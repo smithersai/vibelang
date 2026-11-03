@@ -143,8 +143,8 @@ const Presence = Schema.Struct({
   prohibited: Schema.optionalKey(Schema.Never)
 })
 const WithDecodeDefault = Schema.Struct({
-  copies: Schema.FiniteFromString.pipe(Schema.withDecodingDefaultType(() => 1)),
-  rank: Schema.FiniteFromString.pipe(Schema.withDecodingDefaultTypeKey(() => 0))
+  copies: Schema.FiniteFromString.pipe(Schema.withDecodingDefaultType(Effect.succeed(1))),
+  rank: Schema.FiniteFromString.pipe(Schema.withDecodingDefaultTypeKey(Effect.succeed(0)))
 })
 ```
 

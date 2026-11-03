@@ -11,6 +11,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 
 ## 0.0.11 (unreleased)
+- The Fibers, Basic Concurrency and Cheat Sheet pages showed `try interrupt`, which `EK0502` rejects because `interrupt` is a function, and the Schema page passed `withDecodingDefaultType` a function where Effect 4.1.1 takes an Effect. The examples now write `try interrupt()` and `Schema.withDecodingDefaultType(Effect.succeed(1))`, and compile.
 - With `effect` not installed, `vibelang --fix` read the `function*` in `Effect.gen(function* () { … })` and `Effect.fn("load")(function* … )` as a producer and rewrote `return x + 1` to `{ x + 1; return }`, losing the value. A `function*` passed to a callee that does not resolve now draws no `EK2128` and no fix until the program resolves.
 - Service access written as a call, `try FileSystem.FileSystem()`, `try Path()`, `try ClassTag()` or `try Reference()`, compiled before explicit effects and now reports `TS2349` or `TS2348`. `--fix-vip-only` rewrote it, but plain `--fix` and the editor did not. A new quick fix, which `vibelang --fix` applies, writes `try FileSystem.FileSystem`, `try Path.Path`, `try ClassTag` or `try Reference`. A function that returns an Effect keeps its call.
 - The specification gave the `EK4856` quick fix two triggers for the qualified `Effect.Effect<A, E, R>`: VIP-3 named only an interface heritage element, chapter 7 said "where the syntax requires it". Both now say it writes `A!E!R` where that needs no new parentheses and `Effect.Effect<A, E, R>` everywhere else, including `implements` clauses, unions and arrays of Effects (decided detail 260).
@@ -399,6 +400,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Sharded Go tests could report success after a partitioning tool failed and omitted tests; any failed weighting, sorting, slicing or assignment stage now stops the run with a diagnostic.
 
 - Awaiting a Promise, Effect or ordinary value inside effect code could report a retired await diagnostic; every operand now reports the assigned placement error `EK0102`, while native `async` awaiting keeps its behavior.
+
+- Switching an existing native project to the VIP-1 compiler left service lookups such as `try RuleContext()` unchanged and failed the upgraded build; the migrate flow now asks the new compiler to finish failing projects before that build, after the predecessor migrates inferred function kinds.
 - The `EK0509` repair of an object-literal value fallback, `x catch { directory }`, wrote `() => { directory }`, a block that returns nothing, and refused with `TS2322`; it now writes `() => ({ directory })`.
 - After VIP-1, `vibelang --fix --fix-vip-only` left a call that ran inside a catch's head cold, as in `decode(fs.readFileString(path)) catch …` (`TS2375`, `EK9202`); it now writes the head as the program it was, `(effect { return decode(try fs.readFileString(path)) }) catch …`.
 
@@ -655,6 +658,11 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Reading a producer's `yield` result exposed a queue-offer boolean; a completed offer now gives `undefined`, as the language specifies.
 
 - Specification edits could add language rules without accepted authority; the optional `//:spec-rule-judge` Smithers target now reports Luna’s evidence and contradictions, caches retries, and allows entries through when the judge is unavailable.
+- The ESLint corpus check rejected two deliberately malformed compiler and editor fixtures as regressions; it now verifies their exact intended syntax errors and rejects changed or missing errors.
+
+- Producers accepted `yield*` even though delegation is not specified; it now reports `EK2103`. Native generator delegation keeps its ordinary behavior.
+- A timed-out `cache-loaders` validation hid which engine and cache mode failed; each child now records its stage, elapsed time, termination reason and partial output.
+- `vibelang-format` and the editor moved a comment written after a `for concurrent` or `for try` head in front of the head, turning `for concurrent /* note */ (const x of xs)` into `for /* note */ concurrent (const x of xs)`; the comment now stays after `concurrent`, its limit, or `try`.
 
 - The short compiler fuzz suite could exceed its CPU limit after adding migration coverage; repeated `--fix` checks now reuse unchanged dependency syntax while still checking every seed.
 

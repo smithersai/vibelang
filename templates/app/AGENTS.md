@@ -31,4 +31,4 @@ export effect function names(ids: ReadonlyArray<string>) {
 - Resources: `try scoped(effect { const h = try acquireRelease(open(), close); … })`.
 - Tests: `it.effect("name", () => effect { … })` uses a test clock: `try TestClock.adjust("1 second")`. `it.live` uses real time. Assert.
 
-<!-- 587 tokens (o200k_base, js-tiktoken 1.0.21). Generated: smithersai/vibelang .smithers/flows/docs/flow.ts -->
+<!-- 568 tokens (o200k_base, js-tiktoken 1.0.21). Generated: smithersai/vibelang .smithers/flows/docs/flow.ts -->

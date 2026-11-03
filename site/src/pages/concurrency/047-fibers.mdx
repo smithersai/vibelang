@@ -93,7 +93,7 @@ effect function pollStatus(cancelled: boolean) {
   interruptible {
     try sleep("1 second")
   }
-  if (cancelled) try interrupt
+  if (cancelled) try interrupt()
 }
 // Output: saving; an interruption waits until the block ends
 // Output: saved
@@ -103,7 +103,7 @@ effect function pollStatus(cancelled: boolean) {
 - `uninterruptible` (`Effect.uninterruptibleMask`) runs its block without interruption: an interruption that arrives waits until the block ends.
 - `restore` inside it brings back the fiber's previous interruptibility, so long waits stay cancellable. A `restore` in an `effect` function, arrow, method, producer or block nested in the mask, or anywhere in a `for concurrent` head or body, is `EK2202`: those run as their own Effects, outside the mask. A `do` expression runs in place, so its `restore` is inside the mask.
 - `interruptible` (`Effect.interruptible`) makes its code interruptible even inside an uninterruptible region.
-- `try interrupt` (`Effect.interrupt`) interrupts the running fiber.
+- `try interrupt()` (`Effect.interrupt`) interrupts the running fiber.
 
 The opening `{` must be on the same line as `uninterruptible`, `restore` or `interruptible`. With a line break before `{`, the word is an ordinary identifier and the following block is a separate statement.
 
