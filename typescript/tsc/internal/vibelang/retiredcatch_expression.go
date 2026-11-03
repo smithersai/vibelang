@@ -13,7 +13,9 @@ import (
 
 // The parser keeps a catch expression's arrow parameter annotation. It does
 // not filter failures, so report the same retirement as a statement catch,
-// and offer the same explicit match for a class annotation.
+// and offer the same explicit match for a class annotation. Its default
+// rethrows, so the handler is catch effect: a throw in a plain handler is
+// EK0401.
 func retiredCatchExpressionActions(ctx context.Context, fix *ls.CodeFixContext) ([]*ls.CodeAction, error) {
 	var handler *ast.Node
 	var visit func(*ast.Node) bool
@@ -43,10 +45,10 @@ func retiredCatchExpressionActions(ctx context.Context, fix *ls.CodeFixContext) 
 	}
 	name := parameter.Name().Text()
 	body := strings.TrimSpace(fix.SourceFile.Text()[handler.Body().Pos():handler.Body().End()])
-	replacement := "(" + name + ") => match (" + name + ") { when " + pattern + ": " + body + "; default: throw " + name + "; }"
+	replacement := "effect (" + name + ") => match (" + name + ") { when " + pattern + ": " + body + "; default: throw " + name + "; }"
 	description := "Test the failure with match"
 	if ast.IsBlock(handler.Body()) {
-		replacement = "(" + name + ") => { if (" + name + " is " + pattern + ") " + body + " else { throw " + name + " } }"
+		replacement = "effect (" + name + ") => { if (" + name + " is " + pattern + ") " + body + " else { throw " + name + " } }"
 		description = "Test the failure with is"
 	}
 	span := core.NewTextRange(scanner.SkipTrivia(fix.SourceFile.Text(), handler.Pos()), handler.End())
