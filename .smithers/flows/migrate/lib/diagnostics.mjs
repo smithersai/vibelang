@@ -79,6 +79,10 @@ export function summarize(diagnostics, files = []) {
  * exported class that extends Error keeps its new X(message, options). Such
  * a kept Schema.TaggedError class keeps its constructor too, which EK4814
  * warns about: an EK4814 on a class whose EK4837 has no quick fix stays out.
+ * So does an EK4809 warning: it says every member of a service needs one
+ * requirement, and those member contracts are the service's published
+ * declaration, which verify already holds to the TypeScript's. Dropping the
+ * requirement, as its advice says, would change the API (alchemy-42).
  */
 export function styleProblems(diagnostics, files, preservedErrors = new Set()) {
   const inFiles = new Set(files)
@@ -86,7 +90,7 @@ export function styleProblems(diagnostics, files, preservedErrors = new Set()) {
   // The class a diagnostic names first: `E extends …`, `E overrides …`.
   const className = (d) => /^(\S+) (?:extends|overrides) /.exec(d.message)?.[1]
   const keptClasses = new Set(diagnostics.filter((d) => d.code === "EK4837" && refused(d)).map((d) => `${d.file}\0${className(d)}`))
-  const kept = (d) => d.code === "EK4832" || refused(d) || (d.code === "EK4804" && preservedErrors.has(d)) || (d.code === "EK4814" && d.category !== "error" && keptClasses.has(`${d.file}\0${className(d)}`))
+  const kept = (d) => d.code === "EK4832" || refused(d) || (d.code === "EK4809" && d.category === "warning") || (d.code === "EK4804" && preservedErrors.has(d)) || (d.code === "EK4814" && d.category !== "error" && keptClasses.has(`${d.file}\0${className(d)}`))
   return diagnostics.filter((d) => inFiles.has(d.file) && ((/^EK48\d\d$/.test(d.code) && !kept(d)) || d.code === "EK4402" || d.code === "EK9204"))
 }
 

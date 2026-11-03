@@ -1,0 +1,7 @@
+{
+  "key": "alchemy-links-leaking-requirement",
+  "source": "alchemy demos/effect-prezzy/chapters/06-layers-neon/src/Links.ts (alchemy-42, [alchemy] 2026-11-03T01:55Z), after vibelang --fix on vibe d4fa2c6c954e; RuntimeContext stands in for Alchemy.RuntimeContext",
+  "vibe": "export service RuntimeContext { static readonly key = \"RuntimeContext\"; id: string }\nexport error LinkStoreError { cause: unknown }\nexport interface Link { readonly code: string }\n\n/** Where links live. The Worker depends on this contract, never on a database. */\nexport service Links {\n  static readonly key = \"Links\"\n  create(url: string): Link!LinkStoreError!RuntimeContext;\n  list(): readonly Link[]!LinkStoreError!RuntimeContext;\n}\n",
+  "output": "main.vibe(6,16): warning EK4809: Every member of Links needs RuntimeContext, so each caller must provide it.\n  Read RuntimeContext where the layer is built, and drop it from the members' contracts. A service meant to pass along, such as a transaction, says @vibelang leakable in its documentation comment.\n",
+  "styleProblems": []
+}
