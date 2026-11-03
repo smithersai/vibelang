@@ -40,13 +40,9 @@ FuzzFailuresSpec  feature:promise-reject  compiler  VIP-4: 003-failures.md rejec
 FuzzFailuresSpec  feature:promise-reject-wrapped  compiler  VIP-4: 003-failures.md accepts the program for "`Promise.reject(e)`, like every Promise-producing call, must be inside a `tryPromise` or `promise` thunk in…"; lane w2-throw
 FuzzFailuresSpec  feature:declaration-throws  compiler  VIP-27, VIP-4: 001-functions.md, Declaration output as amended 2026-10-31: every non-effectful .vibe call signature carries @throws {never}; main emits no @throws on parse, add's call signature or Id's constructor; lane nothrow-impl
 FuzzFailuresSpec  feature:effect-decoder-call  compiler  VIP-4: 003-failures.md rejects calling the decoder Schema.decodeUnknownSync returns in effect code (it throws SchemaError); lane w2-throw
-FuzzFailuresSpec  feature:effectful-body-throw  compiler  VIP-4 (001-functions.md Declaration output, 003-failures.md): a plain function returning Effect.succeed(id) may not throw, but draws no error; lane w2-throw
-FuzzFailuresSpec  feature:effectful-body-call  compiler  VIP-4 (001-functions.md, 003-failures.md): a plain function returning a Stream may not make an unwrapped call that may throw, but draws no error; lane w2-throw
 FuzzFailuresSpec  feature:effectful-body-fail  compiler  VIP-6: the global `fail` that 001-functions.md's example returns is not in scope (TS2304); lane fix-vip-globals
 FuzzFailuresSpec  corpus:direct-local  compiler  the minimal reproduction of feature:direct-local
 FuzzFailuresSpec  corpus:declaration-throws  compiler  the minimal reproduction of feature:declaration-throws
-FuzzFailuresSpec  corpus:effectful-body-throw  compiler  the minimal reproduction of feature:effectful-body-throw
-FuzzFailuresSpec  corpus:effectful-body-call  compiler  the minimal reproduction of feature:effectful-body-call
 FuzzFailuresSpec  corpus:effectful-body-fail  compiler  the minimal reproduction of feature:effectful-body-fail
 FuzzFailuresSpec feature:assign-throwing compiler VIP-4: 003-failures.md contract assign-throwing disagrees on unmodified main c9327b36 (error TS2322); lane vip-core2
 FuzzFailuresSpec feature:assign-object-member compiler VIP-4: 003-failures.md contract assign-object-member disagrees on unmodified main c9327b36 (error TS2322); lane vip-core2
@@ -135,8 +131,6 @@ FuzzFailuresSpec feature:schema-error-effect-setter-priority compiler VIP-29: ch
 FuzzFailuresSpec corpus:schema-error-effect-setter-priority compiler VIP-29: minimized reproduction of feature:schema-error-effect-setter-priority; lane core-land
 FuzzFailuresSpec feature:schema-error-effect-constructor-priority compiler VIP-29: chapter 3 contract schema-error-effect-constructor-priority fails on main 405bac96 (initial probe: TS2337); lane core-land
 FuzzFailuresSpec corpus:schema-error-effect-constructor-priority compiler VIP-29: minimized reproduction of feature:schema-error-effect-constructor-priority; lane core-land
-FuzzFailuresSpec feature:wrapper-suspend-throw compiler VIP-4: chapter 3 contract wrapper-suspend-throw fails on main 405bac96 (initial probe: TS2552); lane w2-throw
-FuzzFailuresSpec corpus:wrapper-suspend-throw compiler VIP-4: minimized reproduction of feature:wrapper-suspend-throw; lane w2-throw
 FuzzFailuresSpec feature:catch-tracked-template compiler VIP-5: 003-failures.md as amended 2026-10-31 expects EK0401 at the marked code; main draws no error; lane nothrow-impl
 FuzzFailuresSpec corpus:catch-tracked-template compiler VIP-4: minimized reproduction of feature:catch-tracked-template; lane w2-throw
 FuzzFailuresSpec feature:promise-new compiler VIP-4: chapter 3 contract promise-new fails on main 405bac96 (initial probe: no required diagnostic); lane w2-throw
@@ -157,8 +151,6 @@ FuzzFailuresSpec feature:assign-incompatible-contract compiler VIP-4: 003-failur
 FuzzFailuresSpec corpus:assign-incompatible-contract compiler VIP-4: minimized reproduction of feature:assign-incompatible-contract; lane w2-throw
 FuzzFailuresSpec feature:assign-class-override compiler VIP-4: 003-failures.md as amended 2026-10-31 expects EK0401 at the marked code; main draws TS2416; lane nothrow-impl
 FuzzFailuresSpec corpus:assign-class-override compiler VIP-4: minimized reproduction of feature:assign-class-override; lane vip-core2 (form inference makes the throwing plain function an Effect), then lane w2-throw
-FuzzFailuresSpec feature:assign-dts-callback compiler VIP-4: 003-failures.md as amended 2026-10-31 expects EK0401 at the marked code; main draws EK4401; lane nothrow-impl
-FuzzFailuresSpec corpus:assign-dts-callback compiler VIP-4: minimized reproduction of feature:assign-dts-callback; lane vip-core2 (form inference makes the throwing plain function an Effect), then lane w2-throw
 FuzzFailuresSpec feature:assign-return-written-type compiler VIP-4: the chapter reports EK0402 at the marked code; the compiler draws TS2322 there on main 90a26cf8; lane vip-core2 (form inference makes the throwing plain function an Effect), then lane w2-throw
 FuzzFailuresSpec corpus:assign-return-written-type compiler VIP-4: minimized reproduction of feature:assign-return-written-type; lane vip-core2 (form inference makes the throwing plain function an Effect), then lane w2-throw
 FuzzFailuresSpec feature:assign-service-layer compiler VIP-4: 003-failures.md as amended 2026-10-31 expects EK0401 at the marked code; main draws EK4301, EK9205; lane nothrow-impl
@@ -173,28 +165,16 @@ FuzzFailuresSpec feature:builtin-repeat compiler VIP-4: the chapter reports EK04
 FuzzFailuresSpec corpus:builtin-repeat compiler VIP-4: minimized reproduction of feature:builtin-repeat; lane w2-throw
 FuzzFailuresSpec feature:declaration-interface-member compiler VIP-4: declaration output tags read with @throws '', the chapter requires '{never}' on main 90a26cf8; lane w2-throw
 FuzzFailuresSpec corpus:declaration-interface-member compiler VIP-4: minimized reproduction of feature:declaration-interface-member; lane w2-throw
-FuzzFailuresSpec feature:effect-data-last-callback-throw compiler VIP-4: 003-failures.md as amended 2026-10-31 expects EK0401 at the marked code; main draws EK4502, TS2345; lane nothrow-impl
-FuzzFailuresSpec corpus:effect-data-last-callback-throw compiler VIP-4: minimized reproduction of feature:effect-data-last-callback-throw; lane vip-core2 (form inference makes the throwing plain function an Effect), then lane w2-throw
 FuzzFailuresSpec feature:foreign-function-field compiler VIP-4: the chapter reports EK0403 at the marked code; the compiler draws EK4401 there on main 90a26cf8; lane w2-throw
 FuzzFailuresSpec corpus:foreign-function-field compiler VIP-4: minimized reproduction of feature:foreign-function-field; lane w2-throw
 FuzzFailuresSpec feature:foreign-function-property compiler VIP-4: the chapter reports EK0403 at the marked code; the compiler draws EK4401 there on main 90a26cf8; lane w2-throw
 FuzzFailuresSpec corpus:foreign-function-property compiler VIP-4: minimized reproduction of feature:foreign-function-property; lane w2-throw
-FuzzFailuresSpec feature:match-guard-call compiler VIP-4: 003-failures.md as amended 2026-10-31 expects EK0401 at the marked code; main draws no error; lane nothrow-impl
-FuzzFailuresSpec corpus:match-guard-call compiler VIP-4: minimized reproduction of feature:match-guard-call; lane w2-throw
 FuzzFailuresSpec feature:promise-union compiler VIP-4: the chapter reports EK0404 at the marked code; the compiler reports no error there on main 90a26cf8; lane w2-throw
 FuzzFailuresSpec corpus:promise-union compiler VIP-4: minimized reproduction of feature:promise-union; lane w2-throw
 FuzzFailuresSpec feature:rethrows-reduce-no-initial compiler VIP-4: the chapter reports EK0403 at the marked code; the compiler reports no error there on main 90a26cf8; lane w2-throw
 FuzzFailuresSpec corpus:rethrows-reduce-no-initial compiler VIP-4: minimized reproduction of feature:rethrows-reduce-no-initial; lane w2-throw
-FuzzFailuresSpec feature:catch-effect-param-default compiler VIP-5: 003-failures.md as amended 2026-10-31 expects EK0401 at the marked code; main draws EK4401; lane nothrow-impl
-FuzzFailuresSpec corpus:catch-effect-param-default compiler VIP-4: minimized reproduction of feature:catch-effect-param-default; lane w2-throw
-FuzzFailuresSpec feature:catch-param-computed-key compiler VIP-5: 003-failures.md as amended 2026-10-31 expects EK0401 at the marked code; main draws EK4401; lane nothrow-impl
-FuzzFailuresSpec corpus:catch-param-computed-key compiler VIP-4: minimized reproduction of feature:catch-param-computed-key; lane w2-throw
-FuzzFailuresSpec feature:catch-param-default compiler VIP-5: 003-failures.md as amended 2026-10-31 expects EK0401 at the marked code; main draws EK4401; lane nothrow-impl
-FuzzFailuresSpec corpus:catch-param-default compiler VIP-4: minimized reproduction of feature:catch-param-default; lane w2-throw
 FuzzFailuresSpec feature:generic-unconstrained-substitution compiler VIP-4: 003-failures.md as amended 2026-10-31 expects EK0403 at the marked code; main draws EK4401; lane nothrow-impl
 FuzzFailuresSpec corpus:generic-unconstrained-substitution compiler VIP-4: minimized reproduction of feature:generic-unconstrained-substitution; lane w2-throw
-FuzzFailuresSpec feature:overload-effect-bound-throw compiler VIP-4: 003-failures.md as amended 2026-10-31 expects EK0401 at the marked code; main draws EK9203, TS2322; lane nothrow-impl
-FuzzFailuresSpec corpus:overload-effect-bound-throw compiler VIP-4: minimized reproduction of feature:overload-effect-bound-throw; lane vip-core2 (EK9203: a plain Effect-returning implementation may not build an Effect), then lane w2-throw
 FuzzFailuresSpec feature:error-async-effect-getter-priority compiler VIP-13: the chapter reports EK0104 at the marked code; the compiler draws TS1434, TS7008 there on main d0cdbe5a; lane core-land (TS1434: async effect get does not parse)
 FuzzFailuresSpec corpus:error-async-effect-getter-priority compiler VIP-13: minimized reproduction of feature:error-async-effect-getter-priority; lane core-land (TS1434: async effect get does not parse)
 FuzzFailuresSpec feature:promise-tagged-template compiler VIP-4: the chapter reports EK0404 at the marked code; the compiler reports no error there on main d0cdbe5a; lane w2-throw
@@ -237,25 +217,5 @@ FuzzFailuresSpec feature:schema-error-extends-native-union-optional compiler VIP
 FuzzFailuresSpec corpus:schema-error-extends-native-union-optional compiler VIP-13/VIP-29: Chapter 3 rejects every extends clause with EK2117; native union-tag parents accept this child on main0d0c6b46, so legacy tag compatibility is not the rule; lane impl-hunt-fail
 FuzzFailuresSpec feature:schema-error-extends-native-union-getter compiler VIP-13/VIP-29: Chapter 3 rejects every extends clause with EK2117; native union-tag parents accept this child on main0d0c6b46, so legacy tag compatibility is not the rule; lane impl-hunt-fail
 FuzzFailuresSpec corpus:schema-error-extends-native-union-getter compiler VIP-13/VIP-29: Chapter 3 rejects every extends clause with EK2117; native union-tag parents accept this child on main0d0c6b46, so legacy tag compatibility is not the rule; lane impl-hunt-fail
-FuzzFailuresSpec  feature:async-arguments  compiler  VIP-4: 003-failures.md, Plain code never throws: a call known to throw in a plain function's argument draws no error; lane nothrow-impl
-FuzzFailuresSpec  feature:effectful-body-caught-throw  compiler  VIP-4: 003-failures.md, Plain code never throws: a throw caught in a plain effectful-returning function draws no error; lane nothrow-impl
-FuzzFailuresSpec  feature:effectful-body-nested-throw  compiler  VIP-4: 003-failures.md, Plain code never throws: a throw in a function nested in a plain function draws no error; lane nothrow-impl
-FuzzFailuresSpec  feature:inferred-plain-calls-plain  compiler  VIP-4: 003-failures.md, Plain code never throws: a plain function's call of a .ts function known to throw draws no error; lane nothrow-impl
-FuzzFailuresSpec  feature:nothrow-arrow  compiler  VIP-4: 003-failures.md, Plain code never throws: a throw in a plain arrow draws no error; lane nothrow-impl
-FuzzFailuresSpec  feature:nothrow-arrow-in-effect  compiler  VIP-4: 003-failures.md, Plain code never throws: a throw in a plain arrow nested in effect code draws no error; lane nothrow-impl
 FuzzFailuresSpec  feature:nothrow-generator  compiler  VIP-4: 003-failures.md, Plain code never throws: a throw in a plain generator draws no error; lane nothrow-impl
-FuzzFailuresSpec  feature:nothrow-json-parse  compiler  VIP-4: 003-failures.md, Plain code never throws: JSON.parse in a plain function draws no error; lane nothrow-impl
-FuzzFailuresSpec  feature:nothrow-known-call  compiler  VIP-4: 003-failures.md, Plain code never throws: a plain function's call of a .ts function known to throw draws no error; lane nothrow-impl
-FuzzFailuresSpec  feature:nothrow-known-call-catch-block  compiler  VIP-4: 003-failures.md, Plain code never throws: a call known to throw in a catch block draws no error; lane nothrow-impl
-FuzzFailuresSpec  feature:nothrow-known-call-finally-block  compiler  VIP-4: 003-failures.md, Plain code never throws: a call known to throw in a finally block draws no error; lane nothrow-impl
-FuzzFailuresSpec  feature:nothrow-known-call-nested-in-try  compiler  VIP-4: 003-failures.md, Plain code never throws: a call known to throw in an arrow written inside a try block draws no error; lane nothrow-impl
-FuzzFailuresSpec  feature:nothrow-known-call-try-finally-only  compiler  VIP-4: 003-failures.md, Plain code never throws: a call known to throw in a try block with only finally draws no error; lane nothrow-impl
-FuzzFailuresSpec  feature:nothrow-method  compiler  VIP-4: 003-failures.md, Plain code never throws: a throw in a plain class method draws no error; lane nothrow-impl
-FuzzFailuresSpec  feature:nothrow-object-method  compiler  VIP-4: 003-failures.md, Plain code never throws: a throw in a plain object-literal method draws no error; lane nothrow-impl
-FuzzFailuresSpec  feature:nothrow-rethrow-in-catch  compiler  VIP-4: 003-failures.md, Plain code never throws: a rethrow in a plain catch block draws no error; lane nothrow-impl
-FuzzFailuresSpec  feature:nothrow-throw-caught  compiler  VIP-4: 003-failures.md, Plain code never throws: a throw caught in the same plain function draws no error; lane nothrow-impl
-FuzzFailuresSpec  feature:nothrow-try-statement  compiler  VIP-4: 003-failures.md, Plain code never throws: an unannotated .ts call in a plain try block draws EK4401, though a call whose throwing is unknown stays an ordinary call; lane nothrow-impl
-FuzzFailuresSpec  feature:nothrow-unknown-call  compiler  VIP-4: 003-failures.md, Plain code never throws: an unannotated .ts call in a plain function draws EK4401, though a call whose throwing is unknown stays an ordinary call; lane nothrow-impl
-FuzzFailuresSpec  feature:throw-plain  compiler  VIP-4: 003-failures.md, Plain code never throws: a throw in a plain function draws no error; lane nothrow-impl
-FuzzFailuresSpec  feature:wrap-effect-try-held  compiler  VIP-4: 003-failures.md, Plain code never throws: a held Effect.try over a .ts callee known to throw is typed as its success, so try on it draws EK0502; lane nothrow-impl
 FuzzFailuresSpec  feature:nothrow-declaration-no-rethrows  compiler  VIP-27, VIP-4: 001-functions.md, Declaration output as amended 2026-10-31: a .vibe function with a callback parameter is emitted @throws {never} and no @rethrows; main emits no @throws; lane nothrow-impl

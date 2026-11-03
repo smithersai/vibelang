@@ -47,7 +47,6 @@ FuzzVIPDifferential compile:EK4801/vip21.lexical-receiver compiler VIP-21: the `
 FuzzVIPDifferential corpus:fz-run-vip21-lexical-receiver compiler VIP-21: minimal named probe reproduces compile:EK4801/vip21.lexical-receiver; lane w2-genpipe
 FuzzVIPDifferential compile:EK9203/vip21.lexical-receiver compiler VIP-21: the `effect *name()` method shorthand compiles as a JavaScript generator (EK4801, EK9203, TS2739); lane w2-genpipe
 FuzzVIPDifferential compile:TS2739/vip21.lexical-receiver compiler VIP-21: the `effect *name()` method shorthand compiles as a JavaScript generator (EK4801, EK9203, TS2739); lane w2-genpipe
-FuzzPlainHandlerThrow missing:EK0401 compiler VIP-5: 002-running.md, a plain handler is plain code, so a `throw` in it, or in a function nested in either kind of handler, is EK0401; main reports no error; lane nothrow-impl
 FuzzRunningRules diagnostic:concurrent-head-return compiler VIP-19: a `return` in a head default's `do` draws TS1108 from the generated callback, not EK1904; lane impl-hunt-run
 FuzzRunningRules corpus:concurrent-head-return compiler VIP-19: minimal reproduction of diagnostic:concurrent-head-return; lane impl-hunt-run
 FuzzRunningRules diagnostic:concurrent-head-computed-return compiler VIP-19: a `return` in a computed head key's `do` draws TS1108 from the generated callback, not EK1904; lane impl-hunt-run

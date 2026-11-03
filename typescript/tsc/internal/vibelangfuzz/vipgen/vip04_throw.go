@@ -80,23 +80,11 @@ func (t *Throw) Effect(w *Writer) {
 
 func (t *Throw) Ends() bool { return true }
 
-// Plain probes keep JavaScript exceptions distinct from an Effect failure,
-// even before the effect-function marker is implemented.
+// A plain probe keeps a JavaScript exception distinct from an Effect failure.
+// A throw statement in plain code is EK0401 (VIP-4, amended 2026-10-31: plain
+// functions never throw), so only the implicit throw is a plain probe; the
+// error is FuzzNothrowPlacement's.
 func init() {
-	Register(&Construct{
-		Key:   "vip04.throw-plain",
-		VIP:   4,
-		Plain: true,
-		Citations: []Citation{{
-			VIP:      4,
-			Template: "throw new Error(‹message›)",
-			Quote:    "in a plain or `async` function, `throw` is JavaScript's throw;",
-		}},
-		Focus: func(g *Gen, s *Scope) []Stmt {
-			return []Stmt{&Event{Label: g.Label()}, &plainFailureProbe{}}
-		},
-		Stmt: func(g *Gen, s *Scope) Stmt { return &plainFailureProbe{} },
-	})
 	Register(&Construct{
 		Key:   "vip04.implicit-throw-plain",
 		VIP:   4,

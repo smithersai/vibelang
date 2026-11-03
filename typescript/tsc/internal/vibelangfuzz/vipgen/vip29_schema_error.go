@@ -307,18 +307,28 @@ func init() {
 			Vibe: `schema error NotFound { id: string }
 schema error Timeout
 function witness() {
-  const json = JSON.parse(JSON.stringify(Schema.encodeSync(NotFound)(new NotFound({ id: "a" }))))
-  const back = Schema.decodeUnknownSync(NotFound)(json)
-  const timeout = Schema.decodeUnknownSync(Timeout)(Schema.encodeSync(Timeout)(new Timeout()))
-  return [json, back instanceof NotFound, back._tag, back.id, timeout instanceof Timeout, Schema.is(NotFound)({ _tag: "NotFound", id: 1 })]
+  // calls known to throw stand in a try block with a catch clause (chapter 3)
+  try {
+    const json = JSON.parse(JSON.stringify(Schema.encodeSync(NotFound)(new NotFound({ id: "a" }))))
+    const back = Schema.decodeUnknownSync(NotFound)(json)
+    const timeout = Schema.decodeUnknownSync(Timeout)(Schema.encodeSync(Timeout)(new Timeout()))
+    return [json, back instanceof NotFound, back._tag, back.id, timeout instanceof Timeout, Schema.is(NotFound)({ _tag: "NotFound", id: 1 })]
+  } catch (e) {
+    return ["threw", String(e)]
+  }
 }`,
 			Effect: `class NotFound extends Schema.TaggedError()("NotFound", { id: Schema.String }) {}
 class Timeout extends Schema.TaggedError()("Timeout", {}) {}
 function witness() {
-  const json = JSON.parse(JSON.stringify(Schema.encodeSync(NotFound)(new NotFound({ id: "a" }))))
-  const back = Schema.decodeUnknownSync(NotFound)(json)
-  const timeout = Schema.decodeUnknownSync(Timeout)(Schema.encodeSync(Timeout)(new Timeout()))
-  return [json, back instanceof NotFound, back._tag, back.id, timeout instanceof Timeout, Schema.is(NotFound)({ _tag: "NotFound", id: 1 })]
+  // calls known to throw stand in a try block with a catch clause (chapter 3)
+  try {
+    const json = JSON.parse(JSON.stringify(Schema.encodeSync(NotFound)(new NotFound({ id: "a" }))))
+    const back = Schema.decodeUnknownSync(NotFound)(json)
+    const timeout = Schema.decodeUnknownSync(Timeout)(Schema.encodeSync(Timeout)(new Timeout()))
+    return [json, back instanceof NotFound, back._tag, back.id, timeout instanceof Timeout, Schema.is(NotFound)({ _tag: "NotFound", id: 1 })]
+  } catch (e) {
+    return ["threw", String(e)]
+  }
 }`,
 			Modules: []string{"Schema"},
 			Cite:    vip29Cite(`Schema.TaggedError()("NotFound", { id: Schema.String })`),

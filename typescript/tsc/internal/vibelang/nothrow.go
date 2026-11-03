@@ -93,9 +93,11 @@ func (a *analyzer) knownThrows(node *ast.Node) []*checker.Type {
 	if t.promise || a.performs(node) {
 		return nil
 	}
-	if t.unknown {
+	if t.unknown || t.unreachable != "" {
 		// a written @throws {unknown} says the call may throw anything, an
-		// affirmative contract; no tag at all stays an ordinary call (detail 255)
+		// affirmative contract; no tag at all stays an ordinary call (detail
+		// 255). A written @throws naming no class, such as {"default"}, is a
+		// contract other than never too: the call is known to throw.
 		return []*checker.Type{a.checker.GetUnknownType()}
 	}
 	if len(t.failures) == 0 {

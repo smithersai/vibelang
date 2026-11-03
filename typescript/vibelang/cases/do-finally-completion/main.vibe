@@ -1,12 +1,12 @@
 // VIP-2 / pinned TC39 do completion; the runner compares each block with native eval.
 export function probe0(): unknown { return do { label: { try { 1; } finally { 2; break label; } } }; } // local-break
 export function probe1(): unknown { return do { label: { try { 1; } finally { break label; } } }; } // empty-break
-export function probe2(): unknown { return do { label: { try { throw 0; } catch { 4; } finally { 5; break label; } } }; } // catch-break
+export function probe2(): unknown { return do { label: { try { raise(0); } catch { 4; } finally { 5; break label; } } }; } // catch-break
 export function probe3(): unknown { return do { label: { try { 1; } finally { try { 2; } finally { 99; } 3; break label; } } }; } // nested-finalizers
 export function probe4(): unknown { return do { try { 1; } finally { 2; } }; } // normal-finalizer
 export function probe5(): unknown { return do { try { 1; } finally {} }; } // empty-normal-finalizer
-export function probe6(): unknown { return do { try { throw 0; } catch { 4; } finally { 5; } }; } // normal-catch-finalizer
-export function probe7(): unknown { return do { label: { try { throw 0; } catch { 4; } finally { break label; } } }; } // empty-catch-break
+export function probe6(): unknown { return do { try { raise(0); } catch { 4; } finally { 5; } }; } // normal-catch-finalizer
+export function probe7(): unknown { return do { label: { try { raise(0); } catch { 4; } finally { break label; } } }; } // empty-catch-break
 export function probe8(): unknown { return do { label: { try { 1; } finally { try { 2; } finally { 3; break label; } } } }; } // nested-abrupt-finalizer
 export function probe9(): unknown { return do { label: { try { 1; } finally { 9; try { 2; } finally { break label; } } } }; } // nested-empty-abrupt
 export function probe10(): unknown { return do { try { 1; } finally { inner: { 2; break inner; } } }; } // internal-break-finishes-normally
@@ -20,7 +20,7 @@ export function probe17(): unknown { return do { label: { try { 1; } finally { s
 export function probe18(): unknown { return do { label: { try { 1; } finally { inner: break label; } } }; } // labeled-body-break
 export function probe19(): unknown { return do { try { 1; } finally { for (let i = 0; i < 2; i++) { 9; continue; } } }; } // internal-continue
 export function returnOverride(): unknown { return do { try { 1; } finally { return 7; } }; }
-export function throwOverride(): unknown { try { return do { try { 1; } finally { throw 8; } }; } catch (error) { return error; } }
+export function throwOverride(): unknown { try { return do { try { 1; } finally { raise(8); } }; } catch (error) { return error; } }
 export function continueOverride(): number {
   let total = 0;
   for (let i = 0; i < 3; i++) {
@@ -33,3 +33,7 @@ export function differentNormalType(): number { return do { try { 1; } finally {
 export function differentAbruptType(): unknown { return do { label: { try { 1; } finally { "final"; break label; } } }; }
 // The pinned do algorithm applies UpdateEmpty to abrupt completions too: the inner do carries 7.
 export function nestedDoBreak(): unknown { return do { label: { try { 1; } finally { (do { 7; break label; }); } } }; }
+
+// A synchronous VibeLang function never throws (Will, 2026-10-31): the throw
+// these tests need lives in raise.ts, which keeps JavaScript's throw.
+import { raise } from "./raise.js"

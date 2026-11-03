@@ -60,7 +60,10 @@ func doFinallyNest(g *Gen, depth int, parents []string) string {
 		case 3:
 			return "break " + target + ";"
 		case 4:
-			return fmt.Sprintf("throw %d;", value)
+			// An implicit throw, valid TypeScript and JavaScript: a throw
+			// statement in plain code is EK0401 (VIP-4, amended 2026-10-31),
+			// and a call known to throw is too.
+			return "Object(null).x.y;"
 		case 5:
 			return fmt.Sprintf("%d; if (true) { break %s; } else {}", value, target)
 		case 6:
