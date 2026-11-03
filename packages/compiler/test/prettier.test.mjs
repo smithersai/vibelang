@@ -1,3 +1,5 @@
+// docs/design/vips/0038-effect-lint-built-in.md#b8ac57fcf2f7a28e
+// VIP-38: formatter consumes Vibe source through the Prettier plugin.
 import assert from "node:assert/strict"
 import { test } from "node:test"
 import { createRequire } from "node:module"

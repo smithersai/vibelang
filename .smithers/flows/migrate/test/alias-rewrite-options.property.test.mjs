@@ -1,3 +1,7 @@
+// docs/design/vips/0027-declaration-output.md#adad552196e48a59
+// VIP-27: authored true/false/absent and inherited rewriting values survive forward/revert mutations.
+// docs/design/vips/0027-declaration-output.md#e0a5f687190306de
+// VIP-27: authored true/false/absent and inherited rewriting values survive forward/revert mutations.
 import assert from "node:assert/strict"
 import { spawnSync } from "node:child_process"
 import { mkdirSync, mkdtempSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs"

@@ -1,3 +1,9 @@
+// docs/design/vips/0027-declaration-output.md#ab84b6b8845122f6
+// VIP-27: enumeration-triggered setup and layout-preserving rootDirs matrix.
+// docs/design/vips/0027-declaration-output.md#af092d7a91e1c914
+// VIP-27: enumeration-triggered setup and layout-preserving rootDirs matrix.
+// docs/design/vips/0027-declaration-output.md#a736e37f7297d867
+// VIP-27: enumeration-triggered setup and layout-preserving rootDirs matrix.
 // Decided detail 268: setup turns vibe.sidecarDir on where tracked code
 // enumerates *.ts files in a folder that holds or will hold .vibe files, as
 // Smithers' .smithers/flows/test/coding-stable-plan.test.ts:57 does, and

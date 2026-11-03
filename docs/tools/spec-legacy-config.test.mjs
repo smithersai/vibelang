@@ -1,3 +1,19 @@
+// docs/design/vips/0030-config-files.md#4114c5b7ce322620
+// VIP-30: legacy map admission/modern-port precedence and complete own-warning table.
+// docs/design/vips/0030-config-files.md#3762687b605975a2
+// VIP-30: legacy map admission/modern-port precedence and complete own-warning table.
+// docs/design/vips/0030-config-files.md#07ab532e394d8958
+// VIP-30: legacy map admission/modern-port precedence and complete own-warning table.
+// docs/design/vips/0030-config-files.md#8fa70e50358d6928
+// VIP-30: legacy map admission/modern-port precedence and complete own-warning table.
+// docs/design/vips/0030-config-files.md#9c8143b63c658708
+// VIP-30: legacy map admission/modern-port precedence and complete own-warning table.
+// docs/design/vips/0030-config-files.md#a69114ebfaecf767
+// VIP-30: legacy map admission/modern-port precedence and complete own-warning table.
+// docs/design/vips/0030-config-files.md#a38bd8da5b08f9dc
+// VIP-30: legacy map admission/modern-port precedence and complete own-warning table.
+// docs/design/vips/0030-config-files.md#c75cbc66b6168204
+// VIP-30: legacy map admission/modern-port precedence and complete own-warning table.
 import assert from "node:assert/strict"
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs"
 import { spawnSync } from "node:child_process"

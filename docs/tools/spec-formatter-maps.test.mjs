@@ -1,3 +1,5 @@
+// docs/design/vips/0034-compiler-and-tooling.md#b9cb23f40ef3d960
+// VIP-34: native compiler maps differ after formatting and contain current source bytes.
 import assert from "node:assert/strict"
 import { spawnSync } from "node:child_process"
 import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"

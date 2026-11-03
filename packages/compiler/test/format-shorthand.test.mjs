@@ -1,3 +1,13 @@
+// docs/design/vips/0034-compiler-and-tooling.md#dcce1a6fdc2157d3
+// VIP-34: EK4618 human hint and actual --fix-vip-only repair; formatter retains diagnostics.
+// docs/design/vips/0034-compiler-and-tooling.md#f402aaa0dce71fa7
+// VIP-34: EK4618 human hint and actual --fix-vip-only repair; formatter retains diagnostics.
+// docs/design/vips/0034-compiler-and-tooling.md#742e5f8dfb48a772
+// VIP-34: EK4618 human hint and actual --fix-vip-only repair; formatter retains diagnostics.
+// docs/design/vips/0034-compiler-and-tooling.md#56ec36499e4b5616
+// VIP-34: EK4618 human hint and actual --fix-vip-only repair; formatter retains diagnostics.
+// docs/design/vips/0034-compiler-and-tooling.md#277b4b01690f8a41
+// VIP-34: EK4618 human hint and actual --fix-vip-only repair; formatter retains diagnostics.
 import assert from "node:assert/strict"
 import { test } from "node:test"
 import { spawnSync } from "node:child_process"
@@ -31,6 +41,7 @@ test("format preserves shorthand diagnostics; --fix alone migrates declarations"
   writeFileSync(path, source)
   const before = compile()
   assert.equal(before.status, 2, before.text)
+  assert.match(before.text, /function/, "the diagnostic explains the mechanical function-keyword repair")
   assert.equal((before.text.match(/error EK4618:/g) ?? []).length, 2, before.text)
   const formatted = formatSource(source, path)
   assert.doesNotMatch(formatted, /\bfunction\b/, "formatting must preserve the missing-function diagnostic")
