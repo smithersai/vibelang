@@ -177,3 +177,5 @@ The earlier fold’s claim that preserving `./dep.ts` means a package should pre
 Folded: 1793682039-declstyle-from-tsc.patch (retired-setting warning reconciled at docs/design/vips/0030-config-files.md:26, docs/design/src/007-tooling.md:124 and Appendix B’s `EK3011` row).
 
 The named input’s retirement behavior is adopted for every value, invalid values included. Its proposed `TS5101` is replaced by `EK3011`: VIP-34 keeps `TS` codes for native TypeScript syntax/static errors and requires the owning VIP’s `EK` code for a VibeLang rule. Stock TypeScript `5.9.3` ignores the custom root section and produces no deprecation diagnostic for this key. VIP-30’s next unused allocation is `EK3011`; warning configuration and exit status follow the existing warning rules. No new deprecation policy is introduced.
+
+Folded: conf-auto-effect-expression-name-context-ek1702.patch (applied to Appendix B’s `EK1702` row, matching VIP-17’s expression-name amendment).
