@@ -41,7 +41,38 @@ class Users extends Context.Service<Users, $Users$Shape>()("@acme/app/src/users#
 declare namespace Users { type Shape = $Users$Shape }
 ```
 
-- **The key** is Effect's run-time identity for the service. It is derived from the package, the file and the name: the `name` in the package's `package.json`, `/`, the file's package-relative path without its extension, `#`, the service name. The package is the file's Node package scope, the nearest ancestor directory with a `package.json`; if that file has no string `name`, the service has no derived key (`EK0903` below). The path's segments are joined with `/` on every OS, as in an import specifier, and only the final extension is removed: `src\users.vibe` on Windows gives `src/users`. A service can write it explicitly instead, as a migrated service does to keep its key:
+- **Amended 2026-11-02: a written whole shape.** Add `service Name: Type { … }`. The TypeScript type annotation supplies the exact Shape; the required body admits only the existing `key` and `defaultValue` members. Pass the written type directly to `Context.Service<Name, Type>` (or `Context.Reference<Type>` for a default), preserving its name and modifiers. For this form, `Name.Shape` resolves to that type where chapter 005 permits it; emit the supplied type reference, without an added shape helper or namespace. Existing key, default, ambient and generic-capture rules apply.
+
+```vibe es
+// compiler-gap: pending VIP-9
+import { Context } from "effect";
+export type Shape = { readonly value: string };
+service Port: Shape { static readonly key = "probe/Port" }
+export type Implementation = Context.Service.Shape<typeof Port>;
+```
+
+```ts effect
+import { Context } from "effect";
+export type Shape = { readonly value: string };
+class Port extends Context.Service<Port, Shape>()("probe/Port") {}
+export type Implementation = Context.Service.Shape<typeof Port>;
+```
+
+The annotation is the whole shape, including a non-object type. It does not merge body members or imply inheritance. Body-only services retain their rules and output. The example's declaration output is byte-identical to its Effect TypeScript twin:
+
+```ts
+import { Context } from "effect";
+export type Shape = {
+    readonly value: string;
+};
+declare const Port_base: Context.ServiceClass<Port, "probe/Port", Shape>;
+declare class Port extends Port_base {
+}
+export type Implementation = Context.Service.Shape<typeof Port>;
+export {};
+```
+
+**The key** is Effect's run-time identity for the service. It is derived from the package, the file and the name: the `name` in the package's `package.json`, `/`, the file's package-relative path without its extension, `#`, the service name. The package is the file's Node package scope, the nearest ancestor directory with a `package.json`; if that file has no string `name`, the service has no derived key (`EK0903` below). The path's segments are joined with `/` on every OS, as in an import specifier, and only the final extension is removed: `src\users.vibe` on Windows gives `src/users`. A service can write it explicitly instead, as a migrated service does to keep its key:
 
   ```vibe es
   // compiler-gap: pending VIP-9
@@ -276,6 +307,7 @@ A member gets one diagnostic: the first row below that names it. The last row ap
 | `impl instanceof Users`, and a class pattern `when Users:` or `when Users(…):` | `EK3004` | always false, because implementations are plain objects |
 | `service Repo<T> { … }`, or a written member contract depending on an outer type parameter | `EK3005` | specialized shapes would share one key; use a concrete shape or a member-local generic signature |
 | `static key = "a"` without `readonly`, or a `key` whose initializer is not a string literal (`static readonly key = prefix + "S"`, `` static readonly key = `S` ``). A type annotation is allowed, as in TypeScript: `static readonly key: string = "S"` | `EK0901` | `EK3001` needs every key at compile time |
+| in `service Name: Type { … }`, any member other than a [KeyMember](900-appendices.md#keymember) or a [DefaultMember](900-appendices.md#defaultmember) | `EK0902` | the annotation is the whole shape; the body adds no members |
 | any member that is not a `PropertySignature`, a `MethodSignature`, a [KeyMember](900-appendices.md#keymember) or a [DefaultMember](900-appendices.md#defaultmember): a body, an initializer, a modifier (`private`, `protected`, `#x`, `declare`, `accessor`, `override`), a `get` or `set` accessor, a `constructor`, an index signature, a call signature `(x: number): string`, a construct signature `new (): X`, or another `static`. A bodyless `effect find(id: string): User!NotFound` or `async find(): Promise<User>` is `EK0902`; the quick fix removes the modifier: `find(id: string): User!NotFound` | `EK0902` | as in a TypeScript `interface`, members declare a shape and implement nothing |
 | `service S extends Base { }`, `service S implements I { }` | `EK0904` | a service's identity is its key; compose shapes with types (`find: Base.Shape["find"]`) |
 | `export default service S { }` | `EK0905` | `export default` takes a function, class or expression, as in ECMAScript; write `export { S as default }` |
