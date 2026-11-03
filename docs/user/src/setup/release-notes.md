@@ -351,6 +351,10 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - `return try value` could replace a noniterable operand's native `TypeError` message, including through typed and generic parameters. Tail returns now preserve the message and the source function's name, arity and callable kind.
 
+- Capturing `this` could erase an Effect arrow's field or default-parameter function name. These callables now keep TypeScript's inferred names, including private and computed fields, while receiver reads remain lazy.
+
+- Building an `effect` block or Effect arrow before a derived constructor calls `super()` no longer reads `this` early; each run checks the receiver only when it reaches the read, and a computed `super` key runs after that check.
+
 - The function-controls example read the callable `Function` constructor and reported `EK0107`. Its erased constructor comparison now uses the explicit `any` boundary allowed by VIP-1, while the `instanceof` and prototype controls remain checked.
 
 - The operation-operands example declared a `.vibe` function with `@throws {never}`, which VIP-4 rejects with `EK0406`. The example now uses the declaration’s implicit `never` thrown type and keeps all operation-operand checks.

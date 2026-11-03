@@ -209,6 +209,14 @@ effect function concurrent() {
 
 An effect function call constructs an Effect. `try` runs it at that point. `try.all` runs the supplied Effects concurrently. An `effect { ... }` block constructs an Effect and reruns its statements each time that Effect runs. A producer call constructs a Stream. See [Producers](112-producers.md).
 
+An effect arrow or block keeps its enclosing `this`, `super` and `new.target`.
+Building the Effect does not read these bindings. You can build a block in a
+derived constructor before `super()` and run it afterward. Running it before
+`super()` dies with a `ReferenceError` only if execution reaches a `this` or
+`super` read; a skipped read checks nothing.
+Field and default-parameter arrows also keep TypeScript's inferred `name`,
+including private and computed fields; lazy captures preserve that naming context.
+
 ## Preserve a factory's call-time work
 
 When TypeScript captures configuration before returning an Effect, keep that phase in a plain function with a declared Effect return and return an Effect value:

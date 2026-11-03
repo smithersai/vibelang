@@ -218,9 +218,6 @@ func (tx *lowering) visitTryStatement(node *ast.Node) *ast.Node {
 	run := tx.runNow(tx.regionFunction(r, "try", nil, try.TryBlock, tryBlock), try.TryBlock)
 	if catchClause != nil {
 		handler := tx.regionFunction(r, "catch", catchClause.VariableDeclaration, catchClause.Block, catchBlock)
-		if usesThis(catchClause.Block) {
-			handler = tx.Factory().NewFunctionBindCall(handler, tx.Factory().NewThisExpression(), nil /*argumentsList*/)
-		}
 		helper := "$catch"
 		if isCauseCatch(node) {
 			helper = "$catchCause" // catch (cause: Cause) (primitives.go)
@@ -233,9 +230,6 @@ func (tx *lowering) visitTryStatement(node *ast.Node) *ast.Node {
 		if binding := exitBinding(try.FinallyBlock); binding != nil {
 			// finally (exit) { ... }: the closure takes the Exit (primitives.go).
 			finalizer := tx.regionFunction(cleanup, "finally", binding, try.FinallyBlock, finallyBlock)
-			if usesThis(try.FinallyBlock) {
-				finalizer = tx.Factory().NewFunctionBindCall(finalizer, tx.Factory().NewThisExpression(), nil /*argumentsList*/)
-			}
 			run = tx.runtimeCall("$finallyExit", run, finalizer)
 		} else {
 			run = tx.runtimeCall("$finally", run, tx.runNow(tx.regionFunction(cleanup, "finally", nil, try.FinallyBlock, finallyBlock), try.FinallyBlock))
@@ -309,20 +303,15 @@ func (tx *lowering) regionFunction(r *region, role string, binding *ast.Node, bl
 	generator := f.NewFunctionExpression(nil /*modifiers*/, f.NewToken(ast.KindAsteriskToken), name, nil /*typeParameters*/, f.NewNodeList(parameters), nil /*type*/, nil /*fullSignature*/, body)
 	tx.EmitContext().SetOriginal(generator, block)
 	tx.generated(generator)
+	tx.lexicalReceiver(generator)
 	if r.forTry {
 		// VIP-20: the consumer callback builds a fresh Effect.gen per item.
 		generator = f.NewFunctionExpression(nil, f.NewToken(ast.KindAsteriskToken), name, nil, f.NewNodeList(nil), nil, nil, body)
 		tx.EmitContext().SetOriginal(generator, block)
 		tx.generated(generator)
+		tx.lexicalReceiver(generator)
 		run := tx.wrapGenerator("gen", block, generator)
-		if usesThis(body) {
-			self := f.NewObjectLiteralExpression(f.NewNodeList([]*ast.Node{
-				f.NewPropertyAssignment(nil, f.NewIdentifier("self"), nil, nil, f.NewThisExpression()),
-			}), false)
-			run = f.NewCallExpression(run.Expression(), nil, nil, f.NewNodeList([]*ast.Node{self, generator}), ast.NodeFlagsNone)
-			tx.EmitContext().SetOriginal(run, block)
-			run.Loc = block.Loc
-		}
+
 		return f.NewArrowFunction(nil, nil, f.NewNodeList(parameters), nil, nil, f.NewToken(ast.KindEqualsGreaterThanToken), run)
 	}
 	return tx.wrapGenerator("fnUntraced", block, generator)
@@ -412,14 +401,10 @@ func (tx *lowering) dispatch(completion *ast.Node, j jump) *ast.Node {
 	return f.NewIfStatement(test, then, nil /*elseStatement*/)
 }
 
-// runNow makes `fn()`, which makes the Effect that fn, the closure of block,
-// runs, or `fn.call(this)` when block refers to this, so the closure sees the
-// function's this.
+// runNow builds the region Effect. Its generator uses lexical receiver
+// reads, so calling the closure must not itself read this before super().
 func (tx *lowering) runNow(fn *ast.Node, block *ast.Node) *ast.Node {
 	f := tx.Factory()
-	if usesThis(block) {
-		return f.NewFunctionCallCall(fn, f.NewThisExpression(), nil /*argumentsList*/)
-	}
 	return f.NewCallExpression(fn, nil /*questionDotToken*/, nil /*typeArguments*/, f.NewNodeList(nil), ast.NodeFlagsNone)
 }
 

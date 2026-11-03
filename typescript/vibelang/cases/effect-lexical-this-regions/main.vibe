@@ -1,0 +1,23 @@
+// VIP-1 Bindings: building reads nothing; only reached receiver reads check this.
+import { runExit } from "./runner.ts"
+function shape(e: unknown!!): string {
+  const x = runExit(e)
+  if (Exit.isSuccess(x)) return "Success(" + String(x.value) + ")"
+  return x.cause.reasons.map(r => r._tag === "Die" && r.defect instanceof ReferenceError ? "ReferenceError" : r._tag).join("+")
+}
+
+class Base { value = 7 }
+class Derived extends Base {
+  constructor(read: boolean) {
+    out.push(shape(effect { uninterruptible { if (read) return this.value; return 5 } }))
+    out.push(shape(effect { interruptible { if (read) return this.value; return 5 } }))
+    out.push(shape(effect { uninterruptible { restore { if (read) return this.value; return 5 } } }))
+    out.push(shape(effect { provide Layer.empty { if (read) return this.value; return 5 } }))
+    super()
+  }
+}
+const out: string[] = []
+new Derived(false)
+new Derived(true)
+// expect-result: ["Success(5)","Success(5)","Success(5)","Success(5)","ReferenceError","ReferenceError","ReferenceError","ReferenceError"]
+export effect function main() { return out }

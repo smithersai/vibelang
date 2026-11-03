@@ -462,17 +462,16 @@ func (tx *lowering) lowerFunction(node *ast.Node) *ast.Node {
 	if node.Kind != ast.KindArrowFunction {
 		tx.forwarding(generator) // Effect.fnUntraced calls it with the function's this and arguments
 	}
-	lowered := tx.wrapGenerator("fnUntraced", node, generator)
-	if keepsThis(node) {
-		lowered = tx.Factory().NewFunctionBindCall(lowered, tx.Factory().NewThisExpression(), nil /*argumentsList*/)
+	if node.Kind == ast.KindArrowFunction {
+		tx.lexicalReceiver(generator)
 	}
-	return lowered
+	return tx.wrapGenerator("fnUntraced", node, generator)
 }
 
 // lowerProgram turns a lambda with no parameters that is a program into
 // `Effect.gen(function* () { body })`, an Effect that runs the body each time
-// it runs, or `Effect.gen({ self: this }, function* () { body })` when the
-// lambda keeps its enclosing function's this.
+// it runs. A lexical receiver is read through its source environment's
+// getter only where the body reaches it (frames_lower.go).
 func (tx *lowering) lowerProgram(node *ast.Node) *ast.Node {
 	parameters, body := tx.loweredBody(node)
 	// Only a parameterless arrow: a program lambda can have optional or rest
@@ -495,26 +494,10 @@ func (tx *lowering) lowerProgram(node *ast.Node) *ast.Node {
 		}
 	}
 	generator := tx.generatorFrom(node, parameters, body)
-	if !keepsThis(node) {
-		return tx.wrapGenerator("gen", node, generator)
+	if node.Kind == ast.KindArrowFunction {
+		tx.lexicalReceiver(generator)
 	}
-	f := tx.Factory()
-	self := f.NewObjectLiteralExpression(f.NewNodeList([]*ast.Node{
-		f.NewPropertyAssignment(nil /*modifiers*/, f.NewIdentifier("self"), nil /*postfixToken*/, nil /*typeNode*/, f.NewThisExpression()),
-	}), false /*multiLine*/)
-	callee := f.NewPropertyAccessExpression(tx.effectName(), nil /*questionDotToken*/, f.NewIdentifier("gen"), ast.NodeFlagsNone)
-	lowered := f.NewCallExpression(callee, nil /*questionDotToken*/, nil /*typeArguments*/, f.NewNodeList([]*ast.Node{self, generator}), ast.NodeFlagsNone)
-	tx.EmitContext().SetOriginal(lowered, node)
-	lowered.Loc = node.Loc
-	return lowered
-}
-
-// keepsThis reports whether node is an arrow function that refers to this,
-// in its parameters or its body. An arrow function sees its enclosing
-// function's this, but the generator function that replaces it has its own,
-// so the lowering passes the arrow's this on.
-func keepsThis(node *ast.Node) bool {
-	return node.Kind == ast.KindArrowFunction && usesThis(node)
+	return tx.wrapGenerator("gen", node, generator)
 }
 
 // generatorOf returns `function* (params) { body }` for node, with node's

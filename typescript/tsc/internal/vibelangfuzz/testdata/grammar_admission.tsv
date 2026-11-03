@@ -477,7 +477,7 @@ vibelang/lower.go:lowering.runtimeCall	admission:function-lowering	001-functions
 vibelang/lower.go:lowering.visitRunningCall	admission:implicit-running	-	pending	VIP-1/5 require explicit effect kind and execution; implicit conversion is legacy
 vibelang/lower.go:lowering.lowerFunction	admission:function-lowering	001-functions.md	support	Function lowering machinery; legacy implicit conversions below
 vibelang/lower.go:lowering.lowerProgram	admission:function-lowering	001-functions.md	support	Function lowering machinery; legacy implicit conversions below
-vibelang/lower.go:keepsThis	admission:function-lowering	001-functions.md	support	Function lowering machinery; legacy implicit conversions below
+vibelang/frames_lower.go:lowering.lexicalReceiver	admission:effect-function-support	001-functions.md,002-running.md	support	VIP-1/2: capture lexical `this` without reading it until execution reaches the body read
 vibelang/lower.go:lowering.generatorOf	admission:function-lowering	001-functions.md	support	Function lowering machinery; legacy implicit conversions below
 vibelang/lower.go:lowering.generatorFrom	admission:function-lowering	001-functions.md	support	Function lowering machinery; legacy implicit conversions below
 vibelang/lower.go:lowering.loweredBody	admission:function-lowering	001-functions.md	support	Function lowering machinery; legacy implicit conversions below

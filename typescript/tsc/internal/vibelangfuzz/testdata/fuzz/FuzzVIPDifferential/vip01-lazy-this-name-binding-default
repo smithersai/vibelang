@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("key:vip01.lazy-this-name-binding-default\u00000123456789")

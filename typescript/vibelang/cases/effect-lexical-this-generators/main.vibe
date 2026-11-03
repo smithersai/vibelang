@@ -1,0 +1,74 @@
+// VIP-1 Bindings: building reads nothing; only reached receiver reads check this.
+import { poison, poisonCalls } from "./poison.ts"
+import { runExit } from "./runner.ts"
+function shape(e: unknown!!): string {
+  const x = runExit(e)
+  if (Exit.isSuccess(x)) return "Success(" + String(x.value) + ")"
+  return x.cause.reasons.map(r => r._tag === "Die" && r.defect instanceof ReferenceError ? "ReferenceError" : r._tag).join("+")
+}
+
+class Base {
+  value = 7
+  offset() { return this.value }
+  tag(parts: TemplateStringsArray) { return this.value + parts[0].length }
+}
+;(Base.prototype.offset as any).call = poison
+;(Base.prototype.offset as any).bind = poison
+;(Base.prototype.tag as any).call = poison
+;(Base.prototype.tag as any).bind = poison
+class Derived extends Base {
+  constructor() {
+    const arrow = effect (read: boolean) => {
+      try Effect.succeed(0)
+      if (read) return this.value
+      return 5
+    }
+    out.push(shape(arrow(false)), shape(arrow(true)))
+    const block = effect {
+      try Effect.succeed(0)
+      const f = fork Effect.succeed(1)
+      if (flag) return this.value
+      return 5
+    }
+    out.push(shape(block))
+    const later = effect { try Effect.succeed(0); return this.value }
+    const defaults = effect (value = this.value) => { try Effect.succeed(0); return value }
+    out.push(shape(defaults()))
+    super()
+    out.push(shape(arrow(true)), shape(later), shape(defaults()))
+    const own = effect {
+      try Effect.succeed(0)
+      const holder = { value: 9, read() { return this.value } }
+      return holder.read()
+    }
+    out.push(shape(own))
+  }
+}
+const out: string[] = []
+const flag = false
+new Derived()
+class Default extends Base {
+  constructor(read = effect () => { try Effect.succeed(0); return this.value }) {
+    super()
+    out.push(shape(read()))
+  }
+}
+class Field extends Base {
+  read = effect () => { try Effect.succeed(0); return this.value }
+}
+new Default()
+out.push(shape(new Field().read()))
+class Methods extends Base {
+  constructor() {
+    const call = effect { try Effect.succeed(0); return super.offset() }
+    const optional = effect { try Effect.succeed(0); return super.offset?.() }
+    const tag = effect { try Effect.succeed(0); return super.tag`xy` }
+    out.push(shape(call), shape(optional), shape(tag))
+    super()
+    out.push(shape(call), shape(optional), shape(tag))
+  }
+}
+new Methods()
+out.push(String(poisonCalls()))
+// expect-result: ["Success(5)","ReferenceError","Success(5)","ReferenceError","Success(7)","Success(7)","Success(7)","Success(9)","Success(7)","Success(7)","ReferenceError","ReferenceError","ReferenceError","Success(7)","Success(7)","Success(9)","0"]
+export effect function main() { return out }

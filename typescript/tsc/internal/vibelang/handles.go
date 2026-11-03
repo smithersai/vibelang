@@ -409,10 +409,8 @@ func (tx *lowering) clauseFunction(r *region, clause handleClause, state *clause
 	generator := f.NewFunctionExpression(nil /*modifiers*/, f.NewToken(ast.KindAsteriskToken), name, nil /*typeParameters*/, f.NewNodeList([]*ast.Node{rest}), nil /*type*/, nil /*fullSignature*/, block)
 	tx.EmitContext().SetOriginal(generator, clause.block)
 	tx.generated(generator)
+	tx.lexicalReceiver(generator)
 	lowered := tx.wrapGenerator("fnUntraced", clause.block, generator)
-	if usesThis(clause.block) {
-		lowered = f.NewFunctionBindCall(lowered, f.NewThisExpression(), nil /*argumentsList*/)
-	}
 	return lowered
 }
 

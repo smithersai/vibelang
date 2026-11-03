@@ -201,9 +201,7 @@ func (tx *lowering) scopeRegion(r *region, scope *ast.Node, block *ast.Node, sta
 	f := tx.Factory()
 	parameter := f.NewVariableDeclaration(scope, nil /*exclamationToken*/, nil /*typeNode*/, nil /*initializer*/)
 	closure := tx.regionFunction(r, "using", parameter, block, statements)
-	if usesThis(block) {
-		closure = f.NewFunctionBindCall(closure, f.NewThisExpression(), nil /*argumentsList*/)
-	}
+
 	run := tx.runtimeCall("$region", closure)
 	run.Loc = block.Loc // ends where the closure ends, so the printer does not repeat the comments after the block inside the call
 	return run
@@ -392,10 +390,8 @@ func (tx *lowering) acquisition(initializer *ast.Node) *ast.Node {
 	return tx.initializerProgram(initializer, value)
 }
 
-// initializerProgram returns `Effect.gen(function* () { return value })`, the
-// program of initializer, a using initializer whose lowered value runs
-// calls, or `Effect.gen({ self: this }, function* () { return value })` when
-// initializer refers to this, which the generator would not otherwise see.
+// initializerProgram returns Effect.gen with a generator whose receiver
+// reads remain in the using initializer's source environment.
 func (tx *lowering) initializerProgram(initializer *ast.Node, value *ast.Node) *ast.Node {
 	f := tx.Factory()
 	ec := tx.EmitContext()
@@ -407,13 +403,8 @@ func (tx *lowering) initializerProgram(initializer *ast.Node, value *ast.Node) *
 	generator := f.NewFunctionExpression(nil /*modifiers*/, f.NewToken(ast.KindAsteriskToken), nil /*name*/, nil /*typeParameters*/, f.NewNodeList(nil), nil /*type*/, nil /*fullSignature*/, body)
 	ec.SetOriginal(generator, initializer)
 	tx.generated(generator)
+	tx.lexicalReceiver(generator)
 	arguments := []*ast.Node{generator}
-	if usesThis(initializer) {
-		self := f.NewObjectLiteralExpression(f.NewNodeList([]*ast.Node{
-			f.NewPropertyAssignment(nil /*modifiers*/, f.NewIdentifier("self"), nil /*postfixToken*/, nil /*typeNode*/, f.NewThisExpression()),
-		}), false /*multiLine*/)
-		arguments = []*ast.Node{self, generator}
-	}
 	callee := f.NewPropertyAccessExpression(tx.effectName(), nil /*questionDotToken*/, f.NewIdentifier("gen"), ast.NodeFlagsNone)
 	program := f.NewCallExpression(callee, nil /*questionDotToken*/, nil /*typeArguments*/, f.NewNodeList(arguments), ast.NodeFlagsNone)
 	ec.SetOriginal(program, initializer)

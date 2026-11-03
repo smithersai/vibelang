@@ -5,7 +5,7 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/transformers"
 )
 
-// super, arguments and new.target in generated generators.
+// this, super, arguments and new.target in generated generators.
 //
 // A generator that the lowering introduces is a function of its own, and
 // JavaScript binds super, arguments and new.target afresh in every function
@@ -70,14 +70,15 @@ import (
 
 // frameBinding is a set of the bindings that JavaScript gives every function
 // that is not an arrow, so that a generator the lowering introduces binds
-// them afresh. this is not one: a generator gets its source function's this
-// as its receiver (usesThis).
+// them afresh. Forwarding generators receive the source receiver; lexical
+// generators read it lazily through a getter in the source activation.
 type frameBinding uint8
 
 const (
 	bindsArguments frameBinding = 1 << iota
 	bindsNewTarget
 	bindsSuper
+	bindsThis
 )
 
 // frameReferences records which source functions bind a super, arguments or
@@ -86,6 +87,7 @@ const (
 type frameReferences struct {
 	binders    map[*ast.Node]bool // functions, static blocks and class fields whose super, arguments or new.target their scope refers to
 	arguments  map[*ast.Node]bool // identifiers that refer to their function's arguments
+	lexical    map[*ast.Node]bool // generators of arrows and blocks: this remains lexical and is read lazily
 	forwarders map[*ast.Node]bool // generators called with their source function's this and arguments on every run (forwarding)
 }
 
@@ -95,11 +97,13 @@ type frameReferences struct {
 // (bindsFrame), when that one binds what the reference names
 // (frameBindings).
 func findFrameReferences(file *ast.SourceFile) frameReferences {
-	refs := frameReferences{binders: map[*ast.Node]bool{}, arguments: map[*ast.Node]bool{}, forwarders: map[*ast.Node]bool{}}
+	refs := frameReferences{binders: map[*ast.Node]bool{}, arguments: map[*ast.Node]bool{}, forwarders: map[*ast.Node]bool{}, lexical: map[*ast.Node]bool{}}
 	var visit func(node, binder *ast.Node) bool
 	visit = func(node, binder *ast.Node) bool {
 		var binding frameBinding
 		switch {
+		case node.Kind == ast.KindThisKeyword:
+			binding = bindsThis
 		case node.Kind == ast.KindSuperKeyword && isSuperProperty(node.Parent):
 			binding = bindsSuper
 		case ast.IsIdentifier(node) && node.Text() == "arguments" && !ast.IsRightSideOfQualifiedNameOrPropertyAccess(node) && (!ast.IsDeclarationName(node) || ast.IsShorthandPropertyAssignment(node.Parent)):
@@ -120,7 +124,7 @@ func findFrameReferences(file *ast.SourceFile) frameReferences {
 			return visit(child, binder)
 		})
 	}
-	visit(file.AsNode(), nil)
+	visit(file.AsNode(), file.AsNode())
 	return refs
 }
 
@@ -151,12 +155,14 @@ func bindsFrame(node, child *ast.Node) bool {
 // in a static block and a field, as it is in a generator.
 func frameBindings(fn *ast.Node) frameBinding {
 	switch fn.Kind {
+	case ast.KindSourceFile:
+		return bindsThis
 	case ast.KindClassStaticBlockDeclaration, ast.KindPropertyDeclaration:
-		return bindsSuper
+		return bindsSuper | bindsThis
 	case ast.KindMethodDeclaration, ast.KindGetAccessor, ast.KindSetAccessor, ast.KindConstructor:
-		return bindsArguments | bindsNewTarget | bindsSuper
+		return bindsArguments | bindsNewTarget | bindsSuper | bindsThis
 	}
-	return bindsArguments | bindsNewTarget
+	return bindsArguments | bindsNewTarget | bindsThis
 }
 
 // isNewTarget reports whether node is new.target.
@@ -182,7 +188,7 @@ func frameBody(fn *ast.Node) *ast.Node {
 	switch fn.Kind {
 	case ast.KindClassStaticBlockDeclaration:
 		return fn.AsClassStaticBlockDeclaration().Body
-	case ast.KindPropertyDeclaration:
+	case ast.KindPropertyDeclaration, ast.KindParameter, ast.KindBindingElement, ast.KindSourceFile:
 		return nil
 	}
 	return fn.Body()
@@ -203,13 +209,27 @@ func (tx *lowering) forwarding(generator *ast.Node) *ast.Node {
 	return generator
 }
 
+// lexicalReceiver records a generator whose source is an arrow or effect
+// block. Giving it a receiver when it is built would read an uninitialized
+// derived constructor's this, even when the body never reaches the read.
+func (tx *lowering) lexicalReceiver(generator *ast.Node) {
+	fn := generator
+	if ast.IsPropertyAccessExpression(fn) || ast.IsElementAccessExpression(fn) {
+		fn = fn.Expression().AsObjectLiteralExpression().Properties.Nodes[0]
+	}
+	tx.frames.lexical[fn] = true
+}
+
 // activation is a lowered function that runs as the source function whose
 // references hoistFrameReferences rewrites: what it binds as that function
 // does, and the bindings it declares, once used, for the references that the
 // lowering moved out of it.
 type activation struct {
-	binds                                                 frameBinding
-	super, superSet, superReference, arguments, newTarget *ast.Node
+	binds                                                             frameBinding
+	super, superSet, superReference, arguments, newTarget, thisGetter *ast.Node
+	lexical                                                           *ast.Node        // source arrow whose callable can declare a lazy receiver
+	parameter                                                         bool             // initializer scope, outside the callable's body declarations
+	thisValue                                                         func() *ast.Node // source receiver before this synthetic activation
 }
 
 // hoistFrameReferences rewrites each super, arguments and new.target
@@ -281,7 +301,28 @@ func (tx *lowering) hoistFrameReferences(binder *ast.Node, lowered *ast.Node) *a
 	visitor.Visit = func(node *ast.Node) *ast.Node {
 		source := ec.ParseNode(node)
 		super, arguments, newTarget := frameFor(bindsSuper), frameFor(bindsArguments), frameFor(bindsNewTarget)
+		this := frameFor(bindsThis)
+		receiver := func() *ast.Node {
+			if this == nil {
+				return f.NewThisExpression()
+			}
+			if this.thisGetter == nil {
+				this.thisGetter = f.NewUniqueName("getThis")
+			}
+			return f.NewCallExpression(this.thisGetter, nil, nil, f.NewNodeList(nil), ast.NodeFlagsNone)
+		}
+		key := func(property *ast.Node) *ast.Node {
+			value := tx.superKey(visitor, property)
+			if this != nil {
+				// GetThisBinding precedes evaluating a computed super key,
+				// including when evaluating the key itself would initialize this.
+				value = f.NewBinaryExpression(nil, receiver(), nil, f.NewToken(ast.KindCommaToken), value)
+			}
+			return value
+		}
 		switch {
+		case this != nil && node.Kind == ast.KindThisKeyword:
+			return receiver()
 		case super != nil && isSuperAssignment(node) && !isAssignmentTarget(source):
 			binary := node.AsBinaryExpression()
 			operator := binary.OperatorToken.Kind
@@ -289,14 +330,14 @@ func (tx *lowering) hoistFrameReferences(binder *ast.Node, lowered *ast.Node) *a
 			var value *ast.Node
 			switch {
 			case operator == ast.KindEqualsToken:
-				value = write(super, tx.superKey(visitor, binary.Left), right)
+				value = write(super, key(binary.Left), right)
 			case ast.IsLogicalOrCoalescingAssignmentOperator(operator):
 				// super.x ??= v is super_1("x") ?? superSet_1("x", v).
-				value = f.NewBinaryExpression(nil /*modifiers*/, read(super, tx.superKey(visitor, binary.Left)), nil /*typeNode*/, f.NewToken(transformers.GetNonAssignmentOperatorForCompoundAssignment(operator)), write(super, tx.superKey(visitor, binary.Left), right))
+				value = f.NewBinaryExpression(nil /*modifiers*/, read(super, key(binary.Left)), nil /*typeNode*/, f.NewToken(transformers.GetNonAssignmentOperatorForCompoundAssignment(operator)), write(super, key(binary.Left), right))
 			default:
 				// super.x += v is superSet_1("x", super_1("x") + v).
-				current := f.NewBinaryExpression(nil /*modifiers*/, read(super, tx.superKey(visitor, binary.Left)), nil /*typeNode*/, f.NewToken(transformers.GetNonAssignmentOperatorForCompoundAssignment(operator)), right)
-				value = write(super, tx.superKey(visitor, binary.Left), current)
+				current := f.NewBinaryExpression(nil /*modifiers*/, read(super, key(binary.Left)), nil /*typeNode*/, f.NewToken(transformers.GetNonAssignmentOperatorForCompoundAssignment(operator)), right)
+				value = write(super, key(binary.Left), current)
 			}
 			ec.SetOriginal(value, node)
 			value.Loc = node.Loc
@@ -304,8 +345,8 @@ func (tx *lowering) hoistFrameReferences(binder *ast.Node, lowered *ast.Node) *a
 		case super != nil && ast.IsCallExpression(node) && isSuperProperty(node.Expression()):
 			// Capture the method before evaluating arguments, without reading
 			// its own call/apply/bind properties (VIP-1 Bindings).
-			method := read(super, tx.superKey(visitor, node.Expression()))
-			callee := tx.bindSuperMethod(method, node.QuestionDotToken() != nil)
+			method := read(super, key(node.Expression()))
+			callee := tx.bindSuperMethod(method, receiver(), node.QuestionDotToken() != nil)
 			call := f.NewCallExpression(callee, node.QuestionDotToken(), nil /*typeArguments*/, visitor.VisitNodes(node.ArgumentList()), node.Flags)
 			ec.SetOriginal(call, node)
 			call.Loc = node.Loc
@@ -314,14 +355,14 @@ func (tx *lowering) hoistFrameReferences(binder *ast.Node, lowered *ast.Node) *a
 			// Keep the native template site and capture the receiver before
 			// substitutions. The adapter uses the runtime's captured apply.
 			tagged := node.AsTaggedTemplateExpression()
-			tag := tx.bindSuperMethod(read(super, tx.superKey(visitor, tagged.Tag)), false)
+			tag := tx.bindSuperMethod(read(super, key(tagged.Tag)), receiver(), false)
 			return f.UpdateTaggedTemplateExpression(tagged, tag, tagged.QuestionDotToken, tagged.TypeArguments, visitor.VisitNode(tagged.Template), node.Flags)
 		case super != nil && isSuperProperty(node):
 			var value *ast.Node
 			if isAssignmentTarget(source) {
-				value = reference(super, tx.superKey(visitor, node))
+				value = reference(super, key(node))
 			} else {
-				value = read(super, tx.superKey(visitor, node))
+				value = read(super, key(node))
 			}
 			ec.SetOriginal(value, node)
 			value.Loc = node.Loc
@@ -346,16 +387,52 @@ func (tx *lowering) hoistFrameReferences(binder *ast.Node, lowered *ast.Node) *a
 			}
 			return newTarget.newTarget
 		case node.Kind == ast.KindArrowFunction:
-			return visitor.VisitEachChild(node)
+			if source == nil || source.Kind != ast.KindArrowFunction {
+				return visitor.VisitEachChild(node)
+			}
+			// Keep captures inside the callable so its field/default initializer
+			// keeps Native NamedEvaluation. A surrounding generated generator
+			// may itself have a different receiver, so retain the source read.
+			value := receiver
+			if this != nil && this.parameter && this.thisValue != nil {
+				value = this.thisValue
+			}
+			a := &activation{binds: bindsThis, lexical: source, thisValue: value}
+			activations = append(activations, a)
+			visited := visitor.VisitEachChild(node)
+			activations = activations[:len(activations)-1]
+			return tx.declareFrameBindings(visited, a)
 		case ast.IsClassLike(node) && source != nil:
 			return outside.VisitEachChild(node)
-		case !opensFrame(node):
+		case node.Kind == ast.KindParameter && source != nil && (source.Parent == binder || len(activations) > 0 && activations[len(activations)-1].lexical == source.Parent):
+			// A default's closures cannot see declarations in the function body.
+			// Give the initializer its own activation, declared in an arrow called
+			// where the default is evaluated, without reading this at construction.
+			a := &activation{binds: frameBindings(binder), parameter: true, thisValue: func() *ast.Node { return f.NewThisExpression() }}
+			if len(activations) > 0 && activations[len(activations)-1].lexical == source.Parent {
+				a.binds = bindsThis
+				a.thisValue = activations[len(activations)-1].thisValue
+			}
+			activations = append(activations, a)
+			visited := visitor.VisitEachChild(node)
+			activations = activations[:len(activations)-1]
+			return tx.declareFrameBindings(visited, a)
+		case node.Kind == ast.KindBindingElement && source != nil && node.Initializer() != nil && len(activations) > 0 && activations[len(activations)-1].parameter:
+			// A destructuring default has its own initializer, even when the
+			// containing parameter has no initializer in which to declare helpers.
+			parent := activations[len(activations)-1]
+			a := &activation{binds: parent.binds, parameter: true, thisValue: parent.thisValue}
+			activations = append(activations, a)
+			visited := visitor.VisitEachChild(node)
+			activations = activations[:len(activations)-1]
+			return tx.declareFrameBindings(visited, a)
+		case !opensFrame(node) && node.Kind != ast.KindSourceFile:
 			return visitor.VisitEachChild(node)
 		case source == binder || node == root:
 			var binds frameBinding
 			switch {
 			case tx.frames.forwarders[node]:
-				binds = bindsArguments
+				binds = bindsArguments | bindsThis
 			case node.Kind == binder.Kind && len(activations) == 0:
 				// The function that binder's caller calls. A plain function
 				// declaration's $direct variant and its Effect wrapper are
@@ -375,7 +452,13 @@ func (tx *lowering) hoistFrameReferences(binder *ast.Node, lowered *ast.Node) *a
 		}
 		// A generator, or another function, that the lowering introduced.
 		saved := own
-		own = 0
+		// Other generated generators retain the receiver their existing
+		// wrapper supplies. Only an arrow/block's generator needs a lazy
+		// read from its source activation.
+		own = bindsThis
+		if tx.frames.lexical[node] {
+			own = 0
+		}
 		visited := visitor.VisitEachChild(node)
 		own = saved
 		return visited
@@ -397,18 +480,20 @@ func (tx *lowering) hoistFrameReferences(binder *ast.Node, lowered *ast.Node) *a
 // bindSuperMethod captures a super Reference as an invocation adapter.
 // For an optional call, a nullish target must stay nullish so the native
 // optional call skips its arguments. Read the target only once; testing a
-// method's own call property would observe user code instead.
-func (tx *lowering) bindSuperMethod(method *ast.Node, optional bool) *ast.Node {
+// method's own call property would observe user code instead. The receiver
+// is the source activation's lazy read when this call is inside a lexical
+// generator, and native this when the enclosing function binds it.
+func (tx *lowering) bindSuperMethod(method, receiver *ast.Node, optional bool) *ast.Node {
 	f := tx.Factory()
 	if !optional {
-		return tx.runtimeCall("$bindMethod", method, f.NewThisExpression())
+		return tx.runtimeCall("$bindMethod", method, receiver)
 	}
 	value := f.NewUniqueName("method")
 	parameter := f.NewParameterDeclaration(nil /*modifiers*/, nil /*dotDotDotToken*/, value, nil /*questionToken*/, nil /*type*/, nil /*initializer*/)
 	isNull := f.NewBinaryExpression(nil /*modifiers*/, value, nil /*typeNode*/, f.NewToken(ast.KindEqualsEqualsEqualsToken), f.NewKeywordExpression(ast.KindNullKeyword))
 	isUndefined := f.NewBinaryExpression(nil /*modifiers*/, value, nil /*typeNode*/, f.NewToken(ast.KindEqualsEqualsEqualsToken), f.NewVoidZeroExpression())
 	nullish := f.NewBinaryExpression(nil /*modifiers*/, isNull, nil /*typeNode*/, f.NewToken(ast.KindBarBarToken), isUndefined)
-	bound := tx.runtimeCall("$bindMethod", value, f.NewThisExpression())
+	bound := tx.runtimeCall("$bindMethod", value, receiver)
 	body := f.NewConditionalExpression(nullish, f.NewToken(ast.KindQuestionToken), value, f.NewToken(ast.KindColonToken), bound)
 	adapter := f.NewArrowFunction(nil /*modifiers*/, nil /*typeParameters*/, f.NewNodeList([]*ast.Node{parameter}), nil /*type*/, nil /*fullSignature*/, f.NewToken(ast.KindEqualsGreaterThanToken), body)
 	return f.NewCallExpression(f.NewParenthesizedExpression(adapter), nil /*questionDotToken*/, nil /*typeArguments*/, f.NewNodeList([]*ast.Node{method}), ast.NodeFlagsNone)
@@ -454,23 +539,34 @@ func (tx *lowering) superKey(visitor *ast.NodeVisitor, node *ast.Node) *ast.Node
 // that declares them and returns it, called in its place.
 func (tx *lowering) declareFrameBindings(fn *ast.Node, a *activation) *ast.Node {
 	body := frameBody(fn)
-	if a.super == nil && a.superSet == nil && a.superReference == nil && a.arguments == nil && a.newTarget == nil {
-		return fn
-	}
-	if fn.Kind == ast.KindPropertyDeclaration {
-		if fn.Initializer() == nil {
-			return fn
-		}
-	} else if body == nil || !ast.IsBlock(body) {
+	if a.super == nil && a.superSet == nil && a.superReference == nil && a.arguments == nil && a.newTarget == nil && a.thisGetter == nil {
 		return fn
 	}
 	f := tx.Factory()
+	originalBody := body
+	if fn.Kind == ast.KindArrowFunction && body != nil && !ast.IsBlock(body) {
+		body = f.NewBlock(f.NewNodeList([]*ast.Node{f.NewReturnStatement(body)}), true)
+	}
+	if fn.Kind == ast.KindPropertyDeclaration || fn.Kind == ast.KindParameter || fn.Kind == ast.KindBindingElement {
+		if fn.Initializer() == nil {
+			return fn
+		}
+	} else if fn.Kind != ast.KindSourceFile && (body == nil || !ast.IsBlock(body)) {
+		return fn
+	}
 	ec := tx.EmitContext()
 	var declarations []*ast.Node
 	declare := func(name, value *ast.Node) {
 		declarations = append(declarations, f.NewVariableStatement(nil /*modifiers*/, f.NewVariableDeclarationList(f.NewNodeList([]*ast.Node{
 			f.NewVariableDeclaration(name, nil /*exclamationToken*/, nil /*typeNode*/, value),
 		}), ast.NodeFlagsConst)))
+	}
+	if a.thisGetter != nil {
+		value := f.NewThisExpression()
+		if a.thisValue != nil {
+			value = a.thisValue()
+		}
+		declare(a.thisGetter, tx.generated(tx.arrow(nil, value)))
 	}
 	if a.super != nil {
 		key := f.NewIdentifier("key")
@@ -503,24 +599,41 @@ func (tx *lowering) declareFrameBindings(fn *ast.Node, a *activation) *ast.Node 
 	if a.newTarget != nil {
 		declare(a.newTarget, f.NewMetaProperty(ast.KindNewKeyword, f.NewIdentifier("target")))
 	}
-	if fn.Kind == ast.KindPropertyDeclaration {
-		// field = (() => { const super_1 = …; return initializer; })()
-		property := fn.AsPropertyDeclaration()
-		block := f.NewBlock(f.NewNodeList(append(declarations, f.NewReturnStatement(property.Initializer))), true /*multiLine*/)
+	if fn.Kind == ast.KindPropertyDeclaration || fn.Kind == ast.KindParameter || fn.Kind == ast.KindBindingElement {
+		// initializer = (() => { const super_1 = …; return initializer; })()
+		block := f.NewBlock(f.NewNodeList(append(declarations, f.NewReturnStatement(fn.Initializer()))), true /*multiLine*/)
 		arrow := f.NewArrowFunction(nil /*modifiers*/, nil /*typeParameters*/, f.NewNodeList(nil), nil /*type*/, nil /*fullSignature*/, f.NewToken(ast.KindEqualsGreaterThanToken), block)
 		initializer := f.NewCallExpression(f.NewParenthesizedExpression(arrow), nil /*questionDotToken*/, nil /*typeArguments*/, f.NewNodeList(nil), ast.NodeFlagsNone)
+		if fn.Kind == ast.KindParameter {
+			parameter := fn.AsParameterDeclaration()
+			return f.UpdateParameterDeclaration(parameter, fn.Modifiers(), parameter.DotDotDotToken, fn.Name(), parameter.QuestionToken, parameter.Type, initializer)
+		}
+		if fn.Kind == ast.KindBindingElement {
+			binding := fn.AsBindingElement()
+			return f.UpdateBindingElement(binding, binding.DotDotDotToken, binding.PropertyName, binding.Name(), initializer)
+		}
+		property := fn.AsPropertyDeclaration()
 		return f.UpdatePropertyDeclaration(property, fn.Modifiers(), fn.Name(), property.PostfixToken, property.Type, initializer)
 	}
-	statements := body.Statements()
+	var statements []*ast.Node
+	if fn.Kind == ast.KindSourceFile {
+		statements = fn.AsSourceFile().Statements.Nodes
+	} else {
+		statements = body.Statements()
+	}
 	directives := 0
 	for directives < len(statements) && ast.IsPrologueDirective(statements[directives]) {
 		directives++
 	}
 	all := append(append(append([]*ast.Node{}, statements[:directives]...), declarations...), statements[directives:]...)
+	if fn.Kind == ast.KindSourceFile {
+		file := fn.AsSourceFile()
+		return f.UpdateSourceFile(file, f.NewNodeList(all), file.EndOfFileToken)
+	}
 	block := f.UpdateBlock(body.AsBlock(), f.NewNodeList(all), body.AsBlock().MultiLine)
 	replace := ec.NewNodeVisitor(nil)
 	replace.Visit = func(node *ast.Node) *ast.Node {
-		if node == body {
+		if node == originalBody {
 			return block
 		}
 		return node

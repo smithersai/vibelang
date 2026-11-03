@@ -1,0 +1,47 @@
+// VIP-1 Source names and Bindings: lexical captures preserve NamedEvaluation.
+import { runExit } from "./runner.ts"
+let keyCalls = 0
+function computedKey(): "computed" { keyCalls++; return "computed" }
+const computed = computedKey()
+class Named {
+  value = 7
+  literal = effect (flag: boolean) => { try Effect.succeed(0); if (flag) return this.value; return 5 };
+  #hidden = effect (flag: boolean) => { try Effect.succeed(0); if (flag) return this.value; return 5 };
+  [computed] = effect (flag: boolean) => { try Effect.succeed(0); if (flag) return this.value; return 5 }
+  factory = (flag: boolean) => effect { try Effect.succeed(0); if (flag) return this.value; return 5 };
+  destructured({ read = effect (flag: boolean) => { try Effect.succeed(0); if (flag) return this.value; return 5 } } = {}) { return read }
+  defaultBlock({ p = effect { try Effect.succeed(0); return this.value } } = {}) { return p }
+  defaulted(read = effect (flag: boolean) => { try Effect.succeed(0); if (flag) return this.value; return 5 }) { return read }
+  names() { return { literal: this.literal.name, hidden: this.#hidden.name, computed: this.computed.name, default: this.defaulted().name, factory: this.factory.name, destructured: this.destructured().name } }
+  programs() { return [this.literal(true), this.#hidden(true), this.computed(true), this.defaulted()(true), this.factory(true), this.destructured()(true), this.defaultBlock()] }
+}
+function shape(e: unknown!!): string {
+  const x = runExit(e)
+  if (Exit.isSuccess(x)) return "Success(" + String(x.value) + ")"
+  return x.cause.reasons.map(r => r._tag === "Die" && r.defect instanceof ReferenceError ? "ReferenceError" : r._tag).join("+")
+}
+const nested: string[] = []
+class Base { value = 7 }
+class Nested extends Base {
+  constructor(flag: boolean) {
+    const p = effect {
+      try Effect.succeed(0)
+      const read = effect (inner: boolean) => { try Effect.succeed(0); if (inner) return this.value; return 5 }
+      return try read(flag)
+    }
+    nested.push(shape(p))
+    super()
+    nested.push(shape(p))
+  }
+}
+new Nested(false)
+new Nested(true)
+class DefaultCapture extends Base {
+  constructor({ p = effect { try Effect.succeed(0); return this.value } } = {}) { super(); nested.push(shape(p)) }
+}
+new DefaultCapture()
+// expect-result: {"names":{"literal":"literal","hidden":"#hidden","computed":"computed","default":"read","factory":"factory","destructured":"read"},"keyCalls":1,"values":[7,7,7,7,7,7,7],"nested":["Success(5)","Success(5)","ReferenceError","Success(7)","Success(7)"]}
+export effect function main() {
+  const x = new Named()
+  return { names: x.names(), keyCalls, values: try all(x.programs()), nested }
+}

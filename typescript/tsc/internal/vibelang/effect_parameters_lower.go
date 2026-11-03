@@ -14,8 +14,11 @@ func (tx *lowering) callTimeEffectBody(node *ast.Node, parameters *ast.NodeList,
 	}
 	tx.EmitContext().SetOriginal(generator, node)
 	tx.generatedFunctions(generator)
+	if node.Kind == ast.KindArrowFunction {
+		tx.lexicalReceiver(generator)
+	}
 	arguments := []*ast.Node{generator}
-	if usesThis(node.Body()) {
+	if node.Kind != ast.KindArrowFunction && usesThis(node.Body()) {
 		self := f.NewPropertyAssignment(nil, f.NewIdentifier("self"), nil, nil, f.NewThisExpression())
 		arguments = []*ast.Node{f.NewObjectLiteralExpression(f.NewNodeList([]*ast.Node{self}), false), generator}
 	}
