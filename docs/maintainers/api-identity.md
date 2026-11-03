@@ -40,7 +40,7 @@ side. Adding, removing or renaming a private member still changes nominal
 identity. Their member types, visibility and enum values remain part of the
 generated type checks. Identical deferred
 `infer` and mapped types share a virtual module only after proving their complete
-resolved dependency closures equivalent, including cycles. A changed dependency
+resolved dependency closures equivalent, including cycles and `import = require(...)` edges. The proof ignores declaration import/member order and equivalent type-import spelling; overload order and distinct external nominal origins remain significant. A changed dependency
 invalidates that proof. Separate installations with the same package name and
 version remain separate until proved equivalent. Dependency pair candidates
 are seeded independently of entry syntax, so reordering entry imports preserves
@@ -48,6 +48,16 @@ unchanged external `unique symbol` types without hiding dependency changes. JSDo
 tags. Formatting, quotes, import order, equivalent module specifiers and
 member order do not fail the check when TypeScript sees the same API.
 Formatter tests may continue to compare bytes to test their formatting.
+
+Global declarations and module augmentations can merge when both input trees
+enter one TypeScript program. Before probing, the checker reads each tree in
+isolation and proves the ambient declaration dependency closures equivalent,
+including normalized JSDoc from their dependencies. An unproved ambient change
+makes the comparison unavailable with exit status `2`; it is never accepted as
+identical or counted as a type difference. Unchanged ambient declarations and
+doc-comment whitespace remain comparable. This conservative guard does not yet
+classify changed global environments by export.
+
 
 The reusable synchronous API is
 `compareApiIdentity(ts, beforeDir, afterDir, options)` from
@@ -69,7 +79,7 @@ additional result is `true`.
 prints the three lists.
 
 Run `smthrs test //:api-identity-test`, or
-`node --test scripts/api-identity.test.mjs`, for the regression corpus and
+`node --test scripts/api-identity*.test.mjs`, for the regression corpus and
 the property that harmless rewrites pass while a semantic mutation fails.
 
 Migration snapshots can also supply `beforeResolutions` and

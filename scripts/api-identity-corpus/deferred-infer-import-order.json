@@ -1,0 +1,9 @@
+{
+  "rule": "Import and member order and type-import spelling do not change an exported type, including a deferred infer alias.",
+  "manifest": { "types": "./index.d.ts" },
+  "dependencies": {
+    "a.d.ts": "export interface A { a: string; b: number }",
+    "b.d.ts": "export type B = number;"
+  },
+  "before": "import type { A } from \"./a\"; import type { B } from \"./b\"; export type X<T> = T extends (infer I)[] ? I : never; export type Used = [A, B];"
+}

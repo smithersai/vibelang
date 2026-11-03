@@ -567,7 +567,7 @@ const targets = {
     sandbox: "none",
     timeout: "1m"
   }),
-  "api-identity-test": check("Published export names, tsc type identity and JSDoc, with property controls.", "node scripts/sync-api-identity.mjs --check && node --test scripts/api-identity.test.mjs", [], [node]),
+  "api-identity-test": check("Published export names, tsc type identity and JSDoc, with property controls.", "node scripts/sync-api-identity.mjs --check && node --test scripts/api-identity*.test.mjs", [], [node]),
   "spec-shared-tables": specSharedTables,
   "spec-copy-sections": specCopySections,
   "spec-registry": specRegistry,

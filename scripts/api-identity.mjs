@@ -126,7 +126,7 @@ type __Assert<T extends true> = T;
 // dependency closures have the same syntax (comments/quotes/specifiers aside).
 // The final generated strict probe still imports both published entry points.
 // Changed or unresolved dependencies invalidate every ancestor, including cycles.
-function equivalentModules(ts, program, host, left, right, externalGroups) {
+function equivalentModules(ts, program, host, left, right, externalGroups, documentation) {
   const printer = ts.createPrinter({ removeComments: true })
   const nodes = new Map(), normalized = new Map(), origins = new Map()
   function externalOrigin(file) {
@@ -149,21 +149,54 @@ function equivalentModules(ts, program, host, left, right, externalGroups) {
     const source = program.getSourceFile(file)
     if (!source) return undefined
     const imports = []
+    const factory = ts.factory
+    const canonicalImport = (node, module = node.moduleSpecifier) => {
+      let bindings = node.importClause.namedBindings
+      if (bindings && ts.isNamedImports(bindings)) bindings = factory.updateNamedImports(bindings,
+        [...bindings.elements].sort((a, b) => a.name.text.localeCompare(b.name.text))
+          .map(specifier => factory.updateImportSpecifier(specifier, false, specifier.propertyName, specifier.name)))
+      const clause = factory.updateImportClause(node.importClause, false, node.importClause.name, bindings)
+      return factory.updateImportDeclaration(node, node.modifiers, clause, module, node.attributes)
+    }
+    const imported = node => ts.isImportDeclaration(node) && node.importClause
+    const importKey = node => printer.printNode(ts.EmitHint.Unspecified,
+      canonicalImport(node, factory.createStringLiteral("__module")), source)
+    const orderedMembers = members => {
+      const name = node => node.name && (ts.isIdentifier(node.name) || ts.isStringLiteral(node.name) || ts.isNumericLiteral(node.name)) ? node.name.text : undefined
+      const counts = new Map()
+      for (const member of members) if (name(member) !== undefined) counts.set(name(member), (counts.get(name(member)) ?? 0) + 1)
+      const eligible = member => name(member) !== undefined && counts.get(name(member)) === 1 &&
+        (ts.isPropertySignature(member) || ts.isMethodSignature(member) ||
+          ts.isPropertyDeclaration(member) && !member.initializer || ts.isMethodDeclaration(member))
+      const sorted = members.filter(eligible).sort((a, b) => name(a).localeCompare(name(b)))
+      let index = 0
+      return factory.createNodeArray(members.map(member => eligible(member) ? sorted[index++] : member))
+    }
     const transform = context => {
       const visit = node => {
+        if (ts.isTypeLiteralNode(node)) node = factory.updateTypeLiteralNode(node, orderedMembers(node.members))
+        else if (ts.isInterfaceDeclaration(node)) node = factory.updateInterfaceDeclaration(node, node.modifiers, node.name, node.typeParameters, node.heritageClauses, orderedMembers(node.members))
+        else if (ts.isClassDeclaration(node)) node = factory.updateClassDeclaration(node, node.modifiers, node.name, node.typeParameters, node.heritageClauses, orderedMembers(node.members))
         if (ts.isStringLiteral(node)) {
           const p = node.parent
           const module = (ts.isImportDeclaration(p) || ts.isExportDeclaration(p)) && p.moduleSpecifier === node ||
-            ts.isLiteralTypeNode(p) && ts.isImportTypeNode(p.parent)
+            ts.isLiteralTypeNode(p) && ts.isImportTypeNode(p.parent) ||
+            ts.isExternalModuleReference(p) && p.expression === node
           if (module) { imports.push(node.text); return ts.factory.createStringLiteral("__edge" + (imports.length - 1)) }
           return ts.factory.createStringLiteral(node.text)
         }
-        return ts.visitEachChild(node, visit, context)
+        const visited = ts.visitEachChild(node, visit, context)
+        return imported(visited) ? canonicalImport(visited) : visited
       }
-      return source => ts.visitNode(source, visit)
+      return source => {
+        const sorted = source.statements.filter(imported).sort((a, b) => importKey(a).localeCompare(importKey(b)))
+        let index = 0
+        const ordered = factory.updateSourceFile(source, source.statements.map(statement => imported(statement) ? sorted[index++] : statement))
+        return ts.visitNode(ordered, visit)
+      }
     }
     const transformed = ts.transform(source, [transform])
-    const text = printer.printFile(transformed.transformed[0])
+    const text = printer.printFile(transformed.transformed[0]) + (documentation?.get(file) ?? "")
     transformed.dispose()
     const deps = host.resolveModuleNames(imports, file).map(x => x?.resolvedFileName)
     for (const ref of source.referencedFiles) deps.push(resolve(dirname(file), ref.fileName))
@@ -196,6 +229,17 @@ function equivalentModules(ts, program, host, left, right, externalGroups) {
     const [a, b, ...extra] = [...files]
     if (a && b && !extra.length) pair(a, b)
   }
+  // Paths and frozen resolution edges can bypass tsc package IDs. Recover
+  // the same candidates from logical installed-package/module origins.
+  const logicalGroups = new Map()
+  for (const source of program.getSourceFiles()) {
+    if (source.hasNoDefaultLib) continue
+    const origin = externalOrigin(source.fileName)
+    if (origin === undefined) continue
+    if (!logicalGroups.has(origin)) logicalGroups.set(origin, [])
+    logicalGroups.get(origin).push(source.fileName)
+  }
+  for (const files of logicalGroups.values()) if (files.length === 2) pair(files[0], files[1])
   const bad = [...nodes.values()].filter(n => !n.good)
   for (let i = 0; i < bad.length; i++) for (const parent of bad[i].parents) {
     if (parent.good) { parent.good = false; bad.push(parent) }
@@ -345,6 +389,73 @@ export function compareApiIdentity(ts, before, after, options = {}) {
     if ([before, after].some(base => source.fileName === base || source.fileName.startsWith(base + "/")) &&
         !source.fileName.includes("/node_modules/"))
       originalDiagnostics.push(...program.getSyntacticDiagnostics(source), ...program.getSemanticDiagnostics(source))
+  }
+
+  // A shared program merges ambient globals and module augmentations. Prove
+  // these shared contributions equivalent using separate dependency closures.
+  // Changed contributions cannot be compared soundly by the combined probe.
+  const contributesAmbient = source => {
+    if (source.hasNoDefaultLib) return false
+    let contributes = !ts.isExternalModule(source)
+    const visit = node => {
+      if (ts.isModuleDeclaration(node) && ((node.flags & ts.NodeFlags.GlobalAugmentation) || ts.isStringLiteral(node.name))) contributes = true
+      ts.forEachChild(node, visit)
+    }
+    visit(source)
+    return contributes
+  }
+  if (program.getSourceFiles().some(contributesAmbient)) {
+    const ambientDocumentation = new Map()
+    const ambient = (roots, base) => {
+      const isolated = ts.createProgram(Object.values(roots), compilerOptions, host)
+      const sources = new Map()
+      const docChecker = isolated.getTypeChecker()
+      for (const source of isolated.getSourceFiles()) {
+        if (source.hasNoDefaultLib) continue
+        const comments = []
+        const inspect = (node, path) => {
+          const name = node.name && (ts.isIdentifier(node.name) || ts.isStringLiteral(node.name) || ts.isNumericLiteral(node.name)) ? node.name.text : ""
+          const key = path + "/" + ts.SyntaxKind[node.kind] + ":" + name
+          const symbol = node.name && docChecker.getSymbolAtLocation(node.name)
+          if (symbol) {
+            const value = docs(ts, docChecker, symbol)
+            if (value) comments.push([key, value])
+          }
+          ts.forEachChild(node, child => inspect(child, key))
+        }
+        inspect(source, "")
+        ambientDocumentation.set(source.fileName, JSON.stringify(comments.sort((a,b) => JSON.stringify(a).localeCompare(JSON.stringify(b)))))
+        if (!contributesAmbient(source)) continue
+        const file = resolve(source.fileName)
+        let key
+        const marker = "/node_modules/", at = file.lastIndexOf(marker)
+        if (at >= 0) {
+          const tail = file.slice(at + marker.length).split("/")
+          const count = tail[0].startsWith("@") ? 2 : 1
+          const root = file.slice(0, at + marker.length) + tail.slice(0, count).join("/")
+          let manifest = {}
+          try { manifest = JSON.parse(readFileSync(join(root, "package.json"), "utf8")) } catch {}
+          key = "package:" + JSON.stringify([manifest.name ?? tail.slice(0, count).join("/"), manifest.version, relative(root, file)])
+        } else if (file === base || file.startsWith(base + "/")) key = "owned:" + relative(base, file)
+        else key = "shared:" + file
+        if (sources.has(key) && sources.get(key) !== file) {
+          result.environmentDiagnostics.push({ blocking: true, file, diagnostic: "Ambiguous ambient declaration origin: " + key })
+        }
+        sources.set(key, file)
+      }
+      return sources
+    }
+    const ambientLeft = ambient(left, before), ambientRight = ambient(right, after)
+    const ambientProof = equivalentModules(ts, program, host, Object.fromEntries(ambientLeft), Object.fromEntries(ambientRight), externalGroups, ambientDocumentation)
+    for (const key of new Set([...ambientLeft.keys(), ...ambientRight.keys()])) {
+      const a = ambientLeft.get(key), b = ambientRight.get(key)
+      if (a && b && (a === b || ambientProof.get(b) === a)) continue
+      result.environmentDiagnostics.push({ blocking: true, file: b ?? a, diagnostic: "Ambient declaration closures differ; shared-program comparison is unavailable: " + key })
+    }
+    if (result.environmentDiagnostics.some(d => d.blocking)) {
+      result.comparisonComplete = false
+      return result
+    }
   }
   const equivalents = equivalentModules(ts, program, host, left, right, externalGroups)
   const nominal = alignNominalIdentity(ts, program, before, after, join(repo, ".api-identity-brands.d.cts"), [left, right])

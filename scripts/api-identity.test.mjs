@@ -696,3 +696,55 @@ test("foreign generic alias constraints and defaults cannot disappear into a pri
     assert.ok(result.environmentDiagnostics.some(d => d.blocking))
   }
 })
+
+test("deferred infer identity survives import declaration and member order and type-import spelling", () => {
+  const deps = { "a.d.ts": "export interface A { a: string; b: number }", "b.d.ts": "export type B = number;" }
+  const before = { ...deps, "index.d.ts": 'import type { A } from "./a"; import type { B } from "./b"; export type X<T> = T extends (infer I)[] ? I : never; export type Used = [A, B];' }
+  for (const after of [
+    'import type { B } from "./b"; import type { A } from "./a"; export type X<T> = T extends (infer I)[] ? I : never; export type Used = [A, B];',
+    'import { type B } from "./b.js"; import { type A } from "./a.js"; export type X<T> = T extends (infer I)[] ? I : never; export type Used = [A, B];',
+  ]) pass(before, { ...deps, "a.d.ts": "export interface A { b: number; a: string }", "index.d.ts": after }, { types: "./index.d.ts" })
+})
+
+test("module closure proof follows import-equals dependency changes", () => {
+  const a = { "index.d.cts": 'import Dep = require("./dep"); export type X = Dep.X;', "dep.d.ts": "export type X = string;" }
+  const b = { ...a, "dep.d.ts": "export type X = number;" }
+  const result = compare(a, b, { types: "./index.d.cts" })
+  assert.equal(result.identical, false, JSON.stringify(result))
+  assert.ok(result.typeDifferences.some(d => d.export === "X"))
+})
+
+test("property: ignored rewrites around deferred aliases pass and a dependency mutation fails", async () => {
+  const corpus = JSON.parse(readFileSync(new URL("./api-identity-corpus/deferred-infer-import-order.json", import.meta.url)))
+  await checkProperty(fc, {
+    name: "api-identity-deferred-import-rewrites",
+    rule: corpus.rule + " A real dependency type mutation still fails.",
+    command: "node --test scripts/api-identity.test.mjs",
+    arbitrary: fc.record({ reverse: fc.boolean(), inline: fc.boolean(), members: fc.boolean() }),
+    numRuns: 4,
+    check: ({ reverse, inline, members }) => {
+      const imports = ["A", "B"].map(name => inline ? `import { type ${name} } from "./${name.toLowerCase()}.js";` : `import type { ${name} } from "./${name.toLowerCase()}";`)
+      if (reverse) imports.reverse()
+      const before = { ...corpus.dependencies, "index.d.ts": corpus.before }
+      const after = { ...corpus.dependencies,
+        "a.d.ts": members ? "export interface A { b: number; a: string }" : corpus.dependencies["a.d.ts"],
+        "index.d.ts": imports.join(" ") + ' export type X<T> = T extends (infer I)[] ? I : never; export type Used = [A, B];' }
+      pass(before, after, corpus.manifest)
+      const changed = compare(before, { ...after, "b.d.ts": "export type B = string;" }, corpus.manifest)
+      assert.ok(changed.typeDifferences.some(d => d.export === "Used"), JSON.stringify(changed))
+    },
+  })
+})
+
+test("path-mapped external dependency identity survives alias expansion", () => {
+  const deps = {
+    "tsconfig.json": JSON.stringify({ compilerOptions: { baseUrl: ".", paths: { foreign: ["./node_modules/foreign/index.d.ts"] } } }),
+    "node_modules/foreign/package.json": JSON.stringify({ name: "foreign", version: "1.0.0", types: "index.d.ts" }),
+    "node_modules/foreign/index.d.ts": "export declare const brand: unique symbol; export interface X { readonly [brand]: string }",
+  }
+  const a = { ...deps, "index.d.ts": 'import type { X } from "foreign"; export type Api = X; export {};' }
+  const b = { ...deps, "index.d.ts": 'import type { X } from "foreign"; type Alias = X; export type Api = Alias; export {};' }
+  pass(a, b, { types: "./index.d.ts" })
+  const changed = compare(a, { ...b, "node_modules/foreign/index.d.ts": deps["node_modules/foreign/index.d.ts"].replace("]: string", "]: number") }, { types: "./index.d.ts" })
+  assert.ok(changed.typeDifferences.some(d => d.export === "Api"))
+})
