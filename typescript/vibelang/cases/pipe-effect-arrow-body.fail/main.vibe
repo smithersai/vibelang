@@ -4,3 +4,6 @@
 export const plain = 1 |> () => %
 export const later = 1 |> async () => %
 export const effectful = 1 |> effect () => %
+
+// docs/design/vips/0023-pipe.md#1f70d56b299aa8c4 | VIP-23 pipe-body-arrow-restriction
+// **Amended 2026-10-31: arrows at the right edge.** An `EffectArrow` is an arrow for the pinned pipe-body restriction.
