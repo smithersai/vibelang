@@ -1,0 +1,5 @@
+// expect: EK0103
+// rule-evidence: docs/design/vips/0005-try-runs-effects.md#a264c40b94e41c69
+// VIP-5: await on an Effect inside an async function is an
+async function bad() { return await Effect.succeed(1) }
+

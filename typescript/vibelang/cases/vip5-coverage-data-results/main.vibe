@@ -1,0 +1,15 @@
+// rule-evidence: docs/design/vips/0005-try-runs-effects.md#b4364086f6f93bb0
+// VIP-5: A successful try and a plain catch handler result likewise
+import { Effect } from "effect"
+const promise = Promise.resolve(7)
+let calls = 0
+const thenable = { then(resolve: (value: number) => void) { calls++; resolve(8) } }
+const unknownThenable: unknown = thenable
+effect function returned() { return thenable }
+export effect function main(): Effect.Effect<readonly unknown[]> {
+  const fromTry = try Effect.succeed(promise)
+  const fromThenable = try Effect.succeed(thenable)
+  const fromReturn = try returned()
+  const fromHandler = Effect.fail("x") catch () => unknownThenable
+  return [fromTry === promise, fromThenable === thenable, fromReturn === thenable, fromHandler === thenable, calls]
+}

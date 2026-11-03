@@ -1,0 +1,1 @@
+catch association and assignment parity

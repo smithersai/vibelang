@@ -1,0 +1,1 @@
+typed handler parameters use TypeScript checking without retired EK2112

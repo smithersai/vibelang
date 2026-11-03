@@ -1,4 +1,6 @@
 // expect: EK0102
+// rule-evidence: docs/design/vips/0005-try-runs-effects.md#aa4ed747c8882c5e
+// VIP-5: await inside an effect function is an error;
 // VIP-5: await inside effect code is a placement error for every operand type.
 effect function load() {
   await Promise.resolve(1)

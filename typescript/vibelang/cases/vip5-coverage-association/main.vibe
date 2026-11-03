@@ -1,0 +1,8 @@
+// rule-evidence: docs/design/vips/0005-try-runs-effects.md#49f3282785b8a37b
+// VIP-5: catch binds like ??
+import { Effect } from "effect"
+export effect function main(): Effect.Effect<number> {
+  let assigned: number = 0
+  assigned = Effect.fail("first") catch function () { return Effect.fail("second") } catch function (e: string) { return e.length }
+  return assigned
+}

@@ -1,0 +1,9 @@
+// expect: EK0509
+// rule-evidence: docs/design/vips/0005-try-runs-effects.md#6f9638ec00dad146
+// VIP-5: the value and effect-block rows are removed
+// rule-evidence: docs/design/vips/0005-try-runs-effects.md#930708e865b0c36b
+// VIP-5: A catch handler is always a function literal, so x
+// rule-evidence: docs/design/vips/0005-try-runs-effects.md#4aad5acbeeab74cd
+// VIP-5: The value-form row x catch guest is the same kind
+// VIP-5: handler-block rejection; expected contract comes from the specification.
+effect function bad() { return Effect.fail("x") catch effect { return 7 } }

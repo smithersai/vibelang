@@ -1,0 +1,19 @@
+// expect: EK0403 EK0403 EK0403 EK0403 EK0403 EK0403 EK0403 EK0403 EK0403 EK0403 EK0403 EK0403 EK0403 EK0403
+// rule-evidence: docs/design/vips/0004-throw.md#95b3acca0e0d8ed9
+// VIP-4: Every other specified throw is argument validation and is tracked
+effect function bad(s: string, data: object) {
+  JSON.parse(s)
+  JSON.stringify(data)
+  BigInt(s)
+  new RegExp(s)
+  decodeURIComponent(s)
+  atob(s)
+  structuredClone(() => 1)
+  "x".repeat(-1)
+  "x".padStart(-1)
+  (1.5).toFixed(2)
+  (1.5).toPrecision(0)
+  (1).toString(1)
+  new Array(-1)
+  "x".normalize(s)
+}

@@ -1,0 +1,1 @@
+Effect success keeps Promise and thenable data without assimilation

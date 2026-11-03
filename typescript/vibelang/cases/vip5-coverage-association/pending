@@ -1,0 +1,1 @@
+cov-try-throw VIP coverage counterexample: tsc reported 1 error(s): TS2322 (13.8 s); rule and witness recorded in review-spec/conformance/from-coverage.md.

@@ -1,0 +1,3 @@
+// expect: TS2322
+// VIP-5: handler-annotation rejection; expected contract comes from the specification.
+effect function bad() { return Effect.fail("x") catch (e: number) => e + 1 }

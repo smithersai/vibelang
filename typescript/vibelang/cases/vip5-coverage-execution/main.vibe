@@ -1,0 +1,58 @@
+// rule-evidence: docs/design/vips/0004-throw.md#c0a3df5df805011f
+// VIP-4: in an effect function, throw e fails the Effect with
+// rule-evidence: docs/design/vips/0005-try-runs-effects.md#725ec9664cd0da99
+// VIP-5: try e runs the Effect e inside an effect function
+// rule-evidence: docs/design/vips/0005-try-runs-effects.md#b18e6a012e09a12d
+// VIP-5: A failure propagates to the enclosing Effect, as Zig's try
+// rule-evidence: docs/design/vips/0005-try-runs-effects.md#07e15ba3115a38a9
+// VIP-5: completed Effects and scheduling
+// rule-evidence: docs/design/vips/0005-try-runs-effects.md#28d5a3cb33789b43
+// VIP-5: | x catch effect (e) => … (an effect function;
+// rule-evidence: docs/design/vips/0005-try-runs-effects.md#c93313aa7730b26f
+// VIP-5: An Effect that can't fail is still run with try,
+// rule-evidence: docs/design/vips/0005-try-runs-effects.md#6d37c66256a0017b
+// VIP-5: the handler is always a function literal
+// rule-evidence: docs/design/vips/0005-try-runs-effects.md#e4879820dd246fa4
+// VIP-5: return values stay unflattened
+// rule-evidence: docs/design/vips/0005-try-runs-effects.md#e2b3de26811fab44
+// VIP-5: A returned inner Effect stays unrun: return e keeps it,
+// rule-evidence: docs/design/vips/0005-try-runs-effects.md#8830d23cdf78488d
+// VIP-5: catch's handler is always a function literal, and its syntax
+// rule-evidence: docs/design/vips/0005-try-runs-effects.md#b41f15442ee2364c
+// VIP-5: vibe x catch (e) => 7 // ok: fallback value
+// rule-evidence: docs/design/vips/0005-try-runs-effects.md#fe1585f96c22fa69
+// VIP-5: Executing a completed Effect need not give up the current
+// rule-evidence: docs/design/vips/0005-try-runs-effects.md#42b47fefbed8f038
+// VIP-5: It introduces no extra Promise job, implicit yieldNow, or mandatory
+// rule-evidence: docs/design/vips/0005-try-runs-effects.md#f2cbf542d9a3908d
+// VIP-5: The await placement/precedence/evaluation-order analogy does not promise JavaScript microtask scheduling
+// rule-evidence: docs/design/vips/0005-try-runs-effects.md#1dcefa4d80c57260
+// VIP-5: A plain x catch (e) => { B } remains
+import { Effect, Exit } from "effect"
+// VIP-5: execution, propagation, one-layer success data, literal handler kinds,
+// parenthesized nested catch, left association, assignment and synchronous turn.
+export effect function completed(): Effect.Effect<number> { return try Effect.succeed(7) }
+export effect function main(): Effect.Effect<readonly unknown[]> {
+  let runs = 0
+  const inner = Effect.sync(() => { runs++; return 3 })
+  const held = effect { return inner }
+  const returned = try held
+  const fromSuccess = try Effect.succeed(inner)
+  const fromHandler = Effect.fail("bad") catch () => inner
+  const before = runs
+  const ran = try returned
+  const value = try fromSuccess
+  const handlerValue = try fromHandler
+  const failed = try Effect.exit(effect { try Effect.fail("propagated"); return "unreachable" })
+  const recovered = Effect.fail("bad") catch (e: string) => e.length
+  const refailed = try Effect.exit(effect { return Effect.fail("first") catch effect (e: string) => { throw e + " again" } })
+  let assigned: number = 0
+  assigned = Effect.fail("missing") catch () => 9
+  const success = Effect.succeed(4) catch () => { runs += 100; return 0 }
+  return [before, runs, returned === inner, fromSuccess === inner, fromHandler === inner,
+    ran, value, handlerValue,
+    Exit.isFailure(failed) && failed.cause.reasons[0]?._tag === "Fail" && failed.cause.reasons[0].error === "propagated",
+    recovered,
+    Exit.isFailure(refailed) && refailed.cause.reasons[0]?._tag === "Fail" && refailed.cause.reasons[0].error === "first again",
+    assigned, success]
+}

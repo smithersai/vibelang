@@ -1,0 +1,11 @@
+// expect: EK0509 TS2739
+// rule-evidence: docs/design/vips/0005-try-runs-effects.md#ad0105c508be79ac
+// VIP-5: Corrected 2026-10-30: this amendment also listed async arrows as plain
+// rule-evidence: docs/design/vips/0005-try-runs-effects.md#8134241285ed195a
+// VIP-5: no generator or async handlers
+// rule-evidence: docs/design/vips/0005-try-runs-effects.md#447b0ad6b3c8c9ca
+// VIP-5: Generator and async catch handlers are syntax errors (NW 51;
+// rule-evidence: docs/design/vips/0005-try-runs-effects.md#596b71def4f135e1
+// VIP-5: A catch handler is an arrow function, a function expression
+// VIP-5: handler-async-arrow rejection; expected contract comes from the specification.
+effect function bad() { return Effect.fail("x") catch async () => 7 }

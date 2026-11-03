@@ -1,0 +1,14 @@
+// rule-evidence: docs/design/vips/0004-throw.md#3ca4137f7b0434f7
+// VIP-4: function types
+// rule-evidence: docs/design/vips/0004-throw.md#bc34f7d86b0eda7e
+// VIP-4: A function type with no @throws stays non-throwing.
+// rule-evidence: docs/design/vips/0004-throw.md#9a5c481d2c9401b8
+// VIP-4: A function type or interface member with no @throws is
+// rule-evidence: docs/design/vips/0004-throw.md#9d9d7c15c5442bde
+// VIP-4: A function type with no @throws is non-throwing (decided detail
+// rule-evidence: docs/design/vips/0004-throw.md#8b89332ec60f834f
+// VIP-4: else a function type written in a .vibe type position
+type Callback = () => number
+interface Local { method(): number }
+export effect function accepted(callback: Callback, local: Local) { return callback() + local.method() }
+
