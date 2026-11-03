@@ -122,25 +122,7 @@ func tryOperationArrayType(c *checker.Checker, t *checker.Type) bool {
 }
 
 func tryOperationEffectType(c *checker.Checker, t *checker.Type) bool {
-	if t == nil {
-		return false
-	}
-	if t.Flags()&checker.TypeFlagsNever != 0 {
-		return true
-	}
-	return everyMember(t, func(t *checker.Type) bool {
-		t = c.GetApparentType(t)
-		if c.GetPropertyOfType(t, effectTypeID) == nil {
-			return false
-		}
-		base := analyzerFor(c).programEffectInterface()
-		if base == nil {
-			return false
-		}
-		any := c.GetAnyType()
-		effect := c.NewTypeReference(base, []*checker.Type{any, any, any})
-		return c.IsTypeAssignableTo(t, effect)
-	})
+	return isEffectOperandType(c, t)
 }
 
 // Keep file comments and directive prologues before an inserted import.

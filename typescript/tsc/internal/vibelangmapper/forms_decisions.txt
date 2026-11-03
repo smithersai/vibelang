@@ -2035,6 +2035,8 @@ typescript/vibelang/cases/effect-method-super/main.vibe:53:12 lambda choice fall
 typescript/vibelang/cases/effect-method-super/main.vibe:93:15 lambda effectFn fallback
 typescript/vibelang/cases/effect-method-super/main.vibe:94:17 lambda dual fallback
 typescript/vibelang/cases/effect-modules-explicit/main.vibe:3:168 lambda plain table
+typescript/vibelang/cases/effect-operation-operands/main.vibe:9:46 lambda effectFn table
+typescript/vibelang/cases/effect-operation-operands/main.vibe:9:59 lambda effectFn table
 typescript/vibelang/cases/effect-optional-method.fail/main.vibe:2:19 lambda dual fallback
 typescript/vibelang/cases/effect-platform-name-meanings/main.vibe:22:15 lambda plain annotation
 typescript/vibelang/cases/effect-subtype-as-data-suspended.fail/main.vibe:10:34 lambda program annotation
@@ -5288,8 +5290,9 @@ typescript/vibelang/cases/trust-levels/main.vibe:51:66 lambda plain table
 typescript/vibelang/cases/trust-levels/main.vibe:98:18 lambda effectFn annotation
 typescript/vibelang/cases/trusted-value/main.vibe:11:34 lambda program table
 typescript/vibelang/cases/trusted-value/main.vibe:14:36 lambda program table
+typescript/vibelang/cases/try-effect-subtype-calls/main.vibe:29:10 lambda choice fallback
 typescript/vibelang/cases/try-effect-subtype-calls/main.vibe:29:10 lambda effectFn table
-typescript/vibelang/cases/try-effect-subtype-calls/main.vibe:29:50 lambda effectFn table
+typescript/vibelang/cases/try-effect-subtype-calls/main.vibe:29:68 lambda effectFn table
 typescript/vibelang/cases/try-nested-value.fail/main.vibe:6:17 byname program table
 typescript/vibelang/cases/try-nested-value.fail/main.vibe:6:18 byname program table
 typescript/vibelang/cases/try-nested/main.vibe:10:20 byname program table

@@ -164,6 +164,11 @@ func checkCatchExpressions(c *checker.Checker, file *ast.SourceFile) {
 				// EK0504 or EK0509 (foldkit devtools-mcp relayRegistry.vibe).
 				return node.ForEachChild(visit)
 			}
+			if t := catchOperandType(c, left); t != nil && !isEffectOperandType(c, t) {
+				report(c, left, EK0506)
+				coverCodes(c, call, 2322, 2345, 2769)
+				return node.ForEachChild(visit)
+			}
 			checkCatchHandlerResult(c, file, call, fallback)
 			if inLowerableBody(call) && analyzerFor(c).caughtErrors(call).Flags()&checker.TypeFlagsNever != 0 {
 				d := reportAt(c, file, keyword, deadCatchExpression, nodeText(file, left))

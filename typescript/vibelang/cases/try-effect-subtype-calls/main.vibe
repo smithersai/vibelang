@@ -26,5 +26,5 @@ effect function migrate() {
 }
 
 effect function query(): string!! {
-  return (try failing()).length.toString() catch (e) => e
+  return effect { return (try failing()).length.toString() } catch (e) => e
 }

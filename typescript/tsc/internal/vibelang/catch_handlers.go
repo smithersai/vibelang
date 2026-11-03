@@ -155,6 +155,11 @@ func catchHandlerRepair(c *checker.Checker, file *ast.SourceFile, call, handler 
 		edits = append([]core.TextChange{{TextRange: core.NewTextRange(scanner.SkipTrivia(text, call.Pos()), scanner.SkipTrivia(text, call.Pos())), NewText: "("}}, edits...)
 		edits[1].NewText += ")"
 	}
+	if t := c.GetTypeAtLocation(handler); t != nil && !isEffectOperandType(c, t) && len(c.GetSignaturesOfType(t, checker.SignatureKindCall)) == 0 {
+		if removal := legacyCatchTryRemoval(file, call); removal != nil {
+			edits = append(edits, *removal)
+		}
+	}
 	return edits, repaired
 }
 

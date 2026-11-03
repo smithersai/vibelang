@@ -470,6 +470,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - `Convert to a pipe` could turn a statement with an object argument into invalid syntax; object and class inputs now keep their expression context at the pipe head.
 
+- Effect operand checks could reject `never` or `any` and accept types that only resembled an Effect. `try`, `catch`, `fork` and the elements of `try.all`, `try.race`, `try.any` and `try.allSettled` now use TypeScript assignability to `Effect.Effect<any, any, any>`; `unknown` needs narrowing first. `vibelang --fix` preserves previously accepted unchecked `try` calls and computed `catch` heads, making their behavior explicit.
+
 - Bun's release-age setting blocked newly published VibeLang packages in example projects; the examples now exempt their pinned VibeLang packages from that age check.
 - `--fix` rewrote `.pipe(Semaphore.withPermits(semaphore, 1))` to `Semaphore.withPermits(%, semaphore, 1)`, which passes the program as the Semaphore, and then refused the whole `Effect.gen` with TS2740; a stage whose `self` is not the piped value now stays curried, as `Semaphore.withPermits(semaphore, 1)(%)`.
 - Editor fixes could write invalid annotations around `this` or `super`, a loop binding or a `finally` binding; they now decline edits that cannot preserve the program.

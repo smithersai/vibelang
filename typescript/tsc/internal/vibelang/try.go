@@ -106,13 +106,7 @@ func checkTry(c *checker.Checker, file *ast.SourceFile, call, operand *ast.Node)
 		return
 	}
 	t := c.GetTypeAtLocation(operand)
-	if t == nil || t.Flags()&checker.TypeFlagsAnyOrUnknown != 0 || isEffectValueType(c, t) || isEffectValueType(c, presentCallResult(c, t)) {
-		return
-	}
-	// An Effect with structure of its own runs too, as yield* runs it: a
-	// Config, an Effect intersected with a brand, an interface that extends
-	// Effect. try reads its channels (effectOfValue), as the type it gives does.
-	if effectOfValue(c, t) != nil {
+	if t == nil || isEffectOperandType(c, t) {
 		return
 	}
 	text := shortText(expressionText(file, operand), "the operand")
@@ -153,10 +147,6 @@ func triedText(file *ast.SourceFile, operand *ast.Node) string {
 func checkTriedCall(c *checker.Checker, file *ast.SourceFile, operand *ast.Node) {
 	keyword := tryKeyword(file, operand)
 	call := ast.SkipParentheses(operand)
-	a := analyzerFor(c)
-	if runsWhereItStands(a, call) {
-		return
-	}
 	text := shortText(triedText(file, operand), "the call")
 	if inEffectCode(call) && serviceLookup(c, call) != nil {
 		return // try S.member(…) runs the service lookup (D41)
@@ -165,8 +155,8 @@ func checkTriedCall(c *checker.Checker, file *ast.SourceFile, operand *ast.Node)
 		note(reportAt(c, file, keyword, EK0502, text, "a program this position holds without running it"), "Remove try to hold the program, or run it first: const value = try {0}.", text)
 		return
 	}
-	t := c.GetTypeAtLocation(operand)
-	if t == nil || t.Flags()&checker.TypeFlagsAnyOrUnknown != 0 {
+	t := effectOperandType(c, operand)
+	if t == nil || isEffectOperandType(c, t) {
 		return
 	}
 	d := reportAt(c, file, keyword, EK0502, text, "not an Effect: "+c.TypeToString(t))

@@ -41,6 +41,9 @@ func migrationOperandRules() []migrationOperandRule {
 		{"schema-tagged-error", "schema error Missing { id:string }; const input = new Missing({id:\"x\"});", true},
 		{"any", "declare const input: any;", true},
 		{"never", "declare const input: never;", true},
+		{"effect-union", "declare const input: Effect.Effect<number> | Effect.Effect<string, string>;", true},
+		{"optional", "declare const input: Effect.Effect<number> | undefined;", false},
+		{"forged-variance", "declare const input: Pick<Effect.Effect<number>, \"~effect/Effect\">;", false},
 		{"unknown", "declare const input: unknown;", false},
 		{"number", "declare const input: number;", false},
 		{"option", "declare const input: Option.Option<number>;", false},
@@ -70,6 +73,9 @@ func checkMigrationEffectOperand(t *testing.T, w *Workspace, rule migrationOpera
 	operand, shape := "input", "value"
 	if variant&4 != 0 {
 		operand, shape = "make()", "call"
+	}
+	if variant&8 != 0 {
+		operand, shape = "(make())", "parenthesized-call"
 	}
 	operators := []string{"try", "catch", "try.all", "fork"}
 	codes := []int32{502, 506, 1801, 1703}
@@ -119,6 +125,12 @@ func FuzzMigrationEffectOperands(f *testing.F) {
 	rules := migrationOperandRules()
 	for _, rule := range rules {
 		f.Add(rule.key, uint8(0))
+		// Seed every consumer at assignability's top/bottom and malformed boundaries.
+		if rule.key == "any" || rule.key == "never" || rule.key == "unknown" || rule.key == "optional" || rule.key == "forged-variance" {
+			for variant := uint8(1); variant < 12; variant++ {
+				f.Add(rule.key, variant)
+			}
+		}
 	}
 	// Other operators and call operands enter the short seeds too.
 	for _, variant := range []uint8{1, 2, 3, 4, 5, 6, 7} {
@@ -136,5 +148,68 @@ func FuzzMigrationEffectOperands(f *testing.F) {
 			i = int(key[0]) % len(rules)
 		}
 		checkMigrationEffectOperand(t, w, rules[i], variant)
+	})
+}
+
+// Catch checks the value produced by execution syntax, not the Effect
+// returned by an internal helper that implements that syntax.
+func FuzzCatchExecutedOperand(f *testing.F) {
+	startShortBudget(f)
+	rules := []struct {
+		key, declarations, operand string
+		allowed                    bool
+	}{
+		{"try-number", "declare const input: Effect.Effect<number,string>;", "(try input)", false},
+		{"try-effect", "declare const input: Effect.Effect<Effect.Effect<number>,string>;", "(try input)", true},
+		{"try-never", "declare const input: Effect.Effect<never,string>;", "(try input)", true},
+		{"try-any", "declare const input: Effect.Effect<any,string>;", "(try input)", true},
+		{"computed", "declare const input: Effect.Effect<number,string>;", "(try input).toString()", false},
+		{"join-number", "declare const input: Fiber.Fiber<number,string>;", "(join input)", false},
+		{"fork-fiber", "declare const input: Effect.Effect<number,string>;", "(fork input)", false},
+		{"all-array", "declare const input: Effect.Effect<number,string>;", "(try.all [input])", false},
+	}
+	for _, rule := range rules {
+		f.Add(rule.key, uint8(0))
+	}
+	w := NewWorkspace(f)
+	f.Fuzz(func(t *testing.T, key string, wrappers uint8) {
+		TestMigrationEffectOperandsQuoted(t)
+		i := slices.IndexFunc(rules, func(rule struct {
+			key, declarations, operand string
+			allowed                    bool
+		}) bool {
+			return rule.key == key
+		})
+		if i < 0 {
+			if key == "" {
+				return
+			}
+			i = int(key[0]) % len(rules)
+		}
+		rule := rules[i]
+		operand := rule.operand
+		for range wrappers % 4 {
+			operand = "(" + operand + ")"
+		}
+		source := rule.declarations + "\nexport effect function probe() { return " + operand + " catch (() => 0) }"
+		result, err := w.Compile(t.Context(), Project{Files: map[string]string{"main.vibe": source}})
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer result.Remove()
+		matched := false
+		var errors []string
+		for _, d := range result.Diagnostics {
+			if d.Category() != diagnostics.CategoryError {
+				continue
+			}
+			errors = append(errors, diagnosticCodeName(d.Source(), d.Code()))
+			if d.Source() == "EK" && d.Code() == 506 {
+				matched = true
+			}
+		}
+		if rule.allowed && len(errors) > 0 || !rule.allowed && !matched {
+			Gap(t, "FuzzCatchExecutedOperand", "operand:"+rule.key, "Chapter 2: %q; accepts=%v, got %v\n%s", migrationOperandQuote, rule.allowed, errors, source)
+		}
 	})
 }

@@ -349,9 +349,8 @@ func checkKeywordOperands(c *checker.Checker, file *ast.SourceFile) {
 // forkOperandRejected reports whether operand, fork's, fails the operand test
 // of try: its type is known and is not an Effect (VIP-17, EK1703).
 func forkOperandRejected(c *checker.Checker, operand *ast.Node) bool {
-	t := c.GetTypeAtLocation(operand)
-	return t != nil && t.Flags()&(checker.TypeFlagsAnyOrUnknown|checker.TypeFlagsNever) == 0 &&
-		!isEffectValueType(c, t) && effectOfValue(c, t) == nil
+	t := analyzerFor(c).keywordValueType(operand)
+	return t != nil && !isEffectOperandType(c, t)
 }
 
 // joinsRejectedFork reports whether operand, join's, is a fork whose operand
@@ -388,7 +387,7 @@ func checkForkOperand(c *checker.Checker, file *ast.SourceFile, operand *ast.Nod
 	if !forkOperandRejected(c, operand) {
 		return
 	}
-	t := c.GetTypeAtLocation(operand)
+	t := analyzerFor(c).keywordValueType(operand)
 	text := shortText(nodeText(file, inner), "this operand")
 	d := reportAt(c, file, core.NewTextRange(nodeStart(file, operand), operand.End()), EK1703, text, c.TypeToString(t))
 	switch {

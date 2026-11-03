@@ -127,7 +127,7 @@ func FuzzPlainHandlerThrow(f *testing.F) {
 		if effect {
 			shape = "effect/" + strings.Join(names, ".")
 		}
-		source := "declare const load: Effect.Effect<number, string>\nexport effect function main() {\n  return try (load " + kind + " " + handler + ")\n}\n"
+		source := "declare const load: Effect.Effect<number, string>\nexport effect function main() {\n  return (load " + kind + " " + handler + ")\n}\n"
 		r, err := w.Compile(t.Context(), Project{Files: map[string]string{"main.vibe": source}})
 		if err != nil {
 			t.Fatal(err)

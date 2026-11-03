@@ -1,0 +1,18 @@
+// VIP-5/17/18: use native Effect operand assignability, including never/any.
+declare const input: never
+/** @throws {never} */
+declare function make(): never
+
+export effect function probe() { return try input }
+export effect function call() { return try make() }
+export effect function parenthesized() { return try (make()) }
+export effect function catchNever() { return input catch (() => 0) }
+export effect function forkNever() { const fiber = fork input; return 0 }
+export effect function allNever() { return try.all [input] }
+
+export effect function allAny(value: any) { return try.all [value] }
+export effect function raceAny(value: any) { return try.race [value] }
+export effect function anyAny(value: any) { return try.any [value] }
+export effect function settledAny(value: any) { return try.allSettled [value] }
+
+// Compile-only: never values cannot be constructed.

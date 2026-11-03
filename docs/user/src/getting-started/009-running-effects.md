@@ -25,7 +25,7 @@ Constructing the object runs nothing; `journal.read()` returns an Effect, and `t
 
 Running the same Effect again starts a fresh execution of its body. Objects passed by the caller keep their identity; changing their contents remains visible to later executions. A factory that explicitly returns an Effect keeps the outer state it captured when called.
 
-`try` also accepts a union of Effects and keeps every alternative's success, error and requirement types.
+`try` also accepts a union of Effects and keeps every alternative's success, error and requirement types. Its operand must be assignable to `Effect.Effect<any, any, any>`, as must a `catch` or `fork` operand and each element of a `try.all`, `try.race`, `try.any` or `try.allSettled` array. This admits `never` and `any`; narrow an `unknown` value or a possibly `undefined` Effect before running it. Merely having Effect's variance property is insufficient. Older code that ran an `unknown` operand can use `vibelang --fix` to keep its previous unchecked behavior explicitly; prefer narrowing the value in new code. A computed `catch` head that runs other Effects first uses an explicit block, such as `effect { return (try load()).name } catch () => "guest"`; `--fix` adds that block to older code. It also removes a redundant `try` around a `catch` expression whose result is a plain value.
 
 ## Build and run a local project
 

@@ -38,3 +38,18 @@ func TestCatchHandlerObjectFallback(t *testing.T) {
 		})
 	}
 }
+
+func TestCatchHandlerObjectFallbackUnderLegacyTry(t *testing.T) {
+	source := `export effect function main() { return try (Effect.fail("bad") catch { v: 3 }) }`
+	fixed, name := fixVIPOnlySource(t, source)
+	if fixed.Err != nil || len(fixed.Refused) != 0 {
+		t.Fatalf("migration refused: %+v", fixed)
+	}
+	got := source
+	if file := fixed.Files[name]; file != nil {
+		got = file.Text
+	}
+	if strings.Contains(got, "return try") || !strings.Contains(got, "() => ({ v: 3 })") {
+		t.Fatalf("wrong repair: %s", got)
+	}
+}
