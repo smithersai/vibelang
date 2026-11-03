@@ -1,0 +1,1 @@
+compiler Chapter 004 builtin-recognition: docs/design/src/004-match.md#317336a081a4dfb8; forged Array.prototype object matches Array; Array.isArray returns false

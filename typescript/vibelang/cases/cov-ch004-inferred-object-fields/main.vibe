@@ -1,0 +1,20 @@
+import { Effect } from "effect"
+// Chapter 004, inferred-object-fields: docs/design/src/004-match.md#5d602ec27389d27e
+// Chapter 004, inferred-object-fields: docs/design/src/004-match.md#f37bb4563d8d5891
+// Chapter 004, inferred-object-fields: docs/design/src/004-match.md#34c3bf5c78d0de27
+// Chapter 004, inferred-object-fields: docs/design/src/004-match.md#e0ebf11cade129c5
+// Chapter 004, inferred-object-fields: docs/design/src/004-match.md#dbef3c989962cb9f
+export function objectField(s:{x?:number}){return match(s){when {let x}:x;default:0;}}
+export function unknownField(s:unknown){return match(s){when {let x}:x;default:0;}}
+export function indexedField(s:Record<string,number>){return match(s){when {let x}:x;default:0;}}
+export function main():Effect.Effect<unknown>{return Effect.sync(()=>[objectField({x:7}),unknownField({x:"x"}),indexedField({x:9})])}
+
+// Chapter 004 rule: | object `{ _tag: "Sent", let tracking, id }` | `(typeof s === "object" \|\| typeof s === "function") && s !== null && "_tag" in s && s._tag === "Sent" && "tracking" in s && "id" in s` | `tracking`: the narrowed subject's property type |
+
+// Chapter 004 rule: A pattern reads an element or key only after proving it exists, so `noUncheckedIndexedAccess` adds no `undefined` to that generated read.
+
+// Chapter 004 rule: A pattern key is not dotted property access, so `noPropertyAccessFromIndexSignature` reports no `TS4111` at it.
+
+// Chapter 004 rule: Other options change a binding as they change its counterpart's value: with `exactOptionalPropertyTypes`, `{ let x }` on `{ x?: number }` binds `number`; `strictNullChecks: false` removes the strict null distinctions.
+
+// Chapter 004 rule: An extracted property of an `unknown` subject is `unknown`; a declared field has its narrowed property type.

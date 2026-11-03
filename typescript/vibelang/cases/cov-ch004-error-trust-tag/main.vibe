@@ -1,0 +1,18 @@
+import { Effect } from "effect"
+// Chapter 004, error-trust-tag: docs/design/src/004-match.md#076737bf7f776b90
+// Chapter 004, error-trust-tag: docs/design/src/004-match.md#aa9c4cbc9a4e8d15
+// Chapter 004, error-trust-tag: docs/design/src/004-match.md#0ae2ad57976a511b
+// Chapter 004, error-trust-tag: docs/design/src/004-match.md#fac69bb8241a86d4
+error Missing { id:string; get label(){return this.id} }
+export function probe(s:unknown):readonly[boolean,boolean]{return [s is Missing,match(s){when Missing(let e):e===s;default:false;}]}
+export function label(s:unknown):string{return match(s){when Missing(let e):e.label;default:"other";}}
+export function templateProbe(s:unknown):boolean{return match(s){when `ready`:true;default:false;}}
+export function main():Effect.Effect<unknown>{return Effect.sync(()=>{const foreign={_tag:"Missing"};const coerced={toString(){return "ready"}};const poison={[Symbol.toPrimitive](){throw new Error("coerced")}};return [probe(foreign),String(label(foreign)),templateProbe(coerced),templateProbe(poison)]})}
+
+// Chapter 004 rule: A no-substitution template uses general `SameValueZero`: equal strings match and every non-string subject fails without coercion, as for a string literal.
+
+// Chapter 004 rule: Do not manufacture an assertion exception for violating an abstract operation's preconditions, call `toString` on the subject, or change arm selection/order.
+
+// Chapter 004 rule: Generated error matchers deliberately trust `_tag`: a matching foreign object need not carry every field or getter promised by the local error type (VIP-13).
+
+// Chapter 004 rule: TypeScript intuition: detail 103 preserves the subject’s own tagged members when available, but for `unknown` the fallback declared class type can still promise a getter absent from a foreign object.

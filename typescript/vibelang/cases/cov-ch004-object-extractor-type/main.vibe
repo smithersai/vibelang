@@ -1,0 +1,7 @@
+import { Effect } from "effect"
+// Chapter 004, object-extractor-type: docs/design/src/004-match.md#f7ff3d8a7ae5a243
+const M={[customMatcher](s:unknown):false|[number]{return typeof s==="number"?[s]:false}}
+export function probe(s:unknown){return match(s){when M(let n):n;default:0;}}
+export function main():Effect.Effect<unknown>{return Effect.sync(()=>probe(7))}
+
+// Chapter 004 rule: | own matcher object `M(let x)` | only narrowing established by its matcher invocation | `x`: an element of its declared extraction iterable, excluding `false` |

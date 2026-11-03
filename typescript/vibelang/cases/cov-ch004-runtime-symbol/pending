@@ -1,0 +1,1 @@
+runtime Chapter 004 runtime-symbol: docs/design/src/004-match.md#5e4afaf62d0739be; runtime import leaves Symbol.customMatcher undefined instead of installing the symbol

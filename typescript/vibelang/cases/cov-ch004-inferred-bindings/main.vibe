@@ -1,0 +1,12 @@
+import { Effect } from "effect"
+// Chapter 004, inferred-bindings: docs/design/src/004-match.md#d520d76bbe2fea43
+// Chapter 004, inferred-bindings: docs/design/src/004-match.md#86f60f6f70df4213
+// Chapter 004, inferred-bindings: docs/design/src/004-match.md#ce14643915dfc7e8
+export function arrayValue<T>(s:readonly T[],fallback:T){return match(s){when [let v]:v;default:fallback;}}
+export function main():Effect.Effect<unknown>{return Effect.sync(()=>[arrayValue([8],0),arrayValue([],9)])}
+
+// Chapter 004 rule: Patterns type as the TypeScript counterpart this chapter shows for them, under the project's compiler options; the table below illustrates `tsc --strict` ([VIP-7](../vips/0007-match.md#decision), amended).
+
+// Chapter 004 rule: **Bindings.** A `let` binding has the type TypeScript gives the value it is bound to in the counterpart.
+
+// Chapter 004 rule: | array `[let a, let b]` | members that are iterable | the element type of the subject's iterable (tuple element types for a tuple) |

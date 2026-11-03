@@ -1,0 +1,10 @@
+import { Effect } from "effect"
+// Chapter 004, inferred-results: docs/design/src/004-match.md#1174d0142bdc227e
+// Chapter 004, inferred-results: docs/design/src/004-match.md#eb6bb7ade2cec0ca
+export function classify(s:"a"|"b"){return match(s){when "a":1 as const;when "b":"b" as const;}}
+export function thrown(s:boolean){return match(s){when true:1 as const;default:throw "bad";}}
+export function main():Effect.Effect<unknown>{return Effect.sync(()=>[classify("a"),classify("b"),thrown(true)])}
+
+// Chapter 004 rule: **Result.** A `match` expression has the union of its arm types; a `throw` arm contributes `never`.
+
+// Chapter 004 rule: A `match` with no `default` whose subject passes `EK4701` ([Exhaustiveness](#exhaustiveness)) adds nothing for the no-match path.

@@ -1,0 +1,21 @@
+import { Effect } from "effect"
+// Chapter 004, ordinary-constructors: docs/design/src/004-match.md#cbfee29e0b6dece0
+// Chapter 004, ordinary-constructors: docs/design/src/004-match.md#55564aea3a34bd17
+// Chapter 004, ordinary-constructors: docs/design/src/004-match.md#07c820b664131793
+// Chapter 004, ordinary-constructors: docs/design/src/004-match.md#618aeeaf1e9dfc92
+// Chapter 004, ordinary-constructors: docs/design/src/004-match.md#db163a3ec8513650
+import * as Cli from "effect/cli/CliError"
+class Plain{}
+export function plain(s:unknown){return s is Plain}
+export function cli(s:unknown){return s is Cli.UnrecognizedOption}
+export function main():Effect.Effect<unknown>{return Effect.sync(()=>{const fake=Object.create(Plain.prototype);const changed=new Plain();Object.setPrototypeOf(changed,Object.prototype);const foreign=Object.create(Cli.UnrecognizedOption.prototype);return [[plain(fake),plain(changed)],[cli(foreign),cli({_tag:"UnrecognizedOption"})],Object.hasOwn(Cli,"CliError")]})}
+
+// Chapter 004 rule: Any other class uses `instanceof`; the runtime never installs the draft's `Function.prototype` matcher.
+
+// Chapter 004 rule: Ordinary classes without an explicit matcher, including classes imported from untouched `.ts` or `.js`, instead test `subject instanceof C`, then extract as the draft specifies (decided detail 67).
+
+// Chapter 004 rule: No helper patches `Function.prototype` or records construction identity.
+
+// Chapter 004 rule: This deliberately differs from the snapshot's `[[ConstructedBy]]` test: changing a genuine instance's prototype can make it stop matching, while forging a prototype can make an object match.
+
+// Chapter 004 rule: `cli/CliError` is a union with no constructor; its members and nested reason classes without companion guards use ordinary class matching.

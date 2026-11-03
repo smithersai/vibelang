@@ -1,0 +1,9 @@
+import { Effect } from "effect"
+// Chapter 004, retained-error-type: docs/design/src/004-match.md#a51a1cbca85d3255
+// Chapter 004, retained-error-type: docs/design/src/004-match.md#d850d867ef3268de
+export function probe(s:unknown){return match(s){when Cause.TimeoutError(let t):t._tag;when {_tag:"TimeoutError"}:"invalid" as const;default:"other" as const;}}
+export function main():Effect.Effect<unknown>{return Effect.sync(()=>[probe(new Cause.TimeoutError()),probe({_tag:"TimeoutError"}),probe(null)])}
+
+// Chapter 004 rule: | retained error `Cause.TimeoutError(let t)` | `Cause.isTimeoutError(s)` | `t`: `Cause.TimeoutError`, so `t._tag` is `"TimeoutError"` |
+
+// Chapter 004 rule: In `errorLabel` ([Retained fixed patterns](#retained-fixed-patterns)) `t` is `Cause.TimeoutError`, and the function's type is `"TimeoutError" | "invalid" | "other"`.

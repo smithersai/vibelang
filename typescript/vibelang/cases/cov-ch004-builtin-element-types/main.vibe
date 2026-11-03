@@ -1,0 +1,8 @@
+import { Effect } from "effect"
+// Chapter 004, builtin-element-types: docs/design/src/004-match.md#2f020350721c8f13
+export function probe(s:number[]){return match(s){when Array(let n):n;default:0;}}
+export function bytes(s:Uint8Array){return match(s){when Uint8Array(let n):n;default:0;}}
+export function big(s:BigInt64Array){return match(s){when BigInt64Array(let n):n;default:0n;}}
+export function main():Effect.Effect<unknown>{return Effect.sync(()=>[probe([7]),bytes(new Uint8Array([8])),String(big(new BigInt64Array([9n])))])}
+
+// Chapter 004 rule: | built-in `Array(let n)`, typed-array extractor | `Array.isArray(s)`, `s instanceof C` respectively | elements of the subject array or typed array (`number` or `bigint`) |

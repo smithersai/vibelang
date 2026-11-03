@@ -1,0 +1,1 @@
+compiler Chapter 004 inferred-readonly-undefined: docs/design/src/004-match.md#96613391e6207e36; readonly array payload emits any; stock TypeScript preserves number | undefined

@@ -1,0 +1,1 @@
+compiler Chapter 004 builtin-element-types: docs/design/src/004-match.md#2f020350721c8f13; BigInt64Array extraction emits BigInt64Array | 0n instead of bigint

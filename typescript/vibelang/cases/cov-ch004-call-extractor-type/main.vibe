@@ -1,0 +1,9 @@
+import { Effect } from "effect"
+// Chapter 004, call-extractor-type: docs/design/src/004-match.md#c45fd2652fab552f
+function isNumber(s:unknown):s is number{return typeof s==="number"}
+function extract(s:unknown):false|[number]{return typeof s==="number"?[s]:false}
+export function bare(s:unknown){return match(s){when isNumber:s;default:0;}}
+export function probe(s:unknown){return match(s){when extract(let n):n;default:0;}}
+export function main():Effect.Effect<unknown>{return Effect.sync(()=>[bare(7),bare("x"),probe(8),probe("x")])}
+
+// Chapter 004 rule: | call-only predicate `p` | its declared type predicate, as `if (p(s))` | bare: none; extractor `p(let x)`: an element of its declared return iterable, excluding `false` (detail 94) |

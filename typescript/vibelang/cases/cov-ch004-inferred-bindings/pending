@@ -1,0 +1,1 @@
+compiler Chapter 004 inferred-bindings: docs/design/src/004-match.md#d520d76bbe2fea43, docs/design/src/004-match.md#86f60f6f70df4213, docs/design/src/004-match.md#ce14643915dfc7e8; readonly iterable binding emits any; stock TypeScript preserves T

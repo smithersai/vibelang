@@ -1,0 +1,10 @@
+import { Effect } from "effect"
+// Chapter 004, primitive-extractor-types: docs/design/src/004-match.md#b9894190f49ece78
+export function text(s:unknown){return match(s){when String(let x):x;default:"";}}
+export function number(s:unknown){return match(s){when Number(let x):x;default:0;}}
+export function boolean(s:unknown){return match(s){when Boolean(let x):x;default:false;}}
+export function big(s:unknown){return match(s){when BigInt(let x):x;default:0n;}}
+export function symbol(s:unknown){return match(s){when Symbol(let x):x;default:Symbol.for("fallback");}}
+export function main():Effect.Effect<unknown>{return Effect.sync(()=>[text("x"),number(7),boolean(true),String(big(9n)),symbol(Symbol.for("x"))===Symbol.for("x")])}
+
+// Chapter 004 rule: | primitive class `String(let t)`, `Number`, … | `typeof s === "string" \|\| s instanceof String`, … | `t`: `string`, … |

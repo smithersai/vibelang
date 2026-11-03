@@ -1,0 +1,6 @@
+import { Effect } from "effect"
+// Chapter 004, builtin-recognition: docs/design/src/004-match.md#317336a081a4dfb8
+export function probe(s:unknown){return [s is Array,s is Date,s is RegExp,s is Map,s is Set,s is Promise,s is Uint8Array,s is BigInt64Array,s is ArrayBuffer,s is Error,s is AggregateError]}
+export function main():Effect.Effect<unknown>{return Effect.sync(()=>{const constructors=[Array,Date,RegExp,Map,Set,Promise,Uint8Array,BigInt64Array,ArrayBuffer,Error,AggregateError];return constructors.map(C=>probe(Object.create(C.prototype)))})}
+
+// Chapter 004 rule: Built-in constructor patterns use `Array.isArray(subject)` for `Array`, and `subject instanceof C` for every other built-in, including native errors, `AggregateError`, `Date`, `RegExp`, collections, `Promise`, typed arrays and `ArrayBuffer` (decided detail 67a).

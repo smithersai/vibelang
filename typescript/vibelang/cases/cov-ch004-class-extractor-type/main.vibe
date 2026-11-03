@@ -1,0 +1,7 @@
+import { Effect } from "effect"
+// Chapter 004, class-extractor-type: docs/design/src/004-match.md#036d78961793fd57
+class M{static [customMatcher](s:unknown):false|[number]{return typeof s==="number"?[s]:false}}
+export function probe(s:unknown){return match(s){when M(let n):n;default:0;}}
+export function main():Effect.Effect<unknown>{return Effect.sync(()=>probe(7))}
+
+// Chapter 004 rule: | class `C` with an own matcher | only narrowing established by its matcher invocation; no implicit `instanceof` | elements of the declared extraction iterable, excluding `false` |

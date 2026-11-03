@@ -1,0 +1,7 @@
+import { Effect } from "effect"
+// Chapter 004, collection-extractor-types: docs/design/src/004-match.md#97d4629796ba97c3
+export function mapValue(s:Map<string,number>){return match(s){when Map(let m):m;default:s;}}
+export function setValue(s:Set<number>){return match(s){when Set(let m):m;default:s;}}
+export function main():Effect.Effect<unknown>{return Effect.sync(()=>[mapValue(new Map([["x",7]])).get("x"),setValue(new Set([8])).has(8)])}
+
+// Chapter 004 rule: | other built-in constructor extractor | its specified recognition test | elements of its actual draft extraction list; `Map` and `Set` return `[s]`, so bind the collection |

@@ -1,0 +1,6 @@
+import { Effect } from "effect"
+// Chapter 004, inferred-undefined: docs/design/src/004-match.md#96613391e6207e36
+export function payload(s:readonly(number|undefined)[]){return match(s){when [let v]:v;default:0;}}
+export function main():Effect.Effect<unknown>{return Effect.sync(()=>[String(payload([undefined])),payload([7]),payload([7,8])])}
+
+// Chapter 004 rule: A payload that includes `undefined` keeps that type after the presence test.
