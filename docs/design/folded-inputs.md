@@ -153,3 +153,9 @@ Standing TypeScript rule and VIP-7. TypeScript 5.9.3 strict twin: conditional as
 ## Round 19: restore VIP-40’s accepted plain-call boundary
 
 Reconciled: 1793693643-sl18-fix-astra-2.patch at docs/design/vips/0040-module-declarations.md:154. Its service examples remain folded; its rejecting unannotated plain-call sentence is superseded by VIP-40’s accepted text before `8c554d6c31eb`. An unknown unannotated contract stays an ordinary call in plain code; an explicit `@throws {unknown}` is known throwing. Both require a bridge in effect code. This restores agreement with chapter 3 and the explicit program runners of VIP-26, without creating a runner exemption.
+
+## Round 19: complete the inferred-argument warning input
+
+Folded: fuzz-effect-generic-arg.patch (applied at docs/design/src/002-running.md:24 and docs/design/src/007-tooling.md, under VIP-5’s inferred Effect arguments amendment).
+
+The earlier fold omitted the warning-table row and the explicit-type-argument editor action/batch refusal. Both are now present. Preserve the input’s declared-Effect-result exclusion: a generic inferred result is not a declared program position. The compiler lane’s report records direct, container, callback, overload, method and constrained-parameter coverage; TypeScript itself accepts program data and the added check remains a configurable warning.

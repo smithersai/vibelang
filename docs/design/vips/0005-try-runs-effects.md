@@ -107,3 +107,11 @@ Old VibeLang is a reference only; nothing in it is part of the language unless a
 
 
 - **Amended 2026-11-01: no guessed operand conversion.** A value that fails the structural Effect operand test keeps `EK0502`; migration inserts no conversion and unwraps nothing. An `asEffect` member does not grant permission to insert a call. `Option.some(1)` and `Result.succeed(2)` fail the test in the pinned Effect version. Removing a proven old wrapper's run is the separate VIP-34 migration rule.
+
+## Amendment: inferred Effect arguments
+
+VIP-1 makes an Effect call construct a cold program; this VIP requires `try` to obtain its result. Extend the configurable unrun-program warning `EK4802` to a plain call in effect code whose own inferred type argument is an Effect, at each argument using that parameter outside a declared Effect position. This warns about a possibly missing `try`; it does not change TypeScript inference, execute the argument or reject the call by default. VIP-34’s warning exit-status rule applies.
+
+The rule covers direct parameters, containers such as `T[]` and `Promise<T>`, callback contracts, overloads and methods, including `T extends unknown`. A call with a declared Effect result, a declared `Effect.Effect<T>` parameter, explicit call type arguments and calls inside nested plain or `async` functions are excluded. Intentional program data uses explicit type arguments, such as `expect<Effect.Effect<number>>(e)`; `expect(try e)` passes the result.
+
+The direct-argument quick fix writes `try` only when the enclosing failure and requirement contract accepts it. A container or callback repair runs the Effect where the value is constructed, or the editor can write explicit type arguments. Batch `--fix` never chooses the explicit-type-argument opt-out. The [chapter rule](../src/002-running.md#inferred-effect-arguments) and [warning table](../src/007-tooling.md#effects-type-aware-lint) describe the same diagnostic. This reconciles the `fuzz-effect-generic-arg` input with the accepted cold-call and explicit-run model; it adds no implicit execution.

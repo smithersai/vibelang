@@ -323,6 +323,7 @@ These are VibeLang’s own configurable warnings, distinct from the imported `EK
 | Warning | Code | Suggested fix |
 | --- | --- | --- |
 | A plain `catch` handler returns an unrun Effect ([VIP-5](../vips/0005-try-runs-effects.md#decision)) | `EK0508` | `catch effect (e) => try …` |
+| A plain call in effect code infers an Effect type argument outside a declared Effect position ([Inferred Effect arguments](002-running.md#inferred-effect-arguments); [VIP-5](../vips/0005-try-runs-effects.md#amendment-inferred-effect-arguments)) | `EK4802` | Run the direct argument with `try`, or explicitly write the type arguments to keep the program. Batch `--fix` chooses only the context-safe `try` repair. |
 | An `effect` function returns an Effect value unrun, so its caller gets the program instead of its result ([VIP-1](../vips/0001-effect-and-async-functions.md), [VIP-5](../vips/0005-try-runs-effects.md#decision)) | `EK4802` | `return try e`; no automatic fix in ordinary `--fix` |
 | A legacy severity map remains in the config | `EK3009` | Run `vibelang --fix` after resolving obsolete entries. |
 | `using` in effect code | `EK0801` | Use `acquireDisposable` inside `scoped`. |
