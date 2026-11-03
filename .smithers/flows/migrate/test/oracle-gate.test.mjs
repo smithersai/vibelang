@@ -11,7 +11,7 @@ import { must, writeJson } from "../lib/util.mjs"
 const require = createRequire(new URL("../../../../packages/runtime/package.json", import.meta.url))
 const corpus = JSON.parse(readFileSync(new URL("./corpus/alchemy-stock-oracle-builders.json", import.meta.url), "utf8"))
 
-async function fixture(action, { identical = false, stock = true, stockExit = 0, privatePackage = false, mixed = false, custom = false } = {}) {
+async function fixture(action, { identical = false, stock = true, stockExit = 0, privatePackage = false, mixed = false, custom = false, includePrivate = false } = {}) {
   const root = mkdtempSync(join(tmpdir(), "alchemy-stock-gate-"))
   const target = join(root, "repo"), run = join(root, "run")
   const put = (name, text) => {
@@ -44,19 +44,20 @@ async function fixture(action, { identical = false, stock = true, stockExit = 0,
     put(".gitignore", "node_modules/\n")
     put("tsconfig.json", JSON.stringify({ compilerOptions: { rootDir: "src", outDir: "lib", strict: true }, include: ["src/**/*.ts", "src/**/*.vibe"] }))
     for (const [name, source] of Object.entries(corpus.source)) put(name, source)
-    compiler("vibelang", identical ? corpus.stock : corpus.native, 0)
+    compiler("vibelang", identical ? corpus.stock : includePrivate ? { ...corpus.stock, "Ok.d.ts": "export declare const ok: (value: string) => number;\n" } : corpus.native, 0)
     if (stock) compiler(custom ? "custom-tsc" : "tsrs", corpus.stock, stockExit)
     if (mixed) put("src/Already.vibe", "export const already = 1\n")
     symlinkSync(dirname(require.resolve("typescript/package.json")), join(target, "node_modules/typescript"))
     await must("jj git init && jj config set --repo user.name test && jj config set --repo user.email test@localhost && jj commit -m original", { cwd: target })
     const p = paths(run)
-    writeJson(p.config, makeConfig({ target, test: "true", vibelangVersion: "0.0.11", wire: false, ...(custom ? { stockCompiler: "node_modules/.bin/custom-tsc" } : {}) }))
+    writeJson(p.config, makeConfig({ target, test: "true", vibelangVersion: "0.0.11", wire: false, includePrivateDeclarations: includePrivate, ...(custom ? { stockCompiler: "node_modules/.bin/custom-tsc" } : {}) }))
     writeJson(p.upgrade, { jj: { initialized: true, commit: await commitId(target) }, effect: { to: "4.1.0" }, changed: [], tests: {} })
     writeJson(join(p.baseline, "upgraded-tests.json"), { code: 0, tests: {} })
     const baseline = await setup({ run })
     assert.equal(readFileSync(join(target, "build-ready.txt"), "utf8"), "ready")
-    renameSync(join(target, "src/Pipes/builders.ts"), join(target, "src/Pipes/builders.vibe"))
-    writeJson(p.plan, { batches: [{ files: ["src/Pipes/builders.ts"] }] })
+    const module = includePrivate ? "src/Ok" : "src/Pipes/builders"
+    renameSync(join(target, module + ".ts"), join(target, module + ".vibe"))
+    writeJson(p.plan, { batches: [{ files: [module + ".ts"] }] })
     return await action({ run, p, baseline })
   } finally {
     rmSync(root, { recursive: true, force: true })
@@ -119,4 +120,19 @@ test("setup uses an explicitly selected stock compiler", async () => {
     const result = await verify({ run, batch: "01" })
     assert.equal(result.ok, true)
   }, { identical: true, custom: true })
+})
+
+const fc = require("fast-check")
+const t3code = JSON.parse(readFileSync(new URL("./corpus/t3code-private-stock-oracle.json", import.meta.url), "utf8"))
+
+test("t3code: opted-in private packages record a stock API oracle; changed or unavailable APIs still fail", async () => {
+  await fc.assert(fc.asyncProperty(fc.constantFrom(...t3code.variants), async options => {
+    await fixture(async ({ run, baseline }) => {
+      const oracle = baseline.declarationOracle["."]
+      assert.ok(oracle, "setup must record the opted-in private oracle")
+      const result = await verify({ run, batch: "01" })
+      assert.equal(result.checks.declarationOracle, options.identical === true && options.stock !== false && !options.stockExit)
+      assert.equal(result.checks.declarations, true, "candidate matches native baseline; stock identity is independently required")
+    }, { ...options, privatePackage: true, includePrivate: true })
+  }), { seed: 31103, numRuns: 6, examples: t3code.variants.map(x => [x]) })
 })

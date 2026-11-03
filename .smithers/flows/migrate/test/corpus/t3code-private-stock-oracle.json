@@ -1,0 +1,21 @@
+{
+  "key": "verify:stock-oracle-skips-private-packages",
+  "repo": "t3code",
+  "pattern": "private package with declarations.includePrivate must retain the stock API proof",
+  "variants": [
+    {
+      "identical": true
+    },
+    {
+      "identical": false
+    },
+    {
+      "identical": true,
+      "stock": false
+    },
+    {
+      "identical": true,
+      "stockExit": 2
+    }
+  ]
+}

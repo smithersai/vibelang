@@ -1190,7 +1190,7 @@ async function emitStockOracle(config, p, logs) {
   const oracle = {}
   for (const pkg of config.packages) {
     const dir = join(t, pkg.dir)
-    if (readJson(join(dir, "package.json")).private === true) continue
+    if (config.declarations?.includePrivate !== true && readJson(join(dir, "package.json")).private === true) continue
     const found = config.stockCompiler ? { name: posix.basename(config.stockCompiler), path: resolve(t, config.stockCompiler) } : findStockCompiler(t, dir)
     if (!found) {
       oracle[pkg.dir] = { unavailable: "no tsc, tsgo or tsrs is installed for it" }
