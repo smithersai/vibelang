@@ -64,6 +64,12 @@ func deduplicateRenameEdits(mappedEdits []mappedRenameEdit) (map[lsproto.Documen
 }
 
 func (l *LanguageService) ProvideRename(ctx context.Context, params *lsproto.RenameParams, orchestrator CrossProjectOrchestrator) (lsproto.WorkspaceEditOrNull, error) {
+	if info, changes, ok := l.moduleDeclarationRename(params.TextDocument.Uri, params.Position, params.NewName); ok {
+		if !info.CanRename {
+			return lsproto.WorkspaceEditOrNull{}, nil
+		}
+		return lsproto.WorkspaceEditOrNull{WorkspaceEdit: &lsproto.WorkspaceEdit{Changes: &changes}}, nil
+	}
 	return l.handleCrossProject(
 		ctx,
 		params,
@@ -78,6 +84,9 @@ func (l *LanguageService) ProvideRename(ctx context.Context, params *lsproto.Ren
 }
 
 func (l *LanguageService) GetRenameInfo(ctx context.Context, newName string, documentURI lsproto.DocumentUri, position lsproto.Position) RenameInfo {
+	if info, _, ok := l.moduleDeclarationRename(documentURI, position, newName); ok {
+		return info
+	}
 	program, sourceFile := l.getProgramAndFile(documentURI)
 	positions := l.converters.FromLSPPositionForSourceFile(sourceFile, position, spanmap.FeatureRename)
 	for _, mapped := range positions {
@@ -264,16 +273,7 @@ func (l *LanguageService) renameBlockedReason(sourceFile *ast.SourceFile, node *
 	if isInferredReturnPlaceholder(sourceFile, node) {
 		return diagnostics.You_cannot_rename_this_element
 	}
-	// A name colliding with a retired inline module also needs its identifier
-	// imports renamed. The recovery AST has already replaced those with paths.
-	// Decline the transaction rather than returning a partial rename.
-	if ast.IsIdentifier(node) && hasRetiredInlineModule(sourceFile, node.Text()) {
-		return diagnostics.You_cannot_rename_this_element
-	}
 	for _, declaration := range symbol.Declarations() {
-		if declaration.Kind == ast.KindModuleDeclaration && declaration.Flags&ast.NodeFlagsVibeLang != 0 {
-			return diagnostics.You_cannot_rename_this_element
-		}
 		if isDefinedInLibraryFile(program, declaration) {
 			return diagnostics.You_cannot_rename_elements_that_are_defined_in_the_standard_TypeScript_library
 		}

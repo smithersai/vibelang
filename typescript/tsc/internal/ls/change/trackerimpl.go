@@ -261,6 +261,19 @@ func GetFormatCodeSettingsForWriting(options lsutil.FormatCodeSettings, sourceFi
 }
 
 func (t *Tracker) getNonformattedText(node *ast.Node, sourceFile *ast.SourceFile) (string, *ast.Node) {
+	// Source edits must print the identifier the user wrote, rather than the
+	// parser's synthetic module path. Clone only this edit's tree.
+	var visitor *ast.NodeVisitor
+	visitor = ast.NewNodeVisitor(func(n *ast.Node) *ast.Node {
+		if parser.IsVibeLangModuleReference(n) && n.Pos() >= 0 && n.End() <= len(sourceFile.Text()) {
+			name := sourceFile.Text()[scanner.SkipTrivia(sourceFile.Text(), n.Pos()):n.End()]
+			result := t.NewIdentifier(name)
+			result.Loc = n.Loc
+			return result
+		}
+		return n.VisitEachChild(visitor)
+	}, t.NodeFactory, ast.NodeVisitorHooks{})
+	node = visitor.VisitNode(node)
 	text, nodeOut := printer.PrintAndPositionNode(t.NodeFactory, node, sourceFile, t.newLine, t.formatSettings.IndentSize, t.EmitContext)
 	sourceFileLike := printer.CreateSyntheticSourceFile(
 		t.NodeFactory,
