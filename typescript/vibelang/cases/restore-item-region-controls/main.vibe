@@ -15,3 +15,5 @@ export effect function main() {
     return [seen.length, fromDo, fromOwn]
   }
 }
+// Chapter 002: own masks and transparent-region restore controls; docs/design/src/002-running.md#9843ce8fcee307be
+// Chapter 002: own masks and transparent-region restore controls; docs/design/src/002-running.md#461678d2cff0c232

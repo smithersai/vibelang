@@ -32,3 +32,9 @@ export function probe(): unknown {
   return events
 }
 export { nativeSource } from "./native.js"
+// Chapter 002: do RHS keeps native permanently uninitialized head binding; docs/design/src/002-running.md#5f8816bd2041976b
+// Chapter 002: do RHS keeps native permanently uninitialized head binding; docs/design/src/002-running.md#09852a86edbfe4d8
+// Chapter 002: do RHS keeps native permanently uninitialized head binding; docs/design/src/002-running.md#eaf61e1262db4f1f
+// Chapter 002: do RHS keeps native permanently uninitialized head binding; docs/design/src/002-running.md#9de27359a47117a3
+// Chapter 002: do RHS keeps native permanently uninitialized head binding; docs/design/src/002-running.md#0e6f169940beb2a9
+// Chapter 002: do RHS keeps native permanently uninitialized head binding; docs/design/src/002-running.md#3d7b2e617573fe0a

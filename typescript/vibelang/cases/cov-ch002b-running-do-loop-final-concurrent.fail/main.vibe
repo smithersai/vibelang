@@ -1,0 +1,5 @@
+// expect: EK0201
+// Chapter 002: custom iteration statements obey do ending predicates; docs/design/src/002-running.md#844085cd651f4bab
+// Chapter 002: custom iteration statements obey do ending predicates; docs/design/src/002-running.md#31e6af13635fe178
+// Chapter 002: custom iteration statements obey do ending predicates; docs/design/src/002-running.md#0e41987e5f38b851
+export effect function invalid(){return do{for concurrent(const n of [1]){}}}

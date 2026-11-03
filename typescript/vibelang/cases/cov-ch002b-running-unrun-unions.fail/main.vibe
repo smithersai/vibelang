@@ -1,0 +1,15 @@
+// expect: EK0103 EK0404 EK0508 EK0507 EK0502 EK0506 EK1801
+// Chapter 002: unrun union-member predicate differs from execution assignability; docs/design/src/002-running.md#d1806ab8e84dc48e
+// Chapter 002: unrun union-member predicate differs from execution assignability; docs/design/src/002-running.md#9171d6ce27cae994
+// Chapter 002: unrun union-member predicate differs from execution assignability; docs/design/src/002-running.md#b35f5d9a9f23abc6
+// Chapter 002: unrun union-member predicate differs from execution assignability; docs/design/src/002-running.md#35f651bb4ba8531a
+declare function maybePromise(): Promise<number> | undefined
+declare const maybeEffect: Effect.Effect<number> | undefined
+declare const maybeThenable: PromiseLike<number> | undefined
+export async function awaited() { return await maybeEffect }
+export effect function promiseCall() { return maybePromise() }
+export effect function effectFallback() { return Effect.fail(1) catch () => maybeEffect }
+export effect function promiseFallback() { return Effect.fail(1) catch () => maybeThenable }
+export effect function tryUnion() { return try maybeEffect }
+export effect function catchUnion() { return maybeEffect catch () => 0 }
+export effect function allUnion() { return try.all [maybeEffect] }

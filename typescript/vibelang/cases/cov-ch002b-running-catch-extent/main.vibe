@@ -1,0 +1,36 @@
+// Chapter 002: catch runs its head after argument evaluation and catches only that Effect; docs/design/src/002-running.md#37b0cf6b745e6057
+// Chapter 002: catch runs its head after argument evaluation and catches only that Effect; docs/design/src/002-running.md#42f5a7275f12bc51
+// Chapter 002: catch runs its head after argument evaluation and catches only that Effect; docs/design/src/002-running.md#95a06c353674222e
+// Chapter 002: catch runs its head after argument evaluation and catches only that Effect; docs/design/src/002-running.md#de528bd24b0aa4c2
+// Chapter 002: catch runs its head after argument evaluation and catches only that Effect; docs/design/src/002-running.md#e384616224d643a6
+// Chapter 002: catch runs its head after argument evaluation and catches only that Effect; docs/design/src/002-running.md#b088bbcbc7da8902
+// Chapter 002: catch runs its head after argument evaluation and catches only that Effect; docs/design/src/002-running.md#abe9e2ccdb74d390
+// Chapter 002: catch runs its head after argument evaluation and catches only that Effect; docs/design/src/002-running.md#3ba5cc7379fb115f
+// Chapter 002: catch runs its head after argument evaluation and catches only that Effect; docs/design/src/002-running.md#8698b78f8d0c73a3
+// Chapter 002: catch runs its head after argument evaluation and catches only that Effect; docs/design/src/002-running.md#c034c5465fec7a09
+// Chapter 002: catch runs its head after argument evaluation and catches only that Effect; docs/design/src/002-running.md#46a28db7ad44fd5f
+// Chapter 002: catch runs its head after argument evaluation and catches only that Effect; docs/design/src/002-running.md#bd0cae15b0547cd7
+// Chapter 002: catch runs its head after argument evaluation and catches only that Effect; docs/design/src/002-running.md#64635617963243a5
+// Chapter 002: catch runs its head after argument evaluation and catches only that Effect; docs/design/src/002-running.md#36c4117e3f64943d
+import { Effect, Exit, Cause } from "effect"
+function parse(bad: boolean, events: string[]): Effect.Effect<number,string> {
+ events.push("parse");return bad ? Effect.fail("parse") : Effect.succeed(7)
+}
+function decode(n: number, events: string[]): Effect.Effect<number,string> {
+ events.push("decode");return n === 7 ? Effect.fail("decode") : Effect.succeed(n)
+}
+effect function narrow(bad: boolean, events: string[]) {
+ return decode(try parse(bad,events),events) catch e => { events.push("handler");return e.length }
+}
+effect function wide(events: string[]) {
+ return (effect { return try decode(try parse(true,events),events) }) catch e => { events.push("handler");return e.length }
+}
+effect function joined() { const f=fork Effect.succeed(Effect.fail("inner"));return (join f) catch e => e.length }
+export effect function main(): unknown!! {
+ const a:string[]=[], b:string[]=[], c:string[]=[]
+ const first=try Effect.exit(narrow(true,a)), second=try Effect.exit(narrow(false,b))
+ const wideValue=try wide(c)
+ const argument=(effect {return 7}) catch ()=>0
+ const spanned=try Effect.withSpan(effect {return (effect {return 9}) catch ()=>0},"read")
+ return [Exit.isFailure(first)?Cause.squash(first.cause):"wrong",Exit.isSuccess(second)?second.value:0,a,b,wideValue,c,try joined(),argument,spanned]
+}

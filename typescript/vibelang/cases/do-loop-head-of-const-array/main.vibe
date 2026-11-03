@@ -32,3 +32,4 @@ export function probe(): unknown {
   return events
 }
 export { nativeSource } from "./native.js"
+// Chapter 002: native lexical head capture and per-item binding identity; docs/design/src/002-running.md#819bf885ace62851

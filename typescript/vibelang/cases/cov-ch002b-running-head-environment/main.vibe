@@ -1,0 +1,14 @@
+// Chapter 002: limit precedes RHS head environment and head captures remain in TDZ; docs/design/src/002-running.md#55431b6e18ef88b2
+// Chapter 002: limit precedes RHS head environment and head captures remain in TDZ; docs/design/src/002-running.md#d4a60c6238e4f58f
+// Chapter 002: limit precedes RHS head environment and head captures remain in TDZ; docs/design/src/002-running.md#2b44920f0cd13416
+import {Effect,Stream,Cause,Exit} from "effect"
+export effect function main():unknown!! {
+ const x=3;let read:()=>number=()=>0;const seen:number[]=[]
+ for concurrent(x)(let x of (read=():number=>x,[1])){x=7;seen.push(x)}
+ const a=try Effect.exit(Effect.try({try:()=>read(),catch:e=>e}))
+ let readStream:()=>number=()=>0
+ for try(const x of (readStream=():number=>x,Stream.make(1))){seen.push(x)}
+ const b=try Effect.exit(Effect.try({try:()=>readStream(),catch:e=>e}))
+ const name=(ex:Exit.Exit<unknown,unknown>)=>Exit.isFailure(ex)?(Cause.squash(ex.cause) as Error).name:"wrong"
+ return [seen,name(a),name(b)]
+}

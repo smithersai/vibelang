@@ -45,3 +45,4 @@ export function* yielded(): Generator<unknown, unknown, unknown> {
   for (const x of do { read = (): unknown => x; yield "pause"; [1] }) {}
   return readError(read)
 }
+// Chapter 002: RHS abrupt completion and suspension keep source activation; docs/design/src/002-running.md#74009be3d8f6cbff

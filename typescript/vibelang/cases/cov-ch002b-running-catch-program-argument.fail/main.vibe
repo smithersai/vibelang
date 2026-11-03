@@ -1,0 +1,6 @@
+// expect: TS2769 EK0502
+// Chapter 002: executed catch argument supplies a value, not a cold program; docs/design/src/002-running.md#8c60090e04c6979b
+// Chapter 002: executed catch argument supplies a value, not a cold program; docs/design/src/002-running.md#2859395c086e291c
+export effect function rejected() {
+ return try Effect.withSpan((effect { return 1 }) catch effect () => 0, "read")
+}

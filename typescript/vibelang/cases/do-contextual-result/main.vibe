@@ -61,3 +61,10 @@ export effect function main() {
     reason(),
   ]
 }
+// Chapter 002: ordinary fresh literals and result-only contextual typing; docs/design/src/002-running.md#4055ee18a30803c0
+// Chapter 002: ordinary fresh literals and result-only contextual typing; docs/design/src/002-running.md#31e7182d71328f23
+// Chapter 002: ordinary fresh literals and result-only contextual typing; docs/design/src/002-running.md#c17aafd7147964ba
+// Chapter 002: ordinary fresh literals and result-only contextual typing; docs/design/src/002-running.md#a8afbb67e5675c3d
+// Chapter 002: ordinary fresh literals and result-only contextual typing; docs/design/src/002-running.md#82db2ea4aa1a268e
+// Chapter 002: ordinary fresh literals and result-only contextual typing; docs/design/src/002-running.md#6549cab5daf39682
+// Chapter 002: ordinary fresh literals and result-only contextual typing; docs/design/src/002-running.md#d52f4f7fe93a18ce

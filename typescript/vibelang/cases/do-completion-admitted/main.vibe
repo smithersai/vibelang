@@ -18,3 +18,7 @@ export effect function main() {
   const maskedValue = do { uninterruptible { restore { 3 } } }
   return [labeled, onlyEmpty === undefined, afterSwitch, emptySwitch === undefined, emptyBlock === undefined, trailingEmpty, emptyMask === undefined, emptyRestore === undefined, emptyInterruptible === undefined, maskedValue]
 }
+// Chapter 002: empty switch prefix and final completion; docs/design/src/002-running.md#37017cec750e8346
+// Chapter 002: empty switch prefix and final completion; docs/design/src/002-running.md#42aab57cb1e3402b
+// Chapter 002: empty switch prefix and final completion; docs/design/src/002-running.md#4439b82d0e21ba31
+// Chapter 002: empty switch prefix and final completion; docs/design/src/002-running.md#297008e8e3bcb2ea

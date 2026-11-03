@@ -1,0 +1,1 @@
+cov-ch002b Chapter 002 conformance: missing EK0103 EK0404 EK0508 EK0507 EK0502 EK0506; unexpected TS2769 TS2322 (2.3 s); rules docs/design/src/002-running.md#d1806ab8e84dc48e, docs/design/src/002-running.md#9171d6ce27cae994, docs/design/src/002-running.md#b35f5d9a9f23abc6, docs/design/src/002-running.md#35f651bb4ba8531a
