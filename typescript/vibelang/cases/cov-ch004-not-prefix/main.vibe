@@ -1,0 +1,37 @@
+import { Effect } from "effect"
+// Chapter 004, not-prefix: docs/design/src/004-match.md#8ab859c6fc291707
+// Chapter 004, not-prefix: docs/design/src/004-match.md#c6855bbbc2b67bab
+// Chapter 004, not-prefix: docs/design/src/004-match.md#5e310b1c8a169d11
+// Chapter 004, not-prefix: docs/design/src/004-match.md#08e9456afc7dcb1e
+// Chapter 004, not-prefix: docs/design/src/004-match.md#fd9f399f0363ba06
+// Chapter 004, not-prefix: docs/design/src/004-match.md#ef3cfd3d4102a7df
+// Chapter 004, not-prefix: docs/design/src/004-match.md#4c780ad7938cfa43
+// Chapter 004, not-prefix: docs/design/src/004-match.md#f7beb88d6c36d72d
+
+function probe(): unknown {
+let calls = 0
+function not(s: unknown): [unknown] { calls++; return [s] }
+const helpers = { not }
+const a = match (5) { when not(let x): "hit"; default: "miss"; }
+const b = match (5) { when helpers.not(let x): "hit"; default: "miss"; }
+const c = match ([0]) { when not[0]: "other"; default: "zero"; }
+return [a,b,c,calls]
+}
+
+export function main(): Effect.Effect<unknown> { return Effect.sync(probe) }
+
+// Chapter 004 rule: Prefix `not` wins whenever the same token sequence can also be a member/extractor rooted at an identifier `not`.
+
+// Chapter 004 rule: Thus `not(let x)` negates a parenthesized binding pattern and `not[0]` negates an array pattern; `helpers.not(let x)` remains a qualified extractor.
+
+// Chapter 004 rule: `not` stays an ordinary name outside the prefix collision and in property/binding-name positions.
+
+// Chapter 004 rule: **Prefix negation wins the contextual not/member-extractor collision by syntax alone.** (live `004-not-extractor-ambiguity`; VIP-7 incorporated-grammar reconciliation.) When the same pattern token sequence admits both `not MatchPattern` and an identifier-rooted member/extractor pattern starting with contextual `not`, choose the negation derivation before applying the ordinary pattern early errors.
+
+// Chapter 004 rule: This includes `not(let x)` (negation of a parenthesized binding pattern) and `not[0]` (negation of an array pattern).
+
+// Chapter 004 rule: Preserve `not` as an ordinary TypeScript name outside this prefix collision and in property/binding-name positions.
+
+// Chapter 004 rule: A qualified callee such as `helpers.not(...)` is an ordinary extractor; renaming the callee is another existing escape.
+
+// Chapter 004 rule: ```vibe function not(s: unknown): [unknown] { return [s] } const helpers = { not } match (5) { when not(let x): "hit"; default: "miss"; } // miss; local not is not called match (5) { when helpers.not(let x): "hit"; default: "miss"; } // hit; extractor is called match ([0]) { when not[0]: "other"; default: "zero"; } // zero; not is prefix negation ``` Effect TS: the first pattern negates the always-matching binding test and therefore selects the fallback without invoking the function; the qualified extractor calls `helpers.not(subject)` once and matches its one-element result list.

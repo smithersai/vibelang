@@ -1,0 +1,10 @@
+import { Effect } from "effect"
+// Chapter 004, throw-arm: docs/design/src/004-match.md#775867f17b1d945e
+// Chapter 004, throw-arm: docs/design/src/004-match.md#ef6dac64feb1fdbb
+function plain(){return match(true){default:throw "bad";}}
+effect function typed(){return match(true){default:throw "bad";}}
+export function main():Effect.Effect<unknown>{return Effect.gen(function*(){const thrown=yield* Effect.sync(()=>{try{plain()}catch(e){return e}});const result=yield* Effect.exit(typed());return [thrown,result._tag,result._tag==="Failure"&&result.cause.reasons.map(r=>r._tag)]})}
+
+// Chapter 004 rule: An arm's body may be `throw e`, as VIP-5's example writes it.
+
+// Chapter 004 rule: In effect code it fails the Effect ([Failures](003-failures.md#throw)); outside effect code it is JavaScript's `throw`.

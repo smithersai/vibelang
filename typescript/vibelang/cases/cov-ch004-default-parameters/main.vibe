@@ -1,0 +1,23 @@
+import { Effect } from "effect"
+// Chapter 004, default-parameters: docs/design/src/004-match.md#a354c563084b628a
+// Chapter 004, default-parameters: docs/design/src/004-match.md#58b751792288a053
+// Chapter 004, default-parameters: docs/design/src/004-match.md#4a0a4ab0f8c51df6
+// Chapter 004, default-parameters: docs/design/src/004-match.md#c6fcdea2d496cb2b
+
+function probe(): unknown {
+let calls=0
+function next(){return ++calls}
+function good(a=do{const ok=next() is let captured;[ok,captured]}){return a}
+const result=[next(),match(next()){when 2:next();default:0;},next()]
+return [result,good(),good.length,calls]
+}
+
+export function main(): Effect.Effect<unknown> { return Effect.sync(probe) }
+
+// Chapter 004 rule: A `match` in a destructuring or parameter default follows [Destructuring and parameter defaults](002-running.md#destructuring-and-parameter-defaults).
+
+// Chapter 004 rule: A `match` inside a larger expression follows the shared [evaluation-order rule](002-running.md#evaluation-order).
+
+// Chapter 004 rule: A repair preserves eager, left-to-right, once-only initialization, parameter/body environment separation, `length`, TDZ and closure identity.
+
+// Chapter 004 rule: ```vibe function bad(a = (1 is let captured)) { return a } // EK0705: no defined parameter-home binding function alsoBad({ a = (1 is const captured) } = {}) {} // EK0705 function good(a = do { const ok = 1 is let captured; [ok, captured] }) { return a } function testOnly(a = (1 is Number)) { return a } // no new pattern bindings function caller() { consume(1 is let captured); return captured } // ordinary call argument: caller block ``` Effect TS: the simple block-local example has the ordinary counterpart `function good(a = (() => { let captured = 1; const ok = true; return [ok, captured] })()) { return a }`; its local binding does not become a parameter or body-local name.

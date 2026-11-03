@@ -1,0 +1,13 @@
+import { Effect } from "effect"
+// Chapter 004, extract-nonobject: docs/design/src/004-match.md#7505020598c769fe
+
+function probe(): unknown {
+const matcher={[customMatcher](_s:unknown):any{return true}}
+let result=""
+try{match(1){when matcher(let x):x;default:0;}}catch(e){result=((x:unknown)=>x instanceof TypeError?"TypeError":"other")(e)}
+return result
+}
+
+export function main(): Effect.Effect<unknown> { return Effect.sync(probe) }
+
+// Chapter 004 rule: Successful custom extractor results must be objects.

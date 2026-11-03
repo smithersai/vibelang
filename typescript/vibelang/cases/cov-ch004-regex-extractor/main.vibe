@@ -1,0 +1,38 @@
+import { Effect } from "effect"
+// Chapter 004, regex-extractor: docs/design/src/004-match.md#1616a1e9441ed91c
+// Chapter 004, regex-extractor: docs/design/src/004-match.md#df5029eae58ae9f6
+// Chapter 004, regex-extractor: docs/design/src/004-match.md#21db90c448949f04
+// Chapter 004, regex-extractor: docs/design/src/004-match.md#25ce917117f9507f
+// Chapter 004, regex-extractor: docs/design/src/004-match.md#6829c6316f0d5434
+// Chapter 004, regex-extractor: docs/design/src/004-match.md#8118011a60aae393
+
+function probe(): unknown {
+function digits(s: string) { return match (s) { when /(\d+)-(\d+)/(let m): m[1] + m[2]; default: "none"; } }
+return [digits("12-34"),digits("no"),"12" is /\d+/, "no" is /\d+/]
+}
+
+// Chapter 004, reconciled pattern families: docs/design/src/004-match.md#feba9fa8943c0180
+
+// Chapter 004, reconciled pattern families: docs/design/src/004-match.md#f2e2889d3e982387
+
+// Chapter 004, reconciled pattern families: docs/design/src/004-match.md#ab6e3263acc86baa
+
+export function main(): Effect.Effect<unknown> { return Effect.sync(probe) }
+
+// Chapter 004 rule: | regex `/(\d+)/(let m)` | none | `m`: `RegExpMatchArray` (non-global); `RegExpExecArray` elements for a global regex |
+
+// Chapter 004 rule: A [RegularExpressionPattern](900-appendices.md#regularexpressionpattern) admits a bare `RegularExpressionLiteral` or its extractor suffix `(MatchList)`, including the nullable list `()`.
+
+// Chapter 004 rule: It evaluates the literal once at its pattern position and matches as the same named `RegExp` value does.
+
+// Chapter 004 rule: The runtime emulates the draft's `RegExp.prototype` matcher without patching the prototype: a bare pattern calls `test`; a non-global extractor returns `[regexp[Symbol.match](subject)]`, failing on `null`.
+
+// Chapter 004 rule: **The regex-literal pattern alternative includes its promised extractor suffix.** (live `004-regex-extractor-grammar`; VIP-7 regex-literal reconciliation and named-RegExp extraction, grammar admission repair.) Use one `RegularExpressionPattern` alternative of `MatchPattern`, with exactly the bare `RegularExpressionLiteral` branch and `RegularExpressionLiteral ( MatchList )` branch, preserving the pinned nullable MatchList and grammar parameters.
+
+// Chapter 004 rule: ```vibe function digits(s: string) { return match (s) { when /(\d+)-(\d+)/(let m): m[1] + m[2]; default: "none"; } } // digits("12-34") is "1234" ``` Effect TS: evaluate the regexp, obtain its adopted match result through the existing RegExp matching operation, fail the pattern on null, otherwise match the singleton extracted list `[result]`; `m` receives the full result array before the selected expression reads its captures.
+
+// Chapter 004 rule: `match`, `when`, `is`, patterns, guards, `and`, `or`, `not` and `default` follow the [vendored TC39 snapshot](../vips/tc39-pattern-matching/README.md): commit `ba73ffe42f30f0cf56ece28bebdc28f955f2a52e`, dated `2025-10-03`, with the reconciliations listed there.
+
+// Chapter 004 rule: The full proposal is in the language, including regular-expression patterns, relational patterns and `async match`, with the class adaptations below (decided details 67 and 67a).
+
+// Chapter 004 rule: The reconciliations are: relational patterns use the draft specification; regex patterns accept both literals and `RegExp` values; `async match` uses the explainer's Promise-producing sketch; custom matchers receive `(subject, { matchType })`, with `matchType` either `"boolean"` or `"extractor"`; the `RegExp.prototype` matcher uses the draft specification, emulated without modifying globals; built-in and primitive constructor tests use decided details 67a and 87 below.

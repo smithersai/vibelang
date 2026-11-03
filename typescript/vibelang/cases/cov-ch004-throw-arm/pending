@@ -1,0 +1,1 @@
+compiler Chapter 004 throw-arm: docs/design/src/004-match.md#775867f17b1d945e, docs/design/src/004-match.md#ef6dac64feb1fdbb; TS2322 EK1002; see main.vibe rule citations and TypeScript twin): tsc reported 2 error(s): TS2322 EK1002

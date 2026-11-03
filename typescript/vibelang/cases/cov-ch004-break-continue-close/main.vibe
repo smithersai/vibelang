@@ -1,0 +1,13 @@
+import { Effect } from "effect"
+// Chapter 004, break-continue-close: docs/design/src/004-match.md#a5ab61d0f9030150
+
+function probe(): unknown {
+const log:string[]=[];const seen:number[]=[]
+function* numbers(){try{yield 1;yield 2}finally{log.push("closed")}}
+outer:for(let i=0;i<3;i++){match(numbers()){when [let a,...]:do{seen.push(a);if(i===0)continue outer;break outer;};default:0;}}
+return [seen,log]
+}
+
+export function main(): Effect.Effect<unknown> { return Effect.sync(probe) }
+
+// Chapter 004 rule: | `return`, `break` or `continue`, through `do` or a generator's `return()` | the iterators close, then the jump goes on |

@@ -1,0 +1,11 @@
+// expect: EK0107
+// Chapter 004, var-binding: docs/design/src/004-match.md#cd8cf16e68700d63
+// Chapter 004, var-binding: docs/design/src/004-match.md#ba67f3f10c947027
+// Chapter 004, var-binding: docs/design/src/004-match.md#a10d235a40da244d
+export function probe(s: unknown) { return match (s) { when var value: value; default: 0; } }
+
+// Chapter 004 rule: Pattern bindings use `let` or `const`; `when var x:` is `EK0107`, as `var` is everywhere in `.vibe`.
+
+// Chapter 004 rule: Leave `if`'s nearest-block behavior and detail 165's within-one-or replacement unchanged; this does not relax the existing `var` ban.
+
+// Chapter 004 rule: Preserve detail 165's specific `or` replacement rule and this detail's separate loop scopes, and retain the existing `var` ban.

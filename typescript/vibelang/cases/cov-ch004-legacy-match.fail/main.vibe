@@ -1,0 +1,7 @@
+// expect: EK0107
+// Chapter 004, legacy-match: docs/design/src/004-match.md#be6c8ac77d67285a
+export function subject(){return match(eval("1")){default:0;}}
+export function guard(s:unknown){return match(s){when let v and if(arguments.length):v;default:0;}}
+export function arm(){return match(true){default:arguments;}}
+
+// Chapter 004 rule: `eval` and `arguments` are compile errors anywhere in `.vibe`, including subjects, guards and arms ([Legacy JavaScript](001-functions.md#direct-eval); VIP-1, amended).

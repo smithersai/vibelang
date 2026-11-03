@@ -1,0 +1,10 @@
+import { Effect } from "effect"
+// Chapter 004, implicit-defect-close: docs/design/src/004-match.md#ed1b34fc89a6b887
+// Chapter 004, implicit-defect-close: docs/design/src/004-match.md#90f6e42ffa636440
+function* numbers(log:string[]){try{yield 1;yield 2}finally{log.push("closed")}}
+effect function implicit(log:string[],o:{value:number}){return match(numbers(log)){when [let a,...]:o.value;default:0;}}
+export effect function main():unknown!!{const log:string[]=[];const result=try exit(implicit(log,{get value():number{throw "t"}}));return [result._tag,result._tag==="Failure"&&result.cause.reasons.map(r=>r._tag),log]}
+
+// Chapter 004 rule: | `implicit(log, o)`, the getter `o.value` throws `"t"` | `Die("t")` | `["closed"]`: a JavaScript throw unwinds the generator |
+
+// Chapter 004 rule: No-match `TypeError`, implicit matcher reads/calls and protocol checks are implicit throws: never tracked, and defects in effect code (decided detail 95).

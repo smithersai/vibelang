@@ -1,0 +1,13 @@
+import { Effect } from "effect"
+// Chapter 004, iterator-record: docs/design/src/004-match.md#28d3a7bd012e2017
+
+function probe(): unknown {
+const log:string[]=[];let count=0
+const it={ [Symbol.iterator](){return this}, get next(){log.push("get next");return function(){count++;log.push("next "+count);return count===1?{done:false,value:1}:{done:true,value:undefined}}},return(){log.push("close");return {done:true,value:undefined}}}
+const value=match(it){when [2]:0;when [1]:1;default:-1;}
+return [value,log]
+}
+
+export function main(): Effect.Effect<unknown> { return Effect.sync(probe) }
+
+// Chapter 004 rule: Native iterator acquisition, saved `next`, result-object checks, `done`/`value` reads and abrupt-completion handling are preserved; an iterator marked done by an iteration error is not closed again.

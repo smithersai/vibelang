@@ -1,0 +1,33 @@
+import { Effect } from "effect"
+// Chapter 004, bare-presence: docs/design/src/004-match.md#fbefa8360ba71a1a
+// Chapter 004, bare-presence: docs/design/src/004-match.md#d88412510d348ce3
+// Chapter 004, bare-presence: docs/design/src/004-match.md#4929564b5211fd0f
+// Chapter 004, bare-presence: docs/design/src/004-match.md#33a7c411da424061
+// Chapter 004, bare-presence: docs/design/src/004-match.md#dcc99c660e31ddbf
+// Chapter 004, bare-presence: docs/design/src/004-match.md#b601b3c75a0ea013
+// Chapter 004, bare-presence: docs/design/src/004-match.md#9216c6ab9e865276
+// Chapter 004, bare-presence: docs/design/src/004-match.md#3ffbfa6af4d97f96
+
+function probe(): unknown {
+const tracking = "outer"
+const subject = { tracking: "payload", _tag: "Sent" }
+return [match (subject) { when { tracking }: tracking; default: "none"; }, match (subject) { when { _tag: "Sent", let tracking }: tracking; default: "none"; }]
+}
+
+export function main(): Effect.Effect<unknown> { return Effect.sync(probe) }
+
+// Chapter 004 rule: In an object pattern, a bare key such as `{ tracking }` only tests that the property exists.
+
+// Chapter 004 rule: Binding it takes `let tracking`, shorthand for `tracking: let tracking` (VIP-16).
+
+// Chapter 004 rule: Replacing `let tracking` with `tracking` above would return `"outer"`, not the field.
+
+// Chapter 004 rule: VibeLang does not adopt the draft's disputed early error rejecting a `MatchProperty` name coverable by `BindingIdentifier`, either as a bare presence key or before `:`.
+
+// Chapter 004 rule: Identifier keys such as `_tag:` remain valid; the separate `__proto__` pattern-key restriction and unrelated early errors remain.
+
+// Chapter 004 rule: **Reconcile the disputed TC39 object-key early error with the accepted bare-key syntax.** (live `004-bare-key-early-error`; VIP-7/VIP-16.) VibeLang does not adopt the pinned draft's disputed early error for a MatchProperty PropertyName coverable by BindingIdentifier, either in the bare presence form or before a colon.
+
+// Chapter 004 rule: Bare identifier keys test presence without creating a binding, and identifier keys such as `_tag:` remain valid.
+
+// Chapter 004 rule: ```vibe const tracking = "outer" match ({ tracking: "payload" }) { when { tracking }: tracking; default: "none"; } // "outer" match (x) { when { _tag: "Sent", let tracking }: tracking; default: "none"; } // valid keys ``` Effect TS: `"tracking" in subject ? tracking : "none"`, with the pinned cached property operations and ordinary narrowing.

@@ -1,0 +1,7 @@
+// Chapter 004, native-template-ownership: docs/design/src/004-match.md#bb306331b254d6e0
+// Chapter 004, native-template-ownership: docs/design/src/004-match.md#fb269eb53dd6cd1e
+export const anchor=true
+
+// Chapter 004 rule: Independent native lexical, type and name errors, including errors in valid embedded expressions, retain TypeScript's diagnostics; malformed native templates do not become `EK0707` merely by appearing in a match.
+
+// Chapter 004 rule: A malformed native template or ordinary invalid expression is not automatically `EK0707` merely because it appears inside a match.

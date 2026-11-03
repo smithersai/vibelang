@@ -1,0 +1,22 @@
+import { Effect } from "effect"
+// Chapter 004, finish-order-errors: docs/design/src/004-match.md#be940783bf26cb71
+// Chapter 004, finish-order-errors: docs/design/src/004-match.md#1fef4e4772f443b4
+
+function probe(): unknown {
+const log:string[]=[]
+function iterator(name:string,value:unknown){return {[Symbol.iterator](){return this},next(){return {done:false as const,value}},return(){log.push(name);throw name+"-close"},get Value(){throw "private Value read"},get IteratorsToClose(){throw "private registry read"}}}
+const inner=iterator("inner",1),outer=iterator("outer",inner)
+let errors:unknown
+try{match(outer){when [[0]]:0;default:throw "body";}}catch(e){errors=((x:unknown)=>x instanceof AggregateError?x.errors:x)(e)}
+return [errors,log]
+}
+
+export function main(): Effect.Effect<unknown> { return Effect.sync(probe) }
+
+// Chapter 004 rule: Iterator registration/closing stays in insertion order and skips empty registry slots; bookkeeping never reads user properties named `Value` or `IteratorsToClose`.
+
+// Chapter 004 rule: With a pending throw, or a second closing error, the `match` throws an `AggregateError` whose `errors` lists the pending throw and then the closing errors, where `for…of` keeps the pending throw alone |
+
+// Chapter 004, rule witness: docs/design/src/004-match.md#f017769fa8394e32
+
+// Chapter 004 rule: | a JavaScript throw, the no-match `TypeError` included | the iterators close, then the throw goes on |
