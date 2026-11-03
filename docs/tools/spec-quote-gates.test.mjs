@@ -2,32 +2,26 @@ import assert from "node:assert/strict"
 import { readdirSync, readFileSync } from "node:fs"
 import { createRequire } from "node:module"
 import { test } from "node:test"
-import ts from "typescript"
+import { specTestSelection } from "../../scripts/spec-test-selection.mjs"
 
 const require = createRequire(new URL("../../packages/runtime/package.json", import.meta.url))
 const fc = require("fast-check")
 
-function gateNames(source) {
-  const ast = ts.createSourceFile("PACKAGE.ts", source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS)
-  const names = []
-  function visit(node) {
-    if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name) && node.name.text === "specTests") {
-      assert.ok(ts.isArrayLiteralExpression(node.initializer), "specTests must remain an explicit gate list")
-      for (const item of node.initializer.elements) {
-        assert.ok(ts.isStringLiteralLike(item), "a quote gate must be an explicit test name")
-        names.push(item.text)
-      }
-    }
-    ts.forEachChild(node, visit)
-  }
-  visit(ast)
-  assert.ok(names.length, "PACKAGE.ts must declare specTests")
-  return new Set(names)
-}
+const fuzzPackage = "typescript/tsc/internal/vibelangfuzz"
 
 function missingGates(go, config) {
-  const gates = gateNames(config)
-  return [...go.matchAll(/^func (Test\w+Quoted)\(/gm)].map(m => m[1]).filter(name => !gates.has(name))
+  const { pattern, packages } = specTestSelection(config)
+  return [...go.matchAll(/^func (Test\w+Quoted)\(/gm)].map(m => m[1])
+    .filter(name => !packages.includes(fuzzPackage) || !pattern.test(name))
+}
+
+// The property fixtures exercise the same -run argument and package scope as
+// the real target, including the explicit-list form used before name discovery.
+function configFor(names, wildcard = "", packages = "./internal/vibelangfuzz/", separator = ", ") {
+  return "const specTests = [" + names.map(JSON.stringify).join(separator) + "];\n" +
+    '"spec-tests": S.Shell.Test({ shell: ' +
+    "`go test -run '^(" + wildcard + '${[...specTests].join("|")}' +
+    ")$' " + packages + '`, data: [] })'
 }
 
 test("every static-rule quote test participates in the pre-merge spec gate", () => {
@@ -55,9 +49,32 @@ test("the gate inventory ignores decoys and formatting across generated test-nam
       // inventory. Decoys include every absent name, outside the real list.
       const separator = multiline ? ",\n/* gate */ " : ", "
       const config = "const decoys = " + JSON.stringify(absent) + ";\n" +
-        "const specTests = [" + [...listed, "TestUnrelated"].map(JSON.stringify).join(separator) + "];\n"
+        configFor([...listed, "TestUnrelated"], "", "./internal/vibelangfuzz/", separator)
       const go = names.map(name => "func " + name + "(t *testing.T) {}").join("\n")
       assert.deepEqual(missingGates(go, config), absent)
     }
   ), { seed: 440044, numRuns: 500 })
+})
+
+test("name discovery admits new quote tests and rejects selector or package regressions", () => {
+  const go = "func TestNewRuleQuoted(t *testing.T) {}"
+  assert.deepEqual(missingGates(go, configFor(["TestUnrelated"], "Test[A-Za-z0-9_]*Quoted|")), [])
+  assert.deepEqual(missingGates(go, configFor(["TestUnrelated"])), ["TestNewRuleQuoted"])
+  assert.deepEqual(missingGates(go, configFor(["TestUnrelated"], "Test[A-Za-z0-9_]*Quoted|", "./internal/checker/")), ["TestNewRuleQuoted"])
+  assert.deepEqual(missingGates(go, configFor(["TestNewRuleQuoted"])), [])
+})
+
+test("fast-check: quote discovery follows the executable selector and package scope", () => {
+  fc.assert(fc.property(
+    fc.stringMatching(/^[A-Z][a-z]{1,12}$/),
+    fc.boolean(), fc.boolean(), fc.boolean(),
+    (part, wildcard, listed, inScope) => {
+      const name = "Test" + part + "Quoted"
+      const config = configFor(listed ? [name] : ["TestUnrelated"],
+        wildcard ? "Test[A-Za-z0-9_]*Quoted|" : "",
+        inScope ? "./internal/vibelangfuzz/" : "./internal/checker/")
+      const go = "func " + name + "(t *testing.T) {}"
+      assert.deepEqual(missingGates(go, config), inScope && (wildcard || listed) ? [] : [name])
+    }
+  ), { seed: 440045, numRuns: 500 })
 })

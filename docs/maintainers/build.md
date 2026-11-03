@@ -714,6 +714,8 @@ Shard selectors are joined with shell builtins, so a failing external `paste` co
 | `harness.mjs` | every case and the `:tree` checks | compiler, runtime |
 | A `PACKAGE.ts` | the targets it declares and their dependents | everything else |
 
+The `//:spec-tests` selector includes every `Test…Quoted` in its declared Go packages by name. Quote checks need no explicit list entry. `node --test scripts/spec-tests.test.mjs` and `bun test docs/tools/spec-quote-gates.test.mjs` check the executable selector, its package scope and the listed tests together.
+
 A gate that needs only some checks names their labels, for example
 `sh scripts/ci.sh //packages/... //:docs-check --jobs 8`; a full run is
 `sh scripts/ci.sh //... --jobs 8`. Each checkout keeps its
