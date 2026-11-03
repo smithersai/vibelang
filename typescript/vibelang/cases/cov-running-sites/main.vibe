@@ -1,3 +1,28 @@
+// Chapter 2: The allSettled execution twin preserves each Exit and its tuple element types.
+// docs/design/src/002-running.md#909a014fb7ba4346
+// docs/design/src/002-running.md#f8de491b7359fa1e
+// Chapter 2: Join and Fiber.join give the same typed success in the paired execution case.
+// docs/design/src/002-running.md#16565af7060e647e
+// Chapter 2: The execution-site twin forks an Effect and joins its success.
+// docs/design/src/002-running.md#5ca32c3fae09d670
+// Chapter 2: Explicit yieldNow permits other concurrent item fibers to run; no implicit yield is inserted.
+// docs/design/src/002-running.md#f3ca29112fdd4dad
+// Chapter 2: The same cold task reruns and increments its body counter on each try.
+// docs/design/src/002-running.md#85c20c28a63724d3
+// Chapter 2: Execution-site witness separates constructing cold Effects, starting fibers, executing catch and typed failure.
+// docs/design/src/002-running.md#264e482c86644922
+// Chapter 2: Explicit yieldNow permits other concurrent item fibers to run; no implicit yield is inserted.
+// docs/design/src/002-running.md#f3ca29112fdd4dad
+// Chapter 2: The same cold task reruns and increments its body counter on each try.
+// docs/design/src/002-running.md#85c20c28a63724d3
+// Chapter 2: Execution-site witness separates constructing cold Effects, starting fibers, executing catch and typed failure.
+// docs/design/src/002-running.md#264e482c86644922
+// Chapter 2: Explicit yieldNow permits other concurrent item fibers to run; no implicit yield is inserted.
+// docs/design/src/002-running.md#f3ca29112fdd4dad
+// Chapter 2: The same cold task reruns and increments its body counter on each try.
+// docs/design/src/002-running.md#85c20c28a63724d3
+// Chapter 2: Execution-site witness separates constructing cold Effects, starting fibers, executing catch and typed failure.
+// docs/design/src/002-running.md#264e482c86644922
 // Chapter 2: Native APIs retain their written runner behavior.
 // docs/design/src/002-running.md#abb5ffb761604607
 // Chapter 2: Calling an `effect` function constructs its cold Effect.

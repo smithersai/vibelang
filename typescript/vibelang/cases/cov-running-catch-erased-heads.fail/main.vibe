@@ -1,0 +1,12 @@
+// expect: EK0505
+// Chapter 2: For `EK0505`'s head search, [runtime-erased TypeScript expression wrappers](https://github.com/micro
+// docs/design/src/002-running.md#1e05104332254623
+import { Effect } from "effect"
+declare const program: Effect.Effect<number>
+export effect function main() {
+ const a = (try program as number) + 1 catch () => 0
+ const b = <number>try program + 1 catch () => 0
+ const c = try program satisfies number catch () => 0
+ const d = try program! catch () => 0
+ return 0
+}

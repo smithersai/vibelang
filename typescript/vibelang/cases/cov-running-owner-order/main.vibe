@@ -1,3 +1,5 @@
+// Chapter 2: The scope expression runs once before the fork operand, matching saved-scope Effect.forkIn.
+// docs/design/src/002-running.md#036d432d3817dfb0
 // Chapter 2: Where Effect's argument order differs from source order, the source order still governs: `fork.in(sc
 // docs/design/src/002-running.md#86abbf07e27e4f5f
 import { Effect, Scope, Exit } from "effect"

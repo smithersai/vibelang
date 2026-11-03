@@ -1,4 +1,10 @@
 // expect: EK1701
+// Chapter 2: The formal-parameter execution boundary rejects a reserved join; try/class boundaries are also in FuzzRunningRules.
+// docs/design/src/002-running.md#44a02f264a7ebfe9
+// Chapter 2: The formal-parameter execution boundary rejects a reserved join; try/class boundaries are also in FuzzRunningRules.
+// docs/design/src/002-running.md#44a02f264a7ebfe9
+// Chapter 2: The formal-parameter execution boundary rejects a reserved join; try/class boundaries are also in FuzzRunningRules.
+// docs/design/src/002-running.md#44a02f264a7ebfe9
 // Chapter 2: A parameter list or `static` block that inherits the reservation still parses them as fiber operatio
 // docs/design/src/002-running.md#7ed3ae4827c1a000
 import { Fiber } from "effect"
