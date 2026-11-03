@@ -456,6 +456,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - `Symbol.customMatcher` in a `.vibe` file reported `TS2339`, though chapter 4 and these docs write it; it now names the runtime's key without an import, unless the file declares its own `Symbol`.
 - A class that inherited a static `Symbol.customMatcher` from a superclass matched through it; a class now uses only its own matcher, and `class B extends A {}` tests `instanceof`. Error families keep their generated tag matcher.
+- An `Option.match` repair could write an unqualified payload type or a shortened record type and then be refused; generated callback annotations now keep qualified names and complete types.
+
 - Bun's release-age setting blocked newly published VibeLang packages in example projects; the examples now exempt their pinned VibeLang packages from that age check.
 - Editor fixes could write invalid annotations around `this` or `super`, a loop binding or a `finally` binding; they now decline edits that cannot preserve the program.
 - Hover and rename missed references in match guards, `is` subjects, `and` patterns and error `extends` clauses; the editor now finds those original source references.

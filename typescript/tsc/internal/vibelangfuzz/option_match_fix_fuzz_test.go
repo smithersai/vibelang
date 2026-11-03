@@ -67,6 +67,30 @@ func optionMatchFixArchive(input string) string {
 		some = "(item: { n: number }): infer _ => { const n = item.n; events.push(\"some-object\"); return n + 1; }"
 	}
 
+	// Source annotations must name qualified payloads and complete record types.
+	switch pick(7) % 3 {
+	case 1:
+		imports += "; import { DateTime } from \"effect\""
+		valueType = "DateTime.Utc"
+		value = "DateTime.make(\"2024-01-02T00:00:00Z\")"
+		if pick(2)&1 != 0 {
+			value = option + ".none<DateTime.Utc>()"
+		}
+		some = "(n): number => { events.push(\"some-date\"); return DateTime.toDateUtc(n).getUTCFullYear(); }"
+	case 2:
+		fields, values := []string{}, []string{}
+		for i := 0; i < 24+int(pick(1)%17); i++ {
+			fields = append(fields, fmt.Sprintf("p%d: number", i))
+			values = append(values, fmt.Sprintf("p%d: %d", i, i))
+		}
+		valueType = "{" + strings.Join(fields, ";") + "}"
+		value = option + ".some({" + strings.Join(values, ",") + "})"
+		if pick(2)&1 != 0 {
+			value = option + ".none<" + valueType + ">()"
+		}
+		some = "(n): number => { events.push(\"some-wide\"); return n.p0; }"
+	}
+
 	handlers := fmt.Sprintf(`{ onNone: (): number => { events.push("none"); return -1; }, onSome: %s }`, some)
 	if pick(4)&1 != 0 {
 		handlers = fmt.Sprintf(`{ get onNone(): () => number { events.push("read-none"); return (): number => { events.push("none"); return -1; }; }, get onSome(): (n: %s) => number { events.push("read-some"); return %s; } }`, valueType, some)

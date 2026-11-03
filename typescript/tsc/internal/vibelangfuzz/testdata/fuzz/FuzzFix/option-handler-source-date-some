@@ -1,0 +1,2 @@
+go test fuzz v1
+string("key:direct-option-match\n\u0000\u0007\u0000\u0000\u0000\u0000\u0000\u0001")

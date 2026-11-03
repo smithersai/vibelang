@@ -34,7 +34,7 @@ func optionMatchRewrite(c *checker.Checker, file *ast.SourceFile, call *ast.Node
 	payload := names.freshName("$optionValue")
 	none := names.freshName("$optionNone")
 	some := names.freshName("$optionSome")
-	handlersType := c.TypeToString(c.GetTypeAtLocation(handlers))
+	handlersType := c.TypeToStringEx(c.GetTypeAtLocation(handlers), handlers, checker.TypeFormatFlagsNoTruncation|checker.TypeFormatFlagsUseFullyQualifiedType, nil)
 	prefix := "do { const "
 	// At the start of an expression statement, do denotes do/while.
 	// A plain block preserves the discarded result and callback order.
