@@ -3,7 +3,7 @@ import { cpSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writ
 import { join } from "node:path"
 import test from "node:test"
 import fc from "fast-check"
-import { vipRegistry, vipRegistryFromSources, generateShared, diagnosticRegistry, lintAuthority, lintCopies, lintRegistry, lintTables, read, repository, section, table } from "./spec-rules.mjs"
+import { codeBlockFindings, vipRegistry, vipRegistryFromSources, generateShared, diagnosticRegistry, lintAuthority, lintCopies, lintRegistry, lintTables, read, repository, section, table } from "./spec-rules.mjs"
 import { examples, removedHandlers, verdict } from "./spec-examples.mjs"
 
 function fixture(fn) {
@@ -17,6 +17,15 @@ function fixture(fn) {
 }
 const chapter = "docs/design/src/007-tooling.md", appendix = "docs/design/src/900-appendices.md"
 
+test("r27 OPUS-4: an Appendix B code outside its VIP's block needs a stated exception", () => fixture((root, edit) => {
+  assert.deepEqual(codeBlockFindings(read(root, appendix)), [])
+  edit(appendix, s => s.replace(/ Transitional, migration and removal codes keep.*?VIP-9, amended\)\./, ""))
+  const missing = lintTables(root).map(f => f.message.split(" ")[0])
+  for (const code of ["EK1023", "EK4607", "EK4853", "EK4857"]) assert.ok(missing.includes(code), code)
+  edit(appendix, s => s.replace(/^(\| `EK4402` .*)$/m, "$1\n| `EK4499` | a new rule | 41 | [Failures](003-failures.md#throw-expressions) |"))
+  assert.ok(lintTables(root).some(f => f.message.startsWith("EK4499 is outside the block")))
+  assert.deepEqual(codeBlockFindings("## Appendix B. Diagnostics\n\nKept: `EK3001` to `EK3005`.\n\n| Code |\n| `EK3004` | x | 7, 9 | y |\n| `EK1902` | x | 19 | y |\n"), [])
+}))
 test("r14 OPUS-4: an undocumented EK assignment is named with source location", () => fixture((root, edit) => {
   edit(chapter, s => s + "\nNew rule: `EK9999`.\n")
   assert.ok(lintRegistry(root).some(f => f.message.includes("EK9999") && f.path === chapter && f.line > 1))

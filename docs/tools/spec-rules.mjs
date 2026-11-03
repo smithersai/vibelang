@@ -237,6 +237,7 @@ export function lintTables(root) {
     if (chapterKeys.has(key) !== approvedKeys.has(key)) findings.push(issue("tables", chapterPath, chapter, chapter.indexOf("| Key | Meaning |"), key + ": decided-key table disagrees with VIP-30"))
   }
   const appendixPath = "docs/design/src/900-appendices.md", appendix = read(root, appendixPath)
+  findings.push(...codeBlockFindings(appendix, appendixPath))
   const denied = table(appendix, "| VIP | Denied | Instead |")
   const rows = [...denied.matchAll(/^\| \[(\d+)\].*? \| (.*?) \| (.*?) \|$/gm)]
   const ids = new Set(rows.map(m => Number(m[1])))
@@ -255,6 +256,26 @@ export function lintTables(root) {
         findings.push(issue("tables", appendixPath, appendix, appendix.indexOf(m[0]), "VIP-" + m[1] + " repair is absent from its VIP: " + repair))
     }
 
+  }
+  return findings
+}
+
+// Appendix B: a code sits in its VIP's hundred-block (VIP-34, amended), is an
+// imported EK38xx lint code, or is named in the catalog's stated exceptions.
+export function codeBlockFindings(appendix, path = "docs/design/src/900-appendices.md") {
+  const findings = []
+  const head = appendix.split("## Appendix B. Diagnostics")[1]?.split("\n| Code |")[0] ?? ""
+  const named = new Set()
+  for (const m of head.matchAll(/`EK(\d{4})`(?:\s*(?:to|–)\s*`EK(\d{4})`)?/g)) {
+    const from = Number(m[1]), to = Number(m[2] ?? m[1])
+    for (let n = from; n <= to; n++) named.add("EK" + String(n).padStart(4, "0"))
+  }
+  for (const m of appendix.matchAll(/^\| `(EK(\d\d)\d\d)` \| .*? \| ([^|]*) \| [^|]*\|\s*$/gm)) {
+    const [, code, block, vipColumn] = m
+    if (block === "38" || named.has(code)) continue
+    const vipIds = [...vipColumn.matchAll(/\d+/g)].map(x => Number(x[0]))
+    if (!vipIds.includes(Number(block))) findings.push(issue("tables", path, appendix, m.index,
+      code + " is outside the block of its VIPs (" + vipColumn.trim() + ") and is not a stated kept or transitional code"))
   }
   return findings
 }
