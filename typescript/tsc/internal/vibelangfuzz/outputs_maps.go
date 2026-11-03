@@ -110,8 +110,55 @@ func (oc *OutputChecker) checkStatementMappings(name, generated, source string, 
 		node *ast.Node
 	}
 	byIdentity := map[string][]statementSpan{}
+	// A for head or destructuring pattern declares bindings without being a
+	// VariableStatement. Count written binding sites too, so a lowered head
+	// declaration cannot borrow an outer statement that happens to name x.
+	bindingSites := map[string]map[statementSpan]bool{}
+	var recordBinding func(*ast.Node)
+	recordBinding = func(name *ast.Node) {
+		if name == nil {
+			return
+		}
+		if ast.IsIdentifier(name) {
+			if name.Pos() < 0 || name.End() > len(source) {
+				return
+			}
+			start := scanner.GetTokenPosOfNode(name, original, false)
+			if start >= name.End() {
+				return
+			}
+			// Parser companions also have anchored identifier locations. Only
+			// the decoded written token establishes a source binding; checking
+			// NodeFlags alone would discard real reparsed error/data names.
+			token := scanner.NewScanner()
+			token.SetText(source[start:name.End()])
+			kind := token.Scan()
+			if kind < ast.KindIdentifier || kind > ast.KindLastKeyword ||
+				token.TokenValue() != name.Text() || token.TokenEnd() != name.End()-start {
+				return
+			}
+			if bindingSites[name.Text()] == nil {
+				bindingSites[name.Text()] = map[statementSpan]bool{}
+			}
+			// Supplemental parser trees can expose the same written binding.
+			bindingSites[name.Text()][statementSpan{start, name.End()}] = true
+			return
+		}
+		if ast.IsObjectBindingPattern(name) || ast.IsArrayBindingPattern(name) {
+			for _, element := range name.AsBindingPattern().Elements.Nodes {
+				if ast.IsBindingElement(element) {
+					recordBinding(element.Name())
+				}
+			}
+		}
+	}
 	var visit ast.Visitor
 	visit = func(n *ast.Node) bool {
+		if ast.IsVariableDeclaration(n) || n.Kind == ast.KindParameter ||
+			ast.IsFunctionDeclaration(n) || ast.IsFunctionExpression(n) ||
+			ast.IsClassDeclaration(n) || ast.IsClassExpression(n) {
+			recordBinding(n.Name())
+		}
 		if ast.IsStatement(n) && n.Pos() >= 0 && n.End() > n.Pos() && n.End() <= len(source) {
 			start := scanner.GetTokenPosOfNode(n, original, false)
 			if start < n.End() {
@@ -196,7 +243,17 @@ func (oc *OutputChecker) checkStatementMappings(name, generated, source string, 
 		candidates := byKey[statementKey(generated[start:n.End()])]
 		preservedText := len(candidates) > 0
 		if len(candidates) == 0 {
-			if named := byIdentity[statementIdentity(n)]; len(named) == 1 {
+			named := byIdentity[statementIdentity(n)]
+			unique := len(named) == 1
+			if unique && ast.IsVariableStatement(n) {
+				for _, declaration := range n.AsVariableStatement().DeclarationList.AsVariableDeclarationList().Declarations.Nodes {
+					if len(bindingSites[declaration.Name().Text()]) != 1 {
+						unique = false
+						break
+					}
+				}
+			}
+			if unique {
 				candidates = named
 			}
 		}
