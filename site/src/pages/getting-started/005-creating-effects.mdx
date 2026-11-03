@@ -9,6 +9,10 @@ An effect function describes a VibeLang computation: return a value to succeed, 
 
 The `effect` keyword also fixes the kind of a class method. Editor projection keeps that kind for a pure body and for a return type that names a local or imported Effect alias.
 
+Use `effect` on functions, arrows, and class or object methods. Getters, setters, and class constructors cannot have an `effect` prefix (`EK0104`). Move the work into an effect method, or let an ordinary getter return an `effect { … }` value for the caller to run. `effect get()` and `effect set()` remain effect methods named `get` and `set`; `effect()` is a plain method named `effect`. In an object literal, `effect constructor()` is an effect method named `constructor`.
+
+`vibelang --fix` can preserve a parameterless legacy Effect constructor by returning a cold `effect { … }` block from an ordinary constructor. Constructors with parameters, type parameters, a return annotation, `async`, `super`, or `new.target` need a manual migration: the old Effect method lowering deferred parameter initialization until each run, so simply removing `effect` would change when work happens.
+
 ## Success and failure
 
 ```vibe

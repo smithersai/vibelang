@@ -91,10 +91,10 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [Welcome](../001-onboarding.md) | 1,800 |
 | [Why VibeLang?](../getting-started/002-why-effect.md) | 660 |
 | [A Real Provider, Before and After](../getting-started/real-provider-before-after.md) | 1,700 |
-| **Learning Path** | **11,000** |
+| **Learning Path** | **12,000** |
 | [The Effect Type](../getting-started/003-the-effect-type.md) | 2,400 |
 | [Installation](../getting-started/004-installation.md) | 2,900 |
-| [Creating Effects](../getting-started/005-creating-effects.md) | 3,100 |
+| [Creating Effects](../getting-started/005-creating-effects.md) | 3,400 |
 | [Two Types of Errors](../error-management/006-two-error-types.md) | 650 |
 | [Basic Concurrency](../concurrency/007-basic-concurrency.md) | 2,500 |
 | **Core Concepts** | **25,000** |
@@ -143,7 +143,7 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | --- | ---: |
 | [Getting Started](../013-getting-started.md) | 1,100 |
 | **Error Management** | **17,000** |
-| [Expected Errors](../error-management/014-expected-errors.md) | 7,000 |
+| [Expected Errors](../error-management/014-expected-errors.md) | 7,100 |
 | [Unexpected Errors](../error-management/015-unexpected-errors.md) | 1,500 |
 | [Fallback](../error-management/016-fallback.md) | 1,500 |
 | [Matching](../error-management/017-matching.md) | 790 |
@@ -182,8 +182,8 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | **Caching** | **2,000** |
 | [Caching Effects](../caching/045-caching-effects.md) | 950 |
 | [Cache](../caching/046-cache.md) | 1,100 |
-| **Concurrency** | **8,600** |
-| [Fibers](../concurrency/047-fibers.md) | 3,400 |
+| **Concurrency** | **8,700** |
+| [Fibers](../concurrency/047-fibers.md) | 3,500 |
 | [Deferred](../concurrency/048-deferred.md) | 1,100 |
 | [Queue](../concurrency/049-queue.md) | 1,400 |
 | [PubSub](../concurrency/050-pubsub.md) | 1,300 |
@@ -266,9 +266,9 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | Page | Tokens |
 | --- | ---: |
 | [Control operations and handlers](111-control-operations-and-handlers.md) | 65 |
-| [Producers](112-producers.md) | 3,000 |
+| [Producers](112-producers.md) | 3,100 |
 | [Building an HTTP API](113-building-an-http-api.md) | 1,500 |
-| [VibeLang for Effect users](114-vibelang-for-effect-users.md) | 6,800 |
+| [VibeLang for Effect users](114-vibelang-for-effect-users.md) | 6,900 |
 | [Cheat sheet](115-cheat-sheet.md) | 11,000 |
 | [Pattern matching with match and is](116-match-and-is.md) | 8,100 |
 | [Diagnostic code map](diagnostic-code-map.md) | 2,700 |

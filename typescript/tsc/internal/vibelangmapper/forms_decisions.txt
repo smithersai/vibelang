@@ -1976,6 +1976,8 @@ typescript/vibelang/cases/dual-block-legacy-fixed/main.vibe:15:19 lambda program
 typescript/vibelang/cases/dual-block-legacy-fixed/main.vibe:21:18 lambda program table
 typescript/vibelang/cases/dual-block-legacy-fixed/main.vibe:28:35 lambda dual fallback
 typescript/vibelang/cases/dual-block-legacy-fixed/main.vibe:34:19 lambda program table
+typescript/vibelang/cases/effect-accessor-modifier-controls/main.vibe:11:3 lambda plain fallback
+typescript/vibelang/cases/effect-accessor-modifier-controls/main.vibe:8:26 lambda plain fallback
 typescript/vibelang/cases/effect-arrow-head-controls/main.vibe:10:24 lambda choice fallback
 typescript/vibelang/cases/effect-arrow-head-controls/main.vibe:6:22 lambda plain fallback
 typescript/vibelang/cases/effect-arrow-head-controls/main.vibe:7:24 lambda plain fallback
@@ -4846,6 +4848,12 @@ typescript/vibelang/cases/s19-30-callback-finalizer/main.vibe:7:40 lambda plain 
 typescript/vibelang/cases/s19-30-callback-finalizer/main.vibe:7:57 lambda plain hatch
 typescript/vibelang/cases/s2170-function-hoisting/main.vibe:78:14 lambda plain annotation
 typescript/vibelang/cases/schema-class-recursive-contract/main.vibe:15:20 lambda plain table
+typescript/vibelang/cases/schema-error-cross-copy/main.vibe:15:19 lambda plain fallback
+typescript/vibelang/cases/schema-error-cross-copy/main.vibe:19:23 lambda plain table
+typescript/vibelang/cases/schema-error-cross-copy/main.vibe:20:11 lambda dual fallback
+typescript/vibelang/cases/schema-error-cross-copy/main.vibe:21:11 lambda dual fallback
+typescript/vibelang/cases/schema-error-cross-copy/main.vibe:22:11 lambda dual fallback
+typescript/vibelang/cases/schema-error-cross-copy/main.vibe:23:11 lambda dual fallback
 typescript/vibelang/cases/schema-errors-constructor-defect/main.vibe:7:34 byname program table
 typescript/vibelang/cases/schema-errors-constructor-defect/main.vibe:8:88 lambda plain fallback
 typescript/vibelang/cases/schema-errors-implicit-copy/main.vibe:18:34 byname program table
