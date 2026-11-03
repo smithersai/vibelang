@@ -11,3 +11,7 @@ enum E{A=(1 is let one)?1:0}
 // VIP-7 EK0705 for parameter and enum binding homes; rule: docs/design/vips/0007-match.md#7cd06db9d8224bb4
 // VIP-7 EK0705 for parameter and enum binding homes; rule: docs/design/vips/0007-match.md#1d8b1d7d92edbd84
 // VIP-7 parameter-home is binding owns EK0705; rule: docs/design/vips/0007-match.md#6d8a26bb3dd5a9f4
+// VIP-7 EK0705 for parameter and enum binding homes; rule: docs/design/vips/0007-match.md#925ad113d2b27a49
+// VIP-7 EK0705 for parameter and enum binding homes; rule: docs/design/vips/0007-match.md#41fe8608d329b11d
+// VIP-7 EK0705 for parameter and enum binding homes; rule: docs/design/vips/0007-match.md#7cd06db9d8224bb4
+// VIP-7 EK0705 for parameter and enum binding homes; rule: docs/design/vips/0007-match.md#1d8b1d7d92edbd84
