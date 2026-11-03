@@ -90,9 +90,9 @@ func (p *Parser) parseEffectDeclaration(pos int, jsdoc jsdocScannerInfo, modifie
 // parseShorthandFunctionDeclaration parses name(…) { … }, a function
 // declaration without its function keyword, after effect or async.
 func (p *Parser) parseShorthandFunctionDeclaration(pos int, jsdoc jsdocScannerInfo, modifiers *ast.ModifierList, effect bool) *ast.Node {
-	defer p.setVibeLangFiberContext(effect)()
 	p.recordVibeSyntax(VibeSyntax{Kind: VibeSyntaxShorthand, Word: p.tokenRange()})
-	name := p.parseBindingIdentifier()
+	name := p.parseBindingIdentifier() // a declaration's name takes the enclosing context (Appendix A)
+	defer p.setVibeLangFiberContext(effect)()
 	signatureFlags := core.IfElse(modifierListHasAsync(modifiers), ParseFlagsAwait, ParseFlagsNone)
 	typeParameters := p.parseTypeParameters()
 	saveContextFlags := p.contextFlags

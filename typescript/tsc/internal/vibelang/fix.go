@@ -479,12 +479,14 @@ func FixProjectWithOptions(ctx context.Context, fs vfs.FS, libraryPath tspath.Ro
 			var p proposal
 			if options.VIPOnly {
 				p = fileFixes(ctx, program, file, g.refused, vipMigrationFixCodes)
+				p = p.withFixes(fiberNameMigrationFixes(ctx, program, file, g.refused))
 			} else {
 				p = pipeConditionalFixes(file, g.refused)
 				p = p.withFixes(dualBlockMigrationFixes(ctx, program, file, g.refused, refuse))
 				p = p.withFixes(vipTypeMigrationFixes(ctx, program, file, g.refused))
 				p = p.withFixes(ambiguousRootMigrationFixes(ctx, program, file, g.refused))
 				p = p.withFixes(bindingRenameMigrationFixes(ctx, program, file, g.refused))
+				p = p.withFixes(fiberNameMigrationFixes(ctx, program, file, g.refused))
 				if options.MigrationOnly && len(p.fixes) == 0 {
 					p = sourceFileMigrationFixes(ctx, program, file, g.refused)
 				}

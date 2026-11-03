@@ -33,7 +33,7 @@ func (p *Parser) tokenRange() core.TextRange {
 // context (VIP-17, amended). Outside it, only unambiguous legacy forms
 // are recovered for their outside-effect diagnostics and migration.
 func (p *Parser) isStartOfVibeLangFork() bool {
-	return p.token == ast.KindIdentifier && p.scanner.TokenValue() == "fork" && p.isVibeLangFile() && (p.vibelangFiberContext || p.lookAhead((*Parser).nextTokenStartsLegacyForkOperand))
+	return p.token == ast.KindIdentifier && p.scanner.TokenValue() == "fork" && p.isVibeLangFile() && (p.vibelangFiberContext && !p.lookAhead((*Parser).nextTokenIsEqualsGreaterThan) || p.lookAhead((*Parser).nextTokenStartsLegacyForkOperand))
 }
 
 func (p *Parser) nextTokenStartsLegacyForkOperand() bool {
@@ -81,7 +81,7 @@ func (p *Parser) parseVibeLangFork() *ast.Node {
 // isStartOfVibeLangJoin uses the same source Effect reservation as fork.
 // Outside it, valid TypeScript identifier expressions retain their reading.
 func (p *Parser) isStartOfVibeLangJoin() bool {
-	return p.token == ast.KindIdentifier && p.scanner.TokenValue() == "join" && p.isVibeLangFile() && (p.vibelangFiberContext || p.lookAhead((*Parser).nextTokenStartsLegacyJoinOperand))
+	return p.token == ast.KindIdentifier && p.scanner.TokenValue() == "join" && p.isVibeLangFile() && (p.vibelangFiberContext && !p.lookAhead((*Parser).nextTokenIsEqualsGreaterThan) || p.lookAhead((*Parser).nextTokenStartsLegacyJoinOperand))
 }
 
 func (p *Parser) nextTokenStartsLegacyJoinOperand() bool {

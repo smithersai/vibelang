@@ -231,6 +231,9 @@ func planEffectGen(c *checker.Checker, file *ast.SourceFile, call *ast.Node) *fo
 	if why != "" {
 		return refuse(why)
 	}
+	if why := generatorFiberNameRefusal(c, call); why != "" {
+		return refuse(why)
+	}
 	a := analyzerFor(c)
 	text := file.Text()
 	generator := g.generator

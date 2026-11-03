@@ -1655,6 +1655,14 @@ func (p *Parser) parseExpressionOrLabeledStatement() *ast.Statement {
 	pos := p.nodePos()
 	jsdoc := p.jsdocScannerInfo()
 	hasParen := p.token == ast.KindOpenParenToken
+	if p.isReservedFiberName() && p.lookAhead((*Parser).nextTokenIsColonToken) {
+		p.rejectReservedFiberName(p.tokenRange())
+		label := p.parseIdentifier()
+		p.parseExpected(ast.KindColonToken)
+		result := p.finishNode(p.factory.NewLabeledStatement(label, p.parseEmbeddedStatement()), pos)
+		p.withJSDoc(result, jsdoc)
+		return result
+	}
 	expression := p.parseExpression()
 
 	if expression.Kind == ast.KindIdentifier && p.parseOptional(ast.KindColonToken) {
@@ -1820,9 +1828,13 @@ func (p *Parser) parseObjectBindingElement() *ast.Node {
 	pos := p.nodePos()
 	dotDotDotToken := p.parseOptionalToken(ast.KindDotDotDotToken)
 	tokenIsIdentifier := p.isBindingIdentifier()
+	reservedName, nameRange := p.isReservedFiberName(), p.tokenRange()
 	propertyName := p.parsePropertyName()
 	var name *ast.Node
 	if tokenIsIdentifier && p.token != ast.KindColonToken {
+		if reservedName {
+			p.rejectReservedFiberName(nameRange)
+		}
 		name = propertyName
 		propertyName = nil
 	} else {
@@ -1940,6 +1952,9 @@ func (p *Parser) parseNameOfClassDeclarationOrExpression() *ast.Node {
 	// - class with name 'implements'
 	// 'isImplementsClause' helps to disambiguate between these two cases
 	if p.isBindingIdentifier() && !p.isImplementsClause() {
+		if p.isReservedFiberName() {
+			p.rejectReservedFiberName(p.tokenRange())
+		}
 		saveHasAwaitIdentifier := p.statementHasAwaitIdentifier
 		id := p.createIdentifier(p.isBindingIdentifier())
 		p.statementHasAwaitIdentifier = saveHasAwaitIdentifier
@@ -4858,6 +4873,9 @@ func (p *Parser) parseSimpleArrowFunctionExpression(pos int, identifier *ast.Nod
 		defer p.setVibeLangFiberContext(true)()
 	}
 	debug.Assert(p.token == ast.KindEqualsGreaterThanToken, "parseSimpleArrowFunctionExpression should only have been called if we had a =>")
+	if p.vibelangFiberContext && p.isVibeLangFile() && ast.IsIdentifier(identifier) && (identifier.Text() == "fork" || identifier.Text() == "join") {
+		p.rejectReservedFiberName(p.sourceRange(identifier))
+	}
 	parameter := p.finishNode(p.factory.NewParameterDeclaration(nil /*modifiers*/, nil /*dotDotDotToken*/, identifier, nil /*questionToken*/, nil /*typeNode*/, nil /*initializer*/), identifier.Pos())
 	parameters := p.newNodeList(parameter.Loc, []*ast.Node{parameter})
 	equalsGreaterThanToken := p.parseExpectedToken(ast.KindEqualsGreaterThanToken)
@@ -6063,6 +6081,7 @@ func (p *Parser) parseObjectLiteralElement() *ast.Node {
 	}
 	asteriskToken := p.parseOptionalToken(ast.KindAsteriskToken)
 	tokenIsIdentifier := p.isIdentifier()
+	reservedName, nameRange := p.isReservedFiberName(), p.tokenRange()
 	name := p.parsePropertyName()
 	// Disallowing of optional property assignments and definite assignment assertion happens in the grammar checker.
 	postfixToken := p.parseOptionalToken(ast.KindQuestionToken)
@@ -6081,6 +6100,9 @@ func (p *Parser) parseObjectLiteralElement() *ast.Node {
 	var node *ast.Node
 	isShorthandPropertyAssignment := tokenIsIdentifier && p.token != ast.KindColonToken
 	if isShorthandPropertyAssignment {
+		if reservedName {
+			p.rejectReservedFiberName(nameRange)
+		}
 		equalsToken := p.parseOptionalToken(ast.KindEqualsToken)
 		var initializer *ast.Expression
 		if equalsToken != nil {
@@ -6115,6 +6137,9 @@ func (p *Parser) parseFunctionExpression(effect bool) *ast.Expression {
 	isAsync := modifierListHasAsync(modifiers)
 	signatureFlags := core.IfElse(isGenerator, ParseFlagsYield, ParseFlagsNone) | core.IfElse(isAsync, ParseFlagsAwait, ParseFlagsNone)
 	var name *ast.Node
+	// A function expression's own name is not a binding EK1702 reports here.
+	bodyFiberContext := p.vibelangFiberContext
+	p.vibelangFiberContext = false
 	switch {
 	case isGenerator && isAsync:
 		name = p.doInContext(ast.NodeFlagsYieldContext|ast.NodeFlagsAwaitContext, true, (*Parser).parseOptionalBindingIdentifier)
@@ -6125,6 +6150,7 @@ func (p *Parser) parseFunctionExpression(effect bool) *ast.Expression {
 	default:
 		name = p.parseOptionalBindingIdentifier()
 	}
+	p.vibelangFiberContext = bodyFiberContext
 	typeParameters := p.parseTypeParameters()
 	parameters := p.parseParameters(signatureFlags)
 	returnType := p.parseReturnType(ast.KindColonToken, false /*isType*/)
@@ -6239,6 +6265,9 @@ func (p *Parser) parseBindingIdentifierWithDiagnostic(privateIdentifierDiagnosti
 	// VibeLang emits modules, where await cannot be a binding even in a plain function.
 	if p.isVibeLangFile() && p.token == ast.KindAwaitKeyword {
 		p.parseErrorAtCurrentToken(diagnostics.Identifier_expected_0_is_a_reserved_word_that_cannot_be_used_here, "await")
+	}
+	if p.isReservedFiberName() {
+		p.rejectReservedFiberName(p.tokenRange())
 	}
 	saveHasAwaitIdentifier := p.statementHasAwaitIdentifier
 	id := p.createIdentifierWithDiagnostic(p.isBindingIdentifier(), nil /*diagnosticMessage*/, privateIdentifierDiagnosticMessage)

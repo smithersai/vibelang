@@ -19,9 +19,9 @@ import (
 //	                                      on its own fiber; likewise
 //	                                      allSettled, race and any
 //
-// fork(e) is the keyword while its callee, spelled fork, resolves to the
-// prelude's binding; a fork the program declares is an ordinary call, never
-// decided by spelling (rule H5). Typing, flow, hover and lowering ask
+// In effect code fork(e) is the operation whatever is in scope: fork and join
+// are reserved there, and a binding of either name is EK1702 (VIP-17, amended).
+// In plain code a fork the program declares is an ordinary call. Typing, flow, hover and lowering ask
 // keywordOperand whether an operand runs where it stands, never the
 // destination's type: D147's type-chosen deferral no longer reaches these
 // operands, so a plain call such as events.push("x") runs in the new fiber
