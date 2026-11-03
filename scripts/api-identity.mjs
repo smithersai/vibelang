@@ -1096,7 +1096,10 @@ function checkComparison(ts, plan, progress) {
   }
   virtual.set(probe, lines.join("\n"))
   progress("create-probe-program", { probeOffset: offset, probeCount: batch.length, totalProbes: checks.length })
-  program = ts.createProgram([...roots, probe], compilerOptions, host)
+  // Inputs were already validated with the caller's unused-code checks.
+  // Private aliases/imports in this synthetic module are implementation details.
+  program = ts.createProgram([...roots, probe],
+    { ...compilerOptions, noUnusedLocals: false, noUnusedParameters: false }, host)
   const diagnosticText = d => "TS" + d.code + ": " + ts.flattenDiagnosticMessageText(d.messageText, "\n")
   progress("probe-diagnostics", { probeOffset: offset, probeCount: batch.length, totalProbes: checks.length })
   const probeSource = program.getSourceFile(probe)

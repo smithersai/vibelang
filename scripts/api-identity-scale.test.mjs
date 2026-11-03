@@ -238,3 +238,51 @@ test("property: invalid prefixes stay invalid and valid mismatches still inspect
     }
   })
 })
+
+test("project unused-code checks do not reject generated identity probes", () => {
+  const corpus = JSON.parse(readFileSync(new URL("./api-identity-corpus/opencode-project-unused-probes.json", import.meta.url)))
+  for(const text of ["export {};",corpus.declaration,"export declare const value: number;"]){
+    fixture({"index.d.ts":text},{"index.d.ts":text},(a,b)=>{
+      const settings={...options.compilerOptions,noUnusedLocals:true,noUnusedParameters:true}
+      const original=ts.createProgram([join(a,"index.d.ts")],{...settings,target:ts.ScriptTarget.ESNext,
+        module:ts.ModuleKind.ESNext,moduleResolution:ts.ModuleResolutionKind.Bundler,noEmit:true,strict:true,types:[]})
+      assert.deepEqual(ts.getPreEmitDiagnostics(original),[],"Stock tsc 5.9.3 accepts the original declaration")
+      const result=compareApiIdentity(ts,a,b,{compilerOptions:settings})
+      assert.equal(result.identical,true,JSON.stringify(result))
+      assert.equal(result.comparisonComplete,true)
+    })
+  }
+})
+
+test("real unused input locals and parameters remain invalid", () => {
+  for(const text of ["const unused = 1; export const value = 1;","export function value(unused: string) { return 1 }"]){
+    fixture({"index.ts":text},{"index.ts":text},(a,b)=>{
+      const result=compareApiIdentity(ts,a,b,{compilerOptions:{...options.compilerOptions,noUnusedLocals:true,noUnusedParameters:true},
+        beforeEntrypoints:{".":join(a,"index.ts")},afterEntrypoints:{".":join(b,"index.ts")}})
+      assert.equal(result.identical,false)
+      assert.equal(result.comparisonComplete,false)
+      assert.deepEqual(result.typeDifferences,[])
+      assert.ok(result.environmentDiagnostics.some(d=>d.blocking&&/TS6133/.test(d.diagnostic)&&d.file?.endsWith("index.ts")),JSON.stringify(result))
+    })
+  }
+})
+
+test("property: project unused flags preserve declaration identity and real differences", async () => {
+  await checkProperty(fc,{
+    name:"api-identity-project-unused-probes",
+    rule:"Will: match TypeScript; generated checker implementation cannot make a valid original declaration invalid, and real input diagnostics stay visible",
+    command:"node --test scripts/api-identity-scale.test.mjs",
+    numRuns:8,
+    arbitrary:fc.record({locals:fc.boolean(),parameters:fc.boolean(),count:fc.integer({min:1,max:12}),mutated:fc.boolean()}),
+    check:({locals,parameters,count,mutated})=>{
+      const before=Array.from({length:count},(_,i)=>`export interface X${i}<T = string> { value: T; tag: ${i} }`).join("\n")
+      const after=mutated?before.replace(`tag: ${count-1} }`,`tag: ${count} }`):before
+      fixture({"index.d.ts":before},{"index.d.ts":after},(a,b)=>{
+        const result=compareApiIdentity(ts,a,b,{compilerOptions:{...options.compilerOptions,noUnusedLocals:locals,noUnusedParameters:parameters},probeBatchSize:2})
+        assert.equal(result.comparisonComplete,true,JSON.stringify(result))
+        assert.equal(result.identical,!mutated)
+        if(mutated)assert.ok(result.typeDifferences.some(d=>d.export===`X${count-1}`))
+      })
+    }
+  })
+})

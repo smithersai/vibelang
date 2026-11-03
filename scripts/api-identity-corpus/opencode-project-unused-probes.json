@@ -1,0 +1,6 @@
+{
+  "origin": "Original opencode project-options qualification: TS6196 for generated __check aliases",
+  "declaration": "export interface X<T = string> { value: T }",
+  "compilerOptions": { "noUnusedLocals": true, "noUnusedParameters": true },
+  "oracle": "Stock TypeScript 5.9.3 accepts this original declaration; unused synthetic helpers cannot invalidate it"
+}

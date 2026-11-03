@@ -155,3 +155,9 @@ Such receipts have `comparisonComplete: false`: their lists cover attempted
 groups only and cannot establish API identity. An ordinary API mismatch remains
 a complete comparison and continues through the remaining names, types and
 comments.
+
+Project `noUnusedLocals` and `noUnusedParameters` checks apply to the original
+input programs. They are disabled only for the synthetic probe program, whose
+private helper aliases and imports are not part of the package. Real unused
+input diagnostics remain blocking; ordinary export type differences remain
+visible under either setting.

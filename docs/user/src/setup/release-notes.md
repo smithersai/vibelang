@@ -158,6 +158,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Upgrade commits could split the VIP migration notice across the preceding paragraph when the body was wrapped. The notice now has its own paragraph while retaining the command, migrated-file count and body-width limit.
 
 
+- Valid declarations could fail API comparison when the project checked unused code, because generated identity helpers were reported as unused; those checks now apply to the original inputs while synthetic probes remain exempt.
+
 - The migration checks generated callback failure unions without their required parentheses and failed to parse them. They now write valid compound slots while checking the same preserved channels and refusal controls.
 
 
