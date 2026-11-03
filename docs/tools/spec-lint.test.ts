@@ -569,3 +569,41 @@ test("schema documentation property covers every owning document and alias names
     expect(lint(fixture, rule("written-schema-docs"))).toEqual([])
   }), { seed: 16003, numRuns: 100 })
 })
+
+
+const oneExternalRule = "A callable declared outside VibeLang, in an npm package, carries a thrown type by one rule."
+
+test("npm contracts reject a historical implicit inventory and retain explicit/global contracts", () => {
+  const fixture: Spec = new Map([
+    ["src/003-failures.md", oneExternalRule + "\nEffect and TypeScript's lib declare no tags, so the compiler ships them."],
+    ["src/900-appendices.md", "VibeLang ships them for JavaScript's globals and for Effect's non-effectful exports.\nEvery remaining global and effect 4.1.0 non-Effect export is annotated by a generator."]
+  ])
+  expect(lint(fixture, rule("npm-signature-contracts"))).toHaveLength(3)
+  fixture.set("src/003-failures.md", oneExternalRule + "\nAn npm signature needs its own annotation; compiler inventories grant no implicit contract.")
+  fixture.set("src/900-appendices.md", "VibeLang supplies intrinsic global and explicit wrapper-thunk contracts. A written library annotation is respected.")
+  expect(lint(fixture, rule("npm-signature-contracts"))).toEqual([])
+})
+
+test("npm inventory property covers pinned versions, placement and literal examples", () => {
+  // External npm signatures follow the same rule as local TypeScript signatures.
+  fc.assert(fc.property(fc.integer({ min: 0, max: 99 }), fc.integer({ min: 0, max: 99 }), fc.constantFrom("src/003-failures.md", "src/900-appendices.md"), (minor, patch, file) => {
+    const fixture: Spec = new Map([["src/003-failures.md", oneExternalRule]])
+    const bad = `Every remaining global and effect 4.${minor}.${patch} non-Effect export is annotated by a generator.`
+    fixture.set(file, (fixture.get(file) ?? "") + "\n" + bad)
+    expect(lint(fixture, rule("npm-signature-contracts"))).toHaveLength(1)
+    fixture.set(file, (file === "src/003-failures.md" ? oneExternalRule : "") + "\n```text\n" + bad + "\n```")
+    expect(lint(fixture, rule("npm-signature-contracts"))).toEqual([])
+  }), { seed: 16004, numRuns: 100 })
+})
+
+test("new specification guards run through their categorized gate targets", () => {
+  const fixtures: Array<[string, string, Spec]> = [
+    ["authority", "vip-references", new Map([["vips/README.md", "[missing](0099-missing.md)"]])],
+    ["tables", "service-shape-grammar", new Map([["src/005-services.md", "`service Port: Shape { … }` supplies the exact whole Shape."]])],
+    ["copies", "written-schema-docs", new Map([["src/006-data.md", "A written alias replaces the synthesized alias.\nits `typeof X.Type` alias has no comment."]])],
+    ["authority", "npm-signature-contracts", new Map([["src/003-failures.md", oneExternalRule + "\nEvery remaining global and effect 4.1.1 non-Effect export is annotated by a generator."]])]
+  ]
+  for (const [kind, expected, fixture] of fixtures) {
+    expect(lintKind(fixture, kind).map(v => v.rule)).toContain(expected)
+  }
+})

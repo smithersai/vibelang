@@ -570,13 +570,39 @@ const writtenSchemaDocs: Rule = {
   }
 }
 
-export const rules: Rule[] = [writtenSchemaDocs, serviceShapeGrammar, vipReferences, specLinks, resolutionClaims, nativeSourceResolution, configKeys, importStyleScope, declarationImportForm, deniedVipRepairs, retiredForms, platformImports, counterpartUsing, collisionConditional, rulingClaims, compilerGaps, moduleExtractionTwins]
+const npmSignatureContracts: Rule = {
+  name: "npm-signature-contracts",
+  finding: "an implicit npm inventory contract contradicts one external-signature rule",
+  check(spec) {
+    const failures = spec.get("src/003-failures.md") ?? ""
+    // Before this authority is published, earlier VIP text can still authorize
+    // shipped library annotations. Once published, the inventory is informational.
+    if (!/A callable declared outside VibeLang[^\n]*an npm package[^\n]*one rule/.test(failures)) return []
+    const out: Violation[] = []
+    for (const file of ["src/003-failures.md", "src/900-appendices.md"]) {
+      const text = spec.get(file) ?? ""
+      for (const pattern of [
+        /Effect and TypeScript's lib declare no tags, so the compiler ships them/g,
+        /ships them for JavaScript's globals and for Effect's non-effectful exports/g,
+        /Every remaining global and effect [\d.]+ non-Effect export is annotated by a generator/g,
+        /with shipped \x60@throws \{never\}\x60 when it only builds that function/g,
+        /data-last overload returns a function and is non-effectful with \x60@throws \{never\}\x60/g
+      ]) for (const m of prose(text).matchAll(pattern)) {
+        out.push({ rule: this.name, file, line: lineAt(text, m.index!),
+          message: "an npm inventory cannot grant an unannotated non-effectful signature a throws contract" })
+      }
+    }
+    return out
+  }
+}
+
+export const rules: Rule[] = [npmSignatureContracts, writtenSchemaDocs, serviceShapeGrammar, vipReferences, specLinks, resolutionClaims, nativeSourceResolution, configKeys, importStyleScope, declarationImportForm, deniedVipRepairs, retiredForms, platformImports, counterpartUsing, collisionConditional, rulingClaims, compilerGaps, moduleExtractionTwins]
 
 const kinds: Record<string, string[]> = {
   registry: ["config-keys"],
   tables: ["service-shape-grammar", "native-source-resolution", "resolution-claims", "declaration-import-style-scope", "denied-vip-repairs", "collision-conditional", "compiler-gaps-not-rules"],
   copies: ["written-schema-docs", "declaration-import-form", "counterpart-using"],
-  authority: ["vip-references", "ruling-claims"],
+  authority: ["npm-signature-contracts", "vip-references", "ruling-claims"],
   examples: ["retired-forms", "platform-imports", "module-extraction-twins"]
 }
 // A repair or migration that compares declarations compares API identity
