@@ -116,9 +116,9 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | **Build and test** | **13,000** |
 | [vibelang CLI](../setup/vibelang-cli.md) | 9,900 |
 | [Vite and Vitest](../setup/vite.md) | 3,100 |
-| **Format and lint** | **6,600** |
+| **Format and lint** | **6,700** |
 | [Format with dprint](../setup/formatting.md) | 2,400 |
-| [Developer tools](../setup/developer-tools.md) | 4,200 |
+| [Developer tools](../setup/developer-tools.md) | 4,300 |
 | **Frameworks** | **12,000** |
 | [React](../setup/react.md) | 2,100 |
 | [React Native and Metro](../setup/react-native.md) | 450 |
@@ -228,7 +228,7 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [Order](../behaviour/084-order.md) | 1,400 |
 | **Schema** | **35,000** |
 | [Introduction](../schema/085-introduction.md) | 1,400 |
-| [Getting Started](../schema/086-getting-started.md) | 3,100 |
+| [Getting Started](../schema/086-getting-started.md) | 3,200 |
 | [Basic Usage](../schema/087-basic-usage.md) | 4,600 |
 | [Filters](../schema/088-filters.md) | 1,500 |
 | [Advanced Usage](../schema/089-advanced-usage.md) | 2,900 |
