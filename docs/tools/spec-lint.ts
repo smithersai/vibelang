@@ -375,11 +375,39 @@ const rulingClaims: Rule = {
   }
 }
 
-export const rules: Rule[] = [resolutionClaims, configKeys, importStyleScope, declarationImportForm, deniedVipRepairs, retiredForms, platformImports, counterpartUsing, collisionConditional, rulingClaims]
+// Compiler gaps are not language rules (round 15 OPUS-1). Compiler commit
+// 65542e8d8ca3 listed `EK0204`, "an outward source completion cannot yet
+// cross a generated function boundary", among Appendix B's normative rules,
+// and the do-expression snapshot's README said "VibeLang rejects" a
+// parameter-default `return` that VIP-2's 2026-10-30 amendments keep legal.
+// A row describing what the compiler cannot yet do belongs under
+// "Transitional compiler diagnostics", never in the normative table.
+const compilerGapWords = /\b(?:compiler (?:implementation )?limitation|implementation limitation|compiler gap|cannot yet|not a TC39 early error)\b/i
+const compilerGaps: Rule = {
+  name: "compiler-gaps-not-rules",
+  finding: "r15 OPUS-1: Appendix B's normative table listed the compiler gap EK0204 as a rule",
+  check(spec) {
+    const file = "src/900-appendices.md"
+    const text = spec.get(file) ?? ""
+    const start = text.indexOf("## Appendix B")
+    const end = text.indexOf("### Transitional compiler diagnostics", start)
+    if (start < 0 || end < 0) return [{ rule: this.name, file, line: 1, message: "Appendix B or its transitional section is missing" }]
+    const out: Violation[] = []
+    const normative = text.slice(start, end)
+    for (const m of normative.matchAll(/^\| `(EK\d+)` \|([^\n]*)$/gm)) {
+      if (compilerGapWords.test(m[2]!)) {
+        out.push({ rule: this.name, file, line: lineAt(text, start + m.index!), message: `${m[1]} describes a compiler gap, not a language rule: list it under Transitional compiler diagnostics` })
+      }
+    }
+    return out
+  }
+}
+
+export const rules: Rule[] = [resolutionClaims, configKeys, importStyleScope, declarationImportForm, deniedVipRepairs, retiredForms, platformImports, counterpartUsing, collisionConditional, rulingClaims, compilerGaps]
 
 const kinds: Record<string, string[]> = {
   registry: ["config-keys"],
-  tables: ["resolution-claims", "declaration-import-style-scope", "denied-vip-repairs", "collision-conditional"],
+  tables: ["resolution-claims", "declaration-import-style-scope", "denied-vip-repairs", "collision-conditional", "compiler-gaps-not-rules"],
   copies: ["declaration-import-form", "counterpart-using"],
   authority: ["ruling-claims"],
   examples: ["retired-forms", "platform-imports"]

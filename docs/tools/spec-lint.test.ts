@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test"
 import fc from "fast-check"
-import { lint, loadSpec, rules, type Spec } from "./spec-lint"
+import { lint, lintKind, loadSpec, rules, type Spec } from "./spec-lint"
 import { examples, verdict } from "./spec-examples.mjs"
 
 const spec = legacyStyleFixtures(loadSpec(process.env.VIBELANG_SPEC_ROOT))
@@ -204,3 +204,31 @@ function legacyStyleFixtures(current: Spec): Spec {
   fixture.set("vips/0030-config-files.md", fixture.get("vips/0030-config-files.md")! + '\n\n`vibelang.declarationImportStyle` controls package output; sidecars keep source spelling.\n')
   return fixture
 }
+
+test("compiler-gaps-not-rules rejects round 15 OPUS-1's EK0204 row in the normative table", () => {
+  const row = "| `EK0204` | current compiler implementation limitation: an outward source completion cannot yet cross a generated function boundary in this position; this is not a TC39 early error | 2 | [Running Effects](002-running.md#do-expressions) |\n"
+  const defect = withEdit("src/900-appendices.md", text => text.replace(/^\| `EK0205` \|/m, row + "| `EK0205` |"))
+  expect(lint(defect, rule("compiler-gaps-not-rules")).map(v => v.message)).toEqual([
+    "EK0204 describes a compiler gap, not a language rule: list it under Transitional compiler diagnostics"
+  ])
+  expect(lintKind(defect, "tables")).toEqual(lint(defect, rule("compiler-gaps-not-rules")))
+})
+
+// Appendix B separates language rules from transitional compiler limitations.
+test("compiler-gaps-not-rules checks gap wording only in the normative table", () => {
+  fc.assert(fc.property(
+    fc.integer({ min: 1000, max: 9999 }),
+    fc.constantFrom("compiler limitation", "compiler implementation limitation", "implementation limitation", "compiler gap", "cannot yet", "not a TC39 early error"),
+    fc.boolean(),
+    (number, wording, uppercase) => {
+      const code = `EK${number}`
+      const row = `| \`${code}\` | ${uppercase ? wording.toUpperCase() : wording} | 2 | chapter |\n`
+      const normative: Spec = new Map([["src/900-appendices.md", "## Appendix B\n" + row + "### Transitional compiler diagnostics\n"]])
+      expect(lint(normative, rule("compiler-gaps-not-rules")).map(v => v.message)).toEqual([
+        `${code} describes a compiler gap, not a language rule: list it under Transitional compiler diagnostics`
+      ])
+      const transitional: Spec = new Map([["src/900-appendices.md", "## Appendix B\n### Transitional compiler diagnostics\n" + row]])
+      expect(lint(transitional, rule("compiler-gaps-not-rules"))).toEqual([])
+    }
+  ), { numRuns: 100, seed: 1501 })
+})
