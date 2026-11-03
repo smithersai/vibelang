@@ -1,0 +1,12 @@
+import { Effect } from "effect"
+export effect function sample() {
+  const obj = { run: () => Effect.succeed(3) }
+  const a = try
+    obj.run() + 4
+  const b = try /* operand starts after this comment */
+    obj.run() + 5
+  const c = (try obj.run()) + 6
+  const d = 2 * (try
+    obj.run())
+  return [a, b, c, d]
+}

@@ -476,3 +476,5 @@ A nested object schema follows the schema field mapping: its keys are writable u
 A fieldless `error Timeout` or `error Timeout {}` declares the same base as `class Timeout extends Data.TaggedError("Timeout") {}`: `extends Timeout_base`. A TypeScript class that explicitly writes `Data.TaggedError("Timeout")<{}>` instead declares `extends Timeout_base<{}>`. In a project that emits declarations, `vibelang --fix` keeps that class and explains why `EK4830` has no automatic fix, preserving the written empty payload type argument. Without declaration output, the conversion remains available.
 
 For a single-parameter arrow such as `x => …`, the effect fix writes `effect (x) => …`, preserving the parameter name and adjacent comments.
+
+The operand of `try` can start on the next line, including after a comment. Member calls and parenthesized expressions keep ordinary expression precedence: `try obj.run() + 4` runs `obj.run()` before adding `4`.

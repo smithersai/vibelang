@@ -24,18 +24,19 @@ import (
 //
 // Its operand binds as await's does: try f().name runs f().name, so a
 // member of the result is (try f()).name. A try statement starts with a
-// block, so try followed on the same line by anything else is the operator.
+// block, so try followed by an expression operand is the operator; a line
+// break before that operand is allowed, as it is after await.
 
 // isStartOfVibeLangTry reports whether the current token, try, starts a try
-// expression: in a .vibe file, try followed on the same line by a token other
-// than {.
+// expression: in a .vibe file, try followed by an expression operand,
+// including across a line break; a following { starts a try statement.
 func (p *Parser) isStartOfVibeLangTry() bool {
 	return p.token == ast.KindTryKeyword && p.isVibeLangFile() && (p.isVibeLangTryOperation() || p.lookAhead((*Parser).nextTokenStartsTryOperand))
 }
 
 func (p *Parser) nextTokenStartsTryOperand() bool {
 	p.nextToken()
-	return !p.hasPrecedingLineBreak() && p.token != ast.KindOpenBraceToken && p.isStartOfExpression()
+	return p.token != ast.KindOpenBraceToken && p.isStartOfExpression()
 }
 
 // parseVibeLangTry parses `try operand`.

@@ -1,1 +1,0 @@
-cov-ch002a A newline after unary try is parsed as a try statement. Rules: docs/design/src/002-running.md#f09fd5431ddc12c3

@@ -10,8 +10,6 @@ FuzzRunningRules corpus:try-finally compiler VIP-5: minimized reproduction of re
 FuzzRunningRules reject:try-statement compiler VIP-5: the forbidden form is accepted; lane core-catch
 FuzzRunningRules corpus:try-statement compiler VIP-5: minimized reproduction of reject:try-statement; lane core-catch
 FuzzVIPDifferential exit:value/vip02.lexical-receiver compiler VIP-2: main.vibe ends differently from its VIPs' Effect TS: want Exit {"_tag":"Success","value":7}; lane vip-core2
-FuzzVIPDifferential feature:vip05.try-composition compiler VIP-5: a newline after `try`, or `try` on a member call inside `+`, does not parse (TS1005, TS1109), and parse recovery reports unrelated codes elsewhere in the program; lane core-catch
-FuzzVIPDifferential corpus:fz-run-vip05-try-composition compiler VIP-5: minimal named probe reproduces feature:vip05.try-composition; lane core-catch
 FuzzVIPDifferential compile:TS7057/vip21.yield-value compiler VIP-21: a program of accepted constructs does not compile: main.vibe 7057: 'yield' expression implicitly results in an 'any' type because its containing generator lacks a return-type annotation. (line 6: { ev("0"); effect function* p() { const a = yield 1; ev(a === undefined ? "undefined" : "wrong"); yield 2; return; yield 99 }; const xs = try Stream.runCollect(p()); return xs }); lane w2-genpipe
 FuzzVIPDifferential corpus:fz-run-vip21-yield-value compiler VIP-21: minimal named probe reproduces compile:TS7057/vip21.yield-value; lane w2-genpipe
 FuzzRunningRules reject:mask-qualified compiler VIP-22: the VIP-6 global `uninterruptible` is still callable; the keyword removes it; lane vip-core2
