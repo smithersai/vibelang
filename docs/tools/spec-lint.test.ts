@@ -204,30 +204,3 @@ function legacyStyleFixtures(current: Spec): Spec {
   fixture.set("vips/0030-config-files.md", fixture.get("vips/0030-config-files.md")! + '\n\n`vibelang.declarationImportStyle` controls package output; sidecars keep source spelling.\n')
   return fixture
 }
-
-const retiredStyle: Spec = new Map([
-  ["vips/0030-config-files.md", "There is no `declarationImportStyle` setting. Both historical paths, root `vibelang.declarationImportStyle` and `compilerOptions.vibelang.declarationImportStyle`, are ignored with a nonfatal deprecation warning for every value, including invalid values."],
-  ["vips/0027-declaration-output.md", "Written relative specifiers stay as written in package declarations and compatibility sidecars. The retired `declarationImportStyle` paths are ignored."],
-  ["src/001-functions.md", "Declaration emit follows TypeScript for the source's `.ts`/`.tsx` twin."],
-  ["src/007-tooling.md", "`declarationImportStyle` is retired: both historical paths are ignored with a nonfatal deprecation warning for every value."]
-])
-
-test("declaration-import-style-scope accepts retirement without requiring the removed setting", () => {
-  expect(lint(retiredStyle, rule("declaration-import-style-scope"))).toEqual([])
-})
-
-test("declaration-import-style-scope rejects the carried live styles and undecided vibex spelling", () => {
-  for (const file of ["src/001-functions.md", "src/007-tooling.md", "vips/0027-declaration-output.md", "vips/0034-compiler-and-tooling.md"]) {
-    for (const claim of [
-      "Package declarations use `vibelang.declarationImportStyle`: `\".js\"` (the default). Compatibility sidecars keep `./x.vibex`.",
-      "The retired `declarationImportStyle` option selects `./x.js` by default.",
-      "The retired `declarationImportStyle` option's `.vibex` spelling is not yet decided."
-    ]) {
-      const defect = new Map(retiredStyle)
-      defect.set(file, claim)
-      expect(lint(defect, rule("declaration-import-style-scope"))).toHaveLength(1)
-    }
-  }
-})
-
-

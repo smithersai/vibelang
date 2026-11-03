@@ -179,6 +179,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Editor validation still reported four repaired wide `Option` handler cases as failing. They now run as normal passing regression cases.
 
+- The specification linter failed to load after independent updates repeated its declaration-retirement fixture; the fixture and its exact repeated tests are now declared once.
+
 - Renaming a shorthand pattern binding could change the property it matched and add `TS2339`; rename now keeps the property key and writes an explicit binding.
 
 - Rolldown entry globs could bundle generated `.d.vibex.ts` declarations as empty entrypoints; the plugin now excludes those sidecars and retains the JSX source entries and aliases.
