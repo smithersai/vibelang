@@ -49,7 +49,7 @@ func init() {
 // catchParts returns.
 func malformedCatchHandler(call, fallback *ast.Node) *ast.Node {
 	if fallback == nil {
-		if handler := call.Arguments()[1]; isAsyncOrGenerator(handler) {
+		if handler := call.Arguments()[1]; isAsyncOrGenerator(handler) || isCatchBlockHandler(handler) {
 			return handler
 		}
 		return nil
@@ -61,6 +61,42 @@ func malformedCatchHandler(call, fallback *ast.Node) *ast.Node {
 		return nil
 	}
 	return fallback
+}
+
+// isCatchBlockHandler reports whether handler is `(e) { B }`, a parameter
+// list followed directly by a block, which the parser recovers as an arrow
+// without its => (parser/vibelang_catch.go). It is EK0509, and the catch
+// expression gets no EK0505 besides (chapter 2).
+func isCatchBlockHandler(handler *ast.Node) bool {
+	fn := ast.SkipParentheses(handler)
+	if !ast.IsArrowFunction(fn) || fn.Body() == nil || !ast.IsBlock(fn.Body()) {
+		return false
+	}
+	token := fn.AsArrowFunction().EqualsGreaterThanToken
+	return token != nil && token.Pos() == token.End()
+}
+
+// catchBlockLeavesHandler reports whether body, a recovered handler's block,
+// holds a jump, await or yield at its own level, whose target changes when the
+// block becomes an arrow's body: the repair would move it (chapter 2).
+func catchBlockLeavesHandler(body *ast.Node) bool {
+	var visit func(n *ast.Node, inLoop, inSwitch bool) bool
+	visit = func(n *ast.Node, inLoop, inSwitch bool) bool {
+		switch {
+		case ast.IsFunctionLike(n) && !(isProgramArrow(n) && !isEffectBlock(n)):
+			return false
+		case ast.IsBreakStatement(n):
+			return n.AsBreakStatement().Label != nil || !inLoop && !inSwitch
+		case ast.IsContinueStatement(n):
+			return n.AsContinueStatement().Label != nil || !inLoop
+		case ast.IsAwaitExpression(n), ast.IsYieldExpression(n), fiberHelper(n) == "$await":
+			return true
+		}
+		inLoop = inLoop || ast.IsIterationStatement(n, false /*lookInLabeledStatements*/)
+		inSwitch = inSwitch || ast.IsSwitchStatement(n)
+		return n.ForEachChild(func(child *ast.Node) bool { return visit(child, inLoop, inSwitch) })
+	}
+	return body.ForEachChild(func(child *ast.Node) bool { return visit(child, false, false) })
 }
 
 func isAsyncOrGenerator(fn *ast.Node) bool {
@@ -95,6 +131,17 @@ func catchHandlerRepair(c *checker.Checker, file *ast.SourceFile, call, handler 
 	start := scanner.SkipTrivia(text, handler.Pos())
 	source := text[start:handler.End()]
 	inner := ast.SkipParentheses(handler)
+	if isCatchBlockHandler(inner) {
+		// (e) { B } becomes effect (e) => { B }, the handler chapter 2's
+		// table gives, unless B jumps out of itself.
+		if len(inner.ModifierNodes()) != 0 || catchBlockLeavesHandler(inner.Body()) {
+			return nil, ""
+		}
+		at := scanner.SkipTrivia(text, inner.Pos())
+		open := scanner.SkipTrivia(text, inner.Body().Pos())
+		edits := []core.TextChange{{TextRange: core.NewTextRange(at, at), NewText: "effect "}, {TextRange: core.NewTextRange(open, open), NewText: "=> "}}
+		return edits, applyTextChanges(text, edits)[start : handler.End()+len("effect ")+len("=> ")]
+	}
 	if isAsyncOrGenerator(inner) {
 		if catchHandlerNeedsConversion(handler) {
 			return nil, ""

@@ -34,6 +34,11 @@ func TestCatchHandlerEK0509QuickFix(t *testing.T) {
 		{"function* (e) { return e.length }", "function (e) { return e.length }"},
 		{"function* () { return 7 }", "function () { return 7 }"},
 		{"class C {}", ""},
+		// A parameter list followed directly by a block (chapter 2).
+		{"(e) { return 7 }", "effect (e) => { return 7 }"},
+		{"() { return 7 }", "effect () => { return 7 }"},
+		{"(e: string) { return e.length }", "effect (e: string) => { return e.length }"},
+		{"(e) { for (const x of [1]) { break }; return 7 }", "effect (e) => { for (const x of [1]) { break }; return 7 }"},
 	} {
 		t.Run(test.written, func(t *testing.T) {
 			want := ""
