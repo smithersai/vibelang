@@ -1,0 +1,5 @@
+// expect: TS2339
+// A file that declares its own Symbol keeps its own property: spelling alone never
+// selects the runtime's key.
+const Symbol = { other: 1 }
+export const missing = Symbol.customMatcher

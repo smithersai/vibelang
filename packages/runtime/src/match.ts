@@ -17,6 +17,29 @@
  */
 export const customMatcher: unique symbol = ((Symbol as any).customMatcher ?? Symbol.for("Symbol.customMatcher")) as any
 
+/** The generated matchers of error declarations, which their subclasses share (D278). */
+const errorMatchers = new WeakSet<object>()
+
+/** Records matcher as an error declaration's generated matcher. */
+export function $registerErrorMatcher<F extends Function>(matcher: F): F {
+  errorMatchers.add(matcher)
+  return matcher
+}
+
+/**
+ * The matcher that decides for value. A class uses its own, not one a superclass
+ * declares (chapter 004, decided details 67 and 93): `class B extends A {}` tests
+ * instanceof. An error family's generated matcher is the exception, because it tests
+ * the subject's tag and every subclass of the family is written against it.
+ */
+function matcherOf(value: unknown): Function | undefined {
+  if (value === null || value === undefined) return undefined
+  const custom = (value as any)[customMatcher]
+  if (typeof custom !== "function") return undefined
+  if (typeof value === "function" && !Object.hasOwn(value, customMatcher) && !errorMatchers.has(custom)) return undefined
+  return custom
+}
+
 /** The hint a custom matcher receives as its second argument. */
 export interface MatchHint {
   readonly matchType: "boolean" | "extractor"
@@ -76,8 +99,8 @@ export function $is<S>(matcher: CustomMatcher | ((subject: S, hint: MatchHint) =
 export function $is<const T>(matcher: T, subject: unknown): subject is T
 export function $is(matcher: unknown, subject: unknown): boolean {
   if (matcher !== null && (typeof matcher === "object" || typeof matcher === "function")) {
-    const custom = (matcher as any)[customMatcher]
-    if (typeof custom === "function") return !!custom.call(matcher, subject, { matchType: "boolean" })
+    const custom = matcherOf(matcher)
+    if (custom !== undefined) return !!custom.call(matcher, subject, { matchType: "boolean" })
     if (typeof matcher === "function") {
       const primitive = primitiveTypes.get(matcher)
       if (primitive !== undefined) return typeof subject === primitive
@@ -147,8 +170,8 @@ export function $extract<C extends PrimitiveConstructor>(matcher: C, subject: un
 export function $extract<S, R>(matcher: (subject: S, hint: MatchHint) => R, subject: unknown): Extracted<R> | false
 export function $extract(matcher: unknown, subject: unknown): ReadonlyArray<any> | false
 export function $extract(matcher: unknown, subject: unknown): unknown {
-  const custom = matcher === null || matcher === undefined ? undefined : (matcher as any)[customMatcher]
-  if (typeof custom === "function") return extractedList(custom.call(matcher, subject, { matchType: "extractor" }))
+  const custom = matcherOf(matcher)
+  if (custom !== undefined) return extractedList(custom.call(matcher, subject, { matchType: "extractor" }))
   if (typeof matcher === "function") {
     const primitive = primitiveTypes.get(matcher)
     if (primitive !== undefined) return typeof subject === primitive ? [subject] : false

@@ -3522,6 +3522,7 @@ typescript/vibelang/cases/match-subject-once/main.vibe:72:20 lambda plain fallba
 typescript/vibelang/cases/match-subject-once/main.vibe:76:20 lambda plain fallback
 typescript/vibelang/cases/match-subject-shadow/main.vibe:12:22 lambda dual fallback
 typescript/vibelang/cases/match-subject-shadow/main.vibe:29:29 lambda plain table
+typescript/vibelang/cases/match-symbol-custom-matcher/main.vibe:12:3 lambda plain fallback
 typescript/vibelang/cases/match-tagged-error-guards/guard0.vibe:1:225 lambda dual fallback
 typescript/vibelang/cases/match-tagged-error-guards/guard0.vibe:1:285 lambda dual fallback
 typescript/vibelang/cases/match-tagged-error-guards/guard0.vibe:1:345 lambda dual fallback

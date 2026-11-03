@@ -1,7 +1,7 @@
 import { Data, SchemaAST } from "effect"
 import type * as EffectModule from "effect/Effect"
 import type * as ScopeModule from "effect/Scope"
-import { customMatcher, type MatchHint } from "./match.js"
+import { $registerErrorMatcher, customMatcher, type MatchHint } from "./match.js"
 
 // The prelude (D4, D48): every .vibe file sees these exports without an import.
 // Effect and Scope are both the effect module and a type, so `Effect<A, E, R>`
@@ -41,7 +41,7 @@ const errorMatcher = (made: object, tag: string) =>
  */
 export const TaggedError: typeof Data.TaggedError = ((tag: string) => {
   const Base: any = Data.TaggedError(tag)
-  Base[customMatcher] = errorMatcher(Base, tag)
+  Base[customMatcher] = $registerErrorMatcher(errorMatcher(Base, tag))
   return Base
 }) as any
 
@@ -62,7 +62,7 @@ export const $errorSubclass = <B extends abstract new(...args: any) => { readonl
       this._tag = tag
     }
   }
-  Object.defineProperty(Tagged, customMatcher, { value: errorMatcher(Tagged, tag), configurable: true })
+  Object.defineProperty(Tagged, customMatcher, { value: $registerErrorMatcher(errorMatcher(Tagged, tag)), configurable: true })
   ;(Tagged.prototype as unknown as { name: string }).name = tag
   return Tagged as unknown as B
 }

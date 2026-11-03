@@ -1,0 +1,28 @@
+// expect-result: {"own":["own 1","other"],"object":["even","odd"],"bare":["yes","no"],"same":true,"inherited":["no","yes"]}
+// Chapter 004, Class patterns: a class arm whose class has its own Symbol.customMatcher
+// reads and calls that matcher, and a static matcher inherited from a superclass is not
+// its own. The spelling needs no import: the runtime provides the key.
+import { customMatcher } from "vibelang-runtime"
+export class Numeric {
+  static [Symbol.customMatcher](s: unknown, _options: { matchType: "extractor" }): false | [number] {
+    return s === 1 ? [s] : false
+  }
+}
+const Even = {
+  [Symbol.customMatcher](subject: unknown) { return typeof subject === "number" && subject % 2 === 0 }
+}
+class Base { static [Symbol.customMatcher](s: unknown, _o: { matchType: "boolean" }) { return s === "inherited" } }
+class Derived extends Base {}
+function own(s: unknown) { return match (s) { when Numeric(let n): `own ${n}`; default: "other"; } }
+function parity(n: number) { return match (n) { when Even: "even"; default: "odd"; } }
+function bare(s: unknown) { return match (s) { when Base: "yes"; default: "no"; } }
+function inherited(s: unknown) { return match (s) { when Derived: "yes"; default: "no"; } }
+export effect function main() {
+  return {
+    own: [own(1), own(2)],
+    object: [parity(2), parity(3)],
+    bare: [bare("inherited"), bare("x")],
+    same: Symbol.customMatcher === customMatcher,
+    inherited: [inherited("inherited"), inherited(new Derived())]
+  }
+}

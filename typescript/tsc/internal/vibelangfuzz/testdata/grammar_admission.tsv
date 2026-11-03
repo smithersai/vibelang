@@ -851,3 +851,4 @@ parser/vibelang_fibers.go:Parser.parseVibeLangJoin@join-for-head	admission:join-
 parser/vibelang.go:Parser.parseServiceDeclaration@service-separators	admission:service-separators	-	pending	Appendix A: ServiceDeclaration has one Separator after each member, as interface members; `service S { n: number; ; m: string }` compiles
 parser/vibelang_match.go:misplacedRest	admission:match	004-match.md	recovery	VIP-7: EK0707, a rest element or property that is not last
 parser/vibelang.go:schemaWrittenReadonly	admission:schema	900-appendices.md#SchemaDeclaration	support	VIP-15 key mutability: a field is readonly only when written readonly
+parser/vibelang_match.go:Parser.isVibeLangSymbolCustomMatcher	admission:match	004-match.md	support	VIP-7: Symbol.customMatcher spelled through the global Symbol

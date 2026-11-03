@@ -5846,6 +5846,9 @@ func (p *Parser) parsePropertyAccessExpressionRest(pos int, expression *ast.Expr
 			p.parseErrorAtRange(loc, diagnostics.An_instantiation_expression_cannot_be_followed_by_a_property_access)
 		}
 	}
+	if questionDotToken == nil && p.isVibeLangSymbolCustomMatcher(expression, name) {
+		return p.vibelangSpanning(p.vibelangIntrinsic("customMatcher", core.NewTextRange(pos, name.End())), core.NewTextRange(pos, name.End()))
+	}
 	return p.finishNode(propertyAccess, pos)
 }
 
