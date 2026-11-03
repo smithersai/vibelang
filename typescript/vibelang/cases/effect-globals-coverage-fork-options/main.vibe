@@ -1,0 +1,13 @@
+// VIP-6 native-fork-options
+export effect function main(){
+ const n=4
+ const a=try Effect.forkChild(Effect.succeed(n),{startImmediately:true})
+ const b=try Effect.forkChild(Effect.succeed(n+1),{uninterruptible:"inherit"})
+ return [join a,join b]
+}
+// VIP-6 native-fork-options
+// rule: docs/design/vips/0006-effect-globals.md#d77d3d049ec7e8c4
+// VIP-6 native-fork-options
+// rule: docs/design/vips/0006-effect-globals.md#58ff3a98b7090c1d
+// VIP-6 native-fork-options
+// rule: docs/design/vips/0006-effect-globals.md#db5612b9f3bfa22e

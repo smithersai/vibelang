@@ -102,3 +102,6 @@ func FuzzProvideCommaRecovery(f *testing.F) {
 		ExpectPending(t, "FuzzProvideCommaRecovery", specCorpusKey(t))
 	})
 }
+
+// VIP-12 bounded-head-recognition-and-expression-controls
+// rule: docs/design/vips/0012-provide.md#8388b81e530b1bc4

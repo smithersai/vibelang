@@ -1,0 +1,10 @@
+const observed:unknown[]=[]
+const Live=Layer.effectDiscard(Effect.acquireRelease(Effect.succeed(undefined),(_,ex)=>Effect.sync(()=>{observed.push(Exit.isSuccess(ex)?ex.value??"undefined":ex._tag)})))
+effect function value():number!!{return do {target:{provide Live {17;break target}}}}
+export effect function main(){const n=try value();return [n,observed]}
+// VIP-12 finalizer-never-sees-control-records
+// rule: docs/design/vips/0012-provide.md#d7817706551ceb17
+// VIP-12 finalizer-never-sees-control-records
+// rule: docs/design/vips/0012-provide.md#da73fb3854b56aa0
+// VIP-12 finalizer-never-sees-control-records
+// rule: docs/design/vips/0012-provide.md#3d73b476e6ffe96c

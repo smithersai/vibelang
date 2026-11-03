@@ -2,3 +2,5 @@
 import { Stream } from "effect"
 export effect function main() { outer: for (const x of [1]) { for try (const row of Stream.make(x)) { if (row === 1) continue outer } } }
 
+// VIP-12 item-body-jump-owner
+// rule: docs/design/vips/0012-provide.md#273b8596954389b6

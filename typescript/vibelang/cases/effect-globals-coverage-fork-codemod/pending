@@ -1,0 +1,1 @@
+cov-modules VIP-6 deterministic --fix pass does not preserve legacy fork(program, options) through Effect.forkChild

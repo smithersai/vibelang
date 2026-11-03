@@ -1,0 +1,6 @@
+// expect: EK3207
+export effect function task(){provide effect {return Layer.empty}{return 1}}
+// VIP-12 effect-expression-provider
+// rule: docs/design/vips/0012-provide.md#b443f4664b4ee095
+// VIP-12 effect-expression-provider
+// rule: docs/design/vips/0012-provide.md#9042cacf305c0128

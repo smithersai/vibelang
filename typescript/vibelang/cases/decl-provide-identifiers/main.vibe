@@ -1,4 +1,4 @@
-// expect-result: {"old":"Ada","called":3,"indexed":[20,20],"shadowed":"local"}
+// expect-result: {"old":"Ada","called":3,"indexed":[20,20],"shadowed":"local","subtracted":9}
 // provide is the provider block keyword; with is ordinary TypeScript syntax.
 // The word provide alone stays an ordinary identifier: a call, an element
 // access, and a local name.
@@ -37,6 +37,17 @@ function shadowed() {
   return provide
 }
 
+function subtracted(){const provide=10;return provide-1}
 export effect function main() {
-  return { old: try old(), called: called(), indexed: indexed(), shadowed: shadowed() }
+  return { old: try old(), called: called(), indexed: indexed(), shadowed: shadowed(), subtracted: subtracted() }
 }
+// VIP-12 complete-head-versus-identifier
+// rule: docs/design/vips/0012-provide.md#1e01ca19b5067634
+// VIP-12 complete-head-versus-identifier
+// rule: docs/design/vips/0012-provide.md#9a5454676d83b8b3
+// VIP-12 complete-head-versus-identifier
+// rule: docs/design/vips/0012-provide.md#f0afbf7f85a83d4e
+// VIP-12 complete-head-versus-identifier
+// rule: docs/design/vips/0012-provide.md#f213b0c9c4ee19d3
+// VIP-12 complete-head-versus-identifier
+// rule: docs/design/vips/0012-provide.md#632d1305fbafeb1e

@@ -1,0 +1,28 @@
+// VIP-6 qualified-collisions-and-JavaScript-undefined
+import * as Native from "effect"
+export const collisions=[
+Effect.catch===Native.Effect.catch,
+Effect.interruptible===Native.Effect.interruptible,
+Effect.let===Native.Effect.let,
+Effect.match===Native.Effect.match,
+Effect.provide===Native.Effect.provide,
+Effect.service===Native.Effect.service,
+Effect.try===Native.Effect.try,
+Effect.undefined===Native.Effect.undefined,
+Effect.uninterruptible===Native.Effect.uninterruptible,
+Effect.void===Native.Effect.void,
+Effect.when===Native.Effect.when
+]
+export effect function main(){const empty:undefined=undefined;return [collisions,empty===undefined]}
+// VIP-6 qualified-collisions-and-JavaScript-undefined
+// rule: docs/design/vips/0006-effect-globals.md#a49d366ecd9b4611
+// VIP-6 qualified-collisions-and-JavaScript-undefined
+// rule: docs/design/vips/0006-effect-globals.md#36d097e4919c1a01
+// VIP-6 qualified-collisions-and-JavaScript-undefined
+// rule: docs/design/vips/0006-effect-globals.md#c5ab8fe9628c447a
+// VIP-6 qualified-collisions-and-JavaScript-undefined
+// rule: docs/design/vips/0006-effect-globals.md#fb1cbbf971c8c019
+// VIP-6 qualified-collisions-and-JavaScript-undefined
+// rule: docs/design/vips/0006-effect-globals.md#dac0c996ddadaf33
+// VIP-6 qualified-collisions-and-JavaScript-undefined
+// rule: docs/design/vips/0012-provide.md#1f7f431dd1a639f6

@@ -1,0 +1,8 @@
+// VIP-12 provider-list-formatting
+export effect function task(){
+ provide Layer.empty, Layer.empty, Layer.empty, Layer.empty, Layer.empty, Layer.empty{return 1}
+}
+// VIP-12 provider-list-formatting
+// rule: docs/design/vips/0012-provide.md#056012925767cde0
+// VIP-12 provider-list-formatting
+// rule: docs/design/vips/0012-provide.md#06a863261d5a1366

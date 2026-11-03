@@ -7,3 +7,17 @@ export effect function f() {
   provide Layer.empty
     , Layer.empty {}
 }
+// VIP-12 bounded-provider-comma-recovery
+// rule: docs/design/vips/0012-provide.md#752be525551d7ec4
+// VIP-12 bounded-provider-comma-recovery
+// rule: docs/design/vips/0012-provide.md#0e626035b062665e
+// VIP-12 bounded-provider-comma-recovery
+// rule: docs/design/vips/0012-provide.md#76ebb5e1543750a6
+// VIP-12 bounded-provider-comma-recovery
+// rule: docs/design/vips/0012-provide.md#d44b33b916176fca
+// VIP-12 bounded-provider-comma-recovery
+// rule: docs/design/vips/0012-provide.md#d273990c810cebed
+// VIP-12 bounded-provider-comma-recovery
+// rule: docs/design/vips/0012-provide.md#3d3d4b577b8d4257
+// VIP-12 bounded-provider-comma-recovery
+// rule: docs/design/vips/0012-provide.md#536635703ae06736

@@ -1,0 +1,4 @@
+// expect: TS2304
+export const task=sync(()=>1)
+// VIP-6 configurable-globals
+// rule: docs/design/vips/0006-effect-globals.md#21c3dfdfe28b671a

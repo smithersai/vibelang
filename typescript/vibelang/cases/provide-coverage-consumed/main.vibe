@@ -1,0 +1,8 @@
+// VIP-12 ordinary-block-consumed-completion
+const observed:unknown[]=[]
+const Live=Layer.effectDiscard(Effect.acquireRelease(Effect.succeed(undefined),(_,ex)=>Effect.sync(()=>{observed.push(Exit.isSuccess(ex)?ex.value??"undefined":ex._tag)})))
+effect function value():number!!{return do {target:{provide Live {17;break target}}}}
+export effect function main(){const n=try value();return n}
+// VIP-12 ordinary-block-consumed-completion
+// VIP-12 ordinary-block-consumed-completion
+// rule: docs/design/vips/0012-provide.md#80cc8b79bb28e86c

@@ -1,0 +1,34 @@
+// VIP-12 source-completions-and-finalizer-payloads
+service NumberService {value:number}
+const observed:unknown[]=[]
+const Live=Layer.effectDiscard(Effect.acquireRelease(Effect.succeed(undefined),(_,ex)=>Effect.sync(()=>{observed.push(Exit.isSuccess(ex)?ex.value??"undefined":ex._tag)})))
+effect function returned():number!!{
+ const effect=Live
+ provide (effect),NumberService={value:7}{return (try NumberService).value}
+}
+effect function completed():number!!{return do {provide Live {12}}}
+effect function jumps(){
+ const seen:number[]=[]
+ outer:for(let i=0;i<5;i++){
+  provide Live{
+   if(i===1)continue outer
+   if(i===3)break outer
+   seen.push(i)
+  }
+ }
+ return seen
+}
+effect function bare():void!!{provide Live{return}}
+export effect function main(){
+ const a=try returned()
+ const b=try completed()
+ const xs=try jumps()
+ try bare()
+ return [a,b,xs,observed]
+}
+// VIP-12 source-completions-and-finalizer-payloads
+// rule: docs/design/vips/0012-provide.md#d7817706551ceb17
+// VIP-12 source-completions-and-finalizer-payloads
+// rule: docs/design/vips/0012-provide.md#da73fb3854b56aa0
+// VIP-12 source-completions-and-finalizer-payloads
+// rule: docs/design/vips/0012-provide.md#3d73b476e6ffe96c

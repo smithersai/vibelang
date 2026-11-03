@@ -22,3 +22,5 @@ effect function wrongShape() {
 export effect function main() {
   return [try notAKey(), try wrongShape()]
 }
+// VIP-12 native-service-provider-types
+// rule: docs/design/vips/0012-provide.md#83e370ee01391be5

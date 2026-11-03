@@ -1,0 +1,17 @@
+// VIP-6 captured-globals-and-qualified-collisions
+import {query} from "./query.js"
+import * as Native from "effect"
+export effect function main() {
+ const n=7
+ const a=try sync(()=>n)
+ const b=try tryPromise(()=>query(n+1))
+ const c=try callback<number>((resume)=>resume(succeed(n+2)))
+ const d=try Effect.try(()=>n+3)
+ const empty:undefined=undefined
+ const matched=try Effect.match(succeed(n),{onFailure:()=>false,onSuccess:x=>x===n})
+ return [a,b,c,d,empty===undefined,matched]
+}
+// VIP-6 captured-globals-and-qualified-collisions
+// rule: docs/design/vips/0006-effect-globals.md#85b5ce0a948097b2
+// VIP-6 captured-globals-and-qualified-collisions
+// rule: docs/design/vips/0006-effect-globals.md#68540dac20b6993a

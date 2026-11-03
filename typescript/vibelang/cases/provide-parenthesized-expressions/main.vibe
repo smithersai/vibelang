@@ -2,7 +2,8 @@
 export effect function main() {
   const seen: number[] = []
   let count = 0
-  provide (seen.push(1), Layer.empty) {
+  provide (seen.push(1),
+ Layer.empty) {
     count = seen.length
   }
   let chosen = Layer.empty
@@ -10,3 +11,5 @@ export effect function main() {
     return [count, seen.length]
   }
 }
+// VIP-12 internal-expression-newlines
+// rule: docs/design/vips/0012-provide.md#b84777dc333c6acf

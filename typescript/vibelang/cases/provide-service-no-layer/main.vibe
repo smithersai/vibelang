@@ -79,3 +79,13 @@ export effect function once(): number!! {
 export effect function bare() {
   return (try Greeting.text()).length
 }
+// VIP-12 layer-and-service-provider-equivalence
+// rule: docs/design/vips/0012-provide.md#3d274af5ff398519
+// VIP-12 layer-and-service-provider-equivalence
+// rule: docs/design/vips/0012-provide.md#a0523956b5662c9c
+// VIP-12 layer-and-service-provider-equivalence
+// rule: docs/design/vips/0012-provide.md#7bf037c7d18e13c8
+// VIP-12 layer-and-service-provider-equivalence
+// rule: docs/design/vips/0012-provide.md#83e370ee01391be5
+// VIP-12 declared-service-provider
+// rule: docs/design/vips/0012-provide.md#316e8b263510234e

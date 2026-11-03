@@ -99,3 +99,6 @@ func FuzzReviewProvideRecovery(f *testing.F) {
 		ExpectPending(t, reviewProvideRecoveryTarget, specCorpusKey(t))
 	})
 }
+
+// VIP-12 bounded-head-recognition-and-expression-controls
+// rule: docs/design/vips/0012-provide.md#0389c0b3f7cfe23c
