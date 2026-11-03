@@ -1,3 +1,0 @@
-go test fuzz v1
-string("assign-override-admitted")
-byte(0)

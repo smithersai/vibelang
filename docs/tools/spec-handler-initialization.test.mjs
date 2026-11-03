@@ -11,7 +11,7 @@ test("the plain-handler check is EK0401 and includes eager binding initializatio
   const row = text.split("\n").find(line => line.startsWith("|") && line.includes("EK0403"))
   assert.match(row, /^\| In effect code, a call/)
   assert.match(row, /In a plain `catch` handler and other plain code, a call known to throw is `EK0401`/)
-  assert.match(text, /A `throw` statement, or a call known to throw, in a plain `catch` handler's eager parameters or body is `EK0401`, including defaults, destructuring and computed binding keys/)
+  assert.match(text, /A `throw` statement, or a call known to throw outside the `try` block of a `try`\/`catch` statement, in a plain `catch` handler's eager parameters or body is `EK0401`, including defaults, destructuring and computed binding keys/)
   assert.match(text, /nonthrowing parameters/)
   assert.match(text, /Merely defining a nested source function/)
 })

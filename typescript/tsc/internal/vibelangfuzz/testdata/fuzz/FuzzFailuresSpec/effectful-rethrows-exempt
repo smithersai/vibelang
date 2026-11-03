@@ -1,3 +1,0 @@
-go test fuzz v1
-string("effectful-rethrows-exempt")
-byte(0)

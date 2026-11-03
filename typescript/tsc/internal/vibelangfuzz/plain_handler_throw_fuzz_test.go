@@ -9,17 +9,18 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/diagnostics"
 )
 
-// Chapter 2 (decided detail 239, loop round 1 ASTRA-9): "A plain handler with
-// an explicit `throw` that can complete it gets a VIP-38 lint warning
-// (`EK0511`)", and "A `throw` caught inside the handler, or written in a
-// nested function, does not warn." The quotes are read from the chapter at
-// test time. The generator wraps one `throw e` in up to three statements and
-// function boundaries; the oracle is the chapter's rule: the throw can complete
-// the handler exactly when no enclosing `try` block catches it and no nested
-// function owns it, and then the plain handler, and only it, warns.
+// Chapter 2 (VIP-5, amended 2026-10-31, replacing the old EK0511 warning of
+// decided detail 239): "A plain handler is plain code, so a `throw` in it is
+// `EK0401`", caught inside it or not, and "a function nested in it is checked
+// as its own plain code". The quotes are read from the chapter at test time.
+// The generator wraps one `throw e` in up to three statements and function
+// boundaries; the oracle is the chapter's rule: the throw is `EK0401` exactly
+// when it stands in plain code, that is in a plain handler or in a function
+// nested in either kind of handler, and an `effect` handler's own `throw` is
+// a typed failure.
 var plainHandlerThrowQuotes = []string{
-	"A plain handler with an explicit `throw` that can complete it gets a VIP-38 lint warning (`EK0511`)",
-	"A `throw` caught inside the handler, or written in a nested function, does not warn.",
+	"A plain handler is plain code, so a `throw` in it is `EK0401`",
+	"a function nested in it is checked as its own plain code",
 }
 
 type plainHandlerWrapper struct {
@@ -105,7 +106,7 @@ func FuzzPlainHandlerThrow(f *testing.F) {
 			// A try statement in effect code is EK0503, outside this rule.
 			effect = false
 		}
-		escapes := !slices.ContainsFunc(wrappers, func(w plainHandlerWrapper) bool { return w.catches || w.boundary })
+		nested := slices.ContainsFunc(wrappers, func(w plainHandlerWrapper) bool { return w.boundary })
 		var names []string
 		body := "throw e"
 		for i := len(wrappers) - 1; i >= 0; i-- {
@@ -132,33 +133,35 @@ func FuzzPlainHandlerThrow(f *testing.F) {
 			t.Fatal(err)
 		}
 		defer r.Remove()
-		warned := false
+		rejected := false
 		var errs []string
 		for _, d := range r.Diagnostics {
-			if IsEK(d) && d.Code() == 511 {
-				warned = true
+			if d.Category() != diagnostics.CategoryError {
+				continue
 			}
-			if d.Category() == diagnostics.CategoryError {
-				errs = append(errs, fmt.Sprintf("%s%d: %s", d.Source(), d.Code(), d.String()))
+			if IsEK(d) && d.Code() == 401 {
+				rejected = true
+				continue
 			}
+			errs = append(errs, fmt.Sprintf("%s%d: %s", d.Source(), d.Code(), d.String()))
 		}
 		if len(errs) > 0 {
-			Gap(t, "FuzzPlainHandlerThrow", "compile:"+shape, "the handler %s should compile:\n%s\n%s", shape, source, strings.Join(errs, "\n"))
+			Gap(t, "FuzzPlainHandlerThrow", "compile:"+shape, "the handler %s should have no error but EK0401:\n%s\n%s", shape, source, strings.Join(errs, "\n"))
 			return
 		}
-		want := escapes && !effect
+		want := !effect || nested
 		switch {
-		case want && !warned:
-			Gap(t, "FuzzPlainHandlerThrow", "missing:EK0511", "chapter 2: %s; no EK0511 for %s:\n%s", plainHandlerThrowQuotes[0], shape, source)
+		case want && !rejected:
+			Gap(t, "FuzzPlainHandlerThrow", "missing:EK0401", "chapter 2: %s; no EK0401 for %s:\n%s", plainHandlerThrowQuotes[0], shape, source)
 			return
-		case warned && !want:
-			Gap(t, "FuzzPlainHandlerThrow", "spurious:EK0511", "chapter 2: %s; EK0511 for %s:\n%s", plainHandlerThrowQuotes[1], shape, source)
+		case rejected && !want:
+			Gap(t, "FuzzPlainHandlerThrow", "spurious:EK0401", "chapter 2: an effect handler's own throw is a typed failure; EK0401 for %s:\n%s", shape, source)
 			return
 		}
 		if want {
-			ExpectPending(t, "FuzzPlainHandlerThrow", "missing:EK0511")
+			ExpectPending(t, "FuzzPlainHandlerThrow", "missing:EK0401")
 		} else {
-			ExpectPending(t, "FuzzPlainHandlerThrow", "spurious:EK0511")
+			ExpectPending(t, "FuzzPlainHandlerThrow", "spurious:EK0401")
 		}
 	})
 }

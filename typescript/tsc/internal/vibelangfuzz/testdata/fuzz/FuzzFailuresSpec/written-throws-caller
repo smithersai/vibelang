@@ -1,3 +1,0 @@
-go test fuzz v1
-string("written-throws-caller")
-byte(0)

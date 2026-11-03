@@ -1,3 +1,0 @@
-go test fuzz v1
-string("declaration-catch-binding-unknown")
-byte(0)

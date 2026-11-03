@@ -43,7 +43,7 @@ await assert.rejects(promise, e => e === "callback")
 
 test("the Creating Effects guide limits synchronous rethrows to synchronous invocation", () => {
   const text = read("docs/user/src/getting-started/005-creating-effects.md")
-  assert.match(text, /For synchronous invocation/)
-  assert.match(text, /without active synchronous/)
-  assert.match(text, /result type alone/)
+  // VIP-4, amended 2026-10-31: only a `.ts` function's synchronous invocation rethrows; `async` rejects.
+  assert.match(text, /For synchronous invocation of a `\.ts` function, `@rethrows f` adds `f`'s thrown type/)
+  assert.match(text, /An `async` function's `throw` rejects its Promise\./)
 })

@@ -1,3 +1,0 @@
-go test fuzz v1
-string("rethrows-default-wrapped")
-byte(0)

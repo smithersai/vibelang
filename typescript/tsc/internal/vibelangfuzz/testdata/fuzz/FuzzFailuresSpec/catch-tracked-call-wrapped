@@ -1,3 +1,0 @@
-go test fuzz v1
-string("catch-tracked-call-wrapped")
-byte(0)

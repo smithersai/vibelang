@@ -1,3 +1,0 @@
-go test fuzz v1
-string("inferred-catch-binding-rethrow")
-byte(0)

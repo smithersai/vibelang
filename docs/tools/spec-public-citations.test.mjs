@@ -43,7 +43,6 @@ test("each rule Functions cites is in the amendment it names", () => {
     [/works at run time \(VIP-27, amended\)/, 27, "the generated matcher"],
     [/\[Thrown types\]\(003-failures\.md#thrown-types\), VIP-4, amended\)/, 4, "contracts sit on call signatures"],
     [/even with a written function type \(VIP-4, amended\)/, 4, "foreign callables"],
-    [/parameter \(VIP-4, amended\)/, 4, "compose thrown-type contracts"],
   ])
 })
 

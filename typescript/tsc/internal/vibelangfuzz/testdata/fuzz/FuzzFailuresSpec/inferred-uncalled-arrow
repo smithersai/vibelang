@@ -1,3 +1,0 @@
-go test fuzz v1
-string("inferred-uncalled-arrow")
-byte(0)

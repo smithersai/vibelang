@@ -8,11 +8,12 @@ import { chapter, read } from "./spec-witness.mjs"
 test("every owner of the plain-handler throw rule states EK0401, not the EK0511 warning", () => {
   const running = chapter("002-running")
   assert.match(running, /\| `x catch \(e\) => \{ throw e \}` \| plain function \| error `EK0401`/)
-  assert.match(running, /A plain handler is plain code, so a `throw` in it is `EK0401` \(VIP-5, amended 2026-10-31; this replaces the retired `EK0511` warning\)/)
+  assert.match(running, /A plain handler is plain code, so a `throw` in it is `EK0401` \(VIP-5, amended 2026-10-31; this replaces the old, retired `EK0511` warning\)/)
   assert.doesNotMatch(running, /A `throw` caught inside the handler, or written in a nested function, does not warn\./)
-  assert.match(chapter("007-tooling"), /The retired `EK0511` warning for a `throw` in a plain handler is now this error\./)
+  assert.match(chapter("007-tooling"), /The old `EK0511` warning for a `throw` in a plain handler is retired; this error replaces it\./)
   const appendix = chapter("900-appendices")
-  assert.match(appendix, /\| `EK0511` \| lint warning: an explicit `throw` that can complete a plain `catch` handler/)
+  assert.doesNotMatch(appendix, /^\| `EK0511` \|/m)
+  assert.match(appendix, /the old `EK0511` warned about a `throw` in a plain `catch` handler, which is now the error `EK0401`/)
   assert.match(read("docs/design/vips/0005-try-runs-effects.md"), /`EK0511` is retired/)
 })
 

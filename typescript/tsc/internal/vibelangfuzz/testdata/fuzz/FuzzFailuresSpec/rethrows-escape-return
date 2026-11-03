@@ -1,3 +1,0 @@
-go test fuzz v1
-string("rethrows-escape-return")
-byte(0)
