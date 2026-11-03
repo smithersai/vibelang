@@ -340,6 +340,7 @@ The generated constants keep TypeScript declaration order and temporal dead zone
 | a recognized ordinary schema declaration missing its required body or admitted alias form | `EK1503` |
 | two fields on one line with no separator, `{ a: string b: number }`; write `;` or a line break between them (quick fix: insert `;`) | `EK1504` |
 | a member of a `schema` body that is not a [Field](900-appendices.md#field): `schema S { m(): string }`, `schema S { [k: string]: number }` | `EK1505` |
+| a `schema` declaration in an ambient source context, explicit or inherited, as for a [service](005-services.md#static-rules); it comes ahead of the same declaration’s `EK1503` | `EK1506` |
 | a field type outside the mapping (including a shadowing type without a suitable Schema value), or a referenced schema with conflicting or unprovable decoded-key flags at a required or effectively readonly position; use an unmodified value schema and write the modifiers on the declaration (for `Date`, use `Schema.Date`) | `EK2109` |
 
 
@@ -501,6 +502,7 @@ VIP-7 includes `data` unions and [tagged members](004-match.md#tagged-members) i
 | a recognized data declaration missing its required variant body | `EK1604` |
 | two variants, or two fields of a variant, on one line with no separator, `data D { A B }` or `A { x: number y: string }`; write `;` or a line break between them (quick fix: insert `;`) | `EK1605` |
 | a malformed variant or a payload member that is not a [Field](900-appendices.md#field): `data D { A(x: number) }`, `data D { A { m(): void } }`; write `A { x: number }` | `EK1606` |
+| a `data` declaration in an ambient source context, explicit or inherited, as for a [service](005-services.md#static-rules); it comes ahead of the same declaration’s `EK1604` | `EK1607` |
 
 
 The named default-export counterpart is:
