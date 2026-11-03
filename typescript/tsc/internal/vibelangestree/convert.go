@@ -1532,13 +1532,27 @@ func (c *converter) convertNode(n *ast.Node, parent *ast.Node) *obj {
 
 // variableKind is a declaration list's kind. A list the parser wrote for a
 // pattern binding, such as when Exit.Success(let user), is const: the
-// binding is part of a pattern, not a declaration prefer-const can rewrite.
+// binding is part of a pattern, not a declaration prefer-const can rewrite. A
+// list of only the parser's own names keeps its kind: a do expression assigns
+// its `let $do1`, so const would read as an assignment to a constant.
 func (c *converter) variableKind(statement *ast.Node, list *ast.Node) string {
 	kind := declarationKind(list)
-	if c.vibe && !c.startsWithWord(list, strings.Fields(kind)[0]) {
+	if c.vibe && !c.startsWithWord(list, strings.Fields(kind)[0]) && !c.declaresOnlySynthesized(list) {
 		return "const"
 	}
 	return kind
+}
+
+func (c *converter) declaresOnlySynthesized(list *ast.Node) bool {
+	if list.Kind != ast.KindVariableDeclarationList {
+		return false
+	}
+	for _, declaration := range list.AsVariableDeclarationList().Declarations.Nodes {
+		if !c.synthesized(declaration.Name()) {
+			return false
+		}
+	}
+	return true
 }
 
 func (c *converter) startsWithWord(n *ast.Node, word string) bool {
