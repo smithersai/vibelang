@@ -1,0 +1,17 @@
+import { Effect } from "effect"
+enum Tag{A,B}
+function shared(s:{_tag:"A";x:number}|{_tag:"A";y:number}):number{return match(s){when {_tag:"A"}:1;}}
+function unions(s:{_tag:"A"|"B"}|{_tag:"C"}):number{return match(s){when {_tag:"A"}:1;when {_tag:"B"}:2;when {_tag:"C"}:3;}}
+function numbers(s:{_tag:1|2}):number{return match(s){when {_tag:1}:1;when {_tag:2}:2;}}
+function bigints(s:{_tag:1n|2n}):number{return match(s){when {_tag:1n}:1;when {_tag:2n}:2;}}
+function booleans(s:{_tag:true|false}):number{return match(s){when {_tag:true}:1;when {_tag:false}:2;}}
+function enums(s:{_tag:Tag}):number{return match(s){when {_tag:Tag.A}:1;when {_tag:Tag.B}:2;}}
+function undefinedTag(s:{_tag:undefined}):number{return match(s){when {_tag:undefined}:1;}}
+export function main():Effect.Effect<readonly number[]>{return Effect.sync(()=>[shared({_tag:"A",x:1}),shared({_tag:"A",y:2}),unions({_tag:"A"}),unions({_tag:"B"}),unions({_tag:"C"}),numbers({_tag:1}),numbers({_tag:2}),bigints({_tag:1n}),bigints({_tag:2n}),booleans({_tag:true}),booleans({_tag:false}),enums({_tag:Tag.A}),enums({_tag:Tag.B}),undefinedTag({_tag:undefined})])}
+// VIP-7 match-vip7-tagged-complete; rule: docs/design/vips/0007-match.md#b10abbbe61aa174a
+// VIP-7 match-vip7-tagged-complete; rule: docs/design/vips/0007-match.md#67b7a5403ce9323d
+// VIP-7 match-vip7-tagged-complete; rule: docs/design/vips/0007-match.md#baa12701684891aa
+// VIP-7 match-vip7-tagged-complete; rule: docs/design/vips/0007-match.md#812715e043bc4d9f
+// VIP-7 match-vip7-tagged-complete; rule: docs/design/vips/0007-match.md#481bc91e8cf0911b
+// VIP-7 match-vip7-tagged-complete; rule: docs/design/vips/0007-match.md#7e0a40c2fc5491ca
+// VIP-7 match-vip7-tagged-complete; rule: docs/design/vips/0007-match.md#74e96bed11976746

@@ -1,0 +1,4 @@
+import { Effect } from "effect"
+function both(x:boolean):number{return match(x){when true and true:1;when false:0;default:-1;}}
+function negative(x:boolean):number{return match(x){when not false:1;when false:0;default:-1;}}
+export function main():Effect.Effect<readonly number[]>{return Effect.sync(()=>[both(true),both(false),negative(true),negative(false)])}

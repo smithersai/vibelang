@@ -21,3 +21,5 @@ export function literal(o: Option.Option<number>) {
 // Chapter 004, fixed list payload restrictions do not cover the case: docs/design/src/004-match.md#c239c81eab2ff1fc
 
 // Chapter 004 rule: A fixed pattern (`Option.Some(let v)`, `Option.None`, `Exit.Success(…)`, `Exit.Failure(…)`, `Result.Success(…)`, `Result.Failure(…)`) and a retained error's bare or one-binding extractor cover their case only when their argument list has the required length and every argument pattern is a bare `let` or `const` binding.
+
+// VIP-7 extractor cardinality and conservative coverage; rule: docs/design/vips/0007-match.md#c161764e65f6189b

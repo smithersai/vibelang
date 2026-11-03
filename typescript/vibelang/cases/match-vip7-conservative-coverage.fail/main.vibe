@@ -1,0 +1,6 @@
+// expect: EK4701 EK4701
+function both(x:boolean){return match(x){when true and true:1;when false:0;}}
+function negative(x:boolean){return match(x){when not false:1;when false:0;}}
+// VIP-7 and/not add no static coverage; rule: docs/design/vips/0007-match.md#aad9690940c87f59
+// VIP-7 and/not add no static coverage; rule: docs/design/vips/0007-match.md#392f09aff77a38a0
+// VIP-7 and/not add no static coverage; rule: docs/design/vips/0007-match.md#6bcd29da4d3ae1ab
