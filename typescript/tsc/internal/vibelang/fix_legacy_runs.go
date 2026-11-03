@@ -621,6 +621,8 @@ func (m *legacyModel) wrapperTry(call *ast.Node) bool {
 // () => fetchReport()"). A function written inside n keeps its own form, which
 // the block does not change when nothing in it runs an Effect
 // (holdsFunctionWithRuns); any other such n is left to the reported refusal.
+// An n that is itself a function, such as an effect block, is already what its
+// parameter receives: a block around it would read as the try(…) hatch.
 func (m *legacyModel) byNameBlock(n *ast.Node) bool {
 	if done, ok := m.blocks[n]; ok {
 		return done
@@ -628,7 +630,7 @@ func (m *legacyModel) byNameBlock(n *ast.Node) bool {
 	m.blocks[n] = false
 	result := false
 	if parent := n.Parent; parent != nil && (ast.IsCallExpression(parent) || ast.IsNewExpression(parent) || ast.IsArrayLiteralExpression(parent) || ast.IsPropertyAssignment(parent) || isPipe(parent)) && !ast.IsParenthesizedExpression(n) {
-		if owner := effectCodeOwner(n); owner != nil && (inEffectCode(n) || m.marked(owner)) && !m.holdsFunctionWithRuns(n) {
+		if owner := effectCodeOwner(n); owner != nil && (inEffectCode(n) || m.marked(owner)) && !isWrittenFunction(ast.SkipParentheses(n)) && !m.holdsFunctionWithRuns(n) {
 			if held, byName, _ := legacyHold(m.a, n); held && byName {
 				result = len(m.blockRuns(n)) > 0
 			}

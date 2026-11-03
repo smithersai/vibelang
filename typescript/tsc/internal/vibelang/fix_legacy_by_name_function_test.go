@@ -45,3 +45,26 @@ func TestFixVIPByNameArgumentHoldsEffectFunction(t *testing.T) {
 		t.Fatalf("refused %+v", result.Refused)
 	}
 }
+
+// An argument that is itself an effect block is the program its parameter
+// receives: the tries go inside it and no block goes around it.
+func TestFixVIPByNameArgumentIsEffectBlock(t *testing.T) {
+	prelude := legacyRunsPrelude + "effect function hold(program: number!!): number!! {\n  return try program\n}\n\n"
+	for _, c := range []struct{ name, site string }{
+		{"map-argument", "return try Effect.map(effect { return plainId(CALL) }, (n) => n + 1)"},
+		{"own-helper", "return try hold(effect { return plainId(CALL) })"},
+		{"pipe-topic", "return try (effect { return plainId(CALL) } |> Effect.orDie(%))"},
+		{"parenthesized", "return try hold((effect { return plainId(CALL) }))"},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			write := func(call string) string {
+				return prelude + "export effect function f() {\n  " + strings.Replace(c.site, "CALL", call, 1) + "\n}\n"
+			}
+			result, name := fixVIPOnlySource(t, write("load(1)"))
+			fixed := result.Files[name]
+			if fixed == nil || fixed.Text != write("try load(1)") || len(result.Refused) != 0 {
+				t.Fatalf("--fix-vip-only wrote %+v, want\n%s\nrefused %+v", fixed, write("try load(1)"), result.Refused)
+			}
+		})
+	}
+}

@@ -18,6 +18,10 @@ import (
 // inside the effect block, so the oracle is no refusal and a program that
 // compiles; a function whose body gives an Effect must stay refused.
 //
+// A "block-" site's argument is itself an effect block, the program its
+// parameter receives: its calls get try where they stand with no block around
+// it, whatever plain function it holds, and no refusal (D147).
+//
 // An input is "<site>:<function>"; other bytes pick by index.
 func FuzzVIPLegacyByNameFunctions(f *testing.F) {
 	startShortBudget(f)
@@ -39,6 +43,9 @@ func FuzzVIPLegacyByNameFunctions(f *testing.F) {
 		}
 		key := site + ":" + fnKey
 		fn := legacyByNameFunctions[fnKey]
+		if fn.refused && strings.HasPrefix(site, "block-") {
+			t.Skip("an effect block gives its own function its form")
+		}
 		source := legacyByNameHelpers + strings.ReplaceAll(legacyByNameSites[site], "FN", fn.text)
 		files := map[string]string{"main.vibe": source}
 		old := legacyCompile(t, env, files)
@@ -79,6 +86,9 @@ func FuzzVIPLegacyByNameFunctions(f *testing.F) {
 var legacyByNameSites = map[string]string{
 	"map-argument": "export effect function f() {\n  return try Effect.map(take(load(1), FN), (n) => n + 1)\n}\n",
 	"own-helper":   "export effect function f() {\n  return try hold(take(load(1), FN))\n}\n",
+	"block-map":    "export effect function f() {\n  return try Effect.map(effect { return plain(load(1)) + (FN)() }, (n) => n + 1)\n}\n",
+	"block-helper": "export effect function f() {\n  return try hold(effect { return plain(load(1)) + (FN)() })\n}\n",
+	"block-pipe":   "export effect function f() {\n  return try (effect { return plain(load(1)) + (FN)() } |> Effect.map(%, (n) => n + 1))\n}\n",
 	"pipe-topic":   "export effect function f() {\n  return try (take(load(1), FN) |> Effect.map(%, (n) => n + 1))\n}\n",
 }
 
@@ -94,6 +104,10 @@ var legacyByNameFunctions = map[string]struct {
 }
 
 const legacyByNameHelpers = `import { Effect } from "effect"
+
+function plain(n: number): number {
+  return n
+}
 
 effect function load(n: number): number!! {
   return n
