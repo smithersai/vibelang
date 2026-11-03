@@ -1,0 +1,1 @@
+cov-match VIP-7: continue and a short-circuited successful condition still allocate fresh uninitialized cells.

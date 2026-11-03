@@ -1,0 +1,19 @@
+import { Effect } from "effect"
+function witness():readonly unknown[]{const n=99;let turn=0;const reads:(()=>unknown)[]=[]
+ while(++turn<3&&(turn===2||[turn] is [let n])){
+  reads.push(()=>{try{
+   // Intentional runtime witness: the skipped second condition leaves n in TDZ.
+   // @ts-ignore TS2454
+   return n
+  }catch(e){return e instanceof ReferenceError?"tdz":"other"}})
+  if(turn===1){
+   // @ts-ignore TS2454
+   n+=10
+   continue
+  }
+ }
+ return [reads.map(read=>read()),n]
+}
+export function main():Effect.Effect<readonly unknown[]>{return Effect.sync(witness)}
+// VIP-7 fresh uninitialized while cells after continue and a skipped match; rule: docs/design/vips/0007-match.md#e2dd39fb39c17162
+// VIP-7 fresh uninitialized while cells after continue and a skipped match; rule: docs/design/vips/0007-match.md#628f5c8e4be0cd17

@@ -1,0 +1,6 @@
+import { Effect } from "effect"
+export function main():Effect.Effect<boolean>{return Effect.succeed(true)}
+// VIP-7 complete retained inventory; rule: docs/design/vips/0007-match.md#a6e7d4f080dc52e1
+// VIP-7 complete retained inventory; rule: docs/design/vips/0007-match.md#994d1d77d6a25550
+// VIP-7 complete retained inventory; rule: docs/design/vips/0007-match.md#beb53dc47bac7e6c
+// VIP-7 complete retained inventory; rule: docs/design/vips/0007-match.md#094527937ed5ef47

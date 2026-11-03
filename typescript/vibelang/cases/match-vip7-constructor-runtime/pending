@@ -1,0 +1,1 @@
+cov-match VIP-7: erased constructor extraction must throw TypeError only after instanceof succeeds.

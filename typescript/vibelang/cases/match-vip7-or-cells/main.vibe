@@ -1,3 +1,4 @@
+type Equal<A,B>=(<T>()=>T extends A?1:2) extends (<T>()=>T extends B?1:2)?true:false
 import { Effect } from "effect"
 export function alternativeCell(): readonly number[] {
   const reads: (() => number)[] = []
@@ -6,9 +7,9 @@ export function alternativeCell(): readonly number[] {
     default: [];
   }
 }
-export function main(): Effect.Effect<unknown> { return Effect.sync(alternativeCell) }
+export function main(): Effect.Effect<unknown> { return Effect.sync(()=>[alternativeCell(),alternativeType({a:2}),alternativeType({b:"x"})]) }
 // VIP-7 fresh loop-head cells, initial do TDZ and shared or cells; rule: docs/design/vips/0007-match.md#f43d97838564ee9a
 // VIP-7 fresh loop-head cells, initial do TDZ and shared or cells; rule: docs/design/vips/0007-match.md#39b3c8b142768ff9
 
-export function alternativeType(s:{a:number}|{b:string}):number|string{return match(s){when {a:let n} or {b:let n}:n;}}
+export function alternativeType(s:{a:number}|{b:string}):number|string{return match(s){when {a:let n} or {b:let n}:do{const exact:Equal<typeof n,number|string>=true;n};}}
 // VIP-7 shared alternative binding type union; rule: docs/design/vips/0007-match.md#a406131b8596570e

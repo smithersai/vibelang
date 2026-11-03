@@ -1,0 +1,4 @@
+// expect: EK0702
+effect function loadUser(_x:unknown){return {id:"x"}}
+export function invalid(x:unknown){return match(x){when loadUser:1;default:0;}}
+// VIP-7 an Effect-returning predicate is rejected beside the valid user array and class arms; rule: docs/design/vips/0007-match.md#b23d786c9f5015cc

@@ -1,0 +1,2 @@
+inventory: 33 guarded errors plus 6 Option/Exit/Result cases
+ok pinned TypeScript 5.9.3 / Effect 4.1.0 complete retained inventory types and Exit

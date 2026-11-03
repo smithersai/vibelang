@@ -1,0 +1,10 @@
+import { Effect } from "effect"
+export function probe(value:unknown):string {
+ class C {}
+ const ctor:any=C
+ const s=value==="instance"?new C():value
+ try{return match(s){when ctor(): "matched";default:"miss";}}catch(e){return e instanceof TypeError?"TypeError":"other"}
+}
+export function main():Effect.Effect<readonly string[]>{return Effect.sync(()=>[probe("instance"),probe(null)])}
+// VIP-7 erased constructor extractor; rule: docs/design/vips/0007-match.md#c895a4568481df7f
+// VIP-7 erased constructor extractor; rule: docs/design/vips/0007-match.md#d2a178be08d5ab19

@@ -1,0 +1,1 @@
+cov-match VIP-7: a callable pattern returning an Effect reports EK0702.

@@ -25,3 +25,4 @@ export function main(): Effect.Effect<readonly unknown[]> {
 // VIP-7 async match grammar, Promise adoption and nested-function boundary; rule: docs/design/vips/0007-match.md#b5f0d47e0433372a
 // VIP-7 async match grammar, Promise adoption and nested-function boundary; rule: docs/design/vips/0007-match.md#72bc85bbd04cf1af
 // VIP-7 async match grammar, Promise adoption and nested-function boundary; rule: docs/design/vips/0007-match.md#8107a8c0c7bc23bb
+// VIP-7 settled async boundary plus companion fork grammar tests; rule: docs/design/vips/0007-match.md#c07e4c2e0e4fc2c0

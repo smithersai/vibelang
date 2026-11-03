@@ -1,0 +1,9 @@
+// expect: EK0702
+const pAny:any=()=>true
+const pUnknown:unknown=()=>true
+const pFunction:Function=()=>true
+const pObjectValue:object={}
+export function invalid(x:unknown) {
+ return match(x){when pAny:1;when pUnknown:2;when pFunction:3;when pObjectValue:4;default:0;}
+}
+// VIP-7 any unknown Function and non-callable pattern values reject with EK0702; rule: docs/design/vips/0007-match.md#d8845449c968d35a

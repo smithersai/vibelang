@@ -1,6 +1,6 @@
 import { Effect } from "effect"
 export function regex(s:string):readonly [string,string]|undefined {return match(s){when /(\d+)/(let m,let g):do{const typed:RegExpExecArray=m;const group:string=g;[typed[0],group] as const};default:undefined;}}
-export function relational(s:number):number {return match(s){when < 0:s;default:s;}}
+export function relational(s:-1|1):-1|1 {return match(s){when < 0:do{const a:typeof s=-1;const b:typeof s=1;s};default:do{const a:typeof s=-1;const b:typeof s=1;s};}}
 export function main():Effect.Effect<readonly unknown[]> {return Effect.sync(()=>[regex("a12"),regex("none"),relational(-1),relational(1)])}
 // VIP-7 regex extraction and relational typing; rule: docs/design/vips/0007-match.md#bd03bfa08a71cb6a
 // VIP-7 regex extraction and relational typing; rule: docs/design/vips/0007-match.md#7c1723ce577c82c6

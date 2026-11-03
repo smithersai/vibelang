@@ -1,0 +1,1 @@
+cov-match VIP-7: public static matcher sidecars require their runtime type reference and a compiling stock TypeScript consumer.

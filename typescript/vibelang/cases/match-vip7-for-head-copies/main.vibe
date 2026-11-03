@@ -1,0 +1,15 @@
+import { Effect, Stream } from "effect"
+export function forIn():readonly number[]{const reads:(()=>number)[]=[];for(const key in ((0 is let n),{a:1,b:1})){reads.push(()=>n);n++}return reads.map(f=>f())}
+export function forOf():readonly number[]{const reads:(()=>number)[]=[];for(const v of ((0 is let n),[1,2])){reads.push(()=>n);n+=v}return reads.map(f=>f())}
+export async function forAwait():Promise<readonly number[]>{const reads:(()=>number)[]=[];for await(const v of ((0 is let n),[1,2])){reads.push(()=>n);n+=v}return reads.map(f=>f())}
+export effect function forConcurrent():Effect.Effect<readonly number[]>{const reads:(()=>number)[]=[];for concurrent(2)(const v of ((0 is let n),[1,2])){reads.push(()=>n);n+=v}return reads.map(f=>f()).sort()}
+export effect function forTry():Effect.Effect<readonly number[]>{const reads:(()=>number)[]=[];for try(const v of ((0 is let n),Stream.make(1,2))){reads.push(()=>n);n+=v}return reads.map(f=>f())}
+export function skipped():readonly string[]{const seen:string[]=[];for(const v of ((true||(0 is let n)),[1,2])){try{
+ // Intentional checking bypass: observe the copied uninitialized cell.
+ // @ts-ignore TS2454
+ seen.push(String(n))
+}catch(e){seen.push(e instanceof ReferenceError?"tdz":"other")}}return seen}
+export effect function main():Effect.Effect<readonly unknown[]>{return [forIn(),forOf(),awaitNever(),try promise(()=>forAwait()),try forConcurrent(),try forTry(),skipped()]}
+function awaitNever():number{return 0}
+// VIP-7 all five for head environments copy cells; rule: docs/design/vips/0007-match.md#efd59c9924614ebe
+// VIP-7 all five for head environments copy cells; rule: docs/design/vips/0007-match.md#43f61c208e1906e3

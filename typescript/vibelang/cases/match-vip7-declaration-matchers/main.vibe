@@ -1,0 +1,5 @@
+import {Effect} from "effect"
+export function probe():readonly boolean[]{error E{id:string};data D{A};schema S{n:number};return [Object.hasOwn(E,customMatcher),Object.hasOwn(D.A,customMatcher),Object.hasOwn(S,customMatcher)]}
+export function main():Effect.Effect<readonly boolean[]>{return Effect.sync(probe)}
+// VIP-7 error declarations own matchers while data/schema values do not; rule: docs/design/vips/0007-match.md#0cb967d4ad07e462
+// VIP-7 error declarations own matchers while data/schema values do not; rule: docs/design/vips/0007-match.md#eb801ce188cb34c3

@@ -1,8 +1,11 @@
 import { Effect } from "effect"
 import { numbers } from "./native.js"
 function first(log:string[]):number {const ignored=match(numbers(log)){when [let a,...]:do{return a};default:0;};return -1}
-function witness():unknown {const log:string[]=[];return [first(log),log]}
-export function main():Effect.Effect<unknown> {return Effect.sync(witness)}
+function breakOut(log:string[]):void {for(let i=0;i<2;i++){const ignored=match(numbers(log)){when [let a,...]:do{break};default:0;};log.push("after")}}
+function continueOut(log:string[]):void {for(let i=0;i<2;i++){log.push("loop");const ignored=match(numbers(log)){when [let a,...]:do{continue};default:0;};log.push("after")}}
+function closeReplacesReturn(log:string[]):number {const ignored=match(numbers(log,true)){when [let a,...]:do{return a};default:0;};return -1}
+function witness():unknown {const a:string[]=[],b:string[]=[],c:string[]=[],d:string[]=[];const value=first(a);breakOut(b);continueOut(c);let closed:unknown;try{closed=closeReplacesReturn(d)}catch(e){closed=(e as Error).message}return [value,a,b,c,closed,d]}
+export function main():Effect.Effect<unknown>{return Effect.sync(witness)}
 // VIP-7 iterator return; rule: docs/design/vips/0007-match.md#58517decff7c9e9a
 // VIP-7 iterator return; rule: docs/design/vips/0007-match.md#f90a2cf1adda7581
 // VIP-7 iterator return; rule: docs/design/vips/0007-match.md#9c37789fa1973b49

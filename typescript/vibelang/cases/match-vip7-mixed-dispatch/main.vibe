@@ -1,0 +1,9 @@
+import { Effect, Option, Exit, Cause } from "effect"
+import * as HttpClientError from "effect/http/HttpClientError"
+export function mixed(x:unknown):unknown{return match(x){when Option.Some(let v):v;when Exit.Failure(let c):Cause.pretty(c);when Cause.TimeoutError:"timeout";default:"other";}}
+function retry(h:HttpClientError.HttpClientError):string{return h._tag}
+function rethrow(e:unknown):never{throw e}
+export function errors(e:unknown):string{return match(e){when HttpClientError.HttpClientError(let h):retry(h);when Cause.TimeoutError:"timeout";default:rethrow(e);}}
+export function main():Effect.Effect<readonly unknown[]>{const timeout={_tag:"TimeoutError","~effect/Cause/TimeoutError":"~effect/Cause/TimeoutError"};const http={_tag:"HttpClientError","~effect/http/HttpClientError":"~effect/http/HttpClientError"};return Effect.sync(()=>[mixed(Option.some(7)),mixed(Exit.fail("bad")),mixed(timeout),mixed({}),errors(http),errors(timeout),Effect.runSyncExit(Effect.sync(()=>errors({_tag:"unhandled"})))])}
+// VIP-7 mixed fixed pattern bodies; rule: docs/design/vips/0007-match.md#e2df8b9d2f2659e9
+// VIP-7 mixed fixed pattern bodies; rule: docs/design/vips/0007-match.md#75ddee950325b97d

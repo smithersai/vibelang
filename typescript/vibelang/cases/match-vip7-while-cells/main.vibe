@@ -2,16 +2,16 @@ import { Effect } from "effect"
 export function whileCells(): readonly unknown[] {
   const n = 99
   let turn = 0
+  const nested:(()=>number)[]=[]
   const reads: (() => number)[] = []
   while (++turn < 4 && [turn] is [let n]) {
     reads.push(() => n)
+    { if ([100] is [let n]) nested.push(()=>n) }
     n += 10
     if (turn === 2) continue
   }
-  return [reads.map(read => read()), n]
+  return [reads.map(read => read()), n, nested.map(read=>read())]
 }
 export function main(): Effect.Effect<unknown> { return Effect.sync(whileCells) }
 // VIP-7 fresh loop-head cells, initial do TDZ and shared or cells; rule: docs/design/vips/0007-match.md#ffe9d340c2df18c8
-// VIP-7 fresh loop-head cells, initial do TDZ and shared or cells; rule: docs/design/vips/0007-match.md#e2dd39fb39c17162
-// VIP-7 fresh loop-head cells, initial do TDZ and shared or cells; rule: docs/design/vips/0007-match.md#628f5c8e4be0cd17
 // VIP-7 fresh loop-head cells, initial do TDZ and shared or cells; rule: docs/design/vips/0007-match.md#f61eda48eb2a8f21

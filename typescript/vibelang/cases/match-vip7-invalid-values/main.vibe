@@ -1,0 +1,8 @@
+import { Effect } from "effect"
+interface User {id:string}
+const isUser=(u:unknown):u is User=>typeof u==="object"&&u!==null&&"id" in u
+class Point {}
+function pair(s:unknown,hint:{matchType:string}):false|readonly [number,string]{return typeof s==="number"?[s,hint.matchType]:false}
+export function valid(s:unknown):unknown{return match(s){when isUser:s.id;when Array.isArray:s.length;when Point:0;default:-1;}}
+export function extract(s:unknown):unknown{return match(s){when pair(let n,let hint):[n,hint];default:[];}}
+export function main():Effect.Effect<readonly unknown[]>{return Effect.sync(()=>[valid({id:"x"}),valid([1,2]),valid(new Point()),valid(null),extract(7),extract("x")])}

@@ -1,0 +1,22 @@
+import * as Predicate from "effect/Predicate"
+import * as HttpClient from "effect/http/HttpClient"
+import { Effect, Data, Schema, Cause, Config, PlatformError, Option, Exit, Result } from "effect"
+import * as AiError from "effect/ai/AiError"
+import * as SqlError from "effect/sql/SqlError"
+import * as CliError from "effect/cli/CliError"
+export function patching():readonly boolean[] {
+ const roots:object[]=[Function.prototype,Array,Date,Map,Set,Error,RegExp,WeakMap,WeakSet,Promise,Uint8Array,ArrayBuffer,AggregateError,Cause.TimeoutError]
+ return [...roots.map(x=>Object.hasOwn(x,customMatcher)),Object.hasOwn(Option,"Some"),Object.hasOwn(Option,"None"),Object.hasOwn(Exit,"Success"),Object.hasOwn(Exit,"Failure"),Object.hasOwn(Result,"Success"),Object.hasOwn(Result,"Failure")]
+}
+class Plain {}
+function constructed():readonly boolean[]{return [Object.create(Plain.prototype),new Plain(),{}].map(s=>s is Plain)}
+function predicates(s:unknown):readonly boolean[]{return [s is Predicate.isError,s is CliError.isCliError,s is HttpClient.isTransientError]}
+export function localOption(s:unknown):number {const Option={Some:(x:unknown):x is number=>typeof x==="number"};return match(s){when Option.Some:1;default:0;}}
+export function ordinary(s:unknown):readonly boolean[] {return [s is Config.ConfigError,s is PlatformError.BadArgument,s is PlatformError.SystemError,s is AiError.RateLimitError,s is SqlError.ConnectionError,s is CliError.UnrecognizedOption,s is CliError.DuplicateOption,s is CliError.MissingOption,s is CliError.MissingArgument,s is CliError.UnexpectedArgument,s is CliError.InvalidValue,s is CliError.UnknownSubcommand,s is CliError.ValidationError,s is CliError.UserError,s is CliError.ShowHelp]}
+export function main():Effect.Effect<readonly unknown[]> {return Effect.sync(()=>[patching(),constructed(),[new Error("x"),null,{}, {_tag:"TimeoutError","~effect/Cause/TimeoutError":"~effect/Cause/TimeoutError"}].map(predicates),localOption(2),localOption("x"),[Config.ConfigError,PlatformError.BadArgument,PlatformError.SystemError,AiError.RateLimitError,SqlError.ConnectionError,CliError.UnrecognizedOption,CliError.DuplicateOption,CliError.MissingOption,CliError.MissingArgument,CliError.UnexpectedArgument,CliError.InvalidValue,CliError.UnknownSubcommand,CliError.ValidationError,CliError.UserError,CliError.ShowHelp].flatMap(C=>[Object.create(C.prototype),{_tag:C.name},null]).map(ordinary)])}
+// VIP-7 no global patching and ordinary excluded constructors; rule: docs/design/vips/0007-match.md#b7b215a8d1d591b9
+// VIP-7 no global patching and ordinary excluded constructors; rule: docs/design/vips/0007-match.md#4a63ee88d804ba73
+// VIP-7 no global patching and ordinary excluded constructors; rule: docs/design/vips/0007-match.md#e0b42d7043f172fd
+// VIP-7 no global patching and ordinary excluded constructors; rule: docs/design/vips/0007-match.md#1df569d00b676958
+// VIP-7 no global patching and ordinary excluded constructors; rule: docs/design/vips/0007-match.md#6529b5c1c63a7645
+// VIP-7 no global patching and ordinary excluded constructors; rule: docs/design/vips/0007-match.md#23309d2c663613f8

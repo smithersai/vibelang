@@ -1,0 +1,4 @@
+// expect: TS1005
+export function invalid(){return async do {1;}}
+// VIP-7 async do remains outside VibeLang syntax; rule: docs/design/vips/0007-match.md#f546d3dcf747eba1
+// VIP-7 async do remains outside VibeLang syntax; rule: docs/design/vips/0007-match.md#c74e6eb7105ba0bc

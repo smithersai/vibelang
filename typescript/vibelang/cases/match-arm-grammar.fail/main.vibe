@@ -44,3 +44,4 @@ export function separated(b: boolean) {
 export function guarded(s: string, kind: string) {
   return match (s) { when `tag-A`: 1; when let v and if (v === `tag-${kind}`): 2; default: 0; }
 }
+// VIP-7 generic pattern syntax errors own EK0707; rule: docs/design/vips/0007-match.md#d62c3a5f3dbdd129

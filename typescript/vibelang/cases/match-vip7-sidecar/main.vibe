@@ -1,0 +1,6 @@
+import { Effect } from "effect"
+export error E { n:number }
+export schema error S { id:string }
+export function read(x:unknown):unknown{return match(x){when E(let e):e.n;when S(let e):e.id;default:"other";}}
+export function main():Effect.Effect<readonly unknown[]>{return Effect.sync(()=>[read({_tag:"E",n:1}),read({_tag:"S",id:"x"}),read({})])}
+// VIP-7 public static matcher sidecars; rule: docs/design/vips/0007-match.md#657559a63a4145df
