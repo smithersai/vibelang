@@ -446,7 +446,46 @@ const moduleExtractionTwins: Rule = {
   }
 }
 
-export const rules: Rule[] = [resolutionClaims, configKeys, importStyleScope, declarationImportForm, deniedVipRepairs, retiredForms, platformImports, counterpartUsing, collisionConditional, rulingClaims, compilerGaps, moduleExtractionTwins]
+// A relative link into docs/design names a file that exists and a heading or
+// <a id> in it. Round 16: Appendix C linked `0025-inline-modules-denied, superseded
+// by VIP-40.md`, and 004 linked a 003 heading the simplify pass had removed.
+const anchorSlug = (heading: string) =>
+  heading.replace(/`/g, "").trim().toLowerCase().replace(/[^\p{L}\p{N}\s_-]/gu, "").replace(/\s/g, "-")
+const anchorsOf = (text: string) => {
+  const anchors = new Set([...text.matchAll(/<a id="([^"]+)"/g)].map(m => m[1]!))
+  const seen = new Map<string, number>()
+  for (const m of prose(text).matchAll(/^#+ (.+)$/gm)) {
+    const slug = anchorSlug(m[1]!)
+    const count = seen.get(slug) ?? 0
+    anchors.add(count ? `${slug}-${count}` : slug)
+    seen.set(slug, count + 1)
+  }
+  return anchors
+}
+const specLinks: Rule = {
+  name: "spec-links",
+  finding: "r16 OPUS-6, OPUS-7: a chapter links a VIP file or heading that does not exist",
+  check(spec) {
+    const out: Violation[] = []
+    const anchors = new Map([...spec].map(([file, text]) => [file, anchorsOf(text)]))
+    for (const [file, text] of spec) {
+      const dir = file.split("/")[0]!
+      for (const m of prose(text).matchAll(/\]\(((?:\.\.\/(?:src|vips)\/|\d{3}-|\d{4}-|#)[^)]*)\)/g)) {
+        const [path, anchor] = m[1]!.split("#") as [string, string | undefined]
+        if (path.includes("/tc39-") || (path && !path.endsWith(".md") && !path.includes(" "))) continue // vendored proposals are not in the Spec map
+        const target = !path ? file : path.startsWith("../") ? path.slice(3) : `${dir}/${path}`
+        if (!spec.has(target)) {
+          out.push({ rule: this.name, file, line: lineAt(text, m.index!), message: `links ${m[1]}, which is no file` })
+        } else if (anchor && !anchors.get(target)!.has(anchor)) {
+          out.push({ rule: this.name, file, line: lineAt(text, m.index!), message: `links ${m[1]}, which is no heading or anchor of ${target}` })
+        }
+      }
+    }
+    return out
+  }
+}
+
+export const rules: Rule[] = [specLinks, resolutionClaims, configKeys, importStyleScope, declarationImportForm, deniedVipRepairs, retiredForms, platformImports, counterpartUsing, collisionConditional, rulingClaims, compilerGaps, moduleExtractionTwins]
 
 const kinds: Record<string, string[]> = {
   registry: ["config-keys"],

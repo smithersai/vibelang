@@ -373,3 +373,10 @@ test("native TypeScript preserves JSX in virtual tsx files and rejects it in ts 
 // the VIP still records as an EK9100 refusal. Keep that integration obligation
 // explicit until the mapper exposes separate virtual body files.
 test.todo("rule-evidence: docs/design/vips/0040-module-declarations.md#tooling | project module bodies from .vibe and .vibex through stock TypeScript with and without JSX | present | It projects each body as its own virtual `.ts` file for a body in `.vibe`, or `.tsx` for one in `.vibex`, retaining the body’s source language variant even when it contains no JSX ([VIP-39](0039-vibex.md#decision)).")
+
+test("spec-links rejects round 16's VIP-25 link and removed heading", () => {
+  const badFile = withEdit("src/900-appendices.md", text => text.replace("../vips/0025-inline-modules-denied.md", "../vips/0025-inline-modules-denied, superseded by VIP-40.md"))
+  expect(lint(badFile, rule("spec-links")).map(v => v.message)).toEqual([expect.stringContaining("which is no file")])
+  const badAnchor = withEdit("src/004-match.md", text => text + "\n[Thrown](003-failures.md#thrown-type-by-kind-of-callable)\n")
+  expect(lint(badAnchor, rule("spec-links")).map(v => v.message)).toEqual([expect.stringContaining("no heading or anchor")])
+})
