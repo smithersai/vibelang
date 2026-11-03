@@ -421,7 +421,7 @@ export default defineConfig({
 
 The starter already includes this configuration. `bun run test` checks and compiles source tests without a prior build. See [TestClock](/testing/063-testclock) for tests with virtual time.
 
-Lint `.vibe` files with ESLint through `vibelang/eslint`, the parser the `vibelang` package ships. The compiler parses each file, and ESLint gets the tree typescript-eslint gives it for TypeScript: typescript-eslint's rules and plugins such as `eslint-plugin-import`, `eslint-plugin-jsdoc`, and `eslint-plugin-unicorn` apply unchanged. Install `eslint` and `typescript-eslint` 8 beside `vibelang`; the parser uses typescript-eslint's scope analysis.
+Lint `.vibe` and `.vibex` files with ESLint through `vibelang/eslint`, the parser the `vibelang` package ships. The compiler parses each file, and ESLint gets the tree typescript-eslint gives it for TypeScript: typescript-eslint's rules and plugins such as `eslint-plugin-import`, `eslint-plugin-jsdoc`, and `eslint-plugin-unicorn` apply unchanged. Install `eslint` and `typescript-eslint` 8 beside `vibelang`; the parser uses typescript-eslint's scope analysis.
 
 ```js
 // eslint.config.js
@@ -429,34 +429,36 @@ import tseslint from "typescript-eslint"
 import vibelang from "vibelang/eslint"
 
 export default tseslint.config({
-  files: ["src/**/*.vibe"],
+  files: ["src/**/*.{vibe,vibex}"],
   extends: [tseslint.configs.recommended],
   languageOptions: { parser: vibelang }
 })
 ```
 
-Reports, fixes, and `// eslint-disable-next-line` comments land on the `.vibe` text. Adjacent type-list openings, such as `F<<T>(x: T) => T>`, are separate `<` tokens; a written left shift remains a single `<<` token. When an `is` pattern captures its subject, the lint tree uses `VibeIsExpression` with `callee` and `arguments` visitor keys. Its matcher retains its lexical scope and its subject is visited once; the generated invocation is not a written call. Rules still visit calls you write in the subject or a guard. Rules that need type information, such as `@typescript-eslint/no-unnecessary-type-assertion`, cannot run on a `.vibe` file, since no TypeScript program loads one: enable them for `.ts` files only and check types with `vibelang --noEmit`. EK4801-EK4825 stay in the compiler and the language server. To see the tree a rule reads, run `vibelang --estree main.vibe < main.vibe`. Pattern bindings keep their assignment child under `VibePatternAssignment`, whose `expression` visitor key lets scope analysis distinguish reads from writes. Compiler-generated constant-true steps do not trigger `no-constant-binary-expression`; constants and comma expressions written in the source still do.
+`.vibex` enables JSX with the same ESTree nodes, ranges and tokens as TypeScript JSX. React rules such as `react/jsx-key` and `react-hooks/rules-of-hooks`, and Solid's `solid/no-destructure`, read JSX directly. Component tags count as references, and comments inside JSX expression containers retain their source positions.
 
-`eslint-plugin-import` reads the exports of each module a file imports with the parser its `import/parsers` setting maps the module's extension to. Without an entry for `.vibe`, it finds no exports in a `.vibe` module, so `import/namespace`, `import/named` and `import/default` report every name a `.ts` file imports from one. Map `.vibe` to `vibelang/eslint` (`import-x/parsers` for `eslint-plugin-import-x`); the migrate flow's setup adds this entry to each ESLint configuration that loads either plugin:
+Reports, fixes, and `// eslint-disable-next-line` comments land on the `.vibe` or `.vibex` text. Adjacent type-list openings, such as `F<<T>(x: T) => T>`, are separate `<` tokens; a written left shift remains a single `<<` token. When an `is` pattern captures its subject, the lint tree uses `VibeIsExpression` with `callee` and `arguments` visitor keys. Its matcher retains its lexical scope and its subject is visited once; the generated invocation is not a written call. Rules still visit calls you write in the subject or a guard. Rules that need type information, such as `@typescript-eslint/no-unnecessary-type-assertion`, cannot run on a `.vibe` file, since no TypeScript program loads one: enable them for `.ts` files only and check types with `vibelang --noEmit`. EK4801-EK4825 stay in the compiler and the language server. To see the tree a rule reads, run `vibelang --estree main.vibe < main.vibe`. Pattern bindings keep their assignment child under `VibePatternAssignment`, whose `expression` visitor key lets scope analysis distinguish reads from writes. Compiler-generated constant-true steps do not trigger `no-constant-binary-expression`; constants and comma expressions written in the source still do.
+
+`eslint-plugin-import` reads the exports of each module a file imports with the parser its `import/parsers` setting maps the module's extension to. Without an entry for `.vibe`, it finds no exports in a `.vibe` module, so `import/namespace`, `import/named` and `import/default` report every name a `.ts` file imports from one. Map `.vibe` and `.vibex` to `vibelang/eslint` (`import-x/parsers` for `eslint-plugin-import-x`); the migrate flow's setup adds this entry to each ESLint configuration that loads either plugin:
 
 ```js
 // eslint.config.js
 export default [
-  { settings: { "import/parsers": { "vibelang/eslint": [".vibe"] } } },
+  { settings: { "import/parsers": { "vibelang/eslint": [".vibe", ".vibex"] } } },
   // ...
 ]
 ```
 
-Find unused files, exports and dependencies in `.vibe` files with [Knip](https://knip.dev) through `vibelang/knip`, a Knip [compiler](https://knip.dev/features/compilers). It gives Knip each `.vibe` module's imports, re-exports, dynamic imports and exports, and the members it reads through a namespace import, from the compiler's ESTree. Knip takes compilers only from a configuration that is code:
+Find unused files, exports and dependencies in `.vibe` and `.vibex` files with [Knip](https://knip.dev) through `vibelang/knip`, a Knip [compiler](https://knip.dev/features/compilers). It gives Knip each `.vibe` module's imports, re-exports, dynamic imports and exports, JSX component tag references, and the members it reads through a namespace import, from the compiler's ESTree. Knip takes compilers only from a configuration that is code:
 
 ```js
 // knip.config.js
 import vibelang from "vibelang/knip"
 
 export default {
-  compilers: { vibe: vibelang },
+  compilers: { vibe: vibelang, vibex: vibelang },
   // The declaration sidecars vibelang writes beside .vibe files are its output.
-  ignore: ["**/*.d.vibe.ts"]
+  ignore: ["**/*.d.vibe.ts", "**/*.d.vibex.ts"]
 }
 ```
 
@@ -464,7 +466,7 @@ Knip then resolves `./x.vibe`, reports an unused export of a `.vibe` file at its
 
 An export keeps the JSDoc tags Knip reads, such as `/** @public */`. All names in one variable declaration share its tags, as in TypeScript: `/** @public */ export const first = 1, second = 2` keeps both exports public. The adapter also keeps intervening ordinary comments and their spacing, so a comment after a JSDoc tag affects Knip attachment exactly as it does in TypeScript. A tag after an earlier statement recognizes every JavaScript line terminator, including CR, U+2028 and U+2029. JSDoc on the same line as an earlier statement follows Knip's ordinary TypeScript lookup as well.
 
-Typed lint of `.ts` files needs the types of the `.vibe` modules they import. typescript-eslint builds its program with the `typescript` it installs, which cannot read a `.vibe` file, so a type from one, imported directly or through a `.ts` barrel, is unresolved there, and type-aware rules report code that `vibelang -p` accepts, such as a non-null assertion the compiler needs. Give typescript-eslint the program `typedProgram` builds instead of `project` or `projectService`:
+Typed lint of `.ts` files needs the types of the `.vibe` and `.vibex` modules they import. typescript-eslint builds its program with the `typescript` it installs, which cannot read a `.vibe` file, so a type from one, imported directly or through a `.ts` barrel, is unresolved there, and type-aware rules report code that `vibelang -p` accepts, such as a non-null assertion the compiler needs. Give typescript-eslint the program `typedProgram` builds instead of `project` or `projectService`:
 
 ```js
 // eslint.config.js
@@ -480,7 +482,7 @@ export default tseslint.config(
     }
   },
   {
-    files: ["src/**/*.vibe"],
+    files: ["src/**/*.{vibe,vibex}"],
     extends: [tseslint.configs.recommended],
     languageOptions: { parser: vibelang }
   }

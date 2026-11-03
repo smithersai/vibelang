@@ -263,7 +263,10 @@ export function wireDeveloperTools({ root, specsFor, ts }) {
           const rooted = config === null ? null : posix.normalize(posix.join(dir, config))
           const file = rooted === null || rooted === ".oxlintrc.json" ? "eslint.config.mjs" : eslintConfigName(rooted)
           if (file !== "eslint.config.mjs") lintConfigs.set(file, rooted)
-          const pass = `eslint --config ${up}.vibelang/${file} ${paths.length ? paths.map(path => path.replace(/[.]\{([^}]+)\}/g, (all, extensions) => extensions.split(",").some(ext => /^[cm]?tsx?$/.test(ext)) ? ".vibe" : all).replace(/[.][cm]?tsx?(?=["']?$)/g, ".vibe")).join(" ") : '"**/*.vibe"'} --no-error-on-unmatched-pattern${denyWarnings ? " --max-warnings 0" : ""}`
+          const pass = `eslint --config ${up}.vibelang/${file} ${paths.length ? paths.map(path => path.replace(/[.]\{([^}]+)\}/g, (all, extensions) => {
+            const mapped = [...new Set(extensions.split(",").map(ext => ext === "tsx" ? "vibex" : /^[cm]?ts$/.test(ext) ? "vibe" : ext))]
+            return mapped.length === 1 ? "." + mapped[0] : ".{" + mapped.join(",") + "}"
+          }).replace(/[.]([cm]?ts|tsx)(?=["']?$)/g, (all, ext) => ext === "tsx" ? ".vibex" : ".vibe")).join(" ") : '"**/*.{vibe,vibex}"'} --no-error-on-unmatched-pattern${denyWarnings ? " --max-warnings 0" : ""}`
           return /--import(?:=|\s+)vibelang\/register(?=["\'\s]|$)/.test(next) ? preloadRegister(pass, words => words[0] === "eslint") : pass
         })
         // A script that runs its own ESLint pass over .vibe keeps it.
@@ -485,17 +488,20 @@ const rules = (settings = {}) => Object.fromEntries(Object.entries(settings).fla
   if (levels[level] !== "off") missing.add(name)
   return []
 }))
-const vibe = (glob) => glob.replace(/\\.\\{([^}]*)\\}$/, (all, list) => list.split(",").some((e) => /^[cm]?tsx?$/.test(e.trim())) ? ".vibe" : all).replace(/\\.[cm]?tsx?$/, ".vibe")
+const vibe = (glob) => glob.replace(/\\.\\{([^}]*)\\}$/, (all, list) => {
+  const mapped = [...new Set(list.split(",").map(e => e.trim() === "tsx" ? "vibex" : /^[cm]?ts$/.test(e.trim()) ? "vibe" : e.trim()))]
+  return mapped.length === 1 ? "." + mapped[0] : ".{" + mapped.join(",") + "}"
+}).replace(/\\.(tsx|[cm]?ts)$/, (all, ext) => ext === "tsx" ? ".vibex" : ".vibe")
 const overrides = (oxlint.overrides ?? [])
-  .map((override) => ({ files: [override.files].flat().filter((glob) => vibe(glob) !== glob || glob.endsWith(".vibe") || !/[.][a-z0-9]+$/i.test(glob)).map((glob) => vibe(glob) === glob ? [glob, "**/*.vibe"] : vibe(glob)), rules: rules(override.rules) }))
+  .map((override) => ({ files: [override.files].flat().filter((glob) => vibe(glob) !== glob || /[.]vibex?$/.test(glob) || !/[.][a-z0-9]+$/i.test(glob)).map((glob) => vibe(glob) === glob ? [glob, "**/*.{vibe,vibex}"] : vibe(glob)), rules: rules(override.rules) }))
   .filter((override) => override.files.length && Object.keys(override.rules).length)
 // Like Oxlint, ignorePatterns are relative to the lint invocation's cwd.
 const ignores = (${nativeIgnorePatterns.toString()})(oxlint.ignorePatterns ?? [])
 const correctness = levels[oxlint.categories?.correctness] !== "off"
 const configs = [
-  { ignores: [...ignores, "**/node_modules/**", "**/dist/**", "**/build/**", "**/*.d.vibe.ts"] },
-  ...(correctness && tseslint ? tseslint.configs.recommended.map((config) => ({ ...config, ...(config.plugins ? { plugins: { ...config.plugins, "@typescript-eslint": tseslint.plugin } } : {}), files: ["**/*.vibe"] })) : []),
-  { files: ["**/*.vibe"], linterOptions: { reportUnusedDisableDirectives: "off" }, languageOptions: { parser: withOxlintComments(parser, aliases) }, plugins: { oxc, ...(adaptedUnused ? { vibelang: { rules: { "no-unused-vars": adaptedUnused } } } : {}), ...(tseslint ? { "@typescript-eslint": tseslint.plugin } : {}), ...Object.fromEntries(jsPlugins) }, rules: { ...(correctness ? { "no-debugger": "error" } : {}), ...rules(oxlint.rules) } },
+  { ignores: [...ignores, "**/node_modules/**", "**/dist/**", "**/build/**", "**/*.d.vibe.ts", "**/*.d.vibex.ts"] },
+  ...(correctness && tseslint ? tseslint.configs.recommended.map((config) => ({ ...config, ...(config.plugins ? { plugins: { ...config.plugins, "@typescript-eslint": tseslint.plugin } } : {}), files: ["**/*.{vibe,vibex}"] })) : []),
+  { files: ["**/*.{vibe,vibex}"], linterOptions: { reportUnusedDisableDirectives: "off" }, languageOptions: { parser: withOxlintComments(parser, aliases) }, plugins: { oxc, ...(adaptedUnused ? { vibelang: { rules: { "no-unused-vars": adaptedUnused } } } : {}), ...(tseslint ? { "@typescript-eslint": tseslint.plugin } : {}), ...Object.fromEntries(jsPlugins) }, rules: { ...(correctness ? { "no-debugger": "error" } : {}), ...rules(oxlint.rules) } },
   ...overrides
 ]
 if (strict && missing.size) throw new Error("Oxlint rules unavailable under ESLint: " + [...missing].join(", "))

@@ -1,7 +1,7 @@
-// vibelang/eslint: an ESLint parser for .vibe files.
+// vibelang/eslint: an ESLint parser for .vibe and .vibex files.
 //
 //   import vibelang from "vibelang/eslint"
-//   export default [{ files: ["**/*.vibe"], languageOptions: { parser: vibelang } }]
+//   export default [{ files: ["**/*.{vibe,vibex}"], languageOptions: { parser: vibelang } }]
 //
 // The compiler parses the file and converts its tree to ESTree
 // (`vibelang --estree`, typescript/tsc/internal/vibelangestree): TypeScript
@@ -25,6 +25,25 @@ import { nearestProject, workspaceProject } from "./project.mjs"
 const manifest = JSON.parse(readFileSync(new URL("./package.json", import.meta.url), "utf8"))
 
 export const meta = { name: "vibelang/eslint", version: manifest.version }
+
+// Explicit JSX keys also cover hosts whose TypeScript visitor table omits JSX.
+const jsxVisitorKeys = Object.freeze({
+  JSXElement: ["openingElement", "children", "closingElement"],
+  JSXOpeningElement: ["name", "typeArguments", "attributes"],
+  JSXClosingElement: ["name"],
+  JSXFragment: ["openingFragment", "children", "closingFragment"],
+  JSXOpeningFragment: [],
+  JSXClosingFragment: [],
+  JSXAttribute: ["name", "value"],
+  JSXSpreadAttribute: ["argument"],
+  JSXExpressionContainer: ["expression"],
+  JSXEmptyExpression: [],
+  JSXSpreadChild: ["expression"],
+  JSXText: [],
+  JSXIdentifier: [],
+  JSXMemberExpression: ["object", "property"],
+  JSXNamespacedName: ["namespace", "name"]
+})
 
 /** Child keys of the ESTree node types VibeLang adds. */
 export const vibeVisitorKeys = Object.freeze({
@@ -132,18 +151,19 @@ export function parseESTree(code, filePath) {
  * Parses a .vibe file for ESLint.
  *
  * @param {string} code The file's text.
- * @param {{ filePath?: string, sourceType?: "module" | "script", lib?: string[] }} [options]
+ * @param {{ filePath?: string, sourceType?: "module" | "script", lib?: string[], jsxPragma?: string | null, jsxFragmentName?: string | null }} [options]
  */
 export function parseForESLint(code, options = {}) {
   const ast = parseESTree(code, options.filePath ?? "file.vibe")
   finish(ast, code)
   ast.sourceType = options.sourceType ?? "module"
   const { analyze, Visitor, visitorKeys: typescriptKeys } = typescriptEslint(options.filePath)
-  const visitorKeys = { ...typescriptKeys, ...vibeVisitorKeys }
+  const visitorKeys = { ...typescriptKeys, ...jsxVisitorKeys, ...vibeVisitorKeys }
   const scopeManager = withModuleScopes(Visitor, () => analyze(ast, {
     childVisitorKeys: visitorKeys,
     globalReturn: false,
-    jsxPragma: null,
+    jsxPragma: options.jsxPragma,
+    jsxFragmentName: options.jsxFragmentName,
     lib: options.lib ?? ["esnext"],
     sourceType: ast.sourceType
   }))
@@ -392,8 +412,9 @@ function projectTypeScript(project) {
 // path: x.vibe for x.d.vibe.ts, and x.vibe for a module declaration's
 // x.vibe.text.d.ts (D403). Anything else is undefined.
 function vibeSourceOf(path) {
-  if (path.endsWith(".d.vibe.ts")) return path.slice(0, -".d.vibe.ts".length) + ".vibe"
-  return /^(.+\.vibe)\.[^./\\]+\.d\.ts$/.exec(path)?.[1]
+  const sidecar = /^(.*)\.d(\.vibex?)\.ts$/.exec(path)
+  if (sidecar) return sidecar[1] + sidecar[2]
+  return /^(.+\.vibex?)\.[^./\\]+\.d\.ts$/.exec(path)?.[1]
 }
 
 // vibeDeclarations compiles project once and returns the declaration of each
@@ -418,7 +439,7 @@ function vibeDeclarations(compiler, project, root) {
       const emitted = line.slice("TSFILE: ".length).trim()
       if (!emitted.endsWith(".d.ts")) continue
       const base = resolve(parsePath(root).root, relative(out, emitted)).slice(0, -".d.ts".length)
-      const path = existsSync(base + ".vibe") ? base + ".d.vibe.ts" : base + ".d.ts"
+      const path = vibeSidecar(base) ?? base + ".d.ts"
       if (vibeSourceOf(path) !== undefined) declarations.set(path, readFileSync(emitted, "utf8"))
     }
     if (result.status !== 0 && declarations.size === 0) {
@@ -436,8 +457,17 @@ function vibeDeclarations(compiler, project, root) {
 function vibeDeclarationFor(specifier, containingFile) {
   if (!specifier.startsWith("./") && !specifier.startsWith("../")) return undefined
   const target = resolve(dirname(containingFile), specifier)
-  const base = target.endsWith(".js") ? target.slice(0, -".js".length) : target
-  return existsSync(base + ".vibe") ? base + ".d.vibe.ts" : undefined
+  const jsx = target.endsWith(".jsx")
+  const base = target.replace(/\.jsx?$/, "")
+  return vibeSidecar(base, jsx)
+}
+
+// Match source-extension priority: JSX specifiers prefer JSX sources.
+function vibeSidecar(base, jsx = false) {
+  for (const ext of jsx ? [".vibex", ".vibe"] : [".vibe", ".vibex"]) {
+    if (existsSync(base + ext)) return base + ".d" + ext + ".ts"
+  }
+  return undefined
 }
 
 export default { meta, parse, parseForESLint }

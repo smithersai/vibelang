@@ -1,0 +1,3913 @@
+[
+  {
+    "name": "selfClosing",
+    "code": "const el = <Box />;",
+    "expected": {
+      "comments": [],
+      "roots": [
+        {
+          "children": [],
+          "closingElement": null,
+          "openingElement": {
+            "attributes": [],
+            "name": {
+              "name": "Box",
+              "range": [
+                12,
+                15
+              ],
+              "type": "JSXIdentifier"
+            },
+            "range": [
+              11,
+              18
+            ],
+            "selfClosing": true,
+            "type": "JSXOpeningElement"
+          },
+          "range": [
+            11,
+            18
+          ],
+          "type": "JSXElement"
+        }
+      ],
+      "tokens": [
+        {
+          "range": [
+            0,
+            5
+          ],
+          "type": "Keyword",
+          "value": "const"
+        },
+        {
+          "range": [
+            6,
+            8
+          ],
+          "type": "Identifier",
+          "value": "el"
+        },
+        {
+          "range": [
+            9,
+            10
+          ],
+          "type": "Punctuator",
+          "value": "="
+        },
+        {
+          "range": [
+            11,
+            12
+          ],
+          "type": "Punctuator",
+          "value": "<"
+        },
+        {
+          "range": [
+            12,
+            15
+          ],
+          "type": "JSXIdentifier",
+          "value": "Box"
+        },
+        {
+          "range": [
+            16,
+            17
+          ],
+          "type": "Punctuator",
+          "value": "/"
+        },
+        {
+          "range": [
+            17,
+            18
+          ],
+          "type": "Punctuator",
+          "value": ">"
+        },
+        {
+          "range": [
+            18,
+            19
+          ],
+          "type": "Punctuator",
+          "value": ";"
+        }
+      ]
+    }
+  },
+  {
+    "name": "attributes",
+    "code": "const el = <input disabled data-name=\"a&amp;b\" title='é😀 &quot; &#x1f600;' value={x} {...props} />;",
+    "expected": {
+      "comments": [],
+      "roots": [
+        {
+          "children": [],
+          "closingElement": null,
+          "openingElement": {
+            "attributes": [
+              {
+                "name": {
+                  "name": "disabled",
+                  "range": [
+                    18,
+                    26
+                  ],
+                  "type": "JSXIdentifier"
+                },
+                "range": [
+                  18,
+                  26
+                ],
+                "type": "JSXAttribute",
+                "value": null
+              },
+              {
+                "name": {
+                  "name": "data-name",
+                  "range": [
+                    27,
+                    36
+                  ],
+                  "type": "JSXIdentifier"
+                },
+                "range": [
+                  27,
+                  46
+                ],
+                "type": "JSXAttribute",
+                "value": {
+                  "range": [
+                    37,
+                    46
+                  ],
+                  "raw": "\"a&amp;b\"",
+                  "type": "Literal",
+                  "value": "a&b"
+                }
+              },
+              {
+                "name": {
+                  "name": "title",
+                  "range": [
+                    47,
+                    52
+                  ],
+                  "type": "JSXIdentifier"
+                },
+                "range": [
+                  47,
+                  75
+                ],
+                "type": "JSXAttribute",
+                "value": {
+                  "range": [
+                    53,
+                    75
+                  ],
+                  "raw": "'é😀 &quot; &#x1f600;'",
+                  "type": "Literal",
+                  "value": "é😀 \" 😀"
+                }
+              },
+              {
+                "name": {
+                  "name": "value",
+                  "range": [
+                    76,
+                    81
+                  ],
+                  "type": "JSXIdentifier"
+                },
+                "range": [
+                  76,
+                  85
+                ],
+                "type": "JSXAttribute",
+                "value": {
+                  "expression": {
+                    "decorators": [],
+                    "name": "x",
+                    "optional": false,
+                    "range": [
+                      83,
+                      84
+                    ],
+                    "type": "Identifier"
+                  },
+                  "range": [
+                    82,
+                    85
+                  ],
+                  "type": "JSXExpressionContainer"
+                }
+              },
+              {
+                "argument": {
+                  "decorators": [],
+                  "name": "props",
+                  "optional": false,
+                  "range": [
+                    90,
+                    95
+                  ],
+                  "type": "Identifier"
+                },
+                "range": [
+                  86,
+                  96
+                ],
+                "type": "JSXSpreadAttribute"
+              }
+            ],
+            "name": {
+              "name": "input",
+              "range": [
+                12,
+                17
+              ],
+              "type": "JSXIdentifier"
+            },
+            "range": [
+              11,
+              99
+            ],
+            "selfClosing": true,
+            "type": "JSXOpeningElement"
+          },
+          "range": [
+            11,
+            99
+          ],
+          "type": "JSXElement"
+        }
+      ],
+      "tokens": [
+        {
+          "range": [
+            0,
+            5
+          ],
+          "type": "Keyword",
+          "value": "const"
+        },
+        {
+          "range": [
+            6,
+            8
+          ],
+          "type": "Identifier",
+          "value": "el"
+        },
+        {
+          "range": [
+            9,
+            10
+          ],
+          "type": "Punctuator",
+          "value": "="
+        },
+        {
+          "range": [
+            11,
+            12
+          ],
+          "type": "Punctuator",
+          "value": "<"
+        },
+        {
+          "range": [
+            12,
+            17
+          ],
+          "type": "JSXIdentifier",
+          "value": "input"
+        },
+        {
+          "range": [
+            18,
+            26
+          ],
+          "type": "JSXIdentifier",
+          "value": "disabled"
+        },
+        {
+          "range": [
+            27,
+            36
+          ],
+          "type": "JSXIdentifier",
+          "value": "data-name"
+        },
+        {
+          "range": [
+            36,
+            37
+          ],
+          "type": "Punctuator",
+          "value": "="
+        },
+        {
+          "range": [
+            37,
+            46
+          ],
+          "type": "JSXText",
+          "value": "\"a&amp;b\""
+        },
+        {
+          "range": [
+            47,
+            52
+          ],
+          "type": "JSXIdentifier",
+          "value": "title"
+        },
+        {
+          "range": [
+            52,
+            53
+          ],
+          "type": "Punctuator",
+          "value": "="
+        },
+        {
+          "range": [
+            53,
+            75
+          ],
+          "type": "JSXText",
+          "value": "'é😀 &quot; &#x1f600;'"
+        },
+        {
+          "range": [
+            76,
+            81
+          ],
+          "type": "JSXIdentifier",
+          "value": "value"
+        },
+        {
+          "range": [
+            81,
+            82
+          ],
+          "type": "Punctuator",
+          "value": "="
+        },
+        {
+          "range": [
+            82,
+            83
+          ],
+          "type": "Punctuator",
+          "value": "{"
+        },
+        {
+          "range": [
+            83,
+            84
+          ],
+          "type": "Identifier",
+          "value": "x"
+        },
+        {
+          "range": [
+            84,
+            85
+          ],
+          "type": "Punctuator",
+          "value": "}"
+        },
+        {
+          "range": [
+            86,
+            87
+          ],
+          "type": "Punctuator",
+          "value": "{"
+        },
+        {
+          "range": [
+            87,
+            90
+          ],
+          "type": "Punctuator",
+          "value": "..."
+        },
+        {
+          "range": [
+            90,
+            95
+          ],
+          "type": "Identifier",
+          "value": "props"
+        },
+        {
+          "range": [
+            95,
+            96
+          ],
+          "type": "Punctuator",
+          "value": "}"
+        },
+        {
+          "range": [
+            97,
+            98
+          ],
+          "type": "Punctuator",
+          "value": "/"
+        },
+        {
+          "range": [
+            98,
+            99
+          ],
+          "type": "Punctuator",
+          "value": ">"
+        },
+        {
+          "range": [
+            99,
+            100
+          ],
+          "type": "Punctuator",
+          "value": ";"
+        }
+      ]
+    }
+  },
+  {
+    "name": "elements",
+    "code": "const el = <UI.Forms.Box><span>Hello &lt;world&gt; &#65; &#x1f600;!</span>{value}</UI.Forms.Box>;",
+    "expected": {
+      "comments": [],
+      "roots": [
+        {
+          "children": [
+            {
+              "children": [
+                {
+                  "range": [
+                    31,
+                    67
+                  ],
+                  "raw": "Hello &lt;world&gt; &#65; &#x1f600;!",
+                  "type": "JSXText",
+                  "value": "Hello <world> A 😀!"
+                }
+              ],
+              "closingElement": {
+                "name": {
+                  "name": "span",
+                  "range": [
+                    69,
+                    73
+                  ],
+                  "type": "JSXIdentifier"
+                },
+                "range": [
+                  67,
+                  74
+                ],
+                "type": "JSXClosingElement"
+              },
+              "openingElement": {
+                "attributes": [],
+                "name": {
+                  "name": "span",
+                  "range": [
+                    26,
+                    30
+                  ],
+                  "type": "JSXIdentifier"
+                },
+                "range": [
+                  25,
+                  31
+                ],
+                "selfClosing": false,
+                "type": "JSXOpeningElement"
+              },
+              "range": [
+                25,
+                74
+              ],
+              "type": "JSXElement"
+            },
+            {
+              "expression": {
+                "decorators": [],
+                "name": "value",
+                "optional": false,
+                "range": [
+                  75,
+                  80
+                ],
+                "type": "Identifier"
+              },
+              "range": [
+                74,
+                81
+              ],
+              "type": "JSXExpressionContainer"
+            }
+          ],
+          "closingElement": {
+            "name": {
+              "object": {
+                "object": {
+                  "name": "UI",
+                  "range": [
+                    83,
+                    85
+                  ],
+                  "type": "JSXIdentifier"
+                },
+                "property": {
+                  "name": "Forms",
+                  "range": [
+                    86,
+                    91
+                  ],
+                  "type": "JSXIdentifier"
+                },
+                "range": [
+                  83,
+                  91
+                ],
+                "type": "JSXMemberExpression"
+              },
+              "property": {
+                "name": "Box",
+                "range": [
+                  92,
+                  95
+                ],
+                "type": "JSXIdentifier"
+              },
+              "range": [
+                83,
+                95
+              ],
+              "type": "JSXMemberExpression"
+            },
+            "range": [
+              81,
+              96
+            ],
+            "type": "JSXClosingElement"
+          },
+          "openingElement": {
+            "attributes": [],
+            "name": {
+              "object": {
+                "object": {
+                  "name": "UI",
+                  "range": [
+                    12,
+                    14
+                  ],
+                  "type": "JSXIdentifier"
+                },
+                "property": {
+                  "name": "Forms",
+                  "range": [
+                    15,
+                    20
+                  ],
+                  "type": "JSXIdentifier"
+                },
+                "range": [
+                  12,
+                  20
+                ],
+                "type": "JSXMemberExpression"
+              },
+              "property": {
+                "name": "Box",
+                "range": [
+                  21,
+                  24
+                ],
+                "type": "JSXIdentifier"
+              },
+              "range": [
+                12,
+                24
+              ],
+              "type": "JSXMemberExpression"
+            },
+            "range": [
+              11,
+              25
+            ],
+            "selfClosing": false,
+            "type": "JSXOpeningElement"
+          },
+          "range": [
+            11,
+            96
+          ],
+          "type": "JSXElement"
+        }
+      ],
+      "tokens": [
+        {
+          "range": [
+            0,
+            5
+          ],
+          "type": "Keyword",
+          "value": "const"
+        },
+        {
+          "range": [
+            6,
+            8
+          ],
+          "type": "Identifier",
+          "value": "el"
+        },
+        {
+          "range": [
+            9,
+            10
+          ],
+          "type": "Punctuator",
+          "value": "="
+        },
+        {
+          "range": [
+            11,
+            12
+          ],
+          "type": "Punctuator",
+          "value": "<"
+        },
+        {
+          "range": [
+            12,
+            14
+          ],
+          "type": "JSXIdentifier",
+          "value": "UI"
+        },
+        {
+          "range": [
+            14,
+            15
+          ],
+          "type": "Punctuator",
+          "value": "."
+        },
+        {
+          "range": [
+            15,
+            20
+          ],
+          "type": "JSXIdentifier",
+          "value": "Forms"
+        },
+        {
+          "range": [
+            20,
+            21
+          ],
+          "type": "Punctuator",
+          "value": "."
+        },
+        {
+          "range": [
+            21,
+            24
+          ],
+          "type": "JSXIdentifier",
+          "value": "Box"
+        },
+        {
+          "range": [
+            24,
+            25
+          ],
+          "type": "Punctuator",
+          "value": ">"
+        },
+        {
+          "range": [
+            25,
+            26
+          ],
+          "type": "Punctuator",
+          "value": "<"
+        },
+        {
+          "range": [
+            26,
+            30
+          ],
+          "type": "JSXIdentifier",
+          "value": "span"
+        },
+        {
+          "range": [
+            30,
+            31
+          ],
+          "type": "Punctuator",
+          "value": ">"
+        },
+        {
+          "range": [
+            31,
+            67
+          ],
+          "type": "JSXText",
+          "value": "Hello &lt;world&gt; &#65; &#x1f600;!"
+        },
+        {
+          "range": [
+            67,
+            68
+          ],
+          "type": "Punctuator",
+          "value": "<"
+        },
+        {
+          "range": [
+            68,
+            69
+          ],
+          "type": "Punctuator",
+          "value": "/"
+        },
+        {
+          "range": [
+            69,
+            73
+          ],
+          "type": "JSXIdentifier",
+          "value": "span"
+        },
+        {
+          "range": [
+            73,
+            74
+          ],
+          "type": "Punctuator",
+          "value": ">"
+        },
+        {
+          "range": [
+            74,
+            75
+          ],
+          "type": "Punctuator",
+          "value": "{"
+        },
+        {
+          "range": [
+            75,
+            80
+          ],
+          "type": "Identifier",
+          "value": "value"
+        },
+        {
+          "range": [
+            80,
+            81
+          ],
+          "type": "Punctuator",
+          "value": "}"
+        },
+        {
+          "range": [
+            81,
+            82
+          ],
+          "type": "Punctuator",
+          "value": "<"
+        },
+        {
+          "range": [
+            82,
+            83
+          ],
+          "type": "Punctuator",
+          "value": "/"
+        },
+        {
+          "range": [
+            83,
+            85
+          ],
+          "type": "JSXIdentifier",
+          "value": "UI"
+        },
+        {
+          "range": [
+            85,
+            86
+          ],
+          "type": "Punctuator",
+          "value": "."
+        },
+        {
+          "range": [
+            86,
+            91
+          ],
+          "type": "JSXIdentifier",
+          "value": "Forms"
+        },
+        {
+          "range": [
+            91,
+            92
+          ],
+          "type": "Punctuator",
+          "value": "."
+        },
+        {
+          "range": [
+            92,
+            95
+          ],
+          "type": "JSXIdentifier",
+          "value": "Box"
+        },
+        {
+          "range": [
+            95,
+            96
+          ],
+          "type": "Punctuator",
+          "value": ">"
+        },
+        {
+          "range": [
+            96,
+            97
+          ],
+          "type": "Punctuator",
+          "value": ";"
+        }
+      ]
+    }
+  },
+  {
+    "name": "fragments",
+    "code": "const el = <>\n  <Box />\n  text // not a comment /* neither */\n</>;",
+    "expected": {
+      "comments": [],
+      "roots": [
+        {
+          "children": [
+            {
+              "range": [
+                13,
+                16
+              ],
+              "raw": "\n  ",
+              "type": "JSXText",
+              "value": "\n  "
+            },
+            {
+              "children": [],
+              "closingElement": null,
+              "openingElement": {
+                "attributes": [],
+                "name": {
+                  "name": "Box",
+                  "range": [
+                    17,
+                    20
+                  ],
+                  "type": "JSXIdentifier"
+                },
+                "range": [
+                  16,
+                  23
+                ],
+                "selfClosing": true,
+                "type": "JSXOpeningElement"
+              },
+              "range": [
+                16,
+                23
+              ],
+              "type": "JSXElement"
+            },
+            {
+              "range": [
+                23,
+                62
+              ],
+              "raw": "\n  text // not a comment /* neither */\n",
+              "type": "JSXText",
+              "value": "\n  text // not a comment /* neither */\n"
+            }
+          ],
+          "closingFragment": {
+            "range": [
+              62,
+              65
+            ],
+            "type": "JSXClosingFragment"
+          },
+          "openingFragment": {
+            "range": [
+              11,
+              13
+            ],
+            "type": "JSXOpeningFragment"
+          },
+          "range": [
+            11,
+            65
+          ],
+          "type": "JSXFragment"
+        }
+      ],
+      "tokens": [
+        {
+          "range": [
+            0,
+            5
+          ],
+          "type": "Keyword",
+          "value": "const"
+        },
+        {
+          "range": [
+            6,
+            8
+          ],
+          "type": "Identifier",
+          "value": "el"
+        },
+        {
+          "range": [
+            9,
+            10
+          ],
+          "type": "Punctuator",
+          "value": "="
+        },
+        {
+          "range": [
+            11,
+            12
+          ],
+          "type": "Punctuator",
+          "value": "<"
+        },
+        {
+          "range": [
+            12,
+            13
+          ],
+          "type": "Punctuator",
+          "value": ">"
+        },
+        {
+          "range": [
+            13,
+            16
+          ],
+          "type": "JSXText",
+          "value": "\n  "
+        },
+        {
+          "range": [
+            16,
+            17
+          ],
+          "type": "Punctuator",
+          "value": "<"
+        },
+        {
+          "range": [
+            17,
+            20
+          ],
+          "type": "JSXIdentifier",
+          "value": "Box"
+        },
+        {
+          "range": [
+            21,
+            22
+          ],
+          "type": "Punctuator",
+          "value": "/"
+        },
+        {
+          "range": [
+            22,
+            23
+          ],
+          "type": "Punctuator",
+          "value": ">"
+        },
+        {
+          "range": [
+            23,
+            62
+          ],
+          "type": "JSXText",
+          "value": "\n  text // not a comment /* neither */\n"
+        },
+        {
+          "range": [
+            62,
+            63
+          ],
+          "type": "Punctuator",
+          "value": "<"
+        },
+        {
+          "range": [
+            63,
+            64
+          ],
+          "type": "Punctuator",
+          "value": "/"
+        },
+        {
+          "range": [
+            64,
+            65
+          ],
+          "type": "Punctuator",
+          "value": ">"
+        },
+        {
+          "range": [
+            65,
+            66
+          ],
+          "type": "Punctuator",
+          "value": ";"
+        }
+      ]
+    }
+  },
+  {
+    "name": "namespaced",
+    "code": "const el = <svg:path xml:lang=\"en\" foo-bar:baz-qux=\"x\" />;",
+    "expected": {
+      "comments": [],
+      "roots": [
+        {
+          "children": [],
+          "closingElement": null,
+          "openingElement": {
+            "attributes": [
+              {
+                "name": {
+                  "name": {
+                    "name": "lang",
+                    "range": [
+                      25,
+                      29
+                    ],
+                    "type": "JSXIdentifier"
+                  },
+                  "namespace": {
+                    "name": "xml",
+                    "range": [
+                      21,
+                      24
+                    ],
+                    "type": "JSXIdentifier"
+                  },
+                  "range": [
+                    21,
+                    29
+                  ],
+                  "type": "JSXNamespacedName"
+                },
+                "range": [
+                  21,
+                  34
+                ],
+                "type": "JSXAttribute",
+                "value": {
+                  "range": [
+                    30,
+                    34
+                  ],
+                  "raw": "\"en\"",
+                  "type": "Literal",
+                  "value": "en"
+                }
+              },
+              {
+                "name": {
+                  "name": {
+                    "name": "baz-qux",
+                    "range": [
+                      43,
+                      50
+                    ],
+                    "type": "JSXIdentifier"
+                  },
+                  "namespace": {
+                    "name": "foo-bar",
+                    "range": [
+                      35,
+                      42
+                    ],
+                    "type": "JSXIdentifier"
+                  },
+                  "range": [
+                    35,
+                    50
+                  ],
+                  "type": "JSXNamespacedName"
+                },
+                "range": [
+                  35,
+                  54
+                ],
+                "type": "JSXAttribute",
+                "value": {
+                  "range": [
+                    51,
+                    54
+                  ],
+                  "raw": "\"x\"",
+                  "type": "Literal",
+                  "value": "x"
+                }
+              }
+            ],
+            "name": {
+              "name": {
+                "name": "path",
+                "range": [
+                  16,
+                  20
+                ],
+                "type": "JSXIdentifier"
+              },
+              "namespace": {
+                "name": "svg",
+                "range": [
+                  12,
+                  15
+                ],
+                "type": "JSXIdentifier"
+              },
+              "range": [
+                12,
+                20
+              ],
+              "type": "JSXNamespacedName"
+            },
+            "range": [
+              11,
+              57
+            ],
+            "selfClosing": true,
+            "type": "JSXOpeningElement"
+          },
+          "range": [
+            11,
+            57
+          ],
+          "type": "JSXElement"
+        }
+      ],
+      "tokens": [
+        {
+          "range": [
+            0,
+            5
+          ],
+          "type": "Keyword",
+          "value": "const"
+        },
+        {
+          "range": [
+            6,
+            8
+          ],
+          "type": "Identifier",
+          "value": "el"
+        },
+        {
+          "range": [
+            9,
+            10
+          ],
+          "type": "Punctuator",
+          "value": "="
+        },
+        {
+          "range": [
+            11,
+            12
+          ],
+          "type": "Punctuator",
+          "value": "<"
+        },
+        {
+          "range": [
+            12,
+            15
+          ],
+          "type": "Identifier",
+          "value": "svg"
+        },
+        {
+          "range": [
+            15,
+            16
+          ],
+          "type": "Punctuator",
+          "value": ":"
+        },
+        {
+          "range": [
+            16,
+            20
+          ],
+          "type": "Identifier",
+          "value": "path"
+        },
+        {
+          "range": [
+            21,
+            24
+          ],
+          "type": "Identifier",
+          "value": "xml"
+        },
+        {
+          "range": [
+            24,
+            25
+          ],
+          "type": "Punctuator",
+          "value": ":"
+        },
+        {
+          "range": [
+            25,
+            29
+          ],
+          "type": "Identifier",
+          "value": "lang"
+        },
+        {
+          "range": [
+            29,
+            30
+          ],
+          "type": "Punctuator",
+          "value": "="
+        },
+        {
+          "range": [
+            30,
+            34
+          ],
+          "type": "JSXText",
+          "value": "\"en\""
+        },
+        {
+          "range": [
+            35,
+            42
+          ],
+          "type": "Identifier",
+          "value": "foo-bar"
+        },
+        {
+          "range": [
+            42,
+            43
+          ],
+          "type": "Punctuator",
+          "value": ":"
+        },
+        {
+          "range": [
+            43,
+            50
+          ],
+          "type": "Identifier",
+          "value": "baz-qux"
+        },
+        {
+          "range": [
+            50,
+            51
+          ],
+          "type": "Punctuator",
+          "value": "="
+        },
+        {
+          "range": [
+            51,
+            54
+          ],
+          "type": "JSXText",
+          "value": "\"x\""
+        },
+        {
+          "range": [
+            55,
+            56
+          ],
+          "type": "Punctuator",
+          "value": "/"
+        },
+        {
+          "range": [
+            56,
+            57
+          ],
+          "type": "Punctuator",
+          "value": ">"
+        },
+        {
+          "range": [
+            57,
+            58
+          ],
+          "type": "Punctuator",
+          "value": ";"
+        }
+      ]
+    }
+  },
+  {
+    "name": "expressions",
+    "code": "const el = <Box>{/* keep 😀 */}{ }{...children}{/a/.test(s) ? <b/> : null}{`x${n}`}</Box>;",
+    "expected": {
+      "comments": [
+        {
+          "range": [
+            17,
+            30
+          ],
+          "type": "Block",
+          "value": " keep 😀 "
+        }
+      ],
+      "roots": [
+        {
+          "children": [
+            {
+              "expression": {
+                "range": [
+                  17,
+                  30
+                ],
+                "type": "JSXEmptyExpression"
+              },
+              "range": [
+                16,
+                31
+              ],
+              "type": "JSXExpressionContainer"
+            },
+            {
+              "expression": {
+                "range": [
+                  32,
+                  33
+                ],
+                "type": "JSXEmptyExpression"
+              },
+              "range": [
+                31,
+                34
+              ],
+              "type": "JSXExpressionContainer"
+            },
+            {
+              "expression": {
+                "decorators": [],
+                "name": "children",
+                "optional": false,
+                "range": [
+                  38,
+                  46
+                ],
+                "type": "Identifier"
+              },
+              "range": [
+                34,
+                47
+              ],
+              "type": "JSXSpreadChild"
+            },
+            {
+              "expression": {
+                "alternate": {
+                  "range": [
+                    69,
+                    73
+                  ],
+                  "raw": "null",
+                  "type": "Literal",
+                  "value": null
+                },
+                "consequent": {
+                  "children": [],
+                  "closingElement": null,
+                  "openingElement": {
+                    "attributes": [],
+                    "name": {
+                      "name": "b",
+                      "range": [
+                        63,
+                        64
+                      ],
+                      "type": "JSXIdentifier"
+                    },
+                    "range": [
+                      62,
+                      66
+                    ],
+                    "selfClosing": true,
+                    "type": "JSXOpeningElement"
+                  },
+                  "range": [
+                    62,
+                    66
+                  ],
+                  "type": "JSXElement"
+                },
+                "range": [
+                  48,
+                  73
+                ],
+                "test": {
+                  "arguments": [
+                    {
+                      "decorators": [],
+                      "name": "s",
+                      "optional": false,
+                      "range": [
+                        57,
+                        58
+                      ],
+                      "type": "Identifier"
+                    }
+                  ],
+                  "callee": {
+                    "computed": false,
+                    "object": {
+                      "range": [
+                        48,
+                        51
+                      ],
+                      "raw": "/a/",
+                      "regex": {
+                        "flags": "",
+                        "pattern": "a"
+                      },
+                      "type": "Literal",
+                      "value": null
+                    },
+                    "optional": false,
+                    "property": {
+                      "decorators": [],
+                      "name": "test",
+                      "optional": false,
+                      "range": [
+                        52,
+                        56
+                      ],
+                      "type": "Identifier"
+                    },
+                    "range": [
+                      48,
+                      56
+                    ],
+                    "type": "MemberExpression"
+                  },
+                  "optional": false,
+                  "range": [
+                    48,
+                    59
+                  ],
+                  "type": "CallExpression"
+                },
+                "type": "ConditionalExpression"
+              },
+              "range": [
+                47,
+                74
+              ],
+              "type": "JSXExpressionContainer"
+            },
+            {
+              "expression": {
+                "expressions": [
+                  {
+                    "decorators": [],
+                    "name": "n",
+                    "optional": false,
+                    "range": [
+                      79,
+                      80
+                    ],
+                    "type": "Identifier"
+                  }
+                ],
+                "quasis": [
+                  {
+                    "range": [
+                      75,
+                      79
+                    ],
+                    "tail": false,
+                    "type": "TemplateElement",
+                    "value": {
+                      "cooked": "x",
+                      "raw": "x"
+                    }
+                  },
+                  {
+                    "range": [
+                      80,
+                      82
+                    ],
+                    "tail": true,
+                    "type": "TemplateElement",
+                    "value": {
+                      "cooked": "",
+                      "raw": ""
+                    }
+                  }
+                ],
+                "range": [
+                  75,
+                  82
+                ],
+                "type": "TemplateLiteral"
+              },
+              "range": [
+                74,
+                83
+              ],
+              "type": "JSXExpressionContainer"
+            }
+          ],
+          "closingElement": {
+            "name": {
+              "name": "Box",
+              "range": [
+                85,
+                88
+              ],
+              "type": "JSXIdentifier"
+            },
+            "range": [
+              83,
+              89
+            ],
+            "type": "JSXClosingElement"
+          },
+          "openingElement": {
+            "attributes": [],
+            "name": {
+              "name": "Box",
+              "range": [
+                12,
+                15
+              ],
+              "type": "JSXIdentifier"
+            },
+            "range": [
+              11,
+              16
+            ],
+            "selfClosing": false,
+            "type": "JSXOpeningElement"
+          },
+          "range": [
+            11,
+            89
+          ],
+          "type": "JSXElement"
+        }
+      ],
+      "tokens": [
+        {
+          "range": [
+            0,
+            5
+          ],
+          "type": "Keyword",
+          "value": "const"
+        },
+        {
+          "range": [
+            6,
+            8
+          ],
+          "type": "Identifier",
+          "value": "el"
+        },
+        {
+          "range": [
+            9,
+            10
+          ],
+          "type": "Punctuator",
+          "value": "="
+        },
+        {
+          "range": [
+            11,
+            12
+          ],
+          "type": "Punctuator",
+          "value": "<"
+        },
+        {
+          "range": [
+            12,
+            15
+          ],
+          "type": "JSXIdentifier",
+          "value": "Box"
+        },
+        {
+          "range": [
+            15,
+            16
+          ],
+          "type": "Punctuator",
+          "value": ">"
+        },
+        {
+          "range": [
+            16,
+            17
+          ],
+          "type": "Punctuator",
+          "value": "{"
+        },
+        {
+          "range": [
+            30,
+            31
+          ],
+          "type": "Punctuator",
+          "value": "}"
+        },
+        {
+          "range": [
+            31,
+            32
+          ],
+          "type": "Punctuator",
+          "value": "{"
+        },
+        {
+          "range": [
+            33,
+            34
+          ],
+          "type": "Punctuator",
+          "value": "}"
+        },
+        {
+          "range": [
+            34,
+            35
+          ],
+          "type": "Punctuator",
+          "value": "{"
+        },
+        {
+          "range": [
+            35,
+            38
+          ],
+          "type": "Punctuator",
+          "value": "..."
+        },
+        {
+          "range": [
+            38,
+            46
+          ],
+          "type": "Identifier",
+          "value": "children"
+        },
+        {
+          "range": [
+            46,
+            47
+          ],
+          "type": "Punctuator",
+          "value": "}"
+        },
+        {
+          "range": [
+            47,
+            48
+          ],
+          "type": "Punctuator",
+          "value": "{"
+        },
+        {
+          "range": [
+            48,
+            51
+          ],
+          "regex": {
+            "flags": "",
+            "pattern": "a"
+          },
+          "type": "RegularExpression",
+          "value": "/a/"
+        },
+        {
+          "range": [
+            51,
+            52
+          ],
+          "type": "Punctuator",
+          "value": "."
+        },
+        {
+          "range": [
+            52,
+            56
+          ],
+          "type": "JSXIdentifier",
+          "value": "test"
+        },
+        {
+          "range": [
+            56,
+            57
+          ],
+          "type": "Punctuator",
+          "value": "("
+        },
+        {
+          "range": [
+            57,
+            58
+          ],
+          "type": "Identifier",
+          "value": "s"
+        },
+        {
+          "range": [
+            58,
+            59
+          ],
+          "type": "Punctuator",
+          "value": ")"
+        },
+        {
+          "range": [
+            60,
+            61
+          ],
+          "type": "Punctuator",
+          "value": "?"
+        },
+        {
+          "range": [
+            62,
+            63
+          ],
+          "type": "Punctuator",
+          "value": "<"
+        },
+        {
+          "range": [
+            63,
+            64
+          ],
+          "type": "JSXIdentifier",
+          "value": "b"
+        },
+        {
+          "range": [
+            64,
+            65
+          ],
+          "type": "Punctuator",
+          "value": "/"
+        },
+        {
+          "range": [
+            65,
+            66
+          ],
+          "type": "Punctuator",
+          "value": ">"
+        },
+        {
+          "range": [
+            67,
+            68
+          ],
+          "type": "Punctuator",
+          "value": ":"
+        },
+        {
+          "range": [
+            69,
+            73
+          ],
+          "type": "Null",
+          "value": "null"
+        },
+        {
+          "range": [
+            73,
+            74
+          ],
+          "type": "Punctuator",
+          "value": "}"
+        },
+        {
+          "range": [
+            74,
+            75
+          ],
+          "type": "Punctuator",
+          "value": "{"
+        },
+        {
+          "range": [
+            75,
+            79
+          ],
+          "type": "Template",
+          "value": "`x${"
+        },
+        {
+          "range": [
+            79,
+            80
+          ],
+          "type": "Identifier",
+          "value": "n"
+        },
+        {
+          "range": [
+            80,
+            82
+          ],
+          "type": "Template",
+          "value": "}`"
+        },
+        {
+          "range": [
+            82,
+            83
+          ],
+          "type": "Punctuator",
+          "value": "}"
+        },
+        {
+          "range": [
+            83,
+            84
+          ],
+          "type": "Punctuator",
+          "value": "<"
+        },
+        {
+          "range": [
+            84,
+            85
+          ],
+          "type": "Punctuator",
+          "value": "/"
+        },
+        {
+          "range": [
+            85,
+            88
+          ],
+          "type": "JSXIdentifier",
+          "value": "Box"
+        },
+        {
+          "range": [
+            88,
+            89
+          ],
+          "type": "Punctuator",
+          "value": ">"
+        },
+        {
+          "range": [
+            89,
+            90
+          ],
+          "type": "Punctuator",
+          "value": ";"
+        }
+      ]
+    }
+  },
+  {
+    "name": "generics",
+    "code": "const el = <UI.Box<Foo<Bar>> value={f<Foo<Bar>>()} />;",
+    "expected": {
+      "comments": [],
+      "roots": [
+        {
+          "children": [],
+          "closingElement": null,
+          "openingElement": {
+            "attributes": [
+              {
+                "name": {
+                  "name": "value",
+                  "range": [
+                    29,
+                    34
+                  ],
+                  "type": "JSXIdentifier"
+                },
+                "range": [
+                  29,
+                  50
+                ],
+                "type": "JSXAttribute",
+                "value": {
+                  "expression": {
+                    "arguments": [],
+                    "callee": {
+                      "decorators": [],
+                      "name": "f",
+                      "optional": false,
+                      "range": [
+                        36,
+                        37
+                      ],
+                      "type": "Identifier"
+                    },
+                    "optional": false,
+                    "range": [
+                      36,
+                      49
+                    ],
+                    "type": "CallExpression",
+                    "typeArguments": {
+                      "params": [
+                        {
+                          "range": [
+                            38,
+                            46
+                          ],
+                          "type": "TSTypeReference",
+                          "typeArguments": {
+                            "params": [
+                              {
+                                "range": [
+                                  42,
+                                  45
+                                ],
+                                "type": "TSTypeReference",
+                                "typeName": {
+                                  "decorators": [],
+                                  "name": "Bar",
+                                  "optional": false,
+                                  "range": [
+                                    42,
+                                    45
+                                  ],
+                                  "type": "Identifier"
+                                }
+                              }
+                            ],
+                            "range": [
+                              41,
+                              46
+                            ],
+                            "type": "TSTypeParameterInstantiation"
+                          },
+                          "typeName": {
+                            "decorators": [],
+                            "name": "Foo",
+                            "optional": false,
+                            "range": [
+                              38,
+                              41
+                            ],
+                            "type": "Identifier"
+                          }
+                        }
+                      ],
+                      "range": [
+                        37,
+                        47
+                      ],
+                      "type": "TSTypeParameterInstantiation"
+                    }
+                  },
+                  "range": [
+                    35,
+                    50
+                  ],
+                  "type": "JSXExpressionContainer"
+                }
+              }
+            ],
+            "name": {
+              "object": {
+                "name": "UI",
+                "range": [
+                  12,
+                  14
+                ],
+                "type": "JSXIdentifier"
+              },
+              "property": {
+                "name": "Box",
+                "range": [
+                  15,
+                  18
+                ],
+                "type": "JSXIdentifier"
+              },
+              "range": [
+                12,
+                18
+              ],
+              "type": "JSXMemberExpression"
+            },
+            "range": [
+              11,
+              53
+            ],
+            "selfClosing": true,
+            "type": "JSXOpeningElement",
+            "typeArguments": {
+              "params": [
+                {
+                  "range": [
+                    19,
+                    27
+                  ],
+                  "type": "TSTypeReference",
+                  "typeArguments": {
+                    "params": [
+                      {
+                        "range": [
+                          23,
+                          26
+                        ],
+                        "type": "TSTypeReference",
+                        "typeName": {
+                          "decorators": [],
+                          "name": "Bar",
+                          "optional": false,
+                          "range": [
+                            23,
+                            26
+                          ],
+                          "type": "Identifier"
+                        }
+                      }
+                    ],
+                    "range": [
+                      22,
+                      27
+                    ],
+                    "type": "TSTypeParameterInstantiation"
+                  },
+                  "typeName": {
+                    "decorators": [],
+                    "name": "Foo",
+                    "optional": false,
+                    "range": [
+                      19,
+                      22
+                    ],
+                    "type": "Identifier"
+                  }
+                }
+              ],
+              "range": [
+                18,
+                28
+              ],
+              "type": "TSTypeParameterInstantiation"
+            }
+          },
+          "range": [
+            11,
+            53
+          ],
+          "type": "JSXElement"
+        }
+      ],
+      "tokens": [
+        {
+          "range": [
+            0,
+            5
+          ],
+          "type": "Keyword",
+          "value": "const"
+        },
+        {
+          "range": [
+            6,
+            8
+          ],
+          "type": "Identifier",
+          "value": "el"
+        },
+        {
+          "range": [
+            9,
+            10
+          ],
+          "type": "Punctuator",
+          "value": "="
+        },
+        {
+          "range": [
+            11,
+            12
+          ],
+          "type": "Punctuator",
+          "value": "<"
+        },
+        {
+          "range": [
+            12,
+            14
+          ],
+          "type": "JSXIdentifier",
+          "value": "UI"
+        },
+        {
+          "range": [
+            14,
+            15
+          ],
+          "type": "Punctuator",
+          "value": "."
+        },
+        {
+          "range": [
+            15,
+            18
+          ],
+          "type": "JSXIdentifier",
+          "value": "Box"
+        },
+        {
+          "range": [
+            18,
+            19
+          ],
+          "type": "Punctuator",
+          "value": "<"
+        },
+        {
+          "range": [
+            19,
+            22
+          ],
+          "type": "Identifier",
+          "value": "Foo"
+        },
+        {
+          "range": [
+            22,
+            23
+          ],
+          "type": "Punctuator",
+          "value": "<"
+        },
+        {
+          "range": [
+            23,
+            26
+          ],
+          "type": "Identifier",
+          "value": "Bar"
+        },
+        {
+          "range": [
+            26,
+            27
+          ],
+          "type": "Punctuator",
+          "value": ">"
+        },
+        {
+          "range": [
+            27,
+            28
+          ],
+          "type": "Punctuator",
+          "value": ">"
+        },
+        {
+          "range": [
+            29,
+            34
+          ],
+          "type": "JSXIdentifier",
+          "value": "value"
+        },
+        {
+          "range": [
+            34,
+            35
+          ],
+          "type": "Punctuator",
+          "value": "="
+        },
+        {
+          "range": [
+            35,
+            36
+          ],
+          "type": "Punctuator",
+          "value": "{"
+        },
+        {
+          "range": [
+            36,
+            37
+          ],
+          "type": "Identifier",
+          "value": "f"
+        },
+        {
+          "range": [
+            37,
+            38
+          ],
+          "type": "Punctuator",
+          "value": "<"
+        },
+        {
+          "range": [
+            38,
+            41
+          ],
+          "type": "Identifier",
+          "value": "Foo"
+        },
+        {
+          "range": [
+            41,
+            42
+          ],
+          "type": "Punctuator",
+          "value": "<"
+        },
+        {
+          "range": [
+            42,
+            45
+          ],
+          "type": "Identifier",
+          "value": "Bar"
+        },
+        {
+          "range": [
+            45,
+            46
+          ],
+          "type": "Punctuator",
+          "value": ">"
+        },
+        {
+          "range": [
+            46,
+            47
+          ],
+          "type": "Punctuator",
+          "value": ">"
+        },
+        {
+          "range": [
+            47,
+            48
+          ],
+          "type": "Punctuator",
+          "value": "("
+        },
+        {
+          "range": [
+            48,
+            49
+          ],
+          "type": "Punctuator",
+          "value": ")"
+        },
+        {
+          "range": [
+            49,
+            50
+          ],
+          "type": "Punctuator",
+          "value": "}"
+        },
+        {
+          "range": [
+            51,
+            52
+          ],
+          "type": "Punctuator",
+          "value": "/"
+        },
+        {
+          "range": [
+            52,
+            53
+          ],
+          "type": "Punctuator",
+          "value": ">"
+        },
+        {
+          "range": [
+            53,
+            54
+          ],
+          "type": "Punctuator",
+          "value": ";"
+        }
+      ]
+    }
+  },
+  {
+    "name": "nestedAttributes",
+    "code": "const el = <Box child=<b title=\"x\"/> other={<i/>} />;",
+    "expected": {
+      "comments": [],
+      "roots": [
+        {
+          "children": [],
+          "closingElement": null,
+          "openingElement": {
+            "attributes": [
+              {
+                "name": {
+                  "name": "child",
+                  "range": [
+                    16,
+                    21
+                  ],
+                  "type": "JSXIdentifier"
+                },
+                "range": [
+                  16,
+                  36
+                ],
+                "type": "JSXAttribute",
+                "value": {
+                  "children": [],
+                  "closingElement": null,
+                  "openingElement": {
+                    "attributes": [
+                      {
+                        "name": {
+                          "name": "title",
+                          "range": [
+                            25,
+                            30
+                          ],
+                          "type": "JSXIdentifier"
+                        },
+                        "range": [
+                          25,
+                          34
+                        ],
+                        "type": "JSXAttribute",
+                        "value": {
+                          "range": [
+                            31,
+                            34
+                          ],
+                          "raw": "\"x\"",
+                          "type": "Literal",
+                          "value": "x"
+                        }
+                      }
+                    ],
+                    "name": {
+                      "name": "b",
+                      "range": [
+                        23,
+                        24
+                      ],
+                      "type": "JSXIdentifier"
+                    },
+                    "range": [
+                      22,
+                      36
+                    ],
+                    "selfClosing": true,
+                    "type": "JSXOpeningElement"
+                  },
+                  "range": [
+                    22,
+                    36
+                  ],
+                  "type": "JSXElement"
+                }
+              },
+              {
+                "name": {
+                  "name": "other",
+                  "range": [
+                    37,
+                    42
+                  ],
+                  "type": "JSXIdentifier"
+                },
+                "range": [
+                  37,
+                  49
+                ],
+                "type": "JSXAttribute",
+                "value": {
+                  "expression": {
+                    "children": [],
+                    "closingElement": null,
+                    "openingElement": {
+                      "attributes": [],
+                      "name": {
+                        "name": "i",
+                        "range": [
+                          45,
+                          46
+                        ],
+                        "type": "JSXIdentifier"
+                      },
+                      "range": [
+                        44,
+                        48
+                      ],
+                      "selfClosing": true,
+                      "type": "JSXOpeningElement"
+                    },
+                    "range": [
+                      44,
+                      48
+                    ],
+                    "type": "JSXElement"
+                  },
+                  "range": [
+                    43,
+                    49
+                  ],
+                  "type": "JSXExpressionContainer"
+                }
+              }
+            ],
+            "name": {
+              "name": "Box",
+              "range": [
+                12,
+                15
+              ],
+              "type": "JSXIdentifier"
+            },
+            "range": [
+              11,
+              52
+            ],
+            "selfClosing": true,
+            "type": "JSXOpeningElement"
+          },
+          "range": [
+            11,
+            52
+          ],
+          "type": "JSXElement"
+        }
+      ],
+      "tokens": [
+        {
+          "range": [
+            0,
+            5
+          ],
+          "type": "Keyword",
+          "value": "const"
+        },
+        {
+          "range": [
+            6,
+            8
+          ],
+          "type": "Identifier",
+          "value": "el"
+        },
+        {
+          "range": [
+            9,
+            10
+          ],
+          "type": "Punctuator",
+          "value": "="
+        },
+        {
+          "range": [
+            11,
+            12
+          ],
+          "type": "Punctuator",
+          "value": "<"
+        },
+        {
+          "range": [
+            12,
+            15
+          ],
+          "type": "JSXIdentifier",
+          "value": "Box"
+        },
+        {
+          "range": [
+            16,
+            21
+          ],
+          "type": "JSXIdentifier",
+          "value": "child"
+        },
+        {
+          "range": [
+            21,
+            22
+          ],
+          "type": "Punctuator",
+          "value": "="
+        },
+        {
+          "range": [
+            22,
+            23
+          ],
+          "type": "Punctuator",
+          "value": "<"
+        },
+        {
+          "range": [
+            23,
+            24
+          ],
+          "type": "JSXIdentifier",
+          "value": "b"
+        },
+        {
+          "range": [
+            25,
+            30
+          ],
+          "type": "JSXIdentifier",
+          "value": "title"
+        },
+        {
+          "range": [
+            30,
+            31
+          ],
+          "type": "Punctuator",
+          "value": "="
+        },
+        {
+          "range": [
+            31,
+            34
+          ],
+          "type": "JSXText",
+          "value": "\"x\""
+        },
+        {
+          "range": [
+            34,
+            35
+          ],
+          "type": "Punctuator",
+          "value": "/"
+        },
+        {
+          "range": [
+            35,
+            36
+          ],
+          "type": "Punctuator",
+          "value": ">"
+        },
+        {
+          "range": [
+            37,
+            42
+          ],
+          "type": "JSXIdentifier",
+          "value": "other"
+        },
+        {
+          "range": [
+            42,
+            43
+          ],
+          "type": "Punctuator",
+          "value": "="
+        },
+        {
+          "range": [
+            43,
+            44
+          ],
+          "type": "Punctuator",
+          "value": "{"
+        },
+        {
+          "range": [
+            44,
+            45
+          ],
+          "type": "Punctuator",
+          "value": "<"
+        },
+        {
+          "range": [
+            45,
+            46
+          ],
+          "type": "JSXIdentifier",
+          "value": "i"
+        },
+        {
+          "range": [
+            46,
+            47
+          ],
+          "type": "Punctuator",
+          "value": "/"
+        },
+        {
+          "range": [
+            47,
+            48
+          ],
+          "type": "Punctuator",
+          "value": ">"
+        },
+        {
+          "range": [
+            48,
+            49
+          ],
+          "type": "Punctuator",
+          "value": "}"
+        },
+        {
+          "range": [
+            50,
+            51
+          ],
+          "type": "Punctuator",
+          "value": "/"
+        },
+        {
+          "range": [
+            51,
+            52
+          ],
+          "type": "Punctuator",
+          "value": ">"
+        },
+        {
+          "range": [
+            52,
+            53
+          ],
+          "type": "Punctuator",
+          "value": ";"
+        }
+      ]
+    }
+  },
+  {
+    "name": "keywords",
+    "code": "const el = <this.Foo class=\"x\" default={true}><default /></this.Foo>;",
+    "expected": {
+      "comments": [],
+      "roots": [
+        {
+          "children": [
+            {
+              "children": [],
+              "closingElement": null,
+              "openingElement": {
+                "attributes": [],
+                "name": {
+                  "name": "default",
+                  "range": [
+                    47,
+                    54
+                  ],
+                  "type": "JSXIdentifier"
+                },
+                "range": [
+                  46,
+                  57
+                ],
+                "selfClosing": true,
+                "type": "JSXOpeningElement"
+              },
+              "range": [
+                46,
+                57
+              ],
+              "type": "JSXElement"
+            }
+          ],
+          "closingElement": {
+            "name": {
+              "object": {
+                "name": "this",
+                "range": [
+                  59,
+                  63
+                ],
+                "type": "JSXIdentifier"
+              },
+              "property": {
+                "name": "Foo",
+                "range": [
+                  64,
+                  67
+                ],
+                "type": "JSXIdentifier"
+              },
+              "range": [
+                59,
+                67
+              ],
+              "type": "JSXMemberExpression"
+            },
+            "range": [
+              57,
+              68
+            ],
+            "type": "JSXClosingElement"
+          },
+          "openingElement": {
+            "attributes": [
+              {
+                "name": {
+                  "name": "class",
+                  "range": [
+                    21,
+                    26
+                  ],
+                  "type": "JSXIdentifier"
+                },
+                "range": [
+                  21,
+                  30
+                ],
+                "type": "JSXAttribute",
+                "value": {
+                  "range": [
+                    27,
+                    30
+                  ],
+                  "raw": "\"x\"",
+                  "type": "Literal",
+                  "value": "x"
+                }
+              },
+              {
+                "name": {
+                  "name": "default",
+                  "range": [
+                    31,
+                    38
+                  ],
+                  "type": "JSXIdentifier"
+                },
+                "range": [
+                  31,
+                  45
+                ],
+                "type": "JSXAttribute",
+                "value": {
+                  "expression": {
+                    "range": [
+                      40,
+                      44
+                    ],
+                    "raw": "true",
+                    "type": "Literal",
+                    "value": true
+                  },
+                  "range": [
+                    39,
+                    45
+                  ],
+                  "type": "JSXExpressionContainer"
+                }
+              }
+            ],
+            "name": {
+              "object": {
+                "name": "this",
+                "range": [
+                  12,
+                  16
+                ],
+                "type": "JSXIdentifier"
+              },
+              "property": {
+                "name": "Foo",
+                "range": [
+                  17,
+                  20
+                ],
+                "type": "JSXIdentifier"
+              },
+              "range": [
+                12,
+                20
+              ],
+              "type": "JSXMemberExpression"
+            },
+            "range": [
+              11,
+              46
+            ],
+            "selfClosing": false,
+            "type": "JSXOpeningElement"
+          },
+          "range": [
+            11,
+            68
+          ],
+          "type": "JSXElement"
+        }
+      ],
+      "tokens": [
+        {
+          "range": [
+            0,
+            5
+          ],
+          "type": "Keyword",
+          "value": "const"
+        },
+        {
+          "range": [
+            6,
+            8
+          ],
+          "type": "Identifier",
+          "value": "el"
+        },
+        {
+          "range": [
+            9,
+            10
+          ],
+          "type": "Punctuator",
+          "value": "="
+        },
+        {
+          "range": [
+            11,
+            12
+          ],
+          "type": "Punctuator",
+          "value": "<"
+        },
+        {
+          "range": [
+            12,
+            16
+          ],
+          "type": "Keyword",
+          "value": "this"
+        },
+        {
+          "range": [
+            16,
+            17
+          ],
+          "type": "Punctuator",
+          "value": "."
+        },
+        {
+          "range": [
+            17,
+            20
+          ],
+          "type": "JSXIdentifier",
+          "value": "Foo"
+        },
+        {
+          "range": [
+            21,
+            26
+          ],
+          "type": "JSXIdentifier",
+          "value": "class"
+        },
+        {
+          "range": [
+            26,
+            27
+          ],
+          "type": "Punctuator",
+          "value": "="
+        },
+        {
+          "range": [
+            27,
+            30
+          ],
+          "type": "JSXText",
+          "value": "\"x\""
+        },
+        {
+          "range": [
+            31,
+            38
+          ],
+          "type": "JSXIdentifier",
+          "value": "default"
+        },
+        {
+          "range": [
+            38,
+            39
+          ],
+          "type": "Punctuator",
+          "value": "="
+        },
+        {
+          "range": [
+            39,
+            40
+          ],
+          "type": "Punctuator",
+          "value": "{"
+        },
+        {
+          "range": [
+            40,
+            44
+          ],
+          "type": "Boolean",
+          "value": "true"
+        },
+        {
+          "range": [
+            44,
+            45
+          ],
+          "type": "Punctuator",
+          "value": "}"
+        },
+        {
+          "range": [
+            45,
+            46
+          ],
+          "type": "Punctuator",
+          "value": ">"
+        },
+        {
+          "range": [
+            46,
+            47
+          ],
+          "type": "Punctuator",
+          "value": "<"
+        },
+        {
+          "range": [
+            47,
+            54
+          ],
+          "type": "JSXIdentifier",
+          "value": "default"
+        },
+        {
+          "range": [
+            55,
+            56
+          ],
+          "type": "Punctuator",
+          "value": "/"
+        },
+        {
+          "range": [
+            56,
+            57
+          ],
+          "type": "Punctuator",
+          "value": ">"
+        },
+        {
+          "range": [
+            57,
+            58
+          ],
+          "type": "Punctuator",
+          "value": "<"
+        },
+        {
+          "range": [
+            58,
+            59
+          ],
+          "type": "Punctuator",
+          "value": "/"
+        },
+        {
+          "range": [
+            59,
+            63
+          ],
+          "type": "Keyword",
+          "value": "this"
+        },
+        {
+          "range": [
+            63,
+            64
+          ],
+          "type": "Punctuator",
+          "value": "."
+        },
+        {
+          "range": [
+            64,
+            67
+          ],
+          "type": "JSXIdentifier",
+          "value": "Foo"
+        },
+        {
+          "range": [
+            67,
+            68
+          ],
+          "type": "Punctuator",
+          "value": ">"
+        },
+        {
+          "range": [
+            68,
+            69
+          ],
+          "type": "Punctuator",
+          "value": ";"
+        }
+      ]
+    }
+  },
+  {
+    "name": "entities",
+    "code": "const el = <p a=\"&apos; &copy; &notin; &madeup; &#0; &#x110000; &amp\">&copy; &NotEqualTilde; &madeup; &amp;lt;</p>;",
+    "expected": {
+      "comments": [],
+      "roots": [
+        {
+          "children": [
+            {
+              "range": [
+                70,
+                110
+              ],
+              "raw": "&copy; &NotEqualTilde; &madeup; &amp;lt;",
+              "type": "JSXText",
+              "value": "© &NotEqualTilde; &madeup; &lt;"
+            }
+          ],
+          "closingElement": {
+            "name": {
+              "name": "p",
+              "range": [
+                112,
+                113
+              ],
+              "type": "JSXIdentifier"
+            },
+            "range": [
+              110,
+              114
+            ],
+            "type": "JSXClosingElement"
+          },
+          "openingElement": {
+            "attributes": [
+              {
+                "name": {
+                  "name": "a",
+                  "range": [
+                    14,
+                    15
+                  ],
+                  "type": "JSXIdentifier"
+                },
+                "range": [
+                  14,
+                  69
+                ],
+                "type": "JSXAttribute",
+                "value": {
+                  "range": [
+                    16,
+                    69
+                  ],
+                  "raw": "\"&apos; &copy; &notin; &madeup; &#0; &#x110000; &amp\"",
+                  "type": "Literal",
+                  "value": "' © ∉ &madeup; \u0000 &#x110000; &amp"
+                }
+              }
+            ],
+            "name": {
+              "name": "p",
+              "range": [
+                12,
+                13
+              ],
+              "type": "JSXIdentifier"
+            },
+            "range": [
+              11,
+              70
+            ],
+            "selfClosing": false,
+            "type": "JSXOpeningElement"
+          },
+          "range": [
+            11,
+            114
+          ],
+          "type": "JSXElement"
+        }
+      ],
+      "tokens": [
+        {
+          "range": [
+            0,
+            5
+          ],
+          "type": "Keyword",
+          "value": "const"
+        },
+        {
+          "range": [
+            6,
+            8
+          ],
+          "type": "Identifier",
+          "value": "el"
+        },
+        {
+          "range": [
+            9,
+            10
+          ],
+          "type": "Punctuator",
+          "value": "="
+        },
+        {
+          "range": [
+            11,
+            12
+          ],
+          "type": "Punctuator",
+          "value": "<"
+        },
+        {
+          "range": [
+            12,
+            13
+          ],
+          "type": "JSXIdentifier",
+          "value": "p"
+        },
+        {
+          "range": [
+            14,
+            15
+          ],
+          "type": "JSXIdentifier",
+          "value": "a"
+        },
+        {
+          "range": [
+            15,
+            16
+          ],
+          "type": "Punctuator",
+          "value": "="
+        },
+        {
+          "range": [
+            16,
+            69
+          ],
+          "type": "JSXText",
+          "value": "\"&apos; &copy; &notin; &madeup; &#0; &#x110000; &amp\""
+        },
+        {
+          "range": [
+            69,
+            70
+          ],
+          "type": "Punctuator",
+          "value": ">"
+        },
+        {
+          "range": [
+            70,
+            110
+          ],
+          "type": "JSXText",
+          "value": "&copy; &NotEqualTilde; &madeup; &amp;lt;"
+        },
+        {
+          "range": [
+            110,
+            111
+          ],
+          "type": "Punctuator",
+          "value": "<"
+        },
+        {
+          "range": [
+            111,
+            112
+          ],
+          "type": "Punctuator",
+          "value": "/"
+        },
+        {
+          "range": [
+            112,
+            113
+          ],
+          "type": "JSXIdentifier",
+          "value": "p"
+        },
+        {
+          "range": [
+            113,
+            114
+          ],
+          "type": "Punctuator",
+          "value": ">"
+        },
+        {
+          "range": [
+            114,
+            115
+          ],
+          "type": "Punctuator",
+          "value": ";"
+        }
+      ]
+    }
+  },
+  {
+    "name": "whitespace",
+    "code": "// é😀\r\nconst el = <p>  \r\n \ttext\r\n\t </p>;",
+    "expected": {
+      "comments": [
+        {
+          "range": [
+            0,
+            6
+          ],
+          "type": "Line",
+          "value": " é😀"
+        }
+      ],
+      "roots": [
+        {
+          "children": [
+            {
+              "range": [
+                22,
+                36
+              ],
+              "raw": "  \r\n \ttext\r\n\t ",
+              "type": "JSXText",
+              "value": "  \r\n \ttext\r\n\t "
+            }
+          ],
+          "closingElement": {
+            "name": {
+              "name": "p",
+              "range": [
+                38,
+                39
+              ],
+              "type": "JSXIdentifier"
+            },
+            "range": [
+              36,
+              40
+            ],
+            "type": "JSXClosingElement"
+          },
+          "openingElement": {
+            "attributes": [],
+            "name": {
+              "name": "p",
+              "range": [
+                20,
+                21
+              ],
+              "type": "JSXIdentifier"
+            },
+            "range": [
+              19,
+              22
+            ],
+            "selfClosing": false,
+            "type": "JSXOpeningElement"
+          },
+          "range": [
+            19,
+            40
+          ],
+          "type": "JSXElement"
+        }
+      ],
+      "tokens": [
+        {
+          "range": [
+            8,
+            13
+          ],
+          "type": "Keyword",
+          "value": "const"
+        },
+        {
+          "range": [
+            14,
+            16
+          ],
+          "type": "Identifier",
+          "value": "el"
+        },
+        {
+          "range": [
+            17,
+            18
+          ],
+          "type": "Punctuator",
+          "value": "="
+        },
+        {
+          "range": [
+            19,
+            20
+          ],
+          "type": "Punctuator",
+          "value": "<"
+        },
+        {
+          "range": [
+            20,
+            21
+          ],
+          "type": "JSXIdentifier",
+          "value": "p"
+        },
+        {
+          "range": [
+            21,
+            22
+          ],
+          "type": "Punctuator",
+          "value": ">"
+        },
+        {
+          "range": [
+            22,
+            36
+          ],
+          "type": "JSXText",
+          "value": "  \r\n \ttext\r\n\t "
+        },
+        {
+          "range": [
+            36,
+            37
+          ],
+          "type": "Punctuator",
+          "value": "<"
+        },
+        {
+          "range": [
+            37,
+            38
+          ],
+          "type": "Punctuator",
+          "value": "/"
+        },
+        {
+          "range": [
+            38,
+            39
+          ],
+          "type": "JSXIdentifier",
+          "value": "p"
+        },
+        {
+          "range": [
+            39,
+            40
+          ],
+          "type": "Punctuator",
+          "value": ">"
+        },
+        {
+          "range": [
+            40,
+            41
+          ],
+          "type": "Punctuator",
+          "value": ";"
+        }
+      ]
+    }
+  },
+  {
+    "name": "arrow",
+    "code": "const el = <Box render={<T,>(x: T) => <i>{x}</i>} />;",
+    "expected": {
+      "comments": [],
+      "roots": [
+        {
+          "children": [],
+          "closingElement": null,
+          "openingElement": {
+            "attributes": [
+              {
+                "name": {
+                  "name": "render",
+                  "range": [
+                    16,
+                    22
+                  ],
+                  "type": "JSXIdentifier"
+                },
+                "range": [
+                  16,
+                  49
+                ],
+                "type": "JSXAttribute",
+                "value": {
+                  "expression": {
+                    "async": false,
+                    "body": {
+                      "children": [
+                        {
+                          "expression": {
+                            "decorators": [],
+                            "name": "x",
+                            "optional": false,
+                            "range": [
+                              42,
+                              43
+                            ],
+                            "type": "Identifier"
+                          },
+                          "range": [
+                            41,
+                            44
+                          ],
+                          "type": "JSXExpressionContainer"
+                        }
+                      ],
+                      "closingElement": {
+                        "name": {
+                          "name": "i",
+                          "range": [
+                            46,
+                            47
+                          ],
+                          "type": "JSXIdentifier"
+                        },
+                        "range": [
+                          44,
+                          48
+                        ],
+                        "type": "JSXClosingElement"
+                      },
+                      "openingElement": {
+                        "attributes": [],
+                        "name": {
+                          "name": "i",
+                          "range": [
+                            39,
+                            40
+                          ],
+                          "type": "JSXIdentifier"
+                        },
+                        "range": [
+                          38,
+                          41
+                        ],
+                        "selfClosing": false,
+                        "type": "JSXOpeningElement"
+                      },
+                      "range": [
+                        38,
+                        48
+                      ],
+                      "type": "JSXElement"
+                    },
+                    "expression": true,
+                    "generator": false,
+                    "id": null,
+                    "params": [
+                      {
+                        "decorators": [],
+                        "name": "x",
+                        "optional": false,
+                        "range": [
+                          29,
+                          33
+                        ],
+                        "type": "Identifier",
+                        "typeAnnotation": {
+                          "range": [
+                            30,
+                            33
+                          ],
+                          "type": "TSTypeAnnotation",
+                          "typeAnnotation": {
+                            "range": [
+                              32,
+                              33
+                            ],
+                            "type": "TSTypeReference",
+                            "typeName": {
+                              "decorators": [],
+                              "name": "T",
+                              "optional": false,
+                              "range": [
+                                32,
+                                33
+                              ],
+                              "type": "Identifier"
+                            }
+                          }
+                        }
+                      }
+                    ],
+                    "range": [
+                      24,
+                      48
+                    ],
+                    "type": "ArrowFunctionExpression",
+                    "typeParameters": {
+                      "params": [
+                        {
+                          "const": false,
+                          "in": false,
+                          "name": {
+                            "decorators": [],
+                            "name": "T",
+                            "optional": false,
+                            "range": [
+                              25,
+                              26
+                            ],
+                            "type": "Identifier"
+                          },
+                          "out": false,
+                          "range": [
+                            25,
+                            26
+                          ],
+                          "type": "TSTypeParameter"
+                        }
+                      ],
+                      "range": [
+                        24,
+                        28
+                      ],
+                      "type": "TSTypeParameterDeclaration"
+                    }
+                  },
+                  "range": [
+                    23,
+                    49
+                  ],
+                  "type": "JSXExpressionContainer"
+                }
+              }
+            ],
+            "name": {
+              "name": "Box",
+              "range": [
+                12,
+                15
+              ],
+              "type": "JSXIdentifier"
+            },
+            "range": [
+              11,
+              52
+            ],
+            "selfClosing": true,
+            "type": "JSXOpeningElement"
+          },
+          "range": [
+            11,
+            52
+          ],
+          "type": "JSXElement"
+        }
+      ],
+      "tokens": [
+        {
+          "range": [
+            0,
+            5
+          ],
+          "type": "Keyword",
+          "value": "const"
+        },
+        {
+          "range": [
+            6,
+            8
+          ],
+          "type": "Identifier",
+          "value": "el"
+        },
+        {
+          "range": [
+            9,
+            10
+          ],
+          "type": "Punctuator",
+          "value": "="
+        },
+        {
+          "range": [
+            11,
+            12
+          ],
+          "type": "Punctuator",
+          "value": "<"
+        },
+        {
+          "range": [
+            12,
+            15
+          ],
+          "type": "JSXIdentifier",
+          "value": "Box"
+        },
+        {
+          "range": [
+            16,
+            22
+          ],
+          "type": "JSXIdentifier",
+          "value": "render"
+        },
+        {
+          "range": [
+            22,
+            23
+          ],
+          "type": "Punctuator",
+          "value": "="
+        },
+        {
+          "range": [
+            23,
+            24
+          ],
+          "type": "Punctuator",
+          "value": "{"
+        },
+        {
+          "range": [
+            24,
+            25
+          ],
+          "type": "Punctuator",
+          "value": "<"
+        },
+        {
+          "range": [
+            25,
+            26
+          ],
+          "type": "Identifier",
+          "value": "T"
+        },
+        {
+          "range": [
+            26,
+            27
+          ],
+          "type": "Punctuator",
+          "value": ","
+        },
+        {
+          "range": [
+            27,
+            28
+          ],
+          "type": "Punctuator",
+          "value": ">"
+        },
+        {
+          "range": [
+            28,
+            29
+          ],
+          "type": "Punctuator",
+          "value": "("
+        },
+        {
+          "range": [
+            29,
+            30
+          ],
+          "type": "Identifier",
+          "value": "x"
+        },
+        {
+          "range": [
+            30,
+            31
+          ],
+          "type": "Punctuator",
+          "value": ":"
+        },
+        {
+          "range": [
+            32,
+            33
+          ],
+          "type": "Identifier",
+          "value": "T"
+        },
+        {
+          "range": [
+            33,
+            34
+          ],
+          "type": "Punctuator",
+          "value": ")"
+        },
+        {
+          "range": [
+            35,
+            37
+          ],
+          "type": "Punctuator",
+          "value": "=>"
+        },
+        {
+          "range": [
+            38,
+            39
+          ],
+          "type": "Punctuator",
+          "value": "<"
+        },
+        {
+          "range": [
+            39,
+            40
+          ],
+          "type": "JSXIdentifier",
+          "value": "i"
+        },
+        {
+          "range": [
+            40,
+            41
+          ],
+          "type": "Punctuator",
+          "value": ">"
+        },
+        {
+          "range": [
+            41,
+            42
+          ],
+          "type": "Punctuator",
+          "value": "{"
+        },
+        {
+          "range": [
+            42,
+            43
+          ],
+          "type": "Identifier",
+          "value": "x"
+        },
+        {
+          "range": [
+            43,
+            44
+          ],
+          "type": "Punctuator",
+          "value": "}"
+        },
+        {
+          "range": [
+            44,
+            45
+          ],
+          "type": "Punctuator",
+          "value": "<"
+        },
+        {
+          "range": [
+            45,
+            46
+          ],
+          "type": "Punctuator",
+          "value": "/"
+        },
+        {
+          "range": [
+            46,
+            47
+          ],
+          "type": "JSXIdentifier",
+          "value": "i"
+        },
+        {
+          "range": [
+            47,
+            48
+          ],
+          "type": "Punctuator",
+          "value": ">"
+        },
+        {
+          "range": [
+            48,
+            49
+          ],
+          "type": "Punctuator",
+          "value": "}"
+        },
+        {
+          "range": [
+            50,
+            51
+          ],
+          "type": "Punctuator",
+          "value": "/"
+        },
+        {
+          "range": [
+            51,
+            52
+          ],
+          "type": "Punctuator",
+          "value": ">"
+        },
+        {
+          "range": [
+            52,
+            53
+          ],
+          "type": "Punctuator",
+          "value": ";"
+        }
+      ]
+    }
+  }
+]

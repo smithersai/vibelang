@@ -326,9 +326,9 @@ it beside dprint's TypeScript plugin, and add `vibe` to `includes`:
 configuration's `typescript` settings, so they read like the project's `.ts`
 files. See [Format with dprint](https://vibelang.sh/setup/formatting).
 
-## Lint .vibe files with ESLint
+## Lint .vibe and .vibex files with ESLint
 
-`vibelang/eslint` is an ESLint parser for `.vibe` files: it gives ESLint the
+`vibelang/eslint` is an ESLint parser for `.vibe` and `.vibex` files: it gives ESLint the
 tree typescript-eslint gives for TypeScript, so the same rules and plugins
 apply. Install `eslint` and `typescript-eslint` 8 beside `vibelang`:
 
@@ -338,15 +338,19 @@ import tseslint from "typescript-eslint"
 import vibelang from "vibelang/eslint"
 
 export default tseslint.config({
-  files: ["src/**/*.vibe"],
+  files: ["src/**/*.{vibe,vibex}"],
   extends: [tseslint.configs.recommended],
   languageOptions: { parser: vibelang }
 })
 ```
 
-Rules that need type information don't run on `.vibe` files;
+`.vibex` JSX has the same tree, tokens and tag references as TypeScript JSX.
+Rules such as `react/jsx-key`, `react-hooks/rules-of-hooks` and
+`solid/no-destructure` run on the source, including comments inside JSX.
+
+Rules that need type information don't run on `.vibe` or `.vibex` files;
 `vibelang --noEmit` checks types. For typed lint of `.ts` files that import
-`.vibe` modules, pass typescript-eslint the program `typedProgram` builds, in
+`.vibe` or `.vibex` modules, pass typescript-eslint the program `typedProgram` builds, in
 which each `.vibe` module reads as its declaration:
 
 ```js
@@ -369,8 +373,8 @@ and shows the whole configuration.
 ## Find unused code with Knip
 
 `vibelang/knip` is a [Knip compiler](https://knip.dev/features/compilers) for
-`.vibe` files. It gives Knip a module's imports, re-exports, dynamic imports,
-export names and namespace member reads, from the compiler's ESTree, and the
+`.vibe` and `.vibex` files. It gives Knip a module's imports, re-exports, dynamic imports,
+export names, JSX tag references and namespace member reads, from the compiler's ESTree, and the
 `vibelang-runtime` import its JavaScript has. Knip takes a compiler only from a
 configuration that is code:
 
@@ -378,7 +382,7 @@ configuration that is code:
 // knip.config.js
 import vibelang from "vibelang/knip"
 
-export default { compilers: { vibe: vibelang }, ignore: ["**/*.d.vibe.ts"] }
+export default { compilers: { vibe: vibelang, vibex: vibelang }, ignore: ["**/*.d.vibe.ts", "**/*.d.vibex.ts"] }
 ```
 
 ## How the package finds the native compiler

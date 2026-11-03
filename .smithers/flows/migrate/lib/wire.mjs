@@ -1027,8 +1027,16 @@ export function addEslintImportParsers(text) {
   if (!plugin) return text
   const setting = plugin[1] ? "import-x/parsers" : "import/parsers"
   const mapped = new RegExp(`["'\`]${setting}["'\`]\\s*:\\s*\\{[^}]*["'\`]vibelang/eslint["'\`]`)
-  if (mapped.test(text)) return text
-  return firstConfiguration(text, `{ settings: { ${stringIn(text, setting)}: { ${stringIn(text, "vibelang/eslint")}: [${stringIn(text, ".vibe")}] } } },`)
+  if (mapped.test(text)) {
+    // Upgrade setup's existing mapping as well as a fresh configuration.
+    return text.replace(/(["'`])vibelang\/eslint\1\s*:\s*\[([^\]]*)\]/g, (whole, quote, extensions) => {
+      if (/["'`]\.vibex["'`]/.test(extensions)) return whole
+      const values = extensions.replace(/\/\*[\s\S]*?\*\/|\/\/[^\r\n]*/g, "").trim()
+      const separator = values && !values.endsWith(",") ? ", " : ""
+      return whole.slice(0, -1) + separator + quote + ".vibex" + quote + "]"
+    })
+  }
+  return firstConfiguration(text, `{ settings: { ${stringIn(text, setting)}: { ${stringIn(text, "vibelang/eslint")}: [${stringIn(text, ".vibe")}, ${stringIn(text, ".vibex")}] } } },`)
 }
 
 // closingParen returns the index of the parenthesis that closes the one at
@@ -1302,8 +1310,8 @@ const config: { ignore?: string | string[]; [setting: string]: unknown } = ${con
 
 export default {
   ...config,
-  compilers: { vibe: vibelang },
-  ignore: [...[config.ignore ?? []].flat(), "**/*.d.vibe.ts"],
+  compilers: { vibe: vibelang, vibex: vibelang },
+  ignore: [...[config.ignore ?? []].flat(), "**/*.d.vibe.ts", "**/*.d.vibex.ts"],
 }
 `
 }

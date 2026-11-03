@@ -65,7 +65,7 @@ test("setup leaves a pinned dprint configuration's plugins alone and keeps dprin
   assert.equal(read("packages/pinned/eslint.config.js"), 'import tseslint from "typescript-eslint"\n\nexport default tseslint.config(\n  { ignores: ["**/.vibelang/js/**"] },\n  { ignores: ["**/*.d.vibe.ts"] },\n  { ignores: ["**/dist"] },\n  { files: ["src/**/*.ts"] }\n)\n')
   assert.equal(read("packages/open/eslint.config.mjs"), 'export default [\n  { ignores: ["**/.vibelang/js/**"] },\n  { ignores: ["**/*.d.vibe.ts"] },\n  { files: ["**/*.ts"] },\n]\n')
   assert.equal(read("packages/named/eslint.config.js"), "const config = [{ files: [\"**/*.ts\"] }]\nexport default config\n")
-  assert.equal(read("packages/imports/eslint.config.js"), 'import importPlugin from "eslint-plugin-import"\n\nexport default [\n  { settings: { "import/parsers": { "vibelang/eslint": [".vibe"] } } },\n  { ignores: ["**/.vibelang/js/**"] },\n  { ignores: ["**/*.d.vibe.ts"] },\n  importPlugin.flatConfigs.recommended,\n]\n')
+  assert.equal(read("packages/imports/eslint.config.js"), 'import importPlugin from "eslint-plugin-import"\n\nexport default [\n  { settings: { "import/parsers": { "vibelang/eslint": [".vibe", ".vibex"] } } },\n  { ignores: ["**/.vibelang/js/**"] },\n  { ignores: ["**/*.d.vibe.ts"] },\n  importPlugin.flatConfigs.recommended,\n]\n')
   assert.equal(result.warnings.length, 2)
   assert.match(result.warnings[0], /^1 dprint configuration pins every plugin by checksum \(packages\/pinned\/dprint\.json\)/)
   assert.match(result.warnings[1], /^packages\/named\/eslint\.config\.js: add \{ ignores/)
@@ -97,7 +97,7 @@ test("the lint config loads where typescript-eslint refuses the repository's Typ
   })
   wireDeveloperTools({ root, specsFor })
   const config = (await import(join(root, ".vibelang/eslint.config.mjs"))).default
-  assert.deepEqual(config.at(-1).files, ["**/*.vibe"])
+  assert.deepEqual(config.at(-1).files, ["**/*.{vibe,vibex}"])
   assert.equal(config.length, 2)
 })
 // foldkit: its .oxlintrc.json turns the correctness category off, enables
@@ -151,9 +151,9 @@ test("each oxlint invocation's .vibe pass uses the configuration it names with -
   wireDeveloperTools({ root, specsFor })
   const scripts = JSON.parse(readFileSync(join(root, "package.json"))).scripts
   const pass = (config, paths) => `eslint --config .vibelang/${config} ${paths} --no-error-on-unmatched-pattern`
-  assert.equal(scripts.lint, `(oxlint --no-error-on-unmatched-pattern) && ${pass("eslint.config.mjs", '"**/*.vibe"')}`)
+  assert.equal(scripts.lint, `(oxlint --no-error-on-unmatched-pattern) && ${pass("eslint.config.mjs", '"**/*.{vibe,vibex}"')}`)
   assert.equal(scripts["lint:applications"], `(oxlint --no-error-on-unmatched-pattern --config .oxlintrc.app.json --disable-nested-config examples packages/website/src) && ${pass("eslint.app.config.mjs", "examples packages/website/src")}`)
-  assert.equal(scripts["lint:both"], `(oxlint --no-error-on-unmatched-pattern -D no-debugger && oxlint --no-error-on-unmatched-pattern -c .oxlintrc.effect.json --deny-warnings packages scripts) && ${pass("eslint.config.mjs", '"**/*.vibe"')} && ${pass("eslint.effect.config.mjs", "packages scripts")} --max-warnings 0`)
+  assert.equal(scripts["lint:both"], `(oxlint --no-error-on-unmatched-pattern -D no-debugger && oxlint --no-error-on-unmatched-pattern -c .oxlintrc.effect.json --deny-warnings packages scripts) && ${pass("eslint.config.mjs", '"**/*.{vibe,vibex}"')} && ${pass("eslint.effect.config.mjs", "packages scripts")} --max-warnings 0`)
   assert.equal(scripts["lint:root"], `(oxlint --no-error-on-unmatched-pattern --config=.oxlintrc.json src) && ${pass("eslint.config.mjs", "src")}`)
   assert.equal(JSON.parse(readFileSync(join(root, "packages/x/package.json"))).scripts.lint, "(oxlint --no-error-on-unmatched-pattern -c ../../.oxlintrc.app.json src) && eslint --config ../../.vibelang/eslint.app.config.mjs src --no-error-on-unmatched-pattern")
   const rulesOf = async (file) => (await import(join(root, ".vibelang", file))).default.find(entry => entry.languageOptions?.parser).rules
@@ -351,7 +351,7 @@ test("a tool run in parentheses gets its .vibe pass, and setup rewrites the pass
   assert.equal(scripts["lint:applications"], corpus.wired["lint:applications"])
   assert.equal(scripts.fmt, "(oxfmt --check .) && vibelang-format --check")
   assert.equal(scripts.pretty, "(prettier --plugin vibelang/prettier --check .)")
-  assert.equal(scripts.both, '((oxfmt --check . && oxlint --no-error-on-unmatched-pattern) && vibelang-format --check) && eslint --config .vibelang/eslint.config.mjs "**/*.vibe" --no-error-on-unmatched-pattern')
+  assert.equal(scripts.both, '((oxfmt --check . && oxlint --no-error-on-unmatched-pattern) && vibelang-format --check) && eslint --config .vibelang/eslint.config.mjs "**/*.{vibe,vibex}" --no-error-on-unmatched-pattern')
   assert.deepEqual(wireDeveloperTools({ root, specsFor }).changed, [])
 })
 

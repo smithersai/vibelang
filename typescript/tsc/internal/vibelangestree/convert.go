@@ -582,6 +582,9 @@ func (c *converter) convertNode(n *ast.Node, parent *ast.Node) *obj {
 	if result, ok := c.convertVibeLang(n, parent); ok {
 		return result
 	}
+	if result := c.convertJSX(n); result != nil {
+		return result
+	}
 	switch n.Kind {
 	case ast.KindSourceFile:
 		file := n.AsSourceFile()
@@ -1157,7 +1160,11 @@ func (c *converter) convertNode(n *ast.Node, parent *ast.Node) *obj {
 		if n.Flags&ast.NodeFlagsReparserTransformedLiteral != 0 {
 			raw = strconv.Quote(n.Text()) // synthesized at another token: its own text
 		}
-		return c.node(n, "Literal").set("raw", raw).set("value", n.Text())
+		value := n.Text()
+		if parent != nil && parent.Kind == ast.KindJsxAttribute {
+			value = decodeJSXEntities(value)
+		}
+		return c.node(n, "Literal").set("raw", raw).set("value", value)
 
 	case ast.KindNumericLiteral:
 		r := c.rangeOf(n)

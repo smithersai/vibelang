@@ -1,8 +1,8 @@
-// vibelang/knip: a Knip compiler for .vibe files.
+// vibelang/knip: a Knip compiler for .vibe and .vibex files.
 //
 //   // knip.config.ts
 //   import vibelang from "vibelang/knip"
-//   export default { compilers: { vibe: vibelang } }
+//   export default { compilers: { vibe: vibelang, vibex: vibelang } }
 //
 // Knip reads what a compiler returns as a TypeScript module, for its imports
 // and exports. This one returns a .vibe module's surface: each import and
@@ -28,11 +28,15 @@ export function compile(text, path = "file.vibe") {
   const source = (node) => text.slice(node.range[0], node.range[1])
   const lines = ['import "vibelang-runtime"']
   const namespaces = new Set()
+  const imported = new Set()
   const imports = (body) => {
     for (const node of body) {
       if (node.type === "ImportDeclaration") {
         lines.push(source(node))
-        for (const specifier of node.specifiers) if (specifier.type === "ImportNamespaceSpecifier") namespaces.add(specifier.local.name)
+        for (const specifier of node.specifiers) {
+          imported.add(specifier.local.name)
+          if (specifier.type === "ImportNamespaceSpecifier") namespaces.add(specifier.local.name)
+        }
       } else if (node.type === "VibeModuleDeclaration" && node.body) {
         // A module declaration's body is TypeScript with imports of its own (D283).
         imports(Array.isArray(node.body) ? node.body : node.body.body ?? [])
@@ -64,8 +68,16 @@ export function compile(text, path = "file.vibe") {
     else if (node.type === "ExportDefaultDeclaration") lines.push(doc + "export default 0")
   })
   const reads = new Set()
+  // Knip reads this output as TypeScript, so preserve tag uses as value
+  // expressions instead of making it parse VibeLang function bodies.
+  const tag = (name) => name?.type === "JSXIdentifier" ? name.name
+    : name?.type === "JSXMemberExpression" ? `${tag(name.object)}.${tag(name.property)}` : undefined
   visit(program, (node) => {
-    if (node.type === "ImportExpression" && node.source?.type === "Literal" && typeof node.source.value === "string") reads.add(`import(${JSON.stringify(node.source.value)})`)
+    if (node.type === "JSXOpeningElement") {
+      const name = tag(node.name)
+      const root = name?.split(".")[0]
+      if (name && imported.has(root) && (name.includes(".") || !/^[a-z]/.test(name))) reads.add(name)
+    } else if (node.type === "ImportExpression" && node.source?.type === "Literal" && typeof node.source.value === "string") reads.add(`import(${JSON.stringify(node.source.value)})`)
     else if (node.type === "MemberExpression" && !node.computed && node.object?.type === "Identifier" && namespaces.has(node.object.name) && node.property?.type === "Identifier") reads.add(`${node.object.name}.${node.property.name}`)
     else if ((node.type === "TSQualifiedName") && node.left?.type === "Identifier" && namespaces.has(node.left.name) && node.right?.type === "Identifier") reads.add(`${node.left.name}.${node.right.name}`)
   })

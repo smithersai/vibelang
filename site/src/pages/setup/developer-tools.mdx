@@ -77,7 +77,7 @@ Migration keeps upstream `oxlint`. For a package's existing Oxlint/Vite+
 lint script, setup adds one pass for each `oxlint` invocation in it,
 including one in a subshell such as `(oxlint --disable-nested-config)`, over
 the same paths with the configuration named by `-c` or `--config`. ESLint
-checks `.vibe` through `vibelang/eslint`. Each generated pass retains its
+checks `.vibe` and `.vibex` through `vibelang/eslint`. Generated lint globs include `**/*.{vibe,vibex}`; a `.tsx` selector maps to `.vibex`, and a `.ts` selector maps to `.vibe`. JSX tags count as references for ESLint and Knip, and React and Solid rules read the source JSX. Each generated pass retains its
 invocation's `--deny-warnings` or `--max-warnings 0` policy. Running setup
 again refreshes its generated configurations and passes. When a local JS plugin is
 migrated, setup preloads `vibelang/register` separately for Oxlint and each

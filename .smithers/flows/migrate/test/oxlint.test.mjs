@@ -58,7 +58,7 @@ test("plain oxlint src and nested runners keep the upstream dependency", t => {
   assert.equal(rootPkg.devDependencies.oxlint, undefined)
   assert.ok(rootPkg.scripts.lint.startsWith("(oxlint --no-error-on-unmatched-pattern src)"))
   assert.match(rootPkg.scripts.glob, /\{ts,tsx\}/)
-  assert.match(rootPkg.scripts.glob, /eslint.*src\/\*\*\/\*\.vibe/)
+  assert.match(rootPkg.scripts.glob, /eslint.*src\/\*\*\/\*\.\{vibe,vibex\}/)
   assert.equal(nested.dependencies.oxlint, "1.60.0")
   assert.equal(nested.devDependencies, undefined)
   assert.match(readFileSync(join(root, "packages/a/tools/lint.mjs"), "utf8"), /vibe/)
@@ -228,7 +228,7 @@ test("directory overrides retain every JS rule and its severity on .vibe files",
   })
   wireDeveloperTools({ root, specsFor, ts })
   const configs = (await import(join(root, ".vibelang/eslint.config.mjs"))).default
-  assert.deepEqual(configs.at(-1).files, [["src/**", "**/*.vibe"]])
+  assert.deepEqual(configs.at(-1).files, [["src/**", "**/*.{vibe,vibex}"]])
   assert.deepEqual(configs.at(-1).rules, { "oxc/no-accumulating-spread": ["warn"] })
   assert.ok(configs.find(config => config.plugins)?.plugins.oxc.rules["no-accumulating-spread"])
 })

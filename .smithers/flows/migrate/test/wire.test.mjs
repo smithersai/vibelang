@@ -441,13 +441,13 @@ test("wireKnip moves a JSON Knip configuration to knip.config.ts with VibeLang's
     writeFileSync(join(root, "knip.d.ts"), 'declare module "vibelang/knip" { const compile: (text: string) => string; export default compile }\n')
     const program = ts.createProgram([join(root, "knip.config.ts"), join(root, "knip.d.ts")], { strict: true, noEmit: true, module: ts.ModuleKind.ESNext, moduleResolution: ts.ModuleResolutionKind.Bundler, target: ts.ScriptTarget.ES2022, types: [] })
     assert.deepEqual(ts.getPreEmitDiagnostics(program).map((d) => ts.flattenDiagnosticMessageText(d.messageText, "\n")), [])
-    assert.ok(text.includes('  compilers: { vibe: vibelang },\n  ignore: [...[config.ignore ?? []].flat(), "**/*.d.vibe.ts"],\n'))
+    assert.ok(text.includes('  compilers: { vibe: vibelang, vibex: vibelang },\n  ignore: [...[config.ignore ?? []].flat(), "**/*.d.vibe.ts", "**/*.d.vibex.ts"],\n'))
     // The configuration is TypeScript, and its value keeps the JSON's settings.
     const out = ts.transpileModule(text, { compilerOptions: { module: ts.ModuleKind.CommonJS }, reportDiagnostics: true })
     assert.deepEqual(out.diagnostics, [])
     const module = { exports: {} }
     new Function("module", "exports", "require", out.outputText)(module, module.exports, () => ({ default: "compiler" }))
-    assert.deepEqual(module.exports.default, { $schema: "https://unpkg.com/knip@6/schema.json", ignore: ["scripts/**", "**/*.d.vibe.ts"], compilers: { vibe: "compiler" } })
+    assert.deepEqual(module.exports.default, { $schema: "https://unpkg.com/knip@6/schema.json", ignore: ["scripts/**", "**/*.d.vibe.ts", "**/*.d.vibex.ts"], compilers: { vibe: "compiler", vibex: "compiler" } })
     assert.equal(JSON.parse(readFileSync(join(root, "package.json"), "utf8")).devDependencies.vibelang, "0.0.12")
 
     // A package.json key moves too; a configuration that is code is named, not rewritten.
@@ -682,13 +682,13 @@ test("setup maps .vibe to vibelang/eslint for eslint-plugin-import, once, in the
   assert.equal(once, corpus.expected)
   assert.equal(addEslintImportParsers(once), once)
   const single = "import importPlugin from 'eslint-plugin-import'\nexport default [\n  importPlugin.flatConfigs.recommended,\n]\n"
-  assert.equal(addEslintImportParsers(single), "import importPlugin from 'eslint-plugin-import'\nexport default [\n  { settings: { 'import/parsers': { 'vibelang/eslint': ['.vibe'] } } },\n  importPlugin.flatConfigs.recommended,\n]\n")
+  assert.equal(addEslintImportParsers(single), "import importPlugin from 'eslint-plugin-import'\nexport default [\n  { settings: { 'import/parsers': { 'vibelang/eslint': ['.vibe', '.vibex'] } } },\n  importPlugin.flatConfigs.recommended,\n]\n")
   const x = 'import importX from "eslint-plugin-import-x"\nexport default [importX.flatConfigs.recommended]\n'
-  assert.equal(addEslintImportParsers(x), 'import importX from "eslint-plugin-import-x"\nexport default [{ settings: { "import-x/parsers": { "vibelang/eslint": [".vibe"] } } }, importX.flatConfigs.recommended]\n')
+  assert.equal(addEslintImportParsers(x), 'import importX from "eslint-plugin-import-x"\nexport default [{ settings: { "import-x/parsers": { "vibelang/eslint": [".vibe", ".vibex"] } } }, importX.flatConfigs.recommended]\n')
   const cjs = 'const importPlugin = require("eslint-plugin-import")\nmodule.exports = [importPlugin.flatConfigs.recommended]\n'
   assert.match(addEslintImportParsers(cjs), /^module\.exports = \[\{ settings: \{ "import\/parsers"/m)
   // A configuration that already maps .vibe, or loads no import plugin, stays as written.
-  const mapped = "import i from 'eslint-plugin-import'\nexport default [{ settings: { 'import/parsers': { '@typescript-eslint/parser': ['.ts'], 'vibelang/eslint': ['.vibe'] } } }]\n"
+  const mapped = "import i from 'eslint-plugin-import'\nexport default [{ settings: { 'import/parsers': { '@typescript-eslint/parser': ['.ts'], 'vibelang/eslint': ['.vibe', '.vibex'] } } }]\n"
   assert.equal(addEslintImportParsers(mapped), mapped)
   const plain = "import js from '@eslint/js'\nexport default [js.configs.recommended]\n"
   assert.equal(addEslintImportParsers(plain), plain)
@@ -710,7 +710,7 @@ test("setup puts its ESLint entries before an array method's result, not into it
   const tricky = 'export default base.map((e) => ({ ...e, name: ")" /* ) */ + `)${")"}` }))\n'
   assert.equal(addEslintIgnore(tricky), 'export default [{ ignores: ["**/*.d.vibe.ts"] }, ...base.map((e) => ({ ...e, name: ")" /* ) */ + `)${")"}` }))]\n')
   // eslint-plugin-import's entry goes to the same place.
-  assert.match(addEslintImportParsers('import i from "eslint-plugin-import"\nexport default base.concat([i.flatConfigs.recommended])\n'), /^export default \[\{ settings: \{ "import\/parsers": \{ "vibelang\/eslint": \[".vibe"\] \} \} \}, \.\.\.base\.concat\(\[i\.flatConfigs\.recommended\]\)\]$/m)
+  assert.match(addEslintImportParsers('import i from "eslint-plugin-import"\nexport default base.concat([i.flatConfigs.recommended])\n'), /^export default \[\{ settings: \{ "import\/parsers": \{ "vibelang\/eslint": \[".vibe", ".vibex"\] \} \} \}, \.\.\.base\.concat\(\[i\.flatConfigs\.recommended\]\)\]$/m)
 })
 
 // smithers: setup wrote "moduleSuffixes": ["",".d.vibe"], and dprint's check

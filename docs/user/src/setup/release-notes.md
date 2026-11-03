@@ -551,6 +551,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 
 - Producers accepted erased return annotations and rejected valid `Stream` contracts; written `Stream` aliases now compile with their yield, error and requirement channels checked, and invalid contracts report `EK2102`.
+- ESLint could not parse JSX in `.vibex` files; JSX now uses TypeScript-compatible trees, tokens and scope analysis, React and Solid rules run on the source, and lint setup and Knip include `.vibex` files.
 - In the editor, an `is` that binds names and has a parenthesized subject, such as `(x as T) is [let a]` or `([3, r] as const) is [let n, let e]`, made the TypeScript 7 mapper report "invalid or overlapping edits" and pass the whole file through unchanged, so the editor checked VibeLang syntax as TypeScript; the file now maps as it does without the parentheses.
 - Migration returned converted services to TypeScript when every member kept the original service requirement. Verification now accepts the `EK4809` design warning and preserves those member contracts; a configured `EK4809` error still fails.
 - Declarations of imported Effect values could gain an extra import; cold values and decoders now have regression comparisons against TypeScript.

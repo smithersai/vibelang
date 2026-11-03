@@ -40,7 +40,7 @@ const oxlint = fc.record({
 }).map(({ config, spelling, flags, paths }) => ({
   text: ["oxlint", ...(config ? [spelling + config] : []), ...flags, ...paths].join(" "),
   nativeText: ["oxlint", "--no-error-on-unmatched-pattern", ...(config ? [spelling + config] : []), ...flags, ...paths].join(" "),
-  pass: `eslint --config .vibelang/${configFile[config ?? ".oxlintrc.json"]} ${paths.length ? paths.join(" ") : '"**/*.vibe"'} --no-error-on-unmatched-pattern${flags.includes("--deny-warnings") ? " --max-warnings 0" : ""}`
+  pass: `eslint --config .vibelang/${configFile[config ?? ".oxlintrc.json"]} ${paths.length ? paths.join(" ") : '"**/*.{vibe,vibex}"'} --no-error-on-unmatched-pattern${flags.includes("--deny-warnings") ? " --max-warnings 0" : ""}`
 }))
 const other = fc.constantFrom("pnpm build", "echo done", "tsc -b").map(text => ({ text, nativeText: text, pass: null }))
 const step = fc.tuple(fc.oneof(oxlint, other), fc.boolean()).map(([s, parens]) => parens ? { ...s, text: `(${s.text})`, nativeText: `(${s.nativeText})` } : s)

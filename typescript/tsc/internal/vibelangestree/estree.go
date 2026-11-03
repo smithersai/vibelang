@@ -36,20 +36,27 @@ func (e *Error) Error() string {
 }
 
 // Parse returns the ESTree Program of text as JSON. fileName decides the
-// language: a name ending in .vibe is VibeLang, anything else TypeScript.
+// language: .vibe and .vibex are VibeLang; .vibex and .tsx enable JSX.
 // The JSON has no loc, which the JavaScript side computes from the ranges.
 func Parse(fileName string, text string) (json string, failure *Error) {
-	vibe := strings.HasSuffix(fileName, tspath.ExtensionVibe)
+	vibe := tspath.IsVibeLangSource(fileName)
 	name := "/estree.ts"
 	if vibe {
-		name = "/estree.vibe"
+		name = "/estree" + tspath.VibeLangSourceExtension(fileName)
+	}
+	kind := core.ScriptKindTS
+	if core.GetScriptKindFromFileName(tspath.RootedFilePath(fileName)) == core.ScriptKindTSX {
+		kind = core.ScriptKindTSX
+		if !vibe {
+			name = "/estree.tsx"
+		}
 	}
 	positions := newPositions(text)
 	fail := func(pos int, message string) *Error {
 		line, column := lineAndColumn(text, pos, positions)
 		return &Error{Message: message, Index: positions.utf16(pos), Line: line, Column: column}
 	}
-	file := parser.ParseSourceFile(ast.SourceFileParseOptions{FileName: tspath.RootedFilePath(name), PathKey: tspath.PathKey(name)}, text, core.ScriptKindTS)
+	file := parser.ParseSourceFile(ast.SourceFileParseOptions{FileName: tspath.RootedFilePath(name), PathKey: tspath.PathKey(name)}, text, kind)
 	var modules map[*ast.Node]*ast.SourceFile
 	var bodies []*ast.SourceFile
 	if vibe {
