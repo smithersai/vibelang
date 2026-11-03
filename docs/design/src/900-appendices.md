@@ -796,15 +796,21 @@ This is one added `MatchPattern` alternative, replacing the chapter's earlier ba
 
 #### ModuleDeclaration
 
+```text
+ModuleDeclaration = "module" [no LineTerminator here] BindingIdentifier "{" ModuleBody? "}"
 ```
-ModuleDeclaration :
-  "module" [no LineTerminator here] BindingIdentifier "{" ModuleBody? "}"
-ModuleSpecifier :
-  StringLiteral
-  IdentifierReference
-ImportDeclaration :
-  ...
-  "import" ModuleSpecifier ";"
+
+#### ModuleSpecifier
+
+```text
+ModuleSpecifier = StringLiteral | IdentifierReference
+```
+
+#### ImportDeclaration
+
+```text
+ImportDeclaration = an ordinary TypeScript import declaration using ModuleSpecifier
+                  | "import" ModuleSpecifier ";"
 ```
 
 VIP-40: TC39's module declaration, restricted to a top-level statement of a `.vibe` or `.vibex` file. `ModuleBody` is TypeScript. An identifier `ModuleSpecifier` appears in VibeLang code of the same file only. `module` stays an identifier everywhere else.
