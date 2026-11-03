@@ -19,7 +19,9 @@ import (
 // Appendix A is an admission rule, not an implementation-derived allowlist.
 // The implication includes programs with type/name/placement errors: those
 // errors do not authorize a syntax absent from the language.
-const grammarAdmissionQuote = "VibeLang's grammar is TypeScript's, plus three TC39 proposals and the productions below."
+const grammarAdmissionQuote = "VibeLang's grammar is TypeScript's, plus four TC39 proposals and the productions below."
+const grammarThrowQuote = `"throw" UnaryExpression[?Yield, ?Await] [lookahead ∉ ThrowExpressionInvalidPunctuator]`
+const grammarModuleImportQuote = `"import" ModuleSpecifier ";"`
 const grammarAdmissionRecoveryQuote = "parses, then the top-level-shorthand rule rejects it"
 const grammarAdmissionPlainBodyQuote = "The body of any source callable without an `effect` modifier parses with `[~Effect]`"
 const grammarTopicQuote = "%` is the topic: the left side's value, evaluated once."
@@ -27,6 +29,15 @@ const grammarTopicQuote = "%` is the topic: the left side's value, evaluated onc
 func TestGrammarAdmissionQuoted(t *testing.T) {
 	if !strings.Contains(SpecText(grammarAppendix), grammarAdmissionQuote) {
 		t.Fatal("Appendix A admission quote changed; review the oracle")
+	}
+	// The fourth proposal is VIP-41's throw expression. Its production and VIP-40's
+	// module declaration are written in notations the production reader skips, so
+	// grammarBuildGrammar restates them; a reworded production must be restated again.
+	if !strings.Contains(SpecText(grammarAppendix), grammarThrowQuote) {
+		t.Fatal("Appendix A ThrowExpression production changed; review grammarBuildGrammar's ThrowExpression")
+	}
+	if !strings.Contains(SpecText(grammarAppendix), grammarModuleProduction) || !strings.Contains(SpecText(grammarAppendix), grammarModuleImportQuote) {
+		t.Fatal("Appendix A ModuleDeclaration changed; review grammarVip40Module")
 	}
 	if !strings.Contains(SpecText(grammarAppendix), grammarAdmissionRecoveryQuote) {
 		t.Fatal("Appendix A shorthand recovery quote changed; review syntax rejection")
@@ -1093,6 +1104,40 @@ func TestGrammarAdmissionCore(t *testing.T) {
 	if r := lab.read(lab.g, grammarLexSource("a < b > c ;"), grammarParseMode{prose: true, names: true}); r.count == 0 {
 		t.Error("a relational chain has no derivation")
 	}
+	// A quoted "," is a lookahead member, not the separator between members.
+	if s := grammarBracketSym(`lookahead ∉ { ",", "<" }`); len(s.seqs) != 2 || s.seqs[0][0] != "," || s.seqs[1][0] != "<" {
+		t.Errorf("lookahead set with a quoted comma read as %q", s.seqs)
+	}
+	// VIP-41 throw expressions and VIP-40 module declarations.
+	for _, source := range []string{
+		"function f(x, e) { return x ?? throw e; }",
+		"const n = c ? throw a : b;",
+		"f((throw e), b);",
+		"const n = (throw a) + b;",
+		"module M { export const n = 1; }",
+		"module M\n{ }",
+		"module M { }",
+		"import M;",
+		"import { n } from M;",
+		"module\n{ }",
+	} {
+		if r := lab.read(lab.g, grammarLexSource(source), grammarParseMode{prose: true, names: true}); r.count == 0 {
+			t.Errorf("VIP-40/41 form has no derivation: %q", source)
+		}
+	}
+	for _, source := range []string{
+		"const n = throw a + b;",
+		"f(throw e, b);",
+		"const n = throw a ?? b;",
+		"module { }",
+		"function f() { module M { } }",
+		"export module M { }",
+		"module\nM { }",
+	} {
+		if r := lab.read(lab.g, grammarLexSource(source), grammarParseMode{prose: true, names: true}); r.count != 0 {
+			t.Errorf("form outside VIP-40/41 has a derivation: %q", source)
+		}
+	}
 	// TypeScript's angle-bracket assertion is inherited in a .vibe file.
 	if r := lab.read(lab.g, grammarLexSource("< T > { a : T };"), grammarParseMode{prose: true, names: true}); r.count == 0 {
 		t.Error("an angle-bracket assertion has no derivation")
@@ -1168,6 +1213,10 @@ func grammarAdmissionSyntaxCode(code int32) bool {
 	case 509: // CatchHandler must be a function literal.
 		return true
 	case 4408: // Legacy module recovery rejects a missing name; this admits no module form.
+		return true
+	case 4001, 4002, 4003: // VIP-40: a module declaration below the top level, exported, or with no name.
+		return true
+	case 1010: // VIP-41: a ThrowExpressionInvalidPunctuator after a throw expression's operand.
 		return true
 	case 906: // ServiceDeclaration requires its body.
 		return true
@@ -1276,6 +1325,10 @@ func grammarAdmissionSyntaxDiagnostic(d *ast.Diagnostic) bool {
 	// `for (await x of xs)` and `for (fork x of xs)` have no derivation.
 	case 2487, 2406:
 		return true
+	// VIP-40: `module A.B { }` and other identifier-named modules that are not
+	// the production are TypeScript namespaces, which get TS1540 alone.
+	case 1540:
+		return true
 	}
 	return false
 }
@@ -1339,6 +1392,12 @@ func TestGrammarAdmissionDiagnostics(t *testing.T) {
 		{"native-empty-type-arguments", "", diagnostics.CategoryError, 1099, true},
 		{"native-definite-no-type", "", diagnostics.CategoryError, 1264, true},
 		{"native-for-of-target", "", diagnostics.CategoryError, 2487, true},
+		{"native-module-namespace", "", diagnostics.CategoryError, 1540, true},
+		{"module-placement", "EK", diagnostics.CategoryError, 4001, true},
+		{"module-export", "EK", diagnostics.CategoryError, 4002, true},
+		{"module-expression", "EK", diagnostics.CategoryError, 4003, true},
+		{"throw-expression-punctuator", "EK", diagnostics.CategoryError, 1010, true},
+		{"throw-expression-punctuator-warning", "EK", diagnostics.CategoryWarning, 1010, false},
 		{"native-for-in-target", "", diagnostics.CategoryError, 2406, true},
 		{"native-for-of-target-warning", "", diagnostics.CategoryWarning, 2487, false},
 		{"service-member-separator", "EK", diagnostics.CategoryError, 908, true},

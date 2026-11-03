@@ -50,8 +50,8 @@ parser/vibelang.go:isVibeLangSchemaLiteral	admission:schema	900-appendices.md#Sc
 parser/vibelang.go:Parser.vibelangEntityExpression	admission:declaration-support	900-appendices.md#DeclarationStart	support	Declaration dispatch and synthesized node support
 parser/vibelang_block_do.go:Parser.nextTokenIsBlockOrDoBlock	admission:block-do	-	pending	Unadopted block do recovery spelling
 parser/vibelang_block_do.go:Parser.rejectVibeLangBlockDo	admission:block-do	-	pending	Unadopted block do recovery spelling
-parser/vibelang_blocks.go:Parser.isStartOfVibeLangThrowExpression	admission:throw-expression	-	pending	General throw expressions unmentioned; match throw arm admitted separately; x ?? throw e is with Will
-parser/vibelang_blocks.go:Parser.parseVibeLangThrowExpression	admission:throw-expression	-	pending	General throw expressions unmentioned; match throw arm admitted separately; x ?? throw e is with Will
+parser/vibelang_blocks.go:Parser.isStartOfVibeLangThrowExpression	admission:throw-expression	900-appendices.md,003-failures.md	support	VIP-41: TC39 throw expressions (Appendix A ThrowExpression); EK1010 is the invalid-punctuator restriction
+parser/vibelang_blocks.go:Parser.parseVibeLangThrowExpression	admission:throw-expression	900-appendices.md,003-failures.md	support	VIP-41: TC39 throw expressions (Appendix A ThrowExpression); EK1010 is the invalid-punctuator restriction
 parser/vibelang_blocks.go:Parser.isStartOfVibeLangDoExpression	admission:do	002-running.md	support	VIP-2 pinned do expression and completion support
 parser/vibelang_blocks.go:Parser.nextTokenIsOpenBraceToken	admission:do	002-running.md	support	VIP-2 pinned do expression and completion support
 parser/vibelang_blocks.go:Parser.parseVibeLangDoExpression	admission:do	002-running.md	support	VIP-2 pinned do expression and completion support
@@ -207,21 +207,21 @@ parser/vibelang_match.go:hoistedDeclarator	admission:is	004-match.md	support	Cha
 parser/vibelang_match.go:Parser.mLetList	admission:is	004-match.md	support	Chapter 004 binding homes for is (decided detail 245); synthesized let hoisting only
 parser/vibelang_match.go:Parser.takeHoists	admission:is	004-match.md	support	Chapter 004 binding homes for is (decided detail 245); synthesized let hoisting only
 parser/vibelang_match.go:Parser.parseEmbeddedStatement	admission:is	004-match.md	support	Chapter 004 binding homes for is (decided detail 245); synthesized let hoisting only
-parser/vibelang_modules.go:Parser.isStartOfVibeLangModuleDeclaration	admission:inline-module	-	pending	Denied VIP-25; legacy inline module parser and imports
-parser/vibelang_modules.go:Parser.parseVibeLangModuleDeclaration	admission:inline-module	-	pending	Denied VIP-25; legacy inline module parser and imports
-parser/vibelang_modules.go:Parser.skipTypeScriptModuleBody	admission:inline-module	-	pending	Denied VIP-25; legacy inline module parser and imports
-parser/vibelang_modules.go:Parser.parseVibeLangModuleReference	admission:inline-module	-	pending	Denied VIP-25; legacy inline module parser and imports
-parser/vibelang_modules.go:Parser.vibelangModuleReference	admission:inline-module	-	pending	Denied VIP-25; legacy inline module parser and imports
-parser/vibelang_modules.go:Parser.isVibeLangModuleImport	admission:inline-module	-	pending	Denied VIP-25; legacy inline module parser and imports
-parser/vibelang_modules.go:Parser.parseVibeLangModuleImport	admission:inline-module	-	pending	Denied VIP-25; legacy inline module parser and imports
-parser/vibelang_modules.go:ModuleDeclarationFileSuffix	admission:inline-module	-	pending	Denied VIP-25; legacy inline module parser and imports
-parser/vibelang_modules.go:ModuleDeclarationSpecifier	admission:inline-module	-	pending	Denied VIP-25; legacy inline module parser and imports
-parser/vibelang_modules.go:IsVibeLangModuleDeclaration	admission:inline-module	-	pending	Denied VIP-25; legacy inline module parser and imports
-parser/vibelang_modules.go:IsVibeLangModuleReference	admission:inline-module	-	pending	Denied VIP-25; legacy inline module parser and imports
-parser/vibelang_modules.go:ModuleDeclarationBody	admission:inline-module	-	pending	Denied VIP-25; legacy inline module parser and imports
-parser/vibelang_modules.go:Parser.attachVibeLangModules	admission:inline-module	-	pending	Denied VIP-25; legacy inline module parser and imports
-parser/vibelang_modules.go:parseModuleBody	admission:inline-module	-	pending	Denied VIP-25; legacy inline module parser and imports
-parser/vibelang_modules.go:blankOutside	admission:inline-module	-	pending	Denied VIP-25; legacy inline module parser and imports
+parser/vibelang_modules.go:Parser.isStartOfVibeLangModuleDeclaration	admission:module-declaration	900-appendices.md#ModuleDeclaration	support	VIP-40: a top-level module declaration whose body is TypeScript, and identifier module specifiers
+parser/vibelang_modules.go:Parser.parseVibeLangModuleDeclaration	admission:module-declaration	900-appendices.md#ModuleDeclaration	support	VIP-40: a top-level module declaration whose body is TypeScript, and identifier module specifiers
+parser/vibelang_modules.go:Parser.skipTypeScriptModuleBody	admission:module-declaration	900-appendices.md#ModuleDeclaration	support	VIP-40: a top-level module declaration whose body is TypeScript, and identifier module specifiers
+parser/vibelang_modules.go:Parser.parseVibeLangModuleReference	admission:module-declaration	900-appendices.md#ModuleDeclaration	support	VIP-40: a top-level module declaration whose body is TypeScript, and identifier module specifiers
+parser/vibelang_modules.go:Parser.vibelangModuleReference	admission:module-declaration	900-appendices.md#ModuleDeclaration	support	VIP-40: a top-level module declaration whose body is TypeScript, and identifier module specifiers
+parser/vibelang_modules.go:Parser.isVibeLangModuleImport	admission:module-declaration	900-appendices.md#ModuleDeclaration	support	VIP-40: a top-level module declaration whose body is TypeScript, and identifier module specifiers
+parser/vibelang_modules.go:Parser.parseVibeLangModuleImport	admission:module-declaration	900-appendices.md#ModuleDeclaration	support	VIP-40: a top-level module declaration whose body is TypeScript, and identifier module specifiers
+parser/vibelang_modules.go:ModuleDeclarationFileSuffix	admission:module-declaration	900-appendices.md#ModuleDeclaration	support	VIP-40: a top-level module declaration whose body is TypeScript, and identifier module specifiers
+parser/vibelang_modules.go:ModuleDeclarationSpecifier	admission:module-declaration	900-appendices.md#ModuleDeclaration	support	VIP-40: a top-level module declaration whose body is TypeScript, and identifier module specifiers
+parser/vibelang_modules.go:IsVibeLangModuleDeclaration	admission:module-declaration	900-appendices.md#ModuleDeclaration	support	VIP-40: a top-level module declaration whose body is TypeScript, and identifier module specifiers
+parser/vibelang_modules.go:IsVibeLangModuleReference	admission:module-declaration	900-appendices.md#ModuleDeclaration	support	VIP-40: a top-level module declaration whose body is TypeScript, and identifier module specifiers
+parser/vibelang_modules.go:ModuleDeclarationBody	admission:module-declaration	900-appendices.md#ModuleDeclaration	support	VIP-40: a top-level module declaration whose body is TypeScript, and identifier module specifiers
+parser/vibelang_modules.go:Parser.attachVibeLangModules	admission:module-declaration	900-appendices.md#ModuleDeclaration	support	VIP-40: a top-level module declaration whose body is TypeScript, and identifier module specifiers
+parser/vibelang_modules.go:parseModuleBody	admission:module-declaration	900-appendices.md#ModuleDeclaration	support	VIP-40: a top-level module declaration whose body is TypeScript, and identifier module specifiers
+parser/vibelang_modules.go:blankOutside	admission:module-declaration	900-appendices.md#ModuleDeclaration	support	VIP-40: a top-level module declaration whose body is TypeScript, and identifier module specifiers
 parser/vibelang_pipes.go:Parser.isPipeOperator	admission:pipe	900-appendices.md#PipeExpression	support	VIP-23 pinned Hack pipe and topic
 parser/vibelang_pipes.go:Parser.parsePipeRest	admission:pipe	900-appendices.md#PipeExpression	support	VIP-23 pinned Hack pipe and topic
 parser/vibelang_pipes.go:isFunctionLiteral	admission:pipe	900-appendices.md#PipeExpression	support	VIP-23 pinned Hack pipe and topic
@@ -639,7 +639,7 @@ vibelang/services_lower.go:servicePlan.planServiceNode	admission:services	900-ap
 vibelang/services_lower.go:servicePlan.looksUp	admission:services	900-appendices.md#ServiceDeclaration	support	VIP-9 service class lowering; legacy lookup/call paths below
 vibelang/services_lower.go:analyzer.addServiceLookup	admission:services	900-appendices.md#ServiceDeclaration	support	VIP-9 service class lowering; legacy lookup/call paths below
 vibelang/services_lower.go:lowering.visitServiceLookup	admission:implicit-service-call	-	pending	Denied VIP-10 and VIP-5; no implicit service/config execution
-vibelang/services_lower.go:lowering.visitModuleAlias	admission:inline-module	-	pending	Denied VIP-25
+vibelang/services_lower.go:lowering.visitModuleAlias	admission:module-declaration	900-appendices.md#ModuleDeclaration	support	VIP-40: a top-level module declaration whose body is TypeScript, and identifier module specifiers
 vibelang/services_lower.go:lowering.visitServiceClass	admission:services	900-appendices.md#ServiceDeclaration	support	VIP-9 service class lowering; legacy lookup/call paths below
 vibelang/services_lower.go:operationArity	admission:services	900-appendices.md#ServiceDeclaration	support	VIP-9 service class lowering; legacy lookup/call paths below
 vibelang/trust_lower.go:newTrustedPlan	admission:trusted	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
@@ -814,7 +814,7 @@ parser/vibelang_schema_generic.go:Parser.vibelangRecordSchemaReference	admission
 parser/vibelang_schema_generic.go:Parser.vibelangSchemaGenericName	admission:schema	900-appendices.md#SchemaDeclaration,006-data.md	support	VIP-15: mapped Array/ReadonlyArray/Record/Readonly references preserve resolved library bindings, codec flags and ordinary shadowing
 parser/vibelang_syntax.go:vibeLangScriptKind	admission:syntax-records	900-appendices.md	support	VIP-39: a .vibex file reads the same VibeLang productions with TypeScript JSX; the script-kind choice admits no form
 parser/vibelang_errors.go:vibelangErrorPayloadSeparators	admission:error	900-appendices.md#Separator,900-appendices.md#Field,003-failures.md	support	VIP-13: a comma after a payload Field is the Separator production; the parser marks it for the projected class without admitting class punctuation
-parser/vibelang_modules.go:Parser.rejectVibeLangModule	admission:inline-module	900-appendices.md	recovery	VIP-25: inline TypeScript escape modules are denied; the parser reports the form and admits nothing
+parser/vibelang_modules.go:Parser.rejectVibeLangModule	admission:module-declaration	900-appendices.md#ModuleDeclaration	recovery	VIP-40: EK4001-EK4003 reject a module declaration below the top level, an exported one and a nameless module expression
 vibelang/services_lower.go:serviceHead	admission:services	900-appendices.md#CatchExpression,005-services.md	support	VIP-5 and VIP-9: a plain catch head that looks a service up suspends the lookup; the lowering admits no form
 vibelang/services_lower.go:lowering.visitServiceHead	admission:services	900-appendices.md#CatchExpression,005-services.md	support	VIP-5 and VIP-9: a plain catch head that looks a service up suspends the lookup; the lowering admits no form
 parser/vibelang_fiber_context.go:Parser.isReservedFiberName	admission:fork	900-appendices.md#ForkExpression,900-appendices.md#JoinExpression	support	VIP-17 (amended): EK1702 rejects fork and join as bindings under [+Effect]

@@ -385,7 +385,7 @@ func grammarBracketSym(text string) *grammarGsym {
 		set = strings.TrimSpace(set)
 		set = strings.TrimSuffix(strings.TrimPrefix(set, "{"), "}")
 		var seqs [][]string
-		for _, part := range strings.Split(set, ",") {
+		for _, part := range grammarSplitLookahead(set) {
 			var seq []string
 			for _, m := range grammarLookaheadElem.FindAllStringSubmatch(part, -1) {
 				if m[0] == "[no LineTerminator here]" {
@@ -403,6 +403,23 @@ func grammarBracketSym(text string) *grammarGsym {
 	return &grammarGsym{kind: grammarSymClass, text: "‹[" + t + "]›"}
 }
 
+// grammarSplitLookahead splits a lookahead set at the commas between its
+// members. A quoted "," is a member, as in ThrowExpressionInvalidPunctuator.
+func grammarSplitLookahead(set string) []string {
+	var parts []string
+	quoted, start := false, 0
+	for i, r := range set {
+		switch {
+		case r == '"':
+			quoted = !quoted
+		case r == ',' && !quoted:
+			parts = append(parts, set[start:i])
+			start = i + 1
+		}
+	}
+	return append(parts, set[start:])
+}
+
 // grammarTsSubset is the TypeScript the search embeds: ECMAScript 2025's
 // statements and expressions and TypeScript 5.9's types, cut to what the
 // VibeLang productions and the specification's examples touch (no regular
@@ -417,7 +434,8 @@ func grammarBracketSym(text string) *grammarGsym {
 // type name takes a following "<" as its type arguments, and "(" … ")"
 // followed by "=>" is a function type. Script is the start symbol.
 const grammarTsSubset = `
-Script = Statement*
+Script = ScriptItem*
+ScriptItem = Statement
 Statement = Block | VariableStatement | EmptyStatement | ExpressionStatement | IfStatement | WhileStatement | ForOfStatement | SwitchStatement | ReturnStatement | ThrowStatement | TryStatement | LabelledStatement | BreakStatement | ContinueStatement | Declaration
 SwitchStatement = "switch" "(" Expression ")" "{" CaseClause* "}"
 CaseClause = "case" Expression ":" Statement* | "default" ":" Statement*
@@ -435,7 +453,7 @@ BindingPropertyList = BindingProperty | BindingPropertyList "," BindingProperty
 BindingProperty = BindingIdentifier Initializer? | PropertyName ":" BindingIdentifier Initializer?
 BindingElementList = BindingIdentifier | BindingElementList "," BindingIdentifier
 EmptyStatement = ";"
-ExpressionStatement = [lookahead ∉ { "{", "function", "class", "let" "[", "async" [no LineTerminator here] "function", "effect" [no LineTerminator here] "function", "using", "do" }] Expression StatementEnd
+ExpressionStatement = [lookahead ∉ { "{", "function", "class", "let" "[", "async" [no LineTerminator here] "function", "effect" [no LineTerminator here] "function", "using", "do", "throw" }] Expression StatementEnd
 StatementEnd = ";" | ASI
 IfStatement = "if" "(" Expression ")" Statement "else" Statement | "if" "(" Expression ")" Statement [lookahead ∉ { "else" }]
 WhileStatement = "while" "(" Expression ")" Statement
@@ -587,6 +605,42 @@ const grammarTc39Do = `
 DoExpression = "do" Block
 `
 
+// grammarModuleProduction is VIP-40's ModuleDeclaration as Appendix A writes it,
+// in an untyped block with ECMAScript's colon notation that the production
+// reader does not read. TestGrammarAdmissionQuoted pins it; grammarVip40Module
+// restates it in the lab's notation, with the IdentifierReference specifier.
+// ModuleBody is TypeScript; the lab reads it as Statements, VibeLang included,
+// so it admits more than the specification there and can miss a compiler that
+// accepts VibeLang in a body.
+const grammarModuleProduction = `"module" [no LineTerminator here] BindingIdentifier "{" ModuleBody? "}"`
+
+const grammarVip40Module = `
+ModuleDeclaration = "module" [no LineTerminator here] BindingIdentifier "{" ModuleBody? "}"
+ModuleBody = Statement | ModuleBody Statement
+ModuleImport = "import" IdentifierReference StatementEnd | "import" ImportClause "from" IdentifierReference StatementEnd
+`
+
+// grammarThrowPunctuators returns the body of Appendix A's
+// ThrowExpressionInvalidPunctuator, continuation lines included.
+func grammarThrowPunctuators(text string) string {
+	const head = "ThrowExpressionInvalidPunctuator = "
+	at := strings.Index(text, head)
+	if at < 0 {
+		return ""
+	}
+	lines := strings.Split(text[at+len(head):], "\n")
+	body := lines[0]
+	for _, l := range lines[1:] {
+		if !strings.HasPrefix(strings.TrimSpace(l), "|") {
+			break
+		}
+		body += " " + strings.TrimSpace(l)
+	}
+	return body
+}
+
+var grammarQuotedToken = regexp.MustCompile(`"[^"\s]+"`)
+
 // grammarSubsetHooks says where the subset admits each Appendix A production that
 // no other production names, by the alternatives ECMAScript gives the
 // construct it mirrors: an effect function stands where an async function
@@ -632,6 +686,9 @@ var grammarSubsetHooks = []struct{ at, name string }{
 	{"Statement", "SchemaDeclaration"},
 	{"Statement", "DataDecl"},
 	{"Statement", "DataDeclaration"},
+	{"UnaryExpression", "ThrowExpression"},
+	{"ScriptItem", "ModuleDeclaration"},
+	{"ImportDeclaration", "ModuleImport"},
 }
 
 // grammarPlacementComments are the production comments that say where a
@@ -839,6 +896,27 @@ func grammarBuildGrammar(a *grammarAppendixData) *grammarCfg {
 				defs = append(defs, d)
 				defined[name] = true
 			}
+		}
+	}
+	// VIP-41 imports the pinned throw-expression draft: one UnaryExpression
+	// alternative whose lookahead is Appendix A's ThrowExpressionInvalidPunctuator.
+	if defined["ThrowExpressionInvalidPunctuator"] {
+		set := grammarQuotedToken.FindAllString(grammarThrowPunctuators(a.text), -1)
+		d := grammarParseDef("ThrowExpression", `"throw" UnaryExpression [lookahead ∉ { `+strings.Join(set, ", ")+` }]`, 0)
+		d.vibe = true
+		d.source = "vips/tc39-throw-expressions/spec.emu"
+		defs = append(defs, d)
+		defined["ThrowExpression"] = true
+	}
+	// VIP-40's module declaration: a top-level statement only.
+	if strings.Contains(a.text, grammarModuleProduction) {
+		for _, line := range strings.Split(strings.TrimSpace(grammarVip40Module), "\n") {
+			name, body, _ := strings.Cut(line, " = ")
+			d := grammarParseDef(name, body, 0)
+			d.vibe = true
+			d.source = "vips/0040-module-declarations.md"
+			defs = append(defs, d)
+			defined[name] = true
 		}
 	}
 	all := map[string]bool{}
