@@ -1,0 +1,9 @@
+export effect function collect() {
+  const seen: number[] = []
+  const result = do { { for concurrent(1) (const n of [1, 2, 3]) { seen.push(n) }; void 0 as void; } }
+  return { kind: typeof result, seen }
+}
+
+export effect function empty() {
+  return do { { for concurrent(1) (const n of [1]) { }; void 0 as void; } }
+}

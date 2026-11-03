@@ -265,7 +265,7 @@ func (p *Parser) checkDoEnds(d *doExpression) {
 	if bad := endsBadly(d.block.AsBlock().Statements.Nodes, nil, true); bad != nil {
 		what, fix := "a declaration", "End it with the value, after the declaration."
 		switch {
-		case ast.IsIterationStatement(bad, false):
+		case ast.IsIterationStatement(bad, false), doConcurrentBody(bad) != nil:
 			what, fix = "a loop", "End it with the value, after the loop."
 		case bad.Kind == ast.KindIfStatement:
 			what, fix = "an if without an else", "Give the if an else with the value it has otherwise."
@@ -318,6 +318,14 @@ func endsBadly(list []*ast.Node, labels []string, isLast bool) *ast.Node {
 }
 
 func endsBadlyStatement(s *ast.Node, labels []string, isLast bool) *ast.Node {
+	// Concurrent loops are represented by intrinsic calls, but remain iteration
+	// statements for the source grammar's completion predicates (VIP-2).
+	if body := doConcurrentBody(s); body != nil {
+		if isLast || isBreakStatement(body, labels) {
+			return s
+		}
+		return endsBadlyStatement(body, labels, isLast)
+	}
 	when := func(b bool) *ast.Node {
 		if b {
 			return s
@@ -393,6 +401,29 @@ func endsBadlyStatement(s *ast.Node, labels []string, isLast bool) *ast.Node {
 	// A declaration of any kind other than var: let, const, using, function, class,
 	// and TypeScript's type, interface, enum and namespace declarations.
 	return when(isLast)
+}
+
+func doConcurrentBody(s *ast.Node) *ast.Node {
+	if !ast.IsExpressionStatement(s) {
+		return nil
+	}
+	call := s.Expression()
+	if !ast.IsCallExpression(call) || !ast.IsIdentifier(call.Expression()) || call.Expression().Text() != "$forConcurrent" || call.Expression().Flags&ast.NodeFlagsVibeLangIntrinsic == 0 {
+		return nil
+	}
+	args := call.Arguments()
+	if len(args) != 3 || !ast.IsArrowFunction(args[2]) {
+		return nil
+	}
+	body := args[2].Body()
+	if !ast.IsBlock(body) || len(body.AsBlock().Statements.Nodes) == 0 {
+		return nil
+	}
+	// The callback wraps the source body and may prepend a synthesized
+	// destructuring declaration for the head. Only the final, source statement
+	// is the iteration body; the generated declaration has no source completion.
+	statements := body.AsBlock().Statements.Nodes
+	return statements[len(statements)-1]
 }
 
 // isEmptyList is IsEmpty of a statement list.

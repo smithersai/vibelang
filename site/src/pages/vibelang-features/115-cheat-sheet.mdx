@@ -793,7 +793,9 @@ const label = (id: string) =>
 
 :::
 
-A `do` expression is TC39's: `return`, `break`, `continue` and `var` inside it mean what they mean around it. Its block cannot end with a declaration, a loop or an `if` without `else` (`EK0201`); an unlabeled jump or one targeting any label directly chained around the same loop cannot leave a `do` expression in that loop's head (`EK0205`), nor a `var` stand in one in a parameter list (`EK0203`), including inside nested `do` expressions; and where VibeLang still writes a function around it, such as a parameter default, none of them can leave it (`EK0204`).
+A `do` expression is TC39's: `return`, `break`, `continue` and `var` inside it mean what they mean around it. Its block cannot end with a declaration, a loop (including `for concurrent` and `for try`) or an `if` without `else` (`EK0201`); an unlabeled jump or one targeting any label directly chained around the same loop cannot leave a `do` expression in that loop's head (`EK0205`), nor a `var` stand in one in a parameter list (`EK0203`), including inside nested `do` expressions; and where VibeLang still writes a function around it, such as a parameter default, none of them can leave it (`EK0204`).
+
+A final `for concurrent` discards its item results. `vibelang --fix` preserves the formerly accepted spelling by wrapping that loop in a block ending with `void 0 as void`, making its `undefined` result explicit while retaining its `void` type. A later value, as in `do { for concurrent (const n of xs) { use(n) }; 7 }`, is already valid.
 
 An anonymous function or class used as a `do` completion, conditional value, method receiver, computed key, `match` subject or array value keeps its empty `.name`. An object property before a later `do` keeps its property name; class static initializers observe that source name during creation.
 

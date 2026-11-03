@@ -1971,6 +1971,8 @@ typescript/vibelang/cases/do-computed-key-finish-order/main.vibe:30:52 lambda pl
 typescript/vibelang/cases/do-computed-key-finish-order/main.vibe:50:86 lambda plain annotation
 typescript/vibelang/cases/do-computed-key-finish-order/main.vibe:70:52 lambda plain annotation
 typescript/vibelang/cases/do-computed-key-finish-order/main.vibe:90:51 lambda plain annotation
+typescript/vibelang/cases/do-concurrent-ending-fix/main.vibe:3:50 lambda effectFn table
+typescript/vibelang/cases/do-concurrent-ending-fix/main.vibe:8:42 lambda effectFn table
 typescript/vibelang/cases/do-constructor-getvalue-order/main.vibe:24:31 lambda plain annotation
 typescript/vibelang/cases/do-constructor-getvalue-order/main.vibe:46:37 lambda plain annotation
 typescript/vibelang/cases/do-constructor-getvalue-order/main.vibe:68:31 lambda plain annotation
