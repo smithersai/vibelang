@@ -79,7 +79,7 @@ func methodCatchParts(c *checker.Checker, call *ast.Node) (*ast.Node, *ast.Node)
 }
 
 func catchCombinatorOf(c *checker.Checker, call *ast.Node) string {
-	if !ast.IsCallExpression(call) || call.TypeArguments() != nil || !inLowerableBody(call) || inHatch(call) || ast.IsOptionalChain(call) {
+	if !ast.IsCallExpression(call) || call.TypeArguments() != nil || !inLowerableBody(call) || inHatch(call) || ast.IsOptionalChain(call) || directTryFormSite(call) == nil {
 		return ""
 	}
 	operator := call
@@ -109,9 +109,14 @@ func findCatchCombinators(c *checker.Checker, file *ast.SourceFile, report func(
 	var visit func(node *ast.Node) bool
 	visit = func(node *ast.Node) bool {
 		if name := catchCombinatorOf(c, node); name != "" {
-			if rewrite := catchCombinatorRewrite(c, file, node); rewrite.fixable() {
-				report(node, rewrite, "Effect."+name)
+			rewrite := catchCombinatorRewrite(c, file, node)
+			if rewrite == nil {
+				rewrite = &formRewrite{why: directTrySafetyNote}
 			}
+			if name == "catch" && !rewrite.fixable() {
+				rewrite.message = catchHandlerMessage
+			}
+			report(node, rewrite, "Effect."+name)
 		}
 		return node.ForEachChild(visit)
 	}
@@ -163,6 +168,9 @@ func catchCombinatorRewrite(c *checker.Checker, file *ast.SourceFile, call *ast.
 	name := catchCombinatorOf(c, call)
 	if name == "" {
 		return nil
+	}
+	if directTryFormSite(call) != call {
+		return &formRewrite{why: directTryWrapperNote}
 	}
 	arguments := call.Arguments()
 	if self, inner := methodCatchParts(c, call); self != nil {

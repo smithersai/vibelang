@@ -1,19 +1,1 @@
 # Gaps found by the fuzz targets of spec loop round 5 (loop_r5_advisory_fuzz_test.go).
-FuzzDirectTryAdvisories errors:TS1360/satisfies compiler VIP-34: the operand of try typechecks as its success, not as an Effect (D288's a call runs where it stands), so (Effect.succeed(1) satisfies number!string) is TS1360 (007 rows, loop r5 OPUS-4, decided detail 254); lane impl-hunt-svc
-FuzzDirectTryAdvisories missing:EK4834/bare compiler VIP-34: try Effect.fail(x) reports no EK4834 (007 rows, loop r5 OPUS-4, decided detail 254); lane impl-hunt-svc
-FuzzDirectTryAdvisories missing:EK4834/parens compiler VIP-34: a parenthesized Effect.fail or Effect.succeed under try reports no EK4834 (007 rows, loop r5 OPUS-4, decided detail 254); lane impl-hunt-svc
-FuzzDirectTryAdvisories missing:EK4834/as compiler VIP-34: an Effect.succeed or Effect.fail under try through as reports no EK4834 (007 rows, loop r5 OPUS-4, decided detail 254); lane impl-hunt-svc
-FuzzDirectTryAdvisories missing:EK4834/satisfies compiler VIP-34: an Effect.fail under try through satisfies reports no EK4834 (007 rows, loop r5 OPUS-4, decided detail 254); lane impl-hunt-svc
-FuzzDirectTryAdvisories missing:EK4835/bare compiler VIP-34: try Effect.catch(e, h) with a handler value reports no EK4835 (007 rows, loop r5 OPUS-4, decided detail 254); lane impl-hunt-svc
-FuzzDirectTryAdvisories missing:EK4835/parens compiler VIP-34: a parenthesized Effect.catch(e, h) under try reports no EK4835 (007 rows, loop r5 OPUS-4, decided detail 254); lane impl-hunt-svc
-FuzzDirectTryAdvisories missing:EK4835/as compiler VIP-34: an Effect.catch(e, h) under try through as reports no EK4835 (007 rows, loop r5 OPUS-4, decided detail 254); lane impl-hunt-svc
-FuzzDirectTryAdvisories missing:EK4835/satisfies compiler VIP-34: an Effect.catch(e, h) under try through satisfies reports no EK4835; on main e2974ee5 after VIP-1 the operand no longer stops at TS1360 (007 rows, loop r5 OPUS-4, decided detail 254); lane impl-hunt-svc
-FuzzDirectTryAdvisories extra:EK4834/stored compiler VIP-34: const v = Effect.succeed(1) reports EK4834 on a stored Effect (007 rows, loop r5 OPUS-4, decided detail 254); lane impl-hunt-svc
-FuzzDirectTryAdvisories extra:EK4834/api-argument compiler VIP-34: an Effect returned from an Effect API callback reports EK4834 (007 rows, loop r5 OPUS-4, decided detail 254); lane impl-hunt-svc
-FuzzDirectTryAdvisories extra:EK4836/stored compiler VIP-34: const v = Effect.provide(e, L) reports EK4836 on a stored Effect (007 rows, loop r5 OPUS-4, decided detail 254); lane impl-hunt-svc
-FuzzDirectTryAdvisories extra:EK4836/fork compiler VIP-34: fork Effect.provide(e, L) reports EK4836 (007 rows, loop r5 OPUS-4, decided detail 254); lane impl-hunt-svc
-FuzzDirectTryAdvisories extra:EK4836/try.all compiler VIP-34: a try.all element Effect.provide(e, L) reports EK4836 (007 rows, loop r5 OPUS-4, decided detail 254); lane impl-hunt-svc
-FuzzDirectTryAdvisories extra:EK4836/try.allSettled compiler VIP-34: a try.allSettled element Effect.provide(e, L) reports EK4836 (007 rows, loop r5 OPUS-4, decided detail 254); lane impl-hunt-svc
-FuzzDirectTryAdvisories extra:EK4836/try.race compiler VIP-34: a try.race element Effect.provide(e, L) reports EK4836 (007 rows, loop r5 OPUS-4, decided detail 254); lane impl-hunt-svc
-FuzzDirectTryAdvisories extra:EK4836/api-argument compiler VIP-34: an Effect.provide(e, L) returned from an Effect API callback reports EK4836 (007 rows, loop r5 OPUS-4, decided detail 254); lane impl-hunt-svc
-FuzzDirectTryAdvisories extra:EK4836/catch-head compiler VIP-34: the head of a catch, Effect.provide(e, L) catch f, reports EK4836 (007 rows, loop r5 OPUS-4, decided detail 254); lane impl-hunt-svc

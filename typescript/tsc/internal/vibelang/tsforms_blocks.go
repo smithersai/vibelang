@@ -66,7 +66,9 @@ func blockFormOf(c *checker.Checker, call *ast.Node) string {
 			return name
 		}
 	case name == "provide" && len(call.Arguments()) == 2, name == "provideService" && len(call.Arguments()) == 3:
-		return name
+		if directTryFormSite(call) != nil {
+			return name
+		}
 	}
 	return ""
 }
@@ -77,7 +79,11 @@ func findBlockForms(c *checker.Checker, file *ast.SourceFile, report func(at *as
 	var visit func(node *ast.Node) bool
 	visit = func(node *ast.Node) bool {
 		if name := blockFormOf(c, node); name != "" {
-			if rewrite := blockFormRewrite(c, file, node); rewrite != nil {
+			rewrite := blockFormRewrite(c, file, node)
+			if rewrite == nil && name != "withSpan" {
+				rewrite = &formRewrite{why: directTrySafetyNote}
+			}
+			if rewrite != nil {
 				form := "withSpan(program, name)"
 				switch name {
 				case "provide":
@@ -98,6 +104,9 @@ func blockFormRewrite(c *checker.Checker, file *ast.SourceFile, call *ast.Node) 
 	name := blockFormOf(c, call)
 	if name == "" {
 		return nil
+	}
+	if name != "withSpan" && directTryFormSite(call) != call {
+		return &formRewrite{why: directTryWrapperNote}
 	}
 	arguments := call.Arguments()
 	if name == "withSpan" {

@@ -16,7 +16,8 @@ import (
 //	return try Effect.fail(new Gone())   throw new Gone()
 //	effect () => try Effect.fail(error)  effect () => throw error
 //
-// Only a call that try runs counts. Any other call builds a program, which
+// Only the direct operand of bare try counts (detail 254), through erased
+// expression wrappers. Any other call builds a program, which
 // the value would not be. The fix of Effect.succeed(x) writes x where a value
 // stands: a return, an initializer, an argument, an element or a field, an
 // arrow function's body, a branch of ?:, and the right side of ??, ||, or &&;
@@ -44,13 +45,10 @@ func directFormCall(c *checker.Checker, call *ast.Node) string {
 	if !ast.IsCallExpression(call) || call.TypeArguments() != nil || len(call.Arguments()) != 1 || ast.IsSpreadElement(call.Arguments()[0]) || ast.IsOptionalChain(call) {
 		return ""
 	}
-	if !isEffectFunction(c, call.Expression(), "Effect", "succeed", "fail") || !inLowerableBody(call) || inHatch(call) {
+	if !isEffectFunction(c, call.Expression(), "Effect", "succeed", "fail") || !inLowerableBody(call) || inHatch(call) || directTryFormSite(call) == nil {
 		return ""
 	}
 	_, name := effectMember(c, call.Expression())
-	if !analyzerFor(c).runs(call) {
-		return "" // a call no try runs builds a program
-	}
 	return name
 }
 
@@ -60,9 +58,18 @@ func findDirectForms(c *checker.Checker, file *ast.SourceFile, report func(at *a
 	var visit func(node *ast.Node) bool
 	visit = func(node *ast.Node) bool {
 		if ast.IsCallExpression(node) && directFormCall(c, node) != "" {
-			if rewrite := directFormRewrite(c, file, node); rewrite.fixable() {
-				report(node, rewrite, expressionText(file, node.Expression())+"(…)", rewrite.description)
+			rewrite := directFormRewrite(c, file, node)
+			if rewrite == nil {
+				rewrite = &formRewrite{why: directTrySafetyNote}
 			}
+			if !rewrite.fixable() {
+				rewrite.description = shortText(expressionText(file, node.Arguments()[0]), "the argument")
+				if directFormCall(c, node) == "fail" {
+					rewrite.description = "throw " + rewrite.description
+					rewrite.message = directFailMessage
+				}
+			}
+			report(node, rewrite, expressionText(file, node.Expression())+"(…)", rewrite.description)
 		}
 		return node.ForEachChild(visit)
 	}
@@ -117,6 +124,9 @@ func directFormRewrite(c *checker.Checker, file *ast.SourceFile, call *ast.Node)
 	name := directFormCall(c, call)
 	if name == "" {
 		return nil
+	}
+	if directTryFormSite(call) != call {
+		return &formRewrite{why: directTryWrapperNote}
 	}
 	argument := call.Arguments()[0]
 	argumentText := expressionText(file, argument)
