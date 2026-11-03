@@ -1,4 +1,4 @@
-import { fileURLToPath as __vibelangFileURLToPath } from "node:url"
+import * as __vibelangNodeURL from "node:url"
 
 // VibeLang source-child loader arguments.
 function __vibelangSourceChild<C extends string>(
@@ -38,7 +38,7 @@ function __vibelangSourceChild<C extends string>(
   const bun = runtime === "bun"
   const specifier = bun ? "vibelang/bun" : "vibelang/register"
   const resolved = resolveLoader(specifier)
-  const path = resolved.startsWith("file:") ? __vibelangFileURLToPath(resolved) : resolved
+  const path = resolved.startsWith("file:") ? __vibelangNodeURL.fileURLToPath(resolved) : resolved
   const flag = bun ? "--preload" : "--import"
   const sameLoader = (value: string | undefined) => value === specifier || value === resolved || value === path
   const prefix: string[] = []

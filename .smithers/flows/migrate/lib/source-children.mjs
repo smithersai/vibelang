@@ -10,6 +10,59 @@ const api = name => name === "node:child_process" || name === "child_process"
   ? new Set(["spawn", "spawnSync"])
   : name === "effect/process/ChildProcess" ? new Set(["make"]) : null
 
+// Refresh only the URL binding owned by a previously emitted helper. A
+// namespace import obeys native no-import-alias rules without an exception.
+// Keep manually observed bindings unchanged and report the boundary.
+function refreshSourceChildImport(text, source, ts, checker) {
+  const helpers = source.statements.filter(node => ts.isFunctionDeclaration(node) &&
+    /^__vibelangSourceChild\d*$/.test(node.name?.text ?? ""))
+  if (!helpers.length) return null
+  const edits = [], refusals = []
+  const inside = node => helpers.some(helper => helper.pos <= node.pos && node.end <= helper.end)
+  for (const statement of source.statements) {
+    if (!ts.isImportDeclaration(statement) || statement.moduleSpecifier.text !== "node:url" ||
+      statement.importClause?.isTypeOnly) continue
+    const clause = statement.importClause, named = clause?.namedBindings
+    if (!named || !ts.isNamedImports(named)) continue
+    for (const item of named.elements) {
+      if (item.isTypeOnly || item.propertyName?.text !== "fileURLToPath" ||
+        !/^__vibelangFileURLToPath\d*$/.test(item.name.text)) continue
+      const binding = checker.getSymbolAtLocation(item.name), references = []
+      const visit = node => {
+        if (ts.isImportDeclaration(node)) return
+        if (ts.isIdentifier(node)) {
+          let target = checker.getSymbolAtLocation(node)
+          if (ts.isShorthandPropertyAssignment(node.parent)) target = checker.getShorthandAssignmentValueSymbol(node.parent) ?? target
+          if (ts.isExportSpecifier(node.parent)) target = checker.getExportSpecifierLocalTargetSymbol(node.parent) ?? target
+          if (target === binding) references.push(node)
+        }
+        ts.forEachChild(node, visit)
+      }
+      visit(source)
+      if (!references.some(inside)) continue // An authored alias is not ours.
+      const refuse = reason => refusals.push({
+        line: source.getLineAndCharacterOfPosition(statement.getStart(source)).line + 1, reason
+      })
+      if (clause.name || named.elements.length !== 1) {
+        refuse("generated source-child URL binding shares an authored import; retain it for manual review")
+        continue
+      }
+      if (references.some(node => !inside(node) || !ts.isCallExpression(node.parent) || node.parent.expression !== node)) {
+        refuse("generated source-child URL binding has manual references; retain it for manual review")
+        continue
+      }
+      const quote = statement.moduleSpecifier.getText(source)[0]
+      const semicolon = statement.getText(source).trimEnd().endsWith(";") ? ";" : ""
+      edits.push({ start:statement.getStart(source), end:statement.end,
+        text:"import * as " + item.name.text + " from " + quote + "node:url" + quote + semicolon })
+      for (const node of references) edits.push({ start:node.getStart(source), end:node.end, text:item.name.text + ".fileURLToPath" })
+    }
+  }
+  let after = text
+  for (const edit of edits.sort((a,b) => b.start-a.start)) after = after.slice(0,edit.start) + edit.text + after.slice(edit.end)
+  return { text:after, usesChild:true, refusals }
+}
+
 export function addSourceChildLoaders(text, ts, { file = "child.ts", type = "module" } = {}) {
   const source = ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true, ts.getScriptKindFromFileName(file))
   const refusals = []
@@ -71,7 +124,11 @@ export function addSourceChildLoaders(text, ts, { file = "child.ts", type = "mod
     warn(calls[0], "a CommonJS child-process launcher needs an ESM source entry to resolve native preloads")
     return { text, usesChild: false, refusals }
   }
-  if (text.includes(marker)) return { text, usesChild: true, refusals }
+
+  if (text.includes(marker)) {
+    const refreshed = refreshSourceChildImport(text, source, ts, checker)
+    if (refreshed) return refreshed
+  }
 
   const identifiers = new Set()
   const collect = node => { if (ts.isIdentifier(node)) identifiers.add(node.text); ts.forEachChild(node, collect) }
@@ -82,7 +139,7 @@ export function addSourceChildLoaders(text, ts, { file = "child.ts", type = "mod
     identifiers.add(name)
     return name
   }
-  const helper = fresh("__vibelangSourceChild"), url = fresh("__vibelangFileURLToPath")
+  const helper = fresh("__vibelangSourceChild"), url = fresh("__vibelangNodeURL")
   const edits = []
   for (const call of calls) {
     if (call.arguments.length < 2 || call.arguments.length > 3 || call.arguments.some(ts.isSpreadElement)) {
@@ -123,7 +180,7 @@ export function addSourceChildLoaders(text, ts, { file = "child.ts", type = "mod
     })
   }
   if (!edits.length) return { text, usesChild: false, refusals }
-  let rendered = template.replaceAll("__vibelangSourceChild", helper).replaceAll("__vibelangFileURLToPath", url)
+  let rendered = template.replaceAll("__vibelangSourceChild", helper).replaceAll("__vibelangNodeURL", url)
   if (/\.[cm]?jsx?$/.test(file)) rendered = ts.transpileModule(rendered, {
     compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022, removeComments: false }
   }).outputText
