@@ -39,3 +39,10 @@ test("every listed name is a test in the target's packages", () => {
   const names = goTests(packages)
   assert.deepEqual(listed.filter(name => !names.has(name)), [])
 })
+
+// Merge-queue rejections on PACKAGE.ts came from lanes appending quote tests next to each other in this list (34 of
+// the last 400 rejections). The pattern already runs every quote test, so a listed one only invites that conflict.
+test("no list names a quote test: the pattern runs it", () => {
+  const { listed } = specTests(read("PACKAGE.ts"))
+  assert.deepEqual(listed.filter(name => name.endsWith("Quoted")), [])
+})
