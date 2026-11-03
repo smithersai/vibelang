@@ -20,6 +20,8 @@ effect function main() {
 
 Calling `greet("Ada")` returns an Effect. `try greet("Ada")` runs it and returns its string. Pass that Effect directly to `retry`, `timeout`, or another Effect function. Use `effect { ... }` to build an Effect from several statements. Plain and `async` functions keep their TypeScript meaning. `await` waits for Promises in `async` functions.
 
+Plain code may discard a runner's result: `function run(): void { Effect.runSyncExit(Effect.succeed(1)) }` runs the Effect and discards its `Exit`, just as in TypeScript. The same applies to plain callbacks, `async` functions and module statements. Discarding a constructed Effect value does not run it; use explicit execution when that is intended.
+
 A plain `for...of` also keeps TypeScript's lexical scopes. A closure made in its iterable expression captures an uninitialized `let` or `const` head binding, even with destructuring. Calling that closure during or after the loop throws `ReferenceError`; initializing the separate per-iteration bindings does not initialize the captured cell. A `var` or assignment head keeps its shared binding instead.
 
 A recognized `effect` modifier on an `abstract` declaration, in an ambient `declare` context, or on an `interface` or type literal member is `EK0108`. Remove the modifier from the signature, or put the implementation in an ordinary function or method. A method named `effect`, such as `interface Ordinary { effect(): number }`, keeps its ordinary TypeScript meaning.

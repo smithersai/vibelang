@@ -17,6 +17,14 @@ const plainRunnersQuote = "neither keyword: plain JavaScript"
 // plainRunnerForms are the plain function forms FuzzFunctionPlainRunners
 // puts a runner call in; RUN stands for the call.
 var plainRunnerForms = []struct{ key, source string }{
+	{"top-level", "RUN"},
+	{"parenthesized-statement", "export function f(): void { ((RUN)) }"},
+	{"async", "export async function f(): Promise<void> { RUN }"},
+	{"getter", "export class C { get value(): number { RUN; return 1 } }"},
+	{"setter", "export class C { set value(_value: number) { RUN } }"},
+	{"static-block", "export class C { static { RUN } }"},
+	{"parameter-default", "export function f(_value = (RUN, 1)): void {}"},
+	{"plain-in-effect", "export effect function f() { const g = () => { RUN }; g() }"},
 	{"declaration", "export function f(): void { RUN }"},
 	{"arrow", "export const f = (): void => { RUN }"},
 	{"expression-arrow", "export const f = () => RUN"},

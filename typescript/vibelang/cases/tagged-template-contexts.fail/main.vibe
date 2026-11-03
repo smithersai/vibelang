@@ -1,9 +1,9 @@
-// expect: EK0501 EK4301 EK4801
+// expect: EK0501 EK4801
 // A tagged template is a call (D267): it gives the tag's Effect unrun (VIP-1),
 // and only try runs it (VIP-5). try at the top level, in a plain callback, a
 // constructor, an accessor or a parameter default is outside effect code:
-// EK0501. A statement that discards a structured Effect result is EK4301
-// (D24), and one whose try leaves its Effect unrun is EK4801. Before VIP-1 a
+// EK0501. A plain statement may discard its structured result (VIP-1).
+// A try whose result leaves an Effect unrun is EK4801. Before VIP-1 a
 // template there ran implicitly and was EK1001/EK4301.
 import { tag, statement } from "./tags.js"
 try tag`top-level`

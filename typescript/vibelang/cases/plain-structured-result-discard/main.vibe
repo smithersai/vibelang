@@ -1,0 +1,38 @@
+// VIP-1: neither keyword: plain JavaScript.
+// Runners execute before their Exit result is discarded.
+import { Effect, Exit, Config } from "effect"
+
+let runs = 0
+const program = () => Effect.sync(() => { runs++ })
+export function f(): void { Effect.runSyncExit(program()) }
+const arrow = (): void => { (Effect.runSyncExit(program())) }
+const expression = function (): void { Effect.runSyncExit(program()) }
+class C {
+  constructor() { Effect.runSyncExit(program()) }
+  method(): void { Effect.runSyncExit(program()) }
+  get value(): number { Effect.runSyncExit(program()); return 1 }
+  static { Effect.runSyncExit(program()) }
+  field = (Effect.runSyncExit(program()), 1)
+}
+const object = { method(): void { Effect.runSyncExit(program()) } }
+function wrapped() { return Effect.runSyncExit(program()) }
+function tag(_strings: TemplateStringsArray) { return Effect.runSyncExit(program()) }
+async function asynchronous(): Promise<void> { Effect.runSyncExit(program()) }
+function defaults(_value = (Effect.runSyncExit(program()), 1)): void {}
+Effect.runSyncExit(program())
+f()
+arrow()
+expression()
+const instance = new C()
+instance.method()
+instance.value
+object.method()
+wrapped()
+tag`run`
+;[1].forEach(() => { Effect.runSyncExit(program()) })
+await asynchronous()
+defaults()
+// Constructing an Effect subtype alone must keep it cold.
+Exit.fail("discarded")
+Config.String("UNREAD")
+export const getRuns = () => runs

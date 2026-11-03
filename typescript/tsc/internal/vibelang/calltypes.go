@@ -219,13 +219,13 @@ func runWithTryNote(node *ast.Node) string {
 	return "Return it, or run it with try inside an effect function: try {0}."
 }
 
-// A structured Effect result stays data. Discarding a call or template
-// statement must ask rather than silently leaving a SQL migration cold; a
-// statement that runs it, try sql.unsafe(…), discards nothing.
+// In effect code, a structured Effect result stays data until try runs it.
+// Plain and async code keep ordinary JavaScript call/discard behavior (VIP-1),
+// including a runner whose returned Exit is already the outcome of execution.
 func checkInvocationRuns(c *checker.Checker, file *ast.SourceFile) {
 	var visit func(*ast.Node) bool
 	visit = func(node *ast.Node) bool {
-		if isInvocation(node) && !inHatch(node) && !isTry(node) { // try runs it (VIP-5)
+		if isInvocation(node) && inEffectCode(node) && !inHatch(node) && !isTry(node) { // try runs it (VIP-5)
 			sig := c.GetResolvedSignature(node)
 			if sig != nil {
 				t := runningCallResult(c, node, sig)

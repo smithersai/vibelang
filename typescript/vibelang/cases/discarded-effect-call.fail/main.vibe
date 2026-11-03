@@ -1,7 +1,7 @@
 // expect: EK4301
 import { Config, Exit } from "effect"
 import type { SqlClient } from "effect/sql/SqlClient"
-export function migration(sql: SqlClient) {
+export effect function migration(sql: SqlClient) {
   sql.unsafe("CREATE TABLE example (id TEXT)");
   (sql.unsafe("PRAGMA foreign_keys = ON"))
   Exit.fail("discarded")

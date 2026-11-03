@@ -1,2 +1,2 @@
 This call returns an Effect subtype, which only try runs, so this statement discards its result without running it.
-Return it, or run it with try inside an effect function: try Exit.fail("discarded").
+Run it with try: try Exit.fail("discarded").
