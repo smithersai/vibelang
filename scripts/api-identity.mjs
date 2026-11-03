@@ -626,7 +626,14 @@ export function compareApiIdentity(ts, before, after, options = {}) {
           if (!decl) return path
           const source = decl.getSourceFile()
           const id = "__api_identity_" + counter++
-          const params = decl.typeParameters.map(p => printer.printNode(ts.EmitHint.Unspecified, p, source)).join(", ")
+          const params = decl.typeParameters.map(parameter => {
+            // Variance belongs to the original class/interface/type alias.
+            // A generic function bridge cannot carry in/out modifiers.
+            const legal = ts.factory.updateTypeParameterDeclaration(parameter,
+              parameter.modifiers?.filter(modifier => modifier.kind !== ts.SyntaxKind.InKeyword && modifier.kind !== ts.SyntaxKind.OutKeyword),
+              parameter.name, parameter.constraint, parameter.default)
+            return printer.printNode(ts.EmitHint.Unspecified, legal, source)
+          }).join(", ")
           const args = decl.typeParameters.map(p => p.name.text).join(", ")
           // Append where the exported symbol is defined, with its local name.
           let local = decl.name?.text ?? symbol.name

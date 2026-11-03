@@ -748,3 +748,36 @@ test("path-mapped external dependency identity survives alias expansion", () => 
   const changed = compare(a, { ...b, "node_modules/foreign/index.d.ts": deps["node_modules/foreign/index.d.ts"].replace("]: string", "]: number") }, { types: "./index.d.ts" })
   assert.ok(changed.typeDifferences.some(d => d.export === "Api"))
 })
+
+test("variance-annotated generic exports compare with themselves using valid probes", () => {
+  for (const text of [
+    "export interface Box<out T> { readonly value: T }",
+    "export type Box<out T> = { readonly value: T };",
+    "export declare class Box<out T> { readonly value: T }",
+    "export interface Box<in T> { consume(value: T): void }",
+    "export interface Box<in out T> { value: T }",
+  ]) fixture(text, text, (a, b) => {
+    const original = ts.createProgram([join(a, "index.d.ts")], { strict: true, noEmit: true, types: [] })
+    assert.deepEqual(ts.getPreEmitDiagnostics(original).map(d => ts.flattenDiagnosticMessageText(d.messageText, "\n")), [])
+    for (const result of [compareApiIdentity(ts, a, a), compareApiIdentity(ts, a, b)])
+      assert.equal(result.identical, true, JSON.stringify(result))
+  })
+})
+
+test("property: variance-annotated export families preserve identity and reject a changed field", async () => {
+  await checkProperty(fc, {
+    name: "api-identity-variance-bridges",
+    rule: "Valid generic exports compare identically with themselves; variance modifiers cannot make the generated function probe invalid, and a changed public field must fail.",
+    command: "node --test scripts/api-identity.test.mjs",
+    arbitrary: fc.record({ variance: fc.constantFrom("out", "in", "in out"), shape: fc.constantFrom("interface", "type", "class"), value: fc.integer({ min: 0, max: 100 }) }),
+    numRuns: 4,
+    check: ({ variance, shape, value }) => {
+      const member = variance === "in" ? "consume(value: T): void;" : "readonly value: T;"
+      const body = `{ ${member} readonly tag: ${value}; }`
+      const before = shape === "type" ? `export type Box<${variance} T> = ${body};`
+        : `export ${shape === "class" ? "declare class" : "interface"} Box<${variance} T> ${body}`
+      pass(before, before)
+      fail(before, before.replace("tag: " + value, "tag: " + (value + 1)))
+    },
+  })
+})
