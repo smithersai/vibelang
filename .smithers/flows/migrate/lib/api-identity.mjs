@@ -106,8 +106,10 @@ function projectSidecarHost(ts, host, virtual = new Map()) {
     const mirror = join(config.sidecar, local)
     return originalExists(mirror) ? mirror : undefined
   }
-  // Project mirrored declarations at their logical beside-source paths. Relative
-  // imports inside a moved sidecar must resolve beside that source too.
+  // Keep public logical paths, but resolve the mirrored file's own imports
+  // from the physical declaration location used by the compiler and stock tsc.
+  // A real beside-source declaration takes precedence over a stale mirror.
+  project.physicalFile = path => originalExists(path) ? path : sidecar(path) ?? path
   host.readFile = path => virtual.get(resolve(path)) ?? read(path) ?? (sidecar(path) ? read(sidecar(path)) : undefined)
   host.fileExists = path => virtual.has(resolve(path)) || originalExists(path) || Boolean(sidecar(path))
   return project
@@ -604,7 +606,7 @@ function createIdentityHost(ts, compilerOptions, before, after, options, virtual
     if (frozen) return { resolvedFileName: frozen, extension: frozen.endsWith(".d.mts") ? ts.Extension.Dmts
       : frozen.endsWith(".d.cts") ? ts.Extension.Dcts : ts.Extension.Dts, isExternalLibraryImport: false }
     const resolutionOptions = { ...compilerOptions, ...project(containingFile).options, ...options.compilerOptions, allowArbitraryExtensions: true }
-    let resolved = ts.resolveModuleName(name, containingFile, resolutionOptions, host, undefined, undefined, mode).resolvedModule
+    let resolved = ts.resolveModuleName(name, project.physicalFile(containingFile), resolutionOptions, host, undefined, undefined, mode).resolvedModule
     if (!resolved && !name.startsWith(".") && !name.startsWith("/")) {
       for (const modules of moduleRoots) {
         resolved = ts.resolveModuleName(name, join(dirname(resolve(modules)), "__api_identity__.ts"), compilerOptions, host, undefined, undefined, mode).resolvedModule

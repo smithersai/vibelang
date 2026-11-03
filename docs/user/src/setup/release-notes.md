@@ -153,6 +153,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - `vibelang --fix` kept the type name an `Effect.fn` fix left unread, and so left a new TS6133 or TS6196, whenever another fix in the project was refused: retrying the refusals took the unread name for one the author had left. It now removes the name as it does when nothing is refused.
 
 - Identical namespace exports with private generic constraints could fail an API identity check; declarations proven to be the same module export now compare directly.
+
+- API checks could reject unchanged packages using `vibe.sidecarDir` because imports in mirrored declarations resolved from the wrong directory. They now resolve from the physical declaration file, matching `tsc`.
 - API checks invented ambient exports or hid an ambient type change when one input directory contained the other. Contributions now follow each snapshot’s dependency closure, and nested private-class origins remain distinct where required.
 
 - The editor outline merged separate `module` declarations as TypeScript namespaces and hid a later declaration with the same name; each VibeLang module now keeps its own outline entry and name range, including an invalid duplicate.

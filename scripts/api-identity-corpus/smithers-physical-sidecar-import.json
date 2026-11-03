@@ -1,0 +1,13 @@
+{
+  "before": {
+    "package.json": "{\"name\":\"pkg\",\"types\":\"./src/A.d.ts\"}",
+    "src/B.d.ts": "export interface B { readonly x: number }",
+    "src/A.d.ts": "import type { B } from \"./B.ts\"; export declare const a: B;"
+  },
+  "after": {
+    "package.json": "{\"name\":\"pkg\",\"types\":\"./src/A.d.vibe.ts\"}",
+    "tsconfig.json": "{\"vibe\":{\"sidecarDir\":\".vibe/declarations\"},\"compilerOptions\":{\"strict\":true,\"allowImportingTsExtensions\":true,\"noEmit\":true}}",
+    "src/B.d.ts": "export interface B { readonly x: number }",
+    ".vibe/declarations/src/A.d.vibe.ts": "import type { B } from \"../../../src/B.ts\"; export declare const a: B;"
+  }
+}

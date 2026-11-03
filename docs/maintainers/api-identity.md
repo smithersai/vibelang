@@ -30,7 +30,9 @@ compares each declaration module, suitable for sidecars and their TypeScript
 twins. Resolution uses each file's nearest `vibe.config.json` or
 `tsconfig.json`, including inherited options and `vibe.sidecarDir`.
 Moved sidecars are read at their logical beside-source paths without writing
-to either input tree. An unresolved public declaration or exported dependency
+to either input tree. Imports in a projected sidecar resolve from the physical
+mirror file, matching the compiler-emitted specifiers and stock TypeScript.
+An existing beside-source declaration takes precedence over a stale mirror. An unresolved public declaration or exported dependency
 makes the comparison unavailable.
 
 Types are compared by a generated TypeScript program using the strict
