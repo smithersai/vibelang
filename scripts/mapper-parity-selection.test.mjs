@@ -42,10 +42,12 @@ function fixture(t, names = ["alpha-case", "beta-case"]) {
   if (process.env.PARITY_SELECTION_SOURCE) {
     cpSync(process.env.PARITY_SELECTION_SOURCE, join(harness, "parity.ts"))
   }
-  for (const name of ["parity.ts", "docs.ts"]) {
+  for (const name of ["parity.ts", "docs.ts", "runtime.ts"]) {
     const file = join(harness, name)
     writeFileSync(file, readFileSync(file, "utf8").replace(
       '"../../../../docs/tools/check-snippets.ts"', JSON.stringify(join(root, "docs/tools/check-snippets.ts"))
+    ).replace(
+      '"../../../compiler/cache.mjs"', JSON.stringify(join(root, "packages/compiler/cache.mjs"))
     ))
   }
   for (const dir of ["typescript/vibelang/cases", "examples", "templates", "docs/user"]) {

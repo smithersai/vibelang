@@ -25,7 +25,7 @@ const greetUri = pathToFileURL(greetPath).href
 // the text the hover must contain.
 const hovers = [
   // Inferred: greet's Effect type comes from its projected generator.
-  { at: "export function greet", token: "greet", expect: "function greet(name: string): Effect.Effect<string, EmptyName, never>" },
+  { at: "export effect function greet", token: "greet", expect: "function greet(name: string): Effect.Effect<string, EmptyName, never>" },
   // A call runs: loud is shout's success type, not an Effect.
   { at: "const loud", token: "loud", expect: "const loud: string" },
   // Annotated with the contract string!!.
