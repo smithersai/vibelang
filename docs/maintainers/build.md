@@ -1125,3 +1125,24 @@ excluding reviewed `not-rules/*.csv` rows;
 `//:spec-coverage-census-test` checks its extraction and matching contracts.
 See [the docs tools census contract](../tools/README.md#specification-coverage-census)
 for outputs, confidence rules, compiled twins and the 15-minute watcher.
+
+### Diagnostic identity inventory
+
+`//:spec-diagnostic-identity` checks actual compiler message declarations,
+the compiler's reserved-category registry, imported lint registrations, Appendix B
+definition rows and current user/reference citations in both directions.
+A prose mention or range does not replace a definition row. Disabled warnings
+and editor-only suggestions count; whole decimal suffixes remain distinct.
+The existing `//:spec-registry` checks VIP authority and citations in specification
+chapters; it does not inventory every compiler message declaration.
+
+This target is exclusive and omitted from normal wildcard test runs while `fold-details` folds the complete Appendix B
+inventory from `gate6-codes`. Its mutation tests already run in
+`//:spec-linters-test`. To require the real inventory, fold the missing rows,
+regenerate compiler category/doc projections, run
+`node docs/tools/diagnostic-identity.mjs` with zero findings, remove
+`exclusive: true` from `specDiagnosticIdentity`, then add it to `specLint.data`.
+No compatibility-code allowlist bypasses missing definition rows.
+Historical proposals, the versioned code map and release/decision logs are
+migration records; current chapters and guides are scanned. Appendix B's
+explicit retired-code declaration preserves its non-reassignment history.

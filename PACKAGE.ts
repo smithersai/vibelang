@@ -509,6 +509,7 @@ const vibelangTopicTargets = Object.fromEntries(
 const specInputs = S.Filegroup({ srcs: [...S.glob([
   "docs/design/**", "docs/tools/spec-rules*", "docs/tools/spec-examples*", "docs/tools/spec-lint*",
   "docs/tools/package.json", "docs/tools/bun.lock", "docs/maintainers/build.md",
+  "docs/tools/diagnostic-identity*", "docs/tools/property-regressions/gate6-ek4804.json", "PACKAGE.ts",
   "typescript/tsc/internal/diagnostics/diagnosticMessages.json",
   "typescript/tsc/internal/tsoptions/declarations_generated.go"
 ])] })
@@ -529,6 +530,20 @@ const specCheck = (kind: string, deps: ReadonlyArray<unknown> = []) => S.Shell.T
   data: [specInputs, ...deps] as Array<never>, tools: [node], sandbox: "none", timeout: "2m"
 })
 const specRegistry = specCheck("registry")
+// Exclusive while fold-details owns the complete Appendix B handoff. After that
+// fold regenerates the compiler categories and this check passes, remove exclusive
+// and add specDiagnosticIdentity to specLint.data.
+const specDiagnosticIdentity = S.Shell.Test({
+  summary: "Compiler registrations, Appendix B definitions and current doc citations agree.",
+  shell: "node --test docs/tools/diagnostic-identity.test.mjs && node docs/tools/diagnostic-identity.mjs",
+  data: [S.Filegroup({ srcs: [...S.glob([
+    "docs/tools/diagnostic-identity*", "docs/tools/property-regressions/gate6-ek4804.json",
+    "docs/design/src/**", "docs/user/src/**", "docs/user/llms-essentials.md",
+    "packages/compiler/skills/vibelang/SKILL.md", "templates/app/AGENTS.md",
+    "typescript/tsc/internal/**/*.go", "PACKAGE.ts"
+  ])] })],
+  tools: [node], sandbox: "none", timeout: "2m", exclusive: true
+})
 const specTables = specCheck("tables")
 const specCopies = specCheck("copies", [specSharedTables, specCopySections])
 const specAuthority = specCheck("authority")
@@ -540,7 +555,7 @@ const specExamples = S.Shell.Test({
 })
 const specLinterTests = S.Shell.Test({
   summary: "Historical spec defects, seeded properties and native example checks reject regressions.",
-  shell: "node --test docs/tools/spec-rules.test.mjs docs/tools/spec-examples-compiler.test.mjs && cd docs/tools && bun test --timeout 60000 spec-lint.test.ts",
+  shell: "node --test docs/tools/spec-rules.test.mjs docs/tools/spec-examples-compiler.test.mjs docs/tools/diagnostic-identity.test.mjs && cd docs/tools && bun test --timeout 60000 spec-lint.test.ts",
   data: [specInputs, Packages["compiler-native"], Packages["runtime-dist"]] as Array<never>,
   tools: [node, bun], sandbox: "none", timeout: "5m"
 })
@@ -618,6 +633,7 @@ const targets = {
   "spec-shared-tables": specSharedTables,
   "spec-copy-sections": specCopySections,
   "spec-registry": specRegistry,
+  "spec-diagnostic-identity": specDiagnosticIdentity,
   "spec-tables": specTables,
   "spec-copies": specCopies,
   "spec-authority": specAuthority,

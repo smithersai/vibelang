@@ -1,0 +1,8 @@
+{
+  "provenance": "Release 0.0.11 gate 6, vibe 7007a749: lsrules.go registered EK4804; devtools documented it; Appendix B omitted it.",
+  "path": "docs/user/src/getting-started/012-devtools.md",
+  "source": "var EK4804 = message(4804, warningCategory, \"This failure is a global {0}, which has no _tag for a catch or a match to tell it apart by.\")",
+  "citation": "EK4804: a failure is a global Error.",
+  "before": "## Appendix B. Diagnostics\n\n| Code | Rule | VIP | Chapter |\n| --- | --- | --- | --- |\n| `EK4802` | warning: nested Effect | 34 | Tooling |\n",
+  "after": "## Appendix B. Diagnostics\n\n| Code | Rule | VIP | Chapter |\n| --- | --- | --- | --- |\n| `EK4802` | warning: nested Effect | 34 | Tooling |\n| `EK4804` | warning: a failure is a global Error | 34 | Tooling |\n"
+}
