@@ -119,14 +119,21 @@ platform-specific binary is needed beyond the existing VibeLang compiler.
 
 ## ast-grep
 
-`vibelang-ast-grep <output>` compiles the canonical
-`editors/tree-sitter-vibelang/src` parser and scanner into a shared library.
-The compiler npm release includes these sources; a C compiler is required.
-Migration registers `VibeLang` in each `sgconfig.yml`, with the symbol
-`tree_sitter_vibe`, extension `vibe`, and a generated library beside the
-config. It clones TypeScript/TSX rules with VibeLang language selectors and
-unique IDs: registration alone would not apply existing rules.
+`vibelang-ast-grep <output>` compiles every parser declared by
+`editors/tree-sitter-vibelang/tree-sitter.json` into one shared library.
+The compiler npm release includes the manifest and each grammar's `src`
+directory; a C compiler is required. Legacy packages with a single flat
+parser remain supported.
 
+Migration registers `VibeLang` in each `sgconfig.yml`, with the symbol
+`tree_sitter_vibe` and extension `vibe`. When the installed compiler's
+manifest declares the JSX grammar, it also registers `VibeLangJSX`, using
+that grammar's symbol and extension `vibex`. Both use the same generated
+library beside the config. TypeScript/TSX rules get copies with the
+corresponding language selectors and unique IDs. JSX-only rule kinds stay
+on the JSX parser, and TypeScript-only kinds stay on the plain parser. JSX tag identifiers
+remain visible to the rules. Both declaration sidecar extensions are excluded
+from the original TypeScript rules.
 The library is ignored and rebuilt by the repository's postinstall command,
 so a fresh checkout builds for its own machine. Linux and macOS use the same
 extensionless output path. Windows developers use WSL.
@@ -134,7 +141,7 @@ For ast-grep 0.50+, [custom language loading](https://ast-grep.github.io/advance
 also requires `--custom-languages allow` or project trust; earlier versions
 load registered languages directly. Existing pinned versions are retained.
 
-Migration recognizes TypeScript/TSX aliases without case sensitivity and translates TS file selectors and ignores to .vibe, preserving directory scope.
+Migration recognizes TypeScript/TSX aliases without case sensitivity. With a JSX grammar installed, `.ts` selectors and ignores map to `.vibe`, and `.tsx` maps to `.vibex`, preserving directory scope.
 
 
 ## Bundlers inside unchanged tests

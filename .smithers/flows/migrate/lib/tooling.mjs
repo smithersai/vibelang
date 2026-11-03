@@ -1,5 +1,5 @@
 // Developer tools must include .vibe in their existing commands.
-import { chmodSync, existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs"
+import { chmodSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { join, posix } from "node:path"
 import { wireSourceChildren } from "./source-children.mjs"
 import { wireRolldownSources } from "./rolldown-builds.mjs"
@@ -13,38 +13,38 @@ import { wireTsdownConfigs } from "./tsdown.mjs"
 // .vibe module twice (opencode's lint:effect-patterns). sidecarIgnoreOf
 // writes the entry once; withoutSidecarIgnore takes back exactly what it wrote.
 const sidecarPattern = `"**/${sidecarIgnore}"`
-export function sidecarIgnoreOf(text) {
-  if (text.includes(sidecarPattern)) return text
+export function sidecarIgnoreOf(text, pattern = sidecarPattern) {
+  if (text.includes(pattern)) return text
   const flow = /^ignores:[ \t]*\[/m.exec(text)
-  if (flow) return text.slice(0, flow.index + flow[0].length) + sidecarPattern + (/^ignores:[ \t]*\[[ \t]*\]/m.test(text) ? "" : ", ") + text.slice(flow.index + flow[0].length)
+  if (flow) return text.slice(0, flow.index + flow[0].length) + pattern + (/^ignores:[ \t]*\[[ \t]*\]/m.test(text) ? "" : ", ") + text.slice(flow.index + flow[0].length)
   const block = /^ignores:[ \t]*(?:#.*)?\n([ \t]*)- /m.exec(text)
   if (block) {
     const at = block.index + block[0].length - block[1].length - 2
-    return text.slice(0, at) + `${block[1]}- ${sidecarPattern}\n` + text.slice(at)
+    return text.slice(0, at) + `${block[1]}- ${pattern}\n` + text.slice(at)
   }
   // Appended in the file's own ending: a final newline only where it had one.
-  return text === "" || text.endsWith("\n") ? `${text}ignores:\n  - ${sidecarPattern}\n` : `${text}\nignores:\n  - ${sidecarPattern}`
+  return text === "" || text.endsWith("\n") ? `${text}ignores:\n  - ${pattern}\n` : `${text}\nignores:\n  - ${pattern}`
 }
-const escaped = sidecarPattern.replace(/[.*]/g, "\\$&")
-export function withoutSidecarIgnore(text) {
+export function withoutSidecarIgnore(text, pattern = sidecarPattern) {
+  const escaped = pattern.replace(/[.*]/g, "\\$&")
   return text
     .replace(new RegExp(`(^|\\n)ignores:\\n  - ${escaped}\\n$`), "$1")
     .replace(new RegExp(`\\nignores:\\n  - ${escaped}$`), "")
     .replace(new RegExp(`^[ \\t]*- ${escaped}\\n`, "m"), "")
-    .replace(`${sidecarPattern}, `, "")
-    .replace(`[${sidecarPattern}]`, "[]")
+    .replace(`${pattern}, `, "")
+    .replace(`[${pattern}]`, "[]")
 }
 
-function vibeSelectors(text) {
+function vibeSelectors(text, jsx = false) {
   let selectors = false
   const extension = value => value
     .replace(/\.\{([^}]+)\}/g, (whole, list) => {
       const parts = list.split(",").map(part => part.trim())
       if (!parts.some(part => /^(?:[cm]?ts|tsx)$/i.test(part))) return whole
-      const mapped = [...new Set(parts.map(part => /^(?:[cm]?ts|tsx)$/i.test(part) ? "vibe" : part))]
+      const mapped = [...new Set(parts.map(part => /^(?:[cm]?ts|tsx)$/i.test(part) ? jsx && part.toLowerCase() === "tsx" ? "vibex" : "vibe" : part))]
       return mapped.length === 1 ? "." + mapped[0] : ".{" + mapped.join(",") + "}"
     })
-    .replace(/\.(?:[cm]?ts|tsx)\b/gi, ".vibe")
+    .replace(/\.([cm]?ts|tsx)\b/gi, (all, ext) => jsx && ext.toLowerCase() === "tsx" ? ".vibex" : ".vibe")
   return text.split("\n").map(line => {
     if (/^[^\s#]/.test(line)) selectors = /^(?:files|ignores):/.test(line)
     return selectors ? extension(line) : line
@@ -512,25 +512,49 @@ export default await configFor()
     write(".vibelang/eslint.config.mjs", eslintConfig(null))
   }
   for (const [file, oxlintrc] of lintConfigs) write(".vibelang/" + file, eslintConfig(oxlintrc))
+  // setup installs the incoming compiler before wiring its developer tools.
+  // Its manifest is the source of truth for the parser symbols in the library.
+  const grammarManifest = join(root, "node_modules/vibelang/tree-sitter/tree-sitter.json")
+  const jsxGrammar = existsSync(grammarManifest)
+    ? JSON.parse(readFileSync(grammarManifest, "utf8")).grammars.find(grammar => grammar["file-types"]?.includes("vibex"))
+    : undefined
+  const astLanguages = [{ name: "VibeLang", symbol: "tree_sitter_vibe", extension: "vibe", suffix: "vibelang" },
+    ...(jsxGrammar ? [{ name: "VibeLangJSX", symbol: "tree_sitter_" + jsxGrammar.name, extension: "vibex", suffix: "vibelang-jsx" }] : [])]
   for (const file of all.filter(f => /(^|\/)sgconfig\.ya?ml$/.test(f))) {
     let config = readFileSync(join(root, file), "utf8")
     const dir = posix.dirname(file)
     const library = ".vibelang/vibelang-parser"
-    if (!/^  VibeLang:/m.test(config)) {
-      const entry = `  VibeLang:\n    libraryPath: ${library}\n    languageSymbol: tree_sitter_vibe\n    extensions: [vibe]\n    expandoChar: µ\n`
+    for (const language of astLanguages) {
+      if (new RegExp("^  " + language.name + ":", "m").test(config)) continue
+      const entry = `  ${language.name}:\n    libraryPath: ${library}\n    languageSymbol: ${language.symbol}\n    extensions: [${language.extension}]\n    expandoChar: µ\n`
       config = /^customLanguages:\s*$/m.test(config) ? config.replace(/^customLanguages:\s*$/m, "customLanguages:\n" + entry.trimEnd()) : config.trimEnd() + "\ncustomLanguages:\n" + entry
-      write(file, config)
     }
+    write(file, config)
     // Rules are selected by language. Registering the extension alone does
     // not apply the repo's existing TS rules, so clone those beside them.
-    for (const rule of all.filter(f => f.startsWith(dir === "." ? "" : dir + "/") && /\.ya?ml$/.test(f) && f !== file && !f.endsWith(".vibelang.yml"))) {
+    for (const rule of all.filter(f => f.startsWith(dir === "." ? "" : dir + "/") && /\.ya?ml$/.test(f) && f !== file && !/\.vibelang(?:-jsx)?\.yml$/.test(f))) {
       const original = readFileSync(join(root, rule), "utf8")
       const language = /^language:[ \t]*(["']?)(?:typescript|tsx|ts)\1[ \t]*(?:#.*)?$/im
       if (!language.test(original)) continue
-      const text = vibeSelectors(withoutSidecarIgnore(original).replace(language, "language: VibeLang"))
-        .replace(/^id:\s*(.+)$/m, "id: $1-vibelang")
-      write(rule.replace(/\.ya?ml$/, ".vibelang.yml"), text)
-      write(rule, sidecarIgnoreOf(original))
+      const jsxSidecar = '"**/*.d.vibex.ts"'
+      const source = jsxGrammar ? withoutSidecarIgnore(withoutSidecarIgnore(original), jsxSidecar) : withoutSidecarIgnore(original)
+      // JSX-only node kinds do not exist in the plain TypeScript grammar.
+      // Keep each rule on its original language's corresponding parser.
+      const tsx = /^language:[ \t]*["']?tsx["']?[ \t]*(?:#.*)?$/im.test(original)
+      const targets = jsxGrammar ? astLanguages.filter(target => (target.extension === "vibex") === tsx) : astLanguages
+      if (jsxGrammar) {
+        const obsolete = rule.replace(/\.ya?ml$/, tsx ? ".vibelang.yml" : ".vibelang-jsx.yml")
+        if (existsSync(join(root, obsolete))) {
+          rmSync(join(root, obsolete))
+          changed.push(obsolete)
+        }
+      }
+      for (const target of targets) {
+        const text = vibeSelectors(source.replace(language, "language: " + target.name), Boolean(jsxGrammar))
+          .replace(/^id:\s*(.+)$/m, "id: $1-" + target.suffix)
+        write(rule.replace(/\.ya?ml$/, "." + target.suffix + ".yml"), text)
+      }
+      write(rule, jsxGrammar ? sidecarIgnoreOf(sidecarIgnoreOf(original), jsxSidecar) : sidecarIgnoreOf(original))
     }
     builds.push({ cwd: dir, command: `node ${posix.relative(dir, ".") ? posix.relative(dir, ".") + "/" : ""}node_modules/vibelang/bin/vibelang-ast-grep ${library}` })
     needsCompiler = true

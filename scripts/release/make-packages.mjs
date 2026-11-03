@@ -162,7 +162,14 @@ for (const [platform, [os, cpu]] of Object.entries(platforms)) {
 
 // Every file the compiler package lists, except the ones this script writes.
 const compilerFiles = compiler.files.filter((file) => !["editor", "dprint-plugin.json", "LICENSE", "NOTICE"].includes(file))
-const vibelangDir = stage("vibelang", [...compilerFiles.map((file) => [`packages/compiler/${file}`, file]), ["packages/compiler/package.json"], ["editors/tree-sitter-vibelang/src", "tree-sitter"]], { LICENSE: apache, NOTICE: notice })
+const grammarRoot = "editors/tree-sitter-vibelang"
+const grammarManifest = readJson(`${grammarRoot}/tree-sitter.json`)
+const grammarSources = grammarManifest.grammars.map(grammar => [
+  join(grammarRoot, grammar.path ?? ".", "src"),
+  join("tree-sitter", grammar.path ?? ".", "src")
+])
+const vibelangDir = stage("vibelang", [...compilerFiles.map((file) => [`packages/compiler/${file}`, file]), ["packages/compiler/package.json"],
+  [`${grammarRoot}/tree-sitter.json`, "tree-sitter/tree-sitter.json"], ...grammarSources], { LICENSE: apache, NOTICE: notice })
 const stagedCompiler = JSON.parse(readFileSync(join(vibelangDir, "package.json"), "utf8"))
 stagedCompiler.files.push("tree-sitter")
 writeFileSync(join(vibelangDir, "package.json"), JSON.stringify(stagedCompiler, null, 2) + "\n")

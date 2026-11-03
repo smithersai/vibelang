@@ -21,7 +21,8 @@ function fixture(t) {
   t.after(() => rmSync(root, { recursive: true, force: true }))
   for (const path of ["scripts/release/make-packages.mjs", "docs/tools/release-docs.mjs", "LICENSE", "typescript/LICENSE.txt", "typescript/NOTICE.txt", "typescript/tsc/internal/vibelang/identity.go",
     ...["compiler", "runtime", "vite", "create-vibelang", "unplugin"].flatMap((name) => [`packages/${name}/package.json`, `packages/${name}/README.md`]),
-    ...compilerSources, "editors/tree-sitter-vibelang/src", "packages/vite/src", "packages/create-vibelang/bin", "packages/unplugin/src", "templates/app"]) {
+    ...compilerSources, "editors/tree-sitter-vibelang/tree-sitter.json",
+    ...json(join(repo, "editors/tree-sitter-vibelang/tree-sitter.json")).grammars.map(grammar => join("editors/tree-sitter-vibelang", grammar.path ?? ".", "src")), "packages/vite/src", "packages/create-vibelang/bin", "packages/unplugin/src", "templates/app"]) {
     mkdirSync(dirname(join(root, path)), { recursive: true })
     cpSync(join(repo, path), join(root, path), { recursive: true, filter: (file) => !["node_modules", "dist", ".prototype"].includes(file.split("/").at(-1)) })
   }
@@ -49,8 +50,8 @@ test("packs every file the compiler package lists and every target its exports n
   const result = assemble(root)
   assert.equal(result.status, 0, result.stderr)
   const compiler = json(join(root, "packages/compiler/package.json"))
-  assert.deepEqual(archive(root, "vibelang", "tree-sitter/scanner.c"), readFileSync(join(repo, "editors/tree-sitter-vibelang/src/scanner.c")))
-  assert.ok(archive(root, "vibelang", "tree-sitter/parser.c").length > 1000)
+  assert.deepEqual(archive(root, "vibelang", "tree-sitter/src/scanner.c"), readFileSync(join(repo, "editors/tree-sitter-vibelang/src/scanner.c")))
+  assert.ok(archive(root, "vibelang", "tree-sitter/src/parser.c").length > 1000)
   const targets = Object.values(compiler.exports).flatMap((target) => typeof target === "string" ? [target] : Object.values(target))
   for (const path of [...targets.map((target) => target.replace(/^\.\//, "")), ...compiler.files.filter((file) => file !== "bin" && file !== "editor")]) {
     assert.ok(archive(root, "vibelang", path).length > 0, `vibelang tarball lacks ${path}`)
@@ -232,4 +233,34 @@ test("refuses a missing or drifting transitive Effect override before packing", 
     assert.match(result.stderr, /@effect\/platform-node-shared override must match effect/)
     assert.ok(!existsSync(join(root, "dist-npm/tarballs")))
   }
+})
+
+test("release assembly includes every registered grammar and its manifest", { timeout: 120_000 }, t => {
+  const root = fixture(t)
+  const grammarRoot = join(root, "editors/tree-sitter-vibelang")
+  const manifest = json(join(grammarRoot, "tree-sitter.json"))
+  manifest.grammars.push({ name: "extra", path: "extra", "file-types": ["extra"] })
+  writeFileSync(join(grammarRoot, "tree-sitter.json"), JSON.stringify(manifest))
+  mkdirSync(join(grammarRoot, "extra/src"), { recursive: true })
+  writeFileSync(join(grammarRoot, "extra/src/parser.c"), "int tree_sitter_extra(void) { return 1; }")
+  writeFileSync(join(grammarRoot, "extra/src/scanner.c"), "int extra_scan(void) { return 1; }")
+  const result = assemble(root)
+  assert.equal(result.status, 0, result.stderr)
+  assert.deepEqual(JSON.parse(archive(root, "vibelang", "tree-sitter/tree-sitter.json")), manifest)
+  assert.equal(archive(root, "vibelang", "tree-sitter/extra/src/parser.c").toString(), "int tree_sitter_extra(void) { return 1; }")
+  const unpacked = join(root, "unpacked")
+  mkdirSync(unpacked)
+  const version = json(join(root, "packages/compiler/package.json")).version
+  execFileSync("tar", ["-xzf", join(root, "dist-npm/tarballs", `vibelang-${version}.tgz`), "-C", unpacked])
+  const library = join(root, "parser.so")
+  const build = spawnSync(process.execPath, [join(unpacked, "package/bin/vibelang-ast-grep"), library], { encoding: "utf8" })
+  if (process.platform === "win32") {
+    assert.equal(build.status, 1)
+    assert.match(build.stderr, /WSL/)
+    return
+  }
+  assert.equal(build.status, 0, build.stderr)
+  const symbols = execFileSync("nm", ["-g", library], { encoding: "utf8" })
+  assert.ok(symbols.includes("tree_sitter_vibe"), symbols)
+  assert.ok(symbols.includes("tree_sitter_extra"), symbols)
 })
