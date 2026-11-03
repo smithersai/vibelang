@@ -33,12 +33,14 @@ func preservingThrowFix(c *checker.Checker, file *ast.SourceFile, site *ast.Node
 		return preservingHandlerThrows(c, file, site, home, key)
 	}
 	// An Effect-returning body and effect parameters prohibit unknown throws too.
-	// Moving the throw to TypeScript cannot meet their contract.
+	// A native catch in the same activation contains the exception, so a TS
+	// instruction preserves that catch and native cleanup without changing the
+	// factory result. An escaping throw cannot meet the contract.
 	if ast.IsFunctionLike(home) {
 		if isMarkedEffect(home) {
 			return fileFix{}, false
 		}
-		if sig := c.GetSignatureFromDeclaration(home); sig != nil && isEffectfulType(c, c.GetReturnTypeOfSignature(sig)) {
+		if sig := c.GetSignatureFromDeclaration(home); sig != nil && isEffectfulType(c, c.GetReturnTypeOfSignature(sig)) && !inCatchingTry(site) {
 			return fileFix{}, false
 		}
 	}

@@ -32,7 +32,7 @@ func TestNothrowPreservingQuoted(t *testing.T) {
 
 func FuzzNothrowPreservingFix(f *testing.F) {
 	startShortBudget(f)
-	for _, key := range []string{"factory-iterator", "statement", "caught", "callback", "default", "generator", "effect-result", "smithers-Store-Effect-try"} {
+	for _, key := range []string{"smithers-CacheAdmission-caught", "factory-iterator", "statement", "caught", "callback", "default", "generator", "effect-result", "smithers-Store-Effect-try"} {
 		f.Add(key, int8(7))
 	}
 	w := NewWorkspace(f)
@@ -42,6 +42,8 @@ func FuzzNothrowPreservingFix(f *testing.F) {
 			prefix := "const marker=1;\n"
 			var source string
 			switch key {
+			case "smithers-CacheAdmission-caught":
+				source = "export function main(xs:Iterable<number>):number!unknown {try{for(const n of xs){if(n)throw " + operand + "};return Effect.succeed(0)}catch(e){return Effect.fail(e)}}"
 			case "caught":
 				source = "export function main():number {try {throw " + operand + "} catch(e) {return marker}}"
 			case "callback":

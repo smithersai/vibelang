@@ -12,6 +12,9 @@ const stock = resolve(here, "../../../../experiments/node_modules/typescript/bin
 const dir = mkdtempSync(join(tmpdir(), "ek0401-preserving-"))
 const common = 'import { Effect } from "effect"\nexport const events: string[] = []\nconst marker = "marker"\n'
 const fixtures = [
+  ["native-effect-catch", 'export function f(n:number):Effect.Effect<number,string> {try{events.push("factory");if(n)throw (events.push("operand"),marker);return Effect.succeed(n)}catch(e){events.push("catch");return Effect.fail(String(e))}}'],
+  ["native-effect-catch-cleanup", 'export function f(n:number):Effect.Effect<number,string> {const xs={*[Symbol.iterator](){try{yield n}finally{events.push("close");if(n)throw "cleanup"}}};try{for(const x of xs){events.push("operand");throw marker};return Effect.succeed(n)}catch(e){events.push("catch:"+String(e));return Effect.fail(String(e))}}'],
+
   ["known-call", 'export function f(n: number): unknown { events.push("before"); return JSON.parse(n ? "(" : String((events.push("arg"), n))) }'],
   ["known-default", 'export function f(n: unknown = JSON.parse((events.push("default"), "0"))): unknown { events.push("body"); return n }'],
   ["known-receiver", 'import {reader} from "./native.js"\nexport function f(n:number):number {events.push("before");return reader.read(n ?? 0)}',
@@ -69,7 +72,7 @@ try {
     writeFileSync(join(dir, "tsconfig.stock.json"), JSON.stringify({ compilerOptions: { target:"ES2022", module:"NodeNext", strict:true, skipLibCheck:true, declaration:true, outDir:"stock" }, files:["twin.ts"] }))
     const checked = spawnSync(process.execPath,[stock,"-p",join(dir,"tsconfig.stock.json"),"--pretty","false"],{encoding:"utf8",timeout:120000})
     assert.equal(checked.status,0,name+" stock TypeScript 5.9.3 twin\n"+checked.stdout+checked.stderr)
-    if(process.env.VIBELANG_BASELINE && (name.startsWith("known-") || name.startsWith("effect-factory"))) {
+    if(process.env.VIBELANG_BASELINE && (name.startsWith("known-") || name.startsWith("effect-factory") || name.startsWith("native-effect-catch"))) {
       const baseline=spawnSync(process.env.VIBELANG_BASELINE,["-p",dir,"--fix","--noEmit","--pretty","false"],{encoding:"utf8",timeout:120000})
       assert.equal(baseline.status,2,name+" must fail before this fix\n"+baseline.stdout+baseline.stderr)
       assert.match(baseline.stdout,/error EK0401:/,name+" missing original diagnostic")

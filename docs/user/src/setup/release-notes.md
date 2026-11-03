@@ -416,6 +416,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Nested Effect types keep their qualified spelling when shorthand would need new grouping; migration checks now cover both direct nesting and array boundaries.
 
+- `--fix` refused native throws caught inside an Effect-returning factory. It now preserves the existing catch result and cleanup through a TypeScript instruction helper, including in exported factories.
+
 - `--fix` refused native throws inside inline `Effect.suspend` factories. It now preserves them as defects at the same run phase, including tail throw expressions, and refuses cleanup-sensitive or non-tail cases.
 
 - `vibelang --fix` left tracked throwing calls unrepaired; supported synchronous calls now retain their receiver, evaluation order, and return type through a TypeScript module helper, and immediately run internal Effect factories retain native exceptions as defects.
