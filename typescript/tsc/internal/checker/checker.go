@@ -6343,25 +6343,6 @@ func (c *Checker) checkDecorator(node *ast.Node) {
 	c.checkTypeAssignableTo(returnType, expectedReturnType, node.Expression(), headMessage)
 }
 
-// isDoIterationCompletion follows only the immediate source of an iteration
-// operation to its compiler-written do completion cell.
-func (c *Checker) isDoIterationCompletion(node *ast.Node) bool {
-	if node == nil {
-		return false
-	}
-	if ast.IsArrayBindingPattern(node) && node.Parent != nil {
-		node = node.Parent.Initializer()
-	} else if ast.IsArrayLiteralExpression(node) && node.Parent != nil && ast.IsBinaryExpression(node.Parent) {
-		binary := node.Parent.AsBinaryExpression()
-		if binary.Left == node && binary.OperatorToken.Kind == ast.KindEqualsToken {
-			node = binary.Right
-		}
-	} else if ast.IsSpreadElement(node) {
-		node = node.Expression()
-	}
-	return node != nil && c.doCompletionDeclaration(ast.SkipParentheses(node)) != nil
-}
-
 func (c *Checker) checkIteratedTypeOrElementType(use IterationUse, inputType *Type, sentType *Type, errorNode *ast.Node) *Type {
 	if IsTypeAny(inputType) {
 		return inputType
@@ -6376,13 +6357,6 @@ func (c *Checker) checkIteratedTypeOrElementType(use IterationUse, inputType *Ty
 func (c *Checker) getIteratedTypeOrElementType(use IterationUse, inputType *Type, sentType *Type, errorNode *ast.Node, checkAssignability bool) *Type {
 	allowAsyncIterables := (use & IterationUseAllowsAsyncIterablesFlag) != 0
 	if inputType == c.neverType {
-		// A do completion cell with no normal value is never evaluated by
-		// its surrounding operation. Do not demand an iterator from that
-		// compiler-written cell; source-written never expressions retain
-		// TypeScript's iterable diagnostic.
-		if c.isDoIterationCompletion(errorNode) {
-			return c.neverType
-		}
 		if errorNode != nil {
 			c.reportTypeNotIterableError(errorNode, inputType, allowAsyncIterables)
 		}
@@ -6541,11 +6515,6 @@ func (c *Checker) getIterationTypeOfIterable(use IterationUse, typeKind Iteratio
 // the `[Symbol.asyncIterator]()` method first, and then the `[Symbol.iterator]()` method.
 func (c *Checker) getIterationTypesOfIterable(t *Type, use IterationUse, errorNode *ast.Node) IterationTypes {
 	t = c.getReducedType(t)
-	// yield* also queries its operand's return and next types directly.
-	// Keep this expression-dependent result outside the shared type cache.
-	if t == c.neverType && c.isDoIterationCompletion(errorNode) {
-		return IterationTypes{c.neverType, c.neverType, c.neverType}
-	}
 	if IsTypeAny(t) {
 		return IterationTypes{c.anyType, c.anyType, c.anyType}
 	}

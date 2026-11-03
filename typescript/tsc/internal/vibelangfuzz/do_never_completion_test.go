@@ -18,6 +18,8 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/scanner"
 )
 
+const doNativeIterationQuote = "Native `for...of` and `for await` keep TypeScript's protocol checks and JavaScript meaning"
+
 const doNeverCompletionQuote = "a do expression with no normal path has type `never`"
 const doNormalCompletionQuote = "Its type is the union of the values reaching normal completion under ECMAScript's `UpdateEmpty` flow, including consumed local jumps."
 const doLiteralCompletionQuote = "`const exact = do { 1 }` has type `1`, while `let ordinary = do { 1 }` widens to `number`"
@@ -25,6 +27,7 @@ const doNeverStop = "export function stop(): never { throw 1 }\n/** @throws {unk
 
 func TestDoNeverCompletionQuoted(t *testing.T) {
 	chapterSays(t, "002-running.md", doNeverCompletionQuote)
+	chapterSays(t, "002-running.md", doNativeIterationQuote)
 	chapterSays(t, "002-running.md", doNormalCompletionQuote)
 	chapterSays(t, "002-running.md", doLiteralCompletionQuote)
 }
@@ -94,8 +97,15 @@ func checkDoNeverCompletionType(t *testing.T, data []byte) {
 		t.Fatal(err)
 	}
 	defer c.Remove()
-	if len(c.Diagnostics) != 0 {
-		t.Fatalf("mode %d: no-normal-path do must have type never: %v", mode, c.Diagnostics)
+	// Stock TypeScript 5.9.3 and 7.1.0-beta reject these protocol uses
+	// of never, including unreachable code. Array literal spread stays valid.
+	wantCode := map[int]int32{6: 2488, 8: 2488, 9: 2488, 10: 2488, 11: 2488, 12: 2504}[mode]
+	if wantCode == 0 {
+		if len(c.Diagnostics) != 0 {
+			t.Fatalf("mode %d: no-normal-path do must have type never: %v", mode, c.Diagnostics)
+		}
+	} else if len(c.Diagnostics) != 1 || c.Diagnostics[0].Source() != "" || c.Diagnostics[0].Code() != wantCode || !strings.Contains(c.Diagnostics[0].String(), "never") {
+		t.Fatalf("mode %d: require native TS%d for the never operand: %v", mode, wantCode, c.Diagnostics)
 	}
 }
 

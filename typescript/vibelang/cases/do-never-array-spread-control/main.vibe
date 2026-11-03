@@ -1,0 +1,1 @@
+export function arraySpread() { return [...do { return 5; [1] }] }

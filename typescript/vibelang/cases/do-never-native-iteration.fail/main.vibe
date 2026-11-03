@@ -1,0 +1,12 @@
+// expect: TS2488 TS2504 TS2488 TS2488 TS2488 TS2488
+// rule-evidence: docs/design/src/002-running.md#meaning | Native `for...of` and `for await` keep TypeScript's protocol checks and JavaScript meaning, even when their operand also implements `Stream`.
+// rule-evidence: docs/design/src/002-running.md#do-expressions | a do expression with no normal path has type `never`
+// Authority: VIP-2 and Will's 2026-11-03 standing instruction to match TypeScript.
+// Stock 5.9.3/7.1.0-beta native.ts counterpart records TS2488/TS2504, with no array-literal-spread errors.
+export function loop() { for (const item of do { return 5; [1] }) {} }
+export async function asyncLoop() { for await (const item of do { return 5; [1] }) {} }
+export function binding() { const [item] = do { return 5; [1] }; return item }
+export function assigned() { let item: unknown; [item] = do { return 5; [1] }; return item }
+export function* delegated() { yield* do { return; [1] } }
+function take(...items: number[]) {}
+export function spreadCall() { take(...do { return 5; [1] }) }
