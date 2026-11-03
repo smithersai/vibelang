@@ -7,7 +7,8 @@ import { fileURLToPath } from "node:url"
 
 const root = fileURLToPath(new URL("../../", import.meta.url))
 const semver = String.raw`\d+\.\d+\.\d+(?:-[\w.-]+)?`
-const historical = /(?:^|\/)(?:release-notes|compiler-gaps)\.(?:md|mdx)$/
+// VIP pages record decisions as written, including the Effect version they cite ("In 4.1.0 ...").
+const historical = /(?:^|\/)(?:release-notes|compiler-gaps)\.(?:md|mdx)$|^site\/src\/pages\/vips\//
 
 export function renderReleasePage(path, text, version, effect) {
   if (historical.test(path)) return text

@@ -117,6 +117,8 @@ test("install pins, compiler output, prose and homepage badges derive from the c
   const next = renderReleasePage("site/src/pages/index.mdx", text, "9.8.7")
   assert.doesNotMatch(next, /0\.0\.[123]/)
   assert.equal(renderReleasePage("page.md", next, "9.8.7"), next)
+  const vip = "In 4.1.0 two subpaths export the name.\n"
+  assert.equal(renderReleasePage("site/src/pages/vips/0014-effect-modules-in-scope.mdx", vip, "9.8.7"), vip)
 })
 
 test("a toolchain version the docs expect keeps its value", () => {
