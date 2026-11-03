@@ -1,0 +1,21 @@
+{
+  "source": "Mobile whole158 verification: 2986 passed, 120 renamed coverage titles reported missing; minimized to two real case paths",
+  "renames": [
+    {
+      "from": "apps/mobile/src/connection/background-activity-scopes.ts",
+      "to": "apps/mobile/src/connection/background-activity-scopes.vibe"
+    },
+    {
+      "from": "apps/mobile/src/connection/background-activity.ts",
+      "to": "apps/mobile/src/connection/background-activity.vibe"
+    }
+  ],
+  "baseline": {
+    "apps/mobile/src/reactCompilerCoverage.test > React Compiler coverage compiles src/connection/background-activity-scopes.ts": "passed",
+    "apps/mobile/src/reactCompilerCoverage.test > React Compiler coverage compiles src/connection/background-activity.ts": "passed"
+  },
+  "current": {
+    "apps/mobile/src/reactCompilerCoverage.test > React Compiler coverage compiles src/connection/background-activity-scopes.vibe": "passed",
+    "apps/mobile/src/reactCompilerCoverage.test > React Compiler coverage compiles src/connection/background-activity.vibe": "passed"
+  }
+}

@@ -159,6 +159,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - A generic plain call such as `expect(awaited(p))` silently received an unrun Effect. In effect code it now reports `EK4802`; `--fix` writes `expect(try awaited(p))`, and explicit Effect type arguments keep the program as data.
 
+- Migration verification reported passing React Compiler coverage cases as missing after their source paths changed from `.ts` to `.vibe`; test titles now follow recorded source renames while retaining case counts and failures.
+
 - Identical recursive generic declaration APIs could fail with `TS2589`; exact resolved type identity now proves those comparisons.
 - API checks treated identical JSDoc links as different when a private target resolved in only one snapshot. Link targets and labels now compare consistently while real comment changes remain differences.
 

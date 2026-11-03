@@ -47,6 +47,8 @@ Across a pre-VIP-1 to post-VIP-1 toolchain switch, the predecessor first migrate
 
 A test's `Bun.spawn` or `Bun.spawnSync` child that runs `bun test` in a fixture directory needs that directory's own `[test].preload`. Setup reads literal commands and immutable working-directory paths, including `fileURLToPath(new URL(…, import.meta.url))` and imported path helpers, without running test code. If the child entries reach migrated sources, setup adds `vibelang/bun` to the fixture's `bunfig.toml` and records the changed file. Test source and other options stay unchanged. Unrelated fixtures and foreign submodules stay untouched; an unknown working directory receives a file-and-line warning.
 
+Test result titles that enumerate a renamed source path retain that source's base-name identity (Decision B). Comparison uses recorded renames, including unambiguous package-relative paths, and keeps the raw test receipts. Failed, missing, extra duplicate and skipped cases retain their statuses; an unrecorded path or a declaration sidecar is never mapped to a source.
+
 ### Test and fixture identity
 
 Decided detail 272 keeps tests and fixtures as the migration's oracle. Each batch's `verify` compares pinned jj trees from before setup through the current batch, using the flow's test-file detection and fixture directories. Adding, deleting or renaming a test or fixture fails. Changed TypeScript files are parsed with the TypeScript AST; every byte outside the permitted literal or selector must stay unchanged, including embedded configs and setup. Source-text assertions remain protected.

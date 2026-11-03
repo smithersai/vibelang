@@ -131,16 +131,47 @@ const runDates = new RegExp([
 export const stableName = (name) => name.replace(runDates, "<date>")
 
 /** tests keyed by stableName; names that become one are numbered in order, as parseVitestJson numbers repeats. */
-function byStableName(tests) {
+export function comparableTests(tests, { renames = [] } = {}) {
+  const titleKey = sourceTitleKey(renames)
   const out = {}
   const seen = new Map()
   for (const [name, status] of Object.entries(tests)) {
-    const key = stableName(name)
-    const n = (seen.get(key) ?? 0) + 1
+    const key = stableName(titleKey(name))
+    let n = (seen.get(key) ?? 0) + 1
+    while (Object.hasOwn(out, n === 1 ? key : `${key} [${n}]`)) n++
     seen.set(key, n)
-    out[n === 1 || key === name ? key : `${key} [${n}]`] = status
+    out[n === 1 ? key : `${key} [${n}]`] = status
   }
   return out
+}
+
+// Decision B: titles that enumerate source paths use the same recorded rename
+// as file discovery. Package-relative suffixes qualify only when unambiguous;
+// arbitrary .ts text and sidecars retain their own identities.
+function sourceTitleKey(renames) {
+  const aliases = new Map(), owners = new Map()
+  for (const { from, to } of renames) {
+    if (!/\.(?:ts|tsx|mts)$/.test(from) || !/\.(?:vibe|vibex)$/.test(to)) continue
+    const source = from.split("/"), target = to.split("/")
+    for (let i = 0; i < source.length; i++) {
+      const old = source.slice(i).join("/"), next = target.slice(i).join("/")
+      const stem = old.replace(/\.(?:ts|tsx|mts)$/, "")
+      const sources = owners.get(stem) ?? new Set()
+      sources.add(from)
+      owners.set(stem, sources)
+      for (const token of [old, next]) {
+        const candidates = aliases.get(token) ?? new Set()
+        candidates.add(JSON.stringify([from, stem]))
+        aliases.set(token, candidates)
+      }
+    }
+  }
+  return name => name.replace(/[^\s"'`<>()\[\]{},;:]+/g, token => {
+    const candidates = aliases.get(token)
+    if (candidates?.size !== 1) return token
+    const [, stem] = JSON.parse([...candidates][0])
+    return owners.get(stem)?.size === 1 ? stem : token
+  })
 }
 
 /**
@@ -149,13 +180,13 @@ function byStableName(tests) {
  * per-test result says why, with or without a per-test report. Tests are
  * matched by stableName.
  */
-export function compareTests(baseline, current) {
+export function compareTests(baseline, current, { renames = [] } = {}) {
   if (!baseline.tests || !current.tests) {
     const regressed = baseline.code === 0 && current.code !== 0
     return { ok: !regressed, newFailures: regressed ? ["(exit status)"] : [], missing: [], fixed: [] }
   }
-  const before = byStableName(baseline.tests)
-  const after = byStableName(current.tests)
+  const before = comparableTests(baseline.tests, { renames })
+  const after = comparableTests(current.tests, { renames })
   const newFailures = Object.keys(after).filter((n) => after[n] === "failed" && before[n] !== "failed").sort()
   const missing = Object.keys(before).filter((n) => before[n] === "passed" && !(n in after)).sort()
   const fixed = Object.keys(before).filter((n) => before[n] === "failed" && after[n] === "passed").sort()

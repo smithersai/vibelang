@@ -1864,7 +1864,9 @@ export async function verify(options) {
   const candidateBuild = thePlan.mode === "one-pass" ? null : await prepareBuilds(config, logs, "candidate")
   const measurement = thePlan.mode === "one-pass" ? await measureTests(config,{run:p.run,batch:b}) : null
   const tests = measurement?.receipts.candidate ?? await runTests({ command: config.test.command, report: config.test.report, cwd: join(t, config.test.cwd), root: t, jsonFile: join(p.batch(b), "vitest.json"), log: join(logs, "tests.log") })
-  const testResults = compareTests(baselineTests, tests)
+  const testRenames = (thePlan.batches ?? []).slice(0, Number(b)).flatMap((_, i) =>
+    readJsonIf(p.codemod(batchName(i)))?.renames ?? [])
+  const testResults = compareTests(baselineTests, tests, { renames: testRenames })
   const ts = typeScriptOf(config)
   const testDiff = await testEdits(config, p, thePlan, b, ts)
   const declarations = {}

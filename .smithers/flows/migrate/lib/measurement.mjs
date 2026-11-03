@@ -6,9 +6,9 @@ import { fileURLToPath } from "node:url"
 import * as Jj from "./jj.mjs"
 import * as Wire from "./wire.mjs"
 import { readdirSync } from "node:fs"
-import { compareTests, runTests } from "./tests.mjs"
+import { comparableTests, compareTests, runTests } from "./tests.mjs"
 import { assertReadableTests } from "./test-receipts.mjs"
-import { must, quote, readJson, writeJson } from "./util.mjs"
+import { must, quote, readJson, readJsonIf, writeJson } from "./util.mjs"
 
 export async function runMeasurementJob(manifest) {
   const receipts = {}, builds = {}
@@ -57,8 +57,11 @@ export async function measureTests(config, { run, batch }) {
     if (result.job !== job) throw new Error("stale test measurement job")
     for (const side of ["main","previous","candidate"]) assertReadableTests(result.receipts[side] ?? {})
     const compared = before => {
-      const diff = compareTests(before,result.receipts.candidate)
-      const skipped = Object.keys(before.tests).filter(id => before.tests[id] === "passed" && result.receipts.candidate.tests[id] === "skipped")
+      const renames = Array.from({ length: Number(batch) }, (_, i) =>
+        readJsonIf(join(resolve(run), "batches", String(i + 1).padStart(2, "0"), "codemod.json"))?.renames ?? []).flat()
+      const diff = compareTests(before,result.receipts.candidate, { renames })
+      const oldTests = comparableTests(before.tests, { renames }), nextTests = comparableTests(result.receipts.candidate.tests, { renames })
+      const skipped = Object.keys(oldTests).filter(id => oldTests[id] === "passed" && nextTests[id] === "skipped")
       return { ...diff, skipped, ok:diff.ok && !skipped.length }
     }
     const previousDiff = compared(result.receipts.previous), mainDiff = compared(result.receipts.main)
