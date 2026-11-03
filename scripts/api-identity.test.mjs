@@ -781,3 +781,83 @@ test("property: variance-annotated export families preserve identity and reject 
     },
   })
 })
+
+const jsonCorpus = JSON.parse(readFileSync(new URL("./api-identity-corpus/foldkit-oxlint-json-export.json", import.meta.url)))
+const jsonManifest = jsonCorpus.manifest
+const jsonCompare = (a, b, compilerOptions = { resolveJsonModule: true }) => fixture(
+  { "all.json": JSON.stringify(a) }, { "all.json": JSON.stringify(b) },
+  (a, b) => compareApiIdentity(ts, a, b, { compilerOptions }), jsonManifest)
+
+test("JSON assets use stock resolveJsonModule types and remain compared", () => {
+  const input = jsonCorpus.before
+  assert.equal(jsonCompare(input, jsonCorpus.after).identical, true)
+  fixture({ "all.json": JSON.stringify(input) }, { "all.json": JSON.stringify(input) }, (a, b) => {
+    for (const dir of [a, b]) {
+      const program = ts.createProgram([join(dir, "all.json")], {
+        noEmit: true, resolveJsonModule: true, module: ts.ModuleKind.ESNext,
+        moduleResolution: ts.ModuleResolutionKind.Bundler, types: [],
+      })
+      assert.deepEqual(ts.getPreEmitDiagnostics(program), [], "stock tsc 5.9.3 accepts the fixture")
+    }
+    assert.equal(ts.version, "5.9.3")
+    for (const after of [a, b]) {
+      const result = compareApiIdentity(ts, a, after, { compilerOptions: { resolveJsonModule: true } })
+      assert.equal(result.identical, true, JSON.stringify(result))
+    }
+  }, jsonManifest)
+  assert.equal(jsonCompare(input, { ...input, count: "one" }).identical, false)
+  assert.equal(jsonCompare(input, { ...input, count: 2 }).identical, true, "tsc widens JSON numeric values")
+  assert.equal(jsonCompare(input, { ...input, list: [1] }).identical, false)
+  assert.equal(jsonCompare(input, { ...input, extra: true }).identical, false)
+})
+
+test("property: JSON asset packages compared with themselves are identical", async () => {
+  await checkProperty(fc, {
+    name: "api-identity-json-self",
+    rule: "Will: a package compared with itself is always identical; a JSON import has tsc's resolveJsonModule type",
+    command: "node --test scripts/api-identity.test.mjs",
+    arbitrary: fc.record({ value: fc.jsonValue(), reverse: fc.boolean() }),
+    numRuns: 24,
+    check: ({ value, reverse }) => {
+      const input = { value, enabled: true }
+      const after = reverse ? { enabled: true, value } : input
+      const result = jsonCompare(input, after)
+      assert.equal(result.identical, true, JSON.stringify(result))
+      assert.equal(jsonCompare(input, { ...after, enabled: "yes" }).identical, false)
+    },
+  })
+})
+
+
+test("JSON wildcard exports, scalar roots and invalid inputs stay visible", () => {
+  fixture({ "assets/one.json": "true", "assets/two.json": "[1, 2]" }, { "assets/one.json": "true", "assets/two.json": "[1, 2]" }, (a, b) => {
+    assert.deepEqual(Object.keys(publishedEntrypoints(a)).sort(), ["./one.json", "./two.json"])
+    const result = compareApiIdentity(ts, a, b)
+    assert.equal(result.identical, true, JSON.stringify(result))
+  }, { exports: { "./*.json": "./assets/*.json" } })
+  for (const input of [true, null, 1, "word", [1, 2]]) assert.equal(jsonCompare(input, input).identical, true)
+  assert.equal(jsonCompare(true, "true").identical, false)
+  const disabled = jsonCompare({}, {}, { resolveJsonModule: false })
+  assert.equal(disabled.identical, false)
+  assert.equal(disabled.comparisonComplete, false)
+  assert.deepEqual(disabled.typeDifferences, [])
+  fixture({ "all.json": "{broken}" }, { "all.json": "{broken}" }, (a, b) => {
+    const result = compareApiIdentity(ts, a, b)
+    assert.equal(result.identical, false)
+    assert.equal(result.comparisonComplete, false)
+    assert.deepEqual(result.typeDifferences, [])
+  }, jsonManifest)
+})
+
+
+test("JSON comparison honors the inherited project setting", () => {
+  const files = { "all.json": "{}", "base.json": '{"compilerOptions":{"resolveJsonModule":false}}', "tsconfig.json": '{"extends":"./base.json"}' }
+  fixture(files, files, (a, b) => {
+    writeFileSync(join(a, "..", "vibe.config.json"), '{"compilerOptions":{"resolveJsonModule":true}}')
+    assert.equal(compareApiIdentity(ts, a, b).identical, false)
+    assert.equal(compareApiIdentity(ts, a, b, { compilerOptions: { resolveJsonModule: true } }).identical, true)
+    for (const dir of [a, b]) writeFileSync(join(dir, "base.json"), '{"compilerOptions":{"resolveJsonModule":true}}')
+    const result = compareApiIdentity(ts, a, b)
+    assert.equal(result.identical, true, JSON.stringify(result))
+  }, jsonManifest)
+})

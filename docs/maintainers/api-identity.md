@@ -98,3 +98,11 @@ The standalone migrate flow includes generated copies of the checker under
 `node scripts/sync-api-identity.mjs --write`. Both `docs:check` and
 `//:api-identity-test` check their freshness so a staged flow keeps the same
 implementation without depending on files outside its stage.
+
+Published JSON assets, including wildcard targets, stay in the comparison. They
+use stock TypeScript's `resolveJsonModule` types and value widening: changing
+a number to another number preserves its type, while changing it to a string
+does not. The checker reads the inherited project setting, enables JSON for
+declaration-only snapshots without configuration, and accepts an explicit
+`compilerOptions.resolveJsonModule` override. Invalid JSON is an unavailable
+comparison, reported through `environmentDiagnostics`, without type differences.

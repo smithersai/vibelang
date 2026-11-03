@@ -1,0 +1,7 @@
+{
+  "package": "@foldkit/oxlint-plugin",
+  "pattern": "published JSON presets with resolveJsonModule",
+  "manifest": { "exports": { "./all.json": "./all.json" } },
+  "before": { "rules": { "foldkit/no-raw": "error" }, "enabled": true, "count": 1, "list": ["x"] },
+  "after": { "rules": { "foldkit/no-raw": "error" }, "enabled": true, "count": 1, "list": ["x"] }
+}

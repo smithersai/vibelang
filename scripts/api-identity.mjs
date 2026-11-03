@@ -21,13 +21,13 @@ export function loadTypeScript(dirs = []) {
   throw new Error("TypeScript compiler API unavailable; run (cd docs/tools && bun install --frozen-lockfile)")
 }
 
-function filesUnder(dir) {
+function filesUnder(dir, includeJson = false) {
   const out = []
   for (const item of readdirSync(dir, { withFileTypes: true })) {
     if (["node_modules", ".jj", ".git"].includes(item.name)) continue
     const path = join(dir, item.name)
-    if (item.isDirectory()) out.push(...filesUnder(path))
-    else if (declaration.test(item.name)) out.push(path)
+    if (item.isDirectory()) out.push(...filesUnder(path, includeJson))
+    else if (declaration.test(item.name) || (includeJson && item.name.endsWith(".json"))) out.push(path)
   }
   return out.sort()
 }
@@ -121,7 +121,7 @@ export function publishedEntrypoints(directory, tsCompiler) {
   const raw = JSON.parse(readFileSync(manifestFile, "utf8"))
   const manifest = { ...raw, ...raw.publishConfig }
   const entries = {}
-  const all = filesUnder(directory)
+  const all = filesUnder(directory, true)
   const exportMap = manifest.exports && !Array.isArray(manifest.exports) && typeof manifest.exports === "object" &&
     Object.keys(manifest.exports).some(key => key.startsWith(".")) ? manifest.exports : undefined
   // Exact subpaths override patterns; longest prefixes, then longest trailers,
@@ -135,9 +135,9 @@ export function publishedEntrypoints(directory, tsCompiler) {
   })
   function add(key, target, origin) {
     if (typeof target !== "string") return
-    // JSON/assets have no declaration surface. Missing declaration targets fail
-    // closed, including source/runtime targets whose expected declaration is absent.
-    if (/\.(?:json|css|wasm)$/.test(target)) return
+    // CSS and WASM have no TypeScript declaration surface. JSON is a tsc module.
+    // Missing declaration targets fail closed.
+    if (/\.(?:css|wasm)$/.test(target)) return
     const path = resolve(directory, target)
     if (target.includes("*")) {
       const expected = declaration.test(path) ? path
@@ -196,7 +196,7 @@ export function publishedEntrypoints(directory, tsCompiler) {
           const resolved = ts.resolveModuleName(packageName + (subpath === "." ? "" : subpath.slice(1)),
             join(directory, "__api_identity_consumer.ts"), {
               module: ts.ModuleKind.ESNext, moduleResolution: ts.ModuleResolutionKind.Bundler,
-              allowArbitraryExtensions: true, customConditions: extra
+              allowArbitraryExtensions: true, resolveJsonModule: projectJsonModules(ts, directory), customConditions: extra
             }, host, undefined, undefined, mode).resolvedModule
           if (!resolved) continue
           const target = declarationPath(resolved.resolvedFileName) ?? resolved.resolvedFileName
@@ -290,9 +290,9 @@ function equivalentModules(ts, program, host, left, right, externalGroups, docum
         else if (ts.isClassDeclaration(node)) node = factory.updateClassDeclaration(node, node.modifiers, node.name, node.typeParameters, node.heritageClauses, orderedMembers(node.members))
         if (ts.isStringLiteral(node)) {
           const p = node.parent
-          const module = (ts.isImportDeclaration(p) || ts.isExportDeclaration(p)) && p.moduleSpecifier === node ||
-            ts.isLiteralTypeNode(p) && ts.isImportTypeNode(p.parent) ||
-            ts.isExternalModuleReference(p) && p.expression === node
+          const module = p && ((ts.isImportDeclaration(p) || ts.isExportDeclaration(p)) && p.moduleSpecifier === node ||
+            ts.isLiteralTypeNode(p) && p.parent && ts.isImportTypeNode(p.parent) ||
+            ts.isExternalModuleReference(p) && p.expression === node)
           if (module) { imports.push(node); return ts.factory.createStringLiteral("__edge" + (imports.length - 1)) }
           return ts.factory.createStringLiteral(node.text)
         }
@@ -372,6 +372,19 @@ function equivalentModules(ts, program, host, left, right, externalGroups, docum
   return new Map(candidates.filter(n => n.good).map(n => [n.b, n.a]))
 }
 
+// Read the inherited project setting rather than assuming a JSON export opts
+// the project into JSON imports. Declaration-only snapshots may have no config.
+function projectJsonModules(ts, path) {
+  const start = statSync(path).isFile() ? dirname(path) : path
+  const config = ["vibe.config.json", "tsconfig.json"]
+    .map(name => ts.findConfigFile(start, ts.sys.fileExists, name)).filter(Boolean)
+    .sort((a, b) => dirname(b).length - dirname(a).length)[0]
+  if (!config) return true
+  return ts.getParsedCommandLineOfConfigFile(config, {}, {
+    ...ts.sys, onUnRecoverableConfigFileDiagnostic: () => {},
+  })?.options.resolveJsonModule ?? false
+}
+
 /** Compile a generated .ts probe. Generic type exports get a local bridge
  * inside their own declaration module, so constraints and private aliases
  * resolve in their original scope; a generic factory preserves constraints.
@@ -389,6 +402,7 @@ export function compareApiIdentity(ts, before, after, options = {}) {
     target: ts.ScriptTarget.ESNext, module: ts.ModuleKind.ESNext,
     moduleResolution: ts.ModuleResolutionKind.Bundler, strict: true,
     noEmit: true, skipLibCheck: false, types: [], allowImportingTsExtensions: true, allowArbitraryExtensions: true,
+    resolveJsonModule: projectJsonModules(ts, before) && projectJsonModules(ts, after),
     ...options.compilerOptions,
     strict: true, strictNullChecks: true, strictFunctionTypes: true, noImplicitAny: true, noImplicitThis: true,
     noEmit: true, skipLibCheck: false, allowSyntheticDefaultImports: true,
@@ -462,7 +476,7 @@ export function compareApiIdentity(ts, before, after, options = {}) {
   // these shared contributions equivalent using separate dependency closures.
   // Changed contributions cannot be compared soundly by the combined probe.
   const contributesAmbient = source => {
-    if (source.hasNoDefaultLib) return false
+    if (source.hasNoDefaultLib || ts.isJsonSourceFile(source)) return false
     let contributes = !ts.isExternalModule(source)
     const visit = node => {
       if (ts.isModuleDeclaration(node) && ((node.flags & ts.NodeFlags.GlobalAugmentation) || ts.isStringLiteral(node.name))) contributes = true
@@ -589,7 +603,9 @@ export function compareApiIdentity(ts, before, after, options = {}) {
       result.environmentDiagnostics.push({ entrypoint: entry, side, file, blocking: true, diagnostic: "Published declaration not found: " + file })
       return new Map()
     }
-    const sym = checker.getSymbolAtLocation(sf)
+    // JSON is bound as an export-equals module even though its syntax is not
+    // recognized by getSymbolAtLocation(SourceFile).
+    const sym = checker.getSymbolAtLocation(sf) ?? (ts.isJsonSourceFile(sf) ? sf.symbol : undefined)
     if (!sym) {
       result.environmentDiagnostics.push({ entrypoint: entry, file, blocking: true, diagnostic: "Published declaration is not an external module: " + file })
       return new Map()
