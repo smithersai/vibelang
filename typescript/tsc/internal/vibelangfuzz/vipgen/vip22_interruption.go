@@ -69,13 +69,20 @@ func init() {
 			g.UseEffect()
 			inner := blockScope(s)
 			mask := &Mask{Body: g.Block(inner)}
+			hasRestore := false
 			if !ends(mask.Body) && !g.Chance(3) {
+				hasRestore = true
 				mask.Body = append(mask.Body, &Restore{Body: g.Block(blockScope(inner))})
 				if !ends(mask.Body) {
 					mask.Body = append(mask.Body, g.Block(inner)...)
 				}
 			}
-			if g.Chance(2) {
+			// NoReturn scopes include concurrent items and transparent masks.
+			// Put a restore-bearing mask in the existing fresh-function probe
+			// when the source activation is uncertain. Its restore then names
+			// that function's own mask, rather than an item's forbidden one.
+			// Root masks retain both the inline and fresh-function forms.
+			if g.Chance(2) || (s.NoReturn && hasRestore) {
 				return &Seq{Stmts: g.interrupted(s, mask, nil)}
 			}
 			return mask
