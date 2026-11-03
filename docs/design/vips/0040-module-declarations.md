@@ -122,7 +122,7 @@ A module declaration is a module record, so ECMAScript's module evaluation decid
 
 1. **Once at most** per realm, however many times it is imported.
 2. **Only if imported for a value.** A body the file never imports, or imports only types from (`import type`, or imports TypeScript elides), never evaluates and emits no JavaScript; it is still checked. `import name;` evaluates it for effects.
-3. **In import order.** The file's dependencies, its module declarations among them, evaluate in the order of its import and re-export declarations, then the file's own body. Declarations are hoisted: `import { port } from parse` above `module parse { }` is ordinary (case `module-declaration-order`).
+3. **In import order.** The file's source dependencies, its module declarations among them, evaluate in the order of its import and re-export declarations, then the file's own body. A required matcher initialization dependency precedes those source dependencies ([VIP-31](0031-runtime-guarantees.md)); a TypeScript body arranges its own initialization before using `Symbol.customMatcher`, as a sibling `.ts` file would. Declarations are hoisted: `import { port } from parse` above `module parse { }` is ordinary (case `module-declaration-order`).
 4. **Live bindings.** An `export let` the body reassigns is seen by the importer (case `module-declaration-live-bindings`).
 5. **Failure.** An uncaught `throw` or rejected top-level `await` fails module evaluation, before any effect code runs, as for a `.ts` import; it is never an Effect error. Retryable initialization belongs in an exported function called through `Effect.try`.
 
