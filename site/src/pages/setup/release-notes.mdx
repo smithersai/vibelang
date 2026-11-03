@@ -477,6 +477,12 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Setup needed a second run to finish refreshing a source-child loader helper when one call launched a typed source and another only probed a shell. It now removes the unnecessary wrapper and refreshes the retained helper in one pass.
 
+- CI-health reports mistook missing Node packages for test assertions; reports now identify package-install failures and point to the requesting module's installation and module root.
+
+- The pattern-matching reference example dropped callable objects with an `id` property; its TypeScript counterpart now includes them.
+
+- Migration setup enabled `rewriteRelativeImportExtensions` when it was absent or inherited `false`; setup now preserves the project's native option and its inheritance.
+
 - `vibelang --fix` refused `EK4401` on a plain TypeScript call that reads a property a guard narrowed, such as `o.p ? f(o.p) : 0` or `if (!o.p) return 0; return f(o.p)`, because `Effect.try`'s function no longer knew what the guard proved (`TS2345`). The guard now joins the call in that function, or a `const` under the guard keeps the read; a call that runs before the read still blocks the move.
 
 - Release validation rejected the stock-reference control suite because it had no test runner; `//:release` now runs checks for `Exit` values, public types, and version pins.
@@ -527,6 +533,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - A TypeScript consumer could accept a wrong argument or result type from a function re-exported through a `module` body because its type became `any`. The body declaration beside the source now preserves the function signature; regression checks cover exported arrow functions too.
 - The Alchemy union-and-`pipe` inference check incorrectly demanded a `TS2345` error from TypeScript 7.1; it now uses the migration’s TypeScript 5.9.3 baseline and verifies that the provider retains requirement `B`.
+
+- A schema struct repair could delete a custom associated type whose helper was also spelled `Schema.Schema.Type`. The repair now resolves the helper and preserves unrelated aliases and interfaces.
 - Loading a `.vibe` module through `vibelang/register`, `vibelang/bun` or a bundler plugin failed with `TS6305: Output file '…/lib/x.d.ts' has not been built from source file '…/src/x.ts'` when its tsconfig `references` a project that was not built yet, as in a fresh clone before `vibelang -b`; the loader's compile now reads a referenced project's types from its sources, as the editor does, and a relative import into that project no longer reports `TS2878`.
 - Interruption blocks in plain or `async` code were accepted, or `restore` reported a nesting error. All three forms now report `EK2201` outside effect code. `vibelang --fix` removes the ignored keyword and keeps the ordinary JavaScript block.
 

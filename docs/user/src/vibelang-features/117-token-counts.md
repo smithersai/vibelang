@@ -282,7 +282,7 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [Introduction](../../../design/src/000-intro.md) | 3,000 |
 | **The language** | **120,000** |
 | [1. Functions and Effect types](../../../design/src/001-functions.md) | 13,000 |
-| [2. Running Effects](../../../design/src/002-running.md) | 30,000 |
+| [2. Running Effects](../../../design/src/002-running.md) | 29,000 |
 | [3. Failures](../../../design/src/003-failures.md) | 10,000 |
 | [4. Pattern matching](../../../design/src/004-match.md) | 23,000 |
 | [5. Services and the environment](../../../design/src/005-services.md) | 13,000 |

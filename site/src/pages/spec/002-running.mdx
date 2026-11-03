@@ -52,7 +52,7 @@ Writing the call's type arguments explicitly opts out: `expect<Effect.Effect<num
 
 ### Meaning
 
-`try e` is `yield* e`. It runs `e` and gives its success value. A failure propagates to the enclosing Effect, as Zig's `try x` means `x catch |err| return err`. The static operand test adds no runtime Effect guard: an unchecked `any` follows native delegation, including its iterator errors, rather than Promise adoption or identity on a non-Promise value. A noniterable such as `5`, `undefined` or an ordinary Promise produces a native `TypeError` defect; an unchecked empty iterable can complete with `undefined`, and an ordinary iterator can delegate Effects or return a value. This does not admit typed arrays or generators as Effect operands. See the [checked runtime witness](/spec/008-runtime#unchecked-delegation).
+`try e` is `yield* e`. It runs `e` and gives its success value. A failure propagates to the enclosing Effect. The static operand test adds no runtime Effect guard: an unchecked `any` follows native delegation, including its iterator errors, rather than Promise adoption or identity on a non-Promise value. A noniterable such as `5`, `undefined` or an ordinary Promise produces a native `TypeError` defect; an unchecked empty iterable can complete with `undefined`, and an ordinary iterator can delegate Effects or return a value. This does not admit typed arrays or generators as Effect operands. See the [checked runtime witness](/spec/008-runtime#unchecked-delegation).
 
 ```vibe [VibeLang]
 // compiler-gap: pending VIP-5
@@ -260,7 +260,7 @@ effect function c() { const p = maybeQuery() }                      // EK0404: P
 
 ### Meaning
 
-`e catch h` runs `e`. On a failure in its error channel it calls `h` with the error, as Zig's `catch |err|` does. `h` runs only when the `Cause` holds no defect: a `Cause` with both a failure and a defect, such as one a `.ts` function builds with `Effect.failCause`, passes through with its failures re-raised as defects, as `Effect.catch` does in Effect 4.1.1. The handler's kind decides whether its result runs Effects, as for any function. `h` is evaluated only on failure. An `effect` block is an ordinary operand, so `effect { try write(x); try close() } catch effect (e) => try log(e)` replaces the banned `try { } catch { }` statement:
+`e catch h` runs `e`. On a failure in its error channel it calls `h` with the error. `h` runs only when the `Cause` holds no defect: a `Cause` with both a failure and a defect, such as one a `.ts` function builds with `Effect.failCause`, passes through with its failures re-raised as defects, as `Effect.catch` does in Effect 4.1.1. The handler's kind decides whether its result runs Effects, as for any function. `h` is evaluated only on failure. An `effect` block is an ordinary operand, so `effect { try write(x); try close() } catch effect (e) => try log(e)` replaces the banned `try { } catch { }` statement:
 
 | Written | Effect TypeScript |
 | --- | --- |
@@ -581,9 +581,7 @@ console.log(JSON.stringify([
 
 The counterparts give `Success(7)`, `Success(undefined)`, `Success(7)` and `Success(7)` respectively.
 
-In plain code, `try`/`finally` inside `do` follows ECMA-262's `TryStatement` evaluation: a normal finalizer preserves the `try` or `catch` completion, and an abrupt finalizer replaces it before `UpdateEmpty` supplies `undefined` if needed. Thus `do { label: { try { 1 } finally { 2; break label } } }` gives `2`, the same block without `2;` gives `undefined`, and `do { try { 1 } finally { 2 } }` gives `1`. Nested finalizers apply the same rule at each level.
-
-<a id="evaluation-order"></a>**Evaluation order.** Captures also preserve the [source naming context](/spec/001-functions#source-names): a private temporary cannot give an anonymous value a name or erase a requested one. A `do` or `match` is an expression, and this is the one rule for it inside a larger expression: it runs where JavaScript evaluates the expression that holds it, never earlier or more often. Everything to its left runs first, in source order, the callee and a method's receiver included, so `o.m(try a(), match (x) { … })` reads `o.m`, runs `a()`, runs the `match`, and calls the method with `this` as `o`. An operand to its left is finished, not only read: a spread is iterated, an object spread copies its properties, a computed object key is converted to a property key, an untagged template converts each earlier substitution to a string, a tag is read with its receiver, and a constructor is read before its arguments, so in `[...xs, do { … }]` the iterator of `xs` finishes before the block runs. Element-assignment keys keep the assignment operator's own conversion timing. In a conditional position (one side of `&&`, `||`, `??`, `?:`, `&&=`, `||=`, `??=`, after `?.`, a `case` test, a loop condition or update) it runs only when JavaScript evaluates that position. How the compiler keeps this is its choice. Destructuring and parameter defaults follow [their own rule](/spec/002-running#destructuring-and-parameter-defaults). As the snapshot's explainer says, an unlabeled `break` or `continue` in a `do` in a loop head is an early error. Calls retain ECMA-262's `CallExpression` evaluation, `EvaluateCall` and `ArgumentListEvaluation` behavior, including the receiver, callee lookup, abrupt completions and native non-callable errors; generated invocation machinery must add no observable helper lookup. Reading `this` is part of that order: in a derived constructor, an earlier `this` read still precedes a later `do` that calls `super()`. Lowering must preserve the source diagnostic and the native uninitialized-receiver error, including inside lexical arrows.
+<a id="evaluation-order"></a>**Evaluation order.** A `do` or `match` runs where ECMAScript evaluates the expression that holds it, never earlier or more often. Everything to its left runs first, in source order, fully evaluated as ECMA-262 specifies (callee and receiver read, spreads iterated, keys converted, earlier template substitutions stringified), so `o.m(try a(), match (x) { … })` reads `o.m`, runs `a()`, runs the `match`, and calls the method with `this` as `o`. In a conditional position it runs only when ECMAScript evaluates that position. Calls keep ECMA-262's `EvaluateCall` and `ArgumentListEvaluation`, and lowering adds no observable helper lookup, temporary name ([source names](/spec/001-functions#source-names)) or change to `this` and `super()` order. How the compiler keeps this is its choice. Destructuring and parameter defaults follow [their own rule](/spec/002-running#destructuring-and-parameter-defaults). As the snapshot's explainer says, an unlabeled `break` or `continue` in a `do` in a loop head is an early error.
 
 <a id="jumps-from-expressions"></a>**Jumps from expressions.** `do` gives an expression completions no other expression has: `return`, `break` and `continue`. Around it, each stays what it is. ECMA-262 and the pinned drafts say "abrupt" in steps written when an expression could only throw, and VibeLang reads those steps as "throw": [`FinishMatch`](/spec/004-match#leaving-a-match), and the parameter steps of [`async` functions and generators](/spec/002-running#parameter-defaults). The snapshot's README lists them.
 
@@ -606,13 +604,9 @@ function total(o: Calc) {
 
 The pinned snapshot is the vendored copy of `tc39/proposal-do-expressions` at commit `3ef6d463b8163cbf222846b40d17178cca36e9e1`, the head on 2026-10-28 (UTC), as pattern matching is pinned.
 
-A `do` expression's type is the union of the values that can reach a normal completion of its block, following ECMAScript's value, empty and `UpdateEmpty` flow, local jumps included; a final empty completion is `undefined`. A `do` body in a short-circuit operand keeps the TypeScript narrowing its source guard gives.
-
 ### Destructuring and parameter defaults
 
 A destructuring or parameter default runs only when it applies. In effect code a destructuring pattern behaves exactly as the same pattern in JavaScript with the pinned `do` proposal: ECMA-262's BindingInitialization, IteratorBindingInitialization and DestructuringAssignmentEvaluation, with GetIterator and IteratorClose for array patterns. Evaluation order, getters, the iterator protocol, temporal dead zones, closing, and the `name` and `message` of every protocol error are that algorithm's on the same host, and the canonical `Exit` compares them ([Runtime guarantees](/spec/008-runtime)). How the compiler achieves it (native destructuring with an inline `yield*`, a runtime helper, or any other lowering) is its choice; the examples below, the VIP-31 differential suite and the fuzz suite check it.
-
-In an assignment pattern, the right side is evaluated once before the pattern. Computed keys and assignment targets then run at their native destructuring steps; a default runs only for `undefined`, including a missing value. A present value, including `null`, skips its default. This also applies when the key, target or default contains `do`.
 
 Three things can happen in a default:
 
@@ -702,8 +696,6 @@ Each row runs the function with the iterable `xs` described; unless the row says
 
 **Diagnostics.** A `do` block whose last statement violates TC39's `EndsInIterationOrBareIfOrDeclaration` early error, ending in a declaration, a loop or an `if` without an `else`, is `EK0201`. `var` in a `do` expression in a parameter list is `EK0203`. A `break` or `continue` in a loop head's `do` that leaves it unlabeled or targets that loop is `EK0205`. Every label in a contiguous chain around that loop names the same loop, so `outer: inner: while (do { continue outer; true }) {}` is also `EK0205`. A jump to a label on a different enclosing loop remains exempt from this early error. `EK0204` is a compiler gap, not a language rule: where the compiler still compiles a `do` to a function, it rejects an outward completion (`return`, `var`, a jump, `await` or `yield`) that VIP-2 keeps legal, such as the parameter-default `return` in the table above ([transitional diagnostics](/spec/900-appendices#transitional-compiler-diagnostics)).
 
-A default in an ordinary `function*` or `async function*` runs at the construction call, before the body. An outward `return v` there gives an iterator whose first `next()` is `{ done: true, value: v }` and never starts the body.
-
 ## `fork` and `join`
 
 ### Syntax
@@ -768,7 +760,7 @@ A line break after `fork` or `join` changes nothing, as after `await`: `join` th
 
 ### Meaning
 
-`fork` starts a fiber and gives its `Fiber`. The form names the owner, which interrupts the fiber when it ends. A child is not awaited at the end of a scope, as Swift's and Kotlin's structured children are; it keeps Effect's meaning. A `fork` child whose parent ends first exits with an interruption; a `fork.detached` child runs to its own end.
+`fork` starts a fiber and gives its `Fiber`. The form names the owner, which interrupts the fiber when it ends. A child is not awaited at the end of a scope. A `fork` child whose parent ends first exits with an interruption; a `fork.detached` child runs to its own end.
 
 <a id="fork-operand"></a>`fork e` evaluates `e` now, on the caller, as `const p = work(await id())` calls `id` and `work` now, and runs only the Effect that `e` gives on the new fiber. So a failure of `id` in `fork worker(try id())` is the caller's, as a rejection of `await id()` is. Handling a failure on the child keeps that split, as `.catch(h)` does on a Promise:
 
@@ -1059,8 +1051,6 @@ const streamHeadScope = Effect.promise(async () => {
 function limitReturn() { return Effect.gen(function* () { return 7 }) } // Success(7)
 ```
 
-Both loop heads evaluate the operand in ECMAScript's separate `ForDeclaration` environment, with head-bound names in their temporal dead zone; `n` in `for concurrent(n)` evaluates before that. A source-function `return` in a head's per-item defaults or computed keys is `EK1904`, and in `for try` `EK2002`. `for concurrent` inherits `Effect.forEach`'s pulling: limit 1 pulls incrementally and does not close the iterator when an item fails, and other limits materialize the iterable first.
-
 ## `for try`
 
 ### Syntax
@@ -1150,8 +1140,6 @@ function first() {
   })
 }
 ```
-
-A plain `fork` in a `for try` item belongs to the loop's consuming fiber: the child can outlive the item and is not implicitly joined.
 
 ## Producers
 
@@ -1343,8 +1331,6 @@ function nestedRestore(events: string[]) {
 
 The keywords remove the globals of the same name ([VIP-6](/vips/0006-effect-globals)), so Effect's functions are written `Effect.uninterruptible` and `Effect.interruptible`.
 
-
-An outer `restore` cannot cross a nested `effect` function, arrow, method, producer or block: `EK2202`. A nested activation can open its own `uninterruptible` and restore that mask.
 
 ## Region bodies
 
