@@ -15,6 +15,7 @@ import { createHash } from "node:crypto"
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs"
 import { join, posix } from "node:path"
 import { wireNativeViteConfigs } from "./vite-config.mjs"
+import { addVitestProjectPlugins } from "./vitest-projects.mjs"
 import { workspaceGlobs, workspaceManifests } from "./upgrade.mjs"
 import { must, quote } from "./util.mjs"
 import { packageScripts, testLeftAsIs, testOnlyScripts } from "./test-files.mjs"
@@ -491,7 +492,7 @@ export function wireVite({ root, packages, test, ts, specsFor }) {
   // A config whose shape addVitePlugin does not know is named in a warning and left as it is.
   const wire = (file) => {
     try {
-      wireViteConfig({ root, file, ts, specsFor, changed, register: true })
+      wireViteConfig({ root, file, packages, ts, specsFor, changed, warnings, register: true })
     } catch (error) {
       warnings.push(`${file}: ${error.message}`)
     }
@@ -526,7 +527,7 @@ export function wireVite({ root, packages, test, ts, specsFor }) {
 // Adds the plugin to one config, and the compiler and the plugin to the
 // package that owns it, the nearest one above it; records the files changed.
 // register is for a config the tests load (addVitePlugin).
-function wireViteConfig({ root, file, ts, specsFor, changed, register = false }) {
+function wireViteConfig({ root, file, packages, ts, specsFor, changed, warnings, register = false }) {
   const write = (path, before, after) => {
     if (before === after) return
     writeFileSync(join(root, path), after)
@@ -536,7 +537,8 @@ function wireViteConfig({ root, file, ts, specsFor, changed, register = false })
   let owner = posix.dirname(file)
   while (owner !== "." && !existsSync(join(root, owner, "package.json"))) owner = posix.dirname(owner)
   // electron-vite builds main, preload and renderer with a plugin list each; a Vite app's workers build with worker.plugins.
-  write(file, text, electronViteConfigFile.test(posix.basename(file)) ? addElectronVitePlugin(text, ts) : addVitePlugin(text, ts, { register, worker: startsWorkers(root, owner) }))
+  const pluginText = electronViteConfigFile.test(posix.basename(file)) ? addElectronVitePlugin(text, ts) : addVitePlugin(text, ts, { register, worker: startsWorkers(root, owner) })
+  write(file, text, addVitestProjectPlugins(pluginText, ts, { root, file, packages, warn: message => warnings.push(file + ": " + message) }))
   const manifest = posix.join(owner, "package.json")
   const before = readFileSync(join(root, manifest), "utf8")
   write(manifest, before, JSON.stringify(addVibeLangPlugin(JSON.parse(before), specsFor(owner)), null, 2) + "\n")
@@ -726,7 +728,7 @@ export function wireViteApps({ root, packages, ts, specsFor, wired = [] }) {
       continue
     }
     try {
-      wireViteConfig({ root, file, ts, specsFor, changed })
+      wireViteConfig({ root, file, packages, ts, specsFor, changed, warnings })
       configs.push(file)
     } catch (error) {
       warnings.push(`${file}: ${error.message}`)

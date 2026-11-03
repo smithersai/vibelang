@@ -174,6 +174,8 @@ Run `npx vitest run`. Tests need no prior build. The output includes:
 
 If a test starts a Node process that runs the project's source, such as a command-line program, pass `vibelang({ project: "tsconfig.test.json", register: true })`. The plugin adds `vibelang/register` to the tests' `NODE_OPTIONS`, so that process imports `.vibe` modules too, whatever its working directory. Any `NODE_OPTIONS` the configuration or the environment already sets is kept. A Bun process a test starts, such as `process.execPath` under `bun x --bun vitest`, reads `BUN_OPTIONS` instead, so the plugin also adds `--preload` of `vibelang/bun` there, unless that file's path contains a space, which `BUN_OPTIONS` cannot carry.
 
+When using Vitest's `test.projects`, add `vibelang()` to each project's own `plugins` when its tests import `.vibe` sources. Keep the project's other plugins and test options. A plugin on the outer configuration alone does not configure an independent project. Use `register: true` on a project's plugin when its tests launch source-running child processes. The migrate flow wires inline projects with statically readable roots and test selectors, and reports unsupported shapes for manual setup.
+
 ### Node's test runner and Jest
 
 For `node --test`, write a `.test.ts` suite that imports `.vibe` modules and runs their programs with `Effect.runSync` or `Effect.runPromise`. Include the suite in `tsconfig.test.json`, install `@types/node`, and add `"node"` to that project's `compilerOptions.types` (keeping any existing entries). Load the source hook and select that project:

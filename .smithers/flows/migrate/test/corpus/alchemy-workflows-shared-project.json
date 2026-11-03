@@ -1,0 +1,5 @@
+{
+  "config": "import path from \"node:path\";\nimport { defineConfig } from \"vitest/config\";\nimport vibelang from \"vibelang-vite\";\nconst sourceRoot = (...parts) => path.resolve(import.meta.dirname, \"src\", ...parts);\nconst workflowsSharedRoot = sourceRoot(\"internal/workflows-shared\");\nexport default defineConfig({\n  plugins: [vibelang({ register: true })],\n  test: { projects: [\n    {\n      root: workflowsSharedRoot,\n      plugins: [cloudflareTest({ wrangler: { configPath: \"wrangler.jsonc\" } })],\n      test: { name: \"workflows-shared\", include: [\"test/**/*.test.ts\"], globalSetup: [\"./test/global-setup.ts\"], testTimeout: 50000 }\n    },\n    { root: \"./src/plain\", plugins: [plainPlugin()], test: { name: \"plain\", include: [\"**/*.test.ts\"] } }\n  ] }\n});\n",
+  "test": "import { value } from \"../value.ts\"; export { value };\n",
+  "source": "export const value = 42;\n"
+}
