@@ -369,6 +369,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Specification changes with grounded rules lacking accepted authority or contradicting retained text were only reported; `//:spec-rule-judge` now rejects them by default, while unavailable judgments still warn and allow the entry.
 
+- Migration regression checks now cover callback properties, object-result spreads and contextual handler results against the original TypeScript programs.
+
 - Sharded Go tests could start several fuzz campaigns when `-test.fuzz` used a separate selector argument; that form now runs once with its original arguments and exit status.
 - Remote checks could report success after failing to discover tracked fixtures, leaving the build host with a partial checkout; `scripts/remote.sh` now stops before running tests and reports the failing discovery stage and exit status.
 
