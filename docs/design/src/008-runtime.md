@@ -23,7 +23,7 @@ In plain functions, `for…of` keeps stock TypeScript's emitted behavior, includ
 Native iterator completion determines cleanup. In this example all three runs end with `Die(problem)`: an exception from `next` or a default after exhaustion has trace `[]`, while a default exception before exhaustion closes the iterator, records `["close"]` and wins over `closeProblem`. See the [destructuring rule](002-running.md#destructuring-and-parameter-defaults).
 
 ```ts effect
-// Native iterator completion witness: VIP-2, VIP-8, VIP-31
+// Native iterator completion witness: VIP-2, VIP-31
 import { Effect, Exit } from "effect"
 
 const problem = { label: "source" }, closeProblem = { label: "close" }
@@ -271,7 +271,7 @@ if (outcome.value.started !== 8 || outcome.value.consumed !== 1) {
 `using` keeps TypeScript’s meaning ([VIP-8](../vips/0008-using-denied.md), denied). It disposes when JavaScript control leaves its scope, including by `return` or a JavaScript throw; on a success `Exit`, the disposer runs as in TypeScript. A non-success `Exit` of an Effect run by `try` [abandons](#abandonment) the generator without unwinding that scope. Use Effect’s `scoped`, `acquireRelease`, `acquireDisposable` or `addFinalizer` for cleanup on every Effect exit. `using` in effect code gets a warning (`EK0801`), with a quick fix to `acquireDisposable` inside `scoped`; the warning does not change disposal semantics.
 
 ```vibe es
-// compiler-gap: pending VIP-8
+// compiler-gap: pending VIP-34
 // openFile is the plain helper in the shared TypeScript fixture below.
 import { openFile } from "./resource.ts"
 effect function unsafe(defect = false) {
