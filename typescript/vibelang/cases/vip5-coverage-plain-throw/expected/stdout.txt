@@ -1,0 +1,1 @@
+plain handler throw is a defect

@@ -1,0 +1,3 @@
+// expect: EK0510
+effect function bad(e: number!!) { return try e ** 2 }
+

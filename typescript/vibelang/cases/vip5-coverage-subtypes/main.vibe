@@ -1,0 +1,20 @@
+// rule-evidence: docs/design/vips/0004-throw.md#5d56cbc780552153
+// VIP-4: Effect subtype examples (Opus round30 m53). The operand predicate is
+// rule-evidence: docs/design/vips/0004-throw.md#042399db63dd2370
+// VIP-4: Pinned Effect4.1.0 Exit.Exit<number> and Config.Config<number> pass, alongside the already-listed tagged-error
+// rule-evidence: docs/design/vips/0005-try-runs-effects.md#4cc00ce1c62da07d
+// VIP-5: In Effect4.1.0, Effectable.Class extends the Effect type and declares an
+// rule-evidence: docs/design/vips/0005-try-runs-effects.md#9f2fdb29de19eeff
+// VIP-5: vibe effect function rejected() { return try Option.some(1) // EK0502;
+// rule-evidence: docs/design/vips/0005-try-runs-effects.md#0ecc6c262f372dc7
+// VIP-5: ts import { Effect } from "effect" const explicit =
+// rule-evidence: docs/design/vips/0005-try-runs-effects.md#8d2fc64b289daadd
+// VIP-5: A user-defined method really returning an Effect remains an ordinary
+import { Effect, Effectable, Exit, Config } from "effect"
+class Custom extends Effectable.Class<number> { asEffect() { return Effect.succeed(4) } }
+interface Branded extends Effect.Effect<number> { readonly brand: "ok" }
+const branded: Branded = Object.assign(Effect.succeed(5), { brand: "ok" as const })
+const adapter = { asEffect() { return Effect.succeed(6) } }
+export effect function main(): Effect.Effect<readonly number[], Effect.Error<Config.Config<number>>> {
+  return [try Exit.succeed(8), try Config.succeed(7), try new Custom(), try branded, try adapter.asEffect()]
+}

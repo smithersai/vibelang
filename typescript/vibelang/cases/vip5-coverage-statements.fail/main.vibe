@@ -1,0 +1,12 @@
+// expect: EK0503 EK0503
+// rule-evidence: docs/design/vips/0004-throw.md#dbf03f71afff9fa0
+// VIP-4: This is distinct from the VibeLang effect catch expression and
+// rule-evidence: docs/design/vips/0005-try-runs-effects.md#24bcf81858af1702
+// VIP-5: An effect function has no try/catch statement.
+// rule-evidence: docs/design/vips/0005-try-runs-effects.md#acca23dd0214d192
+// VIP-5: Amended 2026-10-29: no try statements of any kind, try/finally included.
+// rule-evidence: docs/design/vips/0005-try-runs-effects.md#4080b2927a64a88e
+// VIP-5: Effect code has exactly one try, the one that runs
+// VIP-5: statements rejection; expected contract comes from the specification.
+effect function catches() { try { return 1 } catch { return 2 } }
+effect function cleans() { try { return 1 } finally { } }

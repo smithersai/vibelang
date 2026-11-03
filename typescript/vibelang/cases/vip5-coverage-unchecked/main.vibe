@@ -1,0 +1,56 @@
+// rule-evidence: docs/design/vips/0005-try-runs-effects.md#d208b72ff399c8b2
+// VIP-5: unchecked operands retain native delegation
+// rule-evidence: docs/design/vips/0005-try-runs-effects.md#37622c2eb44bc5a7
+// VIP-5: An unchecked noniterable produces its native TypeError as a defect.
+// rule-evidence: docs/design/vips/0005-try-runs-effects.md#fee3f5eda9e811f0
+// VIP-5: Unchecked try operands use native delegation, with no dynamic Effect
+// rule-evidence: docs/design/vips/0005-try-runs-effects.md#c4cc7359924450e9
+// VIP-5: any bypassing static checking does not insert Effect.isEffect, convert a
+// rule-evidence: docs/design/vips/0005-try-runs-effects.md#c6b20c3696a8ce04
+// VIP-5: A noniterable operand such as5, undefined or an ordinary Promise
+// rule-evidence: docs/design/vips/0005-try-runs-effects.md#db9784d5b2ebce7d
+// VIP-5: This is not a universal rule that every runtime non-Effect
+// rule-evidence: docs/design/vips/0005-try-runs-effects.md#66e9e1cfe2118623
+// VIP-5: vibe const number: any = 5 effect function bad() {
+// rule-evidence: docs/design/vips/0005-try-runs-effects.md#29c083e14a58c15e
+// VIP-5: 226 success-type clarification, decide-live, 2026-11-02. An operand with actual TypeScript
+// rule-evidence: docs/design/vips/0005-try-runs-effects.md#949ad4e4f3e4b8aa
+// VIP-5: Its try success expression has type any, as native yield
+// rule-evidence: docs/design/vips/0005-try-runs-effects.md#74c4337ddf39399c
+// VIP-5: vibe declare const loose: any effect function read() { const
+// rule-evidence: docs/design/vips/0005-try-runs-effects.md#710ffedccd3135a0
+// VIP-5: Effect TS counterpart: Effect.gen(function () { const value = yield
+// rule-evidence: docs/design/vips/0005-try-runs-effects.md#e994fb9ae9a8416d
+// VIP-5: Native ordinary generator delegation and await any also preserve any,
+// rule-evidence: docs/design/vips/0005-try-runs-effects.md#e913be9c2eeedf42
+// VIP-5: Do not repair a compiler's false unknown success by asserting
+// rule-evidence: docs/design/vips/0005-try-runs-effects.md#774a89015b794f89
+// VIP-5: Do not erase E/R. The exact reported Effect.fn("resolve")(function (port: number)
+// rule-evidence: docs/design/vips/0005-try-runs-effects.md#8e3405c154cc4405
+// VIP-5: The inbox's illustrative never, never claim is not the native
+// rule-evidence: docs/design/vips/0005-try-runs-effects.md#8197f9a32804f092
+// VIP-5: Success any alone is no proof of no failures/services, no
+// rule-evidence: docs/design/vips/0005-try-runs-effects.md#2ea49c54364bc43a
+// VIP-5: The existing any behavior and native delegation in89/104 remain unchanged.
+import { Effect } from "effect"
+// VIP-5: any preserves native delegation and all three inferred channels.
+export effect function tail(value: any) { return try value }
+export effect function statement(value: any) { const result = try value; return result }
+export effect function contextual(value: any) {
+  const checked: string = try value
+  return checked
+}
+export effect function resolver(loose: any, port: number) {
+  const host: string = try loose
+  return { endpoint: `${host}:${port}` }
+}
+declare const loose: any
+export const named = Effect.fn("resolve")(effect (port: number) => {
+  const host: string = try loose
+  return { endpoint: `${host}:${port}` }
+})
+type Exact<A,B> = (<T>() => T extends A ? 1 : 2) extends (<T>() => T extends B ? 1 : 2) ? true : false
+const directSuccessIsAny: Exact<Effect.Success<ReturnType<typeof tail>>,any> = true
+const namedErrorIsUnknown: Exact<Effect.Error<ReturnType<typeof named>>,unknown> = true
+const namedServicesAreUnknown: Exact<Effect.Services<ReturnType<typeof named>>,unknown> = true
+const namedSuccess: Exact<Effect.Success<ReturnType<typeof named>>,{ endpoint: string }> = true

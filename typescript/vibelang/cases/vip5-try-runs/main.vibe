@@ -1,3 +1,5 @@
+// rule-evidence: docs/design/vips/0004-throw.md#0da7589cba535879
+// VIP-4: else a shipped annotation (JavaScript globals, Effect exports) gives its
 // expect-result: {"a":2,"b":"guest","c":3,"parsed":{"x":1},"bad":"Bad","n":4}
 // 000-intro.md: catch executes its cold operand and invokes its recovery
 // rule: docs/design/src/000-intro.md#2a696d5885f837c5

@@ -1,0 +1,12 @@
+// rule-evidence: docs/design/vips/0005-try-runs-effects.md#c914ad3acdf26faa
+// VIP-5: | x catch (e) => f(e) (a plain function; a
+// rule-evidence: docs/design/vips/0005-try-runs-effects.md#18034adfb8ee1e85
+// VIP-5: An explicit throw in a plain handler keeps its defect
+// rule-evidence: docs/design/vips/0005-try-runs-effects.md#790e1dc0d9aa37ef
+// VIP-5: an explicit throw in a plain handler warns (decided detail
+// rule-evidence: docs/design/vips/0005-try-runs-effects.md#f6f31d29697a0221
+// VIP-5: The throw stays a JavaScript exception, so the result is
+import { Effect } from "effect"
+export effect function main(): Effect.Effect<number,unknown> {
+  return Effect.fail("plain") catch (e: string) => { throw e }
+}

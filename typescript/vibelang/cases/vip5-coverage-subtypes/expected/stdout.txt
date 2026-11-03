@@ -1,0 +1,1 @@
+subtype parity: Exit, Config, Effectable, branded Effect and explicit adapter

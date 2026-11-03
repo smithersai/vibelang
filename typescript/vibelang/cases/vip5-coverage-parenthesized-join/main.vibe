@@ -1,0 +1,5 @@
+import { Effect, Fiber } from "effect"
+export effect function main(): Effect.Effect<number> {
+  const child = fork Effect.succeed(Effect.fail("inner"))
+  return (join child) catch (e: string) => e.length
+}

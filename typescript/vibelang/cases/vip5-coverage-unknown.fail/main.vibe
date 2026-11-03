@@ -1,0 +1,2 @@
+// expect: EK0502
+effect function bad(value: unknown) { return try value }

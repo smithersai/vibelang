@@ -1,0 +1,7 @@
+// expect: EK0403 EK0403
+// rule-evidence: docs/design/vips/0005-try-runs-effects.md#0fe3f3053beae320
+// VIP-5: a throwing call in a plain handler
+import { bare } from "./foreign.js"
+effect function body() { return Effect.fail("bad") catch () => bare() }
+effect function parameter() { return Effect.fail<number | undefined>(undefined) catch (e = bare()) => e }
+

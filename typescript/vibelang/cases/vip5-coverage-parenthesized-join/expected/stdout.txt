@@ -1,0 +1,1 @@
+parenthesized join catch executes the joined Effect value

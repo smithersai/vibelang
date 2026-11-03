@@ -1,0 +1,8 @@
+// rule-evidence: docs/design/vips/0005-try-runs-effects.md#f966cb88444cdb9f
+// VIP-5: catch h
+// rule-evidence: docs/design/vips/0005-try-runs-effects.md#6435b3ffb2ebecfc
+// VIP-5: "Never both" covers only the unparenthesized try x catch h.
+import { Effect } from "effect"
+export effect function main(): Effect.Effect<number> {
+  return (try Effect.succeed(Effect.fail("inner"))) catch (e: string) => e.length
+}

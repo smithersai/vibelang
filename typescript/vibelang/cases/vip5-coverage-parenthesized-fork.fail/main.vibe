@@ -1,0 +1,4 @@
+// expect: EK0506
+// rule-evidence: docs/design/vips/0005-try-runs-effects.md#a815083656020fa1
+// VIP-5: Corrected 2026-10-30: the quick fix was fork (e catch h),
+effect function bad() { const value = (fork Effect.succeed(1)) catch () => 0; return 0 }
