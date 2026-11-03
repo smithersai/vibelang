@@ -1,3 +1,7 @@
+// docs/design/vips/0001-effect-and-async-functions.md#dba410839102fac3
+// VIP-1: source effect callables and producers capture eager binding defects
+// docs/design/vips/0001-effect-and-async-functions.md#3bea08f6202965c3
+// VIP-1: source effect callables and producers capture eager binding defects
 // 003-failures.md, Code outside the generator: parameter defaults and
 // destructuring run at the call, and when they throw, "the call of an effect
 // function then gives an Effect that dies with that value, and a producer's

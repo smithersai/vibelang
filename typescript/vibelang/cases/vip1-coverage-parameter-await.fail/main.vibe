@@ -1,0 +1,8 @@
+// expect: EK0102
+// docs/design/vips/0001-effect-and-async-functions.md#357537ad3792af68
+// VIP-1: formal parameter await is EK0102 across Effect callable forms
+effect function f(value = await Promise.resolve(1)) { return value }
+const arrow = effect (value = await Promise.resolve(1)) => value
+class C { effect m(value = await Promise.resolve(1)) { return value } }
+effect function* p(value = await Promise.resolve(1)) { yield value }
+export {}

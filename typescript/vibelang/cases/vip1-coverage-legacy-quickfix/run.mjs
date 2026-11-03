@@ -1,3 +1,5 @@
+// docs/design/vips/0001-effect-and-async-functions.md#77a1eea5f1253075
+// VIP-1: legacy restrictions include editor repairs
 // docs/design/vips/0001-effect-and-async-functions.md#d509fa16dd5857bc
 // VIP-1: each banned legacy form has an editor quick fix
 // run-seconds: 180

@@ -1,0 +1,8 @@
+// docs/design/vips/0001-effect-and-async-functions.md#898a05f1ad0a64b1
+// VIP-1: identifier-named effect method has no modifier
+import { Effect } from "effect"
+interface Ordinary { effect(): number }
+type Literal = { effect(): number }
+const ordinary: Ordinary = { effect() { return 7 } }
+const literal: Literal = ordinary
+export function main(): Effect.Effect<number> { return Effect.succeed(literal.effect()) }

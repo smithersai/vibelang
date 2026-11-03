@@ -1,0 +1,10 @@
+// expect: EK0107
+// docs/design/vips/0001-effect-and-async-functions.md#377eb8c52b464ea5
+// VIP-1: TC39 do predicates do not lift the independent var source ban
+// docs/design/vips/0001-effect-and-async-functions.md#f6bdfd4e7edbfc25
+// VIP-1: TC39 do predicates do not lift the independent var source ban
+// docs/design/vips/0001-effect-and-async-functions.md#209768c9639ccaa6
+// VIP-1: TC39 do predicates do not lift the independent var source ban
+const first = do { var value = 1; value }
+effect function f() { return do { var value = 1; value } }
+export {}

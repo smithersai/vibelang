@@ -1,4 +1,10 @@
 // expect: EK0105
+// docs/design/vips/0001-effect-and-async-functions.md#153e1e1b4e6cd365
+// VIP-1: mixed function modifiers are rejected
+// docs/design/vips/0001-effect-and-async-functions.md#65d10c72c94ee404
+// VIP-1: mixed function modifiers are rejected
+// docs/design/vips/0001-effect-and-async-functions.md#64addf38ded732c5
+// VIP-1: both block modifier orders are rejected
 // docs/design/vips/0001-effect-and-async-functions.md#7fd8209994a612dd
 // VIP-1: mixed modifiers rejected
 effect async function a() {}

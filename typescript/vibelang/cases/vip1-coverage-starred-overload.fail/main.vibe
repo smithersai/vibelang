@@ -1,0 +1,6 @@
+// expect: TS1222
+// docs/design/vips/0001-effect-and-async-functions.md#f4c970c935459f28
+// VIP-1: starred bodyless signatures retain native TS1222
+effect function* values(): Stream.Stream<number>;
+effect function* values() { yield 1 }
+export {}

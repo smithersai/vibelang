@@ -1,0 +1,6 @@
+// expect: TS7010
+// docs/design/vips/0001-effect-and-async-functions.md#22d90d2c88438b6e
+// VIP-1: unannotated overload exposes any with noImplicitAny error
+effect function f(x: string);
+effect function f(x: string) { return x }
+export {}

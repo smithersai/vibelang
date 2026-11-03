@@ -1,0 +1,10 @@
+// docs/design/vips/0001-effect-and-async-functions.md#82abf8b7d0a8707d
+// VIP-1: outward default returns produce Effect success or an empty Stream
+import { Effect, Stream } from "effect"
+effect function f(value = do { return 9 }) { return 0 }
+effect function* p(value = do { return }) { yield 1 }
+export function main(): Effect.Effect<readonly [number, readonly number[]]> {
+  return Effect.gen(function* () {
+    return [yield* f(), yield* Stream.runCollect(p())] as const
+  })
+}

@@ -1,0 +1,13 @@
+// docs/design/vips/0001-effect-and-async-functions.md#86f1bb7fa623fbbb
+// VIP-1: moved-default initialization returns a dying Effect without synchronous throw
+import { Effect, Exit } from "effect"
+effect function f({ a }: { a: number } = do { const v = undefined as any; v }) { return a }
+export function main(): Effect.Effect<string> {
+  let program: Effect.Effect<number>
+  try { program = f() } catch { return Effect.succeed("Throw") }
+  return Effect.map(Effect.exit(program), ex => {
+    if (Exit.isSuccess(ex)) return "Success"
+    const reason = ex.cause.reasons[0]
+    return reason._tag === "Die" && reason.defect instanceof TypeError ? "Die:TypeError" : "wrong"
+  })
+}

@@ -1,0 +1,3 @@
+// docs/design/vips/0001-effect-and-async-functions.md#3edf4767049336f3
+// VIP-1: mixed function repairs offer either modifier removal, blocks remove async
+export {}

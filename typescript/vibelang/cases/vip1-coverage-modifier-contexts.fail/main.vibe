@@ -1,0 +1,13 @@
+// expect: EK0108
+// docs/design/vips/0001-effect-and-async-functions.md#bdb0c01a5893ea5e
+// VIP-1: effect modifiers in forbidden native async positions
+// docs/design/vips/0001-effect-and-async-functions.md#af49d78b0ac68bf9
+// VIP-1: effect modifiers in forbidden native async positions
+// docs/design/vips/0001-effect-and-async-functions.md#49accbf76ee1f2db
+// VIP-1: effect modifiers in forbidden native async positions
+abstract class A { abstract effect m(): number!! }
+declare effect function ambient(): number!!
+interface I { effect m(): number!! }
+type T = { effect m(): number!! }
+interface Computed { effect [Symbol.iterator](): number!! }
+export {}

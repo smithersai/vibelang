@@ -1,3 +1,5 @@
+// docs/design/vips/0001-effect-and-async-functions.md#b4443c8bf91121ed
+// VIP-1: native await in enclosing async body
 // expect-result: 3
 // await inside a do expression belongs to the enclosing async function, as
 // TC39 specifies (VIP-2); it waited for nothing when do was a function.

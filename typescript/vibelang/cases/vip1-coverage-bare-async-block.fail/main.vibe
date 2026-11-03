@@ -1,0 +1,5 @@
+// expect: TS2552 EK1101
+// docs/design/vips/0001-effect-and-async-functions.md#d6e1a64a95bd7859
+// VIP-1: bare async block is not an accepted expression
+async { 1 }
+export {}

@@ -1,0 +1,5 @@
+// expect: EK0104 EK0105
+// docs/design/vips/0001-effect-and-async-functions.md#71ff47cd426f4ca6
+// VIP-1: both accessor and mixed-modifier diagnostics apply
+class C { async effect get value() { return 1 } }
+export {}

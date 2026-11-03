@@ -1,0 +1,6 @@
+// expect: EK0401
+// docs/design/vips/0001-effect-and-async-functions.md#46a8b56c2d9a725f
+// VIP-1: tracked throwing calls remain rejected in eager initialization
+import { danger } from "./boundary.ts"
+effect function f(value = danger()) { return value }
+export {}

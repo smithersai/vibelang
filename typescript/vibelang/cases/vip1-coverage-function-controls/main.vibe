@@ -1,3 +1,5 @@
+// docs/design/vips/0001-effect-and-async-functions.md#c2a4b5befe947f0b
+// VIP-1: only statically named prototype member access is exempt
 // docs/design/vips/0001-effect-and-async-functions.md#0e3b2e5ed029b4e1
 // VIP-1: Function type and exempt prototype/instanceof controls
 // docs/design/vips/0001-effect-and-async-functions.md#bf128ee68549a046

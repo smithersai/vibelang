@@ -1,4 +1,16 @@
 // expect: EK0107
+// docs/design/vips/0001-effect-and-async-functions.md#de1233e5ced6bc36
+// VIP-1: Function call/name references are rejected while prototype controls are separate
+// docs/design/vips/0001-effect-and-async-functions.md#d9ecfe28aca036fd
+// VIP-1: global Function references and constructor access remain forbidden
+// docs/design/vips/0001-effect-and-async-functions.md#747e058151496d09
+// VIP-1: global Function references and constructor access remain forbidden
+// docs/design/vips/0001-effect-and-async-functions.md#4f9403c6bec916a8
+// VIP-1: global Function references and constructor access remain forbidden
+// docs/design/vips/0001-effect-and-async-functions.md#a46d66347a91eae1
+// VIP-1: global Function references and constructor access remain forbidden
+// docs/design/vips/0001-effect-and-async-functions.md#708684638e3dd8d5
+// VIP-1: global Function references and constructor access remain forbidden
 // docs/design/vips/0001-effect-and-async-functions.md#5a20313d268349ad
 // VIP-1: legacy references rejected in plain code
 // docs/design/vips/0001-effect-and-async-functions.md#35c59b2ab7c30672

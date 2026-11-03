@@ -1,0 +1,5 @@
+// expect: EK4003
+// docs/design/vips/0001-effect-and-async-functions.md#7bef55cc0038a92c
+// VIP-1: inline module expression stays denied
+const x = module { export const y = 1 }
+export {}

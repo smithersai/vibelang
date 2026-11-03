@@ -1,0 +1,5 @@
+// expect: EK2104
+// docs/design/vips/0001-effect-and-async-functions.md#52a2bedcd1722a48
+// VIP-1: producer parameter yield is rejected with producer placement code
+effect function* p(value = yield 1) { yield value }
+export {}
