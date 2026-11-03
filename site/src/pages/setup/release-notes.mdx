@@ -11,6 +11,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 
 ## 0.0.11 (unreleased)
+- With `effect` not installed, `vibelang --fix` read the `function*` in `Effect.gen(function* () { … })` and `Effect.fn("load")(function* … )` as a producer and rewrote `return x + 1` to `{ x + 1; return }`, losing the value. A `function*` passed to a callee that does not resolve now draws no `EK2128` and no fix until the program resolves.
+- Service access written as a call, `try FileSystem.FileSystem()`, `try Path()`, `try ClassTag()` or `try Reference()`, compiled before explicit effects and now reports `TS2349` or `TS2348`. `--fix-vip-only` rewrote it, but plain `--fix` and the editor did not. A new quick fix, which `vibelang --fix` applies, writes `try FileSystem.FileSystem`, `try Path.Path`, `try ClassTag` or `try Reference`. A function that returns an Effect keeps its call.
 - The specification gave the `EK4856` quick fix two triggers for the qualified `Effect.Effect<A, E, R>`: VIP-3 named only an interface heritage element, chapter 7 said "where the syntax requires it". Both now say it writes `A!E!R` where that needs no new parentheses and `Effect.Effect<A, E, R>` everywhere else, including `implements` clauses, unions and arrays of Effects (decided detail 260).
 - The JSX specification (VIP-39) said `x ?? throw <E/>` is not VibeLang and told you to write `x ?? do { throw <E/> }`, though throw expressions follow the TC39 proposal (decided detail 284). It now says a throw expression is allowed wherever a throw statement is, with a JSX operand as in `.tsx`, and synchronous code still reports `EK0401`.
 - A `throw` in a plain function drew `EK4804`, `EK4811` or `EK4815`, the advisories about what an Effect function's typed failure fails with, though a plain function's `throw` is JavaScript's (VIP-4); t3code's throwing plain helpers failed the migrate flow's style gate on them. Only an Effect function's `throw` reports them now.
@@ -312,6 +314,13 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - A shared package-release helper using arrow functions to map import conditions crashed on migrated targets with `value.replace is not a function`. Setup now recognizes these mappers and preserves the helper’s JavaScript and declaration paths.
 - Migrating a returned `Effect.callback<A, Error>(...).pipe(...)`, such as Foldkit’s WebSocket acquisition with timeout handling, failed the style gate despite keeping its original error channel; the flow now proves channel-preserving pipe stages while still refusing discarded, nested, async, generator and changed-channel results.
+- An optional tuple element in the error or requirement slot of an Effect type, such as `number!([string, boolean?])`, parsed wrongly and declared a malformed tuple; it now declares the same tuple as `Effect.Effect<number, [string, boolean?]>`.
+
+- Build entry globs could emit empty chunks from generated `.d.vibe.ts` files beside the source outputs; the Rolldown plugin now excludes those sidecars from single, array and named entries, including `tsdown` builds.
+
+- Knip could hide an unused export when an ordinary comment followed `@public`; the adapter now preserves that comment and Knip applies the same attachment rules as for TypeScript.
+
+- Knip marked later names in a `@public` variable declaration as unused; all bindings in that declaration now keep the marker.
 - The ESLint corpus check could report a missing identifier node for a name written with a Unicode escape; it now matches the decoded name at the same source position while still detecting missing nodes.
 - Nested schema alias rules still appeared as known gaps after their fix landed; those rules and their corpus inputs now run as strict checks of `EK2109`.
 
@@ -320,6 +329,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - The editor refused renames and import organization in files with TypeScript `module` bodies. These operations now work across the body boundary and preserve identifier specifiers (VIP-40).
 
 - Published declaration checks rejected harmless formatting, quote, import-order and member-order differences; `scripts/api-identity.mjs` now compares exported names, their types through `tsc`, and their doc comments.
+
+- Grammar-admission fuzzing reported fiber prefixes in plain functions nested inside Effect code as new unknown forms. It now follows each source callable's context and tracks them under the existing outside-Effect gaps, preserving explicit Effect blocks and `do`/`match` source context.
 - In the editor, an `is` that binds names and has a parenthesized subject, such as `(x as T) is [let a]` or `([3, r] as const) is [let n, let e]`, made the TypeScript 7 mapper report "invalid or overlapping edits" and pass the whole file through unchanged, so the editor checked VibeLang syntax as TypeScript; the file now maps as it does without the parentheses.
 - Running compiler cases with a missing, malformed or unbuilt runtime could delete previous output or look like a compiler failure; the harness now exits with status `2` before changing cases and names the invalid `VIBELANG_RUNTIME` installation.
 - Migration returned converted services to TypeScript when every member kept the original service requirement. Verification now accepts the `EK4809` design warning and preserves those member contracts; a configured `EK4809` error still fails.
@@ -335,6 +346,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Declarations of imported Effect values could gain an extra import; cold values and decoders now have regression comparisons against TypeScript.
 
 - The editor refused renames and import organization in files with TypeScript `module` bodies. These operations now work across the body boundary and preserve identifier specifiers (VIP-40).
+
+- Effect type hints that lose union parentheses could escape fuzz coverage; generated checks now track the affected success slots and enclosing types.
 - After VIP-1, `vibelang --fix --fix-vip-only` could not see that a method of a service read as `const fs = FileSystem.FileSystem()` ran where it stood, so it refused the whole file's migration (`EK9202`) and left functions such as foldkit's `readLiveRecordFile` plain, building their reads at the call and skipping their later steps; it now writes `try FileSystem.FileSystem` and runs each such method with `try`.
 - A `match` whose last arm lacked its `;` beside a `do` could crash the compiler (`slice bounds out of range`) instead of reporting `EK0701`; a lowered `do` temporary no longer gets a range that ends before it starts.
 - A Date match regression check still rejected an object with `Date.prototype`; it now expects the prototype check required by VIP-7, in both bare and extractor patterns.
@@ -397,6 +410,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Grammar-admission fuzzing missed bare reserved parameters such as `effect join => 1` and reported variants as new unknown forms. Its grammar reader now reserves `fork` and `join` in bare Effect-arrow heads, and the oracle tracks them with parenthesized parameters, retaining plain-arrow and line-break controls.
 
+- `vibelang --fix-vip-only` refused a function that called a method on a legacy service call and used the result, such as `const digest = (Hasher()).digest(input)` before `digest.slice(…)`: it wrote `(try Hasher)` but no `try` for the method's Effect, so the file's other `try`s were refused too and `EK4802` became an error. It now writes `try (try Hasher).digest(input)`, as the old compiler ran it.
+- `vibelang --fix-vip-only` refused `fork(call(n), { startImmediately: true })` in a function it marks `effect`: `fork` is reserved there, so the text read as `fork` over a comma expression, `EK1703`, and every `try` in the file was refused. It now writes `try Effect.forkChild(call(n), { startImmediately: true })`, the Effect form `fork` stands for, which takes the options.
 - Four spec quote guards (`TestEffectFnParameterDeclarationQuoted`, `TestInferredEffectDeclarationQuoted`, `TestPipeDeclarationAliasesQuoted`, `TestTopLevelAwaitVIPQuoted`) landed outside the pre-merge spec gate, so a spec edit could break them unseen; the gate now runs them.
 - Source-map fuzz checks could reject correct mappings after TypeScript erased annotations or assertions beside an untyped lookalike; they now compare each statement’s executable syntax as well as its written tokens.
 

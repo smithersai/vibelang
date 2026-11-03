@@ -114,11 +114,11 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [New project](../setup/new-project.md) | 540 |
 | [Existing project](../setup/existing-project.md) | 1,900 |
 | **Build and test** | **12,000** |
-| [vibelang CLI](../setup/vibelang-cli.md) | 9,200 |
+| [vibelang CLI](../setup/vibelang-cli.md) | 9,300 |
 | [Vite and Vitest](../setup/vite.md) | 3,000 |
-| **Format and lint** | **6,300** |
+| **Format and lint** | **6,400** |
 | [Format with dprint](../setup/formatting.md) | 2,300 |
-| [Developer tools](../setup/developer-tools.md) | 4,000 |
+| [Developer tools](../setup/developer-tools.md) | 4,100 |
 | **Frameworks** | **12,000** |
 | [React](../setup/react.md) | 2,100 |
 | [React Native and Metro](../setup/react-native.md) | 420 |
