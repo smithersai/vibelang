@@ -556,6 +556,8 @@ barrier-controlled regression that executes both targets' actual shell commands
 concurrently. The aggregate starts after the per-case compiler emits and before
 its runner loads the result, so shared output directories fail deterministically.
 
+The harness sets `VIBELANG_BINARY` to the absolute compiler executable it used when launching every custom runner, including an isolated case. A runner's nested compiler calls therefore check the same build as the case.
+
 A case's custom `run.mjs` has 60 seconds unless one of its lines says
 `// run-seconds: N`. The twelve `rewrite-*` runners call `compareRewrite`, a
 pipeline of six stages (two compiles, two runs, two `--fix` passes) that each

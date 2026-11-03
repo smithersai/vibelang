@@ -445,7 +445,10 @@ async function check(name, commands) {
     fs.writeFileSync(entry, runner(headers.entry))
   }
   const stdoutFile = path.join(expectedDir, "stdout.txt")
-  const ran = await commands.run("node", [entry], { phase: "run", cwd: dir, timeout: runTimeout })
+  const ran = await commands.run("node", [entry], {
+    phase: "run", cwd: dir, timeout: runTimeout,
+    env: { ...process.env, VIBELANG_BINARY: tsc },
+  })
   let want, got
   if (fs.existsSync(stdoutFile)) {
     want = fs.readFileSync(stdoutFile, "utf8")

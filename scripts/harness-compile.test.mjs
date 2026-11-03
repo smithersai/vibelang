@@ -5,7 +5,7 @@ import { tmpdir } from "node:os"
 import { dirname, join } from "node:path"
 import test from "node:test"
 
-function fixture(t, { diagnostic = "", header = "", identity = false, identityAfter, pending = false, expectedDiagnostics = false } = {}) {
+function fixture(t, { diagnostic = "", header = "", identity = false, identityAfter, pending = false, expectedDiagnostics = false, runnerBinary = false } = {}) {
   const root = mkdtempSync(join(tmpdir(), "harness compile "))
   t.after(() => rmSync(root, { recursive: true, force: true }))
   const put = (file, text, mode) => {
@@ -19,6 +19,12 @@ function fixture(t, { diagnostic = "", header = "", identity = false, identityAf
   put(at + "/tsconfig.json", "{}")
   put(at + "/main.vibe", header + "\nexport const answer = 42\n")
   put(at + "/expected/stdout.txt", "42\n")
+  if (runnerBinary) put(at + "/run.mjs", [
+    'import assert from "node:assert/strict"',
+    'import { resolve } from "node:path"',
+    'assert.equal(process.env.VIBELANG_BINARY, resolve("../../../built/local/tsc"))',
+    'console.log(42)',
+  ].join("\n"))
   if (pending) put(at + "/pending", "fixture known failure\n")
   if (expectedDiagnostics) put(at + "/expected/diagnostics.txt", diagnostic.replace(/: [^:]*$/, "") + "\n")
   if (identity) {
@@ -144,4 +150,13 @@ test("declaration twins distinguish unavailable comparisons from API differences
   const log = f.log(result)
   assert.ok(log.commands.some(c => c.phase === "compare declarations" && c.exitCode === 2))
   assert.match(JSON.stringify(log), /Environment diagnostics/)
+})
+
+test("custom runners receive the exact compiler used by the harness", t => {
+  const f = fixture(t, { runnerBinary: true })
+  for (const args of [[], ["--isolated"]]) {
+    const result = f.run(0, args)
+    assert.equal(result.status, 0, result.stdout + result.stderr)
+    assert.match(result.stdout, /1 cases: 1 ok, 0 FAIL/)
+  }
 })
