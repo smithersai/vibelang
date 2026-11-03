@@ -12,3 +12,5 @@ arrow nested in effect code, a plain `catch` handler and the module's top level.
 The controls report nothing: `throw` in effect code and in an effect handler is
 `Effect.fail`, `throw` in an `async` function rejects its Promise (decided
 detail 251), and a `module` block's body and a `.ts` file are TypeScript.
+
+Both `catch` controls use the catch expression's join point directly; an outer `try` would run its completed value again.

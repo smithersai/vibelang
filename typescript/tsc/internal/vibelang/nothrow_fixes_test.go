@@ -108,10 +108,10 @@ func TestThrowOutsideEffectCodeFixes(t *testing.T) {
 		},
 		{
 			"plain handler",
-			"effect function load(): number!string { throw \"x\" }\nexport effect function f() { return try (load() catch (e) => { throw e }) }",
+			"effect function load(): number!string { throw \"x\" }\nexport effect function f() { return (load() catch (e) => { throw e }) }",
 			"Make the handler an effect handler: catch effect|Make the handler an effect handler: catch effect and fail with a defect: die",
 			"Make the handler an effect handler: catch effect",
-			"effect function load(): number!string { throw \"x\" }\nexport effect function f() { return try (load() catch effect (e) => { throw e }) }",
+			"effect function load(): number!string { throw \"x\" }\nexport effect function f() { return (load() catch effect (e) => { throw e }) }",
 		},
 		{"constructor", "error Bad\nexport class P {\n  constructor(readonly v: number) { if (v < 0) throw new Bad() }\n}", "", "", ""},
 		{"getter", "error Bad\nexport class P {\n  get v(): number { throw new Bad() }\n}", "", "", ""},

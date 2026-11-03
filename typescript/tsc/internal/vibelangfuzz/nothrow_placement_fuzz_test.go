@@ -98,7 +98,7 @@ var nothrowKinds = []nothrowKind{
 	{key: "generator", wrap: func(b string) string { return "export function* g(): Generator<number> {\n  " + b + "\n  yield 1\n}\n" }},
 	{key: "top-level", wrap: func(b string) string { return b + "\n" }},
 	{key: "plain-handler", wrap: func(b string) string {
-		return "effect function load(): number!string { return 1 }\nexport effect function f() {\n  return try (load() catch (e) => {\n    " + b + "\n    return 1\n  })\n}\n"
+		return "effect function load(): number!string { return 1 }\nexport effect function f() {\n  return (load() catch (e) => {\n    " + b + "\n    return 1\n  })\n}\n"
 	}},
 	{key: "nested-plain", wrap: func(b string) string {
 		return "export effect function f() {\n  const g = (x: number): number => {\n    " + b + "\n    return x\n  }\n  return g(1)\n}\n"

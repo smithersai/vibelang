@@ -3974,12 +3974,12 @@ typescript/vibelang/cases/nothrow-sync-throw.fail/main.vibe:37:28 lambda dual fa
 typescript/vibelang/cases/nothrow-sync-throw.fail/main.vibe:38:36 lambda dual fallback
 typescript/vibelang/cases/nothrow-sync-throw.fail/main.vibe:49:3 lambda plain annotation
 typescript/vibelang/cases/nothrow-sync-throw.fail/main.vibe:53:17 lambda plain annotation
-typescript/vibelang/cases/nothrow-sync-throw.fail/main.vibe:58:15 lambda effectFn table
-typescript/vibelang/cases/nothrow-sync-throw.fail/main.vibe:58:28 lambda effectFn table
+typescript/vibelang/cases/nothrow-sync-throw.fail/main.vibe:58:11 lambda effectFn table
+typescript/vibelang/cases/nothrow-sync-throw.fail/main.vibe:58:24 lambda effectFn table
 typescript/vibelang/cases/nothrow-sync-throw.fail/main.vibe:67:29 lambda choice fallback
 typescript/vibelang/cases/nothrow-sync-throw.fail/main.vibe:67:59 lambda dual fallback
-typescript/vibelang/cases/nothrow-sync-throw.fail/main.vibe:69:15 lambda effectFn table
-typescript/vibelang/cases/nothrow-sync-throw.fail/main.vibe:69:28 lambda effectFn table
+typescript/vibelang/cases/nothrow-sync-throw.fail/main.vibe:69:11 lambda effectFn table
+typescript/vibelang/cases/nothrow-sync-throw.fail/main.vibe:69:24 lambda effectFn table
 typescript/vibelang/cases/nothrow-sync-throw.fail/main.vibe:75:29 lambda choice fallback
 typescript/vibelang/cases/nothrow-toplevel-async.fail/main.vibe:20:56 lambda dual fallback
 typescript/vibelang/cases/nothrow-toplevel-async.fail/main.vibe:23:45 lambda plain annotation

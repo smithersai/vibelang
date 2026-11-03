@@ -134,7 +134,7 @@ func TestNothrowPreferredAutomaticFix(t *testing.T) {
 		name, source string
 		fixed        bool
 	}{
-		{"plain handler", "effect function load(): number!string { throw \"x\" }\nexport effect function f() { return try (load() catch (e) => { throw e }) }", true},
+		{"plain handler", "effect function load(): number!string { throw \"x\" }\nexport effect function f() { return (load() catch (e) => { throw e }) }", true},
 		{"unused local", "function f() { throw 1 }\nexport const answer = 42", true},
 		{"published export", "export function f() { throw 1 }", false},
 		{"dynamic use", "function f() { throw 1 }\nexport const answer = eval(\"f()\")", false},
@@ -156,6 +156,14 @@ func TestNothrowPreferredAutomaticFix(t *testing.T) {
 			}
 			if tc.fixed && tc.name == "unused local" && !strings.Contains(fixed.Text, "effect function f") {
 				t.Fatalf("did not make unused function effect: %s", fixed.Text)
+			}
+			if tc.fixed {
+				checked, edited, _, _ := editorProgram(t, fixed.Text)
+				for _, after := range append(checked.GetSyntacticDiagnostics(t.Context(), edited), checked.GetSemanticDiagnostics(t.Context(), edited)...) {
+					if after.Category() == diagnostics.CategoryError {
+						t.Errorf("automatic fix left an error: %s", after.String())
+					}
+				}
 			}
 			if !tc.fixed && fixed != nil {
 				t.Fatalf("unsafe change applied: %s", fixed.Text)
