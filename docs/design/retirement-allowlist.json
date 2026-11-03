@@ -98,5 +98,35 @@
       "by": "Will",
       "reference": "Accepted VIP-32, docs/design/vips/0032-effect-version.md#decision; explicit ek3201-once task (2026-11-03): fix the existing off-pin error to report once per project, add failing-first cases and a property over file counts, and queue it."
     }
+  },
+  {
+    "code": "EK2109",
+    "case": "typescript/vibelang/cases/decl-schema.fail",
+    "vip": "VIP-15",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0015-schema-declarations.md: Status accepted by Will (2026-10-28); 2026-10-31 non-field-members amendment explicitly assigns EK1505 under Will's principle in decided detail 247. This cites existing published authority, not a new approval."
+    },
+    "reason": "The program is unchanged apart from expectation comments. The pre-existing EK2109 errors at the Date, Partial and unknown fields are unchanged; only the already-refused method changes owner identity from EK2109 to EK1505."
+  },
+  {
+    "code": "EK1505",
+    "case": "typescript/vibelang/cases/decl-schema.fail",
+    "vip": "VIP-15",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0015-schema-declarations.md: Status accepted by Will (2026-10-28); 2026-10-31 non-field-members amendment explicitly assigns EK1505 under Will's principle in decided detail 247. This cites existing published authority, not a new approval."
+    },
+    "reason": "The existing refused run(): void method is the same program after removing comments. Published VIP-15's non-field amendment assigns EK1505 to this existing refusal, replacing EK2109."
+  },
+  {
+    "code": "EK1505",
+    "case": "typescript/vibelang/cases/schema-member-not-field-forms.fail",
+    "vip": "VIP-15",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0015-schema-declarations.md: Status accepted by Will (2026-10-28); 2026-10-31 non-field-members amendment explicitly assigns EK1505 under Will's principle in decided detail 247. This cites existing published authority, not a new approval."
+    },
+    "reason": "The fixture directly witnesses the already-published, accepted VIP-15 non-field-members amendment: ordinary schema bodies contain only Field members; EK1505 is the assigned diagnostic. This records that specific approved language rule; no diagnostic severity or unrelated fixture is exempted."
   }
 ]

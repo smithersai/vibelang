@@ -32,6 +32,8 @@ A required `schema` field must reference a codec with required decoded key flags
 
 An empty type argument list on a schema reference, such as `Address<>`, reports `EK2109`. `vibelang --fix` removes the empty list and keeps its comments.
 
+A `schema` body holds only typed fields, written `name: Type` or `name?: Type`. Methods, index signatures, call and construct signatures, accessors, and untyped members report `EK1505`, including inside a field’s nested object type. A schema alias with an unsupported object-type member keeps `EK2109`.
+
 ## Extracting decoded, encoded, and service types
 
 ```vibe

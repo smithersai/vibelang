@@ -1,6 +1,5 @@
 # Gaps found by the fuzz targets of spec loop round 3 (loop_r3_fuzz_test.go).
 FuzzIsHomePositions catch:EK0705 compiler VIP-7: an is binding in a catch parameter reports EK4703, not EK0705 (decided detail 249); lane impl-hunt-data
-FuzzOwnerSyntaxCodes missing:EK1505 compiler VIP-15: EK1505 is unregistered, a non-field schema member reports EK2109 (decided detail 247); lane impl-hunt-data
 FuzzIsHomePositions catch:free compiler VIP-5: a typed catch parameter in plain code reports EK2105 and EK9203, though decided detail 249's examples use that native form; lane impl-hunt-data
 FuzzIsHomePositions catch:body compiler VIP-5: a typed catch parameter in plain code reports EK2105 and EK9203, though decided detail 249's examples use that native form; lane impl-hunt-data
 FuzzPipeRightEdge accepted:closed-handler compiler VIP-5: x catch function () { return 1 } succeeds with the function, so the following pipe reports TS2365 (claim vip05.catch-function); lane impl-hunt-run

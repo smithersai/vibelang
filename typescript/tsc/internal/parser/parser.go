@@ -111,6 +111,7 @@ type Parser struct {
 	vibelangServiceMembers   bool                        // service member signatures use interface separators
 	vibelangMutableMember    bool                        // the type member being parsed was written with mutable (vibelang.go)
 	vibelangImplicitReadonly bool                        // inside a data, schema or error body, whose type members are readonly unless written mutable (vibelang.go)
+	vibelangSchemaBody       bool                        // declaration body (including nested object types) reports non-fields as EK1505
 	vibelangControlMembers   bool                        // legacy control properties keep their readonly default (vibelang.go)
 	vibelangAbstractMembers  bool                        // bodiless class members become abstract: a service or control body (vibelang.go)
 	vibelangFieldBody        bool                        // an error, service, or control body supports recoverable field commas (vibelang_errors.go)

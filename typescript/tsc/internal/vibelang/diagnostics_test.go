@@ -88,7 +88,6 @@ var specAhead = map[int32]string{
 	1705: renumbering, 1706: renumbering,
 	// Decided detail 212 gives an unparenthesized execution expression on the left of ** its code (loop round 1, ASTRA-10).
 	// Decided detail 247 gives the remaining owner-block rejections codes (loop round 3, OPUS-7).
-	1505: "lane impl-hunt-data registers EK1505 (claim parser:schema-member-EK1505)",
 	// Spec-direct commits of 2026-11-03 (576e5f80a23f, 93ee4a5d11cf, ad7c006e1e7c and the 14:26Z fold batch) assigned these.
 	407:  "lane relic-trusted registers EK0407 (claim EK0407:trusted-empty-retirement)",
 	1402: "lane spec-lander assigned EK1402 (claim spec:EK1402-public-provenance); " + renumbering,

@@ -1133,6 +1133,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - The full site check omitted the 404 publication assertions. It now verifies the built fallback and ordinary-page metadata while reusing the existing production build.
 - `EK1301`'s quick fix, which rewrites an `error` declaration with a constructor as its Effect TypeScript class, copied the doc comment of the field after `_tag` into `TaggedError("Name" as string …)`'s arguments, so the class head carried a stray comment (Smithers `SmithersError`). The comment now stays only on its field.
+- Non-field members in a `schema` body, such as methods and index signatures, reported the general `EK2109` type error. They now report `EK1505`; unsupported field types and schema alias types keep `EK2109`.
+
 - API identity checks rejected two identical copies of a generic function using an `import()` type with literal type arguments. Copies now compare identically, while changed literal arguments and dependencies remain differences.
 
 - Publication checks for source-child packages could not install an already-published Effect dependency while simulating an unreleased VibeLang SDK. Their registry fixture now serves the pinned Effect release while continuing to withhold the SDK.

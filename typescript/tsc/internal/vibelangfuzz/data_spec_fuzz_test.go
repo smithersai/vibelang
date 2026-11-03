@@ -347,6 +347,7 @@ func dataRules() []dataRule {
 	rules = append(rules, dataRegExpValueRules()...)
 	rules = append(rules, dataMatchFlowDomainRules()...)
 	rules = append(rules, dataPrimitiveCoverageRules()...)
+	rules = append(rules, schemaMemberDomainRules()...)
 	rules = append(rules, dataExhaustivenessRules()...)
 	rules = append(rules, dataHelperNameRules()...)
 	rules = append(rules, dataTaggedMembersRules()...)

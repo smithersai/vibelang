@@ -1,0 +1,13 @@
+// expect: EK1505 EK1505 EK1505 EK1505 EK1505 EK1505 EK1505
+// Chapter 006, decided detail 247: a member of a schema body that is not a
+// Field reports the schema declaration's own code, EK1505, not EK2109. A
+// field whose type has no schema form keeps EK2109 (decl-schema.fail).
+schema Method { m(): string }
+schema Index { [k: string]: number }
+schema Call { (x: number): string }
+schema Construct { new (x: number): object }
+schema Getter { get n(): number }
+schema Untyped { n }
+schema Nested { inner: { m(): void }; n: number }
+// A field list is a schema.
+schema Fine { n: number; label?: string }

@@ -1236,7 +1236,10 @@ func (p *Parser) parseSchemaDeclaration(pos int, jsdoc jsdocScannerInfo, modifie
 	}
 	form.Range = core.NewTextRange(scanner.SkipTrivia(p.sourceText, pos), p.nodePos())
 	p.recordVibeSyntax(form)
+	savedBody := p.vibelangSchemaBody
+	p.vibelangSchemaBody = true // a member that is not a field is EK1505 in the body (D247)
 	fields := p.vibelangSchemaFields(members, body)
+	p.vibelangSchemaBody = savedBody
 	statement := p.factory.NewVariableStatement(modifiers, p.vibelangSpanning(p.factory.NewVariableDeclarationList(
 		p.newNodeList(core.NewTextRange(name.Pos(), fields.End()), []*ast.Node{
 			p.vibelangSpanning(p.factory.NewVariableDeclaration(name, nil /*exclamationToken*/, nil /*typeNode*/, fields), core.NewTextRange(name.Pos(), fields.End())),
@@ -1350,11 +1353,18 @@ func (p *Parser) vibelangSchemaProperties(members []*ast.Node) []*ast.Node {
 	for _, member := range members {
 		name := member.Name()
 		if name == nil || !ast.IsPropertySignatureDeclaration(member) || member.Type() == nil {
-			// A method, an index signature, or a property without a type.
+			// A method, a signature, an accessor or a property without a type:
+			// not a field. In a schema declaration's body the checker reports
+			// EK1505 at it (schemas.go); in a schema alias's object type it
+			// keeps EK2109, the alias's own code (D247).
 			if name == nil {
 				name = p.vibelangSynthesized(p.factory.NewStringLiteral("", ast.TokenFlagsNone), member.Loc)
 			}
-			properties = append(properties, p.vibelangSpanning(p.factory.NewPropertyAssignment(nil /*modifiers*/, name, nil /*postfixToken*/, nil /*typeNode*/, p.vibelangUnsupportedSchema(member.Loc)), member.Loc))
+			placeholder := p.vibelangUnsupportedSchema(member.Loc)
+			if p.vibelangSchemaBody {
+				placeholder = p.vibelangNonFieldSchema(member.Loc)
+			}
+			properties = append(properties, p.vibelangSpanning(p.factory.NewPropertyAssignment(nil /*modifiers*/, name, nil /*postfixToken*/, nil /*typeNode*/, placeholder), member.Loc))
 			continue
 		}
 		value := p.vibelangSchemaOf(member.Type())
@@ -1382,6 +1392,16 @@ func (p *Parser) vibelangUnsupportedSchema(anchor core.TextRange) *ast.Node {
 	unknown := p.vibelangSchemaMember(nil, "Unknown", anchor)
 	unknown.Flags |= ast.NodeFlagsVibeLang
 	return unknown
+}
+
+// vibelangNonFieldSchema makes the Schema.Never that stands for a member of
+// a schema body that is not a field (a method, a signature, an accessor or a
+// property without a type), flagged NodeFlagsVibeLang so the checker reports
+// EK1505 at it.
+func (p *Parser) vibelangNonFieldSchema(anchor core.TextRange) *ast.Node {
+	never := p.vibelangSchemaMember(nil, "Never", anchor)
+	never.Flags |= ast.NodeFlagsVibeLang
+	return never
 }
 
 // vibelangSchemaOf returns the schema expression of typeNode, a field's type.

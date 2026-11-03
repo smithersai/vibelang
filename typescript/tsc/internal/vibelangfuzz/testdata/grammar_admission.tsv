@@ -45,6 +45,7 @@ parser/vibelang.go:Parser.vibelangCalleeAnchor	admission:declaration-support	900
 parser/vibelang.go:Parser.vibelangSchemaFields	admission:schema	900-appendices.md#SchemaDeclaration	support	VIP-15 schema mapping
 parser/vibelang.go:Parser.vibelangSchemaProperties	admission:schema	900-appendices.md#SchemaDeclaration	support	VIP-15 schema mapping
 parser/vibelang.go:Parser.vibelangUnsupportedSchema	admission:schema	900-appendices.md#SchemaDeclaration	support	VIP-15 schema mapping
+parser/vibelang.go:Parser.vibelangNonFieldSchema	admission:schema	900-appendices.md#SchemaDeclaration	support	VIP-15 and detail 247 retain non-field members for EK1505
 parser/vibelang.go:Parser.vibelangSchemaOf	admission:schema	900-appendices.md#SchemaDeclaration	support	VIP-15 schema mapping
 parser/vibelang.go:Parser.vibelangSchemaPropertyName	admission:schema	900-appendices.md#SchemaDeclaration	support	VIP-15 schema mapping keeps `__proto__` a field name
 parser/vibelang.go:isVibeLangSchemaLiteral	admission:schema	900-appendices.md#SchemaDeclaration	support	VIP-15 schema mapping

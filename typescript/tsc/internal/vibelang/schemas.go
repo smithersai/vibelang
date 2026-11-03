@@ -20,7 +20,10 @@ import (
 // reads both as written. This file reports EK2109 at a field whose type has
 // no schema form, which the parser wrote as Schema.Unknown flagged
 // NodeFlagsVibeLang, and at a field whose type names a value that is not a
-// schema, such as Date.
+// schema, such as Date. It reports EK1505 (D247) at a member of a schema body
+// that is not a field, a method, a signature, an accessor or a property
+// without a type, which the parser wrote as Schema.Never flagged
+// NodeFlagsVibeLang.
 //
 // VIP-15 maps only primitives among the keyword types. unknown, any, never,
 // object and void have no schema form; their quick fix, which vibelang --fix
@@ -30,7 +33,11 @@ import (
 //	schema Event { payload: unknown }
 //	schema Event { payload: Schema.Unknown }
 
+// EK1505: a member of a schema body that is not a field. {0} is the member.
+var EK1505 = message(1505, errorCategory, "{0} is not a field: a schema body holds only fields, each written name: Type or name?: Type.")
+
 func init() {
+	registry[EK1505.Code] = EK1505
 	fileChecks = append(fileChecks, checkSchemaDeclarations)
 	tsFormFixCodes = append(tsFormFixCodes, EK2109.Code)
 	ls.RegisterCodeFixProvider(schemaKeywordFix)
@@ -106,6 +113,12 @@ func isUnsupportedSchema(node *ast.Node) bool {
 	return node.Kind == ast.KindPropertyAccessExpression && node.Flags&ast.NodeFlagsVibeLang != 0
 }
 
+// isNonFieldSchema reports whether node is the Schema.Never that the parser
+// writes for a member of a schema body that is not a field.
+func isNonFieldSchema(node *ast.Node) bool {
+	return isUnsupportedSchema(node) && node.Name().Text() == "Never"
+}
+
 func checkSchemaDeclarations(c *checker.Checker, file *ast.SourceFile) {
 	var visit func(n *ast.Node) bool
 	visit = func(n *ast.Node) bool {
@@ -147,6 +160,11 @@ func checkSchemaFields(c *checker.Checker, file *ast.SourceFile, call *ast.Node,
 // type or a part of one.
 func checkSchemaValue(c *checker.Checker, file *ast.SourceFile, value *ast.Node, declaration *ast.Node) {
 	switch {
+	case isNonFieldSchema(value):
+		// A member of the body that is not a field (D247): a method, a
+		// signature, an accessor or a property without a type.
+		d := report(c, value, EK1505, memberText(file, value))
+		note(d, "A schema body lists the decoded keys; a method belongs on a schema error, and a key set is a Record<K, V> field.")
 	case isUnsupportedSchema(value):
 		loc := core.NewTextRange(scanner.SkipTrivia(file.Text(), value.Pos()), value.End())
 		d := reportAt(c, file, loc, EK2109, file.Text()[loc.Pos():loc.End()])
