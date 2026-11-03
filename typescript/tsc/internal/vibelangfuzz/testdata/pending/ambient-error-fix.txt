@@ -1,0 +1,45 @@
+FuzzAmbientErrorFix offered-repair:schema-error/bodyless/declare:TS1036 compiler VIP-34: offered ambient repair introduces a runtime matcher static block and TS1036 instead of preserving a valid native declaration; lane conf-schema-data
+FuzzAmbientErrorFix offered-repair:schema-error/bodyless/export-declare:TS1036 compiler VIP-34: offered ambient repair introduces a runtime matcher static block and TS1036 instead of preserving a valid native declaration; lane conf-schema-data
+FuzzAmbientErrorFix offered-repair:schema-error/bodyless/global:TS1036 compiler VIP-34: offered ambient repair introduces a runtime matcher static block and TS1036 instead of preserving a valid native declaration; lane conf-schema-data
+FuzzAmbientErrorFix offered-repair:schema-error/bodyless/namespace:TS1036 compiler VIP-34: offered ambient repair introduces a runtime matcher static block and TS1036 instead of preserving a valid native declaration; lane conf-schema-data
+FuzzAmbientErrorFix offered-repair:schema-error/bodyless/nested-namespace:TS1036 compiler VIP-34: offered ambient repair introduces a runtime matcher static block and TS1036 instead of preserving a valid native declaration; lane conf-schema-data
+FuzzAmbientErrorFix offered-repair:schema-error/empty/declare:TS1036 compiler VIP-34: offered ambient repair introduces a runtime matcher static block and TS1036 instead of preserving a valid native declaration; lane conf-schema-data
+FuzzAmbientErrorFix offered-repair:schema-error/empty/export-declare:TS1036 compiler VIP-34: offered ambient repair introduces a runtime matcher static block and TS1036 instead of preserving a valid native declaration; lane conf-schema-data
+FuzzAmbientErrorFix offered-repair:schema-error/empty/global:TS1036 compiler VIP-34: offered ambient repair introduces a runtime matcher static block and TS1036 instead of preserving a valid native declaration; lane conf-schema-data
+FuzzAmbientErrorFix offered-repair:schema-error/empty/namespace:TS1036 compiler VIP-34: offered ambient repair introduces a runtime matcher static block and TS1036 instead of preserving a valid native declaration; lane conf-schema-data
+FuzzAmbientErrorFix offered-repair:schema-error/empty/nested-namespace:TS1036 compiler VIP-34: offered ambient repair introduces a runtime matcher static block and TS1036 instead of preserving a valid native declaration; lane conf-schema-data
+FuzzAmbientErrorFix offered-repair:schema-error/payload/declare:TS1036 compiler VIP-34: offered ambient repair introduces a runtime matcher static block and TS1036 instead of preserving a valid native declaration; lane conf-schema-data
+FuzzAmbientErrorFix offered-repair:schema-error/payload/export-declare:TS1036 compiler VIP-34: offered ambient repair introduces a runtime matcher static block and TS1036 instead of preserving a valid native declaration; lane conf-schema-data
+FuzzAmbientErrorFix offered-repair:schema-error/payload/global:TS1036 compiler VIP-34: offered ambient repair introduces a runtime matcher static block and TS1036 instead of preserving a valid native declaration; lane conf-schema-data
+FuzzAmbientErrorFix offered-repair:schema-error/payload/namespace:TS1036 compiler VIP-34: offered ambient repair introduces a runtime matcher static block and TS1036 instead of preserving a valid native declaration; lane conf-schema-data
+FuzzAmbientErrorFix offered-repair:schema-error/payload/nested-namespace:TS1036 compiler VIP-34: offered ambient repair introduces a runtime matcher static block and TS1036 instead of preserving a valid native declaration; lane conf-schema-data
+FuzzAmbientErrorFix original-diagnostic:schema-error/bodyless/declare:EK1307,TS1036 compiler VIP-13: Chapter 3 ambient rejection must report EK1307 alone; generated matcher leaks TS1036; lane conf-schema-data
+FuzzAmbientErrorFix original-diagnostic:schema-error/bodyless/export-declare:EK1307,TS1036 compiler VIP-13: Chapter 3 ambient rejection must report EK1307 alone; generated matcher leaks TS1036; lane conf-schema-data
+FuzzAmbientErrorFix original-diagnostic:schema-error/bodyless/global:EK1307,TS1036 compiler VIP-13: Chapter 3 ambient rejection must report EK1307 alone; generated matcher leaks TS1036; lane conf-schema-data
+FuzzAmbientErrorFix original-diagnostic:schema-error/bodyless/namespace:EK1307,TS1036 compiler VIP-13: Chapter 3 ambient rejection must report EK1307 alone; generated matcher leaks TS1036; lane conf-schema-data
+FuzzAmbientErrorFix original-diagnostic:schema-error/bodyless/nested-namespace:EK1307,TS1036 compiler VIP-13: Chapter 3 ambient rejection must report EK1307 alone; generated matcher leaks TS1036; lane conf-schema-data
+FuzzAmbientErrorFix original-diagnostic:schema-error/empty/declare:EK1307,TS1036 compiler VIP-13: Chapter 3 ambient rejection must report EK1307 alone; generated matcher leaks TS1036; lane conf-schema-data
+FuzzAmbientErrorFix original-diagnostic:schema-error/empty/export-declare:EK1307,TS1036 compiler VIP-13: Chapter 3 ambient rejection must report EK1307 alone; generated matcher leaks TS1036; lane conf-schema-data
+FuzzAmbientErrorFix original-diagnostic:schema-error/empty/global:EK1307,TS1036 compiler VIP-13: Chapter 3 ambient rejection must report EK1307 alone; generated matcher leaks TS1036; lane conf-schema-data
+FuzzAmbientErrorFix original-diagnostic:schema-error/empty/namespace:EK1307,TS1036 compiler VIP-13: Chapter 3 ambient rejection must report EK1307 alone; generated matcher leaks TS1036; lane conf-schema-data
+FuzzAmbientErrorFix original-diagnostic:schema-error/empty/nested-namespace:EK1307,TS1036 compiler VIP-13: Chapter 3 ambient rejection must report EK1307 alone; generated matcher leaks TS1036; lane conf-schema-data
+FuzzAmbientErrorFix original-diagnostic:schema-error/payload/declare:EK1307,TS1036 compiler VIP-13: Chapter 3 ambient rejection must report EK1307 alone; generated matcher leaks TS1036; lane conf-schema-data
+FuzzAmbientErrorFix original-diagnostic:schema-error/payload/export-declare:EK1307,TS1036 compiler VIP-13: Chapter 3 ambient rejection must report EK1307 alone; generated matcher leaks TS1036; lane conf-schema-data
+FuzzAmbientErrorFix original-diagnostic:schema-error/payload/global:EK1307,TS1036 compiler VIP-13: Chapter 3 ambient rejection must report EK1307 alone; generated matcher leaks TS1036; lane conf-schema-data
+FuzzAmbientErrorFix original-diagnostic:schema-error/payload/namespace:EK1307,TS1036 compiler VIP-13: Chapter 3 ambient rejection must report EK1307 alone; generated matcher leaks TS1036; lane conf-schema-data
+FuzzAmbientErrorFix original-diagnostic:schema-error/payload/nested-namespace:EK1307,TS1036 compiler VIP-13: Chapter 3 ambient rejection must report EK1307 alone; generated matcher leaks TS1036; lane conf-schema-data
+FuzzAmbientErrorFix corpus:opencode-ambient-schema-error-bodyless-declare compiler VIP-13/VIP-34: measured ambient matcher regression; lane conf-schema-data
+FuzzAmbientErrorFix corpus:opencode-ambient-schema-error-bodyless-export-declare compiler VIP-13/VIP-34: measured ambient matcher regression; lane conf-schema-data
+FuzzAmbientErrorFix corpus:opencode-ambient-schema-error-bodyless-global compiler VIP-13/VIP-34: measured ambient matcher regression; lane conf-schema-data
+FuzzAmbientErrorFix corpus:opencode-ambient-schema-error-bodyless-namespace compiler VIP-13/VIP-34: measured ambient matcher regression; lane conf-schema-data
+FuzzAmbientErrorFix corpus:opencode-ambient-schema-error-bodyless-nested-namespace compiler VIP-13/VIP-34: measured ambient matcher regression; lane conf-schema-data
+FuzzAmbientErrorFix corpus:opencode-ambient-schema-error-empty-declare compiler VIP-13/VIP-34: measured ambient matcher regression; lane conf-schema-data
+FuzzAmbientErrorFix corpus:opencode-ambient-schema-error-empty-export-declare compiler VIP-13/VIP-34: measured ambient matcher regression; lane conf-schema-data
+FuzzAmbientErrorFix corpus:opencode-ambient-schema-error-empty-global compiler VIP-13/VIP-34: measured ambient matcher regression; lane conf-schema-data
+FuzzAmbientErrorFix corpus:opencode-ambient-schema-error-empty-namespace compiler VIP-13/VIP-34: measured ambient matcher regression; lane conf-schema-data
+FuzzAmbientErrorFix corpus:opencode-ambient-schema-error-empty-nested-namespace compiler VIP-13/VIP-34: measured ambient matcher regression; lane conf-schema-data
+FuzzAmbientErrorFix corpus:opencode-ambient-schema-error-payload-declare compiler VIP-13/VIP-34: measured ambient matcher regression; lane conf-schema-data
+FuzzAmbientErrorFix corpus:opencode-ambient-schema-error-payload-export-declare compiler VIP-13/VIP-34: measured ambient matcher regression; lane conf-schema-data
+FuzzAmbientErrorFix corpus:opencode-ambient-schema-error-payload-global compiler VIP-13/VIP-34: measured ambient matcher regression; lane conf-schema-data
+FuzzAmbientErrorFix corpus:opencode-ambient-schema-error-payload-namespace compiler VIP-13/VIP-34: measured ambient matcher regression; lane conf-schema-data
+FuzzAmbientErrorFix corpus:opencode-ambient-schema-error-payload-nested-namespace compiler VIP-13/VIP-34: measured ambient matcher regression; lane conf-schema-data
