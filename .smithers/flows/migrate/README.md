@@ -481,7 +481,7 @@ When tests live in `test`, `tests` or `__tests__` outside their nearest `tsconfi
 
 Staged VibeLang tarballs replace only entries in `dependencies` and `devDependencies`. Published peer and optional dependency ranges keep their original portable specifiers.
 
-Upgrade test fixtures provide both predecessor and staged compiler checks. The predecessor handles inferred function kinds; the new compiler can then finish projects that still fail its check before the upgraded builds. Failed baseline checks remain failures.
+Upgrade test fixtures provide both predecessor and staged compiler checks. The predecessor handles inferred function kinds; the new compiler can then finish projects that still fail its check before the upgraded builds. Failed baseline checks remain failures. A failed or interrupted `vip-finish.json` receipt stops before the candidate build and rejects later baseline reuse, even if ordinary checks would pass.
 
 Shipped-root resolution preserves publication subpaths, conditions and aliases in snapshot metadata. The shared TypeScript probe checks the exported API; an unresolved public type or an unavailable probe fails verification as an environment problem.
 

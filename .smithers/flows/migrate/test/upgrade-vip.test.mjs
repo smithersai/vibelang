@@ -437,3 +437,54 @@ test("foldkit service transition property covers compiler eras and native siblin
   }
  ),{seed:413947,numRuns:40})
 })
+
+// A candidate can apply a safe repair, then refuse another legacy site.
+// Successful ordinary checks cannot erase that failed migration status.
+async function refusedFinishFixture(root, count, code) {
+  const corpus = JSON.parse(readFileSync(new URL("./corpus/alchemy-vip-finish-refusal.json", import.meta.url), "utf8"))
+  const files = { "tsconfig.json": "{}\n", "src/control.ts": 'export const text = "try RuleContext()"\n' }
+  for (let i = 0; i < count; i++) files[i ? "src/peer" + i + ".vibe" : "src/rule.vibe"] = corpus.before
+  const f = await fixture(root, files)
+  const compiler = join(f.toolchain, "native/vibelang")
+  fakeCompiler(compiler, { side: "post", target: f.target, finishServices: true })
+  // Probe/check returns exit before this line. Only --fix reaches it, after
+  // making the native-proven service-call repair.
+  writeFileSync(compiler, readFileSync(compiler, "utf8") + "\nprocess.exit(" + code + ")\n")
+  const manifest = JSON.parse(readFileSync(join(f.target, "package.json"), "utf8"))
+  manifest.scripts = { "build:packages": "node build.cjs" }
+  writeJson(join(f.target, "package.json"), manifest)
+  writeFileSync(join(f.target, ".gitignore"), readFileSync(join(f.target, ".gitignore"), "utf8") + ".build-calls.log\n")
+  writeFileSync(join(f.target, "build.cjs"), [
+    'const fs = require("node:fs")',
+    'const old = JSON.parse(fs.readFileSync("package.json", "utf8")).dependencies.vibelang.includes("vibelang-old.tgz")',
+    'fs.appendFileSync(".build-calls.log", (old ? "old" : "new") + "\\n")',
+  ].join("\n") + "\n")
+  f.base = await Jj.commit(f.target, "builds pass independently of VIP completion")
+  return { ...f, corpus }
+}
+
+test("alchemy: failed VIP completion stops before a green candidate build", async () => {
+  const root = mkdtempSync(join(tmpdir(), "migrate-alchemy-finish-refusal-"))
+  try {
+    const f = await refusedFinishFixture(root, 1, 2)
+    await assert.rejects(upgradeEffect({ run: join(root, "run"), target: f.target, packages: ["."], test: "true", toolchain: f.toolchain, install: "true", base: f.base }), /toolchain baseline regression/)
+    assert.equal(readFileSync(join(f.target, "src/rule.vibe"), "utf8"), f.corpus.after)
+    assert.equal(readFileSync(join(f.target, ".build-calls.log"), "utf8").trim(), "old")
+    const receipt = JSON.parse(readFileSync(join(root, "run/baseline/logs/vip-finish.json"), "utf8"))
+    assert.equal(receipt.state, "failed")
+    assert.deepEqual(receipt.failed, [{ project: "tsconfig.json", code: 2 }])
+  } finally { rmSync(root, { recursive: true, force: true }) }
+})
+
+test("alchemy VIP refusal property retains nonzero status after partial repairs", async () => {
+  await fc.assert(fc.asyncProperty(fc.integer({ min: 1, max: 4 }), fc.constantFrom(2, 7, 127), async (count, code) => {
+    const root = mkdtempSync(join(tmpdir(), "migrate-alchemy-finish-refusal-property-"))
+    try {
+      const f = await refusedFinishFixture(root, count, code)
+      await assert.rejects(upgradeEffect({ run: join(root, "run"), target: f.target, packages: ["."], test: "true", toolchain: f.toolchain, install: "true", base: f.base }), /toolchain baseline regression/)
+      for (let i = 0; i < count; i++) assert.equal(readFileSync(join(f.target, i ? "src/peer" + i + ".vibe" : "src/rule.vibe"), "utf8"), f.corpus.after)
+      assert.equal(readFileSync(join(f.target, ".build-calls.log"), "utf8").trim(), "old")
+      assert.equal(readFileSync(join(f.target, "src/control.ts"), "utf8"), 'export const text = "try RuleContext()"\n')
+    } finally { rmSync(root, { recursive: true, force: true }) }
+  }), { seed: 560203, numRuns: 12 })
+})

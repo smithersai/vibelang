@@ -1,0 +1,6 @@
+{
+  "id": "alchemy-vip-finish-refusal",
+  "rule": "A failed or unfinished toolchain migration cannot become the next migration baseline, even if its partial repair makes ordinary builds and tests pass.",
+  "before": "import { Context } from \"effect\"\nexport class RuleContext extends Context.Service<RuleContext, { readonly value: number }>()(\"example/Internals\") {}\nexport const read = effect () => { const impl = try RuleContext(); return impl.value }\n",
+  "after": "import { Context } from \"effect\"\nexport class RuleContext extends Context.Service<RuleContext, { readonly value: number }>()(\"example/Internals\") {}\nexport const read = effect () => { const impl = try RuleContext; return impl.value }\n"
+}

@@ -562,6 +562,7 @@ export async function upgradeEffect(options) {
     await install("upgraded")
     vipFinish = await finishVipFixes(config, logs, vip)
     for (const file of vipFinish.changed) if (!changed.includes(file)) changed.push(file)
+    assertBaselineSafe(p, { includeSetup: false })
     upgradedBuild = await prepareBuilds(config, logs, "upgraded")
     after = await testRun("upgraded")
     comparison = compareTests(before, after)
