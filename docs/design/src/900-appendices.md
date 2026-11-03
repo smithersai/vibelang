@@ -628,6 +628,7 @@ Provider = LeftHandSideExpression "=" AssignmentExpression   (Key = value)
 
 ```text
 ServiceDeclaration = ServiceStart TypeParameters? ClassHeritage? "{" (ServiceMember Separator)* "}"   (a member that ends in a Block needs no Separator, as a class method)
+                   | ServiceStart TypeParameters? ":" Type "{" (ServiceMember Separator)* "}"   (only KeyMember and DefaultMember are admitted; other members parse for EK0902)
 ```
 
 <a id="servicemember"></a>
