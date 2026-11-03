@@ -5,10 +5,13 @@ import { Effect } from "effect"
 
 const failures = readFileSync(process.env.SPEC_FAILURES ?? new URL("../design/src/003-failures.md", import.meta.url), "utf8")
 
-test("generator call contracts separate eager parameters from suspended bodies", () => {
-  assert.ok(/generator declarations, expressions and methods/.test(failures), "cover generator declarations, expressions and methods")
-  assert.ok(/parameter initialization.*synchronous thrown type/.test(failures), "track only eager generator initialization at the call")
-  assert.ok(/suspended body.*do not contribute/.test(failures), "exclude the suspended generator body from call throws")
+// VIP-4, amended 2026-10-31: a .vibe generator never throws; a plain generator's body and parameters are
+// synchronous code outside effect code (EK0401), and an async generator's body throws reject its resumption.
+test("a .vibe generator never throws; foreign generators keep their signature contracts", () => {
+  assert.match(failures, /A `\.vibe` generator never throws: a plain generator's body and parameter list are synchronous code outside effect code, so a `throw` or a call known to throw there is `EK0401`/)
+  assert.match(failures, /an `async` generator's body throws reject its resumption Promise \(decided detail 251\)/)
+  assert.match(failures, /function\* lazy\(\) \{ throw "body" \}\s+\/\/ EK0401: a plain generator never throws/)
+  assert.doesNotMatch(failures, /parameter initialization alone contributes to the call's synchronous thrown type/)
 })
 
 test("the documented generator call phases have the stated Effect Exits", async () => {

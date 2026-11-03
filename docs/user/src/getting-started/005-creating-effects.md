@@ -81,9 +81,9 @@ A platform API that neither Effect nor VibeLang's [experimental platform APIs](.
 
 The wrapper's callback is plain TypeScript, evaluated when the Effect runs. Its arrow captures `path` from the enclosing function. `Effect.try` wraps synchronous code; `tryPromise` wraps a Promise.
 
-The compiler tracks what plain functions may throw. JavaScript's built-ins have `@throws` annotations, so a function known not to throw, such as `Math.max`, can be called directly. A function that may throw must be wrapped with `Effect.try` before an effect function calls it.
+A plain VibeLang function never throws: a `throw` outside effect code and `async` functions is `EK0401`. The compiler tracks what TypeScript and JavaScript functions may throw. JavaScript's built-ins have `@throws` annotations, so a function known not to throw, such as `Math.max`, can be called directly. A function that may throw must be wrapped with `Effect.try` before an effect function calls it.
 
-A TypeScript library states its thrown error type with `@throws {ErrorType}` in its declaration. A callable declared in `.ts`, `.d.ts` or JavaScript with no `@throws` is assumed to throw `unknown`, with a written type or without one; `@throws {never}` states that it cannot throw. VibeLang infers throws from non-effectful plain `.vibe` functions and writes each call signature's contract on exported declarations. Shipped annotations apply before foreign defaults. For synchronous invocation, `@rethrows f` adds `f`'s thrown type to the callee's own throws, including when the own contract is `@throws {never}`. Ordinary `async` invocation retains its source callback admission without active synchronous `@rethrows`: parameter initialization, body and callback throws reject its Promise, and its synchronous own contract is `@throws {never}`. A `Promise` result type alone does not give a plain function that behavior. Wrap an imported function that may throw in `Effect.try`, and use its `catch` option to map the exception to a domain error.
+A TypeScript library states its thrown error type with `@throws {ErrorType}` in its declaration. A callable declared in `.ts`, `.d.ts` or JavaScript with no `@throws` is assumed to throw `unknown`, with a written type or without one; `@throws {never}` states that it cannot throw. VibeLang functions throw nothing, so their exported declarations carry `@throws {never}`; a `.vibe` file can't write `@throws` or `@rethrows` (`EK0406`). Shipped annotations apply before foreign defaults. For synchronous invocation of a `.ts` function, `@rethrows f` adds `f`'s thrown type to the callee's own throws, including when the own contract is `@throws {never}`. An `async` function's `throw` rejects its Promise. Wrap an imported function that may throw in `Effect.try`, and use its `catch` option to map the exception to a domain error.
 
 In Effect code, `catch` sees expected failures only. Implicit exceptions, such as reading a property of `undefined`, are defects. For recoverable input, use `Option.getOrElse`, `fromOption`, or `Schema.decodeUnknownEffect`. Plain and `async` functions keep JavaScript's `try`/`catch` semantics. Plain foreign calls at module top level are ordinary JavaScript calls, so their exceptions fail the module's import.
 
@@ -237,7 +237,7 @@ effect function checkedQuantity(n: number) {
 // Output: 3
 ```
 
-Effect functions use Effect's execution semantics. Plain functions and recursion through synchronous JavaScript callbacks retain JavaScript's stack limit. For deep recursion, write an `effect` function and run each recursive call with `try`. Returns and throws unify success and failure channels across branches.
+Effect functions use Effect's execution semantics. Plain functions and recursion through synchronous JavaScript callbacks retain JavaScript's stack limit; a stack overflow is an implicit throw, a defect in effect code. For deep recursion, write an `effect` function and run each recursive call with `try`. Returns and throws unify success and failure channels across branches.
 
 ## Coming from Effect
 

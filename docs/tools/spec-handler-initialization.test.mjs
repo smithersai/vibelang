@@ -5,11 +5,13 @@ import { block, chapter, run } from "./spec-witness.mjs"
 
 const failures = () => process.env.SPEC_FAILURES ? readFileSync(process.env.SPEC_FAILURES, "utf8") : chapter("003-failures")
 
-test("the plain-handler call check includes eager binding initialization", () => {
+// VIP-5, amended 2026-10-31: a plain handler is plain code, so its throwing calls and throws are EK0401.
+test("the plain-handler check is EK0401 and includes eager binding initialization", () => {
   const text = failures()
   const row = text.split("\n").find(line => line.startsWith("|") && line.includes("EK0403"))
-  assert.match(row, /parameter\/default\/destructuring initialization/)
-  assert.match(text, /computed binding keys/)
+  assert.match(row, /^\| In effect code, a call/)
+  assert.match(row, /In a plain `catch` handler and other plain code, a call known to throw is `EK0401`/)
+  assert.match(text, /A `throw` statement, or a call known to throw, in a plain `catch` handler's eager parameters or body is `EK0401`, including defaults, destructuring and computed binding keys/)
   assert.match(text, /nonthrowing parameters/)
   assert.match(text, /Merely defining a nested source function/)
 })

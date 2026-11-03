@@ -110,7 +110,7 @@ function open(events: string[]) {
   events.push("open")
   return {
     [Symbol.dispose](): void {
-      if (closed) throw new Error("closed twice")
+      if (closed) { events.push("closed twice"); return }
       closed = true
       events.push("closed")
     }

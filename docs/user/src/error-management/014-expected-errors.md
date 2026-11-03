@@ -39,23 +39,20 @@ Use `export error InvalidCode` or `export schema error InvalidCode` for a named 
 
 Fields in `error` and `schema error` declarations can use computed literal or `unique symbol` keys, such as `const key = "id" as const` and `error Missing { [key]: string }`. They remain readonly instance fields initialized from the constructor's input object. A computed string key that resolves to `"_tag"` is rejected with `EK2117`.
 
-VibeLang annotates `JSON.parse` as throwing `SyntaxError`. An effect function must wrap a synchronous call that may throw with `Effect.try` before running it with `try`. Library declarations describe thrown types with `@throws {ErrorType}`; an unannotated callable declared in `.ts`, `.d.ts` or JavaScript may throw `unknown`, even when it has a written function type. Its source and emitted declarations agree. Exported non-effectful VibeLang call signatures carry their written or inferred `@throws` contract, including `@throws {never}`. For a synchronous callable, a `@rethrows callback` adds that callback's thrown type at each invocation; an own `@throws {never}` does not erase it. Effectful callables carry no `@throws`. Wrap every Promise with `tryPromise`, including one that cannot reject. Synchronous functions known not to throw, such as `Option.isNone`, need no wrapper. A function whose return type is wholly an Effect, a Stream or a Layer is never throw-tracked: its failures are its Effect's error channel.
+VibeLang annotates `JSON.parse` as throwing `SyntaxError`. An effect function must wrap a synchronous call that may throw with `Effect.try` before running it with `try`. Library declarations describe thrown types with `@throws {ErrorType}`; an unannotated callable declared in `.ts`, `.d.ts` or JavaScript may throw `unknown`, even when it has a written function type. Its source and emitted declarations agree. A VibeLang function never throws, so every exported non-effectful VibeLang call signature carries `@throws {never}`. For a synchronous `.ts` callable, a `@rethrows callback` adds that callback's thrown type at each invocation; an own `@throws {never}` does not erase it. Effectful callables carry no `@throws`. Wrap every Promise with `tryPromise`, including one that cannot reject. Synchronous functions known not to throw, such as `Option.isNone`, need no wrapper. A function whose return type is wholly an Effect, a Stream or a Layer is never throw-tracked: its failures are its Effect's error channel.
 
-An ordinary nongenerator `async` function rejects its Promise for callback and parameter-default throws. Its declaration preserves throwing-callback admission on the parameter with `@throws {unknown}`, while the callee stays `@throws {never}` without a synchronous `@rethrows` tag. A plain function that merely returns a Promise can still throw before returning.
+An `async` function's `throw` rejects its Promise, as in TypeScript, and its declaration carries `@throws {never}`. A `.ts` function that merely returns a Promise can still throw before returning.
 
 A foreign function value must fit the function type it is passed or assigned as. A function type without `@throws` admits only a function that throws `never`, `@throws {U}` admits subtypes of `U`, and `@throws {unknown}` admits anything. So a `.ts` function declared `@throws {Error}`, passed where `() => void` is expected, is `EK0402` as an argument, an object member, a spread member, an initializer, an array element or a returned value. A parameter named by `@rethrows`, the callback of `Array` iteration methods such as `map`, and the thunk of `Effect.try` and `tryPromise` admit any thrown type.
 
-In an effect function, `throw` is a typed failure and a catch expression receives typed failures only. A plain function keeps TypeScript's behavior: its return annotation checks its result, and its `try`/`catch` statement can handle JavaScript exceptions while returning a value:
+In an effect function, `throw` is a typed failure and a catch expression receives typed failures only. A plain function can't throw: a `throw` there is `EK0401`, and so is a call known to throw, such as `JSON.parse(text)`, unless the call sits in the `try` block of a `try`/`catch` statement. Make the function `effect`, or move the code to a `.ts` file. A plain function's `try`/`catch` statement still handles exceptions from the calls it makes while returning a value:
 
 ```vibe
 // run: try Console.log(quantityOr("3", 0)); try Console.log(quantityOr("x", 0))
-error InvalidQuantity { text: string }
-
 function quantityOr(text: string, fallback: number): number {
   try {
-    const quantity = Number(text)
-    if (!Number.isInteger(quantity)) throw new InvalidQuantity({ text })
-    return quantity
+    const quantity = JSON.parse(text)
+    return Number.isInteger(quantity) ? quantity : fallback
   } catch {
     return fallback
   }
@@ -64,21 +61,23 @@ function quantityOr(text: string, fallback: number): number {
 // Output: 0
 ```
 
-A plain function may throw, and its thrown type is inferred. Finite recursive summaries stay precise; an expanding recursive thrown type that cannot stabilize as a representable contract conservatively becomes `unknown`, preserved as `@throws {unknown}` in declarations. A plain return annotation does not make a function effectful:
+To fail with a typed error, make the function `effect`: its `throw` is `Effect.fail`. A plain return annotation does not make a function effectful, so the same body in `function wholeQuantity(text: string): number` is `EK0401`:
 
 ```vibe
-function quantity(text: string): number {
+error InvalidQuantity { text: string }
+
+effect function wholeQuantity(text: string) {
   const value = Number(text)
   if (!Number.isInteger(value)) throw new InvalidQuantity({ text })
   return value
 }
 ```
 
-A generic call retains its declaration's thrown contract even when a type argument makes its result an Effect. A `@rethrows` parameter's possible default callback also contributes to a synchronous callable's conservative own thrown bound, retained in `@throws` when declaration output erases the default; a safe supplied callback does not erase that bound.
+A generic call retains its declaration's thrown contract even when a type argument makes its result an Effect.
 
-Calling an effect function returns its unrun Effect. A caller runs it with `try` inside an effect function or Effect block. A defect is for a failure no caller should handle: a catch expression never receives one. In a plain or async function, `throw` is JavaScript's, and `orDie(Effect.try(() => call()))` turns such an exception into a defect; `sync` takes only a function that can't throw.
+Calling an effect function returns its unrun Effect. A caller runs it with `try` inside an effect function or Effect block. A defect is for a failure no caller should handle: a catch expression never receives one. In an `async` function, `throw` is JavaScript's and rejects the Promise; a plain function can't throw. `orDie(Effect.try(() => call()))` turns an exception from a `.ts` call into a defect; `sync` takes only a function that can't throw.
 
-An effect method follows the same rules: its keyword determines its kind, and its return annotation checks the Effect type. A plain method, including a JavaScript protocol member such as `[Equal.symbol]`, keeps TypeScript's behavior. A plain function calls TypeScript code directly and handles JavaScript exceptions with `try`/`catch`. To run an Effect, use `try` inside an effect function or Effect block.
+An effect method follows the same rules: its keyword determines its kind, and its return annotation checks the Effect type. A plain method, including a JavaScript protocol member such as `[Equal.symbol]`, keeps TypeScript's behavior, except that it can't throw. A plain function calls TypeScript code directly and handles its exceptions with `try`/`catch`. To run an Effect, use `try` inside an effect function or Effect block.
 
 An effect function can stand for a function type returning an Effect. Calling it returns that Effect unrun; a plain caller that ignores the return value does not run its work. Declare a function returning an Effect at a destination that needs one, or provide a plain function for a plain result. This applies to initializers, assignments, returns, property writes, typed literal elements, and members of objects and class instances.
 
