@@ -119,10 +119,24 @@ func makeEffectEdits(fix *ls.CodeFixContext, site *ast.Node, home *ast.Node) []*
 	if home.Kind == ast.KindMethodDeclaration {
 		at = nodeStart(file, home.Name())
 	}
+	prefix := "effect "
+	var bareParameter *ast.Node
 	if home.Kind == ast.KindArrowFunction && !strings.HasPrefix(text[at:], "(") && !strings.HasPrefix(text[at:], "<") {
-		return nil // effect needs the parameter list in parentheses
+		parameters := home.ParameterList()
+		if parameters == nil || len(parameters.Nodes) != 1 {
+			return nil
+		}
+		bareParameter = parameters.Nodes[0].Name()
+		if bareParameter == nil || !ast.IsIdentifier(bareParameter) {
+			return nil
+		}
+		prefix = "effect ("
 	}
-	edits := replaceRange(fix, at, at, "effect ")
+
+	edits := replaceRange(fix, at, at, prefix)
+	if bareParameter != nil {
+		edits = append(edits, replaceRange(fix, bareParameter.End(), bareParameter.End(), ")")...)
+	}
 	if annotation := home.Type(); annotation != nil {
 		start := nodeStart(file, annotation)
 		colon := start - 1

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"maps"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 
@@ -16,6 +17,7 @@ import (
 // creates without overwriting, keeps the local binding/re-export, and removes EK0401 without new errors.
 var nothrowMoveQuotes = []string{
 	"or move the code to a `.ts` file.",
+	"make the function `effect`, so `throw` is `Effect.fail`",
 	"An exported function of a published package offers the `.ts` fix first, because `effect` changes its declaration.",
 }
 
@@ -29,12 +31,13 @@ func TestNothrowMoveQuoted(t *testing.T) {
 
 func FuzzNothrowMove(f *testing.F) {
 	startShortBudget(f)
-	for index, key := range []string{"function", "generator", "constructor", "accessor", "arrow", "function-expression", "overload", "class-namespace", "function-namespace"} {
+	for index, key := range []string{"function", "generator", "constructor", "accessor", "arrow", "function-expression", "overload", "class-namespace", "function-namespace", "bare-arrow"} {
 		f.Add(key, int8(index), true, false, false)
 		f.Add(key, int8(-1), false, false, true)
 	}
 	f.Add("function", int8(7), true, true, false)
 	f.Add("accessor", int8(7), true, true, true)
+	f.Add("bare-arrow", int8(7), true, true, false)
 	w := NewWorkspace(f)
 	f.Fuzz(func(t *testing.T, key string, value int8, published, capture, collision bool) {
 		toolsGuard(t, "FuzzNothrowMove", func() {
@@ -53,13 +56,13 @@ func FuzzNothrowMove(f *testing.F) {
 			}
 			var declaration string
 			kind := 0
-			for index, name := range []string{"function", "generator", "constructor", "accessor", "arrow", "function-expression", "overload", "class-namespace", "function-namespace"} {
+			for index, name := range []string{"function", "generator", "constructor", "accessor", "arrow", "function-expression", "overload", "class-namespace", "function-namespace", "bare-arrow"} {
 				if key == name {
 					kind = index
 				}
 			}
-			if key != "function" && key != "generator" && key != "constructor" && key != "accessor" && key != "arrow" && key != "function-expression" && key != "overload" && key != "class-namespace" && key != "function-namespace" && len(key) > 0 {
-				kind = int(key[0]) % 9
+			if key != "function" && key != "generator" && key != "constructor" && key != "accessor" && key != "arrow" && key != "function-expression" && key != "overload" && key != "class-namespace" && key != "function-namespace" && key != "bare-arrow" && len(key) > 0 {
+				kind = int(key[0]) % 10
 			}
 			switch kind {
 			case 0:
@@ -83,6 +86,16 @@ func FuzzNothrowMove(f *testing.F) {
 				declaration = fmt.Sprintf("export class %s { constructor() { throw %s } } export namespace %s { export const extra = 1 }", name, operand, name)
 			case 8:
 				declaration = fmt.Sprintf("export function %s(): number { throw %s }; export namespace %s { export const tag = 1 }", name, operand, name)
+			case 9:
+				parameter := fmt.Sprintf("value%d", uint8(value))
+				if value&1 != 0 {
+					parameter = "effect"
+				}
+				gap := " "
+				if value&2 != 0 {
+					gap = " /* binding */ "
+				}
+				declaration = fmt.Sprintf("export const %s: (input: number) => void = %s%s=> { throw %s }", name, parameter, gap, operand)
 			}
 			files := map[string]string{"main.vibe": prefix + declaration, "package.json": fmt.Sprintf(`{"name":"nothrow-move","type":"module","private":%t}`, !published)}
 			if collision {
@@ -127,13 +140,16 @@ func FuzzNothrowMove(f *testing.F) {
 					}
 				}
 			}
+			if kind == 9 && !slices.Contains(titles, "Make f an effect function") {
+				Gap(t, "FuzzNothrowMove", "nothrow-move:bare-effect-fix:"+key, "missing effect repair for a bare parameter: %v", titles)
+			}
 			if capture {
 				if move != nil {
 					Gap(t, "FuzzNothrowMove", "nothrow-move:captured-cell:"+key, "captured cells must not move")
 				}
 				return
 			}
-			if move == nil && kind >= 6 {
+			if move == nil && kind >= 6 && kind <= 8 {
 				return
 			} // A group move is optional; any offered move must retain the complete declaration group.
 			if move == nil {

@@ -470,3 +470,5 @@ Neither error form accepts type parameters (`EK1303`). Keep a plain generic erro
 A nested object schema follows the schema field mapping: its keys are writable unless marked `readonly`, even when the schema-error payload field containing that object is readonly. The legacy-key upgrade, `vibelang -p tsconfig.json --fix --fix-migration-only`, preserves older nested readonly defaults.
 
 A fieldless `error Timeout` or `error Timeout {}` declares the same base as `class Timeout extends Data.TaggedError("Timeout") {}`: `extends Timeout_base`. A TypeScript class that explicitly writes `Data.TaggedError("Timeout")<{}>` instead declares `extends Timeout_base<{}>`. In a project that emits declarations, `vibelang --fix` keeps that class and explains why `EK4830` has no automatic fix, preserving the written empty payload type argument. Without declaration output, the conversion remains available.
+
+For a single-parameter arrow such as `x => …`, the effect fix writes `effect (x) => …`, preserving the parameter name and adjacent comments.

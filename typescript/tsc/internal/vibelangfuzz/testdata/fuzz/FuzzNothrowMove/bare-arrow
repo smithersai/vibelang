@@ -1,0 +1,6 @@
+go test fuzz v1
+string("bare-arrow")
+int8(0)
+bool(false)
+bool(false)
+bool(true)
