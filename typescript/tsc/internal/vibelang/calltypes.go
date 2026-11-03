@@ -125,6 +125,12 @@ func inLowerableBody(node *ast.Node) bool {
 		if isHatchArgument(n) {
 			return false // TypeScript, inside a boundary hatch (hatches.go)
 		}
+		if heritageTypeArgument(n.Parent, n) {
+			return false
+		}
+		if classExtendsChild(n.Parent, n) {
+			continue
+		}
 		if fn := n.Parent; isFunctionBoundary(fn) {
 			return n == fn.Body() && isLowerable(fn)
 		}

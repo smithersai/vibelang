@@ -170,7 +170,8 @@ func populateFilePlan(c *checker.Checker, file *ast.SourceFile, p *plan) {
 }
 
 // forEachCallInBody calls cb for each call that fn's own body evaluates,
-// skipping nested functions and classes, until cb returns true. It reports
+// skipping nested function and class bodies, until cb returns true. Class
+// base expressions run in the enclosing body. It reports
 // whether cb returned true. A function-like node without a body, a function
 // type or an overload signature, evaluates no call.
 func forEachCallInBody(fn *ast.Node, cb func(call *ast.Node) bool) bool {
@@ -180,6 +181,12 @@ func forEachCallInBody(fn *ast.Node, cb func(call *ast.Node) bool) bool {
 	}
 	var visit func(node *ast.Node) bool
 	visit = func(node *ast.Node) bool {
+		if ast.IsClassLike(node) {
+			if base := ast.GetClassExtendsHeritageElement(node); base != nil {
+				return visit(base.Expression())
+			}
+			return false
+		}
 		if isFunctionBoundary(node) {
 			return false
 		}
@@ -201,6 +208,12 @@ func (a *analyzer) forEachRunningCallInBody(fn *ast.Node, cb func(*ast.Node) boo
 	}
 	var visit func(*ast.Node) bool
 	visit = func(node *ast.Node) bool {
+		if ast.IsClassLike(node) {
+			if base := ast.GetClassExtendsHeritageElement(node); base != nil {
+				return visit(base.Expression())
+			}
+			return false
+		}
 		if isFunctionBoundary(node) {
 			return false
 		}

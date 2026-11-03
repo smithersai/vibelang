@@ -79,3 +79,17 @@ func isLowerable(node *ast.Node) bool {
 func isFunctionBoundary(node *ast.Node) bool {
 	return ast.IsFunctionLike(node) || ast.IsClassLike(node) || node.Kind == ast.KindClassStaticBlockDeclaration || node.Kind == ast.KindEnumDeclaration
 }
+
+// classExtendsChild reports the part of a class that evaluates its base in
+// the enclosing code. Class bodies retain their own execution boundaries.
+func classExtendsChild(class, child *ast.Node) bool {
+	return ast.IsClassLike(class) && ast.IsHeritageClause(child) &&
+		child.AsHeritageClause().Token == ast.KindExtendsKeyword
+}
+
+// heritageTypeArgument keeps erased class-base types outside runtime code.
+// An error's payload types stay types; a schema error maps them to expressions.
+func heritageTypeArgument(parent, child *ast.Node) bool {
+	return ast.IsExpressionWithTypeArguments(parent) && parent.Parent != nil &&
+		ast.IsHeritageClause(parent.Parent) && child != parent.Expression()
+}

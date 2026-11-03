@@ -1,0 +1,13 @@
+// expect: EK9201 EK9202
+error KeyError
+service KeyService { key: string }
+declare const failedKey: Effect.Effect<string, KeyError>
+declare const requiredKey: Effect.Effect<string, never, KeyService>
+effect function failure(): number!! {
+  schema error E { value: { readonly [try failedKey]: string } }
+  return 1
+}
+effect function requirement(): number!! {
+  schema error E { value: { readonly [try requiredKey]: string } }
+  return 1
+}

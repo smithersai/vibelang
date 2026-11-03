@@ -1,0 +1,39 @@
+// expect-result: {"events":["struct-string","struct-number","struct-symbol","optional-string","optional-number","optional-symbol","array-string","array-number","array-symbol","tuple-string","tuple-number","tuple-symbol"],"valid":[true,true,true,true,true,true,true,true,true,true,true,true],"block":1,"failure":true,"required":true,"inherited":7}
+const field: unique symbol = Symbol()
+error KeyError
+service Keys { key: string }
+effect function failed(): boolean!KeyError {
+  schema error E { value: { readonly [try Effect.fail(new KeyError())]: string } }
+  return false
+}
+effect function required() {
+  const readKey = effect { return (try Keys).key }
+  schema error E { value: { readonly [try readKey]: string } }
+  return Schema.is(E)(new E({ value: { key: "ok" } }))
+}
+export effect function main() {
+  const events: string[] = []
+  const base = Effect.succeed(class { marker = 7 })
+  class Child extends (try base) {}
+  const inherited = new Child().marker
+  schema error E0 { value: { readonly [try Effect.sync(() => { events.push("struct-string"); return "key" })]: string } }
+  schema error E1 { value: { readonly [try Effect.sync(() => { events.push("struct-number"); return 7 })]: string } }
+  schema error E2 { value: { readonly [try Effect.sync(() => { events.push("struct-symbol"); return field })]: string } }
+  schema error E3 { value?: { readonly [try Effect.sync(() => { events.push("optional-string"); return "key" })]: string } }
+  schema error E4 { value?: { readonly [try Effect.sync(() => { events.push("optional-number"); return 7 })]: string } }
+  schema error E5 { value?: { readonly [try Effect.sync(() => { events.push("optional-symbol"); return field })]: string } }
+  schema error E6 { value: Array<{ readonly [try Effect.sync(() => { events.push("array-string"); return "key" })]: string }> }
+  schema error E7 { value: Array<{ readonly [try Effect.sync(() => { events.push("array-number"); return 7 })]: string }> }
+  schema error E8 { value: Array<{ readonly [try Effect.sync(() => { events.push("array-symbol"); return field })]: string }> }
+  schema error E9 { value: [{ readonly [try Effect.sync(() => { events.push("tuple-string"); return "key" })]: string }] }
+  schema error E10 { value: [{ readonly [try Effect.sync(() => { events.push("tuple-number"); return 7 })]: string }] }
+  schema error E11 { value: [{ readonly [try Effect.sync(() => { events.push("tuple-symbol"); return field })]: string }] }
+  const block = try effect {
+    const key = Effect.succeed("key")
+    schema error Block { value: { readonly [try key]: string } }
+    return 1
+  }
+  const failure = failed() catch () => true
+  const requiredValue = try Effect.provideService(required(), Keys, { key: "key" })
+  return { events, valid: [Schema.is(E0)(new E0({ value: { key: "ok" } })), Schema.is(E1)(new E1({ value: { 7: "ok" } })), Schema.is(E2)(new E2({ value: { [field]: "ok" } })), Schema.is(E3)(new E3({ value: { key: "ok" } })), Schema.is(E4)(new E4({ value: { 7: "ok" } })), Schema.is(E5)(new E5({ value: { [field]: "ok" } })), Schema.is(E6)(new E6({ value: [{ key: "ok" }] })), Schema.is(E7)(new E7({ value: [{ 7: "ok" }] })), Schema.is(E8)(new E8({ value: [{ [field]: "ok" }] })), Schema.is(E9)(new E9({ value: [{ key: "ok" }] })), Schema.is(E10)(new E10({ value: [{ 7: "ok" }] })), Schema.is(E11)(new E11({ value: [{ [field]: "ok" }] }))], block, failure, required: requiredValue, inherited }
+}

@@ -1,0 +1,6 @@
+// expect-result: 1
+const field: unique symbol = Symbol()
+export effect function main(): number!! {
+  schema error E { value: { readonly [try Effect.succeed("key")]: string } }
+  return 1
+}

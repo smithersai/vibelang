@@ -987,6 +987,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Native home-directory lookups could fail with `HOME` unset when replaced by the environment-based `UserDirectories.home`. `Experimental.Process.homeDirectory` now preserves `os.homedir()` account fallback through the Node and Bun layers.
 
+- Nested computed field keys in a `schema error` inside effect code incorrectly reported `EK0501` and `TS2464`; `try` now evaluates those keys in the enclosing Effect and keeps their failures and requirements. `vibelang --fix` preserves defects from formerly unchecked plain calls when their failures exceed a written contract.
+
 
 - Source-child loader wiring introduced a `fileURLToPath` import alias and failed repositories’ native import policies. Setup now uses a namespace import and refreshes its own previously generated helpers while preserving manually observed bindings.
 

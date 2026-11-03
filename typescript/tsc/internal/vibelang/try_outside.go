@@ -57,6 +57,14 @@ func triedFlag(node *ast.Node) bool {
 func effectCodeOwner(node *ast.Node) *ast.Node {
 	child := node
 	for n := node.Parent; n != nil; child, n = n, n.Parent {
+		if heritageTypeArgument(n, child) {
+			return nil
+		}
+		// The base expression runs where the class is declared (VIP-1,
+		// VIP-29), including field codecs generated for a schema error.
+		if classExtendsChild(n, child) {
+			continue
+		}
 		if !isFunctionBoundary(n) || isCalledInPlace(n) || isCatchLeftFunction(n) {
 			continue // an arrow the parser calls in place, or a catch expression's left side, has the code around it (markedForm)
 		}

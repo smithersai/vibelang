@@ -277,6 +277,12 @@ func (tx *lowering) visitNode(node *ast.Node) *ast.Node {
 		return tx.lowerFunction(node)
 	case tx.plan.isProgram(node):
 		return tx.lowerProgram(node)
+	case node.Kind == ast.KindHeritageClause && node.AsHeritageClause().Token == ast.KindExtendsKeyword && ast.IsClassLike(node.Parent):
+		// Enter the source context again after visiting the class boundary.
+		// Its body stays plain; its base (and schema-error codecs) can yield.
+		saved := tx.inEffect
+		tx.inEffect = inEffectCode(node)
+		defer func() { tx.inEffect = saved }()
 	case isFunctionBoundary(node):
 		saved := tx.inEffect
 		tx.inEffect = false

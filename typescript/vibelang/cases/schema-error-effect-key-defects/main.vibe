@@ -1,0 +1,19 @@
+// expect-result: {"heritage":true,"key":true,"success":1,"reference":{"heritage":true,"key":true}}
+import { reference } from "./reference.js"
+effect function heritage(): number!! {
+  class C extends (try Effect.orDie(Effect.try({ try: () => JSON.parse("invalid"), catch: (error) => error }))) {}
+  return 1
+}
+effect function keyed(): number!! {
+  schema error E { value: { readonly [(try Effect.orDie(Effect.try({ try: () => JSON.parse("invalid"), catch: (error) => error })))]: string } }
+  return 1
+}
+effect function successful(): number!! {
+  schema error E { value: { readonly [(try Effect.orDie(Effect.try({ try: () => JSON.parse('"key"') as string, catch: (error) => error })))]: string } }
+  return Schema.is(E)(new E({ value: { key: "ok" } })) ? 1 : 0
+}
+export effect function main() {
+  const h = try Effect.exit(heritage())
+  const k = try Effect.exit(keyed())
+  return { heritage: Exit.isFailure(h) && Cause.hasDies(h.cause) && Cause.squash(h.cause) instanceof SyntaxError, key: Exit.isFailure(k) && Cause.hasDies(k.cause) && Cause.squash(k.cause) instanceof SyntaxError, success: try successful(), reference: try reference }
+}

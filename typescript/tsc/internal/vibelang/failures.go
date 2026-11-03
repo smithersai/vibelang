@@ -18,14 +18,20 @@ import (
 // of a function is what can escape its body.
 
 // flowOf collects what running node adds to E and R. node is a statement,
-// block, or expression in the body of one function; the functions and classes
-// nested in it, and the expressions it passes by name (D147), do not run as
-// part of it.
+// block, or expression in the body of one function. Nested function and class
+// bodies, and expressions passed by name (D147), do not run as part of it.
+// A class's extends expression does run in the enclosing code.
 func (a *analyzer) flowOf(node *ast.Node) *effectInfo {
 	info := &effectInfo{}
 	var visit func(n *ast.Node) bool
 	visit = func(n *ast.Node) bool {
 		switch {
+		case ast.IsClassLike(n):
+			// A class's generated schema codecs run in its extends
+			// expression, so their E and R escape into the enclosing Effect.
+			if base := ast.GetClassExtendsHeritageElement(n); base != nil {
+				visit(base.Expression())
+			}
 		case isFunctionBoundary(n):
 		case n != node && false:
 			// Passed as a program (D147): it runs where the callee runs it.
