@@ -1,0 +1,14 @@
+// expect: EK0404 EK0501 EK4701
+import { Effect } from "effect"
+
+effect function unbridged() {
+  return async match (true) { default: 1; }
+}
+
+function wrongContext() {
+  return async match (true) { default: try Effect.succeed(1); }
+}
+
+function partial(subject: "a" | "b") {
+  return async match (subject) { when "a": 1; }
+}

@@ -121,6 +121,8 @@ type Parser struct {
 	vibelangNoBlockParams    bool                        // a { after an expression is not a block param here: heritage clauses and provide's providers (vibelang_blocks.go)
 	vibelangMatchTemps       int                         // names written for match and is, numbered per file (vibelang_match.go)
 	vibelangTemps            []*ast.Node                 // the identifiers of those names, which freshenVibeLangTemps renames when the file spells them (vibelang_match.go)
+	vibelangSourceReturns    map[*ast.Node]bool          // source return statements or match blocks before do lowering
+	vibelangAsyncMatches     []*ast.Node                 // async match source boundaries
 	vibelangMatches          map[*ast.Node]*matchInfo    // match expressions as written, by their call or statement (vibelang_match.go)
 	vibelangMatchMemberArms  map[*ast.Node][]MatchMemberArm // normalized tagged-member coverage
 	vibelangIsBindings       map[*ast.Node]*isInfo       // is expressions whose patterns bind names, by their markers (vibelang_match.go)
@@ -388,6 +390,8 @@ func (p *Parser) parseErrorAtRange(loc core.TextRange, message *diagnostics.Mess
 type ParserState struct {
 	vibelangNamespaceContext    bool
 	vibelangDeniedTrailingBlock bool
+	vibelangDoOrderLen          int
+	vibelangAsyncMatchesLen     int
 	vibelangFiberContext        bool
 	scannerState                scanner.ScannerState
 	contextFlags                ast.NodeFlags
@@ -405,6 +409,8 @@ func (p *Parser) mark() ParserState {
 	return ParserState{
 		vibelangDeniedTrailingBlock: p.vibelangDeniedTrailingBlock,
 		vibelangNamespaceContext:    p.vibelangNamespaceContext,
+		vibelangDoOrderLen:          len(p.vibelangDoOrder),
+		vibelangAsyncMatchesLen:     len(p.vibelangAsyncMatches),
 		vibelangFiberContext:        p.vibelangFiberContext,
 		scannerState:                p.scanner.Mark(),
 		contextFlags:                p.contextFlags,
@@ -422,6 +428,8 @@ func (p *Parser) mark() ParserState {
 func (p *Parser) rewind(state ParserState) {
 	p.vibelangDeniedTrailingBlock = state.vibelangDeniedTrailingBlock
 	p.vibelangNamespaceContext = state.vibelangNamespaceContext
+	p.vibelangDoOrder = p.vibelangDoOrder[:state.vibelangDoOrderLen]
+	p.vibelangAsyncMatches = p.vibelangAsyncMatches[:state.vibelangAsyncMatchesLen]
 	p.vibelangFiberContext = state.vibelangFiberContext
 	p.scanner.Rewind(state.scannerState)
 	p.token = p.scanner.Token()
@@ -541,6 +549,7 @@ func (p *Parser) parseSourceFileWorker() *ast.SourceFile {
 		result.SetJSDiagnostics(attachFileToDiagnostics(p.jsDiagnostics, result))
 	}
 	if p.isVibeLangFile() {
+		p.checkVibeLangAsyncMatchJumps(result)
 		p.parseVibeLangDos(result)      // do expressions, lowered to statements (vibelang_do.go)
 		p.freshenVibeLangTemps(result)  // the names written for match, is and do (vibelang_match.go)
 		p.attachVibeLangModules(result) // module declarations' bodies (vibelang_modules.go)
@@ -1547,6 +1556,7 @@ func (p *Parser) parseReturnStatement() *ast.Node {
 		return p.matchReturnStatement(info, pos) // return match (...) { ... } (vibelang_match.go)
 	}
 	result := p.finishNode(p.factory.NewReturnStatement(expression), pos)
+	p.recordVibeLangSourceReturn(result)
 	p.withJSDoc(result, jsdoc)
 	return result
 }
@@ -6094,6 +6104,9 @@ func (p *Parser) parsePrimaryExpression() *ast.Expression {
 		// statement form once, rather than a cascade of punctuation errors.
 		return p.patternErrorCall(1017, "", keyword)
 	}
+	if p.isStartOfVibeLangAsyncMatch() {
+		return p.parseVibeLangAsyncMatch() // async match (subject) { … } (vibelang_match.go)
+	}
 	if p.isStartOfVibeLangMatch() {
 		return p.parseVibeLangMatch() // match (subject) { when ...: ...; } (vibelang_match.go)
 	}
@@ -6671,6 +6684,9 @@ func (p *Parser) isStartOfDeclaration() bool {
 
 func (p *Parser) scanStartOfDeclaration() bool {
 	for {
+		if p.isStartOfVibeLangAsyncMatch() {
+			return false // a primary expression, not the retired async name(...) shorthand
+		}
 		if p.token == ast.KindAsyncKeyword && p.isVibeLangFile() && p.lookAhead(func(p *Parser) bool {
 			p.nextToken()
 			return p.scanStartOfShorthandFunction()

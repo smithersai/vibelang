@@ -21,6 +21,13 @@ var update = flag.Bool("update", false, "rewrite the golden files of TestFormatG
 // forms holds one source per VibeLang form, written as an author might, so
 // a test sees each form's TypeScript form and its round trip.
 var forms = map[string]string{
+	"async match": `function f() {
+  return async match (await Promise.resolve(1)) { when 1: await Promise.resolve(2); default: 0; }
+}
+const x = (async match (true) { default: 1; })
+async match (true) { default: 2; }
+`,
+
 	"for-head patterns": `function countdown(src: { n: number }) {
   const seen: (() => number)[] = []
   for (src.n is let n; n > 0; n--) seen.push(() => n)

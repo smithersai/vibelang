@@ -1,9 +1,11 @@
 import { Effect } from "effect"
+/** @throws {never} */
 export async function adopted(flag: boolean) {
   const subject = await Promise.resolve(flag)
   if (subject === true) return Promise.resolve(3)
   return "other"
 }
+/** @throws {never} */
 export async function nested() { return (() => { return 7 })() }
 export function main(): Effect.Effect<readonly unknown[]> {
   return Effect.promise(async () => [await adopted(true), await adopted(false), await nested()])

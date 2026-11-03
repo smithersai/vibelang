@@ -58,7 +58,8 @@ const (
 	// VibeSyntaxIs is subject is pattern (D211): Word is is, Right the pattern.
 	VibeSyntaxIs
 	// VibeSyntaxMatch is match (subject) { arms } (D206): Word is match, Left
-	// the subject, Open and Close the braces, and Arms the arms.
+	// the subject, Open and Close the braces, and Arms the arms. Head is the
+	// async keyword of an async match, empty otherwise.
 	VibeSyntaxMatch
 	// VibeSyntaxBlockStatement is a statement made of a header and a block:
 	// provide or with and the providers (D172), or uninterruptible, restore,

@@ -116,6 +116,7 @@ type matchInfo struct {
 	subject *ast.Node
 	arms    []matchArm
 	pos     int
+	async   *ast.Node    // the async modifier, or nil for a synchronous match
 	errors  []matchError // arm separators and arm grammar, in source order
 }
 
@@ -184,6 +185,47 @@ func (p *Parser) scanStartOfVibeLangMatch() bool {
 	return p.isMatchWord("when") || p.token == ast.KindDefaultKeyword || p.token == ast.KindCloseBraceToken
 }
 
+// isStartOfVibeLangAsyncMatch reports whether the current token starts an
+// async match (chapter 004, Appendix A AsyncMatchExpression): in a .vibe
+// file, async and match on one line, then what starts a match.
+func (p *Parser) isStartOfVibeLangAsyncMatch() bool {
+	return p.token == ast.KindAsyncKeyword && p.isVibeLangFile() && p.lookAhead((*Parser).scanStartOfVibeLangAsyncMatch)
+}
+
+func (p *Parser) scanStartOfVibeLangAsyncMatch() bool {
+	p.nextToken()
+	if p.hasPrecedingLineBreak() || !p.isMatchWord("match") {
+		return false
+	}
+	defer p.setVibeLangFiberContext(false)()
+	saved := p.contextFlags
+	defer func() { p.contextFlags = saved }()
+	p.setContextFlags(ast.NodeFlagsAwaitContext, true)
+	p.setContextFlags(ast.NodeFlagsYieldContext, false)
+	return p.scanStartOfVibeLangMatch()
+}
+
+// parseVibeLangAsyncMatch parses async match (subject) { … } in the
+// independent context [~Yield, +Await, ~Effect] (chapter 004, async match).
+// It has the behavior of (async () => match (subject) { … })(): the subject,
+// tests and the selected arm run in that async function, await is
+// JavaScript's there, and a thrown exception, the no-match TypeError
+// included, rejects the Promise. The arrow is no effect function, so try in
+// it is EK0501, and in effect code the call is a Promise-producing call
+// (EK0404) that an explicit bridge such as try promise(() => …) runs.
+func (p *Parser) parseVibeLangAsyncMatch() *ast.Node {
+	pos := p.nodePos()
+	p.nextToken() // async
+	modifier := p.finishNode(p.factory.NewModifier(ast.KindAsyncKeyword), pos)
+	defer p.setVibeLangFiberContext(false)()
+	saved := p.contextFlags
+	p.setContextFlags(ast.NodeFlagsAwaitContext, true)
+	p.setContextFlags(ast.NodeFlagsYieldContext, false)
+	node := p.parseVibeLangMatchWith(modifier, pos)
+	p.contextFlags = saved
+	return node
+}
+
 // isMatchWord reports whether the current token is the identifier word.
 func (p *Parser) isMatchWord(word string) bool {
 	return p.token == ast.KindIdentifier && p.scanner.TokenValue() == word
@@ -191,12 +233,21 @@ func (p *Parser) isMatchWord(word string) bool {
 
 // parseVibeLangMatch parses match (subject) { when pattern: value; ... default: value; }.
 func (p *Parser) parseVibeLangMatch() *ast.Node {
-	info := &matchInfo{pos: p.nodePos(), anchor: p.tokenRange()}
+	return p.parseVibeLangMatchWith(nil, p.nodePos())
+}
+
+// parseVibeLangMatchWith parses a match whose async modifier, if any, the
+// caller has read; pos is where the expression starts.
+func (p *Parser) parseVibeLangMatchWith(async *ast.Node, pos int) *ast.Node {
+	info := &matchInfo{pos: pos, anchor: p.tokenRange(), async: async}
 	p.nextToken() // match
 	p.parseExpected(ast.KindOpenParenToken)
 	info.subject = p.parseExpressionAllowIn()
 	p.parseExpected(ast.KindCloseParenToken)
 	form := VibeSyntax{Kind: VibeSyntaxMatch, Word: info.anchor, Left: p.sourceRange(info.subject)}
+	if async != nil {
+		form.Head = p.sourceRange(async)
+	}
 	if p.token == ast.KindOpenBraceToken {
 		form.Open = p.tokenRange()
 	}
@@ -262,6 +313,11 @@ func (p *Parser) parseVibeLangMatch() *ast.Node {
 	form.Range = core.NewTextRange(info.anchor.Pos(), p.nodePos())
 	p.recordVibeSyntax(form)
 	node := p.matchFunctionCall(info)
+	if async != nil {
+		// Always the async function's call: a return or statement position
+		// does not unwrap it, as it unwraps a synchronous match.
+		return node
+	}
 	if p.vibelangMatches == nil {
 		p.vibelangMatches = map[*ast.Node]*matchInfo{}
 	}
@@ -2084,7 +2140,18 @@ func (p *Parser) matchFunctionCall(info *matchInfo) *ast.Node {
 	})
 	span := core.NewTextRange(info.anchor.End(), p.nodePos())
 	body := p.mBlock(statements, span)
-	arrow := p.vibelangProgramArrow(nil, body, info.anchor)
+	var arrow *ast.Node
+	if info.async != nil {
+		// async () => { … }: the arrow of an async match.
+		arrowToken := p.vibelangSpanning(p.factory.NewToken(ast.KindEqualsGreaterThanToken), info.anchor)
+		arrowToken.Flags &^= ast.NodeFlagsReparsed
+		modifiers := p.newModifierList(info.async.Loc, p.nodeSliceArena.NewSlice1(info.async))
+		params := p.newNodeList(core.NewTextRange(info.anchor.Pos(), info.anchor.Pos()), nil)
+		arrow = p.vibelangSpanning(p.factory.NewArrowFunction(modifiers, nil, params, nil, nil, arrowToken, body), core.NewTextRange(body.Pos(), body.End()))
+		p.vibelangAsyncMatches = append(p.vibelangAsyncMatches, arrow)
+	} else {
+		arrow = p.vibelangProgramArrow(nil, body, info.anchor)
+	}
 	callee := p.vibelangSpanning(p.factory.NewParenthesizedExpression(arrow), span)
 	call := p.factory.NewCallExpression(callee, nil, nil, p.newNodeList(core.NewTextRange(p.nodePos(), p.nodePos()), nil), ast.NodeFlagsNone)
 	return p.finishNode(call, info.pos)
@@ -2093,7 +2160,9 @@ func (p *Parser) matchFunctionCall(info *matchInfo) *ast.Node {
 // matchReturnStatement writes return match (...) { ... } as a block whose
 // arms return their values.
 func (p *Parser) matchReturnStatement(info *matchInfo, pos int) *ast.Node {
-	return p.matchReturnStatementAt(info, core.NewTextRange(pos, p.nodePos()))
+	block := p.matchReturnStatementAt(info, core.NewTextRange(pos, p.nodePos()))
+	p.recordVibeLangSourceReturn(block)
+	return block
 }
 
 // matchReturnStatementAt also serves do completion after parsing has moved
@@ -2204,4 +2273,79 @@ func (p *Parser) restructureVibeLangWhile(condition, body *ast.Node, pos int) *a
 func (p *Parser) keywordRangeAt(pos int, keyword string) core.TextRange {
 	start := scanner.SkipTrivia(p.sourceText, pos)
 	return core.NewTextRange(start, min(start+len(keyword), len(p.sourceText)))
+}
+
+// checkVibeLangAsyncMatchJumps runs before do lowering, while source targets
+// and source returns still exist. Synchronous expression wrappers are transparent;
+// nested source callables and nested async matches own their jumps.
+func (p *Parser) checkVibeLangAsyncMatchJumps(file *ast.SourceFile) {
+	for _, boundary := range p.vibelangAsyncMatches {
+		var visit func(*ast.Node) bool
+		visit = func(n *ast.Node) bool {
+			if ast.IsFunctionLike(n) && !isSynthesizedArrow(n) || ast.IsClassLike(n) {
+				return false
+			}
+			switch n.Kind {
+			case ast.KindBlock:
+				if p.vibelangSourceReturns[n] {
+					p.doError(p.skipRangeTrivia(n.Loc), 706, "return cannot leave an async match. Return a value from the arm instead.")
+				}
+			case ast.KindReturnStatement:
+				if p.vibelangSourceReturns[n] {
+					p.doError(p.skipRangeTrivia(n.Loc), 706, "return cannot leave an async match. Return a value from the arm instead.")
+				}
+			case ast.KindBreakStatement, ast.KindContinueStatement:
+				if !jumpTargetWithin(n, boundary) && asyncMatchHasOuterTarget(n, boundary) {
+					p.doError(p.skipRangeTrivia(n.Loc), 706, "{0} cannot leave an async match. Keep its target inside the async match.", keywordOf(n))
+				}
+			}
+			n.ForEachChild(visit)
+			return false
+		}
+		boundary.Body().ForEachChild(visit)
+	}
+	if len(p.vibelangAsyncMatches) != 0 {
+		file.GetOrComputeData(asyncMatchFunctionsKey, func(*ast.SourceFile) []*ast.Node {
+			return slices.Clone(p.vibelangAsyncMatches)
+		})
+		file.SetDiagnostics(attachFileToDiagnostics(p.diagnostics, file))
+	}
+}
+
+// A jump with no source target keeps TypeScript's own diagnostic.
+func asyncMatchHasOuterTarget(jump, boundary *ast.Node) bool {
+	label := jump.Label()
+	for n := boundary.Parent; n != nil; n = n.Parent {
+		if ast.IsFunctionLike(n) && !isSynthesizedArrow(n) {
+			return false
+		}
+		if label != nil {
+			if ast.IsLabeledStatement(n) && n.Label().Text() == label.Text() {
+				return true
+			}
+		} else if ast.IsIterationStatement(n, false) || jump.Kind == ast.KindBreakStatement && n.Kind == ast.KindSwitchStatement {
+			return true
+		}
+	}
+	return false
+}
+
+// Generated match-arm returns are not source jumps. Record source return
+// identity before the parser replaces return match with its statement block.
+func (p *Parser) recordVibeLangSourceReturn(node *ast.Node) {
+	if !p.isVibeLangFile() {
+		return
+	}
+	if p.vibelangSourceReturns == nil {
+		p.vibelangSourceReturns = map[*ast.Node]bool{}
+	}
+	p.vibelangSourceReturns[node] = true
+}
+
+var asyncMatchFunctionsKey = ast.NewSourceFileDataKey[[]*ast.Node]()
+
+// VibeLangAsyncMatches returns the native async boundaries written for source
+// async match expressions. Their calls produce Promises in the enclosing context.
+func VibeLangAsyncMatches(file *ast.SourceFile) []*ast.Node {
+	return file.GetOrComputeData(asyncMatchFunctionsKey, func(*ast.SourceFile) []*ast.Node { return nil })
 }

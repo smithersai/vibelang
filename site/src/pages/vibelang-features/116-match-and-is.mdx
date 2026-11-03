@@ -390,12 +390,26 @@ function id(text: string): string {
 // Output: ["small","mid","large","not a number","id 12","none"]
 ```
 
+## Async matches
+
+`async match` returns a Promise. Its subject, tests and selected arm run in an async function, so each may use native `await`, even when the containing function is synchronous. Returned Promises and thenables are adopted.
+
+```vibe
+function load() {
+  return async match (await Promise.resolve("sent")) {
+    when "sent": await Promise.resolve("delivered");
+    default: "other";
+  }
+}
+```
+
+A thrown exception, including the no-match `TypeError`, rejects the Promise. A `return` belonging to the match, or a `break` or `continue` targeting a statement outside it, reports `EK0706`. Nested functions keep their own `return`; loops inside the match keep their own jumps. In effect code, run the Promise through a bridge such as `try Effect.promise(() => load())`.
+
 ## Not yet supported
 
 - A binding in an optional list element, `[let a?]` (`EK4704`).
 
 - A binding in an optional property, `{ let a? }` (`EK4704`).
-- `async match`.
 - A computed key other than a name or a literal (`EK4704`).
 
 Support for the new forms arrives with the compiler's VIP implementation. VIP-7 accepts the full TC39 proposal, including regular-expression patterns, relational patterns, and `async match`.

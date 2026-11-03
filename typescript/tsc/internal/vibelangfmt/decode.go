@@ -414,7 +414,7 @@ func (d *decoder) node(node *ast.Node) error {
 		}
 		d.replace(bracket, end, d.reindent(holder, start))
 	case placeholderMatchHead:
-		return d.match(node, holder.text == "statement match", holder.text == "grouped match", lost)
+		return d.match(node, holder.text == "statement match" || holder.text == "statement async match", holder.text == "grouped match", holder.text == "async match" || holder.text == "statement async match", lost)
 	case placeholderMatchArm:
 		d.replace(start, end, d.reindent(holder, start))
 	case placeholderBlockHead, placeholderClauseHead:
@@ -594,7 +594,7 @@ func (d *decoder) previousStatement(statement *ast.Node) *ast.Node {
 
 // match decodes the object literal ({ $v: subject, arms }) that stands for a
 // match, whose subject property's name is head.
-func (d *decoder) match(head *ast.Node, statement, groupedMatch bool, lost func() error) error {
+func (d *decoder) match(head *ast.Node, statement, groupedMatch, asyncMatch bool, lost func() error) error {
 	property := head.Parent
 	if property.Kind != ast.KindPropertyAssignment || property.Name() != head || property.Parent.Kind != ast.KindObjectLiteralExpression {
 		return lost()
@@ -620,6 +620,9 @@ func (d *decoder) match(head *ast.Node, statement, groupedMatch bool, lost func(
 	}
 	subject := property.Initializer()
 	prefix, suffix := "match (", "}"
+	if asyncMatch {
+		prefix = "async match ("
+	}
 	if groupedMatch && outer.Parent.Kind != ast.KindParenthesizedExpression {
 		prefix, suffix = "(match (", "})"
 	}

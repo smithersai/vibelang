@@ -773,6 +773,11 @@ func (e *encoder) parenthesizeNullish(r core.TextRange) bool {
 // match writes a match as an object literal whose first property holds the
 // subject and whose other properties are the arms.
 func (e *encoder) match(form parser.VibeSyntax) error {
+	start := form.Word.Pos()
+	asyncMatch := form.Head.End() > form.Head.Pos()
+	if asyncMatch {
+		start = form.Head.Pos()
+	}
 	separator := " "
 	next := form.Close.Pos()
 	if len(form.Arms) != 0 {
@@ -788,7 +793,7 @@ func (e *encoder) match(form parser.VibeSyntax) error {
 	statement, groupedMatch := false, false
 	var visit func(*ast.Node) bool
 	visit = func(node *ast.Node) bool {
-		if node.Kind == ast.KindCallExpression && scanner.SkipTrivia(e.source, node.Pos()) == form.Word.Pos() {
+		if node.Kind == ast.KindCallExpression && scanner.SkipTrivia(e.source, node.Pos()) == start {
 			parent := node.Parent
 			grouped := false
 			for parent != nil && parent.Kind == ast.KindParenthesizedExpression {
@@ -798,6 +803,7 @@ func (e *encoder) match(form parser.VibeSyntax) error {
 			// Removing the last group at a statement or after return changes
 			// match lowering from an expression call to a statement block.
 			groupedMatch = grouped && parent != nil && (parent.Kind == ast.KindReturnStatement || parent.Kind == ast.KindExpressionStatement)
+			statement = asyncMatch && !grouped && parent != nil && parent.Kind == ast.KindExpressionStatement
 			return true
 		}
 		if (node.Kind == ast.KindLabeledStatement || node.Kind == ast.KindBlock) && scanner.SkipTrivia(e.source, node.Pos()) == form.Word.Pos() {
@@ -814,8 +820,14 @@ func (e *encoder) match(form parser.VibeSyntax) error {
 	if statement {
 		prefix, marker = "void ", "statement match"
 	}
-	head := e.hold(placeholderMatchHead, marker, form.Word.Pos(), 0)
-	e.replace(form.Word.Pos(), form.Left.Pos(), prefix+"({"+separator+head+": ")
+	if asyncMatch {
+		marker = "async match"
+		if statement {
+			marker = "statement async match"
+		}
+	}
+	head := e.hold(placeholderMatchHead, marker, start, 0)
+	e.replace(start, form.Left.Pos(), prefix+"({"+separator+head+": ")
 	if len(form.Arms) == 0 {
 		e.replace(form.Left.End(), form.Open.End(), "")
 	} else {

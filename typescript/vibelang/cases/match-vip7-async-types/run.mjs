@@ -32,9 +32,9 @@ const serial = value => JSON.parse(JSON.stringify(value, (_key, item) => {
   if (typeof item === "number" && !Number.isFinite(item)) return { $number: String(item) }
   return item
 }))
-const actualExit = serial(Effect.runSyncExit(actual.main()))
-const referenceExit = serial(referenceEffect.runSyncExit(reference.main()))
-assert.deepEqual(actualExit, referenceExit)
-assert.equal(actualExit._tag, "Success")
+const actualExit = serial(await Effect.runPromiseExit(actual.main()))
+const referenceExit = serial(await referenceEffect.runPromiseExit(reference.main()))
+assert.deepEqual(actualExit, referenceExit, JSON.stringify({ actualExit, referenceExit }))
+assert.equal(actualExit._tag, "Success", JSON.stringify({ actualExit, referenceExit }))
 assert.deepEqual(actualExit.value, [3, "other", 7])
 console.log("ok pinned TypeScript 5.9.3 / Effect 4.1.0 async types and Exit")

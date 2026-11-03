@@ -1121,3 +1121,46 @@ func init() {
 		Cite:    vip7Cite("if(!bound)throw new ReferenceError()"),
 	})
 }
+
+// Async boundaries vary subject suspension, branch selection and Promise adoption.
+// Every variant checks that the caller resumes before the awaited guard and that
+// only the selected arm runs. The native async IIFE is VIP-7's explicit reading.
+func init() {
+	for mask := 0; mask < 8; mask++ {
+		subject := "1"
+		if mask&1 != 0 {
+			subject = "2"
+		}
+		if mask&2 != 0 {
+			subject = "await Promise.resolve(" + subject + ")"
+		}
+		arm := "Promise.resolve(n + 5)"
+		if mask&4 != 0 {
+			arm = "await " + arm
+		}
+		vibe := fmt.Sprintf(`function witness(){return Effect.promise(async()=>{
+const log:string[]=[];
+const pending=async match((log.push("subject"),%s)){
+ when let n and if((log.push("guard"),await Promise.resolve(n===1))):do{log.push("hit");%s};
+ default:do{log.push("miss");Promise.resolve(9)};
+};
+log.push("caller");return [await pending,log];
+})}`, subject, arm)
+		reference := fmt.Sprintf(`function witness(){return Effect.promise(async()=>{
+const log=[];
+const pending=(async()=>{
+ const n=(log.push("subject"),%s);
+ if((log.push("guard"),await Promise.resolve(n===1))){log.push("hit");return %s;}
+ log.push("miss");return Promise.resolve(9);
+})();
+log.push("caller");return [await pending,log];
+})}`, subject, arm)
+		registerWitness(7, ChapterWitness{
+			Key:     fmt.Sprintf("vip07.async-boundary-%d-plain", mask),
+			Chapter: "004-match.md",
+			Quote:   "subject evaluation, tests and the selected arm run inside the async function.",
+			Vibe:    vibe, Effect: reference, ReturnsEffect: true,
+			Cite: vip7Cite("const pending=(async()=>"),
+		})
+	}
+}

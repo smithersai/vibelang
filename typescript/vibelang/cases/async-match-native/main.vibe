@@ -1,0 +1,48 @@
+import { Effect } from "effect"
+
+// The census witness: await belongs to the match, even in a non-async arrow.
+effect function witness0() {
+  return try Effect.promise(() => async match (await Promise.resolve("sent")) {
+    when "sent": await Promise.resolve("sent");
+  })
+}
+
+async function native() {
+  const trace: string[] = []
+  const result: Promise<number> = async match ((trace.push("subject"), await Promise.resolve(2))) {
+    when 1: do { trace.push("wrong"); 1 };
+    when let n and if ((trace.push("guard"), await Promise.resolve(n === 2))):
+      do { trace.push("arm"); await Promise.resolve(n + 5) };
+    default: do { trace.push("default"); 0 };
+  }
+  trace.push("caller")
+  const value = await result
+  const adopted: Promise<number> = async match (true) { default: Promise.resolve(9); }
+  let rejected = false
+  try {
+    await async match ("other" as unknown) { when "sent": "bad"; }
+  } catch (e) { rejected = e instanceof TypeError }
+  const nested = await async match (1) {
+    default: await async match (2) { default: 3; };
+  }
+  const localReturn = await async match (true) {
+    default: (() => { return 11 })();
+  }
+  return [value, await adopted, rejected, nested, localReturn, trace]
+}
+
+const receiver = {
+  value: 4,
+  choose(...args: number[]) {
+    return async match (this.value) { default: this.value + args[0]; }
+  }
+}
+
+// expect-result: ["sent",[7,9,true,3,11,["subject","caller","guard","arm"]],10]
+export effect function main() {
+  return [
+    try witness0(),
+    try Effect.promise(native),
+    try Effect.promise(() => receiver.choose(6))
+  ]
+}
