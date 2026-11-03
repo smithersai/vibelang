@@ -53,8 +53,16 @@ func renderExec(e edit) (text string, keep bool) {
 		}
 		return e.arg, true
 	case editSettledCall:
+		if e.arg == "literal" {
+			return pick(e.part, helperRef("Effect")+".all(", "", ", { concurrency: \"unbounded\" })"), true
+		}
 		return pick(e.part, helperRef("$tryAllSettled")+"(", "", ")"), true
-	case editSettledMap, editSettledElement:
+	case editSettledElement:
+		if e.arg == "literal" {
+			return pick(e.part, helperRef("Effect")+".exit(", "", ")"), true
+		}
+		return "", false
+	case editSettledMap:
 		return "", false
 	case editWitness:
 		return "", false

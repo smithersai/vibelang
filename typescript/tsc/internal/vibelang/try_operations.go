@@ -2,10 +2,12 @@ package vibelang
 
 import (
 	"context"
+	"slices"
+	"strings"
+
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/checker"
 	"github.com/microsoft/TypeScript/tsc/internal/ls"
-	"strings"
 )
 
 // EK1801: VIP-18 accepts only arrays of Effects.
@@ -138,4 +140,51 @@ func tryOperationImportPosition(file *ast.SourceFile) int {
 		at = statement.End()
 	}
 	return at
+}
+
+// trySettledLiteral returns a no-spread source literal. Spread operands keep
+// the helper's single source-array construction and native iterator behavior.
+func trySettledLiteral(node *ast.Node) *ast.Node {
+	if tryOperationName(node) != "try.allSettled" {
+		return nil
+	}
+	operand := ast.SkipParentheses(node.Arguments()[0])
+	if !ast.IsArrayLiteralExpression(operand) || slices.ContainsFunc(operand.Elements(), ast.IsSpreadElement) {
+		return nil
+	}
+	return operand
+}
+
+// visitTrySettledLiteral emits the VIP-18 per-element counterpart directly:
+// mapping a compiler-created literal would add an observable prototype call.
+func (tx *lowering) visitTrySettledLiteral(node *ast.Node) *ast.Node {
+	f := tx.Factory()
+	operand := trySettledLiteral(node)
+	invoke := func(name string, args ...*ast.Node) *ast.Node {
+		member := f.NewPropertyAccessExpression(tx.effectName(), nil, f.NewIdentifier(name), ast.NodeFlagsNone)
+		return f.NewCallExpression(member, nil, nil, f.NewNodeList(args), ast.NodeFlagsNone)
+	}
+	elements := make([]*ast.Node, 0, len(operand.Elements()))
+	for _, element := range operand.Elements() {
+		exited := invoke("exit", tx.Visitor().VisitNode(element))
+		tx.EmitContext().SetOriginal(exited, element)
+		exited.Loc = element.Loc
+		elements = append(elements, exited)
+	}
+	array := f.NewArrayLiteralExpression(f.NewNodeList(elements), false)
+	tx.EmitContext().SetOriginal(array, operand)
+	array.Loc = operand.Loc
+	options := f.NewObjectLiteralExpression(f.NewNodeList([]*ast.Node{
+		f.NewPropertyAssignment(nil, f.NewIdentifier("concurrency"), nil, nil, f.NewStringLiteral("unbounded", ast.TokenFlagsNone)),
+	}), false)
+	call := invoke("all", array, options)
+	tx.EmitContext().SetOriginal(call, node)
+	call.Loc = node.Loc
+	if tx.inEffect && tx.plan.runsCall(node) {
+		run := f.NewYieldExpression(f.NewToken(ast.KindAsteriskToken), call)
+		tx.EmitContext().SetOriginal(run, node)
+		run.Loc = node.Loc
+		return run
+	}
+	return call
 }

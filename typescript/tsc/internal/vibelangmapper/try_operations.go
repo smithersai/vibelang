@@ -1,6 +1,8 @@
 package vibelangmapper
 
 import (
+	"slices"
+
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/scanner"
 )
@@ -107,16 +109,21 @@ func restoreTryOperandMarks(file *ast.SourceFile, text string, marks []tryOperan
 	file.AsNode().ForEachChild(visit)
 }
 
-// Checking uses the exact VIP-18 Effect counterpart; executable output keeps
-// the runtime helper so wrappers never iterate a compiler-created array.
+// No-spread literals use the direct VIP-18 wrappers in both renderings.
+// Held and spread operands keep the helper to avoid extra array iteration.
 func (p *projector) trySettledOperation(call, operand *ast.Node, start int, e env) {
 	p.plan.mark(editRun, partOpen, start, start, "")
-	p.plan.mark(editSettledCall, partOpen, start, p.tokenStart(operand), "")
 	inner := ast.SkipParentheses(operand)
+	literal := ast.IsArrayLiteralExpression(inner) && !slices.ContainsFunc(inner.Elements(), ast.IsSpreadElement)
+	mode := ""
+	if literal {
+		mode = "literal"
+	}
+	p.plan.mark(editSettledCall, partOpen, start, p.tokenStart(operand), mode)
 	e.holdCalls = true
 	if ast.IsArrayLiteralExpression(inner) {
 		for _, element := range inner.Elements() {
-			kind, arg := editSettledElement, ""
+			kind, arg := editSettledElement, mode
 			value := element
 			if ast.IsSpreadElement(element) {
 				kind, arg, value = editSettledMap, "spread", element.Expression()
@@ -130,6 +137,6 @@ func (p *projector) trySettledOperation(call, operand *ast.Node, start int, e en
 		p.visit(operand, e)
 		p.plan.mark(editSettledMap, partClose, operand.End(), operand.End(), "")
 	}
-	p.plan.mark(editSettledCall, partClose, call.End(), call.End(), "")
+	p.plan.mark(editSettledCall, partClose, call.End(), call.End(), mode)
 	p.plan.mark(editRun, partClose, call.End(), call.End(), "")
 }

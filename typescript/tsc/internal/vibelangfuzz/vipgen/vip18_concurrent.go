@@ -1,6 +1,7 @@
 package vipgen
 
 import (
+	"fmt"
 	"slices"
 	"strconv"
 	"strings"
@@ -9,8 +10,8 @@ import (
 // VIP-18: `try.all`, `try.race`, `try.any` and `try.allSettled` over an
 // array of Effects, each "exact sugar for an Effect function":
 // Effect.all(…, { concurrency: "unbounded" }), Effect.raceAllFirst,
-// Effect.raceAll, and Effect.all(….map(Effect.exit), { concurrency:
-// "unbounded" }). Each element waits for its own virtual deadline first, and
+// Effect.raceAll, and per-element Effect.exit wrappers under Effect.all
+// with unbounded concurrency. Each element waits for its own virtual deadline first, and
 // the deadlines of one array differ, so which element finishes first never
 // depends on how fast the scheduler runs it (merged.md, Determinism).
 
@@ -18,6 +19,12 @@ import (
 type concurrentOp struct {
 	key, name string
 	citation  Citation
+}
+
+var settledLiteralCitation = Citation{
+	VIP:      18,
+	Template: "yield* Effect.all([‹xs›], { concurrency: \"unbounded\" })",
+	Quote:    "For an array literal the counterpart wraps each element, `Effect.all([Effect.exit(a()), Effect.exit(b())], { concurrency: \"unbounded\" })`, which gives the same `Exit` and keeps the tuple type; any other operand uses `xs.map(Effect.exit)`.",
 }
 
 var concurrentOps = []concurrentOp{
@@ -36,11 +43,7 @@ var concurrentOps = []concurrentOp{
 		Template: "yield* Effect.raceAll([‹xs›])",
 		Quote:    "`try.race` gives the first to finish, and `try.any` the first to succeed.",
 	}},
-	{"vip18.all-settled", "allSettled", Citation{
-		VIP:      18,
-		Template: `yield* Effect.all([‹xs›].map(Effect.exit), { concurrency: "unbounded" })`,
-		Quote:    "`try.allSettled` gives each element's `Exit` (success, failure, defect or interruption), and the whole never fails, as `Promise.allSettled` never rejects.",
-	}},
+	{"vip18.all-settled", "allSettled", settledLiteralCitation},
 }
 
 func init() {
@@ -162,9 +165,16 @@ func (c *Concurrent) Effect(w *Writer) {
 		c.array(w)
 		w.Write(")")
 	case "allSettled":
-		w.Write("yield* Effect.all(")
-		c.array(w)
-		w.Write(`.map(Effect.exit), { concurrency: "unbounded" })`)
+		w.Write("yield* Effect.all([")
+		for i, e := range c.Elems {
+			if i > 0 {
+				w.Write(", ")
+			}
+			w.Write("Effect.exit(")
+			w.Node(e)
+			w.Write(")")
+		}
+		w.Write(`], { concurrency: "unbounded" })`)
 	}
 }
 
@@ -426,4 +436,121 @@ func init() {
 			}}
 		},
 	})
+}
+
+// SettledMapObservation keeps prototype instrumentation inside a synchronous
+// JS turn, so concurrent generated fibers cannot observe a temporary patch.
+// Receiver identity uses the source Effect values rather than module-local
+// callback identity. Empty arrays are a result control.
+type SettledMapObservation struct {
+	Mode, Prefix, Label string
+}
+
+func init() {
+	for _, mode := range []string{"literal", "grouped", "held", "spread", "single", "empty", "shadow", "defect", "factory"} {
+		makeStmt := func(g *Gen, s *Scope) Stmt {
+			g.UseEffect()
+			name := g.Name("settled")
+			s.Locals = append(s.Locals, name)
+			return &Const{Name: name, Value: &SettledMapObservation{Mode: mode, Prefix: g.Name("probe"), Label: g.Label()}}
+		}
+		citation := settledLiteralCitation
+		citation.Template = "yield* ‹module›.all([‹elements›], { concurrency: \"unbounded\" })"
+		if mode == "held" || mode == "spread" {
+			citation.Template = "yield* ‹module›.all(‹array›.map(‹module›.exit), { concurrency: \"unbounded\" })"
+		}
+		Register(&Construct{
+			Key: "vip18.settled-map-" + mode, VIP: 18,
+			Requires:  []string{"vip01.effect-function", "vip02.effect-block", "vip05.try", "vip18.all-settled"},
+			Citations: []Citation{citation},
+			Focus:     func(g *Gen, s *Scope) []Stmt { return []Stmt{makeStmt(g, s)} },
+			Stmt:      makeStmt,
+		})
+	}
+}
+
+func (p *SettledMapObservation) Vibe(w *Writer)   { p.print(w, true) }
+func (p *SettledMapObservation) Effect(w *Writer) { p.print(w, false) }
+func (p *SettledMapObservation) print(w *Writer, vibe bool) {
+	a, b, rows, ns := p.Prefix+"a", p.Prefix+"b", p.Prefix+"rows", p.Prefix+"ns"
+	targets, operand := "["+a+", "+b+"]", "["+a+", "+b+"]"
+	native := ns + ".all([" + ns + ".exit(" + a + "), " + ns + ".exit(" + b + ")], { concurrency: \"unbounded\" })"
+	before := ""
+	switch p.Mode {
+	case "grouped":
+		operand = "(" + operand + ")"
+	case "held":
+		operand = rows
+		native = ns + ".all(" + rows + ".map(" + ns + ".exit), { concurrency: \"unbounded\" })"
+	case "spread":
+		operand = "[..." + rows + "]"
+		before = "const " + p.Prefix + "source = [..." + rows + "];"
+		native = ns + ".all(" + p.Prefix + "source.map(" + ns + ".exit), { concurrency: \"unbounded\" })"
+	case "single":
+		targets, operand = "["+a+"]", "["+a+"]"
+		native = ns + ".all([" + ns + ".exit(" + a + ")], { concurrency: \"unbounded\" })"
+	case "empty":
+		targets, operand = "[]", "[]"
+		native = ns + ".all([], { concurrency: \"unbounded\" })"
+	}
+	shadow := ""
+	if p.Mode == "shadow" {
+		shadow = "const Effect = { all: 0, exit: 0 };"
+	}
+	factories := ""
+	if p.Mode == "factory" {
+		factories = fmt.Sprintf("const %sfirst = () => { ev(%s); return %s; }; const %ssecond = () => { ev(%s); return %s; };", p.Prefix, strconv.Quote(p.Label+"first"), a, p.Prefix, strconv.Quote(p.Label+"second"), b)
+		operand = "[" + p.Prefix + "first(), " + p.Prefix + "second()]"
+		native = ns + ".all([" + ns + ".exit(" + p.Prefix + "first()), " + ns + ".exit(" + p.Prefix + "second())], { concurrency: \"unbounded\" })"
+	}
+	work := "effect { " + shadow + factories + " return try.allSettled " + operand + "; }"
+	run := "try"
+	if !vibe {
+		work = ns + ".gen(function* () { " + shadow + factories + before + " return yield* " + native + "; })"
+		run = "yield*"
+	}
+	second := ns + `.fail("e")`
+	if p.Mode == "defect" {
+		second = ns + `.die("settled-map-defect")`
+	}
+	template := `$RUN$ Effect.sync(() => {
+  const $P$ns = Effect;
+  const $P$a: Effect.Effect<number, string> = $P$ns.succeed(7);
+  const $P$b: Effect.Effect<number, string> = $SECOND$;
+  const $P$rows: Array<Effect.Effect<number, string>> = $ROWS$;
+  const $P$prototype: any = Array.prototype;
+  const $P$map = $P$prototype.map;
+  const $P$iterator = $P$prototype[Symbol.iterator];
+  let $P$maps = 0, $P$iterators = 0;
+  const $P$matches = (xs: any[]) => $P$rows.length > 0 && xs.length === $P$rows.length && xs.every((v, i) => v === $P$rows[i]);
+  const $P$work = $WORK$;
+  let $P$exits: any;
+  try {
+    $P$prototype.map = function (this: any[], callback: any, thisArg: any) {
+      if ($P$matches(this)) $P$maps++;
+      return Reflect.apply($P$map, this, [callback, thisArg]);
+    };
+    $P$prototype[Symbol.iterator] = function (this: any[]) {
+      if ($P$matches(this)) $P$iterators++;
+      return Reflect.apply($P$iterator, this, []);
+    };
+    $P$exits = $P$ns.runSync($P$work);
+  } finally {
+    $P$prototype.map = $P$map;
+    $P$prototype[Symbol.iterator] = $P$iterator;
+  }
+  ev($LABEL$ + ":" + $P$maps + ":" + $P$iterators);
+  for (const $P$exit of $P$exits) ev($P$exit._tag);
+  return 0;
+})`
+	text := strings.NewReplacer("$RUN$", run, "$P$", p.Prefix, "$SECOND$", second, "$ROWS$", targets, "$WORK$", work, "$LABEL$", strconv.Quote(p.Label)).Replace(template)
+	if !vibe {
+		text = strings.NewReplacer(
+			"this: any[], ", "", "this: any[]", "",
+			": Array<Effect.Effect<number, string>>", "",
+			": Effect.Effect<number, string>", "",
+			": any[]", "", ": any", "",
+		).Replace(text)
+	}
+	w.Write(text)
 }

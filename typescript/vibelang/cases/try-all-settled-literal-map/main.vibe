@@ -1,0 +1,56 @@
+// expect-result: {"literal":[0,0],"grouped":[0,0],"held":[1,0],"spread":[1,1],"single":[0,0],"emptyLength":0,"same":true}
+import { Effect as Fx } from "effect"
+import { nativeObserve, type Kind } from "./native.js"
+
+export effect function observe(kind: Kind) {
+  const result = try Fx.sync(() => {
+    const a: Fx.Effect<number, string> = Fx.succeed(7)
+    const b: Fx.Effect<number, string> = Fx.fail("e")
+    const rows: Array<Fx.Effect<number, string>> = kind === "empty" ? [] : kind === "single" ? [a] : [a, b]
+    const prototype: any = Array.prototype
+    const oldMap = prototype.map
+    const oldIterator = prototype[Symbol.iterator]
+    let maps = 0, iterators = 0
+    const matches = (xs: any[]) => xs.length === rows.length && xs.every((v, i) => v === rows[i])
+    const work = effect {
+      const Effect = { all: 0, exit: 0 }
+      switch (kind) {
+        case "grouped": return try.allSettled ([a, b])
+        case "held": return try.allSettled rows
+        case "spread": return try.allSettled [...rows]
+        case "single": return try.allSettled [a]
+        case "empty": return try.allSettled []
+        default: return try.allSettled [a, b]
+      }
+    }
+    try {
+      prototype.map = function (this: any[], callback: any, thisArg: any) {
+        if (matches(this)) maps++
+        return Reflect.apply(oldMap, this, [callback, thisArg])
+      }
+      prototype[Symbol.iterator] = function (this: any[]) {
+        if (rows.length > 0 && matches(this)) iterators++
+        return Reflect.apply(oldIterator, this, [])
+      }
+      const exits = Fx.runSync(work)
+      return { maps, iterators, exits }
+    } finally {
+      prototype.map = oldMap
+      prototype[Symbol.iterator] = oldIterator
+    }
+  })
+  return { maps: result.maps, iterators: result.iterators, tags: result.exits.map((x) => x._tag) }
+}
+
+export effect function main() {
+  const summary: Record<string, unknown> = {}
+  let same = true
+  for (const kind of ["literal", "grouped", "held", "spread", "single", "empty"] as const) {
+    const actual = try observe(kind)
+    const native = try nativeObserve(kind)
+    same = same && JSON.stringify(actual) === JSON.stringify(native)
+    if (kind === "empty") summary.emptyLength = actual.tags.length
+    else summary[kind] = [actual.maps, actual.iterators]
+  }
+  return { ...summary, same }
+}

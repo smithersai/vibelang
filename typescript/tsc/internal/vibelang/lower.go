@@ -215,6 +215,8 @@ func (tx *lowering) visitNode(node *ast.Node) *ast.Node {
 		f := tx.Factory()
 		flatten := f.NewPropertyAccessExpression(tx.effectName(), nil, f.NewIdentifier("flatten"), ast.NodeFlagsNone)
 		return f.NewCallExpression(flatten, nil, nil, f.NewNodeList([]*ast.Node{tx.Visitor().VisitEachChild(node)}), ast.NodeFlagsNone)
+	case trySettledLiteral(node) != nil:
+		return tx.visitTrySettledLiteral(node)
 	case isInvocation(node) && tx.inEffect && tx.plan.runsCall(node):
 		return tx.visitRunningCall(node)
 	case isTryCall(node):
