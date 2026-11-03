@@ -7,3 +7,4 @@ export function pick(a: unknown, id: number) {
   if (a is { id: let id }) return id
   return id
 }
+// VIP-7 parameter collision retains native diagnostic; rule: docs/design/vips/0007-match.md#4356fa4568f6aacb

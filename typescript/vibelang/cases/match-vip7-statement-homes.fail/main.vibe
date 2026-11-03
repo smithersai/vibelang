@@ -1,0 +1,3 @@
+// expect: TS2345
+export function ids(xs:unknown[]){const out:number[]=[];for(const x of xs)if(x is {id:let id})out.push(id);return out}
+// VIP-7 unknown payload is not a number; rule: docs/design/vips/0007-match.md#e6afb4c503060b5f

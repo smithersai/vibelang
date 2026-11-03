@@ -44,3 +44,5 @@ export effect function main() {
 // Chapter 004 rule: Its ordinary TypeScript/Effect counterpart is `function inspect(x: number) { let value = x; if (value > 0) return value; return value }`.
 
 // Chapter 004 rule: `if` keeps its existing nearest-block scope; the within-one-`or` replacement above is unchanged.
+
+// VIP-7 if head bindings survive a negated guard; rule: docs/design/vips/0007-match.md#69932b9ccdabc299

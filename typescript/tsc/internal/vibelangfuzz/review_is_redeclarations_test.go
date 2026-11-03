@@ -141,3 +141,8 @@ func FuzzReviewIsRedeclarations(f *testing.F) {
 		ExpectPending(t, reviewIsRedeclarationsTarget, specCorpusKey(t))
 	})
 }
+// VIP-7 one name per home, native redeclaration diagnostics and distinct-home controls; rule: docs/design/vips/0007-match.md#e7ed83301e09f377
+// VIP-7 one name per home, native redeclaration diagnostics and distinct-home controls; rule: docs/design/vips/0007-match.md#11b63ab148e09aa0
+// VIP-7 one name per home, native redeclaration diagnostics and distinct-home controls; rule: docs/design/vips/0007-match.md#ff4c32607ec8b008
+// VIP-7 one name per home, native redeclaration diagnostics and distinct-home controls; rule: docs/design/vips/0007-match.md#1ce3c9096dfced97
+// VIP-7 one name per home, native redeclaration diagnostics and distinct-home controls; rule: docs/design/vips/0007-match.md#f810118fa78c18d8

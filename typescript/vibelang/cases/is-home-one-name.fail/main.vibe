@@ -7,3 +7,4 @@ export function pick(a: unknown, b: unknown) {
   if (b is { id: let id }) return id
   return 0
 }
+// VIP-7 duplicate object heads and distinct-name repair; rule: docs/design/vips/0007-match.md#1ce3c9096dfced97

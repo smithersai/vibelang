@@ -1,0 +1,32 @@
+import {Effect,Stream} from "effect"
+function home0(xs:unknown[]):readonly unknown[]{const readers:(()=>unknown)[]=[];for(const x of xs){if(true) (x is {id:let id}) && readers.push(()=>id);}return readers.map(f=>f());}
+function home1(xs:unknown[]):readonly unknown[]{const readers:(()=>unknown)[]=[];for(const x of xs){if(true) {(x is {id:let id}) && readers.push(()=>id);}}return readers.map(f=>f());}
+function home2(xs:unknown[]):readonly unknown[]{const readers:(()=>unknown)[]=[];for(const x of xs){if(false){}else (x is {id:let id}) && readers.push(()=>id);}return readers.map(f=>f());}
+function home3(xs:unknown[]):readonly unknown[]{const readers:(()=>unknown)[]=[];for(const x of xs){if(false){}else {(x is {id:let id}) && readers.push(()=>id);}}return readers.map(f=>f());}
+function home4(xs:unknown[]):readonly unknown[]{const readers:(()=>unknown)[]=[];let i=0;while(i<xs.length) (xs[i++] is {id:let id}) && readers.push(()=>id);return readers.map(f=>f());}
+function home5(xs:unknown[]):readonly unknown[]{const readers:(()=>unknown)[]=[];let i=0;while(i<xs.length) {(xs[i++] is {id:let id}) && readers.push(()=>id);}return readers.map(f=>f());}
+function home6(xs:unknown[]):readonly unknown[]{const readers:(()=>unknown)[]=[];let i=0;do (xs[i++] is {id:let id}) && readers.push(()=>id); while(i<xs.length);return readers.map(f=>f());}
+function home7(xs:unknown[]):readonly unknown[]{const readers:(()=>unknown)[]=[];let i=0;do {(xs[i++] is {id:let id}) && readers.push(()=>id);} while(i<xs.length);return readers.map(f=>f());}
+function home8(xs:unknown[]):readonly unknown[]{const readers:(()=>unknown)[]=[];for(let i=0;i<xs.length;i++) (xs[i] is {id:let id}) && readers.push(()=>id);return readers.map(f=>f());}
+function home9(xs:unknown[]):readonly unknown[]{const readers:(()=>unknown)[]=[];for(let i=0;i<xs.length;i++) {(xs[i] is {id:let id}) && readers.push(()=>id);}return readers.map(f=>f());}
+function home10(xs:unknown[]):readonly unknown[]{const readers:(()=>unknown)[]=[];for(const key in xs) (xs[Number(key)] is {id:let id}) && readers.push(()=>id);return readers.map(f=>f());}
+function home11(xs:unknown[]):readonly unknown[]{const readers:(()=>unknown)[]=[];for(const key in xs) {(xs[Number(key)] is {id:let id}) && readers.push(()=>id);}return readers.map(f=>f());}
+function home12(xs:unknown[]):readonly unknown[]{const readers:(()=>unknown)[]=[];for(const x of xs) (x is {id:let id}) && readers.push(()=>id);return readers.map(f=>f());}
+function home13(xs:unknown[]):readonly unknown[]{const readers:(()=>unknown)[]=[];for(const x of xs) {(x is {id:let id}) && readers.push(()=>id);}return readers.map(f=>f());}
+async function home14(xs:unknown[]):Promise<readonly unknown[]>{const readers:(()=>unknown)[]=[];for await(const x of xs) (x is {id:let id}) && readers.push(()=>id);return readers.map(f=>f());}
+async function home15(xs:unknown[]):Promise<readonly unknown[]>{const readers:(()=>unknown)[]=[];for await(const x of xs) {(x is {id:let id}) && readers.push(()=>id);}return readers.map(f=>f());}
+effect function home16(xs:unknown[]):Effect.Effect<readonly unknown[]>{const readers:(()=>unknown)[]=[];for concurrent(1)(const x of xs) (x is {id:let id}) && readers.push(()=>id);return readers.map(f=>f());}
+effect function home17(xs:unknown[]):Effect.Effect<readonly unknown[]>{const readers:(()=>unknown)[]=[];for concurrent(1)(const x of xs) {(x is {id:let id}) && readers.push(()=>id);}return readers.map(f=>f());}
+effect function home18(xs:unknown[]):Effect.Effect<readonly unknown[]>{const readers:(()=>unknown)[]=[];for try(const x of Stream.fromIterable(xs)) (x is {id:let id}) && readers.push(()=>id);return readers.map(f=>f());}
+effect function home19(xs:unknown[]):Effect.Effect<readonly unknown[]>{const readers:(()=>unknown)[]=[];for try(const x of Stream.fromIterable(xs)) {(x is {id:let id}) && readers.push(()=>id);}return readers.map(f=>f());}
+function home20(xs:unknown[]):readonly unknown[]{const readers:(()=>unknown)[]=[];for(const x of xs){home: (x is {id:let id}) && readers.push(()=>id);}return readers.map(f=>f());}
+function home21(xs:unknown[]):readonly unknown[]{const readers:(()=>unknown)[]=[];for(const x of xs){home: {(x is {id:let id}) && readers.push(()=>id);}}return readers.map(f=>f());}
+function home22(xs:unknown[]):readonly unknown[]{const readers:(()=>unknown)[]=[];for(const x of xs) if(x is {id:let id}) readers.push(()=>id);return readers.map(f=>f());}
+function home23(xs:unknown[]):readonly unknown[]{const readers:(()=>unknown)[]=[];for(const x of xs) {if(x is {id:let id}) readers.push(()=>id);}return readers.map(f=>f());}
+function home24(xs:unknown[]):readonly unknown[]{const readers:(()=>unknown)[]=[];for(const x of xs){if(true) if(x is {id:let id}) readers.push(()=>id);}return readers.map(f=>f());}
+function home25(xs:unknown[]):readonly unknown[]{const readers:(()=>unknown)[]=[];for(const x of xs){if(true) {if(x is {id:let id}) readers.push(()=>id);}}return readers.map(f=>f());}
+export effect function main():Effect.Effect<readonly unknown[],unknown>{const xs:unknown[]=[{id:1},{id:2},{}];return [home0(xs),home1(xs),home2(xs),home3(xs),home4(xs),home5(xs),home6(xs),home7(xs),home8(xs),home9(xs),home10(xs),home11(xs),home12(xs),home13(xs),try Effect.promise(()=>home14(xs)),try Effect.promise(()=>home15(xs)),try home16(xs),try home17(xs),try home18(xs),try home19(xs),home20(xs),home21(xs),home22(xs),home23(xs),home24(xs),home25(xs)]}
+// VIP-7 fresh closure cells in all braced/unbraced statement homes; rule: docs/design/vips/0007-match.md#bd969bda6b125d4c
+// VIP-7 fresh closure cells in all braced/unbraced statement homes; rule: docs/design/vips/0007-match.md#1ef3d3d76aa9c0b1
+// VIP-7 fresh closure cells in all braced/unbraced statement homes; rule: docs/design/vips/0007-match.md#92dc541ce4f5dfda
+// VIP-7 fresh closure cells in all braced/unbraced statement homes; rule: docs/design/vips/0007-match.md#0f2ebf99ebbacbb2

@@ -234,3 +234,5 @@ func FuzzReviewIsBindingHomes(f *testing.F) {
 		ExpectPending(t, reviewIsBindingHomesTarget, specCorpusKey(t))
 	})
 }
+// VIP-7 concise-arrow, field/static-field, static-block, enum and parameter home classification; rule: docs/design/vips/0007-match.md#ec1c2deae4f0a68f
+// VIP-7 concise-arrow, field/static-field, static-block, enum and parameter home classification; rule: docs/design/vips/0007-match.md#e78afe0e526bbf6a

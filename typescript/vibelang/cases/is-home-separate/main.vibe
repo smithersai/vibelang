@@ -25,3 +25,4 @@ export function idsBraced(xs: unknown[]) {
 export effect function main() {
   return [pickOk({ id: 1 }, {}), pickOk({}, { id: 2 }), blocks({}, { id: 3 }), ids([{ id: 1 }, { id: 2 }, {}])]
 }
+// VIP-7 duplicate object heads and distinct-name repair; rule: docs/design/vips/0007-match.md#1ce3c9096dfced97
