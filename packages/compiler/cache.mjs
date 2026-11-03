@@ -86,7 +86,7 @@ function unsafe(cache) {
   return undefined
 }
 
-function prepare(cache) {
+export function prepare(cache) {
   mkdirSync(cache.path, { recursive: true, mode: 0o700 })
   const reason = unsafe(cache)
   if (reason !== undefined) throw new Error(reason)
