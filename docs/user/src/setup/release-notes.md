@@ -170,6 +170,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Packed packages could leave private emitted imports pointing at compatibility declarations that were absent from the archive. Publication now maps each exact source to the package’s regular built declarations while preserving its runtime targets.
 - No-throw documentation and fuzz checks failed after VIP-41 clarified `throw` expressions; their citations now match the current rule.
 - The `effect` quick fix was missing for arrows with one bare parameter; it now adds the required parentheses and preserves comments.
+- A `layer` body holding a token that cannot start a statement, such as `layer L: S { default }`, hung the compiler and the editor until they ran out of memory. The parser now reports the error once and continues.
 - Documentation checks accepted throws in synchronous arrows whose parameter was named `effect`; they now apply the same rule after parameter renaming.
 - No-throw validation incorrectly failed after a plain catch handler became an effect handler; its regression fixtures now use catch's existing join point without a redundant `try`.
 - Migration setup could leave a nested workspace consumer on `tsc` when a semver peer or npm alias resolved to migrated workspace sources. Setup now follows installed workspace links for compiler, test-runner and worker wiring while respecting nearer registry packages.
