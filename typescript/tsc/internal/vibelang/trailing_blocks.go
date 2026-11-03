@@ -12,6 +12,7 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/lsp/lsproto"
 	"github.com/microsoft/TypeScript/tsc/internal/parser"
 	"github.com/microsoft/TypeScript/tsc/internal/scanner"
+	"github.com/microsoft/TypeScript/tsc/internal/stringutil"
 	"github.com/microsoft/TypeScript/tsc/internal/tspath"
 )
 
@@ -172,7 +173,7 @@ func trailingBlockRewrite(c *checker.Checker, file *ast.SourceFile, call *ast.No
 	block := arguments[len(arguments)-1]
 	brace := nodeStart(file, block.Body())
 	lead := trailingBlockLead(c, call)
-	before := strings.TrimRight(text[:brace], " \t")
+	before := strings.TrimRightFunc(text[:brace], stringutil.IsWhiteSpaceSingleLine)
 	closing := sourceEdit{block.End(), block.End(), ")"}
 	switch {
 	case len(before) == call.Expression().End() && len(arguments) == 1:

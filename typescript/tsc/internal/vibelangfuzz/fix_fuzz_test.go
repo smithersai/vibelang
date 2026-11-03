@@ -77,6 +77,9 @@ func FuzzFix(f *testing.F) {
 	for _, choices := range []string{"\x00\x07\x00\x00\x00", "\x01\x81\x01\x00\x01", "\x02\x82\x00\x01\x01\x01", "\x00\x80\x01\x01\x00", "\x01\xff\x00\x00\x01"} {
 		f.Add(optionMatchFixKey + choices)
 	}
+	for _, data := range []string{"\x04\x00\x02", "\x14\x04\x03"} {
+		f.Add(trailingWhitespaceFixKey + data)
+	}
 	w := NewWorkspace(f)
 	codes := toolsFixCodes()
 	var node *Node
@@ -87,7 +90,15 @@ func FuzzFix(f *testing.F) {
 	})
 	f.Fuzz(func(t *testing.T, archive string) {
 		toolsGuard(t, "FuzzFix", func() {
-			nativeTS := strings.HasPrefix(archive, nativeFixReferenceKey)
+			trailingWhitespace := strings.HasPrefix(archive, trailingWhitespaceFixKey)
+			var trailingReference string
+			if trailingWhitespace {
+				TestTrailingBlocksQuoted(t)
+				source, reference := trailingWhitespaceFixSources(archive)
+				trailingReference = reference
+				archive = Archive(map[string]string{"main.vibe": source})
+			}
+			nativeTS := trailingWhitespace || strings.HasPrefix(archive, nativeFixReferenceKey)
 			if nativeTS {
 				TestCatchScopeFixQuoted(t)
 				archive = strings.TrimPrefix(archive, nativeFixReferenceKey)
@@ -112,7 +123,11 @@ func FuzzFix(f *testing.F) {
 				if len(files) != 1 || files["main.vibe"] == "" {
 					return
 				}
-				runtimeBefore = toolsCompile(t, w, "FuzzFix", map[string]string{"main.ts": files["main.vibe"]})
+				reference := files["main.vibe"]
+				if trailingWhitespace {
+					reference = trailingReference
+				}
+				runtimeBefore = toolsCompile(t, w, "FuzzFix", map[string]string{"main.ts": reference})
 				defer runtimeBefore.Remove()
 				if !toolsErrorFree(runtimeBefore) {
 					t.Skip("not an admissible native TypeScript reference")
@@ -139,6 +154,9 @@ func FuzzFix(f *testing.F) {
 			})
 			if directOption && len(result.Files) == 0 {
 				Gap(t, "FuzzFix", "fix:direct-option-match:missing", "the direct Option.match must have a safe fix:\n%s", archive)
+			}
+			if trailingWhitespace && len(result.Files) == 0 {
+				Gap(t, "FuzzFix", "fix:trailing-whitespace:missing", "Chapter 7 requires the mechanical trailing-block migration:\n%s", archive)
 			}
 			if result.Err != nil {
 				Gap(t, "FuzzFix", "fix:converge", "--fix did not reach a fixed point (%v):\n%s", result.Err, archive)

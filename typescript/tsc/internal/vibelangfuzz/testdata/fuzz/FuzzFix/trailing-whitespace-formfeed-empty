@@ -1,0 +1,2 @@
+go test fuzz v1
+string("key:trailing-whitespace\n\u0003\u0003\u0005")
