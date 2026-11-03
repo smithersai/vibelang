@@ -1,0 +1,6 @@
+{
+  "property": "editor-vibex-discovery",
+  "rule": "VIP-39: .vibex documents use the nearest workspace compiler, as .vibe documents do.",
+  "input": ["open", ["ui"]],
+  "generatorVersion": 1
+}

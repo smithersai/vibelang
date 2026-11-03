@@ -1,6 +1,6 @@
 // The VibeLang extension: starts `vibelang --lsp --stdio` as the language
-// server for .vibe files, and for .ts and .js files when VS Code's built-in
-// TypeScript features are off.
+// server for .vibe and .vibex files, and for .ts and .js files when the
+// built-in TypeScript features are off.
 import * as fs from "node:fs"
 import * as os from "node:os"
 import * as path from "node:path"
@@ -13,6 +13,7 @@ import {
   TransportKind
 } from "vscode-languageclient/node"
 
+const vibeLanguages = ["vibe", "vibex"]
 const typeScriptLanguages = ["typescript", "typescriptreact", "javascript", "javascriptreact"]
 
 let client: LanguageClient | undefined
@@ -22,7 +23,7 @@ let restarting: Promise<void> = Promise.resolve()
 
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
   output = vscode.window.createOutputChannel("VibeLang", { log: true })
-  status = vscode.languages.createLanguageStatusItem("vibelang.server", { language: "vibe" })
+  status = vscode.languages.createLanguageStatusItem("vibelang.server", vibeLanguages.map((language) => ({ language })))
   status.name = "VibeLang language server"
   status.command = { title: "Show Output", command: "vibelang.showOutput" }
   context.subscriptions.push(
@@ -83,7 +84,7 @@ async function start(): Promise<void> {
     return
   }
 
-  const languages = servesTypeScriptFiles() ? ["vibe", ...typeScriptLanguages] : ["vibe"]
+  const languages = servesTypeScriptFiles() ? [...vibeLanguages, ...typeScriptLanguages] : vibeLanguages
   output.info(`Starting ${server.command} --lsp --stdio (from ${server.from}) for ${languages.join(", ")} documents`)
   const serverOptions: ServerOptions = {
     command: server.command,
@@ -154,8 +155,8 @@ interface Server {
 }
 
 // findServer returns the vibelang to run: the vibelang.server.path setting,
-// else the node_modules/.bin/vibelang nearest to the active .vibe file or to a
-// workspace folder, else vibelang on PATH.
+// else node_modules/.bin/vibelang nearest to the active .vibe or .vibex
+// file or a workspace folder, else vibelang on PATH.
 function findServer(): Server | undefined {
   const folders = vscode.workspace.workspaceFolders ?? []
   const configured = vscode.workspace.getConfiguration("vibelang").get<string>("server.path", "").trim()
@@ -169,9 +170,9 @@ function findServer(): Server | undefined {
   const executable = process.platform === "win32" ? "vibelang.cmd" : "vibelang"
   const starts: string[] = []
   const active = vscode.window.activeTextEditor?.document
-  if (active?.languageId === "vibe" && active.uri.scheme === "file") starts.push(path.dirname(active.uri.fsPath))
+  if (active && vibeLanguages.includes(active.languageId) && active.uri.scheme === "file") starts.push(path.dirname(active.uri.fsPath))
   for (const document of vscode.workspace.textDocuments) {
-    if (document.languageId === "vibe" && document.uri.scheme === "file") starts.push(path.dirname(document.uri.fsPath))
+    if (vibeLanguages.includes(document.languageId) && document.uri.scheme === "file") starts.push(path.dirname(document.uri.fsPath))
   }
   for (const folder of folders) starts.push(folder.uri.fsPath)
   for (const start of starts) {

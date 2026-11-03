@@ -1,7 +1,7 @@
 {
   "name": "vibelang",
   "displayName": "VibeLang",
-  "description": "VibeLang language support: the vibelang language server, diagnostics with EK codes, hovers with inferred contracts, and syntax highlighting for .vibe files.",
+  "description": "VibeLang language support: the vibelang language server, diagnostics with EK codes, hovers with inferred contracts, and syntax highlighting for .vibe and .vibex files.",
   "version": "0.0.11",
   "publisher": "vibelang",
   "private": true,
@@ -26,7 +26,9 @@
   },
   "activationEvents": [
     "onLanguage:vibe",
-    "workspaceContains:**/*.vibe"
+    "workspaceContains:**/*.vibe",
+    "onLanguage:vibex",
+    "workspaceContains:**/*.vibex"
   ],
   "main": "./dist/extension.js",
   "contributes": {
@@ -39,6 +41,20 @@
         ],
         "extensions": [
           ".vibe"
+        ],
+        "configuration": "./language-configuration.json",
+        "icon": {
+          "light": "./icons/vibelang.svg",
+          "dark": "./icons/vibelang.svg"
+        }
+      },
+      {
+        "id": "vibex",
+        "aliases": [
+          "VibeLang JSX"
+        ],
+        "extensions": [
+          ".vibex"
         ],
         "configuration": "./language-configuration.json",
         "icon": {
@@ -107,6 +123,35 @@
             "support.function.ts"
           ]
         }
+      },
+      {
+        "language": "vibex",
+        "scopes": {
+          "property": [
+            "variable.other.property.ts"
+          ],
+          "property.readonly": [
+            "variable.other.constant.property.ts"
+          ],
+          "variable": [
+            "variable.other.readwrite.ts"
+          ],
+          "variable.readonly": [
+            "variable.other.constant.object.ts"
+          ],
+          "function": [
+            "entity.name.function.ts"
+          ],
+          "namespace": [
+            "entity.name.type.module.ts"
+          ],
+          "variable.defaultLibrary": [
+            "support.variable.ts"
+          ],
+          "function.defaultLibrary": [
+            "support.function.ts"
+          ]
+        }
       }
     ],
     "configuration": {
@@ -128,7 +173,7 @@
           "enumDescriptions": [
             "Serve .ts and .js files too when the built-in TypeScript features are off: the built-in extension \"TypeScript and JavaScript Language Features\" is disabled, or, in Cursor, `typescript.experimental.useTsgo` is true.",
             "Always serve .ts and .js files too. VS Code's built-in TypeScript features then report the same files a second time unless they are off.",
-            "Serve only .vibe files."
+            "Serve only .vibe and .vibex files."
           ],
           "default": "auto",
           "markdownDescription": "Whether the VibeLang language server also serves `.ts` and `.js` files. It always checks them as part of the program; this decides whether it reports their diagnostics, hovers, and completions in the editor."

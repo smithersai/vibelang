@@ -510,6 +510,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - The editor refused renames and import organization in files with TypeScript `module` bodies. These operations now work across the body boundary and preserve identifier specifiers (VIP-40).
 - Published declaration checks rejected harmless formatting, quote, import-order and member-order differences; `scripts/api-identity.mjs` now compares exported names, their types through `tsc`, and their doc comments.
 - Writing a separately documented `type X = typeof X.Type` beside `schema X` reported a duplicate type; one exact, nongeneric alias now replaces the generated type in either source order, keeping each declaration's documentation and exports (VIP-15, VIP-27, foldkit-9).
+
+- JSX source files did not activate or reach VibeLang's VS Code language server as `.vibex` documents; the `vibex` language mode now selects the JSX parser and provides component and prop completions, hovers, diagnostics, definitions and paired-tag rename.
 - In the editor, an `is` that binds names and has a parenthesized subject, such as `(x as T) is [let a]` or `([3, r] as const) is [let n, let e]`, made the TypeScript 7 mapper report "invalid or overlapping edits" and pass the whole file through unchanged, so the editor checked VibeLang syntax as TypeScript; the file now maps as it does without the parentheses.
 - Migration returned converted services to TypeScript when every member kept the original service requirement. Verification now accepts the `EK4809` design warning and preserves those member contracts; a configured `EK4809` error still fails.
 - Declarations of imported Effect values could gain an extra import; cold values and decoders now have regression comparisons against TypeScript.

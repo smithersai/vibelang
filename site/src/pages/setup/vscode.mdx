@@ -36,6 +36,8 @@ Open the project directory and trust the workspace: the extension runs the works
 
 Without adjacent declaration sidecars, VS Code's built-in TypeScript cannot resolve `.vibe` imports. To have VibeLang check a `.ts` file that imports a `.vibe` module, run **VibeLang: Serve TypeScript Files in This Workspace** from the command palette. In Cursor, the command turns the built-in TypeScript features off for the workspace; in VS Code, it shows the extension to disable, "TypeScript and JavaScript Language Features". Run `vibelang` to write adjacent `.d.vibe.ts` declarations, even with `--noEmit`; [configure TypeScript tools to read them](/setup/vibelang-cli#let-typescript-tools-read-vibe-modules).
 
+Open JSX source as `.vibex`; its language mode is **VibeLang JSX**. The extension serves `.vibe` and `.vibex` documents, including untitled documents in either language mode, with the same compiler discovery and server settings. In `.vibex`, component and prop completions, hovers, go-to-definition, and rename work in JSX; renaming a component updates its opening and closing tags. VibeLang expressions inside JSX containers retain their diagnostics and inferred Effect contracts.
+
 After updating `vibelang`, reinstall the extension from `node_modules`.
 
 ## Editor features

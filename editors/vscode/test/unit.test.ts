@@ -55,7 +55,7 @@ mock.module("vscode", () => ({ workspace, window, env,
     registerCommand(id: string, fn: () => unknown) { registered.set(id, fn); return { dispose() {} } },
     async executeCommand(...args: unknown[]) { executed.push(args) }
   },
-  languages: { createLanguageStatusItem: () => (status = { dispose() {} }) },
+  languages: { createLanguageStatusItem: (_id: string, selector: unknown) => (status = { selector, dispose() {} }) },
   LanguageStatusSeverity: { Error: 2, Warning: 1, Information: 0 }, ConfigurationTarget: { Workspace: 2 },
   extensions: { getExtension: () => builtin ? {} : undefined }
 }))
@@ -87,7 +87,7 @@ test("starts the configured server with stdio and owns only VibeLang by default"
   await start()
   expect(clients).toHaveLength(1)
   expect(clients[0].server).toEqual({ command: "/configured/vibelang", args: ["--lsp"], transport: 0, options: { cwd: scratch } })
-  expect(clients[0].options.documentSelector).toEqual([{ scheme: "file", language: "vibe" }, { scheme: "untitled", language: "vibe" }])
+  expect(clients[0].options.documentSelector).toEqual([{ scheme: "file", language: "vibe" }, { scheme: "untitled", language: "vibe" }, { scheme: "file", language: "vibex" }, { scheme: "untitled", language: "vibex" }])
   expect(status.text).toBe("vibelang")
   expect(status.detail).toContain("TypeScript 7.1-test")
   await deactivate()
@@ -108,7 +108,7 @@ for (const [mode, hasBuiltin, appName, useTsgo, serveTS] of [
     builtin = hasBuiltin; env.appName = appName
     await start()
     const languages = [...new Set(clients[0].options.documentSelector.map((d: any) => d.language))]
-    expect(languages).toEqual(serveTS ? ["vibe", "typescript", "typescriptreact", "javascript", "javascriptreact"] : ["vibe"])
+    expect(languages).toEqual(serveTS ? ["vibe", "vibex", "typescript", "typescriptreact", "javascript", "javascriptreact"] : ["vibe", "vibex"])
   })
 }
 
@@ -352,7 +352,7 @@ test("property: configuration and command histories", () => property("editor-his
     }
     const current = clients.at(-1)!
     const serveTS = state.mode === "on" || state.mode === "auto" && (!state.builtin || state.cursor && state.tsgo)
-    const languages = serveTS ? ["vibe", "typescript", "typescriptreact", "javascript", "javascriptreact"] : ["vibe"]
+    const languages = serveTS ? ["vibe", "vibex", "typescript", "typescriptreact", "javascript", "javascriptreact"] : ["vibe", "vibex"]
     expect(new Set(current.options.documentSelector.map((d: any) => `${d.scheme}:${d.language}`)))
       .toEqual(new Set(languages.flatMap(language => ["file", "untitled"].map(scheme => `${scheme}:${language}`))))
     expect(current.server.command).toBe(join(workspace.workspaceFolders[0].uri.fsPath, "tools/compiler"))
@@ -379,3 +379,41 @@ test("property: configuration middleware preserves unrelated settings", () => pr
     if (!["typescript", "javascript", "js/ts"].includes(section)) expect(result[i]).toEqual(values[i])
   })
 }))
+
+// VIP-39: JSX documents have the same server ownership and discovery rules.
+test("vibex registers its extension and workspace activation", async () => {
+  const manifest = await Bun.file(new URL("../package.json", import.meta.url)).json()
+  expect(manifest.contributes.languages).toContainEqual(expect.objectContaining({
+    id: "vibex", aliases: expect.arrayContaining(["VibeLang JSX"]), extensions: [".vibex"]
+  }))
+  expect(manifest.activationEvents).toContain("workspaceContains:**/*.vibex")
+  await start()
+  expect(status.selector).toEqual([{ language: "vibe" }, { language: "vibex" }])
+})
+
+test("vibex compiler discovery follows generated nested editor documents", async () => {
+  await checkProperty(fc, {
+    name: "editor-vibex-discovery",
+    rule: "VIP-39: .vibex is VibeLang with JSX; editor compiler discovery and ownership match .vibe",
+    command: "bun test test/unit.test.ts", regressions, numRuns: 40,
+    arbitrary: fc.tuple(fc.constantFrom("active", "open"), fc.array(fc.constantFrom("app", "ui", "space dir", "雪"), { minLength: 1, maxLength: 5 })),
+    check: async ([location, parts]) => {
+      await deactivate()
+      clients = []
+      settings["vibelang.server.path"] = ""
+      process.env.PATH = ""
+      workspace.workspaceFolders = []
+      const root = join(scratch, location, ...parts)
+      const compiler = executable(join(root, "node_modules/.bin/vibelang"))
+      const document = { languageId: "vibex", uri: { scheme: "file", fsPath: join(root, "src/App.vibex") } }
+      window.activeTextEditor = location === "active" ? { document } : undefined
+      workspace.textDocuments = location === "open" ? [document] : []
+      await start()
+      expect(clients).toHaveLength(1)
+      expect(clients[0].server.command).toBe(compiler)
+      for (const scheme of ["file", "untitled"]) {
+        expect(clients[0].options.documentSelector).toContainEqual({ scheme, language: "vibex" })
+      }
+    }
+  })
+})

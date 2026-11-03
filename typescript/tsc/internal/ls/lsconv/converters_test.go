@@ -498,3 +498,32 @@ func TestConvertersAgainstJSReference(t *testing.T) {
 		})
 	}
 }
+
+// VIP-39: editor language IDs must preserve the TSX parser for JSX documents,
+// including untitled documents whose names have no extension.
+func TestVibexLanguageKind(t *testing.T) {
+	for _, tc := range []struct {
+		id   lsproto.LanguageKind
+		want core.ScriptKind
+	}{
+		{"vibe", core.ScriptKindTS},
+		{"vibex", core.ScriptKindTSX},
+		{"typescriptreact", core.ScriptKindTSX},
+		{"typescript", core.ScriptKindTS},
+		{"unknown", core.ScriptKindUnknown},
+	} {
+		t.Run(string(tc.id), func(t *testing.T) {
+			assert.Equal(t, lsconv.LanguageKindToScriptKind(tc.id), tc.want)
+		})
+	}
+}
+
+func TestVibexLanguageKindParsesUntitledJSX(t *testing.T) {
+	file := parser.ParseSourceFile(ast.SourceFileParseOptions{
+		FileName: "/Untitled-1", PathKey: "/Untitled-1",
+	}, "const view = <div>{1}</div>", lsconv.LanguageKindToScriptKind("vibex"))
+	assert.Equal(t, file.LanguageVariant, core.LanguageVariantJSX)
+	assert.Equal(t, len(file.Diagnostics()), 0)
+	init := file.Statements.Nodes[0].AsVariableStatement().DeclarationList.AsVariableDeclarationList().Declarations.Nodes[0].AsVariableDeclaration().Initializer
+	assert.Equal(t, init.Kind, ast.KindJsxElement)
+}

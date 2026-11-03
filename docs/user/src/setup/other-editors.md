@@ -1,6 +1,6 @@
 # Other editors
 
-Any editor with an LSP client can run VibeLang's language server, `vibelang --lsp --stdio`: the compiler the project installs as `node_modules/.bin/vibelang`. It serves the `.vibe` and `.ts` files selected by the project configuration. VibeLang discovers `vibe.config.json`, `tsconfig.json`, then `jsconfig.json`. It reports diagnostics on request, through LSP 3.17 pull diagnostics (`textDocument/diagnostic`). A client that only accepts pushed diagnostics, such as Claude Code's, declares `publishDiagnostics` without `diagnostic`; the server then publishes each open file's diagnostics after every open, change and save.
+Any editor with an LSP client can run VibeLang's language server, `vibelang --lsp --stdio`: the compiler the project installs as `node_modules/.bin/vibelang`. It serves the `.vibe`, `.vibex`, `.ts` and `.tsx` files selected by the project configuration. VibeLang discovers `vibe.config.json`, `tsconfig.json`, then `jsconfig.json`. It reports diagnostics on request, through LSP 3.17 pull diagnostics (`textDocument/diagnostic`). A client that only accepts pushed diagnostics, such as Claude Code's, declares `publishDiagnostics` without `diagnostic`; the server then publishes each open file's diagnostics after every open, change and save.
 
 ## 1. Check the server
 
@@ -17,9 +17,9 @@ It prints `VibeLang 0.0.11 (TypeScript 7.1.0-dev)`.
 | Setting | Value |
 | --- | --- |
 | Command | `node_modules/.bin/vibelang --lsp --stdio`, or its absolute path if the client needs one |
-| Files | `*.vibe`; add `*.ts` to serve TypeScript files too |
+| Files | `*.vibe` and `*.vibex`; add `*.ts` and `*.tsx` to serve TypeScript files too |
 | Root marker | `vibe.config.json`, `tsconfig.json`, or `jsconfig.json` |
-| Language id | `vibe` or `typescript` |
+| Language id | `vibe` for `.vibe`, `vibex` for `.vibex`; `typescript` or `typescriptreact` for TypeScript |
 
 If the server answers for `.ts` files, turn off the editor's other TypeScript server for the project, or both report every `.ts` file. JetBrains IDEs run the server through the LSP4IJ plugin.
 
