@@ -3,11 +3,13 @@ package vibelang
 import (
 	"context"
 	"fmt"
+	"slices"
+
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/checker"
 	"github.com/microsoft/TypeScript/tsc/internal/compiler"
 	"github.com/microsoft/TypeScript/tsc/internal/ls"
-	"slices"
+	"github.com/microsoft/TypeScript/tsc/internal/nodebuilder"
 )
 
 var EK4853 = message(4853, warningCategory, "An omitted requirement slot means never; write {0} to preserve the requirements previously inferred from this body.")
@@ -53,7 +55,20 @@ func omittedRequirementRewrite(c *checker.Checker, file *ast.SourceFile, annotat
 			return nil // a type parameter of a callback's contract, which this declaration cannot name
 		}
 	}
-	text := expressionText(file, annotation) + "!" + bangSlot(c.TypeToString(c.GetUnionType(requirements)), true)
+	requirement := c.GetUnionType(requirements)
+	if !requirementCanBeNamed(c, requirement, annotation) {
+		return nil
+	}
+	// A diagnostic's context-free display name is not source text: Input
+	// may be imported as Renamed, or shadowed by an unrelated local alias.
+	printed := c.TypeToStringEx(requirement, annotation, checker.TypeFormatFlagsNoTruncation|checker.TypeFormatFlagsUseFullyQualifiedType, nil)
+	slot := bangSlot(printed, true)
+	// The inferred union is one requirement slot, including when distinct
+	// services share an exported name. Keep it grouped as source syntax.
+	if hasTopLevel(slot, "|") || hasTopLevel(slot, "&") {
+		slot = "(" + slot + ")"
+	}
+	text := expressionText(file, annotation) + "!" + slot
 	return &formRewrite{description: text, edits: []sourceEdit{{nodeStart(file, annotation), annotation.End(), text}}}
 }
 
@@ -129,4 +144,47 @@ func vipTypeMigrationFixes(ctx context.Context, program *compiler.Program, file 
 	}
 
 	return p
+}
+
+// Check every reference in the serialized type, including nested generic
+// arguments and union members. The type writer may otherwise recover an
+// inaccessible private symbol with an unbound name; even a successful CLI
+// check cannot detect that name binding to an unrelated any/unknown alias.
+func requirementCanBeNamed(c *checker.Checker, requirement *checker.Type, at *ast.Node) bool {
+	symbols := map[*ast.IdentifierNode]*ast.Symbol{}
+	node := c.TypeToTypeNode(requirement, at, nodebuilder.FlagsNoTruncation|nodebuilder.FlagsUseFullyQualifiedType, symbols)
+	if node == nil {
+		return false
+	}
+	var inaccessible func(*ast.Node) bool
+	inaccessible = func(n *ast.Node) bool {
+		var name *ast.Node
+		value := false
+		switch n.Kind {
+		case ast.KindTypeReference:
+			name = n.AsTypeReferenceNode().TypeName
+		case ast.KindTypeQuery:
+			name, value = n.AsTypeQueryNode().ExprName, true
+		case ast.KindImportType:
+			name, value = n.AsImportTypeNode().Qualifier, n.AsImportTypeNode().IsTypeOf
+		}
+		if name != nil {
+			for ast.IsQualifiedName(name) {
+				name = name.AsQualifiedName().Right
+			}
+			symbol := symbols[name]
+			if symbol == nil {
+				return true
+			}
+			if value {
+				if !c.IsValueSymbolAccessible(symbol, at) {
+					return true
+				}
+			} else if !inScope(c.GetDeclaredTypeOfSymbol(symbol), at) || !c.IsTypeSymbolAccessible(symbol, at) {
+				return true
+			}
+		}
+		return n.ForEachChild(inaccessible)
+	}
+	return !inaccessible(node)
 }

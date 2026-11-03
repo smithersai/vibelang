@@ -714,6 +714,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Foreign callbacks imported from `.d.ts` files could bypass callback throw admission. They now report `EK0402` when a throwing callback meets an untagged function type, while `@throws {never}` callbacks remain accepted. Regression coverage checks arguments, object members, spreads and initializers.
 
+- The `EK4853` quick fix could write an imported service's original name instead of its alias, introducing an unknown name or silently widening the requirement to an unrelated local `any` or `unknown` type. The editor and `--fix` now keep the bound alias or namespace qualifier and decline inaccessible requirement types.
+
 - Identical recursive generic declaration APIs could fail with `TS2589`; exact resolved type identity now proves those comparisons.
 - API checks treated identical JSDoc links as different when a private target resolved in only one snapshot. Link targets and labels now compare consistently while real comment changes remain differences.
 
