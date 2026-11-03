@@ -420,6 +420,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Private `trusted(impl, [])` wrappers had no migration away from the legacy trust form. `vibelang --fix` now rewrites safe direct calls through `Effect.try` and `Effect.orDie`, preserving the exact defect value and public declaration API; function values that escape remain for review.
 - Removing an Effect type assertion in the editor could widen a public failure or requirement channel. The action now refuses instead of changing the exported contract.
 
+- A `do` expression whose paths all leave outward could be typed as `any` or `undefined` and fail a `never` annotation; it now has type `never`. For calls or property uses that relied on the old `any`, `vibelang --fix` adds an erased assertion that preserves the outward jump.
+
 - The migration checks generated callback failure unions without their required parentheses and failed to parse them. They now write valid compound slots while checking the same preserved channels and refusal controls.
 
 

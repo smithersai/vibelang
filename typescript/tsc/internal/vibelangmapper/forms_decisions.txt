@@ -1771,7 +1771,7 @@ typescript/vibelang/cases/do-loop-head-abrupt/main.vibe:39:31 lambda plain annot
 typescript/vibelang/cases/do-loop-head-abrupt/main.vibe:44:29 lambda plain annotation
 typescript/vibelang/cases/do-loop-head-abrupt/main.vibe:45:31 lambda plain annotation
 typescript/vibelang/cases/do-loop-head-abrupt/main.vibe:5:29 lambda plain annotation
-typescript/vibelang/cases/do-loop-head-abrupt/main.vibe:8:33 lambda plain annotation
+typescript/vibelang/cases/do-loop-head-abrupt/main.vibe:8:34 lambda plain annotation
 typescript/vibelang/cases/do-loop-head-effect/main.vibe:12:34 lambda plain table
 typescript/vibelang/cases/do-loop-head-effect/main.vibe:4:29 lambda plain annotation
 typescript/vibelang/cases/do-loop-head-effect/main.vibe:6:31 lambda plain annotation
@@ -1912,6 +1912,7 @@ typescript/vibelang/cases/do-never-completion/main.vibe:71:48 lambda effectFn fa
 typescript/vibelang/cases/do-never-completion/main.vibe:76:35 lambda plain annotation
 typescript/vibelang/cases/do-never-completion/main.vibe:77:31 lambda plain annotation
 typescript/vibelang/cases/do-never-completion/main.vibe:78:33 lambda plain annotation
+typescript/vibelang/cases/do-never-normal-controls.fail/main.vibe:10:16 lambda plain fallback
 typescript/vibelang/cases/do-object-spread-finish-order/main.vibe:30:56 lambda plain annotation
 typescript/vibelang/cases/do-object-spread-finish-order/main.vibe:50:73 lambda plain annotation
 typescript/vibelang/cases/do-object-spread-finish-order/main.vibe:70:55 lambda plain annotation
