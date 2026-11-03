@@ -192,8 +192,12 @@ func retiredTryArguments(operand *ast.Node) []*ast.Node {
 		arguments = append(arguments, n)
 	}
 	flatten(inner)
-	if len(arguments) == 1 && !ast.IsFunctionExpressionOrArrowFunction(ast.SkipParentheses(inner)) {
-		return nil
+	if len(arguments) == 1 {
+		value := ast.SkipParentheses(inner)
+		// An effect block's synthesized arrow is the Effect value try runs.
+		if isEffectBlock(value) || !ast.IsFunctionExpressionOrArrowFunction(value) {
+			return nil
+		}
 	}
 	return arguments
 }

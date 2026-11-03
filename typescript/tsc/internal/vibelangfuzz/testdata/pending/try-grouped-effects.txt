@@ -1,0 +1,3 @@
+# Independent operand classification gap, retained as a neighbourhood control.
+FuzzTryGroupedEffects do compiler VIP-2/VIP-5: grouped do completion is an Effect but try reports EK0502; operand owner queued920c6e557cf6; lane conf-auto-effect-operation-operands
+FuzzTryGroupedEffects corpus:do-effect-completion compiler VIP-2/VIP-5: minimized grouped do returning Effect.succeed; exact EK0502 gap; lane conf-auto-effect-operation-operands

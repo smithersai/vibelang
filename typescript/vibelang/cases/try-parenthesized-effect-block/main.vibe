@@ -1,0 +1,23 @@
+// expect-result: [7,8,1,2,0,2,3,3,"typed"]
+import { Effect } from "effect"
+
+effect function grouped() { return try (effect { return 7 }) }
+effect function nested() { return try (((effect { return 8 }))) }
+effect function conditional(flag: boolean) {
+  return try (flag ? effect { return 1 } : Effect.succeed(2))
+}
+effect function failure() { return try (effect { throw "typed" }) }
+
+export effect function main() {
+  let runs = 0
+  const held = effect { runs += 1; return 3 }
+  const before = runs
+  const first = try (held)
+  const second = try ((held))
+  return [
+    try grouped(), try nested(),
+    try conditional(true), try conditional(false),
+    before, runs, first, second,
+    failure() catch (error) => error
+  ]
+}
