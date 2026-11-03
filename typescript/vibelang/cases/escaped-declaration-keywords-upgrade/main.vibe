@@ -1,0 +1,13 @@
+export error Plain { value: number }
+export schema error Encoded { value: number }
+export schema Box { value: number }
+export data Status { Ready }
+export service API { static readonly key = "escaped-keyword-runtime"; value: number }
+export error \u004eamed { value: number }
+const error = 4
+export const escapedValue = er\u0072or as number
+export effect function main() {
+  const encoded = try Schema.decodeUnknownEffect(Encoded)({ _tag: "Encoded", value: 2 })
+  const boxed = try Schema.decodeUnknownEffect(Box)({ value: 3 })
+  return [new Plain({ value: 1 })._tag, encoded.value, boxed.value, Status.Ready()._tag, new Named({ value: 5 })._tag, escapedValue]
+}

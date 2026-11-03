@@ -102,6 +102,10 @@ func (p *Parser) parseErrorDeclaration(pos int, jsdoc jsdocScannerInfo, modifier
 	if schema {
 		form.Name = "schema error"
 		p.nextToken() // schema
+		// The second token in schema error is a keyword too.
+		if p.scanner.HasUnicodeEscape() || p.scanner.HasExtendedUnicodeEscape() {
+			p.parseErrorAtCurrentToken(diagnostics.Keywords_cannot_contain_escape_characters)
+		}
 	}
 	p.nextToken() // error
 	d.name = p.parseBindingIdentifier()

@@ -1,5 +1,7 @@
 # Expected Errors
 
+Write `error` and `schema error` without Unicode escapes (`TS1260`). `vibelang --fix` restores the literal keywords while leaving escaped names and ordinary identifier expressions unchanged.
+
 Expected errors are situations callers can handle: invalid input, a denied operation, an unavailable dependency. VibeLang infers them in `E` and narrows them inside a catch expression.
 
 [Upstream page](https://effect.website/docs/v4/error-management/expected-errors)

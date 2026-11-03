@@ -57,6 +57,7 @@ The fixes keep a rewrite only when it adds no compiler error.
 
 | Before | After and repair |
 | --- | --- |
+| Unicode escapes in an `error`, `schema`, `service` or `data` declaration keyword, such as `er\u0072or E` | Write the literal keyword (`TS1260`). Run `vibelang --fix` to unescape each keyword while preserving the declaration, escaped names and ordinary identifier expressions. |
 | `vibelang.tracing` or mapper `options.tracing` | Remove the unsupported option. Add named operation spans explicitly with `try withSpan(program, "name")`. |
 | `when var name:` or a `var` binding in an `is` pattern | Pattern bindings use `let` or `const` (`EK0107`, VIP-7). The quick fix and `vibelang --fix` replace the pattern's `var` with `let`. |
 | Bare compound types beside `!`, such as `number!Error \| string` or `number!! \| null` | `EK0301` (VIP-3). Run `vibelang --fix` to preserve the existing channels with parentheses, such as `number!(Error \| string)` or `number!!(\| null)`. To mean an Effect or `null`, write `(number!!) \| null`. |
@@ -619,6 +620,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Importing `vibelang-runtime/experimental/platform-node` loaded `@effect/platform-node`'s HTTP server with Effect's http stack and `ws` on import, about 180 modules a program providing only `ExperimentalNodeProcess` never used; the server module now loads when its layer is built.
 
 - Importing `vibelang-runtime/experimental/platform-node` loaded the whole `@effect/platform-node` root, Redis client included, so every process using it (a `vite build` with a migrated plugin) paid for about 900 extra modules; the entry now imports only the `NodeHttpServer` module.
+
+- Escaped declaration keywords such as `er\u0072or` were accepted while TypeScript rejected the corresponding contextual keyword. They now report `TS1260`; `vibelang --fix` restores the keyword without changing escaped names or identifier expressions.
 
 - Renaming a shorthand pattern binding could change the property it matched and add `TS2339`; rename now keeps the property key and writes an explicit binding.
 

@@ -1,5 +1,7 @@
 # Managing Services
 
+Write the `service` keyword without Unicode escapes (`TS1260`). `vibelang --fix` restores its literal spelling; escaped service names and ordinary identifiers keep working.
+
 A service is a named capability a program uses without passing an implementation through every function. `service` declares its key and members' contracts; looking up its implementation with `try` adds the identifier to the `R` channel.
 
 [Upstream page](https://effect.website/docs/v4/requirements-management/services)

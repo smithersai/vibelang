@@ -75,7 +75,14 @@ func (p *Parser) parseVibeLangDeclaration(pos int, jsdoc jsdocScannerInfo, modif
 	if !p.isStartOfVibeLangDeclaration() {
 		return nil
 	}
-	switch p.scanner.TokenValue() {
+	// Declaration introducers follow TypeScript contextual type, including
+	// its native prohibition on Unicode escapes in keyword tokens.
+	word := p.scanner.TokenValue()
+	if (word == "error" || word == "schema" || word == "service" || word == "data") &&
+		(p.scanner.HasUnicodeEscape() || p.scanner.HasExtendedUnicodeEscape()) {
+		p.parseErrorAtCurrentToken(diagnostics.Keywords_cannot_contain_escape_characters)
+	}
+	switch word {
 	case "effect":
 		return p.parseEffectDeclaration(pos, jsdoc, modifiers) // vibelang_effect.go
 	case "error":

@@ -1,0 +1,7 @@
+// expect: TS1260
+export er\u0072or Plain { value: number }
+export \u{0073}chema error Encoded { value: number }
+export schema \u0065rror SecondMarker { value: number }
+export \u0073ervice API { value: number }
+export da\u0074a State { Ready }
+export sch\u0065ma NumberBox { value: number }
