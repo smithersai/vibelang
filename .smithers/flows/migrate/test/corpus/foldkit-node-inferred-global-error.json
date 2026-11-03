@@ -1,0 +1,12 @@
+{
+  "key": "preserved-errors:inferred-private-global-error",
+  "source": "foldkit-29, foldkit packages/node/src/node.ts: eleven EK4804 on private functions whose channels the original inferred; held overlay scratch-drive-foldkit/node-held-overlay/node.vibe compiles with only those advisories",
+  "before": "import { Effect } from 'effect'\nconst MESSAGE = 'invalid origin'\nconst originFrom = (origin: string) =>\n  Effect.gen(function* () {\n    if (origin === '') {\n      return yield* Effect.fail(new Error(MESSAGE))\n    }\n    const url = yield* Effect.try({\n      try: () => new URL(origin),\n      catch: () => new Error(MESSAGE),\n    })\n    if (url.pathname !== '/') {\n      return yield* Effect.fail(new Error(MESSAGE))\n    }\n    return url\n  })\nconst decodeManifest = (content: string) =>\n  Effect.try({\n    try: () => JSON.parse(content),\n    catch: cause =>\n      new Error('foldkit.build.json is not valid JSON', { cause }),\n  })\nexport const run = (origin: string, content: string) => Effect.all([originFrom(origin), decodeManifest(content)])\n",
+  "after": "const MESSAGE = 'invalid origin'\nconst originFrom = effect (origin: string) => {\n  if (origin === '') throw new Error(MESSAGE)\n  const url = try Effect.try({\n    try: () => new URL(origin),\n    catch: (): Error => new Error(MESSAGE),\n  })\n  if (url.pathname !== '/') throw new Error(MESSAGE)\n  return url\n}\nconst decodeManifest = effect (content: string) => {\n  return try Effect.try({\n    try: () => JSON.parse(content),\n    catch: (cause): Error =>\n      new Error('foldkit.build.json is not valid JSON', { cause }),\n  })\n}\nexport const run = effect (origin: string, content: string) => [try originFrom(origin), try decodeManifest(content)]\n",
+  "markers": [
+    "new Error(MESSAGE)\n  const url",
+    "catch: (): Error",
+    "new Error(MESSAGE)\n  return url",
+    "catch: (cause): Error"
+  ]
+}

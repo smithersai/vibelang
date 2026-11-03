@@ -78,7 +78,7 @@ The skill below teaches accepted VIPs, and the toolchain does not implement ever
 
 ## Keep the contract
 
-- Preserve an original global `Error` failure channel with a written native `!Error` contract; `EK4804` is a tag advisory, not a TypeScript-style Effect form. The style gate compares the enclosing function with its retained declaration and records the exemption; do not replace its error class or suppress other diagnostics.
+- Preserve an original global `Error` failure channel with a written native `!Error` contract; `EK4804` is a tag advisory, not a TypeScript-style Effect form. The style gate compares the enclosing function with its retained declaration and records the exemption; do not replace its error class or suppress other diagnostics. A private function the original only inferred needs no written channel: the gate accepts a `new Error` with the same message that the same function failed with, through `Effect.fail`, a `try` `catch` or `mapError`, as many times as the original did.
 
 - Keep every export, with its name and type: a published package’s emitted declarations must stay identical. A package marked `"private": true` publishes no declarations: `verify` reports `"not published"`; preserve behavior and pass its tests, compiler, build, workspace typecheck, lint, format and Knip gates. Annotate an export's return type when inference would change its declared type, and keep a class a class when callers construct it or test `instanceof`.
 - The declaration file prints what the source writes, so write an export's types as the TypeScript did:

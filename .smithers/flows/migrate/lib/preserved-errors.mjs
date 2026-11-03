@@ -4,7 +4,9 @@
 // source (or, for runs that kept none, its retained declaration) proves the
 // channel that function declared before migration. A private producer, an
 // inline catch callback and a union channel that includes Error all count
-// (drive-foldkit-examples and drive-foldkit-node, 2026-10-31T23:15Z).
+// (drive-foldkit-examples and drive-foldkit-node, 2026-10-31T23:15Z). A private
+// channel the original only inferred has no written contract: there the proof is
+// the same `new Error(…)` failing in the same function (foldkit-29, packages/node).
 import { readFileSync } from "node:fs"
 import { join, posix } from "node:path"
 import { listDeclarations } from "./declarations.mjs"
@@ -185,7 +187,59 @@ function contracts(ast, source = "") {
     for (const child of children(node)) visit(child, path, scope)
   }
   visit(ast)
-  return { shadowed, functions, sites, counts, catches, throws, assigned }
+  // Each `new Error(message)` with the top-level function it belongs to, and those
+  // that function fails with: an inferred private channel writes no contract, so
+  // the message is the proof. Its `cause` option may change when a platform read
+  // moves behind a service. A nested callback is a boundary with a channel of its
+  // own; only Effect.gen's generator, a catch handler and a catch or mapError
+  // mapper belong to the function around them.
+  const isNewError = node => node?.type === "NewExpression" && node.callee?.type === "Identifier" && node.callee.name === "Error"
+  const returned = fn => !functionTypes.has(fn?.type) ? null : fn.body?.type === "BlockStatement"
+    ? fn.body.body.length === 1 && fn.body.body[0].type === "ReturnStatement" ? fn.body.body[0].argument : null
+    : fn.body
+  const newErrors = [], failures = new Map(), mapped = new Map()
+  const collect = (node, owner) => {
+    if (isNewError(node)) newErrors.push({ owner: owner ?? mapped.get(node) ?? null, range: node.range, tree: executable(node.arguments?.[0]) })
+    const method = node.type === "CallExpression" ? api(node.callee) : null
+    if (owner && method) {
+      const first = node.arguments?.[0]
+      const catcher = first?.properties?.find(prop => !prop.computed && (prop.key?.name ?? prop.key?.value) === "catch")?.value
+      const mapper = method === "try" || method === "tryPromise" ? returned(catcher) : method === "mapError" ? returned(node.arguments.at(-1)) : null
+      if (isNewError(mapper)) mapped.set(mapper, owner)
+      const failed = method === "fail" ? first : mapper
+      if (isNewError(failed)) {
+        const key = owner + "\0" + executable(failed.arguments?.[0])
+        failures.set(key, (failures.get(key) ?? 0) + 1)
+      }
+    }
+    for (const child of children(node)) {
+      const belongs = !functionTypes.has(child.type) || handlers.has(child) || (method === "gen" && child === node.arguments.at(-1))
+      collect(child, belongs ? owner : null)
+    }
+  }
+  for (const statement of ast.body ?? []) {
+    const declaration = statement.type === "ExportNamedDeclaration" ? statement.declaration ?? statement : statement
+    if (declaration.type === "FunctionDeclaration" && declaration.id) for (const child of children(declaration)) collect(child, declaration.id.name)
+    else if (declaration.type === "VariableDeclaration") for (const declarator of declaration.declarations) {
+      const init = declarator.init
+      if (functionTypes.has(init?.type) && declarator.id?.type === "Identifier") for (const child of children(init)) collect(child, declarator.id.name)
+      else collect(declarator, null)
+    } else collect(declaration, null)
+  }
+  return { ast, shadowed, functions, sites, counts, catches, throws, assigned, newErrors, failures }
+}
+
+/** The `new Error(…)` an advisory reports: the one inside the throw, property, call or function nearest the offset, if it is the only one. */
+function reportedNewError(current, offset) {
+  const within = node => node.range && node.range[0] <= offset && offset < node.range[1]
+  let nearest = null
+  const descend = node => {
+    if (["NewExpression", "ThrowStatement", "Property", "CallExpression", ...functionTypes].includes(node.type)) nearest = node
+    for (const child of children(node)) if (within(child)) descend(child)
+  }
+  descend(current.ast)
+  const inside = nearest ? current.newErrors.filter(error => nearest.range[0] <= error.range[0] && error.range[1] <= nearest.range[1]) : []
+  return inside.length === 1 ? inside[0] : null
 }
 
 /** Pure decision over compiler-parsed trees; callers retain a small audit trail. */
@@ -194,6 +248,7 @@ export function preservedGlobalErrors(before, after, source, diagnostics) {
   const current = contracts(after, source)
   const decisions = []
   const accepted = new Set()
+  const spent = new Map()
   for (const d of diagnostics.filter(d => d.code === "EK4804")) {
     const offset = source.split("\n").slice(0, d.line - 1).reduce((n, line) => n + line.length + 1, 0) + d.column - 1
     // The innermost enclosing function that writes a failure contract. A plain
@@ -235,13 +290,25 @@ export function preservedGlobalErrors(before, after, source, diagnostics) {
       })
       if (direct || rethrow) { splitProof = { function: candidate.key, mapper: contract.name, channel: contract.channel, rethrow: Boolean(rethrow) }; break }
     }
+    // An inferred private channel: the same function failed with this same
+    // expression before migration, at least as many times as it does now.
+    let inferredProof = null
+    if (!changedContract && !functionProof && !siteProof && !splitProof) {
+      const error = reportedNewError(current, offset)
+      const key = error?.owner ? error.owner + "\0" + error.tree : null
+      if (key && (spent.get(key) ?? 0) < (original.failures.get(key) ?? 0)) {
+        spent.set(key, (spent.get(key) ?? 0) + 1)
+        inferredProof = { function: error.owner }
+      }
+    }
     const keep = d.category !== "error" && /This failure is a global Error,/.test(d.message) &&
-      !original.shadowed && !current.shadowed && (functionProof || siteProof || (!changedContract && splitProof))
+      !original.shadowed && !current.shadowed && (functionProof || siteProof || (!changedContract && splitProof) || inferredProof)
     if (keep) accepted.add(d)
     decisions.push({ file: d.file, line: d.line, column: d.column, code: d.code, exempt: Boolean(keep), ...(fn ? { function: fn.key, channel: fn.failure } : {}),
       ...(siteProof ? { producer: siteProof.key, producerChannel: siteProof.channel } : {}),
       ...(splitProof ? { acquisition: splitProof } : {}),
-      reason: keep ? (functionProof ? (originals[0].returnedCallback ? "written global Error channel matches the original returned callback contract" : "written global Error channel matches the original contract") : splitProof ? "unchanged mapper preserves the original returned acquire channel" : "written Error producer matches the original call contract") : "no matching explicit global Error channel" })
+      ...(inferredProof ? { inferred: inferredProof } : {}),
+      reason: keep ? (functionProof ? (originals[0].returnedCallback ? "written global Error channel matches the original returned callback contract" : "written global Error channel matches the original contract") : splitProof ? "unchanged mapper preserves the original returned acquire channel" : inferredProof ? "the original function failed with this same new Error" : "written Error producer matches the original call contract") : "no matching explicit global Error channel" })
   }
   return { accepted, decisions }
 }
