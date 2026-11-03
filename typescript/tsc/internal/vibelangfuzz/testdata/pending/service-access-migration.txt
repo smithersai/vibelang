@@ -1,0 +1,2 @@
+FuzzServiceAccessMigration service-call:namespace compiler VIP-34: legacy zero-argument service/tag access has no automatic bare-tag repair across the explicit-effects upgrade; lane migfix-t3code
+FuzzServiceAccessMigration corpus:t3code-service-call-form-namespace compiler VIP-34: legacy zero-argument service/tag access has no automatic bare-tag repair across the explicit-effects upgrade; lane migfix-t3code
