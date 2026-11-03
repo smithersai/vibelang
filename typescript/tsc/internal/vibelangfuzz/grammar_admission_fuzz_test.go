@@ -157,6 +157,7 @@ var grammarAdmissionSeeds = []struct{ key, source string }{
 	{"native-function-overload", "function f(p: number): number; function f(p: number) { return p; }"},
 	{"join-nested-plain", "effect effect => function f(p) { return join p; }"},
 	{"native-for-await", "async function f(xs) { for await (const x of xs) { x; } }"},
+	{"native-for-await-placement", "async\nfunction f ( xs ) { for await ( const of xs ) effect { x ; } }"},
 }
 
 func FuzzGrammarAdmission(f *testing.F) {
@@ -1505,6 +1506,11 @@ func grammarAdmissionSyntaxDiagnostic(d *ast.Diagnostic) bool {
 	// something that is no target (TS2364), which ECMAScript's grammar does not derive.
 	case 1005, 1108, 1255, 1344, 2364:
 		return true
+	// Native ForInOfStatement requires an Await context for for-await-of.
+	// The checker reports TS1103 before checking a malformed head, so a
+	// missing lab derivation is already rejected by this native grammar rule.
+	case 1103:
+		return true
 	case 1099: // An empty type argument list.
 		return true
 	case 1264: // A definite assignment assertion with no type annotation.
@@ -1578,6 +1584,10 @@ func TestGrammarAdmissionDiagnostics(t *testing.T) {
 		{"native-optional-object-member", "", diagnostics.CategoryError, 1162, true},
 		{"native-missing-body", "", diagnostics.CategoryError, 1005, true},
 		{"native-return-placement", "", diagnostics.CategoryError, 1108, true},
+		{"native-for-await-placement", "", diagnostics.CategoryError, 1103, true},
+		{"native-for-await-placement-warning", "", diagnostics.CategoryWarning, 1103, false},
+		{"external-for-await-code-collision", "other", diagnostics.CategoryError, 1103, false},
+		{"ek-for-await-code-collision", "EK", diagnostics.CategoryError, 1103, false},
 		{"native-member-definite", "", diagnostics.CategoryError, 1255, true},
 		{"native-labeled-declaration", "", diagnostics.CategoryError, 1344, true},
 		{"native-assignment-target", "", diagnostics.CategoryError, 2364, true},

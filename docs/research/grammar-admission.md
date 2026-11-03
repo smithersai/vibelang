@@ -87,8 +87,9 @@ production to a subset rule; a test fails when a reworded production becomes an
 opaque terminal. The inherited TypeScript subset includes `for await (… of …)`, with native
 binding, destructuring and assignment heads and line breaks between `for`,
 `await` and `(`. Its negative controls exclude `in`, a three-clause head,
-a binding initializer and a missing iterable. Await placement remains a native
-early-error check. Bounds: no decorators, conditional types or regular
+a binding initializer and a missing iterable. A `for await` outside an async function or module reports native `TS1103`,
+which counts as grammar rejection even when the checker reaches it before
+a malformed head. Warnings and foreign diagnostic-source collisions do not. Bounds: no decorators, conditional types or regular
 expressions in the subset.
 
 The pipe lab recognizes `|>` as one token and incorporates the pinned

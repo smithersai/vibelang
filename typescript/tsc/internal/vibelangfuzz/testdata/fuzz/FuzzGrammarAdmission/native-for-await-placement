@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("key:native-for-await-placement\nasync\nfunction f ( xs ) { for await ( const of xs ) effect { x ; } }")
