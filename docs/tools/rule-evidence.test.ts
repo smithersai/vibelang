@@ -278,3 +278,83 @@ test("copying an unchanged published sentence into its VIP adds no new rule", ()
   expect(changedRules([doc("`try` must run.", "`try` must run."),
     { path: "docs/design/vips/0005-rule.md", before: "", after: "`try` must run." }])).toEqual([])
 })
+
+// Will, 2026-11-03: unimplemented specs may have test.todo, but each rule
+// must at least have a test. Pending coverage is never executable coverage.
+const pendingSource = (text = "`try` must run.", reference = path, state = "present") =>
+  'import { test } from "bun:test"\n' +
+  'test.todo(' + JSON.stringify(`rule-evidence: ${reference} | explicit run | ${state} | ${text}`) + ')\n'
+const pendingFile = (after: string, before = ""): Change =>
+  ({ path: "docs/tools/spec-new-rules-pending.test.ts", before, after })
+
+test("pending witness counts an exact changed test.todo separately from executable coverage", async () => {
+  const result = await checkEntry(entry(doc("# Rules\n\n`try` must run."),
+    pendingFile(pendingSource("`try` must run.", path + "#rules"))))
+  expect(result.findings).toEqual([])
+  expect(result.pending).toBe(1)
+  expect(result.cases).toBe(0)
+  expect(result.twins).toBe(0)
+})
+
+test("pending witness cannot cover another sentence, chapter, section or removal state", async () => {
+  for (const source of [
+    pendingSource("`try` must not run.", path + "#rules"),
+    pendingSource("`try` must run.", "docs/design/src/002-running.md#rules"),
+    pendingSource("`try` must run.", path + "#other"),
+    pendingSource("`try` must run.", path),
+    pendingSource("`try` must run.", path + "#rules", "removed")
+  ]) expect((await checkEntry(entry(doc("# Rules\n\n`try` must run."), pendingFile(source)))).findings).toHaveLength(1)
+  const result = await checkEntry(entry(doc("", "`try` must run."),
+    pendingFile(pendingSource("`try` must run.", path, "removed"))))
+  expect(result.findings).toEqual([])
+  expect(result.pending).toBe(1)
+})
+
+test("pending witness rejects unchanged, renamed, deleted and comment-only todo changes", async () => {
+  const source = pendingSource()
+  for (const file of [
+    pendingFile(source, source), pendingFile(source + "// another comment\n", source),
+    pendingFile(source.replace("explicit run", "renamed"), source), pendingFile("", source),
+    pendingFile("// " + source.replaceAll("\n", "\n// ")),
+    pendingFile('const fixture = ' + JSON.stringify(source)),
+    { ...pendingFile(source), path: "docs/tools/fixture.ts" }
+  ]) expect((await checkEntry(entry(doc("`try` must run."), file))).findings).toHaveLength(1)
+})
+
+test("pending witness requires a real imported top-level test.todo call", async () => {
+  const source = pendingSource()
+  for (const text of [
+    source.replace('"bun:test"', '"./fake"'), source.replace("test.todo", "other.todo"),
+    source.replace("test.todo", "test.skip"), source.replace("test.todo", "test"),
+    source.replace("test.todo(", "function neverCalled() { test.todo(") + "}",
+    source.replace("test.todo(", "if (false) test.todo("),
+    source.replace('import { test } from "bun:test"', 'const test = { todo() {} }')
+  ]) expect((await checkEntry(entry(doc("`try` must run."), pendingFile(text)))).findings).toHaveLength(1)
+  expect((await checkEntry(entry(doc("`try` must run."),
+    pendingFile(source.replaceAll("test.todo", "check.todo").replace("{ test }", "{ test as check }"))))).pending).toBe(1)
+})
+
+test("pending witness diff collection retains the test file and immutable revision contents", () => {
+  const body = pendingSource()
+  const patch = ["diff --git a/docs/tools/spec-new-rules-pending.test.ts b/docs/tools/spec-new-rules-pending.test.ts",
+    "new file mode 100644", "--- /dev/null", "+++ b/docs/tools/spec-new-rules-pending.test.ts", "@@ -0,0 +1,2 @@",
+    ...body.trimEnd().split("\n").map(line => "+" + line)].join("\n")
+  expect(parseDiff(patch)).toEqual([pendingFile(body)])
+})
+
+test("pending witness property: one test covers only its exact rule, including negations and codes", async () => {
+  await fc.assert(fc.asyncProperty(fc.constantFrom("try", "fork", "join", "schema", "service"),
+    fc.integer({ min: 1000, max: 9998 }), async (form, code) => {
+      const text = `The \`${form}\` form must report EK${code}.`
+      const witness = pendingFile(pendingSource(text))
+      expect((await checkEntry(entry(doc(text), witness))).pending).toBe(1)
+      expect((await checkEntry(entry(doc(text.replace("must report", "must not report")), witness))).findings).toHaveLength(1)
+      expect((await checkEntry(entry(doc(text.replace(`EK${code}`, `EK${code + 1}`)), witness))).findings).toHaveLength(1)
+    }), { seed: 20261103, numRuns: 100 })
+})
+
+test("pending witness covers only one of two rules in the same chapter section", async () => {
+  const result = await checkEntry(entry(doc("`try` must run. `fork` must run."), pendingFile(pendingSource())))
+  expect(result.pending).toBe(1)
+  expect(result.findings.map(f => f.text)).toEqual(["`fork` must run."])
+})

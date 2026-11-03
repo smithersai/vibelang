@@ -366,8 +366,9 @@ never receives typo correction. This lexical check cannot decide arbitrary
 semantic equivalence or whether an assertion proves a rule; `rule-judge`
 reviews those questions.
 
-Each sentence needs either a new or changed executable compiler case in that
-entry, or a nearby pair of complete `vibe` and `ts effect` fences. A changed
+Each sentence needs a new or changed executable compiler case in that
+entry, a nearby pair of complete `vibe` and `ts effect` fences, or an explicit
+pending test for an unimplemented rule (Will, 2026-11-03). A changed
 case must contain a diagnostic or form named by the sentence; member names
 such as `Users.Shape` also match `Local.Shape`, and grammar productions such
 as `CatchExpression` match `catch`. Existing case comments that cite a VIP
@@ -398,8 +399,25 @@ objects with Node's `isDeepStrictEqual`. Both must export an Effect; a timeout,
 failure to load or unequal Exit fails the comparison.
 A missing twin, a compile failure or a declaration mismatch names the sentence
 and the missing evidence. Diagnostic rules can use a failing compiler case.
-The checker exits `0` for an evidenced or exempt entry, `1` for missing
-evidence and `2` for a setup or revision error. The target requires full immutable commit IDs; both enter its cache key.
+A pending witness is a new top-level `test.todo` (or `it.todo`) call in a
+`docs/tools/*.test.ts` or `*.test.mjs` file, with `test`/`it` imported from
+`bun:test` or `node:test`. Its literal title names the exact chapter, heading
+slug, short name, rule state and full rule sentence:
+
+```ts
+import { test } from "bun:test"
+test.todo("rule-evidence: docs/design/src/001-functions.md#rules | explicit run | present | `try` must run.")
+```
+
+Use `removed` instead of `present` for a removed rule. The chapter, heading,
+state and canonical sentence must all match; a chapter or heading alone
+cannot cover another rule. A renamed or unchanged pending test, a comment,
+a fixture string, a skipped suite or an uncalled function does not count.
+Pending tests are reported separately from executable cases and compiled
+twins, so passing this obligation check does not claim implementation coverage.
+
+The checker exits `0` for an evidenced, explicitly pending or exempt entry,
+`1` for missing evidence and `2` for a setup or revision error. The target requires full immutable commit IDs; both enter its cache key.
 It is exclusive so ordinary wildcard CI can run without an entry diff.
 
 ## Specification coverage census
