@@ -1205,8 +1205,8 @@ func fileFixes(ctx context.Context, program *compiler.Program, file *ast.SourceF
 	diagnostics := append(slices.Clone(program.GetSyntacticDiagnostics(ctx, file)), program.GetSemanticDiagnostics(ctx, file)...)
 	seen := map[string]bool{}
 	for _, d := range diagnostics {
-		// Schema grammar providers explicitly opt their native diagnostics in.
-		if (d.Source() == diagnosticSource || d.Source() == "" && slices.Contains(nativeSchemaFixCodes, d.Code())) && slices.Contains(codes, d.Code()) && d.File() == file {
+		// Providers opt their native diagnostics in explicitly.
+		if (d.Source() == diagnosticSource || d.Source() == "" && slices.Contains(nativeFixCodes, d.Code())) && slices.Contains(codes, d.Code()) && d.File() == file {
 			// The syntactic and semantic lists can both carry one diagnostic;
 			// identify it by position, not text, so two spellings of the same
 			// type on different lines keep their own fixes.
