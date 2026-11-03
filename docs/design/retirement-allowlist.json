@@ -1,0 +1,92 @@
+[
+  {
+    "code": "EK1606",
+    "severity": "error",
+    "vip": "VIP-16",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0016-data-declarations.md: Status accepted by Will (2026-10-28), malformed-variant amendment (2026-10-31), decided detail 247; lane brief explicitly authorizes implementing accepted VIP requirements under Will's standing approval."
+    },
+    "reason": "Register the existing assigned diagnostic for already-rejected parenthesized variants and non-Field payload members. Baseline native/unit receipts prove existing errors; this adds no rejected form."
+  },
+  {
+    "code": "TS2300",
+    "case": "typescript/vibelang/cases/data-declaration.fail",
+    "vip": "VIP-16",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0016-data-declarations.md: Status accepted by Will (2026-10-28), malformed-variant amendment (2026-10-31), decided detail 247; lane brief explicitly authorizes implementing accepted VIP requirements under Will's standing approval."
+    },
+    "reason": "Diagnostic-only compatibility fixture update for VIP-16/detail 247. The main.vibe program is byte-identical after removing comment lines, and the golden diagnostics change only EK2125 to EK1606. The existing TS2300 expectation is unchanged; this records no new rejection or endorsement of a legacy restriction."
+  },
+  {
+    "code": "TS2717",
+    "case": "typescript/vibelang/cases/data-declaration.fail",
+    "vip": "VIP-16",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0016-data-declarations.md: Status accepted by Will (2026-10-28), malformed-variant amendment (2026-10-31), decided detail 247; lane brief explicitly authorizes implementing accepted VIP requirements under Will's standing approval."
+    },
+    "reason": "Diagnostic-only compatibility fixture update for VIP-16/detail 247. The main.vibe program is byte-identical after removing comment lines, and the golden diagnostics change only EK2125 to EK1606. The existing TS2717 expectation is unchanged; this records no new rejection or endorsement of a legacy restriction."
+  },
+  {
+    "code": "EK2124",
+    "case": "typescript/vibelang/cases/data-declaration.fail",
+    "vip": "VIP-16",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0016-data-declarations.md: Status accepted by Will (2026-10-28), malformed-variant amendment (2026-10-31), decided detail 247; lane brief explicitly authorizes implementing accepted VIP requirements under Will's standing approval."
+    },
+    "reason": "Diagnostic-only compatibility fixture update for VIP-16/detail 247. The main.vibe program is byte-identical after removing comment lines, and the golden diagnostics change only EK2125 to EK1606. The existing EK2124 expectation is unchanged; this records no new rejection or endorsement of a legacy restriction."
+  },
+  {
+    "code": "EK1606",
+    "case": "typescript/vibelang/cases/data-declaration.fail",
+    "vip": "VIP-16",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0016-data-declarations.md: Status accepted by Will (2026-10-28), malformed-variant amendment (2026-10-31), decided detail 247; lane brief explicitly authorizes implementing accepted VIP requirements under Will's standing approval."
+    },
+    "reason": "Diagnostic-only compatibility fixture update for VIP-16/detail 247. The main.vibe program is byte-identical after removing comment lines, and the golden diagnostics change only EK2125 to EK1606. This code is the newly assigned owner identity for the same existing rejection."
+  },
+  {
+    "code": "EK1013",
+    "case": "typescript/vibelang/cases/data-declaration.fail",
+    "vip": "VIP-16",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0016-data-declarations.md: Status accepted by Will (2026-10-28), malformed-variant amendment (2026-10-31), decided detail 247; lane brief explicitly authorizes implementing accepted VIP requirements under Will's standing approval."
+    },
+    "reason": "Diagnostic-only compatibility fixture update for VIP-16/detail 247. The main.vibe program is byte-identical after removing comment lines, and the golden diagnostics change only EK2125 to EK1606. The existing EK1013 expectation is unchanged; this records no new rejection or endorsement of a legacy restriction."
+  },
+  {
+    "code": "EK2801",
+    "case": "typescript/vibelang/cases/data-declaration.fail",
+    "vip": "VIP-16",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0016-data-declarations.md: Status accepted by Will (2026-10-28), malformed-variant amendment (2026-10-31), decided detail 247; lane brief explicitly authorizes implementing accepted VIP requirements under Will's standing approval."
+    },
+    "reason": "Diagnostic-only compatibility fixture update for VIP-16/detail 247. The main.vibe program is byte-identical after removing comment lines, and the golden diagnostics change only EK2125 to EK1606. The existing EK2801 expectation is unchanged; this records no new rejection or endorsement of a legacy restriction."
+  },
+  {
+    "code": "EK2126",
+    "case": "typescript/vibelang/cases/data-declaration.fail",
+    "vip": "VIP-16",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0016-data-declarations.md: Status accepted by Will (2026-10-28), malformed-variant amendment (2026-10-31), decided detail 247; lane brief explicitly authorizes implementing accepted VIP requirements under Will's standing approval."
+    },
+    "reason": "Diagnostic-only compatibility fixture update for VIP-16/detail 247. The main.vibe program is byte-identical after removing comment lines, and the golden diagnostics change only EK2125 to EK1606. The existing EK2126 expectation is unchanged; this records no new rejection or endorsement of a legacy restriction."
+  },
+  {
+    "code": "EK2122",
+    "case": "typescript/vibelang/cases/data-declaration.fail",
+    "vip": "VIP-16",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0016-data-declarations.md: Status accepted by Will (2026-10-28), malformed-variant amendment (2026-10-31), decided detail 247; lane brief explicitly authorizes implementing accepted VIP requirements under Will's standing approval."
+    },
+    "reason": "Diagnostic-only compatibility fixture update authorized by VIP-16/detail 247. EK2122 is an unchanged pre-existing compiler bug: VIP-16 allows zero variants. This entry does not approve or add that rejection. The fixture's program text is unchanged apart from comments and its golden diagnostics change only EK2125 to EK1606."
+  }
+]

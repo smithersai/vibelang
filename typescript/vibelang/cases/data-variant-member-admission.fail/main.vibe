@@ -1,0 +1,10 @@
+// expect: EK1606 EK1606 EK1606 EK1606 EK1606 EK1606 EK1606 EK1606
+data Callable { A { (x: number): string } }
+data Constructable { A { new(x: number): object } }
+data Indexed { A { [key: string]: unknown } }
+data Getter { A { get n(): number } }
+data Setter { A { set n(v: number) } }
+data Untyped { A { n } }
+data Generic<T> { A(f: (n: T) => void) }
+data Recovery { A(x: { n: number }); B }
+const recovered: Recovery = Recovery.B()

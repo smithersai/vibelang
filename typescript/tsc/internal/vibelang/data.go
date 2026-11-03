@@ -23,7 +23,7 @@ import (
 //
 //   - the declaration's rules: at least one variant (EK2122), no name
 //     Data.taggedEnum reserves (EK2124), only fields in
-//     a variant (EK2125), at most four type parameters (EK2801), no constraints (EK2126),
+//     a variant (EK1606), at most four type parameters (EK2801), no constraints (EK2126),
 //     and no comma between variants or fields (EK1013);
 //   - Name.Variant naming no variant, in a call, a pattern or anywhere else
 //     (EK2127, in place of TypeScript's TS2339);
@@ -46,8 +46,8 @@ var (
 	EK2122 = message(2122, errorCategory, "data {0} has no variants: a data type lists at least one.")
 	// EK2124: a name that Data.taggedEnum reserves: a variant named $is or $match. {0} is the name.
 	EK2124 = message(2124, errorCategory, "{0} cannot name a variant: Data.taggedEnum gives every data type its own {0}.")
-	// EK2125: a member of a variant that is not a field. {0} is the member.
-	EK2125 = message(2125, errorCategory, "{0} is not a field: a variant holds only fields, each written name: Type or name?: Type.")
+	// EK1606: a malformed variant or a payload member that is not a Field (VIP-16/detail 247).
+	EK1606 = message(1606, errorCategory, "{0} is not a field: a variant holds only fields, each written name: Type or name?: Type.")
 	// EK2801: a data declaration with more than four type parameters. {0} is its name, {1} the count.
 	EK2801 = message(2801, errorCategory, "data {0} has {1} type parameters, and Data.TaggedEnum.WithGenerics passes at most four.")
 	// EK2126: a constraint on a data type parameter. {0} is the parameter.
@@ -59,15 +59,16 @@ var (
 	// EK4707: a variant pattern whose subject's type has no case of that variant. {0} is the type, {1} the variant.
 	EK4707 = message(4707, errorCategory, "{0} has no case {1}, so this pattern never matches.")
 
-	ek2124Tag       = EK2124.With("_tag cannot name a field: a variant's constructor sets _tag to the variant's name.")
-	ek2125Mutable   = EK2125.With("{0} cannot be mutable: Data.TaggedEnum makes every field of a variant readonly.")
-	ek2125Untyped   = EK2125.With("{0} has no type: write {0}: Type.")
-	ek4706Extractor = EK4706.With("{0} is a data variant, and a variant's pattern lists its fields in braces: {0} { let field }.")
-	ek1013Variants  = EK1013.With("The variants of {0} are separated by ; or a new line, not by a comma.")
+	ek2124Tag        = EK2124.With("_tag cannot name a field: a variant's constructor sets _tag to the variant's name.")
+	ek1606Parameters = EK1606.With("A variant lists its fields in braces, not parentheses: write `A { x: Type }`.")
+	ek1606Mutable    = EK1606.With("{0} cannot be mutable: Data.TaggedEnum makes every field of a variant readonly.")
+	ek1606Untyped    = EK1606.With("{0} has no type: write {0}: Type.")
+	ek4706Extractor  = EK4706.With("{0} is a data variant, and a variant's pattern lists its fields in braces: {0} { let field }.")
+	ek1013Variants   = EK1013.With("The variants of {0} are separated by ; or a new line, not by a comma.")
 )
 
 func init() {
-	for _, m := range []*Message{EK2122, EK2124, EK2125, EK2126, EK2801, EK2127, EK4706, EK4707} {
+	for _, m := range []*Message{EK2122, EK2124, EK1606, EK2126, EK2801, EK2127, EK4706, EK4707} {
 		registry[m.Code] = m
 	}
 	fileChecks = append(fileChecks, checkData)
@@ -329,17 +330,22 @@ func checkDataDeclaration(c *checker.Checker, file *ast.SourceFile, alias *ast.N
 		if fields == nil || fields.Kind != ast.KindTypeLiteral {
 			continue
 		}
+		if fields.Flags&ast.NodeFlagsVibeLang != 0 {
+			report(c, fields, ek1606Parameters)
+			cover(c, fields)
+			continue
+		}
 		for _, field := range fields.Members() {
 			reportDataComma(c, file, field, EK1013, "a data variant")
 			switch {
 			case field.Kind != ast.KindPropertySignature:
-				report(c, field, EK2125, memberText(file, field))
+				report(c, field, EK1606, memberText(file, field))
 				cover(c, field)
 			case field.Type() == nil:
-				report(c, field.Name(), ek2125Untyped, scanner.GetTextOfNode(field.Name()))
+				report(c, field.Name(), ek1606Untyped, scanner.GetTextOfNode(field.Name()))
 				cover(c, field)
 			case !hasModifier(field, ast.KindReadonlyKeyword):
-				report(c, field.Name(), ek2125Mutable, scanner.GetTextOfNode(field.Name()))
+				report(c, field.Name(), ek1606Mutable, scanner.GetTextOfNode(field.Name()))
 				continue
 			case ast.IsIdentifier(field.Name()) && field.Name().Text() == "_tag":
 				report(c, field.Name(), ek2124Tag)
@@ -348,7 +354,7 @@ func checkDataDeclaration(c *checker.Checker, file *ast.SourceFile, alias *ast.N
 			}
 			// Data.TaggedEnum refuses a variant that may have a _tag field
 			// (TS2344 at its type argument): one named so, an index signature,
-			// or one of no type. EK2124 or EK2125 explains it.
+			// or one of no type. EK2124 or EK1606 explains it.
 			coverArgument(c, alias.Type().TypeArguments()[0])
 		}
 	}

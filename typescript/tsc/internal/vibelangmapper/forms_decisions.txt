@@ -1723,6 +1723,8 @@ typescript/vibelang/cases/data-methods-first-parameter/main.vibe:14:28 byname pr
 typescript/vibelang/cases/data-methods-first-parameter/main.vibe:21:51 lambda plain fallback
 typescript/vibelang/cases/data-patterns.fail/main.vibe:33:11 lambda dual fallback
 typescript/vibelang/cases/data-patterns.fail/main.vibe:37:11 lambda dual fallback
+typescript/vibelang/cases/data-variant-field-controls/main.vibe:11:23 lambda plain fallback
+typescript/vibelang/cases/data-variant-field-controls/main.vibe:11:44 lambda plain fallback
 typescript/vibelang/cases/decl-effect-types-lines/main.vibe:10:43 lambda program table
 typescript/vibelang/cases/decl-effect-types-lines/main.vibe:13:16 lambda effectFn service
 typescript/vibelang/cases/decl-effect-types-lines/main.vibe:13:51 lambda plain table

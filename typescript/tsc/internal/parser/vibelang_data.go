@@ -47,7 +47,7 @@ import (
 // The checker reports what the parser accepts and a data type cannot hold
 // (data.go in package vibelang): no variants (EK2122), a variant named
 // $is or $match or a field named _tag
-// (EK2124), a member of a variant that is not a field (EK2125), more than
+// (EK2124), a member of a variant that is not a field (EK1606), more than
 // four type parameters (EK2801), a constrained one (EK2126), and a comma after a
 // variant or a field (EK1013). A variant, like a member of a type literal,
 // ends with its separator, so the checker reads the comma there.
@@ -154,7 +154,8 @@ func (p *Parser) parseDataVariant(form *VibeSyntax) *ast.Node {
 	name := p.parseIdentifierName()
 	variant := VibeSyntaxVariant{Name: p.sourceRange(name)}
 	var fields *ast.Node
-	if p.token == ast.KindOpenBraceToken {
+	switch p.token {
+	case ast.KindOpenBraceToken:
 		// A variant's payload is readonly, as in Effect's Data.TaggedEnum (006).
 		saved := p.vibelangImplicitReadonly
 		p.vibelangImplicitReadonly = true
@@ -166,7 +167,14 @@ func (p *Parser) parseDataVariant(form *VibeSyntax) *ast.Node {
 			}
 		}
 		variant.Open, variant.Close = p.blockBraces(fields)
-	} else {
+	case ast.KindOpenParenToken:
+		// VIP-16 / detail 247: a parameter list is a malformed variant,
+		// not a missing separator. Retain its range for the owning EK1606
+		// diagnostic and recover at the following variant.
+		list := p.skipDataVariantParameters()
+		fields = p.vibelangSpanning(p.factory.NewTypeLiteralNode(p.newNodeList(list, nil)), list)
+		fields.Flags |= ast.NodeFlagsVibeLang
+	default:
 		fields = p.vibelangSynthesized(p.factory.NewTypeLiteralNode(p.newNodeList(name.Loc, nil)), name.Loc)
 	}
 	form.Variants = append(form.Variants, variant)
@@ -212,6 +220,35 @@ func (p *Parser) parseDataFields() *ast.Node {
 	})
 	p.parseExpected(ast.KindCloseBraceToken)
 	return p.finishNode(p.factory.NewTypeLiteralNode(members), pos)
+}
+
+// skipDataVariantParameters consumes a malformed parenthesized payload,
+// including function types and object types. An unmatched list stops before
+// the declaration's closing brace so subsequent declarations remain visible.
+func (p *Parser) skipDataVariantParameters() core.TextRange {
+	start, end := p.scanner.TokenStart(), p.scanner.TokenEnd()
+	parens, braces := 0, 0
+	for p.token != ast.KindEndOfFile {
+		switch p.token {
+		case ast.KindOpenParenToken:
+			parens++
+		case ast.KindCloseParenToken:
+			parens--
+		case ast.KindOpenBraceToken:
+			braces++
+		case ast.KindCloseBraceToken:
+			if braces == 0 {
+				return core.NewTextRange(start, end)
+			}
+			braces--
+		}
+		end = p.scanner.TokenEnd()
+		p.nextToken()
+		if parens == 0 {
+			break
+		}
+	}
+	return core.NewTextRange(start, end)
 }
 
 // dataDefinition writes the interface through which a generic data type

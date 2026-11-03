@@ -1,4 +1,4 @@
-// expect: EK2122 TS2300 TS2717 EK2124 EK2125 EK2126 EK2801 EK1013
+// expect: EK2122 TS2300 TS2717 EK2124 EK1606 EK2126 EK2801 EK1013
 // What a data declaration (D307) cannot hold.
 
 // EK2122: no variants.
@@ -17,7 +17,7 @@ data Reserved {
   Tagged { _tag: string }
 }
 
-// EK2125: a variant holds only fields, each typed and readonly.
+// EK1606: a variant holds only fields, each typed and readonly.
 data Members {
   Method { run(): void }
   Mutable { mutable count: number }

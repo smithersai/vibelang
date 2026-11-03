@@ -1,0 +1,13 @@
+// Valid payload fields keep TypeScript types, including nested method types.
+data D {
+ A
+ {
+  f: (n: number) => void
+  inner: { m(): void }
+  readonly name?: string
+ }
+ B
+}
+const d: D = D.A({ f: (_n) => {}, inner: { m() {} } })
+const b: D = D.B()
+export { d, b }

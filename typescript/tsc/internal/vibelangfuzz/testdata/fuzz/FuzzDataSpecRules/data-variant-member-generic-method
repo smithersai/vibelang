@@ -1,0 +1,3 @@
+go test fuzz v1
+string("variant-member-generic-method")
+byte(0)
