@@ -1,0 +1,6 @@
+go test fuzz v1
+string("function-namespace")
+int8(8)
+bool(true)
+bool(false)
+bool(false)

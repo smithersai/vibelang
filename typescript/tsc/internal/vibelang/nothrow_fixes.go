@@ -37,6 +37,7 @@ import (
 
 func init() {
 	ls.RegisterCodeFixProvider(nothrowFix)
+	tsFormFixCodes = append(tsFormFixCodes, EK0401.Code)
 }
 
 var nothrowFix = &ls.CodeFixProvider{
@@ -53,16 +54,26 @@ var nothrowFix = &ls.CodeFixProvider{
 		}
 		c, done := fix.Program.GetTypeCheckerForFile(ctx, fix.SourceFile)
 		defer done()
+		move := moveNothrowDeclaration(ctx, fix, c, site)
+		var actions []*ls.CodeAction
+		if move != nil && publishedNothrowDeclaration(fix, c, site) {
+			actions = append(actions, move)
+		}
+		finish := func() ([]*ls.CodeAction, error) {
+			if move != nil && (len(actions) == 0 || actions[0] != move) {
+				actions = append(actions, move)
+			}
+			return actions, nil
+		}
 		home := analyzerFor(c).plainHomeOf(site)
 		if home == nil || effectBreaksContract(c, home) {
-			return nil, nil
+			return finish()
 		}
 		edits := makeEffectEdits(fix, site, home)
 		if edits == nil {
-			return nil, nil
+			return finish()
 		}
 		file := fix.SourceFile
-		var actions []*ls.CodeAction
 		name := functionDisplayName(home)
 		description := "Make " + name + " an effect function"
 		if isCatchHandlerOf(home) {
@@ -76,7 +87,7 @@ var nothrowFix = &ls.CodeFixProvider{
 			die := append(append([]*lsproto.TextEdit{}, edits...), replaceRange(fix, nodeStart(file, site), operand.End(), "return try die("+nodeText(file, operand)+")")...)
 			actions = append(actions, &ls.CodeAction{Description: description + " and fail with a defect: die", Changes: die})
 		}
-		return actions, nil
+		return finish()
 	},
 }
 

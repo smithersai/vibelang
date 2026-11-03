@@ -1328,7 +1328,7 @@ type fixGate struct {
 	baseline errorBaseline
 	// scope is the modules the run may rewrite and whose errors it counts
 	// (fix_only.go); nil is the whole project.
-	scope   *fixScope
+	scope *fixScope
 	// original is baseline before any round: retryRefused adds the errors
 	// the gate accepted, which include the names fixes left unread, and
 	// removeUnusedTypeNames must not take those for the author's.
@@ -1470,6 +1470,18 @@ func fileFixes(ctx context.Context, program *compiler.Program, file *ast.SourceF
 	var declined []declinedSite
 	for _, d := range fixable {
 		key := fixKey(file, d)
+		if d.Code() == EK0401.Code {
+			site := reportedNode(file, core.NewTextRange(d.Pos(), d.End()), func(n *ast.Node) bool {
+				return n.Kind == ast.KindThrowStatement || ast.IsCallExpression(n) || ast.IsNewExpression(n)
+			})
+			c, done := program.GetTypeCheckerForFile(ctx, file)
+			safe := site != nil && automaticNothrowFix(c, file, site)
+			done()
+			if !safe {
+				declined = append(declined, declinedSite{d.Pos(), d.End(), d.Code(), key, "requires an explicit effect or TypeScript-file migration"})
+				continue
+			}
+		}
 		if refused[key] {
 			if d.Code() == EK1002.Code {
 				c, done := program.GetTypeCheckerForFile(ctx, file)

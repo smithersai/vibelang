@@ -1,0 +1,6 @@
+go test fuzz v1
+string("overload")
+int8(1)
+bool(true)
+bool(false)
+bool(true)

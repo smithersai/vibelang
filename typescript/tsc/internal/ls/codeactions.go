@@ -507,6 +507,13 @@ func containsErrorCode(codes []int32, code int32) bool {
 // convertToLSPCodeAction converts an internal CodeAction to an LSP CodeAction
 func convertToLSPCodeAction(action *CodeAction, diag *lsproto.Diagnostic, uri lsproto.DocumentUri) lsproto.CommandOrCodeAction {
 	kind := lsproto.CodeActionKindQuickFix
+	if len(action.CreatedFiles) != 0 {
+		result := convertToLSPRefactor(action, uri)
+		result.CodeAction.Kind = &kind
+		diagnostics := []*lsproto.Diagnostic{diag}
+		result.CodeAction.Diagnostics = &diagnostics
+		return result
+	}
 	changes := map[lsproto.DocumentUri][]*lsproto.TextEdit{
 		uri: action.Changes,
 	}
