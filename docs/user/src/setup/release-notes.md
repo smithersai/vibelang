@@ -301,6 +301,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Migration declaration checks now cover generic span rewrites that accidentally remove a requirement, while accepting equivalent formatting and union order.
 
 - The specification's folded details referred to removed `EK1020` and `EK4843` checks as though they still needed diagnostic registry entries. Both references now explicitly identify historical checks, matching VIP-1 and VIP-26.
+
+- The specification's folded details referred to removed `EK1020` and `EK4843` checks as though they still needed diagnostic registry entries. Both references now explicitly identify historical checks, matching VIP-1 and VIP-26.
 - Resolved schema-binding regressions still appeared as pending gaps; namespace, function and escaped-name coverage now checks `EK2109` strictly while keeping every keyed corpus.
 - Schema library-alias checks now compare array decoding and mutability with native TypeScript and explicit Schema controls; remaining decoder gaps keep precise pending records.
 
