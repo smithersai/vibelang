@@ -110,7 +110,7 @@ Old VibeLang is a reference only; nothing in it is part of the language unless a
 
 ## Amendment: inferred Effect arguments
 
-VIP-1 makes an Effect call construct a cold program; this VIP requires `try` to obtain its result. The configurable warning `EK4802` also covers inferred Effect arguments under this rule. It does not change TypeScript inference, execute the argument or reject the call by default; VIP-34's warning exit-status rule applies.
+**Clarified 2026-11-03:** the inferred-argument warning is derived from VIP-1's cold-call rule, this VIP's explicit `try`, and VIP-34's diagnostic and severity rules. `EK4802` warns about a possibly missing `try`; it does not change TypeScript inference, execute the argument or reject the call by default.
 
 In effect code, inspect the resolved call signature's own type parameters inferred as Effects. Report `EK4802` at each argument whose unsubstituted parameter type contains one outside a declared Effect position, following unions, intersections, container type arguments, object properties, and callback parameter and result types. This includes overloads, methods and `T extends unknown`. A signature with a declared Effect result is excluded, as are arguments already run with `try`, explicit call type arguments and explicitly instantiated callees. Keyword execution forms and TypeScript module blocks are excluded; nested plain or `async` functions keep TypeScript's inference.
 
