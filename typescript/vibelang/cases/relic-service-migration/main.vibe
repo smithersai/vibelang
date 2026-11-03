@@ -1,0 +1,6 @@
+// expect-result: 6
+// The retirement codemod must preserve this private service-shaped use.
+control Ask { ask(x: number): number!! }
+export effect function main(): number!! {
+  try { return try Ask.ask(4) } handle Ask.ask(x) { return try resume(x + 2) }
+}
