@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("key:try-in-generator\nfunction* g() { try 1; }")

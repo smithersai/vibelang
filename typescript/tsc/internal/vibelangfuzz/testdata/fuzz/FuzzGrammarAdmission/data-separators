@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("key:data-separators\ndata D { A { x : number } ; ; B }")

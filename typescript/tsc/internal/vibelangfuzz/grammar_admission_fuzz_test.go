@@ -129,6 +129,8 @@ var grammarAdmissionSeeds = []struct{ key, source string }{
 	{"effect-type-trailing-bang", "type T = number!string!;"},
 	{"effect-type-line-break", "type T = number !\n! ;"},
 	{"service-class", "service class S { n: number }"},
+	{"try-in-generator", "function* g() { try 1; }"},
+	{"data-separators", "data D { A { x : number } ; ; B }"},
 	{"interruption-outside-effect", "function f() { uninterruptible { return 1; } }"},
 	{"error-no-end", "error E effect { id: string }"},
 	{"error-no-end-schema", "schema error E effect { id: string }"},
@@ -340,6 +342,29 @@ func grammarAdmissionDeclarationForm(ts []grammarToken) string {
 			if i > 0 && ts[i-1].text == "for" && i+1 < len(ts) && ts[i+1].nl {
 				return "admission:for-concurrent-line-break"
 			}
+		case "data":
+			// DataDeclaration has one Separator between variants and an optional last one.
+			if i+2 < len(ts) && ts[i+1].kind == 'w' {
+				open := i + 2
+				if ts[open].text == "{" {
+					inner := 0
+					for j := open; j < len(ts); j++ {
+						switch ts[j].text {
+						case "{":
+							inner++
+						case "}":
+							inner--
+						case ";":
+							if inner == 1 && (ts[j-1].text == ";" || ts[j-1].text == "{") {
+								return "admission:data-separators"
+							}
+						}
+						if inner == 0 {
+							break
+						}
+					}
+				}
+			}
 		case "service":
 			// The older spelling draws only the warning EK2120.
 			if i+1 < len(ts) && !ts[i+1].nl && ts[i+1].text == "class" {
@@ -405,6 +430,19 @@ func TestGrammarAdmissionFiberParameterKeys(t *testing.T) {
 	} {
 		if got := grammarFiberParameter.MatchString(source); got != want {
 			t.Errorf("%q matched %v; want %v", source, got, want)
+		}
+	}
+}
+
+func TestGrammarAdmissionDataSeparatorKeys(t *testing.T) {
+	for source, want := range map[string]string{
+		"data D { A { x : number } ; ; B }":     "admission:data-separators",
+		"data D { ; A }":                        "admission:data-separators",
+		"data D { A; B; }":                      "",
+		"data D { A { x: number; y: string } }": "",
+	} {
+		if got := grammarAdmissionDeclarationForm(grammarLexSource(source)); got != want {
+			t.Errorf("%q keyed %q; want %q", source, got, want)
 		}
 	}
 }
@@ -489,6 +527,9 @@ func grammarAdmissionForm(source string) string {
 			body++
 		}
 		if grammarPlainExecutes(ts, body) {
+			if i+1 < len(ts) && ts[i+1].text == "*" {
+				return "admission:try-in-generator"
+			}
 			return "admission:function-kind"
 		}
 	}
@@ -1015,6 +1056,16 @@ func TestGrammarAdmissionCore(t *testing.T) {
 	}
 	if r := lab.read(lab.g, grammarLexSource("[ 1 2 ];"), grammarParseMode{prose: true, names: true}); r.count != 0 {
 		t.Error("array elements with no comma have a derivation")
+	}
+	// TypeScript allows a leading operator in a union or intersection type.
+	for _, source := range []string{"type T = | 1 | 2;", "type T = & 1;", "type T = ( | 2 ) ! string ;"} {
+		if r := lab.read(lab.g, grammarLexSource(source), grammarParseMode{prose: true, names: true}); r.count == 0 {
+			t.Errorf("leading type operator has no derivation: %s", source)
+		}
+	}
+	// TypeScript's angle-bracket assertion is inherited in a .vibe file.
+	if r := lab.read(lab.g, grammarLexSource("< T > { a : T };"), grammarParseMode{prose: true, names: true}); r.count == 0 {
+		t.Error("an angle-bracket assertion has no derivation")
 	}
 	// A lookahead whose set holds "=>" is still a negative lookahead.
 	if r := lab.read(lab.g, grammarLexSource("type T = (number);"), grammarParseMode{prose: true, names: true}); r.count == 0 {

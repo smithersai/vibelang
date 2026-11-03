@@ -485,7 +485,7 @@ RelationalExpression = AdditiveExpression | RelationalExpression RelationalOpera
 RelationalOperator = "<" | ">" | "<=" | ">=" | "instanceof" | "in"
 AdditiveExpression = MultiplicativeExpression | AdditiveExpression "+" MultiplicativeExpression | AdditiveExpression "-" MultiplicativeExpression
 MultiplicativeExpression = UnaryExpression | MultiplicativeExpression "*" UnaryExpression | MultiplicativeExpression "%" UnaryExpression
-UnaryExpression = UpdateExpression | "!" UnaryExpression | "-" UnaryExpression | "+" UnaryExpression | "typeof" UnaryExpression | "void" UnaryExpression | "delete" UnaryExpression | AwaitExpression
+UnaryExpression = "<" Type ">" UnaryExpression | UpdateExpression | "!" UnaryExpression | "-" UnaryExpression | "+" UnaryExpression | "typeof" UnaryExpression | "void" UnaryExpression | "delete" UnaryExpression | AwaitExpression
 AwaitExpression = "await" UnaryExpression
 YieldExpression = "yield" [lookahead ∉ { "*" }] | "yield" [no LineTerminator here] AssignmentExpression | "yield" [no LineTerminator here] "*" AssignmentExpression
 UpdateExpression = LeftHandSideExpression | LeftHandSideExpression [no LineTerminator here] "++" | "++" UnaryExpression
@@ -527,8 +527,8 @@ TypeArguments = "<" TypeList ">"
 TypeList = Type | TypeList "," Type
 Type = UnionType | FunctionType
 TypeNoEffect = UnionType | FunctionType
-UnionType = IntersectionType | UnionType "|" IntersectionType
-IntersectionType = PostfixType | IntersectionType "&" PostfixType
+UnionType = "|"? IntersectionType | UnionType "|" IntersectionType
+IntersectionType = "&"? PostfixType | IntersectionType "&" PostfixType
 PostfixType = PrimaryType | PostfixType [no LineTerminator here] "[" "]" | PostfixType [no LineTerminator here] "[" Type "]" | "readonly" [no LineTerminator here] PostfixType | "keyof" [no LineTerminator here] PostfixType
 PrimaryType = TypeReference | "(" Type ")" [lookahead ∉ { "=>" }] | ObjectType | TupleType | StringLiteral | NumericLiteral | "void" | "null" | "true" | "false" | "typeof" IdentifierReference
 TypeReference = TypeName [lookahead ∉ { "<" }] | TypeName [no LineTerminator here] TypeArguments
