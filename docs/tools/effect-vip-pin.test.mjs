@@ -6,7 +6,8 @@ const vip = (name) => readFileSync(new URL(`../design/vips/${name}`, import.meta
 
 test("VIP module and resource references use the accepted Effect pin", () => {
   const decision = vip("0032-effect-version.md")
-  const pin = /the pin is effect ([\d.]+)/.exec(decision)[1]
+  const pin = /the pin is `?effect`? (\d+\.\d+\.\d+)/.exec(decision)?.[1]
+  assert.ok(pin, "VIP-32 names no Effect pin in the form: the pin is `effect` X.Y.Z")
   assert.ok(vip("0014-effect-modules-in-scope.md").includes(`149 in effect ${pin}`))
   assert.ok(vip("0008-using-denied.md").includes(`## Effect's scope functions (effect ${pin})`))
 })
