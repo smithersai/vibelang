@@ -4,6 +4,6 @@ import { Effect } from "effect"
 function fork(n: number) { return n + 1 }
 function join(n: number) { return n + 2 }
 export effect function main() {
- service Defaulted { value: number; static readonly defaultValue = () => ({ value: fork(join(4)) }) }
+ service Defaulted { value: number; static readonly defaultValue = () => ({ value: fork(join(4)) }); static readonly key = "cov/Defaulted" }
  return (try Defaulted).value
 }

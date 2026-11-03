@@ -5,6 +5,7 @@ export effect function main(): Effect.Effect<number> {
  service Item {
    readonly n: number
    static readonly defaultValue = () => ({ n: join(3) })
+   static readonly key = "Item"
  }
  return (try Item).n
 }
