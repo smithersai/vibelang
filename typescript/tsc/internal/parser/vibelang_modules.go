@@ -5,6 +5,7 @@ import (
 
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/core"
+	"github.com/microsoft/TypeScript/tsc/internal/diagnostics"
 	"github.com/microsoft/TypeScript/tsc/internal/scanner"
 	"github.com/microsoft/TypeScript/tsc/internal/spanmap"
 	"github.com/microsoft/TypeScript/tsc/internal/tspath"
@@ -38,7 +39,7 @@ import (
 // isStartOfVibeLangModuleDeclaration reports whether the current token,
 // module, starts a module declaration: an identifier follows it on the same
 // line, and a { follows the identifier. A { in the identifier's place starts
-// one without its name, which the checker refuses (EK4408), rather than a
+// one without its name, which the checker refuses (EK4003), rather than a
 // block passed to a function named module.
 func (p *Parser) isStartOfVibeLangModuleDeclaration() bool {
 	return p.isVibeLangFile() && p.token == ast.KindModuleKeyword && p.lookAhead(func(p *Parser) bool {
@@ -67,7 +68,7 @@ func (p *Parser) parseVibeLangModuleDeclaration(pos int, jsdoc jsdocScannerInfo,
 	p.nextToken() // module
 	var name *ast.Node
 	if p.token == ast.KindOpenBraceToken {
-		name = p.createMissingIdentifier() // module { }: EK4408 asks for the name
+		name = p.createMissingIdentifier() // module { }: EK4003 asks for the name
 	} else {
 		name = p.parseIdentifier()
 	}
@@ -289,3 +290,23 @@ const (
 	// identifier, from text (D283): Word, and Name the identifier.
 	VibeSyntaxModuleReference
 )
+
+// VIP-40 reserves expressions and non-top-level declarations. Consume the
+// whole rejected form, keeping native trailing-block recovery out of it.
+const ModuleExpressionMessage = "A module expression is not supported. Write module name { … } at the top level and import from name."
+const ModulePlacementMessage = "A module declaration stands at the top level of a .vibe file. Move it to the top level."
+const ModuleExportMessage = "A module declaration is not exported; re-export its members with export { … } from name."
+
+func (p *Parser) rejectVibeLangModule(code int32, message string) *ast.Node {
+	pos := p.nodePos()
+	keyword := p.tokenRange()
+	p.nextToken()
+	if p.token != ast.KindOpenBraceToken {
+		p.parseIdentifier()
+	}
+	p.parseExpected(ast.KindOpenBraceToken)
+	p.skipTypeScriptModuleBody()
+	p.parseExpected(ast.KindCloseBraceToken)
+	p.diagnostics = append(p.diagnostics, ast.NewExternalDiagnostic(nil, keyword, "EK", diagnostics.CategoryError, code, message))
+	return p.finishNode(p.factory.NewKeywordExpression(ast.KindNullKeyword), pos)
+}

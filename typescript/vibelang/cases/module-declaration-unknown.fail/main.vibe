@@ -1,0 +1,13 @@
+// expect: EK4006
+// An identifier module specifier names a module declaration of this file
+// (D283); a name the file does not declare is EK4006, not a package lookup.
+module text {
+  export const separator = "-"
+}
+
+import { separator } from text
+import { other } from missing
+
+export function main() {
+  return separator + other
+}

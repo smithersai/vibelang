@@ -1,0 +1,1 @@
+A module name is not a value. Import its exports with a static import from text, or use a .ts file for dynamic import().

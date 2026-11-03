@@ -1,0 +1,2 @@
+// expect: EK4002
+export module text { export const n = 1 }

@@ -1,0 +1,1 @@
+A module declaration's body is an ES module, which imports with import, not import = require().

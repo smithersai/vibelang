@@ -1,0 +1,1 @@
+A module declaration stands at the top level of a .vibe file. Move it to the top level.

@@ -895,7 +895,8 @@ func (p *Parser) isListElement(parsingContext ParsingContext, inErrorRecovery bo
 		// not in error recovery.  If we're in error recovery, we don't want an errant
 		// semicolon to be treated as a class member (since they're almost always used
 		// for statements.
-		return p.vibelangFieldComma && p.token == ast.KindCommaToken || // vibelang_errors.go
+		return p.isStartOfVibeLangModuleDeclaration() || // VIP-40: consume and diagnose misplaced modules
+			p.vibelangFieldComma && p.token == ast.KindCommaToken || // vibelang_errors.go
 			p.lookAhead((*Parser).scanClassMemberStart) || p.token == ast.KindSemicolonToken && !inErrorRecovery
 	case PCEnumMembers:
 		// Include open bracket computed properties. This technically also lets in indexers,
@@ -2040,6 +2041,11 @@ func (p *Parser) parseExpressionWithTypeArguments() *ast.Node {
 }
 
 func (p *Parser) parseClassElement() *ast.Node {
+	if p.isStartOfVibeLangModuleDeclaration() {
+		pos := p.nodePos()
+		p.rejectVibeLangModule(4001, ModulePlacementMessage)
+		return p.finishNode(p.factory.NewSemicolonClassElement(), pos)
+	}
 	if p.vibelangFieldComma && p.token == ast.KindCommaToken {
 		return p.parseVibeLangFieldComma() // vibelang_errors.go
 	}
@@ -2770,7 +2776,12 @@ func (p *Parser) parseExportAssignment(pos int, jsdoc jsdocScannerInfo, modifier
 			return declaration
 		}
 	}
-	expression := p.parseAssignmentExpressionOrHigher()
+	var expression *ast.Node
+	if !isExportEquals && p.isStartOfVibeLangModuleDeclaration() {
+		expression = p.rejectVibeLangModule(4002, ModuleExportMessage)
+	} else {
+		expression = p.parseAssignmentExpressionOrHigher()
+	}
 	p.parseSemicolon()
 	p.contextFlags = saveContextFlags
 	p.statementHasAwaitIdentifier = saveHasAwaitIdentifier
@@ -5916,6 +5927,9 @@ func (p *Parser) parseTemplateSpan(isTaggedTemplate bool) *ast.Node {
 }
 
 func (p *Parser) parsePrimaryExpression() *ast.Expression {
+	if p.isStartOfVibeLangModuleDeclaration() {
+		return p.rejectVibeLangModule(4003, ModuleExpressionMessage)
+	}
 	// A parenthesized call may name a user's function with a block argument.
 	// Only the statement spelling here was previously invalid syntax.
 	if p.isStartOfVibeLangProvide() && !p.lookAhead((*Parser).nextTokenIsOpenParen) {

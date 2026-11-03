@@ -1,0 +1,6 @@
+main.vibe(3,22): error EK4004
+main.vibe(4,28): error EK4004
+main.vibe(5,31): error EK4004
+main.vibe(6,25): error EK4004
+main.vibe(8,8): error EK4004
+main.vibe(9,28): error EK4004

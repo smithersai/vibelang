@@ -194,8 +194,13 @@ var (
 	EK4405 = message(4405, errorCategory, "{0} is declared outside the hatch, and a hatch's TypeScript is self-contained: pass {0} to {1} as an input.")
 	// EK4406: a declaration tag cannot reach the per-file emit (D249).
 	EK4406 = message(4406, legacyTrustCategory, "{0}: @vibelang trusted and @throws tags will not survive the emit switch; {1}.")
-	// EK4407: a module specifier written as an identifier names no module declaration of the file (D283). {0} is the name.
-	EK4407 = message(4407, errorCategory, "This file declares no module named {0}: write module {0} { … } at its top level, or import a file with a string specifier.")
+	// VIP-40: named, top-level TypeScript module declarations.
+	EK4001 = message(4001, errorCategory, parser.ModulePlacementMessage)
+	EK4002 = message(4002, errorCategory, parser.ModuleExportMessage)
+	EK4003 = message(4003, errorCategory, parser.ModuleExpressionMessage)
+	EK4004 = message(4004, errorCategory, "A module name is not a value. Import its exports with a static import from {0}, or use a .ts file for dynamic import().")
+	EK4006 = message(4006, errorCategory, "This file declares no module named {0}: write module {0} { … } at its top level, or import a file with a string specifier.")
+	EK4008 = message(4008, errorCategory, "A module declaration's body is an ES module. Use export default and import instead of export = or import = require().")
 	// EK4408: a module declaration written where none can stand, or a body that is not an ES module (D283).
 	EK4408 = message(4408, errorCategory, "A module declaration stands at the top level of a .vibe file and holds an ES module.")
 	// EK4409: what an Effect function or a program returns is a call of a value of type any. {0} is the call, {1} the function. A warning, adjustable.
@@ -213,7 +218,7 @@ func init() {
 		EK0201, EK0202, EK0203, EK0204, EK0205,
 		EK9201, EK9202, EK9203, EK9204, EK2005, EK2006, EK9205, EK9206, EK9207, EK2104, EK2105, EK2106, EK2107, EK2108, EK2109, EK2112, EK2113, EK2115, EK2116, EK2117, EK2118,
 		EK3001, EK3002, EK3003, EK3004, EK3005, EK9208, EK3101, EK3201, EK3202, EK3203, EK3204, EK3205, EK3206, EK3207,
-		EK4201, EK4202, EK4301, EK4401, EK4402, EK4403, EK4405, EK4406, EK4407, EK4408, EK4409, EK4501,
+		EK4201, EK4202, EK4301, EK4401, EK4402, EK4403, EK4405, EK4406, EK4001, EK4002, EK4003, EK4004, EK4006, EK4008, EK4408, EK4409, EK4501,
 	} {
 		registry[m.Code] = m
 	}
@@ -438,7 +443,7 @@ func filterPlatformImports(c *checker.Checker, file *ast.SourceFile, diagnostics
 }
 
 func filterCoveredDiagnostics(c *checker.Checker, file *ast.SourceFile, diagnostics []*ast.Diagnostic) []*ast.Diagnostic {
-	if !isVibeLangFile(file) {
+	if !isVibeLangFile(file) && file.EmbeddedModule() == nil {
 		return diagnostics
 	}
 	state := diagnosticsStateOf(c)

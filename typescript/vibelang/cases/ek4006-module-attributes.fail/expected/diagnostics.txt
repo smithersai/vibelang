@@ -1,0 +1,1 @@
+main.vibe(3,19): error EK4006

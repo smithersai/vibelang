@@ -1,0 +1,2 @@
+// expect: EK4003
+export const value = module { export const n = 1 }

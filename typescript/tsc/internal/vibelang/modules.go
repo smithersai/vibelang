@@ -45,10 +45,15 @@ func init() {
 }
 
 // checkModuleDeclarations reports misplaced and misspelled module
-// declarations (EK4408) and module specifiers that name no module
-// declaration of file (EK4407).
+// declarations (VIP-40) and module specifiers that name no declaration.
 func checkModuleDeclarations(c *checker.Checker, file *ast.SourceFile) {
 	seen := map[string]bool{}
+	moduleNames := map[string]bool{}
+	for _, body := range file.SupplementalSourceFiles() {
+		if module := body.EmbeddedModule(); module != nil {
+			moduleNames[module.Name] = true
+		}
+	}
 	var visit func(node *ast.Node) bool
 	visit = func(node *ast.Node) bool {
 		switch {
@@ -59,15 +64,15 @@ func checkModuleDeclarations(c *checker.Checker, file *ast.SourceFile) {
 			if name == "" {
 				// module { }: the name's place, after the keyword, is empty.
 				keyword := core.NewTextRange(node.Name().Pos()-len("module"), node.Name().Pos())
-				reportAt(c, file, keyword, EK4408.With("A module declaration needs a name: module name { … }."))
+				reportAt(c, file, keyword, EK4003)
 				return false
 			}
 			key := strings.ToLower(name)
 			switch {
 			case node.Parent != file.AsNode():
-				report(c, node.Name(), EK4408.With("A module declaration stands at the top level of a file."))
+				report(c, node.Name(), EK4001)
 			case node.Modifiers() != nil && len(node.Modifiers().Nodes) != 0:
-				report(c, node.Modifiers().Nodes[0], EK4408.With("A module declaration is not exported; export what it exports with export { … } from {0}."), name)
+				report(c, node.Modifiers().Nodes[0], EK4002, name)
 			case seen[key]:
 				report(c, node.Name(), EK4408.With("This file already declares a module named {0}."), name)
 			}
@@ -81,15 +86,26 @@ func checkModuleDeclarations(c *checker.Checker, file *ast.SourceFile) {
 				report(c, node.Name(), collision, name)
 			}
 			return false
-		case node.Kind == ast.KindModuleDeclaration && node.AsModuleDeclaration().Keyword == ast.KindModuleKeyword && node.Name() != nil && ast.IsIdentifier(node.Name()):
-			// declare module x { }, module a.b { }: in a .vibe file module is never a namespace.
-			cover(c, node.Name())
-			report(c, node.Name(), EK4408.With("In a .vibe file, module declares a module whose body is TypeScript: module {0} { … }. Write a namespace with namespace."), node.Name().Text())
+		case parser.IsVibeLangModuleReference(node):
+			if moduleReferenceHasAttributes(node) {
+				coverCodes(c, node.Parent, 2856, 2823, 2857)
+				report(c, node, EK4006.With("An identifier module specifier cannot carry import attributes. Use a string specifier for a file or package."))
+			} else if file.EmbeddedModuleBySpecifier(node.Text()) == nil {
+				cover(c, node)
+				report(c, node, EK4006, specifierName(file, node))
+			}
 			return false
-		case parser.IsVibeLangModuleReference(node) && file.EmbeddedModuleBySpecifier(node.Text()) == nil:
-			cover(c, node)
-			report(c, node, EK4407, specifierName(file, node))
-			return false
+		case ast.IsIdentifier(node) && moduleNames[node.Text()] && (!ast.IsDeclarationName(node) || ast.IsShorthandPropertyAssignment(node.Parent)) && !ast.IsRightSideOfQualifiedNameOrPropertyAccess(node) && (!ast.IsPartOfTypeNode(node) || ast.IsPartOfTypeQuery(node)):
+			symbol := c.ResolveName(node.Text(), node, ast.SymbolFlagsValue|ast.SymbolFlagsNamespaceModule, false)
+			if symbol != nil && c.GetSymbolFlags(symbol)&ast.SymbolFlagsValue == 0 {
+				for _, declaration := range symbol.Declarations() {
+					if parser.IsVibeLangModuleDeclaration(declaration) {
+						coverCodes(c, node, 2708)
+						report(c, node, EK4004, node.Text())
+						break
+					}
+				}
+			}
 		}
 		node.ForEachChild(visit)
 		return false
@@ -103,15 +119,9 @@ func specifierName(file *ast.SourceFile, reference *ast.Node) string {
 }
 
 // checkModuleBody reports what a module declaration's body cannot hold
-// (EK4408): it is an ES module, as TC39's module declarations are. Where
-// TypeScript emits ES modules it reports export = and import = require()
-// itself (TS1203, TS1202); EK4408 covers a CommonJS emit.
+// (EK4008): it is an ES module under every emit target (VIP-40).
 func checkModuleBody(c *checker.Checker, file *ast.SourceFile) {
 	if file.EmbeddedModule() == nil {
-		return
-	}
-	kind := c.CompilerOptions().GetEmitModuleKind()
-	if kind >= core.ModuleKindES2015 && kind != core.ModuleKindPreserve && c.Program().GetImpliedNodeFormatForEmit(file) != core.ModuleKindCommonJS {
 		return
 	}
 	for _, statement := range file.Statements.Nodes {
@@ -124,8 +134,9 @@ func checkModuleBody(c *checker.Checker, file *ast.SourceFile) {
 		default:
 			continue
 		}
-		// D266 keeps EK diagnostics out of TypeScript files; a module body is part of its .vibe file.
-		c.AddDiagnostic(ast.NewExternalDiagnostic(file, scanner.GetErrorRangeForNode(file, statement), diagnosticSource, errorCategory, EK4408.Code, text))
+		// VIP-40 profile errors belong to the containing .vibe file under any emit.
+		coverCodes(c, statement, 1202, 1203)
+		c.AddDiagnostic(ast.NewExternalDiagnostic(file, scanner.GetErrorRangeForNode(file, statement), diagnosticSource, errorCategory, EK4008.Code, text))
 	}
 }
 
@@ -192,4 +203,18 @@ func moduleEmitsScript(resolver printer.EmitResolver, options *core.CompilerOpti
 // moduleExportNameText is the text of a module export name.
 func moduleExportNameText(name *ast.Node) string {
 	return name.Text()
+}
+
+func moduleReferenceHasAttributes(node *ast.Node) bool {
+	parent := node.Parent
+	if parent == nil {
+		return false
+	}
+	switch parent.Kind {
+	case ast.KindImportDeclaration:
+		return parent.AsImportDeclaration().Attributes != nil
+	case ast.KindExportDeclaration:
+		return parent.AsExportDeclaration().Attributes != nil
+	}
+	return false
 }

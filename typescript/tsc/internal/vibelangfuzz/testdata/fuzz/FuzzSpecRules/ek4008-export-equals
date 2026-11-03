@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("ek:EK4008/export-equals\x00template:minimal\x00")

@@ -1,0 +1,1 @@
+An identifier module specifier cannot carry import attributes. Use a string specifier for a file or package.

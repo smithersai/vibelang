@@ -1,0 +1,8 @@
+// expect-result: [1, 2, 3]
+type Shape = number
+module Shape { export const n = 1 }
+module text { export const n = 3 }
+import { n } from Shape
+import { n as m } from text
+function identity(text: Shape): Shape { return text }
+export effect function main() { return [n, identity(2), m] }

@@ -1,0 +1,4 @@
+// expect: TS1540 TS1540 TS1540
+module A.B {}
+declare module C {}
+export {}

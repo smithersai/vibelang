@@ -609,7 +609,7 @@ func TestFormatModuleCases(t *testing.T) {
 				t.Fatal(err)
 			}
 			once, err := Format(input, string(source), formatter)
-			if strings.HasPrefix(string(source), "// expect: EK4408\n") {
+			if strings.HasPrefix(string(source), "// expect: EK4003\n") {
 				if err == nil || !strings.Contains(err.Error(), "a module declaration needs a name") {
 					t.Fatalf("expected the nameless-module syntax refusal, got %v", err)
 				}

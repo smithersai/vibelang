@@ -1,4 +1,0 @@
-// expect-result: ["shadow", "1"]
-module String { export const x = "shadow" }
-import { x } from String
-export effect function main() { return [x, String(1)] }

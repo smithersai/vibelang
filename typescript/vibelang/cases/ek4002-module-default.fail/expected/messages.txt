@@ -1,0 +1,1 @@
+A module declaration is not exported; re-export its members with export { … } from name.

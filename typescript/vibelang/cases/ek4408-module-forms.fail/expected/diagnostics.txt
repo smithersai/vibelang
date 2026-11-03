@@ -1,5 +1,0 @@
-main.vibe(5,1): error EK4408
-main.vibe(13,8): error EK4408
-main.vibe(22,16): error EK4408
-main.vibe(27,10): error EK4408
-main.vibe(19,3): error TS1203

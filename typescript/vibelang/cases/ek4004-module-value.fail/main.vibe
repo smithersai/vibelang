@@ -1,0 +1,9 @@
+// expect: EK4004 EK4004 EK4004 EK4004 EK4004 EK4004
+module text { export const n = 1 }
+export const value = text.n
+export const kind = typeof text
+export const promise = import(text)
+export const object = { text }
+function accept(value: unknown) {}
+accept(text)
+export type Query = typeof text

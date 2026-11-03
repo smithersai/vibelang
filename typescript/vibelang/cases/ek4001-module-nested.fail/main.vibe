@@ -1,0 +1,5 @@
+// expect: EK4001
+function f() {
+  module text { export const n = 1 }
+}
+export {}

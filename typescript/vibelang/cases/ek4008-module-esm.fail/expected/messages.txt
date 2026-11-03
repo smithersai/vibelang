@@ -1,0 +1,1 @@
+A module declaration's body is an ES module, which export = cannot end; use export default.

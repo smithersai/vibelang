@@ -9,6 +9,9 @@ Diagnostic codes follow Appendix B of the specification: `EK`, the two-digit VIP
 
 | Previous code | Appendix B code | Rule and repair |
 | --- | --- | --- |
+| `EK4407` | `EK4006` | An identifier module specifier names no declaration, or has import attributes. Declare the module, fix the name, or quote a file or package name. |
+| `EK4408` (placement, export, expression, body) | `EK4001`, `EK4002`, `EK4003`, `EK4008` | Keep declarations named, at the top level and unexported; use ES imports and exports in their TypeScript bodies (VIP-40). |
+| `TS2708` (module name as a value) | `EK4004` | Import the module's exports with a static identifier import. |
 | `EK4617` | `EK0103` | `await` does not run an Effect in an `async` function. Use `await runPromise(program)`. |
 
 The language server keeps the numeric code (`103`) with source `EK`; the terminal and diagnostic references write `EK0103`.

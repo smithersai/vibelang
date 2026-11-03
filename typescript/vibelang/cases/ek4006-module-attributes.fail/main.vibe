@@ -1,0 +1,4 @@
+// expect: EK4006
+module text { export const n = 1 }
+import { n } from text with { type: "json" }
+export const value = n

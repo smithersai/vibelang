@@ -1,0 +1,6 @@
+// expect: EK4008
+module text {
+  import value = require("./dep.cjs")
+  export const n = value
+}
+import text

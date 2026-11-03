@@ -1,0 +1,2 @@
+// expect: EK4002
+export default module { export const n = 1 }
