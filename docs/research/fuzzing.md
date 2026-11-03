@@ -976,3 +976,5 @@ The module-sidecar neighbourhood retains 19 precise `.vibex` emit gaps and
 compatibility sidecars; the current emitter's spelling is not used as the oracle.
 
 The Effect pin oracle quotes the accepted previous-patch clarification verbatim; its older, previous-patch, next-patch, prerelease, exact-pin and nested-resolution checks remain unchanged.
+
+`FuzzNativeCrossVariantResolution` checks both native source-extension substitutions against stock TypeScript, with declaration decoys, type/value imports, re-exports, nesting, JSX settings and `NodeNext`. Keyed R25 corpora retain direction and options.

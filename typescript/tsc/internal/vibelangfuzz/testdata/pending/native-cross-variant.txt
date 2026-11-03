@@ -1,0 +1,32 @@
+FuzzNativeCrossVariantResolution vibe-to-vibex/0 compiler VIP-39: the opposite native source extension is not resolved, causing TS2307 instead of the stock TypeScript result; lane sl25-fix-opus-1
+FuzzNativeCrossVariantResolution vibe-to-vibex/1 compiler VIP-39: the opposite native source extension is not resolved, causing TS2307 instead of the stock TypeScript result; lane sl25-fix-opus-1
+FuzzNativeCrossVariantResolution vibe-to-vibex/2 compiler VIP-39: the opposite native source extension is not resolved, causing TS2307 instead of the stock TypeScript result; lane sl25-fix-opus-1
+FuzzNativeCrossVariantResolution vibe-to-vibex/3 compiler VIP-39: the opposite native source extension is not resolved, causing TS2307 instead of the stock TypeScript result; lane sl25-fix-opus-1
+FuzzNativeCrossVariantResolution vibe-to-vibex/4 compiler VIP-39: the opposite native source extension is not resolved, causing TS2307 instead of the stock TypeScript result; lane sl25-fix-opus-1
+FuzzNativeCrossVariantResolution vibe-to-vibex/8 compiler VIP-39: the opposite native source extension is not resolved, causing TS2307 instead of the stock TypeScript result; lane sl25-fix-opus-1
+FuzzNativeCrossVariantResolution vibe-to-vibex/60 compiler VIP-39: the resolver selects the declaration decoy instead of the opposite native source extension, causing TS2322; lane sl25-fix-opus-1
+FuzzNativeCrossVariantResolution vibe-to-vibex/80 compiler VIP-39: the resolver selects the declaration decoy instead of the opposite native source extension, causing TS2322; lane sl25-fix-opus-1
+FuzzNativeCrossVariantResolution vibex-to-vibe/0 compiler VIP-39: the opposite native source extension is not resolved, causing TS2307 instead of the stock TypeScript result; lane sl25-fix-opus-1
+FuzzNativeCrossVariantResolution vibex-to-vibe/1 compiler VIP-39: the opposite native source extension is not resolved, causing TS2307 instead of the stock TypeScript result; lane sl25-fix-opus-1
+FuzzNativeCrossVariantResolution vibex-to-vibe/2 compiler VIP-39: the opposite native source extension is not resolved, causing TS2307 instead of the stock TypeScript result; lane sl25-fix-opus-1
+FuzzNativeCrossVariantResolution vibex-to-vibe/3 compiler VIP-39: the opposite native source extension is not resolved, causing TS2307 instead of the stock TypeScript result; lane sl25-fix-opus-1
+FuzzNativeCrossVariantResolution vibex-to-vibe/4 compiler VIP-39: the opposite native source extension is not resolved, causing TS2307 instead of the stock TypeScript result; lane sl25-fix-opus-1
+FuzzNativeCrossVariantResolution vibex-to-vibe/8 compiler VIP-39: the opposite native source extension is not resolved, causing TS2307 instead of the stock TypeScript result; lane sl25-fix-opus-1
+FuzzNativeCrossVariantResolution vibex-to-vibe/60 compiler VIP-39: the opposite native source extension is not resolved, causing TS2307 instead of the stock TypeScript result; lane sl25-fix-opus-1
+FuzzNativeCrossVariantResolution vibex-to-vibe/80 compiler VIP-39: the opposite native source extension is not resolved, causing TS2307 instead of the stock TypeScript result; lane sl25-fix-opus-1
+FuzzNativeCrossVariantResolution corpus:r25-vibe-sibling-vibex-nested-type-reexport compiler VIP-39: minimized keyed native-source cross-extension witness with stock TypeScript control; lane sl25-fix-opus-1
+FuzzNativeCrossVariantResolution corpus:r25-vibe-sibling-vibex-nodenext-decoy compiler VIP-39: minimized keyed native-source cross-extension witness with stock TypeScript control; lane sl25-fix-opus-1
+FuzzNativeCrossVariantResolution corpus:r25-vibe-to-vibex-jsx-off-import compiler VIP-39: minimized keyed native-source cross-extension witness with stock TypeScript control; lane sl25-fix-opus-1
+FuzzNativeCrossVariantResolution corpus:r25-vibe-to-vibex-preserve-import compiler VIP-39: minimized keyed native-source cross-extension witness with stock TypeScript control; lane sl25-fix-opus-1
+FuzzNativeCrossVariantResolution corpus:r25-vibe-to-vibex-preserve-reexport compiler VIP-39: minimized keyed native-source cross-extension witness with stock TypeScript control; lane sl25-fix-opus-1
+FuzzNativeCrossVariantResolution corpus:r25-vibe-to-vibex-preserve-type-import compiler VIP-39: minimized keyed native-source cross-extension witness with stock TypeScript control; lane sl25-fix-opus-1
+FuzzNativeCrossVariantResolution corpus:r25-vibe-to-vibex-react-jsx-import compiler VIP-39: minimized keyed native-source cross-extension witness with stock TypeScript control; lane sl25-fix-opus-1
+FuzzNativeCrossVariantResolution corpus:r25-vibe-to-vibex-react-native-import compiler VIP-39: minimized keyed native-source cross-extension witness with stock TypeScript control; lane sl25-fix-opus-1
+FuzzNativeCrossVariantResolution corpus:r25-vibex-sibling-vibe-nested-type-reexport compiler VIP-39: minimized keyed native-source cross-extension witness with stock TypeScript control; lane sl25-fix-opus-1
+FuzzNativeCrossVariantResolution corpus:r25-vibex-sibling-vibe-nodenext-decoy compiler VIP-39: minimized keyed native-source cross-extension witness with stock TypeScript control; lane sl25-fix-opus-1
+FuzzNativeCrossVariantResolution corpus:r25-vibex-to-vibe-jsx-off-import compiler VIP-39: minimized keyed native-source cross-extension witness with stock TypeScript control; lane sl25-fix-opus-1
+FuzzNativeCrossVariantResolution corpus:r25-vibex-to-vibe-preserve-import compiler VIP-39: minimized keyed native-source cross-extension witness with stock TypeScript control; lane sl25-fix-opus-1
+FuzzNativeCrossVariantResolution corpus:r25-vibex-to-vibe-preserve-reexport compiler VIP-39: minimized keyed native-source cross-extension witness with stock TypeScript control; lane sl25-fix-opus-1
+FuzzNativeCrossVariantResolution corpus:r25-vibex-to-vibe-preserve-type-import compiler VIP-39: minimized keyed native-source cross-extension witness with stock TypeScript control; lane sl25-fix-opus-1
+FuzzNativeCrossVariantResolution corpus:r25-vibex-to-vibe-react-jsx-import compiler VIP-39: minimized keyed native-source cross-extension witness with stock TypeScript control; lane sl25-fix-opus-1
+FuzzNativeCrossVariantResolution corpus:r25-vibex-to-vibe-react-native-import compiler VIP-39: minimized keyed native-source cross-extension witness with stock TypeScript control; lane sl25-fix-opus-1
