@@ -306,6 +306,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - A Vite app whose workspace dependency started a worker failed to parse the worker’s `.vibe` imports. Migration setup now follows local dependency chains and adds `vibelang()` to the app’s `worker.plugins` factory.
 - The ESLint corpus check could report a missing identifier node for a name written with a Unicode escape; it now matches the decoded name at the same source position while still detecting missing nodes.
 - Nested schema alias rules still appeared as known gaps after their fix landed; those rules and their corpus inputs now run as strict checks of `EK2109`.
+
+- The editor refused renames and import organization in files with TypeScript `module` bodies. These operations now work across the body boundary and preserve identifier specifiers (VIP-40).
 - In the editor, an `is` that binds names and has a parenthesized subject, such as `(x as T) is [let a]` or `([3, r] as const) is [let n, let e]`, made the TypeScript 7 mapper report "invalid or overlapping edits" and pass the whole file through unchanged, so the editor checked VibeLang syntax as TypeScript; the file now maps as it does without the parentheses.
 - Running compiler cases with a missing, malformed or unbuilt runtime could delete previous output or look like a compiler failure; the harness now exits with status `2` before changing cases and names the invalid `VIBELANG_RUNTIME` installation.
 - Migration returned converted services to TypeScript when every member kept the original service requirement. Verification now accepts the `EK4809` design warning and preserves those member contracts; a configured `EK4809` error still fails.
