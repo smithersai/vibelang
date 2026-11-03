@@ -21,6 +21,7 @@ export function payloadFrom(argv: ReadonlyArray<string>) {
     target: one(options, "target"),
     packages: many(options.package) as Array<string>,
     ...(options["emitted-project"] ? { emittedProjects: many(options["emitted-project"]) as Array<string> } : {}),
+    ...(options["route-bundled-imports"] ? { routeBundledImports: true } : {}),
     test: one(options, "test"),
     ...(options.main ? { main: one(options, "main") } : {}),
     ...(options["after-convert"] ? { afterConvert: many(options["after-convert"]) as Array<string> } : {}),

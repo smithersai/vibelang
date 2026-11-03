@@ -1,0 +1,7 @@
+{
+  "finding": "opencode-33:drizzle-source-globs",
+  "note": "packages/core/drizzle.config.ts selects tables by named globs, which drizzle-kit reads. Renaming session/sql.ts to .vibe drops its tables from the schema, and the migration check reports ungenerated migrations.",
+  "config": "import { defineConfig } from \"drizzle-kit\"\nexport default defineConfig({ dialect: \"sqlite\", schema: [\"./src/**/*.sql.ts\", \"./src/**/sql.ts\"], out: \"./migration\" })\n",
+  "selected": ["src/session/sql.ts", "src/database/schema.sql.ts"],
+  "free": ["src/session/session.ts", "src/session/sql.test.ts", "src/session/mysql.ts"]
+}

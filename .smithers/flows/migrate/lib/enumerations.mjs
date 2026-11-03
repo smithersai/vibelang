@@ -29,6 +29,38 @@ const vibeAware = /\.d\.vibe\.ts|endsWith\(\s*["'`]\.vibe["'`]|\\\.vibe\b|\*\.vi
 
 const lineOf = (text, index) => text.slice(0, index).split("\n").length
 
+// A glob that walks folders for a file name or a compound suffix, as drizzle-kit's
+// schema: ["./src/**/*.sql.ts", "./src/**/sql.ts"]. A sidecar never matches it, so
+// no sidecar directory follows; the module keeps its name for the tool that reads it.
+const namedGlob = /(["'`])((?:[^"'`\s*]*\/)?\*\*\/(\*\.)?([\w-]+(?:\.[\w-]+)*)\.[cm]?ts)\1/g
+const testSuffix = /^(?:test|spec|d|stories|bench|e2e)$/
+
+/**
+ * The places code selects modules by a named glob. Each finding has the file,
+ * its line, what matched, the folder it walks and `named`, a test of a file's
+ * base name. Test-suffix globs are skipped: tests already keep their names.
+ */
+export function namedSelectors(files, read) {
+  const findings = [], tracked = new Set(files)
+  const packageOf = (file) => {
+    let dir = posix.dirname(file)
+    while (dir !== "." && !tracked.has(posix.join(dir, "package.json"))) dir = posix.dirname(dir)
+    return dir
+  }
+  for (const file of files) {
+    if (!code.test(file) || /\.d\.[cm]?ts$/.test(file) || /(?:^|\/)node_modules\//.test(file)) continue
+    const text = read(file) ?? ""
+    for (const match of text.matchAll(namedGlob)) {
+      if (match[3] && testSuffix.test(match[4])) continue
+      const prefix = match[2].slice(0, match[2].indexOf("**")).replace(/\/$/, "")
+      const base = match[2].startsWith(".") ? posix.dirname(file) : packageOf(file)
+      const escaped = match[4].replace(/\./g, "\\.")
+      findings.push({ file, line: lineOf(text, match.index), match: match[2], kind: "named", directory: posix.normalize(posix.join(base, prefix)), named: new RegExp((match[3] ? "\\." : "^") + escaped + "\\.[cm]?ts$") })
+    }
+  }
+  return findings
+}
+
 /**
  * The places tracked code enumerates *.ts files. files are the repository's
  * tracked paths; read returns a file's text. Each finding has the
@@ -110,8 +142,8 @@ export function tsEnumerations(files, read) {
 
 const within = (directory, path) => directory === "." || path === directory || path.startsWith(directory + "/")
 
-/** Whether an enumerated directory holds path. */
-export const enumerates = (finding, path) => within(finding.directory, path)
+/** Whether an enumerated directory holds path, and a named selector picks it. */
+export const enumerates = (finding, path) => within(finding.directory, path) && (!finding.named || finding.named.test(posix.basename(path)))
 
 /**
  * The findings whose folder holds, or will hold, .vibe files: a .vibe file, or
@@ -124,7 +156,7 @@ export function relevantEnumerations(findings, files, read) {
 }
 
 /** One line per finding, for setup's record and its warnings. */
-export const describe = (finding) => `${finding.file}:${finding.line} enumerates *.ts files under ${finding.directory === "." ? "the repository" : finding.directory + "/"} (${finding.kind === "glob" ? "glob" : "a walk filtered by"} ${finding.match})`
+export const describe = (finding) => finding.named ? `${finding.file}:${finding.line} selects modules by the named glob ${finding.match}` : `${finding.file}:${finding.line} enumerates *.ts files under ${finding.directory === "." ? "the repository" : finding.directory + "/"} (${finding.kind === "glob" ? "glob" : "a walk filtered by"} ${finding.match})`
 
 /**
  * Turns vibe.sidecarDir on in a tsconfig's text (JSON with comments) and adds

@@ -437,7 +437,7 @@ export async function onePassStep(step, options) {
     if (existing?.renameComplete) return existing
     let state = readJsonIf(p.codemodState("01"))
     const files = plan.batches[0].files
-    assertNoTestBundleRename(config.target, files)
+    assertNoTestBundleRename(config.target, files, { routed: Boolean(config.routeBundledImports) })
     if (!state) {
       if (existing) throw new Error("legacy interrupted rename has no durable journal; restore its recorded renames before retrying")
       const baseline = await checkProjects(config, p, options)

@@ -124,9 +124,21 @@ function entriesOf(text, file, ts, native) {
     return node && ts.isObjectLiteralExpression(node) ? node : null
   }
   const bundles = []
+  // Bun.spawn([process.execPath, "build", entry, ...]) and Bun.spawnSync: a bundle no plugin can reach.
+  const isBun = node => ts.isStringLiteralLike(node) ? /(?:^|\/)bun(?:\.exe)?$/.test(node.text)
+    : ts.isPropertyAccessExpression(node) && node.getText(source).replace(/\s+/g, "") === "process.execPath"
   const visit = node => {
     if (ts.isCallExpression(node)) {
       const callee = unwrap(node.expression)
+      if (ts.isPropertyAccessExpression(callee) && ts.isIdentifier(callee.expression) && callee.expression.text === "Bun" &&
+          !sym(callee.expression)?.declarations?.length && ["spawn", "spawnSync"].includes(callee.name.text)) {
+        const argv = unwrap(node.arguments[0])
+        if (argv && ts.isArrayLiteralExpression(argv) && argv.elements.length > 1 && isBun(unwrap(argv.elements[0])) &&
+            ts.isStringLiteralLike(argv.elements[1]) && argv.elements[1].text === "build") {
+          const line = source.getLineAndCharacterOfPosition(node.getStart(source)).line + 1
+          bundles.push({ line, bundler: "bun build", values: argv.elements.slice(2).flatMap(e => values(e)).filter(item => !item.value.startsWith("-")) })
+        }
+      }
       let name = ts.isIdentifier(callee) && bound(callee, functions)
       if (ts.isPropertyAccessExpression(callee)) {
         const owner = ts.isIdentifier(callee.expression) && bound(callee.expression, namespaces) || modulesOf(callee.expression)
@@ -166,8 +178,9 @@ function entriesOf(text, file, ts, native) {
 }
 
 /** For selected source modules, the unchanged test bundle entries and their transitive runtime graphs. */
-export function testBundleDeferrals(root, selected, { paths = {}, ts, onWarning = () => {} } = {}) {
-  if (!selected.length) return []
+export function testBundleDeferrals(root, selected, { paths = {}, ts, onWarning = () => {}, routed = false } = {}) {
+  // routeBundledImports gives these graphs a boundary the bundler can read, so nothing stays back.
+  if (!selected.length || routed) return []
   const { files, manifests, owner } = repository(root), known = new Set(files)
   const protectedFiles = new Set()
   for (const [dir, manifest] of manifests) for (const file of testOnlyScripts(root, dir, packageScripts(root, dir), manifest)) {
@@ -178,7 +191,7 @@ export function testBundleDeferrals(root, selected, { paths = {}, ts, onWarning 
     if (!texts.has(file)) texts.set(file, readFileSync(join(root, file), "utf8"))
     return texts.get(file)
   }
-  const tests = [...protectedFiles].filter(file => /["'](?:rolldown|esbuild|vite|(?:node:)?child_process)["']|\bBun\.build\b/.test(text(file)))
+  const tests = [...protectedFiles].filter(file => /["'](?:rolldown|esbuild|vite|(?:node:)?child_process)["']|\bBun\.build\b|\bBun\.spawn(?:Sync)?\b/.test(text(file)))
   if (!tests.length) return []
   ts ??= loadTypeScript([root, fileURLToPath(new URL("../../../../packages/runtime", import.meta.url)), fileURLToPath(new URL("../../../../docs/tools", import.meta.url))])
   // Scope and rename checks can run without the setup's persisted paths.

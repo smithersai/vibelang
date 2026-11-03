@@ -21,6 +21,7 @@ const SetupPayload = {
   target: Schema.String,
   packages: Schema.Array(Schema.String),
   emittedProjects: Schema.optional(Schema.Array(Schema.String)),
+  routeBundledImports: Schema.optional(Schema.Boolean),
   test: Schema.String,
   main: Schema.optional(Schema.String),
   afterConvert: Schema.optional(Schema.Array(Schema.String)),

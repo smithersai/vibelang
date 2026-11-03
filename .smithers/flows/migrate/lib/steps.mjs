@@ -52,6 +52,7 @@ import { withPackingScope } from "./pack-policy.mjs"
 import { wireDeveloperTools } from "./tooling.mjs"
 import { wireTypecheckBuild } from "./typecheck-build.mjs"
 import { planEmittedImports, applyEmittedImports } from "./emitted-imports.mjs"
+import { routeBundledImports } from "./bundled-imports.mjs"
 import { wireOxlintPlugins } from "./oxlint-plugins.mjs"
 import { readToolchain } from "./toolchain.mjs"
 import { probeVip1, probeTargetVip1 } from "./vip-flip.mjs"
@@ -194,6 +195,7 @@ export function makeConfig(options) {
     ...(options.stockCompiler ? { stockCompiler: options.stockCompiler } : {}),
     wire: options.wire !== false,
     ...(options.emittedProjects?.length ? { emittedProjects: options.emittedProjects } : {}),
+    ...(options.routeBundledImports ? { routeBundledImports: true } : {}),
     ...(options.typecheckRetire?.length ? { typecheckRetire: options.typecheckRetire } : {}),
     ...(options.typecheckPrepare?.length ? { typecheckPrepare: options.typecheckPrepare } : {}),
     ...(options.typecheckSourceRoots?.length ? { typecheckSourceRoots: options.typecheckSourceRoots } : {}),
@@ -1240,7 +1242,7 @@ export async function setup(options) {
   const tokens = await countTokens(files.map((f) => join(t, f)))
   // An import through a tsconfig `paths` alias, ~/main, is a dependency edge as ./main is.
   const aliasPaths = Object.fromEntries(config.packages.map((pkg) => [pkg.dir, tsconfigPaths(ts, t, Wire.projectsOf(ts, join(t, pkg.dir), pkg.tsconfig).map((tsconfig) => join(t, pkg.dir, tsconfig)))]))
-  const inventory = buildInventory({ root: t, packages: config.packages, tokens, coverage: readCoverage(t, config.packages), paths: aliasPaths, enumerations: wired?.sidecarDir?.findings ?? [] })
+  const inventory = buildInventory({ root: t, packages: config.packages, tokens, coverage: readCoverage(t, config.packages), paths: aliasPaths, enumerations: wired?.sidecarDir?.findings ?? [], routedBundles: Boolean(config.routeBundledImports) })
   if (wired) wired.warnings.push(...(inventory.bundleWarnings ?? []))
   writeJson(p.inventory, inventory)
 
@@ -1347,10 +1349,13 @@ export async function emitMigratedJs(config, t, logs) {
     const exportsChanged = routeEmittedExports(join(t, pkg.dir), result.outputs, { typescript:typeScriptOf(config), onGraph:graph=>runtimeRouting=graph, onPacking:files=>packingFiles=files.map(file=>posix.join(pkg.dir,file)) })
     emitted.push({ package: pkg.dir, files: result.files, code: result.code, exportsChanged, runtimeRouting, packingFiles, loaderRecords: [], diagnostics: result.diagnostics })
   }
+  // Routing edits TypeScript the loader records name, so it comes first.
+  const routed = config.routeBundledImports ? routeBundledImports({ root: t, packages: config.packages, ts: typeScriptOf(config) }) : null
   // A restored package emitted nothing and gets no record, as before.
   const recorded = emitted.filter((entry) => !entry.restored)
   for (const entry of recorded) entry.loaderRecords = await writeLoaderRecords({ compiler: compilerOf(config), packageDir: join(t, entry.package), root: t })
   for (const entry of recorded) entry.loaderRecords = await checkLoaderRecords({ compiler: compilerOf(config), packageDir: join(t, entry.package), root: t, records: entry.loaderRecords })
+  if (routed?.changed.length) emitted.push({ package: ".", files: 0, code: 0, restored: true, packingFiles: routed.changed, routedImports: routed.modules })
   return emitted
 }
 
@@ -1379,7 +1384,7 @@ export async function codemod(options) {
   if (existsSync(p.codemod(b))) return readJson(p.codemod(b))
   const t = config.target
   const files = thePlan.batches[Number(b) - 1].files
-  assertNoTestBundleRename(t, files)
+  assertNoTestBundleRename(t, files, { routed: Boolean(config.routeBundledImports) })
   // Include owned tool configuration outside src, preserving the source-only
   // boundary for unrelated text, protected tests, fixtures and dependencies.
   const tracked = await Jj.trackedFiles(t)
@@ -1627,6 +1632,7 @@ export async function revertMany(options) {
   const aliases = aliasesOf(config)
   const requests = options.files ?? []
   if (!requests.length) throw new Error("revert needs at least one file")
+  if (config.routeBundledImports) routeBundledImports({ root: config.target, packages: config.packages, ts: typeScriptOf(config), restore: true })
   const seen = new Set(), prepared = []
   for (const item of requests) {
     const { file, reason = options.reason } = typeof item === "string" ? { file: item } : item

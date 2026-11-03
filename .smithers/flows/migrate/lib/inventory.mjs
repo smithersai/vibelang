@@ -8,7 +8,7 @@ import { fileURLToPath } from "node:url"
 import { loadTypeScript } from "./declarations.mjs"
 import { testBundleDeferrals } from "./test-bundles.mjs"
 import { effectUse, isEffectSpecifier, parseImports, resolveAlias, resolveRelative } from "./imports.mjs"
-import { describe, enumerates } from "./enumerations.mjs"
+import { describe, enumerates, namedSelectors } from "./enumerations.mjs"
 import { isDeclarationFile, readJson, rel } from "./util.mjs"
 
 const skipDirectories = new Set(["node_modules", "dist", "build", "coverage", ".git", ".jj", ".turbo", ".vite", ".cache"])
@@ -85,12 +85,15 @@ export function readCoverage(root, packages) {
  * enumerations are setup's findings of code that lists *.ts files: a file
  * under one records each in enumeratedBy, and stays .ts (decided detail 268).
  */
-export function buildInventory({ root, packages, tokens = {}, coverage = {}, paths = {}, enumerations = [] }) {
+export function buildInventory({ root, packages, tokens = {}, coverage = {}, paths = {}, enumerations = [], routedBundles = false }) {
   const files = []
   for (const pkg of packages) for (const dir of pkg.sources) for (const path of listSources(root, posix.join(pkg.dir, dir))) files.push({ path, package: pkg.dir })
   const known = new Set(files.map((f) => f.path))
   const texts = new Map(files.map(({ path }) => [path, readFileSync(join(root, path), "utf8")]))
   const namedBy = namedFiles(texts, root)
+  // A package's tool config and scripts name modules too: read them for named globs.
+  const scanned = [...new Set(packages.flatMap(pkg => listSources(root, pkg.dir)))]
+  const selectors = [...enumerations, ...namedSelectors(scanned, file => texts.get(file) ?? readFileSync(join(root, file), "utf8"))]
   const records = files.map(({ path, package: pkg }) => {
     const text = texts.get(path)
     const imports = parseImports(text)
@@ -101,7 +104,7 @@ export function buildInventory({ root, packages, tokens = {}, coverage = {}, pat
       if (target) local.push(target)
       else if (!i.specifier.startsWith(".")) external.push(i.specifier)
     }
-    const enumeratedBy = enumerations.filter((finding) => finding.file !== path && enumerates(finding, path)).map(describe)
+    const enumeratedBy = selectors.filter((finding) => finding.file !== path && enumerates(finding, path)).map(describe)
     return {
       path,
       package: pkg,
@@ -130,7 +133,7 @@ export function buildInventory({ root, packages, tokens = {}, coverage = {}, pat
     }
   }
   const bundleWarnings = []
-  for (const deferred of testBundleDeferrals(root, records.map(r => r.path), { paths, onWarning: warning => bundleWarnings.push(warning) })) {
+  for (const deferred of testBundleDeferrals(root, records.map(r => r.path), { paths, routed: routedBundles, onWarning: warning => bundleWarnings.push(warning) })) {
     const record = byPath.get(deferred.file)
     record.bundledBy = deferred.bundledBy
     record.bundleReason = deferred.reason

@@ -1,0 +1,23 @@
+{
+  "finding": "opencode-32:bun-build-relative-vibe",
+  "note": "Minimized packages/core: database.ts and mcp/index.ts stay TypeScript, name ./count.vibe and ../effect/keyed-mutex.vibe, and two unchanged tests bundle them: Bun.build and Bun.spawn([process.execPath, \"build\", ...]). Both failed with No matching export.",
+  "files": {
+    "src/database/database.ts": "import { Count } from \"./count.vibe\"\nimport type { Shape } from \"./shape.vibe\"\nexport const database = (shape: Shape) => new Count(shape)\n",
+    "src/database/count.vibe": "export class Count { constructor(readonly shape: unknown) {} }\n",
+    "src/database/shape.vibe": "export interface Shape { readonly name: string }\n",
+    "src/mcp/index.ts": "import { KeyedMutex } from \"../effect/keyed-mutex.vibe\"\nimport { database } from \"../database/database.ts\"\nexport const load = () => [KeyedMutex.make(), database({ name: \"a\" })]\n",
+    "src/effect/keyed-mutex.vibe": "export const KeyedMutex = { make: () => 1 }\n",
+    "src/free.ts": "// Not bundled by a test, so its spelling stays.\nimport { Free } from \"./free-dep.vibe\"\nexport const free = Free\n",
+    "src/free-dep.vibe": "export const Free = 1\n"
+  },
+  "emitted": {
+    ".vibelang/js/src/database/count.js": "export class Count { constructor(shape) { this.shape = shape } }\n",
+    ".vibelang/js/src/effect/keyed-mutex.js": "export const KeyedMutex = { make: () => 1 }\n",
+    ".vibelang/js/src/free-dep.js": "export const Free = 1\n"
+  },
+  "tests": {
+    "test/sqlite-bundle.test.ts": "import { join } from \"path\"\nexport const bundle = () => Bun.build({ entrypoints: [join(import.meta.dir, \"../src/database/database.ts\")], target: \"browser\", throw: false })\n",
+    "test/mcp-import-boundary.test.ts": "export const run = () => Bun.spawn([process.execPath, \"build\", \"src/mcp/index.ts\", \"--target=node\", \"--format=esm\"], { stdout: \"pipe\" })\n"
+  },
+  "routed": ["src/database/count.vibe", "src/effect/keyed-mutex.vibe"]
+}

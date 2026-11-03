@@ -19,7 +19,7 @@ const protectedFile = file => isTestFile(file) ||
 // Read actual module edges from syntax trees: quoted examples, comments
 // and regular expressions are never imports. Dynamic import options and
 // whitespace do not change the edge.
-function runtimeEdges(text, file, ts, compiler, root) {
+export function runtimeEdges(text, file, ts, compiler, root) {
   if (!/\bimport\b|\bexport\b[\s\S]*?\bfrom\b/.test(text)) return []
   const edges = []
   if (file.endsWith(".vibe")) {
