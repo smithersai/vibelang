@@ -227,6 +227,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - `vibelang --estree` declared the temporary a `do` expression assigns as `const`, so ESLint's `no-const-assign` reported `'$do1' is constant` at `do` expressions in `.vibe` files. It is now `let`. An author's pattern binding stays `const`.
 - The migrate flow's style gate rejected `EK4804` on a private function whose original only inferred its global `Error` channel, so `packages/node` in Foldkit could not migrate without new annotations. It now accepts the advisory when the original function failed with a `new Error` with the same message; any other global `Error` stays rejected.
 
+- The migrate flow could record a conversion in which a plain function lost an Effect wrapper, such as `Effect.succeed(xs)` becoming `xs` behind an `as` cast or `Effect.fail(e)` becoming `throw e` (Smithers' `Plugins` and `Refusals`), while types, declarations and the tests a batch reran could all pass; `verify` now compares each function of the original with the emitted JavaScript and fails the batch unless the run's `lost-wrappers-allow.json` names that function with a reason.
+
 
 - Composite-project migration checks still expected JSX files to become `.vibe`. They now check the required `.vibex` mapping, `.mts` sources, and both include and exclude patterns while retaining declaration globs.
 

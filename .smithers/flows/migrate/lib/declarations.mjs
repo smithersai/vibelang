@@ -711,8 +711,8 @@ function exportedTestModules(packageDir, candidates) {
  * emitDeclarations does); a declaration sidecar, which every compile writes,
  * stays. Returns the exit code, the number of files and the diagnostics.
  */
-export async function emitPackageJs({ compiler, tsconfigs, packageDir, log, root }) {
-  const out = join(packageDir, ".vibelang", "js")
+export async function emitPackageJs({ compiler, tsconfigs, packageDir, log, root, outDir }) {
+  const out = outDir ?? join(packageDir, ".vibelang", "js")
   rmSync(out, { recursive: true, force: true })
   const scope = resolve(root ?? packageDir)
   const ts = loadTypeScript([packageDir, scope, fileURLToPath(new URL("../../../../packages/runtime/", import.meta.url))])

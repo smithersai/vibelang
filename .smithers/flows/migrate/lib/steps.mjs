@@ -28,6 +28,7 @@ import { toolchainKeepsFunctionsPlain } from "./plain.mjs"
 import { check, newErrors, styleProblems, summarize } from "./diagnostics.mjs"
 import { preservedErrorAdvisories } from "./preserved-errors.mjs"
 import { runPhaseCheck } from "./run-phase.mjs"
+import { emittedPathOf, lostWrapperCheck, readAllowList } from "./lost-wrapper.mjs"
 import { compareDeclarations, recordDeclarationSurface, emitDeclarations, emitErrorsIn, checkLoaderRecords, emitPackageJs, loadTypeScript, sidecarChanges, writeLoaderRecords, NO_ENTRY_POINTS } from "./declarations.mjs"
 import { declarationNames, findStockCompiler, unprovenDeclarations, unprovenMigrations } from "./oracle.mjs"
 import { foreignChanges } from "./touched.mjs"
@@ -90,6 +91,7 @@ export function paths(runDir) {
     repairPrompt: (b) => join(batch(b), "repair.prompt.md"),
     repair: (b) => join(batch(b), "repair.json"),
     verify: (b) => join(batch(b), "verify.json"),
+    lostWrapperAllow: join(r, "lost-wrappers-allow.json"),
     record: (b) => join(batch(b), "record.json"),
     reverted: (b) => join(batch(b), "reverted.json")
   }
@@ -1838,6 +1840,31 @@ export async function testEdits(config, p, plan, b, ts) {
 }
 
 /** verify: tests against the baseline, declaration identity, and no TypeScript-style form or platform global in the batch. */
+/**
+ * verify's lost-wrapper check, on the JavaScript this verify already emitted.
+ * A package that step skips (no export names the emitted tree) has no such
+ * JavaScript, so it is emitted once here, into the batch's scratch, never into
+ * the tree.
+ */
+async function checkLostWrappers({ config, p, plan, batch, migrated, emittedJs, ts, logs }) {
+  const t = config.target
+  const dirs = config.packages.map(pkg => pkg.dir)
+  const written = new Set(emittedJs.filter(entry => !entry.restored).map(entry => entry.package))
+  const scratch = dir => join(p.batch(batch), "lost-wrapper-js", slug(dir))
+  for (const pkg of config.packages) {
+    if (written.has(pkg.dir) || !migrated.some(file => emittedPathOf(file, dirs)?.dir === pkg.dir)) continue
+    await emitPackageJs({ compiler: compilerOf(config), tsconfigs: Wire.projectsOf(ts, join(t, pkg.dir), pkg.tsconfig), packageDir: join(t, pkg.dir), root: t, log: join(logs, `lost-wrapper-js-${slug(pkg.dir)}.log`), outDir: scratch(pkg.dir) })
+  }
+  const emitted = file => {
+    const at = emittedPathOf(file, dirs)
+    if (!at) return null
+    const path = written.has(at.dir) ? join(t, at.path) : join(scratch(at.dir), posix.relative(posix.join(at.dir, ".vibelang/js"), at.path))
+    return existsSync(path) ? { path, text: readFileSync(path, "utf8") } : null
+  }
+  const renamed = new Set((plan?.batches ?? []).flatMap((_, i) => readJsonIf(p.codemodState(batchName(i)))?.renames ?? []).map(r => r.to))
+  return lostWrapperCheck({ ts, files: migrated, original: file => originalSourceOf(p, plan, file), emitted, renamed: file => renamed.has(file), allow: readAllowList(p.lostWrapperAllow) })
+}
+
 export async function verify(options) {
   assertBaselineSafe(paths(options.run))
   const { p, config, plan: thePlan } = loadRun(options.run)
@@ -1860,7 +1887,8 @@ export async function verify(options) {
   const selectorChecks = hasSelectorEdits ? checkSelectorEdits(codemodReceipt, [...new Set([...(await Jj.trackedFiles(t)), ...scopeFiles(config)])], { ts: typeScriptOf(config), read: file => readFileSync(join(t, file), "utf8") }) : []
   const baselineTests = readJson(join(p.baseline, "tests.json"))
   // Tests, including one-pass measurements, read current emitted JavaScript.
-  codemod = rememberPackingFiles(p, b, await emitMigratedJs(config, t, logs))
+  const emittedJs = await emitMigratedJs(config, t, logs)
+  codemod = rememberPackingFiles(p, b, emittedJs)
   const before = foreignChanges(changedBefore, { files, codemod, testDiff: testDiffBefore, sidecar: batchSidecarLocator(config) })
   const candidateBuild = thePlan.mode === "one-pass" ? null : await prepareBuilds(config, logs, "candidate")
   const measurement = thePlan.mode === "one-pass" ? await measureTests(config,{run:p.run,batch:b}) : null
@@ -1924,6 +1952,7 @@ export async function verify(options) {
   const foreign = [...new Map([...before, ...after].map(c => [c.path, c])).values()]
   const batchErrors = checked.diagnostics.filter((d) => migrated.includes(d.file) && d.category === "error")
   const runPhase = runPhaseCheck({ compiler, ts, target: t, files: migrated, original: file => originalSourceOf(p, thePlan, file) })
+  const lostWrappers = await checkLostWrappers({ config, p, plan: thePlan, batch: b, migrated, emittedJs, ts, logs })
   const style = checked.style.filter((d) => migrated.includes(d.file))
   const result = {
     batch: b,
@@ -1939,6 +1968,7 @@ export async function verify(options) {
     excusedSpecifiers: Object.entries(declarations).flatMap(([dir, d]) => (d.excused ?? []).map((pair) => ({ package: dir, ...pair }))),
     selectorChecks,
     runPhase,
+    lostWrappers,
     testDiff,
     compile: { batchErrors, newErrors: checked.newErrors, style, emitErrors, declarationEmits },
     foreign,
@@ -1954,6 +1984,7 @@ export async function verify(options) {
       foreignFiles: foreign.length === 0,
       declarationOracle: unproven.length === 0,
       runPhase: runPhase.blocking.length === 0,
+      lostWrappers: lostWrappers.blocking.length === 0 && lostWrappers.unchecked.length === 0,
       batchErrors: batchErrors.length === 0,
       newErrors: checked.newErrors.length === 0,
       style: style.length === 0,
