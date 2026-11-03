@@ -78,6 +78,7 @@ var functionBoundaryCases = []struct{ key, quote, source string }{
 	{"await-effect-union", "`await` on an Effect, by the [Result test](002-running.md#result-tests)", "async function f(x: number | (number!!)) { await x }"},
 	{"return-type-any", "A written return type of an `effect` function that does not resolve to `Effect.Effect<A, E, R>`", "effect function f(): any { return 1 }"},
 	{"return-type-unknown", "A written return type of an `effect` function that does not resolve to `Effect.Effect<A, E, R>`", "effect function f(): unknown { return 1 }"},
+	{"await-effect-subtype", "`await` on an Effect, by the [Result test](002-running.md#result-tests)", "import { Exit } from \"effect\"\nasync function f() { await Exit.succeed(1) }"},
 }
 
 // The sentences the function targets cite outside their tables: chapter 1

@@ -53,7 +53,7 @@ func checkSyntax(c *checker.Checker, file *ast.SourceFile) {
 				cover(c, node)
 			}
 		case ast.KindAwaitExpression:
-			if operand := node.Expression(); isEffectType(c, c.GetTypeAtLocation(operand)) {
+			if operand := node.Expression(); holdsEffectValue(c, c.GetTypeAtLocation(operand)) {
 				text := nodeText(file, operand)
 				note(reportAt(c, file, scanner.GetRangeOfTokenAtPosition(file, node.Pos()), EK0103, shortText(text, "the operand")), "Run it to a promise first: await runPromise({0}).", text)
 				cover(c, node) // the Effect the await leaves unrun restates EK0103

@@ -847,6 +847,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - The migrate flow's codemod rewrote a test's extensionless import, `../src/x`, to `../src/x.vibe`, an edit the test verifier refuses, so Smithers' `apps/mvp` lost 120 test files and `ui` a module. A test now keeps its extensionless import as written; a `.ts` or `.js` specifier of a renamed module still changes, and so does a Bun `mock.module`, which does not reach `x.vibe` without it.
 - The `is` guide implied that every skipped pattern binding reports `TS2454`. It now documents TypeScript's exemptions for `any`, `unknown`, `void` and types containing `undefined`; conformance cases check both exempt and checked types.
 
+- `await` on an Effect subtype, a `sql` statement or an `Exit`, or on a union with an Effect among its members, left it unrun with no diagnostic. It now reports `EK0103`, as `await` on an `Effect.Effect` does.
 - Release notes exposed an internal decision identifier while explaining curried service provision; the explanation now uses only the public API names.
 
 - The migrate flow's Alchemy namespace check failed after the source-sidecar specification was reworded. Its corpus now quotes the current contract and identifies a stale quote when one changes.
