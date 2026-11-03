@@ -17,6 +17,7 @@ const runs = [
   ["scripts/bench/*.test.mjs", "scripts/bench/PACKAGE.ts", "node --test scripts/bench/gen-synthetic.test.mjs"],
   ["scripts/release/*.test.mjs", "PACKAGE.ts", "scripts/release/*.test.mjs"],
   ["typescript/vibelang/harness.test.mjs", "PACKAGE.ts", "typescript/vibelang/harness.test.mjs"],
+  ["typescript/vibelang/coverage-stock-twins.test.mjs", "PACKAGE.ts", "typescript/vibelang/coverage-stock-twins.test.mjs"],
   ["docs/redirect/*.test.mjs", "PACKAGE.ts", "docs/redirect/*.test.mjs"],
   ["site/scripts/sync-spec-docs.test.mjs", "PACKAGE.ts", "site/scripts/sync-spec-docs.test.mjs"],
   ["site/scripts/sync-user-docs.test.mjs", "PACKAGE.ts", "site/scripts/sync-user-docs.test.mjs"],
@@ -106,4 +107,13 @@ test("a glob crosses directories only with **", () => {
   assert.ok(matcher("scripts/*.test.mjs").test("scripts/a.test.mjs"))
   assert.ok(!matcher("scripts/*.test.mjs").test("scripts/release/a.test.mjs"))
   assert.ok(matcher("packages/runtime/tests/**").test("packages/runtime/tests/x/a.test.ts"))
+})
+
+test("stock reference controls have a release runner", () => {
+  const file = "typescript/vibelang/coverage-stock-twins.test.mjs"
+  const entry = runs.find(([glob]) => matcher(glob).test(file))
+  assert.ok(entry, file + " has no runner")
+  const [, runner, command] = entry
+  assert.equal(runner, "PACKAGE.ts")
+  assert.ok(read(runner).includes(command), "the declared release command must select the controls")
 })

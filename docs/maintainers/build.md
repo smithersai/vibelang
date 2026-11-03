@@ -48,6 +48,8 @@ and a failing file keeps the target's nonzero exit status. Tests within a file
 keep their own concurrency settings; child processes they spawn are additional
 to the eight file workers.
 
+The release target also runs `typescript/vibelang/coverage-stock-twins.test.mjs`. These compiler-independent controls verify that the stock reference detects changed Exit values, changed public types, and a mismatched Effect pin. The test inventory checks that this suite keeps its runner.
+
 ## Go package coverage
 
 Full validation's `//typescript/tsc/...` selection includes
