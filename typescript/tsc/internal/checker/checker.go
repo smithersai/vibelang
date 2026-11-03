@@ -9983,6 +9983,7 @@ func (c *Checker) reportCallResolutionErrors(node *ast.Node, s *CallState, signa
 				diags = append(diags, NewDiagnosticForNode(s.node, diagnostics.No_overload_matches_this_call))
 			}
 		}
+		diags = c.filterCallArgumentDiagnostics(s.node, diags)
 		for _, diagnostic := range diags {
 			if len(s.candidatesForArgumentError) > 1 {
 				diagnostic = ast.NewDiagnosticChain(diagnostic, diagnostics.The_last_overload_gave_the_following_error)

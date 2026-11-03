@@ -39,6 +39,7 @@ func init() {
 	tsFormFixCodes = append(tsFormFixCodes, EK1703.Code)
 	vipMigrationFixCodes = append(vipMigrationFixCodes, EK1703.Code)
 	fileChecks = append(fileChecks, checkKeywordOperands)
+	checker.RegisterCallArgumentDiagnosticsFilterHook(filterRejectedForkArgumentDiagnostics)
 	ls.RegisterCodeFixProvider(&ls.CodeFixProvider{Source: diagnosticSource, ErrorCodes: []int32{EK1703.Code, EK4609.Code, EK4610.Code}, GetCodeActions: keywordOperandActions})
 }
 
@@ -399,7 +400,22 @@ func checkForkOperand(c *checker.Checker, file *ast.SourceFile, operand *ast.Nod
 	default:
 		note(d, "Fork an Effect, such as fork Effect.succeed({0}).", text)
 	}
-	coverArgument(c, operand)
+}
+
+// filterRejectedForkArgumentDiagnostics lets EK1703 explain the generated
+// fork helper's argument mismatch, including errors elaborated at object
+// properties. The checker supplies only that call's applicability diagnostics;
+// errors in written calls, assignments and satisfies expressions stay intact.
+func filterRejectedForkArgumentDiagnostics(c *checker.Checker, call *ast.Node, diagnostics []*ast.Diagnostic) []*ast.Diagnostic {
+	if len(diagnostics) == 0 || !ast.IsCallExpression(call) || len(call.Arguments()) != 1 ||
+		!isVibeLangFile(ast.GetSourceFileOfNode(call)) || inHatch(call) || !inEffectCode(call) {
+		return diagnostics
+	}
+	operand := call.Arguments()[0]
+	if analyzerFor(c).keywordFork(operand) != nil && forkOperandRejected(c, operand) {
+		return nil
+	}
+	return diagnostics
 }
 
 // keywordOperandActions offers the repair of an EK1703, EK4609, or EK4610

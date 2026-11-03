@@ -1,0 +1,14 @@
+// expect: EK1703
+// VIP-17 and VIP-34: reject the source operand without generated-call errors.
+import { Effect } from "effect"
+export effect function main() {
+  const direct = fork 7
+  const parenthesized = fork (((7)))
+  const recovered = fork (Effect.fail("bad") catch () => 7)
+  const satisfies = fork ((7 satisfies number))
+  const arrow = fork (() => 7)
+  const named = fork (function task() { return 7 })
+  const object = fork ({ value: 7 })
+  const options = fork ({ uninterruptible: "wrong" })
+  return 0
+}

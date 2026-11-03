@@ -1,0 +1,13 @@
+// expect: EK1703 TS2345 TS2322 TS2353
+// Native errors within the operand and in surrounding code stay visible.
+import { Effect } from "effect"
+import { value, options } from "./native.js"
+export effect function main() {
+  const recovered = fork (Effect.fail("bad") catch () => value(0))
+  const called = fork (((value(0))))
+  const assigned: string = 0
+  const object = fork ({ value: options({ extra: 0 }) })
+  const constrained = fork ({ value: 7 } satisfies { ok: number })
+  return 0
+}
+
