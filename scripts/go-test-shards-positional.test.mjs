@@ -42,7 +42,7 @@ function check(t, args, { sharded = false, failure = false } = {}) {
   const result = spawnSync("/bin/sh", [script, peer, ...args], {
     cwd: root, encoding: "utf8", timeout: 15_000, killSignal: "SIGKILL",
     env: {
-      ...process.env, GO_TEST_SHARDS: "3", TMPDIR: join(root, "tmp"),
+      ...process.env, GO_TEST_SLICE: "1/1", GO_TEST_SHARDS: "3", TMPDIR: join(root, "tmp"),
       SHARD_POSITIONAL_TRACE: trace, SHARD_POSITIONAL_FAILURE: failure ? "yes" : "no"
     }
   })

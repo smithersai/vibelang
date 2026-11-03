@@ -710,6 +710,8 @@ fails it: `.smithers/flows/first-bad/README.md`.
 
 Shard selectors are joined with shell builtins, so a failing external `paste` command cannot turn a shard into an empty test selection.
 
+Launcher fixtures that expect the whole suite set `GO_TEST_SLICE=1/1` explicitly. This overrides both the host-local `scripts/go-test-slice` file and the invoking process's slice; tests of slicing supply their own value. The `go-test-shards-isolation.test.mjs` regression runs the original selector, positional-argument and cancellation assertions beside a host slice file and with inherited slice values, including an invalid value.
+
 ## What a change reruns
 
 | Change | Reruns | Replays |

@@ -56,7 +56,7 @@ function setup(names, weights) {
     run(args = [], env = {}) {
       const result = spawnSync("/bin/sh", [join(dir, "go-test-shards.sh"), join(dir, "pkg.test"), "-test.timeout=40m0s", "-test.short=true", ...args], {
         cwd: dir,
-        env: { ...process.env, NAMES: names.join(" "), RUNS: join(dir, "runs"), ...env },
+        env: { ...process.env, GO_TEST_SLICE: "1/1", NAMES: names.join(" "), RUNS: join(dir, "runs"), ...env },
         encoding: "utf8"
       })
       const runs = readdirSync(join(dir, "runs")).map((f) => readFileSync(join(dir, "runs", f), "utf8").trim().split("\n"))
@@ -174,7 +174,7 @@ test("scripts/go-test-slice slices on the host it names and nowhere else; GO_TES
     mkdirSync(join(t.dir, "runs"))
     const r = spawnSync("/bin/sh", [copy, join(t.dir, "pkg.test")], {
       cwd: t.dir,
-      env: { ...process.env, NAMES: names.join(" "), RUNS: join(t.dir, "runs"), GO_TEST_SHARDS: "2", ...env },
+      env: { ...process.env, GO_TEST_SLICE: "", NAMES: names.join(" "), RUNS: join(t.dir, "runs"), GO_TEST_SHARDS: "2", ...env },
       encoding: "utf8"
     })
     assert.equal(r.status, 0, r.stdout + r.stderr)
@@ -291,7 +291,7 @@ setInterval(() => {}, 1000)
 `, { mode: 0o700 })
     const child = spawn("/bin/sh", [script, fixture], {
       cwd: dir, detached: true, stdio: ["ignore", "pipe", "pipe"],
-      env: { ...process.env, GO_TEST_SHARDS: "2", RUNS: runs, TMPDIR: dir, BLOCK_LIST: phase === "listing" ? "1" : "" },
+      env: { ...process.env, GO_TEST_SLICE: "1/1", GO_TEST_SHARDS: "2", RUNS: runs, TMPDIR: dir, BLOCK_LIST: phase === "listing" ? "1" : "" },
       timeout: 15_000, killSignal: "SIGKILL",
     })
     let output = ""

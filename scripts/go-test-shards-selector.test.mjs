@@ -42,7 +42,7 @@ function run(t, { names = ["TestA", "TestB", "TestC"], shards = 3, fault = "heal
     cwd: root, encoding: "utf8", timeout: 15_000,
     env: {
       ...process.env, PATH: join(root, "bin") + delimiter + process.env.PATH,
-      TMPDIR: join(root, "tmp"), GO_TEST_SHARDS: String(shards),
+      TMPDIR: join(root, "tmp"), GO_TEST_SLICE: "1/1", GO_TEST_SHARDS: String(shards),
       SELECTOR_NAMES: JSON.stringify(names), SELECTOR_RUNS: runs,
       SELECTOR_FAULT: fault, SELECTOR_CODE: String(code), SELECTOR_PASTE: realPaste,
       SELECTOR_FAIL_TEST: failing
