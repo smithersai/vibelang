@@ -1,0 +1,3 @@
+'JSON.parse' may throw 'SyntaxError', and synchronous VibeLang code never throws. Make the function 'effect' and run the call with 'try Effect.try(() => …)', or move the code to a '.ts' file.
+'tagged' may throw 'SyntaxError', and synchronous VibeLang code never throws. Make the function 'effect' and run the call with 'try Effect.try(() => …)', or move the code to a '.ts' file.
+'risky' may throw 'unknown', and synchronous VibeLang code never throws. Make the function 'effect' and run the call with 'try Effect.try(() => …)', or move the code to a '.ts' file.

@@ -476,3 +476,4 @@ typescript/vibelang/cases/cov-ch900a-ek1603.fail/main.vibe:2:27 block: appended/
 typescript/vibelang/cases/data-declarations-default-export.fail/main.vibe:2:27 block: appended/plain fallback -> removed # VIP-11: invalid declaration recovery no longer synthesizes a trailing callback.
 typescript/vibelang/cases/schema-declarations-default-export.fail/main.vibe:2:29 block: appended/plain fallback -> removed # VIP-11: invalid declaration recovery no longer synthesizes a trailing callback.
 typescript/vibelang/cases/vip1-coverage-bare-async-block.fail/main.vibe:4:7 block: appended/plain fallback -> removed # VIP-11: the invalid bare async head no longer receives an implicit callback.
+typescript/vibelang/cases/failures-mixed-causes/main.vibe:209:5 lambda: effectFn table -> program table # nothrow-impl: the disposers.js import shifts the file one line; old 208:5 (the effect block, program) is now 209:5 and old 209:5 (effect (h) =>, effectFn) is 210:5

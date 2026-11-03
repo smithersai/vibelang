@@ -20,7 +20,10 @@ import (
 //	  if (!id) throw new NotFound({ id })    // Effect.fail
 //	}
 //
-// Every throw counts, caught by its own try statement or not. A throw
+// Every throw counts, caught by its own try statement or not. A call known to
+// throw, such as JSON.parse(text), is EK0401 too, unless it stands in the try
+// block of a try statement with a catch clause in the same function, or in
+// the function that Effect.try or Effect.tryPromise wraps. A throw
 // expression and a do block are the throw statement they hold: the arrow the
 // parser writes for them (parser/vibelang_blocks.go) belongs to the code
 // around it. Code that must throw a JavaScript exception moves to a .ts file
@@ -31,6 +34,9 @@ var (
 	throwOutsideEffect = EK0401.With("A 'throw' is not allowed outside effect code: synchronous VibeLang code never throws. Make the function 'effect' (its 'throw' becomes 'Effect.fail'), or move the code to a '.ts' file.")
 	// throwAtTopLevel is EK0401's text for a throw at a module's top level.
 	throwAtTopLevel = EK0401.With("A 'throw' is not allowed at the top level of a VibeLang module. Move the code to a '.ts' file, or run it in an 'effect' function.")
+	// throwingCallOutsideEffect is EK0401's text for a call known to throw in
+	// synchronous code. {0} is the callee, {1} what it throws.
+	throwingCallOutsideEffect = EK0401.With("'{0}' may throw '{1}', and synchronous VibeLang code never throws. Make the function 'effect' and run the call with 'try Effect.try(() => …)', or move the code to a '.ts' file.")
 )
 
 func init() {
@@ -55,9 +61,49 @@ func checkThrowsOutsideEffect(c *checker.Checker, file *ast.SourceFile) {
 				}
 			}
 		}
+		if failures := a.knownThrows(node); failures != nil {
+			if home := a.plainHomeOf(node); home != nil && !isWrappedCode(home) {
+				report(c, node, throwingCallOutsideEffect, nodeText(file, ast.GetInvokedExpression(node)), typeListText(c, failures))
+			}
+		}
 		return node.ForEachChild(visit)
 	}
 	file.AsNode().ForEachChild(visit)
+}
+
+// knownThrows returns what node, a call or new expression, is known to throw
+// when nothing catches it: the failures its callee's contract lists, a
+// written @throws on a .ts or .d.ts declaration or a built-in's shipped
+// annotation, such as JSON.parse's SyntaxError. A call in the try block of a
+// try statement with a catch clause in the same function can't throw out of
+// it (DESIGN.md, 2026-10-31 correction), so it has none, and so does a call
+// with no contract: its throwing is unknown, and it stays an ordinary call.
+// A written @throws {unknown} is a contract: the call may throw unknown.
+// VibeLang callables carry no thrown types (trustES).
+func (a *analyzer) knownThrows(node *ast.Node) []*checker.Type {
+	if !ast.IsCallExpression(node) && !ast.IsNewExpression(node) || inCatchingTry(node) {
+		return nil
+	}
+	if ast.IsCallExpression(node) && (ast.IsSuperCall(node) || ast.IsImportCall(node)) {
+		return nil
+	}
+	t := callTrust(a.checker, node)
+	if t.promise || a.performs(node) {
+		return nil
+	}
+	if t.unknown {
+		// a written @throws {unknown} says the call may throw anything, an
+		// affirmative contract; no tag at all stays an ordinary call (detail 255)
+		return []*checker.Type{a.checker.GetUnknownType()}
+	}
+	if len(t.failures) == 0 {
+		return nil
+	}
+	types := make([]*checker.Type, 0, len(t.failures))
+	for _, f := range t.failures {
+		types = append(types, f.t)
+	}
+	return types
 }
 
 // plainHomeOf returns the synchronous code outside effect code that node

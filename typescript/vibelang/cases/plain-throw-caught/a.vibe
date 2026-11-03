@@ -32,9 +32,6 @@ export const parseOr = (text: string): string => {
   }
 }
 
-// Outside a try, a trusted call in a plain function is a JavaScript call:
-// its exception propagates unchanged.
-export const parse = (text: string): string => tagged(text)
 
 // The same throws under an Effect contract fail the Effect, in every form.
 export effect function pick(tag: string): number!Invalid {

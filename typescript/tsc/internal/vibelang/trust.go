@@ -43,6 +43,7 @@ type trust struct {
 	promise     bool      // the call returns a Promise
 	unreachable string    // a @throws type that names no class, as written
 	value       bool      // the callee is a trusted(impl, [Errors]) value, which lists its failures in its type (D514)
+	unknown     bool      // a written @throws {unknown} or {any}: an affirmative may-throw contract, unlike no tag (detail 255)
 }
 
 // failure is a class whose instances a call throws as expected failures.
@@ -321,7 +322,12 @@ func tagged(c *checker.Checker, call *ast.Node, candidates []*ast.Node, otherwis
 			var unknown bool
 			t.failures, t.unreachable, unknown = throwsOf(c, host)
 			if unknown {
-				return otherwise
+				if !throws {
+					return otherwise
+				}
+				o := *otherwise
+				o.unknown = true
+				return &o
 			}
 			return t
 		}

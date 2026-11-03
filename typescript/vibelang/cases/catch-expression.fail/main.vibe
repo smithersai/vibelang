@@ -1,4 +1,4 @@
-// expect: EK0504 EK9201 EK2114 EK4701
+// expect: EK0401 EK0504 EK9201 EK2114 EK4701
 error NotFound { id: string }
 error Timeout
 

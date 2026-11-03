@@ -1,13 +1,13 @@
 // expect-result: [true,"caught",true,"caught"]
 // Result.try catches a TypeScript exception in an expression, where a try
 // statement would not fit.
-import { identity } from "./identity.ts"
+import { identity, parseJson } from "./identity.ts"
 
 const document = (schema: unknown): unknown =>
-  Result.try(() => JSON.parse(JSON.stringify(identity(schema)))).getOrElse(() => "caught")
+  Result.try(() => parseJson(JSON.stringify(identity(schema)))).getOrElse(() => "caught")
 
 const decoded = (text: string): unknown =>
-  Result.try(() => Schema.decodeUnknownSync(Schema.String)(JSON.parse(text))).getOrElse(() => "caught")
+  Result.try(() => Schema.decodeUnknownSync(Schema.String)(parseJson(text))).getOrElse(() => "caught")
 
 export effect function main() {
   return [document("ok") === "ok", document("bad"), decoded("\"x\"") === "x", decoded("{}")]

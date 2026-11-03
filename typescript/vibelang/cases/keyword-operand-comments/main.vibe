@@ -88,7 +88,7 @@ effect function topicBlock(): number!! {
 // return: hatches as an arrow's body
 const parsed = effect (text: string) =>
   // line
-  try Effect.try({ try: () => ((text) => JSON.parse(text) as unknown)(text), catch: (cause) => new Bad({ message: String(cause) }) })
+  try Effect.try({ try: () => JSON.parse(text) as unknown, catch: (cause) => new Bad({ message: String(cause) }) })
 
 const stepped = effect (n: number) =>
   /* block */

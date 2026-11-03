@@ -23,10 +23,10 @@ export effect function main() {
   const pairOf: Pair = [3, 4]
   const pair = try sync((p: Pair) => p[0] + p[1], pairOf)
   const most = try sync(Math.max(1, 2))
-  const parsed = try Effect.try({ try: () => ((text) => JSON.parse(text))('{"n":1}'), catch: (error) => new Rejected({ reason: String(error) }) })
+  const parsed = try Effect.try({ try: () => JSON.parse('{"n":1}'), catch: (error) => new Rejected({ reason: String(error) }) })
   let mapped = "none"
   try {
-    try Effect.try({ try: () => ((text) => JSON.parse(text))("{"), catch: (error) => new Rejected({ reason: String(error) }) })
+    try Effect.try({ try: () => JSON.parse("{"), catch: (error) => new Rejected({ reason: String(error) }) })
   } catch (error) {
     mapped = error._tag
   }

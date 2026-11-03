@@ -1,0 +1,49 @@
+// expect: EK0401
+// Will, 2026-10-31: synchronous VibeLang code never throws. A call known to
+// throw, a built-in's shipped contract such as JSON.parse's SyntaxError or a
+// trusted @throws, is EK0401 in plain code, unless it stands in the try block
+// of a try statement with a catch clause in the same function (DESIGN.md,
+// 2026-10-31 correction). A call in the catch or finally block, or in a try
+// with only finally, is the error. The controls below report nothing.
+import { legacy, risky, tagged } from "./fixtures.js"
+
+export function parsed(text: string): unknown {
+  return JSON.parse(text)
+}
+export const viaTagged = (text: string): string => tagged(text)
+export function inCatch(text: string): unknown {
+  try { return text.length } catch { return JSON.parse(text) }
+}
+export function inFinally(text: string): unknown {
+  try { return text.length } catch { return 0 } finally { JSON.parse(text) }
+}
+export function onlyFinally(text: string): unknown {
+  try { return JSON.parse(text) } finally { }
+}
+export function nested(text: string): unknown {
+  try {
+    const parse = (): unknown => JSON.parse(text)
+    return parse()
+  } catch { return null }
+}
+export class Box {
+  constructor(readonly text: string) { JSON.parse(text) }
+}
+export const top: unknown = JSON.parse("{}")
+// An explicit @throws {unknown} is a contract (decided detail 255).
+export const viaRisky = (text: string): string => risky(text)
+
+// Controls: no diagnostic.
+export function caught(text: string): unknown {
+  try { return JSON.parse(text) } catch { return null }
+}
+export function caughtTagged(text: string): string {
+  try { return tagged(text) } catch (e) { return e.message }
+}
+export const viaLegacy = (text: string): string => legacy(text)
+export effect function wrapped(text: string) {
+  return try Effect.try(() => JSON.parse(text))
+}
+export async function rejects(text: string) {
+  return JSON.parse(text)
+}

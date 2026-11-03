@@ -23,7 +23,7 @@ const traced = effect (n: number): number!! =>
 
 const parse = effect (text: string) =>
   // The comment sits between the arrow and its body.
-  try Effect.try({ try: () => ((text) => JSON.parse(text) as unknown)(text), catch: (cause) => new Bad({ message: String(cause) }) })
+  try Effect.try({ try: () => JSON.parse(text) as unknown, catch: (cause) => new Bad({ message: String(cause) }) })
 
 const step = effect (n: number) =>
   // A comment before a sync hatch.

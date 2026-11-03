@@ -8,7 +8,7 @@ import { lengthOf as lengthOfText } from "./length.ts"
 error BadJson { error: unknown }
 
 effect function parse(text: string) {
-  return try Effect.try({ try: () => ((text) => JSON.parse(text))(text), catch: (error) => new BadJson({ error }) })
+  return try Effect.try({ try: () => JSON.parse(text), catch: (error) => new BadJson({ error }) })
 }
 
 effect function lengthOf(text: string) {
