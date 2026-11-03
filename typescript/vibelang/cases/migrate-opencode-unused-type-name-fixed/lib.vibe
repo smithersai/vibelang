@@ -1,0 +1,16 @@
+import { Effect } from "effect"
+import { local } from "./types.js"
+
+export const read = effect (box: { readonly value: string; }) => try withSpan(effect {
+  return box.value
+}, "read")
+
+export const again = effect (box: { readonly value: string; }) => try withSpan(effect {
+  return box.value + box.value
+}, "again")
+
+export const count = effect (input: { readonly n: number; }) => try withSpan(effect {
+  return input.n + 1
+}, "count")
+
+export const run = () => local({ n: 1 })

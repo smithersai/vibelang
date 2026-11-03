@@ -156,6 +156,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 
 - Schema conformance checks rejected the dangling aliases that TypeScript itself emits with `stripInternal`; these cases now verify exact native output and the same TypeScript diagnostics.
+- `vibelang --fix` refused an `Effect.fn` whose parameter annotation was a type name's last read under `noUnusedLocals`, because writing the checked parameter type left the name unused (TS6133, TS6196), so the module stayed on `EK1002`; the fix now also removes that type-only import binding or module-local type alias.
 - `vibelang --fix` refused `EK4401` on a plain TypeScript call that reads a property a guard narrowed, such as `o.p ? f(o.p) : 0` or `if (!o.p) return 0; return f(o.p)`, because `Effect.try`'s function no longer knew what the guard proved (`TS2345`). The guard now joins the call in that function, or a `const` under the guard keeps the read; a call that runs before the read still blocks the move.
 
 - Release validation rejected the stock-reference control suite because it had no test runner; `//:release` now runs those Exit, public-type, and version-pin checks.

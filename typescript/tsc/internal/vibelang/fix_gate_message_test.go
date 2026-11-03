@@ -1,6 +1,7 @@
 package vibelang
 
 import (
+	"context"
 	"fmt"
 	"math/rand/v2"
 	"os"
@@ -21,6 +22,12 @@ import (
 // fixProjectOf writes files, with effect installed, and runs --fix over them.
 func fixProjectOf(t *testing.T, files map[string]string) *FixResult {
 	t.Helper()
+	return fixProjectIn(t, t.Context(), files)
+}
+
+// fixProjectIn is fixProjectOf under ctx.
+func fixProjectIn(t *testing.T, ctx context.Context, files map[string]string) *FixResult {
+	t.Helper()
 	dir := t.TempDir()
 	root, err := filepath.Abs("../../../..")
 	if err != nil {
@@ -39,7 +46,9 @@ func fixProjectOf(t *testing.T, files map[string]string) *FixResult {
 		names = append(names, `"`+name+`"`)
 	}
 	files["package.json"] = `{"type":"module"}`
-	files["tsconfig.json"] = `{"compilerOptions":{"target":"ES2022","module":"NodeNext","strict":true,"skipLibCheck":true,"noEmit":true,"allowImportingTsExtensions":true},"files":[` + strings.Join(names, ",") + `]}`
+	if _, ok := files["tsconfig.json"]; !ok {
+		files["tsconfig.json"] = `{"compilerOptions":{"target":"ES2022","module":"NodeNext","strict":true,"skipLibCheck":true,"noEmit":true,"allowImportingTsExtensions":true},"files":[` + strings.Join(names, ",") + `]}`
+	}
 	for name, text := range files {
 		if err := os.WriteFile(filepath.Join(dir, name), []byte(text), 0600); err != nil {
 			t.Fatal(err)
@@ -50,7 +59,7 @@ func fixProjectOf(t *testing.T, files map[string]string) *FixResult {
 	if len(errors) != 0 || len(config.Errors) != 0 {
 		t.Fatalf("config: %v %v", errors, config.Errors)
 	}
-	return FixProjectWithOptions(t.Context(), fs, bundled.LibPath(), config, FixOptions{})
+	return FixProjectWithOptions(ctx, fs, bundled.LibPath(), config, FixOptions{})
 }
 
 // The gate keeps a fix whose edit only rewrites an existing error's message.

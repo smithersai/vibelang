@@ -532,6 +532,10 @@ func FixProjectWithOptions(ctx context.Context, fs vfs.FS, libraryPath tspath.Ro
 		return proposals
 	}
 	finish := func() *FixResult {
+		if result.Err == nil && done.Err() == nil {
+			removeUnusedTypeNames(g, texts, result)
+			verified(texts)
+		}
 		slices.SortFunc(result.Order, tspath.RootedFilePath.Compare)
 		return result
 	}
@@ -1048,6 +1052,12 @@ func countErrors(errors []*ast.Diagnostic, spanKey func(*ast.Diagnostic) string)
 // unrelated helper causes. A span in a file a fix edits is compared where it
 // lay before the edits (spanKeys).
 func addedCounts(errors []*ast.Diagnostic, baseline errorBaseline) map[string]int {
+	return strictAddedCounts(slices.DeleteFunc(slices.Clone(errors), isUnusedTypeName), baseline)
+}
+
+// strictAddedCounts is addedCounts with the type names a fix left unused
+// counted too (removeUnusedTypeNames).
+func strictAddedCounts(errors []*ast.Diagnostic, baseline errorBaseline) map[string]int {
 	spanKey := baseline.spanKeys()
 	// Each baseline occurrence has one owner, even when both its keys match.
 	byMessage, bySpan := map[string][]int{}, map[string][]int{}
