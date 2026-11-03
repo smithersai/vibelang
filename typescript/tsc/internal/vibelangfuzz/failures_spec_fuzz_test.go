@@ -466,6 +466,7 @@ func failuresCases() []*failCase {
 	cases = append(cases, failuresFieldCommaCases()...)
 	cases = append(cases, failuresNominalKeyCases()...)
 	cases = append(cases, failuresNominalLiteralKeyCases()...)
+	cases = append(cases, coverageCallableAdditionalCases()...)
 	return append(cases, failuresExtraCases()...)
 }
 

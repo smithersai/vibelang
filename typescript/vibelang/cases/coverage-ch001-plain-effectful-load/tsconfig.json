@@ -1,0 +1,17 @@
+{
+  "compilerOptions": {
+    "strict": true,
+    "target": "ES2022",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "skipLibCheck": true,
+    "declaration": true,
+    "outDir": "out",
+    "allowArbitraryExtensions": true
+  },
+  "files": [
+    "main.vibe",
+    "native.ts",
+    "contracts.ts"
+  ]
+}

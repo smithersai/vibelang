@@ -1,0 +1,6 @@
+FuzzFailuresSpec feature:coverage-const-never compiler VIP-27 / Chapter 001 callable-const declaration witness: emitted const lacks the tagged literal call signature required by original census rule docs/design/src/001-functions.md#18eaa1c18c09b10e; lane cov-ch001-005
+FuzzFailuresSpec corpus:cov-ch001-callable-const-never compiler VIP-27: feature:coverage-const-never; lane cov-ch001-005
+FuzzFailuresSpec feature:coverage-alias-tag-ignored compiler VIP-4: a tag on a foreign function-type alias is incorrectly treated as the callable tag, so the untagged foreign call is admitted instead of EK0403; rule docs/design/src/001-functions.md#cff8ec19ada090af; lane cov-ch001-005
+FuzzFailuresSpec corpus:cov-ch001-alias-tag-ignored compiler VIP-4: feature:coverage-alias-tag-ignored; lane cov-ch001-005
+FuzzFailuresSpec feature:coverage-service-assignment compiler VIP-9 / VIP-4: non-Effect service member is rejected with EK9205 before the shape's default-never foreign implementation admission can be checked; rule docs/design/src/005-services.md#4c0d571572bbc638; lane cov-ch001-005
+FuzzFailuresSpec corpus:cov-ch005-service-throw-admission compiler VIP-9 / VIP-4: feature:coverage-service-assignment; lane cov-ch001-005

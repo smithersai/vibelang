@@ -1,0 +1,13 @@
+// Chapter 001: plain functions return cold Effects and preserve failure and success branches.
+// Spec rule: docs/design/src/001-functions.md#f549f1c363802e16
+// Spec rule: docs/design/src/001-functions.md#97cc0c4e31df8fbc
+error BadInput
+const seen: string[] = []
+effect function fetchUser(id: string) { seen.push(id); return "user-" + id }
+function load(id: string) { return id ? fetchUser(id) : Effect.fail(new BadInput()) }
+export effect function main() {
+ seen.length = 0
+ const bad = try (load("") catch (error) => error._tag)
+ const good = try load("u")
+ return { bad, good, calls: [...seen] }
+}

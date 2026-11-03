@@ -1,0 +1,3 @@
+go test fuzz v1
+string("effect-overload-bound/overload-effect-bound-ok")
+byte(0)

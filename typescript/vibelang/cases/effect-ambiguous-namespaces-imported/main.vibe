@@ -2,3 +2,6 @@ import { Model } from "effect/ai"
 import { Prompt } from "effect/cli"
 import { Utils } from "effect/rpc"
 export const modules = [Model, Prompt, Utils]
+
+// Spec rule: docs/design/src/005-services.md#8827305dbb89143f
+// Chapter 005: ambiguous Model/Prompt/Utils require EK1401 and every exporter-specific import suggestion; explicit namespace imports compile (effect-ambiguous-namespaces-imported).

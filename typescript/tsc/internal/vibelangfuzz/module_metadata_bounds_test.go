@@ -48,6 +48,18 @@ func metadataBoundCases() []metadataBoundCase {
 // This target does not invent those APIs or replace compile-time Vite inputs
 // with a runtime filesystem read.
 func FuzzModuleMetadataBounds(f *testing.F) {
+	// Spec rule: docs/design/src/005-services.md#8a4271c66660c37c
+	// Chapter 005: only import.meta.url is allowed; host members and object escapes reject across callable homes (FuzzModuleMetadataBounds).
+
+	// Spec rule: docs/design/src/005-services.md#77d844734bc21156
+	// Chapter 005: only import.meta.url is allowed; host members and object escapes reject across callable homes (FuzzModuleMetadataBounds).
+
+	// Spec rule: docs/design/src/005-services.md#093fe9c889a52f8a
+	// Chapter 005: only import.meta.url is allowed; host members and object escapes reject across callable homes (FuzzModuleMetadataBounds).
+
+	// Spec rule: docs/design/src/005-services.md#25e2b783d54ba566
+	// Chapter 005: only import.meta.url is allowed; host members and object escapes reject across callable homes (FuzzModuleMetadataBounds).
+
 	// Spec rule: docs/design/src/005-services.md#52acbff1ca95c8ce
 	// Chapter 005: only import.meta.url is allowed; host members and object escapes reject across callable homes (FuzzModuleMetadataBounds).
 

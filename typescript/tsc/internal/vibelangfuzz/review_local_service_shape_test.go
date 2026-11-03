@@ -43,6 +43,40 @@ func TestReviewLocalServiceShapeQuoted(t *testing.T) { localServiceShapeQuotes(t
 // The key is stable across additions to the lists. Names also collide with
 // the compiler's usual private helper spelling, to check alias hygiene.
 func FuzzReviewLocalServiceShape(f *testing.F) {
+	// Spec rule: docs/design/src/005-services.md#465fadd52646943a
+	// Chapter 005: direct recursive Shape aliases, local own-shape hook, public projection and helper hygiene (FuzzReviewLocalServiceShape).
+
+	// Spec rule: docs/design/src/005-services.md#07bc06b6423eebaf
+	// Chapter 005: direct recursive Shape aliases, local own-shape hook, public projection and helper hygiene (FuzzReviewLocalServiceShape).
+
+	// Spec rule: docs/design/src/005-services.md#3426f474c426bbfb
+	// Chapter 005: direct recursive Shape aliases, local own-shape hook, public projection and helper hygiene (FuzzReviewLocalServiceShape).
+
+	// Spec rule: docs/design/src/005-services.md#6c86dcae7678b319
+	// Chapter 005: direct recursive Shape aliases, local own-shape hook, public projection and helper hygiene (FuzzReviewLocalServiceShape).
+
+	// Spec rule: docs/design/src/005-services.md#789e6fc33eead2e0
+	// Chapter 005: direct recursive Shape aliases, local own-shape hook, public projection and helper hygiene (FuzzReviewLocalServiceShape).
+
+	// Spec rule: docs/design/src/005-services.md#4eb9cdaf946d8dfc
+	// Chapter 005: direct recursive Shape aliases, local own-shape hook, public projection and helper hygiene (FuzzReviewLocalServiceShape).
+
+	// Spec rule: docs/design/src/005-services.md#1baaf2dd12bac517
+	// Chapter 005: direct recursive Shape aliases, local own-shape hook, public projection and helper hygiene (FuzzReviewLocalServiceShape).
+
+	// Spec rule: docs/design/src/005-services.md#9530b155cbfdd159
+	// Chapter 005: direct recursive Shape aliases, local own-shape hook, public projection and helper hygiene (FuzzReviewLocalServiceShape).
+
+	// Spec rule: docs/design/src/005-services.md#8c236227e3334862
+	// Chapter 005: direct recursive Shape aliases, local own-shape hook, public projection and helper hygiene (FuzzReviewLocalServiceShape).
+	// Spec rule: docs/design/src/005-services.md#f93f50cb2e2954b0
+
+	// Spec rule: docs/design/src/005-services.md#bbff6a55e3311a24
+	// Chapter 005: direct recursive Shape aliases, local own-shape hook, public projection and helper hygiene (FuzzReviewLocalServiceShape).
+
+	// Spec rule: docs/design/src/005-services.md#6a70bf16991eabd4
+	// Chapter 005: direct recursive Shape aliases, local own-shape hook, public projection and helper hygiene (FuzzReviewLocalServiceShape).
+
 	startShortBudget(f)
 	localServiceShapeQuotes(f)
 	w := NewWorkspace(f)

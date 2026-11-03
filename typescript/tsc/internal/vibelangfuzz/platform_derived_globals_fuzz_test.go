@@ -48,6 +48,12 @@ func platformDerivedRules(t testing.TB) platformDerivedInventory {
 func TestPlatformDerivedGlobalsQuoted(t *testing.T) { platformDerivedRules(t) }
 
 func FuzzPlatformDerivedGlobals(f *testing.F) {
+	// Spec rule: docs/design/src/005-services.md#194ebe52669fa2eb
+	// Chapter 005: derive host bans from libraries; allow ECMAScript/data utilities, shadowing and unresolved controls (FuzzPlatformDerivedGlobals).
+
+	// Spec rule: docs/design/src/005-services.md#0cc793c8872d532e
+	// Chapter 005: derive host bans from libraries; allow ECMAScript/data utilities, shadowing and unresolved controls (FuzzPlatformDerivedGlobals).
+
 	// Spec rule: docs/design/src/005-services.md#c067872b2e952aac
 	// Chapter 005: derive host bans from libraries; allow ECMAScript/data utilities, shadowing and unresolved controls (FuzzPlatformDerivedGlobals).
 

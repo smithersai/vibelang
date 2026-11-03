@@ -59,6 +59,27 @@ func TestReviewProvideRecoveryQuoted(t *testing.T) {
 // stay native expressions. LF, CRLF, Unicode line terminators and multiline
 // comments exercise the same no-LineTerminator grammar restriction.
 func FuzzReviewProvideRecovery(f *testing.F) {
+	// Spec rule: docs/design/src/005-services.md#a16c456a08094b38
+	// Chapter 005: two-sided top-level comma recovery, inner multiline controls and retained ordinary calls (FuzzReviewProvideRecovery).
+
+	// Spec rule: docs/design/src/005-services.md#631b00b95882d275
+	// Chapter 005: two-sided top-level comma recovery, inner multiline controls and retained ordinary calls (FuzzReviewProvideRecovery).
+
+	// Spec rule: docs/design/src/005-services.md#0bae849db666a48c
+	// Chapter 005: two-sided top-level comma recovery, inner multiline controls and retained ordinary calls (FuzzReviewProvideRecovery).
+
+	// Spec rule: docs/design/src/005-services.md#104011f95caa673c
+	// Chapter 005: two-sided top-level comma recovery, inner multiline controls and retained ordinary calls (FuzzReviewProvideRecovery).
+
+	// Spec rule: docs/design/src/005-services.md#25a19780d6cd2de5
+	// Chapter 005: two-sided top-level comma recovery, inner multiline controls and retained ordinary calls (FuzzReviewProvideRecovery).
+
+	// Spec rule: docs/design/src/005-services.md#9c4936b9f2eb3c42
+	// Chapter 005: two-sided top-level comma recovery, inner multiline controls and retained ordinary calls (FuzzReviewProvideRecovery).
+
+	// Spec rule: docs/design/src/005-services.md#a6aeae1c080246e6
+	// Chapter 005: two-sided top-level comma recovery, inner multiline controls and retained ordinary calls (FuzzReviewProvideRecovery).
+
 	// Spec rule: docs/design/src/005-services.md#7dd7f8f47b19fc85
 	// Chapter 005: two-sided top-level comma recovery, inner multiline controls and retained ordinary calls (FuzzReviewProvideRecovery).
 

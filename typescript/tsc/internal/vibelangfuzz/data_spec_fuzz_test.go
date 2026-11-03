@@ -437,6 +437,9 @@ func TestDataSpecRulesQuoted(t *testing.T) {
 // meaning when the list changes; any other input indexes the list by its
 // first byte.
 func FuzzDataSpecRules(f *testing.F) {
+	// Spec rule: docs/design/src/001-functions.md#1d803f7568e07b98
+	// Chapter 001: EK0705 rejects is-pattern bindings in formal defaults, destructuring and nested parameter homes; binding-free and block-local controls compile (FuzzDataSpecRules).
+
 	startShortBudget(f)
 	cases := dataRules()
 	for _, c := range cases {

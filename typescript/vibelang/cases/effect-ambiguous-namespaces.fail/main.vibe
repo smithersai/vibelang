@@ -5,3 +5,10 @@ const utils = Utils
 export {}
 
 // Appendix B: EK1401 — spec-rule: docs/design/src/900-appendices.md#49fd658dd5bcb0a8
+
+// Spec rule: docs/design/src/005-services.md#f6389f3ded0a793d
+// Chapter 005: ambiguous Model/Prompt/Utils require EK1401 and every exporter-specific import suggestion; explicit namespace imports compile (effect-ambiguous-namespaces.fail).
+
+// Spec rule: docs/design/src/005-services.md#645c2e2b7e4edb8f
+// Chapter 005: ambiguous Model/Prompt/Utils require EK1401 and every exporter-specific import suggestion; explicit namespace imports compile (effect-ambiguous-namespaces.fail).
+// Spec rule: docs/design/src/005-services.md#7e02ee150b20b9a5

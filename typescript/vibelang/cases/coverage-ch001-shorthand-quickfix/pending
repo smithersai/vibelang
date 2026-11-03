@@ -1,0 +1,1 @@
+cov-ch001-005 docs/design/src/001-functions.md#add3e51087eb1cdb: shorthand diagnostics are EK4618 instead of required EK0101; all four async/effect and generic fix cells pass native API/Exit comparisons. Keep the exact diagnostic assertion. Rule docs/design/src/001-functions.md#d1bea2e4190cc89a has the same diagnostic witness.
