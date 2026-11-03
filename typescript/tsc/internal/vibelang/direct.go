@@ -54,7 +54,14 @@ func (tx *lowering) directEffect(node *ast.Node, body *ast.Node, role thunkRole)
 			return nil
 		}
 	}
-	thunk := tx.namedThunk(sourceName(node), value, role)
+	var sourceReturn *ast.Node
+	if role == thunkIsReturn && !isProgramArrow(node) {
+		original := tx.EmitContext().MostOriginal(statements[0])
+		if original.Kind == ast.KindReturnStatement && !ast.PositionIsSynthesized(original.Pos()) {
+			sourceReturn = original
+		}
+	}
+	thunk := tx.namedThunk(sourceName(node), value, role, sourceReturn)
 	var effect *ast.Node
 	if delegated {
 		effect = tx.delegatedTail(node, thunk)
@@ -64,7 +71,8 @@ func (tx *lowering) directEffect(node *ast.Node, body *ast.Node, role thunkRole)
 	tx.EmitContext().SetOriginal(effect, statements[0])
 	switch {
 	case isProgramArrow(node):
-		tx.generated(effect) // the arrow's concise body
+		// The caller marks a program value as generated. A program arrow
+		// that remains a callable uses a generated block return instead.
 	case role == thunkIsNothing:
 		// The arrow's concise body stands for its source body.
 		if loc := tx.EmitContext().SourceMapRange(value); !ast.PositionIsSynthesized(loc.Pos()) {
@@ -140,21 +148,32 @@ func (tx *lowering) delegatedTail(node, thunk *ast.Node) *ast.Node {
 	callee := f.NewPropertyAccessExpression(tx.effectName(), nil, f.NewIdentifier("gen"), ast.NodeFlagsNone)
 	effect := f.NewCallExpression(callee, nil, nil, f.NewNodeList([]*ast.Node{generator}), ast.NodeFlagsNone)
 	parameter := f.NewParameterDeclaration(nil, nil, capture, nil, nil, nil)
-	factory := f.NewParenthesizedExpression(tx.generated(tx.arrow([]*ast.Node{parameter}, effect)))
+	factory := f.NewParenthesizedExpression(tx.generatedThunk([]*ast.Node{parameter}, effect))
 	return f.NewCallExpression(factory, nil, nil, f.NewNodeList([]*ast.Node{thunk}), ast.NodeFlagsNone)
 }
 
 // namedThunk returns `() => value`, as `{ name: () => value }.name` when name
 // is not "", which names the arrow without binding name inside it. role
-// says what the thunk stands for (directEffect).
-func (tx *lowering) namedThunk(name string, value *ast.Node, role thunkRole) *ast.Node {
+// says what the thunk stands for (directEffect). sourceReturn, when present,
+// is the written return its block body represents; synthetic array bodies
+// otherwise create a second statement in coverage.
+func (tx *lowering) namedThunk(name string, value *ast.Node, role thunkRole, sourceReturn *ast.Node) *ast.Node {
 	f := tx.Factory()
 	var thunk *ast.Node
 	switch role {
 	case thunkIsNode:
 		thunk = tx.arrow(nil, value)
 	case thunkIsReturn:
-		thunk = tx.generated(tx.arrow(nil, value))
+		statement := f.NewReturnStatement(value)
+		if sourceReturn != nil {
+			// The outer return only builds the Effect. This cold return
+			// stands for the source return and must remain coverable.
+			tx.EmitContext().AssignSourceMapRange(statement, sourceReturn)
+		} else {
+			tx.generated(statement) // a parser program has no written return
+		}
+		body := f.NewBlock(f.NewNodeList([]*ast.Node{statement}), false /*multiLine*/)
+		thunk = tx.generated(tx.arrow(nil, body))
 	default:
 		thunk = tx.generatedThunk(nil, value)
 	}

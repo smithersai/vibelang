@@ -109,7 +109,10 @@ exports of an Effect package, so a test calls them directly. A failed
 assertion's stack points to its `.vibe` source line. Coverage with
 `@vitest/coverage-v8` counts the code you wrote: one function for each
 function in a `.vibe` module, and none for the thunks and generators the
-compiler makes, which map to no source position (D36).
+compiler makes, which map to no source position (D36). This also holds for
+`return try value`, conditional tail returns, and a `catch effect` handler
+whose body is a `throw` expression: their private delegation wrappers do not
+add functions or uncovered statements.
 
 ## Options
 
@@ -185,7 +188,9 @@ A production build checks `.vibe` entry support. A coverage check runs
 `test/coverage`, `.vibe` modules beside the Effect TypeScript an author would
 write, under `@vitest/coverage-v8`: each `.vibe` module reports one function for
 each function in its source, and no more uncovered functions, statements, or
-branches than its TypeScript. Each check removes its temporary projects and
+branches than its TypeScript. A generated property checks direct and conditional
+tail returns and catch fallbacks and rethrows, varying comments and line breaks
+through Vite and the coverage provider. Each check removes its temporary projects and
 compiler output.
 
 The template and the users, http-api, and resilience examples also use this

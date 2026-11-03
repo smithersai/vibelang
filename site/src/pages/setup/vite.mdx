@@ -208,6 +208,11 @@ In `package.json`, replace `tsc` in the build script with `vibelang` so it check
 
 Run `npm run build`, or `bun run build`; then run `npm run test`, or `bun run test`. The build exits with status 0, and its last line starts with `✓ built in`. Review the files you added before committing them.
 
+Coverage with `@vitest/coverage-v8` counts the functions in your `.vibe` source.
+The compiler's private delegation wrappers, including those for `return try value`
+and a `catch effect` handler with a `throw` expression, add no source functions
+or uncovered statements.
+
 ## Dependency pre-bundling
 
 A cold dev server scans the application for the packages it imports and

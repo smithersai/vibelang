@@ -479,6 +479,9 @@ func (tx *lowering) lowerProgram(node *ast.Node) *ast.Node {
 			role = programArrowRole(node)
 		}
 		if effect := tx.directEffect(node, body, role); effect != nil {
+			if isProgramArrow(node) {
+				tx.generated(effect)
+			}
 			effect.Loc = node.Loc
 			return effect
 		}
@@ -556,7 +559,16 @@ func (tx *lowering) directFunction(node *ast.Node, parameters *ast.NodeList, eff
 	f := tx.Factory()
 	var lowered *ast.Node
 	if node.Kind == ast.KindArrowFunction {
-		lowered = f.NewArrowFunction(nil /*modifiers*/, nil /*typeParameters*/, parameters, nil /*typeNode*/, nil /*fullSignature*/, f.NewToken(ast.KindEqualsGreaterThanToken), effect)
+		if isProgramArrow(node) {
+			// This callable is the parser's throw/do wrapper. A generated
+			// block return avoids a second, adjacent no-source position on
+			// its concise body and the tail factory it immediately contains.
+			// Map composition drops adjacent generated positions, after which
+			// coverage's upper-bound lookup would count that factory.
+			lowered = tx.generatedThunk(parameters.Nodes, effect)
+		} else {
+			lowered = f.NewArrowFunction(nil /*modifiers*/, nil /*typeParameters*/, parameters, nil /*typeNode*/, nil /*fullSignature*/, f.NewToken(ast.KindEqualsGreaterThanToken), effect)
+		}
 	} else {
 		body := f.NewBlock(f.NewNodeList([]*ast.Node{tx.generated(f.NewReturnStatement(effect))}), false /*multiLine*/)
 		lowered = f.NewFunctionExpression(nil /*modifiers*/, nil /*asteriskToken*/, node.Name(), nil /*typeParameters*/, parameters, nil /*typeNode*/, nil /*fullSignature*/, body)

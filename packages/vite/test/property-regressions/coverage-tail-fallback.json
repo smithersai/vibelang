@@ -1,0 +1,8 @@
+{
+  "property": "vite-tail-coverage",
+  "input": {
+    "kind": "fallback",
+    "trivia": " "
+  },
+  "rule": "Compiler-generated tail wrappers have no source function position."
+}
