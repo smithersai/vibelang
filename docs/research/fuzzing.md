@@ -881,3 +881,5 @@ After the mapped schema library-binding fixes, retained namespace, function and 
 The current-vibe raw matrix admits all eight dotted shortcut variants and rejects their computed-member twins. Eight exact rejection keys and paired corpus records remain pending under `migfix2-smithers`. Every explicit-service counterpart compiles; this is an admission gap under the denied shorthand, not a new runtime promise.
 
 The `FuzzEditor` corpus retains T3code’s `ForwardCompatibleOptional` helper and eight `Schema.optionalKey` neighbourhoods. Required-reference `EK2109` and native codec controls run before code-action safety checks; optional source positions remain positive controls.
+
+The `FuzzFix` idempotence oracle checks the exact pending key derived from its input and mode after verifying that a second `--fix` invocation changes nothing. A passing idempotence check rejects its stale marker even when a later contract or runtime oracle finds a separate gap. The keyed `t3code-cold-generator-*` corpus covers stored and default-exported generators, direct and piped forms, and value and suspension bodies.

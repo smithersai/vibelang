@@ -182,13 +182,17 @@ func FuzzFix(f *testing.F) {
 			}
 			// A pending convergence defect belongs to one exact input and mode;
 			// it must not excuse another project or another --fix invocation.
+			idempotenceKey := fmt.Sprintf("fix:idempotence:%t:%x", options.VIPOnly, sha256.Sum256([]byte(archive)))
 			if second.Err != nil || len(second.Files) > 0 {
 				var changed []string
 				for name, file := range second.Files {
 					changed = append(changed, fmt.Sprintf("-- %s --\n%s", filepath.Base(name.AsString()), file.Text))
 				}
-				Gap(t, "FuzzFix", fmt.Sprintf("fix:idempotence:%t:%x", options.VIPOnly, sha256.Sum256([]byte(archive))), "a second --fix changes the fixed project (%v):\n%s\nfixed:\n%s\nthen:\n%s", second.Err, archive, Archive(fixed), strings.Join(changed, "\n"))
+				Gap(t, "FuzzFix", idempotenceKey, "a second --fix changes the fixed project (%v):\n%s\nfixed:\n%s\nthen:\n%s", second.Err, archive, Archive(fixed), strings.Join(changed, "\n"))
 			}
+			// A repaired idempotence gap must retire its exact pending key even
+			// when a later contract or runtime check finds a different gap.
+			ExpectPending(t, "FuzzFix", idempotenceKey)
 			// Current tooling explicitly names this codemod, independently of
 			// implementation action availability. Keep main's VIP-only scope;
 			// the unscoped run checks its completion and safe refusals.
