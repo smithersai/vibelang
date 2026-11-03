@@ -1,0 +1,2 @@
+// VIP-39 a b c d 1 Foo.Bar a b.c member: docs/design/vips/0039-vibex.md#d9e2d519451e782d
+const v = <><a:b c:d="1"/><Foo.Bar/></>

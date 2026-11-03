@@ -1,0 +1,2 @@
+// VIP-39 Every .vibe rule applies. VIP-30 every source file is: docs/design/vips/0039-vibex.md#0870a27897611f57
+export effect function main(): number!! { return try succeed(1) }

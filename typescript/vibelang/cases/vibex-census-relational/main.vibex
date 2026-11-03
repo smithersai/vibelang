@@ -1,0 +1,11 @@
+// VIP-39 Pattern position is not expression position. After when is: docs/design/vips/0039-vibex.md#263f21856c80073b
+// VIP-39 when 5 keeps working Opus Sol: docs/design/vips/0039-vibex.md#ffa33d2414a2f2c1
+import {Effect} from "effect"
+import {h,type VNode} from "./jsx.js"
+declare global { namespace JSX { type Element = VNode; interface IntrinsicElements { [tag:string]: Record<string,unknown> } } }
+function Small(): VNode { return <small/> }
+function Big(): VNode { return <big/> }
+export effect function main(): Effect.Effect<VNode> {
+ const n=2
+ return match (n) { when < 5: <Small/>; default: <Big/>; }
+}

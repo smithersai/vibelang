@@ -1,0 +1,4 @@
+// expect: TS1005 TS1381
+// VIP-39 A declaration or statement provide service data schema error: docs/design/vips/0039-vibex.md#d6ccfac03e5f3db3
+// VIP-39 provide Live service S error E declarations and statements: docs/design/vips/0039-vibex.md#15d10d194541b9a3
+const x = <p>{service S {}}</p>

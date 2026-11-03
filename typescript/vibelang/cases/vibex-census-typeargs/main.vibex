@@ -1,0 +1,3 @@
+// VIP-39 Box v id T x less a b type: docs/design/vips/0039-vibex.md#c53e18ff3b532a70
+// VIP-39 Box Array T v n 1 type closers shift: docs/design/vips/0039-vibex.md#f4ea2794f1dd71ac
+const a = <Box v={id<T>(x)} less={a < b}/>; const b = <Box<Array<T>> v={n >> 1}/>

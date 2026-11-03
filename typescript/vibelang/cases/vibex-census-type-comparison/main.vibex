@@ -1,0 +1,2 @@
+// VIP-39 x as A 3 Appendix A R omitted then: docs/design/vips/0039-vibex.md#a08781d716eda9c8
+const x = <p>{value as number!! < 3}</p>
