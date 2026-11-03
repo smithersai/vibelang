@@ -445,3 +445,30 @@ test("superseded-denial: source snapshots verify successors without reading anot
   assert.equal(vipRegistryFromSources(sources).get(25).supersededBy, undefined)
   assert.equal(accepted.get(25).supersededBy, 40)
 })
+
+// r26 OPUS-3: an exported `effect function` keeps its form in the paired
+// Effect TypeScript counterpart. Functions, Meaning: "A declaration stays a
+// hoisted function declaration"; VIP-1: `effect` goes where `async` goes.
+function exportedEffectCounterparts(text) {
+  const blocks = [...text.matchAll(/^```(\S+)[^\n]*\n([\s\S]*?)^```/gm)].map(m => ({ lang: m[1], body: m[2] }))
+  const found = []
+  for (let i = 0; i + 1 < blocks.length; i++) {
+    const [source, twin] = [blocks[i], blocks[i + 1]]
+    if (!source.lang.startsWith("vibe") || !twin.lang.startsWith("ts")) continue
+    for (const [, name] of source.body.matchAll(/^\s*export\s+effect\s+function\s+(\w+)/gm)) {
+      if (new RegExp(`^\\s*export\\s+(?:const|let|var)\\s+${name}\\b`, "m").test(twin.body)) found.push(name)
+    }
+  }
+  return found
+}
+
+test("r26 OPUS-3: an exported effect function's counterpart stays a function declaration", () => {
+  const stale = "```vibe es\nexport effect function loadPort(raw: string) {\n  return try f(raw)\n}\n```\n\n```ts effect\n// fragment\nexport const loadPort = (raw: string) => Effect.gen(function* () { return yield* f(raw) })\n```\n"
+  assert.deepEqual(exportedEffectCounterparts(stale), ["loadPort"])
+  assert.deepEqual(exportedEffectCounterparts(stale.replace("export const loadPort = (raw: string) =>", "export function loadPort(raw: string) { return").replace("})\n```\n", "}) }\n```\n")), [])
+  for (const dir of ["docs/design/src", "docs/design/vips"]) {
+    for (const file of readdirSync(join(repository, dir)).filter(f => f.endsWith(".md"))) {
+      assert.deepEqual(exportedEffectCounterparts(read(repository, `${dir}/${file}`)), [], `${dir}/${file}`)
+    }
+  }
+})
