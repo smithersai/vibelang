@@ -481,6 +481,7 @@ func (p *Parser) parseLayerDeclaration(pos int, jsdoc jsdocScannerInfo, modifier
 	var statements, members []*ast.Node
 	if p.parseExpected(ast.KindOpenBraceToken) {
 		for p.token != ast.KindCloseBraceToken && p.token != ast.KindEndOfFile {
+			start := p.nodePos()
 			switch {
 			case p.lookAhead((*Parser).scanLayerValueStart):
 				members = append(members, p.parseLayerValue())
@@ -499,6 +500,11 @@ func (p *Parser) parseLayerDeclaration(pos int, jsdoc jsdocScannerInfo, modifier
 				members = append(members, p.parseMethodDeclaration(memberPos, memberJSDoc, nil /*modifiers*/, asterisk, memberName, nil /*questionToken*/, nil /*diagnosticMessage*/, false /*effect*/, false /*allowComma*/))
 			default:
 				statements = append(statements, p.parseStatement())
+			}
+			// parseStatement reports a token that cannot start a statement, such
+			// as `default` or `)`, without consuming it.
+			if p.nodePos() == start {
+				p.nextToken()
 			}
 		}
 		p.parseExpected(ast.KindCloseBraceToken)
