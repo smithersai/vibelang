@@ -190,6 +190,49 @@ groups only and cannot establish API identity. An ordinary API mismatch remains
 a complete comparison and continues through the remaining names, types and
 comments.
 
+## Declarations absent on both sides
+
+The checker reads emitted declaration trees, so it cannot see why a
+declaration is missing. A caller whose emit failed for some files passes
+`absentDeclarations`: `{ before: { "<path>.d.ts": [diagnostic] }, after: { ... } }`,
+with paths relative to each snapshot and each diagnostic recorded as
+`{ code, file, line, column }` from that side's declaration emit, such as
+`TS7056` or `TS2883`.
+
+| Listed declaration | Result |
+| --- | --- |
+| Missing on both sides, same nonempty set of codes and source locations | Compares equal. As an entry point, it has no program root and no result. |
+| Missing on both sides, different diagnostics or evidence for one side only | Never equal. As an entry point, it is unavailable on its own (`export: "*"`). |
+| Present on either side | A blocking error for the whole group: a one-sided absence never compares equal. |
+
+`result.absentDeclarations` records each listed declaration with `equal` and
+its reason. References into a missing declaration fail alike on both sides:
+`TS2307` at the import, or `TS2305`, `TS2694` and related codes for a name a
+module would re-export from it through `export *`. Those diagnostics stay in
+`environmentDiagnostics` with `blocking: false` and `absentDeclaration` only
+when each file's failed references (code, target module and name) are the same
+in both snapshots. Otherwise the group stays unavailable, so a candidate that
+drops `export * from "./missing"` cannot pass.
+
+An export whose declarations reach a missing declaration, through an import
+binding that resolves to nothing, an unresolved qualified name, an import type
+or an owned local declaration, has no probe. It is reported as a blocking
+environment record with `scope: "export"`, its entry point, its export name,
+`absentDeclarations` and the reason. Its type cannot be compared: a candidate
+that changes `{ a: Platform; b: string }` to `{ a: Platform; b: number }` is
+unavailable, not identical. Every other export is still compared, and an
+export-scoped record does not stop later entry groups. Such a receipt has
+`comparisonComplete: false` and `identical: false`, and keeps the type
+differences of the exports it did compare. A blocking record without
+`scope: "export"` still makes its whole group unavailable and clears the
+receipt's type differences.
+
+The checker does not model a missing module's exports. Their own API belongs
+to the package that failed to emit them; their names are not compared, even
+when their source differs between the snapshots. The t3code corpus pair
+`scripts/api-identity-corpus/t3code-absent-on-both-sides.json` keeps the mobile
+(`TS2883`) and server/contracts (`TS7056`) shapes.
+
 Project `noUnusedLocals` and `noUnusedParameters` checks apply to the original
 input programs. They are disabled only for the synthetic probe program, whose
 private helper aliases and imports are not part of the package. Real unused

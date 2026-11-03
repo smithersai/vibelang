@@ -1,0 +1,107 @@
+{
+  "origin": "t3code apps/mobile (TS2883) and apps/server with packages/contracts (TS7056), drive-t3code-apps 09:45Z and drive-t3code-server 11:20Z",
+  "qualification": "Minimized shapes of the witnesses, not original t3code declaration bytes",
+  "mobile": {
+    "files": {
+      "apps/mobile/src/connection/runtime.d.ts": "import type { Platform } from \"./platform\";\nimport type { MigrationPlan } from \"./migration\";\nexport declare const makeRuntime: (platform: Platform) => MigrationPlan;\nexport declare const runtimeVersion: string;\n",
+      "apps/mobile/src/connection/onboarding.d.ts": "export interface OnboardingStep {\n  readonly id: string;\n  readonly done: boolean;\n}\n",
+      "apps/mobile/src/persistence/layer.d.ts": "import type { Platform } from \"../connection/platform\";\nexport type Layer = { readonly platform: Platform; readonly name: string };\n"
+    },
+    "entries": [
+      "apps/mobile/src/connection/migration.d.ts",
+      "apps/mobile/src/connection/onboarding.d.ts",
+      "apps/mobile/src/connection/platform.d.ts",
+      "apps/mobile/src/connection/runtime.d.ts",
+      "apps/mobile/src/persistence/layer.d.ts"
+    ],
+    "absent": {
+      "apps/mobile/src/connection/migration.d.ts": [
+        {
+          "code": "TS2883",
+          "file": "apps/mobile/src/connection/migration.ts",
+          "line": 90,
+          "column": 14
+        }
+      ],
+      "apps/mobile/src/connection/platform.d.ts": [
+        {
+          "code": "TS2883",
+          "file": "apps/mobile/src/connection/platform.ts",
+          "line": 249,
+          "column": 7
+        }
+      ]
+    },
+    "candidateAbsent": {
+      "apps/mobile/src/connection/migration.d.ts": [
+        {
+          "code": "TS2883",
+          "file": "apps/mobile/src/connection/migration.vibe",
+          "line": 87,
+          "column": 14
+        }
+      ],
+      "apps/mobile/src/connection/platform.d.ts": [
+        {
+          "code": "TS2883",
+          "file": "apps/mobile/src/connection/platform.vibe",
+          "line": 238,
+          "column": 7
+        }
+      ]
+    }
+  },
+  "server": {
+    "files": {
+      "packages/contracts/src/index.d.ts": "export * from \"./environmentHttp.ts\";\nexport * from \"./guestStream.ts\";\nexport * from \"./orchestrationV2.ts\";\nexport * from \"./rpc.ts\";\nexport * from \"./ids.ts\";\n",
+      "packages/contracts/src/ids.d.ts": "export type ThreadId = string & { readonly ThreadId: unique symbol };\n",
+      "apps/server/src/auth/RpcAuthorization.d.ts": "import type { RpcScopeAuthorization, ThreadId } from \"../../../../packages/contracts/src/index.ts\";\nexport declare const authorize: (scope: RpcScopeAuthorization) => boolean;\nexport declare const threadOf: (id: ThreadId) => string;\n",
+      "apps/server/src/RequestUrl.d.ts": "export declare const requestUrl: (path: string) => URL;\n"
+    },
+    "entries": [
+      "apps/server/src/RequestUrl.d.ts",
+      "apps/server/src/auth/RpcAuthorization.d.ts"
+    ],
+    "absent": {
+      "packages/contracts/src/environmentHttp.d.ts": [
+        {
+          "code": "TS7056",
+          "file": "packages/contracts/src/environmentHttp.ts",
+          "line": 695,
+          "column": 7
+        }
+      ],
+      "packages/contracts/src/guestStream.d.ts": [
+        {
+          "code": "TS7056",
+          "file": "packages/contracts/src/guestStream.ts",
+          "line": 37,
+          "column": 14
+        }
+      ],
+      "packages/contracts/src/orchestrationV2.d.ts": [
+        {
+          "code": "TS7056",
+          "file": "packages/contracts/src/orchestrationV2.ts",
+          "line": 3842,
+          "column": 14
+        },
+        {
+          "code": "TS7056",
+          "file": "packages/contracts/src/orchestrationV2.ts",
+          "line": 4089,
+          "column": 14
+        }
+      ],
+      "packages/contracts/src/rpc.d.ts": [
+        {
+          "code": "TS7056",
+          "file": "packages/contracts/src/rpc.ts",
+          "line": 1972,
+          "column": 14
+        }
+      ]
+    }
+  },
+  "oracle": "Same-reason absences compare equal; exports that do not reach them are compared in every group; exports that reach them are unavailable one by one; one-sided or different-reason absences, and changed types that refer to an absent module, never pass"
+}

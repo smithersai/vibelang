@@ -513,6 +513,145 @@ function equivalentModules(ts, program, host, left, right, externalGroups, docum
   return equivalent
 }
 
+// Declarations that neither snapshot emitted. The checker reads only emitted
+// trees, so the caller supplies each missing declaration's emit diagnostics:
+// { before: { "dir/x.d.ts": [{ code, file, line, column }] }, after: { ... } },
+// paths relative to each snapshot. A declaration missing on both sides with
+// the same nonempty set of codes and source locations compares equal; any
+// other listed absence stays unequal. A listed declaration that exists on
+// either side is a blocking error, so a one-sided absence is never equal.
+const absentReferenceCodes = new Set([2305, 2307, 2339, 2459, 2460, 2614, 2694, 2724])
+const absentReason = records => (Array.isArray(records) ? records : []).map(record =>
+  [String(record.code ?? "").replace(/^TS/, ""), slash(String(record.file ?? "")).replace(/^\.\//, ""),
+    record.line ?? "", record.column ?? ""].join(":")).sort()
+const declarationTwins = path => [path, path.endsWith(".d.vibe.ts") ? path.replace(/\.d\.vibe\.ts$/, ".d.ts")
+  : path.replace(/\.d\.(ts)$/, ".d.vibe.ts")]
+
+function planAbsentDeclarations(before, after, supplied, exists) {
+  const plan = { declarations: new Map(), paths: new Map(), diagnostics: [] }
+  if (!supplied) return plan
+  const sides = { before: supplied.before ?? {}, after: supplied.after ?? {} }
+  const names = new Map()
+  for (const side of ["before", "after"]) for (const [name, records] of Object.entries(sides[side])) {
+    const declaration = slash(name).replace(/^\.\//, "")
+    if (!declaration.endsWith(".d.ts") && !declaration.endsWith(".d.mts") && !declaration.endsWith(".d.cts"))
+      plan.diagnostics.push({ declaration, side, blocking: true, diagnostic: "Absent declaration is not a declaration path: " + declaration })
+    else names.set(declaration, { ...names.get(declaration), [side]: records })
+  }
+  for (const [declaration, reasons] of [...names].sort(([a], [b]) => a.localeCompare(b))) {
+    const paths = { before: resolve(before, declaration), after: resolve(after, declaration) }
+    const present = Object.entries(paths).filter(([, path]) => declarationTwins(path).some(exists)).map(([side]) => side)
+    if (present.length) {
+      plan.diagnostics.push({ declaration, blocking: true, diagnostic: "Declaration listed as absent exists on the " +
+        present.join(" and ") + " side; a one-sided absence never compares equal: " + declaration })
+      continue
+    }
+    const a = absentReason(reasons.before), b = absentReason(reasons.after)
+    const equal = a.length > 0 && JSON.stringify(a) === JSON.stringify(b)
+    const reason = equal ? "absent on both sides with the same emit diagnostics: " + a.join(", ")
+      : !a.length || !b.length ? "absent on both sides; emit diagnostics supplied for the " +
+        (a.length ? "before" : b.length ? "after" : "neither") + " side only"
+      : "absent on both sides with different emit diagnostics: before " + a.join(", ") + "; after " + b.join(", ")
+    const record = { declaration, equal, reason, before: a, after: b }
+    plan.declarations.set(declaration, record)
+    for (const path of Object.values(paths)) plan.paths.set(path, record)
+  }
+  return plan
+}
+
+// References into an absent declaration fail the same way in both snapshots.
+// They stop blocking the entry group only when each file's failed references
+// (code, target module and name) agree on both sides; the exports reaching
+// them become unavailable one by one in prepareComparison.
+function attributeAbsentReferences(ts, program, checker, diagnostics, before, after, absent, resolution, host) {
+  const attributed = new Map(), mismatches = []
+  if (!absent.paths.size) return { attributed, mismatches, resolveAbsent: () => undefined }
+  const absentPaths = new Set(absent.paths.keys())
+  const probeHost = { ...host,
+    fileExists: path => absentPaths.has(resolve(path)) || host.fileExists(path),
+    directoryExists: dir => [...absentPaths].some(path => path.startsWith(resolve(dir) + "/")) ||
+      (host.directoryExists ? host.directoryExists(dir) : true) }
+  const targetOf = (literal, file) => {
+    const source = literal.getSourceFile()
+    const resolved = ts.resolveModuleName(literal.text, file, resolution, probeHost, undefined, undefined,
+      ts.getModeForUsageLocation(source, literal, resolution)).resolvedModule?.resolvedFileName
+    return resolved && resolve(resolved)
+  }
+  const stars = new Map()
+  // The absent declaration a module reaches, itself or through `export *`.
+  const resolveAbsent = (file, trail = new Set()) => {
+    if (absent.paths.has(file)) return absent.paths.get(file)
+    if (stars.has(file)) return stars.get(file)
+    if (trail.has(file)) return undefined
+    trail.add(file)
+    let found
+    for (const statement of program.getSourceFile(file)?.statements ?? []) {
+      if (!ts.isExportDeclaration(statement) || statement.exportClause || !statement.moduleSpecifier ||
+          !ts.isStringLiteral(statement.moduleSpecifier)) continue
+      const target = targetOf(statement.moduleSpecifier, file)
+      if (target && (found = resolveAbsent(target, trail))) break
+    }
+    stars.set(file, found)
+    return found
+  }
+  const nodeAt = (source, position) => {
+    let found
+    const visit = node => {
+      if (node.getStart(source) <= position && position < node.end) { found = node; ts.forEachChild(node, visit) }
+    }
+    ts.forEachChild(source, visit)
+    return found
+  }
+  const moduleLiteral = node => {
+    for (let n = node; n && !ts.isSourceFile(n); n = n.parent) {
+      if ((ts.isImportDeclaration(n) || ts.isExportDeclaration(n)) && n.moduleSpecifier && ts.isStringLiteral(n.moduleSpecifier)) return n.moduleSpecifier
+      if (ts.isImportTypeNode(n) && ts.isLiteralTypeNode(n.argument) && ts.isStringLiteral(n.argument.literal)) return n.argument.literal
+      if (ts.isImportEqualsDeclaration(n) && ts.isExternalModuleReference(n.moduleReference) && ts.isStringLiteral(n.moduleReference.expression)) return n.moduleReference.expression
+      if (ts.isQualifiedName(n) || ts.isPropertyAccessExpression(n)) {
+        let left = ts.isQualifiedName(n) ? n.left : n.expression
+        while (ts.isQualifiedName(left) || ts.isPropertyAccessExpression(left)) left = ts.isQualifiedName(left) ? left.left : left.expression
+        const declaration = ts.isIdentifier(left) ? checker.getSymbolAtLocation(left)?.declarations?.[0] : undefined
+        if (declaration && ts.isNamespaceImport(declaration)) return declaration.parent.parent.moduleSpecifier
+        if (declaration && ts.isImportEqualsDeclaration(declaration) && ts.isExternalModuleReference(declaration.moduleReference))
+          return declaration.moduleReference.expression
+        return undefined
+      }
+    }
+    return undefined
+  }
+  const owned = file => [before, after].find(base => file.startsWith(base + "/") && !file.includes("/node_modules/"))
+  const logical = (base, file) => slash(relative(base, file)).replace(/\.d\.vibe\.ts$/, ".d.ts")
+  const records = new Map()
+  for (const d of diagnostics) {
+    if (!d.file || d.start === undefined || !absentReferenceCodes.has(d.code) || !owned(d.file)) continue
+    records.set(d.file + "\0" + d.start + "\0" + d.code, d)
+  }
+  const files = new Map()
+  for (const [key, d] of records) {
+    const base = owned(d.file), source = program.getSourceFile(d.file)
+    const node = source && nodeAt(source, d.start)
+    const literal = node && moduleLiteral(node)
+    const target = literal && ts.isStringLiteral(literal) ? targetOf(literal, d.file) : undefined
+    const record = target && (d.code === 2307 ? absent.paths.get(target) : resolveAbsent(target))
+    if (!record) continue
+    const file = logical(base, d.file)
+    if (!files.has(file)) files.set(file, { before: [], after: [], keys: [] })
+    files.get(file)[base === before ? "before" : "after"].push(
+      [d.code, logical(owned(target) ?? base, target), d.code === 2307 || !ts.isIdentifier(node) ? "" : node.text].join("\0"))
+    files.get(file).keys.push([key, record])
+  }
+  for (const [file, item] of files) {
+    if (JSON.stringify(item.before.sort()) === JSON.stringify(item.after.sort()))
+      for (const [key, record] of item.keys) attributed.set(key, record)
+    else mismatches.push({ file, blocking: true, diagnostic: "References into absent declarations differ between the snapshots in " + file +
+      "; they cannot be judged identically" })
+  }
+  return { attributed, mismatches, resolveAbsent: (literal, file) => {
+    const target = targetOf(literal, file)
+    return target && resolveAbsent(target)
+  } }
+}
+
 // Read the inherited project setting rather than assuming a JSON export opts
 // the project into JSON imports. Declaration-only snapshots may have no config.
 function projectJsonModules(ts, path) {
@@ -564,13 +703,18 @@ export function compareApiIdentity(ts, before, after, options = {}) {
       }
       if (result.comparedFiles) for (const side of ["before", "after"])
         result.comparedFiles[side] = [...new Set([...result.comparedFiles[side], ...(part.comparedFiles?.[side] ?? [])])].sort()
+      for (const record of part.absentDeclarations ?? []) {
+        result.absentDeclarations ??= []
+        if (!result.absentDeclarations.some(item => item.declaration === record.declaration)) result.absentDeclarations.push(record)
+      }
       result.identical &&= part.identical
       result.comparisonComplete &&= part.comparisonComplete
       // A later crash must not replace the diagnostic that already made this
       // package unavailable. Incomplete receipts never establish API identity.
-      if (!part.comparisonComplete) break
+      // Exports unavailable on their own leave the later groups comparable.
+      if (groupBlocked(part)) break
     }
-    if (!result.comparisonComplete) result.typeDifferences = []
+    if (groupBlocked(result)) result.typeDifferences = []
     return result
   } catch (error) {
     const failure = { stage, ...progressDetails, elapsedMs: Math.round(performance.now() - started),
@@ -582,6 +726,11 @@ export function compareApiIdentity(ts, before, after, options = {}) {
           (error?.name ?? "Error") + ": " + (error?.message ?? String(error)) }] }
   }
 }
+
+// A blocking record without `scope: "export"` makes its whole entry group
+// unavailable; an export-scoped one makes only that export unavailable.
+const groupBlocked = result => !result.comparisonComplete &&
+  (result.failure !== undefined || result.environmentDiagnostics.some(d => d.blocking && d.scope !== "export"))
 
 function createIdentityHost(ts, compilerOptions, before, after, options, virtual) {
   const host = ts.createCompilerHost(compilerOptions)
@@ -718,6 +867,20 @@ function prepareComparison(ts, before, after, options, progress) {
     if (path.endsWith(".vibe") && host.fileExists(path.replace(/\.vibe$/, ".d.vibe.ts")))
       entries[key] = path.replace(/\.vibe$/, ".d.vibe.ts")
   }
+  const absent = planAbsentDeclarations(before, after, options.absentDeclarations, path => host.fileExists(path))
+  result.environmentDiagnostics.push(...absent.diagnostics)
+  if (options.absentDeclarations) result.absentDeclarations = [...absent.declarations.values()]
+  // An entry point absent on both sides has no program root. An equal absence
+  // compares equal; a different one makes only that entry point unavailable.
+  const absentEntries = new Set()
+  for (const key of keys) {
+    const record = left[key] && absent.paths.get(left[key])
+    if (!record || record !== (right[key] && absent.paths.get(right[key]))) continue
+    absentEntries.add(key)
+    delete left[key]; delete right[key]
+    if (!record.equal) result.environmentDiagnostics.push({ entrypoint: key, export: "*", declaration: record.declaration,
+      blocking: true, scope: "export", diagnostic: "Published declaration " + record.reason })
+  }
   // Output-layout constraints still apply with noEmit. Keep the synthetic
   // source inside the same effective root without relaxing input validation.
   const probeRoot = resolve(compilerOptions.rootDir ??
@@ -816,7 +979,8 @@ function prepareComparison(ts, before, after, options, progress) {
       if (a && b && (a === b || ambientProof.get(b) === a)) continue
       result.environmentDiagnostics.push({ blocking: true, file: b ?? a, diagnostic: "Ambient declaration closures differ; shared-program comparison is unavailable: " + key })
     }
-    if (result.environmentDiagnostics.some(d => d.blocking)) {
+    // Export-scoped records leave the shared program comparable.
+    if (result.environmentDiagnostics.some(d => d.blocking && d.scope !== "export")) {
       result.comparisonComplete = false
       return result
     }
@@ -838,6 +1002,69 @@ function prepareComparison(ts, before, after, options, progress) {
   const inputDiagnostics = collectInputDiagnostics(ts, roots, compilerOptions, host,
     program.getSourceFiles().map(source => source.fileName), options, progress, "normalized-input-diagnostics")
   const checker = program.getTypeChecker()
+  const absentReferences = attributeAbsentReferences(ts, program, checker, inputDiagnostics,
+    before, after, absent, { ...compilerOptions, ...options.compilerOptions, allowArbitraryExtensions: true }, host)
+  result.environmentDiagnostics.push(...absentReferences.mismatches)
+  const absentScope = absentReferences.attributed.size > 0
+  // The absent declaration an export's declarations reach: an import binding
+  // that resolves to nothing, an unresolved qualified name, or an import type
+  // of an absent module, followed through owned local declarations.
+  const own = node => [before, after].some(base => node.getSourceFile().fileName.startsWith(base + "/") &&
+    !node.getSourceFile().fileName.includes("/node_modules/"))
+  const absentOf = node => {
+    for (let n = node; n && !ts.isSourceFile(n); n = n.parent) {
+      if ((ts.isImportDeclaration(n) || ts.isExportDeclaration(n)) && n.moduleSpecifier && ts.isStringLiteral(n.moduleSpecifier))
+        return absentReferences.resolveAbsent(n.moduleSpecifier, n.getSourceFile().fileName)
+      if (ts.isImportEqualsDeclaration(n) && ts.isExternalModuleReference(n.moduleReference) && ts.isStringLiteral(n.moduleReference.expression))
+        return absentReferences.resolveAbsent(n.moduleReference.expression, n.getSourceFile().fileName)
+    }
+    return undefined
+  }
+  const unresolved = { declaration: "an unresolved import", reason: "its target declaration is absent" }
+  // A reached declaration is cached at once; a symbol whose whole closure
+  // reaches none is negative, and so is every symbol inside that closure.
+  const reachCache = new Map()
+  function reachesAbsent(symbol) {
+    if (reachCache.has(symbol)) return reachCache.get(symbol)
+    const visited = new Set()
+    const found = walkAbsent(symbol, visited)
+    if (!found) for (const item of visited) reachCache.set(item, undefined)
+    return found
+  }
+  function walkAbsent(symbol, visited) {
+    if (!symbol || visited.has(symbol)) return undefined
+    if (reachCache.has(symbol)) return reachCache.get(symbol)
+    visited.add(symbol)
+    let found
+    const pending = [...(symbol.declarations ?? [])].filter(own)
+    while (pending.length && !found) {
+      const node = pending.pop()
+      if (ts.isImportTypeNode(node) && ts.isLiteralTypeNode(node.argument) && ts.isStringLiteral(node.argument.literal)) {
+        found = absentReferences.resolveAbsent(node.argument.literal, node.getSourceFile().fileName)
+        if (found) break
+      }
+      if (ts.isIdentifier(node) && node.parent) {
+        const target = checker.getSymbolAtLocation(node)
+        const entity = ts.isQualifiedName(node.parent) || ts.isTypeReferenceNode(node.parent) || ts.isTypeQueryNode(node.parent) ||
+          ts.isExpressionWithTypeArguments(node.parent) || ts.isPropertyAccessExpression(node.parent)
+        if (!target && entity) { found = unresolved; break }
+        if (target && target !== symbol) {
+          if (target.flags & ts.SymbolFlags.Alias) {
+            const aliased = checker.getAliasedSymbol(target)
+            if (!aliased?.declarations?.length) {
+              found = target.declarations?.map(absentOf).find(Boolean) ?? unresolved
+              break
+            }
+            found = walkAbsent(aliased, visited)
+          } else if (target.declarations?.some(own) && !(target.flags & ts.SymbolFlags.TypeParameter)) found = walkAbsent(target, visited)
+          if (found) break
+        }
+      }
+      ts.forEachChild(node, child => { pending.push(child) })
+    }
+    if (found) reachCache.set(symbol, found)
+    return found
+  }
   // Error-any can make a strict identity probe pass vacuously. Inspect only
   // compared export types, so an unrelated error in a dependency is harmless.
   const invalidExports = []
@@ -1001,7 +1228,21 @@ function prepareComparison(ts, before, after, options, progress) {
     const adoc = docs(ts, checker, a) || docs(ts, checker, unalias(a))
     const bdoc = docs(ts, checker, b) || docs(ts, checker, unalias(b))
     if (adoc !== bdoc) result.docDifferences.push({ entrypoint, export: name, before: adoc, after: bdoc })
+    const aliases = [a, b]
     a = unalias(a); b = unalias(b)
+    if (absentScope) {
+      // References into absent declarations fail alike on both sides, so a
+      // probe of an export that reaches one would compare error types.
+      const reached = [a, b].map((symbol, index) => symbol.declarations?.length ? reachesAbsent(symbol)
+        : aliases[index].declarations?.map(absentOf).find(Boolean) ?? unresolved).filter(Boolean)
+      if (reached.length) {
+        const declarations = [...new Set(reached.map(record => record.declaration))].sort()
+        invalidExports.push({ entrypoint, export: name, blocking: true, scope: "export", absentDeclarations: declarations,
+          diagnostic: "Compared export depends on " + declarations.join(", ") + ", " +
+            [...new Set(reached.map(record => record.reason))].join("; ") + "; its API is unavailable" })
+        return
+      }
+    }
     if (inputDiagnostics.length || originalDiagnostics.length) {
       for (const symbol of [a, b]) {
         const d = symbol.valueDeclaration ?? symbol.declarations?.[0]
@@ -1011,7 +1252,8 @@ function prepareComparison(ts, before, after, options, progress) {
             diagnostic.start >= parameter.pos && diagnostic.start < parameter.end)))
         if (invalidParameter || (symbol.flags & ts.SymbolFlags.Type && erroneous(checker.getDeclaredTypeOfSymbol(symbol))) ||
             (d && symbol.flags & ts.SymbolFlags.Value && erroneous(checker.getTypeOfSymbolAtLocation(symbol, d))))
-          invalidExports.push({ entrypoint, export: name, blocking: true, diagnostic: "Compared export depends on an unresolved or erroneous type; identity probe cannot establish its API." })
+          invalidExports.push({ entrypoint, export: name, blocking: true, ...(absentScope ? { scope: "export" } : {}),
+            diagnostic: "Compared export depends on an unresolved or erroneous type; identity probe cannot establish its API." })
       }
     }
     const afiles = new Set(a.declarations?.map(d => d.getSourceFile().fileName))
@@ -1140,6 +1382,7 @@ function prepareComparison(ts, before, after, options, progress) {
   }
   progress("export-surface")
   for (const key of keys) {
+    if (absentEntries.has(key)) continue
     if (!left[key] || !right[key]) {
       result.nameDifferences.push({ entrypoint: key, export: "*", side: left[key] ? "before" : "after" })
       continue
@@ -1178,14 +1421,23 @@ function prepareComparison(ts, before, after, options, progress) {
       virtual.set(to, (virtual.get(to) ?? host.readFile(to)) + text.slice(original.length))
     }
   }
-  const diagnostics = [...originalDiagnostics, ...inputDiagnostics].map(({ start, length, code, ...d }) => ({
-    ...d, blocking: !d.file || [before, after].some(base =>
-      (d.file === base || d.file.startsWith(base + "/")) && !d.file.includes("/node_modules/"))
-  }))
+  // Original-snapshot positions predate nominal alignment; match them by text.
+  const attributedText = new Map(inputDiagnostics.map(d => [d, absentReferences.attributed.get(d.file + "\0" + d.start + "\0" + d.code)])
+    .filter(([, record]) => record).map(([d, record]) => [d.file + "\0" + d.code + "\0" + d.diagnostic, record]))
+  const diagnostics = [...originalDiagnostics, ...inputDiagnostics].map(({ start, length, code, ...d }) => {
+    const absentDeclaration = (absentReferences.attributed.get(d.file + "\0" + start + "\0" + code) ??
+      attributedText.get(d.file + "\0" + code + "\0" + d.diagnostic))?.declaration
+    return absentDeclaration ? { ...d, blocking: false, absentDeclaration } : { ...d, blocking: !d.file || [before, after].some(base =>
+      (d.file === base || d.file.startsWith(base + "/")) && !d.file.includes("/node_modules/")) }
+  })
+  // An unavailable export has no probe: its error types prove nothing.
+  const unavailable = new Set(invalidExports.filter(item => item.scope === "export").map(item => item.entrypoint + "\0" + item.export))
+  const comparable = checks.filter(check => !unavailable.has(check.entrypoint + "\0" + check.export))
   // Only plain comparison data survives preparation. No Program, TypeChecker,
   // SourceFile or diagnostic node is retained while fresh probes are checked.
   return { before, after, options, result, compilerOptions, roots, probe, virtual,
-    equivalents, checks, imports, bridges: [...bridges.keys()], invalidExports, diagnostics }
+    equivalents, checks: comparable, imports, bridges: [...bridges.keys()], invalidExports, diagnostics,
+    absentReferences: [...absentReferences.attributed.keys()] }
 }
 
 function compareUnchecked(ts, before, after, options, progress) {
@@ -1197,6 +1449,7 @@ function compareUnchecked(ts, before, after, options, progress) {
 function checkComparison(ts, plan, progress) {
   const { before, after, options, result, compilerOptions, roots, probe, virtual,
     equivalents, checks, imports, bridges, invalidExports } = plan
+  const absentReferences = new Set(plan.absentReferences)
   const { host } = createIdentityHost(ts, compilerOptions, before, after, options, virtual)
   let program
   const resolveModules = host.resolveModuleNames
@@ -1240,6 +1493,8 @@ function checkComparison(ts, plan, progress) {
   const assignmentFailures = new Set(diagnostics.filter(d => d.file?.fileName === probe && d.start !== undefined)
     .map(d => assignmentLines.get(d.file.getLineAndCharacterOfPosition(d.start).line)).filter(Boolean))
   for (const d of diagnostics) {
+    // Input preparation already recorded these references, without blocking.
+    if (d.file && absentReferences.has(d.file.fileName + "\0" + d.start + "\0" + d.code)) continue
     // TypeScript's quantified equality helper can exceed its instantiation
     // depth even for Same<F, F>. The exact same resolved Type object proves
     // reflexivity without evaluating that helper. Compare the actual probe
@@ -1280,8 +1535,9 @@ function checkComparison(ts, plan, progress) {
     seen.add(key)
   }
   result.comparisonComplete = !result.environmentDiagnostics.some(d => d.blocking)
-  // No error-recovery probe result qualifies as an API difference.
-  if (!result.comparisonComplete) result.typeDifferences = []
+  // No error-recovery probe result qualifies as an API difference. Exports
+  // that are unavailable on their own have no probe; the others stand.
+  if (groupBlocked(result)) result.typeDifferences = []
   result.identical = result.comparisonComplete && !result.nameDifferences.length && !result.typeDifferences.length && !result.docDifferences.length
   return result
 }
