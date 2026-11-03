@@ -1264,7 +1264,8 @@ A denied VIP is not part of the language. Each records what was proposed and why
 | [10](../vips/0010-service-call-shorthand-denied.md) | the `Users.find(id)` shorthand | `try (try Users).find(id)` |
 | [11](../vips/0011-trailing-blocks-denied.md) | trailing blocks, `f(x) { … }` | `f(x, () => { … })`, `f(x, effect () => { … })` or `f(x, effect { … })`, as the proven legacy lowering chooses; refuse an unproved choice (VIP-11) |
 | [24](../vips/0024-wire-denied.md) | `wire`, automatic layer composition | Effect's `Layer.provide` and `Layer.provideMerge` |
-| [25](../vips/0025-inline-modules-denied.md) | inline `module` declarations as a TypeScript escape; superseded by [VIP-40](../vips/0040-module-declarations.md) | a `.ts` file, or a `module` declaration |
+
+[VIP-25](../vips/0025-inline-modules-denied.md) is superseded by accepted [VIP-40](../vips/0040-module-declarations.md): named top-level `module` declarations are TypeScript escapes. Its denial is historical.
 
 ### Open VIPs
 
