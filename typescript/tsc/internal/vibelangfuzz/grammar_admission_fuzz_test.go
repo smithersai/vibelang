@@ -629,7 +629,8 @@ func grammarAdmissionForm(source string) string {
 			// VIP-17: join is exactly as await, and `for (await x of xs)` is TS2487.
 			// The operand may follow a line break, as after await.
 			if i >= 2 && ts[i-1].text == "(" && ts[i-2].text == "for" && i+1 < len(ts) {
-				if n := ts[i+1]; n.kind == 'n' || n.kind == 's' || n.kind == 'w' && n.text != "of" && n.text != "in" && n.text != "as" && n.text != "satisfies" && n.text != "instanceof" {
+				// `for (join of of xs)` joins `of` in effect code; one `of` is a native head.
+				if n := ts[i+1]; n.kind == 'n' || n.kind == 's' || n.kind == 'w' && n.text != "of" && n.text != "in" && n.text != "as" && n.text != "satisfies" && n.text != "instanceof" || n.text == "of" && i+2 < len(ts) && ts[i+2].text == "of" {
 					return "admission:join-for-head"
 				}
 			}
@@ -855,6 +856,7 @@ func TestGrammarAdmissionMutationKeys(t *testing.T) {
 		"function f(xs) { for (join x of xs) { x; } }",
 		"effect function f(xs) { for (join x in xs) { x; } }",
 		"effect function f(xs) { for (join 1 of xs) { } }",
+		"effect function f(xs) { for (join of of xs) { } }",
 		"effect function f(xs) { for (join\nx\nof xs) { x; } }",
 	} {
 		if got := grammarAdmissionForm(source); got != "admission:join-for-head" {
@@ -1129,6 +1131,22 @@ func TestGrammarAdmissionCore(t *testing.T) {
 	}
 	if r := lab.read(lab.g, grammarLexSource("function f() { uninterruptible { return 1; } }"), grammarParseMode{prose: true, names: true}); r.count != 0 {
 		t.Error("an interruption block in a plain function has a derivation")
+	}
+	// A nested async or generator function is a plain source callable: its
+	// body resets the Effect reservation, so join is an identifier there.
+	for _, source := range []string{
+		"effect x => async function f(p) { return join; }",
+		"effect x => function* g() { return join; }",
+		"const b = provide is 1;",
+		"const b = provide is [ let a ];",
+		"service S { static n: number; static readonly key: string = \"k\"; }",
+	} {
+		if r := lab.read(lab.g, grammarLexSource(source), grammarParseMode{prose: true, names: true}); r.count == 0 {
+			t.Errorf("form has no derivation: %q", source)
+		}
+	}
+	if r := lab.read(lab.g, grammarLexSource("effect function f(p) { const g = async function() { return join p; }; }"), grammarParseMode{prose: true, names: true}); r.count != 0 {
+		t.Error("join with an operand in a nested async function has a derivation")
 	}
 	// ECMAScript's for and for-in statements. The subset has no [In] parameter,
 	// so `for (a in b; ;)` derives too; that only makes the lab admit more.

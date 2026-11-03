@@ -354,6 +354,11 @@ func (s *grammarProseSet) mark(toks []grammarToken, effect bool, g *grammarCfg) 
 			if k.effectOnly && !effect {
 				continue
 			}
+			// `provide` is a keyword "at a statement start"; anywhere else it is an
+			// identifier, as in `const b = provide is 1`.
+			if strings.HasPrefix(k.Phrase, "at a statement start") && !grammarStatementStart(toks, i) {
+				continue
+			}
 			// The TC39 row defers to the draft, whose words take line breaks after them.
 			tc39 := strings.HasPrefix(k.Phrase, "as TC39")
 			if s.sameLine > 0 && !tc39 && i+1 < len(toks) && toks[i+1].nl && !(len(k.alts) > 0 && k.alts[0] != nil && k.alts[0][0].kind == 'P') {
@@ -374,6 +379,20 @@ func (s *grammarProseSet) mark(toks []grammarToken, effect bool, g *grammarCfg) 
 		kw[i] = state
 	}
 	return kw
+}
+
+// grammarStatementStart reports whether toks[i] can begin a statement: the
+// first token, one after a line break, or one after a token that ends a
+// statement or opens a block.
+func grammarStatementStart(toks []grammarToken, i int) bool {
+	if i == 0 || toks[i].nl {
+		return true
+	}
+	switch toks[i-1].text {
+	case ";", "{", "}", ")", ":", "else", "do":
+		return true
+	}
+	return false
 }
 
 // grammarNamePosition holds the tokens after which a word is a name: a

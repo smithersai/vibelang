@@ -564,6 +564,7 @@ TypeMemberSeparator = ";" | "," | LineTerminator
 TypeMemberEnd = ";" | ","
 TypeMember = PropertySignature | MethodSignature | CallSignature
 CallSignature = TypeParameters? "(" FormalParameters ")" TypeAnnotation?
+RejectedMemberShape = ClassMemberModifiers? MethodDefinition | ClassMemberModifiers? PropertyName "?"? TypeAnnotation? Initializer? | CallSignature
 PropertySignature = PropertyName "?"? TypeAnnotation? | "readonly" [no LineTerminator here] PropertyName "?"? TypeAnnotation?
 MethodSignature = PropertyName "?"? TypeParameters? "(" FormalParameters ")" TypeAnnotation?
 ClassElementName = PropertyName | "#" IdentifierName
@@ -714,7 +715,7 @@ var grammarProseMeanings = []struct {
 	{regexp.MustCompile(`^(a type at TypeScript.s type-operator level|an ordinary TypeScript source type at the type-operator level)`), "PostfixType", "TypeScript type-operator level"},
 	{regexp.MustCompile(`^an ordinary TypeScript class MethodDeclaration`), "MethodDefinition", "TypeScript class method or accessor"},
 	{regexp.MustCompile(`^a ClassElement \(an EffectAccessor included\) that is not`), "ClassElement", "parses, then a static rule rejects it; the exclusions are not modeled"},
-	{regexp.MustCompile(`^a ClassElement or a TypeScript TypeMember`), "ClassElement", "parses, then a static rule rejects it; the exclusions are not modeled"},
+	{regexp.MustCompile(`^a ClassElement or a TypeScript TypeMember`), "RejectedMemberShape", "parses, then a static rule rejects it; the exclusions are not modeled"},
 	{regexp.MustCompile(`^a Type that is not an unparenthesized EffectType`), "TypeNoEffect", "Type without the EffectType alternative"},
 	{regexp.MustCompile(`^the class-member modifiers TypeScript allows before async`), "ClassMemberModifiers", ""},
 	{regexp.MustCompile(`^the head of ECMAScript's for…of before "of"`), "ForOfHead", ""},
@@ -1042,7 +1043,7 @@ func grammarBuildGrammar(a *grammarAppendixData) *grammarCfg {
 // grammarEffectBodies are the subset's function-like productions, whose parameters
 // and body are parsed with [~Effect], as ECMAScript parses a nested plain
 // function's with [~Await].
-var grammarEffectBodies = map[string]bool{"FunctionDeclaration": true, "FunctionExpression": true, "ArrowFunction": true, "AsyncArrowFunction": true, "MethodDefinition": true, "GetAccessor": true, "NonStaticMethod": true}
+var grammarEffectBodies = map[string]bool{"FunctionDeclaration": true, "FunctionExpression": true, "AsyncFunctionExpression": true, "GeneratorExpression": true, "ArrowFunction": true, "AsyncArrowFunction": true, "MethodDefinition": true, "GetAccessor": true, "NonStaticMethod": true}
 
 // parameterize gives every nonterminal its two copies, N and N[+Effect]
 // (written N⁺), the way ECMAScript parameterizes [Await]: after the token
