@@ -59,7 +59,8 @@ ${elsewhere.length ? `\nNew errors outside the batch, in files that import it:\n
 2. The package's published entrypoints preserve the baseline's exported names, strict type identity and normalized JSDoc; formatting and import order do not change API identity.
 3. The batch's files report no error, no TypeScript-style Effect form (EK48xx, except a Struct constant --fix leaves and a Context.Service class with no quick fix) and no platform global (EK4402), and no file reports an error it did not before.
 4. Every batch file is idiomatic VibeLang, or stays .ts with a recorded reason.
-5. Change only this batch's source files. The codemod's recorded importer, manifest, literal path-reference and platform-sibling edits are allowed; earlier batches, tests and configs stay as committed. Verification and recording reject any other changed file.
+5. No path held as data can reach a converted module. \`verify.json\` names each \`path-to-converted-file\` refusal under \`pathReferences.refusals\`, by module, file and line: a built path the codemod cannot rewrite, such as \`./X\${moduleExtension(import.meta.url)}\`. Revert that module, or stop and have the caller changed in its own commit; a batch cannot edit a file outside it.
+6. Change only this batch's source files. The codemod's recorded importer, manifest, literal path-reference and platform-sibling edits are allowed; earlier batches, tests and configs stay as committed. Verification and recording reject any other changed file.
 
 Check as you go: \`${step} compile --run ${run} --batch ${batch}\` and \`${step} verify --run ${run} --batch ${batch}\`.
 

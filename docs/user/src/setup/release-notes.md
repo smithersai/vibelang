@@ -241,6 +241,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - ESLint corpus checks could miss lost function names or parameters named with contextual words such as `match`; those bindings now require their written identifier nodes, including after the final parameter is removed.
 - The migrate flow stopped before `--fix` when program discovery reported a repairable `EK0301` union-slot error. It now discovers the full file scope, repairs the spelling and lets subsequent checks report type errors that parsing had hidden.
+- Migration could leave a path held as data naming a renamed module, which failed only when the program ran it; batched codemods now rewrite more static forms, and `verify` refuses the rest by module, file and line.
 - Release notes repeated the upgrade and bug-fix sections, hiding later fixes from readers and documentation tools. Each section now appears once, with the unique fixes and upgrade repairs retained.
 
 - The source mapper crashed with a stack overflow on a regex pattern with an extractor, such as `s is /(\d+)/(let m)`, in a file it projected. It now projects that file.

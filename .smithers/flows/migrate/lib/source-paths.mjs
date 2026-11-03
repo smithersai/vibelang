@@ -1,6 +1,7 @@
 import { existsSync, readFileSync, writeFileSync } from "node:fs"
 import { posix, join } from "node:path"
 import { Minimatch } from "./vendor/minimatch.mjs"
+import { expectationLiteral, joinedLiteralPath, packageContext, processArgument, remoteUrlPart, resolveRenamed, twinListed } from "./converted-paths.mjs"
 import { compileRegex, disagreeingLiterals, enumeratesFiles, onlySelectionUses, packageBase, regexIdentity, widenableRegexes, widenExtensionRegex } from "./regex-selectors.mjs"
 
 
@@ -285,7 +286,7 @@ export function checkSelectorEdits(codemod, inventory, { ts, read } = {}) {
 
 // Literal-only discovery wiring. Assertion expectations, test names, type
 // literals, comments and code embedded in strings are never rewrite targets.
-export function rewriteSourceLiterals(ts, text, file, renames, { selectors = true, exactContexts, inventory, matcherCache = new Map() } = {}) {
+export function rewriteSourceLiterals(ts, text, file, renames, { selectors = true, exactContexts, inventory, matcherCache = new Map(), packages = packageContext(inventory) } = {}) {
   const source = ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true, /\.json$/.test(file) ? ts.ScriptKind.JSON : ts.ScriptKind.TS)
   const changes = [], warnings = [], edits = [], selectorChecks = []
   const bases = globBases(file, inventory)
@@ -310,11 +311,9 @@ export function rewriteSourceLiterals(ts, text, file, renames, { selectors = tru
     edits.push({ file, from: node.text, to: value, kind, context: literalContext(ts,node), beforeLiteral: text.slice(node.getStart(source), node.end), ...(module ? { module } : {}), ...(selectorKind ? { selectorKind } : {}), line: line(node) })
   }
   const renameByPath = new Map(renames.map(r => [r.from, r]))
-  const targetOf = value => {
-    const direct = renameByPath.get(posix.normalize(value))
-    const relative = renameByPath.get(posix.normalize(posix.join(posix.dirname(file), value)))
-    return direct && relative && direct !== relative ? undefined : direct ?? relative
-  }
+  const live = new Set(inventory ?? [])
+  // A key of an object literal is data: only an exact path from the file or the root moves it.
+  const targetOf = (value, key) => resolveRenamed(value, file, renameByPath, key ? { live } : { packages, live }).move
   const pathPattern = value => value.length < 200 && (value.includes("/") || /\.(?:[cm]?[jt]sx?|vibe)(?:$|[,}])|\.\{(?:[cm]?[jt]sx?|vibe)[,}]/.test(value))
   const matcherOf = pattern => compiledSelector(pattern, matcherCache)
   const moduleMap = node => {
@@ -324,28 +323,17 @@ export function rewriteSourceLiterals(ts, text, file, renames, { selectors = tru
   }
   const configGlob = /(?:^|\/)(?:(?:tsconfig|jsconfig)(?:\.[^/]*)?|vibe\.config)\.jsonc?$/.test(file)
   const { globOwner, globCall } = globScope(ts, source)
-  const literalOnly = node => {
-    if (ts.isLiteralTypeNode(node.parent) && !ts.isImportTypeNode(node.parent.parent)) return true
-    if (ts.isVariableDeclaration(node.parent) && node.parent.type && ts.isLiteralTypeNode(node.parent.type)) return true
-    if (ts.isCallExpression(node.parent)) {
-      const call = node.parent, name = call.expression.getText(source)
-      const at = call.arguments.indexOf(node)
-      if (/^(?:it|test|describe|bench)(?:[.(]|$)/.test(name) && at === 0) return true
-      if (/^(?:assert|expect)(?:\.|$)/.test(name) && literal(node)) return true
-      if (/\.to[A-Z][A-Za-z]+$/.test(name)) return true
-    }
-    for (let n = node.parent; n && !ts.isStatement(n); n = n.parent) {
-      if (ts.isCallExpression(n)) {
-        const name = n.expression.getText(source)
-        if (/\.to[A-Z][A-Za-z]+$/.test(name) && n.arguments.some(arg => node.pos >= arg.pos && node.end <= arg.end)) return true
-        if (/^assert(?:\.|$)/.test(name) && n.arguments.slice(1).some(arg => node.pos >= arg.pos && node.end <= arg.end)) return true
-      }
-    }
-    return false
+  const literalOnly = node => expectationLiteral(ts, source, node)
+  // A fragment of path.join(__dirname, "..", "src", "x.ts") names what the whole call names.
+  const fragmentTarget = node => {
+    const joined = joinedLiteralPath(ts, source, node, file)
+    const move = joined && renameByPath.get(joined)
+    return move && node.text.endsWith(posix.extname(move.from)) ? move : undefined
   }
   const visit = node => {
-    if (literal(node) && !literalOnly(node) && !moduleMap(node)) {
-      const move = targetOf(node.text)
+    // A child process inherits no loader for .vibe, so verify refuses its path instead.
+    if (literal(node) && !literalOnly(node) && !moduleMap(node) && !processArgument(ts, node) && !remoteUrlPart(ts, node) && !twinListed(ts, node)) {
+      const move = fragmentTarget(node) ?? targetOf(node.text, ts.isPropertyAssignment(node.parent) && node.parent.name === node)
       if (move && (!exactContexts || exactContexts.has(literalContext(ts,node)))) {
         const discovery = globOwner(node)
         if (discovery && !globCall(node)) warnings.push(file + ":" + line(node) + ": source selector options or transformed patterns lack a selected-set proof; rewrite refused")

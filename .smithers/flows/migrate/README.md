@@ -78,6 +78,8 @@ Declaration identity applies only to published packages. `verify` reports a pack
 
 `verify` also checks each migrated module for a lost Effect wrapper, the reverse of the run-phase check below. In a plain function, `Effect.succeed(xs)` becoming `xs` or `Effect.fail(e)` becoming `throw e` type-checks behind an `as` cast or a contextual type, declares the same API and adds no wrapper for a wrapper-gain audit to see, and the caller gets a value or a synchronous throw where it had a program. So `verify` pairs each function of the original `.ts` with the same function of the JavaScript it just emitted under `.vibelang/js`, by name path: variable, property, method, function and class names, and for a callback the callee and the argument index that hold it, as in `make/parallel/Effect.map(0)`. A body handed to `Effect.gen` belongs to the function around it. Each arm of a returned `?:`, `??`, `||` or `&&` counts on its own, and an arm counts as an Effect when it reads a member of `Effect` or a program from `vibelang-runtime` outside nested functions. A function is flagged when the emitted one is plain and hands back fewer Effect values, unless it is a generator or every result is an Effect with no `throw` at the call. `verify.json` lists each under `lostWrappers.flags` by file, function path and line, with `cast` set when the original had an `as` around the function or the return. A flag fails the batch unless `lost-wrappers-allow.json` in the run directory, a list of `{ "file", "function", "reason" }`, names that function with a non-empty reason; `lostWrappers` then lists it under `allowed`, an entry without a reason under `invalidAllow`, and an entry nothing matched under `unusedAllow`. A module with no retained original or no emitted JavaScript, such as an example no project compiles, is listed under `unchecked` and fails the batch, unless an entry with `"function": "*"` and a reason excuses that file; `lostWrappers` then lists it under `excused`. A module this run's codemod never renamed has no original to compare and is listed under `noOriginal` without failing the batch, as the run-phase check skips it. A test module has no emitted JavaScript and is skipped. A package whose exports do not name `.vibelang/js` is not emitted by the flow, so `verify` emits it once into the batch's `lost-wrapper-js/`, never into the tree. An original function that returned an Effect and has no emitted function by that path is listed under `unpaired` and does not fail the batch, since a pipeline rewritten as an `effect` body leaves its callbacks with no counterpart. A program handed back through a local name or a helper counts on neither side; that needs types. To run the same check on two trees outside a run: `node lost-wrappers.mjs --orig <tree> --conv <tree> [--js <emitted root>] [--ts <dir with typescript>] [--allow <file>] [--json <out>]`.
 
+`verify` also checks every path held as data (alchemy's `DevWatchProvider`). See [Paths to converted files](#paths-to-converted-files).
+
 `verify` also checks each migrated module's run phase (alchemy-62). A function's kind is decided by its `effect` keyword, so a conversion that marks `effect` a function the original module kept plain makes the call return a program, and its body runs only when that program runs. Types and declarations can hide this (alchemy's `effectClass` was typed through `as any`), so `verify` pairs each `effect` function in the `.vibe` with the original function at the same name path (`const`, property, method, class and function names) and reads the original's body. The batch fails when the original returned a value (an object, array, class, literal, function, `new`, `Object.assign(…)` or `JSON.*` call, or nothing), or did work at the call before returning (a `throw`, a call, an assignment or an update outside nested functions). An original that returned `Effect.gen(…)`, or an `Effect.fn` function, passes. One that returned any other expression, such as a pipeline, is listed under `runPhase.changes` with verdict `review` and does not fail the batch. `verify.json` lists every finding by file, name, line and verdict under `runPhase`; a module the compiler cannot parse is listed under `runPhase.unchecked`, and compile's own gate fails it.
 
 The codemod refuses a batch whose `.vibe` path the repository ignores, as a tracked module under an ignored `lib/` directory is: a commit would delete the `.ts` and record no `.vibe`.
@@ -497,6 +499,52 @@ The split tells a value from a type of the same name, Effect's schema pattern `c
 
 The same durable rename journal covers whole-scope mode: an interrupted rename resumes before compiler work, and bulk reverts restore the original source bytes.
 
+### Paths to converted files
+
+Renaming `X.ts` to `X.vibe` updates imports, but not a path held as data. Compile,
+declarations and tests all pass, and the program fails only when it runs that line:
+alchemy's `import.meta.resolve(`./Local${moduleExtension(import.meta.url)}`)` threw
+`Cannot find module`, and no offline test reached it.
+
+`verify` reads the tracked tree and treats `x.vibe` with no `x.ts` or `x.mts` beside
+it as converted, so the check needs no plan and clears when `revert` brings a module
+back. It parses every owned source and tool configuration, plus shell, YAML and TOML
+files by token. Dependencies, generated trees, submodules and fixtures stay out. In a
+test file, only a path handed to a call counts: an expected string is not a reference.
+
+Each finding falls into one of three groups. A refusal sets `checks.pathReferences`
+to false, so the batch fails with the module, file and line in `verify.json` under
+`pathReferences.refusals`, each named `path-to-converted-file`. A report goes under
+`pathReferences.reports`, and `report.json` repeats it as `pathReports`. An opaque
+sink, `import(specifier)`, only adds to the `pathReferences.opaque` count.
+
+| Kind | Example | Outcome |
+| --- | --- | --- |
+| `static` | `new URL("./X.ts", import.meta.url)`, `main: "./X.ts"` | Refused when left behind. The codemod rewrites one it scans |
+| `run-time` | `` `./X${moduleExtension(import.meta.url)}` ``, `` import(`./${name}.ts`) `` | Refused for each module it can reach |
+| `process-entry` | `spawn("bun", ["src/X.ts"])`, `` $`bun src/X.ts` `` | Refused: a child process inherits no loader for `.vibe` |
+| `static-suffix` | `new URL("./X.ts?worker", import.meta.url)` | Refused: the codemod does not rewrite a query or hash |
+| `ambiguous` | a path that names two modules from different bases | Refused for both |
+| `caller-extension` | `import.meta.url.endsWith(".ts")`, `/\.tsx?$/.test(import.meta.url)`, `moduleExtension(import.meta.url)` in a `.vibe` module | Refused: nothing throws, and source mode silently takes the bundle branch |
+| `selector` | `include: ["src/**/*.ts"]`, `test: /\.tsx?$/`, `/\.tsx?$/.test(id)` in a `*.config.*`, `/^src\/X\.ts$/` | Refused when it selected a module as `.ts` and does not select `.vibe`. Lists up to 50 modules |
+| `open-path` | `` import(`./${name}`) `` | Reported: it can reach a converted module, and nothing proves it does |
+| `unanchored-path` | `path.join(root, "src", "X.ts")` with an unknown `root` | Reported |
+| `extension-test` | `id.endsWith(".ts")` on a value the file does not show | Reported |
+| `javascript-output` | `new URL("./X.js", import.meta.url)` with no tracked `X.js` | Reported: correct only where a build writes it |
+| `bare-name` | `"X.ts"` beside `X.vibe`, outside any path call | Reported |
+
+The check reads a `const` and a local function's parameter when every call in the
+file passes a literal, so `resolveRunner("ViteChildRunner")` names one module and not
+its whole directory. An exported function's parameter stays unknown. These stay clean:
+comments, URLs, prose, types, assertions, test names, imports, generated outputs,
+`.tsx` twins, files that were not renamed, a glob naming a fixed file such as
+`apps/*/PACKAGE.ts`, lint configurations, a selector or expression that also covers
+`.vibe`, and a data file's `path` field. In a `package.json`, only `main`, `module`,
+`bin` and `sideEffects` count: the codemod owns `exports` and `imports`.
+
+To clear a refusal, `revert` the module, or change the caller in its own commit
+before the batch: `foreignFiles` fails a batch that edits a file outside it.
+
 ### Source filename wiring
 
 Before the compiler starts, `codemod` scans the inventory's source files
@@ -517,6 +565,19 @@ submodules stay outside this extra scan. Resuming an older journal adds
 configuration edits while retaining its earlier source-literal receipts, so
 `revert` can restore both. `referenceScan.toolConfigFiles` records the configuration
 count; a scope upgrade also records `upgraded`.
+
+Owned code outside the inventory, such as a root script or a target file, gets
+filename edits too, and no selector edit. `referenceScan.pathSourceFiles` counts
+those files. Tests and fixtures outside the inventory stay as written, so `verify`
+refuses a path in one that a call still uses.
+
+A filename literal resolves from its own file, the repository root and its
+package's root, or through a workspace package's name. `//apps/site/x.ts`, a
+build label, resolves from the repository root. The last fragment of
+`path.join(__dirname, "..", "src", "x.ts")` moves when the whole call names the
+module. A key of an object literal moves only for an exact path from its file
+or the root. A list that already names both `x.ts` and `x.vibe`, a literal in
+`new URL(x, "https://…")` and an argument of a child process stay as written.
 
 Every changed literal is recorded in `referenceEdits` with its file, line,
 original spelling and kind. Assertions, expected values, test names and

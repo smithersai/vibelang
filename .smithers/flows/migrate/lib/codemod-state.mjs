@@ -8,6 +8,7 @@ import { prepareSourceChildModules } from "./source-child-module.mjs"
 import { markPlainFunctions } from "./plain.mjs"
 import { rewriteViteScripts } from "./vite-config.mjs"
 import { rewriteSourceLiterals } from "./source-paths.mjs"
+import { packageContext } from "./converted-paths.mjs"
 import { assertModuleBoundary, rewriteExports, rewriteImports, rewriteScripts, vibePath } from "./codemod.mjs"
 import { rewriteBuildEntrypoints } from "./build-entrypoints.mjs"
 
@@ -32,7 +33,7 @@ export function durableWrite(path, data, mode = 0o600) {
 export const saveState = (path, state) => durableWrite(path, JSON.stringify(state, null, 2) + "\n")
 
 /** Plan all edits without changing the target; original source bytes live in the journal. */
-export function prepareState(target, files, scope, { ts, aliases, referenceFiles = scope, references = [], catalog = scope, bareEntries = false, moduleBodies = false, globalsOf = () => [], plainGroups = [], tracked } = {}) {
+export function prepareState(target, files, scope, { ts, aliases, referenceFiles = scope, references = [], pathSources = [], catalog = scope, bareEntries = false, moduleBodies = false, globalsOf = () => [], plainGroups = [], tracked } = {}) {
   for (const from of files) assertModuleBoundary(target, from)
   const deferred = pathReadDeferrals(target, files, referenceFiles)
   if (deferred.length) throw new Error("source text test requires .ts: " + deferred.map(d => d.file).join(", "))
@@ -68,7 +69,10 @@ export function prepareState(target, files, scope, { ts, aliases, referenceFiles
   const importEdits = rewriteImports(target, [...scope, ...platform.splits.flatMap(s => s.platform ?? [])].map(file => toOf.get(file) ?? file), renames.map(r => r.to), aliases, { read, write })
   const referenceEdits = [], referenceWarnings = [], selectorChecks = [], matcherCache = new Map()
   const started = performance.now()
-  if (ts) for (const reference of references) {
+  const packages = packageContext(catalog, file => readFileSync(join(target, file), "utf8"))
+  // A path source outside the inventory takes filename edits only: its selectors are not this batch's to prove.
+  const listed = new Set(references)
+  if (ts) for (const reference of [...references, ...pathSources.filter(file => !listed.has(file))]) {
     const file = toOf.get(reference) ?? reference
     if (/\.(?:pdf|png|jpe?g|gif|webp|avif|ico|woff2?|ttf|otf|zip|t?gz|br|wasm|node|exe|dll|so|mp[34])$/i.test(file)) continue
     const path = join(target, fromOf.get(file) ?? file)
@@ -77,13 +81,13 @@ export function prepareState(target, files, scope, { ts, aliases, referenceFiles
     if (original.includes(0)) continue
     const text = original.toString("utf8")
     if (!Buffer.from(text).equals(original) || !/\.[cm]?ts/.test(text)) continue
-    const changed = rewriteSourceLiterals(ts, read(file), file, renames, { matcherCache, inventory: catalog })
+    const changed = rewriteSourceLiterals(ts, read(file), file, renames, { matcherCache, inventory: catalog, packages, selectors: listed.has(reference) })
     referenceEdits.push(...changed.edits)
     referenceWarnings.push(...changed.warnings)
     selectorChecks.push(...(changed.selectorChecks ?? []))
     if (changed.edits.length) write(file, changed.text)
   }
-  return { version: 1, target, files, phase: "prepared", referenceVersion: 1, referencePending: false, referenceScan: { files: references.length, patterns: matcherCache.size, durationMs: Math.round(performance.now() - started) }, referenceEdits, referenceWarnings, selectorChecks, platform, sourceChildModules, plain, functionModel: plainGroups.length ? (plainGroups.every(g => g.flipped) ? "plain-by-syntax" : "legacy-inference") : "unprobed", renames, originals, writes, exportEdits, buildEntries, importEdits, refEdits, scriptEdits, packageScriptEdits, attempts: [] }
+  return { version: 1, target, files, phase: "prepared", referenceVersion: 1, referencePending: false, referenceScan: { files: references.length, pathSourceFiles: pathSources.filter(file => !listed.has(file)).length, patterns: matcherCache.size, durationMs: Math.round(performance.now() - started) }, referenceEdits, referenceWarnings, selectorChecks, platform, sourceChildModules, plain, functionModel: plainGroups.length ? (plainGroups.every(g => g.flipped) ? "plain-by-syntax" : "legacy-inference") : "unprobed", renames, originals, writes, exportEdits, buildEntries, importEdits, refEdits, scriptEdits, packageScriptEdits, attempts: [] }
 }
 
 /** Replay a prepared transaction, accepting each operation before or after its atomic write. */
@@ -111,9 +115,10 @@ export function applyState(target, state) {
 /** Add literal wiring to an interrupted journal created by an earlier flow.
  * Read current native files, preserving checked compiler/agent edits, while
  * retaining the journal's original sources and declaration/test baselines. */
-export function prepareReferences(target, renames, ts, references, catalog = references) {
+export function prepareReferences(target, renames, ts, references, catalog = references, { selectors = true } = {}) {
   const matcherCache = new Map(), started = performance.now()
   const result = { referenceVersion: 1, referencePending: true, referenceWrites: [], referenceEdits: [], referenceWarnings: [], selectorChecks: [] }
+  const packages = packageContext(catalog, file => readFileSync(join(target, file), "utf8"))
   for (const file of references) {
     if (/\.(?:pdf|png|jpe?g|gif|webp|avif|ico|woff2?|ttf|otf|zip|t?gz|br|wasm|node|exe|dll|so|mp[34])$/i.test(file)) continue
     const path = join(target, file)
@@ -122,7 +127,7 @@ export function prepareReferences(target, renames, ts, references, catalog = ref
     if (original.includes(0)) continue
     const text = original.toString("utf8")
     if (!Buffer.from(text).equals(original) || !/\.[cm]?ts/.test(text)) continue
-    const changed = rewriteSourceLiterals(ts, text, file, renames, { matcherCache, inventory: catalog })
+    const changed = rewriteSourceLiterals(ts, text, file, renames, { matcherCache, inventory: catalog, packages, selectors })
     result.referenceEdits.push(...changed.edits)
     result.referenceWarnings.push(...changed.warnings)
     result.selectorChecks.push(...(changed.selectorChecks ?? []))

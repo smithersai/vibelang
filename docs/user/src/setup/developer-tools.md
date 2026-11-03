@@ -35,6 +35,29 @@ Node on a package `bin`, `bun file` from a directory whose `bunfig.toml` has no 
 
 Where a loader does serve a script, as in `node --import vibelang/register src/x.ts`, the modules it reaches can migrate, and `src/x.ts` keeps its name because no step rewrites a script's path. To migrate a module this keeps, wire its runner or change the entry in its own commit first. A module already `.vibe` that such a runner reaches is a setup warning. Other bundlers, such as vinext, are not followed.
 
+## Paths to converted files
+
+Renaming `X.ts` to `X.vibe` updates imports, but not a path held as data, and
+that path fails only when the program runs it. A batched migration rewrites a
+static path it can resolve. `verify` fails the batch for what is left, naming
+each `path-to-converted-file` refusal by module, file and line under
+`pathReferences.refusals` in `verify.json`:
+
+```ts
+// Each of these fails the batch while Local.ts is now Local.vibe.
+import.meta.resolve(`./Local${moduleExtension(import.meta.url)}`)
+spawn("bun", ["src/Local.ts"])
+export default { include: ["src/**/*.ts"], test: /\.tsx?$/ }
+
+// In a module that became .vibe, this silently takes its other branch.
+const fromSource = import.meta.url.endsWith(".ts")
+```
+
+Revert the module to TypeScript, or change the caller in its own commit before
+the batch. A path the check cannot prove either way, such as ``import(`./${name}`)``,
+goes under `pathReferences.reports` and does not fail the batch. Comments, URLs,
+prose, assertions, generated outputs and files that were not renamed stay clean.
+
 ## Prettier and Oxfmt
 
 Setup and record split large formatter file lists into bounded argument chunks. Their format log retains each command and exit status. A failing chunk makes the step fail after all selected files have been attempted.

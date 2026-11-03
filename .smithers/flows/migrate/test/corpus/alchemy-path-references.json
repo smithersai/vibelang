@@ -1,0 +1,20 @@
+{
+  "repo": "alchemy",
+  "revision": "be1fa00d94e1",
+  "key": "migrate-flow:paths-to-converted-files",
+  "pattern": "a path held as data names a module the migration renamed: compile, declarations and tests pass, and it fails only at run time",
+  "witnesses": [
+    {
+      "file": "packages/aws/src/Local/DevWatchProvider.ts",
+      "line": 2,
+      "module": "packages/aws/src/Local/Local.ts",
+      "source": "export const flociProvidersUrl = () =>\n  import.meta.resolve(`./Local${moduleExtension(import.meta.url)}`, import.meta.url);\n"
+    },
+    {
+      "file": "packages/aws/src/RDS/MigrationRunner.ts",
+      "line": 2,
+      "module": "packages/aws/src/RDS/MigrationRunnerHandler.ts",
+      "source": "export const MigrationRunner = (id: string, props: MigrationRunnerProps) => LambdaFunction(id, {\n    main: new URL(`./MigrationRunnerHandler${moduleExtension(import.meta.url)}`, import.meta.url)\n      .href,\n    handler: \"handler\",\n  });\n"
+    }
+  ]
+}

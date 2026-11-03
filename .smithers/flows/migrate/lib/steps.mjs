@@ -1,7 +1,8 @@
 import { formatResult as formatApiIdentity } from "./api-identity.mjs"
 import { prepareToolchainPublication, stagedToolchainSpecs } from "./toolchain-publication.mjs"
 import { prepareBuilds } from "./builds.mjs"
-import { ownedToolConfigs } from "./tool-config-references.mjs"
+import { checkConvertedPaths } from "./converted-paths.mjs"
+import { generatedTree, ownedPathSources, ownedToolConfigs } from "./tool-config-references.mjs"
 // The migrate flow's steps. Each reads and writes the run directory, so it can
 // run as a step of flow.ts or alone from step.mjs, and a later step reads what
 // an earlier one recorded. A step that has already recorded its result returns
@@ -1448,14 +1449,19 @@ export async function codemod(options) {
     ...(inventory?.files.map(f => live(f.path)).filter(Boolean) ?? scopeFiles(config)),
     ...toolConfigs.map(live).filter(Boolean)
   ])]
+  const pathSources = () => {
+    const inScope = new Set(references())
+    return ownedPathSources(t, tracked).filter(file => !inScope.has(file))
+  }
   let state = readJsonIf(p.codemodState(b))
   if (!state) {
     // A repository that exports its .vibe modules by bare paths gets its new ones that way too.
     const owned = Wire.ownedPaths(t)
     const manifests = tracked.filter((file) => /(?:^|\/)package\.json$/.test(file) && !/(?:^|\/)node_modules\//.test(file) && owned(file))
     const flipped = await toolchainKeepsFunctionsPlain({ compiler: compilerOf(config), modules: join(t, config.packages[0].dir, "node_modules"), dir: join(p.batch(b), "probe") })
-    state = prepareState(t, files, await importers(t), { ts: typeScriptOf(config), moduleBodies: config.platformModuleBodies === true, globalsOf: platformCausesOf(config, p.run), aliases: aliasesOf(config), references: references(), catalog: [...new Set([...tracked, ...references()])], bareEntries: bareVibeExports(t, manifests), tracked, plainGroups: plainGroupsOf(config, files, typeScriptOf(config), { flipped }) })
+    state = prepareState(t, files, await importers(t), { ts: typeScriptOf(config), moduleBodies: config.platformModuleBodies === true, globalsOf: platformCausesOf(config, p.run), aliases: aliasesOf(config), references: references(), pathSources: pathSources(), catalog: [...new Set([...tracked, ...references()])], bareEntries: bareVibeExports(t, manifests), tracked, plainGroups: plainGroupsOf(config, files, typeScriptOf(config), { flipped }) })
     state.toolConfigReferences = 1
+    state.pathSourceReferences = 1
     state.referenceScan.toolConfigFiles = toolConfigs.length
     saveState(p.codemodState(b), state)
   }
@@ -1471,6 +1477,25 @@ export async function codemod(options) {
     Object.assign(state, prepareReferences(t, state.renames, typeScriptOf(config), references(), [...new Set([...tracked, ...references()])]))
     state.toolConfigReferences = 1
     state.referenceScan.toolConfigFiles = toolConfigs.length
+    saveState(p.codemodState(b), state)
+  }
+  if (state.referencePending) {
+    applyState(t, { renames: [], writes: state.referenceWrites })
+    state.referencePending = false
+    saveState(p.codemodState(b), state)
+  }
+  if (state.pathSourceReferences !== 1) {
+    // As below: an older journal keeps its receipts, and revert still needs them.
+    const scanned = pathSources().map(live).filter(Boolean)
+    const extra = prepareReferences(t, state.renames, typeScriptOf(config), scanned, [...new Set([...tracked, ...references()])], { selectors: false })
+    const previous = state.referenceScan
+    Object.assign(state, extra, {
+      pathSourceReferences: 1,
+      referenceEdits: [...(state.referenceEdits ?? []), ...extra.referenceEdits],
+      referenceWarnings: [...new Set([...(state.referenceWarnings ?? []), ...extra.referenceWarnings])],
+      selectorChecks: [...(state.selectorChecks ?? []), ...extra.selectorChecks],
+      referenceScan: { ...previous, pathSourceFiles: scanned.length, patterns: (previous?.patterns ?? 0) + extra.referenceScan.patterns, durationMs: (previous?.durationMs ?? 0) + extra.referenceScan.durationMs, upgraded: true }
+    })
     saveState(p.codemodState(b), state)
   }
   if (state.referencePending) {
@@ -1960,6 +1985,8 @@ export async function verify(options) {
   const runPhase = runPhaseCheck({ compiler, ts, target: t, files: migrated, original: file => originalSourceOf(p, thePlan, file) })
   const lostWrappers = await checkLostWrappers({ config, p, plan: thePlan, batch: b, migrated, emittedJs, ts, logs })
   const style = checked.style.filter((d) => migrated.includes(d.file))
+  // Paths held as data: nothing above runs the line that opens one (alchemy's DevWatchProvider).
+  const pathReferences = checkConvertedPaths({ ts, tracked: await Jj.trackedFiles(t), read: file => readFileSync(join(t, file), "utf8"), owned: Wire.ownedPaths(t), generated: generatedTree })
   const result = {
     batch: b,
     at: new Date().toISOString(),
@@ -1975,6 +2002,7 @@ export async function verify(options) {
     selectorChecks,
     runPhase,
     lostWrappers,
+    pathReferences,
     testDiff,
     compile: { batchErrors, newErrors: checked.newErrors, style, emitErrors, declarationEmits },
     foreign,
@@ -1991,6 +2019,7 @@ export async function verify(options) {
       declarationOracle: unproven.length === 0,
       runPhase: runPhase.blocking.length === 0,
       lostWrappers: lostWrappers.blocking.length === 0 && lostWrappers.unchecked.length === 0,
+      pathReferences: pathReferences.ok,
       batchErrors: batchErrors.length === 0,
       newErrors: checked.newErrors.length === 0,
       style: style.length === 0,
@@ -2111,7 +2140,9 @@ export async function report(options) {
     codemodGaps: issues.filter((i) => i.kind === "codemod-gap"),
     idioms: issues.filter((i) => i.kind === "idiom"),
     testDiffs: batches.map(b => ({ batch: b.batch, result: b.record?.testDiff ?? b.verify?.testDiff })).filter(b => b.result),
-    fixRefusals: batches.flatMap((b) => b.codemod?.fix.refused ?? [])
+    fixRefusals: batches.flatMap((b) => b.codemod?.fix.refused ?? []),
+    // Paths the check could not prove either way; a refusal fails its batch and never reaches a record.
+    pathReports: batches.flatMap((b) => b.verify?.pathReferences?.reports ?? [])
   }
   const rewrites = {}
   for (const b of batches) for (const [k, n] of Object.entries(b.codemod?.fix.totals ?? {})) rewrites[k] = (rewrites[k] ?? 0) + n
