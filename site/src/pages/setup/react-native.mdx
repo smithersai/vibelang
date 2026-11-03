@@ -19,7 +19,7 @@ const { withVibeLang } = require("vibelang/metro")
 module.exports = withVibeLang(getDefaultConfig(__dirname))
 ```
 
-`withVibeLang` adds `vibe` to `resolver.sourceExts` and puts `vibelang/metro` in front of the app's Babel transformer. That transformer still transforms every module. For a `.vibe` module it receives the module's JavaScript, and the bundle's source maps name `.vibe` lines. The config can also be a promise of a config, or a function that returns one.
+`withVibeLang` adds `vibe` to `resolver.sourceExts`, resolves the emitted names of a `.vibe` module's relative imports (`./a.js` for `./a.ts`) to the sources beside it, and puts `vibelang/metro` in front of the app's Babel transformer. That transformer still transforms every module. For a `.vibe` module it receives the module's JavaScript, and the bundle's source maps name `.vibe` lines. The config can also be a promise of a config, or a function that returns one.
 
 Metro caches a transformed module by its own text, but a `.vibe` module's JavaScript also depends on the modules it imports. After a change that alters how an importer compiles, restart Metro with `npx expo start --clear` or `--reset-cache`.
 

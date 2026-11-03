@@ -19,8 +19,8 @@ An agent that writes VibeLang loads the skill first: its forms, rules and idioms
 | --- | ---: |
 | The VibeLang skill, `packages/compiler/skills/vibelang/SKILL.md` | 4,435 |
 | The skill and the [cheat sheet](115-cheat-sheet.md) | 15,436 |
-| The skill and the user guide (140 pages) | 390,000 |
-| The user guide alone | 390,000 |
+| The skill and the user guide (140 pages) | 400,000 |
+| The user guide alone | 400,000 |
 | The specification (10 chapters) | 150,000 |
 | The decision log, `docs/design/history/DECISIONS.md` | 140,000 |
 
@@ -110,18 +110,18 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | --- | ---: |
 | [Set up VibeLang](../setup.md) | 1,900 |
 | [Known limitations](../setup/known-limitations.md) | 510 |
-| **Start a project** | **2,400** |
+| **Start a project** | **2,500** |
 | [New project](../setup/new-project.md) | 540 |
-| [Existing project](../setup/existing-project.md) | 1,900 |
+| [Existing project](../setup/existing-project.md) | 2,000 |
 | **Build and test** | **13,000** |
-| [vibelang CLI](../setup/vibelang-cli.md) | 9,600 |
-| [Vite and Vitest](../setup/vite.md) | 3,000 |
-| **Format and lint** | **6,500** |
+| [vibelang CLI](../setup/vibelang-cli.md) | 9,900 |
+| [Vite and Vitest](../setup/vite.md) | 3,100 |
+| **Format and lint** | **6,600** |
 | [Format with dprint](../setup/formatting.md) | 2,400 |
-| [Developer tools](../setup/developer-tools.md) | 4,100 |
+| [Developer tools](../setup/developer-tools.md) | 4,200 |
 | **Frameworks** | **12,000** |
 | [React](../setup/react.md) | 2,100 |
-| [React Native and Metro](../setup/react-native.md) | 420 |
+| [React Native and Metro](../setup/react-native.md) | 450 |
 | [Vue](../setup/vue.md) | 3,000 |
 | [Svelte](../setup/svelte.md) | 2,700 |
 | [Foldkit](../setup/foldkit.md) | 3,400 |
@@ -140,8 +140,8 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | Page | Tokens |
 | --- | ---: |
 | [Getting Started](../013-getting-started.md) | 1,100 |
-| **Error Management** | **17,000** |
-| [Expected Errors](../error-management/014-expected-errors.md) | 6,400 |
+| **Error Management** | **18,000** |
+| [Expected Errors](../error-management/014-expected-errors.md) | 6,500 |
 | [Unexpected Errors](../error-management/015-unexpected-errors.md) | 1,600 |
 | [Fallback](../error-management/016-fallback.md) | 1,600 |
 | [Matching](../error-management/017-matching.md) | 850 |
@@ -212,7 +212,7 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [BigDecimal](../data-types/070-bigdecimal.md) | 1,400 |
 | [Cause](../data-types/071-cause.md) | 1,200 |
 | [Chunk](../data-types/072-chunk.md) | 930 |
-| [Data](../data-types/073-data.md) | 3,300 |
+| [Data](../data-types/073-data.md) | 3,400 |
 | [DateTime](../data-types/074-datetime.md) | 3,100 |
 | [Duration](../data-types/075-duration.md) | 1,300 |
 | [Result](../data-types/076-result.md) | 1,600 |
@@ -229,7 +229,7 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | **Schema** | **35,000** |
 | [Introduction](../schema/085-introduction.md) | 1,400 |
 | [Getting Started](../schema/086-getting-started.md) | 3,100 |
-| [Basic Usage](../schema/087-basic-usage.md) | 4,500 |
+| [Basic Usage](../schema/087-basic-usage.md) | 4,600 |
 | [Filters](../schema/088-filters.md) | 1,500 |
 | [Advanced Usage](../schema/089-advanced-usage.md) | 2,900 |
 | [Projections](../schema/090-projections.md) | 710 |
@@ -268,7 +268,7 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [Building an HTTP API](113-building-an-http-api.md) | 1,600 |
 | [VibeLang for Effect users](114-vibelang-for-effect-users.md) | 6,200 |
 | [Cheat sheet](115-cheat-sheet.md) | 11,000 |
-| [Pattern matching with match and is](116-match-and-is.md) | 7,500 |
+| [Pattern matching with match and is](116-match-and-is.md) | 7,600 |
 | [Diagnostic code map](diagnostic-code-map.md) | 2,600 |
 | [Experimental platform APIs](118-experimental-platform-apis.md) | 6,300 |
 | **All 8 pages** | **38,000** |

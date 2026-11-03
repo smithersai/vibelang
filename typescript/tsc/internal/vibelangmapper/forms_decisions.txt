@@ -2180,6 +2180,7 @@ typescript/vibelang/cases/entry-platform-layer-experimental/main.vibe:9:26 bynam
 typescript/vibelang/cases/entry-platform-layer-services.fail/platform.test.vibe:7:31 lambda effectFn table
 typescript/vibelang/cases/entry-platform-layer-services.fail/services.vibe:6:55 lambda effectFn service
 typescript/vibelang/cases/entry-platform-layer/provide.vibe:9:39 lambda effectFn table
+typescript/vibelang/cases/enum-initializer-try-effect-block.fail/main.vibe:3:24 lambda choice fallback
 typescript/vibelang/cases/execution-power-parentheses/main.vibe:4:38 byname program table
 typescript/vibelang/cases/experimental-animations/main.vibe:21:18 byname program table
 typescript/vibelang/cases/experimental-animations/main.vibe:22:39 lambda effectFn annotation
@@ -2591,6 +2592,7 @@ typescript/vibelang/cases/for-of-native-close/main.vibe:47:60 lambda plain proto
 typescript/vibelang/cases/for-of-native-close/main.vibe:51:149 lambda plain annotation
 typescript/vibelang/cases/for-of-native-close/main.vibe:51:41 lambda plain annotation
 typescript/vibelang/cases/for-try-coverage-owner/main.vibe:8:17 lambda program table
+typescript/vibelang/cases/foreign-callback-admitted/main.vibe:41:62 lambda plain table
 typescript/vibelang/cases/fork-arrow-body/main.vibe:23:17 lambda effectFn fallback
 typescript/vibelang/cases/fork-arrow-body/main.vibe:23:82 byname program table
 typescript/vibelang/cases/fork-arrow-body/main.vibe:27:17 lambda dual fallback
@@ -3229,6 +3231,8 @@ typescript/vibelang/cases/match-fixed-extractor-unchecked/main.vibe:9:73 lambda 
 typescript/vibelang/cases/match-getter-multiple-tests/main.vibe:11:24 lambda dual fallback
 typescript/vibelang/cases/match-getter-once/main.vibe:10:24 lambda dual fallback
 typescript/vibelang/cases/match-is-concurrent-limit-home/main.vibe:6:48 lambda effectFn table
+typescript/vibelang/cases/match-is-dollar-bindings/main.vibe:21:22 lambda plain annotation
+typescript/vibelang/cases/match-is-nested-subjects/main.vibe:7:21 lambda plain annotation
 typescript/vibelang/cases/match-is-unbraced-body-home/main.vibe:34:57 lambda plain fallback
 typescript/vibelang/cases/match-is-unbraced-body-home/main.vibe:35:18 lambda plain table
 typescript/vibelang/cases/match-last-arm-tested/main.vibe:24:53 lambda plain fallback
