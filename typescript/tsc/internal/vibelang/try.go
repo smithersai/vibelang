@@ -1,6 +1,7 @@
 package vibelang
 
 import (
+	"strconv"
 	"github.com/microsoft/TypeScript/tsc/internal/parser"
 	"strings"
 
@@ -295,14 +296,22 @@ func retiredTryRewrite(c *checker.Checker, file *ast.SourceFile, call *ast.Node)
 //	try((text) => JSON.parse(text), text)   () => JSON.parse(text)
 //	try((text) => JSON.parse(text), "1")    () => { let text = "1"; return JSON.parse(text) }
 //
+// A parameter whose input is its own name is still a binding of its own
+// (PREVIEW-3): when the body assigns it or a function in the body captures
+// it, or it has a written type, the thunk copies the caller's value to a
+// fresh const and rebinds the parameter in an inner block, so a write or a
+// later closure call never reaches the caller's variable:
+//
+//	try((text) => () => text, text)         () => { const textInput = text; { let text = textInput; return () => text } }
+//
 // The thunk then holds no plain function of its own, so a call known to
 // throw in the body belongs to Effect.try, as chapter 3 has it, where the
 // arrow called in place would be plain code that throws (EK0401). The
 // arrow's written return type stays on the thunk. It reports false, keeping
 // the arrow called in place, for a function expression (its this and
 // arguments are its own), a type parameter, a parameter with a default, a
-// rest parameter or a pattern, a written type on a parameter whose input is
-// its own name, and an input that names a parameter the thunk rebinds.
+// rest parameter or a pattern, and an input that names a parameter the thunk
+// binds with let from another input.
 func inlinedThunk(file *ast.SourceFile, fn *ast.Node, inputs []*ast.Node, async bool) (string, bool) {
 	if async || fn.Kind != ast.KindArrowFunction || ast.GetFunctionFlags(fn)&ast.FunctionFlagsAsync != 0 || len(fn.TypeParameters()) != 0 {
 		return "", false
@@ -311,7 +320,7 @@ func inlinedThunk(file *ast.SourceFile, fn *ast.Node, inputs []*ast.Node, async 
 	if len(parameters) != len(inputs) {
 		return "", false
 	}
-	var bound []string
+	var copies, rebound, bound []string
 	names := map[string]bool{}
 	for i, parameter := range parameters {
 		p := parameter.AsParameterDeclaration()
@@ -321,9 +330,12 @@ func inlinedThunk(file *ast.SourceFile, fn *ast.Node, inputs []*ast.Node, async 
 		name := p.Name().Text()
 		input := ast.SkipParentheses(inputs[i])
 		if ast.IsIdentifier(input) && input.Text() == name {
-			if p.Type != nil {
-				return "", false
+			if p.Type == nil && !assignsOrCaptures(fn.Body(), name) {
+				continue
 			}
+			copy := freshName(file, name+"Input")
+			copies = append(copies, "const "+copy+" = "+name)
+			rebound = append(rebound, "let "+nodeText(file, parameter)+" = "+copy)
 			continue
 		}
 		names[name] = true
@@ -344,6 +356,15 @@ func inlinedThunk(file *ast.SourceFile, fn *ast.Node, inputs []*ast.Node, async 
 	}
 	body := fn.Body()
 	text := nodeText(file, body)
+	if len(copies) != 0 {
+		// The rebound parameters come first: another input that reads one
+		// of them reads the same value from the new binding.
+		prefix := head + "{ " + strings.Join(copies, "; ") + "; { " + strings.Join(append(rebound, bound...), "; ") + ";"
+		if ast.IsBlock(body) {
+			return prefix + text[1:] + " }", true
+		}
+		return prefix + " return " + text + " } }", true
+	}
 	if len(bound) == 0 {
 		return head + text, true
 	}
@@ -352,6 +373,35 @@ func inlinedThunk(file *ast.SourceFile, fn *ast.Node, inputs []*ast.Node, async 
 		return prefix + text[1:], true
 	}
 	return prefix + " return " + text + " }", true
+}
+
+// assignsOrCaptures reports whether body may assign name or capture it in a
+// function nested in it: an identifier spelled name that is an assignment
+// target (=, a compound assignment, ++, --, a destructuring or a for-in/of
+// head) or sits in a nested function or class. It reads spelling, not
+// symbols, so a shadowing declaration only makes it answer true more often.
+func assignsOrCaptures(body *ast.Node, name string) bool {
+	var visit func(node *ast.Node, nested bool) bool
+	visit = func(node *ast.Node, nested bool) bool {
+		if ast.IsIdentifier(node) && node.Text() == name {
+			return nested || ast.IsAssignmentTarget(node)
+		}
+		if ast.IsFunctionLike(node) || ast.IsClassLike(node) {
+			nested = true
+		}
+		return node.ForEachChild(func(child *ast.Node) bool { return visit(child, nested) })
+	}
+	return visit(body, false)
+}
+
+// freshName returns base, or base with a number after it, spelled nowhere in
+// file, so a binding the codemod writes shadows and captures nothing.
+func freshName(file *ast.SourceFile, base string) string {
+	name := base
+	for i := 2; strings.Contains(file.Text(), name); i++ {
+		name = base + strconv.Itoa(i)
+	}
+	return name
 }
 
 // retiredTryMapper splits the arguments after a retired try hatch's function

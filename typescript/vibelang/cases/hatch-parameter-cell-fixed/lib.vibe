@@ -1,0 +1,43 @@
+// PREVIEW-3: a hatch arrow's parameter is a binding of its own, even when its
+// input is a variable of the same name. EK4616's fix inlines the arrow as
+// Effect.try's thunk; where the body assigns the parameter or a function in
+// it captures the parameter, the thunk copies the caller's value and rebinds
+// the parameter in an inner block, so the caller's variable keeps its value.
+// The twin hatch-parameter-cell-fixed is what vibelang --fix-vip-only writes, and it
+// returns what the hatches returned: the arrow called with its inputs.
+export effect function written() {
+  let text = "1"
+  const parsed = try Effect.try(() => { const textInput = text; { let text = textInput; text = "2"; return JSON.parse(text) } })
+  return [parsed, text]
+}
+
+export effect function captured() {
+  let text = "1"
+  const read = try Effect.try(() => { const textInput = text; { let text = textInput; return () => text } })
+  text = "2"
+  return (read as () => string)()
+}
+
+export effect function typed() {
+  const text = "3"
+  return try Effect.try(() => { const textInput = text; { let text: string = textInput; return JSON.parse(text) } })
+}
+
+export effect function mixed() {
+  let text = "4"
+  const n = try Effect.try(() => { const textInput = text; { let text = textInput; let digit = 2; text = text + digit; return JSON.parse(text) } })
+  return [n, text]
+}
+
+export effect function shadowed() {
+  const text = "5"
+  return try Effect.try(() => { const textInput = text; { let text = textInput; return [text].map((text) => text + "!")[0] } })
+}
+
+export effect function collided() {
+  let raw = "6"
+  const rawInput = "x"
+  const read = try Effect.try(() => { const rawInput2 = raw; { let raw = rawInput2; return () => raw } })
+  raw = "7"
+  return (read as () => string)() + rawInput
+}

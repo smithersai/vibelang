@@ -280,3 +280,54 @@ export const generic = effect (n: number): Effect<number, unknown> => {
 		t.Errorf("fixes %v; want five EK4616 fixes", fixed.Counts)
 	}
 }
+
+// PREVIEW-3 (rev-preview pass 9): a hatch arrow's parameter is a binding of
+// its own even when its input is a variable of the same name. EK4616's fix
+// inlines the arrow as Effect.try's thunk; where the body assigns the
+// parameter, a function in it captures the parameter, or the parameter has a
+// written type, the thunk copies the input to a fresh const and rebinds the
+// parameter in an inner block. The twin hatch-parameter-cell-fixed is what
+// --fix-vip-only writes; the harness runs it and expects what the hatches
+// returned, the arrow called with its inputs: a write or a later closure call
+// leaves the caller's variable as it was. Fixing the twin again changes
+// nothing.
+func TestFixVIPHatchKeepsParameterCell(t *testing.T) {
+	root, err := filepath.Abs("../../../..")
+	if err != nil {
+		t.Fatal(err)
+	}
+	fixture := filepath.Join(root, "typescript/vibelang/cases/hatch-parameter-cell.fail")
+	twin := filepath.Join(root, "typescript/vibelang/cases/hatch-parameter-cell-fixed")
+	want, err := os.ReadFile(filepath.Join(twin, "lib.vibe"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	fixVIP := func(dir string) *FixResult {
+		fs := bundled.WrapFS(osvfs.FS())
+		config, errors := tsoptions.GetParsedCommandLineOfConfigFile(tspath.RootedFilePathFromAbsolute(filepath.ToSlash(filepath.Join(dir, "tsconfig.json"))), &core.CompilerOptions{}, nil, fs, nil)
+		if len(errors) != 0 {
+			t.Fatalf("config: %v", errors)
+		}
+		return FixProjectWithOptions(t.Context(), fs, bundled.LibPath(), config, FixOptions{VIPOnly: true})
+	}
+	result := fixVIP(copyCompilerFixture(t, fixture, root))
+	got := ""
+	for file, fixed := range result.Files {
+		if filepath.Base(file.AsString()) == "lib.vibe" {
+			got = fixed.Text
+			if fixed.Counts[EK4616.Code] != 6 {
+				t.Errorf("fixes %v; want six EK4616 fixes", fixed.Counts)
+			}
+		}
+	}
+	const expect = "// expect: EK4616 EK4616 EK4616 EK4616 EK4616 EK4616\n"
+	if !strings.HasPrefix(got, expect) || strings.TrimPrefix(got, expect) != string(want) {
+		t.Errorf("--fix-vip-only writes\n%s\nwant\n%s", got, want)
+	}
+	if len(result.Refused) != 0 {
+		t.Errorf("refused: %v", result.Refused)
+	}
+	if again := fixVIP(copyCompilerFixture(t, twin, root)); len(again.Files) != 0 {
+		t.Errorf("fixing the twin again changes %v", again.Order)
+	}
+}

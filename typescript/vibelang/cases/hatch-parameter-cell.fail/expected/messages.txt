@@ -1,0 +1,6 @@
+  Its quick fix writes try Effect.try(() => { const textInput = text; { let text = textInput; text = "2"; return JSON.parse(text) } }); vibelang --fix applies every such fix in the project.
+  Its quick fix writes try Effect.try(() => { const textInput = text; { let text = textInput; return () => text } }); vibelang --fix applies every such fix in the project.
+  Its quick fix writes try Effect.try(() => { const textInput = text; { let text: string = textInput; return JSON.parse(text) } }); vibelang --fix applies every such fix in the project.
+  Its quick fix writes try Effect.try(() => { const textInput = text; { let text = textInput; let digit = 2; text = text + digit; return JSON.parse(text) } }); vibelang --fix applies every such fix in the project.
+  Its quick fix writes try Effect.try(() => { const textInput = text; { let text = textInput; return [text].map((text) => text + "!")[0] } }); vibelang --fix applies every such fix in the project.
+  Its quick fix writes try Effect.try(() => { const rawInput2 = raw; { let raw = rawInput2; return () => raw } }); vibelang --fix applies every such fix in the project.
