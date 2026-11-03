@@ -481,9 +481,7 @@ To share the value, `a.vibe` exports `policySecret` and `b.vibe` imports it. Add
 - `await` at the top level is ES top-level await of a Promise. `await` on an Effect there is `EK0103`.
 - `try` is not allowed at the top level, because the top level is not effect code. It is the one rule "`try` outside effect code" ([Running Effects](002-running.md#static-rules)), not a second one.
 - A `try { } catch { }` statement at the top level, or in a plain or `async` function, is JavaScript's, as in TypeScript. Only effect code bans it (VIP-5).
-An exported `const main` or `let main` keeps its ordinary lexical binding and temporal dead zone. It draws no entry warning, and neither `--fix` nor an editor quick fix converts it to a hoisted function declaration. A read before initialization retains JavaScript’s `ReferenceError`.
-
-- There is no magic entry point. A function named `main` is an ordinary function, and you run it with a runner yourself, exactly as in Effect TypeScript.
+- There is no magic entry point. A function named `main` is an ordinary function, and you run it with a runner yourself, exactly as in Effect TypeScript. An exported `const main` or `let main` is an ordinary lexical binding: a read before initialization throws JavaScript’s `ReferenceError`.
 
 ```vibe es
 // compiler-gap: pending VIP-26
