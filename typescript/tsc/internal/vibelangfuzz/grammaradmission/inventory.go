@@ -89,6 +89,7 @@ func Hooks(root string) (map[string]bool, error) {
 // locates a specification chapter.
 func Check(hooks map[string]bool, data string, specPath func(chapter string) string) (errs, stale []string) {
 	seen := map[string]bool{}
+	covered := map[string]bool{}
 	for i, line := range strings.Split(data, "\n") {
 		if line == "" || strings.HasPrefix(line, "#") {
 			continue
@@ -104,7 +105,7 @@ func Check(hooks map[string]bool, data string, specPath func(chapter string) str
 		}
 		seen[hook] = true
 		base, _, _ := strings.Cut(hook, "@")
-		seen[base] = true
+		covered[base] = true
 		if !hooks[base] {
 			stale = append(stale, hook)
 		}
@@ -139,7 +140,7 @@ func Check(hooks map[string]bool, data string, specPath func(chapter string) str
 	}
 	var missing []string
 	for hook := range hooks {
-		if !seen[hook] {
+		if !covered[hook] {
 			missing = append(missing, hook)
 		}
 	}

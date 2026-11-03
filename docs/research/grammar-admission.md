@@ -10,7 +10,8 @@ The checked table is
 paths, and every function in a file with a method on `vibelang.lowering`. This intentionally includes
 support machinery so a new entry point cannot evade the census by choosing
 a different function name. Rows ending in `@<form>` document additional
-legacy branches inside a function.
+legacy branches inside a function. Base and branch rows may appear in any order;
+repeating either row still fails the census.
 
 Each row names its source hook (methods include their receiver type), `admission:<form>` key, authority, status and
 reason. Authority is relative to `docs/design/src/`; a fragment names an
