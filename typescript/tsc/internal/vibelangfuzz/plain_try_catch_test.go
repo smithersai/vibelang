@@ -67,6 +67,9 @@ func plainTryCatchProgram(home, form string) string {
 // effect function the statement is banned, so an EK error must appear. The
 // run-time half (the fallback runs) belongs to the VIP-5 differential.
 func FuzzPlainTryCatch(f *testing.F) {
+	// Spec rule: docs/design/src/001-functions.md#7bd7fe363a07173b
+	// Chapter 001: native try/catch across plain, async and module homes (FuzzPlainTryCatch).
+
 	startShortBudget(f)
 	forms := plainTryCatchForms()
 	names := make([]string, 0, len(forms))

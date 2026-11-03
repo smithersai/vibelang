@@ -103,6 +103,9 @@ func platformBoundarySource(key string, native bool) string {
 // FuzzVIPDifferential. The window/crypto sources are the minimized T3Code
 // synchronous-browser and secure-random API findings.
 func FuzzPlatformBoundaryHomes(f *testing.F) {
+	// Spec rule: docs/design/src/001-functions.md#d0cf0636327eb955
+	// Chapter 001: fetch is forbidden in the ordinary, Effect, try and tryPromise source homes (FuzzPlatformBoundaryHomes).
+
 	startShortBudget(f)
 	platformBoundaryHomesQuoted(f)
 	keys := platformBoundaryKeys()

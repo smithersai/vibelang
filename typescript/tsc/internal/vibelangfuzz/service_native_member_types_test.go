@@ -55,6 +55,21 @@ var serviceNativeModes = []struct {
 }
 
 func FuzzServiceNativeMemberTypes(f *testing.F) {
+	// Spec rule: docs/design/src/005-services.md#2e12511506cbb078
+	// Chapter 005: native property/method signatures, explicit any and strict/noImplicitAny overrides (FuzzServiceNativeMemberTypes).
+
+	// Spec rule: docs/design/src/005-services.md#8272cf7707eddc03
+	// Chapter 005: native property/method signatures, explicit any and strict/noImplicitAny overrides (FuzzServiceNativeMemberTypes).
+
+	// Spec rule: docs/design/src/005-services.md#13643191e2482b90
+	// Chapter 005: native property/method signatures, explicit any and strict/noImplicitAny overrides (FuzzServiceNativeMemberTypes).
+
+	// Spec rule: docs/design/src/005-services.md#bb6947cb0b64ab16
+	// Chapter 005: native property/method signatures, explicit any and strict/noImplicitAny overrides (FuzzServiceNativeMemberTypes).
+
+	// Spec rule: docs/design/src/005-services.md#0cfa56a960e99156
+	// Chapter 005: native property/method signatures, explicit any and strict/noImplicitAny overrides (FuzzServiceNativeMemberTypes).
+
 	startShortBudget(f)
 	serviceNativeMemberQuotes(f)
 	for _, member := range serviceNativeMembers {

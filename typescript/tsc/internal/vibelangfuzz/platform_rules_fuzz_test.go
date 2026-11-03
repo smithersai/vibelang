@@ -44,6 +44,12 @@ func platformRulesQuoted(t testing.TB) {
 func TestPlatformRulesQuoted(t *testing.T) { platformRulesQuoted(t) }
 
 func FuzzPlatformRules(f *testing.F) {
+	// Spec rule: docs/design/src/001-functions.md#cf0222e682982809
+	// Chapter 001: literal/optional globalThis access controls and banned host members (FuzzPlatformRules).
+
+	// Spec rule: docs/design/src/001-functions.md#37634ab0bc2343e6
+	// Chapter 001: literal/optional globalThis access controls and banned host members (FuzzPlatformRules).
+
 	startShortBudget(f)
 	platformRulesQuoted(f)
 	for _, rule := range platformRules {

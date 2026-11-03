@@ -55,6 +55,15 @@ var danglingBangForms = map[string]struct {
 const danglingBangPrelude = "type User = { id: number }\ntype NotFound = { _tag: \"NotFound\" }\ntype Timeout = { _tag: \"Timeout\" }\ntype Users = { users: true }\n"
 
 func FuzzEffectTypeDanglingBang(f *testing.F) {
+	// Spec rule: docs/design/src/005-services.md#fbabc74c511ee178
+	// Chapter 005: double-bang member ends at line break before the next signature (FuzzEffectTypeDanglingBang).
+
+	// Spec rule: docs/design/src/001-functions.md#7ec955e8e72f33ba
+	// Chapter 001: whole Effect tuple elements keep optional markers (FuzzEffectTypeDanglingBang).
+
+	// Spec rule: docs/design/src/001-functions.md#cbad9497daf9f068
+	// Chapter 001: line breaks end slots; a grouped slot may span lines (FuzzEffectTypeDanglingBang).
+
 	startShortBudget(f)
 	requireDanglingBangQuotes(f)
 	for key := range danglingBangForms {

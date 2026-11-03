@@ -39,13 +39,14 @@ func reviewProducerScopeRules() []reviewProducerScopeRule {
 }
 
 func TestReviewProducerScopeQuoted(t *testing.T) {
-	for _, quote := range []string{
-		"It compiles to `Stream.callback`",
-		"The return type, when written, is `Stream.Stream<A, E, R>`",
-		"the resulting `Stream` requires `Exclude<RBody, Scope.Scope>` because `Stream.callback` supplies its own `Scope.Scope`.",
+	for chapter, quotes := range map[string][]string{
+		"002-running.md":   {"It compiles to `Stream.callback`", "A written `Stream.Stream<A, E, R>` return contract checks each `yield x` against `A`"},
+		"001-functions.md": {"**Producer environments.** An inferred producer declaration exposes the environment `Exclude<RBody, Scope.Scope>` for its body requirements `RBody`, because the accepted `Stream.callback` provides `Scope`."},
 	} {
-		if !strings.Contains(SpecText("002-running.md"), quote) {
-			t.Fatalf("Chapter 2 no longer says %q", quote)
+		for _, quote := range quotes {
+			if !strings.Contains(SpecText(chapter), quote) {
+				t.Fatalf("%s no longer says %q", chapter, quote)
+			}
 		}
 	}
 }
@@ -55,6 +56,12 @@ func TestReviewProducerScopeQuoted(t *testing.T) {
 // Explicit annotations and ordinary Effect/foreign Stream requirements keep
 // their own types. These are static admission tests, not a runtime oracle.
 func FuzzReviewProducerScope(f *testing.F) {
+	// Spec rule: docs/design/src/001-functions.md#f731202ef7a4c502
+	// Chapter 001: inferred producer strips body Scope but preserves other services, explicit annotations and Scope values (FuzzReviewProducerScope).
+
+	// Spec rule: docs/design/src/001-functions.md#4d8bfa513b8c716a
+	// Chapter 001: inferred producer strips body Scope but preserves other services, explicit annotations and Scope values (FuzzReviewProducerScope).
+
 	startShortBudget(f)
 	rules := reviewProducerScopeRules()
 	for _, rule := range rules {

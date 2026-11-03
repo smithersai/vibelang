@@ -22,6 +22,15 @@ import (
 // typechecks as a consumer's input. alchemy's packages/aws builders recurse
 // this way (corpus alchemy-recursive-builder).
 func FuzzRecursiveInferredDeclarations(f *testing.F) {
+	// Spec rule: docs/design/src/001-functions.md#610a56454d7702ae
+	// Chapter 001: recursive anonymous property/method returns elide the repeated type (FuzzRecursiveInferredDeclarations).
+
+	// Spec rule: docs/design/src/001-functions.md#99a783e7e6b1c26a
+	// Chapter 001: recursive anonymous property/method returns elide the repeated type (FuzzRecursiveInferredDeclarations).
+
+	// Spec rule: docs/design/src/001-functions.md#7b1f55622d1fefb2
+	// Chapter 001: recursive anonymous property/method returns elide the repeated type (FuzzRecursiveInferredDeclarations).
+
 	startShortBudget(f)
 	recursiveDeclarationsChapter(f)
 	for _, shape := range recursiveShapes {

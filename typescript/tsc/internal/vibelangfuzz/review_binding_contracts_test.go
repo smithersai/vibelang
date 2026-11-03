@@ -20,7 +20,7 @@ type reviewContractCase struct {
 func TestReviewBindingContractsQuoted(t *testing.T) {
 	quotes := map[string]string{
 		"006-data.md":     "A reference names a Schema value, not an expanded TypeScript type alias, interface, enum or class.",
-		"002-running.md":  "a written return type that is not a `Stream.Stream<A, E, R>`",
+		"002-running.md":  "a written return type incompatible with the producer's Stream result",
 		"005-services.md": "A local declaration or import shadows one, as with any global.",
 	}
 	for chapter, quote := range quotes {

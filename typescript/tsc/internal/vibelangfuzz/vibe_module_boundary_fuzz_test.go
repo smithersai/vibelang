@@ -27,6 +27,18 @@ var moduleBindingWitnesses = []moduleBindingWitness{
 // covers value/type bindings, patterns and every moduleDetection/prelude
 // combination, rather than only one const declaration in the discovery.
 func FuzzVibeModuleBoundary(f *testing.F) {
+	// Spec rule: docs/design/src/001-functions.md#932c8898f1eae4e7
+	// Chapter 001: file-local module bindings across prelude switches and explicit import/export control (FuzzVibeModuleBoundary).
+
+	// Spec rule: docs/design/src/001-functions.md#6ff6c6886d03357e
+	// Chapter 001: file-local module bindings across prelude switches and explicit import/export control (FuzzVibeModuleBoundary).
+
+	// Spec rule: docs/design/src/001-functions.md#6ff883269b72a9d4
+	// Chapter 001: file-local module bindings across prelude switches and explicit import/export control (FuzzVibeModuleBoundary).
+
+	// Spec rule: docs/design/src/001-functions.md#d570a55fbffeeb2a
+	// Chapter 001: file-local module bindings across prelude switches and explicit import/export control (FuzzVibeModuleBoundary).
+
 	startShortBudget(f)
 	text, err := os.ReadFile(SpecPath("007-tooling.md"))
 	if err != nil {

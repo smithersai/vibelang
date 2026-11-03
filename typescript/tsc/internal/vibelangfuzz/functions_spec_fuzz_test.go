@@ -129,6 +129,27 @@ func TestFunctionsSpecQuotes(t *testing.T) {
 }
 
 func FuzzFunctionsSpec(f *testing.F) {
+	// Spec rule: docs/design/src/001-functions.md#7374b9968339f8d3
+	// Chapter 001: banned legacy JavaScript witnesses across plain, async and effect source homes (FuzzFunctionsSpec).
+
+	// Spec rule: docs/design/src/001-functions.md#b47f980f91157496
+	// Chapter 001: banned legacy JavaScript witnesses across plain, async and effect source homes (FuzzFunctionsSpec).
+
+	// Spec rule: docs/design/src/001-functions.md#885485e5c022c86f
+	// Chapter 001: banned legacy JavaScript witnesses across plain, async and effect source homes (FuzzFunctionsSpec).
+
+	// Spec rule: docs/design/src/001-functions.md#48edb64bae085b16
+	// Chapter 001: banned legacy JavaScript witnesses across plain, async and effect source homes (FuzzFunctionsSpec).
+
+	// Spec rule: docs/design/src/001-functions.md#457797e3c1a98579
+	// Chapter 001: banned legacy JavaScript witnesses across plain, async and effect source homes (FuzzFunctionsSpec).
+
+	// Spec rule: docs/design/src/001-functions.md#2e5f7bb8090ddf64
+	// Chapter 001: legacy bans run in ordinary and Effect source homes (FuzzFunctionsSpec).
+
+	// Spec rule: docs/design/src/001-functions.md#2594bc43a4b816ef
+	// Chapter 001: banned legacy JavaScript witnesses across plain, async and effect source homes (FuzzFunctionsSpec).
+
 	startShortBudget(f)
 	chapter, err := os.ReadFile(filepath.Join(Root(), "docs/design/src/001-functions.md"))
 	if err != nil {
@@ -197,6 +218,21 @@ func FuzzFunctionsSpec(f *testing.F) {
 // FuzzFunctionBoundaries checks the independent static boundaries in chapter
 // 1. A feature key names precisely the syntax rejected by its rule.
 func FuzzFunctionBoundaries(f *testing.F) {
+	// Spec rule: docs/design/src/001-functions.md#16a7004079a7a8e5
+	// Chapter 001: shorthand, accessors, constructors and await execution boundaries (FuzzFunctionBoundaries).
+
+	// Spec rule: docs/design/src/001-functions.md#177a654ee380f393
+	// Chapter 001: shorthand, accessors, constructors and await execution boundaries (FuzzFunctionBoundaries).
+
+	// Spec rule: docs/design/src/001-functions.md#90662dd011b09a84
+	// Chapter 001: shorthand, accessors, constructors and await execution boundaries (FuzzFunctionBoundaries).
+
+	// Spec rule: docs/design/src/001-functions.md#41a535a2a8205383
+	// Chapter 001: shorthand, accessors, constructors and await execution boundaries (FuzzFunctionBoundaries).
+
+	// Spec rule: docs/design/src/001-functions.md#add3e51087eb1cdb
+	// Chapter 001: shorthand, accessors, constructors and await execution boundaries (FuzzFunctionBoundaries).
+
 	startShortBudget(f)
 	chapter, err := os.ReadFile(filepath.Join(Root(), "docs/design/src/001-functions.md"))
 	if err != nil {
@@ -243,6 +279,21 @@ func FuzzFunctionBoundaries(f *testing.F) {
 }
 
 func FuzzFunctionSyntax(f *testing.F) {
+	// Spec rule: docs/design/src/001-functions.md#6eb3bf0bfe4c9e09
+	// Chapter 001: generic private/static methods, ordinary identifiers/property names and line breaks (FuzzFunctionSyntax).
+
+	// Spec rule: docs/design/src/001-functions.md#17b01bf4381d3da8
+	// Chapter 001: generic private/static methods, ordinary identifiers/property names and line breaks (FuzzFunctionSyntax).
+
+	// Spec rule: docs/design/src/001-functions.md#5fcceb4850ec0253
+	// Chapter 001: generic private/static methods, ordinary identifiers/property names and line breaks (FuzzFunctionSyntax).
+
+	// Spec rule: docs/design/src/001-functions.md#c2f99e550ab9da2e
+	// Chapter 001: generic private/static methods, ordinary identifiers/property names and line breaks (FuzzFunctionSyntax).
+
+	// Spec rule: docs/design/src/001-functions.md#12bc0bff491e1510
+	// Chapter 001: generic private/static methods, ordinary identifiers/property names and line breaks (FuzzFunctionSyntax).
+
 	startShortBudget(f)
 	chapter, err := os.ReadFile(filepath.Join(Root(), "docs/design/src/001-functions.md"))
 	if err != nil {
@@ -304,6 +355,15 @@ func FuzzFunctionSyntax(f *testing.F) {
 
 // These two amendments deliberately delegate errors to TypeScript.
 func FuzzFunctionTypeScriptRules(f *testing.F) {
+	// Spec rule: docs/design/src/001-functions.md#af0d109226341bb8
+	// Chapter 001: ordinary recursive-inference diagnostics remain TypeScript errors (FuzzFunctionTypeScriptRules).
+
+	// Spec rule: docs/design/src/001-functions.md#9c97a81fa72be987
+	// Chapter 001: construction and recursive inference retain native TS diagnostics (FuzzFunctionTypeScriptRules).
+
+	// Spec rule: docs/design/src/001-functions.md#40d3d16d31ad7b40
+	// Chapter 001: construction and recursive inference retain native TS diagnostics (FuzzFunctionTypeScriptRules).
+
 	startShortBudget(f)
 	chapter, err := os.ReadFile(filepath.Join(Root(), "docs/design/src/001-functions.md"))
 	if err != nil {
@@ -423,6 +483,9 @@ func FuzzRestoreFunctionBoundary(f *testing.F) {
 // Check type information too: runtime Exit equality alone cannot observe a
 // compiler silently dropping an Effect's error or requirement type.
 func FuzzFunctionEffectInference(f *testing.F) {
+	// Spec rule: docs/design/src/001-functions.md#0a04ca671d35f770
+	// Chapter 001: positive native type control and negative success/error/requirement assignments (FuzzFunctionEffectInference).
+
 	startShortBudget(f)
 	chapter, err := os.ReadFile(filepath.Join(Root(), "docs/design/src/001-functions.md"))
 	if err != nil {

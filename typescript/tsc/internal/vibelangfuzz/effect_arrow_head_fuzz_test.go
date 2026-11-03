@@ -33,6 +33,12 @@ func TestEffectArrowHeadsQuoted(t *testing.T) { requireEffectArrowHeadQuotes(t) 
 // Effect arrow heads own EK0109. Wrapping that parameter admits the same
 // type, generic constraints, body, comments and surrounding source.
 func FuzzEffectArrowHeads(f *testing.F) {
+	// Spec rule: docs/design/src/001-functions.md#ae3218cb2defac1e
+	// Chapter 001: typed/generic bare heads reject; parenthesized heads and ordinary effect calls compile (FuzzEffectArrowHeads).
+
+	// Spec rule: docs/design/src/001-functions.md#3820d49aba907397
+	// Chapter 001: typed/generic bare heads reject; parenthesized heads and ordinary effect calls compile (FuzzEffectArrowHeads).
+
 	startShortBudget(f)
 	requireEffectArrowHeadQuotes(f)
 	heads := map[string][2]string{

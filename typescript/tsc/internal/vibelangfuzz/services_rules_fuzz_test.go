@@ -124,6 +124,12 @@ func TestServicesRulesQuoted(t *testing.T) { servicesRulesChapter(t) }
 const servicesPackage = "{\"type\":\"module\",\"name\":\"@fuzz/services\"}"
 
 func FuzzServicesRules(f *testing.F) {
+	// Spec rule: docs/design/src/005-services.md#6cf41f113d22fc47
+	// Chapter 005: valid service controls and precise rejected members/keys/identity operations (FuzzServicesRules).
+
+	// Spec rule: docs/design/src/005-services.md#ec9a9efd319d8041
+	// Chapter 005: valid service controls and precise rejected members/keys/identity operations (FuzzServicesRules).
+
 	startShortBudget(f)
 	chapter := servicesRulesChapter(f)
 	for _, rule := range servicesRules {

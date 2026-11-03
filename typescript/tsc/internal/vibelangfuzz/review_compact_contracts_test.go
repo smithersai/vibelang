@@ -53,6 +53,12 @@ func TestReviewCompactContractsQuoted(t *testing.T) {
 // bans a line terminator before an arrow, without requiring a space.
 // Native inequality controls keep their ordinary unsplit token reading.
 func FuzzReviewCompactContracts(f *testing.F) {
+	// Spec rule: docs/design/src/001-functions.md#375737adf99cf4bc
+	// Chapter 001: compact bang completion before assignment/equality/arrow; ordinary inequality controls (FuzzReviewCompactContracts).
+
+	// Spec rule: docs/design/src/001-functions.md#eb6a93e7f2af5740
+	// Chapter 001: compact bang completion before assignment/equality/arrow; ordinary inequality controls (FuzzReviewCompactContracts).
+
 	startShortBudget(f)
 	rules := reviewCompactContractRules()
 	for _, rule := range rules {

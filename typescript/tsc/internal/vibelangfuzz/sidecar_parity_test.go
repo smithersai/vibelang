@@ -74,6 +74,9 @@ func (*sidecarParitySystem) Spawn([]string, string, io.Writer) (io.ReadWriteClos
 
 // Chapter 007 / include yields to source while explicit files retain input bytes: docs/design/src/007-tooling.md#fee0a31ad53ffc12
 func FuzzSidecarEmitParity(f *testing.F) {
+	// Spec rule: docs/design/src/001-functions.md#1064265a74abcf32
+	// Chapter 001: sidecar output beside source or in a mirrored configured directory (FuzzSidecarEmitParity).
+
 	startShortBudget(f)
 	checkSidecarEmitRulesQuoted(f)
 	for _, key := range []string{"files", "include"} {

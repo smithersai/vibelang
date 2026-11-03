@@ -138,6 +138,9 @@ var grammarAdmissionSeeds = []struct{ key, source string }{
 }
 
 func FuzzGrammarAdmission(f *testing.F) {
+	// Spec rule: docs/design/src/001-functions.md#cf6d8b7ccc47907d
+	// Chapter 001: inline module seeds violate the current grammar (FuzzGrammarAdmission).
+
 	startShortBudget(f)
 	w := NewWorkspace(f)
 	for _, s := range grammarAdmissionSeeds {
