@@ -20,6 +20,7 @@ import (
 func TestDeniedTrailingBlockParsesLikeTypeScript(t *testing.T) {
 	for _, source := range []string{
 		"f(x) {}", "f {}", "obj.f(x) { sideEffect() }", "obj.f {}",
+		"async { 1 }", "async() { 1 }", "obj.async { 1 }",
 		"obj[key](x) {}", "f<T>(x) {}", "f(x,) {}",
 		"f() /* keep */ {}", "f() {}()", "f() {}.value",
 		"function g() { return f() {} }",
