@@ -1,4 +1,6 @@
 // expect: EK0704
+class C{}
+export function f(s:unknown){return match(s){when C():1;default:0;}}
 class Point { constructor(readonly x: number, readonly y: number) {} }
 class Custom { static [customMatcher](s: unknown) { return true } }
 class Inherited extends Custom {}
