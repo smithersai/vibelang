@@ -1,0 +1,2 @@
+go test fuzz v1
+string("-- main.vibe --\nimport * as Effect from \"effect/Effect\";\nexport const make = Effect.gen(function* () {\n  const run = effect () => {\n    return try Effect.tryPromise({\n      try: (): infer _ => Promise.resolve(1),\n      catch: (cause): infer _ => String(cause),\n    });\n  };\n  return { run };\n});\n")

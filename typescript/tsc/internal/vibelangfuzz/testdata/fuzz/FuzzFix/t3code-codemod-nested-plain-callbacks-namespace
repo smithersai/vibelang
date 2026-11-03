@@ -1,0 +1,2 @@
+go test fuzz v1
+string("native-ts:\n-- main.vibe --\nimport * as Effect from \"effect/Effect\";\nimport * as Context from \"effect/Context\";\nimport * as Layer from \"effect/Layer\";\nexport const make = Effect.gen(function* () { const run = () => Effect.tryPromise({try: (): Promise<number> => Promise.resolve(1), catch: (cause): string => String(cause)}); return {run}; });\nexport const main = () => Effect.gen(function* () { const made = yield* make; return yield* made.run(); });\n")

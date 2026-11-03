@@ -1,0 +1,2 @@
+go test fuzz v1
+string("-- leaf.vibe --\nimport * as Effect from \"effect/Effect\";\nimport * as Context from \"effect/Context\";\nimport * as Layer from \"effect/Layer\";\nexport class Env extends Context.Service<Env, { n: number }>()(\"Env\") {}\nexport const value = Effect.gen(function* () { const env = yield* Env; return env.n; });\nexport const layer = Layer.succeed(Env, { n: 1 });\n-- main.vibe --\nimport * as Effect from \"effect/Effect\";\nimport { value, layer } from \"./leaf.vibe\";\nexport const result = value.pipe(Effect.provide(layer));\n")

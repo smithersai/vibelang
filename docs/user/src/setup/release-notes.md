@@ -295,6 +295,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - The compiler reported `EK1307` for an ambient `error` or `schema error` declaration, but Appendix B did not list the code; it does now.
 - Six compiler cases still expected behaviour the language had already changed: plain `main` functions after VIP-1, an unrun `Fiber.join` result, an `error` constructor (`EK1301`), a last match arm without `;`, and `EK1003` for `for await` in a plain function; they now state current behaviour, and that last one is `plain-for-await.fail`, expecting `TS1103`.
 - `try` on a value that is not an Effect made the enclosing function `any`, which added a stray `EK3205` at `main`, and `try` on a value typed by a constrained type parameter lost its success and error types; the `try` now reports only `EK0502` and the type parameter keeps the channels of its constraint.
+
+- Migration checks now exercise filtered tagged catches, dependent cold-program construction, nested callbacks, and untraced context restoration across both Effect import forms; unsafe rewrites remain subject to refusal.
 - Resolved schema-binding regressions still appeared as pending gaps; namespace, function and escaped-name coverage now checks `EK2109` strictly while keeping every keyed corpus.
 - Schema library-alias checks now compare array decoding and mutability with native TypeScript and explicit Schema controls; remaining decoder gaps keep precise pending records.
 
