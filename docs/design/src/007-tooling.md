@@ -284,6 +284,14 @@ After preserving migration, a bare `fork { … }` is `EK1707` and the resolved r
 
 The resolved `trusted(f, [])` runtime wrapper is retired with `EK0407`. Its preserving `vibelang --fix` migration captures `f` at the original declaration and replaces private direct synchronous calls in explicit Effect bodies with an identity-mapped `Effect.try` and `Effect.orDie` bridge. Preserve the callee read, forwarding function, argument order, coldness, exact defect value and declaration output. Refuse escaping function values, changed exported `Trusted` types, lost comments or reordered Effect operands. A reviewed `.ts` helper with `@throws {never}` is another replacement. Listed-failure wrappers are outside this migration. As with other held retirements, ship the codemod and migrate all consumers before enforcing rejection.
 
+### Legacy entry-dispatch migration
+
+For source checked under the pinned legacy compiler, the preserving codemod follows these boundaries. Current source follows VIP-26’s explicit runner rule.
+
+In every scope, `--fix` can expand a legacy CommonJS entry to explicit calls of the existing entry dispatcher and the selected native runner and layers. It preserves the function's declaration and callable kind, entry-only execution and import-only behavior. An implicit ESM entry is retained when its host identity cannot be expressed by accepted source forms; the codemod does not guess a bundle's entry identity or add a forbidden host read. Once startup is explicit, `--fix` removes an inert compiler-only `vibelang/platform/*` marker. It retains a marker still needed by implicit ESM startup.
+
+A retained implicit ESM site is reported as not fixed until a preserving source expansion is available. This is migration status; it grants no new host-read permission under VIP-33.
+
 ### Selecting ordinary fix files
 
 `--only <files>` limits ordinary `--fix` to the listed modules ([VIP-34, amended](../vips/0034-compiler-and-tooling.md#decision)). `<files>` is a comma-separated list of paths relative to the current directory, or `@list.txt`, a file of such paths, one per line; the flag can repeat. An empty list, or a path that is not a `.vibe` module of the project, stops the invocation before it writes anything. The repairs write no other file, a config included, even when they are interrupted; the compilation after them still writes what any compilation writes, such as declaration sidecars. A fix that would edit another file is not applied. Only an error in a listed module refuses a fix: a fix that breaks an unlisted module is kept, and the compilation after `--fix` reports the error. The result is a partial repair and its report says so: a clean run does not verify the project. `--only` cannot be combined with `--fix-migration-only` or `--fix-vip-only`, because a project-wide migration changes what other modules mean. Alone, it is an unknown compiler option (`TS5023`).

@@ -137,3 +137,9 @@ Folded: 1793657528-lang-tables.patch (applied at docs/design/src/900-appendices.
 Folded: 1793659478-lang-tables.patch (already stated at docs/design/src/900-appendices.md:959)
 
 Both old registry patches mechanically centralized the then-current grammar/diagnostic inventories. The simplified appendix already owns the grammar productions and language, transitional and imported-lint tables; tooling owns repair triggers and preservation boundaries. Keep the current accepted rules and their reconciliations rather than reintroducing the removed historical grammar census, obsolete registry duplicates or old diagnostic descriptions. The normative tables remain the simplified specification’s source, and generated imported lint tables retain their own generator. The old census’s pending throw-expression claim is superseded by accepted VIP-41. VIP-40’s module productions now use the appendix’s `text` fences, `=` notation and individual production headings: the existing grammar-layout regression fails on the base and passes with this normalization; syntax and meaning are unchanged.
+
+## fold preserving legacy entry-dispatch migration
+
+Folded: relic-rest-b-entry-marker-codemod.patch (applied at docs/design/src/007-tooling.md:295)
+
+VIP-26 and VIP-33 require explicit runner calls and retain the platform boundary. Expand proved legacy CommonJS startup without changing callable kind or import-only behavior; preserve and report unsupported ESM sites rather than guessing bundled entry identity. No new language form or Will question is required.
