@@ -221,6 +221,10 @@ const (
 // only slower than solving the cycle. Every other function compiles to plain
 // JavaScript (design D10).
 type analyzer struct {
+	// legacyUnmatched holds the legacy model's TS2769 offsets for the file it
+	// reads (newLegacyModel).
+	legacyUnmatched map[int]bool
+
 	checker    *checker.Checker
 	states     map[*ast.Node]fnState
 	effects    map[*ast.Node]*effectInfo // see effectOf

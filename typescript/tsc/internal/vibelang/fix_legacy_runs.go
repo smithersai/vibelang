@@ -53,6 +53,7 @@ type legacyModel struct {
 }
 
 func newLegacyModel(a *analyzer, unmatched map[int]bool) *legacyModel {
+	a.legacyUnmatched = unmatched
 	return &legacyModel{a: a, marks: map[*ast.Node]bool{}, blocks: map[*ast.Node]bool{}, unmatched: unmatched}
 }
 
@@ -211,7 +212,7 @@ func (m *legacyModel) marked(fn *ast.Node) bool {
 		return done
 	}
 	m.marks[fn] = false // a call cycle through fn answers no
-	result := !isMarkedEffect(fn) && isLowerable(fn) && !isProducer(fn) && !isProgramArrow(fn) && (legacyProgramLiteral(m.a, fn) || m.formIsEffect(fn) && m.runsInBody(fn))
+	result := !isMarkedEffect(fn) && isLowerable(fn) && !isProducer(fn) && !isProgramArrow(fn) && (legacyProgramLiteral(m.a, fn) || m.formIsEffect(fn) && m.runsInBody(fn) || m.plainEffectLiteral(fn))
 	if result && !legacyProgramLiteral(m.a, fn) {
 		_, _, result = effectMarkerEdit(ast.GetSourceFileOfNode(fn), fn)
 	}
@@ -314,6 +315,99 @@ func (m *legacyModel) runsInBody(fn *ast.Node) bool {
 	return body != nil && visit(body)
 }
 
+// plainEffectLiteral reports whether fn is a function literal with no written
+// return type, passed where every overload that has a function at that
+// argument expects one that returns an Effect, and whose result is a plain
+// value. The old compiler chose its form from the parameter (D44), so the value
+// was its success, as (caught) => caught.message in
+// Effect.catchTag(%, "Boom", (caught) => caught.message) (Smithers errors
+// TaggedFailures.test.vibe). Its call has no matching overload until the mark
+// is written (TS2769), so the resolved signature can't answer: all are read.
+func (m *legacyModel) plainEffectLiteral(fn *ast.Node) bool {
+	if fn.Kind != ast.KindArrowFunction && fn.Kind != ast.KindFunctionExpression || fn.Type() != nil {
+		return false
+	}
+	owner, path := ownerCall(fn)
+	if owner == nil || len(path) == 0 || !ast.IsCallExpression(owner) {
+		return false
+	}
+	callee := ast.SkipParentheses(owner.Expression())
+	if callee.Flags&(ast.NodeFlagsReparsed|ast.NodeFlagsVibeLangIntrinsic) != 0 {
+		return false
+	}
+	c := m.a.checker
+	expects := false
+	for _, signature := range c.GetSignaturesOfType(c.GetApparentType(c.GetTypeAtLocation(callee)), checker.SignatureKindCall) {
+		declared := m.a.declaredSignature(signature)
+		if declared == nil {
+			declared = signature
+		}
+		e := m.a.classify(m.a.expectedFrom(declared, path))
+		if e.plainFn || e.program {
+			return false
+		}
+		expects = expects || e.effectFn
+	}
+	return expects && m.givesPlainValue(fn)
+}
+
+// givesPlainValue reports whether fn's body can give a result that is no
+// Effect: an expression body or a returned expression whose type can't be
+// one, a return without a value, or a block with no return. A body that only
+// throws is hasEscapingThrow's. An expression typed any counts when it calls
+// nothing: a literal's parameter is any until its call has an overload.
+func (m *legacyModel) givesPlainValue(fn *ast.Node) bool {
+	body := fn.Body()
+	if body == nil {
+		return false
+	}
+	plain := func(e *ast.Node) bool {
+		t := m.a.checker.GetTypeAtLocation(e)
+		if t.Flags()&checker.TypeFlagsAny != 0 {
+			return !holdsInvocation(e)
+		}
+		if t.Flags()&(checker.TypeFlagsUnknown|checker.TypeFlagsNever) != 0 {
+			return false
+		}
+		// A function value is what a call without a matching overload gives
+		// (TS2769: Effect.catchTag's last candidate returns its data-last
+		// form), not the value the old compiler saw.
+		if len(m.a.checker.GetSignaturesOfType(t, checker.SignatureKindCall)) != 0 {
+			return false
+		}
+		return !isEffectType(m.a.checker, t) && !m.a.mayBeExpectedEffect(t)
+	}
+	if !ast.IsBlock(body) {
+		return plain(body)
+	}
+	returned, found := false, false
+	var visit func(node *ast.Node) bool
+	visit = func(node *ast.Node) bool {
+		if isFunctionBoundary(node) {
+			return false
+		}
+		if ast.IsReturnStatement(node) {
+			returned = true
+			if e := node.Expression(); e == nil || plain(e) {
+				found = true
+				return true
+			}
+			return false
+		}
+		return node.ForEachChild(visit)
+	}
+	body.ForEachChild(visit)
+	return found || !returned && !hasEscapingThrow(fn)
+}
+
+// holdsInvocation reports whether n calls anything outside a nested function.
+func holdsInvocation(n *ast.Node) bool {
+	if isFunctionBoundary(n) {
+		return false
+	}
+	return isInvocation(n) || n.ForEachChild(holdsInvocation)
+}
+
 // legacyEffectPosition decides call in effect code whose owner is owner. It
 // walks from call to owner's body and stops at the first position that held
 // the call or passed it by name.
@@ -407,7 +501,7 @@ func legacyHold(a *analyzer, n *ast.Node) (held bool, byName bool, reason string
 	if signature == nil {
 		return false, false, ""
 	}
-	if a.classify(a.expectedAt(owner, signature, path, n)).program {
+	if a.classify(a.expectedAt(owner, signature, path, n)).program || a.unmatchedOverloadExpectsProgram(owner, path) {
 		return true, true, "the expression is passed by name to a parameter that expects an Effect (D147), so the call in it ran inside that program"
 	}
 	return false, false, ""
@@ -670,16 +764,60 @@ func (m *legacyModel) blockText(file *ast.SourceFile, block *ast.Node) string {
 	return "effect { return " + body + " }"
 }
 
+// unmatchedOverloadExpectsProgram reports whether call has no matching overload
+// (TS2769), so the checker read it by its last candidate, and another candidate
+// expects a program at path. Effect.catchTag(raise(e), "Boom", (c) => c.message)
+// is such a call until its handler is marked: the last candidate takes the tag
+// first, and the old compiler held raise(e) for self.
+func (a *analyzer) unmatchedOverloadExpectsProgram(call *ast.Node, path []pathStep) bool {
+	if !holdsUnmatchedOffset(a.legacyUnmatched, call) {
+		return false
+	}
+	c := a.checker
+	for _, signature := range c.GetSignaturesOfType(c.GetApparentType(c.GetTypeAtLocation(ast.SkipParentheses(call.Expression()))), checker.SignatureKindCall) {
+		declared := a.declaredSignature(signature)
+		if declared == nil {
+			declared = signature
+		}
+		if a.classify(a.expectedFrom(declared, path)).program {
+			return true
+		}
+	}
+	return false
+}
+
 // overloadUnmatched reports whether TS2769 stands on one of call's own
 // arguments: the checker found no overload, and typed the call by its last
 // candidate.
 func (m *legacyModel) overloadUnmatched(call *ast.Node) bool {
-	if len(m.unmatched) == 0 || !ast.IsCallExpression(call) {
+	return hasUnmatchedArgument(m.unmatched, call)
+}
+
+// holdsUnmatchedOffset reports whether a TS2769 offset falls inside call's
+// arguments. TypeScript elaborates a mismatched callback onto its result, as
+// caught.message in (caught) => caught.message, so the offset need not be an
+// argument's start.
+func holdsUnmatchedOffset(unmatched map[int]bool, call *ast.Node) bool {
+	if len(unmatched) == 0 || !ast.IsCallExpression(call) {
+		return false
+	}
+	for _, argument := range call.Arguments() {
+		for offset := range unmatched {
+			if argument.Pos() <= offset && offset < argument.End() {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func hasUnmatchedArgument(unmatched map[int]bool, call *ast.Node) bool {
+	if len(unmatched) == 0 || !ast.IsCallExpression(call) {
 		return false
 	}
 	text := ast.GetSourceFileOfNode(call).Text()
 	for _, argument := range call.Arguments() {
-		if m.unmatched[scanner.SkipTrivia(text, argument.Pos())] {
+		if unmatched[scanner.SkipTrivia(text, argument.Pos())] {
 			return true
 		}
 	}

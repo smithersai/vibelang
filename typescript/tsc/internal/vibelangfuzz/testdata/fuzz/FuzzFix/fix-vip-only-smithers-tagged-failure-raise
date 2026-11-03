@@ -1,0 +1,2 @@
+go test fuzz v1
+string("-- main.vibe --\nimport { Effect } from \"effect\"\n\nclass Boom extends Error {\n  readonly _tag = \"Boom\"\n}\n\nfunction raise<E>(error: E): Effect<never, E, infer R> {\n  throw error\n}\n\nexport function recover(error: Boom): Effect<string, never, infer R> {\n  return raise(error) |> Effect.catchTag(%, \"Boom\", (caught) => caught.message)\n}\n")
