@@ -187,10 +187,15 @@ queue:
 | `//:mapper-scripts` | `scripts/mapper-*`, `packages/ts-mapper/`, the compiler's `cache.mjs` or the LSP fixture |
 | `//typescript/vibelang:lsp-smoke` | `typescript/vibelang/lsp-*`, its `PACKAGE.ts`, or the compiler's `format.mjs` |
 | `//:go-vibelangfuzz-editor` | the language service, `typescript/tsc/internal/ls/` |
+| `//:go-vibelang-fix-twins` | a non-test Go source in the parser, `internal/vibelang/` or `internal/effectglobals/` |
 
 The editor oracles take about a minute after their build. They join for the
 language service, which they judge: main went RED post-merge on
-`FuzzEditorConsistency` when a rename change reached it unchecked. The other fuzz
+`FuzzEditorConsistency` when a rename change reached it unchecked. The `--fix`
+fixed twins and cost guards take about a minute after their build. They join for
+any compiler source because a change outside `--fix` can move what it writes:
+VIP-6's parser and prelude change turned every qualified `Effect` call into a
+bare global in `--fix` output, and only post-merge saw it. The other fuzz
 suites, `//:docs-tools` and `//:snippets` stay out of this list. They take
 minutes and depend on most of the tree, so no small set of paths selects them.
 
@@ -423,6 +428,7 @@ The `//typescript/vibelang:coverage-twin-oracle` target runs the parity oracle's
   :go-vibelangfuzz-hangs        bounded child probes for stale hang markers (merge gate)
   :go-vibelangfuzz-pending      the inputs testdata/pending/ lists, which must still fail, and every VIP and data probe (merge gate)
   :go-vibelangfuzz-editor       the editor oracles over documentation examples and cases (merge gate)
+  :go-vibelang-fix-twins        the --fix fixed twins of the TypeScript-form and migration cases and the --fix cost guards (merge gate)
   :go-vibelangfuzz-compile      the compile oracles over their short sample of cases and documentation examples (merge gate)
   :go-vibelangfuzz-config       the project-settings oracles over every case's vibelang section (merge gate)
   :go-vibelangfuzz-topic-<t>    the Fuzz and Test functions of internal/vibelangfuzz/<t>_*_test.go (merge gate,

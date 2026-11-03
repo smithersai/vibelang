@@ -823,6 +823,17 @@ const targets = {
   // The registry test alone, for spec-push (~/vibe/mq/mq.py SPEC_LINT_TARGETS; fix-main-red 2026-11-03): spec-direct
   // commits gave Appendix B 15 codes the registry lacked, and only post-merge's //:spec-tests saw it. spec-push
   // tolerates a target main carries red, so a target of one test still blocks while //:spec-tests is red for others.
+  // The --fix fixed twins and cost guards, for the merge gate (validate.sh selects it for a non-test source change
+  // in the parser, internal/vibelang or internal/effectglobals; fix-main-red 2026-11-03). VIP-6's 77843b2ee56b, a
+  // parser and prelude change, made 3f57b5b4694e's prelude pass rewrite every Effect.x call to its bare global:
+  // the tsforms and migrate fixed twins changed again on a second --fix run and TestFixGateChecksAFewTimes built
+  // more programs than its bound, and only post-merge's //:go-vibelang and //:spec-tests saw it.
+  "go-vibelang-fix-twins": goVibelang(
+    "What --fix writes for the TypeScript-form, migration and pipeline-stage cases is their fixed twin, within the --fix cost bounds.",
+    `CGO_ENABLED=0 ${effect} go test -count=1 -timeout 20m -trimpath -run '^(TestTypeScriptFormCasesFix|TestMigrationCasesFix|TestEffectStageFixes|TestEffectStageFixesRefuse|${fixCostTests.join("|")})$' ./internal/vibelang/`,
+    [Tsc["vibelang-files"]],
+    "30m"
+  ),
   "spec-registry-go": S.Shell.Test({
     summary: "Every code Appendix B assigns is registered, or specAhead names the lane that registers it.",
     shell: `cd typescript/tsc && GOCACHE=$HOME/.cache/go-build-smthrs CGO_ENABLED=0 go test -count=1 -trimpath -run '^TestRegistryMatchesSpec$' ./internal/vibelang/`,
