@@ -78,7 +78,7 @@ Svelte's and Vue's TypeScript tooling; CSS modules' `.d.css.ts`; TypeScript's `a
 
 An empty `vibe.sidecarDir` string names the directory of its declaring config, as an empty TypeScript path does. A present child value overrides an inherited path; an absent child value inherits. Non-string values report `EK3007`. This is the path-inheritance contract of the directory setting.
 
-Directory paths may overlap the source tree; emit still mirrors config-relative paths, and stale cleanup preserves every module's selected output. Stock TypeScript keeps its native `rootDirs` longest-prefix resolution. A separate sidecar directory avoids virtual-path collisions with sources inside that directory.
+Directory paths may overlap the source tree; emit still mirrors paths relative to TypeScript's declaration source root, as defined in the opt-in-directory amendment, and stale cleanup preserves every module's selected output. Stock TypeScript keeps its native `rootDirs` longest-prefix resolution. A separate sidecar directory avoids virtual-path collisions with sources inside that directory.
 
 ### Amendment: cyclic inferred declaration types (2026-11-01)
 

@@ -159,3 +159,9 @@ Reconciled: 1793693643-sl18-fix-astra-2.patch at docs/design/vips/0040-module-de
 Folded: fuzz-effect-generic-arg.patch (applied at docs/design/src/002-running.md:24 and docs/design/src/007-tooling.md, under VIP-5’s inferred Effect arguments amendment).
 
 The earlier fold omitted the warning-table row and the explicit-type-argument editor action/batch refusal. Both are now present. Preserve the input’s declared-Effect-result exclusion: a generic inferred result is not a declared program position. The compiler lane’s report records direct, container, callback, overload, method and constrained-parameter coverage; TypeScript itself accepts program data and the added check remains a configurable warning.
+
+## Round 19: complete the sidecar-root reconciliation
+
+Folded: 1793693984-sl18-fix-astra-3.patch (already stated at docs/design/src/007-tooling.md:54; the same root rule now also governs docs/design/vips/0027-declaration-output.md’s overlapping-directory paragraph).
+
+The directory amendment already follows TypeScript’s declaration source root. Remove the surviving unconditional config-relative claim from its later paragraph. Native TypeScript `5.9.3` emits `decl/x.d.ts` for a sole `src/x.ts` without `rootDir`, and `decl/src/x.d.ts` with explicit `rootDir: "."` or a composite project. Overlap, selected-output cleanup and native `rootDirs` resolution keep their existing rules. This corrects the omitted sentence, not the implementation owned by `sidecar-outside-root` or the earlier `sl18-review-astra` fix.
