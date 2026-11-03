@@ -237,6 +237,14 @@ A trial that adds an error needs only that error to fail, so once a round has fo
 
 A round that halves its fixes also writes edits as it goes. Once the round has made 16 checks, then 32, 64 and so on, `--fix` checks the fixes it has kept and the halving's passing fixes in a fresh check of the whole project, and writes them when that check passes, at most four such checks a round. An interrupted run keeps the last verified checkpoint. After 256 isolation checks in one round, `--fix` stops telling the remaining suspects apart and refuses them as a group, each named by the round's first added error and `the gate stopped telling apart after 256 checks of its round; run vibelang --fix again to try them`. Rerun `vibelang --fix` to retry them.
 
+A refused site is the span of one diagnostic `--fix` declines: its fix would add an error, its fix would edit another refused site, or the run ends with the diagnostic still there and no fix for it. A refused site keeps its bytes, and no edit overlaps it, so a file can hold refused sites and fixes elsewhere. `--fix` prints one line per site, with its span in the file as it stood before the run: 1-based line and column (UTF-16 code units, as diagnostics count them), then the byte offsets `[start,end)`:
+
+```text
+vibelang --fix: refused site: src/a.vibe:12:3-12:40 [281,318) EK2128: no fix applies: A JavaScript caller can read a plain function*'s return value, so vibelang --fix leaves it; mark the function effect if it is a producer.
+```
+
+A site in text that an earlier fix of the same run wrote reads `EK2128 new`, and its span is the original text that fix replaced. Refused sites alone don't change the exit status. If a rewrite changes a refused site anyway, that is a VibeLang bug: `--fix` prints `vibelang --fix: refused site changed: <site>: a vibelang bug; <file> keeps its text from before --fix`, leaves that file as it was, and exits 3.
+
 Normalization continues until no accepted fix remains, even when nested edits overlap for more than sixteen rounds. If a rewrite repeats a source state, the command reports non-convergence and writes no files.
 
 A direct `extends` or `implements` entry retains its named type, such as `Effect.Effect<number>`. Effect types inside another base's type arguments can still shorten, as in `Holder<number!!>`.

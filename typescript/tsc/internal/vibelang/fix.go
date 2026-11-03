@@ -225,6 +225,9 @@ func FixWithOptions(ctx context.Context, sys tsc.System, args []string, options 
 	}
 	reportSidecarConfigFixes(sys, configChanges)
 	result.Report(sys.Writer(), func(name tspath.RootedFilePath) string { return relativeName(sys, name) })
+	if len(result.Changed) > 0 {
+		return int(tsc.ExitStatusInvalidProject_OutputsSkipped) // a fixer bug; the files keep their text
+	}
 	if n := len(result.Remaining); n > 0 {
 		fmt.Fprintf(sys.ErrorWriter(), "vibelang --fix: stopped after %d %s with %d %s still applying; run vibelang --fix again.\n", fixPassLimit, plural(fixPassLimit, "pass", "passes"), n, plural(n, "fix", "fixes"))
 		return int(tsc.ExitStatusDiagnosticsPresent_OutputsGenerated)
@@ -311,6 +314,10 @@ type FixRefusal struct {
 	Label   string // a source migration without a diagnostic
 	Rewrite string // a rewrite's label, as try, when no diagnostic's fix was refused
 	Error   string // the first error the fix would add, or for a rewrite why it was not written
+	// Start and End, when Spanned, are the span of the refused diagnostic,
+	// or of the fix's edits, in the text the fix was tried on (fix_sites.go).
+	Start, End int
+	Spanned    bool
 }
 
 // A FixRemaining is a fix that still applies after the pass limit.
@@ -327,6 +334,8 @@ type FixResult struct {
 	Refused   []FixRefusal
 	Remaining []FixRemaining // the fixes that still apply after fixPassLimit passes
 	Err       error          // normalization could not reach a fixed point
+	Sites     []RefusedSite  // the diagnostics --fix declined, in the files before the run (fix_sites.go)
+	Changed   []RefusedSite  // sites a rewrite changed anyway, a vibelang bug: their files keep their text
 }
 
 // Report writes one line per fixed file, per refusal and per fix that still
@@ -360,6 +369,9 @@ func (r *FixResult) Report(w io.Writer, name func(tspath.RootedFilePath) string)
 				count += n
 			}
 		}
+		if count == 0 {
+			continue // restored: a rewrite changed a refused site (fix_sites.go)
+		}
 		total += count
 		fmt.Fprintf(w, "vibelang --fix: %s: %d %s (%s)\n", name(file), count, plural(count, "fix", "fixes"), strings.Join(parts, ", "))
 	}
@@ -374,6 +386,7 @@ func (r *FixResult) Report(w io.Writer, name func(tspath.RootedFilePath) string)
 		}
 		fmt.Fprintf(w, "vibelang --fix: %s:%d: %s not fixed: the fixed program would report %s\n", name(refusal.File), refusal.Line, code, refusal.Error)
 	}
+	reportSites(w, r.Sites, r.Changed, name)
 	for _, remaining := range r.Remaining {
 		fmt.Fprintf(w, "vibelang --fix: %s:%d: %s still applies after %d %s\n", name(remaining.File), remaining.Line, remaining.Fix, fixPassLimit, plural(fixPassLimit, "pass", "passes"))
 	}
@@ -468,10 +481,36 @@ func FixProjectWithOptions(ctx context.Context, fs vfs.FS, libraryPath tspath.Ro
 	}
 	g := &fixGate{ctx: ctx, done: done, build: build, fresh: fresh, baseline: baselineOf(ctx, program), refused: map[string]bool{}, alone: map[[32]byte]map[string]int{}, verified: verified, progress: progress, isolationChecks: options.IsolationChecks, checkpointFirst: options.CheckpointFirst}
 	var roundRefusals []FixRefusal
+	sites := newFixSites(func(name tspath.RootedFilePath) string {
+		text, _ := fs.ReadFile(name)
+		return text
+	})
+	refusedWhy := map[string]string{}
 	refuse := func(refusal FixRefusal, key string) {
 		g.refused[key] = true
 		roundRefusals = append(roundRefusals, refusal)
 		result.Refused = append(result.Refused, refusal)
+		code := refusal.Label
+		if code == "" && refusal.Code != 0 {
+			code = fixCodeName(refusal.Code)
+		}
+		if code == "" {
+			return // a rewrite, not a diagnostic
+		}
+		reason := "the fixed program would report " + refusal.Error
+		refusedWhy[key] = reason
+		current, ok := texts[refusal.File]
+		if !ok {
+			current, _ = fs.ReadFile(refusal.File)
+		}
+		start, end := refusal.Start, refusal.End
+		if !refusal.Spanned {
+			if refusal.Line <= 0 {
+				return
+			}
+			start, end = lineSpan(current, refusal.Line)
+		}
+		sites.add(refusal.File, current, start, end, code, reason)
 	}
 	// retryRefused forgets the round refusals, each of which held for the
 	// program it was tried on, and adds program's errors to the baseline: the
@@ -522,6 +561,23 @@ func FixProjectWithOptions(ctx context.Context, fs vfs.FS, libraryPath tspath.Ro
 				}
 			}
 			p.cleanImports = !options.MigrationOnly && !options.VIPOnly
+			// Refuse each fix that would edit a refused site (fix_sites.go).
+			name, text := p.file.FileName(), p.file.Text()
+			if len(p.fixes) > 0 {
+				kept, blocked, by := sites.guard(name, text, p.fixes)
+				for i, f := range blocked {
+					if f.key != "" {
+						g.refused[f.key] = true
+					}
+					code := f.label
+					if code == "" {
+						code = fixCodeName(f.code)
+					}
+					start, end := fixSiteSpan(f)
+					sites.add(name, text, start, end, code, fmt.Sprintf("its fix would edit the refused site %s at %d:%d", by[i].Code, by[i].StartLine, by[i].StartColumn))
+				}
+				p.fixes = kept
+			}
 			if len(p.fixes) > 0 && (p.cleanImports || removesImport(file, p.fixes)) {
 				p.declared = declarationImportKeys(ctx, program, file)
 				p.fixes = keepDeclaredImports(file, p.fixes, p.declared)
@@ -537,6 +593,42 @@ func FixProjectWithOptions(ctx context.Context, fs vfs.FS, libraryPath tspath.Ro
 			removeUnusedTypeNames(g, texts, result)
 			verified(texts)
 		}
+		// A diagnostic the run leaves without a fix is a refused site too. A
+		// round's diagnostic without a fix is not one yet: a later round or
+		// rewrite may repair it.
+		if done.Err() == nil && result.Err == nil {
+			codes := tsFormFixCodes
+			if options.VIPOnly || options.MigrationOnly {
+				codes = vipMigrationFixCodes
+			}
+			for _, file := range fixableFiles(program) {
+				for _, d := range fileFixes(ctx, program, file, g.refused, codes).declined {
+					reason := refusedWhy[d.key]
+					if reason == "" {
+						reason = d.reason
+					}
+					sites.add(file.FileName(), file.Text(), d.start, d.end, fixCodeName(d.code), reason)
+				}
+			}
+		}
+		// A refused site a rewrite changed anyway is a vibelang bug: its file
+		// keeps its text from before the run (fix_sites.go).
+		reverted := false
+		for _, name := range result.Order {
+			fixed := result.Files[name]
+			if changed := sites.check(name, fixed.Text); len(changed) > 0 {
+				result.Changed = append(result.Changed, changed...)
+				fixed.Text = fixed.Original
+				clear(fixed.Counts)
+				fixed.Rewrites = nil
+				texts[name] = fixed.Original
+				reverted = true
+			}
+		}
+		if reverted && result.Err == nil && done.Err() == nil {
+			verified(texts)
+		}
+		result.Sites = sites.all()
 		slices.SortFunc(result.Order, tspath.RootedFilePath.Compare)
 		return result
 	}
@@ -1239,6 +1331,18 @@ type fileFix struct {
 	edits []sourceEdit
 	key   string
 	label string // when set, the fix counts as a rewrite of this kind rather than under code: a native diagnostic has no EK code to count (fix_binding_rename.go)
+	// siteStart and siteEnd, when sited, are the span of the diagnostic.
+	siteStart, siteEnd int
+	sited              bool
+}
+
+// A declinedSite is a diagnostic fileFixes found no fix for, or whose fix
+// was refused before, by key.
+type declinedSite struct {
+	start, end int
+	code       int32
+	key        string
+	reason     string
 }
 
 // A proposal is one round's fixes of a file, whose edits do not overlap.
@@ -1249,6 +1353,7 @@ type proposal struct {
 	// declared is the imports file's declaration file writes, by
 	// declaredImportKey, which the import cleanup keeps.
 	declared map[string]bool
+	declined []declinedSite // fileFixes' diagnostics without a fix
 }
 
 // text returns the proposal's file with its fixes applied.
@@ -1303,6 +1408,7 @@ func fileFixes(ctx context.Context, program *compiler.Program, file *ast.SourceF
 	uri := lsconv.FileNameToDocumentURI(file.FileName())
 	only := []lsproto.CodeActionKind{lsproto.CodeActionKindQuickFix}
 	var candidates []fileFix
+	var declined []declinedSite
 	for _, d := range fixable {
 		key := fixKey(file, d)
 		if refused[key] {
@@ -1314,6 +1420,7 @@ func fileFixes(ctx context.Context, program *compiler.Program, file *ast.SourceF
 					candidates = append(candidates, fix)
 				}
 			}
+			declined = append(declined, declinedSite{d.Pos(), d.End(), d.Code(), key, ""})
 			continue
 		}
 		diagnostic := lsconv.DiagnosticToLSPPush(ctx, converters, d)
@@ -1323,8 +1430,10 @@ func fileFixes(ctx context.Context, program *compiler.Program, file *ast.SourceF
 			Context:      &lsproto.CodeActionContext{Diagnostics: []*lsproto.Diagnostic{diagnostic}, Only: &only},
 		})
 		if err != nil || response.CommandOrCodeActionArray == nil {
+			declined = append(declined, declinedSite{d.Pos(), d.End(), d.Code(), key, declineReason(d)})
 			continue
 		}
+		found := false
 		for _, action := range *response.CommandOrCodeActionArray {
 			if action.CodeAction == nil || action.CodeAction.Edit == nil || action.CodeAction.Edit.Changes == nil {
 				continue
@@ -1338,14 +1447,18 @@ func fileFixes(ctx context.Context, program *compiler.Program, file *ast.SourceF
 				span := converters.FromLSPRangeToOriginal(file, edit.Range)
 				edits = append(edits, sourceEdit{span.Pos(), span.End(), edit.NewText})
 			}
-			candidates = append(candidates, fileFix{code: d.Code(), edits: edits, key: key})
+			candidates = append(candidates, fileFix{code: d.Code(), edits: edits, key: key, siteStart: d.Pos(), siteEnd: d.End(), sited: true})
+			found = true
 			break
+		}
+		if !found {
+			declined = append(declined, declinedSite{d.Pos(), d.End(), d.Code(), key, declineReason(d)})
 		}
 	}
 	// Take the fixes in source order whose edits overlap no fix taken.
 	slices.SortStableFunc(candidates, func(a, b fileFix) int { return firstEdit(a.edits) - firstEdit(b.edits) })
 	var taken []sourceEdit
-	p := proposal{file: file}
+	p := proposal{file: file, declined: declined}
 	for _, candidate := range candidates {
 		if slices.ContainsFunc(candidate.edits, func(e sourceEdit) bool { return overlapsAny(e, taken) }) {
 			continue

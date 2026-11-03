@@ -11,7 +11,10 @@ import (
 // A producer's Stream has no return value (VIP-21): `return value` in a
 // producer is EK2128, and a bare `return` ends the stream. Before VIP-21 the
 // value was evaluated and dropped, so the fix keeps its evaluation: `return`
-// alone for a value that runs no code, `{ value; return }` otherwise.
+// alone for a value that runs no code, `{ value; return }` otherwise. The fix
+// applies only to a function marked effect. A plain function* is a JavaScript
+// generator (VIP-21), whose caller can read the value through next() or
+// yield*, so rewriting its return would lose data with nothing to flag it.
 
 // EK2128: `return value` in a producer. {0} is the value.
 var EK2128 = message(2128, errorCategory, "A producer returns a Stream, which has no return value, so {0} would be dropped; write return alone to end the stream.")
@@ -23,25 +26,25 @@ func init() {
 	tsFormFixCodes = append(tsFormFixCodes, EK2128.Code)
 }
 
-// producerReturns calls f with each `return value` of each producer in file,
-// except a function* written for an API that takes a JavaScript generator,
-// which is EK1002 (generators.go), and one given to a callee that does not
-// resolve, where nothing yet says which it is.
-func producerReturns(c *checker.Checker, file *ast.SourceFile, f func(ret *ast.Node)) {
+// producerReturns calls f with each `return value` of each producer in file and
+// the producer it returns from, except a function* written for an API that takes
+// a JavaScript generator, which is EK1002 (generators.go), and one given to a
+// callee that does not resolve, where nothing yet says which it is.
+func producerReturns(c *checker.Checker, file *ast.SourceFile, f func(producer, ret *ast.Node)) {
 	generators := generatorArguments(c, file)
-	var inProducer func(n *ast.Node) bool
-	inProducer = func(n *ast.Node) bool {
-		if isFunctionBoundary(n) {
-			return false
-		}
-		if n.Kind == ast.KindReturnStatement && n.Expression() != nil {
-			f(n)
-		}
-		return n.ForEachChild(inProducer)
-	}
 	var visit func(n *ast.Node) bool
 	visit = func(n *ast.Node) bool {
 		if isProducer(n) && !generators[n] {
+			var inProducer func(child *ast.Node) bool
+			inProducer = func(child *ast.Node) bool {
+				if isFunctionBoundary(child) {
+					return false
+				}
+				if child.Kind == ast.KindReturnStatement && child.Expression() != nil {
+					f(n, child)
+				}
+				return child.ForEachChild(inProducer)
+			}
 			n.Body().ForEachChild(inProducer)
 		}
 		return n.ForEachChild(visit)
@@ -77,8 +80,12 @@ func checkProducerReturns(c *checker.Checker, file *ast.SourceFile) {
 	if !isVibeLangFile(file) {
 		return
 	}
-	producerReturns(c, file, func(ret *ast.Node) {
+	producerReturns(c, file, func(producer, ret *ast.Node) {
 		d := report(c, ret.Expression(), EK2128, nodeText(file, ret.Expression()))
+		if !isMarkedEffect(producer) {
+			note(d, "A JavaScript caller can read a plain function*'s return value, so vibelang --fix leaves it; mark the function effect if it is a producer.")
+			return
+		}
 		note(d, "Its quick fix writes {0}; vibelang --fix applies every such fix in the project.", producerReturnRewrite(c, file, ret))
 	})
 }
@@ -96,8 +103,8 @@ func producerReturnFixActions(ctx context.Context, fix *ls.CodeFixContext) ([]*l
 	c, done := fix.Program.GetTypeCheckerForFile(ctx, fix.SourceFile)
 	defer done()
 	var actions []*ls.CodeAction
-	producerReturns(c, fix.SourceFile, func(ret *ast.Node) {
-		if len(actions) == 0 && nodeStart(fix.SourceFile, ret.Expression()) == fix.Span.Pos() {
+	producerReturns(c, fix.SourceFile, func(producer, ret *ast.Node) {
+		if isMarkedEffect(producer) && len(actions) == 0 && nodeStart(fix.SourceFile, ret.Expression()) == fix.Span.Pos() {
 			end := ret.End()
 			if text := fix.SourceFile.Text(); end > 0 && text[end-1] == ';' {
 				end--
