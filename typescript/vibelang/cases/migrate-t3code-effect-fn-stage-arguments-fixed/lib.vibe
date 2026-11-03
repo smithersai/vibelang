@@ -1,0 +1,39 @@
+
+// t3code apps/server DatabaseMaintenance.inspect: a stage reads the argument.
+export const inspect = effect (databasePath: string) => try withSpan(effect {
+  return databasePath.length
+} |> ((effect, databasePath) => effect |> Effect.map(%, (size) => `${databasePath}:${size}`))(%, databasePath), "DatabaseMaintenance.inspect")
+
+// t3code apps/desktop DesktopLegacyLocalStorage.newestFileMtime: a stage that reads no argument.
+export const newestFileMtime = effect (directory: string) => try withSpan(effect {
+  if (directory === "") throw "empty"
+  return directory.length
+} |> ((effect) => effect |> Effect.option(%))(%), "DesktopLegacyLocalStorage.newestFileMtime")
+
+// t3code apps/server cli/project: a stage that takes both arguments.
+export const snapshot = effect (origin: string, bearerToken: string) => try withSpan(effect {
+  return `${origin}#${bearerToken.length}`
+} |> ((effect, origin, bearerToken) =>
+    effect |> Effect.map(%, (text) => (origin.startsWith("http") ? text.toUpperCase() : text)))(%, origin, bearerToken), "project.fetchLiveOrchestrationSnapshot")
+
+// t3code apps/server CodexAdapterV2.startNativeTurn: a stage reads the first of two arguments.
+export const startTurn = effect (turnInput: string, codexInput: number) => try withSpan(effect {
+  return turnInput.length + codexInput
+} |> ((effect, turnInput) => effect |> Effect.map(%, (n) => `${turnInput}=${n}`))(%, turnInput), "CodexAdapterV2.startNativeTurn")
+
+// t3code apps/server ClaudeProvider: a comment between the parameters.
+export const verify = effect (
+  proof: string | undefined,
+  // Requests that cannot carry a proof send the header.
+  header: string,
+) => try withSpan(effect {
+  return proof ?? header
+}, "ClaudeProvider.verify")
+
+// t3code apps/server SourceControlRepositoryService: a comment before a stage.
+export const lookup = effect (name: string) => try withSpan(effect {
+  if (name === "") throw "missing"
+  return name.length
+}
+  // Someone is waiting, so a missing repository reads as none.
+  |> Effect.orElseSucceed(%, () => 0), "SourceControlRepositoryService.lookupRepository")

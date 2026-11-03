@@ -24,6 +24,8 @@ import (
 //	Effect.fn(function* (a) { B })            effect (a) => { B }
 //	Effect.fn("n")(function* (a) { B })       effect (a) => try Effect.withSpan(effect { B }, "n")
 //	Effect.fn(function* (a) { B }, stage)     effect (a) => try (effect { B } |> stage(%))
+//	Effect.fn(function* (a) { B }, (e, a) => S)
+//	                                          effect (a) => try (effect { B } |> ((e, a) => S)(%, a))
 //
 // In B, each yield* e becomes what runs e where it stands: try e;
 // x for Effect.succeed(x); try e.asEffect() for an Effect.Yieldable that is no
@@ -345,7 +347,27 @@ func planEffectGenWith(c *checker.Checker, file *ast.SourceFile, call *ast.Node,
 	if fn != nil {
 		start, end = opening, fn.Body().End()
 	}
-	if hasComment(text[start:blockStart]) || hasComment(text[blockEnd:end]) {
+	// Effect.fn's rewrite copies the text of its parameter list, its span's
+	// arguments and its stages, and carries a comment before a stage
+	// (effectFnText), so a comment there keeps its place.
+	head, tail := text[start:blockStart], text[blockEnd:end]
+	if g.isFn {
+		var kept [][2]int
+		if open, close := generator.ParameterList().Pos()-1, parametersEnd(file, generator); close > open && open >= 0 {
+			if generator.TypeParameterList() != nil {
+				open = generator.TypeParameterList().Pos() - 1
+			}
+			kept = append(kept, [2]int{open, close})
+		}
+		for _, argument := range g.span {
+			kept = append(kept, [2]int{nodeStart(file, argument), argument.End()})
+		}
+		for _, stage := range g.stages {
+			kept = append(kept, [2]int{stage.Pos(), stage.End()})
+		}
+		head, tail = withoutRanges(text, start, blockStart, kept), withoutRanges(text, blockEnd, end, kept)
+	}
+	if hasComment(head) || hasComment(tail) {
 		return refuse("a comment stands between " + nodeText(file, apiName(call)) + " and its generator's body")
 	}
 	edits = joinEditsAt(edits)
@@ -481,10 +503,27 @@ func effectFnText(c *checker.Checker, file *ast.SourceFile, g *generatorCall, bo
 	}
 	program := "effect " + body
 	for _, stage := range g.stages {
-		if arrow := ast.SkipParentheses(stage); ast.IsSpreadElement(stage) || ast.IsFunctionExpressionOrArrowFunction(arrow) && len(arrow.Parameters()) > 1 {
-			return "", "a stage is a spread or reads the function's arguments, which a pipe's stage has no access to"
+		if ast.IsSpreadElement(stage) {
+			return "", "a stage is a spread, which a pipe's stage has no access to"
 		}
-		program += " |> " + pipeStageText(g, file, stage)
+		if why := stageShadowing(c, generator, stage); why != "" {
+			return "", why
+		}
+		if arrow := ast.SkipParentheses(stage); ast.IsFunctionExpressionOrArrowFunction(arrow) && len(arrow.Parameters()) > 1 {
+			// Effect.fn calls a stage with the program and the function's
+			// arguments, stage(effect, ...args); the effect function passes
+			// its parameters, which hold those arguments.
+			arguments, why := stageArguments(file, generator, arrow)
+			if why == "" {
+				why = stageRenamesArguments(file, generator, arrow)
+			}
+			if why != "" {
+				return "", why
+			}
+			program += stageOperator(file, stage) + "(" + nodeText(file, stage) + ")(%" + arguments + ")"
+			continue
+		}
+		program += stageOperator(file, stage) + pipeStageText(g, file, stage)
 	}
 	running := "try (" + program + ")"
 	if g.span != nil {
@@ -498,6 +537,162 @@ func effectFnText(c *checker.Checker, file *ast.SourceFile, g *generatorCall, bo
 		return "effect function " + nameOf(generator) + signature + " { return " + running + " }", ""
 	}
 	return "effect " + signature + " => " + running, ""
+}
+
+// stageOperator returns the pipe operator that applies stage, an Effect.fn's
+// stage, " |> ", with the comments written before the stage on their own
+// lines before it.
+func stageOperator(file *ast.SourceFile, stage *ast.Node) string {
+	text := file.Text()
+	leading := text[stage.Pos():nodeStart(file, stage)]
+	if !hasComment(leading) {
+		return " |> "
+	}
+	indent := lineIndent(text, nodeStart(file, stage))
+	return "\n" + indent + strings.TrimSpace(leading) + "\n" + indent + "|> "
+}
+
+// withoutRanges returns text[from:to] with each of kept, a range whose text
+// the rewrite keeps, written as spaces.
+func withoutRanges(text string, from, to int, kept [][2]int) string {
+	out := []byte(text[from:to])
+	for _, r := range kept {
+		for i := max(r[0], from); i < min(r[1], to); i++ {
+			out[i-from] = ' '
+		}
+	}
+	return string(out)
+}
+
+// stageArguments returns the arguments after the program, ", a, b", with
+// which the effect function that replaces generator calls stage, an
+// Effect.fn's stage that reads the function's arguments, or why there are
+// none. Effect.fn passes the arguments as the caller wrote them, so each
+// parameter the stage reads must hold its argument: a name with no default.
+// A stage with a rest parameter gets them all, a rest parameter's spread.
+func stageArguments(file *ast.SourceFile, generator, stage *ast.Node) (string, string) {
+	var names []string
+	rest := false
+	for _, parameter := range generator.Parameters() {
+		name := parameter.Name()
+		if ast.IsIdentifier(name) && name.Text() == "this" {
+			continue
+		}
+		if !ast.IsIdentifier(name) || parameter.Initializer() != nil {
+			return "", "a stage reads the function's arguments, and the parameter " + shortText(nodeText(file, parameter), "of the generator") + " does not hold its argument"
+		}
+		if parameter.AsParameterDeclaration().DotDotDotToken != nil {
+			names = append(names, "..."+name.Text())
+			rest = true
+		} else {
+			names = append(names, name.Text())
+		}
+	}
+	read := stage.Parameters()[1:]
+	switch {
+	case slices.ContainsFunc(read, func(p *ast.Node) bool { return p.AsParameterDeclaration().DotDotDotToken != nil }):
+	case rest && len(read) >= len(names) || !rest && len(read) > len(names):
+		return "", "a stage reads more arguments than the generator's parameters name"
+	default:
+		names = names[:len(read)]
+	}
+	if !ast.IsArrowFunction(stage) && usesArguments(stage) {
+		return "", "a stage reads its own arguments"
+	}
+	if len(names) == 0 {
+		return "", ""
+	}
+	return ", " + strings.Join(names, ", "), ""
+}
+
+// stageRenamesArguments returns why stage, an Effect.fn stage of generator
+// that reads the function's arguments, keeps EK1002 when it names one of them
+// otherwise than the generator does, such as (effect, _directory) for
+// function* (directory): Effect.fn's declaration then takes the stage's name,
+// and the effect function's would take the generator's. It returns "" when
+// the names agree.
+func stageRenamesArguments(file *ast.SourceFile, generator, stage *ast.Node) string {
+	var own []*ast.Node
+	for _, parameter := range generator.Parameters() {
+		if name := parameter.Name(); !ast.IsIdentifier(name) || name.Text() != "this" {
+			own = append(own, parameter)
+		}
+	}
+	for i, parameter := range stage.Parameters()[1:] {
+		if i >= len(own) {
+			break
+		}
+		if name, want := nodeText(file, parameter.Name()), nodeText(file, own[i].Name()); name != want {
+			return "a stage names the argument " + want + " " + name + ", which Effect.fn's declaration takes, and the effect function's would keep " + want
+		}
+	}
+	return ""
+}
+
+// usesArguments reports whether fn, a function expression, reads arguments.
+func usesArguments(fn *ast.Node) bool {
+	var visit func(node *ast.Node) bool
+	visit = func(node *ast.Node) bool {
+		if ast.IsIdentifier(node) && node.Text() == "arguments" && readsBinding(node) {
+			return true
+		}
+		if isFunctionBoundary(node) && !ast.IsArrowFunction(node) {
+			return false
+		}
+		return node.ForEachChild(visit)
+	}
+	return fn.Body() != nil && fn.Body().ForEachChild(visit)
+}
+
+// stageShadowing returns why stage, an Effect.fn's stage, would read
+// something else inside the effect function that replaces generator: a name
+// it reads from outside that one of the generator's parameters or type
+// parameters declares, and that would hide it there; or "".
+func stageShadowing(c *checker.Checker, generator, stage *ast.Node) string {
+	names := map[string]bool{}
+	for _, parameter := range generator.Parameters() {
+		collectBindingNames(parameter.Name(), names)
+	}
+	for _, parameter := range generator.TypeParameters() {
+		names[parameter.Name().Text()] = true
+	}
+	why := ""
+	var visit func(node *ast.Node) bool
+	visit = func(node *ast.Node) bool {
+		if ast.IsIdentifier(node) && names[node.Text()] && (readsBinding(node) || ast.IsTypeReferenceNode(node.Parent)) {
+			symbol := c.GetSymbolAtLocation(node)
+			inside := symbol != nil && len(symbol.Declarations()) > 0 && slices.ContainsFunc(symbol.Declarations(), func(d *ast.Node) bool {
+				return d.Pos() >= stage.Pos() && d.End() <= stage.End()
+			})
+			if !inside {
+				why = "a stage reads " + node.Text() + ", which the generator's parameter of that name would hide"
+				return true
+			}
+		}
+		return node.ForEachChild(visit)
+	}
+	visit(stage)
+	return why
+}
+
+// collectBindingNames adds the names that name, a binding name or pattern,
+// declares to names.
+func collectBindingNames(name *ast.Node, names map[string]bool) {
+	if name == nil {
+		return
+	}
+	if ast.IsIdentifier(name) {
+		names[name.Text()] = true
+		return
+	}
+	name.ForEachChild(func(child *ast.Node) bool {
+		if ast.IsBindingElement(child) {
+			collectBindingNames(child.Name(), names)
+		} else {
+			collectBindingNames(child, names)
+		}
+		return false
+	})
 }
 
 // plainMemberDestination reports whether node is an object literal's

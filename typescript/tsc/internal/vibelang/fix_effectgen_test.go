@@ -121,6 +121,42 @@ func TestEffectGenQuickFixes(t *testing.T) {
   return n
 } |> Effect.orElseSucceed(%, () => 0) |> Effect.asVoid(%), "f")
 `},
+		{"Effect.fn stage that reads the arguments", `export const f = Effect.fn("f")(
+  function* (n: number) {
+    return yield* Effect.succeed(n)
+  },
+  (e, n) => Effect.map(e, (x) => x + n),
+)
+`, `export const f = effect (n: number) => try Effect.withSpan(effect {
+  return n
+} |> ((e, n) => Effect.map(e, (x) => x + n))(%, n), "f")
+`},
+		{"Effect.fn stage with unread arguments", "export const f = Effect.fn(\"f\")(function* (path: string, n: number) {\n  return yield* Effect.succeed(path.length + n)\n}, (effect, path) => Effect.option(effect))\n",
+			"export const f = effect (path: string, n: number) => try Effect.withSpan(effect {\n  return path.length + n\n} |> ((effect, path) => Effect.option(effect))(%, path), \"f\")\n"},
+		{"Effect.fn stage reading a rest parameter", "export const f = Effect.fn(function* (...xs: number[]) {\n  return yield* Effect.succeed(xs.length)\n}, (e, ...xs) => Effect.map(e, (n) => n + xs.length))\n",
+			"export const f = effect (...xs: number[]) => try (effect {\n  return xs.length\n} |> ((e, ...xs) => Effect.map(e, (n) => n + xs.length))(%, ...xs))\n"},
+		{"Effect.fn with a comment in its parameters", "export const f = Effect.fn(\"f\")(function* (\n  // The count.\n  n: number,\n) {\n  return yield* Effect.succeed(n)\n})\n",
+			"export const f = effect (\n  // The count.\n  n: number,\n) => try Effect.withSpan(effect {\n  return n\n}, \"f\")\n"},
+		{"Effect.fn with comments among its stages", `export const f = Effect.fn("f")(
+  function* (n: number) {
+    return yield* Effect.succeed(n)
+  },
+  // A missing count is zero.
+  Effect.orElseSucceed(() => 0),
+  (e) =>
+    // Nothing reads the count.
+    Effect.asVoid(e),
+)
+`, `export const f = effect (n: number) => try Effect.withSpan(effect {
+  return n
+}
+  // A missing count is zero.
+  |> Effect.orElseSucceed(%, () => 0) |> ((e) =>
+    // Nothing reads the count.
+    Effect.asVoid(e))(%), "f")
+`},
+		{"Effect.fn stage with its own pipe", "export const f = Effect.fn(\"f\")(function* (directory: string) {\n  return yield* Effect.succeed(directory.length)\n}, (effect, directory) => effect |> Effect.option(%))\n",
+			"export const f = effect (directory: string) => try Effect.withSpan(effect {\n  return directory.length\n} |> ((effect, directory) => effect |> Effect.option(%))(%, directory), \"f\")\n"},
 		{"Effect.fn reading this", "export class Box {\n  v = 1\n  read = Effect.fn(function* (this: Box) {\n    return yield* Effect.succeed(this.v)\n  })\n}\n",
 			"export class Box {\n  v = 1\n  read = effect function (this: Box) {\n    return this.v\n  }\n}\n"},
 		{"Effect.fn with an optional parameter", "export const f = Effect.fn(function* (n?: number) {\n  return yield* Effect.succeed(n)\n})\n",
@@ -174,10 +210,17 @@ func TestEffectGenRefusals(t *testing.T) {
 		{"arguments", "export function f(n: number) {\n  return Effect.gen(function* () {\n    return yield* Effect.succeed(arguments.length)\n  })\n}\n", "its own arguments"},
 		{"a nested function*", "export const f = (xs: ReadonlyArray<number>) => Effect.gen(function* () {\n  return yield* Effect.forEach(xs, (x) => Effect.gen(function* () { return yield* Effect.succeed(x) }))\n})\n", "another function*"},
 		{"a comment outside the body", "export const f = () => Effect.gen(/* why */ function* () {\n  return yield* Effect.succeed(1)\n})\n", "a comment stands between"},
+		{"a comment after Effect.fn's last stage", "export const f = Effect.fn(function* (n: number) {\n  return yield* Effect.succeed(n)\n}, Effect.asVoid /* why */)\n", "a comment stands between"},
+		{"a comment before Effect.fn's generator", "export const f = Effect.fn(/* why */ function* (n: number) {\n  return yield* Effect.succeed(n)\n})\n", "a comment stands between"},
 		{"another return type", "type G = Generator<never, number>\nexport const f = Effect.fn(function* (n: number): G {\n  return n\n})\n", "a return type other than Effect.fn.Return"},
 		{"a return annotation before stages", "export const f = Effect.fn(function* (n: number): Effect.fn.Return<number> {\n  return n\n}, Effect.map((x) => x + 1))\n", "names the Effect before its stages"},
 		{"new.target", "export function F(this: unknown) {\n  return Effect.gen(function* () {\n    return new.target === undefined\n  })\n}\n", "new.target"},
-		{"an Effect.fn stage that reads the arguments", "export const f = Effect.fn(function* (n: number) {\n  return yield* Effect.succeed(n)\n}, (e, n) => Effect.map(e, (x) => x + n))\n", "reads the function's arguments"},
+		{"an Effect.fn stage that reads a defaulted argument", "export const f = Effect.fn(function* (n: number = 1) {\n  return yield* Effect.succeed(n)\n}, (e, n) => Effect.map(e, (x) => x + (n ?? 0)))\n", "does not hold its argument"},
+		{"an Effect.fn stage that reads a destructured argument", "export const f = Effect.fn(function* ({ n }: { n: number }) {\n  return yield* Effect.succeed(n)\n}, (e, o) => Effect.map(e, (x) => x + o.n))\n", "does not hold its argument"},
+		{"an Effect.fn stage that reads a name a parameter hides", "const n = 1\nexport const f = Effect.fn(function* (n: number) {\n  return yield* Effect.succeed(n)\n}, Effect.map((x) => x + n))\n", "would hide"},
+		{"an Effect.fn stage that reads an argument no parameter names", "export const f = Effect.fn(function* (n: number) {\n  return yield* Effect.succeed(n)\n}, (e: Effect.Effect<number>, n: number, m?: number) => Effect.map(e, (x) => x + n + (m ?? 0)))\n", "more arguments than"},
+		{"an Effect.fn stage that renames an argument", "export const f = Effect.fn(\"f\")(function* (directory: string) {\n  return yield* Effect.succeed(directory.length)\n}, (effect, _directory) => Effect.option(effect))\n", "Effect.fn's declaration takes"},
+		{"an Effect.fn stage that is a spread", "const stages = [Effect.asVoid] as const\nexport const f = Effect.fn(function* (n: number) {\n  return yield* Effect.succeed(n)\n}, ...stages)\n", "a stage is a spread"},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			if got, ok := effectGenQuickFix(t, test.source); ok {
@@ -225,6 +268,78 @@ func TestEffectGenMemberNamesAreNotBindings(t *testing.T) {
 			}
 		})
 	}
+}
+
+// Effect.fn calls each stage with the program and the arguments as the
+// caller wrote them. The effect function that replaces it passes a stage its
+// parameters, so the fix exists only where each parameter the stage reads
+// holds its argument, a name with no default, where the stage reads no more
+// arguments than the generator names, where the stage names them as the
+// generator does (Effect.fn's declaration takes the stage's names), and where
+// no stage reads an outer name that a generator parameter would hide. The
+// fixed source compiles and keeps the stage's text.
+func FuzzEffectFnStageArguments(f *testing.F) {
+	parameters := []struct {
+		text  string
+		holds bool // the parameter holds the argument the caller wrote
+	}{
+		{"n: number, m?: number", true},
+		{"n?: number, m?: number", true},
+		{"n: number = 1, m?: number", false},
+		{"{ n }: { n: number }, m?: number", false},
+	}
+	for p := range len(parameters) {
+		for arity := range uint8(3) {
+			for _, flags := range []uint8{0, 1, 2} {
+				f.Add(uint8(p), arity, flags)
+			}
+		}
+	}
+	f.Fuzz(func(t *testing.T, p, arity, flags uint8) {
+		parameter := parameters[int(p)%len(parameters)]
+		shadow, renamed := flags%3 == 1, flags%3 == 2
+		// The stage reads the program alone, or every argument, or one more
+		// than the generator names.
+		reads := []int{1, 3, 4}[int(arity)%3]
+		names := []string{"e", "n", "m", "c"}[:reads]
+		if renamed {
+			for i := 1; i < len(names); i++ {
+				names[i] = "_" + names[i]
+			}
+		}
+		outer := "o"
+		if shadow {
+			outer = "n" // an outer name that the generator's n would hide
+		}
+		read := outer
+		if shadow && reads > 1 && !renamed {
+			read = "k" // the stage's own n would bind it: read another outer name
+			outer = "k"
+		}
+		stage := "(" + strings.Join(names, ", ") + ") => Effect.map(e, (x) => x + " + read + ")"
+		source := "const " + outer + " = 1\nexport const f = Effect.fn(\"f\")(function* (" + parameter.text + ") {\n  return yield* Effect.succeed(1)\n}, " + stage + ")\n"
+		hidden := read == "n"
+		want := !hidden && (reads == 1 || parameter.holds && reads == 3 && !renamed)
+		got, ok := effectGenQuickFix(t, source)
+		if ok != want {
+			t.Fatalf("quick fix %v, want %v, for:\n%s\ngot:\n%s\nnotes: %s", ok, want, source, got, effectGenNotes(t, source))
+		}
+		if !ok {
+			if notes := effectGenNotes(t, source); !strings.Contains(notes, "No quick fix") {
+				t.Fatalf("EK1002's notes %q give no reason", notes)
+			}
+			return
+		}
+		if !strings.Contains(got, stage) {
+			t.Fatalf("the fix lost the stage %q:\n%s", stage, got)
+		}
+		program, file, _, _ := editorProgram(t, got)
+		for _, d := range append(program.GetSyntacticDiagnostics(t.Context(), file), program.GetSemanticDiagnostics(t.Context(), file)...) {
+			if d.Category() == diagnostics.CategoryError {
+				t.Fatalf("the fixed source reports %s%d: %s\n%s", d.Source(), d.Code(), d.String(), got)
+			}
+		}
+	})
 }
 
 // A generator's reads of arguments and of its name, in every position a name
