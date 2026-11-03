@@ -64,6 +64,16 @@ imports, a package-name literal, and multiple explicit runtime imports.
 The oracle rejects missing or invalid emitted JavaScript, so absent output
 cannot silently prove that the package is unnecessary.
 
+## Declaration and reference positions
+
+The editor oracle requires hover, definition and completion answers at source
+references to project declarations. Declaration names remain new-name contexts:
+stock TypeScript can return no completions there. A generated schema-error
+self type shares its declaration name's span, so reference selection excludes
+all declaration-name source spans before inspecting projected references.
+The local, exported and namespace corpus cases retain real constructor uses
+and all existing editor range and edit checks.
+
 ## Rename collision diagnostics
 
 The editor consistency oracle follows the specification's TypeScript counterpart
@@ -289,7 +299,7 @@ Appendix B supplies the current diagnostic assignments; compatibility declaratio
 | `FuzzSpecVariants` | Retired | Equivalent-form semantics use `FuzzVIPDifferential`. |
 | `FuzzFormat` | One source | A file with a syntax error is refused and a file without one is not; the output emits the same JavaScript token stream and diagnostics as the input, keeps each comment between the same tokens, and a second pass changes nothing (Chapter 28 Idempotence, D276, D372) |
 | `FuzzFix` | Project archive | `--fix` converges, adds no error, keeps comments and contracts, is a fixed point and keeps every exported program's outcome (Configuration and tooling, rule 2). Historical code ranges no longer establish a completion promise. The current tooling chapter explicitly names the `EK1101` codemod and preserves the existing safe-fix/refusal checks; those checks remain. File-scope checks remain pending the current-spec wording for decided detail 270. |
-| `FuzzEditor` | Project archive and offsets | No panic, hang or request error; ranges inside documents; hover, definition and completion answer at a declared name; edits stay in their documents, do not overlap, keep a parsing file parsing; an EK quick fix removes its diagnostic and adds no error (D61, D291, D372) |
+| `FuzzEditor` | Project archive and offsets | No panic, hang or request error; ranges inside documents; hover, definition and completion answer at a reference to a project declaration; edits stay in their documents, do not overlap, keep a parsing file parsing; an EK quick fix removes its diagnostic and adds no error (D61, D291, D372) |
 | `FuzzIncremental` | Archive and edit script over any file of the project | After each partial edit, the server's diagnostics equal a fresh compilation's (D32, D61) |
 | `FuzzCommandLine` | Archive and a fuzzed argument list | The built binary never panics or hangs; exit statuses as Chapter 28 gives them; printed diagnostics equal the library's; `--fix` as above; `--estree` equals the library conversion; `--help`, `--version`, `--watch`, an LSP and an API session end cleanly |
 
