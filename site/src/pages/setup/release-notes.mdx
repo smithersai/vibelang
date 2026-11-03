@@ -489,6 +489,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - An `effect` function passed where a call infers its success, as in `Effect.suspend(effect () => sql`...`)`, succeeded with an Effect subtype it returned (a `sql` statement, an `Exit`, a `Config`) and never ran it, with no diagnostic, though the same code with `Effect.Effect` drew `EK4802`. It now draws `EK4802`, and `--fix-vip-only` writes the `try` that keeps it running as it did before VIP-1. A plain function that returns such a subtype where an Effect is expected, as `Effect.suspend(() => make())`, already ran it, and `--fix-vip-only` now leaves it as written instead of marking it `effect`.
 - The migrate flow's codemod rewrote a test's extensionless import, `../src/x`, to `../src/x.vibe`, an edit the test verifier refuses, so Smithers' `apps/mvp` lost 120 test files and `ui` a module. A test now keeps its extensionless import as written; a `.ts` or `.js` specifier of a renamed module still changes, and so does a Bun `mock.module`, which does not reach `x.vibe` without it.
+- The `is` guide implied that every skipped pattern binding reports `TS2454`. It now documents TypeScript's exemptions for `any`, `unknown`, `void` and types containing `undefined`; conformance cases check both exempt and checked types.
+
 - Release notes exposed an internal decision identifier while explaining curried service provision; the explanation now uses only the public API names.
 
 - The migrate flow's Alchemy namespace check failed after the source-sidecar specification was reworded. Its corpus now quotes the current contract and identifies a stale quote when one changes.
@@ -713,6 +715,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - `vibelang --fix` left `Result.gen` in a `.vibe` file as `EK1002` with no quick fix and no reason. It now rewrites it to a plain function called in place, which stops at the first failure as `Result.gen` does, or says why it can't.
 - Bun's release-age setting blocked newly published VibeLang packages in example projects; the examples now exempt their pinned VibeLang packages from that age check.
 - `--fix` rewrote `.pipe(Semaphore.withPermits(semaphore, 1))` to `Semaphore.withPermits(%, semaphore, 1)`, which passes the program as the Semaphore, and then refused the whole `Effect.gen` with TS2740; a stage whose `self` is not the piped value now stays curried, as `Semaphore.withPermits(semaphore, 1)(%)`.
+- A bare object after `fork` was interpreted as a legacy callback body; it now remains an object operand and receives `EK1703` when it is not an Effect.
 - Editor fixes could write invalid annotations around `this` or `super`, a loop binding or a `finally` binding; they now decline edits that cannot preserve the program.
 - Hover and rename missed references in match guards, `is` subjects, `and` patterns and error `extends` clauses; the editor now finds those original source references.
 - An unfinished `catch` expression could produce document-outline ranges that ended before they started; outline entries now keep valid source ranges.
