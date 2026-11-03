@@ -912,6 +912,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - The specification listed side-effect imports twice; its grammar now gives them one derivation, checked by a regression guard.
 
+- The specification omitted the diagnostic for calls and property access after parenthesized or block-bodied `catch` handlers. All closed handlers now name `EK0512` and the repair that parenthesizes the whole expression.
+
 - Renaming a shorthand pattern binding could change the property it matched and add `TS2339`; rename now keeps the property key and writes an explicit binding.
 
 - Rolldown entry globs could bundle generated `.d.vibex.ts` declarations as empty entrypoints; the plugin now excludes those sidecars and retains the JSX source entries and aliases.

@@ -255,6 +255,12 @@ const specCheck = (kind: string, deps: ReadonlyArray<unknown> = []) => S.Shell.T
   shell: "node docs/tools/spec-rules.mjs " + kind,
   data: [specInputs, ...deps] as Array<never>, tools: [node], sandbox: "none", timeout: "2m"
 })
+const specCatchDiagnostics = S.Shell.Test({
+  summary: "Closed catch handler diagnostics agree across VIP-5 and both catalogs.",
+  shell: "node docs/tools/spec-catch-diagnostics.mjs && node --test docs/tools/spec-catch-diagnostics.test.mjs",
+  data: [specInputs, S.Filegroup({ srcs: [...S.glob(["docs/tools/spec-catch-diagnostics*"])] })],
+  tools: [node], sandbox: "none", timeout: "2m"
+})
 const specPipeArrows = S.Shell.Test({
   summary: "Pipe restrictions preserve closed catch arrows and reject blanket exclusions.",
   shell: "node docs/tools/spec-pipe-arrows.mjs && node --test docs/tools/spec-pipe-arrows.test.mjs",
@@ -352,7 +358,7 @@ const grammarAdmissionCheck = check(
 const specLint = S.Shell.Test({
   summary: "Static specification contracts and their regression tests.",
   shell: "echo 'spec-lint: static contracts passed'",
-  data: [specRegistry, specTables, specCopies, specAuthority, specLinterTests, specPipeArrows],
+  data: [specRegistry, specTables, specCopies, specAuthority, specLinterTests, specPipeArrows, specCatchDiagnostics],
   sandbox: "none", timeout: "1m"
 })
 
@@ -485,6 +491,7 @@ const targets = {
     [Packages["compiler-native"]],
     [bun, node]
   ),
+  "spec-catch-diagnostics": specCatchDiagnostics,
   release: check(
     "The release, contributor and site generator node tests, the upgrade and maintenance flows' steps, and their evals' step keys.",
     "node --test --test-concurrency=8 scripts/release/*.test.mjs scripts/*.test.mjs typescript/vibelang/harness.test.mjs typescript/vibelang/coverage-stock-twins.test.mjs typescript/vibelang/vip7-reference.test.mjs docs/redirect/*.test.mjs " +
