@@ -3,6 +3,9 @@
 // so it matches every string; a closed class's arm matches every value of
 // an open family's base; a bind-only arm `when let other:` matches whatever
 
+import { $errorSubclass } from "vibelang-runtime"
+import { $ErrorArgs } from "vibelang-runtime"
+
 import { TaggedError as $ErrorTaggedError } from "vibelang-runtime"
 // is left, as default does.
 class AppError extends $ErrorTaggedError("AppError" as string)<{
@@ -10,11 +13,18 @@ class AppError extends $ErrorTaggedError("AppError" as string)<{
     readonly code: string;
 }> {
 }
-error Missing extends AppError { path: string }
+class Missing extends $errorSubclass(AppError, "Missing") {
+declare readonly _tag: "Missing";
+readonly declare path: string;
+constructor(args: $ErrorArgs<typeof AppError, Pick<Missing, "path">>) {
+    super(args);
+}
+}
 
 function text(x: string): string {
   return match (x) {
     when String: `text ${x}`;
+    default: "outside";
   }
 }
 
@@ -22,12 +32,14 @@ function count(x: number): string {
   return match (x) {
     when 0: "zero";
     when Number: "some";
+    default: "outside";
   }
 }
 
 function family(e: AppError): string {
   return match (e) {
     when AppError: e.code;
+    default: "outside";
   }
 }
 

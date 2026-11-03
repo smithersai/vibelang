@@ -3,6 +3,9 @@
 // @smthrs/errors' SmithersError does. A subclass with fields writes its own
 // constructor and sets them; one without fields inherits the base's.
 
+
+import { $errorSubclass } from "vibelang-runtime"
+
 export class Failure extends Data.TaggedError("Failure" as string)<{
     readonly _tag: string;
     readonly code: string;
@@ -18,8 +21,10 @@ export class Failure extends Data.TaggedError("Failure" as string)<{
   }
 }
 
-export error Integration extends Failure {
-  reason: string
+export class Integration extends $errorSubclass(Failure, "Integration") {
+declare readonly _tag: "Integration";
+readonly declare reason: string;
+
 
   constructor(reason: string, summary: string) {
     super("INTEGRATION", summary)
@@ -27,7 +32,9 @@ export error Integration extends Failure {
   }
 }
 
-export error Plain extends Failure
+export class Plain extends $errorSubclass(Failure, "Plain") {
+declare readonly _tag: "Plain";
+}
 
 effect function fail(error: Integration | Plain): never!(Integration | Plain) {
   throw error

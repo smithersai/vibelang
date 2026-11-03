@@ -1,4 +1,4 @@
-// expect: TS1030
+// expect: TS1030 TS1030 TS1030 TS1030 TS1030 EK2117 TS1030
 schema Direct { readonly readonly value: string }
 schema Alias = { readonly /* keep */ readonly value: string }
 schema Nested { child: { readonly readonly readonly value: string } }

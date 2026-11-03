@@ -10,7 +10,7 @@ func TestBugBashSchemaErrorBaseText(t *testing.T) {
 		name, source, want, absent string
 		code                       int32
 	}{
-		{"schema base expression", `schema error E extends { id: string }`, "{ id: string } is not one", "and  is not one", 2117},
+		{"schema base expression", `schema error E extends { id: string }`, "cannot have an extends clause", "and  is not one", 2117},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			program, file, _, _ := editorProgram(t, tc.source)

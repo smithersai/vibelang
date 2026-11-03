@@ -32,7 +32,7 @@ var errorMemberClassFix = &ls.CodeFixProvider{
 			if node.Pos() > fix.Span.Pos() || node.End() < fix.Span.End() {
 				return false
 			}
-			if errorDeclarationBase(node) {
+			if form, _ := errorFormOf(node); form != errorFormNone {
 				class = node
 			}
 			return node.ForEachChild(visit)
@@ -40,6 +40,9 @@ var errorMemberClassFix = &ls.CodeFixProvider{
 		fix.SourceFile.AsNode().ForEachChild(visit)
 		if class == nil {
 			return nil, nil
+		}
+		if form, _ := errorFormOf(class); form == errorFormSubclass || form == errorFormSchemaSubclass {
+			return errorInheritanceClassActions(ctx, fix, class)
 		}
 		text := fix.SourceFile.Text()
 		name := class.Name()
@@ -265,8 +268,8 @@ func errorDeclarationClassPrefix(text string, class *ast.Node) (int, string, boo
 	}
 	start := errorStart
 	trivia := text[errorEnd:nameStart]
-	base := ast.GetClassExtendsHeritageElement(class)
-	if !isSynthesizedName(base.Expression().Expression(), "TaggedError") {
+	form, _ := errorFormOf(class)
+	if form == errorFormSchemaRoot || form == errorFormSchemaSubclass {
 		if schemaStart < 0 || schemaEnd > errorStart {
 			return 0, "", false
 		}

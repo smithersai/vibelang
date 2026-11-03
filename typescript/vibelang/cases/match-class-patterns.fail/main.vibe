@@ -1,4 +1,4 @@
-// expect: EK4701
+// expect: EK2117 EK4701
 // An error class arm covers each member with its tag; a family base
 // still leaves an unrelated error with the same fields.
 import { TaggedError as $ErrorTaggedError } from "vibelang-runtime"

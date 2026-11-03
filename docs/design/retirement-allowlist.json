@@ -418,5 +418,75 @@
       "reference": "docs/design/vips/0001-effect-and-async-functions.md: Status: accepted by Will, 2026-10-28. Existing published acceptance; no new approval is asserted."
     },
     "reason": "Only an appendix rule-citation comment was appended to an existing negative fixture. Its executable program and expected diagnostics are unchanged; this receipt authorizes no new rejection."
+  },
+  {
+    "code": "EK2117",
+    "case": "typescript/vibelang/cases/decl-error-family-own-tag.fail",
+    "vip": "VIP-13",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0013-error-declarations.md: Status: accepted by Will, 2026-10-28. The accepted error declaration grammar excludes extends; this cites existing published acceptance, not a new approval."
+    },
+    "reason": "The executable negative fixture is unchanged. Accepted VIP-13 excludes inheritance clauses on error/schema error declarations; EK2117 now owns those clauses, replacing or accompanying the previous tag/constructor diagnostics. Invalid tag, duplicate-readonly and primitive-constructor controls are deliberately not silently rewritten."
+  },
+  {
+    "code": "EK2117",
+    "case": "typescript/vibelang/cases/decl-error-primitive-constructor.fail",
+    "vip": "VIP-13",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0013-error-declarations.md: Status: accepted by Will, 2026-10-28. The accepted error declaration grammar excludes extends; this cites existing published acceptance, not a new approval."
+    },
+    "reason": "The executable negative fixture is unchanged. Accepted VIP-13 excludes inheritance clauses on error/schema error declarations; EK2117 now owns those clauses, replacing or accompanying the previous tag/constructor diagnostics. Invalid tag, duplicate-readonly and primitive-constructor controls are deliberately not silently rewritten."
+  },
+  {
+    "code": "TS2345",
+    "case": "typescript/vibelang/cases/decl-error-primitive-constructor.fail",
+    "vip": "VIP-13",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0013-error-declarations.md: Status: accepted by Will, 2026-10-28. The accepted error declaration grammar excludes extends; this cites existing published acceptance, not a new approval."
+    },
+    "reason": "The executable negative fixture is unchanged and this native/exhaustiveness diagnostic is inherited unchanged. Only the additional accepted VIP-13 extends-clause refusal or its owner code changes."
+  },
+  {
+    "code": "EK2117",
+    "case": "typescript/vibelang/cases/match-class-patterns.fail",
+    "vip": "VIP-13",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0013-error-declarations.md: Status: accepted by Will, 2026-10-28. The accepted error declaration grammar excludes extends; this cites existing published acceptance, not a new approval."
+    },
+    "reason": "The executable negative fixture is unchanged. Accepted VIP-13 excludes inheritance clauses on error/schema error declarations; EK2117 now owns those clauses, replacing or accompanying the previous tag/constructor diagnostics. Invalid tag, duplicate-readonly and primitive-constructor controls are deliberately not silently rewritten."
+  },
+  {
+    "code": "EK4701",
+    "case": "typescript/vibelang/cases/match-class-patterns.fail",
+    "vip": "VIP-13",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0013-error-declarations.md: Status: accepted by Will, 2026-10-28. The accepted error declaration grammar excludes extends; this cites existing published acceptance, not a new approval."
+    },
+    "reason": "The executable negative fixture is unchanged and this native/exhaustiveness diagnostic is inherited unchanged. Only the additional accepted VIP-13 extends-clause refusal or its owner code changes."
+  },
+  {
+    "code": "TS1030",
+    "case": "typescript/vibelang/cases/schema-duplicate-readonly.fail",
+    "vip": "VIP-13",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0013-error-declarations.md: Status: accepted by Will, 2026-10-28. The accepted error declaration grammar excludes extends; this cites existing published acceptance, not a new approval."
+    },
+    "reason": "The executable negative fixture is unchanged and this native/exhaustiveness diagnostic is inherited unchanged. Only the additional accepted VIP-13 extends-clause refusal or its owner code changes."
+  },
+  {
+    "code": "EK2117",
+    "case": "typescript/vibelang/cases/schema-duplicate-readonly.fail",
+    "vip": "VIP-13",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0013-error-declarations.md: Status: accepted by Will, 2026-10-28. The accepted error declaration grammar excludes extends; this cites existing published acceptance, not a new approval."
+    },
+    "reason": "The executable negative fixture is unchanged. Accepted VIP-13 excludes inheritance clauses on error/schema error declarations; EK2117 now owns those clauses, replacing or accompanying the previous tag/constructor diagnostics. Invalid tag, duplicate-readonly and primitive-constructor controls are deliberately not silently rewritten."
   }
 ]

@@ -2,7 +2,10 @@
 // rule: docs/design/src/003-failures.md#c6b3c2a5c8791289
 package vibelangfuzz
 
-import "strings"
+import (
+	"strings"
+	"testing"
+)
 
 // A narrow parent's incompatible tag already reports EK2117 under the old
 // family rules. Extensible native parents distinguish that check from the
@@ -17,6 +20,8 @@ func failuresErrorFamilyCases() []*failCase {
 		for _, tag := range []struct{ name, text string }{
 			{"string", `"Base" as string`},
 			{"union", `"Base" as "Base" | "Child"`},
+			{"template", `"Base" as ` + "`Base${string}`" + ` | "Child"`},
+			{"intersection", `"Base" as string & {}`},
 		} {
 			for _, body := range []struct{ name, text string }{
 				{"empty", "{}"},
@@ -30,11 +35,28 @@ func failuresErrorFamilyCases() []*failCase {
 				}
 				name := strings.ReplaceAll(form.prefix, " ", "-") + "-extends-native-" + tag.name + "-" + body.name
 				cases = append(cases, &failCase{
-					Name: name, Quote: quote, VIP: form.vip, Owner: "impl-hunt-fail", Host: "none", Code: 2117,
+					Name: name, Quote: quote, VIP: form.vip, Owner: "conf-auto-error-extends-admission", Host: "none", Code: 2117,
 					Decls: "import { Data, Schema } from \"effect\"\n" + base + "\nexport " + form.prefix + " Child ⟦extends Base⟧ " + body.text + "\n",
 				})
 			}
 		}
 	}
 	return cases
+}
+
+// Keep this family's oracle runnable when another chapter's quote is stale.
+func TestErrorInheritanceQuoted(t *testing.T) {
+	for _, c := range failuresErrorFamilyCases() {
+		if !strings.Contains(SpecText(c.chapter()), c.Quote) {
+			t.Fatalf("%s: %s no longer says %q", c.Name, c.chapter(), c.Quote)
+		}
+	}
+}
+
+func TestErrorInheritanceSpec(t *testing.T) {
+	TestErrorInheritanceQuoted(t)
+	w := NewWorkspace(t)
+	for _, c := range failuresErrorFamilyCases() {
+		t.Run(c.Name, func(t *testing.T) { checkFailures(t, w, c, 0) })
+	}
 }

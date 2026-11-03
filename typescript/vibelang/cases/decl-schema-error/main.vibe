@@ -5,6 +5,8 @@
 
 import { $schemaErrorFamily as $ErrorSchemaFamily } from "vibelang-runtime"
 
+import { $schemaErrorMember } from "vibelang-runtime"
+
 /** The base of a family of file system failures. */
 export class FsError extends Schema.TaggedError<FsError>()("FsError" as string, {
     method: Schema.String,
@@ -15,7 +17,13 @@ export class FsError extends Schema.TaggedError<FsError>()("FsError" as string, 
   }
 }
 
-export schema error NotFound extends FsError { attempts: number }
+export class NotFound extends FsError.extend<NotFound>("NotFound")({
+    _tag: Schema.tag("NotFound"), attempts: Schema.Number,
+}) {
+static {
+    $schemaErrorMember(this);
+}
+}
 
 export schema error Locked {
   holder: string

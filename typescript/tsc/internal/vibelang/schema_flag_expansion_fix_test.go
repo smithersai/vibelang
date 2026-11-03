@@ -134,6 +134,8 @@ func TestSchemaTupleFlagDirectivePrologue(t *testing.T) {
 func TestSchemaTupleFlagDerivedErrorFix(t *testing.T) {
 	source := "const Optional=Schema.optionalKey(Schema.Number)\nexport abstract schema error Parent { id: string; get label() { return this.id } }\nexport schema error Child extends Parent { value: readonly [Optional] }\n"
 	fixed := applyQuickFixOf(t, source, EK2109.Code, diagnostics.CategoryError)
+	// The legacy inheritance clause needs its separate VIP-13 migration.
+	fixed = applyQuickFixOf(t, fixed, 2117, diagnostics.CategoryError)
 	program, file, _, _ := editorProgram(t, fixed)
 	for _, d := range append(program.GetSyntacticDiagnostics(t.Context(), file), program.GetSemanticDiagnostics(t.Context(), file)...) {
 		if d.Category() == diagnostics.CategoryError {

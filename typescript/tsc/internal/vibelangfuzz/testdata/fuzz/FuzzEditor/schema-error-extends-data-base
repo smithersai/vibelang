@@ -1,0 +1,3 @@
+go test fuzz v1
+string("-- main.vibe --\nimport { Data } from \"effect\"\nclass Base extends Data.TaggedError(\"Base\" as string)<{}> {}\nschema error Child extends Base {}\n")
+[]byte("")

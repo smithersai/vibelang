@@ -24,7 +24,8 @@ test("schema tuple flag migration preserves subclass evaluation order",{skip},t=
  writeFileSync(join(root,"main.vibe"),"export const events: string[]=[]\nconst Optional=Schema.optionalKey(Schema.Number)\nconst Refs={get Optional(){events.push(\"codec\");return Optional}}\nexport abstract schema error Parent { id: string }\nconst originalExtend=Parent.extend\nObject.defineProperty(Parent,\"extend\",{get: (): infer _ => {events.push(\"extend\");return originalExtend}})\nexport schema error Child extends Parent { value: readonly [Refs.Optional] }\n")
  const fixed=spawnSync(native,["-p",".","--fix","--fix-migration-only","--pretty","false"],{cwd:root,encoding:"utf8"})
  assert.equal(fixed.status,0,fixed.stdout+fixed.stderr)
- assert.ok(fixed.stdout.includes("EK2109 ×1"),fixed.stdout)
+ // The inheritance repair expands the complete schema class, including its codec flags.
+ assert.ok(fixed.stdout.includes("EK2117 ×1"),fixed.stdout)
  const script="const m=await import("+JSON.stringify(pathToFileURL(join(root,"out/main.js")).href)+"); console.log(m.events.join(','))"
  const run=spawnSync(process.execPath,["--input-type=module","-e",script],{cwd:root,encoding:"utf8"})
  assert.equal(run.status,0,run.stdout+run.stderr)

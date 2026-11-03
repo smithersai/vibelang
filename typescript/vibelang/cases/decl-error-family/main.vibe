@@ -3,6 +3,13 @@
 // subclass, while is and match test the whole family through instanceof.
 // D304: the base of a family declares its tag type with a _tag field.
 
+
+
+
+
+import { $errorSubclass } from "vibelang-runtime"
+import { $ErrorArgs } from "vibelang-runtime"
+
 /** The base of a family: each subclass carries its own tag. */
 export class AppError extends Data.TaggedError("AppError" as string)<{
     readonly _tag: string;
@@ -11,11 +18,25 @@ export class AppError extends Data.TaggedError("AppError" as string)<{
   static readonly family = "app"
 }
 
-export error NotFound extends AppError { path: string }
+export class NotFound extends $errorSubclass(AppError, "NotFound") {
+declare readonly _tag: "NotFound";
+readonly declare path: string;
+constructor(args: $ErrorArgs<typeof AppError, Pick<NotFound, "path">>) {
+    super(args);
+}
+}
 
-export error Timeout extends AppError
+export class Timeout extends $errorSubclass(AppError, "Timeout") {
+declare readonly _tag: "Timeout";
+}
 
-export error Typed<T extends string> extends AppError { value: T }
+export class Typed<T extends string> extends $errorSubclass(AppError, "Typed") {
+declare readonly _tag: "Typed";
+readonly declare value: T;
+constructor(args: $ErrorArgs<typeof AppError, Pick<Typed<T>, "value">>) {
+    super(args);
+}
+}
 
 /** An abstract error has a family's tag type without a _tag field. */
 export abstract error HttpError {
@@ -23,13 +44,17 @@ export abstract error HttpError {
   abstract describe(): string
 }
 
-export error Missing extends HttpError {
+export class Missing extends $errorSubclass(HttpError, "Missing") {
+declare readonly _tag: "Missing";
+
   override describe(): string {
     return `missing ${this.status}`
   }
 }
 
-export error Gone extends HttpError {
+export class Gone extends $errorSubclass(HttpError, "Gone") {
+declare readonly _tag: "Gone";
+
   override describe(): string {
     return `${this._tag} ${this.status}`
   }

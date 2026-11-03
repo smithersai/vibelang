@@ -1,6 +1,15 @@
+import { $errorSubclass } from "vibelang-runtime"
+import { $ErrorArgs } from "vibelang-runtime"
 // expect-result: ["Sub","x","Sub","x","Sub","y"]
 abstract error Base
-error Sub extends Base { who: string }
+class Sub extends $errorSubclass(Base, "Sub") {
+declare readonly _tag: "Sub";
+readonly declare who: string;
+constructor(args: $ErrorArgs<typeof Base, Pick<Sub, "who">>) {
+    super();
+    this["who"] = args["who"];
+}
+}
 effect function fail(): never!Sub { throw new Sub({ who: "x" }) }
 export effect function main() {
   const sub = new Sub({ who: "x" })

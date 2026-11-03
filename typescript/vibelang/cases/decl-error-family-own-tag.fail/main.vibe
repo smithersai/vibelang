@@ -1,4 +1,4 @@
-// expect: EK2117 EK2117 EK2117 EK2117 EK2117 EK2117 EK2117
+// expect: EK2117 EK2117 EK2117 EK2117 EK2117 EK2117 TS2416 EK2117 EK2117 EK2117 EK2117 EK2117 EK2117 EK2117
 import { TaggedError, $schemaErrorFamily } from "vibelang-runtime"
 // A concrete error is tagged with its own name (D304), a subclass included,
 // whatever its _tag field says: a _tag field whose type leaves the name out

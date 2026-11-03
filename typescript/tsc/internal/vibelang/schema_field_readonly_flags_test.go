@@ -50,6 +50,9 @@ func TestSchemaReadonlyFieldReferenceFix(t *testing.T) {
 		"const Mutable=Schema.mutableKey(Schema.Number)\nexport abstract schema error Parent { id: string }\nexport schema error Child extends Parent { readonly child: { readonly value: Mutable } }\n",
 	} {
 		fixed := applyQuickFixOf(t, source, EK2109.Code, diagnostics.CategoryError)
+		if strings.Contains(source, "schema error Child extends") {
+			fixed = applyQuickFixOf(t, fixed, 2117, diagnostics.CategoryError)
+		}
 		program, file, _, _ := editorProgram(t, fixed)
 		for _, d := range append(program.GetSyntacticDiagnostics(t.Context(), file), program.GetSemanticDiagnostics(t.Context(), file)...) {
 			if d.Category() == diagnostics.CategoryError {

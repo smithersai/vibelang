@@ -1,4 +1,4 @@
-// expect: TS2515 TS2511
+// expect: TS2515 EK2117 TS2511
 // abstract keeps its TypeScript meaning on an error (D278).
 abstract error HttpError {
   status: number

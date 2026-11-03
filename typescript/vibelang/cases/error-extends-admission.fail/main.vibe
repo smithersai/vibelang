@@ -1,0 +1,6 @@
+// expect: EK2117 EK2117
+import { Data, Schema } from "effect"
+class Base extends Data.TaggedError("Base" as string)<{ readonly id: string }> {}
+export error Child extends Base {}
+class SchemaBase extends Schema.TaggedError<SchemaBase>()("SchemaBase" as string, { id: Schema.String }) {}
+export schema error SchemaChild extends SchemaBase {}

@@ -1,4 +1,4 @@
-// expect: EK2118
+// expect: EK2117
 // A subclass that declares fields and no constructor passes them to its
 
 import * as $ErrorData from "effect/Data"

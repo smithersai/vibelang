@@ -1,5 +1,5 @@
 // VibeLang code compiled against the declarations alone: the error classes
-// are closed, so these matches need no default arm.
+// retain native source narrowing; handwritten constructor arms need a fallback.
 import { Denied, NotFound, Timeout } from "../../out/main.js"
 
 function viaVibe(e: NotFound | Timeout | Denied) {
@@ -7,6 +7,7 @@ function viaVibe(e: NotFound | Timeout | Denied) {
     when NotFound: `missing ${e.id}`;
     when Timeout: `timeout ${e.ms}`;
     when Denied: `denied ${e.user}`;
+    default: "outside";
   }
 }
 

@@ -1,4 +1,4 @@
-// expect: EK2118 TS2345
+// expect: EK2117 TS2345 EK2117 EK2117
 // A subclass that declares fields and no constructor passes them to its
 // base's constructor as one object; these bases take a string, a number or
 // a list instead (D278).

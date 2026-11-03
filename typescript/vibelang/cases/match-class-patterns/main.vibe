@@ -12,6 +12,9 @@
 // instead of taking the last arm (D405). A class with a custom matcher is not
 // closed, so its arm covers nothing and its match needs a default arm (D407,
 
+import { $errorSubclass } from "vibelang-runtime"
+import { $ErrorArgs } from "vibelang-runtime"
+
 import { TaggedError as $ErrorTaggedError } from "vibelang-runtime"
 // D428).
 import * as A from "./a.vibe"
@@ -23,7 +26,13 @@ class AppError extends $ErrorTaggedError("AppError" as string)<{
     readonly code: string;
 }> {
 }
-error Missing extends AppError { path: string }
+class Missing extends $errorSubclass(AppError, "Missing") {
+declare readonly _tag: "Missing";
+readonly declare path: string;
+constructor(args: $ErrorArgs<typeof AppError, Pick<Missing, "path">>) {
+    super(args);
+}
+}
 error Other { code: string }
 
 error Circle { r: number }
@@ -61,6 +70,8 @@ function family(e: Missing | Other) {
   return match (e) {
     when AppError: `app ${e.path}`;
     when Other: `other ${e.code}`;
+    // Native constructor arms retain source narrowing but require fallback coverage.
+    default: "outside family";
   }
 }
 

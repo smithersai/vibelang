@@ -5,6 +5,8 @@
 
 import { TaggedError as $ErrorTaggedError } from "vibelang-runtime"
 
+import { $errorSubclass } from "vibelang-runtime"
+
 // An error family (D278, D304) whose subclass calls its base's method.
 class Base extends $ErrorTaggedError("Base" as string)<{
     readonly _tag: string;
@@ -15,7 +17,9 @@ class Base extends $ErrorTaggedError("Base" as string)<{
     return `code ${this.code}`
   }
 }
-error Sub extends Base {
+class Sub extends $errorSubclass(Base, "Sub") {
+declare readonly _tag: "Sub";
+
   effect describe() {
     const text = try super.describe()
     try Console.log("sub describe")

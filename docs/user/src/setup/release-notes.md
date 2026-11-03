@@ -1535,6 +1535,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Effect 3 API repairs could rename functions whose callbacks or results changed in Effect 4. The editor and CLI now leave those sites unchanged and explain the manual migration.
 
 
+- An `error` or `schema error` with an `extends` clause could compile when its native parent had a broad tag type. Both now report `EK2117`; `vibelang --fix` preserves valid inheritance as an explicit TypeScript class.
+
 - Schema conformance checks rejected the dangling aliases that TypeScript itself emits with `stripInternal`; these cases now verify exact native output and the same TypeScript diagnostics.
 - `vibelang --fix` refused an `Effect.fn` whose parameter annotation was a type name's last read under `noUnusedLocals`, because writing the checked parameter type left the name unused (TS6133, TS6196), so the module stayed on `EK1002`; the fix now also removes that type-only import binding or module-local type alias.
 

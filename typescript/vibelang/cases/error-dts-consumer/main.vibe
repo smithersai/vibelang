@@ -3,6 +3,9 @@
 // exhaustiveness, as a consumer of the source does, because the class extends
 // effect's YieldableError. consumer/src does both; run.mjs compiles and
 
+import { $errorSubclass } from "vibelang-runtime"
+import { $ErrorArgs } from "vibelang-runtime"
+
 import { TaggedError as $ErrorTaggedError } from "vibelang-runtime"
 // runs it.
 export error NotFound { id: string }
@@ -12,7 +15,13 @@ export class AppError extends $ErrorTaggedError("AppError" as string)<{
     readonly code: string;
 }> {
 }
-export error Denied extends AppError { user: string }
+export class Denied extends $errorSubclass(AppError, "Denied") {
+declare readonly _tag: "Denied";
+readonly declare user: string;
+constructor(args: $ErrorArgs<typeof AppError, Pick<Denied, "user">>) {
+    super(args);
+}
+}
 
 export function describe(e: NotFound | Timeout): string {
   return match (e) {

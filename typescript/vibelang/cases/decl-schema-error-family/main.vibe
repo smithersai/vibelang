@@ -2,6 +2,13 @@
 // D304: a value of a family base's type may be any of its subclasses, so the
 // base's schema encodes and decodes each of them, as well as its own instances.
 
+
+
+
+import { $schemaErrorFamily } from "vibelang-runtime"
+
+import { $schemaErrorMember } from "vibelang-runtime"
+
 import { $schemaErrorFamily as $ErrorSchemaFamily } from "vibelang-runtime"
 
 export class StoreError extends Schema.TaggedError<StoreError>()("StoreError" as string, {
@@ -12,8 +19,16 @@ export class StoreError extends Schema.TaggedError<StoreError>()("StoreError" as
   }
 }
 
-export schema error NotStored extends StoreError {
-  attempts: number
+export class NotStored extends StoreError.extend<NotStored>("NotStored")({
+    _tag: Schema.tag("NotStored"),
+    attempts: Schema.Number,
+    /** An intermediate base widens its own tag for its subclasses. */
+}) {
+static {
+    $schemaErrorMatcher(this, "NotStored");
+    $schemaErrorMember(this);
+}
+
 
   describe(): string {
     return `not stored after ${this.attempts}`
@@ -21,22 +36,51 @@ export schema error NotStored extends StoreError {
 }
 
 /** An intermediate base widens its own tag for its subclasses. */
-export schema error Expired extends StoreError {
-  _tag: string
-  at: number
+export class Expired extends StoreError.extend<Expired>("Expired")({
+    _tag: Schema.tag("Expired" as string),
+    at: Schema.Number,
+}) {
+static {
+    $schemaErrorMatcher(this, "Expired");
+    $schemaErrorFamily(this);
+}
 }
 
-export schema error Evicted extends Expired { by: string }
+export class Evicted extends Expired.extend<Evicted>("Evicted")({
+    _tag: Schema.tag("Evicted"), by: Schema.String,
+    /** An abstract base has a family's tag type without a _tag field. */
+}) {
+static {
+    $schemaErrorMatcher(this, "Evicted");
+    $schemaErrorMember(this);
+}
+}
 
 /** An abstract base has a family's tag type without a _tag field. */
 export abstract schema error Quota { limit: number }
 
-export schema error OverQuota extends Quota { used: number }
+export class OverQuota extends Quota.extend<OverQuota>("OverQuota")({
+    _tag: Schema.tag("OverQuota"), used: Schema.Number,
+    /** A schema built from the base before a subclass is declared lists it too. */
+}) {
+static {
+    $schemaErrorMatcher(this, "OverQuota");
+    $schemaErrorMember(this);
+}
+}
 
 /** A schema built from the base before a subclass is declared lists it too. */
 schema Envelope { readonly id: string; readonly error: StoreError }
 
-export schema error Late extends StoreError
+export class Late extends StoreError
+    .extend<Late>("Late")({
+    _tag: Schema.tag("Late")
+}) {
+static {
+    $schemaErrorMatcher(this, "Late");
+    $schemaErrorMember(this);
+}
+}
 
 effect function fail(error: StoreError): never!StoreError {
   throw error

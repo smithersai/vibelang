@@ -51,8 +51,6 @@ FuzzCompile registry:EK2113 compiler Appendix B: "A transitional compiler may st
 FuzzCompile corpus:registry-EK2113 compiler Appendix B: reproduction of registry:EK2113; lane del-2.
 FuzzCompile registry:EK2114 compiler Appendix B: "A transitional compiler may still print compatibility diagnostics from the old language." The compiler emits 2114 with no current assignment; lane del-rest.
 FuzzCompile corpus:registry-EK2114 compiler Appendix B: reproduction of registry:EK2114; lane del-rest.
-FuzzCompile registry:EK2118 compiler Appendix B: "A transitional compiler may still print compatibility diagnostics from the old language." The compiler emits 2118 with no current assignment; lane del-rest.
-FuzzCompile corpus:registry-EK2118 compiler Appendix B: reproduction of registry:EK2118; lane del-rest.
 FuzzCompile registry:EK2119 compiler Appendix B: "A transitional compiler may still print compatibility diagnostics from the old language." The compiler emits 2119 with no current assignment; lane d-handlers.
 FuzzCompile corpus:registry-EK2119 compiler Appendix B: reproduction of registry:EK2119; lane d-handlers.
 FuzzCompile registry:EK2120 compiler Appendix B: "A transitional compiler may still print compatibility diagnostics from the old language." The compiler emits 2120 with no current assignment; lane del-2.
