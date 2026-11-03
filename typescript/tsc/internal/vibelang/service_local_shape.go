@@ -72,7 +72,15 @@ func localServiceShapeName(c *checker.Checker, name *ast.Node) bool {
 		return false
 	}
 	class := symbol.ValueDeclaration()
-	return classKindOf(class) == serviceClass && !serviceShapeNamespaceScope(class) && !serviceOwnShapeName(class, name)
+	if classKindOf(class) == serviceClass {
+		return !serviceShapeNamespaceScope(class) && !serviceOwnShapeName(class, name)
+	}
+	// Native Context keys have no synthetic namespace. Preserve an explicitly
+	// declared Shape member and reject type aliases or shadowing type parameters.
+	if symbol.Flags()&ast.SymbolFlagsClass == 0 || c.GetMergedSymbol(symbol).Exports()[serviceShapeName] != nil {
+		return false
+	}
+	return serviceShapeOfIdentifier(c, c.GetDeclaredTypeOfSymbol(symbol)) != nil
 }
 
 func localServiceShapeEdit(file *ast.SourceFile, name *ast.Node) sourceEdit {
@@ -83,7 +91,7 @@ func localServiceShapeEdit(file *ast.SourceFile, name *ast.Node) sourceEdit {
 
 func init() {
 	ls.RegisterCodeFixProvider(&ls.CodeFixProvider{
-		ErrorCodes: []int32{2702, 2503},
+		ErrorCodes: []int32{2702, 2503, 2713},
 		GetCodeActions: func(ctx context.Context, fix *ls.CodeFixContext) ([]*ls.CodeAction, error) {
 			name := astnav.GetTokenAtPosition(fix.SourceFile, fix.Span.Pos())
 			if name == nil {
@@ -98,7 +106,12 @@ func init() {
 				return nil, nil
 			}
 			edit := localServiceShapeEdit(fix.SourceFile, name)
-			return []*ls.CodeAction{{Description: "Use Context.Service.Shape for the local service", Changes: replaceRange(fix, edit.start, edit.end, edit.text)}}, nil
+			description := "Use Context.Service.Shape for the local service"
+			symbol := c.ResolveEntityName(name.AsQualifiedName().Left, ast.SymbolFlagsType)
+			if classKindOf(symbol.ValueDeclaration()) != serviceClass {
+				description = "Use Context.Service.Shape for the service key"
+			}
+			return []*ls.CodeAction{{Description: description, Changes: replaceRange(fix, edit.start, edit.end, edit.text)}}, nil
 		},
 	})
 }

@@ -49,7 +49,11 @@ func FuzzServiceShapeRename(f *testing.F) {
 		case "shadow":
 			prefix += fmt.Sprintf(` function inner(){ service %s {static readonly key="tests/Inner"; prefix:number}; const value:Context.Service.Shape<typeof %s>={prefix:1};return value.prefix }`, name, name)
 		}
-		files["main.vibe"] = prefix + fmt.Sprintf(`; export function label(x:%s.Shape){return x.prefix};export const key=%s`, qualifier, qualifier)
+		shape := qualifier + ".Shape"
+		if key == "foreign" {
+			shape = "Context.Service.Shape<typeof " + qualifier + ">"
+		}
+		files["main.vibe"] = prefix + fmt.Sprintf(`; export function label(x:%s){return x.prefix};export const key=%s`, shape, qualifier)
 		r := toolsCompile(t, w, consistencyTarget, files)
 		defer r.Remove()
 		if HasError(r.Diagnostics) {

@@ -1,0 +1,139 @@
+[
+  {
+    "key": "native-class",
+    "source": "import { Context } from \"effect\";\nclass Key extends Context.Service<Key,{value:number}>()(\"native/Key\") {}\nexport type Impl=Key.Shape;",
+    "bad": true,
+    "errors": [
+      "TS2702"
+    ]
+  },
+  {
+    "key": "native-extractor",
+    "source": "import { Context } from \"effect\";\nclass Key extends Context.Service<Key,{value:number}>()(\"native/Key\") {}\nexport type Impl=Context.Service.Shape<typeof Key>;",
+    "bad": false,
+    "errors": []
+  },
+  {
+    "key": "ordinary-class",
+    "source": "class Key{}; export type Impl=Key.Shape;",
+    "bad": true,
+    "errors": [
+      "TS2702"
+    ]
+  },
+  {
+    "key": "imported-class",
+    "source": "import { Key as Port } from \"./key.js\"; export type Impl=Port.Shape;",
+    "files": {
+      "key.ts": "import { Context } from \"effect\"; export class Key extends Context.Service<Key,{value:number}>()(\"native/Key\") {}\n"
+    },
+    "bad": true,
+    "errors": [
+      "TS2702"
+    ]
+  },
+  {
+    "key": "qualified-class",
+    "source": "import * as Keys from \"./key.js\"; export type Impl=Keys.Key.Shape;",
+    "files": {
+      "key.ts": "import { Context } from \"effect\"; export class Key extends Context.Service<Key,{value:number}>()(\"native/Key\") {}\n"
+    },
+    "bad": true,
+    "errors": [
+      "TS2713"
+    ]
+  },
+  {
+    "key": "imported-extractor",
+    "source": "import {Context} from \"effect\"; import {Key as Port} from \"./key.js\"; export type Impl=Context.Service.Shape<typeof Port>;",
+    "files": {
+      "key.ts": "import { Context } from \"effect\"; export class Key extends Context.Service<Key,{value:number}>()(\"native/Key\") {}\n"
+    },
+    "bad": false,
+    "errors": []
+  },
+  {
+    "key": "explicit-namespace",
+    "source": "import { Context } from \"effect\";\nclass Key extends Context.Service<Key,{value:number}>()(\"native/Key\") {}\nnamespace Key {export type Shape={value:number}}; export type Impl=Key.Shape;",
+    "bad": false,
+    "errors": []
+  },
+  {
+    "key": "imported-explicit-namespace",
+    "source": "import {Key as Port} from \"./key.js\"; export type Impl=Port.Shape;",
+    "files": {
+      "key.ts": "import { Context } from \"effect\"; export class Key extends Context.Service<Key,{value:number}>()(\"native/Key\") {}\nexport namespace Key{export type Shape={value:number}}"
+    },
+    "bad": false,
+    "errors": []
+  },
+  {
+    "key": "nested-class",
+    "source": "import {Context} from \"effect\"; namespace Tags {export class Key extends Context.Service<Key,{value:number}>()(\"native/Key\") {}}; export type Impl=Tags.Key.Shape;",
+    "bad": true,
+    "errors": [
+      "TS2713"
+    ]
+  },
+  {
+    "key": "local-class",
+    "source": "import {Context} from \"effect\"; export function make(){class Key extends Context.Service<Key,{value:number}>()(\"native/Key\") {}; type Impl=Key.Shape; return 1}",
+    "bad": true,
+    "errors": [
+      "TS2702"
+    ]
+  },
+  {
+    "key": "local-extractor",
+    "source": "import {Context} from \"effect\"; export function make(){class Key extends Context.Service<Key,{value:number}>()(\"native/Key\") {}; type Impl=Context.Service.Shape<typeof Key>; return 1}",
+    "bad": false,
+    "errors": []
+  },
+  {
+    "key": "generic-local-class",
+    "source": "import {Context} from \"effect\"; export function make<T>(){class Key extends Context.Service<Key,{value:T}>()(\"native/Key\") {}; type Impl=Key.Shape; return 1}",
+    "bad": true,
+    "errors": [
+      "TS2702"
+    ]
+  },
+  {
+    "key": "generic-local-extractor",
+    "source": "import {Context} from \"effect\"; export function make<T>(){class Key extends Context.Service<Key,{value:T}>()(\"native/Key\") {}; type Impl=Context.Service.Shape<typeof Key>; return 1}",
+    "bad": false,
+    "errors": []
+  },
+  {
+    "key": "class-shape-type-argument",
+    "source": "import { Context } from \"effect\";\nclass Key extends Context.Service<Key,{value:number}>()(\"native/Key\") {}\nexport type Impl=Key.Shape<number>;",
+    "bad": true,
+    "errors": [
+      "TS2702"
+    ]
+  },
+  {
+    "key": "vibe-member-service",
+    "source": "service Key {static readonly key=\"native-controls/Key\";value:number};export type Impl=Key.Shape;",
+    "errors": []
+  },
+  {
+    "key": "vibe-imported-member-service",
+    "source": "import {Key as Port} from \"./key.js\"; export type Impl=Port.Shape;",
+    "files": {
+      "key.vibe": "export service Key{static readonly key=\"native-controls/Key\";value:number}"
+    },
+    "errors": []
+  },
+  {
+    "key": "vibe-written-shape",
+    "source": "service Key:{value:number}{static readonly key=\"native-controls/Key\"};export type Impl=Key.Shape;",
+    "errors": [
+      "TS2702"
+    ]
+  },
+  {
+    "key": "vibe-written-extractor",
+    "source": "service Key:{value:number}{static readonly key=\"native-controls/Key\"};export type Impl=Context.Service.Shape<typeof Key>;",
+    "errors": []
+  }
+]

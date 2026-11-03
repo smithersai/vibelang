@@ -617,3 +617,5 @@ For an inferred Effect argument such as `expect(awaited())`, `EK4802` offers `ex
  The historical `--fix-vip-only` migration keeps its separate run-phase rules.
 
 An ordinary namespace type such as `Names.Shape` follows TypeScript namespace resolution. A missing or out-of-scope qualifier reports a TypeScript diagnostic; a service's `Shape` qualifier keeps its service identity for references and rename.
+
+Native `Context.Service` classes keep TypeScript namespace rules: `Key.Shape` needs a declared namespace, while `Context.Service.Shape<typeof Key>` extracts the implementation without one. The `EK4831` style warning does not add members to a native class. The native namespace diagnostic offers a binding-safe shape-extractor repair for a genuine service key, also applied by `vibelang --fix`; it leaves an explicit namespace, a shadowing type and type arguments unchanged.

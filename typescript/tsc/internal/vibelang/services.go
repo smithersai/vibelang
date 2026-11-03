@@ -230,7 +230,6 @@ type services struct {
 	unprovided map[*checker.Type][]*ast.Node // wire arguments, by a service they need and their wire does not provide
 	shapes     map[*ast.Node]*checker.Type   // service classes, by declaration, and their shapes
 	shapeNames map[*ast.Node]*ast.Symbol     // service classes and the type alias that Name.Shape resolves to
-	keyShapes  map[*ast.Symbol]*ast.Symbol   // other service keys and the type alias that Name.Shape resolves to
 	instances  map[*ast.Node]*checker.Type   // service classes and their identifiers' base, Effect's instance type
 	owners     map[*checker.Type]string      // the shapes shapeOf built from members, and their services' names
 }
@@ -241,7 +240,7 @@ type servicesKey struct{}
 // so they are freed with c.
 func servicesFor(c *checker.Checker) *services {
 	return c.ExtensionState(servicesKey{}, func() any {
-		return &services{checker: c, modules: map[string]*ast.Symbol{}, keys: map[*ast.Node]string{}, shapes: map[*ast.Node]*checker.Type{}, shapeNames: map[*ast.Node]*ast.Symbol{}, keyShapes: map[*ast.Symbol]*ast.Symbol{}, instances: map[*ast.Node]*checker.Type{}, owners: map[*checker.Type]string{}}
+		return &services{checker: c, modules: map[string]*ast.Symbol{}, keys: map[*ast.Node]string{}, shapes: map[*ast.Node]*checker.Type{}, shapeNames: map[*ast.Node]*ast.Symbol{}, instances: map[*ast.Node]*checker.Type{}, owners: map[*checker.Type]string{}}
 	}).(*services)
 }
 
@@ -414,22 +413,6 @@ func (s *services) shapeName(class *ast.Node) *ast.Symbol {
 	return alias
 }
 
-// keyShapeName returns the type alias that Name.Shape resolves to for symbol,
-// a class that TypeScript declares as a Context key, such as a
-// Context.Service class: Effect's Context.Service.Shape<typeof Name>, or nil
-// when symbol is not a Context key.
-func (s *services) keyShapeName(symbol *ast.Symbol) *ast.Symbol {
-	if alias, ok := s.keyShapes[symbol]; ok {
-		return alias
-	}
-	var alias *ast.Symbol
-	if _, shape := serviceOfKey(s.checker, s.checker.GetApparentType(s.checker.GetTypeOfSymbol(symbol))); shape != nil {
-		alias = s.checker.NewTypeAliasSymbol(serviceShapeName, symbol, shape)
-	}
-	s.keyShapes[symbol] = alias
-	return alias
-}
-
 // serviceShapeOfIdentifier returns the shape of the service whose identifier
 // is t, the declared type of a service class, or nil when t is not a
 // service's identifier. A class TypeScript declares is a service when its
@@ -494,10 +477,9 @@ func resolveServiceShapeName(c *checker.Checker, name *ast.Node, left *ast.Node,
 		}
 		return s.shapeName(declaration)
 	}
-	if file := ast.GetSourceFileOfNode(name); file == nil || !isVibeLangFile(file) || symbol.Flags()&ast.SymbolFlagsClass == 0 {
-		return nil
-	}
-	return s.keyShapeName(symbol)
+	// A native class has only the namespace it actually declares.
+	// Context.Service.Shape<typeof Key> extracts its implementation type.
+	return nil
 }
 
 // serviceOfKey returns the identifier and the shape of the service that t,

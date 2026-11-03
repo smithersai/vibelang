@@ -58,6 +58,7 @@ The fixes keep a rewrite only when it adds no compiler error.
 | Before | After and repair |
 | --- | --- |
 | Unicode escapes in an `error`, `schema`, `service` or `data` declaration keyword, such as `er\u0072or E` | Write the literal keyword (`TS1260`). Run `vibelang --fix` to unescape each keyword while preserving the declaration, escaped names and ordinary identifier expressions. |
+| `Key.Shape` for an ordinary native `Context.Service` class without a declared namespace | The native TypeScript namespace diagnostic now applies. The editor and `vibelang --fix` write `import("effect/Context").Service.Shape<typeof Key>` for a non-generic shape reference to that service key, including imported aliases. Explicit namespaces, shadows and type arguments remain unchanged. |
 | `vibelang.tracing` or mapper `options.tracing` | Remove the unsupported option. Add named operation spans explicitly with `try withSpan(program, "name")`. |
 | `when var name:` or a `var` binding in an `is` pattern | Pattern bindings use `let` or `const` (`EK0107`, VIP-7). The quick fix and `vibelang --fix` replace the pattern's `var` with `let`. |
 | Bare compound types beside `!`, such as `number!Error \| string` or `number!! \| null` | `EK0301` (VIP-3). Run `vibelang --fix` to preserve the existing channels with parentheses, such as `number!(Error \| string)` or `number!!(\| null)`. To mean an Effect or `null`, write `(number!!) \| null`. |
@@ -426,6 +427,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Large compiler messages containing Unicode could display replacement characters in bundlers or misidentify source files; their text and paths now stay intact, and old cached warnings are refreshed.
 - Imported `EK38xx` severity entries activated Effect lint without its plugin and reactivated `diagnosticSeverity: null`; they now only configure an enabled plugin.
+
+- Native `Context.Service` classes accepted an undeclared `Key.Shape` namespace that TypeScript rejects. They now report the native TypeScript diagnostic; use `Context.Service.Shape<typeof Key>` or an explicitly declared namespace. Member-body `service` aliases keep working.
 
 - Repository build checks could fail before inspecting compiler inputs after target declarations changed. Their isolated fixtures now retain the native source group and imported parser data while checking dependency and cache behavior.
 

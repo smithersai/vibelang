@@ -1,0 +1,19 @@
+// expect: TS2702 TS2713
+import {Context} from "effect"
+import {Foreign as Port} from "./foreign.js"
+import * as Keys from "./foreign.js"
+class Key extends Context.Service<Key,{value:number}>()("native-shape/Key") {}
+export type Direct=Key.Shape
+export type Imported=Port.Shape
+export type Qualified=Keys.Foreign.Shape
+namespace Tags {export class Nested extends Context.Service<Nested,{value:number}>()("native-shape/Nested") {}}
+export type Nested=Tags.Nested.Shape
+export function local<T>() {
+ class Local extends Context.Service<Local,{value:T}>()("native-shape/Local") {}
+ type Bad=Local.Shape
+ type Good=Context.Service.Shape<typeof Local>
+ return 1
+}
+export type Explicit=Context.Service.Shape<typeof Key>
+service Written {static readonly key="native-shape/Written";value:number}
+export type WrittenShape=Written.Shape
