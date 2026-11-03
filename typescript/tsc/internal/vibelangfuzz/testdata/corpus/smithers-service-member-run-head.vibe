@@ -1,0 +1,6 @@
+import { Effect } from "effect"
+error Refused
+service Audit { record: (message: string) => void!Refused }
+export effect function probe() {
+  return Audit.record("record") catch () => undefined
+}
