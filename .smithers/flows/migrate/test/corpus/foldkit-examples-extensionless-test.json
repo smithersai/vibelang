@@ -1,0 +1,6 @@
+{
+  "key": "migrate-flow:test-extensionless-specifier",
+  "source": "foldkit-155: examples/api-cache/src/scene.test.ts:16, run-drive-foldkit-examples-pre/batches/01/test-diff.md",
+  "module": "export const value = 1\n",
+  "test": "import { value } from './main'\nexport const scene = value\n"
+}

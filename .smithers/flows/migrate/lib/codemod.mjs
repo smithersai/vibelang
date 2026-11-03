@@ -10,7 +10,7 @@ import { loadTypeScript } from "./declarations.mjs"
 import { sidecarConfigIn, sidecarPath, sidecarSettings } from "./sidecar-config.mjs"
 import { applyEdits, parseImports, resolveAliased, resolveRelative } from "./imports.mjs"
 import { assertFinished, parseDiagnostics } from "./diagnostics.mjs"
-import { isTestFile } from "./inventory.mjs"
+import { isFixtureFile, isTestFile } from "./inventory.mjs"
 import { isDeclarationFile, quote, run } from "./util.mjs"
 import { fixProgramFiles, withFixFiles } from "./fix-scope.mjs"
 
@@ -601,10 +601,11 @@ export function rewriteImports(root, scope, moved, aliases, { preserve = [], rea
       // `~/leaf.ts`, a non-relative TypeScript name, is TS2877 under
       // rewriteRelativeImportExtensions (t3code web, 23 modules).
       if (aliased && !target.endsWith(".vibe") && posix.extname(i.specifier) !== ".vibe") continue
-      // Detail 272's first addendum: a test's extensionless specifier needs no edit,
+      // Detail 272's first addendum: a test's or fixture's extensionless specifier needs
+      // no edit (the test-diff protects both alike),
       // an import's or a Vitest or Jest mock's alike. Bun's mock.module("../src/x") does
       // need one: it does not reach x.vibe as written.
-      if (i.kind !== "mock" && isTestFile(file) && !specifierExtensions.includes(posix.extname(i.specifier))) continue
+      if (i.kind !== "mock" && (isTestFile(file) || isFixtureFile(file)) && !specifierExtensions.includes(posix.extname(i.specifier))) continue
       let next = rewriteSpecifier(file, i.specifier, target, { base: aliased?.base })
       if (aliased && target.endsWith(".vibe") && aliases?.rewriteRelativeImportExtensions?.(file)) {
         // Native TS2877 rejects non-relative source names under this option.
