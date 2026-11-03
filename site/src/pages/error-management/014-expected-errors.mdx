@@ -100,6 +100,8 @@ Effect-returning functions are ordinary values at typed destinations. TypeScript
 
 Saving a union of foreign callbacks preserves every alternative's written throws contract. For example, `const read = flag ? risky : safe` still requires a destination that admits `risky`'s errors. An optional callback keeps its function alternative's contract too. A destination union admits the value when every source alternative fits a matching destination signature.
 
+Shorthand object members keep the value's throws contract: `{ risky }` is checked like `{ risky: risky }` in an argument, typed initializer, spread or written return. Destructuring targets remain ordinary assignments, and an incompatible property type keeps TypeScript's native diagnostic.
+
 ## Wrapping a TypeScript function
 
 ```ts

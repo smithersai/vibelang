@@ -1,0 +1,15 @@
+// expect: EK0402 EK0402 EK0402 EK0402 EK0402 EK0402 EK0402 EK0402 EK0402 EK0402
+import { risky, risky as handler, take, takeRenamed, type Strict, type Renamed } from "./helpers.js"
+export function check() {
+ take({ risky })
+ const saved: Strict = { risky }
+ const spread: Strict = { ...{ risky } }
+ takeRenamed({ handler })
+ const renamed: Renamed = { handler }
+ const renamedSpread: Renamed = { ...{ handler } }
+ const checked = { risky } satisfies Strict
+ return [saved, spread, renamed, renamedSpread, checked]
+}
+export function back(): Strict { return { risky } }
+export function renamedBack(): Renamed { return { handler } }
+export function defaults(value: Strict = { risky }) { return value }

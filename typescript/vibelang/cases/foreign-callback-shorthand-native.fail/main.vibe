@@ -1,0 +1,5 @@
+// expect: TS2322 TS2322
+import { risky } from "./helpers.js"
+interface Invalid { risky: () => string }
+export const value: Invalid = { risky }
+export function back(): Invalid { return { risky } }

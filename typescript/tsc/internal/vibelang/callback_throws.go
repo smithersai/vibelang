@@ -72,6 +72,8 @@ func isContextualValue(expr *ast.Node) bool {
 	switch p.Kind {
 	case ast.KindCallExpression, ast.KindNewExpression:
 		return p.Arguments() != nil && slices.Contains(p.Arguments(), node)
+	case ast.KindShorthandPropertyAssignment:
+		return p.Name() == node && !ast.IsAssignmentTarget(node)
 	case ast.KindPropertyAssignment, ast.KindVariableDeclaration, ast.KindPropertyDeclaration, ast.KindParameter:
 		return p.Initializer() == node
 	case ast.KindBinaryExpression:
@@ -159,6 +161,11 @@ func foreignThrows(c *checker.Checker, expr *ast.Node) (throwContract, bool) {
 			symbol = c.GetPropertyOfType(c.GetApparentType(object), checker.GetPropertyNameFromType(key))
 		}
 	}
+	if parent := expr.Parent; parent != nil && ast.IsShorthandPropertyAssignment(parent) && parent.Name() == expr {
+		// The shorthand's property is new; its value keeps the lexical
+		// function symbol and that foreign declaration's throws contract.
+		symbol = c.GetShorthandAssignmentValueSymbol(parent)
+	}
 	if symbol != nil && symbol.Flags()&ast.SymbolFlagsAlias != 0 {
 		symbol = c.GetAliasedSymbol(symbol)
 	}
@@ -222,6 +229,12 @@ func foreignAliasThrows(c *checker.Checker, expr *ast.Node) (throwContract, bool
 }
 
 func checkCallbackValue(c *checker.Checker, expr *ast.Node) {
+	if parent := expr.Parent; parent != nil && ast.IsShorthandPropertyAssignment(parent) {
+		contextual := c.GetContextualType(expr, checker.ContextFlagsNone)
+		if contextual == nil || !c.IsTypeAssignableTo(c.GetTypeAtLocation(expr), contextual) {
+			return // Preserve TypeScript's ordinary property-type diagnostic.
+		}
+	}
 	if checkUnionCallbackValue(c, expr) {
 		return
 	}

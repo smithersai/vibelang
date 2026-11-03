@@ -1,0 +1,21 @@
+// expect:
+import { risky, safe, fx, takeSafe, takeLoose, type Safe, type Loose, type Fx } from "./helpers.js"
+function local() { return 1 }
+export function check() {
+ takeSafe({ safe })
+ const saved: Safe = { safe }
+ const spread: Safe = { ...{ safe } }
+ takeLoose({ risky })
+ const allowed: Loose = { risky }
+ const allowedSpread: Loose = { ...{ risky } }
+ const localValue: { local: () => number } = { local }
+ const effectValue: Fx = { fx }
+ const env = { pending: safe }
+ ;({ pending } = env)
+ for ({ pending } of [env]) {}
+ ;[{ pending }] = [env]
+ ;({ nested: { pending } } = { nested: env })
+ return [saved, spread, allowed, allowedSpread, localValue, effectValue]
+}
+export function back(): Safe { return { safe } }
+export function allowedBack(): Loose { return { risky } }
