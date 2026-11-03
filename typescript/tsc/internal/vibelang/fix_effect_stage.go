@@ -17,6 +17,7 @@ import (
 // migration needs after EK1002's and EK4502's, which leave them as calls:
 //
 //	try (x |> Effect.orElseSucceed(%, () => v))   x catch () => v
+//	try (x |> Effect.catch(%, (e) => h(e)))       x catch (e) => h(e)
 //	try (x |> Effect.mapError(%, (e) => f(e)))    x catch effect (e) => { throw f(e) }
 //	try (x catch (e) => v)                        x catch (e) => v
 //	try x catch (e) => v                          x catch (e) => v
@@ -451,6 +452,7 @@ func effectStageFixes(ctx context.Context, program *compiler.Program, file *ast.
 		switch {
 		case isPipe(node):
 			propose(EK4835.Code, node, stageRewrite(c, file, node))
+			propose(EK4835.Code, node, catchStageRewrite(c, file, node))
 		case isTryCall(node):
 			propose(EK4835.Code, node, triedCatchRewrite(c, file, node))
 			propose(EK4834.Code, node, voidRewrite(c, file, node))

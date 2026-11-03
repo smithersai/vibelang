@@ -79,7 +79,17 @@ func methodCatchParts(c *checker.Checker, call *ast.Node) (*ast.Node, *ast.Node)
 }
 
 func catchCombinatorOf(c *checker.Checker, call *ast.Node) string {
-	if !ast.IsCallExpression(call) || call.TypeArguments() != nil || !inLowerableBody(call) || inHatch(call) || ast.IsOptionalChain(call) || directTryFormSite(call) == nil {
+	if directTryFormSite(call) == nil {
+		return ""
+	}
+	return catchCombinatorName(c, call)
+}
+
+// catchCombinatorName is catchCombinatorOf for any position of call. EK4835
+// reports only the direct operand of bare try (detail 254); catchStageRewrite
+// also reads a pipeline's last stage, which --fix rewrites and nothing reports.
+func catchCombinatorName(c *checker.Checker, call *ast.Node) string {
+	if !ast.IsCallExpression(call) || call.TypeArguments() != nil || !inLowerableBody(call) || inHatch(call) || ast.IsOptionalChain(call) {
 		return ""
 	}
 	operator := call
@@ -172,6 +182,26 @@ func catchCombinatorRewrite(c *checker.Checker, file *ast.SourceFile, call *ast.
 	if directTryFormSite(call) != call {
 		return &formRewrite{why: directTryWrapperNote}
 	}
+	return catchExpressionRewrite(c, file, call, name)
+}
+
+// catchStageRewrite plans the catch expression for pipe, whose last stage is
+// a catch combinator, under the try that runs it, or nil.
+func catchStageRewrite(c *checker.Checker, file *ast.SourceFile, pipe *ast.Node) *formRewrite {
+	call := pipe.AsBinaryExpression().Right
+	if !ast.IsCallExpression(call) || stagePipe(call) != pipe {
+		return nil
+	}
+	name := catchCombinatorName(c, call)
+	if name == "" {
+		return nil
+	}
+	return catchExpressionRewrite(c, file, call, name)
+}
+
+// catchExpressionRewrite writes call, the catch combinator name, as a catch
+// expression.
+func catchExpressionRewrite(c *checker.Checker, file *ast.SourceFile, call *ast.Node, name string) *formRewrite {
 	arguments := call.Arguments()
 	if self, inner := methodCatchParts(c, call); self != nil {
 		arguments = append([]*ast.Node{self}, inner.Arguments()...)
