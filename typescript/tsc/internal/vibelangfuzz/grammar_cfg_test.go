@@ -432,11 +432,14 @@ func grammarSplitLookahead(set string) []string {
 // the choices TypeScript's parser makes greedily, where the written grammar
 // has two readings: a type after "as" takes a following "|" or "&", and a
 // type name takes a following "<" as its type arguments, and "(" … ")"
-// followed by "=>" is a function type. Script is the start symbol.
+// followed by "=>" is a function type. TypeScript's parser keeps its binary
+// loop going after "as T" or "satisfies T", so any operator may follow one:
+// `x as number % 2` is `(x as number) % 2`. The subset puts both on
+// UpdateExpression, which derives the same sentences. Script is the start symbol.
 const grammarTsSubset = `
 Script = ScriptItem*
 ScriptItem = Statement
-Statement = Block | VariableStatement | EmptyStatement | ExpressionStatement | IfStatement | WhileStatement | ForOfStatement | SwitchStatement | ReturnStatement | ThrowStatement | TryStatement | LabelledStatement | BreakStatement | ContinueStatement | Declaration
+Statement = Block | VariableStatement | EmptyStatement | ExpressionStatement | IfStatement | WhileStatement | ForOfStatement | ForStatement | ForInStatement | SwitchStatement | ReturnStatement | ThrowStatement | TryStatement | LabelledStatement | BreakStatement | ContinueStatement | Declaration
 SwitchStatement = "switch" "(" Expression ")" "{" CaseClause* "}"
 CaseClause = "case" Expression ":" Statement* | "default" ":" Statement*
 Declaration = HoistableDeclaration | ClassDeclaration | InterfaceDeclaration | TypeAliasDeclaration | ImportDeclaration | ExportDeclaration
@@ -458,6 +461,8 @@ StatementEnd = ";" | ASI
 IfStatement = "if" "(" Expression ")" Statement "else" Statement | "if" "(" Expression ")" Statement [lookahead ∉ { "else" }]
 WhileStatement = "while" "(" Expression ")" Statement
 ForOfStatement = "for" "(" ForOfHead "of" AssignmentExpression ")" Statement
+ForStatement = "for" "(" [lookahead ∉ { "let" "[" }] Expression? ";" Expression? ";" Expression? ")" Statement | "for" "(" LetOrConst BindingList ";" Expression? ";" Expression? ")" Statement
+ForInStatement = "for" "(" ForOfHead "in" Expression ")" Statement
 ForDeclaration = LetOrConst ForBinding
 ForBinding = BindingIdentifier | BindingPattern
 ForOfHead = LetOrConst BindingIdentifier | LetOrConst BindingPattern | [lookahead ∉ { "let", "async" "of" }] LeftHandSideExpression
@@ -499,14 +504,14 @@ LogicalANDExpression = BitwiseORExpression | LogicalANDExpression "&&" BitwiseOR
 BitwiseORExpression = EqualityExpression | BitwiseORExpression "|" EqualityExpression
 EqualityExpression = RelationalExpression | EqualityExpression EqualityOperator RelationalExpression
 EqualityOperator = "===" | "!==" | "==" | "!="
-RelationalExpression = AdditiveExpression | RelationalExpression RelationalOperator AdditiveExpression | RelationalExpression [no LineTerminator here] "as" Type [lookahead ∉ { "|", "&" }] | RelationalExpression [no LineTerminator here] "satisfies" Type [lookahead ∉ { "|", "&" }]
+RelationalExpression = AdditiveExpression | RelationalExpression RelationalOperator AdditiveExpression
 RelationalOperator = "<" | ">" | "<=" | ">=" | "instanceof" | "in"
 AdditiveExpression = MultiplicativeExpression | AdditiveExpression "+" MultiplicativeExpression | AdditiveExpression "-" MultiplicativeExpression
 MultiplicativeExpression = UnaryExpression | MultiplicativeExpression "*" UnaryExpression | MultiplicativeExpression "%" UnaryExpression
 UnaryExpression = "<" Type ">" UnaryExpression | UpdateExpression | "!" UnaryExpression | "-" UnaryExpression | "+" UnaryExpression | "typeof" UnaryExpression | "void" UnaryExpression | "delete" UnaryExpression | AwaitExpression
 AwaitExpression = "await" UnaryExpression
 YieldExpression = "yield" [lookahead ∉ { "*" }] | "yield" [no LineTerminator here] AssignmentExpression | "yield" [no LineTerminator here] "*" AssignmentExpression
-UpdateExpression = LeftHandSideExpression | LeftHandSideExpression [no LineTerminator here] "++" | "++" UnaryExpression
+UpdateExpression = LeftHandSideExpression | LeftHandSideExpression [no LineTerminator here] "++" | "++" UnaryExpression | UpdateExpression [no LineTerminator here] "as" Type [lookahead ∉ { "|", "&" }] | UpdateExpression [no LineTerminator here] "satisfies" Type [lookahead ∉ { "|", "&" }]
 LeftHandSideExpression = NewExpression | CallExpression | OptionalExpression
 NewExpression = MemberExpression | "new" NewExpression
 MemberExpression = MemberExpression TypeArguments [lookahead ∈ { ";", ")", "]", "}", "," }] | PrimaryExpression | "super" "." IdentifierName | "super" "[" Expression "]" | MemberExpression "[" Expression "]" | MemberExpression "." IdentifierName | MemberExpression [no LineTerminator here] "!" | MemberExpression TemplateLiteral | "new" MemberExpression Arguments

@@ -144,6 +144,7 @@ var grammarAdmissionSeeds = []struct{ key, source string }{
 	{"data-separators", "data D { A { x : number } ; ; B }"},
 	{"join-for-head", "effect function f(xs) { for (join x of xs) { x; } }"},
 	{"join-outside-effect-empty", "join [ ]"},
+	{"join-for-head-line-break", "effect function f(xs) { for (join\nx\nof xs) { x; } }"},
 	{"interruption-outside-effect", "function f() { uninterruptible { return 1; } }"},
 	{"error-no-end", "error E effect { id: string }"},
 	{"error-no-end-schema", "schema error E effect { id: string }"},
@@ -626,7 +627,8 @@ func grammarAdmissionForm(source string) string {
 		switch tok.text {
 		case "join":
 			// VIP-17: join is exactly as await, and `for (await x of xs)` is TS2487.
-			if i >= 2 && ts[i-1].text == "(" && ts[i-2].text == "for" && i+1 < len(ts) && !ts[i+1].nl {
+			// The operand may follow a line break, as after await.
+			if i >= 2 && ts[i-1].text == "(" && ts[i-2].text == "for" && i+1 < len(ts) {
 				if n := ts[i+1]; n.kind == 'n' || n.kind == 's' || n.kind == 'w' && n.text != "of" && n.text != "in" && n.text != "as" && n.text != "satisfies" && n.text != "instanceof" {
 					return "admission:join-for-head"
 				}
@@ -716,7 +718,7 @@ func grammarAdmissionForm(source string) string {
 				return "admission:" + word + "-outside-effect"
 			}
 			// An element access needs an argument (TS1011), so `join [ ]` is no native access.
-			if next.text == "[" && len(operand) > 1 && operand[1].text == "]" {
+			if next.text == "[" && len(operand) > 1 && (operand[1].text == "]" || operand[1].text == ",") {
 				return "admission:" + word + "-outside-effect"
 			}
 		case parser.VibeSyntaxForkBlock:
@@ -853,6 +855,7 @@ func TestGrammarAdmissionMutationKeys(t *testing.T) {
 		"function f(xs) { for (join x of xs) { x; } }",
 		"effect function f(xs) { for (join x in xs) { x; } }",
 		"effect function f(xs) { for (join 1 of xs) { } }",
+		"effect function f(xs) { for (join\nx\nof xs) { x; } }",
 	} {
 		if got := grammarAdmissionForm(source); got != "admission:join-for-head" {
 			t.Errorf("join for-head not keyed: %s: %s", source, got)
@@ -862,14 +865,13 @@ func TestGrammarAdmissionMutationKeys(t *testing.T) {
 		"function f(xs) { for (join of xs) { } }",
 		"function f(o) { for (join in o) { } }",
 		"function f(xs) { for (join.x of xs) { } }",
-		"function f(xs) { for (join\nx of xs) { } }",
 		"effect function f(xs) { for (fork x of xs) { } }",
 	} {
 		if got := grammarAdmissionForm(source); got == "admission:join-for-head" {
 			t.Errorf("native or other for-head keyed as join-for-head: %s", source)
 		}
 	}
-	for _, source := range []string{"join {}", "join { n: 1 }", "join [ ]", "join [\n]"} {
+	for _, source := range []string{"join {}", "join { n: 1 }", "join [ ]", "join [\n]", "join [ , ]"} {
 		if got := grammarAdmissionForm(source); got != "admission:join-outside-effect" {
 			t.Errorf("outside-Effect object prefix not keyed: %s: %s", source, got)
 		}
@@ -1108,6 +1110,44 @@ func TestGrammarAdmissionCore(t *testing.T) {
 	if s := grammarBracketSym(`lookahead ∉ { ",", "<" }`); len(s.seqs) != 2 || s.seqs[0][0] != "," || s.seqs[1][0] != "<" {
 		t.Errorf("lookahead set with a quoted comma read as %q", s.seqs)
 	}
+	// TypeScript's binary loop goes on after an assertion.
+	for _, source := range []string{"const v = x as number % 2;", "const v = a + b as T * c;", "const v = x as T ? a : b;", "const v = -x satisfies T;"} {
+		if r := lab.read(lab.g, grammarLexSource(source), grammarParseMode{prose: true, names: true}); r.count == 0 {
+			t.Errorf("operator after an assertion has no derivation: %q", source)
+		}
+	}
+	for _, source := range []string{"x as T = 1;", "const v = x\nas T;"} {
+		if r := lab.read(lab.g, grammarLexSource(source), grammarParseMode{prose: true, names: true}); r.count != 0 {
+			t.Errorf("assertion form has a derivation: %q", source)
+		}
+	}
+	// A contextual word that names a declaration is an identifier.
+	for _, source := range []string{"module uninterruptible { export const n = 1; }", "schema error restore { id: string }", "class interruptible { }", "const o = { a: 1 }.restore;"} {
+		if r := lab.read(lab.g, grammarLexSource(source), grammarParseMode{prose: true, names: true}); r.count == 0 {
+			t.Errorf("contextual word as a name has no derivation: %q", source)
+		}
+	}
+	if r := lab.read(lab.g, grammarLexSource("function f() { uninterruptible { return 1; } }"), grammarParseMode{prose: true, names: true}); r.count != 0 {
+		t.Error("an interruption block in a plain function has a derivation")
+	}
+	// ECMAScript's for and for-in statements. The subset has no [In] parameter,
+	// so `for (a in b; ;)` derives too; that only makes the lab admit more.
+	for _, source := range []string{
+		"for (let i = 0; i < 3; i++) { }",
+		"for (;;) { break; }",
+		"for (const k in o) { }",
+		"for (k in o) k;",
+		"effect function f() { for (fork x ; ; ) { break; } }",
+	} {
+		if r := lab.read(lab.g, grammarLexSource(source), grammarParseMode{prose: true, names: true}); r.count == 0 {
+			t.Errorf("for statement has no derivation: %q", source)
+		}
+	}
+	for _, source := range []string{"for (;) { }", "for (const k in o; ;) { }"} {
+		if r := lab.read(lab.g, grammarLexSource(source), grammarParseMode{prose: true, names: true}); r.count != 0 {
+			t.Errorf("malformed for statement has a derivation: %q", source)
+		}
+	}
 	// VIP-41 throw expressions and VIP-40 module declarations.
 	for _, source := range []string{
 		"function f(x, e) { return x ?? throw e; }",
@@ -1215,6 +1255,8 @@ func grammarAdmissionSyntaxCode(code int32) bool {
 	case 4408: // Legacy module recovery rejects a missing name; this admits no module form.
 		return true
 	case 4001, 4002, 4003: // VIP-40: a module declaration below the top level, exported, or with no name.
+		return true
+	case 4008: // VIP-40: `export =` or `import x = require()` in a body, TypeScript the lab's ModuleBody leaves out.
 		return true
 	case 1010: // VIP-41: a ThrowExpressionInvalidPunctuator after a throw expression's operand.
 		return true
@@ -1329,6 +1371,9 @@ func grammarAdmissionSyntaxDiagnostic(d *ast.Diagnostic) bool {
 	// the production are TypeScript namespaces, which get TS1540 alone.
 	case 1540:
 		return true
+	// checkGrammarProperty: an initializer on a type literal member (TS1247).
+	case 1247:
+		return true
 	}
 	return false
 }
@@ -1393,6 +1438,8 @@ func TestGrammarAdmissionDiagnostics(t *testing.T) {
 		{"native-definite-no-type", "", diagnostics.CategoryError, 1264, true},
 		{"native-for-of-target", "", diagnostics.CategoryError, 2487, true},
 		{"native-module-namespace", "", diagnostics.CategoryError, 1540, true},
+		{"native-type-member-initializer", "", diagnostics.CategoryError, 1247, true},
+		{"module-export-assignment", "EK", diagnostics.CategoryError, 4008, true},
 		{"module-placement", "EK", diagnostics.CategoryError, 4001, true},
 		{"module-export", "EK", diagnostics.CategoryError, 4002, true},
 		{"module-expression", "EK", diagnostics.CategoryError, 4003, true},

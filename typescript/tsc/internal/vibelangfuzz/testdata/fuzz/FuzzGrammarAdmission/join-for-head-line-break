@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("key:join-for-head-line-break\neffect function f(xs) { for (join\nx\nof xs) { x; } }")

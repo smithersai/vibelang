@@ -340,6 +340,12 @@ func (s *grammarProseSet) mark(toks []grammarToken, effect bool, g *grammarCfg) 
 		if t.kind != 'w' || !s.words[t.text] {
 			continue
 		}
+		// "Each is tested wherever its production can appear": a declaration's
+		// name and a member name are never where one appears, so
+		// `module restore { }` and `schema error restore { }` name a declaration.
+		if i > 0 && grammarNamePosition[toks[i-1].text] {
+			continue
+		}
 		state := grammarKwNo
 		for _, k := range s.keywords {
 			if !grammarContainsWord(k.Words, t.text) {
@@ -368,6 +374,14 @@ func (s *grammarProseSet) mark(toks []grammarToken, effect bool, g *grammarCfg) 
 		kw[i] = state
 	}
 	return kw
+}
+
+// grammarNamePosition holds the tokens after which a word is a name: a
+// declaration keyword's BindingIdentifier, or a member access's IdentifierName.
+var grammarNamePosition = map[string]bool{
+	"module": true, "class": true, "interface": true, "function": true, "namespace": true, "enum": true,
+	"service": true, "error": true, "schema": true, "data": true, "type": true,
+	".": true, "?.": true, "#": true,
 }
 
 func grammarContainsWord(ws []string, w string) bool {
