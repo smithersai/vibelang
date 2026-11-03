@@ -861,3 +861,37 @@ test("JSON comparison honors the inherited project setting", () => {
     assert.equal(result.identical, true, JSON.stringify(result))
   }, jsonManifest)
 })
+
+test("comparison exceptions are explicit invalid results, including self-comparison", () => {
+  fixture("export type X = string;", "export type X = string;", (before, after) => {
+    for (const other of [before, after]) {
+      const crashing = { ...ts, createProgram() { throw new RangeError("Maximum call stack size exceeded") } }
+      const result = compareApiIdentity(crashing, before, other)
+      assert.equal(result.identical, false)
+      assert.equal(result.comparisonComplete, false)
+      assert.deepEqual(result.typeDifferences, [])
+      assert.ok(result.environmentDiagnostics.some(d => d.blocking && /RangeError/.test(d.diagnostic)))
+      assert.equal(result.failure.stage, "create-input-program")
+    }
+  })
+})
+
+test("property: compiler exceptions never establish API identity", async () => {
+  await checkProperty(fc, {
+    name: "api-identity-exception-invalid",
+    rule: "Will: a crash is an explicit invalid result, never identical",
+    command: "node --test scripts/api-identity.test.mjs",
+    arbitrary: fc.record({ operation: fc.constantFrom("createCompilerHost", "createProgram"),
+      kind: fc.constantFrom("RangeError", "Error", "TypeError") }),
+    numRuns: 12,
+    check: ({ operation, kind }) => fixture("export {};", "export {};", (before, after) => {
+      const compiler = { ...ts, [operation]() { throw new globalThis[kind]("injected compiler failure") } }
+      const result = compareApiIdentity(compiler, before, after)
+      assert.equal(result.identical, false)
+      assert.equal(result.comparisonComplete, false)
+      assert.equal(result.failure.error, kind)
+      assert.ok(result.environmentDiagnostics.some(d => d.blocking))
+      assert.deepEqual(result.typeDifferences, [])
+    }),
+  })
+})

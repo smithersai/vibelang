@@ -106,3 +106,9 @@ does not. The checker reads the inherited project setting, enables JSON for
 declaration-only snapshots without configuration, and accepts an explicit
 `compilerOptions.resolveJsonModule` override. Invalid JSON is an unavailable
 comparison, reported through `environmentDiagnostics`, without type differences.
+
+Comparison exceptions, including a stack overflow, return an invalid result:
+`comparisonComplete: false` and `identical: false`, with a blocking environment
+diagnostic. The `failure` record identifies the stage, elapsed milliseconds and
+process memory use. The CLI prints the same result with `--json` and exits `2`.
+A failed comparison supplies no type-difference verdict.

@@ -391,6 +391,22 @@ function projectJsonModules(ts, path) {
  * No files are written to either input tree.
  */
 export function compareApiIdentity(ts, before, after, options = {}) {
+  let stage = "entrypoints"
+  const started = performance.now()
+  try {
+    return compareUnchecked(ts, before, after, options, value => { stage = value })
+  } catch (error) {
+    const failure = { stage, elapsedMs: Math.round(performance.now() - started),
+      error: error?.name ?? "Error", ...process.memoryUsage() }
+    return { identical: false, comparisonComplete: false, nameDifferences: [],
+      typeDifferences: [], docDifferences: [], failure,
+      environmentDiagnostics: [{ blocking: true,
+        diagnostic: "API identity comparison failed during " + stage + ": " +
+          (error?.name ?? "Error") + ": " + (error?.message ?? String(error)) }] }
+  }
+}
+
+function compareUnchecked(ts, before, after, options, progress) {
   before = resolve(before); after = resolve(after)
   const entryMap = (base, supplied) => Object.fromEntries(Object.entries(supplied ?? publishedEntrypoints(base, ts))
     .map(([key, path]) => [key, resolve(base, path)]))
@@ -462,7 +478,9 @@ export function compareApiIdentity(ts, before, after, options = {}) {
   }
   const probe = join(repo, ".api-identity-probe.mts")
   const roots = [...new Set([...Object.values(left), ...Object.values(right)])]
+  progress("create-input-program")
   let program = ts.createProgram(roots, compilerOptions, host)
+  progress("input-diagnostics")
   const originalDiagnostics = []
   // Diagnose originals before asking for enum constants: tsc can cache a
   // non-diagnostic enum computation when getConstantValue is called first.
@@ -546,7 +564,9 @@ export function compareApiIdentity(ts, before, after, options = {}) {
       return result
     }
   }
+  progress("module-equivalence")
   const equivalents = equivalentModules(ts, program, host, left, right, externalGroups)
+  progress("nominal-identity")
   const nominal = alignNominalIdentity(ts, program, before, after, join(repo, ".api-identity-brands.d.cts"), [left, right])
   if (nominal.size > 1) {
     for (const [path, text] of nominal) {
@@ -554,6 +574,7 @@ export function compareApiIdentity(ts, before, after, options = {}) {
     }
     program = ts.createProgram(roots, compilerOptions, host)
   }
+  progress("normalized-input-diagnostics")
   const checker = program.getTypeChecker()
   const inputDiagnostics = ts.getPreEmitDiagnostics(program)
   // Error-any can make a strict identity probe pass vacuously. Inspect only
@@ -771,6 +792,7 @@ export function compareApiIdentity(ts, before, after, options = {}) {
       }
     }
   }
+  progress("export-surface")
   for (const key of keys) {
     if (!left[key] || !right[key]) {
       result.nameDifferences.push({ entrypoint: key, export: "*", side: left[key] ? "before" : "after" })
@@ -818,8 +840,10 @@ export function compareApiIdentity(ts, before, after, options = {}) {
     lines.push(`type __assign${byLine.size} = __Assert<__Assignable<${check.a}, ${check.b}>>;`)
   }
   virtual.set(probe, lines.join("\n"))
+  progress("create-probe-program")
   program = ts.createProgram([...roots, probe], compilerOptions, host)
   const diagnosticText = d => "TS" + d.code + ": " + ts.flattenDiagnosticMessageText(d.messageText, "\n")
+  progress("probe-diagnostics")
   const diagnostics = [...originalDiagnostics, ...inputDiagnostics, ...ts.getPreEmitDiagnostics(program)]
   const assignmentFailures = new Set(diagnostics.filter(d => d.file?.fileName === probe && d.start !== undefined)
     .map(d => assignmentLines.get(d.file.getLineAndCharacterOfPosition(d.start).line)).filter(Boolean))
