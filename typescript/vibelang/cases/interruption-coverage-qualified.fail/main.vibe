@@ -1,0 +1,8 @@
+// expect: TS2304
+import { Effect } from "effect"
+// VIP-22 keywords remove the two same-named globals; qualify native APIs.
+export effect function missingMask() { return try uninterruptible(Effect.succeed(1)) }
+export effect function missingInterrupt() { return try interruptible(Effect.succeed(1)) }
+
+// docs/design/vips/0022-interruption-blocks.md#ee6609176b45f7ff | VIP-22 native-mask-APIs-stay-qualified
+// Under VIP-6, the keywords remove the globals of the same name, so Effect's functions are written `Effect.uninterruptible` and `Effect.interruptible`.

@@ -1,0 +1,30 @@
+import { Effect, Stream } from "effect"
+// VIP-22 empty completion, normal values, outward jumps and restore activations.
+export effect function main(): Effect.Effect<number[]> {
+ const a = do { uninterruptible { 7 } }
+ const b = do { 8; uninterruptible {} }
+ const c = do { outer: { uninterruptible { 9; break outer } } }
+ const out = [a, b, c]
+ uninterruptible {
+   for try (const n of Stream.make(10)) { restore { out.push(n) } }
+   for concurrent(1) (const n of [11]) {
+     try Effect.uninterruptibleMask(resume => resume(Effect.sync(() => { out.push(n) })))
+   }
+ }
+ return out
+}
+
+// docs/design/vips/0022-interruption-blocks.md#791b72f6a1da7200 | VIP-22 source-completion-and-local-mask-repair
+// Transparent regions and `for try` callback lowering add no source activation boundary; the following `for concurrent` restriction remains.
+
+// docs/design/vips/0022-interruption-blocks.md#3f122e6fdfb1c2e8 | VIP-22 source-completion-and-local-mask-repair
+// Mask per item with `Effect.uninterruptibleMask` inside the body, or use a plain `for`.
+
+// docs/design/vips/0022-interruption-blocks.md#2381aa63e48ecae2 | VIP-22 source-completion-and-local-mask-repair
+// **Amended 2026-10-30: ordinary-block completion values.** A transparent block preserves the source completion's kind, value (including `empty`) and target.
+
+// docs/design/vips/0022-interruption-blocks.md#80cc8b79bb28e86c | VIP-22 source-completion-and-local-mask-repair
+// A surrounding `do` can observe its normal value or a value carried through a consumed jump; generated callbacks do not discard it.
+
+// docs/design/vips/0022-interruption-blocks.md#4a49201e8cb11bb0 | VIP-22 source-completion-and-local-mask-repair
+// A body that needs it masks per item with `Effect.uninterruptibleMask` inside the body, or uses a plain `for` instead of `for concurrent(1)`.

@@ -1,0 +1,2 @@
+This statement follows the layer's members, but a layer's setup statements come first.
+Move it above next: setup runs once, before the members exist.

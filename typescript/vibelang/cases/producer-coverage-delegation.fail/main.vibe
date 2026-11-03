@@ -1,0 +1,12 @@
+// expect: EK2103
+// VIP-21 delegation requires a future VIP.
+export effect function* delegated() { yield* [1, 2] }
+
+// docs/design/vips/0021-producers.md#7764e6a6f464042c | VIP-21 delegation-requires-a-VIP
+// **Amended 2026-10-29: no delegation yet.** `yield*` in a producer is a compile error until a VIP specifies delegation.
+
+// docs/design/vips/0021-producers.md#195dda3951229152 | VIP-21 delegation-requires-a-VIP
+// (NW 12; VIP-21) `yield*` in a producer (`effect function*`) is a compile error until a VIP specifies delegation.
+
+// docs/design/vips/0021-producers.md#1ef5150126f7936e | VIP-21 delegation-requires-a-VIP
+// ```vibe effect function* p() { yield* other() } // error ``` Effect TS: none chosen (`Stream.concat` is one candidate).

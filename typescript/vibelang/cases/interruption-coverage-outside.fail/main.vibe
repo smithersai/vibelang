@@ -1,0 +1,6 @@
+// expect: EK2201
+// VIP-22 statement forms require effect code.
+export function plain() { uninterruptible {} }
+
+// docs/design/vips/0022-interruption-blocks.md#cf275b3b85629e5f | VIP-22 outside-effect-region-statement
+// These are statements inside an `effect` function or block, like `provide` (VIP-12).

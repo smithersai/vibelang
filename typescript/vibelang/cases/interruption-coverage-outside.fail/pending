@@ -1,0 +1,1 @@
+cov-concurrency VIP-22: a masking block in a plain function is admitted instead of EK2201.

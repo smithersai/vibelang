@@ -1,0 +1,16 @@
+import { Effect } from "effect"
+import { values } from "./helper.js"
+// VIP-31 source cells keep TDZ and are initialized before IteratorClose.
+export effect function main(): Effect.Effect<string[]> {
+ const trace: string[] = []
+ const hook = { read: (): number => 0 }
+ hook.read = (): number => x
+ const [x = do { const v = 7; try Effect.succeed(7); v }] = values(hook, trace)
+ return [String(x), ...trace]
+}
+
+// docs/design/vips/0031-runtime-guarantees.md#f9ae8cf3eb3060de | VIP-31 source-TDZ-and-initialization-before-close
+// A generated try block must not hide the source binding or turn a TDZ into an initialized undefined.
+
+// docs/design/vips/0031-runtime-guarantees.md#077342b89e8080bc | VIP-31 source-TDZ-and-initialization-before-close
+// ```vibe effect function witness(xs: Iterable<number | undefined>, hook: { read: () => number }) { hook.read = (): number => x const [x = do { const v = 7; try succeed(7); v }] = xs return x // a normal iterator return() calling hook.read observes 7 } ``` Effect TS: `Effect.gen(function* () { hook.read = () => x; const [x = (yield* Effect.succeed(7), 7)] = xs; return x })` for this witness; general expansion follows the same binding steps with hygienic cells when needed.

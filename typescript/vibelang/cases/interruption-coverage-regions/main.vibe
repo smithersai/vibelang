@@ -1,0 +1,35 @@
+import { Effect } from "effect"
+// VIP-22 ordinary jumps cross transparent regions; nested restore is lexical.
+export effect function main(): Effect.Effect<number[]> {
+ const out: number[] = []
+ effect function returned() {
+   uninterruptible { return 7 }
+ }
+ out.push(try returned())
+ for (const x of [1, 2, 3]) {
+   uninterruptible {
+     if (x === 2) continue
+     restore { out.push(x) }
+     if (x === 3) break
+   }
+ }
+ uninterruptible {
+   restore {
+     uninterruptible { restore { try Effect.yieldNow; out.push(4) } }
+   }
+   interruptible { try Effect.yieldNow; out.push(5) }
+ }
+ return out
+}
+
+
+
+
+// docs/design/vips/0022-interruption-blocks.md#2784d2dcbedc2d7f | VIP-22 transparent-region-control-and-mask-nesting
+// **Amended 2026-10-29: these are ordinary blocks.** `return`, `break` and `continue` inside them reach the enclosing function or loop, as in any TypeScript block.
+
+// docs/design/vips/0022-interruption-blocks.md#da9e70fb7b057585 | VIP-22 transparent-region-control-and-mask-nesting
+// That activation may introduce its own `uninterruptible` mask and restore it.
+
+// docs/design/vips/0022-interruption-blocks.md#eb5b5bbd87d89822 | VIP-22 transparent-region-control-and-mask-nesting
+// **Ambiguity: none.** These are contextual keywords followed by `{` on the same line.

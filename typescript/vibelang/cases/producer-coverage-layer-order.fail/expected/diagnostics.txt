@@ -1,0 +1,2 @@
+main.vibe(8,8): warning EK2121
+main.vibe(12,3): error EK9209

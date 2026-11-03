@@ -1,0 +1,17 @@
+// expect: EK2102 TS2322
+import { Stream } from "effect"
+// VIP-21 exact written container and independent yield mismatch.
+export effect function* erased(): any { yield 1 }
+export effect function* opaque(): unknown { yield 1 }
+export effect function* bottom(): never { yield 1 }
+export effect function* optional(): Stream.Stream<number> | undefined { yield 1 }
+export effect function* wrongElement(): Stream.Stream<string> { yield 1 }
+
+// docs/design/vips/0021-producers.md#d6b094ae3667a558 | VIP-21 invalid-written-Stream-container
+// A bare `any`, `unknown` or `never`, or a genuine union in place of that Stream contract, is `EK2102`.
+
+// docs/design/vips/0021-producers.md#729da97745019b91 | VIP-21 invalid-written-Stream-container
+// Preserve independent native body/type diagnostics, with `EK2102` owning this invalid written-return contract.
+
+// docs/design/vips/0021-producers.md#1e3ab5d5effe2d6a | VIP-21 invalid-written-Stream-container
+// ```vibe type Numbers = Stream.Stream<number> effect function* values(): Numbers { yield 1 } // valid alias effect function* erased(): unknown { yield 1 } // EK2102 effect function* choices(): Stream.Stream<number> | undefined { yield 1 } // EK2102 ```

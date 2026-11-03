@@ -1,0 +1,1 @@
+cov-concurrency VIP-22: same-named mask function globals remain available instead of requiring Effect qualification.

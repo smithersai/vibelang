@@ -1,0 +1,37 @@
+import { Effect, Context, Layer, Exit } from "effect"
+// VIP-22/VIP-31 finalizers see primitive payloads, not source-control records.
+class S extends Context.Service<S, { value: number }>()("S") {}
+export effect function main(): Effect.Effect<Array<number | undefined>> {
+ const trace: Array<number | undefined> = []
+ const live = Layer.effect(S, Effect.acquireRelease(Effect.succeed({value:1}), (_, e) => Effect.sync(() => { trace.push(Exit.isSuccess(e) ? e.value as number | undefined : -1) })))
+ const normal = do { provide live { uninterruptible { 7 } } }
+ trace.push(normal)
+ effect function returned() { provide live { uninterruptible { return 7 } } }
+ trace.push(try returned())
+ effect function returnedVoid() { provide live { uninterruptible { return } } }
+ trace.push((try returnedVoid()) as undefined)
+ for (const item of [0]) { provide live { uninterruptible { break } } }
+ for (const item of [0]) { provide live { uninterruptible { continue } } }
+ return trace
+}
+
+// docs/design/vips/0022-interruption-blocks.md#d7817706551ceb17 | VIP-22 primitive-Exit-and-source-completion
+// **Amended 2026-10-30: observer payloads and source completions.** A `provide` or interruption region preserves its source completion separately from the primitive Effect success value.
+
+// docs/design/vips/0022-interruption-blocks.md#da73fb3854b56aa0 | VIP-22 primitive-Exit-and-source-completion
+// Normal completion and outward `break`/`continue` give primitive success `undefined`; a source `return value` gives that exact value, and bare `return` gives `undefined`.
+
+// docs/design/vips/0022-interruption-blocks.md#3d73b476e6ffe96c | VIP-22 primitive-Exit-and-source-completion
+// Finalizers observe these generator payloads, never compiler control records; a normal source value still contributes to an enclosing `do`.
+
+// docs/design/vips/0031-runtime-guarantees.md#d7817706551ceb17 | VIP-31 primitive-Exit-and-source-completion
+// **Amended 2026-10-30: observer payloads and source completions.** A `provide` or interruption region preserves its source completion separately from the primitive Effect success value.
+
+// docs/design/vips/0031-runtime-guarantees.md#da73fb3854b56aa0 | VIP-31 primitive-Exit-and-source-completion
+// Normal completion and outward `break`/`continue` give primitive success `undefined`; a source `return value` gives that exact value, and bare `return` gives `undefined`.
+
+// docs/design/vips/0031-runtime-guarantees.md#3d73b476e6ffe96c | VIP-31 primitive-Exit-and-source-completion
+// Finalizers observe these generator payloads, never compiler control records; a normal source value still contributes to an enclosing `do`.
+
+// docs/design/vips/0031-runtime-guarantees.md#331bb75bed1c3e42 | VIP-31 native-Exit-observer-contract
+// **The guarantee.** Compiled output gives the same `Exit` as the Effect TypeScript shown in each VIP: success, failure, defect or interruption, with finalizers in the same order.

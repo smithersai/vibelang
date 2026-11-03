@@ -1,0 +1,16 @@
+// expect: EK2104
+// VIP-21 source ownership is independent of implementation generators.
+export effect function badYield() { yield 1 }
+export effect function* formal(a = do { yield 1; 0 }) { yield a }
+
+// docs/design/vips/0021-producers.md#3fbc719e06f06372 | VIP-21 source-yield-ownership
+// **Amended 2026-10-30: parameter yield ownership.** `yield` in directly evaluated formal-parameter initialization of any Effect callable, a producer included, is `EK2104`.
+
+// docs/design/vips/0021-producers.md#9e59dc80ae087754 | VIP-21 source-yield-ownership
+// A producer owns `yield` in its body, not its parameter initialization; nested native generators and ordinary async callables keep their own contexts.
+
+// docs/design/vips/0021-producers.md#bc2fb26ad6c20dbc | VIP-21 source-yield-ownership
+// Recover the source-rule-owned yield check with its existing `EK2104` trigger, including the source context/formal-initialization boundaries of212; native generators/native diagnostics remain distinct.
+
+// docs/design/vips/0021-producers.md#e6a503659ee1fba7 | VIP-21 source-yield-ownership
+// An `Effect.gen` implementation generator is not a source producer and grants no source `yield` permission to `badYield`.

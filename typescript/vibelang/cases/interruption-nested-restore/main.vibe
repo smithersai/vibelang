@@ -23,3 +23,9 @@ export effect function main() {
 // Chapter 002: nested lexical mask restore and interruption trace; docs/design/src/002-running.md#75a943a8b0682763
 // Chapter 002: nested lexical mask restore and interruption trace; docs/design/src/002-running.md#5740eb7a5817bc88
 // Chapter 002: nested lexical mask restore and interruption trace; docs/design/src/002-running.md#c3d8428c9c08506d
+
+// docs/design/vips/0022-interruption-blocks.md#0642a7e3d558bb19 | VIP-22 innermost-mask-entry-state
+// It selects the innermost enclosing `uninterruptible` block in its source activation.
+
+// docs/design/vips/0022-interruption-blocks.md#1001581fcb4f5d2d | VIP-22 innermost-mask-entry-state
+// That entry state may already be uninterruptible; `restore`, `interruptible` and `provide` blocks do not rebind the capability.

@@ -1,0 +1,29 @@
+// expect: EK2111 EK2202
+// VIP-22 masks require effect code; restore cannot capture another activation.
+export effect function noMask() { restore {} }
+export effect function capture() { uninterruptible { const e = effect { restore {} }; try e } }
+export effect function item() { uninterruptible { for concurrent(1) (const n of [1]) { restore {} } } }
+
+// docs/design/vips/0022-interruption-blocks.md#0fb82a842deef324 | VIP-22 restore-activation-and-item-boundaries
+// `restore { … }` is allowed only inside an `uninterruptible` block; anywhere else it is a compile error.
+
+// docs/design/vips/0022-interruption-blocks.md#273b8596954389b6 | VIP-22 restore-activation-and-item-boundaries
+// (`for concurrent` and `for try` keep their own rule, because their bodies run once per item.) Recorded under Will's standing approval of recommendations.
+
+// docs/design/vips/0022-interruption-blocks.md#302f64c3a6ea73a1 | VIP-22 restore-activation-and-item-boundaries
+// **Amended 2026-10-30: `restore` follows source activations.** Capturing an outer mask across an `effect` function declaration or expression, arrow, method, producer or `effect` block is `EK2202`: the nested Effect can run after the mask ends.
+
+// docs/design/vips/0022-interruption-blocks.md#da1d071f52af55a7 | VIP-22 restore-activation-and-item-boundaries
+// **Amended 2026-10-30: `restore` in a `for concurrent` body.** `restore` inside any `for concurrent` body is a compile error (`EK2202`), whatever the limit: each item runs as a separate Effect that the enclosing mask does not govern.
+
+// docs/design/vips/0022-interruption-blocks.md#c7231635c13224ad | VIP-22 restore-activation-and-item-boundaries
+// (NW 13; VIP-22) `restore` is lexical: a `restore` inside an `effect` arrow or `effect` block nested in an `uninterruptible` block is a compile error.
+
+// docs/design/vips/0022-interruption-blocks.md#0b456e12613eae49 | VIP-22 restore-activation-and-item-boundaries
+// ```vibe uninterruptible { const e = effect { restore { try poll() } }; try e } // error ``` Effect TS: `Effect.uninterruptibleMask((restore) => …)`; `restore` is only valid while the mask runs.
+
+// docs/design/vips/0022-interruption-blocks.md#f0138c8fb39573eb | VIP-22 restore-activation-and-item-boundaries
+// **`restore` in any `for concurrent` body is `EK2202`** (audit-x 002 D1; extends detail 51).
+
+// docs/design/vips/0022-interruption-blocks.md#a44cf009ca527a6b | VIP-22 restore-activation-and-item-boundaries
+// `restore` is lexical, and a `for concurrent` body's items run as separate Effects that the enclosing `uninterruptible` mask does not govern, whatever the limit.
