@@ -1167,6 +1167,8 @@ function first() {
 | `yield*` in a producer, `effect function* p() { yield* other() }`: no VIP specifies delegation | `EK2103` |
 | `yield` in nonproducer effect code (an `effect` function, arrow or block), whether or not an outer producer exists, or in directly evaluated formal-parameter initialization of an Effect callable or producer | `EK2104` |
 
+`EK2104` offers a quick fix for `yield* e` in a nonproducer Effect body when `e` is an Effect: write `try e`. If the operand already runs with `try` and gives a non-Effect value, remove the redundant `yield*`, so `yield* try load()` becomes `try load()`. If that `try` gives another Effect, keep both runs as `try (try e)`. The fix preserves comments and operand grouping. A bare `yield`, a producer delegation and a parameter initializer have no such rewrite.
+
 `EK2104` does not require an outer producer:
 
 ```vibe

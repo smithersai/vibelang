@@ -1,5 +1,5 @@
-// expect: EK1015
-effect function load(): string!! { return "x" }
+// expect: EK2104
+effect function load() { return "x" }
 export effect function main() {
   const value = yield* try load()
   try Console.log(value)

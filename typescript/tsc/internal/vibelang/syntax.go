@@ -3,6 +3,7 @@ package vibelang
 import (
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/checker"
+	"github.com/microsoft/TypeScript/tsc/internal/parser"
 	"github.com/microsoft/TypeScript/tsc/internal/scanner"
 	"github.com/microsoft/TypeScript/tsc/internal/vibelangmapper"
 )
@@ -48,6 +49,9 @@ func checkSyntax(c *checker.Checker, file *ast.SourceFile) {
 		switch node.Kind {
 		case ast.KindYieldExpression:
 			fn := yieldBodyFunction(file, node)
+			if parser.VibeLangYieldOutsideProducer(node) {
+				break // EK2104 owns source placement, including yield*.
+			}
 			if node.AsYieldExpression().AsteriskToken != nil && (fn == nil || ast.GetFunctionFlags(fn)&ast.FunctionFlagsGenerator == 0) {
 				report(c, node, EK1015)
 				cover(c, node)

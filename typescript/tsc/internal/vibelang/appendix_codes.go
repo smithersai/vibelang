@@ -33,6 +33,7 @@ var (
 	EK1907 = message(1907, errorCategory, "A for concurrent limit must be assignable to Types.Concurrency: number or \"unbounded\".")
 	EK2102 = message(2102, errorCategory, "A producer whose written return type is not a Stream. Yield values from a producer and return without a value; its return type is a Stream.")
 	EK2103 = message(2103, errorCategory, "yield* is not supported in a producer. Loop over the source and yield each value instead.")
+	EK2104 = message(2104, errorCategory, "yield belongs to a producer body, not a nonproducer Effect activation or parameter initializer.")
 	EK2201 = message(2201, errorCategory, "An interruption block outside effect code. Use interruption blocks inside effect code and restore inside the same uninterruptible region.")
 	EK2202 = message(2202, errorCategory, "Restore in an effect arrow or block nested in an uninterruptible block. Use interruption blocks inside effect code and restore inside the same uninterruptible region.")
 	// EK2301: pipe grammar early errors; the parser supplies the form-specific text.

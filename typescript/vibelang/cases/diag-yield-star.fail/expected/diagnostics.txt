@@ -1,1 +1,1 @@
-main.vibe(4,17): error EK1015
+main.vibe(4,17): error EK2104

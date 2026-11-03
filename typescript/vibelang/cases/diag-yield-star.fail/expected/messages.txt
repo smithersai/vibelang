@@ -1,1 +1,1 @@
-Calls run in VibeLang; remove yield*.
+yield belongs to a producer body, not a nonproducer Effect activation or parameter initializer.

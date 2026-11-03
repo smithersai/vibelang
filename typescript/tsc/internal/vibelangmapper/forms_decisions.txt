@@ -7652,6 +7652,7 @@ typescript/vibelang/cases/written-forms/forms.vibe:20:64 lambda plain annotation
 typescript/vibelang/cases/written-forms/forms.vibe:26:35 lambda plain table
 typescript/vibelang/cases/written-forms/forms.vibe:31:24 lambda plain fallback
 typescript/vibelang/cases/written-forms/forms.vibe:31:60 lambda plain fallback
+typescript/vibelang/cases/yield-activation-independent-errors.fail/main.vibe:4:46 lambda plain fallback
 typescript/vibelang/lsp-fixture/src/catch-expression.vibe:12:10 lambda effectFn table
 typescript/vibelang/lsp-fixture/src/catch-expression.vibe:12:29 lambda effectFn table
 typescript/vibelang/lsp-fixture/src/catch-expression.vibe:16:10 lambda effectFn table

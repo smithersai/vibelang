@@ -108,5 +108,14 @@
         "output": "typescript/vibelang/cases/vip3-infer-slot-migration-output"
       }
     ]
+  },
+  {
+    "code": "EK2104",
+    "cases": [
+      {
+        "input": "typescript/vibelang/cases/diag-yield-star.fail",
+        "output": "typescript/vibelang/cases/diag-yield-star-fixed-output"
+      }
+    ]
   }
 ]

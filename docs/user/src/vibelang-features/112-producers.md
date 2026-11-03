@@ -42,6 +42,10 @@ A producer expression cannot use `fork` or `join` as its own name (`EK1702`), ju
 
 A bare `return` ends a producer. `return value` is an error (`EK2128`) because a Stream has no return value; `vibelang --fix` writes `return` and keeps the value's evaluation. It rewrites only a function marked `effect`, never a plain `function*`, whose caller can read the value. A `return` inside a `for try` head's binding initialization or body is also an error (`EK2002`); nested functions keep their own return targets. Save the result and use `break` instead.
 
+A `yield` belongs to its own source activation. In a nonproducer `effect` function, arrow or `effect { }` block, it reports `EK2104`, even inside an outer producer. Directly evaluated parameter defaults and destructuring of Effect callables and producers also report `EK2104`: parameter initialization is outside the suspended body. Nested native generators keep TypeScript's own `yield` rules.
+
+For legacy Effect delegation in a nonproducer body, EK2104's quick fix and `vibelang --fix` write `try e` for `yield* e` when `e` is an Effect. If the operand already runs and returns an ordinary value, `yield* try load()` becomes `try load()`; if it returns another Effect, the fix keeps both runs as `try (try load())`. Bare yields, producer delegation and parameter initializers need an explicit source change.
+
 ## Call services between yields
 
 ```vibe

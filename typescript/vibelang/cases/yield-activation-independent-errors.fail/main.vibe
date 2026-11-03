@@ -1,0 +1,4 @@
+// expect: EK2104 TS2304
+// VIP-21: source activation decides placement; operand errors stay independent.
+export effect function invalid() { yield missingOperand }
+export effect function* parameter(value = do { yield 1; 0 }) { yield value }
