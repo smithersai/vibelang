@@ -508,8 +508,8 @@ const vibelangTopicTargets = Object.fromEntries(
 // gate selection reaches these dependencies without a pre-gate change.
 const specInputs = S.Filegroup({ srcs: [...S.glob([
   "docs/design/**", "docs/tools/spec-rules*", "docs/tools/spec-examples*", "docs/tools/spec-lint*",
-  "docs/tools/package.json", "docs/tools/bun.lock", "docs/maintainers/build.md",
-  "docs/tools/diagnostic-identity*", "docs/tools/property-regressions/gate6-ek4804.json", "PACKAGE.ts",
+  "docs/tools/package.json", "docs/tools/bun.lock", "docs/maintainers/build.md", "docs/user/src/getting-started/012-devtools.md",
+  "docs/tools/diagnostic-identity*", "docs/tools/property-regressions/gate6-ek4804.json", "docs/tools/property-regressions/gate6-mapper-ek2115.json", "PACKAGE.ts",
   "typescript/tsc/internal/diagnostics/diagnosticMessages.json",
   "typescript/tsc/internal/tsoptions/declarations_generated.go"
 ])] })
@@ -537,7 +537,7 @@ const specDiagnosticIdentity = S.Shell.Test({
   summary: "Compiler registrations, Appendix B definitions and current doc citations agree.",
   shell: "node --test docs/tools/diagnostic-identity.test.mjs && node docs/tools/diagnostic-identity.mjs",
   data: [S.Filegroup({ srcs: [...S.glob([
-    "docs/tools/diagnostic-identity*", "docs/tools/property-regressions/gate6-ek4804.json",
+    "docs/tools/diagnostic-identity*", "docs/tools/property-regressions/gate6-ek4804.json", "docs/tools/property-regressions/gate6-mapper-ek2115.json",
     "docs/design/src/**", "docs/user/src/**", "docs/user/llms-essentials.md",
     "packages/compiler/skills/vibelang/SKILL.md", "templates/app/AGENTS.md",
     "typescript/tsc/internal/**/*.go", "PACKAGE.ts"

@@ -30,11 +30,42 @@ export function compilerCodes(sources) {
   const registered = new Map()
   const tokens = sources.map(({ path, text }) => ({ path, text, tokens: goTokens(text) }))
   const constants = new Map()
+  const mapperConstants = new Map()
+  const directory = path => path.slice(0, path.lastIndexOf("/"))
   for (const { tokens: ts } of tokens) {
     for (let i = 0; i < ts.length; i++) {
       const j = ts[i + 1]?.value === "int32" ? i + 2 : i + 1
       if (ts[j]?.value === "=" && /^\d+$/.test(ts[j + 1]?.value ?? ""))
         constants.set(ts[i].value, Number(ts[j + 1].value))
+    }
+  }
+  // Resolve actual package-local const declarations, never a same-named
+  // variable from another package or a generic forwarding parameter.
+  for (const { path, tokens: ts } of tokens) {
+    if (!path.split("/").includes("vibelangmapper")) continue
+    const values = mapperConstants.get(directory(path)) ?? new Map()
+    mapperConstants.set(directory(path), values)
+    for (let i = 0; i < ts.length; i++) {
+      if (ts[i].value !== "const") continue
+      const grouped = ts[i + 1]?.value === "("
+      let end = i + 2
+      if (grouped) {
+        let depth = 1
+        while (end < ts.length && depth) {
+          if (ts[end].value === "(") depth++
+          else if (ts[end].value === ")") depth--
+          end++
+        }
+      }
+      for (let j = grouped ? i + 2 : i + 1; j < end; j++) {
+        const name = ts[j]?.value
+        if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(name ?? "")) continue
+        const eq = ts[j + 1]?.value === "=" ? j + 1 : ts[j + 2]?.value === "=" ? j + 2 : -1
+        if (eq < 0) continue
+        const arg = ts[eq + 1]?.value
+        values.set(name, Number.isInteger(Number(arg)) ? Number(arg) : undefined)
+        j = eq + 1
+      }
     }
   }
   const add = (code, path, offset, kind) => {
@@ -54,6 +85,24 @@ export function compilerCodes(sources) {
         if (n !== undefined) add(codeName(n), path, ts[i].offset, "message")
         else if (/^"EK\d{4,}"$/.test(arg ?? "")) add(JSON.parse(arg), path, ts[i].offset, "message")
         else throw new Error(path + ": unresolved diagnostic constructor argument " + arg)
+      }
+      // The stock TypeScript content mapper reports its own EK diagnostics
+      // as Diagnostic records. A native message's removal must not hide one.
+      if (path.split("/").includes("vibelangmapper") && ["Diagnostic", "OptionDiagnosticResult"].includes(token) && ts[i + 1]?.value === "{") {
+        let depth = 1
+        for (let j = i + 2; j < ts.length && depth; j++) {
+          if (ts[j].value === "{") depth++
+          else if (ts[j].value === "}") depth--
+          else if (depth === 1 && ts[j].value === "Code" && ts[j + 1]?.value === ":") {
+            const arg = ts[j + 2]?.value
+            if (![",", "}"].includes(ts[j + 3]?.value)) continue
+            const local = mapperConstants.get(directory(path))
+            const n = Number.isInteger(Number(arg)) ? Number(arg) : local?.get(arg)
+            if (local?.has(arg) && n === undefined)
+              throw new Error(path + ": unresolved mapper diagnostic constant " + arg)
+            if (n > 0) add(codeName(n), path, ts[j].offset, "mapper")
+          }
+        }
       }
       // Both maps are actual compiler registries. The category map also reserves
       // ahead-of-implementation VIP codes; it never enables a checker. Do not

@@ -524,6 +524,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Renaming a service left its `Shape` type uses behind and added namespace errors; rename now follows those uses, including namespaces and imported aliases.
 
+- The diagnostic inventory could overlook errors from stock TypeScript’s mapper; it now checks those codes against the reference along with native compiler diagnostics.
+
 - The diagnostic guide cited a retired unused-`main` warning; it now describes that migration without presenting the old number as a current code.
 
 - Bun's release-age setting blocked newly published VibeLang packages in example projects; the examples now exempt their pinned VibeLang packages from that age check.

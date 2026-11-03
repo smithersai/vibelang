@@ -1,0 +1,5 @@
+{
+  "provenance": "gate6-codes source audit, vibe d343fc4d7098: native message has no use, but stock TypeScript mapper still reports EK2115 numerically.",
+  "path": "typescript/tsc/internal/vibelangmapper/factory.go",
+  "source": "p.diagnostics = append(p.diagnostics, Diagnostic{Start: p.tokenStart(n), Length: n.End() - p.tokenStart(n), Code: 2115, Message: \"This function returns a program, so its body runs when called and cannot run an Effect. Move it into return () => { \u2026 }.\"})"
+}

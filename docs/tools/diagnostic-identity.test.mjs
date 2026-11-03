@@ -113,3 +113,62 @@ test("the lint target stays exclusive until fold-details folds and regenerates t
   assert.doesNotMatch(aggregate, /specDiagnosticIdentity[,\]]/)
   assert.ok(repository.endsWith("/"))
 })
+
+test("a mapper reporter remains registered without a native message declaration", () => {
+  const past = JSON.parse(readFileSync(new URL("./property-regressions/gate6-mapper-ek2115.json", import.meta.url), "utf8"))
+  const registered = compilerCodes([
+    ...source('var EK4804 = message(4804, warningCategory, "failure")'),
+    { path: past.path, text: past.source }
+  ])
+  assert.ok(registered.has("EK2115"), "the stock TypeScript mapper still reports this code")
+  assert.deepEqual(auditIdentity(registered, new Map([["EK4804", "warning"]]), []).map(f => [f.kind, f.code]), [["registered-missing", "EK2115"]])
+})
+
+test("mapper code fields ignore strings, comments and nested diagnostic records", () => {
+  const registered = compilerCodes([
+    ...source('var EK4804 = message(4804, warningCategory, "failure")'),
+    { path: "typescript/tsc/internal/vibelangmapper/project.go", text:
+      'var d = Diagnostic{Start: start(node), Code: 2115, Message: "Diagnostic{Code:9999}", Nested: Other{Code:9998}}; // Diagnostic{Code:9997}' }
+  ])
+  assert.deepEqual([...registered.keys()].sort(), ["EK2115", "EK4804"])
+})
+
+test("mapper code constants register tool errors, but a generic forwarding parameter is not an assignment", () => {
+  const registered = compilerCodes([
+    ...source('var EK4804 = message(4804, warningCategory, "failure")'),
+    { path: "typescript/tsc/internal/vibelangmapper/emit.go", text: 'const CodeExecSyntax = 9002; var d = Diagnostic{Code: CodeExecSyntax, Message: "syntax"}; func forward(code int32) { append(ds, Diagnostic{Code:code}) }' },
+    { path: "unrelated/numbers.go", text: "var code = 1030" }
+  ])
+  assert.deepEqual([...registered.keys()].sort(), ["EK4804", "EK9002"])
+})
+
+test("mapper registration mutations preserve full codes and ignore forwarded parameters", () => {
+  fc.assert(fc.property(
+    fc.integer({ min: 9000, max: 999999 }), fc.constantFrom(" ", "\n", "\t"), fc.boolean(), fc.boolean(),
+    (ordinal, space, named, commentOnly) => {
+      const code = "EK" + ordinal
+      const declaration = named ? "const" + space + "CodeProbe" + space + "=" + space + ordinal + "\n" : ""
+      const record = "var d = Diagnostic{Start: start(node), Code: " + (named ? "CodeProbe" : ordinal) + ', Message: "probe"}'
+      const body = declaration + record
+      const sources = [
+        ...source('var EK4804 = message(4804, warningCategory, "failure")'),
+        { path: "typescript/tsc/internal/vibelangmapper/project.go", text: (commentOnly ? "/* " + body + " */" : body) + "\nfunc forward(code int32) { append(ds, Diagnostic{Code:code}) }" },
+        { path: "unrelated/constants.go", text: "var code = 1030" }
+      ]
+      const registered = compilerCodes(sources)
+      const expected = commentOnly ? ["EK4804"] : ["EK4804", code].sort()
+      assert.deepEqual([...registered.keys()].sort(), expected)
+      const findings = auditIdentity(registered, new Map([["EK4804", "warning"]]), [])
+      assert.deepEqual(findings.map(f => [f.kind, f.code]), commentOnly ? [] : [["registered-missing", code]])
+    }), { seed: 690019004, numRuns: 150 })
+})
+
+test("mapper constants are package-local and work for option errors without a naming convention", () => {
+  const registered = compilerCodes([
+    ...source('var EK4804 = message(4804, warningCategory, "failure")'),
+    { path: "typescript/tsc/internal/vibelangmapper/codes.go", text: "const optionError int32 = 9003; const unused = 9999; const typedUnused int32 = 9998" },
+    { path: "typescript/tsc/internal/vibelangmapper/server.go", text: 'var d = contentmapper.OptionDiagnosticResult{Code:optionError, MessageText:"invalid option"}' },
+    { path: "unrelated/codes.go", text: "const optionError = 1030" }
+  ])
+  assert.deepEqual([...registered.keys()].sort(), ["EK4804", "EK9003"])
+})
