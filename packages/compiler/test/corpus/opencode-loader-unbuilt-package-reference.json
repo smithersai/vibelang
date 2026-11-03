@@ -1,0 +1,15 @@
+{
+  "issue": "opencode release path N3: Bun.build's vibelang plugin failed a server .vibe module with TS6305 for each import of an unbuilt referenced package, while its .ts siblings raised none",
+  "files": {
+    "app/package.json": "{\"name\":\"app\",\"type\":\"module\"}",
+    "app/tsconfig.json": "{\"compilerOptions\":{\"target\":\"ESNext\",\"module\":\"Preserve\",\"moduleResolution\":\"Bundler\",\"strict\":true,\"skipLibCheck\":true,\"types\":[],\"allowImportingTsExtensions\":true,\"rewriteRelativeImportExtensions\":true,\"noEmit\":true},\"include\":[\"src\"],\"references\":[{\"path\":\"../core\"}]}",
+    "app/src/main.vibe": "import { fromTs } from \"core/plain\"\nimport { fromVibe } from \"core/sidecar\"\nexport const total: number = fromTs() + fromVibe()\n",
+    "app/src/sibling.ts": "import { fromTs } from \"core/plain\"\nexport const sibling: number = fromTs()\n",
+    "core/package.json": "{\"name\":\"core\",\"type\":\"module\",\"exports\":{\"./sidecar\":{\"types\":\"./src/sidecar.d.vibe.ts\",\"vibelang-source\":\"./src/sidecar.vibe\",\"default\":\"./.vibelang/js/src/sidecar.js\"},\"./*\":{\"types\":\"./src/*.ts\",\"vibelang-source\":\"./src/*.ts\",\"default\":\"./.vibelang/js/src/*.js\"}}}",
+    "core/tsconfig.json": "{\"compilerOptions\":{\"target\":\"ESNext\",\"module\":\"Preserve\",\"moduleResolution\":\"Bundler\",\"strict\":true,\"skipLibCheck\":true,\"types\":[],\"allowImportingTsExtensions\":true,\"rewriteRelativeImportExtensions\":true,\"composite\":true,\"declaration\":true,\"emitDeclarationOnly\":true,\"incremental\":true,\"noEmit\":false,\"rootDir\":\"src\",\"outDir\":\"node_modules/.ts-dist/source\",\"tsBuildInfoFile\":\"node_modules/.ts-dist/source.tsbuildinfo\"},\"include\":[\"src\"]}",
+    "core/src/plain.ts": "export const fromTs = (): number => 1\n",
+    "core/src/sidecar.vibe": "export const fromVibe = (): number => 2\n",
+    "core/src/sidecar.d.vibe.ts": "export declare const fromVibe: () => number\n"
+  },
+  "links": { "app/node_modules/core": "core" }
+}

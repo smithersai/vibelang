@@ -307,6 +307,55 @@ test("a check-only project that imports .ts files compiles, without TS5096", { s
   assert.match(main.code, /from "\.\/helper\.js"/)
 })
 
+// A project's references, none of them built: the loader compiles a project
+// with --loader-root, so a referenced project's declaration output (lib/*.d.ts)
+// does not exist until something builds it. Each shape reaches a referenced
+// project's source: by a relative path, through a package whose exports name
+// its source, and through a reference of a reference.
+const unbuiltReferences = {
+  relative: {
+    "app/src/main.vibe": 'import { now } from "../../shared/src/clock.ts"\nexport const fromApp: number = now()\n'
+  },
+  "package exports": {
+    "shared/package.json": JSON.stringify({ name: "shared", type: "module", exports: { "./clock": "./src/clock.ts" } }),
+    "app/node_modules/shared": "link:shared",
+    "app/src/main.vibe": 'import { now } from "shared/clock"\nexport const fromApp: number = now()\n'
+  },
+  transitive: {
+    "base/tsconfig.json": "composite",
+    "base/src/seven.ts": "export const seven = (): number => 7\n",
+    "shared/tsconfig.json": "composite:../base",
+    "shared/src/clock.ts": 'import { seven } from "../../base/src/seven.ts"\nexport const now = (): number => seven()\n',
+    "app/src/main.vibe": 'import { now } from "../../shared/src/clock.ts"\nexport const fromApp: number = now()\n'
+  }
+}
+for (const [shape, files] of Object.entries(unbuiltReferences)) {
+  test(`a project whose referenced project is not built compiles against its source, without TS6305 (${shape})`, { skip }, async (t) => {
+    const { root, app, compiler } = workspace(t)
+    const composite = (...references) => JSON.stringify({
+      compilerOptions: { ...JSON.parse(tsconfig).compilerOptions, noEmit: false, composite: true, rootDir: "src", outDir: "lib", declaration: true },
+      include: ["src"], references: references.map((path) => ({ path }))
+    })
+    for (const [path, text] of Object.entries({
+      "app/tsconfig.json": JSON.stringify({ ...JSON.parse(tsconfig), references: [{ path: "../shared" }] }),
+      "shared/tsconfig.json": "composite",
+      "shared/src/clock.ts": "export const now = (): number => 7\n",
+      ...files
+    })) {
+      const target = join(root, path)
+      mkdirSync(dirname(target), { recursive: true })
+      if (text.startsWith("link:")) { symlinkSync(join(root, text.slice(5)), target, "dir"); continue }
+      writeFileSync(target, text.startsWith("composite") ? composite(...text.split(":").slice(1)) : text)
+      utimesSync(target, new Date(Date.now() - 60_000), new Date(Date.now() - 60_000))
+    }
+    const modules = projects({ root: app, project: join(app, "tsconfig.json"), compiler, cache: false })
+    const main = await modules.load(join(app, "src/main.vibe"))
+    assert.deepEqual([main.errors, main.error], [[], false])
+    assert.match(main.code, /fromApp = now\(\)/)
+    for (const project of ["shared", "base"]) assert.equal(existsSync(join(root, project, "lib")), false, `the compile builds no ${project}/lib`)
+  })
+}
+
 test("a module declaration compiles to an output of its own from its file's compile, and its body is no input file (D403)", { skip }, async (t) => {
   const { app, compiler, compiles } = workspace(t)
   const main = join(app, "src/main.vibe")

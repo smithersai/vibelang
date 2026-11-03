@@ -72,7 +72,10 @@ type ProgramFactories struct {
 }
 
 func (p *ProgramConfig) canUseProjectReferenceSource() bool {
-	return p.UseSourceOfProjectReference && !p.Config.CompilerOptions().DisableSourceOfProjectReferenceRedirect.IsTrue()
+	// VibeLang: a module loader's compile (SetLoaderRoot) reads a referenced
+	// project's sources, as the editor does, instead of its declaration output:
+	// the loader builds no reference, so that output may not exist (TS6305).
+	return (p.UseSourceOfProjectReference || loaderRoot != "") && !p.Config.CompilerOptions().DisableSourceOfProjectReferenceRedirect.IsTrue()
 }
 
 type lazyValue[T any] struct {
@@ -1574,6 +1577,7 @@ func (p *Program) getBindAndCheckDiagnosticsWithChecker(ctx context.Context, fil
 	// Checker creation forces binding, so bind diagnostics will be populated.
 	diags := fileChecker.ApplyBindDiagnosticsFilterHooks(sourceFile, slices.Clip(sourceFile.BindDiagnostics()))
 	diags = append(diags, fileChecker.GetDiagnostics(ctx, sourceFile)...)
+	diags = withoutLoaderLayoutErrors(diags)
 
 	if includeDeferredGlobals {
 		if fileChecker.WasCanceled() {

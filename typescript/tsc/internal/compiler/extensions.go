@@ -5,6 +5,7 @@ import (
 
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/core"
+	"github.com/microsoft/TypeScript/tsc/internal/diagnostics"
 	"github.com/microsoft/TypeScript/tsc/internal/printer"
 	"github.com/microsoft/TypeScript/tsc/internal/transformers"
 	"github.com/microsoft/TypeScript/tsc/internal/tspath"
@@ -135,11 +136,25 @@ var loaderRoot string
 // sources beside the .vibe ones and the sources of the workspace packages it
 // imports, only supply types, and the checker reads only the types a .vibe
 // file needs: checking a package's every .ts file made one module's cold
-// load take seconds (opencode, bun:standalone-cold-project-compiles). An
-// empty root checks and emits every file. Call it from the command's entry
+// load take seconds (opencode, bun:standalone-cold-project-compiles). A
+// referenced project supplies its types from its sources too, so its
+// declaration output need not be built. An empty root checks and emits every
+// file. Call it from the command's entry
 // point before compiling; it is not synchronized.
 func SetLoaderRoot(root string) {
 	loaderRoot = root
+}
+
+// withoutLoaderLayoutErrors drops TS2878 from a loader's compile. A loader
+// serves a referenced project's modules from their sources, where an import
+// rewritten from ./x.ts to ./x.js finds them, not from the referenced
+// project's outDir, so the output layout that error compares does not apply.
+func withoutLoaderLayoutErrors(diags []*ast.Diagnostic) []*ast.Diagnostic {
+	code := diagnostics.This_import_path_is_unsafe_to_rewrite_because_it_resolves_to_another_project_and_the_relative_path_between_the_projects_output_files_is_not_the_same_as_the_relative_path_between_its_input_files.Code()
+	if loaderRoot == "" || !slices.ContainsFunc(diags, func(d *ast.Diagnostic) bool { return d.Code() == code }) {
+		return diags
+	}
+	return core.Filter(diags, func(d *ast.Diagnostic) bool { return d.Code() != code })
 }
 
 // outsideLoaderRoot reports whether a loader's compile leaves file unchecked
