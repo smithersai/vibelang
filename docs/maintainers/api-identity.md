@@ -245,3 +245,17 @@ comment. Other bindings retain strict bidirectional TypeScript probes.
 Snapshot-specific ambient references keep their independent comparisons.
 Profiling reports `export-comparison-plan` with `sharedExportProofs` and
 `structuralProbes` to distinguish validation work from comparison work.
+## Codemod fuzz contract probes
+
+The separate Go codemod fuzz oracle checks callable contracts in emitted
+declarations, including private callables referenced by exported types. In
+external-module declaration copies, it gives named callables fresh exported
+ambient constants typed with `typeof` solely for the assignability probe. These
+constants preserve implicit ambient exports; adding an export list would make
+other ambient declarations private. It retains the original declaration
+files, keeps default exports on their native path, avoids alias collisions,
+and leaves global scripts in their original scope. An unchanged private
+callable must compare equal to itself; a changed private signature must still
+fail assignability.
+
+

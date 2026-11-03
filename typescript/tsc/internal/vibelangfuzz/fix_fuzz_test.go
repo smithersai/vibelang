@@ -677,12 +677,30 @@ func toolsContractMismatch(t *testing.T, w *Workspace, before, after *Result, sa
 			continue
 		}
 		fmt.Fprintf(&check, "import * as A%d from \"./a/%s.js\"\nimport * as B%d from \"./b/%s.js\"\n", n, module, n, module)
-		for _, function := range names {
-			if !slices.Contains(toolsContracts(fixed), function) {
+		probeModule := slices.ContainsFunc(toolsParse("contracts.d.ts", text).Statements.Nodes, ast.IsExternalModuleIndicator) && slices.ContainsFunc(toolsParse("contracts.d.ts", fixed).Statements.Nodes, ast.IsExternalModuleIndicator)
+		fixedNames := toolsContracts(fixed)
+		for i, function := range names {
+			if !slices.Contains(fixedNames, function) {
 				return fmt.Sprintf("%s no longer declares %s", name, function)
 			}
-			fmt.Fprintf(&check, "export const ab%d_%s: typeof A%d.%s = B%d.%s\nexport const ba%d_%s: typeof B%d.%s = A%d.%s\n", n, function, n, function, n, function, n, function, n, function, n, function)
+			access := function
+			if function != "default" && probeModule {
+				// Private declarations may appear in a public type without being
+				// module exports. Expose them only in the copied probe, so their
+				// contracts stay checked alongside exported functions. An exported
+				// ambient constant preserves implicit ambient exports; an export
+				// list would turn those other declarations private.
+				access = fmt.Sprintf("__vibelangContract%d", i)
+				for strings.Contains(text, access) || strings.Contains(fixed, access) {
+					access += "_"
+				}
+				export := "\nexport declare const " + access + ": typeof " + function + ";\n"
+				text += export
+				fixed += export
+			}
+			fmt.Fprintf(&check, "export const ab%d_%s: typeof A%d.%s = B%d.%s\nexport const ba%d_%s: typeof B%d.%s = A%d.%s\n", n, function, n, access, n, access, n, function, n, access, n, access)
 		}
+		files["a/"+module+".d.ts"], files["b/"+module+".d.ts"] = nominalMember.ReplaceAllString(text, ""), nominalMember.ReplaceAllString(fixed, "")
 		n++
 	}
 	if n == 0 {

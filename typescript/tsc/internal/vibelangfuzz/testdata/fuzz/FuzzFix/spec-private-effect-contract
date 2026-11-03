@@ -1,0 +1,2 @@
+go test fuzz v1
+string("-- main.vibe --\neffect function hidden(value: number): Effect.Effect<number> { return value }\nexport type Callback = typeof hidden\nexport effect function main() { return try hidden(1) }\n\n-- package.json --\n{\"name\":\"contract-probe\",\"type\":\"module\"}\n")
