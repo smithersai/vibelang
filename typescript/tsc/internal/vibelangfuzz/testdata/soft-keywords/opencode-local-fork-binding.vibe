@@ -1,0 +1,6 @@
+// Opencode minimized local helper: VIP-17 requires EK1702 in Effect code.
+// The intended helper result is 10; silently forking it is never correct.
+effect function opencodeLocalFork() {
+  const fork = (n: number) => n + 7
+  return fork(3)
+}

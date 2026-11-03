@@ -1,0 +1,8 @@
+// expect: EK1702
+import { Effect, FiberSet } from "effect"
+
+// opencode session run coordinator: a local named fork is reserved in effect code. --fix renames it.
+export const make = effect () => {
+  const fork = try FiberSet.makeRuntime<never, void, never>()
+  return (work: Effect.Effect<void>) => fork(work)
+}

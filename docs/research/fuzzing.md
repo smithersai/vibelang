@@ -160,6 +160,7 @@ Appendix B supplies the current diagnostic assignments; compatibility declaratio
 | `FuzzPreludeImportShadow` | Seven import/local forms, six prelude names, source/output extension spellings, and the minimized `opencode` source | Chapter 5 binding shadowing; native TypeScript control and `node --check` of emitted JavaScript |
 | `FuzzPreludeModuleClash` | `Headers`, `Response`, `Event` or `Worker` in a value read, `new Name()`, a type position, a public signature, or shadowed by a local class; keyed `clash:<name>:<position>` | The .vibe program reports the same error codes as its counterpart with the module imported from its subpath, or with no import where the bare name is the DOM type (Chapter 5: precedence applies per meaning; bare `Worker` is `effect/workers`, detail 76) |
 | `FuzzVibexNativeParity` | Nine ordinary TSX forms across missing/preserve/react-native/react JSX settings; keyed source/options corpus | VIP-39 requires native JSX diagnostics, output suffixes and preservation. Covers round 4 options, scanner, throw-expression and emit findings; quote gate `TestVibexNativeParityQuoted`. |
+| `FuzzSoftKeywordBindings` | Appendix A keyword × binding × source context × use matrix, keyed by all four names | Reserved `fork`/`join` bindings require `EK1702`; ordinary identifier syntax and emit use native TypeScript twins. Runtime behavior uses `vip17.soft-keyword-identifiers-plain` in `FuzzVIPDifferential`. |
 | `FuzzPlainTryCatch` | Keyed seed matrices with native TypeScript controls | Spec quotes checked by `TestPlainTryCatchQuoted`; migration and review neighbourhoods |
 | `FuzzPlainMatchKinds` | Keyed seed matrices with native TypeScript controls | Spec quotes checked by `TestPlainMatchKindsQuoted`; migration and review neighbourhoods |
 | `FuzzTopLevelAwait` | Twelve keyed module-level forms with native TypeScript controls; all corpus files retained | VIP-26 quote checked by `TestTopLevelAwaitVIPQuoted`; `TestTopLevelAwait` retains the parser witnesses. Resolved Promise forms are strict checks; the separate module-level `for await` gap remains pending for `migfix-foldkit`. |
@@ -802,3 +803,41 @@ The saved two-file T3code importer also exposes a second-run fixed-point gap. It
 Retained schema binding coverage keeps the original mapped-type witnesses in `FuzzDataSpecRules` and `FuzzFix`: namespace and function homes, escaped names, value-only declarations and leaving a scope. Its exact known gaps stay keyed in `schema-binding-retained.txt`; remove a gap only after its implementation produces the observed XPASS, retaining the corpus and oracle. These are static rules from the [schema mapping](../design/src/006-data.md#shadowing-mapped-built-ins), not a second runtime differential model.
 
 The migration declaration gate has 160 generated generic-signature controls and two T3code corpus inputs for `R | Scope` versus `Exclude<R, ParentSpan> | Scope`. Formatting, union order, and normalization idempotence stay equivalent; removing a generic requirement is rejected. This checks the unchanged public-contract comparator, not a repair to the historical span rewrite, which remains owned by `codemod-alchemy`.
+
+## Keyword bindings and source contexts
+
+`FuzzSoftKeywordBindings` enumerates 108 words, ten binding forms, eight
+positions and three uses (25,920 shapes). The word list covers every word in
+Appendix A's contextual-keyword section, the native keywords that VibeLang
+extends, and production-specific suffixes. Native TypeScript rules remain the
+oracle for native reserved words; the test does not treat every word as a
+shadowable identifier.
+
+The binding forms are `const`, `let`, parameter, destructured binding,
+function, class, import, label, catch parameter and property name. Positions
+are Effect code, a plain function, an ordinary `async` function, a class
+field initializer, an enum initializer, a plain static block, an
+Effect-reserved static block and module top level. Uses call, read or pass the
+name. Initializers cannot contain declarations, imports bind at module scope,
+and a non-callable position cannot itself declare a parameter: the generator
+puts those bindings in the enclosing native scope and leaves the use directly
+in the initializer or static block. Labels retain their actual source context.
+
+Each key names all four choices, so saved corpus files survive list reordering.
+The full matrix runs the cheap parser oracle, and a covering sample compiles
+both the `.vibe` and `.ts` twins. A campaign can request compilation for any
+key. A source native TypeScript rejects must stay rejected. A source it accepts
+keeps its diagnostic codes and emits the same JavaScript, except `await` as an
+identifier, which is a SyntaxError in an ES module and which the `.vibe` parser
+rejects. Effect-local `fork` and `join` bindings require `EK1702`: the silent
+form, where the name's calls became structured operations, is the opencode
+session coordinator's bug, kept as the `opencode-local-fork-binding` corpus file
+and case. A catch parameter in Effect code keeps its uses. This matrix does not
+check `EK0503` for the `try` statement around it.
+
+Runtime observations belong to the existing `FuzzVIPDifferential` comparator:
+`vip17.soft-keyword-identifiers-plain` prints the same generated shape and a
+stock-TypeScript reference. It covers valid identifier uses in plain and Effect
+functions, field and enum initializers, static blocks and module code, with
+native-reserved words retained as property names. An ordinary `async` home
+has identical native emit in the static target.
