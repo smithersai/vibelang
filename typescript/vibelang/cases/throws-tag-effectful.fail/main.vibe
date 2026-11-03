@@ -1,0 +1,62 @@
+// expect: EK0406
+// VIP-4, amended 2026-10-31: VibeLang functions never throw, so they have no
+// thrown type, and a @throws or @rethrows tag anywhere in a .vibe file is
+// EK0406: on an effect function, arrow, method or producer, on a plain
+// function, on a function returning a Stream, a Layer or a union, and on a
+// type's member. Its quick fix removes the tag (throws-tag-effectful-fixed).
+// Tags in TypeScript files are read as before (helpers.ts).
+import { tsLoad } from "./helpers.ts"
+
+error Absent
+
+/** @throws {Absent} */
+effect function badTag(fail: boolean): number!Absent {
+  if (fail) throw new Absent()
+  return 1
+}
+
+/**
+ * Runs f.
+ * @rethrows f
+ */
+effect function run(f: () => number) { return f() }
+
+/** @throws {Error} @rethrows f */
+function load(f: () => number): number!! { return f() }
+
+/** @throws {Absent} */
+const viaArrow = effect () => 4
+
+/** @throws {Error} */
+function numbers(): Stream<number> { return Stream.make(5, 6) }
+
+/** @throws {Error} */
+function live(): Layer<never> { return Layer.empty }
+
+class Repo {
+  /** @throws {Absent} */
+  effect find(): string!Absent { return "repo" }
+}
+
+/** @throws {never} */
+function add(a: number, b: number): number { return a + b }
+
+/** @throws {Error} */
+function maybe(): (number!!) | undefined { return undefined }
+
+export type Reader = {
+  /** @throws {Error} */
+  read(): string
+}
+
+export effect function main() {
+  const tagged = try badTag(false)
+  const ran = try run(() => 2)
+  const loaded = try load(() => 3)
+  const arrow = try viaArrow()
+  const streamed = try Stream.runCollect(numbers())
+  try Effect.provide(Effect.void, live())
+  const found = try new Repo().find()
+  const ts = try tsLoad(() => 7)
+  return { tagged, ran, loaded, arrow, streamed, found, add: add(1, 2), maybe: maybe() === undefined, ts }
+}

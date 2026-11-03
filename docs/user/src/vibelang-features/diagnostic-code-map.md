@@ -53,6 +53,7 @@ Registration reserves a code; it does not mean the compiler already implements e
 | `EK0402` | a function that may throw where a function type doesn't admit its thrown type |
 | `EK0403` | an unwrapped call, `new` expression or tagged template that may throw, in effect code |
 | `EK0404` | an unwrapped Promise-producing call, `new` expression, tagged template or `async match` in effect code |
+| `EK0406` | a `@throws` or `@rethrows` tag in a `.vibe` file, on any declaration, signature or type; quick fix: remove the tag |
 | `EK0501` | `try` outside effect code, the top level included |
 | `EK0502` | `try` on a value that is not an Effect |
 | `EK0503` | a `try` statement in effect code |
