@@ -3911,7 +3911,7 @@ typescript/vibelang/cases/new-target-constructor-arrow/box.vibe:15:20 lambda cho
 typescript/vibelang/cases/new-target-constructor-arrow/box.vibe:16:36 lambda plain table
 typescript/vibelang/cases/new-target-effect-arrow/main.vibe:6:16 lambda choice fallback
 typescript/vibelang/cases/new-target-effect-arrow/main.vibe:7:16 lambda plain table
-typescript/vibelang/cases/new-vibelang-function.fail/main.vibe:18:15 lambda plain fallback
+typescript/vibelang/cases/new-vibelang-function.fail/main.vibe:14:15 lambda plain fallback
 typescript/vibelang/cases/node-format-cjs.fail/main.vibe:2:21 lambda plain annotation
 typescript/vibelang/cases/node-format-default.fail/main.vibe:2:21 lambda plain annotation
 typescript/vibelang/cases/node-format-esm/main.vibe:5:21 lambda plain annotation

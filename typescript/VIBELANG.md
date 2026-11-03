@@ -683,6 +683,8 @@ func checkContracts(c *checker.Checker, file *ast.SourceFile) {
 
 Report only from a file check, and only at nodes of the file being checked: the program reads each file's diagnostics from the checker that checks that file. A check that finds a problem while the checker types another file records it and reports it from the file check of the file that holds the node.
 
+`new f()` on a `.vibe` function uses TypeScript's constructor checks under [VIP-1](../docs/design/vips/0001-effect-and-async-functions.md), including `TS7009`, `TS2350`, assertions and `@ts-ignore`. The compiler adds no constructor check for that call.
+
 The checks so far:
 
 | Code | Reported at | File |
@@ -694,7 +696,6 @@ The checks so far:
 | EK1005 | The callee of a runner in code a fiber runs | `runners.go` |
 | EK1012 | A call that runs and never succeeds where a variable, a field, an element or an assignment stores it (D147); a warning, adjustable | `neverstored.go` |
 | EK1013 | The comma after a field of an `error`, `schema error`, `service`, or `control` body, which the parser reads as an empty class member flagged `NodeFlagsVibeLang` instead of reporting TypeScript's TS1442; with a quick fix that writes `;`. A `data` declaration's variants and fields end with their separator, so the check reads a comma there (`data.go`) | `fieldcommas.go`, `data.go` |
-| EK1020 | A `new` expression whose target, through parentheses and casts, names a function a `.vibe` file declares outside a module declaration (rule L6); covers TypeScript's TS7009 and TS2350 there, and only those | `constructors.go` |
 | `EK9201` | The call or `throw` that adds an expected failure the function's contract does not allow | `contracts.go` |
 | `EK9202` | The call that adds a requirement the function's contract does not allow | `contracts.go` |
 | `EK9203` | A plain return annotation on a function whose body runs an Effect, or one on a function whose throw can escape, with a quick fix that writes `A!E!` (D282); a JavaScript iterator annotation on a generator whose throw can escape (D296) | `contracts.go`, `plain_failures.go`, `plain_generators.go` |

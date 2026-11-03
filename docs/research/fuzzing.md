@@ -396,6 +396,8 @@ Each open bug has a minimal reproduction in `typescript/tsc/internal/vibelangfuz
 | Reported twice | EK1001 for a top-level `provide` that contains calls |
 | Listed after the table, not reported yet | EK1018, EK2129, EK3208, EK4410, EK4411, EK4613 |
 
+`new f()` on a `.vibe` function now uses TypeScript's own errors under [VIP-1](../design/vips/0001-effect-and-async-functions.md); the historical `EK1020` entry above records the old rule. `FuzzNativeNewDiagnostic` checks native diagnostic identity across callable forms, casts and `@ts-ignore`.
+
 ### Added before landing
 
 The same change set adds what the first results argued for:

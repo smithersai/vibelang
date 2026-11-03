@@ -23,8 +23,6 @@ FuzzFunctionBoundaries corpus:fz-func-both compiler VIP-1: minimized both violat
 FuzzFunctionBoundaries corpus:fz-func-return-type compiler VIP-1: minimized return-type violation; lane vip-core2
 FuzzFunctionSyntax corpus:fz-func-syntax-identifier compiler VIP-1: minimized syntax probe; lane vip-core2
 FuzzFunctionSyntax corpus:fz-func-syntax-method-name compiler VIP-1: minimized syntax probe; lane vip-core2
-FuzzFunctionTypeScriptRules typescript:new compiler VIP-1: new of a .vibe function still reports the forbidden additional EK1020; lane vip-core2 (coordinate deletion lane)
-FuzzFunctionTypeScriptRules corpus:fz-func-typescript-new compiler VIP-1: minimized new-function diagnostic probe; lane vip-core2
 FuzzFunctionEffectInference corpus:fz-func-inference-0 compiler VIP-1: minimized Effect type-slot probe; lane vip-core2
 FuzzFunctionEffectInference corpus:fz-func-inference-1 compiler VIP-1: minimized Effect type-slot probe; lane vip-core2
 FuzzFunctionEffectInference corpus:fz-func-inference-2 compiler VIP-1: minimized Effect type-slot probe; lane vip-core2

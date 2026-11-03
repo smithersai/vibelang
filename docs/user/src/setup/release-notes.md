@@ -678,6 +678,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - An animation frame timestamp earlier than its starting clock produced a negative delta; `Experimental.Animations.frameDeltas` now clamps negative deltas to zero.
 
 - A service-default editor repair could rename the declaration while leaving aliased, parenthesized, union-indexed or instantiated type reads broken; it now retains `EK4855` with a manual-repair explanation and offers no partial edit.
+- `new f()` on a function declared in a `.vibe` file reported the retired `EK1020` and hid TypeScript's errors. It now uses TypeScript's constructor checks alone, including assertions and `@ts-ignore`.
 - Resolved schema-binding regressions still appeared as pending gaps; namespace, function and escaped-name coverage now checks `EK2109` strictly while keeping every keyed corpus.
 - Schema library-alias checks now compare array decoding and mutability with native TypeScript and explicit Schema controls; remaining decoder gaps keep precise pending records.
 

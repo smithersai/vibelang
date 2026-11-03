@@ -24,7 +24,6 @@ var legacyDeclared = map[int32]string{
 	1013: "lane del-rest",                                                                                                                                                 // fieldcommas.go
 	1015: "lane del-rest",                                                                                                                                                 // syntax.go
 	1017: "lane del-rest",                                                                                                                                                 // syntax.go
-	1020: "lane del-rest",                                                                                                                                                 // constructors.go
 	1023: "lane del-rest; declaration only: under VIP-1 a block is a program, so the appended call D382 reported no longer type-checks and no reduced witness reaches it", // diagnostics.go
 	2006: "lane del-2",                                                                                                                                                    // diagnostics.go
 	2105: "lane del-2",                                                                                                                                                    // diagnostics.go
