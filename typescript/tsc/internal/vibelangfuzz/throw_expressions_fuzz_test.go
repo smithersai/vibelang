@@ -92,6 +92,11 @@ func FuzzThrowExpressions(f *testing.F) {
 		f.Add("asi:"+op, uint8(1))
 	}
 	f.Add("await:operand", uint8(0))
+	for _, op := range throwMissingOperandOps(ops) {
+		for _, mode := range []uint8{0, 2, 3, 7, 14} {
+			f.Add("missing:"+op, mode)
+		}
+	}
 	for _, repo := range []string{"alchemy-streaming-source", "smithers-engine-subject", "t3code-crypto"} {
 		f.Add("migration:"+repo, uint8(0))
 		f.Add("migration:"+repo, uint8(1))
@@ -214,6 +219,9 @@ func FuzzThrowExpressions(f *testing.F) {
 				wantError = true
 				wantStatements = 0
 			}
+		case "missing":
+			throwMissingOperand(t, throwMissingOperandOps(ops), key, mode)
+			return
 		case "reject":
 			op := ops[int(mode)%len(ops)]
 			if len(parts) > 1 {
@@ -305,6 +313,58 @@ func FuzzThrowExpressions(f *testing.F) {
 			Gap(t, "FuzzThrowExpressions", key, "ASI must leave %d statements: %s; got %d", wantStatements, source, len(file.Statements.Nodes))
 		}
 	})
+}
+
+// throwMissingOperandOps keeps the ThrowExpressionInvalidPunctuator tokens
+// that can't start a UnaryExpression, so `throw` before one has no operand:
+// + and - are unary operators, / and /= start a regular expression, <
+// starts a type assertion, and % is a pipe's topic reference in .vibe.
+func throwMissingOperandOps(ops []string) []string {
+	var out []string
+	for _, op := range ops {
+		switch op {
+		case "+", "-", "/", "/=", "<", "%":
+			continue
+		}
+		out = append(out, op)
+	}
+	return out
+}
+
+// `"throw" UnaryExpression[?Yield, ?Await] [lookahead ∉ ThrowExpressionInvalidPunctuator]`
+// restricts the token after an operand. With no operand there is nothing to
+// restrict: the error is TypeScript's TS1109 Expression expected, as tsc
+// reports for `throw ,`, never EK1010. Mutation varies the trivia between
+// throw and the token, which FuzzGrammarAdmission found crashing the parser
+// (slice bounds out of range in checkVibeLangThrowLookahead), and the
+// expression's parent.
+func throwMissingOperand(t *testing.T, ops []string, key string, mode uint8) {
+	op := ops[int(mode)%len(ops)]
+	if parts := strings.SplitN(key, ":", 2); len(parts) == 2 {
+		for _, candidate := range ops {
+			if parts[1] == candidate {
+				op = candidate
+			}
+		}
+	}
+	gaps := []string{" ", "  ", " /* trivia */ ", "\n", "\n  ", " // trivia\n", "\t"}
+	places := []string{"const x = %s b;", "f(%s b);", "class C { value = %s b }", "const x = a ?? %s b;", "const f = () => %s b;"}
+	gap := gaps[int(mode)%len(gaps)]
+	place := places[int(mode/uint8(len(gaps)))%len(places)]
+	source := strings.Replace(place, "%s", "throw"+gap+op, 1)
+	file, _ := parser.ParseVibeLangSyntax(ast.SourceFileParseOptions{FileName: "/main.vibe", PathKey: "/main.vibe"}, source)
+	expected := false
+	for _, d := range file.Diagnostics() {
+		if d.Source() == "EK" && d.Code() == 1010 {
+			Gap(t, "FuzzThrowExpressions", key, "a missing operand is TS1109, not EK1010: %q; got %v", source, file.Diagnostics())
+		}
+		if d.Code() == 1109 {
+			expected = true
+		}
+	}
+	if !expected {
+		Gap(t, "FuzzThrowExpressions", key, "a throw with no operand needs TS1109 Expression expected: %q; got %v", source, file.Diagnostics())
+	}
 }
 
 // Appendix B keeps native diagnostics native. Generate scanner TS1010 beside

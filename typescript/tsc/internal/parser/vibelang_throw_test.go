@@ -234,3 +234,34 @@ func TestEK1010PunctuatorSeverity(t *testing.T) {
 	}
 	t.Fatal("unfinished comment must remain native error TS1010")
 }
+
+// A throw with no operand, as an editor sees it mid-edit, is TypeScript's
+// TS1109 "Expression expected", not EK1010, and must not crash the parser.
+// FuzzGrammarAdmission found the crash: trivia between throw and a forbidden
+// punctuator put the operand text's start past its end. The list leaves out
+// tokens that start an operand: + - / < and %, a pipe's topic.
+func TestTC39ThrowMissingOperand(t *testing.T) {
+	ops := strings.Fields(", > <= >= == != === !== * ** << >> >>> & | ^ && || ?? = += -= *= %= **= <<= >>= >>>= &= |= ^= &&= ||= ??= ?")
+	for _, op := range ops {
+		for _, gap := range []string{" ", "  ", " /* c */ ", "\n", "\n  ", " // c\n"} {
+			for _, place := range []string{"const x = throw%s%s b;", "f(throw%s%s b);", "class C { v = throw%s%s b }"} {
+				source := strings.Replace(strings.Replace(place, "%s", gap, 1), "%s", op, 1)
+				t.Run(source, func(t *testing.T) {
+					file, _ := parser.ParseVibeLangSyntax(ast.SourceFileParseOptions{FileName: "/main.vibe", PathKey: "/main.vibe"}, source)
+					expected := false
+					for _, d := range file.Diagnostics() {
+						if d.Code() == 1010 && d.Source() == "EK" {
+							t.Fatalf("a missing operand is not a throw lookahead error: %s", d.String())
+						}
+						if d.Code() == 1109 {
+							expected = true
+						}
+					}
+					if !expected {
+						t.Fatalf("want TS1109 Expression expected, got %v", file.Diagnostics())
+					}
+				})
+			}
+		}
+	}
+}

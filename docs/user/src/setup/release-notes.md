@@ -486,6 +486,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - A closure created in a `for try` `Stream` expression could read an outer variable or fail to resolve the loop head. Reading its captured head binding now throws `ReferenceError`, including when the `Stream` is empty or emits several items.
 
 - `await` in Effect callable parameter defaults reported retired `EK4602`. It now reports `EK0102` for functions, arrows, methods and producers, while nested native callables keep their own rules.
+- A `throw` with no operand before a comma or binary operator, such as `const x = throw , b` while typing, crashed the compiler and the language server with `slice bounds out of range`. It now reports TypeScript's `TS1109` Expression expected.
 
 - The new catch-handler projection fuzz target omitted its CPU-budget registration. It now participates in the same short-seed budget check as every other target.
 - The editor stopped offering "Run it with try" on a direct Effect argument that `EK4802` reports at a plain generic call. It offers it again when the enclosing contract accepts the Effect; a returned program stays data and gets no action.

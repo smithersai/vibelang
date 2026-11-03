@@ -105,6 +105,12 @@ func (p *Parser) checkVibeLangThrowLookahead(span core.TextRange, operand *ast.N
 	if !isThrowExpressionInvalidPunctuator(p.token) {
 		return
 	}
+	// A missing operand already reported TS1109 Expression expected, as tsc
+	// does for `throw ,`. It has no text, and trivia after it would put the
+	// text's start past its end.
+	if ast.NodeIsMissing(operand) {
+		return
+	}
 	if !p.hasPrecedingLineBreak() || !throwInvalidPunctuatorCanFollowASI(p.token) {
 		text := strings.TrimSpace(p.sourceText[scanner.SkipTrivia(p.sourceText, operand.Pos()):operand.End()])
 		p.diagnostics = append(p.diagnostics, ast.NewExternalDiagnostic(nil, span, "EK", throwLookaheadSeverity(p.scanner.TokenText()), VibeLangThrowLookaheadCode, ThrowLookaheadMessage(text, p.scanner.TokenText())))
