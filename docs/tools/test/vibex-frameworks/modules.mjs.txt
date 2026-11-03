@@ -1,0 +1,6 @@
+export { default as babel } from "@babel/core"
+export { default as solid } from "babel-preset-solid"
+export { default as reactTransform } from "@babel/plugin-transform-react-jsx"
+export { createElement } from "react"
+export { createComponent } from "solid-js"
+export { default as ts } from "typescript"

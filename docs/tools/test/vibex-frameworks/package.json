@@ -1,0 +1,13 @@
+{
+  "name": "vibelang-framework-test-reference",
+  "private": true,
+  "type": "module",
+  "devDependencies": {
+    "@babel/core": "7.29.0",
+    "@babel/plugin-transform-react-jsx": "7.27.1",
+    "babel-preset-solid": "1.9.15",
+    "react": "19.2.0",
+    "solid-js": "1.9.15",
+    "typescript": "5.9.3"
+  }
+}
