@@ -54,7 +54,7 @@ VIP-14 provides namespaces, not same-name export shorthands. Migrations and advi
 
 ## fold fork and wire migration contracts
 
-Folded: relic-try-forms-fork-codemod.patch (applied at docs/design/src/007-tooling.md:273)
+Folded: relic-try-forms-fork-codemod.patch (applied at docs/design/src/007-tooling.md:275)
 
 Folded: relic-try-forms-try-wire-codemods.patch (applied at docs/design/src/007-tooling.md:277)
 
@@ -64,7 +64,7 @@ VIP-2/VIP-5/VIP-17 and denied VIP-24 settle the forms. HELD is an enforcement ro
 
 ## fold empty legacy trust-wrapper retirement
 
-Folded: relic-trusted-empty-wrapper.patch (applied at docs/design/src/007-tooling.md:283)
+Folded: relic-trusted-empty-wrapper.patch (applied at docs/design/src/007-tooling.md:285)
 
 Will’s no-relics ruling removes the unapproved wrapper. Preserve defect identity rather than silently replacing a defect with an UnknownError failure. The source HOLD remains an enforcement prerequisite, not a spec-publication dependency.
 
@@ -78,7 +78,7 @@ EK4802 remains a configurable advisory; explicit program-data type arguments opt
 
 ## fold ordinary fix file selection
 
-Folded: 1793683286-fixscope-alchemy.patch (applied at docs/design/src/007-tooling.md:287)
+Folded: 1793683286-fixscope-alchemy.patch (applied at docs/design/src/007-tooling.md:297)
 
 Folded: 1793657811-trailing-blocks-final.patch (already stated at docs/design/src/007-tooling.md:241)
 
@@ -98,7 +98,7 @@ Will’s module-resolution ruling and VIP-27 govern the simplified text. Sidecar
 
 ## reconcile declaration spelling with the TypeScript twin
 
-Folded: 1793682039-declstyle-from-tsc.patch (applied at docs/design/src/001-functions.md:564)
+Folded: 1793682039-declstyle-from-tsc.patch (applied at docs/design/src/001-functions.md:563)
 
 Folded: 1793667173-rc-entry1.patch (applied at docs/design/src/001-functions.md:484)
 
@@ -120,13 +120,13 @@ VIP-9’s later native namespace reconciliation governs Name.Shape visibility. T
 
 ## record already folded review and table inputs
 
-Folded: 1793689134-sl17-fix-opus-1.patch (already stated at docs/design/src/002-running.md:514)
+Folded: 1793689134-sl17-fix-opus-1.patch (already stated at docs/design/src/002-running.md:196)
 
 Folded: 1793689877-sl17-fix-astra-2.patch (already stated at docs/design/src/900-appendices.md:321)
 
-Folded: 1793692491-sl18-fix-opus-1.patch (already stated at docs/design/src/003-failures.md:450)
+Folded: 1793692491-sl18-fix-opus-1.patch (already stated at docs/design/src/003-failures.md:45)
 
-Folded: 1793692940-sl18-fix-astra-1.patch (already stated at docs/design/src/007-tooling.md:78)
+Folded: 1793692940-sl18-fix-astra-1.patch (already stated at docs/design/src/007-tooling.md:487)
 
 These round-17/18 corrections are already in the publication tip. This receipt changes no language rule.
 
@@ -140,6 +140,6 @@ Both old registry patches mechanically centralized the then-current grammar/diag
 
 ## fold preserving legacy entry-dispatch migration
 
-Folded: relic-rest-b-entry-marker-codemod.patch (applied at docs/design/src/007-tooling.md:295)
+Folded: relic-rest-b-entry-marker-codemod.patch (applied at docs/design/src/007-tooling.md:287)
 
 VIP-26 and VIP-33 require explicit runner calls and retain the platform boundary. Expand proved legacy CommonJS startup without changing callable kind or import-only behavior; preserve and report unsupported ESM sites rather than guessing bundled entry identity. No new language form or Will question is required.
