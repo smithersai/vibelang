@@ -14,6 +14,7 @@ const read = (path) => readFileSync(new URL(path, root), "utf8")
 const runs = [
   ["site/scripts/not-found.test.mjs", "docs/tools/site-contrast.test.ts", "test:404"],
   ["site/scripts/patch-vocs-search.test.mjs", "site/package.json", "scripts/patch-vocs-search.test.mjs"],
+  ["site/scripts/patch-vocs-llms.test.mjs", "site/package.json", "scripts/patch-vocs-llms.test.mjs"],
   ["scripts/*.test.mjs", "PACKAGE.ts", "scripts/*.test.mjs"],
   ["scripts/bench/*.test.mjs", "scripts/bench/PACKAGE.ts", "node --test scripts/bench/gen-synthetic.test.mjs"],
   ["scripts/release/*.test.mjs", "PACKAGE.ts", "scripts/release/*.test.mjs"],

@@ -1,0 +1,33 @@
+--- a/src/internal/vite-plugins.ts
++++ b/src/internal/vite-plugins.ts
+@@ -173,6 +173,7 @@
+ export function llms(config: Config.Config): PluginOption {
+   const { description, title } = config
+   let viteConfig: ResolvedConfig
++  let buildContent: ReturnType<typeof buildLlmsContent> | undefined
+ 
+   const { rehypePlugins, remarkPlugins } = Mdx.getCompileOptions('txt', config)
+ 
+@@ -203,6 +204,7 @@
+     enforce: 'post',
+     configResolved(config) {
+       viteConfig = config
++      buildContent = undefined
+     },
+     configureServer(server) {
+       let content: Awaited<ReturnType<typeof buildLlmsContent>> | undefined
+@@ -231,7 +233,13 @@
+       })
+     },
+     async buildEnd() {
+-      const content = await buildLlmsContent()
++      if (this.meta.watchMode) buildContent = undefined
++      const content = await (this.meta.watchMode
++        ? buildLlmsContent()
++        : (buildContent ??= buildLlmsContent().catch((error) => {
++            buildContent = undefined
++            throw error
++          })))
+       const outDir = path.resolve(viteConfig.root, config.outDir, 'public')
+       await fs.mkdir(outDir, { recursive: true })
+       await Promise.all([

@@ -11,7 +11,7 @@
     "postdeploy": "node ../docs/tools/deployed-release.mjs",
     "deploy:plan": "alchemy plan --stage prod",
     "dev:cloudflare": "alchemy dev",
-    "postinstall": "node scripts/patch-vocs-search.mjs",
+    "postinstall": "node scripts/patch-vocs-search.mjs && node scripts/patch-vocs-llms.mjs",
     "prebuild": "bun scripts/build-docs.ts",
     "predev": "node scripts/patch-vocs-search.mjs",
     "postbuild": "bun scripts/build-docs.ts --markdown && node scripts/publication.mjs && bun ../docs/tools/check-site.ts dist/public && bun ../docs/tools/prepare-site.ts dist",
@@ -19,7 +19,7 @@
     "test:llms": "node --test scripts/llms.test.mjs",
     "social-card": "node scripts/render-social-card.mjs",
     "test:contrast": "node --test scripts/contrast.test.mjs",
-    "test:infrastructure": "node --test scripts/cloudflare-stack.test.mjs scripts/deploy-load.test.mjs scripts/patch-vocs-search.test.mjs",
+    "test:infrastructure": "node --test scripts/cloudflare-stack.test.mjs scripts/deploy-load.test.mjs scripts/patch-vocs-search.test.mjs scripts/patch-vocs-llms.test.mjs",
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {

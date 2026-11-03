@@ -636,6 +636,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Ambient `error` and `schema error` declarations could also report member-restriction errors. They now report `EK1307` first, while preserving independent field-type errors.
 
 - Services inside functions or blocks, or outside a named package, now require an explicit key and report `EK0903`; their conformance checks cover the explicit-key controls too.
+
+- Site builds regenerated the same Markdown and LLM exports for every bundler environment; they now reuse that computation while preserving those exports and refreshing watch builds.
 - Generic `data` helper names used unstable suffixes and could collide with source names; they now use `$Name$Definition` and the first free numbered suffix.
 - Async-to-Effect conversion could skip a returned object's `then` getter or its error; conversions now preserve that Promise-adoption read by declining accessors and aliased objects, while keeping fresh data-property literals available.
 

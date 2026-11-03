@@ -1140,7 +1140,7 @@ The `//:site-contrast` check runs `npm run test:infrastructure` after
 Its five tests check patch idempotence, refusal of an unsupported version or
 changed source or compiled module, and refusal to modify borrowed dependencies.
 They use temporary copies of the vendor files and leave the installed package
-unchanged. Run the same installed-site checks with:
+unchanged. The same command runs `site/scripts/patch-vocs-llms.test.mjs` against the real generator: repeated and concurrent build environments share one computation while every output is restored, watch and new builds refresh, rejected work retries, and version/source/ownership guards preserve dependencies. The pinned patch is applied by `npm ci`; its runtime and source map are generated from the reviewed source. Run the same installed-site checks with:
 
 ```sh
 cd site

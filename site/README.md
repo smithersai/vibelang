@@ -102,3 +102,10 @@ It needs CLOUDFLARE_ACCOUNT_ID and CLOUDFLARE_API_TOKEN with Workers Scripts
 Edit and access to the configured domains. Every configured retired domain
 returns a 301 to https://vibelang.sh at the same path and query. A final .html
 is removed, and /index.html maps to /. No redirect is deployed by the site pipeline.
+
+
+### Temporary Vocs LLM build cache patch
+
+`npm ci` also applies the [Vocs 2.8.5 LLM build cache patch](patches/vocs-2.8.5-llms-build-cache.patch). Vocs calls its Markdown/LLM export hook for each bundler environment. The patch computes that content once for a resolved production build and writes every output again for each environment, including after an output directory is emptied. It preserves `llms-full.txt`, `llms.txt` and the per-page `assets/md/` files; VibeLang's postbuild Markdown generator still runs.
+
+Watch builds bypass the cache, a new resolved build clears it, and a failed generation can be retried. The installer checks the pinned version and reviewed source/runtime hashes, recompiles the runtime and source map from the patched source, and refuses borrowed dependencies. Run `node --test scripts/patch-vocs-llms.test.mjs` after installing the site's dependencies. Review the pin, patch and hashes together when upgrading Vocs.
