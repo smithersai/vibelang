@@ -1,0 +1,1 @@
+FuzzFormat format:refusal:FunctionDeclaration:property-assignment-expected compiler Appendix B EK0701/D276: the formatter refuses a comma between match arms, which the checker reports, not the parser; case match-arm-grammar.fail; lane fix2-go.
