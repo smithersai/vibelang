@@ -68,6 +68,11 @@ func TestThrowOutsideEffectCodeFixes(t *testing.T) {
 		{"getter", "error Bad\nexport class P {\n  get v(): number { throw new Bad() }\n}", "", "", ""},
 		{"plain generator", "error Bad\nexport function* g(): Generator<number> { throw new Bad() }", "", "", ""},
 		{"top level", "declare const n: number\nif (n < 0) throw new Error(\"n\")", "", "", ""},
+		// making these effect would change a type something else fixes
+		{"overload implementation", "error Bad\nfunction choose(mode: true): number\nfunction choose(mode: false): number\nfunction choose(mode: boolean): number { throw new Bad() }\nexport const n = choose(true)", "", "", ""},
+		{"implemented method", "error Bad\ninterface Reader { read(): string }\nexport class R implements Reader { read(): string { throw new Bad() } }", "", "", ""},
+		{"overriding method", "error Bad\nclass Base { read(): string { return \"ok\" } }\nexport class Loud extends Base { read(): string { throw new Bad() } }", "", "", ""},
+		{"contextual object method", "error Bad\ninterface Reader { read(): string }\nexport const r: Reader = { read(): string { throw new Bad() } }", "", "", ""},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			program, file, service, converters := editorProgram(t, test.source)

@@ -29,7 +29,7 @@ func TestAwaitPlacementQuickFixes(t *testing.T) {
 					"declare const other: " + handle.typ + "\n" +
 					"declare const box: { value: " + handle.typ + " }\n" +
 					"declare const flag: boolean\n" +
-					"/** @throws {never} */ declare function get(): " + handle.typ + "\n" +
+					"declare function get(): " + handle.typ + "\n" +
 					"export effect function wait() { /* café 😀 */ return await " + operand + " }\n"
 				program, file, service, converters := editorProgram(t, source)
 				var placement *ast.Diagnostic

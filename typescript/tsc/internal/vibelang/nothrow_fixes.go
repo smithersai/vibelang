@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
+	"github.com/microsoft/TypeScript/tsc/internal/checker"
 	"github.com/microsoft/TypeScript/tsc/internal/ls"
 	"github.com/microsoft/TypeScript/tsc/internal/lsp/lsproto"
 	"github.com/microsoft/TypeScript/tsc/internal/scanner"
@@ -27,7 +28,12 @@ import (
 // A plain catch handler becomes catch effect (e) => …. Neither fix is
 // offered for a constructor, accessor, plain generator, initializer, static
 // block, parameter list or the top level, which can't be effect code: their
-// fix is moving the code to a .ts file.
+// fix is moving the code to a .ts file. Nor is it offered where making the
+// function effect would change a type something else fixes (FuzzEditor,
+// editor:quickfix-error:EK401:TS2394 and TS2416): an overload implementation,
+// whose overloads must stay compatible with it, and a method whose name a
+// base class, an implemented interface or the object's contextual type
+// declares.
 
 func init() {
 	ls.RegisterCodeFixProvider(nothrowFix)
@@ -48,6 +54,9 @@ var nothrowFix = &ls.CodeFixProvider{
 		c, done := fix.Program.GetTypeCheckerForFile(ctx, fix.SourceFile)
 		defer done()
 		home := analyzerFor(c).plainHomeOf(site)
+		if home == nil || effectBreaksContract(c, home) {
+			return nil, nil
+		}
 		edits := makeEffectEdits(fix, site, home)
 		if edits == nil {
 			return nil, nil
@@ -117,4 +126,37 @@ func makeEffectEdits(fix *ls.CodeFixContext, site *ast.Node, home *ast.Node) []*
 		edits = append(edits, replaceRange(fix, nodeStart(file, site), site.End(), "try Effect.try(() => "+nodeText(file, site)+")")...)
 	}
 	return edits
+}
+
+// effectBreaksContract reports whether making home effect would change a type
+// that something else fixes: an overload implementation, whose overload
+// signatures must stay compatible with it (TS2394), or a method whose name a
+// base class, an implemented interface or the object literal's contextual
+// type declares (TS2416, TS2322).
+func effectBreaksContract(c *checker.Checker, home *ast.Node) bool {
+	if ast.IsFunctionDeclaration(home) || ast.IsMethodDeclaration(home) {
+		if symbol := c.GetSymbolOfDeclaration(home); symbol != nil && len(symbol.Declarations()) > 1 {
+			return true
+		}
+	}
+	if !ast.IsMethodDeclaration(home) || home.Name() == nil || !ast.IsIdentifier(home.Name()) {
+		return false
+	}
+	name := home.Name().Text()
+	owner := home.Parent
+	if ast.IsClassLike(owner) {
+		for _, kind := range []ast.Kind{ast.KindExtendsKeyword, ast.KindImplementsKeyword} {
+			for _, element := range ast.GetHeritageElements(owner, kind) {
+				if t := c.GetTypeAtLocation(element); t != nil && c.GetPropertyOfType(t, name) != nil {
+					return true
+				}
+			}
+		}
+	}
+	if ast.IsObjectLiteralExpression(owner) {
+		if t := c.GetContextualType(owner, checker.ContextFlagsNone); t != nil && c.GetPropertyOfType(t, name) != nil {
+			return true
+		}
+	}
+	return false
 }
