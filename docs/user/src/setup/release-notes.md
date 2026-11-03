@@ -607,6 +607,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Specification examples could show an extracted TypeScript module body as a global script; the specification checks now require extracted twins to preserve module scope.
 - ESLint treated a multiline `for concurrent` head as a function call; it now follows the loop's source children while preserving item scopes and real call warnings.
 
+- Passing a throwing TypeScript method through indexed access, such as `handlers["parse"]` or `handlers[key]`, could bypass callback checks. Its written `@throws` contract now receives the same `EK0402` check as dotted access, including numeric and symbol keys.
+
 - The Go validation graph omitted the language-service tests, hiding stale trailing-block fixtures. It now runs that package, checks ordinary Effect arguments, and retains the retired forms as rejection tests.
 
 - VibeLang could treat a namespace re-export in a `.d.vibe.ts` file as untyped and report `TS7006` in TypeScript callbacks. Explicit `.vibe` imports now find compatibility declarations when no source exists, preserving contextual types and real callback errors.

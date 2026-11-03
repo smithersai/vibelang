@@ -1,0 +1,23 @@
+// expect: EK0402 EK0402 EK0402 EK0402 EK0402 EK0402 EK0402 EK0402 EK0402 EK0402 EK0402 EK0402
+// VIP-4: indexed function values keep their written throws contract.
+import { handlers, token, call, take, allow } from "./helpers.ts"
+const key = "risky" as const
+export function check() {
+  call(handlers["risky"])
+  take({ onCall: handlers["risky"] })
+  const h0: () => number = handlers["risky"]
+  call(handlers[key])
+  take({ onCall: handlers[key] })
+  const h3: () => number = handlers[key]
+  call(handlers[0])
+  take({ onCall: handlers[0] })
+  const h6: () => number = handlers[0]
+  call(handlers[token])
+  take({ onCall: handlers[token] })
+  const h9: () => number = handlers[token]
+  call(handlers["safe"])
+  allow(handlers["risky"])
+  allow(handlers[key])
+  allow(handlers[0])
+  allow(handlers[token])
+}

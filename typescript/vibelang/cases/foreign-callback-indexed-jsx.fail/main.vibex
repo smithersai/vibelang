@@ -1,0 +1,19 @@
+// expect: EK0402 EK0402
+import { handlers } from "./helpers.ts"
+
+declare global {
+  namespace JSX {
+    interface Element {}
+    interface IntrinsicElements { button: { onClick: () => number } }
+  }
+}
+
+export function IndexedHandler() {
+  return <button onClick={handlers["risky"]} />
+}
+export function SpreadHandler() {
+  return <button {...{ onClick: handlers["risky"] }} />
+}
+export function SafeHandler() {
+  return <button onClick={handlers["safe"]} />
+}

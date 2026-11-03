@@ -46,7 +46,7 @@ func checkCallbackThrows(c *checker.Checker, file *ast.SourceFile) {
 		if isTypeScriptModule(node) || isHatchArgument(node) {
 			return false
 		}
-		if (ast.IsIdentifier(node) || ast.IsPropertyAccessExpression(node)) && isContextualValue(node) {
+		if (ast.IsIdentifier(node) || ast.IsPropertyAccessExpression(node) || ast.IsElementAccessExpression(node)) && isContextualValue(node) {
 			checkCallbackValue(c, node)
 		}
 		return node.ForEachChild(visit)
@@ -149,6 +149,16 @@ func foreignThrows(c *checker.Checker, expr *ast.Node) (throwContract, bool) {
 		name = expr.Name()
 	}
 	symbol := c.GetSymbolAtLocation(name)
+	if ast.IsElementAccessExpression(expr) {
+		// A literal key, including a const identifier, numeric key or unique
+		// symbol, names the same property as its dotted spelling. Looking
+		// up the key identifier itself would inspect the key variable.
+		key := c.GetTypeAtLocation(expr.AsElementAccessExpression().ArgumentExpression)
+		if key != nil && checker.IsTypeUsableAsPropertyName(key) {
+			object := c.GetTypeAtLocation(expr.Expression())
+			symbol = c.GetPropertyOfType(c.GetApparentType(object), checker.GetPropertyNameFromType(key))
+		}
+	}
 	if symbol != nil && symbol.Flags()&ast.SymbolFlagsAlias != 0 {
 		symbol = c.GetAliasedSymbol(symbol)
 	}

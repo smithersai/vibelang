@@ -1,0 +1,9 @@
+// expect-result: [1,9,"function"]
+import { handlers, call, allow } from "./helpers.ts"
+
+export effect function main() {
+  const safe = call(handlers["safe"])
+  const admitted = allow(handlers["risky"])
+  const recovered = Effect.try(handlers["risky"]) catch () => 9
+  return [safe, recovered, typeof admitted]
+}
