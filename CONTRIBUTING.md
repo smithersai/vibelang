@@ -79,7 +79,7 @@ The end-to-end check runs setup, then scaffolds, installs, builds, runs and test
 1. Link the accepted issue: `Closes #123`.
 2. Change one thing. Add a test that fails without the change, and update the examples and diagnostics it affects. Every fix commit must add one line to the top release-notes section's `Bugs fixed since <last published version>` list and update every doc page its change affects, in the same commit. If the bug is listed under `Known bugs`, remove that line and add its `Bugs fixed` line in the same commit.
 3. Describe the behavior before and after, any syntax or API break, and the commands you ran with their results.
-4. Open a draft for early feedback. Maintainers land their own work directly on `main`. Outside contributions arrive as pull requests that a maintainer reviews and merges. Agents never approve or merge.
+4. Open a draft for early feedback. Maintainers land their own work on `vibe`. `main` advances only to a commit on `vibe` whose post-merge checks passed, with no failing commit below it. Outside contributions arrive as pull requests that a maintainer reviews and merges. Agents never approve or merge.
 
 After publishing, start a `## <next version> (unreleased)` section in [the release notes](docs/user/src/setup/release-notes.md), with a `### Bugs fixed since <last published version>` heading. Repository release pins follow the compiler manifest. Website builds use npm latest, its published platforms and its runtime's Effect pin; an explicit release-version override supports rehearsals.
 
@@ -97,4 +97,4 @@ Start with [good first issues](https://github.com/smithersai/vibelang/issues?q=i
 
 Ask with the [question form](https://github.com/smithersai/vibelang/issues/new?template=question.yml). Report a vulnerability privately, never in an issue: see [SECURITY.md](.github/SECURITY.md).
 
-<sub>2,637 tokens (o200k_base, js-tiktoken 1.0.21), counted by the [docs flow](.smithers/flows/docs/flow.ts).</sub>
+<sub>2,664 tokens (o200k_base, js-tiktoken 1.0.21), counted by the [docs flow](.smithers/flows/docs/flow.ts).</sub>

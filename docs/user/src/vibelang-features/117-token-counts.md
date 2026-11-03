@@ -90,10 +90,10 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | **Start Here** | **2,500** |
 | [Welcome](../001-onboarding.md) | 1,800 |
 | [Why VibeLang?](../getting-started/002-why-effect.md) | 640 |
-| **Learning Path** | **11,000** |
+| **Learning Path** | **12,000** |
 | [The Effect Type](../getting-started/003-the-effect-type.md) | 2,400 |
 | [Installation](../getting-started/004-installation.md) | 2,900 |
-| [Creating Effects](../getting-started/005-creating-effects.md) | 3,000 |
+| [Creating Effects](../getting-started/005-creating-effects.md) | 3,100 |
 | [Two Types of Errors](../error-management/006-two-error-types.md) | 670 |
 | [Basic Concurrency](../concurrency/007-basic-concurrency.md) | 2,500 |
 | **Core Concepts** | **23,000** |
@@ -131,8 +131,8 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [Zed](../setup/zed.md) | 480 |
 | [Other editors](../setup/other-editors.md) | 490 |
 | [Coding agents](../setup/coding-agents.md) | 1,100 |
-| **Upgrade** | **99,000** |
-| [Release notes](../setup/release-notes.md) | 99,000 |
+| **Upgrade** | **100,000** |
+| [Release notes](../setup/release-notes.md) | 100,000 |
 | **All 19 pages** | **140,000** |
 
 ### Guides
@@ -264,7 +264,7 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | Page | Tokens |
 | --- | ---: |
 | [Control operations and handlers](111-control-operations-and-handlers.md) | 65 |
-| [Producers](112-producers.md) | 2,900 |
+| [Producers](112-producers.md) | 3,000 |
 | [Building an HTTP API](113-building-an-http-api.md) | 1,600 |
 | [VibeLang for Effect users](114-vibelang-for-effect-users.md) | 6,100 |
 | [Cheat sheet](115-cheat-sheet.md) | 11,000 |
