@@ -6,7 +6,7 @@ error Boom
 function overThrow() {
   let count = 0
   for (let n = 0; n < 3; n++) {
-    try { count++; throw new Boom() } finally { continue }
+    try { count++; raise(new Boom()) } finally { continue }
   }
   return count
 }
@@ -24,7 +24,7 @@ function labeled() {
   const steps: string[] = []
   outer: for (let i = 0; i < 2; i++) {
     for (let j = 0; j < 3; j++) {
-      try { steps.push(i + ":" + j); throw new Boom() } finally { continue outer }
+      try { steps.push(i + ":" + j); raise(new Boom()) } finally { continue outer }
     }
   }
   return steps
@@ -34,3 +34,7 @@ function labeled() {
 export effect function main() {
   return { overThrow: overThrow(), overReturn: overReturn(), labeled: labeled() }
 }
+
+// A synchronous VibeLang function never throws (Will, 2026-10-31): the throw
+// these tests need lives in raise.ts, which keeps JavaScript's throw.
+import { raise } from "./raise.js"

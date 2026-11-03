@@ -31,7 +31,7 @@ effect function caught() {
 function value() {
   const cause: unknown = Cause.die("not rethrown")
   try {
-    throw cause
+    raise(cause)
   } catch (e) {
     return Cause.isCause(e) ? "cause object" : "other"
   }
@@ -53,3 +53,7 @@ export effect function main() {
     value: value()
   }
 }
+
+// A synchronous VibeLang function never throws (Will, 2026-10-31): the throw
+// these tests need lives in raise.ts, which keeps JavaScript's throw.
+import { raise } from "./raise.js"

@@ -20,7 +20,7 @@ effect function describe(id: string) {
   }
 }
 
-function unwrap() {
+effect function unwrap() {
   try {
     throw new Wrapped({ value: 7 })
   } catch (error) {
@@ -35,5 +35,5 @@ function label(error: string) {
 }
 
 export effect function main() {
-  return { timeout: try describe("slow"), missing: try describe("42"), wrapped: unwrap(), label: label("plain") }
+  return { timeout: try describe("slow"), missing: try describe("42"), wrapped: try unwrap(), label: label("plain") }
 }

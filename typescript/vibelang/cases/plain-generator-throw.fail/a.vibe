@@ -19,6 +19,6 @@ export function* kept(): Iterator<string> {
   try {
     throw new Invalid({ value: "x" })
   } catch (e) {
-    yield e.value
+    yield e instanceof Invalid ? e.value : "?"
   }
 }

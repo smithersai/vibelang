@@ -1,10 +1,11 @@
 import { Cause, Data, Effect, Exit, Schema } from "effect"
+import { raise } from "./raise.js"
 type Equal<A, B> = (<T>() => T extends A ? 1 : 2) extends (<T>() => T extends B ? 1 : 2) ? true : false
 error CopyError { value: number }
 data Copies { Copy { value: number } }
 const token = { failure: "copy" }
 let reads = 0
-const payload = { get value(): number { reads++; throw token } }
+const payload = { get value(): number { reads++; return raise(token) } }
 effect function build() { return new CopyError(payload) }
 effect function variant() { return Copies.Copy(payload) }
 export const contract: Equal<ReturnType<typeof build>, Effect.Effect<CopyError>> = true

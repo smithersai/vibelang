@@ -1,4 +1,4 @@
-// expect: TS2345 TS2322 EK9201
+// expect: TS2345 TS2322 EK9201 EK0401
 import { Effect } from "effect"
 error Bad { reason: string }
 effect function wrap(effect: Effect.Effect<number, Bad, never>) { return try effect }

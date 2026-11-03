@@ -1,8 +1,9 @@
 import { Effect } from "effect"
+import { raise } from "./raise.js"
 const error = 1
 const schema = 2
 const data = 3
-function caught() { try { throw 4 } catch (error) { return typeof error === "number" ? error : 0 } }
+function caught() { try { raise(4) } catch (error) { return typeof error === "number" ? error : 0 } }
 export effect function main() { return [error, schema, data, caught()] }
 
 // VIP-13 declaration words remain ordinary bindings and catch parameters; rule: docs/design/vips/0013-error-declarations.md#b88558e6b3aad6bc

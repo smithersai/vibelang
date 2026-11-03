@@ -8,19 +8,21 @@ class Invalid extends Data.TaggedError("Invalid")<{ readonly n: number }> {}
 
 export function clamp(n: number) {
   try {
-    if (n > 10) throw new Invalid({ n })
+    if (n > 10) raise(new Invalid({ n }))
     return n
   } catch (e) {
-    return e.n > 100 ? -100 : -10
+    return (e as { n: number }).n > 100 ? -100 : -10
   }
 }
 
-// A destructured catch, which catches a TypeError too and binds n undefined.
+// A catch that destructures what it caught, which catches a TypeError too and
+// binds n undefined.
 export function length(value: any) {
   try {
-    if (value === 0) throw new Invalid({ n: 0 })
+    if (value === 0) raise(new Invalid({ n: 0 }))
     return value.length
-  } catch ({ n }) {
+  } catch (e) {
+    const { n } = e as { n?: number }
     return n
   }
 }
@@ -29,10 +31,10 @@ export function length(value: any) {
 export function rethrown(n: number) {
   try {
     try {
-      if (n < 0) throw new Invalid({ n })
+      if (n < 0) raise(new Invalid({ n }))
       return n
     } catch {
-      throw "negative"
+      raise("negative")
     } finally {
       steps.push(`finally ${n}`)
     }
@@ -54,3 +56,7 @@ export effect function main() {
     steps
   }
 }
+
+// A synchronous VibeLang function never throws (Will, 2026-10-31): the throw
+// these tests need lives in raise.ts, which keeps JavaScript's throw.
+import { raise } from "./raise.js"

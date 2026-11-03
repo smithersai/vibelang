@@ -1,7 +1,8 @@
 // expect-result: [1,0,true,false,2,"none",3,4,7]
 // Chapter 004: the names an is binds in an ordinary block expression belong
 // to the nearest enclosing block, so a variable statement, an expression
-// statement, a return and a throw may bind; a concise arrow body is its own
+// statement, a return and a throw may bind (a throw in an effect function, since
+// synchronous VibeLang code never throws); a concise arrow body is its own
 // home; an unbraced body is a block of its own; a static block is a block.
 export function initializer(x: unknown) {
   const id = (x is { id: let found }) ? found : 0
@@ -11,7 +12,7 @@ export function returned(x: unknown) {
   return x is { id: let id } && id === 1
 }
 export const concise = (x: unknown) => x is { id: let id } && id === 2
-export function thrown(x: { message: string } | null) {
+export effect function thrown(x: { message: string } | null) {
   try {
     throw (x is { message: let message }) ? new Error(message) : new Error("none")
   } catch (e) {
@@ -41,7 +42,7 @@ export effect function main() {
     returned({ id: 1 }),
     returned({ id: 2 }),
     concise({ id: 2 }) ? 2 : 0,
-    thrown(null),
+    try thrown(null),
     unbraced({ n: 3 }),
     Counted.count,
     expressionStatement({ a: 3, b: 4 }),

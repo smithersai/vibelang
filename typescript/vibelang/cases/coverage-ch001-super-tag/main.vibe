@@ -1,3 +1,4 @@
+import { raise } from "./raise.js"
 class Base {
  n = 7
  tag(_parts: TemplateStringsArray, value: number) { return this.n + value }
@@ -5,7 +6,7 @@ class Base {
 class Derived extends Base {
  effect go() { try Effect.yieldNow; const value = 2; return super.tag`value ${value}` }
 }
-const forbidden = () => { throw new Error("own call or bind was read") }
+const forbidden = () => raise(new Error("own call or bind was read"))
 Object.defineProperty(Base.prototype.tag, "call", { get: forbidden })
 Object.defineProperty(Base.prototype.tag, "bind", { get: forbidden })
 export effect function main() { return try new Derived().go() }

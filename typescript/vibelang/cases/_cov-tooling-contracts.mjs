@@ -24,7 +24,13 @@ for (const suffix of [".vibe", ".vibex"]) {
       "export function foreignOverloads(n: number): number",
       "/** @throws {SyntaxError} */",
       "export function foreignOverloads(n: string): string",
-      "export function foreignOverloads(n: number | string) { return n }", "/** @rethrows f */", "export function callback(f: () => void): void { f() }"
+      "export function foreignOverloads(n: number | string) { return n }", "/** @rethrows f */", "export function callback(f: () => void): void { f() }",
+      // A `.vibe` file can't write `@throws` (EK0406, chapter 3), so the tagged
+      // ambient signatures are foreign declarations that main re-exports.
+      'import type { BadInput } from "@fixture/contracts"',
+      "export declare const declaredLocal: {\n/** @throws {BadInput} */\n(s: string): string\n}",
+      "export interface SchemaLike<T> { readonly value: T }",
+      "export declare function decodeUnknownSync<T>(s: SchemaLike<T>): {\n/** @throws {BadInput} */\n(input: unknown): T\n}"
     ].join("\n"))
     const library = join(dir, "node_modules/@fixture/contracts")
     mkdirSync(library, { recursive: true })
@@ -40,10 +46,8 @@ for (const suffix of [".vibe", ".vibex"]) {
       'import { risky, parse } from "./foreign.ts"',
       'export { pure, foreignOverloads, callback } from "./foreign.ts"',
       'export { declared } from "@fixture/contracts"',
-      'import type { BadInput } from "@fixture/contracts"',
-      'export declare const declaredLocal: {\n/** @throws {BadInput} */\n(s: string): string\n}',
-      'export interface SchemaLike<T> { readonly value: T }',
-      'export declare function decodeUnknownSync<T>(s: SchemaLike<T>): {\n/** @throws {BadInput} */\n(input: unknown): T\n}',  
+      'export { declaredLocal, decodeUnknownSync } from "./foreign.ts"',
+      'export type { SchemaLike } from "./foreign.ts"',
       'export function add(n: number) { return n + 1 }',
       'export const arrow = (n: number) => n + 1',
       'export function overloaded(n: number): number',

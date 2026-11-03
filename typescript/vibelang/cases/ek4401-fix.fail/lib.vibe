@@ -45,7 +45,7 @@ export const projected = project({
   },
 })
 
-// A function that runs no Effect stays plain; one whose call is known to throw
-// (a @throws naming a class this module can't reach) becomes effect code.
+// A function that runs no Effect stays plain. In effect code, a call known to
+// throw (a @throws naming a class this module can't reach) is wrapped too.
 export const shout = (name: string) => label(name, double(1)).toUpperCase()
-export const hidden = (n: number) => guarded(n)
+export const hidden = effect (n: number) => guarded(n)

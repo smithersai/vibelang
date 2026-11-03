@@ -1,10 +1,11 @@
 import { Effect } from "effect"
+import { raise } from "./raise.js"
 // Chapter 004, result-types: docs/design/src/004-match.md#1174d0142bdc227e
 // Chapter 004, result-types: docs/design/src/004-match.md#eb6bb7ade2cec0ca
 
 function probe(): unknown {
 function classify(s: "a" | "b"): number | string { return match (s) { when "a": 1; when "b": "b"; } }
-function fail(s: boolean): number { return match (s) { when true: 1; default: throw "bad"; } }
+function fail(s: boolean): number { return match (s) { when true: 1; default: raise("bad"); } }
 return [classify("a"),classify("b"),fail(true)]
 }
 

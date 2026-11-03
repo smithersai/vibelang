@@ -4,7 +4,7 @@
 // reasons it holds. failed, died and mixed compile to plain JavaScript;
 // framedDied, which yields, compiles to frames and agrees with them.
 function caught(cause: unknown) {
-  try { throw cause }
+  try { raise(cause) }
   catch (e) { return e === cause && Cause.isCause(e) ? "Cause" : "other" }
 }
 
@@ -36,3 +36,7 @@ export effect function main() {
     mixed: mixed()
   }
 }
+
+// A synchronous VibeLang function never throws (Will, 2026-10-31): the throw
+// these tests need lives in raise.ts, which keeps JavaScript's throw.
+import { raise } from "./raise.js"

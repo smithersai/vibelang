@@ -15,7 +15,7 @@ error Negative
 
 export function guarded(n: number) {
   try {
-    if (n < 0) throw new Negative()
+    if (n < 0) raise(new Negative())
     return n
   } catch (e) {
     return 0
@@ -25,3 +25,7 @@ export function guarded(n: number) {
 export class Legacy extends Error {}
 
 export const Big = Schema.Literal(Infinity)
+
+// A synchronous VibeLang function never throws (Will, 2026-10-31): the throw
+// these tests need lives in raise.ts, which keeps JavaScript's throw.
+import { raise } from "./raise.js"

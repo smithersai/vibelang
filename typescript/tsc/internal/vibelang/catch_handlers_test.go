@@ -113,7 +113,7 @@ func TestCatchHandlerFunctionLiteralsAdmitted(t *testing.T) {
 
 // RC-22: decoded names come from the handler's scope, never source words.
 func TestCatchHandlerFreshParameterScope(t *testing.T) {
-	const prefix = "import * as Effect from \"effect/Effect\"\nconst e = \"E\", error = \"R\", failure = \"F\", $e = \"outer\", $e2 = \"two\"\n/** @throws {never} */\nfunction make(a:string,b:string,c:string,d:string): (x:string)=>string { return () => a+b+c+d }\nexport effect function f() { return Effect.fail(\"bad\") catch "
+	const prefix = "import * as Effect from \"effect/Effect\"\nconst e = \"E\", error = \"R\", failure = \"F\", $e = \"outer\", $e2 = \"two\"\nfunction make(a:string,b:string,c:string,d:string): (x:string)=>string { return () => a+b+c+d }\nexport effect function f() { return Effect.fail(\"bad\") catch "
 	for _, handler := range []string{
 		"make(e,error,failure,$e)",
 		"({ get: make(e,error,failure,$e) })[\"get\"]",

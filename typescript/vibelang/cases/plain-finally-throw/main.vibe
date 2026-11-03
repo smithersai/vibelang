@@ -7,27 +7,27 @@ error Cleanup
 
 function overThrow() {
   try {
-    try { throw new First() } finally { throw new Cleanup() }
-  } catch (e) { return e._tag }
+    try { raise(new First()) } finally { raise(new Cleanup()) }
+  } catch (e) { return (e as { _tag: string })._tag }
 }
 
 // A throw from the catch block is in flight when the finally block runs.
 function overCatchThrow() {
   try {
-    try { throw new First() } catch { throw new Second() } finally { throw new Cleanup() }
-  } catch (e) { return e._tag }
+    try { raise(new First()) } catch { raise(new Second()) } finally { raise(new Cleanup()) }
+  } catch (e) { return (e as { _tag: string })._tag }
 }
 
 function overReturn() {
   try {
-    try { return "returned" } finally { throw new Cleanup() }
-  } catch (e) { return e._tag }
+    try { return "returned" } finally { raise(new Cleanup()) }
+  } catch (e) { return (e as { _tag: string })._tag }
 }
 
 // What leaves is the cleanup's own value, not a SuppressedError.
 function alone() {
   try {
-    try { throw new First() } finally { throw new Cleanup() }
+    try { raise(new First()) } finally { raise(new Cleanup()) }
   } catch (e) { return e instanceof Cleanup && !(e instanceof SuppressedError) }
 }
 
@@ -55,3 +55,7 @@ export effect function main() {
     defect: reasons(try exit(effect { return defect() }))
   }
 }
+
+// A synchronous VibeLang function never throws (Will, 2026-10-31): the throw
+// these tests need lives in raise.ts, which keeps JavaScript's throw.
+import { raise } from "./raise.js"

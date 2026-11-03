@@ -1,8 +1,9 @@
 import { Effect } from "effect"
+import { raise } from "./raise.js"
 function mul(effect: number) { return effect * 2 }
 function call(effect: (n: number) => number) { return effect(2) }
 function caught() { try
-  { throw 2 } catch (error) { return error as number }
+  { raise(2) } catch (error) { return error as number }
 }
 const native = { async effect() { return 3 } }
 const bare: (effect: number) => Promise<number> = async effect => effect + 1

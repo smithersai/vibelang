@@ -32,7 +32,7 @@ export function direct() {
 // catch is JavaScript's catch (VIP-4), which catches it, so mixed returns.
 function mixed() {
   try {
-    try { throw new Bad() }
+    try { raise(new Bad()) }
     finally { crash("cleanup") }
   } catch { return "caught" }
 }
@@ -63,3 +63,7 @@ export effect function report() {
     framed: reasons(try exit(framed()))
   }
 }
+
+// A synchronous VibeLang function never throws (Will, 2026-10-31): the throw
+// these tests need lives in raise.ts, which keeps JavaScript's throw.
+import { raise } from "./raise.js"

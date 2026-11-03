@@ -22,7 +22,7 @@ effect function badTag(fail: boolean): number!Absent {
 effect function run(f: () => number) { return f() }
 
 /** @throws {Error} @rethrows f */
-function load(f: () => number): number!! { return f() }
+effect function load(f: () => number): number!! { return f() }
 
 /** @throws {Absent} */
 const viaArrow = effect () => 4

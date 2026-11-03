@@ -1,6 +1,7 @@
 // VIP-1: a function without effect is plain JavaScript. Its call runs its body
 // at once and returns what the body returns, even when that is an Effect or
-// when the body throws, and a local named like an Effect global is an ordinary
+// when the function it re-exports from a .ts file throws (a VibeLang function
+// never throws, Will 2026-10-31), and a local named like an Effect global is an ordinary
 // binding (VIP-6, VIP-12, VIP-14).
 const provide = (x: number) => x
 const succeed = (n: number) => n + 1
@@ -10,7 +11,7 @@ export const shadowed = [provide(7), succeed(7), Option.some(7)]
 export function value() { return 7 }
 export const arrow = () => 7
 export function main() { return 7 }
-export function thrower() { throw "bad" }
+export { thrower } from "./thrower.js"
 
 export const trace: string[] = []
 export function timed() {
