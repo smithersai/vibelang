@@ -539,6 +539,36 @@ const fallbackRow: Rule = {
   }
 }
 
+// Chapter codes need a row (round 20 OPUS-5, round 19 OPUS-6). Appendix B:
+// "Every diagnostic has an `EK` code" with its row. A code a chapter's prose
+// names must have an Appendix B row, or Appendix B must state it retired, not
+// reused or still printed. Code blocks are skipped: legacy severity maps quote
+// old codes such as `EK4801` as config data.
+const codeRows: Rule = {
+  name: "chapter-codes",
+  finding: "r20 OPUS-5: transitional `EK1023` is named in chapter 7 and Appendix B but has no row",
+  check(spec) {
+    const appendix = spec.get("src/900-appendices.md") ?? ""
+    const rows = new Set([...appendix.matchAll(/^\| (?:interim )?`(EK\d{4})`/gm)].map(m => m[1]!))
+    const stated = new Set(sentences(appendix)
+      .filter(s => /\bretired\b|\bnot reused\b|\bstill prints\b/.test(s.text))
+      .flatMap(s => [...s.text.matchAll(/EK\d{4}/g)].map(m => m[0])))
+    const out: Violation[] = []
+    const seen = new Set<string>()
+    for (const [file, text] of chapters(spec)) {
+      for (const m of prose(text).matchAll(/`(EK\d{4})`/g)) {
+        const code = m[1]!
+        if (rows.has(code) || stated.has(code) || seen.has(code)) continue
+        seen.add(code)
+        out.push({ rule: this.name, file, line: lineAt(text, m.index!), message: `${code} has no Appendix B row and no retirement note` })
+      }
+    }
+    return out
+  }
+}
+
+rules.push(resolutionClaims, codeRows)
+
 // A rule stated twice (r18 OPUS-1). VIP-40 says a plain call of a function
 // whose throwing is unknown stays an ordinary call; chapter 3's section on
 // plain code has to say the same, because 000:3 makes the VIP win.

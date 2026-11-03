@@ -425,3 +425,17 @@ test("declaration-bytes rejects byte comparisons of declarations and keeps TS505
   const protectedInput = withEdit("vips/0027-declaration-output.md", text => text + "\n\nExplicit `files` inputs retain native `TS5055` protection: exit `1` and unchanged declaration bytes.\n")
   expect(lint(protectedInput, rule("declaration-bytes"))).toEqual([])
 })
+
+test("chapter-codes rejects round 20 OPUS-5's transitional EK1023 without its row", () => {
+  const defect = withEdit("src/900-appendices.md", text => text.replace(/^\| `EK1023` \|.*\n/m, ""))
+  expect(lint(defect, rule("chapter-codes")).map(v => `${v.file} ${v.message}`)).toEqual([
+    "src/007-tooling.md EK1023 has no Appendix B row and no retirement note",
+  ])
+})
+
+test("chapter-codes accepts a code Appendix B states retired and rejects an unknown one", () => {
+  const retired = withEdit("src/002-running.md", text => text.replace("## `try`\n", "## `try`\n\nThe old `EK4843` warning is gone.\n"))
+  expect(lint(retired, rule("chapter-codes"))).toEqual([])
+  const unknown = withEdit("src/002-running.md", text => text.replace("## `try`\n", "## `try`\n\nThe old `EK2007` warning is gone.\n"))
+  expect(lint(unknown, rule("chapter-codes")).map(v => v.message)).toEqual(["EK2007 has no Appendix B row and no retirement note"])
+})
