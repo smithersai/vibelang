@@ -870,3 +870,11 @@ cd site
 npm ci --no-audit --no-fund
 npm run test:infrastructure
 ```
+
+
+Packaging properties inspect extracted archive filenames through Node's filesystem API. A `tar` listing can quote Unicode bytes differently under `LC_ALL=C`. The regression includes both package managers, explicit C and UTF-8 child locales, and offline installed Node/Bun consumers. Reproduce the locale boundary with:
+
+```sh
+LC_ALL=C node --test .smithers/flows/migrate/test/emitted-pack.property.test.mjs
+LC_ALL=C.UTF-8 node --test .smithers/flows/migrate/test/emitted-pack.property.test.mjs
+```

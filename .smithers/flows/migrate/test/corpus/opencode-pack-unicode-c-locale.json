@@ -1,0 +1,6 @@
+{
+ "property": "opencode-emitted-pack",
+ "rule": "Inspect actual packed filenames, independent of tar's locale-dependent display spelling.",
+ "input": { "files": false, "ignore": "git", "packer": "npm", "stem": "雪", "locale": "C" },
+ "repoPattern": "opencode emitted-package packing regression expanded to a Unicode entry; GNU tar lists its UTF-8 bytes as octal escapes under C locale."
+}
