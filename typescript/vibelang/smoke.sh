@@ -70,11 +70,11 @@ echo "test: go test -timeout=20m ./internal/vibelang/"
 # The fuzz targets' seed corpus: every oracle runs on the cases, the snippets
 # and the saved reproductions, a pending gap skips, and a fixed one fails as
 # XPASS (internal/vibelangfuzz/testdata/pending/README.md).
-# Parallel declaration emit must not race. Without -race the regression test
+# Parallel declaration emit and lowering must not race. Without -race the regression test
 # passes even on the racing code, so it runs under the race detector.
-echo "test: go test -race -run TestDeclarationEmitInParallel ./internal/vibelang/"
-(cd "$root/tsc" && CGO_ENABLED=1 go test -race -count=1 -trimpath -run TestDeclarationEmitInParallel ./internal/vibelang/ >/dev/null) ||
-	(cd "$root/tsc" && CGO_ENABLED=1 go test -race -count=1 -trimpath -run TestDeclarationEmitInParallel ./internal/vibelang/; exit 1)
+echo "test: go test -race -run TestDeclarationEmitInParallel|TestLoweringInParallel ./internal/vibelang/"
+(cd "$root/tsc" && CGO_ENABLED=1 go test -race -count=1 -trimpath -run 'TestDeclarationEmitInParallel|TestLoweringInParallel' ./internal/vibelang/ >/dev/null) ||
+	(cd "$root/tsc" && CGO_ENABLED=1 go test -race -count=1 -trimpath -run 'TestDeclarationEmitInParallel|TestLoweringInParallel' ./internal/vibelang/; exit 1)
 
 # The parity target and the declaration consumer compare with the stock
 # TypeScript the mapper pins, installed as CONTRIBUTING.md says.

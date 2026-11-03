@@ -83,8 +83,6 @@ func newFilePlan() *plan {
 // checking share the same lowering decisions rather than guessing from tokens.
 func populateFilePlan(c *checker.Checker, file *ast.SourceFile, p *plan) {
 	p.prelude = preludeUses(c, file)
-	p.collisionModules = collisionModules(c)
-	p.intrinsics = preludeStateOf(c).intrinsics
 	a := analyzerFor(c)
 	var visit func(node *ast.Node) bool
 	visit = func(node *ast.Node) bool {
@@ -165,6 +163,10 @@ func populateFilePlan(c *checker.Checker, file *ast.SourceFile, p *plan) {
 	p.prelude = core.Filter(p.prelude, func(name string) bool { return name != "$try" })
 	p.planTrustedCalls(c, a, file)
 	p.entry = planEntry(c, file)
+	// Copies, and last: the lowering reads these without the checker's lock,
+	// while the plan of another file on this checker goes on writing them.
+	p.collisionModules = lockedCopy(collisionModules(c))
+	p.intrinsics = lockedCopy(preludeStateOf(c).intrinsics)
 }
 
 // forEachCallInBody calls cb for each call that fn's own body evaluates,
