@@ -6,18 +6,6 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 
 ## 0.0.11 (unreleased)
-- A local binding named `fork` or `join` in effect code compiled with no error, and its calls silently became the fiber operation: `const fork = try FiberSet.makeRuntime(); fork(job)` waited for the fiber's cleanup instead of running the callback. Effect code that binds either name now reports `EK1702` (VIP-17), which it did not before, and `vibelang --fix` renames the binding and its calls. The fix also renames a `fork` or `join` that an `Effect.gen` or `Effect.fn` it rewrites reaches. An exported binding keeps its name through `export { fork2 as fork }`, an imported one through `import { join as join2 }`, and an object key stays `{ join: join2 }`.
-- Under the `vibelang/bun` preload, a `module` body importing a package, an `imports` map entry or an extensionless relative `.ts` file, such as `import { theme } from "../theme"`, failed with `Cannot find module` from a `vibelang-module:` path. It now resolves as it does in a `.ts` file beside the `.vibe` file.
-- The migrate flow's batch commits listed files on lines up to about 200 characters and named every file in the subject, so a repository with a commit-message wrap gate, such as Foldkit's 80-column check, failed on every batch. The flow now wraps commit bodies at 72 columns and shortens a long subject to `…, and N more`; the body still lists every file.
-- The migrate flow left a Vitest `coverage.include` such as `src/**/*.ts` as it was, so each migrated `.vibe` module silently left the coverage report and its `.d.vibe.ts` sidecar joined it at 0 of 0 lines, while thresholds still passed. Setup now widens those globs to `{ts,vibe}` and excludes `**/*.d.vibe.ts`.
-- The migrate flow's rules taught only `import { Array as Arr }` for `EK4842`, which a repository's lint can reject, as Foldkit's `prefer-effect-module-names` does. They now also teach `Effect.Array.map(xs, f)` with no import of `Array` or `Effect`.
-- Compiler test cases added after the Effect `4.1.1` pin still pinned `4.1.0`, and `interruption-restore-regions` read a service with the retired call form, `try Svc()`, so the repository's own checks failed. Every case now pins the runtime's Effect version and reads the service as `try Svc` (VIP-9).
-- A file added to a project whose `include` writes a leading dot, such as `.source-collector-*.vibe`, was invisible to the compile cache, so the Node loader reported that the project excludes it until something else changed. The cache now sees it, and still ignores dotted files a pattern does not name.
-- `vibelang --estree` wrote `try` before a tagged template, such as ``try sql`VACUUM INTO ${target}` ``, as the bare template, so ESLint's `no-unused-expressions` reported the statement. It is now the `$try(...)` call `try` writes before any other operand that is not a call.
-- The migrate flow's `.vibelang/eslint.config.mjs` ran `getter-return` and `no-dupe-class-members` on `.vibe` files, which Oxlint skips on `.ts` files because TypeScript's checker reports them, so a getter whose `switch` covers every case got a warning its `.ts` original never had. The `.vibe` config now skips the same two.
-- `vibelang --estree` declared the temporary a `do` expression assigns as `const`, so ESLint's `no-const-assign` reported `'$do1' is constant` at `do` expressions in `.vibe` files. It is now `let`. An author's pattern binding stays `const`.
-- The migrate flow's style gate rejected `EK4804` on a private function whose original only inferred its global `Error` channel, so `packages/node` in Foldkit could not migrate without new annotations. It now accepts the advisory when the original function failed with a `new Error` with the same message; any other global `Error` stays rejected.
-
 Update `vibelang`, `vibelang-runtime` and your bundler plugin together to
 0.0.11. Use exactly `effect@4.1.1`, the earliest Effect version VibeLang
 now supports, with matching `@effect/platform-*` and `@effect/vitest` when
@@ -34,8 +22,9 @@ against [Platform globals](../platform/platform-globals.md).
 The fixes keep a rewrite only when it adds no compiler error.
 
 | Before | After and repair |
-| `vibelang.tracing` or mapper `options.tracing` | Remove the unsupported option. Add named operation spans explicitly with `try withSpan(program, "name")`. |
 | --- | --- |
+| `vibelang.tracing` or mapper `options.tracing` | Remove the unsupported option. Add named operation spans explicitly with `try withSpan(program, "name")`. |
+| `when var name:` or a `var` binding in an `is` pattern | Pattern bindings use `let` or `const` (`EK0107`, VIP-7). The quick fix and `vibelang --fix` replace the pattern's `var` with `let`. |
 | Bare compound types beside `!`, such as `number!Error \| string` or `number!! \| null` | `EK0301` (VIP-3). Run `vibelang --fix` to preserve the existing channels with parentheses, such as `number!(Error \| string)` or `number!!(\| null)`. To mean an Effect or `null`, write `(number!!) \| null`. |
 | A nested Effect error pattern used class identity, such as `Csv.CsvError`. | It now uses the module guard. `vibelang --fix --fix-migration-only` preserves the old class matcher through fresh constructor aliases and call-only extractors, with the same constructor, matcher observations and declared types. |
 | `effect@4.0.6` and `@effect/*@4.0.6` | Effect 4.1.1 is now the minimum supported version, pinned exactly: install `effect@4.1.1` and `@effect/*@4.1.1`; the runtime refuses any other version. Effect 4.1 removed `effect/Crypto` and `TestCrypto`, so `Crypto` in a `.vibe` file is the DOM's again. Use `effect/crypto`'s services: `SecureRandom.randomBytes(16)`, `SecureRandom.uuidV4()` and `SecureRandom.intBetween(min, max)` for `Crypto.randomBytes`, `Crypto.randomUUIDv4()` and `Crypto.randomIntBetween`; `Digest.digest(Digest.sha256, bytes)` for `Crypto.digest("SHA-256", bytes)`; `Mac` and `Signature` for HMAC and signatures. `NodeServices.layer` and `BunServices.layer` no longer provide a crypto service: provide `NodeCrypto.layer`, `BunCrypto.layer` or `BrowserCrypto.layer`. `Experimental.Crypto` keeps its members, and its platform layers provide Effect's crypto services too. Node.js 22.19.0 is the minimum for `@effect/platform-node`. A test terminal built with `Terminal.make` must now supply `size`, a scoped queue of resizes, such as `size: Queue.unbounded<Terminal.Size, Cause.Done>()`. |
@@ -134,10 +123,12 @@ Projects using another bundler update `vibelang-unplugin` to 0.0.11
 instead of installing the Vite plugin. See the 0.0.10 notes below for the
 Effect 4.0.6 defect-precedence and interruption migration.
 
+
 ### Configuration upgrade
 
 | Before | Now |
 | --- | --- |
+| A schema field with a JavaScript initializer | `TS1247`: run `vibelang --fix` to remove the ignored expression. Choose an explicit codec default when a default is intended. |
 | A required schema field whose referenced codec has optional or uncertain decoded key flags | `EK2109`: run `vibelang --fix` to keep the existing codec as an explicit `Schema.Struct` value. Written optional fields keep their optional behavior. |
 | A `Record` value referenced optional decoded keys or a readonly `Record` referenced mutable decoded keys | `EK2109`; `vibelang --fix` preserves the existing codecs, declarations and decoding. Schema-error declarations retain their constructors and matchers. |
 | A schema reference with an empty type argument list, such as `schema Name = Address<>` | `EK2109`: run `vibelang --fix` to remove the empty list. The codec, decoded values and declaration types stay the same. |
@@ -151,6 +142,20 @@ Effect 4.0.6 defect-precedence and interruption migration.
 | Old diagnostic numbers, including `EK4617` | Appendix B numbering, including `EK0103`. Diagnostic triggers are unchanged. See the [old-to-new map](../vibelang-features/diagnostic-code-map.md). |
 
 ### Bugs fixed since 0.0.10
+- Release notes repeated the upgrade and bug-fix sections, hiding later fixes from readers and documentation tools. Each section now appears once, with the unique fixes and upgrade repairs retained.
+
+- A local binding named `fork` or `join` in effect code compiled with no error, and its calls silently became the fiber operation: `const fork = try FiberSet.makeRuntime(); fork(job)` waited for the fiber's cleanup instead of running the callback. Effect code that binds either name now reports `EK1702` (VIP-17), which it did not before, and `vibelang --fix` renames the binding and its calls. The fix also renames a `fork` or `join` that an `Effect.gen` or `Effect.fn` it rewrites reaches. An exported binding keeps its name through `export { fork2 as fork }`, an imported one through `import { join as join2 }`, and an object key stays `{ join: join2 }`.
+- Under the `vibelang/bun` preload, a `module` body importing a package, an `imports` map entry or an extensionless relative `.ts` file, such as `import { theme } from "../theme"`, failed with `Cannot find module` from a `vibelang-module:` path. It now resolves as it does in a `.ts` file beside the `.vibe` file.
+- The migrate flow's batch commits listed files on lines up to about 200 characters and named every file in the subject, so a repository with a commit-message wrap gate, such as Foldkit's 80-column check, failed on every batch. The flow now wraps commit bodies at 72 columns and shortens a long subject to `…, and N more`; the body still lists every file.
+- The migrate flow left a Vitest `coverage.include` such as `src/**/*.ts` as it was, so each migrated `.vibe` module silently left the coverage report and its `.d.vibe.ts` sidecar joined it at 0 of 0 lines, while thresholds still passed. Setup now widens those globs to `{ts,vibe}` and excludes `**/*.d.vibe.ts`.
+- The migrate flow's rules taught only `import { Array as Arr }` for `EK4842`, which a repository's lint can reject, as Foldkit's `prefer-effect-module-names` does. They now also teach `Effect.Array.map(xs, f)` with no import of `Array` or `Effect`.
+- Compiler test cases added after the Effect `4.1.1` pin still pinned `4.1.0`, and `interruption-restore-regions` read a service with the retired call form, `try Svc()`, so the repository's own checks failed. Every case now pins the runtime's Effect version and reads the service as `try Svc` (VIP-9).
+- A file added to a project whose `include` writes a leading dot, such as `.source-collector-*.vibe`, was invisible to the compile cache, so the Node loader reported that the project excludes it until something else changed. The cache now sees it, and still ignores dotted files a pattern does not name.
+- `vibelang --estree` wrote `try` before a tagged template, such as ``try sql`VACUUM INTO ${target}` ``, as the bare template, so ESLint's `no-unused-expressions` reported the statement. It is now the `$try(...)` call `try` writes before any other operand that is not a call.
+- The migrate flow's `.vibelang/eslint.config.mjs` ran `getter-return` and `no-dupe-class-members` on `.vibe` files, which Oxlint skips on `.ts` files because TypeScript's checker reports them, so a getter whose `switch` covers every case got a warning its `.ts` original never had. The `.vibe` config now skips the same two.
+- `vibelang --estree` declared the temporary a `do` expression assigns as `const`, so ESLint's `no-const-assign` reported `'$do1' is constant` at `do` expressions in `.vibe` files. It is now `let`. An author's pattern binding stays `const`.
+- The migrate flow's style gate rejected `EK4804` on a private function whose original only inferred its global `Error` channel, so `packages/node` in Foldkit could not migrate without new annotations. It now accepts the advisory when the original function failed with a `new Error` with the same message; any other global `Error` stays rejected.
+
 
 - Composite-project migration checks still expected JSX files to become `.vibe`. They now check the required `.vibex` mapping, `.mts` sources, and both include and exclude patterns while retaining declaration globs.
 
@@ -192,8 +197,6 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Custom compiler-case runners could fail before invoking the compiler; they now receive the same compiler executable that checked the case.
 
 - The specification checks failed after an approved module-resolution table edit left the generated reference stale. The reference now follows VIP-39 exactly, with a regression check against a fresh generation.
-
-- Renaming a symbol in a file with an unfinished `module { ... }` declaration could crash the editor. Rename now skips the missing module name and still updates other bindings.
 
 - A declaration comparison could lose an earlier blocking diagnostic while checking later entries and report a crash instead; it now retains that diagnostic and stops the unavailable comparison.
 
@@ -251,18 +254,13 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Published-declaration checks could accept a changed global type or doc comment because the two declaration trees merged their ambient declarations. They now prove ambient dependency closures and comments in isolation, and report an unavailable comparison when that proof fails.
 
-- Published-declaration checks could reject a package compared with itself when `vibe.sidecarDir` moved its declarations or a dependency had an unrelated TypeScript error. They now resolve moved sidecars, report environment errors separately, and distinguish an unavailable comparison from an API difference.
 - Migration setup moved existing declarations out of source folders but left package `types` pointing at deleted files, so TypeScript consumers could not resolve the package. Setup now refreshes owned declaration targets to the configured sidecar layout.
-- Declaration twins, semantic fuzz checks and emitted-import setup could reject the same exported API over declaration spelling; they now share the API identity checker, preserve frozen package-alias resolution, and report the changed export with its `tsc` diagnostic.
-
 - Bun build scripts using `Bun.Glob("**/*.ts")` silently omitted migrated modules and could emit declaration sidecars as JavaScript entries. Migration setup now includes `.vibe` and `.vibex` sources and filters their declaration sidecars, including when refreshing an already wired build script.
 
 - `vibelang --fix` could refuse a fix early in a run and not try it again after later fixes made it safe, so a second run changed the project; one run now retries refused fixes until none applies.
 - The documentation checks reported new spec quote tests as missing even when the build gate selected them by name. They now check the gate’s actual test selector and package scope.
 
 - `vibelang --fix-vip-only` refused a whole file when an argument passed by name was itself an effect block, such as `try (effect { return id(load(1)) } |> Effect.orDie(%))`, and reported the retired `try(…)` form (`EK4616`); it now writes `try` inside the block and leaves the block as it stands.
-- A TypeScript consumer of a `.vibe` sidecar that re-exported a `module` body's members could not resolve their declaration; body declarations now accompany the source, including with `--noEmit`, so stock `tsc` reads their types and `@throws` JSDoc (VIP-40).
-
 - A TypeScript `module` body had no editor action for moving it to a separate file; **Move module to a .ts file** now creates a sibling file and rewrites its imports and re-exports while preserving the program, without running from `--fix` (VIP-40).
 
 - A TypeScript consumer of a `.vibe` sidecar that re-exported a `module` body's members could not resolve their declaration; body declarations now accompany the source, including with `--noEmit`, so stock `tsc` reads their types and `@throws` JSDoc (VIP-40).
@@ -453,135 +451,6 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - `vibelang --fix` refused a `yield*` whose success is itself a program, such as `const stop = yield* listen()` followed by `Effect.addFinalizer(() => stop)`, though `try` runs one layer and the value stays a program. It now writes `const stop = try listen()`.
 
 
-Update `vibelang`, `vibelang-runtime` and your bundler plugin together to
-0.0.11. Use exactly `effect@4.1.1`, the earliest Effect version VibeLang
-now supports, with matching `@effect/platform-*` and `@effect/vitest` when
-used, and the `@effect/platform-node-shared` override at 4.1.1. Effect's
-failure rules from 0.0.10 still apply.
-
-### Upgrade from 0.0.10
-
-- `data` payload readonlyness is shallow. To preserve the old implicit readonly modifiers on nested fields, run `vibelang --fix --fix-migration-only`; ordinary `--fix` keeps valid writable payloads unchanged.
-
-This release changes platform access and name resolution in `.vibe`.
-D310, D311, D312 and D313 are **provisional, pending the owner's review**.
-Run `vibelang -p tsconfig.json --fix`, then check the remaining diagnostics
-against [Platform globals](../platform/platform-globals.md).
-The fixes keep a rewrite only when it adds no compiler error.
-
-| Before | After and repair |
-| `vibelang.tracing` or mapper `options.tracing` | Remove the unsupported option. Add named operation spans explicitly with `try withSpan(program, "name")`. |
-| `when var name:` or a `var` binding in an `is` pattern | Pattern bindings use `let` or `const` (`EK0107`, VIP-7). The quick fix and `vibelang --fix` replace the pattern's `var` with `let`. |
-| --- | --- |
-| A nested Effect error pattern used class identity, such as `Csv.CsvError`. | It now uses the module guard. `vibelang --fix --fix-migration-only` preserves the old class matcher through fresh constructor aliases and call-only extractors, with the same constructor, matcher observations and declared types. |
-| `effect@4.0.6` and `@effect/*@4.0.6` | Effect 4.1.1 is now the minimum supported version, pinned exactly: install `effect@4.1.1` and `@effect/*@4.1.1`; the runtime refuses any other version. Effect 4.1 removed `effect/Crypto` and `TestCrypto`, so `Crypto` in a `.vibe` file is the DOM's again. Use `effect/crypto`'s services: `SecureRandom.randomBytes(16)`, `SecureRandom.uuidV4()` and `SecureRandom.intBetween(min, max)` for `Crypto.randomBytes`, `Crypto.randomUUIDv4()` and `Crypto.randomIntBetween`; `Digest.digest(Digest.sha256, bytes)` for `Crypto.digest("SHA-256", bytes)`; `Mac` and `Signature` for HMAC and signatures. `NodeServices.layer` and `BunServices.layer` no longer provide a crypto service: provide `NodeCrypto.layer`, `BunCrypto.layer` or `BrowserCrypto.layer`. `Experimental.Crypto` keeps its members, and its platform layers provide Effect's crypto services too. Node.js 22.19.0 is the minimum for `@effect/platform-node`. A test terminal built with `Terminal.make` must now supply `size`, a scoped queue of resizes, such as `size: Queue.unbounded<Terminal.Size, Cause.Done>()`. |
-| A schema tuple rest uses a local type named `Array` or `ReadonlyArray` | The generic must resolve to the TypeScript library array. Run `vibelang --fix` to preserve an old accepted decoder as explicit `Schema.TupleWithRest` codecs. |
-| `Readonly<Record<K, V>>` with a shadowing type or a canonical `Readonly` alias that selects an array | Library bindings now select the mapped codec. Run `vibelang --fix` for rejected shadows or `vibelang --fix --fix-migration-only` to keep a previously accepted decoder explicit. |
-| A library `Array` imported as `Record`, then used as `Record<K, V>` | The library binding must match the mapped form and arity. Run `vibelang --fix` to retain the previous record decoder through explicit `Schema.Record` code. |
-| `Array<T>` imported as the library `ReadonlyArray`, or the reverse | Normal compilation now uses the library binding. Run `vibelang --fix --fix-migration-only` to retain the previous decoder and public type through explicit Effect codecs. |
-| A value after `catch`: `x catch "guest"`, `x catch onErr`, `x catch effect { … }`, `x catch async (e) => 7` | A `catch` handler is a function literal (VIP-5, amended 2026-10-29); anything else is `EK0509`. `vibelang --fix` writes `x catch () => "guest"`, `x catch (e) => onErr(e)`, `x catch effect () => { … }` and `x catch (e) => 7`; a value that is an Effect, such as `x catch Effect.succeed(1)`, becomes `x catch effect () => try Effect.succeed(1)`, which runs it as the old fallback did. In a chain or a conditional's test it parenthesizes the inner `catch`: `(a catch () => b) catch () => c`. |
-| Commas between `schema` declaration fields | Separate fields with `;` or a new line. `vibelang --fix` replaces commas with semicolons (`EK1013`). |
-| `import { Path } from "effect"`; `Path.Path.join("a", "b")` | Every unambiguous Effect module is global; write `Path.join("a", "b")`. Existing imports still work. `--fix` removes redundant imports and shortens the module's same-named export. |
-| The type `Option.Option<number>` | Write `Option<number>`; the long form remains valid. A module's own exports still win over its same-named export. |
-| A DOM type named `Cache`, `Console`, `FileSystem`, `Scheduler`, `Transferable` or `Worker` | Bare type names retain their ambient meanings. Values and namespaces name Effect modules; qualify an Effect type, such as `FileSystem.FileSystem`. Emitted declaration imports use fresh aliases. |
-| `console.log("hello")`, or holding `const logger = console` | The call was already EK4402; holding the value is newly rejected. Use `Console.log("hello")`; the map lists the Effect service for each platform global. Node/web I/O globals are out of scope outside TypeScript escapes. |
-| A value import such as `import { join } from "node:path"` | EK4402, even before a call. Use `Path.join`; for an uncovered API, import it in a named `module` block or a `.ts` file and call through a hatch. A type-only import remains allowed. |
-| An entry that manually provides `NodeServices.layer` around `FileSystem.FileSystem.readFileString(path)` | It can start with `import "vibelang/platform/node"` and call `FileSystem.readFileString(path)`; the entry provides the required platform bundle. This spelling is provisional. Existing explicit providers keep working; no import is required for a main with no platform needs. |
-| Early 0.0.11 experimental layer imports named `NodeServices`, `NodeCrypto` or `BrowserLocks` | Exports from `vibelang-runtime/experimental/platform-*` now start with `Experimental`: import `ExperimentalNodeServices`, `ExperimentalNodeCrypto` or `ExperimentalBrowserLocks`. Rename the other experimental layers the same way. Imports from Effect's `@effect/platform-*` packages keep their names. |
-| Both `import "vibelang/platform/node"` and `import "vibelang/platform/bun"` in one file | EK3206 rejects conflicting imports. Keep one platform import per file; use a separate entry file for each host. Repeating the same platform is allowed. |
-| A platform API in a hatch because Effect has no equivalent | Prefer the new `Experimental.FileSystem`, `Experimental.Crypto`, `Experimental.Process` or `Experimental.Locks` where covered. Their layers and platform limits are listed below; an uncovered API stays in TypeScript. |
-| `interrupt` alone as a statement | EK4801: it previously ran nothing. Write `interrupt()` (the quick fix), likewise `yieldNow()` and other zero-argument program references. |
-| `return x ?? throw c ? a : b` | EK1010: it previously parsed as `(x ?? throw c) ? a : b`, throwing only `c`. Write `return x ?? throw (c ? a : b)`. |
-| `throw cause` where `cause` is a `Cause`, as in `when Exit.Failure(let cause): throw cause` | It now fails with the Cause object itself as an expected failure, as `Effect.fail(cause)` does: `throw` fails with the value it is given (VIP-4). It previously rethrew every reason the cause held. To keep that, write `return Effect.failCause(cause)`, as Effect code does. |
-| A Stream that needs a control operation, such as a producer that performs one, held in a binding or used with a Stream method, as in `const s = asks(); Stream.runCollect(s)` or `s.take(1)` | EK4201, as passing the producer call itself already was: a Stream consumer pulls it on a fiber of its own, where the operation's handler cannot be reached. Loop over it with `for...of`, or handle the operation inside the producer. |
-| `return value` in a producer, as in `function* upTo(n) { …; return n }` | `EK2128` (VIP-21): a Stream has no return value, and the value was dropped. `--fix` writes `return`, or `{ value; return }` where evaluating the value runs code. |
-| `error Sub extends Base { path: string }` when Base's constructor takes a primitive or list | EK2118 at the declaration; before, construction usually failed later with TS2345. Write a constructor that calls `super` with the arguments Base expects. |
-| `module { export const value = 1 }` | EK4408 replaces misleading platform/call errors. Name it: `module helpers { export const value = 1 }`. |
-| A `module` declaration whose code relies on running before the file's other imports, or an importer that relies on an exported `let` keeping its first value | Each module declaration the file imports is now a JavaScript module of its own, `main.vibe.text.js` beside `main.js`. It runs in its place among the file's imports, after its own imports, and imports of its exports are live bindings; before, every module's imports ran first and an import kept the value the export had when the module ran. Its `import.meta` is its own file's. Order the imports as the code needs them, and ship the `main.vibe.*.js` files with `main.js`. |
-| An `await` binding such as `const await = 1` | Rejected in a VibeLang module; rename the binding. It previously compiled despite the reserved word. JavaScript `await` remains available inside TypeScript escapes. |
-| A plain object, default or parameter typed with a service's name, such as `const impl: Users = { … }` or `function f(users: Users)` given `Users()`, or a TypeScript class that `implements Users` | TS2739 or TS2420: a service's name is now its identifier, Effect's `Context.Service` instance type, which carries its key, so another service with the same members or a structural type no longer stands for it. Type the implementation `Users.Shape`: `const impl: Users.Shape = { … }`, `static readonly default: Flags.Shape = { … }`, `function f(users: Users.Shape)`. `Users()` has the type `Users.Shape`, as `yield* Users` has. TypeScript writes `implements Context.Service.Shape<typeof Users>`. |
-| A package compiled by 0.0.10 that exports a `service` declaration | Its declaration file declared `interface Users`, a key typed with the runtime's `ServiceKey` and a `namespace Users { interface Shape }`; it now declares what Effect TypeScript does, `declare const Users_base: Context.ServiceClass<Users, "<key>", { … }>` and `class Users extends Users_base`, and a service with only a default `const Flags: Context.Reference<{ … }>`. `.vibe` code doesn't change. Recompile the package; TypeScript that wrote `Users.Shape` writes `Context.Service.Shape<typeof Users>`. A `Context.Service` class migrated to a `service` keeps its key with `static readonly key = "…"`. |
-| A `match` without `default` whose arms name classes that are not error classes (classes that don't extend `effect`'s `YieldableError`), `Error`, or a class with its own `[Symbol.hasInstance]` or `[customMatcher]` | EK4701: such an arm no longer proves the match covers its subject, and the diagnostic's note names each arm that did not count. Add a `default` arm, or declare the classes with `error` or `Data.TaggedError`. An error class counts wherever it is declared, a `.ts` file or a declaration file included. |
-| A package compiled by 0.0.10 that exports an `error` declaration | Its declaration file now declares exactly what `class E extends Data.TaggedError("E")<{ … }> {}` declares. `.vibe` code doesn't change. Recompile the package so its `.d.ts` matches. |
-| A trailing block, such as `Layer.effect(Users) { … }`, `it.effect("loads") { … }` or `Effect.scoped { … }` | `EK1101`: Code that compiled before now has a compile error: VibeLang has no trailing blocks (VIP-11). `vibelang --fix` writes the block as the call's last argument, `Layer.effect(Users, effect { … })`, `it.effect("loads", effect () => { … })`, `Effect.scoped(effect { … })`, or `f(x, () => { … })` for a plain callback. Runtime behavior is unchanged; comment printing and equivalent arrow layout can differ. |
-| A block after an Effect dual, such as `withSpan("load") { … }`, `timeout("1 second") { … }` or `semaphore.withPermits(1) { … }` | A block is always its call's last argument, so the callee's type no longer moves it. Write the program first, `withSpan(effect { … }, "load")`, or use the curried form, `semaphore.withPermits(1)(effect { … })`. `vibelang --fix` rewrites each site. Where the appended call still type-checks, it is EK1023. |
-| `() => fork p()`, or a `fork` in an `if` branch or a bare block | A fiber belongs to its innermost named region: a function body (an arrow's expression body included), one loop iteration, a `try`, `catch` or `finally` block, a block that declares `using`, or a `provide` or mask block. `if` branches, bare blocks, `do` blocks and `match` own nothing. Passing an owned fiber out of its region (returning, storing, assigning outside it, or capturing it) is now the error EK4838. Use `Effect.forkScoped(() => p())` for a child the caller's scope owns, or `detach(() => p())`. |
-| The `try` hatch, `try((text) => parse(text), (e) => new Bad({ e }), text)` | EK4616: `try` is an operator that runs an Effect (VIP-5), so `try(…)` is no longer a hatch. Wrap the code with Effect's own `Effect.try` or `Effect.tryPromise` and run it with `try`: `try Effect.try({ try: () => parse(text), catch: (e) => new Bad({ e }) })`. `vibelang --fix` rewrites each hatch, passing its inputs to its function, and refuses one whose inputs run code. A function that is not `async` but returns a promise is no longer awaited: write it `async`, or wrap it with `Effect.tryPromise`. The function `Effect.try` or `Effect.tryPromise` wraps is TypeScript, as a hatch's is: a `throw` there is JavaScript's, for the wrapper to catch, and platform APIs such as `fetch` are allowed there, where they were EK4402 before. `import { try } from "vibelang-runtime"` no longer resolves. |
-| A function that is an Effect function because of its body or its return annotation, such as `function load(id: string) { return try getUser(id) }`, a method like it, or a function literal passed where an Effect function is expected, as in `forEach(ids, (id) => getUser(id))` | Mark it `effect` (VIP-1), which goes exactly where TypeScript allows `async` (VIP-39): `effect function load(id: string)`, `effect (id) => try getUser(id)`, or a method `effect find(id)`. A function literal with no parameters that became a program where an Effect was expected, `retry(() => save(x), policy)`, is an effect block (VIP-2): `retry(effect { return try save(x) }, policy)`. `vibelang --fix --fix-vip-only` writes both, with `try` before a value such a function runs, and keeps a function that compiles to plain JavaScript unmarked. Only `effect` makes an Effect function: a function without it is plain JavaScript, returns an Effect it builds unrun, and gains no Effect type from its body or from where it is passed; `try` in it is `EK0501`, and a return type written on an `effect` function is an Effect type, `User!NotFound`, where `User` alone is `EK0106`. Run the codemod before you upgrade: this release no longer infers which functions to mark. A declaration without `function`, `effect load(id) { … }` or `async get(url) { … }`, is EK4618; its quick fix writes `effect function load(id)`. |
-| A call of an Effect value: `Users()` for a service, `Port()` for a Config, `body()` for an Effect parameter, or `Journal.read()` for a service member that is an Effect | `TS2349` or `TS2348`: an Effect is not a function, and only `try` runs it (VIP-5); a service is read with `try Users` (VIP-10). `vibelang --fix --fix-vip-only` writes `try Users`, `(try Users).find(id)`, `try body` and `try (try Journal).read`, and drops the argument list from `try Users()`. |
-| `async function load() { … }`, and `await` inside it | No longer EK1003: an `async` function means what it means in TypeScript (VIP-1), and `await` there waits for a promise. Awaiting an Effect there is EK4617: write `await runPromise(program)`. |
-| `using h = Effect.acquireRelease(() => openDisposable(), release)` with a plain-holder workaround | The acquisition's release is now the only release, so `using` no longer also calls `[Symbol.dispose]()`. Bind the Disposable directly and drop the holder. |
-| A package compiled by 0.0.10 that exports a `schema` declaration | Its declaration file declared the type as `interface User extends Schema.Schema.Type<typeof User> {}`; it now declares what Effect TypeScript does, the constant and then `type User = typeof User.Type`. `.vibe` code doesn't change. Recompile the package so its `.d.ts` matches. A TypeScript consumer can no longer merge declarations into the type, as with Effect's own alias. |
-| `using n = count()` where the value has no disposal method and the initializer needs no `Scope` | TS2850. Bind it with `const`, or acquire it with `acquireRelease` so its release is recorded. |
-| `const spawn = fork`, `const run = sync`, an import that renames `fork`, `join`, `sync`, `try` or `callback`, or `R.fork(x)` through a namespace import of the runtime | EK4410: a call spelled otherwise read its first operand by a binding its reader cannot see, so `spawn(work())` deferred `work()`. Call each under its own name where it runs; to pass forking as a function, write `(job: () => A!E!R) => fork job()`. In a `module` block the runtime's functions stay ordinary values. |
-| A pause in a `using` initializer, such as a wait in the function that opens the resource | Cancellation now follows Effect. Every initializer runs with the interruptibility in force where the `using` stands, whether or not it requires `Scope`, so cancellation reaches its waits and `using` registers nothing. A `timeout` around `using db = openDb()` now ends at its deadline instead of waiting for `openDb`. To wait one out, write `using db = Effect.acquireDisposable(() => openDb())`: its acquisition holds cancellation off, and `using` adds no second release. |
-| A package compiled from VibeLang whose consumers call its plain functions from Effect code | Its build now writes `vibelang.manifest.json` beside its declarations, listing each declaration file emitted from a `.vibe` file. A consumer trusts each listed module as a package in `trustedPackages`, so a call of its plain function is no longer EK4401. Publish the manifest with the declarations: add it to `files` in `package.json`. Stock TypeScript ignores it. |
-| An Effect function held where a declared type makes it plain: `runAll(fs)` with `fs = [tick, tick]` and `runAll(fs: ReadonlyArray<() => unknown>)`, `const cb: (n: number) => void = logged`, an object such as `{ onSave(doc: string) { … } }` passed as `{ onSave(doc: string): void }`, or `const r: Resettable = new Counter()` whose unannotated `reset()` is an Effect method | EK4301: the caller of the plain type would drop the program unrun. These compiled before; only an Effect function passed by name or in an array written at the call was caught. Annotate the function or method with its plain return type, `(): void`; write `class Counter implements Resettable`, which makes `reset()` plain; or declare the destination to return an Effect, `() => void!!`. |
-| A TypeScript caller of a `trusted(impl, [Errors])` value, such as `Effect.runSync(rows())`, or a `.vibe` file that passes one to `map` | `trusted` now returns one plain function of `impl`'s type, carrying its classes as `f[$errors]`: a TypeScript call returns what `impl` returns and throws what it throws, so drop the `Effect.runSync`. A VibeLang call still makes a listed exception an expected failure. `lines.map(slugify)` passes a value with an empty list and is EK4301 for one with listed classes; use `Effect.forEach(lines, slugify)` there. |
-| `fork(() => work())`, a `fork` whose operand is a function | `EK1703` (VIP-17): `fork e` is `Effect.forkChild(e)`, so its operand is an Effect. Write `fork work()`, or `fork job` for an Effect `job`. |
-| `await.all [a(), b()]`, `await.race`, `await.any` or `await.allSettled`, or `await.all { a: a(), b: b() }` | EK1802 (VIP-18): the await operations are retired. `vibelang --fix` writes `try.all`, `try.race`, `try.any` or `try.allSettled` over explicit Effects, so each element still runs when the operation runs, and an object becomes `try all({ … }, { concurrency: "unbounded" })` with its keys in the order written. `try.allSettled` gives each element's `Exit`; where the old operation gave a `Result`, `--fix` writes `all(…, { concurrency: "unbounded", mode: "result" })`. |
-| A `schema` field typed `unknown`, `any`, `never`, `object` or `void`, such as `schema Event { payload: unknown }` | EK2109 (VIP-15): among keyword types only primitives map to a schema. Name the schema instead, `payload: Schema.Unknown`; `--fix` writes it. |
-| An abstract class used as a service | EK4854 (VIP-9): write a `service` declaration. `--fix` removes the class spelling and preserves its members and key. Abstract classes now have ordinary TypeScript semantics. |
-| `static readonly default = shape` on a service | EK4855 (VIP-9): write `static readonly defaultValue = () => shape`. `--fix` renames the member, wraps its type and value in a thunk, and updates its value and type reads (`typeof S.default` becomes `ReturnType<typeof S.defaultValue>`). |
-| `A!E` on a function with a body inferred its requirements | EK4853 (VIP-3): every omitted slot is `never`, exactly as in `Effect<A, E, R>`. `--fix` writes the requirements previously inferred from the body. Leave out the annotation to infer the whole contract. |
-| `for (const x of stream)` or native `for await (const x of stream)` | Native loops keep JavaScript iteration and TypeScript operand diagnostics. Choose `for try (const x of stream)` explicitly for `Stream` consumption inside effect code; `for await` in effect code is `EK0102`. |
-
-Direct platform calls such as `console.log` and `process.env.NAME` were
-already EK4402 in 0.0.10; holding their values and importing Node values
-are newly rejected. The trailing-throw example compiled with an inferred
-return in 0.0.10 and is now EK1010; a restrictive return contract could
-already reject it with EK2001. A nameless module already failed with less
-useful diagnostics. The DOM type example, bare program statements,
-primitive-base declaration, effectful method under a plain annotation and
-`await` binding compiled then and are rejected now.
-
-With npm:
-
-```sh
-npm install --save-exact vibelang-runtime@0.0.11 effect@4.1.1 @effect/platform-node@4.1.1
-npm install --save-dev --save-exact vibelang@0.0.11 vibelang-vite@0.0.11 @effect/vitest@4.1.1
-npm run build
-npm test
-```
-
-With Bun:
-
-```sh
-bun add --exact vibelang-runtime@0.0.11 effect@4.1.1 @effect/platform-node@4.1.1
-bun add -d --exact vibelang@0.0.11 vibelang-vite@0.0.11 @effect/vitest@4.1.1
-bun run build
-bun run test
-```
-
-Move the existing override in `package.json` to 4.1.1:
-
-```json
-{ "overrides": { "@effect/platform-node-shared": "4.1.1" } }
-```
-
-Projects using another bundler update `vibelang-unplugin` to 0.0.11
-instead of installing the Vite plugin. See the 0.0.10 notes below for the
-Effect 4.0.6 defect-precedence and interruption migration.
-
-
-### Configuration upgrade
-
-| Before | Now |
-| --- | --- |
-| A schema field with a JavaScript initializer | `TS1247`: run `vibelang --fix` to remove the ignored expression. Choose an explicit codec default when a default is intended. |
-| A required schema field whose referenced codec has optional or uncertain decoded key flags | `EK2109`: run `vibelang --fix` to keep the existing codec as an explicit `Schema.Struct` value. Written optional fields keep their optional behavior. |
-| A `Record` value referenced optional decoded keys or a readonly `Record` referenced mutable decoded keys | `EK2109`; `vibelang --fix` preserves the existing codecs, declarations and decoding. Schema-error declarations retain their constructors and matchers. |
-| A schema reference with an empty type argument list, such as `schema Name = Address<>` | `EK2109`: run `vibelang --fix` to remove the empty list. The codec, decoded values and declaration types stay the same. |
-| A schema field with repeated `readonly` modifiers | `TS1030`: run `vibelang --fix` to keep one modifier and preserve its codec. |
-| `vibelang.diagnostics` | Run `vibelang --fix` to move configurable warning settings to `vibe.severities`. Remove obsolete legacy policy entries before rerunning `--fix`. |
-
-### Diagnostic codes
-
-| Before | Now |
-| --- | --- |
-| Old diagnostic numbers, including `EK4617` | Appendix B numbering, including `EK0103`. Diagnostic triggers are unchanged. See the [old-to-new map](../vibelang-features/diagnostic-code-map.md). |
-
-### Bugs fixed since 0.0.10
 - A `.ts` function declared `@throws {Error}` could be passed where a callback type such as `() => void` was expected, as an argument, object member, spread member, initializer, array element or return value, with no diagnostic. It now reports `EK0402`; a `@throws` on the function type, a `@rethrows` parameter, `Array` iteration callbacks and the thunk of `Effect.try` and `tryPromise` still admit it.
 
 - API regression checks could fail after concurrent checker fixes duplicated an expected JSON export; each published entry is now expected exactly once.

@@ -51,7 +51,10 @@ export function assertReleaseStructure(notes, version) {
   const body = release.slice(release.indexOf("\n") + 1)
   const intro = body.split(/^### /m)[0]
   assert.doesNotMatch(intro, /^(?:- |\| )/m, "a release row sits before the first heading; move it under its bug list or upgrade table")
+  const seen = new Set()
   for (const [, heading] of body.matchAll(/^### (.+)$/gm)) {
+    assert.ok(!seen.has(heading), "duplicate release section: " + heading)
+    seen.add(heading)
     if (/upgrade/i.test(heading)) assert.ok(upgradeHeadings.some(allowed => allowed.test(heading)), "an upgrade row belongs in the upgrade table, not under its own heading: " + heading)
   }
 }
