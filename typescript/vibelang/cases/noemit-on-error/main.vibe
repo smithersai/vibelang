@@ -1,1 +1,1 @@
-export const clock = performance.now()
+import { Effect } from "effect"; export type Value = Effect.Effect<number>

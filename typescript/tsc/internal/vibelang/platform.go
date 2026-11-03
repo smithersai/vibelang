@@ -2,6 +2,7 @@ package vibelang
 
 import (
 	"cmp"
+	"path"
 	"strings"
 
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
@@ -33,9 +34,8 @@ import (
 // and at each value that an import declaration brings in from a platform
 // module; a type-only import stays allowed. ECMAScript's built-ins and the
 // web's pure helpers (URL, TextEncoder, structuredClone, AbortController,
-// Blob, ...) are not platform code. A clock or randomness read, such as
-// performance.now(), is EK4403 instead, an error by default that a project may lower
-// (D34); a read it allows compiles as a trusted sync call. Both apply
+// ...) are not platform code. Host clock and randomness reads use the same
+// nonconfigurable EK4402 as other host values. The restrictions apply
 // everywhere in a .vibe file, a boundary's callback and the module's top
 // level included.
 
@@ -104,7 +104,7 @@ var platformServices = map[string]*platformService{
 	"Schedule":        {"sleep and Schedule, from the prelude", `sleep("1 second")`, "", ""},
 	"Interrupt":       {"a fiber's interruption", "fiber.interrupt()", "", ""},
 	"Yield":           {"Effect's yieldNow value", "try Effect.yieldNow", `import { Effect } from "effect"`, ""},
-	"Clock":           {"Clock, from the prelude", "Clock.currentTimeMillis()", "", ""},
+	"Clock":           {"Clock, from the prelude", "try Clock.currentTimeMillis", "", ""},
 	"Config":          {"Config, from the prelude", `Config.String("NAME")()`, "", ""},
 	"Console":         {"Console, from the prelude", "Console.log(message)", "", ""},
 	"Stream":          {"Stream, from the prelude", "Stream.fromIterable(values)", "", ""},
@@ -316,7 +316,7 @@ var platformAPIs = map[string]platformAPI{
 	"BroadcastChannel":              {note: "Effect has no service for messages between browser tabs; a Worker carries messages to a worker."},
 	"Bun":                           {note: runtimeGap},
 	"Deno":                          {note: runtimeGap},
-	"performance.now":               {"Clock", "Clock.monotonicTimeNanos()", "Clock.monotonicTimeNanos() is a bigint of nanoseconds, and performance.now() a number of milliseconds."},
+	"performance.now":               {"Clock", "Number(try Clock.monotonicTimeNanos) / 1e6", "Clock.monotonicTimeNanos yields bigint nanoseconds, and performance.now() returns number milliseconds."},
 	"performance.timeOrigin":        {"ExperimentalProcess", "Experimental.Process.timeOrigin()", "Clock reads the time now; it has no time origin."},
 	"window.matchMedia":             {service: "ExperimentalMediaQuery"},
 	"window.FileReader":             {service: "ExperimentalFileReader"},
@@ -360,11 +360,11 @@ var platformAPIs = map[string]platformAPI{
 	"process.stdout":         {"Console", "Console.log(text)", "For bytes, (try Stdio.Stdio).stdout() is a Sink."},
 	"process.stderr":         {"Console", "Console.error(text)", "For bytes, (try Stdio.Stdio).stderr() is a Sink."},
 	"process.stdin":          {"Terminal", "try (try Terminal.Terminal).readLine", "(try Stdio.Stdio).stdin streams the bytes."},
-	"process.hrtime":         {"Clock", "Clock.monotonicTimeNanos()", "Clock.monotonicTimeNanos() is a bigint of nanoseconds, as process.hrtime.bigint() is."},
+	"process.hrtime":         {"Clock", "try Clock.monotonicTimeNanos", "Clock.monotonicTimeNanos yields bigint nanoseconds, as process.hrtime.bigint() does."},
 	"process.nextTick":       {"Yield", "", "yieldNow lets other fibers run; it does not queue a microtask."},
 	"process.exit":           {"Exit", "", processExit},
 	"process.exitCode":       {"Exit", "", processExit},
-	"process.uptime":         {note: "Clock reads the time, not the process's age: keep a Clock.monotonicTimeNanos() reading from the start."},
+	"process.uptime":         {note: "Clock reads the time, not the process's age: keep a try Clock.monotonicTimeNanos reading from the start."},
 	"process.kill":           {"ExperimentalProcess", "Experimental.Process.kill(pid, { killSignal })", "Signal 0 is Experimental.Process.isRunning(pid); a child that the injected ChildProcessSpawner service started also stops with its handle's kill()."},
 	"process.on":             {note: processEvents},
 	"process.once":           {note: processEvents},
@@ -478,19 +478,13 @@ const (
 	testCrypto = `In a test, provide Layer.succeed(SecureRandom.SecureRandom, SecureRandom.make(randomBytes)) with fixed bytes; a seeded Random does not reach SecureRandom.`
 )
 
-// clockReads lists host clock and randomness reads (EK4403), by the
+// clockReads lists host clock and randomness reads (EK4402), by the
 // declaration that a call resolves to, with what replaces each one.
 // VIP-33 allows ECMA-262 built-ins, including Date and Math.random.
 var clockReads = map[string]clockRead{
-	"Crypto.randomUUID":      {"SecureRandom.uuidV4()", "Crypto", testCrypto},
-	"Crypto.getRandomValues": {"SecureRandom.randomBytes(size), which returns new bytes instead of filling an array", "Crypto", testCrypto},
-	"Performance.now":        {"Number(Clock.monotonicTimeNanos()) / 1e6: Clock.monotonicTimeNanos() is a bigint of nanoseconds, and performance.now() a number of milliseconds", "", testClock},
-	"Now.instant":            {"DateTime.now()", "", testClock},
-	"Now.zonedDateTimeISO":   {"DateTime.nowInCurrentZone()", "", testClock},
-	"Now.plainDateTimeISO":   {"DateTime.now()", "", testClock},
-	"Now.plainDateISO":       {"DateTime.now()", "", testClock},
-	"Now.plainTimeISO":       {"DateTime.now()", "", testClock},
-	"Now.timeZoneId":         {"DateTime.CurrentTimeZone()", "", "In a test, provide DateTime.CurrentTimeZone."},
+	"Crypto.randomUUID":      {"try (try SecureRandom.SecureRandom).uuidV4()", "Crypto", testCrypto},
+	"Crypto.getRandomValues": {"try (try SecureRandom.SecureRandom).randomBytes(size), which returns new bytes instead of filling an array", "Crypto", testCrypto},
+	"Performance.now":        {"Number(try Clock.monotonicTimeNanos) / 1e6: Clock.monotonicTimeNanos yields bigint nanoseconds, and performance.now() returns number milliseconds", "", testClock},
 }
 
 // platformModule is EK4402's text for an import of a platform module that
@@ -502,7 +496,7 @@ var platformModule = EK4402.With("{0} is platform code, which VibeLang code does
 var platformValueImport = EK4402.With("{0} from {1} is platform code, which a .vibe file does not import as a value.")
 
 // checkPlatform reports EK4402 where file's code runs a platform API (D108),
-// and EK4403 for clock and randomness reads.
+// and EK4402 for clock and randomness reads.
 func checkPlatform(c *checker.Checker, file *ast.SourceFile) {
 	var visit func(node *ast.Node) bool
 	visit = func(node *ast.Node) bool {
@@ -838,7 +832,7 @@ func checkPlatformUse(c *checker.Checker, file *ast.SourceFile, id *ast.Node) {
 	use, runs := platformRun(c, id)
 	if !runs {
 		if isClockReadMember(c, id) {
-			return // EK4403 reports it
+			return // EK4402 reports it
 		}
 		use = id // the global held as a value
 	}
@@ -872,7 +866,7 @@ func checkPlatformUse(c *checker.Checker, file *ast.SourceFile, id *ast.Node) {
 
 // isClockReadMember reports whether id, a platform global, is the object of
 // a clock or randomness read, as performance is in performance.now(), which
-// EK4403 reports instead.
+// EK4402 reports instead.
 func isClockReadMember(c *checker.Checker, id *ast.Node) bool {
 	parent := id.Parent
 	for parent != nil && ast.IsParenthesizedExpression(parent) {
@@ -951,7 +945,7 @@ func platformRun(c *checker.Checker, value *ast.Node) (use *ast.Node, runs bool)
 		return value, true
 	case (ast.IsPropertyAccessExpression(parent) || ast.IsElementAccessExpression(parent)) && parent.Expression() == value:
 		if call := parent.Parent; call != nil && (ast.IsCallExpression(call) || ast.IsNewExpression(call)) && call.Expression() == parent && isClockRead(c, call) {
-			return nil, false // EK4403 reports it
+			return nil, false // EK4402 reports it
 		}
 		return parent, true
 	case ast.IsVariableDeclaration(parent) && parent.Initializer() == value && ast.IsBindingPattern(parent.Name()):
@@ -1024,6 +1018,12 @@ func clockReadOf(c *checker.Checker, call *ast.Node) string {
 		return ""
 	}
 	file := ast.GetSourceFileOfNode(decl)
+	if isLibFile(c, file) {
+		name := path.Base(string(file.FileName()))
+		if strings.HasPrefix(name, "lib.es") || strings.HasPrefix(name, "lib.decorators") {
+			return ""
+		}
+	}
 	if !isLibFile(c, file) && !isPlatformPackage(packageOf(c, file)) {
 		return ""
 	}
@@ -1048,7 +1048,7 @@ func isClockRead(c *checker.Checker, call *ast.Node) bool {
 	return clockReadOf(c, call) != ""
 }
 
-// checkClockRead reports EK4403 for a clock or randomness read.
+// checkClockRead reports EK4402 for a clock or randomness read.
 func checkClockRead(c *checker.Checker, file *ast.SourceFile, call *ast.Node) {
 	key := clockReadOf(c, call)
 	if key == "" {
@@ -1059,11 +1059,10 @@ func checkClockRead(c *checker.Checker, file *ast.SourceFile, call *ast.Node) {
 		text = "new " + text
 	}
 	read := clockReads[key]
-	d := report(c, call, EK4403, text)
+	d := report(c, call, EK4402, text)
 	note(d, "Use {0}.", read.use)
 	if s := platformServices[read.service]; s != nil {
 		noteService(d, s)
 	}
 	note(d, read.test)
-	note(d, "To allow it, set \"EK4403\": \"warning\" or \"off\" in \"vibelang\": { \"diagnostics\": { ... } } at the top level of tsconfig.json.")
 }

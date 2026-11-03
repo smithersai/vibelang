@@ -884,6 +884,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - The call-time default regression stayed marked pending after its native TypeScript comparison passed. It now runs as an active check that defaults run once per call and the body runs once per execution.
 - Computed presence keys such as `{ ["field"] }` incorrectly required a colon; they now test property presence without reading its value or creating a binding.
 
+- Host `performance` and `crypto` reads used an obsolete diagnostic that legacy settings could weaken, while ECMAScript `Temporal.Now` reads were rejected. Host reads now report `EK4402` with native Effect replacements; ECMAScript reads stay allowed, and obsolete `EK4403` settings are rejected.
+
 - Vite coverage counted private tail-delegation wrappers as extra functions or uncovered statements, especially in callbacks and throwing catch handlers. It now counts the authored functions and statements through the composed source map.
 
 - A native checker reported `TS2307` when it reached a package whose VibeLang declarations were hidden under `vibe.sidecarDir` through another package’s TypeScript sources. Setup now supplies private type routes to the physical declarations, preserving loader identity and the normal built JavaScript and declaration paths. Bun’s native `bun check --no-script` keeps its existing command.

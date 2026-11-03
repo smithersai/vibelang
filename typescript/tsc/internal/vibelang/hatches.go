@@ -27,7 +27,7 @@ import (
 // A hatch's first argument is TypeScript, not VibeLang: a call there does not
 // run, so calling a .vibe function gives an inert Effect value for
 // runPromise or runFork; throw, async, and await keep their JavaScript
-// meaning; platform APIs are allowed (no EK4401, EK4402, or EK4403); and a
+// meaning; platform APIs are allowed (no EK4401 or EK4402); and a
 // runner may start a program (no EK1005). That TypeScript is self-contained
 // (D229): it may use its own parameters and locals, globals, imports, and the
 // file's error declarations, but no other binding of the .vibe file

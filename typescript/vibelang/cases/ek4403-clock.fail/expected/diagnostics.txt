@@ -1,2 +1,2 @@
-main.vibe(17,10): error EK4403
-main.vibe(21,10): error EK4403
+main.vibe(17,10): error EK4402
+main.vibe(21,10): error EK4402

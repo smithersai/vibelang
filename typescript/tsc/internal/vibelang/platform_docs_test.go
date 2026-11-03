@@ -21,7 +21,7 @@ func skipVIPForm(t *testing.T, page []byte) {
 	}
 }
 
-// The platform introduction's table says what EK4402 and EK4403 say: each
+// The platform introduction's table says what EK4402 say: each
 // call's Effect replacement, which needs no import (D310, D311), and the
 // layer that provides it.
 func TestPlatformDocsTable(t *testing.T) {
@@ -50,7 +50,7 @@ func TestPlatformDocsTable(t *testing.T) {
 			read := clockReads[key]
 			s = platformServices[read.service]
 			if !strings.HasPrefix(read.use, effect) {
-				t.Errorf("%s: the page says %s, EK4403 says %s", call, effect, read.use)
+				t.Errorf("%s: the page says %s, EK4402 says %s", call, effect, read.use)
 			}
 		} else {
 			root, member, _ := strings.Cut(call, ".")

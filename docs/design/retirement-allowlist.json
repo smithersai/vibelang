@@ -178,5 +178,35 @@
       "reference": "docs/design/vips/0017-fork.md: Status accepted by Will (2026-10-28), operand-check amendment D88 and existing capture restriction; VIP-34 diagnostic ownership. This records existing approved rejection authority, not approval of a new rejection."
     },
     "reason": "Diagnostic-only compatibility fixture correction: program statements are byte-identical before and after; the only source difference is the expect comment. Existing EK1703/EK4838 expectations are unchanged. The golden only removes a generated-helper TS2345 cascade. The compiler hook filters final applicability diagnostics and leaves admission unchanged."
+  },
+  {
+    "code": "EK4402",
+    "vip": "VIP-33",
+    "case": "typescript/vibelang/cases/ek4403-clock.fail",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0033-platform-stdlib.md: accepted 2026-10-29; banned-globals amendments 2026-10-29 explicitly name crypto/performance and require EK4402 by resolved host origin"
+    },
+    "reason": "Record the accepted host-state policy for an already rejected input: the parent golden reports error EK4403 for crypto.randomUUID and performance.now. The same operations now retain the specified hard EK4402 identity, and diagnostics identify the native Effect service alternatives."
+  },
+  {
+    "code": "EK4402",
+    "vip": "VIP-33",
+    "case": "typescript/vibelang/cases/hatch-inputs-vibelang.fail",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0033-platform-stdlib.md: accepted 2026-10-29; banned-globals/host-origin amendments require EK4402 for performance outside a TypeScript module body"
+    },
+    "reason": "The parent golden already rejects the performance.now hatch input with error EK4403. This code-identity refresh keeps that rejection under EK4402; it introduces no accepted hatch-input form."
+  },
+  {
+    "code": "EK0403",
+    "vip": "VIP-4",
+    "case": "typescript/vibelang/cases/hatch-inputs-vibelang.fail",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0004-throw.md: accepted by Will 2026-10-28; Decision explicitly rejects an unwrapped throwing foreign call with EK0403; one-rule-for-TypeScript amendment 2026-11-02"
+    },
+    "reason": "The parent golden already reports EK0403 on legacyParse(text) outside the hatch callback. This remains the same accepted VIP-4 negative control; changing the independent clock diagnostic's expected code does not introduce a new foreign-call restriction."
   }
 ]

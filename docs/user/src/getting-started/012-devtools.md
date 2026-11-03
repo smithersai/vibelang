@@ -77,7 +77,7 @@ effect function promised(value: number): number!! {
 
 This is `EK9201`, an interim code ([diagnostic code map](../vibelang-features/diagnostic-code-map.md)): handle `Rejected` inside the function or widen its contract. Unmet services are `EK9202`, also interim. A call returns an Effect that can be stored at module top level; run it with an explicit runner. A synchronous callback can return an Effect without running it.
 
-Inside effect functions, wrap a call that may throw with `Effect.try`, or a Promise with `tryPromise`, then run the wrapper with `try`. A VibeLang plain function never throws, so it can be called directly; so can a `.ts` function known not to throw. A Node.js or web I/O global, run or held as a value, and a Node.js module imported as a value are rejected with the Effect service that replaces them (`EK4402`). The web's `crypto` and `performance` are such globals. `Date.now()` and `Math.random()` stay allowed, though the current compiler still reports some clock and randomness reads as `EK4403`, an interim code. A runner inside code a fiber runs is `EK1005`. A `catch` expression whose Effect has E = `never` gets `EK9204`, an interim code (defects pass through), a warning by default.
+Inside effect functions, wrap a call that may throw with `Effect.try`, or a Promise with `tryPromise`, then run the wrapper with `try`. A VibeLang plain function never throws, so it can be called directly; so can a `.ts` function known not to throw. A Node.js or web I/O global, run or held as a value, and a Node.js module imported as a value are rejected with the Effect service that replaces them (`EK4402`). The web's `crypto` and `performance` are such globals. `Date.now()` and `Math.random()` stay allowed. `Temporal.Now` reads also stay allowed when the selected ECMAScript library declares `Temporal`. Host clock and randomness reads use `EK4402`; remove obsolete `EK4403` severity settings. A runner inside code a fiber runs is `EK1005`. A `catch` expression whose Effect has E = `never` gets `EK9204`, an interim code (defects pass through), a warning by default.
 
 Use a throw statement to fail an Effect: `if (value === undefined) throw new MissingValue()`. A handler that fails again uses `catch effect (e) => { throw e }`; a plain `catch (e) => value` returns a value.
 
@@ -357,8 +357,8 @@ Native `|>` stages do not count as written `.pipe` chains. Their generated calls
 | Anti-pattern | `strictEffectProvide` | EK4816, off by default | `provide AppLive { … }` or `Effect.provide(program, AppLive)`; includes functions named `main` |
 | Anti-pattern | `tryCatchInEffectGen` | Use a `catch` expression | `(try Users).find(id) catch (e) => fallback` |
 | Anti-pattern | `unknownInEffectCatch` | EK4806, warning | `Effect.try({ try: code, catch: (cause) => cause })` |
-| Effect-native | `cryptoRandomUUID` | Covered: EK4402, because `crypto` is a banned global (the compiler still reports EK4403) | `crypto.randomUUID()` |
-| Effect-native | `cryptoRandomUUIDInEffect` | Covered: EK4402, because `crypto` is a banned global (the compiler still reports EK4403) | `crypto.randomUUID()` |
+| Effect-native | `cryptoRandomUUID` | Covered: `EK4402`, because `crypto` is a banned global | `crypto.randomUUID()` |
+| Effect-native | `cryptoRandomUUIDInEffect` | Covered: `EK4402`, because `crypto` is a banned global | `crypto.randomUUID()` |
 | Effect-native | `extendsNativeError` | EK4805, warning | `class Boom extends Error {}`; declare `error Boom { }` |
 | Effect-native | `globalConsole` | Covered: EK4402 | `console.log(x)` |
 | Effect-native | `globalConsoleInEffect` | Covered: EK4402 | `console.log(x)` |

@@ -15,7 +15,7 @@
     "noEmitOnError": true,
     "vibelang": {
       "diagnostics": {
-        "EK4403": "warning"
+        "EK4833": "warning"
       }
     }
   },

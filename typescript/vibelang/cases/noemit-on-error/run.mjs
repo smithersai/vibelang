@@ -28,13 +28,13 @@ for (const mode of ["-p", "-b"]) {
     const config = structuredClone(base)
     config.include = ["main.vibe"]
     config.compilerOptions.outDir = "js"
-    config.compilerOptions.vibelang.diagnostics.EK4403 = severity === "error" ? "error" : "warning"
+    config.compilerOptions.vibelang.diagnostics.EK4833 = severity === "error" ? "error" : "warning"
     writeFileSync(path.join(fixture, "tsconfig.json"), JSON.stringify(config))
-    writeFileSync(path.join(fixture, "main.vibe"), `${repro}export const clock = performance.now()\n${severity === "mixed" ? 'export const wrong: number = "bad"' : ""}\n`)
+    writeFileSync(path.join(fixture, "main.vibe"), `${repro}import { Effect } from "effect"; export type Value = Effect.Effect<number>\n${severity === "mixed" ? 'export const wrong: number = "bad"' : ""}\n`)
     const compile = () => spawnSync(compiler, [mode, fixture, "--pretty", "false"], { encoding: "utf8" })
     const result = compile()
     const output = result.stdout + result.stderr
-    assert.match(output, /EK4403/)
+    assert.match(output, /EK4833/)
     const emitted = path.join(fixture, "js/main.js")
     if (severity === "warning") {
       assert.equal(result.status, 0, output)

@@ -77,7 +77,7 @@ func TestVibeLangConfigDiagnosticLocations(t *testing.T) {
 		{"soundness diagnostic", `{"diagnostics":{"EK9201":"off"}}`, `"EK9201"`, "vibelang.diagnostics.EK9201", 5023},
 		{"TypeScript diagnostic", `{"diagnostics":{"EK4813":"off"}}`, `"EK4813"`, "vibelang.diagnostics.EK4813", 5023},
 		{"category spelling", `{"diagnostics":{"EK9204":"Warning"}}`, `"Warning"`, "'error', 'warning', 'off'", 6046},
-		{"category type", `{"diagnostics":{"EK4403":false}}`, `false`, "vibelang.diagnostics.EK4403", 6046},
+		{"category type", `{"diagnostics":{"EK4406":false}}`, `false`, "vibelang.diagnostics.EK4406", 6046},
 		{"diagnostics type", `{"diagnostics":[]}`, `[]`, "vibelang.diagnostics", 5024},
 		{"diagnostics null", `{"diagnostics":null}`, `null`, "vibelang.diagnostics", 5024},
 	} {
@@ -98,12 +98,12 @@ func TestVibeLangConfigDiagnosticLocations(t *testing.T) {
 
 // Chapter 007 / legacy section replaces inherited section: docs/design/src/007-tooling.md#05b41a5466581c26
 func TestVibeLangConfigInheritance(t *testing.T) {
-	base := `{"compilerOptions":{"vibelang":{"trustedPackages":["@smthrs/*"],"diagnostics":{"EK4403":"off"}}},"files":["main.vibe"]}`
+	base := `{"compilerOptions":{"vibelang":{"trustedPackages":["@smthrs/*"],"diagnostics":{"EK4406":"off"}}},"files":["main.vibe"]}`
 	for _, test := range []struct {
 		name, override string
 		want           *core.VibeLangOptions
 	}{
-		{"inherit", "", &core.VibeLangOptions{Diagnostics: map[string]string{"EK4403": "off"}}},
+		{"inherit", "", &core.VibeLangOptions{Diagnostics: map[string]string{"EK4406": "off"}}},
 		{"replace", `,"compilerOptions":{"vibelang":{"trustedPackages":["other"]}}`, &core.VibeLangOptions{}},
 		{"empty object replaces", `,"compilerOptions":{"vibelang":{}}`, &core.VibeLangOptions{}},
 		{"null resets", `,"compilerOptions":{"vibelang":null}`, nil},

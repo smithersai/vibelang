@@ -1,0 +1,14 @@
+// expect: EK4402
+export const direct = () => performance.now()
+export const optional = () => performance?.now?.()
+export const computed = () => performance["now"]()
+export const global = () => globalThis.performance.now()
+export const uuid = () => crypto.randomUUID()
+export const bytes = () => crypto.getRandomValues(new Uint8Array(2))
+export const builtin = () => [Date.now(), Math.random(), Temporal.Now.instant(), Temporal.Now.zonedDateTimeISO(), Temporal.Now.plainDateTimeISO(), Temporal.Now.plainDateISO(), Temporal.Now.plainTimeISO(), Temporal.Now.timeZoneId()]
+export effect function milliseconds(): number!! {
+ return Number(try Clock.monotonicTimeNanos) / 1e6
+}
+export effect function secureID(): string!!SecureRandom.SecureRandom {
+ return try (try SecureRandom.SecureRandom).uuidV4()
+}

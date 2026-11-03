@@ -1,0 +1,176 @@
+[
+  {
+    "key": "performance-default",
+    "source": "export const value = () => performance.now();\n",
+    "banned": true,
+    "severity": "default"
+  },
+  {
+    "key": "performance-legacy-off",
+    "source": "export const value = () => performance.now();\n",
+    "banned": true,
+    "severity": "legacy-off"
+  },
+  {
+    "key": "performance-legacy-warning",
+    "source": "export const value = () => performance.now();\n",
+    "banned": true,
+    "severity": "legacy-warning"
+  },
+  {
+    "key": "performance-optional-default",
+    "source": "export const value = () => performance?.now?.();\n",
+    "banned": true,
+    "severity": "default"
+  },
+  {
+    "key": "performance-optional-legacy-off",
+    "source": "export const value = () => performance?.now?.();\n",
+    "banned": true,
+    "severity": "legacy-off"
+  },
+  {
+    "key": "performance-optional-legacy-warning",
+    "source": "export const value = () => performance?.now?.();\n",
+    "banned": true,
+    "severity": "legacy-warning"
+  },
+  {
+    "key": "performance-computed-default",
+    "source": "export const value = () => performance[\"now\"]();\n",
+    "banned": true,
+    "severity": "default"
+  },
+  {
+    "key": "performance-computed-legacy-off",
+    "source": "export const value = () => performance[\"now\"]();\n",
+    "banned": true,
+    "severity": "legacy-off"
+  },
+  {
+    "key": "performance-computed-legacy-warning",
+    "source": "export const value = () => performance[\"now\"]();\n",
+    "banned": true,
+    "severity": "legacy-warning"
+  },
+  {
+    "key": "performance-global-default",
+    "source": "export const value = () => globalThis.performance.now();\n",
+    "banned": true,
+    "severity": "default"
+  },
+  {
+    "key": "performance-global-legacy-off",
+    "source": "export const value = () => globalThis.performance.now();\n",
+    "banned": true,
+    "severity": "legacy-off"
+  },
+  {
+    "key": "performance-global-legacy-warning",
+    "source": "export const value = () => globalThis.performance.now();\n",
+    "banned": true,
+    "severity": "legacy-warning"
+  },
+  {
+    "key": "crypto-uuid-default",
+    "source": "export const value = () => crypto.randomUUID();\n",
+    "banned": true,
+    "severity": "default"
+  },
+  {
+    "key": "crypto-uuid-legacy-off",
+    "source": "export const value = () => crypto.randomUUID();\n",
+    "banned": true,
+    "severity": "legacy-off"
+  },
+  {
+    "key": "crypto-uuid-legacy-warning",
+    "source": "export const value = () => crypto.randomUUID();\n",
+    "banned": true,
+    "severity": "legacy-warning"
+  },
+  {
+    "key": "crypto-bytes-default",
+    "source": "export const value = () => crypto.getRandomValues(new Uint8Array(2));\n",
+    "banned": true,
+    "severity": "default"
+  },
+  {
+    "key": "crypto-bytes-legacy-off",
+    "source": "export const value = () => crypto.getRandomValues(new Uint8Array(2));\n",
+    "banned": true,
+    "severity": "legacy-off"
+  },
+  {
+    "key": "crypto-bytes-legacy-warning",
+    "source": "export const value = () => crypto.getRandomValues(new Uint8Array(2));\n",
+    "banned": true,
+    "severity": "legacy-warning"
+  },
+  {
+    "key": "local-performance",
+    "source": "const performance = { now: () => 1 }; export const value = () => performance.now();",
+    "banned": false,
+    "severity": "default"
+  },
+  {
+    "key": "local-crypto",
+    "source": "const crypto = { randomUUID: () => \"local\" }; export const value = () => crypto.randomUUID();",
+    "banned": false,
+    "severity": "default"
+  },
+  {
+    "key": "ecma-date-math",
+    "source": "export const value = () => [Date.now(), Math.random()];",
+    "banned": false,
+    "severity": "default"
+  },
+  {
+    "key": "erased-performance",
+    "source": "export type ClockMethod = typeof performance.now;",
+    "banned": false,
+    "severity": "default"
+  },
+  {
+    "key": "native-module",
+    "source": "module Native { export const read = () => performance.now() }\nimport { read } from Native;\nexport const value = read;",
+    "banned": false,
+    "severity": "default"
+  },
+  {
+    "key": "ecma-temporal-instant",
+    "source": "export const value = () => Temporal.Now.instant();",
+    "banned": false,
+    "severity": "default"
+  },
+  {
+    "key": "ecma-temporal-zonedDateTimeISO",
+    "source": "export const value = () => Temporal.Now.zonedDateTimeISO();",
+    "banned": false,
+    "severity": "default"
+  },
+  {
+    "key": "ecma-temporal-plainDateTimeISO",
+    "source": "export const value = () => Temporal.Now.plainDateTimeISO();",
+    "banned": false,
+    "severity": "default"
+  },
+  {
+    "key": "ecma-temporal-plainDateISO",
+    "source": "export const value = () => Temporal.Now.plainDateISO();",
+    "banned": false,
+    "severity": "default"
+  },
+  {
+    "key": "ecma-temporal-plainTimeISO",
+    "source": "export const value = () => Temporal.Now.plainTimeISO();",
+    "banned": false,
+    "severity": "default"
+  },
+  {
+    "key": "ecma-temporal-timeZoneId",
+    "source": "export const value = () => Temporal.Now.timeZoneId();",
+    "banned": false,
+    "severity": "default"
+  }
+]

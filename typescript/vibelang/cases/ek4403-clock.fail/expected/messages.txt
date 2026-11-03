@@ -1,6 +1,5 @@
 In a test, TestClock sets it.
-Use SecureRandom.uuidV4().
+Use try (try SecureRandom.SecureRandom).uuidV4().
 Provide it in main with NodeCrypto.layer from "@effect/platform-node", BunCrypto.layer from "@effect/platform-bun", or BrowserCrypto.layer from "@effect/platform-browser".
 In a test, provide Layer.succeed(SecureRandom.SecureRandom, SecureRandom.make(randomBytes)) with fixed bytes; a seeded Random does not reach SecureRandom.
-Use Number(Clock.monotonicTimeNanos()) / 1e6: Clock.monotonicTimeNanos() is a bigint of nanoseconds, and performance.now() a number of milliseconds.
-To allow it, set "EK4403": "warning" or "off" in "vibelang": { "diagnostics": { ... } } at the top level of tsconfig.json.
+Use Number(try Clock.monotonicTimeNanos) / 1e6: Clock.monotonicTimeNanos yields bigint nanoseconds, and performance.now() returns number milliseconds.

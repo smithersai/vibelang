@@ -822,7 +822,7 @@ FileSystem advice gets the implementation with `try FileSystem.FileSystem` befor
 | `navigator.permissions` | `try (try Permissions.Permissions).query("geolocation")` |
 | `navigator.userAgent` | `try (try Experimental.BrowserInfo.BrowserInfo).userAgent` |
 | `performance` | `try Clock.currentTimeMillis` |
-| `performance.now` | `try Clock.monotonicTimeNanos` |
+| `performance.now` | `Number(try Clock.monotonicTimeNanos) / 1e6` |
 | `performance.timeOrigin` | `try (try Experimental.Process.Process).timeOrigin` |
 | `postMessage` | Worker and WorkerRunner |
 | `process` | `try Config.String("NAME")` |

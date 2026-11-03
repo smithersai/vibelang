@@ -187,8 +187,6 @@ var (
 	EK4401 = message(4401, errorCategory, "{0} is a plain TypeScript function, and nothing says what its exceptions mean.")
 	// EK4402: a Node.js or browser API, used or imported as a value. {0} is the API.
 	EK4402 = message(4402, errorCategory, "{0} is platform code, which VibeLang code does not use directly.")
-	// EK4403: a clock or randomness read. {0} is the read, such as "performance.now()".
-	EK4403 = message(4403, errorCategory, "{0} reads the clock or randomness, which a test cannot control.")
 	// EK4501: method syntax without a call. {0} is the method, {1} the module.
 	EK4501 = message(4501, errorCategory, "{0} is a method of {1}'s values only in a call: x.{0}(…) calls {1}.{0}(x, …).")
 	// EK4405: a hatch's TypeScript reads a binding of the .vibe file. {0} is the binding, {1} the hatch.
@@ -219,7 +217,7 @@ func init() {
 		EK0201, EK0202, EK0203, EK0204, EK0205,
 		EK9201, EK9202, EK9203, EK9204, EK2005, EK2006, EK9205, EK9206, EK9207, EK2104, EK2105, EK2106, EK2107, EK2108, EK2109, EK2112, EK2113, EK2115, EK2117, EK2118,
 		EK3001, EK3002, EK3003, EK3004, EK3005, EK9208, EK3101, EK3201, EK3202, EK3203, EK3204, EK3205, EK3206, EK3207,
-		EK4201, EK4202, EK4301, EK4401, EK4402, EK4403, EK4405, EK4406, EK4001, EK4002, EK4003, EK4004, EK4006, EK4008, EK4408, EK4409, EK4501,
+		EK4201, EK4202, EK4301, EK4401, EK4402, EK4405, EK4406, EK4001, EK4002, EK4003, EK4004, EK4006, EK4008, EK4408, EK4409, EK4501,
 	} {
 		registry[m.Code] = m
 	}

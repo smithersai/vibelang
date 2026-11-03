@@ -1,0 +1,3 @@
+// expect: TS5023
+// An obsolete clock severity setting is rejected independently of source code.
+export const value = 1

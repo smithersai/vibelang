@@ -87,7 +87,7 @@ func TestRetiredConfigOptionsDoNotHideErrors(t *testing.T) {
 }
 
 func TestRetiredConfigBothPathsAndSeverityMigration(t *testing.T) {
-	p := vibeConfig(t, `{"vibelang":{"trustedPackages":42,"declarationImportStyle":42,"diagnostics":{"EK4403":"off"}},"compilerOptions":{"vibelang":{"trustedPackages":null,"declarationImportStyle":{},"diagnostics":{"EK4403":"off"}}},"vibe":{"severities":{"EK3009":"off"}},"files":["main.vibe"]}`, "{}")
+	p := vibeConfig(t, `{"vibelang":{"trustedPackages":42,"declarationImportStyle":42,"diagnostics":{"EK4406":"off"}},"compilerOptions":{"vibelang":{"trustedPackages":null,"declarationImportStyle":{},"diagnostics":{"EK4406":"off"}}},"vibe":{"severities":{"EK3009":"off"}},"files":["main.vibe"]}`, "{}")
 	ds := p.GetConfigFileParsingDiagnostics()
 	if len(ds) != 4 {
 		t.Fatalf("want four retirement warnings with EK3009 hidden, got %v", ds)
@@ -97,7 +97,7 @@ func TestRetiredConfigBothPathsAndSeverityMigration(t *testing.T) {
 			t.Fatal(d)
 		}
 	}
-	if p.CompilerOptions().VibeLang.Diagnostics["EK4403"] != "off" {
+	if p.CompilerOptions().VibeLang.Diagnostics["EK4406"] != "off" {
 		t.Fatal("retirement lost independent legacy severity")
 	}
 }

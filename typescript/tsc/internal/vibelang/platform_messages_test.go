@@ -43,10 +43,9 @@ const (
 	provideExperimental        = `Provide it in main with ExperimentalNodeServices.layer from "vibelang-runtime/experimental/platform-node", or ExperimentalBunServices.layer from "vibelang-runtime/experimental/platform-bun".`
 	provideExperimentalBrowser = `Provide it in main with ExperimentalBrowserServices.layer from "vibelang-runtime/experimental/platform-browser".`
 	noServiceYet               = "Effect, VibeLang's standard library, has no service for it yet, so escape to TypeScript for now."
-	allowEK4403                = `To allow it, set "EK4403": "warning" or "off" in "vibelang": { "diagnostics": { ... } } at the top level of tsconfig.json.`
 )
 
-// EK4402 and EK4403 name the Effect API that replaces a platform API and
+// EK4402 name the Effect API that replaces a platform API and
 // the layer that provides it; Effect's modules need no import (D310, D311).
 // For an API Effect lacks, they name VibeLang's experimental service, or show
 // the escape to TypeScript, never a wrapper module. A platform global is an
@@ -57,7 +56,7 @@ func TestPlatformReplacementMessages(t *testing.T) {
 	tests := []struct {
 		name   string
 		source string
-		want   []string // EK4402's or EK4403's lines; none for code that runs no platform API
+		want   []string // EK4402's lines; none for code that runs no platform API
 	}{
 		{"fs", `import { readFile } from "node:fs/promises"
 export const run = (path: string) => readFile(path, "utf8")`, []string{
@@ -266,17 +265,17 @@ export const run = (key: Uint8Array) => createHmac("sha256", key)`, []string{
 		}},
 		{"clock", `export const run = () => Date.now()`, nil},
 		{"monotonic clock", `export const run = () => performance.now()`, []string{
-			"performance.now() reads the clock or randomness, which a test cannot control.",
-			"Use Number(Clock.monotonicTimeNanos()) / 1e6: Clock.monotonicTimeNanos() is a bigint of nanoseconds, and performance.now() a number of milliseconds.",
-			"In a test, TestClock sets it.", allowEK4403,
+			"performance.now() is platform code, which VibeLang code does not use directly.",
+			"Use Number(try Clock.monotonicTimeNanos) / 1e6: Clock.monotonicTimeNanos yields bigint nanoseconds, and performance.now() returns number milliseconds.",
+			"In a test, TestClock sets it.",
 		}},
 		{"date call", `export const run = () => Date()`, nil},
 		{"date", `export const run = () => new Date()`, nil},
 		{"random", `export const run = () => Math.random()`, nil},
 		{"crypto", `export const run = () => crypto.randomUUID()`, []string{
-			"crypto.randomUUID() reads the clock or randomness, which a test cannot control.",
-			"Use SecureRandom.uuidV4().", provideCrypto,
-			"In a test, provide Layer.succeed(SecureRandom.SecureRandom, SecureRandom.make(randomBytes)) with fixed bytes; a seeded Random does not reach SecureRandom.", allowEK4403,
+			"crypto.randomUUID() is platform code, which VibeLang code does not use directly.",
+			"Use try (try SecureRandom.SecureRandom).uuidV4().", provideCrypto,
+			"In a test, provide Layer.succeed(SecureRandom.SecureRandom, SecureRandom.make(randomBytes)) with fixed bytes; a seeded Random does not reach SecureRandom.",
 		}},
 		{"pure web helpers", `export const run = (text: string, url: string) => [
   new TextEncoder().encode(text), new TextDecoder().decode(new Uint8Array()), new URL(url).host, new URLSearchParams(text).size,
@@ -294,7 +293,7 @@ export const run = (key: Uint8Array) => createHmac("sha256", key)`, []string{
 			files["/workspace/x/src/tsconfig.json"] = strings.Replace(files["/workspace/x/src/tsconfig.json"], `"files":["main.vibe"]`, `"files":["main.vibe","node_modules/@types/node/index.d.ts"]`, 1)
 			var got []string
 			for _, d := range computedKeyProgram(t, files).GetSemanticDiagnostics(t.Context(), nil) {
-				if d.Code() == EK4402.Code || d.Code() == EK4403.Code {
+				if d.Code() == EK4402.Code {
 					got = append(got, diagnosticWithNotes(d))
 				}
 			}

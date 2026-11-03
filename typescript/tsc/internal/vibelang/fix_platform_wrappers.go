@@ -32,7 +32,7 @@ func rewritePlatformWrappers(g *fixGate, fs vfs.FS, program *compiler.Program, t
 			var refusal string
 			at := 0 // where the diagnostic the candidate holds starts
 			for _, d := range program.GetSemanticDiagnostics(g.ctx, file) {
-				if d.Source() != diagnosticSource || (d.Code() != EK4402.Code && d.Code() != EK4403.Code) {
+				if d.Source() != diagnosticSource || d.Code() != EK4402.Code {
 					continue
 				}
 				var visit func(*ast.Node) bool

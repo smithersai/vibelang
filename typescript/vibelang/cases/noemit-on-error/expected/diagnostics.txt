@@ -1,2 +1,2 @@
-main.vibe(1,22): warning EK4403
+main.vibe(1,54): warning EK4833
 tsconfig.json(17,7): warning EK3009

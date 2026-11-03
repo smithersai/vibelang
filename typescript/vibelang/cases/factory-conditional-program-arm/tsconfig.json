@@ -10,9 +10,7 @@
     "allowImportingTsExtensions": true,
     "rewriteRelativeImportExtensions": true,
     "vibelang": {
-      "diagnostics": {
-        "EK4403": "warning"
-      }
+      "diagnostics": {}
     }
   },
   "include": [
