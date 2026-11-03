@@ -165,6 +165,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - VibeLang could treat a namespace re-export in a `.d.vibe.ts` file as untyped and report `TS7006` in TypeScript callbacks. Explicit `.vibe` imports now find compatibility declarations when no source exists, preserving contextual types and real callback errors.
 
+- The failure-spec fuzz suite still marked seven working Promise-wrapper and typed-failure rules as broken. Their stale pending markers are removed, so those regression cases now run normally.
+
 - Renaming a shorthand pattern binding could change the property it matched and add `TS2339`; rename now keeps the property key and writes an explicit binding.
 
 - Rolldown entry globs could bundle generated `.d.vibex.ts` declarations as empty entrypoints; the plugin now excludes those sidecars and retains the JSX source entries and aliases.

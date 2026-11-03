@@ -9,8 +9,6 @@ FuzzFailuresSpec  feature:direct-local  compiler  VIP-4: 003-failures.md rejects
 FuzzFailuresSpec  feature:direct-local-const  compiler  VIP-4: 003-failures.md rejects the marked call for "In effect code, a direct call of a function that may throw. Wrap it: `try Effect.try(() => parse(s))`"; lane w2-throw
 FuzzFailuresSpec  feature:direct-local-argument  compiler  VIP-4: 003-failures.md rejects the marked call for "In effect code, a direct call of a function that may throw. Wrap it: `try Effect.try(() => parse(s))`"; lane w2-throw
 FuzzFailuresSpec  feature:direct-local-return  compiler  VIP-4: 003-failures.md rejects the marked call for "In effect code, a direct call of a function that may throw. Wrap it: `try Effect.try(() => parse(s))`"; lane w2-throw
-FuzzFailuresSpec  feature:wrap-try-promise-async  compiler  VIP-4: 003-failures.md accepts the program for "In effect code, a call returning a Promise or thenable, even if assigned to a variable and never awaited. M…"; lane w2-throw
-FuzzFailuresSpec  feature:wrap-promise  compiler  VIP-4: 003-failures.md accepts the program for "In effect code, a call returning a Promise or thenable, even if assigned to a variable and never awaited. M…"; lane w2-throw
 FuzzFailuresSpec  feature:library-tagged  compiler  VIP-4: 003-failures.md rejects the marked call for "A non-effectful library or global function says what it throws with the JSDoc tag `@throws {ErrorType}`."; lane w2-throw
 FuzzFailuresSpec  feature:global-json-parse  compiler  VIP-4: 003-failures.md rejects the marked call for "VibeLang ships its own annotations for them, so `JSON.parse` throws `SyntaxError` and `Math.max` is known n…"; lane w2-throw
 FuzzFailuresSpec  feature:effect-decode-sync  compiler  VIP-4: 003-failures.md rejects the marked call for "VibeLang also ships annotations for Effect's non-effectful exports: `Option.some` throws `never`; `Schema.d…"; lane w2-throw
@@ -32,17 +30,11 @@ FuzzFailuresSpec  feature:promise-async-local  compiler  VIP-4: 003-failures.md 
 FuzzFailuresSpec  feature:promise-held  compiler  VIP-4: 003-failures.md rejects the marked call for "In effect code, a call returning a Promise or thenable, even if assigned to a variable and never awaited. M…"; lane w2-throw
 FuzzFailuresSpec  feature:promise-library  compiler  VIP-4: 003-failures.md rejects the marked call for "In effect code, a call returning a Promise or thenable, even if assigned to a variable and never awaited. M…"; lane w2-throw
 FuzzFailuresSpec  feature:promise-thenable  compiler  VIP-4: 003-failures.md rejects the marked call for "In effect code, a call returning a Promise or thenable, even if assigned to a variable and never awaited. M…"; lane w2-throw
-FuzzFailuresSpec  feature:promise-library-wrapped  compiler  VIP-4: 003-failures.md accepts the program for "In effect code, a call returning a Promise or thenable, even if assigned to a variable and never awaited. M…"; lane w2-throw
 FuzzFailuresSpec  feature:promise-reject  compiler  VIP-4: 003-failures.md rejects the marked call for "`Promise.reject(e)`, like every Promise-producing call, must be inside a `tryPromise` or `promise` thunk in…"; lane w2-throw
-FuzzFailuresSpec  feature:promise-reject-wrapped  compiler  VIP-4: 003-failures.md accepts the program for "`Promise.reject(e)`, like every Promise-producing call, must be inside a `tryPromise` or `promise` thunk in…"; lane w2-throw
 FuzzFailuresSpec  feature:declaration-throws  compiler  VIP-27, VIP-4: 001-functions.md, Declaration output as amended 2026-10-31: every non-effectful .vibe call signature carries @throws {never}; main emits no @throws on parse, add's call signature or Id's constructor; lane nothrow-impl
 FuzzFailuresSpec  feature:effect-decoder-call  compiler  VIP-4: 003-failures.md rejects calling the decoder Schema.decodeUnknownSync returns in effect code (it throws SchemaError); lane w2-throw
-FuzzFailuresSpec  feature:effectful-body-fail  compiler  VIP-6: the global `fail` that 001-functions.md's example returns is not in scope (TS2304); lane fix-vip-globals
 FuzzFailuresSpec  corpus:direct-local  compiler  the minimal reproduction of feature:direct-local
 FuzzFailuresSpec  corpus:declaration-throws  compiler  the minimal reproduction of feature:declaration-throws
-FuzzFailuresSpec  corpus:effectful-body-fail  compiler  the minimal reproduction of feature:effectful-body-fail
-FuzzFailuresSpec feature:wrapper-promise-throw compiler VIP-4: 003-failures.md as amended 2026-10-31 expects EK0401 at the marked code; main draws TS2552; lane nothrow-impl
-FuzzFailuresSpec feature:wrapper-trypromise-options compiler VIP-4: 003-failures.md as amended 2026-10-31 expects EK0401 at the marked code; main draws TS2552, TS7006; lane nothrow-impl
 FuzzFailuresSpec feature:dynamic-any compiler VIP-4: 003-failures.md contract dynamic-any disagrees on unmodified main c9327b36 (error TS1128, error TS1434, error TS2304); lane vip-core2
 FuzzFailuresSpec feature:dynamic-function compiler VIP-4: 003-failures.md contract dynamic-function disagrees on unmodified main c9327b36 (error TS1128, error TS1434, error TS2304); lane vip-core2
 FuzzFailuresSpec feature:effectful-mixed-return compiler VIP-4: 003-failures.md contract effectful-mixed-return disagrees on unmodified main c9327b36 (error EK2003, error TS1128, error TS1434, error TS2552); lane vip-core2
@@ -53,8 +45,6 @@ FuzzFailuresSpec feature:effectful-unknown-return compiler VIP-4: 003-failures.m
 FuzzFailuresSpec corpus:direct-local-const compiler VIP-4: minimized reproduction of feature:direct-local-const; lane w2-throw
 FuzzFailuresSpec corpus:direct-local-argument compiler VIP-4: minimized reproduction of feature:direct-local-argument; lane w2-throw
 FuzzFailuresSpec corpus:direct-local-return compiler VIP-4: minimized reproduction of feature:direct-local-return; lane w2-throw
-FuzzFailuresSpec corpus:wrap-try-promise-async compiler VIP-4: minimized reproduction of feature:wrap-try-promise-async; lane w2-throw
-FuzzFailuresSpec corpus:wrap-promise compiler VIP-4: minimized reproduction of feature:wrap-promise; lane w2-throw
 FuzzFailuresSpec corpus:library-tagged compiler VIP-4: minimized reproduction of feature:library-tagged; lane w2-throw
 FuzzFailuresSpec corpus:global-json-parse compiler VIP-4: minimized reproduction of feature:global-json-parse; lane w2-throw
 FuzzFailuresSpec corpus:effect-decode-sync compiler VIP-4: minimized reproduction of feature:effect-decode-sync; lane w2-throw
@@ -76,12 +66,8 @@ FuzzFailuresSpec corpus:promise-async-local compiler VIP-4: minimized reproducti
 FuzzFailuresSpec corpus:promise-held compiler VIP-4: minimized reproduction of feature:promise-held; lane w2-throw
 FuzzFailuresSpec corpus:promise-library compiler VIP-4: minimized reproduction of feature:promise-library; lane w2-throw
 FuzzFailuresSpec corpus:promise-thenable compiler VIP-4: minimized reproduction of feature:promise-thenable; lane w2-throw
-FuzzFailuresSpec corpus:promise-library-wrapped compiler VIP-4: minimized reproduction of feature:promise-library-wrapped; lane w2-throw
 FuzzFailuresSpec corpus:promise-reject compiler VIP-4: minimized reproduction of feature:promise-reject; lane w2-throw
-FuzzFailuresSpec corpus:promise-reject-wrapped compiler VIP-4: minimized reproduction of feature:promise-reject-wrapped; lane w2-throw
 FuzzFailuresSpec corpus:effect-decoder-call compiler VIP-4: minimized reproduction of feature:effect-decoder-call; lane w2-throw
-FuzzFailuresSpec corpus:wrapper-promise-throw compiler VIP-4: minimized reproduction of feature:wrapper-promise-throw; lane w2-throw
-FuzzFailuresSpec corpus:wrapper-trypromise-options compiler VIP-4: minimized reproduction of feature:wrapper-trypromise-options; lane w2-throw
 FuzzFailuresSpec corpus:dynamic-any compiler VIP-4: minimized reproduction of feature:dynamic-any; lane w2-throw
 FuzzFailuresSpec corpus:dynamic-function compiler VIP-4: minimized reproduction of feature:dynamic-function; lane w2-throw
 FuzzFailuresSpec corpus:effectful-mixed-return compiler VIP-4: minimized reproduction of feature:effectful-mixed-return; lane w2-throw
