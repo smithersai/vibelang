@@ -196,6 +196,7 @@ The fixes keep a rewrite only when it adds no compiler error.
 | Before | After and repair |
 | `vibelang.tracing` or mapper `options.tracing` | Remove the unsupported option. Add named operation spans explicitly with `try withSpan(program, "name")`. |
 | --- | --- |
+| A nested Effect error pattern used class identity, such as `Csv.CsvError`. | It now uses the module guard. `vibelang --fix --fix-migration-only` preserves the old class matcher through fresh constructor aliases and call-only extractors, with the same constructor, matcher observations and declared types. |
 | `effect@4.0.6` and `@effect/*@4.0.6` | Effect 4.1.1 is now the minimum supported version, pinned exactly: install `effect@4.1.1` and `@effect/*@4.1.1`; the runtime refuses any other version. Effect 4.1 removed `effect/Crypto` and `TestCrypto`, so `Crypto` in a `.vibe` file is the DOM's again. Use `effect/crypto`'s services: `SecureRandom.randomBytes(16)`, `SecureRandom.uuidV4()` and `SecureRandom.intBetween(min, max)` for `Crypto.randomBytes`, `Crypto.randomUUIDv4()` and `Crypto.randomIntBetween`; `Digest.digest(Digest.sha256, bytes)` for `Crypto.digest("SHA-256", bytes)`; `Mac` and `Signature` for HMAC and signatures. `NodeServices.layer` and `BunServices.layer` no longer provide a crypto service: provide `NodeCrypto.layer`, `BunCrypto.layer` or `BrowserCrypto.layer`. `Experimental.Crypto` keeps its members, and its platform layers provide Effect's crypto services too. Node.js 22.19.0 is the minimum for `@effect/platform-node`. A test terminal built with `Terminal.make` must now supply `size`, a scoped queue of resizes, such as `size: Queue.unbounded<Terminal.Size, Cause.Done>()`. |
 | A schema tuple rest uses a local type named `Array` or `ReadonlyArray` | The generic must resolve to the TypeScript library array. Run `vibelang --fix` to preserve an old accepted decoder as explicit `Schema.TupleWithRest` codecs. |
 | `Readonly<Record<K, V>>` with a shadowing type or a canonical `Readonly` alias that selects an array | Library bindings now select the mapped codec. Run `vibelang --fix` for rejected shadows or `vibelang --fix --fix-migration-only` to keep a previously accepted decoder explicit. |
@@ -304,6 +305,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 ### Bugs fixed since 0.0.10
 - The ESLint corpus check could report a missing identifier node for a name written with a Unicode escape; it now matches the decoded name at the same source position while still detecting missing nodes.
+- Nested schema alias rules still appeared as known gaps after their fix landed; those rules and their corpus inputs now run as strict checks of `EK2109`.
 - In the editor, an `is` that binds names and has a parenthesized subject, such as `(x as T) is [let a]` or `([3, r] as const) is [let n, let e]`, made the TypeScript 7 mapper report "invalid or overlapping edits" and pass the whole file through unchanged, so the editor checked VibeLang syntax as TypeScript; the file now maps as it does without the parentheses.
 - Running compiler cases with a missing, malformed or unbuilt runtime could delete previous output or look like a compiler failure; the harness now exits with status `2` before changing cases and names the invalid `VIBELANG_RUNTIME` installation.
 - Migration returned converted services to TypeScript when every member kept the original service requirement. Verification now accepts the `EK4809` design warning and preserves those member contracts; a configured `EK4809` error still fails.
@@ -336,6 +338,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Sharded Go tests continued in other processes after the first failure even with `-failfast`; explicit fail-fast runs now use one native process and stop with Go's original status.
 
 - Verifying a migrated package could reject the flow's new `.npmignore` and packing receipt as foreign files when its first emit happened after codemod. Packing ownership now stays in the batch journal through verification, recording and revert; unrelated files still fail the scope check.
+
+- Specification changes with grounded rules lacking accepted authority or contradicting retained text were only reported; `//:spec-rule-judge` now rejects them by default, while unavailable judgments still warn and allow the entry.
 
 - Sharded Go tests could start several fuzz campaigns when `-test.fuzz` used a separate selector argument; that form now runs once with its original arguments and exit status.
 - Remote checks could report success after failing to discover tracked fixtures, leaving the build host with a partial checkout; `scripts/remote.sh` now stops before running tests and reports the failing discovery stage and exit status.
@@ -589,6 +593,19 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Exact claim searches could miss another lane working on the same reproduction under a different key spelling; the advisory claim lookup now shows punctuation aliases, shared corpus names and each claim's age and status.
 
 - A direct `schema error` payload reference could silently make a readonly key writable or a required key optional; incompatible decoded-key flags now report `EK2109`, and `vibelang --fix` preserves the existing codecs in an explicit Effect TypeScript class.
+- The ESLint corpus check rejected deliberately unused source labels as generated code; it now checks the reported label's provenance while continuing to detect synthesized-label leaks.
+
+- A `yield` inside a producer's `for concurrent` body was rejected or omitted from its element type; item bodies now emit from and contribute their types to the enclosing producer.
+
+- ESLint reported `no-unexpected-multiline` at a closing brace after some `is` patterns, such as `value is if (true)`; subject-capturing patterns now keep their own source form in ESTree, so generated matcher invocations produce no call warnings and written calls still report normally.
+
+- Commas between payload fields in `error` and `schema error` bodies reported `EK1013`; they now separate readonly constructor fields, including optional fields and trailing commas.
+
+- Tagged error patterns from nested Effect modules rejected independently branded errors; all thirty-three retained error patterns now use their module guards, including singleton extraction and failed arity mismatches.
+
+- Reading a producer's `yield` result exposed a queue-offer boolean; a completed offer now gives `undefined`, as the language specifies.
+
+- Specification edits could add language rules without accepted authority; the optional `//:spec-rule-judge` Smithers target now reports Luna’s evidence and contradictions, caches retries, and allows entries through when the judge is unavailable.
 
 - The short compiler fuzz suite could exceed its CPU limit after adding migration coverage; repeated `--fix` checks now reuse unchanged dependency syntax while still checking every seed.
 
