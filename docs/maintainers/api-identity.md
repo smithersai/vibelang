@@ -118,3 +118,12 @@ allocation failure, a signal or an empty successful exit is an invalid receipt,
 printed as JSON with `--json` and exit `2`. The receipt records the child's
 signal, exit status and diagnostic byte count. Imported callers can use
 `compareApiIdentityInWorker(ts, before, after, options)` for the same isolation.
+
+Large surfaces use fresh TypeScript checkers with at most `8` type probes per batch.
+Input diagnostics are collected once; batches check their generated probes.
+Resolution and unchanged source parsing are reused. The synchronous API accepts
+`probeBatchSize` as a positive safe integer for comparison controls.
+Export documentation and erroneous-type walks use explicit worklists, so deeply
+nested exported objects do not consume the JavaScript call stack. Proven equal
+module closures reuse documentation only when their attached comments also agree.
+Use `--profile` to record stages, elapsed time, batch offsets and memory use.

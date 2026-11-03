@@ -370,7 +370,29 @@ function equivalentModules(ts, program, host, left, right, externalGroups, docum
   for (let i = 0; i < bad.length; i++) for (const parent of bad[i].parents) {
     if (parent.good) { parent.good = false; bad.push(parent) }
   }
-  return new Map(candidates.filter(n => n.good).map(n => [n.b, n.a]))
+  const equivalent = new Map(candidates.filter(n => n.good).map(n => [n.b, n.a]))
+  // Syntax identity alone ignores comments. Reuse the same closure proof for
+  // documentation only when every attached JSDoc in that closure also agrees.
+  const comments = new Map()
+  function documentationFingerprint(file) {
+    if (comments.has(file)) return comments.get(file)
+    const source = program.getSourceFile(file), pending = [source], texts = []
+    while (pending.length) {
+      const node = pending.pop()
+      for (const doc of node.jsDoc ?? []) texts.push(source.text.slice(doc.pos, doc.end).replace(/\s+/gu, " ").trim())
+      ts.forEachChild(node, child => { pending.push(child) })
+    }
+    const text = texts.join("\0")
+    comments.set(file, text)
+    return text
+  }
+  const docBad = [...nodes.values()].filter(n => !n.good || n.a !== n.b && documentationFingerprint(n.a) !== documentationFingerprint(n.b))
+  const invalidDocs = new Set(docBad)
+  for (let i = 0; i < docBad.length; i++) for (const parent of docBad[i].parents) {
+    if (!invalidDocs.has(parent)) { invalidDocs.add(parent); docBad.push(parent) }
+  }
+  equivalent.documentation = new Map(candidates.filter(n => n.good && !invalidDocs.has(n)).map(n => [n.b, n.a]))
+  return equivalent
 }
 
 // Read the inherited project setting rather than assuming a JSON export opts
@@ -392,12 +414,17 @@ function projectJsonModules(ts, path) {
  * No files are written to either input tree.
  */
 export function compareApiIdentity(ts, before, after, options = {}) {
-  let stage = "entrypoints"
+  let stage = "entrypoints", progressDetails = {}
   const started = performance.now()
   try {
-    return compareUnchecked(ts, before, after, options, value => { stage = value })
+    return compareUnchecked(ts, before, after, options, (value, details = {}) => {
+      stage = value
+      progressDetails = details
+      if (options.profile) console.error(JSON.stringify({ stage,
+        elapsedMs: Math.round(performance.now() - started), ...details, ...process.memoryUsage() }))
+    })
   } catch (error) {
-    const failure = { stage, elapsedMs: Math.round(performance.now() - started),
+    const failure = { stage, ...progressDetails, elapsedMs: Math.round(performance.now() - started),
       error: error?.name ?? "Error", ...process.memoryUsage() }
     return { identical: false, comparisonComplete: false, nameDifferences: [],
       typeDifferences: [], docDifferences: [], failure,
@@ -426,7 +453,24 @@ function compareUnchecked(ts, before, after, options, progress) {
   }
   const virtual = new Map()
   const host = ts.createCompilerHost(compilerOptions)
+  const originalRead = host.readFile.bind(host)
+  const fileContents = new Map()
+  host.readFile = file => {
+    const key = resolve(file)
+    if (!fileContents.has(key)) fileContents.set(key, originalRead(file))
+    return fileContents.get(key)
+  }
   const project = projectSidecarHost(ts, host, virtual)
+  // Reuse parsed sources only while their virtual text remains unchanged.
+  const sourceCache = new Map()
+  const getSource = host.getSourceFile.bind(host)
+  host.getSourceFile = (file, languageVersion, onError, fresh) => {
+    const key = resolve(file), cached = sourceCache.get(key)
+    if (!fresh && cached && cached.text === host.readFile(file)) return cached
+    const source = getSource(file, languageVersion, onError, fresh)
+    if (source) sourceCache.set(key, source)
+    return source
+  }
   for (const entries of [left, right]) for (const [key, path] of Object.entries(entries)) {
     if (path.endsWith(".vibe") && host.fileExists(path.replace(/\.vibe$/, ".d.vibe.ts")))
       entries[key] = path.replace(/\.vibe$/, ".d.vibe.ts")
@@ -477,6 +521,13 @@ function compareUnchecked(ts, before, after, options, progress) {
       literals.map(literal => ts.getModeForUsageLocation(source, literal, resolverOptions)))
       .map(resolvedModule => ({ resolvedModule }))
   }
+  const resolveNames = host.resolveModuleNames
+  const moduleResolutions = new Map()
+  host.resolveModuleNames = (names, file, modes = []) => names.map((name, index) => {
+    const key = resolve(file) + "\0" + name + "\0" + (modes[index] ?? "")
+    if (!moduleResolutions.has(key)) moduleResolutions.set(key, resolveNames([name], file, [modes[index]])[0])
+    return moduleResolutions.get(key)
+  })
   const probe = join(repo, ".api-identity-probe.mts")
   const roots = [...new Set([...Object.values(left), ...Object.values(right)])]
   progress("create-input-program")
@@ -573,6 +624,7 @@ function compareUnchecked(ts, before, after, options, progress) {
     for (const [path, text] of nominal) {
       virtual.set(path, text)
     }
+    moduleResolutions.clear()
     program = ts.createProgram(roots, compilerOptions, host)
   }
   progress("normalized-input-diagnostics")
@@ -581,11 +633,16 @@ function compareUnchecked(ts, before, after, options, progress) {
   // Error-any can make a strict identity probe pass vacuously. Inspect only
   // compared export types, so an unrelated error in a dependency is harmless.
   const invalidExports = []
-  function erroneous(type, seen = new Set(), expanded = new Set()) {
-    if (!type || seen.has(type)) return false
+  const errorCache = new Map()
+  function erroneous(root) {
+    if (errorCache.has(root)) return errorCache.get(root)
+    const pending = [root], seen = new Set(), expanded = new Set()
+    while (pending.length) {
+      const type = pending.pop()
+    if (!type || seen.has(type)) continue
     seen.add(type)
     const identity = type.target ?? type
-    if (type.flags & ts.TypeFlags.Any && ["error", "unresolved"].includes(type.intrinsicName)) return true
+    if (type.flags & ts.TypeFlags.Any && ["error", "unresolved"].includes(type.intrinsicName)) { errorCache.set(root, true); return true }
     const nested = [...(type.types ?? []), ...(type.aliasTypeArguments ?? [])]
     if (type.flags & ts.TypeFlags.TypeParameter) nested.push(checker.getBaseConstraintOfType(type), type.getDefault?.())
     if (type.flags & ts.TypeFlags.Conditional) nested.push(type.checkType, type.extendsType, type.resolvedTrueType, type.resolvedFalseType)
@@ -612,7 +669,10 @@ function compareUnchecked(ts, before, after, options, progress) {
       for (const index of checker.getIndexInfosOfType(type)) nested.push(index.type, index.keyType)
       }
     }
-    return nested.some(t => erroneous(t, seen, expanded))
+      for (let i = nested.length - 1; i >= 0; i--) pending.push(nested[i])
+    }
+    errorCache.set(root, false)
+    return false
   }
   const checks = []
   const imports = []
@@ -677,22 +737,28 @@ function compareUnchecked(ts, before, after, options, progress) {
     const own = s => s?.declarations?.some(d => [before, after].some(base =>
       (d.getSourceFile().fileName === base || d.getSourceFile().fileName.startsWith(base + "/")) &&
       !d.getSourceFile().fileName.includes("/node_modules/")))
-    const walk = (type, path) => {
-      const identity = type?.target ?? type
-      if (!type || seen.has(identity)) return
-      seen.add(identity)
-      for (const property of checker.getPropertiesOfType(type).sort((a, b) => a.name.localeCompare(b.name))) {
-        if (!own(property)) continue
-        const key = path + "." + property.name
-        const text = docs(ts, checker, property)
-        if (text) found.set(key, text)
-        const declaration = property.valueDeclaration ?? property.declarations?.[0]
-        if (declaration) walk(checker.getTypeOfSymbolAtLocation(property, declaration), key)
-      }
-      for (const signature of [...type.getCallSignatures(), ...type.getConstructSignatures()]) {
-        const declaration = signature.getDeclaration()
-        if (declaration && [before, after].some(base => declaration.getSourceFile().fileName.startsWith(base + "/")))
-          walk(checker.getReturnTypeOfSignature(signature), path + "()")
+    const walk = (root, rootPath) => {
+      const pending = [[root, rootPath]]
+      while (pending.length) {
+        const [type, path] = pending.pop()
+        const identity = type?.target ?? type
+        if (!type || seen.has(identity)) continue
+        seen.add(identity)
+        const children = []
+        for (const property of checker.getPropertiesOfType(type).sort((a, b) => a.name.localeCompare(b.name))) {
+          if (!own(property)) continue
+          const key = path + "." + property.name
+          const text = docs(ts, checker, property)
+          if (text) found.set(key, text)
+          const declaration = property.valueDeclaration ?? property.declarations?.[0]
+          if (declaration) children.push([checker.getTypeOfSymbolAtLocation(property, declaration), key])
+        }
+        for (const signature of [...type.getCallSignatures(), ...type.getConstructSignatures()]) {
+          const declaration = signature.getDeclaration()
+          if (declaration && [before, after].some(base => declaration.getSourceFile().fileName.startsWith(base + "/")))
+            children.push([checker.getReturnTypeOfSignature(signature), path + "()"])
+        }
+        for (let i = children.length - 1; i >= 0; i--) pending.push(children[i])
       }
     }
     if (symbol.flags & ts.SymbolFlags.Type) walk(checker.getDeclaredTypeOfSymbol(symbol), symbol.flags & ts.SymbolFlags.Class ? ".prototype" : "")
@@ -718,7 +784,12 @@ function compareUnchecked(ts, before, after, options, progress) {
           invalidExports.push({ entrypoint, export: name, blocking: true, diagnostic: "Compared export depends on an unresolved or erroneous type; identity probe cannot establish its API." })
       }
     }
-    const amembers = memberDocs(a), bmembers = memberDocs(b)
+    const afiles = new Set(a.declarations?.map(d => d.getSourceFile().fileName))
+    const bfiles = new Set(b.declarations?.map(d => d.getSourceFile().fileName))
+    const equalDocs = a === b || a.name === b.name && afiles.size === bfiles.size && bfiles.size > 0 &&
+      [...bfiles].every(file => afiles.has(equivalents.documentation.get(file)))
+    const amembers = equalDocs ? new Map() : memberDocs(a)
+    const bmembers = equalDocs ? new Map() : memberDocs(b)
     for (const key of [...new Set([...amembers.keys(), ...bmembers.keys()])].sort()) {
       if (amembers.get(key) !== bmembers.get(key)) result.docDifferences.push({
         entrypoint, export: name + key, before: amembers.get(key) ?? "", after: bmembers.get(key) ?? ""
@@ -831,24 +902,36 @@ function compareUnchecked(ts, before, after, options, progress) {
   const resolveModules = host.resolveModuleNames
   host.resolveModuleNames = (names, file, modes) => resolveModules(names, file, modes).map(resolved => resolved &&
     { ...resolved, resolvedFileName: equivalents.get(resolved.resolvedFileName) ?? resolved.resolvedFileName })
+  const batchSize = options.probeBatchSize ?? 8
+  if (!Number.isSafeInteger(batchSize) || batchSize < 1)
+    throw new Error("probeBatchSize must be a positive safe integer")
+  const seen = new Set()
+  // A checker retains every type relation it instantiates. Restrict each fresh
+  // checker to a small probe and diagnose the already validated inputs once.
+  for (let offset = 0; offset < Math.max(1, checks.length); offset += batchSize) {
+    const batch = checks.slice(offset, offset + batchSize)
   const lines = [...imports, ...identityPrelude.split("\n")]
   const byLine = new Map()
   const assignmentLines = new Map()
-  for (const check of checks) {
+  for (const check of batch) {
     byLine.set(lines.length, check)
     lines.push(`type __check${byLine.size} = __Assert<__Same<${check.a}, ${check.b}>>;`)
     assignmentLines.set(lines.length, check)
     lines.push(`type __assign${byLine.size} = __Assert<__Assignable<${check.a}, ${check.b}>>;`)
   }
   virtual.set(probe, lines.join("\n"))
-  progress("create-probe-program")
+  progress("create-probe-program", { probeOffset: offset, probeCount: batch.length, totalProbes: checks.length })
   program = ts.createProgram([...roots, probe], compilerOptions, host)
   const diagnosticText = d => "TS" + d.code + ": " + ts.flattenDiagnosticMessageText(d.messageText, "\n")
-  progress("probe-diagnostics")
-  const diagnostics = [...originalDiagnostics, ...inputDiagnostics, ...ts.getPreEmitDiagnostics(program)]
+  progress("probe-diagnostics", { probeOffset: offset, probeCount: batch.length, totalProbes: checks.length })
+  const probeSource = program.getSourceFile(probe)
+  const diagnostics = [
+    ...(offset === 0 ? [...originalDiagnostics, ...inputDiagnostics,
+      ...[...bridges.keys()].flatMap(file => ts.getPreEmitDiagnostics(program, program.getSourceFile(file)))] : []),
+    ...ts.getPreEmitDiagnostics(program, probeSource),
+  ]
   const assignmentFailures = new Set(diagnostics.filter(d => d.file?.fileName === probe && d.start !== undefined)
     .map(d => assignmentLines.get(d.file.getLineAndCharacterOfPosition(d.start).line)).filter(Boolean))
-  const seen = new Set()
   for (const d of diagnostics) {
     const line = d.file && d.start !== undefined ? d.file.getLineAndCharacterOfPosition(d.start).line : -1
     if (d.file?.fileName === probe && assignmentLines.has(line) && d.code === 2344) continue
@@ -861,6 +944,7 @@ function compareUnchecked(ts, before, after, options, progress) {
     const key = JSON.stringify(item)
     if (!seen.has(key)) (check ? result.typeDifferences : result.environmentDiagnostics).push(item)
     seen.add(key)
+  }
   }
   for (const item of invalidExports) {
     const key = JSON.stringify(item)
@@ -925,18 +1009,19 @@ export function formatResult(result) {
 
 function main(args) {
   if (args.includes("--help")) {
-    console.log("node scripts/api-identity.mjs --before <dir|package> --after <dir|package> [--json]")
+    console.log("node scripts/api-identity.mjs --before <dir|package> --after <dir|package> [--json] [--profile]")
     return 0
   }
   const values = {}
   for (let i = 0; i < args.length; i++) {
-    if (args[i] === "--json") values.json = true
+    if (args[i] === "--profile") values.profile = true
+    else if (args[i] === "--json") values.json = true
     else if (["--before", "--after"].includes(args[i]) && args[i + 1]) values[args[i].slice(2)] = args[++i]
     else throw new Error("Unknown or incomplete argument: " + args[i])
   }
   if (!values.before || !values.after) throw new Error("--before and --after are required")
   const ts = loadTypeScript([values.before, values.after])
-  const result = compareApiIdentityInWorker(ts, values.before, values.after)
+  const result = compareApiIdentityInWorker(ts, values.before, values.after, { profile: values.profile })
   console.log(values.json ? JSON.stringify(result, null, 2) : formatResult(result))
   return result.comparisonComplete === false ? 2 : result.identical ? 0 : 1
 }
