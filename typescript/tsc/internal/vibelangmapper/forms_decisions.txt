@@ -87,6 +87,15 @@ typescript/vibelang/cases/acquire-function-resource/main.vibe:21:22 byname progr
 typescript/vibelang/cases/acquire-function-resource/main.vibe:21:34 lambda plain table
 typescript/vibelang/cases/acquire-function-resource/main.vibe:21:56 lambda plain annotation
 typescript/vibelang/cases/acquire-function-resource/main.vibe:8:15 lambda factory annotation
+typescript/vibelang/cases/allsettled-construction-order/main.vibe:10:19 lambda program table
+typescript/vibelang/cases/allsettled-construction-order/main.vibe:12:7 byname program table
+typescript/vibelang/cases/allsettled-construction-order/main.vibe:13:7 byname program table
+typescript/vibelang/cases/allsettled-construction-order/main.vibe:14:7 byname program table
+typescript/vibelang/cases/allsettled-construction-order/main.vibe:14:8 byname program table
+typescript/vibelang/cases/allsettled-construction-order/main.vibe:15:7 byname program table
+typescript/vibelang/cases/allsettled-construction-order/main.vibe:16:7 byname program table
+typescript/vibelang/cases/allsettled-construction-order/main.vibe:17:7 byname program table
+typescript/vibelang/cases/allsettled-construction-order/main.vibe:19:22 lambda plain fallback
 typescript/vibelang/cases/allsettled-spread-iterable/main.vibe:12:31 byname program table
 typescript/vibelang/cases/allsettled-spread-iterable/main.vibe:13:33 byname program table
 typescript/vibelang/cases/allsettled-spread-iterable/main.vibe:13:55 byname program table

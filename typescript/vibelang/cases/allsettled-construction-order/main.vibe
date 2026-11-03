@@ -1,0 +1,26 @@
+// expect-result: {"cold":true,"first":{"values":["head","left","middle","right","tail"],"events":["make:head","spread:left","make:left","make:middle","spread:empty","spread:right","make:right","make:tail","run:head","run:left","run:middle","run:right","run:tail"]},"second":{"values":["head","left","middle","right","tail"],"events":["make:head","spread:left","make:left","make:middle","spread:empty","spread:right","make:right","make:tail","run:head","run:left","run:middle","run:right","run:tail"]}}
+// VIP-18, chapter 2, decided detail 252: build each literal once in native
+// element order, then run its Effects. Empty and multiple spreads participate
+// in construction; rerunning the cold program repeats construction once.
+import { Effect } from "effect"
+import { createProbe } from "./probe.ts"
+
+export effect function main() {
+  const probe = createProbe()
+  const program = effect {
+    const exits = try.allSettled [
+      probe.factory("head"),
+      ...probe.spread("left", true),
+      (probe.factory("middle")),
+      ...probe.spread("empty", false),
+      ...probe.spread("right", true),
+      probe.factory("tail")
+    ]
+    return exits.map(x => x._tag === "Success" ? x.value : "failure")
+  }
+  const cold = probe.events.length === 0
+  const firstValues = try program
+  const first = { values: firstValues, events: probe.take() }
+  const secondValues = try program
+  return { cold, first, second: { values: secondValues, events: probe.take() } }
+}
