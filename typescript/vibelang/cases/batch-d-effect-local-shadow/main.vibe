@@ -1,3 +1,7 @@
 // expect:
 const Effect = { Array: { head: (xs: number[]): number => xs.length } };
 export const result: number = Effect.Array.head([1]);
+// VIP-14 local-Effect-members
+// rule: docs/design/vips/0014-effect-modules-in-scope.md#3ee152ead0543b39
+// VIP-14 local-Effect-members
+// rule: docs/design/vips/0014-effect-modules-in-scope.md#dbf19240080334cc

@@ -1,0 +1,4 @@
+// expect: EK0501
+export const value=try Effect.succeed(1)
+// VIP-26 ordinary-top-level-rejects-try
+// rule: docs/design/vips/0026-top-level-and-main.md#9b77f698158ab897

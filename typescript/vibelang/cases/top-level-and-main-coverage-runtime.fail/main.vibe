@@ -1,0 +1,4 @@
+// expect: TS2304
+// VIP-26 platform-runtime-requires-an-import
+export const runner=NodeRuntime.runMain
+// rule: docs/design/vips/0026-top-level-and-main.md#6fe6b872cde3e319

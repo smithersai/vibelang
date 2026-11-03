@@ -12,4 +12,4 @@ Effect.uninterruptible===Effect.uninterruptible,
 Effect.void===Effect.void,
 Effect.when===Effect.when
 ]
-export function main(){const empty:undefined=undefined;return Effect.succeed([collisions,empty===undefined])}
+export function main(){const empty:undefined=undefined;return Effect.succeed([collisions,typeof empty,empty===undefined])}

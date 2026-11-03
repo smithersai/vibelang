@@ -1,0 +1,8 @@
+// expect: EK0401
+// VIP-26 explicit-source-throw-owner: initializer
+class Fail { static value = (() => { throw new Error("stop") })() }
+export const value=Fail
+// VIP-26 source-owner-neighbourhood
+// rule: docs/design/vips/0026-top-level-and-main.md#1fa8227371c14776
+// VIP-26 nested-synchronous-initializer-owner
+// rule: docs/design/vips/0026-top-level-and-main.md#f88a96e4128b2a9e

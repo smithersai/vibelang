@@ -251,3 +251,5 @@ test("formatVibe formats with the repository's dprint where the nearest dprint c
     rmSync(root, { recursive: true, force: true })
   }
 })
+// VIP-32 upgrade-before-conversion
+// rule: docs/design/vips/0032-effect-version.md#c5b6290f216dbea5

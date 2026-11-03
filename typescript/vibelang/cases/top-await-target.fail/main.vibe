@@ -1,3 +1,5 @@
 // expect: TS1378
 export {}
 const value = await -1
+// VIP-26 supported-target-required
+// rule: docs/design/vips/0026-top-level-and-main.md#62576f853a8abb03

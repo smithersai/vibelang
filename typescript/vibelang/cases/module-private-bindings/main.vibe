@@ -3,3 +3,5 @@ import "./a.vibe"
 import "./b.vibe"
 // expect-result: 0
 export effect function main() { return 0 }
+// VIP-26 external-module-without-prelude
+// rule: docs/design/vips/0026-top-level-and-main.md#7dfa949b3adf3b16

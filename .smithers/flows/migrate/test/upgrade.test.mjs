@@ -575,3 +575,5 @@ test("patchState holds for generated patches: applies before, contained after, c
     assert.equal(patchState(diff, file(reworded)), "conflict", message)
   }
 })
+// VIP-32 simultaneous-existing-VibeLang-upgrade
+// rule: docs/design/vips/0032-effect-version.md#a8bf35e3b7a8a1df

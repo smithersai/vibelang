@@ -15,3 +15,5 @@ export effect function main() {
     new HostHeaders({ b: "2" }).get("b")
   ]
 }
+// VIP-14 explicit-collision-import
+// rule: docs/design/vips/0014-effect-modules-in-scope.md#bdf4ea17d204700b

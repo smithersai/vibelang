@@ -1,0 +1,9 @@
+// expect: TS2552 TS2339
+import {Effect as Explicit,Array as Arr} from "effect"
+export const ok=Arr.head([1])
+export const bad=Effect.Array
+export const explicitBad=Explicit.Array
+// VIP-14 disabled-implicit-qualifier
+// rule: docs/design/vips/0014-effect-modules-in-scope.md#571c1372931c9190
+// VIP-14 disabled-implicit-qualifier
+// rule: docs/design/vips/0014-effect-modules-in-scope.md#50c882fd97612f8b

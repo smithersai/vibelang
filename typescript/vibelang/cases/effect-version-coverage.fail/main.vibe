@@ -1,0 +1,8 @@
+// expect: EK3201
+export const value=1
+// VIP-32 exact-pin-diagnostic
+// rule: docs/design/vips/0032-effect-version.md#1cc56090e3b485bb
+// VIP-32 exact-pin-diagnostic
+// rule: docs/design/vips/0032-effect-version.md#d89942644af3abf9
+// VIP-32 exact-pin-diagnostic
+// rule: docs/design/vips/0032-effect-version.md#9359896124660c28

@@ -30,3 +30,7 @@ export const result = [
 ]
 
 // VIP-33 Effect Worker namespace shadows the host constructor; rule: docs/design/vips/0033-platform-stdlib.md#2284fe2d24cd55d5
+// VIP-14 subpath-namespaces
+// rule: docs/design/vips/0014-effect-modules-in-scope.md#3c05b98163877c1a
+// VIP-14 subpath-namespaces
+// rule: docs/design/vips/0014-effect-modules-in-scope.md#2181270b1ea182af

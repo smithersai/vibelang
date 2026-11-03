@@ -11,3 +11,5 @@ if (answer > 0) { label = await Promise.resolve("done") }
 export effect function main(): readonly [number, number, string]!never {
   return [answer, steps, label] as const
 }
+// VIP-26 native-top-level-await
+// rule: docs/design/vips/0026-top-level-and-main.md#9b77f698158ab897

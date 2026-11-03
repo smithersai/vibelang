@@ -1,0 +1,18 @@
+// VIP-28 four-parameters-hygienic-helper
+type $Outcome$Definition=string
+type $Outcome$Definition$2=number
+type $Outcome$Definition$3=boolean
+export data Outcome<A,B,C,D>{Value{a:A;b:B;c:C;d:D};Empty}
+export data Box<A>{Value{value:A}}
+type DefaultBox=Box<string>
+type StrBox=Outcome<string,number,boolean,bigint>
+export effect function main(){
+ const defaulted:DefaultBox=Box.Value({value:"default"})
+ const x:StrBox=Outcome.Value({a:"x",b:2,c:true,d:3n})
+ const user:[$Outcome$Definition,$Outcome$Definition$2,$Outcome$Definition$3]=["user",4,true]
+ return [x.a,x.b,x.c,String(x.d),user,defaulted.value]
+}
+// VIP-28 four-parameters-hygienic-helper
+// rule: docs/design/vips/0028-generic-data.md#eb18171eb15becd6
+// VIP-28 four-parameters-hygienic-helper
+// rule: docs/design/vips/0028-generic-data.md#8fcc5bf9c4264110

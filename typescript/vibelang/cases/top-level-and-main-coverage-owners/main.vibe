@@ -1,0 +1,17 @@
+import {foreign} from "./foreign.js"
+const awaited=await Promise.resolve(3)
+let caught=""
+try{foreign()}catch{caught="foreign"}
+async function rejected(){throw new Error("async")}
+const cold=effect {throw "typed"}
+export effect function main(){
+ const rejectedExit=try Effect.exit(Effect.tryPromise(()=>rejected()))
+ const failedExit=try Effect.exit(cold)
+ return [awaited,caught,Exit.isFailure(rejectedExit),Exit.isFailure(failedExit)]
+}
+// VIP-26 native-Promise-and-nested-owners
+// rule: docs/design/vips/0026-top-level-and-main.md#ab4f4c258827723e
+// VIP-26 native-Promise-and-nested-owners
+// rule: docs/design/vips/0026-top-level-and-main.md#38d7bcf39288402e
+// VIP-26 native-Promise-and-nested-owners
+// rule: docs/design/vips/0026-top-level-and-main.md#5f6774e006ba1d31

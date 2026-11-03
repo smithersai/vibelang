@@ -1,0 +1,8 @@
+// expect: TS2304
+export const unavailable = provide
+// VIP-6 keyword-collision-removes-the-implicit-variable
+// rule: docs/design/vips/0006-effect-globals.md#a49d366ecd9b4611
+// VIP-6 keyword-collision-removes-the-implicit-variable
+// rule: docs/design/vips/0006-effect-globals.md#dac0c996ddadaf33
+// VIP-12 keyword-collision-removes-the-implicit-variable
+// rule: docs/design/vips/0012-provide.md#1f7f431dd1a639f6

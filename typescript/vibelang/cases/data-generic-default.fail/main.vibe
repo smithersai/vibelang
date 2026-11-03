@@ -1,5 +1,11 @@
 // expect: EK2803
 data Box<A = string> { Value { value: A } }
 data Pair<A, B = number> { Value { first: A; second: B } }
+// VIP-28 no-defaults-use-a-type-alias
+// rule: docs/design/vips/0028-generic-data.md#f5c8ea5db0d4a804
+// VIP-28 no-defaults-use-a-type-alias
+// rule: docs/design/vips/0028-generic-data.md#598126fd951d6b40
+// VIP-28 no-defaults-use-a-type-alias
+// rule: docs/design/vips/0028-generic-data.md#4481e06d79c266a1
 
 // Appendix B: EK2803 — spec-rule: docs/design/src/900-appendices.md#f9ab808cd94e1099

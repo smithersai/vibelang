@@ -218,5 +218,65 @@
       "reference": "docs/design/vips/0006-effect-globals.md: Status: accepted by Will, 2026-10-28. This cites existing published authority, not a new approval."
     },
     "reason": "The existing fixture program is byte-identical after comment removal. Accepted VIP-6 retires the special hatch arity diagnostic in favor of ordinary Effect functions and native argument errors; this changes existing EK4405 ownership to TS2345 without introducing a newly refused program."
+  },
+  {
+    "code": "EK2801",
+    "case": "typescript/vibelang/cases/data-parameter-limit-code.fail",
+    "vip": "VIP-28",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0028-generic-data.md: Status: accepted, 2026-10-29, under Will's standing approval of recommendations (\"assume I accept now. I will interrupt you if I need to\"). This cites existing published authority, not a new approval."
+    },
+    "reason": "Only rule-citation comments and an expected message substring were added. The executable fixture and existing diagnostics are unchanged."
+  },
+  {
+    "code": "EK2126",
+    "case": "typescript/vibelang/cases/data-parameter-limit-code.fail",
+    "vip": "VIP-28",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0028-generic-data.md: Status: accepted, 2026-10-29, under Will's standing approval of recommendations (\"assume I accept now. I will interrupt you if I need to\"). This cites existing published authority, not a new approval."
+    },
+    "reason": "Only rule-citation comments and an expected message substring were added. The executable fixture and existing diagnostics are unchanged."
+  },
+  {
+    "code": "EK1401",
+    "case": "typescript/vibelang/cases/effect-ambiguous-namespaces.fail",
+    "vip": "VIP-14",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0014-effect-modules-in-scope.md: Status: accepted by Will, 2026-10-28. This cites existing published authority, not a new approval."
+    },
+    "reason": "Only coverage witness comments were appended. The executable fixture and existing ambiguity diagnostic are unchanged."
+  },
+  {
+    "code": "TS2552",
+    "case": "typescript/vibelang/cases/effect-modules-disabled.fail",
+    "vip": "VIP-14",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0014-effect-modules-in-scope.md: Status: accepted by Will, 2026-10-28. This cites existing published authority, not a new approval."
+    },
+    "reason": "Only coverage witness comments were appended. The executable fixture and existing disabled-globals diagnostics are unchanged."
+  },
+  {
+    "code": "TS2304",
+    "case": "typescript/vibelang/cases/effect-modules-disabled.fail",
+    "vip": "VIP-14",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0014-effect-modules-in-scope.md: Status: accepted by Will, 2026-10-28. This cites existing published authority, not a new approval."
+    },
+    "reason": "Only coverage witness comments were appended. The executable fixture and existing disabled-globals diagnostics are unchanged."
+  },
+  {
+    "code": "TS2503",
+    "case": "typescript/vibelang/cases/effect-modules-disabled.fail",
+    "vip": "VIP-14",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0014-effect-modules-in-scope.md: Status: accepted by Will, 2026-10-28. This cites existing published authority, not a new approval."
+    },
+    "reason": "Only coverage witness comments were appended. The executable fixture and existing disabled-globals diagnostics are unchanged."
   }
 ]

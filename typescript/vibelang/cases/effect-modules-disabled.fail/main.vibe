@@ -2,3 +2,5 @@
 export const disabledNamespaces = [Option, Hex, Schema, Effect, Layer, flow, Scope, pipe]
 export type Optional = Option.Option<number>
 export const escaped = Op\u0074ion
+// VIP-14 configurable-modules
+// rule: docs/design/vips/0014-effect-modules-in-scope.md#3bb89b00c090d8f6

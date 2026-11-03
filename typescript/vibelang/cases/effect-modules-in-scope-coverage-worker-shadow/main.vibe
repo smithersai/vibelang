@@ -1,0 +1,7 @@
+import {Worker as ImportedWorker} from "./worker.js"
+export effect function main(){
+ const Worker={makePool:(n:number):number=>n+1}
+ return [Worker.makePool(1),new ImportedWorker(2).n]
+}
+// VIP-14 Worker-shadowing
+// rule: docs/design/vips/0014-effect-modules-in-scope.md#f7f323b00b42a3a4

@@ -1,0 +1,28 @@
+// VIP-28 four-parameters-hygienic-helper
+type $Outcome$Definition=string
+type $Outcome$Definition$2=number
+type $Outcome$Definition$3=boolean
+export data Outcome<A,B,C,D>{Value{a:A;b:B;c:C;d:D};Empty}
+export data Box<A>{Value{value:A}}
+type DefaultBox=Box<string>
+type StrBox=Outcome<string,number,boolean,bigint>
+export effect function main(){
+ const defaulted:DefaultBox=Box.Value({value:"default"})
+ const x:StrBox=Outcome.Value({a:"x",b:2,c:true,d:3n})
+ const user:[$Outcome$Definition,$Outcome$Definition$2,$Outcome$Definition$3]=["user",4,true]
+ return [x.a,x.b,x.c,String(x.d),user,defaulted.value]
+}
+// VIP-28 four-parameters-hygienic-helper
+// rule: docs/design/vips/0028-generic-data.md#32de7834f3ba19a3
+// VIP-28 four-parameters-hygienic-helper
+// rule: docs/design/vips/0028-generic-data.md#2e384c51dbec23d2
+// VIP-28 four-parameters-hygienic-helper
+// rule: docs/design/vips/0028-generic-data.md#865661bf605ba10f
+// VIP-28 four-parameters-hygienic-helper
+// rule: docs/design/vips/0028-generic-data.md#ebff7528db9db6de
+// VIP-28 four-parameters-hygienic-helper
+// rule: docs/design/vips/0028-generic-data.md#968f6627cca4e35b
+// VIP-28 four-parameters-hygienic-helper
+// rule: docs/design/vips/0028-generic-data.md#ce83e32260759663
+// VIP-28 four-parameters-hygienic-helper
+// rule: docs/design/vips/0028-generic-data.md#aaa2f2da31c09042

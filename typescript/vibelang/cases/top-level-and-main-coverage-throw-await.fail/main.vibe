@@ -1,0 +1,8 @@
+// expect: EK0401
+// VIP-26 explicit-source-throw-owner: await
+await Promise.resolve(1)
+throw new Error("stop")
+// VIP-26 top-level-await-does-not-admit-throw
+// rule: docs/design/vips/0026-top-level-and-main.md#fc13f460ce2dc77f
+// VIP-26 source-owner-neighbourhood
+// rule: docs/design/vips/0026-top-level-and-main.md#1fa8227371c14776

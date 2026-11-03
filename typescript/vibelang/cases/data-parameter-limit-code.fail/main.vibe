@@ -4,6 +4,12 @@ data Five<A, B, C, D, E> { Empty }
 data Constrained<A extends string> { Value { readonly value: A } }
 data Both<A, B, C, D, E extends string> { Empty }
 export {}
+// VIP-28 parameter-limit-and-no-constraints
+// rule: docs/design/vips/0028-generic-data.md#401c1c5122798c77
+// VIP-28 parameter-limit-and-no-constraints
+// rule: docs/design/vips/0028-generic-data.md#698d7b6fa614cd8f
+// VIP-28 parameter-limit-and-no-constraints
+// rule: docs/design/vips/0028-generic-data.md#35f567da491ab100
 
 // Appendix B: EK2126 — spec-rule: docs/design/src/900-appendices.md#1c3aa6fe9a18cbf0
 // Appendix B: EK2801 — spec-rule: docs/design/src/900-appendices.md#ebbee38dc078949c

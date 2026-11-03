@@ -1,0 +1,1 @@
+cov-modules VIP-26 compiler emits an implicit runner for exported effect main

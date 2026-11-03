@@ -12,3 +12,11 @@ export {}
 // Spec rule: docs/design/src/005-services.md#645c2e2b7e4edb8f
 // Chapter 005: ambiguous Model/Prompt/Utils require EK1401 and every exporter-specific import suggestion; explicit namespace imports compile (effect-ambiguous-namespaces.fail).
 // Spec rule: docs/design/src/005-services.md#7e02ee150b20b9a5
+// VIP-14 all-ambiguous-exporter-repairs
+// rule: docs/design/vips/0014-effect-modules-in-scope.md#f7d5ccb16e0c6a1e
+// VIP-14 all-ambiguous-exporter-repairs
+// rule: docs/design/vips/0014-effect-modules-in-scope.md#169168ea1cb7706a
+// VIP-14 all-ambiguous-exporter-repairs
+// rule: docs/design/vips/0014-effect-modules-in-scope.md#88c8b5f141754731
+// VIP-14 all-ambiguous-exporter-repairs
+// rule: docs/design/vips/0014-effect-modules-in-scope.md#fd6567f3acfc9afa

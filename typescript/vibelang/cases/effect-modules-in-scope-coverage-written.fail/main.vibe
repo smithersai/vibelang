@@ -1,0 +1,13 @@
+// expect: TS2339
+import {Effect,Array as Arr} from "effect"
+import * as Alias from "effect/Effect"
+export const ok=Arr.head([1,2])
+export const actual=Effect.succeed(3)
+export const bad=Effect.Array
+export const aliased=Alias.Array
+// VIP-14 written-Effect-namespace
+// rule: docs/design/vips/0014-effect-modules-in-scope.md#71bbe865e952070f
+// VIP-14 written-Effect-namespace
+// rule: docs/design/vips/0014-effect-modules-in-scope.md#4071d2b7fb16c6b2
+// VIP-14 written-Effect-namespace
+// rule: docs/design/vips/0014-effect-modules-in-scope.md#e4f141e4e4f18f5e

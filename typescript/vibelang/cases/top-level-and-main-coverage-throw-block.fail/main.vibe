@@ -1,0 +1,5 @@
+// expect: EK0401
+// VIP-26 explicit-source-throw-owner: block
+{ throw new Error("stop") }
+// VIP-26 source-owner-neighbourhood
+// rule: docs/design/vips/0026-top-level-and-main.md#1fa8227371c14776

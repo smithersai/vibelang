@@ -1,0 +1,13 @@
+// expect: EK0401
+// VIP-26 explicit-source-throw-owner: caught
+try { throw new Error("stop") } catch {}
+// VIP-26 explicit-source-throw-not-legalized-by-catch
+// rule: docs/design/vips/0026-top-level-and-main.md#0dcd4889755258ef
+// VIP-26 explicit-source-throw-not-legalized-by-catch
+// rule: docs/design/vips/0026-top-level-and-main.md#ef634a220b53a636
+// VIP-26 explicit-source-throw-not-legalized-by-catch
+// rule: docs/design/vips/0026-top-level-and-main.md#5c1ade05008285dc
+// VIP-26 explicit-source-throw-not-legalized-by-catch
+// rule: docs/design/vips/0026-top-level-and-main.md#3ecd89db10b89198
+// VIP-26 source-owner-neighbourhood
+// rule: docs/design/vips/0026-top-level-and-main.md#1fa8227371c14776

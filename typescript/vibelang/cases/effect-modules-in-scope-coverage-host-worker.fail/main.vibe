@@ -1,0 +1,11 @@
+// expect: EK4402 TS2351
+export const a=globalThis.Worker
+export const b=globalThis["Worker"]
+export const c=self.Worker
+export const d=new Worker("worker.js")
+// VIP-14 host-versus-namespace-Worker
+// rule: docs/design/vips/0014-effect-modules-in-scope.md#5d772fcda2e37e5e
+// VIP-14 host-versus-namespace-Worker
+// rule: docs/design/vips/0014-effect-modules-in-scope.md#8d3cca131dbe1efa
+// VIP-14 host-versus-namespace-Worker
+// rule: docs/design/vips/0014-effect-modules-in-scope.md#62a0ed0204758c93

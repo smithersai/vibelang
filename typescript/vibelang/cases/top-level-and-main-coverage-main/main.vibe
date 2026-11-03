@@ -1,0 +1,7 @@
+// VIP-26 main-is-ordinary
+export let calls=0
+export effect function main(){calls++;try Console.log("manual main");return 7}
+// VIP-26 main-is-ordinary
+// rule: docs/design/vips/0026-top-level-and-main.md#657b0febacc88ea2
+// VIP-26 main-is-ordinary
+// rule: docs/design/vips/0026-top-level-and-main.md#f60cc1f65858f126

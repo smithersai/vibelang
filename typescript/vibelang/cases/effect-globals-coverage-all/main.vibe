@@ -223,3 +223,5 @@ zipWith===Native.Effect.zipWith
 export effect function main(){return globals}
 // VIP-6 every-Effect-export-is-a-global
 // rule: docs/design/vips/0006-effect-globals.md#e7c1dbe351b53832
+// VIP-6 widened-Effect-export-prelude
+// rule: docs/design/vips/0006-effect-globals.md#b21a02d607ee9e16

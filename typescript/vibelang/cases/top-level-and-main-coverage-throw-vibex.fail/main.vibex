@@ -1,0 +1,7 @@
+// expect: EK0401
+// VIP-26 explicit-source-throw-owner: vibex
+try { throw new Error("stop") } catch {}
+// VIP-26 vibex-uses-the-same-source-rule
+// rule: docs/design/vips/0026-top-level-and-main.md#c36c33ee2ee19cf5
+// VIP-26 source-owner-neighbourhood
+// rule: docs/design/vips/0026-top-level-and-main.md#1fa8227371c14776
