@@ -257,3 +257,10 @@ without them installs nothing extra.
 
 
 A staged migration toolchain can remain local while a public package's production dependencies name registry releases. Setup records that split in `.vibelang/toolchain-publication.json`: npm gets development `file:` pins, while pnpm, Bun and Yarn get local overrides or resolutions. Public source-child loader dependencies are included. Check `releaseRequired` and publish those exact versions before distributing the package; setup does not publish them. Switching to `--vibelang-version` removes the managed local pins.
+
+## Failed toolchain migrations
+
+The migrate flow records the candidate's finishing pass in
+`baseline/logs/vip-finish.json`. A `failed`, `checking` or `fixing` receipt
+cannot become a new baseline. The upgrade stops before the candidate build
+after a refused migration, even if its partial edits make ordinary checks pass.

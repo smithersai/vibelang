@@ -117,9 +117,9 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | **Build and test** | **13,000** |
 | [vibelang CLI](../setup/vibelang-cli.md) | 10,000 |
 | [Vite and Vitest](../setup/vite.md) | 3,100 |
-| **Format and lint** | **7,400** |
+| **Format and lint** | **7,500** |
 | [Format with dprint](../setup/formatting.md) | 2,500 |
-| [Developer tools](../setup/developer-tools.md) | 4,900 |
+| [Developer tools](../setup/developer-tools.md) | 5,000 |
 | **Frameworks** | **12,000** |
 | [React](../setup/react.md) | 2,100 |
 | [React Native and Metro](../setup/react-native.md) | 450 |
@@ -269,7 +269,7 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [Building an HTTP API](113-building-an-http-api.md) | 1,600 |
 | [VibeLang for Effect users](114-vibelang-for-effect-users.md) | 6,400 |
 | [Cheat sheet](115-cheat-sheet.md) | 11,000 |
-| [Pattern matching with match and is](116-match-and-is.md) | 7,800 |
+| [Pattern matching with match and is](116-match-and-is.md) | 7,900 |
 | [Diagnostic code map](diagnostic-code-map.md) | 2,700 |
 | [Experimental platform APIs](118-experimental-platform-apis.md) | 6,600 |
 | **All 8 pages** | **39,000** |
