@@ -289,6 +289,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - The `EK1202` provider-separator fix could flatten line breaks inside a comment. It now leaves that site unchanged and still joins whitespace around comments that fit on one line.
 
+- Nested `do` expressions hid forbidden loop-head jumps and reported parameter `var` declarations as `EK0204`; they now report `EK0205` and `EK0203` exactly once across nested blocks.
+
 - Published API checks rejected identical JSON exports as non-modules; JSON assets now retain their `resolveJsonModule` types, and real type changes still fail.
 
 - Source-child loader wiring introduced a `fileURLToPath` import alias and failed repositories’ native import policies. Setup now uses a namespace import and refreshes its own previously generated helpers while preserving manually observed bindings.

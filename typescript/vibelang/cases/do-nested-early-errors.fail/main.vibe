@@ -1,0 +1,5 @@
+// expect: EK0205 EK0205 EK0205 EK0203
+export function breaks(): void { while (do { (do { break; true }) }) {} }
+export function continues(): void { while (do { (do { continue; true }) }) {} }
+export function labeled(): void { outer: while (do { (do { break outer; true }) }) {} }
+export function parameter(x = do { (do { var v = 1; v }) }): unknown { return x }

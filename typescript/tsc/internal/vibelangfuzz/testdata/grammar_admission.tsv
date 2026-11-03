@@ -767,7 +767,6 @@ parser/vibelang_do.go:isSynthesizedArrow	admission:do	900-appendices.md,002-runn
 parser/vibelang_do.go:isTryOperation	admission:do	900-appendices.md,002-running.md	support	VIP-2: pinned TC39 do-expression lowering and completion support; introduces no additional syntax
 parser/vibelang_do.go:jumpTargetWithin	admission:do	900-appendices.md,002-running.md	support	VIP-2: pinned TC39 do-expression lowering and completion support; introduces no additional syntax
 parser/vibelang_do.go:keywordOf	admission:do	900-appendices.md,002-running.md	support	VIP-2: pinned TC39 do-expression lowering and completion support; introduces no additional syntax
-parser/vibelang_do.go:loopHeadOf	admission:do	900-appendices.md,002-running.md	support	VIP-2: pinned TC39 do-expression lowering and completion support; introduces no additional syntax
 parser/vibelang_do.go:VibeLangDoHeadBinding	admission:do	900-appendices.md,002-running.md	support	VIP-2: maps a do lowering's generated loop-head cell back to its source ForDeclaration binding for checking; introduces no additional syntax
 parser/vibelang_do.go:doLowering.loopHead	admission:do	900-appendices.md,002-running.md	support	VIP-2: evaluates a do in a lexical for-in/of head in TC39 TDZ order (ForIn/OfHeadEvaluation); introduces no additional syntax
 parser/vibelang_do.go:setExpression	admission:do	900-appendices.md,002-running.md	support	VIP-2: pinned TC39 do-expression lowering and completion support; introduces no additional syntax
@@ -838,3 +837,7 @@ parser/vibelang_effect_channels.go:VibeLangEffectChannelParts	admission:effect-t
 parser/vibelang.go:Parser.isVibeLangServiceCallSignature	admission:service	900-appendices.md#ServiceDeclaration	recovery	VIP-9 recovers a forbidden call signature for EK0902; it is not an admitted service member
 parser/vibelang_service_syntax.go:Parser.vibelangServiceError	admission:service	900-appendices.md#ServiceDeclaration,005-services.md	support	VIP-9: shared EK0906/EK0907/EK0908 parser diagnostic writer; it admits no declaration form
 parser/vibelang_service_syntax.go:Parser.isVibeLangAmbientService	admission:service	900-appendices.md#ServiceDeclaration,005-services.md	support	VIP-9: explicit or inherited native ambient context rejects a custom service with EK0907; ordinary ambient TypeScript stays native
+parser/vibelang_do.go:Parser.loopHeadOf	admission:do	900-appendices.md,002-running.md	support	VIP-2: pinned TC39 do-expression lowering and completion support; introduces no additional syntax
+parser/vibelang_do.go:Parser.isDoArrow	admission:do	900-appendices.md,002-running.md	support	VIP-2 / RC-32: identify transparent do arrows for source early errors; introduces no additional syntax
+parser/vibelang_do.go:forEachDoStatementThrough	admission:do	900-appendices.md,002-running.md	support	VIP-2 / RC-32: traverse nested do blocks for early errors while stopping at source functions and classes
+parser/vibelang_do.go:Parser.doOfArrow	admission:do	900-appendices.md,002-running.md	support	VIP-2 / RC-32: distinguish source do owners from transparent native match wrappers for early errors

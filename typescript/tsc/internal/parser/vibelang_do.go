@@ -449,9 +449,32 @@ func isBreakStatement(s *ast.Node, labels []string) bool {
 // forEachDoStatement calls f for each node of block's statements, not
 // entering functions or classes.
 func forEachDoStatement(block *ast.Node, f func(*ast.Node)) {
+	forEachDoStatementThrough(block, f, nil)
+}
+
+// doOfArrow recognizes the parser arrows for do and native match expressions.
+func (p *Parser) doOfArrow(fn *ast.Node) *doExpression {
+	if fn == nil || fn.Kind != ast.KindArrowFunction {
+		return nil
+	}
+	call := fn.Parent
+	for call != nil && call.Kind == ast.KindParenthesizedExpression {
+		call = call.Parent
+	}
+	d := p.vibelangDos[call]
+	if d != nil && d.arrow == fn {
+		return d
+	}
+	return nil
+}
+
+func (p *Parser) isDoArrow(fn *ast.Node) bool { return p.doOfArrow(fn) != nil }
+
+// Early errors see source execution boundaries, including nested do blocks.
+func forEachDoStatementThrough(block *ast.Node, f func(*ast.Node), transparent func(*ast.Node) bool) {
 	var visit func(*ast.Node) bool
 	visit = func(n *ast.Node) bool {
-		if ast.IsFunctionLike(n) || ast.IsClassLike(n) {
+		if ast.IsClassLike(n) || ast.IsFunctionLike(n) && (transparent == nil || !transparent(n)) {
 			return false
 		}
 		f(n)
@@ -477,14 +500,18 @@ func jumpTargetWithin(jump, within *ast.Node) bool {
 	return false
 }
 
-// loopHeadOf returns the loop whose head holds node, crossing no function.
-func loopHeadOf(node *ast.Node) *ast.Node {
+// loopHeadOf returns the nearest loop whose head holds node, crossing no
+// source function or intervening loop body.
+func (p *Parser) loopHeadOf(node *ast.Node) *ast.Node {
 	for child, n := node, node.Parent; n != nil; child, n = n, n.Parent {
-		if ast.IsFunctionLike(n) || ast.IsClassLike(n) {
+		if ast.IsClassLike(n) || ast.IsFunctionLike(n) && !p.isDoArrow(n) {
 			return nil
 		}
-		if ast.IsIterationStatement(n, false) && child != n.Statement() {
-			return n
+		if ast.IsIterationStatement(n, false) {
+			if child != n.Statement() {
+				return n
+			}
+			return nil
 		}
 	}
 	return nil
@@ -493,16 +520,23 @@ func loopHeadOf(node *ast.Node) *ast.Node {
 // checkDoLoopHead reports a jump that leaves a do expression in a loop's
 // head unlabeled, or targets that loop: TC39 bans both.
 func (p *Parser) checkDoLoopHead(d *doExpression) {
-	loop := loopHeadOf(d.call)
+	loop := p.loopHeadOf(d.call)
 	if loop == nil {
 		return
+	}
+	// An enclosing source do in the same head visits this body and owns
+	// its diagnostics. A synthetic match is transparent, not an owner.
+	for n := d.call.Parent; n != nil && n != loop; n = n.Parent {
+		if outer := p.doOfArrow(n); outer != nil && !outer.match {
+			return
+		}
 	}
 	outer := loop
 	for ast.IsLabeledStatement(outer.Parent) {
 		outer = outer.Parent
 	}
 	labels, _ := ast.CollectLabelChain(outer)
-	forEachDoStatement(d.block, func(n *ast.Node) {
+	forEachDoStatementThrough(d.block, func(n *ast.Node) {
 		if n.Kind != ast.KindBreakStatement && n.Kind != ast.KindContinueStatement || jumpTargetWithin(n, d.block) {
 			return
 		}
@@ -513,7 +547,7 @@ func (p *Parser) checkDoLoopHead(d *doExpression) {
 		if label == nil || targetsLoop {
 			p.doError(p.skipRangeTrivia(n.Loc), DoLoopHeadCode, DoLoopHeadMessage, keywordOf(n))
 		}
-	})
+	}, p.isDoArrow)
 }
 
 func keywordOf(jump *ast.Node) string {
@@ -526,8 +560,14 @@ func keywordOf(jump *ast.Node) string {
 // checkDoParameterVar reports var in a do expression in a parameter list,
 // and reports whether the do expression stands in one.
 func (p *Parser) checkDoParameterVar(d *doExpression) bool {
-	inParameter := false
-	for n := d.call.Parent; n != nil && !ast.IsFunctionLike(n) && !ast.IsClassLike(n); n = n.Parent {
+	inParameter, nested := false, false
+	for n := d.call.Parent; n != nil; n = n.Parent {
+		if ast.IsClassLike(n) || ast.IsFunctionLike(n) && !p.isDoArrow(n) {
+			break
+		}
+		if outer := p.doOfArrow(n); outer != nil && !outer.match {
+			nested = true
+		}
 		if n.Kind == ast.KindParameter {
 			inParameter = true
 			break
@@ -536,11 +576,15 @@ func (p *Parser) checkDoParameterVar(d *doExpression) bool {
 	if !inParameter {
 		return false
 	}
-	forEachDoStatement(d.block, func(n *ast.Node) {
-		if n.Kind == ast.KindVariableDeclarationList && n.Flags&ast.NodeFlagsBlockScoped == 0 {
-			p.doError(p.skipRangeTrivia(n.Loc), DoParameterVarCode, DoParameterVarMessage)
-		}
-	})
+	// The outermost do owns each var diagnostic. All nested do blocks still
+	// know they are in a parameter, so EK0204 does not duplicate EK0203.
+	if !nested {
+		forEachDoStatementThrough(d.block, func(n *ast.Node) {
+			if n.Kind == ast.KindVariableDeclarationList && n.Flags&ast.NodeFlagsBlockScoped == 0 {
+				p.doError(p.skipRangeTrivia(n.Loc), DoParameterVarCode, DoParameterVarMessage)
+			}
+		}, p.isDoArrow)
+	}
 	return true
 }
 
