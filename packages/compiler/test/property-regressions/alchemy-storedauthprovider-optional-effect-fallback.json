@@ -1,0 +1,11 @@
+{
+  "property": "MigrationOptionalEffectFallback",
+  "rule": "A quick fix is offered only when it preserves evaluation order, coldness, types, comments, and declaration output",
+  "input": {
+    "home": "arrow",
+    "access": "property",
+    "fallback": "values",
+    "token": "fallback"
+  },
+  "sourceCode": "import { Effect } from \"effect\"\n/** Completes stored credentials lazily. */\nexport const run = (config: { complete?: (values: { token: string }) => Effect.Effect<{ token: string }> | undefined }, values: { token: string }) => Effect.gen(function* () {\n  const complete = config.complete?.(values) ?? Effect.succeed(values)\n  return yield* complete\n})\n"
+}
