@@ -497,3 +497,5 @@ typescript/vibelang/cases/catch-mixed-precedence.fail/main.vibe:17:24 lambda: pl
 typescript/vibelang/cases/catch-mixed-precedence.fail/main.vibe:18:23 lambda: plain fallback -> effectFn table # VIP-5: the literal receives handler context while its attached computed member remains invalid.
 typescript/vibelang/cases/catch-mixed-precedence.fail/main.vibe:19:25 lambda: plain fallback -> effectFn table # VIP-5: the literal receives handler context while its attached invocation remains invalid.
 typescript/vibelang/cases/vip5-coverage-association/main.vibe:6:92 lambda: plain fallback -> effectFn table # VIP-5: the second literal is a handler in the left-associated catch chain; the first plain result stays data.
+
+typescript/vibelang/cases/match-vip7-for-head-copies/main.vibe:12:108 lambda: choice fallback -> plain table # Coverage twin now calls qualified Effect.promise; its callback is the native plain Promise thunk (previous source column 114).
