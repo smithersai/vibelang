@@ -2738,9 +2738,9 @@ typescript/vibelang/cases/match-class-patterns/main.vibe:129:60 byname program a
 typescript/vibelang/cases/match-class-patterns/main.vibe:129:72 lambda plain table
 typescript/vibelang/cases/match-class-patterns/main.vibe:130:60 byname program annotation
 typescript/vibelang/cases/match-class-patterns/main.vibe:94:23 lambda dual fallback
-typescript/vibelang/cases/match-date-brand-r5/main.vibe:3:9 lambda dual fallback
-typescript/vibelang/cases/match-date-brand-r5/main.vibe:4:9 lambda dual fallback
 typescript/vibelang/cases/match-date-brand-r5/main.vibe:5:9 lambda dual fallback
+typescript/vibelang/cases/match-date-brand-r5/main.vibe:6:9 lambda dual fallback
+typescript/vibelang/cases/match-date-brand-r5/main.vibe:7:9 lambda dual fallback
 typescript/vibelang/cases/match-date-prototypes/main.vibe:11:23 lambda dual fallback
 typescript/vibelang/cases/match-effect-aliases/main.vibe:26:112 lambda plain fallback
 typescript/vibelang/cases/match-effect-aliases/main.vibe:26:154 lambda dual fallback

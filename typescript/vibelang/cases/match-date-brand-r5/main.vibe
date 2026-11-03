@@ -1,3 +1,5 @@
+// VIP-7, detail 67a: Date patterns use the current prototype chain,
+// so a forged Date prototype matches in bare and extractor patterns.
 const forged: unknown = Object.create(Date.prototype);
 export const result = [
   match (forged) { when Date: true; default: false; },
