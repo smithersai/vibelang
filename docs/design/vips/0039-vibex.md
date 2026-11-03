@@ -189,8 +189,8 @@ src/Profile.tsx    ->  dist/Profile.jsx, dist/Profile.d.ts
 | --- | --- |
 | `./App`, `./App.js` | `App.ts`, `App.tsx`, `App.vibe`, `App.vibex`, `App.d.ts`, then JavaScript |
 | `./App.jsx` | `App.tsx`, `App.ts`, `App.vibex`, `App.vibe`, `App.d.ts`, `App.jsx`, `App.js` |
-| `./App.vibe` | `App.vibe`, `App.d.ts` |
-| `./App.vibex` | `App.vibex`, `App.d.ts` |
+| `./App.vibe` | `App.vibe`, `App.vibex`, `App.d.ts` |
+| `./App.vibex` | `App.vibex`, `App.vibe`, `App.d.ts` |
 
 These orders apply after TypeScript's `exports`, `imports`, `paths`, `moduleSuffixes` and resolution-mode rules select a lookup; NodeNext still requires extensions where `.tsx` does. A live source beats its sidecar. `App.vibe` beside `App.vibex`, or `App.tsx` beside `App.vibex`, get TypeScript's TS5055/TS5056 only where the selected inputs write the same output path, as `App.ts` beside `App.tsx` does: under `"jsx": "preserve"` with declarations off, `App.vibe` and `App.vibex` write `App.js` and `App.jsx` and are both admitted; with declarations on both write `App.d.ts`, and under `"jsx": "react"` both write `App.js`, so those collide. Their compatibility sidecars stay distinct, `App.d.vibe.ts` and `App.d.vibex.ts`.
 
@@ -377,3 +377,4 @@ Accept. `.vibex` is one extension that selects `.tsx`'s language variant plus Vi
 The proposals page lists "JSX source files" as not in VibeLang: components live in `.tsx` files that call `.vibe` functions. The earlier design left `.vibex` as a candidate that must not imply a stricter mode (research note D21). 45 opencode (Solid, `class=`, `jsxImportSource` from tsconfig), 218 t3code (React, `react-jsx`, `@effect/atom-react`) and 4 foldkit Effect modules are `.tsx` and can't become VibeLang today.
 
 - **Amended 2026-11-03: declaration specifiers follow the `.tsx` twin.** Ordinary package declarations use the native twin’s relative specifiers: `./user.vibe` is declared as `./user.ts` and `./App.vibex` as `./App.tsx`; written `./user.js`, `./App.jsx`, `./user` and native `./plain.ts` keep their spelling. Synthesized import types use TypeScript’s spelling for the twin under the same imports and tsconfig. Compatibility sidecars instead keep VibeLang source references such as `./user.vibe` and `./App.vibex`, relocated to the selected compatibility declaration when necessary, to preserve source identity. Neither `allowImportingTsExtensions` nor `rewriteRelativeImportExtensions` rewrites declaration specifiers; JavaScript output rewriting is separate. The `jsx` options keep their native meanings. There are no nondefault VibeLang declaration styles (VIP-27, VIP-30).
+- **Amended 2026-11-03: a written source extension keeps the `.ts`/`.tsx` substitution.** `./App.vibe` tries `App.vibe`, `App.vibex`, then `App.d.ts`, and `./App.vibex` tries `App.vibex`, `App.vibe`, then `App.d.ts`, as TypeScript 5.9.3 resolves `./App.ts` to `App.tsx` and `./App.tsx` to `App.ts` when only the other exists. This corrects the table above to its own rule, "Resolution treats `.vibex` as `.vibe`'s `.tsx`", and to the 2026-11-02 resolution amendment that each rule follows TypeScript on the `.ts` twin. Output-path collisions still follow TypeScript.
