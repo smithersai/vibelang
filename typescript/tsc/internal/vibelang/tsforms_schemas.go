@@ -321,6 +321,18 @@ func schemaTypeText(c *checker.Checker, file *ast.SourceFile, schema *ast.Node, 
 				return keyword, true
 			}
 		}
+		if ast.IsIdentifier(schema) {
+			// An ordinary value name must remain a value reference. In schema
+			// type syntax these tokens instead select a keyword type.
+			switch scanner.StringToToken(schema.Text()) {
+			case ast.KindAnyKeyword, ast.KindBigIntKeyword, ast.KindBooleanKeyword,
+				ast.KindIntrinsicKeyword, ast.KindNeverKeyword, ast.KindNumberKeyword,
+				ast.KindObjectKeyword, ast.KindStringKeyword, ast.KindSymbolKeyword,
+				ast.KindUndefinedKeyword, ast.KindUnknownKeyword, ast.KindVoidKeyword,
+				ast.KindKeyOfKeyword, ast.KindReadonlyKeyword, ast.KindUniqueKeyword, ast.KindInferKeyword:
+				return "", false
+			}
+		}
 		return expressionText(file, schema), true
 	case !ast.IsCallExpression(schema) || schema.TypeArguments() != nil:
 		return "", false

@@ -173,6 +173,8 @@ For `EK4834`, `EK4835` and the `provide` calls in `EK4836`, only the direct oper
 
 `EK4833` remains a style advisory when shorthand needs new grouping or would change declaration output. It offers no automatic edit there, so an ordinary `vibelang --fix` run keeps the qualified migration result.
 
+Schema repairs retain value references. A library alias or field that refers to a value named `string`, `number` or another type keyword (including `keyof` and `readonly`) keeps its form: using that bare name as a schema type would change its meaning. Qualified references such as `holder.string` and neutral names remain eligible for automatic repair.
+
 `EK4833` omits an unused requirements slot: `Effect.Effect<User, NotFound>` becomes `User!NotFound`, whose requirements default to `never`. A custom alias named `Effect` is suggested only when its written arguments already match the resolved Effect's success, error and requirements types, including omitted `never` slots. Aliases whose parameter order, defaults, wrapped slots, service requirements or union branches would change the resulting type keep their spelling.
 
 A pure `Option.gen(function* () { … })` has an eager plain-function quick fix for
