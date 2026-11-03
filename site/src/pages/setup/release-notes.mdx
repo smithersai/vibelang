@@ -305,10 +305,22 @@ Effect 4.0.6 defect-precedence and interruption migration.
 ### Bugs fixed since 0.0.10
 - In the editor, an `is` that binds names and has a parenthesized subject, such as `(x as T) is [let a]` or `([3, r] as const) is [let n, let e]`, made the TypeScript 7 mapper report "invalid or overlapping edits" and pass the whole file through unchanged, so the editor checked VibeLang syntax as TypeScript; the file now maps as it does without the parentheses.
 - Running compiler cases with a missing, malformed or unbuilt runtime could delete previous output or look like a compiler failure; the harness now exits with status `2` before changing cases and names the invalid `VIBELANG_RUNTIME` installation.
+- Migration returned converted services to TypeScript when every member kept the original service requirement. Verification now accepts the `EK4809` design warning and preserves those member contracts; a configured `EK4809` error still fails.
+
+- Migration tests treated every Babel tuple preset list as a pending defect; working tuple lists now have strict checks, while the remaining empty-array consumer gap has its own minimized witness and precise pending key.
+
+- A migration packaging check could report a Unicode file missing because `tar` escaped its filename under the C locale. The check now reads extracted filenames and covers C and UTF-8 locales, including installed Node and Bun imports.
+
+- Package-barrel regression checks now exercise TypeScript package entries that re-export VibeLang modules under Bun and Rolldown, including the documented adapter and its negative control.
+
+- Compiler fuzz checks missed legacy `Effect` repairs in heritage clauses; they now check qualified output, generic defaults and local or imported aliases in both interface and class heritage.
+
+- Declarations of imported Effect values could gain an extra import; cold values and decoders now have regression comparisons against TypeScript.
 - After VIP-1, `vibelang --fix --fix-vip-only` could not see that a method of a service read as `const fs = FileSystem.FileSystem()` ran where it stood, so it refused the whole file's migration (`EK9202`) and left functions such as foldkit's `readLiveRecordFile` plain, building their reads at the call and skipping their later steps; it now writes `try FileSystem.FileSystem` and runs each such method with `try`.
 - A `match` whose last arm lacked its `;` beside a `do` could crash the compiler (`slice bounds out of range`) instead of reporting `EK0701`; a lowered `do` temporary no longer gets a range that ends before it starts.
 - A Date match regression check still rejected an object with `Date.prototype`; it now expects the prototype check required by VIP-7, in both bare and extractor patterns.
 - A native build or copy could replace a working compiler with a file that could not execute, even though the writer reported success; publication now requires a nonempty regular executable and preserves the previous binary on failure.
+- Open-subject match checks still expected an error containing the subject and marked the empty-message behavior as missing; they now require the empty-message `TypeError` specified by VIP-7.
 - Running compiler cases with a missing Effect install could silently use the runtime's installation and replace previous case outputs; the harness now exits before changing cases, names the missing package and explains how to install it or set `EFFECT_NODE_MODULES`.
 - The match examples for schema guards and extractor counts failed in the Effect runner with `Not a valid effect`; their entry points now explicitly return Effects.
 
