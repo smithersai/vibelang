@@ -1,0 +1,19 @@
+// expect-result: [1,"set-by-constructor"]
+// EK4814's message says decoding runs an overriding constructor. This case
+// fails when an Effect upgrade makes that untrue (lints-smithers R2).
+let calls = 0
+
+class Overridden extends Schema.Class<Overridden>("Overridden")({ a: Schema.String }) {
+  declare readonly extra: string
+
+  constructor(props: { readonly a: string }, options?: Schema.MakeOptions) {
+    super(props, options)
+    calls++
+    Object.defineProperty(this, "extra", { value: "set-by-constructor" })
+  }
+}
+
+export effect function main() {
+  const decoded = try Schema.decodeUnknownEffect(Overridden)({ a: "x" })
+  return [calls, decoded.extra]
+}

@@ -1,0 +1,2 @@
+Overridden overrides the constructor of a Schema class, which runs on every decode as well as on new.
+Decoding calls it for each value it decodes. Add a static function that makes an instance instead.

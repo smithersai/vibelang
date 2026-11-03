@@ -163,6 +163,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - The migrate flow left a module under a test directory out of a package's emitted JavaScript even when the package exports it, such as `"./test/TestDatabase": "./src/test/TestDatabase.ts"`, so plain Node importing it from another package failed with `ERR_UNKNOWN_FILE_EXTENSION` on its `.vibe` imports. The flow now emits and routes an exported test-directory module and what it imports relatively; `.test` and `.spec` files stay out.
 - A nested Vitest project with its own `plugins` could miss the VibeLang loader even after setup wired the outer configuration. Setup now adds the loader to each inline project whose tests or setup files reach migrated sources, preserving the other project options.
 
+- `EK4814` said decoding does not call a constructor that overrides a Schema class's, and its note said decoding builds instances without calling it. On Effect 4.1.1 decoding does call it, once per value. The message and note now say so.
 - Published API checks rejected identical JSON exports as non-modules; JSON assets now retain their `resolveJsonModule` types, and real type changes still fail.
 
 - Source-child loader wiring introduced a `fileURLToPath` import alias and failed repositories’ native import policies. Setup now uses a namespace import and refreshes its own previously generated helpers while preserving manually observed bindings.
