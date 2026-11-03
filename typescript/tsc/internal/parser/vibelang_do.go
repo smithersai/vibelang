@@ -121,7 +121,7 @@ func (p *Parser) parseVibeLangDos(file *ast.SourceFile) {
 		hasForTry = func(n *ast.Node) bool {
 			return n.Kind == ast.KindForOfStatement && n.Flags&ast.NodeFlagsVibeLang != 0 || n.ForEachChild(hasForTry)
 		}
-		if !hasForTry(file.AsNode()) {
+		if p.opts.VibeLangDoAsFunction || !hasForTry(file.AsNode()) {
 			return
 		}
 	}
@@ -2064,7 +2064,7 @@ func (l *doLowering) loopHead(loop *ast.Node, labels []*ast.Node) ([]*ast.Node, 
 	var pre []*ast.Node
 	f.Expression = l.expr(f.Expression, &pre)
 	init := f.Initializer
-	if loop.Kind == ast.KindForOfStatement && loop.Flags&ast.NodeFlagsVibeLang != 0 &&
+	if loop.Kind == ast.KindForOfStatement && loop.Flags&ast.NodeFlagsVibeLang != 0 && !l.p.opts.VibeLangDoAsFunction &&
 		ast.IsVariableDeclarationList(init) && init.Flags&ast.NodeFlagsBlockScoped != 0 {
 		// Stream.runForEachWhile evaluates the RHS before entering its item
 		// callback. Capture it in the never-initialized source head environment,
