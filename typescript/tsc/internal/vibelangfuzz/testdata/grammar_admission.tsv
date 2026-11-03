@@ -95,7 +95,6 @@ parser/vibelang_errors.go:Parser.parseErrorDeclaration	admission:error	900-appen
 parser/vibelang_errors.go:Parser.parseVibeLangErrorHeritage	admission:error	900-appendices.md#ErrorDeclaration	support	VIP-13/29 error declarations, members and recovery
 parser/vibelang_errors.go:Parser.isVibeLangFieldComma	admission:error	900-appendices.md#ErrorDeclaration	support	VIP-13/29 error declarations, members and recovery
 parser/vibelang_errors.go:Parser.parseVibeLangFieldComma	admission:error	900-appendices.md#ErrorDeclaration	support	VIP-13/29 error declarations, members and recovery
-parser/vibelang_errors.go:vibelangErrorPayloadSeparators	admission:error	900-appendices.md#ErrorDeclaration	support	VIP-13/29 error declarations, members and recovery
 parser/vibelang_errors.go:Parser.parseVibeLangErrorElement	admission:error	900-appendices.md#ErrorBody	support	Appendix A: ErrorBody; inherited TypeScript helpers and diagnostic recovery retain their stated boundaries
 parser/vibelang_errors.go:isVibeLangErrorField	admission:error	900-appendices.md#ErrorDeclaration	support	VIP-13/29 error declarations, members and recovery
 parser/vibelang_errors.go:isVibeLangTagField	admission:error	900-appendices.md#ErrorDeclaration	support	VIP-13/29 error declarations, members and recovery
@@ -809,3 +808,5 @@ parser/vibelang_schema_generic.go:Parser.vibelangSchemaGenericName	admission:sch
 parser/vibelang_syntax.go:vibeLangScriptKind	admission:syntax-records	900-appendices.md	support	VIP-39: a .vibex file reads the same VibeLang productions with TypeScript JSX; the script-kind choice admits no form
 parser/vibelang_errors.go:vibelangErrorPayloadSeparators	admission:error	900-appendices.md#Separator,900-appendices.md#Field,003-failures.md	support	VIP-13: a comma after a payload Field is the Separator production; the parser marks it for the projected class without admitting class punctuation
 parser/vibelang_modules.go:Parser.rejectVibeLangModule	admission:inline-module	900-appendices.md	recovery	VIP-25: inline TypeScript escape modules are denied; the parser reports the form and admits nothing
+vibelang/services_lower.go:serviceHead	admission:services	900-appendices.md#CatchExpression,005-services.md	support	VIP-5 and VIP-9: a plain catch head that looks a service up suspends the lookup; the lowering admits no form
+vibelang/services_lower.go:lowering.visitServiceHead	admission:services	900-appendices.md#CatchExpression,005-services.md	support	VIP-5 and VIP-9: a plain catch head that looks a service up suspends the lookup; the lowering admits no form
