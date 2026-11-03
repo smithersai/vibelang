@@ -66,7 +66,8 @@ func serviceDeclarations(resolver printer.EmitResolver, file *ast.SourceFile) fu
 	}
 	emits := map[*ast.Node]*serviceEmit{}
 	implemented := map[*ast.Node]bool{} // implements clause elements that name a service
-	shapes := map[*ast.Node]bool{}      // type references Name.Shape to a service's shape
+	var contextImport *ast.Node
+	shapes := map[*ast.Node]bool{} // type references Name.Shape to a service's shape
 	r.WithChecker(func(c *checker.Checker) {
 		s := servicesFor(c)
 		var collect func(statements []*ast.Node)
@@ -100,13 +101,14 @@ func serviceDeclarations(resolver printer.EmitResolver, file *ast.SourceFile) fu
 			return node.ForEachChild(visit)
 		}
 		file.AsNode().ForEachChild(visit)
+		contextImport = serviceContextImport(c, file, emits, implemented, shapes)
 	})
 	if len(emits) == 0 && len(implemented) == 0 && len(shapes) == 0 {
 		return nil
 	}
 	ec := resolver.EmitContext()
 	return func(declarations *ast.SourceFile) *ast.SourceFile {
-		e := &serviceEmitter{ec: ec, names: &freshNames{file: file}, emits: emits, implemented: implemented}
+		e := &serviceEmitter{ec: ec, names: &freshNames{file: file}, emits: emits, implemented: implemented, contextImport: contextImport}
 		statements, changed := e.statements(declarations.Statements.Nodes, false /*ambient*/)
 		if e.private && !core.Some(statements, func(s *ast.Node) bool { return ast.IsExportDeclaration(s) || ast.IsExportAssignment(s) }) {
 			// A base constant is not exported, so the file says it is a
@@ -121,6 +123,9 @@ func serviceDeclarations(resolver printer.EmitResolver, file *ast.SourceFile) fu
 			list.Loc = declarations.Statements.Loc
 			declarations = rewriter.TransformSourceFile(ec.Factory.UpdateSourceFile(declarations, list, declarations.EndOfFileToken).AsSourceFile())
 			statements, changed = declarations.Statements.Nodes, changed || rewriter.changed
+		}
+		if e.contextUsed {
+			statements = e.restoreContextImport(statements)
 		}
 		if !changed {
 			return declarations
@@ -142,17 +147,23 @@ func serviceDeclarations(resolver printer.EmitResolver, file *ast.SourceFile) fu
 
 // serviceEmitter writes the declarations of the services of one file.
 type serviceEmitter struct {
-	ec          *printer.EmitContext
-	names       *freshNames                // the names that declaration emit adds (hygiene.go)
-	emits       map[*ast.Node]*serviceEmit // service and control classes, by source declaration
-	implemented map[*ast.Node]bool         // implements clause elements that name a service
-	imports     []*ast.Node                // the Context identifiers it wrote
-	private     bool                       // it wrote an unexported base constant at the top level
+	ec            *printer.EmitContext
+	names         *freshNames                // the names that declaration emit adds (hygiene.go)
+	emits         map[*ast.Node]*serviceEmit // service and control classes, by source declaration
+	implemented   map[*ast.Node]bool         // implements clause elements that name a service
+	contextImport *ast.Node
+	contextUsed   bool
+	imports       []*ast.Node // the Context identifiers it wrote
+	private       bool        // it wrote an unexported base constant at the top level
 }
 
 // context returns a new identifier Context, effect's module, which
 // transformDeclarations imports.
 func (e *serviceEmitter) context() *ast.Node {
+	if e.contextImport != nil {
+		e.contextUsed = true
+		return e.ec.Factory.NewIdentifier(e.contextImport.ImportClause().AsImportClause().NamedBindings.Name().Text())
+	}
 	identifier := e.ec.Factory.NewIdentifier("Context")
 	e.imports = append(e.imports, identifier)
 	return identifier

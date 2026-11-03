@@ -242,6 +242,8 @@ Capture construction dependencies in the layer factory: `try reporter.write(...)
 
 Service members follow TypeScript interface typing. Omitting a method's return type gives `TS7010` under `noImplicitAny`; an untyped property gives `TS7008`. With that option disabled both are `any`, and an explicit `read(): any` works under strict checking. Write the intended type; no Effect return is required.
 
+A service declaration keeps a written namespace import for `effect/Context` in its declaration file, including aliases such as `import * as Ctx from "effect/Context"`. Its generated base type then uses `Ctx.ServiceClass`. A locally shadowed alias uses a visible binding instead.
+
 ---
 
 The matching Effect page: [effect.website/docs/v4/requirements-management/services](https://effect.website/docs/v4/requirements-management/services/)

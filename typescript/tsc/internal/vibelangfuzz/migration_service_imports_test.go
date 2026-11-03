@@ -56,6 +56,16 @@ func migrationServiceImportPrograms() map[string][2]string {
 			}
 		}
 	}
+	for _, alias := range []string{"Ctx", "ServiceContext", "DatabaseContext", "ContextAlias"} {
+		for _, field := range []string{"string", "array", "optional", "nested"} {
+			base := pairs["subpath:"+field+":written"]
+			for i := range base {
+				base[i] = strings.ReplaceAll(base[i], "import * as Context ", "import * as "+alias+" ")
+				base[i] = strings.ReplaceAll(base[i], "Context.", alias+".")
+			}
+			pairs["alchemy-context-alias:"+alias+":"+field] = base
+		}
+	}
 	return pairs
 }
 
@@ -107,6 +117,15 @@ func FuzzMigrationServiceImports(f *testing.F) {
 				t.Fatalf("no declaration emitted for %s", file)
 			}
 			outputs[index] = output
+		}
+		if strings.HasPrefix(key, "alchemy-context-alias:") {
+			if outputs[1] != outputs[0] {
+				Gap(t, migrationServiceImportsTarget, "declaration:"+key, "Chapter1: %q; keep the written Context alias exactly. Native:\n%s\nVibe:\n%s", migrationServiceImportsQuote, outputs[1], outputs[0])
+			}
+			ExpectPending(t, migrationServiceImportsTarget, "compile:"+key)
+			ExpectPending(t, migrationServiceImportsTarget, "declaration:"+key)
+			ExpectPending(t, migrationServiceImportsTarget, specCorpusKey(t))
+			return
 		}
 		if diff := compareDeclarationTexts(t, outputs[1], outputs[0]); diff != "" {
 			Gap(t, migrationServiceImportsTarget, "declaration:"+key, "Chapter1: %q\nnative declaration:\n%s\nVibe declaration:\n%s\n%s\nAPI:\n%s", migrationServiceImportsQuote, outputs[1], outputs[0], pair[0], diff)

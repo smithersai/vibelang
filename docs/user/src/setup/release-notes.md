@@ -166,6 +166,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - The grammar inventory omitted the binding-preservation helpers used by retired hatch fixes; their migration authority is now recorded.
 
 - The no-throw documentation check missed plain functions with an `effect` parameter or a nested function on one line; it now parses callable contexts and checks both forms.
+- A service declaration could replace a written `Context` namespace alias with a new import in its public declaration. Generated service types now retain a visible namespace alias and preserve its import.
 - API checks invented ambient exports or hid an ambient type change when one input directory contained the other. Contributions now follow each snapshot’s dependency closure, and nested private-class origins remain distinct where required.
 
 - The editor outline merged separate `module` declarations as TypeScript namespaces and hid a later declaration with the same name; each VibeLang module now keeps its own outline entry and name range, including an invalid duplicate.

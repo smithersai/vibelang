@@ -1,0 +1,4 @@
+import * as Ctx from "effect/Context"
+/** A database key. */
+export service Database { static readonly key = "alchemy/Database"; readonly value: number }
+export const value = 7
