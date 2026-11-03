@@ -533,6 +533,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Defaults in `effect` functions ran again on every execution and parameter writes were reset. Parameters now bind once at the call, and repeated runs share their bindings; binding exceptions become defects in the returned Effect (VIP-1).
 
 - An `effect` arrow or named function expression that compared its own callable value incorrectly reported a circular-inference error; value-only self references now infer the same return type as their `Effect.gen` equivalents.
+- Pipe grammar no longer rejects a pipe after a closed catch arrow body; it applies to the recovered value.
+
 
 - Declaration checks could compare an unused `types` export instead of an earlier matching package condition, hiding a real API change. Published entry discovery now follows TypeScript's conditional export order and preserves mirrored `.vibe` sidecar resolution.
 

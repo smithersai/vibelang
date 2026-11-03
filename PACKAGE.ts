@@ -512,7 +512,7 @@ const vibelangTopicTargets = Object.fromEntries(
 // Specification checks share the normal graph and cache. The existing forms
 // gate selection reaches these dependencies without a pre-gate change.
 const specInputs = S.Filegroup({ srcs: [...S.glob([
-  "docs/design/**", "docs/tools/spec-rules*", "docs/tools/spec-examples*", "docs/tools/spec-lint*",
+  "docs/design/**", "docs/tools/spec-rules*", "docs/tools/spec-examples*", "docs/tools/spec-lint*", "docs/tools/spec-pipe-arrows*",
   "docs/tools/package.json", "docs/tools/bun.lock", "docs/maintainers/build.md",
   "docs/tools/diagnostic-identity*", "docs/tools/factory-diagnostic-retirement.test.mjs",
   "docs/tools/property-regressions/gate6-ek4804.json", "docs/tools/property-regressions/gate6-mapper-ek2115.json", "typescript/tsc/internal/vibelang/diagnostics.go",
@@ -535,6 +535,11 @@ const specCheck = (kind: string, deps: ReadonlyArray<unknown> = []) => S.Shell.T
   summary: "Specification " + kind + " contracts agree with published VIP authority.",
   shell: "node docs/tools/spec-rules.mjs " + kind,
   data: [specInputs, ...deps] as Array<never>, tools: [node], sandbox: "none", timeout: "2m"
+})
+const specPipeArrows = S.Shell.Test({
+  summary: "Pipe restrictions preserve closed catch arrows and reject blanket exclusions.",
+  shell: "node docs/tools/spec-pipe-arrows.mjs && node --test docs/tools/spec-pipe-arrows.test.mjs",
+  data: [specInputs], tools: [node], sandbox: "none", timeout: "1m"
 })
 const specRegistry = specCheck("registry")
 // Exclusive while fold-details owns the complete Appendix B handoff. After that
@@ -598,7 +603,7 @@ const specRuleEvidenceTest = S.Shell.Test({
 const specLint = S.Shell.Test({
   summary: "Static specification contracts and their regression tests.",
   shell: "echo 'spec-lint: static contracts passed'",
-  data: [specRegistry, specTables, specCopies, specAuthority, specLinterTests],
+  data: [specRegistry, specTables, specCopies, specAuthority, specLinterTests, specPipeArrows],
   sandbox: "none", timeout: "1m"
 })
 
@@ -642,6 +647,7 @@ const targets = {
   "spec-registry": specRegistry,
   "spec-diagnostic-identity": specDiagnosticIdentity,
   "spec-tables": specTables,
+  "spec-pipe-arrows": specPipeArrows,
   "spec-copies": specCopies,
   "spec-authority": specAuthority,
   "spec-rule-evidence": specRuleEvidence,
