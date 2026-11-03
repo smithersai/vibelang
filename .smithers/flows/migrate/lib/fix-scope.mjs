@@ -1,18 +1,36 @@
 import { appendFileSync, existsSync, realpathSync } from "node:fs"
-import { resolve } from "node:path"
+import { isAbsolute, resolve } from "node:path"
 import { assertFinished, parseDiagnostics } from "./diagnostics.mjs"
 import { quote, run } from "./util.mjs"
 
 export async function fixProgramFiles({ compiler, tsconfig, cwd, log, timeoutMs }) {
   const scopeLog = log && `${log}.scope.log`
   const result = await run(`${quote(compiler)} -p ${quote(tsconfig)} --listFilesOnly --pretty false --singleThreaded`, { cwd, log: scopeLog, timeoutMs })
-  assertFinished(result, scopeLog)
-  if (result.code !== 0) {
-    const diagnostics = parseDiagnostics(result.stdout + result.stderr).map(d => `${d.code}: ${d.message}`).join("\n")
-    const detail = diagnostics || result.stderr.trim().split(/\r?\n/).slice(-12).join("\n")
+  const output = [result.stdout, result.stderr].join("\n")
+  assertFinished({ ...result, stdout: output, stderr: "" }, scopeLog)
+  const files = [...new Set(result.stdout.split(/\r?\n/).map(line => line.trim()).filter(line => /\.vibex?$/.test(line)).map(line => resolve(cwd ?? ".", line)).filter(path => existsSync(path)))]
+  const diagnostics = parseDiagnostics(output)
+  const errors = diagnostics.filter(d => d.category === "error")
+  // --listFilesOnly still lists the complete program when EK0301 reports a
+  // repairable type spelling. Scope discovery must let --fix reach that file;
+  // this receipt is not a successful semantic check.
+  let inDiagnostic = false
+  const unexpected = output.split(/\r?\n/).filter(line => {
+    if (!line.trim()) return false
+    if (parseDiagnostics(line).length) { inDiagnostic = true; return false }
+    if (inDiagnostic && /^\s/.test(line)) return false
+    inDiagnostic = false
+    const path = line.trim()
+    return !(/\.(?:[cm]?[jt]sx?|vibex?|json)$/.test(path) && (/^bundled:\/\/\/libs\//.test(path) || isAbsolute(path) || existsSync(resolve(cwd ?? ".", path))))
+  })
+  const recoverable = result.code === 1 && files.length > 0 && errors.length > 0 &&
+    errors.every(d => d.code === "EK0301") && unexpected.length === 0
+  if (result.code !== 0 && !recoverable) {
+    const detail = [...diagnostics.map(d => `${d.code}: ${d.message}`), ...unexpected.slice(-12)].join("\n")
     throw new Error(`cannot determine the compiler's fix scope (exit ${result.code})${scopeLog ? `; see ${scopeLog}` : ""}${detail ? `\n${detail}` : ""}`)
   }
-  return [...new Set(result.stdout.split(/\r?\n/).map(line => line.trim()).filter(line => /\.vibex?$/.test(line)).map(line => resolve(cwd ?? ".", line)).filter(path => existsSync(path)))]
+  if (scopeLog) appendFileSync(scopeLog, `# fix scope ${JSON.stringify({ stage: "discovered", files: files.length, exit: result.code, recoverableDiagnostics: recoverable ? ["EK0301"] : [], semanticChecksDeferred: recoverable })}\n`)
+  return files
 }
 
 const active = new Set()

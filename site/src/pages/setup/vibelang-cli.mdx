@@ -403,3 +403,5 @@ Migration setup adapts release helpers that map source paths to JavaScript and d
 The migrate flow keeps packed runtime exports reachable: when `default` names `.vibelang/js/`, an existing package `files` list gains that directory, including its loader records. Packing ignore exceptions cover only this generated runtime tree and preserve other exclusions. Reverting the last migrated module removes the flow's additions and keeps authored packing entries.
 
 A migration batch retains the packing files its emit creates, including when verification first creates them. Repeated verification, recording and revert recognize those exact files as the batch's output.
+
+The migrate flow discovers the compiler program before each fixing pass. Repairable `EK0301` union-slot errors can accompany the file list without stopping that pass. Its `.scope.log` receipt records that semantic checking is deferred; normal checks after fixing still report type errors. Configuration failures, other errors, crashes and empty file lists stop discovery.

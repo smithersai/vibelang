@@ -619,3 +619,5 @@ Required source-child helpers use `Schema.is(Schema.String)` at the command and 
 An upgrade commit lists the predecessor's VIP migrations in a separate paragraph. Its notice keeps the command and migrated-file count together, and the commit body remains wrapped at 72 columns.
 
 Generated JavaScript source-child helpers retain their TypeScript parameter, generic and tuple contracts through JSDoc, so strict `checkJs` and declaration emit accept the same native launcher. Setup refreshes the canonical untyped helper without changing its runtime code, retains manually edited documentation with a located warning, and keeps structural blank lines after transpilation.
+
+Before a fixing pass, the flow discovers every `.vibe` file in the compiler program. A complete file list accompanied only by repairable `EK0301` union-slot diagnostics allows the pass to run; configuration errors, other diagnostics, crashes and an empty list still stop discovery. The `.scope.log` receipt records that semantic checking is deferred. After fixing, the normal checks report previously hidden type errors.

@@ -1,0 +1,18 @@
+{
+  "config": {
+    "compilerOptions": {
+      "strict": true,
+      "noEmit": true,
+      "module": "preserve",
+      "target": "es2022",
+      "skipLibCheck": true
+    },
+    "include": [
+      "src"
+    ]
+  },
+  "files": {
+    "src/a.vibe": "export const first = effect <A, E, R>(get: A | undefined!E!R) => {\n  const value = try get\n  return value\n}\n",
+    "src/b.vibe": "export const two = (n: number): number => n + \"x\"\n"
+  }
+}
