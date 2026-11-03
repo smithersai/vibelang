@@ -617,6 +617,15 @@ const foreignCallExamples = S.Shell.Test({
   timeout: "5m"
 })
 
+const sidecarRootContract = S.Shell.Test({
+  summary: "Sidecar specification mirrors TypeScript declaration roots, with a native twin and generated path controls.",
+  shell: "node --test docs/tools/spec-sidecar-roots.test.mjs",
+  data: [design, S.Filegroup({ srcs: [...S.glob(["docs/tools/spec-sidecar-roots*.mjs", "docs/tools/package.json", "docs/tools/bun.lock"])] })],
+  tools: [node],
+  sandbox: "none",
+  timeout: "5m"
+})
+
 const targets = {
   "spec-coverage-census": S.Shell.Run({
     summary: "Inventory main rules with passing, pending, missing and tag-linked evidence.",
@@ -632,6 +641,7 @@ const targets = {
     data: [tree], tools: [bun], sandbox: "none", timeout: "2m"
   }),
   "spec-foreign-call-contract": foreignCallExamples,
+  "spec-sidecar-roots": sidecarRootContract,
   // A Run has no graph replay: revision and external decisions are runtime
   // inputs. The script pins the revision/diff verdict, including failures.
   // Platform owns attachment to the pre-gate; grounded violations reject by default.
