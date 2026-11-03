@@ -157,6 +157,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Identical recursive generic declaration APIs could fail with `TS2589`; exact resolved type identity now proves those comparisons.
 - API checks treated identical JSDoc links as different when a private target resolved in only one snapshot. Link targets and labels now compare consistently while real comment changes remain differences.
+
+- Editor consistency checks could report that renaming a TypeScript module block added or removed errors because its virtual filename changed. The checks now compare diagnostics under the original `.vibe` document, retaining every diagnostic (VIP-40).
 - API identity checks rejected two identical copies of a generic function using an `import()` type with literal type arguments. Copies now compare identically, while changed literal arguments and dependencies remain differences.
 
 - Publication checks for source-child packages could not install an already-published Effect dependency while simulating an unreleased VibeLang SDK. Their registry fixture now serves the pinned Effect release while continuing to withhold the SDK.

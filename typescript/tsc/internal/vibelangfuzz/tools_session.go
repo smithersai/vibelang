@@ -497,7 +497,7 @@ func toolsErrorCounts(r *Result) map[string]int {
 func toolsFileCode(r *Result, d *ast.Diagnostic) string {
 	file := ""
 	if d.File() != nil {
-		file = strings.TrimPrefix(d.File().FileName().AsString(), filepath.ToSlash(r.Dir)+"/")
+		file = strings.TrimPrefix(d.File().OriginalFileName().AsString(), filepath.ToSlash(r.Dir)+"/")
 	}
 	source := d.Source()
 	if source == "" {
