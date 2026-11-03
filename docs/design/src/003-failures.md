@@ -422,7 +422,7 @@ error Access {
 | two members on one line with no separator, in either error form; write `;` or a line break between them (quick fix: insert `;`) | `EK1306` |
 | a recognized `error` or `schema error` declaration in an ambient source context, explicit or inherited, as for a [service](005-services.md#static-rules): `declare error Missing`; it comes ahead of the declaration's other diagnostics | `EK1307` |
 
-A member rejected by [Functions](001-functions.md#static-rules) for `effect` on a getter, setter or constructor gets the applicable Functions diagnostics and no redundant error-body category diagnostic, including in either error form. This includes both `EK0104` and `EK0105` for `async effect get x() { }`. Otherwise a member gets one diagnostic: the first row that names it. The last row applies only when no other row applies. For example, `_tag = 1` reports `EK2117`; `static x = 1` reports the static-member rule, not the general member rule.
+A member rejected by [Functions](001-functions.md#static-rules) for `effect` on a getter, setter or constructor gets the applicable Functions diagnostics and no redundant error-body category diagnostic, including in either error form. This includes both `EK0104` and `EK0105` for `async effect get x() { }`. Check the ambient-context rule before classifying members. Otherwise a member gets one diagnostic: the first row that names it. The general member rule, `EK1304`, applies only when no specific member rule applies. For example, `_tag = 1` reports `EK2117`; `static x = 1` reports the static-member rule, not the general member rule.
 
 ```vibe es
 // compiler-gap: pending VIP-1, VIP-13
