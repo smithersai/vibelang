@@ -1,0 +1,3 @@
+go test fuzz v1
+string("effect-any")
+byte(1)

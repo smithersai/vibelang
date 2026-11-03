@@ -41,6 +41,12 @@ func callExpressionType(c *checker.Checker, call *ast.Node, t *checker.Type) *ch
 	if result := resumeResultType(c, call); result != nil {
 		return result // what the handle statement ends with (handle_results.go)
 	}
+	// $try's generic Effect identity infers unknown from an unchecked any.
+	// Native yield* any instead gives any as its success (VIP-5/VIP-27).
+	// Keep the identity's error and environment channels for flow inference.
+	if operand := tryOperand(call); operand != nil && c.GetTypeAtLocation(operand).Flags()&checker.TypeFlagsAny != 0 {
+		return c.GetAnyType()
+	}
 	if success := successType(c, t); success != nil {
 		return success // its success may itself be subtype data
 	}

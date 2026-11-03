@@ -42,6 +42,8 @@ effect function invoice(quantity: number) {
 
 Each `try` completes before the next statement runs. `Config.Finite("UNIT_PRICE")` builds a descriptor; `try` loads the setting and returns a number, and a loading failure stops the function. Effect functions use `try` where Effect TypeScript writes `yield*`; `Effect.gen` stays available as a library function.
 
+An unchecked `any` operand follows native `yield*` inference: its success remains `any` in exported declarations, with `unknown` error and environment channels. Returning that success keeps it as data; another `try` explicitly executes it.
+
 ## Relate calls to async functions
 
 ```vibe
