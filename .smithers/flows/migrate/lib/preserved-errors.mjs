@@ -104,15 +104,49 @@ function contracts(ast, source = "") {
     const fn = mappers.get(catcher.name), channel = returns(fn?.returnType)
     return channel ? { name: catcher.name, channel, body: executable(fn.body) } : null
   }
-  // A directly returned callback writes its producer's failure channel even
-  // when migration replaces the raw callback with a platform service. Do not
-  // search inside nested callbacks or borrow a call whose result is discarded.
+  const singleReturn = fn => fn.body?.type === "BlockStatement" && fn.body.body.length === 1 &&
+    fn.body.body[0].type === "ReturnStatement" ? fn.body.body[0].argument : fn.body
+  const plainLiteral = fn => ["ArrowFunctionExpression", "FunctionExpression"].includes(fn?.type) &&
+    !fn.async && !fn.generator && !fn.returnType
+  // Only these local, known Effect stages prove E without evaluating target code.
+  // map/as preserve E regardless of the success value. A default timeout adds
+  // TimeoutError, a global Error subtype. A tap must return no Effect, and the
+  // timeout handler must fail with a fresh global Error. Unknown operators,
+  // recovery and error mappers cannot borrow the callback's generic argument.
+  const preservesCallbackChannel = (stage, channel) => {
+    if (stage?.type !== "CallExpression" || stage.optional || stage.callee?.optional ||
+      (stage.typeArguments ?? stage.typeParameters)?.params?.length ||
+      stage.arguments?.some(arg => arg.type === "SpreadElement")) return false
+    const args = stage.arguments ?? [], method = api(stage.callee)
+    if (method === "map") return args.length === 1
+    if (method === "as") return args.length === 1
+    if (method === "timeout") return includesError(channel) && args.length === 1 &&
+      args[0].type === "Literal" && ["string", "number"].includes(typeof args[0].value)
+    if (method === "tap" && args.length === 1 && plainLiteral(args[0])) {
+      const body = args[0].body
+      return body?.type === "BlockStatement" && body.body.every(statement => statement.type === "ExpressionStatement") ||
+        body?.type === "UnaryExpression" && body.operator === "void"
+    }
+    if (method !== "catchTag" || !includesError(channel) || channel.split(" | ").includes("TimeoutError") ||
+      args.length !== 2 || args[0].type !== "Literal" || args[0].value !== "TimeoutError" || !plainLiteral(args[1])) return false
+    const failed = singleReturn(args[1]), error = failed?.arguments?.[0]
+    return failed?.type === "CallExpression" && !failed.optional && api(failed.callee) === "fail" &&
+      failed.arguments.length === 1 && error?.type === "NewExpression" && error.callee?.type === "Identifier" && error.callee.name === "Error"
+  }
+  // A directly returned callback, optionally wrapped in one proven .pipe(...),
+  // writes its producer's channel even after replacement by a platform service.
+  // Never search nested callbacks or borrow a discarded/Promise/iterator result.
   const returnedCallback = fn => {
     if (fn.returnType || fn.async || fn.generator) return null
-    const body = fn.body?.type === "BlockStatement" && fn.body.body.length === 1 &&
-      fn.body.body[0].type === "ReturnStatement" ? fn.body.body[0].argument : fn.body
-    return body?.type === "CallExpression" && api(body.callee) === "callback"
-      ? nameOf((body.typeArguments ?? body.typeParameters)?.params?.[1]) : null
+    const body = singleReturn(fn)
+    const piped = body?.type === "CallExpression" && !body.optional &&
+      body.callee?.type === "MemberExpression" && !body.callee.computed && !body.callee.optional &&
+      body.callee.property?.name === "pipe"
+    const callback = piped ? body.callee.object : body
+    if (callback?.type !== "CallExpression" || callback.optional || api(callback.callee) !== "callback") return null
+    const channel = nameOf((callback.typeArguments ?? callback.typeParameters)?.params?.[1])
+    return channel && (!piped || !(body.typeArguments ?? body.typeParameters)?.params?.length &&
+      body.arguments.every(stage => preservesCallbackChannel(stage, channel))) ? channel : null
   }
   const visit = (node, path = [], scope = []) => {
     if (node.type === "CallExpression") site(node, scope)
