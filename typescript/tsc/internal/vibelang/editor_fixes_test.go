@@ -17,9 +17,6 @@ func TestEditorQuickFixGoldens(t *testing.T) {
 		name, source, title, want string
 		code                      int32
 	}{
-		{"hatch constructor capture", "class C {}\nexport effect function main() { return try sync(() => new C()) }", "Pass C as an input", "class C {}\nexport effect function main() { return try sync((C) => new C(), C) }", EK4405.Code},
-		{"hatch narrowed capture", "effect function size(value: string | undefined) { if (value === undefined) return 0; return try sync(() => value.length) }", "Pass value as an input", "effect function size(value: string | undefined) { if (value === undefined) return 0; return try sync((value: string) => value.length, value) }", EK4405.Code},
-		{"hatch captured function type query", "const parse = (text: string): number => Number(text)\nexport effect function invalid(text: string) { return try sync((input: typeof text): ReturnType<typeof parse> => parse(input), text) }", "Pass parse as an input", "const parse = (text: string): number => Number(text)\nexport effect function invalid(text: string) { return try sync((input: typeof text, parse: (text: string) => number): ReturnType<typeof parse> => parse(input), text, parse) }", EK4405.Code},
 		{"service public property", "service S { public n: number }", "Write a service contract", "service S { n: number }", 902},
 		{"service private readonly property", "service S { private /* keep */ readonly n?: number }", "Write a service contract", "service S { /* keep */ readonly n?: number }", 902},
 		{"service declare property", "service S { declare n: number }", "Write a service contract", "service S { n: number }", 902},

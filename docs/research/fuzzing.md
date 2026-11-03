@@ -239,6 +239,7 @@ Appendix B supplies the current diagnostic assignments; compatibility declaratio
 | `FuzzPlainMatchKinds` | Keyed seed matrices with native TypeScript controls | Spec quotes checked by `TestPlainMatchKindsQuoted`; migration and review neighbourhoods |
 | `FuzzTopLevelAwait` | Twelve keyed module-level forms with native TypeScript controls; all corpus files retained | VIP-26 quote checked by `TestTopLevelAwaitVIPQuoted`; `TestTopLevelAwait` retains the parser witnesses. Resolved Promise forms are strict checks; the separate module-level `for await` gap remains pending for `migfix-foldkit`. |
 | `FuzzEffectGlobals` | Keyed seed matrices with native TypeScript controls | Spec quotes checked by `TestEffectGlobalsQuoted`; migration and review neighbourhoods |
+| `FuzzLegacyHatchTypes` | Keyed local, alias, parameter, property, imported, instantiated and factory-return annotations | VIP-6/VIP-34; exact JavaScript and declaration reference, owned edits and idempotence |
 | `TestSidecarEntryGlobsQuoted` | Expanded bundler entry globs retain source entries and exclude declaration sidecars; actual fast-glob and Rolldown integration, keyed Alchemy witness. |
 | `FuzzReviewIsStatementHomes` | Keyed lexical-home and leak-control matrices | Chapter 4 scope quotes checked by `TestReviewIsStatementHomesQuoted` |
 | `FuzzReviewIsRedeclarations` | Keyed lexical-home and leak-control matrices | Chapter 4 scope quotes checked by `TestReviewIsRedeclarationsQuoted` |
@@ -263,6 +264,7 @@ Appendix B supplies the current diagnostic assignments; compatibility declaratio
 | `FuzzPlatformConstructorBindings` | Twelve DOM constructors and pure web helpers across capture, `new`, `instanceof` and local-shadow bindings; 72 keyed inputs | VIP-33 resolved host-library declarations and the checked Chapter 5 inventory classify every binding; native TypeScript is an independent syntax/type control |
 | `FuzzTopLevelAwait` | Keyed seed matrices with native TypeScript controls | Spec quotes checked by `TestTopLevelAwaitQuoted`; migration and review neighbourhoods |
 | `FuzzEffectGlobals` | Keyed seed matrices with native TypeScript controls | Spec quotes checked by `TestEffectGlobalsQuoted`; migration and review neighbourhoods |
+| `FuzzLegacyHatchTypes` | Keyed local, alias, parameter, property, imported, instantiated and factory-return annotations | VIP-6/VIP-34; exact JavaScript and declaration reference, owned edits and idempotence |
 | `TestSidecarEntryGlobsQuoted` | Expanded bundler entry globs retain source entries and exclude declaration sidecars; actual fast-glob and Rolldown integration, keyed Alchemy witness. |
 | `FuzzReviewIsStatementHomes` | Keyed lexical-home and leak-control matrices | Chapter 4 scope quotes checked by `TestReviewIsStatementHomesQuoted` |
 | `FuzzReviewIsRedeclarations` | Keyed lexical-home and leak-control matrices | Chapter 4 scope quotes checked by `TestReviewIsRedeclarationsQuoted` |

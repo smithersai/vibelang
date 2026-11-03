@@ -894,3 +894,38 @@ func TestResolverDoEffectOperandSourceContext(t *testing.T) {
 		}
 	}
 }
+
+// VIP-6 changes the value alias, while transitional direct calls keep their
+// existing signatures. Following a stored const must not inherit the bridge.
+func TestResolverNativeHatchValuesAndDirectCompatibility(t *testing.T) {
+	r := resolve(t, `const f = sync; const g = callback;
+sync((n: number) => n, 7);
+f(() => 7);
+g<number>((resume) => resume(Effect.succeed(7)));
+`)
+	old := r.table
+	aliases := make(map[string]string, len(old.aliases))
+	for key, value := range old.aliases {
+		aliases[key] = value
+	}
+	aliases["prelude#sync"] = "effect/Effect#sync"
+	aliases["prelude#callback"] = "effect/Effect#callback"
+	table := &Table{Header: old.Header, modules: old.modules, entries: old.entries, aliases: aliases, values: old.values}
+	r.Resolver = NewResolver(r.file, table)
+	for _, test := range []struct{ source, key string }{
+		{"sync(", "vibelang-runtime#sync"},
+		{"f(", "effect/Effect#sync"},
+		{"g<number>", "effect/Effect#callback"},
+	} {
+		calls := r.find(test.source, ast.IsCallExpression)
+		if len(calls) != 1 {
+			t.Fatalf("%s: %d calls", test.source, len(calls))
+		}
+		if got := r.Callee(calls[0]).Canonical; got != test.key {
+			t.Fatalf("%s: %s, want %s", test.source, got, test.key)
+		}
+	}
+	if d := r.lambda(t, "(n: number) => n"); d.Form != FormPlain || d.Provenance != FromTable {
+		t.Fatalf("direct compatibility lambda lost its plain table form: %+v", d)
+	}
+}

@@ -5,12 +5,12 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/checker"
 )
 
-// The prelude's fork and join, and the hatches sync and callback, take
+// The prelude's fork and join take
 // their first operand by syntax, so they are reached only through their own
 // spellings (rule H4, D330, D432, D452): a call spelled otherwise would read
 // its operand by a binding its reader cannot see.
 
-// EK4410: a hatch, or the prelude's fork or join, used other than as the callee of a call under its own name (D330, D432). {0} is the name.
+// EK4410: the prelude's fork or join, used other than as the callee of a call under its own name (D330, D432). {0} is the name.
 var EK4410 = message(4410, errorCategory, "{0} is used only as the callee of {0}(…), since its first operand is syntax; it cannot be renamed or stored.")
 
 func init() {
@@ -19,11 +19,12 @@ func init() {
 }
 
 // keywordNames are the prelude bindings whose first operand is syntax: the
-// contextual keywords fork and join, and the hatches (D432).
-var keywordNames = map[string]bool{"fork": true, "join": true, "sync": true, "callback": true}
+// contextual keywords fork and join (D432). VIP-6 makes sync and callback
+// ordinary first-class Effect values.
+var keywordNames = map[string]bool{"fork": true, "join": true}
 
-// checkKeywordBindings reports EK4410 at each use of the prelude's fork,
-// join, sync, or callback other than as the callee of a call spelled
+// checkKeywordBindings reports EK4410 at each use of the prelude's fork or
+// join other than as the callee of a call spelled
 // with its own name: an import that renames one, and any other reference,
 // such as const spawn = fork (D330, D432). A call spelled otherwise would
 // defer its operand by the callee's resolved symbol, which its reader cannot
@@ -64,7 +65,7 @@ func checkKeywordBindings(c *checker.Checker, file *ast.SourceFile) {
 }
 
 // isKeywordCallee reports whether name is the callee of a call, as fork is
-// in fork(e) and fork e, and sync is in sync(…).
+// in fork(e) and fork e.
 func isKeywordCallee(name *ast.Node) bool {
 	parent := name.Parent
 	return parent != nil && ast.IsCallExpression(parent) && parent.Expression() == name

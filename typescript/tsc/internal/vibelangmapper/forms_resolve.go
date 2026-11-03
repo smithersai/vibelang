@@ -1447,6 +1447,13 @@ func (r *Resolver) Callee(call *ast.Node) Callee {
 	if !ok {
 		return Callee{}
 	}
+	// Native global values and their aliases use Effect's signatures.
+	// Direct unshadowed legacy calls retain their compatibility overloads,
+	// matching the native compiler's direct-call bridge.
+	if len(chain) == 0 && formsHatchNames[root.Text()] && r.binding(root, root.Text()) == nil {
+		key := "vibelang-runtime#" + root.Text()
+		return Callee{Kind: CalleeTable, Key: key, Canonical: key}
+	}
 	return r.calleeOf(root, chain, 0)
 }
 

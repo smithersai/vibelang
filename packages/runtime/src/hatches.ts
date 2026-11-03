@@ -4,15 +4,17 @@ import { Effect, Exit } from "effect"
 // TypeScript inside VibeLang. In a .vibe file a hatch's first argument is not
 // VibeLang: calls do not run, `throw`, `async`, and `await` keep their
 // JavaScript meaning, and platform APIs are allowed. That TypeScript is
-// self-contained (D229): values reach it as inputs, the arguments after the
-// function, which fill its first parameters (D230); an async function then
+// allowed to capture surrounding locals (VIP-6). Legacy explicit inputs,
+// the arguments after the function, fill its first parameters (D230); an async function then
 // receives the AbortSignal, and a callback `resume` and the signal. The
 // compiler lowers `sync` to Effect's own functions and reads the overload it
 // chose by the first parameter's name (evaluate or value); the function
 // itself decides between sync and async by its type (D232). A throw that is
 // an expected failure goes through Effect's own Effect.try or
 // Effect.tryPromise, which replaced the `try` hatch (VIP-5). These implementations serve
-// TypeScript callers and a hatch passed as a value. They see no types, so
+// explicit TypeScript callers and transitional direct calls. Stored sync
+// and callback globals are the native Effect exports (VIP-6). These
+// compatibility implementations see no types, so
 // they decide by the function's declaration: an async function that
 // declares a parameter after its inputs gets the AbortSignal there, and
 // interruption aborts it; any other function gets its inputs only, and a

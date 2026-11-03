@@ -1,13 +1,11 @@
 package vibelang
 
 import (
-	"context"
 	"slices"
 	"strconv"
 	"strings"
 
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
-	"github.com/microsoft/TypeScript/tsc/internal/astnav"
 	"github.com/microsoft/TypeScript/tsc/internal/checker"
 	"github.com/microsoft/TypeScript/tsc/internal/core"
 	"github.com/microsoft/TypeScript/tsc/internal/ls"
@@ -28,10 +26,8 @@ import (
 // run, so calling a .vibe function gives an inert Effect value for
 // runPromise or runFork; throw, async, and await keep their JavaScript
 // meaning; platform APIs are allowed (no EK4401 or EK4402); and a
-// runner may start a program (no EK1005). That TypeScript is self-contained
-// (D229): it may use its own parameters and locals, globals, imports, and the
-// file's error declarations, but no other binding of the .vibe file
-// (EK4405). Values reach it as inputs, the arguments after the function, which
+// runner may start a program (no EK1005). VIP-6 permits ordinary lexical
+// captures. Legacy explicit inputs, the arguments after the function, still
 // fill its first parameters (D230). The inputs are VibeLang (D232). A
 // throw or rejection that may fail is wrapped with Effect's own Effect.try
 // or Effect.tryPromise, which replaced the try hatch (VIP-5).
@@ -138,31 +134,8 @@ func inHatch(node *ast.Node) bool {
 }
 
 func init() {
-	fileChecks = append(fileChecks, checkHatches)
-	ls.RegisterCodeFixProvider(hatchInputFix)
+	// VIP-6 retires the no-capture rule, including for compatibility calls.
 	ls.RegisterQuickInfoHook(hatchQuickInfo)
-}
-
-// checkHatches reports EK4405 at each reference in a hatch's TypeScript to a binding
-// that the .vibe file declares outside it (D229).
-func checkHatches(c *checker.Checker, file *ast.SourceFile) {
-	var visit func(node *ast.Node) bool
-	visit = func(node *ast.Node) bool {
-		if name := hatchOf(node); name != "" {
-			references := outsideReferences(c, hatchIsland(node))
-			for _, reference := range references {
-				d := report(c, reference, EK4405, reference.Text(), name)
-				note(d, "Add a parameter for it and pass the value after the function, as in {0}(({1}) => …, {1}).", name, reference.Text())
-			}
-			if len(references) > 0 && takesFewerInputs(node) {
-				// TypeScript then reports that the function fits no overload,
-				// naming one it was never meant for; EK4405 explains the call.
-				coverArgument(c, hatchIsland(node))
-			}
-		}
-		return node.ForEachChild(visit)
-	}
-	file.AsNode().ForEachChild(visit)
 }
 
 // takesFewerInputs reports whether call, a hatch, passes more inputs after
@@ -536,6 +509,9 @@ type hatchForm struct {
 // that returns a promise, is Effect.promise.
 func hatchFormOf(c *checker.Checker, call *ast.Node) (hatchForm, bool) {
 	name := hatchOf(call)
+	if name == "callback" && len(call.Arguments()) > 0 {
+		return hatchForm{effect: name}, true
+	}
 	if name != "sync" {
 		return hatchForm{}, false
 	}
@@ -726,7 +702,7 @@ func (tx *lowering) visitHatchCall(node *ast.Node) *ast.Node {
 		inputs = append(inputs, tx.Visitor().VisitNode(input))
 	}
 	// The runtime's adapter takes the function and the inputs as written.
-	if form.adapter {
+	if form.adapter || form.effect == "callback" {
 		return tx.adapterHatchCall(node, form, body, inputs[1:])
 	}
 	async := form.effect == "promise"
@@ -767,7 +743,7 @@ func hatchQuickInfo(c *checker.Checker, node *ast.Node) (string, string) {
 	if name == "" {
 		return "", ""
 	}
-	paragraph := "An escape hatch: its first argument is self-contained TypeScript (D229)."
+	paragraph := "An Effect wrapper. Its arrow may capture surrounding locals (VIP-6)."
 	if inputs := hatchInputs(call); len(inputs) > 0 {
 		var names []string
 		for _, input := range inputs {
@@ -810,70 +786,6 @@ func hatchInputs(call *ast.Node) []*ast.Node {
 		return arguments[1:]
 	}
 	return nil
-}
-
-// hatchInputFix is EK4405's quick fix: it makes every binding the hatch's
-// TypeScript reads from outside an input. It adds a parameter for each after
-// the parameters that take the existing inputs, and passes each value after
-// the existing inputs.
-var hatchInputFix = &ls.CodeFixProvider{
-	Source:     diagnosticSource,
-	ErrorCodes: []int32{EK4405.Code},
-	GetCodeActions: func(ctx context.Context, fix *ls.CodeFixContext) ([]*ls.CodeAction, error) {
-		file := fix.SourceFile
-		var call *ast.Node
-		for n := astnav.GetTouchingPropertyName(file, fix.Span.Pos()); n != nil; n = n.Parent {
-			if isHatchArgument(n) {
-				call = n.Parent
-				break
-			}
-		}
-		if call == nil {
-			return nil, nil
-		}
-		c, done := fix.Program.GetTypeCheckerForFile(ctx, file)
-		defer done()
-		names := outsideNames(c, hatchIsland(call))
-		if len(names) == 0 {
-			return nil, nil
-		}
-		function := ast.SkipParentheses(call.Arguments()[0])
-		if ast.IsFunctionExpressionOrArrowFunction(function) && len(hatchInputs(call)) > len(function.Parameters()) {
-			return nil, nil // unmatched existing inputs have no unambiguous parameter mapping
-		}
-		var parameters []string
-		for _, name := range names {
-			var captured *checker.Type
-			for _, reference := range outsideReferences(c, hatchIsland(call)) {
-				if reference.Text() == name {
-					captured = c.GetTypeAtLocation(reference)
-					break
-				}
-			}
-			if captured == nil {
-				return nil, nil
-			}
-			// Preserve flow narrowing at the capture, rather than widening
-			// a parameter back to its binding's declared type.
-			t := c.TypeToStringEx(captured, function, checker.TypeFormatFlagsNoTruncation|checker.TypeFormatFlagsUseFullyQualifiedType, nil)
-			if t == "typeof "+name {
-				// The new parameter shadows the captured constructor or namespace.
-				// Let its input infer the type instead of referring to itself.
-				parameters = append(parameters, name)
-			} else {
-				parameters = append(parameters, name+": "+t)
-			}
-		}
-		list := strings.Join(names, ", ")
-		edits := hatchInputEdits(c, fix, file, call, strings.Join(parameters, ", "))
-		arguments := call.Arguments()
-		edits = append(edits, edit(fix, file, arguments[len(arguments)-1].End(), ", "+list))
-		description := "Pass " + list + " as an input"
-		if len(names) > 1 {
-			description += "s"
-		}
-		return []*ls.CodeAction{{Description: description, Changes: edits}}, nil
-	},
 }
 
 // hatchInputEdits adds parameters named list to the hatch's TypeScript, or,

@@ -631,6 +631,7 @@ func FixProjectWithOptions(ctx context.Context, fs vfs.FS, libraryPath tspath.Ro
 	// propose returns a round's fixes: in each fixable file of program, the
 	// fixes options select whose edits do not overlap.
 	propose := func(program *compiler.Program) []proposal {
+		hatchTypes := legacyHatchTypeMigrationFixes(ctx, program, g.refused)
 		var proposals []proposal
 		for _, file := range scope.fixable(program) {
 			// Detail 296's preserving import migration also runs in VIP-only
@@ -694,6 +695,9 @@ func FixProjectWithOptions(ctx context.Context, fs vfs.FS, libraryPath tspath.Ro
 					inferSlotsDeferred = true
 					return true
 				})
+			}
+			if migration, ok := hatchTypes[file]; ok {
+				p = migration.withFixes(p)
 			}
 			p.cleanImports = !options.MigrationOnly && !options.VIPOnly
 			// Refuse each fix that would edit a refused site (fix_sites.go).

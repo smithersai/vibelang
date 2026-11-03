@@ -1,0 +1,4 @@
+go test fuzz v1
+string("sync/alias")
+byte(7)
+byte(2)

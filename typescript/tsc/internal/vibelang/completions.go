@@ -28,7 +28,7 @@ func preludeCompletions(c *checker.Checker, location *ast.Node, meaning ast.Symb
 	state := preludeStateOf(c)
 	if module := orProgramModule(c, runtimeModuleSymbol(c, state, file), runtimeModule); module != nil {
 		for name := range preludeModules {
-			if strings.HasPrefix(name, "$") || implicitEffectModuleDisabled(c, file, name) {
+			if strings.HasPrefix(name, "$") || hatchNames[name] || implicitEffectModuleDisabled(c, file, name) {
 				continue // written by the compiler, not by people
 			}
 			if symbol := c.TryGetMemberInModuleExports(name, module); symbol != nil && hasMeaning(c, symbol, meaning) {

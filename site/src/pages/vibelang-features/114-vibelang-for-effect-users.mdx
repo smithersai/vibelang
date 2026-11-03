@@ -187,6 +187,8 @@ When upgrading existing `.vibe` modules from the former readonly defaults, run `
 | `Effect.forkDetach(program)` | `fork.detached program` |
 | `Stream.runForEachWhile` | `for try (const value of stream) { ... }` |
 
+`sync`, `callback` and `never` can be stored and passed as values: `const evaluate = sync`, `const register = callback`, `const waiting = never`. These bindings are `Effect.sync`, `Effect.callback` and `Effect.never`, with their native types. Older annotations, including factory return types, that require the compatibility helper's signature migrate with `vibelang --fix` to a qualified runtime import type; the underlying value and calls stay unchanged. Their arrows capture surrounding locals; an aliased `callback` resumes with an Effect, as in `register<number>((resume) => resume(Effect.succeed(value)))`.
+
 `try.allSettled` captures every element's full outcome as an `Exit`, including defects and interruption, and the whole never fails.
 
 `try result(program)` captures typed failures only. Defects and interruption propagate. `try exit(program)` instead captures the full cause in `Exit.Failure`, including defects and interruption.

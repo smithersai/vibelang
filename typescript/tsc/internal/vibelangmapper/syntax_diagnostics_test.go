@@ -52,19 +52,7 @@ func checkSyntaxFixture(t *testing.T, name string, code int32, count int) {
 	if len(found) != count {
 		t.Fatalf("%s: want %d EK%d, got %v", name, count, code, found)
 	}
-	if code == 4405 {
-		positions := [][2]int{{27, 28}, {28, 28}, {28, 37}, {29, 28}, {30, 28}, {31, 31}}
-		for i, pos := range positions {
-			offset := 0
-			lines := strings.Split(source, "\n")
-			for _, line := range lines[:pos[0]-1] {
-				offset += len(line) + 1
-			}
-			if found[i].Start != offset+pos[1]-1 {
-				t.Fatalf("%s: capture %d: %+v", name, i, found[i])
-			}
-		}
-	}
+
 }
 
 // TestSyntaxEK1003 reports for await and await using outside an async
@@ -128,20 +116,19 @@ func TestSyntaxEK2104(t *testing.T) {
 	checkSyntaxDiagnostic(t, 2104, `layer CounterLive: Counter { next() { return 1 } const start = 0; }`, "const start = 0;", "This statement follows the layer's members, but a layer's setup statements come first.", `layer CounterLive: Counter { const start = 0; next() { return start } }`)
 }
 
-// TestSyntaxEK4405 uses lexical bindings and honors hatch-local shadows (D229).
+// TestSyntaxEK4405 keeps the old witnesses: VIP-6 now permits every capture.
 func TestSyntaxEK4405(t *testing.T) {
-	checkSyntaxFixture(t, "ek4405-self-contained", 4405, 6)
+	checkSyntaxFixture(t, "ek4405-self-contained", 4405, 0)
 	for _, use := range []string{"text.length", "({ text })", "text"} {
 		source := "function label(text: string) { return sync(() => " + use + ") }"
-		at := strings.LastIndex(source, "text")
 		var ds []Diagnostic
 		for _, d := range Project(source, testContext).Diagnostics {
 			if d.Code == 4405 {
 				ds = append(ds, d)
 			}
 		}
-		if len(ds) != 1 || ds[0].Start != at || ds[0].Length != 4 || ds[0].Message != "text is declared outside the hatch, and a hatch's TypeScript is self-contained: pass text to sync as an input." {
-			t.Fatalf("%s: %v", source, ds)
+		if len(ds) != 0 {
+			t.Fatalf("VIP-6 permits the capture: %s: %v", source, ds)
 		}
 	}
 	valid := `import { trim } from './text'; error Bad { reason: string }; const text = "outer"; function f() { return sync((text: string) => { const local = trim(text); if (!local) throw new Bad({ reason: JSON.stringify(local) }); return { text: local } }, text) }`

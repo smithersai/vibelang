@@ -208,5 +208,15 @@
       "reference": "docs/design/vips/0004-throw.md: accepted by Will 2026-10-28; Decision explicitly rejects an unwrapped throwing foreign call with EK0403; one-rule-for-TypeScript amendment 2026-11-02"
     },
     "reason": "The parent golden already reports EK0403 on legacyParse(text) outside the hatch callback. This remains the same accepted VIP-4 negative control; changing the independent clock diagnostic's expected code does not introduce a new foreign-call restriction."
+  },
+  {
+    "code": "TS2345",
+    "case": "typescript/vibelang/cases/hatch-input-without-parameter.fail",
+    "vip": "VIP-6",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0006-effect-globals.md: Status: accepted by Will, 2026-10-28. This cites existing published authority, not a new approval."
+    },
+    "reason": "The existing fixture program is byte-identical after comment removal. Accepted VIP-6 retires the special hatch arity diagnostic in favor of ordinary Effect functions and native argument errors; this changes existing EK4405 ownership to TS2345 without introducing a newly refused program."
   }
 ]

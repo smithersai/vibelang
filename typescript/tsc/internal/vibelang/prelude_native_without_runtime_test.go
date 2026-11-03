@@ -7,6 +7,9 @@ import (
 
 func TestNativePreludeWithoutRuntime(t *testing.T) {
 	for _, source := range []string{
+		"export const value = sync",
+		"export const value = callback",
+		"export const value = never",
 		"export const value = Effect",
 		"export const value = Layer",
 		"export const value = Schema",

@@ -1,0 +1,13 @@
+// expect-result: [true,true,true,8,9,10,11]
+export const f = sync
+export const g = callback
+export const n = never
+
+export effect function main() {
+  const input = 7
+  const viaSync = try f(() => input + 1)
+  const viaCallback = try g<number>((resume) => resume(Effect.succeed(input + 2)))
+  const directSync = try sync(() => input + 3)
+  const directCallback = try callback<number>((resume) => resume(input + 4))
+  return [f === Effect.sync, g === Effect.callback, n === Effect.never, viaSync, viaCallback, directSync, directCallback]
+}

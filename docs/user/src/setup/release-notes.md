@@ -256,6 +256,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - `async match` in native Promise callbacks was rejected with syntax errors; it now returns a Promise and accepts `await` in its subject, tests and selected arm.
 
 - Parentheses inside schema unions could create extra union codecs; grouping now stays transparent and literal-only unions expose `.literals` in source order. Run `vibelang -p tsconfig.json --fix --fix-migration-only` to retain an older grouped schema codec layout, public declarations and decoding behavior.
+- Storing or renaming `sync` and `callback` reported `EK4410`, and their arrows rejected captured locals with `EK4405`. Stored bindings now use the native Effect exports, `never` resolves to `Effect.never`, and wrapper arrows may capture locals. If an older `typeof sync` or `typeof callback` annotation, including a factory return type, needs the compatibility signature, `vibelang --fix` qualifies its runtime import type while preserving the function and its calls.
 - Bare `data as T;`, `data satisfies T;`, and `data is Number;` statements bypassed the required data body check. They now report `EK1604`, and `vibelang --fix` preserves the intended expression by adding parentheses.
 
 - Generated error matchers could fail to load after the extractor update because the guarded runtime entry omitted its registration helper. The entry now exports the helper once and preserves its ABI identity.

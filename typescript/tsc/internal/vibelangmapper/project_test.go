@@ -1196,20 +1196,10 @@ func TestHatchDataExports(t *testing.T) {
 		assert.Equal(t, len(Executable(source, testContext).Diagnostics), 0, "%s", source)
 	}
 	source := `function f(BigDecimal: { fromNumberUnsafe(n: number): () => number }) { return sync(BigDecimal.fromNumberUnsafe(0)) }`
-	// D229/EK4405: the parameter is outside sync's first argument, just as
-	// native checkHatches -> outsideReferences -> declaredOutside decides.
-	// Keep this invalid input to also test the original callable-value ambiguity.
+	// VIP-6 permits the capture. Keep the independent callable-value
+	// ambiguity diagnostic from the original witness.
 	for _, projection := range []Projection{Project(source, testContext), Executable(source, testContext)} {
-		assert.Equal(t, len(projection.Diagnostics), 2, "%v", projection.Diagnostics)
-		codes := map[int32]bool{}
-		for _, diagnostic := range projection.Diagnostics {
-			codes[diagnostic.Code] = true
-			if diagnostic.Code == 4405 {
-				assert.Equal(t, diagnostic.Start, strings.LastIndex(source, "BigDecimal"))
-				assert.Equal(t, diagnostic.Length, len("BigDecimal"))
-				assert.Equal(t, diagnostic.Message, "BigDecimal is declared outside the hatch, and a hatch's TypeScript is self-contained: pass BigDecimal to sync as an input.")
-			}
-		}
-		assert.Assert(t, codes[CodeUnprojectedForm] && codes[4405], "%v", projection.Diagnostics)
+		assert.Equal(t, len(projection.Diagnostics), 1, "%v", projection.Diagnostics)
+		assert.Equal(t, projection.Diagnostics[0].Code, int32(CodeUnprojectedForm))
 	}
 }

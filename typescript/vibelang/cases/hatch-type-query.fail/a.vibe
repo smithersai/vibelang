@@ -1,6 +1,6 @@
-// expect: EK4405
+// VIP-6: both the type query and the ordinary value capture are allowed.
 const parse = (text: string): number => Number(text)
-// Type queries are exempt; the actual value capture is not.
+// Capturing parse does not require an explicit input.
 export effect function invalid(text: string) {
   return try sync((input: typeof text): ReturnType<typeof parse> => parse(input), text)
 }

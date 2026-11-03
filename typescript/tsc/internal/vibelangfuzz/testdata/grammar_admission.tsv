@@ -433,7 +433,6 @@ vibelang/hatches.go:isWrappedCode	admission:hatches	-	pending	Legacy lowering ha
 vibelang/hatches.go:forEachHatchVibeLang	admission:hatches	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
 vibelang/hatches.go:inHatch	admission:hatches	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
 vibelang/hatches.go:init	admission:hatches	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
-vibelang/hatches.go:checkHatches	admission:hatches	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
 vibelang/hatches.go:takesFewerInputs	admission:hatches	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
 vibelang/hatches.go:hatchIsland	admission:hatches	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
 vibelang/hatches.go:outsideReferences	admission:hatches	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal

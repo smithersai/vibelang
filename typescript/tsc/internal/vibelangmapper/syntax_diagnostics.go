@@ -27,14 +27,14 @@ func (p *projector) syntaxToken(node *ast.Node, code int32, message string) {
 // checkSyntaxDiagnostics mirrors EK1003 (for await and await using outside an
 // async function), EK1010, D15's finally exits
 // (EK2006), D1's bodiless service contracts (EK9205), D129's setup order
-// (EK2104), and D229's lexical hatch captures (EK4405). Alias/type identity
+// (EK2104). VIP-6 permits lexical wrapper captures. Alias/type identity
 // and unresolved types remain native. A type argument left out of an Effect
 // type means what it means in TypeScript (D308, D309), so Effect<A> is complete.
 func (p *projector) checkSyntaxDiagnostics() {
 	var visit func(*ast.Node) bool
 	visit = func(n *ast.Node) bool {
 		if p.isHatchCall(n) {
-			p.checkHatchCaptures(n)
+			// VIP-6 retires D229: ordinary lexical captures are allowed.
 			// D232: only the first argument is TypeScript; mapper and inputs are VibeLang.
 			for _, arg := range n.Arguments()[min(1, len(n.Arguments())):] {
 				visit(arg)
@@ -203,42 +203,7 @@ func (p *projector) checkFinallyExits(block *ast.Node) {
 	block.ForEachChild(visit)
 }
 
-// checkHatchCaptures resolves value references lexically for EK4405 (D229).
-// Imports, globals, types, error declarations, and island-local bindings pass.
-func (p *projector) checkHatchCaptures(call *ast.Node) {
-	if len(call.Arguments()) == 0 {
-		return
-	}
-	island := call.Arguments()[0]
-	var visit func(*ast.Node) bool
-	visit = func(n *ast.Node) bool {
-		// A binding element's property name, `extra` in `const { extra: picked } = item`,
-		// names the property it reads, not a binding.
-		if ast.IsIdentifier(n) && n.Parent != nil && !(n.Parent.Kind == ast.KindBindingElement && n.Parent.PropertyName() == n) && ((!ast.IsDeclarationName(n) && !ast.IsPartOfTypeNode(n) && !ast.IsRightSideOfQualifiedNameOrPropertyAccess(n)) || n.Parent.Kind == ast.KindShorthandPropertyAssignment) {
-			d := p.forms.(*Resolver).binding(n, n.Text())
-			if d != nil {
-				switch d.Kind {
-				case ast.KindVariableDeclaration, ast.KindParameter, ast.KindFunctionDeclaration, ast.KindFunctionExpression, ast.KindClassDeclaration, ast.KindClassExpression, ast.KindEnumDeclaration, ast.KindModuleDeclaration:
-					inside := false
-					for parent := d; parent != nil; parent = parent.Parent {
-						if parent == island {
-							inside = true
-							break
-						}
-					}
-					if !inside && !isErrorDeclaration(d) && !syntaxTaggedErrorClass(d) {
-						p.syntaxDiagnostic(n, 4405, n.Text()+" is declared outside the hatch, and a hatch's TypeScript is self-contained: pass "+n.Text()+" to "+call.Expression().Text()+" as an input.")
-					}
-				}
-			}
-		}
-		n.ForEachChild(visit)
-		return false
-	}
-	visit(island)
-}
-
-// syntaxTaggedErrorClass preserves D229's error-class exception (EK4405).
+// syntaxTaggedErrorClass recognizes the legacy TaggedError class shape.
 func syntaxTaggedErrorClass(n *ast.Node) bool {
 	if !ast.IsClassLike(n) {
 		return false

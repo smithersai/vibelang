@@ -360,26 +360,14 @@ try {
     assert(items.length === 0, `expected no diagnostics, got ${JSON.stringify(items.map((d) => d.message))}`)
   })
 
-  await check("code action: EK4405 reports a hatch reading a parameter, and its quick fix passes it as an input", async () => {
+  await check("diagnostics: wrapper arrows capture parameters without an input fix (VIP-6)", async () => {
     open("src/hatch-outside.vibe", "vibe")
     const items = await diagnostics("src/hatch-outside.vibe")
-    assert(items.length === 1, `expected one diagnostic, got ${JSON.stringify(items.map((d) => d.message))}`)
-    const [item] = items
-    assert(item.source === "EK" && item.code === 4405, `expected EK 4405, got ${item.source} ${JSON.stringify(item.code)}`)
-    const start = at("src/hatch-outside.vibe", "text.length")
-    assert(item.range.start.line === start.line && item.range.start.character === start.character, `range ${JSON.stringify(item.range)}`)
+    assert(items.length === 0, `expected no capture diagnostic, got ${JSON.stringify(items)}`)
     const uri = fileUri("src/hatch-outside.vibe")
-    const actions = (await connection.request("textDocument/codeAction", { textDocument: { uri }, range: item.range, context: { diagnostics: [item], only: ["quickfix"] } })) ?? []
-    const fix = actions.find((a) => a.title === "Pass text as an input")
-    assert(fix, `no quick fix among ${JSON.stringify(actions.map((a) => a.title))}`)
-    const edits = fix.edit?.changes?.[uri] ?? []
-    const lines = text("src/hatch-outside.vibe").split("\n")
-    const offset = (p) => lines.slice(0, p.line).reduce((n, l) => n + l.length + 1, 0) + p.character
-    let fixed = text("src/hatch-outside.vibe")
-    for (const e of [...edits].sort((a, b) => offset(b.range.start) - offset(a.range.start))) {
-      fixed = fixed.slice(0, offset(e.range.start)) + e.newText + fixed.slice(offset(e.range.end))
-    }
-    assert(fixed.includes("return sync((text: string) => text.length, text)"), `fixed text: ${fixed}`)
+    const start = at("src/hatch-outside.vibe", "text.length")
+    const actions = (await connection.request("textDocument/codeAction", { textDocument: { uri }, range: { start, end: start }, context: { diagnostics: [], only: ["quickfix"] } })) ?? []
+    assert(!actions.some((a) => a.title === "Pass text as an input"), "retired input fix was offered")
   })
 
   await check("code action: Effect's language service rules report in .vibe, execution repairs refuse, and names can be repaired", async () => {
@@ -529,9 +517,9 @@ try {
       "alias diagnostic span " + JSON.stringify(items[0].range))
   })
 
-  await check("hover: a hatch's callee says its TypeScript is self-contained and lists its inputs", async () => {
+  await check("hover: wrapper arrows may capture locals and legacy direct calls list their inputs", async () => {
     const shown = await hover("src/hatch-outside.vibe", "sync((t)")
-    assert(shown.includes("self-contained TypeScript (D229)") && shown.includes("Inputs, which fill its first parameters: `text`."), `hover ${shown}`)
+    assert(shown.includes("capture surrounding locals (VIP-6)") && shown.includes("Inputs, which fill its first parameters: `text`."), `hover ${shown}`)
   })
 
   await check("hover: an exported .vibe function shows the contract its callee's failure flows into", async () => {

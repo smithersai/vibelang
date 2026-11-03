@@ -216,7 +216,7 @@ func mayUsePrelude(file *ast.SourceFile) (prelude bool, root bool, barrels []str
 				prelude = true
 				// The native namespaces also resolve directly from Effect
 				// when this file has no runtime package (VIP-14).
-				root = root || strings.HasPrefix(module, "effect/")
+				root = root || strings.HasPrefix(module, "effect/") || hatchNames[name]
 			} else if _, ok := effectRootNames[name]; ok || effectglobals.Names[name] && !isMemberNameOf(node) {
 				root = true
 			} else if subpath, ok := effectSubpathNames[name]; ok && !loaded[subpath.barrel] && !isMemberNameOf(node) {
@@ -502,6 +502,13 @@ func resolvePreludeName(c *checker.Checker, location *ast.Node, name string, mea
 	}
 	state := preludeStateOf(c)
 	symbol := preludeSymbol(c, state, file, name)
+	// Existing direct hatch calls retain their compatibility signatures. A
+	// reference to the global itself is the native Effect export (VIP-6).
+	if hatchNames[name] && isLoweredHatchCallee(location) {
+		if module := runtimeModuleSymbol(c, state, file); module != nil {
+			symbol = c.TryGetMemberInModuleExports(name, module)
+		}
+	}
 	if symbol != nil && meaning&ast.SymbolFlagsType != 0 && !hasMeaning(c, symbol, meaning) && !shadowed(location, name) {
 		// The type Option is Option.Option (D311), unless the file declares
 		// Option in another meaning, as const Order = Schema.Struct(…) does.
@@ -589,7 +596,9 @@ func preludeSpellingCandidates(c *checker.Checker, location *ast.Node, meaning a
 		}
 	}
 	for name := range preludeModules {
-		offer(name)
+		if !hatchNames[name] {
+			offer(name)
+		}
 	}
 	for name := range effectRootNames {
 		offer(name)
@@ -619,6 +628,9 @@ func recordPreludeUse(state *preludeState, file *ast.SourceFile, name string) {
 func preludeSymbol(c *checker.Checker, state *preludeState, file *ast.SourceFile, name string) *ast.Symbol {
 	if len(effectSubpathShared[name]) > 0 {
 		return nil
+	}
+	if hatchNames[name] {
+		return effectExportSymbol(c, state, file, name)
 	}
 	if path, ok := preludeModules[name]; ok {
 		if module := runtimeModuleSymbol(c, state, file); module != nil {
@@ -684,7 +696,7 @@ func effectExportSymbol(c *checker.Checker, state *preludeState, file *ast.Sourc
 // JavaScript needs no import of it.
 func isLoweredHatchCallee(location *ast.Node) bool {
 	parent := location.Parent
-	return parent != nil && ast.IsCallExpression(parent) && parent.Expression() == location && location.Text() == "sync"
+	return parent != nil && ast.IsCallExpression(parent) && parent.Expression() == location && hatchNames[location.Text()]
 }
 
 // isBuiltinGlobal gives ECMAScript globals precedence over Effect's module
@@ -858,6 +870,9 @@ func preludeImports(f *ast.NodeFactory, names []string) []*ast.Node {
 	var namedModules []string
 	for _, name := range names {
 		module, namespace := preludeModules[name], true
+		if hatchNames[name] {
+			module = ""
+		}
 		if module == "" && effectglobals.Names[name] {
 			module, namespace = "effect/Effect", false
 		} else if subpath, ok := effectSubpathNames[name]; module == "" && ok {

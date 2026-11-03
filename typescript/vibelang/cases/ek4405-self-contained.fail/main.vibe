@@ -1,7 +1,5 @@
-// expect: EK4405
-// A hatch's TypeScript is self-contained (D229): it may use its own
-// parameters and locals, globals, imports, and the file's error declarations,
-// but no other binding of the .vibe file. Pass a value as an input instead.
+// expect-result: [4,"!text","item-x","function",{"suffix":"!"}]
+// VIP-6: wrapper arrows capture module bindings, parameters and locals.
 import { String as Str } from "effect"
 
 error Bad { reason: string }
@@ -22,12 +20,14 @@ export effect function label(text: string) {
     if (local === "") return new Bad({ reason: JSON.stringify(local) }).reason
     return local
   }, text)
-  // Not allowed: a parameter, a local, a module constant, a module function,
+  // Captures: a parameter, a local, a module constant, a module function,
   // and a shorthand property.
   const a = try sync(() => text.length)
   const b = try sync(() => suffix + ok)
   const c = try sync(() => prefix + "x")
   const d = try sync(() => helper)
   const e = try sync(() => ({ suffix }))
-  return [a, b, c, d, e]
+  return [a, b, c, typeof d, e]
 }
+
+export effect function main() { return try label("text") }

@@ -1,10 +1,9 @@
 // A hatch called as a value runs through the runtime's sync, which passes
 // an async function the AbortSignal in the parameter after its inputs,
 // as a direct call does (D230, D232). Interruption aborts the signal. A rest
-// or defaulted parameter gets no signal. VibeLang code calls a hatch only
-// under its own name (EK4410, D432), so the calls of hatches as values are
-// TypeScript's, in this module, where the runtime's sync is an ordinary
-// function (D330).
+// or defaulted parameter gets no signal. This module exercises the explicit
+// compatibility runtime helper. The unqualified global, when stored as a
+// value, is native Effect.sync (VIP-6).
 module foreign {
   import { sync as run } from "vibelang-runtime"
 

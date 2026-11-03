@@ -1,4 +1,4 @@
-// A hatch's TypeScript reads a parameter: EK4405, and its quick fix passes it as an input.
+// VIP-6: a wrapper arrow captures its surrounding parameter without an input fix.
 export function measure(text: string) {
   return sync(() => text.length)
 }
