@@ -326,6 +326,7 @@ func dataRules() []dataRule {
 	add("async-match-direct", match, "Inside effect code, a direct `async match` is a compile error", `effect function f(){return async match(true){default:1;}}`, "error", "vip-match")
 	add("async-match-effect-try", match, "`await` is allowed there and effect `try` is not", `effect function f(){return try promise(()=>async match(true){default:try succeed(1);})}`, "error", "vip-match")
 
+	rules = append(rules, dataDynamicPropertyRules()...)
 	rules = append(rules, dataMatchProtoRules()...)
 	rules = append(rules, dataScopedSchemaAliasRules()...)
 	rules = append(rules, constructorParameterRules()...)

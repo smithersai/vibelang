@@ -1,0 +1,4 @@
+// expect: TS2322 TS2322 TS2322
+function a(x:unknown,key:string){return match(x){when {[key]:let value}:do{const n:number=value;n};default:0;}}
+function b(x:unknown,key:number){return match(x){when {[key]:let value}:do{const n:number=value;n};default:0;}}
+function c(x:unknown,key:symbol){return match(x){when {[key]:let value}:do{const n:number=value;n};default:0;}}

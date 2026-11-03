@@ -3420,6 +3420,7 @@ typescript/vibelang/cases/match-date-brand-r5/main.vibe:5:9 lambda dual fallback
 typescript/vibelang/cases/match-date-brand-r5/main.vibe:6:9 lambda dual fallback
 typescript/vibelang/cases/match-date-brand-r5/main.vibe:7:9 lambda dual fallback
 typescript/vibelang/cases/match-date-prototypes/main.vibe:11:23 lambda dual fallback
+typescript/vibelang/cases/match-dynamic-property-unknown/main.vibe:6:79 lambda plain table
 typescript/vibelang/cases/match-effect-aliases/main.vibe:26:112 lambda plain fallback
 typescript/vibelang/cases/match-effect-aliases/main.vibe:26:154 lambda dual fallback
 typescript/vibelang/cases/match-effect-aliases/main.vibe:26:45 lambda dual fallback

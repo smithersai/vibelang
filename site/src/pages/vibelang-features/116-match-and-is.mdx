@@ -422,3 +422,5 @@ An object pattern rejects a literal `__proto__` key, including quoted and escape
 Primitive constructor patterns such as `when Number:` and `when Number(let n):` do not prove exhaustiveness for a finite literal union. Add `default`, literal arms or a bare binding arm. Ordinary `is`, arm and default-flow narrowing stay the same (VIP-7, decided detail78).
 
 A no-op whose removal would discard an embedded comment or the evaluation of its receiver stays unchanged, such as `try Effect /* keep */ .void` or `try getEffect().void`.
+
+A binding from an `unknown` subject through a computed key, such as `{ [key]: let value }` with `key: string`, has type `unknown`. It does not produce an indexing error for the generated read. Declared field and index-signature types still apply, and accesses written in your source keep TypeScript's normal checks.

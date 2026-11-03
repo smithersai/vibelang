@@ -1,0 +1,6 @@
+// expect-result: [7,0,true,"old",0,1]
+import { Effect } from "effect"
+let reads=0
+const value={get field(){reads++;return 7}}
+function take(x:unknown,key:string):unknown{return match(x){when {[key]:let value}:value;default:0;}}
+export effect function main():readonly unknown[]!never{return try Effect.sync(():readonly unknown[] => [take(value,"field"),take({},"field"),take({field:undefined},"field")===undefined,take(Object.create({field:"old"}),"field"),take(1,"field"),reads])}
