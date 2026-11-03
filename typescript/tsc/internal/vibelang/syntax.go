@@ -65,6 +65,12 @@ func checkSyntax(c *checker.Checker, file *ast.SourceFile) {
 			}
 		case ast.KindVariableDeclarationList:
 			switch node.Flags & ast.NodeFlagsBlockScoped {
+			case ast.NodeFlagsUsing:
+				// VIP-34: advise at the source declaration list, including
+				// for-of heads, without changing native disposal.
+				if inEffectCode(node) {
+					reportAt(c, file, scanner.GetRangeOfTokenAtPosition(file, node.Pos()), EK0801)
+				}
 			case ast.NodeFlagsAwaitUsing:
 				if inAsyncFunction(node) {
 					break

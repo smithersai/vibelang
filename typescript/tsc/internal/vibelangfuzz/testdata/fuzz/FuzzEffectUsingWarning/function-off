@@ -1,0 +1,3 @@
+go test fuzz v1
+string("function:off")
+uint8(3)

@@ -160,7 +160,7 @@ Acquisitions inside `scoped` belong to that scope. An acquisition without an inn
 
 `Scope` is in scope as a module, and its type is `Scope.Scope`, so these contracts need no import. `acquireRelease` masks acquisition by default, and its third argument `{ interruptible: true }` lets cancellation reach an acquisition that waits on the outside world. An adapter that receives a resource after cancellation must release it.
 
-`acquireDisposable` registers a JavaScript Disposable or AsyncDisposable in the current Effect scope and releases it exactly once, even when an interruption is pending as acquisition gives its value. A value acquired with `acquireRelease` is released only by its release ([Releasing JavaScript Disposables](/resource-management/030-scope#releasing-javascript-disposables)). TypeScript's `using` retains its JavaScript disposal behavior.
+`acquireDisposable` registers a JavaScript Disposable or AsyncDisposable in the current Effect scope and releases it exactly once, even when an interruption is pending as acquisition gives its value. A value acquired with `acquireRelease` is released only by its release ([Releasing JavaScript Disposables](/resource-management/030-scope#releasing-javascript-disposables)). TypeScript's `using` retains its JavaScript disposal behavior. In Effect code, `using` reports warning `EK0801` because failure or interruption can bypass JavaScript disposal. Use `acquireDisposable` inside `scoped` for Effect resources. Configure this warning through `vibe.severities`; plain and `async` functions keep native `using` without this warning.
 
 ## Coming from Effect
 
