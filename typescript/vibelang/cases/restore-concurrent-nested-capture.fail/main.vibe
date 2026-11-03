@@ -1,0 +1,16 @@
+// expect: EK2202 EK2202 EK2202 EK2202 EK2202
+export effect function outer() {
+  uninterruptible {
+    for concurrent (const item of [1]) {
+      const arrow = effect () => { restore {} };
+      effect function declaration() { restore {} }
+      const block = effect { restore {} };
+      class Nested { effect method() { restore {} } }
+      effect function* producer() { restore {}; yield 1 }
+      const ownMask = effect () => { uninterruptible { restore {} } };
+      void item; void arrow; void declaration; void block; void Nested; void producer; void ownMask;
+    }
+  }
+}
+// VIP-22: an independent Effect activation cannot capture an outer mask,
+// including when a concurrent item stands between it and that mask.

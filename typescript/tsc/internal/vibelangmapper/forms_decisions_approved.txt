@@ -1846,3 +1846,9 @@ typescript/vibelang/cases/opencode-unused-name-beside-refusal-fixed/lib.vibe:3:2
 typescript/vibelang/cases/opencode-unused-name-beside-refusal-fixed/lib.vibe:7:22 lambda: plain fallback -> effectFn keyword # VIP-1: written `effect` fixes callable kind before the contextual return target; preserve every observed occurrence.
 typescript/vibelang/cases/rewrite-void-match-arm/main.vibe:8:24 lambda: plain fallback -> effectFn keyword # VIP-1: written `effect` fixes callable kind before the contextual return target; preserve every observed occurrence.
 typescript/vibelang/cases/rewrite-void-match-arm/main.vibe:9:18 lambda: effectFn table -> effectFn keyword # VIP-1: written `effect` fixes callable kind before the contextual return target; preserve every observed occurrence.
+
+# Published VIP-5 closed-handler recovery; baseline/fixed forms outputs are byte-identical.
+typescript/vibelang/cases/catch-mixed-precedence.fail/main.vibe:16:24 lambda: effectFn table -> plain fallback # VIP-5 EK0512 rejects the unparenthesized ?? continuation; the published parser's fallback recovery keeps this nested source function plain.
+typescript/vibelang/cases/catch-mixed-precedence.fail/main.vibe:17:24 lambda: effectFn table -> plain fallback # VIP-5 EK0512 rejects .call after a closed function handler; the published fallback recovery no longer contextually converts its nested function.
+typescript/vibelang/cases/catch-mixed-precedence.fail/main.vibe:18:23 lambda: effectFn table -> plain fallback # VIP-5 EK0512 rejects element access after a closed function handler; its nested recovery function has no contextual Effect signature.
+typescript/vibelang/cases/catch-mixed-precedence.fail/main.vibe:19:25 lambda: effectFn table -> plain fallback # VIP-5 EK0512 rejects calling a closed function handler; its nested recovery function remains an ordinary function.

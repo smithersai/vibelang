@@ -326,6 +326,9 @@ func checkPrimitives(c *checker.Checker, file *ast.SourceFile) {
 				visit(args[0], ctx)
 				visit(args[1], ctx)
 				region := maskContext{inFunction: true, item: true}
+				// Nested activations still have a lexical outer mask; direct
+				// item restores remain forbidden by the item flag.
+				region.outerMasked = ctx.masked || ctx.outerMasked
 				args[2].ForEachChild(func(child *ast.Node) bool { return visit(child, region) })
 				return false
 			}
