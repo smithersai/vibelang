@@ -35,8 +35,7 @@ import (
 const fiberNameRenameLabel = "fork and join binding renames"
 
 // reservedFiberName is EK1702 as the parser reports it for a binding in effect
-// code (VIP-17, amended). The parser does not report a function expression's
-// own name.
+// code, including an Effect expression's own name (VIP-17; Appendix A).
 var reservedFiberName = message(parser.ReservedFiberNameDiagnosticCode, errorCategory, parser.ReservedFiberNameDiagnosticText)
 
 func init() {
@@ -175,7 +174,7 @@ func generatorRegionFiberNames(c *checker.Checker, call *ast.Node) []*ast.Node {
 // fork or join that EK1702 reports or that a generator's rewrite would reach.
 func fiberNameRenames(c *checker.Checker, file *ast.SourceFile) []fiberRename {
 	text := file.Text()
-	if !file.FileName().IsVibeLangSource() || !strings.Contains(text, "fork") && !strings.Contains(text, "join") {
+	if !file.FileName().IsVibeLangSource() || !strings.Contains(text, "fork") && !strings.Contains(text, "join") && !strings.Contains(text, `\`) {
 		return nil
 	}
 	identifiers, taken := fiberNameIdentifiers(file)
@@ -211,6 +210,10 @@ func fiberNameRenames(c *checker.Checker, file *ast.SourceFile) []fiberRename {
 			renames = append(renames, fiberLabelRename(file, id, fresh(id.Text())))
 			continue
 		}
+		if ast.IsFunctionExpression(id.Parent) && id.Parent.Name() == id {
+			renames = append(renames, fiberExpressionNameFix(c, file, id))
+			continue
+		}
 		add(id)
 	}
 	var visit func(node *ast.Node) bool
@@ -225,6 +228,32 @@ func fiberNameRenames(c *checker.Checker, file *ast.SourceFile) []fiberRename {
 	file.AsNode().ForEachChild(visit)
 	slices.SortStableFunc(renames, func(a, b fiberRename) int { return nodeStart(file, a.name) - nodeStart(file, b.name) })
 	return renames
+}
+
+// fiberExpressionNameFix keeps the callable's observable name and immutable
+// self-binding by moving that binding into a plain arrow's local constant.
+// The anonymous callable receives the same inferred name. Its defaults and
+// nested plain callables still close over that binding, while its Effect body
+// continues to parse fork and join as operators. Source slices retain comments
+// and escaped identifier spellings. The project fixer checks the edited types.
+func fiberExpressionNameFix(c *checker.Checker, file *ast.SourceFile, name *ast.Node) fiberRename {
+	fn := name.Parent
+	start, nameStart := nodeStart(file, fn), nodeStart(file, name)
+	text := file.Text()
+	spelling := text[nameStart:name.End()]
+	anonymous := text[start:nameStart] + text[name.End():fn.End()]
+	suffix := ""
+	if fn.AsFunctionExpression().AsteriskToken == nil && refersToOwnName(fn) {
+		// A self-bound Effect expression keeps a native function wrapper. An
+		// anonymous expression may lower to fnUntraced instead, whose name is
+		// "fn". Restore the original name without changing its self-binding.
+		if !isGlobal(c, c.ResolveName("Object", fn, ast.SymbolFlagsValue, false)) {
+			return fiberRename{name: name, why: "Object is shadowed; preserve this self-bound callable's name by hand"}
+		}
+		suffix = "; Object.defineProperty(" + spelling + `, "name", { value: ` + strconv.Quote(name.Text()) + " })"
+	}
+	replacement := "(() => { const " + spelling + " = " + anonymous + suffix + "; return " + spelling + " })()"
+	return fiberRename{name: name, newName: name.Text(), edits: []sourceEdit{{start, fn.End(), replacement}}}
 }
 
 // fiberRenameEdits writes the rename of symbol to newName at each identifier
@@ -388,11 +417,21 @@ func fiberNameActions(ctx context.Context, fix *ls.CodeFixContext) ([]*ls.CodeAc
 		if nodeStart(fix.SourceFile, r.name) != fix.Span.Pos() || len(r.edits) == 0 {
 			continue
 		}
+		// The arrow wrapper cannot carry a surrounding contextual signature.
+		// --fix checks its edits through the project gate; an editor action has
+		// no such check, so leave contextual or self-bound expressions to it.
+		if ast.IsFunctionExpression(r.name.Parent) && (c.GetContextualType(r.name.Parent, 0) != nil || refersToOwnName(r.name.Parent)) {
+			continue
+		}
 		var changes []*lsproto.TextEdit
 		for _, e := range r.edits {
 			changes = append(changes, replaceRange(fix, e.start, e.end, e.text)...)
 		}
-		return []*ls.CodeAction{{Description: "Rename " + r.name.Text() + " and its uses to " + r.newName, Changes: changes}}, nil
+		description := "Rename " + r.name.Text() + " and its uses to " + r.newName
+		if r.newName == r.name.Text() {
+			description = "Preserve " + r.name.Text() + " through a local constant"
+		}
+		return []*ls.CodeAction{{Description: description, Changes: changes}}, nil
 	}
 	return nil, nil
 }

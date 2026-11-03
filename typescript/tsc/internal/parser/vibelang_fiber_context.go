@@ -7,9 +7,10 @@ import (
 )
 
 // ReservedFiberNameDiagnosticCode and Text identify EK1702: fork or join naming
-// a variable, parameter or label under [+Effect] (VIP-17, amended).
+// a binding or label under [+Effect], including an expression's own name
+// (VIP-17; Appendix A).
 const ReservedFiberNameDiagnosticCode int32 = 1702
-const ReservedFiberNameDiagnosticText = "fork and join are reserved in effect code, so neither can name a variable, parameter or label here. Rename it; vibelang --fix renames it and its uses."
+const ReservedFiberNameDiagnosticText = "fork and join are reserved in effect code, including an effect expression's own name. Use another binding or label name; vibelang --fix preserves its uses."
 
 // setVibeLangFiberContext follows Appendix A's source Effect parameter.
 // Returning the restore function makes every early return and speculative

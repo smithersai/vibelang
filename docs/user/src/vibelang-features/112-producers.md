@@ -38,6 +38,8 @@ In `.vibe`, `effect function*` declares a producer; use a plain `function*` for 
 
 A class or object method written `effect *values() { yield this.value }` is also a producer. Calling it constructs a `Stream` without running its body. Each collection runs the body again with the original receiver and observes its current fields; `super` keeps the enclosing method’s meaning. TypeScript member modifiers, private names and generic parameters keep their usual meaning.
 
+A producer expression cannot use `fork` or `join` as its own name (`EK1702`), just like a non-generator `effect function` expression. Top-level declarations and method names are allowed. `vibelang --fix` preserves the expression's name and self-references through a local constant in a plain arrow; see [Fibers](../concurrency/047-fibers.md).
+
 A bare `return` ends a producer. `return value` is an error (`EK2128`) because a Stream has no return value; `vibelang --fix` writes `return` and keeps the value's evaluation. It rewrites only a function marked `effect`, never a plain `function*`, whose caller can read the value. A `return` inside a `for try` head's binding initialization or body is also an error (`EK2002`); nested functions keep their own return targets. Save the result and use `break` instead.
 
 ## Call services between yields

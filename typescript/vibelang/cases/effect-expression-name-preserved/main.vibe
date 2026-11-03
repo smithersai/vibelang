@@ -1,0 +1,14 @@
+// expect-result: ["fork","fork","join",["join"],2,3]
+const item = (() => { const fork = effect function(): string!! {
+  try yieldNow()
+  return (() => fork.name)()
+}; Object.defineProperty(fork, "name", { value: "fork" }); return fork })()
+const producer = (() => { const join = effect function*(): Stream.Stream<string> {
+  yield (() => join.name)()
+}; return join })()
+effect function fork() { return 2 }
+const declared = fork
+const methods = { effect join() { return 3 } }
+export effect function main() {
+  return [item.name, try item(), producer.name, try Stream.runCollect(producer()), try declared(), try methods.join()]
+}

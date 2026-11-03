@@ -7,6 +7,7 @@ import (
 )
 
 const reviewCallableNamesTarget = "FuzzReviewCallableNames"
+const reviewExpressionNameQuote = "An \x60effect\x60 function or producer expression\u0027s own [Name](#name) parses with the parameters of its body, \x60[+Effect]\x60 included"
 const reviewCallableNamesQuote = "`fork` and `join` are reserved words, as `await` is under `[+Await]` (VIP-17, amended)."
 
 type reviewCallableNameRule struct {
@@ -26,6 +27,11 @@ func reviewCallableNameRules() []reviewCallableNameRule {
 				rules = append(rules, reviewCallableNameRule{kind + ":" + form + ":" + name, source + "\n", reject})
 			}
 			add("expression", "export const item = effect function"+star+" "+name+"() { "+body+" }", true)
+			add("expression-comment", "export const item = (effect function"+star+" /*name*/ "+name+"(value = 1) { "+body+" })", true)
+			escaped := strings.Replace(name, "o", "\\u006f", 1)
+			add("expression-escaped", "export const item = effect function"+star+" "+escaped+"() { "+body+" }", true)
+			add("expression-nested-plain", "export function outer() { return effect function"+star+" "+name+"() { "+body+" } }", true)
+			add("preserved-expression", "export const item = (() => { const "+name+" = effect function"+star+"() { "+body+" }; return "+name+" })()", false)
 			add("repaired-expression", "export const item = effect function"+star+" "+name+"One() { "+body+" }", false)
 			add("declaration", "export effect function"+star+" "+name+"() { "+body+" }", false)
 			add("nested-declaration", "effect function outer() { effect function"+star+" "+name+"() { "+body+" }; return 1 }", true)
@@ -38,6 +44,9 @@ func reviewCallableNameRules() []reviewCallableNameRule {
 }
 
 func TestReviewCallableNamesQuoted(t *testing.T) {
+	if !strings.Contains(SpecText("900-appendices.md"), reviewExpressionNameQuote) {
+		t.Fatalf("Appendix A no longer says %q", reviewExpressionNameQuote)
+	}
 	if !strings.Contains(SpecText("900-appendices.md"), reviewCallableNamesQuote) {
 		t.Fatalf("Appendix A no longer says %q", reviewCallableNamesQuote)
 	}
@@ -83,7 +92,7 @@ func FuzzReviewCallableNames(f *testing.F) {
 		}
 		gapKey := "name:" + rule.key
 		if rule.reject && !reserved {
-			Gap(t, reviewCallableNamesTarget, gapKey, "Appendix A: %q; detail 242 requires EK1702 for this binding name, got %v\n%s", reviewCallableNamesQuote, SortedKeys(Keys(result.Dir, result.Diagnostics)), rule.source)
+			Gap(t, reviewCallableNamesTarget, gapKey, "Appendix A: %q; detail 242 requires EK1702 for this binding name, got %v\n%s", reviewExpressionNameQuote, SortedKeys(Keys(result.Dir, result.Diagnostics)), rule.source)
 		}
 		if !rule.reject && HasError(result.Diagnostics) {
 			Gap(t, reviewCallableNamesTarget, gapKey, "valid name control rejected with %v\n%s", SortedKeys(Keys(result.Dir, result.Diagnostics)), rule.source)

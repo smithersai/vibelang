@@ -6236,9 +6236,8 @@ func (p *Parser) parseFunctionExpression(effect bool) *ast.Expression {
 	isAsync := modifierListHasAsync(modifiers)
 	signatureFlags := core.IfElse(isGenerator, ParseFlagsYield, ParseFlagsNone) | core.IfElse(isAsync, ParseFlagsAwait, ParseFlagsNone)
 	var name *ast.Node
-	// A function expression's own name is not a binding EK1702 reports here.
-	bodyFiberContext := p.vibelangFiberContext
-	p.vibelangFiberContext = false
+	// Appendix A gives an expression's own name its body's Effect context,
+	// just as an async expression reserves await in its own name.
 	switch {
 	case isGenerator && isAsync:
 		name = p.doInContext(ast.NodeFlagsYieldContext|ast.NodeFlagsAwaitContext, true, (*Parser).parseOptionalBindingIdentifier)
@@ -6249,7 +6248,6 @@ func (p *Parser) parseFunctionExpression(effect bool) *ast.Expression {
 	default:
 		name = p.parseOptionalBindingIdentifier()
 	}
-	p.vibelangFiberContext = bodyFiberContext
 	typeParameters := p.parseTypeParameters()
 	parameters := p.parseParameters(signatureFlags)
 	returnType := p.parseReturnType(ast.KindColonToken, false /*isType*/)

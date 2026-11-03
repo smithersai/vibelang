@@ -1,0 +1,5 @@
+// expect: EK1702 EK1702 EK1702 EK1702
+export const item = effect function fork() { return 1 }
+export const joined = effect function join() { return 1 }
+export const producer = effect function* fork() { yield 1 }
+export const joinedProducer = effect function* join() { yield 1 }
