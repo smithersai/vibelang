@@ -1,1 +1,6 @@
 import * as Cause from "effect/Cause";export function test(){const f:any={_tag:"NoSuchElementError"};const s:any={_tag:"NoSuchElementError","~effect/Cause/NoSuchElementError":"~effect/Cause/NoSuchElementError"};return [match(f){when Cause.NoSuchElementError:true;default:false;},match(s){when Cause.NoSuchElementError:true;default:false;},match(s){when Cause.NoSuchElementError(let e):e===s;default:false;},match(s){when Cause.NoSuchElementError():true;default:false;}]}
+// VIP-7 root retained error guard and one-subject extraction; rule: docs/design/vips/0007-match.md#e4b45d7b776d19cf
+// VIP-7 root retained error inventory row; rule: docs/design/vips/0007-match.md#0b99c0926d66c436
+// VIP-7 retained guards accept brands and reject tag-only impostors; rule: docs/design/vips/0007-match.md#4e1af7e2a5d54dbe
+// VIP-7 retained guards accept brands and reject tag-only impostors; rule: docs/design/vips/0007-match.md#5c728e1bd6e6e18c
+// VIP-7 retained guards accept brands and reject tag-only impostors; rule: docs/design/vips/0007-match.md#1eff32fb554c6970

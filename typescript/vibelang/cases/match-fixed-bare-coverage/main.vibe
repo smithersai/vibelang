@@ -16,3 +16,5 @@ export function mixed(o: Option.Option<number>) {
 export effect function main() {
   return [option(Option.some(1)), exit(Exit.succeed(1)), result(Result.succeed(1)), mixed(Option.none())]
 }
+// VIP-7 bare fixed case exhaustiveness; rule: docs/design/vips/0007-match.md#dc8873cf160cd46a
+// VIP-7 bare fixed case exhaustiveness; rule: docs/design/vips/0007-match.md#a92f3ca1f214b160

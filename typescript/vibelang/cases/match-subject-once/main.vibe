@@ -204,3 +204,4 @@ export effect function main() {
     [width({ value: "abc" }), area({ kind: "square", side: 2 }), firstTwo({ value: "b" }), retryable(new Denied({ user: "Ada" })), kindOf({ kind: "b" }), size({ kind: "a", x: 1 }), size({ kind: "c", y: "yy" }), optional(undefined), optional({ b: 2 }), sum({ opt: Option.some(2) }), narrowedFirst("a"), variantAfterIs(Delivery.Waiting())]
   ]
 }
+// VIP-7 evaluate subject once; rule: docs/design/vips/0007-match.md#326b9d72a14eea33

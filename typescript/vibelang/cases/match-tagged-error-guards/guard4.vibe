@@ -1,1 +1,3 @@
 import * as Cause from "effect/Cause";export function test(){const f:any={_tag:"AsyncFiberError"};const s:any={_tag:"AsyncFiberError","~effect/Cause/AsyncFiberError":"~effect/Cause/AsyncFiberError"};return [match(f){when Cause.AsyncFiberError:true;default:false;},match(s){when Cause.AsyncFiberError:true;default:false;},match(s){when Cause.AsyncFiberError(let e):e===s;default:false;},match(s){when Cause.AsyncFiberError():true;default:false;}]}
+// VIP-7 root retained error guard and one-subject extraction; rule: docs/design/vips/0007-match.md#3c47098134ba342f
+// VIP-7 root retained error inventory row; rule: docs/design/vips/0007-match.md#0b2c85c773721893
