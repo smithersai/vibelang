@@ -150,6 +150,18 @@ try {
 }
 
 const args = process.argv.slice(2)
+// Reject unknown switches before case selection or filesystem writes. A value
+// belongs to --jobs even when it starts with a dash; validate the count below.
+const switches = new Set(["--status", "--late-start", "--isolated", "--verbose", "-v"])
+for (let i = 0; i < args.length; i++) {
+  const arg = args[i]
+  if (arg === "--jobs") {
+    i++
+  } else if (arg.startsWith("-") && !switches.has(arg)) {
+    console.error("harness.mjs: unknown option " + arg)
+    process.exit(2)
+  }
+}
 const statusOnly = args.includes("--status")
 const lateStart = args.includes("--late-start") || process.env.VIBELANG_LATE_START === "1"
 const isolated = args.includes("--isolated")
