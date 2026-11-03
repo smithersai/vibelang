@@ -467,9 +467,26 @@ func FixProjectWithOptions(ctx context.Context, fs vfs.FS, libraryPath tspath.Ro
 		return last
 	}
 	g := &fixGate{ctx: ctx, done: done, build: build, fresh: fresh, baseline: baselineOf(ctx, program), refused: map[string]bool{}, alone: map[[32]byte]map[string]int{}, verified: verified, progress: progress, isolationChecks: options.IsolationChecks, checkpointFirst: options.CheckpointFirst}
+	var roundRefusals []FixRefusal
 	refuse := func(refusal FixRefusal, key string) {
 		g.refused[key] = true
+		roundRefusals = append(roundRefusals, refusal)
 		result.Refused = append(result.Refused, refusal)
+	}
+	// retryRefused forgets the round refusals, each of which held for the
+	// program it was tried on, and adds program's errors to the baseline: the
+	// gate accepted them, and each is held by the span it has now. A fix refused
+	// before later fixes may apply now, as it would to a second --fix (chapter 7:
+	// running it again changes nothing). One that does not is refused again.
+	retryRefused := func(program *compiler.Program) {
+		for _, r := range roundRefusals {
+			if i := slices.Index(result.Refused, r); i >= 0 {
+				result.Refused = slices.Delete(result.Refused, i, i+1)
+			}
+		}
+		roundRefusals = nil
+		g.refused = map[string]bool{}
+		g.baseline = g.baseline.with(baselineOf(ctx, program))
 	}
 	// propose returns a round's fixes: in each fixable file of program, the
 	// fixes options select whose edits do not overlap.
@@ -519,6 +536,7 @@ func FixProjectWithOptions(ctx context.Context, fs vfs.FS, libraryPath tspath.Ro
 		return result
 	}
 	round := 0
+	changed := false // the program changed since the refusals were last retried
 	seen := map[[32]byte]bool{fixState(program): true}
 	for pass := 1; ; pass++ {
 		// The rounds: each takes the fixes that apply, until none does.
@@ -530,6 +548,11 @@ func FixProjectWithOptions(ctx context.Context, fs vfs.FS, libraryPath tspath.Ro
 			progress.enter("round", round, fixesApplied(result), len(result.Refused), "finding fixes")
 			proposals := propose(program)
 			if len(proposals) == 0 {
+				if changed && len(roundRefusals) > 0 {
+					changed = false
+					retryRefused(program)
+					continue
+				}
 				break
 			}
 			offered := 0
@@ -541,6 +564,7 @@ func FixProjectWithOptions(ctx context.Context, fs vfs.FS, libraryPath tspath.Ro
 			if options.CheckEachFix {
 				accept = g.acceptEach
 			}
+			refusedBefore := len(roundRefusals)
 			accepted := accept(texts, proposals, refuse)
 			if done.Err() != nil {
 				return result
@@ -570,6 +594,7 @@ func FixProjectWithOptions(ctx context.Context, fs vfs.FS, libraryPath tspath.Ro
 				}
 				texts[name] = fixed.Text
 			}
+			changed = changed || refusedBefore > 0 // a fix accepted beside a refusal changes nothing it was tried with
 			verified(texts)
 			program = build(texts)
 			state := fixState(program)
@@ -647,6 +672,7 @@ func FixProjectWithOptions(ctx context.Context, fs vfs.FS, libraryPath tspath.Ro
 			return result
 		}
 		seen[state] = true
+		changed = true
 		if pass == fixPassLimit {
 			result.Remaining = remainingFixes(ctx, program, texts, fresh, propose, options)
 			break
@@ -983,6 +1009,23 @@ func baselineOf(ctx context.Context, program *compiler.Program) errorBaseline {
 		}
 	}
 	return b
+}
+
+// with returns b holding other's errors too, each key at the larger count.
+func (b errorBaseline) with(other errorBaseline) errorBaseline {
+	merged := errorBaseline{errors: slices.Concat(b.errors, other.errors), messages: map[string]int{}, spans: map[string]int{}, texts: map[string]string{}}
+	for _, from := range []errorBaseline{b, other} {
+		for key, count := range from.messages {
+			merged.messages[key] = max(merged.messages[key], count)
+		}
+		for key, count := range from.spans {
+			merged.spans[key] = max(merged.spans[key], count)
+		}
+		for name, text := range from.texts {
+			merged.texts[name] = text
+		}
+	}
+	return merged
 }
 
 func countErrors(errors []*ast.Diagnostic, spanKey func(*ast.Diagnostic) string) errorBaseline {

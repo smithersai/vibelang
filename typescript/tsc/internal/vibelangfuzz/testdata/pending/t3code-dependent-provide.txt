@@ -1,6 +1,2 @@
-FuzzFix fix:idempotence:false:47d61682412eb942bf4d398225867e10c4dd92998094f67b3cf7518ed0e414e7 compiler VIP-34: second fix changes retained T3code service-tag and cold-program conversion; lane core-land
-FuzzFix corpus:t3code-codemod-dependent-provide-importer compiler VIP-34: second fix changes retained T3code service-tag and cold-program conversion; lane core-land
-FuzzFix fix:idempotence:false:016785d5764099813e6e74021e9bb570805c6567fab30c4787f6e4058e60e366 compiler VIP-34: second fix changes retained T3code service-tag and cold-program conversion; lane core-land
-FuzzFix corpus:t3code-codemod-exported-program-provide-named compiler VIP-34: second fix changes retained T3code service-tag and cold-program conversion; lane core-land
 FuzzFix fix:idempotence:false:1fcfb7ea539bc43e58443c0f10952dc49892d9ed560e60907b527bd4929b522c compiler VIP-34: second fix changes retained T3code service-tag and cold-program conversion; lane core-land
 FuzzFix corpus:t3code-codemod-exported-program-provide-namespace compiler VIP-34: second fix changes retained T3code service-tag and cold-program conversion; lane core-land
