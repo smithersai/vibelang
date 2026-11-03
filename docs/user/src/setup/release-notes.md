@@ -323,6 +323,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Nested `do` expressions hid forbidden loop-head jumps and reported parameter `var` declarations as `EK0204`; they now report `EK0205` and `EK0203` exactly once across nested blocks.
 
+- ESLint and Knip passed on a `.vibe` module without reading it in a repository that runs ESLint itself or installs Knip package by package. Setup now gives such a repository's TypeScript lint blocks and `eslint` script globs to `.vibe` files, and writes `knip.config.ts` with the `vibelang/knip` compiler in each package.
 - Published API checks rejected identical JSON exports as non-modules; JSON assets now retain their `resolveJsonModule` types, and real type changes still fail.
 
 - Source-child loader wiring introduced a `fileURLToPath` import alias and failed repositories’ native import policies. Setup now uses a namespace import and refreshes its own previously generated helpers while preserving manually observed bindings.

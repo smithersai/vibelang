@@ -1075,8 +1075,8 @@ export async function wireTarget(config, log) {
   const publishing = wirePublishingScripts({ root: t, ts })
   changed.push(...publishing.changed.filter((file) => !changed.includes(file)))
   warnings.push(...publishing.warnings)
-  // Knip reads .vibe files through vibelang/knip.
-  const knip = Wire.wireKnip({ root: t, specs: specsFor(".") })
+  // Knip reads .vibe files through vibelang/knip, wherever it is installed.
+  const knip = Wire.wireKnips({ root: t, specsFor, manifests: (await Jj.trackedFiles(t)).filter((file) => posix.basename(file) === "package.json").filter(Wire.ownedPaths(t)) })
   changed.push(...knip.changed.filter((file) => !changed.includes(file)))
   warnings.push(...knip.warnings)
   const typecheck = wireTypecheckBuild(config)

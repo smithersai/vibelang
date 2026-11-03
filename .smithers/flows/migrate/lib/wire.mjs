@@ -1041,6 +1041,48 @@ export function addEslintImportParsers(text) {
   return firstConfiguration(text, `{ settings: { ${stringIn(text, setting)}: { ${stringIn(text, "vibelang/eslint")}: [${stringIn(text, ".vibe")}, ${stringIn(text, ".vibex")}] } } },`)
 }
 
+// expressionEnd returns where the expression starting at start ends in text, a
+// module: at a semicolon outside brackets, or at the end of a line outside
+// brackets when what follows opens a new statement or nothing does. Past
+// strings, template literals and comments, as closingParen reads them.
+function expressionEnd(text, start) {
+  let depth = 0, end = start
+  for (let i = start; i < text.length; i++) {
+    const c = text[i]
+    if (c === "/" && text[i + 1] === "/") i = text.indexOf("\n", i) < 0 ? text.length : text.indexOf("\n", i) - 1
+    else if (c === "/" && text[i + 1] === "*") i = text.indexOf("*/", i + 2) < 0 ? text.length : text.indexOf("*/", i + 2) + 1
+    else if (c === '"' || c === "'" || c === "`") {
+      for (i++; i < text.length && text[i] !== c; i++) if (text[i] === "\\") i++
+      end = i + 1
+    } else if ("([{".includes(c)) { depth++; end = i + 1 }
+    else if (")]}".includes(c)) { depth--; end = i + 1 }
+    else if (c === ";" && depth === 0) return end
+    else if (c === "\n" && depth === 0 && /^\s*(?:$|(?:export|import|const|let|var|function|class|async|if|for)\b|\/[/*])/.test(text.slice(i))) return end
+    else if (!/\s/.test(c)) end = i + 1
+  }
+  return depth === 0 ? end : -1
+}
+
+/**
+ * An ESLint flat configuration's text with what it exports passed through
+ * withVibe (templates/eslint-vibe.mjs), imported from helper. A repository
+ * that runs ESLint itself names its files as *.ts, here or in a helper this
+ * file imports, so its rules never reach a .vibe module. Returns null for a
+ * shape it does not know, such as module.exports, which cannot import helper.
+ */
+export function addEslintVibe(text, helper) {
+  if (/\bwithVibe\(/.test(text)) return text
+  const open = /^export\s+default\s+/m.exec(text)
+  if (!open) return null
+  const start = open.index + open[0].length
+  const end = expressionEnd(text, start)
+  if (end < 0) return null
+  const wrapped = `${text.slice(0, start)}withVibe(${text.slice(start, end)})${text.slice(end)}`
+  const line = `import { withVibe } from ${stringIn(text, helper)}\n`
+  const first = /^import\b/m.exec(wrapped)
+  return first ? `${wrapped.slice(0, first.index)}${line}${wrapped.slice(first.index)}` : `${line}\n${wrapped}`
+}
+
 // closingParen returns the index of the parenthesis that closes the one at
 // open in text, a module, past strings, template literals and comments; -1
 // when there is none.
@@ -1063,12 +1105,12 @@ function closingParen(text, open) {
 // `defineConfig([`, on a line of its own when the entries are; null for a
 // shape it does not know.
 function firstConfiguration(text, entry) {
-  const open = /(?:export\s+default|module\.exports\s*=)\s*(?:[\w$.]+\((?:\s*\[)?|\[)/.exec(text)
+  const open = /(?:export\s+default|module\.exports\s*=)\s*(?:withVibe\(\s*)?(?:(?!withVibe\()[\w$.]+\((?:\s*\[)?|\[)/.exec(text)
   if (!open) return null
   // An array method's result, such as config.flatMap(...), is the list:
   // the entry goes before its spread, not into the method's arguments
   // (smithers flows/database: "TypeError: object is not a function").
-  const method = /^((?:export\s+default|module\.exports\s*=)\s*)([\w$.]+\.(?:flatMap|map|filter|concat|slice|flat|toSorted|toReversed)\()/.exec(text.slice(open.index))
+  const method = /^((?:export\s+default|module\.exports\s*=)\s*(?:withVibe\(\s*)?)([\w$.]+\.(?:flatMap|map|filter|concat|slice|flat|toSorted|toReversed)\()/.exec(text.slice(open.index))
   if (method) {
     const call = open.index + method[1].length
     const close = closingParen(text, call + method[2].length - 1)
@@ -1368,6 +1410,26 @@ export function wireKnip({ root, specs }) {
     if (found && /\bknip\b/.test(command) && command.includes(found)) warnings.push(`package.json script ${name} names ${found}, which is now knip.config.ts`)
   }
   return { changed, warnings, config: "knip.config.ts" }
+}
+
+/**
+ * wireKnip for each package a repository lists in manifests, root included:
+ * Knip reads its configuration only from the directory it runs in, and a
+ * monorepo may install it package by package. Paths are from the repository's
+ * root. The fixtures of a test are data, and stay as they are.
+ */
+export function wireKnips({ root, manifests, specsFor }) {
+  const changed = []
+  const warnings = []
+  for (const manifest of manifests) {
+    if (/(?:^|\/)(?:fixtures|__fixtures__|testdata)\//.test(manifest)) continue
+    const dir = posix.dirname(manifest)
+    const name = (file) => (dir === "." ? file : `${dir}/${file}`)
+    const wired = wireKnip({ root: join(root, dir), specs: specsFor(dir) })
+    changed.push(...wired.changed.map(name))
+    warnings.push(...wired.warnings.map((warning) => (dir === "." ? warning : `${dir}: ${warning}`)))
+  }
+  return { changed, warnings }
 }
 
 // The formatters the flow knows, by the name a script runs, each as the argv

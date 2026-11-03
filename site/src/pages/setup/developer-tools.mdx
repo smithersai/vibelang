@@ -79,6 +79,36 @@ Oxfmt and Vite+ format scripts. The same check extends Vite+ staged hooks.
 Raw `oxfmt file.vibe` remains unsupported; use the migrated script.
 Existing dprint JSON configs gain the shipped plugin and `.vibe` includes. A configuration that pins every existing plugin by checksum keeps that list; its `dprint` format and check scripts run `vibelang-format` afterward. Older setup output that already contains an unpinned shipped plugin is not yet recognized as a pinned configuration.
 
+## ESLint a repository runs itself
+
+A repository that runs ESLint itself names its files as `*.ts`, in its
+configurations and in the helpers they share, so its rules would miss a `.vibe`
+module and `eslint src` would pass without reading it. Setup writes
+`.vibelang/eslint-vibe.mjs` and passes what each `eslint.config.*` exports through
+its `withVibe`:
+
+```js
+import { withVibe } from "../../.vibelang/eslint-vibe.mjs"
+
+export default withVibe(tseslint.config({ files: ["src/**/*.ts"], rules }))
+```
+
+Each block whose `files` or `ignores` name TypeScript gets the matching `.vibe`
+glob. `vibelang/eslint` parses those files, and rules that need type information
+are off for them, because `vibelang -p` type-checks them. `eslint-plugin-import`
+learns the `.vibe` extension and its parser. A TypeScript glob on a script's
+`eslint` command line gains its `.vibe` companion and
+`--no-error-on-unmatched-pattern`. A configuration in another shape, such as
+`module.exports`, gets a setup warning instead. A test's fixtures stay as they are.
+
+## Knip a package installs itself
+
+Knip reads its configuration only from the directory it runs in. Setup gives each
+package that installs Knip or sets a `knip` key in `package.json` a
+`knip.config.ts` with the `vibelang/knip` compiler. A `--config` that names a JSON
+file replaces it, and a JSON file cannot hold a compiler, so Knip then does not
+read `.vibe` modules: such a command needs a JavaScript configuration.
+
 ## Oxlint
 
 Oxlint's [JS plugin API](https://oxc.rs/docs/guide/usage/linter/js-plugins.html#api-support)

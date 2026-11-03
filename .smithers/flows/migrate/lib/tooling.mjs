@@ -5,7 +5,7 @@ import { wireSourceChildren } from "./source-children.mjs"
 import { wireRolldownSources } from "./rolldown-builds.mjs"
 import { wireOxlint } from "./oxlint.mjs"
 import { preloadRegister } from "./oxlint-plugins.mjs"
-import { addEslintIgnore, addEslintImportParsers, emittedIgnore, ownedPaths, sidecarIgnore } from "./wire.mjs"
+import { addEslintIgnore, addEslintImportParsers, addEslintVibe, emittedIgnore, ownedPaths, sidecarIgnore } from "./wire.mjs"
 import { wireNodeSourceHooks } from "./node-hooks.mjs"
 import { wireTsdownConfigs } from "./tsdown.mjs"
 
@@ -180,6 +180,40 @@ function nativeIgnorePatterns(patterns) {
 // commandAt matches a script that runs one of words: at its start, after a
 // separator, or opening a subshell, (oxlint --fix).
 const commandAt = (words) => new RegExp(String.raw`(?:^|[\s;&|(])(?:${words})\b`)
+// ESLint's flags that take a value, whose value names no files to lint.
+const eslintValueFlags = new Set(["-c", "--config", "--ext", "--ignore-pattern", "--ignore-path", "-f", "--format", "-o", "--output-file", "--parser", "--parser-options", "--plugin", "--rule", "--rulesdir", "--max-warnings", "--cache-location", "--cache-file", "--cache-strategy", "--global", "--env", "--stats", "--flag", "--inspect-config"])
+
+/**
+ * A script with each ESLint invocation's TypeScript globs joined by their .vibe
+ * companions, since ESLint lints only what a glob on its command line names,
+ * and --no-error-on-unmatched-pattern for a package with no .vibe file yet. A
+ * glob naming one file by path stays: the rename follows that. Unchanged when
+ * the script names no such glob.
+ */
+export function eslintScriptReadsVibe(command) {
+  return command.replace(/(^|[\s;&|(])eslint(?![\w-])((?:[ \t]+(?!&&|\|\||;)[^\s;&|()]+)*)/g, (all, before, args) => {
+    const words = args.trim().split(/\s+/).filter(Boolean)
+    if (words.includes("--config") && words.some(word => /\.vibelang\/eslint\./.test(word))) return all
+    const out = []
+    let added = false
+    for (let i = 0; i < words.length; i++) {
+      const word = words[i]
+      out.push(word)
+      if (eslintValueFlags.has(word)) { if (i + 1 < words.length) out.push(words[++i]); continue }
+      if (word.startsWith("-") || !/[*{]/.test(word)) continue
+      const quote = /^["']/.test(word) ? word[0] : ""
+      const glob = quote ? word.slice(1, word.endsWith(quote) ? -1 : undefined) : word
+      if (/\.d\.[^/]*$/.test(glob)) continue
+      const match = /\.(?:[cm]?tsx?|\{([^{}]*)\})$/.exec(glob)
+      if (!match || (match[1] !== undefined && !match[1].split(",").some(name => /^[cm]?tsx?$/.test(name)))) continue
+      const companion = `${quote}${glob.slice(0, match.index)}.vibe${quote}`
+      if (!words.includes(companion)) { out.push(companion); added = true }
+    }
+    if (added && !words.includes("--no-error-on-unmatched-pattern")) out.push("--no-error-on-unmatched-pattern")
+    return added ? `${before}eslint ${out.join(" ")}` : all
+  })
+}
+
 // group parenthesizes a script once: (oxlint) stays (oxlint), but (a) && (b)
 // becomes ((a) && (b)).
 function group(script) {
@@ -272,6 +306,7 @@ export function wireDeveloperTools({ root, specsFor, ts }) {
         // A script that runs its own ESLint pass over .vibe keeps it.
         if (!/\.vibelang\/eslint\./.test(next)) next = `${group(next)} && ${[...new Set(passes)].join(" && ")}`
       }
+      next = eslintScriptReadsVibe(next)
       const dprint = /(?:^|[\s;&|(])dprint\s+(fmt|check)\b/.exec(next)
       if (dprint && pinned.has(dprintConfigOf(dir)) && !next.includes("vibelang-format")) {
         next = `${group(next)} && vibelang-format ${dprint[1] === "check" ? "--check" : "--write"}`
@@ -311,16 +346,25 @@ export function wireDeveloperTools({ root, specsFor, ts }) {
   }
   if (pinned.size) warnings.push(`${pinned.size} dprint configuration${pinned.size === 1 ? " pins" : "s pin"} every plugin by checksum (${[...pinned].slice(0, 3).join(", ")}${pinned.size > 3 ? ", …" : ""}), and VibeLang's dprint plugin, npm:vibelang/dprint-plugin.json, has none: dprint leaves .vibe files there to vibelang-format, which their dprint scripts now run`)
   // ESLint lints x.d.vibe.ts as TypeScript wherever a files glob takes *.ts.
-  for (const file of all.filter(f => /(^|\/)eslint\.config\.[cm]?[jt]s$/.test(f))) {
+  let readsVibe = false
+  for (const file of all.filter(f => /(^|\/)eslint\.config\.[cm]?[jt]s$/.test(f) && !f.startsWith(".vibelang/"))) {
     const text = readFileSync(join(root, file), "utf8")
     const sidecars = addEslintIgnore(text)
     const ignored = sidecars === null ? null : addEslintIgnore(sidecars, emittedIgnore)
-    if (ignored === null) warnings.push(`${file}: add { ignores: ["**/${sidecarIgnore}", "${emittedIgnore}"] } as its first configurations by hand`)
     // eslint-plugin-import reads a .vibe module's exports through vibelang/eslint.
-    const next = addEslintImportParsers(ignored ?? text)
-    if (next === null) {
-      if (/["'`]eslint-plugin-import(-x)?["'`]/.test(text)) warnings.push(`${file}: add { settings: { "import/parsers": { "vibelang/eslint": [".vibe"] } } } as its first configuration by hand`)
-    } else if (next !== text) write(file, next)
+    const parsers = addEslintImportParsers(ignored ?? text)
+    if (parsers === null && /["'`]eslint-plugin-import(-x)?["'`]/.test(text)) warnings.push(`${file}: add { settings: { "import/parsers": { "vibelang/eslint": [".vibe"] } } } as its first configuration by hand`)
+    // The repository's rules for its TypeScript reach .vibe, wherever they name their files.
+    const helper = posix.relative(posix.dirname(file), ".vibelang/eslint-vibe.mjs")
+    const fixture = /(?:^|\/)(?:fixtures|__fixtures__|testdata)\//.test(file)
+    const next = fixture ? parsers ?? ignored ?? text : addEslintVibe(parsers ?? ignored ?? text, helper.startsWith("../") ? helper : "./" + helper)
+    if (next === null) warnings.push(`${file}: pass what it exports through withVibe from .vibelang/eslint-vibe.mjs by hand; it also keeps ESLint off **/${sidecarIgnore} and ${emittedIgnore}`)
+    else if (!fixture) readsVibe = true
+    if ((next ?? parsers ?? text) !== text) write(file, next ?? parsers)
+  }
+  if (readsVibe) {
+    write(".vibelang/eslint-vibe.mjs", readFileSync(new URL("../templates/eslint-vibe.mjs", import.meta.url), "utf8"))
+    needsCompiler = true
   }
   for (const file of all.filter(f => /(?:^|\/)(?:\.vite-hooks|\.husky)\/pre-commit$/.test(f))) {
     const text = readFileSync(join(root, file), "utf8")
