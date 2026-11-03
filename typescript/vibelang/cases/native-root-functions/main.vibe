@@ -1,0 +1,6 @@
+// expect-result: [true,true,true,true,true,true]
+import * as Native from "effect/Function"
+export effect function main() {
+ return [pipe === Native.pipe, flow === Native.flow, identity === Native.identity,
+         absurd === Native.absurd, cast === Native.cast, hole === Native.hole]
+}

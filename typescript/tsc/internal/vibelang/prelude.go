@@ -63,7 +63,6 @@ var preludeModules = map[string]string{
 	"$schemaErrorMember":  runtimeModule,
 	"$schemaErrorMatcher": runtimeModule,
 	"Control":             runtimeModule,
-	"pipe":                runtimeModule,
 	"wire":                runtimeModule,
 	"fork":                runtimeModule,
 	"handle":              runtimeModule,
@@ -607,9 +606,8 @@ func preludeSymbol(c *checker.Checker, state *preludeState, file *ast.SourceFile
 		if module := runtimeModuleSymbol(c, state, file); module != nil {
 			return c.TryGetMemberInModuleExports(name, module)
 		}
-		// Effect, Layer, Schema and Scope are native Effect namespaces.
-		// Their emitted imports and type-only contracts do not need the
-		// runtime's compatibility re-exports.
+		// Native Effect namespaces and root functions resolve directly when
+		// this file has no runtime compatibility re-exports.
 		if strings.HasPrefix(path, "effect/") {
 			return effectExportSymbol(c, state, file, name)
 		}
@@ -793,7 +791,8 @@ func preludeUses(c *checker.Checker, file *ast.SourceFile) []string {
 // `import { TaggedError } from "vibelang-runtime"` would leave TaggedError
 // unbound. A named import becomes a destructuring require,
 //
-//	const { TaggedError, pipe } = require("vibelang-runtime")
+//	const { pipe } = require("effect/Function")
+//	const { TaggedError } = require("vibelang-runtime")
 //
 // which binds the names themselves; a namespace import, which the transform
 // writes as a const of its own name, stays as it is.
@@ -826,7 +825,8 @@ func requireNamedImports(f *ast.NodeFactory, declaration *ast.Node) *ast.Node {
 //	import * as Effect from "effect/Effect"
 //	import { flow } from "effect/Function"
 //	import * as HttpRouter from "effect/http/HttpRouter"
-//	import { TaggedError, pipe } from "vibelang-runtime"
+//	import { pipe } from "effect/Function"
+//	import { TaggedError } from "vibelang-runtime"
 //
 // The checker resolved each use to the runtime's or effect's export, so the
 // declarations bind the names the emitted code already refers to. A root

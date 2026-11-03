@@ -463,6 +463,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Malformed `data` variants reported unrelated TypeScript errors or the old `EK2125`; parenthesized payloads and payload members that are not fields now report `EK1606`, with guidance to use fields in braces.
 
+- Bare `pipe` could fail to resolve when only `effect` was installed, or add a runtime import when the runtime was present. It now resolves and imports directly from `effect/Function`, like the other root functions; local bindings keep their meaning.
+
 - Vite coverage counted private tail-delegation wrappers as extra functions or uncovered statements, especially in callbacks and throwing catch handlers. It now counts the authored functions and statements through the composed source map.
 - Repository migration checks could stop at invalid fixture lockfiles or package metadata before checking build provenance, declaration exits or test regressions. The fixtures now retain valid publication prerequisites and reach those checks.
 

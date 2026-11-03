@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("cast:value\x00\x00")

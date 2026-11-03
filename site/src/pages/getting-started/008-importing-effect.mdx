@@ -15,7 +15,7 @@ npm install effect@4.1.1
 
 The core package supplies Effect's data types, schedules, concurrency tools, and other modules. See [Installation](/getting-started/004-installation) for platform packages, `vibelang`, and `vibelang-runtime`.
 
-`Effect`, `Layer`, `Schema` and `Scope` also resolve when only `effect` is installed. Language forms whose generated code imports `vibelang-runtime` still require that package.
+`Effect`, `Layer`, `Schema` and `Scope` also resolve when only `effect` is installed. The root functions `pipe`, `flow`, `identity`, `absurd`, `cast` and `hole` resolve directly from `effect/Function` and need no runtime package. Their emitted imports and type-only uses keep the native Effect bindings. Language forms whose generated code imports `vibelang-runtime` still require that package.
 
 ## Module and namespace imports
 
