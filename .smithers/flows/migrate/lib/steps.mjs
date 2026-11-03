@@ -53,7 +53,7 @@ import { wireEsbuildBuilds } from "./esbuild-builds.mjs"
 import { wirePublishingScripts } from "./publishing.mjs"
 import { wireReactTools } from "./react-tools.mjs"
 import { hasNativeRuntimeExport, hasVibeSource, routeEmittedExports } from "./emitted-exports.mjs"
-import { withPackingScope } from "./pack-policy.mjs"
+import { withPackingScope, wireSidecarPacking, packRepository, comparePacks } from "./pack-policy.mjs"
 import { wireDeveloperTools } from "./tooling.mjs"
 import { wireTypecheckBuild } from "./typecheck-build.mjs"
 import { planEmittedImports, applyEmittedImports } from "./emitted-imports.mjs"
@@ -535,6 +535,7 @@ export async function upgradeEffect(options) {
   const priorChecks = await previousCompilerChecks(config, logs)
   writeJson(join(p.baseline, "upstream-checks.json"), priorChecks)
   const upstreamBuild = await prepareBuilds(config, logs, "upstream")
+  writeJson(join(p.baseline, "upstream-packs.json"), await packRepository(config, join(logs, "upstream-packs")))
   const before = await testRun("upstream")
   if (before.code !== 0 && !before.tests) throw new Error(`the target's tests do not run (exit ${before.code}); see ${join(logs, "upstream-tests.log")}`)
   writeJson(join(p.baseline, "upstream-tests.json"), { code: before.code, tests: before.tests })
@@ -940,6 +941,8 @@ export async function wireNewPackages(config, log) {
   const sidecarDir = finishSidecarLayout({ t, ts, layout, changed, warnings, log })
   const publication = prepareToolchainPublication({ target: t, manifests: ["package.json", ...packages.map(pkg => posix.join(pkg.dir, "package.json")), ...changed.filter(file => posix.basename(file) === "package.json")], manager: Wire.packageManager(readdirSync(t)), specsFor })
   changed.push(...publication.changed)
+  changed.push(...wireSidecarPacking(t))
+
   const formatted = await formatWritten(t, changed, join(log, "setup-format.log"))
   if (formatted.code !== 0) warnings.push(`${formatted.formatter} exited ${formatted.code} on the files setup wrote; see ${join(log, "setup-format.log")}`)
   const manager = Wire.packageManager(readdirSync(t))
@@ -986,6 +989,8 @@ export async function wireTarget(config, log) {
   const layout = await prepareSidecarLayout(t)
   wirePackages({ t, ts, packages, specsFor, writeIfChanged, warnings, layout })
   const sidecarDir = finishSidecarLayout({ t, ts, layout, changed, warnings, log })
+  changed.push(...wireSidecarPacking(t))
+
   // Effect's lint rules run on .vibe files where the root's scripts run them on .ts files (VIP-38).
   const rootPackage = join(t, "package.json")
   if (existsSync(rootPackage)) {
@@ -1948,6 +1953,10 @@ export async function verify(options) {
   const testRenames = (thePlan.batches ?? []).slice(0, Number(b)).flatMap((_, i) =>
     readJsonIf(p.codemod(batchName(i)))?.renames ?? [])
   const testResults = compareTests(baselineTests, tests, { renames: testRenames })
+  const candidatePacks = measurement?.packs?.candidate ?? await packRepository(config, join(logs, "candidate-packs"))
+  const migratedPackSources = Object.fromEntries(config.packages.map(pkg => [pkg.dir,
+    thePlan.batches.flatMap(batch => batch.files.map(vibePath)).filter(file => existsSync(join(t, file)) && packageOf(config, file) === pkg).map(file => posix.relative(pkg.dir, file))]))
+  const packs = comparePacks(readJsonIf(join(p.baseline, "upstream-packs.json")), candidatePacks, migratedPackSources)
   const ts = typeScriptOf(config)
   const testDiff = await testEdits(config, p, thePlan, b, ts)
   const declarations = {}
@@ -2021,7 +2030,7 @@ export async function verify(options) {
       status: testsPassed(tests) ? "passed" : "failing", failedNames: tests.failed, baseline: { code: baselineTests.code, failed: baselineTests.tests ? Object.keys(baselineTests.tests).filter(name => baselineTests.tests[name] === "failed") : [] }, ...testResults },
     build: measurement?.builds?.candidate ?? candidateBuild,
     declarations,
-    measurement, hooks,
+    measurement, hooks, packs,
     // Each published specifier the gate excused, for the pull request's description.
     excusedSpecifiers: Object.entries(declarations).flatMap(([dir, d]) => (d.excused ?? []).map((pair) => ({ package: dir, ...pair }))),
     selectorChecks,
@@ -2036,6 +2045,7 @@ export async function verify(options) {
     declarationOracle: { unproven, unavailable: Object.fromEntries(Object.entries(oracle ?? {}).filter(([, o]) => o.unavailable).map(([dir, o]) => [dir, o.unavailable])) },
     checks: {
       tests: testResults.ok,
+      packs: packs.ok,
       testEdits: testDiffBefore.ok && testDiff.ok && (measurement?.ok ?? true),
       selectors: selectorChecks.every(proof => proof.pass),
       baselinePrepared: baselineTests.code === 0 || baselineTests.build?.state === "complete",
@@ -2101,6 +2111,7 @@ export async function record(options) {
       throw new Error(`batch ${b} failed verify after formatting; inspect ${p.verify(b)} before recording`)
     }
   }
+  if (!verified?.checks?.packs) throw new Error("record refused: published pack policy failed; --force cannot ship declaration sidecars or unexpected files")
   const reverted = readJsonIf(p.reverted(b), [])
   const byPath = new Map(inventory.files.map((f) => [f.path, f]))
   const after = await countTokens(files.map((f) => join(t, f.path)))

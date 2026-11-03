@@ -1,0 +1,6 @@
+{
+  "property": "sidecars-out-of-packs",
+  "rule": "VIP-27: A package build also writes ordinary `.d.ts` files to its output directory; published packages retain declarations (007-tooling). Sidecars serve source tools.",
+  "input": { "files": ["src", "dist"], "shape": "pattern", "extension": "vibe", "packer": "npm" },
+  "repoPattern": { "package": "@alchemy.run/aws", "files": ["lib", "src"], "sidecars": 6541, "exports": { "./Bootstrap/*": "./src/Bootstrap/*.ts" } }
+}

@@ -1,3 +1,8 @@
+import { testPath } from "./test-files.mjs"
+import { ownedPaths, packageManager, repositoryPackages } from "./wire.mjs"
+import { must, quote } from "./util.mjs"
+import { posix, resolve } from "node:path"
+import { mkdtempSync, rmSync, statSync } from "node:fs"
 // Export routing and packing must describe the same public runtime tree.
 // Keep receipts outside js/: only js/ (including its loader records) is public.
 import { createHash } from "node:crypto"
@@ -79,4 +84,111 @@ export function withPackingScope(codemod, emitted = []) {
   for (const row of emitted) for (const proof of row.generatedFiles ?? []) generated.set(proof.file, proof)
   if (!files.size && !generated.size && !Object.hasOwn(codemod, "packingFiles")) return codemod
   return { ...codemod, packingFiles: [...files].sort(), ...(generated.size ? { generatedFiles: [...generated.values()] } : {}) }
+}
+
+// VIP-27: sidecars serve tools working on source; packages publish ordinary
+// declarations. Keep exclusion independent of emitted-runtime routing.
+export const isSidecar = file => /\.d\.vibex?\.ts$/.test(file)
+const sidecarExclusions = ["!**/*.d.vibe.ts", "!**/*.d.vibex.ts"]
+
+export function excludeSidecars(root, pkg) {
+  const changed = []
+  for (const files of [pkg.files, pkg.publishConfig?.files].filter(Array.isArray)) {
+    const added = sidecarExclusions.filter(pattern => !files.includes(pattern))
+    files.push(...added)
+    if (added.length && !changed.includes("package.json")) changed.push("package.json")
+  }
+  if (Array.isArray(pkg.files)) return changed
+  // Creating .npmignore disables the .gitignore fallback: retain its contents.
+  const path = join(root, ".npmignore")
+  const before = textAt(path)
+  let text = before ?? textAt(join(root, ".gitignore")) ?? ""
+  for (const pattern of sidecarExclusions.map(value => value.slice(1))) {
+    if (!text.split(/\r?\n/).includes(pattern)) text += (text && !text.endsWith("\n") ? "\n" : "") + pattern + "\n"
+  }
+  if (text === before) return changed
+  writeFileSync(path, text)
+  return [...changed, ".npmignore"]
+}
+
+/** Strict file-list gate: only recorded source renames are allowed. */
+export function comparePacks(baseline, candidate, migrated = {}) {
+  if (!baseline?.packages || !candidate?.packages) return { ok: false, reason: "missing upstream pack baseline; rerun upgrade-effect", packages: {} }
+  const packages = {}
+  for (const dir of new Set([...Object.keys(baseline.packages), ...Object.keys(candidate.packages)])) {
+    const before = baseline.packages[dir], after = candidate.packages[dir]
+    if (!before || !after) { packages[dir] = { ok: false, reason: "public package set changed" }; continue }
+    const original = new Set(before.files.filter(file => !isSidecar(file)))
+    const renames = new Set(migrated[dir] ?? [])
+    const sidecars = after.files.filter(isSidecar)
+    const sidecarTargets = after.sidecarTargets ?? []
+    const normalized = new Set(after.files.filter(file => !isSidecar(file)).map(file => {
+      if (!renames.has(file)) return file
+      const stem = file.replace(/\.vibex?$/, "")
+      return [stem + ".ts", stem + ".tsx"].find(path => original.has(path) && !after.files.includes(path)) ?? file
+    }))
+    const missing = [...original].filter(file => !normalized.has(file)).sort()
+    const extra = [...normalized].filter(file => !original.has(file)).sort()
+    packages[dir] = { ok: !sidecars.length && !sidecarTargets.length && !missing.length && !extra.length, sidecars, sidecarTargets, missing, extra,
+      ...(sidecars.length || sidecarTargets.length ? { reason: "declaration sidecars must not ship; point published types at built .d.ts files" } : {}) }
+  }
+  return { ok: Object.values(packages).every(item => item.ok), packages }
+}
+
+/** Pack with the repository's manager, including its publication lifecycle. */
+export async function packRepository(config, out) {
+  mkdirSync(out, { recursive: true })
+  const packages = {}
+  const manager = config.packer ?? packageManager(readdirSync(config.target))
+  const owns = ownedPaths(config.target)
+  for (const pkg of repositoryPackages(config.target).filter(pkg => owns(posix.join(pkg.dir, "package.json")) && !testPath.test(posix.join(pkg.dir, "package.json")))) {
+    const root = join(config.target, pkg.dir)
+    const manifest = JSON.parse(readFileSync(join(root, "package.json"), "utf8"))
+    if (manifest.private === true) continue
+    const directory = mkdtempSync(join(resolve(out), "tarball-"))
+    let generated
+    const prior = new Map(readdirSync(root).filter(file => file.endsWith(".tgz")).map(file => [file, statSync(join(root, file)).mtimeMs]))
+    try {
+      // Some repositories' pack script temporarily maps exports to dist before
+      // creating the archive, then restores the source manifest in finally.
+      if (manifest.scripts?.pack) {
+        await must(manager + " run pack", { cwd: root, log: join(directory, "..", "pack-script-" + encodeURIComponent(pkg.dir) + ".log") })
+        const produced = readdirSync(root).filter(file => file.endsWith(".tgz") && prior.get(file) !== statSync(join(root, file)).mtimeMs)
+        if (produced.length > 1) throw new Error("ambiguous pack script output for " + pkg.dir)
+        generated = produced[0]
+      }
+      const command = manager === "bun" ? "bun pm pack --destination " + quote(directory)
+        : manager === "yarn" ? "yarn pack --out " + quote(join(directory, "package.tgz"))
+        : manager + " pack --pack-destination " + quote(directory)
+      if (!generated) await must(command, { cwd: root, log: join(directory, "..", "pack-" + encodeURIComponent(pkg.dir) + ".log") })
+      const archives = generated ? [generated] : readdirSync(directory).filter(file => file.endsWith(".tgz"))
+      if (archives.length !== 1) throw new Error("expected one package tarball for " + pkg.dir)
+      const archive = join(generated ? root : directory, archives[0])
+      const listed = await must("tar --quoting-style=literal -tzf " + quote(archive), { cwd: root })
+      const files = listed.stdout.split("\n").filter(file => file && !file.endsWith("/")).map(file => file.replace(/^package\//, "")).sort()
+      const packed = await must("tar -xOzf " + quote(archive) + " package/package.json", { cwd: root })
+      const published = JSON.parse(packed.stdout)
+      const refs = value => typeof value === "string" ? (isSidecar(value) ? [value] : [])
+        : value && typeof value === "object" ? Object.values(value).flatMap(refs) : []
+      const sidecarTargets = ["types", "typings", "main", "module", "exports", "imports"].flatMap(field => refs(published[field]))
+      packages[pkg.dir] = { name: published.name, files, sidecarTargets }
+    } finally {
+      if (generated && !prior.has(generated)) unlinkSync(join(root, generated))
+      rmSync(directory, { recursive: true, force: true })
+    }
+  }
+  return { packages }
+}
+
+/** Setup edits owned package policy only; fixtures and vendored manifests keep every byte. */
+export function wireSidecarPacking(root) {
+  const changed = [], owns = ownedPaths(root)
+  for (const member of repositoryPackages(root)) {
+    const path = posix.join(member.dir, "package.json")
+    if (!owns(path) || testPath.test(path) || member.manifest.private === true) continue
+    const edits = excludeSidecars(join(root, member.dir), member.manifest)
+    if (edits.includes("package.json")) writeFileSync(join(root, path), JSON.stringify(member.manifest, null, 2) + "\n")
+    changed.push(...edits.map(file => posix.join(member.dir, file)))
+  }
+  return changed
 }

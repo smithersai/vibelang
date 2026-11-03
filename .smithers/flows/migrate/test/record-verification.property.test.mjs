@@ -18,7 +18,7 @@ async function fixture(drift, name, action, pattern=corpus) {
   try {
     mkdirSync(join(target,"node_modules/.bin"),{recursive:true})
     symlinkSync(require.resolve("typescript/package.json").replace(/\/package.json$/,""),join(target,"node_modules/typescript"))
-    writeJson(join(target,"package.json"),{name:"foldkit-fixture",types:"./main.d.ts"})
+    writeJson(join(target,"package.json"),{name:"foldkit-fixture",version:"1.0.0",files:["main.ts","main.vibe"],types:"./main.d.ts"})
     writeJson(join(target,"tsconfig.json"),{compilerOptions:{rootDir:"."},include:["*.vibe"]})
     writeFileSync(join(target,".gitignore"),"node_modules/\n")
     const source=pattern.before.replaceAll("createLazy",name),formatted=pattern.formatted.replaceAll("createLazy",name)
@@ -46,6 +46,8 @@ async function fixture(drift, name, action, pattern=corpus) {
     writeJson(p.inventory,{files:[{path:"main.ts",tokens:999}]})
     writeJson(join(p.baseline,"tests.json"),{code:0,tests:{},total:0,passed:0,failed:[],skipped:0})
     writeJson(join(p.baseline,"compile-"+slug(".")+".json"),[])
+
+    writeJson(join(p.baseline, "upstream-packs.json"), { packages: { ".": { files: ["main.ts", "package.json"] } } })
 
     // This fixture isolates emit/format certification with a known matching stock baseline.
     writeJson(join(p.baseline, "declaration-oracle.json"), { ".": { compiler: "fixture-stock", files: [], missing: [], extra: [], changed: [] } })
@@ -81,7 +83,7 @@ test("foldkit-13-record: generated signature names retain API gating and final t
   await fc.assert(fc.asyncProperty(fc.boolean(),fc.stringMatching(/^[a-z][a-z0-9]{0,7}$/),fc.constantFrom(corpus,...corpus.neighbours),async(drift,name,pattern)=>{
     await fixture(drift,name,async({run,p,target,formatted})=>{
       const checked=await verify({run,batch:"01"})
-      assert.equal(checked.ok,true,JSON.stringify(checked))
+      assert.equal(checked.ok,true,JSON.stringify(checked,JSON.stringify(checked))
       assert.equal(checked.checks.declarations,true)
       const recorded=await record({run,batch:"01"})
       assert.ok(recorded.commit)

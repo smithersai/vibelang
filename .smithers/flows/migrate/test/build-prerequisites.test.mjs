@@ -14,8 +14,8 @@ async function fixture(root, fail = false) {
   put("package.json",JSON.stringify({...corpus.root,...(fail?{scripts:{"build:packages":"node -e 'process.exit(7)'"}}:{})}))
   put("bun.lock","")
   put(".gitignore","**/dist/\nnode_modules/\ntrace.log\n")
-  put("packages/core/package.json",JSON.stringify(corpus.packages["packages/core"]))
-  put("packages/mcp/package.json",JSON.stringify(corpus.packages["packages/mcp"]))
+  put("packages/core/package.json",JSON.stringify({version:"1.0.0",...corpus.packages["packages/core"]}))
+  put("packages/mcp/package.json",JSON.stringify({version:"1.0.0",...corpus.packages["packages/mcp"]}))
   const script=(name,dependency)=>'import {existsSync,mkdirSync,writeFileSync,readFileSync,appendFileSync} from "node:fs";\n'+(dependency?'if(!existsSync("../core/dist/index.js")) process.exit(3);\n':"")+'mkdirSync("dist",{recursive:true});writeFileSync("dist/'+(name==="core"?"index":"server")+'.js",readFileSync("source.txt"));appendFileSync("../../trace.log",'+JSON.stringify(name+"\n")+');\n'
   put("packages/core/build.mjs",script("core",false));put("packages/mcp/build.mjs",script("mcp",true))
   put("packages/core/source.txt","original-core");put("packages/mcp/source.txt","original-server")
@@ -103,7 +103,7 @@ test("foldkit: each measurement side rebuilds stale outputs after install and be
    const out=join(root,"out");mkdirSync(out)
    const sides=order.map(name=>{
     const target=join(root,name);mkdirSync(target);mkdirSync(join(target,"dist"))
-    writeFileSync(join(target,"package.json"),JSON.stringify({scripts:{build:"node build.mjs"}}))
+    writeFileSync(join(target,"package.json"),JSON.stringify({private:true,scripts:{build:"node build.mjs"}}))
     writeFileSync(join(target,"source.txt"),name+seed)
     writeFileSync(join(target,"dist/server.js"),measurementCorpus.stale)
     writeFileSync(join(target,"build.mjs"),'import{readFileSync,writeFileSync,existsSync}from"node:fs";if(!existsSync("installed"))process.exit(3);writeFileSync("dist/server.js",readFileSync("source.txt"))')

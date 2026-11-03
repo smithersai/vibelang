@@ -1,5 +1,6 @@
 // One job owns all three measurements, so provider and load cannot differ by side.
 import { prepareBuilds } from "./builds.mjs"
+import { packRepository } from "./pack-policy.mjs"
 import { existsSync, mkdirSync, rmSync, cpSync } from "node:fs"
 import { join, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
@@ -11,15 +12,16 @@ import { assertReadableTests } from "./test-receipts.mjs"
 import { must, quote, readJson, readJsonIf, writeJson } from "./util.mjs"
 
 export async function runMeasurementJob(manifest) {
-  const receipts = {}, builds = {}
+  const receipts = {}, builds = {}, packs = {}
   for (const side of manifest.sides) {
     if (side.install) await must(side.install, { cwd: side.target, log: join(manifest.out, side.name + "-install.log") })
     if (manifest.build) builds[side.name] = await prepareBuilds({ ...manifest.build, target: side.target }, manifest.out, side.name)
+    if (manifest.build) packs[side.name] = await packRepository({ ...manifest.build, target: side.target }, join(manifest.out, side.name + "-packs"))
     receipts[side.name] = await runTests({ command: manifest.test.command, report: manifest.test.report,
       cwd: join(side.target, manifest.test.cwd ?? "."), root: side.target,
       jsonFile: join(manifest.out, side.name + "-vitest.json"), log: join(manifest.out, side.name + "-tests.log"), strict: true })
   }
-  writeJson(join(manifest.out, "receipts.json"), { job: manifest.job, receipts, builds })
+  writeJson(join(manifest.out, "receipts.json"), { job: manifest.job, receipts, builds, packs })
 }
 
 async function mainRevision(config) {
@@ -65,7 +67,7 @@ export async function measureTests(config, { run, batch }) {
       return { ...diff, skipped, ok:diff.ok && !skipped.length }
     }
     const previousDiff = compared(result.receipts.previous), mainDiff = compared(result.receipts.main)
-    const receipt = { job, mainRevision:main, previousRevision:previous, receipts:result.receipts, builds:result.builds,
+    const receipt = { job, mainRevision:main, previousRevision:previous, receipts:result.receipts, builds:result.builds, packs:result.packs,
       previous:previousDiff,main:mainDiff,ok:previousDiff.ok && mainDiff.ok }
     writeJson(join(out,"comparison.json"),receipt)
     return receipt

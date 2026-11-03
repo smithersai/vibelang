@@ -390,3 +390,15 @@ after a refused migration, even if its partial edits make ordinary checks pass.
 The `EK1101` trailing-block repair accepts JavaScript whitespace between the call and block, including nonbreaking spaces, thin spaces and byte-order marks. An intervening comment still requires a manual edit.
 
 The `Option.match` repair preserves qualified callback payload types and complete record annotations, including types inferred from Effect modules.
+
+## Published packages
+
+Migration setup excludes `*.d.vibe.ts` and `*.d.vibex.ts` declaration sidecars
+from package tarballs. They serve tools working on source. Publish the build's
+ordinary `.js` and `.d.ts` files, and point published `types` conditions at
+those `.d.ts` files rather than source sidecars.
+
+Migration verification compares actual pack file lists with the upstream
+baseline. Sidecars, missing files and unexpected additions fail the check;
+a migrated `.vibe` source may replace its deliberately published `.ts` twin.
+Setup preserves tests, fixtures and their package manifests.
