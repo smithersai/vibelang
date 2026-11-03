@@ -1,0 +1,6 @@
+// expect: EK0301
+// Appendix B: EK0301 — spec-rule: docs/design/src/900-appendices.md#c48cbd7090406021
+type X = string | number!Error
+
+// Appendix A: cov-ch900a-ek0301.fail — spec-rule: docs/design/src/900-appendices.md#440a70b639653ef4
+// Appendix A: cov-ch900a-ek0301.fail — spec-rule: docs/design/src/900-appendices.md#d4afdd0461153465

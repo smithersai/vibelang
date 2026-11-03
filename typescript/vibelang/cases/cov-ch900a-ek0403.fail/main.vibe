@@ -1,0 +1,4 @@
+// expect: EK0403
+// Appendix B: EK0403 — spec-rule: docs/design/src/900-appendices.md#3c543c128699abfa
+function risky(): number { throw "bad" }
+export effect function load() { return risky() }

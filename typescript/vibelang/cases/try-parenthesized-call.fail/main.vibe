@@ -4,3 +4,5 @@
 export function plain() {
   return try (Effect.succeed(1))
 }
+
+// Appendix B: EK0501 — spec-rule: docs/design/src/900-appendices.md#fea4083cb22dcc7a

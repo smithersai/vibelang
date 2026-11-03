@@ -7,3 +7,5 @@ class Child extends Base {
   }
 }
 export {}
+
+// Appendix B: EK0204 — spec-rule: docs/design/src/900-appendices.md#91c7e631d752b8f0

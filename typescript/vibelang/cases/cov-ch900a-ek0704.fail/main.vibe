@@ -1,0 +1,4 @@
+// expect: EK0704
+// Appendix B: EK0704 — spec-rule: docs/design/src/900-appendices.md#e0d2faaf2665e5fb
+class C {}
+export function load(x: unknown) { return match (x) { when C(): 1; default: 0; } }

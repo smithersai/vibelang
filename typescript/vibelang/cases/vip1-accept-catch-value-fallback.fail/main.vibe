@@ -8,3 +8,5 @@ const parse = (s: string): number!string => s === "" ? Effect.fail("empty") : Ef
 export const load = effect (s: string) => {
   return Effect.asSome(parse(s)) catch Effect.succeedNone()
 }
+
+// Appendix B: EK0509 — spec-rule: docs/design/src/900-appendices.md#d1df57aeffec8f88

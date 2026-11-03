@@ -45,3 +45,6 @@ export effect function inEffect(layer: Layer.Layer<never>) {
   }
   return v + r
 }
+
+// Appendix B: EK0504 — spec-rule: docs/design/src/900-appendices.md#b2d477d69d4c6b95
+// Appendix B: EK1902 — spec-rule: docs/design/src/900-appendices.md#61ee2238f6f5a520

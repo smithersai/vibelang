@@ -1,0 +1,4 @@
+// expect: EK0405
+// Appendix B: EK0405 — spec-rule: docs/design/src/900-appendices.md#f7830da0e1663fc7
+/** @throws {never} */
+export function load() { throw new Error("bad") }

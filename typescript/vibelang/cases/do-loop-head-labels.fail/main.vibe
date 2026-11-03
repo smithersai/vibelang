@@ -31,3 +31,5 @@ export function enclosingContinue(): void {
   }
 }
 // Chapter 002: do head jump early errors remain native; docs/design/src/002-running.md#183271dc7fe9162f
+
+// Appendix B: EK0205 — spec-rule: docs/design/src/900-appendices.md#e65a59ec3636d6ab

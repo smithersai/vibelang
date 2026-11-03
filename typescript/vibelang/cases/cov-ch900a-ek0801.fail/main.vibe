@@ -1,0 +1,5 @@
+// expect: EK0801
+// Appendix B: EK0801 — spec-rule: docs/design/src/900-appendices.md#15024e67333072eb
+// Promote this configurable warning to an error so the rejection harness checks its trigger.
+declare const resource: Disposable
+export effect function load() { using r = resource; return 1 }

@@ -1,0 +1,3 @@
+// expect: EK0507
+// Appendix B: EK0507 — spec-rule: docs/design/src/900-appendices.md#940b3cd59760775f
+export effect function load() { return Effect.fail("bad") catch () => Promise.resolve(0) }

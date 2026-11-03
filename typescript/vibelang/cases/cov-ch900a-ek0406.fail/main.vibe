@@ -1,0 +1,4 @@
+// expect: EK0406
+// Appendix B: EK0406 — spec-rule: docs/design/src/900-appendices.md#b04e2f7c6b02c2d0
+/** @throws {never} */
+export effect function load() { return 1 }

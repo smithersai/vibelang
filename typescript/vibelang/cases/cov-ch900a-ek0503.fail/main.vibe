@@ -1,0 +1,3 @@
+// expect: EK0503
+// Appendix B: EK0503 — spec-rule: docs/design/src/900-appendices.md#ae41fff6850a25f3
+export effect function load() { try { return 1 } catch { return 0 } }

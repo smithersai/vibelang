@@ -1,0 +1,4 @@
+// expect: EK0508
+// Appendix B: EK0508 — spec-rule: docs/design/src/900-appendices.md#08c89055b32da7de
+// Promote this configurable warning to an error so the rejection harness checks its trigger.
+export effect function load() { return Effect.fail("bad") catch () => Effect.succeed(0) }

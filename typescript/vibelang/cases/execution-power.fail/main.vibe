@@ -7,3 +7,5 @@ declare const fiber: Fiber.Fiber<number>
 export effect function badTry() { return try program ** 2 }
 export effect function badFork() { return fork program ** 2 }
 export effect function badJoin() { return join fiber ** 2 }
+
+// Appendix B: EK0510 — spec-rule: docs/design/src/900-appendices.md#629d85f0e8d0c79a

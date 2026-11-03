@@ -5,3 +5,5 @@
 effect function load() {
   await Promise.resolve(1)
 }
+
+// Appendix B: EK0102 — spec-rule: docs/design/src/900-appendices.md#8fce3e7fe410d1ca

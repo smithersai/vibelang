@@ -1,0 +1,11 @@
+// expect: EK0105
+// Appendix B: EK0105 — spec-rule: docs/design/src/900-appendices.md#e704cf2d76e294e1
+effect async function load() { return 1 }
+
+// Appendix A: cov-ch900a-ek0105.fail — spec-rule: docs/design/src/900-appendices.md#404417c96b6b2878
+
+// Appendix A: cov-ch900a-ek0105.fail — spec-rule: docs/design/src/900-appendices.md#216a55532b851057
+
+async effect function other() { return 1 }
+const first = effect async { return 1 }
+const second = async effect { return 1 }

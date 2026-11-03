@@ -1,0 +1,7 @@
+// expect: EK0108
+// Appendix B: EK0108 — spec-rule: docs/design/src/900-appendices.md#2de371458e4d0405
+interface I { effect load(): number!! }
+
+// Appendix A: cov-ch900a-ek0108.fail — spec-rule: docs/design/src/900-appendices.md#6d406421f21753c8
+
+// Appendix A: cov-ch900a-ek0108.fail — spec-rule: docs/design/src/900-appendices.md#863747778faad059

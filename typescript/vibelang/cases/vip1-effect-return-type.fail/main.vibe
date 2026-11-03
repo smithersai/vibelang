@@ -6,3 +6,5 @@ export effect function f(): number { return 1 }
 export effect function g(): number!! { return 1 }
 
 export const h = effect (n: number): string => `${n}`
+
+// Appendix B: EK0106 — spec-rule: docs/design/src/900-appendices.md#fa72230abce6eed2

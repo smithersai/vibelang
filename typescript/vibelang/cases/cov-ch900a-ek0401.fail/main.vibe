@@ -1,0 +1,3 @@
+// expect: EK0401
+// Appendix B: EK0401 — spec-rule: docs/design/src/900-appendices.md#babd12cf7e90f8ea
+function load(): number!! { throw new Error("bad") }

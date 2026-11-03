@@ -1,0 +1,5 @@
+// expect: EK0101
+// Appendix B: EK0101 — spec-rule: docs/design/src/900-appendices.md#7a40ee08b779a449
+effect load() { return 1 }
+
+// Appendix A: cov-ch900a-ek0101.fail — spec-rule: docs/design/src/900-appendices.md#268a8e8be5deafec

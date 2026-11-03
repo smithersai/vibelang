@@ -5,3 +5,5 @@ export async function total() {
   await sleep("1 millis")
   return 1
 }
+
+// Appendix B: EK0103 — spec-rule: docs/design/src/900-appendices.md#3c6a016d514e5429

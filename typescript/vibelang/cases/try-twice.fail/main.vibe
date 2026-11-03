@@ -7,3 +7,5 @@ effect function seven() {
 export effect function main() {
   return try try seven()
 }
+
+// Appendix B: EK0502 — spec-rule: docs/design/src/900-appendices.md#07b4059c2216e657

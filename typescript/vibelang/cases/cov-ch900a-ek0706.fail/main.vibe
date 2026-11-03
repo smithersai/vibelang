@@ -1,0 +1,5 @@
+// expect: EK0706
+// Appendix B: EK0706 — spec-rule: docs/design/src/900-appendices.md#1bd35b69010e0e12
+export function load(x: number) { return async match (x) { default: do { return 1; 0 }; } }
+
+// Appendix A: cov-ch900a-ek0706.fail — spec-rule: docs/design/src/900-appendices.md#6bb197c10b69a7ed

@@ -34,3 +34,6 @@ function varInParameter(x = do { var y = 1; y }) {
 export function main() {
   return [noElse(2), endsInDeclaration(), endsInLoop(), endsInLabeledDeclaration(), jumpInLoopHead([]), varInParameter()]
 }
+
+// Appendix B: EK0203 — spec-rule: docs/design/src/900-appendices.md#f678f6adf78d5508
+// Appendix B: EK0201 — spec-rule: docs/design/src/900-appendices.md#ce5c4c92f67168f6

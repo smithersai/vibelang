@@ -31,3 +31,5 @@ export function sites() {
   run(safe)
   return [handler, handlers, fine, fines, back]
 }
+
+// Appendix B: EK0402 — spec-rule: docs/design/src/900-appendices.md#c728c39fcabeee37

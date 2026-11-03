@@ -1,0 +1,4 @@
+// expect: EK0404
+// Appendix B: EK0404 — spec-rule: docs/design/src/900-appendices.md#0c091c06197bad88
+declare function load(): Promise<number>
+export effect function run() { return load() }

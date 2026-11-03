@@ -21,3 +21,5 @@ export effect function main() {
 // rule: docs/design/src/003-failures.md#25d3291d73a435f7
 // 003-failures.md: bare tagged errors match; zero-argument extractors reject singleton extractions
 // rule: docs/design/src/003-failures.md#ab456b1c6564f3f7
+
+// Appendix B: EK0703 — spec-rule: docs/design/src/900-appendices.md#390a394d4f968a08
