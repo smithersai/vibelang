@@ -704,6 +704,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Changes to fuzz-test helpers unnecessarily rebuilt the native compiler, mapper and forms generator; their cache keys now keep production inputs separate while Go tests still track the changed helpers.
 
+- An arm such as `when not Date: value.kind` could retain the original union and report `TS2339`. Negated ordinary-class patterns now narrow their arm like the false branch of `instanceof`.
+
 - Identical recursive generic declaration APIs could fail with `TS2589`; exact resolved type identity now proves those comparisons.
 - API checks treated identical JSDoc links as different when a private target resolved in only one snapshot. Link targets and labels now compare consistently while real comment changes remain differences.
 

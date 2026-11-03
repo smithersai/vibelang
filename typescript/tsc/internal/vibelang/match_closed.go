@@ -96,10 +96,34 @@ func narrowOpenClassArm(c *checker.Checker, reference *ast.Node, t *checker.Type
 	if assumeTrue {
 		return nil
 	}
+	// In a negated arm, failure of the positive instanceof is success of
+	// the pattern. Coverage credit cannot erase that native false branch.
+	if negatedClassTest(test) && !declaresOwnMatcher(c, c.TypeOfPatternMatcher(matcher)) {
+		return nil
+	}
 	if classArmCreditOf(c, matcher).counts {
 		return nil
 	}
 	return t
+}
+
+func negatedClassTest(test *ast.Node) bool {
+	for parent := test.Parent; parent != nil; parent = parent.Parent {
+		switch {
+		case ast.IsParenthesizedExpression(parent):
+			continue
+		case ast.IsBinaryExpression(parent):
+			operator := parent.AsBinaryExpression().OperatorToken.Kind
+			if operator != ast.KindAmpersandAmpersandToken && operator != ast.KindBarBarToken {
+				return false
+			}
+		case ast.IsPrefixUnaryExpression(parent):
+			return parent.AsPrefixUnaryExpression().Operator == ast.KindExclamationToken
+		default:
+			return false
+		}
+	}
+	return false
 }
 
 // classArmTest returns the matcher and the subject of test when it is the
