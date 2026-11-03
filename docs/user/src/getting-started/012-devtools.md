@@ -586,3 +586,5 @@ One `vibelang --fix` invocation repeats its passes until no fix applies. Running
 Completion and token navigation accept `service`, `error`, and `schema error` declaration keywords, including declarations with decorators and modifiers.
 
 Signature help accepts positions throughout an `error` declaration, including comments and whitespace before payload fields.
+
+Renaming a service also updates its `Shape` qualifiers, including qualified names and imported aliases.

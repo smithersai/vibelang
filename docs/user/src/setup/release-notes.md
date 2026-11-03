@@ -517,6 +517,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Signature help inside an `error` declaration could crash near its fields or closing brace; generated payload types now contain their field spans, including leading comments.
 
+- Renaming a service left its `Shape` type uses behind and added namespace errors; rename now follows those uses, including namespaces and imported aliases.
+
 - Bun's release-age setting blocked newly published VibeLang packages in example projects; the examples now exempt their pinned VibeLang packages from that age check.
 - `--fix` rewrote `.pipe(Semaphore.withPermits(semaphore, 1))` to `Semaphore.withPermits(%, semaphore, 1)`, which passes the program as the Semaphore, and then refused the whole `Effect.gen` with TS2740; a stage whose `self` is not the piped value now stays curried, as `Semaphore.withPermits(semaphore, 1)(%)`.
 - Editor fixes could write invalid annotations around `this` or `super`, a loop binding or a `finally` binding; they now decline edits that cannot preserve the program.

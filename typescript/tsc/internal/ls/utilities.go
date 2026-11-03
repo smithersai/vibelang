@@ -829,6 +829,8 @@ func getMeaningFromLocation(node *ast.Node) ast.SemanticMeaning {
 		return getMeaningFromDeclaration(parent)
 	case ast.IsEntityName(node) && ast.IsJSDocNameReferenceContext(node):
 		return ast.SemanticMeaningAll
+	case isVibeLangShapeQualifier(node):
+		return ast.SemanticMeaningAll
 	case isTypeReference(node):
 		return ast.SemanticMeaningType
 	case isNamespaceReference(node):
@@ -841,6 +843,22 @@ func getMeaningFromLocation(node *ast.Node) ast.SemanticMeaning {
 	default:
 		return ast.SemanticMeaningValue
 	}
+}
+
+// A VibeLang service's Shape qualifier denotes the class/key as well as its
+// synthesized namespace. Actual symbol identity still decides each reference.
+func isVibeLangShapeQualifier(node *ast.Node) bool {
+	file := ast.GetSourceFileOfNode(node)
+	if file == nil || !file.FileName().IsVibeLangSource() {
+		return false
+	}
+	entity := node
+	if ast.IsQualifiedName(entity.Parent) && entity.Parent.AsQualifiedName().Right == entity {
+		entity = entity.Parent
+	}
+	parent := entity.Parent
+	return ast.IsQualifiedName(parent) && parent.AsQualifiedName().Left == entity &&
+		parent.AsQualifiedName().Right.Text() == "Shape" && ast.IsTypeReferenceNode(parent.Parent)
 }
 
 func getMeaningFromDeclaration(node *ast.Node) ast.SemanticMeaning {
