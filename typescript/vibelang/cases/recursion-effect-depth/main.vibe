@@ -1,3 +1,5 @@
+// docs/design/vips/0001-effect-and-async-functions.md#2c2b4320e949cc30
+// VIP-1: deep explicit Effect recursion
 // expect-result: {"direct":100000,"mutual":100000}
 effect function depth(n: number): number!! {
   return n === 0 ? 0 : 1 + (try depth(n - 1))

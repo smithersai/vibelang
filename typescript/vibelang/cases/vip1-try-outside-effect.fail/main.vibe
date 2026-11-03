@@ -1,4 +1,6 @@
 // expect: EK0501
+// docs/design/vips/0001-effect-and-async-functions.md#00a9f910018e58b8
+// VIP-1: try cannot cross source function boundaries
 // VIP-1, VIP-5: try runs an Effect only inside an effect function or block.
 // The innermost function decides, so a plain function nested in an effect
 // function is plain, and try in it is an error.

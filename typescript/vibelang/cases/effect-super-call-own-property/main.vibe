@@ -1,3 +1,5 @@
+// docs/design/vips/0001-effect-and-async-functions.md#b3e40b3e7b0a5f83
+// VIP-1: native super receiver and lookup order
 // Functions, "Bindings" (VIP-1): `effect go() { return super.offset() }`,
 // where offset has an own `call` property, runs the method with the instance
 // as this, and `call` is never read. A generator body must not reach the

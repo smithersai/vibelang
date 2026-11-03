@@ -1,3 +1,5 @@
+// docs/design/vips/0001-effect-and-async-functions.md#815d69e54b4d9947
+// VIP-1: explicit runPromise bridge
 // VIP-1 flip acceptance case 5 (foldkit-3, probe foldkit-ssg-plain-runpromise):
 // a plain Promise entry, like an SSG renderPage(request), starts a root
 // Effect with runPromise and stays plain.

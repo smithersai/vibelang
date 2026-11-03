@@ -1,0 +1,6 @@
+// expect: EK0101
+// docs/design/vips/0001-effect-and-async-functions.md#9512440b6017c016
+// VIP-1: top-level shorthand rejected
+effect load() {}
+async fetchValue() {}
+export {}

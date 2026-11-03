@@ -1,0 +1,11 @@
+// docs/design/vips/0001-effect-and-async-functions.md#0e3b2e5ed029b4e1
+// VIP-1: Function type and exempt prototype/instanceof controls
+// docs/design/vips/0001-effect-and-async-functions.md#bf128ee68549a046
+// VIP-1: Function type and exempt prototype/instanceof controls
+import { Effect } from "effect"
+function f() { return 7 }
+const typed: Function = f
+const erased: any = f
+export function main(): Effect.Effect<readonly [boolean, boolean, number, number]> {
+  return Effect.succeed([typed instanceof Function, Function.prototype === Function["prototype"], erased.constructor === Function ? 7 : 0, f()] as const)
+}

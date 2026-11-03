@@ -1,0 +1,4 @@
+// expect: TS7023
+// docs/design/vips/0001-effect-and-async-functions.md#41457f546aeed331
+// VIP-1: native recursive inference error
+export effect function f(n: number) { return n ? try f(n - 1) : 0 }

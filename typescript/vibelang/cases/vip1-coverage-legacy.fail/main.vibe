@@ -1,0 +1,20 @@
+// expect: EK0107
+// docs/design/vips/0001-effect-and-async-functions.md#5a20313d268349ad
+// VIP-1: legacy references rejected in plain code
+// docs/design/vips/0001-effect-and-async-functions.md#35c59b2ab7c30672
+// VIP-1: legacy references rejected in plain code
+// docs/design/vips/0001-effect-and-async-functions.md#68998777ae15e17a
+// VIP-1: legacy references rejected in plain code
+// docs/design/vips/0001-effect-and-async-functions.md#3890cf4b321730a8
+// VIP-1: legacy references rejected in plain code
+// docs/design/vips/0001-effect-and-async-functions.md#d509fa16dd5857bc
+// VIP-1: legacy references rejected in plain code
+// docs/design/vips/0001-effect-and-async-functions.md#3d1871c21d7ae64f
+// VIP-1: legacy references rejected in plain code
+export function args() { return arguments.length }
+export function indirect() { return (0, eval)("1") }
+export const alias = Function
+export const member = Function.name
+export const built = new Function("return 1")
+export function legacy() { var x = 1; return x }
+export const constructorRead = (() => 1).constructor

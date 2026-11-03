@@ -1,4 +1,6 @@
 // expect: EK0102
+// docs/design/vips/0001-effect-and-async-functions.md#00a9f910018e58b8
+// VIP-1: await forbidden in Effect bodies
 import type { Fiber, Deferred } from "effect"
 declare const fiber: Fiber.Fiber<number>
 declare const deferred: Deferred.Deferred<number>

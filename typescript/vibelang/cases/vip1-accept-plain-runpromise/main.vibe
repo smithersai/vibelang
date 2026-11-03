@@ -1,3 +1,5 @@
+// docs/design/vips/0001-effect-and-async-functions.md#815d69e54b4d9947
+// VIP-1: explicit runPromise bridge
 // expect-result: {"render":7,"isPromise":true,"page":"page:/a"}
 import { render, renderPage } from "./lib.vibe"
 

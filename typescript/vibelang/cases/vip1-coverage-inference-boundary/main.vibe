@@ -1,0 +1,20 @@
+// docs/design/vips/0001-effect-and-async-functions.md#97cdefb13cc2c57c
+// VIP-1: inferred success/error/requirement channels and native legacy boundary
+// docs/design/vips/0001-effect-and-async-functions.md#70f274462d9285ea
+// VIP-1: inferred success/error/requirement channels and native legacy boundary
+import { Effect } from "effect"
+import { legacy } from "./legacy.ts"
+service Numbers { value: number }
+error Bad
+effect function read() {
+  const numbers = try Numbers
+  if (numbers.value < 0) throw new Bad()
+  return numbers.value
+}
+type Equal<A, B> = (<T>() => T extends A ? 1 : 2) extends (<T>() => T extends B ? 1 : 2) ? true : false
+const success: Equal<Effect.Success<ReturnType<typeof read>>, number> = true
+const failure: Equal<Effect.Error<ReturnType<typeof read>>, Bad> = true
+const required: Equal<Effect.Services<ReturnType<typeof read>>, Numbers> = true
+export function main(): Effect.Effect<readonly [boolean, boolean, boolean, number], unknown> {
+  return Effect.map(Effect.try(() => legacy(1, 2)), n => [success, failure, required, n] as const)
+}

@@ -1,3 +1,7 @@
+// docs/design/vips/0001-effect-and-async-functions.md#20a8c2235679960e
+// VIP-1: native async awaits and explicit Promise bridge
+// docs/design/vips/0001-effect-and-async-functions.md#513928b6d808be0a
+// VIP-1: native async awaits and explicit Promise bridge
 // expect-result: [1,2,"a"]
 // 000-intro.md: ordinary async/await and for-await retain Promise behavior
 // rule: docs/design/src/000-intro.md#e51bd93fdb383a06

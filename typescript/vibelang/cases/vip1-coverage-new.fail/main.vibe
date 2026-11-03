@@ -1,0 +1,6 @@
+// expect: TS7009
+// docs/design/vips/0001-effect-and-async-functions.md#0d1b37b7c2e5a818
+// VIP-1: native nonconstructable function error
+effect function f() { return 1 }
+new f()
+export {}

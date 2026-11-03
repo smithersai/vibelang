@@ -1,3 +1,7 @@
+// docs/design/vips/0001-effect-and-async-functions.md#548ac0d7070ed79b
+// VIP-1: native plain recursion RangeError
+// docs/design/vips/0001-effect-and-async-functions.md#b402ca04c0a18979
+// VIP-1: native plain recursion RangeError
 // expect-result: "RangeError"
 // The fixed test runtime has a finite stack; the spec gives no portable depth.
 import { observe } from "./observe.ts"

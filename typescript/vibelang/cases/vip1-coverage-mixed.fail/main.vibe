@@ -1,0 +1,7 @@
+// expect: EK0105
+// docs/design/vips/0001-effect-and-async-functions.md#7fd8209994a612dd
+// VIP-1: mixed modifiers rejected
+effect async function a() {}
+async effect function b() {}
+export const c = effect async { return 1 }
+export const d = async effect { return 2 }
