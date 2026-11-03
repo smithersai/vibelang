@@ -1679,6 +1679,9 @@ func getPossibleSymbolReferencePositions(sourceFile *ast.SourceFile, symbolName 
 	}
 
 	position := strings.Index(text[container.Pos():], symbolName)
+	if position >= 0 {
+		position += container.Pos()
+	}
 	endPos := container.End()
 	for position >= 0 && position < endPos {
 		// We found a match.  Make sure it's not part of a larger word (i.e. the char
