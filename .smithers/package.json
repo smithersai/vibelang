@@ -21,6 +21,8 @@
     "@smthrs/cli": "1.0.0-rc.16",
     "@smthrs/evals": "1.0.0-rc.16",
     "@smthrs/scorers": "1.0.0-rc.16",
-    "@smthrs/targets": "1.0.0-rc.16"
+    "@smthrs/targets": "1.0.0-rc.16",
+    "oxlint": "1.60.0",
+    "@oxlint/plugins": "1.60.0"
   }
 }

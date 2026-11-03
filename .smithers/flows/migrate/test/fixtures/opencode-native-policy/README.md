@@ -1,0 +1,1 @@
+Unchanged rules and their vendored dependencies supplied by the opencode migration on 2026-11-03, Oxlint 1.60.0. The test plugin selects the two rules that rejected the generated source-child helper. The original complete policy is also replayed during lane qualification. No runtime-typeof exception or rule setting is weakened. See the vendor license and upstream attribution.

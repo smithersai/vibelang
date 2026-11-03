@@ -15,11 +15,13 @@ const ts = require("typescript"), fc = require("fast-check")
 const corpus = JSON.parse(readFileSync(new URL("./corpus/alchemy-source-child-preloads.json", import.meta.url)))
 const template = readFileSync(new URL("../templates/source-child.ts", import.meta.url), "utf8")
 const compile = source => ts.transpileModule(source, { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ESNext } }).outputText
-const helperModule = await import("data:text/javascript;base64," + Buffer.from(compile(template + "\nexport { __vibelangSourceChild }\n")).toString("base64"))
+const helperModule = await import("data:text/javascript;base64," + Buffer.from(compile(template + "\nexport { __vibelangSourceChild }\n").replaceAll('"effect/Schema"', JSON.stringify(pathToFileURL(require.resolve("effect/Schema")).href))).toString("base64"))
 const sourceChild = helperModule.__vibelangSourceChild
-const specsFor = () => ({ vibelang: "0.0.11" })
+const specsFor = () => ({ vibelang: "0.0.11", effect: "4.1.1" })
 function temp() {
   const root = mkdtempSync(join(tmpdir(), "alchemy-source-children-"))
+  mkdirSync(join(root, "node_modules"), { recursive: true })
+  symlinkSync(join(repo, "packages/runtime/node_modules/effect"), join(root, "node_modules/effect"), "dir")
   return { root, put(file, text) {
     mkdirSync(dirname(join(root, file)), { recursive: true }); writeFileSync(join(root, file), text)
   }, dispose() { rmSync(root, { recursive: true, force: true }) } }
@@ -205,10 +207,10 @@ test("Node and Bun source children load native syntax from a foreign cwd; unmodi
   const f = temp(), foreign = temp()
   try {
     f.put("package.json", '{"type":"module","private":true}')
-    mkdirSync(join(f.root, "node_modules"))
+    mkdirSync(join(f.root, "node_modules"), { recursive: true })
     symlinkSync(join(repo, "packages/compiler"), join(f.root, "node_modules/vibelang"), "dir")
     symlinkSync(join(repo, "packages/runtime"), join(f.root, "node_modules/vibelang-runtime"), "dir")
-    symlinkSync(realpathSync(join(repo, "experiments/node_modules/effect")), join(f.root, "node_modules/effect"), "dir")
+    assert.ok(existsSync(join(f.root, "node_modules/effect")))
     f.put("tsconfig.json", JSON.stringify({ compilerOptions: { target: "ES2022", module: "ESNext", moduleResolution: "Bundler", strict: true, skipLibCheck: true }, include: ["src/**/*"] }))
     f.put("src/value.vibe", "export effect function value() { return 42 }\n")
     f.put("src/Runner.ts", 'import { runSync } from "effect/Effect"; import { value } from "./value.vibe"; console.log(runSync(value()));\n')

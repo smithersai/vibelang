@@ -6,6 +6,7 @@ import { packageScripts, testOnlyScripts } from "./test-files.mjs"
 
 const marker = "// VibeLang source-child loader arguments."
 const template = readFileSync(new URL("../templates/source-child.ts", import.meta.url), "utf8")
+const legacyTemplate = readFileSync(new URL("../templates/source-child-legacy.ts", import.meta.url), "utf8")
 const api = name => name === "node:child_process" || name === "child_process"
   ? new Set(["spawn", "spawnSync"])
   : name === "effect/process/ChildProcess" ? new Set(["make"]) : null
@@ -61,6 +62,70 @@ function refreshSourceChildImport(text, source, ts, checker) {
   let after = text
   for (const edit of edits.sort((a,b) => b.start-a.start)) after = after.slice(0,edit.start) + edit.text + after.slice(edit.end)
   return { text:after, usesChild:true, refusals }
+}
+
+// Upgrade only the exact helper body this generator emitted. An authored
+// observation or edit remains visible for review instead of being rewritten.
+function refreshSourceChildPolicy(text, source, ts, checker, calls, file) {
+  const helper = source.statements.find(node => ts.isFunctionDeclaration(node) && /^__vibelangSourceChild\d*$/.test(node.name?.text ?? ""))
+  if (!helper) return null
+  const imports = source.statements.filter(ts.isImportDeclaration)
+  const currentSchema = imports.find(node => node.moduleSpecifier.text === "effect/Schema" && node.importClause?.namedBindings &&
+    ts.isNamespaceImport(node.importClause.namedBindings) && /^__vibelangSchema\d*$/.test(node.importClause.namedBindings.name.text) &&
+    helper.getText(source).includes(node.importClause.namedBindings.name.text + ".is("))
+  const urlImport = imports.find(node => node.moduleSpecifier.text === "node:url" && node.importClause?.namedBindings &&
+    ts.isNamespaceImport(node.importClause.namedBindings) && /^__vibelang(?:NodeURL|FileURLToPath)\d*$/.test(node.importClause.namedBindings.name.text))
+  if (!urlImport) return null
+  const url = urlImport.importClause.namedBindings.name.text
+  if (currentSchema) {
+    let canonical = template.replaceAll("__vibelangSourceChild", helper.name.text).replaceAll("__vibelangNodeURL", url)
+      .replaceAll("__vibelangSchema", currentSchema.importClause.namedBindings.name.text)
+    if (/\.[cm]?jsx?$/.test(file)) canonical = ts.transpileModule(canonical, {
+      compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022, removeComments: false }
+    }).outputText
+    const parsed = ts.createSourceFile(file, canonical, ts.ScriptTarget.Latest, true)
+    if (helper.getText(source) === parsed.statements.find(ts.isFunctionDeclaration).getText(parsed)) return null
+    return { text, usesChild: true, refusals: [{
+      line: source.getLineAndCharacterOfPosition(helper.getStart(source)).line + 1,
+      reason: "generated source-child helper has manual edits; retain it for policy review"
+    }] }
+  }
+  const symbol = checker.getSymbolAtLocation(helper.name)
+  const wrappers = calls.flatMap(call => {
+    const spread = call.arguments[0], inner = spread && ts.isSpreadElement(spread) ? spread.expression : undefined
+    return inner && ts.isCallExpression(inner) && checker.getSymbolAtLocation(inner.expression) === symbol ? [inner.expression] : []
+  })
+  let owned = true
+  const visit = node => {
+    if (ts.isIdentifier(node) && node !== helper.name && checker.getSymbolAtLocation(node) === symbol && !wrappers.includes(node)) owned = false
+    ts.forEachChild(node, visit)
+  }
+  visit(source)
+  let rendered = legacyTemplate.replaceAll("__vibelangSourceChild", helper.name.text).replaceAll("__vibelangNodeURL", url)
+  const javascript = /\.[cm]?jsx?$/.test(file)
+  const render = code => javascript ? ts.transpileModule(code, {
+    compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022, removeComments: false }
+  }).outputText : code
+  rendered = render(rendered)
+  const parsed = ts.createSourceFile(file, rendered, ts.ScriptTarget.Latest, true)
+  const oldFunction = parsed.statements.find(ts.isFunctionDeclaration)
+  if (!owned || helper.getText(source) !== oldFunction.getText(parsed)) return { text, usesChild: true, refusals: [{
+    line: source.getLineAndCharacterOfPosition(helper.getStart(source)).line + 1,
+    reason: "generated source-child helper has manual observations or edits; retain it for policy review"
+  }] }
+  const names = new Set()
+  const collect = node => { if (ts.isIdentifier(node)) names.add(node.text); ts.forEachChild(node, collect) }
+  collect(source)
+  let schema = "__vibelangSchema"
+  for (let i = 2; names.has(schema); i++) schema = "__vibelangSchema" + i
+  const next = render(template.replaceAll("__vibelangSourceChild", helper.name.text).replaceAll("__vibelangNodeURL", url).replaceAll("__vibelangSchema", schema))
+  const nextSource = ts.createSourceFile(file, next, ts.ScriptTarget.Latest, true)
+  const nextImports = nextSource.statements.filter(ts.isImportDeclaration)
+  const schemaImport = nextImports.find(node => node.moduleSpecifier.text === "effect/Schema")
+  const nextFunction = nextSource.statements.find(ts.isFunctionDeclaration)
+  let after = text.slice(0, helper.getStart(source)) + nextFunction.getText(nextSource) + text.slice(helper.end)
+  after = after.slice(0, urlImport.end) + "\n" + next.slice(schemaImport.getStart(nextSource), schemaImport.end) + after.slice(urlImport.end)
+  return { text: after, usesChild: true, refusals: [] }
 }
 
 export function addSourceChildLoaders(text, ts, { file = "child.ts", type = "module" } = {}) {
@@ -177,18 +242,25 @@ export function addSourceChildLoaders(text, ts, { file = "child.ts", type = "mod
         }
         // Match only byte-exact bodies this generator owns. Manual edits or
         // uses stay intact with a located warning instead of being discarded.
-        const legacy = template.replace(/import \* as __vibelangNodeURL from "node:url"/, 'import { fileURLToPath as __vibelangFileURLToPath } from "node:url"')
+        const schemaImport = source.statements.find(node => ts.isImportDeclaration(node) &&
+          node.moduleSpecifier.text === "effect/Schema" && node.importClause?.namedBindings &&
+          ts.isNamespaceImport(node.importClause.namedBindings) &&
+          /^__vibelangSchema\d*$/.test(node.importClause.namedBindings.name.text) &&
+          references(symbol(node.importClause.namedBindings.name)).every(node => helper.pos <= node.pos && node.end <= helper.end))
+        const schema = schemaImport?.importClause.namedBindings.name.text
+        const legacy = legacyTemplate.replace(/import \* as __vibelangNodeURL from "node:url"/, 'import { fileURLToPath as __vibelangFileURLToPath } from "node:url"')
           .replaceAll("__vibelangNodeURL.fileURLToPath", "__vibelangFileURLToPath")
         let append
-        if (owned && urlImport) for (const namespace of [false, true]) {
-          let rendered = legacy.replaceAll("__vibelangSourceChild", helper.name.text)
-            .replaceAll("__vibelangFileURLToPath", urlBinding)
-          if (namespace) rendered = rendered.replaceAll(urlBinding + "(", urlBinding + ".fileURLToPath(")
+        if (owned && urlImport) for (const base of [legacy, ...(schema ? [template] : [])]) for (const namespace of [false, true]) {
+          let rendered = base.replaceAll("__vibelangSourceChild", helper.name.text)
+          rendered = base === legacy ? rendered.replaceAll("__vibelangFileURLToPath", urlBinding)
+            : rendered.replaceAll("__vibelangNodeURL", urlBinding).replaceAll("__vibelangSchema", schema ?? "__vibelangSchema")
+          if (namespace && base === legacy) rendered = rendered.replaceAll(urlBinding + "(", urlBinding + ".fileURLToPath(")
           if (/\.[cm]?jsx?$/.test(file)) rendered = ts.transpileModule(rendered, {
             compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022, removeComments: false }
           }).outputText
           const parsed = ts.createSourceFile(file, rendered, ts.ScriptTarget.Latest, true)
-          const imported = parsed.statements.find(ts.isImportDeclaration)
+          const imported = parsed.statements.filter(ts.isImportDeclaration).at(-1)
           const body = rendered.slice(imported.end).replace(/^export \{\};?\s*$/gm, "")
           const candidate = "\n" + body + "\n"
           if (text.endsWith(candidate)) { append = candidate; break }
@@ -199,12 +271,14 @@ export function addSourceChildLoaders(text, ts, { file = "child.ts", type = "mod
           const removeHelper = unnecessary.length === wrappers.length
           if (removeHelper) {
             edits.push({ start: text.length - append.length, end: text.length, text: "" })
-            const newline = /^\r?\n/.exec(text.slice(urlImport.end))?.[0].length ?? 0
-            edits.push({ start: urlImport.getStart(source), end: urlImport.end + newline, text: "" })
+            for (const imported of [urlImport, schemaImport].filter(Boolean)) {
+              const newline = /^\r?\n/.exec(text.slice(imported.end))?.[0].length ?? 0
+              edits.push({ start: imported.getStart(source), end: imported.end + newline, text: "" })
+            }
           }
           let after = text
           for (const edit of edits.sort((a,b) => b.start-a.start)) after = after.slice(0,edit.start) + edit.text + after.slice(edit.end)
-          return removeHelper ? addSourceChildLoaders(after, ts, { file, type }) : { text: after, usesChild: true, refusals }
+          return addSourceChildLoaders(after, ts, { file, type })
         }
         warn(helper, "non-source launcher has a manually edited or observed generated helper; retain it for review")
         return { text, usesChild: true, refusals }
@@ -218,7 +292,31 @@ export function addSourceChildLoaders(text, ts, { file = "child.ts", type = "mod
   }
 
   if (text.includes(marker)) {
+    const declared = source.statements.find(node => ts.isFunctionDeclaration(node) && /^__vibelangSourceChild\d*$/.test(node.name?.text ?? ""))
+    if (declared) {
+      const target = checker.getSymbolAtLocation(declared.name)
+      let observed = false
+      const inspect = node => {
+        let value = ts.isIdentifier(node) ? checker.getSymbolAtLocation(node) : undefined
+        if (ts.isIdentifier(node) && ts.isShorthandPropertyAssignment(node.parent)) value = checker.getShorthandAssignmentValueSymbol(node.parent) ?? value
+        if (ts.isIdentifier(node) && ts.isExportSpecifier(node.parent)) value = checker.getExportSpecifierLocalTargetSymbol(node.parent) ?? value
+        if (ts.isIdentifier(node) && node !== declared.name && value === target &&
+            !(ts.isCallExpression(node.parent) && node.parent.expression === node &&
+              ts.isSpreadElement(node.parent.parent) && ts.isCallExpression(node.parent.parent.parent) &&
+              calls.includes(node.parent.parent.parent))) observed = true
+        ts.forEachChild(node, inspect)
+      }
+      inspect(source)
+      if (observed) return { text, usesChild: true, refusals: [{
+        line: source.getLineAndCharacterOfPosition(declared.getStart(source)).line + 1,
+        reason: "generated source-child helper has manual observations; retain it for policy review"
+      }] }
+    }
     const refreshed = refreshSourceChildImport(text, source, ts, checker)
+    if (refreshed?.refusals.length) return refreshed
+    if (refreshed && refreshed.text !== text) return addSourceChildLoaders(refreshed.text, ts, { file, type })
+    const upgraded = refreshSourceChildPolicy(text, source, ts, checker, calls, file)
+    if (upgraded) return upgraded
     if (refreshed) return refreshed
   }
 
@@ -231,7 +329,7 @@ export function addSourceChildLoaders(text, ts, { file = "child.ts", type = "mod
     identifiers.add(name)
     return name
   }
-  const helper = fresh("__vibelangSourceChild"), url = fresh("__vibelangNodeURL")
+  const helper = fresh("__vibelangSourceChild"), url = fresh("__vibelangNodeURL"), schema = fresh("__vibelangSchema")
   const edits = []
   for (const call of calls) {
     if (call.arguments.length < 2 || call.arguments.length > 3 || call.arguments.some(ts.isSpreadElement)) {
@@ -273,16 +371,16 @@ export function addSourceChildLoaders(text, ts, { file = "child.ts", type = "mod
     })
   }
   if (!edits.length) return { text, usesChild: false, refusals }
-  let rendered = template.replaceAll("__vibelangSourceChild", helper).replaceAll("__vibelangNodeURL", url)
+  let rendered = template.replaceAll("__vibelangSourceChild", helper).replaceAll("__vibelangNodeURL", url).replaceAll("__vibelangSchema", schema)
   if (/\.[cm]?jsx?$/.test(file)) rendered = ts.transpileModule(rendered, {
     compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022, removeComments: false }
   }).outputText
   // Imports go after the directive prologue, before any executable statement,
   // including a call on the same line as an existing import.
   const helperSource = ts.createSourceFile(file, rendered, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS)
-  const importNode = helperSource.statements.find(ts.isImportDeclaration)
-  const helperImport = rendered.slice(importNode.getStart(helperSource), importNode.end)
-  const body = rendered.slice(importNode.end).replace(/^export \{\};?\s*$/gm, "")
+  const importNodes = helperSource.statements.filter(ts.isImportDeclaration)
+  const helperImport = importNodes.map(node => rendered.slice(node.getStart(helperSource), node.end)).join("\n")
+  const body = rendered.slice(importNodes.at(-1).end).replace(/^export \{\};?\s*$/gm, "")
   let index = 0
   while (index < source.statements.length && ts.isExpressionStatement(source.statements[index]) &&
     ts.isStringLiteralLike(source.statements[index].expression)) index++
@@ -297,9 +395,12 @@ export function addSourceChildLoaders(text, ts, { file = "child.ts", type = "mod
 export function wireSourceChildren({ root, all, manifests, ts, specsFor, write }) {
   const warnings = []
   if (!ts) return { warnings }
+  const rootPackage = all.includes("package.json") ? JSON.parse(readFileSync(join(root, "package.json"), "utf8")) : {}
+  const declaredEffect = pkg => pkg.dependencies?.effect ?? pkg.devDependencies?.effect ?? pkg.peerDependencies?.effect
   for (const manifest of manifests) {
     const dir = posix.dirname(manifest)
     const current = JSON.parse(readFileSync(join(root, manifest), "utf8"))
+    const effectVersion = specsFor(dir).effect ?? declaredEffect(current) ?? declaredEffect(rootPackage)
     const scripts = packageScripts(root, dir).filter(file => all.includes(file))
     const candidates = scripts.map(file => ({ file, text: readFileSync(join(root, file), "utf8") }))
       .filter(({ text }) => /["'](?:node:)?child_process["']|["']effect\/process\/ChildProcess["']/.test(text))
@@ -324,6 +425,7 @@ export function wireSourceChildren({ root, all, manifests, ts, specsFor, write }
       for (const refusal of result.refusals) warnings.push(file + ":" + refusal.line + ": " + refusal.reason)
       if (!result.usesChild) continue
       if (!specsFor(dir).vibelang) { warnings.push(file + ":1: no vibelang version is configured for source children"); continue }
+      if (!effectVersion) { warnings.push(file + ":1: source-child Schema boundary needs the selected toolchain Effect pin or a declared effect dependency; retain the native launcher"); continue }
       if (result.text !== text) write(file, result.text)
       wired = true
       runtime ||= current.private !== true && !/(?:^|\/)(?:scripts?|tools?|configs?|build)\//.test(posix.relative(dir, file))
@@ -332,7 +434,13 @@ export function wireSourceChildren({ root, all, manifests, ts, specsFor, write }
     const pkg = JSON.parse(readFileSync(join(root, manifest), "utf8"))
     const field = runtime || pkg.dependencies?.vibelang ? "dependencies" : "devDependencies"
     ;(pkg[field] ??= {}).vibelang = specsFor(dir).vibelang
-    if (field === "dependencies" && pkg.devDependencies) delete pkg.devDependencies.vibelang
+    if (!pkg.dependencies?.effect && (field === "dependencies" || !pkg.devDependencies?.effect)) {
+      pkg[field].effect = effectVersion
+    }
+    if (field === "dependencies" && pkg.devDependencies) {
+      delete pkg.devDependencies.vibelang
+      delete pkg.devDependencies.effect
+    }
     write(manifest, JSON.stringify(pkg, null, 2) + "\n")
   }
   return { warnings }

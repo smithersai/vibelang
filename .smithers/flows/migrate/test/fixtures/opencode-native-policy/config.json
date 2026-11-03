@@ -1,0 +1,21 @@
+{
+  "jsPlugins": [
+    {
+      "name": "anti-slop",
+      "specifier": "./index.ts"
+    }
+  ],
+  "categories": {
+    "correctness": "off",
+    "suspicious": "off",
+    "pedantic": "off",
+    "perf": "off",
+    "style": "off",
+    "restriction": "off",
+    "nursery": "off"
+  },
+  "rules": {
+    "anti-slop/no-runtime-typeof": "warn",
+    "anti-slop/require-readable-spacing": "warn"
+  }
+}

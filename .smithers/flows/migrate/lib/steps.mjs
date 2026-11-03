@@ -960,7 +960,7 @@ export async function wireTarget(config, log) {
   rmSync(local, { recursive: true, force: true })
   const tarballs = toolchain ? Wire.copyTarballs(toolchain.dir, toolchain.packages, local) : {}
   const specsFor = (dir) => (toolchain
-    ? Wire.toolchainSpecs(dir, tarballs)
+    ? { ...Wire.toolchainSpecs(dir, tarballs), effect: toolchain.effect }
     : { vibelang: config.toolchain.version, "vibelang-runtime": config.toolchain.version, "vibelang-vite": config.toolchain.version, "vibelang-unplugin": config.toolchain.version })
 
   const writeIfChanged = (path, before, after) => {
