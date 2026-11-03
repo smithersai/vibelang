@@ -12,7 +12,7 @@ for(const location of ["local","npm"])for(const contract of ["unannotated","neve
  const foreignTest=!bridge&&contract!=="never"?test.todo:test
  foreignTest("Chapter 007 / "+location+" "+contract+" "+(bridge?"wrapped":"direct")+" foreign call",t=>{
   const root=mkdtempSync(join(tmpdir(),"chapter007-foreign-"));t.after(()=>rmSync(root,{recursive:true,force:true}))
-  mkdirSync(join(root,"node_modules"));symlinkSync(join(process.env.EFFECT_NODE_MODULES,"effect"),join(root,"node_modules/effect"))
+  mkdirSync(join(root,"node_modules"));symlinkSync(join(process.env.EFFECT_NODE_MODULES||join(repo,"experiments/node_modules"),"effect"),join(root,"node_modules/effect"))
   symlinkSync(join(repo,"packages/runtime"),join(root,"node_modules/vibelang-runtime"))
   writeFileSync(join(root,"package.json"),'{"type":"module"}')
   const comment=contract==="unannotated"?"":"/** @throws {"+contract+"} */\n"

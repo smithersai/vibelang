@@ -10,7 +10,7 @@ const binary=process.env.VIBELANG_BINARY||join(repo,"packages/compiler/native/vi
 // Chapter 007 / build fixes owned sources in project dependency order: docs/design/src/007-tooling.md#a1beb9c6c673c47b
 test.todo("Chapter 007 / --fix -b handles each referenced project's owned sources in build order",t=>{
  const root=mkdtempSync(join(tmpdir(),"chapter007-build-fix-"));t.after(()=>rmSync(root,{recursive:true,force:true}))
- mkdirSync(join(root,"node_modules"));symlinkSync(join(process.env.EFFECT_NODE_MODULES,"effect"),join(root,"node_modules/effect"))
+ mkdirSync(join(root,"node_modules"));symlinkSync(join(process.env.EFFECT_NODE_MODULES||join(repo,"experiments/node_modules"),"effect"),join(root,"node_modules/effect"))
  writeFileSync(join(root,"package.json"),'{"type":"module"}')
  const source='import {Effect} from "effect";export type Run=Effect.Effect<number>;\n'
  for(const name of ["lib","app"]){

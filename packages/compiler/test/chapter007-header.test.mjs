@@ -10,7 +10,7 @@ const binary=process.env.VIBELANG_BINARY||join(repo,"packages/compiler/native/vi
 // Chapter 007 / first-import comment attachment and native elision: docs/design/src/007-tooling.md#46110484ebf74536
 test("Chapter 007 / native declaration elision distinguishes a first unused import header",t=>{
  const root=mkdtempSync(join(tmpdir(),"chapter007-header-"));t.after(()=>rmSync(root,{recursive:true,force:true}))
- mkdirSync(join(root,"node_modules"));symlinkSync(join(process.env.EFFECT_TWIN_NODE_MODULES||process.env.EFFECT_NODE_MODULES,"effect"),join(root,"node_modules/effect"))
+ mkdirSync(join(root,"node_modules"));symlinkSync(join(process.env.EFFECT_TWIN_NODE_MODULES||process.env.EFFECT_NODE_MODULES||join(repo,"experiments/node_modules"),"effect"),join(root,"node_modules/effect"))
  writeFileSync(join(root,"package.json"),'{"type":"module"}')
  const header="/** Canonical original header */\n"
  const unused='import {Effect} from "effect";\n'
