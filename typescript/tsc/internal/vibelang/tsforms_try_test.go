@@ -115,3 +115,51 @@ func TestDirectTryFormShadowedImport(t *testing.T) {
 		}
 	}
 }
+
+// The EK4834-EK4836 rows warn only on a try in effect code (chapter 7,
+// "TypeScript spellings with VibeLang forms"). A try in a plain or async
+// function is EK0501 and runs nothing, so no running form is there to rewrite.
+func TestDirectTryFormOnlyInEffectCode(t *testing.T) {
+	params := "(e: number!string, h: (x: string) => number!!)"
+	contexts := []struct {
+		name, form string
+		warn       bool
+	}{
+		{"plain-arrow", "export const f = " + params + " => try %s", false},
+		{"plain-arrow-parens", "export const f = " + params + " => try (%s)", false},
+		{"plain-function", "export function f" + params + " { return try %s }", false},
+		{"async-function", "export async function f" + params + " { return try %s }", false},
+		{"plain-in-effect", "export effect function f" + params + " { const g = () => try %s; return 0 }", false},
+		{"effect-arrow", "export const f = effect " + params + " => try %s", true},
+		{"effect-function", "export effect function f" + params + " { return try (%s) }", true},
+	}
+	for _, family := range []struct {
+		name, call string
+		code       int32
+	}{
+		{"succeed", "Effect.succeed(1)", 4834},
+		{"fail", "Effect.fail(\"boom\")", 4834},
+		{"catch", "Effect.catch(e, h)", 4835},
+		{"provide", "Effect.provide(e, Layer.empty)", 4836},
+	} {
+		for _, context := range contexts {
+			t.Run(family.name+"/"+context.name, func(t *testing.T) {
+				source := fmt.Sprintf(context.form, family.call) + "\n"
+				p, file, _, _ := editorProgram(t, source)
+				var codes []int32
+				for _, d := range p.GetSemanticDiagnostics(t.Context(), file) {
+					if d.Source() == diagnosticSource && slices.Contains([]int32{4834, 4835, 4836}, d.Code()) {
+						codes = append(codes, d.Code())
+					}
+				}
+				want := []int32(nil)
+				if context.warn {
+					want = []int32{family.code}
+				}
+				if !slices.Equal(codes, want) {
+					t.Fatalf("advisories %v, want %v:\n%s", codes, want, source)
+				}
+			})
+		}
+	}
+}
