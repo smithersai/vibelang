@@ -579,6 +579,69 @@ incremental. On alchemy's 30 packages at be1fa00d94e1, the diff of clean builds
 finds 0 missing files, 15 renamed chunks and one `vibelang.manifest.json` extra per
 converted package.
 
+### Pack check
+
+A dist-list diff proves the files ship, not that they work for anyone outside the
+workspace. alchemy at be1fa00d94e1 passed it with 29 of 30 packs failing to install,
+954 Bun entries failing to load and 100 new public specifiers. So `setup` and each
+batch's `verify` use each published package the way a consumer does:
+
+1. Pack it with the repository's own package manager.
+2. `npm install` the pack in an empty directory outside the tree, so the workspace's
+   links, `bunfig.toml` preload and loaders do not reach it. Workspace dependencies
+   install from their own packs. A release the registry does not have yet comes from
+   the staged toolchain and is listed under `releaseRequired`, not refused.
+3. Import every `exports` specifier under Node and under Bun, with wildcard keys
+   expanded over the pack's files and Node's key order deciding each specifier. A
+   declaration, `.json` or `.css` target is not imported.
+
+Each specifier gets its own process, up to 200 per package. Above that, specifiers
+share one process per batch (40 under Node, 80 under Bun) and each failure reruns
+alone, so an entry that passes only because an earlier one in its batch set up
+global state goes unseen. `batching` in the receipt says which ran. A crash or a
+240-second hang marks only the entry that was running. An entry past 240 seconds
+reruns alone with a 960-second limit, because a slow box can stretch a large entry
+past the first: it fails as a hang only past the second, and a load that finishes
+goes under `slowLoads` with its time. A target the pack does not hold fails as
+`ABSENT` without starting a process. Each result records its load time in `ms`.
+
+`setup` writes `baseline/logs/baseline-pack-load.json`, and a batch writes
+`logs/candidate-pack-load.json`. Each regression is a named refusal under
+`packLoad.refusals` in `verify.json`, and `checks.packLoad` fails the batch:
+
+| Refusal | Meaning |
+|---|---|
+| `pack-local-dependency` | The pack names a `file:`, `link:`, `workspace:`, `catalog:` or `portal:` dependency, and installing it fails. Refused even if the baseline has it. The loads still run against the staged toolchain, so it hides no other defect. |
+| `pack-failed`, `pack-install-failed` | The package packed or installed in the baseline and now does not. |
+| `load-failed` | The specifier loaded under that runtime in the baseline and now fails, for example `export * from "./x.vibe"` under Bun with no preload. |
+| `load-names-lost` | The specifier still loads and no longer exports these names. |
+| `exports-lost`, `exports-added` | The pack stopped answering a specifier, or newly answers one, for example an exact `./X/internal` key that outranks a `./*/internal: null` block, or a `./Boot/*` wildcard that matches `X.d.vibe.ts`. |
+| `export-target-missing` | The specifier's target is no longer in the pack. |
+
+A gained name goes under `namesGained`, a load that needed the longer limit under
+`slowLoads`, an entry the load cap did not reach under `unverified`, and a failure
+the baseline has too under `baselineFailures`. None of these fails the batch. `report.json` lists each batch's result under `packLoad`.
+
+The check never passes silently. It costs the most of any gate, so it runs last and
+only when every other check passed; otherwise `packLoad.state` is `not-run` with the
+reason. It also says so for a one-pass run, a baseline from before this check, a run
+with no published package, and a batch with no file in a published package. A batch
+checks only the published packages holding its files, and `notInBatch` lists the rest.
+
+Cost, measured on alchemy's `packages/aws` (7,281 specifiers, so batched) on one
+4-vCPU box:
+
+| Tree | Pack | Install | Node | Bun | Total |
+|---|---|---|---|---|---|
+| Stock TypeScript | 12 s | 28 s | 54 s | 9 s | 104 s |
+| Converted, cd523ff73f58 | 14 s | 44 s | 662 s | 27 s | 749 s |
+
+Most of the converted tree's Node time is five entries that import nearly the whole
+package (`.`, `./index`, `./Providers`, `./AutoScaling`,
+`./AutoScaling/LaunchTemplate`), at 182 to 239 seconds each. Before `ABSENT`, its
+6,536 `.d.vibe` specifiers with no Node target each reran alone, and the check took
+1,258 to 1,808 seconds.
+
 ### Source filename wiring
 
 Before the compiler starts, `codemod` scans the inventory's source files

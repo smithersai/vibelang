@@ -1,0 +1,7 @@
+{
+  "source": "alchemy be1fa00d94e1, 30 of 30 packages, from a clean build, pnpm pack, npm install in an empty directory, import() under Node and Bun",
+  "totals": { "packagesWithFilePin": 29, "nodeRegress": 12, "bunRegress": 954, "bunNamesLost": 526, "specifiersAdded": 100 },
+  "filePin": { "package": "@alchemy.run/redis", "runtimeVersion": "0.0.11", "spec": "file:../../.vibelang-toolchain/vibelang-runtime-0.0.11-2fe05486ecc6.tgz", "errorPattern": "ENOENT" },
+  "bun": { "package": "@alchemy.run/redis", "name": "ProtocolError", "message": "Export named 'ProtocolError' not found in module .../src/Errors.vibe" },
+  "internal": { "package": "@alchemy.run/aws", "dir": "X", "leaked": 94 }
+}

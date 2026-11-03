@@ -3,6 +3,7 @@ import { prepareToolchainPublication, stagedToolchainSpecs } from "./toolchain-p
 import { prepareBuilds } from "./builds.mjs"
 import { checkConvertedPaths } from "./converted-paths.mjs"
 import { compareDistLists } from "./dist-list.mjs"
+import { packLoadBaseline, verifyPackLoad } from "./pack-load.mjs"
 import { generatedTree, ownedPathSources, ownedToolConfigs } from "./tool-config-references.mjs"
 // The migrate flow's steps. Each reads and writes the run directory, so it can
 // run as a step of flow.ts or alone from step.mjs, and a later step reads what
@@ -1261,6 +1262,9 @@ export async function setup(options) {
   const tests = await runTests({ command: config.test.command, report: config.test.report, cwd: join(t, config.test.cwd), root: t, jsonFile: join(p.baseline, "baseline.vitest.json"), log: join(logs, "baseline-tests.log") })
   writeJson(join(p.baseline, "tests.json"), { code: tests.code, tests: tests.tests, build: baselineBuild })
   assertBaselineSafe(p)
+  // What a consumer outside this tree gets from each published package, nothing migrated.
+  const packBaseline = await packLoadBaseline({ config, logs })
+  if (packBaseline.dirtied?.length) wired?.warnings.push("packing changed tracked files, and setup's commit holds the change: " + packBaseline.dirtied.join(", "))
   const wiring = wired ? compareTests(upstream, tests) : null
   // Setting VibeLang up broke tests before any file moved: record it, so it is
   // not mistaken for a batch's regression, and finish setup with its evidence.
@@ -2034,6 +2038,10 @@ export async function verify(options) {
       migrated: migrated.length > 0
     }
   }
+  // A pack that does not install or load outside the tree: last, and only if the rest pass, because it costs the most.
+  result.packLoad = await verifyPackLoad({ config, baselinePath: join(p.baseline, "logs", "baseline-pack-load.json"), logs, files, built: Boolean(candidateBuild),
+    earlierFailure: Object.entries(result.checks).filter(([, passed]) => !passed).map(([name]) => name) })
+  result.checks.packLoad = result.packLoad.ok
   result.ok = Object.values(result.checks).every(Boolean)
   writeJson(p.verify(b), result)
   return result
@@ -2152,7 +2160,9 @@ export async function report(options) {
     // Paths the check could not prove either way; a refusal fails its batch and never reaches a record.
     pathReports: batches.flatMap((b) => b.verify?.pathReferences?.reports ?? []),
     // A dist-list diff that did not run says so for each batch, so no report reads as a pass it never made.
-    distList: batches.filter(b => b.verify?.distList).map(b => ({ batch: b.batch, state: b.verify.distList.state, reason: b.verify.distList.reason, refusals: b.verify.distList.refusals?.length ?? 0, extras: b.verify.distList.extraCount ?? 0 }))
+    distList: batches.filter(b => b.verify?.distList).map(b => ({ batch: b.batch, state: b.verify.distList.state, reason: b.verify.distList.reason, refusals: b.verify.distList.refusals?.length ?? 0, extras: b.verify.distList.extraCount ?? 0 })),
+    // Likewise the pack check: the packages it compared, what it refused, and what it could only report.
+    packLoad: batches.filter(b => b.verify?.packLoad).map(b => ({ batch: b.batch, state: b.verify.packLoad.state, reason: b.verify.packLoad.reason, counts: b.verify.packLoad.counts ?? {}, packages: Object.keys(b.verify.packLoad.packages ?? {}), notInBatch: b.verify.packLoad.notInBatch ?? [], unverified: b.verify.packLoad.unverified?.length ?? 0, namesGained: b.verify.packLoad.namesGained?.length ?? 0, releaseRequired: b.verify.packLoad.releaseRequired ?? [], ms: b.verify.packLoad.ms }))
   }
   const rewrites = {}
   for (const b of batches) for (const [k, n] of Object.entries(b.codemod?.fix.totals ?? {})) rewrites[k] = (rewrites[k] ?? 0) + n

@@ -65,6 +65,16 @@ batch, and `verify` fails the batch for each file the build no longer writes,
 under `distList.refusals` in `verify.json`. With no build script it records
 that the check did not run.
 
+A package can ship every file and still fail for everyone outside its workspace:
+a `file:` dependency stops it installing, and `export * from "./x.vibe"` loads
+under Bun only with the workspace's preload. A batched migration packs each
+published package with a file in the batch, installs the pack in an empty
+directory and imports every `exports` specifier under Node and under Bun. `verify`
+fails the batch for each regression from the baseline, under `packLoad.refusals`
+in `verify.json`: a dependency the pack cannot install, a specifier that stops
+loading, a lost export name, or a specifier lost or added. It runs after every
+other check passes, and records why when it does not run.
+
 ## Prettier and Oxfmt
 
 Setup and record split large formatter file lists into bounded argument chunks. Their format log retains each command and exit status. A failing chunk makes the step fail after all selected files have been attempted.

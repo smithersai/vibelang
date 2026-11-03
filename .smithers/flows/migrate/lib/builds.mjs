@@ -43,6 +43,17 @@ export function builtPackages(manifests, plan) {
   return [...dirs].sort().map(dir => ({ dir, manifest: manifests.find(f => dirname(f.path) === dir)?.manifest ?? {} }))
 }
 
+/** The workspace's members and the run's packages, each with its manifest. An explicitly selected package need not be a member. */
+export async function workspacePackages(config, tracked) {
+  const t = config.target
+  const files = existsSync(join(t,".jj")) ? tracked ?? await Jj.trackedFiles(t) : ["package.json",...config.packages.map(p=>join(p.dir,"package.json"))]
+  const workspace = existsSync(join(t,"pnpm-workspace.yaml")) ? readFileSync(join(t,"pnpm-workspace.yaml"),"utf8") : ""
+  const globs = workspaceGlobs(readFileSync(join(t,"package.json"),"utf8"),workspace)
+  const members = workspaceManifests(files.filter(file => /(?:^|\/)package\.json$/.test(file)),globs).filter(file=>file.endsWith("package.json"))
+  const selected = config.packages.map(pkg=>join(pkg.dir,"package.json"))
+  return [...new Set([...members,...selected])].map(path=>({path,dir:normalize(dirname(path)),manifest:readJson(join(t,path))}))
+}
+
 /**
  * Runs the declared builds. With `distList`, each built package's output
  * directories are moved aside first, so the list in `<phase>-dist.json` is
@@ -51,13 +62,8 @@ export function builtPackages(manifests, plan) {
 export async function prepareBuilds(config, logs, phase, { distList = false } = {}) {
   const t = config.target
   const versioned = existsSync(join(t,".jj"))
-  const files = versioned ? await Jj.trackedFiles(t) : ["package.json",...config.packages.map(p=>join(p.dir,"package.json"))]
-  const workspace = existsSync(join(t,"pnpm-workspace.yaml")) ? readFileSync(join(t,"pnpm-workspace.yaml"),"utf8") : ""
-  const globs = workspaceGlobs(readFileSync(join(t,"package.json"),"utf8"),workspace)
-  const members = workspaceManifests(files.filter(file => /(?:^|\/)package\.json$/.test(file)),globs).filter(file=>file.endsWith("package.json"))
-  // An explicitly selected package need not be a workspace member.
-  const selected = config.packages.map(pkg=>join(pkg.dir,"package.json"))
-  const manifests = [...new Set([...members,...selected])].map(path=>({path,manifest:readJson(join(t,path))}))
+  const files = versioned ? await Jj.trackedFiles(t) : []
+  const manifests = await workspacePackages(config, files)
   const plan = buildPlan(manifests,config.packages,packageManager(readdirSync(t)))
   const hash = createHash("sha256")
   for (const file of [...new Set([...manifests.map(f=>f.path),...["pnpm-lock.yaml","pnpm-workspace.yaml","bun.lock","bun.lockb","package-lock.json","yarn.lock"].filter(f=>existsSync(join(t,f)))])].sort()) hash.update(file).update("\0").update(readFileSync(join(t,file))).update("\0")

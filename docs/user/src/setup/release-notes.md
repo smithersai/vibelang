@@ -243,6 +243,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - The migrate flow stopped before `--fix` when program discovery reported a repairable `EK0301` union-slot error. It now discovers the full file scope, repairs the spelling and lets subsequent checks report type errors that parsing had hidden.
 - Migration could leave a path held as data naming a renamed module, which failed only when the program ran it; batched codemods now rewrite more static forms, and `verify` refuses the rest by module, file and line.
 - Migration could miss a module a build selected by `.ts` and silently left out of `dist`; `verify` now builds from clean output before and after each batch and refuses each file the build no longer writes.
+- Migration could pass a package that did not install or load outside its workspace, such as a `file:` dependency in the pack or `export * from "./x.vibe"` under Bun; `verify` now installs each batch's packs in an empty directory, imports every export under Node and Bun, and refuses each regression by package, specifier and runtime.
 - Release notes repeated the upgrade and bug-fix sections, hiding later fixes from readers and documentation tools. Each section now appears once, with the unique fixes and upgrade repairs retained.
 
 - The source mapper crashed with a stack overflow on a regex pattern with an extractor, such as `s is /(\d+)/(let m)`, in a file it projected. It now projects that file.
