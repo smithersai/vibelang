@@ -20,6 +20,15 @@ const protectedFile = file => isTestFile(file) ||
 // and regular expressions are never imports. Dynamic import options and
 // whitespace do not change the edge.
 export function runtimeEdges(text, file, ts, compiler, root) {
+  return moduleEdges(text,file,ts,compiler,root,false)
+}
+
+// Native checkers also follow import types and erased import/export edges.
+export function sourceTypeEdges(text, file, ts, compiler, root) {
+  return moduleEdges(text,file,ts,compiler,root,true)
+}
+
+function moduleEdges(text, file, ts, compiler, root, includeTypes) {
   if (!/\bimport\b|\bexport\b[\s\S]*?\bfrom\b/.test(text)) return []
   const edges = []
   if (file.endsWith(".vibe")) {
@@ -32,10 +41,10 @@ export function runtimeEdges(text, file, ts, compiler, root) {
     const visit = node => {
       if (!node || typeof node !== "object") return
       const literal = ["ImportDeclaration", "ExportNamedDeclaration", "ExportAllDeclaration", "ImportExpression"].includes(node.type)
-        ? node.source : node.type === "CallExpression" && node.callee?.type === "Import" ? node.arguments?.[0] : null
-      if (literal?.range && typeof literal.value === "string" && node.importKind !== "type" && node.exportKind !== "type") {
+        ? node.source : includeTypes && node.type === "TSImportType" ? node.source : includeTypes && node.type === "TSImportEqualsDeclaration" ? node.moduleReference?.expression : node.type === "CallExpression" && node.callee?.type === "Import" ? node.arguments?.[0] : null
+      if (literal?.range && typeof literal.value === "string" && (includeTypes || node.importKind !== "type" && node.exportKind !== "type")) {
         const start = literal.range[0] + 1, end = literal.range[1] - 1
-        if (!typeOnly.has(start + ":" + end)) edges.push({ specifier: literal.value, start, end })
+        if (includeTypes || !typeOnly.has(start + ":" + end)) edges.push({ specifier: literal.value, start, end })
       }
       for (const child of Object.values(node)) if (Array.isArray(child)) child.forEach(visit); else if (child && typeof child === "object") visit(child)
     }
@@ -49,13 +58,15 @@ export function runtimeEdges(text, file, ts, compiler, root) {
         const bindings = clause?.namedBindings
         const onlyTypes = clause?.isTypeOnly || (!clause?.name && bindings && ts.isNamedImports(bindings) &&
           bindings.elements.length > 0 && bindings.elements.every(element => element.isTypeOnly))
-        if (!onlyTypes) literal = node.moduleSpecifier
+        if (includeTypes || !onlyTypes) literal = node.moduleSpecifier
       } else if (ts.isExportDeclaration(node)) {
         const bindings = node.exportClause
         const onlyTypes = node.isTypeOnly || (bindings && ts.isNamedExports(bindings) &&
           bindings.elements.length > 0 && bindings.elements.every(element => element.isTypeOnly))
-        if (!onlyTypes) literal = node.moduleSpecifier
+        if (includeTypes || !onlyTypes) literal = node.moduleSpecifier
       } else if (ts.isCallExpression(node) && node.expression.kind === ts.SyntaxKind.ImportKeyword) literal = node.arguments[0]
+      else if (includeTypes && ts.isImportTypeNode(node) && ts.isLiteralTypeNode(node.argument)) literal = node.argument.literal
+      else if (includeTypes && ts.isImportEqualsDeclaration(node) && ts.isExternalModuleReference(node.moduleReference)) literal = node.moduleReference.expression
       if (literal && ts.isStringLiteral(literal)) edges.push({ specifier: literal.text, start: literal.getStart(source) + 1, end: literal.end - 1 })
       ts.forEachChild(node, visit)
     }

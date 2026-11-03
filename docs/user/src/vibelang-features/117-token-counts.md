@@ -103,7 +103,7 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [Sequencing Effects](../getting-started/010-using-generators.md) | 1,900 |
 | [Building Pipelines](../getting-started/011-building-pipelines.md) | 1,900 |
 | [Devtools](../getting-started/012-devtools.md) | 17,000 |
-| **All 13 pages** | **42,000** |
+| **All 13 pages** | **43,000** |
 
 ### Setup
 
@@ -111,9 +111,9 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | --- | ---: |
 | [Set up VibeLang](../setup.md) | 1,900 |
 | [Known limitations](../setup/known-limitations.md) | 550 |
-| **Start a project** | **6,000** |
+| **Start a project** | **6,100** |
 | [New project](../setup/new-project.md) | 540 |
-| [Existing project](../setup/existing-project.md) | 2,400 |
+| [Existing project](../setup/existing-project.md) | 2,500 |
 | [Migrating retired forms](../setup/migrating-retired-forms.md) | 3,100 |
 | **Build and test** | **15,000** |
 | [vibelang CLI](../setup/vibelang-cli.md) | 12,000 |

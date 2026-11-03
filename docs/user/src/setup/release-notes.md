@@ -174,6 +174,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Vite coverage counted private tail-delegation wrappers as extra functions or uncovered statements, especially in callbacks and throwing catch handlers. It now counts the authored functions and statements through the composed source map.
 - Repository migration checks could stop at invalid fixture lockfiles or package metadata before checking build provenance, declaration exits or test regressions. The fixtures now retain valid publication prerequisites and reach those checks.
 
+- A native checker reported `TS2307` when it reached a package whose VibeLang declarations were hidden under `vibe.sidecarDir` through another package’s TypeScript sources. Setup now supplies private type routes to the physical declarations, preserving loader identity and the normal built JavaScript and declaration paths. Bun’s native `bun check --no-script` keeps its existing command.
 - The new catch-handler projection fuzz target omitted its CPU-budget registration. It now participates in the same short-seed budget check as every other target.
 - The editor stopped offering "Run it with try" on a direct Effect argument that `EK4802` reports at a plain generic call. It offers it again when the enclosing contract accepts the Effect; a returned program stays data and gets no action.
 - The TS7 mapper stopped parsing every `for try` loop after its head began lifting the Stream into a separate scope. The mapper now keeps the loop as written.

@@ -1,0 +1,10 @@
+{
+ "repository":"opencode",
+ "pattern":"Figma's native checker loads packages/ai/src/cache-policy.ts, whose relative options.vibe import has its compatibility declaration hidden under the AI package.",
+ "nativeImporter":"import { CacheHint, type CachePolicyObject } from \"./schema/options.vibe\"\nexport const select = (policy: CachePolicyObject): boolean => CacheHint(policy)\n",
+ "source":"export interface CachePolicyObject { readonly tools?: boolean }\nexport function CacheHint(policy: CachePolicyObject): boolean { return policy.tools ?? false }\n",
+ "declaration":"export interface CachePolicyObject { readonly tools?: boolean }\nexport declare function CacheHint(policy: CachePolicyObject): boolean;\n",
+ "consumer":"import { select } from \"../ai/src/cache-policy.ts\"\nconst value: boolean = select({tools: true})\nconsole.log(value)\n",
+ "oldDiagnostic":"TS2307: Cannot find module './schema/options.vibe'",
+ "expectation":"The unmodified native checker follows the same physical declaration through package-private metadata even when the importer belongs to another package."
+}

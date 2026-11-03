@@ -49,16 +49,25 @@ export function rewritePublishingScript(text, ts, fileName = "pack.ts") {
     return node
   }
   const isJS = /\.[cm]?jsx?$/.test(fileName)
-  const normalization = (expression, imports = false) => {
-    const key = imports && expression === "key" ? "__vibelangKey" : "key"
-    const target = imports && expression === "target" ? "__vibelangTarget" : "target"
+  const normalization = (expression, imports = false, entry) => {
+    const reserved = new Set((expression + " " + (entry ?? "")).match(/[A-Za-z_$][\w$]*/g) ?? [])
+    const fresh = base => { let name=base; for(let i=2;reserved.has(name);i++)name=base+i;reserved.add(name);return name }
+    const key = entry ? fresh("__vibelangKey") : imports && expression === "key" ? "__vibelangKey" : "key"
+    const target = entry ? fresh("__vibelangTarget") : imports && expression === "target" ? "__vibelangTarget" : "target"
     const parameter = isJS ? "[" + key + ", " + target + "]" : "[" + key + ", " + target + "]: [string, unknown]"
     const explicit = target + ' !== null && typeof ' + target + ' === "object" && "vibelang-source" in ' + target + ' && typeof ' + target + '["vibelang-source"] === "string"'
     const paired = target + ' !== null && typeof ' + target + ' === "object" && "default" in ' + target + ' && typeof ' + target + '.default === "string" && ' + target + '.default.endsWith(".vibe") && "types" in ' + target + ' && ' + target + '.types === ' + target + '.default.slice(0, -5) + ".d.vibe.ts"'
     let value = explicit + " ? " + target + '["vibelang-source"] : ' + paired + " ? " + target + ".default : " + target
     // Only the owning migration condition supplies a types source. Runtime
     // conditions retain the repository's own publication mapping policy.
-    if (imports) value = key + ' === "types" && typeof ' + expression + '["vibelang-source"] === "string" ? ' + expression + '["vibelang-source"] : ' + value
+    if (imports) {
+      // Source-only bridges use the native build for packed runtime code too.
+      // Emitted bundler bridges retain their existing JavaScript target.
+      const selected = entry
+        ? "(" + key + ' === "types" || (' + key + ' === "default" && typeof ' + entry + ' === "string" && ' + entry + '.startsWith("#vibelang/source/")))'
+        : key + ' === "types"'
+      value = selected + ' && typeof ' + expression + '["vibelang-source"] === "string" ? ' + expression + '["vibelang-source"] : ' + value
+    }
     return "Object.fromEntries(Object.entries(" + expression + ").map((" + parameter + ") => [" + key + ", " + value + "]))"
   }
   const shape = (node) => {
@@ -84,7 +93,9 @@ export function rewritePublishingScript(text, ts, fileName = "pack.ts") {
         entries.arguments.length !== 1 || !qualified(entries.arguments[0])) return argument
     const original = entries.arguments[0], expression = original.getText(source)
     const actual = JSON.stringify(shape(call))
-    return [false, true].some(imports => actual === JSON.stringify(shape(expressionNode(normalization(expression, imports))))) ? original : argument
+    const entry = importsConditions(original)
+    const candidates = [normalization(expression,false),normalization(expression,true),...(entry?[normalization(expression,true,entry)]:[])]
+    return candidates.some(candidate=>actual===JSON.stringify(shape(expressionNode(candidate)))) ? original : argument
   }
   const addFunction = (name, fn, binding = fn) => {
     const named = functions.get(name) || []
@@ -148,6 +159,7 @@ export function rewritePublishingScript(text, ts, fileName = "pack.ts") {
     if (!parent || !ts.isArrowFunction(parent) || parent.parameters.length !== 1) return false
     const binding = parent.parameters[0].name
     if (!ts.isArrayBindingPattern(binding) || binding.elements.length !== 2 ||
+        !binding.elements[0].name || !ts.isIdentifier(binding.elements[0].name) ||
         !binding.elements[1].name || !ts.isIdentifier(binding.elements[1].name) ||
         binding.elements[1].name.text !== argument.text) return false
     const map = parent.parent
@@ -156,7 +168,7 @@ export function rewritePublishingScript(text, ts, fileName = "pack.ts") {
     return ts.isCallExpression(entries) && entries.arguments.length === 1 &&
       property(entries.expression, "entries") && ts.isIdentifier(entries.expression.expression) &&
       entries.expression.expression.text === "Object" &&
-      property(entries.arguments[0], "imports") && qualified(entries.arguments[0])
+      property(entries.arguments[0], "imports") && qualified(entries.arguments[0]) ? binding.elements[0].name.text : false
   }
   const visit = (node) => {
     if (ts.isCallExpression(node) && property(node.expression, "replace") && node.arguments.length === 2 &&
@@ -198,7 +210,8 @@ export function rewritePublishingScript(text, ts, fileName = "pack.ts") {
   if (!literals.length || !maps.length) return { text, changed: false }
   for (const { argument, original, guards } of maps) {
     const expression = original.getText(source)
-    const normalized = normalization(expression, importsConditions(original))
+    const entry=importsConditions(original)
+    const normalized = normalization(expression,Boolean(entry),entry||undefined)
     if (JSON.stringify(shape(argument)) !== JSON.stringify(shape(expressionNode(normalized)))) {
       edits.push({ start: argument.getStart(source), end: argument.end, text: isJS ? normalized : "(" + normalized + " as typeof " + expression + ")" })
     }
