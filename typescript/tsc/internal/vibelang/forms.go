@@ -111,7 +111,8 @@ func isCalledInPlace(fn *ast.Node) bool {
 
 // typeInForm returns fn's type in form f, given t, the type TypeScript
 // inferred for it: a function that returns its body's success value A. A
-// lambda with a return annotation keeps the type it writes (D500).
+// lambda with a return annotation keeps the type it writes (D500). Effect
+// callables preserve their lazy native signature; infer.go adapts its return.
 func (a *analyzer) typeInForm(fn *ast.Node, t *checker.Type, f form) *checker.Type {
 	if f == formProgram && fn.Type() != nil {
 		// S6-4: an explicit Effect contract already types the body as its
@@ -123,7 +124,10 @@ func (a *analyzer) typeInForm(fn *ast.Node, t *checker.Type, f form) *checker.Ty
 			return a.checker.GetReturnTypeOfSignature(signatures[0])
 		}
 	}
-	if f == formPlain || f == formNone || fn.Type() != nil {
+	// Effect callables retain TypeScript's lazy signature. Its return-type
+	// inference hook wraps A only when a caller needs the return type; a
+	// value-only self reference must not force that inference here.
+	if f == formPlain || f == formNone || f == formEffect || fn.Type() != nil {
 		return t
 	}
 	s := a.lambda(fn)
@@ -138,12 +142,8 @@ func (a *analyzer) typeInForm(fn *ast.Node, t *checker.Type, f form) *checker.Ty
 	if effect == nil {
 		return t
 	}
-	result := effect
-	if f == formEffect {
-		result = a.checker.NewFunctionTypeWithReturnType(t.Symbol(), signatures[0], effect)
-	}
-	s.types[f] = result
-	return result
+	s.types[f] = effect
+	return effect
 }
 
 // effectTypeOf returns Effect<A, E, R> for fn's body, given its success type

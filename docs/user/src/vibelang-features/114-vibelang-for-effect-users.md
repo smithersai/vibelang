@@ -354,3 +354,5 @@ A value or call result typed `unknown` must be narrowed to an Effect before `try
 The function `constructor` restriction applies to reading its value. Assigning or deleting the property does not read it, including through parentheses and TypeScript assertions; ordinary TypeScript assignment and `delete` checks still apply.
 
 `var` is rejected everywhere in `.vibe` files, including plain and `async` functions (`EK0107`). Use `let` or `const` with explicit scope and initialization. A function-scoped binding used after a region needs an explicit outer declaration. Check hoisting and module cycles before changing legacy code; keep code that needs JavaScript `var` semantics in a `.ts` file. The editor offers no automatic replacement because that could change the declaration scope.
+
+An inferred `effect` arrow or function expression may refer to its own callable value, as in `const same = effect () => same === same`. Such value-only references infer as the corresponding `Effect.gen` wrapper does. A recursive return whose type cannot be inferred still requires a return annotation and reports TypeScript's native inference error.

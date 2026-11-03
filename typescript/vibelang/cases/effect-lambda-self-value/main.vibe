@@ -1,0 +1,7 @@
+import { Effect } from "effect"
+export const arrow = effect () => arrow === arrow
+export const named = effect function own() { return own === named }
+export const own = effect function inner() { return inner === inner }
+export const kind = effect () => typeof kind
+export const annotated = effect (): boolean!! => annotated === annotated
+export effect function declaration() { return declaration === declaration }

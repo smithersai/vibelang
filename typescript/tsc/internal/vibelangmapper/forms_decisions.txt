@@ -2040,6 +2040,11 @@ typescript/vibelang/cases/effect-globals-coverage-disabled.fail/main.vibe:2:24 l
 typescript/vibelang/cases/effect-globals-coverage-fork-options/main.vibe:4:31 byname program table
 typescript/vibelang/cases/effect-globals-coverage-fork-options/main.vibe:5:31 byname program table
 typescript/vibelang/cases/effect-heritage/main.vibe:11:48 lambda plain fallback
+typescript/vibelang/cases/effect-lambda-self-value/main.vibe:2:22 lambda plain fallback
+typescript/vibelang/cases/effect-lambda-self-value/main.vibe:3:22 lambda plain fallback
+typescript/vibelang/cases/effect-lambda-self-value/main.vibe:4:20 lambda plain fallback
+typescript/vibelang/cases/effect-lambda-self-value/main.vibe:5:21 lambda plain fallback
+typescript/vibelang/cases/effect-lambda-self-value/main.vibe:6:26 lambda effectFn annotation
 typescript/vibelang/cases/effect-lint-mixed-inputs/main.vibe:20:3 lambda plain fallback
 typescript/vibelang/cases/effect-loaded-by-parse/lib.vibe:6:21 lambda plain fallback
 typescript/vibelang/cases/effect-loaded-by-parse/lib.vibe:7:26 lambda plain fallback
