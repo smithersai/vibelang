@@ -445,6 +445,9 @@ export function compareApiIdentity(ts, before, after, options = {}) {
       }
       result.identical &&= part.identical
       result.comparisonComplete &&= part.comparisonComplete
+      // A later crash must not replace the diagnostic that already made this
+      // package unavailable. Incomplete receipts never establish API identity.
+      if (!part.comparisonComplete) break
     }
     if (!result.comparisonComplete) result.typeDifferences = []
     return result

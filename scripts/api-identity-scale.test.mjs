@@ -186,3 +186,55 @@ console.log(JSON.stringify(result));process.exitCode=result.identical?0:2;`
       "All dependency diagnostics, including the last batch, remain visible")
   })
 })
+
+test("an invalid entry group keeps its diagnostic when later checker work would crash", () => {
+  const corpus = JSON.parse(readFileSync(new URL("./api-identity-corpus/opencode-invalid-entry-prefix.json", import.meta.url)))
+  const files = Object.fromEntries(Array.from({length:corpus.moduleCount},(_,i)=>[`m0${i}.d.ts`,
+    i===0 ? corpus.invalidSource : corpus.laterSource]))
+  fixture(files,files,(a,b)=>{
+    const compiler={...ts,createProgram(...args) {
+      const roots=Array.isArray(args[0])?args[0]:args[0].rootNames
+      if(roots.some(file=>file.endsWith("m08.d.ts")))throw new RangeError("later checker stack exhausted")
+      return ts.createProgram(...args)
+    }}
+    const result=compareApiIdentity(compiler,a,b,options)
+    assert.equal(result.identical,false)
+    assert.equal(result.comparisonComplete,false)
+    assert.equal(result.failure,undefined,JSON.stringify(result))
+    assert.deepEqual(result.typeDifferences,[])
+    assert.ok(result.environmentDiagnostics.some(d=>d.blocking&&/TS2304.*Missing/.test(d.diagnostic)),JSON.stringify(result))
+  })
+})
+
+test("property: invalid prefixes stay invalid and valid mismatches still inspect later entries", async () => {
+  await checkProperty(fc,{
+    name:"api-identity-invalid-entry-prefix",
+    rule:"Will: a crash is an explicit invalid result, never identical; only complete comparisons establish names, bidirectional types and docs",
+    command:"node --test scripts/api-identity-scale.test.mjs",
+    numRuns:6,
+    arbitrary:fc.record({modules:fc.integer({min:4,max:9}),entryBatchSize:fc.integer({min:1,max:3}),broken:fc.boolean()}),
+    check:({modules,entryBatchSize,broken})=>{
+      const before={},after={}
+      for(let i=0;i<modules;i++){
+        const key=`m0${i}.d.ts`
+        before[key]=after[key]="/** Original */ export type X = string;"
+      }
+      const last=`m0${modules-1}.d.ts`
+      if(broken)before["m00.d.ts"]=after["m00.d.ts"]="export type Broken = Missing;"
+      else after["m00.d.ts"]=after["m00.d.ts"].replace("string","number")
+      after[last]=after[last].replace("Original","Changed")
+      fixture(before,after,(a,b)=>{
+        const result=compareApiIdentity(ts,a,b,{...options,entryBatchSize})
+        assert.equal(result.identical,false)
+        assert.equal(result.comparisonComplete,!broken)
+        if(broken){
+          assert.deepEqual(result.typeDifferences,[])
+          assert.ok(result.environmentDiagnostics.some(d=>d.blocking&&/TS2304/.test(d.diagnostic)))
+        }else{
+          assert.ok(result.typeDifferences.some(d=>d.entrypoint==="m00.d.ts"))
+          assert.ok(result.docDifferences.some(d=>d.entrypoint===last),"A real API mismatch must not skip later docs")
+        }
+      })
+    }
+  })
+})

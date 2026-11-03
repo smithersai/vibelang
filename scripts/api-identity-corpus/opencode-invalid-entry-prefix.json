@@ -1,0 +1,9 @@
+{
+  "origin": "Exact original opencode core first-eight-entry profile finishes invalid in 19.606 seconds; whole-package work continued until a 420-second timeout",
+  "qualification": "Generated minimized control for diagnostic loss, not original declaration bytes",
+  "moduleCount": 9,
+  "invalidSource": "export type Broken = Missing;",
+  "laterSource": "export type Valid = string;",
+  "laterFailure": "RangeError injected for the ninth module to model later checker resource exhaustion",
+  "oracle": "An unavailable comparison keeps its blocking diagnostic; it never establishes API identity"
+}

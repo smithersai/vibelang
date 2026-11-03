@@ -148,3 +148,10 @@ All source diagnostics remain in the receipt, including unrelated dependency
 errors; only plain records survive a group. Profiling records
 `diagnosticOffset`, `diagnosticCount` and `totalDiagnosticFiles` so a stalled
 validation stage can be located without logging declaration contents.
+
+An invalid entry group stops the comparison immediately. Its blocking
+diagnostics remain available even if a later group would exhaust resources.
+Such receipts have `comparisonComplete: false`: their lists cover attempted
+groups only and cannot establish API identity. An ordinary API mismatch remains
+a complete comparison and continues through the remaining names, types and
+comments.
