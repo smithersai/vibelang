@@ -16,7 +16,7 @@ test("LSP smoke is a cached compiler-suite target with editor and fixture inputs
     .replace("export const Package", "globalThis.result")
   const compiler = { compiler: true }, runtime = { runtime: true }, published = { published: true }
   const context = {
-    S: { Shell: { Test: (spec) => spec }, file: (file) => file, glob: (glob) => glob,
+    S: { Shell: { Test: (spec) => spec, Run: (spec) => spec }, file: (file) => file, glob: (glob) => glob,
       Filegroup: (spec) => spec, Package: (spec) => spec, Host: { bin: (bin) => bin } },
     Typescript: { compiler }, Packages: { "runtime-dist": runtime, "runtime-published": published },
     readdirSync, existsSync, join, dirname: () => new URL("typescript/vibelang/", root).pathname,

@@ -69,7 +69,7 @@ test("real target declarations run exact saved seeds with bounded time and compl
   const group = prefix => new Proxy({}, { get: (_, name) => prefix + "." + name })
   const context = {
     map: families, Root: group("root"), Tsc: group("tsc"), Packages: group("packages"),
-    S: { Shell: { Test: value => value }, Host: { bin: value => value },
+    S: { Shell: { Test: value => value, Run: value => value }, Host: { bin: value => value },
       file: value => value, Package: value => value }
   }
   runInNewContext(source, context)

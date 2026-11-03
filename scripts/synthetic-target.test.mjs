@@ -9,7 +9,7 @@ test("the real benchmark target requires fresh compiler/runtime inputs and canno
     .replace(/^import .*$/gm, "").replace("export const Package", "globalThis.result")
   const context = {
     Packages: new Proxy({}, { get: (_, name) => "packages." + name }),
-    S: { Shell: { Test: spec => spec }, Host: { bin: bin => bin }, file: file => file, Package: spec => spec }
+    S: { Shell: { Test: spec => spec, Run: spec => spec }, Host: { bin: bin => bin }, file: file => file, Package: spec => spec }
   }
   runInNewContext(source, context)
   const target = context.result.targets.synthetic

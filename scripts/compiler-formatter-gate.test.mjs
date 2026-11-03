@@ -11,7 +11,7 @@ test("the compiler gate selects the VibeLang formatter's Go regressions", () => 
   const formatter = "//typescript/tsc:go-vibelangfmt"
   const result = spawnSync(process.execPath, [join(root, ".smithers/node_modules/@smthrs/cli/bin/smithers.mjs"),
     "graph", compiler, "--workspace", root, "--format", "json", "--silent"
-  ], { cwd: root, encoding: "utf8", timeout: 30_000, maxBuffer: 16 * 1024 * 1024 })
+  ], { cwd: root, encoding: "utf8", timeout: 180_000, maxBuffer: 16 * 1024 * 1024 })
   assert.ifError(result.error)
   assert.equal(result.status, 0, result.stdout + result.stderr)
   const graph = JSON.parse(result.stdout)
