@@ -41,6 +41,30 @@ var formChoiceAhead = map[string]string{
 	"docs/user/src/setup/vibelang-cli.md#block-4":                               "mapper:effect-block-catch-head (impl-hunt-run)",
 	"docs/user/src/setup/vue.md#block-3":                                        "mapper:effect-block-catch-head (impl-hunt-run)",
 	"docs/user/src/vibelang-features/114-vibelang-for-effect-users.md#block-11": "mapper:effect-block-catch-head (impl-hunt-run)",
+	// VIP-6 (d9f6dcb0f3ce) retired these blocks' pending lines; each is the
+	// same effect-block head the entries above wait on.
+	"docs/user/src/error-management/014-expected-errors.md#block-9":       "mapper:effect-block-catch-head (impl-hunt-run)",
+	"docs/user/src/error-management/014-expected-errors.md#block-11":      "mapper:effect-block-catch-head (impl-hunt-run)",
+	"docs/user/src/platform/alchemy.md#block-2":                           "mapper:effect-block-catch-head (impl-hunt-run)",
+	"docs/user/src/setup/svelte.md#block-2":                               "mapper:effect-block-catch-head (impl-hunt-run)",
+	"docs/user/src/vibelang-features/113-building-an-http-api.md#block-2": "mapper:effect-block-catch-head (impl-hunt-run)",
+	"docs/user/src/vibelang-features/115-cheat-sheet.md#block-33":         "mapper:effect-block-catch-head (impl-hunt-run)",
+	"docs/user/src/vibelang-features/115-cheat-sheet.md#block-35":         "mapper:effect-block-catch-head (impl-hunt-run)",
+	"docs/user/src/vibelang-features/115-cheat-sheet.md#block-37":         "mapper:effect-block-catch-head (impl-hunt-run)",
+	"docs/user/src/platform/106-file-system.md#block-6":                   "mapper:effect-block-catch-head (impl-hunt-run)",
+	"docs/user/src/setup/react.md#block-4":                                "mapper:effect-block-catch-head (impl-hunt-run)",
+	"docs/user/src/setup/svelte.md#block-4":                               "mapper:effect-block-catch-head (impl-hunt-run)",
+	"docs/user/src/testing/063-testclock.md#block-2":                      "mapper:effect-block-catch-head (impl-hunt-run)",
+	"docs/user/src/testing/063-testclock.md#block-5":                      "mapper:effect-block-catch-head (impl-hunt-run)",
+	// VIP-6 retired these blocks' pending lines too. The projector cannot
+	// type a join operand bound to FiberSet.run or FiberMap.run's result.
+	"docs/user/src/observability/034-tracking-fibers.md#block-1": "mapper:join-operand-fiber-run (fix-main-red)",
+	"docs/user/src/observability/034-tracking-fibers.md#block-2": "mapper:join-operand-fiber-run (fix-main-red)",
+	// The editor reports D253 on an array method of a typed callback parameter or property; the projector does not.
+	"docs/user/src/044-batching.md#block-6": "mapper:d253-editor-only-typed-receiver (fix-main-red)",
+	"docs/user/src/setup/vue.md#block-5":    "mapper:d253-editor-only-typed-receiver (fix-main-red)",
+	// Effect arrows as object-literal property values: the editor and the projector report different spans.
+	"docs/user/src/getting-started/real-provider-before-after.md#block-2": "mapper:object-property-effect-arrow-spans (fix-main-red)",
 }
 
 // TestFormDiagnosticsMatchesProjection keeps the editor's inexpensive query
