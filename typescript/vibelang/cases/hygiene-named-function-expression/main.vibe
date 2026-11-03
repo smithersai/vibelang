@@ -1,4 +1,6 @@
 // expect-result: [true,true,true,true,7,20000]
+// 000-intro.md: lowering preserves recursive source function bindings and default self references
+// rule: docs/design/src/000-intro.md#668b3d144366af50
 // A named function expression binds its name to itself. When it compiles to
 // an Effect function, the name is that Effect function, not the generator
 // that runs its body, for a reference in its body or in a parameter default.

@@ -1,3 +1,41 @@
+// 000-intro.md: VIP-16 tagged unions
+// rule: docs/design/src/000-intro.md#7bcf296f6d723046
+// 000-intro.md: VIP-15 schema declaration
+// rule: docs/design/src/000-intro.md#4291a0f7c4c0d83d
+// 000-intro.md: VIP-6 and VIP-14 globals
+// rule: docs/design/src/000-intro.md#e30c62ee20d567cc
+// 000-intro.md: VIP-12 layered and single-service provision
+// rule: docs/design/src/000-intro.md#4c7e930b6cf9806a
+// 000-intro.md: VIP-9 service keys
+// rule: docs/design/src/000-intro.md#f33116758e9975c5
+// 000-intro.md: VIP-29 schema errors
+// rule: docs/design/src/000-intro.md#44f44e6bfa08c4ce
+// 000-intro.md: VIP-13 tagged errors
+// rule: docs/design/src/000-intro.md#71c0ebdaa05cb4ba
+// 000-intro.md: VIP-4 typed failure
+// rule: docs/design/src/000-intro.md#949dd44b2763f581
+// 000-intro.md: VIP-22 interruption masks
+// rule: docs/design/src/000-intro.md#1e5b346e79d770cb
+// 000-intro.md: VIP-21 callback producers
+// rule: docs/design/src/000-intro.md#59676c07e9c0d4eb
+// 000-intro.md: VIP-20 Stream consumption
+// rule: docs/design/src/000-intro.md#4fe97863fe74fccf
+// 000-intro.md: VIP-19 concurrent iteration
+// rule: docs/design/src/000-intro.md#275986d20c2a812c
+// 000-intro.md: VIP-18 concurrent Effect operations
+// rule: docs/design/src/000-intro.md#cffbe20e468728c9
+// 000-intro.md: VIP-17 fork variants and join
+// rule: docs/design/src/000-intro.md#01df2f042fe3d9e1
+// 000-intro.md: VIP-2 cold effect blocks
+// rule: docs/design/src/000-intro.md#582c07270fd4a9dd
+// 000-intro.md: VIP-1 effect functions, arrows and methods
+// rule: docs/design/src/000-intro.md#3e966cd8c70abb27
+// 000-intro.md: failure, defect, interruption and ordered Cause parity (VIPCompare)
+// rule: docs/design/src/000-intro.md#b1ebb93321ff6ee3
+// 000-intro.md: Exit and finalizer parity (FuzzVIPDifferential)
+// rule: docs/design/src/000-intro.md#f3c10d9fae832266
+// 000-intro.md: constructs have fixed Effect counterparts (TestVIPConstructs)
+// rule: docs/design/src/000-intro.md#d5574eef988e0baf
 package vibelangfuzz
 
 import (

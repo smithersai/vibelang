@@ -1,4 +1,6 @@
 // expect-result: {"terse":"Ada","spelled":"Ada","guest":"guest","count":2,"sum":5}
+// 000-intro.md: bang and Effect contracts agree at callers, arguments and provision
+// rule: docs/design/src/000-intro.md#a8cb2bd9340ec1a4
 // D309: both spellings of a contract in one file, interchangeably. A service
 // declared in one spelling is implemented and called under the other, a
 // function written in one passes where the other is expected, and a program

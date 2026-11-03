@@ -1,4 +1,8 @@
 // expect: TS2322
+// 000-intro.md: a plain Effect return annotation cannot convert an ordinary return
+// rule: docs/design/src/000-intro.md#a38e55e45f953e1f
+// 000-intro.md: syntax selects function kind; contextual Effect types do not convert plain functions
+// rule: docs/design/src/000-intro.md#f99e1ace35a027c7
 // VIP-1: neither a return annotation nor a destination makes a function an
 // Effect function. A plain function that returns 7 is not an Effect, and a
 // plain arrow is not an Effect value.

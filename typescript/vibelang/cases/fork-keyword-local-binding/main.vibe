@@ -1,4 +1,8 @@
 // expect-result: {"a":2,"b":7,"c":8}
+// 000-intro.md: contextual identifier and keyword parsing follow the source context
+// rule: docs/design/src/000-intro.md#137f3cf006a1053a
+// 000-intro.md: fork is an ordinary plain-code binding and a keyword in effect code
+// rule: docs/design/src/000-intro.md#c6445bfbbb5f951d
 // VIP-17 reserves fork in Effect code. A plain helper can still call an
 // ordinary function named fork, while keyword forms start fibers.
 function fork(x: number) {

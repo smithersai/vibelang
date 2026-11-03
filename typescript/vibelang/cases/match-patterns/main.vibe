@@ -1,4 +1,8 @@
 // expect-result: {"errors":["no user 7","retry","denied root"],"literals":["one","two","many","neg","null"],"option":["some 5","none"],"exit":["value 1","failed NotFound"],"result":["ok 3","err bad"],"arrays":["empty","single 1","head 1 rest 2,3"],"objects":["admin ada","guest","rest b,c"],"combinators":["vowel","small","other"],"types":["string 2","number 4","other"],"custom":["even 4","odd"],"extract":"extracted 9","is":[true,false,true],"ifBind":["cause NotFound","fine"],"whileBind":[3,2,1],"position":["stmt","ret","expr 6"],"effectful":"Ada","nested":"inner b","subjectCall":"from call","keys":["json 1 y","type text","none"]}
+// 000-intro.md: exhaustive tagged-error unions and retained Effect extraction
+// rule: docs/design/src/000-intro.md#aab7524938f81036
+// 000-intro.md: finite-union coverage and Option/Exit/Result/error patterns
+// rule: docs/design/src/000-intro.md#c605b2b4ac4c7667
 error NotFound { id: string }
 error Timeout
 error Denied { user: string; reason: string }

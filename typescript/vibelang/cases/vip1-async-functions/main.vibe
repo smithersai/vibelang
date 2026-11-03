@@ -1,4 +1,6 @@
 // expect-result: [1,2,"a"]
+// 000-intro.md: ordinary async/await and for-await retain Promise behavior
+// rule: docs/design/src/000-intro.md#e51bd93fdb383a06
 // An async function means what it means in TypeScript (VIP-1): its body is
 // TypeScript, await waits for a promise, and a call returns a promise. A
 // promise reaches an Effect through Effect.tryPromise, run with try.

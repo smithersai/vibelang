@@ -1,4 +1,8 @@
 // expect-result: {"a":2,"b":"guest","c":3,"parsed":{"x":1},"bad":"Bad","n":4}
+// 000-intro.md: catch executes its cold operand and invokes its recovery
+// rule: docs/design/src/000-intro.md#2a696d5885f837c5
+// 000-intro.md: unary try executes a call or value and preserves member continuation
+// rule: docs/design/src/000-intro.md#3f9d1338ff8bffc5
 // try e runs the Effect e where it stands and gives its success value
 // (VIP-5): before a call, before an Effect value, and in parentheses that a
 // member access continues. x catch y runs x itself. Effect.try wraps code

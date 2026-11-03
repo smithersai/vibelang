@@ -1,4 +1,6 @@
 // expect: EK4402
+// 000-intro.md: platform bans include explicit globalThis access
+// rule: docs/design/src/000-intro.md#f0a86b77b6bb8a6f
 /// <reference path="./node-types/index.d.ts" />
 export const direct = (): string | undefined => process.env.TMPDIR
 export const viaGlobal = (): string | undefined => globalThis.process?.env?.TMPDIR

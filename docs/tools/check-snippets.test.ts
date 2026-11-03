@@ -1,3 +1,11 @@
+// 000-intro.md: complete comparisons are checked; explicit incomplete fragments opt out
+// rule: docs/design/src/000-intro.md#0136ffe17f698768
+// 000-intro.md: explicit fragment labels survive Effect-comparison extraction
+// rule: docs/design/src/000-intro.md#483818c8463a58d7
+// 000-intro.md: missing helper definitions produce a fragment
+// rule: docs/design/src/000-intro.md#81cff47196c634a5
+// 000-intro.md: compiler-gap markers classify a failing marked snippet as pending
+// rule: docs/design/src/000-intro.md#d9a91bb53ca0982d
 import { expect, test } from "bun:test"
 import { blockFilenames, classify, defaultCompiler, extract, linkModules, markdownPages, normalizeOutput, parseDiagnostics, runBlock, writeProject } from "./check-snippets"
 

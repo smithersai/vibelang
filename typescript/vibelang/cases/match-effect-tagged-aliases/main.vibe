@@ -1,3 +1,5 @@
+// 000-intro.md: resolved retained-error aliases call branded guards rather than accepting tag-only impostors
+// rule: docs/design/src/000-intro.md#fc6aa2ec096149c5
 import { Cause as C } from "effect"
 import { TimeoutError as Timeout } from "effect/Cause"
 export function check(e: unknown): boolean {
