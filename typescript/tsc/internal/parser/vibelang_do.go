@@ -1568,9 +1568,10 @@ func (l *doLowering) stringify(e *ast.Node, pre *[]*ast.Node) *ast.Node {
 	return l.ref(name, at)
 }
 
-// isMemberCallee reports whether callee reads a method: o.m or o[k].
+// isMemberCallee sees member references through TypeScript erased wrappers.
+// Comma and other value-producing expressions remain detached callees.
 func isMemberCallee(callee *ast.Node) bool {
-	callee = ast.SkipParentheses(callee)
+	callee = ast.SkipOuterExpressions(callee, ast.OEKAll)
 	return callee.Kind == ast.KindPropertyAccessExpression || callee.Kind == ast.KindElementAccessExpression
 }
 
@@ -1582,7 +1583,7 @@ func isMemberCallee(callee *ast.Node) bool {
 // $bindMethod for it (vibelang/lower.go), which reads nothing from the
 // method.
 func (l *doLowering) method(callee *ast.Node, at core.TextRange, pre *[]*ast.Node) *ast.Node {
-	member := ast.SkipParentheses(callee)
+	member := ast.SkipOuterExpressions(callee, ast.OEKAll)
 	this := func() *ast.Node {
 		return l.p.vibelangSynthesized(l.p.factory.NewKeywordExpression(ast.KindThisKeyword), at)
 	}
@@ -1609,7 +1610,7 @@ func (l *doLowering) method(callee *ast.Node, at core.TextRange, pre *[]*ast.Nod
 		access.ArgumentExpression = l.expr(access.ArgumentExpression, pre)
 	}
 	l.p.overrideParentInImmediateChildren(member)
-	return l.spill(l.p.mCall(l.p.mProperty(member, "bind", at), []*ast.Node{bound}, at), pre)
+	return l.spill(l.p.mCall(l.p.mProperty(callee, "bind", at), []*ast.Node{bound}, at), pre)
 }
 
 // properties lowers an object literal's properties in order.

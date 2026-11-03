@@ -1,0 +1,5 @@
+// expect: TS2345
+export function probe(): number {
+  const obj = { m(value: unknown): number { return 0 } };
+  return (obj.m as (value: "ok") => number)(do { "bad" });
+}

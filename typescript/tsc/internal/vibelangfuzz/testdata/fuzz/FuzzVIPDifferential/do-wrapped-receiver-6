@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("key:vip02.do-wrapped-receiver-plain\x00\x06\x00\x01\x02\x03")
