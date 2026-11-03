@@ -410,7 +410,7 @@ const compilerGaps: Rule = {
 // The separately published VIP fix adds the first annotated twin.
 const moduleExtractionTwins: Rule = {
   name: "module-extraction-twins",
-  finding: "r29 ASTRA-1: an import/export-free body copied unchanged to .ts becomes a global script",
+  finding: "r29 ASTRA-1/2: extracted bodies must preserve module scope and TypeScript source kind",
   check(spec) {
     const out: Violation[] = []
     for (const [file, text] of spec) {
@@ -421,6 +421,19 @@ const moduleExtractionTwins: Rule = {
           block[2]!, ts.ScriptTarget.Latest, true,
           block[1] === "tsx" ? ts.ScriptKind.TSX : ts.ScriptKind.TS
         )
+        // R29 ASTRA-2: the same body tokens can be valid TSX and invalid TS,
+        // or vice versa. A twin must parse under its documented file kind.
+        const parsed = ts.transpileModule(block[2]!, {
+          fileName: source.fileName,
+          compilerOptions: { target: ts.ScriptTarget.Latest, module: ts.ModuleKind.ESNext, jsx: ts.JsxEmit.Preserve },
+          reportDiagnostics: true
+        })
+        for (const diagnostic of parsed.diagnostics ?? []) {
+          out.push({
+            rule: this.name, file, line: lineAt(text, block.index!) + 1,
+            message: `the extracted ${block[1]} twin does not parse: TS${diagnostic.code} ${ts.flattenDiagnosticMessageText(diagnostic.messageText, " ")}`
+          })
+        }
         if (!ts.isExternalModule(source)) {
           out.push({
             rule: this.name, file, line: lineAt(text, block.index!) + 1,

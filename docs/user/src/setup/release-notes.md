@@ -579,6 +579,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - No-throw validation incorrectly failed after a plain catch handler became an effect handler; its regression fixtures now use catch's existing join point without a redundant `try`.
 - Migration setup could leave a nested workspace consumer on `tsc` when a semver peer or npm alias resolved to migrated workspace sources. Setup now follows installed workspace links for compiler, test-runner and worker wiring while respecting nearer registry packages.
 - Automatic repairs dropped service declaration imports when ordinary declaration output was disabled. They now apply the same import checks with sidecars and keep source unused-import checks effective.
+- Extracted JSX examples could be shown with a `.ts` destination that rejects their syntax; specification checks now parse each extracted twin using its documented `.ts` or `.tsx` source kind.
+
 - Specification examples could show an extracted TypeScript module body as a global script; the specification checks now require extracted twins to preserve module scope.
 
 - The Go validation graph omitted the language-service tests, hiding stale trailing-block fixtures. It now runs that package, checks ordinary Effect arguments, and retains the retired forms as rejection tests.

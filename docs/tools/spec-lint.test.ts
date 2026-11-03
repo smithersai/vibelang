@@ -289,3 +289,31 @@ test("module-extraction-twins ignores unannotated illustrative scripts and ordin
   const fixture = new Map([["src/001-functions.md", "```ts\nconst value = 7\n```\n"]])
   expect(lint(fixture, rule("module-extraction-twins"))).toEqual([])
 })
+
+
+test("module-extraction-twins rejects the R29 ASTRA-2 JSX body written as .ts", () => {
+  const source = "export const element = <div />"
+  expect(lint(extractionFixture(source, "ts"), rule("module-extraction-twins"))).toEqual([{
+    rule: "module-extraction-twins", file: "vips/0040-module-declarations.md", line: 2,
+    message: expect.stringContaining("TS1005")
+  }])
+  expect(lint(extractionFixture(source, "tsx"), rule("module-extraction-twins"))).toEqual([])
+})
+
+test("module-extraction-twins checks JSX source-kind neighbors without banning TS syntax", () => {
+  fc.assert(fc.property(
+    fc.constantFrom("div", "section", "Widget", "custom-element", "svg:path"),
+    fc.constantFrom("", " ", "\n"),
+    fc.boolean(),
+    (tag, space, paired) => {
+      const element = paired ? "<" + tag + ">text</" + tag + ">" : "<" + tag + space + "/>"
+      const source = "export const element = " + element
+      expect(lint(extractionFixture(source, "tsx"), rule("module-extraction-twins"))).toEqual([])
+      expect(lint(extractionFixture(source, "ts"), rule("module-extraction-twins")).some(v => v.message.includes("does not parse"))).toBe(true)
+    }
+  ), { numRuns: 200, seed: 29002 })
+  const genericArrow = "export const identity = <T>(value: T) => value"
+  expect(lint(extractionFixture(genericArrow, "ts"), rule("module-extraction-twins"))).toEqual([])
+  expect(lint(extractionFixture(genericArrow, "tsx"), rule("module-extraction-twins")).some(v => v.message.includes("does not parse"))).toBe(true)
+  expect(lint(extractionFixture('export const text = "<div />"', "ts"), rule("module-extraction-twins"))).toEqual([])
+})
