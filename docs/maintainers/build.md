@@ -185,8 +185,12 @@ queue:
 | `//:grammar-inventory` | a VibeLang parser file, a file in `internal/vibelang/`, or the admission table |
 | `//:mapper-scripts` | `scripts/mapper-*`, `packages/ts-mapper/`, the compiler's `cache.mjs` or the LSP fixture |
 | `//typescript/vibelang:lsp-smoke` | `typescript/vibelang/lsp-*`, its `PACKAGE.ts`, or the compiler's `format.mjs` |
+| `//:go-vibelangfuzz-editor` | the language service, `typescript/tsc/internal/ls/` |
 
-Fuzz suites, `//:docs-tools` and `//:snippets` stay out of this list. They take
+The editor oracles take about a minute after their build. They join for the
+language service, which they judge: main went RED post-merge on
+`FuzzEditorConsistency` when a rename change reached it unchecked. The other fuzz
+suites, `//:docs-tools` and `//:snippets` stay out of this list. They take
 minutes and depend on most of the tree, so no small set of paths selects them.
 
 ### Changed-path fuzz seeds
