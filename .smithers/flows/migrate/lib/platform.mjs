@@ -198,11 +198,19 @@ export function splitPlatform(text, file, ts, { globals = [] } = {}) {
   const moduleImports = imports.map((i) => importText(i, source, ts, (b) => moduleReads.has(b.name))).filter(Boolean)
   const head = [...moduleImports]
   if (wrappers.length) head.push(`import * as ${namespace} from "${sibling}"`)
-  if (fromSibling.length) head.push(`import { ${fromSibling.join(", ")} } from "${sibling}"`)
+  // An import is not narrowed inside a closure the way a local const is, so a
+  // moved const comes back under an alias and is bound to a local const of its
+  // own name where it stood: same value, same inferred type, same narrowing.
+  const movedConsts = new Set([...moved].filter((d) => !d.exported && ts.isVariableStatement(d.statement) && (d.statement.declarationList.flags & ts.NodeFlags.Const)).flatMap((d) => [...d.names]))
+  const taken = new Set([...byName.keys(), ...imports.flatMap((i) => bindingsOf(i, ts).map((b) => b.name)), namespace])
+  const alias = new Map()
+  for (const name of fromSibling) if (movedConsts.has(name)) { const a = uniqueName(name + "$platform", taken); taken.add(a); alias.set(name, a) }
+  if (fromSibling.length) head.push(`import { ${fromSibling.map((n) => (alias.has(n) ? `${n} as ${alias.get(n)}` : n)).join(", ")} } from "${sibling}"`)
   const body = []
   for (const d of declarations) {
     if (!moved.has(d)) body.push(statementText(source, d.statement))
     else if (d.exported) body.push(wrappers.find((w) => w.d === d).text(namespace))
+    else for (const name of [...d.names].filter((n) => alias.has(n))) body.push(`const ${name} = ${alias.get(name)}`)
   }
   const moduleText = joinParts(leadingHeader(source), head, body)
   // The sibling: the imports the moved code reads, then the moved code, each

@@ -1,0 +1,8 @@
+{
+  "finding": "t3code:platform-split-closure-narrowing",
+  "note": "Minimized from t3code apps/web/src/components/preview/previewBridge.ts (230fd2f9). With `window` handed to the split (EK4402 `window is platform code`), the private const nativePreviewBridge moved to previewBridge.platform.ts and came back as an import. TypeScript does not narrow an import inside a closure, so the kept `nativePreviewBridge ? { ...: async () => nativePreviewBridge.captureScreenshot() } : null` failed TS18047 on the a444 compiler (platform-t3code web proof). Contracts and Schema decoding are replaced by a local type.",
+  "file": "src/previewBridge.ts",
+  "globals": ["window"],
+  "text": "interface PreviewBridge {\n  readonly captureScreenshot: (tabId: string) => Promise<string>\n  readonly recording: { readonly startScreencast: (tabId: string) => Promise<string> }\n}\n\nconst nativePreviewBridge: PreviewBridge | null =\n  typeof window === \"undefined\" ? null : (window.desktopBridge?.preview ?? null)\n\nexport const previewBridge = nativePreviewBridge\n  ? {\n      ...nativePreviewBridge,\n      captureScreenshot: async (tabId: string) => (await nativePreviewBridge.captureScreenshot(tabId)).trim(),\n      recording: {\n        ...nativePreviewBridge.recording,\n        startScreencast: async (tabId: string) => (await nativePreviewBridge.recording.startScreencast(tabId)).trim(),\n      },\n    }\n  : null\n",
+  "ambient": "declare var window: { readonly desktopBridge?: { readonly preview?: { readonly captureScreenshot: (tabId: string) => Promise<string>; readonly recording: { readonly startScreencast: (tabId: string) => Promise<string> } } } }\n"
+}
