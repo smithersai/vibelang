@@ -938,3 +938,11 @@ The `FuzzFix` idempotence oracle checks the exact pending key derived from its i
 The declaration-twin documentation controls include native async functions and async arrows. A minimized T3code Mobile declaration keeps authored prose unchanged while adding the required `@throws {never}` contract to its TypeScript twin; the raw untagged declaration remains a negative control, so generated metadata is never ignored wholesale.
 
 Foldkit's Effect lint requirement-import corpus checks real `FileSystem` requirement types through native and direct-sidecar imports, with generated test-project, alias, nesting and extension neighbours. Stock TypeScript/project-discovery controls do not certify the external Effect lint plugin's pending verdict.
+
+`FuzzModuleBodyDiscoveryParity` widens R29's generated body-declaration
+discovery finding across `include`, default globs, explicit `files`, retained
+and deleted bodies, both source extensions, and nested or dotted directories.
+It compares the VIP-40 native sibling with the embedded-body input and checks
+`TS5055` input protection. Independent stock `tsc --listFilesOnly` controls
+validate the native discovery oracle. Every body exports a value, keeping the
+separate no-export classification finding with its owner.
