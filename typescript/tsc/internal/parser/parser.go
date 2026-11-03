@@ -1166,6 +1166,11 @@ func (p *Parser) parseStatement() *ast.Statement {
 }
 
 func (p *Parser) parseStatementWorker() *ast.Statement {
+	// A complete mixed arrow is an expression, even at a statement start.
+	// Do not let shorthand-declaration recovery consume its async/effect head.
+	if p.isStartOfMixedEffectArrow() {
+		return p.parseExpressionOrLabeledStatement()
+	}
 	switch p.token {
 	case ast.KindSemicolonToken:
 		return p.parseEmptyStatement()
@@ -2147,8 +2152,12 @@ func (p *Parser) parseClassElement() *ast.Node {
 	if p.isIndexSignature() {
 		return p.checkJSSyntax(p.parseIndexSignatureDeclaration(pos, jsdoc, modifiers))
 	}
-	if p.isStartOfVibeLangEffectMember() {
+	if p.isStartOfVibeLangEffectMember() || p.isStartOfMixedEffectAccessor(modifiers) {
 		word := p.parseVibeLangEffectMember()
+		modifiers = p.reportEffectAsyncModifiers(modifiers, word)
+		if accessor := p.parseEffectAccessor(pos, jsdoc, modifiers, word); accessor != nil {
+			return accessor
+		}
 		return p.vibelangEffectMember(p.parsePropertyOrMethodDeclaration(pos, jsdoc, modifiers, true /*effect*/), word) // effect m() { … } (vibelang_effect.go)
 	}
 	// It is very important that we check this *after* checking indexers because
@@ -4399,9 +4408,9 @@ func (p *Parser) nextTokenCanFollowDefaultKeyword() bool {
 	case ast.KindAbstractKeyword:
 		return p.lookAhead((*Parser).nextTokenIsClassKeywordOnSameLine)
 	case ast.KindAsyncKeyword:
-		return p.lookAhead((*Parser).nextTokenIsFunctionKeywordOnSameLine)
+		return p.lookAhead((*Parser).nextTokenIsFunctionKeywordOnSameLine) || p.isStartOfVibeLangEffectExpression()
 	case ast.KindIdentifier:
-		return p.isVibeLangEffectWord() && p.lookAhead((*Parser).nextTokenIsFunctionKeywordOnSameLine) // export default effect function (vibelang_effect.go)
+		return p.isStartOfVibeLangEffectExpression() // export default effect function (vibelang_effect.go)
 	}
 	return false
 }
@@ -6194,8 +6203,12 @@ func (p *Parser) parseObjectLiteralElement() *ast.Node {
 	if p.parseContextualModifier(ast.KindSetKeyword) {
 		return p.parseAccessorDeclaration(pos, jsdoc, modifiers, ast.KindSetAccessor, ParseFlagsNone)
 	}
-	if p.isStartOfVibeLangEffectMember() {
+	if p.isStartOfVibeLangEffectMember() || p.isStartOfMixedEffectAccessor(modifiers) {
 		word := p.parseVibeLangEffectMember()
+		modifiers = p.reportEffectAsyncModifiers(modifiers, word)
+		if accessor := p.parseEffectAccessor(pos, jsdoc, modifiers, word); accessor != nil {
+			return accessor
+		}
 		asteriskToken := p.parseOptionalToken(ast.KindAsteriskToken)
 		name := p.parsePropertyName()
 		questionToken := p.parseOptionalToken(ast.KindQuestionToken)

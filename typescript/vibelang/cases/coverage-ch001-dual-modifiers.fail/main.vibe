@@ -1,4 +1,4 @@
-// expect: EK0105
+// expect: EK0105 EK0105 EK0105 EK0105 EK0105 EK0105
 effect async function a() {}
 async effect function b() {}
 const c = effect async () => 1

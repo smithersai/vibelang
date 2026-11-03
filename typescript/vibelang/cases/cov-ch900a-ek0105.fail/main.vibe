@@ -1,4 +1,4 @@
-// expect: EK0105
+// expect: EK0105 EK0105 EK0105 EK0105
 // Appendix B: EK0105 — spec-rule: docs/design/src/900-appendices.md#e704cf2d76e294e1
 effect async function load() { return 1 }
 

@@ -2,8 +2,6 @@ FuzzFunctionsSpec corpus:fz-func-arguments compiler VIP-1: minimized arguments v
 FuzzFunctionsSpec corpus:fz-func-eval compiler VIP-1: minimized eval violation; lane vip-core2
 FuzzFunctionsSpec corpus:fz-func-function-alias compiler VIP-1: minimized function-alias violation; lane vip-core2
 FuzzFunctionsSpec corpus:fz-func-with compiler VIP-1: minimized with violation; lane vip-core2
-FuzzFunctionBoundaries rule:both compiler VIP-1: chapter 1 requires the specified EK diagnostic for both; lane vip-core2
-FuzzFunctionBoundaries corpus:fz-func-both compiler VIP-1: minimized both violation; lane vip-core2
 FuzzFunctionBoundaries corpus:fz-func-return-type compiler VIP-1: minimized return-type violation; lane vip-core2
 FuzzFunctionSyntax corpus:fz-func-syntax-identifier compiler VIP-1: minimized syntax probe; lane vip-core2
 FuzzFunctionSyntax corpus:fz-func-syntax-method-name compiler VIP-1: minimized syntax probe; lane vip-core2

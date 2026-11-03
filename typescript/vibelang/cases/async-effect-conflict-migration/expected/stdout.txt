@@ -1,0 +1,1 @@
+mixed prefixes migrate with the same result and declarations

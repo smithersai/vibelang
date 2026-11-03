@@ -1,4 +1,4 @@
-// expect: EK0104 EK0105
+// expect: EK0104 EK0105 EK0104 EK0105
 error Plain { async effect get x() { return 1 } }
 schema error Encoded { async effect get x() { return 1 } }
 export {}

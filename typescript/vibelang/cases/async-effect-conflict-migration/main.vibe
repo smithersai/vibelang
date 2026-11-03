@@ -1,0 +1,7 @@
+export class Box {
+  static async value() { return 2 }
+}
+export const object = { async value() { return 3 } }
+export async function main() {
+  return (await Box.value()) + (await object.value())
+}

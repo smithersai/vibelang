@@ -24,6 +24,8 @@ Calling `greet("Ada")` returns an Effect. `try greet("Ada")` runs it and returns
 
 A plain function's written return type checks the whole value it returns. For `function make(value: string): { type: "dataUrl"; value: string }!unknown { return Effect.succeed({ type: "dataUrl", value }) }`, the return expression is typed by the full `Effect`, preserving `"dataUrl"` as a literal, as in TypeScript. An `effect` function's body instead returns the `Effect`'s success value.
 
+Choose one function kind: `effect` returns an Effect and `async` returns a Promise. Combining them in either order, including on arrows, methods and blocks, reports `EK0105`. The editor can remove either modifier from a function; for a block it removes `async` and keeps `effect { ... }`. `vibelang --fix` removes `effect` from functions to preserve the native `Promise` API previously emitted for accepted mixed declarations and methods; for blocks it removes `async`.
+
 An optional call can return `undefined`, which is not an Effect (`EK0502`). Keep the optional call's normal TypeScript evaluation, then guard its result before `try`:
 
 ```vibe

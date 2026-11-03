@@ -1,0 +1,25 @@
+// expect: EK0105 EK0105 EK0105 EK0105 EK0105 EK0105 EK0105 EK0105 EK0105 EK0105 EK0105 EK0105 EK0105 EK0105 EK0105 EK0105 EK0105 EK0105
+// VIP-1/VIP-2: both orders parse and diagnose their conflicting function kinds.
+effect async function f() {}
+async effect function g() {}
+const expression = effect async function() {}
+const reverseExpression = async effect function() {}
+const arrow = effect async (x: number) => x
+const reverseArrow = async effect (x: number) => x
+const block = effect async { return 1 }
+const reverseBlock = async effect { return 1 }
+class C {
+  effect async m() {}
+  async effect n() {}
+}
+const object = {
+  effect async m() {},
+  async effect n() {}
+}
+
+effect async (x: number) => x;
+async effect (x: number) => x;
+effect async x => x;
+async effect x => x;
+effect async <T>(x: T) => x;
+async effect <T>(x: T) => x;

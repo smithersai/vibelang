@@ -4,6 +4,7 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/core"
 	"github.com/microsoft/TypeScript/tsc/internal/diagnostics"
+	"github.com/microsoft/TypeScript/tsc/internal/scanner"
 )
 
 // EffectArrowHeadDiagnosticCode and Text identify VIP-1/detail247's
@@ -64,8 +65,7 @@ func (p *Parser) scanStartOfShorthandFunction() bool {
 // starts a function declaration: effect function name or effect name(. It
 // moves the scanner.
 func (p *Parser) scanStartOfEffectDeclaration() bool {
-	p.nextToken()
-	if p.hasPrecedingLineBreak() {
+	if _, _, ok := p.scanEffectPrefix(true); !ok {
 		return false
 	}
 	if p.token == ast.KindFunctionKeyword {
@@ -90,7 +90,8 @@ func (p *Parser) isStartOfAsyncShorthand(modifiers *ast.ModifierList) bool {
 // parseEffectDeclaration parses effect function name(…) { … } or effect
 // name(…) { … } at the current token, effect.
 func (p *Parser) parseEffectDeclaration(pos int, jsdoc jsdocScannerInfo, modifiers *ast.ModifierList) *ast.Node {
-	word := p.consumeVibeLangEffectWord()
+	word := p.parseEffectPrefix(true)
+	modifiers = p.reportEffectAsyncModifiers(modifiers, word)
 	var fn *ast.Node
 	if p.token == ast.KindFunctionKeyword {
 		fn = p.parseFunctionDeclaration(pos, jsdoc, modifiers, true /*effect*/)
@@ -134,14 +135,14 @@ func (p *Parser) markEffect(fn *ast.Node, word core.TextRange) *ast.Node {
 // returns nil, the scanner where it was, when the current token starts
 // neither: effect(x) without => is a call of a function named effect.
 func (p *Parser) tryParseVibeLangEffectArrow(allowReturnTypeInArrowFunction bool) *ast.Node {
-	if !p.isVibeLangEffectWord() {
+	if !p.isVibeLangFile() || p.token != ast.KindAsyncKeyword && !p.isVibeLangEffectWord() {
 		return nil
 	}
 	state := p.mark()
 	defer p.setVibeLangFiberContext(true)()
 	pos := p.nodePos()
-	word := p.consumeVibeLangEffectWord()
-	if p.hasPrecedingLineBreak() {
+	word, conflict, ok := p.scanEffectPrefix(false)
+	if !ok {
 		p.rewind(state)
 		return nil
 	}
@@ -164,11 +165,12 @@ func (p *Parser) tryParseVibeLangEffectArrow(allowReturnTypeInArrowFunction bool
 			arrow = p.parseSimpleArrowFunctionExpression(parameter.Pos(), parameter, allowReturnTypeInArrowFunction, jsdoc, nil /*asyncModifier*/, true /*effect*/)
 		}
 	}
-	if arrow == nil || !ast.IsArrowFunction(arrow) {
+	if arrow == nil || !ast.IsArrowFunction(arrow) || conflict.End() != 0 && ast.NodeIsMissing(arrow.AsArrowFunction().EqualsGreaterThanToken) {
 		p.rewind(state)
 		return nil
 	}
 	arrow.Loc = core.NewTextRange(pos, arrow.End())
+	p.reportEffectAsyncConflict(conflict)
 	return p.markEffect(arrow, word)
 }
 
@@ -214,16 +216,16 @@ func (p *Parser) tryParseVibeLangBareEffectArrow(allowReturnTypeInArrowFunction 
 // starts an effect function expression: effect followed by function on
 // the same line. Blocks have their own entry point below.
 func (p *Parser) isStartOfVibeLangEffectExpression() bool {
-	return p.isVibeLangEffectWord() && p.lookAhead(func(p *Parser) bool {
-		p.nextToken()
-		return !p.hasPrecedingLineBreak() && p.token == ast.KindFunctionKeyword
+	return (p.isVibeLangEffectWord() || p.isVibeLangFile() && p.token == ast.KindAsyncKeyword) && p.lookAhead(func(p *Parser) bool {
+		_, _, ok := p.scanEffectPrefix(false)
+		return ok && p.token == ast.KindFunctionKeyword
 	})
 }
 
 // parseVibeLangEffectExpression parses effect function expressions (VIP-1).
 func (p *Parser) parseVibeLangEffectExpression() *ast.Node {
 	pos := p.nodePos()
-	word := p.consumeVibeLangEffectWord()
+	word := p.parseEffectPrefix(false)
 	fn := p.parseFunctionExpression(true /*effect*/)
 	fn.Loc = core.NewTextRange(pos, fn.End())
 	return p.markEffect(fn, word)
@@ -231,16 +233,16 @@ func (p *Parser) parseVibeLangEffectExpression() *ast.Node {
 
 // isStartOfVibeLangEffectBlock is separate from VIP-1's function entry point.
 func (p *Parser) isStartOfVibeLangEffectBlock() bool {
-	return p.isVibeLangEffectWord() && p.lookAhead(func(p *Parser) bool {
-		p.nextToken()
-		return !p.hasPrecedingLineBreak() && p.token == ast.KindOpenBraceToken
+	return (p.isVibeLangEffectWord() || p.isVibeLangFile() && p.token == ast.KindAsyncKeyword) && p.lookAhead(func(p *Parser) bool {
+		_, _, ok := p.scanEffectPrefix(false)
+		return ok && p.token == ast.KindOpenBraceToken
 	})
 }
 
 // parseVibeLangEffectBlock builds an Effect inheriting the lexical scope.
 func (p *Parser) parseVibeLangEffectBlock() *ast.Node {
 	pos := p.nodePos()
-	word := p.consumeVibeLangEffectWord()
+	word := p.parseEffectPrefix(false)
 	defer p.setVibeLangFiberContext(true)()
 	saveContextFlags := p.contextFlags
 	p.setContextFlags(ast.NodeFlagsAwaitContext|ast.NodeFlagsYieldContext, false)
@@ -259,9 +261,8 @@ func (p *Parser) parseVibeLangEffectBlock() *ast.Node {
 // starts an effect method of a class or an object literal: effect followed
 // on the same line by * or by a member name and ( or <.
 func (p *Parser) isStartOfVibeLangEffectMember() bool {
-	return p.isVibeLangEffectWord() && p.lookAhead(func(p *Parser) bool {
-		p.nextToken()
-		if p.hasPrecedingLineBreak() {
+	return (p.isVibeLangEffectWord() || p.isVibeLangFile() && p.token == ast.KindAsyncKeyword) && p.lookAhead(func(p *Parser) bool {
+		if _, _, ok := p.scanEffectPrefix(true); !ok {
 			return false
 		}
 		if p.token == ast.KindAsteriskToken {
@@ -283,7 +284,7 @@ func (p *Parser) isStartOfVibeLangEffectMember() bool {
 // parseVibeLangEffectMember consumes effect before a method and returns its
 // range; vibelangEffectMember marks the method parsed after it.
 func (p *Parser) parseVibeLangEffectMember() core.TextRange {
-	return p.consumeVibeLangEffectWord()
+	return p.parseEffectPrefix(true)
 }
 
 func (p *Parser) vibelangEffectMember(member *ast.Node, word core.TextRange) *ast.Node {
@@ -300,8 +301,8 @@ func (p *Parser) vibelangEffectMember(member *ast.Node, word core.TextRange) *as
 const EffectRestrictedMemberDiagnosticCode int32 = 104
 const EffectRestrictedMemberDiagnosticText = "Effect on a getter, setter or constructor. Use the matching effect or async function form; move legacy JavaScript to a .ts file."
 
-const EffectAsyncMemberDiagnosticCode int32 = 105
-const EffectAsyncMemberDiagnosticText = "Effect and async on one function. Use the matching effect or async function form; move legacy JavaScript to a .ts file."
+const EffectAsyncMemberDiagnosticCode int32 = EffectAsyncConflictDiagnosticCode
+const EffectAsyncMemberDiagnosticText = EffectAsyncConflictDiagnosticText
 
 // Recover the native member as one node, rather than treating effect as a
 // field or a constructor as an ordinary Effect method. Native contextual
@@ -358,5 +359,134 @@ func (p *Parser) isStartOfVibeLangEffectTypeMember() bool {
 		}
 		p.parseOptionalToken(ast.KindQuestionToken)
 		return p.token == ast.KindOpenParenToken || p.token == ast.KindLessThanToken || p.token == ast.KindColonToken
+	})
+}
+
+// VIP-1/VIP-2 admit both mixed prefix orders for diagnostic recovery only.
+// Keep async as a parameter or method name when it is followed by => or ().
+const EffectAsyncConflictDiagnosticCode int32 = 105
+const EffectAsyncConflictDiagnosticText = "Effect and async on one function or block. Remove one modifier."
+
+func (p *Parser) scanEffectPrefix(allowAsyncName bool) (word, conflict core.TextRange, ok bool) {
+	if !p.isVibeLangFile() {
+		return
+	}
+	start := p.tokenRange().Pos()
+	mixed := false
+	if p.token == ast.KindAsyncKeyword {
+		p.nextToken()
+		if p.hasPrecedingLineBreak() {
+			return
+		}
+		mixed = true
+	}
+	if !p.isVibeLangEffectWord() {
+		return
+	}
+	word = p.consumeVibeLangEffectWord()
+	if p.hasPrecedingLineBreak() {
+		return
+	}
+	if !mixed && p.token == ast.KindAsyncKeyword && p.lookAhead(func(p *Parser) bool {
+		p.nextToken()
+		if p.hasPrecedingLineBreak() || p.token == ast.KindEqualsGreaterThanToken {
+			return false
+		}
+		return !allowAsyncName || p.token != ast.KindOpenParenToken && p.token != ast.KindLessThanToken
+	}) {
+		mixed = true
+		end := p.tokenRange().End()
+		p.nextToken()
+		conflict = core.NewTextRange(start, end)
+	}
+	if mixed && conflict.End() == 0 {
+		conflict = core.NewTextRange(start, word.End())
+	}
+	ok = true
+	return
+}
+
+func (p *Parser) reportEffectAsyncConflict(span core.TextRange) {
+	if span.End() != 0 {
+		p.diagnostics = append(p.diagnostics, ast.NewExternalDiagnostic(nil, span, "EK", diagnostics.CategoryError, EffectAsyncConflictDiagnosticCode, EffectAsyncConflictDiagnosticText))
+	}
+}
+
+func (p *Parser) parseEffectPrefix(member bool) core.TextRange {
+	word, conflict, _ := p.scanEffectPrefix(member)
+	p.reportEffectAsyncConflict(conflict)
+	return word
+}
+
+// Report an async modifier consumed by native declaration/member parsing.
+// Retain it in recovery: these accepted forms previously emitted Promises.
+func (p *Parser) reportEffectAsyncModifiers(modifiers *ast.ModifierList, word core.TextRange) *ast.ModifierList {
+	if modifierListHasAsync(modifiers) {
+		for _, m := range modifiers.Nodes {
+			if m.Kind == ast.KindAsyncKeyword {
+				p.reportEffectAsyncConflict(core.NewTextRange(scanner.SkipTrivia(p.sourceText, m.Pos()), word.End()))
+			}
+		}
+	}
+	return modifiers
+}
+
+// Recover forbidden Effect accessors as native accessor nodes. Their bodies
+// are ordinary source contexts and must not be lowered as Effect methods.
+func (p *Parser) parseEffectAccessor(pos int, jsdoc jsdocScannerInfo, modifiers *ast.ModifierList, word core.TextRange) *ast.Node {
+	kind := ast.KindUnknown
+	if p.parseContextualModifier(ast.KindGetKeyword) {
+		kind = ast.KindGetAccessor
+	} else if p.parseContextualModifier(ast.KindSetKeyword) {
+		kind = ast.KindSetAccessor
+	}
+	if kind == ast.KindUnknown {
+		return nil
+	}
+	p.diagnostics = append(p.diagnostics, ast.NewExternalDiagnostic(nil, word, "EK", diagnostics.CategoryError, 104, "Effect on a getter, setter or constructor. Use the matching effect or async function form; move legacy JavaScript to a .ts file."))
+	// Async accessors are invalid too; EK0105 already reports the mixed head.
+	if modifierListHasAsync(modifiers) {
+		var nodes []*ast.Node
+		for _, m := range modifiers.Nodes {
+			if m.Kind != ast.KindAsyncKeyword {
+				nodes = append(nodes, m)
+			}
+		}
+		if len(nodes) == 0 {
+			modifiers = nil
+		} else {
+			modifiers = p.newModifierList(modifiers.Loc, nodes)
+		}
+	}
+	return p.parseAccessorDeclaration(pos, jsdoc, modifiers, kind, ParseFlagsNone)
+}
+
+// Mixed arrows must reach expression parsing before statement-level shorthand
+// recovery. Only a complete mixed head is redirected; ordinary identifiers and
+// invalid shorthand declarations keep their previous reading.
+func (p *Parser) isStartOfMixedEffectArrow() bool {
+	if !p.isVibeLangFile() || p.token != ast.KindAsyncKeyword && !p.isVibeLangEffectWord() {
+		return false
+	}
+	return p.lookAhead(func(p *Parser) bool {
+		state := p.mark()
+		_, conflict, ok := p.scanEffectPrefix(false)
+		p.rewind(state)
+		return ok && conflict.End() != 0 && p.tryParseVibeLangEffectArrow(true) != nil
+	})
+}
+
+// Only mixed prefixes participate in this accessor recovery. Pure Effect
+// accessor admission belongs to its existing independent diagnostic rule.
+func (p *Parser) isStartOfMixedEffectAccessor(modifiers *ast.ModifierList) bool {
+	if !p.isVibeLangFile() || p.token != ast.KindAsyncKeyword && !p.isVibeLangEffectWord() {
+		return false
+	}
+	return p.lookAhead(func(p *Parser) bool {
+		_, conflict, ok := p.scanEffectPrefix(true)
+		if !ok || conflict.End() == 0 && !modifierListHasAsync(modifiers) {
+			return false
+		}
+		return p.parseContextualModifier(ast.KindGetKeyword) || p.parseContextualModifier(ast.KindSetKeyword)
 	})
 }

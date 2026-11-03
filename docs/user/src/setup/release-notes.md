@@ -1204,6 +1204,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Documentation said a written `.ts` import could find only a `.ts` file. It now preserves TypeScript's native source and declaration substitutions while rejecting stale VibeLang fallbacks.
 
+- Combining `effect` and `async`, as in `effect async function f() {}`, produced generic syntax errors or no specific diagnostic. Both orders now report `EK0105`; the editor offers removal of either function modifier, or removal of `async` from an Effect block. `vibelang --fix` removes `effect` from functions to preserve their previously emitted `Promise` API, and removes `async` from blocks.
+
 - Release validation rejected the VIP-7 reference tests because they had no runner; `//:release` now checks parallel installation and cleanup after a failed install.
 
 - The migration namespace corpus quoted a declaration-import-style guarantee removed from the specification, so its citation check failed. It now cites the current module-identity wording.
