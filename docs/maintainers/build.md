@@ -1192,3 +1192,10 @@ dependency and embed lists and rejects a future import or embed of an excluded
 input. Real minimal Go fixtures cover both forbidden snapshot embeds and the
 retained production table.
 The dependency audit uses `CGO_ENABLED=0`, matching native builds even when the caller enables cgo.
+
+The ESLint corpus guard accepts a source-written constant literal only when its
+reported `Literal` node, UTF-16 range and raw text match the source. The
+`no-constant-condition` rule remains enabled, and generated literals or
+unclassified conditions still fail the guard. Native provenance tests run in
+`compiler-test`; the pinned ESLint fixture also tests the real corpus checker
+and generated provenance mutations.

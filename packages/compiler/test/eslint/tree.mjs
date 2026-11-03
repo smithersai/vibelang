@@ -195,3 +195,24 @@ export function reportsSynthesizedLabel(message, sourceCode) {
   const index = sourceCode.getIndexFromLoc({ line: message.line, column: message.column - 1 })
   return synthesizedLabelAtNode(message, sourceCode.getNodeByRangeIndex(index))
 }
+
+// The corpus guard detects diagnostics on generated code, rather than requiring
+// every regression fixture to satisfy recommended style rules. A literal the
+// author wrote is allowed to be a constant condition; an unwritten true is not.
+export function sourceLiteralAtNode(message, node, text) {
+  return message.nodeType === "Literal" && node?.type === "Literal" &&
+    node.synthesized !== true && typeof node.raw === "string" &&
+    node.range?.[1] > node.range?.[0] && text.slice(...node.range) === node.raw
+}
+
+export function reportsSynthesizedConstant(message, sourceCode) {
+  const start = sourceCode.getIndexFromLoc({ line: message.line, column: message.column - 1 })
+  const end = sourceCode.getIndexFromLoc({ line: message.endLine, column: message.endColumn - 1 })
+  let written = false
+  // Lowered do nodes can overlap a source literal: getNodeByRangeIndex may
+  // return a synthetic temporary instead. Match the reported node exactly.
+  walk(sourceCode.ast, (node) => {
+    if (node.range[0] === start && node.range[1] === end && sourceLiteralAtNode(message, node, sourceCode.text)) written = true
+  }, sourceCode.visitorKeys)
+  return !written
+}

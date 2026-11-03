@@ -10,7 +10,7 @@ import { visitorKeys as typescriptKeys } from "@typescript-eslint/visitor-keys"
 import { parseForESLint } from "../../eslint.mjs"
 import { config } from "./config.mjs"
 import { relativeToRepo, repositoryFiles, expectedParseError, matchesParseError, matchesLintParseError } from "./helpers.mjs"
-import { allVisitorKeys, problems, reportsSynthesizedLabel } from "./tree.mjs"
+import { allVisitorKeys, problems, reportsSynthesizedLabel, reportsSynthesizedConstant } from "./tree.mjs"
 import { reportsSynthesizedName } from "./lint-oracle.mjs"
 
 
@@ -67,6 +67,7 @@ test("every .vibe file lints without a crash or a report about code the parser w
     }
     const sourceCode = linter.getSourceCode()
     for (const message of messages) {
+      if (message.ruleId === "no-constant-condition" && !reportsSynthesizedConstant(message, sourceCode)) continue
       if (message.ruleId === "no-unused-labels" && !reportsSynthesizedLabel(message, linter.getSourceCode())) continue
       if (matchesLintParseError(expected, message)) continue
       if (message.fatal || synthesizedFormRules.has(message.ruleId) || reportsSynthesizedName(message, sourceCode)) {
