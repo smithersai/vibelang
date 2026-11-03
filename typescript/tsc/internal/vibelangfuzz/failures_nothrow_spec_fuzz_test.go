@@ -12,7 +12,7 @@ var nothrowQ = struct{ plainRow, asyncRow, constructs, throwStmt, knownCall, lit
 	plainRow:           "| any other `.vibe` code | a compile error, `EK0401` ([Plain code never throws](#plain-code-never-throws)) |",
 	asyncRow:           "| an `async` function, arrow or method, its parameter list included, an `async` generator's body, or an `async match` | JavaScript's `throw`: the returned Promise rejects with `e` |",
 	constructs:         "plain functions and arrows (one nested in effect code included), plain methods, constructors, accessors, plain generators, class field initializers, `static` blocks, every parameter list except an ordinary `async` function's, plain `catch` handlers (parameters and body), and the module top level",
-	throwStmt:          "- A `throw` statement is `EK0401`, even when a `try` statement in the same function catches it.",
+	throwStmt:          "- A `throw` statement or throw expression is `EK0401`, even when a `try` statement in the same function catches it: `const v = s ?? throw new Error(\"empty\")` in a plain function is `EK0401` ([Throw expressions](#throw-expressions)).",
 	knownCall:          "- A call, `new` expression, tagged template or class evaluation *known to throw* is `EK0401`, unless it sits in the `try` block of a `try` statement with a `catch` clause in the same function.",
 	literal:            "as the thunks of `Effect.try` and `Effect.tryPromise` and the `Promise` executor do, or passed to a `@rethrows` parameter, may contain calls known to throw: they belong to the enclosing call.",
 	tryStmt:            "- TypeScript's `try { } catch { }` statement stays allowed.",

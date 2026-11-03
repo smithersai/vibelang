@@ -273,6 +273,7 @@ const specTests = [
   "TestFormatPrefixOperandsQuoted",
   "TestCatchArrowHeadsQuoted",
   "TestFiberUnaryOperandsQuoted",
+  "TestThrowExpressionsQuoted",
   "TestDeclarationLineBreakQuoted",
   "TestEffectHeritageQuoted",
   "TestVibexRenameQuoted",

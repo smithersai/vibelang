@@ -1,0 +1,1 @@
+main.vibe(4,15): error EK1010

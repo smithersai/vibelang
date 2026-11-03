@@ -155,24 +155,24 @@ func TestSyntaxEK4405(t *testing.T) {
 // S10-12 is checked before either mapper rendering; each must refuse the
 // same source span and use the native registry's message.
 func TestSyntaxEK1010(t *testing.T) {
-	checkSyntaxDiagnostic(t, 1010, "function f() { return sync((x: any) => throw x ?? 1, 0) }", "throw x", "throw takes only x here, so the rest of the expression would not be thrown; write throw (…) to throw the whole expression.", "function f() { return sync((x: any) => { throw x ?? 1 }, 0) }")
+	checkSyntaxDiagnostic(t, 1010, "function f() { return sync((x: any) => throw x ?? 1, 0) }", "throw x", throwProposalMessage("x", "??"), "function f() { return sync((x: any) => { throw x ?? 1 }, 0) }")
 	checkSyntaxFixture(t, "throw-operator-precedence", 1010, 3)
 	checkSyntaxFixture(t, "throw-trailing-precedence", 1010, 3)
 	var expressions []string
-	for _, op := range []string{"+", "-", "*", "/", "%", "**", "<<", ">>", ">>>", "<", "<=", ">", ">=", "==", "!=", "===", "!==", "&", "|", "^", "&&", "||", "??", "in", "instanceof", "=", "+=", "**=", "??=", "&&=", "||="} {
+	for _, op := range []string{"+", "-", "*", "/", "%", "**", "<<", ">>", ">>>", "<", "<=", ">", ">=", "==", "!=", "===", "!==", "&", "|", "^", "&&", "||", "??", "=", "+=", "**=", "??=", "&&=", "||="} {
 		expressions = append(expressions, "throw x "+op+" x")
 	}
-	expressions = append(expressions, "throw x ? 1 : 2", "throw x as any", "throw x satisfies any", "throw x |> %", "throw x |> x(1)(%)")
+	expressions = append(expressions, "throw x ? 1 : 2", "throw x |> %", "throw x |> x(1)(%)")
 	for _, expr := range expressions {
-		checkSyntaxDiagnostic(t, 1010, "function f(x: any) { return "+expr+" }", "throw x", "throw takes only x here, so the rest of the expression would not be thrown; write throw (…) to throw the whole expression.", "function f(x: any) { return throw (x ? 1 : 2) }")
+		checkSyntaxDiagnostic(t, 1010, "function f(x: any) { return "+expr+" }", "throw x", throwProposalMessage("x", throwFollowingToken(expr)), "function f(x: any) { return throw (x ? 1 : 2) }")
 	}
 	// A throw that ends an operator's left operand or a conditional's
 	// condition: x ?? throw x ? 1 : 2 is (x ?? throw x) ? 1 : 2.
 	for _, expr := range []string{
-		"x ?? throw x ? 1 : 2", "x || throw x || 1", "x && throw x ? 1 : 2", "x ?? throw x as any",
-		"x || throw x satisfies any", "x ?? throw x |> %", "x ?? throw x |> x(1)(%)", "x ? 1 : x ?? throw x ? 1 : 2",
+		"x ?? throw x ? 1 : 2", "x || throw x || 1", "x && throw x ? 1 : 2",
+		"x ?? throw x |> %", "x ?? throw x |> x(1)(%)", "x ? 1 : x ?? throw x ? 1 : 2",
 	} {
-		checkSyntaxDiagnostic(t, 1010, "function f(x: any) { return "+expr+" }", "throw x", "throw takes only x here, so the rest of the expression would not be thrown; write throw (…) to throw the whole expression.", "function f(x: any) { return x ?? throw (x ? 1 : 2) }")
+		checkSyntaxDiagnostic(t, 1010, "function f(x: any) { return "+expr+" }", "throw x", throwProposalMessage("x", throwFollowingToken(expr)), "function f(x: any) { return x ?? throw (x ? 1 : 2) }")
 	}
 	for _, tc := range []struct{ expression, span, operand string }{
 		{"throw (x) + 1", "throw (x)", "(x)"},
@@ -180,7 +180,7 @@ func TestSyntaxEK1010(t *testing.T) {
 		{"throw x.code === \"unknown\" ? 1 : 2", "throw x.code", "x.code"},
 	} {
 		source := "function f(x: any) { return " + tc.expression + " }"
-		message := "throw takes only " + tc.operand + " here, so the rest of the expression would not be thrown; write throw (…) to throw the whole expression."
+		message := throwProposalMessage(tc.operand, throwFollowingToken(tc.expression))
 		checkSyntaxDiagnostic(t, 1010, source, tc.span, message, "function f(x: any) { return (throw x) ?? 1 }")
 		for name, projection := range map[string]Projection{"checking": Project(source, testContext), "executable": Executable(source, testContext)} {
 			count := 0
@@ -199,12 +199,14 @@ func TestSyntaxEK1010(t *testing.T) {
 		}
 	}
 	for _, expr := range []string{
+		"throw x in x", "throw x instanceof x", "throw x as any", "throw x satisfies any",
+		"!throw x", "throw throw x", "x ?? throw x as any", "x || throw x satisfies any",
 		"x ?? throw x", "x || throw x", "x && throw x", "x ? 1 : throw x", "x ? throw x : 1",
 		"((x: any) => x ?? throw x)(x)", "throw (x ? 1 : 2)", "throw (x === 1)",
 		"throw (x ?? 1)", "throw (x as any)", "throw (x satisfies any)", "throw (x |> x(1)(%))", "(throw x) |> x(1)(%)",
 		"(throw x) ?? 1", "(throw x) ? 1 : 2", "(throw x) as any", "(throw x) satisfies any",
-		"(throw x, 1)", "(() => { throw x })() ?? 1", "do { throw x } ?? 1",
-		"(x ?? throw x) ? 1 : 2", "x ?? (throw x) ? 1 : 2", "(x ?? throw x, 1)", "x ? 1 : x ?? throw x", "[x ?? throw x, 1]",
+		"((throw x), 1)", "(() => { throw x })() ?? 1", "do { throw x } ?? 1",
+		"(x ?? throw x) ? 1 : 2", "x ?? (throw x) ? 1 : 2", "((x ?? throw x), 1)", "x ? 1 : x ?? throw x", "[x ?? (throw x), 1]",
 	} {
 		source := "function f(x: any) { return " + expr + " }"
 		for _, d := range Project(source, testContext).Diagnostics {
@@ -221,6 +223,59 @@ func TestSyntaxEK1010(t *testing.T) {
 			if d.Code == 1010 {
 				t.Errorf("valid: %+v", d)
 			}
+		}
+	}
+}
+
+func throwProposalMessage(operand, token string) string {
+	return "A throw expression can't be followed by " + token + ": write throw (…) to throw the whole expression, or (throw " + operand + ") to throw only " + operand + "."
+}
+func throwFollowingToken(expression string) string {
+	at := strings.Index(expression, "throw ")
+	tail := strings.TrimSpace(expression[at+len("throw "):])
+	if strings.HasPrefix(tail, "/* trivia */") {
+		tail = strings.TrimSpace(strings.TrimPrefix(tail, "/* trivia */"))
+	}
+	token := strings.Fields(tail)[1]
+	if token == "|>" {
+		return "|"
+	}
+	return token
+}
+
+// A native scanner error may share a number with an EK rule. Only EK
+// diagnostics belong in the mapper's own diagnostic channel.
+func TestSyntaxEK1010NativeBoundary(t *testing.T) {
+	for _, source := range []string{
+		"/* unfinished",
+		"const n = 1; /* unfinished",
+		"const x = throw e; /* unfinished",
+		"const x = (throw e) + 1; /* unfinished",
+		"const x = throw e\n+f(); /* unfinished",
+		"class C { value = throw e; } /* unfinished",
+	} {
+		for name, projection := range map[string]Projection{"checking": Project(source, testContext), "executable": Executable(source, testContext)} {
+			for _, d := range projection.Diagnostics {
+				if d.Code == 1010 {
+					t.Errorf("%s: native TS1010 became EK1010: %s: %+v", name, source, d)
+				}
+			}
+		}
+	}
+	// The scanner error must not hide a real lookahead violation.
+	source := "const x = throw e + 1; /* unfinished"
+	for name, projection := range map[string]Projection{"checking": Project(source, testContext), "executable": Executable(source, testContext)} {
+		count := 0
+		for _, d := range projection.Diagnostics {
+			if d.Code == 1010 {
+				count++
+				if d.Message != throwProposalMessage("e", "+") {
+					t.Errorf("%s: native error was copied: %+v", name, d)
+				}
+			}
+		}
+		if count != 1 {
+			t.Errorf("%s: wanted one EK1010, got %d", name, count)
 		}
 	}
 }

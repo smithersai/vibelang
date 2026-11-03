@@ -18,7 +18,6 @@ var legacyDeclared = map[int32]string{
 	1005: "lane del-rest",                                                                                                                                                 // diagnostics.go
 	1006: "lane del-rest",                                                                                                                                                 // diagnostics.go
 	1007: "lane del-rest",                                                                                                                                                 // diagnostics.go
-	1010: "lane del-rest",                                                                                                                                                 // diagnostics.go
 	1011: "lane del-rest; declaration only: missing Effect-type diagnostic has no reached emission witness",                                                               // diagnostics.go
 	1012: "lane del-rest",                                                                                                                                                 // diagnostics.go
 	1013: "lane del-rest",                                                                                                                                                 // fieldcommas.go

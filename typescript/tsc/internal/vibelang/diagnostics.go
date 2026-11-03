@@ -77,8 +77,8 @@ var (
 	EK1006 = message(1006, errorCategory, "This pipe's body does not use its topic, %, so the value before |> would go nowhere.")
 	// EK1007: % outside every pipe's body.
 	EK1007 = message(1007, errorCategory, "% is the topic of a pipe and stands only in a pipe's body, after |>.")
-	// EK1010: an unparenthesized throw expression before an operator. {0} is its unary operand.
-	EK1010 = message(1010, errorCategory, "throw takes only {0} here, so the rest of the expression would not be thrown; write throw (…) to throw the whole expression.")
+	// EK1010: a throw expression followed by a token VIP-41 forbids. {0} is its operand, {1} the token.
+	EK1010 = message(parser.VibeLangThrowLookaheadCode, errorCategory, parser.VibeLangThrowLookaheadMessage)
 	// EK1011: a function compiles to an Effect in a program without effect's Effect type. {0} is the function.
 	EK1011 = message(1011, errorCategory, "{0} compiles to an Effect, but this program cannot find effect's Effect type.")
 	// EK1012: a call that runs and never succeeds is stored. {0} is the call, {1} what stores it. A warning a project may adjust (D241).

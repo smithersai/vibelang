@@ -226,7 +226,11 @@ func (p *Parser) parseVibeLangMatch() *ast.Node {
 		} else {
 			armError("Write : after the pattern, when P: value;.")
 		}
-		arm.value = p.parseAssignmentExpressionOrHigher()
+		if p.token == ast.KindThrowKeyword {
+			arm.value = p.parseVibeLangThrow(true) // VIP-7's direct throw arm
+		} else {
+			arm.value = p.parseAssignmentExpressionOrHigher()
+		}
 		arm.end = p.nodePos()
 		armForm.Value = p.sourceRange(arm.value)
 		switch p.token {

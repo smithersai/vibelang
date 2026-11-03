@@ -1,0 +1,29 @@
+// expect-result: ["unary","nested","arrow","compound","last",7,1,"match"]
+error Missing { code: string }
+effect function unary() { return !throw new Missing({ code: "unary" }) }
+effect function nested() { return throw throw new Missing({ code: "nested" }) }
+effect function compound() { return throw (new Missing({ code: "compound" })) }
+effect function last() { return [1, throw new Missing({ code: "last" })] }
+effect function lazy(value: number | undefined) { return value ?? throw new Missing({ code: "unreached" }) }
+effect function asi(keep: boolean) {
+  let ran = 0
+  const value = keep || throw new Missing({ code: "asi" })
+  + (ran += 1)
+  return ran
+}
+effect function matchArm(flag: boolean) {
+  return match (flag) {
+    when true: throw flag ? new Missing({ code: "match" }) : new Missing({ code: "wrong" });
+    default: "ok";
+  }
+}
+export effect function main() {
+  const arrow = effect () => throw new Missing({ code: "arrow" })
+  const a = unary() catch (e) => e.code
+  const b = nested() catch (e) => e.code
+  const c = arrow() catch (e) => e.code
+  const d = compound() catch (e) => e.code
+  const e = last() catch (e) => e.code
+  const m = matchArm(true) catch (e) => e.code
+  return [a, b, c, d, e, try lazy(7), try asi(true), m]
+}

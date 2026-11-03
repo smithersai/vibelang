@@ -258,6 +258,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Grammar checks no longer report the private trailing-block migration helpers as unaccounted; they are recorded as recovery under `VIP-11`, while trailing blocks stay rejected.
 
 - The documentation sent readers to the removed `vibelang-forms -legacy` command. It now describes supported forms checks, and the unused legacy inventory is removed.
+
+- Throw expressions rejected unary nesting and allowed some ambiguous operator and comma positions; they now follow the pinned TC39 proposal, including its parentheses and line-break rules (VIP-41).
 - `vibelang --fix` left qualified calls such as `Effect.retry(...)` after the same function was available as an unshadowed global. It now writes the bare call, preserving comments, declaration imports and disabled-global settings.
 
 - After the migrate flow moved a module's platform code into a `.platform.ts` sibling, a private `const` it moved could fail `TS18047` ("possibly null") where kept code read it inside a closure under a guard. The module now binds the moved value to a local `const` of the same name, so the guard narrows it as before.
@@ -1217,7 +1219,6 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - VIP-39 promised that renaming a `.vibe` file to `.vibex` changes nothing unless it has `<` in expression position, but a project without a `jsx` setting reports `TS6142` at every import of a `.vibex` file, and `preserve` writes `x.jsx`. The promise is now about parsing, and names both settings.
 - VIP-39 said only `<` in expression position reads differently in `.vibex`, but TypeScript's JSX scanner also reads `</` as a closing-tag token, so `a </b/.source.length` and `when </b/:` don't parse there. A new clash row says to write a space: `a < /b/`.
 - VIP-39 grouped `react-native` with the JSX modes TypeScript transforms, though `react-native` keeps the element in its output. It now groups `react-native` with `preserve`: the framework's compiler decides when a `try` inside the element runs.
-- VIP-39's JSX clash table showed `x ?? throw <E/>`, a throw expression that no VIP adds and TypeScript rejects. The row now shows the `throw` statement and `x ?? do { throw <E/> }`.
 - The migrate flow's setup left a build script that only runs `tsc` through Bun's shell, such as opencode's codemode `` $`bun tsc -p tsconfig.build.json` ``, on stock `tsc`, so the published `dist/index.js` imported `./codemode.vibe` and failed to load once installed; setup now runs `vibelang` there too, which writes `dist/codemode.js`, and adds `vibelang` to the package's `devDependencies`.
 
 - A service declared inside a generic function or class could write member contracts in terms of the outer type parameter (`value: T`, `take(v: T)`, `load(): T!!`, or through an alias or a member-local constraint) and compiled, so every specialization shared one key; it now reports `EK3005` naming the member and the captured parameter, while member-local generics, unused generic arguments and concrete services in generic scopes still compile (decided detail `183`).

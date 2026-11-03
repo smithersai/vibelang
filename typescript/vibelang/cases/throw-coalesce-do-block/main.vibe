@@ -1,5 +1,5 @@
 // expect-result: {"found":"Ada","missing":"NotFound","lazy":"Ada","picked":"short","tooLong":"TooLong","arrow":"Bo"}
-// Loop round 4, OPUS-4 and ASTRA-1: throw is a statement, never an operand.
+// A do block can contain a throw statement; VIP-40 also retains throw expressions.
 // The do-block twin of every blocks-throw-expression form gives the same Exit.
 error NotFound { id: string }
 error TooLong { length: number }

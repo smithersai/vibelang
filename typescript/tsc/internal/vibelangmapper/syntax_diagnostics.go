@@ -31,7 +31,6 @@ func (p *projector) syntaxToken(node *ast.Node, code int32, message string) {
 // and unresolved types remain native. A type argument left out of an Effect
 // type means what it means in TypeScript (D308, D309), so Effect<A> is complete.
 func (p *projector) checkSyntaxDiagnostics() {
-	p.checkThrowExpressionPrecedence()
 	var visit func(*ast.Node) bool
 	visit = func(n *ast.Node) bool {
 		if p.isHatchCall(n) {
@@ -250,92 +249,4 @@ func syntaxTaggedErrorClass(n *ast.Node) bool {
 	}
 	callee := h.Expression().Expression()
 	return ast.IsIdentifier(callee) && callee.Text() == "TaggedError" || ast.IsPropertyAccessExpression(callee) && callee.Name().Text() == "TaggedError"
-}
-
-// throwExpressionPrecedenceOperand recognizes D186's parser-generated
-// (() => { throw operand })() by both its shape and its source keyword.
-// A handwritten IIFE starts with '(' instead; do/match IIFEs have other
-// keywords. It returns the operand only where an operator applies to more
-// than the throw (throwOperandEndsOperator).
-func throwExpressionPrecedenceOperand(file *ast.SourceFile, node *ast.Node) *ast.Node {
-	if node.Kind != ast.KindCallExpression || node.Parent == nil || node.Pos() < 0 || node.End() > len(file.Text()) {
-		return nil
-	}
-	if !throwOperandEndsOperator(file, node) {
-		return nil
-	}
-	keyword := scanner.GetRangeOfTokenAtPosition(file, node.Pos())
-	if file.Text()[keyword.Pos():keyword.End()] != "throw" {
-		return nil
-	}
-	callee := node.Expression()
-	if len(node.Arguments()) != 0 || callee.Kind != ast.KindParenthesizedExpression {
-		return nil
-	}
-	arrow := callee.Expression()
-	if arrow.Kind != ast.KindArrowFunction || arrow.Body() == nil || arrow.Body().Kind != ast.KindBlock {
-		return nil
-	}
-	statements := arrow.Body().Statements()
-	if len(statements) != 1 || statements[0].Kind != ast.KindThrowStatement {
-		return nil
-	}
-	return statements[0].Expression()
-}
-
-// throwOperandEndsOperator reports whether text after node, a throw
-// expression, belongs to an operator that the throw's unary operand leaves
-// out: node, or an expression that node ends, is a binary operator's left
-// operand (except comma), a conditional's condition, or the operand of as or
-// satisfies. `x ?? throw c ? a : b` is `(x ?? throw c) ? a : b`, so it
-// throws only c, as `throw c ? a : b` does. Parentheses end the search, so a
-// parenthesized throw or operand stays explicit, and right operands and
-// conditional arms stay legal.
-func throwOperandEndsOperator(file *ast.SourceFile, node *ast.Node) bool {
-	for ; node.Parent != nil; node = node.Parent {
-		parent := node.Parent
-		switch parent.Kind {
-		case ast.KindBinaryExpression:
-			binary := parent.AsBinaryExpression()
-			if binary.Left == node {
-				return binary.OperatorToken.Kind != ast.KindCommaToken
-			}
-			// node ends the right operand, so it ends parent too.
-		case ast.KindConditionalExpression:
-			conditional := parent.AsConditionalExpression()
-			if conditional.Condition == node {
-				return true
-			}
-			if conditional.WhenFalse != node {
-				return false // : closes the first arm
-			}
-		case ast.KindAsExpression, ast.KindSatisfiesExpression:
-			return parent.Expression() == node
-		case ast.KindPropertyAccessExpression:
-			// D272 normalizes throw x |> f(args)(%) to (throw x).pipe(f(args)).
-			// Its generated 'pipe' name is anchored on '|', unlike a written member.
-			if parent.Expression() != node || parent.Name().Text() != "pipe" {
-				return false
-			}
-			operator := scanner.GetRangeOfTokenAtPosition(file, parent.Name().Pos())
-			return file.Text()[operator.Pos():operator.End()] == "|"
-		default:
-			return false
-		}
-	}
-	return false
-}
-
-// Keep EK1010 in step with the native syntax pass, including inside hatch
-// callbacks. This scan precedes the shared plan's two renderings; the other
-// syntax checks retain their keyword/contract positions and D148 hatch gate.
-func (p *projector) checkThrowExpressionPrecedence() {
-	var visit func(*ast.Node) bool
-	visit = func(node *ast.Node) bool {
-		if operand := throwExpressionPrecedenceOperand(p.file, node); operand != nil {
-			p.syntaxDiagnostic(node, 1010, "throw takes only "+scanner.GetSourceTextOfNodeFromSourceFile(p.file, operand, false)+" here, so the rest of the expression would not be thrown; write throw (…) to throw the whole expression.")
-		}
-		return node.ForEachChild(visit)
-	}
-	p.file.AsNode().ForEachChild(visit)
 }

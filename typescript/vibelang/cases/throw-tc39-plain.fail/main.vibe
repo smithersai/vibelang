@@ -1,0 +1,5 @@
+// expect: EK0401
+error Missing
+export function plain(value: number | undefined): number {
+  return value ?? throw new Missing()
+}

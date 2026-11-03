@@ -1,0 +1,6 @@
+// expect: EK1010
+error Missing
+export effect function bad() {
+  const xs = [throw new Missing(), 1]
+  return xs
+}

@@ -31,7 +31,6 @@ FuzzCompile registry:EK1006 compiler Appendix B: "A transitional compiler may st
 FuzzCompile corpus:registry-EK1006 compiler Appendix B: reproduction of registry:EK1006; lane del-rest.
 FuzzCompile registry:EK1007 compiler Appendix B: "A transitional compiler may still print compatibility diagnostics from the old language." The compiler emits 1007 with no current assignment; lane del-rest.
 FuzzCompile corpus:registry-EK1007 compiler Appendix B: reproduction of registry:EK1007; lane del-rest.
-FuzzCompile corpus:registry-EK1010 compiler Appendix B: reproduction of registry:EK1010; lane del-rest.
 FuzzCompile registry:EK1012 compiler Appendix B: "A transitional compiler may still print compatibility diagnostics from the old language." The compiler emits 1012 with no current assignment; lane del-rest.
 FuzzCompile corpus:registry-EK1012 compiler Appendix B: reproduction of registry:EK1012; lane del-rest.
 FuzzCompile registry:EK1013 compiler Appendix B: "A transitional compiler may still print compatibility diagnostics from the old language." The compiler emits 1013 with no current assignment; lane del-rest.

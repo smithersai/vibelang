@@ -1,1 +1,2 @@
-throw takes only f.code here, so the rest of the expression would not be thrown; write throw (…) to throw the whole expression.
+A throw expression can't be followed by ===: write throw (…) to throw the whole expression, or (throw f.code) to throw only f.code.
+A throw expression can't be followed by ??: write throw (…) to throw the whole expression, or (throw f.code) to throw only f.code.

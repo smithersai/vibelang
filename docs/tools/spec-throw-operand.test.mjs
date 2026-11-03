@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto"
 import assert from "node:assert/strict"
 import { readdirSync } from "node:fs"
 import { test } from "node:test"
@@ -9,12 +10,12 @@ import { read } from "./spec-witness.mjs"
 // pinned the opposite (no throw operand anywhere); loop round 15 ASTRA-1 found
 // VIP-39 row 4 still saying `x ?? throw <E/>` "is not VibeLang". The rule now:
 // a chapter or VIP may write a throw expression only where it cites the
-// proposal (VIP-40 or the pinned TC39 repository), so an operand-position
+// proposal (VIP-41 or the pinned TC39 repository), so an operand-position
 // `throw` never appears as an unexplained form. The scan covers the operand
 // positions around the witness: after `??`, `||`, `&&`, `?`, `=>`, `,`,
 // `(`, `[`, `=` and `return`.
 const operandThrow = /(\?\?|\|\||&&|=>|(?<![?.])\?(?![?.])|,|\(|\[|(?<![=!<>])=(?![=>])|\breturn)\s*throw\b/
-const citation = /proposal-throw-expressions|0040-throw-expressions|VIP-40/
+const citation = /proposal-throw-expressions|0041-throw-expressions|VIP-41/
 
 function codeOf(text) {
   const fences = [...text.matchAll(/```[^\n]*\n([\s\S]*?)```/g)].map(m => m[1])
@@ -49,7 +50,7 @@ test("the throw-operand check flags every uncited operand position and nothing e
       const code = `${at}throw ${operand}`
       for (const doc of ["```vibe\n" + code + "\n```\n", "Write `" + code + "` here.\n"]) {
         assert.deepEqual(uncitedThrowOperands(doc), [code], doc)
-        assert.deepEqual(uncitedThrowOperands(doc + "See [VIP-40](0040-throw-expressions.md).\n"), [], doc)
+        assert.deepEqual(uncitedThrowOperands(doc + "See [VIP-41](0041-throw-expressions.md).\n"), [], doc)
         assert.deepEqual(uncitedThrowOperands(doc + "See https://github.com/tc39/proposal-throw-expressions.\n"), [], doc)
       }
       assert.deepEqual(uncitedThrowOperands("```vibe\nthrow " + operand + "\n```\n"), [], operand)
@@ -83,3 +84,24 @@ test("TypeScript's .tsx parser: a throw statement takes JSX; the throw expressio
   assert.deepEqual(syntax("declare const E: any\nasync function f() { await <E/> }"), [])
   assert.deepEqual(syntax("declare const E: any\nfunction f(x: unknown) { return x ?? (() => { throw <E/> })() }"), [])
 })
+
+// VIP-41 adopts the pinned proposal; native TypeScript is a boundary check,
+// not the oracle for VibeLang's additional unary production.
+test("VIP-41 imports the pinned throw grammar and its exact lookahead", () => {
+  const spec = read("docs/design/vips/tc39-throw-expressions/spec.emu")
+  assert.equal(createHash("sha256").update(spec).digest("hex"), "0e5c16ceac81cd88d1ad0c0d8bfb4d28cda4a1d6726d31e081b286b1e4eaab47")
+  const appendix = read("docs/design/src/900-appendices.md")
+  assert.match(appendix, /"throw" UnaryExpression\[\?Yield, \?Await\] \[lookahead ∉ ThrowExpressionInvalidPunctuator\]/)
+  const tick = String.fromCharCode(96)
+  const tokens = new RegExp(tick + "([^" + tick + "]+)" + tick, "g")
+  const upstream = spec.match(/ThrowExpressionInvalidPunctuator : one of ([^\n]+)/)
+  assert.ok(upstream)
+  const decode = (s) => s.replaceAll("&lt;", "<").replaceAll("&gt;", ">").replaceAll("&amp;", "&")
+  const expected = [...upstream[1].matchAll(tokens)].map(m => decode(m[1]))
+  const production = appendix.split("ThrowExpressionInvalidPunctuator = ")[1]?.split("ExpressionStatement[")[0]
+  assert.ok(production)
+  assert.deepEqual([...production.matchAll(/"([^"]+)"/g)].map(m => m[1]), expected)
+  assert.equal(expected.length, 41)
+  assert.ok(appendix.includes("ECMAScript automatic semicolon insertion applies."))
+})
+

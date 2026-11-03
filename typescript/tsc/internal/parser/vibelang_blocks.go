@@ -11,10 +11,9 @@ import (
 //
 //	x ?? throw new NotFound({ id })   x ?? (() => { throw new NotFound({ id }) })()
 //
-// The arrow is a VibeLang function like any other: when its body fails or runs
-// an Effect, the call runs it where it stands (D24), and a parameter that
-// expects a program takes the call by name (D147). A throw expression
-// therefore fails exactly as the throw statement does.
+// The generated arrow is the existing representation of the throw, not a new
+// source callable. Grammar follows VIP-41; the enclosing context's permission
+// to throw remains governed by VIP-4, including its no-throw amendment.
 
 // isStartOfVibeLangThrowExpression reports whether the current token starts a
 // throw expression: throw in expression position in a .vibe file. A
@@ -25,15 +24,31 @@ func (p *Parser) isStartOfVibeLangThrowExpression() bool {
 }
 
 // parseVibeLangThrowExpression parses `throw operand`, whose operand is a unary
-// expression, as the proposal's grammar has it
-// (https://github.com/tc39/proposal-throw-expressions).
+// expression, as the proposal's grammar has it (VIP-41, pinned in
+// docs/design/vips/tc39-throw-expressions/). A throw expression is itself a
+// unary expression, so it is also the operand of !, typeof, void, await,
+// try, fork, join and throw.
 func (p *Parser) parseVibeLangThrowExpression() *ast.Node {
+	return p.parseVibeLangThrow(false)
+}
+
+// A direct match arm has VIP-7's separate `"throw" Expression` production.
+// Its full operand is not restricted to TC39's UnaryExpression.
+func (p *Parser) parseVibeLangThrow(matchArm bool) *ast.Node {
 	pos := p.nodePos()
 	anchor := p.tokenRange()
 	p.nextToken() // throw
-	operand := p.parseSimpleUnaryExpression()
+	var operand *ast.Node
+	if matchArm {
+		operand = p.parseExpression()
+	} else {
+		operand = p.parseSimpleUnaryExpression()
+	}
 	p.recordVibeSyntax(VibeSyntax{Kind: VibeSyntaxPrefix, Word: anchor, Range: core.NewTextRange(anchor.Pos(), operand.End())})
 	loc := core.NewTextRange(anchor.Pos(), operand.End())
+	if !matchArm {
+		p.checkVibeLangThrowLookahead(loc, operand)
+	}
 	statement := p.vibelangSpanning(p.factory.NewThrowStatement(operand), loc)
 	body := p.vibelangSpanning(p.factory.NewBlock(p.newNodeList(loc, []*ast.Node{statement}), false /*multiLine*/), loc)
 	return p.vibelangInvoked(body, anchor, pos)

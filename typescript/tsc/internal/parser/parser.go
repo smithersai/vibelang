@@ -129,7 +129,8 @@ type Parser struct {
 	vibelangSchemaGenerics   []ast.SchemaGenericReference
 
 	// VIP-11 diagnostic marker, separate from syntax-extension state.
-	vibelangDeniedTrailingBlock bool // request migration diagnostics; never consume its block
+	vibelangDeniedTrailingBlock bool       // request migration diagnostics; never consume its block
+	vibelangThrowStop           *throwStop // where automatic semicolon insertion may end a throw expression (vibelang_throw_lookahead.go)
 }
 
 func newParser() *Parser {
@@ -359,6 +360,9 @@ func (p *Parser) parseErrorAtCurrentToken(message *diagnostics.Message, args ...
 }
 
 func (p *Parser) parseErrorAtRange(loc core.TextRange, message *diagnostics.Message, args ...any) *ast.Diagnostic {
+	if p.reportVibeLangThrowStop(loc.Pos()) {
+		return nil // a throw expression's lookahead (vibelang_throw_lookahead.go)
+	}
 	// Don't report another error if it would just be at the same location as the last error
 	var result *ast.Diagnostic
 	if len(p.diagnostics) == 0 || p.diagnostics[len(p.diagnostics)-1].Pos() != loc.Pos() {
@@ -381,6 +385,7 @@ type ParserState struct {
 	vibelangSyntaxLen           int
 	statementHasAwaitIdentifier bool
 	hasParseError               bool
+	vibelangThrowStop           *throwStop
 }
 
 func (p *Parser) mark() ParserState {
@@ -396,6 +401,7 @@ func (p *Parser) mark() ParserState {
 		vibelangSyntaxLen:           p.vibelangSyntaxCount(),
 		statementHasAwaitIdentifier: p.statementHasAwaitIdentifier,
 		hasParseError:               p.hasParseError,
+		vibelangThrowStop:           p.vibelangThrowStop,
 	}
 }
 
@@ -412,6 +418,7 @@ func (p *Parser) rewind(state ParserState) {
 	p.vibelangSyntaxRewind(state.vibelangSyntaxLen)
 	p.statementHasAwaitIdentifier = state.statementHasAwaitIdentifier
 	p.hasParseError = state.hasParseError
+	p.vibelangThrowStop = state.vibelangThrowStop
 }
 
 func (p *Parser) lookAhead(callback func(p *Parser) bool) bool {
@@ -910,7 +917,7 @@ func (p *Parser) isListElement(parsingContext ParsingContext, inErrorRecovery bo
 		// not in error recovery.  If we're in error recovery, we don't want an errant
 		// semicolon to be treated as a class member (since they're almost always used
 		// for statements.
-		return p.isStartOfVibeLangModuleDeclaration() || // VIP-40: consume and diagnose misplaced modules
+		return p.isStartOfVibeLangModuleDeclaration() || // VIP-41: consume and diagnose misplaced modules
 			p.vibelangFieldComma && p.token == ast.KindCommaToken || p.vibelangNoSeparator || // vibelang_errors.go
 			p.isVibeLangServiceCallSignature() || // vibelang.go
 			p.lookAhead((*Parser).scanClassMemberStart) || p.token == ast.KindSemicolonToken && !inErrorRecovery
@@ -2190,6 +2197,10 @@ func (p *Parser) nextTokenIsOpenParen() bool {
 }
 
 func (p *Parser) parsePropertyOrMethodDeclaration(pos int, jsdoc jsdocScannerInfo, modifiers *ast.ModifierList, effect bool) *ast.Node {
+	if p.token == ast.KindAsteriskToken && p.atVibeLangThrowStop() {
+		// ASI ended the preceding field. This * starts its own generator method.
+		p.vibelangThrowStop = nil
+	}
 	asteriskToken := p.parseOptionalToken(ast.KindAsteriskToken)
 	name := p.parsePropertyName()
 	// Note: this is not legal as per the grammar.  But we allow it in the parser and
@@ -4971,6 +4982,9 @@ func (p *Parser) parseBinaryExpressionRest(precedence ast.OperatorPrecedence, le
 		// We either have a binary operator here, or we're finished.  We call
 		// reScanGreaterToken so that we merge token sequences like > and = into >=
 		operator := p.reScanGreaterThanToken()
+		if p.atVibeLangThrowStop() && !p.vibelangThrowStop.reported {
+			break // a line break may end a throw expression (vibelang_throw_lookahead.go)
+		}
 		if p.isVibeLangIs() {
 			// subject is pattern binds as instanceof does (vibelang_match.go)
 			if !shouldConsumeBinaryOperator(ast.KindInstanceOfKeyword, ast.GetBinaryOperatorPrecedence(ast.KindInstanceOfKeyword), precedence) {
@@ -5496,6 +5510,11 @@ func (p *Parser) parseSimpleUnaryExpression() *ast.Expression {
 		// //  UnaryExpression (modified):
 		// //      < type > UnaryExpression
 		return p.parseTypeAssertion()
+	case ast.KindThrowKeyword:
+		if p.isStartOfVibeLangThrowExpression() {
+			return p.parseVibeLangThrowExpression() // !throw e, throw throw e (VIP-41, vibelang_blocks.go)
+		}
+		return p.parseUpdateExpression()
 	case ast.KindTryKeyword:
 		if p.isStartOfVibeLangTry() {
 			return p.parseVibeLangTry() // try e, which runs an Effect (vibelang_try.go)
@@ -6532,6 +6551,13 @@ func (p *Parser) canParseSemicolon() bool {
 func (p *Parser) tryParseSemicolon() bool {
 	if !p.canParseSemicolon() {
 		return false
+	}
+	if p.atVibeLangThrowStop() && p.token != ast.KindAsteriskToken {
+		// ASI ended the throw expression. Errors in the following statement
+		// belong to that statement, not to the throw's lookahead. A * stays
+		// deferred until a class member consumes it; in statement position
+		// it is still an invalid throw lookahead.
+		p.vibelangThrowStop = nil
 	}
 	if p.token == ast.KindSemicolonToken {
 		// consume the semicolon if it was explicitly provided.
