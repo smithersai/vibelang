@@ -1,0 +1,17 @@
+{
+  "origin": "t3code apps/desktop: vite.config.d.ts default with src/window/DesktopApplicationMenu.d.ts, drive-t3code-apps 21:05Z",
+  "qualification": "Minimized shape of the witness, not original t3code, Vite or electron-updater declaration bytes",
+  "shared": {
+    "dep/package.json": "{\"name\":\"dep\",\"version\":\"1.0.0\",\"types\":\"index.d.ts\"}\n",
+    "dep/index.d.ts": "// @ts-ignore optional peer, absent here, as Vite does for lightningcss and sass\nimport type { Options } from \"optional-peer\";\nexport interface UserConfig { name: string; css?: Options }\nexport interface PlainConfig { name: string }\nexport interface OtherConfig { title: number }\n",
+    "untyped/package.json": "{\"name\":\"untyped\",\"version\":\"1.0.0\",\"main\":\"index.js\"}\n",
+    "untyped/index.js": "exports.value = 1;\n",
+    "updater/package.json": "{\"name\":\"updater\",\"version\":\"1.0.0\",\"types\":\"index.d.ts\"}\n",
+    "updater/index.d.ts": "import { SemVer } from \"untyped\";\nexport declare class AppUpdater { version: SemVer }\n"
+  },
+  "files": {
+    "config.d.ts": "import type { UserConfig } from \"dep\";\ndeclare const c: UserConfig;\nexport default c;\n",
+    "menu.d.ts": "import type { AppUpdater } from \"updater\";\nexport declare const updater: AppUpdater;\n",
+    "other.d.ts": "import { value } from \"untyped\";\nexport declare const other: typeof value;\n"
+  }
+}

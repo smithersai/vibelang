@@ -233,6 +233,34 @@ when their source differs between the snapshots. The t3code corpus pair
 `scripts/api-identity-corpus/t3code-absent-on-both-sides.json` keeps the mobile
 (`TS2883`) and server/contracts (`TS7056`) shapes.
 
+## Error types in an export's closure
+
+An error type compares as `any`, so a strict identity probe passes vacuously
+on it. Every compared export is walked for error types, whatever else the
+program reports: one export's verdict never depends on diagnostics elsewhere
+in the batch. A hit is a blocking record, "Compared export depends on an
+unresolved or erroneous type".
+
+The walk stops at a closed declaration outside both snapshots, such as a
+package under a `moduleRoots` directory. That file is one physical declaration
+on both sides, so an error inside it cannot tell them apart. This covers a
+`// @ts-ignore`d optional peer in Vite's `UserConfig`, and a `TS7016` in a
+dependency reached by another entry point. The boundary has three limits:
+
+| Case | Result |
+| --- | --- |
+| Instantiated shared generic, such as `Box<Owned>` | Walked: its arguments belong to a side. |
+| Shared interface with an owned module augmentation | Walked: one of its declarations belongs to a side. |
+| Sides reach different shared declarations, or the same ones in a different order | Walked from the first difference: an error there can hide the change. |
+
+An export that is one symbol on both sides, re-exported from a shared file, is
+not walked. A package under a snapshot's own `node_modules` belongs to that
+side and is walked. Prefer this failure to a false pass: reordering union
+members around a shared declaration that contains an error fails the export.
+
+The corpus pair `scripts/api-identity-corpus/t3code-unrelated-diagnostic.json`
+keeps the t3code desktop shape.
+
 Project `noUnusedLocals` and `noUnusedParameters` checks apply to the original
 input programs. They are disabled only for the synthetic probe program, whose
 private helper aliases and imports are not part of the package. Real unused

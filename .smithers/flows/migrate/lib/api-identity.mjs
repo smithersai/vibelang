@@ -1065,19 +1065,36 @@ function prepareComparison(ts, before, after, options, progress) {
     if (found) reachCache.set(symbol, found)
     return found
   }
-  // Error-any can make a strict identity probe pass vacuously. Inspect only
-  // compared export types, so an unrelated error in a dependency is harmless.
+  // Error-any can make a strict identity probe pass vacuously, so every
+  // compared export is inspected, whatever the rest of the program reports.
+  // A declaration outside both snapshots is one physical file on both sides:
+  // the walk stops there and records it, and an error inside cannot tell the
+  // sides apart as long as both reach the same declarations in the same order.
   const invalidExports = []
-  const errorCache = new Map()
-  function erroneous(root) {
-    if (errorCache.has(root)) return errorCache.get(root)
-    const pending = [root], seen = new Set(), expanded = new Set()
+  const errorCache = new Map(), boundedErrorCache = new Map()
+  const sharedFile = file => !virtual.has(file) && ![before, after].some(base => file === base || file.startsWith(base + "/"))
+  const sharedSymbol = symbol => symbol?.declarations?.length > 0 &&
+    symbol.declarations.every(d => sharedFile(d.getSourceFile().fileName))
+  // An instantiation carries a side's arguments; only a closed type is shared.
+  const sharedDeclaration = type => type.flags & ts.TypeFlags.Object && !type.aliasTypeArguments?.length &&
+    !(type.objectFlags & ts.ObjectFlags.Instantiated) &&
+    !(type.objectFlags & ts.ObjectFlags.Reference && checker.getTypeArguments(type).length) && sharedSymbol(type.symbol)
+  function walkErrors(root, bounded) {
+    const cache = bounded ? boundedErrorCache : errorCache
+    if (cache.has(root)) return cache.get(root)
+    const pending = [root], seen = new Set(), expanded = new Set(), frontier = []
     while (pending.length) {
       const type = pending.pop()
-    if (!type || seen.has(type)) continue
+    if (!type) continue
+    if (bounded && sharedDeclaration(type)) { frontier.push(type); continue }
+    if (seen.has(type)) continue
     seen.add(type)
     const identity = type.target ?? type
-    if (type.flags & ts.TypeFlags.Any && ["error", "unresolved"].includes(type.intrinsicName)) { errorCache.set(root, true); return true }
+    if (type.flags & ts.TypeFlags.Any && ["error", "unresolved"].includes(type.intrinsicName)) {
+      const walk = { error: true, frontier }
+      cache.set(root, walk)
+      return walk
+    }
     const nested = [...(type.types ?? []), ...(type.aliasTypeArguments ?? [])]
     if (type.flags & ts.TypeFlags.TypeParameter) nested.push(checker.getBaseConstraintOfType(type), type.getDefault?.())
     if (type.flags & ts.TypeFlags.Conditional) nested.push(type.checkType, type.extendsType, type.resolvedTrueType, type.resolvedFalseType)
@@ -1106,8 +1123,25 @@ function prepareComparison(ts, before, after, options, progress) {
     }
       for (let i = nested.length - 1; i >= 0; i--) pending.push(nested[i])
     }
-    errorCache.set(root, false)
-    return false
+    const walk = { error: false, frontier }
+    cache.set(root, walk)
+    return walk
+  }
+  function erroneous(leftRoots, rightRoots) {
+    const sides = [leftRoots, rightRoots].map(roots => roots.map(root => walkErrors(root, true)))
+    if (sides.flat().some(walk => walk.error)) return true
+    const [left, right] = sides.map(walks => walks.flatMap(walk => walk.frontier))
+    let same = 0
+    while (same < left.length && left[same] === right[same]) same++
+    // From the first difference on, an error in a shared declaration can hide it.
+    return [...left.slice(same), ...right.slice(same)].some(type => walkErrors(type, false).error)
+  }
+  const exportTypes = symbol => {
+    const d = symbol.valueDeclaration ?? symbol.declarations?.[0]
+    return [...(symbol.declarations ?? []).flatMap(decl => (decl.typeParameters ?? []).flatMap(parameter =>
+      [parameter.constraint, parameter.default].filter(Boolean).map(type => checker.getTypeAtLocation(type)))),
+      ...(symbol.flags & ts.SymbolFlags.Type ? [checker.getDeclaredTypeOfSymbol(symbol)] : []),
+      ...(d && symbol.flags & ts.SymbolFlags.Value ? [checker.getTypeOfSymbolAtLocation(symbol, d)] : [])]
   }
   const checks = []
   const imports = []
@@ -1243,19 +1277,13 @@ function prepareComparison(ts, before, after, options, progress) {
         return
       }
     }
-    if (inputDiagnostics.length || originalDiagnostics.length) {
-      for (const symbol of [a, b]) {
-        const d = symbol.valueDeclaration ?? symbol.declarations?.[0]
-        const invalidParameter = symbol.declarations?.some(decl => decl.typeParameters?.some(parameter =>
-          [parameter.constraint, parameter.default].some(type => type && erroneous(checker.getTypeAtLocation(type))) ||
-          inputDiagnostics.some(diagnostic => diagnostic.file === parameter.getSourceFile().fileName &&
-            diagnostic.start >= parameter.pos && diagnostic.start < parameter.end)))
-        if (invalidParameter || (symbol.flags & ts.SymbolFlags.Type && erroneous(checker.getDeclaredTypeOfSymbol(symbol))) ||
-            (d && symbol.flags & ts.SymbolFlags.Value && erroneous(checker.getTypeOfSymbolAtLocation(symbol, d))))
-          invalidExports.push({ entrypoint, export: name, blocking: true, ...(absentScope ? { scope: "export" } : {}),
-            diagnostic: "Compared export depends on an unresolved or erroneous type; identity probe cannot establish its API." })
-      }
-    }
+    const invalidParameter = symbol => symbol.declarations?.some(decl => decl.typeParameters?.some(parameter =>
+      inputDiagnostics.some(diagnostic => diagnostic.file === parameter.getSourceFile().fileName &&
+        diagnostic.start >= parameter.pos && diagnostic.start < parameter.end)))
+    // One shared symbol on both sides is one declaration: it cannot differ.
+    if (!(a === b && sharedSymbol(a)) && (invalidParameter(a) || invalidParameter(b) || erroneous(exportTypes(a), exportTypes(b))))
+      invalidExports.push({ entrypoint, export: name, blocking: true, ...(absentScope ? { scope: "export" } : {}),
+        diagnostic: "Compared export depends on an unresolved or erroneous type; identity probe cannot establish its API." })
     const afiles = new Set(a.declarations?.map(d => d.getSourceFile().fileName))
     const bfiles = new Set(b.declarations?.map(d => d.getSourceFile().fileName))
     const equalDocs = a === b || a.name === b.name && afiles.size === bfiles.size && bfiles.size > 0 &&
