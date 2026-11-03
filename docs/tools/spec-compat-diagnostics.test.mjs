@@ -43,7 +43,7 @@ test("each existing migration warning has an Appendix B row and an owning VIP am
     const source = read("../typescript/tsc/internal/vibelang/" + file)
     assert.match(source, new RegExp("EK" + code + " = message\\(" + code + ", warningCategory,"))
     const row = appendix().split("\n").find(line => line.startsWith("| `EK" + code + "` |"))
-    assert.ok(row?.includes("| warning: migration"), "missing migration-warning row EK" + code)
+    assert.ok(/\| warning: (?:preserving )?migration/.test(row ?? ""), "missing migration-warning row EK" + code)
     assert.ok(read("design/vips/" + vip).includes("`EK" + code + "`"), "missing owning VIP amendment EK" + code)
   }
 })

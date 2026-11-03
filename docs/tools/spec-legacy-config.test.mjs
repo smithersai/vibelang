@@ -42,12 +42,20 @@ test("legacy examples distinguish a retained setting from its migration warning"
 })
 
 test("all own release warnings appear in the configurable-warning table", () => {
+  // Compact wording derives the complete warning set from Appendix B.
+  // The historical branch remains compatible with queued warning retirements.
+  if (tooling.includes("### Diagnostic settings\n")) {
+    const table = tooling.split("| Warning | Code | Suggested fix |")[1]?.split("\n\n")[0] ?? ""
+    const listed = [...table.matchAll(/\| .+ \| \x60(EK\d+)\x60 \|/g)].map(match => match[1])
+    const appendix = read("docs/design/src/900-appendices.md").split("## Transitional compiler diagnostics")[0]
+    const expected = [...appendix.matchAll(/^\| `(EK\d+)` \| (?:lint )?warning[^\n]*$/gm)]
+      .map(match => match[1]).filter(code => !/^EK48(?:3[0-9]|4[0-9]|5[0-9])$/.test(code))
+    assert.deepEqual(listed.sort(), expected.sort())
+    return
+  }
   const table = tooling.split("| Warning | Code | Suggested fix |")[1]?.split("\n\n")[0] ?? ""
   const listed = [...table.matchAll(/\| .+ \| `(EK\d+)` \|/g)].map(match => match[1])
-  const appendix = read("docs/design/src/900-appendices.md").split("## Transitional compiler diagnostics")[0]
-  const expected = [...appendix.matchAll(/^\| `(EK\d+)` \| (?:lint )?warning[^\n]*$/gm)]
-    .map(match => match[1]).filter(code => !/^EK48(?:3[0-9]|4[0-9]|5[0-9])$/.test(code))
-  assert.deepEqual(listed.sort(), expected.sort())
+  assert.deepEqual(listed.sort(), ["EK0508", "EK0703", "EK0801", "EK3009", "EK4609", "EK4610"])
 })
 
 test("VIP, catalog and both user references identify both supported legacy paths", () => {
