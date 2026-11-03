@@ -198,3 +198,7 @@ only diagnostics for the source being loaded and project-wide errors, including
 configuration diagnostics.
 An unrelated file's type errors do not prevent loading a clean module. Run
 `vibelang -p tsconfig.json` to check every project file.
+
+Workers use a separate plugin list. Add `worker: { plugins: () => [vibelang()] }`
+to the Vite config when a worker imports `.vibe`, including a worker started
+by a workspace dependency. The factory creates a fresh plugin for each build.

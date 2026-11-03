@@ -337,8 +337,9 @@ export function addElectronVitePlugin(text, ts) {
   return applyPluginEdits(text, edits)
 }
 
-// Whether a package's sources start a Vite worker build: `new Worker(new
-// URL(...))`, `new SharedWorker(new URL(...))` or a `?worker` import.
+// Whether a package or one of its local workspace dependencies starts a Vite
+// worker build. Worker plugins belong to the consuming app, even when the
+// constructor lives in a dependency (opencode's Office preview).
 export function startsWorkers(root, dir) {
   const walk = (path) => {
     let entries = []
@@ -346,7 +347,7 @@ export function startsWorkers(root, dir) {
     for (const entry of entries) {
       const child = path ? posix.join(path, entry.name) : entry.name
       if (entry.isDirectory()) {
-        if (!skippedDirectory(entry.name) && walk(child)) return true
+        if (!skippedDirectory(entry.name) && !testDirectory(entry.name) && !existsSync(join(root, child, "package.json")) && walk(child)) return true
       } else if (/\.(?:[cm]?[jt]sx?|vibe)$/.test(entry.name)) {
         const text = readFileSync(join(root, child), "utf8")
         if (/new\s+(?:Shared)?Worker\s*\(\s*new\s+URL\s*\(/.test(text) || /['"][^'"]+\?worker(?:&[^'"]*)?['"]/.test(text)) return true
@@ -354,7 +355,20 @@ export function startsWorkers(root, dir) {
     }
     return false
   }
-  return walk(dir === "." ? "" : dir)
+  const all = repositoryPackages(root)
+  const owns = ownedPaths(root)
+  const byName = new Map(all.filter(pkg => pkg.manifest.name && owns(posix.join(pkg.dir, "package.json"))).map(pkg => [pkg.manifest.name, pkg]))
+  const byDir = new Map(all.map(pkg => [pkg.dir, pkg]))
+  const pending = [dir], seen = new Set()
+  for (let i = 0; i < pending.length; i++) {
+    const current = pending[i]
+    if (seen.has(current)) continue
+    seen.add(current)
+    if (walk(current === "." ? "" : current)) return true
+    const pkg = byDir.get(current)
+    if (pkg) pending.push(...localPackageDependencies(pkg, byName).map(dependency => dependency.dir))
+  }
+  return false
 }
 
 /**
@@ -558,6 +572,13 @@ const electronViteConfigFile = /^electron\.vite\.config\.m?[jt]s$/
 // A dependency on a workspace package by its source: workspace:, file:, link: or *.
 const localSpec = /^(?:workspace:|file:|link:|\*$)/
 
+const localPackageDependencies = (pkg, byName) => Object.entries({
+  ...pkg.manifest.dependencies, ...pkg.manifest.devDependencies,
+  ...pkg.manifest.peerDependencies, ...pkg.manifest.optionalDependencies
+}).filter(([name, spec]) => typeof spec === "string" && localSpec.test(spec) && byName.has(name))
+  .map(([name]) => byName.get(name))
+
+
 /**
  * The repository's packages that load migrated sources: each migrated package
  * and each that depends on one through workspace packages
@@ -566,8 +587,7 @@ const localSpec = /^(?:workspace:|file:|link:|\*$)/
 export function packagesReaching(root, migrated) {
   const all = repositoryPackages(root)
   const byName = new Map(all.filter((pkg) => pkg.manifest.name).map((pkg) => [pkg.manifest.name, pkg]))
-  const local = (pkg) => Object.entries({ ...pkg.manifest.dependencies, ...pkg.manifest.devDependencies, ...pkg.manifest.peerDependencies })
-    .filter(([name, spec]) => typeof spec === "string" && localSpec.test(spec) && byName.has(name)).map(([name]) => byName.get(name))
+  const local = (pkg) => localPackageDependencies(pkg, byName)
   // Propagate from the migrated packages through reverse dependency edges.
   // A recursive walk cannot memoize false while a dependency cycle is open:
   // another branch may still connect the whole cycle to a migrated package.

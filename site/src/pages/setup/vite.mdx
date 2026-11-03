@@ -34,6 +34,27 @@ import vibelang from "vibelang-vite"
 export default defineConfig({ plugins: [vibelang()] })
 ```
 
+### Workers in the app or its workspace dependencies
+
+Vite builds workers with `worker.plugins`. Add a factory there when a worker
+imports `.vibe`, including workers started inside a workspace dependency:
+
+```ts
+// TypeScript (.ts)
+import { defineConfig } from "vite"
+import vibelang from "vibelang-vite"
+
+export default defineConfig({
+  plugins: [vibelang()],
+  worker: { plugins: () => [vibelang()] }
+})
+```
+
+The factory creates a fresh plugin for each worker build. Migration setup
+follows local workspace dependencies to detect these workers and adds the
+factory to the consuming app's config. Test and fixture sources do not trigger
+this edit.
+
 ### When the Vite config imports a VibeLang module
 
 Vite loads `vite.config.ts` before creating its plugins. If that config, or a

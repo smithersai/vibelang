@@ -1,0 +1,20 @@
+{
+  "key": "opencode:node-build:PWA-masks-migration-build-error",
+  "property": "opencode-worker-workspaces",
+  "rule": "docs/design/src/007-tooling.md: bundlers read .vibe; setup preserves tests and fixtures",
+  "input": {
+    "depth": 2,
+    "cycle": true,
+    "field": "dependencies",
+    "kind": "worker",
+    "spec": "workspace:*",
+    "protected": "tests"
+  },
+  "minimized": {
+    "app": "export default defineConfig({ plugins: [vibelang()] })",
+    "package": "app -> gui -> office (workspace dependencies)",
+    "presentation": "new Worker(new URL('./presentation.worker.ts', import.meta.url), { type: 'module', name: 'PowerPoint preview' })",
+    "worker": "import { slideText } from './slide-text.vibe'; self.postMessage(slideText({text: 'PowerPoint preview'}))",
+    "slideText": "import type { Slide } from './types.ts'; export function slideText(slide: Slide): string { return slide.text }"
+  }
+}
