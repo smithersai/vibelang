@@ -316,7 +316,8 @@ type __Assert<T extends true> = T;
 // Deferred infer/mapped parameters carry declaration-local tsc identities.
 // Intern corresponding modules only after proving their complete resolved
 // dependency closures have the same syntax (comments/quotes/specifiers aside).
-// The final generated strict probe still imports both published entry points.
+// Original entry bindings and docs remain checked; shared canonical exports
+// prove identity directly, while other exports use generated strict probes.
 // Changed or unresolved dependencies invalidate every ancestor, including cycles.
 function equivalentModules(ts, program, host, left, right, externalGroups, documentation) {
   const printer = ts.createPrinter({ removeComments: true })
@@ -864,7 +865,7 @@ function prepareComparison(ts, before, after, options, progress) {
   const imports = []
   const bridges = new Map()
   const genericBridges = new Map()
-  let counter = 0
+  let counter = 0, sharedExportProofs = 0
   const printer = ts.createPrinter()
   const sourceExports = (file, entry, side) => {
     const sf = program.getSourceFile(file)
@@ -974,7 +975,7 @@ function prepareComparison(ts, before, after, options, progress) {
     if (declaration && symbol.flags & ts.SymbolFlags.Value) walk(checker.getTypeOfSymbolAtLocation(symbol, declaration), "")
     return found
   }
-  function visit(a, b, apath, bpath, entrypoint, name, trail = new Set()) {
+  function visit(a, b, apath, bpath, entrypoint, name, trail = new Set(), sharedModule = false) {
     const unalias = s => s.flags & ts.SymbolFlags.Alias ? checker.getAliasedSymbol(s) : s
     const adoc = docs(ts, checker, a) || docs(ts, checker, unalias(a))
     const bdoc = docs(ts, checker, b) || docs(ts, checker, unalias(b))
@@ -1011,6 +1012,10 @@ function prepareComparison(ts, before, after, options, progress) {
         continue
       }
       if (!(amask & flag)) continue
+      // Both bindings name the same export in a proven canonical module.
+      // Original diagnostics, error taint, meaning, names and docs remain
+      // checked; a generated assertion cannot strengthen this identity.
+      if (sharedModule) { sharedExportProofs++; continue }
       if (aspect === "value") recordCheck(entrypoint, name, "typeof " + apath, "typeof " + bpath, aspect)
       else {
         const bridge = (symbol, path) => {
@@ -1107,7 +1112,7 @@ function prepareComparison(ts, before, after, options, progress) {
             const source = symbol.declarations?.find(ts.isSourceFile)
             return (source ? `import(${JSON.stringify(slash(source.fileName))})` : path) + "." + child
           }
-          visit(ae.get(child), be.get(child), childPath(a, apath), childPath(b, bpath), entrypoint, name + "." + child, trail)
+          visit(ae.get(child), be.get(child), childPath(a, apath), childPath(b, bpath), entrypoint, name + "." + child, trail, sharedModule)
         }
       }
     }
@@ -1136,10 +1141,14 @@ function prepareComparison(ts, before, after, options, progress) {
           imports.push(`import type { ${JSON.stringify(name)} as ${alias} } from ${JSON.stringify(slash(path))};`)
           return alias
         }
-        visit(a.get(name), b.get(name), ref(left[key], name, a), ref(right[key], name, b), key, name)
+        const sharedModule = !a.refs?.has(name) && !b.refs?.has(name) &&
+          (equivalents.get(left[key]) ?? left[key]) === (equivalents.get(right[key]) ?? right[key])
+        visit(a.get(name), b.get(name), ref(left[key], name, a), ref(right[key], name, b),
+          key, name, new Set(), sharedModule)
       }
     }
   }
+  progress("export-comparison-plan", { sharedExportProofs, structuralProbes: checks.length })
   for (const [path, text] of bridges) virtual.set(resolve(path), text)
   for (const [from, to] of equivalents) {
     const text = bridges.get(from)

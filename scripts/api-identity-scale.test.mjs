@@ -454,3 +454,84 @@ test("property: shared generic bridges preserve recursive namespaces and comment
     }
   })
 })
+
+const privateNamespace = name => JSON.parse(readFileSync(new URL("./api-identity-corpus/opencode-proven-module-exports.json", import.meta.url))).source.replaceAll("__NAMESPACE__",name)
+test("identical namespace exports retain private generic constraint scope", () => {
+  const text=privateNamespace("A")
+  fixture({"index.d.ts":text},{"index.d.ts":text},(a,b)=>{
+    for(const dir of [a,b]){
+      const program=ts.createProgram([join(dir,"index.d.ts")],{...options.compilerOptions,strict:true,noEmit:true,types:[]})
+      assert.deepEqual(ts.getPreEmitDiagnostics(program),[],"native TypeScript accepts the namespace")
+    }
+    for(const target of [a,b]){
+      const result=compareApiIdentity(ts,a,target,options)
+      assert.equal(result.identical,true,JSON.stringify(result))
+      assert.equal(result.comparisonComplete,true)
+    }
+  })
+})
+
+test("proven namespace identity preserves other names, types and member comments", () => {
+  for(const mutation of ["none","name","type","doc"]){
+    const before={"index.d.ts":privateNamespace("A"),"marker.d.ts":"export type Marker = string;"}
+    const after={...before}
+    if(mutation==="name")after["marker.d.ts"]="export type Renamed = string;"
+    if(mutation==="type")after["marker.d.ts"]="export type Marker = number;"
+    if(mutation==="doc")after["index.d.ts"]=after["index.d.ts"].replace("Original","Changed")
+    fixture(before,after,(a,b)=>{
+      if(mutation==="doc"){
+        const comments=[a,b].map(base=>{
+          const program=ts.createProgram([join(base,"index.d.ts")],{...options.compilerOptions,strict:true,noEmit:true,types:[]})
+          const checker=program.getTypeChecker(),file=program.getSourceFile(join(base,"index.d.ts"))
+          const namespace=checker.getExportsOfModule(checker.getSymbolAtLocation(file)).find(s=>s.name==="A")
+          const box=checker.getExportsOfModule(namespace).find(s=>s.name==="Box")
+          const value=checker.getPropertiesOfType(checker.getDeclaredTypeOfSymbol(box)).find(s=>s.name==="value")
+          return ts.displayPartsToString(value.getDocumentationComment(checker))
+        })
+        assert.deepEqual(comments,["Original","Changed"],"native TypeScript observes both member comments")
+      }
+      const result=compareApiIdentity(ts,a,b,options)
+      assert.equal(result.comparisonComplete,true,JSON.stringify({mutation,result}))
+      assert.equal(result.identical,mutation==="none")
+      if(mutation==="name")assert.ok(result.nameDifferences.length>0)
+      if(mutation==="type")assert.ok(result.typeDifferences.some(d=>d.export==="Marker"))
+      if(mutation==="doc")assert.ok(result.docDifferences.length>0)
+    })
+  }
+})
+
+test("property: proven namespace exports preserve batch-independent types and comments", async()=>{
+  await checkProperty(fc,{
+    name:"api-identity-proven-module-export-identity",
+    rule:"Will: identical trees report identical; each exported name, strict type and doc remains observable regardless of comparison batch size",
+    command:"node --test scripts/api-identity-scale.test.mjs",
+    numRuns:6,
+    arbitrary:fc.record({name:fc.constantFrom("Alpha","Beta","Gamma"),tag:fc.integer({min:1,max:999}),changed:fc.boolean(),entry:fc.integer({min:1,max:3}),probe:fc.integer({min:1,max:8})}),
+    check:({name,tag,changed,entry,probe})=>{
+      const before={"index.d.ts":privateNamespace(name).replace("tag: string","tag: "+tag),"marker.d.ts":"export type Marker = string;"}
+      const after={...before,"index.d.ts":changed?before["index.d.ts"].replace("Original","Changed"):before["index.d.ts"]}
+      fixture(before,after,(a,b)=>{
+        const result=compareApiIdentity(ts,a,b,{...options,entryBatchSize:entry,probeBatchSize:probe})
+        assert.equal(result.comparisonComplete,true,JSON.stringify(result))
+        assert.equal(result.identical,!changed)
+        if(changed)assert.ok(result.docDifferences.length>0)
+      })
+    }
+  })
+})
+
+test("generic bridge keys distinguish an ambient module name from a namespace path", () => {
+  fixture({"index.d.ts":"export import X = A.X;"},{"index.d.ts":'export type { X } from "A";'},(a,b)=>{
+    const shared=join(a,"..","shared.d.ts")
+    writeFileSync(shared,'declare namespace A { export type X<T extends string> = string; }\ndeclare module "A" { export type X<T extends number> = string; }'.replaceAll("\\n","\n"))
+    const settings={...options.compilerOptions,types:[shared],strict:true,noEmit:true,module:ts.ModuleKind.ESNext,moduleResolution:ts.ModuleResolutionKind.Bundler}
+    for(const dir of [a,b]){
+      const original=ts.createProgram([join(dir,"index.d.ts")],settings)
+      assert.deepEqual(ts.getPreEmitDiagnostics(original),[],"stock tsc accepts each original input")
+    }
+    const result=compareApiIdentity(ts,a,b,{compilerOptions:settings})
+    assert.equal(result.comparisonComplete,true,JSON.stringify(result))
+    assert.equal(result.identical,false,JSON.stringify(result))
+    assert.ok(result.typeDifferences.some(d=>d.export==="X"&&d.aspect==="type"),JSON.stringify(result))
+  })
+})

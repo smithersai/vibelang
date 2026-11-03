@@ -1,0 +1,6 @@
+{
+  "repo": "opencode",
+  "qualification": "Generated namespace-scope neighbourhood of the recursive generic declaration failures; not original repository bytes.",
+  "rule": "Will: exported names, strict type identity in both directions and comments match; identical trees report identical.",
+  "source": "export declare namespace __NAMESPACE__ {\n  interface Hidden { tag: string }\n  export interface Box<T extends Hidden = Hidden> {\n    /** Original */\n    value: T\n  }\n}\n"
+}

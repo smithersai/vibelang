@@ -234,3 +234,12 @@ type identity prove reflexive recursive generic comparisons. Input errors
 and documentation remain checked independently.
 
 The Go counterpart oracles use the same API rule for bare declaration trees and published packages. Changed export documentation is a difference; whitespace-only JSDoc changes are not. An unpublished declaration outside a package's `types` entry does not change that package's API.
+
+A complete resolved module-closure proof can establish that both bindings name
+the same canonical module export. Those exports need no generated type
+assertion or generic bridge. Original input diagnostics and error taint remain
+checked, and namespace traversal still compares every name, meaning and doc
+comment. Other bindings retain strict bidirectional TypeScript probes.
+Snapshot-specific ambient references keep their independent comparisons.
+Profiling reports `export-comparison-plan` with `sharedExportProofs` and
+`structuralProbes` to distinguish validation work from comparison work.
