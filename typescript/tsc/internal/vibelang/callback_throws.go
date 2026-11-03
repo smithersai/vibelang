@@ -168,17 +168,57 @@ func foreignThrows(c *checker.Checker, expr *ast.Node) (throwContract, bool) {
 	var contract throwContract
 	for _, decl := range symbol.Declarations() {
 		file := ast.GetSourceFileOfNode(decl)
-		if file == nil || isVibeLangFile(file) || isLibFile(c, file) {
+		if file == nil || isLibFile(c, file) {
 			return throwContract{}, false
+		}
+		if isVibeLangFile(file) {
+			return foreignAliasThrows(c, expr)
 		}
 		own := writtenThrows(c, decl)
 		if !own.tagged {
-			return throwContract{}, false
+			return foreignAliasThrows(c, expr)
 		}
 		contract.unknown = contract.unknown || own.unknown
 		contract.types = append(contract.types, own.types...)
 	}
 	return contract, contract.unknown || len(contract.types) > 0
+}
+
+// A local alias is not a new callable. TypeScript keeps its foreign call
+// signature through variable bindings, destructuring and ordinary type
+// inference. Read its throws annotation without inferring throws from a body
+// or following an initializer past an explicit type assertion. Overloaded/union
+// source values are not resolved by this single-signature path.
+func foreignAliasThrows(c *checker.Checker, expr *ast.Node) (throwContract, bool) {
+	t := c.GetTypeAtLocation(expr)
+	if t == nil || t.Flags()&checker.TypeFlagsUnion != 0 {
+		return throwContract{}, false
+	}
+	signatures := c.GetSignaturesOfType(t, checker.SignatureKindCall)
+	if len(signatures) != 1 {
+		return throwContract{}, false
+	}
+	signature := signatures[0]
+	for signature.Target() != nil {
+		signature = signature.Target()
+	}
+	decl := signature.Declaration()
+	if decl == nil {
+		return throwContract{}, false
+	}
+	file := ast.GetSourceFileOfNode(decl)
+	if file == nil || isVibeLangFile(file) || isLibFile(c, file) ||
+		isEffectfulType(c, c.GetReturnTypeOfSignature(signature)) {
+		return throwContract{}, false
+	}
+	// A comment on a type alias does not annotate its function type.
+	for _, host := range jsdocHosts(decl) {
+		if ast.IsTypeAliasDeclaration(host) {
+			return throwContract{}, false
+		}
+	}
+	contract := writtenThrows(c, decl)
+	return contract, contract.tagged && (contract.unknown || len(contract.types) != 0)
 }
 
 func checkCallbackValue(c *checker.Checker, expr *ast.Node) {

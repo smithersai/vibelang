@@ -1,0 +1,14 @@
+// expect-result: [1,2,9,"function",3]
+import { risky, safe, allow, program } from "./helpers.ts"
+
+const safeAlias = safe
+const riskyAlias = risky
+const programAlias = program
+function own() { return 2 }
+const localAlias = own
+
+export effect function main() {
+  const admitted = allow(riskyAlias)
+  const recovered = Effect.try(riskyAlias) catch () => 9
+  return [safeAlias(), localAlias(), recovered, typeof admitted, try programAlias()]
+}

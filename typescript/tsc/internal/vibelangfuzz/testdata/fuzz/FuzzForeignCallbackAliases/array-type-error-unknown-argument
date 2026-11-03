@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("key:array/type-error/unknown/argument")

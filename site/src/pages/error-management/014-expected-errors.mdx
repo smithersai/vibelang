@@ -57,6 +57,8 @@ A foreign function value must fit the function type it is passed or assigned as.
 
 `try value` delegates like `yield* value`, including in a tail return. An unchecked `any` adds no runtime Effect guard: a noniterable produces a native `TypeError` defect, while an ordinary iterator can delegate Effects or return a value. Typed operands must still pass the Effect operand check.
 
+A local alias such as `const saved = parse`, a chained binding or destructuring keeps the foreign call signature's `@throws` contract. Passing `saved` is checked just as passing `parse` is.
+
 In an effect function, `throw` is a typed failure and a catch expression receives typed failures only. A plain function can't throw: a `throw` there is `EK0401`, and so is a call known to throw, such as `JSON.parse(text)`, unless the call sits in the `try` block of a `try`/`catch` statement. Make the function `effect`, or move the code to a `.ts` file. A plain function's `try`/`catch` statement still handles exceptions from the calls it makes while returning a value:
 
 ```vibe

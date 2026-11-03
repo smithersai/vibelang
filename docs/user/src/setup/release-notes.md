@@ -604,6 +604,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - An explicit `try` of an unchecked call could warn that its returned Effect would not run. That false `EK4409` warning is no longer shown; the Effect still runs normally.
 
+- Passing a local alias such as `const saved = parse` could hide a TypeScript function's written `@throws` contract. The `EK0402` callback check now follows the retained foreign call signature through bindings and destructuring.
+
 - Documentation checks accepted throws in synchronous arrows whose parameter was named `effect`; they now apply the same rule after parameter renaming.
 - No-throw validation incorrectly failed after a plain catch handler became an effect handler; its regression fixtures now use catch's existing join point without a redundant `try`.
 - Migration setup could leave a nested workspace consumer on `tsc` when a semver peer or npm alias resolved to migrated workspace sources. Setup now follows installed workspace links for compiler, test-runner and worker wiring while respecting nearer registry packages.

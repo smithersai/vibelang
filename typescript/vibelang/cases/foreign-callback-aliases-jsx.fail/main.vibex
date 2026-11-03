@@ -1,0 +1,14 @@
+// expect: EK0402 EK0402
+import { risky, safe } from "./helpers.ts"
+
+declare global {
+  namespace JSX {
+    interface Element {}
+    interface IntrinsicElements { button: { onClick: () => void } }
+  }
+}
+const handler = risky
+const safeHandler = safe
+export function AliasHandler() { return <button onClick={handler} /> }
+export function SpreadAliasHandler() { return <button {...{ onClick: handler }} /> }
+export function SafeAliasHandler() { return <button onClick={safeHandler} /> }

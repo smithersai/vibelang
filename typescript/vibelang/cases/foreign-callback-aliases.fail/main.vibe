@@ -1,0 +1,47 @@
+// expect: EK0402 EK0402 EK0402 EK0402 EK0402 EK0402 EK0402 EK0402 EK0402 EK0402 EK0402 EK0402 EK0402
+import { risky, safe, box, nativeAlias, call, allow } from "./helpers.ts"
+
+const plain = risky
+let mutable = risky
+const chained = plain
+const { risky: objectBinding } = box
+const [arrayBinding] = [risky] as const
+const property = box.risky
+const indexed = box["risky"]
+const bound = risky.bind(undefined)
+const annotated: typeof risky = risky
+const asserted = risky as typeof risky
+function identity<T>(value: T) { return value }
+const generic = identity(risky)
+const returned = (() => risky)()
+const safeAlias = safe
+
+export function check() {
+  call(plain)
+  call(mutable)
+  call(chained)
+  call(objectBinding)
+  call(arrayBinding)
+  call(property)
+  call(indexed)
+  call(bound)
+  call(annotated)
+  call(asserted)
+  call(generic)
+  call(returned)
+  call(nativeAlias)
+  call(safeAlias)
+  allow(plain)
+  allow(mutable)
+  allow(chained)
+  allow(objectBinding)
+  allow(arrayBinding)
+  allow(property)
+  allow(indexed)
+  allow(bound)
+  allow(annotated)
+  allow(asserted)
+  allow(generic)
+  allow(returned)
+  allow(nativeAlias)
+}
