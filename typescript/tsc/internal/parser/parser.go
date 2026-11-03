@@ -122,6 +122,7 @@ type Parser struct {
 	vibelangMatchTemps       int                         // names written for match and is, numbered per file (vibelang_match.go)
 	vibelangTemps            []*ast.Node                 // the identifiers of those names, which freshenVibeLangTemps renames when the file spells them (vibelang_match.go)
 	vibelangMatches          map[*ast.Node]*matchInfo    // match expressions as written, by their call or statement (vibelang_match.go)
+	vibelangMatchMemberArms  map[*ast.Node][]MatchMemberArm // normalized tagged-member coverage
 	vibelangIsBindings       map[*ast.Node]*isInfo       // is expressions whose patterns bind names, by their markers (vibelang_match.go)
 	vibelangIsHolders        map[*ast.Node]*ast.Node     // the parenthesized expression written around each such marker, which hoistVibeLangIs fills (vibelang_match.go)
 	vibelangSchemaTypes      map[*ast.Node]bool          // synthesized ordinary-schema companions, distinct from data aliases
@@ -137,10 +138,10 @@ type Parser struct {
 	vibelangSchemaOptionals  []ast.SchemaOptionalReference
 
 	// VIP-11 diagnostic marker, separate from syntax-extension state.
-	vibelangDeniedTrailingBlock bool       // request migration diagnostics; never consume its block
+	vibelangDeniedTrailingBlock bool // request migration diagnostics; never consume its block
 
-	vibelangCallableReturnType bool // implementation return annotations can end at a bare function-body brace
-	vibelangThrowStop           *throwStop // where automatic semicolon insertion may end a throw expression (vibelang_throw_lookahead.go)
+	vibelangCallableReturnType bool       // implementation return annotations can end at a bare function-body brace
+	vibelangThrowStop          *throwStop // where automatic semicolon insertion may end a throw expression (vibelang_throw_lookahead.go)
 }
 
 func newParser() *Parser {
@@ -543,6 +544,7 @@ func (p *Parser) parseSourceFileWorker() *ast.SourceFile {
 		p.parseVibeLangDos(result)      // do expressions, lowered to statements (vibelang_do.go)
 		p.freshenVibeLangTemps(result)  // the names written for match, is and do (vibelang_match.go)
 		p.attachVibeLangModules(result) // module declarations' bodies (vibelang_modules.go)
+		p.attachMatchMemberArms(result)
 		p.checkVibeLangEffectChannels(result)
 	}
 	return result

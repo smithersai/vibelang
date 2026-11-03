@@ -1997,6 +1997,7 @@ func (p *Parser) matchStatements(info *matchInfo, success func(value *ast.Node, 
 	}
 	if !defaulted && len(info.arms) > 0 {
 		noMatch := p.mCall(p.vibelangIntrinsic("$noMatch", info.anchor), []*ast.Node{path()}, info.anchor)
+		p.recordMatchMemberArms(noMatch, info)
 		out = append(out, unmatched(noMatch, info.anchor))
 	}
 	return out

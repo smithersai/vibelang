@@ -1,0 +1,5 @@
+// expect: EK4701
+function strings(s:{_tag:"A"|"B"},v:"A"|"B"){return match(s){when {_tag:v}:0;}}
+function booleans(s:{_tag:boolean},v:boolean){return match(s){when {_tag:v}:0;}}
+function scalars(s:1|2,v:1|2){L:{return 1;}return match(s){when v:0;}}
+export {}

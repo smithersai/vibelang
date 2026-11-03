@@ -1,0 +1,3 @@
+go test fuzz v1
+string("match-unreachable-plain-throw-complete")
+byte(0)

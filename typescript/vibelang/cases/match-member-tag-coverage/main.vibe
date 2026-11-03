@@ -1,0 +1,9 @@
+enum E { A, B }
+function shared(s:{_tag:"A";x:number}|{_tag:"A";y:number}) { return match(s) {when {"_tag":"A"}:1;} }
+function union(s:{_tag:"A"|"B"}|{_tag:"C"}) { return match(s) {when {"_tag":"A"}:1;when {"_tag":"B"}:2;when {"_tag":"C"}:3;} }
+function number(s:{_tag:1|2}) { return match(s) {when {"_tag":1}:1;when {"_tag":2}:2;} }
+function bigint(s:{_tag:1n|2n}) { return match(s) {when {"_tag":1n}:1;when {"_tag":2n}:2;} }
+function boolean(s:{_tag:boolean}) { return match(s) {when {"_tag":true}:1;when {"_tag":false}:2;} }
+function undefinedTag(s:{_tag:undefined}) { return match(s) {when {"_tag":undefined}:0;} }
+function enumTag(s:{_tag:E}) { return match(s) {when {"_tag":E.A}:1;when {"_tag":E.B}:2;} }
+export function main(){ return [shared({_tag:"A",x:1}),shared({_tag:"A",y:2}),union({_tag:"A"}),union({_tag:"B"}),union({_tag:"C"}),number({_tag:1}),number({_tag:2}),bigint({_tag:1n}),bigint({_tag:2n}),boolean({_tag:true}),boolean({_tag:false}),undefinedTag({_tag:undefined}),enumTag({_tag:E.A}),enumTag({_tag:E.B})] }

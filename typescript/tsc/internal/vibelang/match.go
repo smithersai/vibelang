@@ -260,7 +260,7 @@ func matchSubjectTypes(c *checker.Checker, call *ast.Node) (declared, left *chec
 	if declared == nil {
 		return nil, nil
 	}
-	return declared, left
+	return declared, remainingPatternMembers(c, call, left)
 }
 
 // isFiniteMatchType reports whether t is a finite union a match can cover:

@@ -353,6 +353,8 @@ func dataRules() []dataRule {
 	rules = append(rules, dataExhaustivenessRules()...)
 	rules = append(rules, dataHelperNameRules()...)
 	rules = append(rules, dataTaggedMembersRules()...)
+	rules = append(rules, dataMemberCoverageRules()...)
+	rules = append(rules, dataUnreachableMatchRules()...)
 	rules = append(rules, dataDeclarationRules()...)
 	rules = append(rules, dataNestedIsRules()...)
 	rules = append(rules, orPatternBindingRules()...)
