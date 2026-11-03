@@ -1,6 +1,7 @@
 package vibelang
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/microsoft/TypeScript/tsc/internal/core"
@@ -30,5 +31,23 @@ func TestErrorEditorSignatureSpan(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+// A doc comment before an error's first field stays on that field in the
+// declaration, as on the Effect TypeScript twin's type literal: 001-functions
+// requires "the same doc comment on each export". alchemy's Domain
+// StoryFailure.step is the witness.
+func TestErrorFirstFieldCommentStaysOnField(t *testing.T) {
+	declaration := wholeDeclaration(t, `/** Failed. */
+export error StoryFailure {
+  /** The step that failed. */
+  step: number
+  message: string
+}
+`)
+	want := "export declare class StoryFailure extends StoryFailure_base<{\n    /** The step that failed. */\n    readonly step: number;\n"
+	if !strings.Contains(declaration, want) {
+		t.Errorf("declaration lacks %q:\n%s", want, declaration)
 	}
 }

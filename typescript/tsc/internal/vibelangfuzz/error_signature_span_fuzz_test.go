@@ -57,3 +57,54 @@ func FuzzErrorSignatureSpan(f *testing.F) {
 		}
 	})
 }
+
+const errorFieldDocQuote = "and the same doc comment on each export"
+
+func TestErrorFieldDocQuoted(t *testing.T) {
+	if !strings.Contains(SpecText("001-functions.md"), errorFieldDocQuote) {
+		t.Fatalf("Chapter 1 no longer says %q; update the oracle", errorFieldDocQuote)
+	}
+}
+
+// A field's doc comment stays on its field wherever the field stands in the
+// body: the payload literal must not take the first field's leading trivia.
+// Each comment starts its own line: stock tsc 5.9.3 drops one that shares a
+// line with the token before it, so the twin keeps nothing to compare there.
+func FuzzErrorFieldDoc(f *testing.F) {
+	startShortBudget(f)
+	for _, key := range []string{"first", "second", "after-tag", "generic", "after-method", "optional"} {
+		f.Add(key, byte(0))
+	}
+	w := NewWorkspace(f)
+	f.Fuzz(func(t *testing.T, key string, choice byte) {
+		TestErrorFieldDocQuoted(t)
+		gap := []string{" ", "\n  ", "\n\n  "}[int(choice)%3]
+		head, doc, field := "E", "/** doc */"+gap, "readonly a: string"
+		body := doc + "a: string\n  b: number"
+		switch key {
+		case "second":
+			body = "b: number\n  " + doc + "a: string"
+		case "after-tag":
+			body = "_tag: \"E\"\n  " + doc + "a: string"
+		case "generic":
+			head, body, field = "E<T>", doc+"a: T", "readonly a: T"
+		case "after-method":
+			body = doc + "a: string\n  describe(): string { return this.a }"
+		case "optional":
+			body, field = doc+"a?: string", "readonly a?: string"
+		}
+		r := toolsCompile(t, w, "FuzzEditor", map[string]string{"main.vibe": "export error " + head + " {\n  " + body + "\n}\n"})
+		defer r.Remove()
+		declaration, ok := r.Outputs["out/main.d.ts"]
+		if !ok {
+			t.Skip("project emits no declaration")
+		}
+		if !strings.Contains(strings.Join(strings.Fields(declaration), " "), "/** doc */ "+field) {
+			t.Errorf("Chapter 1: %q\nfield %q lost its comment:\n%s", errorFieldDocQuote, field, declaration)
+		}
+		class, _, found := strings.Cut(declaration[strings.Index(declaration, "export declare class"):], " extends ")
+		if !found || strings.Contains(class, "/**") {
+			t.Errorf("a field's comment left the type literal:\n%s", declaration)
+		}
+	})
+}
