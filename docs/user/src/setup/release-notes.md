@@ -1608,6 +1608,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 #### Docs
 
+- The contributor compiler-case command could run without runtime dependencies. It now installs them before the case suite.
+
 - Links to inline HTML anchors in the synced documentation did not jump to their sections; synced pages now preserve those anchors and resolve specification links to them.
 - Completion could hang the language server in a file with a call left open after an earlier closed one, such as a second `pipe(` typed below `pipe(o, Option.getOrNull)`: matching the earlier `)` searched the whole file and found the later `(`. It now searches only before the token, as TypeScript does.
 - The compiler crashed on a file with a broken import whose recovery left a nameless binding, such as `import { Control, handle, resumeWithion nee "vibelang-runtime"`, beside an Effect error class: looking for the empty name in the rewritten code walked past its end. An empty name now matches nothing.
