@@ -158,11 +158,36 @@ test("ruling-claims rejects round 9 OPUS-2's VIP-25 rationale without its amendm
   ])
 })
 
+test("historical resolution fixtures preserve changed live tables without mutating their inputs", () => {
+  fc.assert(fc.property(
+    fc.uniqueArray(fc.constantFrom("App.vibe", "App.vibex", "App.ts", "App.tsx", "App.d.ts"), { minLength: 1 }),
+    targets => {
+      const row = "| `./App.vibe` | " + targets.map(name => "`" + name + "`").join(", ") + " |"
+      const current: Spec = new Map([...loadSpec()].map(([file, text]) => [file,
+        file === "src/007-tooling.md" || file === "vips/0039-vibex.md"
+          ? text.replace(/^\| `\.\/App\.vibe` \|[^\n]*$/m, row) : text]))
+      const snapshot = [...current]
+      const fixture = legacyStyleFixtures(current)
+      for (const file of ["src/007-tooling.md", "vips/0039-vibex.md"]) {
+        expect(current.get(file)).toContain(row)
+        expect(fixture.get(file)).toContain("| `./App.vibe` | `App.vibe`, `App.d.ts` |")
+      }
+      expect([...current]).toEqual(snapshot)
+    }
+  ), { seed: 3927, numRuns: 100 })
+})
+
 // Historical defects are explicit fixtures, not wording the current spec must keep.
 // Keep the real-spec check above on loadSpec(); only mutation inputs use this view.
 function legacyStyleFixtures(current: Spec): Spec {
   const fixture: Spec = new Map([...current].map(([file, text]) =>
     [file, text.replaceAll("declarationImportStyle", "retiredStyle").replaceAll("It decides how a package declaration in the output directory spells a relative import", "Historical package spelling").replaceAll("A relative `./x.vibex`", "Historical relative source")]))
+  // The round-14 drift mutation uses its historical resolution row.
+  // Keep that witness explicit while the real-spec check reads today's table.
+  for (const file of ["src/007-tooling.md", "vips/0039-vibex.md"]) {
+    fixture.set(file, fixture.get(file)!.replace(/^\| `\.\/App\.vibe` \|[^\n]*$/m,
+      "| `./App.vibe` | `App.vibe`, `App.d.ts` |"))
+  }
   fixture.set("src/001-functions.md", fixture.get("src/001-functions.md")! + '\n\nA package whose sources spell relative imports another way uses `vibelang.declarationImportStyle`; source-adjacent sidecars keep `./x.vibex`, and `".js"` is the default. Under every setting the TypeScript declaration contract stays the same.\n')
   fixture.set("src/007-tooling.md", fixture.get("src/007-tooling.md")! + '\n\nRoot `vibelang.declarationImportStyle` selects package spelling; source-adjacent sidecars keep their spelling. It decides how a package declaration in the output directory spells a relative import of a `.vibe` or `.vibex` module. A relative `./x.vibex` keeps its spelling. It sits in the legacy section.\n\nincluding `./helper.ts` ([VIP-27](../vips/0027-declaration-output.md#decision), amended).\n')
   fixture.set("vips/0027-declaration-output.md", fixture.get("vips/0027-declaration-output.md")!.replace(/\n- \*\*Amended 2026-11-02: declaration import spelling\.\*\*[^\n]*\n/g, "\n") + '\n- **Amended 2026-11-02: declaration import spelling.** `vibelang.declarationImportStyle` controls package output; sidecars keep source spelling.\n')
