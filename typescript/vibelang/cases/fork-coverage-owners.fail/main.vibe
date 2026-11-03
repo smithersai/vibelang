@@ -1,0 +1,29 @@
+// expect: EK1703 EK1704
+import { Effect } from "effect"
+// VIP-17 rejects non-Effect fork operands and non-Fiber join operands.
+export effect function invalid() { const f = fork 1; return join Effect.succeed(1) }
+
+export effect function allOwners() {
+ const s = try Effect.scope
+ fork.in(s) 1
+ fork.scoped 1
+ fork.detached 1
+}
+
+// docs/design/vips/0017-fork.md#2d4209bc4e387b49 | VIP-17 Effect-and-Fiber-operand-domain
+// **Amended 2026-10-29: `fork` and `join` operands are checked.** A `fork`, `fork.in(s)`, `fork.scoped` or `fork.detached` operand must pass the operand test of `try` (assignable to `Effect.Effect<any, any, any>`); otherwise `EK1703`.
+
+// docs/design/vips/0017-fork.md#445781431ffd0a48 | VIP-17 Effect-and-Fiber-operand-domain
+// A `join` operand must be assignable to `Fiber.Fiber<any, any>`; otherwise `EK1704`.
+
+// docs/design/vips/0017-fork.md#f141ff01720c9185 | VIP-17 Effect-and-Fiber-operand-domain
+// **`fork` and `join` operands are checked** (NW 52; audit 002 minor 4; r17-002; VIP-17 amendment).
+
+// docs/design/vips/0017-fork.md#fdf83c1ddea0b080 | VIP-17 Effect-and-Fiber-operand-domain
+// A `fork`, `fork.in(s)`, `fork.scoped` or `fork.detached` operand must be assignable to `Effect.Effect<any, any, any>`, the operand test of `try` (`EK0502`); otherwise `EK1703`.
+
+// docs/design/vips/0017-fork.md#df9e630254b98251 | VIP-17 Effect-and-Fiber-operand-domain
+// Each message names the operand's type and the fix ("`fork` needs an Effect: write `fork effect { … }` or call the function"; "`join` needs a `Fiber`: `join` the value `fork` gave").
+
+// docs/design/vips/0017-fork.md#9153e466935b9113 | VIP-17 Effect-and-Fiber-operand-domain
+// ```vibe effect function f(n: number, p: Promise<number>) { const a = fork n // EK1703: number is not an Effect const b = fork work() // ok const c = join p // EK1704: Promise<number> is not a Fiber return join b // ok } ``` Effect TS: `yield* Effect.forkChild(work())` and `yield* Fiber.join(b)`; `Effect.forkChild(1)` and `Fiber.join(p)` are TypeScript errors there, so no accepted program changes.

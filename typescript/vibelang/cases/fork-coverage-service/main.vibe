@@ -1,0 +1,16 @@
+import { Effect } from "effect"
+// VIP-17 service default initializer resets reservation.
+function join(n: number) { return n + 2 }
+export effect function main(): Effect.Effect<number> {
+ service Item {
+   readonly n: number
+   static readonly defaultValue = () => ({ n: join(3) })
+ }
+ return (try Item).n
+}
+
+// docs/design/vips/0017-fork.md#4e89ff2732123f5a | VIP-17 service-default-reservation-reset
+// **Amended 2026-10-30: service default initializer context.** The special service `static readonly defaultValue` initializer has the source class-field reset: it inherits neither enclosing Effect execution nor `fork`/`join` reservation.
+
+// docs/design/vips/0017-fork.md#db8d272b9b27237f | VIP-17 service-default-reservation-reset
+// `join(...)` can be an ordinary user helper there; explicit fiber execution retains the existing outside-effect diagnostic.

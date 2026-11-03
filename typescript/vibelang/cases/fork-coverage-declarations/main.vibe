@@ -1,0 +1,8 @@
+import { Effect } from "effect"
+// VIP-17 declaration names use outer context; method names are IdentifierName.
+export effect function fork(): Effect.Effect<number> { return 1 }
+const methods = { effect join() { return 2 } }
+export effect function main(): Effect.Effect<number> { return try methods.join() }
+
+// docs/design/vips/0017-fork.md#2af72b4c921d1d12 | VIP-17 declaration-and-method-name-context
+// A declaration's name takes the enclosing context, so `export effect function fork() { }` declares `fork` in plain code, and a method name is never reserved: `{ effect join() { } }` is valid.

@@ -1,0 +1,12 @@
+// expect: EK0505 EK0506
+import { Effect } from "effect"
+// VIP-17 heads before catch are rejected; grouped Fiber is not an Effect.
+export effect function forkHead() { return fork Effect.fail(1) catch () => 2 }
+export effect function joinHead() { const f = fork Effect.succeed(1); return join f catch () => 2 }
+export effect function grouped() { return (fork Effect.succeed(1)) catch () => 2 }
+
+// docs/design/vips/0017-fork.md#afce382d9ffc1d2a | VIP-17 fork-join-catch-heads
+// **Amended 2026-10-29: `fork` and `join` heads before `catch`.** `join f catch h` and `fork e catch h` are `EK0505`, as `try x catch h` is (VIP-5); the quick fixes are `Fiber.join(f) catch h` and `fork Effect.catch(e, ($e) => Effect.succeed(h($e)))`, or `fork Effect.catch(e, h)` for an `effect` handler, so `e` stays on the caller and the handler runs on the forked fiber; `fork (e catch h)` runs `e` here and forks its result, `EK1703` unless that result is an Effect.
+
+// docs/design/vips/0017-fork.md#942f18ea199f0132 | VIP-17 fork-join-catch-heads
+// *Corrected 2026-10-30: the quick fix was `fork (e catch h)`, which contradicted decided detail 99's own Effect TypeScript, `Effect.forkChild(Effect.catch(e, …))` (found by the round-19 Fable review).* The parenthesized forms are not `EK0505`; `(fork e) catch h` is still `EK0506`, as a `Fiber` is not an Effect in Effect 4.1.0.

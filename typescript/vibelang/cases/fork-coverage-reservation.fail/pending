@@ -1,0 +1,1 @@
+cov-concurrency VIP-17: reserved fork/join bindings and inherited arrow heads compile without EK1702.

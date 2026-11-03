@@ -1,0 +1,1 @@
+cov-concurrency VIP-17: an explicit named fiber operation in a field initializer gives parser errors instead of EK1701.

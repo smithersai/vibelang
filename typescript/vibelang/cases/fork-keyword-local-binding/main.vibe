@@ -31,3 +31,6 @@ export effect function main() {
   }
   return { a, b: join f, c: join g }
 }
+
+// docs/design/vips/0017-fork.md#5ca32c3fae09d670 | VIP-17 fork-and-join-result
+// `fork` starts a fiber and gives its `Fiber`.

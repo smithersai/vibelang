@@ -1,0 +1,34 @@
+// expect: EK1702
+// VIP-17 binding, arrow head and own expression-name reservations.
+export effect function bindings() { const join = 1; return 0 }
+export effect function arrows() { const f = async (join: number) => 1; return 0 }
+export const expr = effect function join() { return 1 }
+export const producer = effect function* fork() { yield 1 }
+
+export effect function defaults() {
+ const a = async (x = ((join: number) => 1)(1)) => x
+ const b = ({join}: {join: number}) => 1
+
+ return 0
+}
+
+// docs/design/vips/0017-fork.md#6d4a721fb8821a5e | VIP-17 reserved-bindings-and-arrow-heads
+// **Amended 2026-10-29: reserved in effect code.** `fork` and `join` are reserved words in effect code exactly as `await` is in an `async` function body: they can't name a variable, parameter or label there, and where an expression can start they begin a `fork` or `join` expression, so `join(parts)` joins.
+
+// docs/design/vips/0017-fork.md#f69e4730375bc0f7 | VIP-17 reserved-bindings-and-arrow-heads
+// **Amended 2026-10-30: ordinary arrow heads inherit the source reservation.** A plain or `async` arrow head inherits the enclosing `fork`/`join` reservation through bindings, defaults and destructuring, including in an Effect callable's parameters.
+
+// docs/design/vips/0017-fork.md#d3ff2df46ccc749a | VIP-17 reserved-bindings-and-arrow-heads
+// **Amended 2026-10-31: an Effect function expression's own name.** An `effect` function or producer expression's own name is reserved as its body is, as ECMAScript parses an `async` function expression's name with `+Await`: `(effect function join() { })` is `EK1702`, as `(async function await() { })` is a SyntaxError.
+
+// docs/design/vips/0017-fork.md#9e9efe4f459d8533 | VIP-17 reserved-bindings-and-arrow-heads
+// (VIP-17 revisit) `fork` and `join` are reserved words in effect code exactly as `await` is in an async function body (accepted 3A).
+
+// docs/design/vips/0017-fork.md#77500c3357e905c9 | VIP-17 reserved-bindings-and-arrow-heads
+// **Plain and ordinary async arrow heads inherit the enclosing fork/join reservation until the arrow body.** (Opus round30 m52; accepted VIP-17; details32/216.) Where the enclosing source context reserves `fork`/`join`, including an Effect callable's already-reserved parameter context, apply the existing `EK1702` binding/reference rule to the head of an ordinary `async` arrow as well as a plain arrow.
+
+// docs/design/vips/0017-fork.md#76abcabf40f14a1a | VIP-17 reserved-bindings-and-arrow-heads
+// The cover head does not escape that reservation merely by having an `async` prefix.
+
+// docs/design/vips/0017-fork.md#c217bf25df88371d | VIP-17 reserved-bindings-and-arrow-heads
+// ```vibe effect function bad() { const f = async (join: number) => 1; return 0 } // EK1702 at the inherited arrow head const ordinary = async (join: number) => join // plain context: ordinary identifier effect function nested() { function plain(join: number) { return join }; return plain(1) } // existing plain callable reset ``` Effect TS: the admitted ordinary async arrow and nested plain function are native TypeScript; there is no runtime counterpart for the rejected reserved source binding.

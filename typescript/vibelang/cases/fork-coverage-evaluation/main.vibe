@@ -1,0 +1,13 @@
+import { Effect, Fiber } from "effect"
+// VIP-17 operand construction stays on the caller before its next statement.
+export effect function main(): Effect.Effect<string[]> {
+ const trace: string[] = []
+ function made() { trace.push("operand"); return Effect.succeed(7) }
+ const f = fork made()
+ trace.push("caller-after")
+ trace.push(String(join f))
+ return trace
+}
+
+// docs/design/vips/0017-fork.md#7f7ebe0ad3e0b2c8 | VIP-17 caller-side-operand-construction
+// `fork e` evaluates `e` on the caller, as `const p = work(await id())` does.*

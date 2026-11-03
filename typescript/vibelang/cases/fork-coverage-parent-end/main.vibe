@@ -1,0 +1,15 @@
+import { Effect, Deferred, Fiber } from "effect"
+// VIP-17 parent termination interrupts an unjoined child.
+export effect function main(): Effect.Effect<boolean> {
+ let finalized = false
+ const ready = try Deferred.make<void>()
+ const parent = try Effect.forkChild(effect {
+   fork Effect.ensuring(effect { try Deferred.succeed(ready, undefined); try Effect.never }, Effect.sync(() => { finalized = true }))
+   try Deferred.await(ready)
+ })
+ try Fiber.join(parent)
+ return finalized
+}
+
+// docs/design/vips/0017-fork.md#a4a35589fb1e968c | VIP-17 unjoined-child-interrupted-with-parent
+// `fork` keeps Effect's meaning: a child is interrupted when its parent ends.

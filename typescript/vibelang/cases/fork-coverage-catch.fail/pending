@@ -1,0 +1,1 @@
+cov-concurrency VIP-17: fork/join catch heads and grouped Fiber operands use legacy diagnostics rather than EK0505/EK0506.

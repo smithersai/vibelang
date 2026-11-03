@@ -1,0 +1,6 @@
+// expect: EK1701
+// VIP-17 initializer reset does not admit an explicit fiber operation.
+export effect function main() { class C { x = fork.scoped Effect.succeed(1) }; return 0 }
+
+// docs/design/vips/0017-fork.md#1bbf91052b2409b1 | VIP-17 initializer-explicit-execution-outside-effect
+// A recognized execution operator, such as `try e` or an unambiguous fiber-operation form, still receives its outside-effect diagnostic (`EK0501`/`EK1701`); initialization is ordinary code.

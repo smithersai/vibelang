@@ -1,0 +1,73 @@
+import { Effect } from "effect"
+// VIP-19 every numeric limit is passed through, results discarded.
+export effect function main(): Effect.Effect<number[]> {
+ const out: number[] = []
+ for (const limit of [-1, 0, 0.5, 1, 2, 2.5, Infinity] as const) {
+   let count = 0
+   for concurrent(limit) (const n of [1, 2, 3]) { count += n }
+   let active = 0, peak = 0
+   for concurrent(limit) (const n of [1, 2, 3]) {
+     active++; peak = Math.max(peak, active)
+     try Effect.yieldNow
+     active--
+   }
+   out.push(count, peak)
+ }
+ const xs = [1, 2]
+ xs[Symbol.iterator] = function* (): Generator<number, undefined, unknown> { yield 99; return undefined }
+ for concurrent(1) (const x of xs) { out.push(x) }
+ for concurrent(2) (const x of xs) { out.push(x) }
+ for concurrent (let { n } of [{ n: 4 }, { n: 5 }]) {
+   n += 10
+   if (n === 14) continue
+   out.push(n)
+ }
+ return out
+}
+
+// docs/design/vips/0019-for-concurrent.md#f61a97029d54c18e | VIP-19 native-Concurrency-domain-and-item-binding
+// It is a statement inside an `effect` function or block.
+
+// docs/design/vips/0019-for-concurrent.md#4c9bc6d1ba28d9b3 | VIP-19 native-Concurrency-domain-and-item-binding
+// `continue` ends that one item.
+
+// docs/design/vips/0019-for-concurrent.md#6764b739b57ac34e | VIP-19 native-Concurrency-domain-and-item-binding
+// Results are discarded; `try.all ids.map(…)` (VIP-18) keeps them.
+
+// docs/design/vips/0019-for-concurrent.md#a2629038642532b9 | VIP-19 native-Concurrency-domain-and-item-binding
+// **Ambiguity: none.** JavaScript's `for` can only be followed by `(` or `await`.
+
+
+
+
+// docs/design/vips/0019-for-concurrent.md#5173d0a2c09344a1 | VIP-19 native-Concurrency-domain-and-item-binding
+// On Effect `4.1.0`, numeric limits below `1` still visit every item sequentially as `1` does; positive integers bound concurrent items, while other numbers retain Effect's own behavior.
+
+// docs/design/vips/0019-for-concurrent.md#229bdb34627d2171 | VIP-19 native-Concurrency-domain-and-item-binding
+// **Amended 2026-10-29: bindings and operands.** The head takes every `ForBinding` that `for…of` takes (`const`, `let`, destructuring), minus `var`.
+
+// docs/design/vips/0019-for-concurrent.md#6833bc38d670294e | VIP-19 native-Concurrency-domain-and-item-binding
+// The omitted limit stays `"unbounded"`; numeric limits keep native Effect behavior.
+
+
+// docs/design/vips/0019-for-concurrent.md#daba131868b3ab3e | VIP-19 native-Concurrency-domain-and-item-binding
+// (NW 10; VIP-19, VIP-20) A `for concurrent` or `for try` head takes every `ForBinding` `for…of` takes (`const`, `let`, destructuring), minus `var` (30a).
+
+// docs/design/vips/0019-for-concurrent.md#bf397c3cb926e46d | VIP-19 native-Concurrency-domain-and-item-binding
+// ```vibe for concurrent (let [k, v] of entries) { try save(k, v) } // ok for concurrent (const x of stream) { } // error: use for try for try (const x of asyncIterable) { } // error: Stream.fromAsyncIterable first ``` Effect TS: `Effect.forEach(entries, ([k, v]) => save(k, v), { concurrency, discard: true })`; `Stream.runForEachWhile(stream, …)`.
+
+// docs/design/vips/0019-for-concurrent.md#140bef3c1903dc09 | VIP-19 native-Concurrency-domain-and-item-binding
+// ```vibe effect function visit(xs: readonly number[]) { for concurrent (const x of xs) { try consume(x) } } ``` Effect TS: `yield* Effect.forEach(xs, x => Effect.gen(function* () { yield* consume(x) }), { concurrency: "unbounded", discard: true })`, identical to the single-line spelling.
+
+
+// docs/design/vips/0019-for-concurrent.md#a2be808a95ee946a | VIP-19 native-Concurrency-domain-and-item-binding
+// Do not add positive-integer, nonnegative, finite or literal-range validation, clamp/round in VibeLang, skip the iterable when `n` is zero, or reinterpret a value through a second scheduler.
+
+// docs/design/vips/0019-for-concurrent.md#e47e6bb44743eaf5 | VIP-19 native-Concurrency-domain-and-item-binding
+// ```vibe effect function run(ids: ReadonlyArray<number>) { for concurrent(0) (const id of ids) { try handle(id) } // every item runs, sequentially under Effect4.1.0 for concurrent(0.5) (const id of ids) { try handle(id) } // also sequential; not a source range error } ``` Effect TS: `yield* Effect.forEach(ids, id => Effect.gen(function* () { yield* handle(id) }), { concurrency: 0, discard: true })`, likewise for0.5 with the unchanged numeric value.
+
+// docs/design/vips/0019-for-concurrent.md#d4554772e21da7b2 | VIP-19 native-Concurrency-domain-and-item-binding
+// Detail7's early `"inherit"` wording is corrected to the actual pinned `Types.Concurrency` declaration (`number | "unbounded"`), consistent with this detail and existing1907; no extra range check is introduced.
+
+// docs/design/vips/0019-for-concurrent.md#b1e198126cefb94a | VIP-19 native-Concurrency-domain-and-item-binding
+// VibeLang's omitted limit remains its already-accepted `"unbounded"` default, not Effect.forEach's separate default sequential behavior.

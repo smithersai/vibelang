@@ -1,0 +1,41 @@
+import { Effect } from "effect"
+// VIP-17 identifier names and ordinary callable/initializer boundaries.
+function fork(n: number) { return n + 1 }
+function join(n: number) { return n + 2 }
+const ordinary = async (join: number) => join
+export effect function main(): Effect.Effect<number[]> {
+ const props = { fork: 1, join: 2 }
+ class C {
+   x = fork(3)
+   static y = join(4)
+ }
+ enum E { Value = join(5) }
+ const plain = function(join: number) { return join }
+ const asyncBody = async () => { const fork = 8; const join = 9; return fork + join }
+ const text = ["a", "b"].join(",")
+ return [props.fork, props.join, new C().x, C.y, E.Value, plain(6), text.length, try Effect.promise(() => ordinary(10)), try Effect.promise(asyncBody)]
+}
+
+// docs/design/vips/0017-fork.md#5b135a85a7e19d9b | VIP-17 ordinary-name-and-initializer-context
+// In an `IdentifierName` position (`parts.join(",")`, `{ join: 1 }`) they stay ordinary names, as `await` does.
+
+// docs/design/vips/0017-fork.md#22e154a53b9b7f66 | VIP-17 ordinary-name-and-initializer-context
+// A binding named `fork` or `join` outside effect code gets no extra warning, as a binding named `await` gets none.
+
+// docs/design/vips/0017-fork.md#52ca8b48c8197da6 | VIP-17 ordinary-name-and-initializer-context
+// Class field and enum member initializers reset the enclosing Effect context, so a source `fork(...)` or `join(...)` there can call an ordinary identifier.
+
+// docs/design/vips/0017-fork.md#15893c80683e2c2c | VIP-17 ordinary-name-and-initializer-context
+// This is deliberately contextual, unlike ECMAScript’s unconditional `[+Await]` static-block grammar; module status does not globally reserve VibeLang’s two words.
+
+// docs/design/vips/0017-fork.md#360f4a5abfa0b3ee | VIP-17 ordinary-name-and-initializer-context
+// Its body has its own callable context; an ordinary `async` body uses native `await` and does not reserve `fork`/`join`.
+
+// docs/design/vips/0017-fork.md#7f386af3207aa3d6 | VIP-17 ordinary-name-and-initializer-context
+// Outside an enclosing Effect reservation these names remain ordinary identifiers, including ordinary `async` parameters: native async's own `await` reservation adds no global ban on them.
+
+// docs/design/vips/0017-fork.md#569ceb3c6b5f99a5 | VIP-17 ordinary-name-and-initializer-context
+// In an `IdentifierName` position (`parts.join(",")`) they stay ordinary names.
+
+// docs/design/vips/0017-fork.md#dc154d66be3b7a1b | VIP-17 ordinary-name-and-initializer-context
+// Outside an enclosing Effect reservation, ordinary async-arrow parameters can still use a user identifier named `fork` or `join`; do not clone native async's unconditional Await reservation into a global VibeLang-name ban.

@@ -1,0 +1,8 @@
+// expect: EK1701
+// VIP-17 static blocks retain reservation but cannot execute Effects.
+export effect function outside() { class C { static { fork Effect.succeed(1) } }; return 0 }
+
+
+
+// docs/design/vips/0017-fork.md#38b3c734aceec3f6 | VIP-17 initializer-and-static-execution-boundary
+// They inherit the enclosing Effect reservation: inside that reserved context, bare `fork`/`join` are recognized operations and receive `EK1701`.
