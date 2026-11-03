@@ -16,7 +16,7 @@ func checkErrorSetters(c *checker.Checker, file *ast.SourceFile) {
 	visit = func(node *ast.Node) bool {
 		if errorDeclarationBase(node) {
 			for _, member := range node.Members() {
-				if member.Flags&ast.NodeFlagsReparsed == 0 && ast.IsSetAccessorDeclaration(member) && !ast.HasSyntacticModifier(member, ast.ModifierFlagsStatic) && !errorMemberIsReservedTag(c, member) {
+				if member.Flags&ast.NodeFlagsReparsed == 0 && ast.IsSetAccessorDeclaration(member) && !ast.HasSyntacticModifier(member, ast.ModifierFlagsStatic) && !errorMemberIsReservedTag(c, member) && !restrictedEffectMember(member) {
 					report(c, member, ek1302Setter)
 				}
 			}

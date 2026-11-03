@@ -285,3 +285,49 @@ func (p *Parser) vibelangEffectMember(member *ast.Node, word core.TextRange) *as
 	}
 	return p.markEffect(member, word)
 }
+
+// EffectRestrictedMemberDiagnosticCode and Text are VIP-1's diagnostic for
+// a recognized but forbidden accessor/constructor prefix. Keep its registry
+// identity shared with syntactic diagnostics, including --noCheck.
+const EffectRestrictedMemberDiagnosticCode int32 = 104
+const EffectRestrictedMemberDiagnosticText = "Effect on a getter, setter or constructor. Use the matching effect or async function form; move legacy JavaScript to a .ts file."
+
+const EffectAsyncMemberDiagnosticCode int32 = 105
+const EffectAsyncMemberDiagnosticText = "Effect and async on one function. Use the matching effect or async function form; move legacy JavaScript to a .ts file."
+
+// Recover the native member as one node, rather than treating effect as a
+// field or a constructor as an ordinary Effect method. Native contextual
+// modifier lookahead preserves methods named get/set and line boundaries.
+func (p *Parser) tryParseVibeLangRestrictedEffectMember(pos int, jsdoc jsdocScannerInfo, modifiers *ast.ModifierList, class bool) *ast.Node {
+	if !p.isVibeLangEffectWord() || !p.lookAhead(func(p *Parser) bool {
+		p.nextToken()
+		if p.hasPrecedingLineBreak() {
+			return false
+		}
+		if p.parseContextualModifier(ast.KindGetKeyword) || p.parseContextualModifier(ast.KindSetKeyword) {
+			return true
+		}
+		return class && (p.token == ast.KindConstructorKeyword || p.token == ast.KindStringLiteral && p.scanner.TokenValue() == "constructor") &&
+			p.lookAhead(func(p *Parser) bool {
+				unquoted := p.token == ast.KindConstructorKeyword
+				p.nextToken()
+				return p.token == ast.KindOpenParenToken || unquoted && p.token == ast.KindLessThanToken
+			})
+	}) {
+		return nil
+	}
+	word := p.parseVibeLangEffectMember()
+	var member *ast.Node
+	if p.parseContextualModifier(ast.KindGetKeyword) {
+		member = p.parseAccessorDeclaration(pos, jsdoc, modifiers, ast.KindGetAccessor, ParseFlagsNone)
+	} else if p.parseContextualModifier(ast.KindSetKeyword) {
+		member = p.parseAccessorDeclaration(pos, jsdoc, modifiers, ast.KindSetAccessor, ParseFlagsNone)
+	} else {
+		member = p.tryParseConstructorDeclaration(pos, jsdoc, modifiers)
+	}
+	p.diagnostics = append(p.diagnostics, ast.NewExternalDiagnostic(nil, word, "EK", diagnostics.CategoryError, EffectRestrictedMemberDiagnosticCode, EffectRestrictedMemberDiagnosticText))
+	if modifierListHasAsync(modifiers) {
+		p.diagnostics = append(p.diagnostics, ast.NewExternalDiagnostic(nil, word, "EK", diagnostics.CategoryError, EffectAsyncMemberDiagnosticCode, EffectAsyncMemberDiagnosticText))
+	}
+	return member
+}

@@ -25,6 +25,9 @@ func init() {
 
 func checkErrorConstructors(c *checker.Checker, file *ast.SourceFile) {
 	for _, member := range errorConstructors(file) {
+		if restrictedEffectMember(member) {
+			continue
+		}
 		d := report(c, member, EK1301)
 		note(d, "Keep the constructor in an Effect TypeScript class: the quick fix rewrites the declaration as one.")
 	}

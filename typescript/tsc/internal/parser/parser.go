@@ -2098,6 +2098,9 @@ func (p *Parser) parseClassElement() *ast.Node {
 		return result
 	}
 	modifiers := p.parseModifiersEx(true /*allowDecorators*/, true /*permitConstAsModifier*/, true /*stopOnStartOfClassStaticBlock*/)
+	if member := p.tryParseVibeLangRestrictedEffectMember(pos, jsdoc, modifiers, true /*class*/); member != nil {
+		return member
+	}
 	if p.token == ast.KindStaticKeyword && p.lookAhead((*Parser).nextTokenIsOpenBrace) {
 		return p.parseClassStaticBlockDeclaration(pos, jsdoc, modifiers)
 	}
@@ -6114,6 +6117,9 @@ func (p *Parser) parseObjectLiteralElement() *ast.Node {
 		return result
 	}
 	modifiers := p.parseModifiersEx(true /*allowDecorators*/, false /*permitConstAsModifier*/, false /*stopOnStartOfClassStaticBlock*/)
+	if member := p.tryParseVibeLangRestrictedEffectMember(pos, jsdoc, modifiers, false /*class*/); member != nil {
+		return member
+	}
 	if p.parseContextualModifier(ast.KindGetKeyword) {
 		return p.parseAccessorDeclaration(pos, jsdoc, modifiers, ast.KindGetAccessor, ParseFlagsNone)
 	}

@@ -1,0 +1,7 @@
+// expect: EK0104 EK0104 EK0104 EK0104 EK0104
+class Getter { effect get x() { return 1 } }
+class Setter { effect set x(v: number) {} }
+class Constructor { effect constructor() {} }
+const getter = { effect get x() { return 1 } }
+const setter = { effect set x(v: number) {} }
+export {}

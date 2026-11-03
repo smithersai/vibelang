@@ -1,0 +1,17 @@
+// expect-result: [1,2,5,3,4]
+class C {
+  constructor() {}
+  effect() { return 1 }
+  effect get() { return 2 }
+  effect set(value: number) { return value }
+  get x() { return 3 }
+  get program() { return effect { return 4 } }
+}
+const methods = {
+  effect constructor() { return 4 }
+}
+class Computed { effect ['constructor']() { return 7 } }
+export effect function main() {
+  const c = new C()
+  return [c.effect(), try c.get(), try c.set(5), c.x, try c.program]
+}

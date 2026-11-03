@@ -7,8 +7,8 @@ import "github.com/microsoft/TypeScript/tsc/internal/parser"
 var (
 	EK0101 = message(101, errorCategory, "{0} goes where TypeScript allows async, so a declaration keeps function: write {0} function {1}.")
 	EK0102 = message(102, errorCategory, "Await, for await or await using in effect code. Use the matching effect or async function form; move legacy JavaScript to a .ts file.")
-	EK0104 = message(104, errorCategory, "Effect on a getter, setter or constructor. Use the matching effect or async function form; move legacy JavaScript to a .ts file.")
-	EK0105 = message(105, errorCategory, "Effect and async on one function. Use the matching effect or async function form; move legacy JavaScript to a .ts file.")
+	EK0104 = message(parser.EffectRestrictedMemberDiagnosticCode, errorCategory, parser.EffectRestrictedMemberDiagnosticText)
+	EK0105 = message(parser.EffectAsyncMemberDiagnosticCode, errorCategory, parser.EffectAsyncMemberDiagnosticText)
 	EK0107 = message(107, errorCategory, "Eval, Function, arguments, var or with in a .vibe file. Use the matching effect or async function form; move legacy JavaScript to a .ts file.")
 	EK0401 = message(401, errorCategory, "A throw, a call that may throw, or a parameter default that may throw, in an effectful function. Wrap throwing code with Effect.try or tryPromise, or declare a compatible @throws contract.")
 	EK0402 = message(402, errorCategory, "A function that may throw where a function type doesn't admit its thrown type. Wrap throwing code with Effect.try or tryPromise, or declare a compatible @throws contract.")

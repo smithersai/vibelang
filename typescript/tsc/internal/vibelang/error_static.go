@@ -19,7 +19,7 @@ func checkErrorStaticMembers(c *checker.Checker, file *ast.SourceFile) {
 	visit = func(node *ast.Node) bool {
 		if errorDeclarationBase(node) {
 			for _, member := range node.Members() {
-				if errorMemberIsReservedTag(c, member) {
+				if errorMemberIsReservedTag(c, member) || restrictedEffectMember(member) {
 					continue
 				}
 				if member.Flags&ast.NodeFlagsReparsed == 0 && (ast.HasSyntacticModifier(member, ast.ModifierFlagsStatic) || member.Kind == ast.KindClassStaticBlockDeclaration) {

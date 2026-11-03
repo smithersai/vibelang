@@ -167,7 +167,7 @@ func checkErrorDeclaration(c *checker.Checker, class *ast.Node, form errorForm, 
 		}
 	}
 	if form == errorFormRoot || form == errorFormSchemaRoot {
-		if tag := c.GetTypeOfPropertyOfType(instance, "_tag"); !abstract && tag != nil && !c.IsTypeAssignableTo(own, tag) {
+		if tag := c.GetTypeOfPropertyOfType(instance, "_tag"); !abstract && tag != nil && !restrictedEffectErrorTag(c, class, instance) && !c.IsTypeAssignableTo(own, tag) {
 			d := report(c, errorTagField(class, form), EK2117.With("{0}'s tag is \"{0}\", but its _tag field's type is {1}."), name.Text(), c.TypeToString(tag))
 			note(d, "A concrete error is tagged with its own name; give _tag a type that includes it, such as string.")
 		}
@@ -198,7 +198,7 @@ func checkErrorDeclaration(c *checker.Checker, class *ast.Node, form errorForm, 
 		return
 	}
 	tag := errorDeclaredTag(c, class, form, instance)
-	if tag != nil && !c.IsTypeAssignableTo(tag, baseTag) {
+	if tag != nil && !restrictedEffectErrorTag(c, class, instance) && !c.IsTypeAssignableTo(tag, baseTag) {
 		d := report(c, name, EK2117.With("{0} cannot have its own tag: {1}'s tag is {2}, which does not include {3}."), name.Text(), baseName, c.TypeToString(baseTag), c.TypeToString(tag))
 		note(d, "Give {0} the field _tag: string, or declare it abstract, so that its subclasses' tags fit.", baseName)
 		cover(c, name)                                           // TS2416 at the tag member the parser writes
@@ -214,6 +214,21 @@ func checkErrorDeclaration(c *checker.Checker, class *ast.Node, form errorForm, 
 	if form == errorFormSubclass {
 		checkErrorConstructor(c, class, baseName)
 	}
+}
+
+// A forbidden effect accessor can determine the recovered _tag type, but
+// Functions owns that member's diagnostic in both error forms.
+func restrictedEffectErrorTag(c *checker.Checker, class *ast.Node, instance *checker.Type) bool {
+	tag := c.GetPropertyOfType(instance, "_tag")
+	if tag == nil {
+		return false
+	}
+	for _, declaration := range tag.Declarations() {
+		if declaration.Parent == class && restrictedEffectMember(declaration) {
+			return true
+		}
+	}
+	return false
 }
 
 // errorBaseTag returns the tag type of the instances that statics, a base
