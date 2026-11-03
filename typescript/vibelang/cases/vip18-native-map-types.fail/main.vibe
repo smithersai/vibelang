@@ -1,0 +1,30 @@
+// expect: TS2345 TS2345 TS2322 TS2322 EK9202
+import { Effect } from "effect"
+export effect function held(rows: readonly [Effect.Effect<number>, Effect.Effect<string>]): Effect.Effect<unknown> {
+  return try.allSettled rows
+}
+export effect function spread(rows: readonly [Effect.Effect<number>, Effect.Effect<string>]): Effect.Effect<unknown> {
+  return try.allSettled [...rows]
+}
+export effect function heldLength(rows: readonly [Effect.Effect<number>, Effect.Effect<number>]) {
+  const results = try.allSettled rows
+  const length: 2 = results.length
+  return length
+}
+export effect function spreadLength(rows: readonly [Effect.Effect<number>, Effect.Effect<number>]) {
+  const results = try.allSettled [...rows]
+  const length: 2 = results.length
+  return length
+}
+export effect function emptyContract(rows: readonly []): unknown!! {
+  return try.allSettled rows
+}
+export effect function array(rows: ReadonlyArray<Effect.Effect<number> | Effect.Effect<string>>): unknown!! {
+  return try.allSettled rows
+}
+export effect function emptyArray(rows: ReadonlyArray<never>): unknown!! {
+  return try.allSettled rows
+}
+export effect function literalUnion(rows: ReadonlyArray<Effect.Effect<number> | Effect.Effect<string>>): unknown!! {
+  return try.allSettled [rows[0], rows[1]]
+}

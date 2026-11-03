@@ -1,0 +1,33 @@
+// expect-result: {"held":2,"literal":2,"spread":2,"set":2}
+import { Effect, Exit } from "effect"
+export effect function held(rows: readonly [Effect.Effect<number>, Effect.Effect<number>]) {
+  return try.allSettled rows
+}
+export effect function literal(rows: readonly [Effect.Effect<number>, Effect.Effect<string>]) {
+  return try.allSettled [rows[0], rows[1]]
+}
+export effect function spread(rows: readonly [Effect.Effect<number>, Effect.Effect<number>]) {
+  return try.allSettled [Effect.succeed("prefix"), ...rows, Effect.succeed(true)]
+}
+export effect function iterable(rows: Set<Effect.Effect<number>>) {
+  return try.allSettled [...rows]
+}
+export effect function empty(rows: readonly []) {
+  return try.allSettled rows
+}
+export effect function main() {
+  const rows = [Effect.succeed(1), Effect.succeed(2)] as const
+  const h = try held(rows)
+  const l = try literal([rows[0], Effect.succeed("two")])
+  const n: Exit.Exit<number, never> = l[0]
+  const s: Exit.Exit<string, never> = l[1]
+  const length: 2 = l.length
+  const spreadRows = try spread(rows)
+  const prefix: Exit.Exit<string, never> = spreadRows[0]
+  const set = try iterable(new Set(rows))
+  return { held: h.length, literal: length, spread: spreadRows.length - 2, set: set.length }
+}
+export effect function widened(rows: ReadonlyArray<Effect.Effect<number> | Effect.Effect<string>>) {
+  const tasks: ReadonlyArray<Effect.Effect<number | string>> = rows
+  return try.allSettled tasks
+}

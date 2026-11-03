@@ -548,6 +548,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Regression checks did not distinguish a plain `match` throw arm from an Effect failure or an `async match` rejection. Dedicated cases and fuzz coverage now exercise those boundaries, with compiler gaps marked pending.
 
+- `try.allSettled` accepted heterogeneous named arrays and tuples and kept fixed lengths for named or spread tuples. Named operands now use the native `.map(Effect.exit)` callback check and array result; explicit literal elements keep their tuple positions, and `--fix` preserves earlier contracts (VIP-18).
+
 
 - Source-child loader wiring introduced a `fileURLToPath` import alias and failed repositories’ native import policies. Setup now uses a namespace import and refreshes its own previously generated helpers while preserving manually observed bindings.
 

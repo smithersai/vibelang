@@ -52,6 +52,10 @@ func renderExec(e edit) (text string, keep bool) {
 			return strings.Replace(e.arg, "]", "], "+helperRef("$methodCandidates_"+e.fields[0]), 1), true
 		}
 		return e.arg, true
+	case editSettledCall:
+		return pick(e.part, helperRef("$tryAllSettled")+"(", "", ")"), true
+	case editSettledMap, editSettledElement:
+		return "", false
 	case editWitness:
 		return "", false
 	case editSyntax, editRegion, editDispatch:

@@ -30,6 +30,10 @@ func (p *projector) tryOperation(call *ast.Node, e env) {
 		delete(p.statementStarts, start)
 	}
 	operand := call.Arguments()[0]
+	if tryOperationHelper(call) == "$tryAllSettled" {
+		p.trySettledOperation(call, operand, start, e)
+		return
+	}
 	p.plan.mark(editRun, partOpen, start, start, "")
 	p.plan.replace(start, p.tokenStart(operand), helperRef(tryOperationHelper(call))+"(")
 	operandEnv := e
@@ -101,4 +105,31 @@ func restoreTryOperandMarks(file *ast.SourceFile, text string, marks []tryOperan
 		return node.ForEachChild(visit)
 	}
 	file.AsNode().ForEachChild(visit)
+}
+
+// Checking uses the exact VIP-18 Effect counterpart; executable output keeps
+// the runtime helper so wrappers never iterate a compiler-created array.
+func (p *projector) trySettledOperation(call, operand *ast.Node, start int, e env) {
+	p.plan.mark(editRun, partOpen, start, start, "")
+	p.plan.mark(editSettledCall, partOpen, start, p.tokenStart(operand), "")
+	inner := ast.SkipParentheses(operand)
+	e.holdCalls = true
+	if ast.IsArrayLiteralExpression(inner) {
+		for _, element := range inner.Elements() {
+			kind, arg := editSettledElement, ""
+			value := element
+			if ast.IsSpreadElement(element) {
+				kind, arg, value = editSettledMap, "spread", element.Expression()
+			}
+			p.plan.mark(kind, partOpen, p.tokenStart(value), p.tokenStart(value), arg)
+			p.visit(value, e)
+			p.plan.mark(kind, partClose, value.End(), value.End(), arg)
+		}
+	} else {
+		p.plan.mark(editSettledMap, partOpen, p.tokenStart(operand), p.tokenStart(operand), "")
+		p.visit(operand, e)
+		p.plan.mark(editSettledMap, partClose, operand.End(), operand.End(), "")
+	}
+	p.plan.mark(editSettledCall, partClose, call.End(), call.End(), "")
+	p.plan.mark(editRun, partClose, call.End(), call.End(), "")
 }

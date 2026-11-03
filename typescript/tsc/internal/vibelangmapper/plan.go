@@ -34,6 +34,9 @@ const (
 	// keyword, punctuation, or a declaration's shape. Its text names
 	// helpers as helperRef writes them.
 	editSyntax editKind = iota
+	editSettledCall
+	editSettledMap
+	editSettledElement
 	// editWitness is checker-only text, which the executable rendering drops.
 	editWitness
 	// editRun runs a call where it stands (L3).
@@ -251,6 +254,16 @@ func (r checking) text(e edit) (string, bool) {
 	switch e.kind {
 	case editPatternFlow:
 		text = e.fields[0]
+	case editSettledCall:
+		text = pick(e.part, helperRef("Effect")+".all(", "", ", { concurrency: \"unbounded\" })")
+	case editSettledMap:
+		if e.arg == "spread" {
+			text = pick(e.part, "([...(", "", ")].map("+helperRef("Effect")+".exit))")
+		} else {
+			text = pick(e.part, "(", "", ").map("+helperRef("Effect")+".exit)")
+		}
+	case editSettledElement:
+		text = pick(e.part, helperRef("Effect")+".exit(", "", ")")
 	case editSyntax, editWitness, editRegion, editDispatch:
 		text = e.text
 	case editRegionVar:

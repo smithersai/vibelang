@@ -1,0 +1,21 @@
+import { makeRows, counts } from "./factory.js"
+export effect function check() {
+  const results = try.allSettled makeRows()
+  const length: 2 = results.length
+  return { length, tags: results.map(x => x._tag), counts: counts() }
+}
+export effect function empty(): unknown!! {
+  const rows = [] as const
+  return try.allSettled rows
+}
+export effect function array(): unknown!! {
+  const rows: ReadonlyArray<Effect.Effect<number> | Effect.Effect<string>> = [Effect.succeed(1), Effect.succeed("two")]
+  return try.allSettled rows
+}
+export effect function emptyArray(): unknown!! {
+  const rows: ReadonlyArray<never> = []
+  return try.allSettled rows
+}
+export effect function literalUnion(rows: ReadonlyArray<Effect.Effect<number> | Effect.Effect<string>>): unknown!! {
+  return try.allSettled [rows[0], rows[1]]
+}

@@ -13,6 +13,8 @@ var settledShapeQuotes = []string{
 	"a tuple for an array literal",
 	"A non-literal tuple whose elements differ in type is TypeScript's error there",
 	"TypeScript types the spread part as an array, not a tuple",
+	"yield* Effect.all($xs.map(Effect.exit), { concurrency: \"unbounded\" })",
+	"Effect.all([Effect.exit(a()), Effect.exit(b())], { concurrency: \"unbounded\" })",
 }
 
 func settledShapesChapter(t testing.TB) {
@@ -36,16 +38,18 @@ func FuzzTryAllSettledShapes(f *testing.F) {
 	startShortBudget(f)
 	settledShapesChapter(f)
 	rules := []struct {
-		key, gap       string
-		spread, length bool
+		key, gap                            string
+		spread, length, empty, literalUnion bool
 	}{
-		{"held-heterogeneous", "admission:held-heterogeneous", false, false},
-		{"spread-heterogeneous", "admission:spread-heterogeneous", true, false},
-		{"held-tuple-length", "type:held-tuple-length", false, true},
-		{"spread-tuple-length", "type:spread-tuple-length", true, true},
+		{"held-heterogeneous", "admission:held-heterogeneous", false, false, false, false},
+		{"spread-heterogeneous", "admission:spread-heterogeneous", true, false, false, false},
+		{"held-tuple-length", "type:held-tuple-length", false, true, false, false},
+		{"spread-tuple-length", "type:spread-tuple-length", true, true, false, false},
+		{"empty-held-requirement", "admission:empty-held-requirement", false, false, true, false},
+		{"literal-union", "admission:literal-union", false, false, false, true},
 	}
 	for _, r := range rules {
-		for _, suffix := range []string{"", ":paren", ":alias", ":mutable", ":alias-paren"} {
+		for _, suffix := range []string{"", ":paren", ":alias", ":mutable", ":alias-paren", ":assert", ":satisfies", ":non-null", ":array", ":array-mutable"} {
 			f.Add([]byte(r.key + suffix))
 		}
 	}
@@ -73,6 +77,24 @@ func FuzzTryAllSettledShapes(f *testing.F) {
 			second = "number"
 		}
 		tuple := "readonly [Effect.Effect<number>, Effect.Effect<" + second + ">]"
+		if rule.empty {
+			tuple = "readonly []"
+		}
+		if rule.literalUnion {
+			element := "Effect.Effect<number> | Effect.Effect<string>"
+			tuple = "readonly [" + element + ", " + element + "]"
+		}
+		if strings.Contains(suffix, "array") {
+			element := "Effect.Effect<number> | Effect.Effect<" + second + ">"
+			if rule.empty {
+				element = "never"
+			}
+			collection := "ReadonlyArray"
+			if strings.Contains(suffix, "mutable") {
+				collection = "Array"
+			}
+			tuple = collection + "<" + element + ">"
+		}
 		if strings.Contains(suffix, "mutable") {
 			tuple = strings.TrimPrefix(tuple, "readonly ")
 		}
@@ -88,12 +110,37 @@ func FuzzTryAllSettledShapes(f *testing.F) {
 		if strings.Contains(suffix, "paren") {
 			operand = "(" + operand + ")"
 		}
+		if strings.Contains(suffix, "assert") {
+			operand = "(" + operand + " as typeof rows)"
+		}
+		if strings.Contains(suffix, "satisfies") {
+			operand = "(" + operand + " satisfies typeof rows)"
+		}
+		if strings.Contains(suffix, "non-null") {
+			operand = operand + "!"
+		}
 		goodVibe := "return try.allSettled [rows[0], rows[1]]"
 		badVibe := "return try.allSettled " + operand
 		literalNative := "yield* Effect.all([Effect.exit(rows[0]), Effect.exit(rows[1])], { concurrency: \"unbounded\" })"
+		if strings.Contains(suffix, "array") || rule.literalUnion {
+			secondValue := "Effect.succeed(\"two\")"
+			if rule.length {
+				secondValue = "Effect.succeed(2)"
+			}
+			goodVibe = "return try.allSettled [Effect.succeed(1), " + secondValue + "]"
+			literalNative = "yield* Effect.all([Effect.exit(Effect.succeed(1)), Effect.exit(" + secondValue + ")], { concurrency: \"unbounded\" })"
+		}
+		if rule.empty {
+			goodVibe = "return try.allSettled []"
+			literalNative = "yield* Effect.all([], { concurrency: \"unbounded\" })"
+		}
 		mappedNative := "yield* Effect.all(source.map(Effect.exit), { concurrency: \"unbounded\" })"
 		goodNative := "return " + literalNative
 		badNative := "const source = " + operand + "; return " + mappedNative
+		if rule.literalUnion {
+			badVibe = "return try.allSettled [" + operand + "[0], " + operand + "[1]]"
+			badNative = "return yield* Effect.all([Effect.exit(" + operand + "[0]), Effect.exit(" + operand + "[1])], { concurrency: \"unbounded\" })"
+		}
 		if rule.length {
 			tail := "; const length: 2 = results.length; return length"
 			goodVibe = "const results = try.allSettled [rows[0], rows[1]]" + tail
@@ -140,7 +187,7 @@ func FuzzTryAllSettledShapes(f *testing.F) {
 			Gap(t, "FuzzTryAllSettledShapes", rule.gap, "VIP-18/chapter 2 requires the native counterpart's rejection; source was accepted:\n%s", vibe(badVibe))
 			return
 		}
-		if ek {
+		if ek && !rule.empty {
 			t.Fatalf("%s needs ordinary TypeScript type checks, not an Effect-operand rejection:\n%s", rule.key, errors)
 		}
 		ExpectPending(t, "FuzzTryAllSettledShapes", rule.gap)

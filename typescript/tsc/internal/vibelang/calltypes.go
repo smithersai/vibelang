@@ -183,6 +183,9 @@ func runningCallResult(c *checker.Checker, call *ast.Node, sig *checker.Signatur
 // runningCallResultOf is runningCallResult for a call whose callee returns
 // returned.
 func runningCallResultOf(c *checker.Checker, call *ast.Node, returned *checker.Type) *checker.Type {
+	// Infer the same channels as the native allSettled counterpart, including
+	// the unknown requirement inferred by [].map(Effect.exit).
+	returned = trySettledType(c, call, returned)
 	t := providedCallType(c, call, returned)
 	if !ast.IsOptionalChain(call) {
 		return t
