@@ -1698,6 +1698,9 @@ func fileFixes(ctx context.Context, program *compiler.Program, file *ast.SourceF
 				if !ok {
 					candidate, ok = preservingEffectFactoryThrows(c, file, site, key)
 				}
+				if !ok {
+					candidate, ok = preservingSuspendThrows(c, file, site, key)
+				}
 				if ok {
 					candidate.siteStart, candidate.siteEnd = d.Pos(), d.End()
 					candidates = append(candidates, candidate)

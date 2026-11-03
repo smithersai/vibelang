@@ -29,6 +29,10 @@ const fixtures = [
   ["effect-factory-error", 'export effect function f(n:number) {function task():number!string {events.push("factory");if(n<0)throw marker;return n?Effect.fail("typed"):Effect.succeed(n)};return try task()}',
     'export function f(n:number) {return Effect.gen(function*(){function task():Effect.Effect<number,string> {events.push("factory");if(n<0)throw marker;return n?Effect.fail("typed"):Effect.succeed(n)};return yield* task()})}'],
 
+  ["effect-factory-suspend", 'export function f(n:number):Effect.Effect<number,string> {return Effect.suspend(()=>{events.push("factory");if(n<0)throw marker;return n?Effect.fail("typed"):Effect.succeed(n)})}'],
+  ["effect-factory-suspend-tail", 'export function f(n:number):Effect.Effect<number,string> {return Effect.suspend(()=>n<0?throw (events.push("operand"),marker):n?Effect.fail("typed"):Effect.succeed(n))}',
+    'export function f(n:number):Effect.Effect<number,string> {return Effect.suspend(()=>n<0?(()=>{throw (events.push("operand"),marker)})():n?Effect.fail("typed"):Effect.succeed(n))}'],
+
   ["inferred-arrow", 'export const f = (n: number) => { events.push("operand"); throw marker }'],
   ["inferred-function", 'export function f(n: number) { events.push("operand"); throw marker }'],
   ["statement", 'export function f(n: number): number { events.push("before"); if (n) throw (events.push("operand"), marker); events.push("after"); return n }'],
@@ -81,6 +85,7 @@ try {
     assert.equal(fixed.status, 0, name + "\n" + fixed.stdout + fixed.stderr)
     const text = readFileSync(join(dir, "main.vibe"), "utf8")
     if(name==="plain-handler") assert.match(text,/catch effect.*die\(/,name)
+    else if(name.startsWith("effect-factory-suspend")) assert.match(text,/\bdie\(/,name)
     else if(name.startsWith("effect-factory")) assert.match(text,/return die\(/,name)
     else if(name.startsWith("known-")) assert.match(text,/module \$call\$ts/,name)
     else assert.match(text, /module \$throw\$ts/, name)
