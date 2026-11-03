@@ -61,7 +61,7 @@ func utf16Slice(text string, start, end int) string {
 
 var forms = map[string]string{
 	"contracts":      "function read(id: string): string!Gone!Users { return Users.find(id) }\ntype Program = number!!\n",
-	"declarations":   "error Gone { id: string }\nerror Timeout\nservice Users { find(id: string): string!Gone }\ncontrol Ask { answer(): boolean!! }\nschema Ticket { id: string; mutable count: number }\nschema Code = \"a\" | \"b\"\nschema Point = { x: number }\nlayer Live: Users { find(id) { return id } }\n",
+	"declarations":   "error Gone { id: string }\nerror Timeout\nservice Users { find(id: string): string!Gone }\nschema Ticket { id: string; mutable count: number }\nschema Code = \"a\" | \"b\"\nschema Point = { x: number }\nlayer Live: Users { find(id) { return id } }\n",
 	"error classes":  "export error AppError implements Coded {\n  _tag: string\n  /** The code. */\n  code: string\n  static readonly family = \"app\"\n  constructor(code: string) { super({ code }) }\n  get label(): string { return this.code }\n}\nerror NotFound extends AppError { mutable path: string; describe(): string { return this.path } }\nerror Timeout extends AppError\nabstract error Http { status: number; abstract describe(): string }\nschema error FsError { _tag: string; method: string; mutable path?: string }\nschema error Missing extends FsError { attempts: number }\n",
 	"blocks":         "function f() { return withSpan(\"f\", effect () => { const value = do { 1 }; return value }) }\n", // VIP-11 retired trailing blocks (0f6bb08b2eef)
 	"cold blocks":    "function f() { return Effect.withSpan(effect { const value = do { 1 }; return value }, \"f\") }\n",
@@ -71,7 +71,6 @@ var forms = map[string]string{
 	"patterns":       "function f(o: unknown) { if (o is Exit.Failure(let cause)) return cause; return 0 }\n",
 	"primitives":     "function f() { uninterruptible { restore { return read() } } }\nfunction g() { try { return read() } finally (exit) { log(exit) } }\n",
 	"fibers":         "function f(ids: string[]) { const t = fork read(); const all = await.all [read()]; for concurrent(2) (const id of ids) log(id); return join t }\n",
-	"handle":         "function f() { try { return ask() } handle Ask.answer() { resume(true) } handle Ask.other(n) { resume(n) } }\n",
 	"match":          "function f(x: number) { match (x) { when 1: log(\"one\"); default: log(\"other\"); } }\n",
 	"hatches":        "function f(text: string) { return try((text) => JSON.parse(text), text) ?? throw new Gone({ id: text }) }\n",
 	"service shapes": "service Prefix: string\nexport service Search: SearchApi { static readonly layer = live }\n",
@@ -304,6 +303,26 @@ func TestTokensAndCommentsAreTheSourceText(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+// VIP-35 leaves controls outside the first release. Keep the former shared
+// declaration witness as a rejection oracle, rather than parsing it as a
+// successful source tree in every unrelated token/name test.
+func TestRetiredControlFormsAreRejectedByESTree(t *testing.T) {
+	for _, text := range []string{
+		"control Ask { answer(): boolean!! }",
+		"function f() { try { return ask() } handle Ask.answer() { resume(true) } handle Ask.other(n) { resume(n) } }\n",
+		"export control Ask { answer(): boolean!! }",
+		"error Gone { id: string }\ncontrol Ask { answer(): boolean!! }",
+	} {
+		tree, failure := Parse("/retired-control.vibe", text)
+		if failure == nil || !strings.Contains(failure.Message, "Handlers are outside the first release") {
+			t.Fatalf("Parse(%q) = %q, %v; want the VIP-35 rejection", text, tree, failure)
+		}
+		if tree != "" {
+			t.Errorf("retired control returned a successful tree: %s", tree)
+		}
 	}
 }
 

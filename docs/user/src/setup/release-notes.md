@@ -184,6 +184,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - The migrate flow left `import.meta.resolve(specifier)` in `.vibe` files and conversion failed with `EK4402`. It now moves the resolver into a fresh sibling `.ts` function and keeps each call, its captured input and its failure handling in place; source wildcard exports explicitly keep the helper private.
 
 - The runtime package failed to build because `$registerErrorMatcher` was exported twice; its entry now exports the helper once.
+- Tooling validation still treated retired `control` and `handle` examples as valid source; its source-tree fixtures now test the first-release rejection and preserve coverage of supported declarations.
+- ESLint reported `no-unreachable` on reachable completions of `do` expressions containing `match`, including migrated lint rules; its source tree now keeps generated arm exits inside the match, while written unreachable code still reports.
 
 - The forms gate rejected explicit Effect callbacks after independently landed changes moved their source locations; its reviewed snapshot now records the written modifier at each affected site.
 

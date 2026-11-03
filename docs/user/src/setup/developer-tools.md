@@ -269,6 +269,11 @@ The mapped `no-unused-vars` rule counts `typeof` reads as Oxlint does,
 including erased `declare const` symbol brands, while retaining configured
 options and reporting unused declarations.
 
+ESLint's control-flow rules keep `match` arm exits inside the match. A
+`do` expression that completes through a match does not produce a false
+`no-unreachable` report; unreachable statements written in the source still
+produce that diagnostic.
+
 Setup installs neither an Oxlint patch nor a fork, and no platform-specific
 binary beyond the existing VibeLang compiler.
 

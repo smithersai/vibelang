@@ -118,9 +118,19 @@ func (c *converter) convertVibeLang(n *ast.Node, parent *ast.Node) (*obj, bool) 
 				set("right", c.convertChild(binary.Right, n)), true
 		}
 	case ast.KindLabeledStatement:
-		// A match statement's or a select's block, labeled for its arms' breaks.
+		// Match arms leave a generated block with a labeled break. A single
+		// default case keeps that exit in ESLint's control-flow graph without
+		// exposing a label the author did not write.
 		if labeled := n.AsLabeledStatement(); synthesized(labeled.Label) {
-			return c.convertChild(labeled.Statement, parent), true
+			body := c.convertChild(labeled.Statement, n)
+			start := c.start(n)
+			discriminant := c.nodeAt(span{start, start}, "Literal").set("value", 0).set("raw", "0").set("synthesized", true)
+			clause := c.node(n, "SwitchCase").set("test", nil).set("consequent", []any{body})
+			return c.node(n, "SwitchStatement").set("discriminant", discriminant).set("cases", []any{clause}), true
+		}
+	case ast.KindBreakStatement:
+		if label := n.AsBreakStatement().Label; synthesized(label) {
+			return c.node(n, "BreakStatement").set("label", nil), true
 		}
 	case ast.KindTryStatement:
 		if n.Flags&ast.NodeFlagsVibeLang != 0 {

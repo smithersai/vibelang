@@ -1,0 +1,9 @@
+{
+  "key": "eslint:no-unreachable:do-expression",
+  "repo": "t3code",
+  "sources": [
+    "const f = (n: number) => do { const x = n; match (x) { when 0: true; default: false; } };",
+    "function f(n: number) { return do { match (n) { when 0: 1; default: throw new Error(); } }; }",
+    "const f = (n: number) => do { match (n) { when 0: do { match (n) { when 1: 2; default: 3; } }; default: 4; } };"
+  ]
+}
