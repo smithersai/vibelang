@@ -444,6 +444,15 @@ const targets = {
     timeout: "5m"
   }),
   "spec-declaration-preservation": declarationPreservation,
+  "spec-match-arm-throw": S.Shell.Test({
+    summary: "Direct throwing match arms have one parse",
+    shell: "node --test docs/tools/spec-match-arm-throw.test.mjs",
+    data: [S.glob(["docs/design/**", "docs/tools/spec-match-arm-throw.test.mjs", "docs/tools/spec-witness.mjs", "docs/tools/package.json", "docs/tools/bun.lock"])],
+    tools: [node],
+    sandbox: "none",
+    timeout: "5m"
+  }),
+
   // A Run has no graph replay: revision and external decisions are runtime
   // inputs. The script pins the revision/diff verdict, including failures.
   // Platform owns attachment to the pre-gate; grounded violations reject by default.
