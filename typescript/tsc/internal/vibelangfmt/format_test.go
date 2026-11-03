@@ -512,7 +512,7 @@ func TestSameProgram(t *testing.T) {
 		{"module reference order", "export { a as b } from text\nexport * from config\n", "export * from config\nexport { a as b } from text\n", "1:"},
 		{"module body import order", "module text {\n  import { b } from \"./b\"\n  import { a } from \"a\"\n}\n", "module text {\n  import { a } from \"a\"\n  import { b } from \"./b\"\n}\n", "became"},
 		{"module body", "module text {\n  export const v = a + b\n}\n", "module text {\n  export const v = a - b\n}\n", "module text: 2:20: operator"},
-		{"stream iteration syntax", "for try (const x of xs) {}", "for (const x of xs) {}", "1:1: for try changed"},
+		{"stream iteration syntax", "for try (const x of xs) {}", "for (const x of xs) {}", "1:1: KindLabeledStatement became KindForOfStatement"},
 		{"module body syntax", "module text {\n  export const v = 1\n}\n", "module text {\n  export const v = (\n}\n", "module text: vibelang format: 2:21"},
 		{"module reference", "import { a } from text\n", "import { a } from texts\n", "1:19: \"./vibelang-format.vibe.text.js\" became"},
 		{"braces around an if's statement", "function f(x: number) {\n  if (x > 1) { return x } else { return 0 }\n  for (const y of [x]) { log(y) }\n}\n", "function f(x: number) {\n  if (x > 1) return x\n  else return 0\n  for (const y of [x]) log(y)\n}\n", ""},
