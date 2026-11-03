@@ -5,6 +5,7 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { test } from "node:test"
 import { fileURLToPath } from "node:url"
+import { SpecPath } from "../../../../scripts/testing/spec-path.mjs"
 import { runPhaseChanges, runPhaseCheck, vibeTree } from "../lib/run-phase.mjs"
 import { makeConfig, paths, verify } from "../lib/steps.mjs"
 import { must, slug, writeJson } from "../lib/util.mjs"
@@ -14,7 +15,7 @@ const require = createRequire(new URL("../../../../packages/runtime/package.json
 const ts = require("typescript")
 const compiler = process.env.VIBELANG_COMPILER ?? fileURLToPath(new URL("../../../../packages/compiler/native/vibelang", import.meta.url))
 const native = { skip: !existsSync(compiler) && "build the native compiler" }
-const chapter = readFileSync(new URL("../../../../docs/design/src/001-functions.md", import.meta.url), "utf8")
+const chapter = readFileSync(SpecPath("001-functions.md"), "utf8")
 const corpora = ["alchemy-effectclass-run-phase", "smithers-run-phase"].map(name => [name, JSON.parse(readFileSync(new URL(`./corpus/${name}.json`, import.meta.url), "utf8"))])
 const changes = (before, after) => runPhaseChanges({ ts, original: before, originalPath: "main.ts", vibe: vibeTree(compiler, after, "main.vibe"), vibeText: after })
   .map(({ name, line, verdict }) => ({ name, line, verdict }))
@@ -36,7 +37,7 @@ test("alchemy-62: conversions that keep the run phase pass", native, () => {
   // An Effect.gen body and an Effect.fn function return a program at the call
   // in both texts, so marking them effect changes nothing.
   assert.deepEqual(changes(
-    "export const f = (n: number) => Effect.gen(function* () { return yield* Effect.succeed(n) })\nexport const g = Effect.fn(\"g\")(function* (n: number) { return n })\nexport function h() { return Effect.gen(function* () { return 1 }) }\n",
+    'import { Effect } from "effect"; ' + "export const f = (n: number) => Effect.gen(function* () { return yield* Effect.succeed(n) })\nexport const g = Effect.fn(\"g\")(function* (n: number) { return n })\nexport function h() { return Effect.gen(function* () { return 1 }) }\n",
     "export const f = effect (n: number) => try Effect.succeed(n)\nexport const g = effect (n: number) => n\nexport effect function h() { return 1 }\n"), [])
 })
 
@@ -97,4 +98,13 @@ test("alchemy-62: a module the compiler cannot parse is listed unchecked, never 
     assert.equal(result.blocking.length, 0)
     assert.equal(result.unchecked.length, 1)
   } finally { rmSync(root, { recursive: true, force: true }) }
+})
+
+// VIP-34: constructor arguments still evaluate at the original plain call.
+test("run-phase bindings: migration reports a shadow and blocks an eager argument", native, () => {
+  const after = "export effect function f() { return 7 }\n"
+  assert.deepEqual(changes("const Effect={gen:()=>7};export function f(){return Effect.gen()}", after),
+    [{ name: "f", line: 1, verdict: "review" }])
+  assert.deepEqual(changes("import {Effect} from 'effect';function makeGenerator(){return function*(){return 7}};export function f(){return Effect.gen(makeGenerator())}", after),
+    [{ name: "f", line: 1, verdict: "eager" }])
 })

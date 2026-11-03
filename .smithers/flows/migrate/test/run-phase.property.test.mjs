@@ -9,8 +9,8 @@ const fc = require("fast-check")
 
 // The verdict for an original plain function, from its text alone.
 const verdict = body => {
-  const source = ts.createSourceFile("main.ts", "export const f = (x: any) => " + body, ts.ScriptTarget.Latest, true)
-  const declaration = source.statements[0].declarationList.declarations[0]
+  const source = ts.createSourceFile("main.ts", 'import { Effect } from "effect"; export const f = (x: any) => ' + body, ts.ScriptTarget.Latest, true)
+  const declaration = source.statements[1].declarationList.declarations[0]
   return runPhaseOf(ts, declaration.initializer).verdict
 }
 

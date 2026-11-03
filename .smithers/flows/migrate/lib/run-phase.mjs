@@ -79,13 +79,101 @@ const unwrap = (ts, node) => {
   while (node && (ts.isParenthesizedExpression(node) || ts.isAsExpression(node) || ts.isSatisfiesExpression?.(node) || ts.isNonNullExpression(node) || ts.isTypeAssertionExpression(node))) node = node.expression
   return node
 }
-const calleeText = (ts, call) => { const callee = unwrap(ts, call.expression); return ts.isCallExpression(callee) ? calleeText(ts, callee) : callee.getText() }
-const effectFactories = /^(Effect|Micro|Stream|Layer|STM)\.(fn|fnUntraced)$/
+// Bind without resolving dependencies. Import declarations establish provenance;
+// the checker distinguishes them from parameters and local shadowing bindings.
+const bindings = new WeakMap()
+function bindingInfo(ts, source) {
+  if (bindings.has(source)) return bindings.get(source)
+  const host = ts.createCompilerHost({ noLib: true, noResolve: true })
+  host.getSourceFile = file => file === source.fileName ? source : undefined
+  const checker = ts.createProgram([source.fileName], { noLib: true, noResolve: true }, host).getTypeChecker()
+  const info = { checker, stable: new Map() }
+  bindings.set(source, info)
+  return info
+}
+const modules = new Set(["Effect", "Micro", "Stream", "Layer", "STM"])
+
+function effectMember(ts, expression) {
+  const member = unwrap(ts, expression)
+  if (!ts.isPropertyAccessExpression(member) || member.questionDotToken) return null
+  let namespace = unwrap(ts, member.expression), selected = null
+  if (ts.isPropertyAccessExpression(namespace) && !namespace.questionDotToken) {
+    selected = namespace.name.text
+    namespace = unwrap(ts, namespace.expression)
+  }
+  if (!ts.isIdentifier(namespace)) return null
+  const source = namespace.getSourceFile()
+  const { checker, stable } = bindingInfo(ts, source)
+  const symbol = checker.getSymbolAtLocation(namespace)
+  if (symbol?.declarations?.length !== 1) return null
+  const declaration = symbol.declarations[0]
+  let clause, module
+  if (ts.isImportSpecifier(declaration)) {
+    clause = declaration.parent.parent
+    if (selected || declaration.isTypeOnly) return null
+    module = (declaration.propertyName ?? declaration.name).text
+    if (clause.parent.moduleSpecifier.text !== "effect") return null
+  } else if (ts.isNamespaceImport(declaration)) {
+    clause = declaration.parent
+    const path = clause.parent.moduleSpecifier.text
+    module = selected ?? path.replace(/^effect\//, "")
+    if (selected ? path !== "effect" : path !== "effect/" + module) return null
+  } else return null
+  if (clause.isTypeOnly || !modules.has(module)) return null
+  if (!stable.has(symbol)) {
+    let safe = true
+    const visit = node => {
+      if (!safe || ts.isTypeNode(node)) return
+      if (ts.isIdentifier(node) && checker.getSymbolAtLocation(node) === symbol && node !== declaration.name) {
+        let use = node
+        while ((ts.isPropertyAccessExpression(use.parent) && use.parent.expression === use) ||
+          ts.isParenthesizedExpression(use.parent) || ts.isAsExpression(use.parent) || ts.isNonNullExpression(use.parent)) use = use.parent
+        // Namespace escapes and writes invalidate a textual proof. No alias
+        // analysis guess: each use must be a direct member call.
+        const parent = use.parent
+        if (!(ts.isCallExpression(parent) && parent.expression === use)) safe = false
+      }
+      ts.forEachChild(node, visit)
+    }
+    visit(source)
+    stable.set(symbol, safe)
+  }
+  return stable.get(symbol) ? { module, name: member.name.text } : null
+}
+
+// Property reads, spreads and computed keys can invoke author code.
+function inert(ts, expression) {
+  const node = unwrap(ts, expression)
+  if (!node) return false
+  if (ts.isIdentifier(node) || ts.isLiteralExpression(node) ||
+    [ts.SyntaxKind.ThisKeyword, ts.SyntaxKind.TrueKeyword, ts.SyntaxKind.FalseKeyword, ts.SyntaxKind.NullKeyword].includes(node.kind)) return true
+  if (ts.isFunctionExpression(node) || ts.isArrowFunction(node)) return true
+  if (ts.isObjectLiteralExpression(node)) return node.properties.every(p =>
+    (ts.isPropertyAssignment(p) && !ts.isComputedPropertyName(p.name) && inert(ts, p.initializer)) ||
+    (ts.isShorthandPropertyAssignment(p) && !p.objectAssignmentInitializer))
+  if (ts.isArrayLiteralExpression(node)) return node.elements.every(e => inert(ts, e))
+  return false
+}
+
+function coldGen(ts, call) {
+  if (call.questionDotToken || effectMember(ts, call.expression)?.name !== "gen") return false
+  if (call.arguments.length !== 1 && call.arguments.length !== 2) return false
+  const callback = unwrap(ts, call.arguments.at(-1))
+  return ts.isFunctionExpression(callback) && !!callback.asteriskToken &&
+    call.arguments.slice(0, -1).every(arg => inert(ts, arg))
+}
+
+function effectFactory(ts, call) {
+  const callee = unwrap(ts, call.expression)
+  if (ts.isCallExpression(callee)) return effectFactory(ts, callee)
+  const member = effectMember(ts, callee)
+  return member && ["fn", "fnUntraced"].includes(member.name)
+}
 
 /** A function as the original wrote it: an Effect function (`Effect.fn`), a plain one, or neither. */
 function functionShape(ts, value) {
   const node = unwrap(ts, value)
-  if (ts.isCallExpression(node) && effectFactories.test(calleeText(ts, node))) return { kind: "effect" }
+  if (ts.isCallExpression(node) && effectFactory(ts, node)) return { kind: "effect" }
   if (ts.isArrowFunction(node) || ts.isFunctionExpression(node) || ts.isFunctionDeclaration(node) || ts.isMethodDeclaration(node)) {
     if (node.asteriskToken) return { kind: "generator" }
     return { kind: "plain", node }
@@ -104,13 +192,23 @@ const valueCalls = /^(Object|JSON|Array|Math|Number|String|Boolean|Symbol|Reflec
 function returned(ts, expression) {
   const node = unwrap(ts, expression)
   if (!node) return { verdict: "value", detail: "returns undefined" }
-  if (ts.isConditionalExpression(node)) return worst(returned(ts, node.whenTrue), returned(ts, node.whenFalse))
+  if (ts.isConditionalExpression(node)) {
+    const work = eagerWork(ts, node.condition)
+    const condition = work ? { verdict: "eager", detail: work } : inert(ts, node.condition) ? ok : { verdict: "review", detail: "evaluates condition " + node.condition.getText().slice(0, 60) }
+    return worst(condition, worst(returned(ts, node.whenTrue), returned(ts, node.whenFalse)))
+  }
   if (valueKinds(ts).includes(node.kind)) return { verdict: "value", detail: "returns " + node.getText().slice(0, 60) }
   if (ts.isVoidExpression(node) || (ts.isIdentifier(node) && node.text === "undefined")) return { verdict: "value", detail: "returns undefined" }
   if (ts.isCallExpression(node)) {
-    const callee = calleeText(ts, node)
-    if (/^(Effect|Micro|Stream|Layer|STM)\.gen$/.test(callee)) return ok
-    if (valueCalls.test(callee)) return { verdict: "value", detail: "returns " + callee + "(…)" }
+    const callee = unwrap(ts, node.expression)
+    if (ts.isPropertyAccessExpression(callee) && callee.name.text === "gen") {
+      for (const expression of [callee.expression, ...node.arguments]) {
+        const work = eagerWork(ts, expression)
+        if (work) return { verdict: "eager", detail: work }
+      }
+      if (coldGen(ts, node)) return ok
+    }
+    if (valueCalls.test(callee.getText())) return { verdict: "value", detail: "returns " + callee.getText() + "(…)" }
   }
   return { verdict: "review", detail: "returns " + node.getText().slice(0, 60) }
 }
