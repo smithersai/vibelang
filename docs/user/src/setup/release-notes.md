@@ -6,6 +6,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 
 ## 0.0.11 (unreleased)
+- With `effect` not installed, `vibelang --fix` read the `function*` in `Effect.gen(function* () { … })` and `Effect.fn("load")(function* … )` as a producer and rewrote `return x + 1` to `{ x + 1; return }`, losing the value. A `function*` passed to a callee that does not resolve now draws no `EK2128` and no fix until the program resolves.
 - The specification gave the `EK4856` quick fix two triggers for the qualified `Effect.Effect<A, E, R>`: VIP-3 named only an interface heritage element, chapter 7 said "where the syntax requires it". Both now say it writes `A!E!R` where that needs no new parentheses and `Effect.Effect<A, E, R>` everywhere else, including `implements` clauses, unions and arrays of Effects (decided detail 260).
 - The JSX specification (VIP-39) said `x ?? throw <E/>` is not VibeLang and told you to write `x ?? do { throw <E/> }`, though throw expressions follow the TC39 proposal (decided detail 284). It now says a throw expression is allowed wherever a throw statement is, with a JSX operand as in `.tsx`, and synchronous code still reports `EK0401`.
 - A `throw` in a plain function drew `EK4804`, `EK4811` or `EK4815`, the advisories about what an Effect function's typed failure fails with, though a plain function's `throw` is JavaScript's (VIP-4); t3code's throwing plain helpers failed the migrate flow's style gate on them. Only an Effect function's `throw` reports them now.

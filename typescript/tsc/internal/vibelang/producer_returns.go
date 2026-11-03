@@ -25,7 +25,8 @@ func init() {
 
 // producerReturns calls f with each `return value` of each producer in file,
 // except a function* written for an API that takes a JavaScript generator,
-// which is EK1002 (generators.go).
+// which is EK1002 (generators.go), and one given to a callee that does not
+// resolve, where nothing yet says which it is.
 func producerReturns(c *checker.Checker, file *ast.SourceFile, f func(ret *ast.Node)) {
 	generators := generatorArguments(c, file)
 	var inProducer func(n *ast.Node) bool
@@ -49,14 +50,16 @@ func producerReturns(c *checker.Checker, file *ast.SourceFile, f func(ret *ast.N
 }
 
 // generatorArguments returns the function* expressions and declarations of
-// file that are passed where a JavaScript generator is expected.
+// file that are passed where a JavaScript generator is expected, or to a callee
+// that does not resolve: with effect not installed, Effect.gen is such a callee,
+// and rewriting its generator's return as a producer's would lose the value.
 func generatorArguments(c *checker.Checker, file *ast.SourceFile) map[*ast.Node]bool {
 	found := map[*ast.Node]bool{}
 	var visit func(node *ast.Node) bool
 	visit = func(node *ast.Node) bool {
 		if ast.IsCallExpression(node) {
 			for _, arg := range node.Arguments() {
-				if isGeneratorFunction(c, arg) && expectsGenerator(c, arg) {
+				if isGeneratorFunction(c, arg) && (expectsGenerator(c, arg) || c.GetTypeAtLocation(node.Expression()) == c.GetErrorType()) {
 					found[arg] = true
 					if decl := generatorDeclaration(c, arg); decl != nil {
 						found[decl] = true
