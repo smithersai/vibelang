@@ -210,7 +210,7 @@ function groupedHead(nested: Nested) {
 // The parentheses expose the inner Effect to the handler, not the outer run.
 ```
 
-<a id="result-tests"></a>**Result tests.** `EK0103` and `EK0508` ask: may this value be an unrun Effect? A type answers yes when it is not `never`, `any` or `unknown` and at least one union member is an Effect. `EK0404` and `EK0507` ask the same of Promises, with `PromiseLike` for Effect, as typescript-eslint's `no-floating-promises` does. [Effectful callables](003-failures.md#effectful-callables) keep their every-member test, because they ask the opposite question. Only the [operand test](#operand-test) of `try` (`EK0502`), `catch` (`EK0506`), `try.all` (`EK1801`) and `fork` (`EK1703`) uses assignability to `Effect.Effect<any, any, any>`, which `never` and `any` pass. Every other chapter names one of these two tests.
+<a id="result-tests"></a>**Result tests.** `EK0103` and `EK0508` ask: may this value be an unrun Effect? A type answers yes when it is not `never`, `any` or `unknown` and at least one union member is an Effect. `EK0404` and `EK0507` ask the same of Promises, with `PromiseLike` for Effect, as typescript-eslint's `no-floating-promises` does. [Effectful callables](003-failures.md#effectful-callables) keep their every-member test, because they ask the opposite question. The [operand test](#operand-test) of `try` (`EK0502`), `catch` (`EK0506`) and `fork` (`EK1703`) uses assignability to `Effect.Effect<any, any, any>`. The four concurrent array operations require assignability to `ReadonlyArray<Effect.Effect<any, any, any>>` (`EK1801`); `for concurrent` requires `Iterable<unknown>` (`EK1901`), and `for try` requires `Stream.Stream<any, any, any>` (`EK2004`). These are ordinary TypeScript assignability tests, with the project's compiler options; `any` and `never` pass. Every other chapter names its test.
 
 ```vibe es
 // compiler-gap: pending VIP-5
@@ -819,7 +819,7 @@ function owners(scope: Scope.Scope) {
 | Rule | Diagnostic |
 | --- | --- |
 | `try.all`, `try.race`, `try.any` or `try.allSettled` outside effect code | `EK0501` |
-| an operand that is not an array of Effects, for `try.all`, `try.race`, `try.any` or `try.allSettled`, `try.all [1, a()]`; an object of Effects uses the `all` global instead | `EK1801` |
+| an operand that is not an array of Effects, using assignability to `ReadonlyArray<Effect.Effect<any, any, any>>`, for `try.all`, `try.race`, `try.any` or `try.allSettled`, `try.all [1, a()]`; an object of Effects uses the `all` global instead | `EK1801` |
 | a retired `await.all`, `await.race`, `await.any` or `await.allSettled`; `vibelang --fix` writes the `try` operation | `EK1802` |
 | a name after `try.` other than `all`, `race`, `any` or `allSettled`: `try.map x`; run the Effect with `try` and apply the function to its result, `f(try x)`, or use one of the four | `EK1803` |
 
@@ -874,7 +874,7 @@ function page(id: string) {
 | `break` that would leave head binding initialization or the body: `for concurrent (const x of xs) { break }` | `EK1903` |
 | `return` targeting the enclosing function in head binding initialization or the body: `for concurrent (const x of xs) { return x }` | `EK1904` |
 | a labeled `continue` in head binding initialization or the body naming a statement that encloses the `for concurrent` | `EK1905` |
-| an operand that is not an `Iterable`, `for concurrent (const x of 5) { }`; a Stream uses `for try` | `EK1901` |
+| an operand that is not an `Iterable`, `for concurrent (const x of 5) { }`; the test is assignability to `Iterable<unknown>`; a Stream uses `for try` | `EK1901` |
 | a head other than a `const` or `let` declaration: `var`, `using`, `await using` or an assignment head, `for concurrent (x of xs)` | `EK1906` |
 | a limit not assignable to Effect's `Types.Concurrency`, `number \| "unbounded"`: `for concurrent("fast") (const x of xs) { }` | `EK1907` |
 
@@ -1036,7 +1036,7 @@ Both loop heads evaluate the operand in ECMAScript's separate `ForDeclaration` e
 | `for try` outside effect code | `EK2001` |
 | `return` targeting the enclosing function in head binding initialization or the body: `for try (const x of s) { return x }` | `EK2002` |
 | a labeled `break` or `continue` in head binding initialization or the body naming a statement that encloses the `for try`: `outer: for (const s of streams) { for try (const x of s) { continue outer } }` | `EK2003` |
-| an operand that is not a `Stream`, `for try (const x of [1, 2]) { }`; convert an AsyncIterable with `Stream.fromAsyncIterable` first | `EK2004` |
+| an operand that is not a `Stream`, `for try (const x of [1, 2]) { }`; the test is assignability to `Stream.Stream<any, any, any>`; convert an AsyncIterable with `Stream.fromAsyncIterable` first | `EK2004` |
 | a head other than a `const` or `let` declaration: `var`, `using`, `await using` or an assignment head, `for try (x of s)`; write `for try (const v of s) { x = v }` | `EK2005` |
 
 ### Meaning

@@ -1038,10 +1038,10 @@ The TypeScript-form lint warnings also retain their existing `EK4830`–`EK4837`
 | `EK1704` | a `join` operand not assignable to `Fiber.Fiber<any, any>` | 17 | [Running Effects](002-running.md#fork-and-join) |
 | `EK1705` | a `fork.` owner other than `in(s)`, `scoped` or `detached`: `fork.other e` | 17 | [Running Effects](002-running.md#fork-and-join) |
 | `EK1706` | a `fork.in(s)` scope operand not assignable to `Scope.Scope` | 17 | [Running Effects](002-running.md#fork-and-join) |
-| `EK1801` | an operand that is not an array of Effects, for `try.all`, `try.race`, `try.any` or `try.allSettled` | 18 | [Running Effects](002-running.md#running-effects-concurrently) |
+| `EK1801` | an operand that is not an array of Effects, using assignability to `ReadonlyArray<Effect.Effect<any, any, any>>`, for `try.all`, `try.race`, `try.any` or `try.allSettled` | 18 | [Running Effects](002-running.md#running-effects-concurrently) |
 | `EK1802` | a retired `await.all`, `await.race`, `await.any` or `await.allSettled`; quick fix: the `try` operation that replaces it | 18 | [Running Effects](002-running.md#running-effects-concurrently) |
 | `EK1803` | a name after `try.` other than `all`, `race`, `any` or `allSettled`: `try.map x` | 18 | [Running Effects](002-running.md#running-effects-concurrently) |
-| `EK1901` | a `for concurrent` operand that is not an `Iterable` | 19 | [Running Effects](002-running.md#for-concurrent) |
+| `EK1901` | a `for concurrent` operand not assignable to `Iterable<unknown>` | 19 | [Running Effects](002-running.md#for-concurrent) |
 | `EK1902` | `for concurrent` outside effect code | 19 | [Running Effects](002-running.md#for-concurrent) |
 | `EK1903` | `break` leaving head binding initialization or the body of `for concurrent` | 19 | [Running Effects](002-running.md#for-concurrent) |
 | `EK1904` | `return` in head binding initialization or the body of `for concurrent` | 19 | [Running Effects](002-running.md#for-concurrent) |
@@ -1051,7 +1051,7 @@ The TypeScript-form lint warnings also retain their existing `EK4830`–`EK4837`
 | `EK2001` | `for try` outside effect code | 20 | [Running Effects](002-running.md#for-try) |
 | `EK2002` | `return` in head binding initialization or the body of `for try` | 20 | [Running Effects](002-running.md#for-try) |
 | `EK2003` | a labeled `break` or `continue` from `for try` head binding initialization or the body to a statement that encloses the `for try`; one naming the `for try` itself is its unlabeled `break` or `continue` | 20 | [Running Effects](002-running.md#for-try) |
-| `EK2004` | a `for try` operand that is not a `Stream` | 20 | [Running Effects](002-running.md#for-try) |
+| `EK2004` | a `for try` operand not assignable to `Stream.Stream<any, any, any>` | 20 | [Running Effects](002-running.md#for-try) |
 | `EK2005` | a `var`, `using`, `await using` or assignment head in `for try`: any head other than a `const` or `let` declaration | 20 | [Running Effects](002-running.md#for-try) |
 | `EK2102` | a producer whose written return type is incompatible with its Stream result, under TypeScript's ordinary return checking | 21 | [Running Effects](002-running.md#producers) |
 | `EK2103` | `yield*` in a producer | 21 | [Running Effects](002-running.md#producers) |
