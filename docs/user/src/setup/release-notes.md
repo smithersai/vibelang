@@ -723,6 +723,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Incomplete matches on finite generic constraints could compile silently; they now report `EK4701`. `vibelang --fix` can preserve the previous no-match `TypeError` with an explicit default arm.
 
 - Native `using` in Effect code omitted its resource warning; it now reports `EK0801` at the declaration and respects `vibe.severities`.
+- `BigInt64Array(let n)` and `BigUint64Array(let n)` inferred the array container for `n`, producing incorrect declarations and rejecting bigint operations. They now infer `bigint`, matching the extracted element.
 - API identity checks rejected two identical copies of a generic function using an `import()` type with literal type arguments. Copies now compare identically, while changed literal arguments and dependencies remain differences.
 
 - Publication checks for source-child packages could not install an already-published Effect dependency while simulating an unreleased VibeLang SDK. Their registry fixture now serves the pinned Effect release while continuing to withhold the SDK.

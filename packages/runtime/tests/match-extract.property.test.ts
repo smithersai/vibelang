@@ -26,6 +26,23 @@ test("match: a typed array extracts its own kind's elements only", () => {
   }))
 })
 
+test("match: BigInt typed arrays extract bigint elements for every length", () => {
+  fc.assert(fc.property(fc.array(fc.bigInt({ min: -(1n << 63n), max: (1n << 63n) - 1n })), values => {
+    const signed = new BigInt64Array(values)
+    const unsigned = new BigUint64Array(values)
+    const a = $extract(BigInt64Array, signed)
+    const b = $extract(BigUint64Array, unsigned)
+    expect(a).toBe(signed)
+    expect(b).toBe(unsigned)
+    if (a !== false && b !== false) {
+      expect([...a]).toEqual(values)
+      expect([...b]).toEqual(values.map(value => BigInt.asUintN(64, value)))
+    }
+    expect($extract(BigInt64Array, unsigned)).toBe(false)
+    expect($extract(BigUint64Array, values)).toBe(false)
+  }))
+})
+
 test("match: Map and Set extract the collection itself", () => {
   const map = new Map([[1, 2]])
   const set = new Set([1])

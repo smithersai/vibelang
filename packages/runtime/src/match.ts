@@ -213,6 +213,9 @@ type BoxForConstructor<C> =
  * the map; a function that is no class is called with the matcher's hint.
  */
 export function $extract<S>(matcher: ArrayConstructor, subject: S): ArrayExtraction<S> | false
+// Infer the constructor itself: inferring its result can lose the BigInt
+// constructors to the generic class overload during subtype selection.
+export function $extract<C extends TypedArrayClass<unknown>>(matcher: C, subject: unknown): InstanceType<C> | false
 export function $extract<T>(matcher: TypedArrayClass<T>, subject: unknown): T | false
 export function $extract<R>(matcher: CustomMatcher<R>, subject: unknown): Extracted<R> | false
 export function $extract(matcher: RegExp, subject: unknown): ReadonlyArray<RegExpMatchArray> | false

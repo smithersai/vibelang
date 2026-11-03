@@ -1191,7 +1191,7 @@ typescript/vibelang/cases/cov-ch002b-running-yield-activation-nested-block.fail/
 typescript/vibelang/cases/cov-ch004-async-inner-jumps/main.vibe:3:91 lambda plain fallback
 typescript/vibelang/cases/cov-ch004-bare-presence/main.vibe:14:15 lambda plain fallback
 typescript/vibelang/cases/cov-ch004-bare-presence/main.vibe:14:82 lambda plain fallback
-typescript/vibelang/cases/cov-ch004-builtin-element-types/main.vibe:6:66 lambda plain table
+typescript/vibelang/cases/cov-ch004-builtin-element-types/main.vibe:7:66 lambda plain table
 typescript/vibelang/cases/cov-ch004-builtin-recognition/main.vibe:4:208 lambda plain table
 typescript/vibelang/cases/cov-ch004-builtin-recognition/main.vibe:4:66 lambda plain table
 typescript/vibelang/cases/cov-ch004-call-extractor-type/main.vibe:7:66 lambda plain table

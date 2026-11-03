@@ -54,7 +54,25 @@ function ordinary(subject: unknown) {
   }
 }
 `
-    writeFileSync(join(dir, "main.ts"), source)
+    const typedArrays = [
+      ["BigInt64Array", "bigint"], ["BigUint64Array", "bigint"],
+      ["Uint8Array", "number"], ["Float64Array", "number"],
+    ].map(([name, element]) => `
+function typed${name}(subject: unknown) {
+  const Alias = ${name}
+  const result = $extract(Alias, subject)
+  if (result !== false) {
+    const list: ${name} = result
+    const element: ${element} = result[0]
+    // @ts-expect-error The extracted element is not the container.
+    const container: ${name} = result[0]
+    // Explicit result type arguments retain the existing overload.
+    const explicit: ${name} | false = $extract<${name}>(Alias, subject)
+    return [list, element, explicit]
+  }
+}
+`).join("\n")
+    writeFileSync(join(dir, "main.ts"), source + typedArrays)
     const require = createRequire(import.meta.url)
     const result = spawnSync(process.execPath, [require.resolve("typescript/lib/tsc.js"), "-p", dir], {
       cwd: dir, encoding: "utf8", timeout: 45_000,
