@@ -78,7 +78,7 @@ var specAhead = map[int32]string{
 	302:  renumbering,
 	1601: renumbering, 1704: renumbering, 1906: renumbering,
 	// Assigned by the round-20 spec for decided detail 100 (an extractor on a class without its own matcher).
-	
+
 	// Incomplete custom declaration forms have assigned diagnostics before compiler registration.
 	1503: renumbering, 1604: renumbering,
 	// Missing member separators in VibeLang declaration bodies have assigned diagnostics before compiler registration.
@@ -92,6 +92,22 @@ var specAhead = map[int32]string{
 	// Decided detail 212 gives an unparenthesized execution expression on the left of ** its code (loop round 1, ASTRA-10).
 	// Decided detail 247 gives the remaining owner-block rejections codes (loop round 3, OPUS-7).
 	512: "lane impl-hunt-run registers EK0512 (claim parser:catch-mixing-EK0512)", 1505: "lane impl-hunt-data registers EK1505 (claim parser:schema-member-EK1505)", 1606: "lane impl-hunt-data registers EK1606 (claim parser:data-variant-EK1606)",
+	// Spec-direct commits of 2026-11-03 (576e5f80a23f, 93ee4a5d11cf, ad7c006e1e7c and the 14:26Z fold batch) assigned these.
+	407:  "lane relic-trusted registers EK0407 (claim EK0407:trusted-empty-retirement)",
+	1402: "lane spec-lander assigned EK1402 (claim spec:EK1402-public-provenance); " + renumbering,
+	1506: "lane impl-hunt-data registers EK1506 (claim ambient-runtime-declarations:EK1506-EK1607)",
+	1607: "lane impl-hunt-data registers EK1607 (claim ambient-runtime-declarations:EK1506-EK1607)",
+	1707: "lane relic-try-forms registers EK1707 (claim diagnostic:EK1707-bare-fork-block)",
+	2401: "lane relic-try-forms registers EK2401 (claim diagnostic:EK2401-wire-intrinsic)",
+	2601: renumbering,
+	3010: "lane no-trusted-packages registers EK3010 (claim trustedPackages:deprecation)",
+	3011: renumbering,
+	3410: "lane relic-mutable registers EK3410 (claim diagnostic:EK3410:retired-mutable)",
+	3501: renumbering,
+	4005: "lane vip40-core registers EK4005 (queued 14d1abd64058)",
+	4007: "lane vip40-core registers EK4007 (queued 14d1abd64058)",
+	4009: "lane vip40-core registers EK4009 (queued 14d1abd64058)",
+	4857: "lane vip3-sugar registers EK4857 (queued 10e5a99c3de8)",
 }
 
 // TestRegistryMatchesSpec checks the registry against Appendix B of the
