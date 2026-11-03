@@ -1,0 +1,9 @@
+{
+  "property": "eslint-synthetic-declarations",
+  "rule": "VIP-34 existing tools work",
+  "input": {
+    "code": "export function run(receiver) { const result = receiver?.f(do { 1 }); return result }",
+    "constName": null
+  },
+  "note": "Minimized from do-syntax-optional: hidden variables must also disappear from declaration queries."
+}

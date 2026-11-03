@@ -222,12 +222,14 @@ function moduleDeclaration(node) {
 // a synthesized name nothing declares, such as try's $try, leaves each
 // scope's through list, which no-undef reads.
 function hideSynthesized(scopeManager) {
+  const hidden = new Set()
   for (const scope of scopeManager.scopes) {
     const through = scope.through.filter((reference) => reference.identifier.synthesized !== true)
     scope.through.splice(0, scope.through.length, ...through)
     const kept = []
     for (const variable of scope.variables) {
       if (variable.identifiers.length !== 0 && variable.identifiers.every((identifier) => identifier.synthesized === true)) {
+        hidden.add(variable)
         scope.set.delete(variable.name)
         for (const reference of variable.references) reference.resolved = null
       } else {
@@ -235,6 +237,12 @@ function hideSynthesized(scopeManager) {
       }
     }
     scope.variables.splice(0, scope.variables.length, ...kept)
+  }
+  // Rules such as prefer-const also query declarations by AST node. Removing
+  // a variable from scope lists does not remove it from that cached lookup.
+  if (hidden.size !== 0) {
+    const getDeclaredVariables = scopeManager.getDeclaredVariables.bind(scopeManager)
+    scopeManager.getDeclaredVariables = (node) => getDeclaredVariables(node).filter((variable) => !hidden.has(variable))
   }
 }
 

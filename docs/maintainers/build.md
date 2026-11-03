@@ -1371,3 +1371,10 @@ visitor keys. Its callback keeps the item binding scope; only a written limit
 has a concurrency node. Native and real ESLint concurrent-form properties,
 the keyed concurrent-head corpus and `TestConcurrentStatementSourceForm`
 check the loop without suppressing reports on written calls in its children.
+
+The ESLint adapter hides generated variables from both scope lists and
+`getDeclaredVariables` queries. Rules such as `prefer-const` use that
+node-declaration lookup even after scope lists have been filtered. Preserve
+all authored variable objects, including dollar-prefixed names, in both views.
+The pinned ESLint synthetic-declarations property replays the minimized
+optional-`do` witness and checks generated scope, provenance and write controls.
