@@ -4,6 +4,7 @@
 // rule was written for, which must fail. `bun docs/tools/spec-lint.ts` prints
 // the violations and exits non-zero on any. The graph target is //:spec-lint.
 import { readdirSync, readFileSync } from "node:fs"
+import ts from "typescript"
 import { resolve } from "node:path"
 import { fileURLToPath } from "node:url"
 
@@ -403,14 +404,43 @@ const compilerGaps: Rule = {
   }
 }
 
-export const rules: Rule[] = [resolutionClaims, configKeys, importStyleScope, declarationImportForm, deniedVipRepairs, retiredForms, platformImports, counterpartUsing, collisionConditional, rulingClaims, compilerGaps]
+// R29 ASTRA-1: a module body's extracted twin must remain a module even
+// under legacy moduleDetection. Annotated twins are executable examples,
+// not a prose phrase check; ordinary illustrative script snippets are exempt.
+// The separately published VIP fix adds the first annotated twin.
+const moduleExtractionTwins: Rule = {
+  name: "module-extraction-twins",
+  finding: "r29 ASTRA-1: an import/export-free body copied unchanged to .ts becomes a global script",
+  check(spec) {
+    const out: Violation[] = []
+    for (const [file, text] of spec) {
+      for (const block of text.matchAll(/^[ \t]*```(ts|tsx)(?:[ \t][^\n]*)?\n([^]*?)^[ \t]*```/gm)) {
+        if (!/^\s*\/\/ module-extraction-twin\s*$/m.test(block[2]!)) continue
+        const source = ts.createSourceFile(
+          block[1] === "tsx" ? "body.tsx" : "body.ts",
+          block[2]!, ts.ScriptTarget.Latest, true,
+          block[1] === "tsx" ? ts.ScriptKind.TSX : ts.ScriptKind.TS
+        )
+        if (!ts.isExternalModule(source)) {
+          out.push({
+            rule: this.name, file, line: lineAt(text, block.index!) + 1,
+            message: "the extracted module twin is a script under moduleDetection: legacy; preserve module scope with export {}"
+          })
+        }
+      }
+    }
+    return out
+  }
+}
+
+export const rules: Rule[] = [resolutionClaims, configKeys, importStyleScope, declarationImportForm, deniedVipRepairs, retiredForms, platformImports, counterpartUsing, collisionConditional, rulingClaims, compilerGaps, moduleExtractionTwins]
 
 const kinds: Record<string, string[]> = {
   registry: ["config-keys"],
   tables: ["resolution-claims", "declaration-import-style-scope", "denied-vip-repairs", "collision-conditional", "compiler-gaps-not-rules"],
   copies: ["declaration-import-form", "counterpart-using"],
   authority: ["ruling-claims"],
-  examples: ["retired-forms", "platform-imports"]
+  examples: ["retired-forms", "platform-imports", "module-extraction-twins"]
 }
 // A positional fallback must name a row that falls back (r18 OPUS-2). 005's
 // service table ended with EK0905, a declaration rule, under "The last row

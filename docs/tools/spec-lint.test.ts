@@ -247,3 +247,45 @@ test("plain-unknown-call rejects round 18 OPUS-1's untagged call as known to thr
   const defect = withEdit("src/003-failures.md", text => text.replace(/A call whose throwing is unknown, such as an unannotated `\.ts` function, stays an ordinary call[^.]*\./, "It has no tag on a foreign declaration (so throws `unknown`)."))
   expect(lint(defect, rule("plain-unknown-call")).map(v => v.rule)).toEqual(["plain-unknown-call"])
 })
+
+
+const extractionFixture = (source: string, language = "ts"): Spec => new Map([
+  ["vips/0040-module-declarations.md", "```" + language + "\n// module-extraction-twin\n" + source + "\n```\n"]
+])
+
+test("module-extraction-twins rejects the unchanged R29 ASTRA-1 body", () => {
+  const body = "const privateBodyValue = 7"
+  const result = lint(extractionFixture(body), rule("module-extraction-twins"))
+  expect(result).toEqual([{
+    rule: "module-extraction-twins", file: "vips/0040-module-declarations.md", line: 2,
+    message: expect.stringContaining("the extracted module twin is a script")
+  }])
+  expect(lint(extractionFixture(body + "\nexport {}"), rule("module-extraction-twins"))).toEqual([])
+})
+
+test("module-extraction-twins checks script neighbors and native module indicators", () => {
+  fc.assert(fc.property(
+    fc.integer({ min: -100000, max: 100000 }),
+    fc.constantFrom("ts", "tsx"),
+    fc.constantFrom(
+      "const privateBodyValue = VALUE",
+      "interface PrivateShape { value: VALUE }",
+      "type PrivateShape = VALUE",
+      "async function initialize() { return VALUE }",
+      "await Promise.resolve(VALUE)",
+      "// export {} is only a comment\nconst privateBodyValue = VALUE",
+      'const text = "export {}"; const privateBodyValue = VALUE'
+    ),
+    fc.constantFrom("export {}", "export const publicValue = 1", 'import "./dependency.js"', 'import type { Shape } from "./shape.js"', 'export type Shape = number'),
+    (value, language, template, marker) => {
+      const body = template.replaceAll("VALUE", String(value))
+      expect(lint(extractionFixture(body, language), rule("module-extraction-twins"))).toHaveLength(1)
+      expect(lint(extractionFixture(body + "\n" + marker, language), rule("module-extraction-twins"))).toEqual([])
+    }
+  ), { numRuns: 200, seed: 29001 })
+})
+
+test("module-extraction-twins ignores unannotated illustrative scripts and ordinary comments", () => {
+  const fixture = new Map([["src/001-functions.md", "```ts\nconst value = 7\n```\n"]])
+  expect(lint(fixture, rule("module-extraction-twins"))).toEqual([])
+})

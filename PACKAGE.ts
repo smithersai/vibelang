@@ -282,7 +282,7 @@ const specExamples = S.Shell.Test({
   tools: [node], sandbox: "none", timeout: "15m"
 })
 const specLinterTests = S.Shell.Test({
-  summary: "Historical spec defects, seeded properties and native example checks reject regressions.",
+  summary: "Historical spec defects, module extraction scope, seeded properties and native example checks reject regressions.",
   shell: "node --test docs/tools/spec-rules.test.mjs docs/tools/spec-examples-compiler.test.mjs docs/tools/diagnostic-identity.test.mjs docs/tools/factory-diagnostic-retirement.test.mjs && cd docs/tools && bun test --timeout 60000 spec-lint.test.ts",
   data: [specInputs, Packages["compiler-native"], Packages["runtime-dist"]] as Array<never>,
   tools: [node, bun], sandbox: "none", timeout: "5m"
