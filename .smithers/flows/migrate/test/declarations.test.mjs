@@ -120,15 +120,28 @@ test("canonical text keeps every other .ts: a declaration file, a package, a str
   ]) assert.notEqual(canonicalize(ts, a), canonicalize(ts, b), a)
 })
 
-test("compareDeclarations calls a module renamed to .vibe unchanged when its importer's declaration spells it .js", () => {
+test("compareDeclarations compares a tree without surface metadata as published: only a proven D298 spelling is excused", () => {
   const root = mkdtempSync(join(tmpdir(), "migrate-dts-"))
-  try {
-    for (const [dir, index] of [["ts", `export * from "./leaf.ts";\n`], ["vibe", `export * from "./leaf.js";\n`]]) {
+  const compare = (before, after) => {
+    for (const [dir, index] of [["ts", before], ["vibe", after]]) {
+      rmSync(join(root, dir), { recursive: true, force: true })
       mkdirSync(join(root, dir))
       writeFileSync(join(root, dir, "index.d.ts"), index)
       writeFileSync(join(root, dir, "leaf.d.ts"), "export declare const value = 1;\n")
+      writeFileSync(join(root, dir, "other.d.ts"), "export declare const other = 2;\n")
     }
-    assert.equal(compareDeclarations(ts, join(root, "ts"), join(root, "vibe")).identical, true)
+    return compareDeclarations(ts, join(root, "ts"), join(root, "vibe"))
+  }
+  try {
+    const spelled = compare(`export * from "./leaf.ts";\n`, `export * from "./leaf.js";\n`)
+    assert.equal(spelled.identical, true, JSON.stringify(spelled.changed))
+    assert.equal(spelled.comparison, "all bytes")
+    assert.deepEqual(spelled.excused.map((e) => [e.before, e.after]), [["./leaf.ts", "./leaf.js"]])
+    // No canonical leeway: order and comments count, as in a published file.
+    assert.equal(compare(`export * from "./leaf.js";\nexport * from "./other.js";\n`, `export * from "./other.js";\nexport * from "./leaf.js";\n`).identical, false)
+    assert.equal(compare(`/** contract */\nexport * from "./leaf.js";\n`, `export * from "./leaf.js";\n`).identical, false)
+    // Only an extensionless or .ts name may become its emitted .js (D298); another explicit extension stays.
+    assert.equal(compare(`export * from "./leaf.jsx";\n`, `export * from "./leaf.js";\n`).identical, false)
   } finally {
     rmSync(root, { recursive: true, force: true })
   }
@@ -159,10 +172,10 @@ test("compareDeclarations reports changed, added and removed files", () => {
     assert.deepEqual(listDeclarations(join(root, "after")), ["a.d.ts", "b.d.ts", "new/c.d.ts"])
     const result = compareDeclarations(ts, join(root, "before"), join(root, "after"))
     assert.equal(result.identical, false)
-    assert.deepEqual(result.changed.map((c) => c.file), ["b.d.ts"])
+    assert.deepEqual(result.changed.map((c) => c.file), ["a.d.ts", "b.d.ts"])
     assert.deepEqual(result.added, ["new/c.d.ts"])
     assert.deepEqual(result.removed, ["gone.d.ts"])
-    assert.deepEqual(result.changed[0].diff, ["-1: export type B = string;", "+1: export type B = number;"])
+    assert.deepEqual(result.changed.find(c => c.file === "b.d.ts").diff, ["-1: export type B = string;", "+1: export type B = number;"])
     assert.equal(compareDeclarations(ts, join(root, "before"), join(root, "before")).identical, true)
   } finally {
     rmSync(root, { recursive: true, force: true })
