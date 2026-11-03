@@ -147,6 +147,11 @@ export interface Process {
   /** The native temporary directory path. Queries without creating a directory or file. */
   readonly temporaryDirectory: Effect.Effect<string>
   /**
+   * The caller's native uid, or undefined when getuid is unavailable.
+   * Preserves uid 0 and the exact thrown host value as a typed failure.
+   */
+  readonly currentUid: Effect.Effect<number | undefined, unknown>
+  /**
    * Sends a signal to the process `pid`, or to its process group with
    * `group`. Fails with a `SystemError` `NotFound` when no such process
    * exists, `PermissionDenied` when this process may not signal it, and a
@@ -221,6 +226,7 @@ export const layerTest = (impl: Partial<Omit<Process, TypeId>> = {}): Layer.Laye
       timeOrigin: Effect.succeed(0),
       memoryUsage: Effect.succeed({ rss: 0, heapTotal: 0, heapUsed: 0, external: 0, arrayBuffers: 0 }),
       temporaryDirectory: Effect.succeed("/tmp"),
+      currentUid: Effect.succeed(undefined),
       kill: (pid) =>
         Effect.fail(
           PlatformError.systemError({ _tag: "NotFound", module: "Process", method: "kill", pathOrDescriptor: pid })

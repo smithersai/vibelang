@@ -708,6 +708,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Named `effect` function and producer expressions accepted reserved names `fork` and `join`. They now report `EK1702`; `vibelang --fix` preserves the callable name and self-references through a local constant.
 
+- Caller ownership probes had to read the native uid directly; `Experimental.Process.currentUid` now queries it while preserving an unavailable uid, valid uid `0` and the original lookup error.
+
 - Identical recursive generic declaration APIs could fail with `TS2589`; exact resolved type identity now proves those comparisons.
 - API checks treated identical JSDoc links as different when a private target resolved in only one snapshot. Link targets and labels now compare consistently while real comment changes remain differences.
 

@@ -234,7 +234,7 @@ platform API (D313), one module per service, each also a subpath:
 `vibelang-runtime/experimental/FileSystem` (Effect's `FileSystem` plus
 `access` with `executable`, `open` with `nonBlocking` and `File.chmod`),
 `vibelang-runtime/experimental/Crypto` (the members of Effect 4.0's `Crypto`,
-which Effect 4.1 removed, plus `hmac`, `sign` and `verify`), `vibelang-runtime/experimental/Process` (the process id,
+which Effect 4.1 removed, plus `hmac`, `sign` and `verify`), `vibelang-runtime/experimental/Process` (the optional native uid, process id,
 platform, host name and other facts, `kill` and `isRunning`),
 `vibelang-runtime/experimental/Locks` (Web Locks: `hold`, `tryHold` and
 `query`) and `vibelang-runtime/experimental/MediaQuery` (`matches` and

@@ -63,6 +63,7 @@ Each Node.js or web call has an Effect replacement, which needs no import. EK440
 | `crypto.randomUUID` | `try (try SecureRandom.SecureRandom).uuidV4()` | `NodeCrypto.layer` |
 | `crypto.subtle.digest` | `try (try Digest.Digest).digest(Digest.sha256, bytes)` | `NodeCrypto.layer` |
 | `process.argv` | `try (try Stdio.Stdio).args` | `NodeServices.layer` |
+| `process.getuid?.()` | `try (try Experimental.Process.Process).currentUid` | `ExperimentalNodeServices.layer` |
 | `os.hostname` | `try (try Experimental.Process.Process).hostname` | `ExperimentalNodeServices.layer` |
 | `os.homedir` | `try (try Experimental.Process.Process).homeDirectory`, including native account fallback | `ExperimentalNodeServices.layer` |
 | `process.kill` | `try (try Experimental.Process.Process).kill(pid, { killSignal })` | `ExperimentalNodeServices.layer` |

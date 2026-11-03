@@ -111,6 +111,7 @@ Each row says what replaces a global or one of its members: an Effect API first,
 | `process.execPath` | `try (try Experimental.Process.Process).execPath` |
 | `process.exit` | return from main for exit 0; fail for exit 1; interruption exits 130 |
 | `process.exitCode` | return from main for exit 0; fail for exit 1; interruption exits 130 |
+| `process.getuid` | `try (try Experimental.Process.Process).currentUid`; absent is `undefined`, root is `0`, native errors stay typed failures |
 | `process.hrtime` | `try Clock.monotonicTimeNanos` |
 | `process.kill` | `try (try Experimental.Process.Process).kill(pid, { killSignal })` |
 | `process.memoryUsage` | `try (try Experimental.Process.Process).memoryUsage` |

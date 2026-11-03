@@ -345,6 +345,7 @@ var platformAPIs = map[string]platformAPI{
 	"setImmediate":                 {"Yield", "", "yieldNow lets other fibers run; it does not queue a macrotask."},
 	"queueMicrotask":               {"Yield", "", "yieldNow lets other fibers run; it does not queue a microtask."},
 
+	"process.getuid":         {"ExperimentalProcess", "try (try Experimental.Process.Process).currentUid", "Process.currentUid preserves undefined when getuid is unavailable, uid 0, and the original host error as a typed failure."},
 	"process.env":            {"Config", "", ""},
 	"process.pid":            {"ExperimentalProcess", "Experimental.Process.pid()", ""},
 	"process.platform":       {"ExperimentalProcess", "Experimental.Process.platform()", ""},

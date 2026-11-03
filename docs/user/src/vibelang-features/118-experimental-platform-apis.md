@@ -160,6 +160,14 @@ Look up `const process = try Experimental.Process.Process`. Each fact is an Effe
 
 `homeDirectory` delegates to the native `os.homedir()` on each execution, including its account lookup when `HOME` (or `USERPROFILE` on Windows) is unset. Effect's `try (try UserDirectories.UserDirectories).home` reads the `ConfigProvider` environment and remains the resolver for application directories, provided by `UserDirectories.layer`. A `ConfigProvider` override does not change the native lookup. Tests can provide `Experimental.Process.layerTest({ homeDirectory: Effect.succeed("/test/home") })`; its default home is `"/test/home"`. A browser has no process to read, so `Process` has no browser layer.
 
+### Current process uid
+
+`try (try Experimental.Process.Process).currentUid` queries native `process.getuid?.()` on Node/Bun each time it runs. It returns `number | undefined`: `undefined` means the host does not expose `getuid`; `0` is a valid uid. It does not infer the caller from environment variables or a file's owner.
+
+Unlike the infallible facts above, this query has an `unknown` failure channel. A thrown method or property-getter value becomes that exact typed failure, without an `UnknownException` or `PlatformError` wrapper, so an ownership probe can classify it. The native lookup stays synchronous inside the cold Effect.
+
+Tests can provide `Experimental.Process.layerTest({ currentUid: Effect.succeed(0) })` for root, `Effect.succeed(undefined)` for absence, or `Effect.fail(error)` for an unverifiable lookup. The default is `undefined`.
+
 ### Signalling processes
 
 ```vibe

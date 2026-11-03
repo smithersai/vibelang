@@ -1,0 +1,29 @@
+// expect-result: {"matchesNative":true,"missing":true,"root":0,"classified":true}
+import { ExperimentalNodeProcess } from "vibelang-runtime/experimental/platform-node"
+import { nativeUid } from "./host.js"
+
+effect function identity() {
+  return try (try Experimental.Process.Process).currentUid
+}
+effect function nativeIdentity() {
+  provide ExperimentalNodeProcess.layer { return try identity() }
+}
+effect function missingIdentity() {
+  provide Experimental.Process.layerTest() { return typeof try identity() === "undefined" }
+}
+effect function rootIdentity() {
+  provide Experimental.Process.layerTest({ currentUid: Effect.succeed(0) }) { return try identity() }
+}
+effect function failedIdentity() {
+  provide Experimental.Process.layerTest({ currentUid: Effect.fail("uid-probe") }) {
+    return identity() catch (error) => error === "uid-probe"
+  }
+}
+export effect function main() {
+  return {
+    matchesNative: try nativeIdentity() === nativeUid(),
+    missing: try missingIdentity(),
+    root: try rootIdentity(),
+    classified: try failedIdentity(),
+  }
+}

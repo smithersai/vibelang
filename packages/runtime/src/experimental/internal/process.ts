@@ -11,6 +11,7 @@ import * as Process from "../Process.js"
 // The part of the host's process object this layer reads. The runtime declares
 // it here rather than depending on @types/node, as its entry does.
 interface Host {
+  readonly getuid?: (() => number) | undefined
   readonly pid: number
   readonly platform: string
   readonly arch: string
@@ -148,6 +149,7 @@ const make = (): Process.Process => {
       return { rss, heapTotal, heapUsed, external, arrayBuffers }
     }),
     temporaryDirectory: Effect.sync(() => os.tmpdir()),
+    currentUid: Effect.try({ try: () => host.getuid?.(), catch: (error) => error }),
     kill: (pid, options) =>
       Effect.flatMap(target(host, "kill", pid, options?.group), (id) =>
         Effect.try({

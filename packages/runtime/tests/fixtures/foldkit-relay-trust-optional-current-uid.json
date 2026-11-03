@@ -1,0 +1,11 @@
+{
+  "key": "foldkit:relay-trust:optional-current-uid",
+  "oracle": "VIP-33 section2; preserve process.getuid?.() absence, zero, receiver, fresh lookup and original thrown identity in a classifiable Effect.",
+  "cases": [
+    { "mode": "native" },
+    { "mode": "absent" },
+    { "mode": "zero" },
+    { "mode": "throw-method" },
+    { "mode": "throw-getter" }
+  ]
+}

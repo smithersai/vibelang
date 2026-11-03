@@ -21,7 +21,7 @@ declare module "node:os" { export function tmpdir(): string; export function hos
 declare module "node:events" { export function once(emitter: unknown, name: string): Promise<unknown[]> }
 declare module "node:fs" { export const constants: { X_OK: number; O_NONBLOCK: number } }
 declare module "node:crypto" { export function createHmac(algorithm: string, key: Uint8Array): unknown }
-declare var process: { cwd(): string; env: Record<string, string | undefined>; pid: number; argv: string[]; kill(pid: number, signal?: string | number): true; umask(): number }
+declare var process: { cwd(): string; env: Record<string, string | undefined>; pid: number; argv: string[]; kill(pid: number, signal?: string | number): true; umask(): number; getuid?(): number }
 declare var Buffer: { from(text: string): Uint8Array }
 declare var document: { title: string }
 declare var window: { matchMedia(query: string): { matches: boolean } }
@@ -111,6 +111,11 @@ export const run = () => typeof server`, nil},
 		{"process.env", `export const run = () => process.env.PORT`, []string{
 			"process.env is platform code, which VibeLang code does not use directly.",
 			`Use Config, from the prelude:   Config.String("NAME")()`,
+		}},
+		{"process.getuid", `export const run = () => process.getuid?.()`, []string{
+			"process.getuid is platform code, which VibeLang code does not use directly.",
+			"Use the experimental Process service:   try (try Experimental.Process.Process).currentUid", provideExperimental,
+			"Process.currentUid preserves undefined when getuid is unavailable, uid 0, and the original host error as a typed failure.",
 		}},
 		{"process.argv", `export const run = () => process.argv`, []string{
 			"process.argv is platform code, which VibeLang code does not use directly.",
