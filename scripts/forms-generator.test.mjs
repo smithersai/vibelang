@@ -9,6 +9,7 @@ import { test } from "node:test"
 
 const read = file => readFileSync(new URL("../" + file, import.meta.url), "utf8")
 const goSources = { compilerSources: true }
+const nativeSources = { nativeCompilerSources: true }
 const formsGenerator = { formsGenerator: true }
 function targets(file) {
   const source = stripTypeScriptTypes(read(file)).replace(/^import .*$/gm, "")
@@ -20,7 +21,7 @@ function targets(file) {
     migrationSources: { migrationSources: true },
     S: { Generate: spec => spec, Shell: { Build: spec => spec, Test: spec => spec, Run: spec => spec }, Host: { bin: bin => bin },
       Filegroup: spec => spec, glob: patterns => patterns, file: file => file, Package: spec => spec },
-    Tsc: { srcs: goSources }, Typescript: { "forms-generator": formsGenerator }, Packages: {}, Vibelang: {}
+    Tsc: { srcs: goSources, "native-srcs": nativeSources }, Typescript: { "forms-generator": formsGenerator }, Packages: {}, Vibelang: {}
   }
   runInNewContext(source, context)
   return context.result.targets
@@ -29,7 +30,8 @@ function targets(file) {
 test("the forms executable is cached by compiler build inputs, independently of docs and test sources", () => {
   const target = targets("typescript/PACKAGE.ts")["forms-generator"]
   assert.ok(target, "a docs-only forms check must reuse a source-keyed executable")
-  assert.ok(target.data.includes(goSources))
+  assert.ok(target.data.includes(nativeSources))
+  assert.ok(!target.data.includes(goSources), "test and fuzz inputs must not rebuild the native executable")
   assert.ok(target.data.includes("go.work"))
   assert.ok(target.data.includes("//scripts/native-output.sh"))
   assert.equal(target.data.length, 3, "generation inputs must not enter the executable key")

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict"
 import { spawnSync } from "node:child_process"
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs"
+import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
@@ -20,6 +20,10 @@ function fixture(t) {
   for (const file of ["typescript/PACKAGE.ts", "typescript/tsc/PACKAGE.ts", ".smithers/WORKSPACE.ts", ".smithers/package.json", ".smithers/bun.lock"]) {
     put(file, readFileSync(join(repo, file)))
   }
+  // The real tsc declaration reads this parser corpus when its module loads.
+  const jsxCorpus = "typescript/vibelang/cases/vibex-clash"
+  mkdirSync(join(root, jsxCorpus), { recursive: true })
+  cpSync(join(repo, jsxCorpus), join(root, jsxCorpus), { recursive: true })
   put("PACKAGE.ts", 'import { Smithers as S } from "@smthrs/targets"\nexport const Package = S.Package({ targets: {} })\n')
   put("package.json", '{"name":"native-input-fixture","private":true,"type":"module"}\n')
   symlinkSync(join(repo, ".smithers/node_modules"), join(root, "node_modules"), "dir")
