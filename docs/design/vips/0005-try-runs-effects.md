@@ -70,7 +70,7 @@ effect function load(id) {
 - **Amended 2026-10-30: erased TypeScript wrappers in a `catch` head.** The `EK0505` unary/binary head search treats `as`, admitted angle-bracket assertions, `satisfies`, non-null `!` and type-only instantiation expressions without a call as transparent. Explicit source parentheses remain a boundary; emitter-added grouping does not count. The wrappers keep native type checks and do not change the existing call, literal or source-function boundaries. See [the checked examples](../src/002-running.md#catch).
 - **Amended 2026-10-31: a `throw` in a plain handler is `EK0401`** (VIP-4). A call known to throw in its parameters or body is too. The quick fix is `catch effect`, which makes the throw a typed failure. The old lint warning `EK0511` retires.
 
-- **Amended 2026-10-31: the remaining `catch` grammar code.** `catch` mixed with `??`, `||` or `&&` without parentheses, and a member access or call after a function-expression handler, are `EK0512`. `EK0504` to `EK0511` keep their specific triggers. Decided by the agent under Will's rule "when I state a principle, the agent derives the concrete rule and acts; I can override later" (decided detail 247).
+- **Amended 2026-10-31: the remaining `catch` grammar code.** `catch` mixed with `??`, `||` or `&&` without parentheses, and a member access or call after a function-expression handler, are `EK0512`. `EK0504` to `EK0510` keep their specific triggers; `EK0511` is retired (above). Decided by the agent under Will's rule "when I state a principle, the agent derives the concrete rule and acts; I can override later" (decided detail 247).
 
 
 ## Prior art
