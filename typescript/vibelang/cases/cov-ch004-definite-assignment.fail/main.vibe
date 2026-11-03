@@ -2,7 +2,8 @@
 // Chapter 004, definite-assignment: docs/design/src/004-match.md#1dc52fa39ccfe037
 // Chapter 004, definite-assignment: docs/design/src/004-match.md#ea4df5ee858d4974
 // Chapter 004, definite-assignment: docs/design/src/004-match.md#da86b43a622f9060
-export function read(s: unknown) { if (s is [1, let value]) return value; return value; }
+// A number binding requires TS2454; any/unknown follow native TypeScript exemptions.
+export function read(s: number[]) { if (s is [1, let value]) return value; return value; }
 export function before(s: unknown) { const early = value; const ok = s is let value; return [ok, early]; }
 
 // Chapter 004 rule: These bindings take part in TypeScript's definite-assignment and use-before-declaration checks, as a `let` assigned where the pattern runs would.

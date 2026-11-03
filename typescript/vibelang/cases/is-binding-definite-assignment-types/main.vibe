@@ -1,0 +1,5 @@
+// TypeScript exempts any, unknown and types containing undefined from TS2454.
+// Keep the census witness: its untyped extraction must retain native behavior.
+export function read(s: unknown) { if (s is [1, let value]) return value; return value; }
+export function optional(s: [number, number | undefined]) { if (s is [1, let value]) return value; return value; }
+export function checked(s: [number, number]) { if (!(s is [1, let value])) return; return value; }
