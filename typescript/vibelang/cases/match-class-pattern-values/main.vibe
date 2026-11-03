@@ -10,6 +10,6 @@ function describe(x: unknown) {
     default: "other";
   }
 }
-export function main() {
+export effect function main() {
   return [describe(Delivery.Sent({ tracking: "box-1" })), describe({ street: "1 Main St" }), describe(Delivery.Lost())]
 }

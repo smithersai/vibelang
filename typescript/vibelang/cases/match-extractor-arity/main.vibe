@@ -13,7 +13,7 @@ function noneEmpty(o: Option.Option<number>) { return match (o) { when Option.No
 function noneOne(o: Option.Option<number>) { return match (o) { when Option.None(let a): 1; default: 0; } }
 function someOne(o: Option.Option<number>) { return match (o) { when Option.Some(let v): v; default: -1; } }
 function restOnly(e: unknown) { return match (e) { when NotFound(...let all): all.length; default: 0; } }
-export function main() {
+export effect function main() {
   const missing = new NotFound({ id: "1" })
   return [zeroArgs(missing), twoArgs(missing), restAfterOne(missing), noneEmpty(Option.none()), noneOne(Option.none()), someOne(Option.some(1)), restOnly(missing)]
 }
