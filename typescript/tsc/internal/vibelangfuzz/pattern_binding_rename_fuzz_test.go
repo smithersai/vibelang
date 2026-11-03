@@ -22,12 +22,12 @@ func TestPatternBindingRenameQuoted(t *testing.T) {
 // use the existing reference/rename oracle rather than comparing emit strings.
 func FuzzPatternBindingRename(f *testing.F) {
 	startShortBudget(f)
-	for _, key := range []string{"variant", "object", "is", "nested", "explicit", "second"} {
+	for _, key := range []string{"variant", "object", "is", "nested", "explicit", "second", "census"} {
 		f.Add(key, byte(0), byte(0), byte(0))
 	}
 	w := NewWorkspace(f)
 	f.Fuzz(func(t *testing.T, key string, keyword, name, trivia byte) {
-		kinds := []string{"variant", "object", "is", "nested", "explicit", "second"}
+		kinds := []string{"variant", "object", "is", "nested", "explicit", "second", "census"}
 		if !strings.Contains("|"+strings.Join(kinds, "|")+"|", "|"+key+"|") || key == "" {
 			key = kinds[int(keyword)%len(kinds)]
 		}
@@ -39,7 +39,7 @@ func FuzzPatternBindingRename(f *testing.F) {
 		pattern := "{" + field + "}"
 		shape := "{" + binding + ":number}"
 		switch key {
-		case "variant":
+		case "variant", "census":
 			prefix = "data D { V { " + binding + ":number } }\n"
 			shape = "D"
 			pattern = "D.V " + pattern
@@ -53,6 +53,9 @@ func FuzzPatternBindingRename(f *testing.F) {
 			pattern = `{a:"[",` + field + "}"
 		}
 		source := fmt.Sprintf("%sfunction pick(x:%s){return match(x){when %s:%s;default:0;}}", prefix, shape, pattern, binding)
+		if key == "census" {
+			source = fmt.Sprintf("%sexport function main(x:%s){return match(x){when %s:%s;}}", prefix, shape, pattern, binding)
+		}
 		if key == "is" {
 			source = fmt.Sprintf("function pick(x:%s){if(x is %s)return %s;return 0}", shape, pattern, binding)
 		}

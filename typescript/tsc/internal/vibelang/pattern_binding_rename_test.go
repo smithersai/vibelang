@@ -49,3 +49,37 @@ func TestPatternBindingRename(t *testing.T) {
 		})
 	}
 }
+
+// Keep the conformance census witness covered from both rename origins. The
+// property key stays value even when the exported entry function binds fresh.
+func TestPatternBindingRenameCensus(t *testing.T) {
+	const source = "data D { V { value: number } }\nexport function main(x: D) { return match (x) { when D.V { let value }: value; } }\n"
+	const want = "data D { V { value: number } }\nexport function main(x: D) { return match (x) { when D.V { value: let fresh }: fresh; } }\n"
+	for _, origin := range []struct {
+		name   string
+		offset int
+	}{
+		{"binder", strings.Index(source, "let value") + len("let ")},
+		{"use", strings.LastIndex(source, "value")},
+	} {
+		t.Run(origin.name, func(t *testing.T) {
+			_, file, service, converters := editorProgram(t, source)
+			pos, _ := converters.ToLSPPosition(file, core.TextPos(origin.offset))
+			uri := lsconv.FileNameToDocumentURI(file.FileName())
+			response, err := service.ProvideRename(t.Context(), &lsproto.RenameParams{TextDocument: lsproto.TextDocumentIdentifier{Uri: uri}, Position: pos, NewName: "fresh"}, nil)
+			if err != nil || response.WorkspaceEdit == nil || response.WorkspaceEdit.Changes == nil {
+				t.Fatalf("rename: %v %v", response, err)
+			}
+			after := applyEditorEdits(t, file, converters, (*response.WorkspaceEdit.Changes)[uri])
+			if after != want {
+				t.Fatalf("want:\n%s\ngot:\n%s", want, after)
+			}
+			p, f, _, _ := editorProgram(t, after)
+			for _, d := range append(p.GetSyntacticDiagnostics(t.Context(), f), p.GetSemanticDiagnostics(t.Context(), f)...) {
+				if d.Category() == diagnostics.CategoryError {
+					t.Errorf("renamed diagnostic: %s", d.String())
+				}
+			}
+		})
+	}
+}
