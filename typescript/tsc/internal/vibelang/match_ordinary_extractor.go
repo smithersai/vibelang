@@ -214,10 +214,17 @@ var ordinaryExtractorFix = &ls.CodeFixProvider{
 							}
 							body.WriteString(text[pos:inside.End()])
 							beforeOpen := text[matcher.End() : inside.Pos()-1]
-							actions = append(actions, action("Match the class and its parameter properties", bare+" and "+beforeOpen+"{ "+body.String()+" }"))
+							actions = append(actions, action("Write the class test and its parameter properties", bare+" and "+beforeOpen+"{ "+body.String()+" }"))
 						}
 					}
-					actions = append(actions, action("Test the class without extracting values", bare))
+					// --fix applies the first action, and a "Write" title names
+					// the rewrite it applies; the bare test is the alternative
+					// only where the parameter properties can be matched.
+					if len(actions) == 0 {
+						actions = append(actions, action("Write the bare class test", bare))
+					} else {
+						actions = append(actions, action("Test the class without extracting values", bare))
+					}
 					return true
 				}
 			}

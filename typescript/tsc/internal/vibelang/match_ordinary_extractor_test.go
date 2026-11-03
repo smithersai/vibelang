@@ -50,7 +50,6 @@ func TestOrdinaryClassExtractorControls(t *testing.T) {
 		"function f(s:unknown){return match(s){when Map(let x):x;default:0;}}",
 		"function f(s:unknown){return match(s){when String(let x):x;default:0;}}",
 		"error E; function f(s:E){return match(s){when E(let x):x;default:null;}}",
-		"class C {}; const hidden:any=C; function f(s:unknown){return match(s){when hidden():1;default:0;}}",
 		"import { customMatcher as key } from 'vibelang-runtime'; class C { static [key](s:unknown){return [s]} }; function f(s:unknown){return match(s){when C(let x):x;default:0;}}",
 	} {
 		t.Run(source, func(t *testing.T) {
@@ -61,6 +60,21 @@ func TestOrdinaryClassExtractorControls(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+// Chapter 004, Class patterns: a callee typed any has neither signature, so
+// its pattern is EK0702, never the ordinary extractor's EK0704.
+func TestOrdinaryClassExtractorAnyCallee(t *testing.T) {
+	program, file, _, _ := editorProgram(t, "class C {}; const hidden:any=C; function f(s:unknown){return match(s){when hidden():1;default:0;}}")
+	var codes []int32
+	for _, d := range append(program.GetSyntacticDiagnostics(t.Context(), file), program.GetSemanticDiagnostics(t.Context(), file)...) {
+		if d.Category() == diagnostics.CategoryError {
+			codes = append(codes, d.Code())
+		}
+	}
+	if len(codes) != 1 || codes[0] != 702 {
+		t.Fatalf("want one EK0702, got %v", codes)
 	}
 }
 
