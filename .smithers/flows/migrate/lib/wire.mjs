@@ -16,6 +16,7 @@ import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, wri
 import { join, posix } from "node:path"
 import { wireNativeViteConfigs } from "./vite-config.mjs"
 import { addVitestProjectPlugins } from "./vitest-projects.mjs"
+import { wireBunFixtureTests } from "./bun-fixtures.mjs"
 import { workspaceGlobs, workspaceManifests } from "./upgrade.mjs"
 import { must, quote } from "./util.mjs"
 import { packageScripts, testLeftAsIs, testOnlyScripts } from "./test-files.mjs"
@@ -1165,7 +1166,7 @@ export function bunProgramDirs(script, scriptsIn = () => ({})) {
  * one. A bunfig.toml this cannot edit is left as it is, with a warning.
  * Returns the files changed and the warnings.
  */
-export function wireBunTests({ root, packages, specsFor }) {
+export function wireBunTests({ root, packages, specsFor, ts }) {
   const changed = []
   const warnings = []
   const write = (file, before, after) => {
@@ -1182,9 +1183,12 @@ export function wireBunTests({ root, packages, specsFor }) {
     const at = (dir) => posix.normalize(posix.join(pkg.dir, dir))
     return scriptsOf(pkg).flatMap((script) => bunProgramDirs(script, (dir) => scriptsAt(at(dir))).map(at))
   }))
+  const submodules = submodulePaths(root)
+  const fixtures = wireBunFixtureTests({ root, packages, parents: reaching, ts, write, addPreload: addBunTestPreload, foreign: file => inSubmodule(submodules, file) })
+  warnings.push(...fixtures.warnings)
   for (const pkg of reaching) {
     const edits = [...(scriptsOf(pkg).some((script) => runsBunTest(script)) ? [addBunTestPreload] : []), ...(programs.has(pkg.dir) ? [addBunPreload] : [])]
-    if (!edits.length) continue
+    if (!edits.length && !fixtures.owners.has(pkg.dir)) continue
     const bunfig = posix.join(pkg.dir, "bunfig.toml")
     const text = existsSync(join(root, bunfig)) ? readFileSync(join(root, bunfig), "utf8") : ""
     try {

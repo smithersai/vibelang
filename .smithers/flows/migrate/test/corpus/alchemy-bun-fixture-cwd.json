@@ -1,0 +1,5 @@
+{
+  "launcher": "import { fileURLToPath } from \"node:url\";\nconst fixturesDir = fileURLToPath(new URL(\"./fixtures/\", import.meta.url));\nexport const launch = () => Bun.spawn([\"bun\", \"test\", \"./guard.fixture.ts\"], { cwd: fixturesDir, stdout: \"pipe\", stderr: \"pipe\", env: { NO_COLOR: \"1\" } });\n",
+  "entry": "import \"../../../src/value.ts\";\n",
+  "bunfig": "# existing fixture options\n[test]\ntimeout = 60000\npreload = [\"./existing.ts\"]\n"
+}

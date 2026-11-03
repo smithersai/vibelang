@@ -1035,7 +1035,7 @@ export async function wireTarget(config, log) {
     writeIfChanged(bunfig, text, Wire.addBunTestPreload(text))
   }
   // And in every package that runs bun test and reaches migrated sources: a workspace import loads them too.
-  const bunTests = Wire.wireBunTests({ root: t, packages: packages, specsFor })
+  const bunTests = Wire.wireBunTests({ root: t, packages: packages, specsFor, ts })
   changed.push(...bunTests.changed.filter((file) => !changed.includes(file)))
   warnings.push(...bunTests.warnings)
   // The plugin goes into the config the tests load: the shared one the test command names, else each package's.
