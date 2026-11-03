@@ -654,7 +654,10 @@ async function applyEarlierVipFixes(config, logs) {
 // The predecessor can mark inferred Effect functions, while only the new
 // compiler knows the retired value-call syntax it now rejects. Finish those
 // projects after install and before their builds, only when their new check
-// still fails. Same-era switches never enter this pass.
+// still fails. A post-flip release can also reject what its post-flip
+// predecessor accepted and ship the fix (t3code's git.vibe, EK2109), so a
+// post-to-post switch enters too. A pre-flip compiler's fixer never runs on a
+// same-era switch (alchemy-56).
 async function finishVipFixes(config, logs, previous) {
   const result = {
     changed: [],
@@ -662,12 +665,15 @@ async function finishVipFixes(config, logs, previous) {
     failed: [],
     checks: {},
   }
-  if (!previous.projects.length) return result
+  const sameEraPost = previous.probes?.target?.side !== "post" ? [] : (previous.skippedProjects ?? [])
+    .filter(({ reason }) => reason === "same side of the flip").map(({ project }) => project)
+  const projects = [...(previous.projects ?? []), ...sameEraPost]
+  if (!projects.length) return result
   const t = config.target, compiler = compilerOf(config)
   const native = (await Jj.trackedFiles(t)).filter(file => file.endsWith(".vibe") && !file.split("/").includes("node_modules"))
   const before = new Map(native.map(file => [file, readFileSync(join(t, file), "utf8")]))
   const receipt = join(logs, "vip-finish.json")
-  for (const project of previous.projects) {
+  for (const project of projects) {
     writeJson(receipt, { ...result, state: "checking", project })
     const checked = await check({ compiler, tsconfig: join(t, project), cwd: t, root: t,
       log: join(logs, "vip-finish-check-" + slug(project) + ".log") })

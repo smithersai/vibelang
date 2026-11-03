@@ -365,6 +365,41 @@ test("foldkit: the new compiler finishes service lookups before the upgraded bui
 })
 
 
+// t3code's contracts/git.vibe on a444534a5dda: a same-era (post to post) release
+// can reject code its predecessor accepted, here EK2109 on an optional-key field
+// of a schema error, and ship the fix. Only the new compiler has that fix.
+test("post-flip to post-flip: the new compiler repairs what it newly rejects, without the predecessor", async () => {
+ const root=mkdtempSync(join(tmpdir(),"migrate-same-era-finish-"))
+ try {
+  const corpus=JSON.parse(readFileSync(new URL("./corpus/foldkit-rulecontext-transition.json",import.meta.url),"utf8"))
+  const {target,toolchain,base,calls}=await fixture(root,{"tsconfig.json":"{}\n","src/rule.vibe":corpus.before})
+  fakeCompiler(join(target,"node_modules/.bin/vibelang"),{side:"post",target,calls})
+  fakeCompiler(join(toolchain,"native/vibelang"),{side:"post",target,calls,finishServices:true})
+  const result=await upgradeEffect({run:join(root,"run"),target,packages:["."],test:"true",toolchain,install:"true",base})
+  assert.equal(result.vipFixes.skipped,"same side of the flip")
+  assert.equal(readFileSync(join(target,"src/rule.vibe"),"utf8"),corpus.after)
+  assert.deepEqual(result.vipFinish.projects,["tsconfig.json"])
+  assert.deepEqual(result.vipFinish.changed,["src/rule.vibe"])
+  assert.equal(readFileSync(calls,"utf8").trim().split("\n").length,1,"only the new compiler fixes")
+  assert.equal(await Jj.fileAt(target,result.jj.commit,"src/rule.vibe"),corpus.after)
+ } finally {rmSync(root,{recursive:true,force:true})}
+})
+
+// alchemy-56: a pre-flip compiler's --fix-vip-only is destructive on a same-era
+// switch, so a failing check there must not reach it.
+test("pre-flip to pre-flip: a failing check never runs the fixer", async () => {
+ const root=mkdtempSync(join(tmpdir(),"migrate-same-era-pre-"))
+ try {
+  const corpus=JSON.parse(readFileSync(new URL("./corpus/foldkit-rulecontext-transition.json",import.meta.url),"utf8"))
+  const {target,toolchain,base,calls}=await fixture(root,{"tsconfig.json":"{}\n","src/rule.vibe":corpus.before})
+  fakeCompiler(join(toolchain,"native/vibelang"),{side:"pre",target,calls,finishServices:true,version:"0.0.12"})
+  await assert.rejects(upgradeEffect({run:join(root,"run"),target,packages:["."],test:"true",toolchain,install:"true",base}),/toolchain baseline regression/)
+  assert.equal(readFileSync(join(target,"src/rule.vibe"),"utf8"),corpus.before)
+  assert.equal(existsSync(calls),false)
+ } finally {rmSync(root,{recursive:true,force:true})}
+})
+
+
 // Chapter 7: "Every breaking change ships a `vibelang --fix` codemod, so code
 // that compiled under the previous release migrates mechanically."
 // The predecessor alone can recover function kind; the new compiler finishes
