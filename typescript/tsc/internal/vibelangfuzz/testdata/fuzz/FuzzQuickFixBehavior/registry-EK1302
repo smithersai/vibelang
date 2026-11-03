@@ -1,0 +1,3 @@
+go test fuzz v1
+string("EK1302@EK1302-runtime")
+[]byte("\u0000")

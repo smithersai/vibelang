@@ -246,6 +246,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - The `EK1202` provider-separator fix could flatten line breaks inside a comment. It now leaves that site unchanged and still joins whitespace around comments that fit on one line.
 
+- Compiler regression tests could miss quick fixes that changed values read by JavaScript callers. The checks now observe Promise results, generator completion values, thrown values, public types, comments, and refused source spans.
+
 - The migration checks generated callback failure unions without their required parentheses and failed to parse them. They now write valid compound slots while checking the same preserved channels and refusal controls.
 
 

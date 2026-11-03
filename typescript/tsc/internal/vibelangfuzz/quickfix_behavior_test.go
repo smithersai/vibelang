@@ -43,28 +43,63 @@ func quickfixBehaviorSeeds() map[int32][]Seed {
 		4840: "tsforms-option", 4841: "tsforms-schema-type-spelling", 4843: "tsforms-entry-main",
 	} {
 		if seed, ok := byName[name]; ok {
-			seeds[code] = append(seeds[code], seed)
+			seeds[code] = append([]Seed{seed}, seeds[code]...)
 		}
 	}
 	for code, source := range map[int32]string{
 		1023: "export function main() { return runSync(sync(() => 1)) }\n",
-		2112: "error Missing\neffect function f() { try { return 1 } catch (e: Missing) { return 2 } }\n",
-		2113: "effect function f() { try { return 1 } catch (e: Cause) { return 2 } }\n",
-		2120: "service class Users { readonly value: number }\n",
+		2112: "error Missing\nexport effect function main() { try { return 1 } catch (e: Missing) { return 2 } }\n",
+		2113: "export effect function main() { try { return 1 } catch (e: Cause) { return 2 } }\n",
+		2120: "service class Users { readonly value: number }\nexport function main() { return Users.key }\n",
 		2121: "service Users { readonly value: number }\nlayer Live: Users { return { value: 1 } }\n",
 		4406: "effect function f() { return trusted(1) }\n",
 		4819: "import { Effect } from \"effect\"; export const f = Effect.gen(function* () { yield Effect.succeed(1) })\n",
 		4820: "import { Effect } from \"effect\"; export const f = Effect.gen(function* () { yield* Effect.fail(1) })\n",
 		4842: "import { Effect } from \"effect\"; export const value = Effect.succeed(1)\n",
-		4853: "service Users { readonly value: number }\neffect function f(): number!! { return (try Users).value }\n",
-		4854: "export abstract class Users { abstract readonly value: number }\n",
-		4855: "service Flags { readonly enabled: boolean; static readonly default = { enabled: true } }\n",
+		4853: "service Users { readonly value: number }\neffect function f(): number!never { return (try Users).value }\n",
+		4854: "export abstract class Users { abstract readonly value: number }\nexport function main() { return typeof Users }\n",
+		4855: "service Flags { readonly enabled: boolean; static readonly default = { enabled: true } }\nexport function main() { return Flags.key }\n",
 		9100: "export function f() { return 1 }\n",
 		9101: "data Box { Item { value: number } }\nexport function f(box: Box) { return box.value }\n",
 	} {
 		name := fmt.Sprintf("EK%04d", code)
 		seeds[code] = append(seeds[code], Seed{Name: name, Files: map[string]string{"main.vibe": "// preserve this comment\n" + source}})
 	}
+	// These focused warning fixtures have public runtime observers; the older
+	// census cases intentionally shield the relevant source from the advisory.
+	for code, source := range map[int32]string{
+		4841: "export const Value = Schema.Literals([\"a\",\"b\"])\nexport type Value = typeof Value.Type\nexport function main() { return Value.make(\"a\") }\n",
+		4842: "import * as Array from \"effect/Array\"\nexport function main() { return Array.map([1,2], n => n+1) }\n",
+	} {
+		seeds[code] = []Seed{{Name: fmt.Sprintf("EK%04d-runtime", code), Files: map[string]string{"main.vibe": source}}}
+	}
+	for i, seed := range seeds[4839] {
+		files := maps.Clone(seed.Files)
+		main := toolsMainFile(files)
+		if seed.Name == "tsforms-option-match-api" {
+			files[main] += "\nexport function main() { return [named(Option.some(7)), aliased(O.none())] }\n"
+			seed.Files = files
+			seeds[4839][i] = seed
+		}
+	}
+	seeds[509] = []Seed{{Name: "EK0509-handler-reference", Files: map[string]string{"main.vibe": "const handler = (_: unknown) => 7\nexport effect function main() { return Effect.fail(1) catch handler }\n"}}}
+	quickfixInstallGoldenPrograms(seeds)
+	seeds[4802] = []Seed{
+		{Name: "EK4802-runtime", Files: map[string]string{"main.vibe": "export effect function main() { return Effect.succeed(7) }\n"}},
+		{Name: "EK4802-trace", Files: map[string]string{
+			"main.vibe": "import { held } from \"./host.js\"\nexport {traceOf} from \"./host.js\"\nexport effect function main() { return held() }\n",
+			"host.ts":   "import { Effect } from \"effect\"\nconst trace: string[]=[]; export function traceOf() { return trace }\nexport function held() { return Effect.sync(() => { trace.push(\"inner\"); return 7 }) }\n",
+		}},
+	}
+	seeds[9100] = []Seed{{Name: "EK9100-editor", Files: map[string]string{
+		"main.vibe": "import { visit } from \"./host.js\"\nexport function main() { return visit(() => 7) }\n",
+		"host.ts":   "import { Effect } from \"effect\"\nexport function visit(f: () => number) { return Effect.sync(f) }\n",
+	}}}
+	seeds[9101] = []Seed{{Name: "EK9101-editor", Files: map[string]string{
+		"main.vibe": "import { get } from \"./host.vibe\"\nexport function main() { const value = get(); return value.request.code }\n",
+		"host.vibe": "export function get() { return {request: {code: \"ok\"}} }\n",
+	}}}
+	quickfixAdmittedWarnings(seeds)
 	return seeds
 }
 
@@ -79,7 +114,11 @@ func TestQuickFixBehaviorRegistry(t *testing.T) {
 		t.Errorf("EK%04d: registered fix has no keyed generator", code)
 	}
 	for _, code := range codes {
-		t.Logf("EK%04d generators=%d", code, len(seeds[code]))
+		name := ""
+		if len(seeds[code]) > 0 {
+			name = seeds[code][0].Name
+		}
+		t.Logf("EK%04d generators=%d seed=%s", code, len(seeds[code]), name)
 	}
 }
 

@@ -4,6 +4,48 @@ Researched 2026-10-27; suite built 2026-10-27 and 2026-10-28. This is a snapshot
 
 Compiled regression replays in the spec gate use the same `VIBELANG_FUZZ_HANG=120s` stage budget as the full seed suite, so emitted-output checks retain their normal allowance on a busy host.
 
+## Quick-fix behavior oracle
+
+`FuzzQuickFixBehavior` reads the EK inventory from the compiler's registered
+code-fix providers. `TestQuickFixBehaviorRegistry` fails when any registered
+code has no keyed generator; its knockout test removes a real generator and
+introduces an unknown code to prove the gate detects both. Retained providers
+remain visible in the inventory even when their diagnostics are no longer
+emitted. A missing trigger is reported as coverage debt, never as a successful
+repair. Error-recovery output is not a runnable reference: a generator that
+needs a native twin records that debt instead of treating the invalid emit as
+a behavioral pass. Some rejected legacy spellings have hand-written admitted
+references for the same specification rule. Coverage labels those comparisons
+as `golden`, separately from executable before-source comparisons and native
+TypeScript twins.
+
+The target runs the CLI and each editor action from independent original
+snapshots. Applied edits must retain comments and pass stock TypeScript
+`5.9.3` assignments between the two emitted APIs in both directions. A
+JavaScript adapter shares the existing Node worker and outcome comparator:
+it observes ordinary returns, awaited Promise results, every generated
+iterator step including its completion value, thrown values, Effect exits,
+and a generator-owned `traceOf` before the call, after the call and after
+execution. Knockout controls change each observable to prove it is seen.
+
+Refused-site fixtures protect a generator-owned source span until the CLI's
+original-source refusal ranges are available. The CLI checks the span's
+bytes; editor checks additionally reject every overlapping edit, including
+an edit replacing a byte with itself. Changes elsewhere in the same file
+may move the protected span. Files whose bytes do not change must keep their
+mtime, and a second `--fix` must change neither bytes nor mtimes.
+
+The short seed run replays the generator-completion witness;
+the plain registry test checks every generator on every run. Full runs also
+replay CRLF and astral-comment trivia for every registered code. The stored
+`registry-EKxxxx` inputs name both the code and its census case. Short runs
+report the larger registry, alias and mixed-refusal replays as skipped; they are not behavioral
+passes. Set `VIBELANG_FUZZ_SEEDS=all` or omit `-short` to replay every registered
+code, including its exact pending witnesses. Keyed corpus files preserve the opencode generator
+return and refused-write witnesses, mixed applied/refused sites, and the
+schema and Effect alias API neighborhoods. Pending gaps name their specific
+oracle and owner; they do not count as behavioral passes.
+
 ## Missing-runtime package oracle
 
 `FuzzMissingRuntimeDependency` follows the conditional rule quoted from

@@ -31,7 +31,6 @@ FuzzCompile registry:EK1006 compiler Appendix B: "A transitional compiler may st
 FuzzCompile corpus:registry-EK1006 compiler Appendix B: reproduction of registry:EK1006; lane del-rest.
 FuzzCompile registry:EK1007 compiler Appendix B: "A transitional compiler may still print compatibility diagnostics from the old language." The compiler emits 1007 with no current assignment; lane del-rest.
 FuzzCompile corpus:registry-EK1007 compiler Appendix B: reproduction of registry:EK1007; lane del-rest.
-FuzzCompile registry:EK1010 compiler Appendix B: "A transitional compiler may still print compatibility diagnostics from the old language." The compiler emits 1010 with no current assignment; lane del-rest.
 FuzzCompile corpus:registry-EK1010 compiler Appendix B: reproduction of registry:EK1010; lane del-rest.
 FuzzCompile registry:EK1012 compiler Appendix B: "A transitional compiler may still print compatibility diagnostics from the old language." The compiler emits 1012 with no current assignment; lane del-rest.
 FuzzCompile corpus:registry-EK1012 compiler Appendix B: reproduction of registry:EK1012; lane del-rest.
@@ -105,12 +104,6 @@ FuzzCompile registry:EK4405 compiler Appendix B: "A transitional compiler may st
 FuzzCompile corpus:registry-EK4405 compiler Appendix B: reproduction of registry:EK4405; lane del-rest.
 FuzzCompile registry:EK4406 compiler Appendix B: "A transitional compiler may still print compatibility diagnostics from the old language." The compiler emits 4406 with no current assignment; lane del-rest.
 FuzzCompile corpus:registry-EK4406 compiler Appendix B: reproduction of registry:EK4406; lane del-rest.
-FuzzCompile registry:EK4001 compiler Appendix B: "A transitional compiler may still print compatibility diagnostics from the old language." The compiler emits 4001 with no current assignment; lane vip40-core.
-FuzzCompile registry:EK4002 compiler Appendix B: "A transitional compiler may still print compatibility diagnostics from the old language." The compiler emits 4002 with no current assignment; lane vip40-core.
-FuzzCompile registry:EK4003 compiler Appendix B: "A transitional compiler may still print compatibility diagnostics from the old language." The compiler emits 4003 with no current assignment; lane vip40-core.
-FuzzCompile registry:EK4004 compiler Appendix B: "A transitional compiler may still print compatibility diagnostics from the old language." The compiler emits 4004 with no current assignment; lane vip40-core.
-FuzzCompile registry:EK4006 compiler Appendix B: "A transitional compiler may still print compatibility diagnostics from the old language." The compiler emits 4006 with no current assignment; lane vip40-core.
-FuzzCompile registry:EK4008 compiler Appendix B: "A transitional compiler may still print compatibility diagnostics from the old language." The compiler emits 4008 with no current assignment; lane vip40-core.
 FuzzCompile corpus:registry-EK4001 compiler Appendix B: reproduction of registry:EK4001; lane vip40-core.
 FuzzCompile corpus:registry-EK4002 compiler Appendix B: reproduction of registry:EK4002; lane vip40-core.
 FuzzCompile corpus:registry-EK4003 compiler Appendix B: reproduction of registry:EK4003; lane vip40-core.

@@ -1,0 +1,3 @@
+go test fuzz v1
+string("EK4401@ch02-plain-ts-call.fail")
+[]byte("\x00")

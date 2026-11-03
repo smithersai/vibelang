@@ -1,0 +1,60 @@
+# Chapter 7 / VIP-34: quick fixes preserve types, comments, declaration output and behavior.
+FuzzQuickFixBehavior opencode-generator-return:cli:api compiler Chapter 7 / VIP-34: EK2128 changes a JavaScript generator's public return API; lane silentfix-opencode, native admission lane conf-effect
+FuzzQuickFixBehavior opencode-generator-return:cli:outcome compiler Chapter 7 / VIP-34: EK2128 drops values read by a JavaScript iterator caller; lane silentfix-opencode, native admission lane conf-effect
+FuzzQuickFixBehavior opencode-generator-return:editor:api compiler Chapter 7 / VIP-34: EK2128 editor action changes a JavaScript generator's public return API; lane silentfix-opencode
+FuzzQuickFixBehavior opencode-generator-return:editor:outcome compiler Chapter 7 / VIP-34: EK2128 editor action drops the JavaScript caller's completion value; lane silentfix-opencode
+FuzzQuickFixBehavior corpus:opencode-generator-return compiler Chapter 7 / VIP-34: opencode-generator-return:cli:outcome; lane silentfix-opencode
+FuzzQuickFixBehavior schema-alias-api:cli:api compiler Chapter 7 / VIP-34: RC-45 deletes a same-spelled custom Schema.Schema.Type alias/interface; lane rev-compiler probe, repair assigned d-tooling/impl-hunt-data
+FuzzQuickFixBehavior schema-alias-api:editor:api compiler Chapter 7 / VIP-34: RC-45 editor action deletes an unrelated associated type; lane rev-compiler probe, repair assigned d-tooling/impl-hunt-data
+FuzzQuickFixBehavior corpus:schema-alias-api compiler Chapter 7 / VIP-34: schema-alias-api:cli:api; RC-45
+FuzzQuickFixBehavior effect-alias-api:cli:api compiler Chapter 7 / VIP-34 / VIP-3: RC-44 serializes custom Effect alias parameters in the wrong channel order; lane rc-ek4833-alias
+FuzzQuickFixBehavior effect-alias-api:editor:api compiler Chapter 7 / VIP-34 / VIP-3: RC-44 editor repair erases a custom Effect alias's channel mapping; lane rc-ek4833-alias
+FuzzQuickFixBehavior corpus:effect-alias-api compiler Chapter 7 / VIP-34 / VIP-3: effect-alias-api:cli:api; lane rc-ek4833-alias
+FuzzQuickFixBehavior corpus:schema-alias-type compiler Chapter 7 / VIP-34: schema-alias-api:cli:api; RC-45 type-alias neighbor
+FuzzQuickFixBehavior corpus:effect-alias-default compiler Chapter 7 / VIP-34 / VIP-3: effect-alias-api:cli:api; lane rc-ek4833-alias, omitted-default neighbor
+FuzzQuickFixBehavior EK2128:cli:baseline quickfix-generators Chapter 7 / VIP-34: census producer-return-value.fail has no admitted runtime/type reference yet; lane fuzz-quickfix-behavior
+FuzzQuickFixBehavior EK2128:editor:baseline quickfix-generators Chapter 7 / VIP-34: census producer-return-value.fail has no admitted runtime/type reference yet; lane fuzz-quickfix-behavior
+FuzzQuickFixBehavior EK4401:cli:baseline quickfix-generators Chapter 7 / VIP-34: census ch02-plain-ts-call.fail has no admitted runtime/type reference yet; lane fuzz-quickfix-behavior
+FuzzQuickFixBehavior EK4401:editor:baseline quickfix-generators Chapter 7 / VIP-34: census ch02-plain-ts-call.fail has no admitted runtime/type reference yet; lane fuzz-quickfix-behavior
+FuzzQuickFixBehavior EK4402:cli:baseline quickfix-generators Chapter 7 / VIP-34: census ch10-fetch.fail has no admitted runtime/type reference yet; lane fuzz-quickfix-behavior
+FuzzQuickFixBehavior EK4609:editor:baseline quickfix-generators Chapter 7 / VIP-34: census native-await-single-interfaces.fail has no admitted runtime/type reference yet; lane fuzz-quickfix-behavior
+FuzzQuickFixBehavior EK4801:cli:baseline quickfix-generators Chapter 7 / VIP-34: census ek2003-bare-return.fail has no admitted runtime/type reference yet; lane fuzz-quickfix-behavior
+FuzzQuickFixBehavior EK4838:editor:baseline quickfix-generators Chapter 7 / VIP-34: census fork-escape-assign.fail has no admitted runtime/type reference yet; lane fuzz-quickfix-behavior
+FuzzQuickFixBehavior EK9201:cli:baseline quickfix-generators Chapter 7 / VIP-34: census by-name-choice-program.fail has no admitted runtime/type reference yet; lane fuzz-quickfix-behavior
+FuzzQuickFixBehavior EK1023:trigger quickfix-generators Chapter 7 / VIP-34: retained provider has no reached diagnostic on census EK1023; lane fuzz-quickfix-behavior
+FuzzQuickFixBehavior EK4406:trigger quickfix-generators Chapter 7 / VIP-34: retained provider has no reached diagnostic on census EK4406; lane fuzz-quickfix-behavior
+FuzzQuickFixBehavior EK4819:trigger quickfix-generators Chapter 7 / VIP-34: retained provider has no reached diagnostic on census EK4819; lane fuzz-quickfix-behavior
+FuzzQuickFixBehavior EK4820:trigger quickfix-generators Chapter 7 / VIP-34: retained provider has no reached diagnostic on census EK4820; lane fuzz-quickfix-behavior
+FuzzQuickFixBehavior EK4854:cli:api compiler Chapter 7 / VIP-34: public abstract-class constructor changes to a service API (TS2322 both directions); fresh claim relic-decl-forms abstract-class-service:preserving-fix, related b41894f875e6
+FuzzQuickFixBehavior EK4854:editor:api compiler Chapter 7 / VIP-34: public abstract-class constructor changes to a service API (TS2322 both directions); fresh claim relic-decl-forms abstract-class-service:preserving-fix, related b41894f875e6
+FuzzQuickFixBehavior corpus:registry-EK1023 quickfix-generators Chapter 7 / VIP-34: keyed census EK1023; delete this marker once all its preservation oracles pass
+FuzzQuickFixBehavior corpus:registry-EK2128 quickfix-generators Chapter 7 / VIP-34: keyed census producer-return-value.fail; delete this marker once all its preservation oracles pass
+FuzzQuickFixBehavior corpus:registry-EK4401 quickfix-generators Chapter 7 / VIP-34: keyed census ch02-plain-ts-call.fail; delete this marker once all its preservation oracles pass
+FuzzQuickFixBehavior corpus:registry-EK4402 quickfix-generators Chapter 7 / VIP-34: keyed census ch10-fetch.fail; delete this marker once all its preservation oracles pass
+FuzzQuickFixBehavior corpus:registry-EK4406 quickfix-generators Chapter 7 / VIP-34: keyed census EK4406; delete this marker once all its preservation oracles pass
+FuzzQuickFixBehavior corpus:registry-EK4609 quickfix-generators Chapter 7 / VIP-34: keyed census native-await-single-interfaces.fail; delete this marker once all its preservation oracles pass
+FuzzQuickFixBehavior corpus:registry-EK4801 quickfix-generators Chapter 7 / VIP-34: keyed census ek2003-bare-return.fail; delete this marker once all its preservation oracles pass
+FuzzQuickFixBehavior corpus:registry-EK4807 compiler Chapter 7 / VIP-34: EK4807:editor:api; lane fuzz-quickfix-behavior
+FuzzQuickFixBehavior corpus:registry-EK4810 compiler Chapter 7 / VIP-34: EK4810:editor:api; lane fuzz-quickfix-behavior
+FuzzQuickFixBehavior corpus:registry-EK4819 quickfix-generators Chapter 7 / VIP-34: keyed census EK4819; delete this marker once all its preservation oracles pass
+FuzzQuickFixBehavior corpus:registry-EK4820 quickfix-generators Chapter 7 / VIP-34: keyed census EK4820; delete this marker once all its preservation oracles pass
+FuzzQuickFixBehavior corpus:registry-EK4821 compiler Chapter 7 / VIP-34: EK4821:editor:api; lane fuzz-quickfix-behavior
+FuzzQuickFixBehavior corpus:registry-EK4838 quickfix-generators Chapter 7 / VIP-34: keyed census fork-escape-assign.fail; delete this marker once all its preservation oracles pass
+FuzzQuickFixBehavior corpus:registry-EK4854 quickfix-generators Chapter 7 / VIP-34: keyed census EK4854; delete this marker once all its preservation oracles pass
+FuzzQuickFixBehavior corpus:registry-EK9201 quickfix-generators Chapter 7 / VIP-34: keyed census by-name-choice-program.fail; delete this marker once all its preservation oracles pass
+FuzzQuickFixBehavior opencode-mixed-generators:editor:api compiler Chapter 7 / VIP-34: an isolated Effect.gen/fn editor repair leaves another native generator broken; lane silentfix-opencode/conf-effect
+FuzzQuickFixBehavior opencode-mixed-generators:editor:outcome compiler Chapter 7 / VIP-34: an isolated Effect.gen/fn editor repair leaves another native generator broken; lane silentfix-opencode/conf-effect
+FuzzQuickFixBehavior corpus:opencode-mixed-generators compiler Chapter 7 / VIP-34: opencode-mixed-generators:editor:outcome; lane silentfix-opencode/conf-effect
+FuzzQuickFixBehavior EK4802:editor:api compiler Chapter 7 / VIP-34 and VIP-5: running a held return changes its public Effect success type; lane fuzz-quickfix-behavior
+FuzzQuickFixBehavior EK4802:editor:outcome compiler Chapter 7 / VIP-34 and VIP-5: the editor runs a returned Effect that was data, changing its value and trace; lane fuzz-quickfix-behavior
+FuzzQuickFixBehavior corpus:registry-EK4802 compiler Chapter 7 / VIP-34: EK4802:editor:outcome; lane fuzz-quickfix-behavior
+FuzzQuickFixBehavior corpus:held-return-order compiler Chapter 7 / VIP-34: EK4802:editor:outcome; lane fuzz-quickfix-behavior
+FuzzQuickFixBehavior EK4807:editor:api compiler Chapter 7 / VIP-34: wire changes the external layer input and its observed value; lane fuzz-quickfix-behavior
+FuzzQuickFixBehavior EK4807:editor:outcome compiler Chapter 7 / VIP-34: wire changes the external layer input and its observed value; lane fuzz-quickfix-behavior
+FuzzQuickFixBehavior EK4810:editor:api compiler Chapter 7 / VIP-34: removing an assertion widens the exported failure channel; lane fuzz-quickfix-behavior
+FuzzQuickFixBehavior EK4821:editor:api compiler Chapter 7 / VIP-34: TaggedStruct changes make input and the JavaScript constructor result; lane fuzz-quickfix-behavior
+FuzzQuickFixBehavior EK4821:editor:outcome compiler Chapter 7 / VIP-34: TaggedStruct changes make input and the JavaScript constructor result; lane fuzz-quickfix-behavior
+FuzzQuickFixBehavior EK4817:editor:outcome compiler Chapter 7 / VIP-34: Schema.is evaluates the right operand before the left; lane fuzz-quickfix-behavior
+FuzzQuickFixBehavior corpus:registry-EK4817 compiler Chapter 7 / VIP-34: EK4817:editor:outcome; lane fuzz-quickfix-behavior
+FuzzQuickFixBehavior EK2121:editor:errors compiler Chapter 7 / VIP-34 and VIP-11: the layer repair writes a retired trailing block and introduces EK1101; lane fuzz-quickfix-behavior
+FuzzQuickFixBehavior corpus:registry-EK2121 compiler Chapter 7 / VIP-34: EK2121:editor:errors; lane fuzz-quickfix-behavior
