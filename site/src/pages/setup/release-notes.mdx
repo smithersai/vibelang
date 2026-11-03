@@ -300,7 +300,10 @@ Effect 4.0.6 defect-precedence and interruption migration.
 | Old diagnostic numbers, including `EK4617` | Appendix B numbering, including `EK0103`. Diagnostic triggers are unchanged. See the [old-to-new map](/vibelang-features/diagnostic-code-map). |
 
 ### Bugs fixed since 0.0.10
+- After VIP-1, `vibelang --fix --fix-vip-only` could not see that a method of a service read as `const fs = FileSystem.FileSystem()` ran where it stood, so it refused the whole file's migration (`EK9202`) and left functions such as foldkit's `readLiveRecordFile` plain, building their reads at the call and skipping their later steps; it now writes `try FileSystem.FileSystem` and runs each such method with `try`.
+- A `match` whose last arm lacked its `;` beside a `do` could crash the compiler (`slice bounds out of range`) instead of reporting `EK0701`; a lowered `do` temporary no longer gets a range that ends before it starts.
 - Running compiler cases with a missing Effect install could silently use the runtime's installation and replace previous case outputs; the harness now exits before changing cases, names the missing package and explains how to install it or set `EFFECT_NODE_MODULES`.
+- The match examples for schema guards and extractor counts failed in the Effect runner with `Not a valid effect`; their entry points now explicitly return Effects.
 
 - Migration regression checks now cover checksum-pinned `dprint` configurations and earlier setup wiring, keeping the unresolved stale-plugin case visible.
 
@@ -318,6 +321,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - The fibers guide suggested Effect-body repairs inside ordinary async functions; it now shows `runPromise` bridges that run in the original Promise context.
 
 - Coverage and profiling with sharded Go tests could retain only one shard's measurements; profile output now comes from one complete test process.
+- Only the first `catch` outside effect code in a file reported `EK0504` and `EK0509`; every later one went unreported, and `vibelang --fix` had no repair for its value fallback. Every catch is now checked.
 
 - Sharded Go tests could report success after a partitioning tool failed and omitted tests; any failed weighting, sorting, slicing or assignment stage now stops the run with a diagnostic.
 
@@ -329,15 +333,19 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - The native resource example in the denied `using` proposal omitted acquisition and disposal from its Effect TypeScript counterpart; it now keeps the native `using` declaration in the outer generator.
 
+- Migration could reject a retained schema class for its constructor warning; regression properties now keep the exemption limited to the correct class and file.
+
+- Sidecar identity properties used retired specification wording; they now check the current source-resolution rule while retaining the original hashed corpus and nominal-identity controls.
+
 - Repaired native loop migrations now have strict corpus checks while retaining the remaining iterator gaps.
 
-- Plain callable roots, match results and JavaScript try/catch now have strict regression checks after their migration gaps were resolved.
+- Plain callable roots, `match` results and JavaScript `try`/`catch` now have strict regression checks after their migration gaps were resolved.
 
-- Repaired declaration namespaces and explicit Effect import membership now have strict regression checks instead of resolved pending records.
+- Repaired declaration namespaces and explicit `Effect` import membership now have strict regression checks instead of resolved pending records.
 
 - Pattern-binding and sidecar regression checks now cite the settled project-option and final-resolved-path rules, retaining their native TypeScript controls.
 
-- Top-level Promise awaits now have strict regression checks after their pending compiler gaps were resolved.
+- Top-level `Promise` awaits now have strict regression checks after their pending compiler gaps were resolved.
 
 - The compiler fuzz suite treated a warning configured as an error through legacy `vibelang.diagnostics` as a compiler defect; it now checks each parsed legacy override while retaining modern settings and unrelated defaults.
 
