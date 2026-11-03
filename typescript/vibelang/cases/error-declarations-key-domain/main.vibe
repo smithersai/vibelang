@@ -1,0 +1,24 @@
+import { Data, Effect, Schema } from "effect"
+enum Key { Count = "count" }
+const token: unique symbol = Symbol("safe")
+schema error Numeric { [7]: number }
+schema error Symbolic { [token]: number }
+schema error EnumSafe { [Key.Count]: number }
+function generic<K extends `x_${string}`>(key: K) {
+  schema error Safe { [key]: number }
+  return Safe
+}
+function impossible(key: never) {
+  schema error Impossible { [key]: number }
+  return Impossible
+}
+export effect function main() {
+  return [new Numeric({ 7: 1 })[7], new Symbolic({ [token]: 2 })[token], new EnumSafe({ count: 3 }).count]
+}
+
+// VIP-13 provably safe numeric, symbol, enum, template and never domains; rule: docs/design/vips/0013-error-declarations.md#ea8bcddb5b1090e4
+// VIP-13 provably safe numeric, symbol, enum, template and never domains; rule: docs/design/vips/0013-error-declarations.md#bcd546d73fec5f1d
+// VIP-13 provably safe numeric, symbol, enum, template and never domains; rule: docs/design/vips/0013-error-declarations.md#28fd7df8e93b4862
+// VIP-13 provably safe numeric, symbol, enum, template and never domains; rule: docs/design/vips/0013-error-declarations.md#9d5ac153d46de9c1
+// VIP-13 provably safe numeric, symbol, enum, template and never domains; rule: docs/design/vips/0013-error-declarations.md#886870ee1b0a6125
+// VIP-13 provably safe numeric, symbol, enum, template and never domains; rule: docs/design/vips/0029-schema-errors.md#d9a4e4737042b6c8

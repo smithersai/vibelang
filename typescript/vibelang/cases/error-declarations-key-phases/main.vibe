@@ -1,0 +1,24 @@
+import { Data, Effect, Schema } from "effect"
+const trace: string[] = []
+function methodKey(): "label" { trace.push("method"); return "label" }
+function schemaKey(): "count" { trace.push("schema"); return "count" }
+error Plain {
+  [token]: number
+  [methodKey()](): string { return "label" }
+  get message(): string { return "plain" }
+}
+const token: unique symbol = Symbol("payload")
+schema error Encoded { [schemaKey()]: number }
+export effect function main() {
+  const plain = new Plain({ [token]: 7 })
+  const encoded = new Encoded({ count: 8 })
+  return [trace.slice(), plain[token], plain.message, encoded.count]
+}
+
+// VIP-13 erased payload lookup versus runtime schema and method keys; rule: docs/design/vips/0013-error-declarations.md#28db9ee5fafb0377
+// VIP-13 erased payload lookup versus runtime schema and method keys; rule: docs/design/vips/0013-error-declarations.md#955598cf974dda99
+// VIP-13 erased payload lookup versus runtime schema and method keys; rule: docs/design/vips/0013-error-declarations.md#5499ee7bb74af882
+// VIP-13 erased payload lookup versus runtime schema and method keys; rule: docs/design/vips/0013-error-declarations.md#eb8852f362a25b55
+// VIP-13 erased payload lookup versus runtime schema and method keys; rule: docs/design/vips/0013-error-declarations.md#9d5ac153d46de9c1
+
+// VIP-13 TaggedError payload fields methods and getters retain their respective meanings; rule: docs/design/vips/0013-error-declarations.md#e1823cf865e06646

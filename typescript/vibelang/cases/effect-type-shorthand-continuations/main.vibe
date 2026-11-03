@@ -1,0 +1,26 @@
+// VIP-3 assertion continuation and present-R ASI; rule: docs/design/vips/0003-effect-type-shorthand.md#01d0f8a71bd9f012
+// VIP-3 assertion continuation and present-R ASI; rule: docs/design/vips/0003-effect-type-shorthand.md#990a7a09839433cc
+// VIP-3 assertion continuation and present-R ASI; rule: docs/design/vips/0003-effect-type-shorthand.md#5149e16570fe47ac
+// VIP-3 assertion continuation and present-R ASI; rule: docs/design/vips/0003-effect-type-shorthand.md#663b8e24476e8073
+// VIP-3 assertion continuation and present-R ASI; rule: docs/design/vips/0003-effect-type-shorthand.md#5a423723ac83c385
+// VIP-3 assertion continuation and present-R ASI; rule: docs/design/vips/0003-effect-type-shorthand.md#e0af3324c2579a2e
+// VIP-3 assertion continuation and present-R ASI; rule: docs/design/vips/0003-effect-type-shorthand.md#9f3203867d972591
+// VIP-3 assertion continuation and present-R ASI; rule: docs/design/vips/0003-effect-type-shorthand.md#9c4bf926e41ee1ea
+// VIP-3 assertion continuation and present-R ASI; rule: docs/design/vips/0003-effect-type-shorthand.md#9a1c506432456eff
+import { Effect } from "effect"
+type Equal<A, B> = (<T>() => T extends A ? 1 : 2) extends (<T>() => T extends B ? 1 : 2) ? true : false
+type as = unknown
+type B = unknown
+declare const B: unknown
+declare const x: unknown
+function continuation() {
+  const a = x as number!! as B
+  const b = x as number!! satisfies unknown
+  const c = x as number!!as satisfies unknown
+  x as number!!as
+  B
+  return [a, b, c]
+}
+type Present = number!!as
+export const check: Equal<Present, Effect.Effect<number, never, as>> = true
+export effect function main(): number!! { return 1 }

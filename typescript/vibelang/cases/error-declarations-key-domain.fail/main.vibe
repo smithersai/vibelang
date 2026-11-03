@@ -1,0 +1,32 @@
+// expect: EK2117
+import { Brand } from "effect"
+enum Key { Tag = "_tag", Count = "count" }
+declare const key: Key
+declare const branded: "_tag" & Brand.Brand<"Tag">
+declare const broad: string & Brand.Brand<"Text">
+declare const choice: "count" | "_tag"
+schema error EnumDomain { [key]: number }
+schema error BrandedTag { [branded]: number }
+schema error BrandedString { [broad]: number }
+schema error UnionDomain { [choice]: number }
+function generic<K extends string>(key: K) {
+  schema error GenericDomain { [key]: number }
+  return GenericDomain
+}
+declare const anyKey: any
+declare const broadKey: PropertyKey
+schema error AnyDomain { [anyKey]: number }
+schema error BroadKeyDomain { [broadKey]: number }
+export {}
+
+// VIP-13 runtime key domains include constraints, enum values, brands and unions; rule: docs/design/vips/0013-error-declarations.md#65e7334aff584b8f
+// VIP-13 runtime key domains include constraints, enum values, brands and unions; rule: docs/design/vips/0013-error-declarations.md#4c04251776743566
+// VIP-13 runtime key domains include constraints, enum values, brands and unions; rule: docs/design/vips/0013-error-declarations.md#8d084d326847a5cc
+// VIP-13 runtime key domains include constraints, enum values, brands and unions; rule: docs/design/vips/0013-error-declarations.md#ea8bcddb5b1090e4
+// VIP-13 runtime key domains include constraints, enum values, brands and unions; rule: docs/design/vips/0013-error-declarations.md#bcd546d73fec5f1d
+// VIP-13 runtime key domains include constraints, enum values, brands and unions; rule: docs/design/vips/0013-error-declarations.md#241de19355691ea2
+// VIP-13 runtime key domains include constraints, enum values, brands and unions; rule: docs/design/vips/0013-error-declarations.md#1ddd99e39fe0deb6
+// VIP-13 runtime key domains include constraints, enum values, brands and unions; rule: docs/design/vips/0013-error-declarations.md#886870ee1b0a6125
+// VIP-13 runtime key domains include constraints, enum values, brands and unions; rule: docs/design/vips/0029-schema-errors.md#2cf2681c2233a0fb
+// VIP-13 runtime key domains include constraints, enum values, brands and unions; rule: docs/design/vips/0029-schema-errors.md#2e75f89e9a494f0d
+// VIP-13 runtime key domains include constraints, enum values, brands and unions; rule: docs/design/vips/0029-schema-errors.md#adc304471bc27a18

@@ -10,3 +10,11 @@ export let m: Effect<number> | undefined;
 export let t: [Effect<number>];
 export let f: () => Effect<number, Error>;
 export interface I extends Effect<number> {}
+
+// VIP-3 legacy global Effect alias receives migration warning in every type position; rule: docs/design/vips/0003-effect-type-shorthand.md#5ca34a15a91fed52
+
+// VIP-3 legacy global Effect alias receives migration warning in every type position; rule: docs/design/vips/0003-effect-type-shorthand.md#6b01899bd6531349
+
+// VIP-3 legacy global Effect alias receives migration warning in every type position; rule: docs/design/vips/0003-effect-type-shorthand.md#2aeeed5d0e47bee6
+
+// VIP-3 legacy global Effect alias receives migration warning in every type position; rule: docs/design/vips/0003-effect-type-shorthand.md#3e91d934dfe15823

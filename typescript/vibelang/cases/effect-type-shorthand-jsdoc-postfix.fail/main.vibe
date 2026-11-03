@@ -1,0 +1,7 @@
+// expect: TS1005
+type T = number!!(string?)
+export {}
+// VIP-3 parser-only JSDoc operators are not source Effect operands; rule: docs/design/vips/0003-effect-type-shorthand.md#7ed7b962e2f1be27
+// VIP-3 parser-only JSDoc operators are not source Effect operands; rule: docs/design/vips/0003-effect-type-shorthand.md#bdc8f3505c7920ef
+// VIP-3 parser-only JSDoc operators are not source Effect operands; rule: docs/design/vips/0003-effect-type-shorthand.md#983680eed05478a8
+// VIP-3 parser-only JSDoc operators are not source Effect operands; rule: docs/design/vips/0003-effect-type-shorthand.md#dab3a7b1da24040c

@@ -28,3 +28,7 @@ export effect function within(): number!never!Scope {
   try Effect.addFinalizer(() => Effect.void)
   return 1
 }
+
+// VIP-3 authored shorthand emits qualified native Effect declarations; rule: docs/design/vips/0003-effect-type-shorthand.md#b9f37086fa2bad4e
+
+// VIP-3 authored shorthand emits qualified native Effect declarations; rule: docs/design/vips/0003-effect-type-shorthand.md#c6d29f863e953fee

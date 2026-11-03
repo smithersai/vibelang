@@ -1,0 +1,11 @@
+// expect: TS1170
+const numeric: number = 7
+const holder = { key: 7 }
+function key(): 7 { return 7 }
+error Good { [numeric]: number; [holder.key]: number }
+error Call { [key()]: number }
+error Parenthesized { [(numeric)]: number }
+error Element { [holder["key"]]: number }
+export {}
+
+// VIP-13 payload TypeLiteral keys use native expression-shape admission; rule: docs/design/vips/0013-error-declarations.md#8f2e946524e3d0bf

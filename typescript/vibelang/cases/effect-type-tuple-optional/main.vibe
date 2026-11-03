@@ -14,3 +14,11 @@ const empty: Pair = []
 export { firstIsOptionalEffect, secondIsOptionalEffect, lengthIsOmittable }
 // expect-result: 0
 export effect function main() { return empty.length }
+
+// VIP-3 VIP-3 optional tuple omission and indexed undefined; rule: docs/design/vips/0003-effect-type-shorthand.md#a0cc04024294f7b1
+
+// VIP-3 VIP-3 optional tuple omission and indexed undefined; rule: docs/design/vips/0003-effect-type-shorthand.md#ce15d3c27b6cac8c
+
+// VIP-3 VIP-3 optional tuple omission and indexed undefined; rule: docs/design/vips/0003-effect-type-shorthand.md#cb87b6f4b655d2fe
+
+// VIP-3 VIP-3 optional tuple omission and indexed undefined; rule: docs/design/vips/0003-effect-type-shorthand.md#10463b6872997056
