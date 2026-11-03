@@ -505,3 +505,59 @@ test("runner exit status is independent of arbitrary matching stdout", (t) => {
       assert.equal(control.status, 0, control.stdout + control.stderr)
     }), { seed: 0x001005, numRuns: 12 })
 })
+
+test("custom runners receive the selected compiler despite absent or stale inherited paths", (t) => {
+  const cleanString = fc.string({ maxLength: 24 }).filter(value => !value.includes("\0"))
+  fc.assert(fc.property(
+    fc.option(cleanString, { nil: undefined }),
+    fc.constantFrom("plain root", "space and 'quote", "π [root]"),
+    cleanString,
+    fc.boolean(),
+    (inheritedCompiler, directory, sentinel, isolated) => {
+      const original = fixture(t)
+      const root = path.join(path.dirname(original.root), directory)
+      fs.renameSync(original.root, root)
+      const compiler = path.join(root, "built/local/tsc")
+      const harness = path.join(root, "vibelang/harness.mjs")
+      const at = path.join(root, "vibelang/cases/runner-env")
+      fs.mkdirSync(path.join(at, "expected"), { recursive: true })
+      fs.writeFileSync(path.join(at, "scenario"), "runtime")
+      fs.writeFileSync(path.join(at, "tsconfig.json"), "{}")
+      fs.writeFileSync(path.join(at, "expected/stdout.txt"), "selected compiler\n")
+      fs.writeFileSync(path.join(at, "run.mjs"), [
+        'import assert from "node:assert/strict"',
+        'import { spawnSync } from "node:child_process"',
+        "assert.equal(process.env.VIBELANG_BINARY, " + JSON.stringify(compiler) + ")",
+        "assert.equal(process.env.HARNESS_COMPILER_SENTINEL, " + JSON.stringify(sentinel) + ")",
+        'const child = spawnSync(process.env.VIBELANG_BINARY, [], { encoding: "utf8" })',
+        "assert.ifError(child.error)",
+        "assert.equal(child.status, 0, child.stderr)",
+        'assert.match(child.stdout, /compile stdout runtime/)',
+        'console.log("selected compiler")',
+      ].join("\n"))
+      const env = {
+        ...process.env,
+        EFFECT_NODE_MODULES: path.join(root, "modules"),
+        VIBELANG_RUNTIME: path.join(root, "runtime"),
+        HARNESS_COMPILER_SENTINEL: sentinel,
+      }
+      delete env.VIBELANG_BINARY
+      if (inheritedCompiler !== undefined) env.VIBELANG_BINARY = inheritedCompiler
+      const parentCompiler = process.env.VIBELANG_BINARY
+      const result = spawnSync(process.execPath, [harness, "--verbose", ...(isolated ? ["--isolated"] : []), "runner-env"], {
+        env, encoding: "utf8", timeout: 15_000,
+      })
+      assert.equal(result.status, 0, result.stdout + result.stderr)
+      assert.match(result.stdout, /^ok\s+runner-env(?:\s|$)/m)
+      assert.equal(process.env.VIBELANG_BINARY, parentCompiler)
+    },
+  ), {
+    seed: 4701,
+    numRuns: 12,
+    examples: [
+      [undefined, "plain root", "unset", false],
+      ["wrong compiler", "space and 'quote", "stale", true],
+      ["", "π [root]", "", false],
+    ],
+  })
+})
