@@ -93,6 +93,24 @@ export function addSourceChildLoaders(text, ts, { file = "child.ts", type = "mod
       ts.isSatisfiesExpression(node) || ts.isNonNullExpression(node) || ts.isTypeAssertionExpression(node))) node = node.expression
     return node
   }
+  // A finite set of non-source strings cannot name a typed entry. Keep the
+  // native call untouched, including shell probes and already-built programs.
+  const nonSourceArgv = argument => {
+    let array = unwrap(argument)
+    if (ts.isIdentifier(array)) {
+      const binding = symbol(array), declaration = binding?.declarations?.find(ts.isVariableDeclaration)
+      let references = 0
+      const count = node => { if (ts.isIdentifier(node) && node !== declaration?.name && symbol(node) === binding) references++; ts.forEachChild(node, count) }
+      count(source)
+      if (!declaration || !(declaration.parent.flags & ts.NodeFlags.Const) || references !== 1) return false
+      array = unwrap(declaration.initializer)
+    }
+    if (!array || !ts.isArrayLiteralExpression(array)) return false
+    const notSource = type => type.isUnion() ? type.types.every(notSource)
+      : !!(type.flags & ts.TypeFlags.StringLiteral) &&
+        (/\.d\.(?:vibe\.)?[cm]?ts$/.test(type.value) || !/\.(?:[cm]?tsx?|vibex?)$/.test(type.value))
+    return array.elements.every(element => !ts.isSpreadElement(element) && notSource(checker.getTypeAtLocation(element)))
+  }
   const calls = []
   const visit = node => {
     if (ts.isCallExpression(node)) {
@@ -120,7 +138,81 @@ export function addSourceChildLoaders(text, ts, { file = "child.ts", type = "mod
     warn(calls[0], "generated child-process launcher: update its source")
     return { text, usesChild: false, refusals }
   }
-  if (/\.[c][jt]s$/.test(file) || !/\.[m][jt]s$/.test(file) && type !== "module") {
+  const commonJS = /\.[c][jt]s$/.test(file) || !/\.[m][jt]s$/.test(file) && type !== "module"
+  if (!commonJS && text.includes(marker)) {
+    const helper = source.statements.find(node => ts.isFunctionDeclaration(node) && /^__vibelangSourceChild\d*$/.test(node.name?.text ?? ""))
+    if (helper) {
+      const binding = symbol(helper.name), wrappers = []
+      for (const call of calls) {
+        const spread = call.arguments[0], inner = spread && ts.isSpreadElement(spread) ? spread.expression : undefined
+        if (inner && ts.isCallExpression(inner) && ts.isIdentifier(inner.expression) && symbol(inner.expression) === binding &&
+            inner.arguments.length === 2 && !inner.arguments.some(ts.isSpreadElement)) wrappers.push({ spread, inner })
+      }
+      if (wrappers.some(({ inner }) => nonSourceArgv(inner.arguments[1]))) {
+        const references = target => {
+          const found = []
+          const visit = node => {
+            if (ts.isImportDeclaration(node)) return
+            if (ts.isIdentifier(node)) {
+              let value = symbol(node)
+              if (ts.isShorthandPropertyAssignment(node.parent)) value = checker.getShorthandAssignmentValueSymbol(node.parent) ?? value
+              if (ts.isExportSpecifier(node.parent)) value = checker.getExportSpecifierLocalTargetSymbol(node.parent) ?? value
+              if (value === target && node !== helper.name) found.push(node)
+            }
+            ts.forEachChild(node, visit)
+          }
+          visit(source)
+          return found
+        }
+        const unnecessary = wrappers.filter(({ inner }) => nonSourceArgv(inner.arguments[1]))
+        const owned = references(binding).every(node => wrappers.some(({ inner }) => inner.expression === node))
+        let urlImport, urlBinding
+        for (const node of source.statements) {
+          if (!ts.isImportDeclaration(node) || node.moduleSpecifier.text !== "node:url" || node.importClause?.isTypeOnly || node.importClause?.name) continue
+          const named = node.importClause?.namedBindings
+          const name = named && ts.isNamespaceImport(named) ? named.name
+            : named && ts.isNamedImports(named) && named.elements.length === 1 && named.elements[0].propertyName?.text === "fileURLToPath" ? named.elements[0].name : undefined
+          if (name && /^__vibelang(?:FileURLToPath|NodeURL)\d*$/.test(name.text) &&
+              references(symbol(name)).every(node => helper.pos <= node.pos && node.end <= helper.end)) { urlImport = node; urlBinding = name.text; break }
+        }
+        // Match only byte-exact bodies this generator owns. Manual edits or
+        // uses stay intact with a located warning instead of being discarded.
+        const legacy = template.replace(/import \* as __vibelangNodeURL from "node:url"/, 'import { fileURLToPath as __vibelangFileURLToPath } from "node:url"')
+          .replaceAll("__vibelangNodeURL.fileURLToPath", "__vibelangFileURLToPath")
+        let append
+        if (owned && urlImport) for (const namespace of [false, true]) {
+          let rendered = legacy.replaceAll("__vibelangSourceChild", helper.name.text)
+            .replaceAll("__vibelangFileURLToPath", urlBinding)
+          if (namespace) rendered = rendered.replaceAll(urlBinding + "(", urlBinding + ".fileURLToPath(")
+          if (/\.[cm]?jsx?$/.test(file)) rendered = ts.transpileModule(rendered, {
+            compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022, removeComments: false }
+          }).outputText
+          const parsed = ts.createSourceFile(file, rendered, ts.ScriptTarget.Latest, true)
+          const imported = parsed.statements.find(ts.isImportDeclaration)
+          const body = rendered.slice(imported.end).replace(/^export \{\};?\s*$/gm, "")
+          const candidate = "\n" + body + "\n"
+          if (text.endsWith(candidate)) { append = candidate; break }
+        }
+        if (append) {
+          const edits = unnecessary.map(({ spread, inner }) => ({ start: spread.getStart(source), end: spread.end,
+            text: inner.arguments[0].getText(source) + ", " + inner.arguments[1].getText(source) }))
+          const removeHelper = unnecessary.length === wrappers.length
+          if (removeHelper) {
+            edits.push({ start: text.length - append.length, end: text.length, text: "" })
+            const newline = /^\r?\n/.exec(text.slice(urlImport.end))?.[0].length ?? 0
+            edits.push({ start: urlImport.getStart(source), end: urlImport.end + newline, text: "" })
+          }
+          let after = text
+          for (const edit of edits.sort((a,b) => b.start-a.start)) after = after.slice(0,edit.start) + edit.text + after.slice(edit.end)
+          return removeHelper ? addSourceChildLoaders(after, ts, { file, type }) : { text: after, usesChild: true, refusals }
+        }
+        warn(helper, "non-source launcher has a manually edited or observed generated helper; retain it for review")
+        return { text, usesChild: true, refusals }
+      }
+    }
+  }
+
+  if (commonJS) {
     warn(calls[0], "a CommonJS child-process launcher needs an ESM source entry to resolve native preloads")
     return { text, usesChild: false, refusals }
   }
@@ -167,6 +259,7 @@ export function addSourceChildLoaders(text, ts, { file = "child.ts", type = "mod
       warn(call, "source-child argv is not a literal array or a single-use const array; wire native preloads by hand")
       continue
     }
+    if (nonSourceArgv(array)) continue
     const command = unwrap(call.arguments[0])
     if (ts.isStringLiteralLike(command) && !/^(?:node|nodejs|bun)(?:\.exe)?$/i.test(command.text.replace(/\\/g, "/").split("/").at(-1))) continue
     const start = call.arguments[0].getStart(source), end = call.arguments[1].end

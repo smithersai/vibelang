@@ -589,3 +589,5 @@ When runtime exports route to `.vibelang/js/`, the flow adds that directory to a
 
 Packing paths first created by a later `verify` or `record` emit are persisted in `codemod.json` under `packingFiles`. Scope checks use those exact paths for both the changes present before verification and the final tree. Ownership survives journal reloads, empty emits and restoration, so deleting an owned policy file remains in scope. Unrecorded files retain the normal foreign-file check.
 
+
+Source-child wiring leaves a call unchanged when every literal or finite TypeScript string-union argument is a non-source path or flag. Unknown strings and unions containing a typed-source path still receive native preloads. Repeated setup removes only canonical generated wrappers that are no longer needed; the helper and URL import disappear when its last wrapper does. Manually edited or observed helpers retain their bytes and receive a located warning. This prevents shell probes from activating unrelated whole-file lint failures.
