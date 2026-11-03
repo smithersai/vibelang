@@ -1168,3 +1168,13 @@ The `rule-evidence` checker recognizes the exact generated grammar-census
 format and valid, uniquely keyed hook rows as implementation metadata. It
 retains evidence requirements for real grammar rules, malformed markers and
 handwritten additions, preserving heading context and original source line numbers.
+
+Native executable build keys exclude `forms_decisions.txt` and
+`forms_decisions_approved.txt`: the forms checker reads them at execution
+time, while Go embeds `forms_table.jsonl`. Go-test and full-tree check inputs
+retain the snapshots. `//typescript:native-inputs` checks all three executable
+keys with actual SDK fixtures; `//typescript:native-deps` reads Go's real
+dependency and embed lists and rejects a future import or embed of an excluded
+input. Real minimal Go fixtures cover both forbidden snapshot embeds and the
+retained production table.
+The dependency audit uses `CGO_ENABLED=0`, matching native builds even when the caller enables cgo.

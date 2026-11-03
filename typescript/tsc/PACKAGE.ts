@@ -12,7 +12,13 @@ const sources = (exclude: ReadonlyArray<string> = []) => S.Filegroup({
   ]
 })
 const srcs = sources()
-const nativeSrcs = sources(["!internal/vibelangfuzz/**"])
+// Decision snapshots are execution inputs, not Go embeds. The independent
+// dependency audit rejects future imports or embeds of excluded inputs.
+const nativeSrcs = sources([
+  "!internal/vibelangfuzz/**",
+  "!internal/vibelangmapper/forms_decisions.txt",
+  "!internal/vibelangmapper/forms_decisions_approved.txt",
+])
 
 /** Every file in the module, for checks that read the whole tree. */
 const tree = S.Filegroup({ srcs: [...S.glob(["**"])] })

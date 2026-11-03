@@ -63,7 +63,7 @@ const nativeInputs = S.Shell.Test({
 
 // This cheap audit follows production edits without rerunning SDK fixtures.
 const nativeDeps = S.Shell.Test({
-  summary: "Reject native executable imports of excluded fuzz packages.",
+  summary: "Verify native dependency and embed coverage for excluded inputs.",
   shell: "node --test typescript/native-deps.test.mjs",
   data: [Tsc["native-srcs"], S.file("go.work"), S.file("native-deps.test.mjs")],
   tools: [S.Host.bin("node"), S.Host.bin("go")],

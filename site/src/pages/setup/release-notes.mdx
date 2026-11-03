@@ -348,6 +348,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - `vibelang --fix` left `Effect.fn(…)(function* (path) { … }, (effect, path) => …)` on `EK1002` when a stage read the function's arguments, or when a comment stood in the generator's parameter list or before a stage. It now passes the effect function's parameters to that stage, `|> ((effect, path) => …)(%, path)`, and keeps those comments in place. A stage that names an argument otherwise, `(effect, _path)`, keeps `EK1002`, because `Effect.fn`'s declaration takes the stage's name. A stage that reads an outer name that a generator parameter would hide, which the rewrite used to rebind silently, now keeps `EK1002` too.
 - A line break after `try` caused parse errors for expression operands; member calls and other operands now compose across whitespace and comments.
 
+- Forms-decision snapshot changes unnecessarily rebuilt the native compiler, mapper and forms generator. Their build keys now ignore those runtime inputs while checks still track them.
+
 - Changes to fuzz-test helpers unnecessarily rebuilt the native compiler, mapper and forms generator; their cache keys now keep production inputs separate while Go tests still track the changed helpers.
 
 - Identical recursive generic declaration APIs could fail with `TS2589`; exact resolved type identity now proves those comparisons.

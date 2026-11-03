@@ -74,3 +74,23 @@ test("native keys retain production code, embedded data and module inputs", t =>
     previous = next
   }
 })
+
+test("decision snapshots stay in test inputs without changing native build keys", t => {
+  const { put, key } = fixture(t)
+  const base = "typescript/tsc/internal/vibelangmapper/"
+  put(base + "forms_decisions.txt", "original decisions\n")
+  put(base + "forms_decisions_approved.txt", "original approvals\n")
+  put(base + "forms_table.jsonl", "original embedded table\n")
+  const before = nativeTargets.map(key)
+  const testsBefore = key("//typescript/tsc:srcs")
+  for (const name of ["forms_decisions.txt", "forms_decisions_approved.txt"]) {
+    put(base + name, "changed " + name + "\n")
+    assert.deepEqual(nativeTargets.map(key), before, "runtime decision snapshots must not rebuild executables: " + name)
+  }
+  assert.notEqual(key("//typescript/tsc:srcs"), testsBefore, "test inputs must retain snapshot changes")
+  put(base + "forms_table.jsonl", "changed embedded production table\n")
+  const tableChanged = nativeTargets.map(key)
+  for (let index = 0; index < nativeTargets.length; index++) {
+    assert.notEqual(tableChanged[index], before[index], "embedded table must re-key " + nativeTargets[index])
+  }
+})
