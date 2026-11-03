@@ -50,9 +50,7 @@ func citedCodes(text string) map[string]string {
 // pendingCodes are codes the specification cites before their rows exist,
 // each with the lane that registers the code and adds its row. A code here
 // that gains a row fails, so the entry is deleted in that change.
-var pendingCodes = map[string]string{
-	"1023": "chapter 7 transitional trailing-block code, detail 382; row claimed by gate6-codes (AppendixB:EK1023-definition-row)",
-}
+var pendingCodes = map[string]string{}
 
 // TestSpecCodesInAppendixB checks that every code the chapters and the
 // accepted VIPs' decisions cite has a row in Appendix B, and that a code a
