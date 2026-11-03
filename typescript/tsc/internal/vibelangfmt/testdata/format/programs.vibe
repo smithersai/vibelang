@@ -24,7 +24,7 @@ describe("Users", () => {
 function describeFailure(failure: NotFound | Timeout) {
   return match (failure) {
     when NotFound and { let id }: `no user ${id}`;
-    when Timeout: 'retry'
+    when Timeout: 'retry';
   }
 }
 
@@ -62,8 +62,10 @@ function tracked() {
   try { return getUser("1") } finally (exit) { log(`lookup ${exit._tag}`) }
 }
 
-function handled(version: string) {
-  try { return release(version) } handle Approval.approve(request) { resume(true) } catch (e) { return match (e) { when NotFound: "missing"; default: throw e; } }
+effect function handled(version: string) {
+  provide Approval = { effect approve(_request: string) { return true } } {
+    return release(version) catch effect (e) => match (e) { when NotFound: "missing"; default: throw e; }
+  }
 }
 
 function hatches(text: string) {

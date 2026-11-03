@@ -145,7 +145,12 @@ func TestVibeLangSyntaxRecordsEachForm(t *testing.T) {
 		t.Run(c.name, func(t *testing.T) {
 			t.Parallel()
 			file, forms := parser.ParseVibeLangSyntax(ast.SourceFileParseOptions{FileName: "/main.vibe", PathKey: "/main.vibe"}, c.source)
-			if diagnostics := file.Diagnostics(); len(diagnostics) != 0 {
+			diagnostics := file.Diagnostics()
+			if c.name == "clauses" {
+				if len(diagnostics) != 1 || diagnostics[0].Source() != "EK" || diagnostics[0].Code() != 3501 {
+					t.Fatalf("retired handle recovery diagnostics: %v", diagnostics)
+				}
+			} else if len(diagnostics) != 0 {
 				t.Fatalf("syntax rejected: %v", diagnostics[0].String())
 			}
 			if got := describeVibeSyntax(c.source, forms); got != c.want {

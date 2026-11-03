@@ -1,2 +1,0 @@
-The fields of an error are separated by ; or a new line, not by a comma.
-The fields of a control are separated by ; or a new line, not by a comma.

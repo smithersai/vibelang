@@ -18,7 +18,6 @@ import (
 var syntaxRoundTripCases = []struct{ name, source string }{
 	{"declarations", `error Gone { readonly id: string }
 service Users { find(id: string): string!Gone }
-control Ask { answer(): boolean!! }
 schema Ticket { id: string; count: number }`},
 	{"contracts", `function read(id: string): string!Gone!Users { return Users.find(id) }
 type Program = number!!
@@ -83,7 +82,7 @@ func TestInvalidContractPreservesDiagnostic(t *testing.T) {
 	for _, source := range []string{
 		`type A = #Bad!0`,
 		`service A { read(): #Bad!0 }`,
-		`error A { readonly A: string } service A0000 { A(A: string): #A0000!0 } control A000 { A0(): A000000000 } schema0000 { A0 % A000000; A0 % A0000000 }`,
+		`error A { readonly A: string } service A0000 { A(A: string): #A0000!0 } schema0000 { A0 % A000000; A0 % A0000000 }`,
 	} {
 		file := parseVibeLang(t, source)
 		if len(file.Diagnostics()) == 0 {

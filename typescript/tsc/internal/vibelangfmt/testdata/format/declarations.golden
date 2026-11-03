@@ -8,7 +8,7 @@ service Users {
   find(id: string): User!NotFound
   region: string
 }
-control Approval {
+service Approval {
   approve(request: string): boolean!!
 }
 export service Search: SearchApi {

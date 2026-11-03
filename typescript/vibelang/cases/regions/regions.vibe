@@ -31,10 +31,6 @@ effect function loop(stopAt: number) {
 }
 // Effect<number, never, never>
 
-abstract class Pool extends Control {
-  abstract unused(): Effect<void, never, never>
-}
-
 effect function lease(name: string) {
   return try Effect.acquireRelease(
     effect {

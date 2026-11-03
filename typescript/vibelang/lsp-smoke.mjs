@@ -875,22 +875,22 @@ try {
     assert(location.range.start.line === lineOf("src/declarations.vibe", "export error MissingUser"), `line ${location.range.start.line}`)
   })
 
-  await check("hover: a handle statement removes the control it handles", async () => {
+  await check("hover: providing Approval removes its service requirement", async () => {
     const shown = await hover("src/declarations.vibe", "approved(version: string)")
     assert(/function approved\(version: string\): [^!\n]+!!/.test(shown), `got ${JSON.stringify(shown)}`)
   })
 
-  await check("hover: a handle clause's parameter has the operation's parameter type", async () => {
+  await check("hover: a provided service method parameter has its declared type", async () => {
     const shown = await hover("src/declarations.vibe", "request.startsWith")
     assert(shown.includes("request: string"), `got ${JSON.stringify(shown)}`)
   })
 
-  await check("hover: a handle clause's operation shows its contract in the ! form", async () => {
+  await check("hover: a provided service method shows its contract in the ! form", async () => {
     const shown = await hover("src/declarations.vibe", "approve(request) {")
     assert(shown.includes("approve(request: string): boolean!!"), `got ${JSON.stringify(shown)}`)
   })
 
-  await check("definition: a handle clause's operation goes to the member in the control declaration", async () => {
+  await check("definition: a provided service method goes to its service declaration", async () => {
     const [location] = await definition("src/declarations.vibe", "approve(request) {")
     assert(location?.uri === fileUri("src/declarations.vibe"), `went to ${location?.uri}`)
     assert(location.range.start.line === lineOf("src/declarations.vibe", "approve(request: string)"), `line ${location.range.start.line}`)
@@ -1021,7 +1021,7 @@ try {
     }
     await shows("error Gone", 0, /class Gone/)
     await shows("service Seats", 0, /class Seats/)
-    await shows("control Gate", 0, /class Gate/)
+    await shows("service Gate", 0, /class Gate/)
     await shows("join [first", 0, /Joins the fiber/)
     await shows("concurrent(2)", 0, /Runs the body for each item in its own fiber/)
     await shows("const id of ids", 6, /\(parameter\) id: string/)

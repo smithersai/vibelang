@@ -232,7 +232,7 @@ func (tx *lowering) visitNode(node *ast.Node) *ast.Node {
 	case node.Kind == ast.KindClassDeclaration && tx.plan.hasKey(node):
 		return tx.visitServiceClass(node)
 	case tx.inEffect && isHandleStatement(node):
-		return tx.visitHandleStatement(node) // try { ... } handle Control.op(...) { ... } (handles.go)
+		return nil // retired handler syntax is diagnosed, never lowered to continuations
 	case tx.inEffect && node.Kind == ast.KindTryStatement:
 		return tx.visitTryStatement(node)
 	case maskMarkerWord(node) != "" || exitBindingOf(node) != nil:

@@ -34,6 +34,10 @@ import (
 // binding of another meaning is in scope, the lowering reaches the export
 // through an import of its own (recordIntrinsic, intrinsicReference).
 
+// Control, handle, resume, resumeWith and abandon remain in this resolution
+// table only for migration recovery and EK3501. First-release completion lists
+// omit those retired runtime exports; local native bindings still shadow them.
+//
 // runtimeModule is the package that holds the prelude and the helpers that
 // generated code calls.
 const runtimeModule = "vibelang-runtime"

@@ -751,30 +751,6 @@ function shadowed() {
 	}
 }
 
-func TestResolverHandleClausesAreEffectFunctions(t *testing.T) {
-	// handle(program, Control, clauses): the runtime's Clauses<S, H> is a
-	// mapped type, whose template the generator reads, so every clause is an
-	// Effect function, even one whose body pauses nowhere.
-	f := forms(t, "vibelang-runtime#handle", 3)
-	if c := f.Params[2].AnyProp; c != ClassEffectFn {
-		t.Errorf("handle's clauses = %v, want E for every member", c)
-	}
-	r := resolve(t, `control Ask { ask(question: string): number!! }
-export function stopEarly() {
-  return handle(() => Ask.ask("stop"), Ask, {
-    ask(question, _k) { return 0 }
-  })
-}
-export function arrow() {
-  return handle(() => Ask.ask("go"), Ask, { ask: (question, k) => resume(k, question.length) })
-}`)
-	for _, prefix := range []string{"ask(question, _k)", "(question, k) => resume"} {
-		if d := r.lambda(t, prefix); d.Form != FormEffectFn || d.Provenance != FromTable || d.Choice != nil {
-			t.Errorf("%q = %+v, want an Effect function from the table", prefix, d)
-		}
-	}
-}
-
 func TestResolverNoSilentDefaults(t *testing.T) {
 	r := resolve(t, `import { attach } from "./helpers.ts"
 const events: string[] = []

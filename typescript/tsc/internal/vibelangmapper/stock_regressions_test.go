@@ -4,17 +4,15 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"strings"
 	"testing"
 )
 
-// TestStockProjectionGoldens pins D31, D4 service context, and D132's
-// omitted operation bindings in both renderings, then checks stock tsc.
+// TestStockProjectionGoldens pins D31 imports and D4 service context in
+// both renderings, then checks stock tsc.
 func TestStockProjectionGoldens(t *testing.T) {
 	cases := map[string]string{
 		"imports": `import { name } from "./names.ts"; export { name } from "./names.ts"; export function value() { return name }`,
 		"service": `import { Effect } from "effect"; service Names { lookup(id: number): Effect<string, never, never> } export const live = Layer.succeed(Names, { lookup(id) { return String(id) } })`,
-		"handler": `control Log { write(message: string, level?: string): void!! } export function scenario() { try { Log.write("x"); return 42 } handle Log.write(message) { resume() } }`,
 	}
 	for name, source := range cases {
 		t.Run(name, func(t *testing.T) {
@@ -53,18 +51,6 @@ func TestStockProjectionGoldens(t *testing.T) {
 			cmd.Dir = dir
 			if out, err := cmd.CombinedOutput(); err != nil {
 				t.Fatalf("%v\n%s", err, out)
-			}
-			if name == "handler" {
-				js, _, diagnostics := Emit(source, testContext)
-				if len(diagnostics) != 0 {
-					t.Fatal(diagnostics)
-				}
-				cmd := exec.Command("node", "--no-warnings", "--input-type=module")
-				cmd.Dir = dir
-				cmd.Stdin = strings.NewReader(js + "\nimport { runPromise } from \"effect/Effect\"; console.log(await runPromise(scenario()))")
-				if out, err := cmd.CombinedOutput(); err != nil || strings.TrimSpace(string(out)) != "42" {
-					t.Fatalf("%v\n%s", err, out)
-				}
 			}
 		})
 	}

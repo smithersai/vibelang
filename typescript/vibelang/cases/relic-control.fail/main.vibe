@@ -1,0 +1,5 @@
+// expect: EK3501
+control Ask { ask(x: number): number!! }
+export effect function main(): number!! {
+  try { return try Ask.ask(4) } handle Ask.ask(x) { return try resume(x + 2) }
+}

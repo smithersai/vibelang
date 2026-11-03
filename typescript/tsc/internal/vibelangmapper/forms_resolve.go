@@ -1474,6 +1474,9 @@ func (r *Resolver) calleeOf(root *ast.Node, chain []string, depth int) Callee {
 		return c
 	}
 	if decl == nil {
+		if retiredControlPreludeName(name) {
+			return Callee{}
+		}
 		return tableKey("prelude#" + name)
 	}
 	switch decl.Kind {
@@ -2469,6 +2472,9 @@ func formsIsServiceClass(node *ast.Node) bool {
 		return false
 	}
 	if extends := ast.GetClassExtendsHeritageElement(node); extends != nil {
+		if !isServiceKeywordClass(node) {
+			return false
+		}
 		if e := extends.Expression(); !ast.IsIdentifier(e) || e.Text() != "Control" {
 			return false
 		}

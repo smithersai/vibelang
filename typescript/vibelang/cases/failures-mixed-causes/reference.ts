@@ -53,8 +53,6 @@ export const sources: Record<string, () => Program> = {
   r5_awaitRace: () => Effect.raceFirst(fail(), cleanup()),
   r5_awaitAny: () => Effect.raceAll([fail(), cleanup()]),
   r6_interruptThenFinallyThrows: () => Effect.onExit(Effect.interrupt, fail),
-  // Abandonment combines the clause failure with cleanup like Effect's finalizer.
-  r8_abandonMixed: mixed,
   r8_allSettled: () => Effect.all([mixed()], { concurrency: "unbounded", mode: "result" }),
   r2_forUsingHead: () => disposed(),
   r2_forUsingOf: () => Effect.forEach([1], () => disposed(), { discard: true }),

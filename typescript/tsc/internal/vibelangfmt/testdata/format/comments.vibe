@@ -17,13 +17,15 @@ function arms(x: number) {
   }
 }
 
-function clauses() {
-  try {
-    a()
-  } handle Ask.answer(question) {
-    // answer
-    resume(question.length > 0)
-  } catch (e) {
-    // other
+effect function clauses() {
+  provide Ask = {
+    effect answer(question: string) {
+      // answer
+      return question.length > 0
+    }
+  } {
+    return a() catch (e) => {
+      // other
+    }
   }
 }

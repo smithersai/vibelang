@@ -11,7 +11,7 @@ examples build browser bundles with Vite.
 | [http-api](http-api/) | A schema-validated HTTP route, conflict errors, and socket-free route tests. |
 | [file-tree](file-tree/) | A recursive function with a written contract, platform services, a producer, and concurrent reads. |
 | [resilience](resilience/) | Retry schedules, deadlines, races, block-owned fibers, and virtual-time tests. |
-| [approval](approval/) | One release program under automatic and scripted control handlers. |
+| [approval](approval/) | One release program with automatic and scripted approval services. |
 | [pipeline](pipeline/) | A producer flowing through Stream operators and a `for...of` consumer. |
 | [react-vite](react-vite/) | A React component that runs a VibeLang service lookup through a `ManagedRuntime` and renders its recovered error. |
 | [vue-vite](vue-vite/) | A Vue single-file component over a VibeLang layer whose setup holds the todo list. |

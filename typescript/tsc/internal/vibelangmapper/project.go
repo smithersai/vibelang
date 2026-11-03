@@ -281,6 +281,9 @@ func lower(text string, ctx FileContext) *projector {
 
 // visit walks node and records the edits that lower it.
 func (p *projector) visit(node *ast.Node, e env) {
+	if p.rejectRetiredControlSyntax(node) {
+		return
+	}
 	if p.ctx.Lint && p.lintForm(node, e) {
 		return
 	}

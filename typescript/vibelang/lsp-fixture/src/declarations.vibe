@@ -34,15 +34,13 @@ export effect function recover(id: string) {
   }
 }
 
-export control Approval {
+export service Approval {
   approve(request: string): boolean!!
 }
 
 export effect function approved(version: string) {
-  try {
-    return (try Approval.approve(version)) ? "approved" : "declined"
-  } handle Approval.approve(request) {
-    try resume(request.startsWith("v"))
+  provide Approval = { effect approve(request) { return request.startsWith("v") } } {
+    return (try (try Approval).approve(version)) ? "approved" : "declined"
   }
 }
 

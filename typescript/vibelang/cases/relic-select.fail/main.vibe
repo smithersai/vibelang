@@ -1,0 +1,2 @@
+// expect: EK4607
+export effect function main() { select { default: return 1 } }

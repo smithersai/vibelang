@@ -1,7 +1,0 @@
-main.vibe(10,11): error TS2322
-main.vibe(20,11): error TS2322
-main.vibe(29,5): error TS2322
-main.vibe(40,5): error TS2322
-main.vibe(49,11): error TS2322
-main.vibe(62,13): error TS2322
-main.vibe(76,13): error TS2322

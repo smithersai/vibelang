@@ -98,12 +98,6 @@ var emitCases = []struct {
 	},
 
 	{
-		name:     "resume expressions hide normal and jump sentinels while retaining pending completion",
-		source:   "control Ask { answer(): number!! } function f() { try { Ask.answer() } handle Ask.answer() { const value = resume(1); record(value) } }",
-		contains: []string{"$returned($pending) ? $pending : undefined", "return $pending"},
-	},
-
-	{
 		name:     "data methods and predicates call the module without prototypes",
 		source:   "function f(o: Option.Option<number>) { if (o.isSome()) return o.getOrElse(() => 0); return 0 }",
 		contains: []string{"Option.isSome(o)", "Option.getOrElse(o, () => 0)"},
@@ -307,11 +301,6 @@ var emitCases = []struct {
 		contains: []string{`$method((($s = Sessions), $isKey($s) && !("get" in $s) ? (yield* $s) : $s), "get", ["t"], $methodCandidates_get)`},
 	},
 	{
-		name:     "a control registers its operations and their parameter counts",
-		source:   "control Approval {\n  approve(request: string, level?: number): boolean!!\n}\n",
-		contains: []string{`$control(Approval, ["approve"], [2]);`},
-	},
-	{
 		name:     "a service with a static default passes it to $reference (D40)",
 		source:   "service Flags {\n  readonly on: boolean\n  static readonly defaultValue = () => ({ on: false })\n}\n",
 		contains: []string{`class Flags extends $reference("app/src/main#Flags", () => Flags.defaultValue()) {`},
@@ -407,22 +396,14 @@ func TestEmit(t *testing.T) {
 	}
 }
 
-// TestEmitCorpusDeclarations checks the controls and static-default service
+// TestEmitCorpusDeclarations checks the static-default service
 // in the corpus, both before and after TypeScript erases their types.
 func TestEmitCorpusDeclarations(t *testing.T) {
 	t.Parallel()
 	for _, c := range []struct {
-		name          string
-		registrations []string
-		reference     string
+		name      string
+		reference string
 	}{
-		{
-			name: "handle-tail-resume",
-			registrations: []string{
-				`$control(Approval, ["approve"], [1]);`,
-				`$control(Notes, ["note"], [1]);`,
-			},
-		},
 		{
 			name:      "vibelang-services-default",
 			reference: "FeatureFlags",
@@ -437,12 +418,6 @@ func TestEmitCorpusDeclarations(t *testing.T) {
 			js, _, diagnostics := Emit(source, testContext)
 			assert.Equal(t, len(executable.Diagnostics), 0, "diagnostics: %v", executable.Diagnostics)
 			assert.Equal(t, len(diagnostics), 0, "diagnostics: %v", diagnostics)
-			for _, text := range []string{executable.Text, js} {
-				assert.Equal(t, strings.Count(text, "$control("), len(c.registrations), "%s", text)
-				for _, registration := range c.registrations {
-					assert.Equal(t, strings.Count(text, registration), 1, "%s", text)
-				}
-			}
 			if name := c.reference; name != "" {
 				args := `("app/src/main#` + name + `", () => ` + name + `.defaultValue())`
 				assert.Assert(t, strings.Contains(executable.Text, "$reference<"+name+">"+args), "%s", executable.Text)
@@ -506,7 +481,7 @@ func TestEmitForkRegions(t *testing.T) {
 // or separator before else, both of which single-file transpilation recovers.
 func TestEmitCorpusSyntax(t *testing.T) {
 	t.Parallel()
-	for _, name := range []string{"scopes-using", "decl-handle"} {
+	for _, name := range []string{"scopes-using"} {
 		t.Run(name, func(t *testing.T) {
 			data, err := os.ReadFile(filepath.Join("../../../vibelang/cases", name, "main.vibe"))
 			assert.NilError(t, err)
@@ -624,27 +599,6 @@ func TestEmitProducerCleanup(t *testing.T) {
 	assert.Assert(t, strings.Contains(js, "$produce(() => $producerGen(function* () {"), js)
 	assert.Assert(t, strings.Contains(js, "$onExit($gen(() => it)"), js)
 	assert.Assert(t, strings.Contains(js, "it.return(undefined)"), js)
-}
-
-// TestEmitClauseContinuation keeps the continuation last when bindings
-// omit operation parameters, and propagates a resumed return after cleanup.
-func TestEmitClauseContinuation(t *testing.T) {
-	t.Parallel()
-	source := `control Log { write(message: string, level?: string): void!! }
- function f() {
-  try { Log.write("hi"); return 7 }
-  handle Log.write(message) { resume(); record(message) }
- }
- function g() {
-  try { Log.write("hi"); return 8 }
-  handle Log.write(message) { using r = lease(); resume() }
- }`
-	js, _, diagnostics := Emit(source, testContext)
-	assert.Equal(t, len(diagnostics), 0, "%v\n%s", diagnostics, js)
-	assert.Assert(t, strings.Contains(js, "write: (message, $ignored1, ...$clauseArgs) =>"), js)
-	assert.Assert(t, strings.Contains(js, "const $k = $clauseArgs[$clauseArgs.length - 1]"), js)
-	assert.Assert(t, strings.Contains(js, "return $pending"), js)
-	assert.Assert(t, strings.Contains(js, "yield* $resume($k, undefined)"), js)
 }
 
 // TestProgramValuesRuntime checks that both program conversions and pipe
@@ -795,36 +749,9 @@ func TestEmitDoControlFlowCLI(t *testing.T) {
 	}
 }
 
-// TestEmitCallTailResume checks D18 for method and lambda clauses, while
-// retaining ordinary resumes in nested functions and cleanup regions.
-func TestEmitCallTailResume(t *testing.T) {
-	for _, clause := range []string{
-		`ask(q, k) { return resume(k, 1) }`,
-		`ask: (q, k) => resume(k, 1)`,
-		`ask: function(q, k) { return (resume(k, 1)) }`,
-		`ask(q, k) { if (q) return resume(k, 1); return resume(k, 2) }`,
-		`ask(q, k) { return resumeWith(k, () => 1) }`,
-	} {
-		js, _, ds := Emit(`control Ask { ask(q: string): number!! } function f() { return handle(() => Ask.ask("q"), Ask, {`+clause+`}) }`, testContext)
-		assert.Equal(t, len(ds), 0, "%v", ds)
-		assert.Assert(t, strings.Contains(js, "$tailResume"), js)
-		assert.Assert(t, !strings.Contains(js, "$t = resume("), js)
-	}
-	for _, clause := range []string{
-		`ask(q, k) { try { return resume(k, 1) } finally { log() } }`,
-		`ask(q, k) { using r = lease(); return resume(k, 1) }`,
-		`ask(q, k) { const nested = () => resume(k, 1); return nested() }`,
-		`ask(q, k) { const n = resume(k, 1); return n + 1 }`,
-	} {
-		js, _, ds := Emit(`control Ask { ask(q: string): number!! } function f() { return handle(() => Ask.ask("q"), Ask, {`+clause+`}) }`, testContext)
-		assert.Equal(t, len(ds), 0, "%v", ds)
-		assert.Assert(t, !strings.Contains(js, "$tailResume"), js)
-	}
-}
-
-// TestTailResumeDepthRuntime exercises 100,000 producer elements and both
-// handle forms: checking results alone misses suspended clause stack growth.
-func TestTailResumeDepthRuntime(t *testing.T) {
+// TestProducerDepthRuntime exercises 100,000 producer elements and checks
+// that suspended generator frames remain bounded.
+func TestProducerDepthRuntime(t *testing.T) {
 	root, err := filepath.Abs("../../../..")
 	assert.NilError(t, err)
 	scope := mapperTestScope(t, root)
@@ -833,20 +760,14 @@ func TestTailResumeDepthRuntime(t *testing.T) {
 		t.Skip("node is unavailable")
 	}
 	source := `import { hooks } from "vibelang-runtime/kernel"
-control Tick { tick(n: number): void!! }
 function* count() { for (let i = 0; i < 100000; i++) yield i }
-function ticks() { for (let i = 0; i < 100000; i++) Tick.tick(i); return 100000 }
 export function scenario() {
  let depth = 0
  hooks.onResume = (fiber): void => { depth = Math.max(depth, fiber._stack.length) }
  let sum = 0
  for try (const n of count()) sum += n
- let seen = 0
- const called = handle(() => ticks(), Tick, { tick(n, k) { seen++; return resume(k, undefined) } })
- let stated = 0
- try { ticks() } handle Tick.tick(n) { stated++; resume() }
  hooks.onResume = undefined
- return { sum, seen, called, stated, bounded: depth < 50 }
+ return { sum, bounded: depth < 50 }
 }`
 	js, _, ds := Emit(source, testContext)
 	assert.Equal(t, len(ds), 0, "%v", ds)
@@ -855,7 +776,7 @@ export function scenario() {
 	cmd.Stdin = strings.NewReader(js + "\nimport { runPromise as runDepthTest } from 'effect/Effect'; console.log(JSON.stringify(await runDepthTest(scenario())))")
 	out, err := cmd.CombinedOutput()
 	assert.NilError(t, err, "%s", out)
-	assert.Equal(t, strings.TrimSpace(string(out)), `{"sum":4999950000,"seen":100000,"called":100000,"stated":100000,"bounded":true}`)
+	assert.Equal(t, strings.TrimSpace(string(out)), `{"sum":4999950000,"bounded":true}`)
 }
 
 // TestHatchMappingRuntime checks a hatch's lazy data expressions against the

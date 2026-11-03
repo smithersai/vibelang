@@ -135,6 +135,11 @@ func TestEditorPreludeCompletions(t *testing.T) {
 			t.Errorf("compiler helper offered as a prelude completion: %s", symbol.Name())
 		}
 	}
+	for _, name := range []string{"Control", "handle", "resume", "resumeWith", "abandon"} {
+		if names[name] {
+			t.Errorf("retired continuation offered as a prelude completion: %s", name)
+		}
+	}
 	for _, name := range []string{"Effect", "Layer", "Schema", "Console", "Stream", "fork", "wire"} {
 		if !names[name] {
 			t.Errorf("missing global prelude completion %s", name)

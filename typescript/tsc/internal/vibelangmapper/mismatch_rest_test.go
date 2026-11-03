@@ -9,8 +9,7 @@ import (
 )
 
 // TestRemainingMismatchContracts checks the actual declarations as well as
-// execution: generic Match stages retain inference, a fork keeps the child's
-// Scope, and a resumed result survives the handler clause's cleanup region.
+// execution: generic Match stages retain inference and a fork keeps the child's Scope.
 func TestRemainingMismatchContracts(t *testing.T) {
 	root, err := filepath.Abs("../../../..")
 	if err != nil {
@@ -37,20 +36,8 @@ import { Match } from "effect"
 service Pool { acquire(): number!!Scope }
 export function lease() { return Pool.acquire() }
 export function forkedLease() { fork(() => lease()); return "forked" }
-control Ask { get(request: string): boolean!! }
 export function phase(x: "a" | "b") { return pipe(Match.value(x), Match.when("a", () => "A"), Match.orElse((s) => "other " + s)) }
-export function scoped(name: string = "held") {
- const events: string[] = []
- try { events.push("answer " + Ask.get(name)); return events }
- handle Ask.get(request) {
-  if (request !== "decline") {
-   if (request === "early") return ["early"]
-   using resource = Effect.acquireRelease(() => { events.push("acquire"); return 1 }, () => { events.push("release") })
-   resume(true)
-  } else { resume(false) }
- }
-}
-export function main() { return { phases: [phase("a"), phase("b")], scoped: scoped(), early: scoped("early"), declined: scoped("decline") } }
+export function main() { return { phases: [phase("a"), phase("b")] } }
 `
 	projection := Project(source, testContext)
 	if len(projection.Diagnostics) > 0 {
@@ -68,7 +55,7 @@ export function main() { return { phases: [phase("a"), phase("b")], scoped: scop
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, want := range []string{`phase(x: "a" | "b"): Effect.Effect<string, never, never>`, `scoped(name?: string): Effect.Effect<string[], never, never>`, `forkedLease(): Effect.Effect<string, never, Pool | Scope.Scope>`} {
+	for _, want := range []string{`phase(x: "a" | "b"): Effect.Effect<string, never, never>`, `forkedLease(): Effect.Effect<string, never, Pool | Scope.Scope>`} {
 		if !strings.Contains(string(declarations), want) {
 			t.Errorf("missing %s:\n%s", want, declarations)
 		}
@@ -77,14 +64,14 @@ export function main() { return { phases: [phase("a"), phase("b")], scoped: scop
 	if len(ds) > 0 {
 		t.Fatal(ds)
 	}
-	write("main.mjs", js+"\nconsole.log(JSON.stringify(await Effect.runPromise(main())))")
+	write("main.mjs", js+"\nimport { Effect as RunnerEffect } from \"effect\";\nconsole.log(JSON.stringify(await RunnerEffect.runPromise(main())))")
 	cmd = exec.Command("node", "--no-warnings", "main.mjs")
 	cmd.Dir = dir
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		t.Fatalf("exec: %v\n%s\n%s", err, out, js)
 	}
-	if strings.TrimSpace(string(out)) != `{"phases":["A","other b"],"scoped":["acquire","answer true","release"],"early":["early"],"declined":["answer false"]}` {
+	if strings.TrimSpace(string(out)) != `{"phases":["A","other b"]}` {
 		t.Fatalf("result: %s", out)
 	}
 }

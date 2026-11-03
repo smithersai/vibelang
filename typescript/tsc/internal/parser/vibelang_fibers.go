@@ -317,6 +317,7 @@ type selectCase struct {
 func (p *Parser) parseVibeLangSelect() *ast.Node {
 	pos := p.nodePos()
 	anchor := p.tokenRange()
+	p.retiredControlForm(anchor, 4607, RetiredSelectMessage)
 	p.nextToken() // select
 	p.parseExpected(ast.KindOpenBraceToken)
 	var cases []selectCase

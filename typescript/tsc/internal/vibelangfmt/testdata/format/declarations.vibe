@@ -5,7 +5,7 @@ export error NotFound { id: string }
 error Timeout
 export error Wrapped<T> { cause: T; mutable attempts: number }
 service Users { find(id: string): User!NotFound; region: string }
-control Approval { approve(request: string): boolean!! }
+service Approval { approve(request: string): boolean!! }
 export service Search:SearchApi {   static readonly layer = Layer.succeed(Search, searchApi) }
 service Prefix:   string
 service Format: (value: string) => string!!

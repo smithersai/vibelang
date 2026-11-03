@@ -32,6 +32,9 @@ func preludeCompletions(c *checker.Checker, location *ast.Node, meaning ast.Symb
 				continue // written by the compiler, not by people
 			}
 			if symbol := c.TryGetMemberInModuleExports(name, module); symbol != nil && hasMeaning(c, symbol, meaning) {
+				if relicContinuationExport(c, name, symbol) {
+					continue // retained only for retirement diagnostics and --fix recovery
+				}
 				symbols = append(symbols, symbol)
 			}
 		}

@@ -119,7 +119,7 @@ export service Users {
  * @category services
  * @since 0.0.2
  */
-export control Approval {
+export service Approval {
   approve(request: string): boolean!!
 }
 
@@ -343,16 +343,14 @@ export function nameOrReason(id: string) {
 }
 
 /**
- * Handles a control operation.
+ * Provides an approval service.
  *
  * @category constructors
  * @since 0.0.2
  */
-export function auto(version: string) {
-  try {
-    return release(version)
-  } handle Approval.approve(_request) {
-    resume(true)
+export effect function auto(version: string) {
+  provide Approval = { effect approve(_request: string) { return true } } {
+    return try release(version)
   }
 }
 

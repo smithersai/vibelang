@@ -1,0 +1,24 @@
+// expect-result: 15
+function control(n: number) { return n + 1 }
+function handle(n: number) { return n + 1 }
+function resume(n: number) { return n + 1 }
+function abandon(n: number) { return n + 1 }
+function select(n: number) { return n + 1 }
+const methods = { control, handle, resume, abandon, select }
+function callback(resume: (n: number) => number) { return resume(0) }
+export effect function main() {
+  if (!nativeInheritance()) return 0
+  const callbackValue = try Effect.callback<number>(resume => resume(Effect.succeed(7)))
+  if (callbackValue !== 7) return 0
+  const value = callback(resume)
+  return methods.control(value) + methods.handle(value) + methods.resume(value) + methods.abandon(value) + methods.select(value) + control(0) + handle(0) + resume(0) + abandon(0) + select(0)
+}
+
+// A native base called Control must retain ordinary inheritance.
+abstract class Control { abstract value(): number }
+abstract class NativeParent extends Control { abstract value(): number }
+class NativeLeaf extends NativeParent { value() { return 1 } }
+export function nativeInheritance() {
+  const leaf = new NativeLeaf()
+  return leaf instanceof Control && leaf.value() === 1
+}

@@ -15,7 +15,7 @@ export const UsersLive = Layer.succeed(Users, {
   region: "eu"
 })
 
-export control Approval {
+export service Approval {
   approve(request: string): boolean!!
 }
 
@@ -33,10 +33,6 @@ effect function greet(id: string) {
 }
 
 export effect function main() {
-  const approved = try handle(effect { return try release("v1") }, Approval, {
-    effect approve(_request, continuation) {
-      return try resume(continuation, true)
-    }
-  })
+  const approved = try Effect.provideService(release("v1"), Approval, { effect approve(_request: string) { return true } })
   return try Effect.provide(effect { return ({ name: try greet("42"), missing: try greet("7"), region: (try Users).region, approved }) }, UsersLive)
 }

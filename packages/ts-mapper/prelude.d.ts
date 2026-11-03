@@ -55,7 +55,7 @@ export {
 
 // The runtime's prelude names (the fork's prelude.go).
 export {
-  TaggedError, Control, pipe, wire, fork, handle, resume, resumeWith, abandon, sync, callback, Resume, runPromise,
+  TaggedError, pipe, wire, fork, sync, callback, Resume, runPromise,
   runFork, runSync, runCallback, detach, forkIn, interrupt, yieldNow, uninterruptible, restore, interruptible,
   customMatcher, Experimental
 } from "vibelang-runtime"
@@ -79,7 +79,7 @@ export type $BuiltinResult<F extends (...args: any[]) => any> = ReturnType<F>
 
 // The runtime's region helpers (D13, D15, D132, D173): regions, handle
 // statements, and provide blocks lower onto these.
-export { $catch, $finally, $tailResume, $tailResumeWith, $provideEntries, $provideService } from "vibelang-runtime"
+export { $catch, $finally, $provideEntries, $provideService } from "vibelang-runtime"
 
 /**
  * `using x = acquire()` in an Effect body (D47, D94, D14): the block's Scope

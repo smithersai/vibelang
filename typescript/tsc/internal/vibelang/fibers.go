@@ -38,7 +38,7 @@ var (
 	// EK1904: a return in the body of a for concurrent loop.
 	EK1904 = message(1904, errorCategory, "return cannot leave a for concurrent loop: each item runs in its own fiber.")
 	// EK4607: a select statement, replaced by try.race (D197, VIP-18).
-	EK4607 = message(4607, errorCategory, "select was replaced by try.race.")
+	EK4607 = message(4607, errorCategory, "select is outside the first release; vibelang --fix refuses an unproved selection rewrite. Choose explicit Effect selection for the intended behavior.")
 	// EK4609: native await on a Fiber (VIP-5). {0} is the operand.
 	EK4609 = message(4609, warningCategory, "await does not wait for this Fiber; use await runPromise(Fiber.join({0})).")
 	// EK4610: await on a Deferred (D226). {0} is the operand.
@@ -126,8 +126,7 @@ func checkFiberForms(c *checker.Checker, file *ast.SourceFile) {
 		case "$join":
 			checkJoin(c, file, node)
 		case "$select":
-			keyword := scanner.GetRangeOfTokenAtPosition(file, node.Pos())
-			note(reportAt(c, file, keyword, EK4607), "Write try.race [a(), b()] with an Effect per case; use an effect { ... } block for statements. For a default clause, poll instead: Queue.poll(queue) and an if.")
+			// The parser reports EK4607; retain only recovery coverage here.
 			// The retired form's case programs have no typing to check
 			// against: hide TypeScript's argument errors, such as a case
 			// head that gives an Effect where $select expects a program.

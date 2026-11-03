@@ -6,6 +6,12 @@ The VibeLang runtime: the one-shot continuation kernel and the helpers the
 [`vibelang`](https://www.npmjs.com/package/vibelang) compiler emits. It runs on
 Effect 4's fibers, scopes, and services.
 
+The first release uses ordinary services and providers. The compiler rejects
+`control`, `handle`, and continuation-runtime references with `EK3501`, and
+`select` blocks with `EK4607`. Run `vibelang --fix` for supported private
+service patterns; continuation-dependent code needs an explicit service or
+Effect redesign. VIP-35 remains open and is outside the first release.
+
 ## Install
 
 ```sh
@@ -92,6 +98,10 @@ different patch version and Effect 3.
 
 Every export from the package root. `$` marks compiler helpers; types have no
 JavaScript value. Decisions are in [`docs/design/history/DECISIONS.md`](../../docs/design/history/DECISIONS.md).
+
+The continuation exports below remain for legacy artifacts and migration
+verification. Their presence in this package does not make the retired forms
+or runtime references valid in first-release `.vibe` source.
 
 | Export | Purpose | Decision |
 | --- | --- | --- |
@@ -180,16 +190,16 @@ JavaScript value. Decisions are in [`docs/design/history/DECISIONS.md`](../../do
 | `$Context` | Expose Effect's Context namespace for generated service references | D1, D40 |
 | `$service` | Create the Context key base merged with a generated service interface | D1, D45 |
 | `$reference` | Create the `Context.Reference` base of a service class that declares `static readonly default` | D40, D45 |
-| `ServiceKey` (type) | Name the static side of a compiled service or control class in its declaration file | D45 |
+| `ServiceKey` (type) | Name the static side of a compiled service class or legacy control artifact in its declaration file | D45 |
 | `ReferenceKey` (type) | Name the static side of a compiled service class with a static default in its declaration file | D40, D45 |
-| `$control` | Register one kernel operation per generated control method | D2 |
-| `Control` | Mark an abstract control declaration in the prelude | D2, D4 |
+| `$control` | Retained legacy helper: register one kernel operation per control method | D2 |
+| `Control` | Retained legacy control base; first-release references report `EK3501` | D2, D4 |
 | `wire` | Compose layers in the dependent-first order computed by the compiler | D27 |
 | `Continuation` (type) | Type the clause-local, one-shot continuation token: `Continuation<V, E, H>` | D16, D50 |
-| `handle` | Install a deep handler and optional return clause; a clause for every operation | D16, D50 |
-| `resume` | Resume a captured continuation with a value | D16 |
-| `resumeWith` | Resume with an injected Effect that requires no services | D17 |
-| `abandon` | Consume a continuation and run its cleanup without resuming its body | D16 |
+| `handle` | Retained legacy handler; first-release references report `EK3501` | D16, D50 |
+| `resume` | Retained legacy continuation resume; first-release references report `EK3501` | D16 |
+| `resumeWith` | Retained legacy injected resume; first-release references report `EK3501` | D17 |
+| `abandon` | Retained legacy abandonment; first-release references report `EK3501` | D16 |
 | `$tailResume` | Return a tail-resume request without adding a clause frame | D18 |
 | `$tailResumeWith` | Return a tail-resume request with an injected Effect | D17, D18 |
 | `$clause` | Type a handle statement's clause bindings for the checker; compiled code never calls it | D132 |
@@ -385,6 +395,9 @@ bun run build && node tests/provide-bench.mjs
 ```
 
 ## Prototype compatibility
+
+The continuation contracts in this section describe retained prototype runtime
+behavior, outside the first-release language.
 
 The extraction keeps the prototype's helper names and execution behavior. The
 compiler orders `wire` arguments with dependents before providers; the runtime

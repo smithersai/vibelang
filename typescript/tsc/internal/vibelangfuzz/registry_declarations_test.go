@@ -50,8 +50,8 @@ var legacyDeclared = map[int32]string{
 	3205: "lane vip-remove3",                                                                                                                                              // diagnostics.go
 	3206: "lane vip-remove3",                                                                                                                                              // diagnostics.go
 	3207: "lane del-rest",                                                                                                                                                 // diagnostics.go
-	4201: "lane d-handlers",                                                                                                                                               // diagnostics.go
-	4202: "lane d-handlers",                                                                                                                                               // diagnostics.go
+	4201: "lane relic-control; declaration only: retired control witnesses now report EK3501 before boundary checks",                                                      // diagnostics.go
+	4202: "lane relic-control; declaration only: retired control witnesses now report EK3501 before boundary checks",                                                      // diagnostics.go
 	4301: "lane del-rest",                                                                                                                                                 // diagnostics.go
 	4401: "lane del-rest",                                                                                                                                                 // diagnostics.go
 	4403: "lane del-rest",                                                                                                                                                 // diagnostics.go
@@ -73,7 +73,6 @@ var legacyDeclared = map[int32]string{
 	4602: "lane del-rest",                                                                                                             // fibers.go
 	4603: "lane del-rest",                                                                                                             // fibers.go
 	4604: "lane del-rest",                                                                                                             // fibers.go
-	4607: "lane del-rest",                                                                                                             // fibers.go
 	4611: "lane del-rest",                                                                                                             // fibers.go
 	4612: "lane del-rest",                                                                                                             // fibers.go
 	4703: "lane del-rest",                                                                                                             // match.go

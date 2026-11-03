@@ -1,12 +1,6 @@
-// expect: EK4607 EK1802 EK4604
+// expect: EK1802 EK4604
 effect function load(): number!! {
   return 1
-}
-
-export effect function replaced() {
-  select {
-    case const n = load(): return n
-  }
 }
 
 export effect function retired() {

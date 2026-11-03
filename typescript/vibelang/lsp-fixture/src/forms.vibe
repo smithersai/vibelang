@@ -14,7 +14,7 @@ export service Seats {
   take(id: string): string!Gone
 }
 
-export control Gate {
+export service Gate {
   open(request: string): boolean!!
 }
 
@@ -30,14 +30,12 @@ export const SeatsLive = Layer.effect(Seats, effect {
 })
 
 export effect function admit(id: string) {
-  return (try Gate.open(`admit ${id}`)) ? id : "closed"
+  return (try (try Gate).open(`admit ${id}`)) ? id : "closed"
 }
 
 export effect function opened(id: string) {
-  try {
+  provide Gate = { effect open(request) { return request.length > 0 } } {
     return try admit(id)
-  } handle Gate.open(request) {
-    try resume(request.length > 0)
   }
 }
 

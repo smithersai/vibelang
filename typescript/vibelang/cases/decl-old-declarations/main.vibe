@@ -1,6 +1,6 @@
 // expect-result: {"name":"Ada","greeting":"hi Ada","approved":"released v1"}
 // The older spellings still compile and run the same way, with warnings:
-// service class and control class (D220, now EK2120) and the layer
+// service class (D220, now EK2120) and the layer
 // declaration (EK2121). Their quick fixes write the current spellings.
 service class Names {
   name(): string!!
@@ -10,7 +10,7 @@ service class Greeter {
   greet(name: string): string!!
 }
 
-control class Approval {
+service Approval {
   approve(request: string): boolean!!
 }
 
@@ -24,15 +24,13 @@ layer GreeterLive: Greeter {
 }
 
 effect function release(version: string) {
-  if (!try Approval.approve(`deploy ${version}`)) return "declined"
+  if (!try (try Approval).approve(`deploy ${version}`)) return "declined"
   return `released ${version}`
 }
 
 effect function approveAll(version: string) {
-  try {
+  provide Approval = { effect approve(_request: string) { return true } } {
     return try release(version)
-  } handle Approval.approve(_request) {
-    try resume(true)
   }
 }
 

@@ -88,7 +88,7 @@ service Users {
   find(id: string): User!NotFound
   region: string
 }
-control Approval {
+service Approval {
   approve(request: string): boolean!!
 }
 export service Search: SearchApi {
@@ -223,22 +223,24 @@ const typed = (x as number) catch 0
     log("done")
   }
 }
-function auto(version: string) {
-  try {
-    return release(version)
-  } handle Approval.approve(request) {
-    resume(true)
+effect function auto(version: string) {
+  provide Approval = { effect approve(_request: string) { return true } } {
+    return try release(version)
   }
 }
-function answered(version: string) {
-  try {
-    return release(version)
-  } handle Approval.approve(request) {
-    resume(request.length > 0)
-  } catch (e) {
-    return match (e) { when NotFound: "missing"; default: throw e; }
-  } finally {
-    log("released")
+effect function answered(version: string) {
+  provide Approval = {
+    effect approve(request: string) {
+      return request.length > 0
+    }
+  } {
+    return try ensuring(
+      release(version) catch effect (e) => match (e) {
+        when NotFound: "missing";
+        default: throw e;
+      },
+      log("released")
+    )
   }
 }
 function tracked() {

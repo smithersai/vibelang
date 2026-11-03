@@ -523,3 +523,5 @@ typescript/vibelang/cases/tsforms-option-fixed/main.vibe:15:10 lambda: plain fal
 typescript/vibelang/cases/tsforms-option-fixed/main.vibe:5:63 lambda: choice fallback -> plain table # preserving Option.Option<string> identifies Option.map's plain callback; this site was at column 56 before the longer annotation, and the native result case stays equal
 typescript/vibelang/cases/tsforms-option-fixed/main.vibe:7:57 lambda: plain fallback -> plain table # preserving Option.Option<number> identifies Option.map's plain callback; this site was at column 50 before the longer annotation
 typescript/vibelang/cases/tsforms-services-fixed/main.vibe:25:42 lambda: effectFn service -> plain fallback # VIP-9 whole-shape fixture replaces Context.Service heritage with service Named: NamedShape; L1 has no inline members to inspect, while the explicit effect read method preserves the tested runtime and declaration contract.
+
+typescript/vibelang/cases/regions/regions.vibe:40:5 lambda: program table -> effectFn table # Remove unused retired Pool declaration (four lines); this site is now the existing service release callback, formerly line 44, with its unchanged effectFn form.

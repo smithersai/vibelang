@@ -1,0 +1,2 @@
+go test fuzz v1
+string("error NotFound { id: string }\nerror Timeout\neffect function describeFailure(failure: NotFound | Timeout) {\n  return match (failure) {\n    when NotFound and { let id }: `no user ${id}`;\n    when Timeout: 'retry';\n  }\n}\n")

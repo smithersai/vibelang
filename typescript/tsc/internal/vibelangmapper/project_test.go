@@ -30,10 +30,6 @@ var projectionCases = []struct {
 	diagnostics []Diagnostic
 }{
 
-	{name: "tail resume in a cleanup block cannot invent clause fallthrough",
-		source:  `control Ask { get(): boolean!! } function f() { try { return Ask.get() } handle Ask.get() { if (true) { using r = acquire(); resume(true) } else { resume(false) } } }`,
-		virtual: `interface Ask { get(): Effect.Effect<boolean, never, never>; readonly "~vibelang/service"?: "app/src/main#Ask" } abstract class Ask extends $service<Ask>("app/src/main#Ask") {} function f() { return $gen(function* () { const $c = yield* handle_1($gen(function* () { return $box((yield* $run($use(Ask).get()))) }) , Ask, { get: ($k) => $gen(function* () { if (true) { const $c_1 = yield* $scopedBody($gen(function* () { const r = (yield* $acquire($value(acquire)())); return $tailResume($k, true) })); return $c_1 } else { return $tailResume($k, false) } }) }); return $unboxed($c) })}`},
-
 	{name: "Match generic stages retain contextual pipe inference",
 		source:  "import { Match } from \"effect\"; function phase(x: \"a\" | \"b\") { return pipe(Match.value(x), Match.when(\"a\", () => \"A\"), Match.orElse((s) => `other ${s}`)) }",
 		virtual: "import { Match } from \"effect\"; function phase(x: \"a\" | \"b\") { return $gen(function* () { return (yield* $run(pipe((yield* $run(Match.value(x))), Match.when(\"a\", () => \"A\"), Match.orElse((s) => `other ${s}`)))) })}"},
@@ -129,11 +125,6 @@ var projectionCases = []struct {
 		virtual: "function f(o: Option.Option<number>) { return $gen(function* () { return (yield* $run(Option.getOrElse(o, () => 0))) })}",
 	},
 
-	{
-		name:    "non-tail handle fallthrough has an undefined success",
-		source:  "function f() { try { return Ask.answer() } handle Ask.answer() { const n = resume(1); log(n) } }",
-		virtual: "function f() { return $gen(function* () { const $c = yield* handle_1($gen(function* () { return $box((yield* $run($member($use(Ask), \"answer\")()))) }) , Ask, { answer: ($k) => $gen(function* () { const n = (yield* $run(resume($k, 1))); ;(yield* $run(log(n))) ; return undefined; }) }); return $unboxed($c) })}",
-	},
 	{
 		name:    "a never completing try has no void success path",
 		source:  "function f() { try { throw 1 } finally { cleanup() } }",
@@ -460,17 +451,6 @@ var projectionCases = []struct {
 		virtual: "export interface Users {\n  find(id: string): Effect.Effect<User, NotFound, never>\n  region: string; readonly \"~vibelang/service\"?: \"app/src/main#Users\" } export abstract class Users extends $service<Users>(\"app/src/main#Users\") {}\n",
 	},
 	{
-		name:    "a control is a service whose base goes",
-		source:  "control Approval { approve(request: string): boolean!! }\n",
-		virtual: "interface Approval { approve(request: string): Effect.Effect<boolean, never, never>; readonly \"~vibelang/service\"?: \"app/src/main#Approval\" } abstract class Approval extends $service<Approval>(\"app/src/main#Approval\") {}\n",
-	},
-	{
-		// D1/EK9205: all three contract channels are required on now.
-		name:    "a D1 abstract class keeps its static members in the key",
-		source:  "abstract class Clock extends Control {\n  abstract now(): Effect<number, never, never>;\n  static readonly zero = 0\n}\n",
-		virtual: "interface Clock {\n  now(): Effect<number, never, never>; readonly \"~vibelang/service\"?: \"app/src/main#Clock\" } abstract class Clock extends $service<Clock>(\"app/src/main#Clock\") {\n  static readonly zero = 0\n}\n",
-	},
-	{
 		name:    "a service without members is still a key (VIP-9)",
 		source:  "service Empty {}\n",
 		virtual: "interface Empty { readonly \"~vibelang/service\"?: \"app/src/main#Empty\" } abstract class Empty extends $service<Empty>(\"app/src/main#Empty\") {}\n",
@@ -524,11 +504,6 @@ var projectionCases = []struct {
 		name:    "a provide block provides its layers to a region (D172, D173)",
 		source:  "function main() {\n  provide AppLive, Clock = clock {\n    return greet(\"42\")\n  }\n}\n",
 		virtual: "function main() { return $gen(function* () {\n  const $c = yield* $provideEntries([AppLive, $provideService(Clock, \"Clock\", clock)])($gen(function* () {\n    return $box((yield* $run(greet(\"42\"))))\n  })); return $unboxed($c)\n})}\n",
-	},
-	{
-		name:    "a handle statement runs its block under handle (D132)",
-		source:  "function k(version: string) {\n  try {\n    return release(version)\n  } handle Approval.approve(request) {\n    log(request)\n    resume(true)\n  }\n}\n",
-		virtual: "function k(version: string) { return $gen(function* () {\n  const $c = yield* handle_1($gen(function* () {\n    return $box((yield* $run(release(version))))\n  }) , Approval, { approve: (request, $k) => $gen(function* () {\n    ;(yield* $run(log(request)))\n    return $tailResume($k, true)\n  }) }); return $unboxed($c)\n})}\n",
 	},
 	{
 		name:    "a match expression in an Effect body runs as a program (D206)",
@@ -848,20 +823,17 @@ func TestCorpusPlans(t *testing.T) {
 }
 
 // TestExecutableEdits checks the edits the plan carries for the executable
-// rendering: a service's base, a control's registration, which only the
-// executable rendering writes, and a block that is a Scope region of its own.
+// rendering: a service's base and a block that is a Scope region of its own.
 func TestExecutableEdits(t *testing.T) {
 	t.Parallel()
-	source := "control Approval { approve(request: string, ...notes: string[]): boolean!! }\nservice Flags { readonly beta: boolean; static readonly defaultValue = () => ({ beta: true }) }\nfunction f() {\n  g(1)\n  {\n    using r = acquire()\n  }\n}\n"
+	source := "service Flags { readonly beta: boolean; static readonly defaultValue = () => ({ beta: true }) }\nfunction f() {\n  g(1)\n  {\n    using r = acquire()\n  }\n}\n"
 	p := lower(source, testContext)
-	var bases, controls [][]string
+	var bases [][]string
 	scopes := 0
 	for _, e := range p.plan.edits {
 		switch e.kind {
 		case editServiceBase:
 			bases = append(bases, e.fields)
-		case editControl:
-			controls = append(controls, e.fields)
 		case editScopeRegion:
 			if e.part == partOpen {
 				assert.Equal(t, source[e.pos], byte('{'))
@@ -871,8 +843,7 @@ func TestExecutableEdits(t *testing.T) {
 			scopes++
 		}
 	}
-	assert.DeepEqual(t, bases, [][]string{{"service", "app/src/main#Approval", "Approval"}, {"reference", "app/src/main#Flags", "Flags"}})
-	assert.DeepEqual(t, controls, [][]string{{"Approval", "approve", "-1"}})
+	assert.DeepEqual(t, bases, [][]string{{"reference", "app/src/main#Flags", "Flags"}})
 	assert.Equal(t, scopes, 2) // the inner block's open and close, not the function body's
 }
 

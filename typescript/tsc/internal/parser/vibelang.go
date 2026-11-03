@@ -406,6 +406,9 @@ func (p *Parser) parseVibeLangSlotType() *ast.TypeNode {
 // stay as written.
 func (p *Parser) parseServiceDeclaration(pos int, jsdoc jsdocScannerInfo, modifiers *ast.ModifierList, control bool) *ast.Node {
 	word := p.scanner.TokenRange()
+	if control {
+		p.retiredControlForm(word, 3501, RetiredControlMessage)
+	}
 	p.nextToken() // service or control
 	p.parseOptional(ast.KindClassKeyword)
 	name := p.parseBindingIdentifier()
@@ -1055,6 +1058,7 @@ type vibelangHandleClause struct {
 // operation.
 func (p *Parser) parseHandleClause() vibelangHandleClause {
 	anchor := p.scanner.TokenRange()
+	p.retiredControlForm(anchor, 3501, RetiredControlMessage)
 	p.nextToken() // handle
 	operation := p.parseHandleOperation()
 	open := p.scanner.TokenRange()

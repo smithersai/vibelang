@@ -1,20 +1,22 @@
-# Approval handlers
+# Approval service
 
-One release program asks a control operation for staging and production approval.
-The auto-approve handler resumes both operations with true. The scripted reviewer
-uses supplied answers and defaults to denial when the script runs out.
-The business function depends on `Approval`, without choosing a handler.
+One release program asks an `Approval` service for staging and production approval.
+The automatic implementation approves both requests. The scripted reviewer uses
+supplied answers and defaults to denial when the script runs out. The business
+function depends on `Approval`, without choosing the implementation.
 
 From this directory, with `vibelang` on `PATH`:
+
 ```sh
 bun install
 bun run build
 bun run start
 ```
 
-Features: a `control` declaration, handle statements, and tail `resume`.
-Effect alone does not provide delimited handlers. Its key control call, expressed
-as Effect TypeScript against VibeLang's emitted Approval key and runtime, is:
+Features: a `service` declaration, an explicit service lookup with `try`, and
+local implementations supplied by `provide`. The corresponding Effect TypeScript
+business program is:
+
 ```ts
 const release = Effect.fnUntraced(function* (version: string) {
   const approval = yield* Approval
@@ -24,5 +26,7 @@ const release = Effect.fnUntraced(function* (version: string) {
 })
 ```
 
-The runtime owns each one-shot continuation; each clause resumes it once.
-The fixture shows the same program succeeding automatically and declining production.
+The example shows the same business program succeeding automatically and declining
+production under the scripted policy. Its earlier exported `Control` key was
+redesigned as a service; that changes the key's public declaration. The safe
+`vibelang --fix` migration therefore refuses the old exported declaration.

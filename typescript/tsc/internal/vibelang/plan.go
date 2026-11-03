@@ -108,7 +108,6 @@ func populateFilePlan(c *checker.Checker, file *ast.SourceFile, p *plan) {
 				p.effects[node] = true
 			}
 			p.parameterWrites[node] = writesParameters(c, node)
-			p.planClause(c, node)
 			p.planProducer(c, node)
 			forEachCallInBody(node, func(call *ast.Node) bool {
 				if a.runs(call) {
@@ -116,7 +115,6 @@ func populateFilePlan(c *checker.Checker, file *ast.SourceFile, p *plan) {
 				}
 				if ast.IsCallExpression(call) {
 					p.planServiceCall(c, call)
-					p.planResume(c, call)
 				}
 				return false
 			})

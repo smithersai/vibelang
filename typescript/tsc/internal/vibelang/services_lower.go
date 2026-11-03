@@ -1,8 +1,6 @@
 package vibelang
 
 import (
-	"strconv"
-
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/checker"
 )
@@ -84,7 +82,7 @@ func (p *servicePlan) hasKey(node *ast.Node) bool {
 // planServiceNode records the key of node when it declares a service or a
 // control operation, and the order of its arguments when it calls wire.
 func (p *servicePlan) planServiceNode(c *checker.Checker, node *ast.Node) {
-	if classKindOf(node) != ordinaryClass {
+	if classKindOf(node) == serviceClass {
 		p.keys[node] = servicesFor(c).key(node)
 	}
 	if name := moduleServiceStateOf(c).accesses[node]; name != "" {
@@ -187,44 +185,7 @@ func (tx *lowering) visitServiceClass(node *ast.Node) *ast.Node {
 	extends := f.NewHeritageClause(ast.KindExtendsKeyword, f.NewNodeList([]*ast.Node{f.NewExpressionWithTypeArguments(base, nil /*typeArguments*/)}))
 	class := f.UpdateClassDeclaration(node.AsClassDeclaration(), node.Modifiers(), node.Name(), nil /*typeParameters*/, f.NewNodeList([]*ast.Node{extends}), members)
 	ec.SetOriginal(class, node)
-	if classKindOf(node) != controlClass {
-		return class
-	}
-
-	// One entry per operation; overloads share an entry and the widest arity.
-	var names []string
-	arity := map[string]int{}
-	for _, member := range node.Members() {
-		if ast.IsMethodDeclaration(member) && !ast.IsStatic(member) && ast.IsIdentifier(member.Name()) {
-			name, n := member.Name().Text(), operationArity(member)
-			previous, seen := arity[name]
-			switch {
-			case !seen:
-				names = append(names, name)
-				arity[name] = n
-			case previous >= 0 && (n < 0 || n > previous):
-				arity[name] = n
-			}
-		}
-	}
-	operations := make([]*ast.Node, 0, len(names))
-	arities := make([]*ast.Node, 0, len(names))
-	for _, name := range names {
-		operations = append(operations, f.NewStringLiteral(name, ast.TokenFlagsNone))
-		if n := arity[name]; n < 0 {
-			arities = append(arities, f.NewPrefixUnaryExpression(ast.KindMinusToken, f.NewNumericLiteral("1", ast.TokenFlagsNone)))
-		} else {
-			arities = append(arities, f.NewNumericLiteral(strconv.Itoa(n), ast.TokenFlagsNone))
-		}
-	}
-	register := f.NewCallExpression(tx.runtimeMember("$control"), nil /*questionDotToken*/, nil /*typeArguments*/, f.NewNodeList([]*ast.Node{
-		f.NewIdentifier(node.Name().Text()),
-		f.NewArrayLiteralExpression(f.NewNodeList(operations), false /*multiLine*/),
-		f.NewArrayLiteralExpression(f.NewNodeList(arities), false /*multiLine*/),
-	}), ast.NodeFlagsNone)
-	statement := f.NewExpressionStatement(register)
-	ec.SetOriginal(statement, node)
-	return f.NewSyntaxList([]*ast.Node{class, statement})
+	return class
 }
 
 // operationArity is the number of parameters a control operation declares,

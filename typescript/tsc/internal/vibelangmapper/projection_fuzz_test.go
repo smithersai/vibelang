@@ -51,11 +51,17 @@ func TestRegionJumpWithoutTarget(t *testing.T) {
 	}
 }
 
-func TestQualifiedControlProjection(t *testing.T) {
+func TestQualifiedRetiredControlProjection(t *testing.T) {
 	const source = "function f() { try { return API.Ask.get() } handle API.Ask.get() { resume(true) } }"
 	for _, projection := range []Projection{Project(source, testContext), Executable(source, testContext)} {
-		if !strings.Contains(projection.Text, "API.Ask") {
-			t.Fatalf("projection lost the qualified control: %s", projection.Text)
+		found := false
+		for _, diagnostic := range projection.Diagnostics {
+			if diagnostic.Code == 3501 && strings.Contains(diagnostic.Message, "vibelang --fix") {
+				found = true
+			}
+		}
+		if !found {
+			t.Fatalf("qualified retired handler lacks EK3501: %+v", projection.Diagnostics)
 		}
 		assertValidMap(t, projection, source)
 	}

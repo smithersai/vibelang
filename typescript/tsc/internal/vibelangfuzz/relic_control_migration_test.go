@@ -43,7 +43,7 @@ func relicMigrationQuoted(t testing.TB) {
 func FuzzRelicControlMigration(f *testing.F) {
 	startShortBudget(f)
 	relicMigrationQuoted(f)
-	keys := []string{"safe", "safe-unnamed", "safe-named", "control", "handle", "resume", "abandon", "select", "native-control", "native-handle", "native-resume", "native-abandon", "native-select", "safe-boolean", "safe-multi", "safe-string", "safe-zero", "runtime-computed", "native-computed", "runtime-key", "native-key", "export-alias", "direct-eval", "bare-resume", "safe-parens", "shorthand", "prototype-op", "rest-binding", "default-binding"}
+	keys := []string{"safe", "safe-unnamed", "safe-named", "control", "handle", "resume", "abandon", "select", "native-control", "native-handle", "native-resume", "native-abandon", "native-select", "safe-boolean", "safe-multi", "safe-string", "safe-zero", "runtime-computed", "native-computed", "runtime-key", "native-key", "export-alias", "direct-eval", "bare-resume", "safe-parens", "shorthand", "prototype-op", "rest-binding", "default-binding", "native-runtime-namespace"}
 	for _, key := range keys {
 		f.Add([]byte(key))
 	}
@@ -68,6 +68,8 @@ func FuzzRelicControlMigration(f *testing.F) {
 		}
 		source := fmt.Sprintf("control Ask { ask(x: number): number!! }\nexport effect function probe() { try { return try Ask.ask(%d) } handle Ask.ask(x) { return try resume(x + 2) } }\n", n)
 		switch key {
+		case "native-runtime-namespace":
+			source = `import {Control} from "vibelang-runtime"; export const value=Control.value`
 		case "runtime-key":
 			source = `import * as Old from "vibelang-runtime"; const key="resume" as const; export const legacy=Old[key]`
 		case "native-key":
@@ -115,7 +117,7 @@ func FuzzRelicControlMigration(f *testing.F) {
 		case "select":
 			source = "export effect function probe() { select { default: return 1 } }\n"
 		}
-		if strings.HasPrefix(key, "native-") && key != "native-computed" && key != "native-key" {
+		if strings.HasPrefix(key, "native-") && key != "native-computed" && key != "native-key" && key != "native-runtime-namespace" {
 			name := strings.TrimPrefix(key, "native-")
 			source = "export function probe(" + name + ": (n: number) => number) { return " + name + "(1) }\nexport const obj = { " + name + "(n: number) { return n } }\n"
 		}
@@ -125,7 +127,16 @@ func FuzzRelicControlMigration(f *testing.F) {
 		} else if key == "safe-named" {
 			files["package.json"] = "{\"name\":\"@vibelang/relic-keys\",\"type\":\"module\"}"
 		}
-		before := toolsCompile(t, w, relicMigrationTarget, files)
+		var before *Result
+		if key == "native-runtime-namespace" {
+			var err error
+			before, err = w.Compile(t.Context(), relicNativeNamespaceProject(source))
+			if err != nil {
+				t.Fatal(err)
+			}
+		} else {
+			before = toolsCompile(t, w, relicMigrationTarget, files)
+		}
 		defer before.Remove()
 		config := toolsConfig(w, before.Dir)
 		result := vibelang.FixProjectWithOptions(t.Context(), w.fs, bundled.LibPath(), config, vibelang.FixOptions{VIPOnly: true})
@@ -191,4 +202,11 @@ func FuzzRelicControlMigration(f *testing.F) {
 			Gap(t, relicMigrationTarget, "refuse:"+key, "unsupported continuation or native binding changed:\n%s", fixed)
 		}
 	})
+}
+
+func relicNativeNamespaceProject(source string) Project {
+	return Project{Files: map[string]string{
+		"main.vibe":  source,
+		"runtime.ts": `export namespace Control {export const value=7}`,
+	}, Config: `{"compilerOptions":{"target":"es2022","module":"nodenext","strict":true,"skipLibCheck":true,"types":[],"declaration":true,"outDir":"out","paths":{"vibelang-runtime":["./runtime.ts"]}},"files":["main.vibe","runtime.ts"]}`}
 }

@@ -1,5 +1,0 @@
-This resume returns what the handle produces next, which can be string | number, but its result is typed number.
-Make every clause return number, or return resume's result unread.
-With onReturn, resume's result is typed never: return it unread, or transform the handle's result after handle returns.
-This clause returns string, which a resume still waiting in this handle statement then returns, but resume's result is typed number.
-such as Effect<string | number, infer E, infer R>, which still infers E and R; resume's result then has that type.

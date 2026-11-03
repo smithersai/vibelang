@@ -48,7 +48,7 @@ var preludeNames = func() map[string]bool {
 		// D151.
 		`all die exit forEach log logDebug logError logInfo logWarning race repeat retry sleep timeout withSpan`,
 		// The runtime's prelude names; Experimental is D313's namespace.
-		`TaggedError Control pipe wire fork handle resume resumeWith abandon sync callback Resume runPromise runFork
+		`TaggedError pipe wire fork sync callback Resume runPromise runFork
 		runSync runCallback detach forkIn interrupt yieldNow uninterruptible restore interruptible customMatcher
 		Experimental`,
 	} {

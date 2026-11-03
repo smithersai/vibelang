@@ -1,2 +1,0 @@
-main.vibe(10,52): error EK4201
-main.vibe(21,16): error EK4201

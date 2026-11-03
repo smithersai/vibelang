@@ -77,6 +77,12 @@ func dataRules() []dataRule {
 		}
 		add(c.name, match, quote, c.source, code, "vip-match")
 	}
+	// The formatter programs fixture exposed the binding/template neighbour of
+	// the final-separator rule. The same valid source must also remain admitted.
+	add("final-semicolon-binding-template", match, "Separate arms with `;`, including the final arm",
+		"effect function f(x: { id: string } | null) { return match (x) { when { let id }: `value ${id}`; default: 'retry' } }", "EK0701", "relic-control")
+	add("final-semicolon-binding-template-valid", match, "Separate arms with `;`, including the final arm",
+		"effect function f(x: { id: string } | null) { return match (x) { when { let id }: `value ${id}`; default: 'retry'; } }", "", "relic-control")
 	for _, c := range []struct{ name, decl, typ, arms string }{
 		{"literal", "", `"a" | "b"`, `when "a": 1;`},
 		{"boolean", "", "boolean", "when true: 1;"},

@@ -88,7 +88,7 @@ func shapeKindOf(class *ast.Node) classKind {
 		return kind
 	}
 	if extends := ast.GetClassExtendsHeritageElement(class); extends != nil {
-		if !isControlReference(extends) {
+		if declarationWord(class) != "control" || !isControlReference(extends) {
 			return ordinaryClass
 		}
 		kind = controlClass
