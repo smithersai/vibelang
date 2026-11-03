@@ -1301,6 +1301,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - A local declaration named `SchemaAST` could capture the `ParseOptions` qualifier in an inferred decoder declaration, leaving an invalid public type. Inferred library types now keep their library module, as TypeScript does.
 
 - An anonymous function or class captured by a `do` conditional, method receiver, computed key, `match` subject, pipeline topic or returned completion record could expose a generated name such as `$do_v1`, `$match1`, `topic_1` or `value`; captures now preserve the source name before class static initialization and key conversion.
+- The specification no longer holds an example that waits on denied VIP-8, or one written as two statements that parses as one. `spec-lint` now rejects both.
 
 - Declaration checks could compare an unused `types` export instead of an earlier matching package condition, hiding a real API change. Published entry discovery now follows TypeScript's conditional export order and preserves mirrored `.vibe` sidecar resolution.
 

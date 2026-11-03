@@ -380,3 +380,17 @@ test("spec-links rejects round 16's VIP-25 link and removed heading", () => {
   const badAnchor = withEdit("src/004-match.md", text => text + "\n[Thrown](003-failures.md#thrown-type-by-kind-of-callable)\n")
   expect(lint(badAnchor, rule("spec-links")).map(v => v.message)).toEqual([expect.stringContaining("no heading or anchor")])
 })
+
+test("gap-marker-authority rejects round 17 OPUS-6's marker on denied VIP-8", () => {
+  const defect = withEdit("src/008-runtime.md", text => text + "\n```vibe es\n// compiler-gap: pending VIP-8\nconst a = 1\n```\n")
+  expect(lint(defect, rule("gap-marker-authority")).map(v => v.message)).toEqual([
+    "a compiler-gap marker names VIP-8, which is not accepted"
+  ])
+})
+
+test("statement-continuation rejects round 17 OPUS-3's assertion line after an arrow body", () => {
+  const defect = withEdit("src/002-running.md", text => text + "\n```vibe es\nconst f = () => 7 // one statement?\n<T>g\n```\n")
+  expect(lint(defect, rule("statement-continuation")).map(v => v.message)).toEqual([
+    expect.stringMatching(/^this line continues the one before it/)
+  ])
+})

@@ -553,6 +553,55 @@ const moduleProjectionKind: Rule = {
 rules.push(moduleProjectionKind)
 kinds.copies!.push("module-projection-kind")
 
+// A compiler-gap marker says an example passes once VIP-N is implemented, so
+// it can name only a VIP that will be (round 17 OPUS-6: 008 waited on denied VIP-8).
+const gapMarkerAuthority: Rule = {
+  name: "gap-marker-authority",
+  finding: "r17 OPUS-6: `// compiler-gap: pending VIP-8` in 008 names a denied VIP, which is never implemented",
+  check(spec) {
+    const out: Violation[] = []
+    const accepted = new Set(acceptedVips(spec).map(([file]) => Number(file.match(/^vips\/(\d{4})-/)![1])))
+    for (const [file, text] of chapters(spec)) {
+      for (const m of text.matchAll(/\/\/ compiler-gap: pending ([^\n]*)/g)) {
+        for (const vip of m[1]!.matchAll(/VIP-(\d+)/g)) {
+          if (!accepted.has(Number(vip[1]))) {
+            out.push({ rule: this.name, file, line: lineAt(text, m.index!), message: `a compiler-gap marker names VIP-${vip[1]}, which is not accepted` })
+          }
+        }
+      }
+    }
+    return out
+  }
+}
+
+// ECMAScript inserts no semicolon before a line that can continue the last
+// one, so an example written as two statements parses as one (round 17 OPUS-3:
+// a `<T>x` assertion after `() => 7` in 002 read as `7 < T`).
+const continuationLine: Rule = {
+  name: "statement-continuation",
+  finding: "r17 OPUS-3: 002's `catch () => 7` then a line starting `<Effect.Effect<...>>try` is one expression, not two statements",
+  check(spec) {
+    const out: Violation[] = []
+    for (const [file, text] of chapters(spec)) {
+      for (const m of text.matchAll(/^[ \t]*```(?:vibe|vibex)\b[^\n]*\n([^]*?)^[ \t]*```/gm)) {
+        const first = lineAt(text, m.index!) + 1
+        let previous = ""
+        m[1]!.split("\n").forEach((line, i) => {
+          const code = line.replace(/\/\/.*$/, "").trim()
+          if (!code || code.startsWith("/*") || code.startsWith("*")) return
+          if (previous && /^[<(\[`+\-/]/.test(code) && !/(?:[{(,\[;=:|&?+\-*/<>!]|=>|\b(?:return|as|try|join|fork))$/.test(previous)) {
+            out.push({ rule: this.name, file, line: first + i, message: `this line continues the one before it (\`${previous.slice(-24)}\`): end that statement with \`;\`` })
+          }
+          previous = code
+        })
+      }
+    }
+    return out
+  }
+}
+
+rules.push(resolutionClaims, gapMarkerAuthority, continuationLine)
+
 export const lint = (spec: Spec, only = rules) => only.flatMap(rule => rule.check(spec))
 export const lintKind = (spec: Spec, kind: string) =>
   lint(spec, rules.filter(rule => kinds[kind]?.includes(rule.name)))
