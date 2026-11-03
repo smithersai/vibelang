@@ -1136,6 +1136,7 @@ The existing migration warnings retain their emitted codes until the compiler an
 | `EK4854` | warning: migration of the retired abstract-class service spelling to a `service` declaration, retaining its contract and key | 9 | [Configuration and tooling](007-tooling.md#compiler-and-tooling-requirements) |
 | `EK4855` | warning: migration of `static readonly default = shape` to `static readonly defaultValue = () => shape`, including the corresponding type and value reads | 9 | [Configuration and tooling](007-tooling.md#compiler-and-tooling-requirements) |
 | `EK4856` | warning: a type use resolves to the retired global `Effect<A, E, R>` alias; write `A!E!R` or `Effect.Effect<A, E, R>`; local and imported types are unchanged | 3, 14, 34 | [Configuration and tooling](007-tooling.md#compiler-and-tooling-requirements) |
+| `EK4857` | error: a legacy Effect return slot written `infer`; write the inferred slot type, or omit the whole return annotation | 3 | [Configuration and tooling](007-tooling.md#compiler-and-tooling-requirements) |
 
 An abstract class retains ordinary TypeScript class semantics until explicitly migrated. A migrated service default is a factory of type `() => Shape`; these warnings use the existing safe codemod and its refusal rules ([Configuration and tooling](007-tooling.md#compiler-and-tooling-requirements)).
 

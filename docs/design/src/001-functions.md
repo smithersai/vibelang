@@ -399,6 +399,7 @@ An enclosing optional tuple element keeps TypeScript's omission and indexed `und
 | `User!!` | `Effect.Effect<User, never, never>` |
 
 - An omitted slot is `never`, as Effect's own defaults make it. It is never inferred, so `User!NotFound` on a function with a body still means `Effect.Effect<User, NotFound, never>`. To have the type inferred, leave the annotation out.
+- An effect function's annotation means the same as the annotation on its Effect TypeScript twin. A written `infer` slot, such as `Effect.Effect<A, infer E, R>` or `A!(infer E)!R`, has no special channel-inference meaning: ordinary TypeScript `infer` rules apply (`TS1338` outside a conditional type). The transitional compiler reports `EK4857`; `--fix` writes the inferred slot types, or removes the whole return annotation when every slot is `infer`, preserving its declaration. If it cannot name a type safely, it explains why the repair is refused. To infer the return type in new code, omit the annotation.
 
 ```vibe es
 // compiler-gap: pending VIP-3
