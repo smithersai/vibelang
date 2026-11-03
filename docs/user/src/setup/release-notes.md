@@ -230,6 +230,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - The generated grammar admission census cited denied VIP-11 as authority for the legacy trailing-block recovery hooks, so the specification authority check failed on `vibe`. The census source now states the denial, and the generator refuses a denied VIP citation that does not.
 - EK4839's direct `Option.match` quick fix now handles callbacks returning Effects, preserving cold construction and an explicit `try` on the selected result, including `try Option.match(…)` as a statement. These choices previously kept a blanket program-result refusal. A call whose handler is an `Effect.fn` generator now waits for `EK1002`'s rewrite instead of refusing first and blocking it.
+- Bare `data as T;`, `data satisfies T;`, and `data is Number;` statements bypassed the required data body check. They now report `EK1604`, and `vibelang --fix` preserves the intended expression by adding parentheses.
 
 - Native `Schema.TaggedError` classes with spread fields or a user-written static `_tag` no longer receive EK4837 or an error-declaration quick fix. Native `Data.TaggedError` classes with a static `_tag` also keep their class form; ordinary fields remain eligible for preserving repairs.
 
