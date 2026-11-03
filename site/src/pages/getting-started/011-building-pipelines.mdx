@@ -37,6 +37,8 @@ effect function preparedPrice() {
 
 A pipe's `%` is always the value of the expression before its `|>`, and its body must use `%`. Passing `%` to an Effect operator composes that Effect: `try (priceLabel() |> timeout(%, "1 second"))` runs it under the deadline.
 
+A whole arrow body needs parentheses: `1 |> (() => %)`, `1 |> (async () => %)` or `1 |> (effect () => %)`. A bare arrow after `|>` reports `EK2301`, including a block-bodied arrow. `vibelang --fix` adds the parentheses. The arrow captures the pipe's once-evaluated input; arrows inside arguments, arrays or objects remain valid.
+
 ## Map or replace a success
 
 ```vibe

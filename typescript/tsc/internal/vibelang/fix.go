@@ -609,7 +609,7 @@ func FixProjectWithOptions(ctx context.Context, fs vfs.FS, libraryPath tspath.Ro
 			} else {
 				p = trustedEmptyMigrationFixes(ctx, program, file, g.refused)
 				if len(p.fixes) == 0 {
-					p = pipeConditionalFixes(file, g.refused)
+					p = pipeBodyFixes(file, g.refused)
 				}
 				p = p.withFixes(dualBlockMigrationFixes(ctx, program, file, g.refused, refuse))
 				p = p.withFixes(dataMethodMigrationFixes(ctx, program, file, g.refused, refuse, fresh, texts))

@@ -35,7 +35,7 @@ var (
 	EK2103 = message(2103, errorCategory, "yield* is not supported in a producer. Loop over the source and yield each value instead.")
 	EK2201 = message(2201, errorCategory, "An interruption block outside effect code. Use interruption blocks inside effect code and restore inside the same uninterruptible region.")
 	EK2202 = message(2202, errorCategory, "Restore in an effect arrow or block nested in an uninterruptible block. Use interruption blocks inside effect code and restore inside the same uninterruptible region.")
-	// EK2301: a conditional at either end of a pipe; the parser reports it (parser.PipeConditionalMessage).
+	// EK2301: pipe grammar early errors; the parser supplies the form-specific text.
 	EK2301 = message(2301, errorCategory, parser.PipeConditionalMessage)
 	EK2803 = message(2803, errorCategory, "A default on a generic data type parameter. Use at most four unconstrained type parameters without defaults.")
 	EK3006 = message(3006, errorCategory, "An error code or an unknown code in vibe.severities; remove the entry. Remove the invalid entry from vibe.severities; only warning codes may be configured.")

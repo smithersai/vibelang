@@ -505,8 +505,8 @@ func FuzzPipeArrowBody(f *testing.F) {
 			}
 			return
 		}
-		if len(errs) == 0 {
-			Gap(t, "FuzzPipeArrowBody", "accepted:"+s.name, "900-appendices: %s; %s compiles", pipeArrowBodyQuote, s.source)
+		if len(errs) != 1 || len(r.Diagnostics) != 1 || !IsEK(r.Diagnostics[0]) || r.Diagnostics[0].Code() != 2301 {
+			Gap(t, "FuzzPipeArrowBody", "owner:"+s.name, "900-appendices detail246: %s needs exactly EK2301, reports %v", s.source, errs)
 		}
 	})
 }

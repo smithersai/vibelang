@@ -1,0 +1,14 @@
+// expect-result: [1,1,2,3,4,5,6,7,"number","function"]
+let calls = 0
+const plain = (calls += 1) |> (() => %)
+const later = 2 |> (async () => %)
+const effectful = 3 |> (effect () => %)
+const block = 4 |> (() => { return % })
+const nested = 5 |> ({ f: () => % })
+const program = 6 |> effect { return % }
+let assigned = 0
+const chose: number | ((m: number) => number) = true ? 7 |> (assigned = %) : m => m
+const choseLater: number | ((m: number) => number) = false ? 9 |> (assigned = %) : m => m
+export effect function main() {
+  return [calls, plain(), try Effect.promise(later), try effectful(), block(), nested.f(), try program, assigned, typeof chose, typeof choseLater]
+}

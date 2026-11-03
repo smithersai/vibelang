@@ -1,0 +1,24 @@
+// expect: EK2301 EK2301 EK2301 EK2301 EK2301 EK2301 EK2301 EK2301 EK2301 EK2301 EK2301 EK2301 EK2301 EK2301 EK2301 EK2301 EK2301 EK2301 EK2301 EK2301 EK2301
+// VIP-23, decided details 246/247: the whole bare arrow owns EK2301.
+export const v0 = 1 |> () => %
+export const v1 = 1 |> async () => %
+export const v2 = 1 |> effect () => %
+export const v3 = 1 |> x => %
+export const v4 = 1 |> async x => %
+export const v5 = 1 |> effect x => %
+export const v6 = 1 |> (x: number) => % + x
+export const v7 = 1 |> async (x: number) => % + x
+export const v8 = 1 |> effect (x: number) => % + x
+export const v9 = 1 |> <T>(x: T) => [%, x]
+export const v10 = 1 |> async <T>(x: T) => [%, x]
+export const v11 = 1 |> effect <T>(x: T) => [%, x]
+export const v12 = 1 |> () => { return % }
+export const v13 = 1 |> async () => { return % }
+export const v14 = 1 |> effect () => { return % }
+export const v15 = 1 |> (): number => %
+export const v16 = 1 |> async (): Promise<number> => %
+export const v17 = 1 |> effect (): number!! => %
+export const v18 = 1 |> () => 2 |> % + 1
+export const v19 = 1 |> async () => 2 |> % + 1
+export const v20 = 1 |> effect () => 2 |> % + 1
+export const after = 2

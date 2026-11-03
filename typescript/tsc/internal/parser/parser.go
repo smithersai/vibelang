@@ -4544,8 +4544,8 @@ func (p *Parser) parseAssignmentExpressionOrHigherWorker(allowReturnTypeInArrowF
 		return p.makeBinaryExpression(expr, p.parseTokenNode(), p.parseAssignmentExpressionOrHigherWorker(allowReturnTypeInArrowFunction), pos)
 	}
 	// It wasn't an assignment or a lambda.  This is a conditional expression:
-	expr = p.parseVibeLangCatchRest(expr, pos)                                                               // x catch fallback, x catch (e) => handler (vibelang_catch.go)
-	return p.parsePipeRest(p.parseConditionalExpressionRest(expr, pos, allowReturnTypeInArrowFunction), pos) // x |> body (vibelang_pipes.go)
+	expr = p.parseVibeLangCatchRest(expr, pos)                                                                                               // x catch fallback, x catch (e) => handler (vibelang_catch.go)
+	return p.parsePipeRest(p.parseConditionalExpressionRest(expr, pos, allowReturnTypeInArrowFunction), pos, allowReturnTypeInArrowFunction) // x |> body (vibelang_pipes.go)
 }
 
 func (p *Parser) isYieldExpression() bool {

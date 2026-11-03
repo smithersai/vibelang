@@ -41,7 +41,7 @@ func (p *Parser) isPipeOperator() bool {
 
 // parsePipeRest parses the pipes that follow left, an expression that starts
 // at pos.
-func (p *Parser) parsePipeRest(left *ast.Expression, pos int) *ast.Expression {
+func (p *Parser) parsePipeRest(left *ast.Expression, pos int, allowReturnTypeInArrowFunction bool) *ast.Expression {
 	// D272 evaluates the left side as a value, x.pipe(g), where D154 passes it
 	// by name. Only a left side that calls nothing reads the same both ways: a
 	// call there may run a program, and .pipe would then reach its result
@@ -56,7 +56,7 @@ func (p *Parser) parsePipeRest(left *ast.Expression, pos int) *ast.Expression {
 		operator := p.finishNode(p.factory.NewToken(ast.KindBarToken), operatorPos)
 		p.nextToken() // >
 		bodyPos := p.nodePos()
-		body := p.parseBinaryExpressionOrHigher(ast.OperatorPrecedenceLowest)
+		body := p.parsePipeBodyBinaryOrArrow(allowReturnTypeInArrowFunction)
 		body = p.parseVibeLangCatchRest(body, bodyPos) // x |> f(%) catch y catches inside the body (vibelang_catch.go)
 		p.rejectPipeConditional()
 		body = p.parseConditionalExpressionRest(body, bodyPos, false /*allowReturnTypeInArrowFunction*/)
@@ -75,6 +75,38 @@ func (p *Parser) parsePipeRest(left *ast.Expression, pos int) *ast.Expression {
 	}
 	return left
 }
+
+// parsePipeBodyBinaryOrArrow recovers a whole bare arrow before the pinned
+// covering-production error. Binary parsing alone leaves => behind (or
+// fails at an empty parameter list), producing unrelated TypeScript errors.
+// Keep the usual binary-body boundary for assignments, yield and chains.
+// Preserve the native conditional-colon guard: (n = %) : m => m can be
+// a parenthesized assignment followed by the conditional's alternate.
+func (p *Parser) parsePipeBodyBinaryOrArrow(allowReturnTypeInArrowFunction bool) *ast.Expression {
+	pos := p.nodePos()
+	jsdoc := p.jsdocScannerInfo()
+	arrow := p.tryParseVibeLangEffectArrow(allowReturnTypeInArrowFunction)
+	if arrow == nil {
+		arrow = p.tryParseParenthesizedArrowFunctionExpression(allowReturnTypeInArrowFunction)
+	}
+	if arrow == nil {
+		arrow = p.tryParseAsyncSimpleArrowFunctionExpression(allowReturnTypeInArrowFunction)
+	}
+	if arrow == nil {
+		body := p.parseBinaryExpressionOrHigher(ast.OperatorPrecedenceLowest)
+		if body.Kind != ast.KindIdentifier || p.token != ast.KindEqualsGreaterThanToken {
+			return body
+		}
+		arrow = p.parseSimpleArrowFunctionExpression(pos, body, allowReturnTypeInArrowFunction, jsdoc, nil /*asyncModifier*/, false /*effect*/)
+	}
+	p.diagnostics = append(p.diagnostics, ast.NewExternalDiagnostic(nil, p.sourceRange(arrow), "EK", diagnostics.CategoryError, 2301, PipeArrowBodyMessage))
+	p.hasParseError = true
+	return arrow
+}
+
+// PipeArrowBodyMessage applies VIP-23/detail246's covering-production ban
+// equally to plain, async and Effect arrows, including block-bodied arrows.
+const PipeArrowBodyMessage = "An arrow cannot stand unparenthesized as a whole pipe body. Put parentheses around the arrow: x |> (() => %)."
 
 // PipeConditionalMessage is EK2301's text, for a ? after a pipe body.
 const PipeConditionalMessage = "A conditional cannot stand unparenthesized at either end of a pipe. Write (x |> f(%)) ? a : b to test the pipe's result, or x |> (f(%) ? a : b) to make the conditional the body."

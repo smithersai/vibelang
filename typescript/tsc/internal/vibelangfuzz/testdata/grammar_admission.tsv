@@ -233,6 +233,7 @@ parser/vibelang_pipes.go:isFunctionLiteral	admission:pipe	900-appendices.md#Pipe
 parser/vibelang_pipes.go:runsCall	admission:pipe	900-appendices.md#PipeExpression	support	VIP-23 pinned Hack pipe and topic
 parser/vibelang_pipes.go:Parser.parseTopicReference	admission:pipe	900-appendices.md#PipeExpression	support	VIP-23 pinned Hack pipe and topic
 parser/vibelang_pipes.go:curriedPipeStage	admission:pipe	900-appendices.md#PipeExpression	support	VIP-23 pinned Hack pipe and topic
+parser/vibelang_pipes.go:Parser.parsePipeBodyBinaryOrArrow	admission:pipe	900-appendices.md#PipeBody	recovery	VIP-23/details246-247: recover a whole bare arrow and report EK2301; parentheses and nested arrows keep their existing admission
 parser/vibelang_pipes.go:Parser.rejectPipeConditional	admission:pipe	900-appendices.md#PipeBody	recovery	EK2301: a conditional after a pipe body has no valid reading; not language admission
 parser/vibelang_primitives.go:isVibeLangMaskWord	admission:interruption	900-appendices.md#Uninterruptible,900-appendices.md#Restore,900-appendices.md#Interruptible	support	Appendix A: Uninterruptible, Restore, Interruptible; inherited TypeScript helpers and diagnostic recovery retain their stated boundaries
 parser/vibelang_primitives.go:Parser.isStartOfVibeLangMaskBlock	admission:interruption	900-appendices.md#Uninterruptible,900-appendices.md#Restore,900-appendices.md#Interruptible	support	Appendix A: Uninterruptible, Restore, Interruptible; inherited TypeScript helpers and diagnostic recovery retain their stated boundaries
