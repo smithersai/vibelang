@@ -71,7 +71,9 @@ effect function titleOrPlaceholder() {
 No title available
 ```
 
-`x catch () => value` is `yield* Effect.catch(x, () => Effect.succeed(value))`: the value is computed only after an expected failure, and every expected error of `x` is discarded. To keep some visible, take the failure and rethrow the rest: `latestTitle() catch effect (error) => match (error) { when SourceOffline: "No title available"; default: throw error; }`. An effect handler can run Effects that fail or need services; their errors become the expression's. `try orElseSucceed(latestTitle(), () => "No title available")` still works, with a synchronous callback.
+`x catch () => value` is `yield* Effect.catch(x, () => Effect.succeed(value))`: the value is computed only after an expected failure, and every expected error of `x` is discarded. If that value may be an Effect, `EK0508` warns that it remains unrun data. To execute it, write `catch effect () => try fallback()`. A straightforward arrow has a quick fix; mixed Effect/data results need an explicit branch. `any`, `unknown` and `never` do not trigger this warning.
+
+To keep some visible, take the failure and rethrow the rest: `latestTitle() catch effect (error) => match (error) { when SourceOffline: "No title available"; default: throw error; }`. An effect handler can run Effects that fail or need services; their errors become the expression's. `try orElseSucceed(latestTitle(), () => "No title available")` still works, with a synchronous callback.
 
 ## Typing both sides
 

@@ -36,24 +36,17 @@ func plainCatchHandler(call, fallback *ast.Node) *ast.Node {
 	return handler
 }
 
-// checkCatchHandlerResult reports EK0507 at a plain handler whose result
-// type may be a Promise or thenable.
+// checkCatchHandlerResult applies the chapter 2 result tests: EK0508 warns
+// about unrun Effects, while EK0507 rejects unhandled Promises/thenables.
 func checkCatchHandlerResult(c *checker.Checker, file *ast.SourceFile, call, fallback *ast.Node) {
 	handler := plainCatchHandler(call, fallback)
 	if handler == nil {
 		return
 	}
-	signatures := c.GetSignaturesOfType(c.GetTypeAtLocation(handler), checker.SignatureKindCall)
-	if len(signatures) == 0 {
-		return
-	}
-	// The checker gives a plain handler the Effect that $catchExpression
-	// succeeds with, so its written result is that Effect's success.
-	result := c.GetReturnTypeOfSignature(signatures[0])
-	if program := effectOfValue(c, result); program != nil {
-		if success := channelType(c, program, "_A"); success != nil {
-			result = success
-		}
+	result := plainCatchHandlerResult(c, handler)
+	if mayBeEffectResult(c, result) {
+		d := reportAt(c, file, core.NewTextRange(scanner.SkipTrivia(file.Text(), handler.Pos()), handler.End()), EK0508)
+		note(d, "Its result is {0}, which this catch returns as data. To run it, write catch effect (e) => try ….", typeTextAt(c, result, handler))
 	}
 	if !mayBeThenable(c, result) {
 		return
@@ -73,4 +66,48 @@ func mayBeThenable(c *checker.Checker, t *checker.Type) bool {
 	}
 	then := c.GetPropertyOfType(t, "then")
 	return then != nil && len(c.GetSignaturesOfType(c.GetTypeOfSymbol(then), checker.SignatureKindCall)) > 0
+}
+
+// Only a syntax-owned handler is lifted by the generated catch callback.
+// A native function expression held in the fallback retains its own return
+// type; unwrapping that type would inspect the returned Effect's success.
+func plainCatchHandlerResult(c *checker.Checker, handler *ast.Node) *checker.Type {
+	signatures := c.GetSignaturesOfType(c.GetTypeAtLocation(handler), checker.SignatureKindCall)
+	if len(signatures) == 0 {
+		return nil
+	}
+	result := c.GetReturnTypeOfSignature(signatures[0])
+	if markedForm(handler) == formEffect {
+		if program := effectOfValue(c, result); program != nil {
+			if success := channelType(c, program, "_A"); success != nil {
+				return success
+			}
+		}
+	}
+	return result
+}
+
+// The result test asks whether any union member is an Effect, excluding the
+// top and bottom types. It does not require every member to be an Effect.
+func mayBeEffectResult(c *checker.Checker, t *checker.Type) bool {
+	if t == nil || t.Flags()&(checker.TypeFlagsAnyOrUnknown|checker.TypeFlagsNever) != 0 {
+		return false
+	}
+	if t.Flags()&checker.TypeFlagsUnion != 0 {
+		return slices.ContainsFunc(t.Types(), func(member *checker.Type) bool { return mayBeEffectResult(c, member) })
+	}
+	if t.Flags()&(checker.TypeFlagsInstantiableNonPrimitive|checker.TypeFlagsIntersection) != 0 {
+		if base := c.GetBaseConstraintOfType(t); base != nil && base != t {
+			return mayBeEffectResult(c, base)
+		}
+	}
+	if !isEffectValueType(c, t) {
+		return false
+	}
+	symbol := servicesFor(c).effectExport("Effect", "Effect")
+	if symbol == nil {
+		return false
+	}
+	any := c.GetAnyType()
+	return c.IsTypeAssignableTo(t, c.NewTypeReference(c.GetDeclaredTypeOfSymbol(symbol), []*checker.Type{any, any, any}))
 }

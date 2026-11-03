@@ -1,0 +1,11 @@
+// expect-result: [true,0,0,1]
+let runs = 0
+
+effect function task() { runs++; return 0 }
+export effect function load() { return Effect.fail("bad") catch () => task() }
+export effect function main() {
+  const held = try load()
+  const before = runs
+  const value = try held
+  return [Effect.isEffect(held), before, value, runs]
+}

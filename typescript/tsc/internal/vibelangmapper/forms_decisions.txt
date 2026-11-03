@@ -4890,6 +4890,8 @@ typescript/vibelang/cases/plain-functions/main.vibe:49:28 lambda plain table
 typescript/vibelang/cases/plain-functions/main.vibe:50:44 lambda effectFn table
 typescript/vibelang/cases/plain-generator/main.vibe:12:22 lambda plain annotation
 typescript/vibelang/cases/plain-generator/main.vibe:58:27 lambda plain table
+typescript/vibelang/cases/plain-handler-effect-advice-data/main.vibe:5:40 lambda effectFn table
+typescript/vibelang/cases/plain-handler-effect-advice-data/main.vibe:5:65 lambda effectFn table
 typescript/vibelang/cases/plain-imports/main.vibe:24:43 lambda effectFn table
 typescript/vibelang/cases/plain-method-recursion/main.vibe:38:37 lambda plain table
 typescript/vibelang/cases/plain-object-byname/main.vibe:5:13 lambda plain annotation
