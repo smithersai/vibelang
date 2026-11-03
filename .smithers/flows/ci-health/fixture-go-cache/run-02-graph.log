@@ -1,0 +1,4 @@
+//:spec-tests: ok  	github.com/microsoft/TypeScript/tsc/internal/checker	0.007s
+//:spec-tests: ok  	github.com/microsoft/TypeScript/tsc/internal/vibelang	43.112s
+//:spec-tests: ok  	github.com/microsoft/TypeScript/tsc/internal/vibelangfuzz	12.143s
+//:spec-tests: ok  	github.com/microsoft/TypeScript/tsc/internal/effecttsgo/shim/checker	0.004s

@@ -21,6 +21,8 @@ A key that only failed is a real break, and the flow ignores it. A property test
 draws a new seed each run, so its key can pass and fail too. The report names that
 cause `property counterexample`: it is a real bug, and the log prints the replay.
 
+`Go cache archive` identifies a Go import whose content-addressed compiled archive was missing. The hash must match its two-digit cache bucket. Inspect the cache and its cleanup or transport; this log does not identify what removed the file. Missing repository inputs keep the separate `missing file` cause and its input-declaration guidance.
+
 Check a test's last failure before fixing it. An old date usually means someone
 already did.
 
@@ -56,6 +58,8 @@ A second case, `regression`, runs it over `fixture-regression/`:
 on 2026-11-01 and 12 on 2026-11-02 after the migrate suites joined
 compiler-test, two of which timed out. `times.json` gives each run's time; the
 eval sets it as the file's mtime on a copy, which is what `collect` reads.
+
+The `go-cache-archive` eval runs the flow on `fixture-go-cache/`: a real failed build and its same-key successful retry. It checks cache attribution and the absence of fictional test names because compilation failed before tests ran. The duration-regression case remains separate.
 
 | Scorer | 1 when |
 | --- | --- |

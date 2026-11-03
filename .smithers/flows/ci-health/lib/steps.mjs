@@ -168,6 +168,9 @@ export const CAUSES = [
   ["killed", /signal: killed|SIGKILL|out of memory|exit code 137/i],
   ["timeout", /timed? ?out|exceeded (?:the )?time|timeout of \d+|deadline exceeded|\bwithin \d+ ?m?s\b/i],
   ["connection", /ECONNRESET|ECONNREFUSED|ETIMEDOUT|EAI_AGAIN|socket hang up|rate.?limit/i],
+  // A resolved import's hashed compiled archive disappeared. Its bucket
+  // must match the hash; the log does not identify what removed the file.
+  ["Go cache archive", /^(?:vet: )?.+\.go:\d+:\d+: could not import \S+ \(open .+\/([0-9a-f]{2})\/\1[0-9a-f]{62}-d: no such file or directory\)$/],
   ["missing file", /ENOENT|Cannot find module|no such file or directory|missing output/i],
   ["assertion", /AssertionError|expected|--- FAIL|\(fail\)|✖/i]
 ]
@@ -240,6 +243,7 @@ export const ACTIONS = {
   killed: "Reduce the target's memory, or run it alone on a smaller slot",
   timeout: "Find what the test waits for; a timeout that scales with load, or less work, beats a larger number",
   connection: "Replace the network dependency with a local fixture",
+  "Go cache archive": "Inspect the Go build cache and its cleanup or transport: a compiled archive was missing; this log does not identify what removed it",
   "missing file": "Declare the input or output the target reads: its key ignored it",
   assertion: "Read the test: it depends on timing, order or an input its key ignores",
   unknown: "Read the log"

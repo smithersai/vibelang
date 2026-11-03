@@ -72,6 +72,18 @@ const cases = [{
   input: { fixture: "fixture-regression", split: "2026-11-02T00:00:00Z", regressed: { "//packages:compiler-test": 2 } } satisfies Input
 }];
 
+// A real Go compilation failure, followed by a successful same-key retry.
+cases.push({
+  name: "go-cache-archive",
+  input: {
+    fixture: "fixture-go-cache",
+    split: "",
+    flaky: ["//:spec-tests"],
+    tests: [],
+    causes: { "//:spec-tests": "Go cache archive" }
+  } satisfies Input
+});
+
 const score = (id: string, f: (input: Input, output: Output) => number) =>
   Scorer.make({ id: `ci-health/${id}`, version: "1", name: id, score: ({ input, output }) => Effect.succeed({ score: f(input as Input, output as Output) }) });
 
@@ -81,7 +93,11 @@ const exactly = (want: ReadonlyArray<string>, got: ReadonlyArray<string>) => {
   return got.length === 0 ? (want.length === 0 ? 1 : 0) : (right / want.length) * (right / got.length);
 };
 const flaky = score("flaky", (i, o) => (i.flaky ? exactly(i.flaky, o.flaky) : 1));
-const tests = score("tests", (i, o) => (i.tests ? i.tests.filter((t) => o.tests.includes(t)).length / i.tests.length : 1));
+const tests = score("tests", (i, o) => {
+  if (!i.tests) return 1;
+  if (i.tests.length === 0) return Number(o.tests.length === 0);
+  return i.tests.filter((t) => o.tests.includes(t)).length / i.tests.length;
+});
 const causes = score("causes", (i, o) => {
   if (!i.causes) return 1;
   const want = Object.entries(i.causes);

@@ -1,0 +1,18 @@
+//:spec-tests: ok  	github.com/microsoft/TypeScript/tsc/internal/checker	0.008s
+//:spec-tests: # github.com/microsoft/TypeScript/tsc/internal/vibelangfuzz.test
+//:spec-tests: $WORK/b300/_testmain.go:7:2: could not import os (open /cache/ci/.cache/go-build-smthrs/4b/4bfec60ca215dd95a35dc97b673be345557dd398b0ba22e2170f02b1445c380d-d: no such file or directory)
+//:spec-tests: $WORK/b300/_testmain.go:9:2: could not import reflect (open /cache/ci/.cache/go-build-smthrs/8a/8a0ca8491746a638377bbdab6c5eeaba0449880a0d9256bc3495ffc9ee303986-d: no such file or directory)
+//:spec-tests: $WORK/b300/_testmain.go:11:2: could not import testing (open /cache/ci/.cache/go-build-smthrs/d9/d9bce56bfab1bc5bbdcb61d8cc7499516e0cbfb2997e03fb4129c408ead4d385-d: no such file or directory)
+//:spec-tests: # github.com/microsoft/TypeScript/tsc/internal/vibelangfuzz
+//:spec-tests: # [github.com/microsoft/TypeScript/tsc/internal/vibelangfuzz]
+//:spec-tests: vet: internal/vibelangfuzz/children.go:4:2: could not import fmt (open /cache/ci/.cache/go-build-smthrs/2b/2b789a75cf94cc5ce6a744e829771e28e88f6e571c0d84098d8ec90cc43f3e2d-d: no such file or directory)
+//:spec-tests: # github.com/microsoft/TypeScript/tsc/internal/vibelang.test
+//:spec-tests: $WORK/b299/_testmain.go:7:2: could not import os (open /cache/ci/.cache/go-build-smthrs/4b/4bfec60ca215dd95a35dc97b673be345557dd398b0ba22e2170f02b1445c380d-d: no such file or directory)
+//:spec-tests: $WORK/b299/_testmain.go:9:2: could not import testing (open /cache/ci/.cache/go-build-smthrs/d9/d9bce56bfab1bc5bbdcb61d8cc7499516e0cbfb2997e03fb4129c408ead4d385-d: no such file or directory)
+//:spec-tests: # github.com/microsoft/TypeScript/tsc/internal/vibelang
+//:spec-tests: # [github.com/microsoft/TypeScript/tsc/internal/vibelang]
+//:spec-tests: vet: internal/vibelang/appendix_codes.go:3:8: could not import github.com/microsoft/TypeScript/tsc/internal/parser (open /cache/ci/.cache/go-build-smthrs/b6/b614f8271327132403a6fdf2f446d6d9c1c608940da0b208ce1f4c322140d67c-d: no such file or directory)
+//:spec-tests: FAIL	github.com/microsoft/TypeScript/tsc/internal/vibelang [build failed]
+//:spec-tests: FAIL	github.com/microsoft/TypeScript/tsc/internal/vibelangfuzz [build failed]
+//:spec-tests: ok  	github.com/microsoft/TypeScript/tsc/internal/effecttsgo/shim/checker	0.004s
+//:spec-tests: FAIL

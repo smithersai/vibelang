@@ -180,6 +180,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Packages migrated with a staged toolchain could pack runtime or source-child loader dependencies pointing into the migration checkout; setup now uses the artifacts' release versions in production dependencies and preserves staged builds for local development.
 - ESLint corpus checks could overlook missing variable nodes when a name was also a contextual word, such as `match`; ordinary variable declarations now require their written identifier nodes.
+- CI-health reports mistook missing compiled Go cache archives for undeclared source inputs; reports now identify cache-archive failures and recommend inspecting the cache.
 
 - Declaration checks could compare an unused `types` export instead of an earlier matching package condition, hiding a real API change. Published entry discovery now follows TypeScript's conditional export order and preserves mirrored `.vibe` sidecar resolution.
 
