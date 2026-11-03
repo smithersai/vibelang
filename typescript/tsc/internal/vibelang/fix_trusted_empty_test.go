@@ -27,7 +27,8 @@ func TestTrustedEmptyMigration(t *testing.T) {
 	for name, fixed := range result.Files {
 		if filepath.Base(name.AsString()) == "lib.vibe" {
 			changed = true
-			if strings.Contains(fixed.Text, "trusted(Dialect.integer, [])") || !strings.Contains(fixed.Text, "Effect.orDie(Effect.try({ try: () => doubled(n), catch: (error) => error }))") {
+			// Prelude cleanup may shorten Effect.orDie to the equivalent orDie binding.
+			if strings.Contains(fixed.Text, "trusted(Dialect.integer, [])") || !strings.Contains(fixed.Text, "orDie(Effect.try({ try: () => doubled(n), catch: (error) => error }))") {
 				t.Fatalf("missing preserving bridge:\n%s", fixed.Text)
 			}
 		}
