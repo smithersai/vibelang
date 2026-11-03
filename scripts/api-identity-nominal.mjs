@@ -5,7 +5,7 @@
 // All member types, visibility, enum names and constant values remain checked.
 import { relative, resolve } from "node:path"
 
-export function alignNominalIdentity(ts, program, before, after, brandFile, entryMaps) {
+export function alignNominalIdentity(ts, program, before, after, brandFile, entryMaps, ambientNames = new Map()) {
   const printer = ts.createPrinter()
   const checker = program.getTypeChecker()
   const factory = ts.factory
@@ -24,7 +24,7 @@ export function alignNominalIdentity(ts, program, before, after, brandFile, entr
     }
     const names = []
     for (let parent = node; parent && !ts.isSourceFile(parent); parent = parent.parent) {
-      if (parent.name && (ts.isClassDeclaration(parent) || ts.isModuleDeclaration(parent) || ts.isVariableDeclaration(parent) || ts.isEnumDeclaration(parent))) names.unshift(parent.name.getText(source))
+      if (parent.name && (ts.isClassDeclaration(parent) || ts.isModuleDeclaration(parent) || ts.isVariableDeclaration(parent) || ts.isEnumDeclaration(parent))) names.unshift(ambientNames.get(parent.name.text) ?? parent.name.getText(source))
     }
     if (node.name && ts.isClassDeclaration(node)) {
       const module = checker.getSymbolAtLocation(source)
@@ -119,7 +119,9 @@ export function alignNominalIdentity(ts, program, before, after, brandFile, entr
           })
           const qualified = member => factory.createTypeReferenceNode(factory.createQualifiedName(node.name, factory.createIdentifier(member.name.text)), undefined)
           const mods = node.modifiers?.some(m => m.kind === ts.SyntaxKind.ExportKeyword) ? [factory.createModifier(ts.SyntaxKind.ExportKeyword)] : []
-          const namespace = factory.createModuleDeclaration([...mods, factory.createModifier(ts.SyntaxKind.DeclareKeyword)], node.name,
+          const ambientMods = source.isDeclarationFile && !ts.isSourceFile(node.parent)
+            ? mods : [...mods, factory.createModifier(ts.SyntaxKind.DeclareKeyword)]
+          const namespace = factory.createModuleDeclaration(ambientMods, node.name,
             factory.createModuleBlock(entries.map(({member, type}) => ts.setOriginalNode(factory.createTypeAliasDeclaration(
               [factory.createModifier(ts.SyntaxKind.ExportKeyword)], member.name.text, undefined, type), member))), ts.NodeFlags.Namespace)
           const properties = entries.map(({member}) => factory.createPropertySignature(
@@ -130,7 +132,7 @@ export function alignNominalIdentity(ts, program, before, after, brandFile, entr
             index.isReadonly ? [factory.createModifier(ts.SyntaxKind.ReadonlyKeyword)] : undefined,
             [factory.createParameterDeclaration(undefined, undefined, "key", undefined, checker.typeToTypeNode(index.keyType, undefined, ts.NodeBuilderFlags.NoTruncation))],
             checker.typeToTypeNode(index.type, undefined, ts.NodeBuilderFlags.NoTruncation)))
-          const variable = factory.createVariableStatement([...mods, factory.createModifier(ts.SyntaxKind.DeclareKeyword)], factory.createVariableDeclarationList([
+          const variable = factory.createVariableStatement(ambientMods, factory.createVariableDeclarationList([
             factory.createVariableDeclaration(node.name, undefined, factory.createTypeLiteralNode(properties), undefined)
           ], ts.NodeFlags.Const))
           const type = factory.createTypeAliasDeclaration(mods, node.name, undefined,
@@ -144,7 +146,9 @@ export function alignNominalIdentity(ts, program, before, after, brandFile, entr
     }
     const transformed = ts.transform(source, [transform])
     if (changed) {
-      const prelude = `import type * as __api_nominal from ${JSON.stringify(brandFile.replaceAll("\\", "/"))};\n`
+      const prelude = ts.isExternalModule(source)
+        ? `import type * as __api_nominal from ${JSON.stringify(brandFile.replaceAll("\\", "/"))};\n`
+        : `declare var __api_nominal: typeof import(${JSON.stringify(brandFile.replaceAll("\\", "/"))});\n`
       output.set(resolve(source.fileName), prelude + printer.printFile(transformed.transformed[0]))
     }
     transformed.dispose()

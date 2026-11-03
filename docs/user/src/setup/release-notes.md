@@ -242,6 +242,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Regression coverage now checks retained lint comment scopes, inert string/template lookalikes and equivalent severity settings; unresolved diagnostic gaps remain explicitly tracked.
 
+- Published API checks merged ambient declarations across snapshots or rejected them as non-modules; ambient module exports and global contributions now compare in separate environments.
+
 - Published API checks rejected identical JSON exports as non-modules; JSON assets now retain their `resolveJsonModule` types, and real type changes still fail.
 
 - Source-child loader wiring introduced a `fileURLToPath` import alias and failed repositories’ native import policies. Setup now uses a namespace import and refreshes its own previously generated helpers while preserving manually observed bindings.

@@ -41,9 +41,9 @@ function verify(literal) {
     assert.equal(compareApiIdentity(ts, before, before).identical, true)
     const result = compareApiIdentity(ts, before, after)
     assert.equal(result.identical, false, JSON.stringify(result))
-    assert.equal(result.comparisonComplete, false, JSON.stringify(result))
-    assert.deepEqual(result.typeDifferences, [])
-    assert.ok(result.environmentDiagnostics.some(d => d.blocking && /load order/.test(d.diagnostic)), JSON.stringify(result))
+    assert.equal(result.comparisonComplete, true, JSON.stringify(result))
+    assert.ok(result.typeDifferences.some(d => d.export === "result"), JSON.stringify(result))
+    assert.ok(!result.environmentDiagnostics.some(d => d.blocking), JSON.stringify(result))
   })
 }
 test("ambient overload binding order cannot be erased by a shared comparison program", () => verify(1))

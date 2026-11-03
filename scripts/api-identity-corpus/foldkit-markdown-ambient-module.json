@@ -1,0 +1,7 @@
+{
+  "package": "@foldkit/markdown",
+  "pattern": "published ambient markdown declarations",
+  "manifest": { "exports": { "./content": { "types": "./index.d.ts" } } },
+  "before": "declare module '*.md' {\n  const document: unknown\n  export default document\n  export const frontmatter: unknown\n}\n",
+  "after": "declare module '*.md' {\n  const document: unknown\n  export default document\n  export const frontmatter: unknown\n}\n"
+}

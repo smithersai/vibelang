@@ -59,15 +59,22 @@ tags. Formatting, quotes, import order, equivalent module specifiers and
 member order do not fail the check when TypeScript sees the same API.
 Formatter tests may continue to compare bytes to test their formatting.
 
-Global declarations and module augmentations can merge when both input trees
-enter one TypeScript program. Before probing, the checker reads each tree in
-isolation and proves the ambient declaration dependency closures equivalent,
-including normalized JSDoc from their dependencies and the isolated ambient source load order. An unproved ambient change
-makes the comparison unavailable with exit status `2`; it is never accepted as
-identical or counted as a type difference. Unchanged ambient declarations and
-doc-comment whitespace remain comparable. This conservative guard does not yet
-classify changed global environments by export; a reordered ambient closure can remain unavailable even when its order is irrelevant to a particular export.
+Ambient scripts, ambient module exports and `declare global` contributions stay
+in the comparison. Each original snapshot is diagnosed independently before the
+probe gives its globals and modules separate names. Default and named exports,
+generic constraints, namespace types, documentation and ambient declarations
+referenced by a published entry point remain observable. Corresponding nominal
+classes, enums and `unique symbol` keys retain their shared virtual identities.
+Changed global types and comments are compared through their isolated exports.
+Global overloads retain each snapshot's declaration order, so changed inferred
+results remain differences; reversing independent global imports stays identical.
 
+Equal complete environments may share declarations after their syntax,
+comments, source load order and every resolved dependency edge agree. This keeps
+intrinsic array types in their original environment. External module
+augmentations still require equivalent isolated ambient closures and comments.
+An unproved external augmentation makes the comparison unavailable with exit
+status `2`; it cannot silently pass or count as an API difference.
 
 The reusable synchronous API is
 `compareApiIdentity(ts, beforeDir, afterDir, options)` from

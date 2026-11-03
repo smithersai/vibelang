@@ -6,6 +6,7 @@ import { createRequire } from "node:module"
 import { spawnSync } from "node:child_process"
 import { dirname, join, relative, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
+import { isolateAmbientSnapshots } from "./api-identity-ambient.mjs"
 import { alignNominalIdentity } from "./api-identity-nominal.mjs"
 
 const repo = resolve(dirname(fileURLToPath(import.meta.url)), "..")
@@ -663,23 +664,25 @@ function prepareComparison(ts, before, after, options, progress) {
   const roots = [...new Set([...Object.values(left), ...Object.values(right)])]
   progress("create-input-program")
   let program = ts.createProgram(roots, compilerOptions, host)
-  progress("input-diagnostics")
-  // Retain plain records, never diagnostics whose SourceFiles keep an old
-  // checker's instantiation graph alive during the next validation group.
-  const originalDiagnostics = collectInputDiagnostics(ts, roots, compilerOptions, host,
-    program.getSourceFiles().filter(source => [before, after].some(base =>
-      (source.fileName === base || source.fileName.startsWith(base + "/")) &&
-      !source.fileName.includes("/node_modules/"))).map(source => source.fileName),
-    options, progress, "input-diagnostics")
+  const ambient = isolateAmbientSnapshots(ts, [{ base: before, entries: left }, { base: after, entries: right }], compilerOptions, host, program,
+    (isolated, entries, files) => collectInputDiagnostics(ts, entries, compilerOptions, host, files, options, progress, "input-diagnostics"))
+  const originalDiagnostics = ambient.diagnostics
+  for (const [path, text] of ambient.virtual) virtual.set(path, text)
+  if (ambient.virtual.size) {
+    moduleResolutions.clear()
+    program = ts.createProgram(roots, compilerOptions, host)
+  }
 
   // A shared program merges ambient globals and module augmentations. Prove
   // these shared contributions equivalent using separate dependency closures.
   // Changed contributions cannot be compared soundly by the combined probe.
   const contributesAmbient = source => {
     if (source.hasNoDefaultLib || ts.isJsonSourceFile(source)) return false
-    let contributes = !ts.isExternalModule(source)
+    const handled = ambient.surfaces.has(source.fileName)
+    let contributes = !ts.isExternalModule(source) && !handled
     const visit = node => {
-      if (ts.isModuleDeclaration(node) && ((node.flags & ts.NodeFlags.GlobalAugmentation) || ts.isStringLiteral(node.name))) contributes = true
+      if (ts.isModuleDeclaration(node) && (((node.flags & ts.NodeFlags.GlobalAugmentation) && !handled) ||
+          ts.isStringLiteral(node.name) && (ts.isExternalModule(source) || !handled))) contributes = true
       ts.forEachChild(node, visit)
     }
     visit(source)
@@ -748,8 +751,9 @@ function prepareComparison(ts, before, after, options, progress) {
   }
   progress("module-equivalence")
   const equivalents = equivalentModules(ts, program, host, left, right, externalGroups)
+  for (const [from, to] of ambient.equivalentFiles) equivalents.set(from, to)
   progress("nominal-identity")
-  const nominal = alignNominalIdentity(ts, program, before, after, join(repo, ".api-identity-brands.d.cts"), [left, right])
+  const nominal = alignNominalIdentity(ts, program, before, after, join(repo, ".api-identity-brands.d.cts"), [left, right], ambient.names)
   if (nominal.size > 1) {
     for (const [path, text] of nominal) {
       virtual.set(path, text)
@@ -819,14 +823,35 @@ function prepareComparison(ts, before, after, options, progress) {
     // JSON is bound as an export-equals module even though its syntax is not
     // recognized by getSymbolAtLocation(SourceFile).
     const sym = checker.getSymbolAtLocation(sf) ?? (ts.isJsonSourceFile(sf) ? sf.symbol : undefined)
-    if (!sym) {
+    if (!sym && !ambient.surfaces.has(file)) {
       result.environmentDiagnostics.push({ entrypoint: entry, file, blocking: true, diagnostic: "Published declaration is not an external module: " + file })
       return new Map()
     }
     // export = is not included in getExportsOfModule.
-    const exp = sym.exports?.get("export=")
-    const exports = new Map(exp ? [["export=", exp]] : checker.getExportsOfModule(sym).map(s => [s.name, s]))
-    exports.runtime = runtimeExports(sym)
+    const exp = sym?.exports?.get("export=")
+    const exports = new Map(exp ? [["export=", exp]] : sym ? checker.getExportsOfModule(sym).map(s => [s.name, s]) : [])
+    exports.runtime = sym ? runtimeExports(sym) : new Set()
+    exports.refs = new Map()
+    const entries = side === "before" ? left : right
+    const base = side === "before" ? before : after
+    const items = [...(ambient.surfaces.get(file) ?? [])]
+    if (entry === Object.keys(entries).sort()[0]) {
+      for (const [source, contributions] of ambient.surfaces) {
+        if ((source === base || source.startsWith(base + "/")) && !Object.values(entries).includes(source)) items.push(...contributions)
+      }
+    }
+    for (const item of items) {
+      const symbol = item.kind === "module"
+        ? checker.getAmbientModules().find(symbol => symbol.name === JSON.stringify(item.renamed))
+        : checker.resolveName(item.renamed, sf, ts.SymbolFlags.Value | ts.SymbolFlags.Type | ts.SymbolFlags.Namespace, false)
+      if (!symbol) {
+        result.environmentDiagnostics.push({ entrypoint: entry, export: item.key, blocking: true, diagnostic: "Ambient declaration could not be resolved: " + item.renamed })
+        continue
+      }
+      exports.set(item.key, symbol)
+      exports.refs.set(item.key, item.kind === "module" ? `import(${JSON.stringify(item.renamed)})` : item.renamed)
+      if (symbol.flags & ts.SymbolFlags.Value) exports.runtime.add(item.key)
+    }
     if (exp) exports.runtime.add("export=")
     return exports
   }
@@ -952,11 +977,24 @@ function prepareComparison(ts, before, after, options, progress) {
           const args = decl.typeParameters.map(p => p.name.text).join(", ")
           // Append where the exported symbol is defined, with its local name.
           let local = decl.name?.text ?? symbol.name
+          let ambientModule, globalAugmentation
           for (let parent = decl.parent; parent && !ts.isSourceFile(parent); parent = parent.parent) {
-            if (ts.isModuleDeclaration(parent)) local = parent.name.text + "." + local
+            if (ts.isModuleDeclaration(parent)) {
+              if (ts.isStringLiteral(parent.name)) ambientModule = parent
+              else if (parent.flags & ts.NodeFlags.GlobalAugmentation) globalAugmentation = true
+              else local = parent.name.text + "." + local
+            }
           }
           const exportAssignment = source.statements.some(s => ts.isExportAssignment(s) && s.isExportEquals)
           const definition = `export type ${id} = <${params}>() => ${local}<${args}>;`
+          if (ambientModule || globalAugmentation || !ts.isExternalModule(source)) {
+            const text = ambientModule
+              ? `\ndeclare module ${JSON.stringify(ambientModule.name.text)} { ${definition} }\n`
+              : globalAugmentation ? `\ndeclare global { ${definition.replace("export ", "")} }\n`
+              : `\n${definition.replace("export ", "")}\n`
+            bridges.set(source.fileName, (bridges.get(source.fileName) ?? source.text) + text)
+            return ambientModule ? `import(${JSON.stringify(ambientModule.name.text)}).${id}` : id
+          }
           const text = exportAssignment
             ? `\ndeclare namespace ${local} { ${definition} }\n`
             : `\n${definition}\n`
@@ -1025,7 +1063,8 @@ function prepareComparison(ts, before, after, options, progress) {
       else {
         if (a.runtime?.has(name) !== b.runtime?.has(name))
           result.nameDifferences.push({ entrypoint: key, export: name, meaning: "runtime value", side: a.runtime?.has(name) ? "before" : "after" })
-        const ref = (path, name) => {
+        const ref = (path, name, exports) => {
+          if (exports.refs?.has(name)) return exports.refs.get(name)
           if (name === "export=") {
             const alias = "__api_export_" + counter++
             imports.push(`import type ${alias} from ${JSON.stringify(slash(path))};`)
@@ -1036,7 +1075,7 @@ function prepareComparison(ts, before, after, options, progress) {
           imports.push(`import type { ${JSON.stringify(name)} as ${alias} } from ${JSON.stringify(slash(path))};`)
           return alias
         }
-        visit(a.get(name), b.get(name), ref(left[key], name), ref(right[key], name), key, name)
+        visit(a.get(name), b.get(name), ref(left[key], name, a), ref(right[key], name, b), key, name)
       }
     }
   }

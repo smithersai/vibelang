@@ -48,13 +48,18 @@ const augmented = members => ({
   "node_modules/foreign/index.d.ts": "export interface Foreign { x: string }",
 })
 
-test("ambient environments cannot merge changed globals, scripts, dependencies or module augmentations", () => {
+function differentTypes(result) {
+  assert.equal(result.identical, false, JSON.stringify(result))
+  assert.equal(result.comparisonComplete, true, JSON.stringify(result))
+  assert.ok(result.typeDifferences.length, JSON.stringify(result))
+}
+test("ambient globals and scripts compare independently; module augmentations still fail closed", () => {
   for (const [before, after] of [
     [global(), global("x: string; y: number;")],
     [referenced("x: string;"), referenced("x: string; y: number;")],
     [inherited("x: string;"), inherited("x: string; y: number;")],
-    [augmented("y: number;"), augmented("y: number; z: boolean;")],
-  ]) unavailable(compare(before, after))
+  ]) differentTypes(compare(before, after))
+  unavailable(compare(augmented("y: number;"), augmented("y: number; z: boolean;")))
   assert.equal(compare(global(), global()).identical, true)
   assert.equal(compare(augmented("y: number;"), augmented("y: number;")).identical, true)
 })
@@ -62,7 +67,12 @@ test("ambient environments cannot merge changed globals, scripts, dependencies o
 test("ambient documentation is isolated through dependency closures and whitespace is normalized", () => {
   const documented = text => `\n/** ${text} */\nx: string;\n`
   for (const shape of [global, inherited, augmented]) {
-    unavailable(compare(shape(documented("Old docs")), shape(documented("New docs"))))
+    const changed = compare(shape(documented("Old docs")), shape(documented("New docs")))
+    if (shape === augmented) unavailable(changed)
+    else {
+      assert.equal(changed.comparisonComplete, true, JSON.stringify(changed))
+      assert.ok(changed.docDifferences.length, JSON.stringify(changed))
+    }
     assert.equal(compare(shape(documented("Same docs")), shape(documented("Same\n * docs"))).identical, true)
   }
 })
@@ -79,7 +89,7 @@ test("property: ambient packages compare with themselves and semantic mutations 
       const before = shape(`x: ${literal};`), after = shape(`x: ${literal}; changed: number;`)
       fixture(before, after, (a, b) => {
         assert.equal(compareApiIdentity(ts, a, a).identical, true)
-        unavailable(compareApiIdentity(ts, a, b))
+        differentTypes(compareApiIdentity(ts, a, b))
       })
     },
   })
