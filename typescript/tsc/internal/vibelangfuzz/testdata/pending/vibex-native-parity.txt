@@ -1,14 +1,4 @@
 # Fresh current-compiler CLI witnesses; Go library target rechecks and fails on XPASS.
-FuzzVibexNativeParity plain:preserve compiler VIP-39: JSX source/options, diagnostics and expected emitted suffix must match the identical native TSX counterpart; lane vibex-1
-FuzzVibexNativeParity corpus:plain-preserve compiler VIP-39: JSX source/options, diagnostics and expected emitted suffix must match the identical native TSX counterpart; lane vibex-1
-FuzzVibexNativeParity element:preserve compiler VIP-39: JSX source/options, diagnostics and expected emitted suffix must match the identical native TSX counterpart; lane vibex-1
-FuzzVibexNativeParity corpus:element-preserve compiler VIP-39: JSX source/options, diagnostics and expected emitted suffix must match the identical native TSX counterpart; lane vibex-1
-FuzzVibexNativeParity space-regexp:preserve compiler VIP-39: JSX source/options, diagnostics and expected emitted suffix must match the identical native TSX counterpart; lane vibex-1
-FuzzVibexNativeParity corpus:space-regexp-preserve compiler VIP-39: JSX source/options, diagnostics and expected emitted suffix must match the identical native TSX counterpart; lane vibex-1
-FuzzVibexNativeParity generic-comma:preserve compiler VIP-39: JSX source/options, diagnostics and expected emitted suffix must match the identical native TSX counterpart; lane vibex-1
-FuzzVibexNativeParity corpus:generic-comma-preserve compiler VIP-39: JSX source/options, diagnostics and expected emitted suffix must match the identical native TSX counterpart; lane vibex-1
-FuzzVibexNativeParity nullish-throw:preserve compiler VIP-39: JSX source/options, diagnostics and expected emitted suffix must match the identical native TSX counterpart; lane vibex-1
-FuzzVibexNativeParity corpus:nullish-throw-preserve compiler VIP-39: JSX source/options, diagnostics and expected emitted suffix must match the identical native TSX counterpart; lane vibex-1
 FuzzVibexNativeParity import-plain:none compiler VIP-39: JSX source/options, diagnostics and expected emitted suffix must match the identical native TSX counterpart; lane vibex-1
 FuzzVibexNativeParity corpus:import-plain-none compiler VIP-39: JSX source/options, diagnostics and expected emitted suffix must match the identical native TSX counterpart; lane vibex-1
 FuzzVibexNativeParity import-plain:preserve compiler VIP-39: JSX source/options, diagnostics and expected emitted suffix must match the identical native TSX counterpart; lane vibex-1

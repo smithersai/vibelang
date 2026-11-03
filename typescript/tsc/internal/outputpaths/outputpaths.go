@@ -150,7 +150,7 @@ func GetOutputExtension(fileName string, jsx core.JsxEmit) string {
 	switch {
 	case tspath.FileExtensionIs(fileName, tspath.ExtensionJson):
 		return tspath.ExtensionJson
-	case jsx == core.JsxEmitPreserve && tspath.FileExtensionIsOneOf(fileName, []string{tspath.ExtensionJsx, tspath.ExtensionTsx}):
+	case jsx == core.JsxEmitPreserve && tspath.FileExtensionIsOneOf(fileName, []string{tspath.ExtensionJsx, tspath.ExtensionTsx, tspath.ExtensionVibex}):
 		return tspath.ExtensionJsx
 	case tspath.FileExtensionIsOneOf(fileName, []string{tspath.ExtensionMts, tspath.ExtensionMjs}):
 		return tspath.ExtensionMjs

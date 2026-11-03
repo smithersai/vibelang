@@ -1,0 +1,1 @@
+preserved JSX output suffixes and maps
