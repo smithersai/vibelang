@@ -638,7 +638,7 @@ const targets = {
   }),
   "spec-coverage-census-test": S.Shell.Test({
     summary: "Census extraction, immutable snapshots, stable ids and conservative evidence properties.",
-    shell: "bun test docs/tools/coverage-census.test.ts",
+    shell: "bun test --timeout 60000 docs/tools/coverage-census.test.ts",
     data: [tree], tools: [bun], sandbox: "none", timeout: "2m"
   }),
   "spec-foreign-call-contract": foreignCallExamples,

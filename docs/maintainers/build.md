@@ -95,6 +95,10 @@ packages and the language service and checks the graph's package selectors. Add 
 a sibling package; `./internal/vibelang/...` covers that directory and
 its children, including no sibling such as `internal/vibelangfmt`.
 
+The specification coverage census test target runs Bun with an explicit
+sixty-second test budget within its two-minute target limit. This avoids
+Bun's default five-second deadline on loaded build hosts.
+
 ## The merge queue's pre-gate
 
 The merge queue tests every queued change alone on current `main`, and a landing

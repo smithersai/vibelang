@@ -321,6 +321,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Regression coverage now checks ambient `error` and `schema error` quick fixes across explicit and inherited declaration contexts, so a repair that introduces executable class code is detected. Known compiler gaps remain tracked separately.
 
+- The specification coverage census tests could hit Bun's default five-second deadline under load. The build graph now gives each test an explicit sixty-second budget within the existing two-minute target limit.
+
 - The new catch-handler projection fuzz target omitted its CPU-budget registration. It now participates in the same short-seed budget check as every other target.
 - The editor stopped offering "Run it with try" on a direct Effect argument that `EK4802` reports at a plain generic call. It offers it again when the enclosing contract accepts the Effect; a returned program stays data and gets no action.
 - The TS7 mapper stopped parsing every `for try` loop after its head began lifting the Stream into a separate scope. The mapper now keeps the loop as written.
