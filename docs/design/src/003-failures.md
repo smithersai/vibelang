@@ -41,10 +41,10 @@ function load(id: string) {
 
 *Synchronous code outside effect code* is every part of a `.vibe` or `.vibex` file that is not effect code and not in an `async` function or `async match` boundary (nested source callables keep their own contexts): plain functions and arrows (one nested in effect code included), plain methods, constructors, accessors, plain generators, class field initializers, `static` blocks, every parameter list except an ordinary `async` function's, plain `catch` handlers (parameters and body), and the module top level. In that code:
 
-- A `throw` statement is `EK0401`, even when a `try` statement in the same function catches it.
+- A `throw` statement or throw expression is `EK0401`, even when a `try` statement in the same function catches it: `const v = s ?? throw new Error("empty")` in a plain function is `EK0401` ([Throw expressions](#throw-expressions)).
 - A call, `new` expression, tagged template or class evaluation *known to throw* is `EK0401`, unless it sits in the `try` block of a `try` statement with a `catch` clause in the same function. Its callee has a written `@throws {T}` other than `@throws {never}` (`@throws {unknown}` included), or has a `@rethrows` parameter given a callback known to throw. A call whose throwing is unknown, such as an unannotated `.ts` function, stays an ordinary call ([VIP-40](../vips/0040-module-declarations.md)); in effect code the same call has thrown type `unknown` and needs its wrapper (`EK0403`).
 - A plain function whose return type is wholly effectful, and an effectful function's parameter list, are stricter: any thrown type other than `never` is `EK0401` ([Effectful callables](#effectful-callables)).
-- A function literal passed where the parameter's function type admits throws, as the thunks of `Effect.try` and `Effect.tryPromise` and the `Promise` executor do, or passed to a `@rethrows` parameter, may contain calls known to throw: they belong to the enclosing call. A function nested in that literal is its own plain code. A `throw` statement in the literal is still `EK0401`.
+- A function literal passed where the parameter's function type admits throws, as the thunks of `Effect.try` and `Effect.tryPromise` and the `Promise` executor do, or passed to a `@rethrows` parameter, may contain calls known to throw: they belong to the enclosing call. A function nested in that literal is its own plain code. A `throw` statement or throw expression in the literal is still `EK0401`.
 - TypeScript's `try { } catch { }` statement stays allowed.
 
 ```vibe es
