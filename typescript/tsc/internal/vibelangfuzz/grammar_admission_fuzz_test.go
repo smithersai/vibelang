@@ -131,6 +131,8 @@ var grammarAdmissionSeeds = []struct{ key, source string }{
 	{"service-class", "service class S { n: number }"},
 	{"try-in-generator", "function* g() { try 1; }"},
 	{"data-separators", "data D { A { x : number } ; ; B }"},
+	{"join-for-head", "effect function f(xs) { for (join x of xs) { x; } }"},
+	{"join-outside-effect-empty", "join [ ]"},
 	{"interruption-outside-effect", "function f() { uninterruptible { return 1; } }"},
 	{"error-no-end", "error E effect { id: string }"},
 	{"error-no-end-schema", "schema error E effect { id: string }"},
@@ -304,7 +306,6 @@ func TestGrammarAdmissionPipes(t *testing.T) {
 // shows in its own tokens.
 func grammarAdmissionDeclarationForm(ts []grammarToken) string {
 	depth := 0
-	bang, mixed := false, false
 	lastBang := -1
 	for i, tok := range ts {
 		if tok.kind == 's' || tok.kind == 't' {
@@ -317,11 +318,9 @@ func grammarAdmissionDeclarationForm(ts []grammarToken) string {
 			depth--
 		case ";":
 			if depth == 0 {
-				bang, mixed = false, false
 				lastBang = -1
 			}
 		case "!":
-			bang = bang || depth == 0
 			if i+1 < len(ts) && ts[i+1].text == "!" && ts[i+1].nl && i > 0 && (ts[i-1].kind != 'p' || slices.Contains([]string{")", "]", "}"}, ts[i-1].text)) {
 				return "admission:effect-type-line-break"
 			}
@@ -336,8 +335,6 @@ func grammarAdmissionDeclarationForm(ts []grammarToken) string {
 			if i+1 < len(ts) && (ts[i+1].text == "{" || ts[i+1].kind == 'w' && i+2 < len(ts) && ts[i+2].text == "{") {
 				return "admission:inline-module"
 			}
-		case "|", "&":
-			mixed = mixed || depth == 0
 		case "concurrent":
 			if i > 0 && ts[i-1].text == "for" && i+1 < len(ts) && ts[i+1].nl {
 				return "admission:for-concurrent-line-break"
@@ -414,9 +411,6 @@ func grammarAdmissionDeclarationForm(ts []grammarToken) string {
 				return "admission:error-no-end"
 			}
 		}
-		if bang && mixed {
-			return "admission:effect-type-mix"
-		}
 	}
 	return ""
 }
@@ -463,9 +457,6 @@ func TestGrammarAdmissionInterruptionKeys(t *testing.T) {
 
 func TestGrammarAdmissionDeclarationKeys(t *testing.T) {
 	for source, want := range map[string]string{
-		"type T = number | string!boolean;":    "admission:effect-type-mix",
-		"type T = A & B!E;":                    "admission:effect-type-mix",
-		"type G = () => A!E | B;":              "admission:effect-type-mix",
 		"type T = (A | B)!E;":                  "",
 		"type T = A!(B | E);":                  "",
 		"type T = A | B; type U = C!E;":        "",
@@ -622,6 +613,13 @@ func grammarAdmissionForm(source string) string {
 			return ""
 		}
 		switch tok.text {
+		case "join":
+			// VIP-17: join is exactly as await, and `for (await x of xs)` is TS2487.
+			if i >= 2 && ts[i-1].text == "(" && ts[i-2].text == "for" && i+1 < len(ts) && !ts[i+1].nl {
+				if n := ts[i+1]; n.kind == 'n' || n.kind == 's' || n.kind == 'w' && n.text != "of" && n.text != "in" && n.text != "as" && n.text != "satisfies" && n.text != "instanceof" {
+					return "admission:join-for-head"
+				}
+			}
 		case "catch":
 			if i+1 < len(ts) && (ts[i+1].kind == 'n' || ts[i+1].kind == 's') {
 				return "admission:catch-value"
@@ -704,6 +702,10 @@ func grammarAdmissionForm(source string) string {
 			// A same-line object operand cannot be a native call or element
 			// access. A newline still permits an identifier statement and block.
 			if next.kind == 'n' || next.kind == 's' || next.text == "{" {
+				return "admission:" + word + "-outside-effect"
+			}
+			// An element access needs an argument (TS1011), so `join [ ]` is no native access.
+			if next.text == "[" && len(operand) > 1 && operand[1].text == "]" {
 				return "admission:" + word + "-outside-effect"
 			}
 		case parser.VibeSyntaxForkBlock:
@@ -835,7 +837,28 @@ func TestGrammarAdmissionMutationKeys(t *testing.T) {
 	if got := grammarAdmissionForm("module { export const n = 1; }"); got != "admission:inline-module" {
 		t.Fatalf("nameless module: %s", got)
 	}
-	for _, source := range []string{"join {}", "join { n: 1 }"} {
+	for _, source := range []string{
+		"effect function f(xs) { for (join x of xs) { x; } }",
+		"function f(xs) { for (join x of xs) { x; } }",
+		"effect function f(xs) { for (join x in xs) { x; } }",
+		"effect function f(xs) { for (join 1 of xs) { } }",
+	} {
+		if got := grammarAdmissionForm(source); got != "admission:join-for-head" {
+			t.Errorf("join for-head not keyed: %s: %s", source, got)
+		}
+	}
+	for _, source := range []string{
+		"function f(xs) { for (join of xs) { } }",
+		"function f(o) { for (join in o) { } }",
+		"function f(xs) { for (join.x of xs) { } }",
+		"function f(xs) { for (join\nx of xs) { } }",
+		"effect function f(xs) { for (fork x of xs) { } }",
+	} {
+		if got := grammarAdmissionForm(source); got == "admission:join-for-head" {
+			t.Errorf("native or other for-head keyed as join-for-head: %s", source)
+		}
+	}
+	for _, source := range []string{"join {}", "join { n: 1 }", "join [ ]", "join [\n]"} {
 		if got := grammarAdmissionForm(source); got != "admission:join-outside-effect" {
 			t.Errorf("outside-Effect object prefix not keyed: %s: %s", source, got)
 		}
@@ -1063,6 +1086,13 @@ func TestGrammarAdmissionCore(t *testing.T) {
 			t.Errorf("leading type operator has no derivation: %s", source)
 		}
 	}
+	// TypeScript's instantiation expression ends where no expression can go on.
+	if r := lab.read(lab.g, grammarLexSource("C < T > ;"), grammarParseMode{prose: true, names: true}); r.count == 0 {
+		t.Error("an instantiation expression has no derivation")
+	}
+	if r := lab.read(lab.g, grammarLexSource("a < b > c ;"), grammarParseMode{prose: true, names: true}); r.count == 0 {
+		t.Error("a relational chain has no derivation")
+	}
 	// TypeScript's angle-bracket assertion is inherited in a .vibe file.
 	if r := lab.read(lab.g, grammarLexSource("< T > { a : T };"), grammarParseMode{prose: true, names: true}); r.count == 0 {
 		t.Error("an angle-bracket assertion has no derivation")
@@ -1163,6 +1193,8 @@ func grammarAdmissionSyntaxCode(code int32) bool {
 		return true
 	case 3008, 9207: // RejectedMember: a service element that parses, then a static rule rejects.
 		return true
+	case 908, 1306: // A service member or error Field with no Separator after it.
+		return true
 	}
 	return false
 }
@@ -1237,6 +1269,13 @@ func grammarAdmissionSyntaxDiagnostic(d *ast.Diagnostic) bool {
 		return true
 	case 1099: // An empty type argument list.
 		return true
+	case 1264: // A definite assignment assertion with no type annotation.
+		return true
+	// checkForInOfStatement: a for-of or for-in head that is neither a declaration nor
+	// a reference (TS2487, TS2406). ECMAScript's head is a LeftHandSideExpression, so
+	// `for (await x of xs)` and `for (fork x of xs)` have no derivation.
+	case 2487, 2406:
+		return true
 	}
 	return false
 }
@@ -1298,6 +1337,13 @@ func TestGrammarAdmissionDiagnostics(t *testing.T) {
 		{"native-labeled-declaration", "", diagnostics.CategoryError, 1344, true},
 		{"native-assignment-target", "", diagnostics.CategoryError, 2364, true},
 		{"native-empty-type-arguments", "", diagnostics.CategoryError, 1099, true},
+		{"native-definite-no-type", "", diagnostics.CategoryError, 1264, true},
+		{"native-for-of-target", "", diagnostics.CategoryError, 2487, true},
+		{"native-for-in-target", "", diagnostics.CategoryError, 2406, true},
+		{"native-for-of-target-warning", "", diagnostics.CategoryWarning, 2487, false},
+		{"service-member-separator", "EK", diagnostics.CategoryError, 908, true},
+		{"error-field-separator", "EK", diagnostics.CategoryError, 1306, true},
+		{"service-member-separator-warning", "EK", diagnostics.CategoryWarning, 908, false},
 		{"service-member-rule", "EK", diagnostics.CategoryError, 3008, true},
 		{"match-combined-early-error", "EK", diagnostics.CategoryError, 4705, true},
 		{"native-assignment-target-warning", "", diagnostics.CategoryWarning, 2364, false},

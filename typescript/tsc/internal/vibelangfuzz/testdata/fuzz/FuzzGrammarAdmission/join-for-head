@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("key:join-for-head\neffect function f(xs) { for (join x of xs) { x; } }")

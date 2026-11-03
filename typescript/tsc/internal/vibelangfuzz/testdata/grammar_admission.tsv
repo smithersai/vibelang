@@ -847,3 +847,4 @@ vibelang/try.go:inlinedThunk	admission:legacy-try	007-tooling.md	support	Retired
 vibelang/try.go:isPlainValueInput	admission:legacy-try	007-tooling.md	support	Codemod inlines only inputs whose evaluation and binding semantics are preserved
 parser/vibelang_data.go:Parser.parseDataDeclaration@data-separators	admission:data-separators	-	pending	Appendix A: DataDeclaration has one Separator between variants and an optional last one; `data D { A; ; B }` and `data D { ; A }` compile
 parser/vibelang_try.go:Parser.isStartOfVibeLangTry@try-in-generator	admission:try-in-generator	-	pending	VIP-5 and Appendix B EK0501: `try` outside effect code is an error; in a plain generator it reports only the operand error EK0502
+parser/vibelang_fibers.go:Parser.parseVibeLangJoin@join-for-head	admission:join-for-head	-	pending	VIP-17: join is exactly as await; `for (await x of xs)` is TS2487, but `for (join x of xs)` reports only EK4611
