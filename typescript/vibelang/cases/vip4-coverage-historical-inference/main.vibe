@@ -1,0 +1,40 @@
+// rule-evidence: docs/design/vips/0004-throw.md#10bc03b9d114b446
+// VIP-4: throw and Promise.reject are allowed:
+// rule-evidence: docs/design/vips/0004-throw.md#d24684c73177b1b9
+// VIP-4: in a plain or async function, throw is JavaScript's throw;
+// rule-evidence: docs/design/vips/0004-throw.md#7c7c8ae8e57fd199
+// VIP-4: A .vibe function's throws are inferred from its body: an
+// rule-evidence: docs/design/vips/0004-throw.md#9227dc48b3fdfae9
+// VIP-4: try only in effect code
+// rule-evidence: docs/design/vips/0004-throw.md#604012d317c78ea9
+// VIP-4: The old part of EK2003 that made a plain return
+// rule-evidence: docs/design/vips/0004-throw.md#00b6a16e81f83863
+// VIP-4: possible default callbacks
+// rule-evidence: docs/design/vips/0004-throw.md#f1606d6009055ebd
+// VIP-4: Emit the bound in @throws; calls retain it even with
+// rule-evidence: docs/design/vips/0004-throw.md#601f9598c0b45aa3
+// VIP-4: Ordinary async invocation instead keeps its never synchronous bound and
+// rule-evidence: docs/design/vips/0004-throw.md#095d4b3c13bb870d
+// VIP-4: recursion
+// rule-evidence: docs/design/vips/0004-throw.md#21822d7a9302ad1d
+// VIP-4: If an expanding summary cannot reach a finite representable stable
+// rule-evidence: docs/design/vips/0004-throw.md#3acd46f8cc6ee6cd
+// VIP-4: a written @throws
+// rule-evidence: docs/design/vips/0004-throw.md#e0eaa5e83ee6a136
+// VIP-4: A source @rethrows parameter still admits throwing callbacks, but declaration
+// rule-evidence: docs/design/vips/0004-throw.md#d8dcf8e1e3d089ee
+// VIP-4: Witness (Sol r13): / @rethrows f / function invoke(f: ()
+import { Effect } from "effect"
+export function fib(n: number): number { return n < 2 ? n : fib(n-1) + fib(n-2) }
+export function walk(n: number): number { if (n === 0) throw new Error("walk"); return walk(n-1) }
+export function even(n: number): number { if (n === 0) throw new Error("mutual"); return odd(n-1) }
+export function odd(n: number): number { return even(n-1) }
+export function expand<T>(value: T, stop: boolean): never { if (stop) throw value; return expand({value},stop) }
+/** @throws {Error} */
+export function bounded(stop: boolean): number { if (stop) throw new Error("bound"); return 1 }
+/** @rethrows f */
+export function invoke(f: () => number): number { return f() }
+/** @rethrows f */
+export function defaulted(f: () => number = () => { throw new Error("default") }): number { return f() }
+/** @rethrows f */
+export async function asyncDefaulted(f: () => number = () => { throw new Error("default") }): Promise<number> { return f() }

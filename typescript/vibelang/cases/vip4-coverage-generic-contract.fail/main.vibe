@@ -1,0 +1,8 @@
+// expect: EK0403 EK0403 EK0403
+// rule-evidence: docs/design/vips/0004-throw.md#bcfb0953002c835b
+// VIP-4: Keep detail 115's pre-instantiation classification and every existing any/unknown/mixed-return exclusion;
+import { Effect } from "effect"
+import { generic, alias } from "./foreign.js"
+import { generic as declared } from "./foreign-declarations.js"
+effect function bad() { const a = generic(Effect.succeed(1)); const b = alias(Effect.succeed(2)); const c = declared(Effect.succeed(3)); return [a,b,c] }
+

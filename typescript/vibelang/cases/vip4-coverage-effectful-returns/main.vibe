@@ -1,0 +1,30 @@
+// rule-evidence: docs/design/vips/0004-throw.md#32d6eaaf8dd4471a
+// VIP-4: throw tracking applies only to functions that don't return an
+// rule-evidence: docs/design/vips/0004-throw.md#48628c302ed86326
+// VIP-4: Stream- and Layer-returning functions count as effectful
+// rule-evidence: docs/design/vips/0004-throw.md#f787c75be274bc87
+// VIP-4: which return types are effectful
+// rule-evidence: docs/design/vips/0004-throw.md#d09845762bdb6340
+// VIP-4: An unconstrained T is not wholly effectful; a return constrained
+// rule-evidence: docs/design/vips/0004-throw.md#2b701e6e9fa69cb8
+// VIP-4: compose thrown-type contracts (decided detail 66)
+// rule-evidence: docs/design/vips/0004-throw.md#b6f94b4e9cab9c4e
+// VIP-4: In .ts, .d.ts and JavaScript inputs such a tag is
+// rule-evidence: docs/design/vips/0004-throw.md#4e2e8d7f87973800
+// VIP-4: Stream- and Layer-returning functions count as effectful: they can't throw
+// rule-evidence: docs/design/vips/0004-throw.md#72d03e86000081c7
+// VIP-4: Only a return type that is wholly Effect, Stream or
+// rule-evidence: docs/design/vips/0004-throw.md#a81827c48db492d8
+// VIP-4: Effectful callee: an effectful function cannot throw (VIP-4 amendment); its
+import { Effect } from "effect"
+import { effectful, stream, layer, safe, constrained, Foreign } from "./foreign.js"
+export effect function accepted<T extends Effect.Effect<number>>() {
+  const a = effectful()
+  const s = stream()
+  const l = layer()
+  const n = safe()
+  const g = constrained<T>()
+  return [a,s,l,n,g]
+}
+export function accessor(value: Foreign) { const n = value.value; value.value = n; return n }
+

@@ -1,0 +1,17 @@
+// rule-evidence: docs/design/vips/0004-throw.md#ca0ed37bc088491c
+// VIP-4: Runtime import() uses the same explicit bridge.
+// rule-evidence: docs/design/vips/0004-throw.md#16d2a6a81ae74887
+// VIP-4: Its intrinsic operation has synchronous own thrown type never, while
+import { Effect, Exit } from "effect"
+import { api, specifier, reset, counts } from "./foreign.js"
+export effect function main(): Effect.Effect<readonly unknown[],unknown> {
+  reset()
+  const tagged = Effect.tryPromise(() => api.tag`value${3}`)
+  const imported = Effect.tryPromise(() => import("./payload.js"))
+  const coercion = Effect.tryPromise({ try: () => import(specifier as any), catch: (e) => e })
+  const before = counts()
+  const tagValue = try tagged
+  const module = try imported
+  const bad = try Effect.exit(coercion)
+  return [before, counts(),tagValue,module.value,Exit.isFailure(bad) && bad.cause.reasons[0]?._tag === "Fail" && bad.cause.reasons[0].error === "coercion"]
+}

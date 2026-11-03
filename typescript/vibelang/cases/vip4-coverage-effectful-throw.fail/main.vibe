@@ -1,0 +1,7 @@
+// expect: EK0401
+// rule-evidence: docs/design/vips/0004-throw.md#ba40af8009817a30
+// VIP-4: A concrete plain function whose declared return type is wholly
+// rule-evidence: docs/design/vips/0004-throw.md#c010a75f81c48b45
+// VIP-4: vibe effect function operands() { const a = try Exit.succeed(8);
+function bad(): Exit.Exit<number> { throw "bad" }
+

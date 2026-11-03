@@ -1,0 +1,31 @@
+// expect: EK0403 EK0403 EK0403 EK0403 EK0403
+// rule-evidence: docs/design/vips/0004-throw.md#d79e7dda7df920a1
+// VIP-4: An effect function may call a function that may throw
+// rule-evidence: docs/design/vips/0004-throw.md#51c725d4f35b5ce8
+// VIP-4: Library and global functions say what they throw with the
+// rule-evidence: docs/design/vips/0004-throw.md#fbf5cbdc431572a4
+// VIP-4: A function with no @throws is assumed to throw unknown.
+// rule-evidence: docs/design/vips/0004-throw.md#01f7f4a3397f0bf1
+// VIP-4: @throws on the declaration opts in.
+// rule-evidence: docs/design/vips/0004-throw.md#bd470867e68756ef
+// VIP-4: constructors and accessors
+// rule-evidence: docs/design/vips/0004-throw.md#b4e54970e013bb63
+// VIP-4: foreign callables
+// rule-evidence: docs/design/vips/0004-throw.md#5cb4429376e86022
+// VIP-4: A foreign callable, including an interface method or callable constant
+// rule-evidence: docs/design/vips/0004-throw.md#97a5a4a69fca4a90
+// VIP-4: new X() is throw-tracked; getters and setters are not.
+// rule-evidence: docs/design/vips/0004-throw.md#47d7f5bc416efcfa
+// VIP-4: Every callable declared in a .ts, .d.ts or JavaScript module
+// rule-evidence: docs/design/vips/0004-throw.md#be1fe76464b377c3
+// VIP-4: vibe // lib.d.ts: export declare const parse: (s: string) =>
+// rule-evidence: docs/design/vips/0004-throw.md#da9ec122f39f2f32
+// VIP-4: a written @throws {T} on a foreign declaration, or on
+// rule-evidence: docs/design/vips/0004-throw.md#836ceecca3cc27ed
+// VIP-4: else a callable declared in a .ts, .d.ts or JavaScript
+// rule-evidence: docs/design/vips/0004-throw.md#451ad2e6355918ed
+// VIP-4: Missing annotations retain detail 66's existing inference/default behavior; absence is
+// rule-evidence: docs/design/vips/0004-throw.md#767ddcfbbcaad320
+// VIP-4: A migration preserves a foreign call's original defect contract with
+import { bare, typed, port, known, Foreign } from "./foreign.js"
+export effect function f() { const a = bare(); const b = typed(); const c = port.method(); const d = known(); const e = new Foreign(); return [a,b,c,d,e] }
