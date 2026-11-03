@@ -250,8 +250,8 @@ func checkGrammarAdmission(t *testing.T, w *Workspace, key, source string) {
 	mismatch, detail := grammarAdmissionMismatch(source)
 	if mismatch {
 		// Only an absent derivation needs a full check. Type/name errors do not
-		// excuse it, but compiler syntax rejection does. EK4618 is the explicit
-		// EffectShorthand recovery rule (EK0103 after renumbering): Appendix A says it "parses, then the
+		// excuse it, but compiler syntax rejection does. EK0101 is the explicit
+		// EffectShorthand recovery rule: Appendix A says it "parses, then the
 		// top-level-shorthand rule rejects it", even though its diagnostic is
 		// produced by the checker.
 		result, err := w.Compile(context.Background(), Single(source))
@@ -1287,7 +1287,7 @@ func TestGrammarAdmissionCore(t *testing.T) {
 // deliberately absent: they do not excuse an undefined grammar form.
 func grammarAdmissionSyntaxCode(code int32) bool {
 	switch code {
-	case 103, 4618: // EffectShorthand (the latter is the compatibility code).
+	case 101, 103, 4618: // Shorthand and compatibility syntax boundaries.
 		return true
 	case 501, 504, 1701, 1001: // [+Effect] placement; EK1001 is legacy module-level try rejection.
 		return true

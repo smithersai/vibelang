@@ -25,7 +25,7 @@ const EffectArrowHeadDiagnosticText = "An effect arrow with a typed bare paramet
 // A declaration without function, effect load(id) { … } or async get(url)
 // { … }, is not TypeScript, so it is not VibeLang either (VIP-39): it parses
 // as the declaration it was meant to be, recorded VibeSyntaxShorthand, and
-// the checker reports EK4618 there with the quick fix that writes function.
+// the checker reports EK0101 there with the quick fix that writes function.
 // Outside these positions effect is an identifier, so Layer.effect(…) and
 // const effect = … keep their meaning. Every form needs its next token on
 // the same line as effect, as async does.

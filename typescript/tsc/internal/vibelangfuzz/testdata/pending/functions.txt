@@ -8,10 +8,6 @@ FuzzFunctionsSpec rule:function-alias compiler VIP-1: chapter 1 requires the spe
 FuzzFunctionsSpec corpus:fz-func-function-alias compiler VIP-1: minimized function-alias violation; lane vip-core2
 FuzzFunctionsSpec rule:with compiler VIP-1: chapter 1 requires the specified EK diagnostic for with; lane vip-core2
 FuzzFunctionsSpec corpus:fz-func-with compiler VIP-1: minimized with violation; lane vip-core2
-FuzzFunctionBoundaries rule:shorthand compiler VIP-1: chapter 1 requires the specified EK diagnostic for shorthand; lane vip-core2
-FuzzFunctionBoundaries corpus:fz-func-shorthand compiler VIP-1: minimized shorthand violation; lane vip-core2
-FuzzFunctionBoundaries rule:async-shorthand compiler VIP-1: chapter 1 requires the specified EK diagnostic for async-shorthand; lane vip-core2
-FuzzFunctionBoundaries corpus:fz-func-async-shorthand compiler VIP-1: minimized async-shorthand violation; lane vip-core2
 FuzzFunctionBoundaries rule:getter compiler VIP-1: chapter 1 requires the specified EK diagnostic for getter; lane vip-core2
 FuzzFunctionBoundaries corpus:fz-func-getter compiler VIP-1: minimized getter violation; lane vip-core2
 FuzzFunctionBoundaries rule:setter compiler VIP-1: chapter 1 requires the specified EK diagnostic for setter; lane vip-core2

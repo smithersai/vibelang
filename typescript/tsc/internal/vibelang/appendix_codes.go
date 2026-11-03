@@ -5,7 +5,7 @@ import "github.com/microsoft/TypeScript/tsc/internal/parser"
 // Appendix B assigns these identifiers ahead of their owning VIP implementations.
 // Registration alone never adds a checker or changes a diagnostic trigger.
 var (
-	EK0101 = message(101, errorCategory, "Effect f() { } or async f() { } outside a class or object literal. Use the matching effect or async function form; move legacy JavaScript to a .ts file.")
+	EK0101 = message(101, errorCategory, "{0} goes where TypeScript allows async, so a declaration keeps function: write {0} function {1}.")
 	EK0102 = message(102, errorCategory, "Await, for await or await using in effect code. Use the matching effect or async function form; move legacy JavaScript to a .ts file.")
 	EK0104 = message(104, errorCategory, "Effect on a getter, setter or constructor. Use the matching effect or async function form; move legacy JavaScript to a .ts file.")
 	EK0105 = message(105, errorCategory, "Effect and async on one function. Use the matching effect or async function form; move legacy JavaScript to a .ts file.")

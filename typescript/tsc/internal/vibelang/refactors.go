@@ -226,7 +226,7 @@ func (rc *refactorContext) asyncRefactors(fn *ast.Node) []*ls.CodeAction {
 	if asyncModifier == nil {
 		return nil
 	}
-	// The removed shorthand `async f()` (EK4618) has no function keyword after
+	// The removed shorthand `async f()` (EK0101) has no function keyword after
 	// async to keep, so the declaration gets one with its effect modifier.
 	replacement := "effect"
 	if afterAsync := scanner.SkipTrivia(text, asyncModifier.End()); ast.IsFunctionDeclaration(fn) && !strings.HasPrefix(text[afterAsync:], "function") {

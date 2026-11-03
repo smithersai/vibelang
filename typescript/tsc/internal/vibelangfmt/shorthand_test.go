@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-// Formatting must preserve the shorthand and its EK4618 diagnostic. Only
+// Formatting must preserve the shorthand and its EK0101 diagnostic. Only
 // the existing --fix codemod may insert the missing function keyword.
 func TestFormatPreservesFunctionShorthand(t *testing.T) {
 	sources := []string{
@@ -35,7 +35,7 @@ func TestDprintPreservesFunctionShorthand(t *testing.T) {
 		t.Fatal(err)
 	}
 	if strings.Contains(got, "function") {
-		t.Fatalf("format removed EK4618 by inserting function:\n%s", got)
+		t.Fatalf("format removed EK0101 by inserting function:\n%s", got)
 	}
 	again, err := Format("shorthand.vibe", got, formatter)
 	if err != nil {

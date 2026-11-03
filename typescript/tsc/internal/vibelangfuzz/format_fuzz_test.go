@@ -250,7 +250,7 @@ func toolsFormatDifference(before, after *Result) string {
 
 // toolsFormatKey names a difference toolsFormatDifference reports, so that a
 // known one does not hide another: the diagnostic codes formatting lost and
-// added, as lost:EK4618 or added:TS2304+TS7006, diagnostics when the same
+// added, as lost:EK0101 or added:TS2304+TS7006, diagnostics when the same
 // codes changed category or count, or js when only the emitted JavaScript
 // changed.
 func toolsFormatKey(before, after *Result) string {

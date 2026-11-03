@@ -79,9 +79,9 @@ parser/vibelang_data.go:IsDataConstructors	admission:data	900-appendices.md#Data
 parser/vibelang_effect.go:Parser.isVibeLangEffectWord	admission:effect	900-appendices.md#EffectFunction	support	VIP-1 function-kind parsing and recovery
 parser/vibelang_effect.go:Parser.scanStartOfShorthandFunction	admission:effect	900-appendices.md#EffectShorthand	recovery	VIP-1: shorthand recognition only for its specified rejection
 parser/vibelang_effect.go:Parser.scanStartOfEffectDeclaration	admission:effect	900-appendices.md#EffectFunction,900-appendices.md#Producer,900-appendices.md#EffectShorthand	support	Appendix A: EffectFunction, Producer, EffectShorthand; inherited TypeScript helpers and diagnostic recovery retain their stated boundaries
-parser/vibelang_effect.go:Parser.isStartOfAsyncShorthand	admission:async-shorthand	900-appendices.md#EffectShorthand	recovery	VIP-1: explicitly specified recovery for EK4618; not language admission
+parser/vibelang_effect.go:Parser.isStartOfAsyncShorthand	admission:async-shorthand	900-appendices.md#EffectShorthand	recovery	VIP-1: explicitly specified recovery for EK0101; not language admission
 parser/vibelang_effect.go:Parser.parseEffectDeclaration	admission:effect	900-appendices.md#EffectFunction,900-appendices.md#Producer,900-appendices.md#EffectShorthand	support	Appendix A: EffectFunction, Producer, EffectShorthand; inherited TypeScript helpers and diagnostic recovery retain their stated boundaries
-parser/vibelang_effect.go:Parser.parseShorthandFunctionDeclaration	admission:async-shorthand	900-appendices.md#EffectShorthand	recovery	VIP-1: explicitly specified recovery for EK4618; not language admission
+parser/vibelang_effect.go:Parser.parseShorthandFunctionDeclaration	admission:async-shorthand	900-appendices.md#EffectShorthand	recovery	VIP-1: explicitly specified recovery for EK0101; not language admission
 parser/vibelang_effect.go:Parser.markEffect	admission:effect	900-appendices.md#EffectFunction	support	VIP-1 function-kind parsing and recovery
 parser/vibelang_effect.go:Parser.tryParseVibeLangEffectArrow	admission:effect	900-appendices.md#EffectArrow	support	Appendix A: EffectArrow; inherited TypeScript helpers and diagnostic recovery retain their stated boundaries
 parser/vibelang_effect.go:Parser.tryParseVibeLangBareEffectArrow	admission:effect	900-appendices.md#EffectArrow	recovery	VIP-1/detail247: bare typed or generic Effect arrow heads are recovered only to report EK0109; not language admission
@@ -702,7 +702,7 @@ vibelang/wire.go:runnerRequirements	admission:wire	-	pending	Legacy lowering has
 vibelang/wire.go:services.wireNeeders	admission:wire	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
 vibelang/wire.go:providedBy	admission:wire	-	pending	Legacy lowering has no accepted authority; census does not authorize its removal
 parser/vibelang_catch.go:Parser.parseVibeLangCatchRest@catch-value	admission:catch-value	900-appendices.md#CatchHandler,002-running.md	recovery	VIP-5: a value handler is parsed only to report EK0509 with its quick fix (4488a715)
-parser/vibelang_effect.go:Parser.parseShorthandFunctionDeclaration@effect-shorthand	admission:effect-shorthand	900-appendices.md#EffectShorthand	recovery	VIP-1: explicitly specified recovery for EK4618; not language admission
+parser/vibelang_effect.go:Parser.parseShorthandFunctionDeclaration@effect-shorthand	admission:effect-shorthand	900-appendices.md#EffectShorthand	recovery	VIP-1: explicitly specified recovery for EK0101; not language admission
 parser/vibelang.go:Parser.parseServiceDeclaration@control-declaration	admission:control-declaration	-	pending	Open VIP-35 does not admit control declarations
 parser/vibelang_fibers.go:Parser.parseVibeLangJoin@join-aggregate	admission:join-aggregate	-	pending	VIP-17 admits grammar operand but not aggregate Fiber join semantics
 parser/vibelang_fibers.go:Parser.nextTokenStartsLegacyForkOperand	admission:fork	900-appendices.md#ForkExpression	recovery	VIP-1/17: outside source Effect context, legacy fork operands are recognized only for their diagnostics and migration

@@ -156,7 +156,7 @@ func (d *decoder) ordered() error {
 		d.replace(start, end, comma)
 	}
 	// The TypeScript formatter needs function, but the source shorthand must
-	// retain its EK4618 diagnostic. Only --fix inserts function permanently.
+	// retain its EK0101 diagnostic. Only --fix inserts function permanently.
 	for i, pos := range t.functions {
 		if d.enc.functions[i] == "shorthand" {
 			end := pos + len("function")
