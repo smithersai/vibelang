@@ -602,6 +602,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Migrated packages could publish declaration sidecars and expose them through source export globs. Migration setup now excludes `*.d.vibe.ts` and `*.d.vibex.ts` from packs, and verification rejects sidecars or unexpected changes to the published file list.
 
 
+- A local declaration named `SchemaAST` could capture the `ParseOptions` qualifier in an inferred decoder declaration, leaving an invalid public type. Inferred library types now keep their library module, as TypeScript does.
+
 - Declaration checks could compare an unused `types` export instead of an earlier matching package condition, hiding a real API change. Published entry discovery now follows TypeScript's conditional export order and preserves mirrored `.vibe` sidecar resolution.
 
 - Declaration checks could miss a type change selected by an explicit `resolution-mode` import attribute. They now resolve each import using its own mode throughout the comparison.

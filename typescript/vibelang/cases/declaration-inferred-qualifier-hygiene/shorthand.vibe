@@ -1,0 +1,2 @@
+// An actual library reference stays eligible when written as object shorthand.
+export const modules = { Schema }

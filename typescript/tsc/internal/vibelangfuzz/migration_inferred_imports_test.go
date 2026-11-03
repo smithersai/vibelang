@@ -38,6 +38,14 @@ func migrationInferredImportsPrograms() map[string]string {
 				}
 			}
 			programs[home+":"+library+":shadow-SchemaAST"] = head + "export const SchemaAST = \"local\";\nexport const decode = " + library + ".decodeUnknownSync(" + library + ".String);\n"
+			for kind, binding := range map[string]string{
+				"type":       "export type SchemaAST = string;",
+				"namespace":  "export namespace SchemaAST { export type Local = string }",
+				"nested":     "{ const SchemaAST = \"local\"; }",
+				"used-value": "export const SchemaAST = { errors: \"local\" }; export const local = SchemaAST.errors;",
+			} {
+				programs[home+":"+library+":shadow-SchemaAST-"+kind] = head + binding + "\nexport const decode = " + library + ".decodeUnknownSync(" + library + ".String);\n"
+			}
 		}
 	}
 	return programs

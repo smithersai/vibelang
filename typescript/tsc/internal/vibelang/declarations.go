@@ -427,8 +427,8 @@ func preludeModuleName(c *checker.Checker, file *ast.SourceFile, module *ast.Sym
 
 // preludeNameUnwritten reports whether name, the first name of a type node that
 // declaration emit copies into the declaration file of file, resolves to
-// symbol only through the prelude and file never writes it. Effect TypeScript
-// would not import such a name, so the declaration writes what TypeScript
+// symbol only through the prelude and file never writes that library binding.
+// Effect TypeScript would not import such a name, so the declaration writes what TypeScript
 // writes: import("effect/SchemaAST").ParseOptions, not SchemaAST.ParseOptions.
 func preludeNameUnwritten(c *checker.Checker, file *ast.SourceFile, name string, symbol *ast.Symbol) bool {
 	if !isVibeLangFile(file) || !isPreludeName(name) {
@@ -446,8 +446,8 @@ func preludeNameUnwritten(c *checker.Checker, file *ast.SourceFile, name string,
 }
 
 // writtenPreludeNames returns the prelude names that a declaration of file may
-// write: each one file writes, and Effect where file has a marked Effect form, whose
-// Effect TypeScript imports it: an Effect function, or an effect block, which
+// write: each library binding file writes, and Effect where file has a marked
+// Effect form, whose Effect TypeScript imports it: an Effect function, or an effect block, which
 // is Effect.gen (VIP-2). The schema, error and data forms write theirs
 // as intrinsics, as an A!E!R annotation and try write theirs.
 func writtenPreludeNames(c *checker.Checker, state *preludeState, file *ast.SourceFile) map[string]bool {
@@ -469,9 +469,21 @@ func writtenPreludeNames(c *checker.Checker, state *preludeState, file *ast.Sour
 		}
 		if ast.IsIdentifier(node) {
 			if !isMemberNameOf(node) && isPreludeName(node.Text()) {
-				written[node.Text()] = true
-				if isEffectGlobal(c, state, file, node) {
-					written["Effect"] = true
+				// A local declaration or reference can spell a prelude name
+				// without bringing that library into scope. Only the library's
+				// own binding permits a copied inferred type to reuse its name.
+				prelude := preludeSymbol(c, state, file, node.Text())
+				symbol := c.GetSymbolAtLocation(node)
+				if ast.IsShorthandPropertyAssignment(node.Parent) {
+					// The property symbol is distinct from its value binding.
+					symbol = c.GetShorthandAssignmentValueSymbol(node.Parent)
+				}
+				symbol = resolvedAlias(c, symbol)
+				if prelude != nil && symbol != nil && (symbol == resolvedAlias(c, prelude) || symbol == moduleAliasTypeOf(c, prelude, node.Text())) {
+					written[node.Text()] = true
+					if isEffectGlobal(c, state, file, node) {
+						written["Effect"] = true
+					}
 				}
 			}
 			return false
