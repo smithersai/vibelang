@@ -406,6 +406,7 @@ const specTests = [
   "TestServiceDefaultExportQuoted",
   "TestFixFixedPointQuoted",
   "TestPlainHandlerThrowQuoted",
+  "TestNothrowPlacementQuoted",
   "TestFunctionsSpecQuotes",
   "TestVIPCoverage",
   "TestSpecProductionsOnlyInAppendixA",
