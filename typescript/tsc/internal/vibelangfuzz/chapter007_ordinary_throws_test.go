@@ -10,7 +10,7 @@ import (
 )
 
 const chapter007OrdinaryThrowsTarget = "FuzzChapter007OrdinaryThrows"
-const chapter007OrdinaryThrowsQuote = "A " + "\x60throw\x60" + " statement is " + "\x60EK0401\x60" + ", even when a " + "\x60try\x60" + " statement in the same function catches it."
+const chapter007OrdinaryThrowsQuote = "Where a throw is allowed at all remains [VIP-4's no-throw rule](#plain-code-never-throws) (\x60EK0401\x60)."
 
 func chapter007OrdinaryThrowsQuoted(t testing.TB) {
 	if !strings.Contains(SpecText("003-failures.md"), chapter007OrdinaryThrowsQuote) {
@@ -23,20 +23,35 @@ func TestChapter007OrdinaryThrowsQuoted(t *testing.T) { chapter007OrdinaryThrows
 // Chapter 007 / ordinary Vibe throw restrictions remain in force: docs/design/src/007-tooling.md#ca33ed0583087536
 // This is the current VIP-4 plain-code restriction. Older FuzzFailuresSpec
 // fixtures quote the superseded allowance for a synchronous plain throw.
+func chapter007OrdinaryThrowKeys() []string {
+	return append([]string{"plain", "caught", "getter", "generator", "top", "async", "effect"}, throwExpressionPlacementKeys...)
+}
+
+func chapter007OrdinaryThrowKey(key string) string {
+	keys := chapter007OrdinaryThrowKeys()
+	if key == "" || slices.Contains(keys, key) {
+		return key
+	}
+	return keys[int(key[0])%len(keys)]
+}
+
 func FuzzChapter007OrdinaryThrows(f *testing.F) {
 	startShortBudget(f)
 	chapter007OrdinaryThrowsQuoted(f)
-	keys := []string{"plain", "caught", "getter", "generator", "top", "async", "effect"}
+	keys := chapter007OrdinaryThrowKeys()
 	for _, key := range keys {
 		f.Add(key, uint8(0))
 	}
 	w := NewWorkspace(f)
 	f.Fuzz(func(t *testing.T, key string, variant uint8) {
-		if !slices.Contains(keys, key) {
-			if key == "" {
-				return
-			}
-			key = keys[int(key[0])%len(keys)]
+		key = chapter007OrdinaryThrowKey(key)
+		if key == "" {
+			return
+		}
+		if strings.HasPrefix(key, "expr-") {
+			checkThrowExpressionPlacement(t, w, key, variant)
+			ExpectPending(t, chapter007OrdinaryThrowsTarget, specCorpusKey(t))
+			return
 		}
 		value := fmt.Sprintf("%q", fmt.Sprintf("chapter007-%d", variant))
 		body := "throw " + value

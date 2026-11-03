@@ -505,6 +505,15 @@ has a precise `feature:` key and corpus reproduction in
 `vip04.ts-throw`, `vip29.invalid-constructor-plain`, the VIP-5 catch constructs,
 and the VIP-6 wrappers compare the same events and `Exit` against Effect.
 
+The existing `FuzzChapter007OrdinaryThrows` placement target also checks
+VIP-41 throw expressions under VIP-4. Its `expr-` keys cover plain bodies,
+caught throws, nested arrows, methods, accessors, generators, initializers,
+eager defaults and contextually throwing callbacks, with async and effect
+controls. Four expression forms (nullish, conditional, unary and array) run
+in both `.vibe` and `.vibex`. A missing `EK0401` and an unrelated
+compile error have separate keys for each context, expression form and suffix;
+a grammar error cannot stand in for enforcing the no-throw rule.
+
 The failure-contract cases also check inferred declaration tags, each overload
 and returned call signature, foreign annotation precedence, effectful exemption
 from explicit annotations, and error-member diagnostic precedence. Both a

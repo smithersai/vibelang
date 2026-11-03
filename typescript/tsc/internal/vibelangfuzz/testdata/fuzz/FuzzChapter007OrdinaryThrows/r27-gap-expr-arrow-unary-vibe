@@ -1,0 +1,3 @@
+go test fuzz v1
+string("expr-arrow")
+byte(2)
