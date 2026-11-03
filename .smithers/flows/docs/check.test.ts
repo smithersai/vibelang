@@ -116,3 +116,9 @@ test("compiler diagnostic categories match Appendix B", () => {
   const result = spawnSync("node", [join(repository, "scripts/generate-diagnostic-registry.mjs"), "--check"], { encoding: "utf8" });
   expect({ status: result.status, stderr: result.stderr }).toEqual({ status: 0, stderr: "" });
 });
+
+
+test("grammar admission projections match their source", () => {
+  const result = spawnSync("node", [join(repository, "scripts/generate-grammar-admission.mjs"), "--check"], { encoding: "utf8" });
+  expect(result.status, result.stderr).toBe(0);
+});

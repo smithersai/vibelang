@@ -47,6 +47,7 @@ export async function generate() {
 
 if (import.meta.main) {
   execFileSync("node", [join(repository, "scripts/generate-diagnostic-registry.mjs")], { stdio: "inherit" });
+  execFileSync("node", [join(repository, "scripts/generate-grammar-admission.mjs")], { stdio: "inherit" });
   const { outputs, manifest } = await generate();
   for (const [path, content] of Object.entries(outputs)) {
     const target = join(repository, path);

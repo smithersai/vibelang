@@ -602,6 +602,22 @@ const specRuleEvidenceTest = S.Shell.Test({
 
 // Both gate entry points select this aggregate. Each check has one owning
 // target; shared graph dependencies execute once and retain their own cache.
+// The census is a generated projection, not the grammar's admission authority.
+const grammarAdmission = S.Generate({
+  script: S.file("scripts/generate-grammar-admission.mjs"),
+  changes: [
+    "typescript/tsc/internal/vibelangfuzz/testdata/grammar_admission.tsv",
+    "docs/design/src/900-appendices.md"
+  ],
+  data: [tree],
+  sandbox: "none"
+})
+const grammarAdmissionCheck = check(
+  "Every grammar admission table matches its reviewed census source.",
+  "node scripts/generate-grammar-admission.mjs --check",
+  [], [node]
+)
+
 const specLint = S.Shell.Test({
   summary: "Static specification contracts and their regression tests.",
   shell: "echo 'spec-lint: static contracts passed'",
@@ -684,6 +700,8 @@ const targets = {
   "spec-rule-evidence-test": specRuleEvidenceTest,
   "spec-vip-examples": specExamples,
   "spec-linters-test": specLinterTests,
+  "grammar-admission": grammarAdmission,
+  "grammar-admission-check": grammarAdmissionCheck,
   "go-vibelangfuzz-hangs": pendingHangs,
   "site-spec-links": siteSpecLinks,
   "spec-lint": specLint,
@@ -730,7 +748,7 @@ const targets = {
     "The forms table and its decisions match a fresh generation.",
     "FORMS_BINARY=$PWD/typescript/built/local/vibelang-forms " +
       "GOCACHE=$HOME/.cache/go-build-smthrs bash scripts/check-forms-table.sh",
-    [Typescript["forms-generator"], specLint],
+    [Typescript["forms-generator"], specLint, grammarAdmissionCheck],
     [bun, node]
   ),
   "docs-tools": check(

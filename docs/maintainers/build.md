@@ -1272,3 +1272,22 @@ The compiler package test target passes its declared compiler-native artifact th
 The corpus for build entries and the properties for packages, wildcards, reversion and workspace resolution quote Chapter 007’s current contract for TypeScript and tools. Run both consumers of the shared corpus when refreshing its quotation, preserving their literal sources, variant sets, hashes and original property counts.
 
 The workspace-package cache regression uses TypeScript's `strictNullChecks` setting, with a stock TypeScript twin, to check that changing a dependency's `tsconfig.json` invalidates both real warm compiles. Generated newline, indentation, blank-line and Unicode-value cases retain runtime-success controls before requiring `TS2322` after the setting changes. Retired `trustedPackages` settings and missing Effect dependencies must not supply the failure witness.
+
+### Grammar admission tables
+
+Edit `docs/design/registry/grammar-admission.tsv`, one reviewed hook per line.
+The five columns are hook, form, specification authority, status and reason.
+The source preserves the census's existing order and records exactly; it does
+not authorize syntax. The independent fuzz oracle still reads Appendix A's
+productions and prose.
+
+`//:grammar-admission` declares both generated outputs with Smithers
+`S.Generate`: the fuzz inventory and Appendix A's collapsible census table.
+Run `smthrs run //:grammar-admission` to regenerate, or
+`smthrs lint //:grammar-admission` to check drift. The portable command is
+`node scripts/generate-grammar-admission.mjs [--check]`. The check regenerates
+into a temporary tree, names every stale file, and leaves committed copies
+untouched. The merge gate's `//:forms` target depends on
+`//:grammar-admission-check`. The Go inventory check independently verifies
+that hooks and specification authorities exist; generated projections do not
+turn a `pending` row into a language rule.

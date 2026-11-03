@@ -189,6 +189,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 ### Bugs fixed since 0.0.10
 
+- The grammar admission census could drift between its specification and fuzz inventory; both copies now generate from one source and fail checks on drift.
+
 - Migration setup could change entries or plugins on a local `Bun` object; it now changes only Bun's genuine build API and preserves local bindings and explicit API replacements.
 
 - Migration setup stopped when an application already failed to pack before conversion, such as t3code's server with versionless private workspace dependencies. It now records upstream pack exclusions and compares the packages that packed originally; a pack broken by migration still fails verification.
