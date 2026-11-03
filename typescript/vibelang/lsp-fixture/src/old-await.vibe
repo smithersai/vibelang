@@ -13,3 +13,7 @@ export effect function waitOld() {
   try Deferred.succeed(d, 2)
   return await d
 }
+
+import type { Fiber as FiberType, Deferred as DeferredType } from "effect"
+export async function nativeFiber(f: FiberType.Fiber<number>) { return await f }
+export async function nativeDeferred(d: DeferredType.Deferred<number>) { return await d }

@@ -206,6 +206,7 @@ const specTests = [
 
   "TestOptionMatchFixQuoted",
   "TestDeclarationUnnameableFormQuoted",
+  "TestNativeAwaitBridgeQuoted",
   "TestNativeAwaitClassifierQuoted",
   "TestRetiredAwaitAsyncRecoveryQuoted",
   "TestDeclarationPreludeModesQuoted",

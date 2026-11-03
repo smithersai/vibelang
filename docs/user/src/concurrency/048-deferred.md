@@ -2,6 +2,8 @@
 
 A `Deferred.Deferred<A, E>` is a result another fiber can complete once. Use it to signal readiness, hand a value to waiting work, or share a one-time failure. Waiting suspends the fiber; other work keeps running.
 
+In an `async` function, `await deferred` keeps JavaScript's behavior and reports `EK4610`. Its editor quick fix writes the equivalent of `await runPromise(Deferred.await(deferred))` with fresh imports, waiting for the result while evaluating `deferred` once.
+
 ## Creating a one-time result
 
 ```vibe

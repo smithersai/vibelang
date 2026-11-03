@@ -537,6 +537,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Declarations such as `effect load() {}` and `async load() {}` reported `EK4618` instead of VIP-1's `EK0101`. They now report `EK0101`, and the quick fix and `vibelang --fix` still insert `function`.
 - An `effect` function annotated with bare `any` or `unknown`, or an alias or union that resolved to either, bypassed the required Effect return container check. It now reports `EK0106`; `vibelang --fix` can remove the broad annotation and infer the function's Effect contract.
 
+- The editor repaired `await fiber` inside an `async` function with an unrun Effect and offered no repair for `await deferred`. Both quick fixes now keep `async` and wait for the completion value through `runPromise`, preserving operand evaluation and shadowed names. Unions and generic constraints keep their warning when the bridge cannot typecheck.
 - Bun's release-age setting blocked newly published VibeLang packages in example projects; the examples now exempt their pinned VibeLang packages from that age check.
 - `--fix` rewrote `.pipe(Semaphore.withPermits(semaphore, 1))` to `Semaphore.withPermits(%, semaphore, 1)`, which passes the program as the Semaphore, and then refused the whole `Effect.gen` with TS2740; a stage whose `self` is not the piped value now stays curried, as `Semaphore.withPermits(semaphore, 1)(%)`.
 - Editor fixes could write invalid annotations around `this` or `super`, a loop binding or a `finally` binding; they now decline edits that cannot preserve the program.

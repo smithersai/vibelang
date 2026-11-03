@@ -224,7 +224,8 @@ try {
   await check("code action: EK0102 repairs effect await with join or try Deferred.await", async () => {
     open("src/old-await.vibe", "vibe")
     const items = await diagnostics("src/old-await.vibe")
-    assert(items.length === 2 && items.every((d) => d.source === "EK" && d.code === 102 && d.severity === 1),
+    const placement = items.filter((d) => d.code === 102)
+    assert(placement.length === 2 && placement.every((d) => d.source === "EK" && d.severity === 1),
       "placement diagnostics " + JSON.stringify(items))
     const uri = fileUri("src/old-await.vibe")
     const fixFor = async (item, title) => {
@@ -233,15 +234,26 @@ try {
       assert(fix, "no quick fix " + title + " among " + JSON.stringify(actions.map((a) => a.title)))
       return fix.edit?.changes?.[uri] ?? []
     }
-    const fiber = items.find((d) => d.range.start.line === at("src/old-await.vibe", "await f").line)
+    const fiber = placement.find((d) => d.range.start.line === at("src/old-await.vibe", "await f").line)
     const fiberEdits = await fixFor(fiber, "Join the fiber with join")
     assert(fiberEdits.length === 1 && fiberEdits[0].newText === "join" && JSON.stringify(fiberEdits[0].range) === JSON.stringify(fiber.range),
       "fiber edits " + JSON.stringify(fiberEdits))
-    const deferred = items.find((d) => d.range.start.line === at("src/old-await.vibe", "await d").line)
+    const deferred = placement.find((d) => d.range.start.line === at("src/old-await.vibe", "await d").line)
     const deferredEdits = await fixFor(deferred, "Wait for the Deferred with try Deferred.await")
     const start = at("src/old-await.vibe", "await d")
     assert(deferredEdits.length === 1 && deferredEdits[0].newText === "try Deferred.await(d)" && deferredEdits[0].range.start.line === start.line && deferredEdits[0].range.start.character === start.character && deferredEdits[0].range.end.character === start.character + "await d".length,
       "deferred edits " + JSON.stringify(deferredEdits))
+    for (const [code, title, expression] of [
+      [4609, "Join the fiber with await runPromise", "await $awaitRunPromise($awaitJoin(f))"],
+      [4610, "Wait for the Deferred with await runPromise", "await $awaitRunPromise($awaitDeferred(d))"],
+    ]) {
+      const warning = items.find((d) => d.code === code)
+      assert(warning?.severity === 2, "missing native await warning " + JSON.stringify(items))
+      const edits = await fixFor(warning, title)
+      assert(edits.some((e) => e.newText === expression) && edits.some((e) => e.newText.includes('from "effect/Effect"')),
+        "native bridge edits " + JSON.stringify(edits))
+    }
+
   })
 
   await check("code action: EK2120 and EK2121 warn at the old service and layer spellings, and their quick fixes write the current ones", async () => {
