@@ -41,7 +41,7 @@ class Users extends Context.Service<Users, $Users$Shape>()("@acme/app/src/users#
 declare namespace Users { type Shape = $Users$Shape }
 ```
 
-- **Amended 2026-11-02: a written whole shape.** Add `service Name: Type { … }`. The TypeScript type annotation supplies the exact Shape; the required body admits only the existing `key` and `defaultValue` members. Pass the written type directly to `Context.Service<Name, Type>` (or `Context.Reference<Type>` for a default), preserving its name and modifiers. For this form, `Name.Shape` resolves to that type where chapter 005 permits it; emit the supplied type reference, without an added shape helper or namespace. Existing key, default, ambient and generic-capture rules apply.
+- **A written whole shape (VIP-9, amended).** In `service Name: Type { … }` the TypeScript type annotation supplies the exact Shape; the required body admits only the existing `key` and `defaultValue` members. Pass the written type directly to `Context.Service<Name, Type>` (or `Context.Reference<Type>` for a default), preserving its name and modifiers. This form adds no shape helper and no namespace, so, as for a service inside a function, `Name.Shape` names that type only inside the declaration's own body; elsewhere `Name.Shape` is not declared (`TS2702` in the twin): write the type, or `Context.Service.Shape<typeof Name>`. Existing key, default, ambient and generic-capture rules apply.
 
 ```vibe es
 // compiler-gap: pending VIP-9
