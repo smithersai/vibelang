@@ -80,6 +80,7 @@
     "@rspack/core": "2.2.8",
     "esbuild": "0.28.2",
     "fast-check": "4.10.2",
+    "fast-glob": "3.3.3",
     "rolldown": "1.2.13",
     "rollup": "4.64.5",
     "vite": "8.3.4",

@@ -103,6 +103,11 @@ module (D135). A bundle runs the `main` of its entry module and no other, as
 an ES module or as CommonJS, with this plugin or from the compiler's output:
 the runtime asks the file the host started which `main` it exports.
 
+Rolldown input arrays and named entry maps exclude generated `.d.vibe.ts`
+sidecars, including those selected by `tsdown` entry globs. Source order
+and entry aliases are preserved. Choose the `.vibe` source for a single
+entry.
+
 ## Options
 
 ```js

@@ -27,6 +27,16 @@ function sourceConditionConfig(config) {
 
 const cleanId = (id) => id.split("?")[0]
 
+// Declaration sidecars are for type checkers. A *.ts entry glob can include
+// them beside the .vibe sources already selected for this build.
+function withoutSidecarEntries(input) {
+  const source = id => typeof id !== "string" || !cleanId(id).endsWith(".d.vibe.ts")
+  if (Array.isArray(input)) return input.filter(source)
+  if (typeof input === "string") return source(input) ? input : []
+  if (input && typeof input === "object") return Object.fromEntries(Object.entries(input).filter(([, id]) => source(id)))
+  return input
+}
+
 // A module declaration of main.vibe compiles to main.vibe.text.js beside it
 // (D403), which is not on disk: the project's compile serves it. The pattern
 // is vibelang/project's moduleDeclarationSource.
@@ -356,7 +366,7 @@ export const unplugin = createUnplugin((options = {}, meta) => {
     rolldown: {
       options(input) {
         const defaults = ["module", ...(input.platform === "neutral" ? [] : [input.platform ?? "browser"])]
-        return { ...input, resolve: { ...input.resolve, conditionNames: sourceConditions(input.resolve?.conditionNames ?? defaults) } }
+        return { ...input, input: withoutSidecarEntries(input.input), resolve: { ...input.resolve, conditionNames: sourceConditions(input.resolve?.conditionNames ?? defaults) } }
       }
     },
     vite: { config: sourceConditionConfig, configResolved(config) { configure(config.root) } },

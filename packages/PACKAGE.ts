@@ -97,7 +97,7 @@ const pluginTest = (name: string, summary: string, timeout: string) => S.Shell.T
   summary,
   shell: `VIBELANG_BINARY=$PWD/packages/compiler/native/vibelang sh packages/${name}/test/run.sh`,
   data: [compilerNative, S.glob("compiler/**"), S.glob(`${name}/**`),
-    S.file("//scripts/testing/property.mjs"), S.file("//docs/design/src/007-tooling.md"),
+    S.file("//scripts/testing/property.mjs"), S.file("//scripts/testing/spec-path.mjs"), S.file("//docs/design/src/007-tooling.md"),
     migrationSources,
     ...install, S.file("runtime/tsconfig.json"), S.glob("runtime/src/**")],
   tools: [S.Host.bin("node"), S.Host.bin("bun")],

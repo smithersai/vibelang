@@ -18,6 +18,11 @@ keep pointing at the same modules. This applies to TypeScript and JavaScript
 Resumed batches retain earlier filename edits, and reverting a module restores
 its original configuration entry.
 
+The Rolldown plugin excludes generated `.d.vibe.ts` sidecars from build
+entries, including expanded `tsdown` entry globs. Array order and named
+entry aliases stay as configured; `.ts` and `.vibe` sources still build.
+Use the `.vibe` source when choosing a single entry.
+
 ## Prettier and Oxfmt
 
 Install `vibelang` and configure Prettier's `plugins` with
