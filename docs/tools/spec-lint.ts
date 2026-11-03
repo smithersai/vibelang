@@ -494,6 +494,29 @@ const kinds: Record<string, string[]> = {
   authority: ["ruling-claims"],
   examples: ["retired-forms", "platform-imports", "module-extraction-twins"]
 }
+// A repair or migration that compares declarations compares API identity
+// (001-functions.md, "API identity": "Every rule that requires declarations to
+// match, the codemods and migration included, means this"), never bytes. r18
+// ASTRA-1 found it in import cleanup and r19 OPUS-2 in two codemods. Protecting
+// an input file's bytes (TS5055) is a different rule and does not match.
+const declarationBytes = /\bdeclaration(?:'s)?\s+bytes\s+(?:differ|change)\b|\bchanges?\s+(?:the\s+)?(?:emitted\s+)?declaration(?:'s)?\s+bytes\b|\bdeclaration\s+(?:stays|is)\s+the\s+same\s+bytes\b|\bis\s+the\s+same\s+bytes\s+without\b/i
+const declarationIdentity: Rule = {
+  name: "declaration-bytes",
+  finding: "r19 OPUS-2: codemods refuse a rewrite whose declaration bytes differ, against API identity",
+  check(spec) {
+    const out: Violation[] = []
+    for (const [file, text] of [...chapters(spec), ...acceptedVips(spec)]) {
+      for (const s of sentences(text)) {
+        const m = s.text.match(declarationBytes)
+        if (m) out.push({ rule: this.name, file, line: lineAt(text, s.index), message: `"${m[0]}" compares declaration bytes; declarations match by API identity (001-functions.md#api-identity)` })
+      }
+    }
+    return out
+  }
+}
+
+rules.push(resolutionClaims, declarationIdentity)
+
 // A positional fallback must name a row that falls back (r18 OPUS-2). 005's
 // service table ended with EK0905, a declaration rule, under "The last row
 // applies only when no other row applies". The sentence holds only when the

@@ -412,3 +412,16 @@ test("diagnostic-priority accepts a genuinely last fallback", () => {
   const text = "| Rule | Diagnostic |\n| --- | --- |\n| comes ahead of other diagnostics | EK1307 |\n| any other member | EK1304 |\n\nThe last row applies only when no other row applies."
   expect(lint(new Map([["src/test.md", text]]), rule("diagnostic-priority"))).toEqual([])
 })
+
+test("declaration-bytes rejects byte comparisons of declarations and keeps TS5055 input protection", () => {
+  for (const claim of [
+    "It refuses unsupported outward jumps, observed `do` completion and any rewrite whose emitted declaration bytes differ.",
+    "Opaque, duplicate or cyclic graphs, spreads and rewrites that change declaration bytes require manual migration.",
+    "In every scope, `--fix` keeps an import so the declaration stays the same bytes: an import goes only where the module's declaration is the same bytes without it."
+  ]) {
+    const defect = withEdit("src/007-tooling.md", text => text + "\n\n" + claim + "\n")
+    expect(lint(defect, rule("declaration-bytes")).length).toBeGreaterThan(0)
+  }
+  const protectedInput = withEdit("vips/0027-declaration-output.md", text => text + "\n\nExplicit `files` inputs retain native `TS5055` protection: exit `1` and unchanged declaration bytes.\n")
+  expect(lint(protectedInput, rule("declaration-bytes"))).toEqual([])
+})
