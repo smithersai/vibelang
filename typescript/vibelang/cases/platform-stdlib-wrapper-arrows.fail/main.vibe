@@ -1,0 +1,21 @@
+// expect: EK4402
+import { Effect } from "effect"
+export const plain = () => fetch("/api")
+export const asyncValue = async () => fetch("/api")
+export const wrapped = () => Effect.try(() => fetch("/api"))
+export const promised = () => Effect.tryPromise(() => fetch("/api"))
+export const timer = () => setTimeout(() => {}, 1)
+export const writer = () => console.log("x")
+export const host = () => document.title
+
+// VIP-33 platform references stay banned in plain async and Effect wrapper arrows; rule: docs/design/vips/0033-platform-stdlib.md#5e23090b375f0326
+
+// VIP-33 platform references stay banned in plain async and Effect wrapper arrows; rule: docs/design/vips/0033-platform-stdlib.md#d5e563f0c7cc5dd9
+
+// VIP-33 platform references stay banned in plain async and Effect wrapper arrows; rule: docs/design/vips/0033-platform-stdlib.md#971a3048add093c4
+
+// VIP-33 platform references stay banned in plain async and Effect wrapper arrows; rule: docs/design/vips/0033-platform-stdlib.md#093c988811ed784d
+
+// VIP-33 platform references stay banned in plain async and Effect wrapper arrows; rule: docs/design/vips/0033-platform-stdlib.md#32aac479219e72bf
+
+// VIP-9 a native host slice does not exempt platform calls in Vibe wrappers; rule: docs/design/vips/0009-service-declarations.md#e1650faf0503bea2

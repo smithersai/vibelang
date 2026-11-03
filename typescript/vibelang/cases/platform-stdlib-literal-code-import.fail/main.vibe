@@ -1,0 +1,7 @@
+// expect: EK0107
+export const data = () => import("data:text/javascript,export default 1")
+export const blob = () => import("blob:coverage")
+
+// VIP-33 literal data and blob code imports are rejected; rule: docs/design/vips/0033-platform-stdlib.md#84e89eb76d0d50cf
+
+// VIP-33 literal data and blob code imports are rejected; rule: docs/design/vips/0033-platform-stdlib.md#06d36e297e3ee38b

@@ -1,0 +1,4 @@
+// expect: TS2304
+export const layer = NodeServices.layer
+
+// VIP-33 NodeServices is a platform package binding and requires an explicit import; rule: docs/design/vips/0033-platform-stdlib.md#01e909f622cd3111

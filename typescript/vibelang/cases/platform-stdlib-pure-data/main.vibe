@@ -1,0 +1,13 @@
+import { Effect } from "effect"
+export function ordinary() { return [Date.now(), Math.random(), JSON.stringify({ n: 1 }), Intl.NumberFormat] }
+export effect function main() { return try Effect.try(() => {
+  const url = new URL("/a?q=1", "https://example.test")
+  const params = new URLSearchParams("q=1")
+  const bytes = new TextEncoder().encode("ok")
+  const signal = new AbortController().signal
+  return [url.hostname, params.get("q"), new TextDecoder().decode(bytes), structuredClone({ n: 1 }).n, atob(btoa("ok")), signal.aborted]
+}) }
+
+// VIP-33 ECMAScript globals and pure web data utilities remain ordinary; rule: docs/design/vips/0033-platform-stdlib.md#a7e96cdeb3083816
+
+// VIP-33 ECMAScript globals and pure web data utilities remain ordinary; rule: docs/design/vips/0033-platform-stdlib.md#236a1bfaba3247d0

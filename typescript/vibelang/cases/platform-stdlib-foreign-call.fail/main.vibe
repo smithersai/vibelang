@@ -1,0 +1,5 @@
+// expect: EK0403
+import { hostKind } from "./native.js"
+export effect function main() { return hostKind() }
+
+// VIP-33 foreign TypeScript calls retain ordinary throw contracts and mandatory bridges; rule: docs/design/vips/0033-platform-stdlib.md#2813957c3c1c71d8

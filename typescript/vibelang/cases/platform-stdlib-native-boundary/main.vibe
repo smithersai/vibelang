@@ -1,0 +1,9 @@
+import { Effect } from "effect"
+import { hostKind } from "./native.js"
+export effect function main() { return try Effect.try(() => hostKind()) }
+
+
+// VIP-33 native TypeScript owns host bindings and Vibe code retains the ordinary throwing-call bridge; rule: docs/design/vips/0033-platform-stdlib.md#572ba5a43aafceaf
+
+// VIP-33 native TypeScript owns host bindings and Vibe code retains the ordinary throwing-call bridge; rule: docs/design/vips/0033-platform-stdlib.md#cd88181ca639cd5d
+

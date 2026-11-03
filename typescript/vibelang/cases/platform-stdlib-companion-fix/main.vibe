@@ -1,0 +1,14 @@
+import { Effect } from "effect"
+export function main() { return Effect.succeed(1) }
+
+// VIP-33 safe platform move creates an owned sibling and preserves coldness and existing files; rule: docs/design/vips/0033-platform-stdlib.md#b5ce55c811ee8e7b
+
+// VIP-33 safe platform move creates an owned sibling and preserves coldness and existing files; rule: docs/design/vips/0033-platform-stdlib.md#cac2ca7f83a93f04
+
+// VIP-33 safe platform move creates an owned sibling and preserves coldness and existing files; rule: docs/design/vips/0033-platform-stdlib.md#0a8e122bd0b8140a
+
+// VIP-33 safe platform move creates an owned sibling and preserves coldness and existing files; rule: docs/design/vips/0033-platform-stdlib.md#d8783b33c6f708a0
+
+// VIP-33 safe platform move creates an owned sibling and preserves coldness and existing files; rule: docs/design/vips/0033-platform-stdlib.md#2a71f4cb77b78ee0
+
+// VIP-33 safe platform move creates an owned sibling and preserves coldness and existing files; rule: docs/design/vips/0033-platform-stdlib.md#e95adfa824d5ce06

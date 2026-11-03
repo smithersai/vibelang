@@ -1,0 +1,1 @@
+cov-decls VIP-33/VIP-4: unbridged foreign call must use EK0403; baseline emits legacy EK4401

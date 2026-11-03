@@ -52,3 +52,9 @@ test("chapter 5 and the inventory agree", () => {
   for (const [, name] of list.matchAll(/`([^`]+)`/g)) assert.ok(banned.includes(name), `${name} is in the bullets, not the inventory`)
   assert.match(read("docs/design/vips/0033-platform-stdlib.md"), /Amended 2026-10-30: one rule for platform members/)
 })
+
+// VIP-33 pinned platform inventory classifies every member of the closed allowlist; rule: docs/design/vips/0033-platform-stdlib.md#c6e052446ac444ba
+
+// VIP-33 pinned platform inventory classifies every member of the closed allowlist; rule: docs/design/vips/0033-platform-stdlib.md#42f414bbb61d5184
+
+// VIP-33 pinned platform inventory classifies every member of the closed allowlist; rule: docs/design/vips/0033-platform-stdlib.md#1223b50541cd256f

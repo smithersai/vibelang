@@ -1,0 +1,12 @@
+import { Effect } from "effect"
+function load(name: string) { return import(name) }
+export effect function main() {
+ const value: typeof import("./native.js") = try Effect.tryPromise(() => load("./native.js"))
+ return value.value
+}
+
+// VIP-33 computed module specifiers retain ordinary TypeScript import semantics; rule: docs/design/vips/0033-platform-stdlib.md#b799221faca48c2b
+
+// VIP-33 computed module specifiers retain ordinary TypeScript import semantics; rule: docs/design/vips/0033-platform-stdlib.md#28f7d4b96ba050a2
+
+// VIP-33 computed module specifiers retain ordinary TypeScript import semantics; rule: docs/design/vips/0033-platform-stdlib.md#3e247580607ddb7d

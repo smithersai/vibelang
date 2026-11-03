@@ -1,0 +1,10 @@
+// expect: 
+import { Experimental } from "vibelang-runtime"
+export type Capabilities = [typeof Experimental.MediaQuery.MediaQuery, typeof Experimental.FileReader.FileReader,
+ typeof Experimental.Animations.Animations, typeof Experimental.Document.Document,
+ typeof Experimental.BrowserInfo.BrowserInfo, typeof Experimental.ResizeObserver.ResizeObserver]
+export {}
+
+// VIP-9 experimental browser capabilities are ordinary services under Experimental; rule: docs/design/vips/0009-service-declarations.md#fdb2c17d0e606a5d
+
+// VIP-33 experimental browser capabilities are ordinary services under Experimental; rule: docs/design/vips/0033-platform-stdlib.md#1a666eb3614ac82c

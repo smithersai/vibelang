@@ -1,0 +1,10 @@
+import { Effect, Path } from "effect"
+export effect function main() {
+  return try Effect.provide(effect { const path = try Path.Path; return path.join("a", "b") }, Path.layer)
+}
+
+// VIP-33 Path is a namespace and Path.Path is its explicitly provided service key; rule: docs/design/vips/0033-platform-stdlib.md#8fb1dc4d602a5947
+
+// VIP-33 Path is a namespace and Path.Path is its explicitly provided service key; rule: docs/design/vips/0033-platform-stdlib.md#080e4f06ec81475c
+
+// VIP-33 Path is a namespace and Path.Path is its explicitly provided service key; rule: docs/design/vips/0033-platform-stdlib.md#41f67bc47efcf707

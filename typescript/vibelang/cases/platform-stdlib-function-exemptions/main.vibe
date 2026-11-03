@@ -1,0 +1,5 @@
+import { Effect } from "effect"
+function ordinary() {}
+export effect function main() { return ordinary instanceof globalThis.Function }
+
+// VIP-33 globalThis.Function is permitted as instanceof right operand; rule: docs/design/vips/0033-platform-stdlib.md#c5a02f02fdf577c9
