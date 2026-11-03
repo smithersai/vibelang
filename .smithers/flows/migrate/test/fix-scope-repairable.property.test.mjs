@@ -46,11 +46,18 @@ test("EK0301 does not prevent discovery of every Vibe file before its fixing pas
   assert.equal(readFileSync(join(f.root,"src/a.vibe"),"utf8"),corpus.files["src/a.vibe"])
  }finally{f.dispose()}
 })
-test("configuration, ordinary syntax errors, crashes and empty scope still refuse discovery",async()=>{
+test("syntax and type errors in source files keep the complete scope",async()=>{
+ for(const extra of ["src/b.vibe(1,10): error TS1005: Expected token.","src/b.vibe(1,10): error TS2322: Bad assignment."]){
+  const f=fixture()
+  try{
+   assert.deepEqual(await fixProgramFiles({compiler:fake(f,{extra}),tsconfig:"tsconfig.json",cwd:f.root}),[join(f.root,"src/a.vibe"),join(f.root,"src/b.vibe")])
+  }finally{f.dispose()}
+ }
+})
+test("configuration errors, crashes and empty scope still refuse discovery",async()=>{
  for(const config of [
   {extra:"error TS5083: Cannot read configuration."},
-  {extra:"src/b.vibe(1,10): error TS1005: Expected token."},
-  {extra:"src/b.vibe(1,10): error TS2322: Bad assignment."},
+  {extra:"tsconfig.json(1,55): error TS1005: ']' expected."},
   {extra:"Error: internal wrapper failure"},
   {code:2},
   {empty:true},

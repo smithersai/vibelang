@@ -11,9 +11,12 @@ export async function fixProgramFiles({ compiler, tsconfig, cwd, log, timeoutMs 
   const files = [...new Set(result.stdout.split(/\r?\n/).map(line => line.trim()).filter(line => /\.vibex?$/.test(line)).map(line => resolve(cwd ?? ".", line)).filter(path => existsSync(path)))]
   const diagnostics = parseDiagnostics(output)
   const errors = diagnostics.filter(d => d.category === "error")
-  // --listFilesOnly still lists the complete program when EK0301 reports a
-  // repairable type spelling. Scope discovery must let --fix reach that file;
-  // this receipt is not a successful semantic check.
+  // The scope needs only the file list. --listFilesOnly prints the complete
+  // program even when source files have errors (EK0301, EK1702, a syntax or a
+  // type error), and --fix may be the run that repairs them, so those never
+  // stop discovery. An error with no file or in a JSON config means the
+  // compiler could not read the project, so its list is not trusted.
+  const configErrors = errors.filter(d => !d.file || /\.json$/i.test(d.file))
   let inDiagnostic = false
   const unexpected = output.split(/\r?\n/).filter(line => {
     if (!line.trim()) return false
@@ -24,12 +27,12 @@ export async function fixProgramFiles({ compiler, tsconfig, cwd, log, timeoutMs 
     return !(/\.(?:[cm]?[jt]sx?|vibex?|json)$/.test(path) && (/^bundled:\/\/\/libs\//.test(path) || isAbsolute(path) || existsSync(resolve(cwd ?? ".", path))))
   })
   const recoverable = result.code === 1 && files.length > 0 && errors.length > 0 &&
-    errors.every(d => d.code === "EK0301") && unexpected.length === 0
+    configErrors.length === 0 && unexpected.length === 0
   if (result.code !== 0 && !recoverable) {
     const detail = [...diagnostics.map(d => `${d.code}: ${d.message}`), ...unexpected.slice(-12)].join("\n")
     throw new Error(`cannot determine the compiler's fix scope (exit ${result.code})${scopeLog ? `; see ${scopeLog}` : ""}${detail ? `\n${detail}` : ""}`)
   }
-  if (scopeLog) appendFileSync(scopeLog, `# fix scope ${JSON.stringify({ stage: "discovered", files: files.length, exit: result.code, recoverableDiagnostics: recoverable ? ["EK0301"] : [], semanticChecksDeferred: recoverable })}\n`)
+  if (scopeLog) appendFileSync(scopeLog, `# fix scope ${JSON.stringify({ stage: "discovered", files: files.length, exit: result.code, recoverableDiagnostics: recoverable ? [...new Set(errors.map(d => d.code))].sort() : [], semanticChecksDeferred: recoverable })}\n`)
   return files
 }
 
