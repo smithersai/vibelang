@@ -72,6 +72,10 @@ function count(state: LoadState<ReadonlyArray<string>, string>) {
 2 0
 ```
 
+Keep `data` and its name on the same line. The type parameters and opening brace may start on later lines.
+
+At a statement's start, an assertion on a binding named `data` needs parentheses when `as` or `satisfies` is followed by a generic function type on a later line. Run `vibelang --fix` to parenthesize the original expression and preserve its behavior.
+
 A data type takes up to four unconstrained type parameters without defaults, which the constructors infer from their arguments. A default such as `data Box<A = string>` reports `EK2803`; put defaults on a separate type alias. `vibelang --fix` expands the declaration to equivalent Effect TypeScript while preserving its defaults. A recursive data type, such as `data Tree<A> { Leaf { value: A }; Node { left: Tree<A>; right: Tree<A> } }`, works too.
 
 ## What data declares

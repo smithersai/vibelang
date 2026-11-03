@@ -1660,6 +1660,11 @@ func fileFixes(ctx context.Context, program *compiler.Program, file *ast.SourceF
 	for _, d := range diagnostics {
 		// Providers opt their native diagnostics in explicitly.
 		if (d.Source() == diagnosticSource || d.Source() == "" && slices.Contains(nativeFixCodes, d.Code())) && slices.Contains(codes, d.Code()) && d.File() == file {
+			// TS1005 opts in only this data-assertion repair, not native
+			// missing-token fixes elsewhere in the project.
+			if d.Source() == "" && d.Code() == 1005 && len(dataGenericAssertionEdits(file, core.NewTextRange(d.Pos(), d.End()))) == 0 {
+				continue
+			}
 			// The syntactic and semantic lists can both carry one diagnostic;
 			// identify it by position, not text, so two spellings of the same
 			// type on different lines keep their own fixes.

@@ -58,14 +58,15 @@ import (
 const VibeSyntaxData = "data"
 
 // scanDataName reports whether the current token, the identifier after data,
-// starts the rest of a data declaration: the name, then { or, on the same
-// line, <. It moves the scanner; call it through lookAhead.
+// starts the rest of a data declaration: the name, then { or <. Only the
+// data/name boundary forbids a line break. It moves the scanner; call it
+// through lookAhead.
 func (p *Parser) scanDataName() bool {
 	if !p.isIdentifier() {
 		return false
 	}
 	p.nextToken()
-	return p.token == ast.KindOpenBraceToken || p.token == ast.KindLessThanToken && !p.hasPrecedingLineBreak()
+	return p.token == ast.KindOpenBraceToken || p.token == ast.KindLessThanToken
 }
 
 // parseDataDeclaration parses data Name<T> { Variant; Variant { fields } }.

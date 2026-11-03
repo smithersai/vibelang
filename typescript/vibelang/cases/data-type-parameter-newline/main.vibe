@@ -1,0 +1,15 @@
+// VIP-16: a line break is allowed after the data name and before its body.
+export data Name
+<T> { Ok { value: T } }
+
+export data Pair /* first
+second */ <A, B>
+{ Both { left: A; right: B } }
+
+export data Quad
+<A, B, C, D>
+{ All { a: A; b: B; c: C; d: D } }
+
+export const name: Name<number> = Name.Ok({ value: 42 })
+export const pair: Pair<string, number> = Pair.Both({ left: "ok", right: 7 })
+export const quad: Quad<number, string, boolean, null> = Quad.All({ a: 1, b: "x", c: true, d: null })
