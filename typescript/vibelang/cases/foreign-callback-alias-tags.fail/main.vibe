@@ -1,0 +1,17 @@
+// expect: EK0402 EK0402 EK0402 EK0402 EK0402 EK0402 EK0402 EK0402 EK0402 EK0402
+import { risky, take, takeParen, takeChain, takeBounded,
+  type Misplaced, type Parenthesized, type Chain, type Container } from "./helpers.js"
+export function check() {
+  take(risky)
+  takeParen(risky)
+  takeChain(risky)
+  takeBounded(risky)
+  const saved: Misplaced = risky
+  const paren: Parenthesized = risky
+  const chain: Chain = risky
+  let assigned: Misplaced
+  assigned = risky
+  const object: Container = { run: risky }
+  return [saved, paren, chain, assigned, object]
+}
+export function returned(): Misplaced { return risky }

@@ -231,6 +231,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Passing an overloaded TypeScript callback could reject a safe overload or lose a throwing overload through a local alias. Callback checks now compare the matching call signatures and require every signature of an overloaded destination to admit its matching source contract.
 
+- A `@throws` tag on a function type alias could incorrectly permit throwing callbacks. Only a tag attached to the callback's call signature now permits its declared throws.
+
 - The forms gate rejected explicit Effect callbacks after independently landed changes moved their source locations; its reviewed snapshot now records the written modifier at each affected site.
 
 - Combining the chained-assertion and pipe-parser changes stopped compiler builds; the assertion probe now passes the pipe parser's arrow-context argument, with continuation tests covering both assertion operators and conditional tails.

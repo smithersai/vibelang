@@ -1,0 +1,17 @@
+// expect:
+import { risky, safe, take, takeParen, takeChain, takeBounded, takeAllowed, takeWide,
+  type Misplaced, type Parenthesized, type Chain, type Allowed, type Wide } from "./helpers.js"
+export function check() {
+  take(safe)
+  takeParen(safe)
+  takeChain(safe)
+  takeBounded(safe)
+  takeAllowed(risky)
+  takeWide(risky)
+  const saved: Misplaced = safe
+  const parenthesized: Parenthesized = safe
+  const chain: Chain = safe
+  const allowed: Allowed = risky
+  const wide: Wide = risky
+  return [saved, parenthesized, chain, allowed, wide]
+}

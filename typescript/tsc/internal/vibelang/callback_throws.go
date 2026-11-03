@@ -100,6 +100,12 @@ type throwContract struct {
 func writtenThrows(c *checker.Checker, decl *ast.Node) throwContract {
 	var contract throwContract
 	for _, host := range jsdocHosts(decl) {
+		// Chapter 3: tags on aliases of function types do not attach.
+		// A function type's own signature and interface/property hosts keep
+		// their contracts; the enclosing type alias supplies none.
+		if ast.IsTypeAliasDeclaration(host) {
+			continue
+		}
 		for _, jsdoc := range host.JSDoc(nil) {
 			for _, tag := range jsdocTags(jsdoc) {
 				if !ast.IsJSDocThrowsTag(tag) || tag.AsJSDocThrowsTag().TypeExpression == nil {
