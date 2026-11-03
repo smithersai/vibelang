@@ -1,0 +1,28 @@
+// expect-result: {"value":["hit","hit","miss"],"presence":["hit","hit"],"beside":["hit","miss","miss"],"computed":["hit","hit","miss"],"proto":["hit","miss"],"members":["hit","miss","hit","hit"]}
+// The pinned draft's MatchProperty admits key? : an absent property passes and runs no
+// sub-pattern, and a present one must match. A computed "__proto__" key is an ordinary
+// key. A pattern's member expression may be this.#field or super.name.
+function value(s: unknown) { return match (s) { when { a?: 1 }: "hit"; default: "miss"; } }
+function presence(s: unknown) { return match (s) { when { a? }: "hit"; default: "miss"; } }
+function beside(s: unknown) { return match (s) { when { a: 1, b?: 2 }: "hit"; default: "miss"; } }
+const key = "k"
+function computed(s: unknown) { return match (s) { when { [key]?: 1 }: "hit"; default: "miss"; } }
+function proto(s: unknown) { return match (s) { when { ["__proto__"]: null }: "hit"; default: "miss"; } }
+class Base { get inherited() { return 3 } }
+class Member extends Base {
+  #own = 1
+  ownField(s: unknown) { return match (s) { when this.#own: "hit"; default: "miss"; } }
+  viaSuper(s: unknown) { return match (s) { when super.inherited: "hit"; default: "miss"; } }
+  ownObject(s: unknown) { return match (s) { when { a: this.#own }: "hit"; default: "miss"; } }
+}
+export effect function main() {
+  const m = new Member()
+  return {
+    value: [value({}), value({ a: 1 }), value({ a: 2 })],
+    presence: [presence({}), presence({ a: 1 })],
+    beside: [beside({ a: 1 }), beside({ a: 2 }), beside({ a: 1, b: 3 })],
+    computed: [computed({}), computed({ k: 1 }), computed({ k: 2 })],
+    proto: [proto(Object.create(null, { ["__proto__"]: { value: null, enumerable: true } })), proto({})],
+    members: [m.ownField(1), m.ownField(2), m.viaSuper(3), m.ownObject({ a: 1 })]
+  }
+}

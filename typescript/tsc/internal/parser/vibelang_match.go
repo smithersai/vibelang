@@ -74,6 +74,7 @@ const (
 type objectClause struct {
 	key      *ast.Node // an identifier name, a string or numeric literal, or a computed key's expression
 	computed bool
+	optional bool     // written key?: an absent property passes and runs no sub-pattern
 	pattern  *pattern // nil when the clause only tests that the property exists
 }
 
@@ -318,7 +319,7 @@ func (p *Parser) nextTokenStartsPattern() bool {
 
 func (p *Parser) tokenStartsPattern() bool {
 	switch p.token {
-	case ast.KindIdentifier, ast.KindThisKeyword, ast.KindLetKeyword, ast.KindConstKeyword, ast.KindVarKeyword,
+	case ast.KindIdentifier, ast.KindThisKeyword, ast.KindSuperKeyword, ast.KindLetKeyword, ast.KindConstKeyword, ast.KindVarKeyword,
 		ast.KindOpenBracketToken, ast.KindOpenBraceToken, ast.KindOpenParenToken, ast.KindIfKeyword,
 		ast.KindStringLiteral, ast.KindNumericLiteral, ast.KindBigIntLiteral, ast.KindNoSubstitutionTemplateLiteral, ast.KindTemplateHead,
 		ast.KindTrueKeyword, ast.KindFalseKeyword, ast.KindNullKeyword, ast.KindMinusToken, ast.KindPlusToken,
@@ -395,7 +396,7 @@ func (p *Parser) parseMatchPrimaryPattern() *pattern {
 		return &pattern{kind: patternInvalid, anchor: anchor, code: 4704, detail: "Relational"}
 	}
 	// A contextual keyword is a name here too, undefined and of among them.
-	if p.token == ast.KindThisKeyword || p.isIdentifier() {
+	if p.token == ast.KindThisKeyword || p.token == ast.KindSuperKeyword || p.isIdentifier() {
 		expr := p.parseMatchValueExpression()
 		if p.token == ast.KindOpenParenToken && !p.hasPrecedingLineBreak() {
 			result := &pattern{kind: patternExtractor, anchor: anchor, expr: expr}
@@ -420,7 +421,7 @@ func (p *Parser) parseMatchPrimaryPattern() *pattern {
 func (p *Parser) parseMatchValueExpression() *ast.Node {
 	pos := p.nodePos()
 	var expr *ast.Node
-	if p.token == ast.KindThisKeyword {
+	if p.token == ast.KindThisKeyword || p.token == ast.KindSuperKeyword {
 		expr = p.parseKeywordExpression()
 	} else {
 		expr = p.parseIdentifier()
@@ -429,7 +430,7 @@ func (p *Parser) parseMatchValueExpression() *ast.Node {
 		switch {
 		case p.token == ast.KindDotToken:
 			p.nextToken()
-			name := p.parseRightSideOfDot(true /*allowIdentifierNames*/, false /*allowPrivateIdentifiers*/, true /*allowUnicodeEscapeSequenceInIdentifierName*/)
+			name := p.parseRightSideOfDot(true /*allowIdentifierNames*/, true /*allowPrivateIdentifiers*/, true /*allowUnicodeEscapeSequenceInIdentifierName*/)
 			expr = p.finishNode(p.factory.NewPropertyAccessExpression(expr, nil, name, ast.NodeFlagsNone), pos)
 		case p.token == ast.KindOpenBracketToken && !p.hasPrecedingLineBreak():
 			p.nextToken()
@@ -453,7 +454,20 @@ func (p *Parser) parseMatchListPattern(result *pattern, close ast.Kind) {
 			if p.token != close && p.token != ast.KindCommaToken {
 				result.rest = p.parseMatchPattern()
 			}
-			p.parseOptional(ast.KindCommaToken)
+			if p.token != close {
+				// The rest element comes last, with no comma after it. Read what
+				// follows as patterns, so one mistake reports once.
+				misplaced := p.tokenRange()
+				for p.token != close && p.token != ast.KindEndOfFile {
+					if !p.parseOptional(ast.KindCommaToken) {
+						if p.token == close {
+							break
+						}
+						p.parseMatchPattern()
+					}
+				}
+				result.items = append(result.items, misplacedRest(misplaced))
+			}
 			break
 		}
 		result.items = append(result.items, p.parseMatchPattern())
@@ -464,7 +478,13 @@ func (p *Parser) parseMatchListPattern(result *pattern, close ast.Kind) {
 	p.parseExpected(close)
 }
 
-// parseMatchObjectPattern parses { key, let name, key: pattern, [key]: pattern, ...pattern }.
+// misplacedRest is the invalid pattern for what follows a rest pattern.
+func misplacedRest(at core.TextRange) *pattern {
+	return &pattern{kind: patternInvalid, anchor: at, code: 707, detail: "A rest pattern comes last, with nothing after it."}
+}
+
+// parseMatchObjectPattern parses { key, let name, key: pattern, [key]: pattern, ...pattern },
+// where a key or a binding may be written key? to pass when the property is absent.
 func (p *Parser) parseMatchObjectPattern(anchor core.TextRange) *pattern {
 	result := &pattern{kind: patternObject, anchor: anchor}
 	p.nextToken() // {
@@ -474,15 +494,25 @@ func (p *Parser) parseMatchObjectPattern(anchor core.TextRange) *pattern {
 			p.nextToken()
 			result.hasRest = true
 			result.rest = p.parseMatchPattern()
+			if p.token != ast.KindCloseBraceToken {
+				result.items = append(result.items, misplacedRest(p.tokenRange()))
+			}
 		case p.token == ast.KindLetKeyword || p.token == ast.KindConstKeyword || p.token == ast.KindVarKeyword:
 			binding := p.parseMatchPrimaryPattern()
 			key := p.vibelangSynthesized(p.factory.NewIdentifier(binding.name.Text()), binding.name.Loc)
-			result.clauses = append(result.clauses, objectClause{key: key, pattern: binding})
+			clause := objectClause{key: key, pattern: binding}
+			clause.optional = p.parseOptional(ast.KindQuestionToken)
+			if p.parseOptional(ast.KindColonToken) {
+				and := &pattern{kind: patternAnd, anchor: binding.anchor, items: []*pattern{binding, p.parseMatchPattern()}}
+				clause.pattern = and
+			}
+			result.clauses = append(result.clauses, clause)
 		case p.token == ast.KindOpenBracketToken:
 			keyAnchor := p.tokenRange()
 			p.nextToken()
 			key := p.parseAssignmentExpressionOrHigher()
 			p.parseExpected(ast.KindCloseBracketToken)
+			optional := p.parseOptional(ast.KindQuestionToken)
 			p.parseExpected(ast.KindColonToken)
 			sub := p.parseMatchPattern()
 			if p.cloneIdentExpression(key) == nil && key.Kind != ast.KindStringLiteral && key.Kind != ast.KindNumericLiteral {
@@ -490,7 +520,7 @@ func (p *Parser) parseMatchObjectPattern(anchor core.TextRange) *pattern {
 				continue
 			}
 			// A literal key reads the same as a written one, ["a"] as "a".
-			result.clauses = append(result.clauses, objectClause{key: key, computed: !isLiteralKey(key), pattern: sub})
+			result.clauses = append(result.clauses, objectClause{key: key, computed: !isLiteralKey(key), optional: optional, pattern: sub})
 		default:
 			key := p.parsePropertyName()
 			// The pinned MatchProperty early error applies to literal
@@ -503,7 +533,12 @@ func (p *Parser) parseMatchObjectPattern(anchor core.TextRange) *pattern {
 			if key.Kind == ast.KindComputedPropertyName {
 				clause.key = key.Expression()
 				clause.computed = !isLiteralKey(clause.key)
+			} else if (ast.IsIdentifier(key) || ast.IsStringLiteral(key)) && key.Text() == "__proto__" {
+				// The pinned draft: "It is a Syntax Error if PropertyName is a
+				// LiteralPropertyName and PropName of PropertyName is "__proto__"".
+				result.items = append(result.items, &pattern{kind: patternInvalid, anchor: key.Loc, code: 707, detail: "A pattern cannot name __proto__ as a key. Write the computed key [\"__proto__\"]:."})
 			}
+			clause.optional = p.parseOptional(ast.KindQuestionToken)
 			if p.parseOptional(ast.KindColonToken) {
 				clause.pattern = p.parseMatchPattern()
 			}
@@ -1234,7 +1269,7 @@ func (p *Parser) compilePattern(pat *pattern, path matchPath, steps *[]matchStep
 			test(p.mBinary(path(), ast.KindExclamationEqualsEqualsToken, p.mKeyword(ast.KindNullKeyword, at), at))
 		}
 		for _, clause := range pat.clauses {
-			if pat.kind == patternObject || clause.pattern == nil {
+			if !clause.optional && (pat.kind == patternObject || clause.pattern == nil) {
 				test(p.propertyKeyTest(path, clause, at))
 			}
 			key := clause.key
@@ -1242,6 +1277,20 @@ func (p *Parser) compilePattern(pat *pattern, path matchPath, steps *[]matchStep
 				names = append(names, func() *ast.Node { return p.cloneIdentExpression(key) })
 			} else {
 				names = append(names, func() *ast.Node { return p.mString(key.Text(), key.Loc) })
+			}
+			if clause.optional {
+				switch {
+				case clause.pattern == nil:
+				case patternHasBindings(clause.pattern):
+					// An absent property leaves its bindings uninitialized, which
+					// this lowering's const cannot express.
+					test(p.patternErrorCall(4704, "Optional binding", clause.pattern.anchor))
+				default:
+					absent := p.vibelangSpanning(p.factory.NewPrefixUnaryExpression(ast.KindExclamationToken, p.mParens(p.propertyKeyTest(path, clause, at), at)), at)
+					matches := p.mParens(p.inlinePattern(clause.pattern, p.propertyPath(path, clause), ctx), at)
+					test(p.mParens(p.joinTests([]*ast.Node{absent, matches}, ast.KindBarBarToken, at), at))
+				}
+				continue
 			}
 			if clause.pattern != nil {
 				p.compilePattern(clause.pattern, p.enterSubject(p.propertyPath(path, clause), clause.pattern, steps, ctx), steps, ctx)

@@ -1,0 +1,9 @@
+// expect: EK0707 EK4704
+// Chapter 004: invalid match grammar is EK0707. The pinned draft rejects a literal
+// __proto__ key, and a rest pattern comes last.
+export function bare(s: unknown) { return match (s) { when { __proto__: null }: 1; default: 0; } }
+export function quoted(s: unknown) { return match (s) { when { "__proto__": null }: 1; default: 0; } }
+export function objectRest(s: { a: number }) { return match (s) { when { ...let r, a: 1 }: 1; default: 0; } }
+export function arrayRest(s: number[]) { return match (s) { when [...let r, 1]: 1; default: 0; } }
+export function arrayComma(s: number[]) { return match (s) { when [...let r,]: 1; default: 0; } }
+export function optionalBinding(s: { a?: number }) { return match (s) { when { let a? }: 1; default: 0; } }
