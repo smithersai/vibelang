@@ -1,3 +1,19 @@
+// 006-data.md: TestDataSpecRules/schema-shallow-readonly + schema-shallow-mutable checks declaration admission and diagnostics
+// rule: docs/design/src/006-data.md#d15f534a13de9fa3
+// 006-data.md: TestDataSpecRules/schema-nonvalue-alias + schema-nonvalue-interface + schema-nonvalue-class checks declaration admission and diagnostics
+// rule: docs/design/src/006-data.md#e44b2de8b71c9c33
+// 006-data.md: TestDataSpecRules/schema-body-required-as + schema-body-required-satisfies + schema-keyword-name-as + data-keyword-name-as checks declaration admission and diagnostics
+// rule: docs/design/src/006-data.md#58c67442f4d10497
+// 006-data.md: TestDataSpecRules/schema-error-bodyless + empty-data + schema-alias-newline checks declaration admission and diagnostics
+// rule: docs/design/src/006-data.md#77c73aec158eadc5
+// 006-data.md: TestDataSpecRules/schema-body-required-as + data-body-required-satisfies + empty-data checks declaration admission and diagnostics
+// rule: docs/design/src/006-data.md#b0f7583862201f81
+// 006-data.md: TestDataSpecRules/schema-named-error-body + schema-error-alias checks declaration admission and diagnostics
+// rule: docs/design/src/006-data.md#b708db1ad07b5470
+// 006-data.md: TestDataSpecRules/schema-type-continuation checks declaration admission and diagnostics
+// rule: docs/design/src/006-data.md#1f970165963b1c92
+// 006-data.md: TestDataSpecRules/schema-contextual + schema-keyword-name-as + data-keyword-name-satisfies checks declaration admission and diagnostics
+// rule: docs/design/src/006-data.md#e4403bb97f904c8a
 package vibelangfuzz
 
 import (

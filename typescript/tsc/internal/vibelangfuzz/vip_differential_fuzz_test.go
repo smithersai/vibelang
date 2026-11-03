@@ -1,3 +1,55 @@
+// 006-data.md: TestVIPConstructs/vip15.computed-keys-plain compares schema shape, accepted inputs and Exit with Effect
+// rule: docs/design/src/006-data.md#1cdaf0e0cbc8a7a9
+// 006-data.md: TestVIPConstructs/vip15.schema-optional-plain compares schema shape, accepted inputs and Exit with Effect
+// rule: docs/design/src/006-data.md#3fe36586eb8c83b1
+// 006-data.md: TestVIPConstructs/vip15.schema-rest-tuple-plain compares schema shape, accepted inputs and Exit with Effect
+// rule: docs/design/src/006-data.md#f48fd0e5720fdaba
+// 006-data.md: TestVIPConstructs/vip15.schema-optional-tuple-plain compares schema shape, accepted inputs and Exit with Effect
+// rule: docs/design/src/006-data.md#d22d0dd67b45dafa
+// 006-data.md: TestVIPConstructs/vip15.schema-union-plain compares schema shape, accepted inputs and Exit with Effect
+// rule: docs/design/src/006-data.md#83b81ac6c18ed64c
+// 006-data.md: TestVIPConstructs/vip15.schema-optional-plain compares schema shape, accepted inputs and Exit with Effect
+// rule: docs/design/src/006-data.md#2c0f3e26559f3481
+// 006-data.md: TestVIPConstructs/vip15.schema-sample-plain compares schema shape, accepted inputs and Exit with Effect
+// rule: docs/design/src/006-data.md#38063e874be0b20c
+// 006-data.md: TestVIPConstructs/vip15.schema-optional-plain compares schema shape, accepted inputs and Exit with Effect
+// rule: docs/design/src/006-data.md#b471f340a4f6be96
+// 006-data.md: TestVIPConstructs/vip15.schema-sample-plain compares schema shape, accepted inputs and Exit with Effect
+// rule: docs/design/src/006-data.md#f6864e7db9605b6c
+// 006-data.md: TestVIPConstructs/vip15.schema-nested-plain compares schema shape, accepted inputs and Exit with Effect
+// rule: docs/design/src/006-data.md#11ded76e0e664cf8
+// 006-data.md: TestVIPConstructs/vip15.schema-readonly-record-plain compares schema shape, accepted inputs and Exit with Effect
+// rule: docs/design/src/006-data.md#96ce232e2bafe594
+// 006-data.md: TestVIPConstructs/vip15.schema-record-plain compares schema shape, accepted inputs and Exit with Effect
+// rule: docs/design/src/006-data.md#78460a30383b17ca
+// 006-data.md: TestVIPConstructs/vip15.schema-rest-tuple-plain compares schema shape, accepted inputs and Exit with Effect
+// rule: docs/design/src/006-data.md#7e0ad77032632a43
+// 006-data.md: TestVIPConstructs/vip15.schema-optional-tuple-plain compares schema shape, accepted inputs and Exit with Effect
+// rule: docs/design/src/006-data.md#1b30ab60bd7e3b52
+// 006-data.md: TestVIPConstructs/vip15.schema-readonly-tuple-plain compares schema shape, accepted inputs and Exit with Effect
+// rule: docs/design/src/006-data.md#ca8ef8ce642728fe
+// 006-data.md: TestVIPConstructs/vip15.schema-tuple-plain compares schema shape, accepted inputs and Exit with Effect
+// rule: docs/design/src/006-data.md#d84471091d1c30d2
+// 006-data.md: TestVIPConstructs/vip15.schema-readonly-array-plain compares schema shape, accepted inputs and Exit with Effect
+// rule: docs/design/src/006-data.md#00c34e667ffd8ad1
+// 006-data.md: TestVIPConstructs/vip15.schema-array-plain compares schema shape, accepted inputs and Exit with Effect
+// rule: docs/design/src/006-data.md#73bd4a33205a463f
+// 006-data.md: TestVIPConstructs/vip15.schema-reference-plain compares schema shape, accepted inputs and Exit with Effect
+// rule: docs/design/src/006-data.md#c2fa2c8fd8565e4a
+// 006-data.md: TestVIPConstructs/vip15.schema-null-undefined-plain compares schema shape, accepted inputs and Exit with Effect
+// rule: docs/design/src/006-data.md#daca239dc5c9079b
+// 006-data.md: TestVIPConstructs/vip15.schema-union-plain compares schema shape, accepted inputs and Exit with Effect
+// rule: docs/design/src/006-data.md#9eccd18244b7e605
+// 006-data.md: TestVIPConstructs/vip15.schema-literal-union-plain compares schema shape, accepted inputs and Exit with Effect
+// rule: docs/design/src/006-data.md#154e1ef9580b2bb3
+// 006-data.md: TestVIPConstructs/vip15.schema-literals-plain compares schema shape, accepted inputs and Exit with Effect
+// rule: docs/design/src/006-data.md#bfb94b0a64994c83
+// 006-data.md: TestVIPConstructs/vip15.schema-primitives-plain compares schema shape, accepted inputs and Exit with Effect
+// rule: docs/design/src/006-data.md#0850f5b47df33874
+// 006-data.md: TestVIPConstructs/vip15.schema-sample-plain compares schema shape, accepted inputs and Exit with Effect
+// rule: docs/design/src/006-data.md#48bbae7589d6cf7e
+// 006-data.md: TestVIPConstructs/vip15.schema + vip15.schema-reference-plain compares schema shape, accepted inputs and Exit with Effect
+// rule: docs/design/src/006-data.md#981187fded7057e1
 // 000-intro.md: VIP-16 tagged unions
 // rule: docs/design/src/000-intro.md#7bcf296f6d723046
 // 000-intro.md: VIP-15 schema declaration

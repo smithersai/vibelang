@@ -1,3 +1,5 @@
+// 006-data.md: parenthesized library Record mappings retain their schema shape
+// rule: docs/design/src/006-data.md#8dad2972afd2e390
 export schema Grouped = Readonly<(Record<string, number>)>
 export schema Nested { readonly dict: Readonly<((Record<"a" | "b", number>))> }
 export const groupedKey = Grouped.key

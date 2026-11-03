@@ -1,3 +1,5 @@
+// 006-data.md: public schema type is inferred from the actual schema constant
+// rule: docs/design/src/006-data.md#3e1dea0d19a611ef
 // A schema declaration declares type X = typeof X.Type (D501), so in a project
 // that emits declarations EK4832 stays quiet about a struct whose own type is
 // spelled another way: rewriting it would change the declaration.

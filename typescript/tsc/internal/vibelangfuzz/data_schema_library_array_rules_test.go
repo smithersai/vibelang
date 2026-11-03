@@ -1,3 +1,7 @@
+// 006-data.md: array syntax remains mapped when the Array type name is shadowed
+// rule: docs/design/src/006-data.md#27dbf84ce81c0a4f
+// 006-data.md: library-binding scope, imports, aliases and same-spelling shadowing
+// rule: docs/design/src/006-data.md#1815c3e800b1da35
 package vibelangfuzz
 
 import "strings"

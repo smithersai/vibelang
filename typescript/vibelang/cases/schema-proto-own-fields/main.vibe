@@ -1,3 +1,7 @@
+// 006-data.md: emitted computed proto key preserves the field in Schema.Struct
+// rule: docs/design/src/006-data.md#5696ddfd55d75922
+// 006-data.md: unquoted, quoted, escaped and nested proto fields validate as own data properties
+// rule: docs/design/src/006-data.md#262e505c3bfeee49
 // Decided detail 111: schema fields named __proto__ are own data keys.
 // Cover identifier, quoted and escaped names at every schema-field boundary.
 export schema Identifier { readonly __proto__: string }
