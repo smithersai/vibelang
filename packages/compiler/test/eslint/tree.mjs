@@ -49,6 +49,9 @@ export function problems(code, ast, visitorKeys) {
 
   const named = new Set()
   const effectPrefixes = []
+  const bindingStarts = new Set()
+  const declarationHeadAt = new Map(ast.tokens.map((token, index) =>
+    [token.range[0], token.value === "declare" ? ast.tokens[index + 1]?.value : token.value]))
   walk(ast, (node, parent) => {
     if (!(node.type in visitorKeys)) found.push(`unknown node type ${node.type}`)
     const [start, end] = node.range
@@ -62,6 +65,15 @@ export function problems(code, ast, visitorKeys) {
       const children = [node.id, node.key, ...(node.params ?? []), node.returnType, node.body].filter(Boolean)
       effectPrefixes.push([start, Math.min(end, ...children.map((child) => child.range[0]))])
     }
+    // Contextual words are ordinary names at the start of a written variable
+    // declarator. Derive that position from its container, not its id: a
+    // renamed or absent Identifier is exactly what this oracle must catch.
+    // Lowered match temporaries also use VariableDeclarator, but their source
+    // declaration does not start with const/let/var.
+    if (node.type === "VariableDeclarator" && parent?.type === "VariableDeclaration" &&
+        ["const", "let", "var"].includes(declarationHeadAt.get(parent.range[0]))) {
+      bindingStarts.add(start)
+    }
     // An identifier's range covers its type annotation, so it is known by its start and name.
     if (node.type === "Identifier") named.add(`${start}:${node.name}`)
   }, visitorKeys)
@@ -73,8 +85,8 @@ export function problems(code, ast, visitorKeys) {
     // pattern (String) become guards, and an infer placeholder (D57) is
     // VibeInferType's name: none is a variable a rule could miss.
     const effectModifier = word === "effect" && effectPrefixes.some(([start, end]) => start <= token.range[0] && token.range[1] <= end)
-    const exempt = effectModifier || formWords.has(word) || contextualKeywords.has(word) || patternWords.has(word) ||
-      previous === "." || previous === "infer"
+    const exempt = !bindingStarts.has(token.range[0]) && (effectModifier || formWords.has(word) || contextualKeywords.has(word) || patternWords.has(word) ||
+      previous === "." || previous === "infer")
     if (!named.has(`${token.range[0]}:${identifierName(word)}`) && !exempt) found.push(`name ${word} at ${token.range[0]} has no node`)
   })
   return found

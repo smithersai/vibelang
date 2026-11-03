@@ -173,6 +173,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Node could load a native TypeScript wildcard export from a source folder and fail on its relative `.js` imports after a mixed package migrated. Routing now selects the compiled native component for those entries, preserving source type resolution and unrelated native exports.
 
 - Packages migrated with a staged toolchain could pack runtime or source-child loader dependencies pointing into the migration checkout; setup now uses the artifacts' release versions in production dependencies and preserves staged builds for local development.
+- ESLint corpus checks could overlook missing variable nodes when a name was also a contextual word, such as `match`; ordinary variable declarations now require their written identifier nodes.
 
 - Declaration checks could compare an unused `types` export instead of an earlier matching package condition, hiding a real API change. Published entry discovery now follows TypeScript's conditional export order and preserves mirrored `.vibe` sidecar resolution.
 
