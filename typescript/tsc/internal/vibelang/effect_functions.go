@@ -43,6 +43,8 @@ func markedForm(fn *ast.Node) form {
 		return formEffect
 	case isCalledInPlace(fn) && inEffectCode(fn):
 		return formEffect
+	case inlineCatchLeft(fn) && inEffectCode(fn):
+		return formEffect // evaluate the head before installing recovery
 	case isCatchHandlerOf(fn) && inEffectCode(fn):
 		return formEffect
 	case isProgramArrow(fn) && isBlockParamCall(fn.Parent) && fn.Parent.Arguments()[len(fn.Parent.Arguments())-1] == fn:
@@ -104,14 +106,16 @@ func isCatchLeftBody(node *ast.Node) bool {
 	return fn != nil && isCatchLeftFunction(fn) && fn.Body() != nil && ast.SkipParentheses(fn.Body()) == node
 }
 
-// catchLeftHoldsTry reports whether fn is the function the parser writes
-// around a catch expression's left side, in effect code, with a try in it.
-// That function is no function in the source: the plan and the lowering
-// treat its body as code of the enclosing Effect, so each try runs before
-// the catch, and the catch runs the value the left side gives. A failure of
-// that try is the enclosing code's, not the catch's: g(try a) catch h
-// catches g's failure (chapter 2), and (try x) catch h catches the Effect
-// that x succeeds with (VIP-5, amended 2026-10-29).
+// catchLeftHoldsTry keeps a parenthesized try in the surrounding activation.
 func catchLeftHoldsTry(fn *ast.Node) bool {
 	return fn != nil && isCatchLeftFunction(fn) && fn.Body() != nil && inEffectCode(fn) && holdsTry(fn.Body())
+}
+
+// catchLeftRuns reports whether the synthetic left function runs its result.
+func catchLeftRuns(call *ast.Node) bool {
+	fn := call.Parent
+	for fn != nil && ast.IsParenthesizedExpression(fn) {
+		fn = fn.Parent
+	}
+	return fn != nil && isCatchLeftFunction(fn) && fn.Body() != nil && ast.SkipParentheses(fn.Body()) == call && !inlineCatchLeft(fn) && markedForm(fn) == formEffect
 }

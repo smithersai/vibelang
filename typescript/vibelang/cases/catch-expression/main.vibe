@@ -35,9 +35,9 @@ effect function partial(id: string): string!Timeout! {
   }
 }
 
-// catch associates to the left: try b after a fails, then fall back.
+// An explicit Effect protects both alternatives before the final fallback.
 effect function firstOf(a: string, b: string): string!! {
-  return (find(a) catch effect () => try find(b)) catch () => "none"
+  return (effect { return find(a) catch effect () => try find(b) }) catch () => "none"
 }
 
 // A throw expression replaces the failure.

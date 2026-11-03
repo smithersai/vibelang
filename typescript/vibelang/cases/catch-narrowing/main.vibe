@@ -24,7 +24,9 @@ export effect function bracket(source: Source): number!! {
 }
 
 export effect function nested(source: Source): number!! {
-  return source.read === undefined ? 0 : ((source.read() catch effect (error) => (throw error)) catch () => -1)
+  if (source.read === undefined) return 0
+  const read = source.read
+  return (effect { return read.call(source) catch effect (error) => (throw error) }) catch () => -1
 }
 
 // The original Smithers repro uses an arrow and a rethrowing handler.

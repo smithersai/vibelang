@@ -71,6 +71,9 @@ func functionExpressionType(c *checker.Checker, fn *ast.Node, t *checker.Type) *
 		a.lambda(fn).typedAsWritten = true
 		return t
 	}
+	if inlineCatchLeft(fn) {
+		return t // the catch consumes the head value, not the head evaluation Effect
+	}
 	f := markedForm(fn)
 	if f == formNone && serviceHead(c, fn) {
 		// The catch factory returns its operand's Effect, with the lookup's
@@ -257,7 +260,7 @@ func requiredParameterCount(fn *ast.Node) int {
 // function returns what its body gives, so an Effect expected of it types its
 // body as TypeScript does: Effect.succeed({ kind: "a" }) keeps the literal.
 func contextualReturnType(c *checker.Checker, fn *ast.Node, t *checker.Type, getContextual func() *checker.Type) *checker.Type {
-	if !isLowerable(fn) || markedForm(fn) == formNone && !isProducer(fn) {
+	if !isLowerable(fn) || inlineCatchLeft(fn) || markedForm(fn) == formNone && !isProducer(fn) {
 		return t
 	}
 	if t == nil {

@@ -282,7 +282,7 @@ func (tx *lowering) visitNode(node *ast.Node) *ast.Node {
 			return tx.visitObjectMemberName(lowered)
 		}
 		return lowered
-	case tx.inEffect && catchLeftHoldsTry(node):
+	case tx.inEffect && catchLeftHoldsTry(node) && !inlineCatchLeft(node):
 		return tx.visitCatchLeftValue(node)
 	case tx.plan.heads[node]:
 		return tx.visitServiceHead(node)
@@ -447,7 +447,12 @@ func (tx *lowering) runtimeCall(name string, arguments ...*ast.Node) *ast.Node {
 // visitRunningCall turns `f(x)` into `yield* f(x)`.
 func (tx *lowering) visitRunningCall(node *ast.Node) *ast.Node {
 	var call *ast.Node
-	if fiberHelper(node) == "$forConcurrent" && len(node.Arguments()) == 3 {
+	if catchExpressionOf(node) != nil && inlineCatchLeft(node.Arguments()[0]) {
+		f := tx.Factory()
+		head := f.NewCallExpression(tx.visit(node.Arguments()[0]), nil, nil, f.NewNodeList(nil), ast.NodeFlagsNone)
+		value := f.NewYieldExpression(f.NewToken(ast.KindAsteriskToken), head)
+		call = tx.runtimeCall("$catch", value, tx.visit(node.Arguments()[1]))
+	} else if fiberHelper(node) == "$forConcurrent" && len(node.Arguments()) == 3 {
 		call = tx.concurrentForCall(node) // its limit runs before its items (order.go)
 	} else if operand := tryOperand(node); operand != nil {
 		call = tx.Visitor().VisitNode(operand) // try e runs e: yield* e (try.go)

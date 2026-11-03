@@ -444,3 +444,47 @@ func init() {
 		},
 	})
 }
+
+// Head evaluation belongs to the surrounding generator, before Effect.catch
+// receives the produced Effect. Both outer failure and successful evaluation
+// run in every probe; do temporaries and handler kinds vary their syntax.
+func init() {
+	Register(&Construct{
+		Key: "vip05.catch-head-evaluation", VIP: 5,
+		Requires: []string{"vip01.effect-function", "vip02.effect-block", "vip05.try"},
+		Citations: []Citation{{VIP: 5, Template: "yield* Effect.catch(‹head›, ‹handler›)",
+			Quote:   "`e catch y` runs `e`, and on a failure evaluates `y`",
+			Reading: "Effect.catch protects its Effect argument. Ordinary TypeScript evaluates build(yield* start()) before installing that catch; an explicit Effect.gen around the head would instead protect evaluation too.",
+		}},
+		Focus: func(g *Gen, s *Scope) []Stmt {
+			g.UseEffect()
+			g.UseModule("Exit", true)
+			start, build, first, second := g.Name("start"), g.Name("build"), g.Name("first"), g.Name("second")
+			declarationsV := fmt.Sprintf("function %s(bad:boolean): Effect.Effect<number,string> {ev(\"argument\");return bad?Effect.fail(\"outer\"):Effect.succeed(3)}; function %s(n:number): Effect.Effect<number,string> {ev(\"build\");return Effect.fail(\"inner\")}; ", start, build)
+			declarationsT := fmt.Sprintf("function %s(bad) {ev(\"argument\");return bad?Effect.fail(\"outer\"):Effect.succeed(3)}; function %s(n) {ev(\"build\");return Effect.fail(\"inner\")}; ", start, build)
+			do := g.Chance(2)
+			argument := func(bad string) string {
+				value := "try " + start + "(" + bad + ")"
+				if do {
+					value = "do {const n = " + value + "; n}"
+				}
+				return value
+			}
+			handlerV := "e => {ev(\"handler\");return e.length}"
+			handlerT := "e => {ev(\"handler\");return Effect.succeed(e.length)}"
+			if g.Chance(2) {
+				handlerV = "effect (e) => {ev(\"handler\");return e.length}"
+				handlerT = "e => Effect.gen(function*(){ev(\"handler\");return e.length})"
+			}
+			vibe := declarationsV
+			ref := declarationsT
+			for i, out := range []string{first, second} {
+				bad := []string{"true", "false"}[i]
+				vibe += fmt.Sprintf("const %s=try Effect.exit(effect {return %s(%s) catch %s}); ", out, build, argument(bad), handlerV)
+				ref += fmt.Sprintf("const %s=yield* Effect.exit(Effect.gen(function*(){return yield* Effect.catch(%s(yield* %s(%s)),%s)})); ", out, build, start, bad, handlerT)
+			}
+			end := fmt.Sprintf("return [Exit.isSuccess(%s)?%s.value:-1,Exit.isSuccess(%s)?%s.value:-2]", first, first, second, second)
+			return []Stmt{&catchEdge{vibe: vibe + end, ref: ref + end}}
+		},
+	})
+}

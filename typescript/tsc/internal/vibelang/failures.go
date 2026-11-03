@@ -33,9 +33,9 @@ func (a *analyzer) flowOf(node *ast.Node) *effectInfo {
 			for _, expression := range classDefinitionExpressions(n) {
 				visit(expression)
 			}
+		case inlineCatchLeft(n):
+			info.add(a.flowOf(n.Body())) // Head evaluation precedes the recovery boundary.
 		case isFunctionBoundary(n) && !catchLeftHoldsTry(n):
-			// A catch's left side holding a try is code of this function
-			// (catchLeftHoldsTry): its try's failures escape the catch.
 		case n != node && false:
 			// Passed as a program (D147): it runs where the callee runs it.
 		case isHatchArgument(n):

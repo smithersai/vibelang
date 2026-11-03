@@ -87,15 +87,18 @@ func TestCatchScopeOracleSeesWidening(t *testing.T) {
 	files := toolsUnarchive(archive)
 	reference := toolsCompile(t, w, "FuzzFix", map[string]string{"main.ts": files["main.vibe"]})
 	defer reference.Remove()
+	// VIP-5: the deliberately widened control needs an explicit Effect
+	// activation around parsing and decoding; a bare catch protects only
+	// the Effect returned by its successfully evaluated head.
 	bad := toolsCompile(t, w, "FuzzFix", map[string]string{"main.vibe": `import { Effect, Schema } from "effect";
 error K2SchemaError { message: string; cause?: unknown }
 export effect function main() {
-  return Schema.decodeUnknownEffect(Schema.Struct({ n: Schema.Number }))(
+  return (effect { return try Schema.decodeUnknownEffect(Schema.Struct({ n: Schema.Number }))(
     try Effect.try({
       try: () => JSON.parse("{not json") as unknown,
       catch: (cause) => new K2SchemaError({ message: "K2 record content is not valid JSON", cause })
     })
-  ) catch effect (cause) => {
+  ) }) catch effect (cause) => {
     throw new K2SchemaError({ message: "Could not decode K2 record: " + cause.message, cause })
   }
 }

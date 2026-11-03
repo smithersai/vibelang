@@ -51,7 +51,7 @@ effect function step(label: "first" | "second", n: number): ("first" | "second")
 }
 
 effect function chained(a: number, b: number): ("first" | "second" | "last")!! {
-  return (step("first", a) catch effect () => try step("second", b)) catch () => "last"
+  return (effect { return step("first", a) catch effect () => try step("second", b) }) catch () => "last"
 }
 
 effect function mode(n: number): Mode!! {

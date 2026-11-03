@@ -1,0 +1,23 @@
+// expect-result: ["outer",5,["argument"],["argument","build:3","inner"]]
+import {Effect,Exit,Cause} from "effect"
+function start(bad:boolean, events:string[]):Effect.Effect<number,"outer"> {
+ events.push("argument")
+ return bad ? Effect.fail("outer" as const) : Effect.succeed(3)
+}
+function build(n:number,events:string[]):Effect.Effect<number,"inner"> {
+ events.push("build:"+n)
+ return Effect.fail("inner" as const)
+}
+effect function narrow(bad:boolean,events:string[]):number!"outer" {
+ return build(do { const n = try start(bad,events); n },events) catch e => {
+  const typed:"inner"=e
+  events.push(typed)
+  return e.length
+ }
+}
+export effect function main():unknown!! {
+ const a:string[]=[],b:string[]=[]
+ const first=try Effect.exit(narrow(true,a))
+ const second=try Effect.exit(narrow(false,b))
+ return [Exit.isFailure(first)?Cause.squash(first.cause):"wrong",Exit.isSuccess(second)?second.value:-1,a,b]
+}

@@ -13,10 +13,10 @@ export effect function wrongBranch(source: Source): number!! {
 // An actual callback remains a closure boundary, even inside a catch operand.
 export effect function nested(source: Source): number!! {
   if (source.read !== undefined) {
-    return (do {
+    return (effect { return do {
       const later = effect (): Effect.Effect<number, string, never> => try source.read()
       later()
-    }) catch () => 0
+    } }) catch () => 0
   }
   return 0
 }

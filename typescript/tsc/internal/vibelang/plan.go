@@ -197,7 +197,7 @@ func forEachCallInBody(fn *ast.Node, cb func(call *ast.Node) bool) bool {
 			}
 			return false
 		}
-		if isFunctionBoundary(node) && !catchLeftHoldsTry(node) {
+		if isFunctionBoundary(node) && !catchLeftHoldsTry(node) && !inlineCatchLeft(node) {
 			if ast.IsFunctionLike(node) && node.Parent != nil && ast.IsObjectLiteralExpression(node.Parent) {
 				return node.ForEachChild(func(child *ast.Node) bool {
 					return ast.IsComputedPropertyName(child) && visit(child)
@@ -232,7 +232,7 @@ func (a *analyzer) forEachRunningCallInBody(fn *ast.Node, cb func(*ast.Node) boo
 			}
 			return false
 		}
-		if isFunctionBoundary(node) && !catchLeftHoldsTry(node) {
+		if isFunctionBoundary(node) && !catchLeftHoldsTry(node) && !inlineCatchLeft(node) {
 			if ast.IsFunctionLike(node) && node.Parent != nil && ast.IsObjectLiteralExpression(node.Parent) {
 				return node.ForEachChild(func(child *ast.Node) bool {
 					return ast.IsComputedPropertyName(child) && visit(child)
@@ -370,7 +370,7 @@ func (a *analyzer) runs(call *ast.Node) bool {
 		if isCatchLeftBody(call) {
 			// a catch h1 catch h2 is (a catch h1) catch h2 (VIP-5): the
 			// outer catch runs the inner one, which stays its Effect.
-			return false
+			return inlineCatchHead(call) || catchLeftRuns(call)
 		}
 		return inEffectCode(call) // e catch h runs e (VIP-5)
 	}

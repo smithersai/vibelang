@@ -35,6 +35,9 @@ func catchOperandReturnType(c *checker.Checker, fn *ast.Node, t *checker.Type, _
 	if call == nil || !isLowerable(fn) {
 		return t
 	}
+	if inlineCatchLeft(fn) {
+		return t // the head produces an Effect, not the catch success value
+	}
 	contextual := c.GetContextualType(call, checker.ContextFlagsNone)
 	if contextual == nil {
 		return t

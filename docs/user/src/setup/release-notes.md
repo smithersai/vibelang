@@ -218,6 +218,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - EK2104 now offers an editor quick fix and `vibelang --fix` for Effect delegation in a nonproducer body: `yield* e` becomes `try e`, and `yield* try e` becomes `try e`. Native generators, producers, bare yields and parameter initializers keep their own rules.
 
+- A `catch` could recover a failure while evaluating its head, before that head returned the Effect to protect. Head evaluation now happens first, its failures escape, and only the returned Effect is caught; `--fix` preserves the previous boundary for heads that produce plain values.
+
 - `yield` in a nonproducer Effect activation or an Effect callable's parameter initializer reported native generator errors; it now reports `EK2104`, including inside an outer producer, while retaining independent operand errors.
 - A `catch` handler missing `=>` could omit `EK0509`; recovery now reports it while retaining independent TypeScript errors in the parameters and body.
 
