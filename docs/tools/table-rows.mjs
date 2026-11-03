@@ -4,7 +4,7 @@ import { readFileSync, readdirSync } from "node:fs"
 import { join, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
 
-const cells = line => line.replace(/\\\|/g, "").replace(/`[^`]*`/g, "x").split("|").length
+const cells = line => line.replace(/\\./g, "").split("|").length
 const delimiter = line => /^\|(\s*:?-{3,}:?\s*\|)+\s*$/.test(line)
 
 export function tableRowProblems(text, file, { checkWidths = true } = {}) {
@@ -25,7 +25,7 @@ export function tableRowProblems(text, file, { checkWidths = true } = {}) {
       continue
     }
     if (delimiter(line)) continue
-    if (checkWidths && cells(line) !== width) problems.push(file + ":" + (i + 1) + ": " + (cells(line) - 1) + " cells, the header has " + (width - 1))
+    if (checkWidths && cells(line) !== width) problems.push(file + ":" + (i + 1) + ": " + (cells(line) - 2) + " cells, the header has " + (width - 2))
   }
   return problems
 }

@@ -222,6 +222,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - `vibelang lint` reported `EK4806` when an identity-mapped `Effect.try` was piped into `Effect.orDie`; direct and piped defect bridges, including parenthesized forms, now lint alike. An unprotected mapping still warns.
 
+- The exact-optional schema tables hid the explicit-undefined mappings; both settings now display their intended schema mapping.
+
 - Stock TypeScript tools rejected the mapper prelude after the old interruption and yield factories were retired. The mapper now imports `interrupt` and `yieldNow` directly from Effect and preserves their native value identities.
 - Match-chain migration validation now retains the explicit fallback required for destructuring combinator arms and checks that exhaustive tagged handlers keep their results and public types.
 

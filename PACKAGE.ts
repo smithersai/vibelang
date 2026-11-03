@@ -479,6 +479,14 @@ const targets = {
     timeout: "5m"
   }),
 
+  "spec-table-rows": S.Shell.Test({
+    summary: "Specification tables preserve their cells under GFM, including code-span unions.",
+    shell: "node --test docs/tools/spec-table-rows.test.mjs",
+    data: [design, S.Filegroup({ srcs: [...S.glob(["docs/tools/spec-table-rows.test.mjs", "docs/tools/spec-witness.mjs", "docs/tools/table-rows.mjs", "docs/tools/package.json", "docs/tools/bun.lock"])] })],
+    tools: [node],
+    sandbox: "none",
+    timeout: "5m"
+  }),
   // A Run has no graph replay: revision and external decisions are runtime
   // inputs. The script pins the revision/diff verdict, including failures.
   // Platform owns attachment to the pre-gate; grounded violations reject by default.
