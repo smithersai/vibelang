@@ -21,7 +21,7 @@ import (
 // errors do not authorize a syntax absent from the language.
 const grammarAdmissionQuote = "VibeLang's grammar is TypeScript's, plus four TC39 proposals and the productions below."
 const grammarThrowQuote = `"throw" UnaryExpression[?Yield, ?Await] [lookahead ∉ ThrowExpressionInvalidPunctuator]`
-const grammarModuleImportQuote = `"import" ModuleSpecifier ";"`
+const grammarModuleImportQuote = "ImportDeclaration = an ordinary TypeScript import declaration using ModuleSpecifier"
 const grammarAdmissionRecoveryQuote = "parses, then the top-level-shorthand rule rejects it"
 const grammarAdmissionPlainBodyQuote = "The body of any source callable without an `effect` modifier parses with `[~Effect]`"
 const grammarTopicQuote = "%` is the topic: the left side's value, evaluated once."

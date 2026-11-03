@@ -505,7 +505,7 @@ InterfaceDeclaration = "interface" BindingIdentifier TypeParameters? InterfaceEx
 InterfaceExtends = "extends" TypeReference | InterfaceExtends "," TypeReference
 TypeAliasDeclaration = "type" [no LineTerminator here] BindingIdentifier TypeParameters? "=" Type StatementEnd
 ImportDeclaration = "import" ImportClause "from" StringLiteral StatementEnd | "import" StringLiteral StatementEnd
-TsImportDeclaration = "import" ImportClause "from" ModuleSpecifier StatementEnd
+TsImportDeclaration = "import" ImportClause "from" ModuleSpecifier StatementEnd | "import" ModuleSpecifier StatementEnd
 ModuleBody = Statement | ModuleBody Statement
 ImportClause = "{" "}" | "{" ImportsList ","? "}" | "*" "as" BindingIdentifier | BindingIdentifier | "type" "{" ImportsList ","? "}"
 ImportsList = ImportSpecifier | ImportsList "," ImportSpecifier
@@ -732,7 +732,7 @@ var grammarProseMeanings = []struct {
 	{regexp.MustCompile(`^(a non-static MethodDeclaration|TypeScript's MethodDeclaration, without static)`), "NonStaticMethod", ""},
 	{regexp.MustCompile(`^(a non-static get accessor|TypeScript's get accessor, without static)`), "GetAccessor", ""},
 	{regexp.MustCompile(`^a LineTerminator before the next token`), "LineTerminator", ""},
-	{regexp.MustCompile(`^an ordinary TypeScript import declaration using ModuleSpecifier`), "TsImportDeclaration", "TypeScript's import with VIP-40's ModuleSpecifier; `import ModuleSpecifier ;` is the other alternative"},
+	{regexp.MustCompile(`^an ordinary TypeScript import declaration using ModuleSpecifier`), "TsImportDeclaration", "TypeScript's import, side-effect form included, with VIP-40's ModuleSpecifier"},
 	{regexp.MustCompile(`^Undecided \(pending VIP\): UnaryExpression`), "UnaryExpression", "undecided; the search takes the first option, UnaryExpression"},
 }
 
