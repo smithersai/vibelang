@@ -1,0 +1,14 @@
+{
+  "issue": "opencode: Core instance/service RPC closure rejected after a bound import crossed a self-namespace export",
+  "property": "api-identity-import-self-export",
+  "rule": "Formatting, quote style, import extension spelling, and import and member order where `tsc` doesn't care don't count.",
+  "before": {
+    "index.d.ts": "export * as Self from \"./index.js\";\nimport { Out } from \"./leaf.js\";\n/** Reads the value. */\nexport declare const get: <T>(value: T) => Out<T>;\n",
+    "leaf.d.ts": "export type Out<T> = T extends { value: infer V } ? V : never;\n"
+  },
+  "after": {
+    "index.d.ts": "import { Out } from \"./leaf.js\";\nexport * as Self from \"./index.js\";\n/** Reads the value. */\nexport declare const get: <T>(value: T) => Out<T>;\n",
+    "leaf.d.ts": "export type Out<T> = T extends { value: infer V } ? V : never;\n"
+  },
+  "spec": "docs/design/src/001-functions.md#api-identity"
+}

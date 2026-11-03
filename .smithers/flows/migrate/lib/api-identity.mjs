@@ -325,6 +325,7 @@ function equivalentModules(ts, program, host, left, right, externalGroups, docum
   const printer = ts.createPrinter({ removeComments: true })
   const checker = program.getTypeChecker()
   const nodes = new Map(), normalized = new Map(), origins = new Map()
+  let selfNamespaceImportRuns = 0
   function externalOrigin(file) {
     if (origins.has(file)) return origins.get(file)
     const marker = "/node_modules/"
@@ -387,8 +388,24 @@ function equivalentModules(ts, program, host, left, right, externalGroups, docum
       return source => {
         const sorted = source.statements.filter(imported).sort((a, b) => importKey(a).localeCompare(importKey(b)))
         let index = 0
-        const ordered = factory.updateSourceFile(source, source.statements.map(statement => imported(statement) ? sorted[index++] : statement))
-        return ts.visitNode(ordered, visit)
+        const statements = source.statements.map(statement => imported(statement) ? sorted[index++] : statement)
+        const selfExport = statement => ts.isExportDeclaration(statement) &&
+          statement.exportClause && ts.isNamespaceExport(statement.exportClause) && statement.moduleSpecifier &&
+          host.resolveModuleNameLiterals([statement.moduleSpecifier], file, undefined,
+            program.getCompilerOptions(), source)[0].resolvedModule?.resolvedFileName === file
+        // A self-namespace export adds no dependency load. Move it only across
+        // bound imports in the same run; keep every other statement's order.
+        for (let start = 0; start < statements.length;) {
+          let end = start
+          while (end < statements.length && (imported(statements[end]) || selfExport(statements[end]))) end++
+          if (end === start) { start++; continue }
+          const run = statements.slice(start, end)
+          const reordered = [...run.filter(imported), ...run.filter(statement => !imported(statement))]
+          if (run.some((statement, i) => statement !== reordered[i])) selfNamespaceImportRuns++
+          statements.splice(start, run.length, ...reordered)
+          start = end
+        }
+        return ts.visitNode(factory.updateSourceFile(source, statements), visit)
       }
     }
     const transformed = ts.transform(source, [transform])
@@ -492,6 +509,7 @@ function equivalentModules(ts, program, host, left, right, externalGroups, docum
     if (!invalidDocs.has(parent)) { invalidDocs.add(parent); docBad.push(parent) }
   }
   equivalent.documentation = new Map(candidates.filter(n => n.good && !invalidDocs.has(n)).map(n => [n.b, n.a]))
+  equivalent.normalization = { selfNamespaceImportRuns }
   return equivalent
 }
 
@@ -805,6 +823,7 @@ function prepareComparison(ts, before, after, options, progress) {
   }
   progress("module-equivalence")
   const equivalents = equivalentModules(ts, program, host, left, right, externalGroups)
+  progress("module-equivalence-complete", { provedModules: equivalents.size, ...equivalents.normalization })
   for (const [from, to] of ambient.equivalentFiles) equivalents.set(from, to)
   progress("nominal-identity")
   const nominal = alignNominalIdentity(ts, program, before, after, join(repo, ".api-identity-brands.d.cts"), [left, right], ambient.names)
