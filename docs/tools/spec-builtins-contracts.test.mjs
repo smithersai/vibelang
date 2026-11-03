@@ -1,3 +1,7 @@
+// 003-failures.md: native padding ToLength controls cover negative, infinite and NaN counts without count-range failures
+// rule: docs/design/src/003-failures.md#637c879448d77f44
+// 003-failures.md: native padding ToLength controls cover negative, infinite and NaN counts without count-range failures
+// rule: docs/design/src/003-failures.md#cd69e36986dd5b75
 import { readFileSync } from "node:fs"
 import assert from "node:assert/strict"
 import { test } from "node:test"

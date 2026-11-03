@@ -1,3 +1,49 @@
+// 003-failures.md: TestFailuresSpec/catch-effect-param-default + catch-effect-bridged checks its marked diagnostic or declaration contract
+// rule: docs/design/src/003-failures.md#c344b7721cbaac5c
+// 003-failures.md: TestFailuresSpec/catch-param-default + catch-param-computed-key checks its marked diagnostic or declaration contract
+// rule: docs/design/src/003-failures.md#5441063883bbd7b2
+// 003-failures.md: TestFailuresSpec/promise-union + promise-any-return + promise-unknown-return checks its marked diagnostic or declaration contract
+// rule: docs/design/src/003-failures.md#19c2f1353932b8d0
+// 003-failures.md: TestFailuresSpec/declaration-async-rethrows checks its marked diagnostic or declaration contract
+// rule: docs/design/src/003-failures.md#ffbed9dfa63233fb
+// 003-failures.md: TestFailuresSpec/rethrows-default-supplied + declaration-rethrows-default checks its marked diagnostic or declaration contract
+// rule: docs/design/src/003-failures.md#5d388ca35c289b71
+// 003-failures.md: TestFailuresSpec/declaration-rethrows-default checks its marked diagnostic or declaration contract
+// rule: docs/design/src/003-failures.md#4a14d06cb7bb0d29
+// 003-failures.md: TestFailuresSpec/rethrows-default-omitted + rethrows-default-undefined checks its marked diagnostic or declaration contract
+// rule: docs/design/src/003-failures.md#a8ef87003d91bfa2
+// 003-failures.md: TestFailuresSpec/generic-unconstrained-substitution + generic-unconstrained-wrapped checks its marked diagnostic or declaration contract
+// rule: docs/design/src/003-failures.md#4349642985277013
+// 003-failures.md: TestFailuresSpec/generic-unconstrained-substitution + generic-constrained-effectful checks its marked diagnostic or declaration contract
+// rule: docs/design/src/003-failures.md#4185354a5df5a04e
+// 003-failures.md: TestFailuresSpec/rethrows-escape-return + rethrows-escape-nested checks its marked diagnostic or declaration contract
+// rule: docs/design/src/003-failures.md#ba75a03bb362fc7d
+// 003-failures.md: TestFailuresSpec/rethrows-escape-return + rethrows-escape-nested + rethrows-escape-store checks its marked diagnostic or declaration contract
+// rule: docs/design/src/003-failures.md#aa196e75bc7ad5d2
+// 003-failures.md: TestFailuresSpec/rethrows-escape-return + rethrows-escape-nested checks its marked diagnostic or declaration contract
+// rule: docs/design/src/003-failures.md#f4cb13391da24671
+// 003-failures.md: TestFailuresSpec/overload-effect-bound-throw checks its marked diagnostic or declaration contract
+// rule: docs/design/src/003-failures.md#d14ac1d4f5018a57
+// 003-failures.md: TestFailuresSpec/overload-effect-bound-throw + overload-effect-bound-ok checks its marked diagnostic or declaration contract
+// rule: docs/design/src/003-failures.md#4c39ce023b4149b0
+// 003-failures.md: TestFailuresSpec/match-no-match-implicit + match-guard-call checks its marked diagnostic or declaration contract
+// rule: docs/design/src/003-failures.md#445b709679a4bbe5
+// 003-failures.md: TestFailuresSpec/effect-data-last-pipe + effect-data-last-held checks its marked diagnostic or declaration contract
+// rule: docs/design/src/003-failures.md#f2cb62deab292454
+// 003-failures.md: TestFailuresSpec/builtin-push-implicit + builtin-object-keys + builtin-json-stringify + builtin-repeat checks its marked diagnostic or declaration contract
+// rule: docs/design/src/003-failures.md#9862cbbdcf5d0715
+// 003-failures.md: TestFailuresSpec/builtin-object-keys checks its marked diagnostic or declaration contract
+// rule: docs/design/src/003-failures.md#0cea8d131a4c73b6
+// 003-failures.md: TestFailuresSpec/builtin-json-stringify + builtin-repeat checks its marked diagnostic or declaration contract
+// rule: docs/design/src/003-failures.md#dbfd66927659f1bf
+// 003-failures.md: TestFailuresSpec/builtin-push-implicit + builtin-object-keys checks its marked diagnostic or declaration contract
+// rule: docs/design/src/003-failures.md#af8eaa7a5e33011e
+// 003-failures.md: TestFailuresSpec/throws-tag-ts-ignored checks its marked diagnostic or declaration contract
+// rule: docs/design/src/003-failures.md#60ac2bbeda133d1d
+// 003-failures.md: TestFailuresSpec/throws-tag-effect-function + rethrows-tag-effect-function checks its marked diagnostic or declaration contract
+// rule: docs/design/src/003-failures.md#065f91fa4f120d02
+// 003-failures.md: TestFailuresSpec/throws-tag-effect-function + throws-tag-effect-returner checks its marked diagnostic or declaration contract
+// rule: docs/design/src/003-failures.md#eba096abd2f75919
 // 006-data.md: schema-error-computed-key-broad rejects a string domain containing the reserved tag
 // rule: docs/design/src/006-data.md#2abcaa1228285d16
 package vibelangfuzz

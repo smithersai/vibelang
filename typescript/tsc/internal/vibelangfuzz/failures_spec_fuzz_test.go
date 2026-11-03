@@ -1,3 +1,13 @@
+// 003-failures.md: TestFailuresSpec/throws-upper-bound + throws-upper-bound-ok checks acceptance, rejection or emitted throws
+// rule: docs/design/src/003-failures.md#b7dd9f8559a5ef6d
+// 003-failures.md: TestFailuresSpec/rethrows-promise-executor checks acceptance, rejection or emitted throws
+// rule: docs/design/src/003-failures.md#492e345d6999a6f4
+// 003-failures.md: TestFailuresSpec/rethrows-promise-executor checks acceptance, rejection or emitted throws
+// rule: docs/design/src/003-failures.md#e2f62f7221252f53
+// 003-failures.md: TestFailuresSpec/library-unannotated + global-json-parse + global-json-parse-wrapped checks acceptance, rejection or emitted throws
+// rule: docs/design/src/003-failures.md#4a44f003f72216d2
+// 003-failures.md: TestFailuresSpec/rethrows-own-throw + library-unannotated checks acceptance, rejection or emitted throws
+// rule: docs/design/src/003-failures.md#43c84068aa93c8ae
 // 006-data.md: schema-error-default-export cases require error-form EK1305
 // rule: docs/design/src/006-data.md#a9cf713695c4deb2
 package vibelangfuzz

@@ -1,3 +1,19 @@
+// 003-failures.md: unresolved source/native proof retains unknown instead of claiming never
+// rule: docs/design/src/003-failures.md#831e3c16d8093f74
+// 003-failures.md: protocol hooks are implicit; explicit mapping callbacks retain their rethrows contract
+// rule: docs/design/src/003-failures.md#59749e20af0843d9
+// 003-failures.md: the generated native signature inventory preserves implicit protocol hooks and argument-validation classification
+// rule: docs/design/src/003-failures.md#3e71fc23f2150319
+// 003-failures.md: direct calls and argument-validation contracts are checked against the generated signature inventory
+// rule: docs/design/src/003-failures.md#2625e76612811d3d
+// 003-failures.md: exact pinned inventory inputs/hashes and normal generation/checking remain reproducible
+// rule: docs/design/src/003-failures.md#5060e2147335166a
+// 003-failures.md: exact pinned inventory inputs/hashes and normal generation/checking remain reproducible
+// rule: docs/design/src/003-failures.md#ad6583a661ba24ae
+// 003-failures.md: exact pinned inventory inputs/hashes and normal generation/checking remain reproducible
+// rule: docs/design/src/003-failures.md#04976b3f16524a65
+// 003-failures.md: exact pinned inventory inputs/hashes and normal generation/checking remain reproducible
+// rule: docs/design/src/003-failures.md#189ebeb9ba3be71a
 import assert from "node:assert/strict"
 import { test } from "node:test"
 import { readFileSync, mkdtempSync, writeFileSync, rmSync } from "node:fs"

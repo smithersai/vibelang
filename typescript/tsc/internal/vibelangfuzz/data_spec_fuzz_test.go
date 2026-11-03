@@ -1,3 +1,5 @@
+// 003-failures.md: exhaustive-literal + exhaustive-data + exhaustive-error require EK4701 on an uncovered closed subject
+// rule: docs/design/src/003-failures.md#f4d004b091a67b47
 // 006-data.md: TestDataSpecRules/generic-default
 // rule: docs/design/src/006-data.md#8353b9ef2300dbee
 // 006-data.md: TestDataSpecRules/generic-constraint
