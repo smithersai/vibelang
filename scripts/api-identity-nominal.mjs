@@ -61,6 +61,7 @@ export function alignNominalIdentity(ts, program, before, after, brandFile, entr
           return factory.updateVariableDeclaration(node, node.name, node.exclamationToken, importType(brand(source, node), true), node.initializer)
         }
         if (ts.isClassDeclaration(node) || ts.isClassExpression(node)) {
+          const visibilityMarkers = new Set()
           const members = node.members.map(member => {
             const visibility = member.modifiers?.find(m => m.kind === ts.SyntaxKind.PrivateKeyword || m.kind === ts.SyntaxKind.ProtectedKeyword)
             const privateName = member.name && ts.isPrivateIdentifier(member.name)
@@ -70,13 +71,29 @@ export function alignNominalIdentity(ts, program, before, after, brandFile, entr
             copy.modifiers = factory.createNodeArray((member.modifiers ?? []).filter(m => m !== visibility))
             if (privateName) copy.name = factory.createStringLiteral(member.name.getText(source))
             if (ts.isPropertyDeclaration(copy) && !copy.type) copy.type = factory.createKeywordTypeNode(ts.SyntaxKind.AnyKeyword)
+            // Private declarations may elide signatures that would be implicit-any
+            // errors once made public. Materialize their original checker types.
+            const typeNode = type => checker.typeToTypeNode(type, member, ts.NodeBuilderFlags.NoTruncation)
+            if ((ts.isGetAccessorDeclaration(member) || ts.isMethodDeclaration(member)) && !copy.type) {
+              copy.type = typeNode(checker.getReturnTypeOfSignature(checker.getSignatureFromDeclaration(member)))
+            }
+            if (copy.parameters) copy.parameters = factory.createNodeArray(copy.parameters.map(parameter =>
+              parameter.type ? parameter : factory.updateParameterDeclaration(parameter, parameter.modifiers,
+                parameter.dotDotDotToken, parameter.name, parameter.questionToken,
+                typeNode(checker.getTypeAtLocation(parameter)), parameter.initializer)))
             // Preserve the original name so this["privateField"] keeps working.
             // The visibility metadata remains part of the structural contract.
+            const staticModifier = member.modifiers?.find(m => m.kind === ts.SyntaxKind.StaticKeyword)
+            const markerKey = (staticModifier ? "static:" : "instance:") + member.name.getText(source)
+            const transformedMember = ts.visitEachChild(copy, visit, context)
+            // A get/set pair is one property, with one visibility marker.
+            if (visibilityMarkers.has(markerKey)) return transformedMember
+            visibilityMarkers.add(markerKey)
             const marker = factory.createPropertyDeclaration(
-              [factory.createModifier(ts.SyntaxKind.ReadonlyKeyword)],
+              [...(staticModifier ? [staticModifier] : []), factory.createModifier(ts.SyntaxKind.ReadonlyKeyword)],
               factory.createStringLiteral("__api_visibility_" + member.name.getText(source)), undefined,
               factory.createLiteralTypeNode(factory.createStringLiteral(privateName ? "#" : ts.tokenToString(visibility.kind))), undefined)
-            return [ts.visitEachChild(copy, visit, context), marker]
+            return [transformedMember, marker]
           }).flat()
           if (members.some((m, i) => m !== node.members[i]) && node.members.some(m => m.name && (ts.isPrivateIdentifier(m.name) || m.modifiers?.some(x => x.kind === ts.SyntaxKind.PrivateKeyword || x.kind === ts.SyntaxKind.ProtectedKeyword)))) {
             members.push(factory.createPropertyDeclaration(

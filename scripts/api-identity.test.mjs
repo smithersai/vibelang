@@ -225,3 +225,104 @@ test("value/type export meanings are named separately", () => {
 test("keyof alias expansion also works without a nominal declaration", () => {
   pass('export interface I { x: number } export type X = keyof I;', 'export interface I { x: number } export type X = "x";')
 })
+
+// drive2-opencode's strict tsc witness: private signatures may elide types.
+const privateMembers = [
+  "private get hidden();",
+  "private set hidden(value);",
+  "private get hidden(); private set hidden(value);",
+  "private method();",
+  "private method(value);",
+  "private get hidden(); private set hidden(value: number);",
+  "private get hidden(): number; private set hidden(value);",
+  "private get hidden(): number; private set hidden(value: number);",
+  "private static get hidden();",
+  "private static set hidden(value);",
+  "private static get hidden(); private static set hidden(value);",
+  "private static get hidden(); private get hidden();",
+  "static #private;",
+  "#private;",
+  "get #hidden(): number;",
+  "set #hidden(value: number);",
+  "protected get hidden(): number;",
+  "protected set hidden(value: number);",
+  "protected get hidden(): number; protected set hidden(value: number);",
+  "get #hidden(): number; set #hidden(value: number);",
+  "private get hidden(): number;",
+  "private set hidden(value: number);",
+  "private field: number;",
+  "private method(value: number): string;",
+]
+
+function nativeDiagnostics(files) {
+  const options = { strict: true, noEmit: true, skipLibCheck: false, types: [], target: ts.ScriptTarget.ESNext }
+  return ts.getPreEmitDiagnostics(ts.createProgram(files, options))
+}
+
+test("private member alignment preserves valid elided signatures", () => {
+  const declarations = privateMembers.map((member, i) =>
+    `export declare class C${i} { ${member} value(): number; }`).join("\n")
+  fixture(declarations, declarations, (a, b) => {
+    assert.deepEqual(nativeDiagnostics([join(a, "index.d.ts")]).map(d => "TS" + d.code), [])
+    const result = compareApiIdentity(ts, a, b)
+    assert.equal(result.identical, true, JSON.stringify(result, null, 2))
+    const sameRoot = compareApiIdentity(ts, a, a)
+    assert.equal(sameRoot.identical, true, JSON.stringify(sameRoot, null, 2))
+  })
+  const corpus = JSON.parse(readFileSync(new URL("./api-identity-corpus/opencode-private-getter.json", import.meta.url)))
+  pass(corpus.before, corpus.after)
+})
+
+test("adding, removing and renaming private members follows native two-way assignability", () => {
+  for (const [before, after, side] of [
+    ["private get hidden();", "", "instance"],
+    ["", "private set hidden(value);", "instance"],
+    ["private field: number;", "private other: number;", "instance"],
+    ["#private;", "", "instance"],
+    ["private static get hidden();", "", "static"],
+    ["private get hidden(): number;", "private get hidden(): string;", "instance"],
+    ["protected get hidden(): number;", "protected get hidden(): string;", "instance"],
+  ]) {
+    const left = `export declare class C { ${before} value(): number; }`
+    const right = `export declare class C { ${after} value(): number; }`
+    const native = `declare class Left { ${before} value(): number; }
+declare class Right { ${after} value(): number; }
+declare let left: ${side === "static" ? "typeof Left" : "Left"};
+declare let right: ${side === "static" ? "typeof Right" : "Right"};
+left = right;
+right = left;
+export {};`
+    fixture({ "index.ts": native }, { "index.ts": native }, a => {
+      const diagnostics = nativeDiagnostics([join(a, "index.ts")])
+      assert.ok(diagnostics.some(d => [2322, 2741].includes(d.code)), JSON.stringify(diagnostics.map(d => d.code)))
+      const result = compare(left, right)
+      assert.equal(result.identical, false, JSON.stringify({ before, after, result }))
+      assert.ok(result.typeDifferences.length, JSON.stringify(result))
+      assert.ok(result.typeDifferences.every(d => d.probe), JSON.stringify(result))
+    })
+  }
+})
+
+test("property: a valid private-member package compared with itself is identical", async () => {
+  await checkProperty(fc, {
+    name: "api-identity-private-self",
+    rule: "Will: a package compared with itself is always identical; private names still carry nominal identity",
+    command: "node --test scripts/api-identity.test.mjs",
+    arbitrary: fc.record({
+      members: fc.uniqueArray(fc.integer({ min: 0, max: privateMembers.length - 1 }), { minLength: 1, maxLength: 5 }),
+      name: fc.constantFrom("C", "Renamed", "WithPrivate"),
+      generic: fc.boolean(),
+    }),
+    numRuns: 24,
+    check: ({ members, name, generic }) => {
+      const body = members.map((index, i) => privateMembers[index].replaceAll("hidden", "hidden" + i)
+        .replaceAll("method", "method" + i).replaceAll("field", "field" + i).replace("#private", "#private" + i)).join(" ")
+      const text = `export declare class ${name}${generic ? "<T>" : ""} { ${body} value(): ${generic ? "T" : "number"}; }`
+      fixture(text, text, (a, b) => {
+        assert.deepEqual(nativeDiagnostics([join(a, "index.d.ts")]).map(d => "TS" + d.code), [])
+        const result = compareApiIdentity(ts, a, b)
+        assert.equal(result.identical, true, JSON.stringify({ text, result }, null, 2))
+      })
+    },
+  })
+})

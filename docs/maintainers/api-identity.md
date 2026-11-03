@@ -23,8 +23,13 @@ values. Classes include their instance and static sides, namespaces include
 type-only members, and generic aliases retain their constraints and defaults.
 Corresponding nominal declarations in the two snapshots share virtual identity
 keys, so unchanged private classes, enums and `unique symbol` keys compare as
-one API despite their different snapshot paths. Their member types, visibility
-and enum values remain part of the generated type checks. JSDoc is read through the TypeScript API, normalizing whitespace and retaining
+one API despite their different snapshot paths. Private getters, setters and
+methods retain their inferred types when declaration emit elides annotations;
+a getter/setter pair contributes one visibility marker on its instance or static
+side. Adding, removing or renaming a private member still changes nominal
+identity. Their member types, visibility and enum values remain part of the
+generated type checks. JSDoc is read through the TypeScript API, normalizing
+whitespace and retaining
 tags. Formatting, quotes, import order, equivalent module specifiers and
 member order do not fail the check when TypeScript sees the same API.
 Formatter tests may continue to compare bytes to test their formatting.

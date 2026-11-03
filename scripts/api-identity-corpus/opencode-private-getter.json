@@ -1,0 +1,5 @@
+{
+  "before": "export declare class C { private get hidden(); value(): number; }",
+  "after": "export declare class C { private get hidden(); value(): number; }",
+  "origin": "drive2-opencode api48-private-getter"
+}
