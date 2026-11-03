@@ -7,6 +7,6 @@ const testConfig = /(?:^|\/)(?:vitest|jest|playwright|cypress|wdio|karma|ava|moc
 export function ownedToolConfigs(root, files) {
   const owned = ownedPaths(root)
   return files.filter(file =>
-    /\.config\.(?:[cm]?[jt]sx?|vibe)$/.test(file) &&
+    /\.config(?:\.(?!(?:d|test|spec)\.)[\w-]+)?\.(?:[cm]?[jt]sx?|vibe)$/.test(file) &&
     !generated.test(file) && !testConfig.test(file) && !isTestFile(file) && !isFixtureFile(file) && owned(file))
 }

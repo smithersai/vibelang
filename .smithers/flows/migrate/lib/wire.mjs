@@ -635,8 +635,9 @@ export function repositoryPackages(root) {
   return found
 }
 
-// A config a build can load: vite.config.ts, or a named one such as vite.node.config.ts.
-const viteConfigFile = /^(?:vite(?:st)?(?:\.[\w-]+)?|electron\.vite)\.config\.m?[jt]s$/
+// A config a build can load: vite.config.ts, or a named one such as
+// vite.node.config.ts or vite.config.playground.ts (not a declaration or a test).
+const viteConfigFile = /^(?:vite(?:st)?(?:\.[\w-]+)?|electron\.vite)\.config(?:\.(?!(?:d|test|spec)\.)[\w-]+)?\.m?[jt]s$/
 const electronViteConfigFile = /^electron\.vite\.config\.m?[jt]s$/
 
 // A dependency on a workspace package by its source: workspace:, file:, link: or *.

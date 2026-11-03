@@ -1,0 +1,5 @@
+{
+  "key": "migrate-flow:vite-config-variant-wiring",
+  "source": "foldkit-157: examples/ssr/vite.config.playground.ts, run through scripts/check-playground-ssg-build.ts",
+  "config": "import { defineConfig } from 'vite'\n\nexport default defineConfig({\n  plugins: [\n    foldkit({\n      ssr: {\n        serverEntry: '/src/entry.server.ts',\n        clientEntry: '/src/entry.ts',\n        build: true,\n      },\n    }),\n  ],\n})\n"
+}

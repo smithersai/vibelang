@@ -6,7 +6,7 @@ import { packageDirOf } from "./codemod.mjs"
 import { applyEdits } from "./imports.mjs"
 import { testPath } from "./test-files.mjs"
 
-const configFile = /(?:^|\/)vite\.config\.[cm]?[jt]s$/
+const configFile = /(?:^|\/)vite(?:\.[\w-]+)?\.config(?:\.(?!(?:d|test|spec)\.)[\w-]+)?\.[cm]?[jt]s$/
 const fields = [["build", "lib", "entry"], ["build", "rollupOptions", "input"], ["build", "rolldownOptions", "input"], ["pack", "entry"]]
 
 function entries(text, file, ts, warn) {
