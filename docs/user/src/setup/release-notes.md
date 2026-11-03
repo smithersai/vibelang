@@ -450,6 +450,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - The starred-method overload regression remained pending after the expected `TS1222` was restored. It now runs as an active negative check; its diagnostic expectation is unchanged.
 
+- A chained `as` or `satisfies` after `!!` could be consumed as a requirement type and leave the following type stranded. The parser now keeps a complete chained expression while preserving valid contextual type names and automatic semicolon insertion.
+
 - Generated spec pages and compiler diagnostic defaults could lag accepted rules. They now match the published chapters, including the warning default for `EK3012`.
 
 - Repository build checks could fail before inspecting compiler inputs after target declarations changed. Their isolated fixtures now retain the native source group and imported parser data while checking dependency and cache behavior.

@@ -1,0 +1,24 @@
+// Appendix A: choose R among complete source parses, including real ASI.
+// Spec rule: docs/design/src/900-appendices.md#EffectOperand
+type as = unknown
+type satisfies = unknown
+export function chained(value: unknown) {
+  const assertion = value as number!! as unknown
+  const checked = value as number!! satisfies unknown
+  return [assertion, checked]
+}
+export function retained(value: unknown) {
+  const result = value as number!!as
+  value
+  return result
+}
+export function retainedCheckName(value: unknown) {
+  const result = value as number!!satisfies
+  value
+  return result
+}
+export function collect(value: unknown) {
+  let total = 0
+  for (const n of value as number!! as unknown as number[]) total += n
+  return total
+}

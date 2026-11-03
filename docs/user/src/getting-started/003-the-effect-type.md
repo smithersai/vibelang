@@ -64,6 +64,8 @@ After an assertion, `x as A!! < 3` leaves `R` omitted and continues with a compa
 
 An Effect type operand is an ordinary TypeScript source type. An invalid operand such as `number!!(string?)` reports TypeScript's syntax error. The `EK0301` parenthesis repair applies to actual compound operands, including written function and constructor types.
 
+A following `as` or `satisfies` still continues the expression: `x as A!! as B` keeps `R = never` and then asserts `B`. A type named `as` or `satisfies` can still fill a requirement slot. The parser prefers that slot when both source parses complete, including when a line break ends the statement by automatic semicolon insertion. Inside an argument or parentheses, a line break cannot end the statement.
+
 Hovers show contracts this way, and declaration files keep `Effect.Effect<A, E, R>` for TypeScript callers. `Effect.Effect<A, E, R>` is accepted anywhere a type is.
 
 ## Check selected channels

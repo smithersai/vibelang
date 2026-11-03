@@ -67,6 +67,11 @@ type Parser struct {
 	// vibeLangSlotDepth is > 0 while an Effect type slot is parsed (vibelang.go); JSDoc postfix forms are excluded there.
 	vibeLangSlotDepth int
 
+	// Expression termination is scoped by the expression’s actual caller.
+	vibeLangExpressionASI     bool
+	vibeLangOmitRequirementAt int
+	vibeLangAssertionChoices  map[effectAssertionChoiceKey]int
+
 	scanner *scanner.Scanner
 	factory ast.NodeFactory
 
@@ -325,6 +330,7 @@ func ParseIsolatedEntityName(text string) *ast.EntityName {
 }
 
 func (p *Parser) initializeState(opts ast.SourceFileParseOptions, sourceText string, scriptKind core.ScriptKind) {
+	p.vibeLangAssertionChoices = nil
 	if scriptKind == core.ScriptKindUnknown {
 		panic("ScriptKind must be specified when parsing source file: " + opts.FileName.AsString())
 	}
@@ -1526,7 +1532,7 @@ func (p *Parser) parseReturnStatement() *ast.Node {
 	p.parseExpected(ast.KindReturnKeyword)
 	var expression *ast.Expression
 	if !p.canParseSemicolon() {
-		expression = p.parseExpressionAllowIn()
+		expression = p.parseVibeLangExpressionAllowInASI()
 	}
 	p.parseSemicolon()
 	if info := p.vibelangMatches[expression]; info != nil {
@@ -1621,7 +1627,7 @@ func (p *Parser) parseThrowStatement() *ast.Node {
 	// will be reported in the grammar walker.
 	var expression *ast.Expression
 	if !p.hasPrecedingLineBreak() {
-		expression = p.parseExpressionAllowIn()
+		expression = p.parseVibeLangExpressionAllowInASI()
 	} else {
 		expression = p.createMissingIdentifier()
 	}
@@ -1703,7 +1709,7 @@ func (p *Parser) parseExpressionOrLabeledStatement() *ast.Statement {
 		p.withJSDoc(result, jsdoc)
 		return result
 	}
-	expression := p.parseExpression()
+	expression := p.withVibeLangExpressionASI(true, (*Parser).parseExpressionWorker)
 
 	if expression.Kind == ast.KindIdentifier && p.parseOptional(ast.KindColonToken) {
 		result := p.finishNode(p.factory.NewLabeledStatement(expression, p.parseEmbeddedStatement()), pos)
@@ -1806,7 +1812,7 @@ func (p *Parser) parseVariableDeclarationWorker(allowExclamation bool) *ast.Node
 	typeNode := p.parseTypeAnnotation()
 	var initializer *ast.Expression
 	if p.token != ast.KindInKeyword && p.token != ast.KindOfKeyword {
-		initializer = p.parseInitializer()
+		initializer = p.parseVibeLangExpressionInitializer(!p.inDisallowInContext())
 	}
 	result := p.finishNode(p.factory.NewVariableDeclaration(name, exclamationToken, typeNode, initializer), pos)
 	p.withJSDoc(result, jsdoc)
@@ -2261,7 +2267,7 @@ func (p *Parser) parsePropertyDeclaration(pos int, jsdoc jsdocScannerInfo, modif
 		postfixToken = p.parseOptionalToken(ast.KindExclamationToken)
 	}
 	typeNode := p.parseTypeAnnotation()
-	initializer := p.doInContext(ast.NodeFlagsYieldContext|ast.NodeFlagsAwaitContext|ast.NodeFlagsDisallowInContext, false, (*Parser).parseVibeLangOrdinaryInitializer)
+	initializer := p.doInContext(ast.NodeFlagsYieldContext|ast.NodeFlagsAwaitContext|ast.NodeFlagsDisallowInContext, false, (*Parser).parseVibeLangClassInitializer)
 	initializer = p.hoistInitializerBody(initializer)
 	if p.isVibeLangFieldComma(typeNode, initializer) {
 		p.vibelangFieldComma = true // the comma is the next class element (vibelang_errors.go)
@@ -2872,7 +2878,7 @@ func (p *Parser) parseExportAssignment(pos int, jsdoc jsdocScannerInfo, modifier
 	if !isExportEquals && p.isStartOfVibeLangModuleExpression() {
 		expression = p.rejectVibeLangModule(4002, ModuleExportMessage)
 	} else {
-		expression = p.parseAssignmentExpressionOrHigher()
+		expression = p.withVibeLangExpressionASI(true, func(p *Parser) *ast.Expression { return p.parseAssignmentExpressionOrHigherWorker(true) })
 	}
 	p.parseSemicolon()
 	p.contextFlags = saveContextFlags
@@ -4453,6 +4459,10 @@ func (p *Parser) nextTokenIsOpenBrace() bool {
 }
 
 func (p *Parser) parseExpression() *ast.Expression {
+	return p.withVibeLangExpressionASI(false, (*Parser).parseExpressionWorker)
+}
+
+func (p *Parser) parseExpressionWorker() *ast.Expression {
 	// Expression[in]:
 	//      AssignmentExpression[in]
 	//      Expression[in] , AssignmentExpression[in]
@@ -4461,13 +4471,13 @@ func (p *Parser) parseExpression() *ast.Expression {
 	saveContextFlags := p.contextFlags
 	p.contextFlags &^= ast.NodeFlagsDecoratorContext
 	pos := p.nodePos()
-	expr := p.parseAssignmentExpressionOrHigher()
+	expr := p.parseAssignmentExpressionOrHigherWorker(true)
 	for {
 		operatorToken := p.parseOptionalToken(ast.KindCommaToken)
 		if operatorToken == nil {
 			break
 		}
-		expr = p.makeBinaryExpression(expr, operatorToken, p.parseAssignmentExpressionOrHigher(), pos)
+		expr = p.makeBinaryExpression(expr, operatorToken, p.parseAssignmentExpressionOrHigherWorker(true), pos)
 	}
 	p.contextFlags = saveContextFlags
 	return expr
@@ -4478,7 +4488,9 @@ func (p *Parser) parseExpressionAllowIn() *ast.Expression {
 }
 
 func (p *Parser) parseAssignmentExpressionOrHigher() *ast.Expression {
-	return p.parseAssignmentExpressionOrHigherWorker(true /*allowReturnTypeInArrowFunction*/)
+	return p.withVibeLangExpressionASI(false, func(p *Parser) *ast.Expression {
+		return p.parseAssignmentExpressionOrHigherWorker(true /*allowReturnTypeInArrowFunction*/)
+	})
 }
 
 func (p *Parser) parseAssignmentExpressionOrHigherWorker(allowReturnTypeInArrowFunction bool) *ast.Expression {
@@ -4592,7 +4604,7 @@ func (p *Parser) parseYieldExpression() *ast.Node {
 	p.nextToken()
 	var result *ast.Node
 	if !p.hasPrecedingLineBreak() && (p.token == ast.KindAsteriskToken || p.isStartOfExpression()) {
-		result = p.factory.NewYieldExpression(p.parseOptionalToken(ast.KindAsteriskToken), p.parseAssignmentExpressionOrHigher())
+		result = p.factory.NewYieldExpression(p.parseOptionalToken(ast.KindAsteriskToken), p.parseAssignmentExpressionOrHigherWorker(true))
 	} else {
 		// if the next token is not on the same line as yield.  or we don't have an '*' or
 		// the start of an expression, then this is just a simple "yield" expression.
@@ -4983,7 +4995,9 @@ func (p *Parser) parseConditionalExpressionRest(leftOperand *ast.Expression, pos
 	// we do not that for the 'whenFalse' part.
 	saveContextFlags := p.contextFlags
 	p.setContextFlags(ast.NodeFlagsDisallowInContext, false)
-	trueExpression := p.parseAssignmentExpressionOrHigherWorker(false /*allowReturnTypeInArrowFunction*/)
+	trueExpression := p.withVibeLangExpressionASI(false, func(p *Parser) *ast.Expression {
+		return p.parseAssignmentExpressionOrHigherWorker(false /*allowReturnTypeInArrowFunction*/)
+	})
 	p.contextFlags = saveContextFlags
 	colonToken := p.parseExpectedToken(ast.KindColonToken)
 	var falseExpression *ast.Expression
@@ -5074,9 +5088,9 @@ func (p *Parser) parseBinaryExpressionRest(precedence ast.OperatorPrecedence, le
 					lastPrecedence = ast.GetBinaryOperatorPrecedence(lastOperand.AsBinaryExpression().OperatorToken.Kind)
 				}
 				if operator == ast.KindSatisfiesKeyword {
-					leftOperand = p.makeSatisfiesExpression(leftOperand, p.parseType())
+					leftOperand = p.makeSatisfiesExpression(leftOperand, p.parseVibeLangAssertionType())
 				} else {
-					leftOperand = p.makeAsExpression(leftOperand, p.parseType())
+					leftOperand = p.makeAsExpression(leftOperand, p.parseVibeLangAssertionType())
 				}
 				// Stop if the next operator would bind before the last operator when the assertion is erased.
 				nextOperator := p.reScanGreaterThanToken()
