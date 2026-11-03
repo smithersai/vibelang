@@ -774,7 +774,7 @@ DefaultArm = "default" ":" ArmBody
 #### ArmBody
 
 ```text
-ArmBody = Expression | "throw" Expression
+ArmBody = [lookahead ≠ "throw"] Expression | "throw" Expression
 ```
 
 #### ArrayPattern
