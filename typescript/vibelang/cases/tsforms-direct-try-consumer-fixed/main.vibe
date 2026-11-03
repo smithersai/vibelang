@@ -1,3 +1,13 @@
+// rule-evidence: docs/design/vips/0005-try-runs-effects.md#4e87049d9f0c7bba
+// VIP-5: The EK4834–EK4836 form advisories use a direct try consumer, not
+// rule-evidence: docs/design/vips/0005-try-runs-effects.md#19464320375d3de5
+// VIP-5: These three advisories do not inspect a fork operand (any
+// rule-evidence: docs/design/vips/0005-try-runs-effects.md#f14479558cb9703d
+// VIP-5: In particular, detail199's fork Effect.catch(e, h) remains an admitted child-side
+// rule-evidence: docs/design/vips/0005-try-runs-effects.md#fc10da2856a22b2f
+// VIP-5: vibe effect function demo(e: Effect<number>, h: (x: unknown) => Effect<number>)
+// rule-evidence: docs/design/vips/0005-try-runs-effects.md#4e2dd4071a6bfe7d
+// VIP-5: ts function demo(e: Effect.Effect<number>, h: (x: unknown) => Effect.Effect<number>) {
 // expect-result: {"one":1,"two":2,"three":3,"r":4,"p":5,"c":7,"all":[1,2],"settled":1,"chained":8}
 // 007-tooling.md, EK4834-EK4836 (loop round 5 OPUS-4, decided detail 254):
 // the three rows warn only on the direct operand of bare try in effect code,
