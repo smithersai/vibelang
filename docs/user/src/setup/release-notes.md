@@ -255,11 +255,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 ### Bugs fixed since 0.0.10
 
-- Spec changes with explicit pending tests were rejected as having no rule evidence. The checker now accepts a changed `test.todo` for its exact rule and reports pending obligations separately from executable coverage.
 
-- The diagnostic appendix omitted the native call-error codes named by trailing-block migration; it now lists `TS2345`, `TS2554` and `TS2769` with their triggers.
 
-- The entry-migration guide described rewriting unmarked `main` functions and retaining retired runtime helpers; it now limits repair to platform-marked modules, names the explicit runners and explains when repair refuses.
 
 - The migrate flow's codemod left a test that lists a directory and filters it with an extension regex, such as t3code's React Compiler coverage and dependency-graph tests (`/\.tsx?$/.test(file)`), selecting only `.ts` files, so each migrated module silently dropped out of the check (318 t3code web and mobile modules stayed TypeScript); it now widens that one regex to `/(?<!\.d\.vibe)\.(?:tsx?|vibe)$/`, which selects `.vibe` modules and not their `x.d.vibe.ts` sidecars, when the selected files are the same by base name, and `verify` accepts only that widening.
 
@@ -2015,6 +2012,11 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Formatting a file twice could indent a line again when the first format moved a statement onto a line of its own and the statement continued on the next line: a call's arguments, as in `{{0!\n("")}}`, a binary operator, as in `{{x\n+ y}}`, or a `%` operand. The first format now gives the final indentation.
 - Abstract classes could silently become services, and service defaults used a different contract from Effect; services now use `service` declarations and `defaultValue` thunks checked as `() => Shape`.
 - The same `A!E` annotation meant different types on a function and a service member; omitted slots now mean `never` everywhere.
+
+- Spec changes with explicit pending tests were rejected as having no rule evidence. The checker now accepts a changed `test.todo` for its exact rule and reports pending obligations separately from executable coverage.
+- The diagnostic appendix omitted the native call-error codes named by trailing-block migration; it now lists `TS2345`, `TS2554` and `TS2769` with their triggers.
+- The entry-migration guide described rewriting unmarked `main` functions and retaining retired runtime helpers; it now limits repair to platform-marked modules, names the explicit runners and explains when repair refuses.
+
 ### Known bugs
 
 These bugs were found and confirmed and are being fixed; please don't re-report them, and each entry moves to the fixed list when its fix lands.
