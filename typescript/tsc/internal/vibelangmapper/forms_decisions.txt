@@ -4368,6 +4368,12 @@ typescript/vibelang/cases/plain-throw-escapes.fail/a.vibe:20:14 lambda dual fall
 typescript/vibelang/cases/plain-throw-escapes.fail/a.vibe:50:38 lambda plain table
 typescript/vibelang/cases/plain-throw-escapes.fail/a.vibe:8:25 lambda plain annotation
 typescript/vibelang/cases/platform-host-augmentation/main.vibe:2:33 lambda plain annotation
+typescript/vibelang/cases/platform-host-file-scope.fail/main.vibe:3:56 lambda plain table
+typescript/vibelang/cases/platform-host-file-scope.fail/main.vibe:4:72 lambda plain table
+typescript/vibelang/cases/platform-host-file-scope.fail/main.vibe:5:57 lambda plain table
+typescript/vibelang/cases/platform-host-file-scope.fail/main.vibe:5:64 lambda plain fallback
+typescript/vibelang/cases/platform-host-file-scope.fail/main.vibe:6:105 lambda plain table
+typescript/vibelang/cases/platform-host-file-scope.fail/main.vibe:6:65 lambda plain table
 typescript/vibelang/cases/platform-host-members/input/main.vibe:17:58 lambda plain table
 typescript/vibelang/cases/platform-host-members/input/main.vibe:18:72 lambda plain table
 typescript/vibelang/cases/platform-host-members/input/main.vibe:19:63 lambda plain table
