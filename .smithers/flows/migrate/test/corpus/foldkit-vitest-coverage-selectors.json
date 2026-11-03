@@ -1,0 +1,6 @@
+{
+  "key": "migrate-flow:vitest-coverage-selectors",
+  "source": "foldkit-145: packages/foldkit/vitest.config.ts kept coverage.include src/**/*.ts; 79 .vibe modules left the report and 79 .d.vibe.ts sidecars joined it",
+  "before": "import { defineConfig } from 'vitest/config'\n\nexport default defineConfig({\n  test: {\n    coverage: {\n      provider: 'v8',\n      include: ['src/**/*.ts'],\n      exclude: ['src/**/*.test.ts', 'src/**/*.d.ts'],\n    },\n  },\n})\n",
+  "after": "import { defineConfig } from 'vitest/config'\n\nexport default defineConfig({\n  test: {\n    coverage: {\n      provider: 'v8',\n      include: ['src/**/*.{ts,vibe}'],\n      exclude: ['src/**/*.test.ts', 'src/**/*.d.ts', '**/*.d.vibe.ts'],\n    },\n  },\n})\n"
+}

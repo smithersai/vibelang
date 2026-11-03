@@ -535,6 +535,67 @@ function wireViteConfig({ root, file, ts, specsFor, changed, register = false })
   const manifest = posix.join(owner, "package.json")
   const before = readFileSync(join(root, manifest), "utf8")
   write(manifest, before, JSON.stringify(addVibeLangPlugin(JSON.parse(before), specsFor(owner)), null, 2) + "\n")
+  if (register) {
+    const current = readFileSync(join(root, file), "utf8")
+    write(file, current, addCoverageSelectors(current, ts))
+  }
+}
+
+const sidecarGlob = "**/*.d.vibe.ts"
+
+/** A coverage include glob with .vibe beside .ts: `src/**\/*.ts` or `*.{ts,tsx}`. A literal path, or a glob that already names .vibe or only declarations, stays. */
+export function widenCoverageGlob(glob) {
+  if (!/[*?]/.test(glob) || /\bvibe\b/.test(glob) || /\.d\.(?:[cm]?ts|\{[^}]*\})$/.test(glob) || glob.startsWith("!")) return glob
+  const braces = /\.\{([^{}]*)\}$/.exec(glob)
+  if (braces) return braces[1].split(",").map((x) => x.trim()).includes("ts") ? `${glob.slice(0, braces.index)}.{${braces[1]},vibe}` : glob
+  return glob.endsWith(".ts") ? `${glob.slice(0, -".ts".length)}.{ts,vibe}` : glob
+}
+
+/**
+ * Keeps migrated modules in a Vitest coverage report (foldkit-145): each
+ * `coverage.include` glob that selects .ts also selects .vibe, and
+ * `coverage.exclude` drops the sidecars, which such a glob also matches. A
+ * config without `include` measures what the tests load and stays as it is.
+ * Throws when include or exclude is not an array literal, so a person edits it.
+ */
+export function addCoverageSelectors(text, ts) {
+  const source = ts.createSourceFile("vitest.config.ts", text, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS)
+  const test = propertyOf(defineConfigObject(source, ts) ?? { properties: [] }, "test", ts)
+  const options = test && ts.isPropertyAssignment(test) ? unwrapped(test.initializer, ts) : undefined
+  const coverage = options && ts.isObjectLiteralExpression(options) ? propertyOf(options, "coverage", ts) : undefined
+  const object = coverage && ts.isPropertyAssignment(coverage) ? unwrapped(coverage.initializer, ts) : undefined
+  if (!object || !ts.isObjectLiteralExpression(object)) return text
+  const include = propertyOf(object, "include", ts)
+  if (!include) return text
+  const arrayOf = (property, name) => {
+    const list = ts.isPropertyAssignment(property) ? unwrapped(property.initializer, ts) : undefined
+    if (!list || !ts.isArrayLiteralExpression(list)) throw new Error(`coverage.${name} is not an array literal; add .vibe to its globs and ${sidecarGlob} to coverage.exclude yourself, or .vibe modules leave the coverage report`)
+    return list
+  }
+  const globs = arrayOf(include, "include")
+  const edits = [], literals = globs.elements.filter((element) => ts.isStringLiteralLike(element))
+  for (const element of literals) {
+    const widened = widenCoverageGlob(element.text)
+    if (widened === element.text) continue
+    const quote = text[element.getStart(source)]
+    edits.push({ start: element.getStart(source), end: element.getEnd(), text: quote + widened + quote })
+  }
+  const selects = literals.some((element) => widenCoverageGlob(element.text) !== element.text || /\bvibe\b/.test(element.text))
+  if (!selects) return text
+  const quote = text[literals[0].getStart(source)]
+  const glob = quote + sidecarGlob + quote
+  const exclude = propertyOf(object, "exclude", ts)
+  if (!exclude) edits.push({ start: include.getEnd(), end: include.getEnd(), text: `, exclude: [${glob}]` })
+  else {
+    const list = arrayOf(exclude, "exclude")
+    if (!list.elements.some((element) => ts.isStringLiteralLike(element) && element.text === sidecarGlob)) {
+      const last = list.elements.at(-1)
+      edits.push(last ? { start: last.getEnd(), end: last.getEnd(), text: `, ${glob}` } : { start: list.getStart(source) + 1, end: list.getStart(source) + 1, text: glob })
+    }
+  }
+  let out = text
+  for (const edit of edits.sort((a, b) => b.start - a.start)) out = out.slice(0, edit.start) + edit.text + out.slice(edit.end)
+  return out
 }
 
 // Directories a repository walk skips: dependencies, hidden directories, and
