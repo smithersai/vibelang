@@ -45,6 +45,9 @@ func inferredEffectArguments(c *checker.Checker, call *ast.Node) []*ast.Node {
 	}
 	inferred := make(map[*checker.Type]bool)
 	for i, param := range params {
+		if constraintNamesEffect(c, param) {
+			continue // a declared Effect position, as Effect.forkChild's Arg
+		}
 		if isEffectType(c, args[i]) || isEffectSubtype(c, args[i]) {
 			inferred[param] = true
 		}
@@ -67,6 +70,23 @@ func inferredEffectArguments(c *checker.Checker, call *ast.Node) []*ast.Node {
 		}
 	}
 	return out
+}
+
+// constraintNamesEffect reports whether param's constraint is an Effect or a
+// union with an Effect member, as in Effect's duals
+// `<Arg extends Effect<any, any, any> | Options>(effectOrOptions?: Arg)`:
+// the parameter declares that it takes a program (VIP-1, inferred Effect
+// arguments), even though the conditional return type is no Effect.
+func constraintNamesEffect(c *checker.Checker, param *checker.Type) bool {
+	t := c.GetConstraintOfTypeParameter(param)
+	if t == nil {
+		return false
+	}
+	parts := []*checker.Type{t}
+	if t.Flags()&checker.TypeFlagsUnion != 0 {
+		parts = t.Types()
+	}
+	return slices.ContainsFunc(parts, func(part *checker.Type) bool { return isEffectType(c, part) || isEffectSubtype(c, part) })
 }
 
 // Follow generic containers and callback contracts without expanding their

@@ -28,6 +28,11 @@ func TestEffectIntoPlainGeneric(t *testing.T) {
 		{"run", "function take<T>(x: T): number { return 1 }", "try job", "", 0},
 		{"plain-owner", "function take<T>(x: T): number { return 1 }", "job", "", 0},
 		{"declared-program", "function take<T>(x: Effect.Effect<T>): number { return 1 }", "job", "", 0},
+		{"effect-constraint", "function take<T extends Effect.Effect<any, any, any>>(x: T): number { return 1 }", "job", "", 0},
+		{"dual-constraint", "function take<T extends Effect.Effect<any, any, any> | { readonly n?: number } | undefined>(x?: T): [T] extends [Effect.Effect<infer A>] ? Effect.Effect<A> : number { return 1 as any }", "job", "", 0},
+		{"effect-fork-child", "const take = Effect.forkChild", "job", "", 0},
+		{"effect-fork-detach", "const take = Effect.forkDetach", "job", "", 0},
+		{"other-constraint", "function take<T extends { readonly n?: number } | object>(x: T): number { return 1 }", "job", "", 1},
 		{"effect-factory", "function take<T>(x: T): Effect.Effect<T> { return Effect.succeed(x) }", "job", "", 0},
 	} {
 		t.Run(test.name, func(t *testing.T) {
