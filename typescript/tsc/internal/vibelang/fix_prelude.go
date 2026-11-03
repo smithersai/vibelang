@@ -4,6 +4,7 @@ import (
 	"context"
 	"slices"
 	"strings"
+	"sync"
 
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/checker"
@@ -534,13 +535,16 @@ func declarationsOf(ctx context.Context, program *compiler.Program, names []tspa
 		}
 	}
 	texts := map[tspath.RootedFilePath]string{}
+	var writes sync.Mutex // Program.Emit invokes WriteFile concurrently for different files.
 	if len(files) == 0 {
 		return texts
 	}
 	program.Emit(ctx, compiler.EmitOptions{TargetSourceFiles: files, EmitOnly: compiler.EmitOnlyDts, ForceEmit: true,
 		WriteFile: func(name tspath.RootedFilePath, data string, written *compiler.WriteFileData) error {
 			if written != nil && written.SourceFile != nil && tspath.IsDeclarationFileName(name.AsString()) {
+				writes.Lock()
 				texts[written.SourceFile.FileName()] = data
+				writes.Unlock()
 			}
 			return nil
 		}})

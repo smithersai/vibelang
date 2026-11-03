@@ -420,3 +420,5 @@ During migration, a generated source-child helper that cannot safely move to a p
 
 Use `vibelang --fix --fix-migration-only` when upgrading modules written for the former implicit readonly default. It writes `readonly` on native interface properties, object-type members and index signatures, including nested type annotations, to preserve their old declarations. It retains explicit `readonly` and `mutable` members, and preserves the TypeScript mutability of methods, class fields and embedded `module` bodies. Normal checking and ordinary `--fix` use the current written mutability.
 
+
+When `--fix` checks declaration imports across several modules, declaration emission runs in parallel and collects every module's result before comparing the proposed imports.
