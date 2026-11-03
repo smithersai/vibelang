@@ -124,7 +124,7 @@ Anything else after `catch` is a syntax error (`EK0509`): a name, a call, any ot
 | `x catch function* (e) { }` | syntax error | quick fix: `x catch function (e) { }` |
 | `try x catch (e) { … }` | syntax error `EK0509` | quick fix: `x catch effect (e) => { … }` |
 
-An arrow handler's body is TypeScript's concise body, which extends as far as an assignment expression does, as in `(e) => a ?? b`: `a catch () => b ? c : d` means `a catch (() => (b ? c : d))`, and `a catch () => b |> % + 1` means `a catch (() => (b |> % + 1))`: with `a` succeeding with `5` and `b` equal to `0` it gives `5`, and `(a catch () => b) |> % + 1` gives `6`. So `a catch effect (e) => b catch () => c` means `a catch (effect (e) => (b catch (() => c)))`. With a plain arrow, `b catch () => c` is in a plain function, so `a catch (e) => b catch () => c` is the error "`catch` outside effect code". Parenthesizing the arrow, `a catch ((e) => b) catch ((e) => c)`, parses, but the outer `catch` then needs an Effect operand (below).
+An expression-bodied arrow handler takes an `AssignmentExpression` as its body, as in `(e) => a ?? b`: `a catch () => b ? c : d` means `a catch (() => (b ? c : d))`, and `a catch () => b |> % + 1` means `a catch (() => (b |> % + 1))`: with `a` succeeding with `5` and `b` equal to `0` it gives `5`, and `(a catch () => b) |> % + 1` gives `6`. So `a catch effect (e) => b catch () => c` means `a catch (effect (e) => (b catch (() => c)))`. With a plain arrow, `b catch () => c` is in a plain function, so `a catch (e) => b catch () => c` is the error "`catch` outside effect code". Parenthesizing the arrow, `a catch ((e) => b) catch ((e) => c)`, parses, but the outer `catch` then needs an Effect operand (below).
 
 In `(a catch h) catch k`, the outer `catch` runs the value that `a catch h` gives, so `a`'s success (`never`, if `a` only fails, passes the operand test above) and `h`'s result must both be Effects. To try fallbacks in turn, nest them in an `effect` handler: `a catch effect () => b catch () => c`.
 
@@ -140,7 +140,35 @@ const nested = Effect.gen(function* () {
 })
 ```
 
-After a parenthesized handler or a function expression handler, another `catch` or a lower-precedence operator may follow, but a member access or call can't attach to the handler, so `a catch function () { }.call(o)` is a syntax error (`EK0512`). Parenthesize the whole `catch` expression first: `(a catch function () { }).pipe(f)`.
+After a parenthesized handler, a function expression handler or a block-bodied arrow handler, another `catch` or a lower-precedence operator may follow, but a member access or call can't attach to the handler, so `a catch function () { }.call(o)` is a syntax error (`EK0512`). Parenthesize the whole `catch` expression first: `(a catch function () { }).pipe(f)`.
+
+A block-bodied arrow closes at its `}`; a following conditional tests the recovered value, and a following `catch` runs that value if it is an Effect. The plain handler in `closedCatchChain` deliberately returns an unrun Effect (`EK0508` warning); the second `catch` runs it.
+
+```vibe es
+effect function closedCatchConditional() {
+  return fail("e") catch () => { return true } ? 1 : 2
+}
+effect function closedCatchChain() {
+  return fail("e") catch () => { return succeed(7) } catch () => 9
+}
+```
+
+These have `Success(1)` and `Success(7)` respectively:
+
+```ts effect
+import { Effect } from "effect"
+
+const closedCatchConditional = Effect.gen(function* () {
+  return (yield* Effect.catch(Effect.fail("e"), () => Effect.succeed(true))) ? 1 : 2
+})
+const closedCatchChain = Effect.gen(function* () {
+  const recovered = yield* Effect.catch(Effect.fail("e"), () => Effect.succeed(Effect.succeed(7)))
+  return yield* Effect.catch(recovered, () => Effect.succeed(9))
+})
+if (Effect.runSync(closedCatchConditional) !== 1 || Effect.runSync(closedCatchChain) !== 7) {
+  throw new Error("closed catch handlers must leave following operators outside the body")
+}
+```
 
 ### Static rules
 

@@ -495,6 +495,7 @@ ok ? x |> % + 1 : 0         a pipe in a branch
 
 ```text
 ClosedCatchExpression = CatchHead "catch" NonArrowHandler
+                      | CatchHead "catch" BlockArrowHandler
 ```
 
 <a id="catchhead"></a>
@@ -506,13 +507,19 @@ CatchHead = ClosedCatchExpression | BitwiseORExpression
 #### CatchHandler
 
 ```text
-CatchHandler = ArrowHandler | NonArrowHandler   (always a function literal; VIP-5, amended 2026-10-29)
+CatchHandler = ArrowHandler | BlockArrowHandler | NonArrowHandler   (always a function literal; VIP-5, amended 2026-10-29)
 ```
 
 <a id="arrowhandler"></a>
 
 ```text
-ArrowHandler = ArrowFunction | EffectArrow   (no AsyncArrowFunction: VIP-5, amended)
+ArrowHandler = ArrowFunction | EffectArrow   (expression ConciseBody only; no AsyncArrowFunction: VIP-5, amended)
+```
+
+<a id="blockarrowhandler"></a>
+
+```text
+BlockArrowHandler = ArrowFunction | EffectArrow   (block ConciseBody only; no AsyncArrowFunction: VIP-5, amended)
 ```
 
 <a id="nonarrowhandler"></a>
@@ -820,7 +827,7 @@ VIP-40: TC39's module declaration, restricted to a top-level statement of a `.vi
 
 **Pipe snapshot reconciliations.** The missing-topic early error checks the `AssignmentExpression` child with `ContainsOuterTopic`; the `PipeBody` boundary still returns `false`. Evaluation uses the actual `ShortCircuitExpression` input once, with `GetValue`, rather than the stale `ConditionalExpression` reference. `GetPrimaryTopicValue` reads `topicEnv.[[TopicValues]]`, not the unbound `envRec`. Binary XOR `^` and XOR assignment `^=` remain ordinary TypeScript operators despite the duplicated `%` in the token table. The [snapshot receipt](../vips/tc39-pipeline-operator/README.md) records these corrections without changing the upstream HTML; [Running Effects](002-running.md#the-pipe-operator) gives the examples.
 
-**`catch`.** [CatchExpression](#catchexpression) sits in ECMAScript's precedence chain beside `CoalesceExpression`, and its head mirrors `CoalesceExpressionHead`: it binds like `??`, is left-associative, and can't be mixed with `??`, `||` or `&&` without parentheses, for the same structural reason `a ?? b || c` is a syntax error. The handler is a plain or `effect` arrow or function expression, possibly parenthesized, so its kind is decided by its syntax alone; any other handler is `EK0509` ([Running Effects](002-running.md#catch)). An unparenthesized arrow handler ends the chain: its `ConciseBody` is the longest `AssignmentExpression`, as in an ECMAScript arrow, so a later `catch` belongs to the body. Any other handler is a closed expression, after which only another `catch` or a lower-precedence operator can follow.
+**`catch`.** [CatchExpression](#catchexpression) sits in ECMAScript's precedence chain beside `CoalesceExpression`, and its head mirrors `CoalesceExpressionHead`: it binds like `??`, is left-associative, and can't be mixed with `??`, `||` or `&&` without parentheses, for the same structural reason `a ?? b || c` is a syntax error. The handler is a plain or `effect` arrow or function expression, possibly parenthesized, so its kind is decided by its syntax alone; any other handler is `EK0509` ([Running Effects](002-running.md#catch)). An unparenthesized expression-bodied arrow handler ends the chain: its `ConciseBody` is the longest `AssignmentExpression`, as in an ECMAScript arrow, so a later `catch` belongs to the body. Any other handler is a closed expression, after which only another `catch` or a lower-precedence operator can follow.
 
 ```text
 a catch (() => b) catch (() => c)    (a catch (() => b)) catch (() => c); type-checks only when the inner catch gives an Effect: a's success (never, if a only fails) and b are both Effects
