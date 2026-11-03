@@ -19,7 +19,7 @@ An agent that writes VibeLang loads the skill first: its forms, rules and idioms
 | --- | ---: |
 | The VibeLang skill, `packages/compiler/skills/vibelang/SKILL.md` | 4,435 |
 | The skill and the [cheat sheet](115-cheat-sheet.md) | 15,447 |
-| The skill and the user guide (140 pages) | 380,000 |
+| The skill and the user guide (140 pages) | 390,000 |
 | The user guide alone | 380,000 |
 | The specification (10 chapters) | 160,000 |
 | The decision log, `docs/design/history/DECISIONS.md` | 140,000 |
@@ -117,7 +117,7 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [vibelang CLI](../setup/vibelang-cli.md) | 9,100 |
 | [Vite and Vitest](../setup/vite.md) | 2,900 |
 | **Format and lint** | **6,200** |
-| [Format with dprint](../setup/formatting.md) | 2,200 |
+| [Format with dprint](../setup/formatting.md) | 2,300 |
 | [Developer tools](../setup/developer-tools.md) | 3,900 |
 | **Frameworks** | **12,000** |
 | [React](../setup/react.md) | 2,100 |
@@ -131,8 +131,8 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [Zed](../setup/zed.md) | 480 |
 | [Other editors](../setup/other-editors.md) | 490 |
 | [Coding agents](../setup/coding-agents.md) | 1,100 |
-| **Upgrade** | **99,000** |
-| [Release notes](../setup/release-notes.md) | 99,000 |
+| **Upgrade** | **100,000** |
+| [Release notes](../setup/release-notes.md) | 100,000 |
 | **All 19 pages** | **140,000** |
 
 ### Guides
@@ -143,7 +143,7 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | **Error Management** | **17,000** |
 | [Expected Errors](../error-management/014-expected-errors.md) | 6,200 |
 | [Unexpected Errors](../error-management/015-unexpected-errors.md) | 1,600 |
-| [Fallback](../error-management/016-fallback.md) | 1,500 |
+| [Fallback](../error-management/016-fallback.md) | 1,600 |
 | [Matching](../error-management/017-matching.md) | 850 |
 | [Retrying](../error-management/018-retrying.md) | 830 |
 | [Timing Out](../error-management/019-timing-out.md) | 940 |

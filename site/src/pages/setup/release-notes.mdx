@@ -512,6 +512,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - A valid severity override could still fail compilation because an overridden base entry was invalid; only effective severity entries now report `EK3006`, and valid overrides allow emission again.
 - With a repeated configuration key, an invalid-value error could underline the earlier valid value; it now points at the last value that the config uses.
 
+- Site generator unit tests ran in no build target, so regressions could reach the published docs unchecked; the release gate now runs both dependency-free suites.
 
 - The short compiler fuzz suite could exceed its CPU limit after adding migration coverage; repeated `--fix` checks now reuse unchanged dependency syntax while still checking every seed.
 
@@ -527,6 +528,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Programmatic Rolldown builds and exported plugin sets could not bundle migrated modules, including Alchemy's lazy bundles and framework adapters; setup now wires the native plugin into supported calls and typed plugin factories, preserves test-pinned plugin positions, and installs runtime dependencies for published code.
 
 - Compiler benchmarks overwrote earlier trials and targets' diagnostic logs. Every invocation now retains all trial logs, commands and parsed samples, including failed trials, when you reuse `--out`.
+- A held union of Effects could be rejected even though every alternative was an Effect; `try` now accepts it and preserves every success, error and requirement type.
 - Schema fuzzing could miss readonly-record alias regressions outside one spelling; keyed checks now cover the alias, mutability and required-key combinations while keeping unresolved compiler gaps explicit.
 - A catch-handler quick fix could remove `async` or `*` and leave invalid `await`, `yield` or result types; it now declines those repairs and explains the required explicit rewrite.
 
@@ -1344,6 +1346,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - `when Array(let n):` bound the whole array, a typed-array extractor bound the whole value, `when pair(let a, let b):` threw at run time when `pair` was a plain function, and a class whose matcher declared its hint as `{ matchType: "extractor" }` typed its bindings as the class instance. `Array` and typed arrays now list their elements, as the proposal says, a plain function is called with the value and `{ matchType: "extractor" }` and returns `false` or the values, and the matcher's declared return type types the bindings.
 
 - The headless editor check waited for request timeouts after its language server crashed, and could write to a closed pipe; it now reports the affected request and exit cause immediately and cleans up pending requests.
+
+- Formatting comma-separated `error` and `schema error` fields beside methods or getters failed with an internal error. These bodies now format while preserving their separators, comments and diagnostics.
 
 - `vibelang-format` and the `vibelang/prettier` plugin wrote double quotes and wrapped at 120 columns whatever the repository's formatter settings said, so in a repository such as foldkit (Oxfmt, `singleQuote`, `printWidth: 80`) `.vibe` files differed in style from its `.ts` files. They now take the quote style and print width from the repository's Oxfmt, Prettier or dprint configuration, or from Prettier's options.
 
@@ -2425,6 +2429,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 
 - Changes to the formatter specification could pass the pre-merge checks without running one of its quote guards; every static-rule quote guard is now checked for inclusion in that gate.
+
+- A passing compiler-case suite gave no warning when a case or phase became slower; `scripts/bench/case-timings.mjs` now compares repeated timing reports, flags median increases over `50%` without blocking correctness checks, and rejects incomplete or mismatched evidence.
 
 ### Known bugs
 

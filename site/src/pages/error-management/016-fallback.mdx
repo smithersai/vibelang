@@ -53,6 +53,8 @@ Saved issue
 
 Parentheses keep an arrow as the handler: `latestTitle() catch ((error) => error._tag)` receives the failure, just as an unparenthesized arrow does. Its parameter keeps the failure type, and its body still runs only after a failure.
 
+An `async` or generator function is not a catch handler. Its quick fix removes `async` or `*` only when the result is a valid plain handler. Native `await`, `for await`, `await using` and `yield`, returned `Promise` values, and incompatible written return types need an explicit rewrite; the diagnostic explains why no automatic repair is offered.
+
 `try Effect.catch(latestTitle(), () => cachedTitle())` also works, with the same rule as source catch: it leaves a cause with a defect alone and recovers an expected failure beside an interruption, dropping the interruption. When interruption must propagate intact, match on `exit(...)`. `Effect.catchTag`, `Effect.catchIf`, and `Effect.catchFilter` also select domain failures, under Effect's own recovery policy.
 
 ## Supplying a default success
