@@ -9,9 +9,9 @@ import (
 
 // RULES9: a chapter edit must invalidate the actual Node property oracle in the spec gate.
 func TestOxlintNamespaceContractQuoted(t *testing.T) {
-	const quote = "VibeLang resolves a relative `./x.vibe` to source; plain `tsc` reads the compatibility declaration."
-	if !strings.Contains(SpecText("007-tooling.md"), quote) {
-		t.Fatalf("Chapter7 no longer says %q", quote)
+	const quote = "TypeScript's `allowArbitraryExtensions` resolves it, so plain `tsc` and TypeDoc understand imports of `.vibe` files."
+	if !strings.Contains(SpecText("001-functions.md"), quote) {
+		t.Fatalf("Chapter 1 no longer says %q", quote)
 	}
 	source, err := os.ReadFile(filepath.Join(Root(), "packages/compiler/test/oxlint-namespace.property.test.mjs"))
 	if err != nil {

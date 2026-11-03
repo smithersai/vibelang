@@ -16,10 +16,10 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/vfs/vfstest"
 )
 
-const portableReaderQuote = "plain `tsc` reads the compatibility declaration"
+const portableReaderQuote = "so plain `tsc` and TypeDoc understand imports of `.vibe` files"
 
 func TestSidecarPortabilityQuoted(t *testing.T) {
-	text, err := os.ReadFile(SpecPath("007-tooling.md"))
+	text, err := os.ReadFile(SpecPath("001-functions.md"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -182,7 +182,7 @@ func TestSidecarPortabilityRegression(t *testing.T) {
 	}
 }
 
-// Chapter 7: "plain `tsc` reads the compatibility declaration". In a project that emits no
+// Chapter 1: "plain `tsc` and TypeDoc understand imports of `.vibe` files". In a project that emits no
 // declarations nothing is published, so a sidecar has one job: to give that
 // reader the module's types. It names a type wherever it lives, and a misuse
 // of the export stays an error (foldkit-33: Tabs.create in 11 modules).
@@ -199,13 +199,13 @@ func FuzzSidecarNamesItsType(f *testing.F) {
 		key := fmt.Sprintf("%s:%s:%s:%s", c.layout, c.resolution, c.shape, c.kind)
 		text, found := emitPortableSidecar(t, c.files(""))
 		if len(found) != 0 {
-			Gap(t, target, "sidecar-reports:"+key, "Chapter 7: %s\nno declarations are emitted, yet: %s\n%s", portableReaderQuote, found[0].String(), c.source())
+			Gap(t, target, "sidecar-reports:"+key, "Chapter 1: %s\nno declarations are emitted, yet: %s\n%s", portableReaderQuote, found[0].String(), c.source())
 		}
 		if strings.Contains(text, ": any") {
-			Gap(t, target, "sidecar-any:"+key, "Chapter 7: %s\nweakened sidecar:\n%s", portableReaderQuote, text)
+			Gap(t, target, "sidecar-any:"+key, "Chapter 1: %s\nweakened sidecar:\n%s", portableReaderQuote, text)
 		}
 		if codes := checkPortableReader(t, c, c.files(""), text); !slices.Contains(codes, "TS2322") {
-			Gap(t, target, "sidecar-reader:"+key, "Chapter 7: %s\nmisusing the export reports %v:\n%s", portableReaderQuote, codes, text)
+			Gap(t, target, "sidecar-reader:"+key, "Chapter 1: %s\nmisusing the export reports %v:\n%s", portableReaderQuote, codes, text)
 		}
 	})
 }

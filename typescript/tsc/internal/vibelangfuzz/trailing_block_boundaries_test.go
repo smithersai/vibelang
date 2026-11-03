@@ -10,7 +10,7 @@ import (
 func TestTrailingBlockBoundariesQuoted(t *testing.T) {
 	for chapter, quote := range map[string]string{
 		"002-running.md":  "\x60effect { … }\x60 is an expression.",
-		"005-services.md": "\x60service Name { members }\x60 is the only way to declare a service.",
+		"005-services.md": "\x60service Name { members }\x60 and \x60service Name: Type { … }\x60 declare services.",
 		"006-data.md":     "A \x60schema\x60 declaration requires a field body or \x60= type\x60; a \x60data\x60 declaration requires a variant body, even if empty.",
 		"004-match.md":    "return match (d) {",
 	} {

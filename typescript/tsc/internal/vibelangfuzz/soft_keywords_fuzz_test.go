@@ -24,7 +24,7 @@ var softKeywordQuotes = []struct{ chapter, quote string }{
 	{"900-appendices.md", "Anything else is ordinary TypeScript, where the word is an identifier:"},
 	{"900-appendices.md", "Each word below is a keyword only before the tokens listed, on the same line, and an ordinary identifier everywhere else."},
 	{"900-appendices.md", "`try` and `catch` are reserved words already; VibeLang gives them expression forms under `[+Effect]`."},
-	{"900-appendices.md", "VibeLang's grammar is TypeScript's, plus three TC39 proposals and the productions below."},
+	{"900-appendices.md", "VibeLang's grammar is TypeScript's, plus four TC39 proposals and the productions below."},
 	{"002-running.md", "contextual keywords followed by `{` on the same line, and statements in effect code."},
 }
 

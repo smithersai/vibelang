@@ -8,11 +8,11 @@ import { namespaceFixture } from "./oxlint-namespace-fixture.mjs"
 
 const corpus = JSON.parse(readFileSync(new URL("./property-regressions/alchemy-namespace-project-reference.json", import.meta.url), "utf8"))
 const raw = process.env.VIBELANG_OXLINT_NAMESPACE_RAW === "1"
-const chapter = readFileSync(new URL("../../../docs/design/src/007-tooling.md", import.meta.url), "utf8")
-const quote = "VibeLang resolves a relative `./x.vibe` to source; plain `tsc` reads the compatibility declaration."
+const chapter = readFileSync(new URL("../../../docs/design/src/001-functions.md", import.meta.url), "utf8")
+const quote = "TypeScript's `allowArbitraryExtensions` resolves it, so plain `tsc` and TypeDoc understand imports of `.vibe` files."
 
 function inspect(input) {
-  assert.ok(chapter.includes(quote), "the Chapter 7 declaration/source resolution contract")
+  assert.ok(chapter.includes(quote), "the Chapter 1 sidecar resolution contract")
   const root = mkdtempSync(join(tmpdir(), "vibe-namespace-lint-"))
   try {
     for (const extension of ["ts", "vibe"]) for (const references of [false, true]) {
