@@ -1,0 +1,56 @@
+{
+  "repo": "t3code",
+  "pattern": "schema optional-key codec reference and explicit class fallback",
+  "codec": "import * as Option from \"effect/Option\";\nimport * as Schema from \"effect/Schema\";\nimport * as SchemaTransformation from \"effect/SchemaTransformation\";\n\nexport const ForwardCompatibleOptional = <Value extends Schema.Top>(value: Value) => {\n  const decodeValue = Schema.decodeUnknownOption(value as never);\n  return Schema.optionalKey(\n    Schema.Unknown.pipe(\n      Schema.decodeTo(\n        Schema.UndefinedOr(value),\n        SchemaTransformation.transform<Value[\"Encoded\"] | undefined, unknown>({\n          decode: (raw) =>\n            Option.isSome(decodeValue(raw)) ? (raw as Value[\"Encoded\"]) : undefined,\n          encode: (raw) => raw,\n        }),\n      ),\n    ),\n  );\n};\n",
+  "original_pattern": "const GitCommandErrorReasonField = ForwardCompatibleOptional(GitCommandFailureReason)\nexport schema error GitCommandError { reason: GitCommandErrorReasonField }\n",
+  "cases": [
+    {
+      "key": "error-helper",
+      "source": "import * as Schema from \"effect/Schema\"\nimport { ForwardCompatibleOptional } from \"./codec.js\"\nconst GitCommandErrorReasonField = ForwardCompatibleOptional(Schema.String)\nexport schema error GitCommandError { reason: GitCommandErrorReasonField }\n",
+      "control": "import * as Schema from \"effect/Schema\"\nimport { ForwardCompatibleOptional } from \"./codec.js\"\nconst GitCommandErrorReasonField = ForwardCompatibleOptional(Schema.String)\nexport class GitCommandError extends Schema.TaggedError<GitCommandError>()(\"GitCommandError\", { reason: GitCommandErrorReasonField }) {}\n",
+      "expected2109": 1
+    },
+    {
+      "key": "error-helper-alias",
+      "source": "import * as Schema from \"effect/Schema\"\nimport { ForwardCompatibleOptional } from \"./codec.js\"\nconst Original = ForwardCompatibleOptional(Schema.String)\nconst GitCommandErrorReasonField = Original\nexport schema error GitCommandError { reason: GitCommandErrorReasonField }\n",
+      "control": "import * as Schema from \"effect/Schema\"\nimport { ForwardCompatibleOptional } from \"./codec.js\"\nconst Original = ForwardCompatibleOptional(Schema.String)\nconst GitCommandErrorReasonField = Original\nexport class GitCommandError extends Schema.TaggedError<GitCommandError>()(\"GitCommandError\", { reason: GitCommandErrorReasonField }) {}\n",
+      "expected2109": 1
+    },
+    {
+      "key": "error-direct-codec",
+      "source": "import * as Schema from \"effect/Schema\"\nimport { ForwardCompatibleOptional } from \"./codec.js\"\nconst GitCommandErrorReasonField = Schema.optionalKey(Schema.String)\nexport schema error GitCommandError { reason: GitCommandErrorReasonField }\n",
+      "control": "import * as Schema from \"effect/Schema\"\nimport { ForwardCompatibleOptional } from \"./codec.js\"\nconst GitCommandErrorReasonField = Schema.optionalKey(Schema.String)\nexport class GitCommandError extends Schema.TaggedError<GitCommandError>()(\"GitCommandError\", { reason: GitCommandErrorReasonField }) {}\n",
+      "expected2109": 1
+    },
+    {
+      "key": "error-readonly",
+      "source": "import * as Schema from \"effect/Schema\"\nimport { ForwardCompatibleOptional } from \"./codec.js\"\nconst GitCommandErrorReasonField = Schema.optionalKey(Schema.String)\nexport schema error GitCommandError { readonly reason: GitCommandErrorReasonField }\n",
+      "control": "import * as Schema from \"effect/Schema\"\nimport { ForwardCompatibleOptional } from \"./codec.js\"\nconst GitCommandErrorReasonField = Schema.optionalKey(Schema.String)\nexport class GitCommandError extends Schema.TaggedError<GitCommandError>()(\"GitCommandError\", { reason: GitCommandErrorReasonField }) {}\n",
+      "expected2109": 1
+    },
+    {
+      "key": "schema-helper",
+      "source": "import * as Schema from \"effect/Schema\"\nimport { ForwardCompatibleOptional } from \"./codec.js\"\nconst GitCommandErrorReasonField = ForwardCompatibleOptional(Schema.String)\nexport schema GitCommand { readonly reason: GitCommandErrorReasonField }\n",
+      "control": "import * as Schema from \"effect/Schema\"\nimport { ForwardCompatibleOptional } from \"./codec.js\"\nconst GitCommandErrorReasonField = ForwardCompatibleOptional(Schema.String)\nexport const GitCommand = Schema.Struct({ reason: GitCommandErrorReasonField })\nexport type GitCommand = typeof GitCommand.Type\n",
+      "expected2109": 1
+    },
+    {
+      "key": "schema-alias",
+      "source": "import * as Schema from \"effect/Schema\"\nimport { ForwardCompatibleOptional } from \"./codec.js\"\nconst Original = Schema.optionalKey(Schema.String)\nconst GitCommandErrorReasonField = Original\nexport schema GitCommand { readonly reason: GitCommandErrorReasonField }\n",
+      "control": "import * as Schema from \"effect/Schema\"\nimport { ForwardCompatibleOptional } from \"./codec.js\"\nconst Original = Schema.optionalKey(Schema.String)\nconst GitCommandErrorReasonField = Original\nexport const GitCommand = Schema.Struct({ reason: GitCommandErrorReasonField })\nexport type GitCommand = typeof GitCommand.Type\n",
+      "expected2109": 1
+    },
+    {
+      "key": "schema-nested",
+      "source": "import * as Schema from \"effect/Schema\"\nimport { ForwardCompatibleOptional } from \"./codec.js\"\nconst GitCommandErrorReasonField = Schema.optionalKey(Schema.String)\nexport schema GitCommand { readonly nested: { readonly reason: GitCommandErrorReasonField } }\n",
+      "control": "import * as Schema from \"effect/Schema\"\nimport { ForwardCompatibleOptional } from \"./codec.js\"\nconst GitCommandErrorReasonField = Schema.optionalKey(Schema.String)\nexport const GitCommand = Schema.Struct({ nested: Schema.Struct({ reason: GitCommandErrorReasonField }) })\nexport type GitCommand = typeof GitCommand.Type\n",
+      "expected2109": 1
+    },
+    {
+      "key": "schema-optional-control",
+      "source": "import * as Schema from \"effect/Schema\"\nimport { ForwardCompatibleOptional } from \"./codec.js\"\nconst GitCommandErrorReasonField = Schema.optionalKey(Schema.String)\nexport schema GitCommand { readonly reason?: GitCommandErrorReasonField }\n",
+      "control": "import * as Schema from \"effect/Schema\"\nimport { ForwardCompatibleOptional } from \"./codec.js\"\nconst GitCommandErrorReasonField = Schema.optionalKey(Schema.String)\nexport const GitCommand = Schema.Struct({ reason: Schema.optional(GitCommandErrorReasonField) })\nexport type GitCommand = typeof GitCommand.Type\n",
+      "expected2109": 0
+    }
+  ]
+}

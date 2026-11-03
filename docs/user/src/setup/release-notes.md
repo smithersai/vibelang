@@ -232,6 +232,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Declaration comparison could reject a package compared with itself when a wildcard export combined built declarations with an unselected source condition. It now checks the concrete published names without inventing a literal `./*` module.
 
+- Editor regressions around `Schema.optionalKey` references now have named migration cases across aliases and `schema error` fields.
+
 - Contributor release checks could omit fixture tests or fail cancellation checks on a host running one Go test slice; launcher fixtures now run their complete intended suite independently of the host slice.
 
 - Compiler conformance and editor formatting checks could fail on a fresh checkout because the dprint plugin was missing; their build targets now prepare the compiler package before running.

@@ -879,3 +879,5 @@ After the mapped schema library-binding fixes, retained namespace, function and 
 `FuzzServiceShorthandContexts` retains Smithers Egress catch-head shapes under the current VIP-10 denial: get the service, then call it. Sixteen keyed syntax/alias variants pair rejected static calls with admitted instance calls, covering direct `try`, catch operands, parentheses, and `Effect.option`. This static oracle does not restore the retired shortcut or assign runtime semantics to rejected source.
 
 The current-vibe raw matrix admits all eight dotted shortcut variants and rejects their computed-member twins. Eight exact rejection keys and paired corpus records remain pending under `migfix2-smithers`. Every explicit-service counterpart compiles; this is an admission gap under the denied shorthand, not a new runtime promise.
+
+The `FuzzEditor` corpus retains T3code’s `ForwardCompatibleOptional` helper and eight `Schema.optionalKey` neighbourhoods. Required-reference `EK2109` and native codec controls run before code-action safety checks; optional source positions remain positive controls.
