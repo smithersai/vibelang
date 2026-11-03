@@ -105,7 +105,7 @@ func tryEdits(c *checker.Checker, file *ast.SourceFile, unmatched map[int]bool) 
 			edits = append(edits, sourceEdit{node.End(), node.End(), " }"})
 		}
 		if isFunctionBoundary(node) && m.marked(node) {
-			if legacyProgramLiteral(a, node) {
+			if m.programLiteral(node) {
 				edits = append(edits, programLiteralEdits(file, node)...)
 			} else {
 				edit, _, _ := effectMarkerEdit(file, node)
@@ -113,7 +113,7 @@ func tryEdits(c *checker.Checker, file *ast.SourceFile, unmatched map[int]bool) 
 			}
 		}
 		if !isInvocation(node) {
-			if isProgramReference(node) && m.returnedSubtypeRan(node) {
+			if isProgramReference(node) && (m.returnedSubtypeRan(node) || m.liftedResultValue(node)) {
 				insert(scanner.SkipTrivia(text, node.Pos()), "try ")
 				return false
 			}

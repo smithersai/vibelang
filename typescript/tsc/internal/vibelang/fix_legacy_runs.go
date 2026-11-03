@@ -1,10 +1,12 @@
 package vibelang
 
 import (
+	"slices"
 	"strings"
 
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/checker"
+	"github.com/microsoft/TypeScript/tsc/internal/core"
 	"github.com/microsoft/TypeScript/tsc/internal/scanner"
 	"github.com/microsoft/TypeScript/tsc/internal/vibelangmapper"
 )
@@ -255,8 +257,8 @@ func (m *legacyModel) marked(fn *ast.Node) bool {
 		return done
 	}
 	m.marks[fn] = false // a call cycle through fn answers no
-	result := !isMarkedEffect(fn) && isLowerable(fn) && !isProducer(fn) && !isProgramArrow(fn) && (legacyProgramLiteral(m.a, fn) || m.formIsEffect(fn) && m.runsInBody(fn) || m.plainEffectLiteral(fn))
-	if result && !legacyProgramLiteral(m.a, fn) {
+	result := !isMarkedEffect(fn) && isLowerable(fn) && !isProducer(fn) && !isProgramArrow(fn) && (m.programLiteral(fn) || m.formIsEffect(fn) && m.runsInBody(fn) || m.plainEffectLiteral(fn) || m.liftedValue(fn))
+	if result && !m.programLiteral(fn) {
 		_, _, result = effectMarkerEdit(ast.GetSourceFileOfNode(fn), fn)
 	}
 	m.marks[fn] = result
@@ -1152,16 +1154,160 @@ func legacyEffectValueCall(a *analyzer, file *ast.SourceFile, call *ast.Node) bo
 	return effectOfValue(c, t) != nil || moduleServiceKeyName(c, callee) != ""
 }
 
+// liftedValue reports whether the old compiler lifted a plain value that fn
+// returns into the Effect its contract expects, as in
+// `const direct: () => number!! = () => 1` or
+// `Effect.suspend(() => n === 0 ? 0 : g(n))`. VIP-1 keeps such a function
+// plain, so the value no longer fits the contract (TS2322); the effect mark
+// keeps what it did.
+func (m *legacyModel) liftedValue(fn *ast.Node) bool {
+	if !ast.IsFunctionLike(fn) || fn.Body() == nil || isCatchHandlerOf(fn) || !m.expectsEffectResult(fn) {
+		return false
+	}
+	values := returnedExpressions(fn)
+	if len(values) == 0 {
+		return true // falls off its end with undefined, which is no Effect
+	}
+	return core.Some(values, m.valueIsPlain)
+}
+
+// liftedResultValue reports whether node names an Effect value that is a
+// result of a function the migration marks because it lifted a plain value
+// (liftedValue): the old compiler returned the program from that arm and
+// lifted the other, so the marked function runs it. In
+// `flatMap(x, () => c ? next : 1)`, next ran.
+func (m *legacyModel) liftedResultValue(node *ast.Node) bool {
+	owner := effectCodeOwner(node)
+	if owner == nil || !m.marked(owner) || !m.liftedValue(owner) || !legacyResultFlow(node, owner) {
+		return false
+	}
+	return isEffectSubtype(m.a.checker, m.a.checker.GetTypeAtLocation(node))
+}
+
+// expectsEffectResult reports whether fn's written return type, or else every
+// function type its context gives it, returns an Effect. Where no overload
+// matches (TS2769), every overload's type at fn must.
+func (m *legacyModel) expectsEffectResult(fn *ast.Node) bool {
+	c := m.a.checker
+	if fn.Type() != nil {
+		return isEffectType(c, c.GetTypeFromTypeNode(fn.Type()))
+	}
+	returnsEffect := func(t *checker.Type) bool {
+		signatures := c.GetSignaturesOfType(t, checker.SignatureKindCall)
+		return len(signatures) == 1 && isEffectType(c, c.GetReturnTypeOfSignature(signatures[0]))
+	}
+	if overloads := m.unmatchedArgumentTypes(fn); len(overloads) != 0 {
+		return core.Some(overloads, returnsEffect)
+	}
+	contextual := m.a.contextualTypes(fn)
+	return len(contextual) != 0 && core.Every(contextual, returnsEffect)
+}
+
+// valueIsPlain reports whether value, or a part of it that can be what it
+// gives, is a value of a known type that is no Effect: an Effect subtype, as
+// a sql Statement or an Exit, is an Effect the call runs.
+func (m *legacyModel) valueIsPlain(value *ast.Node) bool {
+	if parts := returnedParts(value); len(parts) != 0 {
+		return core.Some(parts, m.valueIsPlain)
+	}
+	if call := ast.SkipParentheses(value); m.overloadUnmatched(call) {
+		return false // the type of a call no overload matches says nothing about its value
+	}
+	t := m.a.checker.GetTypeAtLocation(value)
+	if t == nil || t.Flags()&(checker.TypeFlagsAny|checker.TypeFlagsUnknown|checker.TypeFlagsNever) != 0 {
+		return false
+	}
+	// A function value is what a call without a matching overload gives,
+	// as Effect.catchTag's data-last form in
+	// `raise(e) |> Effect.catchTag(%, "Boom", (caught) => caught.message)`
+	// (TS2769), not the value the old compiler saw.
+	if len(m.a.checker.GetSignaturesOfType(t, checker.SignatureKindCall)) != 0 {
+		return false
+	}
+	return !core.Some(t.Distributed(), func(part *checker.Type) bool {
+		return isEffectSubtype(m.a.checker, part) || m.a.programOf(part) != nil
+	})
+}
+
+// returnedExpressions returns what fn's own body returns: its expression
+// body, or each return statement's value, with nil dropped.
+func returnedExpressions(fn *ast.Node) []*ast.Node {
+	body := fn.Body()
+	if !ast.IsBlock(body) {
+		return []*ast.Node{body}
+	}
+	var values []*ast.Node
+	var visit func(node *ast.Node) bool
+	visit = func(node *ast.Node) bool {
+		if isFunctionBoundary(node) {
+			return false
+		}
+		if ast.IsReturnStatement(node) && node.Expression() != nil {
+			values = append(values, node.Expression())
+		}
+		return node.ForEachChild(visit)
+	}
+	body.ForEachChild(visit)
+	return values
+}
+
+// programLiteral reports whether the old compiler converted fn, a function
+// literal, to the program it holds: legacyProgramLiteral, or an argument no
+// overload matches where one of them takes the program and none a function,
+// as in withSpan(() => program, "name") (TS2769 since VIP-1): the resolved
+// signature of such a call is only its last candidate.
+func (m *legacyModel) programLiteral(fn *ast.Node) bool {
+	if legacyProgramLiteral(m.a, fn) {
+		return true
+	}
+	if !isProgramLiteralShape(fn) {
+		return false
+	}
+	c := m.a.checker
+	types := m.unmatchedArgumentTypes(fn)
+	takesProgram := core.Some(types, func(t *checker.Type) bool { return isEffectType(c, t) })
+	takesFunction := core.Some(types, func(t *checker.Type) bool { return len(c.GetSignaturesOfType(t, checker.SignatureKindCall)) != 0 })
+	return takesProgram && !takesFunction
+}
+
+// unmatchedArgumentTypes returns what each overload takes for fn, an argument
+// where no overload matches (TS2769), or nil for any other function.
+func (m *legacyModel) unmatchedArgumentTypes(fn *ast.Node) []*checker.Type {
+	n := outerParentheses(fn)
+	call := n.Parent
+	if call == nil || !ast.IsCallExpression(call) || !m.unmatched[scanner.SkipTrivia(ast.GetSourceFileOfNode(fn).Text(), n.Pos())] {
+		return nil
+	}
+	at := slices.Index(call.Arguments(), n)
+	if at < 0 {
+		return nil
+	}
+	c := m.a.checker
+	var types []*checker.Type
+	for _, signature := range c.GetSignaturesOfType(c.GetTypeAtLocation(call.Expression()), checker.SignatureKindCall) {
+		if at < len(signature.Parameters()) {
+			types = append(types, c.GetTypeAtPosition(signature, at))
+		}
+	}
+	return types
+}
+
+// isProgramLiteralShape reports whether fn is a function literal without
+// parameters, a type, or a name, neither async nor a generator.
+func isProgramLiteralShape(fn *ast.Node) bool {
+	if fn.Kind != ast.KindArrowFunction && fn.Kind != ast.KindFunctionExpression || len(fn.Parameters()) != 0 || fn.TypeParameters() != nil || fn.Type() != nil || fn.Name() != nil {
+		return false
+	}
+	return ast.GetFunctionFlags(fn)&(ast.FunctionFlagsAsync|ast.FunctionFlagsGenerator) == 0
+}
+
 // legacyProgramLiteral reports whether fn is a function literal without
 // parameters that initializes a const whose written type is an Effect, as
 // const migrate: void!E!R = () => { … }, or that is passed where its
 // parameter expects only a program: the old compiler converted it to the
 // program it holds (D7), which VIP-2 writes as an effect block.
 func legacyProgramLiteral(a *analyzer, fn *ast.Node) bool {
-	if fn.Kind != ast.KindArrowFunction && fn.Kind != ast.KindFunctionExpression || len(fn.Parameters()) != 0 || fn.TypeParameters() != nil || fn.Type() != nil || fn.Name() != nil {
-		return false
-	}
-	if ast.GetFunctionFlags(fn)&(ast.FunctionFlagsAsync|ast.FunctionFlagsGenerator) != 0 {
+	if !isProgramLiteralShape(fn) {
 		return false
 	}
 	n := outerParentheses(fn)

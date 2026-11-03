@@ -63,6 +63,18 @@ func TestFixVIPLegacyRunPositions(t *testing.T) {
 		{"subtype-value-suspended", "interface Statement extends Effect.Effect<number> { readonly sql: string }\ndeclare const stmt: (parts: TemplateStringsArray) => Statement\ndeclare const held: Statement\ndeclare const make: () => Statement\neffect function f() {\n  return try Effect.suspend(effect () => held)\n}\n", "interface Statement extends Effect.Effect<number> { readonly sql: string }\ndeclare const stmt: (parts: TemplateStringsArray) => Statement\ndeclare const held: Statement\ndeclare const make: () => Statement\neffect function f() {\n  return try Effect.suspend(effect () => try held)\n}\n"},
 		{"subtype-returned-suspended", "interface Statement extends Effect.Effect<number> { readonly sql: string }\ndeclare const stmt: (parts: TemplateStringsArray) => Statement\ndeclare const held: Statement\ndeclare const make: () => Statement\neffect function f() {\n  return try Effect.suspend(effect () => {\n    return make()\n  })\n}\n", "interface Statement extends Effect.Effect<number> { readonly sql: string }\ndeclare const stmt: (parts: TemplateStringsArray) => Statement\ndeclare const held: Statement\ndeclare const make: () => Statement\neffect function f() {\n  return try Effect.suspend(effect () => {\n    return try make()\n  })\n}\n"},
 		{"subtype-arms-suspended", "interface Statement extends Effect.Effect<number> { readonly sql: string }\ndeclare const stmt: (parts: TemplateStringsArray) => Statement\ndeclare const held: Statement\ndeclare const make: () => Statement\neffect function f(c: boolean) {\n  return try Effect.suspend(effect () => c ? make() : held)\n}\n", "interface Statement extends Effect.Effect<number> { readonly sql: string }\ndeclare const stmt: (parts: TemplateStringsArray) => Statement\ndeclare const held: Statement\ndeclare const make: () => Statement\neffect function f(c: boolean) {\n  return try Effect.suspend(effect () => c ? try make() : try held)\n}\n"},
+		{"subtype-used-result-suspended", "interface Statement extends Effect.Effect<number> { readonly sql: string }\ndeclare const make: () => Statement\neffect function f() {\n  const n = try Effect.suspend(effect () => make())\n  return n + 1\n}\n", "interface Statement extends Effect.Effect<number> { readonly sql: string }\ndeclare const make: () => Statement\neffect function f() {\n  const n = try Effect.suspend(effect () => try make())\n  return n + 1\n}\n"},
+		{"lifted-annotated-const", "export const direct: () => number!! = () => 1\n", "export const direct: () => number!! = effect () => 1\n"},
+		{"lifted-written-result", "export const call = (n: number): number!! => n + 1\n", "export const call = effect (n: number): number!! => n + 1\n"},
+		{"lifted-block", "export const call = (n: number): number!! => {\n  return n + 1\n}\n", "export const call = effect (n: number): number!! => {\n  return n + 1\n}\n"},
+		{"lifted-void", "export const call = (n: number): void!! => {\n  plainId(n)\n}\n", "export const call = effect (n: number): void!! => {\n  plainId(n)\n}\n"},
+		{"lifted-argument", "export const load2 = (f: () => number!!): number!! => f()\nexport const viaCall = (): number!! => load2(() => 1)\n", "export const load2 = (f: () => number!!): number!! => f()\nexport const viaCall = (): number!! => load2(effect () => 1)\n"},
+		{"lifted-suspend-arms", "export const ternary = (n: number, g: (n: number) => number!!): number!! =>\n  Effect.suspend(() => n === 0 ? 0 : g(n))\n", "export const ternary = (n: number, g: (n: number) => number!!): number!! =>\n  Effect.suspend(effect () => n === 0 ? 0 : try g(n))\n"},
+		{"lifted-value-arm", "export const pick = (n: number, next: number!!): number!! =>\n  Effect.suspend(() => n === 0 ? 0 : next)\n", "export const pick = (n: number, next: number!!): number!! =>\n  Effect.suspend(effect () => n === 0 ? 0 : try next)\n"},
+		{"lifted-catch-handler-call", "export const chained = (e: number!string): number!! =>\n  e |> Effect.catch(%, () => 0)\n", "export const chained = (e: number!string): number!! =>\n  e |> Effect.catch(%, effect () => 0)\n"},
+		{"catch-expression-body", "export const body = (e: number!string): number!boolean =>\n  e catch effect (cause) => { throw cause === \"x\" }\n", "export const body = effect (e: number!string): number!boolean =>\n  e catch effect (cause) => { throw cause === \"x\" }\n"},
+		{"lifted-overloaded-function", "export const after = (n: number) => Effect.andThen(Effect.void, () => n)\n", "export const after = (n: number) => Effect.andThen(Effect.void, effect () => n)\n"},
+		{"program-argument", "export const spanned = (key: string): string!! =>\n  withSpan(() => Effect.succeed(key), \"span\")\n", "export const spanned = (key: string): string!! =>\n  withSpan(effect { return try Effect.succeed(key) }, \"span\")\n"},
 		{"effect-arrow-conditional", "const f = effect (c: boolean) => c ? load(12) : load(13)\n", "const f = effect (c: boolean) => c ? try load(12) : try load(13)\n"},
 		{"argument", "effect function f() {\n  return plainId(load(16))\n}\n", "effect function f() {\n  return plainId(try load(16))\n}\n"},
 		{"member", "effect function f() {\n  return load(17).toFixed()\n}\n", "effect function f() {\n  return (try load(17)).toFixed()\n}\n"},
@@ -203,6 +215,30 @@ func TestFixVIPLegacySubtypeStaysData(t *testing.T) {
 	} {
 		t.Run(strings.SplitN(source, " ", 4)[2], func(t *testing.T) {
 			result, name := fixVIPOnlySource(t, prelude+source)
+			if fixed := result.Files[name]; fixed != nil || len(result.Refused) != 0 {
+				t.Fatalf("--fix-vip-only wrote %+v, refused %+v", fixed, result.Refused)
+			}
+		})
+	}
+}
+
+// A plain function's value that its contract accepts as a value, or that
+// gives a program whole, stays plain: only a value the contract cannot take
+// was lifted (decided detail 274).
+func TestFixVIPLegacyPlainResultStays(t *testing.T) {
+	for _, source := range []string{
+		"export const factory2 = (n: number): number!! => Effect.succeed(n)\n",
+		"export const fromArm = (n: number, a: number!!, b: number!!): number!! => n === 0 ? a : b\n",
+		"export const plainValue = (n: number): number => n + 1\n",
+		"export const unannotated = (n: number) => n + 1\n",
+		"export const eitherForm = (x: number): number | (number!!) => x\n",
+		"export const untyped = (x: any): number!! => x\n",
+		"export const data = [1].map((n) => n + 1)\n",
+		"export const fallback = (e: number!string): number!! => Effect.catch(e, () => Effect.succeed(0))\n",
+		"export const handlers = (resolve: (kind: string) => { revert: () => number!string } | undefined) => ({\n  revert: (kind: string): number!string => {\n    const handler = resolve(kind)\n    if (handler === undefined) return Effect.fail(\"missing\")\n    return handler.revert()\n  },\n})\n",
+	} {
+		t.Run(strings.SplitN(source, " ", 4)[2], func(t *testing.T) {
+			result, name := fixVIPOnlySource(t, source)
 			if fixed := result.Files[name]; fixed != nil || len(result.Refused) != 0 {
 				t.Fatalf("--fix-vip-only wrote %+v, refused %+v", fixed, result.Refused)
 			}
