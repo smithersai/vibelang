@@ -42,6 +42,65 @@ function declarationPath(path) {
   return candidates.find(p => declaration.test(p) && existsSync(p))
 }
 
+// Publication discovery and probes must see the same projected sidecar tree.
+function projectSidecarHost(ts, host, virtual = new Map()) {
+  const read = host.readFile.bind(host)
+  const originalExists = host.fileExists.bind(host)
+  const projectCache = new Map(), configCache = new Map()
+  function readProject(config, trail = new Set()) {
+    if (configCache.has(config)) return configCache.get(config)
+    if (trail.has(config)) return {}
+    trail = new Set([...trail, config])
+    const raw = ts.readConfigFile(config, read).config ?? {}
+    let inherited = {}
+    for (const extension of [raw.extends ?? []].flat()) {
+      try {
+        const base = extension.startsWith(".") || extension.startsWith("/")
+          ? resolve(dirname(config), extension)
+          : createRequire(config).resolve(extension)
+        inherited = { ...inherited, ...readProject(originalExists(base) ? base : base + ".json", trail) }
+      } catch {}
+    }
+    const parsed = ts.parseJsonConfigFileContent(raw, ts.sys, dirname(config), {}, config)
+    const value = { ...inherited, options: parsed.options,
+      ...(typeof raw.vibe?.sidecarDir === "string" ? { sidecar: raw.vibe.sidecarDir, sidecarBase: dirname(config) } : {}) }
+    configCache.set(config, value)
+    return value
+  }
+  function project(file) {
+    const start = dirname(resolve(file))
+    if (projectCache.has(start)) return projectCache.get(start)
+    let dir = start, value = {}
+    for (;;) {
+      const config = ["vibe.config.json", "tsconfig.json"].map(name => join(dir, name)).find(originalExists)
+      if (config) {
+        value = readProject(config)
+        value = { ...value, root: dirname(config), sidecar: value.sidecar === undefined ? undefined
+          : resolve(value.sidecarBase, value.sidecar.replaceAll("${configDir}", dirname(config))) }
+        break
+      }
+      if (dirname(dir) === dir) break
+      dir = dirname(dir)
+    }
+    projectCache.set(start, value)
+    return value
+  }
+  function sidecar(path) {
+    if (!path.endsWith(".d.vibe.ts")) return undefined
+    const config = project(path)
+    if (!config.sidecar) return undefined
+    const local = relative(config.root, path)
+    if (local.startsWith("../") || local === "..") return undefined
+    const mirror = join(config.sidecar, local)
+    return originalExists(mirror) ? mirror : undefined
+  }
+  // Project mirrored declarations at their logical beside-source paths. Relative
+  // imports inside a moved sidecar must resolve beside that source too.
+  host.readFile = path => virtual.get(resolve(path)) ?? read(path) ?? (sidecar(path) ? read(sidecar(path)) : undefined)
+  host.fileExists = path => virtual.has(resolve(path)) || originalExists(path) || Boolean(sidecar(path))
+  return project
+}
+
 /** Names are per published subpath AND types condition, never per private file.
  * Bare declaration trees have no publishing metadata: every file is an entry.
  * An explicit unresolved entry remains in the map and fails closed.
@@ -103,9 +162,9 @@ export function publishedEntrypoints(directory, tsCompiler) {
     if (typeof value === "string") return add(key, value, origin)
     if (Array.isArray(value)) return value.forEach((v, i) => visit(v, key + "#fallback" + i, origin))
     if (!value || typeof value !== "object") return
-    // A types condition replaces the corresponding runtime target.
-    if (value.types !== undefined) return visit(value.types, key, origin)
-    for (const [condition, child] of Object.entries(value)) visit(child, key + "#" + condition, origin)
+    // Discover candidates; ordered condition selection belongs to tsc below.
+    for (const [condition, child] of Object.entries(value))
+      visit(child, condition === "types" ? key : key + "#" + condition, origin)
   }
   if (manifest.exports !== undefined) {
     const exp = manifest.exports
@@ -117,20 +176,18 @@ export function publishedEntrypoints(directory, tsCompiler) {
     const root = declarationPath(join(directory, manifest.main ?? "index"))
     if (root) entries["."] = root
   }
-  // Array exports are ordered resolution fallbacks, not independent entrypoints.
-  const containsArray = value => Array.isArray(value) || Boolean(value && typeof value === "object" &&
-    Object.values(value).some(containsArray))
-  if (containsArray(manifest.exports)) {
+  // Both arrays and conditional objects select ordered alternatives.
+  // A later types condition cannot override an earlier resolvable default.
+  if (manifest.exports !== undefined) {
     const ts = tsCompiler ?? loadTypeScript([directory])
     const packageName = "__api_identity_snapshot__"
     const publishedManifest = JSON.stringify({ ...manifest, name: packageName })
     const host = { ...ts.sys, readFile: path => resolve(path) === manifestFile ? publishedManifest : ts.sys.readFile(path) }
-    const clean = key => key.replace(/#fallback\d+/g, "")
+    projectSidecarHost(ts, host)
+    const clean = key => key.replace(/#fallback\d+|#default/g, "")
     const conditionSets = [...new Set(Object.keys(entries).map(key => JSON.stringify(key.split("#").slice(1)
       .filter(key => !/^fallback\d+$/.test(key) && !["import", "require", "default", "types"].includes(key)))))].map(JSON.parse)
     for (const subpath of [...new Set(Object.keys(entries).map(key => key.split("#")[0]))]) {
-      const origin = exportMap ? selectedExport(subpath) : undefined
-      if (!containsArray(exportMap ? exportMap[origin] : manifest.exports)) continue
       const candidates = Object.entries(entries).filter(([key]) => key.split("#")[0] === subpath)
       for (const [key] of candidates) delete entries[key]
       let found = false
@@ -143,7 +200,8 @@ export function publishedEntrypoints(directory, tsCompiler) {
             }, host, undefined, undefined, mode).resolvedModule
           if (!resolved) continue
           const target = declarationPath(resolved.resolvedFileName) ?? resolved.resolvedFileName
-          const applicable = candidates.filter(([key, path]) => path === target &&
+          const applicable = candidates.filter(([key, path]) =>
+            (path === target || path.endsWith(".vibe") && path.replace(/\.vibe$/, ".d.vibe.ts") === target) &&
             clean(key).split("#").slice(1).every(condition =>
               condition === meaning || condition === "default" || extra.includes(condition)))
           if (!applicable.length) continue
@@ -337,60 +395,7 @@ export function compareApiIdentity(ts, before, after, options = {}) {
   }
   const virtual = new Map()
   const host = ts.createCompilerHost(compilerOptions)
-  const read = host.readFile.bind(host)
-  const originalExists = host.fileExists.bind(host)
-  const projectCache = new Map(), configCache = new Map()
-  function readProject(config, trail = new Set()) {
-    if (configCache.has(config)) return configCache.get(config)
-    if (trail.has(config)) return {}
-    trail = new Set([...trail, config])
-    const raw = ts.readConfigFile(config, read).config ?? {}
-    let inherited = {}
-    for (const extension of [raw.extends ?? []].flat()) {
-      try {
-        const base = extension.startsWith(".") || extension.startsWith("/")
-          ? resolve(dirname(config), extension)
-          : createRequire(config).resolve(extension)
-        inherited = { ...inherited, ...readProject(originalExists(base) ? base : base + ".json", trail) }
-      } catch {}
-    }
-    const parsed = ts.parseJsonConfigFileContent(raw, ts.sys, dirname(config), {}, config)
-    const value = { ...inherited, options: parsed.options,
-      ...(typeof raw.vibe?.sidecarDir === "string" ? { sidecar: raw.vibe.sidecarDir, sidecarBase: dirname(config) } : {}) }
-    configCache.set(config, value)
-    return value
-  }
-  function project(file) {
-    const start = dirname(resolve(file))
-    if (projectCache.has(start)) return projectCache.get(start)
-    let dir = start, value = {}
-    for (;;) {
-      const config = ["vibe.config.json", "tsconfig.json"].map(name => join(dir, name)).find(originalExists)
-      if (config) {
-        value = readProject(config)
-        value = { ...value, root: dirname(config), sidecar: value.sidecar === undefined ? undefined
-          : resolve(value.sidecarBase, value.sidecar.replaceAll("${configDir}", dirname(config))) }
-        break
-      }
-      if (dirname(dir) === dir) break
-      dir = dirname(dir)
-    }
-    projectCache.set(start, value)
-    return value
-  }
-  function sidecar(path) {
-    if (!path.endsWith(".d.vibe.ts")) return undefined
-    const config = project(path)
-    if (!config.sidecar) return undefined
-    const local = relative(config.root, path)
-    if (local.startsWith("../") || local === "..") return undefined
-    const mirror = join(config.sidecar, local)
-    return originalExists(mirror) ? mirror : undefined
-  }
-  // Project mirrored declarations at their logical beside-source paths. Relative
-  // imports inside a moved sidecar must resolve beside that source too.
-  host.readFile = path => virtual.get(resolve(path)) ?? read(path) ?? (sidecar(path) ? read(sidecar(path)) : undefined)
-  host.fileExists = path => virtual.has(resolve(path)) || originalExists(path) || Boolean(sidecar(path))
+  const project = projectSidecarHost(ts, host, virtual)
   for (const entries of [left, right]) for (const [key, path] of Object.entries(entries)) {
     if (path.endsWith(".vibe") && host.fileExists(path.replace(/\.vibe$/, ".d.vibe.ts")))
       entries[key] = path.replace(/\.vibe$/, ".d.vibe.ts")
