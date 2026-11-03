@@ -96,7 +96,7 @@ test("directory shards are import-closed and capped, including dependency cycles
     for (const f of group) for (const d of graph.get(f)) assert.ok(group.includes(d))
   }
   const chain = new Map(names.slice(0, 241).map((f, i, all) => [f, i ? [all[i - 1]] : []]))
-  assert.throws(() => shardModules([...chain.keys()], chain), /240|closure/)
+  assert.deepEqual(shardModules([...chain.keys()], chain), [[...chain.keys()]])
 })
 
 test("three-package one-pass checks every project, reverts the root cause, and keeps its importer", async () => {
@@ -566,4 +566,96 @@ test("opencode-57: an entirely protected scope reports the module, source and re
     assert.ok(existsSync(join(f.target,"core/src/index.ts")))
     assert.ok(!existsSync(paths(f.run).plan))
   }finally{rmSync(f.root,{recursive:true,force:true})}
+})
+
+
+test("t3code oversized selected closure falls back to every project root, including observers", () => {
+  const c = readJson(fileURLToPath(new URL("./corpus/t3code-oversized-import-closure.json", import.meta.url)))
+  const dependencies = Array.from({ length: c.closureModules - 2 }, (_, i) => `apps/mobile/src/lib/m${i}.ts`)
+  const files = [c.selected, c.tsx, ...dependencies, c.observer, c.unrelated]
+  const graph = new Map(files.map(f => [f, []]))
+  graph.set(c.selected, [c.tsx])
+  graph.set(c.tsx, [c.selected, ...dependencies])
+  graph.set(c.observer, [c.selected])
+  const result = fixShards(files, graph, new Set([c.selected]), c.cap)
+  assert.equal(result.sharded, false)
+  assert.deepEqual(result.groups, [files])
+  assert.ok([c.selected, c.tsx].includes(result.fallback.file))
+  assert.equal(result.fallback.modules, c.closureModules)
+  assert.equal(result.fallback.cap, c.cap)
+})
+
+test("generated oversized closures use the original project while bounded closures keep capped shards", () => {
+  const contract = readFileSync(new URL("../README.md", import.meta.url), "utf8")
+  // Flow contract, rather than a language-semantic oracle.
+  assert.ok(contract.includes("A selected import closure larger than the cap uses the original project."))
+  fc.assert(fc.property(
+    fc.integer({ min: 1, max: 30 }),
+    fc.integer({ min: 1, max: 45 }),
+    fc.boolean(), fc.boolean(),
+    (cap, count, cycle, reverse) => {
+      const selected = "src/selected.vibe"
+      const deps = Array.from({ length: count - 1 }, (_, i) => `src/dep${i}.ts`)
+      const observer = "src/observer.ts", unrelated = "src/unrelated.ts"
+      const files = [selected, ...deps, observer, unrelated]
+      if (reverse) files.reverse()
+      const graph = new Map(files.map(f => [f, []]))
+      graph.set(selected, deps)
+      graph.set(observer, [selected])
+      if (cycle && deps.length) graph.set(deps.at(-1), [selected])
+      const result = fixShards(files, graph, new Set([selected]), cap)
+      if (files.length <= cap) {
+        assert.equal(result.sharded, false)
+        assert.deepEqual(result.groups, [files])
+        assert.equal(result.fallback, undefined)
+      } else if (count > cap) {
+        assert.equal(result.sharded, false)
+        assert.deepEqual(result.groups, [files])
+        assert.equal(result.fallback.modules, count)
+      } else {
+        assert.equal(result.sharded, true)
+        assert.ok(result.groups.every(g => g.length <= cap))
+        assert.deepEqual(new Set(result.groups.flat()), new Set([selected, ...deps]))
+      }
+    }
+  ), { seed: 1147, numRuns: 200 })
+})
+
+test("oversized fallback invokes the original tsconfig and restores nonselected fixes", async () => {
+  const f = await fixture()
+  try {
+    const names = Array.from({ length: 241 }, (_, i) => `dep${i}.ts`)
+    for (const [i, name] of names.entries()) put(f.target, "core/src/" + name, `export const value${i} = ${i}\n`)
+    put(f.target, "core/src/observer.vibe", 'import { value } from "./index.ts"\nexport const check: number = value\n')
+    const imports = names.map((name, i) => `import { value${i} } from "./${name}"`).join("\n")
+    put(f.target, "core/src/index.ts", imports + "\nexport const value = 1\n")
+    await Jj.commit(f.target, "oversized project with an observer")
+    put(f.run, "scope.txt", "core/src/index.ts\n")
+    await onePassStep("plan", { run: f.run, scope: f.scope })
+    await onePassStep("rename", { run: f.run })
+    const before = text(f.target, "core/src/observer.vibe")
+    const original = text(f.root, "tool/compiler.cjs")
+    const next = original.replace('if (args.includes("--fix")) { console.log("vibelang --fix: 0 fixes in 0 files."); process.exit(0) }', `
+if (args.includes("--fix")) {
+  if (project !== "tsconfig.json" && project !== "tsconfig.tests.json") throw new Error("observer omitted from fix gate")
+  const file = "src/index.vibe", observer = "src/observer.vibe"
+  const source = fs.readFileSync(file, "utf8")
+  fs.appendFileSync(observer, "// nonselected rewrite\\n")
+  if (!source.includes("// fixed")) {
+    fs.appendFileSync(file, "// fixed\\n")
+    console.log("vibelang --fix: " + file + ": 1 fix (EK4801 ×1)")
+  }
+  console.log("vibelang --fix: 0 fixes in 0 files."); process.exit(0)
+}`)
+    writeProbeAwareCompiler(f.compiler, next, { mode: 0o755 })
+    const result = await onePassStep("fix", { run: f.run, jobs: 1 })
+    assert.equal(result.settled, true)
+    assert.equal(result.projects[0].mode, "whole-project")
+    assert.equal(result.projects[0].fallback.modules, 242)
+    assert.equal(result.projects[0].fallback.cap, 240)
+    assert.equal(result.projects[0].shards[0].modules, 243)
+    assert.match(text(f.target, "core/src/index.vibe"), /fixed/)
+    assert.equal(text(f.target, "core/src/observer.vibe"), before)
+    assert.ok(!readdirSync(join(f.target, "core")).some(p => p.startsWith("tsconfig.vibelang-fix-")))
+  } finally { rmSync(f.root, { recursive: true, force: true }) }
 })

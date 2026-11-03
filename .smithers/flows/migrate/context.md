@@ -14,8 +14,11 @@ Fix packages in dependency order with a bounded job count and compiler timeout.
 Split a large project by directory into the selected modules and their import
 closures, in groups of at most `240` modules; keep unselected roots in the full
 project checks. Use a temporary project even when only one selected shard is
-needed; stop and explain an indivisible closure above the cap. Keep the
-project's compiler options and always check the full projects after fixing.
+needed. If a selected closure exceeds the cap, use the original project with
+every root in the compiler's fix gate and retain only selected modules' rewrites.
+Keep the same fixed-point, timeout and compiler memory bounds; run the full
+program on a box sized for it. Record the mode, fallback file, size and cap.
+Keep the project's compiler options and always check the full projects after fixing.
 
 A failing dependency is retried before its importers: select the sink components
 of the failing-module dependency graph, including paths through healthy files.

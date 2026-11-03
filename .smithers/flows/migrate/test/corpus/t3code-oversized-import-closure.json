@@ -1,0 +1,11 @@
+{
+  "key": "codemod-gap:fix-shard-cap-no-whole-project-path",
+  "repo": "t3code",
+  "pattern": "A selected mobile module imports a retained TSX component whose cycle reaches more than 240 modules; an unrelated TypeScript observer must remain in the fix gate.",
+  "cap": 240,
+  "closureModules": 369,
+  "selected": "apps/mobile/src/connection/background-activity.vibe",
+  "tsx": "apps/mobile/src/components/ComposerEditor.tsx",
+  "observer": "apps/mobile/src/observer.ts",
+  "unrelated": "apps/mobile/src/unrelated.ts"
+}

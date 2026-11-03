@@ -69,8 +69,8 @@ export function dependencyRoots(graph, bad = new Set(graph.keys())) {
   return [...bad].filter(f => [...bad].every(d => d === f || !reach.get(f).has(d) || reach.get(d).has(f)))
 }
 
-/** Directory-packed transitive import closures; never silently exceed the cap. */
-export function shardModules(files, graph, cap = 240) {
+/** Pack complete import closures, or report why the whole project is needed. */
+function planShards(files, graph, cap) {
   positive(cap, 240, "shard cap", 240)
   const members = new Set(files), result = [], covered = new Set()
   let group = new Set()
@@ -78,19 +78,33 @@ export function shardModules(files, graph, cap = 240) {
   for (const file of order) {
     if (covered.has(file)) continue
     const closure = new Set([file, ...reachable(graph, file)].filter(f => members.has(f)))
-    if (closure.size > cap) throw new Error(`import closure of ${file} has ${closure.size} modules, exceeds ${cap}; cannot safely shard`)
+    if (closure.size > cap) return {
+      groups: [[...members]],
+      fallback: { file, modules: closure.size, cap, reason: "import closure exceeds shard cap" }
+    }
     if (new Set([...group, ...closure]).size > cap) { result.push([...group]); group = new Set() }
     for (const f of closure) { group.add(f); covered.add(f) }
   }
   if (group.size) result.push([...group])
-  return result
+  return { groups: result }
+}
+
+/** Directory-packed import closures; an indivisible closure keeps all input modules. */
+export function shardModules(files, graph, cap = 240) {
+  return planShards(files, graph, cap).groups
 }
 
 /** A large program fixes selected roots and their dependencies; unrelated roots stay for the wide check. */
 export function fixShards(files, graph, selected, cap = 240) {
-  const sharded = files.length > cap
-  const work = sharded ? [...new Set(files.filter(f => selected.has(f)).flatMap(f => [f, ...reachable(graph, f)]))] : files
-  return { sharded, groups: sharded ? shardModules(work, graph, cap) : [files] }
+  positive(cap, 240, "shard cap", 240)
+  if (files.length <= cap) return { sharded: false, groups: [files] }
+  const work = [...new Set(files.filter(f => selected.has(f)).flatMap(f => [f, ...reachable(graph, f)]))]
+  const plan = planShards(work, graph, cap)
+  // A temporary project omits reverse observers. An oversized closure must
+  // use the original tsconfig, not just an oversized selected-root project.
+  return plan.fallback
+    ? { sharded: false, groups: [files], fallback: plan.fallback }
+    : { sharded: true, groups: plan.groups }
 }
 
 async function mapLimit(items, jobs, fn) {
@@ -359,8 +373,11 @@ async function fix(config, p, cm, options) {
         if (!Array.isArray(membership)) throw new Error("showConfig did not return project files")
         const roots = membership.map(f => posix.normalize(posix.join(dir, f))).filter(sourceModule)
         const files = [...new Set(roots.flatMap(f => [f, ...reachable(graph, f)]))]
-        const { sharded, groups } = fixShards(files, graph, only)
+        const { sharded, groups, fallback } = fixShards(files, graph, only)
+        receipt.mode = sharded ? "sharded" : "whole-project"
+        if (fallback) receipt.fallback = fallback
         receipt.shards = groups.map(g => ({ modules: g.length, files: g }))
+        appendJsonl(join(p.batch("01"), "progress.jsonl"), { stage: "fix-plan", package: dir, project: project.project, mode: receipt.mode, modules: files.length, selected: only.size, shards: groups.map(g => g.length), ...(fallback ? { fallback } : {}) })
         for (let sweep = 1; sweep <= maxRounds; sweep++) {
           let sweepFixes = 0
           for (let i = 0; i < groups.length; i++) {

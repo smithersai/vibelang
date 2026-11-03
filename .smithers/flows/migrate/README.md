@@ -249,8 +249,15 @@ transitive import-closed shards,
 each at most `240` modules, using temporary projects that extend the original
 options. Unselected roots remain in the full-project checks. Even a single
 selected shard uses a temporary project when the full program is above the cap.
-A closure larger than that cap stops with its file and size instead of
-running an unsafe shard. Temporary projects are removed after failure too.
+A selected import closure larger than the cap uses the original project.
+This fallback keeps every project root in the compiler's fix gate, including
+TypeScript and TSX observers outside the migration scope. Only selected modules'
+rewrites are retained. It uses the same fixed-point, timeout and compiler
+memory bounds; it does not raise the shard cap or cut a closure.
+The project's `mode` receipt is `whole-project` or `sharded`; a fallback
+also records its root file, closure size and cap in `fallback`.
+Run large closures on a box with memory for the full program.
+Temporary projects are removed after failure too.
 `--timeout` bounds each compiler invocation in seconds. A timeout, compiler
 crash or exhausted fix limit fails the command and keeps timing, project, shard
 and error receipts in `codemod.json` and `progress.jsonl`.
