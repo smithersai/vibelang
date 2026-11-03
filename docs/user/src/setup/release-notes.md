@@ -212,6 +212,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Declaration validation now accepts the generated `@throws {never}` contract in written-import tests while continuing to check every import specifier against the untouched TypeScript twin.
 - Migration checks could reject correctly rewritten Bun build scripts or run the same suites twice through compiler wrappers; they now check command and entrypoint rewrites together and run each suite in its own target.
 
+- The specification checks missed broken VIP links and superseded proposals still listed as denied; they now reject both inconsistencies.
+
 - The grammar inventory cited old compatibility diagnostics as though they were current public assignments. Those references now explicitly say they are historical; all pending gaps and their regression witnesses remain intact.
 - Filesystem platform errors recommended methods on the `FileSystem` namespace, where they do not exist; their advice now gets `FileSystem.FileSystem` before calling the implementation.
 - Migrating imports inside native `module` bodies could replace `./leaf.js` with `./leaf.vibe` and cause `TS5097`. These bodies now keep their original TypeScript import spelling.

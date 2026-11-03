@@ -462,3 +462,58 @@ test("chapter-codes rejects unassigned migration advice across the diagnostic ra
     expect(lint(corrected, rule("chapter-codes"))).toEqual([])
   }), { numRuns: 200, seed: 20261104 })
 })
+
+test("VIP references reject a historical broken supersession link", () => {
+  const defect: Spec = new Map([
+    ["src/900-appendices.md", "## Denied\n| [25](../vips/0025-inline-modules-denied, superseded by VIP-40.md) | denied |"],
+    ["vips/0025-inline-modules-denied.md", "**Superseded by [VIP-40](0040-module-declarations.md).**"],
+    ["vips/0040-module-declarations.md", "Accepted."]
+  ])
+  expect(lint(defect, rule("vip-references")).map(v => v.line)).toEqual([2])
+})
+
+test("VIP references reject a historical stale denied index and accept historical prose", () => {
+  const source = "**Superseded by [VIP-40](0040-module-declarations.md).**"
+  const defect: Spec = new Map([
+    ["vips/README.md", "## Denied\n| [25](0025-inline-modules-denied.md) | denied |"],
+    ["vips/0025-inline-modules-denied.md", source],
+    ["vips/0040-module-declarations.md", "Accepted."]
+  ])
+  expect(lint(defect, rule("vip-references"))).toHaveLength(1)
+  defect.set("vips/README.md", "## Denied\n[VIP-25](0025-inline-modules-denied.md) is superseded by [VIP-40](0040-module-declarations.md).")
+  expect(lint(defect, rule("vip-references"))).toEqual([])
+})
+
+test("VIP reference properties cover paths, anchors, missing targets and status transitions", () => {
+  // Authority: VIP index requires later VIPs to update superseded predecessors.
+  fc.assert(fc.property(fc.integer({ min: 1, max: 9998 }), fc.boolean(), fc.boolean(), (id, anchor, fromChapter) => {
+    const name = `${String(id).padStart(4, "0")}-proposal-denied.md`
+    const next = `${String(id + 1).padStart(4, "0")}-successor.md`
+    const file = fromChapter ? "src/900-appendices.md" : "vips/README.md"
+    const prefix = fromChapter ? "../vips/" : ""
+    const row = `| [${id}](${prefix}${name}${anchor ? "#decision" : ""}) | denied |`
+    const fixture: Spec = new Map([
+      [file, `## Denied\n${row}`], [`vips/${name}`, "Denied."], [`vips/${next}`, "Accepted."]
+    ])
+    expect(lint(fixture, rule("vip-references"))).toEqual([])
+    fixture.set(`vips/${name}`, `Superseded by [VIP-${id + 1}](${next}).`)
+    expect(lint(fixture, rule("vip-references"))).toHaveLength(1)
+    fixture.set(file, `## Historical decisions\n${row}`)
+    expect(lint(fixture, rule("vip-references"))).toEqual([])
+    fixture.delete(`vips/${name}`)
+    expect(lint(fixture, rule("vip-references"))).toHaveLength(1)
+    fixture.set(file, `## Examples\n\`\`\`md\n${row}\n\`\`\`\n[external](https://example.com/vips/${name})`)
+    expect(lint(fixture, rule("vip-references"))).toEqual([])
+  }), { seed: 16001, numRuns: 200 })
+})
+
+test("superseded denial cannot still remove the successor's accepted module form", () => {
+  const fixture: Spec = new Map([
+    ["src/005-services.md", "VIP-25 removed inline modules."],
+    ["vips/0025-inline-modules-denied.md", "Superseded by [VIP-40](0040-module-declarations.md)."],
+    ["vips/0040-module-declarations.md", "Accepted."]
+  ])
+  expect(lint(fixture, rule("vip-references"))).toHaveLength(1)
+  fixture.set("src/005-services.md", "[VIP-25](../vips/0025-inline-modules-denied.md) removed inline modules.")
+  expect(lint(fixture, rule("vip-references"))).toHaveLength(1)
+})

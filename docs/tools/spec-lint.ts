@@ -5,7 +5,7 @@
 // the violations and exits non-zero on any. The graph target is //:spec-lint.
 import { readdirSync, readFileSync } from "node:fs"
 import ts from "typescript"
-import { resolve } from "node:path"
+import { resolve, posix } from "node:path"
 import { fileURLToPath } from "node:url"
 import { nativeSourceResolution } from "./spec-native-source-resolution.ts"
 
@@ -486,13 +486,54 @@ const specLinks: Rule = {
   }
 }
 
-export const rules: Rule[] = [specLinks, resolutionClaims, nativeSourceResolution, configKeys, importStyleScope, declarationImportForm, deniedVipRepairs, retiredForms, platformImports, counterpartUsing, collisionConditional, rulingClaims, compilerGaps, moduleExtractionTwins]
+// VIP references must name existing proposals and respect supersession.
+const vipReferences: Rule = {
+  name: "vip-references",
+  finding: "broken VIP links and a superseded denial classified as current",
+  check(spec) {
+    const out: Violation[] = []
+    const superseded = [...spec].filter(([file, text]) =>
+      /^vips\/\d{4}-/.test(file) && /superseded by\s+\[VIP-\d+\]/i.test(prose(text)))
+      .map(([file]) => Number(file.match(/\d{4}/)![0]))
+    for (const [file, text] of spec) {
+      const body = prose(text)
+      for (const id of superseded) {
+        const obsolete = new RegExp(`VIP-${id}(?:\\]\\([^)]*\\))? +removed +inline modules`, "i").exec(body)
+        if (obsolete) out.push({ rule: this.name, file, line: lineAt(text, obsolete.index),
+          message: `VIP-${id} is superseded and cannot justify removing inline modules` })
+      }
+      let heading = ""
+      let offset = 0
+      for (const line of body.split("\n")) {
+        if (/^#{1,6} /.test(line)) heading = line
+        for (const m of line.matchAll(/\[[^\]\n]+\]\(([^)\n]+)\)/g)) {
+          const href = m[1]!.split("#")[0]!
+          if (!href || /^[a-z]+:/i.test(href)) continue
+          const target = posix.normalize(posix.join(posix.dirname(file), href))
+          if (!/^vips\/\d{4}-[^/]+\.md$/.test(target)) continue
+          const source = spec.get(target)
+          const location = { rule: this.name, file, line: lineAt(text, offset + m.index!) }
+          if (source === undefined) {
+            out.push({ ...location, message: `VIP link names missing file ${target}` })
+          } else if (/^\|/.test(line) && /denied/i.test(heading) &&
+                     /superseded by\s+\[VIP-\d+\]/i.test(prose(source))) {
+            out.push({ ...location, message: `${target} is superseded; remove it from the current denied table and link its successor in prose` })
+          }
+        }
+        offset += line.length + 1
+      }
+    }
+    return out
+  }
+}
+
+export const rules: Rule[] = [vipReferences, specLinks, resolutionClaims, nativeSourceResolution, configKeys, importStyleScope, declarationImportForm, deniedVipRepairs, retiredForms, platformImports, counterpartUsing, collisionConditional, rulingClaims, compilerGaps, moduleExtractionTwins]
 
 const kinds: Record<string, string[]> = {
   registry: ["config-keys"],
   tables: ["native-source-resolution", "resolution-claims", "declaration-import-style-scope", "denied-vip-repairs", "collision-conditional", "compiler-gaps-not-rules"],
   copies: ["declaration-import-form", "counterpart-using"],
-  authority: ["ruling-claims"],
+  authority: ["vip-references", "ruling-claims"],
   examples: ["retired-forms", "platform-imports", "module-extraction-twins"]
 }
 // A repair or migration that compares declarations compares API identity
