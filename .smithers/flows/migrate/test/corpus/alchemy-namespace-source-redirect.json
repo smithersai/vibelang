@@ -2,7 +2,7 @@
   "key": "alchemy-57:namespace:project-reference:disable-source-redirect",
   "repo": "alchemy",
   "spec": "docs/design/src/007-tooling.md",
-  "quote": "VibeLang resolves a relative `./x.vibe` to source; plain `tsc` reads the compatibility declaration.",
+  "quote": "Compatibility declarations preserve the actual module selected by a source import. An explicit `./tag.vibe` remains that module even beside `tag.ts`, including re-exports and inferred import types, under every declaration import style and in either layout",
   "name": "DBInstance",
   "namespace": "RDS",
   "depth": 0,

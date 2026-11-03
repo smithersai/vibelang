@@ -8,6 +8,7 @@ import { makeConfig, wireTarget } from "../lib/steps.mjs"
 import { must } from "../lib/util.mjs"
 import { ownedTsconfigs } from "../lib/wire.mjs"
 import { isProtectedFile } from "../lib/test-diff.mjs"
+import { SpecPath } from "../../../../scripts/testing/spec-path.mjs"
 const require = createRequire(new URL("../../../../packages/runtime/package.json", import.meta.url))
 const ts = require("typescript"), fc = require("fast-check")
 
@@ -120,8 +121,9 @@ test("malformed configs and nonliteral redirect values remain unchanged", async 
 
 const namespaceCorpus = JSON.parse(readFileSync(new URL("./corpus/alchemy-namespace-source-redirect.json", import.meta.url), "utf8"))
 test("Alchemy namespace corpus cites the source-sidecar contract", () => {
-  const chapter = readFileSync(new URL("../../../../docs/design/src/007-tooling.md", import.meta.url), "utf8")
-  assert.ok(chapter.includes(namespaceCorpus.quote))
+  const chapter = readFileSync(SpecPath(namespaceCorpus.spec.split("/").at(-1)), "utf8")
+  assert.ok(chapter.includes(namespaceCorpus.quote),
+    `${namespaceCorpus.key}: ${namespaceCorpus.spec} no longer contains the corpus quote: ${namespaceCorpus.quote}`)
 })
 
 test("real Oxlint: referenced namespace remains typed after setup source redirects", {
