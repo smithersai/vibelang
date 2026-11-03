@@ -39,17 +39,3 @@ JavaScript's `for await`; Kotlin's `flow.collect { }`; Rust's `while let Some(x)
 ## Will's words
 
 > "good recomendation"
-
-## Details
-
-Decided details folded in on 2026-11-03. Each keeps its old number as history. The conflict pass deleted superseded, duplicate and relic details and resolved contradictions in favor of Will's words, then accepted VIPs, then later details. Principles are numbered as in [the introduction's Details](../src/000-intro.md#details).
-
-### Detail 49
-
-(NW 11; VIP-20) A labeled `break` or `continue` from a `for try` body to a statement outside it is a compile error, as `for concurrent` already rules.
-    ```vibe
-    outer: for (const s of streams) { for try (const x of s) { continue outer } }   // error
-    ```
-    Effect TS: none; the body runs in `Stream.runForEachWhile`'s callback. Decided by the agent from principles 4 and 8; 2026-10-29.
-
-    **Own-loop labels are not outward jumps (112 producer-guide correction, 2026-10-30).** Resolve the source label target before lowering. `own: for try (const x of stream) { if (skip(x)) continue own; if (stop(x)) break own; }` is allowed: the target is this same Stream loop, so its Effect TypeScript counterpart returns `true`/`false` from the current item callback just as for the unlabelled forms. A native block/loop label wholly inside the body retains ordinary source behavior. A target outside the whole `for try` remains forbidden under this detail, for example `outer: { for try (const x of stream) { break outer } }`. Do not classify a label naming this loop as an outward target merely because its label wrapper is an enclosing AST node. No self-label exception is being removed; it was already the ordinary loop-target rule. Spec-fix-d reports combined source commit8a7ac14df402 withdrawn before landing after its self-label change was found erroneous; only the separately supported iterator-abandonment work will be reissued. Preserve the existing layout regression. Decided by the agent from VIP-20/detail49's outside-target restriction and principle2 (native labelled iteration targets), 2026-10-30. This is a correction to a fixer receipt, not a new language restriction, compiler fix or independently verified queue/main status.

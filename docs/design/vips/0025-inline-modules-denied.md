@@ -6,6 +6,8 @@
 
 There are no inline `module` declarations.
 
+*Superseded by [VIP-40](0040-module-declarations.md), 2026-11-03: its reason, that plain functions kept TypeScript's `throw`, was removed by Will's 2026-10-31 ruling.*
+
 ## What was proposed
 
 Old VibeLang (D283) used TC39's module-declaration syntax, `module text { export function clean(v: string): string { … } }`, as an escape: a body of plain TypeScript inside a `.vibe` file.

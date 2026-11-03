@@ -36,11 +36,3 @@ effect function reviewedCheckout(cartId) {
 ## History
 
 About 6 findings across 10 rounds.
-
-## Details
-
-Decided details folded in on 2026-11-03. Each keeps its old number as history. The conflict pass deleted superseded, duplicate and relic details and resolved contradictions in favor of Will's words, then accepted VIPs, then later details. Principles are numbered as in [the introduction's Details](../src/000-intro.md#details).
-
-### Detail 17
-
-(VIP-35, open) The first release has no handlers: remove `control`/`handle`/`resume`/`abandon` and the continuation runtime from the compiler, since no accepted VIP adds them.

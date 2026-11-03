@@ -130,7 +130,7 @@ const size = n < 5 ? <Small/> : <Big/>
 ### Effects and throws
 
 - **JSX never runs an Effect.** An element doesn't run its props; a component is a plain function (VIP-1), not an Effect; an Effect-returning event handler returns an unrun Effect unless something runs it. TypeScript's `void` callback assignability means that mistake is not always a type error, as in `.tsx`.
-- **An element is not a throw-tracked call** (VIP-4), as a getter isn't. The expressions inside it are tracked as usual. A component's `@throws` comes from its own body. (React's `jsx()` only builds a description; Solid's `createComponent` calls the component at once. What a component throws there is the framework's error-boundary business, as in `.tsx`.)
+- **An element is not a throw-tracked call** (VIP-4), as a getter isn't. The expressions inside it are tracked as usual. A `.vibe` component's declaration carries `@throws {never}` (VIP-27). (React's `jsx()` only builds a description; Solid's `createComponent` calls the component at once. What a component throws there is the framework's error-boundary business, as in `.tsx`.)
 - **`try` inside JSX is legal and lowers in place.** Under `react`, `react-jsx` and `react-jsxdev`, TypeScript transforms the element and `try` runs where it stands, in source order. Under `preserve` and `react-native`, which keep the element in the output, the framework's compiler decides (Metro's Babel transform under `react-native`); Solid's compiler wraps an intrinsic element in an arrow, so `<div>{try x}</div>` fails Solid's build with "Unexpected reserved word 'yield'", exactly as `<div>{yield* x}</div>` and `<div>{await x}</div>` do in `.tsx`. Bind it first; that reads the same in every framework.
 - **An attribute is an object member under VIP-4.** TypeScript checks the attributes against the props type member by member, so a function value in an attribute must fit the prop's call signature, as in `f({ onClick: … })` ([Assignability](../src/003-failures.md#assignability)). A handler imported from a `.ts` file with `/** @throws {Error} */` is `EK0402` against an untagged `onClick`, in `onClick={handler}` and in a spread `{...{ onClick: handler }}` alike. The check of a tag against `JSX.ElementType` or `JSX.ElementClass` is not an assignability site: an element is not a tracked call (Rejected: "JSX elements as throw-tracked calls"), so an imported component is never rejected for what it may throw.
 
@@ -162,7 +162,7 @@ export function SaveButton() {
 
 - **Options.** `jsx`, `jsxFactory`, `jsxFragmentFactory`, `jsxImportSource`, `reactNamespace` and the `@jsx`, `@jsxFrag`, `@jsxImportSource` and `@jsxRuntime` pragmas mean what they mean for `.tsx`, read through VIP-30's `vibe.config.json` → `tsconfig.json` → `jsconfig.json` discovery. A project without `jsx` gets `.tsx`'s errors (TS17004 at the element, TS6142 at the import). No VibeLang option touches JSX.
 - **Output names.** `x.vibex` emits `x.jsx` under `"jsx": "preserve"` and `x.js` otherwise (`react-native` keeps JSX in `x.js`), as `x.tsx` does. This extends VIP-34's `.vibe` → `.js` rule. A relative `./x.vibex` specifier rewrites to `./x.jsx` under `preserve` and `./x.js` otherwise, as TypeScript rewrites `./x.tsx`, decided by the target file's actual output.
-- **Declarations.** `x.vibex` writes the public `x.d.ts` to `outDir` and the sidecar `x.d.vibex.ts` beside the source (VIP-27), which plain `tsc` resolves under `allowArbitraryExtensions`. Neither contains JSX or VibeLang syntax. The public `x.d.ts` is byte-identical to the one the fork writes for the `.tsx` twin that carries the same `@throws` tags. VIP-27 is unchanged: a converted component gains `@throws`, exactly as a `.ts` file converted to `.vibe` does.
+- **Declarations.** `x.vibex` writes the public `x.d.ts` to `outDir` and the sidecar `x.d.vibex.ts` beside the source (VIP-27), which plain `tsc` resolves under `allowArbitraryExtensions`. Neither contains JSX or VibeLang syntax. The public `x.d.ts` is API-identical ([VIP-27](0027-declaration-output.md)) to the one the fork writes for the `.tsx` twin that carries the same `@throws` tags. VIP-27 is unchanged: a converted component gains `@throws`, exactly as a `.ts` file converted to `.vibe` does.
 - **Source maps.** `x.js.map`/`x.jsx.map` and `x.d.ts.map` name `x.vibex` with its `sourcesContent`; JSX nodes keep TypeScript's positions, VibeLang's lowered nodes stand on their keyword as in `.vibe`.
 - **Diagnostics.** JSX errors keep their TypeScript codes; VibeLang errors keep their `EK` codes (VIP-34). VIP-39 adds no diagnostic. `EK39xx` stays reserved for it.
 
@@ -367,40 +367,3 @@ Accept. `.vibex` is one extension that selects `.tsx`'s language variant plus Vi
 ## Context
 
 The proposals page lists "JSX source files" as not in VibeLang: components live in `.tsx` files that call `.vibe` functions. The earlier design left `.vibex` as a candidate that must not imply a stricter mode (research note D21). 45 opencode (Solid, `class=`, `jsxImportSource` from tsconfig), 218 t3code (React, `react-jsx`, `@effect/atom-react`) and 4 foldkit Effect modules are `.tsx` and can't become VibeLang today.
-
-## Details
-
-Decided details folded in on 2026-11-03. Each keeps its old number as history. The conflict pass deleted superseded, duplicate and relic details and resolved contradictions in favor of Will's words, then accepted VIPs, then later details. Principles are numbered as in [the introduction's Details](../src/000-intro.md#details).
-
-### Detail 265
-
-**Vibex output collisions follow the selected native output paths, not a shared source stem.** (Loop r6 Astra ASTRA-5; accepted VIP-39 exact TypeScript JSX checking/emit rule, VIP-27 output/sidecar names, principles2/3/4.) Do not reject `App.vibe` beside `App.vibex` merely because both are selected and share a stem. Compute the actual outputs under the native compiler options and host path identity; report native output-collision diagnostics only where the selected inputs really share a written path. With `jsx: preserve` and public declaration emission off, the pair has distinct `App.js` and `App.jsx` outputs and is admitted. With shared public declaration output enabled, both would write `App.d.ts`, so the normal collision applies. A JSX mode that writes both JavaScript inputs as `App.js` likewise collides. `noEmit`, declaration-only modes, output directories/maps and host filename identity keep their native rules, not a new VibeLang stem rule.
-
-    Selection and emission are separate. Default include/resolution priority may choose only one same-stem source; do not invent an include-both guarantee to manufacture a collision. Use explicit roots in the regression to ensure both selected files are actually tested. The same conditional output rule applies to a `.tsx`/`.vibex` pair: if both are selected and share a native output, report that collision; do not infer it from filenames alone when no corresponding file is emitted.
-
-    ```json
-    { "compilerOptions": { "jsx": "preserve", "declaration": false, "outDir": "dist" },
-      "files": ["App.vibe", "App.vibex"] }
-    ```
-
-    ```vibe
-    // App.vibe
-    export const plain = 1 // dist/App.js
-    ```
-
-    ```vibex
-    // App.vibex, JSX-free but still the JSX language variant
-    export const jsx = 2 // dist/App.jsx
-    ```
-
-    Effect TS: explicit `App.ts` and `App.tsx` roots containing the same two ordinary exports under those options emit `App.js` and `App.jsx`. Enabling declarations produces native `TS5056` for `App.d.ts`; `jsx: react` without declarations produces `TS5056` for `App.js`. None of these files contains Effect work or gains an implicit runner.
-
-    Compatibility sidecars stay separately named `App.d.vibe.ts` and `App.d.vibex.ts`; a common public `App.d.ts` is a different output concern. Keep VIP-39 exact native mode behavior, source maps, existing output/input overwrite diagnostics and host canonical path comparison. No new `EK` code, stricter JSX mode, source extension restriction or cross-file namespace is introduced.
-
-    Five stock TypeScript5.9.3 controls pass with explicit roots: preserve/no declarations emits both distinct files; preserve/declarations, React/no declarations and preserve/declaration-only each report native `TS5056`; React/noEmit reports no diagnostics and writes no files. Receipt: `jsx-output-collision-native-reference.json`. This is a native reference, not a VibeLang `.vibex`, sidecar, TypeScript7.1, product regression or fuzz result. Source/compiler owners retain the paired cases and property matrix over input selection, source kinds, JSX/declaration/noEmit modes, output/map directories and host path identity.
-
-    Decided by the agent from accepted VIP-39 exact `.tsx` emission/checking, principle2 (TypeScript already decides collisions), principle3 (actual output path identity), principle4 (one native collision procedure) and the five native controls, 2026-10-31. Class A; no Will question.
-
-
-
-    **Sidecar boundary clarification.** The native TypeScript `noEmit` control above concerns native output-collision behavior. It does not relax VIP-27 mandatory compatibility-sidecar creation or change the existing VibeLang sidecar writer; the two separately named sidecars remain governed by VIP-27/VIP-39.

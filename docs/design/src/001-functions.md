@@ -1,6 +1,6 @@
 # Functions and Effect types
 
-Sources: [VIP-1](../vips/0001-effect-and-async-functions.md), [VIP-4](../vips/0004-throw.md) (legacy JavaScript), [VIP-3](../vips/0003-effect-type-shorthand.md), [VIP-26](../vips/0026-top-level-and-main.md), [VIP-27](../vips/0027-declaration-output.md).
+Sources: [VIP-1](../vips/0001-effect-and-async-functions.md), [VIP-4](../vips/0004-throw.md) (legacy JavaScript), [VIP-3](../vips/0003-effect-type-shorthand.md), [VIP-26](../vips/0026-top-level-and-main.md), [VIP-27](../vips/0027-declaration-output.md), [VIP-40](../vips/0040-module-declarations.md).
 
 A function's kind is decided by a keyword on the function, never by its body or by a type. There are three kinds:
 
@@ -124,6 +124,7 @@ class OrdinaryValue { effect(): number { return 1 } }   // a method named effect
 | `await` on an Effect, by the [Result test](002-running.md#result-tests) (VIP-5, amended: not `never`, `any` or `unknown`, and at least one union member an Effect), in an `async` function or at the module top level (VIP-5); write `await runPromise(e)` | `EK0103` |
 | `effect` on a getter, setter or constructor | `EK0104` |
 | `effect` and `async` on one function or block | `EK0105` |
+| a recognized `effect` arrow head violating its required head form, a typed or generic bare parameter: `effect x: number!! => x`, `effect <T> x => x`; write the parentheses | `EK0109` |
 | a recognized `effect` modifier on an `abstract` declaration, in an ambient `declare` context, or on an `interface` or type literal member | `EK0108` |
 | A written return type of an `effect` function that does not resolve to `Effect.Effect<A, E, R>`, an alias included, as TS1064 requires `Promise<T>` for `async` (`any`, `unknown` and `never` are errors) | `EK0106` |
 | A banned use of `eval`, `Function`, `arguments`, `var` or `with` anywhere in a `.vibe` file, plain functions included, as [Legacy JavaScript](#direct-eval) defines it | `EK0107` |
@@ -245,7 +246,7 @@ Property names on ordinary objects, such as `o.arguments`, `o.eval` and `{ var: 
 - **`.constructor` of a function.** Reading a property named `constructor` from a value whose static type is a function type or `Function` is `EK0107`: `(async () => {}).constructor` reaches the `AsyncFunction` constructor. `constructor` on other objects, and on values typed `any`, is unaffected.
 - **Code in a specifier.** A string-literal `data:` or `blob:` specifier, in `import(…)` or an `import` declaration, is `EK0107`: it runs a string as code. `import(expr)` with a computed specifier is not checked; it loads a module and can't reach `eval` or `Function`.
 
-With these five uses gone, no lowering has to hide its generator or generated names from evaluated code, and every declaration in a body is block-scoped or a parameter, so no lowering lifts a binding out of a block. [Region bodies](002-running.md#region-bodies), [Evaluation order](002-running.md#evaluation-order), [Pattern matching](004-match.md) and [Runtime guarantees](008-runtime.md) refer to this rule. Inline `module` declarations stay denied ([VIP-25](../vips/0025-inline-modules-denied.md)).
+With these five uses gone, no lowering has to hide its generator or generated names from evaluated code, and every declaration in a body is block-scoped or a parameter, so no lowering lifts a binding out of a block. [Region bodies](002-running.md#region-bodies), [Evaluation order](002-running.md#evaluation-order), [Pattern matching](004-match.md) and [Runtime guarantees](008-runtime.md) refer to this rule. Such code lives in a `.ts` file or a `module` body ([VIP-40](../vips/0040-module-declarations.md)).
 
 ```vibe es
 // compiler-gap: pending VIP-1
@@ -288,6 +289,8 @@ class Counter extends Base {
 ```
 
 With `Base.prototype.offset` returning 30, `value()` succeeds with 37.
+
+A decorator expression on an `effect` method evaluates in its enclosing source context, as class heritage and computed keys do: `@(try d)` needs an enclosing Effect activation. An `effect` method keeps TypeScript's decorator checks and order, and applying a decorator does not run the cold body.
 
 ### Return types
 
@@ -334,6 +337,8 @@ function depthE(n: number): Effect.Effect<number> {
   })
 }
 ```
+
+`infer` has no meaning in a return annotation: `--fix` deletes a bare `: infer _`, and an `Effect<A, infer E, R>` slot retires through the legacy path. Write the slot, or leave the whole annotation out.
 
 ### Crossing between Promises and Effects
 
@@ -493,22 +498,68 @@ await runPromise(main())
 await main()                    // EK0103: the Effect would never run
 ```
 
+### `module` declarations
+
+A `.vibe` or `.vibex` file may hold TypeScript inline ([VIP-40](../vips/0040-module-declarations.md)). `module name { … }` is a [ModuleDeclaration](900-appendices.md#moduledeclaration) at the file's top level. Its body is a TypeScript file stored in the `.vibe` file: moving it to a sibling `.ts` file and replacing `from name` with that file's specifier changes no diagnostic, type, emitted statement, declaration or run-time observation. So a body is `.ts`, or `.tsx` in a `.vibex` file, under the project's `compilerOptions`; it may `throw`, use `node:*` and legacy JavaScript; and it sees none of the file's names. It evaluates once, in import order, only when imported for a value. No VibeLang rule runs on it, except the three below.
+
+```vibe es
+// compiler-gap: pending VIP-40
+module parse {
+  /** @throws {RangeError} */
+  export function port(raw: string): number {
+    const n = Number(raw)
+    if (!Number.isInteger(n) || n < 1 || n > 65535) throw new RangeError(`bad port: ${raw}`)
+    return n
+  }
+}
+
+import { port } from parse
+
+export effect function loadPort(raw: string) {
+  return try Effect.try(() => port(raw))
+}
+```
+
+```ts effect
+// fragment
+// parse.ts
+/** @throws {RangeError} */
+export function port(raw: string): number { /* as above */ }
+
+// config.ts
+import { Effect } from "effect"
+import { port } from "./parse.ts"
+export const loadPort = (raw: string) => Effect.gen(function* () { return yield* Effect.try(() => port(raw)) })
+```
+
+| Rule | Diagnostic | Quick fix |
+| --- | --- | --- |
+| a module declaration below the file's top level | `EK4001` | move it to the top level |
+| `export module name { }` or `export default module { }` | `EK4002` | `export { … } from name` |
+| a module expression `module { … }` | `EK4003` | name it, and import from it |
+| the name used as a value: `import(name)`, `name.x`, `typeof name`, an argument | `EK4004` | a static import from `name` |
+| the name redeclares a binding of the file | `EK4005` | rename one |
+| an identifier specifier naming no declaration of the file, or carrying import attributes | `EK4006` | fix the name, or quote a package name |
+| an identifier specifier inside a body | `EK4007` | move the shared code to a `.ts` file |
+| `export =` or `import x = require()` in a body | `EK4008` | `export default`, `import` |
+| `import.meta` in a body | `EK4009` | pass the value in, or use a `.ts` file |
+
+Other `module A.B { }` and `declare module C { }` forms keep TypeScript's `TS1540`.
+
 ## Declaration output
 
 For each `x.vibe`, the compiler writes `x.d.vibe.ts` beside it, and for each `x.vibex`, `x.d.vibex.ts` (VIP-27, VIP-39). TypeScript's `allowArbitraryExtensions` resolves it, so plain `tsc` and TypeDoc understand imports of `.vibe` files. With `vibe.sidecarDir` the sidecars sit at their sources' paths under that directory instead, and tsconfig `rootDirs` lets the same tools resolve them ([Configuration](007-tooling.md#config-files); VIP-27, amended). A package build also writes ordinary `.d.ts` files to its output directory.
 
 `bun check` runs the project's `check` script; a script that invokes a TypeScript checker uses that checker's sidecar resolution.
 
+<a id="api-identity"></a>**API identity.** Declaration output is API-identical to what `tsc` writes for the Effect TypeScript twin: the same exported names, each export's type identical to `tsc`'s in both directions (a type-level check), and the same doc comment on each export, apart from the `@throws` tags the **Thrown types** rule below adds. Formatting, quote style, import extension spelling, and import and member order where `tsc` doesn't care don't count. Every rule that requires declarations to match, the codemods and migration included, means this.
+
 - **Content.** Declarations are exactly what idiomatic Effect TypeScript would declare. Ordinary interface and object-type properties, including optional members and index signatures, keep exactly the source's written `readonly` modifiers, including in nested object types; class fields keep their written modifiers too. Each keeps its source form: a function declaration is a `declare function`, and a `const` holding an arrow is a `declare const`. A `service`, `error`, `schema`, `schema error` or `data` declaration is declared as TypeScript's declaration emit of its Effect TypeScript counterpart, which introduces a `Name_base` constant for a class-call heritage such as `Context.Service<…>()("k")`. The output imports every name the source had in scope without an import: each root module as `import { Effect, Stream } from "effect"`, each subpath namespace from its subpath, and a module whose bare name is a JavaScript global's (`Array`, `Console`) under a fresh alias, as emitted code does ([Services](005-services.md#effects-modules-are-in-scope)). A declaration writes such a name only where the source writes it: an inferred signature that a library declares with a name the file never writes keeps TypeScript's import type, so `Schema.decodeUnknownSync(Schema.String)` declares `options?: import("effect/SchemaAST").ParseOptions`. A form that stands for a module writes its name: an Effect function, `A!E!R`, `try` or a bare Effect global such as `sleep` writes `Effect`, which its Effect TypeScript imports. Nothing in it depends on `vibe.effectModules` or `vibe.effectGlobals`. The generic-`data` helper for `data Outcome<A>` is named `$Outcome$Definition`; if the module already declares that name, the compiler appends `$2`, `$3`, … and takes the first free name, so the name is the same on every build (VIP-28, amended). An `error` or `schema error` keeps its static `[Symbol.customMatcher]` member, and a declaration file that declares one begins with `/// <reference types="vibelang-runtime" />`, which declares the `Symbol.customMatcher` type, so plain `tsc` checks it and matching across packages works at run time (VIP-27, amended).
-- **Specifiers.** A relative import of a VibeLang module, `./user.vibe`, is declared through its `.js` output, `./user.js`, by default: no TypeScript resolves `./user.vibe` to `user.d.ts` (D298). A package whose sources spell relative imports another way keeps that spelling with the project setting `vibelang.declarationImportStyle`: `"extensionless"` declares `./user`, `".ts"` declares `./user.ts`, and `".js"` is the default. The setting spells only the package declarations in the output directory: a source-adjacent sidecar, `x.d.vibe.ts` or `x.d.vibex.ts`, keeps the source's `./user.vibe` under every setting, which plain `tsc` resolves to `user.d.vibe.ts` under `allowArbitraryExtensions`, and JavaScript output keeps `./user.js`. A relative `./App.vibex` is declared through its JavaScript output by default, `./App.jsx` under `"jsx": "preserve"` and `./App.js` otherwise ([VIP-39](../vips/0039-vibex.md#options-output-and-declarations)); what `"extensionless"` and `".ts"` declare for it is not yet decided. Under every setting, every other specifier stays as the source wrote it, `./plain.ts` included, as `tsc` keeps it in the declaration of a `.ts` file. An import type the compiler writes itself, for a type inferred from a VibeLang module that the file does not import by that specifier, is spelled as `tsc` spells it for the file's TypeScript twin, which writes each `./x.vibe` in the setting's spelling: under `module: nodenext` with `.ts` imports allowed that is `import("./user.ts").User` whatever the file writes, and otherwise the ending `tsc` infers from the twin's imports. Any other value is a configuration error. An import the declaration file adds, such as `import { Effect } from "effect"`, takes the quotes of the file's first written import or export specifier, as an import the TypeScript language service adds does; a file with none gets double quotes. Module types a file writes through one of its own imports, `HashSet<string>` through `import { HashSet, Option } from 'effect'`, stay in one import, in the written order and quotes, and an added name joins it: `import { Effect, HashSet, Option } from 'effect'`.
+- **Specifiers.** A relative import of a VibeLang module, `./user.vibe`, is declared through its `.js` output, `./user.js`, by default: no TypeScript resolves `./user.vibe` to `user.d.ts`. A package whose sources spell relative imports another way keeps that spelling with the project setting `vibelang.declarationImportStyle`: `"extensionless"` declares `./user`, `".ts"` declares `./user.ts`, and `".js"` is the default. The setting spells only the package declarations in the output directory: a source-adjacent sidecar, `x.d.vibe.ts` or `x.d.vibex.ts`, keeps the source's `./user.vibe` under every setting, which plain `tsc` resolves to `user.d.vibe.ts` under `allowArbitraryExtensions`, and JavaScript output keeps `./user.js`. A relative `./App.vibex` is declared through its JavaScript output by default, `./App.jsx` under `"jsx": "preserve"` and `./App.js` otherwise ([VIP-39](../vips/0039-vibex.md#options-output-and-declarations)); what `"extensionless"` and `".ts"` declare for it is not yet decided. Under every setting, every other specifier stays as the source wrote it, `./plain.ts` included, as `tsc` keeps it in the declaration of a `.ts` file. An import type the compiler writes itself, for a type inferred from a VibeLang module that the file does not import by that specifier, is spelled as `tsc` spells it for the file's TypeScript twin, which writes each `./x.vibe` in the setting's spelling: under `module: nodenext` with `.ts` imports allowed that is `import("./user.ts").User` whatever the file writes, and otherwise the ending `tsc` infers from the twin's imports. Any other value is a configuration error.
 - **Cyclic inferred types.** Declaration serialization retains TypeScript 5.9 and 7.0 behavior where TypeScript 7.1's [new anonymous-type cycle check](https://github.com/microsoft/TypeScript/pull/64461) would report `TS5088`: the repeated anonymous type is written as `/*elided*/ any`, without an error for that cycle. This applies to `.vibe` and `.ts` alike (VIP-27, amended). Other `TS5088` checks and ordinary recursive-inference errors `TS7022`, `TS7023` and `TS7024` remain unchanged.
 
 - **Producer environments.** An inferred producer declaration exposes the environment `Exclude<RBody, Scope.Scope>` for its body requirements `RBody`, because the accepted `Stream.callback` provides `Scope`. Preserve other services, ordinary checks on explicit annotations and values of type `Scope.Scope` ([Producers](002-running.md#producers)).
-- **Thrown types.** Each declaration carries its thrown type as [Thrown types](003-failures.md#thrown-types) defines it. An effectful function carries no `@throws`. Every other call signature the output emits carries `@throws {T}`, `@throws {never}` included, so no reader depends on a default: functions, methods, constructors, callable `const`s, `async` functions, and each call, construct or method signature of an exported `interface`, type literal or `type` alias (VIP-4, amended). A bare function type (`() => string`) stays a function type. Getters and setters carry none.
-- **Each call signature carries its own contract** ([Thrown types](003-failures.md#thrown-types), VIP-4, amended): every overload, and a returned callable's own signature. TypeScript attaches JSDoc to a call signature but not to a function type, so a callable `const` is declared with a type literal whose call signature carries the tag. A written `@throws {T}` is a checked upper bound, so the output copies `T`; otherwise it writes the inferred type. A tag on an alias of a function type does not attach to its call signature; write `type Reader = { /** @throws {E} */ (): string }` instead (VIP-4, amended). A foreign callable binding without a tag on itself or its declared call signature throws `unknown`, whether imported from source or an emitted `.d.ts`, even with a written function type (VIP-4, amended).
-- **`@rethrows` is copied and adds to own throws.** A source `/** @rethrows <param> */` tag (VIP-4) is written, never inferred, and the output copies it. For a non-effectful callable, first determine its own thrown type: a written checked bound, else a shipped signature annotation, else local body inference or the foreign/type-position default. Shipped annotations are installed before defaults apply. At each call, union that type with the thrown types of the arguments for every `@rethrows` parameter (VIP-4, amended). Thus `@throws {never}` describes only own throws; it does not erase `@rethrows f`. Effectful callables have synchronous thrown type `never`, and `@rethrows` adds nothing.
-- **Local overload implementations satisfy every exposed overload.** Check the tracked synchronous throws of a local implementation, including parameter/default initialization, against every exposed overload bound, for methods too. An overload returning wholly Effect, Stream or Layer contributes the implicit `never` synchronous bound even though its output has no throws tag. A mixed-return implementation cannot hide a known throw behind that overload; a violation is `EK0401`. A plain overload keeps its written bound or existing inference/default rules. The initial check uses one conservative implementation bound; it does not silently specialize by argument. Foreign signatures retain their declared contracts without a runtime wrapper.
-- **Callback admission survives a callable boundary.** A `@rethrows` parameter that admits arbitrary throwing callbacks has an admitted thrown bound of `unknown` outside the annotated callable's direct synchronous rethrow propagation. Preserve it when returning, storing or assigning the callback, or capturing/invoking it in a nested callable, including a returned object callable member or an immediately invoked nested function. A nested plain callable that may invoke the capture carries `@throws {unknown}` on its own emitted signature. Assignment to a nonthrowing destination is `EK0402`; an unwrapped invocation in effect code is `EK0403`. Merely returning or storing the callback is not an invocation. Direct synchronous invocation/forwarding keeps the own-throws-plus-actual-callback calculation above; async and effect boundaries keep their existing rules.
+- **Thrown types.** A `.vibe` callable throws `never` ([Thrown types](003-failures.md#thrown-types)), so the output states the same on every call signature it emits other than an effectful one: functions, methods, constructors, callable `const`s, `async` functions, and each call, construct or method signature of an exported `interface`, type literal or `type` alias carry `@throws {never}`. A foreign reader treats a declaration without a tag as throwing `unknown`, so this constant is the boundary, not an inferred contract. An effectful function carries no `@throws`. A bare function type stays a function type, and getters and setters carry none. A re-exported foreign callable keeps its actual `@throws` and `@rethrows`.
 
 The recursive builder below has the same ordinary TypeScript counterpart. Its inferred declaration contains `named: (value: string) => /*elided*/ any`.
 
@@ -530,73 +581,16 @@ const makeBuilder = (state: { value: string }) => ({
 ```
 
 ```vibe es
-// compiler-gap: pending VIP-4, VIP-27
-function choose(mode: true): number!!;
-function choose(mode: false): number;
-function choose(mode: boolean): (number!!) | number { throw "boom" }
-// EK0401: the true overload promises never to throw synchronously.
-/** @rethrows f */
-export function later(f: () => number) { return () => f() }
-const delayed = later(() => { throw "callback" })
-const unsafe: () => number = delayed      // EK0402: returned signature throws unknown
-effect function bad() { return delayed() } // EK0403
-effect function good() { return try Effect.try({ try: () => delayed(), catch: (e) => e }) }
-```
-
-The returned declaration carries its own bound, for example `export declare function later(f: () => number): { /** @throws {unknown} */ (): number }`, with the outer callable's own throws and written `@rethrows f` preserved separately. Ordinary TypeScript accepts the overload signatures below; VibeLang adds the synchronous-contract check. The native references show the hidden throw as `Die("boom")`, the unwrapped callback as `Die("callback")`, and the explicit wrapper as `Fail("callback")`:
-
-```ts effect
-// Callable-contract reference witnesses
-import { Effect, Exit } from "effect"
-function choose(mode: true): Effect.Effect<number>;
-function choose(mode: false): number;
-function choose(mode: boolean): Effect.Effect<number> | number { throw "boom" }
-function later(f: () => number) { return () => f() }
-const delayed = later(() => { throw "callback" })
-const hidden = Effect.runSyncExit(Effect.sync(() => choose(true)))
-const unwrapped = Effect.runSyncExit(Effect.gen(function* () { return delayed() }))
-const wrapped = Effect.runSyncExit(Effect.gen(function* () {
-  return yield* Effect.try({ try: () => delayed(), catch: (e) => e })
-}))
-function reason(exit: Exit.Exit<unknown, unknown>) {
-  if (Exit.isSuccess(exit)) return ["Success", exit.value]
-  const r = exit.cause.reasons[0]
-  return r._tag === "Die" ? ["Die", r.defect] : r._tag === "Fail" ? ["Fail", r.error] : ["Interrupt"]
-}
-console.log(JSON.stringify([reason(hidden), reason(unwrapped), reason(wrapped)]))
-```
-
-Ordinary nongenerator `async` callables use the [normalized async contract](003-failures.md#async-contracts) instead of copying a synchronous `@rethrows` tag: the declaration keeps callback admission with a parameter callable `@throws {unknown}` and callee `@throws {never}`, so source and sidecar calls agree.
-
-- A plain `.vibe` function that returns an Effect, a Stream or a Layer is effectful, so it can't throw (VIP-4, amended: an effectful function cannot throw; the later "`try` only in effect code" amendment lets plain non-effectful functions throw) ([Effectful callables](003-failures.md#effectful-callables)):
-
-```vibe es
-// compiler-gap: pending VIP-4
-export function bad(id: string) { if (!id) throw new BadInput(); return fetchUser(id) }   // error: can't throw
-export function load(id: string): User!(NotFound | BadInput) { return id ? fetchUser(id) : fail(new BadInput()) }
-```
-
-```ts effect
-// fragment
-export function load(id: string): Effect.Effect<User, NotFound | BadInput> { return id ? fetchUser(id) : Effect.fail(new BadInput()) }
-```
-
-`load("")` fails with `BadInput`; `load("u")` runs `fetchUser("u")`.
-
-```vibe es
 // compiler-gap: pending VIP-27
 // load.vibe
 export effect function load(id: string) { return try fetchUser(id) }
 export function users(ids: string[]) { return Stream.fromIterable(ids) }
-export function parse(s: string) { if (!s) throw new BadInput(); return s }
 export const add = (a: number, b: number) => a + b
-export async function get(q: string) { if (!q) throw new BadInput(); return await queryDb(q) }
+export async function get(q: string) { return await queryDb(q) }
 export class Id {
-  constructor(readonly s: string) { if (!s) throw new BadInput() }
+  constructor(readonly s: string) { }
   get size() { return this.s.length }
 }
-/** @rethrows f */
-export function each(xs: string[], f: (s: string) => void) { xs.forEach(f) }
 export interface Store { find(id: string): string }
 ```
 
@@ -606,8 +600,6 @@ export interface Store { find(id: string): string }
 import { Effect, Stream } from "effect"
 export declare function load(id: string): Effect.Effect<User, NotFound, Users>   // effectful: no @throws
 export declare function users(ids: string[]): Stream.Stream<string>              // effectful: no @throws
-/** @throws {BadInput} */
-export declare function parse(s: string): string
 export declare const add: {
   /** @throws {never} */
   (a: number, b: number): number
@@ -616,140 +608,12 @@ export declare const add: {
 export declare function get(q: string): Promise<Row[]>
 export declare class Id {
   readonly s: string
-  /** @throws {BadInput} */
+  /** @throws {never} */
   constructor(s: string)
   get size(): number
 }
-/** @throws {never} @rethrows f */
-export declare function each(xs: string[], f: (s: string) => void): void
 export interface Store {
   /** @throws {never} */
   find(id: string): string
 }
 ```
-
-The emitted `each` contract above preserves callback throws at a foreign call site:
-
-```vibe es
-// compiler-gap: pending VIP-4
-import { each } from "./load.vibe"
-effect function direct() {
-  each(["x"], () => { throw "callback" })   // EK0403: invocation throws "callback"
-}
-effect function wrapped() {
-  return try Effect.try(() => each(["x"], () => { throw "callback" }))
-}
-```
-
-```ts effect
-// fragment
-/** @throws {never} @rethrows f */
-function each(xs: string[], f: (s: string) => void) { xs.forEach(f) }
-function wrapped() {
-  return Effect.gen(function* () {
-    return yield* Effect.try(() => each(["x"], () => { throw "callback" }))
-  })
-}
-```
-
-`wrapped()` fails with `Cause.UnknownError` whose `cause` is `"callback"`. An unwrapped JavaScript call inside `Effect.gen` would defect; the source `direct` is rejected rather than silently admitting that defect.
-
-## Details
-
-Decided details folded in on 2026-11-03. Each keeps its old number as history. The conflict pass deleted superseded, duplicate and relic details and resolved contradictions in favor of Will's words, then accepted VIPs, then later details. Principles are numbered as in [the introduction's Details](000-intro.md#details).
-
-### Detail 129
-
-**Binding helpers stay inside the lexical environment that supplies their this/super/new.target.** (live `001-static-super-hoist`; VIP-1/VIP-2, refines 001's helper-placement recipe.) A class static block is an eligible source environment for helpers used by effect arrows/blocks constructed within it. Declare its lexical super accessor inside that static block, never at module scope or in an enclosing factory function that lacks that super binding. Preserve existing in-place class-field/parameter-default treatment. Constructing an accessor is eager, but invoking it and reading the actual super property occurs only where the cold source body does. Use the appropriate source environment for each captured binding; do not blindly hoist every helper to the nearest non-arrow function.
-    Status: applied in main 0a207dbf, revalidated by spec-fix-a against the source binding rule, explicit import-cycle hoisting sentence and the five passing native binding tests. Earlier helper-recipe fixes are superseded; no duplicate patch.
-    ```vibe
-    class Base { static value = 7 }
-    class Derived extends Base {
-      static program: number!!
-      static { this.program = effect { return super.value } }
-    }
-    const value = await runPromise(Derived.program) // 7
-    ```
-    Effect TS: inside the static block, `const getSuper = (k: "value") => super[k]; this.program = Effect.gen(function* () { return getSuper("value") })`. Decided by the agent from principle 2 (TypeScript's lexical super environments), VIP-1/VIP-2's source-binding guarantee, and principle 4 (environment-driven helper placement instead of an expanding list of hoisting exceptions), 2026-10-29. Apply to 001 and its 002/008 cross-references; no source restriction.
-
-### Detail 139
-
-**Effect class methods retain TypeScript's decorator prefixes and placement.** (live `001-effect-method-decorators`; audit 001 interactions m1; source correction queued as `b1788126aa66`, spec-fix-a.) The grammar accepts the same decorator list as TypeScript on class effect methods/producers, in the same class-element position. Preserve ordinary TypeScript decorator checking/evaluation on the generated ordinary Effect/Stream-returning method; the compiler does not execute the cold body while applying it. Do not admit decorator lists on object-literal methods or other positions TypeScript forbids. Parsing a decorated effect accessor for its existing accessor diagnostic does not legalize effect accessors.
-    **Immutable-main source receipt (695576, 139).** Verified at immutable main `695576acb44b`: 001/AppendixA include class decorator prefixes/class-versus-object placement and overload-related method classification. This verifies the source-prefix portion; later decorator expression evaluation/emitter conformance remains separate. This is source-publication evidence only; no compiler/native/regression suite was run by decide-live.
-    Status: applied in 2a1c089083b1 (spec-fix-a; queued, not yet a main landing receipt).
-    ```vibe
-    class Repo {
-      @trace
-      effect load() { return 1 }
-    }
-    ```
-    Effect TS: `class Repo { @trace load() { return Effect.gen(function* () { return 1 }) } }`. Decided by the agent from principle 2 (TypeScript class-element modifiers and decorator semantics), VIP-1's method counterpart, and principle 4 (no decorator-specific execution rule), 2026-10-30. The claimed fix already has source-admission and coldness receipts; this decision records its rule, not a claim that its queued source or forms checks have landed.
-
-
-    **Round26 decorator-position clarification (Opus m37):** include decorator expressions in 002's execution-position table. Evaluate them in their enclosing source context, just like class heritage/computed keys: `@(try d)` is allowed when that evaluation occurs inside an Effect activation; a plain outer function gains no permission merely because the decorated method is effectful. Existing default/field/static/plain-callable exclusions still apply at their actual source boundary. Preserve native decorator evaluation/application order and coldness. TypeScript 5.9.3 accepts `@(await Promise.resolve(mark))` in an async enclosing function and `@(yield* Effect.succeed(mark))` in a generator, and rejects the direct plain-function await control. Its ordinary ES2022 decorator emitter moves those suspension expressions into generated static blocks and emits invalid JavaScript. `round26-reference.log` records that emitter limitation plus successful simple phase-preserving controls; it is source/checker/reference evidence, not a claim that raw TypeScript emit or the VibeLang compiler implements the rule. A simple no-heritage/no-computed-key fixture may evaluate the decorator to a local first; this is not a general hoist-across-class-evaluation recipe. Decided by the agent from VIP-1's native source-context rule, principle 2 (TypeScript decorator expression admission), and principle 4 (source boundaries before generated static blocks), 2026-10-30.
-
-    Applied in 732ad472f25a (spec-fix-b, bookmark 42); landed in main 77510050781c.
-
-    **Independent decorator receipt:** `root-try-turn-reference.log` and `root-try-decorator-literal-emission.stderr` independently reproduce the pinned checker/emitter distinction and execute both simple captured counterparts. This corroborates the existing round26 clarification above; it is not new source-admission policy or VibeLang conformance.
-
-Landing receipt: source 2a1c089083b1 landed in main 695576acb44b (queue 1793370440-spec-fix-a, gate mq-10302026-7).
-
-### Detail 148
-
-**Generated intrinsic captures are initialized before cyclic consumers can invoke hoisted exports.** (live `001-cyclic-apply-tdz`; VIP-1/VIP-26.) A hoisted exported effect declaration cannot acquire a generated module-const TDZ that its source did not have. Supply captured apply and other helpers through an acyclic runtime-helper dependency initialized before source imports can execute cyclic consumers, or an equivalent ordering with the same availability guarantee. Audit every generated module capture used by hoisted exports. Textually putting a const before an import does not establish this order. Retain captured intrinsic calls and do not read the callee's own call/apply property or replace the snapshot with a late mutable Reflect.apply lookup.
-    Related cache-counterpart follow-up: spec-fix-c reports c9b989606ad1c6ad093cf5ad264c7e6544f0e7d2 queued; this removes the remaining mutable-helper example. It is not a new main landing receipt or a reversal of the separate binding/cache status below.
-    Status: applied in main 0a207dbf, revalidated by spec-fix-a against the source binding rule, explicit import-cycle hoisting sentence and the five passing native binding tests. Earlier helper-recipe fixes are superseded; no duplicate patch.
-    ```vibe
-    import "./consumer.ts" // may call and run program during this module's dependency evaluation
-    export effect function program() {
-      class Base { ping() { return 7 } }
-      class Derived extends Base { effect go() { return super.ping() } }
-      return try new Derived().go()
-    }
-    ```
-    Effect TS: the same hoisted function, with apply imported from a noncyclic helper dependency evaluated before consumer.ts; the executed reference succeeds with 7 instead of a generated-capture ReferenceError. Decided by the agent from VIP-1's hoisting guarantee, principle 2 (ordinary ECMAScript module dependency evaluation), and VIP-26's unchanged module model, 2026-10-30. The live cycle probes provide reference/prescribed/fixed receipts; no source restriction or compiler-conformance claim is added.
-
-### Detail 163
-
-**Moved ordinary-generator defaults execute during the construction call.** (live `001-generator-moved-default-phase`; VIP-1/VIP-2; details 68/108.) For ordinary function* and async function* declarations, expressions and methods, perform moved parameter/default work eagerly outside the dormant source body, once at construction. Do not put it at the beginning of a suspended body. Preserve the source parameter environments, length and bindings. Synchronous default throws remain construction throws under detail 108, including async generators; source effect/producer wrapping under 118 stays separate. Outward-return representation is the next item's pending choice.
-    ```vibe
-    let seen = 0
-    function* g(x = do { seen += 1; return 7 }) { yield 1 }
-    const result = g()
-    const afterCall = seen // 1 before any resumption
-    ```
-    Effect TS: perform this eager work before constructing the source-body generator; the native phase oracle `function* g(x = (seen++, 7)) { yield 1 }` increments at the call. Decided by the agent from principle 2 (native generator parameter timing), VIP-1 and detail 108, 2026-10-30. Timing is settled independently of the early-return representation.
-
-### Detail 164
-
-**An outward return in an ordinary generator default uses a synthetic return iterator (class B, answered by Will).** (live `001-generator-moved-default-phase`; follows detail 163's timing.) Chosen A: after evaluating the prologue and return value v eagerly, return a native iterator over a synthetic return v, never starting the source body. First next is { done: true, value: v }; later next is done/undefined. Native return/throw-before-first-next behavior remains. Async generators use the corresponding async iterator. Include v in the iterator return type; the call keeps returning a generator. It is not literally an already-completed native generator, whose next would lose v.
-    ```vibe
-    function* g(x = do { return 7 }) { yield 1 }
-    const r = g()
-    // A (chosen by Will): r.next() is { done: true, value: 7 }; source body never starts
-    // B: r itself is 7; the parameter ReturnCompletion escapes before iterator construction
-    ```
-    Effect TS: A's early path is `return (function* () { return v })()` (async function* for an async generator), with source generator identity/prototype/length guarantees preserved by the full lowering. B follows literal parameter ReturnCompletion before iterator construction and requires a generator-or-value call type. **Answered by Will, 2026-10-30 03:14 PDT: A** ("that's my answer then everything about the do expreession should work liike that spec"). Recommended by the agent on 2026-10-30 because it preserves the calling kind and mirrors already-boxed Effect/Promise/Stream defaults. Native TypeScript has no return-bearing parameter expression, and no existing VIP/detail reconciles this ordinary-generator representation with the draft's construction phase. This choice is separate from eager timing; do not ban the placement or silently defer its side effects.
-
-### Detail 178
-
-**A super property used as a template tag retains its source receiver.** (live `001-super-tag-receiver`; VIP-1/VIP-31 binding preservation, extends the super-call row rather than adding syntax.) Treat a receiver-bearing super property reference used as a tag as a call reference, not as a detached value from `$super_get`. At the original tag-evaluation point, evaluate a computed key and look up the method once, before substitutions; retain the original source receiver for invocation. An implementation may return a fresh tag adapter that forwards the engine-created template object and substitutions through the captured intrinsic apply to that method/receiver pair. Never read or call the user function's own `call`/`bind` properties. Preserve source template-site caching, cooked/raw array identity and frozen state, substitution/evaluation order, callability-error order and the existing completion/error contract. Respect detail 110's cold lexical-this guarantee: do not read a derived constructor's `this` early merely to construct the enclosing cold Effect.
-    Status: applied in main 0a207dbf, revalidated by spec-fix-a against the source binding rule, explicit import-cycle hoisting sentence and the five passing native binding tests. Earlier helper-recipe fixes are superseded; no duplicate patch.
-    ```vibe
-    class Base {
-      n = 7
-      tag(_parts: TemplateStringsArray, value: number) { return this.n + value }
-    }
-    class Derived extends Base {
-      effect go() { return super.tag`value ${2}` } // succeeds with 9
-    }
-    ```
-    Effect TS: wrap the same native super-tag expression in `Effect.sync(() => ...)` inside the same derived method; that lexical arrow preserves its source receiver. A generated adapter invokes the once-captured tag with the source instance via the captured apply; a detached `$super_get` value used directly as a tag loses `this` and defects. Ordinary optional super calls follow the same source Reference rule: obtain the method once, test it for nullishness before evaluating arguments, and preserve the receiver on the taken path; this does not introduce optional tagged-template syntax. Decided by the agent from VIP-1's existing promise that the body sees its source bindings, principle 2 (TypeScript/ECMAScript tagged-template Reference receiver and evaluation order), and principle 4 (the same receiver-preserving operation for all call uses of a super reference), 2026-10-30. Add the tag row/witness to 001 and exact-Exit checks; audit optional calls under the same requirement. Evidence: `decide-live-scratch/root-super-tag-reference.log` gives native `Success(9)`, detached-get `Die(TypeError)` and receiver-preserving adapter `Success(9)` on Effect `4.1.0`; `root-super-tag-types.log` passes strict TypeScript. These are reference/recipe checks, not VibeLang compiler conformance.
-
-### Detail 267
-
-**Plain functions have JavaScript's stack limit; stack-safe recursion is written as `effect`.** (spec agent, 2026-11-01, from VIP-1 and VIP-4; raised by platform during the VIP-1 plain-functions flip; not a Will question.) VIP-1 makes a plain function plain JavaScript, so deep plain recursion overflows as in JavaScript: a `RangeError` that is an implicit throw, untracked and a defect in effect code (VIP-4: "Implicit throws, such as reading a property of `undefined` or a stack overflow, are not tracked"). An `effect` function's recursion runs on the Effect runtime and is stack-safe. Before the flip, plain recursive functions were inferred as effect code and were stack-safe by accident; nothing promised it. Spec text, chapter 1 (or 8): "Plain functions have JavaScript's stack limit; recursion that must be stack-safe is written as an `effect` function." Cases: a 100,000-deep `effect function` recursion succeeds; a plain twin documents the limit (expects `RangeError`, not a guarantee).
-    ```vibe
-    function depth(n: number): number { return n === 0 ? 0 : 1 + depth(n - 1) }                // depth(100_000): RangeError, as in JavaScript
-    effect function depthE(n: number): number!! { return n === 0 ? 0 : 1 + try depthE(n - 1) } // succeeds with 100000
-    ```

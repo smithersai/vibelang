@@ -35,6 +35,7 @@ Will decides each VibeLang language decision as a VIP, one at a time. Nothing is
 | [34](0034-compiler-and-tooling.md) | Compiler and tooling requirements | accepted 2026-10-29 |
 | [38](0038-effect-lint-built-in.md) | Effect's type-aware lint is built into VibeLang | accepted 2026-10-29 |
 | [39](0039-vibex.md) | `.vibex`: VibeLang with JSX | accepted 2026-10-31 |
+| [40](0040-module-declarations.md) | `module` declarations: TypeScript inside a `.vibe` file | accepted 2026-11-03 |
 
 
 ## Denied
@@ -45,7 +46,7 @@ Will decides each VibeLang language decision as a VIP, one at a time. Nothing is
 | [10](0010-service-call-shorthand-denied.md) | The `Users.find(id)` shorthand | denied 2026-10-28 |
 | [11](0011-trailing-blocks-denied.md) | Trailing blocks | denied 2026-10-28 |
 | [24](0024-wire-denied.md) | `wire`, automatic layer composition | denied 2026-10-28 |
-| [25](0025-inline-modules-denied.md) | Inline `module` declarations as a TypeScript escape | denied 2026-10-29 |
+| [25](0025-inline-modules-denied.md) | Inline `module` declarations as a TypeScript escape | denied 2026-10-29; superseded by VIP-40 |
 
 ## Open
 
