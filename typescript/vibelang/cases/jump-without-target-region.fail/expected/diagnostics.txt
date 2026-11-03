@@ -1,5 +1,8 @@
 main.vibe(16,5): warning EK0801
 main.vibe(17,5): error TS1107
+main.vibe(23,3): error EK0503
 main.vibe(26,5): error TS1107
+main.vibe(32,3): error EK0503
 main.vibe(34,5): error TS1107
+main.vibe(42,5): error EK0503
 main.vibe(45,7): error TS1107

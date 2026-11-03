@@ -1,0 +1,2 @@
+main.vibe(2,33): error EK0503
+main.vibe(2,50): warning EK9204

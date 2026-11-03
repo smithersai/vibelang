@@ -1,3 +1,4 @@
+import * as $nativeTryEffect from "effect/Effect";
 // V8 coverage counts one function for each function the author wrote: the
 // thunks, generators, and immediately invoked functions the compiler makes map
 // to no source position, so run.mjs lists only these.
@@ -58,11 +59,13 @@ export function label(n: number): string {
 }
 
 export effect function guarded(n: number): number!! {
-  try {
-    return try step(n)
-  } catch (e) {
-    return 0
-  }
+  { const $nativeTryCompletion = try $nativeTryEffect.catch(effect {
+    return { kind: "return:" as const, value: (try step(n)) };
+  }, effect (e) => {
+    return { kind: "return:" as const, value: (0) };
+  });
+return $nativeTryCompletion.value;
+}
 }
 
 export effect function block(n: number): number!Oops! {

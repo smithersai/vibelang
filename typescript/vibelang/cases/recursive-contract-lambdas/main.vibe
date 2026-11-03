@@ -1,3 +1,4 @@
+import * as $nativeTryEffect from "effect/Effect";
 // Smithers twins D-5, A-7, and S11-1: a lambda with an Effect contract that calls
 // itself, directly or through other lambdas, is an Effect function. While its
 // form is being decided, the recursive call sees the Effect form, and the
@@ -102,11 +103,17 @@ const tree: Tree = { name: "a", children: [{ name: "b", children: [] }, { name: 
 // expect-result: {"race":9,"reserve":"slot 1","depth":3,"holds":[true,false],"walk":2,"count":4,"plainCounts":[1,2,3],"validate":"rejected at 0","processTrigger":2}
 export effect function main() {
   let rejected = ""
-  try {
+  { const $nativeTryCompletion = try $nativeTryEffect.catch(effect {
     try validate(2)
-  } catch (e) {
+  
+;return { kind: "normal" } as const;
+}, effect (e) => {
     rejected = e.message
-  }
+  
+;return { kind: "normal" } as const;
+});
+
+}
   const race = try runRace([{ kind: "slow" }, { kind: "race", branches: [{ kind: "slow" }, { kind: "leaf", value: 8 }] }])
   return {
     race,

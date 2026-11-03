@@ -1,4 +1,4 @@
-// expect: EK2105
+// expect: EK2105 EK0503
 error Busy
 
 export effect function attempt() {

@@ -1,3 +1,5 @@
+
+import * as $nativeTryEffect from "effect/Effect";
 // expect-result: {"arrowLine":1,"arrowBlock":2,"blockArrow":3,"expression":4,"method":5,"classMethod":6,"handlerLine":"line failed","handlerBlock":"block failed","topicLine":8,"topicBlock":9,"parsed":[1],"stepped":9,"matchEffect":[10,11],"matchPlain":[12,13],"doValue":14,"throwLine":"throw line","throwBlock":["kept","throw block"],"produced":[15,16],"generated":[17,18],"awaited":20,"jumps":3,"counted":307,"sum":21,"byName":22}
 // A comment before an expression stays a comment wherever the compiler
 // writes the expression: after a return it adds (an arrow's body, a
@@ -199,15 +201,21 @@ effect function jumps(): number!! {
   let total = 0
   outer: for (const i of [1, 2, 3]) {
     for (const j of [1, 2, 3]) {
-      try {
+      { const $nativeTryCompletion = try $nativeTryEffect.onExit(effect {
         try later(0)
         // line
-        if (j === 2) continue outer
-        if (i === 3) break /* block */ outer
+        if (j === 2) return { kind: "continue:outer" as const };
+        if (i === 3) /* block */
+return { kind: "break:outer" as const };
         total += i * j
-      } finally {
+      
+;return { kind: "normal" } as const;
+}, () => effect {
         try later(0)
-      }
+      });
+if ($nativeTryCompletion.kind === "continue:outer") continue outer;
+if ($nativeTryCompletion.kind === "break:outer") break outer;
+}
     }
   }
   return total

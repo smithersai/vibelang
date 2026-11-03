@@ -1,5 +1,7 @@
+
+import * as $nativeTryEffect from "effect/Effect";
 // expect-result: {"typed":["missing 7","retry","user 1"],"caused":["user 1","fallback"]}
-// The retired catch clauses still compile and run, with warnings EK2112 and EK2113.
+// Migrated recovery keeps the legacy typed and Cause results; editor tests retain the retired clauses.
 error NotFound { id: string }
 error Timeout
 
@@ -10,20 +12,24 @@ effect function find(id: string): string!(NotFound | Timeout)! {
 }
 
 effect function typed(id: string) {
-  try {
-    return try find(id)
-  } catch (e: NotFound) {
-    return `missing ${e.id}`
-  } catch (e: Timeout) {
-    return "retry"
-  }
+  { const $nativeTryCompletion = try $nativeTryEffect.catch(effect {
+    return { kind: "return:" as const, value: try find(id) };
+  }, effect (e) => {
+    return { kind: "return:" as const, value: match (e) {
+      when NotFound: `missing ${e.id}`;
+      when Timeout: "retry";
+      default: throw e;
+    }
+ };
+  });
+return $nativeTryCompletion.value;
+}
 }
 
 effect function caused(id: string) {
-  try {
-    return try find(id)
-  } catch (cause: Cause) {
-    return "fallback"
+  return match (try exit(effect { return try find(id) })) {
+    when Exit.Success(let value): value;
+    when Exit.Failure(let cause): "fallback";
   }
 }
 

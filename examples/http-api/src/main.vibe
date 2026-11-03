@@ -22,17 +22,17 @@ export const UsersLive = Layer.effect(Users, effect {
 })
 
 export effect function createUser() {
-  try {
+  return try Effect.catch(effect {
     const input = try HttpServerRequest.schemaBodyJson(CreateUser)
     const user = try (try Users).create(input.name)
     return try HttpServerResponse.json(user, { status: 201 })
-  } catch (error) {
+  }, effect (error) => {
     return match (error) {
       when NameTaken: HttpServerResponse.text(`Name already registered: ${error.name}`, { status: 409 });
       when Schema.SchemaError: HttpServerResponse.text("Expected a JSON object with a string name", { status: 400 });
       default: throw error;
     }
-  }
+  })
 }
 
 export const Routes = HttpRouter.add("POST", "/users", createUser())

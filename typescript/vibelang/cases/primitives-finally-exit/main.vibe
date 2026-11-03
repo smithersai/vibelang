@@ -3,35 +3,27 @@ error Boom
 
 effect function ok() {
   let tag = ""
-  try {
-    try sleep("1 millis")
-  } finally (exit) {
+  try Effect.onExit(effect { try sleep("1 millis") }, (exit) => effect {
     tag = exit._tag
-  }
+  })
   return tag
 }
 
-// The finally block sees the failure; the failure still propagates.
+// The finalizer sees the failure; recovery follows cleanup.
 effect function failing() {
   let tag = ""
-  try {
-    try {
-      throw new Boom()
-    } finally (exit) {
+  effect {
+    try Effect.onExit(effect { throw new Boom() }, (exit) => effect {
       tag = Exit.isFailure(exit) ? "Failure" : "Success"
-    }
-  } catch (e) {
-    tag += ":" + e._tag
-  }
+    })
+  } catch (e) => { tag += ":" + e._tag }
   return tag
 }
 
 effect function returned() {
-  try {
-    return "value"
-  } finally (exit) {
+  return try Effect.onExit(effect { return "value" }, (exit) => effect {
     try Console.log(exit._tag)
-  }
+  })
 }
 
 export effect function main() {

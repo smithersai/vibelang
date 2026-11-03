@@ -1,3 +1,4 @@
+import * as $nativeTryEffect from "effect/Effect";
 // expect-result: {"results":["stepped","stepped","stepped"],"events":["step","stop concise","after concise","step","stop nested","after nested","step","stop block","after block"]}
 // An arrow's expression body is a function body that owns its forks
 // (D353): the fibers forked in concise and in nested's inner arrow stop when
@@ -6,12 +7,16 @@
 const events: string[] = []
 
 effect function ticker(name: string, started: Deferred.Deferred<void>) {
-  try {
+  { const $nativeTryCompletion = try $nativeTryEffect.onExit(effect {
     try Deferred.succeed(started, undefined)
     while (true) try sleep("1 millis")
-  } finally {
+  
+;return { kind: "normal" } as const;
+}, () => effect {
     events.push(`stop ${name}`)
-  }
+  });
+
+}
 }
 
 effect function step(started: Deferred.Deferred<void>) {

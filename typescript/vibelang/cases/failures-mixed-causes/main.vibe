@@ -1,3 +1,15 @@
+
+import * as $nativeTryEffect5 from "effect/Effect";
+
+import * as $nativeTryEffect4 from "effect/Effect";
+
+import * as $nativeTryEffect3 from "effect/Effect";
+
+import * as $nativeTryEffect2 from "effect/Effect";
+
+import * as $nativeTryEffect1 from "effect/Effect";
+
+import * as $nativeTryEffect from "effect/Effect";
 // expect-result: {"rows":{"r0_fail":{"exit":"Fail(E)","catch":"ok(catch ran: E)","catchMatch":"ok(matched E)","catchValue":"ok(fallback)","retry":"Fail(E) x3","mapError":"Fail(M:E)","catchDefect":"Fail(E)"},"r1_finallyDies":{"exit":"Die(E)+Die(D)","catch":"Die(E)+Die(D)","catchMatch":"Die(E)+Die(D)","catchValue":"Die(E)+Die(D)","retry":"Die(E)+Die(D) x1","mapError":"Die(E)+Die(D)","catchDefect":"ok(defect E)"},"r1_finallyExitDies":{"exit":"Die(E)+Die(D)","catch":"Die(E)+Die(D)","catchMatch":"Die(E)+Die(D)","catchValue":"Die(E)+Die(D)","retry":"Die(E)+Die(D) x1","mapError":"Die(E)+Die(D)","catchDefect":"ok(defect E)"},"r1_finallyThrows":{"exit":"Fail(E)+Fail(E2)","catch":"ok(catch ran: E)","catchMatch":"ok(matched E)","catchValue":"ok(fallback)","retry":"Fail(E) x3","mapError":"Fail(M:E)+Fail(M:E2)","catchDefect":"Fail(E)+Fail(E2)"},"r1_dieThenFinallyThrows":{"exit":"Die(D)+Die(E2)","catch":"Die(D)+Die(E2)","catchMatch":"Die(D)+Die(E2)","catchValue":"Die(D)+Die(E2)","retry":"Die(D)+Die(E2) x1","mapError":"Die(D)+Die(E2)","catchDefect":"ok(defect D)"},"r2_usingReleaseDies":{"exit":"Die(E)+Die(D)","catch":"Die(E)+Die(D)","catchMatch":"Die(E)+Die(D)","catchValue":"Die(E)+Die(D)","retry":"Die(E)+Die(D) x1","mapError":"Die(E)+Die(D)","catchDefect":"ok(defect E)"},"r2_usingDisposeThrows":{"exit":"Die(E)+Die(D)","catch":"Die(E)+Die(D)","catchMatch":"Die(E)+Die(D)","catchValue":"Die(E)+Die(D)","retry":"Die(E)+Die(D) x1","mapError":"Die(E)+Die(D)","catchDefect":"ok(defect E)"},"r3_producerCleanupDies":{"exit":"Fail(E)","catch":"ok(catch ran: E)","catchMatch":"ok(matched E)","catchValue":"ok(fallback)","retry":"Fail(E) x3","mapError":"Fail(M:E)","catchDefect":"Fail(E)"},"r3_producerIteratorCloseThrows":{"exit":"Fail(E)","catch":"ok(catch ran: E)","catchMatch":"ok(matched E)","catchValue":"ok(fallback)","retry":"Fail(E) x3","mapError":"Fail(M:E)","catchDefect":"Fail(E)"},"r4_awaitAll":{"exit":"Die(E)+Die(D)","catch":"Die(E)+Die(D)","catchMatch":"Die(E)+Die(D)","catchValue":"Die(E)+Die(D)","retry":"Die(E)+Die(D) x1","mapError":"Die(E)+Die(D)","catchDefect":"ok(defect E)"},"r4_forConcurrent":{"exit":"Die(E)+Die(D)","catch":"Die(E)+Die(D)","catchMatch":"Die(E)+Die(D)","catchValue":"Die(E)+Die(D)","retry":"Die(E)+Die(D) x1","mapError":"Die(E)+Die(D)","catchDefect":"ok(defect E)"},"r5_awaitRace":{"exit":"Fail(E)","catch":"ok(catch ran: E)","catchMatch":"ok(matched E)","catchValue":"ok(fallback)","retry":"Fail(E) x3","mapError":"Fail(M:E)","catchDefect":"Fail(E)"},"r5_awaitAny":{"exit":"Die(E)+Die(D)","catch":"Die(E)+Die(D)","catchMatch":"Die(E)+Die(D)","catchValue":"Die(E)+Die(D)","retry":"Die(E)+Die(D) x1","mapError":"Die(E)+Die(D)","catchDefect":"ok(defect E)"},"r6_interruptThenFinallyThrows":{"exit":"Interrupt+Fail(E)","catch":"ok(catch ran: E)","catchMatch":"ok(matched E)","catchValue":"ok(fallback)","retry":"Fail(E) x3","mapError":"Interrupt+Fail(M:E)","catchDefect":"Interrupt+Fail(E)"},"r8_allSettled":{"exit":"Die(E)+Die(D)","catch":"Die(E)+Die(D)","catchMatch":"Die(E)+Die(D)","catchValue":"Die(E)+Die(D)","retry":"Die(E)+Die(D) x1","mapError":"Die(E)+Die(D)","catchDefect":"ok(defect E)"},"r2_forUsingHead":{"exit":"Die(E)+Die(D)","catch":"Die(E)+Die(D)","catchMatch":"Die(E)+Die(D)","catchValue":"Die(E)+Die(D)","retry":"Die(E)+Die(D) x1","mapError":"Die(E)+Die(D)","catchDefect":"ok(defect E)"},"r2_forUsingOf":{"exit":"Die(E)+Die(D)","catch":"Die(E)+Die(D)","catchMatch":"Die(E)+Die(D)","catchValue":"Die(E)+Die(D)","retry":"Die(E)+Die(D) x1","mapError":"Die(E)+Die(D)","catchDefect":"ok(defect E)"},"r2_callableDispose":{"exit":"Die(E)+Die(D)","catch":"Die(E)+Die(D)","catchMatch":"Die(E)+Die(D)","catchValue":"Die(E)+Die(D)","retry":"Die(E)+Die(D) x1","mapError":"Die(E)+Die(D)","catchDefect":"ok(defect E)"},"r2_callableAsyncDispose":{"exit":"Die(E)+Die(D)","catch":"Die(E)+Die(D)","catchMatch":"Die(E)+Die(D)","catchValue":"Die(E)+Die(D)","retry":"Die(E)+Die(D) x1","mapError":"Die(E)+Die(D)","catchDefect":"ok(defect E)"},"r2_holder":{"exit":"Die(E)+Die(D)","catch":"Die(E)+Die(D)","catchMatch":"Die(E)+Die(D)","catchValue":"Die(E)+Die(D)","retry":"Die(E)+Die(D) x1","mapError":"Die(E)+Die(D)","catchDefect":"ok(defect E)"},"r9_handBuiltMixed":{"exit":"Fail(E)+Die(D)","catch":"Die(E)+Die(D)","catchMatch":"Die(E)+Die(D)","catchValue":"Die(E)+Die(D)","retry":"Die(E)+Die(D) x1","mapError":"Fail(M:E)+Die(D)","catchDefect":"ok(defect D)"}},"seenExit":"Failure","parity":true}
 // Mixed causes (D305): a typed failure beside a defect or an interruption,
 // from every VibeLang form that makes one, seen through every recovery form.
@@ -10,6 +22,9 @@
 import { all as $tryAllEffects } from "effect/Effect"
 import { referenceRows } from "./reference.js"
 import { closeDies, disposeDies } from "./disposers.js"
+import { onExit as $legacyOnExit } from "effect/Effect";
+import { void as $legacyVoid } from "effect/Exit";
+
 
 error E
 error E2
@@ -52,46 +67,58 @@ effect function failLater() {
 }
 
 effect function dieOnInterrupt() {
-  try {
+  { const $nativeTryCompletion = try $nativeTryEffect.onExit(effect {
     try sleep("1 hour")
-  } finally {
+  
+;return { kind: "normal" } as const;
+}, () => effect {
     try die("D")
-  }
+  });
+
+}
 }
 
 effect function finallyDies() {
-  try {
+  { const $nativeTryCompletion1 = try $nativeTryEffect1.onExit(effect {
     throw new E()
-  } finally {
+  }, () => effect {
     try die("D")
-  }
+  });
+
+}
 }
 
 effect function finallyThrows() {
-  try {
+  { const $nativeTryCompletion2 = try $nativeTryEffect2.onExit(effect {
     throw new E()
-  } finally {
+  }, () => effect {
     throw new E2()
-  }
+  });
+
+}
 }
 
 effect function dieThenFinallyThrows() {
-  try {
+  { const $nativeTryCompletion3 = try $nativeTryEffect3.onExit(effect {
     try die("D")
-  } finally {
+  
+;return { kind: "normal" } as const;
+}, () => effect {
     throw new E2()
-  }
+  });
+
+}
 }
 
 let seenExit = ""
 
 effect function finallyExitDies() {
-  try {
+  return try ($legacyOnExit((effect {
     throw new E()
-  } finally (outcome) {
+  }), effect ($legacyExit) => { const $legacyObserved = $legacyExit._tag === "Success" ? $legacyVoid : $legacyExit; { const outcome = $legacyObserved; 
     seenExit = outcome._tag
     try die("D")
-  }
+  } }));
 }
 
 effect function usingReleaseDies() {
@@ -104,13 +131,15 @@ effect function usingDisposeThrows() {
   throw new E()
 }
 
-effect function* numbers() {
-  try {
-    yield 1
-    yield 2
-  } finally {
-    try die("D")
-  }
+// Keep cleanup on the emitter fiber, as in the native Stream counterpart.
+function numbers() {
+  return Stream.callback<number>(effect (queue) => {
+    try Effect.ensuring(effect {
+      try Queue.offer(queue, 1)
+      try Queue.offer(queue, 2)
+    }, die("D"))
+    try Queue.end(queue)
+  }, { bufferSize: 1, strategy: "suspend" })
 }
 
 effect function* closingItems() {
@@ -154,11 +183,15 @@ effect function awaitAnyMixed() {
 }
 
 effect function interruptThenFinallyThrows() {
-  try {
+  { const $nativeTryCompletion4 = try $nativeTryEffect4.onExit(effect {
     try interrupt
-  } finally {
+  
+;return { kind: "normal" } as const;
+}, () => effect {
     throw new E()
-  }
+  });
+
+}
 }
 
 effect function allSettledMixed() {
@@ -197,12 +230,14 @@ effect function handBuiltMixed() {
 
 // Recovery forms.
 effect function viaCatch(src: () => unknown!(E | E2)) {
-  try {
+  { const $nativeTryCompletion5 = try $nativeTryEffect5.catch(effect {
     try src()
-    return "no failure"
-  } catch (e) {
-    return `catch ran: ${e._tag}`
-  }
+    return { kind: "return:" as const, value: "no failure" };
+  }, effect (e) => {
+    return { kind: "return:" as const, value: `catch ran: ${e._tag}` };
+  });
+return $nativeTryCompletion5.value;
+}
 }
 
 effect function viaCatchMatch(src: () => unknown!(E | E2)) {

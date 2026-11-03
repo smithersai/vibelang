@@ -1,3 +1,8 @@
+import * as $nativeTryEffect4 from "effect/Effect";
+import * as $nativeTryEffect3 from "effect/Effect";
+import * as $nativeTryEffect2 from "effect/Effect";
+import * as $nativeTryEffect1 from "effect/Effect";
+import * as $nativeTryEffect from "effect/Effect";
 // throw is Effect.fail (D46): the thrown value is an expected failure, and its
 // type joins the function's E. A catch handles the try block's expected
 // failures and receives their union, which instanceof and _tag narrow.
@@ -29,22 +34,26 @@ export effect function find(id: string) {
 // The catch handles UserNotFound; InvalidId escapes from before the try.
 export effect function lookup(raw: string) {
   const id = try parseId(raw)
-  try {
-    return try find(String(id))
-  } catch (e) {
-    return guest
-  }
+  { const $nativeTryCompletion = try $nativeTryEffect.catch(effect {
+    return { kind: "return:" as const, value: (try find(String(id))) };
+  }, effect (e) => {
+    return { kind: "return:" as const, value: (guest) };
+  });
+return $nativeTryCompletion.value;
+}
 }
 
 // e is InvalidId | UserNotFound; after the instanceof test it is InvalidId,
 // which the rethrow adds to E.
 export effect function lookupOrGuest(raw: string) {
-  try {
-    return try find(String(try parseId(raw)))
-  } catch (e) {
-    if (e instanceof UserNotFound) return guest
+  { const $nativeTryCompletion1 = try $nativeTryEffect1.catch(effect {
+    return { kind: "return:" as const, value: (try find(String(try parseId(raw)))) };
+  }, effect (e) => {
+    if (e instanceof UserNotFound) return { kind: "return:" as const, value: (guest) };
     throw e
-  }
+  });
+return $nativeTryCompletion1.value;
+}
 }
 
 // Any value can be thrown; a fresh literal widens as in a return type.
@@ -56,16 +65,19 @@ export effect function oops(n: number) {
 
 // _tag narrows the caught union too.
 export effect function describe(raw: string) {
-  try {
-    return (try find(String(try parseId(raw)))).name
-  } catch (e) {
+  { const $nativeTryCompletion2 = try $nativeTryEffect2.catch(effect {
+    return { kind: "return:" as const, value: ((try find(String(try parseId(raw)))).name) };
+  }, effect (e) => {
     switch (e._tag) {
       case "InvalidId":
-        return `invalid ${e.raw}`
+        return { kind: "return:" as const, value: (`invalid ${e.raw}`) };
       case "UserNotFound":
-        return `missing ${e.id}`
+        return { kind: "return:" as const, value: (`missing ${e.id}`) };
+      default: throw e;
     }
-  }
+});
+return $nativeTryCompletion2.value;
+}
 }
 
 // A lambda that can throw is an Effect function too.
@@ -77,18 +89,30 @@ const doubled = effect (n: number): number!InvalidId! => {
 // expect-result: {"found":"Ada","missing":"Guest","orGuest":"Guest","invalid":"InvalidId","oops":["bad","worse",0],"describe":["Ada","invalid x","missing 7"],"lambda":[42,"InvalidId"]}
 export effect function main() {
   let invalid = "none"
-  try {
+  { const $nativeTryCompletion3 = try $nativeTryEffect3.catch(effect {
     try lookupOrGuest("x")
-  } catch (e) {
+  
+;return { kind: "normal" } as const;
+}, effect (e) => {
     invalid = e._tag
-  }
+  
+;return { kind: "normal" } as const;
+});
+
+}
   const failures: Array<string | number> = []
   for (const n of [2, 1, 0]) {
-    try {
+    { const $nativeTryCompletion4 = try $nativeTryEffect4.catch(effect {
       failures.push(try oops(n))
-    } catch (e) {
+    
+;return { kind: "normal" } as const;
+}, effect (e) => {
       failures.push(typeof e === "string" ? e : e.message)
-    }
+    
+;return { kind: "normal" } as const;
+});
+
+}
   }
   return {
     found: (try lookup("42")).name,

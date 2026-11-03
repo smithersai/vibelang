@@ -1,9 +1,13 @@
 main.vibe(9,7): warning EK4830
+main.vibe(12,3): error EK0503
 main.vibe(13,5): warning EK4834
 main.vibe(15,5): error EK9204
+main.vibe(32,3): error EK0503
 main.vibe(42,31): warning EK4833
 main.vibe(43,10): warning EK4834
+main.vibe(46,3): error EK0503
 main.vibe(48,5): error EK9204
 main.vibe(55,3): warning EK4834
+main.vibe(56,3): error EK0503
 main.vibe(56,23): error EK9204
 tsconfig.json(12,19): warning EK3009

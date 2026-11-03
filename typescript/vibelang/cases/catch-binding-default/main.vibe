@@ -6,8 +6,12 @@ export error Fallback
 effect function fallback(): number!Fallback! { throw new Fallback() }
 
 export effect function read(found?: number) {
-  try { throw { id: found } as { id?: number } }
-  catch ({ id = try fallback() }) { return id }
+  return effect {
+    throw { id: found } as { id?: number }
+  } catch effect (error) => {
+    let { id = try fallback() } = error
+    return id
+  }
 }
 
 // expect-result: {"missing":"Fallback","found":7}

@@ -1,3 +1,9 @@
+
+import * as $nativeTryEffect2 from "effect/Effect";
+
+import * as $nativeTryEffect1 from "effect/Effect";
+
+import * as $nativeTryEffect from "effect/Effect";
 import { odd } from "./odd.vibe"
 
 export default effect function down(n: number): number!! {
@@ -12,28 +18,34 @@ export function tree(n: number): number {
   return [n - 1].map(x => tree(x))[0]
 }
 export effect function guarded(n: number): number!! {
-  try {
-    if (n === 0) return try ((foreignSyntaxErrorClass: typeof SyntaxError) => Effect.catch(Effect.try({ try: () => JSON.parse("7"), catch: (error) => error }), (error) => error instanceof foreignSyntaxErrorClass ? Effect.fail(error) : Effect.die(error)))(SyntaxError)
-    return try guarded(n - 1)
-  } catch (e) {
-    return -1
-  }
+  { const $nativeTryCompletion = try $nativeTryEffect.catch(effect {
+    if (n === 0) return { kind: "return:" as const, value: try ((foreignSyntaxErrorClass: typeof SyntaxError) => Effect.catch(Effect.try({ try: () => JSON.parse("7"), catch: (error) => error }), (error) => error instanceof foreignSyntaxErrorClass ? Effect.fail(error) : Effect.die(error)))(SyntaxError) };
+    return { kind: "return:" as const, value: try guarded(n - 1) };
+  }, effect (e) => {
+    return { kind: "return:" as const, value: -1 };
+  });
+return $nativeTryCompletion.value;
+}
 }
 error Stop { value: number }
 export effect function caught(n: number): number!! {
-  try {
+  { const $nativeTryCompletion1 = try $nativeTryEffect1.catch(effect {
     if (n === 0) throw new Stop({ value: 7 })
-    return try caught(n - 1)
-  } catch (e) {
-    return 7
-  }
+    return { kind: "return:" as const, value: try caught(n - 1) };
+  }, effect (e) => {
+    return { kind: "return:" as const, value: 7 };
+  });
+return $nativeTryCompletion1.value;
+}
 }
 export effect function typed(n: number): number!Stop {
   if (n === 0) throw new Stop({ value: 9 })
   return try typed(n - 1)
 }
 export effect function catchTyped(n: number) {
-  try { return try typed(n) } catch (e) { return e.value }
+  { const $nativeTryCompletion2 = try $nativeTryEffect2.catch(effect { return { kind: "return:" as const, value: try typed(n) }; }, effect (e) => { return { kind: "return:" as const, value: e.value }; });
+return $nativeTryCompletion2.value;
+}
 }
 export effect function boom(n: number): number!! {
   if (n === 0) return (null as any).x

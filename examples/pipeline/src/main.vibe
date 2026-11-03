@@ -1,12 +1,14 @@
 // A lazy source: operators decide how many readings to request.
-effect function* readings() {
-  try {
-    for (const celsius of [18, 21, 25, 19, 28, 30]) {
-      yield celsius
-    }
-  } finally {
-    try Console.log("sensor closed")
-  }
+// Keep cleanup on the source fiber while buffered readings are consumed.
+function readings() {
+  return Stream.callback<number>(effect (queue) => {
+    try Effect.ensuring(effect {
+      for (const celsius of [18, 21, 25, 19, 28, 30]) {
+        try Queue.offer(queue, celsius)
+      }
+    }, Console.log("sensor closed"))
+    try Queue.end(queue)
+  }, { bufferSize: 1, strategy: "suspend" })
 }
 
 export effect function main() {

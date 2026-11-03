@@ -21,13 +21,11 @@ export const InventoryLive = Layer.succeed(Inventory, {
 })
 
 export effect function quote(sku: string, quantity: number) {
-  try {
+  return effect {
     const product = try (try Inventory).reserve(sku, quantity)
     const total = (product.cents * quantity / 100).toFixed(2)
     return `${quantity} x ${product.name}: $${total}`
-  } catch (error) {
-    return `Only ${error.available} ${error.sku} left`
-  }
+  } catch (error) => `Only ${error.available} ${error.sku} left`
 }
 
 export effect function quoteCart() {

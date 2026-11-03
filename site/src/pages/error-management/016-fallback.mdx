@@ -141,6 +141,40 @@ A `catch` protects the Effect its head produces. In `decode(try parse(input)) ca
 
 For `(try x) catch (e) => fallback(e)`, `x` must succeed with an Effect. The handler receives that returned Effect's error type; an error from executing `x` still escapes before recovery. For example, `(try Effect.succeed(Effect.fail("inner"))) catch (e) => e.length` returns `5`.
 
+## Replacing a legacy `try` statement
+
+Effect code rejects JavaScript `try`/`catch` and `try`/`finally`
+statements with `EK0503`. Use an `effect { … }` block with a catch
+expression for typed failures, and `onExit` for cleanup on every exit:
+
+```vibe
+error MissingValue
+
+effect function recover(missing: boolean) {
+  return effect {
+    if (missing) throw new MissingValue()
+    return 1
+  } catch () => 2
+}
+
+effect function clean() {
+  return try Effect.onExit(effect { return 1 }, () => effect { try Effect.log("finished") })
+}
+```
+
+`vibelang --fix` and `--fix-vip-only` migrate supported legacy statements
+to explicit Effect operations. The rewrite preserves fallthrough, returns,
+and jumps to enclosing loops, and keeps cleanup outside recovery.
+Nested statements migrate from the inside out. A statement with `var`
+hoisting, `super`, `arguments`, a `do` expression completion, inferred literal returns,
+a `switch` without `default`, producer yields, a jump leaving its
+finalizer, or a retired typed or `Cause` clause needs an explicit migration;
+the diagnostic explains why no automatic edit is offered.
+The fix gate also refuses a rewrite that introduces another error, such as
+capturing an owned fiber in a stored effect block.
+Plain and `async` functions, including those nested in effect code, keep
+JavaScript's native `try` statements.
+
 ---
 
 The matching Effect page: [effect.website/docs/v4/error-management/fallback](https://effect.website/docs/v4/error-management/fallback/)

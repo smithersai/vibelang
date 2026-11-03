@@ -1,0 +1,2 @@
+// expect: EK0503
+effect function f() { try { return 1 } catch { return 2 } }

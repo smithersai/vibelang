@@ -1,3 +1,5 @@
+import * as $nativeTryEffect1 from "effect/Effect";
+import * as $nativeTryEffect from "effect/Effect";
 // expect-result: {"events":["if: after","stop if","if without braces: after","stop if without braces","bare: after","stop bare","stop loop 1","stop loop 2","loop: after","do: after","stop do","stop try","try: finally"]}
 // A fiber belongs to the innermost region the source names, never to braces
 // (D408). An if branch, a bare block, and a do block own nothing, so their
@@ -6,12 +8,16 @@
 const events: string[] = []
 
 effect function ticker(name: string, started: Deferred.Deferred<void>) {
-  try {
+  { const $nativeTryCompletion = try $nativeTryEffect.onExit(effect {
     try Deferred.succeed(started, undefined)
     while (true) try sleep("1 millis")
-  } finally {
+  
+;return { kind: "normal" } as const;
+}, () => effect {
     events.push(`stop ${name}`)
-  }
+  });
+
+}
 }
 
 effect function branch(flag: boolean) {
@@ -58,12 +64,16 @@ effect function doBlock() {
 
 effect function guarded() {
   const started = try Deferred.make<void>()
-  try {
+  { const $nativeTryCompletion1 = try $nativeTryEffect1.onExit(effect {
     fork ticker("try", started)
     try started.await()
-  } finally {
+  
+;return { kind: "normal" } as const;
+}, () => effect {
     events.push("try: finally")
-  }
+  });
+
+}
 }
 
 export effect function main() {

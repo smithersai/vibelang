@@ -1,0 +1,44 @@
+error Bad
+export effect function main() {
+  const events: string[] = []
+  effect function choose(flag: boolean) {
+    try {
+      if (flag) return [1]
+      throw new Bad()
+    } catch {
+      events.push("caught")
+      return [2]
+    } finally {
+      events.push("cleanup")
+    }
+  }
+  effect function defaultValue() {
+    events.push("fallback")
+    try Effect.yieldNow()
+    return 5
+  }
+  effect function readDefault(found?: number) {
+    try {
+      throw { id: found } as { id?: number }
+    } catch ({ id = try defaultValue() }) {
+      id += 1
+      return id
+    }
+  }
+  const a = try choose(true)
+  const b = try choose(false)
+  let n = 0
+  outer: for (let i = 0; i < 4; i++) {
+    try {
+      if (i === 0) continue outer
+      if (i === 2) break outer
+      n += i
+    } finally {
+      events.push("loop" + i)
+    }
+  }
+  const plain = () => { try { return 3 } finally {} }
+  const defaulted = try readDefault()
+  const provided = try readDefault(8)
+  return [a, b, n, events, plain(), defaulted, provided]
+}

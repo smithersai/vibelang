@@ -1,15 +1,30 @@
+
+import * as $nativeTryEffect7 from "effect/Effect";
+
+import * as $nativeTryEffect6 from "effect/Effect";
+
+import * as $nativeTryEffect5 from "effect/Effect";
+
+import * as $nativeTryEffect4 from "effect/Effect";
+
+import * as $nativeTryEffect3 from "effect/Effect";
+
+import * as $nativeTryEffect2 from "effect/Effect";
+
+import * as $nativeTryEffect1 from "effect/Effect";
+
+import * as $nativeTryEffect from "effect/Effect";
 // try, catch, and finally in an Effect function compile to regions: closures
 // whose return, break, and continue leave them as completion records that the
 // enclosing generator dispatches. The results and the finally order are
 // JavaScript's.
-import { Data, Effect } from "effect"
 
-class Boom extends Data.TaggedError("Boom")<{ readonly n: number }> {}
+error Boom { n: number }
 
 const events: string[] = []
 
 effect function risky(n: number) {
-  if (n % 3 === 0) try Effect.fail(new Boom({ n }))
+  if (n % 3 === 0) throw new Boom({ n })
   return n
 }
 
@@ -18,17 +33,26 @@ effect function loop(stopAt: number) {
   let total = 0
   outer: for (let i = 1; i <= 10; i++) {
     for (let j = 0; j < 2; j++) {
-      try {
-        if (i === stopAt) break outer
-        if (j === 1) continue outer
-        if (i % 2 === 0) continue
+      { const $nativeTryCompletion = try $nativeTryEffect.onExit($nativeTryEffect.catch(effect {
+        if (i === stopAt) return { kind: "break:outer" as const };
+        if (j === 1) return { kind: "continue:outer" as const };
+        if (i % 2 === 0) return { kind: "continue:" as const };
         total += try risky(i)
-      } catch (e) {
+      
+;return { kind: "normal" } as const;
+}, effect (e) => {
         events.push(`caught ${e.n}`)
-        if (e.n === 9) return -total
-      } finally {
+        if (e.n === 9) return { kind: "return:" as const, value: -total };
+      
+;return { kind: "normal" } as const;
+}), () => effect {
         events.push(`finally ${i}.${j}`)
-      }
+      });
+if ($nativeTryCompletion.kind === "break:outer") break outer;
+if ($nativeTryCompletion.kind === "continue:outer") continue outer;
+if ($nativeTryCompletion.kind === "continue:") continue;
+if ($nativeTryCompletion.kind === "return:") return $nativeTryCompletion.value;
+}
     }
   }
   return total
@@ -36,35 +60,53 @@ effect function loop(stopAt: number) {
 
 // A return inside a region inside a catch leaves both regions.
 effect function nested(n: number) {
-  try {
-    return try risky(n)
-  } catch (e) {
-    try {
-      return try risky(e.n * 3)
-    } catch {
+  { const $nativeTryCompletion2 = try $nativeTryEffect2.onExit($nativeTryEffect2.catch(effect {
+    return { kind: "return:" as const, value: try risky(n) };
+  }, effect (e) => {
+    { const $nativeTryCompletion1 = try $nativeTryEffect1.onExit($nativeTryEffect1.catch(effect {
+      return { kind: "return:" as const, value: try risky(e.n * 3) };
+    }, effect () => {
       events.push("inner catch")
-      return -1
-    } finally {
+      return { kind: "return:" as const, value: -1 };
+    }), () => effect {
       events.push("inner finally")
-    }
-  } finally {
+    });
+return { kind: "return:" as const, value: $nativeTryCompletion1.value };
+}
+  }), () => effect {
     events.push("outer finally")
-  }
+  });
+return $nativeTryCompletion2.value;
+}
 }
 
 // break out of a labeled try, a destructured catch binding, a try as the body
 // of an if, and a switch inside a region.
 effect function shapes(flag: boolean) {
   let out = ""
-  block: try {
+  block: { const $nativeTryCompletion3 = try $nativeTryEffect3.catch(effect {
     try risky(9)
-  } catch ({ n }) {
+  
+;return { kind: "normal" } as const;
+}, effect ($nativeTryError) => {
+let { n } = $nativeTryError;
+
     out += `caught ${n};`
-    if (flag) break block
+    if (flag) return { kind: "break:block" as const };
     out += "not broken;"
-  }
-  if (flag) try { try risky(3) } catch { out += "embedded;" }
-  try {
+  
+;return { kind: "normal" } as const;
+});
+if ($nativeTryCompletion3.kind === "break:block") break block;
+}
+  if (flag) { const $nativeTryCompletion4 = try $nativeTryEffect4.catch(effect { try risky(3) 
+;return { kind: "normal" } as const;
+}, effect () => { out += "embedded;" 
+;return { kind: "normal" } as const;
+});
+
+}
+  { const $nativeTryCompletion5 = try $nativeTryEffect5.onExit(effect {
     switch (try risky(4)) {
       case 4:
         out += "four;"
@@ -72,9 +114,13 @@ effect function shapes(flag: boolean) {
       default:
         out += "other;"
     }
-  } finally {
+  
+;return { kind: "normal" } as const;
+}, () => effect {
     out += "switched"
-  }
+  });
+
+}
   return out
 }
 
@@ -82,12 +128,16 @@ effect function shapes(flag: boolean) {
 effect function hoisted() {
   let first: number | undefined
   let i: number | undefined
-  try {
+  { const $nativeTryCompletion6 = try $nativeTryEffect6.onExit(effect {
     first = try risky(1)
     for (i = 0; i < 2; i++) first += i
-  } finally {
+  
+;return { kind: "normal" } as const;
+}, () => effect {
     events.push("hoisted")
-  }
+  });
+
+}
   return `${first} ${i}`
 }
 
@@ -95,13 +145,19 @@ effect function hoisted() {
 const counter = {
   count: 0,
   effect bump(n: number): number!! {
-    try {
+    { const $nativeTryCompletion7 = try $nativeTryEffect7.onExit($nativeTryEffect7.catch(effect {
       this.count += try risky(n)
-    } catch (e) {
+    
+;return { kind: "normal" } as const;
+}, effect (e) => {
       this.count -= 100
-    } finally {
+    
+;return { kind: "normal" } as const;
+}), () => effect {
       this.count += 1000
-    }
+    });
+
+}
     return this.count
   }
 }

@@ -1,3 +1,8 @@
+import * as $nativeTryEffect4 from "effect/Effect";
+import * as $nativeTryEffect3 from "effect/Effect";
+import * as $nativeTryEffect2 from "effect/Effect";
+import * as $nativeTryEffect1 from "effect/Effect";
+import * as $nativeTryEffect from "effect/Effect";
 // expect-result: {"bumped":[2,0],"plain":[2,0],"thrown":[2,1],"beside":[0,1,2],"unwritten":[2,0]}
 
 // A written contract on a function whose try block returns a do block, or a
@@ -8,46 +13,56 @@ error E1 { n: number }
 function bump(n: number) { return n + 1 }
 
 effect function bumped(p0: number): number!! {
-  try {
+  { const $nativeTryCompletion = try $nativeTryEffect.catch(effect {
     if (p0 > 0) throw new E1({ n: 0 })
-    return do { const v: number = bump(p0); 0 }
-  } catch (e) {
-    return e._tag.length
-  }
+    return { kind: "return:" as const, value: (do { const v: number = bump(p0); 0 }) };
+  }, effect (e) => {
+    return { kind: "return:" as const, value: (e._tag.length) };
+  });
+return $nativeTryCompletion.value;
+}
 }
 
 effect function plain(p0: number): number!! {
-  try {
+  { const $nativeTryCompletion1 = try $nativeTryEffect1.catch(effect {
     if (p0 > 0) throw new E1({ n: 0 })
-    return do { 0 }
-  } catch (e) {
-    return e._tag.length
-  }
+    return { kind: "return:" as const, value: (do { 0 }) };
+  }, effect (e) => {
+    return { kind: "return:" as const, value: (e._tag.length) };
+  });
+return $nativeTryCompletion1.value;
+}
 }
 
 effect function thrown(p0: number): number!! {
-  try {
-    return do { if (p0 > 0) throw new E1({ n: 2 }); bump(p0) }
-  } catch (e) {
-    return e.n
-  }
+  { const $nativeTryCompletion2 = try $nativeTryEffect2.catch(effect {
+    return { kind: "return:" as const, value: (do { if (p0 > 0) throw new E1({ n: 2 }); bump(p0) }) };
+  }, effect (e) => {
+    return { kind: "return:" as const, value: (e.n) };
+  });
+return $nativeTryCompletion2.value;
+}
 }
 
 effect function beside(p0: number): number!! {
-  try {
-    return p0 < 0 ? throw new E1({ n: 0 }) : match (p0) { when 0: 1; default: 2; }
-  } catch (e) {
-    return e.n
-  }
+  { const $nativeTryCompletion3 = try $nativeTryEffect3.catch(effect {
+    return { kind: "return:" as const, value: (p0 < 0 ? throw new E1({ n: 0 }) : match (p0) { when 0: 1; default: 2; }) };
+  }, effect (e) => {
+    return { kind: "return:" as const, value: (e.n) };
+  });
+return $nativeTryCompletion3.value;
+}
 }
 
 effect function unwritten(p0: number) {
-  try {
+  { const $nativeTryCompletion4 = try $nativeTryEffect4.catch(effect {
     if (p0 > 0) throw new E1({ n: 0 })
-    return do { const v: number = bump(p0); 0 }
-  } catch (e) {
-    return e._tag.length
-  }
+    return { kind: "return:" as const, value: (do { const v: number = bump(p0); 0 }) };
+  }, effect (e) => {
+    return { kind: "return:" as const, value: (e._tag.length) };
+  });
+return $nativeTryCompletion4.value;
+}
 }
 
 export effect function main() {

@@ -2126,3 +2126,6 @@ typescript/vibelang/cases/match-or-not-bindings/main.vibe:38:19 lambda: dual fal
 typescript/vibelang/cases/order-match-part-read-once/main.vibe:42:19 lambda: dual fallback -> plain fallback # VIP-7: generated match-cache observation and lifecycle calls are synchronous; this pattern predicate retains the source plain function form.
 
 typescript/vibelang/cases/match-ordinary-extractor.fail/main.vibe:9:42 lambda: effectFn fallback -> removed # Capturing the inline extractor reads its identifier subject once, so the binding-free is test needs no synthesized arrow.
+
+typescript/vibelang/cases/decl-layer-blocks/main.vibe:66:5 lambda: effectFn keyword -> program table # Native try migration moves an explicit resource Effect block to this coordinate; the former method is unchanged at its new location.
+typescript/vibelang/cases/failures-mixed-causes/main.vibe:213:22 lambda: effectFn table -> plain table # Native try migration shifts this coordinate to a plain synchronous callback; cleanup handlers retain their explicit Effect markers.

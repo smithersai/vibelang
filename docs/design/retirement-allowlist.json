@@ -1025,7 +1025,7 @@
     "severity": "error",
     "approval": {
       "by": "Will",
-      "reference": "Current user task \u201cdiag-identity\u201d, items 1\u20132: compare same-code meanings/severities; the spec decides each code; update tests and docs for renames. This records existing task authorization for identity-only renumbering, not a new language-policy approval."
+      "reference": "Current user task “diag-identity”, items 1–2: compare same-code meanings/severities; the spec decides each code; update tests and docs for renames. This records existing task authorization for identity-only renumbering, not a new language-policy approval."
     },
     "reason": "Rename the existing EK2104 layer setup order report; normalized-token differential proves its checker bodies and activation hooks unchanged. Existing severity, refusal and repair behavior are preserved.",
     "identityRenumbering": "docs/design/diagnostic-identity-renames.json"
@@ -1036,7 +1036,7 @@
     "severity": "error",
     "approval": {
       "by": "Will",
-      "reference": "Current user task \u201cdiag-identity\u201d, items 1\u20132: compare same-code meanings/severities; the spec decides each code; update tests and docs for renames. This records existing task authorization for identity-only renumbering, not a new language-policy approval."
+      "reference": "Current user task “diag-identity”, items 1–2: compare same-code meanings/severities; the spec decides each code; update tests and docs for renames. This records existing task authorization for identity-only renumbering, not a new language-policy approval."
     },
     "reason": "Rename the existing EK2005 resumeWith contract report; normalized-token differential proves its checker bodies and activation hooks unchanged. Existing severity, refusal and repair behavior are preserved.",
     "identityRenumbering": "docs/design/diagnostic-identity-renames.json"
@@ -1047,7 +1047,7 @@
     "severity": "error",
     "approval": {
       "by": "Will",
-      "reference": "Current user task \u201cdiag-identity\u201d, items 1\u20132: compare same-code meanings/severities; the spec decides each code; update tests and docs for renames. This records existing task authorization for identity-only renumbering, not a new language-policy approval."
+      "reference": "Current user task “diag-identity”, items 1–2: compare same-code meanings/severities; the spec decides each code; update tests and docs for renames. This records existing task authorization for identity-only renumbering, not a new language-policy approval."
     },
     "reason": "Rename the existing EK3201 legacy provider report; normalized-token differential proves its checker bodies and activation hooks unchanged. Existing severity, refusal and repair behavior are preserved.",
     "identityRenumbering": "docs/design/diagnostic-identity-renames.json"
@@ -1058,7 +1058,7 @@
     "severity": "error",
     "approval": {
       "by": "Will",
-      "reference": "Current user task \u201cdiag-identity\u201d, items 1\u20132: compare same-code meanings/severities; the spec decides each code; update tests and docs for renames. This records existing task authorization for identity-only renumbering, not a new language-policy approval."
+      "reference": "Current user task “diag-identity”, items 1–2: compare same-code meanings/severities; the spec decides each code; update tests and docs for renames. This records existing task authorization for identity-only renumbering, not a new language-policy approval."
     },
     "reason": "Rename the existing EK3007 service-key arguments report; normalized-token differential proves its checker bodies and activation hooks unchanged. Existing severity, refusal and repair behavior are preserved.",
     "identityRenumbering": "docs/design/diagnostic-identity-renames.json"
@@ -1069,7 +1069,7 @@
     "severity": "error",
     "approval": {
       "by": "Will",
-      "reference": "Current user task \u201cdiag-identity\u201d, items 1\u20132: compare same-code meanings/severities; the spec decides each code; update tests and docs for renames. This records existing task authorization for identity-only renumbering, not a new language-policy approval."
+      "reference": "Current user task “diag-identity”, items 1–2: compare same-code meanings/severities; the spec decides each code; update tests and docs for renames. This records existing task authorization for identity-only renumbering, not a new language-policy approval."
     },
     "reason": "Rename the existing EK9100 fatal mapper form choice report; normalized-token differential proves its checker bodies and activation hooks unchanged. Existing severity, refusal and repair behavior are preserved.",
     "identityRenumbering": "docs/design/diagnostic-identity-renames.json"
@@ -1080,7 +1080,7 @@
     "severity": "error",
     "approval": {
       "by": "Will",
-      "reference": "Current user task \u201cdiag-identity\u201d, items 1\u20132: compare same-code meanings/severities; the spec decides each code; update tests and docs for renames. This records existing task authorization for identity-only renumbering, not a new language-policy approval."
+      "reference": "Current user task “diag-identity”, items 1–2: compare same-code meanings/severities; the spec decides each code; update tests and docs for renames. This records existing task authorization for identity-only renumbering, not a new language-policy approval."
     },
     "reason": "Rename the existing EK9101 fatal mapper data-method choice report; normalized-token differential proves its checker bodies and activation hooks unchanged. Existing severity, refusal and repair behavior are preserved.",
     "identityRenumbering": "docs/design/diagnostic-identity-renames.json"
@@ -1354,7 +1354,7 @@
       "by": "Will",
       "reference": "docs/design/vips/0040-module-declarations.md: Status: accepted, 2026-11-03. Will: \"Are you asking me if I accept a vip I already asked you to add?\" Replaces denied [VIP-25](0025-inline-modules-denied.md). See the restricted syntax and module-name binding rules. This cites existing explicit acceptance, not a new approval."
     },
-    "reason": "Accepted VIP-40 makes a module name a lexical binding: a second module of the same name, or a module beside a value binding, is the error EK4005. This fixture witnesses Appendix B\u2019s EK4408 retirement sentence. Choosing which binding to rename can change identity or API, so no automatic rename is asserted."
+    "reason": "Accepted VIP-40 makes a module name a lexical binding: a second module of the same name, or a module beside a value binding, is the error EK4005. This fixture witnesses Appendix B’s EK4408 retirement sentence. Choosing which binding to rename can change identity or API, so no automatic rename is asserted."
   },
   {
     "code": "TS2345",
@@ -1641,5 +1641,75 @@
       "reference": "docs/design/vips/0004-throw.md and docs/design/src/003-failures.md: accepted prohibition of throw in plain VibeLang handlers, including internally caught throws. VIP-5 catch executes directly and produces a success value."
     },
     "reason": "Remove obsolete outer try from catch success values. Keep both original plain throw rejections, the internally caught throw, and valid nested Effect/effect-handler controls; no new rejection rule is introduced."
+  },
+  {
+    "code": "EK0503",
+    "case": "typescript/vibelang/cases/ek2004-dead-catch.fail",
+    "vip": "VIP-5",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0005-try-runs-effects.md#decision; docs/design/src/002-running.md#try; docs/design/vips/0034-compiler-and-tooling.md#decision"
+    },
+    "reason": "VIP-5 explicitly forbids the native try statement retained here as a negative control. The registered native-try preserving-fix pair proves the migration; this mixed-error/retired-form fixture also retains its prior diagnostic coverage."
+  },
+  {
+    "code": "EK0503",
+    "case": "typescript/vibelang/cases/fork-escape-return.fail",
+    "vip": "VIP-5",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0005-try-runs-effects.md#decision; docs/design/src/002-running.md#try; docs/design/vips/0034-compiler-and-tooling.md#decision"
+    },
+    "reason": "VIP-5 explicitly forbids the native try statement retained here as a negative control. The registered native-try preserving-fix pair proves the migration; this mixed-error/retired-form fixture also retains its prior diagnostic coverage."
+  },
+  {
+    "code": "EK0503",
+    "case": "typescript/vibelang/cases/jump-without-target-region.fail",
+    "vip": "VIP-5",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0005-try-runs-effects.md#decision; docs/design/src/002-running.md#try; docs/design/vips/0034-compiler-and-tooling.md#decision"
+    },
+    "reason": "VIP-5 explicitly forbids the native try statement retained here as a negative control. The registered native-try preserving-fix pair proves the migration; this mixed-error/retired-form fixture also retains its prior diagnostic coverage."
+  },
+  {
+    "code": "EK9204",
+    "case": "typescript/vibelang/cases/ek2004-dead-catch.fail",
+    "vip": "VIP-5",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0005-try-runs-effects.md#decision; docs/design/src/002-running.md#try; docs/design/vips/0034-compiler-and-tooling.md#decision"
+    },
+    "reason": "All three configured legacy dead-catch errors and their existing spans are unchanged. Only VIP-5's EK0503 is added to an already-rejected source; no EK9204 retirement or severity change is introduced."
+  },
+  {
+    "code": "EK4838",
+    "case": "typescript/vibelang/cases/fork-escape-return.fail",
+    "vip": "VIP-38",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0005-try-runs-effects.md#decision; docs/design/src/002-running.md#try; docs/design/vips/0034-compiler-and-tooling.md#decision; docs/design/vips/0038-effect-lint-built-in.md#decision"
+    },
+    "reason": "The pre-existing configured fiber-escape lint error and its source are retained. Only VIP-5's native-try error is added; no new fiber rule, lint severity or repair is claimed."
+  },
+  {
+    "code": "TS1107",
+    "case": "typescript/vibelang/cases/jump-without-target-region.fail",
+    "vip": "VIP-1",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0005-try-runs-effects.md#decision; docs/design/src/002-running.md#try; docs/design/vips/0034-compiler-and-tooling.md#decision; docs/design/src/001-functions.md"
+    },
+    "reason": "The same four native no-target jump errors and their spans are retained. TypeScript rejects these jumps; only VIP-5's EK0503 is added to the existing negative source, with no new TS1107 rejection or purported automatic jump repair."
+  },
+  {
+    "code": "EK0503",
+    "case": "typescript/vibelang/cases/catch-retired-pattern.fail",
+    "vip": "VIP-5",
+    "approval": {
+      "by": "Will",
+      "reference": "Accepted VIP-5 (docs/design/src/002-running.md#try) requires EK0503 for native try statements in effect code."
+    },
+    "reason": "VIP-5 forbids the native try statement retained as a negative control. The registered EK0503 migration pair proves supported preserving rewrites; this retired typed-clause witness retains diagnostic coverage."
   }
 ]

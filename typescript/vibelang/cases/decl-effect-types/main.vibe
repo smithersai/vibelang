@@ -1,3 +1,5 @@
+import * as $nativeTryEffect1 from "effect/Effect";
+import * as $nativeTryEffect from "effect/Effect";
 // expect-result: {"found":"Ada","slow":"Timeout","missing":"none","count":3,"plain":"ok"}
 error NotFound { id: string }
 error Timeout
@@ -25,19 +27,23 @@ export type Scoped = string!NotFound!Scope
 export type Values = ReadonlyArray<number!!>
 
 effect function tryFind(f: Finder, id: string) {
-  try {
-    return try f(id)
-  } catch (error) {
-    return "none"
-  }
+  { const $nativeTryCompletion = try $nativeTryEffect.catch(effect {
+    return { kind: "return:" as const, value: (try f(id)) };
+  }, effect (error) => {
+    return { kind: "return:" as const, value: ("none") };
+  });
+return $nativeTryCompletion.value;
+}
 }
 
 effect function describe(id: string) {
-  try {
-    return try lookup(id)
-  } catch (error) {
-    return error._tag
-  }
+  { const $nativeTryCompletion1 = try $nativeTryEffect1.catch(effect {
+    return { kind: "return:" as const, value: (try lookup(id)) };
+  }, effect (error) => {
+    return { kind: "return:" as const, value: (error._tag) };
+  });
+return $nativeTryCompletion1.value;
+}
 }
 
 export effect function main() {

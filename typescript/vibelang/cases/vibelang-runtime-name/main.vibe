@@ -1,3 +1,4 @@
+import * as $nativeTryEffect from "effect/Effect";
 // Generated code imports vibelang-runtime as a namespace under a free
 // name. This file declares runtime and Effect_1 itself, so the lowering
 // picks other names for its imports.
@@ -14,11 +15,13 @@ effect function read(key: string) {
 }
 
 effect function readOr(key: string, fallback: string) {
-  try {
-    return try read(key)
-  } catch (e) {
-    return `${fallback} (${e._tag})`
-  }
+  { const $nativeTryCompletion = try $nativeTryEffect.catch(effect {
+    return { kind: "return:" as const, value: (try read(key)) };
+  }, effect (e) => {
+    return { kind: "return:" as const, value: (`${fallback} (${e._tag})`) };
+  });
+return $nativeTryCompletion.value;
+}
 }
 
 // expect-result: {"runtime":"node","one":1,"mode":"fast","level":"info (Missing)"}

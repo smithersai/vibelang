@@ -44,14 +44,14 @@ export effect function inner(ready: boolean) {
   return undefined
 }
 
-// A try block is a region, and the return leaves it.
+// The return leaves the Effect block that owns the fiber.
 export effect function guarded() {
-  try {
+  return try Effect.onExit(effect {
     const fiber = fork heartbeat()
     return fiber
-  } finally {
+  }, effect () => {
     try Console.log("left")
-  }
+  })
 }
 
 // An arrow's expression body is a function body: () => fork p() means

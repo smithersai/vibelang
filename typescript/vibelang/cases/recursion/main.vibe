@@ -1,3 +1,4 @@
+import * as $nativeTryEffect from "effect/Effect";
 // Functions that call each other write their contracts: a failure that
 // reaches a function only through its call cycle is stated, not inferred, so
 // each function here names both Even and Odd.
@@ -18,11 +19,13 @@ export effect function isEven(n: number): Effect<boolean, Even | Odd, never> {
 
 // A caller outside the cycle reads the written contracts.
 export effect function parity(n: number) {
-  try {
-    return try isEven(n) ? "even" : "odd"
-  } catch (e) {
-    return e._tag
-  }
+  { const $nativeTryCompletion = try $nativeTryEffect.catch(effect {
+    return { kind: "return:" as const, value: (try isEven(n) ? "even" as const : "odd" as const) };
+  }, effect (e) => {
+    return { kind: "return:" as const, value: (e._tag) };
+  });
+return $nativeTryCompletion.value;
+}
 }
 
 // A self-recursive function writes its contract too, even though its success
@@ -56,5 +59,6 @@ export effect function totalSize(path: string): Effect<number, Missing, never> {
 
 // expect-result: {"parity":["even","odd","Odd","Even"],"size":42}
 export effect function main() {
-  return { parity: [try parity(4), try parity(3), try parity(8), try parity(100)], size: try totalSize("/") }
+  const parities: string[] = [try parity(4), try parity(3), try parity(8), try parity(100)]
+  return { parity: parities, size: try totalSize("/") }
 }

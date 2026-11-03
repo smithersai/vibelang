@@ -1,3 +1,9 @@
+
+import * as $nativeTryEffect3 from "effect/Effect";
+
+import * as $nativeTryEffect2 from "effect/Effect";
+import * as $nativeTryEffect1 from "effect/Effect";
+import * as $nativeTryEffect from "effect/Effect";
 // expect-result: {"describe":["user 1","no user missing","retry"],"partial":"missing","partialSlow":"Timeout","chain":["missing missing","other"],"cause":["user 1","failed"]}
 error NotFound { id: string }
 error Timeout
@@ -10,39 +16,47 @@ effect function find(id: string): string!(NotFound | Timeout)! {
 
 // A complete match over the caught failure needs no rethrow.
 effect function describe(id: string): string!! {
-  try {
-    return try find(id)
-  } catch (e) {
-    return match (e) {
+  { const $nativeTryCompletion2 = try $nativeTryEffect2.catch(effect {
+    return { kind: "return:" as const, value: try find(id) };
+  }, effect (e) => {
+    return { kind: "return:" as const, value: match (e) {
       when NotFound and { let id }: `no user ${id}`;
       when Timeout: "retry";
       default: match (void 0 as unknown) { when 0: (void 0 as never); };
     }
-  }
+ };
+  });
+return $nativeTryCompletion2.value;
+}
 }
 
 // Partial handling rethrows the rest with a throw expression.
 effect function partial(id: string): string!Timeout! {
-  try {
-    return try find(id)
-  } catch (e) {
-    return match (e) {
+  { const $nativeTryCompletion3 = try $nativeTryEffect3.catch(effect {
+    return { kind: "return:" as const, value: try find(id) };
+  }, effect (e) => {
+    return { kind: "return:" as const, value: match (e) {
       when NotFound: "missing";
       default: throw e;
     }
-  }
+ };
+  });
+return $nativeTryCompletion3.value;
+}
 }
 
 // An is chain narrows statement bodies.
 effect function chain(id: string): string!! {
-  try {
-    return try find(id)
-  } catch (e) {
+  { const $nativeTryCompletion = try $nativeTryEffect.catch(effect {
+    return { kind: "return:" as const, value: (try find(id)) };
+  }, effect (e) => {
     if (e is NotFound) {
-      return `missing ${e.id}`
+      return { kind: "return:" as const, value: (`missing ${e.id}`) };
     }
-    return "other"
-  }
+    return { kind: "return:" as const, value: ("other") };
+  });
+return $nativeTryCompletion.value;
+}
 }
 
 // A whole cause: match on the exit.
@@ -55,11 +69,17 @@ effect function outcome(id: string): string!! {
 
 export effect function main() {
   let partialSlow = "none"
-  try {
+  { const $nativeTryCompletion1 = try $nativeTryEffect1.catch(effect {
     try partial("slow")
-  } catch (e) {
+  
+;return { kind: "normal" } as const;
+}, effect (e) => {
     partialSlow = e._tag
-  }
+  
+;return { kind: "normal" } as const;
+});
+
+}
   return {
     describe: [try describe("1"), try describe("missing"), try describe("slow")],
     partial: try partial("missing"),

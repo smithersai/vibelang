@@ -1,3 +1,9 @@
+
+import * as $nativeTryEffect2 from "effect/Effect";
+
+import * as $nativeTryEffect1 from "effect/Effect";
+
+import * as $nativeTryEffect from "effect/Effect";
 // Chapter 12. Contracts and inference.
 
 class CartNotFound extends TaggedError("CartNotFound")<{ readonly cartId: string }> {}
@@ -67,11 +73,13 @@ function estimate(cart: Cart) {
 effect function quoteCart(cartId: string) {
   const cart = try (try Carts).load(cartId)              // E: CartNotFound   R: Carts
   if (cart.items.length === 0) throw new EmptyCart({ cartId })
-  try {
-    return try (try Pricing).quote(cart)                 // E: PricingDown    R: Pricing
-  } catch (e) {                                // e: PricingDown
-    return estimate(cart)                      // a plain function
-  }
+  { const $nativeTryCompletion = try $nativeTryEffect.catch(effect {
+    return { kind: "return:" as const, value: try (try Pricing).quote(cart) };                 // E: PricingDown    R: Pricing
+  }, effect (e) => {                                // e: PricingDown
+    return { kind: "return:" as const, value: estimate(cart) };                      // a plain function
+  });
+return $nativeTryCompletion.value;
+}
 }
 // Effect<Quote, CartNotFound | EmptyCart, Carts | Pricing>
 
@@ -160,17 +168,29 @@ effect function scenario() {
   const full = try quoteCart("full")
   const down = try quoteCart("down")
   let empty = "none"
-  try {
+  { const $nativeTryCompletion1 = try $nativeTryEffect1.catch(effect {
     try quoteCart("empty")
-  } catch (e) {
+  
+;return { kind: "normal" } as const;
+}, effect (e) => {
     empty = e._tag
-  }
+  
+;return { kind: "normal" } as const;
+});
+
+}
   let missing = "none"
-  try {
+  { const $nativeTryCompletion2 = try $nativeTryEffect2.catch(effect {
     try quoteCart("nope")
-  } catch (e) {
+  
+;return { kind: "normal" } as const;
+}, effect (e) => {
     missing = e._tag
-  }
+  
+;return { kind: "normal" } as const;
+});
+
+}
   const name = try welcome("1")
   const size = try totalSize("/root")
   return { full, down, empty, missing, name, size, outbox }

@@ -1,3 +1,4 @@
+import * as $nativeTryEffect from "effect/Effect";
 // A generic using is the same one program as the using written inline
 // (D490): under timeout(…, "100 millis"), withResource(() => connect(…)) and
 // withResource(() => openDb(…)) each end when the same using written inline
@@ -37,12 +38,18 @@ export effect function main(): object!! {
 // the deadline ended.
 effect function deadline(work: (seen: string[]) => void!!) {
   const seen: string[] = []
-  try {
+  { const $nativeTryCompletion = try $nativeTryEffect.catch(effect {
     try Effect.timeout(effect { return try work(seen) }, "100 millis")
     seen.push("finished")
-  } catch (e) {
+  
+;return { kind: "normal" } as const;
+}, effect (e) => {
     seen.push(e._tag)
-  }
+  
+;return { kind: "normal" } as const;
+});
+
+}
   return seen
 }
 

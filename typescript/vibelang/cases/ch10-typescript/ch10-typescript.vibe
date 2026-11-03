@@ -1,3 +1,7 @@
+import * as $nativeTryEffect3 from "effect/Effect";
+import * as $nativeTryEffect2 from "effect/Effect";
+import * as $nativeTryEffect1 from "effect/Effect";
+import * as $nativeTryEffect from "effect/Effect";
 // Chapter 10. Working with TypeScript.
 import {
   Database,
@@ -63,11 +67,13 @@ effect function profileCard(id: string) {
 
 // A throwing plain function behind a boundary, with the typed failure caught.
 effect function portOrDefault(text: string) {
-  try {
-    return try Effect.try({ try: () => parsePort(text), catch: (cause) => new ConfigError({ cause }) })
-  } catch (e) {
-    return 80
-  }
+  { const $nativeTryCompletion = try $nativeTryEffect.catch(effect {
+    return { kind: "return:" as const, value: (try Effect.try({ try: () => parsePort(text), catch: (cause) => new ConfigError({ cause }) })) };
+  }, effect (e) => {
+    return { kind: "return:" as const, value: (80) };
+  });
+return $nativeTryCompletion.value;
+}
 }
 
 // D249: a TypeScript function with a trusted contract, a trusted(impl, [PortError]) value, is
@@ -102,28 +108,46 @@ const UsersTest = Layer.succeed(Users, {
 effect function scenario() {
   const upper = try title("1")
   let missing = "none"
-  try {
+  { const $nativeTryCompletion1 = try $nativeTryEffect1.catch(effect {
     try title("2")
-  } catch (e) {
+  
+;return { kind: "normal" } as const;
+}, effect (e) => {
     missing = e._tag
-  }
+  
+;return { kind: "normal" } as const;
+});
+
+}
   const rows = try rowCount("1")
   const config = try parseConfig(`{"port":8080}`)
   let badConfig = "none"
-  try {
+  { const $nativeTryCompletion2 = try $nativeTryEffect2.catch(effect {
     try parseConfig("{")
-  } catch (e) {
+  
+;return { kind: "normal" } as const;
+}, effect (e) => {
     badConfig = e._tag
-  }
+  
+;return { kind: "normal" } as const;
+});
+
+}
   const card = try profileCard("1")
   const defaultPort = try portOrDefault("x")
   const trustedPort = try portFrom("9090")
   let badPort = "none"
-  try {
+  { const $nativeTryCompletion3 = try $nativeTryEffect3.catch(effect {
     try portFrom("x")
-  } catch (e) {
+  
+;return { kind: "normal" } as const;
+}, effect (e) => {
     badPort = e._tag
-  }
+  
+;return { kind: "normal" } as const;
+});
+
+}
   const greeting = try fetchJson("ada")
   const trimmed = trimAll([" a ", "b "])
   return { upper, missing, rows, port: config.port, badConfig, card, defaultPort, trustedPort, badPort, greeting, trimmed }

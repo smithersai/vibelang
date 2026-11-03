@@ -1,4 +1,4 @@
-// expect: TS1107 TS1107 TS1107 TS1107
+// expect: TS1107 TS1107 TS1107 TS1107 EK0503
 // A break or continue with no target is a grammar error, and the file still
 // emits, since noEmitOnError is off. Inside a region (a using block, a try
 // statement), lowering returns the jump's completion record to the

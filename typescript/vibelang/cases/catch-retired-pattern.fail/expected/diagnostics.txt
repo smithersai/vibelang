@@ -1,1 +1,2 @@
+main.vibe(9,3): error EK0503
 main.vibe(11,20): warning EK2112

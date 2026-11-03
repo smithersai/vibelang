@@ -1,11 +1,25 @@
+import * as $nativeTryEffect1 from "effect/Effect";
+import * as $nativeTryEffect from "effect/Effect";
 import { Effect } from "effect"
 import { pairs, events } from "./helper.js"
 effect function boom(): number!string! { throw "boom" }
 effect function main() {
- try { for (const [n = try boom()] of pairs()) { events.push("body:"+n) } } catch { events.push("caught") }
+ { const $nativeTryCompletion = try $nativeTryEffect.catch(effect { for (const [n = try boom()] of pairs()) { events.push("body:"+n) } 
+;return { kind: "normal" } as const;
+}, effect () => { events.push("caught") 
+;return { kind: "normal" } as const;
+});
+
+}
  try Console.log("binding", events.join(","))
  events.length = 0
- try { for (const pair of pairs()) { const [n = try boom()] = pair; events.push("body:"+n) } } catch { events.push("caught") }
+ { const $nativeTryCompletion1 = try $nativeTryEffect1.catch(effect { for (const pair of pairs()) { const [n = try boom()] = pair; events.push("body:"+n) } 
+;return { kind: "normal" } as const;
+}, effect () => { events.push("caught") 
+;return { kind: "normal" } as const;
+});
+
+}
  try Console.log("body", events.join(","))
 }
 Effect.runPromise(main())

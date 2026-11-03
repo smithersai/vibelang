@@ -1,3 +1,4 @@
+import * as $nativeTryEffect from "effect/Effect";
 // Chapter 7. Concurrency.
 // NOTE: durations are shortened from the proposal's so the run is fast.
 import { Fiber, Scope } from "effect"
@@ -76,15 +77,19 @@ effect function combinators(id: string, images: ReadonlyArray<string>) {
 // Background work with a lifetime
 
 effect function heartbeat(started: Deferred.Deferred<void>) {
-  try {
+  { const $nativeTryCompletion = try $nativeTryEffect.onExit(effect {
     while (true) {
       try Effect.sleep("1 millis")
       beats++
       try Deferred.succeed(started, undefined)
     }
-  } finally {
+  
+;return { kind: "normal" } as const;
+}, () => effect {
     events.push("heartbeat stopped")
-  }
+  });
+
+}
 }
 
 effect function serve(port: number) {

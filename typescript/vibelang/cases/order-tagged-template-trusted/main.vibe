@@ -1,3 +1,9 @@
+
+import * as $nativeTryEffect2 from "effect/Effect";
+
+import * as $nativeTryEffect1 from "effect/Effect";
+
+import * as $nativeTryEffect from "effect/Effect";
 // expect-result: {"call":"caught","tagged":"caught","effect":"caught","value":"a7b","effect value":"a7b"}
 // A tagged template calls its tag with the tag's contract, as a call does: a
 // failure the tag lists is an expected failure that catch receives, also when
@@ -13,13 +19,31 @@ export effect function main() {
   let call = ""
   let tagged = ""
   let effect = ""
-  try {
+  { const $nativeTryCompletion = try $nativeTryEffect.catch(effect {
     try ((ThrownBad: typeof Bad) => Effect.catch(
       Effect.try({ try: () => tag(Object.assign(["a", "b"], { raw: ["a", "b"] }), 0), catch: (error) => error }),
       (error) => error instanceof ThrownBad ? Effect.fail(error) : Effect.die(error)
     ))(Bad)
-  } catch { call = "caught" }
-  try { tag`a${0}b` } catch { tagged = "caught" }
-  try { tag`a${try number(0)}b` } catch { effect = "caught" }
+  
+;return { kind: "normal" } as const;
+}, effect () => { call = "caught" 
+;return { kind: "normal" } as const;
+});
+
+}
+  { const $nativeTryCompletion1 = try $nativeTryEffect1.catch(effect { tag`a${0}b` 
+;return { kind: "normal" } as const;
+}, effect () => { tagged = "caught" 
+;return { kind: "normal" } as const;
+});
+
+}
+  { const $nativeTryCompletion2 = try $nativeTryEffect2.catch(effect { tag`a${try number(0)}b` 
+;return { kind: "normal" } as const;
+}, effect () => { effect = "caught" 
+;return { kind: "normal" } as const;
+});
+
+}
   return { call, tagged, effect, value: tag`a${7}b`, "effect value": tag`a${try number(7)}b` }
 }

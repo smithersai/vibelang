@@ -1,4 +1,5 @@
 import { Effect, Scope } from "effect";
+import * as $nativeTryEffect1 from "effect/Effect";
 declare const NotFound_base: new <A extends Record<string, any> = {}>(args: import("effect/Types").VoidIfEmpty<{ readonly [P in keyof A as P extends "_tag" ? never : P]: A[P]; }>) => import("effect/Cause").YieldableError & {
     readonly _tag: "NotFound";
 } & Readonly<A>;
@@ -17,7 +18,7 @@ export declare function count(): Effect.Effect<number>;
 export type Finder = (id: string) => Effect.Effect<string, NotFound>;
 export type Scoped = Effect.Effect<string, NotFound, Scope.Scope>;
 export type Values = ReadonlyArray<Effect.Effect<number>>;
-export declare function main(): Effect.Effect<{
+export declare function main(): $nativeTryEffect1.Effect<{
     found: string;
     slow: string;
     missing: string;

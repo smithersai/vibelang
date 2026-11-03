@@ -1,18 +1,46 @@
+import * as $nativeTryEffect3 from "effect/Effect";
+import * as $nativeTryEffect2 from "effect/Effect";
+import * as $nativeTryEffect1 from "effect/Effect";
+import * as $nativeTryEffect from "effect/Effect";
 import { Effect } from "effect"
 import { customArray, subclassArray, proxyArray, events } from "./helper.js"
 effect function boom(): never!string! { throw "boom" }
 effect function main() {
- try { for (const n of customArray()) { try boom() } } catch { events.push("caught") }
+ { const $nativeTryCompletion = try $nativeTryEffect.catch(effect { for (const n of customArray()) { try boom() } 
+;return { kind: "normal" } as const;
+}, effect () => { events.push("caught") 
+;return { kind: "normal" } as const;
+});
+
+}
  try Console.log("array", events.join(","))
  events.length = 0
  const iterable: Iterable<number> = customArray()
- try { for (const n of iterable) { try boom() } } catch { events.push("caught") }
+ { const $nativeTryCompletion1 = try $nativeTryEffect1.catch(effect { for (const n of iterable) { try boom() } 
+;return { kind: "normal" } as const;
+}, effect () => { events.push("caught") 
+;return { kind: "normal" } as const;
+});
+
+}
  try Console.log("iterable", events.join(","))
  events.length = 0
- try { for (const n of subclassArray()) { try boom() } } catch { events.push("caught") }
+ { const $nativeTryCompletion2 = try $nativeTryEffect2.catch(effect { for (const n of subclassArray()) { try boom() } 
+;return { kind: "normal" } as const;
+}, effect () => { events.push("caught") 
+;return { kind: "normal" } as const;
+});
+
+}
  try Console.log("subclass", events.join(","))
  events.length = 0
- try { for (const n of proxyArray()) { try boom() } } catch { events.push("caught") }
+ { const $nativeTryCompletion3 = try $nativeTryEffect3.catch(effect { for (const n of proxyArray()) { try boom() } 
+;return { kind: "normal" } as const;
+}, effect () => { events.push("caught") 
+;return { kind: "normal" } as const;
+});
+
+}
  try Console.log("proxy", events.join(","))
 
 }

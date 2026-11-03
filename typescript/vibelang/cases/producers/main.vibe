@@ -1,3 +1,4 @@
+import * as $nativeTryEffect from "effect/Effect";
 // Producers (chapter 8, D26): lazy, one value at a time, cleanup on early
 // exit by break, return, and continue to an outer label, one pass per run,
 // service calls between yields, iteration over another producer, a producer passed
@@ -13,15 +14,12 @@ service Store {
 }
 
 effect function* numbers(limit: number, log: string[]) {
-  try {
-    let n = 0
-    while (n < limit) {
-      log.push(`yield ${n}`)
-      yield n
-      n++
-    }
-  } finally {
-    log.push("closed")
+  try addFinalizer(effect () => { log.push("closed") })
+  let n = 0
+  while (n < limit) {
+    log.push(`yield ${n}`)
+    yield n
+    n++
   }
 }
 
@@ -146,11 +144,15 @@ effect function bindings() {
 // elements before it.
 effect function caught() {
   const seen: number[] = []
-  try {
+  { const $nativeTryCompletion = try $nativeTryEffect.catch(effect {
     for try (const n of failing()) seen.push(n)
-  } catch (e) {
-    return { seen, error: e._tag, at: e.at }
-  }
+  
+;return { kind: "normal" } as const;
+}, effect (e) => {
+    return { kind: "return:" as const, value: ({ seen, error: e._tag, at: e.at }) };
+  });
+if ($nativeTryCompletion.kind === "return:") return $nativeTryCompletion.value;
+}
   return { seen, error: "none", at: 0 }
 }
 

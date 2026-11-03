@@ -1,3 +1,4 @@
+import * as $nativeTryEffect from "effect/Effect";
 // Trust levels (D5, D22, D249): what a call to code that is not Effect means.
 import { Cause, Effect, Exit, Option } from "effect"
 import { legacyParse, parseJson, parsePort, offsetPort } from "./parsers.ts"
@@ -47,11 +48,13 @@ function first(values: ReadonlyArray<number>) {
 
 // A boundary: inside Effect.try, a plain TypeScript call is allowed.
 effect function legacy(text: string) {
-  try {
-    return try Effect.try({ try: () => legacyParse(text), catch: () => "bad port" })
-  } catch (e) {
-    return e
-  }
+  { const $nativeTryCompletion = try $nativeTryEffect.catch(effect {
+    return { kind: "return:" as const, value: (try Effect.try({ try: () => legacyParse(text), catch: () => "bad port" })) };
+  }, effect (e) => {
+    return { kind: "return:" as const, value: (e) };
+  });
+return $nativeTryCompletion.value;
+}
 }
 
 // A trusted library function, and a method trusted through an adapter.

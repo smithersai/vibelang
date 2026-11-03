@@ -1,3 +1,4 @@
+import * as $nativeTryEffect from "effect/Effect";
 // Reference program 1. Existing Effect service: import a generic, overloaded, aliased TypeScript
 // Effect function; compose it without changing E or R; provide a Layer from TypeScript.
 // NOTE: the proposal states this program in prose only. The contract comments below are this
@@ -40,11 +41,17 @@ effect function directly(id: string) {
 
 effect function scenario() {
   let missing = "none"
-  try {
+  { const $nativeTryCompletion = try $nativeTryEffect.catch(effect {
     try teamOf("9")
-  } catch (e) {
+  
+;return { kind: "normal" } as const;
+}, effect (e) => {
     missing = e._tag
-  }
+  
+;return { kind: "normal" } as const;
+});
+
+}
   return {
     team: try teamOf("2"),
     names: try teamNames(["1", "3"]),

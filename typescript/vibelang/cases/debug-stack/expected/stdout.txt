@@ -1,5 +1,5 @@
 [3,2,1,0]
-at ownerName (main.vibe:12:25)
-at lookup (main.vibe:17:9)
-at audited$try (main.vibe:23:27)
-at logOwner (main.vibe:43:41)
+at ownerName (main.vibe:13:25)
+at lookup (main.vibe:18:9)
+at <anonymous> (main.vibe:24:63)
+at logOwner (main.vibe:46:41)

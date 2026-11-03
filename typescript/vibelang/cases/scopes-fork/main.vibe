@@ -1,3 +1,5 @@
+import * as $nativeTryEffect1 from "effect/Effect";
+import * as $nativeTryEffect from "effect/Effect";
 // fork starts a fiber that the region around it owns (D19, D47, D408): the
 // region is a Scope region even without using, and when it exits by any path
 // it interrupts the fiber and waits for its cleanup before it releases what
@@ -27,14 +29,18 @@ effect function resource(name: string) {
 // enters this try and runs no finally. Each caller awaits a Deferred signalled
 // inside the try, so cleanup is installed before the owner can exit.
 effect function ticker(name: string, started: Deferred.Deferred<void>) {
-  try {
+  { const $nativeTryCompletion = try $nativeTryEffect.onExit(effect {
     try Deferred.succeed(started, undefined)
     while (true) {
       try Effect.sleep("1 millis")
     }
-  } finally {
+  
+;return { kind: "normal" } as const;
+}, () => effect {
     events.push(`stop ${name}`)
-  }
+  });
+
+}
 }
 
 effect function compute(n: number) {
@@ -93,12 +99,7 @@ effect function perIteration() {
 // The child's failure reaches the parent only through Fiber.join.
 effect function failingChild() {
   const child = fork boom()
-  try {
-    try Fiber.join(child)
-  } catch (e) {
-    return `joined ${e._tag}`
-  }
-  return "no failure"
+  return Effect.as(Fiber.join(child), "no failure") catch (e) => `joined ${e._tag}`
 }
 
 // A block that fails still stops its fibers.
@@ -163,11 +164,17 @@ export effect function main() {
   const l = phase("loop", try perIteration())
   const f = phase("failing", try failingChild())
   let failedBlock = "none"
-  try {
+  { const $nativeTryCompletion1 = try $nativeTryEffect1.catch(effect {
     try failingBlock()
-  } catch (e) {
+  
+;return { kind: "normal" } as const;
+}, effect (e) => {
     failedBlock = e._tag
-  }
+  
+;return { kind: "normal" } as const;
+});
+
+}
   phase("failedBlock", failedBlock)
   const s = phase("scoped", try scopedBackground())
   const o = phase("outlives", try scopedCaller())

@@ -1,9 +1,10 @@
-import { Effect, Schema } from "effect";
+import { Schema } from "effect";
+import * as $nativeTryEffect from "effect/Effect";
 export declare const Code: Schema.Literals<readonly ["root_missing", "read_failed"]>;
 export type Code = typeof Code.Type;
 export declare const Port: Schema.Number;
 export type Port = typeof Port.Type;
-export declare function main(): Effect.Effect<{
+export declare function main(): $nativeTryEffect.Effect<{
     code: string;
     invalid: string;
     described: string;

@@ -16,10 +16,11 @@ function replaced() {
 
 effect function framed() {
   try yieldNow
-  try {
-    try { throw new First() }
-    finally { throw new Cleanup() }
-  } catch (e) { return e._tag }
+  return Effect.onExit(effect {
+    throw new First()
+  }, effect () => {
+    throw new Cleanup()
+  }) catch (e) => e._tag
 }
 
 // A failure the catch block raises is in flight when the finally block runs.
@@ -64,6 +65,6 @@ export effect function main() {
   }
 }
 
-// A synchronous VibeLang function never throws (Will, 2026-10-31): the throw
+// A synchronous VibeLang function never throws: the throw
 // these tests need lives in raise.ts, which keeps JavaScript's throw.
 import { raise } from "./raise.js"

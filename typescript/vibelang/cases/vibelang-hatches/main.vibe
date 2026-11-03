@@ -1,3 +1,9 @@
+
+import * as $nativeTryEffect2 from "effect/Effect";
+
+import * as $nativeTryEffect1 from "effect/Effect";
+
+import * as $nativeTryEffect from "effect/Effect";
 import { schedule, cancel } from "./timers.js"
 // Boundary hatches (D148): sync, try, and callback run plain TypeScript. In
 // a hatch's first argument calls do not run, throw and async keep their
@@ -43,24 +49,42 @@ export effect function main() {
   const fetched = try Effect.tryPromise(async (signal) => (signal.aborted ? "aborted" : "fetched"))
   const parsed = try parse('{"a":1}')
   let bad = "none"
-  try {
+  { const $nativeTryCompletion = try $nativeTryEffect.catch(effect {
     try parse("{")
-  } catch (error) {
+  
+;return { kind: "normal" } as const;
+}, effect (error) => {
     bad = error._tag
-  }
+  
+;return { kind: "normal" } as const;
+});
+
+}
   let unknown = "none"
-  try {
+  { const $nativeTryCompletion1 = try $nativeTryEffect1.catch(effect {
     try lengthOf("")
-  } catch (error) {
+  
+;return { kind: "normal" } as const;
+}, effect (error) => {
     unknown = error._tag
-  }
+  
+;return { kind: "normal" } as const;
+});
+
+}
   const ticked = try tick()
   let refused = "none"
-  try {
+  { const $nativeTryCompletion2 = try $nativeTryEffect2.catch(effect {
     try refuse()
-  } catch (error) {
+  
+;return { kind: "normal" } as const;
+}, effect (error) => {
     refused = error._tag
-  }
+  
+;return { kind: "normal" } as const;
+});
+
+}
   const inert = try sync((later) => typeof later(), later)
   const viaRunner = try sync(async (later) => runPromise(later()), later)
   return { id, doubled, awaited, fetched, parsed, bad, unknown, ticked, refused, inert, viaRunner }

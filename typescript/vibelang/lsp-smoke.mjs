@@ -311,6 +311,8 @@ try {
 
   await check("code action: EK2112 warns at a typed catch clause, and its quick fix writes a match", async () => {
     open("src/old-catch.vibe", "vibe")
+    const nativeTry = (await diagnostics("src/old-catch.vibe")).filter((d) => d.code === 503)
+    assert(nativeTry.length === 2 && nativeTry.every((d) => d.source === "EK" && d.severity === 1), `VIP-5 native try diagnostics: ${JSON.stringify(nativeTry)}`)
     const items = (await diagnostics("src/old-catch.vibe")).filter((d) => d.code === 2112)
     assert(items.length === 2, `expected two EK2112 warnings, got ${JSON.stringify(items.map((d) => d.message))}`)
     const [item] = items
@@ -348,7 +350,9 @@ try {
     connection.notify("textDocument/didChange", { textDocument: { uri, version: 2 }, contentChanges: [{ text: fixed }] })
     try {
       const after = await diagnostics("src/old-catch.vibe")
-      assert(!after.some((d) => d.code === 2113 || d.severity === 1), `fixed Cause catch: ${JSON.stringify(after)}`)
+      assert(!after.some((d) => d.code === 2113 || (d.severity === 1 && d.code !== 503)), `fixed Cause catch: ${JSON.stringify(after)}`)
+      // label still contains its independent native try statement (VIP-5).
+      assert(after.filter((d) => d.code === 503).length === 1, `remaining native try: ${JSON.stringify(after)}`)
     } finally {
       connection.notify("textDocument/didChange", { textDocument: { uri, version: 3 }, contentChanges: [{ text: original }] })
     }

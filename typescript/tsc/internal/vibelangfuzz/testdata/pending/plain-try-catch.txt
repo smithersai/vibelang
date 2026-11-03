@@ -1,5 +1,1 @@
-# Observed in r3 batch-b2 before pending; rechecked by r4/check-six.sh. Owner migfix-alchemy.
-FuzzPlainTryCatch effect-function:catch-in-callback compiler VIP-1 Chapter 1: try/catch in a plain or async function is ordinary JavaScript; lane migfix-alchemy
-FuzzPlainTryCatch effect-function:finally compiler VIP-1 Chapter 1: try/catch in a plain or async function is ordinary JavaScript; lane migfix-alchemy
-FuzzPlainTryCatch corpus:effect-function-catch-in-callback compiler VIP-1 Chapter 1: try/catch in a plain or async function is ordinary JavaScript; minimized corpus reproduction; lane migfix-alchemy
-FuzzPlainTryCatch corpus:effect-function-finally compiler VIP-1 Chapter 1: try/catch in a plain or async function is ordinary JavaScript; minimized corpus reproduction; lane migfix-alchemy
+# Native effect-body try statements report EK0503; plain nested callbacks retain JavaScript try/catch.

@@ -1,0 +1,12 @@
+// expect-result: [1,2,3,4]
+function plain() { try { return 1 } catch { return 0 } }
+async function promised() { try { return 1 } finally { } }
+export effect function main() {
+  const nested = () => { try { return 2 } finally {} }
+  const task = effect {
+    function inner() { try { return 3 } catch { return 0 } }
+    return inner()
+  }
+  class C { value() { try { return 4 } finally {} } }
+  return [plain(), nested(), try task, new C().value()]
+}

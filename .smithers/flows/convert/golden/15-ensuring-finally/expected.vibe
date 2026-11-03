@@ -1,7 +1,3 @@
 export effect function tracked() {
-  try {
-    return 1
-  } finally {
-    try log("cleanup")
-  }
+  return try Effect.ensuring(effect { return 1 }, Effect.log("cleanup"))
 }

@@ -1,3 +1,4 @@
+import * as $nativeTryEffect from "effect/Effect";
 // expect-result: {"typed":"NotFound","defect":"Die","rethrown":"Boom","onlyCause":"Fail","untyped":"Expected"}
 error NotFound { id: string }
 error Boom
@@ -15,7 +16,7 @@ effect function boom() {
 // Catch expected failures inside exit; defects remain in its Failure case.
 effect function typed() {
   const outcome = try exit(effect { // exit takes an Effect; a do block is a value (VIP-1, VIP-2)
-    return do { try { try find("missing") } catch (e) { e._tag } }
+    return find("missing") catch (e) => e._tag
   })
   if (outcome._tag === "Success") return outcome.value
   return "cause"
@@ -28,13 +29,15 @@ effect function defect() {
 }
 
 effect function rethrown() {
-  try {
+  { const $nativeTryCompletion = try $nativeTryEffect.catch(effect {
     const outcome = try exit(boom())
     if (outcome._tag === "Failure") try Effect.failCause(outcome.cause)
-    return "no"
-  } catch (e) {
-    return e._tag
-  }
+    return { kind: "return:" as const, value: ("no") };
+  }, effect (e) => {
+    return { kind: "return:" as const, value: (e._tag) };
+  });
+return $nativeTryCompletion.value;
+}
 }
 
 effect function onlyCause() {
@@ -45,7 +48,7 @@ effect function onlyCause() {
 
 effect function untyped() {
   const outcome = try exit(effect {
-    return do { try { try boom(); "no" } catch (e) { "Expected" } }
+    return effect { try boom(); return "no" } catch () => "Expected"
   })
   if (outcome._tag === "Success") return outcome.value
   return "cause"

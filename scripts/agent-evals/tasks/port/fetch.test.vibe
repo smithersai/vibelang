@@ -14,14 +14,14 @@ it.effect("retries a Timeout twice", effect () => {
 
 it.effect("fails after the third Timeout", effect () => {
   let calls = 0
-  try {
+  try Effect.catch(effect {
     fetchWithRetry(() => {
       calls += 1
       throw new Timeout({ ms: 100 })
     })
     assert.fail("expected Timeout")
-  } catch (error) {
+  }, effect (error) => {
     assert.instanceOf(error, Timeout)
-  }
+  })
   assert.strictEqual(calls, 3)
 })

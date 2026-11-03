@@ -1,3 +1,4 @@
+import * as $nativeTryEffect from "effect/Effect";
 // Chapter 24: return, break, and continue leave try/catch/finally and `using`
 // regions through completion records. Checked against JavaScript's semantics.
 class Boom extends TaggedError("Boom")<{ readonly n: number }> {}
@@ -14,17 +15,26 @@ effect function loop(stopAt: number) {
   let total = 0
   outer: for (let i = 1; i <= 10; i++) {
     for (let j = 0; j < 2; j++) {
-      try {
-        if (i === stopAt) break outer
-        if (j === 1) continue outer
-        if (i % 2 === 0) continue
+      { const $nativeTryCompletion = try $nativeTryEffect.onExit($nativeTryEffect.catch(effect {
+        if (i === stopAt) return { kind: "break:outer" as const };
+        if (j === 1) return { kind: "continue:outer" as const };
+        if (i % 2 === 0) return { kind: "continue:" as const };
         total += try risky(i)
-      } catch (e) {
+      
+;return { kind: "normal" } as const;
+}, effect (e) => {
         events.push(`caught ${e.n}`)
-        if (e.n === 9) return -total
-      } finally {
+        if (e.n === 9) return { kind: "return:" as const, value: (-total) };
+      
+;return { kind: "normal" } as const;
+}), () => effect {
         events.push(`finally ${i}.${j}`)
-      }
+      });
+if ($nativeTryCompletion.kind === "break:outer") break outer;
+if ($nativeTryCompletion.kind === "continue:outer") continue outer;
+if ($nativeTryCompletion.kind === "continue:") continue;
+if ($nativeTryCompletion.kind === "return:") return $nativeTryCompletion.value;
+}
     }
   }
   return total

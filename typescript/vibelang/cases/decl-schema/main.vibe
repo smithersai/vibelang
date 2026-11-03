@@ -1,3 +1,4 @@
+import * as $nativeTryEffect from "effect/Effect";
 // expect-result: {"a":{"id":"1","name":"Ada","role":"admin","tags":["x"],"home":{"city":"Paris"},"score":[1,"a"],"counts":{"a":1},"verified":null,"login":{"at":3}},"b":"invalid","c":true}
 export schema Address {
   readonly city: string
@@ -18,11 +19,13 @@ export schema User {
 }
 
 effect function decode(input: unknown) {
-  try {
-    return try Schema.decodeUnknownEffect(User)(input)
-  } catch (e) {
-    return "invalid"
-  }
+  { const $nativeTryCompletion = try $nativeTryEffect.catch(effect {
+    return { kind: "return:" as const, value: (try Schema.decodeUnknownEffect(User)(input)) };
+  }, effect (e) => {
+    return { kind: "return:" as const, value: ("invalid") };
+  });
+return $nativeTryCompletion.value;
+}
 }
 
 // The type is the struct's decoded type.

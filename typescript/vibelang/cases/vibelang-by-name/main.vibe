@@ -1,3 +1,4 @@
+import * as $nativeTryEffect from "effect/Effect";
 // Calling an effect function builds its Effect and runs nothing (VIP-1), so
 // fork(fetchReport()) and Effect.retry(fetchReport()) pass a program with no
 // by-name rule. A plain function's call evaluates where it stands, so a runner
@@ -25,11 +26,13 @@ effect function fast() {
 }
 
 effect function deadline() {
-  try {
-    return try Effect.timeout(slow(), "20 millis")
-  } catch (error) {
-    return error._tag
-  }
+  { const $nativeTryCompletion = try $nativeTryEffect.catch(effect {
+    return { kind: "return:" as const, value: (try Effect.timeout(slow(), "20 millis")) };
+  }, effect (error) => {
+    return { kind: "return:" as const, value: (error._tag) };
+  });
+return $nativeTryCompletion.value;
+}
 }
 
 function subtotal() {

@@ -1,3 +1,5 @@
+
+import * as $nativeTryEffect from "effect/Effect";
 // A finally block that fails while a defect is in flight, in a function that
 // compiles to plain JavaScript, replaces it, as JavaScript's does (VIP-4):
 // the cleanup's exception leaves alone, and no SuppressedError is made. In an
@@ -40,8 +42,9 @@ function mixed() {
 // The same code in frames.
 effect function framed() {
   try yieldNow
-  try { return crash("first") }
-  finally { crash("second") }
+  { const $nativeTryCompletion = try $nativeTryEffect.onExit(effect { return { kind: "return:" as const, value: crash("first") }; }, () => effect { crash("second") });
+return $nativeTryCompletion.value;
+}
 }
 
 function name(defect: unknown): string {
@@ -49,7 +52,7 @@ function name(defect: unknown): string {
   return defect instanceof Error ? defect.message.split("'")[1] ?? defect.message : String(defect)
 }
 
-export function reasons(outcome: Exit<unknown, unknown>): string {
+export function reasons(outcome: Exit.Exit<unknown, unknown>): string {
   if (outcome is Exit.Success(let value)) return "ok"
   return outcome.cause.reasons.map((reason) => reason._tag === "Die" ? `Die(${name(reason.defect)})` : reason._tag).join("+")
 }

@@ -1,3 +1,4 @@
+import * as $nativeTryEffect from "effect/Effect";
 // A callback that may run Effects declares its channels as type parameters
 // (design D500): mapAll's E and R come from each call's callback.
 class NotFound extends TaggedError("NotFound")<{ readonly id: string }> {}
@@ -38,10 +39,16 @@ export effect function main() {
   const safe = try mapSafe([1], effect (n) => n * 2)
   const retried = try withRetry(5, effect () => try flaky())
   let caught = "none"
-  try {
+  { const $nativeTryCompletion = try $nativeTryEffect.catch(effect {
     try mapAll([""], effect (id) => try find(id))
-  } catch (e) {
+  
+;return { kind: "normal" } as const;
+}, effect (e) => {
     caught = e._tag
-  }
+  
+;return { kind: "normal" } as const;
+});
+
+}
   return { names, sizes, safe, retried, caught }
 }

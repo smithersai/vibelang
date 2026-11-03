@@ -1,3 +1,4 @@
+import * as $nativeTryEffect from "effect/Effect";
 // Reference program 2. Provider graph: a shared database, two dependent services, test overrides,
 // a failing acquisition, a missing provider, an ambiguous provider, and a cycle. Acquisition
 // dependencies must not leak to callers.
@@ -140,10 +141,16 @@ export effect function main() {
   const live = try Effect.provide(effect { return try summary("1") }, AppLive)
   const fake = try Effect.provide(effect { return try summary("1") }, AppWithFakeUsers)
   let broken = "none"
-  try {
+  { const $nativeTryCompletion = try $nativeTryEffect.catch(effect {
     try Effect.provide(effect { return try summary("1") }, AppBroken)
-  } catch (e) {
+  
+;return { kind: "normal" } as const;
+}, effect (e) => {
     broken = e._tag
-  }
+  
+;return { kind: "normal" } as const;
+});
+
+}
   return { live, fake, broken, connections, events }
 }

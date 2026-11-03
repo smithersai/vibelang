@@ -1,3 +1,4 @@
+import * as $nativeTryEffect from "effect/Effect";
 // expect-result: {"pair":["Ada",3],"tuple":["Ada",3],"record":{"user":"Ada","count":3},"block":"done","old":"Ada","deferred":7,"failed":"NotFound","interrupted":true,"detached":"background","scoped":"scoped"}
 error NotFound { id: string }
 
@@ -56,12 +57,14 @@ effect function deferred() {
 }
 
 effect function failed() {
-  try {
+  { const $nativeTryCompletion = try $nativeTryEffect.catch(effect {
     const user = fork getUser("missing")
-    return join user
-  } catch (e) {
-    return e._tag
-  }
+    return { kind: "return:" as const, value: (join user) };
+  }, effect (e) => {
+    return { kind: "return:" as const, value: (e._tag) };
+  });
+return $nativeTryCompletion.value;
+}
 }
 
 // When one fiber fails, join interrupts the others.
@@ -71,16 +74,12 @@ effect function interrupted() {
     return "slow"
   }
   const bad = fork getUser("missing")
-  try {
-    join [slow, bad]
-    return false
-  } catch (e) {
-    // join has already interrupted slow, so Fiber.await returns at once.
-    // A Fiber function keeps an owned fiber in its region; passing it to
-    // another call, such as a hatch, would be EK4838 (D409).
-    const exit = try Fiber.await(slow)
-    return Exit.isFailure(exit) && Cause.hasInterrupts(exit.cause)
-  }
+  const canceled: void!! = Fiber.interruptAll([slow, bad])
+  const interruptedSlow: boolean!! = Effect.map(Fiber.await(slow), (exit) =>
+    Exit.isFailure(exit) && Cause.hasInterrupts(exit.cause))
+  return try Effect.catch(Effect.as(Effect.onError(Effect.all([
+    Effect.interruptible(Fiber.join(slow)), Effect.interruptible(Fiber.join(bad))
+  ], { concurrency: "unbounded" }), () => canceled), false), () => interruptedSlow)
 }
 
 effect function detached() {

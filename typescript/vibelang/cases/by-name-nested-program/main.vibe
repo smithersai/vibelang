@@ -1,3 +1,4 @@
+import * as $nativeTryEffect from "effect/Effect";
 import * as Effect from "effect/Effect"
 import * as Option from "effect/Option"
 
@@ -27,11 +28,15 @@ export effect function viaCatchContinue(ns: ReadonlyArray<number>) {
   const kept: Array<number> = []
   for (const n of ns) {
     let check: Effect.Effect<void, string, never>
-    try {
+    { const $nativeTryCompletion = try $nativeTryEffect.catch(effect {
       check = try guard(n)
-    } catch (_) {
-      continue
-    }
+    
+;return { kind: "normal" } as const;
+}, effect (_) => {
+      return { kind: "continue:" as const };
+    });
+if ($nativeTryCompletion.kind === "continue:") continue;
+}
     kept.push(n)
   }
   return [checks, kept]

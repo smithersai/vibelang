@@ -1,3 +1,4 @@
+import * as $nativeTryEffect from "effect/Effect";
 // Reference program 4. Callbacks: a pure Array.map; a rejected callback that pauses
 // (ch10-map-pausing-callback.fail.vibe and ref4-pausing-function-value.fail.vibe); an effect-aware
 // traversal; a callback API adapted with suspend under cancellation (ref4-adapter.ts).
@@ -60,11 +61,17 @@ effect function scenario() {
   const viaLoop = try namesLoop(["2", "1"])
   const fast = try session("tcp://fast", 1)
   let slow = "none"
-  try {
+  { const $nativeTryCompletion = try $nativeTryEffect.catch(effect {
     try Effect.timeout(effect { return try session("tcp://slow", 50) }, "5 millis")
-  } catch (e) {
+  
+;return { kind: "normal" } as const;
+}, effect (e) => {
     slow = e._tag
-  }
+  
+;return { kind: "normal" } as const;
+});
+
+}
   return { trimmed: maps.trimmed, doubled: maps.doubled, viaForEach, viaLoop, fast, slow, log }
 }
 

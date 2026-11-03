@@ -34,14 +34,10 @@ function branch(n: number) {
 }
 
 effect function caught() {
-  return do {
-    try {
-      try fail()
-      "unreachable"
-    } catch (e) {
-      "recovered"
-    }
-  }
+  return effect {
+    try fail()
+    return "unreachable"
+  } catch () => "recovered"
 }
 
 function plain() {

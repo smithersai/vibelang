@@ -28,12 +28,10 @@ export const TodosLive = Layer.effect(Todos, effect {
 })
 
 export effect function completeTodo(id: number) {
-  try {
+  return effect {
     const todo = try (try Todos).complete(id)
     return `Completed: ${todo.title}`
-  } catch (error) {
-    return `No todo #${error.id}`
-  }
+  } catch (error) => `No todo #${error.id}`
 }
 
 export interface Board {

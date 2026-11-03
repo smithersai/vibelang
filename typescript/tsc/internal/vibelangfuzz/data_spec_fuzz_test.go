@@ -397,7 +397,14 @@ func checkDataRule(t *testing.T, w *Workspace, c dataRule, trivia uint8) {
 	}
 	source := strings.Repeat("/* trivia */\n", int(trivia)%4) + c.source + "\nexport {}\n"
 	files := map[string]string{"main.vibe": source}
-	r, err := w.Compile(t.Context(), Project{Files: files})
+	project := Project{Files: files}
+	if strings.HasPrefix(c.name, "is-unsettled-catch-control-") {
+		// These controls isolate pattern-binding placement in a plain native
+		// catch. Disable TypeScript's independent unknown catch-variable default;
+		// the pattern must still be checked and may not invent a lexical home.
+		project.Config = strings.Replace(DefaultConfig, `"strict": true,`, `"strict": true, "useUnknownInCatchVariables": false,`, 1)
+	}
+	r, err := w.Compile(t.Context(), project)
 	if err != nil {
 		t.Fatal(err)
 	}

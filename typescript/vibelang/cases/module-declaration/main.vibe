@@ -1,3 +1,4 @@
+import * as $nativeTryEffect from "effect/Effect";
 // A module declaration escapes to TypeScript (D283). Its body is checked and
 // compiled as a .ts file would be: throw and catch, async and await, and
 // platform APIs keep their TypeScript meaning. It imports what it needs
@@ -62,11 +63,17 @@ effect function cleaned(input: string, mode: Mode): Cleaned!Unclean {
 export effect function main() {
   const value = try cleaned("  hi ", "upper")
   let failed = "none"
-  try {
+  { const $nativeTryCompletion = try $nativeTryEffect.catch(effect {
     try cleaned("   ", "trim")
-  } catch (error) {
+  
+;return { kind: "normal" } as const;
+}, effect (error) => {
     failed = error.reason
-  }
+  
+;return { kind: "normal" } as const;
+});
+
+}
   const length = try sync((text) => safeLength(text), "   ")
   const file = try sync(async (name) => later(name), "x.txt")
   const greeting = try greet("Ada")

@@ -1,3 +1,5 @@
+import * as $nativeTryEffect1 from "effect/Effect";
+import * as $nativeTryEffect from "effect/Effect";
 // expect-result: {"found":"Ada","missing":"NotFound","lazy":"Ada","picked":"short","tooLong":"TooLong","arrow":"Bo"}
 // A do block can contain a throw statement; VIP-40 also retains throw expressions.
 // The do-block twin of every blocks-throw-expression form gives the same Exit.
@@ -13,11 +15,13 @@ effect function lookup(id: string) {
 }
 
 effect function missing() {
-  try {
-    return try lookup("9")
-  } catch (e) {
-    return e._tag
-  }
+  { const $nativeTryCompletion = try $nativeTryEffect.catch(effect {
+    return { kind: "return:" as const, value: (try lookup("9")) };
+  }, effect (e) => {
+    return { kind: "return:" as const, value: (e._tag) };
+  });
+return $nativeTryCompletion.value;
+}
 }
 
 // The right side of ?? runs only when the left side is nullish.
@@ -32,11 +36,13 @@ effect function label(text: string) {
 }
 
 effect function tooLong() {
-  try {
-    return try label("much too long")
-  } catch (e) {
-    return e._tag
-  }
+  { const $nativeTryCompletion1 = try $nativeTryEffect1.catch(effect {
+    return { kind: "return:" as const, value: (try label("much too long")) };
+  }, effect (e) => {
+    return { kind: "return:" as const, value: (e._tag) };
+  });
+return $nativeTryCompletion1.value;
+}
 }
 
 effect function arrow() {

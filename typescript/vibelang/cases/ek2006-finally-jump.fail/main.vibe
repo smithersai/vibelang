@@ -1,4 +1,4 @@
-// expect: EK2006
+// expect: EK2006 EK0503
 // Control cannot leave a finally block of effect code: a return, break, or
 // continue there would discard the failure in flight. Plain code keeps
 // JavaScript's finally (plain-finally-return, -break, -continue).

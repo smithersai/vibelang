@@ -1,3 +1,5 @@
+
+import * as $nativeTryEffect from "effect/Effect";
 // In a CommonJS package, the names a file takes from the prelude without a
 // namespace, such as TaggedError (an error declaration's base), the bare
 // Effect function sleep, and pipe and flow, are bound by a destructuring
@@ -19,11 +21,17 @@ const GreeterLive = Layer.succeed(Greeter, {
 export effect function main() {
   provide GreeterLive {
     try Console.log(try (try Greeter).greet("VibeLang"))
-    try {
+    { const $nativeTryCompletion = try $nativeTryEffect.catch(effect {
       try (try Greeter).greet("")
-    } catch (error) {
+    
+;return { kind: "normal" } as const;
+}, effect (error) => {
       try Console.log(`Recovered from ${error._tag}`)
-    }
+    
+;return { kind: "normal" } as const;
+});
+
+}
   }
   try sleep("1 millis")
   const double = flow((n: number) => n + 1, (n: number) => n * 2)

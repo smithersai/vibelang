@@ -1,3 +1,4 @@
+import * as $nativeTryEffect from "effect/Effect";
 // Built-in contracts (D5): JSON.parse's shipped contract lists SyntaxError.
 
 // An Effect function that lets the SyntaxError escape fails with it: the
@@ -8,11 +9,13 @@ effect function parse(text: string) {
 
 // A catch in an Effect function receives the typed SyntaxError.
 effect function config(text: string) {
-  try {
-    return (try parse(text)).port
-  } catch (e) {
-    return e instanceof SyntaxError ? -1 : -2
-  }
+  { const $nativeTryCompletion = try $nativeTryEffect.catch(effect {
+    return { kind: "return:" as const, value: ((try parse(text)).port) };
+  }, effect (e) => {
+    return { kind: "return:" as const, value: (e instanceof SyntaxError ? -1 : -2) };
+  });
+return $nativeTryCompletion.value;
+}
 }
 
 // A plain-annotated function that catches its own failures is plain (D54,

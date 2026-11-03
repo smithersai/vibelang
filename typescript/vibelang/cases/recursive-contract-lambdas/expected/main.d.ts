@@ -1,3 +1,4 @@
+import * as $nativeTryEffect from "effect/Effect";
 import * as Effect from "effect/Effect";
 export declare const reserve: (attempts: number) => Effect.Effect<string, string, never>;
 export declare const load: () => Effect.Effect<string, never, never>;
@@ -20,7 +21,7 @@ declare class Rejected extends Rejected_base<{
 }
 export declare const validate: (depth: number) => Effect.Effect<void, Rejected, never>;
 export declare const processTrigger: (n: number) => Effect.Effect<number>;
-export declare function main(): Effect.Effect<{
+export declare function main(): $nativeTryEffect.Effect<{
     race: number;
     reserve: string;
     depth: number;

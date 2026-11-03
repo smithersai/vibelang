@@ -1,3 +1,5 @@
+import * as $nativeTryEffect1 from "effect/Effect";
+import * as $nativeTryEffect from "effect/Effect";
 // expect-result: {"total":6,"maxRunning":2,"evens":[2,4],"failed":"Boom","stopped":true}
 error Boom
 
@@ -35,21 +37,23 @@ effect function evens() {
 }
 
 effect function failed() {
-  try {
+  { const $nativeTryCompletion = try $nativeTryEffect.catch(effect {
     for concurrent (const n of [1, 2]) {
       if (n === 1) throw new Boom()
       try sleep("1 second")
     }
-    return "no"
-  } catch (e) {
-    return e._tag
-  }
+    return { kind: "return:" as const, value: ("no") };
+  }, effect (e) => {
+    return { kind: "return:" as const, value: (e._tag) };
+  });
+return $nativeTryCompletion.value;
+}
 }
 
 // A failure interrupts the items still running.
 effect function stopped() {
   let finished = false
-  try {
+  { const $nativeTryCompletion1 = try $nativeTryEffect1.catch(effect {
     for concurrent (const n of [1, 2]) {
       if (n === 1) {
         try sleep("1 millis")
@@ -58,7 +62,13 @@ effect function stopped() {
       try sleep("50 millis")
       finished = true
     }
-  } catch {}
+  
+;return { kind: "normal" } as const;
+}, effect () => {
+;return { kind: "normal" } as const;
+});
+
+}
   try sleep("100 millis")
   return !finished
 }

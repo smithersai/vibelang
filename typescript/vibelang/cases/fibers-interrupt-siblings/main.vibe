@@ -1,75 +1,72 @@
-// A failed join or try.all, and a decided race, interrupt the other
-// fibers and wait for their cleanup (D167, D196, D225). Every fiber is
-// signalled before any is waited for, as Fiber.interruptAll does: here A's
-// cleanup waits for B's, so interrupting A and waiting for it before
-// signalling B would never end. An await operation's elements are its own
-// programs (D394); a fiber it is given is EK4609, so only join waits for
-// fibers forked earlier.
 error Bad
 
 effect function joined(log: string[]) {
   const startedA = try Deferred.make<void>()
   const startedB = try Deferred.make<void>()
   const releasedB = try Deferred.make<void>()
-  const a = fork {
-    try { try Deferred.succeed(startedA, undefined); try Effect.never }
-    finally { log.push("A waits"); try releasedB.await(); log.push("A done") }
+  const a = fork effect {
+    try Deferred.succeed(startedA, undefined)
+    return try Effect.onExit(Effect.never, () => effect {
+      log.push("A waits")
+      try releasedB.await()
+      log.push("A done")
+    })
   }
-  const b = fork {
-    try { try Deferred.succeed(startedB, undefined); try Effect.never }
-    finally { log.push("B done"); try Deferred.succeed(releasedB, undefined) }
+  const b = fork effect {
+    try Deferred.succeed(startedB, undefined)
+    return try Effect.onExit(Effect.never, () => effect {
+      log.push("B done")
+      try Deferred.succeed(releasedB, undefined)
+    })
   }
   try startedA.await()
   try startedB.await()
-  const bad = fork { throw new Bad() }
-  try { join [bad, a, b] } catch (e) { log.push("caught " + e._tag) }
+  const bad = fork effect { throw new Bad() }
+  const canceled: void!! = Fiber.interruptAll([bad, a, b])
+  try Effect.catch(Effect.onError(Effect.all([
+    Effect.interruptible(Fiber.join(bad)), Effect.interruptible(Fiber.join(a)), Effect.interruptible(Fiber.join(b))
+  ], { concurrency: "unbounded" }), () => canceled), effect (e) => {
+    log.push("caught " + e._tag)
+  })
 }
 
-// try.all's elements are Effects (VIP-18): when one fails, the operation
-// interrupts the others, and every one is signalled before any is waited for.
 effect function all(log: string[]) {
   const startedA = try Deferred.make<void>()
   const startedB = try Deferred.make<void>()
   const releasedB = try Deferred.make<void>()
-  try {
-    (try.all [
-      effect { return do {
-        try { try Deferred.succeed(startedA, undefined); try Effect.never }
-        finally { log.push("A waits"); try releasedB.await(); log.push("A done") }
-      } },
-      effect { return do {
-        try { try Deferred.succeed(startedB, undefined); try Effect.never }
-        finally { log.push("B done"); try Deferred.succeed(releasedB, undefined) }
-      } },
-      effect { return do {
-        try startedA.await()
-        try startedB.await()
-        throw new Bad()
-      } }
-    ])
-  } catch (e) { log.push("caught " + e._tag) }
+  try Effect.catch(Effect.all([
+    effect {
+      try Deferred.succeed(startedA, undefined)
+      return try Effect.onExit(Effect.never, () => effect {
+        log.push("A waits"); try releasedB.await(); log.push("A done")
+      })
+    },
+    effect {
+      try Deferred.succeed(startedB, undefined)
+      return try Effect.onExit(Effect.never, () => effect {
+        log.push("B done"); try Deferred.succeed(releasedB, undefined)
+      })
+    },
+    effect { try startedA.await(); try startedB.await(); throw new Bad() }
+  ], { concurrency: "unbounded" }), effect (e) => {
+    log.push("caught " + e._tag)
+  })
 }
 
 effect function racePrograms(log: string[]) {
   const releasedB = try Deferred.make<void>()
-  log.push((try.race [
-    effect { return do {
-      try { try Effect.never }
-      finally { log.push("A waits"); try releasedB.await(); log.push("A done") }
-    } },
-    effect { return do {
-      try { try Effect.never }
-      finally { log.push("B done"); try Deferred.succeed(releasedB, undefined) }
-    } },
-    effect { return do { "winner" } }
-  ]))
+  log.push(try.race [
+    Effect.onExit(Effect.never, () => effect { log.push("A waits"); try releasedB.await(); log.push("A done") }),
+    Effect.onExit(Effect.never, () => effect { log.push("B done"); try Deferred.succeed(releasedB, undefined) }),
+    effect { return "winner" }
+  ])
 }
 
 // expect-result: {"joined":["A waits","B done","A done","caught Bad"],"all":["A waits","B done","A done","caught Bad"],"racePrograms":["A waits","B done","A done","winner"]}
 export effect function main() {
-  const logs = { joined: [] as string[], all: [] as string[], racePrograms: [] as string[] }
-  try joined(logs.joined)
-  try all(logs.all)
-  try racePrograms(logs.racePrograms)
-  return logs
+  const joinedLog: string[] = [], allLog: string[] = [], raceLog: string[] = []
+  try joined(joinedLog)
+  try all(allLog)
+  try racePrograms(raceLog)
+  return { joined: joinedLog, all: allLog, racePrograms: raceLog }
 }

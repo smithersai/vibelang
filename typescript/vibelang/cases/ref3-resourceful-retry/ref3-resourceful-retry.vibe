@@ -1,3 +1,4 @@
+import * as $nativeTryEffect from "effect/Effect";
 // Reference program 3. Resourceful retry: acquire, fail, release, retry with fresh locals, then
 // cancel during a later attempt. Each acquisition is released exactly once.
 import { Schedule, Scope } from "effect"
@@ -57,11 +58,17 @@ const PoolTest = Layer.succeed(Pool, {
 effect function scenario() {
   const result = try Effect.retry(effect { return try attempt() }, Schedule.recurs(5))
   let cancelled = "none"
-  try {
+  { const $nativeTryCompletion = try $nativeTryEffect.catch(effect {
     try Effect.timeout(effect { return try Effect.retry(effect { return try slowAttempt() }, Schedule.recurs(5)) }, "20 millis")
-  } catch (e) {
+  
+;return { kind: "normal" } as const;
+}, effect (e) => {
     cancelled = e._tag
-  }
+  
+;return { kind: "normal" } as const;
+});
+
+}
   return { result, attempts, localsSeen, cancelled, slowAttempts, acquired, released, events }
 }
 

@@ -8,13 +8,9 @@ it.effect("greets a known user", effect () => {
 
 it.effect("fails a lookup with UserNotFound", effect () => {
   provide UsersLive {
-    try {
-      try (try Users).find("404")
-      assert.fail("expected UserNotFound")
-    } catch (error) {
-      assert.instanceOf(error, UserNotFound)
-      assert.strictEqual(error.id, "404")
-    }
+    const error = try Effect.flip((try Users).find("404"))
+    assert.instanceOf(error, UserNotFound)
+    assert.strictEqual(error.id, "404")
   }
 })
 

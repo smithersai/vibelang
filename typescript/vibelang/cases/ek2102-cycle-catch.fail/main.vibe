@@ -1,7 +1,9 @@
-// expect: TS7023 TS7023
+// expect: TS7023 TS7024
+import * as $nativeTryEffect from "effect/Effect";
 // A call cycle without return annotations has no type to start from, so
 // f and g need a written contract: TypeScript's TS7023, as for their
-// Effect.gen twins. An Effect slot written infer, which once took E and R
+// Effect.gen twins. Deferring the recursive operand in a callback also
+// produces TypeScript's TS7024. An Effect slot written infer, which once took E and R
 // from the cycle's fixpoint (D52), is retired (VIP-3, amended 2026-11-02).
 // Writing g's contract breaks the cycle, and f's catch then types its
 // variable as X | Y.
@@ -9,9 +11,7 @@ export class X extends TaggedError("X")<{}> {}
 export class Y extends TaggedError("Y")<{}> {}
 
 export effect function f(n: number) {
-  try {
-    return try g(n)
-  } catch (e) {
+  return g(n) catch effect (e) => {
     if (e instanceof X) return -1
     throw e
   }
@@ -25,12 +25,14 @@ export effect function g(n: number) {
 
 // With g's contract written, f's catch types its variable as X | Y.
 export effect function h(n: number): Effect<number, Y, never> {
-  try {
-    return try k(n)
-  } catch (e) {
-    if (e instanceof X) return -1
+  { const $nativeTryCompletion = try $nativeTryEffect.catch(effect {
+    return { kind: "return:" as const, value: try k(n) };
+  }, effect (e) => {
+    if (e instanceof X) return { kind: "return:" as const, value: -1 };
     throw e
-  }
+  });
+return $nativeTryCompletion.value;
+}
 }
 
 export effect function k(n: number): Effect<number, X | Y, never> {

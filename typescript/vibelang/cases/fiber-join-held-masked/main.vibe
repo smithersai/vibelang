@@ -1,3 +1,5 @@
+import * as $nativeTryEffect1 from "effect/Effect";
+import * as $nativeTryEffect from "effect/Effect";
 // expect-result: {"masked":["hold","caught"],"record":["hold","caught"],"held":["hold","caught"]}
 
 // join interrupts the fibers still running when one fails, waits for their
@@ -12,12 +14,16 @@ effect function bad(n: number) {
 
 // A fiber that waits until something interrupts it, and traces its finally.
 effect function hold(ready: Deferred.Deferred<void>, trace: string[]) {
-  try {
+  { const $nativeTryCompletion = try $nativeTryEffect.onExit(effect {
     try Deferred.succeed(ready, undefined)
     try Effect.never
-  } finally {
+  
+;return { kind: "normal" } as const;
+}, () => effect {
     trace.push("hold")
-  }
+  });
+
+}
 }
 
 effect function masked() {
@@ -27,11 +33,8 @@ effect function masked() {
     const held = fork hold(ready, trace)
     try ready.await()
     const failing = fork bad(1)
-    try {
-      join [held, failing]
-    } catch (e) {
-      trace.push("caught")
-    }
+    const canceled: void!! = Fiber.interruptAll([held, failing])
+    Effect.onError(Effect.all([Effect.interruptible(Fiber.join(held)), Effect.interruptible(Fiber.join(failing))], { concurrency: "unbounded" }), () => canceled) catch () => { trace.push("caught") }
   }
   return trace
 }
@@ -43,11 +46,11 @@ effect function record() {
     const held = fork hold(ready, trace)
     try ready.await()
     const failing = fork bad(1)
-    try {
-      join { held, failing }
-    } catch (e) {
-      trace.push("caught")
-    }
+    const canceled: void!! = Fiber.interruptAll([held, failing])
+    Effect.onError(Effect.all({
+      held: Effect.interruptible(Fiber.join(held)),
+      failing: Effect.interruptible(Fiber.join(failing))
+    }, { concurrency: "unbounded" }), () => canceled) catch () => { trace.push("caught") }
   }
   return trace
 }
@@ -57,23 +60,24 @@ effect function held() {
   const trace: string[] = []
   const ready = try Deferred.make<void>()
   const fiber = fork effect {
-    try {
+    { const $nativeTryCompletion1 = try $nativeTryEffect1.onExit(effect {
       uninterruptible {
         try Deferred.succeed(ready, undefined)
         restore { try Effect.never }
         trace.push("not interrupted")
       }
-    } finally {
+    
+;return { kind: "normal" } as const;
+}, () => effect {
       trace.push("hold")
-    }
+    });
+
+}
   }
   try ready.await()
   const failing = fork bad(1)
-  try {
-    join [fiber, failing]
-  } catch (e) {
-    trace.push("caught")
-  }
+  const canceled: void!! = Fiber.interruptAll([fiber, failing])
+  Effect.onError(Effect.all([Effect.interruptible(Fiber.join(fiber)), Effect.interruptible(Fiber.join(failing))], { concurrency: "unbounded" }), () => canceled) catch () => { trace.push("caught") }
   return trace
 }
 

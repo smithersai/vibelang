@@ -1,3 +1,4 @@
+import * as $nativeTryEffect from "effect/Effect";
 // A call to a generic .vibe function adds the callee's E and R as the call
 // instantiates them: run's E is whatever its argument fails with.
 class Missing extends TaggedError("Missing")<{ readonly key: string }> {}
@@ -16,10 +17,16 @@ effect function lookup(key: string) {
 export effect function main() {
   const found = try run(effect () => try lookup("a"))
   let caught = "none"
-  try {
+  { const $nativeTryCompletion = try $nativeTryEffect.catch(effect {
     try run(effect () => try lookup("b"))
-  } catch (e) {
+  
+;return { kind: "normal" } as const;
+}, effect (e) => {
     caught = `${e._tag} ${e.key}`
-  }
+  
+;return { kind: "normal" } as const;
+});
+
+}
   return { found, caught }
 }

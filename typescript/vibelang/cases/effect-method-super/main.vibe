@@ -69,12 +69,14 @@ class Square extends Shape {
   }
   // super in try and finally regions.
   effect guarded() {
-    try {
+    const baseName = () => super.name()
+    const baseKind = () => super.kind
+    return try Effect.onExit(effect {
       try Console.log("guarded")
-      return try super.name()
-    } finally {
-      try Console.log(super.kind)
-    }
+      return try baseName()
+    }, () => effect {
+      try Console.log(baseKind())
+    })
   }
 }
 
@@ -83,13 +85,13 @@ class Counter {
     try Console.log("count")
     return args.length
   }
-  effect counted(...args: [a: number]) {
-    try {
+  effect counted(...args: [a: number]): 1!! {
+    return try Effect.onExit(effect {
       try Console.log("counted")
       return args.length
-    } finally {
+    }, () => effect {
       try Console.log("counted done")
-    }
+    })
   }
 }
 

@@ -1,8 +1,8 @@
 error EK4838: This fiber is owned by startHeartbeat's body, which interrupts it on exit, but it is returned from that body.
 Give it the caller's lifetime: Effect.forkScoped(heartbeat())
-Or give it no owner: detach(heartbeat()), or a scope you hold: forkIn(scope, heartbeat())
+Or give it no owner: detach(heartbeat()), or a scope you hold: forkIn(heartbeat(), scope)
 error EK4838: This fiber is owned by boxed's body, which interrupts it on exit, but it is returned from that body in an object.
 error EK4838: This fiber is owned by listed's body, which interrupts it on exit, but it is returned from that body in an array.
 error EK4838: This fiber is owned by inner's body, which interrupts it on exit, but it is returned from that body.
-error EK4838: This fiber is owned by this try block, which interrupts it on exit, but it is returned from that block.
+error EK4838: This fiber is owned by this effect block, which interrupts it on exit, but it is returned from that block.
 error EK4838: This fiber is owned by concise's body, which interrupts it on exit, but it is returned from that body.

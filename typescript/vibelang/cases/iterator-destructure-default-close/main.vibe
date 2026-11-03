@@ -1,8 +1,15 @@
+import * as $nativeTryEffect from "effect/Effect";
 import { Effect } from "effect"
 import { values, events } from "./helper.js"
 effect function boom(): number!string! { throw "boom" }
 effect function main() {
- try { const [n = try boom()] = values(); events.push("body:"+n) } catch { events.push("caught") }
+ { const $nativeTryCompletion = try $nativeTryEffect.catch(effect { const [n = try boom()] = values(); events.push("body:"+n) 
+;return { kind: "normal" } as const;
+}, effect () => { events.push("caught") 
+;return { kind: "normal" } as const;
+});
+
+}
  try Console.log(events.join(","))
 }
 Effect.runPromise(main())

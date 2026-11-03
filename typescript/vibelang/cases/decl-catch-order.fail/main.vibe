@@ -1,4 +1,4 @@
-// expect: EK2106
+// expect: EK2106 EK0503
 error Busy
 error Offline
 

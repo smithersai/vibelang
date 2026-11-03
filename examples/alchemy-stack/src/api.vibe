@@ -20,19 +20,19 @@ export effect function makeApi() {
   effect function handle() {
     const request = try HttpServerRequest.HttpServerRequest
     const key = new URL(request.url, "http://worker").pathname.slice(1)
-    try {
+    return try Effect.catch(effect {
       if (request.method === "PUT") {
         try bucket.put(key, try request.text)
         return HttpServerResponse.empty({ status: 204 })
       }
       return HttpServerResponse.text(try read(key))
-    } catch (error) {
+    }, effect (error) => {
       return match (error) {
         when MissingNote: HttpServerResponse.text(`No note at ${error.key}`, { status: 404 });
         when { _tag: "R2Error" }: HttpServerResponse.text("Storage failed", { status: 502 });
         default: throw error;
       }
-    }
+    })
   }
 
   // Alchemy reads fetch as an Effect: calling handle gives it unrun (VIP-1).

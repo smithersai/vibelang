@@ -2,37 +2,62 @@
 // rule: docs/design/src/008-runtime.md#c6ad86f23278e11e
 // 008-runtime.md: iterator acquisition/advancement and native closing retain reached order and exception identity
 // rule: docs/design/src/008-runtime.md#cdc83d82c8028394
+import * as $nativeTryEffect3 from "effect/Effect";
+import * as $nativeTryEffect2 from "effect/Effect";
+import * as $nativeTryEffect1 from "effect/Effect";
+import * as $nativeTryEffect from "effect/Effect";
 import { events, values, reference } from "./helper.js"
 
 effect function boom(): number!string! { throw "boom" }
 effect function choose(): number!! { try sync(() => {}); return 7 }
 
 effect function nested() {
-  try {
+  { const $nativeTryCompletion = try $nativeTryEffect.catch(effect {
     const { items: [[n = try boom()]] } = { items: values("outer", [values("inner", [undefined])]) }
     events.push("unreachable:" + n)
-  } catch { events.push("caught") }
+  
+;return { kind: "normal" } as const;
+}, effect () => { events.push("caught") 
+;return { kind: "normal" } as const;
+});
+
+}
   return events.splice(0)
 }
 
 effect function loopTarget() {
   let target = [0]
-  try { for (target[try boom()] of values("loop-target", [1])) events.push("unreachable") }
-  catch { events.push("caught") }
+  { const $nativeTryCompletion1 = try $nativeTryEffect1.catch(effect { for (target[try boom()] of values("loop-target", [1])) events.push("unreachable") 
+;return { kind: "normal" } as const;
+}, effect () => { events.push("caught") 
+;return { kind: "normal" } as const;
+});
+
+}
   return events.splice(0)
 }
 
 effect function target() {
   let target = [0]
-  try { [target[try boom()]] = values("target", [1]); events.push("unreachable") }
-  catch { events.push("caught") }
+  { const $nativeTryCompletion2 = try $nativeTryEffect2.catch(effect { [target[try boom()]] = values("target", [1]); events.push("unreachable") 
+;return { kind: "normal" } as const;
+}, effect () => { events.push("caught") 
+;return { kind: "normal" } as const;
+});
+
+}
   return events.splice(0)
 }
 
 effect function restTarget() {
   let target: number[][] = []
-  try { [...target[try boom()]] = values("rest", [1, 2]); events.push("unreachable") }
-  catch { events.push("caught") }
+  { const $nativeTryCompletion3 = try $nativeTryEffect3.catch(effect { [...target[try boom()]] = values("rest", [1, 2]); events.push("unreachable") 
+;return { kind: "normal" } as const;
+}, effect () => { events.push("caught") 
+;return { kind: "normal" } as const;
+});
+
+}
   return events.splice(0)
 }
 

@@ -1,3 +1,6 @@
+import * as $nativeTryEffect2 from "effect/Effect";
+import * as $nativeTryEffect1 from "effect/Effect";
+import * as $nativeTryEffect from "effect/Effect";
 import * as $effectPrograms from "effect/Effect"
 // using in an Effect function makes its block a Scope region (D14, D47):
 // only the block's using acquisitions get the region's Scope, and they
@@ -146,19 +149,21 @@ effect function interruptibleAcquire() {
 }
 
 effect function deadline(program: () => Effect<string, never, never>) {
-  try {
-    return try Effect.timeout($effectPrograms.suspend(program), "5 millis")
-  } catch (e) {
-    return e._tag
-  }
+  { const $nativeTryCompletion = try $nativeTryEffect.catch(effect {
+    return { kind: "return:" as const, value: (try Effect.timeout($effectPrograms.suspend(program), "5 millis")) };
+  }, effect (e) => {
+    return { kind: "return:" as const, value: (e._tag) };
+  });
+return $nativeTryCompletion.value;
+}
 }
 
 // A Scope region inside try: the release runs before the catch.
 effect function tryUsing() {
-  try {
+  return effect {
     using t = try resource("t")
     throw new Busy({ name: t })
-  } catch (e) {
+  } catch (e) => {
     events.push(`caught ${e.name}`)
     return "recovered"
   }
@@ -197,18 +202,30 @@ function phase<A>(name: string, result: A) {
 export effect function main() {
   const o = phase("ordered", try ordered())
   let failed = "none"
-  try {
+  { const $nativeTryCompletion1 = try $nativeTryEffect1.catch(effect {
     try failing()
-  } catch (e) {
+  
+;return { kind: "normal" } as const;
+}, effect (e) => {
     failed = e._tag
-  }
+  
+;return { kind: "normal" } as const;
+});
+
+}
   phase("failed", failed)
   let timedOut = "none"
-  try {
+  { const $nativeTryCompletion2 = try $nativeTryEffect2.catch(effect {
     try Effect.timeout(effect { return try slow() }, "5 millis")
-  } catch (e) {
+  
+;return { kind: "normal" } as const;
+}, effect (e) => {
     timedOut = e._tag
-  }
+  
+;return { kind: "normal" } as const;
+});
+
+}
   phase("timedOut", timedOut)
   const l = phase("loop", try loop())
   const lb = phase("labeled", try labeled())

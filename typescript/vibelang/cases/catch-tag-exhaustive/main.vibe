@@ -1,3 +1,16 @@
+
+import * as $nativeTryEffect6 from "effect/Effect";
+
+import * as $nativeTryEffect5 from "effect/Effect";
+
+import * as $nativeTryEffect4 from "effect/Effect";
+
+import * as $nativeTryEffect3 from "effect/Effect";
+
+import * as $nativeTryEffect2 from "effect/Effect";
+
+import * as $nativeTryEffect1 from "effect/Effect";
+import * as $nativeTryEffect from "effect/Effect";
 // expect-result: [1,2,3,4,"DataFailure"]
 import { Effect, Schema, Data } from "effect"
 class ProbeFailure extends Schema.TaggedError<ProbeFailure>()("ProbeFailure", { message: Schema.String }) {}
@@ -12,32 +25,44 @@ export const recovered = effect (): Effect.Effect<number, never, never> =>
 effect function dataFail(): never!DataFailure! { throw new DataFailure() }
 effect function declFail(): never!DeclFailure! { throw new DeclFailure() }
 export effect function dataRecovered(): number!! {
-  try { return try dataFail() } catch (e) {
-    return match (e) { when { _tag: "DataFailure" }: 2; default: throw e; }
-  }
+  { const $nativeTryCompletion1 = try $nativeTryEffect1.catch(effect { return { kind: "return:" as const, value: try dataFail() }; }, effect (e) => {
+    return { kind: "return:" as const, value: match (e) { when { _tag: "DataFailure" }: 2; default: throw e; }
+ };
+  });
+return $nativeTryCompletion1.value;
+}
 }
 export effect function declRecovered(): number!! {
-  try { return try declFail() } catch (e) {
-    return match (e) { when { _tag: "DeclFailure" }: 3; default: throw e; }
-  }
+  { const $nativeTryCompletion2 = try $nativeTryEffect2.catch(effect { return { kind: "return:" as const, value: try declFail() }; }, effect (e) => {
+    return { kind: "return:" as const, value: match (e) { when { _tag: "DeclFailure" }: 3; default: throw e; }
+ };
+  });
+return $nativeTryCompletion2.value;
+}
 }
 effect function both(data: boolean): never!(ProbeFailure | DataFailure)! {
   if (data) try dataFail()
   return try failed()
 }
 export effect function allRecovered(): number!! {
-  try { return try both(true) } catch (e) {
-    return match (e) {
+  { const $nativeTryCompletion3 = try $nativeTryEffect3.catch(effect { return { kind: "return:" as const, value: try both(true) }; }, effect (e) => {
+    return { kind: "return:" as const, value: match (e) {
       when { _tag: "ProbeFailure" }: 0;
       when { _tag: "DataFailure" }: 4;
       default: throw e;
     }
-  }
+ };
+  });
+return $nativeTryCompletion3.value;
+}
 }
 export effect function partial(data: boolean): number!DataFailure! {
-  try { return try both(data) } catch (e) {
-    return match (e) { when { _tag: "ProbeFailure" }: 0; default: throw e; }
-  }
+  { const $nativeTryCompletion4 = try $nativeTryEffect4.catch(effect { return { kind: "return:" as const, value: try both(data) }; }, effect (e) => {
+    return { kind: "return:" as const, value: match (e) { when { _tag: "ProbeFailure" }: 0; default: throw e; }
+ };
+  });
+return $nativeTryCompletion4.value;
+}
 }
 // These functions have no written error contract: check their inferred E too.
 export const inferredSchema = effect () => failed() catch effect (e) => match (e) {
@@ -45,20 +70,32 @@ export const inferredSchema = effect () => failed() catch effect (e) => match (e
   default: throw e;
 }
 export effect function inferredData() {
-  try { return try dataFail() } catch (e) {
-    return match (e) { when { _tag: "DataFailure" }: 2; default: throw e; }
-  }
+  { const $nativeTryCompletion5 = try $nativeTryEffect5.catch(effect { return { kind: "return:" as const, value: try dataFail() }; }, effect (e) => {
+    return { kind: "return:" as const, value: match (e) { when { _tag: "DataFailure" }: 2; default: throw e; }
+ };
+  });
+return $nativeTryCompletion5.value;
+}
 }
 export effect function inferredDecl() {
-  try { return try declFail() } catch (e) {
-    return match (e) { when { _tag: "DeclFailure" }: 3; }
-  }
+  { const $nativeTryCompletion6 = try $nativeTryEffect6.catch(effect { return { kind: "return:" as const, value: try declFail() }; }, effect (e) => {
+    return { kind: "return:" as const, value: match (e) { when { _tag: "DeclFailure" }: 3; }
+ };
+  });
+return $nativeTryCompletion6.value;
+}
 }
 const schemaCheck: () => Effect.Effect<number, never, never> = inferredSchema
 const dataCheck: () => Effect.Effect<number, never, never> = inferredData
 const declCheck: () => Effect.Effect<number, never, never> = inferredDecl
 export effect function main() {
   let tag = "none"
-  try { try partial(true) } catch (e) { tag = e._tag }
+  { const $nativeTryCompletion = try $nativeTryEffect.catch(effect { try partial(true) 
+;return { kind: "normal" } as const;
+}, effect (e) => { tag = e._tag 
+;return { kind: "normal" } as const;
+});
+
+}
   return [try recovered(), try dataRecovered(), try declRecovered(), try allRecovered(), tag]
 }

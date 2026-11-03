@@ -1,3 +1,4 @@
+import * as $nativeTryEffect from "effect/Effect";
 // expect-result: [["number",true],["number",true],["number",true]]
 // A try, catch or finally block of an Effect function runs in a generator
 // named after the function, such as work$try. That name binds nothing the
@@ -9,15 +10,19 @@ effect function work() {
   const work$catch = 19
   const work$finally = 23
   const seen: [string, boolean][] = []
-  try {
+  { const $nativeTryCompletion = try $nativeTryEffect.onExit($nativeTryEffect.catch(effect {
     seen.push([typeof work$try, work$try === 17])
     try sleep("1 millis")
     throw new Oops()
-  } catch (e) {
+  }, effect (e) => {
     seen.push([typeof work$catch, work$catch === 19])
-  } finally {
+  
+;return { kind: "normal" } as const;
+}), () => effect {
     seen.push([typeof work$finally, work$finally === 23])
-  }
+  });
+
+}
   return seen
 }
 

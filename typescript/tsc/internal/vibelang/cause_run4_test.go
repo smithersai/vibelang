@@ -1,8 +1,6 @@
 package vibelang
 
 import (
-	"os"
-	"path/filepath"
 	"testing"
 
 	"github.com/microsoft/TypeScript/tsc/internal/bundled"
@@ -12,11 +10,17 @@ import (
 
 func TestRun4CauseCatchFix(t *testing.T) {
 	t.Run("fix:unapplied:EK2113:offered", func(t *testing.T) {
-		data, err := os.ReadFile(filepath.Join("../../../..", "typescript/vibelang/cases/catch-retired/main.vibe"))
-		if err != nil {
-			t.Fatal(err)
-		}
-		p, file, _, _ := editorProgram(t, string(data))
+		// Keep the legacy input local: runnable cases have migrated to VIP-5.
+		const source = `error NotFound { id: string }
+effect function find(id: string): string!NotFound! {
+  if (id === "missing") throw new NotFound({id})
+  return id
+}
+export effect function caused(id: string) {
+  try { return try find(id) } catch (cause: Cause) { return "fallback" }
+}
+`
+		p, file, _, _ := editorProgram(t, source)
 		found := false
 		for _, d := range p.GetSemanticDiagnostics(t.Context(), file) {
 			found = found || d.Source() == "EK" && d.Code() == 2113

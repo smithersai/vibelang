@@ -35,12 +35,10 @@ export const UsersTest = Layer.succeed(Users, {
 export const AppLive = wire(UsersLive, DirectoryLive)
 
 export effect function greet(id: string) {
-  try {
+  return effect {
     const user = try (try Users).find(id)
     return `Welcome, ${user.name}!`
-  } catch (error) {
-    return `No user ${error.id}`
-  }
+  } catch (error) => `No user ${error.id}`
 }
 
 export effect function main() {

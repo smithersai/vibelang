@@ -1,3 +1,8 @@
+import * as $nativeTryEffect4 from "effect/Effect";
+import * as $nativeTryEffect3 from "effect/Effect";
+import * as $nativeTryEffect2 from "effect/Effect";
+import * as $nativeTryEffect1 from "effect/Effect";
+import * as $nativeTryEffect from "effect/Effect";
 import { applicable } from "./helpers.ts"
 
 // The fixture's TypeScript helper supplies this ambient API at runtime.
@@ -71,11 +76,15 @@ effect function preferProgram() {
 
 export effect function raceFail() {
   const before = failures
-  try { return try Effect.race(fail(), fail()) } catch (error) { return { error, runs: failures - before } }
+  { const $nativeTryCompletion = try $nativeTryEffect.catch(effect { return { kind: "return:" as const, value: (try Effect.race(fail(), fail())) }; }, effect (error) => { return { kind: "return:" as const, value: ({ error, runs: failures - before }) }; });
+return $nativeTryCompletion.value;
+}
 }
 
 effect function raceFirstFail() {
-  try { return try Effect.raceFirst(fail(), fail()) } catch (error) { return error }
+  { const $nativeTryCompletion1 = try $nativeTryEffect1.catch(effect { return { kind: "return:" as const, value: (try Effect.raceFirst(fail(), fail())) }; }, effect (error) => { return { kind: "return:" as const, value: (error) }; });
+return $nativeTryCompletion1.value;
+}
 }
 
 function first() {
@@ -84,19 +93,25 @@ function first() {
 }
 
 effect function zipFail() {
-  try { return try Effect.zip(Effect.sync(first), fail()) } catch (error) { return { error, zipped } } // first is plain (VIP-1)
+  { const $nativeTryCompletion2 = try $nativeTryEffect2.catch(effect { return { kind: "return:" as const, value: (try Effect.zip(Effect.sync(first), fail())) }; }, effect (error) => { return { kind: "return:" as const, value: ({ error, zipped }) }; });
+return $nativeTryCompletion2.value;
+} // first is plain (VIP-1)
 }
 
 // Sequential zip and fallback never start an unreachable second program.
 // Effect.yieldNow is an Effect value: calling it would run it (D501), so it
 // is passed as itself (VIP-1: no by-name passing).
 effect function zipNever() {
-  try { return try Effect.zip(fail(), Effect.forever(Effect.yieldNow)) } catch (error) { return error }
+  { const $nativeTryCompletion3 = try $nativeTryEffect3.catch(effect { return { kind: "return:" as const, value: (try Effect.zip(fail(), Effect.forever(Effect.yieldNow))) }; }, effect (error) => { return { kind: "return:" as const, value: (error) }; });
+return $nativeTryCompletion3.value;
+}
 }
 
 effect function fallbackFail() {
   const before = failures
-  try { return try orElse(fail(), fail()) } catch (error) { return { error, runs: failures - before } }
+  { const $nativeTryCompletion4 = try $nativeTryEffect4.catch(effect { return { kind: "return:" as const, value: (try orElse(fail(), fail())) }; }, effect (error) => { return { kind: "return:" as const, value: ({ error, runs: failures - before }) }; });
+return $nativeTryCompletion4.value;
+}
 }
 
 effect function fallbackNever() {

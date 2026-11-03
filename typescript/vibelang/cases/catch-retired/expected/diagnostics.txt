@@ -1,3 +1,0 @@
-main.vibe(15,15): warning EK2112
-main.vibe(17,15): warning EK2112
-main.vibe(25,19): warning EK2113

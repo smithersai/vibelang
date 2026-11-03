@@ -1,3 +1,7 @@
+
+import * as $nativeTryEffect from "effect/Effect";
+import { provideMerge as $wireProvideMerge } from "effect/Layer";
+
 // expect-result: {"found":"Ada","missing":"No user 7","region":"eu","stats":"2 lookups"}
 error UserNotFound { id: string }
 
@@ -50,11 +54,13 @@ const StatsLive = Layer.effect(Stats, effect {
 })
 
 effect function greet(id: string) {
-  try {
-    return try (try Users).find(id)
-  } catch (error) {
-    return `No user ${error.id}`
-  }
+  { const $nativeTryCompletion = try $nativeTryEffect.catch(effect {
+    return { kind: "return:" as const, value: try (try Users).find(id) };
+  }, effect (error) => {
+    return { kind: "return:" as const, value: `No user ${error.id}` };
+  });
+return $nativeTryCompletion.value;
+}
 }
 
 export effect function main() {
@@ -62,5 +68,5 @@ export effect function main() {
     const found = try greet("42")
     const missing = try greet("7")
     return { found, missing, region: (try Users).region, stats: `${try (try Stats).count()} lookups` }
-  }, wire(UsersLive, DirectoryLive, StatsLive))
+  }, (($wireLayers) => $wireProvideMerge($wireLayers[0], $wireProvideMerge($wireLayers[1], $wireLayers[2])))([UsersLive, DirectoryLive, StatsLive] as const))
 }

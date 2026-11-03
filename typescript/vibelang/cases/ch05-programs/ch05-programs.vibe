@@ -1,3 +1,4 @@
+import * as $nativeTryEffect from "effect/Effect";
 // Chapter 5. Programs as values: retry, timeout, and pipe.
 // NOTE: durations are shortened from the proposal's (100 millis, 1 second) so the run is fast.
 import { Clock, Schedule } from "effect"
@@ -76,11 +77,17 @@ effect function combinators(id: string) {
   const fresh = try Effect.timeout(effect { return try fetchUser(id) }, "1 second")
   const fastest = try Effect.race(effect { return try fromCache(id) }, effect { return try fromNetwork(id) })
   let timedOut = "no"
-  try {
+  { const $nativeTryCompletion = try $nativeTryEffect.catch(effect {
     try Effect.timeout(effect { return try slowQuery(id) }, "5 millis")
-  } catch (e) {
+  
+;return { kind: "normal" } as const;
+}, effect (e) => {
     timedOut = e._tag
-  }
+  
+;return { kind: "normal" } as const;
+});
+
+}
   return { user: user.name, fresh: fresh.name, fastest, timedOut }
 }
 

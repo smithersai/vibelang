@@ -1,3 +1,9 @@
+
+import * as $nativeTryEffect4 from "effect/Effect";
+import * as $nativeTryEffect3 from "effect/Effect";
+import * as $nativeTryEffect2 from "effect/Effect";
+import * as $nativeTryEffect1 from "effect/Effect";
+import * as $nativeTryEffect from "effect/Effect";
 // expect-result: {"a":"missing 7","b":"busy","c":"offline","d":"other: Broken","e":"rethrown","f":"handled","g":"schema"}
 error NotFound { id: string }
 error Busy
@@ -13,58 +19,74 @@ effect function fail(kind: string) {
 }
 
 effect function describe(kind: string) {
-  try {
-    return try fail(kind)
-  } catch (e) {
+  { const $nativeTryCompletion = try $nativeTryEffect.catch(effect {
+    return { kind: "return:" as const, value: (try fail(kind)) };
+  }, effect (e) => {
     switch (e._tag) {
-      case "NotFound": return `missing ${e.id}`
-      case "Busy": return "busy"
-      case "Offline": return "offline"
-      default: return `other: ${e._tag}`
+      case "NotFound": return { kind: "return:" as const, value: (`missing ${e.id}`) };
+      case "Busy": return { kind: "return:" as const, value: ("busy") };
+      case "Offline": return { kind: "return:" as const, value: ("offline") };
+      default: return { kind: "return:" as const, value: (`other: ${e._tag}`) };
     }
-  }
+  
+;return { kind: "normal" } as const;
+});
+if ($nativeTryCompletion.kind === "return:") return $nativeTryCompletion.value;
+}
 }
 
 // The default rethrows failures this match does not handle.
 effect function partial(kind: string): string!Broken! {
-  try {
-    return try fail(kind)
-  } catch (e) {
+  { const $nativeTryCompletion4 = try $nativeTryEffect4.catch(effect {
+    return { kind: "return:" as const, value: try fail(kind) };
+  }, effect (e) => {
     switch (e._tag) {
-      case "NotFound": case "Busy": case "Offline": return "handled"
+      case "NotFound": case "Busy": case "Offline": return { kind: "return:" as const, value: "handled" };
       default: throw e
     }
-  }
+  });
+return $nativeTryCompletion4.value;
+}
 }
 
 // A failure raised inside a clause is not tested by the clauses after it.
 effect function rethrow() {
-  try {
-    try {
+  { const $nativeTryCompletion2 = try $nativeTryEffect2.catch(effect {
+    { const $nativeTryCompletion1 = try $nativeTryEffect1.catch(effect {
       try fail("missing")
-      return "none"
-    } catch (e) {
+      return { kind: "return:" as const, value: ("none") };
+    }, effect (e) => {
       switch (e._tag) {
         case "NotFound": throw new Busy()
-        case "Busy": return "wrongly caught"
+        case "Busy": return { kind: "return:" as const, value: ("wrongly caught") };
         default: throw e
       }
-    }
-  } catch (e) {
-    if (e._tag === "Busy") return "rethrown"
+    
+;return { kind: "normal" } as const;
+});
+if ($nativeTryCompletion1.kind === "return:") return { kind: "return:" as const, value: ($nativeTryCompletion1.value) };
+}
+  
+;return { kind: "normal" } as const;
+}, effect (e) => {
+    if (e._tag === "Busy") return { kind: "return:" as const, value: ("rethrown") };
     throw e
-  }
+  });
+if ($nativeTryCompletion2.kind === "return:") return $nativeTryCompletion2.value;
+}
 }
 
 const Port = Schema.Struct({ port: Schema.Number })
 
 effect function parsePort(input: unknown) {
-  try {
-    return `${(try Schema.decodeUnknownEffect(Port)(input)).port}`
-  } catch (e) {
-    if (e._tag === "SchemaError") return "schema"
+  { const $nativeTryCompletion3 = try $nativeTryEffect3.catch(effect {
+    return { kind: "return:" as const, value: (`${(try Schema.decodeUnknownEffect(Port)(input)).port}`) };
+  }, effect (e) => {
+    if (e._tag === "SchemaError") return { kind: "return:" as const, value: ("schema") };
     throw e
-  }
+  });
+return $nativeTryCompletion3.value;
+}
 }
 
 export effect function main() {

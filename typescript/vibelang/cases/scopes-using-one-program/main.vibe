@@ -1,3 +1,4 @@
+import * as $nativeTryEffect from "effect/Effect";
 // using is one Effect program for every initializer (D490):
 // Effect.acquireRelease(e, release, { interruptible: true }) in the block's
 // Scope, which runs e with the interruptibility in force where the using
@@ -45,12 +46,18 @@ class Lease {
 // the deadline ended.
 effect function deadline(work: (seen: string[]) => void!!) {
   const seen: string[] = []
-  try {
+  { const $nativeTryCompletion = try $nativeTryEffect.catch(effect {
     try Effect.timeout(effect { return try work(seen) }, "100 millis")
     seen.push("finished")
-  } catch (e) {
+  
+;return { kind: "normal" } as const;
+}, effect (e) => {
     seen.push(e._tag)
-  }
+  
+;return { kind: "normal" } as const;
+});
+
+}
   return seen
 }
 

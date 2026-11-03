@@ -1,3 +1,5 @@
+
+import * as $nativeTryEffect from "effect/Effect";
 // expect-result: {"name":"Ada","missing":"No user 7","region":"eu","approved":"released v1"}
 error UserNotFound { id: string }
 
@@ -25,11 +27,13 @@ effect function release(version: string) {
 }
 
 effect function greet(id: string) {
-  try {
-    return try (try Users).find(id)
-  } catch (error) {
-    return `No user ${error.id}`
-  }
+  { const $nativeTryCompletion = try $nativeTryEffect.catch(effect {
+    return { kind: "return:" as const, value: try (try Users).find(id) };
+  }, effect (error) => {
+    return { kind: "return:" as const, value: `No user ${error.id}` };
+  });
+return $nativeTryCompletion.value;
+}
 }
 
 export effect function main() {

@@ -1,3 +1,6 @@
+
+import * as $nativeTryEffect1 from "effect/Effect";
+import * as $nativeTryEffect from "effect/Effect";
 // expect-result: {"timeout":"Timeout","missing":"NotFound:42","wrapped":7,"label":"plain"}
 error Timeout
 export error NotFound { id: string }
@@ -13,19 +16,23 @@ effect function find(id: string) {
 }
 
 effect function describe(id: string) {
-  try {
-    return try find(id)
-  } catch (error) {
-    return error._tag === "NotFound" ? `${error._tag}:${error.id}` : error._tag
-  }
+  { const $nativeTryCompletion = try $nativeTryEffect.catch(effect {
+    return { kind: "return:" as const, value: (try find(id)) };
+  }, effect (error) => {
+    return { kind: "return:" as const, value: (error._tag === "NotFound" ? `${error._tag}:${error.id}` : error._tag) };
+  });
+return $nativeTryCompletion.value;
+}
 }
 
 effect function unwrap() {
-  try {
+  { const $nativeTryCompletion1 = try $nativeTryEffect1.catch(effect {
     throw new Wrapped({ value: 7 })
-  } catch (error) {
-    return error.value
-  }
+  }, effect (error) => {
+    return { kind: "return:" as const, value: error.value };
+  });
+return $nativeTryCompletion1.value;
+}
 }
 
 // `error` is still an ordinary name when no identifier follows it.

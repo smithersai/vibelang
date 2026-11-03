@@ -1,3 +1,5 @@
+import * as $nativeTryEffect1 from "effect/Effect";
+import * as $nativeTryEffect from "effect/Effect";
 // expect-result: [2,3,4,true,true,3,5,6,7,8,true,"failure"]
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
@@ -9,15 +11,18 @@ effect function annotated(): Effect.Effect<number, never, never> {
 }
 const named: (n: number) => Effect.Effect<number> = effect (n) => try Exit.succeed(n + 5)
 effect function region(): Effect.Effect<number, never, never> {
-  try { return try Action.make(7) } finally { const unused = 0 }
+  { const $nativeTryCompletion = try $nativeTryEffect.onExit(effect { return { kind: "return:" as const, value: (try Action.make(7)) }; }, () => effect { const unused = 0 });
+return $nativeTryCompletion.value;
+}
 }
 // A call already running an Effect may succeed with subtype data.
 effect function successData(): Effect.Effect<Exit.Exit<number>, never, never> {
   return try Effect.succeed(Exit.succeed(8))
 }
 effect function failed(): Effect.Effect<unknown, never, never> {
-  try { return try implementFailure(effect (n) => try Exit.fail("failure")) }
-  catch (error) { return error }
+  { const $nativeTryCompletion1 = try $nativeTryEffect1.catch(effect { return { kind: "return:" as const, value: (try implementFailure(effect (n) => try Exit.fail("failure"))) }; }, effect (error) => { return { kind: "return:" as const, value: (error) }; });
+return $nativeTryCompletion1.value;
+}
 }
 export effect function main() {
   const exit = try implement(effect (n) => try Exit.succeed(n + 1))

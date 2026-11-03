@@ -161,5 +161,14 @@
         "output": "typescript/vibelang/cases/throw-comma-retired-fixed-output"
       }
     ]
+  },
+  {
+    "code": "EK0503",
+    "cases": [
+      {
+        "input": "typescript/vibelang/cases/native-try-preserving-fix.fail",
+        "output": "typescript/vibelang/cases/native-try-preserving-fix-fixed-output"
+      }
+    ]
   }
 ]

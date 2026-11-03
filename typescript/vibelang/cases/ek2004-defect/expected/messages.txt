@@ -1,1 +1,0 @@
-This try block runs Effects but has no expected errors; defects pass through this catch.
