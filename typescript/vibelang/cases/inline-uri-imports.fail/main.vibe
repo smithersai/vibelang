@@ -13,3 +13,6 @@ export const computed = import("data:" + "text/javascript,export default 1")
 export const valueType = typeof value
 
 // Appendix B: EK0107 — spec-rule: docs/design/src/900-appendices.md#3f3af2b442759e40
+
+// Spec rule: docs/design/src/001-functions.md#d0e9242f8d608bd1
+// Chapter 001: per-location EK0107 snapshots cover data/blob imports and literal dynamic imports.

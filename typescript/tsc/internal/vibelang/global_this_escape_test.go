@@ -3,6 +3,7 @@ package vibelang
 import "testing"
 
 func TestGlobalThisEscapes(t *testing.T) {
+
 	const source = `const key = "URL"
 export const alias = globalThis
 export const computed = globalThis[key]

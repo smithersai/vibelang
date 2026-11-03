@@ -1,0 +1,10 @@
+// Chapter 001: self-contained declarations with prelude options disabled
+import {sleep} from "effect/Effect"
+export type Task=number!!
+export const global=sleep("1 millis")
+export effect function value(){return 1}
+export effect function execute(input:Task){return try input}
+export effect function delay(){try sleep("1 millis");return 1}
+export effect function main(){return [try value(),try execute(value()),try delay()]}
+
+// Spec rule: docs/design/src/001-functions.md#e6469d34f1e5adaa

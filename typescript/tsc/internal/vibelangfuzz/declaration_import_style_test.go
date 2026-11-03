@@ -34,6 +34,15 @@ import (
 // (inbox/migrate-smithers.md, 2026-10-31).
 // Chapter 007 / public declaration styles and compatibility sidecar scope: docs/design/src/007-tooling.md#56e3469cde8b8996
 func TestDeclarationImportStyleMatrix(t *testing.T) {
+	// Spec rule: docs/design/src/001-functions.md#3d7f3621cc0534f3
+	// Chapter 001: package declaration spelling, source sidecars and JavaScript spelling across configured styles (TestDeclarationImportStyleMatrix).
+
+	// Spec rule: docs/design/src/001-functions.md#b4c6ab910ab5d87b
+	// Chapter 001: package declaration spelling, source sidecars and JavaScript spelling across configured styles (TestDeclarationImportStyleMatrix).
+
+	// Spec rule: docs/design/src/001-functions.md#f6b672604cafbc5e
+	// Chapter 001: package declaration spelling, source sidecars and JavaScript spelling across configured styles (TestDeclarationImportStyleMatrix).
+
 	tsc := StockTypeScript(t)
 	w := NewWorkspace(t)
 	modes := []string{"bundler", "nodenext"}
@@ -153,6 +162,9 @@ func stockDeclaration(t *testing.T, w *Workspace, tsc string, project Project, n
 // Smithers declarations printed import("./StdError.js") for
 // import("./StdError.ts") (pass3/dtsdiff, packages/smithers/agent/std).
 func TestDeclarationImportStyleInferredImportType(t *testing.T) {
+	// Spec rule: docs/design/src/001-functions.md#ccd37d703ff5fb5b
+	// Chapter 001: inferred import types match the twin resolution mode (TestDeclarationImportStyleInferredImportType).
+
 	tsc := StockTypeScript(t)
 	w := NewWorkspace(t)
 	schema := "export type MessageUnion<A> = { readonly _tag: \"m\"; readonly value: A }\nexport const makeMessage = <A>(value: A): MessageUnion<A> => ({ _tag: \"m\", value })\n"
@@ -257,6 +269,12 @@ func declarationStyleExtension(style string) string {
 // baseline printed import { Effect, HashMap, HashSet, Option, SubscriptionRef }
 // from 'effect' (foldkit-91).
 func TestDeclarationEffectModuleImports(t *testing.T) {
+	// Spec rule: docs/design/src/001-functions.md#b4422e525c73acaf
+	// Chapter 001: added Effect import joins written imports and preserves order/quotes (TestDeclarationEffectModuleImports).
+
+	// Spec rule: docs/design/src/001-functions.md#980d286dd74d1bce
+	// Chapter 001: added Effect import joins written imports and preserves order/quotes (TestDeclarationEffectModuleImports).
+
 	tsc := StockTypeScript(t)
 	w := NewWorkspace(t)
 	types := map[string]string{"HashMap": "HashMap<string, number>", "HashSet": "HashSet<string>", "Option": "Option<number>", "SubscriptionRef": "SubscriptionRef<number>"}

@@ -31,6 +31,12 @@ func TestTopLevelAwaitQuoted(t *testing.T) {
 // awaited as JavaScript awaits it, and an Effect is EK0103; in effect code
 // either is an error.
 func TestTopLevelAwait(t *testing.T) {
+	// Spec rule: docs/design/src/001-functions.md#3b7a39a57b1d2e71
+	// Chapter 001: native Promise top-level await and EK0103 for an Effect (TestTopLevelAwait).
+
+	// Spec rule: docs/design/src/001-functions.md#6d7a4af271928c19
+	// Chapter 001: native Promise top-level await and EK0103 for an Effect (TestTopLevelAwait).
+
 	w := NewWorkspace(t)
 	operands := map[string]string{"promise": "Promise.resolve(1)", "effect": "Effect.succeed(1)"}
 	topLevel := map[string]string{

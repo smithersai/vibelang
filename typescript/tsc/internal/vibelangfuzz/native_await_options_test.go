@@ -134,6 +134,12 @@ func checkNativeAwaitOptions(w *Workspace, witness nativeAwaitOptionWitness, mod
 	return "", nil
 }
 func TestNativeAwaitOptionsRegression(t *testing.T) {
+	// Spec rule: docs/design/src/001-functions.md#a72f5739ddc13df1
+	// Chapter 001: native module/target diagnostics for ordinary, unary and multiline awaits (TestNativeAwaitOptionsRegression).
+
+	// Spec rule: docs/design/src/001-functions.md#0ef87775d59ad819
+	// Chapter 001: native module/target diagnostics for ordinary, unary and multiline awaits (TestNativeAwaitOptionsRegression).
+
 	w := NewWorkspace(t)
 	for _, witness := range nativeAwaitOptionWitnesses {
 		for module := uint8(0); module < 4; module++ {

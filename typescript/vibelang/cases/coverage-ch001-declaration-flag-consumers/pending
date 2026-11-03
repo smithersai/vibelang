@@ -1,0 +1,1 @@
+cov-ch001-005 docs/design/src/001-functions.md#e6469d34f1e5adaa: prelude-option matrix control compiles a disabled implicit binding instead of TS2304; retain stock TypeScript declaration/type/Exit comparison and effective-option assertions (restart-cases.log).

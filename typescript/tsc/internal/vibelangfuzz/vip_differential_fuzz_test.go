@@ -423,6 +423,84 @@ func FuzzVIPDifferential(f *testing.F) {
 // passes fails as XPASS: the compiler implements the construct now, so its
 // line is deleted and campaigns generate it.
 func TestVIPConstructs(t *testing.T) {
+	// Spec rule: docs/design/src/005-services.md#ac62c0af7f0e840a
+	// Chapter 005: bare Effect globals retain native calls and local captures; keyed construct vip06.globals (TestVIPConstructs).
+
+	// Spec rule: docs/design/src/005-services.md#863b20fcd36fe98b
+	// Chapter 005: bare Effect globals retain native calls and local captures; keyed construct vip06.globals (TestVIPConstructs).
+
+	// Spec rule: docs/design/src/005-services.md#76ad91e5b7e04b8a
+	// Chapter 005: provide block retains outward return/break/continue; keyed construct vip12.jumps (TestVIPConstructs).
+
+	// Spec rule: docs/design/src/005-services.md#199ac7045e2de525
+	// Chapter 005: providers evaluate once and native Effect.provide owns execution, environments and cleanup; keyed construct vip12.provide (TestVIPConstructs).
+
+	// Spec rule: docs/design/src/005-services.md#f3a65227c56d7b27
+	// Chapter 005: providers evaluate once and native Effect.provide owns execution, environments and cleanup; keyed construct vip12.provide (TestVIPConstructs).
+
+	// Spec rule: docs/design/src/005-services.md#029f509c637a3ad1
+	// Chapter 005: providers evaluate once and native Effect.provide owns execution, environments and cleanup; keyed construct vip12.provide (TestVIPConstructs).
+
+	// Spec rule: docs/design/src/005-services.md#80110e94ca3c204b
+	// Chapter 005: providers evaluate once and native Effect.provide owns execution, environments and cleanup; keyed construct vip12.provide (TestVIPConstructs).
+
+	// Spec rule: docs/design/src/005-services.md#fce3d3826f6f9528
+	// Chapter 005: providers evaluate once and native Effect.provide owns execution, environments and cleanup; keyed construct vip12.provide (TestVIPConstructs).
+
+	// Spec rule: docs/design/src/005-services.md#3d274af5ff398519
+	// Chapter 005: providers evaluate once and native Effect.provide owns execution, environments and cleanup; keyed construct vip12.provide (TestVIPConstructs).
+
+	// Spec rule: docs/design/src/005-services.md#1c658d5c9a9d99a7
+	// Chapter 005: explicit service acquisition before member access; no forwarding shorthand; keyed construct vip09.service (TestVIPConstructs).
+
+	// Spec rule: docs/design/src/005-services.md#13e6defdfc6c8ccf
+	// Chapter 005: Context.Reference default factory executes only on fallback and provision overrides it; keyed construct vip09.service-default (TestVIPConstructs).
+
+	// Spec rule: docs/design/src/001-functions.md#b4eeb88aa1c7a716
+	// Chapter 001: producer retains this and super on each Stream consumption; keyed construct vip21.lexical-receiver (TestVIPConstructs).
+
+	// Spec rule: docs/design/src/001-functions.md#e49405b7cc979ce5
+	// Chapter 001: cold block runs and reruns its exact Effect.gen counterpart; keyed construct vip02.effect-block (TestVIPConstructs).
+
+	// Spec rule: docs/design/src/001-functions.md#26c4ee11c6896fa4
+	// Chapter 001: block-bodied arrow executes its native generator counterpart; keyed construct vip01.effect-arrow (TestVIPConstructs).
+
+	// Spec rule: docs/design/src/001-functions.md#85d25ffdb54073a6
+	// Chapter 001: anonymous Effect function expression executes its native generator counterpart; keyed construct vip01.effect-function-expr (TestVIPConstructs).
+
+	// Spec rule: docs/design/src/001-functions.md#f2739c7aeaaca776
+	// Chapter 001: method and nested arrow retain this; nested plain callable owns its own receiver; keyed construct vip01.this (TestVIPConstructs).
+
+	// Spec rule: docs/design/src/001-functions.md#9883009c92496c9f
+	// Chapter 001: method and nested arrow retain this; nested plain callable owns its own receiver; keyed construct vip01.this (TestVIPConstructs).
+
+	// Spec rule: docs/design/src/001-functions.md#7e7bef62b36e84e6
+	// Chapter 001: method and nested arrow retain this; nested plain callable owns its own receiver; keyed construct vip01.this (TestVIPConstructs).
+
+	// Spec rule: docs/design/src/001-functions.md#49b732954bb16117
+	// Chapter 001: call before declaration preserves source hoisting; keyed construct vip01.hoisting (TestVIPConstructs).
+
+	// Spec rule: docs/design/src/001-functions.md#0ce933419cb602e2
+	// Chapter 001: default runs once at call; body stays cold and reruns with shared parameter bindings; keyed construct vip01.call-time (TestVIPConstructs).
+
+	// Spec rule: docs/design/src/001-functions.md#796ecdbf751e36e2
+	// Chapter 001: effect-star declaration produces a Stream; keyed construct vip21.producer (TestVIPConstructs).
+
+	// Spec rule: docs/design/src/001-functions.md#6902410ed8608c63
+	// Chapter 001: keyword-marked declaration builds the exact Effect.gen counterpart; keyed construct vip01.effect-function (TestVIPConstructs).
+
+	// Spec rule: docs/design/src/001-functions.md#22dedc35ff8cd5fc
+	// Chapter 001: keyword-marked declaration builds the exact Effect.gen counterpart; keyed construct vip01.effect-function (TestVIPConstructs).
+
+	// Spec rule: docs/design/src/001-functions.md#40f09f152dd8c2db
+	// Chapter 001: anonymous default-export Effect declaration executes its generator counterpart; keyed construct vip01.default-export (TestVIPConstructs).
+
+	// Spec rule: docs/design/src/001-functions.md#23ba8a5ec11297b1
+	// Chapter 001: anonymous default-export Effect declaration executes its generator counterpart; keyed construct vip01.default-export (TestVIPConstructs).
+
+	// Spec rule: docs/design/src/001-functions.md#7b3d829f5b6ee11e
+	// Chapter 001: anonymous default-export Effect declaration executes its generator counterpart; keyed construct vip01.default-export (TestVIPConstructs).
+
 	keyShape := regexp.MustCompile(`^vip(\d{2})\.[a-z][a-z0-9-]*$`)
 	for _, c := range vipgen.Constructs() {
 		m := keyShape.FindStringSubmatch(c.Key)

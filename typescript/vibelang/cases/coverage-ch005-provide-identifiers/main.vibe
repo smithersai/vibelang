@@ -1,0 +1,14 @@
+// Chapter 005: provide retains ordinary identifier expressions outside a complete statement head.
+// Spec rule: docs/design/src/005-services.md#5e6b021b5ecc84cc
+// Spec rule: docs/design/src/005-services.md#8b073ee58a1f565b
+// Spec rule: docs/design/src/005-services.md#1392e4d5e8c31a86
+// Spec rule: docs/design/src/005-services.md#222027d012841e51
+// Spec rule: docs/design/src/005-services.md#f551f11bbbc71a10
+// Spec rule: docs/design/src/005-services.md#f85a2b6406f37c6f
+function provide(n: number) { return n + 1 }
+function called() { provide(1); return provide(2) }
+function indexed() { const provide = [10, 20]; provide[0] = provide[1]; return provide }
+function shadowed() { const provide = "local"; return provide }
+function subtracted() { const provide = 10; return provide - 1 }
+export function controls() { return { called: called(), indexed: indexed(), shadowed: shadowed(), subtracted: subtracted() } }
+export effect function main() { return controls() }

@@ -112,6 +112,12 @@ func ambientServiceDecode(data []byte) ambientServiceInput {
 }
 
 func FuzzAmbientServiceContract(f *testing.F) {
+	// Spec rule: docs/design/src/005-services.md#8e1b1a649ab97797
+	// Chapter 005: type and value meanings are resolved separately for ambient host names (FuzzAmbientServiceContract).
+
+	// Spec rule: docs/design/src/005-services.md#76d7f21528b250bc
+	// Chapter 005: type and value meanings are resolved separately for ambient host names (FuzzAmbientServiceContract).
+
 	startShortBudget(f)
 	ambientServiceChapters(f)
 	for _, seed := range []string{"FileSystem/generic/dom", "FileSystem/bang/dom", "FileSystem/union/dom", "FileSystem/generic/es", "Path/generic/dom", "Console/generic/dom"} {

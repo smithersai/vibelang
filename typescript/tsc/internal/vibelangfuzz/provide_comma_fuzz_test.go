@@ -27,6 +27,12 @@ func TestProvideCommaRecoveryQuoted(t *testing.T) { provideCommaRecoveryQuoted(t
 // Detail 237 recovers only separator-adjacent breaks, with one EK1202 per
 // broken separator. Newlines within a provider expression stay valid.
 func FuzzProvideCommaRecovery(f *testing.F) {
+	// Spec rule: docs/design/src/005-services.md#745e677d93811666
+	// Chapter 005: bounded keyword classification preserves call and missing-body fallback (FuzzProvideCommaRecovery).
+
+	// Spec rule: docs/design/src/005-services.md#e563939aef5812aa
+	// Chapter 005: bounded keyword classification preserves call and missing-body fallback (FuzzProvideCommaRecovery).
+
 	startShortBudget(f)
 	provideCommaRecoveryQuoted(f)
 	for _, key := range []string{"before", "after", "both", "comment", "inner", "keyword", "body"} {

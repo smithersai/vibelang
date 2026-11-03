@@ -6,6 +6,7 @@ import (
 )
 
 func TestInlineURIModuleImports(t *testing.T) {
+
 	const source = `import value from "data:sample"
 import "blob:sample"
 export { default as upper } from "DATA:sample"

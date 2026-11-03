@@ -36,3 +36,6 @@ export const banned = globalThis.fetch
 
 // Spec rule: docs/design/src/005-services.md#2c48b0bca8010571
 // Chapter 005: window itself is a banned host value (global-this-escape.fail).
+
+// Spec rule: docs/design/src/001-functions.md#0bb45d3a9f735ef2
+// Chapter 001: per-location EK0107 snapshots cover computed keys, aliases, destructuring, arguments, spreads and in operands.

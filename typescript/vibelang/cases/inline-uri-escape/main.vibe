@@ -6,3 +6,6 @@ export effect function read() {
   return [helper.default, computed.default]
 }
 export type DataModule = typeof import("data:text/javascript,export default 1")
+
+// Spec rule: docs/design/src/001-functions.md#42acda7059d47a2b
+// Chapter 001: computed data imports and a foreign loader compile and retain erased type queries.

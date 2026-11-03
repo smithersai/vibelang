@@ -1348,6 +1348,8 @@ typescript/vibelang/cases/cov-running-unchecked/main.vibe:11:35 byname program t
 typescript/vibelang/cases/cov-running-unchecked/main.vibe:12:103 lambda plain fallback
 typescript/vibelang/cases/cov-running-yieldable-error/main.vibe:6:33 lambda program table
 typescript/vibelang/cases/cov-running-yieldable-error/main.vibe:7:62 lambda plain fallback
+typescript/vibelang/cases/coverage-ch001-declaration-flag-consumers/program.vibe:8:63 byname program annotation
+typescript/vibelang/cases/coverage-ch001-declaration-form-imports/program.vibe:7:63 byname program annotation
 typescript/vibelang/cases/coverage-ch001-default-return/main.vibe:1:33 lambda plain fallback
 typescript/vibelang/cases/coverage-ch001-dual-modifiers.fail/main.vibe:4:24 lambda plain fallback
 typescript/vibelang/cases/coverage-ch001-dual-modifiers.fail/main.vibe:5:24 lambda plain fallback
@@ -1376,6 +1378,7 @@ typescript/vibelang/cases/coverage-ch001-generator-defaults/main.vibe:6:49 lambd
 typescript/vibelang/cases/coverage-ch001-generator-defaults/main.vibe:7:23 lambda plain fallback
 typescript/vibelang/cases/coverage-ch001-generator-defaults/main.vibe:7:44 lambda plain fallback
 typescript/vibelang/cases/coverage-ch001-global-function-members.fail/main.vibe:4:24 lambda plain fallback
+typescript/vibelang/cases/coverage-ch001-lifted-names/main.vibe:4:24 lambda plain fallback
 typescript/vibelang/cases/coverage-ch001-nested-formal-context/main.vibe:1:30 lambda choice fallback
 typescript/vibelang/cases/coverage-ch001-nested-formal-context/main.vibe:1:72 lambda plain fallback
 typescript/vibelang/cases/coverage-ch001-promise-bridge/main.vibe:4:31 byname program table
