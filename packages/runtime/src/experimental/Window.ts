@@ -38,6 +38,7 @@ export const TypeId: TypeId = "~vibelang/experimental/Window"
  */
 export interface Host {
   readonly window: () => globalThis.Window
+  readonly computedStyle: (element: Element) => CSSStyleDeclaration
 }
 
 /**
@@ -50,6 +51,11 @@ export interface Window {
   readonly [TypeId]: TypeId
   /** The page's `Window`, read each time this runs. */
   readonly current: Effect.Effect<globalThis.Window>
+  /**
+   * The live computed style of `element`, as `getComputedStyle`: it is the
+   * host's object, so it reflects later changes, not a snapshot.
+   */
+  readonly computedStyle: (element: Element) => Effect.Effect<CSSStyleDeclaration>
 }
 
 /**
@@ -68,14 +74,28 @@ export const Window: Context.Service<Window, Window> = /* @__PURE__ */ Context.S
  * @category constructors
  * @since 0.0.11
  */
-export const make = (host: Host): Window => ({ [TypeId]: TypeId, current: Effect.sync(host.window) })
+export const make = (host: Host): Window => ({
+  [TypeId]: TypeId,
+  current: Effect.sync(host.window),
+  computedStyle: (element) => Effect.sync(() => host.computedStyle(element))
+})
 
 /**
  * Provides `window`, for tests: a fake, such as `new EventTarget()`, cast to
- * `Window`.
+ * `Window`. Pass `computedStyle` when a test reads one; without it, the read is
+ * a defect.
  *
  * @category layers
  * @since 0.0.11
  */
-export const layerTest = (window: globalThis.Window): Layer.Layer<Window> =>
-  Layer.succeed(Window, make({ window: () => window }))
+export const layerTest = (
+  window: globalThis.Window,
+  impl: Partial<Omit<Host, "window">> = {}
+): Layer.Layer<Window> =>
+  Layer.succeed(Window, make({
+    window: () => window,
+    computedStyle: () => {
+      throw new Error("layerTest was not given computedStyle")
+    },
+    ...impl
+  }))

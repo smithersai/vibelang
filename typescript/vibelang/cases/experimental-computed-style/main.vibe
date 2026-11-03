@@ -1,0 +1,18 @@
+// expect-result: ["red","blue"]
+// foldkit's ui/src/anchor/anchor.ts: the style is the host's live object, so a later read sees a later change.
+effect function colorsOf(element: Element, recolor: () => void) {
+  const window = try Experimental.Window.Window
+  const style = try window.computedStyle(element)
+  const before = style.color
+  recolor()
+  return [before, style.color]
+}
+
+export effect function main() {
+  const live = { color: "red" } as CSSStyleDeclaration
+  provide Experimental.Window.layerTest({} as Window, { computedStyle: () => live }) {
+    return try colorsOf({} as Element, () => {
+      live.color = "blue"
+    })
+  }
+}

@@ -7,7 +7,7 @@ test("Window: current gives the host's window, read each time it runs", async ()
   const first = new EventTarget() as unknown as globalThis.Window
   const second = new EventTarget() as unknown as globalThis.Window
   let current = first
-  const service = Window.make({ window: () => current })
+  const service = Window.make({ window: () => current, computedStyle: () => ({}) as CSSStyleDeclaration })
   expect(await Effect.runPromise(service.current)).toBe(first)
   current = second
   expect(await Effect.runPromise(service.current)).toBe(second)
@@ -34,4 +34,24 @@ test("Window: layerTest gives the fake", async () => {
   const fake = new EventTarget() as unknown as globalThis.Window
   const current = Effect.flatMap(Effect.service(Window.Window), (window) => window.current)
   expect(await Effect.runPromise(Effect.provide(current, Window.layerTest(fake)))).toBe(fake)
+})
+
+test("Window: computedStyle gives the host's own object each time, and a read without a host is a defect", async () => {
+  const live = { color: "red" } as CSSStyleDeclaration
+  const element = {} as Element
+  const seen: Array<Element> = []
+  const service = Window.make({
+    window: () => new EventTarget() as unknown as globalThis.Window,
+    computedStyle: (target) => {
+      seen.push(target)
+      return live
+    }
+  })
+  const read = service.computedStyle(element)
+  expect(seen).toEqual([])
+  expect(await Effect.runPromise(read)).toBe(live)
+  expect(await Effect.runPromise(read)).toBe(live)
+  expect(seen).toEqual([element, element])
+  const missing = Effect.flatMap(Effect.service(Window.Window), (window) => window.computedStyle(element))
+  expect(String(await Effect.runPromiseExit(Effect.provide(missing, ExperimentalBrowserWindow.layer)))).toContain("window.getComputedStyle")
 })

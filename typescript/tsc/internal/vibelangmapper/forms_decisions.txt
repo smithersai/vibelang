@@ -2411,6 +2411,8 @@ typescript/vibelang/cases/experimental-animations/main.vibe:22:39 lambda effectF
 typescript/vibelang/cases/experimental-animations/main.vibe:22:52 lambda effectFn annotation
 typescript/vibelang/cases/experimental-animations/main.vibe:22:58 lambda plain fallback
 typescript/vibelang/cases/experimental-animations/main.vibe:6:34 lambda plain annotation
+typescript/vibelang/cases/experimental-computed-style/main.vibe:13:72 lambda plain fallback
+typescript/vibelang/cases/experimental-computed-style/main.vibe:14:40 lambda effectFn annotation
 typescript/vibelang/cases/experimental-document/main.vibe:10:29 lambda choice fallback
 typescript/vibelang/cases/experimental-document/main.vibe:8:26 byname program table
 typescript/vibelang/cases/experimental-file-reader-origin/main.vibe:10:24 byname program table
@@ -2451,6 +2453,9 @@ typescript/vibelang/cases/experimental-resize-observer/main.vibe:14:14 lambda ch
 typescript/vibelang/cases/experimental-resize-observer/main.vibe:20:23 byname program table
 typescript/vibelang/cases/experimental-resize-observer/main.vibe:20:43 lambda effectFn annotation
 typescript/vibelang/cases/experimental-resize-observer/main.vibe:6:33 lambda choice fallback
+typescript/vibelang/cases/experimental-window/main.vibe:11:28 lambda choice fallback
+typescript/vibelang/cases/experimental-window/main.vibe:11:64 lambda choice fallback
+typescript/vibelang/cases/experimental-window/main.vibe:8:24 byname program table
 typescript/vibelang/cases/explicit-operation-spans/main.vibe:3:18 lambda dual fallback
 typescript/vibelang/cases/explicit-operation-spans/main.vibe:7:30 lambda program table
 typescript/vibelang/cases/explicit-operation-spans/main.vibe:9:27 byname program table

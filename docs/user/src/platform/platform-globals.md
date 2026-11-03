@@ -79,6 +79,7 @@ Each row says what replaces a global or one of its members: an Effect API first,
 | `document.addEventListener` | `BrowserStream.fromEventListenerDocument("visibilitychange")` |
 | `exports` | `export const name = value` |
 | `fetch` | `try HttpClient.get(url)` |
+| `getComputedStyle` | `try (try Experimental.Window.Window).computedStyle(element)` |
 | `global` | escape to TypeScript for now: Effect has no global-object service; keep access to the host global object in TypeScript. |
 | `history` | escape to TypeScript for now: Effect has no service for the DOM; UI code belongs in a .ts or .tsx file, such as a React component's. |
 | `importScripts` | `effect/workers`: `import { Worker as EffectWorker }` and `WorkerRunner` |
@@ -140,6 +141,7 @@ Each row says what replaces a global or one of its members: an Effect API first,
 | `window.addEventListener` | `BrowserStream.fromEventListenerWindow("resize")` |
 | `window.cancelAnimationFrame` | `try (try Experimental.Animations.Animations).nextFrame` |
 | `window.crossOriginIsolated` | `try (try Experimental.BrowserInfo.BrowserInfo).crossOriginIsolated` |
+| `window.getComputedStyle` | `try (try Experimental.Window.Window).computedStyle(element)` |
 | `window.matchMedia` | `try (try Experimental.MediaQuery.MediaQuery).matches(query)` |
 | `window.requestAnimationFrame` | `try (try Experimental.Animations.Animations).nextFrame` |
 
@@ -256,7 +258,8 @@ effect function experimental(path: string, pid: number, killSignal: ChildProcess
   try (try Experimental.ResizeObserver.ResizeObserver).observe(element, onResize)
   const isolated = try (try Experimental.BrowserInfo.BrowserInfo).crossOriginIsolated
   const agent = try (try Experimental.BrowserInfo.BrowserInfo).userAgent
-  return { id, platform, arch, executable, versions, memory, host, cores, origin, running, file, mac, signed, valid, sealed, opened, pair, lock, reducedMotion, frame, text, element, isolated, agent }
+  const style = try (try Experimental.Window.Window).computedStyle(element)
+  return { id, platform, arch, executable, versions, memory, host, cores, origin, running, file, mac, signed, valid, sealed, opened, pair, lock, reducedMotion, frame, text, element, isolated, agent, style }
 }
 ```
 

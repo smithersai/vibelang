@@ -1,0 +1,9 @@
+{
+  "key": "foldkit-50,87:window-current-live-style",
+  "spec": "VIP-33: effectful browser reads retain the host object and read when the Effect runs",
+  "states": [
+    { "window": 0, "target": 0, "color": "red", "failCurrent": false, "failStyle": false, "repeats": 2 },
+    { "window": 2, "target": 1, "color": "blue", "failCurrent": true, "failStyle": false, "repeats": 3 },
+    { "window": 1, "target": 0, "color": "green", "failCurrent": false, "failStyle": true, "repeats": 1 }
+  ]
+}

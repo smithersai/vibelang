@@ -406,7 +406,9 @@ effect function origin() {
 
 `try (try Experimental.Window.Window).current` gives the page's `Window`, for an API that takes one, such as a helper that filters an event while it is dispatched, or for a read such as `location.origin`. For events you only read, `BrowserStream.fromEventListenerWindow` needs no service.
 
-`ExperimentalBrowserWindow.layer`, also in `ExperimentalBrowserServices.layer`, reads the global `window` when `current` runs. `Experimental.Window.layerTest(window)` gives a fake.
+`try window.computedStyle(element)` gives the element's live `CSSStyleDeclaration`, as `getComputedStyle` does. It is the host's object, not a snapshot, so a later read of it sees a later change.
+
+`ExperimentalBrowserWindow.layer`, also in `ExperimentalBrowserServices.layer`, reads the host when a member runs. `Experimental.Window.layerTest(window)` gives a fake; pass `computedStyle` as a second argument when a test reads one.
 
 ## BrowserInfo
 

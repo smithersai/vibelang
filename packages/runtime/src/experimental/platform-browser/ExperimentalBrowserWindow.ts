@@ -15,6 +15,14 @@ const window = (): globalThis.Window => {
   return host.window
 }
 
+const computedStyle = (element: Element): CSSStyleDeclaration => {
+  const host = globalThis as { readonly getComputedStyle?: typeof getComputedStyle }
+  if (typeof host.getComputedStyle !== "function") {
+    throw new Error("The Window service needs window.getComputedStyle: a browser page, not a worker or a server")
+  }
+  return host.getComputedStyle(element)
+}
+
 /**
  * Reads the host when a member runs, never when this module is imported or the
  * layer is built. A member that runs on a host without a window is a defect.
@@ -22,4 +30,4 @@ const window = (): globalThis.Window => {
  * @category layers
  * @since 0.0.11
  */
-export const layer: Layer.Layer<Window.Window> = Layer.succeed(Window.Window, Window.make({ window }))
+export const layer: Layer.Layer<Window.Window> = Layer.succeed(Window.Window, Window.make({ window, computedStyle }))
