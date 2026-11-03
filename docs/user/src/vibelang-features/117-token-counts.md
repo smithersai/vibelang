@@ -212,7 +212,7 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [BigDecimal](../data-types/070-bigdecimal.md) | 1,400 |
 | [Cause](../data-types/071-cause.md) | 1,300 |
 | [Chunk](../data-types/072-chunk.md) | 950 |
-| [Data](../data-types/073-data.md) | 3,200 |
+| [Data](../data-types/073-data.md) | 3,300 |
 | [DateTime](../data-types/074-datetime.md) | 3,100 |
 | [Duration](../data-types/075-duration.md) | 1,300 |
 | [Result](../data-types/076-result.md) | 1,600 |
@@ -229,7 +229,7 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | **Schema** | **35,000** |
 | [Introduction](../schema/085-introduction.md) | 1,400 |
 | [Getting Started](../schema/086-getting-started.md) | 3,100 |
-| [Basic Usage](../schema/087-basic-usage.md) | 4,100 |
+| [Basic Usage](../schema/087-basic-usage.md) | 4,500 |
 | [Filters](../schema/088-filters.md) | 1,500 |
 | [Advanced Usage](../schema/089-advanced-usage.md) | 3,000 |
 | [Projections](../schema/090-projections.md) | 710 |

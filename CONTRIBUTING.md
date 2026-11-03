@@ -19,7 +19,7 @@ From a checkout, with Go, Bun and Node on your `PATH`:
 sh scripts/setup.sh
 ```
 
-The tested toolchain is Go 1.26 (setup downloads the Go 1.27 the compiler requires), Bun 1.4.1 and Node 22.22.3 (22.x) or Node 24.11.1 or later. The optional Smithers build graph retains its dependency's Node 26.4 runtime declaration; published packages and the starter require Node 22.22.3. Setup builds the native compiler into `packages/compiler/native/vibelang`, packs the runtime, builds the editor extension, and installs a local starter in `~/.bun-create/vibelang`. Apps you then create with `bun create vibelang my-app` depend on this checkout. After you change the compiler or runtime, rerun setup, then run `bun update vibelang-runtime vibelang vibelang-vite` in those apps. Remove `~/.bun-create/vibelang` to scaffold from npm again.
+The tested toolchain is Go 1.26 (setup downloads the Go 1.27 the compiler requires), Bun 1.4.1 and Node 22.22.3 (22.x) or Node 24.11.1 or later. The optional Smithers build graph retains its dependency's Node 26.4 runtime declaration; published packages and the starter require Node 22.22.3. Setup builds the native compiler into `packages/compiler/native/vibelang`, packs the runtime, builds the editor extension, and installs a local starter in `~/.bun-create/vibelang`. Setup prepares the complete replacement before moving an existing local starter; if preparation fails, the previous starter stays available. Apps you then create with `bun create vibelang my-app` depend on this checkout. After you change the compiler or runtime, rerun setup, then run `bun update vibelang-runtime vibelang vibelang-vite` in those apps. Remove `~/.bun-create/vibelang` to scaffold from npm again.
 
 The compiler cases and the doc snippet check also need the pinned packages in `experiments/` and `docs/tools/`. Install them once:
 
@@ -70,6 +70,8 @@ Run the cached build graph locally with `sh scripts/ci.sh`; [the build graph](do
 
 For each pull request, a maintainer runs `sh scripts/e2e.sh` and the compiler case suite, `(cd typescript && sh vibelang/smoke.sh --jobs 8)`, and records the results in the pull request.
 
+The compiler package tests include a native ESLint tree-oracle check, independent of the optional plugin install: contextual `effect` modifiers are syntax, while a binding, parameter or method named `effect` must retain its identifier node. It also knocks out written names to verify the oracle catches missing nodes.
+
 The end-to-end check runs setup, then scaffolds, installs, builds, runs and tests a temporary app, and stops at the first failing step. A compiler case is a directory under `typescript/vibelang/cases/`; `typescript/vibelang/harness.mjs` describes the format. A passing check doesn't prove every language feature works, so list the checks you ran, the ones that failed and the ones you couldn't run.
 
 ## Pull requests
@@ -95,4 +97,4 @@ Start with [good first issues](https://github.com/smithersai/vibelang/issues?q=i
 
 Ask with the [question form](https://github.com/smithersai/vibelang/issues/new?template=question.yml). Report a vulnerability privately, never in an issue: see [SECURITY.md](.github/SECURITY.md).
 
-<sub>2,555 tokens (o200k_base, js-tiktoken 1.0.21), counted by the [docs flow](.smithers/flows/docs/flow.ts).</sub>
+<sub>2,637 tokens (o200k_base, js-tiktoken 1.0.21), counted by the [docs flow](.smithers/flows/docs/flow.ts).</sub>
