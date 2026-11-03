@@ -7,6 +7,7 @@ import { readdirSync, readFileSync } from "node:fs"
 import ts from "typescript"
 import { resolve } from "node:path"
 import { fileURLToPath } from "node:url"
+import { nativeSourceResolution } from "./spec-native-source-resolution.ts"
 
 // A specification: path relative to docs/design ("src/007-tooling.md",
 // "vips/0039-vibex.md") to text.
@@ -485,11 +486,11 @@ const specLinks: Rule = {
   }
 }
 
-export const rules: Rule[] = [specLinks, resolutionClaims, configKeys, importStyleScope, declarationImportForm, deniedVipRepairs, retiredForms, platformImports, counterpartUsing, collisionConditional, rulingClaims, compilerGaps, moduleExtractionTwins]
+export const rules: Rule[] = [specLinks, resolutionClaims, nativeSourceResolution, configKeys, importStyleScope, declarationImportForm, deniedVipRepairs, retiredForms, platformImports, counterpartUsing, collisionConditional, rulingClaims, compilerGaps, moduleExtractionTwins]
 
 const kinds: Record<string, string[]> = {
   registry: ["config-keys"],
-  tables: ["resolution-claims", "declaration-import-style-scope", "denied-vip-repairs", "collision-conditional", "compiler-gaps-not-rules"],
+  tables: ["native-source-resolution", "resolution-claims", "declaration-import-style-scope", "denied-vip-repairs", "collision-conditional", "compiler-gaps-not-rules"],
   copies: ["declaration-import-form", "counterpart-using"],
   authority: ["ruling-claims"],
   examples: ["retired-forms", "platform-imports", "module-extraction-twins"]

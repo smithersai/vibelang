@@ -231,7 +231,7 @@ const vibelangTopicTargets = Object.fromEntries(
 // Specification checks share the normal graph and cache. The existing forms
 // gate selection reaches these dependencies without a pre-gate change.
 const specInputs = S.Filegroup({ srcs: [...S.glob([
-  "docs/design/**", "docs/tools/spec-rules*", "docs/tools/spec-examples*", "docs/tools/spec-lint*", "docs/tools/spec-pipe-arrows*",
+  "docs/design/**", "docs/tools/spec-rules*", "docs/tools/spec-examples*", "docs/tools/spec-lint*", "docs/tools/spec-pipe-arrows*", "docs/tools/spec-native-source-resolution*",
   "docs/tools/package.json", "docs/tools/bun.lock", "docs/maintainers/build.md",
   "docs/tools/diagnostic-identity*", "docs/tools/factory-diagnostic-retirement.test.mjs", "docs/tools/retirement-gate*", "scripts/mq-retirement-precheck*",
   "docs/tools/property-regressions/gate6-ek4804.json", "docs/tools/property-regressions/gate6-mapper-ek2115.json", "typescript/tsc/internal/vibelang/diagnostics.go",
@@ -286,7 +286,7 @@ const specExamples = S.Shell.Test({
 })
 const specLinterTests = S.Shell.Test({
   summary: "Historical spec defects, module extraction scope and projection source kinds, seeded properties and native example checks reject regressions.",
-  shell: "node --test docs/tools/spec-rules.test.mjs docs/tools/spec-examples-compiler.test.mjs docs/tools/diagnostic-identity.test.mjs docs/tools/factory-diagnostic-retirement.test.mjs docs/tools/retirement-gate.test.mjs && python3 -B scripts/mq-retirement-precheck.test.py && cd docs/tools && bun test --timeout 60000 spec-lint.test.ts",
+  shell: "node --test docs/tools/spec-rules.test.mjs docs/tools/spec-examples-compiler.test.mjs docs/tools/diagnostic-identity.test.mjs docs/tools/factory-diagnostic-retirement.test.mjs docs/tools/retirement-gate.test.mjs && python3 -B scripts/mq-retirement-precheck.test.py && cd docs/tools && bun test --timeout 60000 spec-lint.test.ts spec-native-source-resolution.test.ts",
   data: [specInputs, Packages["compiler-native"], Packages["runtime-dist"]] as Array<never>,
   tools: [node, bun, S.Host.bin("jj"), S.Host.bin("python3")], sandbox: "none", timeout: "5m"
 })
