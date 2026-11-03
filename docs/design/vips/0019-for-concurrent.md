@@ -41,7 +41,7 @@ JavaScript's `for await (…)`, which puts a keyword between `for` and `(`; Rayo
 
 ## Details
 
-Decided details folded in verbatim on 2026-11-03 (mechanical pass). Each keeps its old number as history; where one conflicts with the text above, the fold's conflict pass resolves it.
+Decided details folded in on 2026-11-03. Each keeps its old number as history. The conflict pass deleted superseded, duplicate and relic details and resolved contradictions in favor of Will's words, then accepted VIPs, then later details. Principles are numbered as in [the introduction's Details](../src/000-intro.md#details).
 
 ### Detail 7
 
@@ -56,6 +56,21 @@ Decided details folded in verbatim on 2026-11-03 (mechanical pass). Each keeps i
     for try (const x of asyncIterable) { }                       // error: Stream.fromAsyncIterable first
     ```
     Effect TS: `Effect.forEach(entries, ([k, v]) => save(k, v), { concurrency, discard: true })`; `Stream.runForEachWhile(stream, …)`. Decided by the agent from principle 2 (bindings) and principle 8 (operands); 2026-10-29.
+
+### Detail 209
+
+**`for concurrent` allows a line terminator after `for`, as native `for await` does.** (Opus round22 m21; live `900-for-concurrent-line-break`; VIP-19/VIP-20 grammar clarification.) Remove the special `[no LineTerminator here]` between `for` and `concurrent` from Appendix A and align the contextual table. VIP-19 names `for await` as its syntax precedent and imposes no special same-line condition; `for try` already admits this spacing. Both layouts select the same concurrent-loop production and Effect counterpart. Keep every independently required restriction inside expressions and other construct heads. Ordinary `for (concurrent of xs)` is unchanged; a bare identifier immediately after `for` is not a competing ordinary TypeScript loop production, so no previously valid program acquires a different parse.
+    **Immutable-main source scope (d0cdbe, 209).** AppendixA permits the for/concurrent line break under native for-await precedent. `root-main-d0cd-source-receipt.json` retains the complete31-file diff/hash/read scope. Source only; no decide-live compiler/gate rerun.
+    Status: applied in d473423f4ab3 (spec-fix-a; queued, not yet a main landing receipt).
+    ```vibe
+    effect function visit(xs: readonly number[]) {
+      for
+      concurrent (const x of xs) { try consume(x) }
+    }
+    ```
+    Effect TS: `yield* Effect.forEach(xs, x => Effect.gen(function* () { yield* consume(x) }), { concurrency: "unbounded", discard: true })`, identical to the single-line spelling. Decided by the agent from principle 2 (mirror the native TypeScript/ECMAScript `for await` token boundary), VIP-19's explicit prior art, and principle 4 (remove an unmotivated spacing exception), 2026-10-30. This admits one previously rejected formatting variant without changing an existing valid program's meaning or a public API, so it is class A, not a new Will choice. Add positive single-line/newline grammar controls and retain ordinary-for controls when the source/implementation is updated; no new diagnostic is needed. `for-line-break-reference.log` passes strict TypeScript 5.9.3 and native Node `for\nawait`, plus the Effect 4.1.0 `forEach` reference. Those are native/reference checks, not a claim that today's VibeLang parser accepts the new layout or that a source change has landed.
+
+Landing receipt: source d473423f4ab3 landed in main d0cdbe5a0a7f (queue 1793378252-spec-fix-a, gate mq-10302149-2).
 
 ### Detail 222
 

@@ -603,7 +603,7 @@ Declaration emit retains the comment on the constant and leaves the type alias b
 
 ## Details
 
-Decided details folded in verbatim on 2026-11-03 (mechanical pass). Each keeps its old number as history; where one conflicts with the text above, the fold's conflict pass resolves it.
+Decided details folded in on 2026-11-03. Each keeps its old number as history. The conflict pass deleted superseded, duplicate and relic details and resolved contradictions in favor of Will's words, then accepted VIPs, then later details. Principles are numbered as in [the introduction's Details](000-intro.md#details).
 
 ### Detail 111
 
@@ -614,22 +614,9 @@ Decided details folded in verbatim on 2026-11-03 (mechanical pass). Each keeps i
     ```
     Effect TS: `const Payload = Schema.Struct({ ["__proto__"]: Schema.mutableKey(Schema.String) })`. Decided by the agent from principle 2 (TypeScript object-type field meaning) and VIP-15's per-field schema mapping, 2026-10-29. This repairs the counterpart's key construction without changing Effect or adding syntax.
 
-### Detail 130
-
-**Erratum to detail 122: the helper-name diagnostic is EK1602; EK1601 remains the payload-tag error.** (live `006-data-helper-code-collision`.) Read detail 122's code as `EK1602`. The queued, read-only r19-diffcheck candidate `68bae0bed8c2` already assigns `EK1601` to a data payload field named `_tag`; its 006 and Appendix B contain no `EK1602`. The decision log contains no other `EK1602` allocation. Preserve the earlier assignment instead of giving two distinct triggers/fixes the same code. The reserved-variant-name rule itself is unchanged.
-    **Immutable-main source scope (f6fe7a, 130).** AppendixB explicitly assigns1602 to$is/$match helper-name variants while1601 stays payload_tag. The rule/code source portion is published, with006row-placement followup separate. `root-mainf6-source-receipt.json` and `root-mainf6-throws-audit.json` preserve reviewed-prose/structured-artifact limits; no full raw9.19MB human-read or owncompiler/Go/generator/test/gate claim.
-    Current replacement: applied in 19fd0465084af57fee4f75742cfdd19e5fd8c106 (spec-fix-c; supersedes 83f85800f5ad after main rebase and current-release placement; queued, not a main receipt).
-    Status: applied in 83f85800f5adeb1558eb4e9cf01dbe365be302be (spec-fix-c; queued, not yet a main receipt).
-    ```vibe
-    data A { Bad { _tag: string } } // EK1601: variant name supplies the payload tag
-    data B { $match; Normal }        // EK1602: rename the reserved helper variant
-    ```
-    Effect TS: `Data.TaggedEnum` excludes an explicit payload `_tag`; `Data.taggedEnum` reserves its `$match` property. These are different constraints. Decided by the agent from detail 60 (preserve assigned codes; use a fresh code for a different rule), principle 4 (one meaning per diagnostic identifier), and the candidate's verified allocation, 2026-10-29. The original “first free” claim looked only at main and missed queued integration; it is withdrawn.
-    **Independent f6fe7 source portion (130).** AppendixB now publishesEK1602 for the already-rejected helper-name variants; no compiler diagnostic emission was tested. Full27,227-character nongenerateddiffread; sourceonly, no decide-livecompiler/gaterun. `main-f6f-source-receipt.json` records limits.
-
 ### Detail 132
 
-**Source field modifiers control decoded keys; reject conflicting referenced-schema flags for now.** (live `006-reference-key-modifiers`; VIP-15/VIP-29; detail 12.) Choose the recommended conservative admission rule, not silent modifier loss. For a required source field, the reference's decoded `"~type.optionality"` must be `"required"`; for an explicitly readonly source field its decoded `"~type.mutability"` must be `"readonly"`. Check the inferred/aliased schema type's flags, not the spelling of a call or identifier. When the required flag cannot be established (including a union that may conflict), report `EK2109` and suggest using the unmodified value schema with the modifiers written on the field. Writable fields still use mutableKey; optional fields still use optional. Apply the check to nested structs and schema errors. Encoded/constructor-input defaults remain Effect's; the source property promise describes the decoded Type.
+**Source field modifiers control decoded keys; reject conflicting referenced-schema flags for now.** (live `006-reference-key-modifiers`; VIP-15/VIP-29; detail 12.) Choose the recommended conservative admission rule, not silent modifier loss. For a required source field, the reference's decoded `"~type.optionality"` must be `"required"`; for an effectively readonly source field (written `readonly`, or any schema-error payload field, detail 167) its decoded `"~type.mutability"` must be `"readonly"`. Check the inferred/aliased schema type's flags, not the spelling of a call or identifier. When the required flag cannot be established (including a union that may conflict), report `EK2109` and suggest using the unmodified value schema with the modifiers written on the field. Writable fields still use mutableKey; optional fields still use optional. Apply the check to nested structs and schema errors. Encoded/constructor-input defaults remain Effect's; the source property promise describes the decoded Type.
     **Immutable-main source portion (fb3e96, 132).** 006/AppendixB publish decoded-key optionality/mutability proof checks at required and effectively readonly mapped positions, aliases/unions/nesting, EK2109 for conflict/unprovable flags, preserving encoded/default behavior. Complete10-file,47,460-character diff independently read. Source publication only; no own compiler/native/Go/gate check. `main-fb3-source-receipt.json` records exact limits.
     Status: applied in 1f98199496d8b360641fefb4e2de6f59ed6c7db6 (spec-fix-c; queued, not yet a main receipt).
     Current replacement: applied in 9db43ccce6abed9d140b7f8c6e86ebd68085d8ab (spec-fix-c; supersedes d2753525aef1 after main rebase and current-release placement; queued, not a main receipt).
@@ -652,18 +639,6 @@ Decided details folded in verbatim on 2026-11-03 (mechanical pass). Each keeps i
     ```
     Effect TS: `class RawCount extends Schema.TaggedError<RawCount>()("RawCount", { value: Schema.BigInt }) {}` versus the same declaration using `Schema.BigIntFromString`; `Schema.encodeSync` preserves the selected codec's encoded type and `Schema.decodeUnknownSync` restores its decoded type. Decided by the agent from VIP-15/VIP-29's exact Schema counterparts and principle 1 (idiomatic Effect codec semantics), 2026-10-30. This clarifies an existing contract, changes no language/package API, and authorizes no automatic coercion. `schema-json-reference.log` independently verifies the raw JSON failure, successful raw structured clone, and explicit string-codec JSON round trip on Effect 4.1.0. It is native reference evidence, not compiler or RPC-library conformance.
     Transport: landed on main f58798560fe7 (commit 22d525f4fe69; 003/006/user pages) and its public VIP-29 counterpart on main 9e56d6a17aaf (commit 3e963e0e6868).
-
-### Detail 134
-
-**Computed schema-error keys: preserve broad keys with a reserved-tag guard (class B default).** (live `006-computed-error-tag`; VIP-13/VIP-29.) The no-_tag-override rule is settled; the choice is how to enforce it while preserving the explicitly admitted broad-string computed keys. Option A rejects a key whose type might include `"_tag"` (`EK2117`, broad string included). Recommended option B keeps broad keys and evaluates each computed key once in source order, converts it to its actual property key once using ECMAScript ToPropertyKey, and rejects the string `"_tag"` with `TypeError("schema error fields cannot override _tag")` before evaluating that field's schema value or later keys. Symbols and other strings remain allowed. A statically known `"_tag"` remains `EK2117`. The declaration-time exception is implicit (a defect in effect code), not a new typed failure. Keep detail 111's separate __proto__ construction repair and plain-error type erasure in detail 133.
-    ```vibe
-    const key: string = getKey()
-    schema error Dynamic { [key]: number }
-    // A: EK2117 because string may include "_tag"
-    // B (recommended): valid for an ordinary key; TypeError at declaration if key becomes "_tag"
-    ```
-    Effect TS: `const k = toPropertyKey(key); if (k === "_tag") throw new TypeError("schema error fields cannot override _tag"); class Dynamic extends Schema.TaggedError<Dynamic>()("Dynamic", { [k]: Schema.Number }) {}`, with hygienic helpers and source evaluation order. **default, applies 2026-10-30 09:00 PT unless Will answers pending-computed-error-tag**. Recommended by the agent on 2026-10-30: this preserves existing broad-key programs while enforcing the already-decided tag identity. No principle uniquely chooses the static restriction over a runtime guard, and option A would narrow previously admitted code, so the enforcement tradeoff is class B, not a request to reconfirm that _tag overrides are banned. Do not apply the new default unconditionally before its deadline.
-    Status: superseded by detail 143, applied on main a899a2fcb3cc (003/006 EK2117 unless the computed key domain excludes _tag; verified by spec-fix-c 2026-10-31).
 
 ### Detail 137
 

@@ -370,7 +370,7 @@ The proposals page lists "JSX source files" as not in VibeLang: components live 
 
 ## Details
 
-Decided details folded in verbatim on 2026-11-03 (mechanical pass). Each keeps its old number as history; where one conflicts with the text above, the fold's conflict pass resolves it.
+Decided details folded in on 2026-11-03. Each keeps its old number as history. The conflict pass deleted superseded, duplicate and relic details and resolved contradictions in favor of Will's words, then accepted VIPs, then later details. Principles are numbered as in [the introduction's Details](../src/000-intro.md#details).
 
 ### Detail 265
 
@@ -404,39 +404,3 @@ Decided details folded in verbatim on 2026-11-03 (mechanical pass). Each keeps i
 
 
     **Sidecar boundary clarification.** The native TypeScript `noEmit` control above concerns native output-collision behavior. It does not relax VIP-27 mandatory compatibility-sidecar creation or change the existing VibeLang sidecar writer; the two separately named sidecars remain governed by VIP-27/VIP-39.
-
-### Detail 298
-
-**RESOLVED by detail263's native declaration matrix, implementation pending; historical question: what `"extensionless"` and `".ts"` declare for a relative `./x.vibex` import.** (Round 14 Opus OPUS-5 at frozen `b48c60e5ee9a`, 001:483 and 007:107; lane spec-fix-r14 under Will's 2026-11-02 fix-on-find instruction.) Detail 263 defines `vibelang.declarationImportStyle` only for a reference written `./x.vibe`. VIP-39 settles the default for `.vibex`: "`x.vibex` emits `x.jsx` under `"jsx": "preserve"` and `x.js` otherwise", and "The public `x.d.ts` is byte-identical to the one the fork writes for the `.tsx` twin", so by default a `./x.vibex` import is declared through its JavaScript output, `./x.jsx` under `preserve` and `./x.js` otherwise. spec-fix-r14 published that default in 001, 007 and VIP-27's amendment, said the other two settings are not yet decided, and added the `.vibex` check to `//:spec-lint`'s `declaration-import-style-scope` rule.
-
-    **The compiler.** On main the compiler does not yet meet VIP-39's twin rule: public declarations keep `./x.vibex` (`testdata/pending/vibex-declaration-spelling.txt` in fuzz-findings' `d84df5f4d1b0`, compiler gap owned by lane `vibex-1`). This lane changed no compiler behavior.
-
-    **To decide.** For `"extensionless"`: `./x` (the reading of detail 263's "derived from the original package imports"). For `".ts"`: `./x.tsx`, the `.tsx` twin's own source extension, or `./x.ts`. Record the choice as a VIP-27/VIP-30 amendment.
-
-
-    **298 disposition, decide-live: decided as detail 298, Class A, 2026-11-02.** Apply the approved package-spelling convention to the actual native source twin: for a package declaration's relative written `./x.vibex` reference, `"extensionless"` writes `./x`, and `".ts"` writes `./x.tsx`. The latter is the TypeScript-source convention, retaining the JSX twin's source kind; it does not rename a `.tsx` module into a `.ts` module. Do not introduce a fourth setting `".tsx"`, change `.vibe`'s existing `".ts"` result, or make this mode depend on the JSX emit setting. The existing default `".js"` convention uses the target's actual JavaScript output, `./x.jsx` under `jsx: preserve` and `./x.js` otherwise, as accepted VIP-39 already requires.
-
-    ```vibe
-    // package declarations from: export { View } from "./view.vibex"
-    // "extensionless": export { View } from "./view"
-    // ".ts": export { View } from "./view.tsx"
-    // default ".js": export { View } from "./view.jsx" under jsx: preserve, else "./view.js"
-    ```
-
-    Effect TS counterpart:
-    ```ts
-    // The original JSX source is view.tsx, and its source-style import is:
-    export { View } from "./view.tsx"
-    // TypeScript declaration emit retains that written source specifier.
-    // An extensionless original retains "./view"; an output-style original
-    // retains "./view.jsx" or "./view.js", naming the actual target output.
-    ```
-
-    This is a declaration-spelling clarification under263's approved original-package convention and VIP-39's `.vibex`/`.tsx` twin. It grants no stale `.ts` source fallback (296 remains open), no source-resolution rows, runtime rewrite, alias, sidecar relocation or normalization waiver. Keep unrelated authored `.ts`/`.tsx`/`.js`/`.jsx` specifiers, package names, assets, import kind/order/quotes and native inferred-reference behavior unchanged under263/277. Source-sidecar spelling remains its distinct compatibility route. Source resolution and declaration consumers must preserve actual module identity; an output not satisfying the native/published gates remains an implementation gap, not permission to rewrite every extension or relax tests.
-
-    Decided by the agent from accepted VIP-39 (`.vibex` is to `.vibe` what `.tsx` is to `.ts`; public declaration twin fidelity), the approved C-prime package-spelling ruling in263, principle2 (mirror the native source kind), principle3 (module identity) and principle4 (one convention applied to both source kinds), 2026-11-02 under Will's 2026-10-29 delegation. No new Will choice, syntax, option value or public package API. Publish the exact matrix in VIP-27/VIP-30 and affected declaration/config pages under213; it is internally decided until that public amendment lands.
-
-    Validation scope: read immutable main2519454b6513 VIP-39 file-kind/output/declaration/resolution clauses and external298's reported compiler gap; no own native/compiler test. The existing `vibex-1` delivery owner retains compiler fixes and failing-old/passing-new, keyed spec-quoted coverage over all three styles, every supported JSX mode, imports/re-exports/import types/inferred references, unchanged native siblings, source-sidecars and actual consumer resolution. No completion/green-main claim follows.
-
-
-    **Superseded style question, decide-live cross-reference, 2026-11-02.** The final384-cell native-matrix amendment under263 retires `declarationImportStyle` entirely, including both paths and every supplied value (nonfatal deprecation warning). The older three-style table above is historical. Follow the actual `.tsx` twin's declaration spelling and native generated-import preferences, retaining source-sidecar identity and277's unchanged public-contract gate. The `5e496f0dc5ec` public text saying two JSX styles are undecided is stale against this newer ruling, not an open question for Will. See297's final cross-reference and the named delivery owner's actual verification receipts; no current compiler-conformance or landing claim is added.

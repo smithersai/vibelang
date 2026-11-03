@@ -49,7 +49,7 @@ Effect's `Effect.provide`; Kotlin's `withContext(ctx) { … }`.
 
 ## Details
 
-Decided details folded in verbatim on 2026-11-03 (mechanical pass). Each keeps its old number as history; where one conflicts with the text above, the fold's conflict pass resolves it.
+Decided details folded in on 2026-11-03. Each keeps its old number as history. The conflict pass deleted superseded, duplicate and relic details and resolved contradictions in favor of Will's words, then accepted VIPs, then later details. Principles are numbered as in [the introduction's Details](../src/000-intro.md#details).
 
 ### Detail 34
 
@@ -63,3 +63,17 @@ Decided details folded in verbatim on 2026-11-03 (mechanical pass). Each keeps i
     provide - 1                      // subtraction
     ```
     Effect TS: `Effect.provide(gen, AppLive)` for the first; the rest are TypeScript as written. Decided by the agent from principle 2 (ECMAScript's arrow-head cover grammar) and principle 3 (valid TypeScript keeps its meaning); 2026-10-29.
+
+### Detail 35
+
+(NW 38; VIP-12) A line break after a comma between providers is a syntax error, as VIP-12 says ("its providers and block must be on one line"). Breaks inside a provider are free. The formatter (VIP-34) never breaks a `provide` list at a comma; a long list stays on one line or the author writes `Layer.mergeAll(…)`.
+    **Separator scope clarification (detail237).** The existing one-line separator restriction applies immediately before as well as after each top-level provider comma, as Appendix A already states. Both invalid forms use `EK1202` through237's bounded head recovery; expression-internal line breaks remain free.
+    ```vibe
+    provide AppLive, Users = testUsers { try a() }   // ok
+    provide Layer.mergeAll(
+      AppLive,
+      UsersLive) { try a() }                          // ok
+    provide AppLive,
+      Users = testUsers { try a() }                   // syntax error
+    ```
+    Effect TS: `Effect.provide(gen, [AppLive, Layer.succeed(Users, testUsers)])`. Decided by the agent from VIP-12's text and principle 8 (relaxing to Opus's reading (b) later breaks no code); 2026-10-29.

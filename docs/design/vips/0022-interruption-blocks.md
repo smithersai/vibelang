@@ -46,7 +46,7 @@ Haskell's `mask $ \restore -> …`, Cats Effect's `uncancelable { poll => }`, ZI
 
 ## Details
 
-Decided details folded in verbatim on 2026-11-03 (mechanical pass). Each keeps its old number as history; where one conflicts with the text above, the fold's conflict pass resolves it.
+Decided details folded in on 2026-11-03. Each keeps its old number as history. The conflict pass deleted superseded, duplicate and relic details and resolved contradictions in favor of Will's words, then accepted VIPs, then later details. Principles are numbered as in [the introduction's Details](../src/000-intro.md#details).
 
 ### Detail 51
 
@@ -57,3 +57,7 @@ Decided details folded in verbatim on 2026-11-03 (mechanical pass). Each keeps i
     Effect TS: `Effect.uninterruptibleMask((restore) => …)`; `restore` is only valid while the mask runs. Decided by the agent from principle 8 (a nested Effect can run after the mask ends); 2026-10-29.
 
     Nested-mask source replacement: `961efe5b0efb` is fixer-reported queued, superseding rejected `d184d4aefca2`. It retains innermost-mask selection and possibly masked entry; the witness explicitly bridges its foreign scalar call under VIP-4 and distinguishes inner/outer traces despite both interruption Exits. Strict TypeScript5.9.3, Node2/Bun2, focused2 and regeneration/docs/forms/spec results are attributed to spec-fix-b. No own rerun, new restoration protocol, compiler conformance or main landing is claimed.
+
+### Detail 51a
+
+**`restore` in any `for concurrent` body is `EK2202`** (audit-x 002 D1; extends detail 51). `restore` is lexical, and a `for concurrent` body's items run as separate Effects that the enclosing `uninterruptible` mask does not govern, whatever the limit. A body that needs it masks per item with `Effect.uninterruptibleMask` inside the body, or uses a plain `for` instead of `for concurrent(1)`. Decided by the agent from detail 51's rule, 2026-10-30.

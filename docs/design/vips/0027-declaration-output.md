@@ -73,11 +73,11 @@ Directory paths may overlap the source tree; emit still mirrors config-relative 
 
 ## Details
 
-Decided details folded in verbatim on 2026-11-03 (mechanical pass). Each keeps its old number as history; where one conflicts with the text above, the fold's conflict pass resolves it.
+Decided details folded in on 2026-11-03. Each keeps its old number as history. The conflict pass deleted superseded, duplicate and relic details and resolved contradictions in favor of Will's words, then accepted VIPs, then later details. Principles are numbered as in [the introduction's Details](../src/000-intro.md#details).
 
 ### Detail 38
 
-(NW 3; r11-003 "retained throw metadata"; VIP-27) `@throws` and `@rethrows` attach to a call signature, as TypeScript attaches JSDoc to each overload. A returned function's contract sits on its own call signature. Declaration output writes the inferred contract on every emitted call signature of exported functions, callable constants, methods and callable types.
+(NW 3; r11-003 "retained throw metadata"; VIP-27) `@throws` and `@rethrows` attach to a call signature, as TypeScript attaches JSDoc to each overload. A returned function's contract sits on its own call signature. Declaration output writes the contract on every emitted call signature of exported functions, callable constants, methods and callable types: an imported foreign contract as written, and `@throws {never}` for a `.vibe` callable, which carries no thrown type (Will, 2026-10-31).
     ```vibe
     export declare const parse: { /** @throws {BadInput} */ (s: string): string }
     declare function decodeUnknownSync<T>(s: Schema<T>): { /** @throws {SchemaError} */ (input: unknown): T }
@@ -147,6 +147,25 @@ Decided details folded in verbatim on 2026-11-03 (mechanical pass). Each keeps i
 
     Decided by the agent from Will's no-throw rule and foreign unknown-default clause, existing38/66's supplied-contract-before-default boundary, principle3 (resolved signature identity) and principle8 (conservative known contract), 2026-10-31. Class A; no Will question.
 
+### Detail 257
+
+**Declaration emit elides a cyclic inferred type as `/*elided*/ any`, as TypeScript 5.9 and 7.0 do, instead of 7.1's `TS5088`.** (Will, 2026-10-31 20:05Z via the alchemy orchestrator, "decision 6" for migfix-alchemy alchemy-23; recorded here so the spec round writes it; chapter 000 "where a VIP is silent, its TypeScript counterpart applies"; chapter 007's description of the compiler.) Where TypeScript 7.1's new recursion rule (microsoft/TypeScript #64461, upstream `834e7862c031`) would report `TS5088` ("The inferred type of 'x' references a type with a cyclic structure") for an inferred declaration type, VibeLang prints `/*elided*/ any` at that position in declaration output and reports no error, for `.vibe` and `.ts` files alike. Will's reason: a repository's unchanged TypeScript compiles under VibeLang as it did under its own compiler. No upstream filing. The companion divergence alchemy-25 (#64553: inference from type arguments is cached as in 7.0.2) is a compiler bug fix with no spec text.
+
+    ```vibe
+    export const from = (value: string) => makeBuilder({ value })
+    const makeBuilder = (state: { value: string }) => ({ state, named: (value: string) => makeBuilder({ value }) })
+    // declaration output: named: (value: string) => /*elided*/ any   (TypeScript 7.0.2 byte for byte; 7.1 reports TS5088)
+    ```
+
+    Effect TS: the same two declarations are ordinary TypeScript; `tsc` 5.9 and 7.0 emit `/*elided*/ any`, and nothing in this code is an Effect.
+
+    Spec placement: one sentence in chapter 007 where the compiler is described (the TypeScript 7.1 checker, with its named divergences), or beside chapter 000's silence rule, listing this as a deliberate divergence from 7.1 with the issue number. The compiler keeps 7.1's rule everywhere else. Fixers keep migfix-alchemy's witness as a declaration case and add a keyed fuzz generator over recursive builder shapes (object literal, arrow, method, class field) whose oracle is byte equality with TypeScript 7.0.2's emit. Decided by Will (not asked again); recorded by the agent from his stated reason and chapter 000's counterpart rule, 2026-10-31. Class A; no Will question.
+
+
+    **257 ordinary declaration-oracle scope clarification, decide-live, 2026-11-01.** The Alchemy20:05Z decision6 text and257 are specifically about `TS5088`/cyclic inferred declaration elision; they do not require TypeScript7.0.2's entire declaration printer for unrelated source shapes. Keep the named7.0.2 counterpart for that approved divergence. Outside the named divergences, use a recorded stock native control matching the compiler's ordinary TypeScript7.1 lineage, and keep actual target/compiler/config/source identity explicit under291. The unrelated exported destructuring-const spelling is not authorized as another7.0.2 compatibility change by decision6.
+
+    The target's actual shipped declaration gate remains separate: compare against complete original-source output with the required deterministic mode and actual chosen original compiler, preserving raw differences and emit outcomes. A same-source7.0.2-versus7.1 difference is not, by itself, migration causality; nor is naming that cause permission to ignore a real published-byte change. Rebuild/prove the appropriate complete baseline and keep257's explicit exception tests separate. If a producer such as `tsrs` does not support the required serial mode, establish a verified compatible official artifact/driver rather than silently substitute another major/minor emitter or claim an unverified parallel result. No source workaround, comparator normalization or fabricated success follows. This applies existing257/277/291/292 and principles2/8; no new language choice or Will question. The reported two Alchemy files and compiler outputs are owner receipts, not native7.1 executions by this lane.
+
 ### Detail 258
 
 **Migration never writes `moduleSuffixes`; stock consumers name the `.vibe` source, and declaration identity is per resolved module, not specifier spelling.** (migfix-opencode opencode-19, "For Will" 2026-10-31; chapter 007 "`.vibe` is a supported source extension", "Existing tools work" and "Emit names"; Will's decision-6 reason; principles 2, 3 and 8.) A migration or `setup` step must not add `moduleSuffixes` (such as `["", ".d.vibe"]`) to a repository's `tsconfig.json`: stock TypeScript tries `.ts` before `.tsx` for each suffix, so that setting makes an unchanged consumer of `runtime.tsx` resolve `runtime.d.vibe.ts` ahead of its source and changes the checker's types for code the migration did not touch (receipt `op19-stock-tsx-priority.log`). An edit that changes the meaning of unchanged TypeScript is out by the same reason Will gave for decision 6. The guaranteed stock-TypeScript route to a `.vibe` module stays chapter 007's: an import that names the source, `./runtime.vibe`, with `allowArbitraryExtensions`; stock `tsc` resolves it to `runtime.d.vibe.ts` and VibeLang to the source. Stock resolution of an extensionless `./runtime` to a `.vibe` file is not a language guarantee, and the migration says so instead of configuring it.
@@ -176,46 +195,7 @@ Decided details folded in verbatim on 2026-11-03 (mechanical pass). Each keeps i
 
 ### Detail 263
 
-**C-prime is the approved package declaration-import spelling option; it changes only references to migrated VibeLang sources.** (Will via proxy, `inbox/migrate-opencode.md`, 2026-10-31 approximately20:15Z, C-prime decided under use common sense; smithers agent 23:10Z adds the `.ts` case from that same reason; VIP-27/VIP-30/VIP-34, existing72/258 and principles1/2/3.) Record the already-approved `vibelang.declarationImportStyle` with values `.js` (default), `extensionless` and `.ts`. It controls the emitted-declaration spelling of a relative source reference to `./x.vibe`: respectively `./x.js`, `./x` and `./x.ts`. This is an opt-in package declaration spelling policy derived from the original package imports; it is not new source resolution or runtime behavior. JavaScript output retains the normal emitted `.js` names, and source-adjacent sidecars retain their existing VibeLang-source reference rules.
-
-    **Scope of rewriting.** Preserve every unrelated written specifier, including package/asset names and references to ordinary TypeScript or JavaScript siblings, in all three modes. The20:15ruling explicitly limits the option to a relative reference the source writes as `./x.vibe`, and says other `.ts`/`.js` specifiers stay as written, as TypeScript keeps them. Thus a written `./helper.ts` naming an unchanged `.ts` sibling remains `./helper.ts` in declaration output even under the default `.js` mode. The default determines the spelling of migrated VibeLang references; it is not authority to rewrite every source extension. Do not turn the declaration option into `rewriteRelativeImportExtensions` for declarations, synthesize moduleSuffixes, change unchanged TypeScript resolution, or normalize away a changed module identity. The actual resolved source module remains the identity gate under258.
-
-    ```json
-    { "vibelang": { "declarationImportStyle": ".ts" } }
-    ```
-
-    ```vibe
-    // source after migrating runtime, while helper remains TypeScript
-    export * as Runtime from "./runtime.vibe"
-    export { helper } from "./helper.ts"
-    // .ts mode declarations keep ./runtime.ts and ./helper.ts
-    // extensionless mode uses ./runtime and still ./helper.ts
-    // default .js mode uses ./runtime.js and still ./helper.ts
-    ```
-
-    Effect TS:
-
-    ```ts
-    // original package using .ts imports; stock TypeScript declaration counterpart
-    export * as Runtime from "./runtime.ts"
-    export { helper } from "./helper.ts"
-    // declaration output preserves both written .ts specifiers
-    ```
-
-    Setup selects the package convention from its existing ordinary relative imports, excluding migrated `.vibe` spelling, assets and bare package names. Preserve the default when the convention is `.js`; use the explicit other setting when the original package uses that style. Mixed conventions must be disclosed with a warning rather than silently guessed into one style or a relaxed public-byte gate. The option and setup update must preserve unrelated config keys; do not add a new canonical alias or change legacy-object inheritance based on this record. Publish the exact transitional path, validation and inheritance behavior in the config reference and the approved VIP-27/VIP-30 amendment under213, beside the declaration-output and release notes.
-
-    Preserve the TypeScript counterpart quote choice as part of the same declaration fidelity fix: recreated imports retain their own quotes, and synthesized imports follow the file/native compiler quote preference. Cover a file with no written import as well as mixed quote styles. This changes no language call, return, thrown-type, host-access or execution rule.
-
-    Implementation owner `declstyle-smithers` reports candidate40e455eb2604 queued, four before/after cases and flow properties passing, with a larger declaration matrix pending. Its shared report says the default retains an old `.ts`-to-`.js` declaration rewrite; that reported behavior needs verification/correction against the scoped20:15ruling and TypeScript twin in every setting. This policy lane has not inspected the candidate/compiler implementation or executed those tests and makes no landing/green-main claim. Keep the owner regression matrix over all three settings, source specifiers, import/re-export/import-type forms, quote modes, aliases/inferred types, unchanged TypeScript siblings, sidecar resolution, JavaScript output and invalid/mixed configuration. Compiler/tooling owners retain product and keyed fuzz/property coverage.
-
-    Decided by the agent from the recorded C-prime ruling, its23:10`.ts` application of the same package-spelling reason, VIP-27 faithful declaration output, principle2 (ordinary TypeScript preserves the sibling specifier), principle3 (resolved module identity) and existing258 (do not alter unchanged TypeScript resolution), 2026-10-31. Class A; previously approved direction recorded for the spec round, not a new Will question.
-
-
-    **Bounded native emit evidence.** Two stock TypeScript5.9.3 declaration-only controls preserve three `./helper.ts` references (export, namespace export and import type) and one `./helper.js` reference with `rewriteRelativeImportExtensions` both off and on. This supports the ordinary sibling-specifier rule only; it does not execute the C-prime option, candidate40e455eb2604, VibeLang, TypeScript7.1, sidecar resolution, runtime JavaScript or the migration gate. Receipt: `cprime-native-reference.json`.
-
-    **Superseding tooling disposition (2026-11-02T13:15Z, decide-live records the newer owner receipt):** Will, verbatim relayed by effectscript-11: "Yea no decision you just fit the pattern of how typescript already works as well as possible" (`loop/WILL-ANSWERS.md`). The newer `AGENT-DECISIONS.md` stops the root-only alias codemod before enqueue and assigns `declstyle-from-tsc` the native TypeScript5.9.3 matrix: written `./user.js`, `./user`, `./user.ts`, each module-resolution mode, with/without `rewriteRelativeImportExtensions` and `allowImportingTsExtensions`. Match the native `.ts`/`.tsx` twins for Vibe source extensions. If ordinary source spelling/configuration determines declaration spelling, the extra `declarationImportStyle` option goes away and the root-only codemod is moot; retain an option only for a concrete named example TypeScript cannot express. This supersedes the earlier root-only disposition, not the public-declaration preservation requirement277. Actual matrix/proof and preserving implementation remain the named owner's work, not completed here. Package trust (297part2) remains open.
-
-    **2026-11-02 amendment to detail 263 (declstyle-from-tsc, Will's ruling).** Will: "Yea no decision you just fit the pattern of how typescript already works as well as possible" (AGENT-DECISIONS.md, 2026-11-02). The completed TypeScript 5.9.3 declaration matrix has 384 cells and preserves every written relative specifier, including with diagnostics; neither extension switch changes declaration spelling. No case needs an additional option. This supersedes detail 263's declarationImportStyle policy, detail 297's root-only codemod/invalid-enum policy and detail 298's style question. Match the native twin (.vibe for .ts, .vibex for .tsx); retire both legacy option paths with a nonfatal deprecation warning for every value. Generated import types retain native TypeScript preferences. Census owners affected: opencode, Smithers, foldkit (04db4f250ebf). Full before table and receipts: ~/vibe/fix/alpha/declstyle-from-tsc.REPORT.md. Compiler after verification and queue landing are still pending.
+**Package declarations spell a relative VibeLang import as the native `.ts`/`.tsx` twin's declaration does; `declarationImportStyle` retires.** (declstyle-from-tsc, 2026-11-02; Will: "Yea no decision you just fit the pattern of how typescript already works as well as possible"; replaces the 2026-10-31 C-prime option.) The completed TypeScript 5.9.3 declaration matrix has 384 cells and preserves every written relative specifier, including with diagnostics; neither extension switch changes declaration spelling, and no case needs an additional option. Match the native twin (`.vibe` for `.ts`, `.vibex` for `.tsx`). Both legacy option paths, root `vibelang.declarationImportStyle` and `compilerOptions.vibelang.declarationImportStyle`, retire with a nonfatal deprecation warning for every value. Generated import types retain native TypeScript preferences. Census owners affected: opencode, Smithers, foldkit (04db4f250ebf). Full before table and receipts: `~/vibe/fix/alpha/declstyle-from-tsc.REPORT.md`.
 
     **Native emission and migration preservation remain separate obligations (decide-live, 2026-11-02):** the Foldkit byte audit does not supersede this detail's later native-counterpart amendment or restore retired declaration-style options. Compare the same current source, pinned TypeScript lineage, options and resolution context for emitter conformance. Separately, a migration must preserve the original required API under277. Changed source can cause a native-correct emitter to print different specifiers; that is not permission to waive the migration gate. Under272 an importer must retain its written specifier when the target is unchanged. Repair the source transformation, or keep the module native if both contracts cannot be proved. Do not choose a global `.js` or `.ts` output policy from a differing-input byte count.
 
@@ -309,14 +289,7 @@ Decided details folded in verbatim on 2026-11-03 (mechanical pass). Each keeps i
 
 ### Detail 299
 
-**OPEN for the spec agent: where an added name goes when a declaration joins it to a written `effect` import.** (Round 14 Opus OPUS-4 at frozen `b48c60e5ee9a`, 001:483; lane spec-fix-r14 under Will's 2026-11-02 fix-on-find instruction.) 001's Specifiers bullet says an added name "joins" a written import, "in the written order and quotes", with the example `import { Effect, HashSet, Option } from 'effect'` for a file that writes `import { HashSet, Option } from 'effect'`. That example fits both "sorted" and "prepended", and no VIP, detail or ruling says which. spec-fix-r14 fixed the other half of OPUS-4 (the Content bullet and the 001 worked example now write the value import `import { Effect, Stream } from "effect"`, as the Effect TypeScript twin's `tsc` 5.9.3 declaration keeps it; VIP-27 holds declarations to that twin) and added the rule `declaration-import-form` to `//:spec-lint`.
-
-    **The compiler.** On main the compiler prepends: a file that writes `import { Option, HashSet } from 'effect'` declares `import { Effect, Option, HashSet } from 'effect';` (round 14 `probes/decl/`). Stock `tsc` declares the twin's two written imports separately, so the twin does not settle the position. This lane changed no compiler behavior.
-
-    **To decide.** Prepend (the compiler's behavior; state "an added name goes before the written names" and use a non-sorted example), append, or sort.
-
-
-    **299 disposition, decide-live: decided as detail 299, Class A, 2026-11-02.** Preserve the existing stable insertion rule. In the first retained eligible named import of the same module, insert an added specifier immediately before the first existing specifier whose emitted local identifier name is lexicographically greater; append if none is greater. Never sort or reorder the source-written specifiers. Added module names are processed in existing deterministic sorted-name order, with existing hygienic aliases; compare the resulting local identifier names for insertion. Preserve quotes, aliases, kind, comments and native elision. This concerns names the declaration already must add, not permission to retain an unused import or merge unrelated imports.
+**An added declaration name joins a written `effect` import at its stable insertion point.** (Round 14 Opus OPUS-4, 001's Specifiers bullet; decided by decide-live, Class A, 2026-11-02.) Preserve the existing stable insertion rule. In the first retained eligible named import of the same module, insert an added specifier immediately before the first existing specifier whose emitted local identifier name is lexicographically greater; append if none is greater. Never sort or reorder the source-written specifiers. Added module names are processed in existing deterministic sorted-name order, with existing hygienic aliases; compare the resulting local identifier names for insertion. Preserve quotes, aliases, kind, comments and native elision. This concerns names the declaration already must add, not permission to retain an unused import or merge unrelated imports.
 
     ```vibe
     import { Option, Cause } from 'effect'

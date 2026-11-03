@@ -78,7 +78,7 @@ Effect's `Schema.Struct`; Zod's `z.object`; Pydantic models.
 
 ## Details
 
-Decided details folded in verbatim on 2026-11-03 (mechanical pass). Each keeps its old number as history; where one conflicts with the text above, the fold's conflict pass resolves it.
+Decided details folded in on 2026-11-03. Each keeps its old number as history. The conflict pass deleted superseded, duplicate and relic details and resolved contradictions in favor of Will's words, then accepted VIPs, then later details. Principles are numbered as in [the introduction's Details](../src/000-intro.md#details).
 
 ### Detail 12
 
@@ -113,12 +113,6 @@ Decided details folded in verbatim on 2026-11-03 (mechanical pass). Each keeps i
     ```
 
     The compiler's existing `schemas_declarations.go` behavior (type after the constant, `EFNoComments` on the type) is the rule, not a defect; the spec round states it in chapter 001's declaration-output section beside the `schema` row, and chapter 006 may show the emitted pair. Fixers add a declaration regression (documented `schema` emits one comment) and a keyed fuzz mutation over tag kinds (`@internal`, `@deprecated`, multi-line docs) checking that the type alias stays bare. Decided by the agent from chapter 001's idiomatic-declaration rule, principle 1 (what Effect TypeScript writes), principle 7 (no syntax for non-idiomatic behavior) and principle 8 (no new permission), 2026-10-31. Class A; no Will question.
-
-    **256 current-scope clarification, decide-live, 2026-11-02.** The new Mac question `foldkit-schema-alias-doc` proposes a written type alias replacing the synthesized alias beside `schema X`. That replacement is an additional declaration rule; it is not adopted merely because its tokens already exist in TypeScript. Choose option B under existing256, accepted VIP-27's documented-schema amendment and principles4/8: retain the current constant-only documentation rule and keep the independently documented original const/type pair in TypeScript when required. Do not copy or discard either comment, synthesize an override, or weaken the target comparison to force a conversion.
-
-    The earlier sentence saying every migration identity gate strips comments is not applicable to Foldkit's stronger raw published-declaration contract. Existing277 requires that actual contract, so four reported modules may correctly remain TypeScript. No separate-comment or alias-replacement permission is introduced, and valid existing source and native TypeScript declaration rules are unchanged. This is current accepted scope, not a permanent ban on a future approved amendment. The question is settled by the agent from already-accepted256/VIP-27 and the conservative principle, not answered by Will.
-
-    **Newer owner-authorized amendment plan (2026-11-02T13:23Z):** foldkit agent now applies Will's actual sugar principle (anything Effect TypeScript can write, the sugar should write) to foldkit-9/48; `foldkit-sugar-amend` drafts the VIP change. For a written `type X = typeof X.Type` beside `schema X`, the plan retains that exact written alias and its own JSDoc instead of synthesizing a duplicate alias. This supersedes this detail's earlier current-scope deferral of that feature when the new amendment applies; it does not authorize arbitrary conflicting alias replacements or copying/dropping native comments. Retain the four separately documented native files until the matched spec/compiler change lands and raw public declarations pass277. Owner plan is authorized from Will's principle, not an invented new Will answer, current compiler acceptance or completed fix.
 
     **Accepted foldkit-9 amendment, decide-live, 2026-11-02:** `loop/WILL-ANSWERS.md` now records Will's actual acceptance, “Accept good ideas”, relayed by effectscript-11, of `foldkit-sugar/foldkit-9.md`. The first paragraph is current; the former constant-only deferral and later plan-only status below it are historical. One same-scope nongeneric written `type X = typeof X.Type` replaces the synthesized alias in either source order; preserve each declaration's own JSDoc, order and exports under the native emit options. Other type-name collisions remain errors. Do not duplicate a written alias or move documentation between declarations.
 

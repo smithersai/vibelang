@@ -236,11 +236,7 @@ D207's subset. D206, D209, D515 and D531 are restated here on TC39's terms.
 
 ## Details
 
-Decided details folded in verbatim on 2026-11-03 (mechanical pass). Each keeps its old number as history; where one conflicts with the text above, the fold's conflict pass resolves it.
-
-### Detail 10
-
-(VIP-7) The exhaustiveness check covers literal unions, `boolean`, `data` unions, `error` unions and enums. Guarded arms cover nothing.
+Decided details folded in on 2026-11-03. Each keeps its old number as history. The conflict pass deleted superseded, duplicate and relic details and resolved contradictions in favor of Will's words, then accepted VIPs, then later details. Principles are numbered as in [the introduction's Details](../src/000-intro.md#details).
 
 ### Detail 53
 
@@ -256,7 +252,7 @@ Decided details folded in verbatim on 2026-11-03 (mechanical pass). Each keeps i
     | `Cause.UnknownError` | `Cause.isUnknownError(s)` | `[s]` | `"UnknownError"` |
     | `Schema.SchemaError` | `Schema.isSchemaError(s)` | `[s]` | `"SchemaError"` |
     | `Cron.CronParseError` | `Cron.isCronParseError(s)` | `[s]` | `"CronParseError"` |
-    | `PlatformError.PlatformError` | `PlatformError.isPlatformError(s)` | `[s]` | per instance |
+    | `PlatformError.PlatformError` | `PlatformError.isPlatformError(s)` | `[s]` | `"PlatformError"` |
     | `SemVer.SemVerError` | `SemVer.isSemVerError(s)` | `[s]` | `"SemVerError"` |
     | `Terminal.QuitError` | `Terminal.isQuitError(s)` | `[s]` | `"QuitError"` |
     | `TextDiff.TextDiffError` | `TextDiff.isTextDiffError(s)` | `[s]` | `"TextDiffError"` |
@@ -287,6 +283,22 @@ Decided details folded in verbatim on 2026-11-03 (mechanical pass). Each keeps i
    - Divergence from the draft, stated in chapter 004 with this witness: an object whose prototype was changed after construction (`Object.setPrototypeOf(real, null)`) does not match its class, and `Object.create(Foreign.prototype)` does. When engines ship the draft's matcher, VibeLang follows it in a VIP.
    Effect TS: `if (x instanceof C) { … }`, which is how TypeScript narrows classes today. Decided by the agent from principles 1 and 2 (least surprise; what TypeScript does) and implementability, replacing the chapter's "the pinned specification's constructed-by test … not a blanket instanceof rewrite"; 2026-10-30.
 
+### Detail 67a
+
+**Built-in class patterns** (resolves Astra round-16 M1; extends detail 67). The TC39 draft's matchers for built-in classes check engine internal slots (`[[ErrorData]]`, `[[DateValue]]`, `[[RegExpMatcher]]`, `[[MapData]]`, …) that compiled JavaScript cannot read portably. So a class pattern naming a built-in uses:
+   - `Array`: `Array.isArray(subject)`, which is the draft's own brand check and available everywhere;
+   - every other built-in (`Error` and its subclasses `TypeError`, `RangeError`, …, `AggregateError`, `Date`, `RegExp`, `Map`, `Set`, `WeakMap`, `WeakSet`, `Promise`, typed arrays, `ArrayBuffer`): `subject instanceof C`, as detail 67 does for ordinary classes. `Error.isError` is not in Node 22, which VibeLang supports, so errors use `instanceof` too.
+   - Divergence, stated beside detail 67's: a cross-realm built-in (from another `vm` context or iframe) fails `instanceof`, except arrays. When the supported Node versions all have `Error.isError`, errors switch to it in a VIP.
+   Effect TS: `Array.isArray(x)` and `x instanceof C`. Decided by the agent from detail 67, principle 1 and implementability, 2026-10-30.
+
+### Detail 67b
+
+**A class pattern naming a VibeLang value that is not a class is a compile error** (audit-x 004 D1). A class pattern whose expression resolves to a `data` declaration or variant constructor, a `schema` declaration, a `service` or a `Context.Reference` is `EK0702`, with a quick fix: for a variant, "write `when { _tag: "Sent" }:`"; for a schema, test with `Schema.is(Address)(x)` in a guard; for a service, extend `EK3004`. Under the pinned draft such a function would be *called* with the subject and match almost everything, silently. Correction to detail 67's aside: only `error` declarations (and the Effect matchers of detail 53) have their own `Symbol.customMatcher`; `data` variant constructors and `schema` constants do not (chapter 006 is right). Decided by the agent from principle 8 (an error can be relaxed later) and VIP-7's no-patching condition, 2026-10-30.
+
+### Detail 67c
+
+**Declaration output carries the generated matcher** (audit-x 001 D1). A `.d.vibe.ts` that declares an `error` or `schema error` keeps its static `[Symbol.customMatcher]` member, `vibelang-runtime` ships the `Symbol.customMatcher` type (`declare global { interface SymbolConstructor { readonly customMatcher: unique symbol } }`), and each such declaration file begins with `/// <reference types="vibelang-runtime" />`, so plain `tsc` type-checks it and cross-package matching dispatches at run time as the draft says. Decided by the agent from VIP-27 (declarations are what idiomatic Effect TypeScript would declare), 2026-10-30.
+
 ### Detail 78
 
 **Exhaustiveness: which subjects are checked, and which arms cover a case** (NW 42 and 46; Opus M2 and m4; r16-004, r16-006; amends detail 10). Two rules, one algorithm for every finite subject:
@@ -307,8 +319,8 @@ Decided details folded in verbatim on 2026-11-03 (mechanical pass). Each keeps i
 ### Detail 79
 
 **Static typing of `match`** (NW 45; Opus M1; r16-004, r16-006; VIP-7 amendment). Patterns type as the TypeScript counterpart the spec shows for them, so every rule below is what `tsc --strict` gives that counterpart.
-    - **Result.** A `match` expression has the union of its arm types; a `throw` arm contributes `never`. A `match` with no `default` whose subject passes `EK4701` adds nothing for the no-match path. `async match` has type `Promise<union>`. `x is P` has type `boolean` and narrows `x` as a type predicate where `P` narrows.
-    - **Subject narrowing.** Inside an arm the subject narrows as the arm's test narrows in TypeScript; a `default` arm sees the subject minus every member that an earlier unguarded arm covers (detail 78), as a `switch`'s `default` does. A guard `and if (c)` narrows further as `if (c)` would.
+    - **Result.** A `match` expression has the union of its arm types; a `throw` arm contributes `never`. A `match` with no `default` whose subject passes `EK4701` adds nothing for the no-match path. `async match` has type `Promise<Awaited<union>>`, by TypeScript's async return adoption (detail 112). `x is P` has type `boolean` and narrows `x` as a type predicate where `P` narrows.
+    - **Subject narrowing.** Inside an arm the subject narrows as the arm's test narrows in TypeScript; a `default` arm sees the subject as TypeScript control flow leaves it after every earlier pattern and guard test failed (detail 135), independently of `EK4701` coverage. A guard `and if (c)` narrows further as `if (c)` would.
     - **Bindings.** A `let` binding has the type TypeScript gives the value it is bound to in the counterpart.
 
     | Pattern | Narrows `s` to | Binding types |
@@ -323,7 +335,7 @@ Decided details folded in verbatim on 2026-11-03 (mechanical pass). Each keeps i
     | retained error `Cause.TimeoutError(let t)` | `Cause.isTimeoutError(s)` (`u is TimeoutError`) | `t`: `Cause.TimeoutError`, so `t._tag` is `"TimeoutError"` |
     | user matcher object `M(let x)` | none, unless `M` is a predicate function declared `(u) => u is T` | `x`: element of the matcher's declared return type minus `false` |
     | regex `/(\d+)/(let m, let g)` | none | `m`: `RegExpExecArray`; `g`: `string` (TypeScript's `RegExpExecArray` element) |
-    | relational `< 0`, `not P` | none, except `not` of a literal, `null`, `undefined` or class, which narrows by exclusion as `!==` / `!(s instanceof C)` does | none |
+    | relational `< 0`, `not P` | none, except `not` of a literal, `null`, `undefined` or an ordinary class tested by `instanceof`, which narrows by exclusion as `!==` / `!(s instanceof C)` does; any other `not P` complements P's actual test (detail 113) | none |
     | `P or Q` | union of each side's narrowing | a name bound in every alternative gets the union of its types |
     | `P and Q` | both narrowings in order | both sides' bindings |
 
@@ -352,7 +364,7 @@ Decided details folded in verbatim on 2026-11-03 (mechanical pass). Each keeps i
 
 ### Detail 86
 
-**VIP-7's retained fixed checks: the complete inventory** (VIP-7 "keeps today's fixed checks (D208)"; D208, `docs/design/history/DECISIONS.md:446`: "`Option.Some`/`None`, `Exit.Success`/`Failure`, `Result.Success`/`Failure` compile to the module's own guard"; detail 53 adds Effect's tagged errors). Eighteen intrinsics, each recognized by resolved binding (aliases included, shadowing excluded, principle 3). `s` is the subject, evaluated once. A bare pattern runs the test only; an extractor matches the list by the snapshot's list rules, and an arity mismatch is a failed match (detail 82 warns).
+**VIP-7's retained fixed checks: the complete inventory** (VIP-7 "keeps today's fixed checks (D208)"; D208, `docs/design/history/DECISIONS.md:446`: "`Option.Some`/`None`, `Exit.Success`/`Failure`, `Result.Success`/`Failure` compile to the module's own guard"; detail 53 adds Effect's tagged errors). Eighteen intrinsics here and 21 subpath tagged errors in detail 92 (39 in all), each recognized by resolved binding (aliases included, shadowing excluded, principle 3). `s` is the subject, evaluated once. A bare pattern runs the test only; an extractor matches the list by the snapshot's list rules, and an arity mismatch is a failed match (detail 82 warns).
 
     | Pattern | Ordered test on `s` (effect 4.1.0) | List | Arity | Effect TS for `when P(let x): b` |
     | --- | --- | --- | --- | --- |
@@ -385,6 +397,14 @@ Decided details folded in verbatim on 2026-11-03 (mechanical pass). Each keeps i
     }
     ```
     Effect TS: the ordered `if` tests in the table. Decided by the agent from VIP-7's text, D208, detail 53 and principle 7 (Effect's own guards, no new behavior); this table replaces the separate six-row and twelve-row tables in chapter 004 with one; 2026-10-29.
+
+### Detail 87
+
+**Primitive built-in class patterns** (extends detail 67a; D208's primitive row; TC39 snapshot `String[Symbol.customMatcher]` and its siblings). `String`, `Number`, `Boolean`, `BigInt` and `Symbol` patterns test the primitive or its boxed object, as the snapshot does: `typeof s === "string" || s instanceof String`, and so on. The extracted list is `[s]` for a primitive and `[s.valueOf()]` for a boxed object. The boxed test uses `instanceof`, so detail 67a's cross-realm divergence applies to boxed objects only.
+    ```vibe
+    match (v) { when String(let t): t.length; when Number: 0; default: -1; }
+    ```
+    Effect TS: `if (typeof v === "string" || v instanceof String) { const t = typeof v === "string" ? v : v.valueOf(); return t.length }`. Decided by the agent from principle 2 (the pinned TC39 snapshot) and detail 67a's implementability rule; 2026-10-29.
 
 ### Detail 92
 
@@ -424,6 +444,14 @@ Decided details folded in verbatim on 2026-11-03 (mechanical pass). Each keeps i
     ```
     Effect TS: `if (HttpClientError.isHttpClientError(e)) { const h = e; return retry(h) } if (Cause.isTimeoutError(e)) return "timeout"; return rethrow(e)`. Decided by the agent from VIP-7's text ("its tagged errors", not "its root modules' tagged errors"), detail 53's own rule, principle 4 (no root-versus-subpath exception) and principle 7 (Effect's own guards); every pattern on these classes is `compiler-gap: pending VIP-7`, so no compiled program changes; 2026-10-29.
 
+### Detail 93
+
+**Inherited static matchers stay unused** (NW 56; Fable r16 M2; r17-000, r17-004, r17-008; restates detail 67 so the next round stops copying it forward). A class pattern uses `Symbol.customMatcher` only when it is the class's own property (`Object.hasOwn(C, Symbol.customMatcher)`); for `class B extends A {}`, `when B:` tests `s instanceof B`. Fable's `Get` lookup is not adopted: a `.ts` `class Sub extends NotFound {}` would inherit `NotFound`'s generated matcher, which tests `_tag === "NotFound"` (003), so `when Sub:` would match every `NotFound`. Changing this needs a VIP-7 amendment with new evidence, not a NEEDS-WILL entry.
+    ```vibe
+    match (v) { when B: 1; default: 0; }   // v instanceof B
+    ```
+    Effect TS: `v instanceof B ? 1 : 0`. Decided by the agent from detail 67 and principle 1; 2026-10-29.
+
 ### Detail 94
 
 **A class pattern naming a non-class callable dispatches on its static signatures** (NW 57; Opus r17 M2, audit-x D1; r18-004, r18-008; VIP-7 amendment, extends details 67 and 67b). The pinned draft tells a class from a function by `[[IsClassConstructor]]`, which compiled JavaScript can't read; TypeScript's construct signature is the static fact that stands in for it. For a class pattern whose callee has no own `Symbol.customMatcher` and is not a retained fixed pattern (details 86, 92), a built-in (details 67a, 87) or a VibeLang value covered by detail 67b, the compiler reads the callee's static type, in this order:
@@ -443,9 +471,20 @@ Decided details folded in verbatim on 2026-11-03 (mechanical pass). Each keeps i
     ```
     Effect TS: `if (isUser(v)) return v.id; if (Array.isArray(v)) return v.length; if (v instanceof Point) return 0; return -1`. Decided by the agent from principle 2 (the draft's own predicate call, `[] is Array.isArray`, with TypeScript's construct signature in place of the engine slot), principle 1 (an ES5 constructor declared as a class tests `instanceof`, as TypeScript narrows it) and principle 8 (every ambiguous or always-truthy case is an error that can be relaxed later); 2026-10-29. Apply to 004 "Class patterns" and 008 "Plain-function patterns", replacing both markers, and to VIP-7's amendment list.
 
+### Detail 100
+
+**An extractor on an ordinary class without its own matcher is `EK0704`** (NW 63; Opus r18 M2; r19-004, r19-008; VIP-7 amendment, extends details 67, 93 and 94; next free code in VIP-7's block, detail 60). When a class pattern's callee takes detail 94's construct-signature path (no own `Symbol.customMatcher`, not a retained fixed pattern, built-in or VibeLang declaration), the draft's fallback `Function.prototype[Symbol.customMatcher]` returns `true` for an instance, and `InvokeCustomMatcher` throws `TypeError` because `true` is not an object. So the extractor form `when C(…)`, with any argument count, `()` included, can only fail to match or throw. It is `EK0704` ("`C` has no matcher, so `C(…)` can't extract: test the class with `when C:` and destructure with `and { … }`"). Quick fixes: `when C:`; and, when the pattern's arguments are bindings and `C`'s constructor declares that many parameter properties, `when C and { p1: let a, p2: let b }:` using their names. An inherited matcher doesn't count (detail 93), so `class B extends A {}` with `A`'s static matcher also gets `EK0704` for `when B(…)`. The bare `when C:` is unchanged (`s instanceof C`, no bindings). The runtime rule stays the draft's; an extractor reached in a `.ts` file or through `any` still throws.
+    ```vibe
+    class Point { constructor(readonly x: number, readonly y: number) { } }
+    match (p) { when Point(let x, let y): x + y; default: 0; }   // EK0704: write when Point and { x: let x, y: let y }:
+    match (p) { when Point and { x: let x, y: let y }: x + y; default: 0; }   // ok
+    match (p) { when Point: 1; default: 0; }                      // ok: p instanceof Point
+    ```
+    Effect TS: `p instanceof Point ? p.x + p.y : 0`. Decided by the agent from principle 8 (a guaranteed run-time `TypeError` becomes a compile error, which can be relaxed later) and principle 4 (no binding type has to be invented for an arm that can't bind); the integrator, Opus r18 and both chapter lanes recommend it; every `match` is `compiler-gap: pending VIP-7`, so no compiled program changes; 2026-10-29. Apply to 004's typing table row and "Class patterns" marker, 008's "Callable patterns" marker, Appendix B (`EK0704`, VIP 7) and VIP-7's amendment list.
+
 ### Detail 102
 
-**`EK4701` checks unions of objects with a literal `_tag`** (NW 65; Opus r18 M1 and "design decisions I would revisit" 1; amends detail 78's Subjects rule; coverage is unchanged). A subject member whose type has a property `_tag` of exactly one string literal type (an object type, an interface, or a class instance type such as a `.ts` `class Foo extends Data.TaggedError("Foo")`) is a checked member, identified by that literal. `EK4701` applies when every member of the normalized subject is a detail 78 member or such a tagged member; any member without a literal `_tag` still turns the check off. Detail 78's coverage rules already cover a tagged member: an unguarded object pattern with `_tag: "V"` whose other properties are bare keys or `let` bindings of required fields, an `or` of such patterns, a bare `let`, or a class pattern on that member's class. Only `_tag` is a discriminant: it is Effect's convention (`Data.TaggedEnum`, `Data.TaggedError`, `Schema.TaggedStruct`, `Match.tag`, `Effect.catchTag`), and the compiler's `catch` tag checks (`catch-tag-exhaustive`) already use it.
+**`EK4701` checks unions of objects with a literal `_tag`** (NW 65; Opus r18 M1 and "design decisions I would revisit" 1; amends detail 78's Subjects rule; coverage is unchanged). A subject member whose type has a property `_tag` of a literal type (an optional `_tag` adds the case `undefined`, detail 200) (an object type, an interface, or a class instance type such as a `.ts` `class Foo extends Data.TaggedError("Foo")`) is a checked member, identified by that literal. `EK4701` applies when every member of the normalized subject is a detail 78 member or such a tagged member; any member without a literal `_tag` still turns the check off. Detail 78's coverage rules already cover a tagged member: an unguarded object pattern with `_tag: "V"` whose other properties are bare keys or `let` bindings of required fields, an `or` of such patterns, a bare `let`, or a class pattern on that member's class. Only `_tag` is a discriminant: it is Effect's convention (`Data.TaggedEnum`, `Data.TaggedError`, `Schema.TaggedStruct`, `Match.tag`, `Effect.catchTag`), and the compiler's `catch` tag checks (`catch-tag-exhaustive`) already use it.
     ```vibe
     // o: { _tag: "Sent"; tracking: string } | { _tag: "Waiting" }
     match (o) { when { _tag: "Sent", let tracking }: 1; }                  // EK4701: Waiting not covered
@@ -455,6 +494,44 @@ Decided details folded in verbatim on 2026-11-03 (mechanical pass). Each keeps i
     ```
     Effect TS: `Match.type<O>().pipe(Match.tag("Sent", …), Match.exhaustive)`, a type error until `"Waiting"` is handled, and TypeScript's `never` check after `switch (o._tag)`. Decided by the agent from principle 1 (`Match.exhaustive` over `_tag` is the idiomatic Effect check), principle 8 (a missing arm that would throw `TypeError` becomes a compile error, relaxable later) and principle 4 (the coverage algorithm already handles `_tag` object patterns); every `_tag` object-pattern `match` in the repository's `.vibe` (three cases: `catch-tag-exhaustive`, `catch-tag-partial.fail`, `tsforms-catch-fixed`) ends in `default`, so none changes; 2026-10-29. Apply to 004's "Subjects" rule and example, 006's `data` exhaustiveness paragraph and VIP-7's amendment list.
     Status: applied on main a899a2fcb3cc (004 Subjects/Tagged members; kind-not-_tag example present; verified by spec-fix-c 2026-10-31).
+
+### Detail 152
+
+**Tagged exhaustiveness requires a present tag and covers each normalized member independently.** (Opus round-20 m1/m2; clarifies details 78/102.) A checked object's `_tag` has a literal type; an optional `_tag` is checked, with the case `undefined` uncovered until an arm covers it (detail 200). A required literal tag shared by multiple union members does not merge their required payload keys. An object pattern covers each member with that tag only when every other bare/binding key it tests is required on that particular member; uncovered same-tag members remain uncovered. Keep all other conservative coverage rules.
+    ```vibe
+    // an optional tag leaves the case undefined uncovered:
+    type MaybeA = { _tag?: "A" }
+    // for s: { _tag: "A"; x: number } | { _tag: "A"; y: number }
+    match (s) { when { _tag: "A", let x }: x; } // EK4701: the y member remains
+    ```
+    Effect TS: TypeScript's actual property-presence/discriminant narrowing of each union member; absence is not a literal tag value. Decided by the agent from principle 2 (required versus optional TypeScript properties), principle 8 (do not claim proof for an absent tag or an untested payload member), and detail 78's per-member normalization, 2026-10-30.
+
+### Detail 195
+
+**Leaving a `match` behaves as leaving a `for…of` body.** (Amends 117, 123, 146; settles v15 opus m10, v19 opus M1, m6, v20 opus M1, m5, astra m2.) However a `match` or `is` test ends, cached iterators close first, then control goes on. A closing error replaces a value or a jump, as in `for…of`; a pending throw with a closing error is the draft's `AggregateError`. `FinishMatch`'s "abrupt completion" is read as "throw completion": `gen.return(5)` at a `yield` in an arm reaches that step with no `do` at all. A no-match error is `new TypeError()`. Every `throw` in effect code abandons the generator, wherever it stands, and abandonment is defined once, in 008.
+    Status: applied in 12d6a3b9ce5e on main (source/cross-reference revalidated by spec-fix-c; no duplicate patch). Native completion/Exit regressions pass in main-decision-receipts.log.
+    ```vibe
+    function* numbers() { try { yield 1; yield 2 } finally { log("closed") } }
+    function first() { const v = match (numbers()) { when [let a, ...]: do { return a }; default: 0; }; return -1 } // 1, logs closed
+    ```
+    Effect TS: `for (const a of numbers()) return a`. Decided by the agent from the do proposal's Evaluation, the match draft's own notes and ECMA-262 IteratorClose, 2026-10-30.
+
+### Detail 196
+
+**`return`, and an outward `break` or `continue`, are syntax errors in `async match`.** (New; VIP-7.) The match explainer says "just like `async do` expressions", whose grammar is `Block[~Yield, +Await, ~Return]`.
+    Status: landed on main 1d56b687ec64 (commit e5a3bcd3c466; spec-fix-c, queued as 6efef4e0b1cc): async-match body contexts.
+    **Immutable-main source portion (098e7a, 196).** 004 now cites VIP7 itself for async-match outward-jump restrictions rather than presenting an async-do analogy as adopted syntax; accepted subject/test/arm contexts remain. Complete13-file,82,844-character diff independently read. Source publication only; no own compiler/native/gate check. `main-098-source-receipt.json` records exact scope. Independent root review is retained in `root-main098-source-receipt.json`.
+    Status (async-match jump grammar): source fixed in 5a1389f203172febe59460ba6e1ea9a56d95cb59 (spec-fix-c; queued, not yet a main receipt). The later async-do citation clarification has a separate source-delivery requirement.
+    ```vibe
+    async match (x) { default: do { return 1 }; }   // syntax error
+    ```
+    Effect TS: none. Decided by the agent from the pinned explainer and TC39 `proposal-async-do-expressions`, and principle 8, 2026-10-30.
+
+    **Citation erratum and syntax boundary (Fable round23 m8).** The accepted VIP-7 amendment and its incorporated match explainer settle this restriction; an unvendored `proposal-async-do-expressions` grammar is not an additional normative pin or accepted language feature. The earlier provenance sentence above cited that separate proposal too broadly. State the async-match restriction directly as VibeLang's accepted rule and its already-written nested-async-function counterpart, including the explicit reconciliation for outward jumps. `async do { ... }` is not admitted `.vibe` syntax by VIP-2/VIP-7; no accepted VIP adds it. The Promise analogy in 002 may explicitly label the separate proposal as non-language illustration, or use a nested async function instead, but must not imply that `effect { }` desugars to Promise syntax or that the vendored ordinary-do grammar defines async-do. Remove or qualify the unsupported return/grammar citation in 002/004/VIP-7 and the vendored README; no new vendored proposal is required. Keep ordinary `do`'s source completion behavior and async match's existing boundary unchanged. Effect TS: `async match` continues to have the stated async-function behavior, and an Effect block continues to return `Effect.gen(...)`, with separate result kinds. Decided by the agent from accepted VIP-2/VIP-7, principle 2 (use the actual pinned source), principle 4 (no extra syntax by analogy), and principle 8 (an unaccepted feature remains excluded), 2026-10-30.
+
+
+    **Citation/syntax clarification, 2026-10-30 (Fable r23 m8).** No accepted VIP adds `async do` to `.vibe`; the pinned ordinary do-expression snapshot does not supply that separate proposal. Any comparison with `async do` is informative and must identify it as outside VibeLang. The `async match` return/outward-jump restrictions above are the explicit accepted VIP-7 rule, with its own `~Return` context; no new normative proposal/vendor pin is required to state them. Do not explain the return prohibition by saying an ordinary async arrow forbids its own return: it does not. Its source-function boundary prevents outward jumps, while `async match` separately disallows source return under this rule. Generated async counterparts may return arm results normally. This repairs the citation without admitting new syntax, changing the rule, or asking Will to reconfirm the accepted grammar.
+    Appendix A roots: landed on main 4e088ab33903 (commit 8eae3b952347; spec-fix-c, queued as aec45290ced6).
 
 ### Detail 200
 
@@ -476,6 +553,48 @@ Decided details folded in verbatim on 2026-11-03 (mechanical pass). Each keeps i
     Decided by the agent from VIP-7's actual recognition tests, details 78/102/103/152's explicit member/case model and principle 4 (one actual recognition rule, separate from subject-flow precision), 2026-10-30. This clarifies the existing examples rather than adding a new coverage permission or changing runtime matching. Amend 004/VIP-7 and add the checked uniform-tag switch divergence plus same-tag generated-error coverage witness. Source evidence is Fable round-21 `tagged.ts`/`sw.ts`/`narrow.ts` and its TypeScript 5.9.3 receipts; those reviewer checks were read, not independently rerun by decide-live. No new Will question or detail number is allocated.
 
     **Optional-tag example comment (Fable29m15).** In the existing optional-tag example, the missing/absent-tag case remains uncovered after the A/B object arms; write that explicitly instead of the ambiguous phrase "no tag is left". Preserve the existing bare-binding/default coverage rules. This corrects an example comment, not the coverage or source-flow algorithm; it adds no pattern that recognizes an absent property and no new decision number. Decided by the agent from this detail's already-chosen undefined case and principle4, 2026-10-30.
+
+### Detail 224
+
+**Use `EK0706` for the already-forbidden jumps out of `async match`.** (Opus round28 m47; VIP-7/VIP-34; details 60/196/214.) Assign `EK0706` to a source `return` belonging to an `async match` evaluation context, or a source `break`/`continue` whose resolved target lies outside that async-match boundary. This covers the subject, pattern tests/guards and arm result expressions under their existing source grammar parameters, including a `do` that would otherwise transfer control out. It adds no new restriction: detail 196/VIP-7 already reject those jumps. A nested source function retains its own return context, and a jump to a target inside the async-match boundary keeps its existing rules. Resolve source boundaries/targets before any generated async wrapper; do not report every syntactically nested return as forbidden or treat the generated function as a permission to escape. Keep ordinary independent native/control-flow diagnostics where they apply.
+    Status: landed on main ab92e0dad56f (commit 983c76ba027f; spec-fix-c, queued as 0bea81a644cb).
+    `EK0705` remains detail 214's parameter-home `is` binding error; do not reuse the reviewer's proposed number. Main's Appendix B has `EK0701`–`EK0704`, and the decision ledger reserves `EK0705`; `EK0706` was unassigned in both sources and the coordination claims when reserved. Catalog the new identity in 004/Appendix B and a public VIP-7 amendment under detail 213. Valid mixed modifier recovery and the imported-lint ranges are separate rules. Any suggested rewrite must preserve control flow; there is no automatic jump across the Promise boundary.
+    ```vibe
+    const bad = async match (0) { when 0: do { return 1 }; default: 0; } // EK0706
+    const good = async match (0) { when 0: (() => { return 1 })(); default: 0; }
+    ```
+    Effect TS: no runtime counterpart exists for the rejected outward jump. The admitted nested-function case uses the existing plain async match counterpart, with `(() => { return 1 })()` as its ordinary arm expression and a Promise result; bridging that result from Effect code remains VIP-4's rule. Decided by the agent from accepted VIP-7/detail196's explicit boundary, VIP-34's coded language diagnostics, principle4 (one diagnostic for one existing source boundary), and detail60's agent-owned allocation rule, 2026-10-30. This is a diagnostic assignment, not new language admission, a new runtime API or a claim that the current compiler emits the code. Source and regression implementation remain with fixing lanes.
+
+
+    **Independent allocation receipt:** root-round28-diagnostic-registry.txt and root-round28-main-revision.txt retain the actual diagnostic source at fetched immutable mainb0387e3558d9. Both printed EK0706 and numeric706 are absent there; the shared decision/live logs reserve0705 for214 and had no0706 assignment before224. This is a source/allocation check, not compiler emission or a full historical-code audit.
+
+### Detail 240
+
+**`is` bindings in `for` heads, concise arrow bodies and initializers use the pinned explainer homes.** (Opus r31 m59; VIP-7 pinned explainer "Bindings": "When used in the head of a `for()`, the usual binding scopes apply"; extends 004 nearest-block rule and details 109/191/214.) A `let` or `const` introduced by `is` gets this lexical home:
+    - `for (init; test; update)`: a loop head scope that shadows outer names and does not leak. A binding from `init` behaves as a name declared by a `let`/`const` declaration in `init`, whether `init` is a declaration or an expression: a `let` binding is copied into each iteration environment by ECMAScript CreatePerIterationEnvironment, and a `const` binding stays in the loop scope. A binding from `test` or `update` is a fresh, uninitialized cell in every environment CreatePerIterationEnvironment creates, shared by the update, test and body that run in it and never copied forward, as detail 191 gives each `while` condition. So `for (; it.next() is { done: false, value: let v }; )` never re-initializes `v`.
+    - `for…in`, `for…of`, `for await`, `for concurrent` and `for try`: a binding from the head expression (evaluated once, in detail 109 head environment) is copied into each iteration or item binding environment, as the explainer states; a skipped binding is copied uninitialized. A binding from a default inside the head declaration belongs to that iteration fresh binding environment.
+    - A concise arrow body: the arrow body scope, where its block-body form would declare it.
+    - A class field or static field initializer: that initializer own scope, as ECMAScript evaluates each initializer as a separate method-like body. A `static` block is a block.
+    - Formal parameters keep detail 214 `EK0705`. An enum member initializer has no lexical home in ECMAScript or the explainer, so a binding there is `EK0705` too (principle 8; a later reconciliation can relax it).
+    Bindings stay in TDZ until their pattern executes, and the detail-80 use-before-assignment check (Opus r31 m58) applies in every home.
+    ```vibe
+    function drain(it: Iterator<number>) {
+      const out: (() => number)[] = []
+      for (; it.next() is { done: false, value: let v }; ) out.push(() => v)
+      return out.map(g => g())           // [1, 2, 3] for [1, 2, 3]: one fresh v per iteration
+    }
+    function countdown(src: { n: number }) {
+      const seen: (() => number)[] = []
+      for (src is { n: let n }; n > 0; n--) seen.push(() => n)
+      return seen.map(g => g())          // [3, 2, 1] for n = 3: copied per iteration like let
+    }
+    enum E { A = (1 is let one) ? 1 : 0 } // EK0705: no lexical home
+    ```
+    Effect TS: `drain` is `for (;;) { const r = it.next(); if (!(typeof r === "object" && r !== null && r.done === false)) break; const v = r.value; out.push(() => v) }`; `countdown` is `for (let n = src.n; n > 0; n--) seen.push(() => n)` after the object test. `r31probe/r31-counterparts.log` gives `[1,2,3]` and `[3,2,1]` on Node 26. Decided by the agent from VIP-7 pinned explainer text (for-head scopes and for-of copies), principle 2 (ECMAScript per-iteration environments and field-initializer bodies), principle 4 (one loop-condition rule shared with detail 191) and principle 8 (`EK0705` where no home exists), 2026-10-30. Add the rule and the two loop examples to 004 `is` expressions and VIP-7 public amendment; the `EK0705` row names enum member initializers.
+    Status: homes, TS2454/TS2448 rule and loop witnesses landed on main 003924407712 (commit 84be1db2b58b); remaining clauses (enum-member initializer EK0705, the EK0705 row, the VIP-7 clause, the guide for(;;) copies) queued in 350e37c7b3ef (spec-fix-c), not yet a main receipt.
+
+
+    **Immutable-main source publication (773bddb1d57f, 240).** Chapter 004, Appendix B and public VIP-7 publish `EK0705` for `is` bindings in `enum` member initializers, completing the previously separate source-home clause in this slice. No compiler binding-scope check or guide-wide audit was run. Complete 60,380-character/60,428-byte nine-file design diff was read in four contiguous slices; `main-resumed-source.json` preserves its hash and scope.
 
 ### Detail 245
 

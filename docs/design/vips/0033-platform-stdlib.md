@@ -47,11 +47,11 @@ effect function main() {
 
 ## Details
 
-Decided details folded in verbatim on 2026-11-03 (mechanical pass). Each keeps its old number as history; where one conflicts with the text above, the fold's conflict pass resolves it.
+Decided details folded in on 2026-11-03. Each keeps its old number as history. The conflict pass deleted superseded, duplicate and relic details and resolved contradictions in favor of Will's words, then accepted VIPs, then later details. Principles are numbered as in [the introduction's Details](../src/000-intro.md#details).
 
 ### Detail 56
 
-(NW 19; VIP-33) Will's rule (2026-10-26): "All web apis and all node.js apis should be wrapped and effectful." A reference in any `.vibe` code to one of these globals is a compile error whose quick fix names the Effect service or moves the code to a `.ts` file:
+(NW 19; VIP-33) Will's rule (2026-10-26): "All web apis and all node.js apis should be wrapped and effectful." A reference in any `.vibe` code to a platform global is a compile error (the rule is detail 101's derived ban; the lists below are examples) whose quick fix names the Effect service or moves the code to a `.ts` file:
     - Node: `process`, `Buffer`, `global`, `__dirname`, `__filename`, `require`, `module`, `exports`, `setImmediate`, `clearImmediate`;
     - web I/O and host state: `fetch`, `XMLHttpRequest`, `WebSocket`, `EventSource`, `localStorage`, `sessionStorage`, `indexedDB`, `caches`, `navigator`, `location`, `document`, `window`, `self`, `Worker`, `SharedWorker`, `BroadcastChannel`, `postMessage`, `alert`, `confirm`, `prompt`, `crypto`, `performance`;
     - console and timers: `console`, `setTimeout`, `setInterval`, `clearTimeout`, `clearInterval`, `queueMicrotask`.
@@ -63,6 +63,12 @@ Decided details folded in verbatim on 2026-11-03 (mechanical pass). Each keeps i
     const u = new URL(s)          // ok
     ```
     Effect TS: `Console.log("hi")`, `Effect.sleep("10 millis")`, `HttpClient` for `fetch`, `Clock` for `performance.now`, `Random` for `crypto.getRandomValues`. Decided by the agent from Will's VIP-33 words and principle 8; at most 16 of 1138 `.vibe` files in the repository (7 use `console`, 9 a timer) and need the quick fix; 2026-10-29.
+
+    - *Note on detail 56 (spec agent, 2026-11-01T03:42:41Z): superseded in scope by VIP-33's amended derived ban (spec 005:613).* Its named lists are examples, not the rule: every global declared in `lib.dom*`, `lib.webworker*`, `lib.scripthost` or `@types/node` and not in `lib.es*` is banned unless it is on 005:672's closed allowlist, so names absent from detail 56's lists (`Response`, `Headers`, `Request`, `Blob`, `MutationObserver`, `HTMLElement`) are banned too, `globalThis.<name>` included. Read 005 for the rule.
+
+### Detail 69
+
+**`import(expr)` with a computed specifier is not checked** (audit 005 D1, with NW 43). `EK4402` checks string-literal specifiers only (`import("node:fs")` is checked); `import(name)` and `import("node:" + m)` compile, as a statically unknown `globalThis[k]` does. `import(expr)` with a computed specifier stays unchecked: it loads a module and cannot reach `eval` or `Function`. `globalThis` is not treated the same way; detail 73 rejects every use of it except a statically named, non-banned member. A string-literal `data:` or `blob:` specifier, in `import(…)` or an `import` declaration, is `EK0107`: it runs a string as code, as `eval` does (`import("data:text/javascript,export default 1")` is `EK0107`). Decided by the agent from principle 1 (ordinary lazy loading keeps working) and consistency with NW 43, 2026-10-30.
 
 ### Detail 73
 
@@ -83,6 +89,36 @@ Decided details folded in verbatim on 2026-11-03 (mechanical pass). Each keeps i
 
     Later97 qualifies the Function clause: safe `instanceof globalThis.Function` and the permitted static `.prototype` uses follow the same contexts as bare global `Function`. A banned host/platform member is `EK4402`; prohibited `eval`/Function and nonstatic/alias uses retain `EK0107`. Opus28m42 is a public VIP-33 reconciliation under33/73/97/101, not a new ban or exception.
 
+### Detail 153
+
+**Platform symbol resolution, not the generated name inventory, determines EK4402.** (Opus round-20 m3; restates detail 101.) The platform inventory documents the pinned host declarations; it does not override the compiler's resolved binding rule. If a project's selected libs omit a platform declaration and its free name is unresolved, retain TypeScript's TS2304 rather than invent an EK4402 binding from the inventory. A custom global declaration with no banned declaration source is not automatically a platform global merely because its name matches a listed host name. A resolved symbol merged with a banned host declaration still follows detail 101. Local/import/Effect namespace precedence remains.
+    ```vibe
+    // with only lib.es* and no custom fetch declaration:
+    fetch("/api") // TS2304, not an inventory-created global binding
+    ```
+    Effect TS: the same TypeScript library selection and symbol resolution; an actual host fetch binding uses an explicit Effect service instead. Decided by the agent from principle 3 (symbols, not spellings) and detail 101's explicit statement that the compiler checks declaration sources and the file merely documents them, 2026-10-30. This resolves the prose reading without adding a new global or a new acceptance rule.
+    Status: applied on main a899a2fcb3cc (005 platform rule: a name resolving to nothing is TS2304, not EK4402; verified by spec-fix-c 2026-10-31).
+
+### Detail 154
+
+**The global AbortSignal timeout member is banned through statically resolved reads, including destructuring.** (Opus round-20 m4; makes detail 101's existing exception explicit.) EK4402 applies when a statically named member read or destructuring property resolves to the standard AbortSignal constructor's timeout property, including dot/optional access, a literal-string or no-substitution-template element key, and constructor aliases that preserve that member symbol. A user-defined AbortSignal/member is unaffected. This bans copying the timer-starting method as well as calling it. A key that is not statically known remains unchecked; this is not a runtime sandbox, like the existing any/reflective escape policy.
+    ```vibe
+    AbortSignal.timeout(100)                    // EK4402
+    const { timeout } = AbortSignal             // EK4402
+    const AS = AbortSignal; AS["timeout"](100) // EK4402: same resolved member
+    ```
+    Effect TS: use Effect.timeout/Effect.sleep for the timer behavior; ordinary signal values stay allowlisted for Effect.tryPromise. Decided by the agent from detail 101's explicitly banned timeout operation, principle 3 (the resolved member rather than its spelling), and principle 4 (the same static-reference rule for copying and calling), 2026-10-30.
+
+### Detail 162
+
+**The derived platform ban applies to global bindings, with explicit host-reaching member exclusions.** (Fable round-20 m2; clarifies details 101/153/154.) The rule's domain is an IdentifierReference resolving to a global binding, or a statically named property of the standard globalThis that resolves to that global. It is not a general scan of every property symbol declared in lib.dom/lib.webworker/@types/node. Properties of an allowlisted data utility remain allowed, except members that reach the host: `AbortSignal.timeout` (detail 154), `URL.createObjectURL` and `URL.revokeObjectURL` (detail 201). The platform inventory records banned global bindings, the closed allowlist and these member exclusions separately. Retain resolved-binding shadowing, unresolved-name TS2304, and the existing globalThis access restrictions.
+    ```vibe
+    const url = new URL("/x", "https://example.test")
+    url.searchParams.get("q") // allowed data utility, not a global-binding ban
+    AbortSignal.timeout(100)  // EK4402: explicit timer-member exclusion
+    ```
+    Effect TS: the same pure URL operations; use Effect timeout/sleep for timers. Decided by the agent from detail 101's allowlist purpose, principle 3 (resolve the binding at the stated domain), and principle 4 (one global inventory plus one explicit member exception, not a ban on all DOM-declared properties), 2026-10-30. This makes the generator contract agree with its existing allowed utilities; it does not add another allowlisted name.
+
 ### Detail 201
 
 **`EK4402` asks one question: does the statically named symbol reach the host?** (Amends 101, 154, 162.) A banned global, or a member of an allowlisted global that does I/O, starts a timer, or touches host state: `AbortSignal.timeout`, `URL.createObjectURL`, `URL.revokeObjectURL`. `docs/design/inventory/platform-globals.json` classifies all 50 allowlisted members; an unclassified member fails generation.
@@ -92,20 +128,6 @@ Decided details folded in verbatim on 2026-11-03 (mechanical pass). Each keeps i
     URL.createObjectURL(blob)   // EK4402
     ```
     Effect TS: none. Decided by the agent from VIP-33's "All web apis and all node.js apis should be wrapped and effectful", 2026-10-30; no `.vibe` file uses the two `URL` members.
-
-### Detail 251
-
-**`throw` in an `async` VibeLang function rejects its Promise, as in TypeScript.** (Decided 2026-10-31 by effectscript-11, Will's proxy, from Will's own words; not asked of him. Settles the open `async` question in the 2026-10-31 "plain functions never throw" ruling in core-decisions.md.) Will scoped the error explicitly: "If you throw in vibelang itself in a sync function that's an error." On 2026-10-29 he said "we can allow throw and we can allow Promise.reject". So the compile error covers `throw` in sync VibeLang functions only (plain declarations, expressions, arrows, methods, constructors, accessors, plain generators, initializers, plain `catch` handlers); in an `async` function or async arrow or method, `throw` is JavaScript's throw and rejects the returned Promise. An async VibeLang function carries no thrown type (Will: thrown-type tracking exists only for `.ts`/`.js` imports). Effect code that calls it wraps the Promise as for any Promise (`Effect.tryPromise`, or `try` on an Effect built from it), and the rejection reason is `unknown`.
-    ```vibe
-    async function load(id: string) {
-      if (!id) throw new Error("no id")   // allowed: load("") rejects with Error("no id")
-      return id
-    }
-    function check(id: string) {
-      if (!id) throw new Error("no id")   // error: a sync VibeLang function can't throw
-    }
-    ```
-    Effect TS: the same native `async function load(id: string) { if (!id) throw new Error("no id"); return id }`; Effect code observes it with `Effect.tryPromise({ try: () => load(""), catch: (error) => error })`. The example uses no platform API; VIP-33 is unchanged. This is nongenerator async Promise behavior. Async-generator APIs keep their separate native construction/resumption phases from detail 108; their call does not itself return a Promise, and parameter execution permissions are unchanged.
 
 ### Detail 261
 

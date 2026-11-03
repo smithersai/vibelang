@@ -113,7 +113,7 @@ D40's abstract-class services, and `static readonly default`, which becomes `def
 
 ## Details
 
-Decided details folded in verbatim on 2026-11-03 (mechanical pass). Each keeps its old number as history; where one conflicts with the text above, the fold's conflict pass resolves it.
+Decided details folded in on 2026-11-03. Each keeps its old number as history. The conflict pass deleted superseded, duplicate and relic details and resolved contradictions in favor of Will's words, then accepted VIPs, then later details. Principles are numbered as in [the introduction's Details](../src/000-intro.md#details).
 
 ### Detail 21
 
@@ -233,35 +233,9 @@ Decided details folded in verbatim on 2026-11-03 (mechanical pass). Each keeps i
 
     Decided by the agent from VIP-9's native Context.Service shape and any-member-type amendment, principle2 (TypeScript has the exact signature/option rule), principle1 (the Effect TypeScript counterpart), and principle4 (no separate implicit-any scheme), 2026-11-01. Class A; no new Will choice or change to the accepted MethodSignature grammar. Seven stock TypeScript5.9.3 Context.Service-shape controls pass: strict/loose/override method returns, explicit `any`, strict/loose properties and a generic method. Receipt: `native-loop-r3/service-implicit-any/receipt.json`. These do not test the VibeLang parser/checker or an implementation candidate. Existing `impl-hunt-svc` ownership and its earlier plain-return fix/receipt paths are retained; no duplicate compiler patch or queue replacement is made here. Owners add the failing-main regression and spec-quoted keyed fuzz over method/property annotations, compiler options, optional/generic members, class/defaulted services and independent restrictions.
 
-
-    **Current272addenda qualify the earlier private migration-process notes (decide-live, 2026-11-01).** The private audit qualifications under268/271 are read with272's later proxy-confirmed exceptions: verified module-specifier renames, exact-set-preserving selector widenings and the separate all-TypeScript dependency-upgrade baseline. They do not prohibit those explicitly authorized operations. They still grant no permission to rewrite logic, assertions, snapshots, embedded test configuration/build calls or arbitrary filesystem-read paths. This is a migration-process reconciliation, not new language semantics or a new numbered decision.
-
 ### Detail 302
 
 **Accept `service Name: Type { ... }` under Will-approved foldkit-48; earlier native-only deferral is superseded.** The accepted exact-shape rule and examples below are current; implementation and unchanged target gates remain separate.
-
-    **Historical pre-acceptance deferral (superseded; retained for audit):** (Mac question `foldkit-service-shape`, Foldkit-48; accepted VIP-9; principles4 and8.) Choose conservative current-scope option B: `service Name { members }` remains the accepted declaration form, with its existing key/default/Shape rules. The proposed `service Port: Shape { ... }` is an additive form requiring a future VIP; this decision does not adopt it or expand its required named public contract into anonymous members. A module whose native `Context.ServiceClass<..., DevToolsStore>` or `Context.ServiceClass<..., ShadowRoot>` shape cannot pass its actual declaration gate remains TypeScript. This is a current conversion boundary, not a permanent prohibition on a future accepted VIP or a fixed compiler bug.
-
-    A `.vibe` consumer may import the unchanged real key:
-
-    ```vibe
-    import { Port } from "./port.ts"
-    effect function currentPort() { return try Port }
-    ```
-
-    The native provider keeps the idiomatic Effect TypeScript shape and original key:
-
-    ```ts
-    import { Context } from "effect"
-    export interface Shape { read(): number }
-    export class Port extends Context.Service<Port, Shape>()("probe/Port") {}
-    ```
-
-    The consumer's Effect TypeScript counterpart is `function currentPort() { return Effect.gen(function* () { return yield* Port }) }`. Preserve the actual provider's types, key, initialization and public declarations rather than recreating an anonymized shape merely to increase migration counts. This records the absence of a new form; it grants no service-misuse exemption, new runtime API, target-test edit or changed public signature. This lane performs no implementation or conversion.
-
-    Decided by the agent from accepted VIP-9's one declaration form, principle4 (fewer forms and exceptions), principle8 (retain the current boundary; a later VIP may relax it), and existing277's faithful target contract, 2026-11-02 under the 2026-10-29 delegation. Class A; no Will answer or new Class B question. Will may override this current-scope decision.
-
-    **Newer owner-authorized amendment plan (2026-11-02T13:23Z):** foldkit agent now derives named existing service-shape support from Will's actual sugar principle, and `foldkit-sugar-amend` drafts the VIP-9 amendment. This supersedes the earlier agent current-scope deferral as the authorized design direction; the precise new syntax and rules belong to that published amendment. Preserve the real Context.Service shape, key, runtime initialization and raw public declarations. Keep the native provider until the matched spec/compiler change lands and conformance/replay passes; no current compiler acceptance or successful conversion is claimed. This is an owner derivation from Will's principle, not a fresh Will answer or permanent rejection.
 
     **Accepted foldkit-48 amendment, decide-live, 2026-11-02:** `loop/WILL-ANSWERS.md` records Will's actual acceptance, “Accept good ideas”, relayed by effectscript-11, of `foldkit-sugar/foldkit-48.md`. It supersedes the former conservative deferral and plan-only status. `service Name: Type { ... }` supplies the exact whole Shape; the required body permits only the existing `key` and `defaultValue` members. Pass the written type directly to `Context.Service<Name, Type>` or, with a default, `Context.Reference<Type>`. `Name.Shape` resolves to the supplied type where chapter005 permits it; preserve the reference and modifiers without an extra shape helper or namespace. Existing ambient, generic-capture, key and default rules apply. Body-only services retain their existing meaning.
 

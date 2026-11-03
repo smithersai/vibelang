@@ -107,11 +107,7 @@ Old VibeLang is a reference only; nothing in it is part of the language unless a
 
 ## Details
 
-Decided details folded in verbatim on 2026-11-03 (mechanical pass). Each keeps its old number as history; where one conflicts with the text above, the fold's conflict pass resolves it.
-
-### Detail 6
-
-(VIP-5) In `x catch f` where `f` is a non-literal function value, the fallback is the value `f` (syntax decides), plus a VIP-38 lint warning with quick fixes to `catch (e) => …` or `catch effect { … }` when a fallback's type is an Effect or a function.
+Decided details folded in on 2026-11-03. Each keeps its old number as history. The conflict pass deleted superseded, duplicate and relic details and resolved contradictions in favor of Will's words, then accepted VIPs, then later details. Principles are numbered as in [the introduction's Details](../src/000-intro.md#details).
 
 ### Detail 23
 
@@ -130,41 +126,29 @@ Decided details folded in verbatim on 2026-11-03 (mechanical pass). Each keeps i
 
     Async-context repair receipt: `EK4610` retains native await behavior and its warning status; its documented suggestion in an ordinary async body uses the existing explicit Promise bridge, `await runPromise(Deferred.await(deferred))`, rather than inserting Effect-only syntax there. This follows accepted VIP-1/VIP-5 and the existing source-context boundary. Source applied in `45c801f886c4` (spec-fix-a; fixer-reported queued, not main): focused/grammar/native controls and regeneration/forms/spec/docs pass, with no quick-fix implementation or compiler-emission claim. No new language/API decision.
 
-## Items 30–32 (Will, factory.vibelang.sh, 2026-10-29 ~14:20–14:25: "revisit-r5", accepted, with his change)
+### Detail 31a
 
-### Detail 31
+(Will 15:57: "It asked me to confirm a decision I already made.") `catch`'s handler is always a function literal, and its syntax decides:
+   - `x catch (e) => v` (also async arrows and function expressions) is plain: its result is the fallback value;
+   - `x catch effect (e) => …` runs an Effect and may fail again;
+   - `x catch () => guest` replaces the value form `x catch guest`, which is removed;
+   - a named function needs a wrapper (`x catch (e) => f(e)`), so syntax alone decides.
+   This replaces 2B and the VIP-5 handler amendment. Record it as a VIP-5 amendment with this provenance.
 
-(VIP-5 revisit, superseded by 31a below) **Was pending.** Will accepted 2B (only the `effect` keyword marks a handler) and then asked whether the handler should always be a function literal: `catch (e) => v` for a value and `catch effect (e) => …` to run an Effect, with no value form. Don't change the spec's catch section until he answers; mark it "Undecided (pending Will: always-a-function vs 2B)".
+### Detail 31b
 
-### Detail 39
+**VIP-5's table row "`x catch effect { … }` (an effect block; runs the fallback)" is superseded by 31a** (found by c9's fuzz suite, 2026-10-30). A `catch` handler is always a function literal, so `x catch effect { return 7 }` is a syntax error with the quick fix `x catch effect () => { return 7 }`, as chapter 2 says. Amend VIP-5's table to drop the row and cite 31a; the fuzz construct `vip05.catch-effect-block` is superseded. The value-form row `x catch guest` is the same kind of leftover: 31a replaced it with `x catch () => guest`, so drop that row too (fuzz construct `vip05.catch-value` deleted; `catch-function` covers the replacement). Recorded by the agent from Will's decision 31a, 2026-10-30.
 
-(NW 4; VIP-5 with 31a) A plain `catch` handler whose body may throw a tracked error is a compile error, with the quick fix `catch effect (e) => try Effect.try(() => …)`. An explicit `throw` in a plain handler keeps VIP-5's defect meaning.
-    **Current scope after Will's 2026-10-31 ruling:** local VibeLang thrown-type inference/annotations and any permission for synchronous source `throw` in this older record are superseded by `core-decisions.md`, `loop/WILL-ANSWERS.md` and detail 251. Do not implement those historical local clauses. Retain independently valid foreign-contract, native-phase and unrelated rules; reference receipts below are historical, not current VibeLang admission tests.
+### Detail 85
+
+**Generator and `async` catch handlers are syntax errors** (NW 51; Fable m3; r16-002; amends 31a and VIP-5). A `catch` handler is an arrow function, a function expression or an `effect` form; `async` arrows, `async` function expressions, generator expressions and async generator expressions are a syntax error with the quick fix "remove `async`" or "remove `*`". Appendix A's handler productions drop those four alternatives. `EK0507` then covers only a plain handler whose body returns a Promise (`x catch (e) => queryDb(e)`).
     ```vibe
-    e0 catch (e) => parse(e)                                    // error: parse may throw Error
-    e0 catch effect (e) => try Effect.try(() => parse(e))       // ok
+    x catch (e) => 7                 // ok: fallback value
+    x catch async (e) => 7           // syntax error: remove async
+    x catch function* (e) { }        // syntax error: remove *
+    x catch effect (e) => try g(e)   // ok
     ```
-    Effect TS: `Effect.catch(e0, (e) => Effect.try(() => parse(e)))`. Decided by the agent from principles 6 and 8 (VIP-4's "no unwrapped throwing call" covers the handler); 2026-10-29.
-
-    Existing-Cause counterpart correction: the repeated Opus rounds21–30 m1/Fable m7 finding was already settled by accepted VIP-18 `try.any` → `Effect.raceAll` and VIP-5 `catch` → `Effect.catch`. Remove the false attribution of an unelected mixed failure/defect Cause to `try.any`; do not alter native failure election, payload identity or handler recovery. Applied in `fdf3ddfa90a2` (spec-fix-b; fixer-reported queued, not main). Its documentation baseline failure, fail/die/interrupt/mixed native controls, Node3/Bun3/strict TypeScript and regeneration/forms/spec/docs passes are attributed. This is a source-example correction under existing rules, not a new policy, implementation verification or main receipt.
-
-### Detail 105
-
-**Erratum to detail 99: the fork quick fix constructs an Effect around the handler.** (Fable round-19 M1; Astra round-19 design cost; r20-002.) Replace only its fork quick fix with `fork effect { return e catch (err) => h(err) }` for a plain handler, or `fork Effect.catch(e, effect (err) => try h(err))` when `h` returns an Effect. The enclosing `effect { }` keeps both execution and handling on the child. `fork (e catch (err) => h(err))` runs `e` in the current fiber and forks its success value; it remains `EK1703` unless that value is an Effect. The `join` quick fix and the `EK0505` trigger remain unchanged. Update VIP-5/VIP-17's copied amendment too.
-    ```vibe
-    const child = fork effect { return fail("x") catch () => 7 }
-    return join child // 7
-    ```
-    Effect TS: `const child = yield* Effect.forkChild(Effect.gen(function* () { return yield* Effect.catch(Effect.fail("x"), () => Effect.succeed(7)) })); return yield* Fiber.join(child)`. Decided by the agent from principle 1 (Effect.catch belongs inside the forked Effect), VIP-5/VIP-17 and detail 99's own Effect TS, 2026-10-29. This corrects migration advice; it changes no source construct's meaning.
-
-### Detail 161
-
-**Erratum to detail 105: the fork quick fix captures its operand on the caller before wrapping the handler.** (Fable round-20 m3; VIP-5/VIP-17.) At the original expression position, evaluate the fork operand once into a fresh capture, then fork the Effect containing catch on that captured value. The catch execution/handler runs on the child; constructing the operand stays on the parent. For fork.in evaluate/capture scope first, then the operand, as detail 84 requires. If the fix introduces statements inside a larger expression, use the existing ordered expression lowering so earlier operands/callee reads are not moved. Apply the correction to 002 and VIP-5/VIP-17.
-    ```vibe
-    const w = worker(try id()) // original operand: parent fiber
-    const child = fork effect { return w catch (e) => recover(e) } // handler: child fiber
-    ```
-    Effect TS: `const w = worker(yield* id()); const child = yield* Effect.forkChild(Effect.catch(w, e => Effect.succeed(recover(e))))`. Decided by the agent from VIP-17's eager operand evaluation and principle 2 (preserve source order and receiver/fiber effects), 2026-10-30. Detail 105 fixed the result-versus-Effect error but its unqualified wrapping moved operand evaluation; that part is corrected here. Capturing a preconstructed unrun Effect does not execute it.
+    Effect TS: `Effect.catch(x, () => Effect.succeed(7))`. Decided by the agent from principle 7 (no idiomatic Effect handler is a Promise or a Generator), principle 3 (syntax still decides) and principle 8; the async form was already always an error, so no accepted program changes; 2026-10-29.
 
 ### Detail 218
 
@@ -183,14 +167,6 @@ Decided details folded in verbatim on 2026-11-03 (mechanical pass). Each keeps i
     Effect TS: `Effect.gen(function* () { yield* Effect.forkChild(Effect.sync(() => { events += "child;" })); yield* Effect.succeed(1); events += "parent;"; yield* Effect.yieldNow })`. A short native control on pinned Effect 4.1.0 observes parent-after-completed-effect, child, parent-after-yield; its Promise control observes child before parent-after-await. This is a reference schedule witness, not a universal schedule or VibeLang execution test. Decided by the agent from principle 1 (idiomatic Effect execution), principle 4 (the accepted yield* counterpart without extra scheduling machinery), principle 7 (do not add Promise behavior to Effect), and VIP-5/VIP-31, 2026-10-30. `round26-reference.log` preserves the asserted native controls. No existing `.vibe` execution meaning is changed and no new Will question is needed.
 
     **Independent native receipt:** `root-try-turn-reference.log` records the executed runSync=7 control, opposite short Effect/Promise observer orders, and child progress during synchronous Effect.sync work under the native operation budget. Counting source try expressions is not a scheduling contract. Separate exploratory tiny-budget/optimized-succeed attempts are retained without a claimed pass. Duplicate220 is a receipt alias, excluded from new-decision counts;218 remains canonical. These native checks are not VibeLang conformance.
-
-### Detail 220
-
-**Duplicate receipt of detail 218; no additional decision.** The concurrent `try-native-scheduler-turns` write restated218 after that rule had been added under `completed-effect-scheduling`. Keep218 canonical and retain `root-try-turn-reference.log` as additional native scheduler/decorator evidence. This number is reserved as an alias and must not be reused. The duplicate changes no source behavior or Will question.
-    ```vibe
-    effect function pause() { try Effect.yieldNow }
-    ```
-    Effect TS: `Effect.gen(function* () { yield* Effect.yieldNow })`. Reconciled by the agent to detail218 and the same VIP-5/VIP-31 principles, 2026-10-30.
 
 ### Detail 226
 

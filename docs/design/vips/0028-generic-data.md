@@ -28,7 +28,7 @@ Old VibeLang's four-parameter limit (D374) was the same limit. No findings.
 
 ## Details
 
-Decided details folded in verbatim on 2026-11-03 (mechanical pass). Each keeps its old number as history; where one conflicts with the text above, the fold's conflict pass resolves it.
+Decided details folded in on 2026-11-03. Each keeps its old number as history. The conflict pass deleted superseded, duplicate and relic details and resolved contradictions in favor of Will's words, then accepted VIPs, then later details. Principles are numbered as in [the introduction's Details](../src/000-intro.md#details).
 
 ### Detail 26
 
@@ -47,3 +47,12 @@ Decided details folded in verbatim on 2026-11-03 (mechanical pass). Each keeps i
     type StrBox = Box<string>                     // ok
     ```
     Effect TS: `type Box<A> = Data.TaggedEnum<{ Value: { value: A } }>`. Decided by the agent from decided detail 27's precedent and principle 8 (allowing it on the alias later breaks no code); 2026-10-29.
+
+### Detail 83
+
+**Generic-`data` helper name in `.d.vibe.ts`** (NW 49; Opus m8; r16-001; refines detail 26). The helper for `data Outcome<A>` is named `$Outcome$Definition`. If the module already declares that name, the compiler appends `$2`, `$3`, … and takes the first free name, as `tsc` picks the first free name for its own emitted helpers. The name is therefore the same on every build of the same source and still never collides with a user name.
+    ```ts
+    // outcome.d.vibe.ts
+    declare interface $Outcome$Definition extends Data.TaggedEnum.WithGenerics<1> { … }
+    ```
+    Effect TS: a `WithGenerics<1>` interface under any name. Decided by the agent from principle 2 (deterministic emit, as `tsc`'s) and detail 26 (hygienic); 2026-10-29.

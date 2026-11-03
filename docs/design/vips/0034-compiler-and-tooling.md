@@ -35,37 +35,34 @@
 
 ## Details
 
-Decided details folded in verbatim on 2026-11-03 (mechanical pass). Each keeps its old number as history; where one conflicts with the text above, the fold's conflict pass resolves it.
+Decided details folded in on 2026-11-03. Each keeps its old number as history. The conflict pass deleted superseded, duplicate and relic details and resolved contradictions in favor of Will's words, then accepted VIPs, then later details. Principles are numbered as in [the introduction's Details](../src/000-intro.md#details).
+
+### Detail 60
+
+(NW 22; VIP-34) Each VIP's rules take one fresh hundred-block of codes, recorded in Appendix B; an old code is kept only where its rule is identical (EK4701). The next spec round assigns every "code pending" row.
+    ```vibe
+    // VIP-19 rules: EK19xx, e.g. EK1901 "for concurrent operand is a Stream"
+    ```
+    Effect TS: none. Decided by the agent from Will 15:57 (code numbering is the agent's job) and principle 4; 2026-10-29.
 
 ### Detail 72
 
 **Emit names mirror TypeScript** (audit 007 decision 3). `x.vibe` compiles to `x.js` beside `x.d.ts` in `outDir`, and relative specifiers `./x.vibe` in emitted code are rewritten to `./x.js`, as `rewriteRelativeImportExtensions` does for `.ts`. Bundler plugins (VIP-34) follow the same names. Decided by the agent from principle 2, 2026-10-30.
 
-67a. **Built-in class patterns** (resolves Astra round-16 M1; extends detail 67). The TC39 draft's matchers for built-in classes check engine internal slots (`[[ErrorData]]`, `[[DateValue]]`, `[[RegExpMatcher]]`, `[[MapData]]`, …) that compiled JavaScript cannot read portably. So a class pattern naming a built-in uses:
-   - `Array`: `Array.isArray(subject)`, which is the draft's own brand check and available everywhere;
-   - every other built-in (`Error` and its subclasses `TypeError`, `RangeError`, …, `AggregateError`, `Date`, `RegExp`, `Map`, `Set`, `WeakMap`, `WeakSet`, `Promise`, typed arrays, `ArrayBuffer`): `subject instanceof C`, as detail 67 does for ordinary classes. `Error.isError` is not in Node 22, which VibeLang supports, so errors use `instanceof` too.
-   - Divergence, stated beside detail 67's: a cross-realm built-in (from another `vm` context or iframe) fails `instanceof`, except arrays. When the supported Node versions all have `Error.isError`, errors switch to it in a VIP.
-   Effect TS: `Array.isArray(x)` and `x instanceof C`. Decided by the agent from detail 67, principle 1 and implementability, 2026-10-30.
+### Detail 72a
 
-67b. **A class pattern naming a VibeLang value that is not a class is a compile error** (audit-x 004 D1). A class pattern whose expression resolves to a `data` declaration or variant constructor, a `schema` declaration, a `service` or a `Context.Reference` is `EK0702`, with a quick fix: for a variant, "write `when { _tag: "Sent" }:`"; for a schema, test with `Schema.is(Address)(x)` in a guard; for a service, extend `EK3004`. Under the pinned draft such a function would be *called* with the subject and match almost everything, silently. Correction to detail 67's aside: only `error` declarations (and the Effect matchers of detail 53) have their own `Symbol.customMatcher`; `data` variant constructors and `schema` constants do not (chapter 006 is right). Decided by the agent from principle 8 (an error can be relaxed later) and VIP-7's no-patching condition, 2026-10-30.
-
-67c. **Declaration output carries the generated matcher** (audit-x 001 D1). A `.d.vibe.ts` that declares an `error` or `schema error` keeps its static `[Symbol.customMatcher]` member, `vibelang-runtime` ships the `Symbol.customMatcher` type (`declare global { interface SymbolConstructor { readonly customMatcher: unique symbol } }`), and each such declaration file begins with `/// <reference types="vibelang-runtime" />`, so plain `tsc` type-checks it and cross-package matching dispatches at run time as the draft says. Decided by the agent from VIP-27 (declarations are what idiomatic Effect TypeScript would declare), 2026-10-30.
-
-51a. **`restore` in any `for concurrent` body is `EK2202`** (audit-x 002 D1; extends detail 51). `restore` is lexical, and a `for concurrent` body's items run as separate Effects that the enclosing `uninterruptible` mask does not govern, whatever the limit. A body that needs it masks per item with `Effect.uninterruptibleMask` inside the body, or uses a plain `for` instead of `for concurrent(1)`. Decided by the agent from detail 51's rule, 2026-10-30.
-
-## Items 73–87 (lane decide-r16, 2026-10-29: Will's rule "when I state a principle, the agent derives the concrete rule and acts; I can override later")
-
-Each item closes a round-16 NEEDS-WILL entry (`v15/NEEDS-WILL.md`, "NW n") or a round-15 finding. Principles are numbered as in items 33–66. Will can override any item in `will-overrides.md`. None is class B: no item changes what compiled `.vibe` code means, because every affected construct is still `compiler-gap` or marked Undecided.
+**The formatter only lays out; fixes belong to `vibelang --fix`** (c9's FuzzFormat finding, 2026-10-30; VIP-34 requirement 2). Chapter 7 states the formatter's contract: for any file that parses, formatting keeps its diagnostics (the same codes, at the moved positions) and its program meaning and contracts (detail 234; emitted bytes may change); it never removes or adds a diagnostic. A file that doesn't parse is left unchanged. Rewrites that change meaning, including migrating removed forms such as the `async f()` / `effect f()` shorthand (EK4618) to `function` form, are quick fixes applied by `vibelang --fix` or the editor, never by formatting. The formatter that vip-core (3f873a15) taught to rewrite the shorthand gives that rewrite to `--fix` instead. Decided by the agent from principles 1 and 2 (Prettier and oxfmt never change meaning) and VIP-34 requirement 2, 2026-10-30.
+    **Byte-equality erratum: detail234 supersedes this exact-emission requirement.** Keep this item's no-semantic-codemod, diagnostic-preservation and unparsable-input rules; source-map correctness remains as174 requires. Ordinary formatter layout/spelling changes follow234's semantic, declaration, comment/directive and source-text-reflection contracts instead of executable-byte identity.
+    Status: applied in 781a52f073ba (spec-fix-d; queued, not yet a main receipt).
 
 ### Detail 107
 
-**Imported-lint overflow keeps the VIP prefix and extends the ordinal (class B default).** (r20-007; 130 rules, only 99 positive two-digit ordinals.) The recommended default is the literal prefix `EK38` followed by the decimal ordinal padded to a *minimum* of two digits: ordinals 1, 99, 100, 130 print `EK3801`, `EK3899`, `EK38100`, `EK38130`. Match and validate configured codes against the generated table; `EKxxxx` is a minimum-width display convention, not a four-digit upper bound for imported lint. Keep the already-assigned strings unchanged. This amends detail 60/VIP-34's one-hundred-block capacity specifically for imported lint; it does not consume another VIP's prefix. The alternative is to preserve four digits by reserving an overflow block such as `EK39xx` for VIP-38. No TypeScript/Effect rule or earlier decision chooses between code width and block allocation, so this one is Will's choice.
+**Imported-lint overflow keeps the VIP prefix and extends the ordinal.** (r20-007; 130 rules, only 99 positive two-digit ordinals.) The code is the literal prefix `EK38` followed by the decimal ordinal padded to a *minimum* of two digits: ordinals 1, 99, 100, 130 print `EK3801`, `EK3899`, `EK38100`, `EK38130`. Match and validate configured codes against the generated table; `EKxxxx` is a minimum-width display convention, not a four-digit upper bound for imported lint. Keep the already-assigned strings unchanged. This amends detail 60/VIP-34's one-hundred-block capacity specifically for imported lint; it does not consume another VIP's prefix. Codes match the generated table as whole strings, so `EK3810` and `EK38100` are distinct. No `EK39xx` overflow block is reserved.
     ```vibe
-    effect { succeed(1) } // both options preserve EK3801 floatingEffect
-    // A (default): imported rule ordinal 100 prints EK38100
-    // B: imported rule ordinal 100 prints EK3901; EK39 is reserved for overflow
+    effect { succeed(1) } // EK3801 floatingEffect
+    // imported rule ordinal 100 prints EK38100
     ```
-    Effect TS: identical lint behavior; only the diagnostic identifier format differs. **default, applies 2026-10-30 09:00 PT unless Will answers pending-lint-code-overflow**. Recommended by the agent from principle 4 (one imported-rule namespace), 2026-10-29; not an unconditional decision before the deadline. `for-will.json` carries both options. The explicit date is authoritative: 2026-10-30 is Friday, so the brief's “Thu” label is corrected to Friday.
+    Effect TS: identical lint behavior; only the diagnostic identifier format differs. Decided by the agent from principle 4 (one imported-rule namespace), 2026-10-29; final under detail 142 (NW 66, 2026-10-30).
 
 ### Detail 186
 
@@ -81,6 +78,23 @@ Each item closes a round-16 NEEDS-WILL entry (`v15/NEEDS-WILL.md`, "NW n") or a 
 
 
     **Complete source/oracle replacement:** applied in204d33a447de554894ed629fc945d378bfd935b5 (spec-fix-d/bookmark30, independent queued; not main). Rejected d5c588f3ae82 superseded after queue acceptance. Main already had correct cliFixFlag/loader-root behavior; replacement preserves it and retains exact original regression, both public scope contracts/citations and paired VIP coverage. Immutable-main proof fails only missing docs/stale citations. Fresh current compiler8probes verify standaloneTS5023 and both argument orders/case handling; after regression, configured spec, regen/docs/forms pass with no form changes. No language/API permission or compiler behavior newly introduced.
+
+### Detail 244
+
+**`EK0801` (`using` in effect code) is a VIP-34 TypeScript-form warning; a denied VIP carries no rule.** (spec-fix-a `000-denied-vip-rule-authority`, found 2026-10-31 on main 1d56b687ec64; details 13/60/77/213; VIP-34; VIP-8 denied 2026-10-28.) The rule of detail 13 stands unchanged: `using` in effect code gets a warning, because the resource leaks on a failure or interruption, with the quick fix `acquireDisposable` inside `scoped`; `using` keeps the TypeScript meaning. Only its public home moves: record it as an amendment of VIP-34, the twelfth entry of the TypeScript-form warnings list (a legal TypeScript form with an Effect idiom to teach and a quick fix, like the `EK48xx` rows), and cite VIP-34 in the Appendix B row. The code stays `EK0801` under the detail 60 unchanged-code exception, stated beside the `EK48` exceptions in Appendix B. VIP-8 keeps its denial and its 2026-10-29 amendment text, which now points to the VIP-34 amendment as the authority. The 000 authority sentence is unchanged: option B (an amendment to a denied VIP may add a diagnostic) would add an exception to the authority rule for one row. Not VIP-38: detail 77 gives imported Effect lint rules `EK38xx` codes and tsconfig-style configuration, and this warning is a VibeLang effect-code rule. The 007 `vibe.severities` example keeps `EK0801`. No program changes meaning or severity.
+    ```vibe
+    effect function readAll(path: string) {
+      using file = openSync(path)   // EK0801 warning (VIP-34): leaks if the Effect fails or is interrupted
+      return file.readAll()
+    }
+    effect function readAllSafe(path: string) {
+      return try scoped(effect {
+        const file = try acquireDisposable(() => openSync(path))
+        return file.readAll()
+      })
+    }
+    ```
+    Effect TS: `readAll` is `Effect.gen(function* () { using file = openSync(path); return file.readAll() })`, the form the VIP-8 amendment records as leaking on a failure or interruption; `readAllSafe` is `Effect.scoped(Effect.gen(function* () { const file = yield* Effect.acquireDisposable(() => openSync(path)); return file.readAll() }))`, whose finalizer runs on every exit (Effect 4.1.0). Decided by the agent from principle 4 (one authority rule, no per-row exception), detail 213 (public rules live in accepted VIPs and their public amendments), detail 60 (a code keeps its number when the home of its rule moves) and detail 13 (the rule itself, unchanged), 2026-10-31. spec-fix-a writes the VIP-34 amendment, the row VIP column, the Appendix B exception sentence and the VIP-8 pointer.
 
 ### Detail 270
 

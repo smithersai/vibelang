@@ -76,7 +76,7 @@ The compiler is being changed to match the VIPs. Until it does, every VibeLang e
 
 ## Details
 
-Decided details folded in verbatim on 2026-11-03 (mechanical pass). Each keeps its old number as history; where one conflicts with the text above, the fold's conflict pass resolves it.
+Decided details folded in on 2026-11-03. Each keeps its old number as history. The conflict pass deleted superseded, duplicate and relic details and resolved contradictions in favor of Will's words, then accepted VIPs, then later details. A cited “principle N” is one of the eight decision principles: 1 least surprise and idiomatic Effect TypeScript; 2 mirror TypeScript or TC39; 3 syntax decides; 4 fewer rules; 5 legacy JavaScript banned; 6 effectful functions can't throw; 7 drop non-idiomatic behavior; 8 conservative when unsure.
 
 ### Detail 207
 
@@ -132,48 +132,34 @@ Public VIP27 Bun-script clarification: applied in36d702266edd (spec-fix-a; queue
 
     **VIP-39 chapter/publication corrections (Loop r4 Opus OPUS-2/3/6).** The accepted VIP already settles the extension and native JSX behavior. Publish its file kind, type/grammar competition, module classification, resolution order, JSX options, `.jsx`/`.js` output and `.d.vibex.ts` sidecar throughout000/001/007/AppendixA and affected references; pending chapter delivery does not remove the accepted feature. Native `react-native` retains JSX just as `preserve` does, so both belong in the downstream-framework-transform group; only `react`/`react-jsx`/`react-jsxdev` transform it in TypeScript. Preserve the existing stated framework limitations and no-extra-run-ban rule. Native JSX scanning also merges adjacent `</` into `LessThanSlashToken`, even outside a tag, so qualify the source-parsing/relational-pattern guarantees and add that scanner clash. Write a space in `a < /b/.source.length` or `when < /b/:` when the separate relational token and regex are intended; do not introduce a pattern-only scanner exception or modify upstream scanner rules. Native TS5.9.3 controls in `native-loop-r3/jsx-scanner-modes.log` confirm the parser difference, whitespace control and five emit-mode groups; they are not VibeLang pattern/framework checks. Decided by the agent from accepted VIP-39's native scanner/checking/emit and unchanged-production requirements, principle2 and existing213's public-authority/publication rule, 2026-10-31. No new numbered policy or code. Add mode/scanner/context/spacing regressions and spec-quoted fuzz controls, retaining source-order and ordinary pattern semantics.
 
-### Detail 244
+### Detail 310
 
-**`EK0801` (`using` in effect code) is a VIP-34 TypeScript-form warning; a denied VIP carries no rule.** (spec-fix-a `000-denied-vip-rule-authority`, found 2026-10-31 on main 1d56b687ec64; details 13/60/77/213; VIP-34; VIP-8 denied 2026-10-28.) The rule of detail 13 stands unchanged: `using` in effect code gets a warning, because the resource leaks on a failure or interruption, with the quick fix `acquireDisposable` inside `scoped`; `using` keeps the TypeScript meaning. Only its public home moves: record it as an amendment of VIP-34, the twelfth entry of the TypeScript-form warnings list (a legal TypeScript form with an Effect idiom to teach and a quick fix, like the `EK48xx` rows), and cite VIP-34 in the Appendix B row. The code stays `EK0801` under the detail 60 unchanged-code exception, stated beside the `EK48` exceptions in Appendix B. VIP-8 keeps its denial and its 2026-10-29 amendment text, which now points to the VIP-34 amendment as the authority. The 000 authority sentence is unchanged: option B (an amendment to a denied VIP may add a diagnostic) would add an exception to the authority rule for one row. Not VIP-38: detail 77 gives imported Effect lint rules `EK38xx` codes and tsconfig-style configuration, and this warning is a VibeLang effect-code rule. The 007 `vibe.severities` example keeps `EK0801`. No program changes meaning or severity.
-    ```vibe
-    effect function readAll(path: string) {
-      using file = openSync(path)   // EK0801 warning (VIP-34): leaks if the Effect fails or is interrupted
-      return file.readAll()
-    }
-    effect function readAllSafe(path: string) {
-      return try scoped(effect {
-        const file = try acquireDisposable(() => openSync(path))
-        return file.readAll()
-      })
-    }
-    ```
-    Effect TS: `readAll` is `Effect.gen(function* () { using file = openSync(path); return file.readAll() })`, the form the VIP-8 amendment records as leaking on a failure or interruption; `readAllSafe` is `Effect.scoped(Effect.gen(function* () { const file = yield* Effect.acquireDisposable(() => openSync(path)); return file.readAll() }))`, whose finalizer runs on every exit (Effect 4.1.0). Decided by the agent from principle 4 (one authority rule, no per-row exception), detail 213 (public rules live in accepted VIPs and their public amendments), detail 60 (a code keeps its number when the home of its rule moves) and detail 13 (the rule itself, unchanged), 2026-10-31. spec-fix-a writes the VIP-34 amendment, the row VIP column, the Appendix B exception sentence and the VIP-8 pointer.
-
-### Detail 267
-
-**Plain functions have JavaScript's stack limit; stack-safe recursion is written as `effect`.** (spec agent, 2026-11-01, from VIP-1 and VIP-4; raised by platform during the VIP-1 plain-functions flip; not a Will question.) VIP-1 makes a plain function plain JavaScript, so deep plain recursion overflows as in JavaScript: a `RangeError` that is an implicit throw, untracked and a defect in effect code (VIP-4: "Implicit throws, such as reading a property of `undefined` or a stack overflow, are not tracked"). An `effect` function's recursion runs on the Effect runtime and is stack-safe. Before the flip, plain recursive functions were inferred as effect code and were stack-safe by accident; nothing promised it. Spec text, chapter 1 (or 8): "Plain functions have JavaScript's stack limit; recursion that must be stack-safe is written as an `effect` function." Cases: a 100,000-deep `effect function` recursion succeeds; a plain twin documents the limit (expects `RangeError`, not a guarantee).
-    ```vibe
-    function depth(n: number): number { return n === 0 ? 0 : 1 + depth(n - 1) }                // depth(100_000): RangeError, as in JavaScript
-    effect function depthE(n: number): number!! { return n === 0 ? 0 : 1 + try depthE(n - 1) } // succeeds with 100000
-    ```
-
-### Detail 304
-
-**`do` lowering preserves TypeScript's source-branch flow facts.** (RC-38 `002:do-short-circuit-loses-narrowing`; accepted VIP-2, native plain-function guarantee and principle2.) A `do` body in a short-circuit operand is checked with the ordinary TypeScript narrowing supplied by the original source guard in that branch. A synthesized writable result/completion temporary must not sever the guard's relation to the source variable. Keep guard evaluation once, source short-circuit/side-effect order, native result types and the actual invalidation of a narrowing after source writes. Each operator retains its own native branch facts; this grants no extra non-nullability for a nullish-coalescing RHS.
+**Unsupported pre-VIP special forms retire through preserving migration; historical decisions are not language authority.** (Will's no-pre-VIP-relics standing ruling recorded in `loop/WILL-ANSWERS.md`, 2026-11-03, verbatim relayed by effectscript-11; its D152 application; existing213/274/277 and principles1/2/3/4/7/8.) The legacy Option/Stream receiver-method extension, such as `value.map(f)`, retires. For every pre-VIP VibeLang special form reported by `vibelang-forms -legacy` that no current accepted VIP adds or inherits, implement the preserving codemod to the VIP form or ordinary Effect TypeScript API, migrate the repos and corpus, then reject the retired form with a clear diagnostic and list the change in release notes. No new question asks Will to confirm this inventory.
 
     ```vibe
-    export function probe(x: { n: number } | undefined): number | undefined {
-      return x && do { x.n }
-    }
-    export function invalid(x: { n: number } | undefined) {
-      return x && do { x = undefined; x.n } // retains the native error
+    import { Option, Stream } from "effect"
+    export const optional = Option.map(Option.some(1), value => value + 1)
+    export const mapped = Stream.map(Stream.make(1), value => value + 1)
+    export effect function collect() {
+      return try Stream.runCollect(mapped)
     }
     ```
 
-    Effect TS: these remain ordinary TypeScript functions; the valid no-jump counterpart is `export function probe(x: { n: number } | undefined): number | undefined { return x && (() => x.n)() }`. TypeScript5.9.3 accepts it. The invalidating-assignment counterpart still rejects the property read. An illustrative immediate arrow is not a general lowering recipe: retain source callable bindings, outward jumps and any admitted suspension. Do not require an assertion, annotation, different target source or weakened strictness to recover an originally valid guard.
+    **Effect TS:**
 
-    Reviewer pass126 reports six falsely rejected guard shapes on `fe7b802fbf05`: truthiness, null check, positive/negative `typeof`, discriminant and const guard alias; their native counterparts accept and older `509a2110` controls agree. Explicit ternary, surrounding `if` and inside-`do` guard controls accept; unguarded/invalidated accesses retain real `TS18048`. Its28 compiler calls include17 accepts and11 rejections (seven current false rejections including the duplicate initial witness, four intentional negative-control rejections). Fifteen runtime calls cover accepted programs only. These are attributed receipts, not this lane's Vibe/compiler execution, implementation or a full-suite claim. RC10's inference cycle and contextual-literal reports remain distinct.
+    ```ts
+    import { Effect, Option, Stream } from "effect"
+    export const optional = Option.map(Option.some(1), value => value + 1)
+    export const mapped = Stream.map(Stream.make(1), value => value + 1)
+    export function collect() {
+      return Effect.gen(function* () { return yield* Stream.runCollect(mapped) })
+    }
+    ```
 
-    Chapter002/impl-hunt-run, core-block and checker owners retain a failing-main regression and keyed spec-quoted fuzz/property neighbourhood: both branch outcomes, truth/type/discriminant/alias guards, nested logical/nullish forms, effectful guard evaluation once, source mutation invalidation, valid ordinary/conditional controls and real unsafe-access rejection. Preserve the actual source flow rather than suppressing diagnostic codes. No new diagnostic or public package API. Decided by the agent from principle2 (mirror TypeScript), accepted VIP-2 and `000-intro.md`/`002-running.md`'s native flow/conditional-evaluation guarantee, 2026-11-02 under the 2026-10-29 delegation. Class A; no Will question.
+    Classify the actual legacy operation by resolved identity and the admitted source form, not a member's spelling alone. Ordinary TypeScript methods, including array and user-defined `map`, remain ordinary calls; accepted VIP forms and inherited TypeScript/TC39 syntax are not retired merely because an old inventory labels them legacy. Reconcile a stale inventory with the current accepted source instead of inventing a new ban. The oracle supplies the census; current VIPs and this ruling supply authority. Do not revive retired D-numbers as normative rules or add a compatibility parser exception.
 
-    Sources: `loop/scoped/rev-compiler/FINDINGS.md` pass126; `pass126-narrow.json`, `pass126-narrow-matrix.json` and source/config controls.
+    Migration preserves receiver/argument evaluation, captures, call-versus-run phase, coldness, success/error/environment channels, public declarations and original assertion/coverage contracts. For genuine old source whose behavior cannot yet be preserved, apply existing274's explicit refusal/guard policy and retain a safe TypeScript boundary or prior qualified SDK; do not silently apply a lossy rewrite or call a failed baseline green. This is no general permission to edit protected target tests. Migrate corpus through the owning workflow, retaining minimized old-source migration/rejection witnesses and current positive controls rather than deleting coverage or weakening budgets. Record intended forms-table moves individually with the ruling as their reason.
+
+    Remove pre-VIP decision text from normative chapters as directed; retain D-number references only as history and receipt provenance. The recorded actual Will quote establishes the no-relics principle; effectscript-11's explicit application closes the former external `legacy-forms` question2 about Option/Stream methods. This is an agent application of the recorded ruling, not an invented literal option selection by Will, a timed default, or a completed compiler/codemod rollout.
+
+    Decided by the agent from Will's recorded first-principles/no-relics ruling and existing213/274/277, 2026-11-03 under the 2026-10-29 delegation. Class A; no new syntax, package API or Will question. Regression/property coverage must prove old-form migration and rejection, native counterparts, aliases/shadowing and same-spelling ordinary methods, phases/channels/declarations and retained corpus. This lane records policy only and ran no compiler, migration or product test for this ruling.

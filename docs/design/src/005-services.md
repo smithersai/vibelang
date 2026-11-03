@@ -696,7 +696,7 @@ yield* Effect.sleep("10 millis")
 
 ## Details
 
-Decided details folded in verbatim on 2026-11-03 (mechanical pass). Each keeps its old number as history; where one conflicts with the text above, the fold's conflict pass resolves it.
+Decided details folded in on 2026-11-03. Each keeps its old number as history. The conflict pass deleted superseded, duplicate and relic details and resolved contradictions in favor of Will's words, then accepted VIPs, then later details. Principles are numbered as in [the introduction's Details](000-intro.md#details).
 
 ### Detail 90
 
@@ -704,10 +704,10 @@ Decided details folded in verbatim on 2026-11-03 (mechanical pass). Each keeps i
     ```vibe
     const u = new URL("./data.json", import.meta.url)   // ok: module identity (ECMA-262)
     const d = import.meta.dirname                        // EK4402: acquire Path.Path; use its fromFileUrl/dirname methods
-    const k = import.meta.env.API_KEY                    // EK4402: use Config.string("API_KEY")
+    const k = import.meta.env.API_KEY                    // EK4402: use Config.String("API_KEY")
     const m = import.meta                                // EK4402: alias
     ```
-    Effect TS: `const path = yield* Path.Path; const file = yield* path.fromFileUrl(new URL(import.meta.url)); const d = path.dirname(file)`; `yield* Config.string("API_KEY")`. Decided by the agent from Will's VIP-33 rule ("All web apis and all node.js apis should be wrapped and effectful"; `import.meta.dirname` is Node's ESM spelling of the banned `__dirname`, and `env` is the banned `process.env`'s), detail 73's alias rule and principle 8; 2026-10-29.
+    Effect TS: `const path = yield* Path.Path; const file = yield* path.fromFileUrl(new URL(import.meta.url)); const d = path.dirname(file)`; `yield* Config.String("API_KEY")`. Decided by the agent from Will's VIP-33 rule ("All web apis and all node.js apis should be wrapped and effectful"; `import.meta.dirname` is Node's ESM spelling of the banned `__dirname`, and `env` is the banned `process.env`'s), detail 73's alias rule and principle 8; 2026-10-29.
 
     **Path repair clarification, 2026-10-30 (Opus r21/r22 m10; live `005-import-meta-path-repair`).** The explicit module namespace is not a service instance: acquire `Path.Path` and invoke its Shape methods. The already-stated Effect TS uses `yield* path.fromFileUrl(new URL(import.meta.url))`, then the ordinary `path.dirname(file)`. In `.vibe` effect code, preserve both the explicit service acquisition and explicit execution of the returned conversion Effect; URL construction also keeps details 66/205's ordinary throwing-signature bridge requirements. Do not suggest a nonexistent namespace-level `Path.fromFileUrl` or add an implicit service-forwarding API. This is the existing VIP-9/VIP-33 counterpart and the accepted import-meta restriction, not a new language choice. The fixing lane reports its strict TypeScript/Effect 4.1.0 Path.layer witness; decide-live did not run a VibeLang compiler case for it.
 

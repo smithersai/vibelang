@@ -1420,7 +1420,7 @@ export declare function decodeUnknownSync<T>(s: Schema.Decoder<T>): {
 
 ## Details
 
-Decided details folded in verbatim on 2026-11-03 (mechanical pass). Each keeps its old number as history; where one conflicts with the text above, the fold's conflict pass resolves it.
+Decided details folded in on 2026-11-03. Each keeps its old number as history. The conflict pass deleted superseded, duplicate and relic details and resolved contradictions in favor of Will's words, then accepted VIPs, then later details. Principles are numbered as in [the introduction's Details](000-intro.md#details).
 
 ### Detail 19
 
@@ -1430,63 +1430,9 @@ Decided details folded in verbatim on 2026-11-03 (mechanical pass). Each keeps i
 
 Recursive inference reports only TypeScript's own errors (TS7022/7023/7024). Delete EK2102's old partial-slot rules.
 
-### Detail 35
-
-(NW 38; VIP-12) A line break after a comma between providers is a syntax error, as VIP-12 says ("its providers and block must be on one line"). Breaks inside a provider are free. The formatter (VIP-34) never breaks a `provide` list at a comma; a long list stays on one line or the author writes `Layer.mergeAll(…)`.
-    **Separator scope clarification (detail237).** The existing one-line separator restriction applies immediately before as well as after each top-level provider comma, as Appendix A already states. Both invalid forms use `EK1202` through237's bounded head recovery; expression-internal line breaks remain free.
-    ```vibe
-    provide AppLive, Users = testUsers { try a() }   // ok
-    provide Layer.mergeAll(
-      AppLive,
-      UsersLive) { try a() }                          // ok
-    provide AppLive,
-      Users = testUsers { try a() }                   // syntax error
-    ```
-    Effect TS: `Effect.provide(gen, [AppLive, Layer.succeed(Users, testUsers)])`. Decided by the agent from VIP-12's text and principle 8 (relaxing to Opus's reading (b) later breaks no code); 2026-10-29.
-
-### Detail 40
-
-(NW 5; decided details 2 and 37) The remaining annotations of `lib.d.ts` globals and effect 4.1.0's non-Effect exports are generated, not chosen one by one. Rule: an export is `@throws {never}` only when its 4.1.0 source has no `throw` reachable from well-typed input; a known thrown class is named (`SchemaError`); otherwise `unknown`. The next spec round publishes the generated table in Appendix E with the generator's command.
-    **Immutable-main source scope (f6fe7a, 40).** The expanded generated artifact now includes Effect/global owncontracts and nested callable metadata, with conservativeunknowns retained. Selected records were inspected, not every proof or actual annotation consumer. `root-mainf6-source-receipt.json` and `root-mainf6-throws-audit.json` preserve reviewed-prose/structured-artifact limits; no full raw9.19MB human-read or owncompiler/Go/generator/test/gate claim.
-    ```vibe
-    Option.some(1)                  // never
-    Schema.decodeUnknownSync(S)(u)  // SchemaError
-    ```
-    Effect TS: the tracked ones need `Effect.try`. Decided by the agent from Will 15:57 ("I don't have every api memorized that's on the agent") and principle 8; 2026-10-29.
-
-### Detail 60
-
-(NW 22; VIP-34) Each VIP's rules take one fresh hundred-block of codes, recorded in Appendix B; an old code is kept only where its rule is identical (EK4701). The next spec round assigns every "code pending" row.
-    ```vibe
-    // VIP-19 rules: EK19xx, e.g. EK1901 "for concurrent operand is a Stream"
-    ```
-    Effect TS: none. Decided by the agent from Will 15:57 (code numbering is the agent's job) and principle 4; 2026-10-29.
-
-### Detail 64
-
-(Note on decided detail 4) Correction: the `Promise` executor does not rethrow. `new Promise(() => { throw e })` rejects; it never throws at the construction site (JavaScript; opus probe3, all four reviewers). `new Promise(exec)` is not throw-tracked; the executor's body is plain code whose throws become the rejection.
-    ```vibe
-    const p = new Promise((res) => { res(JSON.parse(s)) })   // no tracked throw: rejection on bad JSON
-    ```
-    Effect TS: `Effect.tryPromise(() => new Promise(…))` turns the rejection into a typed failure. Decided by the agent from principle 2 (mirror JavaScript); it removes only a false error, so no existing code breaks; 2026-10-29.
-
-### Detail 69
-
-**`import(expr)` with a computed specifier is not checked** (audit 005 D1, with NW 43). `EK4402` checks string-literal specifiers only (`import("node:fs")` is checked); `import(name)` and `import("node:" + m)` compile, as a statically unknown `globalThis[k]` does. One rule covers both dynamic forms: checks apply to statically named references only. Decided by the agent from principle 1 (ordinary lazy loading keeps working) and consistency with NW 43, 2026-10-30.
-
 ### Detail 71
 
 **Warnings never change the exit status** (audit 007 M4). `vibelang` and `vibelang lint` exit non-zero only on errors, as `tsc` and ESLint do by default; a repository that wants a warning to fail CI sets its code to `"error"` in `vibe.severities`. Decided by the agent from principle 2, 2026-10-30.
-
-### Detail 74
-
-**Amendment to detail 69: dynamic `import()`** (NW 43). Replace detail 69's sentence "One rule covers both dynamic forms: checks apply to statically named references only." with: "`import(expr)` with a computed specifier stays unchecked: it loads a module and cannot reach `eval` or `Function`. `globalThis` is not treated the same way; detail 73 rejects every use of it except a statically named, non-banned member." A string-literal `data:` or `blob:` specifier, in `import(…)` or an `import` declaration, is `EK0107`: it runs a string as code, as `eval` does.
-    ```vibe
-    const m = import(name)                              // ok, unchecked
-    import("node:fs")                                   // EK4402 (literal, checked)
-    import("data:text/javascript,export default 1")     // EK0107
-    ```
-    Effect TS: `Effect.promise(() => import(name))`. Decided by the agent from 30a (no code from strings) and principle 1 (ordinary lazy loading keeps working); 2026-10-29.
 
 ### Detail 75
 
@@ -1497,145 +1443,6 @@ Recursive inference reports only TypeScript's own errors (TS7022/7023/7024). Del
     const copy = new (point.constructor as any)()    // ok: point is not a function
     ```
     Effect TS: none. Decided by the agent from 30a, detail 33's purpose and principle 8; 2026-10-29.
-
-### Detail 77
-
-**Imported Effect lint rules print `EK38xx` codes and merge configuration like tsconfig** (NW 41; r16-000, r16-007; VIP-38, details 57 and 60). Each `effecttsgo/*` rule VIP-38 imports gets one stable `EK38xx` code, in a table in Appendix B generated from the pinned effect-tsgo version (a VIP-32 bump regenerates it; a rule's code never changes once assigned). The CLI and language server print that code, with the rule name in the message (`EK3801 floatingEffect: …`). Severity resolves in this order, more specific wins, as a tsconfig child overrides its base: an entry for the code in `vibe.severities`; else the repository's Effect language-service configuration (VIP-38: it "selects and configures them"); else the rule's default. Every `EK38xx` code is a lint code and may be set to any value, `"off"` included, whatever severity it prints at: VIP-34's "errors can't be off" covers VibeLang's own rules. The floating-`effect { }` statement (002, 007) is reported by the imported `floatingEffect` rule under its `EK38xx` code.
-    **Immutable-main source portion (fb3e96, 77).** 007/publicVIP38 explicitly include selected .ts and .vibe inputs with pinned upstream rule/file eligibility and declaration/library exclusions, retaining Vibe-specific checks only for .vibe. No CLI/LS invocation verified. Complete10-file,47,460-character diff independently read. Source publication only; no own compiler/native/Go/gate check. `main-fb3-source-receipt.json` records exact limits.
-    **Immutable-main source scope (ff2544, 77).** The pinned 130-rule inventory and identical007/AppendixB tables now publish code/name/defaultseverity, with existing severity precedence and off allowed for all importedrules. Source metadata publication does not verify actualCLI/LS output or separately publish the new mixed-project applicability clarification. `main-ff2-source-receipt.json` records exact read/consistency limits; no own compiler/gate/native rerun.
-    ```json
-    { "vibe": { "severities": { "EK3801": "warning" } } }
-    ```
-    Effect TS: the same rules under the same Effect language-service configuration. Decided by the agent from detail 60 (VIP-38's block is `EK38xx`), detail 57 (`vibe.severities` is keyed by the printed code: one key space, principle 4) and principle 2 (tsconfig precedence); Fable's alternative (rule names as codes) would add a second key space; 2026-10-29.
-
-
-    **Mixed-project input coverage clarification (VIP-38).** Keep the pinned upstream Effect rule applicability for native `.ts` inputs selected by the project's existing compiler/language-service configuration, and add `.vibe` coverage through the approved integration. VIP-38's statement that the rules run “on `.vibe` files” is an inclusion promise, not an instruction to suppress existing upstream diagnostics in TypeScript inputs. The existing user guide already explicitly says both file kinds. Preserve upstream/configured file eligibility, declarations/library exclusions and rule-specific applicability; this is not a promise to lint every dependency or a new global file-scope option.
-    VibeLang's own source-syntax/semantic checks remain distinct from imported Effect lint: this does not require `.ts` to adopt VibeLang syntax, globals or native-exception changes. The imported rules retain77's configured severity/identity contract and98's upstream pin across CLI, language server and `vibelang lint`; other lint tools keep their own configuration. Any discrepancy in exact emitted codes or runner behavior remains a separately evidenced implementation/table issue, not approval to invent an alternate per-extension lint protocol.
-    ```vibe
-    effect function example() {
-      succeed(1) // the selected imported floatingEffect rule still applies
-    }
-    ```
-    Effect TS: `import { Effect } from "effect"; const example = Effect.gen(function* () { Effect.succeed(1) })` remains eligible for that upstream rule when written in a selected native `.ts` file. This records rule coverage, not a new runtime transformation or a claim that a particular compiler diagnostic probe was run.
-    Decided by the agent from accepted VIP-38's built-in Effect runner and existing-configuration promise, principle1 (idiomatic Effect TypeScript keeps its existing lint), principle4 (one upstream integration) and principle8 (retain the current selected checks rather than create an unapproved exclusion), 2026-10-30. Clarify public VIP-38/007 and reconcile the already-both-files user guide under213. The migration report's parked scope question needs no further Will choice; exact source/runner conformance remains separately verified.
-    **Native-input source clarification:** applied in 01956dd360b5a19bcf0ff3e43135f62d0862be8e (spec-fix-d, queued; not main). Four bounded007/publicVIP38/CLI/devtools clauses explicitly retain selected .ts and .vibe imported-rule coverage with pinned per-rule/file eligibility, declaration/library exclusions and existing configuration. Native TypeScript language checking and VibeLang-only language checks remain distinct. Four regressions fail immutable actual main8b4abee2 and pass Node/Bun; configured spec, regen/docs/forms pass with no form moves. No compiler port, code-inventory repair or conformance claim.
-
-    **Smithers green9 scope question, decide-live, 2026-11-02:** this is already settled by accepted VIP-38 and this detail. Imported Effect lint runs on selected native `.ts` and `.vibe` inputs with the pinned upstream eligibility and exclusions. The current generated inventory gives `EK3801` (`floatingEffect`), `EK3865` (`missingEffectContext`) and `EK3870` (`missingReturnYieldStar`) default severity `error`. Preserve the precedence `vibe.severities` > existing Effect language-service configuration > pinned default. Every imported code remains configurable, including `off`; that capability does not automatically authorize changing a migration target's checks to pass. Do not make all imported rules warnings or limit them to `.vibe` merely because an older compiler did not report them.
-
-    ```vibe
-    effect function example() {
-      Effect.succeed(1) // selected imported floatingEffect rule applies
-    }
-    ```
-
-    Effect TS: `import { Effect } from "effect"; const example = Effect.gen(function* () { Effect.succeed(1) })` in an eligible `.ts` file is checked by the same selected pinned rule and effective configuration. This is an applicability example, not a new compiler execution receipt.
-
-    Setup may preserve/translate an existing approved lint configuration through the existing modern root `vibe.severities` contract; it must not silently invent severity downgrades, suppressions or extension exclusions. Compare native and converted source on the same actual SDK and effective configuration before classifying a conversion regression. The reported older `0.0.8` versus `0.0.11` diagnostic-count difference is an upgrade/configuration observation, not by itself a conversion defect. Capture the actual command status separately under292; a printed `error` category alone does not prove a particular process exit. Genuine generated-name TypeScript errors remain separately investigated. This reuses77/98/272/291/292 and principles1/2/4/8; no new rule number or Will question. Immutable current VIP-38 and the three inventory rows were read; no CLI, LSP, compiler or target test was run by this lane.
-
-    **Native TypeScript activation, Smithers owner ruling recorded 2026-11-02T19:15Z:** “selected” includes the upstream/configured activation condition; including a `.ts` file in a compiler project does not itself enable the Effect language-service plugin. Check the effective configuration of every project used by the check scripts, including inherited configuration. If that configuration does not enable the Effect plugin, imported Effect lints must not fire on its native `.ts` files. If enabled, retain its rule/file selection and configured severities, followed by the pinned per-rule defaults. The three `error` inventory defaults quoted above apply after activation; they are not a new automatic opt-in for all native TypeScript. Do not add suppressions to Smithers to conceal diagnostics that violate this activation contract.
-
-    This clarifies77's upstream/configured eligibility and existing-configuration promise; it does not exclude all `.ts` files, globally demote rules, disable ordinary TypeScript diagnostics, or change approved `.vibe` integration. The Effect TS counterpart is the same native source under the same upstream plugin activation and effective project configuration. A minimal native `.ts` floating-Effect fixture with the plugin absent should receive no imported Effect lint; the enabled-plugin twin uses its actual configured/default severity. Those are prescribed owner regressions, not tests executed here. Recorded by the agent from the project owner's ruling, principle2 (mirror the actual native TypeScript/tool configuration) and principle8 (no new unselected checks), 2026-11-02. No fresh Will answer or new number. This makes the activation condition explicit in the earlier green9 answer; actual runner/code/status conformance still needs matching receipts.
-
-### Detail 80
-
-**`A!E` may be a function or constructor type's return without parentheses** (NW 44; Opus M3, Fable M1; r16-001; amends detail 47). `(id: string) => User!NotFound` is `(id: string) => (User!NotFound)`, as `() => A | B` is `() => (A | B)` in TypeScript; the same for `new (…) => A!E`. Detail 47's other rules stay: `!` still does not mix with `|` or `&` without parentheses, and a conditional type's check, extends, true and false parts still need them.
-    ```vibe
-    type Find = (id: string) => User!NotFound      // ok: Effect.Effect<User, NotFound>
-    type Make = new () => Conn!DbError             // ok
-    type G = () => A!E | B                         // syntax error (detail 47: mixes ! and |)
-    type C = T extends U ? A!E : B                 // syntax error: write (A!E)
-    ```
-    Effect TS: `type Find = (id: string) => Effect.Effect<User, NotFound>`. Decided by the agent from principle 2 (TypeScript's function-type return is a full `Type`), principle 1 (the most common Effect signature needs no parentheses) and principle 8's converse (relaxing an error breaks no code; Appendix A's grammar has one parse); 2026-10-29.
-
-### Detail 83
-
-**Generic-`data` helper name in `.d.vibe.ts`** (NW 49; Opus m8; r16-001; refines detail 26). The helper for `data Outcome<A>` is named `$Outcome$Definition`. If the module already declares that name, the compiler appends `$2`, `$3`, … and takes the first free name, as `tsc` picks the first free name for its own emitted helpers. The name is therefore the same on every build of the same source and still never collides with a user name.
-    ```ts
-    // outcome.d.vibe.ts
-    declare interface $Outcome$Definition extends Data.TaggedEnum.WithGenerics<1> { … }
-    ```
-    Effect TS: a `WithGenerics<1>` interface under any name. Decided by the agent from principle 2 (deterministic emit, as `tsc`'s) and detail 26 (hygienic); 2026-10-29.
-
-### Detail 85
-
-**Generator and `async` catch handlers are syntax errors** (NW 51; Fable m3; r16-002; amends 31a and VIP-5). A `catch` handler is an arrow function, a function expression or an `effect` form; `async` arrows, `async` function expressions, generator expressions and async generator expressions are a syntax error with the quick fix "remove `async`" or "remove `*`". Appendix A's handler productions drop those four alternatives. `EK0507` then covers only a plain handler whose body returns a Promise (`x catch (e) => queryDb(e)`).
-    ```vibe
-    x catch (e) => 7                 // ok: fallback value
-    x catch async (e) => 7           // syntax error: remove async
-    x catch function* (e) { }        // syntax error: remove *
-    x catch effect (e) => try g(e)   // ok
-    ```
-    Effect TS: `Effect.catch(x, () => Effect.succeed(7))`. Decided by the agent from principle 7 (no idiomatic Effect handler is a Promise or a Generator), principle 3 (syntax still decides) and principle 8; the async form was already always an error, so no accepted program changes; 2026-10-29.
-
-### Detail 87
-
-**Primitive built-in class patterns** (extends detail 67a; D208's primitive row; TC39 snapshot `String[Symbol.customMatcher]` and its siblings). `String`, `Number`, `Boolean`, `BigInt` and `Symbol` patterns test the primitive or its boxed object, as the snapshot does: `typeof s === "string" || s instanceof String`, and so on. The extracted list is `[s]` for a primitive and `[s.valueOf()]` for a boxed object. The boxed test uses `instanceof`, so detail 67a's cross-realm divergence applies to boxed objects only.
-    ```vibe
-    match (v) { when String(let t): t.length; when Number: 0; default: -1; }
-    ```
-    Effect TS: `if (typeof v === "string" || v instanceof String) { const t = typeof v === "string" ? v : v.valueOf(); return t.length }`. Decided by the agent from principle 2 (the pinned TC39 snapshot) and detail 67a's implementability rule; 2026-10-29.
-
-## Items 88–93 (lane decide-r17, 2026-10-29: Will's rule "when I state a principle, the agent derives the concrete rule and acts; I can override later")
-
-Each item closes a round-17 NEEDS-WILL entry (`v16/NEEDS-WILL.md`, "NW n"), a chapter lane's note (`v16/needs-will-r17-*.md`) or a gap found while deciding them. Principles are numbered as in items 33–66. Will can override any item in `will-overrides.md`. None is class B: no item changes what a compiling `.vibe` program does at run time, and each new error falls only on code the spec marked Undecided, which is not part of the language until decided (chapter 000).
-
-### Detail 89
-
-**One test for "is an Effect" and "is a Promise" in the four result diagnostics** (NW 53; Opus r16 M1; r17-003; replaces the integrator's every-member rule in 002 "Result tests"). `EK0103`, `EK0508`, `EK0404` and `EK0507` all ask the same question: may this value be an unrun Effect (or an unrun Promise)? A type answers yes when it is not `never`, `any` or `unknown` and **at least one** union member is an Effect (for `EK0103`, `EK0508`) or `PromiseLike` (for `EK0404`, `EK0507`). Detail 36 keeps its every-member test, because it asks the opposite question (may this call be exempt from throw tracking?), whose conservative answer is no. `try` (`EK0502`), `catch` (`EK0506`), `try.all` (`EK1801`) and detail 88 keep assignability.
-    ```vibe
-    effect function f() {
-      const p = maybeQuery()                      // maybeQuery(): Promise<number> | undefined: EK0404
-      const q = try tryPromise(async () => maybeQuery())   // ok
-    }
-    async function g(e: Effect.Effect<number> | undefined) {
-      return await e                              // EK0103: e may be an Effect
-    }
-    x catch (e) => (cond ? fetchUser("g") : null) // EK0508 warning: the fallback may be an unrun Effect
-    ```
-    Effect TS: `Effect.tryPromise(async () => maybeQuery())`. Decided by the agent from principle 8 (an error can be relaxed later), principle 4 (one test for four rules instead of two opposite ones) and principle 2 (typescript-eslint's `no-floating-promises` treats a union with any thenable member as a Promise); the four reviewers and the integrator recommend it for Promises; 2026-10-29.
-
-### Detail 96
-
-**`@throws` or `@rethrows` on an effectful `.vibe` callable is `EK0406`** (NW 59; audit 003 interactions m1; r18-003; VIP-4 amendment; next free code in VIP-4's block, detail 60). An effectful callable can't throw (principle 6; detail 1), so a written tag can never apply. In a `.vibe` file a `@throws` or `@rethrows` JSDoc tag on an effectful callable (an `effect` function, arrow, method or producer, or any callable whose return type is wholly `Effect`, `Stream` or `Layer`, detail 36) is `EK0406` ("an effectful function can't throw: declare its failure in the Effect's error type"), with the quick fix "remove the tag". In `.ts`, `.d.ts` and JavaScript inputs, which VibeLang doesn't compile, such a tag is ignored (detail 37).
-    ```vibe
-    /** @throws {NotFound} */
-    effect function find(id: string) { return yield* Effect.fail(new NotFound()) }   // EK0406
-    effect function find2(id: string): User!NotFound { return yield* Effect.fail(new NotFound()) }   // ok
-    ```
-    Effect TS: the failure lives in the type, `Effect.Effect<User, NotFound>`. Decided by the agent from principle 6 and principle 8 (an error can be relaxed to "ignored" later; the reverse breaks code); 2026-10-29. Apply to 003 at the marker and to Appendix B.
-
-### Detail 97
-
-**The `Function` member-access exemption covers `.prototype` only** (NW 60; Fable r17 m4; r18-001; amends detail 33, keeping its `instanceof` exemption). Detail 33's purpose is "no functions built from strings", and `Function.call(null, "return 7")`, `Function.apply(null, [s])` and `Function.bind(null, s)` all build one. So the object-of-a-member-access exemption narrows to a statically named `prototype`: `Function.prototype`, `Function?.prototype`, `Function["prototype"]`, and the same through `globalThis.Function` (detail 73). Every other member of the global `Function` is `EK0107`. `Function.prototype.constructor` stays `EK0107` (detail 75).
-    Public VIP33 reconciliation landed as c080051ae52b from439c77582723 (spec-fix-c; globalThis platform code and VIP1 Function exemptions only).
-    **Immutable-main source receipt (54182a, 97).** Immutable main `54182a644026` reconciles public VIP33 platform EK4402 versus legacy EK0107 and explicitly retains the existing qualified Function instanceof/prototype exemptions (history `5e0a70f5333a`). Source publication only, without extending the exemptions or asserting compiler parity.
-    ```vibe
-    x instanceof Function                 // ok (detail 33)
-    Function.prototype.toString.call(f)   // ok
-    Function.call(null, "return 7")()     // EK0107
-    Function.name                         // EK0107
-    ```
-    Effect TS: none; `typeof x === "function"` is ordinary TypeScript. Decided by the agent from 30a's intent, detail 33's stated purpose and principle 8 (relaxing to another member later breaks no code); 2026-10-29. Apply to 001's `Function` row and Legacy JavaScript list.
-
-### Detail 98
-
-**The imported lint rules are pinned to `@effect/tsgo@0.57.0`** (NW 61; Sol r17 m2, Astra r17 m1; r18-007; completes detail 77). The two options in NW 61 are one fact: the repository vendors a named upstream release. `typescript/tsc/internal/effecttsgo/UPSTREAM` records `repository: https://github.com/Effect-TS/tsgo`, `tag: @effect/tsgo@0.57.0`, `commit: 999942fa41462eb46dfcb2d718e7671db8e14156`, and `sync.sh <tag>` is the only update path. That file is the normative pin, as `package.json` pins `effect` exactly (detail 70). Chapter 007 names the tag and commit and links `UPSTREAM`; Appendix B's generated rule/code/default-severity table names the same tag in its header; a VIP-32 bump runs `sync.sh` and regenerates the table, keeping every assigned code (detail 77). Separately, the implementation prints `EK4801` for `floatingEffect` and other `EK48xx` codes; details 60 and 77 assign VIP-38's block `EK38xx`, so that is a compiler bug for a fix lane, not a spec question. The spec keeps `EK3801`.
-    **Immutable-main source scope (ff2544, 98).** The artifact and publictable headers retain @effect/tsgo@0.57.0/revision999942fa41462eb46dfcb2d718e7671db8e14156. All124 declaredinput SHA256digests match immutableff2544source. This is pin/input consistency, not upstreambehavior/generatorexecution or actualcode-emission conformance. `main-ff2-source-receipt.json` records exact read/consistency limits; no own compiler/gate/native rerun.
-    ```text
-    typescript/tsc/internal/effecttsgo/UPSTREAM   tag: @effect/tsgo@0.57.0   commit: 999942fa4146
-    ```
-    Effect TS: the same rules from `@effect/tsgo@0.57.0`. Decided by the agent from the repository's `UPSTREAM` file, principle 2 (a dependency pinned by released version, as npm and detail 70 do) and VIP-32; 2026-10-29. Apply to 007 at the marker and Appendix B.
-
-### Detail 100
-
-**An extractor on an ordinary class without its own matcher is `EK0704`** (NW 63; Opus r18 M2; r19-004, r19-008; VIP-7 amendment, extends details 67, 93 and 94; next free code in VIP-7's block, detail 60). When a class pattern's callee takes detail 94's construct-signature path (no own `Symbol.customMatcher`, not a retained fixed pattern, built-in or VibeLang declaration), the draft's fallback `Function.prototype[Symbol.customMatcher]` returns `true` for an instance, and `InvokeCustomMatcher` throws `TypeError` because `true` is not an object. So the extractor form `when C(…)`, with any argument count, `()` included, can only fail to match or throw. It is `EK0704` ("`C` has no matcher, so `C(…)` can't extract: test the class with `when C:` and destructure with `and { … }`"). Quick fixes: `when C:`; and, when the pattern's arguments are bindings and `C`'s constructor declares that many parameter properties, `when C and { p1: let a, p2: let b }:` using their names. An inherited matcher doesn't count (detail 93), so `class B extends A {}` with `A`'s static matcher also gets `EK0704` for `when B(…)`. The bare `when C:` is unchanged (`s instanceof C`, no bindings). The runtime rule stays the draft's; an extractor reached in a `.ts` file or through `any` still throws.
-    ```vibe
-    class Point { constructor(readonly x: number, readonly y: number) { } }
-    match (p) { when Point(let x, let y): x + y; default: 0; }   // EK0704: write when Point and { x: let x, y: let y }:
-    match (p) { when Point and { x: let x, y: let y }: x + y; default: 0; }   // ok
-    match (p) { when Point: 1; default: 0; }                      // ok: p instanceof Point
-    ```
-    Effect TS: `p instanceof Point ? p.x + p.y : 0`. Decided by the agent from principle 8 (a guaranteed run-time `TypeError` becomes a compile error, which can be relaxed later) and principle 4 (no binding type has to be invented for an arm that can't bind); the integrator, Opus r18 and both chapter lanes recommend it; every `match` is `compiler-gap: pending VIP-7`, so no compiled program changes; 2026-10-29. Apply to 004's typing table row and "Class patterns" marker, 008's "Callable patterns" marker, Appendix B (`EK0704`, VIP 7) and VIP-7's amendment list.
 
 ### Detail 101
 
@@ -1654,29 +1461,6 @@ Each item closes a round-17 NEEDS-WILL entry (`v16/NEEDS-WILL.md`, "NW n"), a ch
     ```
     Effect TS: `FileSystem.FileSystem` for file reads, `Effect.sleep` for timers, a user `Context.Service` around browser APIs; `Effect.tryPromise((signal) => fetchThing(signal))` for the signal. Decided by the agent from Will's VIP-33 words (the same source as detail 56), principle 3 (resolve the binding, as detail 76 does for `Worker`) and principle 8 (an unlisted name defaults to banned; the allowlist can only grow); 2026-10-29. Apply to 005's marker and "The platform standard library" list, Appendix B's `EK4402` row and VIP-33's amendment list.
 
-### Detail 106
-
-**The initial imported-lint allocation is alphabetical after the retained first code.** (r20-007/r20-900; Sol round-19 M3; Astra m2; completes details 77/98.) Keep `EK3801 floatingEffect`. For the pinned `@effect/tsgo@0.57.0` registry, sort all other rule `Name` strings in ascending ASCII order and assign ordinal 2 onward; the first are `abortControllerInEffect` and `acquireReleaseDisposable`. Order by the emitted name, not by Go variable name, category, file path, or registration order. Persist the name/ordinal/code mapping. Later upstream bumps preserve every assigned code, leave removed-rule slots retired, and append new names in sorted order after the highest ordinal. The overflow spelling is the separate default immediately below; this allocation order does not depend on it.
-    **Imported-code fuzz oracle source receipt (db82, 106).** At immutable `db82b69ac4aa`, the fuzz facts helper reads the published `lint-codes.json` mapping, and its test compares the compiler's actual registry/count against that independent artifact. It no longer builds its expected names from the compiler itself or stale Appendix wording. The complete selected two-file,4,778-character Go diff was read. This is source-reader/oracle evidence, not an own Go run, full CLI/LS diagnostic or severity proof; unchanged spec/artifact receipts retain their original revision scope. `main-db8-selected-readers-receipt.json` records limits.
-    **Immutable-main source scope (ff2544, 106).** All130 persisted ledger assignments matchtheinventory: floatingEffect staysEK3801 andtheotherinitialnames takeASCII-ordered ordinals2–130. Publicsource states futureappend-only reservations; futurebumps/deletions werenotexecuted here. `main-ff2-source-receipt.json` records exact read/consistency limits; no own compiler/gate/native rerun.
-    ```vibe
-    effect { succeed(1) } // EK3801 floatingEffect, never reassigned to another rule
-    ```
-    Effect TS: `Effect.gen(function* () { return 1 })` discarded as a statement, reported by the same pinned `floatingEffect` rule. Decided by the agent from principle 4 (one reproducible ordering without a hand-maintained category policy), details 77/98 (stable codes), and both chapter lanes' alphabetical recommendation, 2026-10-29. The generator owned by `spec-artifacts` must retain `EK3801`; this decision authorizes no edit to that lane's unlanded workspace.
-
-### Detail 122
-
-**Data variants cannot be named $is or $match, Effect's own helper properties.** (live `900-data-helper-variants`; VIP-16/VIP-28; `EK1602`, corrected by detail 130.) Diagnose either name on a `data` variant, generic data included, and offer a rename of the declaration and its resolved references (for example `Is` or `Match`, choosing a fresh name). Leave the grammar broad enough to issue this semantic diagnostic. Other variant names retain the exact `Data.TaggedEnum`/`Data.taggedEnum` counterpart and their existing nonthrowing constructor contract. Do not replace the runtime proxy or claim its two reserved helper properties construct variants.
-    **Immutable-main source scope (f6fe7a, 122).** 006/AppendixB/publicVIP16 now reserve$is/$match for nongeneric/generic data under1602. The006 summary row is detached after a TSfence and has a separate formattingfollowup under the activeCsourceclaim. `root-mainf6-source-receipt.json` and `root-mainf6-throws-audit.json` preserve reviewed-prose/structured-artifact limits; no full raw9.19MB human-read or owncompiler/Go/generator/test/gate claim.
-    Current replacement: applied in 19fd0465084af57fee4f75742cfdd19e5fd8c106 (spec-fix-c; supersedes 83f85800f5ad after main rebase and current-release placement; queued, not a main receipt).
-    Status: applied in 83f85800f5adeb1558eb4e9cf01dbe365be302be (spec-fix-c; queued, not yet a main receipt).
-    ```vibe
-    data D { $is; $match; Normal } // EK1602 on $is and $match
-    data D2 { Is; Match; Normal }  // constructors preserve the promised variant behavior
-    ```
-    Effect TS: `type D2 = Data.TaggedEnum<{ Is: {}; Match: {}; Normal: {} }>; const D2 = Data.taggedEnum<D2>()`. `Data.taggedEnum` always interprets `$is`/`$match` as helpers; a typed zero-argument call can return a predicate or throw instead of constructing a variant. Decided by the agent from principle 8 (reject the unusable constructor names; this can be relaxed later), principle 7 (keep Effect's actual taggedEnum behavior), and VIP-16's exact counterpart, 2026-10-29. The main corpus search found no variant declaration using either name; this is a VIP-16 amendment, not a silent runtime shim.
-    **Independent f6fe7 source portion (122).** Chapter006/publicVIP16 and the catalog now reserve$is/$match for all data declarations, including generic data, withEK1602 and rename-resolved-reference advice. Full27,227-character nongenerateddiffread; sourceonly, no decide-livecompiler/gaterun. `main-f6f-source-receipt.json` records limits.
-
 ### Detail 124
 
 **Inventory surviving TypeScript-form advisories separately from imported lint, retaining unchanged codes.** (live `900-ts-lint-codes`; VIP-34/VIP-38, details 60/71/77/98/106.) The compiler's legacy `EK48xx` declarations are inputs to the audit, not proof that every old rule is part of the new language. Compare each registry trigger and fix against accepted VIPs and current source behavior. Imported upstream rules (including legacy `EK4801 floatingEffect`) use their single generated `EK38…` identity and pinned default, never a duplicate own diagnostic; keep detail 77's severity precedence. For VibeLang-specific TypeScript-form advisories still valid under a VIP, retain an existing `EK48xx` code only when its rule is identical, per detail 60's exception, and publish each trigger, default warning, and mechanical fix in chapter 007/Appendix B. They are configurable warnings in `vibe.severities`, and warning-only runs exit zero (detail 71).
@@ -1694,199 +1478,6 @@ Landing receipt: source 7ef1f862f901 landed in main 695576acb44b (queue 17933727
     **Public authority and kept codes (Opus r31 M10, Fable r31 M2, Astra r31 m1).** Detail 213 governs the gap all three reviewers name. Publish the eleven surviving advisories (`EK4830`–`EK4837`, `EK4839`, `EK4841`, `EK4842`) in a public VIP-34 amendment that lists each trigger, default warning and context-safe quick fix, and cite it from 007 and Appendix B. Keep the codes under detail 60 unchanged-code exception: do not renumber them into a new block (Fable `EK34xx` proposal). State that kept-code exception in the Appendix B intro beside the `EK38` capacity rule (detail 142) and the migration-warning exception (`EK4853`–`EK4855`, detail 194). Keep `EK4833`: like `EK4830` for `Data.TaggedError`, it suggests the VibeLang spelling of valid Effect TypeScript, and 001 written `Effect.Effect<User, NotFound, Users>` example must mark the warning or use `User!NotFound!Users`. Do not delete the rules or demote them to non-normative text while publication is pending (Astra option): the decision exists, and its public record is delivery work. Decided by the agent from details 60/124/213 and principle 4 (one code identity per unchanged rule), 2026-10-30.
     Status (VIP-34 amendment, 007 citation, Appendix B kept-code exceptions): applied in 48d667e6343c (spec-fix-d; queued, not yet a main landing receipt).
     Status (001 example only): applied in a96957dc3549, landed in main f58798560fe7 (spec-fix-a entry bb50c30ea831). The 001 .vibe examples use A!E!R; 002/003 .vibe witnesses still write Effect.Effect<…> unmarked (live findings, spec-fix-a round-31 batch).
-
-### Detail 131
-
-**The Hack pipe's missing-topic early error checks its AssignmentExpression child.** (live `900-pipe-body-early-error`; VIP-23 pinned snapshot reconciliation.) For `PipeBody : AssignmentExpression`, reject when that AssignmentExpression's `ContainsOuterTopic` is false, not when the wrapping PipeBody's is false. Keep `ContainsOuterTopic(PipeBody) = false` to stop a nested pipeline's topic from satisfying the outer one. The original printed early error otherwise rejects every accepted pipe. Record the erratum in the vendored README, 002 and Appendix A; keep the upstream spec.html unchanged.
-    **Immutable-main source receipt (695576, 131).** Verified at immutable main `695576acb44b`: 002/AppendixA and the pipe snapshot README apply the missing-topic check to the AssignmentExpression child while preserving nested topic boundaries. This is source-publication evidence only; no compiler/native/regression suite was run by decide-live.
-    Status: applied in cb3692683d7d (spec-fix-a; queued, not yet a main landing receipt).
-    ```vibe
-    const a = 1 |> % + 1       // ok: 2
-    const b = 1 |> f()         // syntax error: missing topic
-    const c = 1 |> (2 |> % + 1) // syntax error: outer pipe has no topic
-    ```
-    Effect TS: for the admitted example `const a = 1 + 1`, with a hygienic topic temporary for a general left operand. Decided by the agent from VIP-23's accepted topic-bearing examples and nested-call meaning, principle 2 (syntax-directed operation applied to its intended child), and principle 4 (repair the mistaken node rather than special-case all valid pipelines), 2026-10-29. No new topic scope is introduced.
-
-Landing receipt: source cb3692683d7d landed in main 695576acb44b (queue 1793370871-spec-fix-a, gate mq-10302026-7).
-
-### Detail 142
-
-**Imported-lint overflow extends the ordinal; detail 107 is final** (NW 66; r20-007, r20-900; replaces detail 107's "class B default" condition and keeps its rule). Imported rule ordinal *k* prints `EK38` then *k* padded to at least two digits: `EK3801` … `EK3899`, `EK38100` … `EK38130`. Codes match the generated table as whole strings, so `EK3810` and `EK38100` are distinct. No `EK39xx` overflow block is reserved.
-    **Imported-code fuzz oracle source receipt (db82, 142).** At immutable `db82b69ac4aa`, the fuzz facts helper reads the published `lint-codes.json` mapping, and its test compares the compiler's actual registry/count against that independent artifact. It no longer builds its expected names from the compiler itself or stale Appendix wording. The complete selected two-file,4,778-character Go diff was read. This is source-reader/oracle evidence, not an own Go run, full CLI/LS diagnostic or severity proof; unchanged spec/artifact receipts retain their original revision scope. `main-db8-selected-readers-receipt.json` records limits.
-    **Immutable-main source scope (ff2544, 142).** PublicVIP34/38 and007/900 now state EK38 plus a minimum-two-digit growing decimal suffix, includingEK38100throughEK38130 withoutusingEK39. All130 code strings were checked; Appendix-row-parser source accepts growingEK38 suffixes. This is not fullCLI/extraction/configuration conformance. `main-ff2-source-receipt.json` records exact read/consistency limits; no own compiler/gate/native rerun.
-    Earlier tooling receipt: numeric extraction source `255bc6c271af` was queued while citation/catalog consumption awaited the imported-table artifact. That table-presence dependency is now satisfied by immutable main `ff25444dc8a9` and `main-ff2-lint-consistency.json`; this does not certify that separate extraction change or actual CLI/LS code output. Preserve its own queue/test/landing receipt.
-    Status (007 config clause): applied in f76a4792a331 (spec-fix-d; queued, not yet a main receipt). The generated table/Appendix B companion remains in spec-artifacts c6443b28c3cb.
-    ```vibe
-    effect { succeed(1) }            // EK3801 floatingEffect (detail 77), unchanged
-    // vibe.severities: { "EK38100": "off" } is valid once ordinal 100 exists; { "EK3901": "off" } is EK3006
-    ```
-    Effect TS: identical lint behavior under `@effect/tsgo@0.57.0`; only the printed identifier differs. Decided by the agent from detail 60 (`EK39xx` is VIP-39's block, so reserving it for VIP-38 breaks the one-VIP-one-block rule the first time VIP-39 has a rule) and principle 2 (TypeScript widened its codes to five digits, `TS17004`, `TS18046`, instead of fixing a width), 2026-10-30. Will can override in `will-overrides.md`.
-
-    **Historical numeric-reader verification limitation (before ff2544 publication).** For `255bc6c271af`, the fixer reports four baseline groups failing and all five subtests passing after, plus regeneration183/docs9/forms/spec. Its full short-fuzz run still reports `rule:await-effect` XPASS, reproduced on unmodified main; the existing fix-vip-match claim owns that retirement. The numeric extraction receipt is not a whole-suite pass, an imported-table landing, or a new diagnostic-number limit. The later ff2544 receipt above now verifies the actual catalog rows and reader-source updates; no fake row or suppression is approved. These checks remain attributed, not rerun by decide-live.
-
-### Detail 152
-
-**Tagged exhaustiveness requires a present tag and covers each normalized member independently.** (Opus round-20 m1/m2; clarifies details 78/102.) A checked object's _tag property is required/non-optional and its resolved declared type is exactly one string literal; do not strip undefined or ignore an optional-property flag to make it qualify. A required literal tag shared by multiple union members does not merge their required payload keys. An object pattern covers each member with that tag only when every other bare/binding key it tests is required on that particular member; uncovered same-tag members remain uncovered. Keep all other conservative coverage rules.
-    ```vibe
-    // optional tags do not make an exhaustive checked subject:
-    type MaybeA = { _tag?: "A" }
-    // for s: { _tag: "A"; x: number } | { _tag: "A"; y: number }
-    match (s) { when { _tag: "A", let x }: x; } // EK4701: the y member remains
-    ```
-    Effect TS: TypeScript's actual property-presence/discriminant narrowing of each union member; absence is not a literal tag value. Decided by the agent from principle 2 (required versus optional TypeScript properties), principle 8 (do not claim proof for an absent tag or an untested payload member), and detail 78's per-member normalization, 2026-10-30.
-
-### Detail 153
-
-**Platform symbol resolution, not the generated name inventory, determines EK4402.** (Opus round-20 m3; restates detail 101.) The platform inventory documents the pinned host declarations; it does not override the compiler's resolved binding rule. If a project's selected libs omit a platform declaration and its free name is unresolved, retain TypeScript's TS2304 rather than invent an EK4402 binding from the inventory. A custom global declaration with no banned declaration source is not automatically a platform global merely because its name matches a listed host name. A resolved symbol merged with a banned host declaration still follows detail 101. Local/import/Effect namespace precedence remains.
-    ```vibe
-    // with only lib.es* and no custom fetch declaration:
-    fetch("/api") // TS2304, not an inventory-created global binding
-    ```
-    Effect TS: the same TypeScript library selection and symbol resolution; an actual host fetch binding uses an explicit Effect service instead. Decided by the agent from principle 3 (symbols, not spellings) and detail 101's explicit statement that the compiler checks declaration sources and the file merely documents them, 2026-10-30. This resolves the prose reading without adding a new global or a new acceptance rule.
-    Status: applied on main a899a2fcb3cc (005 platform rule: a name resolving to nothing is TS2304, not EK4402; verified by spec-fix-c 2026-10-31).
-
-### Detail 154
-
-**The global AbortSignal timeout member is banned through statically resolved reads, including destructuring.** (Opus round-20 m4; makes detail 101's existing exception explicit.) EK4402 applies when a statically named member read or destructuring property resolves to the standard AbortSignal constructor's timeout property, including dot/optional access, a literal-string or no-substitution-template element key, and constructor aliases that preserve that member symbol. A user-defined AbortSignal/member is unaffected. This bans copying the timer-starting method as well as calling it. A key that is not statically known remains unchecked; this is not a runtime sandbox, like the existing any/reflective escape policy.
-    ```vibe
-    AbortSignal.timeout(100)                    // EK4402
-    const { timeout } = AbortSignal             // EK4402
-    const AS = AbortSignal; AS["timeout"](100) // EK4402: same resolved member
-    ```
-    Effect TS: use Effect.timeout/Effect.sleep for the timer behavior; ordinary signal values stay allowlisted for Effect.tryPromise. Decided by the agent from detail 101's explicitly banned timeout operation, principle 3 (the resolved member rather than its spelling), and principle 4 (the same static-reference rule for copying and calling), 2026-10-30.
-
-### Detail 160
-
-**Every continuation across an Effect-type bang stays on the bang's line.** (Fable round-20 m1; reconciles Appendix A with VIP-3/001's existing line rule.) Place no-LineTerminator restrictions before each bang continuing an Effect type and after each bang when another bang or EffectOperand follows. The next slot begins on the same line as its bang; the two bangs in A!! likewise cannot be split. Multiline syntax inside a parenthesized slot remains ordinary TypeScript. Keep omitted slots as never; do not reinterpret an invalid trailing single bang as an inferred slot.
-    Status: applied in main 0a207dbf; revalidated by spec-fix-a with the three existing Effect-bang grammar/source tests. No duplicate patch.
-    ```vibe
-    type Good = User!NotFound!Services
-    type AlsoGood = User!!Services
-    // type Bad = User!
-    //   NotFound // syntax error: slot must start on its bang's line
-    ```
-    Effect TS: the corresponding Effect.Effect<User, NotFound, Services> or Effect.Effect<User, never, Services>; line restrictions select the already-decided surface grammar. Decided by the agent from VIP-3's existing same-line shorthand rule, principle 2 (TypeScript-style no-LineTerminator grammar conditions), and principle 4 (one continuation rule for every slot), 2026-10-30. This corrects the production/notes disagreement, not a new type-inference rule.
-
-### Detail 162
-
-**The derived platform ban applies to global bindings, with one explicit allowlisted-member exclusion.** (Fable round-20 m2; clarifies details 101/153/154.) The rule's domain is an IdentifierReference resolving to a global binding, or a statically named property of the standard globalThis that resolves to that global. It is not a general scan of every property symbol declared in lib.dom/lib.webworker/@types/node. Properties of an allowlisted data utility remain allowed, except the standard AbortSignal.timeout property explicitly covered by detail 154. The platform inventory records banned global bindings, the closed allowlist and this member exclusion separately. Retain resolved-binding shadowing, unresolved-name TS2304, and the existing globalThis access restrictions.
-    ```vibe
-    const url = new URL("/x", "https://example.test")
-    url.searchParams.get("q") // allowed data utility, not a global-binding ban
-    AbortSignal.timeout(100)  // EK4402: explicit timer-member exclusion
-    ```
-    Effect TS: the same pure URL operations; use Effect timeout/sleep for timers. Decided by the agent from detail 101's allowlist purpose, principle 3 (resolve the binding at the stated domain), and principle 4 (one global inventory plus one explicit member exception, not a ban on all DOM-declared properties), 2026-10-30. This makes the generator contract agree with its existing allowed utilities; it does not add another allowlisted name.
-
-### Detail 170
-
-**Pipe syntax is reachable from ShortCircuitExpression, with left-associated unparenthesized chains.** (live `900-pipe-grammar-entry`; VIP-23 snapshot reconciliation, extends details 131/145.) Add `PipeExpression[?In, ?Yield, ?Await]` to the effective `ShortCircuitExpression` alternatives alongside LogicalORExpression, CoalesceExpression and the effect-context CatchExpression. Keep the pinned `PipeExpression : ShortCircuitExpression |> PipeBody` and `PipeBody : AssignmentExpression`, carrying the enclosing VibeLang grammar parameters consistently. Extend the existing PipeBody covering-production early errors to reject a body whose whole unparenthesized expression is a `PipeExpression`. This excludes the right-associated alternative of an unparenthesized chain, leaving its unique sequential left-associated derivation. A parenthesized nested pipe remains allowed, with the pinned separate topic environment. The restriction concerns the whole body: do not ban every nested occurrence of a pipe. Retain detail 131's missing-topic correction, detail 145's evaluator on the actual ShortCircuitExpression child, and the existing conditional/yield/assignment/arrow restrictions.
-    **Immutable-main source receipt (695576, 170).** Verified at immutable main `695576acb44b`: 002/AppendixA and the snapshot README provide a reachable ShortCircuitExpression pipe entry, sequential left-associated chains and explicit nested topic scopes. This is source-publication evidence only; no compiler/native/regression suite was run by decide-live.
-    Status: applied in cb3692683d7d (spec-fix-a; queued, not yet a main landing receipt).
-    ```vibe
-    const one = 1 |> % + 1 // 2
-    const chain = 1 |> % + 1 |> % * 2 // 4: (1 |> % + 1) |> % * 2
-    const nested = 1 |> (% + 1 |> % * 2) // 4: explicit nested pipe, separate topic scopes
-    ```
-    Effect TS: `const t1 = 1; const t2 = t1 + 1; const chain = t2 * 2`; for explicit nesting, bind the outer topic once, compute the nested input from it, then bind the inner topic once. Decided by the agent from VIP-23's accepted sequential temporary counterpart, principle 2 (the pinned ShortCircuitExpression precedence and topic environments), and principle 4 (one reachable grammar with one chain derivation), 2026-10-30. This repairs the missing grammar reference and ambiguity rather than selecting a new operator meaning. Reconcile Appendix A, 002 and the vendored README while retaining upstream `spec.html`. Add one-stage, multi-stage, parenthesized-nesting and conditional-precedence witnesses; a reduced atom/pipe derivation probe is evidence for that fragment, not a full-language ambiguity proof.
-
-Landing receipt: source cb3692683d7d landed in main 695576acb44b (queue 1793370871-spec-fix-a, gate mq-10302026-7).
-
-### Detail 171
-
-**Duplicate receipt: Signed-zero coverage; use detail 169.** The same rule was recorded concurrently under detail 169 before this receipt was appended. This item introduces no independent decision, does not supersede detail 169, and is excluded from decision counts. Additional reference evidence is in `decide-live-scratch/signed-zero-pipe-entry.log` (Effect `4.1.0`, grammar model only; no compiler claim). Consolidated by decide-live, 2026-10-30.
-
-### Detail 172
-
-**Duplicate receipt: Pipe grammar entry; use detail 170.** The same rule was recorded concurrently under detail 170 before this receipt was appended. This item introduces no independent decision, does not supersede detail 170, and is excluded from decision counts. Additional reference evidence is in `decide-live-scratch/signed-zero-pipe-entry.log` (Effect `4.1.0`, grammar model only; no compiler claim). Consolidated by decide-live, 2026-10-30.
-
-### Detail 175
-
-**Effect overload signatures follow TypeScript's async declaration positions.** (live `900-effect-overload-bodies`; VIP-1's accepted placement rule, not a new feature.) Admit a bodyless overload-signature alternative for an effect function declaration and an effect class method wherever TypeScript admits the corresponding `async` overload signature. Preserve TypeScript's signature ordering, adjacent implementation requirement, overload/implementation compatibility, modifiers and semicolon/automatic-semicolon rules, replacing the Promise result by the specified Effect result. Split declaration/method productions by syntactic position rather than making every `Block` optional. Function expressions, object-literal methods and arrows still require bodies. Do not add starred effect-function/method overload signatures: TypeScript rejects starred generator overload signatures with TS1222. Ambient async positions rejected by TypeScript do not become new effect-modifier positions. Ordinary inherited overload mechanisms remain as TypeScript defines them; a bodyless signature itself executes no code.
-    **Immutable-main source receipt (695576, 175).** Verified at immutable main `695576acb44b`: 001/AppendixA state native async-like effect overload positions, ordering/compatibility/ASI, and class-versus-object method boundaries. This is source-publication evidence only; no compiler/native/regression suite was run by decide-live.
-    Status: applied in 2a1c089083b1 (spec-fix-a; queued, not yet a main landing receipt).
-    ```vibe
-    effect function pick(x: string): string!!;
-    effect function pick(x: number): number!!;
-    effect function pick(x: string | number) { return x }
-    class C {
-      effect m(x: string): string!!;
-      effect m(x: number): number!!;
-      effect m(x: string | number) { return x }
-    }
-    ```
-    Effect TS: the same ordinary function/class overload lists returning `Effect.Effect<string>` or `Effect.Effect<number>`, with one implementation returning `Effect.gen(function* () { return x })`. Declaration output preserves each exposed signature and its Effect return type; effectful signatures still carry no synchronous `@throws`, and detail 138's implementation-bound checks remain. Decided by the agent from VIP-1's explicit rule that `effect` goes exactly where TypeScript allows `async`, principle 2 (inherit overload syntax/checking), and principle 4 (separate bodyless declaration positions instead of a universal optional body), 2026-10-30. Reconcile 001 and Appendix A with these alternatives and provide declaration-output witnesses. Evidence: `effect-overload-types.log` exits 0 under strict TypeScript and `effect-overload-reference.log` gives `Success("ok")`/`Success(7)` on Effect 4.1.0. `overload-position-check.log` independently accepts the function/class async overloads and rejects bodyless expressions/object methods, starred overloads and ambient async declarations (TS1005/1222/1040). These are native TypeScript/Effect reference checks, not VibeLang compiler-conformance evidence.
-
-Landing receipt: source 2a1c089083b1 landed in main 695576acb44b (queue 1793370440-spec-fix-a, gate mq-10302026-7).
-
-
-    **Unannotated effect overloads and recovery cover (Opus31m61/m63/m64).** Preserve TypeScript's bodyless-signature behavior: an omitted return annotation exposes `any`, with native `TS7010` when `noImplicitAny` is enabled. Do not infer that exposed signature from its implementation or invent `E`/`R`; an explicit Effect annotation supplies the checked contract. The source callable's effect kind, eager initialization and returned cold Effect stay unchanged. Unsupported interface/type-literal method and `abstract`/`declare` effect positions already assigned `EK0108` must be recognized by the rejection cover, without admitting them. Native independent errors remain native, and a starred bodyless generator signature retains `TS1222` under this detail.
-    ```vibe
-    effect function untyped(x: string); // TS7010 with noImplicitAny
-    effect function untyped(x: string) { return x }
-    effect function typed(x: string): string!!;
-    effect function typed(x: string) { return x }
-    ```
-    Effect TS: `function untyped(x: string); function untyped(x: string) { return Effect.succeed(x) }`, with the same implicit-any/TS7010 behavior; annotate the typed overload `Effect.Effect<string>`. Decided by the agent from accepted VIP-1's written-or-inferred rule and async positions, detail175, principle2 (native signature/configuration checks), and principle4 (no new mandatory-annotation exception), 2026-10-30. `r31-overload-tdz-asi-reference.log` independently checks TypeScript5.9.3 native async and ordinary Effect-returning overloads: both expose any and report TS7010 only with noImplicitAny. This is native reference evidence, not VibeLang declaration, compiler, source-publication or cross-package conformance.
-
-### Detail 177
-
-**An empty switch case block is false in the do-ending early-error predicate.** (live `900-do-empty-switch`; VIP-2 pinned-draft reconciliation.) Define `EndsInIterationOrBareIfOrDeclaration` for `CaseBlock : { }` to return `false` for either value of `isLast` and any `labelSet`, just as the operation already returns false for an empty ordinary block. This supplies the missing zero-child production; implicit chain-production forwarding cannot supply it. Do not skip the operation only for a final statement: the statement-list prefix is checked with `isLast = false` too. Retain ordinary switch evaluation/completion and the existing forbidden loop/declaration/bare-if endings. An empty switch does not itself supply a value; its ordinary normal completion is `undefined` where the switch algorithm supplies it.
-    **Current do-predicate conflict-repair source (ddcc0580).** Source `ddcc0580e1e6` is reported queued by spec-fix-a, superseding rejected `3d60171bb38d`. It retains both the complete empty-switch and added-loop static predicates/publicVIP2 amendment while preserving current main's call evaluation/source naming. Seven focused checks, exact strictTypeScript,43citations, regeneration/docs/tokens and the four-package spec target (30selected,27active passes,3retired skips) are attributed passes. No matching ORIGINS Circle, main landing or compiler conformance is claimed. Earlier29-target selection evidence remains historical rather than being silently reused as the current count.
-    Status: applied in fdb225af998c (spec-fix-a; queued, not yet a main landing receipt).
-    ```vibe
-    const value = do { switch (0) {} 7 } // 7
-    const empty = do { switch (0) {} }   // undefined
-    ```
-    Effect TS: the first is a same-activation statement sequence `switch (0) {}; return 7`, while the second ends after the empty switch and returns `undefined`; no new Effect operation is involved. Decided by the agent from VIP-2's admission of ordinary TypeScript statements inside `do`, principle 2 (the existing ECMAScript empty case-block production/completion), and principle 4 (one explicit false base case alongside the operation's empty-block case), 2026-10-30. State the reconciliation in the do snapshot README, 002 and Appendix A without editing upstream `spec.emu`. Evidence: `decide-live-scratch/root-do-empty-switch-reference.log` confirms the pinned predicate has neither an empty nor optional-no-default CaseBlock rule and records `Success(7)` from the ordinary-statement Effect `4.1.0` counterpart. Add both final/nonfinal witnesses; this is static-algorithm/reference evidence, not native-do or VibeLang compiler conformance.
-
-**Replacement source queued:** 3fbdc9cdd5d3 (same bookmark9) supersedes rejectedfdb225af998c after rebasing onto main d50d73b32354. All three final tests fail against immutable raw-main inputs and six focused/grammar checks pass after; strict TypeScript5.9.3 and Effect4.1.0 controls pass. Fresh29 selected spec/cost functions, regen183/docs9/tokens/forms pass, no moved decisions. The repaired source preserves the current completion prose and explicitly acknowledges the snapshot reconciliations. ORIGINS grep finds no predicate/empty-switch Circle; earlier jump-target circles are outside this rule. Evidence do-predicates-refresh-* in spec-fix-a-scratch. This is queued source/native-reference evidence, not a main or compiler-emission receipt.
-
-**Earlier complete replacement receipt (before corrected `ddcc0580e1e6`):** 3d60171bb38d (bookmark9) supersedes3fbdc9cdd5d3 and the original rejectedfdb225af998c. Includes the explicit public VIP2 static-predicate amendment required under213. Four final regressions fail on immutable raw main d50; seven focused/grammar checks pass after. Strict TS5.9.3/Effect4.1 controls, regen183/docs9/tokens/forms pass with no form moves. Final Go selection29 exits0 on daf7ddaa51ff:26 top-level passes,3 explicitly retired legacy-oracle skips, plus one intentional superseded fixture subtest skip; native worker dependencies are required. Earlier all29 wording meant the configured target exit0, not29 executed passes. No tests/gates were weakened. Rebased onto fetched f10f3e12c5bb with only generated token conflicts, regenerated and repeated focused7/docs9/tokens before enqueue. Evidence do-predicates-publication-* and final-spec-receipt.json. Queued source/native-reference receipt only; no main or compiler-conformance claim.
-
-### Detail 184
-
-**Effect arrow heads mirror TypeScript's separate bare and parenthesized async forms.** (live `900-effect-arrow-heads`; VIP-1 grammar repair, distinct from detail 175's overload signatures.) Split `EffectArrow` into a bare `BindingIdentifier` head and a parenthesized-formal-parameters head. Only the parenthesized branch may carry type parameters or a return annotation. Keep the simple bare-identifier arrow and its contextual parameter typing. Do not take an independent cross-product of optional type parameters, bare-or-parenthesized parameters and an optional return annotation. Preserve existing no-LineTerminator restrictions, Effect return-type checking, generic parameter rules and the two-modifier `EK0105` recovery; no new arrow position or ambiguity rule is introduced.
-    **Immutable-main source scope (d0cdbe, 184).** 001/AppendixA now preserve complete is/as/satisfies expression-operator readings after ordinary effect/async identifiers; this publishes the later complete-head source clarification in addition to earlier695 arrow-head shapes. `root-main-d0cd-source-receipt.json` retains the complete31-file diff/hash/read scope. Source only; no decide-live compiler/gate rerun.
-    **Immutable-main source receipt (695576, 184).** Verified at immutable main `695576acb44b`: 001/AppendixA split bare Effect arrows from parenthesized generic/annotated heads. This verifies that source-head portion, not every later complete-head identifier-operator clarification or parser behavior. This is source-publication evidence only; no compiler/native/regression suite was run by decide-live.
-    Status: applied in 7b23123f61e5 (spec-fix-a; queued, not yet a main landing receipt).
-    ```vibe
-    const f: (x: number) => (number!!) = effect x: number!! => x // syntax error: parenthesize x
-    const g: (x: number) => (number!!) = effect <T> x => x       // syntax error: parenthesize parameters
-    const a: (x: number) => (number!!) = effect (x): number!! => x // allowed
-    const b = effect <T>(x: T) => x                              // allowed
-    const c: (x: number) => (number!!) = effect x => x             // allowed
-    ```
-    Effect TS: ordinary function values returning `Effect.succeed(x)` with the same checked heads/types; the native async syntax oracles are `async (x): Promise<number> => x`, `async <T>(x: T) => x` and `async x => x`. TypeScript rejects the two bare decorated heads with TS1005. Decided by the agent from VIP-1's explicit rule that `effect` occurs exactly where TypeScript permits `async`, principle 2 (inherit its async-arrow head grammar), and principle 4 (two existing head shapes rather than independently optional decorations that admit unapproved forms), 2026-10-30. Reconcile 001 and Appendix A and add both rejection witnesses and all three controls. `decide-live-scratch/root-effect-arrow-heads-reference.log` verifies those parser results with the installed TypeScript primary compiler API. This is grammar/reference evidence, not a VibeLang parser-conformance result; no runtime Exit claim is needed for this syntax distinction.
-
-    **Complete-head lookahead preserves ordinary identifier operators (live `900-effect-is-head-disambiguation`).** The existing contextual expression rule selects an effect arrow/function/block only for its complete grammar head. Otherwise `effect` remains an ordinary identifier, including valid `effect as T`, `effect satisfies T`, and VIP-7 `effect is P` expressions. The identifier-spelled operators `as`, `satisfies` and `is` must not be consumed by invalid-shorthand recovery before that ordinary expression can parse. This restates VIP-1/VIP-7 and principle 3, not a new shorthand or a symbol-based parsing rule. Source repair reported queued as `64cc01266def`; its strict counterpart `Success(2)` is the fixer's receipt, not an independent compiler run by this lane. Decided by the agent from the accepted expression grammar and principles 2/3/4, 2026-10-30.
-
-Landing receipt: source 7b23123f61e5 landed in main 695576acb44b (queue 1793369968-spec-fix-a, gate mq-10302026-7).
-
-    Landing scope clarification: main `695576acb44b` publishes the ordinary bare-versus-parenthesized arrow-head shapes via `cf67082254d1`. This does not independently verify the later complete-head `is`/`as`/`satisfies` clarification or its separate `64cc01266def` source receipt. Preserve those distinct scopes rather than reading the earlier landing line as full delivery of every later184 follow-up.
-
-Landing receipt: source 64cc01266def landed in main d0cdbe5a0a7f (queue 1793378613-spec-fix-a, gate mq-10302149-2).
-
-### Detail 188
-
-**Error-body methods include TypeScript class overload declarations.** (live `900-error-method-overloads`; VIP-13/VIP-29 method admission, distinct from detail 175's effect overload productions.) Classify TypeScript class method declarations and their bodyless overload signatures as accepted methods in both `error` and `schema error` bodies; do not send them to `RejectedElement` merely because ECMAScript's narrower `MethodDefinition` requires a body. This includes ordinary plain and async method overloads in the positions TypeScript admits. Preserve its ordering, adjacent implementation, compatibility, modifiers and declaration emission rules. Keep every explicit error-body restriction, including constructors, setters, static members and error type parameters. This does not generally admit ambient members, bodyless object-literal methods or starred overload signatures that TypeScript rejects.
-    **Immutable-main source receipt (695576, 188).** Verified at immutable main `695576acb44b`: 003/AppendixA admit plain/async TypeScript class overload signatures in both error forms while retaining other rejected members. This is source-publication evidence only; no compiler/native/regression suite was run by decide-live.
-    Status: applied in 2a1c089083b1 (spec-fix-a; queued, not yet a main landing receipt).
-    ```vibe
-    error Plain {
-      label(x: string): string;
-      label(x: number): number;
-      label(x: string | number) { return x }
-    }
-    schema error Encoded {
-      label(x: string): string;
-      label(x: number): number;
-      label(x: string | number) { return x }
-    }
-    effect function use() { return [new Plain().label("ok"), new Encoded().label(7)] }
-    ```
-    Effect TS: ordinary subclasses of `Data.TaggedError("Plain")` and `Schema.TaggedError<Encoded>()("Encoded", {})` carrying those same overload lists and one method implementation each. Calls expose `string`/`number` results; only the implementation emits a body. Decided by the agent from VIP-13's explicit promise of methods as in a TypeScript class, VIP-29's shared member restrictions, principle 2 (native TypeScript method overload syntax), and principle 4 (one class-method category instead of treating ordinary overload signatures as unknown members), 2026-10-30. Reconcile 003 and Appendix A's member partition; test plain and async overload controls without relaxing forbidden forms. `decide-live-scratch/root-error-method-overloads-types.log` passes strict checking of both error counterparts; `root-error-method-overloads-reference.log` records `Success(["ok", 7])` on Effect `4.1.0`. These are class/counterpart checks, not VibeLang compiler-conformance results.
-
-Landing receipt: source 2a1c089083b1 landed in main 695576acb44b (queue 1793370440-spec-fix-a, gate mq-10302026-7).
 
 ### Detail 189
 
@@ -1943,124 +1534,6 @@ Landing receipt: source 1b4b52d9ac9e landed in main f10f3e12c5bb (queue 17933890
 
     Independent publication check: immutable main `695576acb44b` has no `EK4853`/`EK4854`/`EK4855` definition rows, as retained in `root-batch695-source-receipt.json`; source `1b4b52d9ac9e` remains queued with the92xx inventory. The separate overload/decorator landing does not complete this delivery.
 
-## Items added by lane spec-robust, 2026-10-30 (Will: "go deep ... try really hard to do the robust fix on all of these"; each rule is a precedent, not a recipe; design in `robust-fixes.md`)
-
-Landing receipt: source 1b4b52d9ac9e landed in main f10f3e12c5bb (queue 1793389058-spec-fix-a, gate mq-10302307-6).
-
-### Detail 195
-
-**Leaving a `match` behaves as leaving a `for…of` body.** (Amends 117, 123, 146; settles v15 opus m10, v19 opus M1, m6, v20 opus M1, m5, astra m2.) However a `match` or `is` test ends, cached iterators close first, then control goes on. A closing error replaces a value or a jump, as in `for…of`; a pending throw with a closing error is the draft's `AggregateError`. `FinishMatch`'s "abrupt completion" is read as "throw completion": `gen.return(5)` at a `yield` in an arm reaches that step with no `do` at all. A no-match error is `new TypeError()`. Every `throw` in effect code abandons the generator, wherever it stands, and abandonment is defined once, in 008.
-    Status: applied in 12d6a3b9ce5e on main (source/cross-reference revalidated by spec-fix-c; no duplicate patch). Native completion/Exit regressions pass in main-decision-receipts.log.
-    ```vibe
-    function* numbers() { try { yield 1; yield 2 } finally { log("closed") } }
-    function first() { const v = match (numbers()) { when [let a, ...]: do { return a }; default: 0; }; return -1 } // 1, logs closed
-    ```
-    Effect TS: `for (const a of numbers()) return a`. Decided by the agent from the do proposal's Evaluation, the match draft's own notes and ECMA-262 IteratorClose, 2026-10-30.
-
-### Detail 196
-
-**`return`, and an outward `break` or `continue`, are syntax errors in `async match`.** (New; VIP-7.) The match explainer says "just like `async do` expressions", whose grammar is `Block[~Yield, +Await, ~Return]`.
-    Status: landed on main 1d56b687ec64 (commit e5a3bcd3c466; spec-fix-c, queued as 6efef4e0b1cc): async-match body contexts.
-    **Immutable-main source portion (098e7a, 196).** 004 now cites VIP7 itself for async-match outward-jump restrictions rather than presenting an async-do analogy as adopted syntax; accepted subject/test/arm contexts remain. Complete13-file,82,844-character diff independently read. Source publication only; no own compiler/native/gate check. `main-098-source-receipt.json` records exact scope. Independent root review is retained in `root-main098-source-receipt.json`.
-    Status (async-match jump grammar): source fixed in 5a1389f203172febe59460ba6e1ea9a56d95cb59 (spec-fix-c; queued, not yet a main receipt). The later async-do citation clarification has a separate source-delivery requirement.
-    ```vibe
-    async match (x) { default: do { return 1 }; }   // syntax error
-    ```
-    Effect TS: none. Decided by the agent from the pinned explainer and TC39 `proposal-async-do-expressions`, and principle 8, 2026-10-30.
-
-    **Citation erratum and syntax boundary (Fable round23 m8).** The accepted VIP-7 amendment and its incorporated match explainer settle this restriction; an unvendored `proposal-async-do-expressions` grammar is not an additional normative pin or accepted language feature. The earlier provenance sentence above cited that separate proposal too broadly. State the async-match restriction directly as VibeLang's accepted rule and its already-written nested-async-function counterpart, including the explicit reconciliation for outward jumps. `async do { ... }` is not admitted `.vibe` syntax by VIP-2/VIP-7; no accepted VIP adds it. The Promise analogy in 002 may explicitly label the separate proposal as non-language illustration, or use a nested async function instead, but must not imply that `effect { }` desugars to Promise syntax or that the vendored ordinary-do grammar defines async-do. Remove or qualify the unsupported return/grammar citation in 002/004/VIP-7 and the vendored README; no new vendored proposal is required. Keep ordinary `do`'s source completion behavior and async match's existing boundary unchanged. Effect TS: `async match` continues to have the stated async-function behavior, and an Effect block continues to return `Effect.gen(...)`, with separate result kinds. Decided by the agent from accepted VIP-2/VIP-7, principle 2 (use the actual pinned source), principle 4 (no extra syntax by analogy), and principle 8 (an unaccepted feature remains excluded), 2026-10-30.
-
-
-    **Citation/syntax clarification, 2026-10-30 (Fable r23 m8).** No accepted VIP adds `async do` to `.vibe`; the pinned ordinary do-expression snapshot does not supply that separate proposal. Any comparison with `async do` is informative and must identify it as outside VibeLang. The `async match` return/outward-jump restrictions above are the explicit accepted VIP-7 rule, with its own `~Return` context; no new normative proposal/vendor pin is required to state them. Do not explain the return prohibition by saying an ordinary async arrow forbids its own return: it does not. Its source-function boundary prevents outward jumps, while `async match` separately disallows source return under this rule. Generated async counterparts may return arm results normally. This repairs the citation without admitting new syntax, changing the rule, or asking Will to reconfirm the accepted grammar.
-    Appendix A roots: landed on main 4e088ab33903 (commit 8eae3b952347; spec-fix-c, queued as aec45290ced6).
-
-### Detail 197
-
-**A jump in a default leaves the pattern as from a `for…of` body; `return` in a parameter default acts as `return` at the top of the body.** (Replaces the lowering in 68, 68a, 68b; keeps 68c, 118, 176; deletes 68's temporal-dead-zone exception: JavaScript has none, and the compiler can keep it by binding `let` in order. The parameter half of 68 and 68a stays superseded by Will's ruling of 2026-10-30.) ECMA-262 hands IteratorClose the completion, so `const [x = do { return 9 }] = xs` calls `xs`'s `return` once. Native oracle: `gen.return(9)` at a `yield` in the default.
-    ```vibe
-    effect function j(xs: Iterable<number | undefined>) { const [x = do { return 9 }] = xs; return 0 }   // Success(9); return() called once
-    ```
-    Effect TS: `for (const v of xs) { if (v === undefined) return 9; break }`, for this witness. Decided by the agent from ECMA-262 and the do explainer, 2026-10-30.
-
-
-    Applied in 8deb35e468a5485f9c5fe71424a971e314b8d127 (spec-fix-d/bookmark35; accepted independent replacement, not main). Original five regressions/runtime witness retained; immutable-main4docfail/native1pass, afterNode5/Bun5/strict/native and24 native async controls pass. Fresh final spec/docs/regen/forms pass without decision moves; originalbb9d retired only after acceptance. Preserves permitted default returns and native ordinary generator phases.
-
-    Applied in f7f461bc9fc5564902d9e65c65da88ffb397b38a (spec-fix-d/bookmark39; complete35 replacement, queued not main). All original source/tests/runtime retained; stale quotation repair preserves programs/diagnostics/pending records and enables existing quote/coverage tests in fast gate. Rebasedfb3 expanded spec/docs/forms pass; queued8deb retired only after replacement acceptance.
-
-### Detail 199
-
-**`fork` evaluates its operand on the caller, and its quick fix keeps it there.** (Replaces the fix text of 99, 105 and 161, with 161's Exit.) The fix for `fork e catch h` is `fork Effect.catch(e, ($e) => Effect.succeed(h($e)))`, or `fork Effect.catch(e, h)` for an `effect` handler: no temporary, source order kept for `fork.in`, valid in any expression position.
-    ```vibe
-    const c = fork Effect.catch(worker(try id()), (e) => Effect.succeed(recover(e)))
-    ```
-    Effect TS: `yield* Effect.forkChild(Effect.catch(worker(yield* id()), (e) => Effect.succeed(recover(e))))`. Decided by the agent from Will's mapping (`fork e` is starting a Promise without awaiting it) and detail 161's intent, 2026-10-30.
-
-### Detail 202
-
-**An iterable argument's iterator is a protocol hook; a `dual` data-last call builds a function.** (Extends 81; settles the two disagreements between Appendix E and `throws.json`.) `for (const x of it)` tracks nothing, so `Array.from(it)`, `new Map(it)` and `new Set(it)` are `never`. `dual(arity, body)` runs `body` only with every argument, so `retry(p)` is `never`.
-    ```vibe
-    effect function f(it: Iterable<number>) { return Array.from(it) }   // ok; a throwing next() is a defect
-    ```
-    Effect TS: `Effect.gen(function* () { return Array.from(it) })`. Decided by the agent from the `for…of` precedent and detail 81's hook list, 2026-10-30.
-
-
-## Continuous decide-live follow-ups, 2026-10-30
-
-### Detail 209
-
-**`for concurrent` allows a line terminator after `for`, as native `for await` does.** (Opus round22 m21; live `900-for-concurrent-line-break`; VIP-19/VIP-20 grammar clarification.) Remove the special `[no LineTerminator here]` between `for` and `concurrent` from Appendix A and align the contextual table. VIP-19 names `for await` as its syntax precedent and imposes no special same-line condition; `for try` already admits this spacing. Both layouts select the same concurrent-loop production and Effect counterpart. Keep every independently required restriction inside expressions and other construct heads. Ordinary `for (concurrent of xs)` is unchanged; a bare identifier immediately after `for` is not a competing ordinary TypeScript loop production, so no previously valid program acquires a different parse.
-    **Immutable-main source scope (d0cdbe, 209).** AppendixA permits the for/concurrent line break under native for-await precedent. `root-main-d0cd-source-receipt.json` retains the complete31-file diff/hash/read scope. Source only; no decide-live compiler/gate rerun.
-    Status: applied in d473423f4ab3 (spec-fix-a; queued, not yet a main landing receipt).
-    ```vibe
-    effect function visit(xs: readonly number[]) {
-      for
-      concurrent (const x of xs) { try consume(x) }
-    }
-    ```
-    Effect TS: `yield* Effect.forEach(xs, x => Effect.gen(function* () { yield* consume(x) }), { concurrency: "unbounded", discard: true })`, identical to the single-line spelling. Decided by the agent from principle 2 (mirror the native TypeScript/ECMAScript `for await` token boundary), VIP-19's explicit prior art, and principle 4 (remove an unmotivated spacing exception), 2026-10-30. This admits one previously rejected formatting variant without changing an existing valid program's meaning or a public API, so it is class A, not a new Will choice. Add positive single-line/newline grammar controls and retain ordinary-for controls when the source/implementation is updated; no new diagnostic is needed. `for-line-break-reference.log` passes strict TypeScript 5.9.3 and native Node `for\nawait`, plus the Effect 4.1.0 `forEach` reference. Those are native/reference checks, not a claim that today's VibeLang parser accepts the new layout or that a source change has landed.
-
-Landing receipt: source d473423f4ab3 landed in main d0cdbe5a0a7f (queue 1793378252-spec-fix-a, gate mq-10302149-2).
-
-### Detail 211
-
-**Effect slots consume ordinary TypeScript type operands; optional `R` uses that same category before expression parsing.** (Opus round23 M7; live `900-effect-bang-slot-lookahead`; VIP-3/details 47/80/160.) After the adjacent double bang in the omitted-error form `A!!` on the same line, consume an optional `R` operand when the following tokens start a valid ordinary TypeScript type-operator-level operand, preserving the existing exclusion of an unparenthesized `{` and all existing bang/union/intersection/conditional restrictions. Prefer that present-slot production over omitted `R`; there is no value/type-symbol lookup or whitespace-based choice. An ordinary negative literal type remains admissible and is consumed as `R`; do not adopt the proposed blanket `-` exclusion, which would change currently admitted code. Parenthesize the whole assertion to subtract from its value. Parser-only JSDoc nullable/non-nullable/all forms (`?T`, `T?`, `!T`, `*`) are not ordinary TypeScript source types and are not Effect operands, even inside parentheses. At an optional-slot boundary their prefix tokens do not start `R`: `?` and `*` remain expression operators where that enclosing expression admits them; an additional `!` remains subject to the existing bang/non-null rules, not a JSDoc requirement. Explicit malformed JSDoc operands receive the ordinary invalid-type diagnostic, not new syntax. This is a grammar/category clarification, preserving existing valid negative requirements rather than adding another language exception.
-    **Immutable-main source portion (098e7a, 211).** 001/AppendixA/publicVIP3 publish the complete ordinary-source slot boundary policy: negative R, JSDoc exclusion, required object slots, optional tuples, angle/bracket cases and complete as/satisfies parses with present-R priority and no symbol lookup. Complete13-file,82,844-character diff independently read. Source publication only; no own compiler/native/gate check. `main-098-source-receipt.json` records exact scope. Independent root review is retained in `root-main098-source-receipt.json`.
-    **Immutable-main source receipt (54182a, 211).** Immutable main `54182a644026` narrows AppendixA prose to R after adjacent !! for the brace exclusion. This lands that prose correction only; it does not establish the entire later ordinary-operand/tuple/angle/as/satisfies grammar or parser implementation.
-    Status (ordinary-source operand category/present-R/negative/JSDoc portion): source fixed in edb829e6a8aa (spec-fix-a; queued, not yet a main landing receipt). The later tuple-optionality clarification is not independently covered by that receipt.
-    ```vibe
-    type NegativeRequirement = number!!-1 // Effect.Effect<number, never, -1>
-    const chosen = x as number!! ? 1 : 2 // omitted R, then conditional expression
-    const product = x as number!! * 2 // omitted R, then multiplication (ordinary type checking still applies)
-    const slot = x as number!! - 1 // R is the negative literal type -1
-    const subtract = (x as number!!) - 1 // parenthesized omitted-R assertion, then subtraction
-    ```
-    Effect TS: `type NegativeRequirement = Effect.Effect<number, never, -1>`; `x as Effect.Effect<number, never, -1>` for the consumed negative requirement, and `(x as Effect.Effect<number>) - 1` for the explicitly separated expression, with ordinary TypeScript operand diagnostics. Decided by the agent from VIP-3's exact type-alias promise, principle 2 (ordinary TypeScript source types, not parser recovery/JSDoc types), principle 3 (syntax-only selection) and principle 4 (one slot category), 2026-10-30. `root-type-slot-native.log` and `root-type-slot-check.log` check TypeScript 5.9.3: `-1` is a valid literal type, while the four JSDoc forms produce TS17020/8020/17019. Existing compiler source also consumes same-line negative types; that is a preservation receipt, not a new compiler-conformance run. Update 001/Appendix A and test both type and expression positions.
-
-    **Tuple optionality clarification (Opus round24 M7).** A `?` that TypeScript's enclosing tuple grammar accepts marks the completed Effect element optional; it is not a nullable/JSDoc suffix inside a slot. Thus `[A!E?]` means `[(Effect.Effect<A, E>)?]`, and `[A!!?]` means `[(Effect.Effect<A>)?]`; likewise an optional element may contain an already-consumed negative requirement. The optional tuple element still admits omission and contributes `undefined` on indexed access as ordinary TypeScript does. Outside a tuple or other independently admitted TypeScript punctuation context, a stray postfix `?` is not a source type. Keep the conditional-expression example's `?` outside the assertion too. Decided by the agent from principle 2 (native optional tuple grammar) and this detail's exclusion of parser-only JSDoc types, 2026-10-30; no new slot or nullable-type form.
-
-    **Required-slot brace clarification (Opus round26 M7 / DIFFCHECK open item1).** The unparenthesized `{` exclusion belongs only to the optional R after adjacent `!!`, where it leaves a function body available. It is not an exclusion from EffectOperand generally and does not apply to a required error operand or the required R of `A!E!R`. Therefore `type T = A!{ reason: string }!{ service: number }` is admitted with the ordinary Effect.Effect<A, { reason: string }, { service: number }> meaning; `number!string!{ a: string }` is valid. For the omitted-error spelling, keep `A!!({ service: number })` when an object requirement is intended; `A!! { ... }` retains its existing body boundary where a function body is allowed. Do not turn the current parser's shared-slot `{` skip into a new language ban. Required-slot missing/extra bangs retain the existing errors and all slots exclude JSDoc-only source types. Add positive required-object-slot cases alongside optional-R/body, conditional/subtraction and tuple controls. Decided by the agent from VIP-3's exact alias, the existing Appendix A production that limits this lookahead to A!!R, and principles2/4, 2026-10-30. This clarifies the published grammar; the installed old compiler's rejection is implementation evidence, not a permission change or a request for Will. The earlier queued edb829e6a8aa receipt is not independently claimed to cover this later required-slot case.
-
-
-    **Optional-R angle/bracket boundary (Opus round27 M7).** A leading `<` does not start an ordinary operand at TypeScript's type-operator level: generic function types need parentheses in an Effect slot. Thus `x as A!! < 3` omits R and continues with the comparison, subject to ordinary operand typing, while `A!!(<T>() => T)` explicitly supplies a parenthesized function requirement. Preserve present-slot priority for the ordinary `[` tuple start: `x as A!![0]` supplies R=`[0]`, not value indexing; parenthesize `(x as A!!)[0]` to request a later element access (whose type is checked normally). Do not copy the parser's broad `isStartOfType` recovery set into the source grammar, and do not adopt the reviewer's blanket minus exclusion: negative literal requirements remain admitted under211. Effect TS: `x as Effect.Effect<A, never, [0]>` for the consumed tuple, or `(x as Effect.Effect<A>)[0]` for explicit element access. Decided by the agent from VIP3's existing type-operator operand category, principle2 (pinned TypeScript5.9.3 separates function-type lookahead in parseType from parseTypeOperatorOrHigher) and principle3 (syntax-only present-slot priority), 2026-10-30. This is the already-decided category applied to more tokens, with no new permission or Will question.
-
-    **Assertion/check continuations and contextual type names (Opus30M7).** In an enclosing expression, preserve native `as`/`satisfies` continuations after a completed omitted-R assertion: `x as A!! as B` and `x as A!! satisfies B` have the ordinary chained assertion/check parse when consuming the intervening keyword as R would leave a stray B. The present-slot priority is between complete source parses, not a parser-recovery tree that strands the rest of the expression. Do not turn this correction into a blanket token ban: native TypeScript permits type aliases named as and satisfies. A pure type `A!!as`, a required slot or parenthesized requirement using those aliases, and an expression whose complete present-R parse is valid retain the ordinary operand category. For example `x as A!!as satisfies unknown` can consume R=as and then the native satisfies continuation; do not force an incomplete omitted-R alternative merely because the first token spells as. If both complete source parses survive, keep211's existing present-R priority. This is syntax-only, with no lookup of whether the alias exists, no native expression operator added to pure type positions, and no change to valid negative or object/tuple operands. Parentheses remain an explicit way to group a requirement or the whole assertion. Effect TS: `x as Effect.Effect<A> as B`, `x as Effect.Effect<A> satisfies B`, or `x as Effect.Effect<A, never, as> satisfies unknown` for the corresponding source parses, all with ordinary type errors where applicable. Decided by the agent from VIP3's exact alias/ordinary operand promise, principles2/3 (native contextual identifiers and syntax-selected operators), and the existing complete grammar/211 priority, 2026-10-30. root-round30-reference.log independently checks valid native as/satisfies type aliases and chained native assertions/checks under TypeScript5.9.3. The unknown-version c30 rejection is attributed implementation evidence, not language authority; no VibeLang parser run or new keyword reservation is claimed.
-
-    Status (full operand boundaries): applied in 343b937c (spec-fix-a; verified and queued, not a main landing receipt), superseding edb829e6a8aa while retaining its source/tests. Adds all four later211 clarifications: optional tuple punctuation, required object slots, angle/bracket boundaries and complete as/satisfies parses. Five regressions fail on unchanged main b77fec1e; all10 focused/grammar tests, all23 configured spec/cost checks, three strict printed TS5.9.3 counterparts, seven native controls, Effect4.1.0 Success([0,0,true]), regeneration183/docs9/tokens/forms pass; no form decisions move. Generalizes the v4/v11/v15/v16/v20 slot-boundary Circle rather than excluding more tokens individually. Supplemental whole-Appendix snippet checking is separately non-green: four old-marker failures versus two on raw main, because earlier pending grammar errors alter the shared project's later diagnostics; all three added TS counterparts check individually. No compiler-conformance or whole-spec-snippet pass is claimed.
-
-
-
-    **Complete source parses include native ASI (Opus31m66).** Apply this detail's complete-parse priority with ordinary TypeScript automatic semicolons. With `x as A!!as` followed by a line break and `B`, present-R can complete by native ASI, leaving B as a second statement; the omitted-R chained assertion can also be complete across that break. Present-R wins when both survive, as already decided. A same-line stray B cannot be repaired by invented ASI, so the native chained assertion reading wins there. Keep the existing same-line boundary immediately after adjacent bangs and all native continuation/ASI restrictions; no symbol lookup or new same-line heuristic after contextual names.
-    ```vibe
-    type as = unknown
-    type B = unknown
-    declare const x: unknown
-    declare const B: unknown
-    x as number!!as
-    B // two statements; the preceding assertion supplies R=as
-    x as number!! as B // one chained assertion
-    ```
-    Effect TS parses: `x as Effect.Effect<number, never, as>` then a new-line B is two statements; `x as Effect.Effect<number> as` then a new-line B is one. Ordinary type checking still applies. Decided by the agent from detail211's explicit present-R priority between complete source parses, VIP-3, principles2/3 (native ASI and syntax-only selection), and principle4 (no extra token/line rule), 2026-10-30. `r31-overload-tdz-asi-reference.log` checks both native TypeScript5.9.3 parses and same-line stranding; no VibeLang parser or implementation conformance is claimed.
-
 ### Detail 212
 
 **Complete the diagnostic catalog for existing modifier, declaration and yield rejections without changing admission.** (Opus round23 M8/m24/m27/m29; VIP-1/VIP-15/VIP-16/VIP-21/VIP-34; details 60/175/188/189/194.) Use `EK0108` for a recognized `effect` modifier in a TypeScript-forbidden async-modifier position: `abstract`, ambient `declare`, or an interface/type-literal member. Keep ordinary TypeScript syntax/placement errors where the source is ordinary TypeScript; do not treat an identifier named `effect` as a modifier by symbol lookup. Bodyless function/class overload signatures follow detail 175, including native ASI and compatibility; do not adopt a universal optional method body, invent a mandatory annotation beyond the existing native/signature rules, admit generator overloads, or report `EK0108` merely for a valid overload. Allocate `EK1501` for `export default schema S ...`, `EK1502` for type parameters on a `schema` declaration, and `EK1603` for `export default data D ...`. Keep existing `EK0905` for service and `EK1305` for error/schema-error default declarations. The shared repair is to declare the name and write `export { Name as default }`; a generic schema can instead be an ordinary generic TypeScript factory, not unsupported schema-declaration syntax. These are the first unallocated codes in their owning VIP blocks after checking main, the shared detail log and live findings; do not spread `EK1305` across unrelated VIP blocks or renumber already assigned codes. Broaden `EK2104`'s prose to `yield` in an effect function, effect arrow or effect block that is not itself a producer, whether or not any producer encloses it. Source nesting, not the compiler's generated generator, determines yield ownership; region blocks still forward a producer's admitted yields, and a nested ordinary generator retains native yield. A nested plain nongenerator/arrow retains TypeScript's own yield restrictions; this clarification does not replace every native error by EK2104. Finally, a forbidden constructor/accessor gets the applicable Functions diagnostics and no redundant error-body category diagnostic: `async effect get` can still receive both `EK0104` and `EK0105`; replace the misleading word 'alone' rather than suppressing either.
@@ -2082,7 +1555,7 @@ Landing receipt: source d473423f4ab3 landed in main d0cdbe5a0a7f (queue 17933782
     ```
     Effect TS: the permitted counterparts are ordinary named `Schema.Struct`/`Data.taggedEnum` declarations followed by `export { S as default }` or `export { D as default }`; generic factories remain ordinary functions. A normal Effect function returns `Effect.gen`, but its generated generator does not expose source `yield` syntax. Decided by the agent from VIP-1's accepted async-placement rule, VIP-15/VIP-16's nongeneric/schema and named-declaration grammars, VIP-21's source-producer yield ownership, VIP-34/detail 60's assigned diagnostic requirement, principle 2 (native overload/placement rules), and principle 4 (fill catalog holes without changing source meaning), 2026-10-30. Amend 001/002/003/006/Appendices A/B and relevant VIP notes together; preserve the separate compatibility inventory of actually emitted legacy codes. This is a spec catalog allocation, not a claim that any compiler emits these new codes or that an implementation landed.
 
-    **Remaining syntax/check triggers (Opus round24 m14, same catalog completion).** Assign the verified free codes `EK1705` to an unsupported `fork` owner suffix such as `fork.other`, `EK1706` to a `fork.in(s)` scope operand not assignable to the pinned `Scope.Scope`, `EK1802` to an unsupported dotted `try` execution form such as `try.map x`, `EK1907` to a concurrency limit not assignable to the pinned `Types.Concurrency` (`number | "unbounded"`), and `EK0510` to an unparenthesized unary execution expression on the left of `**` (`try a ** b`; write `(try a) ** b`, likewise the unary fork/join heads). Preserve ordinary operand/TypeScript diagnostics and do not invent positive-integer/literal-range restrictions beyond the actual Effect contract. Expand `EK0302` to an extra unparenthesized bang/slot after a completed Effect shorthand, including `A!B!!` and `A!B!C!D`; explain intentional nesting with parentheses rather than guessing a correction. `EK1702` also covers a reserved `fork`/`join` used as an IdentifierReference in an object-expression shorthand (`{ join }`) in the reserved context; ordinary IdentifierName property keys/access and the plain-context shorthand remain allowed. Existing `EK1906`/`EK2005` reject every head declaration kind other than the admitted `let`/`const`, including `using` and `await using`, as well as their already-covered `var`/assignment heads. Underlying TypeScript assignability is the check for `EK1901`/`EK2004` and the named new operand codes; reuse existing any/never and union rules instead of a second recognition algorithm. All five new codes were absent from current main, the shared decision log and live findings when allocated; source/catalog changes must land together. Decided by the agent from VIP-3/5/17/18/19/20/34, detail 60's code ownership, principles 2/3 (native grammar and actual Effect types) and principle 4 (complete existing rules with one diagnostic per trigger), 2026-10-30. These assignments change neither admitted operator forms nor valid program behavior and do not claim compiler emission.
+    **Remaining syntax/check triggers (Opus round24 m14, same catalog completion).** Assign the verified free codes `EK1705` to an unsupported `fork` owner suffix such as `fork.other`, `EK1706` to a `fork.in(s)` scope operand not assignable to the pinned `Scope.Scope`, `EK1803` to an unsupported dotted `try` execution form such as `try.map x` (detail 243; `EK1802` stays VIP-18's retired-`await` error), `EK1907` to a concurrency limit not assignable to the pinned `Types.Concurrency` (`number | "unbounded"`), and `EK0510` to an unparenthesized unary execution expression on the left of `**` (`try a ** b`; write `(try a) ** b`, likewise the unary fork/join heads). Preserve ordinary operand/TypeScript diagnostics and do not invent positive-integer/literal-range restrictions beyond the actual Effect contract. Expand `EK0302` to an extra unparenthesized bang/slot after a completed Effect shorthand, including `A!B!!` and `A!B!C!D`; explain intentional nesting with parentheses rather than guessing a correction. `EK1702` also covers a reserved `fork`/`join` used as an IdentifierReference in an object-expression shorthand (`{ join }`) in the reserved context; ordinary IdentifierName property keys/access and the plain-context shorthand remain allowed. Existing `EK1906`/`EK2005` reject every head declaration kind other than the admitted `let`/`const`, including `using` and `await using`, as well as their already-covered `var`/assignment heads. Underlying TypeScript assignability is the check for `EK1901`/`EK2004` and the named new operand codes; reuse existing any/never and union rules instead of a second recognition algorithm. All five new codes were absent from current main, the shared decision log and live findings when allocated; source/catalog changes must land together. Decided by the agent from VIP-3/5/17/18/19/20/34, detail 60's code ownership, principles 2/3 (native grammar and actual Effect types) and principle 4 (complete existing rules with one diagnostic per trigger), 2026-10-30. These assignments change neither admitted operator forms nor valid program behavior and do not claim compiler emission.
 
     **Parameter await/yield diagnostic scope (Opus round24 m3).** The existing forbidden-`await` check `EK0102` also covers directly evaluated formal-parameter initialization of an Effect callable, where source async initialization is forbidden; the existing forbidden-source-`yield` check `EK2104` covers formal-parameter initialization of Effect callables/producers as well as their nonproducer effect bodies. Stop at nested source callable/context boundaries: a nested ordinary generator still owns its yield, and an ordinary async callable keeps native await rules. This labels the already-forbidden eager parameter cases; it does not turn a parameter initializer into effect code or permit suspension. Keep the separate `try` outside-effect error `EK0501`. Decided by the agent from VIP-1/VIP-5/VIP-21's native async/generator parameter restrictions and principles 2/4, 2026-10-30.
 
@@ -2136,141 +1609,6 @@ Landing receipt (mixed-block slice only): source 0fa8509ad63a landed mainf6fe7a6
     Ordinary module validity also retains the existing reserved-`await` binding requirement: the unchanged `TestBugBashAwaitBinding` expects syntactic `TS1359` for function, arrow and destructured parameter bindings. Own stock TypeScript5.9.3 accepts the typed arrow `export const f = (await: number) => 1`, but Node26 rejects its erased ordinary-module JavaScript `export const f = (await) => 1`. This TypeScript-version discrepancy is explicitly retained; do not claim that particular TypeScript control rejected it, or use its acceptance to authorize invalid ES module output. Follow accepted VIP-26's ordinary JavaScript module guarantee and the existing reserved-binding regression; keep unrelated native `.ts` behavior separate. The TLA owner has claimed this fix-forward; no duplicate compiler change is requested here.
 
     Root native reference `native-await-boundary-reference/receipt.json` records four stock TypeScript static controls and four Node module-syntax controls: namespace `TS1308`, valid true module/async namespace controls, the typed-binding discrepancy, and rejection of both erased reserved binding and sync-IIFE await. No Vibe/TS7 parser/compiler, bugbash Go test, LSP, fuzz or gate ran here. Apply existing180/212/216, public VIP-5/VIP-26/VIP-34 and principles2/4/8; this is a settled native-context requirement, not a new syntax, permission, code or Will question.
-
-### Detail 215
-
-**Legacy severity maps retain their supported legacy effect until migration; modern severity entries win.** (Opus round24 m33; Fable round24 m9/m11; VIP-30 migration amendment; main source receipt `99c40510f59c3167a4bc0115f4dec2fcfe3d2211`.) Document both historical locations: root `vibelang.diagnostics` and `compilerOptions.vibelang.diagnostics`, in `vibe.config.json`, `tsconfig.json`, `jsconfig.json` and extended configuration files through the existing config loader. Each historical map is an object from printed legacy diagnostic code to its supported severity string. Keep the existing legacy code/value validation and replacement/inheritance behavior while it remains present; this does not make every release code legal in the old map. For a diagnostic with a supported legacy override, apply it until migrated unless the effective modern `vibe.severities` entry for that same diagnostic/explicitly mapped port wins. Use the existing modern code/port identity mapping, never infer equivalence from a reused numeric spelling. Newly assigned release errors cannot be disabled by putting their code in an old map, and a release-only code such as `EK0801` is not silently accepted by the old validator. Modern entry validation/recovery remains details 57/59/208. Report configurable migration warning `EK3009` at each legacy map; configuring the warning off does not migrate, validate, erase or disable that map's supported legacy settings. Reject the proposed blanket 'legacy sets nothing' statement: the current category function explicitly reads the legacy map after modern precedence, and no accepted VIP retires that compatibility behavior. A future intentional removal needs its own accepted migration decision.
-    Status: applied in 5214bd3c85327ad3750be03bd8942a7a65688301 (spec-fix-d; verified source revision, not enqueued during diagnostic-alignment hold; no main receipt).
-
-    `vibelang --fix` moves an independently eligible map to root `vibe.severities`, including in extended configs, retaining JSONC comments, unrelated settings and existing modern entries. A map containing obsolete/nonconfigurable codes remains in place under the accepted migration rule until those entries are resolved; do not copy them into the release map or convert them into new configurable errors. Preserve existing code-identity migration safeguards. Explain that plain TypeScript ignores the custom root wrapper but reports its ordinary unknown-compiler-option error (`TS5023`) for `compilerOptions.vibelang`; VibeLang recognizing that legacy path does not change `tsc`. The configurable-warning table must be complete for its stated source revision, or explicitly say it lists examples: the current six own release warnings include `EK0508`, `EK0703`, `EK0801`, `EK3009`, `EK4609` and `EK4610`, separate from imported lint and any accurately labelled legacy compatibility catalog.
-    ```vibe
-    // vibe.config.json / tsconfig.json / jsconfig.json (JSONC, shown as configuration)
-    // { "vibelang": { "diagnostics": { "EK4801": "off" } } }
-    // A supported legacy setting still affects its legacy diagnostic; EK3009 requests migration.
-    // A valid modern override for that diagnostic's explicit port takes precedence.
-    // { "vibe": { "severities": { "EK3009": "off" } } } only hides the migration warning.
-    ```
-    Effect TS: none; compiler configuration and JSONC migration have no Effect runtime counterpart. Decided by the agent from the accepted VIP-30 safe-migration rule, VIP-34's behavior-preserving codemod requirement, principle 2 (preserve existing configuration behavior while clarifying its schema), and principle 4 (modern precedence over a labelled compatibility fallback, not two competing release schemas), 2026-10-30. This is class A because it preserves verified current behavior; making every legacy map inert would be a breaking change. `root-legacy-severity-main-source.txt`/`root-legacy-severity-receipt.json` record `category`/`releaseSeverity`, legacy validation, merge and migration at the exact main snapshot. They are source receipts, not a compiler execution or a claim that docs or a new implementation landed. Update 007/Appendix B/VIP-30 together with comment/location/precedence examples.
-
-
-    **Earlier accepted source receipt (later rejected: legacy severity; stale007 warning context):** applied in9459b38506c58b177324c718b81f12dcd97aef80 (spec-fix-d/bookmark33, independent queued; not main). Rejected5214bd3c8532 superseded after acceptance. Both legacy paths/admission/inheritance and modern port precedence/warning-only suppression preserved alongside current modern recovery, whole-code policy and warning repairs. Original semantic/native assertions retained with narrow warning-table/message attribution fixes for the newer catalog. Immutable-main four doc controls fail/native control passes; candidate Node5/Bun5,64freshcompiler/TypeScript controls,actualtsc5.9.3root-key/TS5023controls and spec/docs/regen/forms pass with no form changes. ORIGINS legacy-key/comments/warnings-table entries are explicitly not Circles. No implementation/main or broad-green claim.
-
-### Detail 216
-
-**Class field and enum initializers reset the enclosing Effect context; static blocks do not execute Effects.** (Opus round24 corrected M3/m30; VIP-1/VIP-5/VIP-17; detail 32.) Mirror the pinned TypeScript parser's own source boundaries: a class field initializer and an enum member initializer are outside the enclosing Effect execution and contextual-keyword reservation context. Thus a `join(...)`/`fork(...)` there can call a source identifier even when the class/enum is written inside an effect function; it does not execute VibeLang's fiber operator. Explicit `try e`/fiber-execution syntax there retains the existing outside-effect diagnostic (`EK0501`/`EK1701` through recovery), and there is no implicit async or Effect initializer. Class heritage and computed class element names still evaluate in their enclosing source context, separately from the field initializer. Plain source method/function boundaries still reset context, and a nested explicit Effect callable/block creates its own normal context.
-    **Immutable-main source scope (d0cdbe, 216).** 001/002/AppendixA/VIP17 publish source field/enum reset, contextual static-block reservation and separate execution permission. Later service-default235 application remains separate. `root-main-d0cd-source-receipt.json` retains the complete31-file diff/hash/read scope. Source only; no decide-live compiler/gate rerun.
-    Status: applied in 554f60ee7e77 (spec-fix-a; queued, not yet a main landing receipt). One source parsing/reservation/execution rule, public VIP-17 amendment and examples with Success([2,3,7]); ordinary TypeScript computed-field restrictions retained. Nine parser controls, eight strict fixtures, the TS1166 field control, exact strict counterpart and all19 configured spec functions pass.
-    Static blocks are also outside Effect execution. Preserve the accepted enclosing contextual reservation where Appendix A already propagates `+Effect`: a static block of a class written in that reserved source context cannot use a bare `join`/`fork` as an identifier call and receives `EK1701` for the recognized construct. In a plain source context with no enclosing Effect reservation, keep VIP-17's explicit outside-code identifier promise: an ordinary user `join`/`fork` in a static block remains an identifier. Do not copy ECMAScript's unconditional `+Await` static-block grammar into a new global `fork`/`join` ban; VIP-17 did not reserve these names throughout a module or every plain class. Qualify the claimed 'exactly ECMAScript Await' analogy accordingly: keyword reservation and permission to execute are separate, and source module classification does not globally reserve the two VibeLang words. This preserves the existing plain-call meaning and static-block reservation while correcting the field/enum reset, rather than introducing an unapproved global restriction.
-    ```vibe
-    import { join } from "./helpers.vibe"
-    effect function build() {
-      class C { value = join(1) } // ordinary imported call in the field initializer
-      enum E { A = join(1) } // ordinary call; native enum type/constant rules still apply
-      class D { static { join(1) } } // EK1701: enclosing Effect reservation, no static-block execution
-    }
-    class Plain { static { join(1) } } // ordinary identifier call under VIP-17
-    effect function bad() { enum E { A = try task() } } // EK0501
-    ```
-    Effect TS: field/enum calls remain the source helper calls in ordinary generated initializer code; an enclosing Effect function returns `Effect.gen` without placing `yield*` into those initializers. Source fiber operations only lower inside a permitted Effect activation. Decided by the agent from VIP-1's async placement/boundary precedent, VIP-17/detail 32's contextual-only reservation and explicit outside-code identifiers, principle 2 (pinned TypeScript field/enum parsing), principle 4 (source boundaries before lowering), and principle 8 (no implicit initializer execution), 2026-10-30. TypeScript 5.9.3 `parsePropertyDeclaration` clears Yield/Await for the initializer; `parseEnumDeclaration` uses `doOutsideOfYieldAndAwaitContext`; static blocks set Await but cannot execute it. `root-await-class-reference.log` and forced-execution `root-await-class-force.log` show script field `await(1)` calls the ordinary identifier even inside an async function, while modules globally reserve await and static blocks reject it. `root-enum-await-reference.log` distinguishes ordinary identifier calls from an actual forbidden await operand. These are native parser/runtime references, not VibeLang conformance. Amend 001/002/Appendix A/VIP-17 consistently; supersede earlier panel recommendations that reserved field-initializer identifiers or proposed unconditional plain-class static reservation.
-
-
-    **Native module await identifier receipt (Fable29).** The reviewer's TypeScript5.9.3 checker accepts an await-named parameter of a plain function in a module, including one nested in an async function. This is checker admission, not executable native-module proof: root-round29-await-identifier.log independently gets zero checker diagnostics, then Node rejects TypeScript's emitted .mjs with SyntaxError (expected negative check; stderr retained). Preserve the existing32/216 custom fork/join reset at a plain source callable; those ordinary JavaScript identifiers do not inherit the native module-wide await reservation. Do not infer a new VibeLang ban from ECMAScript's reserved await spelling, or claim the invalid native emit runs. This is reference-quality clarification only, with no new syntax, diagnostic or decision count.
-
-Landing receipt: source 554f60ee7e77 landed in main d0cdbe5a0a7f (queue 1793386345-spec-fix-a, gate mq-10302149-2).
-
-    **Catalog follow-up (decide-live; immutable main `969ea00c4aa3`).** The216 source boundary is published, but AppendixB's short `EK1702` row still limits its named-binding trigger to “effect code” and listed parameter contexts, while AppendixA explicitly excludes static blocks from effect execution. Align that row with002's existing `[+Effect]` reservation trigger, including inherited static blocks. For example, `effect function f() { class C { static { const join = 1 } } }` requires `EK1702`; a plain-context static block may still bind/call a helper named `join`, and an operation in a reserved static block remains `EK1701`. This is the already-settled216 rule, not a new prohibition or diagnostic allocation. The earlier source landing is valid for its published portions; it does not establish complete catalog alignment or compiler conformance. Existing `spec-fix-a` source ownership is retained; no source patch was made. `main-216-catalog-followup.json` preserves the exact contrasting main lines.
-
-    **Immutable-main source publication (773bddb1d57f, 216).** Chapter 002 and Appendix B explicitly include reserved `fork`/`join` shorthand properties under existing `EK1702`, while property keys and member access remain names. This follows the already-published `await`-like reservation; it is not a new rule or VibeLang compiler proof. Complete 60,380-character/60,428-byte nine-file design diff was read in four contiguous slices; `main-resumed-source.json` preserves its hash and scope.
-
-### Detail 219
-
-**Promise-producing tagged templates use the existing explicit Promise bridge rule.** (Sol round26 m4; VIP-4; details 89/112/115.) A tagged template invokes its tag even though TypeScript represents it as `TaggedTemplateExpression`, separately from `CallExpression`. In Effect code, apply `EK0404` to that invocation when its selected signature/result satisfies the existing Promise/thenable predicate, including detail 89's union rule. Add tagged templates explicitly to 003 and Appendix B's trigger list; do not make syntax-tree node names an exception to VIP-4's 'always wraps a Promise'. An async tag's synchronous thrown type can be `never`; that does not exempt its Promise result. Preserve the native tag Reference receiver, once-only template/substitution evaluation, template-site identity and ordinary evaluation order inside the bridge thunk. This does not auto-await a tag, grant optional tagged-template syntax, change untagged templates, or alter the existing ordinary-async execution boundary.
-    **Immutable-main source scope (d0cdbe, 219).** 003/AppendixB/VIP4 include Promise-producing tagged-template invocations in the existing explicit bridge, retaining native receiver/template/substitution semantics. `root-main-d0cd-source-receipt.json` retains the complete31-file diff/hash/read scope. Source only; no decide-live compiler/gate rerun.
-    Status: applied in250412a0c2cf (spec-fix-b; queue accepted/held, not main).003/AppendixB/public VIP-4 trigger reconciliation; Node3/Bun3, strict TS5.9.3 node-kind/result proof, Effect4.1.0 native protocol/failure controls, regen/forms/spec/docs pass.
-    ```vibe
-    async function tag(_parts: TemplateStringsArray) { return 7 }
-    effect function bad() { const p = tag`x`; return 0 } // EK0404
-    effect function good() { return try tryPromise(() => tag`x`) }
-    ```
-    Effect TS:
-    ```ts
-    function good() { return Effect.gen(function* () { return yield* Effect.tryPromise(() => tag`x`) }) }
-    ```
-    The native invocation remains in the thunk and the pinned Effect bridge succeeds with `7`. Decided by the agent from accepted VIP-4's explicit Promise requirement, principle 2 (tagged templates are invocations with ordinary selected signatures), principle 3 (syntax selects invocation behavior, not the tag's spelling), and principle 4 (one Promise result rule for invocation forms), 2026-10-30. `round26-reference.log` independently checks strict TypeScript 5.9.3's separate node kind and `Promise<number>` result plus the Effect 4.1.0 bridge. This clarifies the already-required invocation check; no VibeLang compiler acceptance/rejection, API change or landing is claimed.
-
-### Detail 224
-
-**Use `EK0706` for the already-forbidden jumps out of `async match`.** (Opus round28 m47; VIP-7/VIP-34; details 60/196/214.) Assign `EK0706` to a source `return` belonging to an `async match` evaluation context, or a source `break`/`continue` whose resolved target lies outside that async-match boundary. This covers the subject, pattern tests/guards and arm result expressions under their existing source grammar parameters, including a `do` that would otherwise transfer control out. It adds no new restriction: detail 196/VIP-7 already reject those jumps. A nested source function retains its own return context, and a jump to a target inside the async-match boundary keeps its existing rules. Resolve source boundaries/targets before any generated async wrapper; do not report every syntactically nested return as forbidden or treat the generated function as a permission to escape. Keep ordinary independent native/control-flow diagnostics where they apply.
-    Status: landed on main ab92e0dad56f (commit 983c76ba027f; spec-fix-c, queued as 0bea81a644cb).
-    `EK0705` remains detail 214's parameter-home `is` binding error; do not reuse the reviewer's proposed number. Main's Appendix B has `EK0701`–`EK0704`, and the decision ledger reserves `EK0705`; `EK0706` was unassigned in both sources and the coordination claims when reserved. Catalog the new identity in 004/Appendix B and a public VIP-7 amendment under detail 213. Valid mixed modifier recovery and the imported-lint ranges are separate rules. Any suggested rewrite must preserve control flow; there is no automatic jump across the Promise boundary.
-    ```vibe
-    const bad = async match (0) { when 0: do { return 1 }; default: 0; } // EK0706
-    const good = async match (0) { when 0: (() => { return 1 })(); default: 0; }
-    ```
-    Effect TS: no runtime counterpart exists for the rejected outward jump. The admitted nested-function case uses the existing plain async match counterpart, with `(() => { return 1 })()` as its ordinary arm expression and a Promise result; bridging that result from Effect code remains VIP-4's rule. Decided by the agent from accepted VIP-7/detail196's explicit boundary, VIP-34's coded language diagnostics, principle4 (one diagnostic for one existing source boundary), and detail60's agent-owned allocation rule, 2026-10-30. This is a diagnostic assignment, not new language admission, a new runtime API or a claim that the current compiler emits the code. Source and regression implementation remain with fixing lanes.
-
-
-    **Independent allocation receipt:** root-round28-diagnostic-registry.txt and root-round28-main-revision.txt retain the actual diagnostic source at fetched immutable mainb0387e3558d9. Both printed EK0706 and numeric706 are absent there; the shared decision/live logs reserve0705 for214 and had no0706 assignment before224. This is a source/allocation check, not compiler emission or a full historical-code audit.
-
-### Detail 238
-
-**A pipe is never an unparenthesized conditional test.** (Opus r31 M9; VIP-23 pinned explainer precedence; extends details 145/170.) Keep detail 170: `PipeExpression` stays a `ShortCircuitExpression` alternative and chains stay left-associated. Add one early error: in `ConditionalExpression : ShortCircuitExpression ? AssignmentExpression : AssignmentExpression`, it is a Syntax Error if the `ShortCircuitExpression` is an unparenthesized `PipeExpression`. The pinned explainer gives `|>` the precedence of `=>`, assignment and `yield`, looser than `?:`, and rejects a conditional as a pipe head or body. Babel 7.29.11 and 8.0.4 (Hack pipes, `%`) reject `x |> f(%) ? 1 : 2` with "Hack-style pipe body cannot be an unparenthesized conditional expression". With this error the program has one answer, a syntax error, and 002 "not a change of precedence" becomes true. Unchanged: a pipe inside either branch (`c ? x |> % : y`, `c ? a : b |> % + 10`, detail 145), a parenthesized test and a parenthesized body. No `EK` code: it is a syntax error like the pinned pipe early errors.
-    ```vibe
-    const a = x |> f(%) ? 1 : 2     // syntax error: write (x |> f(%)) ? 1 : 2 or x |> (f(%) ? 1 : 2)
-    const b = (x |> f(%)) ? 1 : 2   // the pipe result is the test
-    const c = x |> (f(%) ? 1 : 2)   // the conditional is the body
-    const d = ok ? x |> % + 1 : 0   // a pipe in a branch stays valid
-    ```
-    Effect TS: `const t1 = x; const b = f(t1) ? 1 : 2`; `const t2 = x; const c = f(t2) ? 1 : 2`; `const d = ok ? x + 1 : 0`, with once-only topic temporaries for general operands. The rejected line has no counterpart. Decided by the agent from principle 2 (mirror the pinned TC39 proposal and its reference parser), principle 8 (a syntax error can be relaxed later) and principle 4 (one parse per program), 2026-10-30. Reconcile Appendix A (beside the CatchExpression `?` early error), the 002 pipe examples and the snapshot README reconciliation list; keep upstream `spec.html` unchanged. Native evidence: `r31probe/pipe-cond.log` (both Babel versions; parenthesized and branch controls parse) and `r31probe/r31-counterparts.log` (`[1, 1, 5]` for x = 4); not VibeLang parser conformance.
-    Status: applied in bb50c30ea831, landed in main f58798560fe7 (spec-fix-a, gate mq-10310743-2). Appendix A early error beside the catch one, snapshot receipt row; 002 unchanged.
-
-    **Diagnostic-owner correction (Loop r3, detail 247).** The earlier “No `EK` code” sentence is superseded by accepted public VIP-34/detail 232: this adopted/reconciled pipe rejection uses `EK2301`. Syntax, precedence and admitted controls stay unchanged; detail 247 owns the catalog completion.
-
-### Detail 239
-
-**An explicit `throw` that can complete a plain `catch` handler is a lint warning.** (Opus r31 m56; VIP-5 amendments, details 39/62/71.) Detail 39 meaning stands: the throw is a JavaScript exception inside `Effect.succeed(h(e))`, so the result dies. Add one VIP-38 lint warning, `EK0511` (the first VIP-5 code after decided `EK0510`; the fixer confirms it is free on main), when a plain `catch` handler has an explicit `throw` that can complete the handler: not one caught inside the handler, and not one in a nested function. Quick fix: `catch effect (e) => { ... }`, which turns the throw into a typed failure; the fix is offered, never applied by formatting. Tracked throwing calls keep `EK0403` (detail 39); implicit exceptions stay silent defects. A warning-only run exits zero (detail 71), and `vibe.severities` configures the code. This mirrors detail 62 (`EK0508`): a plain handler written as an effect handler gets one warning and the same quick fix. No program changes meaning or stops compiling.
-    **Current scope after Will's 2026-10-31 ruling:** local VibeLang thrown-type inference/annotations and any permission for synchronous source `throw` in this older record are superseded by `core-decisions.md`, `loop/WILL-ANSWERS.md` and detail 251. Do not implement those historical local clauses. Retain independently valid foreign-contract, native-phase and unrelated rules; reference receipts below are historical, not current VibeLang admission tests.
-    ```vibe
-    effect function load(id: string) {
-      const user = fetchUser(id) catch (e) => { throw new Wrapped(e) } // EK0511 warning: dies, not a typed failure
-      return try user
-    }
-    effect function typed(id: string) {
-      return try (fetchUser(id) catch effect (e) => { throw new Wrapped(e) }) // fails with Wrapped
-    }
-    ```
-    Effect TS: `load` is `Effect.gen(function* () { const user = Effect.catch(fetchUser(id), (e) => Effect.succeed((() => { throw new Wrapped(e) })())); return yield* user })`, which gives `Die(Wrapped)`; `typed` is `Effect.gen(function* () { return yield* Effect.catch(fetchUser(id), (e) => Effect.gen(function* () { return yield* Effect.fail(new Wrapped(e)) })) })`, which gives `Fail(Wrapped)` (`r31probe/r31-counterparts.log`, Effect 4.1.0). Decided by the agent from principle 1 (a TypeScript reader expects a rethrow to stay typed, so the silent defect needs a visible signal), principle 4 (the same treatment as detail 62 for the same plain-handler mistake) and principle 8 (a warning changes no admitted program), 2026-10-30. Add the row to 002 `catch`, 007 lint list and Appendix B, with the example.
-    Status: applied in 71f0479db9f0 (spec-fix-d; queued, not yet a main landing receipt). Published in 002, 007, Appendix B and VIP-5. The compiler has not registered EK0511: specAhead carries it for an implementation lane.
-
-    **Immutable-main source publication (013cfa002833, 239).** Chapters 002/007, Appendix B and public VIP-5 publish `EK0511` for an explicit `throw` that can complete a plain `catch` handler, excluding internally caught throws and nested functions. The effect-handler fix, silent implicit defects and existing `EK0403` tracked-call check stay distinct. Source publication does not prove the compiler warning/quick-fix implementation. The full six-file diff was read; `source-013-publication.json` retains its hash and exact scope.
-
-### Detail 240
-
-**`is` bindings in `for` heads, concise arrow bodies and initializers use the pinned explainer homes.** (Opus r31 m59; VIP-7 pinned explainer "Bindings": "When used in the head of a `for()`, the usual binding scopes apply"; extends 004 nearest-block rule and details 109/191/214.) A `let` or `const` introduced by `is` gets this lexical home:
-    - `for (init; test; update)`: a loop head scope that shadows outer names and does not leak. A binding from `init` behaves as a name declared by a `let`/`const` declaration in `init`, whether `init` is a declaration or an expression: a `let` binding is copied into each iteration environment by ECMAScript CreatePerIterationEnvironment, and a `const` binding stays in the loop scope. A binding from `test` or `update` is a fresh, uninitialized cell in every environment CreatePerIterationEnvironment creates, shared by the update, test and body that run in it and never copied forward, as detail 191 gives each `while` condition. So `for (; it.next() is { done: false, value: let v }; )` never re-initializes `v`.
-    - `for…in`, `for…of`, `for await`, `for concurrent` and `for try`: a binding from the head expression (evaluated once, in detail 109 head environment) is copied into each iteration or item binding environment, as the explainer states; a skipped binding is copied uninitialized. A binding from a default inside the head declaration belongs to that iteration fresh binding environment.
-    - A concise arrow body: the arrow body scope, where its block-body form would declare it.
-    - A class field or static field initializer: that initializer own scope, as ECMAScript evaluates each initializer as a separate method-like body. A `static` block is a block.
-    - Formal parameters keep detail 214 `EK0705`. An enum member initializer has no lexical home in ECMAScript or the explainer, so a binding there is `EK0705` too (principle 8; a later reconciliation can relax it).
-    Bindings stay in TDZ until their pattern executes, and the detail-80 use-before-assignment check (Opus r31 m58) applies in every home.
-    ```vibe
-    function drain(it: Iterator<number>) {
-      const out: (() => number)[] = []
-      for (; it.next() is { done: false, value: let v }; ) out.push(() => v)
-      return out.map(g => g())           // [1, 2, 3] for [1, 2, 3]: one fresh v per iteration
-    }
-    function countdown(src: { n: number }) {
-      const seen: (() => number)[] = []
-      for (src is { n: let n }; n > 0; n--) seen.push(() => n)
-      return seen.map(g => g())          // [3, 2, 1] for n = 3: copied per iteration like let
-    }
-    enum E { A = (1 is let one) ? 1 : 0 } // EK0705: no lexical home
-    ```
-    Effect TS: `drain` is `for (;;) { const r = it.next(); if (!(typeof r === "object" && r !== null && r.done === false)) break; const v = r.value; out.push(() => v) }`; `countdown` is `for (let n = src.n; n > 0; n--) seen.push(() => n)` after the object test. `r31probe/r31-counterparts.log` gives `[1,2,3]` and `[3,2,1]` on Node 26. Decided by the agent from VIP-7 pinned explainer text (for-head scopes and for-of copies), principle 2 (ECMAScript per-iteration environments and field-initializer bodies), principle 4 (one loop-condition rule shared with detail 191) and principle 8 (`EK0705` where no home exists), 2026-10-30. Add the rule and the two loop examples to 004 `is` expressions and VIP-7 public amendment; the `EK0705` row names enum member initializers.
-    Status: homes, TS2454/TS2448 rule and loop witnesses landed on main 003924407712 (commit 84be1db2b58b); remaining clauses (enum-member initializer EK0705, the EK0705 row, the VIP-7 clause, the guide for(;;) copies) queued in 350e37c7b3ef (spec-fix-c), not yet a main receipt.
-
-
-    **Immutable-main source publication (773bddb1d57f, 240).** Chapter 004, Appendix B and public VIP-7 publish `EK0705` for `is` bindings in `enum` member initializers, completing the previously separate source-home clause in this slice. No compiler binding-scope check or guide-wide audit was run. Complete 60,380-character/60,428-byte nine-file design diff was read in four contiguous slices; `main-resumed-source.json` preserves its hash and scope.
 
 ### Detail 242
 
@@ -2407,25 +1745,6 @@ Landing receipt: source 554f60ee7e77 landed in main d0cdbe5a0a7f (queue 17933863
     ```
     Effect TS: the repaired catch initializer's local no-jump block is `function good() { try { (null as any).code } catch ({ code = (() => { let c = 1; const ok = true; return [ok, c] })() }: any) {} }`, using a native `any` catch-parameter annotation solely to isolate this lexical-home witness. For `limitHome`, evaluate `let n = 1; const concurrency = n ? n : 1` in the containing generator before constructing the head/item work and `Effect.forEach`, then retain `n` there; the actual pattern test remains the pinned one. The fresh-read control `let v: number; use(v)` is native `TS2454`; do not lower the source loop by reusing one initialized variable. Decided by the agent from principle 8/detail 214 (reject a parameter home not yet specified), principle 2 (native catch-parameter/body separation and definite assignment), principle 4 (reuse the same gate and the already-decided loop/limit homes), and accepted VIP-7, 2026-10-31. Publish 004, Appendix B and public VIP-7 under detail 213. Add direct/nested/computed-key rejections, binding-free and explicit-block controls, nested callable boundaries, a limit binding visible after the loop, and update-read/closure/TDZ controls. Fuzz each parameter position/home boundary and for-head position against the quoted home rules. `native-loop-r3/` confirms the native fresh-read error; no VibeLang binding/compiler conformance is asserted.
 
-### Detail 257
-
-**Declaration emit elides a cyclic inferred type as `/*elided*/ any`, as TypeScript 5.9 and 7.0 do, instead of 7.1's `TS5088`.** (Will, 2026-10-31 20:05Z via the alchemy orchestrator, "decision 6" for migfix-alchemy alchemy-23; recorded here so the spec round writes it; chapter 000 "where a VIP is silent, its TypeScript counterpart applies"; chapter 007's description of the compiler.) Where TypeScript 7.1's new recursion rule (microsoft/TypeScript #64461, upstream `834e7862c031`) would report `TS5088` ("The inferred type of 'x' references a type with a cyclic structure") for an inferred declaration type, VibeLang prints `/*elided*/ any` at that position in declaration output and reports no error, for `.vibe` and `.ts` files alike. Will's reason: a repository's unchanged TypeScript compiles under VibeLang as it did under its own compiler. No upstream filing. The companion divergence alchemy-25 (#64553: inference from type arguments is cached as in 7.0.2) is a compiler bug fix with no spec text.
-
-    ```vibe
-    export const from = (value: string) => makeBuilder({ value })
-    const makeBuilder = (state: { value: string }) => ({ state, named: (value: string) => makeBuilder({ value }) })
-    // declaration output: named: (value: string) => /*elided*/ any   (TypeScript 7.0.2 byte for byte; 7.1 reports TS5088)
-    ```
-
-    Effect TS: the same two declarations are ordinary TypeScript; `tsc` 5.9 and 7.0 emit `/*elided*/ any`, and nothing in this code is an Effect.
-
-    Spec placement: one sentence in chapter 007 where the compiler is described (the TypeScript 7.1 checker, with its named divergences), or beside chapter 000's silence rule, listing this as a deliberate divergence from 7.1 with the issue number. The compiler keeps 7.1's rule everywhere else. Fixers keep migfix-alchemy's witness as a declaration case and add a keyed fuzz generator over recursive builder shapes (object literal, arrow, method, class field) whose oracle is byte equality with TypeScript 7.0.2's emit. Decided by Will (not asked again); recorded by the agent from his stated reason and chapter 000's counterpart rule, 2026-10-31. Class A; no Will question.
-
-
-    **257 ordinary declaration-oracle scope clarification, decide-live, 2026-11-01.** The Alchemy20:05Z decision6 text and257 are specifically about `TS5088`/cyclic inferred declaration elision; they do not require TypeScript7.0.2's entire declaration printer for unrelated source shapes. Keep the named7.0.2 counterpart for that approved divergence. Outside the named divergences, use a recorded stock native control matching the compiler's ordinary TypeScript7.1 lineage, and keep actual target/compiler/config/source identity explicit under291. The unrelated exported destructuring-const spelling is not authorized as another7.0.2 compatibility change by decision6.
-
-    The target's actual shipped declaration gate remains separate: compare against complete original-source output with the required deterministic mode and actual chosen original compiler, preserving raw differences and emit outcomes. A same-source7.0.2-versus7.1 difference is not, by itself, migration causality; nor is naming that cause permission to ignore a real published-byte change. Rebuild/prove the appropriate complete baseline and keep257's explicit exception tests separate. If a producer such as `tsrs` does not support the required serial mode, establish a verified compatible official artifact/driver rather than silently substitute another major/minor emitter or claim an unverified parallel result. No source workaround, comparator normalization or fabricated success follows. This applies existing257/277/291/292 and principles2/8; no new language choice or Will question. The reported two Alchemy files and compiler outputs are owner receipts, not native7.1 executions by this lane.
-
 ### Detail 259
 
 **Interim `EK9204` is not configurable, and its Appendix B row names every site the transitional compiler reports.** (oracle-appb and smithers-f2's two open questions in `fuzz-coverage/core-requests.md`; details 57, 60 and 189; chapter 007 "Severities"; principle 8.) `vibe.severities` admits VibeLang's own warning codes and the imported `EK38xx` codes (007; detail 57). An interim `EK92xx` code sits in the separately labelled compatibility inventory and is not one of the language's own rules (detail 189), so an entry for it is the same config error as any other code that may not be configured, `EK3006`, even though the compiler prints it as a warning; the oracle and the compiler already agree. A transitional code retires with its VIP, so a project setting keyed on it would vanish; refusing now can be relaxed later, a permission cannot be withdrawn. The row's trigger column documents the actual compiler revision (detail 189): the compiler reports `EK9204` both at an old Effect `try`/`catch` statement with no expected errors and at the `catch` keyword of a catch expression whose head cannot fail (`catch_expressions.go`, `deadCatchExpression`). The row lists both sites and, per site, the accepted-language successor: the statement site retires with VIP-5's removal of the `try` statement (`EK0503`); the expression site is a plain compatibility report with no normative successor, since a catch expression on an infallible head is valid Effect code (`Effect.catch` on `never` is a no-op) and VIP-5 defines no warning for it; it retires outright.
@@ -2456,16 +1775,25 @@ Landing receipt: source 554f60ee7e77 landed in main d0cdbe5a0a7f (queue 17933863
     - *Second tightening of the sixth addendum (effectscript-11, recorded 2026-11-01T09:28:08Z):* comments are compared, not ignored. They stay in the token stream in position among the code tokens, with only their internal whitespace normalized, so the stream is equal apart from whitespace and trailing commas. A dropped or moved `// @ts-expect-error` or `// @ts-ignore` changes what a test checks and fails the proof. This replaces "comments" in the first tightening.
     - *Third tightening note on the sixth addendum (effectscript-11's decision, recorded 2026-11-01T09:29:09Z):* the token stream may also differ in a statement-terminating `;` that dprint removed or added, with the AST half still required. So only whitespace, trailing commas and statement-terminating semicolons may differ. A `;` in a `for` head, and an empty statement, still count.
 
-### Detail 280
+    - **Addendum to detail 272 (spec agent, 2026-11-01, from the smithers agent's question): a specifier-only rename in a test is allowed.** When the migration renames `X.ts` to `X.vibe`, the codemod may rewrite a test's module specifiers that name that file (`import`/`export … from`, `import()`, `require()`, `vi.mock()`/`jest.mock()` and similar module-path arguments) from `…/X.ts` to `…/X.vibe`, and nothing else. This is the rename refactor every editor applies to importers, tests included; the test's logic, assertions, fixtures and identity are unchanged, so it is still the migration's oracle. Bounds, each checked by a verifier the migrate flow runs on every test file it touches: the diff of a test file may change only string literals that are module specifiers resolving to a renamed module, each exactly `.ts`→`.vibe` (or `.tsx`→`.vibex`) on the same path; any other change to a test (an assertion, a fixture, a config embedded in it, a path string read with `fs`, a glob) is still forbidden by detail 272, and the module it needs stays `.ts` with a named cause. Extensionless specifiers (`../src/X`) need no edit. The PR lists each touched test file with the verifier's result.
+      ```ts
+      import { f } from "../src/X.vibe"                    // allowed: specifier rename of a migrated module
+      const src = readFileSync("src/X.ts", "utf8")         // not a specifier: unchanged, so X stays .ts (detail 272)
+      ```
+    - *Addendum confirmed by effectscript-11 (Will's proxy), 2026-11-01T03:36:19Z:* the same allowance covers test fixtures and the specifier spelling the project's `declarationImportStyle` selects; the codemod makes the rename mechanically (never by hand), as it does in every non-test importer, and the PR lists every renamed test or fixture import. Changing any expression, assertion, setup, config or build call in a test beyond the specifier string stays forbidden.
+    - *Second addendum to detail 272 (effectscript-11, Will's proxy, decided; recorded 2026-11-01T03:36:55Z): test file selectors.* A test's file selector (`import.meta.glob`, an extension regex, a `readdir` filter) may gain `.vibe` and exclude `*.d.vibe.ts` sidecars if and only if the migrate flow proves that the set of files it selects after migration, mapped back by base name, equals the set it selected before (same count, same names); the check's output is listed in the PR. Any other selector change stays forbidden. The test-diff verifier accepts exactly two kinds of test or fixture edits: specifier renames of migrated modules, and selector widenings that pass this set check. Case: foldkit's website `docPage.test.ts`.
+    - *Third addendum to detail 272 (spec agent, 2026-11-01T03:38:13Z, from the smithers agent): a dependency upgrade is not a migration test edit.* Test edits that adapt to an API the pinned Effect version removed (VIP-32; Will: "support only the latest Effect") belong to the upgrade, which is its own bottom-of-stack commit below every `.ts`->`.vibe` conversion, changes no `.vibe` file, and passes the repository's full suite on the all-TypeScript tree before any module is migrated. That commit is the migration's baseline: the 272 verifier diffs migrated tests against it. Its test edits are API-mechanical; an assertion whose expected value changes carries a one-line reason in the PR.
 
-**The compiler never overwrites a sidecar it did not write.** (spec agent, 2026-11-01, common sense and precedent, asked by effectscript-11 from main-red FuzzCommandLine/seed#7; amends VIP-27 and reverses nothing. VIP-27 and the spec were silent; `WriteFile` in `typescript/tsc/internal/compiler/sidecars.go` overwrites unconditionally, a silent wrong result.) Precedent: `tsc`'s `TS5055` "Cannot write file ... because it would overwrite input file", and the `// Code generated ... DO NOT EDIT.` marker convention.
-    - Every emitted `x.d.vibe.ts` starts with the comment `// Generated by vibelang from x.vibe. Do not edit.` (before any `/// <reference>`, which a comment may precede). A package build's ordinary `.d.ts` files do not carry it, so public declarations stay byte-identical (VIP-27).
-    - Before writing: no file there, or the existing file has the marker, or its content equals the new output ignoring the marker, means write. Otherwise the compile reports an error (allocate a code by the registry and Appendix B rules, claim it) naming the file: "x.d.vibe.ts is not generated by vibelang and would be overwritten"; the file is left untouched and the rest of emit proceeds. Its quick fix deletes the file; the message says to move hand-written declarations to `x.d.ts`-style TypeScript or a `.ts` module. The equality clause means sidecars generated before the marker existed upgrade without an error unless they are stale, and a stale one takes one delete.
-    - The check runs wherever sidecars are written: `vibelang`, `--watch`, the LSP, the bundler plugins, and in the directory of detail 268.
-    - Tests: a hand-written sidecar is reported and unchanged on disk; a marked sidecar and an unmarked identical one are rewritten without a diagnostic; a marked sidecar with edits is regenerated. Fuzz oracle (`FuzzCommandLine` neighbourhood): for random pre-existing file contents at the sidecar path, the compiler either leaves the bytes unchanged and reports the code, or the old file had the marker or equal content.
-    - **Rework of detail 280 (spec agent, 2026-11-01, after effectscript-11's review; replaces the error rule above, the marker stays).** The error had an upgrade hole: every sidecar written by 0.0.10 has no marker, so the first compile after any source or output change would fail, for normal users and all five migrated repos, and a hash manifest cannot help because old files are not in it. New rule: no compile fails and no upgrade needs action. Before writing `x.d.vibe.ts`: no file, a marked file, or an unmarked file equal to the new output ignoring the marker means write. An unmarked file that differs is moved, bytes intact, to `.vibe/sidecar-backups/<path mirrored from the project root>`, the generated file is written with its marker, and the compile reports one warning per run, not per file (allocate a warning code by the registry and Appendix B rules): "vibelang moved N unmarked .d.vibe.ts files to .vibe/sidecar-backups/ and regenerated them. Sidecars are generated; nothing is needed unless you wrote one by hand, in which case move it to a `.ts` module." Each file moves at most once, because the regenerated file has the marker. So a 0.0.10 sidecar upgrades silently apart from that one line, a hand-written file is preserved and reported, never destroyed, and later hand-edits of a marked file are regenerated, as the marker states. There is no error and no quick fix. The tests and fuzz oracle change accordingly: for random pre-existing contents, the compile succeeds, the sidecar is the generated output, and any unmarked differing bytes exist unchanged under `.vibe/sidecar-backups/`.
-    - *Conditions on the rework (effectscript-11, Will's proxy, released it 2026-11-01T06:53:38Z; nothing that compiles today fails, so no ask to Will).* Each has a test. (1) `.vibe/sidecar-backups/` never joins a program: `tsc`, the LSP and globs exclude it, and the migrate flow's gitignore entry covers it, so no backup is compiled or picked up by a test selector. (2) A backup never overwrites an earlier backup: a colliding name takes a numeric suffix, so a second collision cannot destroy the first hand-written file. (3) Fuzz oracle: for any starting state of the sidecar path and the backup directory, no bytes are ever lost, and the compile result matches a clean compile.
-    - *Note on detail 245 (spec agent, 2026-11-01T06:53:46Z):* effectscript-11 confirmed VIP-7's pinned text is the authority, so no ask to Will. The `TS2451` message points at the rename quick fix, and the release notes list the change as a behaviour change.
+    - *Fourth addendum to detail 272 (effectscript-11, Will's proxy, decided for Smithers; recorded 2026-11-01T04:19:06Z): path strings to migrated files.* This replaces the first addendum's "a path string read with `fs` ... is still forbidden" for one case: a string literal in a test or fixture that names a migrated source file by path may change `.ts` to `.vibe` (`.tsx` to `.vibex`), mechanically, when the flow checks that the new path resolves to the migrated file, nothing else in the test changes, the test passes, and the PR lists each edit. A test that asserts on the file's text (reads it and compares contents, line numbers or source shape) keeps that module `.ts`, and the case goes to the repo's migfix lane. The test-diff verifier accepts this third edit form with a resolves-to-the-migrated-file check.
+
+    **Further272 upgrade-baseline clarification, recorded by decide-live, 2026-11-01.** The smithers agent's04:45Z inbox records the spec agent's later~04:25Z answer: Smithers main already has22 .vibe files on0.0.8, and the pinned Effect4.1 upgrade requires a newer VibeLang. “No .vibe changes” in the earlier third addendum means no new .ts-to-.vibe conversions in the upgrade, not a requirement to delete or freeze pre-existing VibeLang sources. The separate bottom upgrade baseline may port those already-.vibe files, including existing .vibe tests, through the required language-version codemod, before new conversions. Use vibelang --fix output; list every necessary hand edit and file it as a missing codemod, as the transmitted spec answer requires. Keep those ports separate from conversion edits and run the original checks on that upgraded baseline. Existing test intent, assertions and coverage must survive; this is not permission to repair a failing migration by changing its tests or to make arbitrary source/test edits. This records the reported later spec clarification, not an independently inspected private message or a new general test-edit allowance.
+
+    **272 configuration-scope clarification, decide-live, 2026-11-01.** The original272 expressly allows setup to wire the repository's own configuration files outside tests. This includes a genuine standalone Vite/electron-vite test-tool configuration outside a protected test/fixture; its purpose or a filename such as electron.vite.config.test.ts alone does not make its exported tool configuration a test assertion. Conversely, a configuration embedded in a test or stored as a protected fixture stays protected regardless of its basename. Preserve that source-role boundary rather than a broad “no test-config edits” or filename-only rule. This does not permit rewriting test logic, embedded plugin/build calls, fixtures or coverage to pass a conversion. Existing config-wiring regressions belong to the VibeLang-owned flow tests. This is the existing272 sentence applied to opencode21/29, not a new general exception.
+
+    - *Fifth addendum to detail 272 (effectscript-11, Will's proxy, decided; recorded 2026-11-01T07:47:35Z): the one allowed assertion edit.* A test that asserts a package's exact dependency list may gain exactly one `"vibelang-runtime"` entry, only in a package that gained that dependency, only in a list or object of dependencies, with each edit listed in the PR under its own heading so a reviewer sees these are assertion edits. This is the one allowed assertion edit, because a real dependency was added and the test exists to state that. Any other assertion change stays forbidden: the module stays `.ts` and the case goes to migfix. Rejected: inlining the runtime (a compiler change, and duplicated tags and fiber refs), leaving packages unmigrated for good, and moving the dependency to `peerDependencies` (it dodges the assertion).
+
+
+    **Current272addenda qualify the earlier private migration-process notes (decide-live, 2026-11-01).** The private audit qualifications under268/271 are read with272's later proxy-confirmed exceptions: verified module-specifier renames, exact-set-preserving selector widenings and the separate all-TypeScript dependency-upgrade baseline. They do not prohibit those explicitly authorized operations. They still grant no permission to rewrite logic, assertions, snapshots, embedded test configuration/build calls or arbitrary filesystem-read paths. This is a migration-process reconciliation, not new language semantics or a new numbered decision.
 
 ### Detail 284
 
@@ -2571,75 +1899,3 @@ Landing receipt: source 554f60ee7e77 landed in main d0cdbe5a0a7f (queue 17933863
     This pure-callback witness is not a general rewrite template. Preserve subject evaluation, handler construction/native property-read order, selected callback identity/invocation, discarded/chained results, contextual/public types and comments. Do not turn returned program data into a run, introduce unchecked assertions or publish a truncated handler type. Unsupported/ambiguous repairs remain refused with a reason. Existing Match-chain behavior is unchanged.
 
     Decided by the agent from Will's P7, principle 1 (idiomatic native counterpart), principle 3 (resolved library identity), principle 4 (one native-match advisory family) and principle 8 (conservative safe-fix boundaries), 2026-11-01 under his 2026-10-29 delegation. Class A; no new language syntax, runtime permission, public package API or Will question. Public delivery is required under detail 213; registry entries alone are not authority. Source inspection confirms the new path and guards; the reviewer supplies six Option runtime cases, declarations/order checks and old/new severity controls. This lane ran no Option compiler test. Owners need failing-old-inventory publication tests and keyed spec-quoted coverage for identities, boundaries, message/severity/emission, callbacks/data/coldness, comments, typing and refusal behavior.
-
-### Detail 300
-
-**OPEN for the spec agent: `EK1101`'s repair classification and its end-state parse.** (Round 14 Opus OPUS-2 at frozen `b48c60e5ee9a`, VIP-11:30, 900:965, 007:193; lane spec-fix-r14 under Will's 2026-11-02 fix-on-find instruction.) Compiler commit `8fb3cf285207` wrote VIP-11's 2026-11-01 amendment ("Decided by Will in this VIP"). Will's words in VIP-11 remove trailing blocks ("ok yea trailing blocks is fucking awful remove that"); its Implementation line names two repairs, `f(args, () => { … })` or `f(args, effect { … })`. spec-fix-r14 fixed what accepted sources settle: Appendix C now lists the amendment's three repairs as `EK1101`'s quick fix does, and a 2026-11-02 VIP-11 amendment, Appendix B's row state the trigger as a parse position (no TypeScript or VibeLang production admits the `{`), from "There is no trailing-block syntax" and Appendix A. `//:spec-lint` gained `denied-vip-repairs`.
-
-    **Still undecided.** (1) The repair is chosen by "what the block compiled to" ("where it ran as a program", "where it ran as an Effect function"), which refers to old VibeLang's D188/D376/D382 semantics that no chapter or VIP states, and the third spelling `f(args, effect () => { … })` is not in the Implementation line Will's denial carries. Either state the choice from the callee's last parameter type (Effect → `effect { … }`, function returning an Effect → `effect () => { … }`, otherwise `() => { … }`) or record Will's approval of the third form. (2) "Once the examples and cases are converted, the parser stops reading trailing blocks" keys the parse of `f(x) { }`, and whether `TS1005` accompanies `EK1101`, to repository state; state the normative end state. (3) "A block after an Effect dual that `0.0.10` placed elsewhere keeps its own error and migration (D382)" names no code.
-
-    **The compiler.** Unchanged by this lane; it reports `EK1101` at the `{` with the three-way quick fix.
-
-
-    **300 disposition, decide-live: decided as detail 300, Class A, 2026-11-02.** VIP-11 already rejects trailing blocks and requires a preserving migration. Its three explicit argument forms express the existing legacy outcomes; writing an explicit `effect` callback to reproduce an old implicit Effect-function activation needs no new approval. New function kind still follows its written `effect` keyword under VIP-1, never a callee's expected type.
-
-    **Repair classification.** Determine the actual old lowering and argument position from pinned legacy source/compiler/options. An Effect value becomes `effect { ... }`; a callback that the old lowering already made an Effect-function activation becomes `effect () => { ... }`; an ordinary callback becomes `() => { ... }`. Preserve formerly executed operations explicitly with `try` and actual return-as-data behavior under 203/274. A callee's resolved parameter can establish part of the historical case but is insufficient alone: an ordinary callback returning a held Effect must not gain an Effect activation. Preserve callback count, coldness, argument/receiver order, captures, error/defect channels and public declarations. If kind, placement or body preservation is ambiguous/unproved, keep the diagnostic and explain not-fixed under VIP-34/270; a candidate merely type-checking is insufficient.
-
-    ```vibe
-    Layer.effect(Users, effect { return implementation }) // old program argument
-    test("loads", effect () => { return 1 })              // old implicit Effect callback
-    twice(() => { return 2 })                            // old ordinary callback
-    ```
-
-    Effect TS counterparts: `Layer.effect(Users, Effect.gen(function* () { return implementation }))`, `test("loads", () => Effect.gen(function* () { return 1 }))`, and `twice(() => { return 2 })`. These are preserving results, not name-based recognizers for those callees.
-
-    **Normative end-state parse.** No accepted trailing-block production exists, regardless of a project's example/test conversion progress. Use native TypeScript parse/statement boundaries where no adopted VibeLang production owns the brace. Report `EK1101` at the same-line unadmitted brace identified by VIP-11's parse-position rule. Recovery may retain historical structure for diagnosis/migration; that grants no executing form. Suppress redundant missing-separator `TS1005` only for the identical trailing rejection already owned by `EK1101`; retain independent native lexical/syntax/name/type/body errors. Genuine native blocks, methods/heritage, admitted `provide` and line-separated native statements retain their rules. “Once the examples and cases are converted” describes implementation scheduling, never a source-dependent grammar switch.
-
-    **Versioned dual compatibility.** Historical D188 placed an Effect-dual block data-first if that form fit, otherwise applied it to a returned function if that fit, otherwise appended it. D376 removed type-directed placement; D382 retained its preserving migration. These historical texts are evidence of old behavior to migrate, not accepted new-language authority. Inspected transitional `dual_block_migration.go` retains an actual native call error (including `TS2345`/`TS2554`/`TS2769`) with its repair if the appended compatibility call is invalid, or `EK1023` if it still type-checks with changed meaning. That existing compatibility path runs first without a duplicate `EK1101` for the same site; label its pinned artifact as transitional under 189/194. The end-state trailing rejection is `EK1101`. The eventual explicit repair preserves the original data-first/curried position and actual program/callback kind, never a guessed last argument. `EK1023` is no new VIP-11 assignment and this grants no type-directed current call semantics.
-
-    Decided by the agent from Will's actual VIP-11 denial/preserving-codemod requirement, accepted VIP-1/2/34, principle 3 (syntax governs new calls), principle 4 (one owning rejection), and principle 8 (refuse unproved migration), 2026-11-02 under the 2026-10-29 delegation. Correct the earlier amendment's attribution: the three-way/code/recovery details derive from his denial by the agent, not additional Will answers. Publish in VIP-11/007/900 under 213.
-
-    Evidence read at immutable main `2519454b6513`: complete `trailing_blocks.go`/`dual_block_migration.go`, first 180/150 lines respectively of their tests, `8fb3cf285207` description/paths, and exact D188/D376/D382 historical paragraphs. No compiler/codemod/native runtime/fuzz execution here. Owners retain failing-main regression/property coverage of three outcomes, held-Effect callbacks, overload/shadow/alias variants, data-first/curried placement, evaluation/captures, comments/refusals, native valid-brace controls and duplicate-versus-independent diagnostics. Await-equivalent running placement is unchanged.
-
-
-    **300 classification precision, same decision.** “Factory callback” describes the old compiler's established Effect activation, never every callback with an Effect-valued result. A genuinely plain callback that eagerly constructs/returns a program stays plain, including its call-time work. For example:
-
-    ```vibe
-    let calls = 0
-    const callback = () => { calls += 1; return held }
-    // Keep this ordinary callback if that was its actual old kind/phase.
-    ```
-
-    Effect TS counterpart is the identical plain callback; `effect () => { calls += 1; return held }` would defer the increment and add an activation/result layer, so it is not an automatic repair. Existing VIP-1, 203/274/277 and principle 3 settle this, without another number or Will question. Require native-versus-migrated callback invocation/run counters and success payloads for both held programs and newly constructed programs, with eager side effects and cold controls. This clarifies the preceding short classification; it grants no implicit kind inference or result-driven run.
-
-### Detail 310
-
-**Unsupported pre-VIP special forms retire through preserving migration; historical decisions are not language authority.** (Will's no-pre-VIP-relics standing ruling recorded in `loop/WILL-ANSWERS.md`, 2026-11-03, verbatim relayed by effectscript-11; its D152 application; existing213/274/277 and principles1/2/3/4/7/8.) The legacy Option/Stream receiver-method extension, such as `value.map(f)`, retires. For every pre-VIP VibeLang special form reported by `vibelang-forms -legacy` that no current accepted VIP adds or inherits, implement the preserving codemod to the VIP form or ordinary Effect TypeScript API, migrate the repos and corpus, then reject the retired form with a clear diagnostic and list the change in release notes. No new question asks Will to confirm this inventory.
-
-    ```vibe
-    import { Option, Stream } from "effect"
-    export const optional = Option.map(Option.some(1), value => value + 1)
-    export const mapped = Stream.map(Stream.make(1), value => value + 1)
-    export effect function collect() {
-      return try Stream.runCollect(mapped)
-    }
-    ```
-
-    **Effect TS:**
-
-    ```ts
-    import { Effect, Option, Stream } from "effect"
-    export const optional = Option.map(Option.some(1), value => value + 1)
-    export const mapped = Stream.map(Stream.make(1), value => value + 1)
-    export function collect() {
-      return Effect.gen(function* () { return yield* Stream.runCollect(mapped) })
-    }
-    ```
-
-    Classify the actual legacy operation by resolved identity and the admitted source form, not a member's spelling alone. Ordinary TypeScript methods, including array and user-defined `map`, remain ordinary calls; accepted VIP forms and inherited TypeScript/TC39 syntax are not retired merely because an old inventory labels them legacy. Reconcile a stale inventory with the current accepted source instead of inventing a new ban. The oracle supplies the census; current VIPs and this ruling supply authority. Do not revive retired D-numbers as normative rules or add a compatibility parser exception.
-
-    Migration preserves receiver/argument evaluation, captures, call-versus-run phase, coldness, success/error/environment channels, public declarations and original assertion/coverage contracts. For genuine old source whose behavior cannot yet be preserved, apply existing274's explicit refusal/guard policy and retain a safe TypeScript boundary or prior qualified SDK; do not silently apply a lossy rewrite or call a failed baseline green. This is no general permission to edit protected target tests. Migrate corpus through the owning workflow, retaining minimized old-source migration/rejection witnesses and current positive controls rather than deleting coverage or weakening budgets. Record intended forms-table moves individually with the ruling as their reason.
-
-    Remove pre-VIP decision text from normative chapters as directed; retain D-number references only as history and receipt provenance. The recorded actual Will quote establishes the no-relics principle; effectscript-11's explicit application closes the former external `legacy-forms` question2 about Option/Stream methods. This is an agent application of the recorded ruling, not an invented literal option selection by Will, a timed default, or a completed compiler/codemod rollout.
-
-    Decided by the agent from Will's recorded first-principles/no-relics ruling and existing213/274/277, 2026-11-03 under the 2026-10-29 delegation. Class A; no new syntax, package API or Will question. Regression/property coverage must prove old-form migration and rejection, native counterparts, aliases/shadowing and same-spelling ordinary methods, phases/channels/declarations and retained corpus. This lane records policy only and ran no compiler, migration or product test for this ruling.

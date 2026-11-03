@@ -53,7 +53,7 @@ Zig's `error{NotFound}`, Swift's `enum: Error`, Rust's `thiserror`, Effect's `Da
 
 ## Details
 
-Decided details folded in verbatim on 2026-11-03 (mechanical pass). Each keeps its old number as history; where one conflicts with the text above, the fold's conflict pass resolves it.
+Decided details folded in on 2026-11-03. Each keeps its old number as history. The conflict pass deleted superseded, duplicate and relic details and resolved contradictions in favor of Will's words, then accepted VIPs, then later details. Principles are numbered as in [the introduction's Details](../src/000-intro.md#details).
 
 ### Detail 8
 
@@ -76,6 +76,28 @@ Decided details folded in verbatim on 2026-11-03 (mechanical pass). Each keeps i
     function g(x: unknown) { return match (x) { when NotFound(let n): n.id; default: "" } }                        // n: NotFound (declared class; documented hole)
     ```
     Effect TS: `Effect.catchTag("NotFound", (n) => …)`, whose `n` is `Extract<E, { _tag: "NotFound" }>`. Decided by the agent from principle 2 (TypeScript's discriminant narrowing) and principle 1 (`catchTag`'s typing); no compiled program changes; 2026-10-29. Apply to 004's typing table row and TypeScript-intuition list.
+
+### Detail 188
+
+**Error-body methods include TypeScript class overload declarations.** (live `900-error-method-overloads`; VIP-13/VIP-29 method admission, distinct from detail 175's effect overload productions.) Classify TypeScript class method declarations and their bodyless overload signatures as accepted methods in both `error` and `schema error` bodies; do not send them to `RejectedElement` merely because ECMAScript's narrower `MethodDefinition` requires a body. This includes ordinary plain and async method overloads in the positions TypeScript admits. Preserve its ordering, adjacent implementation, compatibility, modifiers and declaration emission rules. Keep every explicit error-body restriction, including constructors, setters, static members and error type parameters. This does not generally admit ambient members, bodyless object-literal methods or starred overload signatures that TypeScript rejects.
+    **Immutable-main source receipt (695576, 188).** Verified at immutable main `695576acb44b`: 003/AppendixA admit plain/async TypeScript class overload signatures in both error forms while retaining other rejected members. This is source-publication evidence only; no compiler/native/regression suite was run by decide-live.
+    Status: applied in 2a1c089083b1 (spec-fix-a; queued, not yet a main landing receipt).
+    ```vibe
+    error Plain {
+      label(x: string): string;
+      label(x: number): number;
+      label(x: string | number) { return x }
+    }
+    schema error Encoded {
+      label(x: string): string;
+      label(x: number): number;
+      label(x: string | number) { return x }
+    }
+    effect function use() { return [new Plain().label("ok"), new Encoded().label(7)] }
+    ```
+    Effect TS: ordinary subclasses of `Data.TaggedError("Plain")` and `Schema.TaggedError<Encoded>()("Encoded", {})` carrying those same overload lists and one method implementation each. Calls expose `string`/`number` results; only the implementation emits a body. Decided by the agent from VIP-13's explicit promise of methods as in a TypeScript class, VIP-29's shared member restrictions, principle 2 (native TypeScript method overload syntax), and principle 4 (one class-method category instead of treating ordinary overload signatures as unknown members), 2026-10-30. Reconcile 003 and Appendix A's member partition; test plain and async overload controls without relaxing forbidden forms. `decide-live-scratch/root-error-method-overloads-types.log` passes strict checking of both error counterparts; `root-error-method-overloads-reference.log` records `Success(["ok", 7])` on Effect `4.1.0`. These are class/counterpart checks, not VibeLang compiler-conformance results.
+
+Landing receipt: source 2a1c089083b1 landed in main 695576acb44b (queue 1793370440-spec-fix-a, gate mq-10302026-7).
 
 ### Detail 223
 
@@ -118,14 +140,3 @@ Decided details folded in verbatim on 2026-11-03 (mechanical pass). Each keeps i
     ```
 
     Decided by the agent from accepted VIP-13's exact counterpart, VIP-27's fidelity to that counterpart, principle1 (the native TypeScript result), principle4 (one fieldless form), and principle8 (preserve existing VibeLang declarations; refuse an unpreservable conversion), 2026-11-01. Class A; no Will question or breaking change to existing VibeLang. Four stock TypeScript5.9.3 declaration controls pass: bare base, explicit empty type argument, one readonly field and method-only body. The first and second emitted spellings are demonstrably different; this is native evidence, not a VibeLang/compiler/codemod/fuzz run. Receipt: `native-loop-r3/fieldless-canonical/receipt.json`. Main's twin source and quoted VIP/chapter were read with `jj`; its run/landing claims remain attributed. Preserve the existing plain-error twin corpus and both brace seeds under the approved counterpart. The separately claimed Schema-error twin gap remains with `fuzz-findings`; migration-specific refusal/declaration controls remain with the owning fixer. A compiler-only change to `<{}>` is not the authorized repair for foldkit-90.
-
-    - **Addendum to detail 272 (spec agent, 2026-11-01, from the smithers agent's question): a specifier-only rename in a test is allowed.** When the migration renames `X.ts` to `X.vibe`, the codemod may rewrite a test's module specifiers that name that file (`import`/`export … from`, `import()`, `require()`, `vi.mock()`/`jest.mock()` and similar module-path arguments) from `…/X.ts` to `…/X.vibe`, and nothing else. This is the rename refactor every editor applies to importers, tests included; the test's logic, assertions, fixtures and identity are unchanged, so it is still the migration's oracle. Bounds, each checked by a verifier the migrate flow runs on every test file it touches: the diff of a test file may change only string literals that are module specifiers resolving to a renamed module, each exactly `.ts`→`.vibe` (or `.tsx`→`.vibex`) on the same path; any other change to a test (an assertion, a fixture, a config embedded in it, a path string read with `fs`, a glob) is still forbidden by detail 272, and the module it needs stays `.ts` with a named cause. Extensionless specifiers (`../src/X`) need no edit. The PR lists each touched test file with the verifier's result.
-      ```ts
-      import { f } from "../src/X.vibe"                    // allowed: specifier rename of a migrated module
-      const src = readFileSync("src/X.ts", "utf8")         // not a specifier: unchanged, so X stays .ts (detail 272)
-      ```
-    - *Addendum confirmed by effectscript-11 (Will's proxy), 2026-11-01T03:36:19Z:* the same allowance covers test fixtures and the specifier spelling the project's `declarationImportStyle` selects; the codemod makes the rename mechanically (never by hand), as it does in every non-test importer, and the PR lists every renamed test or fixture import. Changing any expression, assertion, setup, config or build call in a test beyond the specifier string stays forbidden.
-    - *Second addendum to detail 272 (effectscript-11, Will's proxy, decided; recorded 2026-11-01T03:36:55Z): test file selectors.* A test's file selector (`import.meta.glob`, an extension regex, a `readdir` filter) may gain `.vibe` and exclude `*.d.vibe.ts` sidecars if and only if the migrate flow proves that the set of files it selects after migration, mapped back by base name, equals the set it selected before (same count, same names); the check's output is listed in the PR. Any other selector change stays forbidden. The test-diff verifier accepts exactly two kinds of test or fixture edits: specifier renames of migrated modules, and selector widenings that pass this set check. Case: foldkit's website `docPage.test.ts`.
-    - *Third addendum to detail 272 (spec agent, 2026-11-01T03:38:13Z, from the smithers agent): a dependency upgrade is not a migration test edit.* Test edits that adapt to an API the pinned Effect version removed (VIP-32; Will: "support only the latest Effect") belong to the upgrade, which is its own bottom-of-stack commit below every `.ts`->`.vibe` conversion, changes no `.vibe` file, and passes the repository's full suite on the all-TypeScript tree before any module is migrated. That commit is the migration's baseline: the 272 verifier diffs migrated tests against it. Its test edits are API-mechanical; an assertion whose expected value changes carries a one-line reason in the PR.
-
-    - *Note on detail 56 (spec agent, 2026-11-01T03:42:41Z): superseded in scope by VIP-33's amended derived ban (spec 005:613).* Its named lists are examples, not the rule: every global declared in `lib.dom*`, `lib.webworker*`, `lib.scripthost` or `@types/node` and not in `lib.es*` is banned unless it is on 005:672's closed allowlist, so names absent from detail 56's lists (`Response`, `Headers`, `Request`, `Blob`, `MutationObserver`, `HTMLElement`) are banned too, `globalThis.<name>` included. Read 005 for the rule.

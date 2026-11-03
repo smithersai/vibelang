@@ -97,7 +97,7 @@ R8 (2026-10-28, "no throw in .vibe"), and the form rules that made `throw` an Ef
 
 ## Details
 
-Decided details folded in verbatim on 2026-11-03 (mechanical pass). Each keeps its old number as history; where one conflicts with the text above, the fold's conflict pass resolves it.
+Decided details folded in on 2026-11-03. Each keeps its old number as history. The conflict pass deleted superseded, duplicate and relic details and resolved contradictions in favor of Will's words, then accepted VIPs, then later details. Principles are numbered as in [the introduction's Details](../src/000-intro.md#details).
 
 ### Detail 1
 
@@ -113,16 +113,11 @@ Decided details folded in verbatim on 2026-11-03 (mechanical pass). Each keeps i
 
 ### Detail 4
 
-(VIP-4) Rethrows is declared with a `@rethrows <param>` JSDoc tag. VibeLang ships the rethrowing globals: `map`, `forEach`, `filter`, `reduce`, `find`, `some`, `every`, `sort`, `Array.from` and the `Promise` executor. `setTimeout` does not rethrow, because it stores the callback.
+(VIP-4) Rethrows is declared with a `@rethrows <param>` JSDoc tag. VibeLang ships the rethrowing globals: `map`, `forEach`, `filter`, `reduce`, `find`, `some`, `every`, `sort`, `Array.from`. The `Promise` executor does not rethrow: its throws reject the Promise (VIP-4's correction). `setTimeout` does not rethrow, because it stores the callback.
 
 ### Detail 5
 
 (VIP-4) `new X()` is throw-tracked; getters and setters are not.
-
-### Detail 20
-
-(VIP-4/5) `try` is allowed only in effect code. Plain functions may throw (VIP-4). Delete the old "plain return annotation forbids throws" part of EK2003.
-    **Current scope after Will's 2026-10-31 ruling:** local VibeLang thrown-type inference/annotations and any permission for synchronous source `throw` in this older record are superseded by `core-decisions.md`, `loop/WILL-ANSWERS.md` and detail 251. Do not implement those historical local clauses. Retain independently valid foreign-contract, native-phase and unrelated rules; reference receipts below are historical, not current VibeLang admission tests.
 
 ### Detail 36
 
@@ -155,6 +150,16 @@ Decided details folded in verbatim on 2026-11-03 (mechanical pass). Each keeps i
     ```
     Effect TS: `Effect.try(() => parse(s))`. Decided by the agent from principle 8 and VIP-4's library-function default; 2026-10-29.
 
+### Detail 40
+
+(NW 5; decided details 2 and 37) The remaining annotations of `lib.d.ts` globals and effect 4.1.0's non-Effect exports are generated, not chosen one by one. Rule: an export is `@throws {never}` only when its 4.1.0 source has no `throw` reachable from well-typed input; a known thrown class is named (`SchemaError`); otherwise `unknown`. The next spec round publishes the generated table in Appendix E with the generator's command.
+    **Immutable-main source scope (f6fe7a, 40).** The expanded generated artifact now includes Effect/global owncontracts and nested callable metadata, with conservativeunknowns retained. Selected records were inspected, not every proof or actual annotation consumer. `root-mainf6-source-receipt.json` and `root-mainf6-throws-audit.json` preserve reviewed-prose/structured-artifact limits; no full raw9.19MB human-read or owncompiler/Go/generator/test/gate claim.
+    ```vibe
+    Option.some(1)                  // never
+    Schema.decodeUnknownSync(S)(u)  // SchemaError
+    ```
+    Effect TS: the tracked ones need `Effect.try`. Decided by the agent from Will 15:57 ("I don't have every api memorized that's on the agent") and principle 8; 2026-10-29.
+
 ### Detail 41
 
 (NW 25; VIP-4, decided detail 3) Only `Effect.try` and `Effect.tryPromise` admit a throwing thunk. `sync`, `promise`, `callback` and `suspend` take `LazyArg`, which has no `@throws`, so a throwing thunk there is a compile error with a quick fix to the matching wrapper.
@@ -168,16 +173,6 @@ Decided details folded in verbatim on 2026-11-03 (mechanical pass). Each keeps i
 
     **Approved bridge retained after the new ruling.** Will explicitly keeps the foreign-call bridge. `Effect.try(() => foreignParse(s))` and `Effect.tryPromise(() => foreignAsync(s))`, including their options-object thunk forms, remain that bridge; removing local throws inference must not reject the approved foreign-call thunk pattern or make it execute during construction. A source `throw` inside a synchronous VibeLang thunk remains forbidden; neither wrapper grants a local throwing-function annotation or permits an arbitrary plain source helper to throw. Resolve imported wrappers/contracts hygienically and preserve aliases according to their actual symbols. Decided by the agent from Will's unchanged foreign bridge and the already-accepted VIP-4 wrappers, principle1 (idiomatic Effect), 2026-10-31. Native Effect4.1.0 controls confirm cold construction, one foreign call and the expected typed failure with an identity catch mapper (`nothrow-ruling-native-reference.json`); they do not prove new compiler enforcement.
 
-### Detail 43
-
-(NW 34; VIP-4) The thrown type of recursive and mutually recursive plain functions is the least fixed point over the strongly connected component, starting from `never`.
-    **Current scope after Will's 2026-10-31 ruling:** local VibeLang thrown-type inference/annotations and any permission for synchronous source `throw` in this older record are superseded by `core-decisions.md`, `loop/WILL-ANSWERS.md` and detail 251. Do not implement those historical local clauses. Retain independently valid foreign-contract, native-phase and unrelated rules; reference receipts below are historical, not current VibeLang admission tests.
-    ```vibe
-    function fib(n: number): number { return n < 2 ? n : fib(n - 1) + fib(n - 2) }   // throws never
-    function walk(n: number) { if (n) walk(n - 1); else throw new Error("end") }     // throws Error
-    ```
-    Effect TS: `fib` is called directly; `walk` needs `Effect.try`. Decided by the agent from principle 1 (a non-throwing `fib` must not need a wrapper; all four reviewers recommend it); 2026-10-29.
-
 ### Detail 44
 
 (NW 36; VIP-4) A call through `any`, `unknown`-typed callables or `Function` throws `unknown`. A call of a union of callables throws the union of the alternatives' thrown types; an object type's members are checked member by member (decided detail 3).
@@ -187,26 +182,14 @@ Decided details folded in verbatim on 2026-11-03 (mechanical pass). Each keeps i
     ```
     Effect TS: `Effect.try(() => f(s))`. Decided by the agent from principle 8 (`unknown`) and principle 2 (TypeScript unions a union call's return types); 2026-10-29.
 
-### Detail 45
-
-(NW 37; VIP-4) A written `@throws {T}` on a `.vibe` plain function is a checked upper bound, as a written return type is in TypeScript: the body may throw only subtypes of `T`, callers see `T`, and declaration output copies the tag.
-    **Current scope after Will's 2026-10-31 ruling:** local VibeLang thrown-type inference/annotations and any permission for synchronous source `throw` in this older record are superseded by `core-decisions.md`, `loop/WILL-ANSWERS.md` and detail 251. Do not implement those historical local clauses. Retain independently valid foreign-contract, native-phase and unrelated rules; reference receipts below are historical, not current VibeLang admission tests.
-    ```vibe
-    /** @throws {Error} */
-    function parse(s: string) { if (!s) throw new BadInput(); return s }   // ok: BadInput extends Error
-    /** @throws {never} */
-    function bad(s: string) { throw new BadInput() }                       // error: BadInput is not never
-    ```
-    Effect TS: none (types only). Decided by the agent from principle 2 (a written return annotation is checked against the body); 2026-10-29.
-
 ### Detail 66
 
 **Thrown-type classification is a procedure, not an ordered table** (resolves round 13's Sol M1, Astra M1, Opus M1; replaces round 13's "the rows apply in order and the first that matches decides"). For a call, in this order:
    1. **Effectful callee:** an effectful function cannot throw (VIP-4 amendment); its synchronous thrown type is `never`, and `@rethrows` adds nothing.
    2. **The callee's own thrown type**, by where the callable is declared:
-      - a written `@throws {T}` on the declaration, or on its declared type, gives `T` (a checked upper bound in `.vibe`);
+      - a written `@throws {T}` on a foreign declaration, or on its declared type, gives `T` (in a `.vibe` file every such tag is `EK0406`);
       - else a shipped annotation (JavaScript globals, Effect exports) gives its `T`; shipped annotations are installed on their signatures before any default applies;
-      - else a plain function declared in `.vibe` gives the type inferred from its body (decided details 1-4);
+      - else a callable declared in `.vibe` gives `never`: VibeLang functions carry no thrown types (Will, 2026-10-31);
       - else a callable declared in a `.ts`, `.d.ts` or JavaScript module gives `unknown`, whether or not its type is written (a `function`, a `const` of function type with or without an annotation, a class or interface method, each overload; detail 37). An emitted `.d.ts` and its source agree;
       - else a function type written in a `.vibe` type position (a parameter, alias, interface member or annotation) gives `never`.
    3. **Rethrows:** at each invocation, union the callee's own thrown type with the thrown types of the arguments passed for each `@rethrows` parameter, whichever case in step 2 applied. Evaluating the argument expressions is the caller's code.
@@ -227,18 +210,30 @@ Decided details folded in verbatim on 2026-11-03 (mechanical pass). Each keeps i
     Effect TS: `Effect.try(() => JSON.stringify(v))`. Decided by the agent from VIP-4 (its implicit examples, a property of `undefined` and a stack overflow, are receiver state and resource limits), detail 2 (`JSON.parse`, an argument validator, is tracked) and principle 8 (tracking more is the side that can be relaxed later); 2026-10-29.
     **Expanded throws artifact source receipt (f6fe7).** The previous global-only snapshot has been replaced by16,258 unique module/declaration/kind/signature entries across417modules:7,400global/8,858Effect, with319entries carryingrethrows,3,578callbacksand2,401returnedcontracts. Requiredfields/keyuniquenesschecked,116immutableTypeScriptlibhashes and1,144centralpinnedEffect4.1.0declaration/sourcehashes pluspackagehashallmatch. BundledTypeScriptversion7.1.0-dev/parser5.9.3 recorded. Fouroldfalsecoverageflagsarenolongerthisartifactformat. Full27,227-character nongenerateddocdiffread; raw9,191,285-character diffNOTfullyread. Generatorpath/pin/proof/extractionmetadataexcerpts andtestnamesonlyread; nogenerator/test/compiler/Go/LS/gaterun,no claim that every classification or the detail205 native-catch repair is verified. `main-f6f-throws-consistency.json` and`main-f6f-source-receipt.json` retain exactscope.
 
+### Detail 81a
+
+**The shipped thrown-signature inventory is a generated, published artifact** (resolves Sol round-17 M2; completes detail 81). The generator that annotates every TypeScript lib global and effect 4.1.0 non-Effect export writes a normative file, `docs/design/inventory/throws.json`, keyed by module, declaration and overload signature, recording own throws, `@rethrows` parameters, callback admission and returned callable contracts, with the exact TypeScript lib inputs and the Effect version it was generated from. Appendix E links it and states its classification rules (detail 81). Regenerating it on an Effect or TypeScript bump is part of the bump. Until the generator exists, the spec says the inventory is generated by that tool and links its path. Decided by the agent from VIP-4 and detail 81, 2026-10-30.
+    **Immutable-main source scope (f6fe7a, 81a).** The expanded shippedcontracts artifact is now published:16,258 unique module/declaration/kind/signature entries with required own/rethrows/callback/returnedcallable fields, including8,858Effect entries and7,400global entries. Input hashes match116immutableTSlibs and572declarations+572distfiles of the pinned installedEffect4.1package. This is structured publication/input consistency, not all classifier/coverage correctness or compilerconsumption. `root-mainf6-source-receipt.json` and `root-mainf6-throws-audit.json` preserve reviewed-prose/structured-artifact limits; no full raw9.19MB human-read or owncompiler/Go/generator/test/gate claim.
+    **Immutable-main source receipt (54182a, 81a).** The first global-own-throws snapshot and its coverage README are present in immutable main `54182a644026` (history lists `2e8757766ab7`). `throws.json` is explicitly a first slice: Effect exports, rethrows, callback admission and returned-callable contracts remain uncovered. Presence is not a correctness certification of current annotations; missing table entries remain unknown. This lane read the README/metadata/sample records and counted symbols/overloads without running the generator/tests or auditing every classification.
+
+    Independent root read: root-main54182-throws-receipt.json confirms54182a644026 is on fetched main, preserves the artifact SHA256 and its four false coverage flags (Effect exports/rethrows/callback admission/returned-callable contracts). The README explicitly leaves missing entries unknown and does not certify current annotations. No generator, freshness test or classification audit was run by this reader.
+
 ### Detail 95
 
 **Throws from the pattern protocol are implicit** (NW 58; audit 003 interactions M1; r18-003; extends details 81 and 66). A `match` with no matching arm throwing `TypeError`, the implicit read and call of `Symbol.customMatcher`, and the draft's protocol checks (a matcher result that isn't iterable, an extractor arity mismatch inside the protocol, iterator closing) are implicit throws: never tracked, a defect in effect code. Calls the author writes in a subject, guard, arm, or as a detail 94 predicate are ordinary calls and are tracked. The static side is `EK4701`: an exhaustive `match` on a checked subject (detail 78) cannot reach the no-match `TypeError`.
     ```vibe
     function f(x: unknown) { return match (x) { when 1: "a"; } }        // f throws never
-    function g(s: string) { return match (s) { when let t and if (JSON.parse(t)): 1; default: 0; } }   // g throws SyntaxError
+    function g(s: string) { return match (s) { when let t and if (JSON.parse(t)): 1; default: 0; } }   // EK0401: JSON.parse may throw SyntaxError in synchronous code
     ```
     Effect TS: `Effect.sync(() => f(x))` (a no-match is a defect, as in `Effect.sync`). Decided by the agent from detail 81, which already classes user hooks the engine invokes implicitly (getters, `valueOf`, `Symbol.toPrimitive`) as implicit, VIP-4's implicit examples, and principle 6; 2026-10-29. Apply to 003 at the marker after "Thrown types".
 
-### Detail 204
+### Detail 202
 
-**Duplicate receipt: retire the legacy `EK4409` warning; use detail 203.** The same rule was recorded concurrently as detail 203 before this receipt was appended under a shorter spelling of the same live-finding key. This item introduces no independent decision and does not supersede 203; exclude it from decision counts. Preserve the additional independent reference evidence in `root-ek4409-reference.log` and `root-ek4409-receipt.json`; the original duplicate text is retained in `decide-live-scratch/ek4409-duplicate204-original.md`. Both receipts retire the old implicit-execution advisory, preserve VIP-4 unknown-throw checking and require explicit execution under VIP-1/VIP-5. Consolidated by decide-live, 2026-10-30.
+**An iterable argument's iterator is a protocol hook; a `dual` data-last call builds a function.** (Extends 81; settles the two disagreements between Appendix E and `throws.json`.) `for (const x of it)` tracks nothing, so `Array.from(it)`, `new Map(it)` and `new Set(it)` are `never`. `dual(arity, body)` runs `body` only with every argument, so `retry(p)` is `never`.
+    ```vibe
+    effect function f(it: Iterable<number>) { return Array.from(it) }   // ok; a throwing next() is a defect
+    ```
+    Effect TS: `Effect.gen(function* () { return Array.from(it) })`. Decided by the agent from the `for…of` precedent and detail 81's hook list, 2026-10-30.
 
 ### Detail 205
 
@@ -265,11 +260,10 @@ Decided details folded in verbatim on 2026-11-03 (mechanical pass). Each keeps i
 
     **Native JavaScript catch clarification (late migration inquiry).** The existing final paragraph's preservation of plain-function native execution applies to the JavaScript `try { ... } catch (...) { ... } finally { ... }` statement. It catches any native thrown completion reaching that handler, including untracked implicit property/getter exceptions; annotation presence, inferred `never` and a historical expected-error channel do not add a runtime filter. Native binding initialization, handler rethrows, `finally` and ordinary async `await` rejection behavior remain TypeScript's. This is distinct from the VibeLang `effect catch` expression and its typed-failure/defect separation; native try statements remain rejected in Effect code.
     ```vibe
-    function catchesImplicit(): string {
-      const o = { get value(): string { throw "implicit" } }
+    function catchesImplicit(o: { readonly value: string }): string {
       try { return o.value } catch { return "caught" }
     }
-    // "caught": the implicit property-access exception is not a tracked call.
+    // "caught" when o's getter, defined in a .ts file, throws: an implicit property-access exception is not a tracked call.
     ```
     Effect TS: the identical plain TypeScript function followed by `Effect.runSync(Effect.sync(catchesImplicit))` succeeds with `"caught"`. `@throws` is a static call-signature contract, not a runtime JavaScript-catch selector. Detail56 permits the pure `URL` utility; it does not claim its constructor never throws. The existing81/205 classification requires `TypeError` for native invalid-URL argument validation; a missing or stale shipped annotation is an implementation/inventory gap.
     Decided by the agent from principle2 (native TypeScript/ECMAScript try/catch), VIP-4's throw-tracking amendment, this detail's explicit native-execution guarantee, the native TryStatement rules in002/AppendixA and213's public authority, 2026-10-30. Historical D282 does not enter the accepted language through a migration report or skill. Publish the clarification in the relevant VIP-4 amendment and affected chapters/skill under213. Keep transitional migration refusal/verification safeguards until runtime equivalence is actually established; the current legacy compiler's filtering is not claimed repaired. Existing migfix-t3code incident ownership is retained, with no duplicate implementation by decide-live.
@@ -292,24 +286,35 @@ Decided details folded in verbatim on 2026-11-03 (mechanical pass). Each keeps i
 
     Decided by the agent from principle 2 (the published ECMAScript algorithms), VIP-4/detail 81's explicit resource/coercion exclusions, and principle 4 (apply the actual per-signature criterion rather than infer validators from a numeric parameter or similar method name), 2026-10-30. The [ECMAScript 2025 padding algorithms](https://tc39.es/ecma262/2025/multipage/text-processing.html#sec-string.prototype.padstart) use [ToLength](https://tc39.es/ecma262/2025/multipage/abstract-operations.html#sec-tolength); [repeat](https://tc39.es/ecma262/2025/multipage/text-processing.html#sec-string.prototype.repeat) has an explicit range check. No Will choice is needed: this corrects an example contradicting its own already-approved classification rule and adds no runtime behavior or public API. Add generator/annotation controls for both padding methods beside the tracked-repeat control and repair affected prose/examples. The inspected legacy annotation table already lists both padding methods as `never`; do not change them to `RangeError` just to match the mistaken list. `padding-ecma-primary.txt` captures the published-source steps; `padding-reference.log` passes strict native TypeScript 5.9.3 and Effect 4.1.0, with negative/nonpositive padding returning the original string and negative/infinite repeat throwing `RangeError`. No huge allocation was attempted; this is primary-source/reference evidence, not a VibeLang compiler-conformance or generator-delivery claim.
 
-### Detail 250
+### Detail 219
 
-**JSX keeps VIP-4 call-signature assignability; an untracked element operation is not a callback-contract exemption.** (Loop r4 Opus OPUS-1; accepted VIP-4 function-type/signature amendments, VIP-39 every-VibeLang-rule clause; details37/38/45/66.) Apply the ordinary thrown-contract comparison wherever native JSX checking actually compares one call signature against another. This includes a callback value checked against a prop's function type and an actual component-call-signature comparison against `JSX.ElementType`. Untagged destination function signatures admit `never`; `@throws {U}` admits subtypes of `U`; admitted `@rethrows`, `any`, unions, overloads and ordinary native assignment rules retain their existing treatment. Do not invent an extra callable comparison for an intrinsic string tag or a native check that only compares result types. Preserve native independent JSX/type diagnostics and report existing `EK0402` for an otherwise-native-compatible signature whose thrown bound does not fit.
-    **Current JSX consequence:** the local callback-summary and `Loud` examples below are historical. A VibeLang callback does not acquire an inferred thrown bound from its body; `runFork(save())` cannot trigger `EK0402` through removed local inference. Direct foreign-call legality follows the new ruling and the existing Effect bridge. Synchronous source `throw` is rejected at its own site. Native JSX checking and no synthetic element call remain; imported foreign function values retain their actual foreign contracts.
-    **Current scope after Will's 2026-10-31 ruling:** local VibeLang thrown-type inference/annotations and any permission for synchronous source `throw` in this older record are superseded by `core-decisions.md`, `loop/WILL-ANSWERS.md` and detail 251. Do not implement those historical local clauses. Retain independently valid foreign-contract, native-phase and unrelated rules; reference receipts below are historical, not current VibeLang admission tests.
-    VIP-39's element operation remains untracked for inference: evaluating a tag does not add a synthetic tracked factory/component invocation or propagate its declared thrown type into the enclosing function. That separate rule does not remove signature assignability. Consequently an event callback containing an uncaught `runFork(save())` with own thrown bound `unknown` does not fit an untagged nonthrowing callback prop. Changing its expression body to a block does not erase the bound, and a helper that merely forwards it retains that bound. Correct the VIP's `SaveButton` example rather than treating it as an exception to VIP-4. A prop type that deliberately admits throws, or a callback that actually handles all synchronous tracked exceptions, uses the existing rules; do not automatically swallow exceptions or falsify a `@throws {never}` annotation. An Effect-returning callback remains subject to native `void` callback assignability and still returns an unrun Effect; this rule adds no implicit execution.
-    ```vibex
-    // JSX fixture: button.onClick is () => void; JSX.ElementType's callable slot is untagged.
-    // The JSX elements below are in a .vibex file.
-    declare const text: string
-    const bad = <button onClick={() => JSON.parse(text)}>Save</button> // EK0402: SyntaxError does not fit never
-    const handled = <button onClick={() => { try { JSON.parse(text) } catch {} }}>Save</button>
-    function Loud(): never { throw new Error("loud") }
-    const badTag = <Loud/> // EK0402 when native ElementType compares Loud's signature to an untagged callable
+**Promise-producing tagged templates use the existing explicit Promise bridge rule.** (Sol round26 m4; VIP-4; details 89/112/115.) A tagged template invokes its tag even though TypeScript represents it as `TaggedTemplateExpression`, separately from `CallExpression`. In Effect code, apply `EK0404` to that invocation when its selected signature/result satisfies the existing Promise/thenable predicate, including detail 89's union rule. Add tagged templates explicitly to 003 and Appendix B's trigger list; do not make syntax-tree node names an exception to VIP-4's 'always wraps a Promise'. An async tag's synchronous thrown type can be `never`; that does not exempt its Promise result. Preserve the native tag Reference receiver, once-only template/substitution evaluation, template-site identity and ordinary evaluation order inside the bridge thunk. This does not auto-await a tag, grant optional tagged-template syntax, change untagged templates, or alter the existing ordinary-async execution boundary.
+    **Immutable-main source scope (d0cdbe, 219).** 003/AppendixB/VIP4 include Promise-producing tagged-template invocations in the existing explicit bridge, retaining native receiver/template/substitution semantics. `root-main-d0cd-source-receipt.json` retains the complete31-file diff/hash/read scope. Source only; no decide-live compiler/gate rerun.
+    Status: applied in250412a0c2cf (spec-fix-b; queue accepted/held, not main).003/AppendixB/public VIP-4 trigger reconciliation; Node3/Bun3, strict TS5.9.3 node-kind/result proof, Effect4.1.0 native protocol/failure controls, regen/forms/spec/docs pass.
+    ```vibe
+    async function tag(_parts: TemplateStringsArray) { return 7 }
+    effect function bad() { const p = tag`x`; return 0 } // EK0404
+    effect function good() { return try tryPromise(() => tag`x`) }
     ```
-    Effect TS: the JSX expressions and ordinary plain `try`/`catch` remain the same `.tsx` source after contract metadata is erased; TypeScript itself does not enforce `@throws`. The handled callback has no escaping synchronous exception from `JSON.parse`; the empty catch is an illustrative explicit policy, not a quick-fix prescription. Native TypeScript5.9.3 controls accept these JSX shapes and independently reject a wrongly typed prop and a return-incompatible tag (`TS2322`/`TS2786`) in `native-loop-r3/jsx-contracts-*.tsx`. Those controls identify native comparison sites only; they do not prove VibeLang `EK0402` emission. Decided by the agent from accepted VIP-4's function-signature contract and VIP-39's explicit preservation of every VibeLang rule, principle4 (one signature rule without a JSX exception), and principle8 (do not grant an unspecified throwing-callback escape), 2026-10-31. Reconcile public VIP-39/VIP-4, chapter003 and tooling/examples under213. No existing `.vibe` contract is relaxed and no new diagnostic code is allocated. Required regression/spec-quoted fuzz coverage: intrinsic/custom props, component tags with/without an actual callable comparison, admitted/untagged/unknown thrown bounds, handled/escaping calls, overloaded/union/generic signatures, foreign callbacks, block/expression wrappers, native type-error controls and unrun Effect-returning `void` callbacks.
+    Effect TS:
+    ```ts
+    function good() { return Effect.gen(function* () { return yield* Effect.tryPromise(() => tag`x`) }) }
+    ```
+    The native invocation remains in the thunk and the pinned Effect bridge succeeds with `7`. Decided by the agent from accepted VIP-4's explicit Promise requirement, principle 2 (tagged templates are invocations with ordinary selected signatures), principle 3 (syntax selects invocation behavior, not the tag's spelling), and principle 4 (one Promise result rule for invocation forms), 2026-10-30. `round26-reference.log` independently checks strict TypeScript 5.9.3's separate node kind and `Promise<number>` result plus the Effect 4.1.0 bridge. This clarifies the already-required invocation check; no VibeLang compiler acceptance/rejection, API change or landing is claimed.
 
-    **Tag clause superseded by VIP-39 (sl4-apply, 2026-11-01, loop r4 apply):** the comparison of a tag against `JSX.ElementType` or `JSX.ElementClass` is not a VIP-4 assignability site. Accepted VIP-39 rejects elements as tracked calls because "Tracking would make every component throw `unknown` under VIP-4's foreign-callable rule, which `.tsx` never imposes", and promises zero JSX errors on the migrated witnesses; under this detail's tag clause every untagged imported component (`<Suspense>`, `<Link>`) would be `EK0402`. A VIP wins over a decided detail (000:3), so the `badTag` line above is historical. The attribute clause stands and is published as VIP-39's "An attribute is an object member under VIP-4" bullet.
+### Detail 251
+
+**`throw` in an `async` VibeLang function rejects its Promise, as in TypeScript.** (Decided 2026-10-31 by effectscript-11, Will's proxy, from Will's own words; not asked of him. Settles the open `async` question in the 2026-10-31 "plain functions never throw" ruling in core-decisions.md.) Will scoped the error explicitly: "If you throw in vibelang itself in a sync function that's an error." On 2026-10-29 he said "we can allow throw and we can allow Promise.reject". So the compile error covers `throw` in sync VibeLang functions only (plain declarations, expressions, arrows, methods, constructors, accessors, plain generators, initializers, plain `catch` handlers); in an `async` function or async arrow or method, `throw` is JavaScript's throw and rejects the returned Promise. An async VibeLang function carries no thrown type (Will: thrown-type tracking exists only for `.ts`/`.js` imports). Effect code that calls it wraps the Promise as for any Promise (`Effect.tryPromise`, or `try` on an Effect built from it), and the rejection reason is `unknown`.
+    ```vibe
+    async function load(id: string) {
+      if (!id) throw new Error("no id")   // allowed: load("") rejects with Error("no id")
+      return id
+    }
+    function check(id: string) {
+      if (!id) throw new Error("no id")   // error: a sync VibeLang function can't throw
+    }
+    ```
+    Effect TS: the same native `async function load(id: string) { if (!id) throw new Error("no id"); return id }`; Effect code observes it with `Effect.tryPromise({ try: () => load(""), catch: (error) => error })`. The example uses no platform API; VIP-33 is unchanged. This is nongenerator async Promise behavior. Async-generator APIs keep their separate native construction/resumption phases from detail 108; their call does not itself return a Promise, and parameter execution permissions are unchanged.
 
 ### Detail 282
 
@@ -349,5 +354,3 @@ Decided details folded in verbatim on 2026-11-03 (mechanical pass). Each keeps i
     Decided by the agent from principle 1 (idiomatic Effect bridge and explicit defect conversion), principle 3 (the actual original operation/contract rather than an export spelling), principle 8 (no inferred trust and refuse unproved migration), Will's retained foreign-call bridge and VIP-34's preservation requirement, 2026-11-01. Class A; no Will question, language admission change or public package API change. Ten native Effect 4.1.0 controls pass for cold execution, exact thrown-value identity across objects/errors/primitives, success values including nested Effect/thenable data, method receiver, and the default-wrapper negative control. TypeScript 5.9.3 strict declaration witnesses show original and identity-mapped defect bridge byte-identical while default `Effect.try` adds `UnknownError`. Receipts: `native-loop-r3/throw-defect-bridge/runtime-receipt.json` and `declaration-receipt.json`. These are native counterpart controls, not a VibeLang compiler/codemod run or proof for the four actual modules.
 
     Implementation owners retain regression and spec-quoted keyed fuzz/property coverage over export/private status, first-party/package imports, aliases/shadows, receivers/arguments, call phases, thrown primitives, nested success data, pre-existing typed failures, declaration artifacts and safe refusal. Minimize the actual T3Code source as a migration corpus and verify the original full target gates. No compiler/source/test edits, commit or queue action were made by this policy lane.
-
-    - *Fifth addendum to detail 272 (effectscript-11, Will's proxy, decided; recorded 2026-11-01T07:47:35Z): the one allowed assertion edit.* A test that asserts a package's exact dependency list may gain exactly one `"vibelang-runtime"` entry, only in a package that gained that dependency, only in a list or object of dependencies, with each edit listed in the PR under its own heading so a reviewer sees these are assertion edits. This is the one allowed assertion edit, because a real dependency was added and the test exists to state that. Any other assertion change stays forbidden: the module stays `.ts` and the case goes to migfix. Rejected: inlining the runtime (a compiler change, and duplicated tags and fiber refs), leaving packages unmigrated for good, and moving the dependency to `peerDependencies` (it dodges the assertion).

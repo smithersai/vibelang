@@ -41,7 +41,7 @@ The top-level `vibe` object accepts `sidecarDir?: string` in every accepted conf
 
 ## Details
 
-Decided details folded in verbatim on 2026-11-03 (mechanical pass). Each keeps its old number as history; where one conflicts with the text above, the fold's conflict pass resolves it.
+Decided details folded in on 2026-11-03. Each keeps its old number as history. The conflict pass deleted superseded, duplicate and relic details and resolved contradictions in favor of Will's words, then accepted VIPs, then later details. Principles are numbered as in [the introduction's Details](../src/000-intro.md#details).
 
 ### Detail 14
 
@@ -61,7 +61,7 @@ Decided details folded in verbatim on 2026-11-03 (mechanical pass). Each keeps i
     ```json
     // base:  { "vibe": { "effectGlobals": false, "severities": { "EK0508": "off" } } }
     // child: { "extends": "./base.json", "vibe": { "effectModules": false } }
-    // result: effectGlobals false, effectModules false, EK4701 off
+    // result: effectGlobals false, effectModules false, EK0508 off
     ```
     Effect TS: none. Decided by the agent from principle 2 (tsconfig `extends`); 2026-10-29.
 
@@ -76,6 +76,24 @@ Decided details folded in verbatim on 2026-11-03 (mechanical pass). Each keeps i
     First apply detail 59's base/child, entry-by-code precedence to determine the effective entries, then validate them independently. If a child explicitly supplies an invalid value for a code, it has displaced the base entry for that same code; ignoring the invalid effective override does not resurrect that overwritten base entry. The code then follows its existing lower precedence source (Effect language-service configuration, where applicable, then its default under detail 77). Unaffected inherited codes remain. This mirrors TypeScript's invalid child compiler option being unset while independent inherited options survive, rather than adding an invalid-value-specific inheritance exception.
 
     Effect TS: no runtime translation; TypeScript `5.9.3` parsing a child with invalid `strict: "bad"`, unknown `noSuchOption`, and valid `noEmit: true`, extending base `strict: true, target: "ES2022"`, reports TS5024/TS5023, retains `noEmit` and inherited `target`, and leaves `strict` undefined instead of restoring base `true`. Decided by the agent from principle 2 (TypeScript per-option configuration recovery), VIP-30/detail 59's already-approved TypeScript-style merge, and principle 4 (one effective-entry validation/precedence procedure), 2026-10-30, formalizing smithers-f2's recorded ruling. Existing severity validity, codes and warning-only exit rules remain as decided; no Will choice is involved. Document this in 007/VIP-30 and cover mixed valid/invalid maps, code/value errors, unrelated `vibe` options and an invalid child overriding the same base code. `root-config-recovery-reference.log` verifies the native TypeScript parse, diagnostics, retained options and the invalid-child boundary. It is a configuration-policy/reference check, not a VibeLang compiler-conformance claim; vibe-config owns source application and tests.
+
+### Detail 215
+
+**Legacy severity maps retain their supported legacy effect until migration; modern severity entries win.** (Opus round24 m33; Fable round24 m9/m11; VIP-30 migration amendment; main source receipt `99c40510f59c3167a4bc0115f4dec2fcfe3d2211`.) Document both historical locations: root `vibelang.diagnostics` and `compilerOptions.vibelang.diagnostics`, in `vibe.config.json`, `tsconfig.json`, `jsconfig.json` and extended configuration files through the existing config loader. Each historical map is an object from printed legacy diagnostic code to its supported severity string. Keep the existing legacy code/value validation and replacement/inheritance behavior while it remains present; this does not make every release code legal in the old map. For a diagnostic with a supported legacy override, apply it until migrated unless the effective modern `vibe.severities` entry for that same diagnostic/explicitly mapped port wins. Use the existing modern code/port identity mapping, never infer equivalence from a reused numeric spelling. Newly assigned release errors cannot be disabled by putting their code in an old map, and a release-only code such as `EK0801` is not silently accepted by the old validator. Modern entry validation/recovery remains details 57/59/208. Report configurable migration warning `EK3009` at each legacy map; configuring the warning off does not migrate, validate, erase or disable that map's supported legacy settings. Reject the proposed blanket 'legacy sets nothing' statement: the current category function explicitly reads the legacy map after modern precedence, and no accepted VIP retires that compatibility behavior. A future intentional removal needs its own accepted migration decision.
+    Status: applied in 5214bd3c85327ad3750be03bd8942a7a65688301 (spec-fix-d; verified source revision, not enqueued during diagnostic-alignment hold; no main receipt).
+
+    `vibelang --fix` moves an independently eligible map to root `vibe.severities`, including in extended configs, retaining JSONC comments, unrelated settings and existing modern entries. A map containing obsolete/nonconfigurable codes remains in place under the accepted migration rule until those entries are resolved; do not copy them into the release map or convert them into new configurable errors. Preserve existing code-identity migration safeguards. Explain that plain TypeScript ignores the custom root wrapper but reports its ordinary unknown-compiler-option error (`TS5023`) for `compilerOptions.vibelang`; VibeLang recognizing that legacy path does not change `tsc`. The configurable-warning table must be complete for its stated source revision, or explicitly say it lists examples: the current six own release warnings include `EK0508`, `EK0703`, `EK0801`, `EK3009`, `EK4609` and `EK4610`, separate from imported lint and any accurately labelled legacy compatibility catalog.
+    ```vibe
+    // vibe.config.json / tsconfig.json / jsconfig.json (JSONC, shown as configuration)
+    // { "vibelang": { "diagnostics": { "EK4801": "off" } } }
+    // A supported legacy setting still affects its legacy diagnostic; EK3009 requests migration.
+    // A valid modern override for that diagnostic's explicit port takes precedence.
+    // { "vibe": { "severities": { "EK3009": "off" } } } only hides the migration warning.
+    ```
+    Effect TS: none; compiler configuration and JSONC migration have no Effect runtime counterpart. Decided by the agent from the accepted VIP-30 safe-migration rule, VIP-34's behavior-preserving codemod requirement, principle 2 (preserve existing configuration behavior while clarifying its schema), and principle 4 (modern precedence over a labelled compatibility fallback, not two competing release schemas), 2026-10-30. This is class A because it preserves verified current behavior; making every legacy map inert would be a breaking change. `root-legacy-severity-main-source.txt`/`root-legacy-severity-receipt.json` record `category`/`releaseSeverity`, legacy validation, merge and migration at the exact main snapshot. They are source receipts, not a compiler execution or a claim that docs or a new implementation landed. Update 007/Appendix B/VIP-30 together with comment/location/precedence examples.
+
+
+    **Earlier accepted source receipt (later rejected: legacy severity; stale007 warning context):** applied in9459b38506c58b177324c718b81f12dcd97aef80 (spec-fix-d/bookmark33, independent queued; not main). Rejected5214bd3c8532 superseded after acceptance. Both legacy paths/admission/inheritance and modern port precedence/warning-only suppression preserved alongside current modern recovery, whole-code policy and warning repairs. Original semantic/native assertions retained with narrow warning-table/message attribution fixes for the newer catalog. Immutable-main four doc controls fail/native control passes; candidate Node5/Bun5,64freshcompiler/TypeScript controls,actualtsc5.9.3root-key/TS5023controls and spec/docs/regen/forms pass with no form changes. ORIGINS legacy-key/comments/warnings-table entries are explicitly not Circles. No implementation/main or broad-green claim.
 
 ### Detail 306
 

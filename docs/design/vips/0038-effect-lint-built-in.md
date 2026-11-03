@@ -26,7 +26,7 @@ The tool-risk report (2026-10-29, `~/migrate/TOOL-RISK.md` on nyc-02) found type
 
 ## Details
 
-Decided details folded in verbatim on 2026-11-03 (mechanical pass). Each keeps its old number as history; where one conflicts with the text above, the fold's conflict pass resolves it.
+Decided details folded in on 2026-11-03. Each keeps its old number as history. The conflict pass deleted superseded, duplicate and relic details and resolved contradictions in favor of Will's words, then accepted VIPs, then later details. Principles are numbered as in [the introduction's Details](../src/000-intro.md#details).
 
 ### Detail 15
 
@@ -49,6 +49,44 @@ Decided details folded in verbatim on 2026-11-03 (mechanical pass). Each keeps i
     ```
     Effect TS: `Effect.catch(fetchUser(id), () => fetchUser("guest"))`. Decided by the agent from principle 1 (the likeliest Effect TS habit) and decided details 28–29 (TypeScript behavior plus a lint); 2026-10-29.
 
+### Detail 77
+
+**Imported Effect lint rules print `EK38xx` codes and merge configuration like tsconfig** (NW 41; r16-000, r16-007; VIP-38, details 57 and 60). Each `effecttsgo/*` rule VIP-38 imports gets one stable `EK38xx` code, in a table in Appendix B generated from the pinned effect-tsgo version (a VIP-32 bump regenerates it; a rule's code never changes once assigned). The CLI and language server print that code, with the rule name in the message (`EK3801 floatingEffect: …`). Severity resolves in this order, more specific wins, as a tsconfig child overrides its base: an entry for the code in `vibe.severities`; else the repository's Effect language-service configuration (VIP-38: it "selects and configures them"); else the rule's default. Every `EK38xx` code is a lint code and may be set to any value, `"off"` included, whatever severity it prints at: VIP-34's "errors can't be off" covers VibeLang's own rules. The floating-`effect { }` statement (002, 007) is reported by the imported `floatingEffect` rule under its `EK38xx` code.
+    **Immutable-main source portion (fb3e96, 77).** 007/publicVIP38 explicitly include selected .ts and .vibe inputs with pinned upstream rule/file eligibility and declaration/library exclusions, retaining Vibe-specific checks only for .vibe. No CLI/LS invocation verified. Complete10-file,47,460-character diff independently read. Source publication only; no own compiler/native/Go/gate check. `main-fb3-source-receipt.json` records exact limits.
+    **Immutable-main source scope (ff2544, 77).** The pinned 130-rule inventory and identical007/AppendixB tables now publish code/name/defaultseverity, with existing severity precedence and off allowed for all importedrules. Source metadata publication does not verify actualCLI/LS output or separately publish the new mixed-project applicability clarification. `main-ff2-source-receipt.json` records exact read/consistency limits; no own compiler/gate/native rerun.
+    ```json
+    { "vibe": { "severities": { "EK3801": "warning" } } }
+    ```
+    Effect TS: the same rules under the same Effect language-service configuration. Decided by the agent from detail 60 (VIP-38's block is `EK38xx`), detail 57 (`vibe.severities` is keyed by the printed code: one key space, principle 4) and principle 2 (tsconfig precedence); Fable's alternative (rule names as codes) would add a second key space; 2026-10-29.
+
+
+    **Mixed-project input coverage clarification (VIP-38).** Keep the pinned upstream Effect rule applicability for native `.ts` inputs selected by the project's existing compiler/language-service configuration, and add `.vibe` coverage through the approved integration. VIP-38's statement that the rules run “on `.vibe` files” is an inclusion promise, not an instruction to suppress existing upstream diagnostics in TypeScript inputs. The existing user guide already explicitly says both file kinds. Preserve upstream/configured file eligibility, declarations/library exclusions and rule-specific applicability; this is not a promise to lint every dependency or a new global file-scope option.
+    VibeLang's own source-syntax/semantic checks remain distinct from imported Effect lint: this does not require `.ts` to adopt VibeLang syntax, globals or native-exception changes. The imported rules retain77's configured severity/identity contract and98's upstream pin across CLI, language server and `vibelang lint`; other lint tools keep their own configuration. Any discrepancy in exact emitted codes or runner behavior remains a separately evidenced implementation/table issue, not approval to invent an alternate per-extension lint protocol.
+    ```vibe
+    effect function example() {
+      succeed(1) // the selected imported floatingEffect rule still applies
+    }
+    ```
+    Effect TS: `import { Effect } from "effect"; const example = Effect.gen(function* () { Effect.succeed(1) })` remains eligible for that upstream rule when written in a selected native `.ts` file. This records rule coverage, not a new runtime transformation or a claim that a particular compiler diagnostic probe was run.
+    Decided by the agent from accepted VIP-38's built-in Effect runner and existing-configuration promise, principle1 (idiomatic Effect TypeScript keeps its existing lint), principle4 (one upstream integration) and principle8 (retain the current selected checks rather than create an unapproved exclusion), 2026-10-30. Clarify public VIP-38/007 and reconcile the already-both-files user guide under213. The migration report's parked scope question needs no further Will choice; exact source/runner conformance remains separately verified.
+    **Native-input source clarification:** applied in 01956dd360b5a19bcf0ff3e43135f62d0862be8e (spec-fix-d, queued; not main). Four bounded007/publicVIP38/CLI/devtools clauses explicitly retain selected .ts and .vibe imported-rule coverage with pinned per-rule/file eligibility, declaration/library exclusions and existing configuration. Native TypeScript language checking and VibeLang-only language checks remain distinct. Four regressions fail immutable actual main8b4abee2 and pass Node/Bun; configured spec, regen/docs/forms pass with no form moves. No compiler port, code-inventory repair or conformance claim.
+
+    **Smithers green9 scope question, decide-live, 2026-11-02:** this is already settled by accepted VIP-38 and this detail. Imported Effect lint runs on selected native `.ts` and `.vibe` inputs with the pinned upstream eligibility and exclusions. The current generated inventory gives `EK3801` (`floatingEffect`), `EK3865` (`missingEffectContext`) and `EK3870` (`missingReturnYieldStar`) default severity `error`. Preserve the precedence `vibe.severities` > existing Effect language-service configuration > pinned default. Every imported code remains configurable, including `off`; that capability does not automatically authorize changing a migration target's checks to pass. Do not make all imported rules warnings or limit them to `.vibe` merely because an older compiler did not report them.
+
+    ```vibe
+    effect function example() {
+      Effect.succeed(1) // selected imported floatingEffect rule applies
+    }
+    ```
+
+    Effect TS: `import { Effect } from "effect"; const example = Effect.gen(function* () { Effect.succeed(1) })` in an eligible `.ts` file is checked by the same selected pinned rule and effective configuration. This is an applicability example, not a new compiler execution receipt.
+
+    Setup may preserve/translate an existing approved lint configuration through the existing modern root `vibe.severities` contract; it must not silently invent severity downgrades, suppressions or extension exclusions. Compare native and converted source on the same actual SDK and effective configuration before classifying a conversion regression. The reported older `0.0.8` versus `0.0.11` diagnostic-count difference is an upgrade/configuration observation, not by itself a conversion defect. Capture the actual command status separately under292; a printed `error` category alone does not prove a particular process exit. Genuine generated-name TypeScript errors remain separately investigated. This reuses77/98/272/291/292 and principles1/2/4/8; no new rule number or Will question. Immutable current VIP-38 and the three inventory rows were read; no CLI, LSP, compiler or target test was run by this lane.
+
+    **Native TypeScript activation, Smithers owner ruling recorded 2026-11-02T19:15Z:** “selected” includes the upstream/configured activation condition; including a `.ts` file in a compiler project does not itself enable the Effect language-service plugin. Check the effective configuration of every project used by the check scripts, including inherited configuration. If that configuration does not enable the Effect plugin, imported Effect lints must not fire on its native `.ts` files. If enabled, retain its rule/file selection and configured severities, followed by the pinned per-rule defaults. The three `error` inventory defaults quoted above apply after activation; they are not a new automatic opt-in for all native TypeScript. Do not add suppressions to Smithers to conceal diagnostics that violate this activation contract.
+
+    This clarifies77's upstream/configured eligibility and existing-configuration promise; it does not exclude all `.ts` files, globally demote rules, disable ordinary TypeScript diagnostics, or change approved `.vibe` integration. The Effect TS counterpart is the same native source under the same upstream plugin activation and effective project configuration. A minimal native `.ts` floating-Effect fixture with the plugin absent should receive no imported Effect lint; the enabled-plugin twin uses its actual configured/default severity. Those are prescribed owner regressions, not tests executed here. Recorded by the agent from the project owner's ruling, principle2 (mirror the actual native TypeScript/tool configuration) and principle8 (no new unselected checks), 2026-11-02. No fresh Will answer or new number. This makes the activation condition explicit in the earlier green9 answer; actual runner/code/status conformance still needs matching receipts.
+
 ### Detail 82
 
 **Lint: an extractor whose arity can never match** (NW 48; Fable m7 and design cost 2; r16-004). When a class or fixed pattern's extracted list has a statically known length (an `error` or `schema error` class and the thirty-three retained errors (86/92): 1; `Option.Some`, `Exit.*`, `Result.*`: 1; `Option.None`: 0) and the known length is outside the required-to-total position interval of an extractor without a rest pattern (128: each elision slot counts, optional elements count only in the maximum), VibeLang reports the VIP-38 lint warning `EK0703`. Quick fixes: the bare pattern `when X:`, or `when X(let e):` for a singleton list. Matching is unchanged: the arm still fails at run time (VIP-7, detail 53).
@@ -60,6 +98,15 @@ Decided details folded in verbatim on 2026-11-03 (mechanical pass). Each keeps i
     Effect TS: none. Decided by the agent from the precedent of details 6, 28, 29 and 62 (a dead or unrun construct gets a VIP-38 warning, never a new error) and principle 1; 2026-10-29.
 
     **Existing inventory/list-rule reconciliation.** Read the retained-error count under86/92 and the arity test under128, as now explicitly published in mainfb3. For example, `Option.None(1?)` admits the empty extracted list and is not warned; runtime matching remains unchanged. This corrects the older summary to already-decided rules, with no newnumber/permission or native/compiler test execution.
+
+### Detail 98
+
+**The imported lint rules are pinned to `@effect/tsgo@0.57.0`** (NW 61; Sol r17 m2, Astra r17 m1; r18-007; completes detail 77). The two options in NW 61 are one fact: the repository vendors a named upstream release. `typescript/tsc/internal/effecttsgo/UPSTREAM` records `repository: https://github.com/Effect-TS/tsgo`, `tag: @effect/tsgo@0.57.0`, `commit: 999942fa41462eb46dfcb2d718e7671db8e14156`, and `sync.sh <tag>` is the only update path. That file is the normative pin, as `package.json` pins `effect` exactly (detail 70). Chapter 007 names the tag and commit and links `UPSTREAM`; Appendix B's generated rule/code/default-severity table names the same tag in its header; a VIP-32 bump runs `sync.sh` and regenerates the table, keeping every assigned code (detail 77). Separately, the implementation prints `EK4801` for `floatingEffect` and other `EK48xx` codes; details 60 and 77 assign VIP-38's block `EK38xx`, so that is a compiler bug for a fix lane, not a spec question. The spec keeps `EK3801`.
+    **Immutable-main source scope (ff2544, 98).** The artifact and publictable headers retain @effect/tsgo@0.57.0/revision999942fa41462eb46dfcb2d718e7671db8e14156. All124 declaredinput SHA256digests match immutableff2544source. This is pin/input consistency, not upstreambehavior/generatorexecution or actualcode-emission conformance. `main-ff2-source-receipt.json` records exact read/consistency limits; no own compiler/gate/native rerun.
+    ```text
+    typescript/tsc/internal/effecttsgo/UPSTREAM   tag: @effect/tsgo@0.57.0   commit: 999942fa4146
+    ```
+    Effect TS: the same rules from `@effect/tsgo@0.57.0`. Decided by the agent from the repository's `UPSTREAM` file, principle 2 (a dependency pinned by released version, as npm and detail 70 do) and VIP-32; 2026-10-29. Apply to 007 at the marker and Appendix B.
 
 ### Detail 104
 
@@ -75,6 +122,13 @@ Decided details folded in verbatim on 2026-11-03 (mechanical pass). Each keeps i
 
 
     **Pinned API correction (r6 Opus OPUS-1, detail 266).** The historical migration sentence recommending a non-Effect Yieldable `asEffect()` call is not valid general advice for Effect4.1.0. Option and Result have no such method; keep `EK0502` rather than inventing a conversion. Effectable.Class instances already satisfy the Effect test, and actual user adapter methods remain ordinary explicit calls. The structural/any/delegation rule of104 is unchanged; see266 for the pinned native controls.
-## Live decisions (lane decide-live, 2026-10-29)
 
-Class A derives existing principles and counterparts. Class B defaults are individually timed; none is unconditional approval before its deadline. No compiler code, spec source, commit, or other lane workspace is changed by this record.
+### Detail 106
+
+**The initial imported-lint allocation is alphabetical after the retained first code.** (r20-007/r20-900; Sol round-19 M3; Astra m2; completes details 77/98.) Keep `EK3801 floatingEffect`. For the pinned `@effect/tsgo@0.57.0` registry, sort all other rule `Name` strings in ascending ASCII order and assign ordinal 2 onward; the first are `abortControllerInEffect` and `acquireReleaseDisposable`. Order by the emitted name, not by Go variable name, category, file path, or registration order. Persist the name/ordinal/code mapping. Later upstream bumps preserve every assigned code, leave removed-rule slots retired, and append new names in sorted order after the highest ordinal. The overflow spelling is the separate default immediately below; this allocation order does not depend on it.
+    **Imported-code fuzz oracle source receipt (db82, 106).** At immutable `db82b69ac4aa`, the fuzz facts helper reads the published `lint-codes.json` mapping, and its test compares the compiler's actual registry/count against that independent artifact. It no longer builds its expected names from the compiler itself or stale Appendix wording. The complete selected two-file,4,778-character Go diff was read. This is source-reader/oracle evidence, not an own Go run, full CLI/LS diagnostic or severity proof; unchanged spec/artifact receipts retain their original revision scope. `main-db8-selected-readers-receipt.json` records limits.
+    **Immutable-main source scope (ff2544, 106).** All130 persisted ledger assignments matchtheinventory: floatingEffect staysEK3801 andtheotherinitialnames takeASCII-ordered ordinals2–130. Publicsource states futureappend-only reservations; futurebumps/deletions werenotexecuted here. `main-ff2-source-receipt.json` records exact read/consistency limits; no own compiler/gate/native rerun.
+    ```vibe
+    effect { succeed(1) } // EK3801 floatingEffect, never reassigned to another rule
+    ```
+    Effect TS: `Effect.gen(function* () { return 1 })` discarded as a statement, reported by the same pinned `floatingEffect` rule. Decided by the agent from principle 4 (one reproducible ordering without a hand-maintained category policy), details 77/98 (stable codes), and both chapter lanes' alphabetical recommendation, 2026-10-29. The generator owned by `spec-artifacts` must retain `EK3801`; this decision authorizes no edit to that lane's unlanded workspace.

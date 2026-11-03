@@ -100,15 +100,20 @@ Plain functions have JavaScript's stack limit; recursion that must be stack-safe
 
 ## Details
 
-Decided details folded in verbatim on 2026-11-03 (mechanical pass). Each keeps its old number as history; where one conflicts with the text above, the fold's conflict pass resolves it.
+Decided details folded in on 2026-11-03. Each keeps its old number as history. The conflict pass deleted superseded, duplicate and relic details and resolved contradictions in favor of Will's words, then accepted VIPs, then later details. Principles are numbered as in [the introduction's Details](../src/000-intro.md#details).
 
-### Detail 30
+### Detail 30a
 
-(VIP-1/VIP-4 revisit, superseded by 30a below) Problematic legacy JavaScript is banned in **all** `.vibe` code, plain functions included, and lives in `.ts`/`.js` files. Will: "anything problematic from js legacy should be forced to be wrapped in js either coming from a ts or js file … Even writing a normal sync js function should be banning things like eval arguments etc." Decided: direct `eval` and `arguments` are compile errors anywhere in `.vibe`. The rest of the list (`new Function`, `var`, `with`) and the `module {}` question are pending his confirmation; mark them "Undecided (pending Will)".
+(Will 15:57: "I don't have every api memorized that's on the agent to do a good job.") Banned in **all** `.vibe` code, plain functions included, each a compile error with a quick fix: direct and indirect `eval`, `new Function` (and `Function(...)`), `arguments` (use rest parameters), `var` (use `let`/`const`), and `with`. Legacy JavaScript lives in `.ts`/`.js` files. Inline `module {}` stays denied (VIP-25). Record this as a VIP-1/VIP-4 amendment with this provenance.
+
+    **Source restriction versus pinned do predicate (decide-live, 2026-11-02):** main cdc392859da9 chapter002 and the vendored README newly say a nonfinal `var` remains legal. That admission contradicts this item and VIP-4's accepted 2026-10-29 amendment. The pinned `VariableStatement` predicate can still describe the underlying TC39 form, including final-statement rejection and native hoisting, but does not lift VibeLang's independent `var` source restriction. A nonfinal `do { var value = 1; value }` in a `.vibe` file remains a compile error; use `let`/`const` for Vibe code or keep legacy source in `.ts`/`.js`. This is an application of30a/principle5, not a new prohibition or Will question. No compiler failure is inferred from docs alone.
+
+
+    **Fresh compiler evidence (decide-live, 2026-11-02T20:07Z):** reviewer pass145 on matching cdc compiler/runtime reports two nonfinal var forms still compile/run, returning [1,1]. This is an observed source-restriction gap under30a/VIP4, not permission created by the final-var EK0201 predicate fix; parameter EK0203 also does not replace the global ban. Existing do-var:source-restriction ownership remains separate. Root read the report, not executed the witness.
 
 ### Detail 33
 
-(NW 39; VIP-1/VIP-4 amendment 30a) The `Function` ban covers every `IdentifierReference` that resolves to the global `Function`, except the right operand of `instanceof` and the object of a member access. The type `Function` stays TypeScript's.
+(NW 39; VIP-1/VIP-4 amendment 30a) The `Function` ban covers every `IdentifierReference` that resolves to the global `Function`, except the right operand of `instanceof` and the object of a statically named `prototype` access (detail 97). The type `Function` stays TypeScript's.
     ```vibe
     new Function("a", "return a")        // error (30a)
     Function("return 1")                 // error (30a)
@@ -125,6 +130,19 @@ Decided details folded in verbatim on 2026-11-03 (mechanical pass). Each keeps i
     effect async function f() { }   // error: pick effect or async
     ```
     Effect TS: no function is both an `Effect.gen` and a Promise-returning async function. Decided by the agent from principles 7 and 8; 2026-10-29.
+
+### Detail 97
+
+**The `Function` member-access exemption covers `.prototype` only** (NW 60; Fable r17 m4; r18-001; amends detail 33, keeping its `instanceof` exemption). Detail 33's purpose is "no functions built from strings", and `Function.call(null, "return 7")`, `Function.apply(null, [s])` and `Function.bind(null, s)` all build one. So the object-of-a-member-access exemption narrows to a statically named `prototype`: `Function.prototype`, `Function?.prototype`, `Function["prototype"]`, and the same through `globalThis.Function` (detail 73). Every other member of the global `Function` is `EK0107`. `Function.prototype.constructor` stays `EK0107` (detail 75).
+    Public VIP33 reconciliation landed as c080051ae52b from439c77582723 (spec-fix-c; globalThis platform code and VIP1 Function exemptions only).
+    **Immutable-main source receipt (54182a, 97).** Immutable main `54182a644026` reconciles public VIP33 platform EK4402 versus legacy EK0107 and explicitly retains the existing qualified Function instanceof/prototype exemptions (history `5e0a70f5333a`). Source publication only, without extending the exemptions or asserting compiler parity.
+    ```vibe
+    x instanceof Function                 // ok (detail 33)
+    Function.prototype.toString.call(f)   // ok
+    Function.call(null, "return 7")()     // EK0107
+    Function.name                         // EK0107
+    ```
+    Effect TS: none; `typeof x === "function"` is ordinary TypeScript. Decided by the agent from 30a's intent, detail 33's stated purpose and principle 8 (relaxing to another member later breaks no code); 2026-10-29. Apply to 001's `Function` row and Legacy JavaScript list.
 
 ### Detail 118
 
@@ -146,6 +164,58 @@ Decided details folded in verbatim on 2026-11-03 (mechanical pass). Each keeps i
     Applied in f7f461bc9fc5564902d9e65c65da88ffb397b38a (spec-fix-d/bookmark39; complete35 replacement, queued not main). All original source/tests/runtime retained; stale quotation repair preserves programs/diagnostics/pending records and enables existing quote/coverage tests in fast gate. Rebasedfb3 expanded spec/docs/forms pass; queued8deb retired only after replacement acceptance.
 
     **Immutable-main source publication (013cfa002833, 118).** Chapter 001 now explicitly covers eager parameter-binding exceptions: the source Effect callable returns a cold Effect or producer Stream that dies with the thrown value; the call itself does not throw. Its simple lowering table describes successful binding only. This publishes the existing detail 118 boundary, not a new evaluation phase or compiler-conformance result. The full six-file diff was read; `source-013-publication.json` retains its hash and exact scope.
+
+### Detail 175
+
+**Effect overload signatures follow TypeScript's async declaration positions.** (live `900-effect-overload-bodies`; VIP-1's accepted placement rule, not a new feature.) Admit a bodyless overload-signature alternative for an effect function declaration and an effect class method wherever TypeScript admits the corresponding `async` overload signature. Preserve TypeScript's signature ordering, adjacent implementation requirement, overload/implementation compatibility, modifiers and semicolon/automatic-semicolon rules, replacing the Promise result by the specified Effect result. Split declaration/method productions by syntactic position rather than making every `Block` optional. Function expressions, object-literal methods and arrows still require bodies. Do not add starred effect-function/method overload signatures: TypeScript rejects starred generator overload signatures with TS1222. Ambient async positions rejected by TypeScript do not become new effect-modifier positions. Ordinary inherited overload mechanisms remain as TypeScript defines them; a bodyless signature itself executes no code.
+    **Immutable-main source receipt (695576, 175).** Verified at immutable main `695576acb44b`: 001/AppendixA state native async-like effect overload positions, ordering/compatibility/ASI, and class-versus-object method boundaries. This is source-publication evidence only; no compiler/native/regression suite was run by decide-live.
+    Status: applied in 2a1c089083b1 (spec-fix-a; queued, not yet a main landing receipt).
+    ```vibe
+    effect function pick(x: string): string!!;
+    effect function pick(x: number): number!!;
+    effect function pick(x: string | number) { return x }
+    class C {
+      effect m(x: string): string!!;
+      effect m(x: number): number!!;
+      effect m(x: string | number) { return x }
+    }
+    ```
+    Effect TS: the same ordinary function/class overload lists returning `Effect.Effect<string>` or `Effect.Effect<number>`, with one implementation returning `Effect.gen(function* () { return x })`. Declaration output preserves each exposed signature and its Effect return type; effectful signatures still carry no synchronous `@throws`, and detail 138's implementation-bound checks remain. Decided by the agent from VIP-1's explicit rule that `effect` goes exactly where TypeScript allows `async`, principle 2 (inherit overload syntax/checking), and principle 4 (separate bodyless declaration positions instead of a universal optional body), 2026-10-30. Reconcile 001 and Appendix A with these alternatives and provide declaration-output witnesses. Evidence: `effect-overload-types.log` exits 0 under strict TypeScript and `effect-overload-reference.log` gives `Success("ok")`/`Success(7)` on Effect 4.1.0. `overload-position-check.log` independently accepts the function/class async overloads and rejects bodyless expressions/object methods, starred overloads and ambient async declarations (TS1005/1222/1040). These are native TypeScript/Effect reference checks, not VibeLang compiler-conformance evidence.
+
+Landing receipt: source 2a1c089083b1 landed in main 695576acb44b (queue 1793370440-spec-fix-a, gate mq-10302026-7).
+
+
+    **Unannotated effect overloads and recovery cover (Opus31m61/m63/m64).** Preserve TypeScript's bodyless-signature behavior: an omitted return annotation exposes `any`, with native `TS7010` when `noImplicitAny` is enabled. Do not infer that exposed signature from its implementation or invent `E`/`R`; an explicit Effect annotation supplies the checked contract. The source callable's effect kind, eager initialization and returned cold Effect stay unchanged. Unsupported interface/type-literal method and `abstract`/`declare` effect positions already assigned `EK0108` must be recognized by the rejection cover, without admitting them. Native independent errors remain native, and a starred bodyless generator signature retains `TS1222` under this detail.
+    ```vibe
+    effect function untyped(x: string); // TS7010 with noImplicitAny
+    effect function untyped(x: string) { return x }
+    effect function typed(x: string): string!!;
+    effect function typed(x: string) { return x }
+    ```
+    Effect TS: `function untyped(x: string); function untyped(x: string) { return Effect.succeed(x) }`, with the same implicit-any/TS7010 behavior; annotate the typed overload `Effect.Effect<string>`. Decided by the agent from accepted VIP-1's written-or-inferred rule and async positions, detail175, principle2 (native signature/configuration checks), and principle4 (no new mandatory-annotation exception), 2026-10-30. `r31-overload-tdz-asi-reference.log` independently checks TypeScript5.9.3 native async and ordinary Effect-returning overloads: both expose any and report TS7010 only with noImplicitAny. This is native reference evidence, not VibeLang declaration, compiler, source-publication or cross-package conformance.
+
+### Detail 184
+
+**Effect arrow heads mirror TypeScript's separate bare and parenthesized async forms.** (live `900-effect-arrow-heads`; VIP-1 grammar repair, distinct from detail 175's overload signatures.) Split `EffectArrow` into a bare `BindingIdentifier` head and a parenthesized-formal-parameters head. Only the parenthesized branch may carry type parameters or a return annotation. Keep the simple bare-identifier arrow and its contextual parameter typing. Do not take an independent cross-product of optional type parameters, bare-or-parenthesized parameters and an optional return annotation. Preserve existing no-LineTerminator restrictions, Effect return-type checking, generic parameter rules and the two-modifier `EK0105` recovery; no new arrow position or ambiguity rule is introduced.
+    **Immutable-main source scope (d0cdbe, 184).** 001/AppendixA now preserve complete is/as/satisfies expression-operator readings after ordinary effect/async identifiers; this publishes the later complete-head source clarification in addition to earlier695 arrow-head shapes. `root-main-d0cd-source-receipt.json` retains the complete31-file diff/hash/read scope. Source only; no decide-live compiler/gate rerun.
+    **Immutable-main source receipt (695576, 184).** Verified at immutable main `695576acb44b`: 001/AppendixA split bare Effect arrows from parenthesized generic/annotated heads. This verifies that source-head portion, not every later complete-head identifier-operator clarification or parser behavior. This is source-publication evidence only; no compiler/native/regression suite was run by decide-live.
+    Status: applied in 7b23123f61e5 (spec-fix-a; queued, not yet a main landing receipt).
+    ```vibe
+    const f: (x: number) => (number!!) = effect x: number!! => x // syntax error: parenthesize x
+    const g: (x: number) => (number!!) = effect <T> x => x       // syntax error: parenthesize parameters
+    const a: (x: number) => (number!!) = effect (x): number!! => x // allowed
+    const b = effect <T>(x: T) => x                              // allowed
+    const c: (x: number) => (number!!) = effect x => x             // allowed
+    ```
+    Effect TS: ordinary function values returning `Effect.succeed(x)` with the same checked heads/types; the native async syntax oracles are `async (x): Promise<number> => x`, `async <T>(x: T) => x` and `async x => x`. TypeScript rejects the two bare decorated heads with TS1005. Decided by the agent from VIP-1's explicit rule that `effect` occurs exactly where TypeScript permits `async`, principle 2 (inherit its async-arrow head grammar), and principle 4 (two existing head shapes rather than independently optional decorations that admit unapproved forms), 2026-10-30. Reconcile 001 and Appendix A and add both rejection witnesses and all three controls. `decide-live-scratch/root-effect-arrow-heads-reference.log` verifies those parser results with the installed TypeScript primary compiler API. This is grammar/reference evidence, not a VibeLang parser-conformance result; no runtime Exit claim is needed for this syntax distinction.
+
+    **Complete-head lookahead preserves ordinary identifier operators (live `900-effect-is-head-disambiguation`).** The existing contextual expression rule selects an effect arrow/function/block only for its complete grammar head. Otherwise `effect` remains an ordinary identifier, including valid `effect as T`, `effect satisfies T`, and VIP-7 `effect is P` expressions. The identifier-spelled operators `as`, `satisfies` and `is` must not be consumed by invalid-shorthand recovery before that ordinary expression can parse. This restates VIP-1/VIP-7 and principle 3, not a new shorthand or a symbol-based parsing rule. Source repair reported queued as `64cc01266def`; its strict counterpart `Success(2)` is the fixer's receipt, not an independent compiler run by this lane. Decided by the agent from the accepted expression grammar and principles 2/3/4, 2026-10-30.
+
+Landing receipt: source 7b23123f61e5 landed in main 695576acb44b (queue 1793369968-spec-fix-a, gate mq-10302026-7).
+
+    Landing scope clarification: main `695576acb44b` publishes the ordinary bare-versus-parenthesized arrow-head shapes via `cf67082254d1`. This does not independently verify the later complete-head `is`/`as`/`satisfies` clarification or its separate `64cc01266def` source receipt. Preserve those distinct scopes rather than reading the earlier landing line as full delivery of every later184 follow-up.
+
+Landing receipt: source 64cc01266def landed in main d0cdbe5a0a7f (queue 1793378613-spec-fix-a, gate mq-10302149-2).
 
 ### Detail 203
 
