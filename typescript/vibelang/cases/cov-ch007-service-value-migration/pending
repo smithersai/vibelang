@@ -1,0 +1,1 @@
+cov-ch007 docs/design/src/007-tooling.md#fab9665fd2f5e055, docs/design/src/007-tooling.md#b1dd29e36b7a08a6: the automatic defaultValue arrow recreates object identity and re-evaluates mutable snapshots and eager effects instead of preserving the original static value.

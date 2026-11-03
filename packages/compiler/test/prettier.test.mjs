@@ -24,6 +24,8 @@ test("Prettier infers .vibe and produces the identical native dprint result", as
 test("syntax failures propagate through Prettier without returning formatted output", async () => {
   await assert.rejects(prettier.format("const broken = ;", { filepath: "broken.vibe", plugins: [plugin] }), /broken|Unexpected|Expression/)
 })
+// Chapter 007 / formatters read the implementation source itself: docs/design/src/007-tooling.md#ff0f8dc765789bfb
+
 test("the formatter companion checks .vibe, writes it, and then passes", () => {
   const dir = mkdtempSync(join(tmpdir(), "vibe-format-cli-"))
   const cli = new URL("../bin/vibelang-format", import.meta.url).pathname

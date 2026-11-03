@@ -51,6 +51,8 @@ test("alchemy-62: work inside a nested function stays at that function's call", 
     verdict(`{ const later = () => { ${statement} }; return ${program} }`) === "ok"))
 })
 
+// Chapter 007 / an opaque pairing is review and cannot certify preservation: docs/design/src/007-tooling.md#fde0659e475943d2
+// Chapter 007 / an opaque pairing is review and cannot certify preservation: docs/design/src/007-tooling.md#602f94517600c73a
 test("alchemy-62: an opaque return is listed for review, never ok or blocking", () => {
   fc.assert(fc.property(fc.constantFrom(...opaque), wrap, (expression, w) => verdict(w(expression)) === "review"))
 })

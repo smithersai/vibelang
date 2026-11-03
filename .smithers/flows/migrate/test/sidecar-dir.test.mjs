@@ -78,6 +78,7 @@ test("selectors that cannot select x.d.vibe.ts, or already know .vibe, are not e
 
 // Metamorphic over spellings: a filter on ".ts" inside a walk is an
 // enumeration exactly when the code does not also name .vibe files.
+// Chapter 007 / setup discovers TypeScript enumeration hazards: docs/design/src/007-tooling.md#4c6f8e17b3986562
 test("property: a .ts filter in a walk is found unless the code names .vibe", () => {
   const filters = [`n.endsWith(".ts")`, `n.endsWith('.ts')`, `/\\.ts$/.test(n)`, `extname(n) === ".ts"`, `/\\.(?:ts|tsx)$/.test(n)`]
   const walks = ["readdirSync(dir)", "await readdir(dir)", "globSync(dir + \"/*\")", "walk(dir)"]
@@ -124,6 +125,8 @@ test("addSidecarDir turns the setting on and adds rootDirs, keeping comments, id
   }
 })
 
+// Chapter 007 / retain implementation identities that ts selectors enumerate: docs/design/src/007-tooling.md#9542602b5fc90536
+// Chapter 007 / retain implementation identities that ts selectors enumerate: docs/design/src/007-tooling.md#d4a9867f5235f438
 test("the plan keeps a module an enumeration lists as .ts, with the reason", () => {
   const file = (path, extra = {}) => ({ path, package: ".", test: false, lines: 10, tokens: 50, effect: "values", effectImports: ["effect"], imports: [], dependents: [], testedBy: [], coverage: null, ...extra })
   const reason = "test/load.test.ts:9 enumerates *.ts files under coding/ (a walk filtered by .endsWith(\".ts\"))"
@@ -219,6 +222,8 @@ test("setup and exports honor the existing effective sidecar path, including inh
   }
 })
 
+// Chapter 007 / tool selectors trigger sidecar directory mode: docs/design/src/007-tooling.md#0554c6384f8d049e
+// Chapter 007 / tool selectors trigger sidecar directory mode: docs/design/src/007-tooling.md#47d9fb8d2bd0b5e7
 test("ast-grep TypeScript rule selectors enable directory mode before per-tool ignores are added", () => {
   for (const selector of ['files:\n  - "src/**/*.ts"\n', "files:\n  - src/**/*.ts\n", ""]) {
     const files = {

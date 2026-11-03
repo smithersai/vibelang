@@ -1,0 +1,10 @@
+// Chapter 007 / shadowed gen is ordinary: docs/design/src/007-tooling.md#e1c60ef55734c0ed
+// Chapter 007 / shadowed gen is ordinary: docs/design/src/007-tooling.md#7db95922614c22d9
+import { Effect } from "effect"
+function ordinary() { const Effect = { gen: () => 7 }; return Effect.gen() }
+export effect function probe() { return ordinary() }
+type Equal<A,B> = (<T>() => T extends A ? 1 : 2) extends (<T>() => T extends B ? 1 : 2) ? true : false
+const success: Equal<Effect.Success<ReturnType<typeof probe>>, number> = true
+const failure: Equal<Effect.Error<ReturnType<typeof probe>>, never> = true
+const requirements: Equal<Effect.Services<ReturnType<typeof probe>>, never> = true
+export const typeEvidence = [success, failure, requirements]

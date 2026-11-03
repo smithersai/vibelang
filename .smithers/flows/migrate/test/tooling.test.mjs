@@ -221,6 +221,9 @@ test("the migrated lint command reports a debugger at its .vibe source location"
   const good = run()
   assert.equal(good.status, 0, good.stdout + good.stderr)
 })
+// Chapter 007 / real repository JS plugin diagnostics use Vibe source locations: docs/design/src/007-tooling.md#1a01ca5adc2f04af
+// Chapter 007 / real repository JS plugin diagnostics use Vibe source locations: docs/design/src/007-tooling.md#b351eadf7aa7995c
+
 test("the migrated lint command reports a JS plugin's rules at their .vibe source location", { skip: !deps && "set VIBELANG_TOOLING_NODE_MODULES" }, t => {
   const report = "(context) => ({ Identifier(node) { if (node.name === \"foo\") context.report({ node, message: \"no foo\" }) } })"
   const root = fixture(t, {

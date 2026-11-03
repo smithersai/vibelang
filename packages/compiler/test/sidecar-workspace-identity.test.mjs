@@ -52,6 +52,7 @@ test("a workspace's relocated sidecar and explicit Vibe source keep one private 
 
 test("preserveSymlinks retains separate logical declaration and source identities", () => { workspaceIdentity({ preserveSymlinks: true }) })
 
+// Chapter 007 / relocated sidecar mapping keeps native workspace identity: docs/design/src/007-tooling.md#71f0db589eb046a0
 test("property: workspace sidecar views preserve effective mapping and native symlink identity", { timeout: 600000 }, () => {
   const corpus = JSON.parse(readFileSync(new URL("./corpus/alchemy-sidecar-private-identity.json", import.meta.url), "utf8"))
   fc.assert(fc.property(fc.record({

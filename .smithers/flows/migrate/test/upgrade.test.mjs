@@ -209,6 +209,7 @@ test("planUpgrade changes nothing at the runtime's version, and needs an effect 
 // The step itself on a real jj repository with a real Bun suite that the
 // upgrade breaks: the upgrade is committed on the base alone, and the broken
 // test is retained as evidence and stops the run before a new baseline.
+// Chapter 007 / upgrade evidence gates source conversion: docs/design/src/007-tooling.md#a85756be22c8907f
 test("upgrade-effect retains the Effect upgrade evidence and rejects new test failures", async () => {
   const root = mkdtempSync(join(tmpdir(), "migrate-upgrade-"))
   const target = join(root, "repo")
@@ -298,6 +299,7 @@ test("upgrade-effect carries pnpm's patched dependency and selectors to the new 
 // foldkit, round 3: a vibe bookmark an older toolchain set up kept that toolchain's
 // runtime through the upgrade, which imports what the new Effect removed, and
 // 1919 tests failed for the old runtime's sake.
+// Chapter 007 / Effect and VibeLang upgrade together: docs/design/src/007-tooling.md#f00796d3ca302f6b
 test("upgrade-effect moves a repository VibeLang set up to this run's VibeLang in the upgrade's commit", async () => {
   const root = mkdtempSync(join(tmpdir(), "migrate-upgrade-vibelang-"))
   const target = join(root, "repo")

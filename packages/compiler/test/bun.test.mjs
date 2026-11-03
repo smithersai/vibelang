@@ -123,6 +123,8 @@ test("bun runs a .vibe module's module declaration as a module of its own (D403)
   assert.equal(compilations(), 1, "the module comes from its file's compile")
 })
 
+// Chapter 007 / a real test runner discovers and runs Vibe implementations: docs/design/src/007-tooling.md#b351eadf7aa7995c
+
 test("bun test loads .vibe modules through a bunfig.toml preload of vibelang/bun", { skip }, async (t) => {
   const { bun, compilations } = project(t, {
     ...greeting,

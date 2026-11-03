@@ -39,6 +39,8 @@ const lazy = () => import("./lazy.vibe")
 const user: Users.Row = Users.first()
 `
 
+// Chapter 007 / Knip reads the actual Vibe module: docs/design/src/007-tooling.md#b351eadf7aa7995c
+
 test("a .vibe module compiles to its imports, export stubs, dynamic imports and namespace reads", { skip }, () => {
   assert.equal(compile(source, "src/module.vibe"), [
     'import "vibelang-runtime"',

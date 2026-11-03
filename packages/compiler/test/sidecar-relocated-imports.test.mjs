@@ -65,6 +65,7 @@ function crossPackage({ output = ".vibe/declarations", nested = "src", helper = 
   } finally { rmSync(root, { recursive: true, force: true }) }
 }
 
+// Chapter 007 / relocated declarations resolve without inheriting producer rootDirs: docs/design/src/007-tooling.md#c6d208bef77ef1fb
 test("opencode-53: a different project's stock compiler resolves every relocated import without the producer rootDirs", () => {
   crossPackage()
 })

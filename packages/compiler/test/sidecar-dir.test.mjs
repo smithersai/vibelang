@@ -74,6 +74,9 @@ const stock = (root) => run(process.execPath, [stockTsc, "-p", "lib/tsconfig.jso
 const beside = (root, module) => join(root, "lib/src", module + ".d.vibe.ts")
 const mirrored = (root, module) => join(root, "lib/.vibe/declarations/src", module + ".d.vibe.ts")
 
+// Chapter 007 / configured sidecars mirror the source tree outside source directories: docs/design/src/007-tooling.md#01d151eab553ced9
+// Chapter 007 / configured sidecars mirror the source tree outside source directories: docs/design/src/007-tooling.md#a747a9d7d9e560d5
+// Chapter 007 / configured sidecars mirror the source tree outside source directories: docs/design/src/007-tooling.md#0a75b642758b3c7d
 test("vibe.sidecarDir writes each sidecar under it, mirroring the source tree, and none beside the sources", { skip }, (t) => {
   const root = project(t, { ...sources, "lib/tsconfig.json": directoryMode() })
   build(root)
@@ -90,7 +93,9 @@ test("vibe.sidecarDir writes each sidecar under it, mirroring the source tree, a
 })
 
 for (const mode of ["beside", "directory"]) {
-  test("stock tsc --noEmit checks a .ts consumer of ./x.vibe in " + mode + " mode", { skip }, (t) => {
+  // Chapter 007 / stock tsc resolves both adjacent and virtual-root sidecar layouts: docs/design/src/007-tooling.md#d2c22dbc501c3a0b
+// Chapter 007 / stock TypeScript checks consumers through declarations in both layouts: docs/design/src/007-tooling.md#b351eadf7aa7995c
+test("stock tsc --noEmit checks a .ts consumer of ./x.vibe in " + mode + " mode", { skip }, (t) => {
     const root = project(t, { ...sources, "lib/tsconfig.json": mode === "beside" ? config(undefined) : directoryMode() })
     const before = stock(root)
     assert.match(before.stdout, /TS2307: Cannot find module '\.\/deep\/greet\.vibe'/)
@@ -104,6 +109,8 @@ for (const mode of ["beside", "directory"]) {
     assert.match(failed.stdout, /wrong\.ts\(2,14\): error TS2322: Type 'string' is not assignable to type 'number'/)
   })
 }
+
+// Chapter 007 / complete sidecar mode interoperability and switching matrix: docs/design/src/007-tooling.md#26e13cfc2a3c8c54
 
 test("switching vibe.sidecarDir on and off leaves one sidecar per module, in the chosen place", { skip }, (t) => {
   const root = project(t, { ...sources, "lib/tsconfig.json": config(undefined) })

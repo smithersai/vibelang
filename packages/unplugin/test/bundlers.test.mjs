@@ -180,6 +180,8 @@ describe("vibelang-unplugin", { concurrency }, () => {
   for (const [bundler, { bundle, watch }] of Object.entries(bundlers)) {
     const skip = bundler === "bun" && !hasBun && "bun is not installed"
 
+// Chapter 007 / bundlers execute the actual Vibe implementation graph: docs/design/src/007-tooling.md#b351eadf7aa7995c
+
     it(`${bundler}: builds the fixture, runs it, and maps it to .vibe sources`, { skip }, async (t) => {
       const root = await fixture(t, bundler)
       const result = await bundleOnce(bundler, root)

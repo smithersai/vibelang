@@ -1,0 +1,14 @@
+// Chapter 007 / authored service factory identity: docs/design/src/007-tooling.md#0e4e9d4ec85fcfd4
+// Chapter 007 / authored service factory identity: docs/design/src/007-tooling.md#1a255153d71ad48d
+// Chapter 007 / authored service factory identity: docs/design/src/007-tooling.md#37c2d71e810ca3b4
+// Chapter 007 / authored service factory identity: docs/design/src/007-tooling.md#cd9ba251ba68558c
+import { Effect, Context } from "effect"
+const cachedFlags: { enabled: boolean } = { enabled: true }
+service Flags { static readonly key = 'chapter007/Flags'; static readonly defaultValue = () => cachedFlags; enabled: boolean }
+service Fresh { static readonly key = 'chapter007/Fresh'; static readonly defaultValue = () => ({ enabled: true }); enabled: boolean }
+export effect function probe() { return { cached: Flags.defaultValue() === Flags.defaultValue(), fresh: Fresh.defaultValue() === Fresh.defaultValue() } }
+type Equal<A,B> = (<T>() => T extends A ? 1 : 2) extends (<T>() => T extends B ? 1 : 2) ? true : false
+const success: Equal<Effect.Success<ReturnType<typeof probe>>, { cached: boolean; fresh: boolean }> = true
+const failure: Equal<Effect.Error<ReturnType<typeof probe>>, never> = true
+const requirements: Equal<Effect.Services<ReturnType<typeof probe>>, never> = true
+export const typeEvidence = [success, failure, requirements]

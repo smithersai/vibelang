@@ -1,0 +1,5 @@
+// Chapter 007 / deep-declaration-gate: docs/design/src/007-tooling.md#81628d1eb6eafe13
+// Chapter 007 / deep-declaration-gate: docs/design/src/007-tooling.md#2da9b0872373803e
+// Chapter 007 / deep-declaration-gate: docs/design/src/007-tooling.md#163e5a26d0d027d5
+// Chapter 007 / deep-declaration-gate: docs/design/src/007-tooling.md#8975de36eb47c006
+export const witness = 1

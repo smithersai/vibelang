@@ -1,0 +1,22 @@
+// Chapter 007 / lifting moves property reads to execution: docs/design/src/007-tooling.md#6cdd4a152a744337
+effect function lifted(props: {id:string}) { const id=props.id; return id }
+// Chapter 007 / plain factory and eager property capture: docs/design/src/007-tooling.md#baaaafc87aa9b542
+// Chapter 007 / plain factory and eager property capture: docs/design/src/007-tooling.md#e7142be085064bb1
+// Chapter 007 / plain factory and eager property capture: docs/design/src/007-tooling.md#bd1db3707d510e7d
+// Chapter 007 / plain factory and eager property capture: docs/design/src/007-tooling.md#09f05185eb5fb9b4
+// Chapter 007 / plain factory and eager property capture: docs/design/src/007-tooling.md#4795275ea3d41278
+import { Effect, Context } from "effect"
+let made = 0
+const make = () => { made += 1; return class {} }
+effect function load() { return 1 }
+function captureId(props: { id: string }) { const id = props.id; return effect { return id } }
+export effect function probe() {
+ const C = make(); let reads = 0; const state = { id: 'A' }; const props = { get id() { reads += 1; return state.id } }; const job = captureId(props); const delayed = lifted(props)
+ state.id = 'B'; const lateFirst = try delayed; const first = try job; state.id = 'C'; const lateSecond = try delayed; const second = try job
+ return { made, reads, constructor: typeof C === 'function', first, second, lateFirst, lateSecond, loaded: try load() }
+}
+type Equal<A,B> = (<T>() => T extends A ? 1 : 2) extends (<T>() => T extends B ? 1 : 2) ? true : false
+const success: Equal<Effect.Success<ReturnType<typeof probe>>, { made: number; reads: number; constructor: boolean; first: string; second: string; lateFirst: string; lateSecond: string; loaded: number }> = true
+const failure: Equal<Effect.Error<ReturnType<typeof probe>>, never> = true
+const requirements: Equal<Effect.Services<ReturnType<typeof probe>>, never> = true
+export const typeEvidence = [success, failure, requirements]

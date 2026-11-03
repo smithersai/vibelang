@@ -193,6 +193,8 @@ test("foldkit-74: SIGKILL preserves planned platform siblings and the original u
   }
 })
 
+// Chapter 007 / native platform siblings never overwrite host code: docs/design/src/007-tooling.md#af665f734ddf9e7b
+
 test("platform siblings replay every partial write without replacing existing host code", () => {
   const parser = require("typescript")
   const sample = readJson(new URL("./corpus/foldkit-interrupted-platform-split.json", import.meta.url))

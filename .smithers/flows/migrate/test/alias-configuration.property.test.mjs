@@ -95,6 +95,9 @@ async function inspect(input) {
   } finally { rmSync(root, { recursive: true, force: true }) }
 }
 
+// Chapter 007 / actual setup and native checks preserve alias configuration coherence: docs/design/src/007-tooling.md#6076a170de8e438c
+// Chapter 007 / actual setup and native checks preserve alias configuration coherence: docs/design/src/007-tooling.md#0937ee616d12e256
+// Chapter 007 / actual setup and native checks preserve alias configuration coherence: docs/design/src/007-tooling.md#dfea88aeb731cf9c
 test("opencode-54: actual setup, alias migration and inverse native controls", () => inspect(corpus.input))
 test("exact path alias names remain an independently keyed migration gap", () =>
   inspect({ ...corpus.input, kind: "exact", wire: false }))

@@ -66,6 +66,7 @@ test("adjacent default sidecars preserve explicit Vibe source bindings", () => c
 
 test("an explicit Vibe import keeps its source when a native sibling has the same basename", () => check())
 
+// Chapter 007 / explicit Vibe module identity survives sibling files and declarations: docs/design/src/007-tooling.md#81db21426646122b
 test("property: sidecars preserve written and inferred source bindings across styles and layouts", { timeout: 600000 }, () => {
   // VIP-27: declarations preserve source types. A written .vibe import selects that source (chapter007).
   const corpus = JSON.parse(readFileSync(new URL("./corpus/sidecar-shadowed-vibe-source.json", import.meta.url), "utf8"))

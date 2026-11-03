@@ -4,6 +4,7 @@ import { test } from "node:test"
 import { fc, migrationPair, skip } from "./migration-helpers.mjs"
 const source = readFileSync(new URL("./corpus/foldkit-option-match-native.txt", import.meta.url), "utf8")
 
+// Chapter 007 / Option choice rewrite preserves getter and callback evaluation: docs/design/src/007-tooling.md#fbe985f7c3963d3b
 test("foldkit-38: native Option choice preserves callback getters, early returns and destructuring", { skip, timeout: 120000 }, async t => {
   const { original, changed, text, Option } = await migrationPair(t, source, "EK4839")
   assert.doesNotMatch(text, /Option\.match/)

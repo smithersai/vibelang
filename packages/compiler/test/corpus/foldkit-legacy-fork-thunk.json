@@ -1,0 +1,8 @@
+{
+  "repo": "foldkit",
+  "pattern": "legacy forkIn scope-first call with deferred receiver thunk",
+  "comments": [
+    "",
+    "/* scope first */"
+  ]
+}

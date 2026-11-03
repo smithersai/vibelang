@@ -1,0 +1,2 @@
+// Chapter 007 / run-phase-bindings: docs/design/src/007-tooling.md#6eefb2c31fd7eb98
+export const witness = 1

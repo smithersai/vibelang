@@ -74,6 +74,8 @@ function check(input) {
   }
 }
 test("r14-astra-1: package declaration spelling leaves source sidecars usable", () => check(fixture.input))
+// Chapter 007 / declaration styles affect public output and preserve source sidecars: docs/design/src/007-tooling.md#5c254cd19b4bd101
+// Chapter 007 / declaration styles affect public output and preserve source sidecars: docs/design/src/007-tooling.md#d05c35efbaf324ec
 test("sidecar scope spans styles, quote choices, reexports and import types", () => {
   fc.assert(fc.property(fc.record({
     name: fc.constantFrom("b", "other-type", "model.shared"),

@@ -1,0 +1,8 @@
+// Chapter 007 / private error consumer declaration graph: docs/design/src/007-tooling.md#a698595e623894bd
+// Chapter 007 / private error consumer declaration graph: docs/design/src/007-tooling.md#443b2df3b34b9785
+// Chapter 007 / private error consumer declaration graph: docs/design/src/007-tooling.md#69d66e39cee1f587
+// Chapter 007 / private error consumer declaration graph: docs/design/src/007-tooling.md#90e5d3c47d7d0b77
+// Chapter 007 / private error consumer declaration graph: docs/design/src/007-tooling.md#69e955e514b21612
+// Chapter 007 / private error consumer declaration graph: docs/design/src/007-tooling.md#f1b06cc613248afb
+// Chapter 007 / private error consumer declaration graph: docs/design/src/007-tooling.md#230734a929d5c40a
+export const witness=1

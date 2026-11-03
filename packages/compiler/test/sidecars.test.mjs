@@ -64,6 +64,9 @@ test("vibelang writes x.d.vibe.ts beside each .vibe module, naming .vibe imports
   assert.equal(statSync(join(root, "lib/src/greet.d.vibe.ts")).mtimeMs, before)
 })
 
+// Chapter 007 / stock tsc resolves the required adjacent sidecar suffix: docs/design/src/007-tooling.md#ea06d7f3f66dd3f1
+// Chapter 007 / stock tsc resolves the required adjacent sidecar suffix: docs/design/src/007-tooling.md#7e67c387134fe0ef
+// Chapter 007 / stock tsc resolves the required adjacent sidecar suffix: docs/design/src/007-tooling.md#7f3eb8f1e11227b2
 test("stock tsc checks a TypeScript importer of a .vibe module against its sidecar", { skip }, (t) => {
   const root = project(t, {
     ...library(),
@@ -79,6 +82,7 @@ test("stock tsc checks a TypeScript importer of a .vibe module against its sidec
   assert.match(after.stdout, /main\.ts\(5,14\): error TS2322: Type 'string' is not assignable to type 'number'/)
 })
 
+// Chapter 007 / public JavaScript and declarations emit to outDir: docs/design/src/007-tooling.md#c40555d021839768
 test("sidecars sit beside the sources when declarations go to an outDir", { skip }, (t) => {
   const root = project(t, library({ noEmit: false, declaration: true, declarationMap: true, outDir: "dist", rootDir: "src" }))
   const built = run(native, ["-p", "lib/tsconfig.json"], root)

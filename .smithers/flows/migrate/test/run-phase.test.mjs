@@ -31,6 +31,7 @@ for (const [name, corpus] of corpora) {
   })
 }
 
+// Chapter 007 / plain functions constructing cold programs remain valid migrations: docs/design/src/007-tooling.md#64beed753c1151d7
 test("alchemy-62: conversions that keep the run phase pass", native, () => {
   // An Effect.gen body and an Effect.fn function return a program at the call
   // in both texts, so marking them effect changes nothing.

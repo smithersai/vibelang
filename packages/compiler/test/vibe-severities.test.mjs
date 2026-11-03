@@ -152,6 +152,8 @@ export async function wait(fiber: Fiber.Fiber<number>, deferred: Deferred.Deferr
  assert.equal(existsSync(join(dir, "dist/main.js")), false, "config error must honor noEmitOnError")
 })
 
+// Chapter 007 / effective severity precedence uses language-service fallback: docs/design/src/007-tooling.md#73ed4cbf7ac90fad
+// Chapter 007 / effective severity precedence uses language-service fallback: docs/design/src/007-tooling.md#9434e720f6424fad
 test("invalid inherited lint severity uses the language-service setting", { skip }, t => {
  const dir = project(t, { extends: "./base.json", vibe: { severities: { EK3833: null } } },
   `import { Effect } from "effect"

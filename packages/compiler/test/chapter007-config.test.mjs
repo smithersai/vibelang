@@ -79,6 +79,7 @@ for (const name of names) {
 }
 
 // Chapter 007 / legacy map admits only its three categories: docs/design/src/007-tooling.md#30e825af1d4af8be
+// Chapter 007 / modern-only warning codes stay invalid in legacy maps: docs/design/src/007-tooling.md#8ebcab313e276eec
 test("Chapter 007 / legacy severity values stay distinct from modern severities", t => {
   const root = fixture(t)
   for (const severity of ["error", "warning", "off"]) {
@@ -91,4 +92,20 @@ test("Chapter 007 / legacy severity values stay distinct from modern severities"
     assert.notEqual(result.status, 0)
     assert.match(result.stdout + result.stderr, /(?:TS6046|TS5023)/)
   }
+})
+
+// Chapter 007 / hiding EK3009 retains legacy validation and settings: docs/design/src/007-tooling.md#24f70fbdee51e20e
+test("Chapter 007 / EK3009 off hides no independent legacy validation",t=>{
+ const root=fixture(t)
+ const config=value=>({files:["main.ts"],compilerOptions:{noEmit:true,types:[]},vibelang:{diagnostics:{EK4802:value}},vibe:{severities:{EK3009:"off"}}})
+ put(root,"tsconfig.json",config("off"))
+ assert.equal(show(root,["-p","."]).compilerOptions.vibelang.diagnostics.EK4802,"off")
+ const checked=spawnSync(binary,["-p",".","--pretty","false"],{cwd:root,encoding:"utf8",timeout:20000})
+ assert.equal(checked.status,0,checked.stdout+checked.stderr)
+ assert.doesNotMatch(checked.stdout+checked.stderr,/EK3009/)
+ put(root,"tsconfig.json",config("suggestion"))
+ const invalid=spawnSync(binary,["-p",".","--pretty","false"],{cwd:root,encoding:"utf8",timeout:20000})
+ assert.notEqual(invalid.status,0)
+ assert.match(invalid.stdout+invalid.stderr,/TS6046/)
+ assert.doesNotMatch(invalid.stdout+invalid.stderr,/EK3009/)
 })

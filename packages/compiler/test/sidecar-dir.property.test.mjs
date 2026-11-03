@@ -73,6 +73,7 @@ const tree = fc.uniqueArray(
   modes: fc.array(fc.constantFrom("beside", "root", "conventional", "custom"), { minLength: 1, maxLength: 3 }).map((modes) => [...modes, "overlap"])
 }))
 
+// Chapter 007 / random source trees have exactly one selected sidecar and stock resolution: docs/design/src/007-tooling.md#26e13cfc2a3c8c54
 test("sidecar-directory: one sidecar per .vibe module in the chosen place, and stock tsc resolves each there", { skip, timeout: 600000 }, async () => {
   await checkProperty(fc, {
     name: "sidecar-directory",

@@ -1,0 +1,16 @@
+// Chapter 007 / native generator argument call phase: docs/design/src/007-tooling.md#a9dadf84dd548fb9
+// Chapter 007 / native generator argument call phase: docs/design/src/007-tooling.md#765cf139202c57e4
+// Chapter 007 / native generator argument call phase: docs/design/src/007-tooling.md#b42966c2d402d959
+// Chapter 007 / native generator argument call phase: docs/design/src/007-tooling.md#642aa5cf3ec2296a
+// Chapter 007 / native generator argument call phase: docs/design/src/007-tooling.md#2ee7a2710be07621
+import { Effect, Context } from "effect"
+let made = 0
+const makeGenerator = () => { made += 1; return function* () { yield* []; return 7 } }
+const factory = () => Effect.gen(makeGenerator())
+function ordinary() { const Effect = { gen: () => 7 }; return Effect.gen() }
+export effect function probe() { const p = factory(); const atCall = made; const value = try p; return { atCall, afterRun: made, value, ordinary: ordinary() } }
+type Equal<A,B> = (<T>() => T extends A ? 1 : 2) extends (<T>() => T extends B ? 1 : 2) ? true : false
+const success: Equal<Effect.Success<ReturnType<typeof probe>>, { atCall: number; afterRun: number; value: number; ordinary: number }> = true
+const failure: Equal<Effect.Error<ReturnType<typeof probe>>, never> = true
+const requirements: Equal<Effect.Services<ReturnType<typeof probe>>, never> = true
+export const typeEvidence = [success, failure, requirements]

@@ -1,0 +1,16 @@
+{
+  "repo": "t3code",
+  "pattern": "bin-and-files manifest still permits a consumer deep import",
+  "manifest": {
+    "name": "cli",
+    "type": "module",
+    "bin": {
+      "cli": "./dist/cli.js"
+    },
+    "files": [
+      "dist"
+    ]
+  },
+  "before": "/** shipped */\nexport type X = \"a\" | \"b\";\n",
+  "after": "export type X = \"b\" | \"a\";\n"
+}

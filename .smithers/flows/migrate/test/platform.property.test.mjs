@@ -87,6 +87,8 @@ test("a module keeps its platform code when an export that uses it cannot stay i
 // some reading builtins: the split module's declaration is stock
 // TypeScript's declaration of the original, the program still checks, and
 // the module imports no builtin as a value.
+// Chapter 007 / native split preserves exact public declarations or refuses: docs/design/src/007-tooling.md#af665f734ddf9e7b
+
 test("splitPlatform keeps the declarations of any module of written functions", () => {
   const callee = fc.constantFrom('readFileSync("x")', 'resolve("a", "b")', 'createHash("sha256").update("v").digest("hex")', "String(1)", "helper0(s)")
   const fn = fc.record({ exported: fc.boolean(), body: callee, arrow: fc.boolean(), doc: fc.boolean(), defaulted: fc.boolean() })
