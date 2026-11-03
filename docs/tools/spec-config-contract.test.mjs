@@ -58,3 +58,27 @@ test("plugin migration retains all scopes, ownership and preserving defaults", (
   const ownership = section("Fix ownership and preservation")
   for (const text of ["an owned source an import reaches", "never overwrites an existing file", "`typeRoots`", "`tsBuildInfoFile`", "With `-b`", "not-fixed explanation"]) assert.ok(ownership.includes(text), text)
 })
+
+// VIP-6 and VIP-14 supply independent preludes. Turning off bare function
+// globals does not require an import for a still-implicit module namespace.
+test("prelude settings preserve independent function and module switches", () => {
+  const row = chapter.split("\n").find(line => line.startsWith("| `vibe.effectGlobals` |"))
+  assert.doesNotMatch(row, /requires imports/)
+  assert.match(row, /`false` turns the function globals off/)
+  assert.match(row, /`Effect.sleep` remain available when `vibe.effectModules` is `true`/)
+  assert.match(chapter, /With both prelude switches `false`, write explicit imports/)
+})
+
+// VIP-38 and Appendix B require the resolved named Effect entry. A different
+// TypeScript plugin must not suppress EK3012 or its preserving config repair.
+test("only the named Effect plugin prevents severity-key migration", () => {
+  const migration = section("Severity-key activation migration")
+  const exemption = migration.split(". ").find(sentence => sentence.includes("prevents this migration"))
+  const name = text => text?.match(/existing resolved plugin entry named `([^`]+)`/)?.[1]
+  assert.equal(name(exemption), "@effect/language-service")
+  assert.match(exemption, /including a native disable setting/)
+  assert.match(migration, /An unrelated plugin does not prevent it/)
+  fc.assert(fc.property(fc.string({ minLength: 1, maxLength: 40 }).filter(value => !value.includes("`") && value !== "@effect/language-service"), other => {
+    assert.notEqual(name(exemption.replace("@effect/language-service", other)), "@effect/language-service")
+  }), { seed: 32007, numRuns: 100 })
+})
