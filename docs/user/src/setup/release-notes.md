@@ -240,6 +240,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Build-graph regression checks could fail before inspecting their targets after API input selection changed. The spec-progress, forms, native-output and fuzz-hang checks now load the actual input helper and run their assertions again.
 
 - Ambient-import declaration regression tests repeatedly checked unrelated browser libraries and ran slowly. Those fixtures now check their ECMAScript libraries explicitly while retaining all diagnostics and generated identity checks.
+- `async match` in native Promise callbacks was rejected with syntax errors; it now returns a Promise and accepts `await` in its subject, tests and selected arm.
 - Bare `data as T;`, `data satisfies T;`, and `data is Number;` statements bypassed the required data body check. They now report `EK1604`, and `vibelang --fix` preserves the intended expression by adding parentheses.
 
 - Generated error matchers could fail to load after the extractor update because the guarded runtime entry omitted its registration helper. The entry now exports the helper once and preserves its ABI identity.
