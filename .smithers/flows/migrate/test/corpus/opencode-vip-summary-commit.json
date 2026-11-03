@@ -1,0 +1,7 @@
+{
+  "key": "opencode:upgrade-vip:commit-summary-paragraph",
+  "repo": "opencode",
+  "notice": "First applies the earlier toolchain's VIP migrations",
+  "command": "(vibelang --fix --fix-vip-only) to 1 .vibe file.",
+  "bodyWidth": 72
+}

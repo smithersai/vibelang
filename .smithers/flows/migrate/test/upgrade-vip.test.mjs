@@ -124,6 +124,10 @@ test("upgrade-effect runs the installed compiler's VIP migrations on the earlier
     const { stdout } = await must(`jj log -r ${result.jj.commit} --no-graph -T description`, { cwd: target })
     assert.match(stdout, /^migrate\(vibelang\): switch to the toolchain of VibeLang fedcba987654\n/)
     assert.match(stdout, /First applies the earlier toolchain's VIP migrations\n\(vibelang --fix --fix-vip-only\) to 1 \.vibe file\./)
+    const message = JSON.parse(readFileSync(new URL("./corpus/opencode-vip-summary-commit.json", import.meta.url)))
+    assert.ok(stdout.includes("\n\n" + message.notice + "\n" + message.command + "\n"),
+      "the VIP notice keeps its own paragraph, command and migrated-file count")
+    for (const line of stdout.split("\n").slice(1)) assert.ok(line.length <= message.bodyWidth, line)
     const { stdout: files } = await must(`jj diff -r ${result.jj.commit} --summary`, { cwd: target })
     assert.deepEqual(files.trim().split("\n").sort(), ["M package.json", "M packages/ai/src/helper.vibe"])
   } finally {

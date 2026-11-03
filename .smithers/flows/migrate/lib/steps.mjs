@@ -709,7 +709,7 @@ export function earlierVipProjects(t, vibe) {
 
 // The sentence a commit adds for the VIP migrations applyEarlierVipFixes made.
 const vipSentence = (vip) => vip.changed.length
-  ? ` First applies the earlier toolchain's VIP migrations\n(vibelang --fix --fix-vip-only) to ${vip.changed.length} .vibe file${vip.changed.length === 1 ? "" : "s"}.`
+  ? `\n\nFirst applies the earlier toolchain's VIP migrations\n(vibelang --fix --fix-vip-only) to ${vip.changed.length} .vibe file${vip.changed.length === 1 ? "" : "s"}.`
   : ""
 
 const vipFinishSentence = (finish) => finish?.changed.length

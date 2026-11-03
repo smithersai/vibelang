@@ -155,6 +155,9 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Composite-project migration checks still expected JSX files to become `.vibe`. They now check the required `.vibex` mapping, `.mts` sources, and both include and exclude patterns while retaining declaration globs.
 
 
+- Upgrade commits could split the VIP migration notice across the preceding paragraph when the body was wrapped. The notice now has its own paragraph while retaining the command, migrated-file count and body-width limit.
+
+
 - The migration checks generated callback failure unions without their required parentheses and failed to parse them. They now write valid compound slots while checking the same preserved channels and refusal controls.
 
 
