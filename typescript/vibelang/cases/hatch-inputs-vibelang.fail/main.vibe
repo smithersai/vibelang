@@ -1,6 +1,6 @@
-// expect: EK4401 EK4403
+// expect: EK0403 EK4403
 // Only a hatch's first argument is TypeScript (D232). Its inputs are VibeLang,
-// so a plain foreign call among them needs a boundary (EK4401) and a clock
+// so a plain foreign call among them needs a boundary (EK0403) and a clock
 // read of host time among them is uncontrolled (EK4403). ECMA-262 Date stays allowed.
 // The same calls inside the function are allowed.
 import { legacyParse } from "./legacy.ts"

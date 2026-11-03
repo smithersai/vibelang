@@ -28,7 +28,7 @@ func TestForeignCallFix(t *testing.T) {
 			got = fixed.Text
 		}
 	}
-	if want := strings.TrimPrefix(string(want), "// expect: EK4401\n"); got != "// expect: EK4401\n"+want {
+	if want := strings.TrimPrefix(string(want), "// expect: EK0403\n"); got != "// expect: EK0403\n"+want {
 		t.Errorf("--fix writes\n%s\nwant\n%s", got, want)
 	}
 	if len(result.Refused) != 0 {

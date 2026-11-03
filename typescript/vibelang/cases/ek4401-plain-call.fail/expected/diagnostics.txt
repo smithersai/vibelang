@@ -1,4 +1,4 @@
-main.vibe(9,10): error EK4401
+main.vibe(9,10): error EK0403
 main.vibe(13,10): error EK4401
 main.vibe(21,10): error EK4401
 main.vibe(21,10): warning EK4406

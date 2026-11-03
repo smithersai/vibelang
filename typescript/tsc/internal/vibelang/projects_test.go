@@ -31,7 +31,7 @@ func projectFiles(producerTrust, appTrust string) map[string]string {
 	})
 }
 
-// untrustedCalls compiles config in files and returns the EK4401 count in
+// untrustedCalls compiles config in files and returns the EK0403 count in
 // each named file, failing the test on any other error.
 func untrustedCalls(t *testing.T, files map[string]string, config tspath.RootedFilePath, names ...tspath.RootedFilePath) []int {
 	t.Helper()
@@ -44,7 +44,7 @@ func untrustedCalls(t *testing.T, files map[string]string, config tspath.RootedF
 }
 
 // untrustedCallsIn compiles the parsed command line over fs and returns the
-// EK4401 count in each named file, failing the test on any other error.
+// EK0403 count in each named file, failing the test on any other error.
 func untrustedCallsIn(t *testing.T, fs vfs.FS, parsed *tsoptions.ParsedCommandLine, names ...tspath.RootedFilePath) []int {
 	t.Helper()
 	p := compiler.NewProgram(compiler.ProgramOptions{Config: parsed, Host: compiler.NewCompilerHost(fs, bundled.LibPath(), nil, nil, nil)})
@@ -55,7 +55,7 @@ func untrustedCallsIn(t *testing.T, fs vfs.FS, parsed *tsoptions.ParsedCommandLi
 			t.Fatalf("%s is not in the program", name)
 		}
 		for _, d := range p.GetSemanticDiagnostics(t.Context(), file) {
-			if d.Code() == EK4401.Code {
+			if d.Code() == EK0403.Code {
 				counts[i]++
 			} else if d.Category() == diagnostics.CategoryError && d.Code() != EK1011.Code { // the fixture installs no effect
 				t.Errorf("unexpected diagnostic in %s: %v", name, d)
@@ -84,7 +84,7 @@ func TestForeignVibeFileUsesItsOwnProjectSettings(t *testing.T) {
 			t.Parallel()
 			counts := untrustedCalls(t, projectFiles(test.producerTrust, test.appTrust), "/app/tsconfig.json", "/producer/src/lib.vibe", "/app/main.vibe")
 			if counts[0] != test.foreign || counts[1] != test.own {
-				t.Fatalf("EK4401 in the producer, the app = %d, %d; want %d, %d", counts[0], counts[1], test.foreign, test.own)
+				t.Fatalf("EK0403 in the producer, the app = %d, %d; want %d, %d", counts[0], counts[1], test.foreign, test.own)
 			}
 		})
 	}
@@ -115,7 +115,7 @@ func TestCommandLineProgramUsesEachPackageProjectSettings(t *testing.T) {
 			}
 			counts := untrustedCallsIn(t, fs, parsed, "/producer/src/lib.vibe", "/app/main.vibe")
 			if counts[0] != test.foreign || counts[1] != test.own {
-				t.Fatalf("EK4401 in the producer, the app = %d, %d; want %d, %d", counts[0], counts[1], test.foreign, test.own)
+				t.Fatalf("EK0403 in the producer, the app = %d, %d; want %d, %d", counts[0], counts[1], test.foreign, test.own)
 			}
 		})
 	}
@@ -130,7 +130,7 @@ func TestForeignVibeFileMatchesItsOwnBuild(t *testing.T) {
 		own := untrustedCalls(t, files, "/producer/tsconfig.json", "/producer/src/lib.vibe")
 		read := untrustedCalls(t, files, "/app/tsconfig.json", "/producer/src/lib.vibe")
 		if own[0] != read[0] {
-			t.Fatalf("trust %s: the producer's build reports %d EK4401, the app's build %d", trust, own[0], read[0])
+			t.Fatalf("trust %s: the producer's build reports %d EK0403, the app's build %d", trust, own[0], read[0])
 		}
 	}
 }
@@ -142,10 +142,10 @@ func TestSamePackageKeepsTheCompiledProjectSettings(t *testing.T) {
 	files := projectFiles(`[]`, `[]`)
 	files["/producer/tsconfig.test.json"] = `{"extends":"./tsconfig.json","vibelang":{"trustedPackages":["@acme/helper"]}}`
 	if counts := untrustedCalls(t, files, "/producer/tsconfig.test.json", "/producer/src/lib.vibe"); counts[0] != 0 {
-		t.Fatalf("EK4401 under the test tsconfig = %d, want 0", counts[0])
+		t.Fatalf("EK0403 under the test tsconfig = %d, want 0", counts[0])
 	}
 	if counts := untrustedCalls(t, files, "/producer/tsconfig.json", "/producer/src/lib.vibe"); counts[0] != 1 {
-		t.Fatalf("EK4401 under the package tsconfig = %d, want 1", counts[0])
+		t.Fatalf("EK0403 under the package tsconfig = %d, want 1", counts[0])
 	}
 }
 
@@ -159,7 +159,7 @@ func TestLinkedWorkspaceVibeFileUsesItsOwnProjectSettings(t *testing.T) {
 		name     string
 		project  string // the workspace package's tsconfig.json, or "" for none
 		importer string // the importing project's VibeLang settings
-		want     int    // EK4401 reports in the workspace package's .vibe file
+		want     int    // EK0403 reports in the workspace package's .vibe file
 	}{
 		{"the package's own trust holds", `{"compilerOptions":{"strict":true},"vibelang":{"trustedPackages":["@smthrs/*"]}}`, `{}`, 0},
 		{"compilerOptions.vibelang holds too", `{"compilerOptions":{"strict":true,"vibelang":{"trustedPackages":["@smthrs/*"]}}}`, `{}`, 0},
@@ -196,14 +196,14 @@ func TestLinkedWorkspaceVibeFileUsesItsOwnProjectSettings(t *testing.T) {
 			}
 			count := 0
 			for _, d := range p.GetSemanticDiagnostics(t.Context(), check) {
-				if d.Code() == EK4401.Code {
+				if d.Code() == EK0403.Code {
 					count++
 				} else if d.Category() == diagnostics.CategoryError && d.Code() != EK1011.Code { // the fixture installs no effect
 					t.Errorf("unexpected diagnostic: %v", d.MessageText())
 				}
 			}
 			if count != test.want {
-				t.Fatalf("EK4401 count = %d, want %d", count, test.want)
+				t.Fatalf("EK0403 count = %d, want %d", count, test.want)
 			}
 		})
 	}

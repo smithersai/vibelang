@@ -1,8 +1,8 @@
-// expect: EK4401
+// expect: EK0403
 // D22: an export of one of Effect's packages is trusted, and so are the
 // values it returns, also when the package re-exports another package's
 // function, as @effect/vitest re-exports vitest's assert and expect. The
-// same function imported from its own package keeps EK4401, and so does the
+// same function imported from its own package keeps EK0403, and so does the
 // program's own TypeScript reached through a value Effect returned.
 import { Option } from "effect"
 import { assert, expect } from "@effect/vitest"

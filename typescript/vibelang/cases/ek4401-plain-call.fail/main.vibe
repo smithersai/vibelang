@@ -1,5 +1,5 @@
-// expect: EK4401
-// D5: a bare TypeScript call inside an effect function is EK4401; plain
+// expect: EK0403 EK4401
+// D5: a synchronous unknown TypeScript call inside effect code is EK0403; plain
 // functions (VIP-1), plain callbacks (D263), boundaries, trust, and the top
 // level (D51) allow it.
 import { Effect } from "effect"

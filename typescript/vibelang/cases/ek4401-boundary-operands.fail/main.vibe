@@ -1,5 +1,5 @@
-// expect: EK4401
-// EK4401's note suggests try around a plain call, with the bindings the call
+// expect: EK0403
+// EK0403's note suggests try around a plain call, with the bindings the call
 // reads as inputs (D230). try's function cannot run an Effect, so an argument
 // or a receiver that runs one is an input too, which runs before the hatch
 // (D232), named after the callee's parameter. The other fix is trusted (D249).

@@ -1,0 +1,17 @@
+// expect: EK0403
+// VIP-4: unknown foreign contracts use the throwing-call diagnostic.
+import { plain, safe, range, anything, callable, reader, client, overloaded, property } from "./lib.js"
+
+export effect function probe(s: string, xs: number[]) {
+  plain(s)
+  anything(s)
+  callable(s)
+  reader.read(s)
+  client.read(s)
+  client.field(s)
+  overloaded(s)
+  overloaded(xs.length)
+  property.read(s)
+  safe(s)
+  return 0
+}

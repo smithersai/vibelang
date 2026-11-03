@@ -409,6 +409,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Declaration-oracle tests still rejected harmless published member reorderings and accepted changed export comments. They now check the same exported names, strict types and normalized documentation in compiler probes and published packages; the Foldkit counterpart keeps matching comments, with its original differing constructor comment retained as a rejection control.
 
+- Unknown foreign calls in effect code reported the legacy `EK4401` trust error; they now report `EK0403`, with the existing preserving `--fix` rewrite still available.
+
 - Declaration checks could compare an unused `types` export instead of an earlier matching package condition, hiding a real API change. Published entry discovery now follows TypeScript's conditional export order and preserves mirrored `.vibe` sidecar resolution.
 
 - Declaration checks could miss a type change selected by an explicit `resolution-mode` import attribute. They now resolve each import using its own mode throughout the comparison.

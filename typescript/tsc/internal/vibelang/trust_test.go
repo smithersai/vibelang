@@ -131,14 +131,14 @@ func TestTrustedWorkspacePackageNames(t *testing.T) {
 			p := compiler.NewProgram(compiler.ProgramOptions{Config: parsed, Host: compiler.NewCompilerHost(fs, bundled.LibPath(), nil, nil, nil)})
 			count := 0
 			for _, d := range p.GetSemanticDiagnostics(t.Context(), p.GetSourceFile("/main.vibe")) {
-				if d.Code() == EK4401.Code {
+				if d.Code() == EK0403.Code {
 					count++
 				} else if d.Category() == diagnostics.CategoryError && d.Code() != EK1011.Code { // the fixture installs no effect
 					t.Errorf("unexpected diagnostic: %v", d)
 				}
 			}
 			if count != test.want {
-				t.Fatalf("EK4401 count = %d, want %d", count, test.want)
+				t.Fatalf("EK0403 count = %d, want %d", count, test.want)
 			}
 		})
 	}
@@ -174,14 +174,14 @@ export declare function make(): Schema`,
 			p := compiler.NewProgram(compiler.ProgramOptions{Config: parsed, Host: compiler.NewCompilerHost(fs, bundled.LibPath(), nil, nil, nil)})
 			count := 0
 			for _, d := range p.GetSemanticDiagnostics(t.Context(), p.GetSourceFile("/main.vibe")) {
-				if d.Code() == EK4401.Code {
+				if d.Code() == EK0403.Code {
 					count++
 				} else if d.Category() == diagnostics.CategoryError && d.Code() != EK1011.Code { // the fixture installs no effect
 					t.Errorf("unexpected diagnostic: %v", d)
 				}
 			}
 			if count != test.want {
-				t.Fatalf("EK4401 count = %d, want %d", count, test.want)
+				t.Fatalf("EK0403 count = %d, want %d", count, test.want)
 			}
 		})
 	}
@@ -218,26 +218,26 @@ export declare const vi: { spyOn(target: object, name: string): Spy }`,
 			p := compiler.NewProgram(compiler.ProgramOptions{Config: parsed, Host: compiler.NewCompilerHost(fs, bundled.LibPath(), nil, nil, nil)})
 			count := 0
 			for _, d := range p.GetSemanticDiagnostics(t.Context(), p.GetSourceFile("/main.vibe")) {
-				if d.Code() == EK4401.Code {
+				if d.Code() == EK0403.Code {
 					count++
 				} else if d.Category() == diagnostics.CategoryError && d.Code() != EK1011.Code { // the fixture installs no effect
 					t.Errorf("unexpected diagnostic: %v", d)
 				}
 			}
 			if count != test.want {
-				t.Fatalf("EK4401 count = %d, want %d", count, test.want)
+				t.Fatalf("EK0403 count = %d, want %d", count, test.want)
 			}
 		})
 	}
 }
 
-// EK4401's note suggests running the call through Effect.try (VIP-5), in
+// EK0403's note suggests running the call through Effect.try (VIP-5), in
 // statements that compile. The function Effect.try wraps is TypeScript, where
 // a .vibe function's call is an Effect, so an operand that calls one is bound
 // first to a const named after the callee's parameter, under a name the
 // function does not use. Each suggestion, written in place of the call's
 // statement, compiles without an error.
-func TestEK4401SuggestionCompiles(t *testing.T) {
+func TestForeignCallSuggestionCompiles(t *testing.T) {
 	const prefix = "module util {\n" +
 		"  export function shout(s: string): string { return s.toUpperCase() }\n" +
 		"  export class Box { constructor(readonly v: string) {} show(prefix: string): string { return prefix + this.v } }\n" +
@@ -260,14 +260,14 @@ func TestEK4401SuggestionCompiles(t *testing.T) {
 			program, file, _, _ := editorProgram(t, prefix+test.call+"\n}\n")
 			got := ""
 			for _, d := range program.GetSemanticDiagnostics(t.Context(), file) {
-				if d.Code() == EK4401.Code {
+				if d.Code() == EK0403.Code {
 					if m := suggestion.FindStringSubmatch(diagnosticWithNotes(d)); m != nil {
 						got = m[1]
 					}
 				}
 			}
 			if got != test.want {
-				t.Fatalf("EK4401 suggests %q, want %q", got, test.want)
+				t.Fatalf("EK0403 suggests %q, want %q", got, test.want)
 			}
 			// The suggestion is statements: the consts it binds, then the run.
 			fixed, fixedFile, _, _ := editorProgram(t, strings.TrimSuffix(prefix, "return ")+got+"\n}\n")
@@ -275,6 +275,50 @@ func TestEK4401SuggestionCompiles(t *testing.T) {
 				if d.Category() == diagnostics.CategoryError {
 					t.Errorf("the suggestion %s does not compile: %s", got, diagnosticWithNotes(d))
 				}
+			}
+		})
+	}
+}
+
+// VIP-4's foreign unknown default has the same diagnostic for every callable
+// declaration shape. A written never contract must remain callable directly.
+func TestForeignCallUnknownDiagnostic(t *testing.T) {
+	const declarations = `export declare function plain(s: string): string
+/** @throws {unknown} */
+export declare function anything(s: string): string
+/** @throws {never} */
+export declare function safe(s: string): string
+export declare const callable: (s: string) => string
+export interface Reader { read(s: string): string }
+export declare const reader: Reader
+export declare class Client { read(s: string): string; field: (s: string) => string }
+export declare const client: Client
+export declare function overloaded(s: string): string
+export declare function overloaded(n: number): number
+export declare const property: { read: (s: string) => string }
+`
+	for _, extension := range []string{".ts", ".d.ts"} {
+		t.Run(extension, func(t *testing.T) {
+			files := map[string]string{
+				"/lib" + extension: declarations,
+				"/main.vibe": `import { plain, anything, safe, callable, reader, client, overloaded, property } from "./lib"
+export effect function probe(s: string) {
+  plain(s)
+  anything(s)
+  callable(s)
+  reader.read(s)
+  client.read(s)
+  client.field(s)
+  overloaded(s)
+  overloaded(1)
+  property.read(s)
+  safe(s)
+  return 0
+}`,
+				"/tsconfig.json": `{"compilerOptions":{"strict":true,"types":[]},"files":["main.vibe"]}`,
+			}
+			if got := untrustedCalls(t, files, "/tsconfig.json", "/main.vibe"); got[0] != 9 {
+				t.Fatalf("unknown calls: %v; want nine EK0403 diagnostics and none for safe", got)
 			}
 		})
 	}

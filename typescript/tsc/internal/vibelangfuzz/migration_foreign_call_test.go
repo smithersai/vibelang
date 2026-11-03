@@ -124,13 +124,13 @@ func parseMigrationForeignCall(input string) (string, string) {
 	return positions[sum%len(positions)], calls[sum%len(calls)]
 }
 
-// migrationForeignCallErrors returns the errors left, without EK4401's: a fix
+// migrationForeignCallErrors returns the errors left, without foreign-call diagnostics: a fix
 // that would move what runs is refused, and the diagnostic says so.
 func migrationForeignCallErrors(all []*ast.Diagnostic) (left []string, refused bool) {
 	for _, d := range all {
 		switch {
 		case d.Category() != diagnostics.CategoryError:
-		case d.Code() == vibelang.EK4401.Code:
+		case d.Code() == vibelang.EK4401.Code || d.Code() == vibelang.EK0403.Code:
 			refused = true
 		default:
 			left = append(left, fmt.Sprintf("%s%d: %s", d.Source(), d.Code(), d.String()))

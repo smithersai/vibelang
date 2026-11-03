@@ -1,4 +1,4 @@
-// expect: EK4401
+// expect: EK0403
 // VIP-4, amended: only a return that is wholly Effect, Stream or Layer exempts a
 // function from throw tracking, and such a function is exempt wherever its call
 // stands, also where no try runs it. The union, the unconstrained T and any are

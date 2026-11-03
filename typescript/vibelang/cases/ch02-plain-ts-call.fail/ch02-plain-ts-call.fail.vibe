@@ -1,4 +1,4 @@
-// expect: EK4401
+// expect: EK0403
 // Chapter 2 "Calling TypeScript", verbatim. formatName is a plain TypeScript function
 // ((user: User) => string). D5 makes a bare call to it an error: it needs Effect.try or a
 // trusted contract. loadAvatar returns an Effect, so that call is fine.

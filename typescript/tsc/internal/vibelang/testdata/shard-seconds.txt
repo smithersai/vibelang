@@ -20,7 +20,7 @@
 8 TestGlobalImportQuickFixes
 8 TestTryOperationArrayConstraints
 8 TestTypeScriptFormRefusals
-7 TestEK4401SuggestionCompiles
+7 TestForeignCallSuggestionCompiles
 7 TestOptionPipeQuickFixes
 7 TestSchemaEmptyArgumentsQuickFixes
 7 TestSchemaRecordFlagDirectivePrologue

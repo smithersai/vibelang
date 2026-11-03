@@ -11,7 +11,7 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/lsp/lsproto"
 )
 
-// EK4401's quick fix writes a call of a plain TypeScript function that nothing
+// EK0403's (and legacy EK4401's) quick fix writes a call of a plain TypeScript function that nothing
 // says the exceptions of, keeping what TypeScript meant by it. A migration
 // meets one wherever a .vibe module calls a .ts one (VIP-4: a foreign callable
 // throws unknown unless annotated).
@@ -46,14 +46,14 @@ import (
 // before the statement, when nothing runs before the read.
 
 func init() {
-	tsFormFixCodes = append(tsFormFixCodes, EK4401.Code)
+	tsFormFixCodes = append(tsFormFixCodes, EK0403.Code, EK4401.Code)
 	ls.RegisterCodeFixProvider(foreignCallFix)
 }
 
-// foreignCallFix is EK4401's quick fix.
+// foreignCallFix keeps the preserving foreign-call rewrite on both codes.
 var foreignCallFix = &ls.CodeFixProvider{
 	Source:     diagnosticSource,
-	ErrorCodes: []int32{EK4401.Code},
+	ErrorCodes: []int32{EK0403.Code, EK4401.Code},
 	GetCodeActions: func(ctx context.Context, fix *ls.CodeFixContext) ([]*ls.CodeAction, error) {
 		callee := tsFormNodeAt(fix.SourceFile, fix.Span, isCallee)
 		if callee == nil {
@@ -73,7 +73,7 @@ var foreignCallFix = &ls.CodeFixProvider{
 	},
 }
 
-// planForeignCall plans EK4401's fix for call, or returns nil.
+// planForeignCall plans the preserving foreign-call fix, or returns nil.
 func planForeignCall(c *checker.Checker, file *ast.SourceFile, call *ast.Node) *formRewrite {
 	if !ast.IsCallExpression(call) || call.Flags&ast.NodeFlagsVibeLangTry != 0 {
 		return nil
@@ -211,7 +211,7 @@ func runsBefore(statement, node *ast.Node) bool {
 	return statement.ForEachChild(visit)
 }
 
-// needsBoundary reports whether call is a synchronous call EK4401 reports: one
+// needsBoundary reports whether call needs the synchronous foreign-call fix: one
 // nothing says the exceptions of, or one whose @throws names a class this file
 // cant reach, which cant join E as a typed failure.
 func needsBoundary(c *checker.Checker, file *ast.SourceFile, call *ast.Node) bool {

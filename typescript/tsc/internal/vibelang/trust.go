@@ -12,13 +12,13 @@ import (
 // D22, D23, D51). Nothing in a plain function's type says whether it throws,
 // so each kind of callee has a rule:
 //
-//	formatName(user)          // plain TypeScript: EK4401 without a boundary
+//	formatName(user)          // plain TypeScript: EK0403 without a boundary
 //	parsePortTrusted(text)    // @vibelang trusted, @throws {PortError}: PortError joins E
 //	JSON.parse(text)          // a built-in: SyntaxError joins E
 //	Option.getOrThrow(o)      // effect's own export: exceptions are defects
 //	Effect.try(() => legacyParse(text))   // a boundary: plain calls are allowed inside
 //
-// EK4401 applies only to code a fiber runs: a module's top level, and the
+// The foreign-call gate applies only to code a fiber runs: a module's top level, and the
 // plain callbacks it passes to TypeScript functions, are JavaScript, where an
 // exception fails the module's import or the caller's callback (D51).
 
@@ -32,7 +32,7 @@ const (
 	trustBuiltin                   // a JavaScript built-in that TypeScript's lib files declare (D5)
 	trustTagged                    // a declaration tagged @vibelang trusted (D23)
 	trustPlatform                  // a platform package such as @types/node, which EK4402 reports
-	trustForeign                   // any other function: EK4401 outside a boundary
+	trustForeign                   // any other function: EK0403 outside a boundary
 )
 
 // trust is what VibeLang knows about calling one callee.
@@ -592,8 +592,8 @@ var unreachableThrows = EK4401.With("{0} is trusted to throw {1}, but {1} is not
 // file imports exports.
 var unimportedThrows = EK4401.With("{0} is trusted to throw {1}, but no module this file imports exports {1}.")
 
-// checkTrust reports EK4401 for each call in code that a fiber runs whose
-// callee has no trust level and that no boundary encloses. Code that no fiber
+// checkTrust reports EK0403 for unknown synchronous foreign calls and legacy
+// trust diagnostics for Promise or unreachable-class contracts, outside boundaries. Code that no fiber
 // runs, the module's top level and the plain callbacks it passes to
 // TypeScript functions, is JavaScript (D51).
 func checkTrust(c *checker.Checker, file *ast.SourceFile) {
@@ -638,7 +638,9 @@ func checkCall(c *checker.Checker, a *analyzer, file *ast.SourceFile, call *ast.
 		d := report(c, callee, promiseCall, name)
 		note(d, "Wait for it with {0}, or name its failure: {1}.", boundaryCall(c, file, "tryPromise", call, ""), boundaryCall(c, file, "tryPromise", call, "(error) => …"))
 	case t.kind == trustForeign:
-		d := report(c, callee, EK4401, name)
+		// VIP-4: unknown is a thrown contract. Keep the legacy trust
+		// diagnostics for Promise and unreachable-class contracts.
+		d := report(c, callee, EK0403)
 		note(d, "Call it through {0}, or {1}.", boundaryCall(c, file, "try", call, ""), trustedNote(c, file, call))
 	case t.kind == trustTagged && t.unreachable != "":
 		d := report(c, callee, unreachableThrows, name, t.unreachable)

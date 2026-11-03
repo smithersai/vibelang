@@ -105,7 +105,7 @@ export effect function call():{readonly _tag:"Value";readonly p0:number}!never {
 	}
 	found := false
 	for _, d := range genericConstructorProgram(t, dir).GetSemanticDiagnostics(t.Context(), nil) {
-		if d.Code() == EK4401.Code {
+		if d.Code() == EK0403.Code {
 			found = true
 		}
 	}

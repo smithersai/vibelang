@@ -1,4 +1,4 @@
-// vibelang --fix writes each EK4401 call so that it stays what it was: its value
+// vibelang --fix preserves each foreign call: its value
 // is the same, and an exception is the defect it was in a generator.
 import { box, double, guarded, label, program, project, refuse } from "./plain.ts"
 
