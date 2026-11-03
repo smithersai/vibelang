@@ -68,7 +68,7 @@ test("public roots include conditional and wildcard exports; unknown entry point
   ]) {
     const result = compare({ "main.d.ts": "export {};\n" },
       { "main.d.ts": "export {};\n", "adapter.d.ts": "export {};\n" }, manifest)
-    assert.equal(result.identical, Boolean(manifest.types || Array.isArray(manifest.exports)))
+    assert.equal(result.identical, Array.isArray(manifest.exports))
   }
 })
 

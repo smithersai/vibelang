@@ -1,6 +1,6 @@
 {
-  "key": "declaration-gate:bin-only-package-has-no-type-surface",
-  "source": "t3code agent 11:15Z/11:20Z: apps/server publishes as t3 with only dist/ and a bin, no types, exports or main; gate it on the flow's canonical comparison",
+  "key": "declaration-gate:bin-only-package-excludes-source-declarations",
+  "source": "t3code apps/server publishes only dist/ and a bin; declarations outside that files allowlist remain private, while shipped dist/ declarations are consumer-reachable",
   "manifest": {
     "name": "t3",
     "type": "module",

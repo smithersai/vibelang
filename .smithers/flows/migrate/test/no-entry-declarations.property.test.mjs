@@ -14,9 +14,8 @@ const ts = require("typescript")
 const fc = require("fast-check")
 const corpus = JSON.parse(readFileSync(new URL("./corpus/t3code-bin-only-manifest.json", import.meta.url), "utf8"))
 
-// A manifest without exports, types, typings, main or module: TypeScript
-// resolves the bare name to the package root's index and nothing else.
-// Canonical comparison here is main's; 40cbbbfa adds import statement order.
+// The bin-only corpus ships dist/, so source declarations outside that
+// allowlist remain private. Shipped deep declarations are covered separately.
 function compare(before, after, manifest) {
   const root = mkdtempSync(join(tmpdir(), "migrate-no-entry-"))
   try {
@@ -34,11 +33,11 @@ function compare(before, after, manifest) {
   }
 }
 
-test("t3code apps/server: a package that publishes only a bin has no published declaration API", () => {
+test("t3code apps/server: a bin-only package compares declarations outside its files allowlist canonically", () => {
   for (const { before, after } of corpus.printing) {
     const result = compare({ "src/tools.d.ts": before }, { "src/tools.d.ts": after }, corpus.manifest)
     assert.equal(result.identical, true, after)
-    assert.deepEqual(result.publicSurface.before, { roots: [], reachable: [], unresolved: [] })
+    assert.deepEqual(result.publicSurface.before, { roots: [], reachable: [], unresolved: [], resolutions: [] })
   }
   for (const { before, after } of corpus.meaning) {
     assert.equal(compare({ "src/tools.d.ts": before }, { "src/tools.d.ts": after }, corpus.manifest).identical, true, after)
@@ -48,11 +47,11 @@ test("t3code apps/server: a package that publishes only a bin has no published d
   assert.deepEqual(compare({ "a.d.ts": "export {};\n" }, { "a.d.ts": "export {};\n", "b.d.ts": "export {};\n" }, corpus.manifest).addedPrivate, ["b.d.ts"])
 })
 
-test("without entry-point fields the root index and what it reaches keep the same API", () => {
+test("without entry-point fields the root index and shipped deep declarations keep the same API", () => {
   const manifest = { name: "lib" }
   const files = { "index.d.ts": "export * from \"./leaf.js\";\n", "leaf.d.ts": "export { b, a } from \"./x.js\";\n", "other.d.ts": "export { b, a } from \"./x.js\";\n", "x.d.ts": "export declare const a: 1, b: 2;\n" }
   const { roots, reachable, unresolved } = compare(files, files, manifest).publicSurface.before
-  assert.deepEqual({ roots, reachable, unresolved }, { roots: ["index.d.ts"], reachable: ["index.d.ts", "leaf.d.ts", "x.d.ts"], unresolved: [] })
+  assert.deepEqual({ roots, reachable, unresolved }, { roots: ["index.d.ts", "leaf.d.ts", "other.d.ts", "x.d.ts"], reachable: ["index.d.ts", "leaf.d.ts", "other.d.ts", "x.d.ts"], unresolved: [] })
   const reordered = "export { a, b } from \"./x.js\";\n"
   assert.equal(compare(files, { ...files, "other.d.ts": reordered }, manifest).identical, true)
   assert.equal(compare(files, { ...files, "leaf.d.ts": reordered }, manifest).identical, true)
@@ -62,7 +61,7 @@ test("without entry-point fields the root index and what it reaches keep the sam
   assert.equal(redirected.comparison, "API identity")
 })
 
-test("verify records again a baseline an older flow marked as having no entry points", async () => {
+for (const snapshotVersion of [undefined, 2]) test(`verify refreshes a legacy declaration snapshot (version ${snapshotVersion ?? "unversioned"})`, async () => {
   const root = mkdtempSync(join(tmpdir(), "migrate-no-entry-verify-"))
   const target = join(root, "repo")
   const run = join(root, "run")
@@ -94,10 +93,11 @@ test("verify records again a baseline an older flow marked as having no entry po
     const baseline = join(p.baseline, "dts", slug(pkg))
     mkdirSync(baseline, { recursive: true })
     writeFileSync(join(baseline, "tools.d.ts"), before)
-    writeJson(join(baseline, "public-surface.json"), { roots: ["tools.d.ts"], unresolved: [NO_ENTRY_POINTS] })
+    writeJson(join(baseline, "public-surface.json"), snapshotVersion ? { roots: [], reachable: [], unresolved: [], snapshotVersion } : { roots: ["tools.d.ts"], unresolved: [NO_ENTRY_POINTS] })
     const result = await verify({ run, batch: "01" })
     assert.equal(result.declarations[pkg].identical, true, JSON.stringify(result.declarations[pkg]))
     assert.deepEqual(result.declarations[pkg].publicSurface.before.unresolved, [])
+    assert.equal(result.declarations[pkg].publicSurface.before.snapshotVersion, 3)
   } finally {
     rmSync(root, { recursive: true, force: true })
   }

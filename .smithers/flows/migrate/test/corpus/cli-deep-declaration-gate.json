@@ -1,0 +1,8 @@
+{
+  "key": "deep-declaration-gate",
+  "manifest": { "name": "cli", "type": "module", "bin": "./dist/cli.js", "files": ["dist"] },
+  "file": "dist/internal.d.ts",
+  "specifier": "cli/dist/internal.js",
+  "before": "/** shipped a */ export type X = \"a\" | \"b\";\n",
+  "after": "export type X = \"b\" | \"a\";\n"
+}

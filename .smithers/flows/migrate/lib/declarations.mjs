@@ -318,16 +318,33 @@ export function declarationSurface(ts, dir, manifest, aliases = {}, logicalPaths
   if (manifest.exports !== undefined) strings(manifest.exports)
   strings(manifest.types ?? manifest.typings)
   if (!targets.length) strings(manifest.main ?? manifest.module)
-  // Without an entry-point field TypeScript resolves the bare package name to
-  // the package root's index and nothing else: a package without one, such as
-  // a CLI that publishes only a bundled bin, declares no type surface.
+  // A bare package name can fall back to index. Deep imports do not need a
+  // bare entry: without exports restrictions every shipped declaration is a
+  // consumer entry point, even for a CLI with only a bin.
   if (!targets.length && manifest.typesVersions === undefined) {
     const index = ["./index.js", "./index.ts", "./index.d.ts"].find(name => resolveName(name))
-    if (!index) return { roots: [], reachable: [], unresolved: [] }
-    targets.push(index)
+    if (index) targets.push(index)
   }
-  if (!targets.length) return { roots: files, unresolved: [NO_ENTRY_POINTS] }
+  if (!targets.length && manifest.typesVersions !== undefined) return { roots: files, unresolved: [NO_ENTRY_POINTS] }
   const roots = new Set()
+  if (manifest.exports == null) {
+    // Only a literal files allowlist proves a path is not shipped. Complex
+    // packing patterns stay conservative rather than silently hiding an API.
+    const includes = manifest.files
+    const literal = Array.isArray(includes) && includes.every(path => typeof path === "string" && !/[!*?{}()[\]\\]/.test(path))
+    const shipped = path => !literal || includes.some(entry => {
+      const prefix = posix.normalize(entry).replace(/^\.\//, "").replace(/\/$/, "")
+      return prefix === "." || path === prefix || path.startsWith(prefix + "/")
+    })
+    for (const file of files) {
+      const path = logicalPaths[file] ?? file
+      if (shipped(path)) roots.add(file)
+    }
+    // Snapshot files can live at different paths from their package outputs.
+    for (const [path, file] of Object.entries(aliases)) {
+      if (/\.d\.[cm]?ts$/.test(path) && !/\.d\.vibe\.ts$/.test(path) && shipped(path)) roots.add(file)
+    }
+  }
   const unresolved = []
   for (const target of targets) {
     if (target.includes("*")) {
@@ -526,7 +543,10 @@ export function compareDeclarations(ts, baselineDir, currentDir, { canonical = f
   }
   const aSurface = surface(baselineDir)
   const bSurface = surface(currentDir)
-  const resolved = aSurface && bSurface && !aSurface.unresolved.length && !bSurface.unresolved.length
+  // Older versioned snapshots did not include shipped deep declarations;
+  // their omitted paths cannot prove a file private, even on both sides.
+  const resolved = aSurface && bSurface && [aSurface, bSurface].every(surface =>
+    (surface.snapshotVersion === undefined || surface.snapshotVersion >= 3) && !surface.unresolved.length)
   const publicFiles = new Set([...(aSurface?.reachable ?? []), ...(bSurface?.reachable ?? [])])
   const afterSet = new Set(after)
   const beforeSet = new Set(before)
@@ -584,6 +604,8 @@ export function compareDeclarations(ts, baselineDir, currentDir, { canonical = f
     left = apiProjection(ts, baselineDir, aSurface, before, { published: !includePrivate })
     right = apiProjection(ts, currentDir, bSurface, after, { published: !includePrivate })
     const entries = (projection, saved) => {
+      if (saved?.snapshotVersion !== undefined && saved.snapshotVersion < 3)
+        throw new Error("Legacy declaration snapshot may omit shipped deep entrypoints; refresh setup before comparing APIs")
       const physical = file => {
         const stored = projection.originals.get(rel(projection.directory, file))
         return stored ? join(projection.directory, projection.destinations.get(stored)) : file
@@ -597,7 +619,18 @@ export function compareDeclarations(ts, baselineDir, currentDir, { canonical = f
         return Object.fromEntries(modules.map(file => [originalName.get(file) ?? file,
           join(projection.directory, projection.destinations.get(file))]))
       }
-      if (published) return published
+      if (published) {
+        const manifest = saved?.apiMetadata?.manifest ?? JSON.parse(readFileSync(join(projection.directory, "package.json"), "utf8"))
+        if ((manifest.publishConfig?.exports ?? manifest.exports) == null) {
+          for (const stored of saved?.roots ?? []) {
+            const logical = saved?.apiMetadata?.logicalPaths?.[stored] ?? stored
+            const name = "./" + logical.replace(/\.d\.mts$/, ".mjs").replace(/\.d\.cts$/, ".cjs").replace(/\.d\.ts$/, ".js")
+            const target = projection.destinations.get(stored) ?? stored
+            published[name] = join(projection.directory, target)
+          }
+        }
+        return published
+      }
       if (saved && !saved.apiMetadata)
         throw new Error("Legacy declaration snapshot lacks published entrypoint names; refresh setup from its saved commit before comparing APIs")
       return publishedEntrypoints(projection.directory, ts)

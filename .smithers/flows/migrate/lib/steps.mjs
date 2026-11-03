@@ -2044,7 +2044,7 @@ export async function verify(options) {
     const baselineDir = join(p.baseline, "dts", slug(pkg.dir))
     const surfacePath = join(baselineDir, "public-surface.json")
     const oldSurface = existsSync(surfacePath) ? readJson(surfacePath) : null
-    if (!oldSurface?.apiMetadata || oldSurface.unresolved?.includes(NO_ENTRY_POINTS)) {
+    if (!oldSurface?.apiMetadata || oldSurface.snapshotVersion < 3 || oldSurface.unresolved?.includes(NO_ENTRY_POINTS)) {
       // A legacy run must snapshot the setup commit's shipped declarations,
       // never the candidate's current package files.
       const setup = readJson(p.setup)
