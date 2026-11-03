@@ -39,12 +39,24 @@ export function rewritePublishingScript(text, ts, fileName = "pack.ts") {
   // A publication mapper keeps the repository's own src/dist and declaration
   // policy. Only recognize a named function with the actual path-replace shape.
   const functions = new Map()
+  const bindings = new Map()
+  const unwrap = (node) => {
+    while (node && (ts.isParenthesizedExpression(node) || ts.isAsExpression(node) || ts.isSatisfiesExpression(node))) node = node.expression
+    return node
+  }
+  const addFunction = (name, fn, binding = fn) => {
+    const named = functions.get(name) || []
+    named.push(fn)
+    functions.set(name, named)
+    bindings.set(fn, binding)
+  }
   const functionNode = (node) => ts.isFunctionDeclaration(node) || ts.isFunctionExpression(node) || ts.isArrowFunction(node) || ts.isMethodDeclaration(node)
   const collectFunctions = (node) => {
-    if (ts.isFunctionDeclaration(node) && node.name) {
-      const named = functions.get(node.name.text) || []
-      named.push(node)
-      functions.set(node.name.text, named)
+    if (ts.isFunctionDeclaration(node) && node.name) addFunction(node.name.text, node)
+    if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name) &&
+        ts.isVariableDeclarationList(node.parent) && (node.parent.flags & ts.NodeFlags.Const)) {
+      const fn = unwrap(node.initializer)
+      if (fn && (ts.isArrowFunction(fn) || ts.isFunctionExpression(fn))) addFunction(node.name.text, fn, node)
     }
     ts.forEachChild(node, collectFunctions)
   }
@@ -57,7 +69,7 @@ export function rewritePublishingScript(text, ts, fileName = "pack.ts") {
     const fn = declarations[0]
     let rebound = false
     const checkName = (node) => {
-      if (node !== fn && node.name && ts.isIdentifier(node.name) && node.name.text === name &&
+      if (node !== fn && node !== bindings.get(fn) && node.name && ts.isIdentifier(node.name) && node.name.text === name &&
           (ts.isVariableDeclaration(node) || ts.isParameter(node) || ts.isImportSpecifier(node) ||
            ts.isImportClause(node) || ts.isNamespaceImport(node) || ts.isBindingElement(node) || ts.isClassDeclaration(node))) rebound = true
       if (ts.isBinaryExpression(node) && ts.isIdentifier(node.left) && node.left.text === name &&
@@ -67,21 +79,24 @@ export function rewritePublishingScript(text, ts, fileName = "pack.ts") {
     checkName(source)
     if (rebound) continue
     const outputs = []
+    const recordOutput = (expression) => {
+      const call = unwrap(expression)
+      if (!call || !ts.isCallExpression(call)) return
+      const prefix = property(call.expression, "replace") && call.expression.expression
+      if (prefix && ts.isCallExpression(prefix) && property(prefix.expression, "replace") &&
+          prefix.arguments.length === 2 && ts.isStringLiteral(prefix.arguments[0]) && prefix.arguments[0].text === "./src/" &&
+          ts.isIdentifier(prefix.expression.expression) && call.arguments.length === 2 && suffix(call.arguments[0]) && outputSuffix(call.arguments[1])) {
+        const parameter = fn.parameters.findIndex((p) => ts.isIdentifier(p.name) && p.name.text === prefix.expression.expression.text)
+        if (parameter >= 0) outputs.push({ parameter, literal: call.arguments[0] })
+      }
+    }
     const scanReturns = (node) => {
       if (node !== fn.body && functionNode(node)) return
-      if (ts.isReturnStatement(node) && node.expression && ts.isCallExpression(node.expression)) {
-        const call = node.expression
-        const prefix = property(call.expression, "replace") && call.expression.expression
-        if (prefix && ts.isCallExpression(prefix) && property(prefix.expression, "replace") &&
-            prefix.arguments.length === 2 && ts.isStringLiteral(prefix.arguments[0]) && prefix.arguments[0].text === "./src/" &&
-            ts.isIdentifier(prefix.expression.expression) && call.arguments.length === 2 && suffix(call.arguments[0]) && outputSuffix(call.arguments[1])) {
-          const parameter = fn.parameters.findIndex((p) => ts.isIdentifier(p.name) && p.name.text === prefix.expression.expression.text)
-          if (parameter >= 0) outputs.push({ parameter, literal: call.arguments[0] })
-        }
-      }
+      if (ts.isReturnStatement(node)) recordOutput(node.expression)
       ts.forEachChild(node, scanReturns)
     }
-    scanReturns(fn.body)
+    if (ts.isBlock(fn.body)) scanReturns(fn.body)
+    else recordOutput(fn.body)
     if (outputs.length === 1) pathMappers.set(name, outputs[0])
   }
   const importsConditions = (argument) => {

@@ -1,0 +1,16 @@
+{
+  "property": "opencode-shared-pack-arrow-imports",
+  "key": "opencode:publishing:arrow-import-condition-mapper",
+  "repo": "opencode",
+  "file": "packages/script/src/pack.ts",
+  "input": {
+    "form": "expression",
+    "extension": "tsx",
+    "stem": "nested/slide-text",
+    "types": "./dist/types/",
+    "legacy": false,
+    "javascript": false,
+    "wrapped": false
+  },
+  "source": "export function pack(pkg) {\n  DECLARATION\n  OUTPUT\n  const exports = Object.fromEntries(\n    Object.entries(pkg.exports).map(([key, value]) => {\n      if (value === null) return [key, null]\n      if (!/\\.tsx?$/.test(value)) return [key, value]\n      return [key, { import: output(value), types: declaration(value) }]\n    }),\n  )\n  const imports = Object.fromEntries(\n    Object.entries(pkg.imports).map(([key, conditions]) => [\n      key,\n      Object.fromEntries(\n        Object.entries(conditions).map(([condition, value]) => [\n          condition,\n          condition === \"types\" ? declaration(value) : output(value),\n        ]),\n      ),\n    ]),\n  )\n  return { ...pkg, exports, imports }\n}\n"
+}

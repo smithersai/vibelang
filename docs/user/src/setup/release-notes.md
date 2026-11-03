@@ -304,6 +304,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - In `(a catch h) catch k`, when `h` gave an Effect, the outer `catch` kept that Effect as a value instead of running it, so `Effect.fail(0) catch (() => Effect.fail(1)) catch () => 7` succeeded with an unrun Effect; the outer `catch` now runs what the inner one gives and the result is `7`.
 
 - A Vite app whose workspace dependency started a worker failed to parse the worker’s `.vibe` imports. Migration setup now follows local dependency chains and adds `vibelang()` to the app’s `worker.plugins` factory.
+
+- A shared package-release helper using arrow functions to map import conditions crashed on migrated targets with `value.replace is not a function`. Setup now recognizes these mappers and preserves the helper’s JavaScript and declaration paths.
 - The ESLint corpus check could report a missing identifier node for a name written with a Unicode escape; it now matches the decoded name at the same source position while still detecting missing nodes.
 - Nested schema alias rules still appeared as known gaps after their fix landed; those rules and their corpus inputs now run as strict checks of `EK2109`.
 
