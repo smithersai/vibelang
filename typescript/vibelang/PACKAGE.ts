@@ -20,6 +20,7 @@ const cases = readdirSync(casesDir)
 // queue links it to a shared install of the same pinned Effect release).
 const shared = [
   Typescript.compiler,
+  Packages["compiler-native"],
   Packages["runtime-dist"],
   Packages["runtime-published"],
   S.file("//packages/runtime/bun.lock"),
@@ -28,7 +29,17 @@ const shared = [
   S.file("harness.mjs"),
   S.file("harness-command.mjs"),
   S.file("late-start-scheduler.mjs"),
-  S.file("rewrite-preservation.mjs")
+  S.file("rewrite-preservation.mjs"),
+  S.file("cases/package.json"),
+  S.glob("cases/*.mjs"),
+  S.file("//scripts/api-identity.mjs"),
+  S.file("//scripts/api-identity-nominal.mjs"),
+  S.file("//docs/tools/package.json"),
+  S.file("//docs/tools/bun.lock"),
+  S.file("//packages/compiler/bin/vibelang"),
+  S.file("//packages/compiler/format.mjs"),
+  S.file("//packages/compiler/package.json"),
+  S.file("//packages/compiler/bun.lock")
 ]
 
 // A label names a target with letters, digits, `_` and `-`; a case name's
@@ -70,6 +81,7 @@ targets["lsp-smoke"] = S.Shell.Test({
     "VIBELANG_RUNTIME=$PWD/packages/runtime sh typescript/vibelang/lsp-smoke.sh --no-build",
   data: [
     Typescript.compiler,
+    Packages["compiler-native"],
     Packages["runtime-dist"],
     Packages["runtime-published"],
     S.file("//packages/runtime/bun.lock"),

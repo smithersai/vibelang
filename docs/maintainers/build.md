@@ -575,6 +575,8 @@ The release check runs `scripts/chapter-failures-clock.test.mjs` against the
 real compiler and the case's exact expected result, including seven schedules
 that pause the host while registering a timer.
 
+Compiler-case and editor smoke targets depend on `//packages:compiler-native` as well as the compiler executable. This prepares `packages/compiler/native/` and `dprint-plugin.json` before a custom runner formats a source. Case cache keys also include shared runner helpers, the API comparison scripts and their pinned TypeScript install.
+
 The harness sets its final exit status and lets stdout drain before it exits.
 Piped failure reports and verbose compiler logs retain their final lines and
 the case summary, including large lines with Unicode text.

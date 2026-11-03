@@ -154,6 +154,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Contributor release checks could omit fixture tests or fail cancellation checks on a host running one Go test slice; launcher fixtures now run their complete intended suite independently of the host slice.
 
+- Compiler conformance and editor formatting checks could fail on a fresh checkout because the dprint plugin was missing; their build targets now prepare the compiler package before running.
+
 - Comparing declarations that re-exported generic global types could report missing standard library types; API checks now preserve the global library while checking those aliases.
 
 - Custom compiler-case runners could fail before invoking the compiler; they now receive the same compiler executable that checked the case.
