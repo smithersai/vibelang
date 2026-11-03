@@ -30,7 +30,7 @@ import (
 //	  const super_1 = (key) => super[key];
 //	  const arguments_1 = arguments;
 //	  return Effect.gen({ self: this }, function* greet() {
-//	    const b = yield* super_1("greet").call(this, name)
+//	    const b = yield* runtime.$bindMethod(super_1("greet"), this)(name)
 //	    return arguments_1.length
 //	  })
 //	}
@@ -302,18 +302,19 @@ func (tx *lowering) hoistFrameReferences(binder *ast.Node, lowered *ast.Node) *a
 			value.Loc = node.Loc
 			return value
 		case super != nil && ast.IsCallExpression(node) && isSuperProperty(node.Expression()):
-			// super.m(a) is super_1("m").call(this, a): the lookup first, then the arguments.
+			// Capture the method before evaluating arguments, without reading
+			// its own call/apply/bind properties (VIP-1 Bindings).
 			method := read(super, tx.superKey(visitor, node.Expression()))
-			callee := f.NewPropertyAccessExpression(method, node.QuestionDotToken(), f.NewIdentifier("call"), ast.NodeFlagsNone)
-			arguments := append([]*ast.Node{f.NewThisExpression()}, visitor.VisitNodes(node.ArgumentList()).Nodes...)
-			call := f.NewCallExpression(callee, nil /*questionDotToken*/, nil /*typeArguments*/, f.NewNodeList(arguments), ast.NodeFlagsNone)
+			callee := tx.bindSuperMethod(method, node.QuestionDotToken() != nil)
+			call := f.NewCallExpression(callee, node.QuestionDotToken(), nil /*typeArguments*/, visitor.VisitNodes(node.ArgumentList()), node.Flags)
 			ec.SetOriginal(call, node)
 			call.Loc = node.Loc
 			return call
 		case super != nil && ast.IsTaggedTemplateExpression(node) && isSuperProperty(node.AsTaggedTemplateExpression().Tag):
-			// super.tag`…` is super_1("tag").bind(this)`…`: the tag is called with this.
+			// Keep the native template site and capture the receiver before
+			// substitutions. The adapter uses the runtime's captured apply.
 			tagged := node.AsTaggedTemplateExpression()
-			tag := f.NewFunctionBindCall(read(super, tx.superKey(visitor, tagged.Tag)), f.NewThisExpression(), nil /*argumentsList*/)
+			tag := tx.bindSuperMethod(read(super, tx.superKey(visitor, tagged.Tag)), false)
 			return f.UpdateTaggedTemplateExpression(tagged, tag, tagged.QuestionDotToken, tagged.TypeArguments, visitor.VisitNode(tagged.Template), node.Flags)
 		case super != nil && isSuperProperty(node):
 			var value *ast.Node
@@ -391,6 +392,26 @@ func (tx *lowering) hoistFrameReferences(binder *ast.Node, lowered *ast.Node) *a
 	}
 	root = lowered
 	return visitor.VisitNode(lowered)
+}
+
+// bindSuperMethod captures a super Reference as an invocation adapter.
+// For an optional call, a nullish target must stay nullish so the native
+// optional call skips its arguments. Read the target only once; testing a
+// method's own call property would observe user code instead.
+func (tx *lowering) bindSuperMethod(method *ast.Node, optional bool) *ast.Node {
+	f := tx.Factory()
+	if !optional {
+		return tx.runtimeCall("$bindMethod", method, f.NewThisExpression())
+	}
+	value := f.NewUniqueName("method")
+	parameter := f.NewParameterDeclaration(nil /*modifiers*/, nil /*dotDotDotToken*/, value, nil /*questionToken*/, nil /*type*/, nil /*initializer*/)
+	isNull := f.NewBinaryExpression(nil /*modifiers*/, value, nil /*typeNode*/, f.NewToken(ast.KindEqualsEqualsEqualsToken), f.NewKeywordExpression(ast.KindNullKeyword))
+	isUndefined := f.NewBinaryExpression(nil /*modifiers*/, value, nil /*typeNode*/, f.NewToken(ast.KindEqualsEqualsEqualsToken), f.NewVoidZeroExpression())
+	nullish := f.NewBinaryExpression(nil /*modifiers*/, isNull, nil /*typeNode*/, f.NewToken(ast.KindBarBarToken), isUndefined)
+	bound := tx.runtimeCall("$bindMethod", value, f.NewThisExpression())
+	body := f.NewConditionalExpression(nullish, f.NewToken(ast.KindQuestionToken), value, f.NewToken(ast.KindColonToken), bound)
+	adapter := f.NewArrowFunction(nil /*modifiers*/, nil /*typeParameters*/, f.NewNodeList([]*ast.Node{parameter}), nil /*type*/, nil /*fullSignature*/, f.NewToken(ast.KindEqualsGreaterThanToken), body)
+	return f.NewCallExpression(f.NewParenthesizedExpression(adapter), nil /*questionDotToken*/, nil /*typeArguments*/, f.NewNodeList([]*ast.Node{method}), ast.NodeFlagsNone)
 }
 
 // isSuperAssignment reports whether node assigns to a super property in a

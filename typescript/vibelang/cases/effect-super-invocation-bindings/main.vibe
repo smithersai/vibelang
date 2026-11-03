@@ -1,0 +1,64 @@
+// VIP-1 Bindings: super calls and tags keep their native receiver and order.
+const events: string[] = []
+let poisonReads = 0
+function record(s: string) { events.push(s); return 2 }
+function method(this: { n: number }, value: number) {
+  events.push("method")
+  return this.n + value
+}
+function tag(this: { n: number }, parts: TemplateStringsArray, value: number) {
+  events.push("tag")
+  return this.n + value + (parts.raw[0] === "x" && Object.isFrozen(parts) ? 1 : 0)
+}
+for (const fn of [method, tag]) {
+  for (const key of ["call", "apply", "bind"]) {
+    Object.defineProperty(fn, key, { get() { poisonReads++; return () => -999 } })
+  }
+}
+class Base {
+  n = 0
+  get method() { events.push("lookup"); return method }
+  get tag() { events.push("lookup-tag"); return tag }
+  get absent(): typeof method | undefined { events.push("absent"); return undefined }
+  get invalidCall(): typeof method { events.push("broken-lookup"); return 0 as unknown as typeof method }
+  get invalidTag(): typeof tag { events.push("broken-lookup"); return 0 as unknown as typeof tag }
+  static n = 20
+  static get method() { events.push("static-lookup"); return method }
+}
+class Derived extends Base {
+  n = 7
+  effect run() {
+    try Effect.succeed(0)
+    const named = super.method(record("arg"))
+    const computed = super[(record("key"), "method")](...([record("spread")] as const))
+    const optional = super.method?.(record("optional-arg"))
+    const absent = super.absent?.(record("must-not-run"))
+    const tagged = super.tag`x${record("substitution")}`
+    const arrow = effect () => {
+      try Effect.succeed(0)
+      return super.method(3)
+    }
+    const nested = try arrow()
+    return { named, computed, optional, absent: absent === undefined, tagged, nested }
+  }
+  effect brokenCall() {
+    try Effect.succeed(0)
+    return super.invalidCall(record("broken-arg"))
+  }
+  effect brokenTag() {
+    try Effect.succeed(0)
+    return super.invalidTag`x${record("broken-substitution")}`
+  }
+  static effect run() {
+    try Effect.succeed(0)
+    return super.method(record("static-arg"))
+  }
+}
+// expect-result: {"values":{"named":9,"computed":9,"optional":9,"absent":true,"tagged":10,"nested":10},"staticValue":22,"poisonReads":0,"brokenCall":true,"brokenTag":true,"events":["lookup","arg","method","key","lookup","spread","method","lookup","optional-arg","method","absent","lookup-tag","substitution","tag","lookup","method","static-lookup","static-arg","method","broken-lookup","broken-arg","broken-lookup","broken-substitution"]}
+export effect function main() {
+  const values = try new Derived().run()
+  const staticValue = try Derived.run()
+  const brokenCall = Exit.isFailure(try Effect.exit(new Derived().brokenCall()))
+  const brokenTag = Exit.isFailure(try Effect.exit(new Derived().brokenTag()))
+  return { values, staticValue, poisonReads, brokenCall, brokenTag, events }
+}

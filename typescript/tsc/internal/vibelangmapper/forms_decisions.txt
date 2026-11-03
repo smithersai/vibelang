@@ -2124,6 +2124,11 @@ typescript/vibelang/cases/effect-subtype-success-data/main.vibe:33:28 lambda pla
 typescript/vibelang/cases/effect-subtype-success-data/main.vibe:35:29 lambda program table
 typescript/vibelang/cases/effect-subtype-success-data/main.vibe:35:97 lambda program table
 typescript/vibelang/cases/effect-subtype-success-data/main.vibe:39:46 lambda effectFn annotation
+typescript/vibelang/cases/effect-super-invocation-bindings/main.vibe:15:38 lambda plain fallback
+typescript/vibelang/cases/effect-super-invocation-bindings/main.vibe:15:68 lambda plain fallback
+typescript/vibelang/cases/effect-super-invocation-bindings/main.vibe:37:19 lambda dual fallback
+typescript/vibelang/cases/effect-super-invocation-bindings/main.vibe:61:53 byname program table
+typescript/vibelang/cases/effect-super-invocation-bindings/main.vibe:62:52 byname program table
 typescript/vibelang/cases/effect-throw-only-never/main.vibe:11:101 lambda choice fallback
 typescript/vibelang/cases/effect-throw-only-never/main.vibe:39:22 byname program table
 typescript/vibelang/cases/effect-throw-only-never/main.vibe:40:22 byname program table

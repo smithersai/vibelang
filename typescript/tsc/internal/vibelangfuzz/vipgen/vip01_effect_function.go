@@ -352,26 +352,37 @@ func init() {
 		},
 	})
 
-	// super: a method's super.m(a) looks the method up before its
-	// arguments and calls it with Reflect.apply, never reading its own
-	// call property.
+	// VIP-1 Bindings: exercise the generator path as well as native
+	// super invocation. Poison reads are observable events in the Exit trace.
 	Register(&Construct{
 		Key:      "vip01.super",
 		VIP:      1,
 		Requires: []string{"vip01.effect-function", "vip05.try"},
 		Citations: []Citation{{
 			VIP:      1,
-			Template: "const $super_get = (k) => super[k] return Effect.gen({ self: this }, function* () { ‹body› $apply($super_get(‹m›), this, [‹a›]) })",
-			Quote:    vip01Unrun,
-			Reading:  "001-functions.md: \"`super.m(a)` | `$apply($super_get(\"m\"), this, [a])`, where `$apply` is `Reflect.apply` captured when the module starts. The method is looked up before `a` is evaluated, and its own `call` property is never read\". Its example: \"With `Base.prototype.offset` returning 30, `value()` succeeds with 37 even if `offset` has an own `call` property\".",
+			Template: "const invoke = () => ‹call› return Effect.gen(function* () { yield* Effect.succeed(0) return yield* Effect.sync(invoke) })",
+			Quote:    "An `effect` body reads `this`, `super` and `new.target` exactly as the same body reads them in an `async` function of the same form: the same bindings, at the same step of evaluation, with the same errors.",
+			Reading:  "VIP-1 Bindings keeps the native super Reference receiver for calls and tags. A lexical arrow in the source method invokes that Reference through Effect.sync; the generated generator must agree, including lookup and argument order.",
 		}},
 		Focus: func(g *Gen, s *Scope) []Stmt {
 			b, c, v := g.Name("B"), g.Name("C"), g.Name("v")
 			l1, l2 := g.Label(), g.Label()
-			base := fmt.Sprintf("const %sOffset = (k: number) => { ev(%q); return 30 + k }\nclass %s {\nget offset() { ev(\"lookup\"); return %sOffset }\n}\nObject.defineProperty(%sOffset, \"call\", { value: () => -1000 })\n\n", b, l1, b, b, b)
+			k := g.Intn(31)
+			argument := fmt.Sprintf("(ev(%q), %d)", l2, k)
+			call := "super.offset(" + argument + ")"
+			switch g.Intn(4) {
+			case 1:
+				call = "super[(ev(\"key\"), \"offset\")](...[" + argument + "])"
+			case 2:
+				call = "super.offset?.(" + argument + ")"
+			case 3:
+				call = "super.tag`value ${" + argument + "}`"
+			}
+			base := fmt.Sprintf("function %sOffset(this: { n: number }, k: number) { ev(%q); return this.n + k }\nfunction %sTag(this: { n: number }, parts: TemplateStringsArray, k: number) { ev(%q); return this.n + k + Number(Object.isFrozen(parts)) }\nclass %s {\nn = 0\nget offset() { ev(\"lookup\"); return %sOffset }\nget tag() { ev(\"lookup-tag\"); return %sTag }\n}\nfor (const fn of [%sOffset, %sTag]) for (const key of [\"call\", \"apply\", \"bind\"]) Object.defineProperty(fn, key, { get() { ev(\"poison-\" + key); return () => -1000 } })\n", b, l1, b, l1, b, b, b, b, b)
+			reference := strings.NewReplacer("this: { n: number }, ", "", "k: number", "k", "parts: TemplateStringsArray", "parts").Replace(base)
 			g.AddDecl(&Code{
-				V: base + fmt.Sprintf("class %s extends %s {\nn = 7\neffect value() {\nreturn this.n + super.offset((ev(%q), 0))\n}\n}", c, b, l2),
-				E: "const $apply = Reflect.apply\n" + strings.Replace(base, "k: number", "k", 1) + fmt.Sprintf("class %s extends %s {\nn = 7\nvalue() {\nconst $super_get = (k) => super[k]\nreturn Effect.gen({ self: this }, function* () {\nreturn this.n + $apply($super_get(\"offset\"), this, [(ev(%q), 0)])\n})\n}\n}", c, b, l2),
+				V: base + fmt.Sprintf("class %s extends %s {\nn = 7\neffect value() {\ntry Effect.succeed(0)\nreturn %s\n}\n}", c, b, call),
+				E: reference + fmt.Sprintf("class %s extends %s {\nn = 7\nvalue() {\nconst invoke = () => %s\nreturn Effect.gen(function* () {\nyield* Effect.succeed(0)\nreturn yield* Effect.sync(invoke)\n})\n}\n}", c, b, call),
 			})
 			s.Locals = append(s.Locals, v)
 			return []Stmt{&Const{Name: v, Value: &Try{X: &Lit{Text: "new " + c + "().value()"}}}}

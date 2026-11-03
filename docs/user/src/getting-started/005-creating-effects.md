@@ -10,6 +10,8 @@ Use `effect` on functions, arrows, and class or object methods. Getters, setters
 
 An `effect` function binds its parameters and evaluates defaults when you call it. Running the returned Effect executes the body. Repeated runs of that same Effect share the call's parameter bindings, including writes the body makes. If a default or destructuring binding throws, the call returns an Effect that dies with that value.
 
+Effect methods keep their source `this` and `super` bindings. A `super.method(...args)` call or a `super.tag` template invokes the inherited method with its source receiver, without reading that method's own `call`, `apply` or `bind` properties. Computed keys, arguments and template substitutions keep their JavaScript evaluation order; an optional `super.method?.(...args)` skips its arguments when the method is absent.
+
 ## Success and failure
 
 ```vibe
