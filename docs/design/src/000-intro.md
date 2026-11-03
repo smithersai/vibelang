@@ -79,4 +79,4 @@ The compiler is being changed to match the VIPs. Until it does, a VibeLang examp
 
 The first-release retirement diagnostics are `EK3501` for `control` and `handle` syntax or resolved continuation-runtime `Control`, `resume`, `resumeWith`, `abandon` and `handle`, and `EK4607` for a retired `select` block. They do not accept VIP-35, which remains open. Ordinary TypeScript bindings, callback parameters and members with these names keep their native meaning. Parser recovery only diagnoses and migrates old source.
 
-`vibelang --fix` rewrites only proved local service-shaped uses whose declarations and `Exit` are preserved. It explicitly refuses continuation-dependent uses and unproved selection rewrites. As for every relic, ship the preserving migration and migrate consumers before enforcing rejection.
+`vibelang --fix` rewrites only local service-shaped uses; a rewrite that can't preserve types, behavior, `Exit` and declaration output refuses at that site. As for every relic, ship the preserving migration and migrate consumers before enforcing rejection.
