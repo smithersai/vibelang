@@ -1,0 +1,10 @@
+{
+  "key": "setup:build-script-bun-glob-entrypoints",
+  "authority": "Chapter 7: bundlers read .vibe, not declaration sidecars",
+  "source": "export const entries = await Array.fromAsync(new Bun.Glob(\"**/*.ts\").scan({ cwd: \"src\" })).then(files => files.filter(file => !file.endsWith(\".d.ts\")))\nexport async function build() { return Bun.build({ entrypoints: entries.map(file => \"src/\" + file), outdir: \"dist\" }) }\n",
+  "names": [
+    "entry",
+    "nested/other"
+  ],
+  "source_bundle_sha256": "241eadb586a564df2723d9145dfe213c8377111e00f76cea2f140cfb1d6172e4"
+}

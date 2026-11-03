@@ -1,3 +1,4 @@
+import { addBunBuildGlobs } from "./bun-globs.mjs"
 // The edits that set up VibeLang in an existing project, as text-in,
 // text-out functions: the package's dependencies, tsc replaced by vibelang
 // in scripts, the vibelang-vite plugin in the Vitest or Vite config, the
@@ -1200,7 +1201,9 @@ export function wireBunBuilds({ root, packages, ts, specsFor }) {
       const text = replaceTscInScript(original, ts)
       if (text !== original) write(file, text)
       try {
-        const next = addBunBuildPlugin(text, ts)
+        const entries = addBunBuildGlobs(text, ts, file)
+        warnings.push(...entries.warnings.map(warning => file + ": " + warning))
+        const next = addBunBuildPlugin(entries.text, ts)
         if (next === text) continue
         write(file, next)
         builds.push(file)
