@@ -17,7 +17,7 @@ import { buildInventory, listSources, readCoverage, tsconfigPaths } from "./inve
 import * as Enumerations from "./enumerations.mjs"
 import { sidecarPath } from "./sidecar-config.mjs"
 import { defaultLimits, draftPlan, migrationScope, planPrompt, validatePlan } from "./plan.mjs"
-import { refreshSidecarExports, bareVibeExports, fixToFixedPoint, importerFile, pathAliases, restoreExports, restoreScripts, restoreSpecifiers, rewriteImports, rewriteTotals, vibePath } from "./codemod.mjs"
+import { refreshSidecarExports, sidecarOf, bareVibeExports, fixToFixedPoint, importerFile, pathAliases, restoreExports, restoreScripts, restoreSpecifiers, rewriteImports, rewriteTotals, vibePath } from "./codemod.mjs"
 import { restoreViteScripts } from "./vite-config.mjs"
 import { applyState, durableWrite, prepareReferences, prepareState, saveState } from "./codemod-state.mjs"
 import { checkSelectorEdits, restoreSourceLiterals, rewriteSourceLiterals } from "./source-paths.mjs"
@@ -1806,6 +1806,23 @@ async function revertSource(t, p, plan, b, ts, vibe) {
 }
 
 /** Cumulative test identity, from before setup through this batch. */
+/**
+ * Where the compiler writes a source's declaration sidecar, repository-relative,
+ * under the owning package's vibe.sidecarDir or beside the source; null for a
+ * path with no sidecar.
+ */
+export function batchSidecarLocator(config) {
+  const located = new Map()
+  const owners = config.packages.map((pkg) => posix.normalize(pkg.dir)).sort((a, b) => (b === "." ? 0 : b.length) - (a === "." ? 0 : a.length))
+  return (path) => {
+    if (!/\.(?:[cm]?ts|vibe)$/.test(path) || /\.d\.(?:vibe\.)?[cm]?ts$/.test(path)) return null
+    const owner = owners.find((dir) => dir === "." || path.startsWith(dir + "/"))
+    if (owner === undefined) return null
+    if (!located.has(owner)) located.set(owner, sidecarOf(config.target, owner))
+    return posix.normalize(posix.join(owner, located.get(owner)(posix.relative(owner, path).replace(/\.(?:[cm]?ts|vibe)$/, ""))))
+  }
+}
+
 export async function testEdits(config, p, plan, b, ts) {
   const setup = readJsonIf(p.setup)
   const renames = (plan?.batches ?? []).slice(0, Number(b)).flatMap((_, i) =>
@@ -1844,7 +1861,7 @@ export async function verify(options) {
   const baselineTests = readJson(join(p.baseline, "tests.json"))
   // Tests, including one-pass measurements, read current emitted JavaScript.
   codemod = rememberPackingFiles(p, b, await emitMigratedJs(config, t, logs))
-  const before = foreignChanges(changedBefore, { files, codemod, testDiff: testDiffBefore })
+  const before = foreignChanges(changedBefore, { files, codemod, testDiff: testDiffBefore, sidecar: batchSidecarLocator(config) })
   const candidateBuild = thePlan.mode === "one-pass" ? null : await prepareBuilds(config, logs, "candidate")
   const measurement = thePlan.mode === "one-pass" ? await measureTests(config,{run:p.run,batch:b}) : null
   const tests = measurement?.receipts.candidate ?? await runTests({ command: config.test.command, report: config.test.report, cwd: join(t, config.test.cwd), root: t, jsonFile: join(p.batch(b), "vitest.json"), log: join(logs, "tests.log") })
@@ -1891,7 +1908,7 @@ export async function verify(options) {
     const names = declarationNames(ts, join(t, pkg.dir), projects.map((tsconfig) => ({ tsconfig, prefix: projects.length === 1 ? "." : slug(tsconfig) })))
     unproven.push(...unprovenMigrations({ migrated, pkgDir: pkg.dir, names, oracle: stock }))
   }
-  const after = foreignChanges(await Jj.changedPaths(t), { files, codemod, testDiff })
+  const after = foreignChanges(await Jj.changedPaths(t), { files, codemod, testDiff, sidecar: batchSidecarLocator(config) })
   const foreign = [...new Map([...before, ...after].map(c => [c.path, c])).values()]
   const batchErrors = checked.diagnostics.filter((d) => migrated.includes(d.file) && d.category === "error")
   const runPhase = runPhaseCheck({ compiler, ts, target: t, files: migrated, original: file => originalSourceOf(p, thePlan, file) })
@@ -1949,7 +1966,7 @@ export async function record(options) {
   const assertScope = async () => {
     const testDiff = await testEdits(config, p, thePlan, b, typeScriptOf(config))
     if (!testDiff.ok) throw new Error("batch " + b + ": forbidden test/fixture edits; see " + join(p.batch(b), "test-diff.md"))
-    const foreign = foreignChanges(await Jj.changedPaths(t), { files, codemod: readJsonIf(p.codemod(b)), testDiff })
+    const foreign = foreignChanges(await Jj.changedPaths(t), { files, codemod: readJsonIf(p.codemod(b)), testDiff, sidecar: batchSidecarLocator(config) })
     if (foreign.length) throw new Error("files outside the batch's scope: " + foreign.map(c => c.path).join(", "))
   }
   await assertScope()

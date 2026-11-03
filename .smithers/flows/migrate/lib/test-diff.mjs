@@ -12,6 +12,24 @@ import { disagreeingLiterals, enumeratesFiles, onlySelectionUses, packageBase, r
 
 export const isProtectedFile = path => isTestFile(path) || isFixtureFile(path)
 
+/**
+ * Whether a declaration sidecar has its .vibe source in tree, beside it or above
+ * a vibe.sidecarDir that mirrors the source's path. Such a sidecar is compiler
+ * output, wherever setup moves it. An orphan is authored TypeScript (VIP-27).
+ */
+export function pairedSidecar(path, tree) {
+  if (!path.endsWith(".d.vibe.ts")) return false
+  const source = path.slice(0, -".d.vibe.ts".length) + ".vibe"
+  if (Object.hasOwn(tree, source)) return true
+  const parts = source.split("/")
+  for (let start = 0; start < parts.length - 1; start++) {
+    for (let end = start + 1; end < parts.length; end++) {
+      if (Object.hasOwn(tree, [...parts.slice(0, start), ...parts.slice(end)].join("/"))) return true
+    }
+  }
+  return false
+}
+
 const globCache = new Map()
 
 // Vite transforms have used engine defaults and explicit extglob disabling.
@@ -446,6 +464,7 @@ export function verifyTestDiff({ ts, before, after, renames, bridges = [], decla
     for (const file of sorted(new Set([...Object.keys(before), ...Object.keys(after)]))) {
       if (!isProtectedFile(file) || before[file] === after[file] && Object.hasOwn(before, file) === Object.hasOwn(after, file)) continue
       if (!Object.hasOwn(before, file) && bridges.some(bridge => bridge.config === file && bridge.text === after[file])) continue
+      if (pairedSidecar(file, before) || pairedSidecar(file, after)) continue
       const entry = { file, ok: true, hunks: [] }
       result.files.push(entry)
       const reject = reason => { entry.ok = false; entry.hunks.push({ kind: "forbidden", reason }) }

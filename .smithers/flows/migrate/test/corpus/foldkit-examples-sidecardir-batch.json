@@ -1,0 +1,43 @@
+{
+  "key": "migrate-flow:batch-scope-sidecardir",
+  "source": "foldkit-154: drive-foldkit-examples run-drive-foldkit-examples-pre/batches/01/verify.json, examples/api-cache with vibe.sidecarDir (paths shortened to src/)",
+  "files": [
+    {
+      "planned": "src/main.ts",
+      "path": "src/main.vibe",
+      "migrated": true
+    }
+  ],
+  "codemod": {
+    "importEdits": [
+      {
+        "file": "src/main.fixture.vibe",
+        "from": "./main.ts",
+        "to": "./main.vibe"
+      }
+    ]
+  },
+  "changed": [
+    {
+      "status": "R",
+      "path": "src/main.vibe",
+      "from": "src/main.ts"
+    },
+    {
+      "status": "A",
+      "path": ".vibe/declarations/src/main.d.vibe.ts"
+    },
+    {
+      "status": "M",
+      "path": ".vibe/declarations/src/main.fixture.d.vibe.ts"
+    },
+    {
+      "status": "M",
+      "path": "src/main.fixture.vibe"
+    }
+  ],
+  "foreignWithoutLocation": [
+    ".vibe/declarations/src/main.d.vibe.ts",
+    ".vibe/declarations/src/main.fixture.d.vibe.ts"
+  ]
+}

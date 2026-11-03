@@ -1,7 +1,7 @@
 import { isProtectedFile } from "./test-diff.mjs"
 
 // What a batch may change in the repository. A batch renames its modules to
-// .vibe, writes their sidecars and platform siblings, and the codemod points
+// .vibe, writes their sidecars (beside them or under vibe.sidecarDir) and platform siblings, and the codemod points
 // package manifests and importers at the renamed modules; the repair agent
 // edits the batch's own files. Any other change is foreign: an earlier
 // batch's committed module that --fix rewrote (alchemy-5a), a test or config
@@ -15,19 +15,28 @@ import { isProtectedFile } from "./test-diff.mjs"
 const emitted = /(?:^|\/)\.vibelang\/js\//
 
 /** Every path the batch may touch, repository-relative. */
-export function batchScope({ files, codemod, testDiff }) {
+export function batchScope({ files, codemod, testDiff, sidecar = () => null }) {
   const scope = new Set()
+  const withSidecars = (path) => {
+    if (/\.(?:[cm]?ts|vibe)$/.test(path) && !/\.d\.(?:vibe\.)?[cm]?ts$/.test(path)) scope.add(path.replace(/\.(?:[cm]?ts|vibe)$/, ".d.vibe.ts"))
+    const located = sidecar(path)
+    if (located) scope.add(located)
+  }
   for (const f of files) {
     for (const path of [f.planned, f.path]) {
       scope.add(path)
-      if (/\.(?:[cm]?ts|vibe)$/.test(path) && !/\.d\.(?:vibe\.)?[cm]?ts$/.test(path)) scope.add(path.replace(/\.(?:[cm]?ts|vibe)$/, ".d.vibe.ts"))
+      withSidecars(path)
     }
   }
   for (const file of codemod?.packingFiles ?? []) scope.add(file)
   for (const emit of codemod?.emittedJs ?? []) for(const file of emit.packingFiles ?? []) scope.add(file)
   for (const split of codemod?.platform?.splits ?? []) if (split.platform) scope.add(split.platform)
   for (const edit of codemod?.exportEdits ?? []) scope.add(edit.manifest)
-  for (const edit of codemod?.importEdits ?? []) scope.add(edit.file)
+  // A rewritten importer's declaration may name the renamed module, so its sidecar is written again.
+  for (const edit of codemod?.importEdits ?? []) {
+    scope.add(edit.file)
+    if (edit.file.endsWith(".vibe")) withSidecars(edit.file)
+  }
   for (const edit of codemod?.refEdits ?? []) scope.add(edit.file)
   for (const edit of codemod?.referenceEdits ?? []) scope.add(edit.file)
   for (const edit of codemod?.scriptEdits ?? []) scope.add(edit.manifest)
