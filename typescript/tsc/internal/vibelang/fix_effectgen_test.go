@@ -223,6 +223,51 @@ func TestEffectGenProgramValueIsHeld(t *testing.T) {
 	}
 }
 
+// A call whose throw a generator meets as a defect stays one: written bare in
+// the block, its class would join E. Smithers' Route and ElectricCollection kept
+// their generators over this (new TextDecoder().decode, TS2375).
+func TestEffectGenTrackedThrowStaysDefect(t *testing.T) {
+	const wrapped = "try Effect.orDie(Effect.try({ try: () => JSON.parse(s), catch: (error) => error }))"
+	for _, test := range []struct{ name, source, want string }{
+		{"a statement", "export const f = (s: string): Effect.Effect<void> => Effect.gen(function* () {\n  JSON.parse(s)\n  yield* Effect.void\n})\n", wrapped},
+		{"a value", "export const f = (s: string): Effect.Effect<number> => Effect.gen(function* () {\n  yield* Effect.void\n  const n = JSON.parse(s)\n  return n\n})\n", "const n = " + wrapped},
+		{"an operand", "export const f = (s: string): Effect.Effect<number> => Effect.gen(function* () {\n  yield* Effect.void\n  return JSON.parse(s) as number\n})\n", "(" + wrapped + ") as number"},
+		{"a member of its result", "export const f = (s: string): Effect.Effect<number> => Effect.gen(function* () {\n  yield* Effect.void\n  return JSON.parse(s).length\n})\n", "(" + wrapped + ").length"},
+		{"the outermost call only", "export const f = (s: string): Effect.Effect<number> => Effect.gen(function* () {\n  yield* Effect.void\n  return JSON.parse(decodeURIComponent(s))\n})\n", "try: () => JSON.parse(decodeURIComponent(s)), catch"},
+		{"a member of a value", "export const f = (b: Uint8Array): Effect.Effect<string> => Effect.gen(function* () {\n  yield* Effect.void\n  return new TextDecoder().decode(b)\n})\n", "try: () => new TextDecoder().decode(b), catch"},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			got, ok := effectGenQuickFix(t, test.source)
+			if !ok {
+				t.Fatalf("no quick fix for:\n%s\nnotes: %s", test.source, effectGenNotes(t, test.source))
+			}
+			if !strings.Contains(got, test.want) {
+				t.Fatalf("got:\n%s\nwant it to hold %q", got, test.want)
+			}
+		})
+	}
+	// What already says its failure stays as it is.
+	for name, source := range map[string]string{
+		"a boundary":  "export const f = (s: string) => Effect.gen(function* () {\n  return yield* Effect.try(() => JSON.parse(s))\n})\n",
+		"a math call": "export const f = (n: number) => Effect.gen(function* () {\n  yield* Effect.void\n  return Math.max(n, 1)\n})\n",
+	} {
+		t.Run(name, func(t *testing.T) {
+			got, ok := effectGenQuickFix(t, source)
+			if !ok || strings.Contains(got, "orDie") {
+				t.Fatalf("ok=%v got:\n%s", ok, got)
+			}
+		})
+	}
+	// The wrapper's function is plain, so a yield* in the call cannot move in.
+	source := "export const f = (s: Effect.Effect<string>) => Effect.gen(function* () {\n  return JSON.parse(yield* s)\n})\n"
+	if got, ok := effectGenQuickFix(t, source); ok {
+		t.Fatalf("unexpected quick fix:\n%s", got)
+	}
+	if notes := effectGenNotes(t, source); !strings.Contains(notes, "can throw") {
+		t.Fatalf("EK1002's notes %q do not say why", notes)
+	}
+}
+
 // Where the rewrite would mean something else, EK1002 has no quick fix, and
 // its note says why.
 func TestEffectGenRefusals(t *testing.T) {

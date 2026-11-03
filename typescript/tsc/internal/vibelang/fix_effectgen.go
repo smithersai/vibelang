@@ -296,6 +296,9 @@ func planEffectGenWith(c *checker.Checker, file *ast.SourceFile, call *ast.Node,
 		}
 		edits = append(edits, edit...)
 	}
+	for _, thrower := range scan.throwing {
+		edits = append(edits, keepThrowDefect(file, thrower)...)
+	}
 	// A .pipe in the body changes with it: try f().pipe(g) is EK4502.
 	for _, pipe := range scan.pipes {
 		if rewrite := planEffectPipe(c, file, pipe); rewrite.fixable() && !keepPipes {
@@ -837,6 +840,7 @@ type effectGenScan struct {
 	pipes    []*ast.Node // the .pipe calls of an Effect in it, which the rewrite writes as pipes
 	throws   []*ast.Node // the throw statements of its own code
 	held     []*ast.Node // const initializers that build a program
+	throwing []*ast.Node // the calls in its own code whose throws would join E
 	usesThis bool        // the body reads this, its own or through an arrow
 	why      string      // the first construct whose rewrite would mean something else
 }
@@ -896,6 +900,7 @@ func scanEffectGenBody(c *checker.Checker, a *analyzer, file *ast.SourceFile, ge
 	}
 	operands := map[*ast.Node]bool{} // the calls that yield* runs or a program holds
 	effectCode := 0                  // depth of effect functions and blocks, an earlier fix's, which run with try
+	var throwing *ast.Node           // the wrapped call this visit stands inside
 	var visit func(node *ast.Node, own, lexical bool, callback *ast.Node) bool
 	visit = func(node *ast.Node, own, lexical bool, callback *ast.Node) bool {
 		if s.why != "" {
@@ -980,6 +985,15 @@ func scanEffectGenBody(c *checker.Checker, a *analyzer, file *ast.SourceFile, ge
 				s.why = why
 				return true
 			}
+			if own && throwing == nil && ast.IsCallExpression(node) && throwsTrackedFailure(c, node) {
+				if holdsYield(node) {
+					s.why = shortText(expressionText(file, node), "a call") + " can throw, and a yield* stands in its arguments, where the function that keeps its exception a defect could not run it"
+					return true
+				}
+				s.throwing = append(s.throwing, node)
+				throwing = node
+				defer func() { throwing = nil }()
+			}
 		}
 		return node.ForEachChild(func(child *ast.Node) bool { return visit(child, own, lexical, callback) })
 	}
@@ -995,6 +1009,42 @@ func readsBinding(node *ast.Node) bool {
 		return true
 	}
 	return ast.IsExpressionNode(node) && !ast.IsRightSideOfPropertyAccess(node)
+}
+
+// throwsTrackedFailure reports whether call is one whose exception a generator
+// meets as a defect, adding nothing to E, but whose thrown class effect code
+// tracks (Chapter 3): JSON.parse, or a .ts function tagged @throws. Written bare
+// in the block it would fail with that class, and its Effect's type would say so.
+func throwsTrackedFailure(c *checker.Checker, call *ast.Node) bool {
+	t := callTrust(c, call)
+	return (t.kind == trustBuiltin || t.kind == trustTagged && !t.value) && len(t.failures) > 0 && !t.promise && !returnsEffectful(c, call)
+}
+
+// holdsYield reports whether a yield runs in node's own code.
+func holdsYield(node *ast.Node) bool {
+	found := false
+	var visit func(n *ast.Node) bool
+	visit = func(n *ast.Node) bool {
+		if isFunctionBoundary(n) {
+			return false
+		}
+		found = found || ast.IsYieldExpression(n)
+		return found || n.ForEachChild(visit)
+	}
+	node.ForEachChild(visit)
+	return found
+}
+
+// keepThrowDefect writes call through the wrapper EK4401's fix writes (it keeps
+// what TypeScript meant): Effect.orDie keeps the exception a defect, and the
+// declaration as it was.
+func keepThrowDefect(file *ast.SourceFile, call *ast.Node) []sourceEdit {
+	open, close := "try Effect.orDie(Effect.try({ try: () => ", ", catch: (error) => error }))"
+	if !standsAlone(call) {
+		open, close = "("+open, close+")"
+	}
+	start := nodeStart(file, call)
+	return []sourceEdit{{start, start, open}, {call.End(), call.End(), close}}
 }
 
 // generatorKeepsName reports whether generator's rewrite keeps its name: an

@@ -243,6 +243,8 @@ When a proposed fix adds an error in an unchanged importer, `--fix` follows refe
 
 The check matches errors one to one by file, code and message, or by file, code and span. A changed message at an existing span and an unchanged message at a different span cannot both reuse one existing error. Spans before or after an edit are compared at their original positions.
 
+Calls such as `JSON.parse(text)` keep their exceptions as defects while an `Effect.gen` body is migrated. The repair uses an explicit `Effect.orDie` boundary, preserving the original error channel and catch behavior.
+
 A trial that adds an error needs only that error to fail, so once a round has found errors, `--fix` looks for a trial's errors in the files that reported them. It keeps no fix until a check of the whole project passes. A fix refused on that evidence names the first error of those files, which may not be the first error it adds across the project.
 
 A round that halves its fixes also writes edits as it goes. Once the round has made 16 checks, then 32, 64 and so on, `--fix` checks the fixes it has kept and the halving's passing fixes in a fresh check of the whole project, and writes them when that check passes, at most four such checks a round. An interrupted run keeps the last verified checkpoint. After 256 isolation checks in one round, `--fix` stops telling the remaining suspects apart and refuses them as a group, each named by the round's first added error and `the gate stopped telling apart after 256 checks of its round; run vibelang --fix again to try them`. Rerun `vibelang --fix` to retry them.

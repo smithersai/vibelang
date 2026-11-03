@@ -515,6 +515,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Hover and rename missed references in match guards, `is` subjects, `and` patterns and error `extends` clauses; the editor now finds those original source references.
 - An unfinished `catch` expression could produce document-outline ranges that ended before they started; outline entries now keep valid source ranges.
 - Empty setting names or empty diagnostic keys in legacy compiler configuration could be silently ignored; they now report a configuration error.
+- `--fix` wrote a `JSON.parse` or `new TextDecoder().decode` in an `Effect.gen` bare in the `effect` block, which turned a defect into a typed failure and changed the module's declared error channel, or failed with TS2375 against a written one; it now keeps the exception a defect through `Effect.orDie(Effect.try(...))`.
 - An unfinished module declaration could crash the parser; it now reports syntax errors.
 - An unfinished variable initializer or `catch` annotation could crash diagnostics or quick fixes; syntax errors now remain reported and unsafe rewrites are declined.
 - `vibelang --fix --fix` reported `TS5023` instead of fixing the project; repeated `--fix` flags now apply the fixes once.
