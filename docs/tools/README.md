@@ -85,18 +85,6 @@ receive those comments. `--check` reports proposed edits without writing, and
 `--all-fixes` also enables the existing style and prelude cleanups; the default
 scope contains decision-1 migration edits only, so S0 makes zero edits.
 
-The checked legacy oracle lives at
-`typescript/tsc/internal/vibelang/testdata/legacy_sites.txt`. Regenerate it with
-`(cd typescript/tsc && go run ./cmd/vibelang-forms -legacy internal/vibelang/testdata/legacy_sites.txt)`;
-`-legacy -` writes stdout instead. It checks the case corpus, examples, templates,
-package test fixtures and docs projects prepared by `legacy-snippets.ts`, using
-the native classifier rather than the mapper snapshot. Each sorted line records
-a span, kind, old boundary/representation and selected signature; conservative
-alternate-candidate sites and incomplete applicability checks are labelled.
-`(cd typescript/tsc && go test -timeout 20m ./cmd/vibelang-forms -run TestLegacyOracle)`
-regenerates and compares the entire file. Both commands require Bun, the pinned
-docs dependencies and the built runtime, as the snippet checker does.
-
 ```sh
 bun test docs/tools/check-snippets.test.ts docs/tools/first-run.test.ts docs/tools/hovers.test.ts
 sh scripts/deploy-docs.sh --dry-run
