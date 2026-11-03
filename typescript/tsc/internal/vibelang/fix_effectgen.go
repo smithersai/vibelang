@@ -92,6 +92,32 @@ func fixKey(file *ast.SourceFile, d *ast.Diagnostic) string {
 	return diagnosticSource + strconv.Itoa(int(d.Code())) + ":" + span
 }
 
+// nativePipesKeySuffix marks the key of EK1002's second fix, which keeps the
+// body's .pipe calls (effectGenNativePipesFix).
+const nativePipesKeySuffix = " (.pipe kept)"
+
+// effectGenNativePipesFix returns EK1002's second fix for d, once the gate has
+// refused its first: the same rewrite with the body's .pipe calls kept. While
+// the generator stands, the gate does not check its body as effect code, so a
+// |> that changes a stage's type shows only when the generator goes (opencode's
+// server fetch handler). It returns false when the body has no .pipe to keep.
+func effectGenNativePipesFix(c *checker.Checker, file *ast.SourceFile, d *ast.Diagnostic, key string, refused map[string]bool) (fileFix, bool) {
+	key += nativePipesKeySuffix
+	if refused[key] {
+		return fileFix{}, false
+	}
+	callee := tsFormNodeAt(file, core.NewTextRange(d.Pos(), d.End()), isCallee)
+	if callee == nil {
+		return fileFix{}, false
+	}
+	call := generatorCallOf(callee)
+	kept := planEffectGenWith(c, file, call, true)
+	if !kept.fixable() || applyEdits(file.Text(), kept.edits) == applyEdits(file.Text(), planEffectGen(c, file, call).edits) {
+		return fileFix{}, false
+	}
+	return fileFix{code: d.Code(), edits: kept.edits, key: key}, true
+}
+
 // generatorCallOf returns the call that callee, the API EK1002 names, leads
 // to and that passes the generator: Effect.fn("n")(function* …) for the
 // Effect.fn of that text.
@@ -218,6 +244,14 @@ func fnReturnEffectType(file *ast.SourceFile, t *ast.Node) string {
 // planEffectGen plans EK1002's fix for call: the edits, or the note that says
 // why there are none. It returns nil for a call of no Effect generator API.
 func planEffectGen(c *checker.Checker, file *ast.SourceFile, call *ast.Node) *formRewrite {
+	return planEffectGenWith(c, file, call, false)
+}
+
+// planEffectGenWith is planEffectGen, keeping each .pipe of the body as it is
+// when keepPipes is set. |> types a stage with no contextual type, where .pipe
+// gives it one: HttpEffect.toWebHandlerWith(context) takes its requirements
+// from it, so its |> form fails with TS2345 where the .pipe compiled.
+func planEffectGenWith(c *checker.Checker, file *ast.SourceFile, call *ast.Node, keepPipes bool) *formRewrite {
 	if rewrite := planOptionGen(c, file, call); rewrite != nil {
 		return rewrite
 	}
@@ -262,7 +296,7 @@ func planEffectGen(c *checker.Checker, file *ast.SourceFile, call *ast.Node) *fo
 	}
 	// A .pipe in the body changes with it: try f().pipe(g) is EK4502.
 	for _, pipe := range scan.pipes {
-		if rewrite := planEffectPipe(c, file, pipe); rewrite.fixable() {
+		if rewrite := planEffectPipe(c, file, pipe); rewrite.fixable() && !keepPipes {
 			edits = append(edits, rewrite.edits...)
 		}
 	}

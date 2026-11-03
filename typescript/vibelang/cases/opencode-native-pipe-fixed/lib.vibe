@@ -1,0 +1,6 @@
+
+export const handler = effect (context: Context<HttpRouter>) => try withSpan(effect {
+  return Context.get(context, HttpRouter.HttpRouter)
+    .asHttpEffect()
+    .pipe(HttpMiddleware.cors({ maxAge: 1 }), HttpEffect.toWebHandlerWith(context))
+}, "handler")

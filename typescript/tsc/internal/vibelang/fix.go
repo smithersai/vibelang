@@ -1305,6 +1305,14 @@ func fileFixes(ctx context.Context, program *compiler.Program, file *ast.SourceF
 	for _, d := range fixable {
 		key := fixKey(file, d)
 		if refused[key] {
+			if d.Code() == EK1002.Code {
+				c, done := program.GetTypeCheckerForFile(ctx, file)
+				fix, ok := effectGenNativePipesFix(c, file, d, key, refused)
+				done()
+				if ok {
+					candidates = append(candidates, fix)
+				}
+			}
 			continue
 		}
 		diagnostic := lsconv.DiagnosticToLSPPush(ctx, converters, d)
