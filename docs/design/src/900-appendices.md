@@ -1093,6 +1093,7 @@ The TypeScript-form lint warnings also retain their existing `EK4830`–`EK4837`
 | `EK3009` | warning: root `vibelang.diagnostics` or `compilerOptions.vibelang.diagnostics` in any supported config or extended config needs migration; supported legacy settings still apply, modern entries win, and `--fix` migrates eligible maps | 30 | [Legacy severity maps](007-tooling.md#legacy-severity-maps) |
 | `EK3010` | warning: retired `trustedPackages` is ignored in `vibe` and supported legacy sections; remove the key and use the ordinary foreign-callable contract | 4, 30 | [Configuration](007-tooling.md#config-files) |
 | `EK3011` | warning: retired root `vibelang.declarationImportStyle` or `compilerOptions.vibelang.declarationImportStyle` is ignored for every value, including invalid values; remove the setting | 30 | [Configuration](007-tooling.md#config-files) |
+| `EK3012` | warning: an assigned `EK38xx` severity key without a resolved `@effect/language-service` plugin entry needs the preserving config migration; `vibelang --fix` writes the explicit plugin entry while retaining inherited plugins and authored settings | 30, 38 | [Imported lint activation migration](007-tooling.md#effects-type-aware-lint) |
 | `EK3201` | a resolved `effect` version other than the pin | 32 | [Configuration and tooling](007-tooling.md#the-effect-version) |
 | `EK4001` | a module declaration below the file's top level | 40 | [Modules](001-functions.md#module-declarations) |
 | `EK4002` | an exported module declaration | 40 | [Modules](001-functions.md#module-declarations) |
