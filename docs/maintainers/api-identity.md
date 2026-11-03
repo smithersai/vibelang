@@ -89,6 +89,10 @@ Each environment record has a `blocking` flag. Callers with an existing publishe
 surface snapshot can supply `beforeEntrypoints` and `afterEntrypoints`,
 maps from subpath/condition names to declaration paths relative to each tree.
 `compilerOptions` carries the package's stock TypeScript resolution settings.
+The virtual probe stays inside an explicit `rootDir`, or the configuration
+directory when `composite` supplies the default root. All original project
+options and genuine outside-root source diagnostics remain in force.
+The checker chooses an unused virtual filename without writing to the input.
 External library diagnostics are retained as environment records. A missing
 type used by a compared export blocks the comparison, including when reached
 through an external dependency; unrelated library defects do not block it.

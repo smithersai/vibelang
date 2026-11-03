@@ -667,7 +667,12 @@ function prepareComparison(ts, before, after, options, progress) {
     if (path.endsWith(".vibe") && host.fileExists(path.replace(/\.vibe$/, ".d.vibe.ts")))
       entries[key] = path.replace(/\.vibe$/, ".d.vibe.ts")
   }
-  const probe = join(repo, ".api-identity-probe.mts")
+  // Output-layout constraints still apply with noEmit. Keep the synthetic
+  // source inside the same effective root without relaxing input validation.
+  const probeRoot = resolve(compilerOptions.rootDir ??
+    (compilerOptions.composite && compilerOptions.configFilePath ? dirname(compilerOptions.configFilePath) : repo))
+  let probe = join(probeRoot, ".api-identity-probe.mts")
+  for (let index = 1; host.fileExists(probe); index++) probe = join(probeRoot, `.api-identity-probe-${index}.mts`)
   const roots = [...new Set([...Object.values(left), ...Object.values(right)])]
   progress("create-input-program")
   let program = ts.createProgram(roots, compilerOptions, host)

@@ -1,0 +1,9 @@
+{
+  "rule": "A tree compared with itself must be identical. Take the project's compiler options as the real project has them. An error in both inputs is an invalid result, never a difference.",
+  "compilerOptions": {
+    "composite": true,
+    "rootDir": "."
+  },
+  "before": "export declare function f<T>(value:T): { value:T; count:1 };",
+  "after": "export declare function f<T>(value:T): { value:T; count:1 };"
+}

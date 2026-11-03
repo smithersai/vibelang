@@ -146,6 +146,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - `vibelang --fix` refused an `Effect.fn` whose parameter annotation was the last read of an imported value binding that only types read, such as a namespace in `SessionSchema.ID`, with TS6133, so the module stayed on `EK1002`; the fix now removes that binding too, and keeps a bare import under `verbatimModuleSyntax`.
 
 - Configuration fuzz checks rejected valid `vibe.sidecarDir` strings and cited an obsolete sidecar layout. They now accept directory strings, reject other JSON types with `EK3007`, and quote TypeScript’s declaration source root rule.
+- API checks rejected valid packages with `rootDir` or composite builds because their generated probe was outside the project. The virtual probe now stays inside the effective project root, while real outside-root source errors still invalidate the comparison.
 
 - Identical recursive generic declaration APIs could fail with `TS2589`; exact resolved type identity now proves those comparisons.
 - API checks treated identical JSDoc links as different when a private target resolved in only one snapshot. Link targets and labels now compare consistently while real comment changes remain differences.
