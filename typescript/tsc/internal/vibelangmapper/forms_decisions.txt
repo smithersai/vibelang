@@ -1762,6 +1762,7 @@ typescript/vibelang/cases/do-jump-operand-order/main.vibe:46:21 byname program a
 typescript/vibelang/cases/do-jump-operand-order/main.vibe:47:23 byname program annotation
 typescript/vibelang/cases/do-jump-operand-order/main.vibe:9:13 lambda plain annotation
 typescript/vibelang/cases/do-local-scope/main.vibe:7:32 lambda plain fallback
+typescript/vibelang/cases/do-logical-global-accessor/main.vibe:58:21 lambda plain annotation
 typescript/vibelang/cases/do-loop-head-abrupt/main.vibe:16:29 lambda plain annotation
 typescript/vibelang/cases/do-loop-head-abrupt/main.vibe:20:14 lambda plain annotation
 typescript/vibelang/cases/do-loop-head-abrupt/main.vibe:31:29 lambda plain annotation

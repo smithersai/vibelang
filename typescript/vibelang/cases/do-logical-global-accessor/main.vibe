@@ -1,0 +1,60 @@
+import { Effect } from "effect"
+import { events, abrupt, observe } from "./helper.js"
+declare let censusLogical: any
+function orAssign() {
+  const result = censusLogical ||= do { events.push("rhs"); abrupt("rhs"); 7 }
+  return result
+}
+function andAssign() {
+  const result = censusLogical &&= do { (do { events.push("rhs"); abrupt("rhs"); 7 }) }
+  return result
+}
+function nullAssign() {
+  const result = censusLogical ??= do { (do { (do { events.push("rhs"); abrupt("rhs"); 7 }) }) }
+  return result
+}
+export function probe() { return observe([orAssign, andAssign, nullAssign]) }
+export function localOr(value: number | undefined): number {
+  const result = value ||= do { 7 }
+  const assigned: number = value
+  return result + assigned
+}
+export function localAnd(value: number | undefined): number | undefined {
+  const result = value &&= do { value + 1 }
+  return result
+}
+export function localNull(value: number | null | undefined): number {
+  const result = value ??= do { 7 }
+  return result + value
+}
+export effect function effectProbe() {
+  let value = 0
+  const first = value ||= do { try Effect.succeed(7) }
+  const second = value &&= do { value = 99; try Effect.succeed(8) }
+  return [first, second, value]
+}
+export function condition(value: string | undefined): number {
+  if (value &&= do { value }) return value.length
+  return 0
+}
+
+export function compared(value: string | undefined): number {
+  if ((value &&= do { value }) !== undefined) return value.length
+  return 0
+}
+export function typed(value: string | number | undefined): number {
+  if (typeof (value ||= do { "fallback" }) === "string") return value.length
+  return value
+}
+export function negated(value: string | undefined): number {
+  if (!(value &&= do { value })) return 0
+  return value.length
+}
+
+function isText(value: unknown, unused: () => unknown): value is string {
+  return typeof value === "string"
+}
+export function predicateBoundary(value: unknown): number {
+  if (isText(value, () => value ||= do { "fallback" })) return value.length
+  return 0
+}

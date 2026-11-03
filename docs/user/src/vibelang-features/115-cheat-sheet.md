@@ -711,6 +711,8 @@ A `do` in a short-circuit operand keeps the selected branch’s TypeScript narro
 
 Erased TypeScript callee wrappers (`!`, `as`, `satisfies` and type assertions) keep a method’s receiver when a later argument contains `do`. The receiver and method are captured once before the argument runs, and the asserted function type still checks the call.
 
+Logical assignments with a `do` right operand (`&&=`, `||=`, `??=`) read the target once. A skipped assignment returns that read; a taken assignment returns the right operand's value, even when a global accessor's setter stores a different value. Testing the result preserves TypeScript's narrowing of the target.
+
 A `break` or `continue` whose target is outside an `effect { }` block is `EK0202`; the block runs as its own Effect.
 
 **Effect blocks as arguments**. Pass `effect { ... }` as an ordinary argument. A test API takes a callback that returns the Effect, such as `it.live("name", () => effect { ... })`.

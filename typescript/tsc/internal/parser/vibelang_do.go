@@ -1810,11 +1810,19 @@ func (l *doLowering) binary(e *ast.Node, pre *[]*ast.Node) *ast.Node {
 		*pre = append(*pre, l.p.vibelangSpanning(l.p.factory.NewIfStatement(l.shortCircuit(operator, l.ref(guard, at), at), l.p.mBlock(inner, b.Right.Loc), skipped), e.Loc))
 		return ref
 	case ast.IsLogicalOrCoalescingAssignmentOperator(operator):
-		// x ||= e: x is an identifier (doSite).
+		// x ||= e: x is an identifier (doSite), but can name a global
+		// accessor. Preserve its first read and the assignment's value;
+		// a setter may store a different value or throw.
 		target := ast.SkipParentheses(b.Left)
+		guard := l.temp("$do_guard", at)
+		name := l.temp("$do_v", at)
+		read := l.p.mIdent(target.Text(), target.Loc)
+		*pre = append(*pre, l.p.mConst(guard, ast.NodeFlagsConst, read, at), l.letStatement(name, at))
 		var inner []*ast.Node
 		right := l.expr(b.Right, &inner)
-		inner = append(inner, l.statement(l.assign(l.p.mIdent(target.Text(), target.Loc), right, b.Right.Loc), b.Right.Loc))
+		written := l.assign(l.p.mIdent(target.Text(), target.Loc), right, b.Right.Loc)
+		l.origins[name] = &DoNarrowingOrigin{Operator: operator, Guard: read, Right: written}
+		inner = append(inner, l.statement(l.assign(l.ref(name, b.Right.Loc), written, b.Right.Loc), b.Right.Loc))
 		var test ast.Kind
 		switch operator {
 		case ast.KindAmpersandAmpersandEqualsToken:
@@ -1824,8 +1832,9 @@ func (l *doLowering) binary(e *ast.Node, pre *[]*ast.Node) *ast.Node {
 		default:
 			test = ast.KindQuestionQuestionToken
 		}
-		*pre = append(*pre, l.p.vibelangSpanning(l.p.factory.NewIfStatement(l.shortCircuit(test, l.p.mIdent(target.Text(), at), at), l.p.mBlock(inner, b.Right.Loc), nil), e.Loc))
-		return l.p.mIdent(target.Text(), l.p.sourceRange(e))
+		skipped := l.statement(l.assign(l.ref(name, at), l.ref(guard, at), at), at)
+		*pre = append(*pre, l.p.vibelangSpanning(l.p.factory.NewIfStatement(l.shortCircuit(test, l.ref(guard, at), at), l.p.mBlock(inner, b.Right.Loc), skipped), e.Loc))
+		return l.ref(name, l.p.sourceRange(e))
 	case ast.IsCompoundAssignmentOperator(operator):
 		// x op= e: x is an identifier (doSite), read before e.
 		target := ast.SkipParentheses(b.Left)

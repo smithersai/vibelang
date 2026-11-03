@@ -16,6 +16,12 @@ import (
 func init() { checker.RegisterFlowNarrowingHook(narrowDoGuard) }
 
 func narrowDoGuard(c *checker.Checker, reference *ast.Node, t *checker.Type, test *ast.Node, assumeTrue bool, narrowAlias func(*ast.Node, *checker.Type, *ast.Node) *checker.Type) *checker.Type {
+	// A logical assignment's saved result has the target's value at this
+	// source position. Keep TypeScript's narrowing of that target through
+	// truthiness, typeof and comparisons without emitting another read.
+	if alias := doAssignmentAlias(c, reference, test); alias != nil {
+		return narrowAlias(alias, t, nil)
+	}
 	if source := doGuardSource(c, test); source != nil && !c.IsMatchingReference(reference, test) {
 		return narrowDoCondition(c, reference, t, source, assumeTrue, narrowAlias)
 	}
@@ -31,6 +37,22 @@ func narrowDoGuard(c *checker.Checker, reference *ast.Node, t *checker.Type, tes
 		}
 	}
 	return nil
+}
+
+func doAssignmentAlias(c *checker.Checker, reference, test *ast.Node) *ast.Node {
+	// Creating a callback does not evaluate the assignments in its body.
+	if ast.IsFunctionLike(test) {
+		return nil
+	}
+	if origin := doValueOrigin(c, test); origin != nil && ast.IsLogicalOrCoalescingAssignmentOperator(origin.Operator) && c.IsMatchingReference(reference, origin.Guard) {
+		return test
+	}
+	var alias *ast.Node
+	test.ForEachChild(func(child *ast.Node) bool {
+		alias = doAssignmentAlias(c, reference, child)
+		return alias != nil
+	})
+	return alias
 }
 
 func doGuardSource(c *checker.Checker, node *ast.Node) *ast.Node {
@@ -54,6 +76,9 @@ func doGuardSource(c *checker.Checker, node *ast.Node) *ast.Node {
 func narrowDoCondition(c *checker.Checker, reference *ast.Node, t *checker.Type, source *ast.Node, assumeTrue bool, narrowAlias func(*ast.Node, *checker.Type, *ast.Node) *checker.Type) *checker.Type {
 	source = ast.SkipParentheses(source)
 	if origin := doValueOrigin(c, source); origin != nil {
+		if ast.IsLogicalOrCoalescingAssignmentOperator(origin.Operator) {
+			return narrowDoCondition(c, reference, t, origin.Guard, assumeTrue, narrowAlias)
+		}
 		if origin.Body != nil {
 			return t
 		}
@@ -170,6 +195,9 @@ func narrowDoNullish(c *checker.Checker, reference *ast.Node, t *checker.Type, s
 		return narrowDoNullish(c, reference, t, guard, assumeNull, test, narrowAlias)
 	}
 	if origin := doValueOrigin(c, source); origin != nil {
+		if ast.IsLogicalOrCoalescingAssignmentOperator(origin.Operator) {
+			return narrowDoNullish(c, reference, t, origin.Guard, assumeNull, test, narrowAlias)
+		}
 		if origin.Body != nil {
 			return t
 		}

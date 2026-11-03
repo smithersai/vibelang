@@ -568,6 +568,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - `catch` could mix with `??`, `||` or `&&` without parentheses and accept a call or member access after a function handler. These forms now report `EK0512`; `vibelang --fix` preserves the earlier grouping and fallback evaluation.
 
+- Logical assignments with a `do` right operand reread global accessors and could return a setter's transformed value. They now read once and return the original value when skipped or the right operand's value when assigned.
+
 
 - Source-child loader wiring introduced a `fileURLToPath` import alias and failed repositories’ native import policies. Setup now uses a namespace import and refreshes its own previously generated helpers while preserving manually observed bindings.
 
