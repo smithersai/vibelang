@@ -39,6 +39,29 @@ func TestForeignCallFix(t *testing.T) {
 	}
 }
 
+// --fix applies a round's fixes together, so calls in one function must not
+// each pick the same name for an operand's const (Smithers: files, setup).
+func TestForeignCallFixNamesEachInput(t *testing.T) {
+	root, err := filepath.Abs("../../../..")
+	if err != nil {
+		t.Fatal(err)
+	}
+	dir := copyCompilerFixture(t, filepath.Join(root, "typescript/vibelang/cases/ek4401-fix.fail"), root)
+	source := "import { double } from \"./plain.ts\"\nconst one = effect (): number!! => 1\nexport const value = effect () => {\n  const a = double(try one())\n  const b = double(try one())\n  const c = double(try one())\n  return [a, b, c]\n}\n"
+	if err := os.WriteFile(filepath.Join(dir, "lib.vibe"), []byte(source), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	result := fixCase(t, dir)
+	if len(result.Refused) != 0 {
+		t.Fatalf("--fix refused: %+v", result.Refused)
+	}
+	for file, fixed := range result.Files {
+		if filepath.Base(file.AsString()) == "lib.vibe" && strings.Count(fixed.Text, "orDie(") != 3 {
+			t.Fatalf("--fix left a call:\n%s", fixed.Text)
+		}
+	}
+}
+
 // A const before the statement would run an operand once, or always, where the
 // call runs it each time, or sometimes: the fix leaves these calls alone.
 func TestForeignCallFixKeepsWhatRuns(t *testing.T) {

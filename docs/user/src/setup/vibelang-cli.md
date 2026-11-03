@@ -122,6 +122,8 @@ For a monorepo, use `vibelang -b -w <solution-or-consuming-project>` to watch an
 vibelang -b -w packages/app
 ```
 
+Repeated foreign calls in one effect function can be fixed together without redeclaring their captured inputs. The repair preserves argument evaluation order and existing narrowed property types.
+
 ### Lint Effect code
 
 Lint leaves existing declaration sidecars and incremental build information unchanged and creates no output files.

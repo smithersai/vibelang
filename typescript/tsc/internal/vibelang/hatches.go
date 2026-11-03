@@ -282,6 +282,74 @@ func inputConsts(inputs []boundaryInput) []string {
 // call with each replaced by its const. keep, when not nil, names more operands
 // that stand outside.
 func boundaryInputs(c *checker.Checker, file *ast.SourceFile, call *ast.Node, keep func(operand *ast.Node) bool) ([]boundaryInput, string) {
+	inputs := boundaryOperands(c, file, call, keep)
+	replaced := func(n *ast.Node) bool {
+		return slices.ContainsFunc(inputs, func(in boundaryInput) bool { return in.node.Pos() <= n.Pos() && n.End() <= in.node.End() })
+	}
+	// The names the rest of the call reads, which a const must not shadow.
+	taken := map[string]bool{}
+	var visit func(n *ast.Node) bool
+	visit = func(n *ast.Node) bool {
+		if replaced(n) {
+			return false
+		}
+		if ast.IsIdentifier(n) {
+			taken[n.Text()] = true
+		}
+		return n.ForEachChild(visit)
+	}
+	visit(call)
+	name := func(in *boundaryInput) {
+		base, chosen := in.param, in.param
+		for n := 2; taken[chosen]; n++ {
+			chosen = base + strconv.Itoa(n)
+		}
+		taken[chosen] = true
+		in.param = chosen
+	}
+	// The consts join the enclosing function's scope, so they must not
+	// shadow or redeclare a name written anywhere in it. --fix plans every
+	// call of a round on one tree and applies them together, so the consts
+	// of the calls before this one are taken too: two calls that each named
+	// their operand a2 refused each other with TS2451 (Smithers: setup, files).
+	if fn := enclosingFunction(call); fn != nil {
+		var names func(n *ast.Node) bool
+		names = func(n *ast.Node) bool {
+			if ast.IsIdentifier(n) {
+				taken[n.Text()] = true
+			}
+			return n.ForEachChild(names)
+		}
+		fn.ForEachChild(names)
+		var earlier func(n *ast.Node) bool
+		earlier = func(n *ast.Node) bool {
+			if n.Pos() >= call.Pos() {
+				return false
+			}
+			if n != call && ast.IsCallExpression(n) && n.End() <= call.Pos() && enclosingFunction(n) == fn && n.Flags&ast.NodeFlagsVibeLangTry == 0 && needsBoundary(c, file, n) {
+				for _, in := range boundaryOperands(c, file, n, keep) {
+					name(&in)
+				}
+			}
+			return n.ForEachChild(earlier)
+		}
+		fn.ForEachChild(earlier)
+	}
+	for i := range inputs {
+		name(&inputs[i])
+	}
+	start := nodeStart(file, call)
+	text := file.Text()[start:call.End()]
+	for i := len(inputs) - 1; i >= 0; i-- {
+		in := inputs[i]
+		text = text[:in.pos-start] + in.param + text[in.end-start:]
+	}
+	return inputs, text
+}
+
+// boundaryOperands returns the operands moved outside the wrapper, including
+// operands that keep requires to preserve their narrowed type.
+func boundaryOperands(c *checker.Checker, file *ast.SourceFile, call *ast.Node, keep func(operand *ast.Node) bool) []boundaryInput {
 	a := analyzerFor(c)
 	type input = boundaryInput
 	var operands []input
@@ -316,49 +384,7 @@ func boundaryInputs(c *checker.Checker, file *ast.SourceFile, call *ast.Node, ke
 			inputs = append(inputs, operand)
 		}
 	}
-	replaced := func(n *ast.Node) bool {
-		return slices.ContainsFunc(inputs, func(in input) bool { return in.node.Pos() <= n.Pos() && n.End() <= in.node.End() })
-	}
-	// The names the rest of the call reads, which a const must not shadow.
-	taken := map[string]bool{}
-	var visit func(n *ast.Node) bool
-	visit = func(n *ast.Node) bool {
-		if replaced(n) {
-			return false
-		}
-		if ast.IsIdentifier(n) {
-			taken[n.Text()] = true
-		}
-		return n.ForEachChild(visit)
-	}
-	visit(call)
-	// The consts join the enclosing function's scope, so they must not
-	// shadow or redeclare a name written anywhere in it.
-	if fn := enclosingFunction(call); fn != nil {
-		var names func(n *ast.Node) bool
-		names = func(n *ast.Node) bool {
-			if ast.IsIdentifier(n) {
-				taken[n.Text()] = true
-			}
-			return n.ForEachChild(names)
-		}
-		fn.ForEachChild(names)
-	}
-	for i := range inputs {
-		base, name := inputs[i].param, inputs[i].param
-		for n := 2; taken[name]; n++ {
-			name = base + strconv.Itoa(n)
-		}
-		taken[name] = true
-		inputs[i].param = name
-	}
-	start := nodeStart(file, call)
-	text := file.Text()[start:call.End()]
-	for i := len(inputs) - 1; i >= 0; i-- {
-		in := inputs[i]
-		text = text[:in.pos-start] + in.param + text[in.end-start:]
-	}
-	return inputs, text
+	return inputs
 }
 
 // runsVibeLang reports whether evaluating node, an expression, runs an
