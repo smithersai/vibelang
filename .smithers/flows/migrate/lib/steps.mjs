@@ -19,7 +19,7 @@ import { assertBaselineSafe } from "./baseline.mjs"
 import { assertNoTestBundleRename } from "./test-bundles.mjs"
 import { buildInventory, listSources, readCoverage, tsconfigPaths } from "./inventory.mjs"
 import * as Enumerations from "./enumerations.mjs"
-import { sidecarPath } from "./sidecar-config.mjs"
+import { sidecarPath, sidecarProjectLayout } from "./sidecar-config.mjs"
 import { defaultLimits, draftPlan, migrationScope, planPrompt, validatePlan } from "./plan.mjs"
 import { refreshSidecarExports, sidecarOf, bareVibeExports, fixToFixedPoint, importerFile, pathAliases, restoreExports, restoreScripts, restoreSpecifiers, rewriteImports, rewriteTotals, vibePath } from "./codemod.mjs"
 import { restoreViteScripts } from "./vite-config.mjs"
@@ -911,7 +911,8 @@ function wirePackages({ t, ts, packages, specsFor, writeIfChanged, warnings, lay
         : Wire.addVibeLangSetting(current, ts, "declarationImportStyle", spelling.style)
       // Native rewriting keeps its authored value, inheritance and default (VIP-27, VIP-30).
       const next = Wire.addVibeIncludes(styled, ts)
-      writeIfChanged(file, text, enumerations.length ? Enumerations.addSidecarDir(next, ts, Enumerations.sidecarDirectory, file) : next)
+      const outside = sidecarProjectLayout(file, ts, next).outside
+      writeIfChanged(file, text, enumerations.length || outside || Enumerations.sidecarSettings(file, ts, next) ? Enumerations.addSidecarDir(next, ts, Enumerations.sidecarDirectory, file) : next)
       wiredTsconfigs.add(posix.join(pkg.dir, tsconfig))
     }
   }
@@ -919,24 +920,24 @@ function wirePackages({ t, ts, packages, specsFor, writeIfChanged, warnings, lay
 
 function finishSidecarLayout({ t, ts, layout, changed, warnings, log }) {
   const { tracked, enumerations, wiredTsconfigs } = layout
-  const sidecarProjects = enumerations.length ? [...wiredTsconfigs].map(file => {
+  const sidecarProjects = [...wiredTsconfigs].map(file => {
     const settings = Enumerations.sidecarSettings(join(t, file), ts)
     return settings && {
       config: file,
       directory: relative(dirname(join(t, file)), settings.directory).replaceAll("\\", "/") || ".",
       declaredIn: relative(t, settings.declaringFile).replaceAll("\\", "/")
     }
-  }).filter(Boolean) : []
+  }).filter(Boolean)
   const directories = [...new Set(sidecarProjects.map(project => project.directory))]
   for (const finding of enumerations) warnings.push("vibe.sidecarDir uses the configured project output directory, and that folder's .ts modules stay .ts: " + Enumerations.describe(finding))
   // Existing exports were written by an earlier rename, before this layout
   // existed. Repair their owned declaration paths even if cleanup ran before.
   const declarationTargets = refreshSidecarExports(t, tracked.filter(Wire.ownedPaths(t)), wiredTsconfigs, { onWarning: warning => warnings.push(warning) })
   changed.push(...new Set(declarationTargets.map(edit => edit.manifest).filter(file => !changed.includes(file))))
-  const supersededSidecars = enumerations.length ? Enumerations.removeSupersededSidecars(t, tracked, wiredTsconfigs, ts) : []
+  const supersededSidecars = sidecarProjects.length ? Enumerations.removeSupersededSidecars(t, tracked, wiredTsconfigs, ts) : []
   changed.push(...supersededSidecars.filter(file => !changed.includes(file)))
   appendJsonl(join(log, "sidecar-layout.jsonl"), { at: new Date().toISOString(), projects: sidecarProjects, removed: supersededSidecars, declarationTargets })
-  return enumerations.length ? { directory: directories.length === 1 ? directories[0] : null, projects: sidecarProjects, reasons: enumerations.map(Enumerations.describe), findings: enumerations, removed: supersededSidecars, declarationTargets } : null
+  return sidecarProjects.length ? { directory: directories.length === 1 ? directories[0] : null, projects: sidecarProjects, reasons: enumerations.map(Enumerations.describe), findings: enumerations, removed: supersededSidecars, declarationTargets } : null
 }
 
 /**

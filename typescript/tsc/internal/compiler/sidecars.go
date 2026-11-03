@@ -31,6 +31,32 @@ func SidecarPath(fileName string) string {
 	return strings.TrimSuffix(fileName, extension) + ".d" + extension + ".ts"
 }
 
+// Sidecar output follows declarationDir's source-root rules in TypeScript 5.9:
+// explicit rootDir, the config directory for composite projects, otherwise the
+// common directory of emitted sources. Declaration inputs and referenced projects
+// do not widen that root.
+func (p *Program) vibeSidecarPaths(source string) (string, string) {
+	if referenced := p.GetProjectReferenceFromSource(p.PathKeyForFileName(tspath.RootedFilePathFromNormalized(source))); referenced != nil {
+		config := referenced.Resolved
+		options := config.CompilerOptions()
+		return options.VibeSidecarPaths(source, p.caseSensitivity, options.VibeSidecarRoot(config.FileNames(), p.caseSensitivity))
+	}
+	return p.Options().VibeSidecarPaths(source, p.caseSensitivity, p.vibeSidecarSourceRoot())
+}
+
+func (p *Program) vibeSidecarSourceRoot() string {
+	p.sidecarSourceDirectoryOnce.Do(func() {
+		var files []tspath.RootedFilePath
+		for _, file := range p.files {
+			if !file.IsDeclarationFile && sourceFileMayBeEmitted(file, p, true, false) {
+				files = append(files, file.FileName())
+			}
+		}
+		p.sidecarSourceDirectory = p.Options().VibeSidecarRoot(files, p.caseSensitivity)
+	})
+	return p.sidecarSourceDirectory
+}
+
 var (
 	sidecarReference = regexp.MustCompile(`(?m)^(/// <reference path=)(["'])([^"']+)(["'])`)
 	sourceMapComment = regexp.MustCompile(`(?m)^//# sourceMappingURL=.*\n?`)
@@ -62,7 +88,7 @@ func (p *Program) EmitDeclarationSidecars(ctx context.Context, write func(fileNa
 	// regardless of the order in which the sources emit.
 	selected := make(map[tspath.PathKey]bool, len(sources))
 	for _, file := range sources {
-		sidecar, _ := p.Options().VibeSidecarPaths(string(file.FileName()), p.caseSensitivity)
+		sidecar, _ := p.vibeSidecarPaths(string(file.FileName()))
 		selected[p.PathKeyForFileName(tspath.RootedFilePathFromNormalized(sidecar))] = true
 	}
 	bodies := map[string]*ast.SourceFile{} // a body's file name, without its extension
@@ -111,7 +137,7 @@ func (p *Program) EmitDeclarationSidecars(ctx context.Context, write func(fileNa
 				if isBody {
 					sidecar = moduleBodyDeclarationPath(data.SourceFile)
 				} else {
-					sidecar, stale = p.Options().VibeSidecarPaths(source, p.caseSensitivity)
+					sidecar, stale = p.vibeSidecarPaths(source)
 				}
 				if p.IsEmitBlocked(tspath.RootedFilePathFromNormalized(sidecar)) {
 					blocked.Store(true)
@@ -130,7 +156,7 @@ func (p *Program) EmitDeclarationSidecars(ctx context.Context, write func(fileNa
 					refer(tspath.ResolvePath(tspath.GetDirectoryPath(source), specifier))
 					resolved, _, _ := resolver.ResolveModuleName(specifier, data.SourceFile.FileName(), p.GetDefaultResolutionModeForFile(data.SourceFile), nil)
 					if resolved != nil && resolved.Extension == tspath.ExtensionVibe {
-						target, _ := p.Options().VibeSidecarPaths(string(resolved.ResolvedFileName), p.caseSensitivity)
+						target, _ := p.vibeSidecarPaths(string(resolved.ResolvedFileName))
 						return strings.TrimSuffix(target, ".d"+tspath.ExtensionVibe+".ts") + tspath.ExtensionVibe
 					}
 					return tspath.ResolvePath(tspath.GetDirectoryPath(source), specifier)

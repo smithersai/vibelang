@@ -62,7 +62,7 @@ test("property: dot and parent module roots preserve native nominal identity in 
         for (const relocated of [false, true, false]) {
           const sidecar = posix.join(relocated ? ".vibe/declarations" : "", main + ".d.vibe.ts")
           write(join(producer, "tsconfig.json"), JSON.stringify({
-            compilerOptions: { ...options, ...(relocated ? { rootDirs: [".", ".vibe/declarations"] } : {}) },
+            compilerOptions: { ...options, rootDir: ".", ...(relocated ? { rootDirs: [".", ".vibe/declarations"] } : {}) },
             vibe: { effectGlobals: false, effectModules: false, ...(relocated ? { sidecarDir: ".vibe/declarations" } : {}) },
             vibelang: { declarationImportStyle: style },
             include: ["src"]

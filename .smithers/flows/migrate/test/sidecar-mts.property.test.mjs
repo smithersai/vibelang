@@ -25,7 +25,7 @@ test("property: relocated package exports round-trip native ts and mts filenames
       symlinkSync(dirname(require.resolve("typescript/package.json")), join(root, "node_modules/typescript"))
       mkdirSync(join(root, nested), { recursive: true })
       writeFileSync(join(root, nested, "x.vibe"), "export const value = 1\n")
-      writeFileSync(join(root, "tsconfig.json"), JSON.stringify({ vibe: { sidecarDir: directory } }))
+      writeFileSync(join(root, "tsconfig.json"), JSON.stringify({ compilerOptions: { rootDir: "." }, vibe: { sidecarDir: directory } }))
       const source = "./" + nested + "/x" + extension
       const before = { name: "foldkit-mts-fixture", type: "module", types: source, exports: { ".": { types: source, import: source }, "./x": source } }
       writeFileSync(join(root, "package.json"), JSON.stringify(before))

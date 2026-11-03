@@ -147,6 +147,7 @@ type processedFiles struct {
 
 type compilerResolutionHost struct {
 	sidecarConfigs collections.SyncMap[tspath.PathKey, *tsoptions.ParsedCommandLine]
+	sidecarRoots   collections.SyncMap[tspath.PathKey, string]
 	host           CompilerHost
 	baseDirectory  tspath.RootedDirectoryPath
 }

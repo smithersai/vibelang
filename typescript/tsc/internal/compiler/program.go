@@ -126,8 +126,10 @@ type Program struct {
 
 	usesUriStyleNodeCoreModules core.Tristate
 
-	commonSourceDirectory     tspath.RootedDirectoryPath
-	commonSourceDirectoryOnce sync.Once
+	commonSourceDirectory      tspath.RootedDirectoryPath
+	commonSourceDirectoryOnce  sync.Once
+	sidecarSourceDirectory     string
+	sidecarSourceDirectoryOnce sync.Once
 
 	declarationDiagnosticCache collections.SyncMap[*ast.SourceFile, []*ast.Diagnostic]
 
@@ -1459,7 +1461,7 @@ func (p *Program) verifyCompilerOptions() {
 		}
 		// Sidecars are emitted even with noEmit, through their own output path.
 		for _, source := range p.declarationSidecarSources() {
-			sidecar, _ := options.VibeSidecarPaths(string(source.FileName()), p.caseSensitivity)
+			sidecar, _ := p.vibeSidecarPaths(string(source.FileName()))
 			verifyEmitFilePath(tspath.RootedFilePathFromNormalized(sidecar))
 			// So is each body's declaration, which may be the path its ordinary
 			// declaration output already claimed.

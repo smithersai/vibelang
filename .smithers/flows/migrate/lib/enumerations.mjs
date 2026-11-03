@@ -7,7 +7,7 @@
 // *.ts files no longer selects x.vibe (decided detail 268).
 import { existsSync, readFileSync } from "node:fs"
 import { dirname, join, posix, relative } from "node:path"
-import { sidecarSettings } from "./sidecar-config.mjs"
+import { sidecarSettings, sidecarProjectLayout } from "./sidecar-config.mjs"
 export { removeSupersededSidecars, sidecarSettings } from "./sidecar-config.mjs"
 
 /** The directory setup names in vibe.sidecarDir and adds to rootDirs. */
@@ -186,11 +186,12 @@ export function addSidecarDir(text, ts, directory = sidecarDirectory, fileName) 
   if (effective) directory = relative(dirname(fileName), effective.directory).replaceAll("\\", "/") || "."
   else if (own && ts.isStringLiteral(own.initializer)) directory = own.initializer.text || "."
   directory = posix.normalize(directory)
+  const sourceRoot = fileName ? relative(dirname(fileName), sidecarProjectLayout(fileName, ts, text).sourceRoot).replaceAll("\\", "/") || "." : "."
   const compiler = find(root, "compilerOptions")
   const rootDirs = compiler && ts.isObjectLiteralExpression(compiler.initializer) ? find(compiler.initializer, "rootDirs") : undefined
   if (rootDirs && ts.isArrayLiteralExpression(rootDirs.initializer)) {
     const present = rootDirs.initializer.elements.filter(ts.isStringLiteral).map((e) => posix.normalize(e.text))
-    const missing = [...new Set([".", directory])].filter((entry) => !present.includes(entry))
+    const missing = [...new Set([sourceRoot, directory])].filter((entry) => !present.includes(entry))
     if (missing.length) {
       const list = rootDirs.initializer
       const last = list.elements.at(-1)
@@ -199,9 +200,9 @@ export function addSidecarDir(text, ts, directory = sidecarDirectory, fileName) 
         : { at: list.getStart(file) + 1, text: missing.map((entry) => JSON.stringify(entry)).join(", ") })
     }
   } else if (compiler && ts.isObjectLiteralExpression(compiler.initializer)) {
-    insert(compiler.initializer, "rootDirs", JSON.stringify([...new Set([".", directory])]), "    ")
+    insert(compiler.initializer, "rootDirs", JSON.stringify([...new Set([sourceRoot, directory])]), "    ")
   } else {
-    insert(root, "compilerOptions", `{ "rootDirs": ${JSON.stringify([...new Set([".", directory])])} }`, "  ")
+    insert(root, "compilerOptions", `{ "rootDirs": ${JSON.stringify([...new Set([sourceRoot, directory])])} }`, "  ")
   }
   if (vibe && ts.isObjectLiteralExpression(vibe.initializer)) {
     if (!inherited && !find(vibe.initializer, "sidecarDir")) insert(vibe.initializer, "sidecarDir", JSON.stringify(directory), "    ")

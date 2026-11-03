@@ -147,7 +147,7 @@ test("a Smithers-shaped test that imports every *.ts but *.d.ts passes with the 
     t.after(() => rmSync(root, { recursive: true, force: true }))
     const files = {
       "package.json": "{\"type\":\"module\"}\n",
-      "tsconfig.json": JSON.stringify({ compilerOptions: { target: "ES2022", module: "NodeNext", moduleResolution: "NodeNext", strict: true, types: [], skipLibCheck: true, noEmit: true, allowArbitraryExtensions: true, rewriteRelativeImportExtensions: true }, include: ["coding"] }, null, 2) + "\n",
+      "tsconfig.json": JSON.stringify({ compilerOptions: { rootDir: ".", target: "ES2022", module: "NodeNext", moduleResolution: "NodeNext", strict: true, types: [], skipLibCheck: true, noEmit: true, allowArbitraryExtensions: true, rewriteRelativeImportExtensions: true }, include: ["coding"] }, null, 2) + "\n",
       "coding/plain.ts": 'import { Effect } from "effect"\nexport const plain = Effect.runSync(Effect.succeed(1))\n',
       "coding/helper.vibe": "export const helper = 2\n",
       "coding/metered.vibe": "export { helper } from \"./helper.vibe\"\n",

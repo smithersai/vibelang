@@ -1170,6 +1170,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - With `jsx: preserve`, `.vibex` inputs emitted preserved JSX in `.js` files. They now emit `.jsx` files and `.jsx.map` source maps, including files with no JSX elements, as `.tsx` does.
 
 - Looking up the temporary directory was suggested as an allocation; `Experimental.Process.temporaryDirectory` now queries the native path without creating a directory or file.
+
+- Compiling an imported `.vibe` file outside the config directory left its sidecar beside the source despite `vibe.sidecarDir`. Sidecars now follow TypeScript's declaration source root and the compiling project's output directory; project references keep output with the owning project.
 - Release notes repeated the upgrade and bug-fix sections, hiding later fixes from readers and documentation tools. Each section now appears once, with the unique fixes and upgrade repairs retained.
 
 - The source mapper crashed with a stack overflow on a regex pattern with an extractor, such as `s is /(\d+)/(let m)`, in a file it projected. It now projects that file.

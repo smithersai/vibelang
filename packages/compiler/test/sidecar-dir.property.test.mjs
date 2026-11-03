@@ -13,7 +13,7 @@ import { checkProperty } from "../../../scripts/testing/property.mjs"
 const vip = fileURLToPath(new URL("../../../docs/design/vips/0027-declaration-output.md", import.meta.url))
 const quotes = [
   "The Location bullet stays the default: `x.d.vibe.ts` beside `x.vibe`, with no configuration.",
-  "`vibe.sidecarDir` moves every sidecar of the project into one directory, conventionally `.vibe/declarations`, at the path the source has under the config's directory, so `src/x.vibe` gets `.vibe/declarations/src/x.d.vibe.ts`.",
+  "With `rootDir: \".\"`, `src/x.vibe` gets `.vibe/declarations/src/x.d.vibe.ts`.",
   "Switching the setting on or off removes each module's sidecar from the other place."
 ]
 
@@ -29,7 +29,7 @@ test("the sidecar-directory oracle quotes VIP-27's amendment", () => {
   for (const quote of quotes) assert.ok(text.includes(quote), quote)
 })
 
-const options = { target: "ES2022", module: "NodeNext", moduleResolution: "NodeNext", strict: true, types: [], skipLibCheck: true, noEmit: true, allowArbitraryExtensions: true, rewriteRelativeImportExtensions: true }
+const options = { rootDir: ".", target: "ES2022", module: "NodeNext", moduleResolution: "NodeNext", strict: true, types: [], skipLibCheck: true, noEmit: true, allowArbitraryExtensions: true, rewriteRelativeImportExtensions: true }
 // A mode is where the sidecars go: beside the sources, the conventional
 // directory, or another directory the config names.
 const besideMode = (mode) => mode === "beside" || mode === "root"

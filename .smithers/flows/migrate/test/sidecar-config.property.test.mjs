@@ -32,7 +32,7 @@ test("property: setup roots and package types agree with the native effective si
       put(root, "lib/config/left.json", JSON.stringify({ vibe: { sidecarDir: input.left } }))
       put(root, "lib/config/right.json", JSON.stringify({ vibe: { sidecarDir: input.right } }))
       const config = join(root, "lib", input.config)
-      const before = JSON.stringify({ extends: ["./config/left.json", "./config/right.json"], compilerOptions: { noEmit: true, rootDirs: ["src"] }, include: ["src"], ...(input.own === undefined ? {} : { vibe: { sidecarDir: input.own } }) })
+      const before = JSON.stringify({ extends: ["./config/left.json", "./config/right.json"], compilerOptions: { noEmit: true, rootDir: ".", rootDirs: ["src"] }, include: ["src"], ...(input.own === undefined ? {} : { vibe: { sidecarDir: input.own } }) })
       writeFileSync(config, before)
       const shown = compiler(root, ["-p", config, "--showConfig"])
       assert.equal(shown.status, 0, shown.stdout + shown.stderr)

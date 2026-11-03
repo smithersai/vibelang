@@ -34,7 +34,7 @@ function check({ directory = ".vibe/declarations", style = ".js", name = "tag", 
     }
     put("src/index.vibe", forms[form] + "\n")
     put("tsconfig.json", JSON.stringify({
-      compilerOptions: { ...options, ...(publicOutput ? { noEmit: false, declaration: true, emitDeclarationOnly: true, declarationDir: "public", rootDir: "." } : {}), ...(style === null ? {} : { vibelang: { declarationImportStyle: style } }) },
+      compilerOptions: { ...options, rootDir: ".", ...(publicOutput ? { noEmit: false, declaration: true, emitDeclarationOnly: true, declarationDir: "public", rootDir: "." } : {}), ...(style === null ? {} : { vibelang: { declarationImportStyle: style } }) },
       files: ["src/index.vibe"], ...(directory === null ? {} : { vibe: { sidecarDir: directory } })
     }))
     const emit = spawnSync(native, ["-p", "tsconfig.json", "--pretty", "false"], { cwd: root, encoding: "utf8" })

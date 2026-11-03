@@ -51,7 +51,7 @@ function project(t, files) {
   return root
 }
 
-const options = { target: "ES2022", module: "NodeNext", moduleResolution: "NodeNext", strict: true, types: [], skipLibCheck: true, noEmit: true, allowArbitraryExtensions: true, rewriteRelativeImportExtensions: true }
+const options = { rootDir: ".", target: "ES2022", module: "NodeNext", moduleResolution: "NodeNext", strict: true, types: [], skipLibCheck: true, noEmit: true, allowArbitraryExtensions: true, rewriteRelativeImportExtensions: true }
 const sources = {
   "lib/src/name.vibe": "export type Name = { readonly first: string }\n",
   "lib/src/deep/greet.vibe": "import type { Name } from \"../name.vibe\"\n\nexport function greet(name: Name): string {\n  return `Hello, ${name.first}!`\n}\n",
@@ -146,7 +146,7 @@ test("the conventional directory keeps files the compiler did not write", { skip
 test("a base config's ${configDir} sidecarDir is the selected project's, and showConfig prints it relative", { skip }, (t) => {
   const root = project(t, {
     ...sources,
-    "base.json": JSON.stringify({ compilerOptions: { ...options, rootDirs: ["${configDir}", "${configDir}/types"] }, vibe: { sidecarDir: "${configDir}/types" } }),
+    "base.json": JSON.stringify({ compilerOptions: { ...options, rootDir: "${configDir}", rootDirs: ["${configDir}", "${configDir}/types"] }, vibe: { sidecarDir: "${configDir}/types" } }),
     "lib/tsconfig.json": JSON.stringify({ extends: "../base.json", include: ["src"] })
   })
   build(root)
@@ -222,7 +222,7 @@ test("an empty sidecarDir overrides an inherited path with the declaring config 
   const root = project(t, {
     ...sources,
     "base.json": JSON.stringify({ compilerOptions: options, vibe: { sidecarDir: "types" } }),
-    "lib/tsconfig.json": JSON.stringify({ extends: "../base.json", include: ["src"], vibe: { sidecarDir: "" } })
+    "lib/tsconfig.json": JSON.stringify({ extends: "../base.json", compilerOptions: { rootDir: "." }, include: ["src"], vibe: { sidecarDir: "" } })
   })
   build(root)
   for (const module of vibeModules) assert.ok(existsSync(beside(root, module)), module)

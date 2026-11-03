@@ -43,7 +43,7 @@ function crossPackage({ output = ".vibe/declarations", nested = "src", helper = 
     const tagFile = vibeKind === "directory" ? tag + "/index.vibe" : tag + ".vibe"
     const tagSpecifier = vibeKind === "directory" ? "./" + tag : "./" + tag + ".vibe"
     put("a/package.json", JSON.stringify({ name: "producer", type: "module", types: `./${output}/${nested}/${entry}.d.vibe.ts` }))
-    put("a/tsconfig.json", JSON.stringify({ compilerOptions: { ...projectOptions, rootDirs: [".", output] }, include: [nested], vibe: { sidecarDir: output } }))
+    put("a/tsconfig.json", JSON.stringify({ compilerOptions: { ...projectOptions, rootDir: ".", rootDirs: [".", output] }, include: [nested], vibe: { sidecarDir: output } }))
     put(`a/${nested}/${helperFile}`, "export interface Helper { readonly n: number }\n")
     put(`a/${nested}/${tagFile}`, "export type Tag = { readonly label: string }\n")
     put(`a/${nested}/${entry}.vibe`, `import type { Helper } from "${helperSpecifier}"\nimport type { Tag } from "${tagSpecifier}"\nexport function make(n: number): Helper & Tag { return { n, label: "ok" } }\n`)

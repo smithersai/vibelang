@@ -109,7 +109,7 @@ func TestPackageSidecarExportIsTheSource(t *testing.T) {
 			sidecar := test.directory + "/src/Stage.d.vibe.ts"
 			files[sidecar] = files["/lib/src/Stage.d.vibe.ts"]
 			delete(files, "/lib/src/Stage.d.vibe.ts")
-			files["/lib/"+test.config] = `{"vibe":{"sidecarDir":"` + test.directory + `"}}`
+			files["/lib/"+test.config] = `{"compilerOptions":{"rootDir":"."},"vibe":{"sidecarDir":"` + test.directory + `"}}`
 			files["/lib/package.json"] = `{"name":"lib","type":"module","types":"` + sidecar + `","main":"./src/Stage.vibe"}`
 			files["/app/src/a.ts"] = `import { Stage } from "lib"; import { use } from "../../lib/src/Use.ts"; export const run = (s: Stage): string => use(s);`
 			p := program(t, files)
@@ -125,7 +125,7 @@ func TestPackageSidecarExportIsTheSource(t *testing.T) {
 		t.Parallel()
 		files := alchemy()
 		files["/app/tsconfig.json"] = strings.Replace(files["/app/tsconfig.json"].(string), `"noLib":true`, `"noLib":true,"preserveSymlinks":true`, 1)
-		files["/lib/tsconfig.json"] = `{"vibe":{"sidecarDir":".vibe/declarations"}}`
+		files["/lib/tsconfig.json"] = `{"compilerOptions":{"rootDir":"."},"vibe":{"sidecarDir":".vibe/declarations"}}`
 		files["/lib/.vibe/declarations/src/Stage.d.vibe.ts"] = files["/lib/src/Stage.d.vibe.ts"]
 		delete(files, "/lib/src/Stage.d.vibe.ts")
 		files["/lib/package.json"] = `{"name":"lib","type":"module","exports":{"./Stage":{"types":"./.vibe/declarations/src/Stage.d.vibe.ts"},"./Use":"./src/Use.ts"}}`
@@ -144,4 +144,30 @@ func TestPackageSidecarExportIsTheSource(t *testing.T) {
 		p := program(t, files)
 		assert.Assert(t, p.GetSourceFile("/app/node_modules/lib/src/Stage.d.vibe.ts") != nil)
 	})
+}
+
+// A config's listed root can import another project's unreferenced source.
+// Both the emitter and the reverse sidecar mapping must use that full graph.
+func TestSidecarImportedSourceRootIdentity(t *testing.T) {
+	t.Parallel()
+	fs := vfstest.FromMap(map[string]any{
+		"/app/tsconfig.json":            `{"compilerOptions":{"noLib":true,"noEmit":true,"module":"nodenext","allowArbitraryExtensions":true,"allowImportingTsExtensions":true},"files":["main.ts"]}`,
+		"/app/package.json":             `{"type":"module"}`,
+		"/app/main.ts":                  `import { X } from "b"; import { X as Source } from "../lib/a/src/X.vibe"; declare const x: X; const same: Source = x;`,
+		"/app/node_modules/b":           vfstest.Symlink("/lib/b"),
+		"/lib/b/package.json":           `{"name":"b","type":"module","types":"./decl/b/src/z.d.vibe.ts"}`,
+		"/lib/b/tsconfig.json":          `{"compilerOptions":{"noLib":true,"noEmit":true,"module":"nodenext","allowArbitraryExtensions":true,"allowImportingTsExtensions":true},"vibe":{"effectGlobals":false,"effectModules":false,"sidecarDir":"decl"},"include":["src"]}`,
+		"/lib/b/src/z.vibe":             `export { X } from "../../a/src/X.vibe";`,
+		"/lib/a/src/X.vibe":             `export class X { private brand = 1; }`,
+		"/lib/b/decl/b/src/z.d.vibe.ts": `export { X } from "../../a/src/X.vibe";`,
+		"/lib/b/decl/a/src/X.d.vibe.ts": `export declare class X { private brand; }`,
+	}, tspath.CaseSensitive)
+	config, ds := tsoptions.GetParsedCommandLineOfConfigFile("/app/tsconfig.json", nil, nil, fs, nil)
+	assert.Equal(t, len(ds), 0)
+	p := NewProgram(ProgramOptions{Config: config, Host: NewCompilerHost(fs, "/", nil, nil, nil)})
+	assert.Assert(t, p.GetSourceFile("/lib/b/src/z.vibe") != nil)
+	assert.Assert(t, p.GetSourceFile("/lib/b/decl/b/src/z.d.vibe.ts") == nil)
+	for _, d := range p.GetSemanticDiagnostics(t.Context(), nil) {
+		t.Error(d.String())
+	}
 }

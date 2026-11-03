@@ -28,7 +28,7 @@ function workspaceIdentity({ output = ".vibe/declarations", config = "tsconfig.j
     const directory = external ? join(root, "declarations") : join(root, "a", output)
     const sidecar = join(directory, "src/Stage.d.vibe.ts")
     put("a/package.json", JSON.stringify({ name: "producer", version: "1.0.0", type: "module", types: sidecar, main: "./src/Stage.vibe" }))
-    put("a/" + config, JSON.stringify({ compilerOptions: options, include: ["src"], vibe: { sidecarDir: external ? directory : output } }))
+    put("a/" + config, JSON.stringify({ compilerOptions: { ...options, rootDir: "." }, include: ["src"], vibe: { sidecarDir: external ? directory : output } }))
     put("a/src/Stage.vibe", "export class Stage { private readonly brand = 1; constructor(readonly name: string) {} }\n")
     mkdirSync(dirname(sidecar), { recursive: true })
     writeFileSync(sidecar, "export declare class Stage { private readonly brand; readonly name: string; constructor(name: string); }\n")

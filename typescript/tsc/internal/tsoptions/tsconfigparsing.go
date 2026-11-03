@@ -1986,20 +1986,6 @@ func getFileNamesFromConfigSpecs(
 				}
 				continue
 			}
-			// VibeLang: x.d.vibe.ts/x.d.vibex.ts beside its source is the sidecar the
-			// compiler writes for it, an
-			// output of the source rather than an input of its project.
-			// With vibe.sidecarDir, a sidecar there mirrors its source's path
-			// under the config's directory (decided detail 268).
-			name := file.AsString()
-			sourceExtension := tspath.ExtensionVibe
-			if strings.HasSuffix(name, ".d"+tspath.ExtensionVibex+".ts") {
-				sourceExtension = tspath.ExtensionVibex
-			}
-			sidecarSuffix := ".d" + sourceExtension + ".ts"
-			if strings.HasSuffix(name, sidecarSuffix) && (host.FileExists(tspath.RootedFilePathFromNormalized(strings.TrimSuffix(name, sidecarSuffix)+sourceExtension)) || host.FileExists(tspath.RootedFilePathFromNormalized(options.VibeSidecarSource(name, host.CaseSensitivity())))) {
-				continue
-			}
 			// So is x.vibe.name.d.ts, when x.vibe declares module name (VIP-40).
 			if isModuleBodyDeclaration(file, host) {
 				continue
@@ -2037,6 +2023,23 @@ func getFileNamesFromConfigSpecs(
 	for file := range wildCardJsonFileMap.Values() {
 		files = append(files, file)
 	}
+	// Infer from sources only, after all wildcard roots are known. Explicit
+	// declarations remain inputs and still participate in TS5055 protection.
+	root := options.VibeSidecarRoot(files, host.CaseSensitivity())
+	files = core.Filter(files, func(file tspath.RootedFilePath) bool {
+		name := file.AsString()
+		extension := tspath.ExtensionVibe
+		if strings.HasSuffix(name, ".d"+tspath.ExtensionVibex+".ts") {
+			extension = tspath.ExtensionVibex
+		}
+		suffix := ".d" + extension + ".ts"
+		if literalFileMap.Has(keyMapper(file)) || !strings.HasSuffix(name, suffix) {
+			return true
+		}
+		beside := strings.TrimSuffix(name, suffix) + extension
+		return !host.FileExists(tspath.RootedFilePathFromNormalized(beside)) &&
+			!host.FileExists(tspath.RootedFilePathFromNormalized(options.VibeSidecarSource(name, host.CaseSensitivity(), root)))
+	})
 	return files, literalFileMap.Size()
 }
 
