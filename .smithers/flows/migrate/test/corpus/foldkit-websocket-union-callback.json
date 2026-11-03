@@ -1,0 +1,9 @@
+{
+  "key": "foldkit-117:returned-callback:union-error-slot",
+  "source": "foldkit-117 (filed as foldkit-17064): examples/websocket-chat managedResources.chatSocket.acquire returns Effect.callback<WebSocket, Error>; replacing the raw socket with a platform service removes that call, while the native acquire writes its original Error channel.",
+  "before": "import { Effect } from 'effect'\nexport const managedResources = () => ({ chatSocket: { acquire: () => Effect.callback<number, Error | TypeError>(resume => { resume(Effect.fail(new Error('Failed to connect to WebSocket'))) }) } })",
+  "after": "export const managedResources = () => ({ chatSocket: { acquire: effect (): number!(Error | TypeError) => (effect { throw new Error('connect'); }) catch effect (error) => { throw new Error('Failed to connect to WebSocket'); } } })",
+  "marker": "throw new Error('Failed to connect to WebSocket')",
+  "spec": "docs/design/src/001-functions.md",
+  "quote": "A slot holds such a type only in parentheses, as in `User!(NotFound | Timeout)`."
+}

@@ -74,7 +74,7 @@ const migrateTest = S.Shell.Test({
     "cd ../../.smithers/flows && node --test migrate/test/*.test.mjs convert/*.test.mjs",
   data: [compilerNative, runtimeDist, S.glob("compiler/**"), migrationSources,
     S.file("//docs/tools/package.json"), S.file("//docs/tools/bun.lock"),
-    S.file("//scripts/testing/property.mjs"), S.file("//docs/design/src/007-tooling.md"),
+    S.file("//scripts/testing/property.mjs"), S.file("//scripts/testing/spec-path.mjs"), S.file("//docs/design/src/001-functions.md"), S.file("//docs/design/src/007-tooling.md"),
     S.glob("vite/src/**"), S.glob("unplugin/src/**"), ...install],
   tools: [S.Host.bin("node"), S.Host.bin("bun"), S.Host.bin("jj")],
   sandbox: "none",

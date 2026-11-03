@@ -17,6 +17,7 @@ const corpus = JSON.parse(readFileSync(new URL("./corpus/foldkit-websocket-retur
 const compiler = process.env.VIBELANG_COMPILER ?? fileURLToPath(new URL("../../../../packages/compiler/native/vibelang", import.meta.url))
 const marker = 'throw new Error("Connection timeout")'
 const safe = ["timeout-catchTag", "map", "as"]
+const channelOf = channel => channel.includes("|") ? "(" + channel + ")" : channel
 
 function scenario(profile, wrapper = "expression", style = "named", name = "acquire", home = "top") {
   const alias = style === "named" ? "Effect" : "Fx"
@@ -123,7 +124,7 @@ const censusProfiles = {
   original: 'Effect.timeout("5 seconds"), Effect.catchTag("TimeoutError", () => Effect.fail(new Error("timeout")))'
 }
 async function decideSource(before, channel = "Error", afterOverride) {
-  const after = afterOverride ?? `export const acquire = effect (): number!${channel} => { ${marker}; }`
+  const after = afterOverride ?? `export const acquire = effect (): number!${channelOf(channel)} => { ${marker}; }`
   const offset = after.indexOf(marker), lines = after.slice(0, offset).split("\n")
   const diagnostic = { file: "main.vibe", line: lines.length, column: lines.at(-1).length + 1,
     code: "EK4804", category: "warning", message: "This failure is a global Error, which has no _tag for a catch or a match to tell it apart by." }

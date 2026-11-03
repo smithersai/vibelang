@@ -8,12 +8,14 @@ import { fileURLToPath } from "node:url"
 import { test } from "node:test"
 import { parseStyleTree, preservedGlobalErrors } from "../lib/preserved-errors.mjs"
 import { parseDiagnostics, styleProblems } from "../lib/diagnostics.mjs"
+import { SpecPath } from "../../../../scripts/testing/spec-path.mjs"
 
 const require = createRequire(new URL("../../../../packages/runtime/package.json", import.meta.url))
 const fc = require("fast-check")
 const corpus = JSON.parse(readFileSync(new URL("./corpus/foldkit-websocket-returned-callback.json", import.meta.url)))
 const compiler = process.env.VIBELANG_COMPILER ?? fileURLToPath(new URL("../../../../packages/compiler/native/vibelang", import.meta.url))
 const native = { skip: !existsSync(compiler) && "build the native compiler" }
+const channelOf = channel => channel.includes("|") ? "(" + channel + ")" : channel
 async function decision(before, after, marker = corpus.marker) {
   const at = after.indexOf(marker)
   assert.ok(at >= 0, marker)
@@ -30,6 +32,19 @@ test("foldkit-117: a returned callback declares the private acquire's preserved 
   assert.equal(result.accepted.size, 1, JSON.stringify(result.decisions))
   assert.deepEqual(styleProblems([result.diagnostic], ["main.vibe"], result.accepted), [])
   assert.match(result.decisions[0].reason, /returned callback/)
+})
+
+test("Foldkit union corpus quotes the compound-slot rule", () => {
+  const union = JSON.parse(readFileSync(new URL("./corpus/foldkit-websocket-union-callback.json", import.meta.url)))
+  assert.ok(readFileSync(SpecPath(union.spec.split("/").at(-1)), "utf8").includes(union.quote),
+    `${union.key}: missing compound-slot specification quote`)
+})
+
+test("foldkit-117: a returned callback preserves a parenthesized union error channel", native, async () => {
+  const union = JSON.parse(readFileSync(new URL("./corpus/foldkit-websocket-union-callback.json", import.meta.url)))
+  const result = await decision(union.before, union.after, union.marker)
+  assert.equal(result.accepted.size, 1, JSON.stringify(result.decisions))
+  assert.equal(result.decisions[0].channel, "Error | TypeError")
 })
 
 test("returned callback contracts support direct block returns and Effect import aliases", native, async () => {
@@ -84,7 +99,7 @@ test("generated return wrappers keep the callback channel inside the returned Ef
         : (kind === "generator" ? "function*" : "async function*") + " () { return " + call + " }"
       const oldCall = "Effect.callback<number, Error>(resume => { resume(Effect.fail(new Error('Failed to connect to WebSocket'))) })"
       const before = corpus.before.replace("() => " + oldCall, producer).replace("acquire:", name + ":")
-      const after = corpus.after.replace("number!Error", "number!" + channel).replace("acquire:", name + ":")
+      const after = corpus.after.replace("number!Error", "number!" + channelOf(channel)).replace("acquire:", name + ":")
       const result = await decision(before, after)
       assert.equal(result.accepted.size, kind === "plain" ? 1 : 0, JSON.stringify({ kind, channel, name, decisions: result.decisions }))
     }), { seed: 11717065, numRuns: 100 })
@@ -97,7 +112,7 @@ test("generated callback channels, owner names and requirements preserve only th
     fc.constantFrom("Error", "TypeError", "Error | TypeError", "never"), fc.boolean(),
     fc.constantFrom("acquire", "open", "connect"), fc.boolean(), async (oldChannel, newChannel, scope, name, nested) => {
       const before = corpus.before.replace("<number, Error>", "<number, " + oldChannel + ">").replace("acquire:", name + ":")
-      let after = corpus.after.replace("number!Error", "number!" + newChannel + (scope ? "!Scope" : "")).replace("acquire:", name + ":")
+      let after = corpus.after.replace("number!Error", "number!" + channelOf(newChannel) + (scope ? "!Scope" : "")).replace("acquire:", name + ":")
       if (nested) after = after.replace(corpus.marker, "const child = effect (): number!Error => { " + corpus.marker + "; }; return try child()")
       const result = await decision(before, after)
       assert.equal(result.accepted.size, !nested && oldChannel === newChannel && oldChannel.split(" | ").includes("Error") ? 1 : 0,
