@@ -301,6 +301,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - After VIP-1, `vibelang --fix --fix-vip-only` could not see that a method of a service read as `const fs = FileSystem.FileSystem()` ran where it stood, so it refused the whole file's migration (`EK9202`) and left functions such as foldkit's `readLiveRecordFile` plain, building their reads at the call and skipping their later steps; it now writes `try FileSystem.FileSystem` and runs each such method with `try`.
 - A `match` whose last arm lacked its `;` beside a `do` could crash the compiler (`slice bounds out of range`) instead of reporting `EK0701`; a lowered `do` temporary no longer gets a range that ends before it starts.
 - A Date match regression check still rejected an object with `Date.prototype`; it now expects the prototype check required by VIP-7, in both bare and extractor patterns.
+- A native build or copy could replace a working compiler with a file that could not execute, even though the writer reported success; publication now requires a nonempty regular executable and preserves the previous binary on failure.
 - Running compiler cases with a missing Effect install could silently use the runtime's installation and replace previous case outputs; the harness now exits before changing cases, names the missing package and explains how to install it or set `EFFECT_NODE_MODULES`.
 - The match examples for schema guards and extractor counts failed in the Effect runner with `Not a valid effect`; their entry points now explicitly return Effects.
 

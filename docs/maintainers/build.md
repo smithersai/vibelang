@@ -172,6 +172,8 @@ stale line leaves that example unchecked. Delete the stale lines with
 compiler take them. `--pending-list <file>` writes why each remaining example is
 refused.
 
+Before publishing, `scripts/native-output.sh` requires a nonempty regular executable file. A writer that returns success but produces a directory or a file without execute permission fails the build or copy; the previous executable stays in place. The helper preserves the source file's permissions when copying, so fix those permissions at the source before retrying.
+
 ### Pending hang probes
 
 The `//:go-vibelangfuzz-pending` merge-gate target requires the independently

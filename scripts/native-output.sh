@@ -32,5 +32,6 @@ case $operation in
   *) echo "native-output: unknown operation: $operation" >&2; exit 2 ;;
 esac
 [ -s "$pending" ] || { echo "native-output: $output: success without a nonempty binary" >&2; exit 1; }
+[ -f "$pending" ] && [ -x "$pending" ] || { echo "native-output: $output: not an executable file" >&2; exit 1; }
 reject_directory
 mv -f "$pending" "$output"
