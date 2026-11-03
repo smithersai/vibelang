@@ -179,6 +179,15 @@ interface TypedArrayClass<T> {
 
 const typedArray = Object.getPrototypeOf(Uint8Array)
 
+// VIP-7 built-in adapters extract the subject. Ordinary constructors instead
+// recognize with a boolean, which is not a valid successful extractor result.
+const instanceExtractors = new Set<unknown>([
+  Object, Function, Map, Set, WeakMap, WeakSet, WeakRef, FinalizationRegistry, RegExp, Promise,
+  Error, EvalError, RangeError, ReferenceError, SyntaxError, TypeError, URIError,
+  AggregateError, ArrayBuffer, DataView,
+  ...(typeof SharedArrayBuffer === "function" ? [SharedArrayBuffer] : [])
+])
+
 /** The list a matcher or a call-only extractor returned, or false. */
 function extractedList(result: unknown): ReadonlyArray<any> | false {
   if (result === false) return false
@@ -209,8 +218,9 @@ type BoxForConstructor<C> =
 /**
  * Runs an extractor pattern's matcher: its values, or false when it does not
  * match. `Array` and a typed array list the subject's elements; another class
- * without a custom matcher extracts the instance itself, so `Map(let m)` binds
- * the map; a function that is no class is called with the matcher's hint.
+ * with a built-in adapter extracts the instance itself, so `Map(let m)` binds
+ * the map. An ordinary class throws TypeError after recognizing the subject;
+ * a function that is no class is called with the matcher's hint.
  */
 export function $extract<S>(matcher: ArrayConstructor, subject: S): ArrayExtraction<S> | false
 // Infer the constructor itself: inferring its result can lose the BigInt
@@ -232,7 +242,11 @@ export function $extract(matcher: unknown, subject: unknown): unknown {
     if (Object.getPrototypeOf(matcher) === typedArray) return subject instanceof (matcher as any) ? subject : false
     const builtin = builtinTest(matcher, subject)
     if (builtin !== undefined) return builtin ? [subject] : false
-    if (isClass(matcher)) return subject instanceof (matcher as any) ? [subject] : false
+    if (isClass(matcher)) {
+      if (!(subject instanceof (matcher as any))) return false
+      if (instanceExtractors.has(matcher)) return [subject]
+      throw new TypeError("An ordinary class used as an extractor must return an object")
+    }
     return extractedList((matcher as Function)(subject, { matchType: "extractor" }))
   }
   throw new TypeError("An extractor pattern needs a class, a regular expression, or a value with a Symbol.customMatcher method")

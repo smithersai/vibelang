@@ -121,7 +121,7 @@ test("match: a custom matcher sees its receiver and the boolean or extractor hin
 test("match: class extraction, primitive mismatches, and unprintable unmatched values", () => {
   class Box {}
   const box = new Box()
-  expect($extract(Box, box)).toEqual([box])
+  expect(() => $extract(Box, box)).toThrow(TypeError)
   expect($extract(Box, {})).toBe(false)
   expect($extract(Number, "42")).toBe(false)
   expect($extract(Symbol, Symbol.for("key"))).toEqual([Symbol.for("key")])

@@ -1,7 +1,7 @@
 import { Effect } from "effect"
 export function probe(value:unknown):string {
  class C {}
- const ctor:any=C
+ const ctor=C as unknown as (s:unknown)=>readonly unknown[]|false
  const s=value==="instance"?new C():value
  try{return match(s){when ctor(): "matched";default:"miss";}}catch(e){return e instanceof TypeError?"TypeError":"other"}
 }

@@ -685,6 +685,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - An empty `provide` at the end of `do` could replace its preceding value with a `Layer`. It now keeps that value while still building and releasing the layer.
 
+- An ordinary class used as an unchecked extractor could silently miss an instance. It now throws `TypeError` after successful `instanceof` recognition, as VIP-7 requires; noninstances still miss.
+
 - Identical recursive generic declaration APIs could fail with `TS2589`; exact resolved type identity now proves those comparisons.
 - API checks treated identical JSDoc links as different when a private target resolved in only one snapshot. Link targets and labels now compare consistently while real comment changes remain differences.
 
