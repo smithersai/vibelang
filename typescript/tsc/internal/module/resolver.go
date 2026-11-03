@@ -1790,6 +1790,12 @@ func (r *resolutionState) tryAddingExtensions(extensionless tspath.FileNameStem,
 			}
 		}
 		if extensions&extensionsDeclaration != 0 {
+			// Stock TypeScript's arbitrary-extension counterpart keeps a written
+			// ./x.vibe import valid when only x.d.vibe.ts is available, including
+			// a compatibility declaration's self-namespace re-export.
+			if resolved := r.tryExtension(".d"+tspath.ExtensionVibe+".ts", extensionless, false); !resolved.shouldContinueSearching() {
+				return resolved
+			}
 			if resolved := r.tryExtension(tspath.ExtensionDts, extensionless, true); !resolved.shouldContinueSearching() {
 				return resolved
 			}

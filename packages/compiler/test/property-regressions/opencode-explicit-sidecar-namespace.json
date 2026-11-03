@@ -1,0 +1,18 @@
+{
+  "property": "opencode-explicit-sidecar-namespace",
+  "rule": "Type checkers work through `.d.vibe.ts`",
+  "spec": "docs/design/src/007-tooling.md",
+  "input": {
+    "namespace": "CodeModeTool",
+    "kind": "string",
+    "extension": "vibe",
+    "nested": false,
+    "suffix": "migration",
+    "skipLibCheck": true,
+    "nativeHomonym": false,
+    "ordinaryDeclaration": false,
+    "invalid": false
+  },
+  "declaration": "export * as CodeModeTool from \"./tool.vibe\";\nexport declare const create: (execute: (name: string, index: number) => number) => number;\n",
+  "consumer": "import { CodeModeTool } from \"@fixture/core/tool\";\nexport const answer = CodeModeTool.create((name, index) => name.length + index);\n"
+}

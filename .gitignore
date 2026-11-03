@@ -24,3 +24,6 @@ dist-npm/
 
 # One CI machine's slice of the Go tests (scripts/go-test-shards.sh); never committed.
 /scripts/go-test-slice
+
+# Handwritten compatibility-declaration regression input, not compiler output.
+!typescript/vibelang/cases/opencode-explicit-sidecar-namespace/decl/tool.d.vibe.ts
