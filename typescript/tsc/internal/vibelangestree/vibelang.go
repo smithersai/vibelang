@@ -89,6 +89,10 @@ func (c *converter) convertVibeLang(n *ast.Node, parent *ast.Node) (*obj, bool) 
 		return nil, false
 	}
 	switch n.Kind {
+	case ast.KindExpressionStatement:
+		if result := c.concurrentStatement(n); result != nil {
+			return result, true
+		}
 	case ast.KindIdentifier:
 		if n.Flags&ast.NodeFlagsVibeLang != 0 && n.Text() == "%" {
 			return c.node(n, "TopicReference"), true
@@ -342,6 +346,30 @@ func (c *converter) isPatternMatcher(callee *ast.Node) bool {
 	}
 	_, kind := c.tokenAfter(c.start(arrow))
 	return kind == ast.KindIsKeyword
+}
+
+// concurrentStatement retains the source loop instead of the parser's
+// $forConcurrent invocation. The callback keeps the item's binding scope;
+// only a written limit has a source node. Calls inside any of these children
+// remain ordinary calls for rules to inspect.
+func (c *converter) concurrentStatement(n *ast.Node) *obj {
+	expression := n.Expression()
+	if expression == nil || expression.Kind != ast.KindCallExpression {
+		return nil
+	}
+	call := expression.AsCallExpression()
+	args := listNodes(call.Arguments)
+	if !isSynthesizedIdentifier(call.Expression, "$forConcurrent") || len(args) != 3 {
+		return nil
+	}
+	var concurrency any
+	if !synthesized(args[1]) {
+		concurrency = c.convertChild(args[1], expression)
+	}
+	return c.node(n, "VibeForConcurrentStatement").
+		set("iterable", c.convertChild(args[0], expression)).
+		set("concurrency", concurrency).
+		set("body", c.convertChild(args[2], expression))
 }
 
 // isProgramArrow reports whether n is an arrow function the parser wrote

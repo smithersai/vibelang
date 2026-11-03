@@ -605,6 +605,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Extracted JSX examples could be shown with a `.ts` destination that rejects their syntax; specification checks now parse each extracted twin using its documented `.ts` or `.tsx` source kind.
 
 - Specification examples could show an extracted TypeScript module body as a global script; the specification checks now require extracted twins to preserve module scope.
+- ESLint treated a multiline `for concurrent` head as a function call; it now follows the loop's source children while preserving item scopes and real call warnings.
 
 - The Go validation graph omitted the language-service tests, hiding stale trailing-block fixtures. It now runs that package, checks ordinary Effect arguments, and retains the retired forms as rejection tests.
 

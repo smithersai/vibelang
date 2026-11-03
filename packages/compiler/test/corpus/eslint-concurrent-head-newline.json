@@ -1,0 +1,10 @@
+{
+  "property": "eslint-concurrent-source-form",
+  "rule": "VIP-16 for concurrent; VIP-34 existing tools work",
+  "input": {
+    "code": "effect function f() {\n  for concurrent\n    (const x of [1]) { use(x) }\n}\n",
+    "bounded": false,
+    "warnings": 0
+  },
+  "note": "Minimized from concurrent-head-newline: the head's opening parenthesis is not a source function call."
+}

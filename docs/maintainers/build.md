@@ -1364,3 +1364,10 @@ source-written calls, computed-access newlines and scope reads remain visible.
 The native `eslint-source-calls.property.test.mjs`, real ESLint
 `source-calls-property.test.mjs` and keyed corpus exercise those boundaries;
 `TestDoMethodCallSourceBoundaries` checks the Go exporter directly.
+
+The ESLint source view represents `for concurrent` as
+`VibeForConcurrentStatement`, with `iterable`, `concurrency` and `body`
+visitor keys. Its callback keeps the item binding scope; only a written limit
+has a concurrency node. Native and real ESLint concurrent-form properties,
+the keyed concurrent-head corpus and `TestConcurrentStatementSourceForm`
+check the loop without suppressing reports on written calls in its children.
