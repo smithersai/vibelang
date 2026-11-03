@@ -1121,6 +1121,8 @@ Trailing blocks are rejected by [VIP-11](../vips/0011-trailing-blocks-denied.md#
 
 ### Transitional compiler diagnostics
 
+The legacy bare prelude `Scope` type and same-named module-export shorthand have no diagnostic while the transitional compiler accepts them. Their [migration](007-tooling.md#legacy-prelude-shorthand) writes `Scope.Scope`, `Option.Option<A>` and `FileSystem.FileSystem.of(impl)`. Coordinated removal follows preserving codemods and zero remaining migration-repository uses; afterwards the equivalent namespace imports report native `TS2709` for namespace-as-type uses and `TS2339` for absent namespace members. This compatibility allocates no `EK` code.
+
 A transitional compiler may still print compatibility diagnostics from the old language. The following inventory covers the `EK92xx` codes in its [registry](../../../typescript/tsc/internal/vibelang/diagnostics.go), separately from the normative rules above: an interim code does not establish a language rule or reserve a new VIP block. Their retirement follows the named VIPs; a compiler renumbering must update this inventory with the registry.
 
 | Emitted code | Rule | Retirement VIP | Replacement |
