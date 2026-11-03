@@ -41,3 +41,10 @@ export function constKept(xs: number[]) {
 export effect function main() {
   return [drain(iter([1, 2, 3])), countdown({ n: 3 }), constInit([1, 2, 3]), letInit([1, 2, 3]), updateBinding([1, 2, 3]), constKept([1])]
 }
+// VIP-7 for init copies and fresh test/update binding cells; rule: docs/design/vips/0007-match.md#82021b5260ecb037
+// VIP-7 for init copies and fresh test/update binding cells; rule: docs/design/vips/0007-match.md#6248b028832db9ae
+// VIP-7 for init copies and fresh test/update binding cells; rule: docs/design/vips/0007-match.md#494d8f4b4bc74cc4
+// VIP-7 for init copies and fresh test/update binding cells; rule: docs/design/vips/0007-match.md#5384f21a26a2249b
+// VIP-7 for init copies and fresh test/update binding cells; rule: docs/design/vips/0007-match.md#cf4047a8c5a7607d
+// VIP-7 for init copies and fresh test/update binding cells; rule: docs/design/vips/0007-match.md#f29175e8b1c03cba
+// VIP-7 for init copies and fresh test/update binding cells; rule: docs/design/vips/0007-match.md#3cc20d862baeec59

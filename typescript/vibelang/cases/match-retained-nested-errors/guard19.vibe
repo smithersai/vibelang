@@ -5,3 +5,4 @@ const subjects:unknown[]=[copy,{_tag:"SqlError"},null,{}];
 return subjects.map(s=>[match(s){when M.SqlError:true;default:false;},match(s){when M.SqlError(let e):e===s;default:false;},match(s){when M.SqlError():true;default:false;},match(s){when M.SqlError(let a,let b):true;default:false;}]);
 }
 export function narrow(s:unknown):M.SqlError["_tag"]|undefined{return match(s){when M.SqlError(let error):error._tag;default:undefined;}}
+// VIP-7 subpath retained error guard and subject extraction; rule: docs/design/vips/0007-match.md#070607254d807183

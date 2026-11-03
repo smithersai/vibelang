@@ -5,3 +5,4 @@ const subjects:unknown[]=[copy,{_tag:"CryptoError"},null,{}];
 return subjects.map(s=>[match(s){when M.CryptoError:true;default:false;},match(s){when M.CryptoError(let e):e===s;default:false;},match(s){when M.CryptoError():true;default:false;},match(s){when M.CryptoError(let a,let b):true;default:false;}]);
 }
 export function narrow(s:unknown):M.CryptoError["_tag"]|undefined{return match(s){when M.CryptoError(let error):error._tag;default:undefined;}}
+// VIP-7 subpath retained error guard and subject extraction; rule: docs/design/vips/0007-match.md#995de216e0ced11b

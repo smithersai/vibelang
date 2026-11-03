@@ -5,3 +5,4 @@ const subjects:unknown[]=[copy,{_tag:"WorkerError"},null,{}];
 return subjects.map(s=>[match(s){when M.WorkerError:true;default:false;},match(s){when M.WorkerError(let e):e===s;default:false;},match(s){when M.WorkerError():true;default:false;},match(s){when M.WorkerError(let a,let b):true;default:false;}]);
 }
 export function narrow(s:unknown):M.WorkerError["_tag"]|undefined{return match(s){when M.WorkerError(let error):error._tag;default:undefined;}}
+// VIP-7 subpath retained error guard and subject extraction; rule: docs/design/vips/0007-match.md#d50aa6dfa0134af8

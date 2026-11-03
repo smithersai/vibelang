@@ -5,3 +5,4 @@ const subjects:unknown[]=[copy,{_tag:"HttpClientError"},null,{}];
 return subjects.map(s=>[match(s){when M.HttpClientError:true;default:false;},match(s){when M.HttpClientError(let e):e===s;default:false;},match(s){when M.HttpClientError():true;default:false;},match(s){when M.HttpClientError(let a,let b):true;default:false;}]);
 }
 export function narrow(s:unknown):M.HttpClientError["_tag"]|undefined{return match(s){when M.HttpClientError(let error):error._tag;default:undefined;}}
+// VIP-7 subpath retained error guard and subject extraction; rule: docs/design/vips/0007-match.md#b8e1d025b7c7f06f

@@ -5,3 +5,4 @@ const subjects:unknown[]=[copy,{_tag:"EncodingError"},null,{}];
 return subjects.map(s=>[match(s){when M.EncodingError:true;default:false;},match(s){when M.EncodingError(let e):e===s;default:false;},match(s){when M.EncodingError():true;default:false;},match(s){when M.EncodingError(let a,let b):true;default:false;}]);
 }
 export function narrow(s:unknown):M.EncodingError["_tag"]|undefined{return match(s){when M.EncodingError(let error):error._tag;default:undefined;}}
+// VIP-7 subpath retained error guard and subject extraction; rule: docs/design/vips/0007-match.md#44cc78d75be064f8

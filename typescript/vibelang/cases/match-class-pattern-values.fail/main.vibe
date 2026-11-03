@@ -18,3 +18,5 @@ export function describe(x: unknown) {
     default: "other";
   }
 }
+// VIP-7 reject non-class VibeLang declarations and references; rule: docs/design/vips/0007-match.md#0b749ce903deb90b
+// VIP-7 reject non-class VibeLang declarations and references; rule: docs/design/vips/0007-match.md#e0b2b3a5e1b7b35b

@@ -5,3 +5,7 @@ const subjects:unknown[]=[copy,{_tag:"AiError"},null,{}];
 return subjects.map(s=>[match(s){when M.AiError:true;default:false;},match(s){when M.AiError(let e):e===s;default:false;},match(s){when M.AiError():true;default:false;},match(s){when M.AiError(let a,let b):true;default:false;}]);
 }
 export function narrow(s:unknown):M.AiError["_tag"]|undefined{return match(s){when M.AiError(let error):error._tag;default:undefined;}}
+// VIP-7 subpath retained error guard and subject extraction; rule: docs/design/vips/0007-match.md#04ae22fa80fb44e4
+// VIP-7 subpath retained-error inventory and guard dispatch; rule: docs/design/vips/0007-match.md#8806935f53c5731e
+// VIP-7 subpath retained-error inventory and guard dispatch; rule: docs/design/vips/0007-match.md#ce9f1e37ee73997d
+// VIP-7 subpath retained-error inventory and guard dispatch; rule: docs/design/vips/0007-match.md#c207e91dd69eee5f

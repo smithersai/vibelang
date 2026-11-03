@@ -5,3 +5,4 @@ const subjects:unknown[]=[copy,{_tag:"GraphQLClientError"},null,{}];
 return subjects.map(s=>[match(s){when M.GraphQLClientError:true;default:false;},match(s){when M.GraphQLClientError(let e):e===s;default:false;},match(s){when M.GraphQLClientError():true;default:false;},match(s){when M.GraphQLClientError(let a,let b):true;default:false;}]);
 }
 export function narrow(s:unknown):M.GraphQLClientError["_tag"]|undefined{return match(s){when M.GraphQLClientError(let error):error._tag;default:undefined;}}
+// VIP-7 subpath retained error guard and subject extraction; rule: docs/design/vips/0007-match.md#7fea4235c19fac15
