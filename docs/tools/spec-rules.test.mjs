@@ -3,7 +3,7 @@ import { cpSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writ
 import { join } from "node:path"
 import test from "node:test"
 import fc from "fast-check"
-import { generateShared, diagnosticRegistry, lintAuthority, lintCopies, lintRegistry, lintTables, read, repository, section, table } from "./spec-rules.mjs"
+import { vipRegistry, vipRegistryFromSources, generateShared, diagnosticRegistry, lintAuthority, lintCopies, lintRegistry, lintTables, read, repository, section, table } from "./spec-rules.mjs"
 import { examples, removedHandlers, verdict } from "./spec-examples.mjs"
 
 function fixture(fn) {
@@ -388,3 +388,66 @@ test("generated-resolution: source table mutations survive generation byte for b
     }
   ), { seed: 539003, numRuns: 72 })
 }))
+
+test("superseded-denial: accepted successor removes only historical table membership", () => fixture((root) => {
+  const entry = vipRegistry(root).get(25)
+  assert.equal(entry.status, "denied", "retain the historical decision")
+  assert.equal(entry.supersededBy, 40)
+  assert.ok(!lintTables(root).some(f => f.message.includes("denied VIP-25 membership")))
+  assert.ok(!lintAuthority(root).some(f => f.path === appendix && f.message.includes("denied VIP-25")))
+}))
+
+test("superseded-denial: positive authority still fails beside the historical explanation", () => fixture((root, edit) => {
+  const path = "docs/design/src/999-supersession.md"
+  writeFileSync(join(root, path), "[VIP-25](../vips/0025-inline-modules-denied.md) is superseded by accepted [VIP-40](../vips/0040-module-declarations.md): named modules are TypeScript escapes.\n\nAuthority: VIP-25 permits inline modules.\n")
+  const findings = lintAuthority(root).filter(f => f.path === path)
+  assert.ok(findings.length > 0)
+  assert.ok(findings.every(f => f.line === 3), JSON.stringify(findings))
+}))
+
+test("superseded-denial: fast-check requires the recorded accepted successor", () => fixture((root, edit) => {
+  const original = read(root, "docs/design/vips/0025-inline-modules-denied.md")
+  const successorPath = "docs/design/vips/0040-module-declarations.md"
+  const successor = read(root, successorPath)
+  const mutation = "docs/design/src/999-supersession.md"
+  fc.assert(fc.property(
+    fc.constantFrom("accepted", "denied", "open"),
+    fc.constantFrom("0040-module-declarations.md", "0040-module-declarations.md#decision", "0040-wrong.md"),
+    fc.boolean(),
+    (status, link, explicit) => {
+      writeFileSync(join(root, successorPath), successor.replace(/(\*\*Status:\*\*\s*)accepted\b/, "$1" + status))
+      const marker = (explicit ? "*Superseded by " : "*Proposed replacement: ") + "[VIP-40](" + link + ")"
+      edit("docs/design/vips/0025-inline-modules-denied.md", () => original.replace("*Superseded by [VIP-40](0040-module-declarations.md)", marker))
+      const valid = status === "accepted" && explicit && !link.endsWith("wrong.md")
+      assert.equal(vipRegistry(root).get(25).supersededBy === 40, valid)
+      assert.equal(lintTables(root).some(f => f.message.includes("denied VIP-25 membership")), !valid)
+      writeFileSync(join(root, mutation), "[VIP-25](../vips/0025-inline-modules-denied.md) is superseded by accepted [VIP-40](../vips/0040-module-declarations.md): named modules are TypeScript escapes.\n")
+      assert.equal(lintAuthority(root).some(f => f.path === mutation && f.message.includes("denied VIP-25")), !valid)
+      for (const statement of [
+        "Authority: VIP-25 permits inline modules.",
+        "VIP-25 permits inline modules; superseded by VIP-40.",
+        "VIP-25 is superseded by accepted VIP-33: inline modules are supported.",
+        "VIP-25 is superseded by accepted VIP-40: VIP-25 permits inline modules.",
+      ]) {
+        writeFileSync(join(root, mutation), statement + "\n")
+        assert.ok(lintAuthority(root).some(f => f.path === mutation && f.message.includes("VIP-25")), statement)
+      }
+    }
+  ), { seed: 310725, numRuns: 72 })
+}))
+
+
+test("superseded-denial: source snapshots verify successors without reading another snapshot", () => {
+  const oldPath = "docs/design/vips/0025-inline-modules-denied.md"
+  const newPath = "docs/design/vips/0040-module-declarations.md"
+  const sources = new Map([
+    [oldPath, "**Status:** denied\n\n*Superseded by [VIP-40](0040-module-declarations.md), 2026-11-03.*\n"],
+    [newPath, "**Status:** accepted\n"],
+  ])
+  const accepted = vipRegistryFromSources(sources)
+  assert.equal(accepted.get(25).status, "denied")
+  assert.equal(accepted.get(25).supersededBy, 40)
+  sources.set(newPath, "**Status:** open\n")
+  assert.equal(vipRegistryFromSources(sources).get(25).supersededBy, undefined)
+  assert.equal(accepted.get(25).supersededBy, 40)
+})

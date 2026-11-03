@@ -980,6 +980,8 @@ once it is available and otherwise Appendix B. Unsupported authority is a
 visible warning until an accepted source settles it. A compatibility number
 explicitly described as still emitted is not a new diagnostic assignment. An accepted VIP's `Decision` section that cites a diagnostic must also appear in that code's registry authority; statements describing an old code are historical.
 
+Denied VIPs retain their historical status. An explicit `*Superseded by [VIP-N](...)` record removes the old VIP from the current denied table only when its link names that accepted successor. The authority check permits the historical supersession citation and still rejects positive claims based on the denied VIP, including later claims in the same sentence. Filesystem and in-memory source snapshots use the same checks.
+
 Run the compiler-backed VIP contract separately with `sh scripts/ci.sh //:spec-vip-examples --jobs 8`. It reports missing assigned diagnostics as errors; schematic examples remain visible warnings.
 
 The throws inventory CLI, `node docs/tools/throws-inventory.mjs --check` or

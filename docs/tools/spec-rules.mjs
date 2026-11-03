@@ -15,13 +15,23 @@ export const issue = (kind, path, text, offset, message, severity = "error") =>
   ({ kind, path, line: text.slice(0, offset).split("\n").length, severity, message })
 
 export function vipRegistryFromSources(sources) {
-  return new Map([...sources].filter(([path]) => /^docs\/design\/vips\/\d+[^/]*\.md$/.test(path))
+  const vips = new Map([...sources].filter(([path]) => /^docs\/design\/vips\/\d+[^/]*\.md$/.test(path))
     .sort(([a], [b]) => a.localeCompare(b)).map(([path, text]) => {
       const status = text.match(/\*\*Status:\*\*\s*(accepted|denied|open)\b/i)?.[1]?.toLowerCase()
       if (!status) throw new Error(path + ": missing VIP status")
       return [Number(path.split("/").at(-1).slice(0, 4)), { path, text, status }]
     }))
+  for (const vip of vips.values()) {
+    if (vip.status !== "denied") continue
+    const marker = vip.text.match(/^\*Superseded by \[VIP-(\d+)\]\(([^)]+)\)/m)
+    if (!marker) continue
+    const successor = vips.get(Number(marker[1]))
+    if (successor?.status === "accepted" && successor.path === "docs/design/vips/" + marker[2].split("#")[0])
+      vip.supersededBy = Number(marker[1])
+  }
+  return vips
 }
+
 export function vipRegistry(root) {
   return vipRegistryFromSources(readdirSync(join(root, "docs/design/vips")).filter(x => /^\d+.*\.md$/.test(x))
     .map(name => {
@@ -231,7 +241,7 @@ export function lintTables(root) {
   const rows = [...denied.matchAll(/^\| \[(\d+)\].*? \| (.*?) \| (.*?) \|$/gm)]
   const ids = new Set(rows.map(m => Number(m[1])))
   for (const [id, vip] of vips) {
-    if ((vip.status === "denied") !== ids.has(id))
+    if ((vip.status === "denied" && vip.supersededBy === undefined) !== ids.has(id))
       findings.push(issue("tables", appendixPath, appendix, appendix.indexOf("| VIP | Denied | Instead |"), "denied VIP-" + id + " membership disagrees with its status"))
   }
   for (const m of rows) {
@@ -271,8 +281,16 @@ export function lintAuthority(root) {
       const paragraph = text.slice(begin, end < 0 ? undefined : end)
         .replace(/\]\([^)]+\)/g, link => "]" + " ".repeat(link.length - 1))
       const offset = m.index - begin
-      const sentence = [...paragraph.matchAll(/[\s\S]+?(?:[.!?](?=\s|$)|$)/g)]
-        .find(s => s.index <= offset && offset < s.index + s[0].length)?.[0] ?? paragraph
+      const sentenceMatch = [...paragraph.matchAll(/[\s\S]+?(?:[.!?](?=\s|$)|$)/g)]
+        .find(s => s.index <= offset && offset < s.index + s[0].length)
+      const sentence = sentenceMatch?.[0] ?? paragraph
+      if (vip.supersededBy !== undefined) {
+        const name = n => "(?:\\[VIP-" + n + "\\]|VIP-" + n + ")"
+        const historical = new RegExp("^(\\s*" + name(id) + ")\\s+is superseded by accepted " + name(vip.supersededBy) + "\\s*:").exec(sentence)
+        // Only the historical citation is exempt. A later claim in the same
+        // sentence must still obtain authority from the accepted successor.
+        if (historical && offset - (sentenceMatch?.index ?? 0) < historical[1].length) continue
+      }
       if (text.slice(text.lastIndexOf("\n", m.index) + 1, m.index).trimStart().startsWith("//")) continue
       // A standalone attributed quotation records historical rationale; it
       // does not assert that the denied proposal is part of the language.
