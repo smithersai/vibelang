@@ -1,2 +1,14 @@
 // expect: EK1201
 provide Layer.empty {}
+
+// Spec rule: docs/design/src/005-services.md#913efdb5eaa19221
+// Chapter 005: unparenthesized effect starts an EffectBlock; parenthesized local name is a provider expression (provide-effect-context.fail).
+
+// Spec rule: docs/design/src/005-services.md#ce4ef32fc6839003
+// Chapter 005: unparenthesized effect starts an EffectBlock; parenthesized local name is a provider expression (provide-effect-context.fail).
+
+// Spec rule: docs/design/src/005-services.md#962a9c482c582caf
+// Chapter 005: unparenthesized effect starts an EffectBlock; parenthesized local name is a provider expression (provide-effect-context.fail).
+
+// Spec rule: docs/design/src/005-services.md#32b33b8005c938e8
+// Chapter 005: unparenthesized effect starts an EffectBlock; parenthesized local name is a provider expression (provide-effect-context.fail).

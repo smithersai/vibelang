@@ -1,0 +1,7 @@
+export effect function g(x = do { return null }) { return 1 }; const good: Effect.Effect<number | null> = g()
+export {}
+
+// Spec rule: docs/design/src/001-functions.md#432af1444f4ff3b7
+// Chapter 001: default-return.
+// Spec rule: docs/design/src/001-functions.md#00a40c51ce931862
+// Chapter 001: default-return.

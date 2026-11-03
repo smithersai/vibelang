@@ -14,3 +14,6 @@ export const withoutParentSpan = effect <A, E>(effect: A!E!Scope) =>
 export class Gone extends Data.TaggedError("Gone")<{}> {}
 
 export const pause = effect (ms: number) => try Effect.sleep(ms)
+
+// Spec rule: docs/design/src/001-functions.md#f9517104c4e17c54
+// Chapter 001: source-written module names differ from library-only inferred import types (declaration-identity-inferred-modules).

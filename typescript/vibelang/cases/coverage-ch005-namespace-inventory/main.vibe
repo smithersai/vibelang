@@ -1,0 +1,16 @@
+export type CryptoType=Crypto
+export const roots=[FileSystem,Path]
+export const namespaces=[AiError,Argument,ClusterCron,Aead,DevTools,Base64,Event,GraphQL,Cookies,HttpApi,AddressResolver,Otlp,CircuitBreaker,ChildProcess,AsyncResult,Rpc,SchemaAOTCompiler,DatagramSocket,Migrator,TestClock,Transferable,Activity,Headers,Response,Worker]
+
+// Spec rule: docs/design/src/005-services.md#8196e4021b618a10
+// Chapter 005: root, subpath and ambient namespace inventory.
+// Spec rule: docs/design/src/005-services.md#c58195677dc8b8f3
+// Chapter 005: root, subpath and ambient namespace inventory.
+// Spec rule: docs/design/src/005-services.md#b19237e1301bfcbb
+// Chapter 005: root, subpath and ambient namespace inventory.
+// Spec rule: docs/design/src/005-services.md#b848da9611250183
+// Chapter 005: root, subpath and ambient namespace inventory.
+// Spec rule: docs/design/src/005-services.md#f70e698e59f28355
+// Chapter 005: root, subpath and ambient namespace inventory.
+// Spec rule: docs/design/src/005-services.md#4a496f74dc7ab705
+// Chapter 005: root, subpath and ambient namespace inventory.

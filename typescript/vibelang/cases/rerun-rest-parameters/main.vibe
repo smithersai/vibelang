@@ -22,3 +22,6 @@ export class Defaults {
 }
 export effect function declaredProgram(...values: number[]): Effect<number | undefined, never, never> { return try Effect.succeed(values.pop()) }
 export const fresh = effect (...values: number[]): Effect<number[], never, never> => values
+
+// Spec rule: docs/design/src/001-functions.md#10543b27ae2bd8b1
+// Chapter 001: rest parameters retain their values across Effect runs (rerun-rest-parameters).

@@ -1,0 +1,12 @@
+abstract class Plain { abstract value(): number }
+class Impl extends Plain { value() { return 7 } }
+declare class Native { value: number }
+declare const count: number
+export effect function main() { return [new Impl().value(), "key" in Plain, typeof Native, typeof count] }
+
+// Spec rule: docs/design/src/005-services.md#5fd47f7777d55ff2
+// Chapter 005: classes.
+// Spec rule: docs/design/src/005-services.md#2ba877727b5bd44f
+// Chapter 005: classes.
+// Spec rule: docs/design/src/005-services.md#e31316a1355cef94
+// Chapter 005: classes.

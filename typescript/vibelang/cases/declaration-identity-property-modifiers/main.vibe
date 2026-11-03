@@ -13,3 +13,6 @@ export class Fields {
   static readonly version: number = 1
 }
 export interface Explicit { readonly value: number }
+
+// Spec rule: docs/design/src/001-functions.md#e21fc0eb15711a9c
+// Chapter 001: written readonly, optional, indexed, nested and class field modifiers survive declaration emit (declaration-identity-property-modifiers).

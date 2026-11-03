@@ -1,0 +1,5 @@
+interface Ordinary { effect(): number }; const x: Ordinary = { effect() { return 1 } }; export const n = x.effect()
+export {}
+
+// Spec rule: docs/design/src/001-functions.md#406f3230e618361b
+// Chapter 001: effect-call-is-ordinary.

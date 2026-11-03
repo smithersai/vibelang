@@ -1,3 +1,6 @@
 export const layer = Layer.merge(Layer.empty, Layer.empty)
 export const context = Context.add(Context.empty(), References.MinimumLogLevel, "Info")
 export type ContextSource = Context<never>
+
+// Spec rule: docs/design/src/001-functions.md#71c327ae91268b3d
+// Chapter 001: implicit namespaces and collision aliases preserve declaration imports (declaration-identity-prelude-module-preserve).

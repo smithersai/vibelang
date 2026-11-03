@@ -7,3 +7,9 @@ export function host() {
   const proc = Experimental.Process
   return proc.hostname()
 }
+
+// Spec rule: docs/design/src/005-services.md#f72491f1c28a1ab7
+// Chapter 005: Effect namespace is not an Effect or a service instance (diag-module-service-value.fail).
+
+// Spec rule: docs/design/src/005-services.md#9fbb09abfdd21c6c
+// Chapter 005: Effect namespace is not an Effect or a service instance (diag-module-service-value.fail).

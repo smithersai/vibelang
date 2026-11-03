@@ -1,0 +1,16 @@
+import { Effect, Layer } from "effect"
+service Counter { static readonly key="coverage/Memo"; value:number }
+let built=0,released=0
+const Live=Layer.effect(Counter,Effect.acquireRelease(Effect.sync(()=>({value:++built})),()=>Effect.sync(()=>{released++})))
+export effect function main() {
+ const values:number[]=[]
+ provide Live {
+  values.push((try Counter).value)
+  provide Live { values.push((try Counter).value) }
+ }
+ provide Live { values.push((try Counter).value) }
+ return {values,built,released}
+}
+
+// Spec rule: docs/design/src/005-services.md#2963a702be8b5159
+// Chapter 005: memoization.

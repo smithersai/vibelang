@@ -1,0 +1,6 @@
+export const process = Experimental.Process
+export const crypto = Experimental.Crypto
+export effect function main() { return [typeof process, typeof crypto] }
+
+// Spec rule: docs/design/src/005-services.md#c16ab688ec6254d0
+// Chapter 005: namespace.

@@ -1,0 +1,6 @@
+// expect: TS2339
+service S { static readonly key = "coverage/NoForward"; read(): number!! }; effect function f() { return try S.read() }
+export {}
+
+// Spec rule: docs/design/src/005-services.md#a68c241f6ad52af6
+// Chapter 005: no-service-forward.

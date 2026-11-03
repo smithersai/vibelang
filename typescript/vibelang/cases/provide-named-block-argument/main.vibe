@@ -1,3 +1,6 @@
 // expect-result: 1
 effect function provide(name: string, program: number!!): number!! { return try program }
 export effect function main() { return try provide("label", effect { return 1 }) }
+
+// Spec rule: docs/design/src/005-services.md#1e01ca19b5067634
+// Chapter 005: parenthesized provider call followed by a provide body is not a trailing-block call (provide-named-block-argument).

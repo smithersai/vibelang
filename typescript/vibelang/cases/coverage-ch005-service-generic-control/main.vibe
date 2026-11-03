@@ -1,0 +1,5 @@
+export service Fixed { static readonly key = "coverage/Fixed"; identity<T>(value: T): T }
+export {}
+
+// Spec rule: docs/design/src/005-services.md#8089803a35598502
+// Chapter 005: service-generic-control.

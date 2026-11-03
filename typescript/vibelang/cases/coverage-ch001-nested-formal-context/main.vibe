@@ -1,0 +1,5 @@
+export effect function f(a = async () => await Promise.resolve(1), b = function* () { yield 2 }) { return [try tryPromise(a), b().next().value] }
+export {}
+
+// Spec rule: docs/design/src/001-functions.md#338f14ad0385eee6
+// Chapter 001: nested-formal-context.

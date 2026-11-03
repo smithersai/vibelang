@@ -1,0 +1,14 @@
+// expect: EK0301
+export type A = number!Error | string
+export type B = number!Error & object
+export type C<T> = T extends string ? number!Error : boolean
+export type D = number!() => void
+export type E = number!new () => object
+export type F = () => number!Error | string
+
+export {}
+
+// Spec rule: docs/design/src/001-functions.md#1cbd355642bf6348
+// Chapter 001: bang-mixed.
+// Spec rule: docs/design/src/001-functions.md#c6630a4fa66f13ae
+// Chapter 001: bang-mixed.

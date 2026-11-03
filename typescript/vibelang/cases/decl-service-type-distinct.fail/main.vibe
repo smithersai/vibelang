@@ -9,3 +9,6 @@ effect function read() {
 }
 
 export const program: string!! = Effect.provide(read(), Layer.succeed(Replica, "replica"))
+
+// Spec rule: docs/design/src/005-services.md#373bba7eb9c687a5
+// Chapter 005: same-shaped service keys remain distinct identifiers in R (decl-service-type-distinct.fail).

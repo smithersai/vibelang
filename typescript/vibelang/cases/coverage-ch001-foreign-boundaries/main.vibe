@@ -1,0 +1,5 @@
+import { legacy } from "./foreign.js"
+export effect function main() { return try Effect.try(() => legacy(1,2,3)) }
+
+// Spec rule: docs/design/src/001-functions.md#bdc091e0b7860dc5
+// Chapter 001: boundaries.

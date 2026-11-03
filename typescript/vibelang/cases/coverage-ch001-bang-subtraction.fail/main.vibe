@@ -1,0 +1,6 @@
+// expect: TS2362
+declare const x: unknown; export const y = (x as number!!) - 1
+export {}
+
+// Spec rule: docs/design/src/001-functions.md#5c2bb4294fb6195f
+// Chapter 001: bang-subtraction.

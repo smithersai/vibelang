@@ -1,0 +1,14 @@
+// expect: EK0501
+effect function f() { service S { static readonly key = "coverage/DefaultTry"; static readonly defaultValue = try Effect.succeed(() => ({ n: 1 })); n: number }; return 1 }
+export {}
+
+// Spec rule: docs/design/src/005-services.md#877c1fd2abef3fd0
+// Chapter 005: service-default-try.
+// Spec rule: docs/design/src/005-services.md#40718f8ca1302a8d
+// Chapter 005: service-default-try.
+// Spec rule: docs/design/src/005-services.md#752488aa1df5d012
+// Chapter 005: service-default-try.
+// Spec rule: docs/design/src/005-services.md#52eb7845876cc265
+// Chapter 005: service-default-try.
+// Spec rule: docs/design/src/005-services.md#a1cf4ea620c44ef6
+// Chapter 005: service-default-try.

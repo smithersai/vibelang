@@ -54,3 +54,6 @@ export class Derived extends Base {
     return try super.read(n)
   }
 }
+
+// Spec rule: docs/design/src/001-functions.md#eeb498b2751add0b
+// Chapter 001: private Effect method retains receiver and call-time parameter bindings (rerun-parameter-method).

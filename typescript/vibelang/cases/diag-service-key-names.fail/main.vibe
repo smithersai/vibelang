@@ -75,3 +75,6 @@ export effect function typed() {
   schema Local { value: string }
   return try Schema.decodeUnknownEffect(Local)({ value: "v" })
 }
+
+// Spec rule: docs/design/src/005-services.md#7172c4fb914aae62
+// Chapter 005: missing key has a targeted diagnostic in local and unnamed-package service declarations (diag-service-key-names.fail).

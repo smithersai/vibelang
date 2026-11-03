@@ -1,0 +1,19 @@
+import { Effect, Layer, Deferred } from "effect"
+service Counter { static readonly key="coverage/Fork"; value:number }
+let released=0
+const Live=Layer.effect(Counter,Effect.acquireRelease(Effect.succeed({value:7}),()=>Effect.sync(()=>{released++})))
+export effect function main() {
+ const ready=try Deferred.make<void>(), gate=try Deferred.make<void>()
+ let fiber: Fiber.Fiber<number>
+ provide Live {
+  fiber = fork effect { try Deferred.succeed(ready,undefined); try Deferred.await(gate); return (try Counter).value }
+  try Deferred.await(ready)
+ }
+ const afterRelease=released
+ try Deferred.succeed(gate,undefined)
+ const value=join fiber!
+ return {value,afterRelease}
+}
+
+// Spec rule: docs/design/src/005-services.md#542e44a9042b4ddb
+// Chapter 005: provider-lifetime.

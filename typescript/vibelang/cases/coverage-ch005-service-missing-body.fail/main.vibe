@@ -1,0 +1,8 @@
+// expect: EK0906
+service S
+export {}
+
+// Spec rule: docs/design/src/005-services.md#d87c99cfc8c24ccc
+// Chapter 005: service-missing-body.
+// Spec rule: docs/design/src/005-services.md#c18cb73925cbf285
+// Chapter 005: service-missing-body.

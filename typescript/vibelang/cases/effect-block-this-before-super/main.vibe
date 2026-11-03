@@ -46,3 +46,24 @@ export effect function main() {
   const after = shape(try exit(new After().p))
   return { after, before, keyCalls, static: shape(try exit(Static.program)) }
 }
+
+// Spec rule: docs/design/src/001-functions.md#86a322e0d7feb405
+// Chapter 001: constructor-this timing, skipped reads, super key order and static-block super (effect-block-this-before-super).
+
+// Spec rule: docs/design/src/001-functions.md#9baad37d0d2f1fe2
+// Chapter 001: constructor-this timing, skipped reads, super key order and static-block super (effect-block-this-before-super).
+
+// Spec rule: docs/design/src/001-functions.md#7501931601813928
+// Chapter 001: constructor-this timing, skipped reads, super key order and static-block super (effect-block-this-before-super).
+
+// Spec rule: docs/design/src/001-functions.md#7548cf5ccbc88f25
+// Chapter 001: constructor-this timing, skipped reads, super key order and static-block super (effect-block-this-before-super).
+
+// Spec rule: docs/design/src/001-functions.md#01a3cadfe1d8d07e
+// Chapter 001: constructor-this timing, skipped reads, super key order and static-block super (effect-block-this-before-super).
+
+// Spec rule: docs/design/src/001-functions.md#b187dfb6560f6884
+// Chapter 001: static super helper remains inside its source static block (effect-block-this-before-super).
+
+// Spec rule: docs/design/src/001-functions.md#807f682faf1d78f8
+// Chapter 001: static super helper remains inside its source static block (effect-block-this-before-super).

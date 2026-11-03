@@ -1,0 +1,15 @@
+// expect: EK3004 EK0702
+service Flags {
+ static readonly key = "coverage/Flags"
+ static readonly defaultValue = () => ({n:1})
+ n: number
+}
+const Direct = Context.Reference<{n:number}>("coverage/Direct", {defaultValue:()=>({n:1})})
+declare const subject: unknown
+export const flags = match(subject) { when Flags: 1; default: 0; }
+export const direct = match(subject) { when Direct: 1; default: 0; }
+
+// Spec rule: docs/design/src/005-services.md#57b476535f8cdded
+// Chapter 005: patterns.
+// Spec rule: docs/design/src/005-services.md#b3982f97c2d3bb35
+// Chapter 005: patterns.

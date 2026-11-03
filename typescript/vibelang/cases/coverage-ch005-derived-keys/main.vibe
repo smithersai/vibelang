@@ -1,0 +1,10 @@
+import { Nested } from "./nested/users.test.vibe"
+export service Repo { value: number }
+export effect function main() { return [Repo.key, Nested.key] }
+
+// Spec rule: docs/design/src/005-services.md#037e52b7c81d030c
+// Chapter 005: keys.
+// Spec rule: docs/design/src/005-services.md#857c519db915d4c0
+// Chapter 005: keys.
+// Spec rule: docs/design/src/005-services.md#5e5a8291a02f8752
+// Chapter 005: keys.

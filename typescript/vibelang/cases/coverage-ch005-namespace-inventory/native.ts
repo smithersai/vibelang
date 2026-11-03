@@ -1,0 +1,33 @@
+import { AiError } from "effect/ai"
+import { Argument } from "effect/cli"
+import { ClusterCron } from "effect/cluster"
+import { Aead } from "effect/crypto"
+import { DevTools } from "effect/devtools"
+import { Base64 } from "effect/encoding"
+import { Event } from "effect/eventlog"
+import { GraphQL } from "effect/graphql"
+import { Cookies } from "effect/http"
+import { HttpApi } from "effect/http-api"
+import { AddressResolver } from "effect/net"
+import { Otlp } from "effect/observability"
+import { CircuitBreaker } from "effect/persistence"
+import { ChildProcess } from "effect/process"
+import { AsyncResult } from "effect/reactivity"
+import { Rpc } from "effect/rpc"
+import { SchemaAOTCompiler } from "effect/schema"
+import { DatagramSocket } from "effect/socket"
+import { Migrator } from "effect/sql"
+import { TestClock } from "effect/testing"
+import { Transferable } from "effect/workers"
+import { Activity } from "effect/workflow"
+import { Headers } from "effect/http"
+import { Response } from "effect/ai"
+import { Worker } from "effect/workers"
+import { FileSystem, Path } from "effect"
+export type CryptoType=Crypto
+export const roots=[FileSystem,Path]
+export const namespaces=[AiError,Argument,ClusterCron,Aead,DevTools,Base64,Event,GraphQL,Cookies,HttpApi,AddressResolver,Otlp,CircuitBreaker,ChildProcess,AsyncResult,Rpc,SchemaAOTCompiler,DatagramSocket,Migrator,TestClock,Transferable,Activity,Headers,Response,Worker]
+
+import * as FileSystemSubpath from "effect/FileSystem"
+import * as PathSubpath from "effect/Path"
+export const subpaths=[FileSystemSubpath,PathSubpath]

@@ -33,3 +33,6 @@ export const banned = globalThis.fetch
 // VIP-33 globalThis aliases dynamic keys destructuring arguments and spreads; rule: docs/design/vips/0033-platform-stdlib.md#56f8a6eb26f1c86e
 
 // VIP-33 globalThis aliases dynamic keys destructuring arguments and spreads; rule: docs/design/vips/0033-platform-stdlib.md#ec4c755cc6c3c2c3
+
+// Spec rule: docs/design/src/005-services.md#2c48b0bca8010571
+// Chapter 005: window itself is a banned host value (global-this-escape.fail).

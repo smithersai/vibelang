@@ -1,0 +1,5 @@
+const fork = (n: number) => n; const join = (n: number) => n; export effect function f() { class C { n = join(1); static n = fork(2) }; enum E { A = join(3) }; return [new C().n, C.n, Number(E.A)] }
+export {}
+
+// Spec rule: docs/design/src/001-functions.md#60d66f44b8761ad7
+// Chapter 001: field-enum-reservations.

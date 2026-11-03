@@ -1,4 +1,6 @@
 // expect-result: ["a","b","c",["d","e"]]
+// Spec rule: docs/design/src/001-functions.md#f77166f310ed7dc2
+// Chapter 001: async functions await runPromise to run an Effect (ek1005-async-function).
 // D38: no fiber runs an async function's body. It is TypeScript (VIP-1), so it
 // may call a runner, as EK0103 tells it to, and so may a callback it passes to
 // a TypeScript function.

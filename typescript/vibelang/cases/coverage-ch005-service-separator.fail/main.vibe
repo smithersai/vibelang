@@ -1,0 +1,8 @@
+// expect: EK0908
+service S { static readonly key = "coverage/Separator"; a: number b: string }
+export {}
+
+// Spec rule: docs/design/src/005-services.md#72784a861726afbc
+// Chapter 005: service-separator.
+// Spec rule: docs/design/src/005-services.md#d2ae3647247a512e
+// Chapter 005: service-separator.

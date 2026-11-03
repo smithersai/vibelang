@@ -1,0 +1,6 @@
+// expect: TS2304
+export const excluded = sleep
+export const stillQualified = Effect.sleep
+
+// Spec rule: docs/design/src/005-services.md#443e131005f9f6d5
+// Chapter 005: switch.

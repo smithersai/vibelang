@@ -32,3 +32,18 @@ export effect function within(): number!never!Scope {
 // VIP-3 authored shorthand emits qualified native Effect declarations; rule: docs/design/vips/0003-effect-type-shorthand.md#b9f37086fa2bad4e
 
 // VIP-3 authored shorthand emits qualified native Effect declarations; rule: docs/design/vips/0003-effect-type-shorthand.md#c6d29f863e953fee
+
+// Spec rule: docs/design/src/001-functions.md#b67b71b33d269ca7
+// Chapter 001: all channel spellings declare the same API as explicit Effect TypeScript (declaration-identity-effect-slots).
+// Spec rule: docs/design/src/001-functions.md#5bc4a2308bd77072
+// Chapter 001: all channel spellings declare the same API as explicit Effect TypeScript (declaration-identity-effect-slots).
+// Spec rule: docs/design/src/001-functions.md#cb1e2cb36f9a1b9c
+// Chapter 001: all channel spellings declare the same API as explicit Effect TypeScript (declaration-identity-effect-slots).
+// Spec rule: docs/design/src/001-functions.md#48b8ecbc17b17433
+// Chapter 001: all channel spellings declare the same API as explicit Effect TypeScript (declaration-identity-effect-slots).
+// Spec rule: docs/design/src/001-functions.md#829069e49dcb890c
+// Chapter 001: all channel spellings declare the same API as explicit Effect TypeScript (declaration-identity-effect-slots).
+// Spec rule: docs/design/src/001-functions.md#337c94130fa828ff
+// Chapter 001: all channel spellings declare the same API as explicit Effect TypeScript (declaration-identity-effect-slots).
+// Spec rule: docs/design/src/001-functions.md#4ed0b2751a60f75d
+// Chapter 001: all channel spellings declare the same API as explicit Effect TypeScript (declaration-identity-effect-slots).

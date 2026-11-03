@@ -1,0 +1,1 @@
+export default effect function (n: number) { return n + 5 }

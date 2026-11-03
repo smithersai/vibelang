@@ -11,3 +11,15 @@ const NamesLive = Layer.succeed(Names, {
 
 provide NamesLive {
 }
+
+// Spec rule: docs/design/src/005-services.md#10ed7c8ef3bffc5c
+// Chapter 005: provide statement wins at statement start; ordinary expression return stays native (decl-provide-top.fail).
+
+// Spec rule: docs/design/src/005-services.md#9c5ef1c5c0c5b85e
+// Chapter 005: provide statement wins at statement start; ordinary expression return stays native (decl-provide-top.fail).
+
+// Spec rule: docs/design/src/005-services.md#38135c0e3e8fefeb
+// Chapter 005: provide statement wins at statement start; ordinary expression return stays native (decl-provide-top.fail).
+
+// Spec rule: docs/design/src/005-services.md#46f9069a0ab6c2f0
+// Chapter 005: provide statement wins at statement start; ordinary expression return stays native (decl-provide-top.fail).

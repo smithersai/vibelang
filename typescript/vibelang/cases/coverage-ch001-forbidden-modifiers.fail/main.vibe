@@ -1,0 +1,13 @@
+// expect: EK0108
+abstract class A { abstract effect read(): number!! }
+declare effect function ambientRead(): number!!
+interface B { effect read(): number!! }
+type C = { effect read(): number!! }
+interface D { effect value: number }
+
+export {}
+
+// Spec rule: docs/design/src/001-functions.md#0a25d6078b1bab1b
+// Chapter 001: forbidden-modifiers.
+// Spec rule: docs/design/src/001-functions.md#cbee8a0cf39910b3
+// Chapter 001: forbidden-modifiers.

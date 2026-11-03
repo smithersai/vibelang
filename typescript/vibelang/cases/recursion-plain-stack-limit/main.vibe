@@ -9,3 +9,18 @@ function depth(n: number): number { return n === 0 ? 0 : 1 + depth(n - 1) }
 export effect function main() {
   return try Effect.try(() => observe(() => depth(100000)))
 }
+
+// Spec rule: docs/design/src/001-functions.md#b402ca04c0a18979
+// Chapter 001: plain recursion reaches a RangeError at native stack depth; Effect recursion has a separate 100000-call control (recursion-plain-stack-limit).
+
+// Spec rule: docs/design/src/001-functions.md#9746ef2415155e88
+// Chapter 001: plain recursion reaches a RangeError at native stack depth; Effect recursion has a separate 100000-call control (recursion-plain-stack-limit).
+
+// Spec rule: docs/design/src/001-functions.md#667c67db8ca023e5
+// Chapter 001: plain recursion reaches a RangeError at native stack depth; Effect recursion has a separate 100000-call control (recursion-plain-stack-limit).
+
+// Spec rule: docs/design/src/001-functions.md#b38a75924ce354e8
+// Chapter 001: plain recursion reaches a RangeError at native stack depth; Effect recursion has a separate 100000-call control (recursion-plain-stack-limit).
+
+// Spec rule: docs/design/src/001-functions.md#a89c4f2222ec524a
+// Chapter 001: plain recursion reaches a RangeError at native stack depth; Effect recursion has a separate 100000-call control (recursion-plain-stack-limit).

@@ -1,0 +1,10 @@
+// expect: EK0907
+declare service S { static readonly key = "coverage/Ambient"; value: number }
+export {}
+
+// Spec rule: docs/design/src/005-services.md#6b4d2b1741762ec9
+// Chapter 005: service-explicit-ambient.
+// Spec rule: docs/design/src/005-services.md#184aa02d7bc29421
+// Chapter 005: service-explicit-ambient.
+// Spec rule: docs/design/src/005-services.md#162ea79957f5dd6c
+// Chapter 005: service-explicit-ambient.

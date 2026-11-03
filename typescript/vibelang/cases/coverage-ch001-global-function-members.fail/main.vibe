@@ -1,0 +1,10 @@
+// expect: EK0107
+globalThis.eval("1")
+globalThis["Function"]("return 1")
+export const exempt = (() => 1) instanceof globalThis.Function
+export const prototype = globalThis.Function.prototype
+
+export {}
+
+// Spec rule: docs/design/src/001-functions.md#fdf739fbef911702
+// Chapter 001: global-function-members.

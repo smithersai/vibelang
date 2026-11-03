@@ -1,0 +1,11 @@
+function mark<This, A extends unknown[], R>(value:(this:This,...args:A)=>R, _context:ClassMethodDecoratorContext<This,(this:This,...args:A)=>R>) { return value }
+export effect function main() {
+ const decorator = try Effect.succeed(mark)
+ class Repo { @(try Effect.succeed(decorator)) effect load() { return 7 } }
+ return try new Repo().load()
+}
+
+// Spec rule: docs/design/src/001-functions.md#e5ebe58cb3e4d560
+// Chapter 001: context.
+// Spec rule: docs/design/src/001-functions.md#621229e94d391fd3
+// Chapter 001: context.

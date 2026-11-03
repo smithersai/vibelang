@@ -1,0 +1,13 @@
+// expect: EK0105
+effect async function a() {}
+async effect function b() {}
+const c = effect async () => 1
+const d = async effect () => 1
+const e = effect async { return 1 }
+const f = async effect { return 1 }
+export {}
+
+// Spec rule: docs/design/src/001-functions.md#4ab9761a41e510cc
+// Chapter 001: dual-modifiers.
+// Spec rule: docs/design/src/001-functions.md#70a8523481a35961
+// Chapter 001: dual-modifiers.

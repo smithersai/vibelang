@@ -1,6 +1,10 @@
 // expect: EK0501
-// docs/design/vips/0001-effect-and-async-functions.md#00a9f910018e58b8
-// VIP-1: try cannot cross source function boundaries
+// Spec rule: docs/design/src/001-functions.md#de2e964e28580cae
+// Chapter 001: module-level try rejects with EK0501 (vip1-try-outside-effect.fail).
+// Spec rule: docs/design/src/001-functions.md#cd3c142d9c551f29
+// Chapter 001: try rejects in plain functions including nested plain functions (vip1-try-outside-effect.fail).
+// Spec rule: docs/design/src/001-functions.md#8181fd89b12b0ff9
+// Chapter 001: try rejects in plain functions including nested plain functions (vip1-try-outside-effect.fail).
 // VIP-1, VIP-5: try runs an Effect only inside an effect function or block.
 // The innermost function decides, so a plain function nested in an effect
 // function is plain, and try in it is an error.
@@ -15,3 +19,9 @@ export effect function main() {
   function k() { return try Effect.succeed(1) }
   return 1
 }
+
+// Chapter 001: module top level is not effect code.
+const topLevel = try Effect.succeed(1)
+
+// docs/design/vips/0001-effect-and-async-functions.md#00a9f910018e58b8
+// VIP-1: try cannot cross source function boundaries

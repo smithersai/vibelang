@@ -1,0 +1,6 @@
+// expect: EK1701
+const join = (n: number) => n; effect function f() { class C { static { join(1) } }; return 1 }
+export {}
+
+// Spec rule: docs/design/src/001-functions.md#4890cb6775258c59
+// Chapter 001: reserved-static-join.

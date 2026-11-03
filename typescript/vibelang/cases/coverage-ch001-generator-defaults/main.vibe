@@ -1,0 +1,24 @@
+let seen=0, bodies=0
+function* declared(x = do { seen++; return 7 }) { bodies++; yield 1 }
+const expression = function* (x = do { seen++; return 7 }) { bodies++; yield 1 }
+const object = { *method(x = do { seen++; return 7 }) { bodies++; yield 1 } }
+async function* asyncDeclared(x = do { seen++; return 7 }) { bodies++; yield 1 }
+const asyncExpression = async function* (x = do { seen++; return 7 }) { bodies++; yield 1 }
+const asyncObject = { async *method(x = do { seen++; return 7 }) { bodies++; yield 1 } }
+export async function probe() {
+ const a=declared(), b=expression(), c=object.method()
+ const d=asyncDeclared(), e=asyncExpression(), f=asyncObject.method()
+ const afterCall=[seen,bodies]
+ return {afterCall, values:[a.next(),b.next(),c.next(),await d.next(),await e.next(),await f.next()],
+  bodies, prototype:Object.getPrototypeOf(a)===declared.prototype, length:declared.length,
+  kind:declared.constructor.name}
+}
+
+// Spec rule: docs/design/src/001-functions.md#b3d851d68ff7ac66
+// Chapter 001: defaults.
+// Spec rule: docs/design/src/001-functions.md#7c4c4f46b3798b36
+// Chapter 001: defaults.
+// Spec rule: docs/design/src/001-functions.md#379432a7580fadae
+// Chapter 001: defaults.
+// Spec rule: docs/design/src/001-functions.md#0c4fb16c343a48d8
+// Chapter 001: defaults.

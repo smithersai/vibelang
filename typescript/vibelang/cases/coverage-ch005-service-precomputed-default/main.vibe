@@ -1,0 +1,7 @@
+export effect function f() { const factory = try Effect.succeed(() => ({ n: 1 })); service S { static readonly key = "coverage/Precomputed"; static readonly defaultValue = factory; n: number }; return (try S).n }
+export {}
+
+// Spec rule: docs/design/src/005-services.md#17fa12524c3d97ca
+// Chapter 005: service-precomputed-default.
+// Spec rule: docs/design/src/005-services.md#2effd46b59e813e7
+// Chapter 005: service-precomputed-default.

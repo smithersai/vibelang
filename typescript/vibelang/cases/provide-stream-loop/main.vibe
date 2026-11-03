@@ -22,3 +22,6 @@ export effect function main() {
     return try collect()
   }
 }
+
+// Spec rule: docs/design/src/005-services.md#34215cafd58c3934
+// Chapter 005: producer yield remains the enclosing producer yield through provide (provide-stream-loop).

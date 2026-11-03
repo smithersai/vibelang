@@ -1,3 +1,6 @@
 // An Effect function names Effect, so the copied signature does too.
 export const decode = Schema.decodeUnknownEffect(Schema.String)
 export const run = effect (n: number): number!! => n
+
+// Spec rule: docs/design/src/001-functions.md#d9dc43b87871818b
+// Chapter 001: declarations and const arrows retain their source declaration form (declaration-identity-effect-forms).

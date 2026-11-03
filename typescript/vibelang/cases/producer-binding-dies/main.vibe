@@ -14,3 +14,6 @@ export effect function* defaulted(n: number, { id }: User = { id: "default" }) {
 export const expression = effect function* ({ id }: User) { yield id }
 export effect function* plain(n: number) { yield n }
 export effect function single({ id }: User) { return id }
+
+// Spec rule: docs/design/src/001-functions.md#39d021d51c5c14f0
+// Chapter 001: throwing destructuring returns a dying Effect or Stream without a synchronous throw (producer-binding-dies).

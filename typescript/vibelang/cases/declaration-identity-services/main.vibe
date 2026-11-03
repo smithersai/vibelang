@@ -30,3 +30,9 @@ export service Store {
   /** Reads the first value. */
   first: () => string!!
 }
+
+// Spec rule: docs/design/src/001-functions.md#cc9377c5ce039500
+// Chapter 001: ordinary declaration artifacts are emitted in the configured output directory (declaration-identity-services).
+
+// Spec rule: docs/design/src/001-functions.md#481ec39f903852ba
+// Chapter 001: declaration identity against native TypeScript for service, error, schema, schema error and data counterparts (declaration-identity-services).

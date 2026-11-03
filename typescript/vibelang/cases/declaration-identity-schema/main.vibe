@@ -11,3 +11,6 @@ export schema TraceJson { traceId: string }
 export schema Profile { name: string }
 
 export schema Code = "root_missing" | "read_failed"
+
+// Spec rule: docs/design/src/001-functions.md#481ec39f903852ba
+// Chapter 001: declaration identity for the native class-call/data counterpart.

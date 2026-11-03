@@ -13,3 +13,6 @@ export effect function main() {
 }
 // VIP-12 internal-expression-newlines
 // rule: docs/design/vips/0012-provide.md#b84777dc333c6acf
+
+// Spec rule: docs/design/src/005-services.md#f75c22d4c8e0fa8f
+// Chapter 005: assignment providers and expression precedence retain their native parse (provide-parenthesized-expressions).

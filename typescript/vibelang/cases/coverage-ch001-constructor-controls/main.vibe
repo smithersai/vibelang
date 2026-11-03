@@ -1,0 +1,5 @@
+const anyValue: any = { constructor: 1 }; export const a = anyValue.constructor; export const b = ({ constructor: 2 }).constructor
+export {}
+
+// Spec rule: docs/design/src/001-functions.md#f8a72552730dec57
+// Chapter 001: constructor-controls.

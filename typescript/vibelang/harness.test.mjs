@@ -456,3 +456,52 @@ test("the summary warns when the compiler is older than a source it builds from"
   assert.equal(stale.status, 1, "the warning leaves the exit status to the cases")
   assert.match(stale.stdout, /^warning: built\/local\/tsc is older than tsc\/internal\/vibelang\/checker\.go, so these cases run an earlier compiler; rebuild it with sh scripts\/build-vibelang\.sh$/m)
 })
+
+test("nonzero runners cannot pass with matching stdout", (t) => {
+  const { root, harness } = fixture(t)
+  const env = { ...process.env, EFFECT_NODE_MODULES: path.join(root, "modules"), VIBELANG_RUNTIME: path.join(root, "runtime") }
+  const variants = [
+    ["empty", "", "process.exit(7)"],
+    ["matching", "expected\n", 'console.log("expected"); process.exit(7)'],
+    ["signal", "expected\n", 'console.log("expected"); process.kill(process.pid,"SIGTERM")'],
+    ["timeout", "expected\n", '// run-seconds: 1\nconsole.log("expected"); setInterval(()=>{},1000)'],
+  ]
+  for (const [name, stdout, source] of variants) {
+    const at = path.join(root, "vibelang/cases", "runner-" + name)
+    fs.mkdirSync(path.join(at, "expected"), { recursive: true })
+    fs.writeFileSync(path.join(at, "scenario"), "runtime")
+    fs.writeFileSync(path.join(at, "tsconfig.json"), "{}")
+    fs.writeFileSync(path.join(at, "run.mjs"), source)
+    fs.writeFileSync(path.join(at, "expected/stdout.txt"), stdout)
+    const result = spawnSync(process.execPath, [harness, "--status", "runner-" + name], { env, encoding: "utf8", timeout: 15_000 })
+    assert.equal(result.status, 1, name + ": a failed runner matched stdout\n" + result.stdout + result.stderr)
+    assert.match(result.stdout, /^runner-\S+\s+-\s+FAIL/m)
+    const logFile = /log: (.+?)(?:\)|$)/m.exec(result.stdout)?.[1]
+    assert.ok(logFile, result.stdout)
+    const record = JSON.parse(fs.readFileSync(logFile, "utf8"))
+    assert.equal(record.commands.at(-1).phase, "run")
+    assert.notEqual(record.commands.at(-1).exitCode, 0)
+  }
+})
+
+test("runner exit status is independent of arbitrary matching stdout", (t) => {
+  const { root, harness } = fixture(t)
+  const env = { ...process.env, EFFECT_NODE_MODULES: path.join(root, "modules"), VIBELANG_RUNTIME: path.join(root, "runtime") }
+  const at = path.join(root, "vibelang/cases/property-runner")
+  fs.mkdirSync(path.join(at, "expected"), { recursive: true })
+  fs.writeFileSync(path.join(at, "scenario"), "runtime")
+  fs.writeFileSync(path.join(at, "tsconfig.json"), "{}")
+  const invoke = (code, stdout) => {
+    fs.writeFileSync(path.join(at, "run.mjs"), "process.stdout.write(" + JSON.stringify(stdout) + ");process.exit(" + code + ")")
+    fs.writeFileSync(path.join(at, "expected/stdout.txt"), stdout)
+    return spawnSync(process.execPath, [harness, "property-runner"], { env, encoding: "utf8", timeout: 10_000 })
+  }
+  fc.assert(fc.property(fc.integer({ min: 1, max: 255 }),
+    fc.oneof(fc.constantFrom("", "matched\n", "\u0000", "Ω\r\n"), fc.string({ maxLength: 32 })),
+    (code, stdout) => {
+      const failed = invoke(code, stdout)
+      assert.equal(failed.status, 1, failed.stdout + failed.stderr)
+      const control = invoke(0, stdout)
+      assert.equal(control.status, 0, control.stdout + control.stderr)
+    }), { seed: 0x001005, numRuns: 12 })
+})

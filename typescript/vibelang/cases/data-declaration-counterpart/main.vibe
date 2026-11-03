@@ -20,3 +20,6 @@ export data Tree { Leaf; Node { left: Tree; right: Tree } }
 export data Json { Null; Items { items: ReadonlyArray<Json> }; Fields { fields: Record<string, Json> } }
 
 export data Outcome<A, E> { Ok { value: A }; Err { error: E } }
+
+// Spec rule: docs/design/src/001-functions.md#481ec39f903852ba
+// Chapter 001: declaration identity for the native class-call/data counterpart.

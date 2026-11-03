@@ -15,3 +15,6 @@ export schema error Failed {
     return `failed: ${this.reason}`
   }
 }
+
+// Spec rule: docs/design/src/001-functions.md#481ec39f903852ba
+// Chapter 001: declaration identity for the native class-call/data counterpart.

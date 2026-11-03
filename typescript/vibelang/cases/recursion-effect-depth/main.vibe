@@ -1,6 +1,10 @@
 // docs/design/vips/0001-effect-and-async-functions.md#2c2b4320e949cc30
 // VIP-1: deep explicit Effect recursion
 // expect-result: {"direct":100000,"mutual":100000}
+// Spec rule: docs/design/src/001-functions.md#1f14a552ce9358c8
+// Chapter 001: 100000-deep direct and mutual Effect recursion (recursion-effect-depth).
+// Spec rule: docs/design/src/001-functions.md#465955da554aa2b3
+// Chapter 001: 100000-deep direct and mutual recursive try execution (recursion-effect-depth).
 effect function depth(n: number): number!! {
   return n === 0 ? 0 : 1 + (try depth(n - 1))
 }

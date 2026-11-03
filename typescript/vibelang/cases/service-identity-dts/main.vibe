@@ -61,3 +61,6 @@ export effect function greet(id: string) {
   const user = try Users.find(id)
   return `${user.name} via ${(try Users).source}, beta ${(try Flags).beta}`
 }
+
+// Spec rule: docs/design/src/005-services.md#864953f4b8cc1999
+// Chapter 005: Reference has Shape but no identifier type (service-identity-dts).

@@ -1,0 +1,14 @@
+import { Effect } from "effect"
+import { reject, throws, summary } from "./foreign.js"
+export effect function main() {
+ const fail = try Effect.exit(Effect.tryPromise(reject))
+ const thrown = try Effect.exit(Effect.tryPromise(throws))
+ const die = try Effect.exit(Effect.promise(reject))
+ const ok = try Effect.promise(() => Promise.resolve(7))
+ return [summary(fail),summary(thrown),summary(die),ok]
+}
+
+// Spec rule: docs/design/src/001-functions.md#40a5a9820a12dae7
+// Chapter 001: bridge.
+// Spec rule: docs/design/src/001-functions.md#f6536d400e38097e
+// Chapter 001: bridge.

@@ -1,0 +1,12 @@
+// expect: EK3005
+export function key<T>() { service S { static readonly key = "coverage/Captured"; value: T }; return S }
+export {}
+
+// Spec rule: docs/design/src/005-services.md#afad83149029cc86
+// Chapter 005: captured-service-type.
+// Spec rule: docs/design/src/005-services.md#5d896af47300d2bb
+// Chapter 005: captured-service-type.
+// Spec rule: docs/design/src/005-services.md#bb8e6b56c9167aae
+// Chapter 005: captured-service-type.
+// Spec rule: docs/design/src/005-services.md#345960549ce0a35e
+// Chapter 005: captured-service-type.

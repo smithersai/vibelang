@@ -1,4 +1,6 @@
 // expect-result: [4,6]
+// Spec rule: docs/design/src/001-functions.md#176b710adaf8658a
+// Chapter 001: effect as and satisfies retain TypeScript assertions (effect-contextual-assertions).
 type Handler = (n: number) => number
 const effect = (n: number): number => n + 1
 const async = (n: number): number => n + 2
@@ -9,3 +11,6 @@ async satisfies (Handler)
 export effect function main() {
   return [effect(3), async(4)]
 }
+
+// Spec rule: docs/design/src/001-functions.md#a9acb3d95da867cb
+// Chapter 001: as and satisfies heads remain ordinary TypeScript assertions (effect-contextual-assertions).

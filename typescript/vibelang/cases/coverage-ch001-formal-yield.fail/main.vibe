@@ -1,0 +1,8 @@
+// expect: EK2104
+effect function a(x = do { yield 1; 0 }) { return x }
+effect function* b(x = do { yield 1; 0 }) { yield x }
+
+export {}
+
+// Spec rule: docs/design/src/001-functions.md#22a31b8dcc5050f1
+// Chapter 001: formal-yield.

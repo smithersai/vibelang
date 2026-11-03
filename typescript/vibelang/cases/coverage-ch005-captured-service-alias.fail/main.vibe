@@ -1,0 +1,10 @@
+// expect: EK3005
+type Box<T> = { value: T }; export function key<T>() { service S { static readonly key = "coverage/CapturedAlias"; value: Box<T> }; return S }
+export {}
+
+// Spec rule: docs/design/src/005-services.md#afad83149029cc86
+// Chapter 005: captured-service-alias.
+// Spec rule: docs/design/src/005-services.md#5d896af47300d2bb
+// Chapter 005: captured-service-alias.
+// Spec rule: docs/design/src/005-services.md#bb8e6b56c9167aae
+// Chapter 005: captured-service-alias.

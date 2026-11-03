@@ -1,0 +1,5 @@
+export service Flags { static readonly key = "coverage/Annotated"; static readonly defaultValue: () => Flags.Shape = () => ({ n: 1 }); n: number }
+export {}
+
+// Spec rule: docs/design/src/005-services.md#be9cfe90c4d9a9c2
+// Chapter 005: service-annotated-default.

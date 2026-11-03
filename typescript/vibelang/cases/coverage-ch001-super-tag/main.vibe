@@ -1,0 +1,22 @@
+class Base {
+ n = 7
+ tag(_parts: TemplateStringsArray, value: number) { return this.n + value }
+}
+class Derived extends Base {
+ effect go() { try Effect.yieldNow; const value = 2; return super.tag`value ${value}` }
+}
+const forbidden = () => { throw new Error("own call or bind was read") }
+Object.defineProperty(Base.prototype.tag, "call", { get: forbidden })
+Object.defineProperty(Base.prototype.tag, "bind", { get: forbidden })
+export effect function main() { return try new Derived().go() }
+
+// Spec rule: docs/design/src/001-functions.md#992dab29cdbbacc4
+// Chapter 001: tag.
+// Spec rule: docs/design/src/001-functions.md#45e6cfccf3ad49f8
+// Chapter 001: tag.
+// Spec rule: docs/design/src/001-functions.md#117cf2c660bb2efa
+// Chapter 001: tag.
+// Spec rule: docs/design/src/001-functions.md#82fb34fff6dc701c
+// Chapter 001: tag.
+// Spec rule: docs/design/src/001-functions.md#464cb189253fa19a
+// Chapter 001: tag.

@@ -1,0 +1,11 @@
+// expect: EK0106
+export effect function a(): any { return 1 }
+export effect function b(): unknown { return 1 }
+export effect function c(): never { for (;;) {} }
+type Good = Effect.Effect<number>
+export effect function good(): Good { return 1 }
+
+export {}
+
+// Spec rule: docs/design/src/001-functions.md#c035782937808ba6
+// Chapter 001: return-annotation.

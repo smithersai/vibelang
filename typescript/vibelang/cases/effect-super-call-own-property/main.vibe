@@ -27,3 +27,9 @@ export effect function main() {
   const c = new Counter()
   return { go: try c.go(), direct: try c.direct(), poisonCalls: state.calls }
 }
+
+// Spec rule: docs/design/src/001-functions.md#639529bc0d5973e7
+// Chapter 001: super method executes on the source receiver without reading its own call (effect-super-call-own-property).
+
+// Spec rule: docs/design/src/001-functions.md#99876b2b13bb7dd1
+// Chapter 001: super method executes on the source receiver without reading its own call (effect-super-call-own-property).

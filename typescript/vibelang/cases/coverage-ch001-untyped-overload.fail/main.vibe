@@ -1,0 +1,9 @@
+// expect: TS7010
+export effect function f(x: string);
+export effect function f(x: string) { return x }
+export {}
+
+// Spec rule: docs/design/src/001-functions.md#102db9ec275baf69
+// Chapter 001: untyped-overload.
+// Spec rule: docs/design/src/001-functions.md#e61038bdeb0a5db2
+// Chapter 001: untyped-overload.

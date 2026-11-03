@@ -17,3 +17,6 @@ export effect function find(id: string): Effect<string> {
 export effect function lookup(id: string): Effect<string, Gone> {
   return try Users.find(id)
 }
+
+// Spec rule: docs/design/src/001-functions.md#500c90cc7e66b8f2
+// Chapter 001: written omitted requirements cannot be inferred from a body (effect-type-defaults.fail).

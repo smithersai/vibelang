@@ -1,0 +1,14 @@
+// expect: EK0907
+declare namespace N { export service S { static readonly key = "coverage/Inherited"; value: number } }
+export {}
+
+// Spec rule: docs/design/src/005-services.md#6b4d2b1741762ec9
+// Chapter 005: service-inherited-ambient.
+// Spec rule: docs/design/src/005-services.md#184aa02d7bc29421
+// Chapter 005: service-inherited-ambient.
+// Spec rule: docs/design/src/005-services.md#8b7f22297e979a2b
+// Chapter 005: service-inherited-ambient.
+// Spec rule: docs/design/src/005-services.md#9537bbb0438cad51
+// Chapter 005: service-inherited-ambient.
+// Spec rule: docs/design/src/005-services.md#162ea79957f5dd6c
+// Chapter 005: service-inherited-ambient.

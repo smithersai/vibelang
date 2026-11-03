@@ -1,0 +1,6 @@
+// expect: TS1222
+class A { effect *m(): Stream.Stream<number>; effect *m() { yield 1 } }
+export {}
+
+// Spec rule: docs/design/src/001-functions.md#5bc3e67b98cecd2d
+// Chapter 001: starred-overload.

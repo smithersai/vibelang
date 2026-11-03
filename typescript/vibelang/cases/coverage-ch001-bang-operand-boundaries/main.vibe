@@ -1,0 +1,25 @@
+export type Required = number!{ reason: string }!{ service: number }
+export type Optional = number!!({ service: number })
+export type Negative = number!!-1
+type as = { service: number }
+type satisfies = { other: string }
+export type Named = number!!as
+export type Other = number!string!satisfies
+export function f(x: unknown) {
+ const a = x as number!! as unknown
+ const b = x as number!! satisfies unknown
+ const c = x as number!!as satisfies unknown
+ const d = x as number!![0]
+ return [a, b, c, d]
+}
+
+export {}
+
+// Spec rule: docs/design/src/001-functions.md#f28cfca36f69d4be
+// Chapter 001: bang-operand-boundaries.
+// Spec rule: docs/design/src/001-functions.md#18a6b794a5e3fd7c
+// Chapter 001: bang-operand-boundaries.
+// Spec rule: docs/design/src/001-functions.md#71a8cf0aceb2f9c7
+// Chapter 001: bang-operand-boundaries.
+// Spec rule: docs/design/src/001-functions.md#cf67e7834073c1f1
+// Chapter 001: bang-operand-boundaries.

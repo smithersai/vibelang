@@ -1,0 +1,11 @@
+// expect: EK0501
+effect function a(x = try Effect.succeed(1)) { return 1 }
+effect function b() { class C { value = try Effect.succeed(1) }; return 1 }
+effect function c() { class C { static { try Effect.succeed(1) } }; return 1 }
+
+export {}
+
+// Spec rule: docs/design/src/001-functions.md#5ad6b0583393dafc
+// Chapter 001: try-contexts.
+// Spec rule: docs/design/src/001-functions.md#621162cb7036e4ad
+// Chapter 001: try-contexts.

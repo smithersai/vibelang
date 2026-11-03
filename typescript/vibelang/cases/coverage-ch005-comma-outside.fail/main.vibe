@@ -1,0 +1,7 @@
+// expect: EK1201 EK1202
+function f() { provide Layer.empty,
+Layer.empty {} }
+export {}
+
+// Spec rule: docs/design/src/005-services.md#fe6655f6500fe823
+// Chapter 005: comma-outside.

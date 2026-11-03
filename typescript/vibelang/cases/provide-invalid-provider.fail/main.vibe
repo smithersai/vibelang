@@ -32,3 +32,9 @@ export effect function context(): string!! {
     return (try A).value
   }
 }
+
+// Spec rule: docs/design/src/005-services.md#251a3284a2f7ee30
+// Chapter 005: provider types follow native Effect.provide overloads (provide-invalid-provider.fail).
+
+// Spec rule: docs/design/src/005-services.md#319f8dcd6abefbd9
+// Chapter 005: provider types follow native Effect.provide overloads (provide-invalid-provider.fail).

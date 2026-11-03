@@ -28,3 +28,6 @@ export effect function main() {
   const c = try Effect.tryPromise(() => new Repo().find("a"))
   return [a, b, c]
 }
+
+// Spec rule: docs/design/src/001-functions.md#3ab60d2ea9eaf23a
+// Chapter 001: async declarations, arrows and methods return Promises; tryPromise bridge (vip1-async-functions).

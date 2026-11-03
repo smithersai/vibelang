@@ -11,3 +11,12 @@ export type Inside = (keyof (A | B))[]!string
 export type Written = Effect.Effect<(string | number), boolean>
 type A = { a: 1 }
 type B = { b: 2 }
+
+// Spec rule: docs/design/src/001-functions.md#3d2b0f3a47ccc36f
+// Chapter 001: nested contracts and grouped union/function/keyof-array slots declare their native types (declaration-bang-slot-grouping).
+
+// Spec rule: docs/design/src/001-functions.md#e7ab5835c9d9b56e
+// Chapter 001: nested contracts and grouped union/function/keyof-array slots declare their native types (declaration-bang-slot-grouping).
+
+// Spec rule: docs/design/src/001-functions.md#620333f39d830308
+// Chapter 001: nested contracts and grouped union/function/keyof-array slots declare their native types (declaration-bang-slot-grouping).

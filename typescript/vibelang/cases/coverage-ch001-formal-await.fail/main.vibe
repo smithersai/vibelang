@@ -1,0 +1,10 @@
+// expect: EK0102
+effect function a(x = await Promise.resolve(1)) { return x }
+const b = effect (x = await Promise.resolve(1)) => x
+class C { effect m(x = await Promise.resolve(1)) { return x } }
+effect function* d(x = await Promise.resolve(1)) { yield x }
+
+export {}
+
+// Spec rule: docs/design/src/001-functions.md#22a31b8dcc5050f1
+// Chapter 001: formal-await.

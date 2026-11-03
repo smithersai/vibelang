@@ -11,3 +11,6 @@ export const checks = [
 export type Global = typeof globalThis
 export type Constructor = typeof globalThis.URL
 export function shadow(globalThis: { URL: string }): string { return globalThis.URL }
+
+// Spec rule: docs/design/src/001-functions.md#d13af53812edbd47
+// Chapter 001: typeof globalThis and typeof its static member remain type queries (global-this-static).

@@ -1,0 +1,76 @@
+// Chapter 001: declaration/expression/arrow/method forms, overloads, decorators and cold calls.
+import anonymousDefault from "./default.vibe"
+export effect function pick(x: string): string!!;
+export effect function pick(x: number): number!!;
+export effect function pick(x: string | number) { return x }
+
+export class Choices {
+  effect pick(x: string): string!!;
+  effect pick(x: number): number!!;
+  effect pick(x: string | number) { return x }
+  static effect identity<T>(x: T) { return x }
+  effect #identity<T>(x: T) { return x }
+  effect privateValue() { return try this.#identity(9) }
+}
+export interface Ordinary { effect(): number }
+export const ordinary: Ordinary = { effect() { return 4 } }
+export const expression = effect function (n: number) { return n + 1 }
+export const blockArrow = effect (n: number) => { return n + 2 }
+export const bareArrow: (n: number) => number!! = effect n => n + 3
+export const expressionArrow = effect (n: number) => n + 4
+let defaults = 0
+let bodies = 0
+export effect function cold(n = ++defaults) { bodies++; return n }
+const decorations: string[] = []
+function mark<This, Args extends unknown[], R>(
+  value: (this: This, ...args: Args) => R,
+  _context: ClassMethodDecoratorContext<This, (this: This, ...args: Args) => R>
+) { decorations.push("mark"); return value }
+export class Decorated {
+  @mark
+  static effect value() { return 5 }
+}
+export effect function main() {
+  const program = cold()
+  const afterCall = [defaults, bodies]
+  const first = try program
+  const second = try program
+  const choices = new Choices()
+  return {
+    overloads: [try pick("ok"), try choices.pick(7)],
+    forms: [try expression(1), try blockArrow(1), try bareArrow(1), try expressionArrow(1), try anonymousDefault(1)],
+    methods: [ordinary.effect(), try Choices.identity(8), try choices.privateValue(), try Decorated.value()],
+    cold: [afterCall, first, second, defaults, bodies],
+    decorations
+  }
+}
+
+// Spec rule: docs/design/src/001-functions.md#74e517a46684b790
+// Chapter 001: native function forms, overloads, decorated methods and channel operand types.
+
+// Spec rule: docs/design/src/001-functions.md#406f3230e618361b
+// Chapter 001: native function forms, overloads, decorated methods and channel operand types.
+
+// Spec rule: docs/design/src/001-functions.md#623b104d03f391ae
+// Chapter 001: native function forms, overloads, decorated methods and channel operand types.
+
+// Spec rule: docs/design/src/001-functions.md#618d450fc402e82f
+// Chapter 001: native function forms, overloads, decorated methods and channel operand types.
+
+// Spec rule: docs/design/src/001-functions.md#84fd658137f2d0a8
+// Chapter 001: native function forms, overloads, decorated methods and channel operand types.
+
+// Spec rule: docs/design/src/001-functions.md#f28cfca36f69d4be
+// Chapter 001: native function forms, overloads, decorated methods and channel operand types.
+
+// Spec rule: docs/design/src/001-functions.md#18a6b794a5e3fd7c
+// Chapter 001: native function forms, overloads, decorated methods and channel operand types.
+
+// Spec rule: docs/design/src/001-functions.md#cf67e7834073c1f1
+// Chapter 001: native function forms, overloads, decorated methods and channel operand types.
+
+// Spec rule: docs/design/src/001-functions.md#51176cea66fcafb0
+// Chapter 001: native function forms, overloads, decorated methods and channel operand types.
+
+// Spec rule: docs/design/src/001-functions.md#7d3dbd0b2c35d276
+// Chapter 001: native function forms, overloads, decorated methods and channel operand types.

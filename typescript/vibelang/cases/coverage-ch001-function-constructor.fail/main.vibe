@@ -1,0 +1,10 @@
+// expect: EK0107
+export const a = (() => 1).constructor
+export const b = (async () => 1).constructor
+declare const f: Function
+export const c = f.constructor
+
+export {}
+
+// Spec rule: docs/design/src/001-functions.md#72531f7597c26de9
+// Chapter 001: function-constructor.

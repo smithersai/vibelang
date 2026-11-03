@@ -11,6 +11,12 @@
 // docs/design/vips/0001-effect-and-async-functions.md#8ac3c2e758d2212a
 // VIP-1: explicit function forms and cold execution
 // expect-result: {"a":2,"b":3,"c":[2,4],"d":"hi!","e":5,"f":1,"g":7,"runs":2,"h":"Layer"}
+// Spec rule: docs/design/src/001-functions.md#480ae2607ca096f5
+// Chapter 001: effect declarations, arrows and methods run through an explicit main runner (vip1-effect-functions).
+// Spec rule: docs/design/src/001-functions.md#14b727204f0269ab
+// Chapter 001: effect declarations, arrows and methods run through an explicit main runner (vip1-effect-functions).
+// Spec rule: docs/design/src/001-functions.md#9073d04f5c7ac9c2
+// Chapter 001: effect declarations, arrows and methods run through an explicit main runner (vip1-effect-functions).
 // effect marks an Effect function (VIP-1) exactly where TypeScript allows
 // async (VIP-39); effect { … } builds an Effect from a block, not yet run,
 // that reruns each time it runs (VIP-2). Outside those positions effect is
@@ -52,3 +58,6 @@ export effect function main() {
   const effect = { kind: "Layer" }
   return { a, b, c, d, e, f, g, runs, h: effect.kind }
 }
+
+// Spec rule: docs/design/src/001-functions.md#551bc96ffe9bc9dc
+// Chapter 001: expression-bodied Effect arrows return their expression (vip1-effect-functions).

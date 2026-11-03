@@ -1,0 +1,5 @@
+const join = (n: number) => () => ({ n }); export effect function f() { service S { static readonly key = "coverage/DefaultJoin"; static readonly defaultValue = join(1); n: number }; return (try S).n }
+export {}
+
+// Spec rule: docs/design/src/005-services.md#2942ca53bfd24655
+// Chapter 005: service-default-join-control.

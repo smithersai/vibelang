@@ -39,3 +39,8 @@ export error TimeoutWithBraces {}
 // VIP-13 VIP-13 fieldless declarations keep the no-type-argument ABI; rule: docs/design/vips/0013-error-declarations.md#aba3914ef78d0b9e
 
 // VIP-13 VIP-13 fieldless declarations keep the no-type-argument ABI; rule: docs/design/vips/0013-error-declarations.md#68c1d6105589f1a0
+
+// Spec rule: docs/design/src/001-functions.md#d39258298b0205a5
+// Chapter 001: custom matcher member and runtime reference survive error declaration emit (declaration-identity-error).
+// Spec rule: docs/design/src/001-functions.md#481ec39f903852ba
+// Chapter 001: declaration identity for the native class-call/data counterpart.

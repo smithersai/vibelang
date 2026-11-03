@@ -1,0 +1,8 @@
+// expect: TS1308
+effect function f() { service S { static readonly key = "coverage/DefaultAwait"; static readonly defaultValue = await Promise.resolve(() => ({ n: 1 })); n: number }; return 1 }
+export {}
+
+// Spec rule: docs/design/src/005-services.md#98d344a73e39b3c2
+// Chapter 005: service-default-await.
+// Spec rule: docs/design/src/005-services.md#4fc2d1324d3860ea
+// Chapter 005: service-default-await.

@@ -1,0 +1,5 @@
+function down2(n:number):number { return n === 0 ? 0 : down2(n-1) }
+export effect function main() { return down2(3) }
+
+// Spec rule: docs/design/src/001-functions.md#cbf37a4b7f9b500f
+// Chapter 001: recursion.
