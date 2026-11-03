@@ -89,6 +89,7 @@ func TestEffectPipeLeavesOtherPipes(t *testing.T) {
 func TestEffectPipeRefusals(t *testing.T) {
 	for _, test := range []struct{ name, source, why string }{
 		{"a comment before the closing parenthesis", "const p = (n: number) => Effect.succeed(n)\nexport const f = (n: number) => p(n).pipe(Effect.asVoid /* done */)\n", "a comment stands before"},
+		{"a generic stage that infers from the pipe", "const observe = <A extends { readonly _tag: string }>(f: (o: A) => number) => <E, R>(self: Effect.Effect<A, E, R>): Effect.Effect<A, E, R> => self\nexport const f = (p: Effect.Effect<{ readonly _tag: \"a\" }>) => p.pipe(observe((o) => o._tag.length))\n", "takes its type arguments from the .pipe"},
 		{"a spread stage", "const p = (n: number) => Effect.succeed(n)\nconst stages = [Effect.asVoid] as const\nexport const f = (n: number) => p(n).pipe(...stages)\n", "a stage is a spread"},
 	} {
 		t.Run(test.name, func(t *testing.T) {

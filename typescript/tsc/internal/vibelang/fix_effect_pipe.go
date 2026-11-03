@@ -105,6 +105,9 @@ func planEffectPipe(c *checker.Checker, file *ast.SourceFile, call *ast.Node) *f
 	if pipeStageAliasContext(c, call) {
 		return refuse("a stage needs its native .pipe context to preserve inferred type names")
 	}
+	if pipeStageInfersFromContext(c, call) {
+		return refuse("a generic stage takes its type arguments from the .pipe, which |> would not give it")
+	}
 	text := file.Text()
 	last := stages[len(stages)-1]
 	closing := call.End() - 1
@@ -198,6 +201,27 @@ func pipeStageAliasContext(c *checker.Checker, call *ast.Node) bool {
 					}
 				}
 			}
+		}
+	}
+	return false
+}
+
+// pipeStageInfersFromContext reports a curried generic stage whose callback
+// has unannotated parameters, as observe((o) => o._tag). In .pipe the stage's
+// contextual type gives its type arguments. In observe(f)(%) the call stands
+// alone, so they fall back to their constraints and the program's type widens:
+// Smithers' RunStore met TS2375 on { readonly _tag: string }.
+func pipeStageInfersFromContext(c *checker.Checker, call *ast.Node) bool {
+	for _, stage := range call.Arguments() {
+		stage = ast.SkipParentheses(stage)
+		if !ast.IsCallExpression(stage) || stage.TypeArguments() != nil || isDataFirstStage(c, stage) {
+			continue
+		}
+		generic := slices.ContainsFunc(c.GetSignaturesOfType(c.GetTypeAtLocation(stage.Expression()), checker.SignatureKindCall), func(signature *checker.Signature) bool {
+			return len(signature.TypeParameters()) > 0
+		})
+		if generic && slices.ContainsFunc(stage.Arguments(), c.IsContextSensitive) {
+			return true
 		}
 	}
 	return false

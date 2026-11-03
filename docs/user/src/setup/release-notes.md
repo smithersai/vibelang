@@ -528,6 +528,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - `--fix` wrote a `JSON.parse` or `new TextDecoder().decode` in an `Effect.gen` bare in the `effect` block, which turned a defect into a typed failure and changed the module's declared error channel, or failed with TS2375 against a written one; it now keeps the exception a defect through `Effect.orDie(Effect.try(...))`.
 - An unfinished module declaration could crash the parser; it now reports syntax errors.
 - An unfinished variable initializer or `catch` annotation could crash diagnostics or quick fixes; syntax errors now remain reported and unsafe rewrites are declined.
+- `--fix` rewrote `.pipe(observe((o) => o._tag))`, a curried generic stage, to `observe((o) => o._tag)(%)`, where its type arguments fell back to their constraints and the program's type widened, failing with TS2375; such a stage now keeps its `.pipe`.
 - `vibelang --fix --fix` reported `TS5023` instead of fixing the project; repeated `--fix` flags now apply the fixes once.
 - The migration instructions omitted throwing synchronous helpers; they now explain when to use an expected failure, a defect or a retained TypeScript helper.
 - The migrate flow's Effect upgrade left versioned pnpm selectors and patch metadata on the old release; matching selectors, patch filenames and `package.json` version references now move together while unrelated settings stay intact.
