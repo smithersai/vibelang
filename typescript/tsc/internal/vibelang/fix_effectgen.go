@@ -1068,6 +1068,12 @@ func effectGenTryEdit(c *checker.Checker, file *ast.SourceFile, y *ast.Node) ([]
 		return []sourceEdit{keyword, {operandStart, operandStart, "Effect.fail("}, {operand.End(), operand.End(), ")"}}, ""
 	}
 	if t != nil {
+		// A statement that drops a program the yield* gives, as a guard's check
+		// that the next step reruns: try gives the same program, and void says
+		// it is dropped, where a bare statement would be EK4801.
+		if ast.IsExpressionStatement(y.Parent) && droppedProgram(c, y, inner, t) {
+			keyword.text = "void " + keyword.text
+		}
 		// An Effect.Yieldable that is no Effect runs through asEffect().
 		if !isEffectValueType(c, t) && !isEffectType(c, t) && yieldsEffect(c, t) {
 			if needsOperandParentheses(operand) {
@@ -1114,6 +1120,22 @@ func throwEdits(file *ast.SourceFile, node *ast.Node, start, operandStart int) [
 		return []sourceEdit{{nodeStart(file, statement), operandStart, "throw "}}
 	}
 	return nil
+}
+
+// droppedProgram reports whether the yield* y, of inner typed t, gives a
+// program: EK4801 reports the statement try would write for it.
+func droppedProgram(c *checker.Checker, y, inner *ast.Node, t *checker.Type) bool {
+	effect := t
+	if isInvocation(inner) {
+		if signature := c.GetResolvedSignature(inner); signature != nil {
+			effect = c.GetReturnTypeOfSignature(signature)
+		}
+	}
+	success := successType(c, effect)
+	if success == nil {
+		success = varianceChannel(c, effect, "_A")
+	}
+	return success != nil && holdsEffectValue(c, success) || holdsEffectValue(c, c.GetTypeAtLocation(y))
 }
 
 // holdsEffectValue reports whether t, or a member of its union, is an Effect value.

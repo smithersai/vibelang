@@ -201,6 +201,28 @@ func TestEffectGenQuickFixes(t *testing.T) {
 	}
 }
 
+// try gives the value yield* gives, so a program a yield* gives stays a value,
+// held until something runs it (Chapter 2's groupedHead).
+func TestEffectGenProgramValueIsHeld(t *testing.T) {
+	for _, test := range []struct{ name, source, want string }{
+		{"a binding", "export const f = (make: () => Effect.Effect<Effect.Effect<number>>) => Effect.gen(function* () {\n  const inner = yield* make()\n  return yield* inner\n})\n", "const inner = try make()\n  return try inner"},
+		{"a returned program", "export const f = (make: () => Effect.Effect<Effect.Effect<number>>) => Effect.gen(function* () {\n  return yield* make()\n})\n", "return try make()"},
+		{"a program that may be absent", "export const f = (make: () => Effect.Effect<Effect.Effect<number> | undefined>) => Effect.gen(function* () {\n  const inner = yield* make()\n  return inner === undefined ? 0 : yield* inner\n})\n", "const inner = try make()"},
+		{"a dropped program", "export const f = (make: () => Effect.Effect<Effect.Effect<number>>) => Effect.gen(function* () {\n  yield* make()\n  return 1\n})\n", "void try make()"},
+		{"a program run at once", "export const f = (make: () => Effect.Effect<Effect.Effect<number>>) => Effect.gen(function* () {\n  return yield* yield* make()\n})\n", "return try try make()"},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			got, ok := effectGenQuickFix(t, test.source)
+			if !ok {
+				t.Fatalf("no quick fix for:\n%s\nnotes: %s", test.source, effectGenNotes(t, test.source))
+			}
+			if !strings.Contains(got, test.want) {
+				t.Fatalf("got:\n%s\nwant it to hold %q", got, test.want)
+			}
+		})
+	}
+}
+
 // Where the rewrite would mean something else, EK1002 has no quick fix, and
 // its note says why.
 func TestEffectGenRefusals(t *testing.T) {

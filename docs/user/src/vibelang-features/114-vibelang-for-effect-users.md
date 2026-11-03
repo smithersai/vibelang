@@ -164,6 +164,8 @@ Use Effect's operators for retries, timeouts, concurrency, and Stream transforma
 
 Effect declarations and combinator calls ported from TypeScript compile in a `.vibe` file, with warnings EK4830-EK4837 where VibeLang has its own form. `Effect.gen` bodies do not compile there (EK1002). Run `npx vibelang -p tsconfig.json --fix --noEmit` to rewrite supported forms whose VibeLang form keeps what the program does, then read the diagnostics left: each says what its form would change. See [TypeScript-style Effect code](../getting-started/012-devtools.md#typescript-style-effect-code). Support for the new forms arrives with the compiler's VIP implementation.
 
+When migrating a generator, `const inner = yield* make()` becomes `const inner = try make()` even when the result is another Effect. That inner program stays cold until explicitly run. A discarded program result becomes `void try make()`.
+
 ## Calls return Effects; programs stay cold
 
 ```vibe

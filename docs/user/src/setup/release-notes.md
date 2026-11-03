@@ -188,6 +188,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - The specification linter failed to load after independent updates repeated its declaration-retirement fixture; the fixture and its exact repeated tests are now declared once.
 
 - A build with only an imported Effect warning, such as `promiseInEffectSuccess`, incorrectly exited successfully and could emit under `noEmitOnError`. Imported diagnostics now follow the pinned Effect TypeScript compiler's exit and emission options, including ignored warnings and explicitly enabled suggestions; VibeLang's own warnings retain their existing policy.
+- Migrating a discarded `yield*` result that was itself an Effect could leave a bare program statement and prevent the migration from compiling; the fixer now writes `void try`, preserving the discarded value and keeping the inner program cold.
 - Renaming a shorthand pattern binding could change the property it matched and add `TS2339`; rename now keeps the property key and writes an explicit binding.
 
 - Rolldown entry globs could bundle generated `.d.vibex.ts` declarations as empty entrypoints; the plugin now excludes those sidecars and retains the JSX source entries and aliases.
