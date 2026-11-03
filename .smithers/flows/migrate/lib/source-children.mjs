@@ -4,6 +4,7 @@ import { readFileSync } from "node:fs"
 import { join, posix, resolve, sep } from "node:path"
 import { packageScripts, testOnlyScripts } from "./test-files.mjs"
 import { sourceChildArgvProof } from "./source-child-argv.mjs"
+import { sameGeneratedCode, sameGeneratedDocumentation, generatedHelperSuffix } from "./generated-helper-shape.mjs"
 
 const marker = "// VibeLang source-child loader arguments."
 const template = readFileSync(new URL("../templates/source-child.ts", import.meta.url), "utf8")
@@ -149,10 +150,10 @@ function refreshSourceChildPolicy(text, source, ts, checker, calls, file) {
     const expected = parsed.statements.find(ts.isFunctionDeclaration)
     const expectedDocs = (expected.jsDoc ?? []).map(doc => doc.getText(parsed)).join("\n")
     const actualDocs = (helper.jsDoc ?? []).map(doc => doc.getText(source)).join("\n")
-    if (helper.getText(source) === expected.getText(parsed) && actualDocs === expectedDocs) return null
+    if (sameGeneratedCode(helper.getText(source), expected.getText(parsed), ts) && sameGeneratedDocumentation(actualDocs, expectedDocs)) return null
     const previous = ts.createSourceFile(file, raw, ts.ScriptTarget.Latest, true)
-    if (javascript && helper.getText(source) === previous.statements.find(ts.isFunctionDeclaration).getText(previous) &&
-        (!actualDocs || actualDocs === expectedDocs)) {
+    if (javascript && sameGeneratedCode(helper.getText(source), previous.statements.find(ts.isFunctionDeclaration).getText(previous), ts) &&
+        (!actualDocs || sameGeneratedDocumentation(actualDocs, expectedDocs))) {
       const prefix = actualDocs ? "" : expectedDocs + "\n"
       return { text: text.slice(0, helper.getStart(source)) + prefix + expected.getText(parsed) + text.slice(helper.end), usesChild: true, refusals: [] }
     }
@@ -180,7 +181,7 @@ function refreshSourceChildPolicy(text, source, ts, checker, calls, file) {
   rendered = render(rendered)
   const parsed = ts.createSourceFile(file, rendered, ts.ScriptTarget.Latest, true)
   const oldFunction = parsed.statements.find(ts.isFunctionDeclaration)
-  if (!owned || helper.getText(source) !== oldFunction.getText(parsed)) return { text, usesChild: true, refusals: [{
+  if (!owned || !sameGeneratedCode(helper.getText(source), oldFunction.getText(parsed), ts)) return { text, usesChild: true, refusals: [{
     line: source.getLineAndCharacterOfPosition(helper.getStart(source)).line + 1,
     reason: "generated source-child helper has manual observations or edits; retain it for policy review"
   }] }
@@ -306,7 +307,7 @@ export function addSourceChildLoaders(text, ts, { file = "child.ts", type = "mod
         const schema = schemaImport?.importClause.namedBindings.name.text
         const legacy = legacyTemplate.replace(/import \* as __vibelangNodeURL from "node:url"/, 'import { fileURLToPath as __vibelangFileURLToPath } from "node:url"')
           .replaceAll("__vibelangNodeURL.fileURLToPath", "__vibelangFileURLToPath")
-        let append
+        let append, suffixEdit
         if (owned && urlImport) for (const base of [legacy, ...(schema ? [template] : [])]) for (const namespace of [false, true]) {
           let rendered = base.replaceAll("__vibelangSourceChild", helper.name.text)
           rendered = base === legacy ? rendered.replaceAll("__vibelangFileURLToPath", urlBinding)
@@ -320,7 +321,9 @@ export function addSourceChildLoaders(text, ts, { file = "child.ts", type = "mod
             const imported = parsed.statements.filter(ts.isImportDeclaration).at(-1)
             const body = version.slice(imported.end).replace(/^export \{\};?\s*$/gm, "")
             const candidate = "\n" + body + "\n"
-            if (text.endsWith(candidate)) { append = candidate; break }
+            if (text.endsWith(candidate)) { append = candidate; suffixEdit = undefined; break }
+            const formatted = generatedHelperSuffix(text, source, helper, candidate, ts, marker)
+            if (formatted) { append = candidate; suffixEdit = formatted; break }
           }
         }
         if (append) {
@@ -328,7 +331,7 @@ export function addSourceChildLoaders(text, ts, { file = "child.ts", type = "mod
             text: inner.arguments[0].getText(source) + ", " + inner.arguments[1].getText(source) }))
           const removeHelper = unnecessary.length === wrappers.length
           if (removeHelper) {
-            edits.push({ start: text.length - append.length, end: text.length, text: "" })
+            edits.push(suffixEdit ?? { start: text.length - append.length, end: text.length, text: "" })
             for (const imported of [urlImport, schemaImport].filter(Boolean)) {
               const newline = /^\r?\n/.exec(text.slice(imported.end))?.[0].length ?? 0
               edits.push({ start: imported.getStart(source), end: imported.end + newline, text: "" })
