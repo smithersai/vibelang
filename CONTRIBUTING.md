@@ -70,9 +70,9 @@ Run the cached build graph locally with `sh scripts/ci.sh`; [the build graph](do
 
 For each pull request, a maintainer runs `sh scripts/e2e.sh` and the compiler case suite, `(cd typescript && sh vibelang/smoke.sh --jobs 8)`, and records the results in the pull request.
 
-The compiler package tests include a native ESLint tree-oracle check, independent of the optional plugin install: contextual `effect` modifiers are syntax, while a binding, parameter or method named `effect` must retain its identifier node. It also knocks out written names to verify the oracle catches missing nodes.
+The compiler package tests include a native ESLint tree-oracle check, independent of the optional plugin install: contextual `effect` modifiers are syntax, while a binding, parameter or method named `effect` must retain its identifier node. Function names and parameters named with contextual words such as `match` or `service` also require their written identifiers. It also knocks out written names to verify the oracle catches missing nodes.
 
-The end-to-end check runs setup, then scaffolds, installs, builds, runs and tests a temporary app, and stops at the first failing step. A compiler case is a directory under `typescript/vibelang/cases/`; `typescript/vibelang/harness.mjs` describes the format. A passing check doesn't prove every language feature works, so list the checks you ran, the ones that failed and the ones you couldn't run.
+The end-to-end check runs setup, then scaffolds, installs, builds, runs and tests a temporary app, and stops at the first failing step. A compiler case is a directory under `typescript/vibelang/cases/`; `typescript/vibelang/harness.mjs` describes the format. Custom `run.mjs` runners receive the compiler the harness uses as `VIBELANG_BINARY`, an absolute path. A passing check doesn't prove every language feature works, so list the checks you ran, the ones that failed and the ones you couldn't run.
 
 ## Pull requests
 
@@ -97,4 +97,4 @@ Start with [good first issues](https://github.com/smithersai/vibelang/issues?q=i
 
 Ask with the [question form](https://github.com/smithersai/vibelang/issues/new?template=question.yml). Report a vulnerability privately, never in an issue: see [SECURITY.md](.github/SECURITY.md).
 
-<sub>2,707 tokens (o200k_base, js-tiktoken 1.0.21), counted by the [docs flow](.smithers/flows/docs/flow.ts).</sub>
+<sub>2,755 tokens (o200k_base, js-tiktoken 1.0.21), counted by the [docs flow](.smithers/flows/docs/flow.ts).</sub>

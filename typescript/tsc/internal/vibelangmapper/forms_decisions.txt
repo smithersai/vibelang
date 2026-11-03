@@ -4061,6 +4061,15 @@ typescript/vibelang/cases/pipe-returned-exit/main.vibe:6:17 lambda effectFn anno
 typescript/vibelang/cases/pipe-returned-exit/main.vibe:7:22 lambda effectFn table
 typescript/vibelang/cases/pipe-returned-exit/main.vibe:7:78 byname program table
 typescript/vibelang/cases/pipe-returned-exit/main.vibe:9:16 lambda effectFn annotation
+typescript/vibelang/cases/plain-arrow-contextual-effect/main.vibe:10:42 lambda effectFn annotation
+typescript/vibelang/cases/plain-arrow-contextual-effect/main.vibe:11:50 lambda effectFn annotation
+typescript/vibelang/cases/plain-arrow-contextual-effect/main.vibe:14:54 lambda effectFn annotation
+typescript/vibelang/cases/plain-arrow-contextual-effect/main.vibe:17:49 lambda plain annotation
+typescript/vibelang/cases/plain-arrow-contextual-effect/main.vibe:18:49 lambda plain annotation
+typescript/vibelang/cases/plain-arrow-contextual-effect/main.vibe:18:55 lambda dual fallback
+typescript/vibelang/cases/plain-arrow-contextual-effect/main.vibe:21:39 lambda effectFn annotation
+typescript/vibelang/cases/plain-arrow-contextual-effect/main.vibe:22:34 lambda program annotation
+typescript/vibelang/cases/plain-arrow-contextual-effect/main.vibe:9:57 lambda dual fallback
 typescript/vibelang/cases/plain-async-generator/main.vibe:13:19 lambda plain table
 typescript/vibelang/cases/plain-binding-controls/main.vibe:45:26 lambda plain annotation
 typescript/vibelang/cases/plain-binding-controls/main.vibe:46:40 lambda plain annotation
