@@ -1,0 +1,15 @@
+import { Cause, Data, Effect, Exit, Schema } from "effect"
+type Equal<A, B> = (<T>() => T extends A ? 1 : 2) extends (<T>() => T extends B ? 1 : 2) ? true : false
+error Copied { ["__proto__"]: object; value: number }
+data Copies { Copy { ["__proto__"]: object; value: number } }
+const marker = { marker: true }
+const payload = { ["__proto__"]: marker, value: 7 }
+export effect function main() {
+  const error = new Copied(payload)
+  const data = Copies.Copy(payload)
+  return [Object.getPrototypeOf(error) === marker, Object.hasOwn(error, "__proto__"), Object.getPrototypeOf(data) === marker, Object.hasOwn(data, "__proto__"), error.value, data.value]
+}
+
+// VIP-29 TaggedError assignment and TaggedEnum spread keep distinct prototype behavior; rule: docs/design/vips/0029-schema-errors.md#25b13b4554971df0
+
+// VIP-29 TaggedError assignment and TaggedEnum spread keep distinct prototype behavior; rule: docs/design/vips/0029-schema-errors.md#6b22d16ef9fb102e

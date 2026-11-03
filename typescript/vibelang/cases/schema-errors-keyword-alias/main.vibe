@@ -1,0 +1,19 @@
+import { Cause, Data, Effect, Exit, Schema } from "effect"
+type Equal<A, B> = (<T>() => T extends A ? 1 : 2) extends (<T>() => T extends B ? 1 : 2) ? true : false
+schema error = string
+schema error Timeout
+schema error Missing { id: string }
+export effect function main() {
+  const decoded = try Schema.decodeUnknownEffect(error)("ordinary alias")
+  return [decoded, new Timeout()._tag, new Missing({ id: "x" }).id]
+}
+
+// VIP-15 schema named error versus schema-error declaration and bodyless constructor; rule: docs/design/vips/0015-schema-declarations.md#35ffb74ad7385db7
+
+// VIP-29 schema named error versus schema-error declaration and bodyless constructor; rule: docs/design/vips/0029-schema-errors.md#d13c65582283ed30
+
+// VIP-29 schema named error versus schema-error declaration and bodyless constructor; rule: docs/design/vips/0029-schema-errors.md#df026e02b92983be
+
+// VIP-29 schema named error versus schema-error declaration and bodyless constructor; rule: docs/design/vips/0029-schema-errors.md#84d02c8797bfada9
+
+// VIP-29 schema named error versus schema-error declaration and bodyless constructor; rule: docs/design/vips/0029-schema-errors.md#91fd2a02750a5c7d

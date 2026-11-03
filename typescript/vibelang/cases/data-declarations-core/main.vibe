@@ -1,0 +1,22 @@
+import { Data, Effect } from "effect"
+type Equal<A, B> = (<T>() => T extends A ? 1 : 2) extends (<T>() => T extends B ? 1 : 2) ? true : false
+data Delivery { Waiting; Sent { tracking: string }; Rejected { reason: string } }
+export effect function main() {
+  const sent = Delivery.Sent({ tracking: "parcel" })
+  const tracking = "outer"
+  const bound = match (sent) { when { _tag: "Sent", let tracking }: tracking; default: "none"; }
+  const exists = match (sent) { when { tracking }: tracking; default: "none"; }
+  return [Delivery.Waiting()._tag, sent._tag, bound, exists, Delivery.Rejected({ reason: "bad" }).reason, Delivery.$is("Sent")(sent)]
+}
+
+// VIP-16 tagged enum constructors, empty union and TC39 property-existence versus binding; rule: docs/design/vips/0016-data-declarations.md#a7a7e5e045d10f6b
+
+// VIP-16 tagged enum constructors, empty union and TC39 property-existence versus binding; rule: docs/design/vips/0016-data-declarations.md#d66f6f7901eb23f3
+
+// VIP-16 tagged enum constructors, empty union and TC39 property-existence versus binding; rule: docs/design/vips/0016-data-declarations.md#76202dbd2aebd987
+
+
+// VIP-16 tagged enum constructors, empty union and TC39 property-existence versus binding; rule: docs/design/vips/0016-data-declarations.md#c36a460961a82a98
+
+
+// VIP-16 tagged enum constructors, empty union and TC39 property-existence versus binding; rule: docs/design/vips/0016-data-declarations.md#1cd403d30e6d5295

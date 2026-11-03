@@ -1,0 +1,11 @@
+import { Data, Effect } from "effect"
+type Equal<A, B> = (<T>() => T extends A ? 1 : 2) extends (<T>() => T extends B ? 1 : 2) ? true : false
+data Empty {}
+export const exact: Equal<Empty, never> = true
+export effect function main() { return Object.keys(Empty) }
+
+// VIP-16 zero variants form the exact empty TaggedEnum and constructors; rule: docs/design/vips/0016-data-declarations.md#a1229c26d7d6fdc5
+
+// VIP-16 zero variants form the exact empty TaggedEnum and constructors; rule: docs/design/vips/0016-data-declarations.md#8caba2cb7cac9c22
+
+// Fuzz neighbourhood: FuzzDataSpecRules feature:empty-data; keyed corpus data-empty-data.

@@ -1,0 +1,20 @@
+// expect: EK1602
+data Reserved {
+  $is
+  $match
+  Normal
+}
+data Generic<A> {
+  $is
+  $match
+  Normal { value: A }
+}
+export {}
+
+// VIP-16 reserved helper names rejected in plain and generic data; rule: docs/design/vips/0016-data-declarations.md#c5569cbd66afff5f
+
+// VIP-16 reserved helper names rejected in plain and generic data; rule: docs/design/vips/0016-data-declarations.md#6883f22234ae8efd
+
+// VIP-16 reserved helper names rejected in plain and generic data; rule: docs/design/vips/0016-data-declarations.md#5e9f25feda1073a1
+
+// VIP-16 reserved helper names rejected in plain and generic data; rule: docs/design/vips/0016-data-declarations.md#05bc5f3e5d85e382

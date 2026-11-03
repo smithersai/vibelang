@@ -11,3 +11,6 @@ schema error Required { value: Optional }
 schema error Wide { value: Uncertain }
 schema error Good { optional?: Optional; array: number[] }
 export {}
+
+// VIP-15 schema-error keys are shallow readonly; rule: docs/design/vips/0015-schema-declarations.md#2189b596c888f9db
+// VIP-15 schema-error keys are shallow readonly; rule: docs/design/vips/0029-schema-errors.md#c759b6e9d682e55b

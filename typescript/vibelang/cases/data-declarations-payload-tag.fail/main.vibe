@@ -1,0 +1,5 @@
+// expect: EK1601
+data Conflict { A { _tag: string } }
+export {}
+
+// VIP-16 payload cannot replace the generated discriminant; rule: docs/design/vips/0016-data-declarations.md#83aa9dbf37a7fc40

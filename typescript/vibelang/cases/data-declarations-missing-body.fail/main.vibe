@@ -1,0 +1,5 @@
+// expect: EK1604
+data Missing
+export {}
+
+// VIP-16 required variant body; rule: docs/design/vips/0016-data-declarations.md#b076d2bc9dda0d89

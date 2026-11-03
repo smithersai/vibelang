@@ -1,0 +1,6 @@
+// expect: TS2740
+error Plain { value: string }
+const decode = Schema.decodeUnknownEffect(Plain)
+export {}
+
+// VIP-13 plain TaggedError does not implement the decoder API; rule: docs/design/vips/0013-error-declarations.md#93a4be468ffd569c

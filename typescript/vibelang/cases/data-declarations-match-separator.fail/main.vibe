@@ -1,0 +1,12 @@
+// expect: EK0701
+data State { A; B }
+export function describe(state: State) {
+  return match (state) {
+    when { _tag: "A" }: 1
+    default: 2
+  }
+}
+
+// VIP-13 every match arm needs a semicolon, including the last; rule: docs/design/vips/0013-error-declarations.md#4fa0bef7a356de99
+
+// VIP-16 every match arm needs a semicolon, including the last; rule: docs/design/vips/0016-data-declarations.md#4fa0bef7a356de99

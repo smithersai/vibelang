@@ -1,0 +1,19 @@
+import { Cause, Data, Effect, Exit, Schema } from "effect"
+type Equal<A, B> = (<T>() => T extends A ? 1 : 2) extends (<T>() => T extends B ? 1 : 2) ? true : false
+schema error Wire { value: Schema.BigIntFromString }
+schema error Native { value: Schema.BigInt }
+error Plain { value: bigint }
+export effect function main() {
+  const encoded = try Schema.encodeEffect(Wire)(new Wire({ value: 12n }))
+  const decoded = try Schema.decodeUnknownEffect(Wire)({ _tag: "Wire", value: "15" })
+  const json = try Effect.try(() => JSON.stringify(encoded))
+  const native = try Schema.encodeEffect(Native)(new Native({ value: 12n }))
+  const unsupported = try Effect.exit(Effect.try(() => JSON.stringify(native)))
+  return [encoded.value, typeof encoded.value, decoded.value.toString(), json.includes('"value":"12"'), Exit.isFailure(unsupported), Schema.isSchema(Plain)]
+}
+
+// VIP-13 encoded representation determines JSON support; plain TaggedError is not a Schema; rule: docs/design/vips/0013-error-declarations.md#93a4be468ffd569c
+
+// VIP-29 encoded representation determines JSON support; plain TaggedError is not a Schema; rule: docs/design/vips/0029-schema-errors.md#ad0cede797f9a9ee
+
+// VIP-29 encoded representation determines JSON support; plain TaggedError is not a Schema; rule: docs/design/vips/0029-schema-errors.md#5c89300564a97661

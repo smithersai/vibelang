@@ -1,0 +1,4 @@
+// expect: EK1603
+export default data Named { A }
+
+// VIP-16 named default export uses export specifier; rule: docs/design/vips/0016-data-declarations.md#1be888861bc23f97

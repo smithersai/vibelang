@@ -1,0 +1,29 @@
+import { Cause, Data, Effect, Exit, Schema } from "effect"
+type Equal<A, B> = (<T>() => T extends A ? 1 : 2) extends (<T>() => T extends B ? 1 : 2) ? true : false
+error CopyError { value: number }
+data Copies { Copy { value: number } }
+const token = { failure: "copy" }
+let reads = 0
+const payload = { get value(): number { reads++; throw token } }
+effect function build() { return new CopyError(payload) }
+effect function variant() { return Copies.Copy(payload) }
+export const contract: Equal<ReturnType<typeof build>, Effect.Effect<CopyError>> = true
+function ordinary() { try { new CopyError(payload); return false } catch (e) { return e === token } }
+export effect function main() {
+  const delayed = build()
+  const cold = reads === 0
+  const first = try Effect.exit(delayed)
+  const plain = ordinary()
+  const second = try Effect.exit(variant())
+  return [cold, plain, reads, Exit.isFailure(first) && Cause.squash(first.cause) === token, Exit.isFailure(second) && Cause.squash(second.cause) === token]
+}
+
+// VIP-29 getter exceptions retain identity, coldness and native versus Effect phase; rule: docs/design/vips/0029-schema-errors.md#5b2f0935b24c3ee6
+
+// VIP-29 getter exceptions retain identity, coldness and native versus Effect phase; rule: docs/design/vips/0029-schema-errors.md#be00d2dc15b38916
+
+// VIP-29 getter exceptions retain identity, coldness and native versus Effect phase; rule: docs/design/vips/0029-schema-errors.md#25b13b4554971df0
+
+// VIP-29 getter exceptions retain identity, coldness and native versus Effect phase; rule: docs/design/vips/0029-schema-errors.md#6f8ac57fdfc0527a
+
+// VIP-29 getter exceptions retain identity, coldness and native versus Effect phase; rule: docs/design/vips/0029-schema-errors.md#6b22d16ef9fb102e

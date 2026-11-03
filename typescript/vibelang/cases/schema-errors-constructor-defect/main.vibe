@@ -1,0 +1,19 @@
+import { Cause, Data, Effect, Exit, Schema } from "effect"
+type Equal<A, B> = (<T>() => T extends A ? 1 : 2) extends (<T>() => T extends B ? 1 : 2) ? true : false
+schema error Invalid { name: Schema.NonEmptyString }
+effect function fail(): never!Invalid { throw new Invalid({ name: "" }) }
+export const contract: Equal<ReturnType<typeof fail>, Effect.Effect<never, Invalid>> = true
+export effect function main() {
+  const result = try Effect.exit(fail())
+  return [Exit.isFailure(result), Exit.isFailure(result) && result.cause.reasons.every(r => r._tag === "Die"), Exit.isFailure(result) && Cause.squash(result.cause) instanceof Error]
+}
+
+// VIP-29 static never-throws constructor can defect on runtime validation; rule: docs/design/vips/0029-schema-errors.md#28c464ef44f59884
+
+// VIP-29 static never-throws constructor can defect on runtime validation; rule: docs/design/vips/0029-schema-errors.md#a891b57be647118d
+
+// VIP-29 static never-throws constructor can defect on runtime validation; rule: docs/design/vips/0029-schema-errors.md#6296c5e4403c94ca
+
+// VIP-29 static never-throws constructor can defect on runtime validation; rule: docs/design/vips/0029-schema-errors.md#dbf5cd60fc7f40de
+
+// VIP-29 static never-throws constructor can defect on runtime validation; rule: docs/design/vips/0029-schema-errors.md#558053344b83274f

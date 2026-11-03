@@ -10,3 +10,5 @@ data Payload {
   Literal { ["lit"]: number }
 }
 export const lit = Payload.Literal({ lit: 1 })
+
+// VIP-16 payload computed keys use native type-literal admission; rule: docs/design/vips/0016-data-declarations.md#60895b7f61014c80
