@@ -1,0 +1,14 @@
+// expect: EK0509 EK0509 EK0509 EK0509 EK0509 EK0509 TS2349 TS2345
+// VIP-5 rejects each value handler once. Native errors belong only to the
+// invalid expressions written by the author, not to a synthetic handler call.
+import { Effect } from "effect"
+
+const fallback = 7
+function needsNumber(n: number) { return n }
+
+export effect function literal() { return Effect.fail(0) catch 7 }
+export effect function named() { return Effect.fail(0) catch fallback }
+export effect function held() { return Effect.fail(0) catch Effect.succeedNone }
+export effect function called() { return Effect.fail(0) catch Effect.succeed(7) }
+export effect function invalidCall() { return Effect.fail(0) catch Effect.succeedNone() }
+export effect function invalidArgument() { return Effect.fail(0) catch needsNumber("bad") }
