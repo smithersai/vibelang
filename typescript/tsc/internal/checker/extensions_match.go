@@ -103,3 +103,15 @@ func (c *Checker) TypeOfPatternMatcher(matcher *ast.Node) *Type {
 func (c *Checker) typesAreSettled() bool {
 	return len(c.flowLoopStack) == 0
 }
+
+// isVibeLangArrayPattern recognizes the parser's Array.isArray subject test.
+// Source-written calls retain TypeScript's mutable any[] predicate.
+func isVibeLangArrayPattern(call *ast.Node) bool {
+	callee := call.Expression()
+	if !ast.IsPropertyAccessExpression(callee) || len(call.Arguments()) != 1 {
+		return false
+	}
+	receiver, name := callee.Expression(), callee.Name()
+	return ast.IsIdentifier(receiver) && receiver.Flags&ast.NodeFlagsReparsed != 0 &&
+		receiver.Text() == "Array" && name.Text() == "isArray"
+}

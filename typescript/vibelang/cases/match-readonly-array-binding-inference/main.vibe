@@ -1,0 +1,23 @@
+export function value<T>(s: readonly T[], fallback: T) {
+ return match(s) { when [let v]: v; default: fallback; }
+}
+export function second<T>(s: readonly [string, T], fallback: T) {
+ return match(s) { when [let label, const v]: v; default: fallback; }
+}
+export function nested<T>(s: readonly (readonly T[])[], fallback: T) {
+ return match(s) { when [[let v]]: v; default: fallback; }
+}
+export function tail<T>(s: readonly T[], fallback: T[]) {
+ return match(s) { when [let first, ...let rest]: rest; default: fallback; }
+}
+export function nullable<T>(s: readonly T[] | null, fallback: T) {
+ return match(s) { when [let v]: v; default: fallback; }
+}
+export function payload(s: readonly (number | undefined)[]) {
+ return match(s) { when [let v]: v; default: 0; }
+}
+// Source-written predicates retain their native TypeScript typing.
+export function nativeBrand<T>(s: readonly T[]) {
+ if (Array.isArray(s)) return s[0];
+ return 0;
+}

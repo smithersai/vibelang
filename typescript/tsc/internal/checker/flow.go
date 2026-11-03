@@ -399,6 +399,13 @@ func (c *Checker) getTypeAtFlowCall(f *FlowState, flow *ast.FlowNode) FlowType {
 }
 
 func (c *Checker) narrowTypeByTypePredicate(f *FlowState, t *Type, predicate *TypePredicate, callExpression *ast.Node, assumeTrue bool) *Type {
+	// A pattern only reads array elements. Its generated brand check must
+	// retain readonly arrays and tuples rather than intersect them with any[].
+	if predicate.t == c.anyArrayType && isVibeLangArrayPattern(callExpression) {
+		copy := *predicate
+		copy.t = c.anyReadonlyArrayType
+		predicate = &copy
+	}
 	// Don't narrow from 'any' if the predicate type is exactly 'Object' or 'Function'
 	if predicate.t != nil && !(IsTypeAny(t) && (predicate.t == c.globalObjectType || predicate.t == c.globalFunctionType)) {
 		// A VibeLang class pattern narrows as instanceof does (extensions_match.go).
