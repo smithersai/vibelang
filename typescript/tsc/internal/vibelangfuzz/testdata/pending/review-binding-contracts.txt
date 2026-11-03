@@ -35,11 +35,3 @@ FuzzCollectionOperandDomain concurrent-number-direct compiler VIP-18/VIP-19/VIP-
 FuzzCollectionOperandDomain corpus:concurrent-number-direct compiler VIP-18/VIP-19/VIP-20 Chapter 2/detail288: resolved binding, written Stream container or named collection operand domain; lane core-fortry
 FuzzCollectionOperandDomain concurrent-number-nested-block compiler VIP-18/VIP-19/VIP-20 Chapter 2/detail288: resolved binding, written Stream container or named collection operand domain; lane core-fortry
 FuzzCollectionOperandDomain corpus:concurrent-number-nested-block compiler VIP-18/VIP-19/VIP-20 Chapter 2/detail288: resolved binding, written Stream container or named collection operand domain; lane core-fortry
-FuzzCollectionOperandDomain stream-any-direct compiler VIP-18/VIP-19/VIP-20 Chapter 2/detail288: resolved binding, written Stream container or named collection operand domain; lane core-fortry
-FuzzCollectionOperandDomain corpus:stream-any-direct compiler VIP-18/VIP-19/VIP-20 Chapter 2/detail288: resolved binding, written Stream container or named collection operand domain; lane core-fortry
-FuzzCollectionOperandDomain stream-any-nested-block compiler VIP-18/VIP-19/VIP-20 Chapter 2/detail288: resolved binding, written Stream container or named collection operand domain; lane core-fortry
-FuzzCollectionOperandDomain corpus:stream-any-nested-block compiler VIP-18/VIP-19/VIP-20 Chapter 2/detail288: resolved binding, written Stream container or named collection operand domain; lane core-fortry
-FuzzCollectionOperandDomain stream-never-direct compiler VIP-18/VIP-19/VIP-20 Chapter 2/detail288: resolved binding, written Stream container or named collection operand domain; lane core-fortry
-FuzzCollectionOperandDomain corpus:stream-never-direct compiler VIP-18/VIP-19/VIP-20 Chapter 2/detail288: resolved binding, written Stream container or named collection operand domain; lane core-fortry
-FuzzCollectionOperandDomain stream-never-nested-block compiler VIP-18/VIP-19/VIP-20 Chapter 2/detail288: resolved binding, written Stream container or named collection operand domain; lane core-fortry
-FuzzCollectionOperandDomain corpus:stream-never-nested-block compiler VIP-18/VIP-19/VIP-20 Chapter 2/detail288: resolved binding, written Stream container or named collection operand domain; lane core-fortry
