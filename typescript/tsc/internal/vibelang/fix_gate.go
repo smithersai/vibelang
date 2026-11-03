@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"fmt"
+	stdmaps "maps"
 	"slices"
 	"strings"
 
@@ -356,9 +357,9 @@ func (r *gateRound) orderErrors(files []tspath.RootedFilePath) map[string]int {
 
 // fixIsolationChecks bounds the programs a round of the gate checks to
 // tell apart the fixes that add errors (exhausted). A round that reaches
-// it refuses the fixes it has not yet told apart, together and without
-// another check (refuseUntold), and keeps the others it has verified.
-// Below it, the bound changes nothing. On opencode's core a check took 10
+// it refuses the fixes it has not yet told apart (refuseUntold), and keeps
+// the others it has verified and those salvage verifies. Below it, the
+// bound changes nothing. On opencode's core a check took 10
 // to 20 s, so 256 is about an hour (opencode-60, 2026-11-02).
 var fixIsolationChecks = 256
 
@@ -387,9 +388,12 @@ func (r *gateRound) exhausted() bool {
 }
 
 // refuseUntold refuses the fixes the round stopped before telling apart,
-// named by the first error the round's first trial added, which they were
-// all part of, and why no check tried them alone.
+// and why no check tried them alone, after salvage has kept those it can
+// verify. Each is named by the first error of the file that set it aside,
+// or of the files that import it, or else by the first error the round's
+// first trial added.
 func (r *gateRound) refuseUntold() {
+	blame := r.salvage()
 	n := 0
 	for _, pt := range r.untold {
 		n += len(pt.fixes)
@@ -397,14 +401,138 @@ func (r *gateRound) refuseUntold() {
 	if n == 0 {
 		return
 	}
-	named := fmt.Sprintf("%s, one of the errors of %d %s the gate stopped telling apart after %d checks of its round; run vibelang --fix again to try them", r.firstError, n, plural(n, "fix", "fixes"), r.g.isolationBound())
 	for _, pt := range r.untold {
+		first, ok := blame[r.proposals[pt.p].file.FileName()]
+		if !ok {
+			first = r.firstError
+		}
+		named := fmt.Sprintf("%s, one of the errors of %d %s the gate stopped telling apart after %d checks of its round; run vibelang --fix again to try them", first, n, plural(n, "fix", "fixes"), r.g.isolationBound())
 		for _, f := range pt.fixes {
 			r.refusals = append(r.refusals, gateRefusal{[2]int{pt.p, f}, named})
 		}
 	}
 	r.g.progress.decided(0, n)
 	r.untold = nil
+}
+
+// fixSalvageChecks bounds the checks of the whole program salvage makes.
+const fixSalvageChecks = 3
+
+// salvage keeps the fixes the round stopped before telling apart that,
+// with the kept ones, add no error to the whole program, once it has set
+// aside the fixes those errors may come from: the fixes of the files that
+// report one and of the files they import, and the fixes of each file with
+// a fix whose text holds a declaration an error reads (blameReads). It checks fixSalvageChecks
+// programs at most, each built anew, and sets aside more after each that
+// adds an error. On t3code's server (wk-srv-a444-35, 2026-11-03), the
+// errors of CodexAdapterV2 came back with any of some 50 fixes, and a
+// round refused one each 5 checks until it reached the bound: it then
+// refused the 237 fixes it had not told apart, under one TS18048 of
+// AssetAccess, and kept none, so a run of --fix again did the same. It
+// returns, by file, the error that set its fixes aside.
+func (r *gateRound) salvage() map[tspath.RootedFilePath]string {
+	blame := map[tspath.RootedFilePath]string{}
+	parts := r.untold
+	for checks := 0; len(parts) > 0 && checks < fixSalvageChecks && r.g.done.Err() == nil; checks++ {
+		t := r.verify(parts)
+		if len(t.added) == 0 {
+			r.keep(parts...)
+			kept := everyFixOf(parts)
+			var rest []part
+			for _, pt := range r.untold {
+				var fixes []int
+				for _, f := range pt.fixes {
+					if !kept[[2]int{pt.p, f}] {
+						fixes = append(fixes, f)
+					}
+				}
+				if len(fixes) > 0 {
+					rest = append(rest, part{pt.p, fixes})
+				}
+			}
+			r.untold = rest
+			return blame
+		}
+		// The first error of each file that reports one names its fixes and
+		// the fixes of the files it imports.
+		firsts := map[tspath.RootedFilePath]string{}
+		for _, d := range t.errors {
+			if d.File() == nil || t.added[errorKey(d)] == 0 {
+				continue
+			}
+			if key, ok := firsts[d.File().FileName()]; !ok || errorKey(d) < key {
+				firsts[d.File().FileName()] = errorKey(d)
+			}
+		}
+		reporting := slices.SortedFunc(stdmaps.Keys(firsts), tspath.RootedFilePath.Compare)
+		for _, name := range reporting {
+			if _, ok := blame[name]; !ok {
+				blame[name] = firsts[name]
+			}
+		}
+		for _, name := range reporting {
+			file := t.program.GetSourceFile(name)
+			if file == nil {
+				continue
+			}
+			for _, m := range t.program.GetResolvedModules()[file.PathKey()] {
+				if m == nil || !m.IsResolved() {
+					continue
+				}
+				if target := t.program.GetSourceFileForResolvedModule(m); target != nil {
+					if _, ok := blame[target.FileName()]; !ok {
+						blame[target.FileName()] = firsts[name]
+					}
+				}
+			}
+		}
+		// A fix an error reads sets aside the other fixes of its file too,
+		// so that salvage never keeps a fix beside a refused one of its file
+		// that the round had not told apart.
+		reached := map[tspath.RootedFilePath]bool{}
+		for _, h := range blameReads(r.g.ctx, t.program, t.errors, t.added, r.spans(t), newBlameBudget()) {
+			reached[r.proposals[h[0]].file.FileName()] = true
+		}
+		_, rest := split(parts, func(h [2]int) bool {
+			name := r.proposals[h[0]].file.FileName()
+			_, aside := blame[name]
+			return aside || reached[name]
+		})
+		if len(rest) == len(parts) {
+			break // no error names a file of the fixes
+		}
+		parts = rest
+	}
+	return blame
+}
+
+// verify checks the kept fixes and parts in a program no trial has read,
+// the whole program.
+func (r *gateRound) verify(parts []part) checked {
+	fixes := map[int][]int{}
+	for p, fs := range r.kept {
+		fixes[p] = slices.Clone(fs)
+	}
+	for _, pt := range parts {
+		fixes[pt.p] = append(fixes[pt.p], pt.fixes...)
+	}
+	overlay := map[tspath.RootedFilePath]string{}
+	size := 0
+	for p, fs := range fixes {
+		slices.Sort(fs)
+		overlay[r.proposals[p].file.FileName()] = r.subset(p, fs).text()
+		size += len(fs)
+	}
+	fresh := r.g.fresh
+	if fresh == nil {
+		fresh = r.g.build
+	}
+	r.g.progress.checkFixes(size, len(overlay))
+	r.checks++
+	program := fresh(maps(r.texts, overlay))
+	r.g.progress.label("")
+	errors := r.g.errors(program)
+	return checked{program, fixes, errors, r.addedBy(errors), true}
 }
 
 // fixCheckpointFirst is the round's checks before a halving first checks
@@ -431,46 +559,23 @@ func (r *gateRound) checkpoint() {
 		return
 	}
 	r.nextCheckpoint *= 2
-	fresh := r.g.fresh
-	if fresh == nil {
-		fresh = r.g.build
-	}
 	parts := slices.Clone(r.tentative)
 	for len(parts) > 0 && r.checkpointChecks < fixCheckpointChecks {
 		r.checkpointChecks++
-		fixes := map[int][]int{}
-		for p, fs := range r.kept {
-			fixes[p] = slices.Clone(fs)
-		}
-		for _, pt := range parts {
-			fixes[pt.p] = append(fixes[pt.p], pt.fixes...)
-		}
-		overlay := map[tspath.RootedFilePath]string{}
-		size := 0
-		for p, fs := range fixes {
-			slices.Sort(fs)
-			overlay[r.proposals[p].file.FileName()] = r.subset(p, fs).text()
-			size += len(fs)
-		}
-		r.g.progress.checkFixes(size, len(overlay))
-		r.checks++
-		program := fresh(maps(r.texts, overlay))
-		r.g.progress.label("")
-		errors := r.g.errors(program)
-		added := r.addedBy(errors)
-		if len(added) == 0 {
-			r.g.verified(maps(r.texts, overlay))
+		t := r.verify(parts)
+		if len(t.added) == 0 {
+			r.g.verified(r.textsOf(t.fixes))
 			return
 		}
 		aside := map[tspath.RootedFilePath]bool{}
-		for _, d := range errors {
-			if d.File() == nil || added[errorKey(d)] == 0 || aside[d.File().FileName()] {
+		for _, d := range t.errors {
+			if d.File() == nil || t.added[errorKey(d)] == 0 || aside[d.File().FileName()] {
 				continue
 			}
 			aside[d.File().FileName()] = true
-			for _, m := range program.GetResolvedModules()[d.File().PathKey()] {
+			for _, m := range t.program.GetResolvedModules()[d.File().PathKey()] {
 				if m != nil && m.IsResolved() {
-					if target := program.GetSourceFileForResolvedModule(m); target != nil {
+					if target := t.program.GetSourceFileForResolvedModule(m); target != nil {
 						aside[target.FileName()] = true
 					}
 				}
@@ -482,6 +587,15 @@ func (r *gateRound) checkpoint() {
 		}
 		parts = rest
 	}
+}
+
+// textsOf returns the round's texts with fixes, by proposal, applied.
+func (r *gateRound) textsOf(fixes map[int][]int) map[tspath.RootedFilePath]string {
+	overlay := map[tspath.RootedFilePath]string{}
+	for p, fs := range fixes {
+		overlay[r.proposals[p].file.FileName()] = r.subset(p, fs).text()
+	}
+	return maps(r.texts, overlay)
 }
 
 // fileErrors returns the errors of files in program.

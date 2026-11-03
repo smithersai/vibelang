@@ -102,7 +102,7 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [Running Effects](../getting-started/009-running-effects.md) | 1,900 |
 | [Sequencing Effects](../getting-started/010-using-generators.md) | 1,800 |
 | [Building Pipelines](../getting-started/011-building-pipelines.md) | 1,900 |
-| [Devtools](../getting-started/012-devtools.md) | 16,000 |
+| [Devtools](../getting-started/012-devtools.md) | 17,000 |
 | **All 13 pages** | **41,000** |
 
 ### Setup

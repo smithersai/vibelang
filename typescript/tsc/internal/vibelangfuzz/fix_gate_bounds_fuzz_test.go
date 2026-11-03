@@ -30,12 +30,18 @@ import (
 // error to a later module that reads it through a string in an import
 // type, so that no error traces to the fix and the gate halves. It runs
 // --fix with the input's checkpoint and isolation thresholds and, when the
-// input says so, stops the run as it builds a given program. Its oracle
-// is fixGateRule's: every set of fixes the run verifies, which a stopped
-// run leaves on disk (fix_keep.go), adds no error to the original; a fix
-// the bound refuses is named by the bound's reason; and a run that
-// finishes without reaching the bound writes and refuses exactly what a
-// run without checkpoints or a bound does.
+// input says so, stops the run as it builds a given program. With hub=k, a
+// hub module imports the refused fixes' functions of k modules and reports
+// an error when any one of them is applied: the shape of t3code's server,
+// where the gate refused one of some 50 such fixes each 5 checks, reached
+// the bound and kept none of 237 fixes (wk-srv-a444-35, 2026-11-03). Its
+// oracle is fixGateRule's: every set of fixes the run verifies, which a
+// stopped run leaves on disk (fix_keep.go), adds no error to the original;
+// a fix the bound refuses is named by the bound's reason; a run that
+// reaches the bound applies every good fix of a module that no error
+// reaches (gateRound.salvage); and a run that finishes without reaching
+// the bound writes and refuses exactly what a run without checkpoints or a
+// bound does.
 //
 // The input is comma-separated key=value pairs (fixGateBoundsProject); a
 // missing or malformed value takes its default, and every value is
@@ -49,6 +55,8 @@ func FuzzFixGateBounds(f *testing.F) {
 		"m=16,g=3,every=6,at=2,d=3,cp=64,iso=64",
 		"m=30,g=1,every=5,at=0,d=1,cp=16,iso=256,stop=20",
 		"m=80,g=2,every=5,at=0,d=1,cp=16,iso=32",
+		"m=30,g=2,every=2,at=0,d=1,cp=16,iso=16,hub=12",
+		"m=24,g=1,every=3,at=1,d=2,cp=32,iso=24,hub=8",
 	} {
 		f.Add(seed)
 	}
@@ -130,12 +138,23 @@ func FuzzFixGateBounds(f *testing.F) {
 				if strings.Contains(refusal.Error, " the gate stopped telling apart after ") {
 					untold++
 					if !strings.HasSuffix(refusal.Error, why) || !strings.Contains(refusal.Error, ", one of the errors of ") {
-						Gap(t, "FuzzFixGateBounds", "fix:bound-reason", "a fix refused at the bound for %q is named %q; want the round's first error and %q", input, refusal.Error, why)
+						Gap(t, "FuzzFixGateBounds", "fix:bound-reason", "a fix refused at the bound for %q is named %q; want an error and %q", input, refusal.Error, why)
 						return
 					}
 				}
 			}
 			if untold > 0 {
+				// The fixes of a module that no error reaches: not a reader,
+				// not the hub, not a module either imports, and not one that
+				// holds a refused fix.
+				for _, name := range fixGateBoundsInnocent(p) {
+					for path, file := range bounded.Files {
+						if filepath.Base(path.AsString()) == name && strings.Contains(file.Text, "Effect.Effect<number>") {
+							Gap(t, "FuzzFixGateBounds", "fix:bound-keeps-nothing", "a run of %q that reached the bound of %d checks left the good fixes of %s, which no error reaches, unapplied\n%s", input, p.iso, name, Archive(files))
+							return
+						}
+					}
+				}
 				t.Logf("%q: %d fixes refused at the bound of %d checks", input, untold, p.iso)
 				return
 			}
@@ -162,11 +181,12 @@ const fixGateBoundsFuzzModules = 32
 
 // fixGateBoundsInput is a FuzzFixGateBounds input: m modules, each with g
 // good fixes; a refused fix in each module whose index is at modulo every,
-// read by the module d after it; the round's checks before its first
-// checkpoint (cp) and its bound on checks (iso); and the program whose
-// build stops the run, or 0 for none.
+// read by the module d after it; a hub that reads the refused fixes of the
+// first hub of those modules, or none for 0; the round's checks before its
+// first checkpoint (cp) and its bound on checks (iso); and the program
+// whose build stops the run, or 0 for none.
 type fixGateBoundsInput struct {
-	m, g, every, at, d, cp, iso, stop int
+	m, g, every, at, d, hub, cp, iso, stop int
 }
 
 // fixGateBoundsParse reads input, with defaults and clamps: up to 160
@@ -197,6 +217,8 @@ func fixGateBoundsParse(input string) fixGateBoundsInput {
 			p.iso = n
 		case "stop":
 			p.stop = n
+		case "hub":
+			p.hub = n
 		}
 	}
 	clamp := func(n, low, high int) int { return min(max(n, low), high) }
@@ -208,6 +230,7 @@ func fixGateBoundsParse(input string) fixGateBoundsInput {
 	p.d = clamp(p.d, 1, p.every-1)
 	p.cp = clamp(p.cp, 1, 256)
 	p.iso = clamp(p.iso, 8, 1024)
+	p.hub = clamp(p.hub, 0, 24)
 	return p
 }
 
@@ -233,7 +256,52 @@ func fixGateBoundsProject(p fixGateBoundsInput) map[string]string {
 		}
 		files[fmt.Sprintf("m%03d.vibe", i)] = b.String()
 	}
+	if hubbed := fixGateBoundsHubbed(p); len(hubbed) > 0 {
+		var b, reads strings.Builder
+		for k, i := range hubbed {
+			fmt.Fprintf(&b, "import { modes%d } from \"./m%03d.vibe\"\n", i, i)
+			if k > 0 {
+				reads.WriteString(" | ")
+			}
+			fmt.Fprintf(&reads, "(ReturnType<typeof modes%d> extends (\"fast\"[]!!) ? true : false)", i)
+		}
+		fmt.Fprintf(&b, "export const any: true extends %s ? false : true = true\n", reads.String())
+		files["hub.vibe"] = b.String()
+	}
 	return files
+}
+
+// fixGateBoundsHubbed returns the modules whose refused fixes the hub
+// reads.
+func fixGateBoundsHubbed(p fixGateBoundsInput) []int {
+	var hubbed []int
+	for i := 0; i < p.m && len(hubbed) < p.hub; i++ {
+		if i%p.every == p.at {
+			hubbed = append(hubbed, i)
+		}
+	}
+	return hubbed
+}
+
+// fixGateBoundsInnocent returns the modules of p whose good fixes no error
+// can reach: not a reader, not one a reader or the hub imports, and not one
+// that holds a refused fix.
+func fixGateBoundsInnocent(p fixGateBoundsInput) []string {
+	reached := map[int]bool{}
+	for i := range p.m {
+		if i%p.every == p.at {
+			reached[i] = true
+		} else if j := i - p.d; j >= 0 && j%p.every == p.at {
+			reached[i], reached[i-1], reached[j] = true, true, true
+		}
+	}
+	var innocent []string
+	for i := range p.m {
+		if !reached[i] && p.g > 0 {
+			innocent = append(innocent, fmt.Sprintf("m%03d.vibe", i))
+		}
+	}
+	return innocent
 }
 
 // fixGateBoundsFS is a workspace's file system that counts builds and
