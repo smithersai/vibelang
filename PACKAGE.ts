@@ -248,6 +248,7 @@ const specTests = [
   "TestGrammarAdmissionQuoted",
   "TestGrammarAdmissionPipes",
   "TestGrammarAdmissionCore",
+  "TestGrammarAdmissionForAwait",
   "TestGrammarAdmissionDiagnostics",
   "TestGrammarAdmissionMutationKeys",
   "TestCurrentDiagnosticPolicyQuoted",

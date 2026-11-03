@@ -83,7 +83,11 @@ Every Appendix A production has a valid seed, so mutation reaches `match`, `is`,
 `do`, declarations, loops, `provide` and `A!E!R`. The lab reads the pinned
 do-expression and pattern-matching drafts' productions and maps each prose
 production to a subset rule; a test fails when a reworded production becomes an
-opaque terminal. Bounds: no decorators, conditional types or regular
+opaque terminal. The inherited TypeScript subset includes `for await (… of …)`, with native
+binding, destructuring and assignment heads and line breaks between `for`,
+`await` and `(`. Its negative controls exclude `in`, a three-clause head,
+a binding initializer and a missing iterable. Await placement remains a native
+early-error check. Bounds: no decorators, conditional types or regular
 expressions in the subset.
 
 The pipe lab recognizes `|>` as one token and incorporates the pinned

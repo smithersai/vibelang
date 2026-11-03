@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("key:native-for-await\nasync function f(xs) { for await (const x of xs) { x; } }")

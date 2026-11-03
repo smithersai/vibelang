@@ -156,6 +156,7 @@ var grammarAdmissionSeeds = []struct{ key, source string }{
 	{"fiber-binding-arrow", "const f = effect join => 1;"},
 	{"native-function-overload", "function f(p: number): number; function f(p: number) { return p; }"},
 	{"join-nested-plain", "effect effect => function f(p) { return join p; }"},
+	{"native-for-await", "async function f(xs) { for await (const x of xs) { x; } }"},
 }
 
 func FuzzGrammarAdmission(f *testing.F) {
@@ -1063,6 +1064,47 @@ func grammarAdmissionMutationKey(source string) string {
 	h := fnv.New64a()
 	_, _ = h.Write([]byte(source))
 	return fmt.Sprintf("mutation:%016x", h.Sum64())
+}
+
+// Appendix A inherits TypeScript's for-await-of statement. The bounded lab
+// carries its tokens independently of the compiler; Await placement and other
+// native early errors remain the compiler's responsibility, as for await e.
+func TestGrammarAdmissionForAwait(t *testing.T) {
+	lab, err := admissionLab()
+	if err != nil {
+		t.Fatal(err)
+	}
+	valid := []string{
+		"async function f(xs) { for await (const x of xs) { x; } }",
+		"const f = async (xs) => { for await (let x of xs) { x; } };",
+		"async function f(xs) { for\nawait\n(const x of xs) { x; } }",
+		"async function f(xs) { for await (const { x } of xs) { x; } }",
+		"async function f(xs) { for await (x of xs) { x; } }",
+		"async function f(xs) { for (const x of xs) { x; } }",
+	}
+	invalid := []string{
+		"async function f(xs) { for await (const x in xs) { x; } }",
+		"async function f(xs) { for await (;;) { } }",
+		"async function f(xs) { for await (const x = 1 of xs) { x; } }",
+		"async function f(xs) { for await (const x of) { x; } }",
+	}
+	for _, control := range []struct {
+		sources []string
+		accept  bool
+	}{{valid, true}, {invalid, false}} {
+		for _, source := range control.sources {
+			for _, variant := range []struct {
+				name string
+				g    *grammarCfg
+				mode grammarParseMode
+			}{{"TypeScript", lab.ts, grammarParseMode{}}, {"VibeLang", lab.g, grammarParseMode{prose: true, names: true}}} {
+				derived := lab.read(variant.g, grammarLexSource(source), variant.mode).count != 0
+				if derived != control.accept {
+					t.Errorf("%s derivation=%v, want %v: %q", variant.name, derived, control.accept, source)
+				}
+			}
+		}
+	}
 }
 
 // Positive controls ensure a grammar-lab omission cannot silently become a
