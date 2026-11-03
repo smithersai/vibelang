@@ -460,7 +460,7 @@ const adopted: Promise<number> = (async () => Promise.resolve(7))()
 const adoptedExit = await Effect.runPromiseExit(Effect.promise(() => adopted)) // Success(7)
 // Stand-in for the runtime-provided Symbol.customMatcher key.
 const customMatcher: unique symbol =
-  (Symbol as typeof Symbol & { readonly customMatcher?: symbol }).customMatcher ?? Symbol.for("Symbol.customMatcher")
+  ((Symbol as typeof Symbol & { readonly customMatcher?: symbol }).customMatcher ?? Symbol.for("Symbol.customMatcher")) as any
 class OnlyNumbers {
   static [customMatcher](s: unknown): boolean { return typeof s === "number" }
 }
@@ -519,7 +519,7 @@ The following is a local typing witness for one `Array(let n)` arm and a tuple-r
 
 ```ts effect
 const numericMatcher: unique symbol =
-  (Symbol as typeof Symbol & { readonly customMatcher?: symbol }).customMatcher ?? Symbol.for("Symbol.customMatcher")
+  ((Symbol as typeof Symbol & { readonly customMatcher?: symbol }).customMatcher ?? Symbol.for("Symbol.customMatcher")) as any
 class Numeric {
   static [numericMatcher](s: unknown, _options: { matchType: "extractor" }): false | [number] {
     return typeof s === "number" ? [s] : false
@@ -1243,7 +1243,7 @@ function builtin(s: unknown) {
 
 ```ts effect
 const customMatcher: unique symbol =
-  (Symbol as typeof Symbol & { readonly customMatcher?: symbol }).customMatcher ?? Symbol.for("Symbol.customMatcher")
+  ((Symbol as typeof Symbol & { readonly customMatcher?: symbol }).customMatcher ?? Symbol.for("Symbol.customMatcher")) as any
 class A {
   static [customMatcher](s: unknown, _options: { matchType: "boolean" }) {
     return s === "inherited"

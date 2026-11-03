@@ -119,7 +119,7 @@ function ordinaryComplement(s: Plain | number) {
 import { Effect, Exit } from "effect"
 
 const complementMatcher: unique symbol =
-  (Symbol as typeof Symbol & { readonly customMatcher?: symbol }).customMatcher ?? Symbol.for("Symbol.customMatcher")
+  ((Symbol as typeof Symbol & { readonly customMatcher?: symbol }).customMatcher ?? Symbol.for("Symbol.customMatcher")) as any
 class OnlyNumbers {
   readonly kind = "instance"
   static [complementMatcher](s: unknown, _hint: { matchType: "boolean" }): boolean {
