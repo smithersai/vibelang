@@ -1,0 +1,16 @@
+{
+  "name": "opencode-jsx-selector-oracle",
+  "input": {
+    "patterns": [
+      "src/**/*.tsx",
+      "src/**/*.mts",
+      "src/*.d.ts",
+      "src/*.d.mts"
+    ],
+    "multiline": true,
+    "excludes": [
+      "**/*.stories.tsx",
+      "src/**/Mixed.mts"
+    ]
+  }
+}
