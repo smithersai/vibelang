@@ -22,7 +22,7 @@ import (
 // rewrite keeps the program when the schema maps back as a struct field's
 // does (schemaTypeText, EK4832's): Schema.Literals and Schema.Literal of
 // literals, the keyword schemas, Schema.Union, Schema.Array, Schema.Tuple,
-// Schema.Record, a struct inside one of them, and a name or a dotted name of
+// Schema.Record, Schema.Struct, and a name or a dotted name of
 // another schema. The constant is a const with one binding, no type
 // annotation and no modifier but export.
 //
@@ -33,9 +33,9 @@ import (
 // Kind.Type with the constant's export, is the statement just after the
 // constant, neither has JSDoc, and the rewrite leaves every import in place.
 // A type written before its constant keeps its form and draws nothing. So do
-// a Schema.Struct constant, which is EK4832's; a refinement or a
-// transformation, such as a pipe, a check, an annotation, Schema.NullOr or a
-// brand, which no type writes (D133); and a schema with a comment inside.
+// a refinement or transformation, such as a pipe, a check, an annotation,
+// Schema.NullOr or a brand, which no type writes (D133); and a schema with a
+// comment inside.
 
 // EK4841 (D474, D501): a schema constant just before its type alias. {0} is the name, {1} the declaration that writes both.
 var EK4841 = message(4841, warningCategory, "{0} holds a schema and its type alias names its type; a schema alias writes both: {1}.")
@@ -90,8 +90,8 @@ func schemaAliasRewrite(c *checker.Checker, file *ast.SourceFile, name *ast.Node
 	schema := declaration.Initializer()
 	switch {
 	case ast.IsCallExpression(schema):
-		if schema.Flags&ast.NodeFlagsVibeLang != 0 || schema.Expression().Flags&ast.NodeFlagsReparsed != 0 || isSchemaCall(c, schema, "Struct", 1) {
-			return nil // a schema declaration's struct, or EK4832's
+		if schema.Flags&ast.NodeFlagsVibeLang != 0 || schema.Expression().Flags&ast.NodeFlagsReparsed != 0 {
+			return nil // a generated schema declaration or alias
 		}
 	case !ast.IsEntityNameExpression(schema):
 		return nil
@@ -114,7 +114,14 @@ func schemaAliasRewrite(c *checker.Checker, file *ast.SourceFile, name *ast.Node
 	}
 	declarationText := "schema " + name.Text() + " = " + typeText
 	edits = append([]sourceEdit{{start, statement.End(), declarationText}}, edits...)
-	rewrite := withImportRemovals(c, file, &formRewrite{edits: edits, description: shortText(declarationText, "schema "+name.Text()+" = …")})
+	rewrite := &formRewrite{edits: edits, description: shortText(declarationText, "schema "+name.Text()+" = …")}
+	if isSchemaCall(c, schema, "Struct", 1) {
+		// The generated struct still names Schema in its declaration even
+		// when all written fields become keywords. Keep the original imports
+		// instead of declining the pair when cleanup would remove one.
+		return rewrite
+	}
+	rewrite = withImportRemovals(c, file, rewrite)
 	if len(rewrite.edits) != len(edits) {
 		return nil // an import the declaration file names would go
 	}

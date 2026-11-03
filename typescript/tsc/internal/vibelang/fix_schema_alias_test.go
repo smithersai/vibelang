@@ -68,6 +68,42 @@ func TestSchemaAliasQuickFixes(t *testing.T) {
 	}
 }
 
+// VIP-15 and VIP-34: the constant/type pair trigger includes Struct.
+func TestSchemaStructAliasQuickFix(t *testing.T) {
+	for _, test := range []struct{ name, fields, want string }{
+		{"primitive", "name: Schema.String", "name: string"},
+		{"empty", "", ""},
+		{"optional", "name: Schema.optional(Schema.String)", "name?: string"},
+		{"mutable", "name: Schema.mutableKey(Schema.String)", "mutable name: string"},
+		{"nested", "child: Schema.Struct({ age: Schema.Number })", "child: { age: number }"},
+	} {
+		for _, imported := range []bool{false, true} {
+			prefix, suffix := "", "/implicit"
+			if imported {
+				prefix, suffix = "import { Schema } from \"effect\"\n", "/imported"
+			}
+			t.Run(test.name+suffix, func(t *testing.T) {
+				source := prefix + "export const User = Schema.Struct({" + test.fields + "})\nexport type User = typeof User.Type\n"
+				body := "{}"
+				if test.want != "" {
+					body = "{ " + test.want + " }"
+				}
+				want := prefix + "export schema User = " + body + "\n"
+				got := applyQuickFix(t, source, EK4841.Code)
+				if got != want {
+					t.Fatalf("got:\n%s\nwant:\n%s", got, want)
+				}
+				program, file, _, _ := editorProgram(t, got)
+				for _, d := range append(program.GetSyntacticDiagnostics(t.Context(), file), program.GetSemanticDiagnostics(t.Context(), file)...) {
+					if d.Category() == diagnostics.CategoryError || d.Source() == diagnosticSource && d.Code() == EK4841.Code {
+						t.Errorf("fixed source reports %s%d: %s", d.Source(), d.Code(), d.String())
+					}
+				}
+			})
+		}
+	}
+}
+
 // Where a schema alias would say something else, or would change the
 // module's declaration file, EK4841 says nothing.
 func TestSchemaAliasNotReported(t *testing.T) {
@@ -80,7 +116,6 @@ func TestSchemaAliasNotReported(t *testing.T) {
 		{"another export", "export const Kind = Schema.Literals([\"a\", \"b\"])\ntype Kind = typeof Kind.Type\nexport const k: Kind = \"a\"\n"},
 		{"no type alias", "export const Kind = Schema.Literals([\"a\", \"b\"])\n"},
 		// No schema alias writes the schema.
-		{"a struct", "export const User = Schema.Struct({ id: Schema.String })\nexport type User = typeof User.Type\n"},
 		{"a transformation", "export const Name = Schema.NullOr(Schema.String)\nexport type Name = typeof Name.Type\n"},
 		{"a pipe", "export const Id = Schema.String.pipe(Schema.brand(\"Id\"))\nexport type Id = typeof Id.Type\n"},
 		{"a comment inside", "export const Kind = Schema.Literals([\"a\", /* the other */ \"b\"])\nexport type Kind = typeof Kind.Type\n"},

@@ -648,6 +648,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Direct default `schema` and `data` declarations produced TypeScript parser errors; they now report `EK1501` and `EK1603` with named-export guidance.
 
+
+- Eligible `Schema.Struct` constants followed by their matching type aliases missed `EK4841`; they now receive the configurable warning and a preserving schema alias quick fix.
 - API checks invented ambient exports or hid an ambient type change when one input directory contained the other. Contributions now follow each snapshot’s dependency closure, and nested private-class origins remain distinct where required.
 
 - The editor outline merged separate `module` declarations as TypeScript namespaces and hid a later declaration with the same name; each VibeLang module now keeps its own outline entry and name range, including an invalid duplicate.

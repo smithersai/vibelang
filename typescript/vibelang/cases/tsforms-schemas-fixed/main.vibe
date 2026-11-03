@@ -3,7 +3,7 @@
 // declaration writes the same struct. The fix replaces the struct's own type
 // alias, and works in a function body too; a struct with a field that no
 // declaration writes, such as Schema.optionalKey, draws nothing.
-// tsforms-schemas-fixed is what vibelang --fix writes.
+// tsforms-schemas-fixed is what vibelang --fix writes; the own pair also draws EK4841.
 export schema User { readonly id: string; readonly nickname?: string; readonly role: "admin" | "member" }
 
 schema Order {
