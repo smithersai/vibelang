@@ -93,10 +93,40 @@ func (a *analyzer) isCatchOperandProgram(fn *ast.Node) bool {
 	return effectOfValue(a.checker, a.checker.GetTypeAtLocation(left)) != nil
 }
 
+// chainedCatchValue returns the Effect that call, a catch expression on the
+// left of another catch, gives as its value, or nil when it gives anything
+// else. In (a catch h) catch k the outer catch runs the value a catch h gives
+// (chapter 2), so a's success and h's result are Effects; never counts as one,
+// since an a that only fails passes the operand test.
+func (a *analyzer) chainedCatchValue(call *ast.Node) *checker.Type {
+	if catchExpressionOf(call) == nil || !isCatchLeftBody(call) || catchLeftRuns(call) {
+		return nil
+	}
+	program := effectOfValue(a.checker, a.checker.GetTypeAtLocation(call))
+	if program == nil {
+		return nil
+	}
+	value := successType(a.checker, program)
+	if value == nil || value.Flags()&checker.TypeFlagsNever != 0 {
+		return nil
+	}
+	for _, member := range value.Distributed() {
+		if member.Flags()&checker.TypeFlagsNever == 0 && !isEffectValueType(a.checker, member) {
+			return nil
+		}
+	}
+	return value
+}
+
 // caughtErrors returns what a catch expression's handler can receive: the
 // failures of a program on its left side, or of the code that runs there.
 func (a *analyzer) caughtErrors(call *ast.Node) *checker.Type {
 	left, _ := catchParts(call)
+	if value := a.chainedCatchValue(ast.SkipParentheses(left)); value != nil {
+		if errors := channelType(a.checker, value, "_E"); errors != nil {
+			return errors
+		}
+	}
 	if a.isCatchOperandProgram(call.Arguments()[0]) || markedForm(call.Arguments()[0]) == formNone {
 		// The left side gives the Effect the catch runs (markedForm): what
 		// the handler receives is that Effect's failures.

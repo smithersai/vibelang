@@ -23,6 +23,7 @@ type plan struct {
 	programs                   map[*ast.Node]bool // lambdas lowered to Effect.gen programs (design D7)
 	runs                       map[*ast.Node]bool // calls in those functions emitted as yield*
 	returns                    map[*ast.Node]bool // returned Effect subtypes executed at an Effect return boundary
+	chainedCatches             map[*ast.Node]bool // catch expressions whose value the catch outside them runs
 	prelude                    []string           // prelude names the file uses as values (prelude.go)
 	intrinsics                 map[*ast.Node]bool // intrinsics a source binding would capture, reached through the lowering's own import (prelude.go)
 	servicePlan
@@ -64,6 +65,7 @@ func newFilePlan() *plan {
 	p.schemaGenerics = map[*ast.Node]*ast.Node{}
 	p.parameterWrites = map[*ast.Node]bool{}
 	p.returns = map[*ast.Node]bool{}
+	p.chainedCatches = map[*ast.Node]bool{}
 	p.fieldlessErrorConstructors = map[*ast.Node]bool{}
 	p.handlerPlan = newHandlerPlan()
 	p.hatches = map[*ast.Node]hatchForm{}
@@ -119,6 +121,9 @@ func populateFilePlan(c *checker.Checker, file *ast.SourceFile, p *plan) {
 		}
 		if a.returnedProgram(node) != nil {
 			p.returns[node] = true
+		}
+		if ast.IsCallExpression(node) && a.chainedCatchValue(node) != nil {
+			p.chainedCatches[node] = true
 		}
 		if form, ok := hatchFormOf(c, node); ok {
 			p.hatches[node] = form

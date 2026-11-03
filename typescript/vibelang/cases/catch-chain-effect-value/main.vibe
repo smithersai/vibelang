@@ -1,0 +1,10 @@
+// expect-result: [7,5,7,"kept"]
+// Chapter 2, "(a catch h) catch k": the outer catch runs the value a catch h gives.
+import { Effect } from "effect"
+export effect function main() {
+  const fails = Effect.fail(0) catch (() => Effect.fail(1)) catch () => 7
+  const succeeds = Effect.fail(0) catch (() => Effect.succeed(5)) catch () => 7
+  const leftValue = Effect.succeed(Effect.fail(1)) catch (() => Effect.succeed(5)) catch () => 7
+  const notAProgram = (Effect.fail(0) catch effect () => "kept") catch () => "lost"
+  return [fails, succeeds, leftValue, notAProgram]
+}

@@ -210,6 +210,11 @@ func (tx *lowering) visitNode(node *ast.Node) *ast.Node {
 		return tx.visitScoped(node)
 	case node.Kind == ast.KindCallExpression && tx.inEffect && tx.frame.handleClause != nil && tx.isClauseResume(node):
 		return tx.visitClauseResume(node)
+	case tx.plan.chainedCatches[node]:
+		// (a catch h) catch k: the outer catch runs the Effect a catch h gives.
+		f := tx.Factory()
+		flatten := f.NewPropertyAccessExpression(tx.effectName(), nil, f.NewIdentifier("flatten"), ast.NodeFlagsNone)
+		return f.NewCallExpression(flatten, nil, nil, f.NewNodeList([]*ast.Node{tx.Visitor().VisitEachChild(node)}), ast.NodeFlagsNone)
 	case isInvocation(node) && tx.inEffect && tx.plan.runsCall(node):
 		return tx.visitRunningCall(node)
 	case isTryCall(node):
