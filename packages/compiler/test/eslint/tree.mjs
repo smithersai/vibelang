@@ -70,7 +70,10 @@ export function problems(code, ast, visitorKeys) {
     // renamed or absent Identifier is exactly what this oracle must catch.
     // Lowered match temporaries also use VariableDeclarator, but their source
     // declaration does not start with const/let/var.
+    // Hoisted loop-test/update temporaries share the init declaration but
+    // point outside its written span. They are operators, not binding names.
     if (node.type === "VariableDeclarator" && parent?.type === "VariableDeclaration" &&
+        start >= parent.range[0] && start < parent.range[1] &&
         ["const", "let", "var"].includes(declarationHeadAt.get(parent.range[0]))) {
       bindingStarts.add(start)
     }

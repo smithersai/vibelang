@@ -2,10 +2,11 @@
 import assert from "node:assert/strict"
 import fc from "fast-check"
 import { test } from "node:test"
-import { parseESTree } from "../eslint.mjs"
+import { parseESTree, vibeVisitorKeys } from "../eslint.mjs"
 const { problems, walk } = await import(process.env.VIBELANG_ESLINT_TREE_MODULE ?? new URL("./eslint/tree.mjs", import.meta.url))
 
 const keys = {
+  ...vibeVisitorKeys,
   Program: ["body"], ExportNamedDeclaration: ["declaration", "specifiers"],
   VariableDeclaration: ["declarations"], VariableDeclarator: ["id", "init"],
   Identifier: [], Literal: [], TSTypeAnnotation: ["typeAnnotation"], TSNumberKeyword: [],
@@ -14,7 +15,8 @@ const keys = {
   ForOfStatement: ["left", "right", "body"], ArrayExpression: ["elements"],
   CallExpression: ["callee", "arguments"], ArrowFunctionExpression: ["params", "body"],
   BinaryExpression: ["left", "right"], IfStatement: ["test", "consequent", "alternate"],
-  ReturnStatement: ["argument"],
+  ReturnStatement: ["argument"], LogicalExpression: ["left", "right"],
+  AssignmentExpression: ["left", "right"], UpdateExpression: ["argument"],
 }
 const words = [
   "error", "service", "control", "schema", "data", "layer", "mutable", "match", "when", "and", "or", "not",
@@ -81,4 +83,19 @@ test("lowered match temporaries retain syntax-word exemptions", () => {
     assert.ok(lowered.length, "the native fixture must exercise the lowered temporary")
     assert.deepEqual(problems(code, ast, keys), [], code)
   }
+})
+
+const loopForms = [
+  (name) => "function read(value) { for (const " + name + " = 0; value is let bound;) { return bound } }",
+  (name) => "function read(value) { for (let " + name + " = 0; value is let bound; " + name + "++) { return bound } }",
+  (name) => "function read(value) { for (let " + name + " = 0; false; value is let bound) {} }",
+]
+test("hoisted loop-test and update temporaries are not source declarators", () => {
+  for (const form of loopForms) for (const name of ["match", "is"]) for (const prefix of prefixes) check(form, name, prefix)
+})
+test("generated loop binding names retain checks beside hoisted pattern temporaries", () => {
+  fc.assert(fc.property(
+    fc.constantFrom(...loopForms), fc.constantFrom(...words), fc.constantFrom(...prefixes),
+    (form, name, prefix) => check(form, name, prefix)
+  ), { seed: 1477, numRuns: 64 })
 })

@@ -244,6 +244,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 | An initialized `_tag` field, accessor or static member in an `error` or `schema error` | `EK2117` reserves the name; `--fix` retains previously valid members in explicit Effect classes. |
 
 - Tests that started `bun test` from a fixture directory could not load migrated modules after setup. Setup now writes the native loader preload in that fixture's own `bunfig.toml`, leaving test code and other options unchanged.
+- ESLint corpus checks reported missing names for valid `is` patterns in loop conditions and updates; checks now distinguish written declarations from generated temporaries.
 - Loading a `.vibe` module through `vibelang/register`, `vibelang/bun` or a bundler plugin failed with `TS6305: Output file '…/lib/x.d.ts' has not been built from source file '…/src/x.ts'` when its tsconfig `references` a project that was not built yet, as in a fresh clone before `vibelang -b`; the loader's compile now reads a referenced project's types from its sources, as the editor does, and a relative import into that project no longer reports `TS2878`.
 
 - Checking a large declaration dependency graph could exhaust memory before comparing exports; input diagnostics now use fresh checker groups and retain the complete dependency diagnostics.
