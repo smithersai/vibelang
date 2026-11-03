@@ -3,7 +3,7 @@ import fc from "fast-check"
 import { lint, loadSpec, rules, type Spec } from "./spec-lint"
 import { examples, verdict } from "./spec-examples.mjs"
 
-const spec = legacyStyleFixtures(loadSpec())
+const spec = legacyStyleFixtures(loadSpec(process.env.VIBELANG_SPEC_ROOT))
 const rule = (name: string) => {
   const found = rules.find(r => r.name === name)
   if (!found) throw new Error(`no rule ${name}`)
@@ -29,7 +29,7 @@ test("the specification passes every rule", () => {
 
 test("resolution-claims rejects round 14 OPUS-1's `./x.ts` to `x.vibe` sentence", () => {
   const defect = withEdit("src/007-tooling.md", insertAfter(
-    "including `./helper.ts` ([VIP-27](../vips/0027-declaration-output.md#decision), amended).",
+    "## JSX source files: `.vibex`\n",
     " A relative `./x.ts` that resolves to `x.vibe`, as an import written before `x.ts` became `x.vibe` does, is checked and emitted as it is for `x.ts`: `rewriteRelativeImportExtensions` rewrites it to `./x.js`, and a declaration keeps `./x.ts`."
   ))
   expect(lint(defect, rule("resolution-claims")).map(v => v.message)).toEqual([
@@ -46,7 +46,7 @@ test("resolution-claims accepts a claim the table lists; generated copies own ta
 const opus3 = "Root `vibelang.declarationImportStyle`, or `compilerOptions.vibelang.declarationImportStyle`, is `\".js\"` (the default), `\"extensionless\"` or `\".ts\"`. It decides how an emitted declaration spells a relative import of a `.vibe` module ([Declaration output](001-functions.md#declaration-output)). Any other value is a configuration error (`TS6046`). It sits in the legacy `vibelang` section with `trustedPackages` and `tracing`, so a child config's own `vibelang` section replaces an inherited one as a whole."
 
 test("config-keys rejects round 14 OPUS-3's TypeScript configuration code; registry owns option authority", () => {
-  const defect = withEdit("src/007-tooling.md", text => text.replace(/^Root `vibelang\.declarationImportStyle`.*$/m, opus3))
+  const defect = withEdit("src/007-tooling.md", text => text + "\n\n" + opus3 + "\n")
   expect(lint(defect, rule("config-keys")).map(v => v.message)).toEqual([
     "a VibeLang configuration error is given TypeScript's `TS6046`"
   ])
@@ -54,24 +54,41 @@ test("config-keys rejects round 14 OPUS-3's TypeScript configuration code; regis
 
 
 
-test("declaration-import-style-scope rejects round 14 ASTRA-1's unscoped option and missing VIP-27 amendment", () => {
-  const astra1 = "A package whose sources spell relative imports another way keeps that spelling with the project setting `vibelang.declarationImportStyle`: `\"extensionless\"` declares `./user`, `\".ts\"` declares `./user.ts`, and `\".js\"` is the default."
-  const defect: Spec = new Map(spec)
-  defect.set("src/001-functions.md", spec.get("src/001-functions.md")!.replace(/A package whose sources spell relative imports another way[^\n]*?is the default\.[^\n]*?(?= Under every setting)/, astra1))
-  defect.set("vips/0027-declaration-output.md", spec.get("vips/0027-declaration-output.md")!.replace(/\n- \*\*Amended 2026-11-02: declaration import spelling\.\*\*[^\n]*\n/, "\n"))
-  expect(defect.get("src/001-functions.md")).not.toBe(spec.get("src/001-functions.md"))
-  // The `.vibex` half of the rule (OPUS-5) also fires on this bullet; this test is about sidecars.
-  expect(lint(defect, rule("declaration-import-style-scope")).map(v => `${v.file} ${v.message}`).filter(m => !m.includes(".vibex"))).toEqual([
-    "src/001-functions.md a paragraph naming `declarationImportStyle` does not say that source-adjacent sidecars keep their spelling",
-    "vips/0027-declaration-output.md the VIP does not publish `vibelang.declarationImportStyle`, as decided detail 263 asks"
-  ])
+const retiredStyle: Spec = new Map([
+  ["vips/0030-config-files.md", "There is no `declarationImportStyle` setting. Both historical paths, root `vibelang.declarationImportStyle` and `compilerOptions.vibelang.declarationImportStyle`, are ignored with a nonfatal deprecation warning for every value, including invalid values."],
+  ["vips/0027-declaration-output.md", "Written relative specifiers stay as written in package declarations and compatibility sidecars. The retired `declarationImportStyle` paths are ignored."],
+  ["src/001-functions.md", "Declaration emit follows TypeScript for the source's `.ts`/`.tsx` twin."],
+  ["src/007-tooling.md", "`declarationImportStyle` is retired: both historical paths are ignored with a nonfatal deprecation warning for every value."]
+])
+
+test("declaration-import-style-scope accepts retirement without requiring the removed setting", () => {
+  expect(lint(retiredStyle, rule("declaration-import-style-scope"))).toEqual([])
 })
 
-test("declaration-import-style-scope rejects round 14 OPUS-5's `.vibe`-only declaration spelling", () => {
-  const defect = withEdit("src/007-tooling.md", text => text.replace(/(It decides how a package declaration in the output directory spells a relative import of a `\.vibe`)[^(]*( module)/, "$1$2").replace(/ A relative `\.\/x\.vibex` [^\n]*?(?= It sits in the legacy)/, ""))
-  expect(lint(defect, rule("declaration-import-style-scope")).map(v => `${v.file}:${v.line} ${v.message}`)).toEqual([
-    expect.stringMatching(/^src\/007-tooling\.md:\d+ a chapter paragraph naming `declarationImportStyle` states no rule for a `\.\/x\.vibex` import$/)
-  ])
+test("declaration-import-style-scope rejects the carried live styles and undecided vibex spelling", () => {
+  for (const file of ["src/001-functions.md", "src/007-tooling.md", "vips/0027-declaration-output.md", "vips/0034-compiler-and-tooling.md"]) {
+    for (const claim of [
+      "Package declarations use `vibelang.declarationImportStyle`: `\".js\"` (the default). Compatibility sidecars keep `./x.vibex`.",
+      "The retired `declarationImportStyle` option selects `./x.js` by default.",
+      "The retired `declarationImportStyle` option's `.vibex` spelling is not yet decided."
+    ]) {
+      const defect = new Map(retiredStyle)
+      defect.set(file, claim)
+      expect(lint(defect, rule("declaration-import-style-scope"))).toHaveLength(1)
+    }
+  }
+})
+
+test("retired declaration notices accept arbitrary examples at both historical paths", () => {
+  fc.assert(fc.property(
+    fc.constantFrom("vibelang.declarationImportStyle", "compilerOptions.vibelang.declarationImportStyle"),
+    fc.jsonValue(),
+    (path, value) => {
+      const fixture = new Map(retiredStyle)
+      fixture.set("src/007-tooling.md", "The retired `" + path + "` is ignored with a nonfatal deprecation warning for every value.\n\n```json\n" + JSON.stringify({ value }) + "\n```\n")
+      expect(lint(fixture, rule("declaration-import-style-scope"))).toEqual([])
+    }
+  ), { numRuns: 100, seed: 1007 })
 })
 
 test("retired declaration notices accept arbitrary examples at both historical paths", () => {
@@ -88,7 +105,7 @@ test("retired declaration notices accept arbitrary examples at both historical p
 
 test("declaration-import-form rejects round 14 OPUS-4's `import type` beside `import` for the same added import", () => {
   const defect = withEdit("src/001-functions.md", text => text
-    .replace("// load.d.vibe.ts\nimport { Effect, Stream } from \"effect\"", "// load.d.vibe.ts\nimport type { Effect, Stream } from \"effect\""))
+    .replace("// load.d.vibe.ts\nimport { Effect, Stream } from \"effect\"", "// load.d.vibe.ts\nimport type { Effect, Stream } from \"effect\"") + '\nimport { Effect } from "effect"\n')
   expect(lint(defect, rule("declaration-import-form")).map(v => v.message)).toEqual([
     expect.stringContaining("`import type { Effect, Stream } from \"effect\"` disagrees")
   ])

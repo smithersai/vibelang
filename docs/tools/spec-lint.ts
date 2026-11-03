@@ -177,7 +177,7 @@ const importStyleScope: Rule = {
     }
     if (!retired) for (const file of ["vips/0027-declaration-output.md", "vips/0030-config-files.md"]) {
       if (!spec.get(file)?.includes("`vibelang.declarationImportStyle`")) {
-        out.push({ rule: this.name, file, line: 1, message: "the VIP does not publish `vibelang.declarationImportStyle`, as decided detail 263 asks" })
+        out.push({ rule: this.name, file, line: 1, message: "the VIP does not publish the declaration spelling contract" })
       }
     }
     return out
