@@ -413,7 +413,14 @@ func (rc *refactorContext) callsToPipe(call *ast.Node) []*ls.CodeAction {
 	if len(steps) < 2 {
 		return nil
 	}
-	parts := []string{scanner.GetTextOfNode(steps[0].Arguments()[0])}
+	input := steps[0].Arguments()[0]
+	inputText := scanner.GetTextOfNode(input)
+	// These expressions would start a block or declaration at statement head.
+	// Keep their expression context when moving them out of an argument list.
+	if input.Kind == ast.KindObjectLiteralExpression || input.Kind == ast.KindClassExpression {
+		inputText = "(" + inputText + ")"
+	}
+	parts := []string{inputText}
 	for _, step := range steps {
 		stepText := scanner.GetTextOfNode(step)
 		first := step.Arguments()[0]

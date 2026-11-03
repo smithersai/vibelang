@@ -468,6 +468,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Renaming a parameter in a predicate arrow could lose its declaration from Find References and leave names unchanged; references and rename now retain both the declaration and its uses at every name length.
 
+- `Convert to a pipe` could turn a statement with an object argument into invalid syntax; object and class inputs now keep their expression context at the pipe head.
+
 - Bun's release-age setting blocked newly published VibeLang packages in example projects; the examples now exempt their pinned VibeLang packages from that age check.
 - `--fix` rewrote `.pipe(Semaphore.withPermits(semaphore, 1))` to `Semaphore.withPermits(%, semaphore, 1)`, which passes the program as the Semaphore, and then refused the whole `Effect.gen` with TS2740; a stage whose `self` is not the piped value now stays curried, as `Semaphore.withPermits(semaphore, 1)(%)`.
 - Editor fixes could write invalid annotations around `this` or `super`, a loop binding or a `finally` binding; they now decline edits that cannot preserve the program.
