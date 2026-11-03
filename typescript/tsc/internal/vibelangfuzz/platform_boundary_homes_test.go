@@ -103,6 +103,33 @@ func platformBoundarySource(key string, native bool) string {
 // FuzzVIPDifferential. The window/crypto sources are the minimized T3Code
 // synchronous-browser and secure-random API findings.
 func FuzzPlatformBoundaryHomes(f *testing.F) {
+	// Spec rule: docs/design/src/005-services.md#6025b09c021107b2
+	// Chapter 005: native TS escape, builtin imports, static aliases, erased type positions and all source callable homes (FuzzPlatformBoundaryHomes).
+
+	// Spec rule: docs/design/src/005-services.md#d16476dbfa1d6895
+	// Chapter 005: native TS escape, builtin imports, static aliases, erased type positions and all source callable homes (FuzzPlatformBoundaryHomes).
+
+	// Spec rule: docs/design/src/005-services.md#c0a9d54075654004
+	// Chapter 005: native TS escape, builtin imports, static aliases, erased type positions and all source callable homes (FuzzPlatformBoundaryHomes).
+
+	// Spec rule: docs/design/src/005-services.md#4e7cb9db2be5615c
+	// Chapter 005: native TS escape, builtin imports, static aliases, erased type positions and all source callable homes (FuzzPlatformBoundaryHomes).
+
+	// Spec rule: docs/design/src/005-services.md#9cef79a7fc6bf1bf
+	// Chapter 005: native TS escape, builtin imports, static aliases, erased type positions and all source callable homes (FuzzPlatformBoundaryHomes).
+
+	// Spec rule: docs/design/src/005-services.md#132ea3896834f46b
+	// Chapter 005: native TS escape, builtin imports, static aliases, erased type positions and all source callable homes (FuzzPlatformBoundaryHomes).
+
+	// Spec rule: docs/design/src/005-services.md#d0fc5f4fdfe85af1
+	// Chapter 005: native TS escape, builtin imports, static aliases, erased type positions and all source callable homes (FuzzPlatformBoundaryHomes).
+
+	// Spec rule: docs/design/src/005-services.md#799326c177f5b6d6
+	// Chapter 005: native TS escape, builtin imports, static aliases, erased type positions and all source callable homes (FuzzPlatformBoundaryHomes).
+
+	// Spec rule: docs/design/src/005-services.md#3188434136b87337
+	// Chapter 005: native TS escape, builtin imports, static aliases, erased type positions and all source callable homes (FuzzPlatformBoundaryHomes).
+
 	// Spec rule: docs/design/src/001-functions.md#d0cf0636327eb955
 	// Chapter 001: fetch is forbidden in the ordinary, Effect, try and tryPromise source homes (FuzzPlatformBoundaryHomes).
 

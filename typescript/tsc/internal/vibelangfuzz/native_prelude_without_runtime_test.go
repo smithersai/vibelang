@@ -32,6 +32,9 @@ func nativePreludeQuoted(t testing.TB) {
 // JavaScript must not acquire that dependency. Shadowing and effectModules=false
 // keep their existing meanings with either package installation.
 func FuzzNativePreludeWithoutRuntime(f *testing.F) {
+	// Spec rule: docs/design/src/005-services.md#e655fc6db8fc208f
+	// Chapter 005: modules-off removes implicit namespaces; explicit imports and local shadow retain native meaning (FuzzNativePreludeWithoutRuntime).
+
 	startShortBudget(f)
 	nativePreludeQuoted(f)
 	for _, key := range nativePreludeKeys {

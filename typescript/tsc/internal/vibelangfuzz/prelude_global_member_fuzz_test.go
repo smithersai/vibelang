@@ -25,6 +25,12 @@ import (
 // member. alchemy's cloudflare-runtime called Response.json in a Worker
 // (corpus alchemy-worker-response-json).
 func FuzzPreludeGlobalMember(f *testing.F) {
+	// Spec rule: docs/design/src/005-services.md#7711ce641e6528fa
+	// Chapter 005: Worker resolves to Effect workers namespace and local bindings shadow it (FuzzPreludeGlobalMember).
+
+	// Spec rule: docs/design/src/005-services.md#aa9219057240de73
+	// Chapter 005: Worker resolves to Effect workers namespace and local bindings shadow it (FuzzPreludeGlobalMember).
+
 	startShortBudget(f)
 	preludeGlobalMemberRuling(f)
 	for _, seed := range []string{

@@ -80,6 +80,9 @@ func platformConstructorSource(name, use, arguments string, local bool) string {
 }
 
 func FuzzPlatformConstructorBindings(f *testing.F) {
+	// Spec rule: docs/design/src/005-services.md#262420bd16c4db38
+	// Chapter 005: host-reaching members of allowed constructors stay banned through aliases (FuzzPlatformConstructorBindings).
+
 	startShortBudget(f)
 	platformConstructorQuotes(f)
 	var keys []string

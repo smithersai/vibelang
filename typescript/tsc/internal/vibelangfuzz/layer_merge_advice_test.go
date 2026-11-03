@@ -44,6 +44,9 @@ func TestLayerMergeNativeAdvice(t *testing.T) {
 // Reordering, aliases, trivia and unrelated providers retain the rule; plain
 // objects and independent Layers must not acquire its diagnostic.
 func FuzzLayerMergeAdvice(f *testing.F) {
+	// Spec rule: docs/design/src/005-services.md#a0a27fada865dcaf
+	// Chapter 005: provider dependency advice names native Layer.provide/Layer.provideMerge and never wire (FuzzLayerMergeAdvice).
+
 	startShortBudget(f)
 	layerMergeAdviceQuoted(f)
 	for _, key := range layerMergeAdviceKeys {

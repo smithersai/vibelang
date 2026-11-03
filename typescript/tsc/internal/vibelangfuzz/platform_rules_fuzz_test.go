@@ -44,6 +44,21 @@ func platformRulesQuoted(t testing.TB) {
 func TestPlatformRulesQuoted(t *testing.T) { platformRulesQuoted(t) }
 
 func FuzzPlatformRules(f *testing.F) {
+	// Spec rule: docs/design/src/005-services.md#60d730d242245568
+	// Chapter 005: globalThis alias/dynamic escape, static URI imports and erased versus retained type imports (FuzzPlatformRules).
+
+	// Spec rule: docs/design/src/005-services.md#33addb4d048cf828
+	// Chapter 005: globalThis alias/dynamic escape, static URI imports and erased versus retained type imports (FuzzPlatformRules).
+
+	// Spec rule: docs/design/src/005-services.md#7dc555df8fcbb070
+	// Chapter 005: globalThis alias/dynamic escape, static URI imports and erased versus retained type imports (FuzzPlatformRules).
+
+	// Spec rule: docs/design/src/005-services.md#94852939ca64f9e0
+	// Chapter 005: globalThis alias/dynamic escape, static URI imports and erased versus retained type imports (FuzzPlatformRules).
+
+	// Spec rule: docs/design/src/005-services.md#a4518740568e7484
+	// Chapter 005: globalThis static banned member reaches the host (FuzzPlatformRules).
+
 	// Spec rule: docs/design/src/001-functions.md#cf0222e682982809
 	// Chapter 001: literal/optional globalThis access controls and banned host members (FuzzPlatformRules).
 

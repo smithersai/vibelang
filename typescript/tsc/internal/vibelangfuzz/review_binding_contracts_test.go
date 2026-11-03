@@ -227,6 +227,30 @@ func FuzzCollectionOperandDomain(f *testing.F) {
 	fuzzReviewContract(f, "FuzzCollectionOperandDomain")
 }
 func FuzzEffectQualifierBinding(f *testing.F) {
+	// Spec rule: docs/design/src/005-services.md#22506de5cba441ad
+	// Chapter 005: implicit collision qualifiers, explicit Effect imports, aliases, local bindings and disabled mode (FuzzEffectQualifierBinding).
+
+	// Spec rule: docs/design/src/005-services.md#58d48c3ed3c2a1f5
+	// Chapter 005: implicit collision qualifiers, explicit Effect imports, aliases, local bindings and disabled mode (FuzzEffectQualifierBinding).
+
+	// Spec rule: docs/design/src/005-services.md#8db38a56e912a92a
+	// Chapter 005: implicit collision qualifiers, explicit Effect imports, aliases, local bindings and disabled mode (FuzzEffectQualifierBinding).
+
+	// Spec rule: docs/design/src/005-services.md#9ec3a580e5a86654
+	// Chapter 005: implicit collision qualifiers, explicit Effect imports, aliases, local bindings and disabled mode (FuzzEffectQualifierBinding).
+
+	// Spec rule: docs/design/src/005-services.md#110a22c985f232cd
+	// Chapter 005: implicit collision qualifiers, explicit Effect imports, aliases, local bindings and disabled mode (FuzzEffectQualifierBinding).
+
+	// Spec rule: docs/design/src/005-services.md#504be02c19e42f12
+	// Chapter 005: implicit collision qualifiers, explicit Effect imports, aliases, local bindings and disabled mode (FuzzEffectQualifierBinding).
+
+	// Spec rule: docs/design/src/005-services.md#c624b110bd90860e
+	// Chapter 005: implicit collision qualifiers, explicit Effect imports, aliases, local bindings and disabled mode (FuzzEffectQualifierBinding).
+
+	// Spec rule: docs/design/src/005-services.md#92d8a5059f33ee1e
+	// Chapter 005: implicit collision qualifiers, explicit Effect imports, aliases, local bindings and disabled mode (FuzzEffectQualifierBinding).
+
 	startShortBudget(f)
 	fuzzReviewContract(f, "FuzzEffectQualifierBinding")
 }

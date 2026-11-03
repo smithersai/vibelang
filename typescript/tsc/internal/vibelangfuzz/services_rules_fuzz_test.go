@@ -124,6 +124,33 @@ func TestServicesRulesQuoted(t *testing.T) { servicesRulesChapter(t) }
 const servicesPackage = "{\"type\":\"module\",\"name\":\"@fuzz/services\"}"
 
 func FuzzServicesRules(f *testing.F) {
+	// Spec rule: docs/design/src/005-services.md#7c338a76b5708721
+	// Chapter 005: valid service controls and precise rejected members/keys/identity operations (FuzzServicesRules).
+
+	// Spec rule: docs/design/src/005-services.md#8aa02a12d07793a6
+	// Chapter 005: valid service controls and precise rejected members/keys/identity operations (FuzzServicesRules).
+
+	// Spec rule: docs/design/src/005-services.md#56a699f5782bbf0e
+	// Chapter 005: valid service controls and precise rejected members/keys/identity operations (FuzzServicesRules).
+
+	// Spec rule: docs/design/src/005-services.md#ab56bbfdefc0c690
+	// Chapter 005: valid service controls and precise rejected members/keys/identity operations (FuzzServicesRules).
+
+	// Spec rule: docs/design/src/005-services.md#bc0f022c42da52bc
+	// Chapter 005: valid service controls and precise rejected members/keys/identity operations (FuzzServicesRules).
+
+	// Spec rule: docs/design/src/005-services.md#7e9a3a0806cb1e2a
+	// Chapter 005: valid service controls and precise rejected members/keys/identity operations (FuzzServicesRules).
+
+	// Spec rule: docs/design/src/005-services.md#6a8ebcbdc65db2f3
+	// Chapter 005: valid service controls and precise rejected members/keys/identity operations (FuzzServicesRules).
+
+	// Spec rule: docs/design/src/005-services.md#71a14ee4dbc43dd5
+	// Chapter 005: valid service controls and precise rejected members/keys/identity operations (FuzzServicesRules).
+
+	// Spec rule: docs/design/src/005-services.md#a740f1a93fe54231
+	// Chapter 005: valid service controls and precise rejected members/keys/identity operations (FuzzServicesRules).
+
 	// Spec rule: docs/design/src/005-services.md#6cf41f113d22fc47
 	// Chapter 005: valid service controls and precise rejected members/keys/identity operations (FuzzServicesRules).
 

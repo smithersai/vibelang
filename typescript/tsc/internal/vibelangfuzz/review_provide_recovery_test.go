@@ -59,6 +59,21 @@ func TestReviewProvideRecoveryQuoted(t *testing.T) {
 // stay native expressions. LF, CRLF, Unicode line terminators and multiline
 // comments exercise the same no-LineTerminator grammar restriction.
 func FuzzReviewProvideRecovery(f *testing.F) {
+	// Spec rule: docs/design/src/005-services.md#7dd7f8f47b19fc85
+	// Chapter 005: two-sided top-level comma recovery, inner multiline controls and retained ordinary calls (FuzzReviewProvideRecovery).
+
+	// Spec rule: docs/design/src/005-services.md#149214dde352c99e
+	// Chapter 005: two-sided top-level comma recovery, inner multiline controls and retained ordinary calls (FuzzReviewProvideRecovery).
+
+	// Spec rule: docs/design/src/005-services.md#6da16b7e2448cb68
+	// Chapter 005: two-sided top-level comma recovery, inner multiline controls and retained ordinary calls (FuzzReviewProvideRecovery).
+
+	// Spec rule: docs/design/src/005-services.md#15af6451b49ad3bc
+	// Chapter 005: two-sided top-level comma recovery, inner multiline controls and retained ordinary calls (FuzzReviewProvideRecovery).
+
+	// Spec rule: docs/design/src/005-services.md#45d6bc008b0f74d0
+	// Chapter 005: two-sided top-level comma recovery, inner multiline controls and retained ordinary calls (FuzzReviewProvideRecovery).
+
 	startShortBudget(f)
 	rules := reviewProvideRecoveryRules()
 	for _, rule := range rules {

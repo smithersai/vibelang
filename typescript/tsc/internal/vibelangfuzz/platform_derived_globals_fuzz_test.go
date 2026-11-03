@@ -48,6 +48,27 @@ func platformDerivedRules(t testing.TB) platformDerivedInventory {
 func TestPlatformDerivedGlobalsQuoted(t *testing.T) { platformDerivedRules(t) }
 
 func FuzzPlatformDerivedGlobals(f *testing.F) {
+	// Spec rule: docs/design/src/005-services.md#c067872b2e952aac
+	// Chapter 005: derive host bans from libraries; allow ECMAScript/data utilities, shadowing and unresolved controls (FuzzPlatformDerivedGlobals).
+
+	// Spec rule: docs/design/src/005-services.md#093c988811ed784d
+	// Chapter 005: derive host bans from libraries; allow ECMAScript/data utilities, shadowing and unresolved controls (FuzzPlatformDerivedGlobals).
+
+	// Spec rule: docs/design/src/005-services.md#971a3048add093c4
+	// Chapter 005: derive host bans from libraries; allow ECMAScript/data utilities, shadowing and unresolved controls (FuzzPlatformDerivedGlobals).
+
+	// Spec rule: docs/design/src/005-services.md#d31f865e9017160e
+	// Chapter 005: derive host bans from libraries; allow ECMAScript/data utilities, shadowing and unresolved controls (FuzzPlatformDerivedGlobals).
+
+	// Spec rule: docs/design/src/005-services.md#d379ea54c2b498f0
+	// Chapter 005: derive host bans from libraries; allow ECMAScript/data utilities, shadowing and unresolved controls (FuzzPlatformDerivedGlobals).
+
+	// Spec rule: docs/design/src/005-services.md#c79739021a26c283
+	// Chapter 005: derive host bans from libraries; allow ECMAScript/data utilities, shadowing and unresolved controls (FuzzPlatformDerivedGlobals).
+
+	// Spec rule: docs/design/src/005-services.md#6c0ca1a5ac267d61
+	// Chapter 005: derive host bans from libraries; allow ECMAScript/data utilities, shadowing and unresolved controls (FuzzPlatformDerivedGlobals).
+
 	startShortBudget(f)
 	inventory := platformDerivedRules(f)
 	for _, key := range []string{
