@@ -22,6 +22,11 @@ import (
 // the editor and the projection agree, or that the docs no longer hold, fails
 // so that its line is deleted.
 var formChoiceAhead = map[string]string{
+	"docs/user/src/error-management/016-fallback.md#block-4":                    "mapper:effect-block-catch-head (impl-hunt-run)",
+	"docs/user/src/schema/086-getting-started.md#block-7":                       "mapper:effect-block-catch-head (impl-hunt-run)",
+	"docs/user/src/schema/089-advanced-usage.md#block-2":                        "mapper:effect-block-catch-head (impl-hunt-run)",
+	"docs/user/src/setup/vite.md#block-6":                                       "mapper:effect-block-catch-head (impl-hunt-run)",
+	"docs/user/src/vibelang-features/118-experimental-platform-apis.md#block-6": "mapper:effect-block-catch-head (impl-hunt-run)",
 	"docs/user/src/error-management/006-two-error-types.md#block-1":             "mapper:effect-block-catch-head (impl-hunt-run)",
 	"docs/user/src/scheduling/037-using-schedules.md#block-5":                   "mapper:effect-block-catch-head (impl-hunt-run)",
 	"docs/user/src/schema/091-transformations.md#block-4":                       "mapper:effect-block-catch-head (impl-hunt-run)",
@@ -34,7 +39,6 @@ var formChoiceAhead = map[string]string{
 	"docs/user/src/schema/097-default-constructors.md#block-3":                  "mapper:effect-block-catch-head (impl-hunt-run)",
 	"docs/user/src/setup/react.md#block-2":                                      "mapper:effect-block-catch-head (impl-hunt-run)",
 	"docs/user/src/setup/vibelang-cli.md#block-4":                               "mapper:effect-block-catch-head (impl-hunt-run)",
-	"docs/user/src/setup/vite.md#block-5":                                       "mapper:effect-block-catch-head (impl-hunt-run)",
 	"docs/user/src/setup/vue.md#block-3":                                        "mapper:effect-block-catch-head (impl-hunt-run)",
 	"docs/user/src/vibelang-features/114-vibelang-for-effect-users.md#block-11": "mapper:effect-block-catch-head (impl-hunt-run)",
 }
