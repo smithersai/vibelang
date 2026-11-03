@@ -35,7 +35,8 @@ import (
 // the quick fixes, a file's rewrites are kept only when the program then
 // reports no error it did not report before.
 //
-// In a project that emits declarations, an import stays when its spelling
+// Every .vibe module has a declaration, including a sidecar with noEmit or
+// declaration:false. Unless noUnusedLocals requires source cleanup, an import stays when its spelling
 // is not the one the declaration file would write for the prelude's name and
 // the file's declaration file keeps it, so the declaration file keeps the
 // import its TypeScript wrote (D501): with import * as Schema from
@@ -227,11 +228,11 @@ func declaredImportKey(specifier, name string) string {
 }
 
 // declaredImports returns the imports of an effect module that the
-// declaration file of file keeps, by declaredImportKey, in a program that
-// emits declarations; nil otherwise, or when file imports no effect module
+// declaration file of file keeps, by declaredImportKey, regardless of emit
+// flags; nil when source unused checks take priority or file imports no effect module
 // under the module's own name.
 func declaredImports(ctx context.Context, program *compiler.Program, file *ast.SourceFile) map[string]bool {
-	if !program.Options().GetEmitDeclarations() {
+	if program.Options().NoUnusedLocals.IsTrue() {
 		return nil
 	}
 	candidate := false
@@ -250,11 +251,11 @@ func declaredImports(ctx context.Context, program *compiler.Program, file *ast.S
 	return declarationImportKeys(ctx, program, file)
 }
 
-// declarationImportKeys returns the imports that the declaration file of
-// file writes, by declaredImportKey, in a program that emits declarations;
-// nil otherwise.
+// declarationImportKeys retains the imports the declaration needs, including
+// sidecars when ordinary declaration emit is off (VIP-27). Source checking
+// takes priority under noUnusedLocals: cleanup must remove unread bindings.
 func declarationImportKeys(ctx context.Context, program *compiler.Program, file *ast.SourceFile) map[string]bool {
-	if !program.Options().GetEmitDeclarations() {
+	if program.Options().NoUnusedLocals.IsTrue() {
 		return nil
 	}
 	return emittedImportKeys(ctx, program, file)

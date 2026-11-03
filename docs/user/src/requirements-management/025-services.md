@@ -251,3 +251,5 @@ Service members follow TypeScript interface typing. Omitting a method's return t
 A service declaration keeps a written namespace import for `effect/Context` in its declaration file, including aliases such as `import * as Ctx from "effect/Context"`. Its generated base type then uses `Ctx.ServiceClass`. A locally shadowed alias uses a visible binding instead.
 
 The public `Sequence.Shape` alias described above belongs to a member-body declaration. With a written whole-shape annotation, use its type or `Context.Service.Shape<typeof Sequence>` outside the declaration; the implicit `Sequence.Shape` name is confined to its own body. The same distinction applies to a reference declared with `defaultValue`.
+
+The same declaration-import checks run with `noEmit` or `declaration: false`, because every VibeLang module has a sidecar. With `noUnusedLocals`, source checking takes priority: a binding left unread by the repair is removed.
