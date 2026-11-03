@@ -249,6 +249,9 @@ func checkCallbackValue(c *checker.Checker, expr *ast.Node) {
 	if checkUnionCallbackValue(c, expr) {
 		return
 	}
+	if checkOverloadedCallbackValue(c, expr) {
+		return
+	}
 	src, ok := foreignThrows(c, expr)
 	if !ok || admittedByShippedContract(c, expr) {
 		return

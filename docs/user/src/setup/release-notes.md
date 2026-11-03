@@ -229,6 +229,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - MAC platform errors suggested a namespace method and omitted the effectful key conversion; they now show the injected signing service and how to obtain its key.
 
+- Passing an overloaded TypeScript callback could reject a safe overload or lose a throwing overload through a local alias. Callback checks now compare the matching call signatures and require every signature of an overloaded destination to admit its matching source contract.
+
 - The forms gate rejected explicit Effect callbacks after independently landed changes moved their source locations; its reviewed snapshot now records the written modifier at each affected site.
 
 - Combining the chained-assertion and pipe-parser changes stopped compiler builds; the assertion probe now passes the pipe parser's arrow-context argument, with continuation tests covering both assertion operators and conditional tails.

@@ -1,0 +1,25 @@
+// expect:
+import { choose, reverse, safe, singleSafe, intrinsic, effectUse, zero, one, both, permitted, either } from "./helpers.js"
+const chooseAlias = choose
+const reverseAlias = reverse
+const intrinsicAlias = intrinsic
+function local(value: 0): number
+function local(value: 1): number
+function local(value: 0 | 1): number { return value }
+export function check() {
+  one(choose)
+  one(chooseAlias)
+  zero(reverse)
+  zero(reverseAlias)
+  both(safe)
+  both(singleSafe)
+  both(local)
+  permitted(choose)
+  permitted(chooseAlias)
+  either(choose)
+  either(chooseAlias)
+  either(reverse)
+  either(reverseAlias)
+  effectUse(intrinsic)
+  effectUse(intrinsicAlias)
+}

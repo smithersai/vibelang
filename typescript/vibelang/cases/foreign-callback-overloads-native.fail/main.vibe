@@ -1,0 +1,7 @@
+// expect: TS2345 TS2345
+import { choose, wrongParameter } from "./helpers.js"
+const alias = choose
+export function check() {
+  wrongParameter(choose)
+  wrongParameter(alias)
+}

@@ -526,3 +526,5 @@ Foreign callable variables follow the same callback rule as foreign function dec
 A returned callable carries its own throw contract. A foreign factory’s `@throws {never}` annotation describes the factory call; it does not make an unannotated callback returned by that factory nonthrowing. Handle that callback’s throw with `Effect.try`, or give its own signature a compatible written contract.
 
 Direct instantiation values such as `read<Program>` keep the foreign generic signature’s throw contract, just like an alias of that value. An unconstrained signature stays `unknown` even when its chosen type argument is an `Effect`. A signature constrained to `Effect`, `Stream` or `Layer` remains effectful and nonthrowing.
+
+An overloaded callback is checked signature by signature. Passing a callback that throws `Error` for argument `0` but throws `never` for argument `1` to `(value: 1) => number` is allowed. Every signature of an overloaded destination must have a type-compatible source signature with an admitted `@throws` contract. A union of function types admits a value when one alternative fits.

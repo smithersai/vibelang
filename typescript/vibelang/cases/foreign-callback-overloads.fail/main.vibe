@@ -1,0 +1,21 @@
+// expect: EK0402 EK0402 EK0402 EK0402 EK0402 EK0402 EK0402 EK0402 EK0402 EK0402 EK0402 EK0402
+import { choose, reverse, single, zero, one, both, permitted } from "./helpers.js"
+import type { Both, Permissive } from "./helpers.js"
+const chooseAlias = choose
+const reverseAlias = reverse
+const singleAlias = single
+
+export function check() {
+  zero(choose)
+  zero(chooseAlias)
+  one(reverse)
+  one(reverseAlias)
+  both(choose)
+  both(chooseAlias)
+  permitted(reverse)
+  permitted(reverseAlias)
+  permitted(single)
+  permitted(singleAlias)
+}
+const assigned: Both = reverseAlias
+const wrong: Permissive = reverse
