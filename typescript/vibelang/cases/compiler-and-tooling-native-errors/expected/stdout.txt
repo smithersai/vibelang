@@ -1,0 +1,1 @@
+native exception syntax remains native and embedded errors retain TS2322

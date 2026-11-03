@@ -1,0 +1,7 @@
+// VIP-38 lint accepts compiler options and preserves the sole fix entry point: docs/design/vips/0038-effect-lint-built-in.md#36b717c513b31ceb
+// VIP-38 lint accepts compiler options and preserves the sole fix entry point: docs/design/vips/0038-effect-lint-built-in.md#a042e6fa8ef00bcb
+// VIP-38 lint accepts compiler options and preserves the sole fix entry point: docs/design/vips/0038-effect-lint-built-in.md#c07f7b4db6d7fc7b
+// VIP-38 lint accepts compiler options and preserves the sole fix entry point: docs/design/vips/0038-effect-lint-built-in.md#435767429fc1a728
+// VIP-38 lint accepts compiler options and preserves the sole fix entry point: docs/design/vips/0038-effect-lint-built-in.md#e2e03d6482449ece
+// VIP-38 lint accepts compiler options and preserves the sole fix entry point: docs/design/vips/0038-effect-lint-built-in.md#9c0f18539fe3780e
+export const witness = 1

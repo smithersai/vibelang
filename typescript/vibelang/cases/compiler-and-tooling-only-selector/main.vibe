@@ -1,0 +1,3 @@
+// docs/design/vips/0034-compiler-and-tooling.md#29eaf575be4d53ab
+// VIP-34: compiler fix interface has no migration-driver --only selector.
+export const witness = 1;

@@ -1,0 +1,7 @@
+// docs/design/vips/0034-compiler-and-tooling.md#b493f68dc366ea9b
+// VIP-34: native exception syntax remains native and embedded errors retain TS2322.
+// docs/design/vips/0038-effect-lint-built-in.md#f0a05c7889055c19
+// VIP-38: native exception syntax remains native and embedded errors retain TS2322.
+// docs/design/vips/0038-effect-lint-built-in.md#3c9a65301b21630b
+// VIP-38: native exception syntax remains native and embedded errors retain TS2322.
+export const witness = 1;

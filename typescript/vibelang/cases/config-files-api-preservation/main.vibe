@@ -1,0 +1,11 @@
+// VIP-30 compiler API preserves validated configuration: docs/design/vips/0030-config-files.md#b245e92daf170309
+// VIP-30 compiler API preserves validated configuration: docs/design/vips/0030-config-files.md#1857d59c4f74479e
+// VIP-30 compiler API preserves validated configuration: docs/design/vips/0030-config-files.md#db98fb52cfeb7075
+// VIP-30 compiler API preserves validated configuration: docs/design/vips/0030-config-files.md#0c34f522b42c9560
+// VIP-30 compiler API preserves validated configuration: docs/design/vips/0030-config-files.md#4a9d3ddd7642d10f
+// VIP-30 compiler API preserves validated configuration: docs/design/vips/0030-config-files.md#df56195b7c2a2823
+// VIP-30 compiler API preserves validated configuration: docs/design/vips/0030-config-files.md#35e4d3bc5dccc927
+// VIP-30 compiler API preserves validated configuration: docs/design/vips/0030-config-files.md#0a0d514a94b2a887
+export const witness = 1
+// VIP-30 discriminating API controls: docs/design/vips/0030-config-files.md#ebf7442f360ae17c
+// VIP-30 discriminating API controls: docs/design/vips/0030-config-files.md#d5648ecf6e1aa87e

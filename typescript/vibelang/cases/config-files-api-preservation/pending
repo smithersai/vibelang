@@ -1,0 +1,1 @@
+conf-tooling VIP coverage: API construction drops the validated Vibe options bag; error categories and noEmitOnError become warning and writes.

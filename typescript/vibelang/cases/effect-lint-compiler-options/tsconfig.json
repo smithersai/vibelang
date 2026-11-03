@@ -1,0 +1,16 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "NodeNext",
+    "strict": true,
+    "types": [],
+    "noEmit": true
+  },
+  "files": [
+    "main.vibe"
+  ],
+  "vibe": {
+    "effectGlobals": false,
+    "effectModules": false
+  }
+}

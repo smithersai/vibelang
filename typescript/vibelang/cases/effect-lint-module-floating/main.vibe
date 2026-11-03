@@ -1,0 +1,5 @@
+// VIP-38 selected module-level lint: docs/design/vips/0038-effect-lint-built-in.md#416e2837bc304291
+// VIP-38 selected module-level lint: docs/design/vips/0038-effect-lint-built-in.md#9d981c7205a6ec45
+// VIP-38 selected module-level lint: docs/design/vips/0038-effect-lint-built-in.md#b6238a1363713d86
+// VIP-38 selected module-level lint: docs/design/vips/0038-effect-lint-built-in.md#63025bf9d1bf0ed6
+export const witness = 1

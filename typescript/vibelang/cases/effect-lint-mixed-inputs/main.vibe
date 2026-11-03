@@ -1,0 +1,24 @@
+// docs/design/vips/0034-compiler-and-tooling.md#4cea01afafb44302
+// VIP-34: configured warning/error status and floating effect block imported identity.
+// docs/design/vips/0034-compiler-and-tooling.md#f725fc04225e96b1
+// VIP-34: configured warning/error status and floating effect block imported identity.
+// VIP-38 configured mixed-input imported lint retains code, severity, activation and exit status: docs/design/vips/0038-effect-lint-built-in.md#6573f8c79fdc91a8
+// VIP-38 configured mixed-input imported lint retains code, severity, activation and exit status: docs/design/vips/0038-effect-lint-built-in.md#24271594eb8f1c52
+// VIP-38 configured mixed-input imported lint retains code, severity, activation and exit status: docs/design/vips/0038-effect-lint-built-in.md#2f2095cf7c353666
+// VIP-38 configured mixed-input imported lint retains code, severity, activation and exit status: docs/design/vips/0038-effect-lint-built-in.md#42a79382c9011871
+// VIP-38 configured mixed-input imported lint retains code, severity, activation and exit status: docs/design/vips/0038-effect-lint-built-in.md#510eb7d753068180
+// VIP-38 configured mixed-input imported lint retains code, severity, activation and exit status: docs/design/vips/0038-effect-lint-built-in.md#218b37b3efc5aebb
+// VIP-38 configured mixed-input imported lint retains code, severity, activation and exit status: docs/design/vips/0038-effect-lint-built-in.md#55a5fe6559392873
+// VIP-38 configured mixed-input imported lint retains code, severity, activation and exit status: docs/design/vips/0038-effect-lint-built-in.md#5e2b1c9630f39e58
+// VIP-38 configured mixed-input imported lint retains code, severity, activation and exit status: docs/design/vips/0038-effect-lint-built-in.md#2d7b1bbb506f023b
+// VIP-38 configured mixed-input imported lint retains code, severity, activation and exit status: docs/design/vips/0038-effect-lint-built-in.md#2c9edb1c1c36a425
+// VIP-38 configured mixed-input imported lint retains code, severity, activation and exit status: docs/design/vips/0038-effect-lint-built-in.md#9310a36d0dce9beb
+// VIP-38 configured mixed-input imported lint retains code, severity, activation and exit status: docs/design/vips/0038-effect-lint-built-in.md#5fb787b2b34497ef
+import { Effect } from "effect"
+export effect function main() {
+  Effect.succeed(1)
+  effect { return 99 }
+  return 2
+}
+// VIP-38 imported code message and precedence: docs/design/vips/0038-effect-lint-built-in.md#a4ea1312c1e4778a
+// VIP-38 imported code message and precedence: docs/design/vips/0038-effect-lint-built-in.md#afc0b1d692f22252
