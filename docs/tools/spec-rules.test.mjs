@@ -133,6 +133,14 @@ test("r2 OPUS-2 / ASTRA-2: current resource warning cites an accepted public ame
   assert.ok(vip.includes("default warning `EK0801`"))
 })
 
+function assertNoObsoleteConfigOptions(text) {
+  // The fold keeps retired settings in Details as historical decisions.
+  // Keep rejecting those spellings in the current chapter contract.
+  const current = text.split("\n## Details\n")[0]
+  for (const obsolete of ["compilerOptions.vibelang.declarationImportStyle", "`trustedPackages`", "`tracing`"])
+    assert.ok(!current.includes(obsolete), obsolete + " is not a supported config option")
+}
+
 test("r14 ASTRA-1 / OPUS-3: declaration spelling scope follows landed VIP-27 and VIP-30", () => {
   for (const path of ["docs/design/src/001-functions.md", chapter]) {
     const text = read(repository, path)
@@ -143,7 +151,7 @@ test("r14 ASTRA-1 / OPUS-3: declaration spelling scope follows landed VIP-27 and
   for (const path of ["docs/design/vips/0027-declaration-output.md", "docs/design/vips/0030-config-files.md"])
     assert.ok(read(repository, path).includes("vibelang.declarationImportStyle"))
   const tooling = read(repository, chapter)
-  for (const obsolete of ["compilerOptions.vibelang.declarationImportStyle", "`trustedPackages`", "`tracing`"]) assert.ok(!tooling.includes(obsolete))
+  assertNoObsoleteConfigOptions(tooling)
   assert.ok(!lintRegistry(repository).some(f => f.message.includes("declarationImportStyle")))
 })
 
@@ -323,3 +331,19 @@ test("fast-check: retired diagnostics remain historical while an unmarked assign
     assert.ok(lintRegistry(root).some(f => f.path.endsWith("999-retired-diagnostic.md") && f.severity === "error" && f.message.includes(code)))
   }), { seed: 310219, numRuns: 24 })
 }))
+
+
+test("fast-check: folded retirement prose is allowed but supported configuration stays checked", () => {
+  // Detail 297: "`trustedPackages` is removed." Its historical description is not an option assignment.
+  const current = read(repository, chapter).split("\n## Details\n")[0]
+  fc.assert(fc.property(
+    fc.constantFrom("compilerOptions.vibelang.declarationImportStyle", "`trustedPackages`", "`tracing`"),
+    fc.constantFrom("old", "retired", "obsolete"),
+    (option, historical) => {
+      const details = "\n## Details\n\n### Detail 297\n\nThe " + historical + " " + option +
+        " option is removed. Its value is ignored with a deprecation warning.\n"
+      assert.doesNotThrow(() => assertNoObsoleteConfigOptions(current + details))
+      assert.throws(() => assertNoObsoleteConfigOptions(current + "\n| " + option + " | Enabled |\n" + details))
+    }
+  ), { seed: 310297, numRuns: 36 })
+})
