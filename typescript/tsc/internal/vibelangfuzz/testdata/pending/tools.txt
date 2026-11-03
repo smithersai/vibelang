@@ -4,7 +4,6 @@
 # is also listed by corpus file, so that it fails as XPASS once fixed.
 # <target> <key> <owner> <what is missing, with the decision it breaks>
 FuzzEditor editor:quickfix-error:EK4832:EK2109 compiler the quick fix of EK4832 is offered for `Schema.Struct({ a: Missing.fields.a })`, a field the checker cannot resolve, and writes `schema S { a: Missing.fields.a }`, which adds EK2109; a fix is offered only where the checker proves it keeps the program (Chapter 28, Rewrites keep meaning, D372, D286)
-FuzzFormat corpus:parser-hang-layer-close-paren compiler hang: the parser never finishes `layer e{)` (or `layer e{]`): parseLayerDeclaration calls parseStatement on a token it never consumes, so vibelang, the formatter and the language server hang on such a file
 FuzzFormat feature:layer-declaration compiler hang: the parser loops on a stray `)` or `]` in a `layer` declaration's body (corpus parser-hang-layer-close-paren), so campaigns leave layer declarations out
 FuzzFix feature:layer-declaration compiler hang: the parser loops on a stray `)` or `]` in a `layer` declaration's body (FuzzFormat corpus parser-hang-layer-close-paren)
 FuzzEditor feature:layer-declaration compiler hang: the parser loops on a stray `)` or `]` in a `layer` declaration's body (FuzzFormat corpus parser-hang-layer-close-paren)
