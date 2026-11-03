@@ -15,6 +15,9 @@
  * `vibelang-runtime/experimental/platform-browser`, also in its
  * `ExperimentalBrowserServices.layer`.
  *
+ * {@link Document.isHTMLElement} and {@link Document.escapeSelector} read the
+ * host's `HTMLElement` and `CSS`, which Effect has no service for.
+ *
  * @experimental
  * @since 0.0.11
  */
@@ -42,6 +45,8 @@ export const TypeId: TypeId = "~vibelang/experimental/Document"
  */
 export interface Host {
   readonly document: () => globalThis.Document
+  readonly isHTMLElement: (value: unknown) => value is HTMLElement
+  readonly escapeSelector: (value: string) => string
 }
 
 /**
@@ -54,6 +59,14 @@ export interface Document {
   readonly [TypeId]: TypeId
   /** The page's `Document`. */
   readonly current: Effect.Effect<globalThis.Document>
+  /**
+   * Whether `value` is an `HTMLElement`, as `value instanceof HTMLElement`. A
+   * plain predicate, so it narrows. A missing host constructor is a defect;
+   * otherwise the check follows `instanceof`, including `Symbol.hasInstance`.
+   */
+  readonly isHTMLElement: (value: unknown) => value is HTMLElement
+  /** `value` escaped for a CSS selector, as `CSS.escape`. */
+  readonly escapeSelector: (value: string) => Effect.Effect<string>
 }
 
 /**
@@ -74,15 +87,26 @@ export const Document: Context.Service<Document, Document> = /* @__PURE__ */ Con
  */
 export const make = (host: Host): Document => ({
   [TypeId]: TypeId,
-  current: Effect.sync(host.document)
+  current: Effect.sync(host.document),
+  isHTMLElement: host.isHTMLElement,
+  escapeSelector: (value) => Effect.sync(() => host.escapeSelector(value))
 })
 
 /**
  * Provides `document`, for tests: a fake, such as `new EventTarget()`, cast to
- * `Document`.
+ * `Document`. `isHTMLElement` answers `false` and `escapeSelector` gives its
+ * input. Pass the members a test needs.
  *
  * @category layers
  * @since 0.0.11
  */
-export const layerTest = (document: globalThis.Document): Layer.Layer<Document> =>
-  Layer.succeed(Document, make({ document: () => document }))
+export const layerTest = (
+  document: globalThis.Document,
+  impl: Partial<Omit<Host, "document">> = {}
+): Layer.Layer<Document> =>
+  Layer.succeed(Document, make({
+    document: () => document,
+    isHTMLElement: (value): value is HTMLElement => false,
+    escapeSelector: (value) => value,
+    ...impl
+  }))

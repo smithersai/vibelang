@@ -1,0 +1,16 @@
+{
+  "key": "foldkit:scroll-to-anchor-css-escape",
+  "basis": "VIP-33: delegate to host CSS.escape when the Effect runs, retaining the host result and defect.",
+  "inputs": [
+    "",
+    "#a b",
+    "\u0000",
+    "\ud800",
+    "\udfff",
+    "-9foo",
+    "\u00e9",
+    "\ud83d\ude00",
+    "a\\b"
+  ],
+  "minimized_pattern": "CSS.escape(hash)"
+}

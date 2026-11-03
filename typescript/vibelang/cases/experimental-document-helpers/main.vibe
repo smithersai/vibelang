@@ -1,0 +1,25 @@
+// expect-result: {"selector":"#a\\ b","id":"editor","other":"none"}
+// foldkit's website/src/main.ts, ScrollToAnchor, and page/playground: an escaped selector, and a predicate that narrows
+// an Element to HTMLElement.
+import { fakeDocument } from "./page.ts"
+
+effect function anchorSelector(hash: string) {
+  const document = try Experimental.Document.Document
+  return `#${try document.escapeSelector(hash)}`
+}
+
+effect function editorId(element: Element) {
+  const document = try Experimental.Document.Document
+  return document.isHTMLElement(element) ? element.id : "none"
+}
+
+export effect function main() {
+  const fake = fakeDocument()
+  const editor = { id: "editor" } as Element
+  provide Experimental.Document.layerTest(fake, {
+    escapeSelector: (value) => value.replaceAll(" ", "\\ "),
+    isHTMLElement: (value): value is HTMLElement => value === editor
+  }) {
+    return { selector: try anchorSelector("a b"), id: try editorId(editor), other: try editorId({ id: "svg" } as Element) }
+  }
+}

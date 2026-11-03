@@ -28,9 +28,11 @@ Each row says what replaces a global or one of its members: an Effect API first,
 | `Buffer.concat` | `new Uint8Array([...a, ...b])` |
 | `Buffer.from` | `new TextEncoder().encode(text)` |
 | `Bun` | escape to TypeScript for now: A runtime's own API belongs to its platform package's layers, such as @effect/platform-bun's, or to a .ts file. |
+| `CSS` | `try (try Experimental.Document.Document).escapeSelector(value)` |
 | `Deno` | escape to TypeScript for now: A runtime's own API belongs to its platform package's layers, such as @effect/platform-bun's, or to a .ts file. |
 | `EventSource` | `try HttpClient.get(url)` |
 | `FileReader` | `try (try Experimental.FileReader.FileReader).readAsText(blob)` |
+| `HTMLElement` | `(try Experimental.Document.Document).isHTMLElement(value)` |
 | `ResizeObserver` | `try (try Experimental.ResizeObserver.ResizeObserver).observe(element, onResize)` |
 | `SharedWorker` | `effect/workers`: `import { Worker as EffectWorker }` and `WorkerRunner` |
 | `WebSocket` | `try Socket.makeWebSocket(url)` |
@@ -231,7 +233,7 @@ effect function browser() {
 VibeLang's experimental services fill what Effect lacks, provided by `ExperimentalNodeServices.layer` from `vibelang-runtime/experimental/platform-node` or Bun's, and `Locks` and `MediaQuery` by `ExperimentalBrowserServices.layer` from `vibelang-runtime/experimental/platform-browser`; [Experimental platform APIs](../vibelang-features/118-experimental-platform-apis.md) has the details:
 
 ```vibe
-effect function experimental(path: string, pid: number, killSignal: ChildProcess.Signal, name: string, query: string, callback: (time: number) => void, blob: Blob, element: Element, onResize: () => void, macKey: Mac.Key, aeadKey: Aead.Key, privateKey: Signature.PrivateKey, publicKey: Signature.PublicKey, signature: Uint8Array, data: Uint8Array, plaintext: Uint8Array, ciphertext: Uint8Array, nonce: Uint8Array) {
+effect function experimental(path: string, pid: number, killSignal: ChildProcess.Signal, name: string, query: string, callback: (time: number) => void, blob: Blob, element: Element, onResize: () => void, value: string, macKey: Mac.Key, aeadKey: Aead.Key, privateKey: Signature.PrivateKey, publicKey: Signature.PublicKey, signature: Uint8Array, data: Uint8Array, plaintext: Uint8Array, ciphertext: Uint8Array, nonce: Uint8Array) {
   const fs = try Experimental.FileSystem.FileSystem
   const id = try (try Experimental.Process.Process).pid
   const platform = try (try Experimental.Process.Process).platform
@@ -261,7 +263,9 @@ effect function experimental(path: string, pid: number, killSignal: ChildProcess
   const isolated = try (try Experimental.BrowserInfo.BrowserInfo).crossOriginIsolated
   const agent = try (try Experimental.BrowserInfo.BrowserInfo).userAgent
   const style = try (try Experimental.Window.Window).computedStyle(element)
-  return { id, platform, arch, executable, versions, memory, host, cores, origin, running, file, mac, signed, valid, sealed, opened, pair, lock, reducedMotion, frame, text, element, isolated, agent, style }
+  const isElement = (try Experimental.Document.Document).isHTMLElement(value)
+  const selector = try (try Experimental.Document.Document).escapeSelector(value)
+  return { id, platform, arch, executable, versions, memory, host, cores, origin, running, file, mac, signed, valid, sealed, opened, pair, lock, reducedMotion, frame, text, element, isolated, agent, style, isElement, selector }
 }
 ```
 

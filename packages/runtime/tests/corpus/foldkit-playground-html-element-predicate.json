@@ -1,0 +1,42 @@
+{
+  "key": "foldkit:playground-html-element-predicate",
+  "basis": "VIP-33: browser capabilities are injected services; the predicate follows host instanceof behavior.",
+  "cases": [
+    {
+      "constructor": "fake",
+      "value": "fake",
+      "outcome": "true"
+    },
+    {
+      "constructor": "fake",
+      "value": "object",
+      "outcome": "false"
+    },
+    {
+      "constructor": "object",
+      "value": "object",
+      "outcome": "true"
+    },
+    {
+      "constructor": "has-instance-one",
+      "value": "one",
+      "outcome": "true"
+    },
+    {
+      "constructor": "has-instance-one",
+      "value": "zero",
+      "outcome": "false"
+    },
+    {
+      "constructor": "missing",
+      "value": "object",
+      "outcome": "throws"
+    },
+    {
+      "constructor": "null",
+      "value": "object",
+      "outcome": "throws"
+    }
+  ],
+  "minimized_pattern": "element instanceof HTMLElement"
+}

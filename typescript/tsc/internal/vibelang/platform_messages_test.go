@@ -33,7 +33,8 @@ declare var ResizeObserver: { new(callback: () => void): unknown }
 declare var crossOriginIsolated: boolean
 declare type Element = unknown
 declare var getComputedStyle: (element: Element) => unknown
-`
+declare var HTMLElement: { new(): unknown }
+declare var CSS: { escape(value: string): string }`
 
 const (
 	provideNodeServices        = `Provide it in main with NodeServices.layer from "@effect/platform-node", or BunServices.layer from "@effect/platform-bun".`
@@ -238,6 +239,15 @@ export const run = (key: Uint8Array) => createHmac("sha256", key)`, []string{
 		{"computed style", `export const run = (element: Element) => getComputedStyle(element)`, []string{
 			"getComputedStyle is platform code, which VibeLang code does not use directly.",
 			"Use the experimental Window service:   try (try Experimental.Window.Window).computedStyle(element)", provideExperimentalBrowser,
+		}},
+		{"element predicate", `export const run = (value: unknown) => value instanceof HTMLElement`, []string{
+			"HTMLElement is platform code, which VibeLang code does not use directly.",
+			"Use the experimental Document service:   (try Experimental.Document.Document).isHTMLElement(value)", provideExperimentalBrowser,
+			"It narrows as instanceof does, and throws as instanceof does on a host without HTMLElement.",
+		}},
+		{"css escape", `export const run = (value: string) => CSS.escape(value)`, []string{
+			"CSS.escape is platform code, which VibeLang code does not use directly.",
+			"Use the experimental Document service:   try (try Experimental.Document.Document).escapeSelector(value)", provideExperimentalBrowser,
 		}},
 		{"gap", `export const run = () => document.title`, []string{
 			"document.title is platform code, which VibeLang code does not use directly.",

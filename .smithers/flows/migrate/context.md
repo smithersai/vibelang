@@ -734,9 +734,11 @@ Each row says what replaces a global or one of its members: an Effect API first,
 | `Buffer.concat` | `new Uint8Array([...a, ...b])` |
 | `Buffer.from` | `new TextEncoder().encode(text)` |
 | `Bun` | escape to TypeScript for now: A runtime's own API belongs to its platform package's layers, such as @effect/platform-bun's, or to a .ts file. |
+| `CSS` | `try (try Experimental.Document.Document).escapeSelector(value)` |
 | `Deno` | escape to TypeScript for now: A runtime's own API belongs to its platform package's layers, such as @effect/platform-bun's, or to a .ts file. |
 | `EventSource` | `try HttpClient.get(url)` |
 | `FileReader` | `try (try Experimental.FileReader.FileReader).readAsText(blob)` |
+| `HTMLElement` | `(try Experimental.Document.Document).isHTMLElement(value)` |
 | `ResizeObserver` | `try (try Experimental.ResizeObserver.ResizeObserver).observe(element, onResize)` |
 | `SharedWorker` | `effect/workers`: `import { Worker as EffectWorker }` and `WorkerRunner` |
 | `WebSocket` | `try Socket.makeWebSocket(url)` |

@@ -389,7 +389,16 @@ effect function keys() {
 
 Calling a member of the document in a `.vibe` file is `EK0403`, because nothing says what it throws: UI code that reads or changes the page belongs in a `.ts` or `.tsx` file.
 
-`ExperimentalBrowserDocument.layer`, also in `ExperimentalBrowserServices.layer`, reads `window.document` when `current` runs. `Experimental.Document.layerTest(document)` gives a fake.
+Two members read the host's other document-level APIs:
+
+| Expression | Gives | Replaces |
+| --- | --- | --- |
+| `document.isHTMLElement(value)` | whether `value` is an `HTMLElement`, narrowing it as `instanceof` does; throws on a host without one, as `instanceof` does | `value instanceof HTMLElement` |
+| `try document.escapeSelector(value)` | `value` escaped for a CSS selector | `CSS.escape(value)` |
+
+`isHTMLElement` is a plain predicate, so that it can narrow. It throws where `value instanceof HTMLElement` throws: on a host without `HTMLElement`, or with one that is not a constructor. Inside `Effect.sync`, that throw is a defect.
+
+`ExperimentalBrowserDocument.layer`, also in `ExperimentalBrowserServices.layer`, reads the host when a member runs. `Experimental.Document.layerTest(document)` gives a fake: `isHTMLElement` answers `false`, and `escapeSelector` gives its input. Pass the members a test needs as a second argument.
 
 ## Window
 
