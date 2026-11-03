@@ -88,7 +88,7 @@ weights=testdata/shard-seconds.txt
 # otherwise leave a partial, apparently successful partition.
 if ! awk -v weights="$weights" '
   BEGIN { while ((getline line < weights) > 0) { split(line, f, " "); if (line !~ /^#/ && f[2] != "") w[f[2]] = f[1] } }
-  /^(Test|Fuzz|Example)[A-Za-z0-9_]*$/ { print (($0 in w) ? w[$0] : 1), $0 }
+  /^(Test|Fuzz|Example)[^[:space:]]*$/ { print (($0 in w) ? w[$0] : 1), $0 }
 ' "$dir/listed" > "$dir/weighted"; then
   echo "go-test-shards: weighting tests failed" >&2
   exit 1

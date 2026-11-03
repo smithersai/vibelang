@@ -545,6 +545,10 @@ preserves their arguments and exit status without adding a shard's
 run the seed corpus in shards. In particular, benchmark selections pass
 through unchanged so a benchmark runs once, rather than once in every shard.
 
+Discovery retains Unicode names from Go for tests, fuzz targets and examples,
+including when `LC_ALL=C`. Benchmark names and diagnostic lines containing
+whitespace do not become shard selectors.
+
 Discovery and execution both receive the original test arguments, including
 `-short`, `-timeout` and custom test flags. A `TestMain` that reads them sees
 the same configuration before the script assigns tests to shards.
