@@ -63,7 +63,18 @@ export function publishedEntrypoints(directory) {
   const manifest = { ...raw, ...raw.publishConfig }
   const entries = {}
   const all = filesUnder(directory)
-  function add(key, target) {
+  const exportMap = manifest.exports && !Array.isArray(manifest.exports) && typeof manifest.exports === "object" &&
+    Object.keys(manifest.exports).some(key => key.startsWith(".")) ? manifest.exports : undefined
+  // Exact subpaths override patterns; longest prefixes, then longest trailers,
+  // win among matching patterns, independently of object insertion order.
+  const exportKeys = Object.keys(exportMap ?? {})
+  const patterns = exportKeys.filter(key => key.includes("*")).sort((a, b) =>
+    b.indexOf("*") - a.indexOf("*") || b.length - a.length)
+  const selectedExport = subpath => exportKeys.includes(subpath) ? subpath : patterns.find(key => {
+    const star = key.indexOf("*"), prefix = key.slice(0, star), suffix = key.slice(star + 1)
+    return subpath.length >= prefix.length + suffix.length && subpath.startsWith(prefix) && subpath.endsWith(suffix)
+  })
+  function add(key, target, origin) {
     if (typeof target !== "string") return
     // JSON/assets have no declaration surface. Missing declaration targets fail
     // closed, including source/runtime targets whose expected declaration is absent.
@@ -78,19 +89,23 @@ export function publishedEntrypoints(directory) {
       let found = false
       for (const file of all) {
         const match = slash(file).match(pattern)
-        if (match) { entries[key.replace("*", match[1])] = file; found = true }
+        if (match) {
+          if (!exportMap || selectedExport(origin.replace("*", match[1])) === origin)
+            entries[key.replace("*", match[1])] = file
+          found = true
+        }
       }
       if (!found) entries[key] = expected
     } else entries[key] = declarationPath(path) ?? path
   }
 
-  function visit(value, key) {
-    if (typeof value === "string") return add(key, value)
-    if (Array.isArray(value)) return value.forEach((v, i) => visit(v, key + "#fallback" + i))
+  function visit(value, key, origin = key) {
+    if (typeof value === "string") return add(key, value, origin)
+    if (Array.isArray(value)) return value.forEach((v, i) => visit(v, key + "#fallback" + i, origin))
     if (!value || typeof value !== "object") return
     // A types condition replaces the corresponding runtime target.
-    if (value.types !== undefined) return visit(value.types, key)
-    for (const [condition, child] of Object.entries(value)) visit(child, key + "#" + condition)
+    if (value.types !== undefined) return visit(value.types, key, origin)
+    for (const [condition, child] of Object.entries(value)) visit(child, key + "#" + condition, origin)
   }
   if (manifest.exports !== undefined) {
     const exp = manifest.exports

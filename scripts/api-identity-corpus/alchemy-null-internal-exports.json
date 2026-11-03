@@ -1,0 +1,11 @@
+{
+  "origin": "Alchemy 97c056a0f898 publishing exclusions",
+  "exports": {
+    "./*": { "types": "./lib/*.d.ts" },
+    "./Basin/internal/*": null,
+    "./R2/internal/*": null,
+    "./*/internal": null
+  },
+  "files": ["public", "Basin/internal/Transport", "R2/internal/Transport", "Provider/internal", "Provider/public"],
+  "published": ["./Provider/public", "./public"]
+}

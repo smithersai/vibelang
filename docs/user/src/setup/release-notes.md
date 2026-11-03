@@ -144,6 +144,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 ### Bugs fixed since 0.0.10
 
+- Wildcard package exports could make declaration checks compare private files blocked by `null` exclusions, or override an exact subpath with a broad pattern. Discovery now follows the most-specific `exports` key, so only published entry points count.
+
 - Comparing valid generic exports annotated with `in` or `out` could fail with `TS1274`, even for a package compared with itself. The generated probe now uses legal function type parameters while checking the original exported types.
 
 - Published-declaration checks could accept a changed global type or doc comment because the two declaration trees merged their ambient declarations. They now prove ambient dependency closures and comments in isolation, and report an unavailable comparison when that proof fails.
