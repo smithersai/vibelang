@@ -41,3 +41,20 @@ export effect function collided() {
   raw = "7"
   return (read as () => string)() + rawInput
 }
+
+// A getter input changes the caller's text when it is read (pass 41). The
+// call read every input first, left to right, so the parameter text holds
+// what text was at its own position: after the getter ran, or before it.
+export effect function getterBefore() {
+  let text = "1"
+  const box = { get value() { text = "2"; return text } }
+  const read = try Effect.try(() => { const ignoredInput = box.value; const textInput = text; { let ignored = ignoredInput; let text = textInput; return () => text } })
+  return [(read as () => string)(), text]
+}
+
+export effect function getterAfter() {
+  let text = "1"
+  const box = { get value() { text = "2"; return text } }
+  const out = try Effect.try(() => { const textInput = text; const ignoredInput = box.value; { let text = textInput; let ignored = ignoredInput; return text } })
+  return [out, text]
+}

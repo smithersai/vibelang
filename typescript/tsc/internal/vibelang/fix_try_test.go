@@ -216,11 +216,11 @@ export const parse = effect (text: string): Effect<number, unknown> => {
   return n
 }
 
-export const annotated = (text: string): Effect<number, unknown> => {
+export const annotated = effect (text: string): Effect<number, unknown> => {
   return try((text): number => JSON.parse(text), undefined, text)
 }
 
-export const generic = (n: number): Effect<number, unknown> => {
+export const generic = effect (n: number): Effect<number, unknown> => {
   return try(<T>(value: T): T => value, undefined, n)
 }
 `
@@ -289,7 +289,8 @@ export const generic = effect (n: number): Effect<number, unknown> => {
 // parameter in an inner block. The twin hatch-parameter-cell-fixed is what
 // --fix-vip-only writes; the harness runs it and expects what the hatches
 // returned, the arrow called with its inputs: a write or a later closure call
-// leaves the caller's variable as it was. Fixing the twin again changes
+// leaves the caller's variable as it was, and a getter among the inputs reads
+// and writes what it did in the call (pass 41). Fixing the twin again changes
 // nothing.
 func TestFixVIPHatchKeepsParameterCell(t *testing.T) {
 	root, err := filepath.Abs("../../../..")
@@ -315,12 +316,12 @@ func TestFixVIPHatchKeepsParameterCell(t *testing.T) {
 	for file, fixed := range result.Files {
 		if filepath.Base(file.AsString()) == "lib.vibe" {
 			got = fixed.Text
-			if fixed.Counts[EK4616.Code] != 6 {
-				t.Errorf("fixes %v; want six EK4616 fixes", fixed.Counts)
+			if fixed.Counts[EK4616.Code] != 8 {
+				t.Errorf("fixes %v; want eight EK4616 fixes", fixed.Counts)
 			}
 		}
 	}
-	const expect = "// expect: EK4616 EK4616 EK4616 EK4616 EK4616 EK4616\n"
+	const expect = "// expect: EK4616 EK4616 EK4616 EK4616 EK4616 EK4616 EK4616 EK4616\n"
 	if !strings.HasPrefix(got, expect) || strings.TrimPrefix(got, expect) != string(want) {
 		t.Errorf("--fix-vip-only writes\n%s\nwant\n%s", got, want)
 	}

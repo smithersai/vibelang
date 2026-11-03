@@ -341,6 +341,13 @@ func inlinedThunk(file *ast.SourceFile, fn *ast.Node, inputs []*ast.Node, async 
 		names[name] = true
 		bound = append(bound, "let "+nodeText(file, parameter)+" = "+nodeText(file, inputs[i]))
 	}
+	head := "() => "
+	if returns := fn.Type(); returns != nil {
+		head = "(): " + nodeText(file, returns) + " => "
+	}
+	if !core.Every(inputs, isPlainValueInput) {
+		return evaluatedThunk(file, fn, head, inputs), true
+	}
 	for i := range parameters {
 		root := ast.SkipParentheses(inputs[i])
 		for ast.IsPropertyAccessExpression(root) {
@@ -349,10 +356,6 @@ func inlinedThunk(file *ast.SourceFile, fn *ast.Node, inputs []*ast.Node, async 
 		if ast.IsIdentifier(root) && names[root.Text()] && !(ast.IsIdentifier(ast.SkipParentheses(inputs[i])) && ast.SkipParentheses(inputs[i]).Text() == parameters[i].Name().Text()) {
 			return "", false // let b = a after let a = … reads the new a
 		}
-	}
-	head := "() => "
-	if returns := fn.Type(); returns != nil {
-		head = "(): " + nodeText(file, returns) + " => "
 	}
 	body := fn.Body()
 	text := nodeText(file, body)
@@ -373,6 +376,35 @@ func inlinedThunk(file *ast.SourceFile, fn *ast.Node, inputs []*ast.Node, async 
 		return prefix + text[1:], true
 	}
 	return prefix + " return " + text + " }", true
+}
+
+// isPlainValueInput reports whether input, a stable hatch input, reads a
+// value without running code: a name, a literal or a keyword. A property
+// access may run a getter, which can change a variable another input or a
+// parameter reads.
+func isPlainValueInput(input *ast.Node) bool {
+	return !ast.IsPropertyAccessExpression(ast.SkipParentheses(input))
+}
+
+// evaluatedThunk writes a hatch arrow as the thunk the way the call evaluated
+// it: each input once, left to right, in the caller's scope, into a fresh
+// const, then each parameter bound to its copy in an inner block, so a getter
+// among the inputs changes nothing the other inputs or parameters read
+// (PREVIEW-3, rev-preview pass 41).
+func evaluatedThunk(file *ast.SourceFile, fn *ast.Node, head string, inputs []*ast.Node) string {
+	var copies, bound []string
+	for i, parameter := range fn.Parameters() {
+		copy := freshName(file, parameter.Name().Text()+"Input")
+		copies = append(copies, "const "+copy+" = "+nodeText(file, inputs[i]))
+		bound = append(bound, "let "+nodeText(file, parameter)+" = "+copy)
+	}
+	body := fn.Body()
+	text := nodeText(file, body)
+	prefix := head + "{ " + strings.Join(copies, "; ") + "; { " + strings.Join(bound, "; ") + ";"
+	if ast.IsBlock(body) {
+		return prefix + text[1:] + " }"
+	}
+	return prefix + " return " + text + " } }"
 }
 
 // assignsOrCaptures reports whether body may assign name or capture it in a

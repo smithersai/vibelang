@@ -1,9 +1,9 @@
-// expect-result: {"written":[2,"1"],"captured":"1","typed":3,"mixed":[42,"4"],"shadowed":"5!","collided":"6x"}
+// expect-result: {"written":[2,"1"],"captured":"1","typed":3,"mixed":[42,"4"],"shadowed":"5!","collided":"6x","getterBefore":["2","2"],"getterAfter":["1","2"]}
 // The values are what the retired hatches returned: the arrow called with its
 // inputs, whose parameter is a binding of its own (PREVIEW-3). lib.vibe is
 // what vibelang --fix-vip-only writes for hatch-parameter-cell.fail.
 import { Effect } from "effect"
-import { captured, collided, mixed, shadowed, typed, written } from "./lib.vibe"
+import { captured, collided, getterAfter, getterBefore, mixed, shadowed, typed, written } from "./lib.vibe"
 
 export function main() {
   return Effect.gen(function* () {
@@ -14,6 +14,8 @@ export function main() {
       mixed: yield* mixed(),
       shadowed: yield* shadowed(),
       collided: yield* collided(),
+      getterBefore: yield* getterBefore(),
+      getterAfter: yield* getterAfter(),
     }
   })
 }

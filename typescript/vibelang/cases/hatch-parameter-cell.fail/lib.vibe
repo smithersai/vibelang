@@ -1,4 +1,4 @@
-// expect: EK4616 EK4616 EK4616 EK4616 EK4616 EK4616
+// expect: EK4616 EK4616 EK4616 EK4616 EK4616 EK4616 EK4616 EK4616
 // PREVIEW-3: a hatch arrow's parameter is a binding of its own, even when its
 // input is a variable of the same name. EK4616's fix inlines the arrow as
 // Effect.try's thunk; where the body assigns the parameter or a function in
@@ -6,39 +6,56 @@
 // the parameter in an inner block, so the caller's variable keeps its value.
 // The twin hatch-parameter-cell-fixed is what vibelang --fix-vip-only writes, and it
 // returns what the hatches returned: the arrow called with its inputs.
-export function written() {
+export effect function written() {
   let text = "1"
   const parsed = try((text) => { text = "2"; return JSON.parse(text) }, text)
   return [parsed, text]
 }
 
-export function captured() {
+export effect function captured() {
   let text = "1"
   const read = try((text) => () => text, text)
   text = "2"
   return (read as () => string)()
 }
 
-export function typed() {
+export effect function typed() {
   const text = "3"
   return try((text: string) => JSON.parse(text), text)
 }
 
-export function mixed() {
+export effect function mixed() {
   let text = "4"
   const n = try((text, digit) => { text = text + digit; return JSON.parse(text) }, text, 2)
   return [n, text]
 }
 
-export function shadowed() {
+export effect function shadowed() {
   const text = "5"
   return try((text) => [text].map((text) => text + "!")[0], text)
 }
 
-export function collided() {
+export effect function collided() {
   let raw = "6"
   const rawInput = "x"
   const read = try((raw) => () => raw, raw)
   raw = "7"
   return (read as () => string)() + rawInput
+}
+
+// A getter input changes the caller's text when it is read (pass 41). The
+// call read every input first, left to right, so the parameter text holds
+// what text was at its own position: after the getter ran, or before it.
+export effect function getterBefore() {
+  let text = "1"
+  const box = { get value() { text = "2"; return text } }
+  const read = try((ignored, text) => () => text, box.value, text)
+  return [(read as () => string)(), text]
+}
+
+export effect function getterAfter() {
+  let text = "1"
+  const box = { get value() { text = "2"; return text } }
+  const out = try((text, ignored) => text, text, box.value)
+  return [out, text]
 }

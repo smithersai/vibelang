@@ -22,7 +22,8 @@ import (
 // reaches the caller's p. The generator writes a hatch whose same-name
 // parameter the body reads, assigns, destructures, loops over, captures or
 // shadows, with an optional second input of the same name or a literal and an
-// optional written type, runs vibelang --fix --fix-vip-only, and runs the
+// optional written type, and a getter input before or after it that
+// changes the caller's p, runs vibelang --fix --fix-vip-only, and runs the
 // fixed program. The oracle is the reference that keeps the call,
 // Effect.try(() => (arrow)(inputs)): the same exit and value.
 var hatchCellUses = []struct {
@@ -39,10 +40,18 @@ var hatchCellUses = []struct {
 	{"shadow", `[p].map((p) => p + "s")[0]`, "out"},
 }
 
-var hatchCellSeconds = []struct{ key, param, input string }{
-	{"none", "", ""},
-	{"same-name", "q", "q"},
-	{"literal", "q", `"L"`},
+// A getter input (pass 41) changes the caller's p when it is read: the call
+// read every input first, left to right, so the parameter p holds the value
+// p had at its own position, before or after the getter ran.
+var hatchCellSeconds = []struct {
+	key, param, input string
+	first             bool
+}{
+	{"none", "", "", false},
+	{"same-name", "q", "q", false},
+	{"literal", "q", `"L"`, false},
+	{"getter-after", "q", "box.value", false},
+	{"getter-before", "q", "box.value", true},
 }
 
 // hatchCellShape reads a keyed input ("assign/same-name/typed") or picks the
@@ -50,7 +59,12 @@ var hatchCellSeconds = []struct{ key, param, input string }{
 func hatchCellShape(data []byte) (use, second int, typed bool) {
 	if parts := strings.Split(string(data), "/"); len(parts) == 3 {
 		u := slices.IndexFunc(hatchCellUses, func(u struct{ key, body, observe string }) bool { return u.key == parts[0] })
-		s := slices.IndexFunc(hatchCellSeconds, func(s struct{ key, param, input string }) bool { return s.key == parts[1] })
+		s := slices.IndexFunc(hatchCellSeconds, func(s struct {
+			key, param, input string
+			first             bool
+		}) bool {
+			return s.key == parts[1]
+		})
 		if u >= 0 && s >= 0 {
 			return u, s, parts[2] == "typed"
 		}
@@ -66,7 +80,7 @@ func FuzzHatchParameterCell(f *testing.F) {
 	for _, u := range hatchCellUses {
 		f.Add([]byte(u.key + "/none/untyped"))
 	}
-	for _, seed := range []string{"assign/same-name/untyped", "capture/literal/typed", "read/same-name/typed", "capture-assign/same-name/typed", "shadow/literal/untyped"} {
+	for _, seed := range []string{"read/getter-after/untyped", "capture/getter-before/untyped", "assign/getter-before/typed", "read/getter-before/untyped", "assign/same-name/untyped", "capture/literal/typed", "read/same-name/typed", "capture-assign/same-name/typed", "shadow/literal/untyped"} {
 		f.Add([]byte(seed))
 	}
 	w := NewWorkspace(f)
@@ -83,7 +97,9 @@ func FuzzHatchParameterCell(f *testing.F) {
 		if typed {
 			params = "p: string"
 		}
-		if s.param != "" {
+		if s.param != "" && s.first {
+			params, inputs = s.param+", "+params, s.input+", "+inputs
+		} else if s.param != "" {
 			params += ", " + s.param
 			inputs += ", " + s.input
 		}
@@ -92,7 +108,7 @@ func FuzzHatchParameterCell(f *testing.F) {
 			// between is the caller's p right after the hatch: a write to the
 			// parameter must not reach it; seen is read after p changes, so a
 			// closure must not see the caller's later p either
-			return "export effect function main() {\n  let p = \"a\"\n  let q = \"b\"\n  const out = " + hatch + "\n  const between = [p, q]\n  p = \"z\"\n  q = \"y\"\n  const seen = " + u.observe + "\n  return [seen, between, p, q]\n}\n"
+			return "export effect function main() {\n  let p = \"a\"\n  let q = \"b\"\n  const box = { get value() { p = \"g\"; return p } }\n  const out = " + hatch + "\n  const between = [p, q]\n  p = \"z\"\n  q = \"y\"\n  const seen = " + u.observe + "\n  return [seen, between, p, q]\n}\n"
 		}
 		original := map[string]string{"main.vibe": program("try(" + arrow + ", " + inputs + ")")}
 		reference := map[string]string{"main.vibe": program("try Effect.try(() => (" + arrow + ")(" + inputs + "))")}
