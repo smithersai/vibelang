@@ -22,6 +22,8 @@ function run(t, marker, { mismatch = true, status = false } = {}) {
   }
   write("typescript/package.json", '{"type":"module"}')
   write("runtime/package.json", '{"name":"vibelang-runtime","files":[]}')
+  write("modules/effect/package.json", '{"name":"effect","version":"4.1.1"}')
+  write("runtime/dist/index.js", "")
   write("typescript/built/local/tsc", `#!/usr/bin/env node
 import fs from "node:fs"
 fs.mkdirSync("out", { recursive: true })

@@ -445,6 +445,8 @@ neither a site install nor a browser or site build.
 `scripts/test-runners.test.mjs` guards their registration and lists the
 remaining site suites with their required installs or build outputs.
 
+Direct harness runs require `VIBELANG_RUNTIME` to name an absolute directory containing the `vibelang-runtime` manifest and its built `dist/index.js`. A missing, malformed or unbuilt runtime exits with status `2` before selecting or staging cases, preserving their existing outputs. Use the built `packages/runtime` directory, or run `vibelang/smoke.sh`.
+
 The release check runs `typescript/vibelang/harness.test.mjs`, including a
 barrier-controlled regression that executes both targets' actual shell commands
 concurrently. The aggregate starts after the per-case compiler emits and before

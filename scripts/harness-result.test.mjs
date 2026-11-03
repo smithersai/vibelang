@@ -26,6 +26,7 @@ function run(t, value, { fail = false } = {}) {
   }
   write("typescript/package.json", '{"type":"module"}')
   write("runtime/package.json", '{"name":"vibelang-runtime","files":[]}')
+  write("runtime/dist/index.js", "")
   mkdirSync(path.join(root, "modules"), { recursive: true })
   symlinkSync(realpathSync(effect), path.join(root, "modules/effect"), "dir")
   write("typescript/built/local/tsc", `#!/usr/bin/env node

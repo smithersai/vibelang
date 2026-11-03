@@ -33,6 +33,8 @@ if (process.env.REPORT_SUCCESS === "1") process.stdout.write(fs.readFileSync(pro
   write("typescript/vibelang/cases/report/expected/stdout.txt", success ? "42\n" : payload)
   if (pending) write("typescript/vibelang/cases/report/pending", "report-fixture intentional output mismatch\n")
   write("runtime/package.json", '{"name":"vibelang-runtime","files":[]}')
+  write("modules/effect/package.json", '{"name":"effect","version":"4.1.1"}')
+  write("runtime/dist/index.js", "")
   return {
     harness: path.join(dir, "harness.mjs"), payload,
     env: { ...process.env, EFFECT_NODE_MODULES: path.join(root, "modules"), VIBELANG_RUNTIME: path.join(root, "runtime"), REPORT_PAYLOAD: path.join(root, "payload"), REPORT_SUCCESS: success ? "1" : "0" },

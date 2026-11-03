@@ -22,6 +22,8 @@ function fixture(t, cases = true) {
   // the real harness must recognize the expected diagnostic and count it.
   put("typescript/built/local/tsc", '#!/bin/sh\nprintf "%s\\n" "$PWD" >> "$JOBS_TRACE"\nprintf "main.vibe(1,1): error EK9999: fixture\\n"\nexit 1\n', 0o755)
   put("runtime/package.json", '{"name":"vibelang-runtime","files":[]}')
+  put("modules/effect/package.json", '{"name":"effect","version":"4.1.1"}')
+  put("runtime/dist/index.js", "")
   if (cases) {
     for (const name of ["first", "second"]) {
       put("typescript/vibelang/cases/" + name + "/tsconfig.json", "{}")

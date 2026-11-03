@@ -102,6 +102,23 @@ if (!effectInstalled) {
   process.exit(2)
 }
 
+// Reject a broken test installation before selecting cases or replacing their
+// outputs. Missing runtime files are setup errors, not compiler regressions.
+try {
+  if (!path.isAbsolute(runtimeDir)) throw new Error("use an absolute directory")
+  if (!fs.statSync(runtimeDir).isDirectory()) throw new Error("not a directory")
+  const manifest = JSON.parse(fs.readFileSync(path.join(runtimeDir, "package.json"), "utf8"))
+  if (manifest?.name !== "vibelang-runtime") throw new Error("expected the vibelang-runtime package")
+  if (!Array.isArray(manifest.files) || !manifest.files.every((file) => typeof file === "string")) {
+    throw new Error("package.json files must be an array of paths")
+  }
+  if (!fs.statSync(path.join(runtimeDir, "dist/index.js")).isFile()) throw new Error("dist/index.js is not a file")
+} catch (error) {
+  console.error("harness.mjs: invalid VIBELANG_RUNTIME " + runtimeDir + ": " + error.message +
+    "; use the built packages/runtime directory or run vibelang/smoke.sh")
+  process.exit(2)
+}
+
 const args = process.argv.slice(2)
 const statusOnly = args.includes("--status")
 const lateStart = args.includes("--late-start") || process.env.VIBELANG_LATE_START === "1"

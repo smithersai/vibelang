@@ -23,6 +23,8 @@ function fixture(t, { diagnostic = "", header = "", identity = false, pending = 
   if (expectedDiagnostics) put(at + "/expected/diagnostics.txt", diagnostic.replace(/: [^:]*$/, "") + "\n")
   if (identity) put(at + "/typescript/tsconfig.json", "{}")
   put("runtime/package.json", '{"name":"vibelang-runtime","files":[]}')
+  put("modules/effect/package.json", '{"name":"effect","version":"4.1.1"}')
+  put("runtime/dist/index.js", "")
   // Real child processes transport known artifacts; compiler semantics are
   // outside this tooling test. A native compiler witness is run separately.
   put("typescript/built/local/tsc", [
