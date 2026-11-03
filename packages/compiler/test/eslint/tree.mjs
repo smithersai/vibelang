@@ -50,6 +50,7 @@ export function problems(code, ast, visitorKeys) {
   const named = new Set()
   const effectPrefixes = []
   const bindingStarts = new Set()
+  const tokenIndexAt = new Map(ast.tokens.map((token, index) => [token.range[0], index]))
   const declarationHeadAt = new Map(ast.tokens.map((token, index) =>
     [token.range[0], token.value === "declare" ? ast.tokens[index + 1]?.value : token.value]))
   walk(ast, (node, parent) => {
@@ -64,6 +65,9 @@ export function problems(code, ast, visitorKeys) {
         node.type === "MethodDefinition" || node.type === "Property" && node.method) {
       const children = [node.id, node.key, ...(node.params ?? []), node.returnType, node.body].filter(Boolean)
       effectPrefixes.push([start, Math.min(end, ...children.map((child) => child.range[0]))])
+    }
+    if (["FunctionDeclaration", "FunctionExpression", "ArrowFunctionExpression", "TSDeclareFunction"].includes(node.type)) {
+      for (const position of functionBindings(node, ast.tokens, tokenIndexAt, visitorKeys)) bindingStarts.add(position)
     }
     // Contextual words are ordinary names at the start of a written variable
     // declarator. Derive that position from its container, not its id: a
@@ -93,6 +97,66 @@ export function problems(code, ast, visitorKeys) {
     if (!named.has(`${token.range[0]}:${identifierName(word)}`) && !exempt) found.push(`name ${word} at ${token.range[0]} has no node`)
   })
   return found
+}
+
+// Read the written header independently of id/params: losing the sole name or
+// last parameter must not grow a contextual-keyword exemption over that slot.
+// Parameter types and default expressions contain syntax that is not a binding.
+function functionBindings(node, tokens, tokenIndexAt, visitorKeys) {
+  const [start, end] = node.range
+  const limit = Math.min(end, node.body?.range[0] ?? end, node.returnType?.range[0] ?? end)
+  const header = []
+  for (let i = tokenIndexAt.get(start); i < tokens.length && tokens[i].range[0] < limit; i++) {
+    const token = tokens[i]
+    if (!node.typeParameters || token.range[0] < node.typeParameters.range[0] ||
+        token.range[0] >= node.typeParameters.range[1]) header.push(token)
+  }
+  // Loop lowering also makes arrows, whose source header is a for-head.
+  // A nested callback in its iterable is not that generated arrow's signature.
+  if (node.type === "ArrowFunctionExpression" && !node.returnType) {
+    let depth = 0
+    let writtenArrow = false
+    for (const token of header) {
+      if (["(", "[", "{"].includes(token.value)) depth++
+      if ([")", "]", "}"].includes(token.value)) depth--
+      if (token.value === "=>" && depth === 0) writtenArrow = true
+    }
+    if (!writtenArrow) return []
+  }
+  const positions = []
+  const open = header.findIndex((token) => token.value === "(")
+  const functionWord = header.findIndex((token) => token.value === "function")
+  if (functionWord >= 0 && (open < 0 || functionWord < open)) {
+    const name = header[functionWord + (header[functionWord + 1]?.value === "*" ? 2 : 1)]
+    if (name?.type === "Identifier") positions.push(name.range[0])
+  }
+  if (open < 0) {
+    const arrow = header.findIndex((token) => token.value === "=>")
+    const name = header[arrow - 1]
+    if (name?.type === "Identifier") positions.push(name.range[0])
+    return positions
+  }
+  const excluded = []
+  for (const parameter of node.params ?? []) {
+    if (!parameter) continue
+    walk(parameter, (child) => {
+      for (const syntax of [child.typeAnnotation, child.typeParameters,
+        child.type === "AssignmentPattern" ? child.right : null, ...(child.decorators ?? [])]) {
+        if (syntax) excluded.push(syntax.range)
+      }
+      if (child.type === "TSParameterProperty" && child.parameter) {
+        excluded.push([child.range[0], child.parameter.range[0]])
+      }
+    }, visitorKeys)
+  }
+  let depth = 1
+  for (const token of header.slice(open + 1)) {
+    if (token.value === "(") depth++
+    if (token.value === ")" && --depth === 0) break
+    if (token.type === "Identifier" &&
+        !excluded.some(([from, to]) => from <= token.range[0] && token.range[1] <= to)) positions.push(token.range[0])
+  }
+  return positions
 }
 
 // Tokens preserve source spelling; ESTree Identifier.name is decoded.

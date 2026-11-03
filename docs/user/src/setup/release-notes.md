@@ -172,6 +172,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - The migration namespace corpus quoted a declaration-import-style guarantee removed from the specification, so its citation check failed. It now cites the current module-identity wording.
 
+
+- ESLint corpus checks could miss lost function names or parameters named with contextual words such as `match`; those bindings now require their written identifier nodes, including after the final parameter is removed.
 - Release notes repeated the upgrade and bug-fix sections, hiding later fixes from readers and documentation tools. Each section now appears once, with the unique fixes and upgrade repairs retained.
 
 - The source mapper crashed with a stack overflow on a regex pattern with an extractor, such as `s is /(\d+)/(let m)`, in a file it projected. It now projects that file.

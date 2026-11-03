@@ -380,6 +380,8 @@ The native ESLint corpus tree oracle compares each source token with the decoded
 
 The same oracle requires a written identifier at the start of each ordinary `const`, `let` or `var` declarator, including `declare` declarations. Contextual words such as `match` and `service` used as variable names receive the same check as other names. `packages/compiler/test/eslint-contextual-bindings.property.test.mjs` mutates and removes native binding nodes across declaration, loop, effect and match neighbours; lowered match temporaries retain their syntax exemptions. Hoisted loop-condition and update temporaries outside the written declaration span also keep their operator exemptions.
 
+Function names and parameter bindings also require written identifier nodes when named with contextual words, such as `match` or `service`. The oracle reads their source headers so removing the last parameter or function name cannot hide the defect. Parameter types, default expressions and Effect modifiers retain their syntax exemptions. `packages/compiler/test/eslint-function-bindings.property.test.mjs` checks native trees across declarations, arrows, methods, destructuring and generated missing-node mutations.
+
 CI-health reports distinguish `Go cache archive` failures from missing repository inputs. The former identifies a missing compiled archive with a matching content hash and bucket; it calls for cache investigation without guessing what removed the archive. `.smithers/flows/ci-health/test/go-cache.test.mjs` covers the real log pair, generated diagnostic neighbours and competing causes, and the `go-cache-archive` eval runs the actual workflow on that pair.
 
 ## Packages
