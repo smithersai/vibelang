@@ -32,7 +32,7 @@ func TestNothrowPreservingQuoted(t *testing.T) {
 
 func FuzzNothrowPreservingFix(f *testing.F) {
 	startShortBudget(f)
-	for _, key := range []string{"statement", "caught", "callback", "default", "generator", "effect-result", "smithers-Store-Effect-try"} {
+	for _, key := range []string{"factory-iterator", "statement", "caught", "callback", "default", "generator", "effect-result", "smithers-Store-Effect-try"} {
 		f.Add(key, int8(7))
 	}
 	w := NewWorkspace(f)
@@ -50,6 +50,8 @@ func FuzzNothrowPreservingFix(f *testing.F) {
 				source = "export function main(n=throw " + operand + "):number {return n}"
 			case "generator":
 				source = "export function* main():Generator<number> {yield marker; throw " + operand + "}"
+			case "factory-iterator":
+				source = "export effect function main(xs:Iterable<number>){function task():number!! {for(const n of xs){throw n};return Effect.succeed(0)};return try task()}"
 			case "effect-result":
 				source = "export function main():Effect.Effect<number> {throw " + operand + "}"
 			case "smithers-Store-Effect-try":
@@ -77,6 +79,12 @@ func FuzzNothrowPreservingFix(f *testing.F) {
 			}
 			if len(result.Changed) > 0 {
 				Gap(t, nothrowPreservingTarget, key+":changed", "fix changed refused sites: %+v", result.Changed)
+			}
+			if key == "factory-iterator" {
+				if strings.Contains(fixed["main.vibe"], "return die(") || len(result.Sites) == 0 {
+					Gap(t, nothrowPreservingTarget, key, "iterator cleanup must keep native throw completion")
+				}
+				return
 			}
 			if key == "effect-result" {
 				if strings.Contains(fixed["main.vibe"], "$raise(") || strings.Contains(fixed["main.vibe"], "effect function main") || len(result.Sites) == 0 {

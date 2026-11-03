@@ -49,14 +49,14 @@ func TestFixNothrowThrowBridge(t *testing.T) {
 }
 
 func TestFixNothrowLeavesRefusedOperand(t *testing.T) {
-	source := "export function f(s: string): never { throw JSON.parse(s) }"
+	source := "export function* f(s: string): Generator<string, never, string> { throw JSON.parse(yield s) }"
 	_, file, _, _ := editorProgram(t, source)
 	result := fixCase(t, filepath.Dir(file.FileName().AsString()))
 	if result.Err != nil {
 		t.Fatal(result.Err)
 	}
 	fixed := result.Files[file.FileName()]
-	if fixed == nil || !strings.Contains(fixed.Text, "$raise(JSON.parse(s))") {
+	if fixed == nil || !strings.Contains(fixed.Text, "$raise(JSON.parse(yield s))") {
 		t.Fatalf("independent throw repair missing: %+v", result)
 	}
 	for _, site := range result.Sites {

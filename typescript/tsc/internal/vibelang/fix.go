@@ -1691,7 +1691,14 @@ func fileFixes(ctx context.Context, program *compiler.Program, file *ast.SourceF
 			c, done := program.GetTypeCheckerForFile(ctx, file)
 			safe := site != nil && site.Kind != ast.KindThrowStatement && automaticNothrowFix(c, file, site)
 			if site != nil && !refused[key] {
-				if candidate, ok := preservingThrowFix(c, file, site, key); ok {
+				candidate, ok := preservingThrowFix(c, file, site, key)
+				if !ok {
+					candidate, ok = preservingNothrowCallFix(c, file, site, key)
+				}
+				if !ok {
+					candidate, ok = preservingEffectFactoryThrows(c, file, site, key)
+				}
+				if ok {
 					candidate.siteStart, candidate.siteEnd = d.Pos(), d.End()
 					candidates = append(candidates, candidate)
 					done()
