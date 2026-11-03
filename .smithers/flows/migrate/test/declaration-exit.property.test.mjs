@@ -5,6 +5,7 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { test } from "node:test"
 import { makeConfig, paths, verify, report } from "../lib/steps.mjs"
+import { parseDiagnostics } from "../lib/diagnostics.mjs"
 import { emitErrorsIn, recordDeclarationSurface } from "../lib/declarations.mjs"
 import { must, slug, writeJson } from "../lib/util.mjs"
 import * as Jj from "../lib/jj.mjs"
@@ -12,15 +13,15 @@ const require = createRequire(new URL("../../../../packages/runtime/package.json
 const fc = require("fast-check")
 const corpus = JSON.parse(readFileSync(new URL("./corpus/foldkit-ui-declaration-exit.json", import.meta.url)))
 
-async function check(code, diagnostic) {
+async function check(code, diagnostic, { baselineEmit, migrated = true, expectedEmit = baselineEmit !== undefined || (code === 0 && !diagnostic) } = {}) {
   const root = mkdtempSync(join(tmpdir(), "foldkit-declaration-exit-"))
   try {
     const target = join(root, "repo"), run = join(root, "run")
     mkdirSync(join(target, "node_modules/.bin"), { recursive: true })
     symlinkSync(require.resolve("typescript/package.json").replace(/\/package.json$/, ""), join(target, "node_modules/typescript"))
     writeJson(join(target, "package.json"), { name: "foldkit-exit-fixture", types: "./main.d.ts" })
-    writeJson(join(target, "tsconfig.json"), { compilerOptions: { rootDir: "." }, include: ["*.vibe"] })
-    writeFileSync(join(target, "main.vibe"), "export const value: number = 1\n")
+    writeJson(join(target, "tsconfig.json"), { compilerOptions: { rootDir: "." }, include: [migrated ? "*.vibe" : "*.ts"] })
+    writeFileSync(join(target, migrated ? "main.vibe" : "main.ts"), "export const value: number = 1\n")
     const declaration = "export declare const value: number;\n"
     writeFileSync(join(target, "node_modules/.bin/vibelang"), [
       "#!/usr/bin/env node",
@@ -35,6 +36,7 @@ async function check(code, diagnostic) {
     await Jj.commit(target, "original declaration input")
     const p = paths(run)
     writeJson(p.config, makeConfig({ target, test: "true", vibelangVersion: "0.0.11" }))
+    if (baselineEmit) writeJson(p.setup, { declarations: { ".": baselineEmit } })
     writeJson(p.plan, { batches: [{ files: ["main.ts"] }] })
     writeJson(join(p.baseline, "tests.json"), { code: 0, tests: {}, total: 0, passed: 0, failed: [], skipped: 0 })
     writeJson(join(p.baseline, "compile-" + slug(".") + ".json"), [])
@@ -51,12 +53,18 @@ async function check(code, diagnostic) {
     }
     const result = await verify({ run, batch: "01" })
     assert.equal(result.checks.declarations, true, "the published APIs intentionally match")
-    assert.equal(result.checks.declarationEmit, code === 0 && !diagnostic)
-    assert.equal(result.ok, code === 0 && !diagnostic)
-    if (code) assert.ok(result.compile.emitErrors.length, JSON.stringify(result))
+    const emitOk = expectedEmit
+    assert.equal(result.checks.declarationEmit, emitOk)
+    assert.equal(result.ok, emitOk && migrated)
+    if (emitOk) {
+      assert.deepEqual(result.compile.emitErrors, [])
+      assert.equal(result.compile.declarationEmits["."].code, code)
+      assert.equal(result.compile.declarationEmits["."].errors, 0)
+      assert.deepEqual(result.compile.declarationEmits["."].diagnostics, parseDiagnostics(diagnostic))
+    } else assert.ok(result.compile.emitErrors.length, JSON.stringify(result))
     await report({ run })
     const summary = readFileSync(p.report, "utf8")
-    if (code) assert.match(summary, /EMIT FAILED/)
+    if (!emitOk) assert.match(summary, /EMIT FAILED/)
     else assert.doesNotMatch(summary, /EMIT FAILED/)
   } finally { rmSync(root, { recursive: true, force: true }) }
 }
@@ -82,8 +90,18 @@ test("generated emit exits and diagnostic locations always retain failure eviden
   }), { seed: 1035051, numRuns: 600 })
 })
 
-test("generated real verifier commands refuse every nonzero emit status", async () => {
+test("generated real verifier commands without original evidence refuse every nonzero emit status", async () => {
   await fc.assert(fc.asyncProperty(fc.integer({ min: 1, max: 127 }), fc.constantFrom("", corpus.diagnostic,
     "tsconfig.json(1,1): error TS5023: Unknown compiler option 'broken'."), async (code, diagnostic) => check(code, diagnostic)),
     { seed: 103103, numRuns: 20 })
+})
+
+
+// The original receipt remains mandatory even when raw declarations match.
+test("saved original emit diagnostics explain inherited exits through the real verifier", async () => {
+  const diagnostic = "main.vibe(3,1): error TS2883: The inferred type cannot be named without a reference to AnimatedNode."
+  const baselineEmit = { code: 1, diagnostics: parseDiagnostics(diagnostic.replace("main.vibe(3,1)", "main.ts(1,1)")) }
+  await check(1, diagnostic, { baselineEmit })
+  await check(1, diagnostic.replace("main.vibe", "main.ts"), { baselineEmit, migrated: false })
+  await check(1, diagnostic + "\nmain.vibe(4,1): error TS2883: A newly unnameable exported type.", { baselineEmit, expectedEmit: false })
 })

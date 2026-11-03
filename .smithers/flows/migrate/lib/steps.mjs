@@ -1871,6 +1871,8 @@ export async function verify(options) {
   const testDiff = await testEdits(config, p, thePlan, b, ts)
   const declarations = {}
   const emitErrors = []
+  const declarationEmits = {}
+  const originalEmits = readJsonIf(p.setup)?.declarations ?? {}
   const oracle = readJsonIf(join(p.baseline, "declaration-oracle.json"))
   const unproven = []
   for (const pkg of config.packages) {
@@ -1905,7 +1907,13 @@ export async function verify(options) {
     declarations[pkg.dir] = compareDeclarations(ts, baselineDir, outDir, {
       includePrivate: config.declarations?.includePrivate === true && readJson(join(t, pkg.dir, "package.json")).private === true,
     })
-    emitErrors.push(...emitErrorsIn(emitted.diagnostics, migrated, { code: emitted.code, log: join(logs, "dts-" + slug(pkg.dir) + ".log") }))
+    const originalEmit = originalEmits[pkg.dir]
+    const emitLog = join(logs, "dts-" + slug(pkg.dir) + ".log")
+    const errors = emitErrorsIn(emitted.diagnostics, migrated, { code: emitted.code, log: emitLog, baseline: originalEmit })
+    emitErrors.push(...errors)
+    declarationEmits[pkg.dir] = { code: emitted.code, baselineCode: originalEmit?.code ?? null,
+      diagnostics: emitted.diagnostics, baselineDiagnostics: originalEmit?.diagnostics?.length ?? null,
+      errors: errors.length, log: emitLog }
     const stock = oracle?.[pkg.dir]
     const projects = Wire.projectsOf(ts, join(t, pkg.dir), pkg.dtsTsconfig)
     const names = declarationNames(ts, join(t, pkg.dir), projects.map((tsconfig) => ({ tsconfig, prefix: projects.length === 1 ? "." : slug(tsconfig) })))
@@ -1931,7 +1939,7 @@ export async function verify(options) {
     selectorChecks,
     runPhase,
     testDiff,
-    compile: { batchErrors, newErrors: checked.newErrors, style, emitErrors },
+    compile: { batchErrors, newErrors: checked.newErrors, style, emitErrors, declarationEmits },
     foreign,
     testDiffBefore,
     declarationOracle: { unproven, unavailable: Object.fromEntries(Object.entries(oracle ?? {}).filter(([, o]) => o.unavailable).map(([dir, o]) => [dir, o.unavailable])) },

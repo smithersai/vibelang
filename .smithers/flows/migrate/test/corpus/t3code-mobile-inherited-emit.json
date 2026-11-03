@@ -1,0 +1,32 @@
+{
+  "source": "Mobile whole158 zero-source verification: 2986 tests and 1275 raw declarations matched; only emit-exit failed",
+  "baseline": {
+    "code": 1,
+    "diagnostics": [
+      {
+        "file": "apps/mobile/modules/t3-source-text/src/util.ts",
+        "line": 4,
+        "column": 17,
+        "category": "error",
+        "code": "TS2883",
+        "message": "The inferred type of 'flattenStyles' cannot be named without a reference to 'AnimatedNode' from '../../../node_modules/react-native/types_generated/Libraries/Animated/AnimatedExports'. This is likely not portable. A type annotation is necessary.",
+        "notes": []
+      }
+    ]
+  },
+  "current": {
+    "code": 1,
+    "diagnostics": [
+      {
+        "file": "apps/mobile/modules/t3-source-text/src/util.ts",
+        "line": 4,
+        "column": 17,
+        "category": "error",
+        "code": "TS2883",
+        "message": "The inferred type of 'flattenStyles' cannot be named without a reference to 'AnimatedNode' from '../../../node_modules/react-native/types_generated/Libraries/Animated/AnimatedExports'. This is likely not portable. A type annotation is necessary.",
+        "notes": []
+      }
+    ]
+  },
+  "files": []
+}

@@ -925,17 +925,39 @@ export async function emitDeclarations({ compiler, tsconfig, cwd, outDir, log, r
 }
 
 /**
- * The errors a declaration emit reported in files, repository-relative. Where
- * the compiler cannot print a module's declarations, as for TS7056's any
- * fallback, the baseline's emit may fail the same way, so equal declarations
- * prove nothing about that module: such a migrated file fails verify.
+ * New declaration emit errors compared with the saved original program.
+ * Source locations may move during conversion; source identity, diagnostic
+ * code, message, notes and multiplicity must agree. Without an original
+ * receipt, retain the strict file/global errors and failing-exit check.
  */
-export function emitErrorsIn(diagnostics, files, { code = 0, log } = {}) {
-  const errors = diagnostics.filter((d) => d.category === "error" && (!d.file || files.includes(d.file)))
-  if (code !== 0) errors.push({
+export function emitErrorsIn(diagnostics, files, { code = 0, log, baseline } = {}) {
+  const current = diagnostics.filter(d => d.category === "error")
+  const recorded = baseline && Number.isInteger(baseline.code) && Array.isArray(baseline.diagnostics)
+  const key = d => JSON.stringify([
+    (d.file ?? "").replace(/\.(?:ts|tsx|mts|cts|vibe|vibex)$/, ""),
+    d.code, d.message, d.notes ?? []
+  ])
+  const remaining = new Map()
+  if (recorded) for (const d of baseline.diagnostics.filter(d => d.category === "error")) {
+    remaining.set(key(d), (remaining.get(key(d)) ?? 0) + 1)
+  }
+  const added = current.filter(d => {
+    const count = remaining.get(key(d)) ?? 0
+    if (!count) return true
+    remaining.set(key(d), count - 1)
+    return false
+  })
+  const errors = recorded ? added : added.filter(d => !d.file || files.includes(d.file))
+  // A failing exit is inherited only when matching original diagnostics
+  // explain it. No receipt, no diagnostics or new errors still fail,
+  // regardless of matching declaration artifacts. Both exit codes stay in
+  // the verification receipt; diagnostic identity decides inheritance.
+  const inheritedExit = recorded && current.length > 0 && added.length === 0
+  if (code !== 0 && !inheritedExit) errors.push({
     category: "error", file: null, code: "emit-exit",
-    message: "Declaration emit exited with status " + code + "; matching artifacts do not certify successful emission.",
-    emitCode: code, ...(log ? { log } : {})
+    message: "Declaration emit exited with status " + code + "; original diagnostics do not explain this failure.",
+    emitCode: code, baselineCode: recorded ? baseline.code : null,
+    newDiagnostics: added.length, ...(log ? { log } : {})
   })
   return errors
 }
