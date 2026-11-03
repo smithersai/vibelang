@@ -1,3 +1,7 @@
+// Coverage census: realpath versus preserveSymlinks checks nominal class identities.
+// VIP-27 realpath versus preserveSymlinks checks nominal class identities: docs/design/vips/0027-declaration-output.md#c54178b32febf50e
+// VIP-27 realpath versus preserveSymlinks checks nominal class identities: docs/design/vips/0027-declaration-output.md#9e58280d2bd3310b
+// VIP-27 realpath versus preserveSymlinks checks nominal class identities: docs/design/vips/0027-declaration-output.md#e3edd4b29e148dbc
 import assert from "node:assert/strict"
 import { spawnSync } from "node:child_process"
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs"

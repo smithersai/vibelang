@@ -1,3 +1,5 @@
+// Coverage census: stock TypeScript final physical/logical resolution across declaration suffixes.
+// VIP-27 stock TypeScript final physical/logical resolution across declaration suffixes: docs/design/vips/0027-declaration-output.md#037637d2828edc83
 import assert from "node:assert/strict"
 import test from "node:test"
 import fc from "fast-check"

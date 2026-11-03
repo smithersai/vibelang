@@ -1,3 +1,6 @@
+// Coverage census: same-basename native sibling and explicit Vibe import keep distinct payload types.
+// VIP-27 same-basename native sibling and explicit Vibe import keep distinct payload types: docs/design/vips/0027-declaration-output.md#08030251660580c7
+// VIP-27 same-basename native sibling and explicit Vibe import keep distinct payload types: docs/design/vips/0027-declaration-output.md#4a2acb45845ab421
 import assert from "node:assert/strict"
 import { spawnSync } from "node:child_process"
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"

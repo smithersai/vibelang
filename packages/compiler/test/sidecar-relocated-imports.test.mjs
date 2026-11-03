@@ -1,3 +1,19 @@
+// Coverage census: isolated stock consumer with both skipLibCheck settings and independent public outputs.
+// VIP-27 isolated stock consumer with both skipLibCheck settings and independent public outputs: docs/design/vips/0027-declaration-output.md#cc9377c5ce039500
+// VIP-27 isolated stock consumer with both skipLibCheck settings and independent public outputs: docs/design/vips/0027-declaration-output.md#8c9c22ad50b11f3b
+// VIP-27 isolated stock consumer with both skipLibCheck settings and independent public outputs: docs/design/vips/0027-declaration-output.md#dfe3486b5a2206ef
+// VIP-27 isolated stock consumer with both skipLibCheck settings and independent public outputs: docs/design/vips/0027-declaration-output.md#d55b6117cfed4c63
+// VIP-27 isolated stock consumer with both skipLibCheck settings and independent public outputs: docs/design/vips/0027-declaration-output.md#f36a561d18bcff1a
+// VIP-27 isolated stock consumer with both skipLibCheck settings and independent public outputs: docs/design/vips/0027-declaration-output.md#b944feca23dbac02
+// VIP-27 isolated stock consumer with both skipLibCheck settings and independent public outputs: docs/design/vips/0027-declaration-output.md#41ff254a3aa64421
+// VIP-27 isolated stock consumer with both skipLibCheck settings and independent public outputs: docs/design/vips/0027-declaration-output.md#37dfe2a6c9c22061
+// VIP-27 isolated stock consumer with both skipLibCheck settings and independent public outputs: docs/design/vips/0027-declaration-output.md#aba446722ee056bb
+// VIP-27 isolated stock consumer with both skipLibCheck settings and independent public outputs: docs/design/vips/0027-declaration-output.md#7565b2f823ab7a6c
+// VIP-27 isolated stock consumer with both skipLibCheck settings and independent public outputs: docs/design/vips/0027-declaration-output.md#f7495f89b1dc1eec
+// VIP-27 isolated stock consumer with both skipLibCheck settings and independent public outputs: docs/design/vips/0027-declaration-output.md#8f0d977b8bac9ac3
+// VIP-27 isolated stock consumer with both skipLibCheck settings and independent public outputs: docs/design/vips/0027-declaration-output.md#41690708d7aa437b
+// VIP-27 isolated stock consumer with both skipLibCheck settings and independent public outputs: docs/design/vips/0027-declaration-output.md#78f2f5854636efad
+// VIP-30 isolated stock consumer with both skipLibCheck settings and independent public outputs: docs/design/vips/0030-config-files.md#5601d1ca241e6468
 import assert from "node:assert/strict"
 import { spawnSync } from "node:child_process"
 import { createRequire } from "node:module"

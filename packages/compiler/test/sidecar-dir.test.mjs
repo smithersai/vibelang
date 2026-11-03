@@ -1,3 +1,23 @@
+// Coverage census: sidecar directory, default, empty override, wrong-type and stock rootDirs controls.
+// VIP-27 sidecar directory, default, empty override, wrong-type and stock rootDirs controls: docs/design/vips/0027-declaration-output.md#209baf7c257f531d
+// VIP-27 sidecar directory, default, empty override, wrong-type and stock rootDirs controls: docs/design/vips/0027-declaration-output.md#e1a00a37d1f67505
+// VIP-27 sidecar directory, default, empty override, wrong-type and stock rootDirs controls: docs/design/vips/0027-declaration-output.md#27e920580866deef
+// VIP-27 sidecar directory, default, empty override, wrong-type and stock rootDirs controls: docs/design/vips/0027-declaration-output.md#e7b29c66248ee30e
+// VIP-27 sidecar directory, default, empty override, wrong-type and stock rootDirs controls: docs/design/vips/0027-declaration-output.md#61d8a75e25432a1f
+// VIP-27 sidecar directory, default, empty override, wrong-type and stock rootDirs controls: docs/design/vips/0027-declaration-output.md#a87c14a0552d3172
+// VIP-27 sidecar directory, default, empty override, wrong-type and stock rootDirs controls: docs/design/vips/0027-declaration-output.md#64d73cd652a81f79
+// VIP-27 sidecar directory, default, empty override, wrong-type and stock rootDirs controls: docs/design/vips/0027-declaration-output.md#42917a9a4b0e1329
+// VIP-27 sidecar directory, default, empty override, wrong-type and stock rootDirs controls: docs/design/vips/0027-declaration-output.md#dbc45a2e67986fbb
+// VIP-27 sidecar directory, default, empty override, wrong-type and stock rootDirs controls: docs/design/vips/0027-declaration-output.md#9cdaf73691b0fad4
+// VIP-27 sidecar directory, default, empty override, wrong-type and stock rootDirs controls: docs/design/vips/0027-declaration-output.md#33840aa6c8b6bfef
+// VIP-27 sidecar directory, default, empty override, wrong-type and stock rootDirs controls: docs/design/vips/0027-declaration-output.md#640b0a1dde866997
+// VIP-27 sidecar directory, default, empty override, wrong-type and stock rootDirs controls: docs/design/vips/0027-declaration-output.md#632c8b43cc61297a
+// VIP-27 sidecar directory, default, empty override, wrong-type and stock rootDirs controls: docs/design/vips/0027-declaration-output.md#0463e6d4120cc07a
+// VIP-27 sidecar directory, default, empty override, wrong-type and stock rootDirs controls: docs/design/vips/0027-declaration-output.md#e4220f49f4cfbc1d
+// VIP-27 sidecar directory, default, empty override, wrong-type and stock rootDirs controls: docs/design/vips/0027-declaration-output.md#f9df0bca9b368e69
+// VIP-30 sidecar directory, default, empty override, wrong-type and stock rootDirs controls: docs/design/vips/0030-config-files.md#c8670b1bb5f05e51
+// VIP-30 sidecar directory, default, empty override, wrong-type and stock rootDirs controls: docs/design/vips/0030-config-files.md#a0a5a219193d3881
+// VIP-30 sidecar directory, default, empty override, wrong-type and stock rootDirs controls: docs/design/vips/0030-config-files.md#f198926ba3c6a0c9
 import { strict as assert } from "node:assert"
 import { spawn, spawnSync } from "node:child_process"
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs"
