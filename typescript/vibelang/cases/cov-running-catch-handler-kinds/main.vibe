@@ -1,0 +1,23 @@
+// Chapter 2: | an `effect` arrow or `effect function` expression | effect function | what the function's Effect s
+// docs/design/src/002-running.md#9ae762dec0ea4ddc
+// Chapter 2: | an arrow or `function` expression | plain function | what the function returns |
+// docs/design/src/002-running.md#3d8f1fdc68c46714
+// Chapter 2: | `x catch (e) => 7`, `x catch ((e) => 7)` | plain function | `7` |
+// docs/design/src/002-running.md#66ca14c7f0b4a0e1
+// Chapter 2: | `x catch () => guest` | plain function | `guest` |
+// docs/design/src/002-running.md#0dd277c4b1adcb2c
+// Chapter 2: | `x catch function (e) { return 7 }` | plain function | `7` |
+// docs/design/src/002-running.md#fa621472312c5bd7
+// Chapter 2: | `x catch effect (e) => 7`, `x catch (effect function (e) { return 7 })` | effect function | `7` |
+// docs/design/src/002-running.md#2d6013e67b620ff1
+import { Effect } from "effect"
+export effect function main() {
+ const guest = "guest"
+ const arrow = Effect.fail("bad") catch (e) => e.length
+ const parenthesized = Effect.fail("bad") catch ((e) => e.length)
+ const ignored = Effect.fail("bad") catch () => guest
+ const expression = Effect.fail("bad") catch function (e) { return e.length }
+ const effectArrow = Effect.fail("bad") catch effect (e) => try Effect.succeed(e.length)
+ const effectExpression = Effect.fail("bad") catch (effect function (e) { return e.length })
+ return [arrow, parenthesized, ignored, expression, effectArrow, effectExpression]
+}

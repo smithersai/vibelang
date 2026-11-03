@@ -1,0 +1,7 @@
+// Chapter 2: Parenthesize the whole `catch` expression first: `(a catch function () { }).pipe(f)`.
+// docs/design/src/002-running.md#c1026a746411a5f6
+import { Effect } from "effect"
+export effect function main() {
+ const grouped = (Effect.fail("bad") catch function () { return 7 }).toString()
+ return grouped
+}

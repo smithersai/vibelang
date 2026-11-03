@@ -1,0 +1,19 @@
+// Chapter 2: `catch` sits beside `??` in ECMAScript's precedence chain: it has the precedence of `??` and is left
+// docs/design/src/002-running.md#bf5faabc49d93845
+// Chapter 2: So `a catch effect (e) => b catch () => c` means `a catch (effect (e) => (b catch (() => c)))`.
+// docs/design/src/002-running.md#660740ab7a994830
+// Chapter 2: Parenthesizing the arrow, `a catch ((e) => b) catch ((e) => c)`, parses, but the outer `catch` then 
+// docs/design/src/002-running.md#cca6582274fba78a
+// Chapter 2: In `(a catch h) catch k`, the outer `catch` runs the value that `a catch h` gives, so `a`'s success 
+// docs/design/src/002-running.md#9738b499098aa6b1
+// Chapter 2: To try fallbacks in turn, nest them in an `effect` handler: `a catch effect () => b catch () => c`.
+// docs/design/src/002-running.md#76ddfb801569d96f
+// Chapter 2: `(try x) catch h` and `(join f) catch h` are allowed: each catches the Effect its parenthesized oper
+// docs/design/src/002-running.md#59f87e30fd374853
+import { Effect } from "effect"
+export effect function main() {
+ const left = (Effect.fail("a") catch (() => Effect.fail("b"))) catch (() => 7)
+ const nested = Effect.fail("a") catch effect () => Effect.fail("b") catch () => 8
+ const grouped = (try Effect.succeed(Effect.fail("a"))) catch () => 9
+ return [left, nested, grouped]
+}

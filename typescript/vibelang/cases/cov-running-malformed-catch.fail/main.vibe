@@ -1,0 +1,5 @@
+// expect: EK0509
+// Chapter 2: | `try x catch (e) { … }` | syntax error `EK0509` | quick fix: `x catch effect (e) => { … }` |
+// docs/design/src/002-running.md#82cf4c367065a3b8
+import { Effect } from "effect"
+export effect function malformed() { return try Effect.fail("bad") catch (e) { return 0 } }

@@ -1,0 +1,25 @@
+// expect: EK0505
+// Chapter 2: | `try x catch h`: write `try x` or `x catch h`, never both.
+// docs/design/src/002-running.md#db1d2c8982363cf6
+// Chapter 2: It fires when a `try` or `try.all` is reachable from the head through unary and binary operator node
+// docs/design/src/002-running.md#57aef0bf3fafbdba
+// Chapter 2: `try.all x catch h` and the other three operations get this error too, not the one below.
+// docs/design/src/002-running.md#b0dd07c2292ba82e
+// Chapter 2: A `fork`, `fork.in(s)`, `fork.scoped`, `fork.detached` or `join` head gets it by the same rule, sinc
+// docs/design/src/002-running.md#fa771dbf016f3f3c
+import { Effect, Fiber } from "effect"
+declare const a: Effect.Effect<number>
+declare const f: Fiber.Fiber<number>
+export effect function heads() {
+ const direct = try a catch () => 1
+ const unary = -try a catch () => 1
+ const left = try a + 1 catch () => 1
+ const right = 1 + try a catch () => 1
+ const all = try.all [a] catch () => 1
+ const race = try.race [a] catch () => 1
+ const any = try.any [a] catch () => 1
+ const settled = try.allSettled [a] catch () => 1
+ const fiber = fork a catch () => 1
+ const joined = join f catch () => 1
+ return 0
+}

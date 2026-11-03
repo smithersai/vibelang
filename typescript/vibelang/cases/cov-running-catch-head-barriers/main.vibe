@@ -1,0 +1,11 @@
+// Chapter 2: One inside arguments, an array or object literal, a template substitution, parentheses, a function b
+// docs/design/src/002-running.md#599e9f918e46d4a9
+import { Effect } from "effect"
+function boxed(n: number) { return Effect.fail(String(n)) }
+export effect function main() {
+ const a = boxed(try Effect.succeed(1)) catch e => e
+ const b = Effect.succeed([try Effect.succeed(2)]) catch () => [0]
+ const c = Effect.succeed({n: try Effect.succeed(3)}) catch () => ({n: 0})
+ const d = Effect.succeed(`n${try Effect.succeed(4)}`) catch () => ""
+ return [a, b[0], c.n, d]
+}

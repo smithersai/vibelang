@@ -1,0 +1,5 @@
+// expect: EK1703
+// Chapter 2: `fork (e catch h)` runs `e` here and forks its result: `EK1703` unless the result is an Effect.
+// docs/design/src/002-running.md#574766f3009de4d7
+import { Effect } from "effect"
+export effect function main() { const f = fork (Effect.fail("bad") catch () => 7); return 0 }

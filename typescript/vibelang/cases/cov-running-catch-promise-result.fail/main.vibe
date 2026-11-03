@@ -1,0 +1,4 @@
+// expect: EK0507
+// Chapter 2: | a plain handler whose result type is a Promise or thenable (`x catch (e) => queryDb(e)`): the Prom
+// docs/design/src/002-running.md#de8d6857af44f8f7
+export effect function main(value: PromiseLike<number>) { return Effect.fail("bad") catch () => value }

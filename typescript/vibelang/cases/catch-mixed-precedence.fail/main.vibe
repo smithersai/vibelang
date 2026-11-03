@@ -1,4 +1,7 @@
 // expect: EK0512 EK0512 EK0512 EK0512 EK0512 EK0512 EK0512
+// Chapter 2: Mixing catch with short-circuit operators and attaching a call/member to a function handler are explicit parser witnesses.
+// docs/design/src/002-running.md#f26f0bc3913bae65
+// docs/design/src/002-running.md#f17708f5ff4ad986
 // Chapter 002 and Appendix A, decided detail 247 (loop round 3, OPUS-7): catch
 // can't mix with ??, || or && without parentheses, and a member access or call
 // can't attach to a function-expression handler.

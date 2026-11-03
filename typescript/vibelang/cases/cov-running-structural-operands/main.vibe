@@ -1,0 +1,8 @@
+// Chapter 2: The structural test admits both values below; running `operands()` gives `Success(15)`:
+// docs/design/src/002-running.md#3288449a6e98342b
+import { Effect, Config, Exit } from "effect"
+export effect function main() {
+ const a = try Exit.succeed(8)
+ const b = try Config.succeed(7)
+ return a + b
+}

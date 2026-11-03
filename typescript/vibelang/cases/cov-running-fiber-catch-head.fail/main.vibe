@@ -1,0 +1,5 @@
+// expect: EK0506
+// Chapter 2: `(fork e) catch h` is not `EK0505`, but its head is a `Fiber`, which is not an Effect in Effect 4.1.
+// docs/design/src/002-running.md#677245c6b593f8cf
+import { Effect } from "effect"
+export effect function main() { return (fork Effect.succeed(7)) catch () => 0 }

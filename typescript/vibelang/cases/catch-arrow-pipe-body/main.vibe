@@ -1,4 +1,6 @@
 // expect-result: {"body":5,"caught":1,"outer":6,"outerCaught":1,"effectBody":5,"conditional":"c","twoPipes":2}
+// Chapter 2: Arrow concise bodies absorb pipes/conditionals; explicit grouping applies a pipe to the catch result.
+// docs/design/src/002-running.md#25264a69d7ed7a69
 // Appendix A, PipeExpression: the ShortCircuitExpression of a PipeExpression
 // is never a CatchExpression whose handler is an ArrowHandler; the |> belongs
 // to the arrow's body, as ? does under ConditionalExpression. Parentheses
