@@ -1,0 +1,1 @@
+fix-vip-match VIP-7: constructor/predicate/own-matcher dispatch differs from native counterpart; preserve the failing Exit.

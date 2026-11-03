@@ -1,0 +1,27 @@
+import { Effect } from "effect"
+export function adopted(flag: boolean) {
+  return async match (await Promise.resolve(flag)) {
+    when true: Promise.resolve(3);
+    default: "other";
+  }
+}
+export function nested() {
+  return async match (1) { default: (() => { return 7 })(); }
+}
+export function main(): Effect.Effect<readonly unknown[]> {
+  return Effect.promise(async () => [await adopted(true), await adopted(false), await nested()])
+}
+// VIP-7 async match grammar, Promise adoption and nested-function boundary; rule: docs/design/vips/0007-match.md#8015e6b923b5b591
+// VIP-7 async match grammar, Promise adoption and nested-function boundary; rule: docs/design/vips/0007-match.md#1d0965cada8ff90b
+// VIP-7 async match grammar, Promise adoption and nested-function boundary; rule: docs/design/vips/0007-match.md#16b8465a3df74bda
+// VIP-7 async match grammar, Promise adoption and nested-function boundary; rule: docs/design/vips/0007-match.md#bdce0eef0691cd80
+// VIP-7 async match grammar, Promise adoption and nested-function boundary; rule: docs/design/vips/0007-match.md#7331c7412e076c21
+// VIP-7 async match grammar, Promise adoption and nested-function boundary; rule: docs/design/vips/0007-match.md#53b12f775fc0314a
+// VIP-7 async match grammar, Promise adoption and nested-function boundary; rule: docs/design/vips/0007-match.md#11479a97c7e0904f
+// VIP-7 async match grammar, Promise adoption and nested-function boundary; rule: docs/design/vips/0007-match.md#8b3832f34a083ee2
+// VIP-7 async match grammar, Promise adoption and nested-function boundary; rule: docs/design/vips/0007-match.md#735d4703792711be
+// VIP-7 async match grammar, Promise adoption and nested-function boundary; rule: docs/design/vips/0007-match.md#5c195d99bc27f8b1
+// VIP-7 async match grammar, Promise adoption and nested-function boundary; rule: docs/design/vips/0007-match.md#fdc866dbcbd096ee
+// VIP-7 async match grammar, Promise adoption and nested-function boundary; rule: docs/design/vips/0007-match.md#b5f0d47e0433372a
+// VIP-7 async match grammar, Promise adoption and nested-function boundary; rule: docs/design/vips/0007-match.md#72bc85bbd04cf1af
+// VIP-7 async match grammar, Promise adoption and nested-function boundary; rule: docs/design/vips/0007-match.md#8107a8c0c7bc23bb

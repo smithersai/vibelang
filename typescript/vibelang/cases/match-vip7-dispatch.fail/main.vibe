@@ -1,0 +1,13 @@
+// expect: EK0704
+class Point { constructor(readonly x: number, readonly y: number) {} }
+class Custom { static [customMatcher](s: unknown) { return true } }
+class Inherited extends Custom {}
+export function empty(s: unknown) { return match (s) { when Point(): 0; default: 1; } }
+export function fields(s: unknown) { return match (s) { when Point(let x, let y): 0; default: 1; } }
+export function inherited(s: unknown) { return match (s) { when Inherited(let x): 0; default: 1; } }
+// VIP-7 ordinary and inherited class extractors report EK0704; rule: docs/design/vips/0007-match.md#2effd649cc5f5d36
+// VIP-7 ordinary and inherited class extractors report EK0704; rule: docs/design/vips/0007-match.md#893fd69b96d4c5b2
+// VIP-7 ordinary and inherited class extractors report EK0704; rule: docs/design/vips/0007-match.md#d839ee747c434021
+// VIP-7 ordinary and inherited class extractors report EK0704; rule: docs/design/vips/0007-match.md#43c4559645de677a
+// VIP-7 ordinary and inherited class extractors report EK0704; rule: docs/design/vips/0007-match.md#b546847d6b7ad0c7
+// VIP-7 ordinary and inherited class extractors report EK0704; rule: docs/design/vips/0007-match.md#d687dd60033919df

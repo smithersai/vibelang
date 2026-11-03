@@ -1,0 +1,41 @@
+import { Effect } from "effect"
+import { inputs, Foreign, CrossRealm, TaggedBase, TaggedSub } from "./subjects.js"
+
+export function recognize(value: unknown): readonly boolean[] {
+  return [
+    value is Array, value is Date, value is Map, value is Error,
+    value is RegExp, value is Set, value is WeakMap, value is WeakSet,
+    value is Promise, value is Uint8Array, value is ArrayBuffer, value is AggregateError,
+    value is Foreign, value is CrossRealm, value is TaggedBase, value is TaggedSub
+  ]
+}
+
+function isText(value: string | number): value is string { return typeof value === "string" }
+export function narrow(value: string | number): number {
+  return match (value) { when isText: value.length; default: value * 2; }
+}
+export function main(): Effect.Effect<readonly unknown[]> {
+  return Effect.sync(() => [inputs().map(recognize), [narrow("abc"), narrow(4)]])
+}
+// VIP-7 native constructor brands, cross-realm divergence and own matcher dispatch; rule: docs/design/vips/0007-match.md#2ad29a9e9eb0f902
+// VIP-7 native constructor brands, cross-realm divergence and own matcher dispatch; rule: docs/design/vips/0007-match.md#1438a62ae44e9959
+// VIP-7 native constructor brands, cross-realm divergence and own matcher dispatch; rule: docs/design/vips/0007-match.md#735f05813225c171
+// VIP-7 native constructor brands, cross-realm divergence and own matcher dispatch; rule: docs/design/vips/0007-match.md#35ba85e9f0e0d5bf
+// VIP-7 native constructor brands, cross-realm divergence and own matcher dispatch; rule: docs/design/vips/0007-match.md#b70efa2d5cf29c3b
+// VIP-7 native constructor brands, cross-realm divergence and own matcher dispatch; rule: docs/design/vips/0007-match.md#6aac0fb8294f338d
+// VIP-7 native constructor brands, cross-realm divergence and own matcher dispatch; rule: docs/design/vips/0007-match.md#b7669751c72bdc92
+// VIP-7 native constructor brands, cross-realm divergence and own matcher dispatch; rule: docs/design/vips/0007-match.md#55e4667133813bea
+// VIP-7 native constructor brands, cross-realm divergence and own matcher dispatch; rule: docs/design/vips/0007-match.md#2dfa6185a554b047
+// VIP-7 native constructor brands, cross-realm divergence and own matcher dispatch; rule: docs/design/vips/0007-match.md#8941053531a90fbc
+// VIP-7 native constructor brands, cross-realm divergence and own matcher dispatch; rule: docs/design/vips/0007-match.md#6b3d266f0a2ff500
+// VIP-7 native constructor brands, cross-realm divergence and own matcher dispatch; rule: docs/design/vips/0007-match.md#5ac54cd6e7d9517d
+// VIP-7 native constructor brands, cross-realm divergence and own matcher dispatch; rule: docs/design/vips/0007-match.md#277bf129818994d9
+// VIP-7 native constructor brands, cross-realm divergence and own matcher dispatch; rule: docs/design/vips/0007-match.md#0455405a1bf0d742
+// VIP-7 native constructor brands, cross-realm divergence and own matcher dispatch; rule: docs/design/vips/0007-match.md#e26a7e4be9a5cc78
+// VIP-7 native constructor brands, cross-realm divergence and own matcher dispatch; rule: docs/design/vips/0007-match.md#d235c2f55489b9b4
+// VIP-7 native constructor brands, cross-realm divergence and own matcher dispatch; rule: docs/design/vips/0007-match.md#c15ed462af5c40a4
+// VIP-7 native constructor brands, cross-realm divergence and own matcher dispatch; rule: docs/design/vips/0007-match.md#7c0f7b7d4940c1d7
+// VIP-7 native constructor brands, cross-realm divergence and own matcher dispatch; rule: docs/design/vips/0007-match.md#3aa1d91bcf3563f8
+// VIP-7 native constructor brands, cross-realm divergence and own matcher dispatch; rule: docs/design/vips/0007-match.md#fd58597434947898
+// VIP-7 native constructor brands, cross-realm divergence and own matcher dispatch; rule: docs/design/vips/0007-match.md#996acde3a286e3a7
+// VIP-7 native constructor brands, cross-realm divergence and own matcher dispatch; rule: docs/design/vips/0007-match.md#c4c91cefc442f1e7

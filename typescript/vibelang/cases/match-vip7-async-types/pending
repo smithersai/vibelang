@@ -1,0 +1,1 @@
+fix-vip-match VIP-7: async match still reports TS1005; require Promise adoption, nested return and native inferred declarations.

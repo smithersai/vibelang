@@ -1,0 +1,30 @@
+// expect: EK0706
+export function armReturn() {
+  return async match (0) {
+    default: do { return 1 };
+  }
+}
+export function subjectReturn() {
+  return async match (do { return 1 }) { default: 0; }
+}
+export function guardReturn() {
+  return async match (0) { when if (do { return true }): 1; default: 0; }
+}
+export function outwardBreak() {
+  while (true) {
+    const value = async match (0) { default: do { break }; }
+  }
+}
+export function outwardContinue() {
+  for (let i = 0; i < 1; i++) {
+    const value = async match (0) { default: do { continue }; }
+  }
+}
+// VIP-7 EK0706 for outward jumps in subject, guard and arm; rule: docs/design/vips/0007-match.md#f1750b19b73b28ef
+// VIP-7 EK0706 for outward jumps in subject, guard and arm; rule: docs/design/vips/0007-match.md#3becdb250014eaec
+// VIP-7 EK0706 for outward jumps in subject, guard and arm; rule: docs/design/vips/0007-match.md#d1eea0bdd88a79dc
+// VIP-7 EK0706 for outward jumps in subject, guard and arm; rule: docs/design/vips/0007-match.md#bfd27bb145869bf5
+// VIP-7 EK0706 for outward jumps in subject, guard and arm; rule: docs/design/vips/0007-match.md#c1ae7725c483cde9
+// VIP-7 EK0706 for outward jumps in subject, guard and arm; rule: docs/design/vips/0007-match.md#71538d2939863c8b
+// VIP-7 EK0706 for outward jumps in subject, guard and arm; rule: docs/design/vips/0007-match.md#143d25317ec07e31
+// VIP-7 EK0706 for outward jumps in subject, guard and arm; rule: docs/design/vips/0007-match.md#d802add1654b1940

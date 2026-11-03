@@ -1,0 +1,1 @@
+fix-vip-match VIP-7: ordinary and inherited-matcher constructor extractors must report EK0704 for every arity.
