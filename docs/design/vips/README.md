@@ -48,7 +48,11 @@ Will decides each VibeLang language decision as a VIP, one at a time. Nothing is
 | [11](0011-trailing-blocks-denied.md) | Trailing blocks | denied 2026-10-28 |
 | [24](0024-wire-denied.md) | `wire`, automatic layer composition | denied 2026-10-28 |
 
-[VIP-25](0025-inline-modules-denied.md) is superseded by accepted [VIP-40](0040-module-declarations.md). Its denial is historical.
+## Superseded
+
+| VIP | Title | Status |
+| --- | --- | --- |
+| [25](0025-inline-modules-denied.md) | Inline `module` declarations as a TypeScript escape | superseded by accepted [VIP-40](0040-module-declarations.md), 2026-11-03; denial is historical |
 
 ## Open
 
