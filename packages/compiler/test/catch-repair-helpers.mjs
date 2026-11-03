@@ -147,5 +147,5 @@ export async function checkRepair(t, source, manual, {refuse=false,sole=false}={
   return cliText
 }
 export function callableSource(handler, declarations='const e="E", error="R", failure="F", $e="outer"') {
-  return declarations+'\n/** @throws {never} */\nfunction make(a:string,b:string,c:string,d:string): (caught:string)=>string { return () => [a,b,c,d].join("/") }\nexport effect function main() { return Effect.fail("bad") catch '+handler+' }\n'
+  return declarations+'\nfunction make(a:string,b:string,c:string,d:string): (caught:string)=>string { return () => [a,b,c,d].join("/") }\nexport effect function main() { return Effect.fail("bad") catch '+handler+' }\n'
 }
