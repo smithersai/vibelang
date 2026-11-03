@@ -494,7 +494,11 @@ go test -short -count=1 -exec "$PWD/../../scripts/go-test-shards.sh" ./internal/
 ```
 
 A run with `-run`, `-bench`, `-fuzz` or `-json`, or with `GO_TEST_SHARDS=1`,
-runs the binary once, as before. In particular, benchmark selections pass
+runs the binary once, as before. Active fuzz selections accept both native binary flag
+forms, `-test.fuzz=FuzzTarget` and `-test.fuzz FuzzTarget`; the script
+preserves their arguments and exit status without adding a shard's
+`-test.run` selector. Fuzz limits and corpus-directory flags alone still
+run the seed corpus in shards. In particular, benchmark selections pass
 through unchanged so a benchmark runs once, rather than once in every shard.
 
 Discovery and execution both receive the original test arguments, including

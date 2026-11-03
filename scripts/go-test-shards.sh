@@ -52,7 +52,7 @@ fi
 for arg in "$@"; do
   case $arg in
     -test.coverprofile|-test.coverprofile=*|-test.cpuprofile|-test.cpuprofile=*|-test.memprofile|-test.memprofile=*|-test.blockprofile|-test.blockprofile=*|-test.mutexprofile|-test.mutexprofile=*|-test.trace|-test.trace=*) exec "$bin" "$@" ;;
-    -test.run|-test.run=*|-test.list|-test.list=*|-test.fuzz=*|-test.bench|-test.bench=*|-test.v=test2json) exec "$bin" "$@" ;;
+    -test.run|-test.run=*|-test.list|-test.list=*|-test.fuzz|-test.fuzz=*|-test.bench|-test.bench=*|-test.v=test2json) exec "$bin" "$@" ;;
   esac
 done
 [ "$shards" -gt 1 ] || [ "$sn" -gt 1 ] || exec "$bin" "$@"
