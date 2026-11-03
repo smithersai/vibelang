@@ -36,7 +36,7 @@ makes the comparison unavailable.
 Types are compared by a generated TypeScript program using the strict
 conditional-function identity helper in both directions, with `typeof` for
 values. Classes include their instance and static sides, namespaces include
-type-only members, and generic aliases retain their constraints and defaults. Variance annotations remain on the original exported types; generated function bridges omit the class/interface-only `in` and `out` modifiers.
+type-only members, and generic aliases retain their constraints and defaults. A namespace re-export that shares its name with a generic type alias resolves its members through the original module, preserving both meanings. Variance annotations remain on the original exported types; generated function bridges omit the class/interface-only `in` and `out` modifiers.
 Generic aliases of global library types are instantiated through their published names in the probe. The checker never appends exports to a global script such as `lib.es5.d.ts`, which would remove its declarations from the global environment.
 Corresponding nominal declarations in the two snapshots share virtual identity
 keys, so unchanged private classes, enums and `unique symbol` keys compare as

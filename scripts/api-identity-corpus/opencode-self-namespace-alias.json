@@ -1,0 +1,8 @@
+{
+  "repo": "opencode",
+  "pattern": "self-namespace re-export merged with a generic type alias",
+  "rule": "Published namespace members resolve through their module even when a generic alias has the same name.",
+  "files": {
+    "index.d.ts": "export type ToolRuntime<R = never> = { result: R };\n/** result */ export interface CallResult { value: string }\nexport type Invocation<R extends { id: string } = { id: string }> = { input: R; result: CallResult };\nexport declare const version: 1;\nexport type Description = { label: string };\nexport * as ToolRuntime from \"./index.js\";\n"
+  }
+}

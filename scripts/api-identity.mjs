@@ -999,7 +999,17 @@ function prepareComparison(ts, before, after, options, progress) {
       const be = new Map(checker.getExportsOfModule(b).map(s => [s.name, s]))
       for (const child of [...new Set([...ae.keys(), ...be.keys()])].sort()) {
         if (!ae.has(child) || !be.has(child)) result.nameDifferences.push({ entrypoint, export: name + "." + child, side: ae.has(child) ? "before" : "after" })
-        else visit(ae.get(child), be.get(child), apath + "." + child, bpath + "." + child, entrypoint, name + "." + child, trail)
+        else {
+          // A namespace export can merge with a type alias of the same name.
+          // Qualifying its type members through that alias loses the module
+          // namespace in a type-position import. Refer to the resolved module
+          // itself; ordinary declared namespaces keep their lexical path.
+          const childPath = (symbol, path) => {
+            const source = symbol.declarations?.find(ts.isSourceFile)
+            return (source ? `import(${JSON.stringify(slash(source.fileName))})` : path) + "." + child
+          }
+          visit(ae.get(child), be.get(child), childPath(a, apath), childPath(b, bpath), entrypoint, name + "." + child, trail)
+        }
       }
     }
   }
