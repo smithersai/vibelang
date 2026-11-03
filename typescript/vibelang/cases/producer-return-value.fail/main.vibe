@@ -37,3 +37,5 @@ export effect function main() {
 // **Amended 2026-10-30: the producer-return diagnostic is `EK2128`.** `return value` in a producer is `EK2128`, because a Stream has no return value; a bare `return` ends the stream.
 
 // Appendix B: EK2128 — spec-rule: docs/design/src/900-appendices.md#32ef3187929cb2e8
+
+// Appendix B: EK2128 — spec-rule: docs/design/src/900-appendices.md#32ef3187929cb2e8
