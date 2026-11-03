@@ -4,12 +4,17 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
+	"strings"
 	"testing"
+
+	"github.com/microsoft/TypeScript/tsc/internal/diagnostics"
 )
 
 const doContextualResultTarget = "FuzzDoContextualResult"
 
 var doContextualResultQuotes = []struct{ chapter, quote string }{
+	{"007-tooling.md", "TypeScript's own lexical, syntax and static errors on ordinary native syntax keep their `TS` codes, including independent errors in embedded expressions and types."},
 	{"002-running.md", "Contextual typing reaches only the expression alternatives contributing to the normal result; discarded intermediate expressions and outward returns retain their own source contexts."},
 	{"002-running.md", "`const exact = do { 1 }` has type `1`, while `let ordinary = do { 1 }` widens to `number`"},
 }
@@ -56,6 +61,10 @@ func FuzzDoContextualResult(f *testing.F) {
 	for _, key := range []string{"foldkit-edge-selection", "plain-conditional", "if-else", "nested-do", "switch-arms", "match-arms", "literal-union", "fresh-literal", "call-argument", "empty-array-match", "empty-array-property", "empty-array-spread", "empty-array-if-else", "empty-array-local", "empty-array-prefix-property", "prefix-tag", "foldkit-ui-toast", "foldkit-pixel-art-prefix"} {
 		f.Add(key, uint8(0))
 		f.Add(key, uint8(11))
+	}
+	for _, key := range []string{"foldkit-edge-selection", "plain-conditional", "if-else", "nested-do", "switch-arms", "match-arms", "call-argument"} {
+		f.Add(key, uint8(16))
+		f.Add(key, uint8(27))
 	}
 	f.Fuzz(func(t *testing.T, key string, variant uint8) {
 		TestDoContextualResultFuzzQuoted(t)
@@ -160,6 +169,26 @@ func FuzzDoContextualResult(f *testing.F) {
 				source = string(raw)
 			}
 		}
+		if variant&16 != 0 {
+			before := "{ " + tag + ": 'SelectedEdge'"
+			wrong := "{ " + tag + ": 'MissingEdge'"
+			if strings.Contains(source, before) && strings.Contains(counterpart, before) {
+				source = strings.ReplaceAll(source, before, wrong)
+				counterpart = strings.ReplaceAll(counterpart, before, wrong)
+				native := doContextualNegativeCodes(t, w, "main.ts", counterpart)
+				if !slices.Contains(native, "TS2322") && !slices.Contains(native, "TS2345") {
+					t.Fatalf("invalid native wrong-tag control: %v\n%s", native, counterpart)
+				}
+				actual := doContextualNegativeCodes(t, w, "main.vibe", source)
+				gap := fmt.Sprintf("wrong-tag:%s:depth-%d:polarity-%t:%s", key, depth, polarity, tag)
+				if !slices.Equal(actual, native) {
+					Gap(t, doContextualResultTarget, gap, "Chapter2 contextual result alternatives retain their written context; Chapter7 keeps native TS codes. Native %v, Vibe %v\n%s\n%s", native, actual, source, counterpart)
+				}
+				ExpectPending(t, doContextualResultTarget, gap)
+				ExpectPending(t, doContextualResultTarget, specCorpusKey(t))
+				return
+			}
+		}
 		project := Project{Files: map[string]string{"main.vibe": source}, Config: fmt.Sprintf(errorTwinConfig, "main.vibe")}
 		var c *Compilation
 		var err error
@@ -190,4 +219,32 @@ func FuzzDoContextualResult(f *testing.F) {
 		ExpectPending(t, doContextualResultTarget, "bytes:"+gap)
 		ExpectPending(t, doContextualResultTarget, specCorpusKey(t))
 	})
+}
+
+// The compiler is compared with itself on the ordinary TypeScript counterpart:
+// Chapter2 requires the same source context, and Chapter7 retains TS codes.
+func doContextualNegativeCodes(t *testing.T, w *Workspace, name, source string) []string {
+	t.Helper()
+	var result *Result
+	var err error
+	within(t, "compile", func() {
+		result, err = w.Compile(t.Context(), Project{Files: map[string]string{name: source}, Config: fmt.Sprintf(errorTwinConfig, name)})
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer result.Remove()
+	var codes []string
+	for _, d := range result.Diagnostics {
+		if d.Category() != diagnostics.CategoryError {
+			continue
+		}
+		prefix := d.Source()
+		if prefix == "" {
+			prefix = "TS"
+		}
+		codes = append(codes, fmt.Sprintf("%s%d", prefix, d.Code()))
+	}
+	slices.Sort(codes)
+	return slices.Compact(codes)
 }
