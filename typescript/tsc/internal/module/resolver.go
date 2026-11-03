@@ -1769,6 +1769,13 @@ func (r *resolutionState) tryAddingExtensions(extensionless tspath.FileNameStem,
 			if resolved := r.tryExtension(tspath.ExtensionTs, extensionless, originalExtension == tspath.ExtensionTsx); !resolved.shouldContinueSearching() {
 				return resolved
 			}
+			if originalExtension == tspath.ExtensionJsx {
+				for _, extension := range []string{tspath.ExtensionVibex, tspath.ExtensionVibe} {
+					if resolved := r.tryExtension(extension, extensionless, false); !resolved.shouldContinueSearching() {
+						return resolved
+					}
+				}
+			}
 		}
 		if extensions&extensionsDeclaration != 0 {
 			if resolved := r.tryExtension(tspath.ExtensionDts, extensionless, originalExtension == tspath.ExtensionTsx); !resolved.shouldContinueSearching() {
@@ -1791,12 +1798,20 @@ func (r *resolutionState) tryAddingExtensions(extensionless tspath.FileNameStem,
 			if resolved := r.tryExtension(originalExtension, extensionless, true); !resolved.shouldContinueSearching() {
 				return resolved
 			}
+			// Written VibeLang source extensions substitute as .ts and .tsx do.
+			alternateExtension := tspath.ExtensionVibex
+			if originalExtension == tspath.ExtensionVibex {
+				alternateExtension = tspath.ExtensionVibe
+			}
+			if resolved := r.tryExtension(alternateExtension, extensionless, true); !resolved.shouldContinueSearching() {
+				return resolved
+			}
 		}
 		if extensions&extensionsDeclaration != 0 {
 			// Stock TypeScript's arbitrary-extension counterpart keeps a written
 			// ./x.vibe import valid when only x.d.vibe.ts is available, including
 			// a compatibility declaration's self-namespace re-export.
-			if resolved := r.tryExtension(".d"+tspath.ExtensionVibe+".ts", extensionless, false); !resolved.shouldContinueSearching() {
+			if resolved := r.tryExtension(".d"+originalExtension+".ts", extensionless, false); !resolved.shouldContinueSearching() {
 				return resolved
 			}
 			if resolved := r.tryExtension(tspath.ExtensionDts, extensionless, true); !resolved.shouldContinueSearching() {
@@ -1818,6 +1833,13 @@ func (r *resolutionState) tryAddingExtensions(extensionless tspath.FileNameStem,
 			// rewrites it to ./welcome.js, which welcome.vibe emits (foldkit-113).
 			if resolved := r.tryExtension(tspath.ExtensionVibe, extensionless, originalExtension == tspath.ExtensionTs); !resolved.shouldContinueSearching() {
 				return resolved
+			}
+			// Runtime and extensionless lookups add JSX VibeLang sources without
+			// extending the legacy written-native fallback (detail 296).
+			if originalExtension == tspath.ExtensionJs || originalExtension == "" {
+				if resolved := r.tryExtension(tspath.ExtensionVibex, extensionless, false); !resolved.shouldContinueSearching() {
+					return resolved
+				}
 			}
 		}
 		if extensions&extensionsDeclaration != 0 {
@@ -1884,15 +1906,24 @@ func (r *resolutionState) tryFile(fileName resolutionCandidate) (tspath.RootedFi
 	fileNameNoExtension := fileName.RemoveExtension(ext)
 	for suffixIndex, suffix := range r.compilerOptions.ModuleSuffixes {
 		path := fileNameNoExtension.AppendSuffix(suffix + ext)
-		// A paired .d.vibe suffix is the compatibility declaration of a
-		// source suffix when it follows that suffix. Do not let it win during
-		// the .ts lookup before
-		// the normal .tsx/.vibe priority is considered (VIP-27).
-		if ext == tspath.ExtensionTs && strings.HasSuffix(suffix, ".d.vibe") {
-			sourceSuffix := strings.TrimSuffix(suffix, ".d.vibe")
-			sourceIndex := slices.Index(r.compilerOptions.ModuleSuffixes, sourceSuffix)
-			if sourceIndex >= 0 && sourceIndex < suffixIndex &&
-				r.resolver.fs.FileExists(fileNameNoExtension.AppendSuffix(sourceSuffix+tspath.ExtensionVibe)) {
+		// A paired compatibility suffix must not win the .ts lookup ahead
+		// of its live .vibe or .vibex source (VIP-27, VIP-39).
+		if ext == tspath.ExtensionTs {
+			pairedSource := false
+			for _, sourceExtension := range []string{tspath.ExtensionVibe, tspath.ExtensionVibex} {
+				sidecarSuffix := ".d" + sourceExtension
+				if !strings.HasSuffix(suffix, sidecarSuffix) {
+					continue
+				}
+				sourceSuffix := strings.TrimSuffix(suffix, sidecarSuffix)
+				sourceIndex := slices.Index(r.compilerOptions.ModuleSuffixes, sourceSuffix)
+				if sourceIndex >= 0 && sourceIndex < suffixIndex &&
+					r.resolver.fs.FileExists(fileNameNoExtension.AppendSuffix(sourceSuffix+sourceExtension)) {
+					pairedSource = true
+					break
+				}
+			}
+			if pairedSource {
 				continue
 			}
 		}

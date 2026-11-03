@@ -173,6 +173,17 @@ Run `npx vibelang`: it prints nothing, exits with status 0, and writes `hello.js
 
 In `.vibe` files, import local modules by their source name: `import { hello } from "./hello.vibe"`. For this CLI build, a `.ts` importer can use `./hello.js`: VibeLang resolves it to `hello.vibe` while checking, and Node loads the emitted `hello.js`. With Vite or Vitest, use `./hello.vibe` from `.ts` too, so the plugin loads the source ([Vite setup](vite.md#3-add-a-first-module)); `rewriteRelativeImportExtensions` permits that source extension and rewrites it when emitting JavaScript.
 
+JSX VibeLang sources use `.vibex` with the same `jsx` option as `.tsx`. Runtime and extensionless imports prefer native TypeScript files before VibeLang files:
+
+| Import | Source lookup order |
+| --- | --- |
+| `./App`, `./App.js` | `App.ts`, `App.tsx`, `App.vibe`, `App.vibex` |
+| `./App.jsx` | `App.tsx`, `App.ts`, `App.vibex`, `App.vibe` |
+| `./App.vibe` | `App.vibe`, `App.vibex` |
+| `./App.vibex` | `App.vibex`, `App.vibe` |
+
+TypeScript's `moduleSuffixes`, `paths`, package exports, and resolution mode still apply. Declaration and JavaScript fallbacks follow the source lookup. A written VibeLang extension can also resolve its own compatibility declaration when the source is absent. Wildcard project discovery excludes `App.d.vibex.ts` when `App.vibex` is present, including relocated sidecars; an explicitly listed sidecar stays an input.
+
 Declaration emit imports a prelude module whose name the source uses when an inferred type needs it: for example, `Layer.empty` declares a value of `Layer.Layer<never, never, never>` through an import from `effect`. This also applies with `module: Preserve` and `moduleResolution: Bundler`.
 
 A `.vibex` source emits `.jsx` under `jsx: preserve`, even when it contains no JSX elements, and `.js` in other JSX modes. Its source map uses the same suffix, `.jsx.map` or `.js.map`; public declarations remain `.d.ts`.

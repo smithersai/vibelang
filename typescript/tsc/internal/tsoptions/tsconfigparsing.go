@@ -1975,12 +1975,18 @@ func getFileNamesFromConfigSpecs(
 				}
 				continue
 			}
-			// VibeLang: x.d.vibe.ts beside x.vibe is the declaration sidecar the
+			// VibeLang: x.d.vibe.ts/x.d.vibex.ts beside its source is the sidecar the
 			// compiler writes for it, an
 			// output of the source rather than an input of its project.
 			// With vibe.sidecarDir, a sidecar there mirrors its source's path
 			// under the config's directory (decided detail 268).
-			if name := file.AsString(); strings.HasSuffix(name, ".d.vibe.ts") && (host.FileExists(tspath.RootedFilePathFromNormalized(strings.TrimSuffix(name, ".d.vibe.ts")+tspath.ExtensionVibe)) || host.FileExists(tspath.RootedFilePathFromNormalized(options.VibeSidecarSource(name, host.CaseSensitivity())))) {
+			name := file.AsString()
+			sourceExtension := tspath.ExtensionVibe
+			if strings.HasSuffix(name, ".d"+tspath.ExtensionVibex+".ts") {
+				sourceExtension = tspath.ExtensionVibex
+			}
+			sidecarSuffix := ".d" + sourceExtension + ".ts"
+			if strings.HasSuffix(name, sidecarSuffix) && (host.FileExists(tspath.RootedFilePathFromNormalized(strings.TrimSuffix(name, sidecarSuffix)+sourceExtension)) || host.FileExists(tspath.RootedFilePathFromNormalized(options.VibeSidecarSource(name, host.CaseSensitivity())))) {
 				continue
 			}
 			// So is x.vibe.name.d.ts, when x.vibe declares module name (VIP-40).

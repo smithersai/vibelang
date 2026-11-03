@@ -535,6 +535,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Migration verification marked every opted-in private module unproven because setup skipped its stock declarations. Setup now captures and checks their API identity, while changed or unavailable APIs still fail.
 
 - The Go fuzz package could fail to build when tests for `do` completion reused the same names. Both independent spec checks now compile and run together.
+
+- Imports written as `./App.js` or `./App.jsx` could miss `App.vibex`, and generated `.d.vibex.ts` files could enter the project's source list. JSX VibeLang modules now follow the configured extension priorities, explicit `.vibe` and `.vibex` names substitute for each other, and wildcard discovery leaves out sidecars that have a source.
 - `EK4834`, `EK4835` and `EK4836` warned on `try Effect.succeed(1)` and the other form spellings in plain functions, where `try` is already `EK0501` and runs nothing. These warnings now appear only in effect code, as the specification requires.
 - `--fix` left `try (x |> Effect.catch(%, h))` as written after a pipeline migration. It writes `x catch h` again; the `EK4835` warning still reports only a direct `try` operand.
 

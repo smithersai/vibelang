@@ -1,0 +1,6 @@
+// expect-result: [[1,2,3,4],[1,2,3,4],[1,2,3,4],[1,2,3,4]]
+import { values as v1 } from "./importer-ts.js"
+import { values as v2 } from "./importer-tsx.js"
+import { values as v3 } from "./importer-vibe.js"
+import { values as v4 } from "./importer-vibex.js"
+export effect function main() { return [v1, v2, v3, v4] }
