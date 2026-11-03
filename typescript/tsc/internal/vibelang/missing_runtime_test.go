@@ -164,13 +164,17 @@ func TestMissingRuntimeDisabledModuleNames(t *testing.T) {
 					continue
 				}
 				counts[d.Code()]++
-				if d.Code() == 2304 && strings.Contains(diagnosticWithNotes(d), "Install") {
+				if (d.Code() == 2304 || d.Code() == 2552) && strings.Contains(diagnosticWithNotes(d), "Install") {
 					t.Fatalf("disabled name got package-install advice: %s", diagnosticWithNotes(d))
 				}
 			}
 			want := map[int32]int{2307: 1}
 			if test.missing {
-				want[2304] = 1
+				code := int32(2304)
+				if test.name == "Effect" {
+					code = 2552 // Native spelling suggestion for the in-scope Reflect.
+				}
+				want[code] = 1
 			}
 			if !stdmaps.Equal(counts, want) {
 				t.Fatalf("want %v, got %v", want, counts)

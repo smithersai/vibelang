@@ -352,9 +352,9 @@ func TestFixLeavesDeclarationBytesAroundImportComments(t *testing.T) {
 }
 
 // In a project that emits declarations, EK4837's fix keeps the import the
-// declaration file prints, even where the class was its only use, and leaves
-// a class whose Schema has another name (D501). Without declarations nothing
-// reads the import, so it goes.
+// declaration sidecar prints, even where the class was its only use, and
+// leaves a class whose Schema has another name (D501). The sidecar remains
+// mandatory with noEmit; noUnusedLocals takes priority over that preservation.
 func TestFixSchemaErrorImports(t *testing.T) {
 	plain := "import * as Schema from \"effect/Schema\"\n\nexport class Plain extends Schema.TaggedError<Plain>()(\"Plain\", {\n  message: Schema.String,\n}) {}\n"
 	alias := "import { Schema as EffectSchema } from \"effect\"\n\nexport class Plain extends EffectSchema.TaggedError<Plain>()(\"Plain\", {\n  message: EffectSchema.String,\n}) {}\n"
@@ -364,7 +364,8 @@ func TestFixSchemaErrorImports(t *testing.T) {
 	}{
 		{"kept", plain, `"declaration":true,"noEmit":true`, "import * as Schema from \"effect/Schema\"\n\n" + declared},
 		{"alias keeps the class", alias, `"declaration":true,"noEmit":true`, ""},
-		{"removed without declarations", plain, `"noEmit":true`, "\n" + declared},
+		{"kept for noEmit sidecar", plain, `"noEmit":true`, "import * as Schema from \"effect/Schema\"\n\n" + declared},
+		{"removed when source requires it", plain, `"noEmit":true,"noUnusedLocals":true`, "\n" + declared},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			_, file, _, _ := editorProgram(t, tc.source)

@@ -36,6 +36,8 @@ func TestSchemaAliasQuickFixes(t *testing.T) {
 	for _, test := range []struct{ name, source, want string }{
 		{"literals", "export const Kind = Schema.Literals([\"persistent\", \"incognito\"])\nexport type Kind = typeof Kind.Type\nexport const k: Kind = \"incognito\"\n",
 			"export schema Kind = \"persistent\" | \"incognito\"\nexport const k: Kind = \"incognito\"\n"},
+		{"JSDoc on the type", "export const Kind = Schema.Literals([\"a\", \"b\"])\n/** The kinds. */\nexport type Kind = typeof Kind.Type\n",
+			"export schema Kind = \"a\" | \"b\"\n/** The kinds. */\nexport type Kind = typeof Kind.Type\n"},
 		{"a keyword schema", "export const Id = Schema.String\nexport type Id = typeof Id.Type\n",
 			"export schema Id = string\n"},
 		{"a union of other schemas", "schema A { a: string }\nconst AB = Schema.Union([A, Schema.Number, Schema.Null])\ntype AB = typeof AB.Type\nexport const ab: AB = null\n",
@@ -74,7 +76,6 @@ func TestSchemaAliasNotReported(t *testing.T) {
 		{"the type before its constant", "export type Kind = typeof Kind.Type\nexport const Kind = Schema.Literals([\"a\", \"b\"])\n"},
 		{"a statement between", "export const Kind = Schema.Literals([\"a\", \"b\"])\nexport const other = 1\nexport type Kind = typeof Kind.Type\n"},
 		{"JSDoc on the constant", "/** The kinds. */\nexport const Kind = Schema.Literals([\"a\", \"b\"])\nexport type Kind = typeof Kind.Type\n"},
-		{"JSDoc on the type", "export const Kind = Schema.Literals([\"a\", \"b\"])\n/** The kinds. */\nexport type Kind = typeof Kind.Type\n"},
 		{"another spelling of the type", "export const Kind = Schema.Literals([\"a\", \"b\"])\nexport type Kind = Schema.Schema.Type<typeof Kind>\n"},
 		{"another export", "export const Kind = Schema.Literals([\"a\", \"b\"])\ntype Kind = typeof Kind.Type\nexport const k: Kind = \"a\"\n"},
 		{"no type alias", "export const Kind = Schema.Literals([\"a\", \"b\"])\n"},

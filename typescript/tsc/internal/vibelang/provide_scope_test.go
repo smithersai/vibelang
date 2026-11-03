@@ -26,6 +26,11 @@ func TestProvideBlockKeepsProviderWhenScoped(t *testing.T) {
 			files[base+"effect/Effect.d.ts"] += `
 export declare function succeed<A>(value: A): Effect<A>
 `
+			// Match the pinned package layout used to discover Effect's interface.
+			files[base+"effect/dist/Effect.d.ts"] = files[base+"effect/Effect.d.ts"]
+			delete(files, base+"effect/Effect.d.ts")
+			files[base+"effect/package.json"] = strings.ReplaceAll(files[base+"effect/package.json"], "./Effect.d.ts", "./dist/Effect.d.ts")
+			files[base+"effect/index.d.ts"] = strings.ReplaceAll(files[base+"effect/index.d.ts"], "./Effect.js", "./dist/Effect.js")
 			files[base+"vibelang-runtime/index.d.ts"] += `
 export declare function fork<A, E, R>(program: import("effect/Effect").Effect<A, E, R>): import("effect/Effect").Effect<unknown, never, R>
 `

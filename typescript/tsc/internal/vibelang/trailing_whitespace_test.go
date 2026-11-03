@@ -12,6 +12,8 @@ func TestTrailingBlockJavaScriptWhitespace(t *testing.T) {
 			t.Run(fmt.Sprintf("%U/%s", []rune(space), head), func(t *testing.T) {
 				source := "function g<T>(n:T,cb:()=>number){return cb()}; function zero(cb:()=>number){return cb()}; export function probe(){return " + head + space + "{return 2;};}"
 				p, file, _, _ := editorProgram(t, source)
+				p = trailingBlockMigrationProgram(p)
+				file = p.GetSourceFile(file.FileName())
 				p.GetSemanticDiagnostics(t.Context(), file)
 				c, done := p.GetTypeCheckerForFile(t.Context(), file)
 				defer done()

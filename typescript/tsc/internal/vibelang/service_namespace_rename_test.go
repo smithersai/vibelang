@@ -11,7 +11,7 @@ import (
 )
 
 func TestServiceNamespaceRename(t *testing.T) {
-	source := `service Settings { static readonly key="tests/Settings"; prefix:string; static readonly fallback:Settings.Shape={prefix:"x"} }
+	source := `service Settings { static readonly key="tests/Settings"; prefix:string; static readonly defaultValue=():Settings.Shape=>({prefix:"x"}) }
  export function label(x:Settings.Shape){return x.prefix}
  export const key=Settings`
 	for _, offset := range []int{strings.Index(source, "Settings"), strings.Index(source, "Settings.Shape"), strings.LastIndex(source, "Settings")} {

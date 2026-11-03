@@ -54,6 +54,8 @@ The release target runs `typescript/vibelang/coverage-stock-twins.test.mjs`. Its
 
 ## Go package coverage
 
+Migration regression fixtures use the accepted source syntax and the pinned dependency package layout. Retired trailing blocks are decoded through the migration program. Fixed compiler-case twins preserve the input's rule-evidence comments, and schema expectations preserve decoded field modifiers and mandatory declaration sidecar imports even under `noEmit`.
+
 Full validation's `//typescript/tsc/...` selection includes
 `//typescript/tsc:go-vibelangestree` for the ESLint exporter and
 `//typescript/tsc:go-vibelangfmt` for formatting and dprint packaging, and

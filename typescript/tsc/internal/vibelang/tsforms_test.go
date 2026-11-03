@@ -349,17 +349,17 @@ export type Port = typeof Port.Type
 export const decode = Schema.decodeUnknownSync(Preserved)
 `
 	want := `/** A 2D point in canvas-local coordinates. */
-export schema Point { x: number; y: number }
+export schema Point { readonly x: number; readonly y: number }
 /** A 2D point in canvas-local coordinates. */
 export type Point = typeof Point.Type
 
 /** The preserved model, as stored. */
-schema Preserved { version: number }
+schema Preserved { readonly version: number }
 /** The decoded preserved model. */
 type Preserved = typeof Preserved.Type
 
 /** Documented on the constant alone. */
-export schema Bare { id: string }
+export schema Bare { readonly id: string }
 
 export const Spelled = Schema.Struct({ id: Schema.String })
 /** A spelled own type keeps its constant. */
