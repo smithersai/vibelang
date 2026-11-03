@@ -1,4 +1,4 @@
-array open,close,caught
+array open,caught
 iterable open,close,caught
-subclass open,close,caught
-proxy open,close,caught
+subclass open,caught
+proxy open,caught

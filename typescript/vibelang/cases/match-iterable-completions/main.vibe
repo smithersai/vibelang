@@ -1,0 +1,12 @@
+// expect-result: [[1,["start","arm","closed"]],[true,["start"]],[1,["start","closed","body"]],[-1,["start","closed","body"]],"1,2"]
+import { Effect, Exit } from "effect"
+import { numbers } from "./native.js"
+function first(log: string[]) { return match (numbers(log)) { when [let x,...]: (log.push("arm"), x); default: -1; } }
+effect function failure(log: string[]) { return match (numbers(log)) { when [let x,...]: throw "bad"; default: 0; } }
+function isBinding(log: string[]) { if (numbers(log) is [let n,...]) { log.push("body"); return n } return -1 }
+function isMiss(log: string[]) { if (numbers(log) is [9,...let rest]) return rest.length; log.push("body"); return -1 }
+function ifArray() { const xs: number[] = [1, 2]; if (xs is [...let rest]) return rest.join(","); return "" }
+export function main() {
+ const a: string[] = [], b: string[] = [], c: string[] = [], d: string[] = []
+ return Effect.succeed([[first(a), a], [Exit.isFailure(Effect.runSyncExit(failure(b))), b], [isBinding(c), c], [isMiss(d), d], ifArray()])
+}

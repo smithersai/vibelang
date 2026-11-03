@@ -167,3 +167,25 @@ func (tx *lowering) isFrameCall(node *ast.Node) bool {
 	}
 	return false
 }
+
+// A recursive named generator is emitted as ({ *name() {...} }).name so
+// its name does not shadow the source function's binding (names.go). A frame
+// that joinFrames wrapped, runtime.$joinedFrame(generator), is its generator.
+func iteratorGeneratorBody(node *ast.Node) *ast.Node {
+	if ast.IsCallExpression(node) && len(node.Arguments()) == 1 && ast.IsPropertyAccessExpression(node.Expression()) && node.Expression().Name().Text() == "$joinedFrame" {
+		node = node.Arguments()[0]
+	}
+	if ast.IsFunctionExpression(node) && node.AsFunctionExpression().AsteriskToken != nil {
+		return node.Body()
+	}
+	if ast.IsPropertyAccessExpression(node) || ast.IsElementAccessExpression(node) {
+		object := node.Expression()
+		if ast.IsObjectLiteralExpression(object) && len(object.AsObjectLiteralExpression().Properties.Nodes) == 1 {
+			method := object.AsObjectLiteralExpression().Properties.Nodes[0]
+			if method.Kind == ast.KindMethodDeclaration && method.AsMethodDeclaration().AsteriskToken != nil {
+				return method.Body()
+			}
+		}
+	}
+	return nil
+}

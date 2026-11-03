@@ -23,7 +23,7 @@ const shout = (text) => (_tail_1 => { return Effect_1.gen(function* shout() {
     return _completion_1[0] ? yield* _value_1 : _value_1;
 }); })({ shout: () => { return [true, Console.log(text.toUpperCase())]; } }.shout);
 export function main() {
-    return Effect_1.fnUntraced(runtime.$iteratorFrame(runtime.$joinedFrame(function* main() {
+    return Effect_1.fnUntraced(runtime.$joinedFrame(function* main() {
         {
             let pending_1 = runtime.$normal;
             try {
@@ -56,6 +56,6 @@ export function main() {
         // findName returns Effect<string>, so the call runs it and name is a string.
         const name = yield* findName(2);
         yield* Console.log(`found ${name.toUpperCase()}`);
-    }))).apply(this, arguments);
+    })).apply(this, arguments);
 }
 runtime.$entry(import.meta.main, import.meta.url, main, () => runtime.$runMain(main()));

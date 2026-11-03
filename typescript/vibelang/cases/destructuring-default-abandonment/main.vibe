@@ -1,0 +1,10 @@
+// expect-result: [[true,["start"]],[true,["start"]],[true,["start"]],[true,["start"]]]
+import { Effect, Exit } from "effect"
+import { holes } from "./native.js"
+effect function direct(log: string[]) { const [x = match (true) { default: throw "bad"; }] = holes(log); return x }
+effect function binding(log: string[]) { const [x = try Effect.fail("bad")] = holes(log); return x }
+effect function assignment(log: string[]) { let x: unknown; [x = try Effect.fail("bad")] = holes(log); return x }
+effect function loop(log: string[]) { for (const outer of [0]) { const [x = try Effect.fail("bad")] = holes(log); return x } }
+export function main() {
+  return Effect.succeed([direct, binding, assignment, loop].map(f => { const log: string[] = []; return [Exit.isFailure(Effect.runSyncExit(f(log))), log] }))
+}

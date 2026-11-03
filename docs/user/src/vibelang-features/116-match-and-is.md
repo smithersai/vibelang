@@ -8,7 +8,7 @@
 
 Every arm ends in `;`, the last one included, and a new line does not separate arms. A missing `;` is `EK0701`, and `vibelang --fix` writes it. A `match` has at least one arm and at most one `default`, which comes last. Other invalid `match` and `is` grammar, such as a second `default`, is `EK0707`.
 
-Object properties run left to right. Cached pattern reads reuse getters across arms, while object rest copies normally and can read a getter again. Array patterns accept iterable primitives such as strings. Each elision comma skips one required position; a missing optional element consumes none, while a present `undefined` still gets tested. The `EK0703` fixed-extractor warning uses the required-to-total position interval, so `Option.None(1?)` is admitted.
+Object properties run left to right. Cached pattern reads reuse getters across arms, while object rest copies normally and can read a getter again. Array patterns accept any iterable, including strings, sets and generators, and reuse one iterator and its pulled values across arms. Each elision comma skips one required position; a missing optional element consumes none, while a present `undefined` still gets tested. The `EK0703` fixed-extractor warning uses the required-to-total position interval, so `Option.None(1?)` is admitted.
 
 ```vibe
 // run: try Console.log(try Effect.try(() => JSON.stringify([describe(new NotFound({ id: "7" })), describe(new Timeout()), describe(new Denied({ user: "Ada", reason: "admin" })), describe(new Denied({ user: "Ada", reason: "other" }))])))
@@ -356,7 +356,7 @@ function describeError(failure: Missing | Other) {
 error EK4701: This match does not handle every case of Missing | Other: Other is left.
 ```
 
-A `return`, `break` or `continue` in an arm's `do` reaches its enclosing function or loop, as from a `for…of` body: iterators the patterns opened close first. In an `effect` function a failure, or a `throw`, ends the function without closing them; use `scoped` for cleanup on every exit.
+A `return`, `break` or `continue` in an arm's `do` reaches its enclosing function or loop, as from a `for…of` body: iterators the patterns opened close first. In an `effect` function a failure, or a `throw`, leaves the generator suspended without closing them. This also applies to iterators suspended in a destructuring default. Use `scoped` or `ensuring` for cleanup on every Effect exit.
 
 An arm that only binds the value, `when let other:`, matches every value, as `default` does, so a match that ends in one handles every case. A match that handles every case needs no `default`, and tests that reach every arm cover every branch. Its last arm is still tested like every other arm, with the same reads, without adding a branch. If a value from an unsound cast or `any` matches no arm, the match throws a `TypeError` with an empty message, without reading or coercing that value.
 
@@ -463,3 +463,4 @@ A no-op whose removal would discard an embedded comment or the evaluation of its
 A binding from an `unknown` subject through a computed key, such as `{ [key]: let value }` with `key: string`, has type `unknown`. It does not produce an indexing error for the generated read. Declared field and index-signature types still apply, and accesses written in your source keep TypeScript's normal checks.
 
 Computed presence keys need no colon: `{ ["field"] }`, `{ [key] }` and `{ [symbol] }` test property presence, including an inherited property or a property holding `undefined`. They do not read the property value or introduce a binding. Add `: let value` to bind it.
+

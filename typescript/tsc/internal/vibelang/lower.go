@@ -3,6 +3,7 @@ package vibelang
 import (
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/core"
+	"github.com/microsoft/TypeScript/tsc/internal/parser"
 	"github.com/microsoft/TypeScript/tsc/internal/printer"
 	"github.com/microsoft/TypeScript/tsc/internal/transformers"
 )
@@ -137,6 +138,10 @@ func (tx *lowering) visitNode(node *ast.Node) *ast.Node {
 		return tx.visitGuardedChain(node, link) // a ?. before a yield (chains_lower.go)
 	}
 	switch {
+	case len(parser.VibeLangMatchCacheBindings(node)) != 0:
+		return tx.visitMatchCacheBlock(node, parser.VibeLangMatchCacheBindings(node))
+	case parser.VibeLangMatchCacheCondition(node) != nil:
+		return tx.visitMatchCacheCondition(node, parser.VibeLangMatchCacheCondition(node))
 	case doPropertyKey(node) != nil:
 		// const $do_k1 = k converts k where it stands, as [k] would
 		// (parser/vibelang_do.go).
@@ -323,8 +328,7 @@ func (tx *lowering) visitSourceFile(file *ast.SourceFile) *ast.Node {
 	visited := tx.reachIntrinsics(tx.Visitor().VisitEachChild(file.AsNode()))
 	tx.markProgramArrows(visited)
 	visited = tx.closeLoops(visited) // before joinFrames, which wraps a frame whose loop joins failures
-	visited = tx.joinFrames(visited) // inside $iteratorFrame, which calls the frame it wraps
-	visited = tx.protectIteratorFrames(visited)
+	visited = tx.joinFrames(visited)
 	if tx.plan.entry != nil {
 		// Run main when the host starts this module (entry.go).
 		statements := tx.Factory().NewNodeList(append(append([]*ast.Node{}, visited.Statements()...), tx.entryStatement()))

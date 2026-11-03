@@ -28,26 +28,6 @@ FuzzVIPDifferential exit:value/vip07.iterator-cache-reuse-plain compiler VIP-7: 
 FuzzVIPDifferential corpus:data-vip07-iterator-cache-reuse-plain compiler VIP-7: minimized vip07.iterator-cache-reuse-plain witness; lane vip-match
 FuzzVIPDifferential exit:value/vip07.property-cache-reset-plain compiler VIP-7: property existence and value reads repeat across arms instead of using the match cache; lane vip-match
 FuzzVIPDifferential corpus:data-vip07-property-cache-reset-plain compiler VIP-7: minimized vip07.property-cache-reset-plain witness; lane vip-match
-FuzzVIPDifferential exit:value/vip07.finishmatch-success-close-plain compiler VIP-7: iterable matching fails before the required observable FinishMatch cleanup/error-order result; lane vip-match
-FuzzVIPDifferential corpus:data-vip07-finishmatch-success-close-plain compiler VIP-7: minimized vip07.finishmatch-success-close-plain native-generator witness; lane vip-match
-FuzzVIPDifferential exit:value/vip07.finishmatch-close-error-plain compiler VIP-7: iterable matching fails before the required observable FinishMatch cleanup/error-order result; lane vip-match
-FuzzVIPDifferential corpus:data-vip07-finishmatch-close-error-plain compiler VIP-7: minimized vip07.finishmatch-close-error-plain native-generator witness; lane vip-match
-FuzzVIPDifferential exit:value/vip07.finishmatch-throw-close-plain compiler VIP-7: iterable matching fails before the required observable FinishMatch cleanup/error-order result; lane vip-match
-FuzzVIPDifferential corpus:data-vip07-finishmatch-throw-close-plain compiler VIP-7: minimized vip07.finishmatch-throw-close-plain native-generator witness; lane vip-match
-FuzzVIPDifferential exit:value/vip07.finishmatch-aggregate-plain compiler VIP-7: iterable matching fails before the required observable FinishMatch cleanup/error-order result; lane vip-match
-FuzzVIPDifferential corpus:data-vip07-finishmatch-aggregate-plain compiler VIP-7: minimized vip07.finishmatch-aggregate-plain native-generator witness; lane vip-match
-FuzzVIPDifferential exit:value/vip07.finishmatch-return-plain compiler VIP-7: outward do jumps now compile; iterable matching still falls through without starting/closing the generator, so the strict FinishMatch oracle disagrees; lane vip-match
-FuzzVIPDifferential corpus:data-vip07-finishmatch-return-plain compiler VIP-7: minimized vip07.finishmatch-return-plain completion witness; lane vip-match
-FuzzVIPDifferential exit:value/vip07.finishmatch-break-plain compiler VIP-7: outward do jumps now compile; iterable matching still falls through without starting/closing the generator, so the strict FinishMatch oracle disagrees; lane vip-match
-FuzzVIPDifferential corpus:data-vip07-finishmatch-break-plain compiler VIP-7: minimized vip07.finishmatch-break-plain completion witness; lane vip-match
-FuzzVIPDifferential exit:value/vip07.finishmatch-continue-plain compiler VIP-7: outward do jumps now compile; iterable matching still falls through without starting/closing the generator, so the strict FinishMatch oracle disagrees; lane vip-match
-FuzzVIPDifferential corpus:data-vip07-finishmatch-continue-plain compiler VIP-7: minimized vip07.finishmatch-continue-plain completion witness; lane vip-match
-FuzzVIPDifferential exit:value/vip07.finishmatch-close-replaces-return-plain compiler VIP-7: outward do jumps now compile; iterable matching still falls through without starting/closing the generator, so the strict FinishMatch oracle disagrees; lane vip-match
-FuzzVIPDifferential corpus:data-vip07-finishmatch-close-replaces-return-plain compiler VIP-7: minimized vip07.finishmatch-close-replaces-return-plain completion witness; lane vip-match
-FuzzVIPDifferential exit:value/vip07.finishmatch-failure-abandons-plain compiler VIP-7: match completion or iterator cleanup disagrees with the documented native for-of/is reconciliation; lane vip-match
-FuzzVIPDifferential corpus:data-vip07-finishmatch-failure-abandons-plain compiler VIP-7: minimized vip07.finishmatch-failure-abandons-plain completion witness; lane vip-match
-FuzzVIPDifferential exit:value/vip07.finish-is-test-throw-plain compiler VIP-7: match completion or iterator cleanup disagrees with the documented native for-of/is reconciliation; lane vip-match
-FuzzVIPDifferential corpus:data-vip07-finish-is-test-throw-plain compiler VIP-7: minimized vip07.finish-is-test-throw-plain completion witness; lane vip-match
 FuzzVIPDifferential exit:value/vip07.tagged-ai-aierror-aierror-plain compiler VIP-7: since 45c86784 resolves Effect tagged-error guards, the probe compiles, but the class pattern rejects a copy that carries the error's _tag and module brand, where the module's own guard accepts it; lane vip-match
 FuzzVIPDifferential exit:value/vip07.tagged-ai-mcpclienterror-mcpclienterror-plain compiler VIP-7: since 45c86784 resolves Effect tagged-error guards, the probe compiles, but the class pattern rejects a copy that carries the error's _tag and module brand, where the module's own guard accepts it; lane vip-match
 FuzzVIPDifferential exit:value/vip07.tagged-crypto-cryptoerror-cryptoerror-plain compiler VIP-7: since 45c86784 resolves Effect tagged-error guards, the probe compiles, but the class pattern rejects a copy that carries the error's _tag and module brand, where the module's own guard accepts it; lane vip-match
@@ -69,15 +49,9 @@ FuzzVIPDifferential exit:value/vip07.tagged-socket-datagramsocket-datagramsocket
 FuzzVIPDifferential exit:value/vip07.tagged-socket-socket-socketerror-plain compiler VIP-7: since 45c86784 resolves Effect tagged-error guards, the probe compiles, but the class pattern rejects a copy that carries the error's _tag and module brand, where the module's own guard accepts it; lane vip-match
 FuzzVIPDifferential exit:value/vip07.tagged-sql-sqlerror-sqlerror-plain compiler VIP-7: since 45c86784 resolves Effect tagged-error guards, the probe compiles, but the class pattern rejects a copy that carries the error's _tag and module brand, where the module's own guard accepts it; lane vip-match
 FuzzVIPDifferential exit:value/vip07.tagged-workers-workererror-workererror-plain compiler VIP-7: since 45c86784 resolves Effect tagged-error guards, the probe compiles, but the class pattern rejects a copy that carries the error's _tag and module brand, where the module's own guard accepts it; lane vip-match
-FuzzVIPDifferential exit:value/vip07.destructuring-default-failure-plain compiler VIP-7: match completion or iterator cleanup disagrees with the documented native for-of/is reconciliation; lane del-rest
-FuzzVIPDifferential corpus:data-vip07-destructuring-default-failure-plain compiler VIP-7: minimized vip07.destructuring-default-failure-plain completion witness; lane del-rest
 FuzzVIPDifferential compile:EK0204/vip07.parameter-default-return-plain compiler VIP-2: a do return inside a match in a parameter default is EK0204, because that match still compiles to a function (was TS1108 before the do lowering); lane core-block
 FuzzVIPDifferential corpus:data-vip07-parameter-default-return-plain compiler VIP-7: minimized vip07.parameter-default-return-plain completion witness; lane vip-match
-FuzzVIPDifferential exit:value/vip07.finish-is-normal-close-plain compiler VIP-7: an is test on an iterable returns false without pulling or closing it; lane vip-match
-FuzzVIPDifferential corpus:data-vip07-finish-is-normal-close-plain compiler VIP-7: minimized vip07.finish-is-normal-close-plain completion witness; lane vip-match
 FuzzVIPDifferential exit:kind/vip07.finishmatch-generator-return-plain compiler VIP-7: a yield in a match arm is emitted inside an arrow function, so the module fails to parse; lane vip-match
 FuzzVIPDifferential corpus:data-vip07-finishmatch-generator-return-plain compiler VIP-7: minimized vip07.finishmatch-generator-return-plain completion witness; lane vip-match
-FuzzVIPDifferential exit:value/vip07.empty-iterables-plain compiler VIP-7: an array pattern tests arrays only, not any iterable; lane vip-match
 FuzzVIPDifferential exit:value/vip07.object-property-order-plain compiler VIP-7: a cached property is read again by a later arm; lane vip-match
-FuzzVIPDifferential corpus:data-vip07-empty-iterables-plain compiler VIP-7: minimized vip07.empty-iterables-plain witness; lane vip-match
 FuzzVIPDifferential corpus:data-vip07-object-property-order-plain compiler VIP-7: minimized vip07.object-property-order-plain witness; lane vip-match

@@ -1297,6 +1297,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - A rejected `fork` operand wrapped in parentheses or `satisfies`, such as `fork (Effect.fail("bad") catch () => 7)`, also reported a compiler-generated call error. It now reports `EK1703` alone while preserving independent errors inside the operand.
 
+- Array patterns skipped generators and other non-array iterables; they now match them and reuse pulled values across arms. Failed Effects leave destructuring iterators suspended, as native `Effect.gen` does.
+
 - Identical recursive generic declaration APIs could fail with `TS2589`; exact resolved type identity now proves those comparisons.
 - API checks treated identical JSDoc links as different when a private target resolved in only one snapshot. Link targets and labels now compare consistently while real comment changes remain differences.
 

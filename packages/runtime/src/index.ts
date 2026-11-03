@@ -35,3 +35,5 @@ export { suspend, handoff, HandoffProtocolViolation, type Resumer } from "./kern
 
 // Migration-only symbols have no runtime exports.
 export type { $awaitAll, $awaitAllSettled, $awaitRace, $awaitAny, AwaitElement } from "./legacy-await-types.js"
+
+export { $matchCache } from "./match-cache.js"

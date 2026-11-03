@@ -1,0 +1,14 @@
+// expect-result: [3,["start","second","done"],[true,false,true,false,false,false],[true,["start","closed"]],[false,["start","closed"]],"OK"]
+import { Effect } from "effect"
+import { numbers } from "./native.js"
+function pair(s: unknown) { return s is ["a","b"] }
+function one(s: unknown) { return s is ["a"] }
+function empty(s: unknown) { return s is [] }
+function tuple(xs: readonly [number, string]) { return match (xs) { when [let n, let text]: text.toUpperCase(); default: "miss"; } }
+export function main() {
+  const log: string[] = []
+  const value = match (numbers(log)) { when [9, ...]: -2; when [let a, let b]: a + b; default: -1; }
+  const results = [pair("ab"), one("ab"), new Set([1,2]) is [1,2], empty(null), empty(undefined), empty(1)]
+  const a: string[] = [], b: string[] = []
+  return Effect.succeed([value, log, results, [numbers(a) is [1,...], a], [numbers(b) is [3,...], b], tuple([1, "ok"])])
+}

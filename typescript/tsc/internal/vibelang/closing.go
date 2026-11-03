@@ -11,8 +11,8 @@ import "github.com/microsoft/TypeScript/tsc/internal/ast"
 // Effect-code loops retain their existing failure-combining policy here:
 // catch a body or binding failure, break to close with a normal completion,
 // then combine a failing close with the pending failure via $finallyFailure.
-// $iteratorFrame separately handles frames whose bodies can pause
-// (iterators_lower.go); plain-loop closing does not change that path.
+// A failed yield leaves the native frame suspended; this rewrite only
+// handles JavaScript completions that actually leave the loop.
 
 // closeLoops rewrites native for...of loops emitted from Effect code. Every
 // consecutive label stays on its loop,

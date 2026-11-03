@@ -88,6 +88,12 @@ func (c *converter) convertVibeLang(n *ast.Node, parent *ast.Node) (*obj, bool) 
 	if !c.vibe {
 		return nil, false
 	}
+	// Iterator cleanup is compiler bookkeeping, outside the source condition.
+	// Keep the checked pattern assignments visible to scope analysis.
+	if parser.VibeLangMatchCacheCondition(n) != nil {
+		return c.convertChild(n.Expression().AsBinaryExpression().Left, parent), true
+	}
+
 	switch n.Kind {
 	case ast.KindExpressionStatement:
 		if result := c.concurrentStatement(n); result != nil {
@@ -103,6 +109,9 @@ func (c *converter) convertVibeLang(n *ast.Node, parent *ast.Node) (*obj, bool) 
 		}
 	case ast.KindBinaryExpression:
 		binary := n.AsBinaryExpression()
+		if parser.VibeLangMatchCacheFinish(n) != nil {
+			return c.convertChild(binary.Left, n), true
+		}
 		assignment := ast.SkipParentheses(binary.Left)
 		// A pattern step assigns a subject/extraction/binding, then yields
 		// synthetic true so the next test runs. It is not a source comma

@@ -1,6 +1,9 @@
 package vibelangestree
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 // VIP-34: a lint rule must not mistake the pattern lowerer's bookkeeping
 // for a constant expression the author wrote. Keep its assignment child so
@@ -9,13 +12,16 @@ func TestPatternAssignmentIsNotAConstantSequence(t *testing.T) {
 	for _, source := range []string{
 		"function f(x) { if (x is Exit.Failure(let cause)) return cause }",
 		"function f(x) { if (x is [let cause]) return cause }",
+		"function f(x) { while (x is [let cause]) return cause }",
 		"function f(x) { if (x is { cause: let cause }) return cause }",
 	} {
 		t.Run(source, func(t *testing.T) {
 			tree := parse(t, "test.vibe", source)
 			assignments := find(tree, "VibePatternAssignment")
-			if len(assignments) == 0 {
-				t.Fatal("pattern bookkeeping still exports constant comma sequences")
+			// An if assigns hoisted bindings; a while declares fresh cells.
+			wantAssignments := !strings.Contains(source, "while (")
+			if (len(assignments) > 0) != wantAssignments {
+				t.Fatalf("pattern assignment presence = %v, want %v", len(assignments) > 0, wantAssignments)
 			}
 			for _, wrapper := range assignments {
 				expression, ok := wrapper["expression"].(map[string]any)

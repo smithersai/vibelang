@@ -472,16 +472,13 @@ vibelang/imports.go:lowering.visitImportOrExport	admission:imports	007-tooling.m
 vibelang/imports.go:lowering.outputSpecifier	admission:imports	007-tooling.md	support	VIP-34 emitted module specifiers
 vibelang/imports.go:outputSpecifierText	admission:imports	007-tooling.md	support	VIP-34 emitted module specifiers
 vibelang/imports.go:outputSpecifierTextWithJSX	admission:imports	007-tooling.md	support	VIP-34 emitted module specifiers
-vibelang/iterators_lower.go:lowering.protectIteratorFrames	admission:iterator-support	002-running.md,008-runtime.md	support	VIP-1/2: native iterator and failure-frame machinery for explicit Effect callables; grants no inferred function kind
-vibelang/iterators_lower.go:iteratorGeneratorBody	admission:iterator-support	002-running.md,008-runtime.md	support	VIP-1/2: native iterator and failure-frame machinery for explicit Effect callables; grants no inferred function kind
-vibelang/iterators_lower.go:iteratorPauses	admission:iterator-support	002-running.md,008-runtime.md	support	VIP-1/2: native iterator and failure-frame machinery for explicit Effect callables; grants no inferred function kind
-vibelang/iterators_lower.go:assignmentHasArray	admission:iterator-support	002-running.md,008-runtime.md	support	VIP-1/2: native iterator and failure-frame machinery for explicit Effect callables; grants no inferred function kind
 vibelang/joined.go:analyzer.joinsFailures	admission:iterator-support	002-running.md,008-runtime.md	support	VIP-1/2: native iterator and failure-frame machinery for explicit Effect callables; grants no inferred function kind
 vibelang/joined.go:joinPlan.planJoins	admission:iterator-support	002-running.md,008-runtime.md	support	VIP-1/2: native iterator and failure-frame machinery for explicit Effect callables; grants no inferred function kind
 vibelang/joined.go:analyzer.compilesToPlain	admission:iterator-support	002-running.md,008-runtime.md	support	VIP-1/2: native iterator and failure-frame machinery for explicit Effect callables; grants no inferred function kind
 vibelang/joined.go:analyzer.callJoinsFailures	admission:iterator-support	002-running.md,008-runtime.md	support	VIP-1/2: native iterator and failure-frame machinery for explicit Effect callables; grants no inferred function kind
 vibelang/joined.go:lowering.joinFrames	admission:iterator-support	002-running.md,008-runtime.md	support	VIP-1/2: native iterator and failure-frame machinery for explicit Effect callables; grants no inferred function kind
 vibelang/joined.go:lowering.isFrameCall	admission:iterator-support	002-running.md,008-runtime.md	support	VIP-1/2: native iterator and failure-frame machinery for explicit Effect callables; grants no inferred function kind
+vibelang/joined.go:iteratorGeneratorBody	admission:iterator-support	002-running.md,008-runtime.md	support	Native generator body discovery for joined failure frames; VIP-31 leaves abandoned generators suspended
 vibelang/lower.go:newLowering	admission:function-lowering	001-functions.md	support	Function lowering machinery; legacy implicit conversions below
 vibelang/lower.go:lowering.visit	admission:function-lowering	001-functions.md	support	Function lowering machinery; legacy implicit conversions below
 vibelang/lower.go:lowering.visitSource	admission:function-lowering	001-functions.md	support	Function lowering machinery; legacy implicit conversions below
@@ -521,6 +518,8 @@ vibelang/match_lower.go:newExhaustivePlan	admission:match	900-appendices.md#Matc
 vibelang/match_lower.go:exhaustivePlan.planExhaustiveMatch	admission:match	900-appendices.md#MatchExpression	support	VIP-7 runtime matcher tests
 vibelang/match_lower.go:exhaustivePlan.withoutUnusedNoMatch	admission:match	900-appendices.md#MatchExpression	support	VIP-7 runtime matcher tests
 vibelang/match_lower.go:lowering.visitCheckedArm	admission:match	900-appendices.md#MatchExpression	support	VIP-7 runtime matcher tests
+vibelang/match_cache_lower.go:lowering.visitMatchCacheBlock	admission:match	004-match.md,008-runtime.md	support	VIP-7/31: native FinishMatch cleanup runs on JavaScript completions without resuming failed Effect generators
+vibelang/match_cache_lower.go:lowering.visitMatchCacheCondition	admission:match	004-match.md,008-runtime.md	support	VIP-7/31: native FinishMatch cleanup runs on JavaScript completions without resuming failed Effect generators
 vibelang/methods.go:analyzer.expectsEffect	admission:effect-method	900-appendices.md#EffectMethod	support	VIP-1 method lowering; legacy unmodified methods audited as function-kind
 vibelang/methods.go:lowering.lowerMethod	admission:effect-method	900-appendices.md#EffectMethod	support	VIP-1 method lowering; legacy unmodified methods audited as function-kind
 vibelang/methods.go:lowering.perRunMethod	admission:effect-method	900-appendices.md#EffectMethod	support	VIP-1 method lowering; legacy unmodified methods audited as function-kind
@@ -817,6 +816,14 @@ parser/vibelang_default_data_export.go:Parser.vibelangDeclarationError	admission
 parser/vibelang_match.go:Parser.markUncovered	admission:match	900-appendices.md#MatchExpression	support	VIP-7 / Chapter 004 Coverage: `and` and `not` arms cover nothing (`EK4701`); flags their tests for the checker
 parser/vibelang_match.go:bindsBesideOneTest	admission:match	900-appendices.md#MatchExpression	support	VIP-7 / Chapter 004 Coverage: recognize binding-only operands without granting `and` exhaustive coverage
 parser/vibelang_match.go:onlyBinds	admission:match	900-appendices.md#MatchExpression	support	VIP-7 / Chapter 004 Coverage: recognize patterns that only bind and test key presence
+parser/vibelang_match_cache.go:Parser.matchCacheCall	admission:match	004-match.md,008-runtime.md	support	VIP-7/31: private per-evaluation iterator caches and native completion cleanup preserve Effect abandonment
+parser/vibelang_match_cache.go:Parser.matchCacheStatements	admission:match	004-match.md,008-runtime.md	support	VIP-7/31: private per-evaluation iterator caches and native completion cleanup preserve Effect abandonment
+parser/vibelang_match_cache.go:Parser.newMatchCacheName	admission:match	004-match.md,008-runtime.md	support	VIP-7/31: private per-evaluation iterator caches and native completion cleanup preserve Effect abandonment
+parser/vibelang_match_cache.go:VibeLangMatchCacheBindings	admission:match	004-match.md,008-runtime.md	support	VIP-7/31: private per-evaluation iterator caches and native completion cleanup preserve Effect abandonment
+parser/vibelang_match_cache.go:VibeLangMatchCacheCondition	admission:match	004-match.md,008-runtime.md	support	VIP-7/31: private per-evaluation iterator caches and native completion cleanup preserve Effect abandonment
+parser/vibelang_match_cache.go:VibeLangMatchCacheDeclaration	admission:match	004-match.md,008-runtime.md	support	VIP-7/31: private per-evaluation iterator caches and native completion cleanup preserve Effect abandonment
+parser/vibelang_match_cache.go:VibeLangMatchCacheFinish	admission:match	004-match.md,008-runtime.md	support	VIP-7/31: private per-evaluation iterator caches and native completion cleanup preserve Effect abandonment
+parser/vibelang_match_cache.go:patternUsesIterator	admission:match	004-match.md,008-runtime.md	support	VIP-7/31: private per-evaluation iterator caches and native completion cleanup preserve Effect abandonment
 vibelang/lower.go:bodyStatements	admission:effect-function-support	001-functions.md,002-running.md	support	VIP-1: callable body helper relocated from retired plain-function lowering
 vibelang/trust_lower.go:inCatchingTry	admission:trusted	-	pending	Legacy trusted-exception hatch catch-context helper; no accepted VIP grants the trusted API
 parser/vibelang_do.go:Parser.completionSite	admission:do	900-appendices.md,002-running.md	support	VIP-2: completion temporary retains the contextual type of the source do-expression site

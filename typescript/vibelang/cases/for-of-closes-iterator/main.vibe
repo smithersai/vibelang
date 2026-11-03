@@ -3,7 +3,7 @@
 // failure thrown in the body or by a call in it, and an interruption. Effect
 // abandons a generator at a failed or interrupted yield* without calling its
 // return(), so a loop whose body runs an Effect goes through $forOf, which
-// closes the iterator itself. Native array loops also protect custom iterators.
+// closes the iterator itself. Native loops keep Effect.gen abandonment.
 error Stop { at: number }
 
 const events: string[] = []

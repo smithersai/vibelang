@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("key:vip07.iterable-cache-arm-prefixes-plain\x00")

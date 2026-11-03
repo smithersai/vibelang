@@ -128,6 +128,7 @@ var preludeModules = map[string]string{
 	// with these helpers; customMatcher is the proposal's Symbol.customMatcher.
 	"$is":           runtimeModule,
 	"$extract":      runtimeModule,
+	"$matchCache":   runtimeModule,
 	"$relation":     runtimeModule,
 	"$rest":         runtimeModule,
 	"$propertyKey":  runtimeModule,

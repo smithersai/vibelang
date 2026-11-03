@@ -106,6 +106,13 @@ func (w *printer) node(n *ast.Node, e env) {
 	if n == nil {
 		return
 	}
+	if cache := parser.VibeLangMatchCacheCondition(n); cache != nil {
+		w.write("(")
+		w.node(n.Expression(), e)
+		w.chunks = append(w.chunks, chunk{kind: editPatternFlow, part: partWhole, fields: []string{"", " || (" + w.identifier(cache) + ".finish(), false)"}})
+		w.write(")")
+		return
+	}
 	if !w.rawExtraction && w.errorExtractorFlow(n, e) {
 		return
 	}
@@ -198,8 +205,25 @@ func (w *printer) node(n *ast.Node, e env) {
 		w.node(n.Name(), e)
 	case ast.KindBlock:
 		w.write("{ ")
+		caches := parser.VibeLangMatchCacheBindings(n)
 		for _, statement := range n.Statements() {
-			w.statement(statement, e)
+			if parser.VibeLangMatchCacheDeclaration(statement) != nil {
+				w.statement(statement, e)
+			}
+		}
+		for range caches {
+			w.chunks = append(w.chunks, chunk{kind: editPatternFlow, part: partWhole, fields: []string{"", "try { "}})
+		}
+		for _, statement := range n.Statements() {
+			if parser.VibeLangMatchCacheDeclaration(statement) == nil {
+				w.statement(statement, e)
+			}
+		}
+		for i := len(caches) - 1; i >= 0; i-- {
+			name := w.identifier(caches[i])
+			failure := w.p.freshWord("$matchError")
+			runtime := "} catch (" + failure + ") { " + name + ".threw(" + failure + "); throw " + failure + "; } finally { " + name + ".finish(); } "
+			w.chunks = append(w.chunks, chunk{kind: editPatternFlow, part: partWhole, fields: []string{"", runtime}})
 		}
 		w.write("}")
 	default:
@@ -438,7 +462,7 @@ func (w *printer) builtinTest(n *ast.Node, e env) bool {
 func (w *printer) identifier(n *ast.Node) string {
 	name := n.Text()
 	switch {
-	case name == "$is" || name == "$noMatch" || name == "$extract" || name == "$rest" || name == "$relation" || name == "$patternError":
+	case name == "$matchCache" || name == "$is" || name == "$noMatch" || name == "$extract" || name == "$rest" || name == "$relation" || name == "$patternError":
 		return helperRef(name)
 	case strings.HasPrefix(name, "$match") || strings.HasPrefix(name, "$is"):
 		return w.temporary(name)

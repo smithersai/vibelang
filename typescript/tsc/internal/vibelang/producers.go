@@ -276,8 +276,8 @@ func (p *producerPlan) planProducer(c *checker.Checker, fn *ast.Node) {
 // return(), so the loop's own iterator needs Effect ownership. A loop whose body can
 // pause or fail runs through $forOf instead, which closes the iterator on
 // every exit that does not finish it, as JavaScript does. A loop this leaves
-// native is protected by protectIteratorFrames (iterators_lower.go), which
-// covers an array with its own iterator and a binding that pauses.
+// native retains Effect.gen abandonment: a failed yield does not resume
+// the source generator to run native IteratorClose or FinishMatch.
 func isClosingLoop(c *checker.Checker, statement *ast.Node) bool {
 	loop := statement.AsForInOrOfStatement()
 	if loop.AwaitModifier != nil || !inLowerableBody(statement) || isForTry(statement) {

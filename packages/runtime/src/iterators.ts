@@ -1,25 +1,8 @@
 import { Effect } from "effect"
 
-// The runtime loop's adapter (design chapter 26). It is not the close helper
-// that D404 and D424 require around JavaScript's own for...of: that is the
-// loop rewrite the compiler emits (closing.go), which joins a failing
-// return() to the failure in flight with $finallyFailure. This adapter owns
-// what that rewrite cannot see, a frame that Effect abandons.
-//
-// Effect abandons a generator at a failed or interrupted yield* without
-// calling its return() (design chapter 24). A native for...of or an array
-// destructuring in that generator would keep its iterator open: JavaScript
-// closes one only when control leaves the loop or the pattern. The frame
-// adapter keeps the native syntax, with its bindings, evaluation order and
-// IteratorClose rules, and gives the Effect frame ownership of leaving it.
-//
-// When the generator did not finish, the finalizer resumes it with a return
-// completion, as JavaScript's own abrupt exit would, and JavaScript runs
-// IteratorClose for every live loop and pattern, innermost first. A return()
-// that throws or returns a primitive propagates out of the generator, as it
-// does from a native loop that exits by a jump, and fails the finalizer: a
-// cleanup failure is a defect beside the original failure, defect or
-// interruption, never dropped (D305, chapter 17).
+// Legacy compiler ABI, retained for already-emitted frames. Current compilers
+// preserve native generator abandonment (VIP-31) instead of resuming a failed
+// frame to run IteratorClose or FinishMatch.
 
 /** @internal Compiler ABI: give Effect ownership of a generator's live native iterators. */
 export const $iteratorFrame = <F extends (...args: any[]) => Generator<Effect.Effect<any, any, any>, any, any>>(

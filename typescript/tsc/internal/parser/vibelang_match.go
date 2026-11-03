@@ -149,6 +149,7 @@ type matchPath func() *ast.Node
 // matchCompile carries the state of compiling one top-level pattern.
 type matchCompile struct {
 	coverage bool // match arms include binding-only and/not in finite coverage queries
+	cache    string // the private per-evaluation Iterator Record cache
 	anchor   core.TextRange
 	inline   bool // inside or, not, or an is without an if or while: no declarations
 	// uncovered marks the tests of and and not, which cover nothing, in a match
@@ -775,7 +776,11 @@ func (p *Parser) hoistVibeLangIs(expression *ast.Node) *ast.Node {
 		var steps []matchStep
 		path, decl := p.subjectPath(info.subject, info.anchor, "$is")
 		steps = append(steps, matchStep{decl: decl})
-		p.compilePattern(info.pattern, path, &steps, &matchCompile{anchor: info.anchor})
+		cache := ""
+		if patternUsesIterator(info.pattern) {
+			cache = p.newMatchCacheName()
+		}
+		p.compilePattern(info.pattern, path, &steps, &matchCompile{anchor: info.anchor, cache: cache})
 		var tests []*ast.Node
 		for _, step := range steps {
 			if step.decl != nil {
@@ -784,7 +789,23 @@ func (p *Parser) hoistVibeLangIs(expression *ast.Node) *ast.Node {
 				tests = append(tests, step.test)
 			}
 		}
-		holder.AsParenthesizedExpression().Expression = p.joinTests(tests, ast.KindAmpersandAmpersandToken, info.anchor)
+		result := p.joinTests(tests, ast.KindAmpersandAmpersandToken, info.anchor)
+		if cache != "" {
+			declaration := p.matchCacheStatements(nil, cache, info.anchor)[0]
+			if p.vibelangHoists == nil {
+				p.vibelangHoists = map[*ast.Node]bool{}
+			}
+			p.vibelangHoists[declaration] = true
+			p.reparseList = append(p.reparseList, declaration)
+			start := p.matchCacheCall(&matchCompile{cache: cache}, "start", info.anchor)
+			finish := func(value ast.Kind) *ast.Node {
+				return p.mParens(p.mBinary(p.matchCacheCall(&matchCompile{cache: cache}, "finish", info.anchor), ast.KindCommaToken, p.mKeyword(value, info.anchor), info.anchor), info.anchor)
+			}
+			result = p.mParens(p.mBinary(
+				p.mParens(p.mBinary(start, ast.KindAmpersandAmpersandToken, result, info.anchor), info.anchor),
+				ast.KindAmpersandAmpersandToken, finish(ast.KindTrueKeyword), info.anchor), info.anchor)
+		}
+		holder.AsParenthesizedExpression().Expression = result
 		p.overrideParentInImmediateChildren(holder)
 		delete(p.vibelangIsBindings, marker)
 		delete(p.vibelangIsHolders, marker)
@@ -1542,12 +1563,20 @@ func (p *Parser) compilePattern(pat *pattern, path matchPath, steps *[]matchStep
 	case patternRelation:
 		test(p.relationTest(pat, path))
 	case patternArray:
-		test(p.mCall(p.mProperty(p.mIdent("Array", at), "isArray", at), []*ast.Node{path()}, at))
-		p.compileList(pat, path, len(pat.items), func(i int) matchPath {
-			return func() *ast.Node { return p.mPatternRead(p.mElement(path(), p.mNumber(i, at), at)) }
-		}, func(n int) *ast.Node {
-			return p.mCall(p.mProperty(path(), "slice", at), []*ast.Node{p.mNumber(n, at)}, at)
-		}, func() *ast.Node { return p.mProperty(path(), "length", at) }, steps, ctx)
+		test(p.matchCacheCall(ctx, "iterable", at, path()))
+		for i, item := range pat.items {
+			test(p.matchCacheCall(ctx, "has", at, path(), p.mNumber(i, at)))
+			value := func() *ast.Node { return p.matchCacheCall(ctx, "at", at, path(), p.mNumber(i, at)) }
+			p.compilePattern(item, p.enterSubject(value, item, steps, ctx), steps, ctx)
+		}
+		if pat.hasRest {
+			if pat.rest != nil {
+				rest := func() *ast.Node { return p.matchCacheCall(ctx, "rest", at, path(), p.mNumber(len(pat.items), at)) }
+				p.compilePattern(pat.rest, p.enterSubject(rest, pat.rest, steps, ctx), steps, ctx)
+			}
+		} else {
+			test(p.matchCacheCall(ctx, "end", at, path(), p.mNumber(len(pat.items), at)))
+		}
 	case patternObject, patternVariant:
 		var names []func() *ast.Node
 		if pat.kind == patternVariant {
@@ -1979,7 +2008,7 @@ func (p *Parser) inlinePattern(pat *pattern, path matchPath, ctx *matchCompile) 
 	if ctx.bound == nil {
 		ctx.bound = map[string]bool{}
 	}
-	inner := &matchCompile{anchor: ctx.anchor, inline: true, coverage: ctx.coverage, uncovered: ctx.uncovered, bound: ctx.bound}
+	inner := &matchCompile{anchor: ctx.anchor, inline: true, coverage: ctx.coverage, uncovered: ctx.uncovered, bound: ctx.bound, cache: ctx.cache}
 	var steps []matchStep
 	p.compilePattern(pat, path, &steps, inner)
 	var tests []*ast.Node
@@ -2092,6 +2121,9 @@ func (p *Parser) emitSteps(steps []matchStep, success []*ast.Node, at core.TextR
 // (match_subject.go in package vibelang).
 func (p *Parser) isExpression(info *isInfo, pos int) *ast.Node {
 	ctx := &matchCompile{anchor: info.anchor, inline: true}
+	if patternUsesIterator(info.pattern) {
+		ctx.cache = p.newMatchCacheName()
+	}
 	inner := ast.SkipParentheses(info.subject)
 	if p.cloneIdentExpression(inner) != nil {
 		// Count the reads with copies first, so that a pattern which reads
@@ -2099,7 +2131,7 @@ func (p *Parser) isExpression(info *isInfo, pos int) *ast.Node {
 		// below.
 		reads := 0
 		p.inlinePattern(info.pattern, func() *ast.Node { reads++; return p.cloneIdentExpression(inner) }, ctx)
-		if reads == 1 {
+		if reads == 1 && ctx.cache == "" {
 			return p.finishNode(p.mParens(p.inlinePattern(info.pattern, func() *ast.Node { return inner }, ctx), info.anchor), pos)
 		}
 	}
@@ -2107,6 +2139,9 @@ func (p *Parser) isExpression(info *isInfo, pos int) *ast.Node {
 	name := "$is" + strconv.Itoa(p.vibelangMatchTemps)
 	path := func() *ast.Node { return p.mTemp(name, info.anchor) }
 	body := p.inlinePattern(info.pattern, path, ctx)
+	if ctx.cache != "" {
+		body = p.mBlock(p.matchCacheStatements([]*ast.Node{p.vibelangSpanning(p.factory.NewReturnStatement(body), info.anchor)}, ctx.cache, info.anchor), info.anchor)
+	}
 	parameter := p.vibelangSpanning(p.factory.NewParameterDeclaration(nil, nil, p.mTemp(name, info.anchor), nil, nil, nil), info.anchor)
 	arrow := p.vibelangProgramArrow([]*ast.Node{parameter}, body, info.anchor)
 	callee := p.mParens(arrow, info.anchor)
@@ -2119,7 +2154,17 @@ func (p *Parser) isExpression(info *isInfo, pos int) *ast.Node {
 // the fallthrough for an unmatched subject.
 func (p *Parser) matchStatements(info *matchInfo, success func(value *ast.Node, at core.TextRange) []*ast.Node, unmatched func(subject *ast.Node, at core.TextRange) *ast.Node) []*ast.Node {
 	path, decl := p.subjectPath(info.subject, info.anchor, "$match")
+	cache := ""
+	for _, arm := range info.arms {
+		if patternUsesIterator(arm.pattern) {
+			cache = p.newMatchCacheName()
+			break
+		}
+	}
 	out := []*ast.Node{decl}
+	if cache != "" {
+		out = p.matchCacheStatements(out, cache, info.anchor)
+	}
 	for _, e := range info.errors {
 		out = append(out, p.vibelangSpanning(p.factory.NewExpressionStatement(p.patternErrorCall(e.code, e.detail, e.at)), info.anchor))
 	}
@@ -2131,7 +2176,7 @@ func (p *Parser) matchStatements(info *matchInfo, success func(value *ast.Node, 
 		var steps []matchStep
 		patternMark := len(p.reparseList)
 		if arm.pattern != nil {
-			p.compilePattern(arm.pattern, path, &steps, &matchCompile{anchor: arm.anchor, uncovered: !hasDefault, coverage: true})
+			p.compilePattern(arm.pattern, path, &steps, &matchCompile{anchor: arm.anchor, uncovered: !hasDefault, coverage: true, cache: cache})
 		}
 		patternHoists := p.takeHoists(patternMark)
 		if !arm.hoisted {
@@ -2266,9 +2311,22 @@ func (p *Parser) conditionSteps(condition *ast.Node) []matchStep {
 			steps = append(steps, matchStep{test: part})
 			continue
 		}
+		cache := ""
+		if patternUsesIterator(info.pattern) {
+			cache = p.newMatchCacheName()
+			steps = append(steps, matchStep{decl: p.matchCacheStatements(nil, cache, info.anchor)[0]})
+		}
 		path, decl := p.subjectPath(info.subject, info.anchor, "$is")
 		steps = append(steps, matchStep{decl: decl})
-		p.compilePattern(info.pattern, path, &steps, &matchCompile{anchor: info.anchor})
+		ctx := &matchCompile{anchor: info.anchor, cache: cache}
+		p.compilePattern(info.pattern, path, &steps, ctx)
+		if cache != "" {
+			// The condition's native block finishes a failed/abrupt test.
+			// A successful is finishes before the following conjunct/body.
+			finish := p.matchCacheCall(ctx, "finish", info.anchor)
+			done := p.mParens(p.mBinary(finish, ast.KindCommaToken, p.mKeyword(ast.KindTrueKeyword, info.anchor), info.anchor), info.anchor)
+			steps = append(steps, matchStep{test: done})
+		}
 	}
 	return steps
 }
