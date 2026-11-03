@@ -265,6 +265,8 @@ Forking schedules a child; it doesn't prove the child reached a particular state
 
 Parenthesize an execution expression before exponentiation: `(join fiber) ** 2`. A bare `join fiber ** 2` or `fork program ** 2` reports `EK0510`. For a numeric `join` result, the editor action and `vibelang --fix` write `(join fiber) ** 2`.
 
+For an old bare `fork { ... }` body, run `vibelang --fix` to write `fork effect { ... }`. The `fork blocks` codemod also handles adjacent `fork{}` and a line break after `fork`, preserving the cold body, captures and return value.
+
 ---
 
 The matching Effect page: [effect.website/docs/v4/concurrency/fibers](https://effect.website/docs/v4/concurrency/fibers/)
