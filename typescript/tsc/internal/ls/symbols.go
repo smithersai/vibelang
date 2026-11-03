@@ -16,6 +16,7 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/ls/lsconv"
 	"github.com/microsoft/TypeScript/tsc/internal/ls/lsutil"
 	"github.com/microsoft/TypeScript/tsc/internal/lsp/lsproto"
+	"github.com/microsoft/TypeScript/tsc/internal/parser"
 	"github.com/microsoft/TypeScript/tsc/internal/printer"
 	"github.com/microsoft/TypeScript/tsc/internal/scanner"
 	"github.com/microsoft/TypeScript/tsc/internal/spanmap"
@@ -680,6 +681,11 @@ func getSymbolKindFromNode(node *ast.Node) lsproto.SymbolKind {
 		}
 		return lsproto.SymbolKindFile
 	case ast.KindModuleDeclaration:
+		// VIP-40 modules are independent ES modules, including invalid duplicates.
+		// Namespace-kind symbols are merged by mergeExpandos.
+		if parser.IsVibeLangModuleDeclaration(node) {
+			return lsproto.SymbolKindModule
+		}
 		return lsproto.SymbolKindNamespace
 	case ast.KindClassDeclaration, ast.KindClassExpression:
 		return lsproto.SymbolKindClass
