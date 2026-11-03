@@ -191,6 +191,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Repository migration checks could stop at invalid fixture lockfiles or package metadata before checking build provenance, declaration exits or test regressions. The fixtures now retain valid publication prerequisites and reach those checks.
 
 - A native checker reported `TS2307` when it reached a package whose VibeLang declarations were hidden under `vibe.sidecarDir` through another package’s TypeScript sources. Setup now supplies private type routes to the physical declarations, preserving loader identity and the normal built JavaScript and declaration paths. Bun’s native `bun check --no-script` keeps its existing command.
+- The service-read migration check rejected the simplified tooling specification because it quoted retired wording. It now checks the current requirement to preserve types, behavior and declaration output.
+
 - Fuzz validation still treated eight module and diagnostic registry examples and a recovered malformed layer input as compiler gaps after their fixes landed. Those retained regression inputs now run as strict checks.
 
 - The new catch-handler projection fuzz target omitted its CPU-budget registration. It now participates in the same short-seed budget check as every other target.

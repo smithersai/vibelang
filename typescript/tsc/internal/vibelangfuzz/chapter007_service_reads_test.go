@@ -7,7 +7,7 @@ import (
 )
 
 var chapter007ServiceReadQuotes = []string{
-	"preserves evaluation order, captures, the call-versus-run phase, coldness, error and environment channels, and public declarations.",
+	"A rewrite that can't preserve types, behavior and declaration output refuses at that site.",
 }
 
 func TestChapter007ServiceReadHygieneQuoted(t *testing.T) {
