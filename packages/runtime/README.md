@@ -134,7 +134,7 @@ JavaScript value. Decisions are in [`docs/design/history/DECISIONS.md`](../../do
 | `acquireDisposable` | Effect's `acquireDisposable`, recording the value whose disposal it registered so `using` releases it once | D401, D481 |
 | `acquireRelease` | Effect's `acquireRelease`, recording the value whose release it registered so `using` releases it once | D401, D481 |
 | `callback` | Adapt a callback API with cancellation | — |
-| `customMatcher` | Symbol used to define a custom pattern matcher | — |
+| `customMatcher` | Shared custom pattern matcher key, installed and typed as `Symbol.customMatcher` | VIP-7, VIP-27 |
 | `detach` | Fork a program independently of the current block | — |
 | `interrupt` | Interrupt the running fiber | — |
 | `interruptible` | Run a program with interruption enabled | — |

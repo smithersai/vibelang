@@ -1,0 +1,2 @@
+export const Symbol = { local: true }
+export error Shadow { id: number }

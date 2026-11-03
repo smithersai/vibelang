@@ -1,0 +1,7 @@
+export namespace Box {
+  export const Symbol = { local: true }
+  export const globalThis = { local: true }
+  export const $customMatcher_1 = 1
+  export error Nested { id: number }
+  export schema error NestedSchema { id: number }
+}

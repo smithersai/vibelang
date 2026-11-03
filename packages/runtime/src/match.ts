@@ -22,7 +22,15 @@
 if (typeof (Symbol as any).customMatcher !== "symbol") {
   Object.defineProperty(Symbol, "customMatcher", { value: Symbol.for("Symbol.customMatcher"), configurable: true })
 }
-export const customMatcher: unique symbol = (Symbol as any).customMatcher
+export const customMatcher: typeof Symbol.customMatcher = (Symbol as any).customMatcher
+
+// Public matcher-bearing declarations reference this module through the
+// runtime package, including when a stock consumer has no VibeLang prelude.
+declare global {
+  interface SymbolConstructor {
+    readonly customMatcher: unique symbol
+  }
+}
 
 /** The generated matchers of error declarations, which their subclasses share (D278). */
 const errorMatchers = new WeakSet<object>()

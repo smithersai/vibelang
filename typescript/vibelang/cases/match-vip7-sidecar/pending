@@ -1,1 +1,1 @@
-cov-match VIP-7: public static matcher sidecars require their runtime type reference and a compiling stock TypeScript consumer.
+conf-auto-not-extractor-lookahead VIP-27 public matcher declarations are fixed; remaining schema error cross-copy runtime matching waits for conf-schema-data 7416c6b5f061.

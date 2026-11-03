@@ -1,0 +1,1 @@
+public matcher declarations check with stock TypeScript 5.9.3

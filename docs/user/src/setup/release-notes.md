@@ -645,6 +645,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Configuration fuzz checks rejected valid `vibe.sidecarDir` strings and cited an obsolete sidecar layout. They now accept directory strings, reject other JSON types with `EK3007`, and quote TypeScript’s declaration source root rule.
 - API checks rejected valid packages with `rootDir` or composite builds because their generated probe was outside the project. The virtual probe now stays inside the effective project root, while real outside-root source errors still invalidate the comparison.
 
+- Exported `error` and `schema error` matchers could lose their types in downstream TypeScript projects. Their declarations now keep the static matcher and its runtime type dependency, including inside namespaces with local `Symbol` bindings.
+
 - Identical recursive generic type exports could fail an API identity check because each side received a fresh comparison alias; proven equivalent declarations now share that alias.
 - An object pattern whose `_tag` is an enum member or a unique symbol, such as `when { _tag: Kind.A }:`, covered no case, so a `match` naming every enum member still reported `EK4701`. Each such pattern now covers its tag case.
 - A `match` over tagged members that share a tag, such as `{ _tag: "A"; x: number } | { _tag: "A"; y: number }`, or whose `_tag` is a union of literals, reported `EK4701` even when its arms covered every tag case. Coverage now counts each member's tag cases one at a time, as chapter 4 requires, and still reports the member or tag case an arm leaves.

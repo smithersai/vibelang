@@ -182,6 +182,8 @@ Changing an `error` or `schema error` declaration's name also changes its `_tag`
 
 An extractor on a class without its own matcher is `EK0704`: use `when C:`, or `when C and { x: let x }:` to read its properties. A callee that returns neither a boolean nor, as an extractor, an iterable or `false`, and one with no call or construct signature, is `EK0702`; test it in a guard.
 
+The runtime installs `Symbol.customMatcher` on engines that lack it and declares its type for stock TypeScript. Declaration files containing an `error` or `schema error` keep the static `[Symbol.customMatcher]` member and begin with `/// <reference types="vibelang-runtime" />`, so downstream TypeScript consumers see the matcher without a VibeLang prelude. This also works for errors exported from namespaces with their own `Symbol` binding.
+
 A value with a `[Symbol.customMatcher]` method decides for itself. `Symbol.customMatcher` comes from the proposal:
 
 ```vibe

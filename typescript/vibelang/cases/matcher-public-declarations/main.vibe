@@ -1,0 +1,2 @@
+export error E { id: number }
+export schema error S { name: string }

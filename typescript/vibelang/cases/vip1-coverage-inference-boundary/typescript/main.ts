@@ -1,7 +1,13 @@
+import { customMatcher as $vibeMatcher } from "vibelang-runtime"
 import { Context, Data, Effect } from "effect"
 import { legacy } from "./legacy.js"
 class Numbers extends Context.Service<Numbers, { value: number }>()("Numbers") {}
-class Bad extends Data.TaggedError("Bad") {}
+class Bad extends Data.TaggedError("Bad") {
+  static [$vibeMatcher](subject: unknown, hint?: { readonly matchType: "boolean" | "extractor" }): boolean | readonly [unknown] {
+    const tagged = subject !== null && (typeof subject === "object" || typeof subject === "function") && "_tag" in subject && subject._tag === "Bad"
+    return tagged ? hint?.matchType === "extractor" ? [subject] : true : false
+  }
+}
 function read() { return Effect.gen(function* () {
   const numbers = yield* Numbers
   if (numbers.value < 0) return yield* Effect.fail(new Bad())
