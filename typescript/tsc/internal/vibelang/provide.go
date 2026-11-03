@@ -436,7 +436,11 @@ func providedCallType(c *checker.Checker, call *ast.Node, t *checker.Type) *chec
 		return t
 	}
 	returned := result(c.GetReturnTypeOfSignature(signature), c.GetTypeOfSymbol(signature.Parameters()[0]))
-	return c.NewFunctionType(nil, []*checker.Signature{c.SignatureWithReturnType(signature, returned)})
+	// Keep the function type's symbol and the signature's declaration: an
+	// anonymous type without them can contain no type variables to the
+	// checker, so x.pipe(Effect.provide(layer)) inferred pipe's result as
+	// never (TS2345) where the same .ts compiled.
+	return c.NewFunctionTypeWithReturnType(t.Symbol(), signature, returned)
 }
 
 // providerCall returns the $provideService call that the parser wrote for a
