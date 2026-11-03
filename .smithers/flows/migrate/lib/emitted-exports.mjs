@@ -64,6 +64,36 @@ function runtimeComponentOutputs(root, outputs, pkg, typescript) {
   const byOutput=new Map(entries.map(([source,output])=>[plainPath(output),plainPath(source)]))
   if (byOutput.size!==entries.length) return fallback("ambiguous emitted module")
   const graph=new Map([...sources].map(source=>[source,new Set()]))
+  // An exported native module may also need its compiled graph: Node cannot
+  // follow an authored ./x.js edge when only x.ts exists beside the source.
+  // Keep bare native facades in source (their host may provide that module),
+  // and root only public entries whose actual runtime edge needs emission.
+  const publicMaps=[pkg.exports,pkg.imports].map(map=>instantiate(map,"*"))
+  const nativeRoots=new Set(),needsEmission=new Set()
+  const runtimeEdges=new Map([...sources].map(source=>[source,new Set()]))
+  const isPublic=source=>publicMaps.some(map=>{
+    if(!map||typeof map!=="object"||Array.isArray(map)||Object.keys(map).every(key=>!key.startsWith(".")&&!key.startsWith("#"))) {
+      return targets(map).some(target=>target.startsWith("./")&&plainPath(target)===source)
+    }
+    for(const [key,item] of Object.entries(map)) for(const target of targets(item)) {
+      if(!target.startsWith("./")||!native.test(target))continue
+      const star=matchPattern(plainPath(target),source)
+      if(star===undefined)continue
+      if(!key.includes("*")) {if(!target.includes("*"))return true;continue}
+      if(!target.includes("*"))return true
+      const exact=key.replaceAll("*",star)
+      let selected=exact,selectedStar=""
+      if(!Object.hasOwn(map,exact)) {
+        const patterns=Object.keys(map).filter(pattern=>pattern.includes("*")&&matchPattern(pattern,exact)!==undefined)
+          .sort((a,b)=>b.indexOf("*")-a.indexOf("*")||b.length-a.length)
+        selected=patterns[0]
+        if(selected===undefined)continue
+        selectedStar=matchPattern(selected,exact)
+      }
+      if(targets(map[selected]).some(path=>path.startsWith("./")&&plainPath(path.replaceAll("*",selectedStar))===source))return true
+    }
+    return false
+  })
   let aliases
   try { aliases=pathAliases(ts,root) } catch { return fallback("unreadable path aliases") }
   const findTarget=(from,output,specifier)=>{
@@ -92,6 +122,18 @@ function runtimeComponentOutputs(root, outputs, pkg, typescript) {
     const from=plainPath(input),file=ts.createSourceFile(output,readFileSync(join(root,output),"utf8"),ts.ScriptTarget.Latest,true,ts.ScriptKind.JSX)
     if (file.parseDiagnostics.length) return fallback("unparseable emitted module")
     let opaque=false
+    let sourceSpecifiers
+    if (native.test(from) && existsSync(join(root,from))) {
+      sourceSpecifiers=new Set()
+      const originalFile=ts.createSourceFile(from,readFileSync(join(root,from),"utf8"),ts.ScriptTarget.Latest,true,ts.getScriptKindFromFileName(from))
+      const record=node=>{
+        const literal=ts.isImportDeclaration(node)||ts.isExportDeclaration(node)?node.moduleSpecifier
+          :ts.isCallExpression(node)&&(node.expression.kind===ts.SyntaxKind.ImportKeyword||ts.isIdentifier(node.expression)&&node.expression.text==="require")?node.arguments[0]:undefined
+        if(literal&&ts.isStringLiteralLike(literal))sourceSpecifiers.add(literal.text)
+        ts.forEachChild(node,record)
+      }
+      record(originalFile)
+    }
     const visit=node=>{
       let literal
       if (ts.isImportDeclaration(node)||ts.isExportDeclaration(node)) literal=node.moduleSpecifier
@@ -102,16 +144,33 @@ function runtimeComponentOutputs(root, outputs, pkg, typescript) {
       if (literal && ts.isStringLiteralLike(literal)) {
         const edge=findTarget(from,output,literal.text)
         opaque ||= !!edge.opaque
-        for (const target of edge.targets??[]) {graph.get(from).add(target);graph.get(target).add(from)}
+        if(sourceSpecifiers?.has(literal.text) && literal.text.startsWith(".")) {
+          let path
+          try {path=decodeURIComponent(literal.text.split(/[?#]/,1)[0])} catch {}
+          if(path&&/\.[cm]?js$/.test(path)&&!existsSync(join(root,posix.dirname(from),path))&&edge.targets?.some(target=>native.test(target))) needsEmission.add(from)
+        }
+        for (const target of edge.targets??[]) {graph.get(from).add(target);graph.get(target).add(from);runtimeEdges.get(from).add(target)}
       }
       ts.forEachChild(node,visit)
     }
     visit(file)
     if (opaque) return fallback("opaque runtime module edge")
   }
-  const selected=new Set(roots),pending=[...roots]
+  // Only a public importer's outgoing runtime graph can require this route.
+  // An unused private importer must not pull a provided facade into emission.
+  for(const source of sources) if(native.test(source)&&isPublic(source)) {
+    const seen=new Set(),pending=[source]
+    while(pending.length) {
+      const next=pending.pop()
+      if(seen.has(next))continue
+      seen.add(next)
+      if(needsEmission.has(next)){nativeRoots.add(source);break}
+      pending.push(...runtimeEdges.get(next))
+    }
+  }
+  const selected=new Set([...roots,...nativeRoots]),pending=[...selected]
   while(pending.length) for(const next of graph.get(pending.pop())??[]) if(!selected.has(next)){selected.add(next);pending.push(next)}
-  return {outputs:Object.fromEntries(entries.filter(([source])=>selected.has(plainPath(source)))),summary:{mode:"component",modules:entries.length,selected:selected.size,vibeRoots:roots.length}}
+  return {outputs:Object.fromEntries(entries.filter(([source])=>selected.has(plainPath(source)))),summary:{mode:"component",modules:entries.length,selected:selected.size,vibeRoots:roots.length,nativeRuntimeRoots:nativeRoots.size}}
 }
 function generatedPatternRoute(value) {
   if (!value || typeof value!=="object") return false

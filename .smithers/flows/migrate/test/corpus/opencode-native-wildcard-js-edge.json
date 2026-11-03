@@ -1,0 +1,8 @@
+{
+  "name": "opencode-native-wildcard-js-edge",
+  "source": "export * as SessionLegacy from \"./session-legacy.js\";\nexport const value = 42;\n",
+  "exports": {
+    "./*": "./src/*.ts"
+  },
+  "entry": "session-legacy"
+}

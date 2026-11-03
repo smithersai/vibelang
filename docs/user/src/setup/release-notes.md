@@ -153,6 +153,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Rerunning migration setup left older publication helpers unable to pack nested import conditions, so package builds crashed with `value.replace is not a function`. Setup now upgrades those helpers while preserving their existing export paths.
 
+- Node could load a native TypeScript wildcard export from a source folder and fail on its relative `.js` imports after a mixed package migrated. Routing now selects the compiled native component for those entries, preserving source type resolution and unrelated native exports.
+
 - Declaration checks could compare an unused `types` export instead of an earlier matching package condition, hiding a real API change. Published entry discovery now follows TypeScript's conditional export order and preserves mirrored `.vibe` sidecar resolution.
 
 - Declaration checks could miss a type change selected by an explicit `resolution-mode` import attribute. They now resolve each import using its own mode throughout the comparison.
