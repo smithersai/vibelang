@@ -10,3 +10,10 @@ export function rejected(x: number) {
   const inBranch = true ? x |> % ? 1 : 2 : 3
   return [identity, called, chained, inBranch]
 }
+// Chapter 002: unparenthesized conditional pipe test is EK2301; docs/design/src/002-running.md#fb9c47b296060853
+// Chapter 002: unparenthesized conditional pipe test is EK2301; docs/design/src/002-running.md#d9bfbc0a94786201
+// Chapter 002: unparenthesized conditional pipe test is EK2301; docs/design/src/002-running.md#2bbaa764c8ac864d
+// Chapter 002: unparenthesized conditional pipe test is EK2301; docs/design/src/002-running.md#7b5a8bb4ad3a4d1c
+// Chapter 002: reject unparenthesized conditional pipe tests; docs/design/src/002-running.md#79e4929682d394db
+// Chapter 002: reject unparenthesized conditional pipe tests; docs/design/src/002-running.md#ee73c41511b7eed2
+// Chapter 002: reject unparenthesized conditional pipe tests; docs/design/src/002-running.md#827ed216503a8ad3

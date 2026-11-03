@@ -1,0 +1,40 @@
+// Chapter 002: Hack topic identity, native precedence, chains, scopes, XOR and modulo; docs/design/src/002-running.md#90cb1248ce5bde62
+// Chapter 002: Hack topic identity, native precedence, chains, scopes, XOR and modulo; docs/design/src/002-running.md#325f5b78caf66662
+// Chapter 002: Hack topic identity, native precedence, chains, scopes, XOR and modulo; docs/design/src/002-running.md#738035125f374100
+// Chapter 002: Hack topic identity, native precedence, chains, scopes, XOR and modulo; docs/design/src/002-running.md#984acacdca7d3cd4
+// Chapter 002: Hack topic identity, native precedence, chains, scopes, XOR and modulo; docs/design/src/002-running.md#1d63a6f7fd63efde
+// Chapter 002: Hack topic identity, native precedence, chains, scopes, XOR and modulo; docs/design/src/002-running.md#969291eca59ac285
+// Chapter 002: Hack topic identity, native precedence, chains, scopes, XOR and modulo; docs/design/src/002-running.md#92e8d5e11c9a98d1
+// Chapter 002: Hack topic identity, native precedence, chains, scopes, XOR and modulo; docs/design/src/002-running.md#63d9479cfce5de4c
+// Chapter 002: Hack topic identity, native precedence, chains, scopes, XOR and modulo; docs/design/src/002-running.md#026cf3edc4c3d321
+// Chapter 002: Hack topic identity, native precedence, chains, scopes, XOR and modulo; docs/design/src/002-running.md#c9c58ba6b484e931
+// Chapter 002: Hack topic identity, native precedence, chains, scopes, XOR and modulo; docs/design/src/002-running.md#fc7385cb2002e8ed
+// Chapter 002: Hack topic identity, native precedence, chains, scopes, XOR and modulo; docs/design/src/002-running.md#7686ec1eb630b519
+// Chapter 002: Hack topic identity, native precedence, chains, scopes, XOR and modulo; docs/design/src/002-running.md#24e51bcabf0b7289
+// Chapter 002: Hack topic identity, native precedence, chains, scopes, XOR and modulo; docs/design/src/002-running.md#967977e057667355
+// Chapter 002: Hack topic identity, native precedence, chains, scopes, XOR and modulo; docs/design/src/002-running.md#aa78d27f1b8fe10d
+// Chapter 002: Hack topic identity, native precedence, chains, scopes, XOR and modulo; docs/design/src/002-running.md#ffd107082b8edbc5
+// Chapter 002: Hack topic identity, native precedence, chains, scopes, XOR and modulo; docs/design/src/002-running.md#79e4929682d394db
+// Chapter 002: Hack topic identity, native precedence, chains, scopes, XOR and modulo; docs/design/src/002-running.md#ee73c41511b7eed2
+// Chapter 002: Hack topic identity, native precedence, chains, scopes, XOR and modulo; docs/design/src/002-running.md#4ba316056da7e612
+// Chapter 002: Hack topic identity, native precedence, chains, scopes, XOR and modulo; docs/design/src/002-running.md#827ed216503a8ad3
+import { Effect, pipe } from "effect"
+export effect function main(): unknown!! {
+ let evaluations = 0
+ const object = { n: 7 }
+ function input() { evaluations++; return object }
+ const same = input() |> % === object && %.n === 7
+ const one = 1 |> % + 1
+ const chain = 1 |> % + 1 |> % * 2
+ const nested = 1 |> (% + 1 |> % * 2)
+ const branch = true ? 1 : 2 |> % + 10
+ const entire = (true ? 1 : 2) |> % + 10
+ const identity = 7 |> %
+ const xor = 1 ^ 3
+ let assigned = 1; assigned ^= 3
+ const modulo = 7 |> % % 4
+ const test = (1 |> %) ? 1 : 2
+ const body = 1 |> (% ? 1 : 2)
+ const piped = pipe(2, n => n + 1)
+ return [one,chain,nested,branch,entire,identity,same,xor,assigned,modulo,evaluations,test,body,piped]
+}

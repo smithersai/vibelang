@@ -1,0 +1,8 @@
+// expect: EK2301
+// Chapter 002: missing outer topic is a pipe early error; docs/design/src/002-running.md#2b253ce52c656592
+// Chapter 002: missing outer topic is a pipe early error; docs/design/src/002-running.md#9ff20491968a48a4
+// Chapter 002: missing outer topic is a pipe early error; docs/design/src/002-running.md#18bddafecf0e95bc
+// Chapter 002: missing outer topic is a pipe early error; docs/design/src/002-running.md#267b35bf1b9fc074
+// Chapter 002: missing outer topic is a pipe early error; docs/design/src/002-running.md#1951dd5007d8b447
+function f(){return 0}
+export const invalid=1 |> f()

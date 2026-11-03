@@ -1,0 +1,10 @@
+// Chapter 002: returned Effect catch Exit parity; docs/design/src/002-running.md#8f756815d1ebf847
+// Chapter 002: returned Effect catch Exit parity; docs/design/src/002-running.md#b3d137fbf3475f80
+// Chapter 002: returned Effect catch Exit parity; docs/design/src/002-running.md#606467dced3cce41
+// Chapter 002: returned Effect catch Exit parity; docs/design/src/002-running.md#16bb69c042d69a29
+// Chapter 002: returned Effect catch Exit parity; docs/design/src/002-running.md#9d34da719aac941d
+import {Effect} from "effect"
+export effect function main():unknown!!{return (try Effect.succeed(Effect.fail("inner"))) catch e=>e.length}
+// Chapter 002: parenthesized execution stops catch-head search; docs/design/src/002-running.md#893dbf79126f5979
+// Chapter 002: parenthesized execution stops catch-head search; docs/design/src/002-running.md#e7861f76f4eb1f61
+// Chapter 002: parenthesized execution stops catch-head search; docs/design/src/002-running.md#b58f5452ba689a7c
