@@ -1,0 +1,1 @@
+cov-ch001-005 docs/design/src/005-services.md#b03ca31b48ac3ca2: FAIL    coverage-ch005-module-import-paths: run.mjs printed printed no result (exit 1) (2.6 s); retain the native counterpart and exact assertions.

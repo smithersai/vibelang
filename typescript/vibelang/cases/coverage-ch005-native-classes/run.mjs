@@ -5,3 +5,4 @@ const actual=await Effect.runPromiseExit(main()); const reference=await Effect.r
 assert.deepEqual(actual,reference)
 assert.equal(actual._tag,"Success")
 assert.deepEqual(actual.value,[7, false, "undefined", "undefined"])
+console.log("coverage-ok")

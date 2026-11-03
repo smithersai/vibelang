@@ -1,0 +1,9 @@
+import { Utils as RootUtils } from "effect"
+export const namespaces=[Arbitrary,Effect.Array,BigDecimal,Effect.BigInt,Effect.Boolean,Brand,ByteSize,Bytes,Cache,Cause,Channel,ChannelSchema,Chunk,Clock,Combiner,Config,ConfigProvider,Console,Context,Cron,Data,DateTime,Deferred,Differ,Duration,Effect,Effectable,Equal,Equivalence,ErrorReporter,ExecutionPlan,Exit,Fiber,FiberHandle,FiberMap,FiberSet,FileSystem,Filter,Formatter,Effect.Function,Glob,Graph,HKT,Hash,HashMap,HashRing,HashSet,Inspectable,Effect.Iterable,JsonPatch,JsonPointer,JsonSchema,Latch,Layer,LayerMap,LayerRef,LogLevel,Logger,ManagedRuntime,Match,Metric,MutableHashMap,MutableHashSet,MutableList,MutableRef,Newtype,NonEmptyIterable,Effect.Number,Optic,Option,Order,Ordering,PartitionedSemaphore,Path,Pipeable,PlatformError,Pool,Predicate,PrimaryKey,PubSub,Pull,Queue,Random,RcMap,RcRef,Effect.Record,Redactable,Redacted,Reducer,Ref,References,Effect.RegExp,Request,RequestResolver,Resource,Result,Runtime,Schedule,Scheduler,Schema,SchemaAST,SchemaGetter,SchemaIssue,SchemaParser,SchemaRepresentation,SchemaTransformation,Scope,ScopedCache,ScopedRef,SemVer,SemVerRange,Semaphore,Sink,StandardSchema,Stdio,Stream,Effect.String,Struct,SubscriptionRef,Effect.Symbol,SynchronizedRef,Take,Terminal,TextDiff,Tracer,Trie,Tuple,TxChunk,TxDeferred,TxHashMap,TxHashSet,TxPriorityQueue,TxPubSub,TxQueue,TxReentrantLock,TxRef,TxSemaphore,TxSubscriptionRef,Types,UndefinedOr,Unify,RootUtils,Version]
+export const functions=[pipe,flow,identity,absurd,cast,hole]
+
+// Spec rule: docs/design/src/005-services.md#23172419efaac0d5
+// Chapter 005: module-inventory.
+
+// Spec rule: docs/design/src/005-services.md#1a30c8fc1b1782cf
+// Chapter 005: current wording of the same rule.

@@ -1,0 +1,16 @@
+effect function program() {
+ const path=try Path.Path
+ const url=try Effect.try(()=>new URL(import.meta.url))
+ const file=try path.fromFileUrl(url)
+ return path.basename(path.dirname(file))
+}
+export effect function main() { provide Path.layer { return try program() } }
+
+// Spec rule: docs/design/src/005-services.md#6ca4632f380a22b3
+// Chapter 005: path-service.
+// Spec rule: docs/design/src/005-services.md#62a8586ccd088822
+// Chapter 005: path-service.
+// Spec rule: docs/design/src/005-services.md#edce8efee00b7b03
+// Chapter 005: path-service.
+// Spec rule: docs/design/src/005-services.md#ce796347490e3213
+// Chapter 005: path-service.

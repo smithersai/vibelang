@@ -1,0 +1,9 @@
+import { Effect } from "effect"
+import { each,callback,summary } from "./foreign.js"
+effect function wrapped() { return try Effect.try(()=>each(callback)) }
+export effect function main() { return summary(try Effect.exit(wrapped())) }
+
+// Spec rule: docs/design/src/001-functions.md#d60a37f523be3594
+// Chapter 001: references.
+// Spec rule: docs/design/src/001-functions.md#4f6111b61f34b8d1
+// Chapter 001: references.

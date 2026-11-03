@@ -31,7 +31,7 @@ export class Decorated {
   static effect value() { return 5 }
 }
 export effect function main() {
-  const program = cold()
+  const program = cold(7)
   const afterCall = [defaults, bodies]
   const first = try program
   const second = try program

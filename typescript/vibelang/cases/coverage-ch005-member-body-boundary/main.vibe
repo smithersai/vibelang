@@ -1,0 +1,5 @@
+// expect: EK0902
+service S { static readonly key="coverage/BodyBoundary"; m() {} n(): void }
+
+// Spec rule: docs/design/src/005-services.md#e4c6a5e4fe448792
+// Chapter 005: body-boundary.

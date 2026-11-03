@@ -1,0 +1,2 @@
+const fiber="local", TypeId=7
+export const values=[fiber,TypeId]

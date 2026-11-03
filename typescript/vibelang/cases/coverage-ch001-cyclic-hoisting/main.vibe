@@ -1,0 +1,14 @@
+import "./consumer.ts"
+export effect function program() {
+ class Base { ping() { return 7 } }
+ class Derived extends Base {
+  effect go() { try Effect.yieldNow; return super.ping() }
+ }
+ return try new Derived().go()
+}
+export effect function main() { return try program() }
+
+// Spec rule: docs/design/src/001-functions.md#0172271cc346753a
+// Chapter 001: hoisting.
+// Spec rule: docs/design/src/001-functions.md#4840f5ecac7e624c
+// Chapter 001: hoisting.

@@ -1,0 +1,5 @@
+// Chapter 001: defaults bind once at call; the body reruns.
+let defaults=0,bodies=0
+export effect function cold(n=++defaults) { bodies++;return n }
+export effect function main() { const p=cold();const before=[defaults,bodies];return [before,try p,try p,defaults,bodies] }
+// Spec rule: docs/design/src/001-functions.md#5c5e4ac8df0b4a26

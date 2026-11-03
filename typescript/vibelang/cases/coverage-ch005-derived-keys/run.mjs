@@ -5,3 +5,4 @@ const actual=await Effect.runPromiseExit(main()); const reference=await Effect.r
 assert.deepEqual(actual,reference)
 assert.equal(actual._tag,"Success")
 assert.deepEqual(actual.value,["@coverage/keys/main#Repo", "@coverage/nested/users.test#Nested"])
+console.log("coverage-ok")

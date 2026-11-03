@@ -1,1 +1,2 @@
 import assert from "node:assert/strict"; import * as actual from "./out/main.js"; import * as native from "./out/native.js"; assert.deepEqual([actual.a,actual.b],[native.a,native.b]); assert.deepEqual([actual.a,actual.b],[1,2])
+console.log("coverage-ok")

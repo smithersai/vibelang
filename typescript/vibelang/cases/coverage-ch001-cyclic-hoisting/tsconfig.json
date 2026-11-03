@@ -1,0 +1,21 @@
+{
+  "compilerOptions": {
+    "strict": true,
+    "target": "ES2022",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "skipLibCheck": true,
+    "types": [],
+    "outDir": "out",
+    "declaration": true,
+    "allowImportingTsExtensions": true,
+    "rewriteRelativeImportExtensions": true
+  },
+  "files": [
+    "main.vibe",
+    "native.ts",
+    "consumer.ts",
+    "native-consumer.ts",
+    "contracts.ts"
+  ]
+}

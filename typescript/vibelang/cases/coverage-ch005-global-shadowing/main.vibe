@@ -1,0 +1,6 @@
+import { values as local } from "./local.vibe"
+import { values as imported } from "./imported.vibe"
+export const values=[local,imported]
+
+// Spec rule: docs/design/src/005-services.md#ac24b5a8c4409fae
+// Chapter 005: local declarations and imports silently shadow value globals.

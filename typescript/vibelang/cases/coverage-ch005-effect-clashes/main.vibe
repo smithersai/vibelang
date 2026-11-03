@@ -1,0 +1,16 @@
+export const values=[Effect.try,Effect.catch,Effect.void,Effect.let,Effect.undefined,Effect.match,Effect.when,Effect.service,Effect.provide,Effect.uninterruptible,Effect.interruptible]
+export const builtinUndefined=undefined
+
+// Spec rule: docs/design/src/005-services.md#9d84611830b106bc
+// Chapter 005: clashes.
+// Spec rule: docs/design/src/005-services.md#36d097e4919c1a01
+// Chapter 005: clashes.
+// Spec rule: docs/design/src/005-services.md#c5ab8fe9628c447a
+// Chapter 005: clashes.
+// Spec rule: docs/design/src/005-services.md#b914daa8afd3ecb5
+// Chapter 005: clashes.
+// Spec rule: docs/design/src/005-services.md#a014657800dc6e15
+// Chapter 005: clashes.
+
+// Spec rule: docs/design/src/005-services.md#067ffe7bd1c9bd36
+// Chapter 005: current wording of the same rule.

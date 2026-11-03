@@ -1,0 +1,9 @@
+import { shadow } from "./shadow.vibe"
+export const values=[Do,TypeId,abortSignal,currentParentSpan,currentSpan,fiber,fiberId,interrupt,never,succeedNone,tracer,txRetry,yieldNow]
+export { shadow }
+
+// Spec rule: docs/design/src/005-services.md#5d0b12de96772831
+// Chapter 005: globals.
+
+// Spec rule: docs/design/src/005-services.md#c558cb5dcb0ca980
+// Chapter 005: current wording of the same rule.

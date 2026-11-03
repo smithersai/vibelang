@@ -14,3 +14,6 @@ export effect function main() {
 
 // Spec rule: docs/design/src/005-services.md#2963a702be8b5159
 // Chapter 005: memoization.
+
+// Spec rule: docs/design/src/005-services.md#74cf550e7347dd91
+// Chapter 005: current wording of the same rule.

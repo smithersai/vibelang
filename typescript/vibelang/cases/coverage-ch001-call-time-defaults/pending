@@ -1,0 +1,1 @@
+cov-ch001-005 docs/design/src/001-functions.md#5c5e4ac8df0b4a26: FAIL    coverage-ch001-call-time-defaults: run.mjs printed printed no result (exit 1) (3.3 s); retain the native counterpart and exact assertions.

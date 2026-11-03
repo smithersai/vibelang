@@ -1,0 +1,7 @@
+export const Schema$=17, Function$=18
+export const namespace=Schema
+export const fn=pipe
+export const locals=[Schema$,Function$]
+
+// Spec rule: docs/design/src/005-services.md#b03ca31b48ac3ca2
+// Chapter 005: import-paths.

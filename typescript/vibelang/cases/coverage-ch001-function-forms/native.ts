@@ -30,7 +30,7 @@ export class Decorated {
   static value() { return Effect.gen(function* () { return 5 }) }
 }
 export function main() { return Effect.gen(function* () {
-  const program = cold()
+  const program = cold(7)
   const afterCall = [defaults, bodies]
   const first = yield* program
   const second = yield* program

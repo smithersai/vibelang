@@ -1,0 +1,10 @@
+const service=7, Name=8
+service
+Name
+service Named
+{ static readonly key="coverage/Newline"; value:number }
+export const value=service+Name
+export const hasKey=typeof Named.key==="string"
+
+// Spec rule: docs/design/src/005-services.md#9b0b2039578a4e05
+// Chapter 005: keyword.

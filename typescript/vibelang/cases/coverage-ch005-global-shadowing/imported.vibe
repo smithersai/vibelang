@@ -1,0 +1,2 @@
+import { fiber, TypeId } from "./foreign.js"
+export const values=[fiber,TypeId]

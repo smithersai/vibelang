@@ -20,3 +20,6 @@ export effect function main() { return try new Derived().go() }
 // Chapter 001: tag.
 // Spec rule: docs/design/src/001-functions.md#464cb189253fa19a
 // Chapter 001: tag.
+
+// Spec rule: docs/design/src/001-functions.md#2268b15f719639e1
+// Chapter 001: tagged super calls retain their receiver and ignore own call/bind properties (coverage-ch001-super-tag).

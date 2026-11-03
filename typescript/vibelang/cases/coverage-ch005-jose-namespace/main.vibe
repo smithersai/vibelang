@@ -1,0 +1,4 @@
+export const namespace=Jwk
+
+// Spec rule: docs/design/src/005-services.md#9dd920dd2d24bc97
+// Chapter 005: the current twenty-third lowercase subpath is effect/jose.

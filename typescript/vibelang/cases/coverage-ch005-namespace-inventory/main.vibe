@@ -14,3 +14,9 @@ export const namespaces=[AiError,Argument,ClusterCron,Aead,DevTools,Base64,Event
 // Chapter 005: root, subpath and ambient namespace inventory.
 // Spec rule: docs/design/src/005-services.md#4a496f74dc7ab705
 // Chapter 005: root, subpath and ambient namespace inventory.
+
+// Spec rule: docs/design/src/005-services.md#06d2b3ae3b97b539
+// Chapter 005: current wording of the same rule.
+
+// Spec rule: docs/design/src/005-services.md#38aefb026ea959a3
+// Chapter 005: current wording of the same rule.

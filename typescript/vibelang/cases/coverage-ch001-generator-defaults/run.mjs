@@ -5,3 +5,4 @@ const actual=await Effect.runPromiseExit(Effect.tryPromise(probe)); const refere
 assert.deepEqual(actual,reference)
 assert.equal(actual._tag,"Success")
 assert.deepEqual(actual.value,{"afterCall": [6, 0], "values": [{"done": true, "value": 7}, {"done": true, "value": 7}, {"done": true, "value": 7}, {"done": true, "value": 7}, {"done": true, "value": 7}, {"done": true, "value": 7}], "bodies": 0, "prototype": true, "length": 0, "kind": "GeneratorFunction"})
+console.log("coverage-ok")
