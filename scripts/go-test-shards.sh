@@ -53,6 +53,8 @@ for arg in "$@"; do
   # Go accepts one or two leading dashes. Inspect a copy; keep "$@" intact.
   case $arg in --test.*) arg=${arg#-} ;; esac
   case $arg in
+    # A suite-wide fail-fast run needs one native process, including flag validation.
+    -test.failfast|-test.failfast=*|--test.failfast|--test.failfast=*) exec "$bin" "$@" ;;
     -test.coverprofile|-test.coverprofile=*|-test.cpuprofile|-test.cpuprofile=*|-test.memprofile|-test.memprofile=*|-test.blockprofile|-test.blockprofile=*|-test.mutexprofile|-test.mutexprofile=*|-test.trace|-test.trace=*) exec "$bin" "$@" ;;
     -test.run|-test.run=*|-test.list|-test.list=*|-test.fuzz|-test.fuzz=*|-test.bench|-test.bench=*|-test.v=test2json) exec "$bin" "$@" ;;
   esac

@@ -310,6 +310,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Sharded Go tests ignored native double-dash selectors such as `--test.run`, running unselected tests; selectors, JSON mode and profile outputs now run once with their original arguments.
 
+- Sharded Go tests continued in other processes after the first failure even with `-failfast`; explicit fail-fast runs now use one native process and stop with Go's original status.
+
 - Sharded Go tests could start several fuzz campaigns when `-test.fuzz` used a separate selector argument; that form now runs once with its original arguments and exit status.
 - Remote checks could report success after failing to discover tracked fixtures, leaving the build host with a partial checkout; `scripts/remote.sh` now stops before running tests and reports the failing discovery stage and exit status.
 

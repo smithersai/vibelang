@@ -574,6 +574,11 @@ before a test process starts. A failed stage names itself in the diagnostic,
 keeps the tool's error output and fails the run; a partial partition cannot
 report a successful subset of the suite. Temporary partition files are removed.
 
+Explicit `-test.failfast` flags also run once, so the first failing test
+stops the whole suite. Their original values and repeated flags reach Go
+unchanged, including `false` settings and invalid values that Go rejects.
+Ordinary runs without this flag still shard.
+
 The fuzz shell caps `GOMAXPROCS` at the smaller of `24` and the CPUs allowed
 by the process affinity, using Node's `os.availableParallelism()`. A lane
 restricted to four CPUs therefore starts four seed workers, rather than sizing
