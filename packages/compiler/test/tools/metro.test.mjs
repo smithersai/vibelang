@@ -73,6 +73,22 @@ export const name: Name = condition
   assert.equal(context.result, "import")
 })
 
+test("a .vibe module's relative imports reach the sources beside it", async (t) => {
+  const { code } = await bundle(t, withVibeLang, {
+    "src/helper.ts": 'export const ts = "ts"\n',
+    "src/other.vibe": 'export const vibe: string = "vibe"\n',
+    "src/use.vibe": `import { ts } from "./helper.ts"
+import { vibe } from "./other.vibe"
+
+export const name: string = ts + ":" + vibe
+`,
+    "index.js": 'import { name } from "./src/use.vibe"\nglobalThis.result = name\n'
+  })
+  const context = {}
+  runInNewContext(code, Object.assign(context, { globalThis: context }))
+  assert.equal(context.result, "ts:vibe")
+})
+
 test("the bundle's source map names the .vibe module's lines", async (t) => {
   const { code, map } = await bundle(t, withVibeLang)
   const at = code.indexOf('"metro-marker"')
@@ -92,7 +108,9 @@ test("withVibeLang keeps the app's transformer and config, and accepts a promise
     resolver: { sourceExts: ["ts", "js"], extraNodeModules: { a: "b" } },
     transformer: { babelTransformerPath: "/app/transformer.js", minifierPath: "m" }
   }))
-  assert.deepEqual(config.resolver, { sourceExts: ["ts", "js", "vibe"], extraNodeModules: { a: "b" } })
+  const { resolveRequest, ...resolver } = config.resolver
+  assert.equal(typeof resolveRequest, "function")
+  assert.deepEqual(resolver, { sourceExts: ["ts", "js", "vibe"], extraNodeModules: { a: "b" } })
   assert.equal(config.transformer.babelTransformerPath, join(compilerPackage, "metro.cjs"))
   assert.equal(config.transformer.minifierPath, "m")
   assert.equal(process.env.VIBELANG_METRO_TRANSFORMER, "/app/transformer.js")

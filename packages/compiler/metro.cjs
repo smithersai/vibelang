@@ -48,10 +48,34 @@ function transformerOf(root, name) {
   }
 }
 
+// A compile rewrites a .vibe module's relative imports to the emitted names, so
+// ./a.ts reaches Metro as ./a.js. From source, those names are the files beside
+// the module, as for vibelang/register.
+const sources = { ".js": [".vibe", ".ts", ".tsx"], ".mjs": [".mts"], ".cjs": [".cts"] }
+
+function resolveEmittedNames(next) {
+  return (context, name, platform) => {
+    const resolve = next ?? context.resolveRequest
+    try {
+      return resolve(context, name, platform)
+    } catch (error) {
+      if (!context.originModulePath.endsWith(".vibe") || !/^\.\.?\//.test(name)) throw error
+      const extension = Object.keys(sources).find((candidate) => name.endsWith(candidate))
+      for (const replacement of extension === undefined ? [] : sources[extension]) {
+        try {
+          return resolve(context, name.slice(0, -extension.length) + replacement, platform)
+        } catch {}
+      }
+      throw error
+    }
+  }
+}
+
 /**
  * The Metro config `config` with .vibe modules: .vibe in
- * resolver.sourceExts, and this module as the Babel transformer before the
- * one `config` names. `config` may be a config, a promise of one, or a
+ * resolver.sourceExts, a resolver for the emitted names of a .vibe module's
+ * imports, and this module as the Babel transformer before the one `config`
+ * names. `config` may be a config, a promise of one, or a
  * function of Metro's default config that returns either.
  */
 function withVibeLang(config) {
@@ -64,7 +88,11 @@ function withVibeLang(config) {
   const sourceExts = config.resolver?.sourceExts ?? defaultSourceExts(root)
   return {
     ...config,
-    resolver: { ...config.resolver, sourceExts: sourceExts.includes("vibe") ? sourceExts : [...sourceExts, "vibe"] },
+    resolver: {
+      ...config.resolver,
+      sourceExts: sourceExts.includes("vibe") ? sourceExts : [...sourceExts, "vibe"],
+      resolveRequest: resolveEmittedNames(config.resolver?.resolveRequest)
+    },
     transformer: { ...transformer, babelTransformerPath: transformerPath }
   }
 }
