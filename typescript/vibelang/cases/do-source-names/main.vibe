@@ -37,3 +37,6 @@ export function names(): unknown[] {
  out.push([nested.name, nested.observed])
  return out
 }
+
+// Spec rule: docs/design/src/001-functions.md#b797c4475380ee71
+// Chapter 001: do completions and array operands suppress inferred names; computed/symbol properties preserve requested names (do-source-names).

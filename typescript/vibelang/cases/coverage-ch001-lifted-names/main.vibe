@@ -1,0 +1,10 @@
+// Chapter 001: value-only pipe topics, match values and completion records.
+export effect function main() {
+ const piped = (class { static observed = this.name }) |> [%.name, %.observed]
+ const matched = match (true) { when true: (class { static observed = this.name }); default: (class { static observed = this.name }); }
+ const completed = do { if (true) { (class { static observed = this.name }) } else { (class { static observed = this.name }) } }
+ return { piped, matched: [matched.name,matched.observed], completed: [completed.name,completed.observed] }
+}
+
+// Spec rule: docs/design/src/001-functions.md#69013845a1cba4f0
+// Chapter 001: anonymous class names are observed before private pipe, match and completion captures can name them (coverage-ch001-lifted-names).

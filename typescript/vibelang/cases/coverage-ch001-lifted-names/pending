@@ -1,0 +1,1 @@
+cov-ch001-005 docs/design/src/001-functions.md#69013845a1cba4f0: the pipe captures an anonymous class as topic_1 before its static initializer observes name; the native counterpart observes empty names. Keep exact native Exit equality.

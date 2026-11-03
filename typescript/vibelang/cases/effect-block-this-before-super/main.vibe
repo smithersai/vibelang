@@ -67,3 +67,6 @@ export effect function main() {
 
 // Spec rule: docs/design/src/001-functions.md#807f682faf1d78f8
 // Chapter 001: static super helper remains inside its source static block (effect-block-this-before-super).
+
+// Spec rule: docs/design/src/001-functions.md#2268b15f719639e1
+// Chapter 001: cold lexical-this construction before derived super, and delayed reads.
