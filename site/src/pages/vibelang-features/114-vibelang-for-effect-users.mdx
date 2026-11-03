@@ -39,6 +39,8 @@ effect function maybeLoad(load?: () => string!!) {
 
 `try make()` explicitly delegates the call's result even when `make` has type `any`. The compiler no longer describes that result as an unrun Effect. Give the callable an Effect return type to check its success, error, and service channels.
 
+With `strictNullChecks` enabled, `try load?.()` and `try program` where `program` may be `undefined` report `EK0502`. Narrow the callable or operand first, or provide an Effect fallback. Optional syntax on a proven-present callable stays allowed, as does an Effect whose success value is `undefined`. The operand check follows the project's TypeScript nullability settings.
+
 Plain code may discard a runner's result: `function run(): void { Effect.runSyncExit(Effect.succeed(1)) }` runs the Effect and discards its `Exit`, just as in TypeScript. The same applies to plain callbacks, `async` functions and module statements. Discarding a constructed Effect value does not run it; use explicit execution when that is intended.
 
 A plain `for...of` also keeps TypeScript's lexical scopes. A closure made in its iterable expression captures an uninitialized `let` or `const` head binding, even with destructuring. Calling that closure during or after the loop throws `ReferenceError`; initializing the separate per-iteration bindings does not initialize the captured cell. An assignment head keeps its outer shared binding instead. In `.vibe`, write an explicit outer `let` and an assignment head when migrating a shared `var` cell; `var` itself belongs in a `.ts` or `.js` file (VIP-1).

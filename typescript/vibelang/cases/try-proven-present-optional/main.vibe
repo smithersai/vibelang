@@ -1,0 +1,28 @@
+// expect-result: [1,2,3,4,null,5]
+import { Effect } from "effect"
+effect function known() {
+ const make = () => Effect.succeed(1)
+ return try make?.()
+}
+effect function method() {
+ const obj = { make() { return Effect.succeed(2) } }
+ return try obj.make?.()
+}
+effect function receiver() {
+ const obj = { make() { return Effect.succeed(3) } }
+ return try obj?.make()
+}
+effect function narrowed(make: (() => number!!) | undefined) {
+ if (make) return try make?.()
+ return 0
+}
+effect function undefinedSuccess() {
+ const make = () => Effect.succeed(undefined)
+ return try make?.()
+}
+effect function asserted(make: (() => number!!) | undefined) {
+ return try make!?.()
+}
+export effect function main() {
+ return [try known(), try method(), try receiver(), try narrowed(() => Effect.succeed(4)), try undefinedSuccess(), try asserted(() => Effect.succeed(5))]
+}

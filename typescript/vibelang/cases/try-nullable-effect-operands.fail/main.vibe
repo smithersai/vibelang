@@ -1,0 +1,10 @@
+// expect: EK0502 EK0502 EK0502 EK0502 EK0502 EK0502
+// VIP-5: a possibly absent operand is not assignable to Effect in strict mode.
+export effect function optional(make?: () => Effect.Effect<number>) { return try make?.() }
+export effect function stored(input: Effect.Effect<number> | undefined) { return try input }
+export effect function returned(make: () => Effect.Effect<number> | undefined) { return try make() }
+export effect function method(obj: { make?: () => Effect.Effect<number> }) { return try obj.make?.() }
+export effect function receiver(obj?: { make(): Effect.Effect<number> }) { return try obj?.make() }
+export effect function grouped(make?: () => Effect.Effect<number>) { return try (make?.()) }
+export effect function narrowed(make?: () => Effect.Effect<number>) { if (make) return try make?.(); return 0 }
+export effect function defined(make: () => Effect.Effect<undefined>) { return try make?.() }

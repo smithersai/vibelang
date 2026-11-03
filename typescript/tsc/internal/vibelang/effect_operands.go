@@ -29,11 +29,10 @@ func effectOperandType(c *checker.Checker, operand *ast.Node) *checker.Type {
 	inner := ast.SkipParentheses(operand)
 	if isInvocation(inner) && catchExpressionOf(inner) == nil && !isTryCall(inner) {
 		if signature := c.GetResolvedSignature(inner); signature != nil {
-			t := c.GetReturnTypeOfSignature(signature)
-			if ast.IsOptionalChain(inner) {
-				return c.GetUnionType([]*checker.Type{t, c.GetUndefinedType()})
-			}
-			return t
+			// The resolved signature already retains the optional call's
+			// absent branch. A syntactic ?. on a narrowed/proven-present
+			// receiver adds no undefined, just as in TypeScript.
+			return c.GetReturnTypeOfSignature(signature)
 		}
 	}
 	return c.GetTypeAtLocation(operand)
