@@ -3,7 +3,10 @@
 Platform can run `smthrs //:spec-rule-judge` after the deterministic spec
 linters. The root `PACKAGE.ts` declares the target; it does not enter the
 pre-gate automatically. `//:spec-rule-judge-test` tests the collector, quote
-validation, retry cache and fail-open behavior without a model.
+validation, retry cache and fail-open behavior without a model. The suite also
+runs directly with `node --test /path/to/checkout/scripts/spec-rule-judge.test.mjs`
+from any working directory; its CLI subprocesses resolve the judge beside the
+test file.
 
 The judge examines the entry's `docs/design/` changes and diagnostic-source
 changes. Implementation-only changes cost no model call. Luna lists added

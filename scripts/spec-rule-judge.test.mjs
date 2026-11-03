@@ -4,7 +4,10 @@ import { mkdtempSync, rmSync, readFileSync, writeFileSync, mkdirSync } from "nod
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { spawnSync } from "node:child_process";
+import { fileURLToPath } from "node:url";
 import { authoritiesFrom, addedText, collectEntry, hash, judge, validateVerdict, wouldReject, promptFor } from "./spec-rule-judge.mjs";
+
+const judgeScript = fileURLToPath(new URL("./spec-rule-judge.mjs", import.meta.url));
 
 const fixture = () => ({
   revision: "abc123", diff: "diff --git a/docs/design/src/001.md b/docs/design/src/001.md\n--- a/docs/design/src/001.md\n+++ b/docs/design/src/001.md\n@@ -1 +1 @@\n-old rule\n+New rule must be approved.\n",
@@ -178,7 +181,7 @@ test("corrupt cached receipts cannot silently authorize an entry", async () => u
 }));
 test("CLI emits and persists fail-open JSON when revision collection fails", async () => using(async (dir) => {
   const output = join(dir, "unavailable.json");
-  const p = spawnSync(process.execPath, ["scripts/spec-rule-judge.mjs", "--repo", "/does-not-exist", "--output", output], {
+  const p = spawnSync(process.execPath, [judgeScript, "--repo", "/does-not-exist", "--output", output], {
     encoding: "utf8"
   });
   assert.equal(p.status, 0);
@@ -211,7 +214,7 @@ console.log(JSON.stringify({ type: "turn.completed", usage: { input_tokens: 100,
   const large = fixture(); large.diff += "+" + "x".repeat(120000) + "\n";
   writeFileSync(input, JSON.stringify(large));
   const flags = join(dir, "flags.json");
-  const result = spawnSync(process.execPath, ["scripts/spec-rule-judge.mjs", "--input", input, "--cache", join(dir, "cache"), "--output", join(dir, "result.json")], {
+  const result = spawnSync(process.execPath, [judgeScript, "--input", input, "--cache", join(dir, "cache"), "--output", join(dir, "result.json")], {
     encoding: "utf8", env: { ...process.env, PATH: bin + ":" + process.env.PATH, CAPTURE_FLAGS: flags }
   });
   assert.equal(result.status, 0, result.stderr);
@@ -291,7 +294,7 @@ test("CLI rejects grounded unsupported rules and contradictions by default; advi
     await judge(input, { cache, invoke: async () => ({ verdict }) });
     for (const advisory of [false, true]) {
       const output = join(dir, name + advisory + ".json");
-      const p = spawnSync(process.execPath, ["scripts/spec-rule-judge.mjs", "--input", file, "--cache", cache,
+      const p = spawnSync(process.execPath, [judgeScript, "--input", file, "--cache", cache,
         "--output", output, ...(advisory ? ["--advisory"] : [])], { encoding: "utf8" });
       assert.equal(p.status, rejects && !advisory ? 1 : 0, p.stderr);
       const receipt = JSON.parse(p.stdout);
@@ -318,10 +321,20 @@ test("default enforcement fails open for unavailable, skipped, corrupt and unwri
     writeFileSync(file, JSON.stringify(input));
     // A regular file cannot be used as the output's parent directory.
     const output = kind === "output" ? join(file, "result.json") : join(dir, kind + "-result.json");
-    const p = spawnSync(process.execPath, ["scripts/spec-rule-judge.mjs", "--input", file, "--cache", cache,
+    const p = spawnSync(process.execPath, [judgeScript, "--input", file, "--cache", cache,
       "--output", output], { encoding: "utf8" });
     assert.equal(p.status, 0, p.stderr);
     assert.equal(JSON.parse(p.stdout).enforced, false);
     if (kind !== "skipped") assert.match(p.stderr, /warning/);
   }
+}));
+
+test("judge subprocess tests run from unrelated working directories", async () => using(async (dir) => {
+  // Exercise all CLI launch sites without recursively selecting this test.
+  const p = spawnSync(process.execPath, ["--test", "--test-reporter=tap", "--test-name-pattern",
+    "^(CLI |production launcher |default enforcement )", fileURLToPath(import.meta.url)], {
+    cwd: dir, encoding: "utf8", env: { ...process.env, NODE_TEST_CONTEXT: undefined }
+  });
+  assert.equal(p.status, 0, p.stdout + p.stderr);
+  assert.match(p.stdout, /# tests 4\b/);
 }));

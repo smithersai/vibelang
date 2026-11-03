@@ -523,6 +523,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - CI health reports lost process-startup failures recorded on target summary lines. They now retain the diagnostic and identify startup failures separately from test timeouts.
 - Focusing on ZIP packaging tests still required building the formatter and its compiler dependencies. A dedicated archive target now runs those tests and their fuzz corpus as a standard-library-only file set, with the normal corpus location preserved.
+
+- The specification rule judge tests failed with `MODULE_NOT_FOUND` when run outside the checkout root; they now locate the CLI relative to the test file.
 - `Effect.forkChild(e)`, `Effect.forkDetach(e)` and other calls whose type parameter is constrained to an `Effect`, such as `<Arg extends Effect<any, any, any> | Options>`, warned `EK4802` that the call receives the unrun program. Such a parameter declares that it takes a program, so it no longer warns.
 - A function whose only statement is `return try value` showed V8 coverage, and tools that read it, a second function for the generator the compiler makes. That generator now maps to no source position, so coverage counts one function, as before tail `try` kept native delegation.
 
