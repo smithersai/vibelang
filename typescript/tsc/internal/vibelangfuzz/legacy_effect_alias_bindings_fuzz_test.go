@@ -16,9 +16,12 @@ func TestLegacyEffectAliasBindingsQuoted(t *testing.T) {
 }
 func FuzzLegacyEffectAliasBindings(f *testing.F) {
 	startShortBudget(f)
-	keys := []string{"legacy-global", "local-type", "imported-type", "legacy-disabled"}
+	keys := []string{"legacy-global", "local-type", "imported-type", "legacy-disabled", "legacy-effect-return"}
 	for _, key := range keys {
 		f.Add(key, uint8(0))
+	}
+	for shape := range uint8(4) {
+		f.Add("legacy-effect-return", shape)
 	}
 	w := NewWorkspace(f)
 	f.Fuzz(func(t *testing.T, key string, shape uint8) {
@@ -35,6 +38,11 @@ func FuzzLegacyEffectAliasBindings(f *testing.F) {
 		use := "export let result: Effect<" + typ + ">;"
 		files := map[string]string{}
 		switch key {
+		case "legacy-effect-return":
+			// plain-contract-exceptions: a legacy alias on an effect return
+			// annotation still warns when all three slots are explicit.
+			value := []string{"1", "\"value\"", "1", "[]"}[int(shape)%4]
+			use = fmt.Sprintf("export effect function result(): Effect<%s, never, never> { return %s }", typ, value)
 		case "legacy-disabled":
 			use = "// @vibelang-diagnostics-next-line EK4856:off\n" + use
 		case "local-type":
@@ -59,7 +67,7 @@ func FuzzLegacyEffectAliasBindings(f *testing.F) {
 			}
 		}
 		want := 0
-		if key == "legacy-global" {
+		if key == "legacy-global" || key == "legacy-effect-return" {
 			want = 1
 		}
 		if warnings != want || len(errors) != 0 {
