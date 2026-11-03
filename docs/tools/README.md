@@ -347,7 +347,11 @@ The checker reads snapshots through `jj`, including deletions, and reports each
 changed normative sentence in `docs/design/src/` and `docs/design/vips/`.
 A sentence with inline code, an `EK` or `TS` diagnostic code, `must`,
 `is an error`, `compiles` or `means` is normative. Code fences themselves
-are examples, not prose rules. Generated pages, headings, unchanged sentences
+are examples, not prose rules. In Appendix A, the grammar admission census is
+implementation metadata: only its exact generated frame and valid, uniquely
+keyed rows are exempt. Malformed markers, handwritten additions and adjacent
+rules retain their evidence requirements, heading context and original source lines.
+Generated pages, headings, unchanged sentences
 moved or copied between chapters and VIPs, whitespace, emphasis, link destinations, citation-only
 replacements, Effect version citations in otherwise unchanged prose and a
 closed list of common prose typos are exempt. Deleted sentences need no new

@@ -1,6 +1,7 @@
 // Entry-scoped, deterministic evidence check. Semantic review belongs to rule-judge.
 import { spawnSync } from "node:child_process"
 import ts from "typescript"
+import { isGeneratedCensusSection } from "../../scripts/grammar-census.mjs"
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join, resolve } from "node:path"
@@ -37,6 +38,13 @@ export function canonical(text: string): string {
 export function sentences(path: string, markdown: string): Sentence[] {
   if (generated(markdown)) return []
   const out: Sentence[] = []
+  // This generated implementation census is metadata, never grammar authority.
+  // Preserve line numbers; malformed frames and handwritten additions stay rules.
+  if (path === "docs/design/src/900-appendices.md") markdown = markdown.replace(
+    /<!-- grammar-admission:start -->[\s\S]*?<!-- grammar-admission:end -->/g,
+    section => isGeneratedCensusSection(section) ? section.replace(/^[^\r\n]+/gm,
+      line => /^#{1,6}\s/.test(line) ? line : "") : section
+  )
   const lines = markdown.split(/\r?\n/)
   let fence = "", section = "", paragraph: { text: string; line: number }[] = [], comment = false
   const flush = () => {

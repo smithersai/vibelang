@@ -1153,3 +1153,10 @@ No compatibility-code allowlist bypasses missing definition rows.
 Historical proposals, the versioned code map and release/decision logs are
 migration records; current chapters and guides are scanned. Appendix B's
 explicit retired-code declaration preserves its non-reassignment history.
+
+### Evidence for generated implementation inventories
+
+The `rule-evidence` checker recognizes the exact generated grammar-census
+format and valid, uniquely keyed hook rows as implementation metadata. It
+retains evidence requirements for real grammar rules, malformed markers and
+handwritten additions, preserving heading context and original source line numbers.
