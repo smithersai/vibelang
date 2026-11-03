@@ -366,18 +366,28 @@ function witness() {
 			Cite:    vip29Cite(`Schema.TaggedError()("Bad", { n: Schema.Number, m: Schema.Number })`),
 		},
 		{
+			Key:     "vip29.schema-error-native-subclass-plain",
+			Chapter: "004-match.md",
+			Quote:   "A static matcher inherited from a superclass is not an own matcher:",
+			Vibe:    "schema error Gone { id: string }\nclass Sub extends Gone {}\nfunction witness() { const subjects: unknown[] = [new Gone({id: \"p\"}), new Sub({id: \"s\"}), {_tag: \"Gone\"}, null, undefined]; return subjects.map(s => match (s) { when Sub: true; default: false; }) }",
+			Effect:  "class Gone extends Schema.TaggedError()(\"Gone\", {id: Schema.String}) {}\nclass Sub extends Gone {}\nfunction witness() { const subjects = [new Gone({id: \"p\"}), new Sub({id: \"s\"}), {_tag: \"Gone\"}, null, undefined]; return subjects.map(s => s instanceof Sub) }",
+			Modules: []string{"Schema"},
+			Cite:    vip29Cite("s instanceof Sub"),
+		},
+		{
 			Key:     "vip29.schema-error-cross-copy-plain",
 			Chapter: "004-match.md",
 			Quote:   "An `error` class ([Failures](003-failures.md#error-declarations)), including a `schema error`, gets a matcher that tests `_tag`.",
 			Vibe: `schema error Gone { id: string }
 function witness() {
-  const subjects: unknown[] = [new Gone({ id: "a" }), { _tag: "Gone" }, { _tag: "Other" }, undefined]
-  return subjects.map((s) => match (s) { when Gone(let e): e === s; default: "no"; })
+  const subjects: unknown[] = [new Gone({ id: "a" }), { _tag: "Gone" }, Object.assign(Object.create(null), { _tag: "Gone" }), Object.assign(() => 1, { _tag: "Gone" }), { _tag: "Other" }, null, undefined, 1, "Gone"]
+  const alias = new Proxy(Gone, {})
+  return subjects.map((s) => [match (s) { when Gone: true; default: false; }, match (s) { when alias(let e): e === s; default: "no"; }])
 }`,
 			Effect: `class Gone extends Schema.TaggedError()("Gone", { id: Schema.String }) {}
 function witness() {
-  const subjects = [new Gone({ id: "a" }), { _tag: "Gone" }, { _tag: "Other" }, undefined]
-  return subjects.map((s) => { const r = s?._tag === "Gone" ? [s] : false; if (r !== false && r.length === 1) { const e = r[0]; return e === s } return "no" })
+  const subjects = [new Gone({ id: "a" }), { _tag: "Gone" }, Object.assign(Object.create(null), { _tag: "Gone" }), Object.assign(() => 1, { _tag: "Gone" }), { _tag: "Other" }, null, undefined, 1, "Gone"]
+  return subjects.map((s) => { const r = s?._tag === "Gone" ? [s] : false; return [r !== false, r !== false && r.length === 1 ? r[0] === s : "no"] })
 }`,
 			Modules: []string{"Schema"},
 			Cite:    vip29Cite(`?._tag === "Gone" ? [s] : false`),

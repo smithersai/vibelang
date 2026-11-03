@@ -186,6 +186,16 @@ var errorMemberClassFix = &ls.CodeFixProvider{
 			addedImport += "import { $schemaErrorFamily as " + familyAlias + " } from \"vibelang-runtime\"\n"
 		}
 		var members []string
+		if module == "Schema" {
+			// VIP-7/VIP-29: an explicit class keeps the declaration's tag
+			// matcher, including before user-written static initializers.
+			matcher := "$ErrorMatcher"
+			for i := 2; c.ResolveName(matcher, class, ast.SymbolFlagsAll, false) != nil; i++ {
+				matcher = "$ErrorMatcher" + strconv.Itoa(i)
+			}
+			addedImport += "import { $schemaErrorMatcher as " + matcher + " } from \"vibelang-runtime\"\n"
+			members = append(members, "\nstatic { "+matcher+"(this, "+strconv.Quote(name.Text())+") }")
+		}
 		for _, member := range class.Members() {
 			if member.Flags&ast.NodeFlagsReparsed == 0 {
 				members = append(members, text[member.Pos():member.End()])

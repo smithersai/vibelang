@@ -1,0 +1,1 @@
+schema error class upgrades retain tags, initialization, declarations and fresh names

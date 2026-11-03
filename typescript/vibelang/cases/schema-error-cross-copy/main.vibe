@@ -1,0 +1,25 @@
+import { Schema } from "effect"
+import { Gone as ForeignGone } from "./copy.js"
+
+schema error Gone { id: string }
+schema error Other { id: string }
+
+export function probe(): unknown[] {
+  const alias = Gone
+  const proxy = new Proxy(Gone, {})
+  const subjects: unknown[] = [
+    new Gone({ id: "local" }),
+    new ForeignGone({ id: "foreign" }),
+    { _tag: "Gone" },
+    Object.assign(Object.create(null), { _tag: "Gone" }),
+    Object.assign(() => 1, { _tag: "Gone" }),
+    new Other({ id: "other" }),
+    { _tag: "Other" }, null, undefined, "Gone", 1
+  ]
+  return subjects.map((subject) => [
+    match (subject) { when Gone: true; default: false; },
+    match (subject) { when alias(let error): error === subject; default: false; },
+    match (subject) { when proxy: true; default: false; },
+    match (subject) { when proxy(let error): error === subject; default: false; }
+  ])
+}

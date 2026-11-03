@@ -100,6 +100,26 @@ const joinSchemaErrorFamilies = (error: object, own: SchemaAST.AST): void => {
   }
 }
 
+/**
+ * VIP-7/VIP-29: a schema error declaration matches its written tag, across
+ * package copies. Both matcher modes extract the original subject; the
+ * closure also keeps its tag when the matcher is called without a receiver.
+ */
+export const $schemaErrorMatcher = (error: abstract new(...args: any) => unknown, tag: string): void => {
+  const matcher = {
+    match(this: unknown, subject: unknown, _hint?: MatchHint): false | [unknown] {
+      // Native subclasses do not acquire their superclass's tag matcher.
+      // Unbound copies retain the declaration's tag, as own matchers do.
+      if (typeof this === "function" && this !== error &&
+        !Object.hasOwn(this, customMatcher) && Object.prototype.isPrototypeOf.call(error, this)) {
+        return subject instanceof this ? [subject] : false
+      }
+      return (subject as { _tag?: unknown } | null | undefined)?._tag === tag ? [subject] : false
+    }
+  }.match
+  Object.defineProperty(error, customMatcher, { value: matcher, configurable: true, writable: true })
+}
+
 /** D304: joins a schema error subclass to the families above it. */
 export const $schemaErrorMember = (error: abstract new(...args: any) => unknown): void => {
   joinSchemaErrorFamilies(error, ownSchemaErrorAst(error))

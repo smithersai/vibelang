@@ -67,6 +67,7 @@ export const {
   $runMain,
   $schemaErrorFamily,
   $schemaErrorMember,
+  $schemaErrorMatcher,
   $select,
   $service,
   $settle,

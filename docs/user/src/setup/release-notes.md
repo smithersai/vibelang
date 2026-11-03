@@ -436,6 +436,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - ESLint and Knip passed on a `.vibe` module without reading it in a repository that runs ESLint itself or installs Knip package by package. Setup now gives such a repository's TypeScript lint blocks and `eslint` script globs to `.vibe` files, and writes `knip.config.ts` with the `vibelang/knip` compiler in each package.
 - Formatting JSX in a `.vibex` file failed or skipped the file. The native formatter, `vibelang-format`, `vibelang/prettier` and the dprint plugin now select TSX mode and preserve JSX text, entities, comments and `<T,>` generic arrows (VIP-39).
 
+- A `schema error` class pattern rejected errors with the same `_tag` from another package copy; bare and extracting patterns now match that tag and keep the original subject. Class upgrades made by `vibelang --fix` retain the same matching.
+
 - Published API checks rejected identical JSON exports as non-modules; JSON assets now retain their `resolveJsonModule` types, and real type changes still fail.
 
 - Source-child loader wiring introduced a `fileURLToPath` import alias and failed repositories’ native import policies. Setup now uses a namespace import and refreshes its own previously generated helpers while preserving manually observed bindings.

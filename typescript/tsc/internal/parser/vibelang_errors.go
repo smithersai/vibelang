@@ -541,30 +541,29 @@ func (p *Parser) vibelangSchemaErrorSubclass(d *errorDeclaration) []*ast.Node {
 	return p.vibelangErrorHeritage(base, d.base.Loc)
 }
 
-// vibelangSchemaErrorRegistration returns the static block through which a
-// schema error joins its family (D304): static { $schemaErrorFamily(this) }
-// for the base of a family, a schema error with a _tag field or abstract, and
-// static { $schemaErrorMember(this) } for any other subclass. It returns nil
-// for any other declaration. The block comes first among the members, so the
-// class has joined its family before its own static initializers run.
+// vibelangSchemaErrorRegistration installs the schema error declaration's
+// own tag matcher (VIP-7/VIP-29), then joins a retained family where needed.
+// The static block runs before user members and adds no declaration surface.
 func (p *Parser) vibelangSchemaErrorRegistration(d *errorDeclaration) *ast.Node {
-	var helper string
-	switch {
-	case !d.schema:
-		return nil
-	case d.tag != nil || d.abstract:
-		helper = "$schemaErrorFamily"
-	case d.base != nil:
-		helper = "$schemaErrorMember"
-	default:
+	if !d.schema {
 		return nil
 	}
 	at := d.name.Loc
-	callee := p.vibelangIntrinsic(helper, at)
-	this := p.vibelangSynthesized(p.factory.NewKeywordExpression(ast.KindThisKeyword), at)
-	call := p.vibelangSynthesized(p.factory.NewCallExpression(callee, nil, nil, p.newNodeList(at, []*ast.Node{this}), ast.NodeFlagsNone), at)
-	statement := p.vibelangSynthesized(p.factory.NewExpressionStatement(call), at)
-	body := p.vibelangSynthesized(p.factory.NewBlock(p.newNodeList(at, []*ast.Node{statement}), true /*multiLine*/), at)
+	call := func(helper string, args ...*ast.Node) *ast.Node {
+		callee := p.vibelangIntrinsic(helper, at)
+		this := p.vibelangSynthesized(p.factory.NewKeywordExpression(ast.KindThisKeyword), at)
+		expression := p.vibelangSynthesized(p.factory.NewCallExpression(callee, nil, nil, p.newNodeList(at, append([]*ast.Node{this}, args...)), ast.NodeFlagsNone), at)
+		return p.vibelangSynthesized(p.factory.NewExpressionStatement(expression), at)
+	}
+	tag := p.vibelangSynthesized(p.factory.NewStringLiteral(d.name.Text(), ast.TokenFlagsNone), at)
+	statements := []*ast.Node{call("$schemaErrorMatcher", tag)}
+	switch {
+	case d.tag != nil || d.abstract:
+		statements = append(statements, call("$schemaErrorFamily"))
+	case d.base != nil:
+		statements = append(statements, call("$schemaErrorMember"))
+	}
+	body := p.vibelangSynthesized(p.factory.NewBlock(p.newNodeList(at, statements), true /*multiLine*/), at)
 	return p.vibelangSynthesized(p.factory.NewClassStaticBlockDeclaration(nil, body), at)
 }
 

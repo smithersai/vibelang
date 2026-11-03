@@ -1,0 +1,2 @@
+go test fuzz v1
+string("-- main.vibe --\nexport schema error E { id: string; static marker = 1 }\nexport function probe(subject: unknown) { return match(subject) { when E(let error): error === subject; default: false; } }\n-- tsconfig.json --\n{\"compilerOptions\": {\"target\": \"es2022\", \"module\": \"nodenext\", \"strict\": true, \"skipLibCheck\": true, \"types\": [], \"outDir\": \"out\", \"declaration\": true}, \"include\": [\"*.vibe\"]}\n")

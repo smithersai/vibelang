@@ -127,6 +127,7 @@ JavaScript value. Decisions are in [`docs/design/history/DECISIONS.md`](../../do
 | `$provideService` | Supply a service implementation | — |
 | `$rest` | Extract object rest properties for a pattern | — |
 | `$schemaErrorFamily` | Register a schema error family and its union schema | — |
+| `$schemaErrorMatcher` | Install a schema error declaration matcher that tests its tag across package copies | VIP-7, VIP-29 |
 | `$schemaErrorMember` | Register a schema error subclass with its ancestor families | — |
 | `$select` | Lower a retired select operation | — |
 | `acquireDisposable` | Effect's `acquireDisposable`, recording the value whose disposal it registered so `using` releases it once | D401, D481 |
