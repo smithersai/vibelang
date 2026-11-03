@@ -3,8 +3,8 @@ package parser
 import (
 	"os"
 	"path/filepath"
-	"regexp"
 	"slices"
+	"strings"
 	"testing"
 )
 
@@ -17,17 +17,23 @@ func TestVibeLangKeywordsCoverParser(t *testing.T) {
 	if err != nil || len(files) == 0 {
 		t.Fatalf("no parser sources: %v", err)
 	}
-	word := regexp.MustCompile(`(?:TokenValue\(\) == |isMatchWord\()"(\w+)"`)
 	found := 0
 	for _, file := range files {
+		if strings.HasSuffix(file, "_test.go") {
+			continue
+		}
 		source, err := os.ReadFile(file)
 		if err != nil {
 			t.Fatal(err)
 		}
-		for _, m := range word.FindAllStringSubmatch(string(source), -1) {
+		words, err := parserKeywordReads(string(source))
+		if err != nil {
+			t.Fatalf("%s: %v", file, err)
+		}
+		for _, word := range words {
 			found++
-			if !slices.Contains(VibeLangKeywords, m[1]) {
-				t.Errorf("%s reads %q as VibeLang syntax, but VibeLangKeywords does not list it", file, m[1])
+			if !slices.Contains(VibeLangKeywords, word) {
+				t.Errorf("%s reads %q as VibeLang syntax, but VibeLangKeywords does not list it", file, word)
 			}
 		}
 	}

@@ -222,6 +222,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - A plain generic call such as `expect(awaited())` could report `EK4802` without its direct-argument repair. The editor and `--fix` now offer `try` when the written contract accepts it; returned Effects retain their existing repair policy.
 
 - The VIP migration could refuse a generic call with an Effect supplied by another argument, reporting `EK0502` after running a program the old call held. It now preserves that sibling-established program context.
+
+- The compiler's keyword coverage check treated a quoted `"constructor"` member name as a VibeLang keyword and failed the parser suite. It now distinguishes guarded string-literal data from keyword comparisons and ignores examples in comments or test fixtures.
 - `Effect.forkChild(e)`, `Effect.forkDetach(e)` and other calls whose type parameter is constrained to an `Effect`, such as `<Arg extends Effect<any, any, any> | Options>`, warned `EK4802` that the call receives the unrun program. Such a parameter declares that it takes a program, so it no longer warns.
 - A function whose only statement is `return try value` showed V8 coverage, and tools that read it, a second function for the generator the compiler makes. That generator now maps to no source position, so coverage counts one function, as before tail `try` kept native delegation.
 
