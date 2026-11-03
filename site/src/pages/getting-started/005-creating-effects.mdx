@@ -13,6 +13,8 @@ Use `effect` on functions, arrows, and class or object methods. Getters, setters
 
 `vibelang --fix` can preserve a parameterless legacy Effect constructor by returning a cold `effect { … }` block from an ordinary constructor. Constructors with parameters, type parameters, a return annotation, `async`, `super`, or `new.target` need a manual migration: the old Effect method lowering deferred parameter initialization until each run, so simply removing `effect` would change when work happens.
 
+An `effect` function binds its parameters and evaluates defaults when you call it. Running the returned Effect executes the body. Repeated runs of that same Effect share the call's parameter bindings, including writes the body makes. If a default or destructuring binding throws, the call returns an Effect that dies with that value.
+
 ## Success and failure
 
 ```vibe

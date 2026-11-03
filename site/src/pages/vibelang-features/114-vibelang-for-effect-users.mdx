@@ -227,7 +227,7 @@ await runPromise(main())
 
 An exported `const main` or `let main` is an ordinary lexical binding. It keeps its temporal dead zone: a read before initialization throws `ReferenceError`. The compiler reports no entry warning for it, and `--fix` and editor quick fixes keep its declaration kind. Call a runner explicitly to run an Effect.
 
-The module top level is ordinary JavaScript. Construct Effects there and run them with an explicit runner. Top-level `await` accepts a Promise. `try` execution belongs inside an effect function or block.
+The module top level is ordinary JavaScript. Construct Effects there and run them with an explicit runner. Top-level `await` accepts a Promise. A TypeScript `namespace` body is synchronous, so `await` there reports `TS1308`; use an `async` function inside the namespace and await its Promise at the module top level. `try` execution belongs inside an effect function or block.
 
 Every export of Effect's `Effect` module is global unless its name clashes with a keyword or JavaScript global. Clashing names keep the `Effect.` prefix, such as `Effect.try` and `Effect.provide`. Root modules such as `Console`, `Clock`, `Option`, `Schedule`, and `Stream` are in scope. JavaScript globals such as `Array` keep their meaning, and `Effect.Array` names Effect's module only through the unshadowed implicit `Effect`. Platform subpath namespaces such as `HttpClient` are also in scope. Precedence applies separately to TypeScript's type and value meanings: `Console` in a type position remains the DOM interface, while `Console.log` uses Effect's namespace. Local type aliases and interfaces likewise keep their type meaning without hiding Effect's value namespace; a local value binding keeps its own members. Generated imports use fresh names.
 
@@ -349,3 +349,11 @@ result where the old code ran it.
 A plain callback keeps its TypeScript body even when an `effect` function passes it as an argument. A captured `Effect.runSyncWith(context)` runner can be called from that callback, as from an assigned or returned plain function; passing the callback does not add an Effect activation. An explicitly `effect` callback remains Effect code.
 
 A package import or `paths` alias that selects a compatibility sidecar outside `node_modules` uses its available source, including `.vibex` and mirrored `vibe.sidecarDir` declarations. It therefore has the same class and private-member identity as a direct source import. TypeScript's `preserveSymlinks` policy still decides whether the resolved path stays inside `node_modules`.
+
+A value or call result typed `unknown` must be narrowed to an Effect before `try`; it reports `EK0502` otherwise. An Effect may still succeed with an `unknown` value. The explicit escape hatch `any` remains unchecked.
+
+The function `constructor` restriction applies to reading its value. Assigning or deleting the property does not read it, including through parentheses and TypeScript assertions; ordinary TypeScript assignment and `delete` checks still apply.
+
+`var` is rejected everywhere in `.vibe` files, including plain and `async` functions (`EK0107`). Use `let` or `const` with explicit scope and initialization. A function-scoped binding used after a region needs an explicit outer declaration. Check hoisting and module cycles before changing legacy code; keep code that needs JavaScript `var` semantics in a `.ts` file. The editor offers no automatic replacement because that could change the declaration scope.
+
+An inferred `effect` arrow or function expression may refer to its own callable value, as in `const same = effect () => same === same`. Such value-only references infer as the corresponding `Effect.gen` wrapper does. A recursive return whose type cannot be inferred still requires a return annotation and reports TypeScript's native inference error.
