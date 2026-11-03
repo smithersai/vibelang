@@ -954,3 +954,14 @@ The migration property in `revert-spelling.property.test.mjs` replays `t3code-mo
 The Effect-pin documentation gate preserves the accepted version across plain and code-formatted names. Seeded `fast-check` properties cover 512 version/spelling mutations and 384 missing, partial, ranged, extra-component and unbalanced-format inputs; missing decisions fail with an explicit assertion.
 
 The parameter-default `do` witnesses retain terminated named corpus keys; a model guard verifies all six select their intended construct even when the enabled registry changes.
+
+R28 module-body declaration coverage extends VIP-27's independent-consumer rule.
+`FuzzModuleSidecarResolution` varies adjacent and relocated sidecars, reexports,
+aliases, inferred types, `.vibe`/`.vibex`, nesting and `noEmit`. A stock TypeScript
+consumer receives declarations only and no producer `rootDirs`. Native positive
+controls and deletion controls require the missing body to report `TS2307`.
+This tests resolution without prescribing a body filename encoding.
+
+The module-sidecar neighbourhood retains 19 precise `.vibex` emit gaps and
+23 corpus pending markers owned by `conf-data`. VIP-39 names the expected
+compatibility sidecars; the current emitter's spelling is not used as the oracle.
