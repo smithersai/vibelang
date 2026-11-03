@@ -190,6 +190,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Broken relative imports in module-body sidecars could escape regression coverage; independent TypeScript consumers now check both declaration layouts.
 
+- Compiler checks for `unknown`-operand repairs could fail on an invalid `@throws` annotation in their input. They now use a valid declaration while preserving the diagnostic and error/service-channel checks.
+
 - Documentation checks accepted throws in synchronous arrows whose parameter was named `effect`; they now apply the same rule after parameter renaming.
 - No-throw validation incorrectly failed after a plain catch handler became an effect handler; its regression fixtures now use catch's existing join point without a redundant `try`.
 - Migration setup could leave a nested workspace consumer on `tsc` when a semver peer or npm alias resolved to migrated workspace sources. Setup now follows installed workspace links for compiler, test-runner and worker wiring while respecting nearer registry packages.

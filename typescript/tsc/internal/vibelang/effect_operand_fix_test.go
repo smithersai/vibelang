@@ -16,7 +16,7 @@ func TestEffectOperandLegacyFix(t *testing.T) {
 		{"optional call", "declare const make: (() => Effect.Effect<number>) | undefined; effect function probe() { return try make?.() }", "try (make?.() ?? effect { return undefined })", 502},
 		{"computed catch", "effect function probe(input: Effect.Effect<number,string>) { return (try input).toString() catch (e) => e }", "effect { return (try input).toString() } catch", 506},
 		{"catch result", "effect function probe() { return try (Effect.fail(\"bad\") catch (() => 0)) }", "(Effect.fail(\"bad\") catch (() => 0))", 502},
-		{"unknown call", "/** @throws {never} */\ndeclare function make(): unknown; effect function probe() { return try make() }", "try (make() as unknown!!)", 502},
+		{"unknown call", "declare function make(): unknown; effect function probe() { return try make() }", "try (make() as unknown!!)", 502},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			got := applyQuickFixOf(t, test.source, test.code, diagnostics.CategoryError)

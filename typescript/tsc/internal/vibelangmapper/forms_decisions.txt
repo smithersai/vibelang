@@ -5335,6 +5335,7 @@ typescript/vibelang/cases/try-twice.fail/main.vibe:8:14 byname program table
 typescript/vibelang/cases/try-twice/main.vibe:17:19 byname program table
 typescript/vibelang/cases/try-twice/main.vibe:18:23 byname program table
 typescript/vibelang/cases/try-twice/main.vibe:18:24 byname program table
+typescript/vibelang/cases/try-unknown-operands.fail/main.vibe:8:64 lambda program table
 typescript/vibelang/cases/tryop-elements-native/main.vibe:10:24 byname program table
 typescript/vibelang/cases/tryop-elements-native/main.vibe:10:43 byname program table
 typescript/vibelang/cases/tryop-elements-native/main.vibe:11:24 byname program table

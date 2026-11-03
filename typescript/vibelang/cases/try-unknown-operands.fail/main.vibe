@@ -1,0 +1,10 @@
+// expect: EK0502 EK0502 EK0502 EK0502 EK0502 EK0502
+// VIP-5: unknown is not assignable to Effect<any, any, any>.
+export effect function value(input: unknown) { return try input }
+export effect function call(make: () => unknown) { return try make() }
+export effect function grouped(make: () => unknown) { return try (make()) }
+export effect function alias(input: unknown) { const held = input; return try held }
+export effect function union(input: Effect.Effect<number> | unknown) { return try input }
+export effect function block(make: () => unknown) { return try effect { return try make() } }
+// Unchecked any remains admitted; this fix adds no runtime guard.
+export effect function unchecked(input: any, make: () => any) { try input; return try make() }
