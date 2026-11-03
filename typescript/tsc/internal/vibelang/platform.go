@@ -103,7 +103,7 @@ var platformServices = map[string]*platformService{
 	"Inspectable":     {"Inspectable, from the prelude", "Inspectable.toStringUnknown(value)", "", ""},
 	"Schedule":        {"sleep and Schedule, from the prelude", `sleep("1 second")`, "", ""},
 	"Interrupt":       {"a fiber's interruption", "fiber.interrupt()", "", ""},
-	"Yield":           {"yieldNow, from the prelude", "yieldNow()", "", ""},
+	"Yield":           {"Effect's yieldNow value", "try Effect.yieldNow", `import { Effect } from "effect"`, ""},
 	"Clock":           {"Clock, from the prelude", "Clock.currentTimeMillis()", "", ""},
 	"Config":          {"Config, from the prelude", `Config.String("NAME")()`, "", ""},
 	"Console":         {"Console, from the prelude", "Console.log(message)", "", ""},

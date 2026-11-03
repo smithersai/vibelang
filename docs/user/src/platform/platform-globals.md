@@ -216,6 +216,8 @@ effect function replacements(
 }
 ```
 
+For `queueMicrotask`, `setImmediate` and `process.nextTick`, the diagnostic recommends importing `Effect` from `"effect"` and writing `try Effect.yieldNow` inside effect code. `yieldNow` is an Effect value, so it has no call parentheses. The qualified spelling also works when implicit Effect globals are disabled. It lets other fibers run; it does not reproduce the host callback queue.
+
 In the browser, `@effect/platform-browser` supplies these services and their layers:
 
 ```vibe
