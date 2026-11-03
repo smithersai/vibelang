@@ -24,6 +24,8 @@ import (
 // readRecordFile and readLiveRecordFile).
 //
 // An input is "<owner>:<position>"; other bytes pick by index.
+// Chapter 007 / legacy active outer arrows keep effect kind and direct catch execution: docs/design/src/007-tooling.md#a2e4f6e04325faa7
+
 func FuzzVIPLegacyServiceReceivers(f *testing.F) {
 	startShortBudget(f)
 	for _, owner := range slices.Sorted(maps.Keys(legacyReceiverOwners)) {

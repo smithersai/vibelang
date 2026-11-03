@@ -65,6 +65,8 @@ func migrationInferredImportsSource(source string, choice uint8) string {
 // the same compiler checking its TypeScript counterpart. Only bounded import,
 // codec, schema-shape, local-shadow and export-alias mutations are generated;
 // arbitrary functions would introduce the separate thrown-contract rule.
+// Chapter 007 / inferred Schema types preserve native namespace and aliases: docs/design/src/007-tooling.md#7632e2a24e933861
+
 func FuzzMigrationInferredImports(f *testing.F) {
 	startShortBudget(f)
 	programs := migrationInferredImportsPrograms()

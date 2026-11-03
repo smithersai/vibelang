@@ -26,6 +26,8 @@ var arityMatchers = []struct {
 
 const arityTarget = "FuzzExtractorArity"
 
+// Chapter 007 / impossible extraction-list arity is an EK0703 warning: docs/design/src/007-tooling.md#5b401d8ac9c29f02
+
 func FuzzExtractorArity(f *testing.F) {
 	startShortBudget(f)
 	for i := range arityMatchers {

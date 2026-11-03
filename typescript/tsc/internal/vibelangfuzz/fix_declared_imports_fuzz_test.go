@@ -26,9 +26,9 @@ import (
 // declaration, its sidecar; and in a plain run no effect import that --fix
 // leaves can go with the declaration unchanged and no error added. Comparing
 // the compiler with itself across the fix is this target's oracle.
-const fixDeclaredQuote = "`--fix` keeps an import that a module's declaration needs"
+const fixDeclaredQuote = "Prelude cleanup keeps an explicit Effect import where removing it would change the declaration."
 
-const fixDeclaredOnlyQuote = "an import goes only where the module's declaration is the same bytes without it"
+const fixDeclaredOnlyQuote = "Every `.vibe` module has a declaration, its sidecar, so `noEmit` and `declaration: false` change nothing here."
 
 var fixDeclaredPrograms = []struct{ key, source string }{
 	{"scope-only-type", "import type { Scope } from \"effect\"\nimport { Effect } from \"effect\"\nexport const a = (x: Effect.Effect<number>): Effect.Effect<number, never, Scope.Scope> => x\n"},
@@ -119,6 +119,10 @@ func fixDeclaredChapter(tb testing.TB) {
 }
 
 func TestFixDeclaredImportsQuoted(t *testing.T) { fixDeclaredChapter(t) }
+
+// Chapter 007 / prelude cleanup preserves explicit declaration source imports: docs/design/src/007-tooling.md#6d35bc3d7ac16521
+// Chapter 007 / prelude cleanup preserves explicit declaration source imports: docs/design/src/007-tooling.md#cc08d856d0ffcb94
+// Chapter 007 / prelude cleanup preserves explicit declaration source imports: docs/design/src/007-tooling.md#97560f522c03cbbf
 
 func FuzzFixDeclaredImports(f *testing.F) {
 	startShortBudget(f)

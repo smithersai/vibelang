@@ -19,6 +19,9 @@ const sidecarReadersQuote = "What it still cannot print there, such as `TS4094`,
 // or without declaration output, and its importers: none, a .ts file's
 // import, import type, export from and import(), and a .vibe file's import,
 // which reads the source, not the sidecar.
+// Chapter 007 / unprintable sidecars report real errors only for required native importers: docs/design/src/007-tooling.md#9bc08ddb7ad676cc
+// Chapter 007 / unprintable sidecars report real errors only for required native importers: docs/design/src/007-tooling.md#a3029ea720455c61
+
 func TestSidecarReaders(t *testing.T) {
 	text, err := os.ReadFile(filepath.Join(Root(), "docs/user/src/setup/vibelang-cli.md"))
 	if err != nil || !strings.Contains(string(text), sidecarReadersQuote) {

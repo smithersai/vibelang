@@ -392,6 +392,8 @@ func vipSeeds(leaveOut map[string]bool) [][]byte {
 // FuzzVIPDifferential generates a program of the constructs no pending line
 // lists, compiles its VibeLang print, and requires no error and the Exit,
 // event log and coldness of its VIPs' Effect TS.
+// Chapter 007 / type and Exit mappings use the pinned Effect artifact: docs/design/src/007-tooling.md#0a55a88f8beb4c02
+
 func FuzzVIPDifferential(f *testing.F) {
 	startShortBudget(f)
 	leaveOut := vipLeaveOut()

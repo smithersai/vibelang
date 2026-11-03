@@ -29,6 +29,12 @@ import (
 // An input is "<owner>:<operand>:<handler>" for a catch, or
 // "argument:<body>" for a literal; other bytes pick by index. Corpus files
 // foldkit-* hold the repository's patterns.
+// Chapter 007 / only VIP migration unwraps legacy wrappers while preserving intended runs: docs/design/src/007-tooling.md#ddd871ac7bb78ac6
+// Chapter 007 / only VIP migration unwraps legacy wrappers while preserving intended runs: docs/design/src/007-tooling.md#46b5b7ad3a3cb1a8
+// Chapter 007 / only VIP migration unwraps legacy wrappers while preserving intended runs: docs/design/src/007-tooling.md#ce3ee90c834f326d
+// Chapter 007 / only VIP migration unwraps legacy wrappers while preserving intended runs: docs/design/src/007-tooling.md#6a28b608d5c9fee0
+// Chapter 007 / only VIP migration unwraps legacy wrappers while preserving intended runs: docs/design/src/007-tooling.md#15af9da84713d673
+
 func FuzzVIPLegacyForms(f *testing.F) {
 	startShortBudget(f)
 	for _, owner := range legacyFormOwnerKeys() {

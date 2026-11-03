@@ -39,6 +39,8 @@ import (
 // An input is "pos:<position>\x00" followed by a vipgen input, or
 // "program:<main.vibe>"; keyed corpus files are named after the position,
 // and foldkit-option-none-die holds foldkit-18's None arm.
+// Chapter 007 / legacy run-site migration preserves execution phase and Exit: docs/design/src/007-tooling.md#ce3a3ee20bb99c91
+
 func FuzzVIPLegacyRuns(f *testing.F) {
 	startShortBudget(f)
 	leaveOut := vipLeaveOut()

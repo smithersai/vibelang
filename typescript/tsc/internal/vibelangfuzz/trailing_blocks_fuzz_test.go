@@ -55,6 +55,8 @@ func TestTrailingBlocksQuoted(t *testing.T) {
 // identifier and property heads in statement and expression positions; the
 // selected key survives reordering. Runtime preservation uses FuzzFix and its
 // existing Exit comparison (the trailing-block-* corpus), not another runner.
+// Chapter 007 / newline, optional, heritage and provide exclusions: docs/design/src/007-tooling.md#7f084c02e1aa2c27
+
 func FuzzTrailingBlocks(f *testing.F) {
 	startShortBudget(f)
 	trailingBlocksQuoted(f)
@@ -74,9 +76,34 @@ func FuzzTrailingBlocks(f *testing.F) {
 			f.Add(head+":statement", boundary)
 		}
 	}
+	f.Add("boundary:heritage", uint8(0))
+	f.Add("boundary:provide", uint8(0))
 	w := NewWorkspace(f)
 	f.Fuzz(func(t *testing.T, key string, value uint8) {
 		toolsGuard(t, "FuzzTrailingBlocks", func() {
+			// These productions already own their braces. They must not be
+			// reinterpreted as a trailing callback, even when the header ends
+			// in a call or a provider name. The existing matrix varies newlines
+			// and optional chains; these keyed controls complete that boundary.
+			if key == "boundary:heritage" || key == "boundary:provide" {
+				space := strings.Repeat(" ", int(value%4)+1)
+				source := "function Base() { return class {} }\nclass Child extends Base()" + space + "{}\n"
+				if key == "boundary:provide" {
+					source = "service Key { static readonly key = \"chapter007/trailing\"; value: number }\nconst live = Layer.succeed(Key, {value:1})\neffect function witness() { provide live" + space + "{} }\n"
+				}
+				r := toolsCompile(t, w, "FuzzTrailingBlocks", map[string]string{"main.vibe": source})
+				defer r.Remove()
+				for _, d := range r.Diagnostics {
+					if IsEK(d) && d.Code() == 1101 {
+						Gap(t, "FuzzTrailingBlocks", key, "Chapter 007 %q: a different production consumed this brace; got EK1101\n%s", trailingBlocksBoundaryQuote, source)
+					}
+					if d.Category() == diagnostics.CategoryError {
+						t.Fatalf("invalid native/header boundary witness %s: %v", key, r.Diagnostics)
+					}
+				}
+				ExpectPending(t, "FuzzTrailingBlocks", specCorpusKey(t))
+				return
+			}
 			h, p := 0, 0
 			if len(key) > 0 {
 				h = int(key[0]) % len(heads)

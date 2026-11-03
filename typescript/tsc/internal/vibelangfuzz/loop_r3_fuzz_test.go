@@ -368,6 +368,8 @@ func TestOwnerSyntaxCodesQuoted(t *testing.T) {
 	}
 }
 
+// Chapter 007 / Vibe production errors use owning EK codes: docs/design/src/007-tooling.md#6f0eb19b09ab0119
+
 func FuzzOwnerSyntaxCodes(f *testing.F) {
 	startShortBudget(f)
 	for _, quote := range ownerCodeQuotes {

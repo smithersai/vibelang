@@ -37,6 +37,8 @@ func TestReviewSidecarWritesQuoted(t *testing.T) { requireReviewSidecarWriteQuot
 // declaration:false, so its no-write result is deliberately not copied.
 // Chapter 007 / explicit sidecar overwrite and required output under noEmit or declaration false: docs/design/src/007-tooling.md#814102f8570dcd4e
 // Chapter 007 / explicit sidecar overwrite and required output under noEmit or declaration false: docs/design/src/007-tooling.md#520298eaa196e373
+// Chapter 007 / sidecars use native include selection and explicit-input overwrite protection: docs/design/src/007-tooling.md#f6f643ead13edc12
+// Chapter 007 / sidecars use native include selection and explicit-input overwrite protection: docs/design/src/007-tooling.md#87d678a5c764321e
 func FuzzReviewSidecarWrites(f *testing.F) {
 	startShortBudget(f)
 	requireReviewSidecarWriteQuotes(f)

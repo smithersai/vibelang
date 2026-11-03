@@ -9,6 +9,11 @@ import (
 
 // The CLI recognizes these scopes only when --fix is present, in either order.
 // Keep the independent fuzz parser and the published flag inventory aligned.
+// Chapter 007 / fix scope flags require fix in either argument order: docs/design/src/007-tooling.md#be8064e772d2a59a
+// Chapter 007 / fix scope flags require fix in either argument order: docs/design/src/007-tooling.md#57bf309e146b7945
+// Chapter 007 / fix scope flags require fix in either argument order: docs/design/src/007-tooling.md#df4275821259b79f
+// Chapter 007 / fix scope flags require fix in either argument order: docs/design/src/007-tooling.md#64b83ee238c8d156
+
 func TestCommandLineFixScopes(t *testing.T) {
 	w := &Workspace{fs: osvfs.FS()}
 	dir := t.TempDir()

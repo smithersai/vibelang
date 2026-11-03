@@ -13,7 +13,7 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/diagnostics"
 )
 
-const schemaCommentQuote = "A JSDoc comment on a `schema` declaration is emitted on its `declare const` only; its `typeof Name.Type` alias has no comment."
+const schemaCommentQuote = "A JSDoc comment on a `schema` declaration is emitted on its `declare const` only; its synthesized `typeof Name.Type` alias has no comment."
 
 func requireSchemaCommentQuote(t testing.TB) {
 	t.Helper()
@@ -31,6 +31,13 @@ func TestSchemaDeclarationCommentsQuoted(t *testing.T) { requireSchemaCommentQuo
 // Chapter 006's exact Effect pair is the independent reference. Comparing
 // complete declarations retains comments; migration canonicalization must not
 // erase the very attachment this oracle checks.
+// Chapter 007 / schema value JSDoc and native stripInternal elision match TS pair: docs/design/src/007-tooling.md#12bd28224f0f004b
+// Chapter 007 / schema value JSDoc and native stripInternal elision match TS pair: docs/design/src/007-tooling.md#ec1ebe136fb0ea02
+// Chapter 007 / schema value JSDoc and native stripInternal elision match TS pair: docs/design/src/007-tooling.md#da5fe373bf92b742
+// Chapter 007 / schema value JSDoc and native stripInternal elision match TS pair: docs/design/src/007-tooling.md#58c234ae8e4cabe8
+// Chapter 007 / schema value JSDoc and native stripInternal elision match TS pair: docs/design/src/007-tooling.md#e2c0f97ce6e2a074
+// Chapter 007 / schema value JSDoc and native stripInternal elision match TS pair: docs/design/src/007-tooling.md#94e926a495759a8e
+
 func FuzzSchemaDeclarationComments(f *testing.F) {
 	startShortBudget(f)
 	requireSchemaCommentQuote(f)

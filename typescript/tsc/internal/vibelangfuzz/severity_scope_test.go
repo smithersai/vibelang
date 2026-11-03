@@ -12,6 +12,8 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/parser"
 )
 
+// Chapter 007 / own warnings remain distinct from imported rule severity overrides: docs/design/src/007-tooling.md#cef47c7292c08f00
+
 func TestUnrelatedSeverityKeepsDiagnosticDefaults(t *testing.T) {
 	project := Project{Config: `{"vibe":{"severities":{"EK4610":"off"}}}`}
 	file := parser.ParseSourceFile(ast.SourceFileParseOptions{FileName: "/project/main.vibe", PathKey: "/project/main.vibe"}, "x", core.ScriptKindTS)

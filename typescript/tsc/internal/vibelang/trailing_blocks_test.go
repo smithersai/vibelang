@@ -139,6 +139,8 @@ func TestTrailingBlockFixKeepsTheEmit(t *testing.T) {
 
 // A comment between the call and its block has no place in the rewrite, so
 // EK1101 stays and --fix refuses it rather than drop the comment.
+// Chapter 007 / interargument comment refusal and dual compatibility: docs/design/src/007-tooling.md#c3c81017075e1310
+
 func TestTrailingBlockFixRefusesAComment(t *testing.T) {
 	for _, source := range []string{
 		"export const n = twice() /* two */ { return 2 }",
@@ -154,6 +156,7 @@ func TestTrailingBlockFixRefusesAComment(t *testing.T) {
 
 // A dual block that D188 placed elsewhere keeps its own error and fix
 // (dual_block_migration.go), with no EK1101 beside it.
+// Chapter 007 / interargument comment refusal and dual compatibility: docs/design/src/007-tooling.md#c3c81017075e1310
 func TestTrailingBlockLeavesDualBlocksToTheirMigration(t *testing.T) {
 	errors := errorsOf(t, dualBlockWork+"export function f() { return withSpan(\"load\") { return work() } }")
 	for _, d := range errors {

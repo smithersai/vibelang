@@ -184,9 +184,14 @@ func FuzzServiceDefaultReads(f *testing.F) {
 	f.Add("value", uint8(4))
 	f.Add("typeof", uint8(4))
 	f.Add("indexed", uint8(3))
+	for _, scope := range []string{"local-shadow", "import-shadow", "value-only"} {
+		f.Add("typeof:"+scope, uint8(0))
+		f.Add("indexed-member:"+scope, uint8(0))
+	}
 	w := NewWorkspace(f)
 	f.Fuzz(func(t *testing.T, key string, choice uint8) {
-		i := slices.IndexFunc(serviceDefaultReads, func(form serviceDefaultRead) bool { return form.key == key })
+		base, scope, _ := strings.Cut(key, ":")
+		i := slices.IndexFunc(serviceDefaultReads, func(form serviceDefaultRead) bool { return form.key == base })
 		if i < 0 {
 			if key == "" {
 				return
@@ -195,6 +200,16 @@ func FuzzServiceDefaultReads(f *testing.F) {
 		}
 		form := serviceDefaultReads[i]
 		files := serviceDefaultReadsProject(form, choice&1 == 0, choice&2 != 0, choice&4 != 0)
+		if scope != "" {
+			scopes := []string{"local-shadow", "import-shadow", "value-only"}
+			if !slices.Contains(scopes, scope) {
+				scope = scopes[int(scope[0])%len(scopes)]
+			}
+			TestChapter007ServiceReadHygieneQuoted(t)
+			chapter007ServiceReadScope(files, scope)
+			form.key += ":" + scope
+		}
 		checkServiceDefaultReads(t, w, form, files)
+		ExpectPending(t, serviceDefaultReadsTarget, specCorpusKey(t))
 	})
 }

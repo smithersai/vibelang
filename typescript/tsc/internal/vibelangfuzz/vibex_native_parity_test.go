@@ -32,15 +32,26 @@ func vibexNativeShapes() []vibexNativeShape {
 	declarations := "declare function Box(props: {value?: unknown}): any;\ndeclare function h(...args: any[]): any;\n"
 	return []vibexNativeShape{
 		{"plain", "export const value = 1;\n"},
+		{"generator-argument", "import {Effect} from \"effect\"; function makeGenerator(){return function*(){yield* [];return 7}}; export const value=Effect.gen(makeGenerator());\n"},
 		{"element", declarations + "export const value = <Box value={1} />;\n"},
 		{"space-regexp", "const a = 1; export const value = a < /b/.source.length;\n"},
 		{"joined-regexp", "const a = 1; export const value = a </b/.source.length;\n"},
 		{"generic-comma", "export const id = <T,>(x: T) => x;\n"},
 		{"generic-ambiguous", "export const id = <T>(x: T) => x;\n"},
 		{"assertion", "export const value = <number>1;\n"},
-		{"nullish-throw", declarations + "export function f(x: unknown) { return x ?? throw <Box/>; }\n"},
+		{"nullish-throw", declarations + "export async function f(x: unknown) { return x ?? throw <Box/>; }\n"},
 		{"import-plain", "export { value } from './component.js';\n"},
 	}
+}
+
+// VIP-41 specifies throw expressions in VibeLang; native TypeScript needs the
+// equivalent IIFE. Comparing the proposal spelling directly with TSX would
+// mistake TS1109 on unsupported native syntax for a VibeLang JSX defect.
+func vibexNativeReferenceSource(shape vibexNativeShape) string {
+	if shape.key == "nullish-throw" {
+		return strings.Replace(shape.source, "throw <Box/>", "(() => { throw <Box/> })()", 1)
+	}
+	return shape.source
 }
 
 func vibexNativeConfig(file, mode string) string {
@@ -76,10 +87,19 @@ func vibexNativeCodes(result *Result) []string {
 // r4 ASTRA-1/2 and OPUS-2/3/4/6: native JSX grammar/options/output do not
 // change under a .vibex rename. This deliberately tests no Effect syntax:
 // each ordinary .tsx control is the identical spec-prescribed counterpart.
+// Chapter 007 / vibex scanning, generic heads, JSX diagnostics and five emit modes match TSX: docs/design/src/007-tooling.md#afd1a269444d0083
+// Chapter 007 / vibex scanning, generic heads, JSX diagnostics and five emit modes match TSX: docs/design/src/007-tooling.md#99f81eef65c3c2cd
+// Chapter 007 / vibex scanning, generic heads, JSX diagnostics and five emit modes match TSX: docs/design/src/007-tooling.md#e5877b1243039358
+// Chapter 007 / vibex scanning, generic heads, JSX diagnostics and five emit modes match TSX: docs/design/src/007-tooling.md#00e94dcb179b71b6
+// Chapter 007 / vibex scanning, generic heads, JSX diagnostics and five emit modes match TSX: docs/design/src/007-tooling.md#5771f09901349387
+// Chapter 007 / vibex scanning, generic heads, JSX diagnostics and five emit modes match TSX: docs/design/src/007-tooling.md#d8345352dc059dd5
+// Chapter 007 / vibex scanning, generic heads, JSX diagnostics and five emit modes match TSX: docs/design/src/007-tooling.md#bbe0a85047d1be0a
+// Chapter 007 / ordinary TSX syntax keeps native codes: docs/design/src/007-tooling.md#b493f68dc366ea9b
+
 func FuzzVibexNativeParity(f *testing.F) {
 	startShortBudget(f)
 	shapes := vibexNativeShapes()
-	modes := []string{"none", "preserve", "react-native", "react"}
+	modes := []string{"none", "preserve", "react-native", "react", "react-jsx", "react-jsxdev"}
 	for _, shape := range shapes {
 		for _, mode := range modes {
 			f.Add(shape.key, mode)
@@ -102,6 +122,12 @@ func FuzzVibexNativeParity(f *testing.F) {
 			mode = modes[int(mode[0])%len(modes)]
 		}
 		shape := shapes[index]
+		if shape.key == "nullish-throw" {
+			TestChapter007ThrowNativeReferenceQuoted(t)
+		}
+		if shape.key == "generator-argument" {
+			TestChapter007GeneratorArgumentQuoted(t)
+		}
 		gapKey := shape.key + ":" + mode
 		var reference *Result
 		for _, native := range []bool{true, false} {
@@ -110,7 +136,17 @@ func FuzzVibexNativeParity(f *testing.F) {
 				extension = "tsx"
 			}
 			file := "main." + extension
-			files := map[string]string{file: shape.source}
+			source := shape.source
+			if native {
+				source = vibexNativeReferenceSource(shape)
+			}
+			files := map[string]string{file: source}
+			if mode == "react-jsx" || mode == "react-jsxdev" {
+				files["node_modules/react/package.json"] = "{\"name\":\"react\",\"types\":\"index.d.ts\"}"
+				files["node_modules/react/jsx-runtime.d.ts"] = "export namespace JSX { type Element = any; interface IntrinsicElements { [key:string]: any } } export declare const jsx: any; export declare const jsxs: any; export declare const Fragment: any;\n"
+				files["node_modules/react/jsx-dev-runtime.d.ts"] = "export * from './jsx-runtime.js'; export declare const jsxDEV: any;\n"
+			}
+
 			if shape.key == "import-plain" {
 				files["component."+extension] = "export const value=1;\n"
 			}
