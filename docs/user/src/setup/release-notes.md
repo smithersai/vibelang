@@ -668,6 +668,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - The migrate flow never split a module that an earlier pass returned to TypeScript for reading a host global such as `window`, `process.env` or `setTimeout` (`EK4402`), so the module went back to TypeScript on every pass. A run now lists earlier passes' `settle-causes.json` or `reverted.json` as `"platformCauses"` in its `config.json`, and the codemod moves the declarations that read each named global into the module's `.platform.ts` sibling.
 - Plain function expressions after `catch` were returned as values instead of called; they now receive the failure, keep the result as data and allow ordinary typed parameters. Invalid generator handlers retain `EK0509` without artificial callback type errors.
 
+- An overflowing `GO_TEST_SLICE` value could skip every Go test and report `PASS`; the shard launcher now rejects it before discovering or running tests.
+
 - Specification table and authority checks rejected the historical explanation that accepted `VIP-40` supersedes denied `VIP-25`. They now verify the accepted successor while continuing to reject positive authority claims based on the denied proposal.
 - API checks lost referenced ambient or library types when a declaration also contained a private class. Nominal alignment now preserves leading reference directives, and referenced type changes remain visible.
 

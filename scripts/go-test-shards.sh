@@ -42,7 +42,9 @@ if [ -n "$slice" ]; then
   case "$si/$sn" in
     *[!0-9/]* | /* | */ | */*/*) si=0 sn=0 ;;
   esac
-  if [ "$si" -lt 1 ] || [ "$si" -gt "$sn" ]; then
+  # Overflow is a failed comparison, not evidence that the slice is in range.
+  # Require both comparisons to succeed before discovery can run.
+  if ! { [ "$si" -ge 1 ] && [ "$si" -le "$sn" ]; } 2>/dev/null; then
     echo "go-test-shards: GO_TEST_SLICE=$slice is not i/n with 1 <= i <= n" >&2
     exit 2
   fi

@@ -783,6 +783,11 @@ also run the binary once. The output file then contains the complete run;
 shards would overwrite the same file. Setting only a sampling rate or fraction
 keeps ordinary test sharding.
 
+`GO_TEST_SLICE=i/n` requires `1 <= i <= n`, with both values representable
+by the shell’s integer comparisons. Malformed or overflowing values exit `2`
+before the test binary is listed or run, including values read from the
+host-local `scripts/go-test-slice` file.
+
 Weighting, sorting, slice selection and shard assignment must all succeed
 before a test process starts. A failed stage names itself in the diagnostic,
 keeps the tool's error output and fails the run; a partial partition cannot
