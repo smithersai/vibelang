@@ -169,7 +169,7 @@ func (c *Checker) applyContextualReturnTypeHooksWithContext(fn *ast.Node, t *Typ
 // infer nothing from contextual. An extension whose call does not stand for
 // what its signature returns, such as a call whose value is the success of
 // the Effect it runs, returns nil.
-type ReturnInferenceTargetHook func(c *Checker, call *ast.Node, contextual *Type, target *Type) *Type
+type ReturnInferenceTargetHook func(c *Checker, call *ast.Node, contextual *Type, target *Type, candidate *Signature) *Type
 
 var returnInferenceTargetHooks []ReturnInferenceTargetHook
 
@@ -180,12 +180,12 @@ func RegisterReturnInferenceTargetHook(hook ReturnInferenceTargetHook) {
 	returnInferenceTargetHooks = append(returnInferenceTargetHooks, hook)
 }
 
-func (c *Checker) applyReturnInferenceTargetHooks(call *ast.Node, contextual *Type, target *Type) *Type {
+func (c *Checker) applyReturnInferenceTargetHooks(call *ast.Node, contextual *Type, target *Type, candidate *Signature) *Type {
 	for _, hook := range returnInferenceTargetHooks {
 		if target == nil {
 			return nil
 		}
-		target = hook(c, call, contextual, target)
+		target = hook(c, call, contextual, target, candidate)
 	}
 	return target
 }

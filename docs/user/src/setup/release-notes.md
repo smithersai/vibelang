@@ -201,6 +201,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 
 - Private service-shaped `control` handlers previously required manual migration. `vibelang --fix` now rewrites a provably safe tail-`resume` subset to ordinary services, preserves its existing key in scopes without a derived key, and reports unsupported continuations without changing them.
+- Error recovery could leave an assigned value possibly `undefined` and lose an unhandled error type. Running calls now keep omitted generic branches at their defaults while still inferring supplied arguments.
 - A service with a written shape annotation gained an extra public `Shape` namespace in its declarations. It now keeps the written shape directly and exposes no implicit namespace outside its own body.
 - Formatting a generated subprocess helper could make migration setup treat it as hand-edited and retain unused loader imports. Setup now recognizes formatting changes while preserving edited code, types, comments and documentation for review.
 - Migration setup could add source-loader helpers to JavaScript CLI launches merely because later arguments were dynamic, introducing unnecessary install-time dependencies. Proven JavaScript entrypoints now keep their native launch; unknown and typed source entrypoints retain loader handling.

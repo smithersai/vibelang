@@ -9753,7 +9753,7 @@ func (c *Checker) inferTypeArguments(node *ast.Node, signature *Signature, args 
 		skipBindingPatterns := core.Every(signature.TypeParameters(), func(p *Type) bool { return c.getDefaultFromTypeParameter(p) != nil })
 		contextualType := c.getContextualType(node, core.IfElse(skipBindingPatterns, ContextFlagsSkipBindingPatterns, ContextFlagsNone))
 		if contextualType != nil {
-			inferenceTargetType := c.applyReturnInferenceTargetHooks(node, contextualType, c.getReturnTypeOfSignature(signature))
+			inferenceTargetType := c.applyReturnInferenceTargetHooks(node, contextualType, c.getReturnTypeOfSignature(signature), signature)
 			if inferenceTargetType != nil && c.couldContainTypeVariables(inferenceTargetType) {
 				outerContext := c.getInferenceContext(node)
 				isFromBindingPattern := !skipBindingPatterns && c.getContextualType(node, ContextFlagsSkipBindingPatterns) != contextualType

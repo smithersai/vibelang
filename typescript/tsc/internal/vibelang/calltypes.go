@@ -58,7 +58,7 @@ func callExpressionType(c *checker.Checker, call *ast.Node, t *checker.Type) *ch
 // gave no inference. Where the contextual type expects an Effect, the call
 // stands where a program is expected (D147, D262, D269), and TypeScript
 // infers from it as usual.
-func runningCallInferenceTarget(c *checker.Checker, call *ast.Node, contextual *checker.Type, target *checker.Type) *checker.Type {
+func runningCallInferenceTarget(c *checker.Checker, call *ast.Node, contextual *checker.Type, target *checker.Type, candidate *checker.Signature) *checker.Type {
 	if !isInvocation(call) || !isVibeLangFile(ast.GetSourceFileOfNode(call)) || !analyzerFor(c).runs(call) || !isEffectType(c, target) {
 		return target
 	}
@@ -76,7 +76,11 @@ func runningCallInferenceTarget(c *checker.Checker, call *ast.Node, contextual *
 	// Outcome: const o: Outcome = try Effect.succeed({ _tag: "Found" }) keeps
 	// "Found" literal, and so does effect { ... } catch h under an Outcome
 	// contract (D293).
-	return successType(c, target)
+	// The value's context must not invent an optional generic branch. Keep
+	// defaults during this pass; actual arguments still infer against the
+	// original signature. Otherwise Exclude<A3, Unassigned> can infer an
+	// absent fallback as undefined from an Item | undefined assignment.
+	return c.InstantiateTypeParameterDefaults(successType(c, target), candidate)
 }
 
 // callRunsResult is the shared checker/lowering predicate for D24: a call

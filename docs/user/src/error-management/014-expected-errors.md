@@ -307,6 +307,8 @@ InvalidCode
 
 `catchIf` selects errors with a predicate or type guard; `catchFilter`, with reusable selection logic from `Filter`. A narrowing filter removes the handled subtype; a boolean condition that handles only some values can't promise the whole subtype is gone.
 
+After assignment from `try catchIf(...)`, ordinary control-flow narrowing applies. If every success branch produces `Item`, a local declared as `Item | undefined` becomes `Item` after the assignment. Omitting an optional recovery branch keeps its generic default. A supplied recovery that can succeed with `undefined` still requires a check before reading the value.
+
 ## Filtering nested reasons
 
 ```vibe

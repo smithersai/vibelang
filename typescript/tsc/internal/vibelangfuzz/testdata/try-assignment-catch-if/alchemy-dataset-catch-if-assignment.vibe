@@ -1,0 +1,13 @@
+import * as Effect from "effect/Effect"
+interface Item { readonly id: string }
+type Err = { readonly _tag: "Conflict" } | { readonly _tag: "Other" }
+declare const create: () => Effect.Effect<Item, Err>
+declare const update: () => Effect.Effect<Item, Err>
+export effect function caught(observed: Item | undefined) {
+  let current = observed
+  if (current === undefined) {
+    current = try Effect.catchIf(create(), (e): e is { readonly _tag: "Conflict" } => e._tag === "Conflict", effect () => try update())
+    return current.id
+  }
+  return current.id
+}

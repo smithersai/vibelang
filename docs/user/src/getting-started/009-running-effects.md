@@ -145,3 +145,6 @@ In `.vibe` and TypeScript files, pass the runner an Effect directly, as in `runP
 [Upstream Effect page](https://effect.website/docs/v4/getting-started/running-effects)
 
 Before exponentiation, parenthesize the whole execution expression: `(try program) ** 2`. The unparenthesized form reports `EK0510`. Use the editor action or `vibelang --fix` to add the parentheses.
+
+
+A running call keeps a generic parameter's default unless an argument infers another type. A result variable's annotation does not create an omitted recovery branch or choose a different default by itself. Supply an explicit type argument when a producer with no inference input needs another instantiation.
