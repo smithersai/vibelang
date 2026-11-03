@@ -1,9 +1,12 @@
+import { stripInternalOutput } from "../_schema-stripinternal.mjs"
 import assert from "node:assert/strict"
 import fs from "node:fs"
 import path from "node:path"
 import os from "node:os"
 import { createRequire } from "node:module"
 import { spawnSync } from "node:child_process"
+
+stripInternalOutput(["Message"])
 
 const require = createRequire(import.meta.url)
 const tsc = require.resolve("../../../../experiments/node_modules/typescript/bin/tsc")

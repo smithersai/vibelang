@@ -579,6 +579,8 @@ that pause the host while registering a timer.
 
 Compiler-case and editor smoke targets depend on `//packages:compiler-native` as well as the compiler executable. This prepares `packages/compiler/native/` and `dprint-plugin.json` before a custom runner formats a source. Case cache keys also include shared runner helpers, the API comparison scripts and their pinned TypeScript install.
 
+The `schema-internal-companion-pair` and `schema-jsdoc-stripinternal-constant-only` cases deliberately test the dangling aliases that native `stripInternal` leaves behind. Their TypeScript twins use `typescript/tsconfig.emit.json` and a custom runner: it compares every emitted declaration byte against both the compiler's TypeScript twin and stock TypeScript, then requires the exact `TS2693` diagnostics for the retained aliases. These fixtures test emission; the API identity checker continues to reject invalid declarations. `scripts/schema-stripinternal-property.test.mjs` generates schema names, struct and alias forms, namespace placement and line endings against the same stock TypeScript oracle.
+
 The harness sets its final exit status and lets stdout drain before it exits.
 Piped failure reports and verbose compiler logs retain their final lines and
 the case summary, including large lines with Unicode text.
