@@ -77,10 +77,13 @@ func FuzzFormat(f *testing.F) {
 	for _, data := range []string{"", "\x07\x02\x03", "\x01\x00\x01"} {
 		f.Add(formatLabelKey + data)
 	}
+	for _, data := range []string{"", "\x01\x02\x00\x02", "\x03\x00\x01\x01", "\x80\x00\x00\x00"} {
+		f.Add(formatUnnamedModuleKey + data)
+	}
 	w := NewWorkspace(f)
 	formatter := toolsFormatter(f)
 	f.Fuzz(func(t *testing.T, source string) {
-		source = formatServiceSeparatorSource(formatLabelSource(formatReturnTypesSource(formatIsLineSource(formatFoldkitSource(source)))))
+		source = formatUnnamedModuleSource(formatServiceSeparatorSource(formatLabelSource(formatReturnTypesSource(formatIsLineSource(formatFoldkitSource(source))))))
 		toolsGuard(t, "FuzzFormat", func() {
 			if len(source) > 24<<10 || toolsLeftOut("FuzzFormat", map[string]string{"main.vibe": source}) {
 				return
@@ -352,6 +355,20 @@ func toolsSlug(message string) string {
 func formatSyntaxError(source string) string {
 	if syntax := toolsSyntaxError("main.vibe", source); syntax != "" {
 		return syntax
+	}
+	// Missing-name recovery has no supplemental source file for toolsSyntaxError
+	// to inspect. Its body still follows TypeScript grammar, so check that
+	// grammar independently rather than calling its syntax errors refusals.
+	file := toolsParse("main.vibe", source)
+	for _, statement := range file.Statements.Nodes {
+		if !parser.IsVibeLangModuleDeclaration(statement) || statement.Name().Text() != "" {
+			continue
+		}
+		r := parser.ModuleDeclarationBody(file, statement)
+		body := parser.ParseSourceFile(ast.SourceFileParseOptions{FileName: "/body.ts", PathKey: "/body.ts"}, source[r.Pos():r.End()], core.ScriptKindTS)
+		if diagnostics := body.Diagnostics(); len(diagnostics) != 0 {
+			return fmt.Sprintf("%d: %s", r.Pos()+diagnostics[0].Pos(), diagnostics[0].String())
+		}
 	}
 	at := -1
 	separatorAt := -1

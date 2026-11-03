@@ -468,7 +468,6 @@ func TestFormatRejects(t *testing.T) {
 		{"syntax error in a module body", "module text {\n  export const a = (\n}\nimport { a } from text\n", "vibelang format: 2:21: module text: Expression expected"},
 		{"VibeLang syntax in a module body", "module text {\n  error Bad { reason: string }\n}\n", "vibelang format: 2:3: module text: Unexpected keyword or identifier"},
 		{"module declaration below the top level", "function f() {\n  module inner {\n    export const a = 1\n  }\n}\n", "vibelang format: 2:3: module inner is not at the file's top level"},
-		{"module declaration without a name", "module {\n  export const a = 1\n}\n", "vibelang format: 1:1: a module declaration needs a name"},
 		{"nested module declaration without a name", "function f() {\n  module {\n    export const a = 1\n  }\n}\n", "vibelang format: 2:3: a module declaration needs a name"},
 		{"module declared twice", "module text {\n  export const a = 1\n}\nmodule text {\n  export const b = 2\n}\n", "vibelang format: 4:1: module text is declared twice"},
 		{"call signature in a service", "service Format {\n  static readonly key = \"f\";\n  (value: string): string\n}\n", "vibelang format: 3:3: a call signature cannot be a service member (EK0902)"},
@@ -613,9 +612,7 @@ func TestFormatModuleCases(t *testing.T) {
 				t.Fatal(err)
 			}
 			wantRefusal := ""
-			if strings.HasPrefix(string(source), "// expect: EK4003\n") {
-				wantRefusal = "a module declaration needs a name"
-			} else if filepath.Base(filepath.Dir(input)) == "module-declaration-forms.fail" {
+			if filepath.Base(filepath.Dir(input)) == "module-declaration-forms.fail" {
 				wantRefusal = "module text is declared twice"
 			}
 			hostCalls := 0

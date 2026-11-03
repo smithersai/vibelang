@@ -47,7 +47,15 @@ func checkModules(file *ast.SourceFile, source string) error {
 		}
 		name := statement.Name().Text()
 		if name == "" {
-			return at(statement, "a module declaration needs a name")
+			// Recovery leaves EK4003 to the checker and attaches no supplemental
+			// file. Check the body independently before projecting a temporary name.
+			r := parser.ModuleDeclarationBody(file, statement)
+			body := parser.ParseSourceFile(typeScriptOptions, source[r.Pos():r.End()], core.ScriptKindTS)
+			if diagnostics := body.Diagnostics(); len(diagnostics) != 0 {
+				line, column := lineColumn(source, r.Pos()+diagnostics[0].Pos())
+				return fmt.Errorf("vibelang format: %d:%d: %s", line, column, diagnostics[0].String())
+			}
+			continue
 		}
 		suffix := parser.ModuleDeclarationFileSuffix(name)
 		if seen[suffix] {
@@ -185,6 +193,28 @@ func isModuleSpecifier(node *ast.Node) bool {
 // sameModules reports how the module bodies of after, a parse of the
 // formatted file, differ from those of before.
 func (c *comparer) sameModules(before, after *ast.SourceFile) error {
+	// Unnamed recovered declarations have no supplemental files. Their
+	// empty ModuleBlock nodes cannot guard body changes, so compare the
+	// independently parsed TypeScript bodies as well.
+	beforeStatements := statements(before.AsNode(), before.Statements.Nodes)
+	afterStatements := statements(after.AsNode(), after.Statements.Nodes)
+	for i, statement := range beforeStatements {
+		if !parser.IsVibeLangModuleDeclaration(statement) || statement.Name().Text() != "" {
+			continue
+		}
+		a := parser.ModuleDeclarationBody(before, statement)
+		b := parser.ModuleDeclarationBody(after, afterStatements[i])
+		original, formatted := before.Text()[a.Pos():a.End()], after.Text()[b.Pos():b.End()]
+		left := parser.ParseSourceFile(typeScriptOptions, original, core.ScriptKindTS)
+		right := parser.ParseSourceFile(typeScriptOptions, formatted, core.ScriptKindTS)
+		if diagnostics := right.Diagnostics(); len(diagnostics) != 0 {
+			return fmt.Errorf("unnamed module: %w", syntaxError(formatted, diagnostics[0]))
+		}
+		bodyComparer := comparer{before: original, after: formatted}
+		if err := bodyComparer.same(left.AsNode(), right.AsNode()); err != nil {
+			return fmt.Errorf("unnamed module: %w", err)
+		}
+	}
 	a, b := before.EmbeddedModules(), after.EmbeddedModules()
 	if len(a) != len(b) {
 		return fmt.Errorf("%d module bodies became %d", len(a), len(b))

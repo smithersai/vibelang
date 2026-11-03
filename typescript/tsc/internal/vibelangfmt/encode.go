@@ -68,6 +68,7 @@ const (
 	placeholderClassHead                                   // a class name for a service or control header
 	placeholderCatch                                       // a method name for catch
 	placeholderMutableIndex                                // [ and the key name after mutable
+	placeholderModuleName                          // a temporary name for a recovered unnamed module
 	placeholderGenericComma                        // a temporary second arrow type parameter
 	placeholderEmptyClassElement                           // a JSDoc-owning empty class element
 	placeholderEmptyStatement                              // a JSDoc-owning empty statement
@@ -532,6 +533,11 @@ func (e *encoder) form(form parser.VibeSyntax) error {
 	case parser.VibeSyntaxClause:
 		// Written with the try statement's other clauses (clauses).
 	case parser.VibeSyntaxModule:
+		// Supply only the projection's missing name. Decoding restores the
+		// empty identifier, so formatting retains EK4003 rather than repairing it.
+		if form.Name == "" {
+			e.opaque(placeholderModuleName, core.NewTextRange(form.Open.Pos(), form.Open.Pos()), " ", "", 0)
+		}
 		// TypeScript syntax too; the body is TypeScript (modules.go).
 		e.modules = append(e.modules, moduleBody{name: form.Name, body: core.NewTextRange(form.Open.End(), form.Close.Pos())})
 	case parser.VibeSyntaxModuleReference:

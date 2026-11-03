@@ -361,6 +361,17 @@ func (d *decoder) node(node *ast.Node) error {
 		}
 		d.replace(d.start(method), method.End(), ",")
 
+	case placeholderModuleName:
+		if parent.Kind != ast.KindModuleDeclaration || parent.Name() != node {
+			return lost()
+		}
+		// The projection inserts a separating space. Remove it along with
+		// the name, including extra spacing a host keeps beside a comment,
+		// so repeated formatting cannot grow the recovered module head.
+		for start > 0 && (d.text[start-1] == ' ' || d.text[start-1] == '\t') {
+			start--
+		}
+		d.replace(start, end, "")
 	case placeholderIsPattern:
 		if parent.Kind != ast.KindBinaryExpression || parent.AsBinaryExpression().Right != node || parent.AsBinaryExpression().OperatorToken.Kind != ast.KindGreaterThanEqualsToken {
 			return lost()

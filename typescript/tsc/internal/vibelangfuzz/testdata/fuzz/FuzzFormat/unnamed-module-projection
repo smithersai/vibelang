@@ -1,0 +1,2 @@
+go test fuzz v1
+string("key:unnamed-module-projection\n\x01\x02\x00\x02")
