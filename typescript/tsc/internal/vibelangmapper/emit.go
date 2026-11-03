@@ -98,9 +98,9 @@ func Executable(text string, ctx FileContext) Projection {
 			Code:    CodeUnprojectedForm,
 			Message: "The executable rendering produced invalid or overlapping edits here; the file emits no JavaScript.",
 		})
-		return Projection{Diagnostics: diagnostics}
+		return Projection{Extension: virtualExtension(ctx), Diagnostics: diagnostics}
 	}
-	return Projection{Text: exec, Segments: withoutKeywords(segments, p.keywords), Diagnostics: diagnostics}
+	return Projection{Extension: virtualExtension(ctx), Text: exec, Segments: withoutKeywords(segments, p.keywords), Diagnostics: diagnostics}
 }
 
 // originalPosition maps pos, a position in a rendering, to the original

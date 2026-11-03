@@ -91,6 +91,11 @@ ln -s "$effect_dir" "$work/.runtime-build/node_modules/effect"
 cp "$root/packages/runtime/package.json" "$runtime/"
 echo "$work"
 
+step "vibex projection properties against stock TSX"
+VIBEX_MAPPER="$package/bin/vibelang-mapper" VIBEX_STOCK="$tsc" \
+  VIBEX_RUNTIME="$runtime" VIBEX_EFFECT="$effect_dir" \
+  node --test "$here/vibex.property.test.mjs"
+
 step "cross-file impure recursion stays stack-safe (B)"
 node "$here/cross-file-stack.mjs" "$package/bin/vibelang-mapper" "$work"
 

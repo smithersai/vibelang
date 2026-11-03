@@ -1,13 +1,14 @@
 {
   "compilerOptions": {
     "strict": true,
+    "jsx": "preserve",
     "noEmit": true,
     "module": "nodenext",
     "target": "es2024",
     "skipLibCheck": true
   },
   "contentMappers": [
-    { "package": "vibelang-ts-mapper", "extensions": [".vibe"] }
+    { "package": "vibelang-ts-mapper", "extensions": [".vibe", ".vibex"] }
   ],
   "include": ["src"]
 }

@@ -15,7 +15,7 @@
   "typescript": {
     "contentMapper": {
       "exec": ["./bin/vibelang-mapper"],
-      "compilerOptions": [],
+      "compilerOptions": ["jsx", "jsxFactory", "jsxFragmentFactory", "jsxImportSource", "reactNamespace"],
       "dynamicConfig": true
     }
   },

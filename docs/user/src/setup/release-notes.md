@@ -259,6 +259,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - ESLint corpus checks could overlook missing variable nodes when a name was also a contextual word, such as `match`; ordinary variable declarations now require their written identifier nodes.
 - CI-health reports mistook missing compiled Go cache archives for undeclared source inputs; reports now identify cache-archive failures and recommend inspecting the cache.
 
+- Stock TypeScript's experimental mapper treated `.vibex` as non-JSX TypeScript and broke JSX syntax; it now projects these files as TSX, preserves JSX source ranges, and includes JSX options in its cache key.
+
 - The mapper's parity and end-to-end checks stopped at a missing `emit-main.go` after automatic tracing was retired; they now use the production mapper and verify Go overlay inputs before building.
 
 - Declaration checks could compare an unused `types` export instead of an earlier matching package condition, hiding a real API change. Published entry discovery now follows TypeScript's conditional export order and preserves mirrored `.vibe` sidecar resolution.

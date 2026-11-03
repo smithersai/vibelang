@@ -70,10 +70,17 @@ const (
 	CodeInvalidOption = 9003
 )
 
-// projectedFileName is the name the parser sees. The parser reads VibeLang
-// syntax only in files whose name ends in .vibe; the name itself never
-// reaches the output.
+// projectedFileName is the default parser name. JSX projections use
+// /projected.vibex so both VibeLang syntax and TypeScript JSX parsing apply.
+// The parser name itself never reaches the output.
 var projectedFileName = tspath.RootedFilePathFromAbsolute("/projected.vibe")
+
+func virtualExtension(ctx FileContext) string {
+	if tspath.VibeLangSourceExtension(ctx.FileName) == tspath.ExtensionVibex {
+		return ".tsx"
+	}
+	return VirtualExtension
+}
 
 // FileContext is what a projection knows about its file besides the text.
 type FileContext struct {
@@ -85,8 +92,10 @@ type FileContext struct {
 	ModuleKey string
 }
 
-// Projection is the virtual TypeScript for one .vibe file.
+// Projection is the virtual TypeScript or TSX for one VibeLang file.
 type Projection struct {
+	// Extension tells the host which TypeScript parser to use.
+	Extension string
 	// Text is the virtual TypeScript source.
 	Text string
 	// Segments map Text back to the original, ordered by virtual start. Text
@@ -189,7 +198,7 @@ func Project(text string, ctx FileContext) Projection {
 			Message: "The TypeScript 7 mapper produced invalid or overlapping edits here; the file is passed through unchanged.",
 		})
 	}
-	return Projection{Text: out, Segments: withoutKeywords(segments, p.keywords), Diagnostics: p.diagnostics, Purity: p.purity()}
+	return Projection{Extension: virtualExtension(ctx), Text: out, Segments: withoutKeywords(segments, p.keywords), Diagnostics: p.diagnostics, Purity: p.purity()}
 }
 
 // lower parses text and walks it in context ctx, recording the lowering
@@ -197,13 +206,18 @@ func Project(text string, ctx FileContext) Projection {
 // executable rendering (emit) renders the same plan. It is the one place the
 // walk is set up, so the two renderings never see different plans.
 func lower(text string, ctx FileContext) *projector {
-	file := parser.ParseSourceFile(ast.SourceFileParseOptions{FileName: projectedFileName, VibeLangDoAsFunction: true}, text, core.ScriptKindTS)
+	fileName, kind := projectedFileName, core.ScriptKindTS
+	if virtualExtension(ctx) == ".tsx" {
+		fileName = tspath.RootedFilePathFromAbsolute("/projected.vibex")
+		kind = core.ScriptKindTSX
+	}
+	file := parser.ParseSourceFile(ast.SourceFileParseOptions{FileName: fileName, VibeLangDoAsFunction: true}, text, kind)
 	effectDeclarations := writtenEffectDeclarationMarks(file)
 	operandTries := tryOperandMarks(file, text)
 	keywords := vipKeywords(file, text)
 	if len(keywords) > 0 {
 		text = blank(text, keywords)
-		file = parser.ParseSourceFile(ast.SourceFileParseOptions{FileName: projectedFileName, VibeLangDoAsFunction: true}, text, core.ScriptKindTS)
+		file = parser.ParseSourceFile(ast.SourceFileParseOptions{FileName: fileName, VibeLangDoAsFunction: true}, text, kind)
 	}
 	restoreTryOperandMarks(file, text, operandTries)
 	restoreWrittenEffectDeclarationMarks(file, effectDeclarations)

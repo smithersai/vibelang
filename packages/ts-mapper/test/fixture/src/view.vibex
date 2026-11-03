@@ -1,0 +1,8 @@
+declare global {
+  namespace JSX {
+    interface IntrinsicElements { p: { title: string } }
+  }
+}
+
+// VIP-39: a real stock host must select TSX from the mapper's extension.
+export const view = <p title="% |> !">hé😀 {/* preserved comment */}{1 |> % + 2}</p>

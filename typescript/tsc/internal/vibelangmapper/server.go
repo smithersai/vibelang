@@ -24,8 +24,7 @@ import (
 // so EK9001 reads like the fork's own EK diagnostics.
 const DiagnosticSource = "EK"
 
-// VirtualExtension is the extension of every projected file: TypeScript
-// checks greet.vibe as greet.vibe.ts.
+// VirtualExtension is the default projection extension. JSX sources use .tsx.
 const VirtualExtension = ".ts"
 
 // Serve answers TypeScript's content mapper requests on rwc until the
@@ -161,10 +160,14 @@ func TransformResult(projection Projection) (contentmapper.TransformResult, erro
 	if err != nil {
 		return contentmapper.TransformResult{}, err
 	}
+	extension := projection.Extension
+	if extension == "" {
+		extension = VirtualExtension
+	}
 	result := contentmapper.TransformResult{
 		MappedOutput: contentmapper.MappedOutput{
 			Text:      projection.Text,
-			Extension: VirtualExtension,
+			Extension: extension,
 			Mappings:  json.Value(mappings),
 		},
 	}
