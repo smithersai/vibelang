@@ -35,6 +35,12 @@ import (
 // return annotation it would compile to an Effect (D500), so it gets : infer _,
 // which keeps its type. A call that returns a Promise has no such fix: it is
 // a value in the generator, and tryPromise would wait for it.
+//
+// The wrapper's function also loses what control flow proved about a property:
+// in `o.p ? f(o.p) : 0`, o.p is a string outside the function and possibly
+// undefined inside it. A guard in the same expression moves into the function
+// with the call. A guard in an earlier statement keeps its proof in a const
+// before the statement, when nothing runs before the read.
 
 func init() {
 	tsFormFixCodes = append(tsFormFixCodes, EK4401.Code)
@@ -93,12 +99,32 @@ func planForeignCall(c *checker.Checker, file *ast.SourceFile, call *ast.Node) *
 		}
 		return &formRewrite{edits: []sourceEdit{{at, at, ": infer _"}}, description: "the function plain"}
 	}
-	inputs, code := boundaryInputs(c, file, call)
+	target := call
+	guard := outermostGuardedExpression(call)
+	if guard != nil && holdsNarrowedForeignCall(c, file, guard) {
+		if a.runsVibeLang(guard) {
+			return nil // a try cannot run inside the wrapper's function
+		}
+		target = guard
+	}
+	var inputs []boundaryInput
+	code := ""
+	if target == call {
+		narrowed := func(operand *ast.Node) bool { return readsNarrowedProperty(c, operand) }
+		inputs, code = boundaryInputs(c, file, call, narrowed)
+	} else {
+		code = nodeText(file, target)
+	}
 	var edits []sourceEdit
 	if len(inputs) > 0 {
 		statement := enclosingStatement(call)
 		if statement == nil || a.runsOutOfOrder(statement, call, inputs) {
 			return nil
+		}
+		for _, in := range inputs {
+			if readsNarrowedProperty(c, in.node) && runsBefore(statement, in.node) {
+				return nil // the call that runs first could change the property
+			}
 		}
 		at := nodeStart(file, statement)
 		text := ""
@@ -111,11 +137,75 @@ func planForeignCall(c *checker.Checker, file *ast.SourceFile, call *ast.Node) *
 		edits = append(edits, sourceEdit{nodeStart(file, fn), nodeStart(file, fn), "effect "}) // try needs effect code
 	}
 	wrapped := "try Effect.orDie(Effect.try({ try: () => " + code + ", catch: (error) => error }))"
-	if !standsAlone(call) {
+	if !standsAlone(target) {
 		wrapped = "(" + wrapped + ")"
 	}
-	edits = append(edits, sourceEdit{nodeStart(file, call), call.End(), wrapped})
+	edits = append(edits, sourceEdit{nodeStart(file, target), target.End(), wrapped})
 	return &formRewrite{edits: edits, description: "the call through Effect.try, whose exceptions stay defects"}
+}
+
+// outermostGuardedExpression returns the outermost conditional or logical
+// expression around node in its statement, or nil.
+func outermostGuardedExpression(node *ast.Node) *ast.Node {
+	var guard *ast.Node
+	for n := node.Parent; n != nil && !ast.IsStatement(n) && !ast.IsFunctionLike(n); n = n.Parent {
+		if ast.IsConditionalExpression(n) || ast.IsBinaryExpression(n) && ast.IsLogicalOrCoalescingBinaryOperator(n.AsBinaryExpression().OperatorToken.Kind) {
+			guard = n
+		}
+	}
+	return guard
+}
+
+// holdsNarrowedForeignCall reports whether a call EK4401 reports, in
+// expression, reads a property whose type control flow narrowed.
+func holdsNarrowedForeignCall(c *checker.Checker, file *ast.SourceFile, expression *ast.Node) bool {
+	var visit func(n *ast.Node) bool
+	visit = func(n *ast.Node) bool {
+		if isFunctionBoundary(n) {
+			return false
+		}
+		if ast.IsCallExpression(n) && needsBoundary(c, file, n) && readsNarrowedProperty(c, n) {
+			return true
+		}
+		return n.ForEachChild(visit)
+	}
+	return visit(expression)
+}
+
+// readsNarrowedProperty reports whether node reads, outside the functions it
+// defines, a property whose declared type is wider than its type there: what a
+// function written around the read would not know.
+func readsNarrowedProperty(c *checker.Checker, node *ast.Node) bool {
+	var visit func(n *ast.Node) bool
+	visit = func(n *ast.Node) bool {
+		if isFunctionBoundary(n) {
+			return false
+		}
+		if ast.IsPropertyAccessExpression(n) {
+			if symbol := c.GetSymbolAtLocation(n.Name()); symbol != nil && symbol.Flags()&(ast.SymbolFlagsProperty|ast.SymbolFlagsAccessor) != 0 {
+				if here, declared := c.GetTypeAtLocation(n), c.GetTypeOfSymbol(symbol); here != nil && declared != nil && !c.IsTypeAssignableTo(declared, here) {
+					return true
+				}
+			}
+		}
+		return n.ForEachChild(visit)
+	}
+	return visit(node)
+}
+
+// runsBefore reports whether statement makes a call before it reaches node.
+func runsBefore(statement, node *ast.Node) bool {
+	var visit func(n *ast.Node) bool
+	visit = func(n *ast.Node) bool {
+		if n.End() <= node.Pos() && isInvocation(n) {
+			return true
+		}
+		if n.Pos() >= node.Pos() || isFunctionBoundary(n) {
+			return false
+		}
+		return n.ForEachChild(visit)
+	}
+	return statement.ForEachChild(visit)
 }
 
 // needsBoundary reports whether call is a synchronous call EK4401 reports: one

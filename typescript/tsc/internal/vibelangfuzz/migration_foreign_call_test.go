@@ -55,6 +55,11 @@ func migrationForeignCallPositions() map[string]string {
 		"ternary-branch": "return n > 0 ? CALL : 0",
 		"and":            "return n > 0 && CALL > 0",
 		"coalesce":       "return (n as number | undefined) ?? CALL",
+		"guard-ternary":  "return o.p ? CALL : 0",
+		"guard-nested":   "return o.p ? CALL : n > 0 ? double(n) : double(0)",
+		"guard-and":      "return o.p !== undefined && CALL > 0",
+		"guard-if":       "if (o.p) {\n    const v = CALL\n    return v\n  }\n  return 0",
+		"guard-early":    "if (!o.p) return 0\n  return CALL",
 		"if-test":        "if (CALL > 0) return 1\n  return 2",
 		"if-branch":      "if (n > 0) {\n    return CALL\n  }\n  return 2",
 		"if-unbraced":    "if (n > 0) return CALL\n  return 2",
@@ -76,6 +81,7 @@ func migrationForeignCallCalls() map[string]string {
 		"namespace": "Helpers.double(n)",
 		"method":    "counter.next(n)",
 		"throws":    "refuse(n)",
+		"narrowed":  "double(o.p)",
 		"running":   "double(yield* one())",
 		"two":       "pair(yield* one(), yield* one())[0]",
 	}
@@ -92,8 +98,8 @@ const tag = (parts: TemplateStringsArray, ...values: ReadonlyArray<number>): Eff
 // same module in the effect code --fix meets once its generators are written.
 func migrationForeignCallSource(position, call string) (typescript, vibe string) {
 	body := strings.ReplaceAll(migrationForeignCallPositions()[position], "CALL", migrationForeignCallCalls()[call])
-	typescript = migrationForeignCallPrefix + "export const value = (n: number) =>\n  Effect.gen(function* () {\n  " + body + "\n  })\n"
-	vibe = migrationForeignCallPrefix + "export const value = effect (n: number) => {\n  " + strings.ReplaceAll(body, "yield*", "try") + "\n}\n"
+	typescript = migrationForeignCallPrefix + "export const value = (n: number, o: { readonly p?: number } = {}) =>\n  Effect.gen(function* () {\n  " + body + "\n  })\n"
+	vibe = migrationForeignCallPrefix + "export const value = effect (n: number, o: { readonly p?: number } = {}) => {\n  " + strings.ReplaceAll(body, "yield*", "try") + "\n}\n"
 	return typescript, vibe
 }
 
@@ -175,6 +181,10 @@ func checkMigrationForeignCall(t *testing.T, w *Workspace, api, input string) {
 			Gap(t, migrationForeignCallTarget, key, "Chapter 3: %q; after --fix: %v\nfixed:\n%s", migrationForeignCallQuote, left, fixed["main.vibe"])
 			return
 		}
+		if refused && call == "narrowed" {
+			Gap(t, migrationForeignCallTarget, key, "Chapter 3: %q; --fix refused a call whose property a guard narrowed\nfixed:\n%s", migrationForeignCallQuote, fixed["main.vibe"])
+			return
+		}
 		if refused {
 			return // no declarations to compare: the module stays .ts
 		}
@@ -211,6 +221,9 @@ func FuzzMigrationForeignCallPositions(f *testing.F) {
 	for i, position := range positions {
 		// Under -short each position meets one call; a campaign meets all.
 		f.Add(position + "/" + calls[i%len(calls)])
+		if strings.HasPrefix(position, "guard-") {
+			f.Add(position + "/narrowed")
+		}
 		if !testing.Short() {
 			for _, call := range calls {
 				f.Add(position + "/" + call)

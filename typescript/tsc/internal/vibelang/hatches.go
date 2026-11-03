@@ -251,7 +251,7 @@ func wrappedCall(effect string, code string, mapper string) string {
 //	shout(hello("VibeLang"))   const s = try hello("VibeLang"); try Effect.try(() => shout(s))
 //	sortTitles(titles)         try Effect.try(() => sortTitles(titles))
 func boundaryCall(c *checker.Checker, file *ast.SourceFile, effect string, call *ast.Node, mapper string) string {
-	inputs, text := boundaryInputs(c, file, call)
+	inputs, text := boundaryInputs(c, file, call, nil)
 	return strings.Join(inputConsts(inputs), "") + wrappedCall(effect, text, mapper)
 }
 
@@ -279,8 +279,9 @@ func inputConsts(inputs []boundaryInput) []string {
 
 // boundaryInputs returns the operands of call that must stand outside its
 // wrapper, named so that no const shadows a name around them, and the text of
-// call with each replaced by its const.
-func boundaryInputs(c *checker.Checker, file *ast.SourceFile, call *ast.Node) ([]boundaryInput, string) {
+// call with each replaced by its const. keep, when not nil, names more operands
+// that stand outside.
+func boundaryInputs(c *checker.Checker, file *ast.SourceFile, call *ast.Node, keep func(operand *ast.Node) bool) ([]boundaryInput, string) {
 	a := analyzerFor(c)
 	type input = boundaryInput
 	var operands []input
@@ -296,7 +297,7 @@ func boundaryInputs(c *checker.Checker, file *ast.SourceFile, call *ast.Node) ([
 	}
 	var inputs []input
 	for i, operand := range operands {
-		if a.runsVibeLang(operand.node) {
+		if a.runsVibeLang(operand.node) || keep != nil && keep(operand.node) {
 			operand.pos, operand.end, operand.text = nodeStart(file, operand.node), operand.node.End(), nodeText(file, operand.node)
 			if i == 0 && len(operands) > len(call.Arguments()) && operand.node.Flags&ast.NodeFlagsVibeLangTry != 0 {
 				// (try f()).m() parses as f().m(), the tried call's range
