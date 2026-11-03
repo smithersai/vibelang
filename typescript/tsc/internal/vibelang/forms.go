@@ -72,6 +72,23 @@ func functionExpressionType(c *checker.Checker, fn *ast.Node, t *checker.Type) *
 		return t
 	}
 	f := markedForm(fn)
+	if f == formNone && serviceHead(c, fn) {
+		// The catch factory returns its operand's Effect, with the lookup's
+		// requirements added. It does not succeed with an Effect as data.
+		signatures := c.GetSignaturesOfType(t, checker.SignatureKindCall)
+		if len(signatures) == 1 {
+			program := effectOfValue(c, c.GetReturnTypeOfSignature(signatures[0]))
+			if program != nil {
+				flow := a.flowOf(fn.Body())
+				errors := append(flow.errors, channelType(c, program, "_E"))
+				requirements := append(flow.requirements, channelType(c, program, "_R"))
+				result := c.NewTypeReference(effectInterface(c, program), []*checker.Type{
+					successType(c, program), c.GetUnionType(errors), c.GetUnionType(requirements),
+				})
+				return c.NewFunctionTypeWithReturnType(t.Symbol(), signatures[0], result)
+			}
+		}
+	}
 	if f == formNone {
 		return t // a function without effect is plain JavaScript (VIP-1)
 	}

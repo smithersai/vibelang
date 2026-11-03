@@ -1,0 +1,10 @@
+import { Effect } from "effect"
+export error Refused { message: string }
+export service Audit { record: (message: string) => number!Refused }
+
+export effect function bareCatch() { return Audit.record("catch") catch () => -1 }
+export effect function tried() { return try Audit.record("try") }
+export effect function piped() { return try (Audit.record("pipe") |> Effect.map(%, (n) => n + 1)) }
+export effect function pipeCatch() { return (Audit.record("pipe-catch") |> Effect.map(%, (n) => n + 1)) catch () => -1 }
+export effect function nestedCatch() { return (Audit.record("inner") catch () => -1) catch () => -2 }
+export effect function instance() { const audit = try Audit; return audit.record("instance") catch () => -1 }

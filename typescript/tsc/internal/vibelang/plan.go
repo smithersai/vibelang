@@ -98,8 +98,10 @@ func populateFilePlan(c *checker.Checker, file *ast.SourceFile, p *plan) {
 				}
 			}
 		}
-		if isLowerable(node) && a.isEffect(node) {
-			if markedForm(node) == formProgram {
+		if isLowerable(node) && (a.isEffect(node) || serviceHead(c, node)) {
+			if serviceHead(c, node) {
+				p.heads[node] = true
+			} else if markedForm(node) == formProgram {
 				p.programs[node] = true
 			} else {
 				p.effects[node] = true

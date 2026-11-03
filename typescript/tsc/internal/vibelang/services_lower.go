@@ -9,6 +9,7 @@ import (
 
 // servicePlan records what the lowering does with services in one file.
 type servicePlan struct {
+	heads      map[*ast.Node]bool   // catch operand factories with a service lookup to suspend
 	lookups    map[*ast.Node]bool   // calls S.member(…) whose callee looks the service up
 	moduleKeys map[*ast.Node]string // the S or p of those calls that name a module, and the key it names (D311)
 	aliases    map[*ast.Node]string // property accesses M.member read through M's export, and the export's name (D311)
@@ -21,7 +22,26 @@ type servicePlan struct {
 }
 
 func newServicePlan() servicePlan {
-	return servicePlan{lookups: map[*ast.Node]bool{}, moduleKeys: map[*ast.Node]string{}, aliases: map[*ast.Node]string{}, keys: map[*ast.Node]string{}, wireOrders: map[*ast.Node][]int{}, wireLists: map[*ast.Node][]wireArgument{}}
+	return servicePlan{heads: map[*ast.Node]bool{}, lookups: map[*ast.Node]bool{}, moduleKeys: map[*ast.Node]string{}, aliases: map[*ast.Node]string{}, keys: map[*ast.Node]string{}, wireOrders: map[*ast.Node][]int{}, wireLists: map[*ast.Node][]wireArgument{}}
+}
+
+// serviceHead reports whether a plain catch operand factory must suspend a
+// service lookup. Unlike a source function, this parser-created arrow shares
+// its surrounding effect code. Its result stays the Effect that catch runs.
+func serviceHead(c *checker.Checker, fn *ast.Node) bool {
+	return isCatchLeftFunction(fn) && markedForm(fn) == formNone && inEffectCode(fn) &&
+		forEachCallInBody(fn, func(call *ast.Node) bool { return isServiceLookup(c, call) })
+}
+
+// visitServiceHead suspends the lookup while preserving the operand's program:
+// gen returns that program as data, then flatten runs it exactly once.
+func (tx *lowering) visitServiceHead(node *ast.Node) *ast.Node {
+	parameters, body := tx.loweredBody(node)
+	program := tx.wrapGenerator("gen", node, tx.generatorFrom(node, parameters, body))
+	f := tx.Factory()
+	flatten := f.NewPropertyAccessExpression(tx.effectName(), nil, f.NewIdentifier("flatten"), ast.NodeFlagsNone)
+	result := f.NewCallExpression(flatten, nil, nil, f.NewNodeList([]*ast.Node{program}), ast.NodeFlagsNone)
+	return tx.directFunction(node, parameters, result)
 }
 
 // planServiceCall records how call, in the body of a function the lowering

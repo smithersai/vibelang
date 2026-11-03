@@ -305,6 +305,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - The specification checks rejected the folded explanation that `trustedPackages` was removed. They now permit historical retirement notes while still rejecting obsolete settings in the current configuration documentation.
 
 - The specification's folded details referred to removed `EK1020` and `EK4843` checks as though they still needed diagnostic registry entries. Both references now explicitly identify historical checks, matching VIP-1 and VIP-26.
+
+- A legacy service member call in a `catch` head could typecheck but throw a `TypeError` instead of handling its typed failure. Accepted service calls in `catch`, `try` and pipe heads now look up the service before calling its member, and the lookup remains in the inferred requirements.
 - Resolved schema-binding regressions still appeared as pending gaps; namespace, function and escaped-name coverage now checks `EK2109` strictly while keeping every keyed corpus.
 - Schema library-alias checks now compare array decoding and mutability with native TypeScript and explicit Schema controls; remaining decoder gaps keep precise pending records.
 
