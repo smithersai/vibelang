@@ -1,6 +1,7 @@
 package lint
 
 import (
+	"github.com/microsoft/TypeScript/tsc/internal/effecttsgo/etscore"
 	"github.com/microsoft/TypeScript/tsc/internal/effecttsgo/etsexecutehooks"
 	"github.com/microsoft/TypeScript/tsc/internal/effecttsgo/internal/rules"
 	"github.com/microsoft/TypeScript/tsc/internal/effecttsgo/shim/ast"
@@ -37,8 +38,14 @@ var effectRuleCodes = func() map[int32]int32 {
 // in under its Effect code, and the ones the filter keeps come back as they
 // were printed.
 func filterForExitCode(opts *shimcore.CompilerOptions, diagnostics []*ast.Diagnostic) []*ast.Diagnostic {
-	if opts.Effect == nil {
-		return diagnostics
+	effect := opts.Effect
+	if effect == nil {
+		if !configuresImportedLint(opts.VibeLang) {
+			return diagnostics
+		}
+		// A code severity entry enables the same default plugin as run(). Its
+		// default suggestion-ignore policy must apply to exit and emit as well.
+		effect = etscore.ParseFromPlugins([]any{map[string]any{"name": etscore.EffectPluginName}})
 	}
 	judged := make([]*ast.Diagnostic, len(diagnostics))
 	printed := map[*ast.Diagnostic]*ast.Diagnostic{}
@@ -49,7 +56,7 @@ func filterForExitCode(opts *shimcore.CompilerOptions, diagnostics []*ast.Diagno
 			printed[judged[i]] = d
 		}
 	}
-	kept := etsexecutehooks.FilterDiagnosticsForExitCode(opts.Effect, judged)
+	kept := etsexecutehooks.FilterDiagnosticsForExitCode(effect, judged)
 	for i, d := range kept {
 		if original, ok := printed[d]; ok {
 			kept[i] = original

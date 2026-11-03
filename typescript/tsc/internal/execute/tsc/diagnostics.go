@@ -32,7 +32,7 @@ func CreateDiagnosticReporter(sys System, w io.Writer, locale locale.Locale, opt
 	formatOpts := getFormatOptsOfSys(sys, locale)
 	if shouldBePretty(sys, options) {
 		return func(diagnostic *ast.Diagnostic) {
-			if diagnostic.Source() == "EK" && diagnostic.Category() == diagnostics.CategorySuggestion {
+			if diagnostic.Source() == "EK" && diagnostic.Category() == diagnostics.CategorySuggestion && !diagnostic.IsImportedEffectLint() {
 				return
 			}
 			diagnosticwriter.FormatDiagnosticWithColorAndContext(w, diagnosticwriter.WrapASTDiagnostic(diagnostic), formatOpts)
@@ -40,7 +40,7 @@ func CreateDiagnosticReporter(sys System, w io.Writer, locale locale.Locale, opt
 		}
 	}
 	return func(diagnostic *ast.Diagnostic) {
-		if diagnostic.Source() == "EK" && diagnostic.Category() == diagnostics.CategorySuggestion {
+		if diagnostic.Source() == "EK" && diagnostic.Category() == diagnostics.CategorySuggestion && !diagnostic.IsImportedEffectLint() {
 			return
 		}
 		diagnosticwriter.WriteFormatDiagnostic(w, diagnosticwriter.WrapASTDiagnostic(diagnostic), formatOpts)
@@ -162,7 +162,7 @@ func CreateBuilderStatusReporter(sys System, w io.Writer, locale locale.Locale, 
 	formatOpts := getFormatOptsOfSys(sys, locale)
 	writeStatus := core.IfElse(shouldBePretty(sys, options), diagnosticwriter.FormatDiagnosticsStatusWithColorAndTime, diagnosticwriter.FormatDiagnosticsStatusAndTime)
 	return func(diagnostic *ast.Diagnostic) {
-		if diagnostic.Source() == "EK" && diagnostic.Category() == diagnostics.CategorySuggestion {
+		if diagnostic.Source() == "EK" && diagnostic.Category() == diagnostics.CategorySuggestion && !diagnostic.IsImportedEffectLint() {
 			return
 		}
 		writerDiagnostic := diagnosticwriter.WrapASTDiagnostic(diagnostic)
@@ -179,7 +179,7 @@ func CreateWatchStatusReporter(sys System, locale locale.Locale, options *core.C
 	formatOpts := getFormatOptsOfSys(sys, locale)
 	writeStatus := core.IfElse(shouldBePretty(sys, options), diagnosticwriter.FormatDiagnosticsStatusWithColorAndTime, diagnosticwriter.FormatDiagnosticsStatusAndTime)
 	return func(diagnostic *ast.Diagnostic) {
-		if diagnostic.Source() == "EK" && diagnostic.Category() == diagnostics.CategorySuggestion {
+		if diagnostic.Source() == "EK" && diagnostic.Category() == diagnostics.CategorySuggestion && !diagnostic.IsImportedEffectLint() {
 			return
 		}
 		writerDiagnostic := diagnosticwriter.WrapASTDiagnostic(diagnostic)

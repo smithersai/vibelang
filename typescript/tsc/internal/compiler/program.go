@@ -2073,10 +2073,8 @@ type ProgramLike interface {
 	Program() *Program
 }
 
-func diagnosticsHaveError(diags []*ast.Diagnostic) bool {
-	return slices.ContainsFunc(diags, func(d *ast.Diagnostic) bool {
-		return d.Category() == diagnostics.CategoryError
-	})
+func diagnosticsAffectBuild(diags []*ast.Diagnostic) bool {
+	return slices.ContainsFunc(diags, (*ast.Diagnostic).AffectsBuild)
 }
 
 // HandleNoEmitOptions mirrors tsc's handleNoEmitOptions.
@@ -2094,8 +2092,8 @@ func HandleNoEmitOptions(ctx context.Context, program ProgramLike, files []*ast.
 			program.GetBindDiagnostics,
 			program.GetSemanticDiagnostics,
 		)
-		if !diagnosticsHaveError(diagnostics) {
-			return nil // Warnings are reported by the caller, but must not prevent emit.
+		if !diagnosticsAffectBuild(diagnostics) {
+			return nil // Own VibeLang warnings are reported but do not prevent emit.
 		}
 		return &EmitResult{
 			Diagnostics: diagnostics,
@@ -2163,7 +2161,7 @@ func GetDiagnosticsOfAnyProgram(
 				}
 			}
 
-			if (skipNoEmitCheckForDtsDiagnostics || program.Options().NoEmit.IsTrue()) && program.Options().GetEmitDeclarations() && !diagnosticsHaveError(allDiagnostics) {
+			if (skipNoEmitCheckForDtsDiagnostics || program.Options().NoEmit.IsTrue()) && program.Options().GetEmitDeclarations() && !diagnosticsAffectBuild(allDiagnostics) {
 				allDiagnostics = appendDiagnosticsForAllFiles(allDiagnostics, program.GetDeclarationDiagnostics)
 			}
 		}

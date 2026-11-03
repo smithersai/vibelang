@@ -76,13 +76,24 @@ func EmitAndReportStatistics(input EmitInput) (CompileAndEmitResult, *Statistics
 		statistics.Report(input.Writer, input.Testing)
 	}
 
-	// VibeLang: only errors make the exit status non-zero; warnings, such as
-	// EK9204 and the EK48xx lint rules (D241), do not fail a build.
+	// The lint command has its own category-only status policy, independent
+	// of imported Effect options that control compiler builds.
+	if policy, ok := input.Sys.(interface{ LintExitPolicy() bool }); ok && policy.LintExitPolicy() {
+		if slices.ContainsFunc(result.Diagnostics, func(d *ast.Diagnostic) bool {
+			return d.Category() == diagnostics.CategoryError
+		}) {
+			result.Status = ExitStatusDiagnosticsPresent_OutputsSkipped
+		}
+		return result, statistics
+	}
+
+	// Own VibeLang warnings do not fail a build. Imported Effect diagnostics
+	// follow the plugin exit policy, including its category-specific ignores.
 	diagnosticsForExitCode := result.Diagnostics
 	if FilterDiagnosticsForExitCodeCallback != nil {
 		diagnosticsForExitCode = FilterDiagnosticsForExitCodeCallback(input.Config.CompilerOptions(), result.Diagnostics)
 	}
-	hasErrors := slices.ContainsFunc(diagnosticsForExitCode, func(d *ast.Diagnostic) bool { return d.Category() == diagnostics.CategoryError })
+	hasErrors := slices.ContainsFunc(diagnosticsForExitCode, (*ast.Diagnostic).AffectsBuild)
 	if result.EmitResult.EmitSkipped && hasErrors {
 		result.Status = ExitStatusDiagnosticsPresent_OutputsSkipped
 	} else if hasErrors {

@@ -63,6 +63,9 @@ type analysisOnlySystem struct{ tsc.System }
 
 func (analysisOnlySystem) SuppressEmit() bool { return true }
 
+// Lint reports categories without applying compiler-only Effect exit options.
+func (analysisOnlySystem) LintExitPolicy() bool { return true }
+
 // Command runs `vibelang lint`.
 func Command(ctx context.Context, sys tsc.System, args []string) int {
 	if slices.Contains(args, "-h") || slices.Contains(args, "--help") {

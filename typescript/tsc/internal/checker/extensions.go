@@ -150,12 +150,13 @@ func (c *Checker) ImportBindingValueReference(name *ast.Node) (referenced, known
 	return c.aliasSymbolLinks.Get(symbol).referenced, true
 }
 
-// AddDiagnostic records d in the matching semantic or suggestion collection,
-// so editor suggestions do not become CLI semantic errors.
+// AddDiagnostic keeps own editor suggestions out of CLI semantic diagnostics.
+// Imported Effect suggestions remain semantic so the plugin's CLI inclusion
+// and exit options retain their upstream meaning.
 // Its node must belong to the file being checked: the program reads each
 // file's diagnostics from the checker that checks that file.
 func (c *Checker) AddDiagnostic(d *ast.Diagnostic) *ast.Diagnostic {
-	if d.Category() == diagnostics.CategorySuggestion {
+	if d.Category() == diagnostics.CategorySuggestion && !d.IsImportedEffectLint() {
 		return c.addSuggestionDiagnostic(d)
 	}
 	return c.addDiagnostic(d)

@@ -1,6 +1,7 @@
 package ast
 
 import (
+	"fmt"
 	"slices"
 	"strings"
 	"sync"
@@ -73,8 +74,29 @@ func (d *Diagnostic) ReportsDeprecated() bool                   { return d.repor
 func (d *Diagnostic) SkippedOnNoEmit() bool                     { return d.skippedOnNoEmit }
 func (d *Diagnostic) RepopulateInfo() *RepopulateDiagnosticInfo { return d.repopulateInfo }
 
-func (d *Diagnostic) SetFile(file *SourceFile)                         { d.file = file }
-func (d *Diagnostic) SetLocation(loc core.TextRange)                   { d.loc = loc }
+func (d *Diagnostic) SetFile(file *SourceFile)       { d.file = file }
+func (d *Diagnostic) SetLocation(loc core.TextRange) { d.loc = loc }
+
+// AffectsBuild reports whether a diagnostic retained by the configured exit
+// or noEmitOnError filter participates in a build failure. Imported Effect
+// diagnostics retain TypeScript's policy; VibeLang's own non-errors do not.
+func (d *Diagnostic) AffectsBuild() bool {
+	if d.category == diagnostics.CategoryError {
+		return true
+	}
+	return d.IsImportedEffectLint()
+}
+
+// IsImportedEffectLint distinguishes imported rules from own VibeLang warnings
+// either at the stable EK38 ordinals or in the upstream 377xxx code range.
+func (d *Diagnostic) IsImportedEffectLint() bool {
+	if d.source != "EK" {
+		return d.code >= 377000 && d.code <= 377999
+	}
+	_, imported := core.VibeImportedLintCodes[fmt.Sprintf("EK%04d", d.code)]
+	return imported
+}
+
 func (d *Diagnostic) SetCategory(category diagnostics.Category)        { d.category = category }
 func (d *Diagnostic) SetSkippedOnNoEmit()                              { d.skippedOnNoEmit = true }
 func (d *Diagnostic) SetRepopulateInfo(info *RepopulateDiagnosticInfo) { d.repopulateInfo = info }
