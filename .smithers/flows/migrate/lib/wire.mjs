@@ -815,27 +815,34 @@ export function removeVibeLangSetting(text, ts, key) {
 }
 
 /**
- * Adds to a tsconfig's include (JSON with comments) the .vibe pattern of each
- * pattern that names .ts or .tsx files, src/**\/*.vibe beside src/**\/*.ts: a
- * composite project must list every file it compiles (TS6307), and a migrated
- * module is a .vibe file. Patterns such as src/**\/* and src already match
- * .vibe files. ts is TypeScript's compiler API.
+ * Widen a tsconfig's include and exclude selectors to the same migrated
+ * modules: .ts/.mts become .vibe, and .tsx becomes .vibex (VIP-39).
+ * Directory patterns already match both. Declaration selectors stay as
+ * written. Edit arrays from right to left to preserve JSONC and offsets.
  */
 export function addVibeIncludes(text, ts) {
   const file = ts.parseJsonText("tsconfig.json", text)
   const root = file.statements[0]?.expression
   if (!root || !ts.isObjectLiteralExpression(root)) throw new Error("not a tsconfig object")
-  const include = root.properties.find((p) => ts.isPropertyAssignment(p) && p.name && (ts.isStringLiteral(p.name) || ts.isIdentifier(p.name)) && p.name.text === "include")
-  if (!include || !ts.isArrayLiteralExpression(include.initializer) || !include.initializer.elements.length) return text
-  const elements = include.initializer.elements
-  const patterns = elements.filter((e) => ts.isStringLiteral(e)).map((e) => e.text)
-  const added = [...new Set(patterns.filter((p) => /\.(?:m?ts|tsx)$/.test(p) && !/\.d\.(?:m?ts|tsx)$/.test(p)).map((p) => p.replace(/\.(?:m?ts|tsx)$/, ".vibe")))].filter((p) => !patterns.includes(p))
-  if (!added.length) return text
-  const last = elements.at(-1)
-  const start = last.getStart(file)
-  const multiline = text.slice(include.initializer.getStart(file), start).includes("\n")
-  const indent = /^[ \t]*/.exec(text.slice(text.lastIndexOf("\n", start) + 1))[0]
-  return text.slice(0, last.getEnd()) + added.map((p) => (multiline ? `,\n${indent}` : ", ") + JSON.stringify(p)).join("") + text.slice(last.getEnd())
+  const selectors = root.properties.filter((p) => ts.isPropertyAssignment(p) && p.name &&
+    (ts.isStringLiteral(p.name) || ts.isIdentifier(p.name)) &&
+    ["include", "exclude"].includes(p.name.text) && ts.isArrayLiteralExpression(p.initializer))
+  for (const selector of selectors.reverse()) {
+    const elements = selector.initializer.elements
+    if (!elements.length) continue
+    const patterns = elements.filter((e) => ts.isStringLiteral(e)).map((e) => e.text)
+    const added = [...new Set(patterns
+      .filter((p) => /\.(?:m?ts|tsx)$/.test(p) && !/\.d\.(?:m?ts|tsx)$/.test(p))
+      .map((p) => p.replace(/\.(?:m?ts|tsx)$/, p.endsWith(".tsx") ? ".vibex" : ".vibe")))]
+      .filter((p) => !patterns.includes(p))
+    if (!added.length) continue
+    const last = elements.at(-1)
+    const start = last.getStart(file)
+    const multiline = text.slice(selector.initializer.getStart(file), start).includes("\n")
+    const indent = /^[ \t]*/.exec(text.slice(text.lastIndexOf("\n", start) + 1))[0]
+    text = text.slice(0, last.getEnd()) + added.map((p) => (multiline ? `,\n${indent}` : ", ") + JSON.stringify(p)).join("") + text.slice(last.getEnd())
+  }
+  return text
 }
 
 /**

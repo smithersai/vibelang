@@ -1,0 +1,16 @@
+{
+  "key": "vibex:setup:tsx-exclude-selectors",
+  "authority": "VIP-39: .vibex is to .vibe what .tsx is to .ts",
+  "config": {
+    "include": [
+      "src/**/*.tsx"
+    ],
+    "exclude": [
+      "**/*.stories.tsx"
+    ]
+  },
+  "files": [
+    "src/updater/beta-dialog.tsx",
+    "src/updater/beta-dialog.stories.tsx"
+  ]
+}
