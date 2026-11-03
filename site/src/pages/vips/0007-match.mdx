@@ -160,7 +160,7 @@ console.log(matcherExit) // Success([true, "number", 0, 8])
 // compiler-gap: pending VIP-7
 function isText(s: string | number): s is string { return typeof s === "string" }
 function classifyDefault(s: string | number) {
-  return match (s) { when isText: s.length; default: s.toFixed(0); }
+  return match (s) { when isText: s.length; default: String(s); }
 }
 function guardedDefault(s: string | number) {
   return match (s) {
@@ -177,7 +177,7 @@ import { Effect, Exit } from "effect"
 function isText(s: string | number): s is string { return typeof s === "string" }
 function classifyDefault(s: string | number) {
   if (isText(s)) return s.length
-  return s.toFixed(0)
+  return String(s)
 }
 function guardedDefault(s: string | number) {
   if (isText(s) && false) return 0

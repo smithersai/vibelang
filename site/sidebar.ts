@@ -100,6 +100,10 @@ export const sidebar = [
           {
             "text": "Existing project",
             "link": "/setup/existing-project"
+          },
+          {
+            "text": "Migrating retired forms",
+            "link": "/setup/migrating-retired-forms"
           }
         ]
       },

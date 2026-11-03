@@ -778,7 +778,7 @@ DefaultArm = "default" ":" ArmBody
 #### ArmBody
 
 ```text
-ArmBody = Expression | "throw" Expression
+ArmBody = [lookahead ≠ "throw"] Expression | "throw" Expression
 ```
 
 #### ArrayPattern
@@ -800,15 +800,21 @@ This is one added `MatchPattern` alternative, replacing the chapter's earlier ba
 
 #### ModuleDeclaration
 
+```text
+ModuleDeclaration = "module" [no LineTerminator here] BindingIdentifier "{" ModuleBody? "}"
 ```
-ModuleDeclaration :
-  "module" [no LineTerminator here] BindingIdentifier "{" ModuleBody? "}"
-ModuleSpecifier :
-  StringLiteral
-  IdentifierReference
-ImportDeclaration :
-  ...
-  "import" ModuleSpecifier ";"
+
+#### ModuleSpecifier
+
+```text
+ModuleSpecifier = StringLiteral | IdentifierReference
+```
+
+#### ImportDeclaration
+
+```text
+ImportDeclaration = an ordinary TypeScript import declaration using ModuleSpecifier
+                  | "import" ModuleSpecifier ";"
 ```
 
 VIP-40: TC39's module declaration, restricted to a top-level statement of a `.vibe` or `.vibex` file. `ModuleBody` is TypeScript. An identifier `ModuleSpecifier` appears in VibeLang code of the same file only. `module` stays an identifier everywhere else.
@@ -984,9 +990,10 @@ The TypeScript-form lint warnings also retain their existing `EK4830`–`EK4837`
 | `EK0403` | an unwrapped call, `new` expression, tagged template or class evaluation that may throw, in effect code | 4 | [Failures](/spec/003-failures#calls-in-effect-code) |
 | `EK0404` | an unwrapped Promise-producing call (runtime `import()` included), `new` expression, tagged template or `async match` in effect code | 4, 5 | [Failures](/spec/003-failures#calls-in-effect-code) |
 | `EK0406` | a `@throws` or `@rethrows` tag in `.vibe` or `.vibex` source outside a `module` body, including on a service member or function-type signature; quick fix: remove the tag | 4 | [Failures](/spec/003-failures#thrown-types) |
+| `EK0407` | the retired resolved `trusted(f, [])` wrapper; use the preserving `vibelang --fix` migration or a reviewed `.ts` helper with `@throws {never}` before rejection | 4 | [Migration](/spec/007-tooling#empty-legacy-trust-wrappers) |
 | `EK0501` | `try` outside effect code, the top level included; the same rule applies to `try.all`, `try.race`, `try.any` or `try.allSettled` | 5, 18, 9 | [Running Effects](/spec/002-running#try) |
 | `EK0502` | `try` on a value that is not an Effect | 5 | [Running Effects](/spec/002-running#try) |
-| `EK0503` | a `try` statement in effect code | 5 | [Running Effects](/spec/002-running#try) |
+| `EK0503` | a `try` statement in effect code; `vibelang --fix` applies the preserving `try statements` codemod | 5 | [Running Effects](/spec/002-running#try) |
 | `EK0504` | `catch` outside effect code | 5 | [Running Effects](/spec/002-running#catch) |
 | `EK0505` | `try x catch h`: a `try`, `try.all` (or another await operation), `fork` or `join` reachable from a `catch` head through unary and binary operator nodes only | 5, 17 | [Running Effects](/spec/002-running#catch) |
 | `EK0506` | `e catch h` where `e` is not an Effect | 5, 17 | [Running Effects](/spec/002-running#catch) |
@@ -1023,6 +1030,7 @@ The TypeScript-form lint warnings also retain their existing `EK4830`–`EK4837`
 | `EK1306` | two `error` or `schema error` body members with no separator between them; write `;` or a line break between them (quick fix: insert `;`) | 13 | [Appendix A](/spec/900-appendices#separator) |
 | `EK1307` | a recognized custom `error` or `schema error` declaration in an ambient source context, whether its own `declare` or an enclosing ambient namespace, module, global region or declaration file; write a native ambient class, or move the declaration to runtime code | 13 | [Failures](/spec/003-failures#error-declarations) |
 | `EK1401` | a namespace name that two subpaths export, or a subpath and the root | 14 | [Services](/spec/005-services#the-platform-standard-library) |
+| `EK1402` | retired Effect data receiver-method extension, such as `Option.some(1).map(f)`; use `Option.map(Option.some(1), f)` or the preserving `vibelang --fix` migration; refuse unsafe bindings or changed declarations | 14 | [Migration](/spec/007-tooling#legacy-data-receiver-methods) |
 | `EK1501` | `export default schema S …`; write `export { S as default }` | 15 | [Data](/spec/006-data#schema-declarations) |
 | `EK1502` | type parameters on a `schema` declaration; use an ordinary generic TypeScript factory | 15 | [Data](/spec/006-data#schema-declarations) |
 | `EK1503` | a recognized ordinary schema declaration missing its required body or admitted alias form | 15 | [Data](/spec/006-data#schema-declarations) |
@@ -1037,11 +1045,12 @@ The TypeScript-form lint warnings also retain their existing `EK4830`–`EK4837`
 | `EK1606` | a malformed `data` variant or a payload member that is not a `Field` | 16 | [Data](/spec/006-data#data-declarations) |
 | `EK1607` | a `data` declaration in an ambient source context, explicit or inherited | 16 | [Data](/spec/006-data#data-declarations) |
 | `EK1701` | `fork` or `join` outside effect code | 17 | [Running Effects](/spec/002-running#fork-and-join) |
-| `EK1702` | `fork` or `join` as a variable, parameter or label name in effect code, in the parameters of an `effect` function, arrow, method or producer, or in a plain or `async` arrow head inheriting that reservation, including one in an Effect callable's parameters; the arrow body has its own context; or a reserved `fork` or `join` as a shorthand property, `{ join }` | 17 | [Running Effects](/spec/002-running#fork-and-join) |
+| `EK1702` | `fork` or `join` as an `effect` function or producer expression's own name, or as a variable, parameter or label name in effect code, in the parameters of an `effect` function, arrow, method or producer, or in a plain or `async` arrow head inheriting that reservation, including one in an Effect callable's parameters; the arrow body has its own context; or a reserved `fork` or `join` as a shorthand property, `{ join }` | 17 | [Running Effects](/spec/002-running#fork-and-join) |
 | `EK1703` | a `fork`, `fork.in(s)`, `fork.scoped` or `fork.detached` operand that fails the operand test of `try` | 5, 17 | [Running Effects](/spec/002-running#fork-and-join) |
 | `EK1704` | a `join` operand not assignable to `Fiber.Fiber<any, any>` | 17 | [Running Effects](/spec/002-running#fork-and-join) |
 | `EK1705` | a `fork.` owner other than `in(s)`, `scoped` or `detached`: `fork.other e` | 17 | [Running Effects](/spec/002-running#fork-and-join) |
 | `EK1706` | a `fork.in(s)` scope operand not assignable to `Scope.Scope` | 17 | [Running Effects](/spec/002-running#fork-and-join) |
+| `EK1707` | a bare `fork { … }` block; write `fork effect { … }` or use the `fork blocks` codemod before rejection | 2, 17 | [Migration](/spec/007-tooling#legacy-fork-try-statement-and-wire-migration) |
 | `EK1801` | an operand that is not an array of Effects, using assignability to `ReadonlyArray<Effect.Effect<any, any, any>>`, for `try.all`, `try.race`, `try.any` or `try.allSettled` | 18 | [Running Effects](/spec/002-running#running-effects-concurrently) |
 | `EK1802` | a retired `await.all`, `await.race`, `await.any` or `await.allSettled`; quick fix: the `try` operation that replaces it | 18 | [Running Effects](/spec/002-running#running-effects-concurrently) |
 | `EK1803` | a name after `try.` other than `all`, `race`, `any` or `allSettled`: `try.map x` | 18 | [Running Effects](/spec/002-running#running-effects-concurrently) |
@@ -1068,6 +1077,8 @@ The TypeScript-form lint warnings also retain their existing `EK4830`–`EK4837`
 | `EK2201` | an interruption block outside effect code | 22 | [Running Effects](/spec/002-running#interruption-blocks) |
 | `EK2202` | `restore` that captures an outer mask across an independent `effect` function, arrow, method, producer or block, or `restore` in any `for concurrent` head binding initialization or body | 22 | [Running Effects](/spec/002-running#interruption-blocks) |
 | `EK2301` | adopted pipe grammar and early errors without a more specific code, including a missing topic and a whole bare plain, `async` or `effect` arrow as a pipe body; parenthesize the arrow, `x \|> (() => %)`. For an unparenthesized conditional at either end of a pipe, `x \|> f(%) ? a : b`: the pinned proposal's conditional-body error and a pipe as a conditional's test; write `(x \|> f(%)) ? a : b` to test the result or `x \|> (f(%) ? a : b)` to pipe into the conditional | 23 | [Running Effects](/spec/002-running#the-pipe-operator) |
+| `EK2401` | the retired resolved `wire` intrinsic; compose Layers explicitly or use the preserving `wire compositions` codemod before rejection | 24 | [Migration](/spec/007-tooling#legacy-fork-try-statement-and-wire-migration) |
+| `EK2601` | a retired `vibelang/platform/node`, `vibelang/platform/bun` or `vibelang/platform/browser` entry marker; run `vibelang --fix` to preserve startup with an explicit runner, or migrate manually when preservation cannot be proved | 26 | [Migration](/spec/007-tooling#legacy-entry-dispatch-migration) |
 | `EK2801` | a `data` declaration with more than 4 type parameters | 28 | [Data](/spec/006-data#generic-unions) |
 | `EK2803` | a default on a generic `data` type parameter | 28 | [Data](/spec/006-data#generic-unions) |
 | `EK3001` | two services with the same key | 9 | [Services](/spec/005-services#static-rules) |
@@ -1078,6 +1089,8 @@ The TypeScript-form lint warnings also retain their existing `EK4830`–`EK4837`
 | `EK3006` | an error code or an unknown code in `vibe.severities`, or a severity entry whose value is not one of the four strings, whatever its JSON type | 30 | [Configuration and tooling](/spec/007-tooling) |
 | `EK3007` | an unknown `vibe` key, or a `vibe` value of the wrong type other than a `severities` entry (`EK3006`), including a `severities` value that is not an object | 30 | [Configuration and tooling](/spec/007-tooling#config-files) |
 | `EK3009` | warning: root `vibelang.diagnostics` or `compilerOptions.vibelang.diagnostics` in any supported config or extended config needs migration; supported legacy settings still apply, modern entries win, and `--fix` migrates eligible maps | 30 | [Legacy severity maps](/spec/007-tooling#legacy-severity-maps) |
+| `EK3010` | warning: retired `trustedPackages` is ignored in `vibe` and supported legacy sections; remove the key and use the ordinary foreign-callable contract | 4, 30 | [Configuration](/spec/007-tooling#config-files) |
+| `EK3011` | warning: retired root `vibelang.declarationImportStyle` or `compilerOptions.vibelang.declarationImportStyle` is ignored for every value, including invalid values; remove the setting | 30 | [Configuration](/spec/007-tooling#config-files) |
 | `EK3201` | a resolved `effect` version other than the pin | 32 | [Configuration and tooling](/spec/007-tooling#the-effect-version) |
 | `EK4001` | a module declaration below the file's top level | 40 | [Modules](/spec/001-functions#module-declarations) |
 | `EK4002` | an exported module declaration | 40 | [Modules](/spec/001-functions#module-declarations) |
@@ -1088,11 +1101,14 @@ The TypeScript-form lint warnings also retain their existing `EK4830`–`EK4837`
 | `EK4007` | an identifier specifier inside a module body | 40 | [Modules](/spec/001-functions#module-declarations) |
 | `EK4008` | `export =` or `import x = require()` in a module body | 40 | [Modules](/spec/001-functions#module-declarations) |
 | `EK4009` | `import.meta` in a module body | 40 | [Modules](/spec/001-functions#module-declarations) |
+| `EK3410` | retired `mutable` marker on an ordinary type member or plain-error payload; run `vibelang --fix` to remove redundant markers or preserve payloads in a compatibility class; enforce after preserving migration | 34 | [Migration](/spec/007-tooling#ordinary-mutable-marker-migration) |
+| `EK3501` | retired continuation forms: `control`/`handle` syntax or resolved continuation-runtime `Control`, `resume`, `resumeWith`, `abandon` or `handle`; migrate proved local service patterns with `vibelang --fix`, otherwise repair manually | 35 (open; removal only) | [Retirement](/spec/000-intro#retired-continuation-forms) |
 | `EK4402` | a value import of a Node builtin, with or without `node:` (`node:fs`, `fs`), a string-literal `import(…)` of one, or a statically named value that [reaches the platform](/spec/005-services#reaches-the-platform): a global declared by `lib.dom`, `lib.webworker`, `lib.scripthost` or `@types/node` and not by `lib.es*` or `lib.decorators*`, minus the allowlist, or a banned member of an allowlisted global, in a `.vibe` file | 33 | [Services](/spec/005-services#the-platform-standard-library) |
+| `EK4607` | retired `select` block; `vibelang --fix` refuses an unproved selection rewrite | 18 (removal only) | [Retirement](/spec/000-intro#retired-continuation-forms) |
 | `EK4609` | lint warning: `await` on a `Fiber` in an `async` function; to obtain its result in that context, use `await runPromise(Fiber.join(fiber))` | 5 | [Running Effects](/spec/002-running#await) |
 | `EK4610` | lint warning: `await` on a `Deferred` in an `async` function; to obtain its result in that context, use `await runPromise(Deferred.await(deferred))` | 5 | [Running Effects](/spec/002-running#await) |
 | `EK4701` | a `match` with no `default` whose subject passes the exhaustiveness check and misses a case; a guarded arm covers nothing | 7 | [Pattern matching](/spec/004-match#exhaustiveness) |
-| `EK4802` | warning: an `effect` function returns an Effect value unrun, so its caller gets the program instead of its result; a project where `--fix-vip-only` refused a call sets it to `"error"` | 1, 5 | [Configuration and tooling](/spec/007-tooling#effects-type-aware-lint) |
+| `EK4802` | warning (advisory; may be ignored or configured to `"off"`): an `effect` function returns an Effect value unrun, or a plain call in effect code infers an Effect for its own type parameter at an argument outside a declared Effect position; [VIP-1’s dated amendment](/vips/0001-effect-and-async-functions#amendment-inferred-effect-arguments-2026-11-03) defines the inferred-argument positions, opt-outs and repairs. A project where `--fix-vip-only` refused a call sets both triggers to `"error"` project-wide | 1, 5 | [Configuration and tooling](/spec/007-tooling#effects-type-aware-lint) |
 | `EK4830` | lint warning: A class written with `Data.TaggedError("Name")` | 13, 34 | [Configuration and tooling](/spec/007-tooling#typescript-spellings-with-vibelang-forms) |
 | `EK4831` | lint warning: A class written with `Context.Service` | 9, 34 | [Configuration and tooling](/spec/007-tooling#typescript-spellings-with-vibelang-forms) |
 | `EK4832` | lint warning: A `const` holding `Schema.Struct({ … })` | 15, 34 | [Configuration and tooling](/spec/007-tooling#typescript-spellings-with-vibelang-forms) |
@@ -1105,9 +1121,11 @@ The TypeScript-form lint warnings also retain their existing `EK4830`–`EK4837`
 | `EK4841` | lint warning: A schema `const` immediately followed by its matching `typeof Name.Type` alias | 15, 34 | [Configuration and tooling](/spec/007-tooling#typescript-spellings-with-vibelang-forms) |
 | `EK4842` | lint warning: An Effect module imported under a conflicting JavaScript global name | 14, 34 | [Configuration and tooling](/spec/007-tooling#typescript-spellings-with-vibelang-forms) |
 
-Trailing blocks are rejected by [VIP-11](/vips/0011-trailing-blocks-denied#amendments); their preserving repair and native-parser recovery follow VIP-34. Classification requires proven legacy lowering, never the callee's parameter type alone. Versioned dual compatibility retains its native call error or transitional `EK1023`, without duplicate `EK1101`.
+Trailing blocks are rejected by [VIP-11](/vips/0011-trailing-blocks-denied#amendments); their preserving repair and native-parser recovery follow VIP-34. Classification requires proven legacy lowering, never the callee's parameter type alone. Versioned dual compatibility retains its native call error (`TS2345` for an incompatible argument, `TS2554` for a wrong argument count or `TS2769` when no overload matches), or transitional `EK1023` when appending the block type-checks with changed meaning, without duplicate `EK1101`.
 
 ### Transitional compiler diagnostics
+
+The legacy bare prelude `Scope` type and same-named module-export shorthand have no diagnostic while the transitional compiler accepts them. Their [migration](/spec/007-tooling#legacy-prelude-shorthand) writes `Scope.Scope`, `Option.Option<A>` and `FileSystem.FileSystem.of(impl)`. Coordinated removal follows preserving codemods and zero remaining migration-repository uses; afterwards the equivalent namespace imports report native `TS2709` for namespace-as-type uses and `TS2339` for absent namespace members. This compatibility allocates no `EK` code.
 
 A transitional compiler may still print compatibility diagnostics from the old language. The following inventory covers the `EK92xx` codes in its registry, separately from the normative rules above: an interim code does not establish a language rule or reserve a new VIP block. Their retirement follows the named VIPs; a compiler renumbering must update this inventory with the registry.
 
@@ -1136,6 +1154,7 @@ The existing migration warnings retain their emitted codes until the compiler an
 
 | Code | Rule | VIP | Chapter |
 | --- | --- | --- | --- |
+| `EK1023` | transitional error: a block after an Effect dual that `0.0.10` ran as the dual's program, where appending it as the last argument type-checks with changed meaning; the versioned dual migration reports it instead of a duplicate `EK1101` and keeps the original argument position | 11, 34 | [Configuration and tooling](/spec/007-tooling#compiler-and-tooling-requirements) |
 | `EK4853` | warning: migration of an omitted requirement slot: write the previously inferred requirements explicitly, or omit the whole return annotation to infer the contract | 3 | [Configuration and tooling](/spec/007-tooling#compiler-and-tooling-requirements) |
 | `EK4854` | warning: migration of the retired abstract-class service spelling to a `service` declaration, retaining its contract and key | 9 | [Configuration and tooling](/spec/007-tooling#compiler-and-tooling-requirements) |
 | `EK4855` | warning: migration of `static readonly default = shape` to `static readonly defaultValue = () => shape`, including the corresponding type and value reads | 9 | [Configuration and tooling](/spec/007-tooling#compiler-and-tooling-requirements) |
@@ -1287,6 +1306,8 @@ Imported rules from `@effect/tsgo@0.57.0` (commit `999942fa41462eb46dfcb2d718e76
 
 
 
+The old `EK4843` entry-point warning is retired and will never be reassigned. Under VIP-26 an exported lexical `main` keeps its ordinary binding, with no entry warning or declaration-changing quick fix.
+
 ## Appendix C. Denied and open VIPs
 
 ### Denied VIPs
@@ -1351,7 +1372,7 @@ These are the annotations [Thrown types](/spec/003-failures#thrown-types) refers
 | `new Promise(executor)` | `@throws {never}`, no `@rethrows`: a throw in the executor rejects the Promise, as in JavaScript; it never throws at the construction site |
 | the `executor` parameter's call signature | `@throws {unknown}`: it admits a throwing executor, whose throw becomes the rejection, not part of the constructor's thrown type |
 
-In a `.ts` file, `setTimeout` does not rethrow, because it stores the callback; in a `.vibe` file it is a banned platform global ([Services](/spec/005-services#the-platform-standard-library)). The array annotations attach to every `lib.d.ts` call signature of the named method, on `Array<T>` and `ReadonlyArray<T>` alike; a tuple uses `Array<T>`'s. An Effect function's data-first overload returns an Effect and is effectful; its data-last overload returns a function and is non-effectful. When that signature carries `@throws {never}`, `fetchUser(id).pipe(Effect.map(toDto), Effect.retry(policy))` is accepted. Their callbacks have no `@throws`. A library declares the same tags in its own declarations:
+In a `.ts` file, `setTimeout` does not rethrow, because it stores the callback; in a `.vibe` file it is a banned platform global ([Services](/spec/005-services#the-platform-standard-library)). The array annotations attach to every `lib.d.ts` call signature of the named method, on `Array<T>` and `ReadonlyArray<T>` alike; a tuple uses `Array<T>`'s. An Effect function's data-first overload returns an Effect and is effectful; its data-last overload returns a function and is non-effectful. When that signature carries `@throws {never}`, `fetchUser(id).pipe(Effect.map(toDto), Effect.retry(policy))` passes the thrown-type rule; inferred-argument `EK4802` warnings still apply. Their callbacks have no `@throws`. A library declares the same tags in its own declarations:
 
 ```ts
 /** @throws {never} @rethrows f */

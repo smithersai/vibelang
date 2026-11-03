@@ -74,7 +74,7 @@ effect function load(id) {
 - **Amended 2026-10-30: erased TypeScript wrappers in a `catch` head.** The `EK0505` unary/binary head search treats `as`, admitted angle-bracket assertions, `satisfies`, non-null `!` and type-only instantiation expressions without a call as transparent. Explicit source parentheses remain a boundary; emitter-added grouping does not count. The wrappers keep native type checks and do not change the existing call, literal or source-function boundaries. See [the checked examples](https://github.com/smithersai/vibelang/blob/main/docs/design/src/002-running.md#catch).
 - **Amended 2026-10-31: a `throw` in a plain handler is `EK0401`** (VIP-4). A call known to throw in its parameters or body is too. The quick fix is `catch effect`, which makes the throw a typed failure. The old lint warning `EK0511` retires.
 
-- **Amended 2026-10-31: the remaining `catch` grammar code.** `catch` mixed with `??`, `||` or `&&` without parentheses, and a member access or call after a function-expression handler, are `EK0512`. `EK0504` to `EK0511` keep their specific triggers. Decided by the agent under Will's rule "when I state a principle, the agent derives the concrete rule and acts; I can override later" (decided detail 247).
+- **Amended 2026-10-31: the remaining `catch` grammar code.** `catch` mixed with `??`, `||` or `&&` without parentheses, and a member access or call after a function-expression handler, are `EK0512`. `EK0504` to `EK0510` keep their specific triggers; `EK0511` is retired (above). Decided by the agent under Will's rule "when I state a principle, the agent derives the concrete rule and acts; I can override later" (decided detail 247).
 
 
 ## Prior art
@@ -111,3 +111,7 @@ Old VibeLang is a reference only; nothing in it is part of the language unless a
 
 
 - **Amended 2026-11-01: no guessed operand conversion.** A value that fails the structural Effect operand test keeps `EK0502`; migration inserts no conversion and unwraps nothing. An `asEffect` member does not grant permission to insert a call. `Option.some(1)` and `Result.succeed(2)` fail the test in the pinned Effect version. Removing a proven old wrapper's run is the separate VIP-34 migration rule.
+
+## Amendment: inferred Effect arguments
+
+**Amended 2026-11-03:** [VIP-1's dated inferred-argument amendment](/vips/0001-effect-and-async-functions#amendment-inferred-effect-arguments-2026-11-03) defines the `EK4802` trigger, argument positions, opt-outs, boundaries and repairs. `try` still runs only an Effect; an editor action checks the enclosing written failure and requirement channels, and batch `--fix` refuses an edit that adds an error. Explicit type arguments keep program data by the author's choice, never by batch `--fix`.

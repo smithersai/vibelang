@@ -348,7 +348,7 @@ function defaultBit(o: { x?: number }, b: boolean) {
 
 An `is` in a loop head uses the pinned loop-head/per-iteration scopes. Each complete `while` or `do…while` condition evaluation has fresh cells; the initial `do` body sees its uninitialized head cells. A match arm has its own lexical scope, so an `is` inside it does not export names to another arm.
 
-These bindings take part in TypeScript's definite-assignment and use-before-declaration checks, as a `let` assigned where the pattern runs would. A read on a path where the binding may not have run, because short-circuiting skipped it or the pattern failed before reaching it, is `TS2454`; a read before the binding's position in its scope is `TS2448`. In `for (init; test; update)`, a direct read in `update` of a binding from `test` is `TS2454`: `update` starts in a fresh iteration environment before the `test` that initializes that cell. The previous body's initialization is not carried forward. Bindings introduced by `update` also start uninitialized; a read after that update's own pattern initializes its binding follows ordinary definite-assignment checking. A read those checks can't see, such as one inside a closure, throws `ReferenceError` while the cell is uninitialized.
+These bindings take part in TypeScript's definite-assignment and use-before-declaration checks, as a `let` assigned where the pattern runs would. A read on a path where the binding may not have run, because short-circuiting skipped it or the pattern failed before reaching it, follows TypeScript’s definite-assignment checks (`TS2454`), including its exemptions for `any`, `unknown`, `void` and types containing `undefined`; a read before the binding's position in its scope is `TS2448`. In `for (init; test; update)`, a direct read in `update` of a binding from `test` follows the same type-dependent `TS2454` checks: `update` starts in a fresh iteration environment before the `test` that initializes that cell. The previous body's initialization is not carried forward. Bindings introduced by `update` also start uninitialized; a read after that update's own pattern initializes its binding follows ordinary definite-assignment checking. A read those checks can't see, such as one inside a closure, throws `ReferenceError` while the cell is uninitialized.
 
 ```vibe [VibeLang]
 // compiler-gap: pending VIP-7
@@ -442,13 +442,13 @@ The table shows `tsc --strict` types. Other options change a binding as they cha
 // compiler-gap: pending VIP-7
 function isText(s: string | number): s is string { return typeof s === "string" }
 function classify(s: string | number) {
-  return match (s) { when isText: s.length; default: s.toFixed(0); }
+  return match (s) { when isText: s.length; default: String(s); }
 } // default s: number, although isText contributes no exhaustiveness coverage
 const adopted: Promise<number> = async match (true) { default: Promise.resolve(7); }
 class OnlyNumbers {
   static [Symbol.customMatcher](s: unknown): boolean { return typeof s === "number" }
 }
-// For s: OnlyNumbers | number, an arm `when not OnlyNumbers: s.toFixed(0);`
+// For s: OnlyNumbers | number, an arm `when not OnlyNumbers: s * 2;`
 // is a TypeScript error: this boolean matcher establishes no narrowing.
 ```
 
@@ -458,7 +458,7 @@ import { Effect } from "effect"
 function isText(s: string | number): s is string { return typeof s === "string" }
 function classify(s: string | number) {
   if (isText(s)) return s.length
-  return s.toFixed(0)
+  return String(s)
 }
 const adopted: Promise<number> = (async () => Promise.resolve(7))()
 const adoptedExit = await Effect.runPromiseExit(Effect.promise(() => adopted)) // Success(7)
@@ -470,7 +470,7 @@ class OnlyNumbers {
 function negated(s: OnlyNumbers | number) {
   if (!OnlyNumbers[customMatcher](s)) {
     // @ts-expect-error no implicit instanceof exclusion for an own boolean matcher
-    s.toFixed(0)
+    s * 2
   }
 }
 const defaultNarrowingExit = Effect.runSyncExit(Effect.sync(() => [classify("text"), classify(7)])) // Success([4, "7"])
@@ -510,15 +510,15 @@ class Numeric {
   }
 }
 function first(s: number[]) {
-  return match (s) { when Array(let n): n.toFixed(0); default: "other"; }
+  return match (s) { when Array(let n): String(n); default: "other"; }
 }
 function numeric(s: unknown) {
-  return match (s) { when Numeric(let n): n.toFixed(0); default: "other"; }
+  return match (s) { when Numeric(let n): String(n); default: "other"; }
 }
 // first([1]) is "1"; numeric(7) is "7", although 7 is not a Numeric instance.
 ```
 
-The following is a local typing witness for one `Array(let n)` arm and a tuple-returning custom matcher. The native loop preserves the element type, and its tagged result carries the fact that one element was obtained before the binding read; an array-length comparison alone does not carry it in TypeScript. Tuple extraction keeps its positional types. A payload that includes `undefined` keeps that type after the presence test. This witness does not replace the general cached Iterator Record, failed-extraction, ordered-arm or `FinishMatch` algorithms.
+The following is a local typing witness for one `Array(let n)` arm and a tuple-returning custom matcher. The native loop preserves the element type, and its tagged result carries the fact that one element was obtained before the binding read; an array-length comparison alone does not carry it in TypeScript. Tuple extraction keeps its positional types. The `number` annotation checks the selected element before the nonthrowing `String(n)` call. A payload that includes `undefined` keeps that type after the presence test. This witness does not replace the general cached Iterator Record, failed-extraction, ordered-arm or `FinishMatch` algorithms.
 
 ```ts [Effect]
 const numericMatcher: unique symbol = Symbol.for("Symbol.customMatcher")
@@ -535,8 +535,8 @@ function first(s: number[]) {
     selected = { done: false, value }
   }
   if (!selected.done) {
-    const n = selected.value
-    return n.toFixed(0)
+    const n: number = selected.value
+    return String(n)
   }
   return "other"
 }
@@ -544,7 +544,7 @@ function numeric(s: unknown) {
   const extracted = Numeric[numericMatcher](s, { matchType: "extractor" })
   if (extracted !== false) {
     const [n] = extracted
-    return n.toFixed(0) // s remains unknown; n is number
+    return String(n) // s remains unknown; n is number
   }
   return "other"
 }
@@ -648,10 +648,12 @@ function countdown(src: { n: number }) {
 function ids(xs: unknown[]) {
   const out: unknown[] = []
   for (const x of xs) {
-    if (typeof x === "object" && x !== null && "id" in x) { let id = x.id; out.push(id) }
+    if ((typeof x === "object" || typeof x === "function") && x !== null && "id" in x) { let id = x.id; out.push(id) }
   }
   return out
 }
+const callable = Object.assign(() => 0, { id: 7 })
+const callableObjectExit = Effect.runSyncExit(Effect.sync(() => ids([callable]))) // Success([7])
 const loopHomesExit = Effect.runSyncExit(Effect.sync(() => [drain([1, 2, 3][Symbol.iterator]()), countdown({ n: 3 }), ids([{ id: 1 }, { id: 2 }])])) // Success([[1, 2, 3], [3, 2, 1], [1, 2]])
 ```
 

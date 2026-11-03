@@ -165,6 +165,10 @@ Effect 4.0.6 defect-precedence and interruption migration.
 | Old diagnostic numbers, including `EK4617` | Appendix B numbering, including `EK0103`. Diagnostic triggers are unchanged. See the [old-to-new map](/vibelang-features/diagnostic-code-map). |
 
 ### Bugs fixed since 0.0.10
+
+- Renaming a shorthand pattern binding could change the property it matched and add `TS2339`; rename now keeps the property key and writes an explicit binding.
+
+- Rolldown entry globs could bundle generated `.d.vibex.ts` declarations as empty entrypoints; the plugin now excludes those sidecars and retains the JSX source entries and aliases.
 - Generic `data` helper names used unstable suffixes and could collide with source names; they now use `$Name$Definition` and the first free numbered suffix.
 - Async-to-Effect conversion could skip a returned object's `then` getter or its error; conversions now preserve that Promise-adoption read by declining accessors and aliased objects, while keeping fresh data-property literals available.
 
@@ -675,6 +679,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - `EK4402` told a `.vibe` file to use `NodeHttpServer.layer(createServer, { port })`, whose `createServer` it may not import; `ExperimentalNodeHttpServer.layer({ port })` now supplies it, `EK4402` names it, and the HTTP guide no longer needs a `.ts` companion file.
 
 - An animation frame timestamp earlier than its starting clock produced a negative delta; `Experimental.Animations.frameDeltas` now clamps negative deltas to zero.
+
+- A service-default editor repair could rename the declaration while leaving aliased, parenthesized, union-indexed or instantiated type reads broken; it now retains `EK4855` with a manual-repair explanation and offers no partial edit.
 - Resolved schema-binding regressions still appeared as pending gaps; namespace, function and escaped-name coverage now checks `EK2109` strictly while keeping every keyed corpus.
 - Schema library-alias checks now compare array decoding and mutability with native TypeScript and explicit Schema controls; remaining decoder gaps keep precise pending records.
 
@@ -1968,6 +1974,13 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - The agent essentials used an undeclared layer binding. The example now declares the layer before providing it.
 - The language skill claimed Node and Bun entries supplied Locks. It now requires an explicit Locks layer and explains its platform limits.
 - The diagnostic guide omitted registered codes and their repairs. It now lists them and checks coverage against the compiler registry.
+- Spec changes with explicit pending tests were rejected as having no rule evidence. The checker now accepts a changed `test.todo` for its exact rule and reports pending obligations separately from executable coverage.
+- The diagnostic appendix omitted the native call-error codes named by trailing-block migration; it now lists `TS2345`, `TS2554` and `TS2769` with their triggers.
+- The entry-migration guide described rewriting unmarked `main` functions and retaining retired runtime helpers; it now limits repair to platform-marked modules, names the explicit runners and explains when repair refuses.
+- The retired-forms migration guide could fail to publish because its spec links escaped the user-docs root; those links now use the specification’s published URLs.
+- The specification could fail its publication check because a retirement rule included internal attribution; the public rule now states the same prerequisites without that attribution.
+
+
 - The diagnostic guide omitted the adjustable editor warning EK9100. It now identifies its default severity and editor-only behavior.
 - The platform guide lacked a complete HTTP request that read the response body. It now checks a JSON request with FetchHttpClient.layer.
 - A copied module-block Node import could fail because the starter disables Node declarations. The guide now installs @types/node and enables those types explicitly.

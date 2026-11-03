@@ -19,7 +19,7 @@ An agent that writes VibeLang loads the skill first: its forms, rules and idioms
 | --- | ---: |
 | The VibeLang skill, `packages/compiler/skills/vibelang/SKILL.md` | 4,654 |
 | The skill and the [cheat sheet](115-cheat-sheet.md) | 15,604 |
-| The skill and the user guide (141 pages) | 410,000 |
+| The skill and the user guide (142 pages) | 420,000 |
 | The user guide alone | 410,000 |
 | The specification (11 chapters) | 180,000 |
 | The decision log, `docs/design/history/DECISIONS.md` | 140,000 |
@@ -111,9 +111,10 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | --- | ---: |
 | [Set up VibeLang](../setup.md) | 1,900 |
 | [Known limitations](../setup/known-limitations.md) | 550 |
-| **Start a project** | **2,600** |
+| **Start a project** | **5,800** |
 | [New project](../setup/new-project.md) | 540 |
-| [Existing project](../setup/existing-project.md) | 2,100 |
+| [Existing project](../setup/existing-project.md) | 2,200 |
+| [Migrating retired forms](../setup/migrating-retired-forms.md) | 3,100 |
 | **Build and test** | **14,000** |
 | [vibelang CLI](../setup/vibelang-cli.md) | 11,000 |
 | [Vite and Vitest](../setup/vite.md) | 3,100 |
@@ -134,7 +135,7 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [Coding agents](../setup/coding-agents.md) | 1,100 |
 | **Upgrade** | **120,000** |
 | [Release notes](../setup/release-notes.md) | 120,000 |
-| **All 19 pages** | **160,000** |
+| **All 20 pages** | **170,000** |
 
 ### Guides
 
@@ -153,7 +154,7 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [Error Channel Operations](../error-management/022-error-channel-operations.md) | 1,400 |
 | [Parallel and Sequential Errors](../error-management/023-parallel-and-sequential-errors.md) | 810 |
 | [Custom Error Classes](../error-management/024-yieldable-errors.md) | 1,100 |
-| **Requirements Management** | **9,800** |
+| **Requirements Management** | **9,900** |
 | [Managing Services](../requirements-management/025-services.md) | 4,400 |
 | [Default Services](../requirements-management/026-default-services.md) | 1,300 |
 | [Managing Layers](../requirements-management/027-layers.md) | 3,100 |
@@ -278,18 +279,18 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 
 | Page | Tokens |
 | --- | ---: |
-| [Introduction](../../../design/src/000-intro.md) | 2,800 |
+| [Introduction](../../../design/src/000-intro.md) | 3,000 |
 | **The language** | **120,000** |
 | [1. Functions and Effect types](../../../design/src/001-functions.md) | 12,000 |
-| [2. Running Effects](../../../design/src/002-running.md) | 29,000 |
+| [2. Running Effects](../../../design/src/002-running.md) | 30,000 |
 | [3. Failures](../../../design/src/003-failures.md) | 10,000 |
 | [4. Pattern matching](../../../design/src/004-match.md) | 23,000 |
 | [5. Services and the environment](../../../design/src/005-services.md) | 13,000 |
-| [6. Data](../../../design/src/006-data.md) | 8,800 |
-| [7. Configuration and tooling](../../../design/src/007-tooling.md) | 16,000 |
+| [6. Data](../../../design/src/006-data.md) | 9,200 |
+| [7. Configuration and tooling](../../../design/src/007-tooling.md) | 18,000 |
 | [8. Runtime guarantees](../../../design/src/008-runtime.md) | 7,500 |
-| **Appendices** | **55,000** |
-| [Grammar, diagnostics, and denied and open VIPs](../../../design/src/900-appendices.md) | 32,000 |
+| **Appendices** | **56,000** |
+| [Grammar, diagnostics, and denied and open VIPs](../../../design/src/900-appendices.md) | 33,000 |
 | [Module resolution matrix](../../../design/src/901-resolution-matrix.md) | 23,000 |
 | **All 11 pages** | **180,000** |
 

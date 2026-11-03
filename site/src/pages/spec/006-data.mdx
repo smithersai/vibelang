@@ -89,6 +89,8 @@ const Code = Schema.Literals(["root_missing", "read_failed"])
 type Code = typeof Code.Type
 ```
 
+The optional rows below show the default with `exactOptionalPropertyTypes` off; the optional-wrapper rule after the table applies when it is on.
+
 In this table, `S`, `A` and `B` are the recursively mapped schemas of the corresponding type syntax. A reference names a Schema value, not an expanded TypeScript type alias, interface, enum or class. The generic built-ins `Array<T>`, `ReadonlyArray<T>`, `Record<K, V>` and `Readonly<T>` in the table mean the corresponding TypeScript-library type bindings, selected by ordinary type lookup and alias resolution, not by spelling. A local or imported type binding can shadow a library type; a value-only binding does not by itself replace the separate library type binding. When the resolved binding is not a mapped built-in, apply the existing Schema-value lookup and arity rules. A reference with no suitable Schema value is `EK2109`: declare a schema or name a Schema value. This does not expand arbitrary user type aliases or introduce generic Schema declarations. The generic rows require these resolved library bindings; `T[]` and `readonly T[]` are syntax mappings independent of a written `Array` name.
 
 | Type or field | Effect 4.1.1 schema |
@@ -119,7 +121,16 @@ Parenthesized unions within a union are flattened in source order, as in TypeScr
 
 For example, `"a" | "b" | null` maps to `Schema.Union([Schema.Literal("a"), Schema.Literal("b"), Schema.Null])`; it does not group the string literals into `Schema.Literals`.
 
-Optional tuple elements use `Schema.optional`, as optional fields do: `[string, number?]` admits `["a", undefined]`, matching TypeScript’s default.
+With `exactOptionalPropertyTypes` off, optional tuple elements use `Schema.optional`, as optional fields do: `[string, number?]` admits `["a", undefined]`, matching TypeScript’s default.
+
+The project's `exactOptionalPropertyTypes` setting controls mapped optional fields and tuple elements, matching TypeScript under that same configuration:
+
+| Source optional field or tuple element | Setting off (default) | Setting on |
+| --- | --- | --- |
+| `name?: T` / `T?` | `Schema.optional(S)`: missing or present `undefined` | `Schema.optionalKey(S)`: missing only |
+| `name?: T \| undefined` / `(T \| undefined)?` | `Schema.optional(S)` | `Schema.optional(S)` |
+
+The rule applies to ordinary schemas, schema errors, and nested mappings; `Schema.mutableKey` keeps its current position outside the optional wrapper. Native `data` payloads follow TypeScript's optional-property types directly. Declarations are identical to the Effect TypeScript twin under the same setting. Without `exactOptionalPropertyTypes`, TypeScript has no exact optional key, so neither does the sugar: a program needing `Schema.optionalKey` writes Effect's class or schema directly. This is not a gap to fill.
 
 Tuple element labels (`[name: A, count?: B]`) do not change the mapping. Optional and rest tuples omit `Schema.mutable` when `readonly`; rest elements map recursively, with any trailing required elements passed after the rest schema to `Schema.TupleWithRest`.
 
@@ -148,7 +159,7 @@ const tupleForms = Schema.decodeUnknownSync(TupleForms)({
 tupleForms.optional.push(3)
 ```
 
-`Schema.optional` accepts a missing key or `undefined`, matching TypeScript’s default. `Schema.mutableKey` changes the property, not its nested value; `Schema.mutable` changes an array or tuple, not its elements. Record keys must satisfy Effect’s `Schema.Record.Key` constraint. Computed schema field names use native TypeScript runtime object-literal grammar and property-key type checks. A key call, parenthesized key or element-access key is admitted when that runtime object counterpart is admitted; type-member restrictions do not apply merely because the field's value is written as a type. Evaluate each admitted key once at the declaration's existing execution point in native property evaluation order, preserving getters, coercion, TDZ, thrown values and source-context throw checks. This follows ECMA-262's [property definition evaluation](https://tc39.es/ecma262/multipage/ecmascript-language-expressions.html#sec-runtime-semantics-propertydefinitionevaluation) and [property-key conversion](https://tc39.es/ecma262/multipage/abstract-operations.html#sec-topropertykey). The key expression is not a schema type reference. Infer the public type from the actual `Schema` value rather than a fabricated type literal containing the expression. A computed key of non-literal type gives an index-signature type, but the runtime struct checks only the key the expression evaluates to, exactly as in Effect TypeScript. With default decoding options, extra keys are ignored and stripped, as in `Schema.Struct`.
+`Schema.optional` accepts a missing key or `undefined`, matching TypeScript’s default; with `exactOptionalPropertyTypes`, an optional key whose type excludes `undefined` instead uses `Schema.optionalKey`. `Schema.mutableKey` changes the property, not its nested value; `Schema.mutable` changes an array or tuple, not its elements. Record keys must satisfy Effect’s `Schema.Record.Key` constraint. Computed schema field names use native TypeScript runtime object-literal grammar and property-key type checks. A key call, parenthesized key or element-access key is admitted when that runtime object counterpart is admitted; type-member restrictions do not apply merely because the field's value is written as a type. Evaluate each admitted key once at the declaration's existing execution point in native property evaluation order, preserving getters, coercion, TDZ, thrown values and source-context throw checks. This follows ECMA-262's [property definition evaluation](https://tc39.es/ecma262/multipage/ecmascript-language-expressions.html#sec-runtime-semantics-propertydefinitionevaluation) and [property-key conversion](https://tc39.es/ecma262/multipage/abstract-operations.html#sec-topropertykey). The key expression is not a schema type reference. Infer the public type from the actual `Schema` value rather than a fabricated type literal containing the expression. A computed key of non-literal type gives an index-signature type, but the runtime struct checks only the key the expression evaluates to, exactly as in Effect TypeScript. With default decoding options, extra keys are ignored and stripped, as in `Schema.Struct`.
 
 A noncomputed field named `__proto__` denotes an own data field, including quoted or escaped names and fields in nested structs. Its generated schema-fields object uses `["__proto__"]`, preserving the field instead of invoking JavaScript object-literal prototype-setting semantics. Already-computed keys keep their existing evaluation order.
 
@@ -625,4 +636,25 @@ import { Schema } from "effect";
 export const Message = Schema.Struct({ id: Schema.mutableKey(Schema.String) });
 /** The type's documentation. */
 export type Message = typeof Message.Type;
+```
+
+### Exact optional keys
+
+With `strict` and `exactOptionalPropertyTypes` enabled, the same optional-key contract is written as follows. Missing keys decode successfully; a present `undefined` fails for `name` and succeeds for `explicit`.
+
+```vibe [VibeLang]
+// compiler-gap: pending VIP-15
+schema Exact {
+  readonly name?: string
+  readonly explicit?: string | undefined
+}
+```
+
+```ts [Effect]
+import { Schema } from "effect"
+const Exact = Schema.Struct({
+  name: Schema.optionalKey(Schema.String),
+  explicit: Schema.optional(Schema.Union([Schema.String, Schema.Undefined]))
+})
+type Exact = typeof Exact.Type
 ```

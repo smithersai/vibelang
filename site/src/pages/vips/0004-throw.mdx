@@ -84,3 +84,7 @@ R8 (2026-10-28, "no throw in .vibe"), and the form rules that made `throw` an Ef
 Will: “A typescript function without a @throws has an unknown error type that it throws. This is literally how typescript already works. Trusted packages does not make sense as a concept nor does it make any sense why you are even thinking about treating npm packages any different than a normal .ts file.”
 
 An npm package's functions follow exactly the rule a local `.ts` file's do: no `@throws` means it may throw `unknown`, and `@throws` means what it says. Package names, re-exports, returned values and compiler inventories grant no different thrown-type contract. Effectful return types and explicit wrapper-thunk and intrinsic global annotations retain their ordinary rules. This supersedes an earlier reading of the Effect-annotation inventory as implicit library signature annotations: an npm signature needs its own annotation.
+
+### Retirement of the empty legacy trust wrapper
+
+The historical `trusted(f, [])` runtime wrapper is not an accepted VIP form. It is retired with `EK0407`, which names `vibelang --fix`. `vibelang --fix` rewrites each private direct synchronous call in an explicit Effect body to the identity-mapped `Effect.try` / `Effect.orDie` bridge over `f`, captured at the original declaration; a rewrite that can't preserve types, behavior and declaration output refuses at that site. A reviewed TypeScript helper with `@throws {never}` is another replacement. Calls with listed failure classes are outside this retirement.
