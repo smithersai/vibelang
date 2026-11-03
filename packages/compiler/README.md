@@ -204,7 +204,9 @@ path redirects only when one source matches the project’s inherited `jsx` mode
 ambiguous siblings leave the emitted module in place. The Bun re-export preserves
 live named and `default` bindings, and adds no `default` to a source that lacks one. With the
 package's [loader record](#loader-records), a process with a cold cache runs
-that source from the recorded compile instead of compiling the package.
+that source from the recorded compile instead of compiling the package. Export inspection lives in the packaged
+`bun-export-surface.mjs` helper, independently of Bun module registration and
+resolution, and checks the namespace without executing the source.
 
 ## Bundle .vibe modules with Metro
 
