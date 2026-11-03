@@ -73,11 +73,16 @@ func configuresImportedLint(vibe *core.VibeLangOptions) bool {
 // run reports the rules options enables for sf, leaving out on a .vibe file
 // the rules whose pattern VibeLang's syntax gives another meaning (vibeRules).
 func run(ctx context.Context, program checker.Program, c *checker.Checker, sf *ast.SourceFile, options *etscore.EffectPluginOptions) []*ast.Diagnostic {
+	return runRules(ctx, program, c, sf, options, ruleNamesFor(sf))
+}
+
+// runRules reports the named rules options enables for sf; nil names every rule.
+func runRules(ctx context.Context, program checker.Program, c *checker.Checker, sf *ast.SourceFile, options *etscore.EffectPluginOptions, names []string) []*ast.Diagnostic {
 	// Rule queries must not overwrite the types the check recorded.
 	defer typeparser.PauseCheckedExpressionTypes(c)()
 	options = releaseSeverities(options, program.Options().VibeLang)
 
-	diagnostics, err := rulerunner.Run(ctx, program, c, sf, options, ruleNamesFor(sf), rulerunner.MinVisibleSeverity(options))
+	diagnostics, err := rulerunner.Run(ctx, program, c, sf, options, names, rulerunner.MinVisibleSeverity(options))
 	if err != nil {
 		return nil
 	}

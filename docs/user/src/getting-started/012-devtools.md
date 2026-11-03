@@ -269,6 +269,8 @@ For bodyless service contracts, `EK0902`'s quick fix and `vibelang --fix` remove
 
 `@effect/language-service` 0.87.5 has 108 diagnostics and editor features. The table maps rules to VibeLang forms and existing EK diagnostics. Effect functions use `try` to run Effects, and `catch` expressions handle failures. The table also marks features not implemented.
 
+A row's answer says how to write the code in VibeLang. A rule that says Not needed or Covered stays out of builds and the language server, but `vibelang lint` with an Oxlint configuration that turns it on runs it on `.vibe` files as on `.ts`, for a file that still spells the pattern through Effect's API. Five exceptions are listed under [`vibelang lint`](../setup/vibelang-cli.md).
+
 EK4801-EK4825 are lint. Each has a default, error, warning, or off, and the historical port codes below remain available through legacy diagnostic comments. Configure assigned imported `EK38xx` codes through `vibe.severities`; core errors cannot be turned off. A later comment overrides an earlier one; within one comment, a code named on its own overrides `*`. Words after the codes are prose, and punctuation ends a category, so `// @vibelang-diagnostics-next-line EK4804:off: generic error` keeps its reason:
 
 ```vibe

@@ -41,6 +41,19 @@ tsconfig.json, then jsconfig.json; -p selects a file or directory.
 The status is 1 when an error is reported or a .vibe file has no project.
 Warnings never fail CI; promote their codes in vibe.severities to error. Invalid
 project settings return status 2.
+
+With no Oxlint configuration and none of its flags, vibelang lint takes the
+compiler's options and reports the compiler's diagnostics, without emitting.
+
+A rule the configuration turns on reports a .vibe file under its EK38xx code.
+A rule VibeLang ports reports under the port's code instead, once: floating-effect
+reports EK4801. An Oxlint rule outside effecttsgo/* does not run here; vibelang
+lint reads only the effecttsgo/* rules of the configuration.
+
+These do not run on .vibe files, because they misread its forms, and a note on
+standard error names the ones a configuration turns on: catch-unfailable-effect,
+missed-pipeable-opportunity, missing-effect-context, missing-effect-error,
+missing-layer-context. The compiler checks all but the pipe rule.
 `
 
 // Keep compiler diagnostics and options while preventing every output phase,
@@ -51,6 +64,10 @@ func (analysisOnlySystem) SuppressEmit() bool { return true }
 
 // Command runs `vibelang lint`.
 func Command(ctx context.Context, sys tsc.System, args []string) int {
+	if slices.Contains(args, "-h") || slices.Contains(args, "--help") {
+		fmt.Fprint(sys.Writer(), usage)
+		return 0
+	}
 	// The release command takes compiler flags and reports compiler diagnostics
 	// without emitting (VIP-38, detail 58). Retain the old Oxlint adapter for
 	// existing scripts that explicitly request it or have its config file.
@@ -99,9 +116,6 @@ func Command(ctx context.Context, sys tsc.System, args []string) int {
 			ignore.noIgnore = true
 		case "--deny-warnings":
 			// Compatibility spelling; promote a code in vibe.severities to fail CI.
-		case "-h", "--help":
-			fmt.Fprint(out, usage)
-			return 0
 		default:
 			if strings.HasPrefix(arg, "-") {
 				fmt.Fprintf(errOut, "vibelang lint: unknown option %s\n\n%s", arg, usage)
@@ -133,6 +147,9 @@ func Command(ctx context.Context, sys tsc.System, args []string) int {
 	if err != nil {
 		fmt.Fprintf(errOut, "vibelang lint: %v\n", err)
 		return 2
+	}
+	if note := misreadNote(config); configPath != "" && note != "" {
+		fmt.Fprint(errOut, note)
 	}
 	if len(paths) == 0 {
 		paths = []string{"."}
@@ -250,12 +267,37 @@ func lintProject(ctx context.Context, sys tsc.System, configFile string, files [
 			}
 		}
 		c, done := program.GetTypeCheckerForFile(ctx, sf)
-		diags = append(diags, run(ctx, program, c, sf, &options)...)
+		diags = append(diags, runRules(ctx, program, c, sf, &options, lintRuleNames)...)
 		done()
 		slices.SortFunc(diags, func(a, b *ast.Diagnostic) int { return a.Pos() - b.Pos() })
 		result = append(result, withoutDisabled(diags, sf.Text())...)
 	}
 	return result, skipped, nil
+}
+
+// misreadNote names the rules config turns on that lintMisreads leaves out, so a
+// clean lint does not read as those rules passing.
+func misreadNote(config *Config) string {
+	var named []string
+	for name := range lintMisreads {
+		on := config.Rules[name] != etscore.SeverityOff && hasRule(config.Rules, name)
+		for _, o := range config.Overrides {
+			on = on || (o.Rules[name] != etscore.SeverityOff && hasRule(o.Rules, name))
+		}
+		if on {
+			named = append(named, kebabCase(name))
+		}
+	}
+	if len(named) == 0 {
+		return ""
+	}
+	slices.Sort(named)
+	return "vibelang lint: these effecttsgo rules do not run on .vibe files: " + strings.Join(named, ", ") + ". See vibelang lint --help.\n"
+}
+
+func hasRule(severities map[string]etscore.Severity, name string) bool {
+	_, ok := severities[name]
+	return ok
 }
 
 // severityFor turns every rule the configuration leaves out off, as Oxlint does.
