@@ -1041,6 +1041,8 @@ Both loop heads evaluate the operand in ECMAScript's separate `ForDeclaration` e
 
 ### Meaning
 
+Native `for...of` and `for await` keep TypeScript's protocol checks and JavaScript meaning, even when their operand also implements `Stream`. A synchronous native loop over `Stream.Stream<number> & Iterable<number>` uses its iterator, not the Stream; an async native loop uses its async iterator or synchronous fallback. `for await` in effect code remains `EK0102`. There is no type-directed `EK2007` rejection or automatic conversion of valid native iteration to `for try`. A `for try` repair of a native diagnostic is offered only where context, head, jumps and evaluation order preserve the program's meaning.
+
 `for try (const x of stream)` consumes a Stream, pulling one element at a time, in order. It mirrors `for await` over AsyncIterables, which keeps its JavaScript meaning. `continue` skips one element, `break` stops consuming and closes the stream's scope, so a producer still running is interrupted and its finalizers run, and a failure in the body fails the loop.
 
 The item callback runs on the current consuming fiber; an item or source callable activation creates no new fiber owner. A plain `fork` child may outlive the item and successful loop completion while its owning fiber continues, is not implicitly joined, and is interrupted when that owner terminates. The consuming fiber can itself be a concurrent item's fiber or another explicitly created child. `fork.in`, `fork.scoped` and `fork.detached` retain their own native owners; `Stream` finalization and the loop's `break` and failure behavior are unchanged. This ownership rule adds no child-start ordering or per-item scope. See the [gated ownership witness](008-runtime.md#for-try-fiber-owner).
