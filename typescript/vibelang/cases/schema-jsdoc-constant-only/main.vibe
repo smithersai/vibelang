@@ -17,3 +17,8 @@ export schema S3 { readonly id: string }
 /** @public */
 export schema S4 { readonly id: string }
 
+
+// VIP-15 synthesized type stays bare while value retains its JSDoc; rule: docs/design/vips/0015-schema-declarations.md#6219bbbb290a4f3f
+// VIP-15 synthesized type stays bare while value retains its JSDoc; rule: docs/design/vips/0015-schema-declarations.md#f038c88a02dd7819
+// VIP-15 synthesized type stays bare while value retains its JSDoc; rule: docs/design/vips/0015-schema-declarations.md#2c9e6d499821c56b
+// VIP-15 synthesized type stays bare while value retains its JSDoc; rule: docs/design/vips/0015-schema-declarations.md#952569285ffc587a

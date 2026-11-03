@@ -4,3 +4,6 @@ const Fake = { "~effect/Schema/Schema": Schema.String["~effect/Schema/Schema"], 
 export schema Alias = Fake
 schema Struct { value: Fake }
 schema error Bad { value: Fake }
+
+// VIP-15 structurally forged values are not suitable Schema decoders; rule: docs/design/vips/0015-schema-declarations.md#419dd5c2e6c5fbc5
+// VIP-15 structurally forged values are not suitable Schema decoders; rule: docs/design/vips/0015-schema-declarations.md#e44b2de8b71c9c33

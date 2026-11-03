@@ -1,0 +1,1 @@
+cov-decls VIP-15 mutable schema fields emit readonly decoded keys; native Schema.mutableKey permits assignment

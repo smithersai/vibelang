@@ -1,0 +1,5 @@
+// expect: EK1502
+schema Generic<T> { value: T }
+export {}
+
+// VIP-15 named schemas are nongeneric; rule: docs/design/vips/0015-schema-declarations.md#aefc264c591fc20f

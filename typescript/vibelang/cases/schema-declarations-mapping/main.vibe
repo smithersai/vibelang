@@ -1,0 +1,51 @@
+import { Effect, Schema } from "effect"
+type Equal<A, B> = (<T>() => T extends A ? 1 : 2) extends (<T>() => T extends B ? 1 : 2) ? true : false
+schema Address { readonly city: string }
+schema User {
+  readonly name: string
+  readonly nick?: string
+  readonly role: "admin" | "member"
+  readonly home: Address
+  readonly count: Schema.NumberFromString
+  readonly numbers: number[]
+  readonly pair: [string, number]
+  readonly record: Record<string, number>
+  readonly nested: { readonly flag: boolean }
+  readonly empty: null
+  readonly absent: undefined
+  readonly mixed: string | number
+}
+schema Code = "a" | "b"
+type Expected = {
+  readonly name: string; readonly nick?: string | undefined; readonly role: "admin" | "member"
+  readonly home: { readonly city: string }; readonly count: number; readonly numbers: number[]
+  readonly pair: [string, number]; readonly record: Record<string, number>
+  readonly nested: { readonly flag: boolean }; readonly empty: null; readonly absent: undefined
+  readonly mixed: string | number
+}
+export const exact: Equal<User, Expected> = true
+export const code: Equal<Code, "a" | "b"> = true
+export effect function main() {
+  const input = { name: "Ada", role: "admin", home: { city: "NYC" }, count: "12", numbers: [1], pair: ["x", 2], record: { a: 3 }, nested: { flag: true }, empty: null, absent: undefined, mixed: 4 }
+  const a = try Schema.decodeUnknownEffect(User)(input)
+  const b = try Schema.decodeUnknownEffect(User)({ ...input, nick: undefined })
+  a.numbers.push(5)
+  a.pair[0] = "changed"
+  a.record.b = 6
+  return [a.count, a.numbers, a.pair, a.record, Schema.is(Code)("a"), Schema.is(Code)("c"), "nick" in a, "nick" in b]
+}
+
+// VIP-15 schema value/type pairs, field mapping, optional undefined and mutable collections; rule: docs/design/vips/0015-schema-declarations.md#981187fded7057e1
+// VIP-15 schema value/type pairs, field mapping, optional undefined and mutable collections; rule: docs/design/vips/0015-schema-declarations.md#b6b4a875d351de9a
+// VIP-15 schema value/type pairs, field mapping, optional undefined and mutable collections; rule: docs/design/vips/0015-schema-declarations.md#bac3ae3343b48624
+// VIP-15 schema value/type pairs, field mapping, optional undefined and mutable collections; rule: docs/design/vips/0015-schema-declarations.md#19bd3632a96dcdbb
+// VIP-15 schema value/type pairs, field mapping, optional undefined and mutable collections; rule: docs/design/vips/0015-schema-declarations.md#8430a891f54f1cf3
+// VIP-15 schema value/type pairs, field mapping, optional undefined and mutable collections; rule: docs/design/vips/0015-schema-declarations.md#29e3ce241732ebc8
+// VIP-15 schema value/type pairs, field mapping, optional undefined and mutable collections; rule: docs/design/vips/0015-schema-declarations.md#2fa81d8d85457bcb
+// VIP-15 schema value/type pairs, field mapping, optional undefined and mutable collections; rule: docs/design/vips/0015-schema-declarations.md#aa02377b20cde53b
+// VIP-15 schema value/type pairs, field mapping, optional undefined and mutable collections; rule: docs/design/vips/0015-schema-declarations.md#adf614e383e1e76b
+// VIP-15 schema value/type pairs, field mapping, optional undefined and mutable collections; rule: docs/design/vips/0015-schema-declarations.md#ad58bae5ae6a15aa
+// VIP-15 schema value/type pairs, field mapping, optional undefined and mutable collections; rule: docs/design/vips/0015-schema-declarations.md#8eb4a67ae2d46c8f
+// VIP-15 schema value/type pairs, field mapping, optional undefined and mutable collections; rule: docs/design/vips/0015-schema-declarations.md#1b7145bef28ba044
+// VIP-15 schema value/type pairs, field mapping, optional undefined and mutable collections; rule: docs/design/vips/0015-schema-declarations.md#dbbeda7b35a82ab4
+

@@ -12,3 +12,5 @@ export schema Widened = readonly [Uncertain]
 export schema Nested { readonly value: readonly [OptionalUndefined] }
 namespace Local { export schema Pair = readonly [Codecs.Optional] }
 schema error Problem { value: readonly [OptionalNumber] }
+
+// VIP-15 required fixed tuple positions preserve decoded-key optionality; rule: docs/design/vips/0015-schema-declarations.md#cce7c457fbd444b2

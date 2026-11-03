@@ -1,0 +1,6 @@
+import { Effect, Schema } from "effect"
+type Array<T> = { unrelated: T }
+schema Values { readonly mutable: number[]; readonly fixed: readonly number[] }
+export effect function main() { return Schema.decodeUnknownSync(Values)({ mutable: [1], fixed: [2] }) }
+
+// VIP-15 array and readonly array syntax ignore a shadowing Array type alias; rule: docs/design/vips/0015-schema-declarations.md#a4d438af8bd1f997

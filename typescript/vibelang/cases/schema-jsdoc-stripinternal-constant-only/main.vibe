@@ -1,3 +1,7 @@
 import * as Schema from "effect/Schema"
 /** @internal */
 export schema Message { readonly id: string }
+
+// VIP-15 stripInternal retains the native bare alias limitation; rule: docs/design/vips/0015-schema-declarations.md#fee9b47426e69436
+// VIP-15 stripInternal retains the native bare alias limitation; rule: docs/design/vips/0015-schema-declarations.md#f5618e2ae0e681a6
+// VIP-15 stripInternal retains the native bare alias limitation; rule: docs/design/vips/0015-schema-declarations.md#8cd6a96fc3dea6fd

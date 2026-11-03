@@ -16,3 +16,6 @@ schema Keyed {
 }
 export const keys = Object.keys(Keyed.fields).sort()
 export const plain: number = Schema.decodeUnknownSync(Keyed)({ dynamic: 1, prefix: "p", called: 3, paren: true, plain: 2 }).plain
+
+// VIP-15 runtime object-literal computed keys and inferred public schema type; rule: docs/design/vips/0015-schema-declarations.md#db71b6551f206ec0
+// VIP-15 runtime object-literal computed keys and inferred public schema type; rule: docs/design/vips/0015-schema-declarations.md#c596d8b49adfbe22

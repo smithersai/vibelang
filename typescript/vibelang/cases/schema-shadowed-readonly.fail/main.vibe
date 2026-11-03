@@ -2,3 +2,7 @@
 export {}
 type Readonly<T> = { own: T }
 schema S { readonly a: Readonly<Record<string, number>> }
+
+// VIP-15 shadowing Readonly type does not select library mapping; rule: docs/design/vips/0015-schema-declarations.md#78cb18b60d67cf34
+// VIP-15 shadowing Readonly type does not select library mapping; rule: docs/design/vips/0015-schema-declarations.md#63f969baeb162f62
+// VIP-15 shadowing Readonly type does not select library mapping; rule: docs/design/vips/0015-schema-declarations.md#426cfccfb5b55758

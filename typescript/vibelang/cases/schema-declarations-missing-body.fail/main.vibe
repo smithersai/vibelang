@@ -1,0 +1,5 @@
+// expect: EK1503
+schema Missing
+export {}
+
+// VIP-15 ordinary schema requires a body or admitted alias; rule: docs/design/vips/0015-schema-declarations.md#7cf1f66bcf61bce5

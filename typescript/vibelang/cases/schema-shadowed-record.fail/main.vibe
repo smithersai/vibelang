@@ -2,3 +2,10 @@
 export {}
 type Record<K, V> = { k: K; v: V }
 schema S { readonly a: Record<string, number> }
+
+// VIP-15 mapped generic builtins use resolved library type bindings; rule: docs/design/vips/0015-schema-declarations.md#78cb18b60d67cf34
+// VIP-15 mapped generic builtins use resolved library type bindings; rule: docs/design/vips/0015-schema-declarations.md#63f969baeb162f62
+// VIP-15 mapped generic builtins use resolved library type bindings; rule: docs/design/vips/0015-schema-declarations.md#426cfccfb5b55758
+// VIP-15 mapped generic builtins use resolved library type bindings; rule: docs/design/vips/0015-schema-declarations.md#a84b5ffd37da0ce5
+
+// VIP-15 mapped generic shadowing neighbourhood retains native binding checks and EK2109; rule: docs/design/vips/0015-schema-declarations.md#461dd376ad1953ae

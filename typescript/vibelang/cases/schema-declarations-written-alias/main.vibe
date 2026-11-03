@@ -1,0 +1,19 @@
+import { Effect, Schema } from "effect"
+type Equal<A, B> = (<T>() => T extends A ? 1 : 2) extends (<T>() => T extends B ? 1 : 2) ? true : false
+/** Value documentation. */
+export schema Message { readonly id: string }
+/** Type documentation. */
+export type Message = typeof Message.Type
+/** Early type documentation. */
+export type Early = typeof Early.Type
+/** Early value documentation. */
+export schema Early = "a" | "b"
+export const exact: Equal<Message, { readonly id: string }> = true
+export const early: Equal<Early, "a" | "b"> = true
+export function main() { return Effect.succeed([Schema.is(Message)({ id: "x" }), Schema.is(Early)("a")]) }
+
+// VIP-15 independent written type documentation in both source orders; rule: docs/design/vips/0015-schema-declarations.md#b12a96827ae40cbb
+// VIP-15 independent written type documentation in both source orders; rule: docs/design/vips/0015-schema-declarations.md#dc5546abfa242bf5
+// VIP-15 independent written type documentation in both source orders; rule: docs/design/vips/0015-schema-declarations.md#ed0db48b4d0b2b6e
+// VIP-15 independent written type documentation in both source orders; rule: docs/design/vips/0015-schema-declarations.md#bc030ddba71affea
+// VIP-15 independent written type documentation in both source orders; rule: docs/design/vips/0015-schema-declarations.md#d2df4e6b14000957

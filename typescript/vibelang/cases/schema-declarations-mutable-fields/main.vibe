@@ -1,0 +1,11 @@
+import { Effect, Schema } from "effect"
+schema Mutable { value: string }
+export effect function main() {
+ const item = Schema.decodeUnknownSync(Mutable)({ value: "before" })
+ item.value = "after"
+ return item
+}
+
+// VIP-15 mutable struct fields use Schema.mutableKey and retain writable decoded properties; rule: docs/design/vips/0015-schema-declarations.md#5f546308f31708e7
+
+// Fuzz neighbourhood: FuzzDataSpecRules feature:schema-writable; keyed corpus data-schema-writable.

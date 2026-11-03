@@ -12,3 +12,6 @@ export schema Aliased = Record<"a", Alias>
 export schema Widened = Readonly<Record<"a", Uncertain>>
 export schema Nested { readonly value: Readonly<Record<string, Codecs.MutableNumber>> }
 schema error Problem { value: Record<"a", Optional> }
+
+// VIP-15 required and readonly Record decoded-key flags; rule: docs/design/vips/0015-schema-declarations.md#cce7c457fbd444b2
+// VIP-15 required and readonly Record decoded-key flags; rule: docs/design/vips/0015-schema-declarations.md#9babe7ad72bcaf7b

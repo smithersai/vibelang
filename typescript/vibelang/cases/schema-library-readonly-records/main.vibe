@@ -26,3 +26,7 @@ function typeChecks(a:Canonical,b:QualifiedInner,c:QualifiedOuter,d:Both,e:Renam
   // @ts-expect-error required key
   const absent:Both={}
 }
+
+// VIP-15 qualified and renamed native library bindings preserve mapping; rule: docs/design/vips/0015-schema-declarations.md#78cb18b60d67cf34
+// VIP-15 qualified and renamed native library bindings preserve mapping; rule: docs/design/vips/0015-schema-declarations.md#63f969baeb162f62
+// VIP-15 qualified and renamed native library bindings preserve mapping; rule: docs/design/vips/0015-schema-declarations.md#dbbeda7b35a82ab4

@@ -2,3 +2,5 @@ import * as Schema from "effect/Schema"
 const Record = Schema.Struct({ k: Schema.String })
 type Record = typeof Record.Type
 export schema S { readonly a: Record }
+
+// VIP-15 a real Schema value supplies the repair; rule: docs/design/vips/0015-schema-declarations.md#6dba55919efdd133

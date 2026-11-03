@@ -1,0 +1,4 @@
+// expect: EK1501
+export default schema Named { value: string }
+
+// VIP-15 named default export uses export specifier; rule: docs/design/vips/0015-schema-declarations.md#9880612c73a318ad
