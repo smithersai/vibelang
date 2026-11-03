@@ -4,8 +4,16 @@
     "patterns": [
       "src/**/*.ts",
       "src/**/*.tsx",
-      "types/*.d.ts"
+      "types/*.d.ts",
+      "src/**/*.mts",
+      "types/*.d.mts",
+      "src/**/*.vibex"
     ],
-    "multiline": true
+    "multiline": true,
+    "excludes": [
+      "generated/**/*.tsx",
+      "legacy/**/*.mts",
+      "types/*.d.mts"
+    ]
   }
 }
