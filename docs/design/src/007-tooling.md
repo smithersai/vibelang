@@ -68,7 +68,7 @@ Write VibeLang settings in the root `vibe` object ([VIP-30](../vips/0030-config-
 
 | Key | Meaning |
 | --- | --- |
-| `vibe.effectGlobals` | Boolean; default `true`. Put Effect's functions in scope ([VIP-6](../vips/0006-effect-globals.md)); `false` requires imports. |
+| `vibe.effectGlobals` | Boolean; default `true`. Put Effect's functions in scope ([VIP-6](../vips/0006-effect-globals.md)); `false` turns the function globals off. Qualified calls such as `Effect.sleep` remain available when `vibe.effectModules` is `true`. |
 | `vibe.effectModules` | Boolean; default `true`. Put Effect's modules in scope ([VIP-14](../vips/0014-effect-modules-in-scope.md)); `false` requires imports. |
 | `vibe.sidecarDir` | String; absent by default. Move compatibility declarations from beside their sources to the mirrored directory described above ([VIP-27](../vips/0027-declaration-output.md#decision)). Relative paths use the declaring config; a leading `${configDir}` uses the selected config. An empty string names the declaring directory and overrides inheritance; only absence inherits. |
 | `vibe.severities` | Object; default `{}`. Maps VibeLang's own warning codes and assigned imported `EK38xx` codes to `"error"`, `"warning"`, `"suggestion"` or `"off"` ([VIP-30](../vips/0030-config-files.md#decision), [VIP-34](../vips/0034-compiler-and-tooling.md#decision), [VIP-38](../vips/0038-effect-lint-built-in.md#decision)). |
