@@ -1,3 +1,5 @@
+// docs/design/vips/0030-config-files.md#9112b4f75b6945d3
+// VIP-30: legacy maps inherit or replace including null and empty maps.
 package tsoptions_test
 
 import (

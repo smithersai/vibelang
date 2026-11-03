@@ -1,3 +1,5 @@
+// VIP-30 nearest directory and first existing config.
+// VIP-30 nearest directory and first existing config: docs/design/vips/0030-config-files.md#bb51c0a91e194b78
 package tsoptions_test
 
 import (

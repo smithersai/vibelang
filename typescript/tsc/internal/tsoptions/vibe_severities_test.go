@@ -1,3 +1,18 @@
+// VIP-30 severity admission, roundtrip, per-code merge and JSONC migration.
+// VIP-30 severity admission, roundtrip, per-code merge and JSONC migration: docs/design/vips/0030-config-files.md#c188a3cb1ab157bd
+// VIP-30 severity admission, roundtrip, per-code merge and JSONC migration: docs/design/vips/0030-config-files.md#368b77d562433e7e
+// VIP-30 severity admission, roundtrip, per-code merge and JSONC migration: docs/design/vips/0030-config-files.md#1c3ff33a996b6960
+// VIP-30 severity admission, roundtrip, per-code merge and JSONC migration: docs/design/vips/0030-config-files.md#f04bb77d610516ee
+// VIP-30 severity admission, roundtrip, per-code merge and JSONC migration: docs/design/vips/0030-config-files.md#876d3659a8cf2287
+// VIP-30 severity admission, roundtrip, per-code merge and JSONC migration: docs/design/vips/0030-config-files.md#f2a4185f8d0b5c13
+// VIP-30 severity admission, roundtrip, per-code merge and JSONC migration: docs/design/vips/0030-config-files.md#813d02ff92f5fbb3
+// VIP-30 severity admission, roundtrip, per-code merge and JSONC migration: docs/design/vips/0030-config-files.md#d2b8a73e4030b88c
+// VIP-30 severity admission, roundtrip, per-code merge and JSONC migration: docs/design/vips/0030-config-files.md#a3ff8b37b6eb2707
+// VIP-30 severity admission, roundtrip, per-code merge and JSONC migration: docs/design/vips/0030-config-files.md#03e5b93ebe5bd441
+// VIP-30 severity admission, roundtrip, per-code merge and JSONC migration: docs/design/vips/0030-config-files.md#a9458af4ae759f62
+// VIP-30 severity admission, roundtrip, per-code merge and JSONC migration: docs/design/vips/0030-config-files.md#a12b6574fed4fe32
+// VIP-30 severity admission, roundtrip, per-code merge and JSONC migration: docs/design/vips/0030-config-files.md#c7b941b96d6a56d4
+// VIP-34 severity admission, roundtrip, per-code merge and JSONC migration: docs/design/vips/0034-compiler-and-tooling.md#ab0b2ad0e057299f
 package tsoptions_test
 
 import (

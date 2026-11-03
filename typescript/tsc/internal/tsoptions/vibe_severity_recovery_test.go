@@ -1,3 +1,10 @@
+// VIP-30 invalid effective entry recovery with unrelated entries and native options retained.
+// VIP-30 invalid effective entry recovery with unrelated entries and native options retained: docs/design/vips/0030-config-files.md#4c8704db13357b17
+// VIP-30 invalid effective entry recovery with unrelated entries and native options retained: docs/design/vips/0030-config-files.md#e80f2cba515008b5
+// VIP-30 invalid effective entry recovery with unrelated entries and native options retained: docs/design/vips/0030-config-files.md#aa2934cb29a8b6f2
+// VIP-30 invalid effective entry recovery with unrelated entries and native options retained: docs/design/vips/0030-config-files.md#2a503a19304df002
+// VIP-30 invalid effective entry recovery with unrelated entries and native options retained: docs/design/vips/0030-config-files.md#16cd7c19129f4d61
+// VIP-30 invalid effective entry recovery with unrelated entries and native options retained: docs/design/vips/0030-config-files.md#24947322004ae10f
 package tsoptions_test
 
 import (

@@ -1,5 +1,9 @@
 package vibelang
 
+// VIP-38 all assigned imported codes accept all categories including off.
+// VIP-38 all assigned imported codes accept all categories including off: docs/design/vips/0038-effect-lint-built-in.md#efaaf03f774a0c93
+// VIP-38 all assigned imported codes accept all categories including off: docs/design/vips/0038-effect-lint-built-in.md#59c08aa3754f0094
+
 import (
 	"fmt"
 	stdmaps "maps"
@@ -132,3 +136,7 @@ func TestAppendixBSeveritySettingsTakeEffect(t *testing.T) {
 		})
 	}
 }
+
+// VIP-34 whole-code config admission: docs/design/vips/0034-compiler-and-tooling.md#d6faf3c867f789ef
+
+// VIP-34 whole-code config admission: docs/design/vips/0034-compiler-and-tooling.md#0daf676a07d3c935
