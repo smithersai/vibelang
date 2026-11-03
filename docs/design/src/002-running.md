@@ -1047,7 +1047,7 @@ Both loop heads evaluate the operand in ECMAScript's separate `ForDeclaration` e
 
 ### Meaning
 
-Native `for...of` and `for await` keep TypeScript's protocol checks and JavaScript meaning, even when their operand also implements `Stream`. A synchronous native loop over `Stream.Stream<number> & Iterable<number>` uses its iterator, not the Stream; an async native loop uses its async iterator or synchronous fallback. `for await` in effect code remains `EK0102`. There is no type-directed `EK2007` rejection or automatic conversion of valid native iteration to `for try`. A `for try` repair of a native diagnostic is offered only where context, head, jumps and evaluation order preserve the program's meaning.
+Native `for...of` and `for await` keep TypeScript's protocol checks and JavaScript meaning, even when their operand also implements `Stream`. A synchronous native loop over `Stream.Stream<number> & Iterable<number>` uses its iterator, not the Stream; an async native loop uses its async iterator or synchronous fallback. `for await` in effect code remains `EK0102`. Valid native iteration is never rejected, or converted to `for try`, because its operand is a Stream. A `for try` repair of a native diagnostic is offered only where context, head, jumps and evaluation order preserve the program's meaning.
 
 `for try (const x of stream)` consumes a Stream, pulling one element at a time, in order. It mirrors `for await` over AsyncIterables, which keeps its JavaScript meaning. `continue` skips one element, `break` stops consuming and closes the stream's scope, so a producer still running is interrupted and its finalizers run, and a failure in the body fails the loop.
 
