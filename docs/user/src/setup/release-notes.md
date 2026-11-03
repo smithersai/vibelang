@@ -157,6 +157,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - API checks could reject unchanged packages using `vibe.sidecarDir` because imports in mirrored declarations resolved from the wrong directory. They now resolve from the physical declaration file, matching `tsc`.
 - Find references on a `module` declaration's name returned only the declaration, and nothing from a specifier such as `from text`, while rename edited every specifier; renaming an imported type of the same name left `from M` naming the old module (`EK4006`). Find references now returns the declaration and each identifier specifier, and rename edits those specifiers in both cases.
 - Find references on a `module` declaration's name returned only the declaration, and nothing from a specifier such as `from text`, while rename edited every specifier; renaming an imported type of the same name left `from M` naming the old module (`EK4006`). Find references now returns the declaration and each identifier specifier, and rename edits those specifiers in both cases.
+
+- The no-throw documentation check missed plain functions with an `effect` parameter or a nested function on one line; it now parses callable contexts and checks both forms.
 - API checks invented ambient exports or hid an ambient type change when one input directory contained the other. Contributions now follow each snapshot’s dependency closure, and nested private-class origins remain distinct where required.
 
 - The editor outline merged separate `module` declarations as TypeScript namespaces and hid a later declaration with the same name; each VibeLang module now keeps its own outline entry and name range, including an invalid duplicate.

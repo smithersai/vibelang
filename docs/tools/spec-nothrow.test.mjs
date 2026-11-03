@@ -1,5 +1,7 @@
 import assert from "node:assert/strict"
 import { test } from "node:test"
+import fc from "fast-check"
+import ts from "typescript"
 import { chapter, read, nothrowFoldPending } from "./spec-witness.mjs"
 
 // Will, 2026-10-31 ~14:00 PDT, recorded in core-decisions.md: "Plain functions are not allowed to throw I have said
@@ -13,38 +15,100 @@ const plainSection = () => {
   return text.slice(text.indexOf("### Plain code never throws"), text.indexOf("## Throw expressions"))
 }
 
-// plainThrows returns the lines of a `vibe es` fence that throw in plain code. A line is allowed when it is in effect
-// code, an `async` function, a `module` body (VIP-40: "A body is a TypeScript file stored inside a `.vibe` file"), or
-// when its comment marks the expected error. Contexts open with a `{` and close at the matching `}`.
+// Parse each fence after projecting contextual Effect modifiers to TypeScript's async syntax. Replacing an
+// ordinary identifier too is harmless: the parser only recognizes async as a modifier in modifier position.
+// Positions map back to the original fence so reports and expected-error comments retain their source lines.
 export function plainThrows(fence) {
-  const found = []
-  const stack = [] // "module", "allowed" or "plain" for each open brace
-  for (const line of fence.split("\n")) {
-    const code = line.replace(/\/\/.*$/, "").replace(/`(?:[^`\\]|\\.)*`|"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/g, '""')
-    const top = stack[stack.length - 1]
-    const plainHandler = /\bcatch\s*\(/.test(code) && !/\bcatch\s+effect\b/.test(code)
-    const allowed = stack.includes("module") || top === "allowed"
-      || (opens(code) !== undefined && opens(code) !== "plain" && !plainHandler)
-      || (/^\s*(when|default)\b/.test(code) && top !== undefined && top !== "plain")
-    if (/\bthrow\b/.test(code) && !allowed && !/EK0401|EK1010/.test(line)) found.push(line.trim())
-    let first = true
-    for (const ch of code) {
-      if (ch === "{") {
-        const inherited = stack.includes("module") ? "module" : stack[stack.length - 1] ?? "plain"
-        stack.push(first ? opens(code) ?? inherited : inherited)
-        first = false
-      } else if (ch === "}") stack.pop()
+  const { text, origins, expectedErrors } = typescriptFence(fence)
+  const source = ts.createSourceFile("fence.ts", text, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS)
+  const lines = fence.split("\n")
+  const found = new Set()
+  function visit(node, allowed = false) {
+    if (ts.isModuleDeclaration(node) && /^(?:export\s+)?module\b/.test(text.slice(node.getStart(source)))) return // VIP-40.
+    if (ts.isThrowStatement(node)) {
+      const offset = origins[node.getStart(source)]
+      const lineIndex = fence.slice(0, offset).split("\n").length - 1
+      if (!allowed && !expectedErrors.has(lineIndex)) found.add(lineIndex)
     }
+    if (ts.isFunctionLike(node)) {
+      const modifier = ts.getModifiers(node)?.find(m => m.kind === ts.SyntaxKind.AsyncKeyword)
+      const effect = modifier && fence.slice(origins[modifier.getStart(source)]).startsWith("effect")
+      const asyncParameters = modifier && !effect && !node.asteriskToken
+      ts.forEachChild(node, child => {
+        visit(child, child === node.body ? !!modifier : node.parameters?.includes(child) ? !!asyncParameters : allowed)
+      })
+      return
+    }
+    // Initializers and static blocks run outside a surrounding fiber, including a class declared in effect code.
+    if (ts.isPropertyDeclaration(node) || ts.isClassStaticBlockDeclaration(node)) allowed = false
+    ts.forEachChild(node, child => visit(child, allowed))
   }
-  return found
+  visit(source)
+  return [...found].sort((a, b) => a - b).map(i => lines[i].trim())
 }
 
-// opens names the context a line's first `{` opens, or undefined when the line opens none of its own.
-function opens(code) {
-  if (/^\s*(export\s+)?module\s+[\w$]+\s*\{/.test(code)) return "module"
-  if (/\beffect\b|^\s*(export\s+)?(default\s+)?async\b|=\s*async\b/.test(code)) return "allowed"
-  if (/^\s*(export\s+)?(function|class)\b|\bcatch\s*\(|=>\s*\{/.test(code)) return "plain"
-  return undefined
+function typescriptFence(fence) {
+  const scanner = ts.createScanner(ts.ScriptTarget.Latest, false, ts.LanguageVariant.Standard, fence)
+  const tokens = []
+  const expectedErrors = new Set()
+  const templates = []
+  for (let kind = scanner.scan(); kind !== ts.SyntaxKind.EndOfFileToken; kind = scanner.scan()) {
+    if (kind === ts.SyntaxKind.TemplateHead) templates.push(0)
+    else if (templates.length && kind === ts.SyntaxKind.OpenBraceToken) templates[templates.length - 1]++
+    else if (templates.length && kind === ts.SyntaxKind.CloseBraceToken) {
+      if (templates.at(-1) === 0) {
+        kind = scanner.reScanTemplateToken(false)
+        if (kind === ts.SyntaxKind.TemplateTail) templates.pop()
+      } else templates[templates.length - 1]--
+    }
+    if (kind === ts.SyntaxKind.SingleLineCommentTrivia || kind === ts.SyntaxKind.MultiLineCommentTrivia) {
+      if (/EK0401|EK1010/.test(scanner.getTokenText())) {
+        const start = fence.slice(0, scanner.getTokenPos()).split("\n").length - 1
+        const end = fence.slice(0, scanner.getTextPos()).split("\n").length - 1
+        for (let line = start; line <= end; line++) expectedErrors.add(line)
+      }
+    }
+    if (kind <= ts.SyntaxKind.LastTriviaToken) continue
+    tokens.push({ kind, start: scanner.getTokenPos(), end: scanner.getTextPos(), text: scanner.getTokenText() })
+  }
+  const replacements = []
+  for (let i = 0; i < tokens.length; i++) {
+    const token = tokens[i]
+    if (token.text === "effect" && token.kind === ts.SyntaxKind.Identifier) {
+      const block = tokens[i + 1]?.kind === ts.SyntaxKind.OpenBraceToken
+        && !/[\r\n]/.test(fence.slice(token.end, tokens[i + 1].start))
+        && ![ts.SyntaxKind.ClassKeyword, ts.SyntaxKind.InterfaceKeyword, ts.SyntaxKind.ModuleKeyword,
+          ts.SyntaxKind.NamespaceKeyword, ts.SyntaxKind.EnumKeyword].includes(tokens[i - 1]?.kind)
+      replacements.push({ ...token, text: block ? "async() =>" : "async " })
+    }
+    if (token.kind === ts.SyntaxKind.CatchKeyword) {
+      // An expression handler is an arrow, not a TypeScript catch clause. Project only that operator to a comma;
+      // preserve try/catch statements, whose parameters are followed by a block rather than an arrow.
+      let j = i + 1
+      if (tokens[j]?.text === "effect") j++
+      if (tokens[j]?.kind !== ts.SyntaxKind.OpenParenToken) continue
+      let depth = 0
+      for (; j < tokens.length; j++) {
+        if (tokens[j].kind === ts.SyntaxKind.OpenParenToken) depth++
+        if (tokens[j].kind === ts.SyntaxKind.CloseParenToken && --depth === 0) break
+      }
+      if (tokens[j + 1]?.kind === ts.SyntaxKind.EqualsGreaterThanToken) replacements.push({ ...token, text: "," })
+    }
+  }
+  let text = ""
+  const origins = []
+  let cursor = 0
+  function append(value, start, width = value.length) {
+    text += value
+    for (let i = 0; i < value.length; i++) origins.push(start + Math.min(i, width - 1))
+  }
+  for (const replacement of replacements.sort((a, b) => a.start - b.start)) {
+    append(fence.slice(cursor, replacement.start), cursor)
+    append(replacement.text, replacement.start, replacement.end - replacement.start)
+    cursor = replacement.end
+  }
+  append(fence.slice(cursor), cursor)
+  return { text, origins, expectedErrors }
 }
 
 const fences = (text) => [...text.matchAll(/```vibe es\n([\s\S]*?)```/g)].map(m => m[1])
@@ -216,4 +280,75 @@ test("user docs, the cheat sheet and SKILL.md say plain VibeLang code never thro
   assert.match(read("docs/user/src/vibelang-features/115-cheat-sheet.md"), /In a plain function it is `EK0401`: make the function `effect`, or move the code to a `\.ts` file\. In an `async` function it rejects the Promise\./)
   assert.doesNotMatch(read("docs/user/src/getting-started/005-creating-effects.md"), /VibeLang infers throws from non-effectful plain `\.vibe` functions/)
   assert.match(read("docs/user/src/setup/release-notes.md").split("\n## ")[1], /\*\*Language change:\*\* a `throw` in a plain VibeLang function/)
+})
+
+test("plainThrows recognizes effect only as a modifier (PREVIEW-18)", () => {
+  for (const code of [
+    "function f(effect: number) { throw effect }",
+    "function f() { const effect = 1; throw effect }",
+    "function f(obj: { effect: number }) { throw obj.effect }",
+    "const f = (effect: number) => { throw effect }",
+    "const o = { effect() { throw 1 } }",
+    "class C { effect() { throw 1 } }",
+    "effect function f() { function g() { throw 1 } }",
+    "effect function f() { const g = () => { throw 1 } }",
+    "effect function f() { const o = { g() { throw 1 } } }",
+    "effect function f() { class C { g() { throw 1 } } }",
+    "async function f() { function g() { throw 1 } }",
+  ]) assert.equal(plainThrows(code).length, 1, code)
+  for (const code of [
+    "effect function f() { throw 1 }",
+    "const f = effect () => { throw 1 }",
+    "const o = { effect f() { throw 1 } }",
+    "class C { effect f() { throw 1 } }",
+    "const f = effect { throw 1 }",
+    "async function f() { throw 1 }",
+    "module m { function f(effect: number) { throw effect } }",
+    'function f() { return "throw effect" } // throw effect',
+  ]) assert.deepEqual(plainThrows(code), [], code)
+})
+
+test("plainThrows is invariant under parameter renaming (PREVIEW-18)", () => {
+  fc.assert(fc.property(fc.integer(), fc.integer({ min: 0, max: 4 }), (n, indent) => {
+    const body = " ".repeat(indent)
+    const ordinary = `function f(value: number) {${body}throw value + ${n}}`
+    const renamed = `function f(effect: number) {${body}throw effect + ${n}}`
+    assert.equal(plainThrows(ordinary).length, 1)
+    assert.equal(plainThrows(renamed).length, plainThrows(ordinary).length)
+  }), { seed: 8818, numRuns: 100 })
+})
+
+test("plainThrows is invariant under nested-function line layout (PREVIEW-18)", () => {
+  fc.assert(fc.property(fc.integer(), fc.integer({ min: 0, max: 4 }), (n, indent) => {
+    const pad = " ".repeat(indent)
+    const inline = `effect function f() {
+${pad}function g() { throw ${n} }
+}`
+    const multiline = `effect function f() {
+${pad}function g() {
+${pad}  throw ${n}
+${pad}}
+}`
+    assert.equal(plainThrows(multiline).length, 1)
+    assert.equal(plainThrows(inline).length, plainThrows(multiline).length)
+  }), { seed: 8818, numRuns: 100 })
+})
+
+test("plainThrows preserves templates, foreign modules and callable boundaries", () => {
+  const witnesses = [
+    ['const s = `raw ${1} effect throw`; effect function f() { throw 1 }', 0],
+    ['const s = `raw ${1} effect throw`; function f() { throw 1 }', 1],
+    ['effect function f() { const s = `a ${(() => { throw 1 })()}` }', 1],
+    ['export module m { function f() { throw 1 } }', 0],
+    ['namespace m { function f() { throw 1 } }', 1],
+    ['class C { effect f() { const g = () => { throw 1 }; throw 2 } }', 1],
+    ['effect function f() { return g() catch effect (e) => { throw e } }', 0],
+    ['async function* f() { throw 1 }', 0],
+    ['function* f() { throw 1 }', 1],
+    ['function f() { try { throw 1 } catch {} }', 1],
+    ['function f() { throw "EK0401" }', 1],
+    ['function f() { throw "// EK0401" }', 1],
+    ['function f() { throw 1 } /* EK0401 */', 0],
+  ]
+  for (const [code, expected] of witnesses) assert.equal(plainThrows(code).length, expected, code)
 })
