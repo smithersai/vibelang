@@ -7,6 +7,7 @@ import { test } from "node:test"
 import { makeConfig, paths, verify, report } from "../lib/steps.mjs"
 import { parseDiagnostics } from "../lib/diagnostics.mjs"
 import { emitErrorsIn, recordDeclarationSurface } from "../lib/declarations.mjs"
+import { packRepository } from "../lib/pack-policy.mjs"
 import { must, slug, writeJson } from "../lib/util.mjs"
 import * as Jj from "../lib/jj.mjs"
 const require = createRequire(new URL("../../../../packages/runtime/package.json", import.meta.url))
@@ -19,7 +20,7 @@ async function check(code, diagnostic, { baselineEmit, migrated = true, expected
     const target = join(root, "repo"), run = join(root, "run")
     mkdirSync(join(target, "node_modules/.bin"), { recursive: true })
     symlinkSync(require.resolve("typescript/package.json").replace(/\/package.json$/, ""), join(target, "node_modules/typescript"))
-    writeJson(join(target, "package.json"), { name: "foldkit-exit-fixture", types: "./main.d.ts" })
+    writeJson(join(target, "package.json"), corpus.manifest)
     writeJson(join(target, "tsconfig.json"), { compilerOptions: { rootDir: "." }, include: [migrated ? "*.vibe" : "*.ts"] })
     writeFileSync(join(target, migrated ? "main.vibe" : "main.ts"), "export const value: number = 1\n")
     const declaration = "export declare const value: number;\n"
@@ -35,6 +36,7 @@ async function check(code, diagnostic, { baselineEmit, migrated = true, expected
     await must("jj git init && jj config set --repo user.name test && jj config set --repo user.email test@localhost", { cwd: target })
     await Jj.commit(target, "original declaration input")
     const p = paths(run)
+    writeJson(join(p.baseline, "upstream-packs.json"), await packRepository({ target }, join(run, "baseline-packs")))
     writeJson(p.config, makeConfig({ target, test: "true", vibelangVersion: "0.0.11" }))
     if (baselineEmit) writeJson(p.setup, { declarations: { ".": baselineEmit } })
     writeJson(p.plan, { batches: [{ files: ["main.ts"] }] })
@@ -52,6 +54,7 @@ async function check(code, diagnostic, { baselineEmit, migrated = true, expected
       return
     }
     const result = await verify({ run, batch: "01" })
+    assert.equal(result.checks.packs, true, "emit failures are checked after valid publication prerequisites")
     assert.equal(result.checks.declarations, true, "the published APIs intentionally match")
     const emitOk = expectedEmit
     assert.equal(result.checks.declarationEmit, emitOk)

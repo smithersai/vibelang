@@ -79,13 +79,15 @@ test("one measurement job compares main and previous; a previous baseline cannot
   const root=mkdtempSync(join(tmpdir(),"migrate-driver-measure-"))
   try {
     const target=join(root,"repo"),run=join(root,"run"); mkdirSync(target)
-    put(target,"package.json",'{"type":"module"}')
+    put(target,"package.json",JSON.stringify(readJson(new URL("./corpus/smithers-driver-rules.json",import.meta.url)).measurementManifest))
     put(target,"a.test.mjs",'import {test} from "node:test";import assert from "node:assert/strict";test("contract",()=>assert.equal(1,1))')
     await must('jj git init && jj config set --repo user.name test && jj config set --repo user.email test@localhost && jj commit -m main && jj bookmark set main -r @-',{cwd:target})
     put(target,"a.test.mjs",'import {test} from "node:test";test("contract",()=>{throw Error("regression")})')
     await must('jj commit -m previous',{cwd:target})
     const config={target,packages:[{dir:"."}],install:"true",test:{command:"node --test --test-reporter=spec a.test.mjs",cwd:"."},main:"main"}
     const result=await measureTests(config,{run,batch:"01"})
+    assert.deepEqual(Object.keys(result.packs).sort(),["candidate","main","previous"])
+    assert.ok(Object.values(result.packs).every(receipt=>receipt.packages["."]))
     assert.equal(result.previous.ok,true)
     assert.equal(result.main.ok,false)
     assert.equal(result.ok,false)

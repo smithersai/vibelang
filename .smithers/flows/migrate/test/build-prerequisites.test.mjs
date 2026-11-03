@@ -12,7 +12,8 @@ async function fixture(root, fail = false) {
   const target=join(root,"repo"),toolchain=join(root,"toolchain")
   const put=(file,text)=>{mkdirSync(dirname(join(target,file)),{recursive:true});writeFileSync(join(target,file),text)}
   put("package.json",JSON.stringify({...corpus.root,...(fail?{scripts:{"build:packages":"node -e 'process.exit(7)'"}}:{})}))
-  put("bun.lock","")
+  // Keep Bun selected while giving its pack command a parseable lockfile.
+  put("bun.lock",JSON.stringify(corpus.lockfile))
   put(".gitignore","**/dist/\nnode_modules/\ntrace.log\n")
   put("packages/core/package.json",JSON.stringify({version:"1.0.0",...corpus.packages["packages/core"]}))
   put("packages/mcp/package.json",JSON.stringify({version:"1.0.0",...corpus.packages["packages/mcp"]}))

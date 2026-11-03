@@ -43,6 +43,8 @@ list is valid. Temporary discovery files are removed on success and failure.
 
 The `//:api-identity-test` target checks [published declaration identity](api-identity.md), including harmless rewrites and semantic mutations.
 
+Migration integration fixtures keep valid lockfile syntax and published package names and versions. Fixtures that bypass setup record real upstream pack receipts before checking declaration exits, build provenance or test regressions. Their pack commands must succeed before the intended checks run.
+
 The `//:release` target runs Node's test files with `--test-concurrency=8`.
 This bounds the number of simultaneous file workers independently of the host's
 CPU count and the graph's `--jobs` setting. Every selected file still runs,

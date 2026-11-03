@@ -34,5 +34,23 @@
     ],
     "stale": "old-server",
     "fresh": "original-server"
+  },
+  "lockfile": {
+    "lockfileVersion": 2,
+    "configVersion": 1,
+    "workspaces": {
+      "": {
+        "name": "foldkit-build-corpus"
+      },
+      "packages/core": {
+        "name": "@foldkit/vite-plugin",
+        "version": "1.0.0"
+      },
+      "packages/mcp": {
+        "name": "@foldkit/devtools-mcp",
+        "version": "1.0.0"
+      }
+    },
+    "packages": {}
   }
 }

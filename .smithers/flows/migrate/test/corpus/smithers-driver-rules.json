@@ -5,5 +5,6 @@
   "textAssertion": "assert.match(readFileSync(new URL(\"../src/a.ts\", import.meta.url), \"utf8\"), /export/)",
   "testRegression": {"main": {"contract": "passed"}, "previous": {"contract": "failed"}, "candidate": {"contract": "failed"}},
   "timeout": "A config whose --fix timed out receives no further --fix in the same pass.",
-  "declaration": "Every baseline and candidate declaration emit uses --singleThreaded."
+  "declaration": "Every baseline and candidate declaration emit uses --singleThreaded.",
+  "measurementManifest": {"name": "smithers-measurement-fixture", "version": "1.0.0", "type": "module"}
 }
