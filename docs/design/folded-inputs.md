@@ -83,3 +83,15 @@ Folded: 1793683286-fixscope-alchemy.patch (applied at docs/design/src/007-toolin
 Folded: 1793657811-trailing-blocks-final.patch (already stated at docs/design/src/007-tooling.md:237)
 
 VIP-34’s write boundary and VIP-11’s denied trailing blocks remain intact. The selected-file option affects repair writes, not the compiler’s normal declaration emission.
+
+## fold resolution migration and package declaration layout
+
+Folded: 1793633870-resolve-like-tsc.patch (applied at docs/design/src/007-tooling.md:118)
+
+Folded: 1793689889-flow-sidecar-pack.patch (applied at docs/design/src/007-tooling.md:124)
+
+Folded: sidecar-outside-root.patch (already stated at docs/design/src/007-tooling.md:54)
+
+Folded: 1793693984-sl18-fix-astra-3.patch (already stated at docs/design/src/007-tooling.md:54)
+
+Will’s module-resolution ruling and VIP-27 govern the simplified text. Sidecar ownership/root inference was already present. The old source-extension rewriting prose is superseded: tsc 5.9.3 declaration emit preserves a written ./dep.ts with rewriteRelativeImportExtensions=true; the VibeLang twin preserves ./dep.vibe. JavaScript rewriting is separate. Generated old-resolution tables are not restored as normative chapters.

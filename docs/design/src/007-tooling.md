@@ -115,9 +115,13 @@ The configured category controls reporting: an `"error"` makes both `vibelang` a
 
 The retired `trustedPackages` key is ignored in `vibe` and every supported legacy section (VIP-4, amended 2026-11-02), with warning `EK3010`. Remove it: npm functions follow the same foreign-callable contract as local TypeScript, including `unknown` when no `@throws` is written; use a signature contract or an explicit `Effect.try` bridge. Module resolution follows TypeScript's tsconfig-driven rules, with `.vibe` and `.vibex` as source extensions beside `.ts` and `.tsx`: under NodeNext `./user.js` resolves to `user.vibe`, and a written `./x.ts` finds only `x.ts`, so a stale one is `TS2307`. Migration never writes `moduleSuffixes`.
 
+The migration ships before enforcement: `vibelang --fix` repairs stale relative `.ts` names in the selected project's own VibeLang sources. `node scripts/migrate-stale-specifiers.mjs` repairs the repository corpus, including foreign importers, without renaming modules or applying other language migrations. Native TypeScript implementations stay native. Emitted JavaScript and declarations do not mask an available VibeLang source. The repair honors `rootDirs` and `moduleSuffixes`, so a migrated `user.native.vibe` is found through the same configured suffixes and native matches still win. With `rewriteRelativeImportExtensions`, the repair names `.vibe` or `.vibex`; a type-only project allowing source extensions can also use those names. Otherwise it names the actual runtime output, `.js` (or `.jsx` for a JSX-preserving target). The migrate flow uses the same project policy for newly renamed modules. An unresolved name without a migrated sibling stays unresolved. Run the repair before upgrading to the resolver that rejects stale native extensions.
+
 ### Declaration import spelling
 
 Declaration import spelling follows TypeScript's source and tsconfig rules ([Declaration output](001-functions.md#declaration-output)). `declarationImportStyle` is retired: root `vibelang.declarationImportStyle` and `compilerOptions.vibelang.declarationImportStyle` are ignored with a nonfatal deprecation warning for every value, including invalid values (VIP-30, amended). No replacement option or spelling codemod is needed.
+
+A published package carries JavaScript and ordinary `.d.ts` files. Compatibility `*.d.vibe.ts` and `*.d.vibex.ts` sidecars serve source tools and do not ship; published type exports point at the build’s ordinary declarations.
 
 ### Legacy severity maps
 
