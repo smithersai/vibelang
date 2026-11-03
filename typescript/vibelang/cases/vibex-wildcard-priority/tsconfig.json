@@ -1,0 +1,19 @@
+{
+  "compilerOptions": {
+    "target": "es2022",
+    "module": "nodenext",
+    "moduleResolution": "nodenext",
+    "jsx": "react",
+    "allowJs": true,
+    "strict": true,
+    "types": [],
+    "skipLibCheck": true,
+    "outDir": "out"
+  },
+  "include": [
+    "App.*"
+  ],
+  "exclude": [
+    "*.d.vibex.ts"
+  ]
+}

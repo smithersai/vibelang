@@ -38,6 +38,8 @@ VibeLang discovers `vibe.config.json`, `tsconfig.json`, then `jsconfig.json`, in
 
 If the project has a `tsconfig.json`, keep it and check that `include` selects `.vibe` files: a directory entry such as `"src"` does; a glob such as `"src/**/*.ts"` does not, so add `"src/**/*.vibe"` beside it.
 
+Wildcard input discovery prefers `.ts`, `.tsx`, `.vibe`, then `.vibex` implementations before ordinary `.d.ts` and JavaScript files with the same stem. This keeps existing output files from hiding their source. A `files` list keeps every explicitly named input, following TypeScript's rules.
+
 Ordinary relative config paths stay relative to the config that declares them. In supported path fields, `${configDir}` uses the selected project config’s directory even when inherited: a base config’s `"outDir": "${configDir}/dist"` gives each extending project its own `dist` directory.
 
 Every source `.vibe` file has its own module scope, including when `moduleDetection` is `"legacy"` or both `vibe.effectGlobals` and `vibe.effectModules` are `false`. Share a value through an explicit `export` and `import`. The option retains its TypeScript meaning for `.ts` and `.js` files.

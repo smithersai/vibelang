@@ -27,8 +27,8 @@ var (
 	SupportedDeclarationExtensions                 = []string{ExtensionDts, ExtensionDcts, ExtensionDmts}
 	SupportedTSImplementationExtensions            = []string{ExtensionTs, ExtensionTsx, ExtensionMts, ExtensionCts, ExtensionVibe, ExtensionVibex}
 	supportedTSExtensionsForExtractExtension       = []string{ExtensionDts, ExtensionDcts, ExtensionDmts, ExtensionTs, ExtensionTsx, ExtensionMts, ExtensionCts, ExtensionVibe, ExtensionVibex}
-	AllSupportedExtensions                         = [][]string{{ExtensionTs, ExtensionTsx, ExtensionDts, ExtensionJs, ExtensionJsx, ExtensionVibe, ExtensionVibex}, {ExtensionCts, ExtensionDcts, ExtensionCjs}, {ExtensionMts, ExtensionDmts, ExtensionMjs}}
-	SupportedTSExtensions                          = [][]string{{ExtensionTs, ExtensionTsx, ExtensionDts, ExtensionVibe, ExtensionVibex}, {ExtensionCts, ExtensionDcts}, {ExtensionMts, ExtensionDmts}}
+	AllSupportedExtensions                         = [][]string{{ExtensionTs, ExtensionTsx, ExtensionVibe, ExtensionVibex, ExtensionDts, ExtensionJs, ExtensionJsx}, {ExtensionCts, ExtensionDcts, ExtensionCjs}, {ExtensionMts, ExtensionDmts, ExtensionMjs}}
+	SupportedTSExtensions                          = [][]string{{ExtensionTs, ExtensionTsx, ExtensionVibe, ExtensionVibex, ExtensionDts}, {ExtensionCts, ExtensionDcts}, {ExtensionMts, ExtensionDmts}}
 	SupportedTSExtensionsFlat                      = []string{ExtensionTs, ExtensionTsx, ExtensionDts, ExtensionCts, ExtensionDcts, ExtensionMts, ExtensionDmts, ExtensionVibe, ExtensionVibex}
 	SupportedJSExtensions                          = [][]string{{ExtensionJs, ExtensionJsx}, {ExtensionMjs}, {ExtensionCjs}}
 	SupportedJSExtensionsFlat                      = []string{ExtensionJs, ExtensionJsx, ExtensionMjs, ExtensionCjs}
