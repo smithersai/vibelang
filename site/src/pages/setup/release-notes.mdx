@@ -174,6 +174,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - JavaScript launch scripts could fail strict `checkJs` after setup inserted a source-child helper. Generated JavaScript now keeps the helper’s parameter and tuple types, preserves native declarations, and retains readable spacing.
 
+- A denied trailing block reported `TS1005` beside `EK1101` at the same brace; the compiler now omits that duplicate separator error while retaining independent syntax errors and preserving quick fixes.
+
 - Release validation rejected the VIP-7 reference tests because they had no runner; `//:release` now checks parallel installation and cleanup after a failed install.
 
 - The migration namespace corpus quoted a declaration-import-style guarantee removed from the specification, so its citation check failed. It now cites the current module-identity wording.

@@ -1,0 +1,9 @@
+main.vibe(9,45): error EK1101
+main.vibe(10,43): error EK1101
+main.vibe(11,41): error EK1101
+main.vibe(11,50): error TS1005
+main.vibe(11,65): error TS1005
+main.vibe(11,73): error TS1128
+main.vibe(11,75): error TS1128
+main.vibe(12,49): error EK1101
+main.vibe(13,49): error EK1101

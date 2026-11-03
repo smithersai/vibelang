@@ -419,3 +419,84 @@ func TestTrailingBlockFinalizedHost(t *testing.T) {
 		t.Fatalf("finalized snapshot lost EK1101: %v", diagnostics)
 	}
 }
+
+// VIP-11 suppresses only a redundant missing separator at the rejected brace.
+func TestTrailingBlockRecoverySeparator(t *testing.T) {
+	for _, source := range []string{
+		"export const n = twice() { return 2 }",
+		"export const n = [twice() { return 2 }]",
+		"export const n = twice() { return 2 }; export const bad = ;",
+	} {
+		t.Run(source, func(t *testing.T) {
+			p, file, _, _ := editorProgram(t, trailingBlockPrelude+source)
+			diags := p.GetSyntacticDiagnostics(t.Context(), file)
+			braces := map[int]bool{}
+			for _, d := range diags {
+				if d.Source() == diagnosticSource && d.Code() == EK1101.Code {
+					braces[d.Pos()] = true
+				}
+			}
+			if len(braces) == 0 {
+				t.Fatal("lost EK1101")
+			}
+			nativeCount := 0
+			for _, d := range file.Diagnostics() {
+				args := d.MessageArgs()
+				if d.Code() == 1005 && len(args) == 1 && (args[0] == ";" || args[0] == ",") && braces[d.Pos()] {
+					nativeCount++
+				}
+			}
+			if nativeCount == 0 {
+				t.Fatal("witness has no native separator; do not mutate the parser diagnostics")
+			}
+			for _, d := range diags {
+				args := d.MessageArgs()
+				if d.Source() == "" && d.Code() == 1005 && len(args) == 1 && (args[0] == ";" || args[0] == ",") && braces[d.Pos()] {
+					t.Errorf("duplicate separator beside EK1101: %v", d)
+				}
+			}
+			if strings.Contains(source, "bad = ;") {
+				found := false
+				for _, d := range diags {
+					if d.Source() == "" && d.Code() == 1109 {
+						found = true
+					}
+				}
+				if !found {
+					t.Fatal("lost independent TS1109")
+				}
+			}
+		})
+	}
+}
+
+func TestTrailingBlockRecoveryKeepsIndependentNativeErrors(t *testing.T) {
+	for _, source := range []string{
+		"export const n = 1 export const m = 2",
+		"effect function main() { with Layer.empty {} }",
+	} {
+		t.Run(source, func(t *testing.T) {
+			p, file, _, _ := editorProgram(t, trailingBlockPrelude+source)
+			diags := p.GetSyntacticDiagnostics(t.Context(), file)
+			checked := 0
+			for _, native := range file.Diagnostics() {
+				if native.Code() != 1005 {
+					continue
+				}
+				checked++
+				found := false
+				for _, d := range diags {
+					if d.Source() == native.Source() && d.Code() == native.Code() && d.Loc() == native.Loc() && d.String() == native.String() {
+						found = true
+					}
+				}
+				if !found {
+					t.Errorf("lost independent native error: %v", native)
+				}
+			}
+			if checked == 0 {
+				t.Fatal("witness has no independent native TS1005")
+			}
+		})
+	}
+}

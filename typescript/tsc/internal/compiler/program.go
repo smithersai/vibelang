@@ -812,7 +812,7 @@ func (p *Program) GetSyntacticDiagnostics(ctx context.Context, sourceFile *ast.S
 			diags = append(diags, getAdditionalJSSyntacticDiagnostics(file, p.Options())...)
 		}
 		for _, hook := range syntacticDiagnosticsHooks {
-			diags = slices.Concat(diags, hook(ctx, p, file))
+			diags = hook(ctx, p, file, diags)
 		}
 		return diags
 	})

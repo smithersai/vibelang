@@ -77,9 +77,9 @@ func trailingBlockBrace(file *ast.SourceFile, call *ast.Node) core.TextRange {
 // deniedTrailingBlockDiagnostics runs before the CLI's native syntax-error
 // short circuit. The migration program computes the original typed message;
 // its AST never enters ordinary checking or emit.
-func deniedTrailingBlockDiagnostics(ctx context.Context, program *compiler.Program, file *ast.SourceFile) []*ast.Diagnostic {
+func deniedTrailingBlockDiagnostics(ctx context.Context, program *compiler.Program, file *ast.SourceFile, native []*ast.Diagnostic) []*ast.Diagnostic {
 	if file.ParseOptions().VibeLangLegacyTrailingBlocks || !file.VibeLangDeniedTrailingBlock {
-		return nil
+		return native
 	}
 	migration := trailingBlockMigrationProgram(program)
 	legacy := migration.GetSourceFile(file.FileName())
@@ -91,7 +91,24 @@ func deniedTrailingBlockDiagnostics(ctx context.Context, program *compiler.Progr
 			result = append(result, copied)
 		}
 	}
-	return result
+	// VIP-11 rejects this brace once. Only a semicolon/comma recovery
+	// diagnostic at that same brace is redundant. Parentheses, colons and
+	// errors elsewhere still describe independent native syntax failures.
+	braces := map[int]bool{}
+	for _, d := range result {
+		if d.Source() == diagnosticSource && d.Code() == EK1101.Code {
+			braces[d.Pos()] = true
+		}
+	}
+	combined := make([]*ast.Diagnostic, 0, len(native)+len(result))
+	for _, d := range native {
+		args := d.MessageArgs()
+		separator := d.Source() == "" && d.Code() == 1005 && len(args) == 1 && (args[0] == ";" || args[0] == ",")
+		if !separator || !braces[d.Pos()] {
+			combined = append(combined, d)
+		}
+	}
+	return append(combined, result...)
 }
 
 func checkTrailingBlocks(c *checker.Checker, file *ast.SourceFile) {

@@ -304,6 +304,7 @@ func FuzzTrailingBlocks(f *testing.F) {
 			defer r.Remove()
 			count := 0
 			seen := map[int]bool{}
+			seenBraces := map[string]bool{}
 			brace := strings.Index(source, expr) + len(head) + len(separator)
 			for _, d := range r.Diagnostics {
 				if IsEK(d) && d.Code() == 1101 && d.Category() == diagnostics.CategoryError {
@@ -312,6 +313,9 @@ func FuzzTrailingBlocks(f *testing.F) {
 						Gap(t, "FuzzTrailingBlocks", "range:duplicate:"+key, "Appendix B: each retired brace has one EK1101; duplicate at %d", d.Pos())
 					}
 					seen[d.Pos()] = true
+					if d.File() != nil {
+						seenBraces[fmt.Sprintf("%s:%d", d.File().FileName(), d.Pos())] = true
+					}
 					expectedBrace := d.Pos() == brace
 					if wantCount == 2 {
 						nested := strings.Index(source[brace+1:], "{") + brace + 1
@@ -320,6 +324,12 @@ func FuzzTrailingBlocks(f *testing.F) {
 					if !expectedBrace || d.End() != d.Pos()+1 {
 						Gap(t, "FuzzTrailingBlocks", "range:"+key, "Appendix B: %s; EK1101 range %d:%d, want %d:%d\n%s", trailingBlocksQuote, d.Pos(), d.End(), brace, brace+1, source)
 					}
+				}
+			}
+			for _, d := range r.Diagnostics {
+				args := d.MessageArgs()
+				if !IsEK(d) && d.Code() == 1005 && len(args) == 1 && (args[0] == ";" || args[0] == ",") && d.File() != nil && seenBraces[fmt.Sprintf("%s:%d", d.File().FileName(), d.Pos())] {
+					Gap(t, "FuzzTrailingBlocks", "separator:"+key, "VIP-11: %s; duplicate native separator at EK1101 brace: %v", trailingBlocksSeparatorQuote, d)
 				}
 			}
 			if count != wantCount {
