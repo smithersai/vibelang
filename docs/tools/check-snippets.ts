@@ -171,6 +171,13 @@ export function markdownPages(root: string): string[] {
   return [...new Set(pages)].sort()
 }
 
+// Validate the page selection before setup or replacing earlier receipts.
+export function selectedMarkdownPages(root: string, filter: string): string[] {
+  const pages = markdownPages(root).filter(page => relative(root, page).includes(filter))
+  if (!pages.length) throw new Error("No Markdown pages match " + (filter ? "--filter " + JSON.stringify(filter) : "--root"))
+  return pages
+}
+
 // An explicit compiler wins, then the native checkout build and the legacy build.
 // Keep the missing native path so callers fail instead of checking another build on PATH.
 export function defaultCompiler(): string {
@@ -580,6 +587,7 @@ async function main() {
   const retire = args.includes("--retire-pending")
   if (!Number.isSafeInteger(timeout) || timeout <= 0) throw new Error("--timeout must be a positive integer in milliseconds")
   if (args.some(a => a !== "--keep" && a !== "--run" && a !== "--retire-pending")) throw new Error(`Unknown argument: ${args.join(" ")}`)
+  const selectedPages = selectedMarkdownPages(root, filter)
   // The compiler reports paths relative to its physical cwd. Keep diagnostic
   // ownership stable when TMPDIR reaches that cwd through a symlink.
   const temp = mkdtempSync(join(realpathSync(tmpdir()), "vibelang-docs-"))
@@ -587,7 +595,7 @@ async function main() {
   try {
     const { runtime, effect } = linkModules(temp)
     console.log(`Compiler: ${Bun.which(compiler) ?? compiler}\nRuntime: ${runtime}\nEffect: ${effect}`)
-    const sources = markdownPages(root).filter(p => relative(root, p).includes(filter)).map(page => ({
+    const sources = selectedPages.map(page => ({
       page, blocks: extract(readFileSync(page, "utf8"), { inlineExamples: [join(repo, "docs/user/llms-essentials.md"), join(repo, "templates/app/AGENTS.md")].includes(page) })
     })).filter(({ blocks }) => blocks.length)
     let retired = 0

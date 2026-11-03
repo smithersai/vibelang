@@ -5,7 +5,7 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "nod
 import { tmpdir } from "node:os"
 import { join, relative, resolve } from "node:path"
 import { createRequire } from "node:module"
-import { classify, command, defaultCompiler, extract, linkModules, markdownPages, parseDiagnostics, runBlock, writeProject, type Block, type Result } from "./check-snippets"
+import { classify, command, defaultCompiler, extract, linkModules, selectedMarkdownPages, parseDiagnostics, runBlock, writeProject, type Block, type Result } from "./check-snippets"
 
 const repo = resolve(import.meta.dir, "../..")
 const ts = () => createRequire(join(repo, "experiments/package.json"))("typescript") as typeof import("../../experiments/node_modules/typescript")
@@ -242,11 +242,12 @@ async function main() {
   const allFixes = args.includes("--all-fixes")
   const vip = args.includes("--vip") // the VIP rewrites alone: vibelang --fix-vip-only
   if (args.some(arg => arg !== "--check" && arg !== "--all-fixes" && arg !== "--vip")) throw new Error(`Unknown argument: ${args.join(" ")}`)
+  const selectedPages = selectedMarkdownPages(root, filter)
   const temp = mkdtempSync(join(tmpdir(), "vibelang-fix-snippets-"))
   let changed = 0, refused = 0, blocks = 0
   try {
     linkModules(temp)
-    for (const [index, page] of markdownPages(root).filter(page => relative(root, page).includes(filter)).entries()) {
+    for (const [index, page] of selectedPages.entries()) {
       const markdown = readFileSync(page, "utf8")
       if (!extract(markdown).length) continue
       const dir = join(temp, String(index))

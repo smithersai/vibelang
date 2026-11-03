@@ -67,6 +67,7 @@ checkout compiler; run `sh scripts/build-vibelang.sh` first. These tools never
 fall back to `vibelang` on `PATH`, including hover generation, snippet fixes
 and `--run` execution. An explicit compiler option can select an installed
 release. `--filter text` selects pages, and `--json path` writes diagnostics with Markdown line numbers.
+Both snippet commands exit `2` if the root contains no Markdown pages or the filter matches none, before dependency setup or writing receipts. A selected prose page with no code is allowed.
 Temporary files are removed on success and failure; `--keep` preserves the
 temporary projects for debugging. Compiler crashes, missing runtime builds, and
 project configuration errors exit 2. Snippet failures exit 1.
