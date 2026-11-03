@@ -503,6 +503,8 @@ await main()                    // EK0103: the Effect would never run
 
 A `.vibe` or `.vibex` file may hold TypeScript inline ([VIP-40](../vips/0040-module-declarations.md)). `module name { … }` is a [ModuleDeclaration](900-appendices.md#moduledeclaration) at the file's top level. Its body is a TypeScript file stored in the `.vibe` file: moving it to a sibling `.ts` file and replacing `from name` with that file's specifier changes no diagnostic, type, emitted statement, declaration or run-time observation. So a body is `.ts`, or `.tsx` in a `.vibex` file, under the project's `compilerOptions`; it may `throw`, use `node:*` and legacy JavaScript; and it sees none of the file's names. It evaluates once, in import order, only when imported for a value. No VibeLang rule runs on it, except the three below.
 
+Body outputs use the source file's full basename, including `.vibe` or `.vibex`, followed by `.` and the encoded module name. Encoding keeps `a`–`z`, `0`–`9` and `_`; every other Unicode code point becomes `-`, its code point in lowercase hexadecimal without leading zeros, and `-`, without case folding or Unicode normalization. The identifier's decoded name is encoded, so escapes and literal characters agree. Thus `module Über` in `main.vibex` has stem `main.vibex.-dc-ber`. JavaScript, declarations, maps and loader requests share that stem; [VIP-40](../vips/0040-module-declarations.md#emit-declarations-source-maps) specifies the output suffixes.
+
 ```vibe es
 // compiler-gap: pending VIP-40
 module parse {
