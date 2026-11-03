@@ -23,6 +23,7 @@ import (
 // An input is "<owner>:<position>:<options>"; other bytes pick by index.
 func FuzzVIPLegacyForkOptions(f *testing.F) {
 	startShortBudget(f)
+	legacyForkOptionsQuoted(f)
 	for _, owner := range slices.Sorted(maps.Keys(legacyForkOwners)) {
 		for _, position := range slices.Sorted(maps.Keys(legacyForkPositions)) {
 			for _, options := range slices.Sorted(maps.Keys(legacyForkOptions)) {
@@ -70,6 +71,10 @@ func FuzzVIPLegacyForkOptions(f *testing.F) {
 // legacyForkOwners hold BODY: each is a function the old compiler made an
 // Effect function from its return type.
 var legacyForkOwners = map[string]string{
+	"marked-arrow":       "export const g = effect (n: number): number!! => {\nBODY\n}\n",
+	"marked-declaration": "export effect function g(n: number): number!! {\nBODY\n}\n",
+	"marked-field-arrow": "export const api = {\n  g: effect (n: number): number!! => {\nBODY\n  },\n}\n",
+
 	"annotated-arrow": "export const g = (n: number): number!! => {\nBODY\n}\n",
 	"declaration":     "export function g(n: number): number!! {\nBODY\n}\n",
 	"field-arrow":     "export const api = {\n  g: (n: number): number!! => {\nBODY\n  },\n}\n",
@@ -115,3 +120,14 @@ func legacyForkInput(data []byte) (key, source string) {
 	}
 	return strings.Join(parts, ":"), legacyForkHelpers + strings.ReplaceAll(legacyForkOwners[parts[0]], "BODY", body)
 }
+
+const legacyForkOptionsQuote = "writes `try Effect.forkChild(program, options)` for the legacy `fork(program, options)`."
+
+func legacyForkOptionsQuoted(t testing.TB) {
+	t.Helper()
+	if !strings.Contains(SpecText("007-tooling.md"), legacyForkOptionsQuote) {
+		t.Fatalf("007-tooling.md no longer contains migration oracle %q", legacyForkOptionsQuote)
+	}
+}
+
+func TestVIPLegacyForkOptionsQuoted(t *testing.T) { legacyForkOptionsQuoted(t) }

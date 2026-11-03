@@ -1089,3 +1089,40 @@ func legacyValueReceiverCall(a *analyzer, call *ast.Node) bool {
 	}
 	return false
 }
+
+// keywordForkOptions recognizes a legacy two-argument fork call after an earlier
+// migration already marked its owner effect. The parser now reserves fork and
+// reads its parentheses as one comma operand, optionally continued by a member.
+func (m *legacyModel) keywordForkOptions(call *ast.Node) (program, options, arguments *ast.Node) {
+	if !ast.IsCallExpression(call) || len(call.Arguments()) != 1 {
+		return nil, nil, nil
+	}
+	callee := call.Expression()
+	if !ast.IsIdentifier(callee) || callee.Text() != "fork" || callee.Flags&ast.NodeFlagsVibeLangIntrinsic == 0 {
+		return nil, nil, nil
+	}
+	operand := call.Arguments()[0]
+	for ast.IsPropertyAccessExpression(operand) || ast.IsElementAccessExpression(operand) {
+		if ast.IsOptionalChain(operand) {
+			return nil, nil, nil
+		}
+		operand = operand.Expression()
+	}
+	if !ast.IsParenthesizedExpression(operand) {
+		return nil, nil, nil
+	}
+	comma := ast.SkipParentheses(operand)
+	if !ast.IsBinaryExpression(comma) || comma.AsBinaryExpression().OperatorToken.Kind != ast.KindCommaToken {
+		return nil, nil, nil
+	}
+	left, right := comma.AsBinaryExpression().Left, comma.AsBinaryExpression().Right
+	// Three arguments are not the legacy overload. A parenthesized comma
+	// inside the first argument is still that one argument.
+	if ast.IsBinaryExpression(left) && left.AsBinaryExpression().OperatorToken.Kind == ast.KindCommaToken {
+		return nil, nil, nil
+	}
+	if !isEffectType(m.a.checker, m.a.checker.GetTypeAtLocation(left)) || isEffectType(m.a.checker, m.a.checker.GetTypeAtLocation(right)) {
+		return nil, nil, nil
+	}
+	return left, right, operand
+}

@@ -119,6 +119,30 @@ func tryEdits(c *checker.Checker, file *ast.SourceFile, unmatched map[int]bool) 
 			edits = append(edits, sourceEdit{at, scanner.SkipTrivia(text, at+len("try")), ""})
 			return node.ForEachChild(visit)
 		}
+
+		if program, options, arguments := m.keywordForkOptions(node); program != nil {
+			start := scanner.SkipTrivia(text, node.Expression().Pos())
+			run, reason := legacyEffectPosition(a, node, effectCodeOwner(node))
+			if reason != "" {
+				refusals = append(refusals, tryRefusal{start, reason})
+				return node.ForEachChild(visit)
+			}
+			open := "Effect.forkChild"
+			if run == legacyRan && node.Flags&ast.NodeFlagsVibeLangTry == 0 && !tried(node) {
+				open = "try " + open
+				if arguments.End() < node.End() {
+					open = "(" + open
+					edits = append(edits, sourceEdit{arguments.End(), arguments.End(), ")"})
+				}
+			}
+			insert(start, open)
+			edits[opens[start]].end = node.Expression().End()
+			// The first argument is the held program. Its call itself gets no
+			// try; calls in its inputs are still checked by the legacy model.
+			program.ForEachChild(visit)
+			visit(options)
+			return false
+		}
 		if m.forkWithOptions(node) {
 			start := scanner.SkipTrivia(text, node.Pos())
 			run, reason := legacyNoRun, ""

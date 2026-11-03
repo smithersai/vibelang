@@ -319,3 +319,8 @@ Inferred parameter types of retained SDK error constructors keep their Effect na
 `vibelang --fix` shortens an `Effect.member(...)` call when the bare name resolves to the same available Effect export. It keeps qualified calls when a value shadows that name, when `vibe.effectGlobals` is `false`, or when shortening would remove a prefix comment. A function value such as `const run = Effect.retry` keeps its spelling. Native TypeScript module bodies are left unchanged, and imports needed by declaration sidecars stay even when `declaration` is `false`.
 
 A generic assertion such as `expect(awaited(p))` in effect code reports `EK4802` when `awaited(p)` returns an Effect: the assertion would receive the unrun program. Write `expect(try awaited(p))` to inspect its result; `--fix` applies this direct-argument repair when its failure and requirement contract fits. To inspect the program object intentionally, write `expect<Effect.Effect<number>>(e)`. Generic arrays, Promises and callback contracts also report the warning; run their Effects where those values are constructed.
+
+The pre-VIP-1 migration repairs a legacy `fork(program, options)` even when an
+earlier pass already marked its function `effect`: it writes
+`try Effect.forkChild(program, options)`. A single-operand `fork program`
+keeps its operator form.
