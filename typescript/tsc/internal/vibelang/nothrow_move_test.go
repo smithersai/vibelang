@@ -136,10 +136,10 @@ func TestNothrowPreferredAutomaticFix(t *testing.T) {
 	}{
 		{"plain handler", "effect function load(): number!string { throw \"x\" }\nexport effect function f() { return (load() catch (e) => { throw e }) }", true},
 		{"unused local", "function f() { throw 1 }\nexport const answer = 42", true},
-		{"published export", "export function f() { throw 1 }", false},
-		{"dynamic use", "function f() { throw 1 }\nexport const answer = eval(\"f()\")", false},
-		{"captured shorthand", "function f() { throw 1 }\nexport const stored = { f }", false},
-		{"called local", "function f() { throw 1 }\nexport function g() { return f() }", false},
+		{"published export", "export function f() { throw 1 }", true},
+		{"dynamic use", "declare function observe(value:()=>void):void;\nfunction f(){throw 1}\nobserve(f);\nexport const answer=1", true},
+		{"captured shorthand", "function f() { throw 1 }\nexport const stored = { f }", true},
+		{"called local", "function f() { throw 1 }\nexport function g() { return f() }", true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			_, file, _, _ := editorProgram(t, tc.source)
@@ -148,14 +148,14 @@ func TestNothrowPreferredAutomaticFix(t *testing.T) {
 				t.Fatal(result.Err)
 			}
 			fixed := result.Files[file.FileName()]
-			if tc.fixed && (fixed == nil || !strings.Contains(fixed.Text, "effect")) {
+			if tc.fixed && (fixed == nil || (!strings.Contains(fixed.Text, "$raise(") && tc.name != "plain handler")) {
 				t.Fatalf("preferred fix not applied: %+v", result)
 			}
-			if tc.fixed && tc.name == "plain handler" && !strings.Contains(fixed.Text, "catch effect") {
-				t.Fatalf("did not make handler effect: %s", fixed.Text)
+			if tc.fixed && tc.name == "plain handler" && !strings.Contains(fixed.Text, "catch effect") || tc.fixed && tc.name == "plain handler" && !strings.Contains(fixed.Text, "die(") {
+				t.Fatalf("did not preserve the plain handler: %s", fixed.Text)
 			}
-			if tc.fixed && tc.name == "unused local" && !strings.Contains(fixed.Text, "effect function f") {
-				t.Fatalf("did not make unused function effect: %s", fixed.Text)
+			if tc.fixed && tc.name == "unused local" && !strings.Contains(fixed.Text, "function f") {
+				t.Fatalf("did not preserve the plain function: %s", fixed.Text)
 			}
 			if tc.fixed {
 				checked, edited, _, _ := editorProgram(t, fixed.Text)

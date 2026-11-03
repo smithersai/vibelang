@@ -1686,10 +1686,18 @@ func fileFixes(ctx context.Context, program *compiler.Program, file *ast.SourceF
 		key := fixKey(file, d)
 		if d.Code() == EK0401.Code {
 			site := reportedNode(file, core.NewTextRange(d.Pos(), d.End()), func(n *ast.Node) bool {
-				return n.Kind == ast.KindThrowStatement || ast.IsCallExpression(n) || ast.IsNewExpression(n)
+				return n.Kind == ast.KindThrowStatement || ast.IsCallExpression(n) && !isProgramArrow(ast.SkipParentheses(n.Expression())) || ast.IsNewExpression(n)
 			})
 			c, done := program.GetTypeCheckerForFile(ctx, file)
-			safe := site != nil && automaticNothrowFix(c, file, site)
+			safe := site != nil && site.Kind != ast.KindThrowStatement && automaticNothrowFix(c, file, site)
+			if site != nil && !refused[key] {
+				if candidate, ok := preservingThrowFix(c, file, site, key); ok {
+					candidate.siteStart, candidate.siteEnd = d.Pos(), d.End()
+					candidates = append(candidates, candidate)
+					done()
+					continue
+				}
+			}
 			done()
 			if !safe {
 				declined = append(declined, declinedSite{d.Pos(), d.End(), d.Code(), key, "requires an explicit effect or TypeScript-file migration"})
