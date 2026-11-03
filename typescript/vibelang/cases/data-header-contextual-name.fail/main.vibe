@@ -1,0 +1,3 @@
+// expect: EK1604
+const data=1; type T=number; data as T;
+export {}

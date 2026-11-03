@@ -6,6 +6,8 @@ A `data` declaration declares a tagged union: Effect's own `Data.TaggedEnum` typ
 
 ## Declaring tagged unions with data
 
+A `data` declaration always needs a variant body. A same-line name starts the declaration, including `as`, `satisfies`, and `is`, so a bare `data as T;`, `data satisfies T;`, or `data is Number;` reports `EK1604`. Write `(data as T);`, `(data satisfies T);`, or `(data is Number);` for an expression statement; `vibelang --fix` adds these parentheses while preserving the expression. Assertions and pattern tests in initializers and after `return` work as usual. Type parameters and the body may follow the name on later lines.
+
 ```vibe
 // run: try Console.log(describe(Delivery.Waiting())); try Console.log(describe(sent)); try Console.log(describe(Delivery.Rejected({ reason: "address missing" }))); try Console.log(Equal.equals(sent, Delivery.Sent({ tracking: "parcel-8" })))
 data Delivery {

@@ -57,11 +57,6 @@ func (p *Parser) scanStartOfVibeLangDeclaration() bool {
 	if p.token == ast.KindClassKeyword {
 		return word == "service" || word == "control"
 	}
-	if word == "data" {
-		// data Name, then { or <: data as T and data satisfies T stay
-		// expressions (vibelang_data.go).
-		return p.scanDataName()
-	}
 	return p.isIdentifier()
 }
 

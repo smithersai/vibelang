@@ -79,7 +79,7 @@ var specAhead = map[int32]string{
 	// Assigned by the round-20 spec for decided detail 100 (an extractor on a class without its own matcher).
 
 	// Incomplete custom declaration forms have assigned diagnostics before compiler registration.
-	1503: renumbering, 1604: renumbering,
+	1503: renumbering,
 	// Missing member separators in VibeLang declaration bodies have assigned diagnostics before compiler registration.
 	1504: renumbering,
 	// Decided details 122/130 reserve a separate code for Data.taggedEnum helper variant names.

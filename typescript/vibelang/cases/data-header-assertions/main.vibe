@@ -1,0 +1,7 @@
+const data=1;
+type T=number;
+(data as T);
+(data satisfies T);
+function read() { return data as T }
+export const result = [data as T, data satisfies T, read()];
+export const matched = (data is Number);

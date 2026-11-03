@@ -1677,6 +1677,14 @@ func (p proposal) text() string {
 // diagnostic of file, one of codes, and applies the fixes whose edits do
 // not overlap.
 func fileFixes(ctx context.Context, program *compiler.Program, file *ast.SourceFile, refused map[string]bool, codes []int32) proposal {
+	if slices.Contains(codes, EK1604.Code) {
+		if edits := dataHeaderExpressionEdits(file, nil); len(edits) > 0 {
+			key := "data-expression:" + file.Text()
+			if !refused[key] {
+				return proposal{file: file, fixes: []fileFix{{code: EK1604.Code, edits: edits, key: key}}}
+			}
+		}
+	}
 	var fixable []*ast.Diagnostic
 	// Some VibeLang syntax errors have a recovered tree and an insertion-only
 	// fix. Keep those fixes available when type checking is disabled, too.

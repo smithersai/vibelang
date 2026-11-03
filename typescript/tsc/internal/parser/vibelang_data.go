@@ -69,6 +69,9 @@ func (p *Parser) scanDataName() bool {
 	return p.token == ast.KindOpenBraceToken || p.token == ast.KindLessThanToken
 }
 
+const VibeLangDataMissingBodyCode int32 = 1604
+const VibeLangDataMissingBodyMessage = "A data declaration needs a variant body. Write data Name { variants }, even when the body is empty."
+
 // parseDataDeclaration parses data Name<T> { Variant; Variant { fields } }.
 func (p *Parser) parseDataDeclaration(pos int, jsdoc jsdocScannerInfo, modifiers *ast.ModifierList) *ast.Node {
 	keyword := p.tokenRange()
@@ -81,7 +84,8 @@ func (p *Parser) parseDataDeclaration(pos int, jsdoc jsdocScannerInfo, modifiers
 	if p.token == ast.KindOpenBraceToken {
 		form.Open = p.tokenRange()
 	}
-	if p.parseExpected(ast.KindOpenBraceToken) {
+	if p.token == ast.KindOpenBraceToken {
+		p.nextToken()
 		for p.token != ast.KindCloseBraceToken && p.token != ast.KindEndOfFile {
 			if p.parseOptional(ast.KindSemicolonToken) {
 				continue
@@ -94,6 +98,10 @@ func (p *Parser) parseDataDeclaration(pos int, jsdoc jsdocScannerInfo, modifiers
 			form.Close = p.tokenRange()
 		}
 		p.parseExpected(ast.KindCloseBraceToken)
+	} else if !p.isVibeLangAmbientService(modifiers) {
+		// Chapter 006 gives ambient declarations EK1607 precedence over EK1604.
+		p.diagnostics = append(p.diagnostics, ast.NewExternalDiagnostic(nil, core.NewTextRange(name.End(), name.End()), "EK", diagnostics.CategoryError, VibeLangDataMissingBodyCode, VibeLangDataMissingBodyMessage))
+		p.hasParseError = true
 	}
 	body := core.NewTextRange(bodyStart, p.nodePos())
 	if body.Len() == 0 {
