@@ -5,12 +5,20 @@ import { block, chapter, read, run } from "./spec-witness.mjs"
 
 const failures = () => process.env.SPEC_FAILURES ? readFileSync(process.env.SPEC_FAILURES, "utf8") : chapter("003-failures")
 
-test("async declarations preserve throwing-callback admission without synchronous rethrows", () => {
+test("async declarations follow source callback contracts without synchronous throws", () => {
   const text = failures()
   assert.match(text, /nongenerator.*async.*synchronous thrown type.*never/)
-  assert.match(text, /parameter.*@throws \{unknown\}/)
-  assert.match(text, /omit.*synchronous.*@rethrows/)
-  assert.match(text, /shared type alias/)
+  if (text.includes("A written `@throws` or `@rethrows` tag in a `.vibe` file is `EK0406`")) {
+    assert.doesNotMatch(text, /A source `@rethrows` parameter still admits/)
+    assert.match(text, /callback parameters follow their written callable signatures/)
+    assert.match(text, /source `@rethrows` tag is `EK0406`/)
+  } else {
+    // The older published spec still allows source rethrows. Keep its guard
+    // until the source-only reconciliation is folded by the spec lander.
+    assert.match(text, /parameter.*@throws \{unknown\}/)
+    assert.match(text, /omit.*synchronous.*@rethrows/)
+    assert.match(text, /shared type alias/)
+  }
   assert.match(text, /Promise-returning plain function.*synchronously/)
 })
 
