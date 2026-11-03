@@ -40,6 +40,7 @@ Code example count: one example per fenced code block in the source body, includ
 - **Start a project**
   - [New project](src/setup/new-project.md)
   - [Existing project](src/setup/existing-project.md)
+  - [Migrating retired forms](src/setup/migrating-retired-forms.md)
 - **Build and test**
   - [vibelang CLI](src/setup/vibelang-cli.md)
   - [Vite and Vitest](src/setup/vite.md)

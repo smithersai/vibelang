@@ -108,6 +108,8 @@ npx vibelang -p tsconfig.json --fix --noEmit
 
 `--fix` applies each rewrite that keeps the program's meaning: Effect error and service classes become `error` and `service` declarations, `Effect.succeed` and `Effect.fail` become returned values and `throw`, catch combinators become `catch`, `Match` chains become `match`, Option pipes become module calls, prelude imports go, a later `is` binding that repeats a name of its block is renamed with its uses, and an `Effect.gen` that is a function's whole body becomes an effect function with `try` replacing `yield*` ([TypeScript-style Effect code](../getting-started/012-devtools.md#typescript-style-effect-code)). It refuses a rewrite that would change what other code receives, and prints why. An `Effect.gen` that the file pipes, such as `Effect.gen(...).pipe(Effect.provide(AppLive))`, stays EK1002 for now: write its body by hand inside `export effect function main() { provide AppLive { ... } }`, reading a service as `try Users`.
 
+Code written for an earlier VibeLang release can use forms that are now retired, such as a trailing block or a legacy platform entry marker. `--fix` rewrites those too; [Migrating retired forms](migrating-retired-forms.md) describes how.
+
 Run `vibelang` to write adjacent `.d.vibe.ts` declarations, even with `--noEmit`; [configure TypeScript tools to read them](vibelang-cli.md#let-typescript-tools-read-vibe-modules).
 
 ## Next
