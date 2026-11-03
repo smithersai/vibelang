@@ -41,7 +41,7 @@ Stock `tsc` preserves the tag in the declaration, exactly as shown above. Withou
 
 `bun check` runs the project's `check` script; a script that invokes a TypeScript checker uses that checker's sidecar resolution. [Bun's script runner](https://bun.com/docs/runtime) executes the configured command.
 
-- **Amended 2026-11-01: documented schemas.** A JSDoc comment on a `schema` declaration is emitted on its `declare const` only; its `typeof Name.Type` alias has no comment. This includes `@internal`, `@public` and `@deprecated`, as on the ordinary Effect TypeScript pair. Native `removeComments` and `stripInternal` behavior is unchanged. A separate type-comment form is not introduced.
+- **Amended 2026-11-01: documented schemas.** A JSDoc comment on a `schema` declaration is emitted on its `declare const` only; its synthesized `typeof Name.Type` alias has no comment. This includes `@internal`, `@public` and `@deprecated`, as on the ordinary Effect TypeScript pair. Native `removeComments` and `stripInternal` behavior is unchanged. Without a written alias, synthesize the same bare alias.
 
 ### Amendment: an opt-in sidecar directory (2026-11-01)
 
@@ -85,3 +85,6 @@ Declaration serialization retains TypeScript 5.9 and 7.0 behavior at the anonymo
 ### Amendment: native overwrite protection (2026-11-02)
 
 Decided detail 281 replaces detail 280: compatibility sidecars are emit outputs like `.d.ts`. An `include` source/sidecar pair selects the source and allows silent regeneration. Explicit `files` inputs retain native `TS5055` protection: exit `1` and unchanged declaration bytes, including under `vibe.sidecarDir`. There is no generated marker, backup directory or warning. The independent compatibility write schedule of detail 283 remains unchanged.
+
+
+- **Amended 2026-11-02: written schema types (foldkit-9, accepted by Will).** For either ordinary `schema X` form, one written, nongeneric `type X = typeof X.Type` in the same scope replaces the synthesized alias, in either source order. Its type query resolves to that schema value. Preserve each declaration’s own JSDoc, order and export status as on the native constant/type pair; native comment/visibility emit options still apply. Other type-name collisions remain errors.

@@ -588,7 +588,7 @@ type S = typeof S.Type
 
 Exported `schema` and `data` declarations emit the TypeScript declarations of their Effect TypeScript counterparts above: a schema constant and its `typeof Name.Type` alias, or a `Data.TaggedEnum` alias and typed constructor constant. Generic data also emits the `WithGenerics` helper, named as above, when the exported constant references it; the helper is an implementation name, not a reserved source identifier. TypeScript declaration emission preserves inferred readonly payloads and the constructor signatures; it adds no runtime matcher.
 
-A JSDoc comment on a `schema` declaration is emitted on its `declare const` only; its `typeof Name.Type` alias has no comment. This includes `@internal`, `@public` and `@deprecated`, as on the ordinary Effect TypeScript pair. Native `removeComments` and `stripInternal` behavior is unchanged.
+A JSDoc comment on a `schema` declaration is emitted on its `declare const` only; its synthesized `typeof Name.Type` alias has no comment. This includes `@internal`, `@public` and `@deprecated`, as on the ordinary Effect TypeScript pair. Native `removeComments` and `stripInternal` behavior is unchanged.
 
 ```vibe es
 import * as Schema from "effect/Schema"
@@ -605,4 +605,20 @@ export const Message = Schema.Struct({ id: Schema.String })
 export type Message = typeof Message.Type
 ```
 
-Declaration emit retains the comment on the constant and leaves the type alias bare. To retain distinct documentation on a constant and its type alias, keep the ordinary TypeScript pair.
+Without a written alias, declaration emit retains the comment on the constant and leaves the synthesized type alias bare. A written alias keeps its own JSDoc, order and export status under the [written schema alias rule](#schema-declarations). For example:
+
+```vibe es
+import { Schema } from "effect";
+/** The constant's documentation. */
+export schema Message { id: string }
+/** The type's documentation. */
+export type Message = typeof Message.Type;
+```
+
+```ts effect
+import { Schema } from "effect";
+/** The constant's documentation. */
+export const Message = Schema.Struct({ id: Schema.mutableKey(Schema.String) });
+/** The type's documentation. */
+export type Message = typeof Message.Type;
+```
