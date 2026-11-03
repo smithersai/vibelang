@@ -43,7 +43,6 @@ FuzzVIPDifferential compile:TS2345/vip07.intrinsic-result-success-plain compiler
 FuzzVIPDifferential compile:TS2339/vip07.local-option-plain compiler VIP-7: Symbol.customMatcher is missing from SymbolConstructor, so the specified matcher protocol cannot be used in typed code; lane vip-match
 FuzzVIPDifferential corpus:data-vip07-local-option-plain compiler VIP-7: minimized vip07.local-option-plain probe; lane vip-match
 FuzzVIPDifferential exit:value/vip07.no-match-plain compiler VIP-7: chapter 004 throws new TypeError() with an empty message, but $noMatch throws TypeError("No match arm matched …"); under VIP-1 the witness is plain, so its catch sees that message (before VIP-1 it was an Effect function, and the no-match defect escaped its catch: vip07.exhaustive-runtime-plain); lane vip-core2
-FuzzVIPDifferential corpus:data-vip07-no-match-plain compiler VIP-7: minimized vip07.no-match-plain probe; lane vip-match
 FuzzVIPDifferential compile:EK0707/vip07.regex-relational-plain compiler VIP-7: RegExp-value and relational patterns are rejected by the retained subset parser; lane vip-match
 FuzzVIPDifferential compile:EK0701/vip07.regex-relational-plain compiler VIP-7: RegExp-value and relational patterns are rejected by the retained subset parser; lane vip-match
 FuzzVIPDifferential compile:EK4704/vip07.regex-relational-plain compiler VIP-7: RegExp-value and relational patterns are rejected by the retained subset parser; lane vip-match

@@ -1,49 +1,25 @@
 # computed field keys must follow the native counterpart's admission and codes; observed on main a10800db69ec.
-FuzzReviewComputedKeys feature:error:literal:call compiler VIP-15/VIP-29 Chapter 6: computed field keys must follow the native counterpart's admission and codes; lane sl1-apply
 FuzzReviewComputedKeys corpus:r1-astra4-error-literal-call compiler VIP-15/VIP-29 Chapter 6: minimized reproduction of feature:error:literal:call; lane sl1-apply
-FuzzReviewComputedKeys feature:error:literal:element compiler VIP-15/VIP-29 Chapter 6: computed field keys must follow the native counterpart's admission and codes; lane sl1-apply
 FuzzReviewComputedKeys corpus:r1-astra4-error-literal-element compiler VIP-15/VIP-29 Chapter 6: minimized reproduction of feature:error:literal:element; lane sl1-apply
-FuzzReviewComputedKeys feature:error:literal:entity compiler VIP-15/VIP-29 Chapter 6: computed field keys must follow the native counterpart's admission and codes; lane sl1-apply
 FuzzReviewComputedKeys corpus:r1-astra4-error-literal-entity compiler VIP-15/VIP-29 Chapter 6: minimized reproduction of feature:error:literal:entity; lane sl1-apply
-FuzzReviewComputedKeys feature:error:literal:parenthesized compiler VIP-15/VIP-29 Chapter 6: computed field keys must follow the native counterpart's admission and codes; lane sl1-apply
 FuzzReviewComputedKeys corpus:r1-astra4-error-literal-parenthesized compiler VIP-15/VIP-29 Chapter 6: minimized reproduction of feature:error:literal:parenthesized; lane sl1-apply
-FuzzReviewComputedKeys feature:error:number:call compiler VIP-15/VIP-29 Chapter 6: computed field keys must follow the native counterpart's admission and codes; lane sl1-apply
 FuzzReviewComputedKeys corpus:r1-astra4-error-number-call compiler VIP-15/VIP-29 Chapter 6: minimized reproduction of feature:error:number:call; lane sl1-apply
-FuzzReviewComputedKeys feature:error:number:element compiler VIP-15/VIP-29 Chapter 6: computed field keys must follow the native counterpart's admission and codes; lane sl1-apply
 FuzzReviewComputedKeys corpus:r1-astra4-error-number-element compiler VIP-15/VIP-29 Chapter 6: minimized reproduction of feature:error:number:element; lane sl1-apply
-FuzzReviewComputedKeys feature:error:number:entity compiler VIP-15/VIP-29 Chapter 6: computed field keys must follow the native counterpart's admission and codes; lane sl1-apply
 FuzzReviewComputedKeys corpus:r1-astra4-error-number-entity compiler VIP-15/VIP-29 Chapter 6: minimized reproduction of feature:error:number:entity; lane sl1-apply
-FuzzReviewComputedKeys feature:error:number:parenthesized compiler VIP-15/VIP-29 Chapter 6: computed field keys must follow the native counterpart's admission and codes; lane sl1-apply
 FuzzReviewComputedKeys corpus:r1-astra4-error-number-parenthesized compiler VIP-15/VIP-29 Chapter 6: minimized reproduction of feature:error:number:parenthesized; lane sl1-apply
-FuzzReviewComputedKeys feature:error:symbol:call compiler VIP-15/VIP-29 Chapter 6: computed field keys must follow the native counterpart's admission and codes; lane sl1-apply
 FuzzReviewComputedKeys corpus:r1-astra4-error-symbol-call compiler VIP-15/VIP-29 Chapter 6: minimized reproduction of feature:error:symbol:call; lane sl1-apply
-FuzzReviewComputedKeys feature:error:symbol:element compiler VIP-15/VIP-29 Chapter 6: computed field keys must follow the native counterpart's admission and codes; lane sl1-apply
 FuzzReviewComputedKeys corpus:r1-astra4-error-symbol-element compiler VIP-15/VIP-29 Chapter 6: minimized reproduction of feature:error:symbol:element; lane sl1-apply
-FuzzReviewComputedKeys feature:error:symbol:entity compiler VIP-15/VIP-29 Chapter 6: computed field keys must follow the native counterpart's admission and codes; lane sl1-apply
 FuzzReviewComputedKeys corpus:r1-astra4-error-symbol-entity compiler VIP-15/VIP-29 Chapter 6: minimized reproduction of feature:error:symbol:entity; lane sl1-apply
-FuzzReviewComputedKeys feature:error:symbol:parenthesized compiler VIP-15/VIP-29 Chapter 6: computed field keys must follow the native counterpart's admission and codes; lane sl1-apply
 FuzzReviewComputedKeys corpus:r1-astra4-error-symbol-parenthesized compiler VIP-15/VIP-29 Chapter 6: minimized reproduction of feature:error:symbol:parenthesized; lane sl1-apply
-FuzzReviewComputedKeys feature:schema-error:literal:call compiler VIP-15/VIP-29 Chapter 6: computed field keys must follow the native counterpart's admission and codes; lane sl1-apply
 FuzzReviewComputedKeys corpus:r1-astra4-schema-error-literal-call compiler VIP-15/VIP-29 Chapter 6: minimized reproduction of feature:schema-error:literal:call; lane sl1-apply
-FuzzReviewComputedKeys feature:schema-error:literal:element compiler VIP-15/VIP-29 Chapter 6: computed field keys must follow the native counterpart's admission and codes; lane sl1-apply
 FuzzReviewComputedKeys corpus:r1-astra4-schema-error-literal-element compiler VIP-15/VIP-29 Chapter 6: minimized reproduction of feature:schema-error:literal:element; lane sl1-apply
-FuzzReviewComputedKeys feature:schema-error:literal:entity compiler VIP-15/VIP-29 Chapter 6: computed field keys must follow the native counterpart's admission and codes; lane sl1-apply
 FuzzReviewComputedKeys corpus:r1-astra4-schema-error-literal-entity compiler VIP-15/VIP-29 Chapter 6: minimized reproduction of feature:schema-error:literal:entity; lane sl1-apply
-FuzzReviewComputedKeys feature:schema-error:literal:parenthesized compiler VIP-15/VIP-29 Chapter 6: computed field keys must follow the native counterpart's admission and codes; lane sl1-apply
 FuzzReviewComputedKeys corpus:r1-astra4-schema-error-literal-parenthesized compiler VIP-15/VIP-29 Chapter 6: minimized reproduction of feature:schema-error:literal:parenthesized; lane sl1-apply
-FuzzReviewComputedKeys feature:schema-error:number:call compiler VIP-15/VIP-29 Chapter 6: computed field keys must follow the native counterpart's admission and codes; lane sl1-apply
 FuzzReviewComputedKeys corpus:r1-astra4-schema-error-number-call compiler VIP-15/VIP-29 Chapter 6: minimized reproduction of feature:schema-error:number:call; lane sl1-apply
-FuzzReviewComputedKeys feature:schema-error:number:element compiler VIP-15/VIP-29 Chapter 6: computed field keys must follow the native counterpart's admission and codes; lane sl1-apply
 FuzzReviewComputedKeys corpus:r1-astra4-schema-error-number-element compiler VIP-15/VIP-29 Chapter 6: minimized reproduction of feature:schema-error:number:element; lane sl1-apply
-FuzzReviewComputedKeys feature:schema-error:number:entity compiler VIP-15/VIP-29 Chapter 6: computed field keys must follow the native counterpart's admission and codes; lane sl1-apply
 FuzzReviewComputedKeys corpus:r1-astra4-schema-error-number-entity compiler VIP-15/VIP-29 Chapter 6: minimized reproduction of feature:schema-error:number:entity; lane sl1-apply
-FuzzReviewComputedKeys feature:schema-error:number:parenthesized compiler VIP-15/VIP-29 Chapter 6: computed field keys must follow the native counterpart's admission and codes; lane sl1-apply
 FuzzReviewComputedKeys corpus:r1-astra4-schema-error-number-parenthesized compiler VIP-15/VIP-29 Chapter 6: minimized reproduction of feature:schema-error:number:parenthesized; lane sl1-apply
-FuzzReviewComputedKeys feature:schema-error:symbol:call compiler VIP-15/VIP-29 Chapter 6: computed field keys must follow the native counterpart's admission and codes; lane sl1-apply
 FuzzReviewComputedKeys corpus:r1-astra4-schema-error-symbol-call compiler VIP-15/VIP-29 Chapter 6: minimized reproduction of feature:schema-error:symbol:call; lane sl1-apply
-FuzzReviewComputedKeys feature:schema-error:symbol:element compiler VIP-15/VIP-29 Chapter 6: computed field keys must follow the native counterpart's admission and codes; lane sl1-apply
 FuzzReviewComputedKeys corpus:r1-astra4-schema-error-symbol-element compiler VIP-15/VIP-29 Chapter 6: minimized reproduction of feature:schema-error:symbol:element; lane sl1-apply
-FuzzReviewComputedKeys feature:schema-error:symbol:entity compiler VIP-15/VIP-29 Chapter 6: computed field keys must follow the native counterpart's admission and codes; lane sl1-apply
 FuzzReviewComputedKeys corpus:r1-astra4-schema-error-symbol-entity compiler VIP-15/VIP-29 Chapter 6: minimized reproduction of feature:schema-error:symbol:entity; lane sl1-apply
-FuzzReviewComputedKeys feature:schema-error:symbol:parenthesized compiler VIP-15/VIP-29 Chapter 6: computed field keys must follow the native counterpart's admission and codes; lane sl1-apply
 FuzzReviewComputedKeys corpus:r1-astra4-schema-error-symbol-parenthesized compiler VIP-15/VIP-29 Chapter 6: minimized reproduction of feature:schema-error:symbol:parenthesized; lane sl1-apply

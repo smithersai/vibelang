@@ -1,5 +1,1 @@
 # Observed in r3 batch-b2 before pending; rechecked by r4/check-six.sh. Owner migfix-foldkit.
-FuzzMatchOpenSubject object-optional:1 compiler VIP-7 Chapter 4 Subjects: the exhaustiveness check excludes open subjects and admits complete closed coverage; lane migfix-foldkit
-FuzzMatchOpenSubject object-optional:3 compiler VIP-7 Chapter 4 Subjects: the exhaustiveness check excludes open subjects and admits complete closed coverage; lane migfix-foldkit
-FuzzMatchOpenSubject corpus:object-optional-1 compiler VIP-7 Chapter 4 Subjects: the exhaustiveness check excludes open subjects and admits complete closed coverage; minimized corpus reproduction; lane migfix-foldkit
-FuzzMatchOpenSubject corpus:object-optional-3 compiler VIP-7 Chapter 4 Subjects: the exhaustiveness check excludes open subjects and admits complete closed coverage; minimized corpus reproduction; lane migfix-foldkit

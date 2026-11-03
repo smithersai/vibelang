@@ -1,3 +1,1 @@
 # Promise await forms now pass their unchanged native TypeScript oracle; only module-level for-await remains pending.
-FuzzTopLevelAwait for-await compiler VIP-26: module top-level await of a Promise has ordinary JavaScript meaning; lane migfix-foldkit
-FuzzTopLevelAwait corpus:for-await compiler VIP-26: module top-level await of a Promise has ordinary JavaScript meaning; minimized corpus reproduction; lane migfix-foldkit

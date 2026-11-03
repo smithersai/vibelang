@@ -1,6 +1,3 @@
 FuzzReviewSidecarWrites files:emit compiler VIP-27: Chapter7 explicitly listed compatibility output must report TS5055, exit1 and preserve input bytes even under noEmit/declaration:false; lane sidecar-guard
-FuzzReviewSidecarWrites corpus:r9-sidecar-files-emit compiler VIP-27: Chapter7 explicitly listed compatibility output must report TS5055, exit1 and preserve input bytes even under noEmit/declaration:false; lane sidecar-guard
 FuzzReviewSidecarWrites files:noEmit compiler VIP-27: Chapter7 explicitly listed compatibility output must report TS5055, exit1 and preserve input bytes even under noEmit/declaration:false; lane sidecar-guard
-FuzzReviewSidecarWrites corpus:r9-sidecar-files-noEmit compiler VIP-27: Chapter7 explicitly listed compatibility output must report TS5055, exit1 and preserve input bytes even under noEmit/declaration:false; lane sidecar-guard
 FuzzReviewSidecarWrites files:noDeclaration compiler VIP-27: Chapter7 explicitly listed compatibility output must report TS5055, exit1 and preserve input bytes even under noEmit/declaration:false; lane sidecar-guard
-FuzzReviewSidecarWrites corpus:r9-sidecar-files-noDeclaration compiler VIP-27: Chapter7 explicitly listed compatibility output must report TS5055, exit1 and preserve input bytes even under noEmit/declaration:false; lane sidecar-guard
