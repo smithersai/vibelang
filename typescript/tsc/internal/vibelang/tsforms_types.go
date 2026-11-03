@@ -34,9 +34,36 @@ func isEffectTypeName(c *checker.Checker, reference *ast.Node) bool {
 	if rightmostName(name).Text() != "Effect" {
 		return false
 	}
-	// Effect.Effect, the prelude's Effect, or Effect imported from effect:
-	// each names effect's own Effect interface.
-	return isEffectType(c, c.GetTypeFromTypeNode(reference))
+	// Resolved Effect identity alone is insufficient: a custom alias named
+	// Effect may reorder or wrap its arguments, default E to something other
+	// than never, add requirements, or denote a union. The rewrite below uses
+	// the written arguments, so prove they are the instantiated Effect slots
+	// before offering either the warning or its editor/CLI repair (VIP-3,
+	// Chapter 7's type/declaration preservation rule).
+	t := c.GetTypeFromTypeNode(reference)
+	if t == nil || t.Flags()&checker.TypeFlagsObject == 0 ||
+		t.ObjectFlags()&checker.ObjectFlagsReference == 0 {
+		return false
+	}
+	// A lookalike interface may declare its own Effect marker. Only the
+	// interface exported by effect/Effect has the shorthand's contract.
+	if own := analyzerFor(c).programEffectInterface(); own == nil || t.Symbol() != own.Symbol() {
+		return false
+	}
+	slots, arguments := c.GetTypeArguments(t), reference.TypeArguments()
+	if len(slots) != 3 || len(arguments) == 0 || len(arguments) > len(slots) {
+		return false
+	}
+	for i, slot := range slots {
+		if i < len(arguments) {
+			if slot != c.GetTypeFromTypeNode(arguments[i]) {
+				return false
+			}
+		} else if slot.Flags()&checker.TypeFlagsNever == 0 {
+			return false
+		}
+	}
+	return true
 }
 
 // findEffectTypes reports EK4833 at each Effect type of file written through

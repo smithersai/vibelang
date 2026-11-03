@@ -167,7 +167,7 @@ For `EK4834`, `EK4835` and the `provide` calls in `EK4836`, only the direct oper
 | EK4841 | `export const Tags = Schema.Array(Schema.String)` just before `export type Tags = typeof Tags.Type` | `export schema Tags = readonly string[]` | When the type alias is the statement just after the constant, with the same export and no JSDoc, and every part of the schema has a type; a type written before its constant keeps its form, because the alias's declaration file lists the constant first |
 | EK4842 | `import { Array } from "effect"` and `Array.take(values, 2)` | `import { Array as Arr } from "effect"` and `Arr.take(values, 2)` | When no type is written with the import, as `Array.NonEmptyReadonlyArray<T>`, and nothing the file exports names it or has a type the module declares; the names are `Arr`, `Str`, `Num`, `Bool`, `Fn`, `Sym`, `Big` and `Regex`, or `EffectArray` and its siblings when the file already uses the short one |
 
-`EK4833` omits an unused requirements slot: `Effect.Effect<User, NotFound>` becomes `User!NotFound`, whose requirements default to `never`.
+`EK4833` omits an unused requirements slot: `Effect.Effect<User, NotFound>` becomes `User!NotFound`, whose requirements default to `never`. A custom alias named `Effect` is suggested only when its written arguments already match the resolved Effect's success, error and requirements types, including omitted `never` slots. Aliases whose parameter order, defaults, wrapped slots, service requirements or union branches would change the resulting type keep their spelling.
 
 A pure `Option.gen(function* () { … })` has an eager plain-function quick fix for
 statement-position `yield*` bindings, discarded yields, and `return yield*`.
