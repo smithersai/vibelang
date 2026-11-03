@@ -375,3 +375,5 @@ Accept. `.vibex` is one extension that selects `.tsx`'s language variant plus Vi
 ## Context
 
 The proposals page lists "JSX source files" as not in VibeLang: components live in `.tsx` files that call `.vibe` functions. The earlier design left `.vibex` as a candidate that must not imply a stricter mode (research note D21). 45 opencode (Solid, `class=`, `jsxImportSource` from tsconfig), 218 t3code (React, `react-jsx`, `@effect/atom-react`) and 4 foldkit Effect modules are `.tsx` and can't become VibeLang today.
+
+- **Amended 2026-11-03: declaration specifiers follow the `.tsx` twin.** A written relative specifier is preserved in declarations as in TypeScript: `./App.vibex` stays `./App.vibex`, just as the twin keeps `./App.tsx`; `./App.js`, `./App.jsx` and `./App` keep their written spelling. `jsx`, `allowImportingTsExtensions` and `rewriteRelativeImportExtensions` retain their TypeScript meanings; JavaScript output names do not choose declaration spelling. A synthesized import type uses TypeScript's twin inference with `.vibex` in place of `.tsx`. There are no nondefault VibeLang declaration styles (VIP-27, VIP-30).
