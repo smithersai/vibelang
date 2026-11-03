@@ -58,6 +58,11 @@ func TestFixVIPLegacyRunPositions(t *testing.T) {
 		{"if-else-arms", "effect function f(c: boolean) {\n  if (c) load(10)\n  else load(11)\n  return 0\n}\n", "effect function f(c: boolean) {\n  if (c) try load(10)\n  else try load(11)\n  return 0\n}\n"},
 		{"do-result", "effect function f() {\n  const v = do {\n    const x = 11\n    load(x)\n  }\n  return v + 1\n}\n", "effect function f() {\n  const v = do {\n    const x = 11\n    try load(x)\n  }\n  return v + 1\n}\n"},
 		{"effect-arrow-body", "const f = effect (n: number) => load(n)\n", "const f = effect (n: number) => try load(n)\n"},
+		{"subtype-tag-suspended", "interface Statement extends Effect.Effect<number> { readonly sql: string }\ndeclare const stmt: (parts: TemplateStringsArray) => Statement\ndeclare const held: Statement\ndeclare const make: () => Statement\neffect function f() {\n  return try Effect.suspend(effect () => stmt`a`)\n}\n", "interface Statement extends Effect.Effect<number> { readonly sql: string }\ndeclare const stmt: (parts: TemplateStringsArray) => Statement\ndeclare const held: Statement\ndeclare const make: () => Statement\neffect function f() {\n  return try Effect.suspend(effect () => try stmt`a`)\n}\n"},
+		{"subtype-call-suspended", "interface Statement extends Effect.Effect<number> { readonly sql: string }\ndeclare const stmt: (parts: TemplateStringsArray) => Statement\ndeclare const held: Statement\ndeclare const make: () => Statement\neffect function f() {\n  return try Effect.suspend(effect () => make())\n}\n", "interface Statement extends Effect.Effect<number> { readonly sql: string }\ndeclare const stmt: (parts: TemplateStringsArray) => Statement\ndeclare const held: Statement\ndeclare const make: () => Statement\neffect function f() {\n  return try Effect.suspend(effect () => try make())\n}\n"},
+		{"subtype-value-suspended", "interface Statement extends Effect.Effect<number> { readonly sql: string }\ndeclare const stmt: (parts: TemplateStringsArray) => Statement\ndeclare const held: Statement\ndeclare const make: () => Statement\neffect function f() {\n  return try Effect.suspend(effect () => held)\n}\n", "interface Statement extends Effect.Effect<number> { readonly sql: string }\ndeclare const stmt: (parts: TemplateStringsArray) => Statement\ndeclare const held: Statement\ndeclare const make: () => Statement\neffect function f() {\n  return try Effect.suspend(effect () => try held)\n}\n"},
+		{"subtype-returned-suspended", "interface Statement extends Effect.Effect<number> { readonly sql: string }\ndeclare const stmt: (parts: TemplateStringsArray) => Statement\ndeclare const held: Statement\ndeclare const make: () => Statement\neffect function f() {\n  return try Effect.suspend(effect () => {\n    return make()\n  })\n}\n", "interface Statement extends Effect.Effect<number> { readonly sql: string }\ndeclare const stmt: (parts: TemplateStringsArray) => Statement\ndeclare const held: Statement\ndeclare const make: () => Statement\neffect function f() {\n  return try Effect.suspend(effect () => {\n    return try make()\n  })\n}\n"},
+		{"subtype-arms-suspended", "interface Statement extends Effect.Effect<number> { readonly sql: string }\ndeclare const stmt: (parts: TemplateStringsArray) => Statement\ndeclare const held: Statement\ndeclare const make: () => Statement\neffect function f(c: boolean) {\n  return try Effect.suspend(effect () => c ? make() : held)\n}\n", "interface Statement extends Effect.Effect<number> { readonly sql: string }\ndeclare const stmt: (parts: TemplateStringsArray) => Statement\ndeclare const held: Statement\ndeclare const make: () => Statement\neffect function f(c: boolean) {\n  return try Effect.suspend(effect () => c ? try make() : try held)\n}\n"},
 		{"effect-arrow-conditional", "const f = effect (c: boolean) => c ? load(12) : load(13)\n", "const f = effect (c: boolean) => c ? try load(12) : try load(13)\n"},
 		{"argument", "effect function f() {\n  return plainId(load(16))\n}\n", "effect function f() {\n  return plainId(try load(16))\n}\n"},
 		{"member", "effect function f() {\n  return load(17).toFixed()\n}\n", "effect function f() {\n  return (try load(17)).toFixed()\n}\n"},
@@ -179,6 +184,30 @@ func fixSourceOptions(t *testing.T, source string, options FixOptions) (*FixResu
 		t.Fatalf("config: %v", errors)
 	}
 	return FixProjectWithOptions(t.Context(), fs, bundled.LibPath(), config, options), file.FileName()
+}
+
+// The old compiler kept a returned Effect subtype as data under a written
+// contract and with no call around the function (D24), so these keep it.
+func TestFixVIPLegacySubtypeStaysData(t *testing.T) {
+	const prelude = "interface Statement extends Effect.Effect<number> { readonly sql: string }\ndeclare const make: () => Statement\ndeclare const held: Statement\n"
+	for _, source := range []string{
+		"export const unmarked = effect () => make()\n",
+		"export const unmarkedValue = effect () => held\n",
+		"export const written = effect (): unknown!! => make()\n",
+		"export const running = effect () => {\n  const statement = make()\n  return statement.sql\n}\n",
+		"export const plainThunk = Effect.suspend(() => make())\n",
+		"export const plainThunkValue = Effect.suspend(() => held)\n",
+		"export const plainThunkBlock = Effect.suspend(() => {\n  return make()\n})\n",
+		"export const plainHandler = (e: number!string) => Effect.catch(e, () => make())\n",
+		"export const tried = effect () => try Effect.suspend(effect () => try make())\n",
+	} {
+		t.Run(strings.SplitN(source, " ", 4)[2], func(t *testing.T) {
+			result, name := fixVIPOnlySource(t, prelude+source)
+			if fixed := result.Files[name]; fixed != nil || len(result.Refused) != 0 {
+				t.Fatalf("--fix-vip-only wrote %+v, refused %+v", fixed, result.Refused)
+			}
+		})
+	}
 }
 
 // A position that held a call, as a declared Effect const, held it whatever

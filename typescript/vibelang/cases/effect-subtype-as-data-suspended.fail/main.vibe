@@ -1,0 +1,12 @@
+// expect: EK4802
+// Smithers' journal migrations: Effect's sql template returns a Statement, an
+// Effect subtype. An effect function passed where a call infers its success
+// returns it as data, so `Effect.suspend(effect () => stmt`...`)` succeeded with
+// the statement and never ran it, with no diagnostic. EK4802 is an error here
+// (tsconfig.json).
+interface Statement<A> extends Effect.Effect<ReadonlyArray<A>> { readonly sql: string }
+declare const stmt: (parts: TemplateStringsArray) => Statement<never>
+
+export const neverRuns: void!! = effect {
+  try Effect.suspend(effect () => stmt`CREATE TABLE t (a int)`)
+}

@@ -108,6 +108,10 @@ func tryEdits(c *checker.Checker, file *ast.SourceFile, unmatched map[int]bool) 
 			}
 		}
 		if !isInvocation(node) {
+			if isProgramReference(node) && m.returnedSubtypeRan(node) {
+				insert(scanner.SkipTrivia(text, node.Pos()), "try ")
+				return false
+			}
 			return node.ForEachChild(visit)
 		}
 		if m.wrapperTry(node) {

@@ -1,0 +1,1 @@
+stmt`CREATE TABLE t (a int)` is an Effect value, and this function's success type, A, names no value, so this function succeeds with this program instead of running it.

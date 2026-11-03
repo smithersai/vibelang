@@ -319,23 +319,41 @@ func (r *ruleCheck) blockDeclaresEffectSuccess(fn *ast.Node, valueType *checker.
 }
 
 // checkReturnedSubtype reports EK4802 where fn returns value, an Effect
-// subtype with structure of its own (an Exit, a Config, a class that extends
-// Effect), as data because fn's success type names no value. The return
-// boundary runs a subtype that its success type does not accept, and one
-// that a contextual unknown or any accepts (S5-1); one that a written
-// contract or a type parameter accepts is data (D24's S22-3 amendment).
+// subtype with structure of its own (an Exit, a Config, a sql Statement, a
+// class that extends Effect), as data because fn's success type names no
+// value. A returned subtype stays fn's success value (VIP-5, return values
+// stay unflattened), so `Effect.suspend(effect () => sql`...`)` succeeds with
+// the statement and never runs it. Only a written contract that rejects value
+// stays TypeScript's to report.
 func (r *ruleCheck) checkReturnedSubtype(fn *ast.Node, value *ast.Node, valueType *checker.Type) {
-	named := r.a.successNamesNoValue(fn)
-	declared := r.a.declaredProgramReturn(fn)
-	if named == nil || declared == nil {
+	named := r.a.subtypeSuccessNamesNoValue(fn, valueType)
+	if named == nil {
 		return
-	}
-	success := successType(r.c, declared)
-	if success == nil || !r.c.IsTypeAssignableTo(valueType, success) || fn.Type() == nil && success.Flags()&(checker.TypeFlagsUnknown|checker.TypeFlagsAny) != 0 {
-		return // the boundary runs it
 	}
 	d := report(r.c, value, returnedEffectAsValue, messageText(value, "This value"), functionDisplayName(fn), r.c.TypeToString(named))
 	note(d, "Run it with try: {0}. To return it itself, write its type as the success type: ({1})!E!R.", r.runText(value), bangTypes(r.c.TypeToString(valueType)))
+}
+
+// subtypeSuccessNamesNoValue returns the success type of fn's Effect when it
+// names no value and fn, returning valueType, an Effect subtype, gives that
+// subtype as its success: a written contract must accept valueType, and
+// without one the success is inferred from what fn returns.
+func (a *analyzer) subtypeSuccessNamesNoValue(fn *ast.Node, valueType *checker.Type) *checker.Type {
+	named := a.successNamesNoValue(fn)
+	if named == nil {
+		return nil
+	}
+	if fn.Type() == nil {
+		return named
+	}
+	declared := a.declaredProgramReturn(fn)
+	if declared == nil {
+		return nil
+	}
+	if success := successType(a.checker, declared); success == nil || !a.checker.IsTypeAssignableTo(valueType, success) {
+		return nil
+	}
+	return named
 }
 
 // checkReturnedUnion reports EK4802 where fn returns value, whose type is a

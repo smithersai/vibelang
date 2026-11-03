@@ -64,6 +64,9 @@ func (m *legacyModel) runOf(call *ast.Node) (legacyRun, string) {
 		return legacyNoRun, ""
 	}
 	if !m.effectResult(call) {
+		if m.returnedSubtypeRan(call) {
+			return legacyRan, ""
+		}
 		if m.overloadUnmatched(call) && inEffectCode(call) {
 			return legacyUnknown, "no overload of this call matches its arguments (TS2769), so whether it returns an Effect that ran is unknown"
 		}
@@ -95,6 +98,43 @@ func (m *legacyModel) effectResult(call *ast.Node) bool {
 	}
 	fn := implementationOf(signature.Declaration())
 	return fn != nil && isFunctionBoundary(fn) && m.marked(fn)
+}
+
+// returnedSubtypeRan reports whether node, a call or a value in an effect
+// function's result, gives an Effect subtype that the old compiler ran where
+// it stood. A running position kept a subtype as data (D24), but a function
+// literal passed where a call infers its success, as in
+// `Effect.suspend(effect () => sql`...`)`, delegated to the subtype's program:
+// the old compiler emitted return yield* there. Under a written contract, or
+// with no call around it, the same function succeeded with the data. Effect's
+// sql template returns such a subtype, so losing the run loses a statement.
+func (m *legacyModel) returnedSubtypeRan(node *ast.Node) bool {
+	c := m.a.checker
+	var t *checker.Type
+	if isInvocation(node) {
+		signature := c.GetResolvedSignature(node)
+		if signature == nil {
+			return false
+		}
+		t = c.GetReturnTypeOfSignature(signature)
+		if ast.IsOptionalChain(node) {
+			t = presentCallResult(c, t)
+		}
+	} else {
+		t = c.GetTypeAtLocation(node)
+	}
+	if t == nil || !isStructuredEffectResult(c, t) {
+		return false
+	}
+	owner := effectCodeOwner(node)
+	if owner == nil || owner.Type() != nil || !isMarkedEffect(owner) || !legacyResultFlow(node, owner) {
+		return false
+	}
+	if call, _ := ownerCall(owner); call == nil {
+		return false
+	}
+	success := m.a.successNamesNoValue(owner)
+	return success != nil && success.Flags()&checker.TypeFlagsTypeParameter != 0
 }
 
 // legacyEffectResult reports whether call returns an Effect that a running
@@ -375,7 +415,10 @@ func (m *legacyModel) givesPlainValue(fn *ast.Node) bool {
 		if len(m.a.checker.GetSignaturesOfType(t, checker.SignatureKindCall)) != 0 {
 			return false
 		}
-		return !isEffectType(m.a.checker, t) && !m.a.mayBeExpectedEffect(t)
+		// An Effect subtype, as a sql Statement, an Exit or a Config, is an
+		// Effect the call runs, not a plain value (D24 keeps it data only
+		// where a running position meets it).
+		return !isEffectType(m.a.checker, t) && !isEffectSubtype(m.a.checker, t) && !m.a.mayBeExpectedEffect(t)
 	}
 	if !ast.IsBlock(body) {
 		return plain(body)
