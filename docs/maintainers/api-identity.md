@@ -207,3 +207,5 @@ module and full namespace path, so equal leaf names cannot merge different
 generic constraints. Reusing the original bridge also lets exact TypeScript
 type identity prove reflexive recursive generic comparisons. Input errors
 and documentation remain checked independently.
+
+The Go counterpart oracles use the same API rule for bare declaration trees and published packages. Changed export documentation is a difference; whitespace-only JSDoc changes are not. An unpublished declaration outside a package's `types` entry does not change that package's API.

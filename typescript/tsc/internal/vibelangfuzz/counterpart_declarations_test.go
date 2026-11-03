@@ -8,22 +8,26 @@ import (
 
 var counterpartComparisonKeys = []string{
 	"comments", "property-order", "union-order", "readonly-wrapper",
-	"literal-change", "readonly-change", "removed-file", "added-file",
+	"literal-change", "readonly-change", "removed-file", "added-file", "doc-whitespace",
 }
 
-// Compiler-only probes explicitly compare private API shapes. Real package
-// metadata keeps the migration gate's published-byte policy.
-// Preserve the declared type and file-set contract in every context.
+// The shared API identity contract applies to compiler probes and published packages:
+// compare exported names, strict types and normalized JSDoc, not emitted bytes.
+// A package's types entry excludes unpublished declaration files.
 func counterpartComparisonWitness(t *testing.T, api, key string, mode uint8) {
 	t.Helper()
 	typeName := fmt.Sprintf("Shape%d", mode%8)
 	before, after := t.TempDir(), t.TempDir()
 	left, right := "export type "+typeName+" = number;\n", "export type "+typeName+" = number;\n"
-	structuralEqual := true
+	apiEqual := true
 	switch key {
 	case "comments":
 		left = "/** original */\n" + left
 		right = "/** counterpart */\n" + right
+		apiEqual = false
+	case "doc-whitespace":
+		left = "/** original */\n" + left
+		right = "/**\n * original\n */\n" + right
 	case "property-order":
 		left = "export type " + typeName + " = { a: string; b: number };\n"
 		right = "export type " + typeName + " = { b: number; a: string };\n"
@@ -36,13 +40,13 @@ func counterpartComparisonWitness(t *testing.T, api, key string, mode uint8) {
 	case "literal-change":
 		left = "export type " + typeName + " = 1;\n"
 		right = "export type " + typeName + " = 2;\n"
-		structuralEqual = false
+		apiEqual = false
 	case "readonly-change":
 		left = "export type " + typeName + " = { value: number };\n"
 		right = "export type " + typeName + " = { readonly value: number };\n"
-		structuralEqual = false
+		apiEqual = false
 	case "removed-file", "added-file":
-		structuralEqual = false
+		apiEqual = false
 	default:
 		t.Fatalf("unknown comparison key %q", key)
 	}
@@ -61,17 +65,18 @@ func counterpartComparisonWitness(t *testing.T, api, key string, mode uint8) {
 		}
 	}
 	scope := int(mode/8) % 4
-	want := structuralEqual
+	want := apiEqual
 	for _, dir := range []string{before, after} {
 		var file, text string
 		switch scope {
-		case 0: // A compiler-only probe; the helper explicitly supplies private metadata.
+		case 0: // A bare declaration tree publishes every declaration module.
 		case 1:
 			file, text = "package.json", "{\"name\":\"comparison-control\",\"types\":\"./main.d.ts\"}"
-			want = false
+			if key == "removed-file" || key == "added-file" {
+				want = true // extra.d.ts is outside the package's types entry.
+			}
 		case 2:
 			file, text = "public-surface.json", "{\"roots\":[\"main.d.ts\"],\"reachable\":[\"main.d.ts\"],\"unresolved\":[]}"
-			want = false
 		case 3:
 			file, text = "public-surface.json", "{\"roots\":[],\"reachable\":[],\"unresolved\":[]}"
 		}
@@ -85,6 +90,13 @@ func counterpartComparisonWitness(t *testing.T, api, key string, mode uint8) {
 	if err != nil || (diff == "") != want {
 		t.Fatalf("%s scope%d: equality=%v, want%v, err=%v\n%s", key, scope, diff == "", want, err, diff)
 	}
+	if !want && key == "comments" && (!strings.Contains(diff, "Doc-comment differences:") || !strings.Contains(diff, "counterpart")) {
+		t.Fatalf("changed export documentation was not identified: %s", diff)
+	}
+	if !want && (key == "literal-change" || key == "readonly-change") && !strings.Contains(diff, "TS2344") {
+		t.Fatalf("changed export type was not identified: %s", diff)
+	}
+
 	diff, err = compareIdentityDeclarations(t.Context(), api, before, before)
 	if err != nil || diff != "" {
 		t.Fatalf("%s scope%d: identical control: err=%v\n%s", key, scope, err, diff)
@@ -118,7 +130,8 @@ func FuzzCounterpartDeclarationComparison(f *testing.F) {
 			found = found || key == known
 		}
 		if !found {
-			key = counterpartComparisonKeys[int(mode)%len(counterpartComparisonKeys)]
+			// Preserve the original eight-key fallback for pre-keyed corpus entries.
+			key = counterpartComparisonKeys[int(mode)%8]
 		}
 		counterpartComparisonWitness(t, api, key, mode)
 	})
