@@ -623,6 +623,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Escaped declaration keywords such as `er\u0072or` were accepted while TypeScript rejected the corresponding contextual keyword. They now report `TS1260`; `vibelang --fix` restores the keyword without changing escaped names or identifier expressions.
 
+- Declaration sidecars changed exported literal types containing source-map or reference-looking text. They now preserve that text and rewrite only actual directives.
+
 - Renaming a shorthand pattern binding could change the property it matched and add `TS2339`; rename now keeps the property key and writes an explicit binding.
 
 - Rolldown entry globs could bundle generated `.d.vibex.ts` declarations as empty entrypoints; the plugin now excludes those sidecars and retains the JSX source entries and aliases.

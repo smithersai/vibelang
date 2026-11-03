@@ -217,3 +217,58 @@ func TestSidecarOverwriteInput(t *testing.T) {
 		}
 	}
 }
+
+// RC-13: directive-looking text is part of a literal's public type.
+func TestRelocatedSidecarPreservesLiteralDirectives(t *testing.T) {
+	t.Parallel()
+	for _, directive := range []string{
+		"//# sourceMappingURL=keep",
+		"/// <reference path=\"./keep.d.ts\" />",
+	} {
+		for _, declaration := range []string{
+			"export type Text = `a\n%s\nz`;\n",
+			"export type Text<T extends string> = `a${T}\n%s\nz`;\n",
+			"export type Text<T extends string> = `a${T}\n%s\n${T}z`;\n",
+			"export type Text = `Ω\r\n%s\r\nz`;\r\n",
+			"export type Text<T extends string> = `a\n%s\n${T}z`;\n",
+			"/**\na\n%s\nz\n*/\nexport type Text = string;\n",
+			"export type Text = 'a\\\n%s\\\nz';\n",
+		} {
+			source := fmt.Sprintf(declaration, directive)
+			if got := sidecarText(source, "/public/main.d.ts", "/src/main.vibe", func(string) bool { return false }, tspath.CaseSensitive); got != source {
+				t.Errorf("sidecarText changed literal or block comment: got %q, want %q", got, source)
+			}
+			for _, directory := range []string{"/public", "/generated"} {
+				got := relocatedSidecarText(source, "/public/main.d.ts", directory, func(s string) string {
+					return tspath.ResolvePath("/src", s)
+				}, tspath.CaseSensitive)
+				if got != source {
+					t.Errorf("literal or block comment changed:\n got %q\nwant %q", got, source)
+				}
+			}
+		}
+	}
+}
+
+func TestRelocatedSidecarRewritesOnlyRealDirectives(t *testing.T) {
+	t.Parallel()
+	source := "/// <reference path=\"./types.d.ts\" />\r\n" +
+		"export type Text = `a\n//# sourceMappingURL=keep\nz`;\r\n" +
+		"//# sourceMappingURL=main.d.ts.map\r\n"
+	want := "/// <reference path=\"../public/types.d.ts\" />\r\n" +
+		"export type Text = `a\n//# sourceMappingURL=keep\nz`;\r\n"
+	got := relocatedSidecarText(source, "/public/main.d.ts", "/generated", func(s string) string {
+		return tspath.ResolvePath("/src", s)
+	}, tspath.CaseSensitive)
+	if got != want {
+		t.Fatalf("got %q, want %q", got, want)
+	}
+}
+
+func TestSidecarTextRemovesRealSourceMapComment(t *testing.T) {
+	source := "export type Text = `a\n//# sourceMappingURL=keep\nz`;\n"
+	got := sidecarText(source+"//# sourceMappingURL=main.d.ts.map\n", "/public/main.d.ts", "/src/main.vibe", func(string) bool { return false }, tspath.CaseSensitive)
+	if got != source {
+		t.Fatalf("got %q, want %q", got, source)
+	}
+}

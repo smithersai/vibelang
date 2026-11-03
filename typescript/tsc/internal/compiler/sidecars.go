@@ -268,7 +268,6 @@ func (p *Program) pruneSidecarDirectories(directory string, output vfs.FS) {
 // directory, using resolve's absolute logical target. Triple-slash paths are
 // rebased from the public declaration output; source-map comments are removed.
 func relocatedSidecarText(text string, declarationFile string, sidecarDirectory string, resolve func(string) string, caseSensitivity tspath.CaseSensitivity) string {
-	text = sourceMapComment.ReplaceAllString(text, "")
 	text = rewriteSidecarSpecifiers(text, func(specifier string) string {
 		if !tspath.IsExternalModuleNameRelative(specifier) {
 			return specifier
@@ -280,9 +279,23 @@ func relocatedSidecarText(text string, declarationFile string, sidecarDirectory 
 		}
 		return relative
 	})
-	declarationDirectory := tspath.GetDirectoryPath(declarationFile)
-	if declarationDirectory != sidecarDirectory {
-		text = sidecarReference.ReplaceAllStringFunc(text, func(match string) string {
+
+	return rewriteSidecarDirectives(text, tspath.GetDirectoryPath(declarationFile), sidecarDirectory, caseSensitivity)
+}
+
+func rewriteSidecarDirectives(text, declarationDirectory, sidecarDirectory string, caseSensitivity tspath.CaseSensitivity) string {
+	if !strings.Contains(text, "//# sourceMappingURL=") &&
+		(declarationDirectory == sidecarDirectory || !strings.Contains(text, "/// <reference path=")) {
+		return text
+	}
+	return rewriteSidecarComments(text, func(comment string) string {
+		if sourceMapComment.MatchString(comment) {
+			return ""
+		}
+		if declarationDirectory == sidecarDirectory {
+			return comment
+		}
+		return sidecarReference.ReplaceAllStringFunc(comment, func(match string) string {
 			parts := sidecarReference.FindStringSubmatch(match)
 			target := tspath.ResolvePath(declarationDirectory, parts[3])
 			relative := tspath.GetRelativePathFromDirectory(sidecarDirectory, target, caseSensitivity)
@@ -291,31 +304,17 @@ func relocatedSidecarText(text string, declarationFile string, sidecarDirectory 
 			}
 			return parts[1] + parts[2] + relative + parts[4]
 		})
-	}
-	return text
+	})
 }
 
 // sidecarText turns the declaration text that declarationFile would hold for
 // source into its sidecar's. exists reports whether a file is on disk.
 func sidecarText(text string, declarationFile string, source string, exists func(string) bool, caseSensitivity tspath.CaseSensitivity) string {
-	text = sourceMapComment.ReplaceAllString(text, "")
 	sourceDirectory := tspath.GetDirectoryPath(source)
 	text = rewriteSidecarSpecifiers(text, func(specifier string) string {
 		return vibeSpecifier(specifier, sourceDirectory, exists)
 	})
-	declarationDirectory := tspath.GetDirectoryPath(declarationFile)
-	if declarationDirectory != sourceDirectory {
-		text = sidecarReference.ReplaceAllStringFunc(text, func(match string) string {
-			parts := sidecarReference.FindStringSubmatch(match)
-			target := tspath.ResolvePath(declarationDirectory, parts[3])
-			relative := tspath.GetRelativePathFromDirectory(sourceDirectory, target, caseSensitivity)
-			if !strings.HasPrefix(relative, ".") {
-				relative = "./" + relative
-			}
-			return parts[1] + parts[2] + relative + parts[4]
-		})
-	}
-	return text
+	return rewriteSidecarDirectives(text, tspath.GetDirectoryPath(declarationFile), sourceDirectory, caseSensitivity)
 }
 
 // vibeSpecifier names a .vibe module by its source, ./y.vibe, where a
@@ -389,6 +388,64 @@ func rewriteSidecarSpecifiers(text string, rewrite func(string) string) string {
 		return node.ForEachChild(visit)
 	}
 	visit(file.AsNode())
+	if end == 0 {
+		return text
+	}
+	result.WriteString(text[end:])
+	return result.String()
+}
+
+// rewriteSidecarComments visits only actual single-line comments. Mask literal
+// tokens using the parsed declaration tree before scanning: a template's middle
+// or tail can contain comment-looking text after an interpolation, which a
+// context-free scan would otherwise mistake for a comment.
+func rewriteSidecarComments(text string, rewrite func(string) string) string {
+	file := parser.ParseSourceFile(ast.SourceFileParseOptions{
+		FileName: "/sidecar.d.ts",
+		PathKey:  "/sidecar.d.ts",
+	}, text, core.ScriptKindTS)
+	masked := []byte(text)
+	var visit func(*ast.Node) bool
+	visit = func(node *ast.Node) bool {
+		if ast.IsStringLiteral(node) || ast.IsTemplateLiteralToken(node) {
+			start := scanner.GetTokenPosOfNode(node, file, false /*includeJSDoc*/)
+			for i := start; i < node.End(); i++ {
+				// Preserve byte offsets and line boundaries for the scanner.
+				if masked[i] != '\n' && masked[i] != '\r' {
+					masked[i] = ' '
+				}
+			}
+			return false
+		}
+		return node.ForEachChild(visit)
+	}
+	visit(file.AsNode())
+	scan := scanner.NewScanner()
+	scan.SetText(string(masked))
+	scan.SetSkipTrivia(false)
+	var result strings.Builder
+	end := 0
+	for token := scan.Scan(); token != ast.KindEndOfFile; token = scan.Scan() {
+		if token != ast.KindSingleLineCommentTrivia {
+			continue
+		}
+		start, stop := scan.TokenStart(), scan.TokenEnd()
+		comment := text[start:stop]
+		if replacement := rewrite(comment); replacement != comment {
+			result.WriteString(text[end:start])
+			result.WriteString(replacement)
+			if replacement == "" {
+				// A removed source map owns its terminating line break.
+				if stop < len(text) && text[stop] == '\r' {
+					stop++
+				}
+				if stop < len(text) && text[stop] == '\n' {
+					stop++
+				}
+			}
+			end = stop
+		}
+	}
 	if end == 0 {
 		return text
 	}
