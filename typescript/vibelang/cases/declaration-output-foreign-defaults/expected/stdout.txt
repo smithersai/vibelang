@@ -1,0 +1,1 @@
+unannotated foreign calls stay ordinary and never contracts stay nonthrowing

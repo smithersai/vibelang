@@ -1,0 +1,1 @@
+both retired declarationImportStyle option paths warn for every value

@@ -1,0 +1,5 @@
+// docs/design/vips/0027-declaration-output.md#c8ed892c1ee67ec1
+// VIP-27: imported overloads and explicit callable contracts retain signature-local metadata.
+// docs/design/vips/0027-declaration-output.md#9fe0e12b1d0c7cb8
+// VIP-27: imported overloads and explicit callable contracts retain signature-local metadata.
+export const witness = 1;

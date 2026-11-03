@@ -1,0 +1,1 @@
+cov-tooling VIP coverage: all eight explicit unknown/any/alias foreign contracts are accepted as unwrapped plain calls.

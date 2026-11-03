@@ -1,0 +1,3 @@
+// docs/design/vips/0027-declaration-output.md#5f379b198b3b9091
+// VIP-27: inspect actual native-consumer JS independently of the known fork admission gap.
+export const witness = 1;

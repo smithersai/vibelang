@@ -1,0 +1,5 @@
+// docs/design/vips/0027-declaration-output.md#b1bb1429e4924dc5
+// VIP-27: foreign callable contracts survive aliases, reexports, overloads and declarations.
+// docs/design/vips/0027-declaration-output.md#a763aaa623b82781
+// VIP-27: foreign callable contracts survive aliases, reexports, overloads and declarations.
+export const witness = 1;

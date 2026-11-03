@@ -1,0 +1,1 @@
+cov-tooling VIP coverage: native arbitrary-extension consumers are rejected by the fork or target the wrong emitted source suffix.

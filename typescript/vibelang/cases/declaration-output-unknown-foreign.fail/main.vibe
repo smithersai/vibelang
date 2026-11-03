@@ -1,0 +1,3 @@
+// docs/design/vips/0027-declaration-output.md#f90cb30257c05809
+// VIP-27: declaration-output-unknown-foreign.fail.
+export const witness = 1;

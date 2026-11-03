@@ -1,0 +1,3 @@
+// docs/design/vips/0027-declaration-output.md#12ed8c4b8284653d
+// VIP-27: async declarations preserve throwing callback admission without synchronous rethrows.
+export const witness = 1;

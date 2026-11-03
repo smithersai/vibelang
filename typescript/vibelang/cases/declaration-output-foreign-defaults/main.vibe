@@ -1,0 +1,7 @@
+// docs/design/vips/0027-declaration-output.md#8d0d03c4fbc95722
+// VIP-27: unannotated foreign calls stay ordinary and never contracts stay nonthrowing.
+// docs/design/vips/0027-declaration-output.md#16371834182096a8
+// VIP-27: unannotated foreign calls stay ordinary and never contracts stay nonthrowing.
+// docs/design/vips/0027-declaration-output.md#1e12284cde4b8170
+// VIP-27: unannotated foreign calls stay ordinary and never contracts stay nonthrowing.
+export const witness = 1;

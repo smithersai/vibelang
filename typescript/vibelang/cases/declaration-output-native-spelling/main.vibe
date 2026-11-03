@@ -1,0 +1,9 @@
+// docs/design/vips/0027-declaration-output.md#9ba30b996739685c
+// VIP-27: native declaration emitter controls relative source spelling.
+// docs/design/vips/0027-declaration-output.md#2addedd21d2a2447
+// VIP-27: native declaration emitter controls relative source spelling.
+// docs/design/vips/0027-declaration-output.md#46011c0868dbd7f5
+// VIP-27: native declaration emitter controls relative source spelling.
+// docs/design/vips/0027-declaration-output.md#cc81c04884151eb8
+// VIP-27: native declaration emitter controls relative source spelling.
+export const witness = 1;

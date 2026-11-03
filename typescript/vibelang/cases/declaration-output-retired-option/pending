@@ -1,0 +1,1 @@
+cov-tooling VIP coverage: retired declarationImportStyle options do not give a nonfatal deprecation warning for every value.

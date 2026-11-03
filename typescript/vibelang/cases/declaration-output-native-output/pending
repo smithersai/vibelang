@@ -1,0 +1,1 @@
+cov-tooling VIP coverage: without rewriteRelativeImportExtensions the fork leaves a native consumer's emitted .vibe import unchanged instead of lowering it to .js.

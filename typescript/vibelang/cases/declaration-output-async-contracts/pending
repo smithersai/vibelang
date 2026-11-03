@@ -1,0 +1,1 @@
+cov-tooling VIP coverage: async declaration retains active rethrows and loses the throwing parameter contract.

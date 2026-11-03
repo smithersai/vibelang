@@ -1,0 +1,1 @@
+foreign callable contracts survive aliases, reexports, overloads and declarations

@@ -1,0 +1,3 @@
+// docs/design/vips/0027-declaration-output.md#882221edf904402d
+// VIP-27: both retired declarationImportStyle option paths warn for every value.
+export const witness = 1;

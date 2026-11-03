@@ -1,0 +1,1 @@
+async declarations preserve throwing callback admission without synchronous rethrows

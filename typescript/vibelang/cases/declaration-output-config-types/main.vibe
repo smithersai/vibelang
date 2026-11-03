@@ -1,0 +1,5 @@
+// docs/design/vips/0027-declaration-output.md#812fd16dff5271d8
+// VIP-27: sidecarDir is a path string rather than a switch, nullable alias, array or CLI flag.
+// docs/design/vips/0027-declaration-output.md#3767b18c6c1647b2
+// VIP-27: sidecarDir is a path string rather than a switch, nullable alias, array or CLI flag.
+export const witness = 1;

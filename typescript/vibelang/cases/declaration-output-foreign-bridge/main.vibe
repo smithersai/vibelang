@@ -1,0 +1,7 @@
+// docs/design/vips/0027-declaration-output.md#99e1a6b6407e0437
+// VIP-27: declaration-output-foreign-bridge.
+// docs/design/vips/0027-declaration-output.md#905c94b1d1a310cd
+// VIP-27: declaration-output-foreign-bridge.
+import {Effect} from "effect"
+import {risky} from "./foreign.js"
+export effect function bridged(s: string) { return try Effect.try({try:()=>risky(s),catch:(error)=>error}) }

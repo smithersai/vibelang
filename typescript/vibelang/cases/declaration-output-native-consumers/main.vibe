@@ -1,0 +1,17 @@
+// docs/design/vips/0027-declaration-output.md#38678f096540f133
+// VIP-27: stock arbitrary-extension consumers versus fork and emitted JS.
+// docs/design/vips/0027-declaration-output.md#a1ce153bf2dd13fd
+// VIP-27: stock arbitrary-extension consumers versus fork and emitted JS.
+// docs/design/vips/0027-declaration-output.md#28676c00cbe5af1e
+// VIP-27: stock arbitrary-extension consumers versus fork and emitted JS.
+// docs/design/vips/0027-declaration-output.md#7c1dd7a36bdc4bd8
+// VIP-27: stock arbitrary-extension consumers versus fork and emitted JS.
+// docs/design/vips/0027-declaration-output.md#0b553f75022d121b
+// VIP-27: stock arbitrary-extension consumers versus fork and emitted JS.
+// docs/design/vips/0027-declaration-output.md#015024e43446181c
+// VIP-27: stock arbitrary-extension consumers versus fork and emitted JS.
+// docs/design/vips/0027-declaration-output.md#2cf58faaee3d2203
+// VIP-27: stock arbitrary-extension consumers versus fork and emitted JS.
+// docs/design/vips/0027-declaration-output.md#5f379b198b3b9091
+// VIP-27: stock arbitrary-extension consumers versus fork and emitted JS.
+export const witness = 1;

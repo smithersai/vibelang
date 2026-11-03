@@ -1,0 +1,9 @@
+// docs/design/vips/0027-declaration-output.md#53232715c534bff4
+// VIP-27: explicit foreign unknown and any contracts reject unwrapped plain calls.
+// docs/design/vips/0027-declaration-output.md#7ab848f94da003ed
+// VIP-27: explicit foreign unknown and any contracts reject unwrapped plain calls.
+// docs/design/vips/0027-declaration-output.md#8d1678c349a0b46b
+// VIP-27: explicit foreign unknown and any contracts reject unwrapped plain calls.
+// docs/design/vips/0027-declaration-output.md#d183acb0cc38c709
+// VIP-27: explicit foreign unknown and any contracts reject unwrapped plain calls.
+export const witness = 1;

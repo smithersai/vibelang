@@ -1,0 +1,25 @@
+// docs/design/vips/0027-declaration-output.md#bfde0627993d5772
+// VIP-27: faithful constant never declaration encoding.
+// docs/design/vips/0027-declaration-output.md#634adc505e120234
+// VIP-27: nonthrowing declaration boundary retained by accepted amendment.
+// docs/design/vips/0027-declaration-output.md#cdde748f8d51aecb
+// VIP-27: every exported local call signature has its nonthrowing boundary.
+// docs/design/vips/0027-declaration-output.md#c8ed892c1ee67ec1
+// VIP-27: local callable declarations retain their nonthrowing boundary.
+// docs/design/vips/0027-declaration-output.md#e4c29a253b364290
+// VIP-27: local callable declarations retain their nonthrowing boundary.
+// docs/design/vips/0027-declaration-output.md#9fe0e12b1d0c7cb8
+// VIP-27: local callable declarations retain their nonthrowing boundary.
+// docs/design/vips/0027-declaration-output.md#11b5629466ffc101
+// VIP-27: local callable declarations retain their nonthrowing boundary.
+// docs/design/vips/0027-declaration-output.md#b5c7009bb0d4d6bc
+// VIP-27: local callable declarations retain their nonthrowing boundary.
+// docs/design/vips/0027-declaration-output.md#fdb2087fae84d51c
+// VIP-27: local callable declarations retain their nonthrowing boundary.
+// docs/design/vips/0027-declaration-output.md#441d142b0220b9e1
+// VIP-27: local callable declarations retain their nonthrowing boundary.
+// docs/design/vips/0027-declaration-output.md#b7a3e2a4d378d9a6
+// VIP-27: local callable declarations retain their nonthrowing boundary.
+// docs/design/vips/0027-declaration-output.md#0a62d033911c0366
+// VIP-27: local callable declarations retain their nonthrowing boundary.
+export const witness = 1;

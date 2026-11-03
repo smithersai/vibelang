@@ -1,0 +1,1 @@
+stock arbitrary-extension consumers versus fork and emitted JS
