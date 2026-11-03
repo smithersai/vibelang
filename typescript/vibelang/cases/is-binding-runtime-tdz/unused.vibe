@@ -1,0 +1,4 @@
+// This module needs no runtime helper except the binding's TDZ identity.
+export function unusedBinding(): boolean {
+  return 7 is let n
+}

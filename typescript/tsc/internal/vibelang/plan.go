@@ -13,6 +13,9 @@ const effectTypeID = "~effect/Effect"
 
 // plan records what the lowering does to one .vibe file.
 type plan struct {
+	isBindingDeclarations map[*ast.Node]bool
+	isBindingReferences   map[*ast.Node]*ast.Node
+
 	schemaGenerics   map[*ast.Node]*ast.Node
 	collisionModules map[*ast.Node]string
 
@@ -85,6 +88,7 @@ func newFilePlan() *plan {
 // checking share the same lowering decisions rather than guessing from tokens.
 func populateFilePlan(c *checker.Checker, file *ast.SourceFile, p *plan) {
 	p.prelude = preludeUses(c, file)
+	p.planIsBindingTDZ(c, file)
 	a := analyzerFor(c)
 	var visit func(node *ast.Node) bool
 	visit = func(node *ast.Node) bool {

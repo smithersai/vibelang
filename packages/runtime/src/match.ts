@@ -317,3 +317,28 @@ export function $assertMatch(matched: unknown, subject: unknown): void {
 export function $patternError(_code: number, _detail?: string): boolean {
   throw new TypeError("This pattern is not supported")
 }
+
+const createBindingSentinel = Symbol
+
+/** Compiler ABI: create a private identity for one compiled module's TDZ. */
+export function $uninitializedBinding(): symbol {
+  return createBindingSentinel("uninitialized pattern binding")
+}
+
+/** Compiler ABI: GetValue of a lexical pattern binding (VIP-7). */
+export function $readBinding<T>(value: T, uninitialized: symbol): T {
+  if (value === uninitialized) throw new ReferenceError("Cannot access an uninitialized pattern binding")
+  return value
+}
+
+/** Compiler ABI: preserve native GetValue/PutValue ordering for source writes. */
+export function $bindingReference<T>(read: () => T, write: (value: T) => void, constant: boolean, uninitialized: symbol): { value: T } {
+  return {
+    get value() { return $readBinding(read(), uninitialized) },
+    set value(value: T) {
+      $readBinding(read(), uninitialized)
+      if (constant) throw new TypeError("Assignment to constant pattern binding")
+      write(value)
+    }
+  }
+}

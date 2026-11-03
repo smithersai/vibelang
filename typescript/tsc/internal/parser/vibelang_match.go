@@ -686,7 +686,8 @@ func (p *Parser) parseVibeLangIs(subject *ast.Node, pos int) *ast.Node {
 //
 // A binding is assigned only when its pattern has matched, so after
 // `if (!(x is { id: let id })) return` the name is initialized, and a binding
-// the condition skipped stays undefined. Two patterns binding one name in
+// the condition skipped stays uninitialized (the emitter guards its runtime
+// TDZ). Two patterns binding one name in
 // one home declare it twice, which TypeScript reports (TS2451), as for two
 // let statements. It returns expression itself when no is in it binds names.
 func (p *Parser) hoistVibeLangIs(expression *ast.Node) *ast.Node {

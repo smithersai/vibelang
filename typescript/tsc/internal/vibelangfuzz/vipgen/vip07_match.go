@@ -1051,3 +1051,58 @@ func init() {
 		},
 	})
 }
+
+// VIP-7: vary the read form, binding keyword, subject value and the point
+// where matching stops. The native oracle models initialization separately
+// from the value; in particular initialized undefined is not a TDZ.
+func init() {
+	var source, reference, calls strings.Builder
+	source.WriteString("function witness():unknown[]{")
+	reference.WriteString("function witness(){")
+	index := 0
+	for _, keyword := range []string{"let", "const"} {
+		for _, value := range []string{"undefined", "0", "7"} {
+			for _, read := range []string{"String(n)", "typeof n", "String(({n}).n)"} {
+				for _, mode := range []string{"missing", "short-circuit", "prefix", "list-prefix", "nested", "initialized", "failed-guard"} {
+					name := fmt.Sprintf("read%d", index)
+					index++
+					subject := "{n:" + value + "}"
+					pattern := "o is {" + keyword + " n}"
+					native := "n=o.n;bound=true"
+					switch mode {
+					case "missing":
+						subject, native = "{}", ""
+					case "short-circuit":
+						pattern, native = "skip && ("+pattern+")", ""
+					case "prefix":
+						subject = "{first:0,n:" + value + "}"
+						pattern, native = "o is {first:1,"+keyword+" n}", ""
+					case "list-prefix":
+						subject = "[0," + value + "]"
+						pattern, native = "o is [1,"+keyword+" n]", ""
+					case "nested":
+						subject = "{outer:{}}"
+						pattern, native = "o is {outer:{"+keyword+" n}}", ""
+					case "failed-guard":
+						pattern += " and if(false)"
+					}
+					fmt.Fprintf(&source, "function %s():string{try{const skip:boolean=false;const read:()=>string=()=>%s;const o=%s;if(%s){}return read()}catch(e){return e instanceof ReferenceError?\"tdz\":\"wrong\"}}", name, read, subject, pattern)
+					fmt.Fprintf(&reference, "function %s(){try{let bound=false;let n;const read=()=>{if(!bound)throw new ReferenceError();return %s};const o=%s;%s;return read()}catch(e){return e instanceof ReferenceError?\"tdz\":\"wrong\"}}", name, read, subject, native)
+					if calls.Len() != 0 {
+						calls.WriteString(",")
+					}
+					calls.WriteString(name + "()")
+				}
+			}
+		}
+	}
+	result := "return [" + calls.String() + "]}"
+	registerWitness(7, ChapterWitness{
+		Key:     "vip07.is-binding-tdz-neighborhood-plain",
+		Chapter: "004-match.md",
+		Quote:   "Each cell stays in TDZ until its binding pattern executes.",
+		Vibe:    source.String() + result,
+		Effect:  reference.String() + result,
+		Cite:    vip7Cite("if(!bound)throw new ReferenceError()"),
+	})
+}

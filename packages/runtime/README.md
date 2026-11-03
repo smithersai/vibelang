@@ -131,6 +131,9 @@ or runtime references valid in first-release `.vibe` source.
 | `$tryAny` | `try.any [a, b]`: the first Effect to succeed wins; fails with every failure when all fail (Effect.raceAll) | VIP-18 |
 | `$tryRace` | `try.race [a, b]`: the first Effect to finish wins, success or failure (Effect.raceAllFirst) | VIP-18 |
 | `$noFailure` | Sentinel for a Cause without a recoverable expected failure | — |
+| `$uninitializedBinding` | Create a private pattern-binding TDZ identity for a compiled module | VIP-7 |
+| `$readBinding` | Read an initialized pattern binding or throw `ReferenceError` | VIP-7 |
+| `$bindingReference` | Preserve native read and write ordering for pattern bindings | VIP-7 |
 | `$noMatch` | Throw for a value that no match arm handled | — |
 | `$patternError` | Mark an unsupported pattern during checking | — |
 | `$provideEntries` | Provide a block's `Layer` providers and `Key = value` entries through `Effect.provide` in source order | VIP-12 |

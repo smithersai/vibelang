@@ -6,6 +6,9 @@ import abi from "./native.cjs"
 export const {
   $Context,
   $assertMatch,
+  $uninitializedBinding,
+  $readBinding,
+  $bindingReference,
   $asyncHatch,
   $await,
   $tryAll,

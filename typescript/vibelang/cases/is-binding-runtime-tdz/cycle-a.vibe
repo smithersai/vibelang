@@ -1,0 +1,9 @@
+import { cycleResult } from "./cycle-b.vibe"
+
+export function initializedInCycle(): number {
+  const o = { n: 7 }
+  if (o is { let n }) return n
+  return 0
+}
+
+export { cycleResult }

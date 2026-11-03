@@ -28,6 +28,8 @@ import (
 //	  }).apply(this, arguments)
 //	}
 type lowering struct {
+	bindingSentinel *ast.IdentifierNode // private lexical-pattern TDZ identity, created once per module
+
 	jsx core.JsxEmit // native .tsx output names follow the project JSX mode
 	transformers.Transformer
 	plan         *plan
@@ -122,6 +124,15 @@ func (tx *lowering) visitSource(node *ast.Node) *ast.Node {
 }
 
 func (tx *lowering) visitNode(node *ast.Node) *ast.Node {
+	if tx.plan.isBindingDeclarations[node] {
+		return tx.visitIsBindingDeclaration(node)
+	}
+	if ast.IsShorthandPropertyAssignment(node) && tx.plan.isBindingReferences[node.Name()] != nil {
+		return tx.visitIsBindingShorthand(node)
+	}
+	if tx.plan.isBindingReferences[node] != nil {
+		return tx.visitIsBindingReference(node)
+	}
 	if link := tx.guardedLink(node); link != nil {
 		return tx.visitGuardedChain(node, link) // a ?. before a yield (chains_lower.go)
 	}
@@ -331,6 +342,11 @@ func (tx *lowering) visitSourceFile(file *ast.SourceFile) *ast.Node {
 		for i, declaration := range imports {
 			imports[i] = requireNamedImports(&tx.Factory().NodeFactory, declaration)
 		}
+	}
+	if tx.bindingSentinel != nil {
+		f := tx.Factory()
+		declaration := f.NewVariableDeclaration(tx.bindingSentinel, nil, nil, nil)
+		imports = append(imports, f.NewVariableStatement(nil, f.NewVariableDeclarationList(f.NewNodeList([]*ast.Node{declaration}), ast.NodeFlagsNone)))
 	}
 	if len(tx.eagerCaches) != 0 {
 		imports = append(imports, tx.Factory().NewVariableStatement(nil, tx.Factory().NewVariableDeclarationList(tx.Factory().NewNodeList(tx.eagerCaches), ast.NodeFlagsNone)))

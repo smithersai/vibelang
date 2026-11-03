@@ -1,0 +1,4 @@
+import { initializedInCycle } from "./cycle-a.vibe"
+
+// The function is hoisted, but cycle-a's module body has not started yet.
+export const cycleResult = initializedInCycle()

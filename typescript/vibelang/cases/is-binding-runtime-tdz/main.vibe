@@ -1,0 +1,179 @@
+// expect-result: ["tdz","tdz","tdz","tdz","undefined","7","tdz","tdz","tdz",["tdz",["rhs"]],["7",8,10,10,11,12,13],"tdz","tdz","outer","tdz",true,true,"sentinel-value",true,7,true]
+import { Effect, Exit } from "effect"
+import { unusedBinding } from "./unused.vibe"
+import { cycleResult } from "./cycle-a.vibe"
+import { $uninitializedBinding } from "vibelang-runtime"
+
+function witness0(): string {
+  try {
+    const read: () => string = () => String(n)
+    const o = {}
+    if (o is { let n }) {}
+    return read()
+  } catch (e) {
+    return e instanceof ReferenceError ? "tdz" : "wrong"
+  }
+}
+
+
+function skipped(flag: boolean): string {
+  try {
+    const read: () => string = () => String(n)
+    const o = { n: 7 }
+    if (flag && (o is { let n })) {}
+    return read()
+  } catch (e) { return e instanceof ReferenceError ? "tdz" : "wrong" }
+}
+function constant(): string {
+  try {
+    const read: () => string = () => String(n)
+    const o = {}
+    if (o is { const n }) {}
+    return read()
+  } catch (e) { return e instanceof ReferenceError ? "tdz" : "wrong" }
+}
+function prefix(): string {
+  try {
+    const read: () => string = () => String(n)
+    const o = { first: 0, n: 7 }
+    if (o is { first: 1, let n }) {}
+    return read()
+  } catch (e) { return e instanceof ReferenceError ? "tdz" : "wrong" }
+}
+function initializedUndefined(): string {
+  const read: () => string = () => String(n)
+  const o = { n: undefined }
+  if (o is { let n }) {}
+  return read()
+}
+function failedGuard(): string {
+  const read: () => string = () => String(n)
+  const o = { n: 7 }
+  if (o is { let n } and if (false)) {}
+  return read()
+}
+function typeRead(): string {
+  try {
+    const read: () => string = () => typeof n
+    const o = {}
+    if (o is { let n }) {}
+    return read()
+  } catch (e) { return e instanceof ReferenceError ? "tdz" : "wrong" }
+}
+function shorthand(): string {
+  try {
+    const read: () => unknown = () => ({ n })
+    const o = {}
+    if (o is { let n }) {}
+    return String(read())
+  } catch (e) { return e instanceof ReferenceError ? "tdz" : "wrong" }
+}
+function before(): string {
+  try {
+    const read: () => string = () => String(n)
+    read()
+    const o = { n: 7 }
+    if (o is { let n }) {}
+    return "wrong"
+  } catch (e) { return e instanceof ReferenceError ? "tdz" : "wrong" }
+}
+function writeSkipped(): unknown[] {
+  const trace: string[] = []
+  try {
+    const write: () => unknown = () => n = (trace.push("rhs"), 9)
+    const o = {} as { n: number }
+    if (o is { let n }) {}
+    write()
+    return ["wrong", trace]
+  } catch (e) { return [e instanceof ReferenceError ? "tdz" : "wrong", trace] }
+}
+function writes(): unknown[] {
+  const read: () => string = () => String(n)
+  const mutate: () => unknown[] = () => {
+    const a = ++n
+    const b = n += 2
+    const c = n++
+    ;[n] = [11]
+    const d = n
+    ;({ n } = { n: 12 })
+    const e = n
+    ;({ n = 13 } = {} as { n?: number })
+    return [a,b,c,d,e,n]
+  }
+  const o = { n: 7 }
+  if (o is { let n }) {}
+  return [read(), ...mutate()]
+}
+function escaped(): string {
+  function factory(): () => string {
+    const read: () => string = () => String(n)
+    const o = {}
+    if (o is { let n }) {}
+    return read
+  }
+  try { return factory()() } catch (e) { return e instanceof ReferenceError ? "tdz" : "wrong" }
+}
+function callable(): string {
+  try {
+    const read: () => string = () => n()
+    const o = {} as { n: () => string }
+    if (o is { let n }) {}
+    return read()
+  } catch (e) { return e instanceof ReferenceError ? "tdz" : "wrong" }
+}
+function shadowed(): string {
+  const runtime = "source"
+  const $readBinding = "source"
+  const n = "outer"
+  {
+    const read: () => string = () => String(n)
+    const o = { n: 7 }
+    if (o is { let n }) {}
+    if (read() !== "7") return "wrong"
+  }
+  return n
+}
+function uninitializedCompound(): string {
+  try {
+    const write: () => unknown = () => ++n
+    const o = {} as { n: number }
+    if (o is { let n }) {}
+    return String(write())
+  } catch (e) { return e instanceof ReferenceError ? "tdz" : "wrong" }
+}
+
+effect function deferredRead() {
+  const read: () => string = () => String(n)
+  const o = {}
+  if (o is { let n }) {}
+  return read()
+}
+effect function initializedRead() {
+  const read: () => string = () => String(n)
+  const o = { n: undefined }
+  if (o is { let n }) {}
+  return read()
+}
+function exportedSentinelValue(): string {
+  try {
+    const value = $uninitializedBinding
+    const read: () => boolean = () => n === value
+    const o = { n: value }
+    if (o is { let n }) {}
+    return read() ? "sentinel-value" : "wrong"
+  } catch (e) { return e instanceof ReferenceError ? "tdz" : "wrong" }
+}
+function protoShorthand(): boolean {
+  const read: () => { __proto__: number } = () => ({ __proto__ })
+  const o = { ["__proto__"]: 7 }
+  if (o is { let __proto__ }) {}
+  const value = read()
+  return Object.hasOwn(value, "__proto__") && value.__proto__ === 7
+    && Object.getPrototypeOf(value) === Object.prototype
+}
+export function main() {
+  return Effect.succeed([witness0(), skipped(false), constant(), prefix(), initializedUndefined(),
+    failedGuard(), typeRead(), shorthand(), before(), writeSkipped(), writes(), escaped(),
+    callable(), shadowed(), uninitializedCompound(), Exit.isFailure(Effect.runSyncExit(deferredRead())),
+    Exit.isSuccess(Effect.runSyncExit(initializedRead())), exportedSentinelValue(), unusedBinding(), cycleResult, protoShorthand()])
+}
