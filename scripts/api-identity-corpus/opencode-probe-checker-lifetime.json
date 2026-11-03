@@ -1,0 +1,7 @@
+{
+  "rule": "Will: large declaration packages must finish; identical trees report identical without retaining the input and probe type-relation forests together.",
+  "qualification": "Generated generic-instantiation workload, not original opencode snapshots.",
+  "familyCount": 16,
+  "tupleDepth": 192,
+  "heapLimitMiB": 256
+}

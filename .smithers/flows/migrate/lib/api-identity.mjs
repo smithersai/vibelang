@@ -459,24 +459,7 @@ export function compareApiIdentity(ts, before, after, options = {}) {
   }
 }
 
-function compareUnchecked(ts, before, after, options, progress) {
-  before = resolve(before); after = resolve(after)
-  const entryMap = (base, supplied) => Object.fromEntries(Object.entries(supplied ?? publishedEntrypoints(base, ts))
-    .map(([key, path]) => [key, resolve(base, path)]))
-  const left = entryMap(before, options.beforeEntrypoints)
-  const right = entryMap(after, options.afterEntrypoints)
-  const result = { identical: false, comparisonComplete: true, nameDifferences: [], typeDifferences: [], docDifferences: [], environmentDiagnostics: [] }
-  const keys = [...new Set([...Object.keys(left), ...Object.keys(right)])].sort()
-  const compilerOptions = {
-    target: ts.ScriptTarget.ESNext, module: ts.ModuleKind.ESNext,
-    moduleResolution: ts.ModuleResolutionKind.Bundler, strict: true,
-    noEmit: true, skipLibCheck: false, types: [], allowImportingTsExtensions: true, allowArbitraryExtensions: true,
-    resolveJsonModule: projectJsonModules(ts, before) && projectJsonModules(ts, after),
-    ...options.compilerOptions,
-    strict: true, strictNullChecks: true, strictFunctionTypes: true, noImplicitAny: true, noImplicitThis: true,
-    noEmit: true, skipLibCheck: false, allowSyntheticDefaultImports: true,
-  }
-  const virtual = new Map()
+function createIdentityHost(ts, compilerOptions, before, after, options, virtual) {
   const host = ts.createCompilerHost(compilerOptions)
   const originalRead = host.readFile.bind(host)
   const fileContents = new Map()
@@ -495,10 +478,6 @@ function compareUnchecked(ts, before, after, options, progress) {
     const source = getSource(file, languageVersion, onError, fresh)
     if (source) sourceCache.set(key, source)
     return source
-  }
-  for (const entries of [left, right]) for (const [key, path] of Object.entries(entries)) {
-    if (path.endsWith(".vibe") && host.fileExists(path.replace(/\.vibe$/, ".d.vibe.ts")))
-      entries[key] = path.replace(/\.vibe$/, ".d.vibe.ts")
   }
   // Fuzz/case snapshots live outside their original package. Resolve their
   // external dependencies through the caller's pinned Effect install only
@@ -553,6 +532,32 @@ function compareUnchecked(ts, before, after, options, progress) {
     if (!moduleResolutions.has(key)) moduleResolutions.set(key, resolveNames([name], file, [modes[index]])[0])
     return moduleResolutions.get(key)
   })
+  return { host, moduleResolutions, externalGroups }
+}
+
+function prepareComparison(ts, before, after, options, progress) {
+  before = resolve(before); after = resolve(after)
+  const entryMap = (base, supplied) => Object.fromEntries(Object.entries(supplied ?? publishedEntrypoints(base, ts))
+    .map(([key, path]) => [key, resolve(base, path)]))
+  const left = entryMap(before, options.beforeEntrypoints)
+  const right = entryMap(after, options.afterEntrypoints)
+  const result = { identical: false, comparisonComplete: true, nameDifferences: [], typeDifferences: [], docDifferences: [], environmentDiagnostics: [] }
+  const keys = [...new Set([...Object.keys(left), ...Object.keys(right)])].sort()
+  const compilerOptions = {
+    target: ts.ScriptTarget.ESNext, module: ts.ModuleKind.ESNext,
+    moduleResolution: ts.ModuleResolutionKind.Bundler, strict: true,
+    noEmit: true, skipLibCheck: false, types: [], allowImportingTsExtensions: true, allowArbitraryExtensions: true,
+    resolveJsonModule: projectJsonModules(ts, before) && projectJsonModules(ts, after),
+    ...options.compilerOptions,
+    strict: true, strictNullChecks: true, strictFunctionTypes: true, noImplicitAny: true, noImplicitThis: true,
+    noEmit: true, skipLibCheck: false, allowSyntheticDefaultImports: true,
+  }
+  const virtual = new Map()
+  const { host, moduleResolutions, externalGroups } = createIdentityHost(ts, compilerOptions, before, after, options, virtual)
+  for (const entries of [left, right]) for (const [key, path] of Object.entries(entries)) {
+    if (path.endsWith(".vibe") && host.fileExists(path.replace(/\.vibe$/, ".d.vibe.ts")))
+      entries[key] = path.replace(/\.vibe$/, ".d.vibe.ts")
+  }
   const probe = join(repo, ".api-identity-probe.mts")
   const roots = [...new Set([...Object.values(left), ...Object.values(right)])]
   progress("create-input-program")
@@ -924,6 +929,30 @@ function compareUnchecked(ts, before, after, options, progress) {
       virtual.set(to, (virtual.get(to) ?? host.readFile(to)) + text.slice(original.length))
     }
   }
+  const diagnosticText = d => "TS" + d.code + ": " + ts.flattenDiagnosticMessageText(d.messageText, "\n")
+  const diagnostics = [...originalDiagnostics, ...inputDiagnostics].map(d => ({
+    diagnostic: diagnosticText(d), file: d.file?.fileName,
+    line: d.file && d.start !== undefined ? d.file.getLineAndCharacterOfPosition(d.start).line + 1 : 0,
+    blocking: !d.file || [before, after].some(base =>
+      (d.file.fileName === base || d.file.fileName.startsWith(base + "/")) && !d.file.fileName.includes("/node_modules/"))
+  }))
+  // Only plain comparison data survives preparation. No Program, TypeChecker,
+  // SourceFile or diagnostic node is retained while fresh probes are checked.
+  return { before, after, options, result, compilerOptions, roots, probe, virtual,
+    equivalents, checks, imports, bridges: [...bridges.keys()], invalidExports, diagnostics }
+}
+
+function compareUnchecked(ts, before, after, options, progress) {
+  const plan = prepareComparison(ts, before, after, options, progress)
+  if (!plan.result) return plan
+  return checkComparison(ts, plan, progress)
+}
+
+function checkComparison(ts, plan, progress) {
+  const { before, after, options, result, compilerOptions, roots, probe, virtual,
+    equivalents, checks, imports, bridges, invalidExports } = plan
+  const { host } = createIdentityHost(ts, compilerOptions, before, after, options, virtual)
+  let program
   const resolveModules = host.resolveModuleNames
   host.resolveModuleNames = (names, file, modes) => resolveModules(names, file, modes).map(resolved => resolved &&
     { ...resolved, resolvedFileName: equivalents.get(resolved.resolvedFileName) ?? resolved.resolvedFileName })
@@ -931,6 +960,11 @@ function compareUnchecked(ts, before, after, options, progress) {
   if (!Number.isSafeInteger(batchSize) || batchSize < 1)
     throw new Error("probeBatchSize must be a positive safe integer")
   const seen = new Set()
+  for (const item of plan.diagnostics) {
+    const key = JSON.stringify(item)
+    if (!seen.has(key)) result.environmentDiagnostics.push(item)
+    seen.add(key)
+  }
   // A checker retains every type relation it instantiates. Restrict each fresh
   // checker to a small probe and diagnose the already validated inputs once.
   for (let offset = 0; offset < Math.max(1, checks.length); offset += batchSize) {
@@ -951,8 +985,7 @@ function compareUnchecked(ts, before, after, options, progress) {
   progress("probe-diagnostics", { probeOffset: offset, probeCount: batch.length, totalProbes: checks.length })
   const probeSource = program.getSourceFile(probe)
   const diagnostics = [
-    ...(offset === 0 ? [...originalDiagnostics, ...inputDiagnostics,
-      ...[...bridges.keys()].flatMap(file => ts.getPreEmitDiagnostics(program, program.getSourceFile(file)))] : []),
+    ...(offset === 0 ? bridges.flatMap(file => ts.getPreEmitDiagnostics(program, program.getSourceFile(file))) : []),
     ...ts.getPreEmitDiagnostics(program, probeSource),
   ]
   const assignmentFailures = new Set(diagnostics.filter(d => d.file?.fileName === probe && d.start !== undefined)

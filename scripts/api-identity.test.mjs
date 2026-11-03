@@ -365,7 +365,7 @@ test("source wildcard targets, module extensions, assets and publication overrid
   for (const [target, file] of [["./lib/*.ts", "lib/a.d.ts"], ["./lib/*.vibe", "lib/a.d.ts"], ["./lib/*.mjs", "lib/a.d.mts"], ["./lib/*.cjs", "lib/a.d.cts"]]) {
     const files = { [file]: "export type X = string;" }
     const manifest = { exports: { "./*": target, "./package.json": "./package.json" } }
-    fixture(files, files, a => assert.deepEqual(Object.keys(publishedEntrypoints(a)), ["./a"]), manifest)
+    fixture(files, files, a => assert.deepEqual(Object.keys(publishedEntrypoints(a)), ["./a", "./package.json"]), manifest)
     pass(files, files, manifest)
   }
   const manifest = { exports: { "./dev": "./missing.ts" }, publishConfig: { exports: { ".": { types: "./lib/index.d.ts" } } } }

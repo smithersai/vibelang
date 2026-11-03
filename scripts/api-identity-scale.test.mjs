@@ -133,3 +133,28 @@ process.exitCode = result.identical ? 0 : result.comparisonComplete ? 1 : 2;`
     assert.equal(result.identical, true)
   })
 })
+
+test("input checker state is released before validating generic bridges", () => {
+  const corpus = JSON.parse(readFileSync(new URL("./api-identity-corpus/opencode-probe-checker-lifetime.json", import.meta.url)))
+  const text = `type Tuple<V, N extends number, T extends unknown[] = []> = T["length"] extends N ? T : Tuple<V, N, [...T, V]>;
+type Assert<T extends true> = T;
+` + Array.from({ length: corpus.familyCount }, (_, i) =>
+    `type Force${i} = Assert<Tuple<${i}, ${corpus.tupleDepth}>["length"] extends ${corpus.tupleDepth} ? true : false>;`).join("\n") +
+    "\nexport type Api<T = string> = { item: T };"
+  fixture({ "index.d.ts": text }, { "index.d.ts": text }, (a, b) => {
+    const source = `import { readFileSync } from "node:fs";
+import { compareApiIdentity, loadTypeScript } from ${JSON.stringify(new URL("./api-identity.mjs", import.meta.url).href)};
+const [a, b] = JSON.parse(readFileSync(0, "utf8"));
+const result = compareApiIdentity(loadTypeScript(), a, b, { compilerOptions: { lib: ["lib.es5.d.ts"] } });
+console.log(JSON.stringify(result));
+process.exitCode = result.identical ? 0 : result.comparisonComplete ? 1 : 2;`
+    const child = spawnSync(process.execPath, [`--max-old-space-size=${corpus.heapLimitMiB}`, "--input-type=module", "--eval", source], {
+      input: JSON.stringify([a, b]), encoding: "utf8", timeout: 120000, maxBuffer: 1024 * 1024,
+    })
+    assert.equal(child.status, 0, child.stdout + child.stderr)
+    assert.equal(child.signal, null)
+    const result = JSON.parse(child.stdout)
+    assert.equal(result.comparisonComplete, true)
+    assert.equal(result.identical, true)
+  })
+})

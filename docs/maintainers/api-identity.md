@@ -133,3 +133,8 @@ programs can be collected before the next group starts. `entryBatchSize` accepts
 a positive safe integer for batch-invariance controls. All name, type, comment
 and environment records are combined; one incomplete group makes the whole
 comparison unavailable, even if every other group is identical.
+
+Preparation passes virtual declaration text and serialized diagnostic/comparison
+records to a separate probe phase. Its input `Program` and `TypeChecker` can
+be collected before probe checkers allocate their own type relations.
+This also applies to a single entry point with many generic instantiations.
