@@ -68,6 +68,7 @@ const (
 	patternOr                           // items joined by or
 	patternNot                          // not items[0]
 	patternGuard                        // if (expr)
+	patternRelation                     // a relational pattern: operator and expr, < 10 or instanceof Map
 	patternInvalid                      // a form VibeLang does not support yet: code, detail
 )
 
@@ -91,8 +92,9 @@ type pattern struct {
 	rest          *pattern // the pattern after ..., or nil
 	clauses       []objectClause
 	parenthesized bool
-	code          int    // a $patternError code: the form, or 4705 for combinators sharing a level
-	detail        string // the $patternError detail
+	operator      ast.Kind // a relational pattern's operator
+	code          int      // a $patternError code: the form, or 4705 for combinators sharing a level
+	detail        string   // the $patternError detail
 }
 
 // matchArm is one arm of a match expression; pattern is nil for the default arm.
@@ -329,7 +331,9 @@ func (p *Parser) tokenStartsPattern() bool {
 		ast.KindStringLiteral, ast.KindNumericLiteral, ast.KindBigIntLiteral, ast.KindNoSubstitutionTemplateLiteral, ast.KindTemplateHead,
 		ast.KindTrueKeyword, ast.KindFalseKeyword, ast.KindNullKeyword, ast.KindMinusToken, ast.KindPlusToken,
 		ast.KindSlashToken, ast.KindSlashEqualsToken, ast.KindLessThanToken, ast.KindGreaterThanToken,
-		ast.KindLessThanEqualsToken, ast.KindGreaterThanEqualsToken:
+		ast.KindLessThanEqualsToken, ast.KindGreaterThanEqualsToken, ast.KindEqualsEqualsToken,
+		ast.KindExclamationEqualsToken, ast.KindEqualsEqualsEqualsToken, ast.KindExclamationEqualsEqualsToken,
+		ast.KindInstanceOfKeyword, ast.KindInKeyword:
 		return true
 	}
 	return p.isIdentifier() // a contextual keyword, such as undefined or of
@@ -392,13 +396,26 @@ func (p *Parser) parseMatchPrimaryPattern() *pattern {
 		value := p.parseMatchValueExpression()
 		return &pattern{kind: patternValue, anchor: anchor, expr: p.finishNode(p.factory.NewPrefixUnaryExpression(operator, value), pos)}
 	case ast.KindSlashToken, ast.KindSlashEqualsToken:
+		// A regular expression literal is a variable pattern whose matcher
+		// is the expression, and with an argument list an extractor
+		// (RegExp.prototype[Symbol.customMatcher]).
 		p.reScanSlashToken()
-		p.parseLiteralExpression()
-		return &pattern{kind: patternInvalid, anchor: anchor, code: 4704, detail: "Regular expression"}
-	case ast.KindLessThanToken, ast.KindGreaterThanToken, ast.KindLessThanEqualsToken, ast.KindGreaterThanEqualsToken:
+		regexp := p.parseLiteralExpression()
+		if p.token == ast.KindOpenParenToken && !p.hasPrecedingLineBreak() {
+			result := &pattern{kind: patternExtractor, anchor: anchor, expr: regexp}
+			p.parseMatchListPattern(result, ast.KindCloseParenToken)
+			return result
+		}
+		return &pattern{kind: patternValue, anchor: anchor, expr: regexp}
+	case ast.KindLessThanToken, ast.KindGreaterThanToken, ast.KindLessThanEqualsToken, ast.KindGreaterThanEqualsToken,
+		ast.KindEqualsEqualsToken, ast.KindExclamationEqualsToken, ast.KindEqualsEqualsEqualsToken, ast.KindExclamationEqualsEqualsToken,
+		ast.KindInstanceOfKeyword, ast.KindInKeyword:
+		if p.token == ast.KindGreaterThanToken {
+			p.reScanGreaterThanToken()
+		}
+		operator := p.token
 		p.nextToken()
-		p.parseUnaryExpressionOrHigher()
-		return &pattern{kind: patternInvalid, anchor: anchor, code: 4704, detail: "Relational"}
+		return &pattern{kind: patternRelation, anchor: anchor, operator: operator, expr: p.parseMatchRelationOperand(operator)}
 	}
 	// A contextual keyword is a name here too, undefined and of among them.
 	if p.token == ast.KindThisKeyword || p.token == ast.KindSuperKeyword || p.isIdentifier() {
@@ -419,6 +436,37 @@ func (p *Parser) parseMatchPrimaryPattern() *pattern {
 		return &pattern{kind: patternValue, anchor: anchor, expr: expr}
 	}
 	return &pattern{kind: patternInvalid, anchor: anchor, code: 707, detail: "A pattern goes here: a literal, a binding, a name, or an array or object pattern."}
+}
+
+// parseMatchRelationOperand parses the operand of a relational pattern: a
+// literal, a signed number, or an identifier expression, which is all that
+// instanceof and in take.
+func (p *Parser) parseMatchRelationOperand(operator ast.Kind) *ast.Node {
+	if operator != ast.KindInstanceOfKeyword && operator != ast.KindInKeyword {
+		switch p.token {
+		case ast.KindNoSubstitutionTemplateLiteral:
+			if p.scanner.TokenFlags()&ast.TokenFlagsIsInvalid != 0 {
+				p.reScanTemplateToken(false /*isTaggedTemplate*/)
+			}
+			return p.parseLiteralExpression()
+		case ast.KindStringLiteral, ast.KindNumericLiteral, ast.KindBigIntLiteral:
+			return p.parseLiteralExpression()
+		case ast.KindTrueKeyword, ast.KindFalseKeyword, ast.KindNullKeyword:
+			return p.parseKeywordExpression()
+		case ast.KindMinusToken, ast.KindPlusToken:
+			pos := p.nodePos()
+			sign := p.token
+			p.nextToken()
+			var operand *ast.Node
+			if p.token == ast.KindNumericLiteral || p.token == ast.KindBigIntLiteral {
+				operand = p.parseLiteralExpression()
+			} else {
+				operand = p.parseMatchValueExpression()
+			}
+			return p.finishNode(p.factory.NewPrefixUnaryExpression(sign, operand), pos)
+		}
+	}
+	return p.parseMatchValueExpression()
 }
 
 // parseMatchValueExpression parses the identifier expression of a variable
@@ -1272,6 +1320,8 @@ func (p *Parser) compilePattern(pat *pattern, path matchPath, steps *[]matchStep
 		// The parentheses span the guard's expression, so that the language
 		// service finds its names.
 		test(p.mParens(pat.expr, core.NewTextRange(at.Pos(), max(at.End(), pat.expr.End()))))
+	case patternRelation:
+		test(p.relationTest(pat, path))
 	case patternArray:
 		test(p.mCall(p.mProperty(p.mIdent("Array", at), "isArray", at), []*ast.Node{path()}, at))
 		p.compileList(pat, path, len(pat.items), func(i int) matchPath {
@@ -1488,6 +1538,23 @@ func IsSignedNumberZero(expr *ast.Node) bool {
 	return err == nil && value == 0
 }
 
+// relationTest writes the test of a relational pattern. ===, !==, == and !=
+// test as the operators do, and instanceof as the operator does, so the
+// checker narrows them. <, >, <=, >= and in call $relation, which is false
+// for a subject the proposal does not compare: not a string, number or
+// bigint, or for in, not a property key or with an operand that is not an
+// object.
+func (p *Parser) relationTest(pat *pattern, path matchPath) *ast.Node {
+	at := pat.anchor
+	switch pat.operator {
+	case ast.KindEqualsEqualsEqualsToken, ast.KindExclamationEqualsEqualsToken, ast.KindEqualsEqualsToken,
+		ast.KindExclamationEqualsToken, ast.KindInstanceOfKeyword:
+		return p.mParens(p.mBinary(path(), pat.operator, pat.expr, testsSpan(at, pat.expr)), at)
+	}
+	operator := scanner.TokenToString(pat.operator)
+	return p.mCall(p.vibelangIntrinsic("$relation", at), []*ast.Node{p.mString(operator, at), path(), pat.expr}, testsSpan(at, pat.expr))
+}
+
 // enterSubject returns the path through which pat, the pattern of a part of a
 // subject (a property, an element, an extracted value or a rest), reads that
 // part. A pattern that reads it more than once, to test it and bind it, reads
@@ -1531,7 +1598,7 @@ func subjectReads(pat *pattern) int {
 	}
 	n := 0
 	switch pat.kind {
-	case patternLiteral, patternValue, patternBinding:
+	case patternLiteral, patternValue, patternBinding, patternRelation:
 		return 1
 	case patternArray:
 		n = 2 // Array.isArray and length

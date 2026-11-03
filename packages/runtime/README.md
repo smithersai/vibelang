@@ -125,6 +125,7 @@ JavaScript value. Decisions are in [`docs/design/history/DECISIONS.md`](../../do
 | `$patternError` | Mark an unsupported pattern during checking | — |
 | `$provideEntries` | Provide a block's `Layer` providers and `Key = value` entries through `Effect.provide` in source order | VIP-12 |
 | `$provideService` | Supply a service implementation | — |
+| `$relation` | Test a relational pattern (`<`, `>`, `<=`, `>=`, `in`) as the proposal does | — |
 | `$rest` | Extract object rest properties for a pattern | — |
 | `$schemaErrorFamily` | Register a schema error family and its union schema | — |
 | `$schemaErrorMatcher` | Install a schema error declaration matcher that tests its tag across package copies | VIP-7, VIP-29 |

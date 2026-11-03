@@ -862,3 +862,5 @@ parser/vibelang_throw_lookahead.go:throwInvalidPunctuatorCanFollowASI	admission:
 parser/vibelang_throw_lookahead.go:Parser.checkVibeLangThrowLookahead	admission:throw-expression	900-appendices.md	support	VIP-41 unary operand, invalid-punctuator lookahead and automatic semicolon insertion support
 parser/vibelang_throw_lookahead.go:Parser.atVibeLangThrowStop	admission:throw-expression	900-appendices.md	support	VIP-41 unary operand, invalid-punctuator lookahead and automatic semicolon insertion support
 parser/vibelang_throw_lookahead.go:Parser.reportVibeLangThrowStop	admission:throw-expression	900-appendices.md	support	VIP-41 unary operand, invalid-punctuator lookahead and automatic semicolon insertion support
+parser/vibelang_match.go:Parser.parseMatchRelationOperand	admission:match	004-match.md	support	VIP-7: relational patterns of the pinned TC39 snapshot, such as < 0
+parser/vibelang_match.go:Parser.relationTest	admission:match	004-match.md	support	VIP-7: relational patterns of the pinned TC39 snapshot, such as < 0

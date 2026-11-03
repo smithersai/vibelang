@@ -1,0 +1,87 @@
+// expect-result: {"sizes":["small","mid","large","not a number"],"strings":["before m","m or after"],"equality":["exactly one","loosely null","loosely null","not two","two"],"instance":["map 2","date","neither"],"keys":["known","unknown","unknown"],"regex":["vowels","digits 42","other",""],"extracted":["id 12 x","none"],"global":["2 digits: 1,2","no digits"],"stored":[true,false],"is":[true,false,true]}
+// VIP-7: relational and regular-expression patterns, from the TC39 snapshot
+// pinned in docs/design/vips/tc39-pattern-matching.
+
+const limits = { small: 10, large: 20 }
+
+function size(n: unknown) {
+  return match (n) {
+    when < limits.small: "small";
+    when >= 10 and < 20: "mid";
+    when >= -Infinity: "large";
+    default: "not a number";
+  }
+}
+
+function letter(s: string) {
+  return match (s) {
+    when < "m": "before m";
+    default: "m or after";
+  }
+}
+
+function equality(x: unknown) {
+  return match (x) {
+    when === 1: "exactly one";
+    when == null: "loosely null";
+    when !== 2: "not two";
+    default: "two";
+  }
+}
+
+function instance(x: unknown) {
+  return match (x) {
+    when instanceof Map and { let size }: `map ${size}`;
+    when instanceof Date: "date";
+    default: "neither";
+  }
+}
+
+const table = { known: 1 }
+
+function key(k: unknown) {
+  return match (k) {
+    when in table: "known";
+    default: "unknown";
+  }
+}
+
+function regex(s: string) {
+  return match (s) {
+    when /^[aeiou]+$/: "vowels";
+    when /^\d+$/ and let digits: `digits ${digits}`;
+    when /^$/: "";
+    default: "other";
+  }
+}
+
+function extracted(s: string) {
+  return match (s) {
+    when /(?<id>\d+)-(\w)/(let m): `id ${m.groups!.id} ${m[2]}`;
+    default: "none";
+  }
+}
+
+function global(s: string) {
+  return match (s) {
+    when /\d/g(let first, ...let rest): `${rest.length + 1} digits: ${[first, ...rest].map(m => m[0]).join(",")}`;
+    default: "no digits";
+  }
+}
+
+const word = /^\w+$/
+
+export effect function main() {
+  return {
+    sizes: [size(3), size(15), size(99), size("big")],
+    strings: [letter("a"), letter("z")],
+    equality: [equality(1), equality(null), equality(undefined), equality(3), equality(2)],
+    instance: [instance(new Map([[1, 1], [2, 2]])), instance(new Date(0)), instance({ size: 1 })],
+    keys: [key("known"), key("other"), key(1)],
+    regex: [regex("aei"), regex("42"), regex("x1"), regex("")],
+    extracted: [extracted("ab 12-x"), extracted("none")],
+    global: [global("a1b2"), global("ab")],
+    stored: ["hello" is word, "two words" is word],
+    is: [5 is > 3 and < 10, "b" is < "a", null is == undefined]
+  }
+}

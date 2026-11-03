@@ -23,9 +23,9 @@ export function bindInForHead(xs: number[]) {
   return xs.length
 }
 
-export function regex(s: string) {
-  return match (s) {
-    when /^a/: "a";
+export function computedKey(o: object, key: () => string) {
+  return match (o) {
+    when { [key()]: 1 }: "one";
     default: "other";
   }
 }

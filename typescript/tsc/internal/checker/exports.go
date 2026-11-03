@@ -14,6 +14,11 @@ func (c *Checker) GetGlobalFunctionType() *Type {
 	return c.globalFunctionType
 }
 
+// GetGlobalRegExpType returns the global RegExp interface type.
+func (c *Checker) GetGlobalRegExpType() *Type {
+	return c.globalRegExpType
+}
+
 func (c *Checker) GetNumberType() *Type {
 	return c.numberType
 }

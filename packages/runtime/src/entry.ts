@@ -63,6 +63,7 @@ export const {
   $provideService,
   $reference,
   $region,
+  $relation,
   $rest,
   $runMain,
   $schemaErrorFamily,

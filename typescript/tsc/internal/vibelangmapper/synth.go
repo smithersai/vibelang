@@ -438,7 +438,7 @@ func (w *printer) builtinTest(n *ast.Node, e env) bool {
 func (w *printer) identifier(n *ast.Node) string {
 	name := n.Text()
 	switch {
-	case name == "$is" || name == "$noMatch" || name == "$extract" || name == "$rest" || name == "$patternError":
+	case name == "$is" || name == "$noMatch" || name == "$extract" || name == "$rest" || name == "$relation" || name == "$patternError":
 		return helperRef(name)
 	case strings.HasPrefix(name, "$match") || strings.HasPrefix(name, "$is"):
 		return w.temporary(name)

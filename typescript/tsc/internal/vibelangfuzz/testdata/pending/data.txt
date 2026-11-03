@@ -16,12 +16,6 @@ FuzzVIPDifferential compile:TS2345/vip07.intrinsic-result-failure-plain compiler
 FuzzVIPDifferential compile:TS2345/vip07.intrinsic-result-success-plain compiler VIP-7: unknown subjects need the brand guard before the tag guard; generated tag checks reject unknown with TS2345; lane vip-match
 FuzzVIPDifferential compile:TS2339/vip07.local-option-plain compiler VIP-7: Symbol.customMatcher is missing from SymbolConstructor, so the specified matcher protocol cannot be used in typed code; lane vip-match
 FuzzVIPDifferential corpus:data-vip07-local-option-plain compiler VIP-7: minimized vip07.local-option-plain probe; lane vip-match
-FuzzVIPDifferential compile:EK0707/vip07.regex-relational-plain compiler VIP-7: RegExp-value and relational patterns are rejected by the retained subset parser; lane vip-match
-FuzzVIPDifferential compile:EK0701/vip07.regex-relational-plain compiler VIP-7: RegExp-value and relational patterns are rejected by the retained subset parser; lane vip-match
-FuzzVIPDifferential compile:EK4704/vip07.regex-relational-plain compiler VIP-7: RegExp-value and relational patterns are rejected by the retained subset parser; lane vip-match
-FuzzVIPDifferential compile:TS1005/vip07.regex-relational-plain compiler VIP-7: RegExp-value and relational patterns are rejected by the retained subset parser; lane vip-match
-FuzzVIPDifferential compile:TS1109/vip07.regex-relational-plain compiler VIP-7: RegExp-value and relational patterns are rejected by the retained subset parser; lane vip-match
-FuzzVIPDifferential corpus:data-vip07-regex-relational-plain compiler VIP-7: minimized vip07.regex-relational-plain probe; lane vip-match
 FuzzVIPDifferential compile:EK2122/vip16.empty-data-plain compiler VIP-16: the permitted zero-variant data declaration still draws EK2122; lane vip-core2
 FuzzVIPDifferential corpus:data-vip16-empty-data-plain compiler VIP-16: minimized vip16.empty-data-plain probe; lane vip-core2
 FuzzVIPDifferential compile:TS2339/vip16.no-matcher-plain compiler VIP-16: Symbol.customMatcher is missing from SymbolConstructor, so the specified matcher protocol cannot be used in typed code; lane vip-match
@@ -41,8 +35,6 @@ FuzzVIPDifferential compile:TS1005/vip07.async-success-plain compiler VIP-7: vip
 FuzzVIPDifferential compile:TS2552/vip07.async-success-plain compiler VIP-7: vip07.async-success-plain disagrees with its cited rule (compile:TS2552); lane vip-match
 FuzzVIPDifferential compile:TS2554/vip07.async-success-plain compiler VIP-7: vip07.async-success-plain disagrees with its cited rule (compile:TS2554); lane vip-match
 FuzzVIPDifferential corpus:data-vip07-async-success-plain compiler VIP-7: minimized vip07.async-success-plain witness; lane vip-match
-FuzzVIPDifferential exit:value/vip07.builtin-brands-plain compiler VIP-7: built-in tests disagree with the Array.isArray/instanceof adapter required by decided detail 67a; lane vip-match
-FuzzVIPDifferential corpus:data-vip07-builtin-brands-plain compiler VIP-7: minimized vip07.builtin-brands-plain witness; lane vip-match
 FuzzVIPDifferential exit:value/vip07.error-matcher-property-plain compiler VIP-7: vip07.error-matcher-property-plain disagrees with its cited rule (exit:value); lane vip-decls
 FuzzVIPDifferential corpus:data-vip07-error-matcher-property-plain compiler VIP-7: minimized vip07.error-matcher-property-plain witness; lane vip-decls
 FuzzVIPDifferential exit:value/vip07.is-binding-tdz-plain compiler VIP-7: a closure's read of a binding whose pattern was skipped returns undefined where chapter 004 has ReferenceError: the hoisted let lowering declares the cell before the pattern runs, so a run-time TDZ needs a per-reference guard (static reads are TS2454/TS2448); lane impl-hunt-data
@@ -70,8 +62,6 @@ FuzzVIPDifferential exit:value/vip07.iterator-cache-reuse-plain compiler VIP-7: 
 FuzzVIPDifferential corpus:data-vip07-iterator-cache-reuse-plain compiler VIP-7: minimized vip07.iterator-cache-reuse-plain witness; lane vip-match
 FuzzVIPDifferential exit:value/vip07.property-cache-reset-plain compiler VIP-7: property existence and value reads repeat across arms instead of using the match cache; lane vip-match
 FuzzVIPDifferential corpus:data-vip07-property-cache-reset-plain compiler VIP-7: minimized vip07.property-cache-reset-plain witness; lane vip-match
-FuzzVIPDifferential compile:EK4704/vip07.regex-literal-plain compiler VIP-7: literal regular-expression patterns are rejected; lane vip-match
-FuzzVIPDifferential corpus:data-vip07-regex-literal-plain compiler VIP-7: minimized vip07.regex-literal-plain witness; lane vip-match
 FuzzVIPDifferential exit:value/vip07.finishmatch-success-close-plain compiler VIP-7: iterable matching fails before the required observable FinishMatch cleanup/error-order result; lane vip-match
 FuzzVIPDifferential corpus:data-vip07-finishmatch-success-close-plain compiler VIP-7: minimized vip07.finishmatch-success-close-plain native-generator witness; lane vip-match
 FuzzVIPDifferential exit:value/vip07.finishmatch-close-error-plain compiler VIP-7: iterable matching fails before the required observable FinishMatch cleanup/error-order result; lane vip-match

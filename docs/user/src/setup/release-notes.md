@@ -187,6 +187,9 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Nested object properties and method types inside an `error` or `schema error` were implicitly readonly, so ordinary TypeScript writes failed. Nested types now keep their written mutability; payload keys remain readonly.
 
 - A generated grammar census was mistaken for hundreds of new language rules by the evidence gate. Valid census metadata is now recognized without exempting adjacent or handwritten rules.
+
+- Regular-expression and relational patterns, such as `when /^a/:` and `when >= 10 and < 20:`, reported `EK4704` or a syntax error; they now run as the pinned proposal says, including stored `RegExp` values, and a regular expression with an argument list extracts its match.
+
 - A service with a written shape annotation gained an extra public `Shape` namespace in its declarations. It now keeps the written shape directly and exposes no implicit namespace outside its own body.
 - Formatting a generated subprocess helper could make migration setup treat it as hand-edited and retain unused loader imports. Setup now recognizes formatting changes while preserving edited code, types, comments and documentation for review.
 - Migration setup could add source-loader helpers to JavaScript CLI launches merely because later arguments were dynamic, introducing unnecessary install-time dependencies. Proven JavaScript entrypoints now keep their native launch; unknown and typed source entrypoints retain loader handling.

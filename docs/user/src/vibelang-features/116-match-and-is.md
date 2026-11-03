@@ -352,10 +352,37 @@ An arm that only binds the value, `when let other:`, matches every value, as `de
 
 The pinned design gives an ordinary `is` expression's `let` and `const` bindings the enclosing block's scope, including both `if` branches and code after it. A name remains in TDZ until its binding pattern runs; a later pattern failure does not undo an earlier initialization. The implementation limits below still apply.
 
+## Regular expressions and relations
+
+A regular expression is a pattern: `when /^\d+$/:` matches a string the expression's `test` accepts. With an argument list it is an extractor whose value is the match, so `/(?<id>\d+)/(let m)` binds the match array, with `m.groups`. A global expression, `/\d/g(let first, ...let rest)`, extracts one element per match.
+
+A relational pattern compares the value on its left with an operand: `<`, `>`, `<=` and `>=` match only a string, a number or a bigint that compares as JavaScript does; `===`, `!==`, `==` and `!=` test as the operators do; `instanceof` and `in` test as the operators do, and `in` fails on a subject that is not a property key.
+
+```vibe
+// run: try Console.log(try Effect.try(() => JSON.stringify([size(3), size(15), size(99), size("big"), id("ab 12"), id("none")])))
+function size(n: unknown): string {
+  return match (n) {
+    when < 10: "small";
+    when >= 10 and < 20: "mid";
+    when Number: "large";
+    default: "not a number";
+  }
+}
+
+function id(text: string): string {
+  return match (text) {
+    when /(?<id>\d+)/(let m): `id ${m.groups!.id}`;
+    default: "none";
+  }
+}
+// Output: ["small","mid","large","not a number","id 12","none"]
+```
+
 ## Not yet supported
 
 - A binding in an optional property, `{ let a? }` (`EK4704`).
-- `async match` and the proposal's regular expression and relational patterns.
+- `async match`.
+- A computed key other than a name or a literal (`EK4704`).
 
 Support for the new forms arrives with the compiler's VIP implementation. VIP-7 accepts the full TC39 proposal, including regular-expression patterns, relational patterns, and `async match`.
 

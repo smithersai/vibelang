@@ -1,0 +1,3 @@
+go test fuzz v1
+string("match-regexp-value-control-any-is")
+byte(0)

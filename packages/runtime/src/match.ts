@@ -1,21 +1,28 @@
-// Pattern matching (D206-D225). The compiler parses `match (x) { when P: v; }`
-// and `x is P`, from the TC39 pattern matching proposal, into plain tests that
-// TypeScript narrows; these helpers are the tests it cannot write inline.
+// Pattern matching (VIP-7). The compiler parses `match (x) { when P: v; }`,
+// `async match` and `x is P`, the TC39 pattern matching proposal pinned in
+// docs/design/vips/tc39-pattern-matching, into plain tests that TypeScript
+// narrows; these helpers are the tests it cannot write inline.
 //
 // A variable pattern calls $is, an extractor pattern with an argument list
 // that the compiler does not know calls $extract, an object pattern's rest
-// calls $rest, and a match without a default arm that no arm matched calls
-// $noMatch. The last arm of an exhaustive match that tests a class or a
-// custom matcher calls $assertMatch. $patternError marks a pattern VibeLang
-// does not support; the compiler reports it, so it never runs in a program
-// that compiled.
+// calls $rest, a relational pattern other than === and !== calls $relation,
+// and a match without a default arm that no arm matched calls $noMatch. The
+// last arm of an exhaustive match that tests a class or a custom matcher
+// calls $assertMatch. $patternError marks a pattern VibeLang does not
+// support; the compiler reports it, so it never runs in a program that
+// compiled.
 
 /**
  * The proposal's `Symbol.customMatcher`: a static method that decides whether
- * a subject matches. It returns a boolean for `x is M`, and `false`, `true`,
- * or the extracted values for an extractor pattern `M(...)`.
+ * a subject matches. `x is M` tests its result for truthiness; an extractor
+ * pattern `M(...)` accepts `false`, `true`, or the extracted values. The runtime
+ * defines `Symbol.customMatcher` when the engine lacks it, as the registered
+ * symbol the proposal's polyfills use, so every copy of the runtime agrees.
  */
-export const customMatcher: unique symbol = ((Symbol as any).customMatcher ?? Symbol.for("Symbol.customMatcher")) as any
+if (typeof (Symbol as any).customMatcher !== "symbol") {
+  Object.defineProperty(Symbol, "customMatcher", { value: Symbol.for("Symbol.customMatcher"), configurable: true })
+}
+export const customMatcher: unique symbol = (Symbol as any).customMatcher
 
 /** The generated matchers of error declarations, which their subclasses share (D278). */
 const errorMatchers = new WeakSet<object>()
@@ -67,6 +74,42 @@ function dateMatches(subject: unknown): boolean {
   return subject instanceof Date
 }
 
+// Array follows the class adaptation's Array.isArray test (D67a).
+// Keep main's Date internal-slot check; other constructors retain instanceof.
+const builtinTests = new Map<unknown, (subject: unknown) => boolean>([
+  [Array, subject => Array.isArray(subject)],
+  [Date, dateMatches]
+])
+
+/**
+ * The proposal's `RegExp.prototype[Symbol.customMatcher]` for an extractor:
+ * the match in a one-element array, or every match of a global expression,
+ * or false when nothing matches.
+ */
+function regExpExtract(regexp: RegExp, subject: unknown): ReadonlyArray<RegExpMatchArray> | false {
+  if (String(regexp.flags).includes("g")) {
+    const all = Array.from((regexp as any)[Symbol.matchAll](subject) as Iterable<RegExpMatchArray>)
+    return all.length === 0 ? false : all
+  }
+  const result = (regexp as any)[Symbol.match](subject) as RegExpMatchArray | null
+  return result === null ? false : [result]
+}
+
+/**
+ * The proposal's test for a built-in matcher, which the engine does not yet
+ * define as a custom matcher: a regular expression, a primitive's class, a
+ * constructor with a dedicated test. Undefined for any
+ * other matcher.
+ */
+function builtinTest(matcher: unknown, subject: unknown): boolean | undefined {
+  if (matcher instanceof RegExp) return !!matcher.test(subject as string)
+  const primitive = primitiveTypes.get(matcher)
+  if (primitive !== undefined) return typeof subject === primitive
+  const test = builtinTests.get(matcher)
+  if (test !== undefined) return test(subject)
+  return undefined
+}
+
 /**
  * Reports whether f is a class: written with class syntax, or a constructor
  * with methods on its prototype (a built-in such as Date or Map). Other
@@ -95,16 +138,15 @@ function sameValue(pattern: unknown, subject: unknown): boolean {
  */
 export function $is<C extends abstract new(...args: any) => any>(matcher: C, subject: unknown): subject is InstanceType<C>
 export function $is<S, T extends S>(matcher: (subject: S, hint: MatchHint) => subject is T, subject: unknown): subject is T
-export function $is<S>(matcher: CustomMatcher | ((subject: S, hint: MatchHint) => unknown), subject: unknown): boolean
+export function $is<S>(matcher: CustomMatcher | ((subject: S, hint: MatchHint) => unknown) | RegExp, subject: unknown): boolean
 export function $is<const T>(matcher: T, subject: unknown): subject is T
 export function $is(matcher: unknown, subject: unknown): boolean {
   if (matcher !== null && (typeof matcher === "object" || typeof matcher === "function")) {
     const custom = matcherOf(matcher)
     if (custom !== undefined) return !!custom.call(matcher, subject, { matchType: "boolean" })
+    const builtin = builtinTest(matcher, subject)
+    if (builtin !== undefined) return builtin
     if (typeof matcher === "function") {
-      const primitive = primitiveTypes.get(matcher)
-      if (primitive !== undefined) return typeof subject === primitive
-      if (matcher === Date) return dateMatches(subject)
       return isClass(matcher) ? subject instanceof (matcher as any) : !!(matcher as Function)(subject, { matchType: "boolean" })
     }
   }
@@ -165,6 +207,7 @@ type BoxForConstructor<C> =
 export function $extract<S>(matcher: ArrayConstructor, subject: S): ArrayExtraction<S> | false
 export function $extract<T>(matcher: TypedArrayClass<T>, subject: unknown): T | false
 export function $extract<R>(matcher: CustomMatcher<R>, subject: unknown): Extracted<R> | false
+export function $extract(matcher: RegExp, subject: unknown): ReadonlyArray<RegExpMatchArray> | false
 export function $extract<C extends abstract new(...args: any) => any>(matcher: C, subject: unknown): readonly [InstanceType<C> | PrimitiveForConstructor<C>] | false
 export function $extract<C extends PrimitiveConstructor>(matcher: C, subject: unknown): readonly [PrimitiveForConstructor<C> | BoxForConstructor<C>] | false
 export function $extract<S, R>(matcher: (subject: S, hint: MatchHint) => R, subject: unknown): Extracted<R> | false
@@ -172,16 +215,16 @@ export function $extract(matcher: unknown, subject: unknown): ReadonlyArray<any>
 export function $extract(matcher: unknown, subject: unknown): unknown {
   const custom = matcherOf(matcher)
   if (custom !== undefined) return extractedList(custom.call(matcher, subject, { matchType: "extractor" }))
+  if (matcher instanceof RegExp) return regExpExtract(matcher, subject)
   if (typeof matcher === "function") {
-    const primitive = primitiveTypes.get(matcher)
-    if (primitive !== undefined) return typeof subject === primitive ? [subject] : false
-    if (matcher === Date) return dateMatches(subject) ? [subject] : false
     if (matcher === Array) return Array.isArray(subject) ? subject : false
     if (Object.getPrototypeOf(matcher) === typedArray) return subject instanceof (matcher as any) ? subject : false
+    const builtin = builtinTest(matcher, subject)
+    if (builtin !== undefined) return builtin ? [subject] : false
     if (isClass(matcher)) return subject instanceof (matcher as any) ? [subject] : false
     return extractedList((matcher as Function)(subject, { matchType: "extractor" }))
   }
-  throw new TypeError("An extractor pattern needs a class or a value with a Symbol.customMatcher method")
+  throw new TypeError("An extractor pattern needs a class, a regular expression, or a value with a Symbol.customMatcher method")
 }
 
 /** The own enumerable properties of an object pattern's subject that its clauses do not name. */
@@ -197,6 +240,34 @@ export function $rest<T, K extends PropertyKey>(subject: T, keys: ReadonlyArray<
     }
   }
   return result as Omit<T, K>
+}
+
+/**
+ * Tests a relational pattern that the compiler does not write as its
+ * operator (VIP-7): `< v`, `> v`, `<= v` and `>= v` are false unless the
+ * subject is a string, a number or a bigint, and `in v` is false unless the
+ * subject is a property key and v an object, as the proposal's
+ * RelationalPatternMatches says.
+ */
+export function $relation(operator: "<" | ">" | "<=" | ">=" | "in", subject: unknown, value: unknown): boolean {
+  if (operator === "in") {
+    if (typeof subject !== "string" && typeof subject !== "symbol") return false
+    if (value === null || (typeof value !== "object" && typeof value !== "function")) return false
+    return subject in (value as object)
+  }
+  if (typeof subject !== "string" && typeof subject !== "number" && typeof subject !== "bigint") return false
+  const s = subject as any
+  const v = value as any
+  switch (operator) {
+    case "<":
+      return s < v
+    case ">":
+      return s > v
+    case "<=":
+      return s <= v
+    case ">=":
+      return s >= v
+  }
 }
 
 /** Ends a match without a default arm that no arm matched, as the proposal's TypeError does. */

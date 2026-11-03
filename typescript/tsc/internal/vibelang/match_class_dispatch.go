@@ -57,6 +57,11 @@ func checkClassPatternDispatch(c *checker.Checker, matcher *ast.Node, extractor 
 	if !isObjectLikeMatcher(t) || hasOwnPatternMatcher(c, t) {
 		return
 	}
+	// VIP-7 admits stored RegExp values as well as regex literals.
+	// Their emulated matcher needs no call or construct signature.
+	if regexp := c.GetGlobalRegExpType(); regexp != nil && regexp.Flags()&(checker.TypeFlagsAny|checker.TypeFlagsUnknown) == 0 && c.IsTypeAssignableTo(t, regexp) {
+		return
+	}
 	if len(c.GetConstructSignatures(t)) > 0 {
 		return
 	}

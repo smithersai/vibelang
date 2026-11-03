@@ -3516,6 +3516,12 @@ typescript/vibelang/cases/match-proto-key-controls/main.vibe:8:25 lambda plain t
 typescript/vibelang/cases/match-proto-literal-key.fail/main.vibe:4:32 lambda effectFn fallback
 typescript/vibelang/cases/match-proto-literal-key.fail/main.vibe:5:32 lambda effectFn fallback
 typescript/vibelang/cases/match-proto-literal-key.fail/main.vibe:6:32 lambda effectFn fallback
+typescript/vibelang/cases/match-relational-regex/main.vibe:67:92 lambda plain table
+typescript/vibelang/cases/match-relational-regex/main.vibe:84:22 lambda plain fallback
+typescript/vibelang/cases/match-relational-regex/main.vibe:84:43 lambda plain fallback
+typescript/vibelang/cases/match-relational-regex/main.vibe:85:12 lambda effectFn fallback
+typescript/vibelang/cases/match-relational-regex/main.vibe:85:33 lambda plain fallback
+typescript/vibelang/cases/match-relational-regex/main.vibe:85:48 lambda plain fallback
 typescript/vibelang/cases/match-retained-nested-errors/guard0.vibe:5:128 lambda dual fallback
 typescript/vibelang/cases/match-retained-nested-errors/guard0.vibe:5:175 lambda dual fallback
 typescript/vibelang/cases/match-retained-nested-errors/guard0.vibe:5:21 lambda plain table
