@@ -58,7 +58,7 @@ const PrinterLive = Layer.effect(Printer, effect {
 
 `Layer.effect(Printer, effect { ... })` builds a `Printer`: `effect { ... }` is the layer's Effect, passed as an ordinary argument to `Layer.effect`. Its statements, `try Settings` included, run once when the layer builds. The returned object is the implementation; the service types its members, so `effect print(text)` needs no annotation. The method captures the `Settings` implementation, so callers need `Printer` but not `Settings`. A layer without setup is `Layer.succeed(Printer, { ... })`. Looking up a service inside a method instead makes it a call-time requirement, which the member's full contract must list.
 
-`Layer.mergeAll` builds its inputs independently. If one input needs a service supplied by another, `EK4807` points to `Layer.provide` or `Layer.provideMerge` to supply that construction dependency. Use `Layer.provideMerge` when both outputs should remain available.
+`Layer.mergeAll` builds its inputs independently. If one input needs a service supplied by another, `EK4807` points to `Layer.provide` or `Layer.provideMerge` to supply that construction dependency. Use `Layer.provideMerge` when both outputs should remain available. Choosing a sibling provider instead of a caller-supplied provider changes behavior and the layer's requirement type, so `EK4807` has no automatic composition repair.
 
 Keep method requirements at `never` when dependencies are implementation details, so a test can provide a simple fake without recreating the production graph.
 

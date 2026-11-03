@@ -282,6 +282,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - The editor's `EK4802` repair could run an Effect that the function returned as data, changing its result, type and side effects. It now leaves that return unchanged and explains the manual choices.
 
+- The editor could replace `Layer.mergeAll` with `wire`, switching a dependency from the caller's layer to a sibling layer. It now leaves the composition unchanged and explains that the provider must be chosen explicitly.
+
 - The migration checks generated callback failure unions without their required parentheses and failed to parse them. They now write valid compound slots while checking the same preserved channels and refusal controls.
 
 

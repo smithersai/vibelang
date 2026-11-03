@@ -154,18 +154,9 @@ func contractRejectsCall(c *checker.Checker, value *ast.Node) bool {
 var mergeAllFix = &ls.CodeFixProvider{
 	Source:     diagnosticSource,
 	ErrorCodes: []int32{EK4807.Code},
-	GetCodeActions: func(_ context.Context, fix *ls.CodeFixContext) ([]*ls.CodeAction, error) {
-		argument := reportedNode(fix.SourceFile, fix.Span, func(node *ast.Node) bool {
-			return node.Parent != nil && ast.IsCallExpression(node.Parent) && node.Parent.Expression() != node
-		})
-		if argument == nil {
-			return nil, nil
-		}
-		callee := argument.Parent.Expression()
-		return []*ls.CodeAction{{
-			Description: "Write wire for Layer.mergeAll",
-			Changes:     replaceRange(fix, nodeStart(fix.SourceFile, callee), callee.End(), "wire"),
-		}}, nil
+	GetCodeActions: func(_ context.Context, _ *ls.CodeFixContext) ([]*ls.CodeAction, error) {
+		// Chapter 7 / VIP-34: this rewrite changes the public API or behavior.
+		return nil, nil
 	},
 }
 
@@ -234,8 +225,8 @@ func renameEffect3API(fix *ls.CodeFixContext, name *ast.Node) []*ls.CodeAction {
 	}}
 }
 
-// schemaIsFix writes Schema.is(S)(x) for the x instanceof S that EK4817
-// reports.
+// schemaIsFix retains EK4817 in the repair registry but refuses conversion:
+// Schema.is reverses operand evaluation and asks a different question.
 var schemaIsFix = &ls.CodeFixProvider{
 	Source:     diagnosticSource,
 	ErrorCodes: []int32{EK4817.Code},
