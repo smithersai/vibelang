@@ -67,6 +67,8 @@ The keyword table's member-position alternatives apply only in member
 positions: `effect[a]` is an element access, though `[` follows `effect` on an
 `interface` member.
 Type-directed meaning such as aggregate `join` is outside this syntax oracle.
+Saved interruption-block witnesses outside Effect code are rejection controls
+for `EK2201`; their former pending entries are removed after XPASS.
 The outside-Effect prefix family includes `join {}`, which has no native
 call or element-access reading; `join(p)`, `join[0]` and an identifier before
 a line break and block remain separate native controls.

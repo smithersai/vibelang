@@ -224,6 +224,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - The VIP migration could refuse a generic call with an Effect supplied by another argument, reporting `EK0502` after running a program the old call held. It now preserves that sibling-established program context.
 
 - The compiler's keyword coverage check treated a quoted `"constructor"` member name as a VibeLang keyword and failed the parser suite. It now distinguishes guarded string-literal data from keyword comparisons and ignores examples in comments or test fixtures.
+- Grammar admission checks still expected the old interruption-placement bug after the compiler fixed it. Their saved witnesses now verify rejection and no longer report an obsolete pending gap.
 - Newly published Effect-type lookahead and call-time parameter helpers could fail the grammar admission inventory gate. The inventory now records their existing language authority.
 - The grammar admission fuzzer could mistake an invalid `for await` placement for accepted undefined syntax. It now recognizes TypeScript's `TS1103` rejection and keeps a minimized replay.
 - Reordering the grammar admission inventory could incorrectly report a duplicate hook when a legacy branch row preceded its base row. The census now accepts either order while still rejecting repeated rows.
