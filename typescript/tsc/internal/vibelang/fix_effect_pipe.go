@@ -274,7 +274,9 @@ func pipeStageEdits(c *checker.Checker, file *ast.SourceFile, stage *ast.Node) (
 // isDataFirstStage reports whether call, a data-last stage such as
 // Effect.map(f), names an effect export with a signature that takes the
 // program first, as Effect's dual functions' first overload does: its first
-// parameter is self, and call's arguments fill the rest.
+// parameter is self, and call's arguments fill the rest. A self the stage does
+// not receive is not that parameter: Semaphore.withPermits(semaphore, 1) takes
+// the Semaphore as self and the program last.
 func isDataFirstStage(c *checker.Checker, call *ast.Node) bool {
 	if module, _ := effectMember(c, call.Expression()); module == "" {
 		return false
@@ -282,11 +284,35 @@ func isDataFirstStage(c *checker.Checker, call *ast.Node) bool {
 	count := len(call.Arguments())
 	for _, signature := range c.GetSignaturesOfType(c.GetTypeAtLocation(call.Expression()), checker.SignatureKindCall) {
 		parameters := signature.Parameters()
-		if len(parameters) > count && parameters[0].Name() == "self" {
+		if len(parameters) > count && parameters[0].Name() == "self" && stageReceives(c, call, c.GetTypeOfSymbol(parameters[0])) {
 			return true
 		}
 	}
 	return false
+}
+
+// stageReceives reports whether the function call gives takes a value of the
+// family of self, the type of a data-first overload's first parameter. Its
+// type arguments differ between overloads, so the family is the declared type:
+// Effect for Effect.map(f), and a type parameter takes anything.
+func stageReceives(c *checker.Checker, call *ast.Node, self *checker.Type) bool {
+	signatures := c.GetSignaturesOfType(c.GetTypeAtLocation(call), checker.SignatureKindCall)
+	if len(signatures) == 0 {
+		return true
+	}
+	return slices.ContainsFunc(signatures, func(signature *checker.Signature) bool {
+		parameters := signature.Parameters()
+		if len(parameters) == 0 {
+			return false
+		}
+		received := c.GetTypeOfSymbol(parameters[0])
+		if self.Flags()&checker.TypeFlagsTypeParameter != 0 || received.Flags()&checker.TypeFlagsTypeParameter != 0 {
+			return true
+		}
+		return slices.ContainsFunc(self.Distributed(), func(s *checker.Type) bool {
+			return slices.ContainsFunc(received.Distributed(), func(r *checker.Type) bool { return s.Symbol() != nil && s.Symbol() == r.Symbol() })
+		})
+	})
 }
 
 // separatorComma returns the offset of the comma in text[from:to], source

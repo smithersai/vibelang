@@ -467,6 +467,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - The specification attributed the `using` warning `EK0801` to a denied proposal; it now cites accepted tooling requirements, with a regression check that preserves its warning severity and repair.
 
 - Bun's release-age setting blocked newly published VibeLang packages in example projects; the examples now exempt their pinned VibeLang packages from that age check.
+- `--fix` rewrote `.pipe(Semaphore.withPermits(semaphore, 1))` to `Semaphore.withPermits(%, semaphore, 1)`, which passes the program as the Semaphore, and then refused the whole `Effect.gen` with TS2740; a stage whose `self` is not the piped value now stays curried, as `Semaphore.withPermits(semaphore, 1)(%)`.
 - Editor fixes could write invalid annotations around `this` or `super`, a loop binding or a `finally` binding; they now decline edits that cannot preserve the program.
 - Hover and rename missed references in match guards, `is` subjects, `and` patterns and error `extends` clauses; the editor now finds those original source references.
 - An unfinished `catch` expression could produce document-outline ranges that ended before they started; outline entries now keep valid source ranges.

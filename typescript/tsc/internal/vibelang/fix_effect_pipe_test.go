@@ -43,6 +43,8 @@ export const f = (n: number) =>
 `},
 		{"a stage with no data-first form", "const stage = <A>(e: Effect.Effect<A>) => e\nconst p = (n: number) => Effect.succeed(n)\nexport const f = (n: number) => p(n).pipe(stage)\n",
 			"const stage = <A>(e: A!!) => e\nconst p = (n: number) => Effect.succeed(n)\nexport const f = (n: number) => p(n) |> stage(%)\n"},
+		{"a stage whose self is not the program", "import * as Semaphore from \"effect/Semaphore\"\nexport const f = (s: Semaphore.Semaphore, p: Effect.Effect<number>) => p.pipe(Semaphore.withPermits(s, 1), Effect.asVoid)\n",
+			"import * as Semaphore from \"effect/Semaphore\"\nexport const f = (s: Semaphore.Semaphore, p: number!!) => p |> Semaphore.withPermits(s, 1)(%) |> Effect.asVoid(%)\n"},
 		{"a pipe of a pipe", "const p = (n: number) => Effect.succeed(n)\nexport const f = (n: number) => p(n).pipe(Effect.map((x) => x + 1)).pipe(Effect.asVoid)\n",
 			"const p = (n: number) => Effect.succeed(n)\nexport const f = (n: number) => p(n) |> Effect.map(%, (x) => x + 1) |> Effect.asVoid(%)\n"},
 		{"a pipe in a stage", "const p = (n: number) => Effect.succeed(n)\nexport const f = (n: number) => p(n).pipe(Effect.flatMap((x) => p(x).pipe(Effect.asVoid)))\n",
