@@ -842,3 +842,9 @@ stock-TypeScript reference. It covers valid identifier uses in plain and Effect
 functions, field and enum initializers, static blocks and module code, with
 native-reserved words retained as property names. An ordinary `async` home
 has identical native emit in the static target.
+
+Retained schema binding coverage keeps the original mapped-type witnesses in `FuzzDataSpecRules` and `FuzzFix`: namespace and function homes, escaped names, value-only declarations and leaving a scope. Its exact known gaps stay keyed in `schema-binding-retained.txt`; remove a gap only after its implementation produces the observed XPASS, retaining the corpus and oracle. These are static rules from the [schema mapping](../design/src/006-data.md#shadowing-mapped-built-ins), not a second runtime differential model.
+
+`HiddenNativeCacheAddition` checks the actual cache component after two unchanged warm hits. Its 32 generated variants and six Foldkit corpus inputs cover explicitly included hidden filenames, hidden parent directories, native extensions, visible additions, and edits to existing sources listed by `files`. A 250 ms settle precedes snapshots and post-write lookup. The known hidden-glob miss remains a strict pending `register-cache:hidden-added-native-source` assertion under `migfix-foldkit`; `HIDDEN_CACHE_RAW=1` exposes the desired failing invalidation assertion, and a fixed implementation must remove that allowance. This component proof does not replace the owner’s saved Node register/cold-compile reproduction.
+
+The same cache neighborhood minimized a visible `.vibex` addition that also leaves a stale warm entry. `cache.mjs:vibex-input-invalidation` is already claimed by `vibex-bundlers`. Visible `.vibex`, hidden `.vibe`, and combined hidden `.vibex` failures have distinct strict pending scopes; existing-file edits remain positive controls. The hidden-cache report’s canonical source id is Foldkit 17075, renamed from the colliding 17074.

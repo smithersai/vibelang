@@ -1,0 +1,18 @@
+{
+  "key": "foldkit-vibex-cache-visible-directory",
+  "property": "HiddenNativeCacheAddition",
+  "source": "Foldkit native-cache neighborhood; shrunk visible .vibex witness FC_SEED963228707 FC_PATH1:0:1",
+  "rule": "Every explicitly included native source addition invalidates a warm result",
+  "input": {
+    "hiddenFile": false,
+    "hiddenDirectory": true,
+    "selection": "glob",
+    "suffix": 0,
+    "extension": ".vibex"
+  },
+  "pending": {
+    "key": "cache.mjs:vibex-input-invalidation",
+    "owner": "vibex-bundlers",
+    "guard": "strict desired-miss assertion, actual stale warm result, XPASS when fixed"
+  }
+}

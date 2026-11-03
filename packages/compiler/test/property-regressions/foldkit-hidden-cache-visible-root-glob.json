@@ -1,0 +1,13 @@
+{
+  "key": "foldkit-hidden-cache-visible-root-glob",
+  "property": "HiddenNativeCacheAddition",
+  "source": "foldkit-17075 (original report17074) source-collector addition after established warm cache hits",
+  "rule": "Explicitly included native additions invalidate warm results; existing explicit-files source edits and visible additions remain controls",
+  "input": {
+    "hiddenFile": false,
+    "hiddenDirectory": false,
+    "selection": "glob",
+    "suffix": 43,
+    "extension": ".vibe"
+  }
+}
