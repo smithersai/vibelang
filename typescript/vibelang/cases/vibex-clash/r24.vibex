@@ -1,0 +1,2 @@
+// expect: valid KindMethodDeclaration
+const x = { effect m<T>(x:T) {} }; class C { effect render() { return <b/> } }; data Box<T> { Value { value:T } }

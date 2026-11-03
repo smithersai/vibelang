@@ -1,0 +1,2 @@
+// expect: valid KindArrowFunction
+const id = <T extends User!NotFound>(v: T) => v

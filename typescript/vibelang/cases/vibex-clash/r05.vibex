@@ -1,0 +1,2 @@
+// expect: valid KindArrowFunction
+const x = task catch <E,>(e: E) => 1

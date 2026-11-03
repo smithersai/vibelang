@@ -1,0 +1,2 @@
+// expect: valid KindJsxElement
+effect function f() { return <div>{try load()}</div> }

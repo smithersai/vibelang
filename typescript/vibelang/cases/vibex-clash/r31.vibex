@@ -1,0 +1,2 @@
+// expect: valid KindJsxSelfClosingElement
+const x = <Box task={effect { return 1 }} value={{ effect: 1 }} />

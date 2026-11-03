@@ -1,0 +1,2 @@
+// expect: invalid
+const x = <Box task=effect { return 1 } />; const y = <Box v=do { 1 } />

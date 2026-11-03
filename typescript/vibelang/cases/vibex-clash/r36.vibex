@@ -1,0 +1,3 @@
+// expect: compiler KindJsxElement
+// expect-compile: EK1101
+const x = <p>{render { return 1 }}</p>

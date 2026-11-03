@@ -1,0 +1,2 @@
+// expect: valid KindJsxSelfClosingElement
+effect function f() { fork <A/>; join <A/>; try <A/>; throw <A/>; }

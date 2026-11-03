@@ -1,0 +1,2 @@
+// expect: codes=1139
+const x = <p>{x as A!! < 3}</p>

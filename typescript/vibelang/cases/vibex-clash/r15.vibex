@@ -1,0 +1,2 @@
+// expect: valid KindJsxElement
+const x = <p>{do { const p: User!!=src; p; }}</p>

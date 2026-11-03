@@ -1,0 +1,2 @@
+// expect: valid KindJsxElement
+const x = <div>{match (x) { when 0: <Zero/>; default: <Other/>; }}</div>

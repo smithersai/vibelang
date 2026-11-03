@@ -1,0 +1,2 @@
+// expect: invalid
+const x = match (n) { when <b/>: 1; default: 2; }

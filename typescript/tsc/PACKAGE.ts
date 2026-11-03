@@ -1,3 +1,4 @@
+import { readdirSync } from "node:fs"
 import { Smithers as S } from "@smthrs/targets"
 
 // The Go module: the TypeScript 7 compiler with VibeLang's packages under
@@ -17,7 +18,17 @@ const tree = S.Filegroup({ srcs: [...S.glob(["**"])] })
 
 // One file group per Go package directory a test target covers: its tests and
 // testdata. A `_test.go` edit re-keys only that package's test target.
-const files = (dir: string) => S.Filegroup({ srcs: [S.glob(`${dir}/**`), S.glob("testdata/**")] })
+// Parser parity also reads its external corpus and the pinned stock diagnostics receipt.
+const jsxClashInputs = S.Filegroup({
+  srcs: [
+    ...readdirSync(new URL("../vibelang/cases/vibex-clash/", import.meta.url))
+      .sort()
+      .map((name) => S.file("//typescript/vibelang/cases/vibex-clash/" + name))
+  ]
+})
+const files = (dir: string) => S.Filegroup({
+  srcs: [S.glob(`${dir}/**`), S.glob("testdata/**"), ...(dir === "internal/parser" ? [jsxClashInputs] : [])]
+})
 
 // `go test` over one package pattern, keyed on the module's sources, that
 // package's files and the `go` launcher. Go's own test cache in GOCACHE also

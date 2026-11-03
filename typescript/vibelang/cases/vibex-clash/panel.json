@@ -1,0 +1,3343 @@
+[
+  {
+    "key": "sol:generic-arrow-comma",
+    "source": "const f = <T,>(x:T) => x; const ui=<Box map={f}/>;",
+    "origins": [
+      "sol:generic-arrow-comma"
+    ],
+    "expect": "valid"
+  },
+  {
+    "key": "sol:generic-arrow-extends",
+    "source": "const f = <T extends unknown>(x:T) => x;",
+    "origins": [
+      "sol:generic-arrow-extends"
+    ],
+    "expect": "valid"
+  },
+  {
+    "key": "sol:generic-arrow-default",
+    "source": "const f = <T = unknown>(x:T) => x;",
+    "origins": [
+      "sol:generic-arrow-default"
+    ],
+    "expect": "valid"
+  },
+  {
+    "key": "sol:generic-arrow-bare",
+    "source": "const f = <T>(x:T) => x;",
+    "origins": [
+      "sol:generic-arrow-bare"
+    ],
+    "expect": "invalid"
+  },
+  {
+    "key": "sol:effect-generic-arrow-comma",
+    "source": "const f = effect <T,>(x:T) => x; const ui=<Box map={f}/>;",
+    "origins": [
+      "sol:effect-generic-arrow-comma"
+    ],
+    "expect": "valid"
+  },
+  {
+    "key": "sol:effect-generic-arrow-bare",
+    "source": "const f = effect <T>(x:T) => x;",
+    "origins": [
+      "sol:effect-generic-arrow-bare"
+    ],
+    "expect": "invalid"
+  },
+  {
+    "key": "sol:angle-assertion",
+    "source": "const ui=<Box value={<T>x}/>;",
+    "origins": [
+      "sol:angle-assertion"
+    ],
+    "expect": "invalid"
+  },
+  {
+    "key": "sol:as-assertion",
+    "source": "const ui=<Box value={x as T}/>;",
+    "origins": [
+      "sol:as-assertion"
+    ],
+    "expect": "valid"
+  },
+  {
+    "key": "sol:comparison",
+    "source": "const ui=<Box yes={a < b} child={a < b ? <A/> : <B/>}/>;",
+    "origins": [
+      "sol:comparison"
+    ],
+    "expect": "valid"
+  },
+  {
+    "key": "sol:generic-call",
+    "source": "const ui=<Box value={f<T>(x)} ctor={new C<T>()} inst={f<T>}/>;",
+    "origins": [
+      "sol:generic-call"
+    ],
+    "expect": "valid"
+  },
+  {
+    "key": "sol:generic-tag",
+    "source": "const ui=<Box<T> value={x}/>;",
+    "origins": [
+      "sol:generic-tag"
+    ],
+    "expect": "valid"
+  },
+  {
+    "key": "sol:generic-tag-nested",
+    "source": "const ui=<Box<Array<T>> value={x}/>;",
+    "origins": [
+      "sol:generic-tag-nested"
+    ],
+    "expect": "valid"
+  },
+  {
+    "key": "sol:generic-tag-effect-type",
+    "source": "const ui=<Box<User!Oops!Env> value={x}/>;",
+    "origins": [
+      "sol:generic-tag-effect-type"
+    ],
+    "expect": "valid"
+  },
+  {
+    "key": "sol:generic-arrow-effect-return",
+    "source": "const ui=<Box map={<T,>(x:T): T!! => succeed(x)}/>;",
+    "origins": [
+      "sol:generic-arrow-effect-return"
+    ],
+    "expect": "valid"
+  },
+  {
+    "key": "sol:effect-type-in-assertion",
+    "source": "const ui=<Box value={x as User!Oops!Env}/>;",
+    "origins": [
+      "sol:effect-type-in-assertion"
+    ],
+    "expect": "valid"
+  },
+  {
+    "key": "sol:effect-type-empty-slots",
+    "source": "type P=User!!; const ui=<Box value={x as User!!}/>;",
+    "origins": [
+      "sol:effect-type-empty-slots"
+    ],
+    "expect": "valid"
+  },
+  {
+    "key": "sol:effect-type-close-angle",
+    "source": "const ui=<Box<User!!>/>;",
+    "origins": [
+      "sol:effect-type-close-angle"
+    ],
+    "expect": "valid"
+  },
+  {
+    "key": "sol:nonnull-unary-inequality",
+    "source": "const ui=<Box value={x!} yes={!x || x != y || x !== y} double={!!x}/>;",
+    "origins": [
+      "sol:nonnull-unary-inequality"
+    ],
+    "expect": "valid"
+  },
+  {
+    "key": "sol:bang-third-assertion",
+    "source": "const ui=<Box value={x as User!!!}/>;",
+    "origins": [
+      "sol:bang-third-assertion"
+    ],
+    "expect": "valid"
+  },
+  {
+    "key": "sol:bang-initializer-no-space",
+    "source": "const f: number!!=x; const ui=<Box value={f}/>;",
+    "origins": [
+      "sol:bang-initializer-no-space"
+    ],
+    "expect": "valid"
+  },
+  {
+    "key": "sol:bang-child-attribute-text",
+    "source": "const ui=<div title='A!E!R != %'>A!E!R !! != %</div>;",
+    "origins": [
+      "sol:bang-child-attribute-text"
+    ],
+    "expect": "valid"
+  },
+  {
+    "key": "sol:try-in-attributes",
+    "source": "effect function f(){return <Box value={try load()}>{try load()}</Box>;}",
+    "origins": [
+      "sol:try-in-attributes"
+    ],
+    "expect": "valid"
+  },
+  {
+    "key": "sol:try-catch-expression",
+    "source": "effect function f(){return <Box value={load() catch () => 0}/>;}",
+    "origins": [
+      "sol:try-catch-expression"
+    ],
+    "expect": "valid"
+  },
+  {
+    "key": "sol:try-catch-effect",
+    "source": "effect function f(){return <Box value={load() catch effect (e) => 0}/>;}",
+    "origins": [
+      "sol:try-catch-effect"
+    ],
+    "expect": "valid"
+  },
+  {
+    "key": "sol:try-statement-plain-arrow",
+    "source": "const ui=<Box f={() => { try { work() } catch(e){ return 0 } }}/>;",
+    "origins": [
+      "sol:try-statement-plain-arrow"
+    ],
+    "expect": "valid"
+  },
+  {
+    "key": "sol:try-statement-effect-arrow",
+    "source": "const ui=<Box f={effect () => { try { work() } catch(e){ return 0 } }}/>;",
+    "origins": [
+      "sol:try-statement-effect-arrow"
+    ],
+    "expect": "parse-only"
+  },
+  {
+    "key": "sol:try-all",
+    "source": "effect function f(){return <Box value={try.all [load(), load()]}/>;}",
+    "origins": [
+      "sol:try-all"
+    ],
+    "expect": "valid"
+  },
+  {
+    "key": "sol:try-race",
+    "source": "effect function f(){return <Box value={try.race [load(), load()]}/>;}",
+    "origins": [
+      "sol:try-race"
+    ],
+    "expect": "valid"
+  },
+  {
+    "key": "sol:try-any",
+    "source": "effect function f(){return <Box value={try.any [load(), load()]}/>;}",
+    "origins": [
+      "sol:try-any"
+    ],
+    "expect": "valid"
+  },
+  {
+    "key": "sol:try-allSettled",
+    "source": "effect function f(){return <Box value={try.allSettled [load(), load()]}/>;}",
+    "origins": [
+      "sol:try-allSettled"
+    ],
+    "expect": "valid"
+  },
+  {
+    "key": "sol:fork-container",
+    "source": "effect function f(){return <Box value={fork task}/>;}",
+    "origins": [
+      "sol:fork-container"
+    ],
+    "expect": "valid"
+  },
+  {
+    "key": "sol:fork.scoped-container",
+    "source": "effect function f(){return <Box value={fork.scoped task}/>;}",
+    "origins": [
+      "sol:fork.scoped-container"
+    ],
+    "expect": "valid"
+  },
+  {
+    "key": "sol:fork.detached-container",
+    "source": "effect function f(){return <Box value={fork.detached task}/>;}",
+    "origins": [
+      "sol:fork.detached-container"
+    ],
+    "expect": "valid"
+  },
+  {
+    "key": "sol:fork.in(scope)-container",
+    "source": "effect function f(){return <Box value={fork.in(scope) task}/>;}",
+    "origins": [
+      "sol:fork.in(scope)-container"
+    ],
+    "expect": "valid"
+  },
+  {
+    "key": "sol:join-container",
+    "source": "effect function f(){return <Box value={join task}/>;}",
+    "origins": [
+      "sol:join-container"
+    ],
+    "expect": "valid"
+  },
+  {
+    "key": "sol:dotted-native",
+    "source": "const ui=<Box value={api.try.all(xs)} test={api.effect()} member={api.fork}/>;",
+    "origins": [
+      "sol:dotted-native"
+    ],
+    "expect": "valid"
+  },
+  {
+    "key": "sol:match-container",
+    "source": "const ui=<Box value={match (x) { when 1: <A/>; default: <B/>; }}/>;",
+    "origins": [
+      "sol:match-container"
+    ],
+    "expect": "valid"
+  },
+  {
+    "key": "sol:match-pattern-relational",
+    "source": "const ui=<>{match (x) { when < 3: <A/>; default: <B/>; }}</>;",
+    "origins": [
+      "sol:match-pattern-relational"
+    ],
+    "expect": "valid"
+  },
+  {
+    "key": "sol:is-container",
+    "source": "const ui=<Box value={x is { let name }} test={x is P}/>;",
+    "origins": [
+      "sol:is-container"
+    ],
+    "expect": "valid"
+  },
+  {
+    "key": "sol:pipe-container",
+    "source": "const ui=<Box value={x |> f(%)}>{x |> <span>{%}</span>}</Box>;",
+    "origins": [
+      "sol:pipe-container"
+    ],
+    "expect": "valid"
+  },
+  {
+    "key": "sol:pipe-whole-jsx",
+    "source": "const ui=x |> <Box value={%}/>;",
+    "origins": [
+      "sol:pipe-whole-jsx"
+    ],
+    "expect": "valid"
+  },
+  {
+    "key": "sol:pipe-modulo",
+    "source": "const ui=<Box value={x |> f(% % 2)}/>;",
+    "origins": [
+      "sol:pipe-modulo"
+    ],
+    "expect": "valid"
+  },
+  {
+    "key": "sol:pipe-raw-topic",
+    "source": "const ui=x |> <Box>%</Box>;",
+    "origins": [
+      "sol:pipe-raw-topic"
+    ],
+    "expect": "parse-only"
+  },
+  {
+    "key": "sol:pipe-topic-callback",
+    "source": "const ui=x |> <Box f={() => %}/>;",
+    "origins": [
+      "sol:pipe-topic-callback"
+    ],
+    "expect": "parse-only"
+  },
+  {
+    "key": "sol:raw-pipe-text",
+    "source": "const ui=<div>! % |></div>;",
+    "origins": [
+      "sol:raw-pipe-text"
+    ],
+    "expect": "invalid"
+  },
+  {
+    "key": "sol:escaped-pipe-text",
+    "source": "const ui=<div>! % |&gt; {\"|>\"}</div>;",
+    "origins": [
+      "sol:escaped-pipe-text"
+    ],
+    "expect": "valid"
+  },
+  {
+    "key": "sol:effect-block-attribute",
+    "source": "const ui=<Box task={effect { return 1 }}>text</Box>;",
+    "origins": [
+      "sol:effect-block-attribute"
+    ],
+    "expect": "valid"
+  },
+  {
+    "key": "sol:effect-function-attribute",
+    "source": "const ui=<Box task={effect function () { return 1 }}/>;",
+    "origins": [
+      "sol:effect-function-attribute"
+    ],
+    "expect": "valid"
+  },
+  {
+    "key": "sol:effect-arrow-attribute",
+    "source": "const ui=<Box task={effect () => { try work() }}/>;",
+    "origins": [
+      "sol:effect-arrow-attribute"
+    ],
+    "expect": "valid"
+  },
+  {
+    "key": "sol:effect-arrow-call-fallback",
+    "source": "const ui=<Box task={effect(x)}/>;",
+    "origins": [
+      "sol:effect-arrow-call-fallback"
+    ],
+    "expect": "valid"
+  },
+  {
+    "key": "sol:do-expression-attribute",
+    "source": "const ui=<Box value={do { const n=1; n+1 }}/>;",
+    "origins": [
+      "sol:do-expression-attribute"
+    ],
+    "expect": "valid"
+  },
+  {
+    "key": "sol:do-jump-attribute",
+    "source": "function f(){return <Box value={do { return <A/>; }}/>;}",
+    "origins": [
+      "sol:do-jump-attribute"
+    ],
+    "expect": "valid"
+  },
+  {
+    "key": "sol:do-effect-try-child",
+    "source": "effect function f(){return <div>{do { const n=try load(); n }}</div>;}",
+    "origins": [
+      "sol:do-effect-try-child"
+    ],
+    "expect": "valid"
+  },
+  {
+    "key": "sol:unbraced-effect-attribute",
+    "source": "const ui=<Box value=effect { return 1 }/>;",
+    "origins": [
+      "sol:unbraced-effect-attribute"
+    ],
+    "expect": "invalid"
+  },
+  {
+    "key": "sol:unbraced-do-attribute",
+    "source": "const ui=<Box value=do { 1 }/>;",
+    "origins": [
+      "sol:unbraced-do-attribute"
+    ],
+    "expect": "invalid"
+  },
+  {
+    "key": "sol:arrow-attribute",
+    "source": "const ui=<Box f={(x)=> <div>{x}</div>} asyncF={async x => x}/>;",
+    "origins": [
+      "sol:arrow-attribute"
+    ],
+    "expect": "valid"
+  },
+  {
+    "key": "sol:bare-arrow-attribute",
+    "source": "const ui=<Box f=(x)=>x/>;",
+    "origins": [
+      "sol:bare-arrow-attribute"
+    ],
+    "expect": "invalid"
+  },
+  {
+    "key": "sol:object-literal-double-brace",
+    "source": "const ui=<Box value={{ effect: 1, data: 2, try: 3 }}/>;",
+    "origins": [
+      "sol:object-literal-double-brace"
+    ],
+    "expect": "valid"
+  },
+  {
+    "key": "sol:provide-do-statement",
+    "source": "effect function f(){return <div>{do { provide Live { try work() }; 1 }}</div>;}",
+    "origins": [
+      "sol:provide-do-statement"
+    ],
+    "expect": "valid"
+  },
+  {
+    "key": "sol:data-schema-error-service",
+    "source": "const ui=<div>{do { data Shape { One; Two; }; schema N { n: number }; error Oops; service S { n: number }; 1 }}</div>;",
+    "origins": [
+      "sol:data-schema-error-service"
+    ],
+    "expect": "valid"
+  },
+  {
+    "key": "sol:interruptions-do",
+    "source": "effect function f(){return <div>{do { uninterruptible { restore { try work() } }; interruptible { try work() }; 1 }}</div>;}",
+    "origins": [
+      "sol:interruptions-do"
+    ],
+    "expect": "valid"
+  },
+  {
+    "key": "sol:loops-do",
+    "source": "effect function f(){return <div>{do { for concurrent(2) (const x of xs) { try work(x) }; for try (const y of stream) { try work(y) }; 1 }}</div>;}",
+    "origins": [
+      "sol:loops-do"
+    ],
+    "expect": "valid"
+  },
+  {
+    "key": "sol:keyword-match",
+    "source": "const ui=<match match='x'/>;",
+    "origins": [
+      "sol:keyword-match"
+    ],
+    "expect": "valid"
+  },
+  {
+    "key": "sol:keyword-is",
+    "source": "const ui=<is is='x'/>;",
+    "origins": [
+      "sol:keyword-is"
+    ],
+    "expect": "valid"
+  },
+  {
+    "key": "sol:keyword-when",
+    "source": "const ui=<when when='x'/>;",
+    "origins": [
+      "sol:keyword-when"
+    ],
+    "expect": "valid"
+  },
+  {
+    "key": "sol:keyword-and",
+    "source": "const ui=<and and='x'/>;",
+    "origins": [
+      "sol:keyword-and"
+    ],
+    "expect": "valid"
+  },
+  {
+    "key": "sol:keyword-or",
+    "source": "const ui=<or or='x'/>;",
+    "origins": [
+      "sol:keyword-or"
+    ],
+    "expect": "valid"
+  },
+  {
+    "key": "sol:keyword-not",
+    "source": "const ui=<not not='x'/>;",
+    "origins": [
+      "sol:keyword-not"
+    ],
+    "expect": "valid"
+  },
+  {
+    "key": "sol:keyword-let",
+    "source": "const ui=<let let='x'/>;",
+    "origins": [
+      "sol:keyword-let"
+    ],
+    "expect": "valid"
+  },
+  {
+    "key": "sol:keyword-const",
+    "source": "const ui=<const const='x'/>;",
+    "origins": [
+      "sol:keyword-const"
+    ],
+    "expect": "valid"
+  },
+  {
+    "key": "sol:keyword-try",
+    "source": "const ui=<try try='x'/>;",
+    "origins": [
+      "sol:keyword-try"
+    ],
+    "expect": "valid"
+  },
+  {
+    "key": "sol:keyword-catch",
+    "source": "const ui=<catch catch='x'/>;",
+    "origins": [
+      "sol:keyword-catch"
+    ],
+    "expect": "valid"
+  },
+  {
+    "key": "sol:keyword-effect",
+    "source": "const ui=<effect effect='x'/>;",
+    "origins": [
+      "sol:keyword-effect"
+    ],
+    "expect": "valid"
+  },
+  {
+    "key": "sol:keyword-service",
+    "source": "const ui=<service service='x'/>;",
+    "origins": [
+      "sol:keyword-service"
+    ],
+    "expect": "valid"
+  },
+  {
+    "key": "sol:keyword-data",
+    "source": "const ui=<data data='x'/>;",
+    "origins": [
+      "sol:keyword-data"
+    ],
+    "expect": "valid"
+  },
+  {
+    "key": "sol:keyword-schema",
+    "source": "const ui=<schema schema='x'/>;",
+    "origins": [
+      "sol:keyword-schema"
+    ],
+    "expect": "valid"
+  },
+  {
+    "key": "sol:keyword-error",
+    "source": "const ui=<error error='x'/>;",
+    "origins": [
+      "sol:keyword-error"
+    ],
+    "expect": "valid"
+  },
+  {
+    "key": "sol:keyword-fork",
+    "source": "const ui=<fork fork='x'/>;",
+    "origins": [
+      "sol:keyword-fork"
+    ],
+    "expect": "valid"
+  },
+  {
+    "key": "sol:keyword-join",
+    "source": "const ui=<join join='x'/>;",
+    "origins": [
+      "sol:keyword-join"
+    ],
+    "expect": "valid"
+  },
+  {
+    "key": "sol:keyword-provide",
+    "source": "const ui=<provide provide='x'/>;",
+    "origins": [
+      "sol:keyword-provide"
+    ],
+    "expect": "valid"
+  },
+  {
+    "key": "sol:keyword-uninterruptible",
+    "source": "const ui=<uninterruptible uninterruptible='x'/>;",
+    "origins": [
+      "sol:keyword-uninterruptible"
+    ],
+    "expect": "valid"
+  },
+  {
+    "key": "sol:keyword-interruptible",
+    "source": "const ui=<interruptible interruptible='x'/>;",
+    "origins": [
+      "sol:keyword-interruptible"
+    ],
+    "expect": "valid"
+  },
+  {
+    "key": "sol:keyword-restore",
+    "source": "const ui=<restore restore='x'/>;",
+    "origins": [
+      "sol:keyword-restore"
+    ],
+    "expect": "valid"
+  },
+  {
+    "key": "sol:keyword-concurrent",
+    "source": "const ui=<concurrent concurrent='x'/>;",
+    "origins": [
+      "sol:keyword-concurrent"
+    ],
+    "expect": "valid"
+  },
+  {
+    "key": "sol:keyword-do",
+    "source": "const ui=<do do='x'/>;",
+    "origins": [
+      "sol:keyword-do"
+    ],
+    "expect": "valid"
+  },
+  {
+    "key": "sol:keyword-async",
+    "source": "const ui=<async async='x'/>;",
+    "origins": [
+      "sol:keyword-async"
+    ],
+    "expect": "valid"
+  },
+  {
+    "key": "sol:keyword-await",
+    "source": "const ui=<await await='x'/>;",
+    "origins": [
+      "sol:keyword-await"
+    ],
+    "expect": "valid"
+  },
+  {
+    "key": "sol:keyword-control",
+    "source": "const ui=<control control='x'/>;",
+    "origins": [
+      "sol:keyword-control"
+    ],
+    "expect": "valid"
+  },
+  {
+    "key": "sol:keyword-handle",
+    "source": "const ui=<handle handle='x'/>;",
+    "origins": [
+      "sol:keyword-handle"
+    ],
+    "expect": "valid"
+  },
+  {
+    "key": "sol:keyword-resume",
+    "source": "const ui=<resume resume='x'/>;",
+    "origins": [
+      "sol:keyword-resume"
+    ],
+    "expect": "valid"
+  },
+  {
+    "key": "sol:keyword-abandon",
+    "source": "const ui=<abandon abandon='x'/>;",
+    "origins": [
+      "sol:keyword-abandon"
+    ],
+    "expect": "valid"
+  },
+  {
+    "key": "sol:keyword-layer",
+    "source": "const ui=<layer layer='x'/>;",
+    "origins": [
+      "sol:keyword-layer"
+    ],
+    "expect": "valid"
+  },
+  {
+    "key": "sol:keyword-mutable",
+    "source": "const ui=<mutable mutable='x'/>;",
+    "origins": [
+      "sol:keyword-mutable"
+    ],
+    "expect": "valid"
+  },
+  {
+    "key": "sol:member-keyword-tags",
+    "source": "const ui=<api.try effect={x}><Foo.Bar/><effect.service data={y}/></api.try>;",
+    "origins": [
+      "sol:member-keyword-tags"
+    ],
+    "expect": "valid"
+  },
+  {
+    "key": "sol:namespaces",
+    "source": "const ui=<a:b c:d='e'/>;",
+    "origins": [
+      "sol:namespaces"
+    ],
+    "expect": "valid"
+  },
+  {
+    "key": "sol:bad-namespace-member",
+    "source": "const ui=<a:b.c/>;",
+    "origins": [
+      "sol:bad-namespace-member"
+    ],
+    "expect": "invalid"
+  },
+  {
+    "key": "sol:fragment",
+    "source": "const ui=<><A/><B/>{x}</>;",
+    "origins": [
+      "sol:fragment"
+    ],
+    "expect": "valid"
+  },
+  {
+    "key": "sol:shift-after-generics",
+    "source": "const ui=<Box value={f<Array<T>>(x) >> 1}/>;",
+    "origins": [
+      "sol:shift-after-generics"
+    ],
+    "expect": "valid"
+  },
+  {
+    "key": "sol:shift-assignment",
+    "source": "const ui=<Box value={n >>= 1}/>;",
+    "origins": [
+      "sol:shift-assignment"
+    ],
+    "expect": "valid"
+  },
+  {
+    "key": "sol:jsx-attribute-direct-element",
+    "source": "const ui=<Box value=<A/>/>;",
+    "origins": [
+      "sol:jsx-attribute-direct-element"
+    ],
+    "expect": "valid"
+  },
+  {
+    "key": "sol:template-container",
+    "source": "const ui=<Box value={`hello ${x}`}>{`! % |> ${x}`}</Box>;",
+    "origins": [
+      "sol:template-container"
+    ],
+    "expect": "valid"
+  },
+  {
+    "key": "sol:template-effect-container",
+    "source": "effect function f(){return <Box value={`v=${try load()}`}/>;}",
+    "origins": [
+      "sol:template-effect-container"
+    ],
+    "expect": "valid"
+  },
+  {
+    "key": "sol:tagged-template",
+    "source": "const ui=<Box value={tag<T>`x ${y}`}/>;",
+    "origins": [
+      "sol:tagged-template"
+    ],
+    "expect": "valid"
+  },
+  {
+    "key": "sol:comment-child",
+    "source": "const ui=<div>{/* ! % |> <T> */} // ! %<A/></div>;",
+    "origins": [
+      "sol:comment-child"
+    ],
+    "expect": "valid"
+  },
+  {
+    "key": "sol:comment-attribute",
+    "source": "const ui=<Box /* effect */ value={/* try */ x!} {...props}/>;",
+    "origins": [
+      "sol:comment-attribute"
+    ],
+    "expect": "valid"
+  },
+  {
+    "key": "sol:spread-do",
+    "source": "const ui=<Box {...do { props }}/ >;",
+    "origins": [
+      "sol:spread-do"
+    ],
+    "expect": "valid"
+  },
+  {
+    "key": "sol:line-break-effect",
+    "source": "const ui=<Box value={effect\n(x) => x}/>;",
+    "origins": [
+      "sol:line-break-effect"
+    ],
+    "expect": "invalid"
+  },
+  {
+    "key": "sol:return-newline",
+    "source": "function f(){return\n<div/>;}",
+    "origins": [
+      "sol:return-newline"
+    ],
+    "expect": "valid"
+  },
+  {
+    "key": "sol:effect-try-child-order",
+    "source": "effect function f(){return <Box a={try first()} {...try props()} b={try second()}>{try third()}</Box>;}",
+    "origins": [
+      "sol:effect-try-child-order"
+    ],
+    "expect": "valid"
+  },
+  {
+    "key": "sol:effect-context-keyword-match",
+    "source": "effect function f(){return <match match='x'/>;}",
+    "origins": [
+      "sol:effect-context-keyword-match"
+    ],
+    "expect": "valid"
+  },
+  {
+    "key": "sol:effect-context-keyword-is",
+    "source": "effect function f(){return <is is='x'/>;}",
+    "origins": [
+      "sol:effect-context-keyword-is"
+    ],
+    "expect": "valid"
+  },
+  {
+    "key": "sol:effect-context-keyword-when",
+    "source": "effect function f(){return <when when='x'/>;}",
+    "origins": [
+      "sol:effect-context-keyword-when"
+    ],
+    "expect": "valid"
+  },
+  {
+    "key": "sol:effect-context-keyword-and",
+    "source": "effect function f(){return <and and='x'/>;}",
+    "origins": [
+      "sol:effect-context-keyword-and"
+    ],
+    "expect": "valid"
+  },
+  {
+    "key": "sol:effect-context-keyword-or",
+    "source": "effect function f(){return <or or='x'/>;}",
+    "origins": [
+      "sol:effect-context-keyword-or"
+    ],
+    "expect": "valid"
+  },
+  {
+    "key": "sol:effect-context-keyword-not",
+    "source": "effect function f(){return <not not='x'/>;}",
+    "origins": [
+      "sol:effect-context-keyword-not"
+    ],
+    "expect": "valid"
+  },
+  {
+    "key": "sol:effect-context-keyword-try",
+    "source": "effect function f(){return <try try='x'/>;}",
+    "origins": [
+      "sol:effect-context-keyword-try"
+    ],
+    "expect": "valid"
+  },
+  {
+    "key": "sol:effect-context-keyword-catch",
+    "source": "effect function f(){return <catch catch='x'/>;}",
+    "origins": [
+      "sol:effect-context-keyword-catch"
+    ],
+    "expect": "valid"
+  },
+  {
+    "key": "sol:effect-context-keyword-effect",
+    "source": "effect function f(){return <effect effect='x'/>;}",
+    "origins": [
+      "sol:effect-context-keyword-effect"
+    ],
+    "expect": "valid"
+  },
+  {
+    "key": "sol:effect-context-keyword-service",
+    "source": "effect function f(){return <service service='x'/>;}",
+    "origins": [
+      "sol:effect-context-keyword-service"
+    ],
+    "expect": "valid"
+  },
+  {
+    "key": "sol:effect-context-keyword-data",
+    "source": "effect function f(){return <data data='x'/>;}",
+    "origins": [
+      "sol:effect-context-keyword-data"
+    ],
+    "expect": "valid"
+  },
+  {
+    "key": "sol:effect-context-keyword-schema",
+    "source": "effect function f(){return <schema schema='x'/>;}",
+    "origins": [
+      "sol:effect-context-keyword-schema"
+    ],
+    "expect": "valid"
+  },
+  {
+    "key": "sol:effect-context-keyword-error",
+    "source": "effect function f(){return <error error='x'/>;}",
+    "origins": [
+      "sol:effect-context-keyword-error"
+    ],
+    "expect": "valid"
+  },
+  {
+    "key": "sol:effect-context-keyword-fork",
+    "source": "effect function f(){return <fork fork='x'/>;}",
+    "origins": [
+      "sol:effect-context-keyword-fork"
+    ],
+    "expect": "valid"
+  },
+  {
+    "key": "sol:effect-context-keyword-join",
+    "source": "effect function f(){return <join join='x'/>;}",
+    "origins": [
+      "sol:effect-context-keyword-join"
+    ],
+    "expect": "valid"
+  },
+  {
+    "key": "sol:effect-context-keyword-provide",
+    "source": "effect function f(){return <provide provide='x'/>;}",
+    "origins": [
+      "sol:effect-context-keyword-provide"
+    ],
+    "expect": "valid"
+  },
+  {
+    "key": "sol:effect-context-keyword-uninterruptible",
+    "source": "effect function f(){return <uninterruptible uninterruptible='x'/>;}",
+    "origins": [
+      "sol:effect-context-keyword-uninterruptible"
+    ],
+    "expect": "valid"
+  },
+  {
+    "key": "sol:effect-context-keyword-interruptible",
+    "source": "effect function f(){return <interruptible interruptible='x'/>;}",
+    "origins": [
+      "sol:effect-context-keyword-interruptible"
+    ],
+    "expect": "valid"
+  },
+  {
+    "key": "sol:effect-context-keyword-restore",
+    "source": "effect function f(){return <restore restore='x'/>;}",
+    "origins": [
+      "sol:effect-context-keyword-restore"
+    ],
+    "expect": "valid"
+  },
+  {
+    "key": "sol:effect-context-keyword-concurrent",
+    "source": "effect function f(){return <concurrent concurrent='x'/>;}",
+    "origins": [
+      "sol:effect-context-keyword-concurrent"
+    ],
+    "expect": "valid"
+  },
+  {
+    "key": "sol:effect-context-keyword-do",
+    "source": "effect function f(){return <do do='x'/>;}",
+    "origins": [
+      "sol:effect-context-keyword-do"
+    ],
+    "expect": "valid"
+  },
+  {
+    "key": "sol:effect-context-keyword-async",
+    "source": "effect function f(){return <async async='x'/>;}",
+    "origins": [
+      "sol:effect-context-keyword-async"
+    ],
+    "expect": "valid"
+  },
+  {
+    "key": "sol:effect-context-keyword-await",
+    "source": "effect function f(){return <await await='x'/>;}",
+    "origins": [
+      "sol:effect-context-keyword-await"
+    ],
+    "expect": "valid"
+  },
+  {
+    "key": "sol:effect-context-keyword-control",
+    "source": "effect function f(){return <control control='x'/>;}",
+    "origins": [
+      "sol:effect-context-keyword-control"
+    ],
+    "expect": "valid"
+  },
+  {
+    "key": "sol:effect-context-keyword-handle",
+    "source": "effect function f(){return <handle handle='x'/>;}",
+    "origins": [
+      "sol:effect-context-keyword-handle"
+    ],
+    "expect": "valid"
+  },
+  {
+    "key": "sol:effect-context-keyword-resume",
+    "source": "effect function f(){return <resume resume='x'/>;}",
+    "origins": [
+      "sol:effect-context-keyword-resume"
+    ],
+    "expect": "valid"
+  },
+  {
+    "key": "sol:effect-context-keyword-abandon",
+    "source": "effect function f(){return <abandon abandon='x'/>;}",
+    "origins": [
+      "sol:effect-context-keyword-abandon"
+    ],
+    "expect": "valid"
+  },
+  {
+    "key": "sol:effect-context-keyword-layer",
+    "source": "effect function f(){return <layer layer='x'/>;}",
+    "origins": [
+      "sol:effect-context-keyword-layer"
+    ],
+    "expect": "valid"
+  },
+  {
+    "key": "sol:effect-context-keyword-mutable",
+    "source": "effect function f(){return <mutable mutable='x'/>;}",
+    "origins": [
+      "sol:effect-context-keyword-mutable"
+    ],
+    "expect": "valid"
+  },
+  {
+    "key": "sol:plain-fork-scoped",
+    "source": "effect function f(){return fork.scoped task;}",
+    "origins": [
+      "sol:plain-fork-scoped"
+    ],
+    "expect": "valid"
+  },
+  {
+    "key": "sol:plain-fork-detached",
+    "source": "effect function f(){return fork.detached task;}",
+    "origins": [
+      "sol:plain-fork-detached"
+    ],
+    "expect": "valid"
+  },
+  {
+    "key": "sol:plain-fork-in",
+    "source": "effect function f(){return fork.in(scope) task;}",
+    "origins": [
+      "sol:plain-fork-in"
+    ],
+    "expect": "valid"
+  },
+  {
+    "key": "sol:plain-do-return",
+    "source": "function f(){return do { return 1; };}",
+    "origins": [
+      "sol:plain-do-return"
+    ],
+    "expect": "valid"
+  },
+  {
+    "key": "sol:plain-for-concurrent",
+    "source": "effect function f(){for concurrent(2) (const x of xs) { try work(x) }; return 1;}",
+    "origins": [
+      "sol:plain-for-concurrent"
+    ],
+    "expect": "valid"
+  },
+  {
+    "key": "sol:plain-for-try",
+    "source": "effect function f(){for try (const x of stream) { try work(x) }; return 1;}",
+    "origins": [
+      "sol:plain-for-try"
+    ],
+    "expect": "valid"
+  },
+  {
+    "key": "sol:plain-third-bang",
+    "source": "const y=x as User!!!;",
+    "origins": [
+      "sol:plain-third-bang"
+    ],
+    "expect": "valid"
+  },
+  {
+    "key": "sol:optional-r-comparison",
+    "source": "const ui=<Box value={x as A!! < y}/>;",
+    "origins": [
+      "sol:optional-r-comparison"
+    ],
+    "expect": "valid"
+  },
+  {
+    "key": "sol:optional-r-generic-function",
+    "source": "const ui=<Box value={x as A!!(<T>()=>T)}/>;",
+    "origins": [
+      "sol:optional-r-generic-function"
+    ],
+    "expect": "valid"
+  },
+  {
+    "key": "sol:required-r-object",
+    "source": "const ui=<Box<A!E!{service:number}>/>;",
+    "origins": [
+      "sol:required-r-object"
+    ],
+    "expect": "valid"
+  },
+  {
+    "key": "sol:optional-r-object-parens",
+    "source": "const ui=<Box<A!!({service:number})>/>;",
+    "origins": [
+      "sol:optional-r-object-parens"
+    ],
+    "expect": "valid"
+  },
+  {
+    "key": "sol:jsx-effect-reserved-member",
+    "source": "effect function f(){return <fork join={join task}><fork.Component/></fork>;}",
+    "origins": [
+      "sol:jsx-effect-reserved-member"
+    ],
+    "expect": "valid"
+  },
+  {
+    "key": "sol:jsx-open-vibe-identifiers",
+    "source": "const ui=<effect function service data schema error match is when and or not provide restore uninterruptible interruptible concurrent fork join='x'/>;",
+    "origins": [
+      "sol:jsx-open-vibe-identifiers"
+    ],
+    "expect": "valid"
+  },
+  {
+    "key": "sol:witness-opencode-project-icons-provider",
+    "source": "import { ProjectIconStoreProvider, type GeneratedProjectIcon } from \"@opencode/ui/project-avatar\"\nimport { Schema } from \"effect\"\nimport type { ParentProps } from \"solid-js\"\nimport { Persist, persisted } from \"@/runtime/persistence/storage\"\nimport { Persistence } from \"@/runtime/persistence/schema\"\n\nconst ProjectIconState = Persistence.struct({\n  icons: Persistence.record(\n    Persistence.struct({\n      style: Schema.String,\n      version: Schema.Finite,\n      params: Schema.Record(Schema.String, Schema.Finite),\n    }),\n  ),\n})\n\n// Generated default avatars are kept on this client, keyed by the project ID (or the directory for projects without\n// one), so each icon stays identical after restarts and after the generator's defaults change. Project IDs derive from\n// the repository, so the same repository shows the same icon on every server.\nexport function ProjectIconsProvider(props: ParentProps) {\n  const [store, setStore] = persisted(Persist.global(\"project-icons\"), ProjectIconState, { icons: {} })\n\n  return (\n    <ProjectIconStoreProvider\n      value={{\n        get: (key) => store.icons[key],\n        remember: (key: string, icon: GeneratedProjectIcon) =>\n          setStore(\"icons\", key, { style: icon.style, version: icon.version, params: { ...icon.params } }),\n      }}\n    >\n      {props.children}\n    </ProjectIconStoreProvider>\n  )\n}\n",
+    "origins": [
+      "sol:witness-opencode-project-icons-provider"
+    ],
+    "expect": "valid"
+  },
+  {
+    "key": "sol:witness-opencode-server-shell-cover",
+    "source": "import { Match } from \"effect\"\nimport { createEffect, createMemo, Show, type ParentProps } from \"solid-js\"\nimport { usePlatform } from \"@/runtime/platform/platform\"\nimport { ServerConnection, useServers } from \"@/runtime/server/registry\"\nimport { useCurrentRoute } from \"@/shell/state/layout\"\nimport { useTabs } from \"@/shell/tabs/tabs\"\nimport { Contribution } from \"./render\"\nimport { usePluginServers } from \"./servers\"\n\n/**\n * Keeps the routed session or draft mounted and lets its server's plugin cover it while the\n * server is not ready.\n */\nexport function PluginServerCover(props: ParentProps) {\n  const servers = usePluginServers()\n  const route = useCurrentRoute()\n  const tabs = useTabs()\n\n  const covered = createMemo(() => {\n    const current = route()\n\n    const key = Match.value(current).pipe(\n      Match.when({ type: \"session\" }, (session) => session.server),\n      Match.when(\n        { type: \"draft\" },\n        (draft) => tabs.store.find((tab) => tab.type === \"draft\" && tab.draftID === draft.draftID)?.server,\n      ),\n      Match.orElse(() => undefined),\n    )\n\n    if (!key) return\n    const source = servers.entry(key)\n\n    if (!source?.entry.cover || source.entry.state === \"ready\") return\n\n    return source.key\n  })\n\n  const tab = () => {\n    const current = route()\n\n    if (current.type === \"session\") return `${current.server}:${current.sessionId}`\n\n    if (current.type === \"draft\") return current.draftID\n\n    return \"\"\n  }\n\n  return (\n    <div class=\"relative flex size-full min-h-0 min-w-0 flex-col\">\n      {/* Keep the route mounted so reconnecting preserves its draft and local UI state. */}\n      <div\n        class=\"flex size-full min-h-0 min-w-0 flex-col\"\n        classList={{ invisible: !!covered() }}\n        inert={!!covered()}\n        aria-hidden={covered() ? true : undefined}\n      >\n        {props.children}\n      </div>\n      <Show when={covered()} keyed>\n        {(key) => {\n          const source = servers.entry(key)\n          const cover = source?.entry.cover\n\n          if (!source || !cover) return null\n\n          return (\n            <div class=\"absolute inset-0\">\n              <Contribution plugin={source.plugin}>\n                {() =>\n                  cover({\n                    get tab() {\n                      return tab()\n                    },\n                  })\n                }\n              </Contribution>\n            </div>\n          )\n        }}\n      </Show>\n    </div>\n  )\n}\n\n/** Tells main the server endpoints so main plugins can reach them. */\nexport function PluginServerEndpoints() {\n  const servers = useServers()\n  const bridge = usePlatform().plugins\n\n  if (bridge) {\n    const sent = { value: \"\" }\n    createEffect(() => {\n      const endpoints = servers.list.flatMap((conn) => {\n        // Main knows the built-in server first-hand; a contributed server has no endpoint until it is ready.\n        if (conn.type === \"sidecar\" || (conn.type === \"plugin\" && conn.state !== \"ready\")) return []\n        const password = conn.http.password\n\n        const endpoint = { id: ServerConnection.key(conn), url: conn.http.url }\n\n        return [password ? { ...endpoint, password } : endpoint]\n      })\n\n      const value = JSON.stringify(endpoints)\n\n      if (value === sent.value) return\n      sent.value = value\n      bridge.configure(endpoints)\n    })\n  }\n\n  return null\n}\n",
+    "origins": [
+      "sol:witness-opencode-server-shell-cover"
+    ],
+    "expect": "valid"
+  },
+  {
+    "key": "sol:witness-t3code-revisioned-query",
+    "source": "import { RegistryContext, useAtomValue } from \"@effect/atom-react\";\nimport { Atom, AtomRegistry } from \"effect/reactivity\";\nimport { describe, expect, it, vi } from \"vite-plus/test\";\n\nimport { render } from \"../../test/render\";\nimport { revisionedQuery } from \"./revisionedQuery\";\n\ndescribe(\"revisionedQuery in React\", () => {\n  it(\"refetches for a new revision without updating a component during render\", async () => {\n    let fetches = 0;\n    const query = Atom.make(() => {\n      fetches += 1;\n      return fetches;\n    }).pipe(Atom.keepAlive);\n    const registry = AtomRegistry.make();\n    function Reader({ revision }: { revision: string }) {\n      return <span>fetch {useAtomValue(revisionedQuery(query, revision))}</span>;\n    }\n    const ui = (revision: string) => (\n      <RegistryContext.Provider value={registry}>\n        <Reader revision={revision} />\n      </RegistryContext.Provider>\n    );\n    using consoleError = vi.spyOn(console, \"error\");\n    // A bare atom reader: no links or navigation to route.\n    await using screen = await render(ui(\"mutation-1\"), { router: false });\n    await expect.element(screen.getByText(\"fetch 1\")).toBeInTheDocument();\n\n    await screen.rerender(ui(\"mutation-2\"));\n\n    await expect.element(screen.getByText(\"fetch 2\")).toBeInTheDocument();\n    expect(consoleError.mock.calls.map(([message]) => String(message))).not.toContainEqual(\n      expect.stringContaining(\"Cannot update a component\"),\n    );\n  });\n});\n",
+    "origins": [
+      "sol:witness-t3code-revisioned-query"
+    ],
+    "expect": "valid"
+  },
+  {
+    "key": "sol:witness-foldkit-async-atom",
+    "source": "import { Cause, Effect } from 'effect'\nimport { AsyncResult, Atom } from 'effect/reactivity'\n\nimport { useAtomValue } from '@effect/atom-react'\n\nconst runtime = Atom.runtime(Api.Default)\n\n// An async atom evaluates an Effect and exposes an AsyncResult.\nconst userAtom = runtime.atom(\n  effect {\n    const api = try Api\n    return try api.getUser()\n  },\n)\n\nconst UserCard = () => {\n  const user = useAtomValue(userAtom)\n\n  return AsyncResult.builder(user)\n    .onInitial(() => <Spinner />)\n    .onFailure(cause => <ErrorBanner message={Cause.pretty(cause)} />)\n    .onSuccess(user => <Profile user={user} />)\n    .render()\n}\n",
+    "origins": [
+      "sol:witness-foldkit-async-atom"
+    ],
+    "expect": "valid"
+  },
+  {
+    "key": "astra:generic-arrow-ambiguous",
+    "source": "const f = <T>(x: T) => x;",
+    "origins": [
+      "astra:generic-arrow-ambiguous",
+      "astra-expanded:generic-arrow-ambiguous"
+    ]
+  },
+  {
+    "key": "astra:generic-arrow-comma",
+    "source": "const f = <T,>(x: T) => x;",
+    "origins": [
+      "astra:generic-arrow-comma",
+      "astra-expanded:generic-arrow-comma"
+    ]
+  },
+  {
+    "key": "astra:generic-arrow-constraint",
+    "source": "const f = <T extends unknown>(x: T) => x;",
+    "origins": [
+      "astra:generic-arrow-constraint",
+      "astra-expanded:generic-arrow-constraint"
+    ]
+  },
+  {
+    "key": "astra:generic-arrow-default",
+    "source": "const f = <T = string>(x: T) => x;",
+    "origins": [
+      "astra:generic-arrow-default",
+      "astra-expanded:generic-arrow-default"
+    ]
+  },
+  {
+    "key": "astra:effect-generic-arrow-ambiguous",
+    "source": "const f = effect <T>(x: T) => x;",
+    "origins": [
+      "astra:effect-generic-arrow-ambiguous",
+      "astra-expanded:effect-generic-arrow-ambiguous"
+    ]
+  },
+  {
+    "key": "astra:effect-generic-arrow-comma",
+    "source": "const f = effect <T,>(x: T) => x;",
+    "origins": [
+      "astra:effect-generic-arrow-comma",
+      "astra-expanded:effect-generic-arrow-comma"
+    ]
+  },
+  {
+    "key": "astra:type-assertion",
+    "source": "const x = <T>value;",
+    "origins": [
+      "astra:type-assertion",
+      "astra-expanded:type-assertion"
+    ]
+  },
+  {
+    "key": "astra:type-as",
+    "source": "const x = <div>{value as T}</div>;",
+    "origins": [
+      "astra:type-as",
+      "astra-expanded:type-as"
+    ]
+  },
+  {
+    "key": "astra:generic-call",
+    "source": "const x = <div>{id<T>(value)}</div>;",
+    "origins": [
+      "astra:generic-call",
+      "astra-expanded:generic-call"
+    ]
+  },
+  {
+    "key": "astra:generic-component-nested",
+    "source": "const x = <Box<Array<number>> value={xs} />;",
+    "origins": [
+      "astra:generic-component-nested",
+      "astra-expanded:generic-component-nested"
+    ]
+  },
+  {
+    "key": "astra:generic-component-effect-type",
+    "source": "const x = <Box<number!!> value={task} />;",
+    "origins": [
+      "astra:generic-component-effect-type",
+      "astra-expanded:generic-component-effect-type"
+    ]
+  },
+  {
+    "key": "astra:effect-type-arrow",
+    "source": "const x = <Box task={(x: number): number!! => task} />;",
+    "origins": [
+      "astra:effect-type-arrow",
+      "astra-expanded:effect-type-arrow"
+    ]
+  },
+  {
+    "key": "astra:bang-nonnull",
+    "source": "const x = <div>{value!}{value!!}{!value}{!!value}{a != b}{a !== b}</div>;",
+    "origins": [
+      "astra:bang-nonnull",
+      "astra-expanded:bang-nonnull"
+    ]
+  },
+  {
+    "key": "astra:bang-as-boundary",
+    "source": "const x = <div>{value as number!!}</div>;",
+    "origins": [
+      "astra:bang-as-boundary",
+      "astra-expanded:bang-as-boundary"
+    ]
+  },
+  {
+    "key": "astra:bang-as-comparison",
+    "source": "const x = <div>{value as number!! < limit}</div>;",
+    "origins": [
+      "astra:bang-as-comparison",
+      "astra-expanded:bang-as-comparison"
+    ]
+  },
+  {
+    "key": "astra:try-child",
+    "source": "effect function f() { return <div>{try task}</div>; }",
+    "origins": [
+      "astra:try-child",
+      "astra-expanded:try-child"
+    ]
+  },
+  {
+    "key": "astra:catch-attribute",
+    "source": "effect function f() { return <Box value={task catch () => 0} />; }",
+    "origins": [
+      "astra:catch-attribute",
+      "astra-expanded:catch-attribute"
+    ]
+  },
+  {
+    "key": "astra:try-dotted",
+    "source": "effect function f() { return <Box value={try.all [a,b]} />; }",
+    "origins": [
+      "astra:try-dotted",
+      "astra-expanded:try-dotted"
+    ]
+  },
+  {
+    "key": "astra:try-keyword-member",
+    "source": "const x = <try.all try={value} />;",
+    "origins": [
+      "astra:try-keyword-member",
+      "astra-expanded:try-keyword-member"
+    ]
+  },
+  {
+    "key": "astra:match-child",
+    "source": "const x = <div>{match (n) { when 0: <b/>; default: <i/>; }}</div>;",
+    "origins": [
+      "astra:match-child",
+      "astra-expanded:match-child"
+    ]
+  },
+  {
+    "key": "astra:is-child",
+    "source": "const x = <Box ok={n is 0} />;",
+    "origins": [
+      "astra:is-child",
+      "astra-expanded:is-child"
+    ]
+  },
+  {
+    "key": "astra:pipe-child",
+    "source": "const x = <div>{n |> f(%)}</div>;",
+    "origins": [
+      "astra:pipe-child",
+      "astra-expanded:pipe-child"
+    ]
+  },
+  {
+    "key": "astra:pipe-jsx-body",
+    "source": "const x = n |> <Box value={%} />;",
+    "origins": [
+      "astra:pipe-jsx-body",
+      "astra-expanded:pipe-jsx-body"
+    ]
+  },
+  {
+    "key": "astra:pipe-nested-arrow-topic",
+    "source": "const x = n |> <Box fn={() => %} />;",
+    "origins": [
+      "astra:pipe-nested-arrow-topic",
+      "astra-expanded:pipe-nested-arrow-topic"
+    ]
+  },
+  {
+    "key": "astra:effect-block-attribute",
+    "source": "const x = <Box task={effect { return 1; }} />;",
+    "origins": [
+      "astra:effect-block-attribute",
+      "astra-expanded:effect-block-attribute"
+    ]
+  },
+  {
+    "key": "astra:do-child",
+    "source": "const x = <div>{do { const a = 1; a + 1; }}</div>;",
+    "origins": [
+      "astra:do-child",
+      "astra-expanded:do-child"
+    ]
+  },
+  {
+    "key": "astra:do-abrupt",
+    "source": "function f() { return <Box value={do { return 7; }} />; }",
+    "origins": [
+      "astra:do-abrupt",
+      "astra-expanded:do-abrupt"
+    ]
+  },
+  {
+    "key": "astra:effect-function-attribute",
+    "source": "const x = <Box task={effect function () { return try task; }} />;",
+    "origins": [
+      "astra:effect-function-attribute",
+      "astra-expanded:effect-function-attribute"
+    ]
+  },
+  {
+    "key": "astra:arrow-attribute",
+    "source": "const x = <Box fn={(x: number) => <i>{x}</i>} />;",
+    "origins": [
+      "astra:arrow-attribute",
+      "astra-expanded:arrow-attribute"
+    ]
+  },
+  {
+    "key": "astra:unbraced-effect",
+    "source": "const x = <Box task=effect { return 1; } />;",
+    "origins": [
+      "astra:unbraced-effect",
+      "astra-expanded:unbraced-effect"
+    ]
+  },
+  {
+    "key": "astra:fork-join",
+    "source": "effect function f() { const fiber = fork task; return <Box value={join fiber} />; }",
+    "origins": [
+      "astra:fork-join",
+      "astra-expanded:fork-join"
+    ]
+  },
+  {
+    "key": "astra:declarations-in-do",
+    "source": "const x = <Box value={do { data D { A; } schema S { n: number } error E service API { get(): number!! } D.A(); }} />;",
+    "origins": [
+      "astra:declarations-in-do",
+      "astra-expanded:declarations-in-do"
+    ]
+  },
+  {
+    "key": "astra:provide-in-effect",
+    "source": "const x = <Box task={effect { provide Live { return try work; } }} />;",
+    "origins": [
+      "astra:provide-in-effect",
+      "astra-expanded:provide-in-effect"
+    ]
+  },
+  {
+    "key": "astra:all-keywords",
+    "source": "const x = <effect match try effect service data fork join provide schema error when is and or not let const uninterruptible interruptible restore concurrent control handle resume abandon layer mutable module async await yield using />;",
+    "origins": [
+      "astra:all-keywords",
+      "astra-expanded:all-keywords"
+    ]
+  },
+  {
+    "key": "astra:jsx-text-punctuation",
+    "source": "const x = <div>! % |></div>;",
+    "origins": [
+      "astra:jsx-text-punctuation",
+      "astra-expanded:jsx-text-punctuation"
+    ]
+  },
+  {
+    "key": "astra:jsx-text-safe",
+    "source": "const x = <div>! % |&gt; // not a comment</div>;",
+    "origins": [
+      "astra:jsx-text-safe",
+      "astra-expanded:jsx-text-safe"
+    ]
+  },
+  {
+    "key": "astra:jsx-text-comment",
+    "source": "const x = <div>/* text */</div>;",
+    "origins": [
+      "astra:jsx-text-comment",
+      "astra-expanded:jsx-text-comment"
+    ]
+  },
+  {
+    "key": "astra:namespaced-member",
+    "source": "const x = <><a:b data-x='ok'/><Foo.Bar/><fork.scoped/></>;",
+    "origins": [
+      "astra:namespaced-member",
+      "astra-expanded:namespaced-member"
+    ]
+  },
+  {
+    "key": "astra:invalid-namespace-member",
+    "source": "const x = <a:b.c/>;",
+    "origins": [
+      "astra:invalid-namespace-member",
+      "astra-expanded:invalid-namespace-member"
+    ]
+  },
+  {
+    "key": "astra:shift-comparison",
+    "source": "const x = <div>{a > b}{a >> 1}{a < b}</div>;",
+    "origins": [
+      "astra:shift-comparison",
+      "astra-expanded:shift-comparison"
+    ]
+  },
+  {
+    "key": "astra:template",
+    "source": "const x = <div>{`! % |> ${value}`}</div>;",
+    "origins": [
+      "astra:template",
+      "astra-expanded:template"
+    ]
+  },
+  {
+    "key": "astra:comments",
+    "source": "const x = <div>{/* comment */}{value /* ! % |> */}</div>;",
+    "origins": [
+      "astra:comments",
+      "astra-expanded:comments"
+    ]
+  },
+  {
+    "key": "astra:spread",
+    "source": "const x = <Box {...do { props; }} />;",
+    "origins": [
+      "astra:spread",
+      "astra-expanded:spread"
+    ]
+  },
+  {
+    "key": "astra:object-vs-container",
+    "source": "const x = <Box value={{effect: 1, try: 2}} />;",
+    "origins": [
+      "astra:object-vs-container",
+      "astra-expanded:object-vs-container"
+    ]
+  },
+  {
+    "key": "astra:regex",
+    "source": "const x = <div>{/[!%>]/.test(value)}</div>;",
+    "origins": [
+      "astra:regex",
+      "astra-expanded:regex"
+    ]
+  },
+  {
+    "key": "astra:empty-attribute",
+    "source": "const x = <Box value={} />;",
+    "origins": [
+      "astra:empty-attribute",
+      "astra-expanded:empty-attribute"
+    ]
+  },
+  {
+    "key": "opus:clash:1",
+    "source": "const a = <T>(x: T) => x",
+    "origins": [
+      "opus:clash:1"
+    ]
+  },
+  {
+    "key": "opus:clash:2",
+    "source": "const b = <T,>(x: T) => x",
+    "origins": [
+      "opus:clash:2"
+    ]
+  },
+  {
+    "key": "opus:clash:3",
+    "source": "const c = <T extends unknown>(x: T) => x",
+    "origins": [
+      "opus:clash:3"
+    ]
+  },
+  {
+    "key": "opus:clash:4",
+    "source": "const d = effect <T>(x: T) => x",
+    "origins": [
+      "opus:clash:4"
+    ]
+  },
+  {
+    "key": "opus:clash:5",
+    "source": "const d = effect <T,>(x: T) => x",
+    "origins": [
+      "opus:clash:5"
+    ]
+  },
+  {
+    "key": "opus:clash:6",
+    "source": "const d = effect <T extends unknown>(x: T) => x",
+    "origins": [
+      "opus:clash:6"
+    ]
+  },
+  {
+    "key": "opus:clash:7",
+    "source": "const d = effect <const T,>(x: T) => x",
+    "origins": [
+      "opus:clash:7"
+    ]
+  },
+  {
+    "key": "opus:clash:8",
+    "source": "const g = async <T>(x: T) => x",
+    "origins": [
+      "opus:clash:8"
+    ]
+  },
+  {
+    "key": "opus:clash:9",
+    "source": "const g = async <T,>(x: T) => x",
+    "origins": [
+      "opus:clash:9"
+    ]
+  },
+  {
+    "key": "opus:clash:10",
+    "source": "const e = <string>y",
+    "origins": [
+      "opus:clash:10"
+    ]
+  },
+  {
+    "key": "opus:clash:11",
+    "source": "effect function h() { const v = try <Eff>y }",
+    "origins": [
+      "opus:clash:11"
+    ]
+  },
+  {
+    "key": "opus:clash:12",
+    "source": "effect function h() { return <div>{try load()}</div> }",
+    "origins": [
+      "opus:clash:12"
+    ]
+  },
+  {
+    "key": "opus:clash:13",
+    "source": "const el = <Foo x={a!} y={!b} z={a != b} w={c as A!!} v={c as A!E!R} u={c as A!!R} />",
+    "origins": [
+      "opus:clash:13"
+    ]
+  },
+  {
+    "key": "opus:clash:14",
+    "source": "const el = <Comp<User!NotFound> v={1} />",
+    "origins": [
+      "opus:clash:14"
+    ]
+  },
+  {
+    "key": "opus:clash:15",
+    "source": "const el = <Comp<A!!> />",
+    "origins": [
+      "opus:clash:15"
+    ]
+  },
+  {
+    "key": "opus:clash:16",
+    "source": "const el = <Comp<A!!R> />",
+    "origins": [
+      "opus:clash:16"
+    ]
+  },
+  {
+    "key": "opus:clash:17",
+    "source": "const el = <Comp<Array<Array<A!E>>> />",
+    "origins": [
+      "opus:clash:17"
+    ]
+  },
+  {
+    "key": "opus:clash:18",
+    "source": "const el = <p>Hi! 50% off</p>",
+    "origins": [
+      "opus:clash:18"
+    ]
+  },
+  {
+    "key": "opus:clash:19",
+    "source": "const el = <p>a |> b</p>",
+    "origins": [
+      "opus:clash:19"
+    ]
+  },
+  {
+    "key": "opus:clash:20",
+    "source": "const el = <p>a {\"|>\"} b</p>",
+    "origins": [
+      "opus:clash:20"
+    ]
+  },
+  {
+    "key": "opus:clash:21",
+    "source": "const el = <p>{x |> f(%)}</p>",
+    "origins": [
+      "opus:clash:21"
+    ]
+  },
+  {
+    "key": "opus:clash:22",
+    "source": "const el = x |> <b>{%}</b>",
+    "origins": [
+      "opus:clash:22"
+    ]
+  },
+  {
+    "key": "opus:clash:23",
+    "source": "const el = x |> <b title=\"%\">%</b>",
+    "origins": [
+      "opus:clash:23"
+    ]
+  },
+  {
+    "key": "opus:clash:24",
+    "source": "const el = <p>{%}</p>",
+    "origins": [
+      "opus:clash:24"
+    ]
+  },
+  {
+    "key": "opus:clash:25",
+    "source": "const el = <Foo run={effect { return 1 }} f={effect () => 1} g={effect function () { return 1 }} />",
+    "origins": [
+      "opus:clash:25"
+    ]
+  },
+  {
+    "key": "opus:clash:26",
+    "source": "const el = <Foo f={effect x => 1} />",
+    "origins": [
+      "opus:clash:26"
+    ]
+  },
+  {
+    "key": "opus:clash:27",
+    "source": "const el = <p>{match (x) { when 1: <b/>; default: <i/>; }}</p>",
+    "origins": [
+      "opus:clash:27"
+    ]
+  },
+  {
+    "key": "opus:clash:28",
+    "source": "const r = match (x) { when <b/>: 1; default: 2; }",
+    "origins": [
+      "opus:clash:28"
+    ]
+  },
+  {
+    "key": "opus:clash:29",
+    "source": "const r = match (x) { when < 5: 1; default: 2; }",
+    "origins": [
+      "opus:clash:29"
+    ]
+  },
+  {
+    "key": "opus:clash:30",
+    "source": "const ok = x is < 5",
+    "origins": [
+      "opus:clash:30"
+    ]
+  },
+  {
+    "key": "opus:clash:31",
+    "source": "const ok = x is <b/>",
+    "origins": [
+      "opus:clash:31"
+    ]
+  },
+  {
+    "key": "opus:clash:32",
+    "source": "const el = <p>{do { const a = 1; <b>{a}</b> }}</p>",
+    "origins": [
+      "opus:clash:32"
+    ]
+  },
+  {
+    "key": "opus:clash:33",
+    "source": "const el = <><try/><match/><effect/><service/><data value=\"1\">x</data><fork/><join/><provide/><catch/><when/><is/></>",
+    "origins": [
+      "opus:clash:33"
+    ]
+  },
+  {
+    "key": "opus:clash:34",
+    "source": "const el = <try.all/>",
+    "origins": [
+      "opus:clash:34"
+    ]
+  },
+  {
+    "key": "opus:clash:35",
+    "source": "const el = <fork.in/>",
+    "origins": [
+      "opus:clash:35"
+    ]
+  },
+  {
+    "key": "opus:clash:36",
+    "source": "const el = <Effect.Provider/>",
+    "origins": [
+      "opus:clash:36"
+    ]
+  },
+  {
+    "key": "opus:clash:37",
+    "source": "const el = <Show when={x} is=\"a\" match={1} try={2} catch={3} data={4} effect={5} service={6} fork={7} provide={8} schema={9} error={10} concurrent={11} />",
+    "origins": [
+      "opus:clash:37"
+    ]
+  },
+  {
+    "key": "opus:clash:38",
+    "source": "const el = <a:b c:d=\"1\"/>",
+    "origins": [
+      "opus:clash:38"
+    ]
+  },
+  {
+    "key": "opus:clash:39",
+    "source": "const el = <><b/></>",
+    "origins": [
+      "opus:clash:39"
+    ]
+  },
+  {
+    "key": "opus:clash:40",
+    "source": "const el = <p>{/* comment */}{`t ${x}`}</p>",
+    "origins": [
+      "opus:clash:40"
+    ]
+  },
+  {
+    "key": "opus:clash:41",
+    "source": "error Timeout\n<T>(x: T) => x",
+    "origins": [
+      "opus:clash:41"
+    ]
+  },
+  {
+    "key": "opus:clash:42",
+    "source": "error Timeout\n<T,>(x: T) => x",
+    "origins": [
+      "opus:clash:42"
+    ]
+  },
+  {
+    "key": "opus:clash:43",
+    "source": "data Box<T> { Full { value: T }; Empty }",
+    "origins": [
+      "opus:clash:43"
+    ]
+  },
+  {
+    "key": "opus:clash:44",
+    "source": "effect function h() { const t = try.all [<A/>, <B/>] }",
+    "origins": [
+      "opus:clash:44"
+    ]
+  },
+  {
+    "key": "opus:clash:45",
+    "source": "effect function h() { const t = fork <A/> }",
+    "origins": [
+      "opus:clash:45"
+    ]
+  },
+  {
+    "key": "opus:clash:46",
+    "source": "effect function h() { const t = join <A/> }",
+    "origins": [
+      "opus:clash:46"
+    ]
+  },
+  {
+    "key": "opus:clash:47",
+    "source": "effect function* gen() { yield <b/> }",
+    "origins": [
+      "opus:clash:47"
+    ]
+  },
+  {
+    "key": "opus:clash:48",
+    "source": "const v = x catch () => <b/>",
+    "origins": [
+      "opus:clash:48"
+    ]
+  },
+  {
+    "key": "opus:clash:49",
+    "source": "type T = A!!\n<b/>",
+    "origins": [
+      "opus:clash:49"
+    ]
+  },
+  {
+    "key": "opus:clash:50",
+    "source": "const v = x as A!! < 3",
+    "origins": [
+      "opus:clash:50"
+    ]
+  },
+  {
+    "key": "opus:clash:51",
+    "source": "const v = f!<T>(x)",
+    "origins": [
+      "opus:clash:51"
+    ]
+  },
+  {
+    "key": "opus:clash:52",
+    "source": "effect function h() { uninterruptible { <b/> } }",
+    "origins": [
+      "opus:clash:52"
+    ]
+  },
+  {
+    "key": "opus:clash:53",
+    "source": "const o = { effect m<T>(x: T) { return 1 } }",
+    "origins": [
+      "opus:clash:53"
+    ]
+  },
+  {
+    "key": "opus:clash:54",
+    "source": "const e = effect <b/>",
+    "origins": [
+      "opus:clash:54"
+    ]
+  },
+  {
+    "key": "opus:clash:55",
+    "source": "const el = <div>{x as A!!}</div>",
+    "origins": [
+      "opus:clash:55"
+    ]
+  },
+  {
+    "key": "opus:clash:56",
+    "source": "const el = <Foo {...try props} />",
+    "origins": [
+      "opus:clash:56"
+    ]
+  },
+  {
+    "key": "opus:clash:57",
+    "source": "const el = <Foo a=<b/> />",
+    "origins": [
+      "opus:clash:57"
+    ]
+  },
+  {
+    "key": "opus:clash:58",
+    "source": "const el = <Foo a={f<A!!>(x)} />",
+    "origins": [
+      "opus:clash:58"
+    ]
+  },
+  {
+    "key": "opus:clash:59",
+    "source": "const f = effect (x) => <b>{x}</b>",
+    "origins": [
+      "opus:clash:59"
+    ]
+  },
+  {
+    "key": "opus:clash:60",
+    "source": "const el = <p>a } b</p>",
+    "origins": [
+      "opus:clash:60"
+    ]
+  },
+  {
+    "key": "opus:clash:61",
+    "source": "provide Users = <b/> { }",
+    "origins": [
+      "opus:clash:61"
+    ]
+  },
+  {
+    "key": "opus:clash:62",
+    "source": "const el = <p>{x catch () => 1}</p>",
+    "origins": [
+      "opus:clash:62"
+    ]
+  },
+  {
+    "key": "opus:clash:63",
+    "source": "const el = <Comp<A!!>></Comp>",
+    "origins": [
+      "opus:clash:63"
+    ]
+  },
+  {
+    "key": "opus:clash:64",
+    "source": "const el = <Comp<A!!>>text</Comp>",
+    "origins": [
+      "opus:clash:64"
+    ]
+  },
+  {
+    "key": "opus:clash:65",
+    "source": "const el = <Comp<A!E>>text</Comp>",
+    "origins": [
+      "opus:clash:65"
+    ]
+  },
+  {
+    "key": "opus:clash:66",
+    "source": "async effect <T,>(x: T) => x",
+    "origins": [
+      "opus:clash:66"
+    ]
+  },
+  {
+    "key": "opus:clash:67",
+    "source": "const el = <A b={x |> g(%) |> h(%)} />",
+    "origins": [
+      "opus:clash:67"
+    ]
+  },
+  {
+    "key": "opus:clash:68",
+    "source": "for (const x of xs) <b/>",
+    "origins": [
+      "opus:clash:68"
+    ]
+  },
+  {
+    "key": "opus:clash:69",
+    "source": "const v = a<b>(c)",
+    "origins": [
+      "opus:clash:69"
+    ]
+  },
+  {
+    "key": "opus:clash:70",
+    "source": "const s = schema satisfies <T/>",
+    "origins": [
+      "opus:clash:70"
+    ]
+  },
+  {
+    "key": "opus:clash2:1",
+    "source": "error Timeout\nconst x = 1",
+    "origins": [
+      "opus:clash2:1"
+    ]
+  },
+  {
+    "key": "opus:clash2:2",
+    "source": "error Timeout<T> { v: T }",
+    "origins": [
+      "opus:clash2:2"
+    ]
+  },
+  {
+    "key": "opus:clash2:3",
+    "source": "error Timeout { id: string }\n<b/>",
+    "origins": [
+      "opus:clash2:3"
+    ]
+  },
+  {
+    "key": "opus:clash2:4",
+    "source": "effect function h() { const f = fork <Eff>x }",
+    "origins": [
+      "opus:clash2:4",
+      "opus:clash3:6"
+    ]
+  },
+  {
+    "key": "opus:clash2:5",
+    "source": "async function h() { const f = await <A/> }",
+    "origins": [
+      "opus:clash2:5"
+    ]
+  },
+  {
+    "key": "opus:clash2:6",
+    "source": "const v = x catch <E,>(e: E) => 1",
+    "origins": [
+      "opus:clash2:6"
+    ]
+  },
+  {
+    "key": "opus:clash2:7",
+    "source": "const v = x catch <E>(e: E) => 1",
+    "origins": [
+      "opus:clash2:7"
+    ]
+  },
+  {
+    "key": "opus:clash2:8",
+    "source": "const f = effect <T,>(x: T) => <b>{x}</b>",
+    "origins": [
+      "opus:clash2:8"
+    ]
+  },
+  {
+    "key": "opus:clash2:9",
+    "source": "const f = <T extends A!!>(x: T) => x",
+    "origins": [
+      "opus:clash2:9"
+    ]
+  },
+  {
+    "key": "opus:clash2:10",
+    "source": "const f = <T = A!!,>(x: T) => x",
+    "origins": [
+      "opus:clash2:10"
+    ]
+  },
+  {
+    "key": "opus:clash2:11",
+    "source": "const f = <T = A!!>(x: T) => x",
+    "origins": [
+      "opus:clash2:11"
+    ]
+  },
+  {
+    "key": "opus:clash2:12",
+    "source": "const f = effect <T extends A!E>(x: T) => x",
+    "origins": [
+      "opus:clash2:12"
+    ]
+  },
+  {
+    "key": "opus:clash2:13",
+    "source": "const r = match (<b/>) { default: 1; }",
+    "origins": [
+      "opus:clash2:13"
+    ]
+  },
+  {
+    "key": "opus:clash2:14",
+    "source": "const el = <div data-id=\"1\" aria-label=\"x\" data={1} />",
+    "origins": [
+      "opus:clash2:14"
+    ]
+  },
+  {
+    "key": "opus:clash2:15",
+    "source": "const el = x |> <A f={() => %} />",
+    "origins": [
+      "opus:clash2:15"
+    ]
+  },
+  {
+    "key": "opus:clash2:16",
+    "source": "const el = <p>{x}!= {y}% |&gt; z</p>",
+    "origins": [
+      "opus:clash2:16"
+    ]
+  },
+  {
+    "key": "opus:clash2:17",
+    "source": "const el = x is Foo ? <a/> : <b/>",
+    "origins": [
+      "opus:clash2:17"
+    ]
+  },
+  {
+    "key": "opus:clash2:18",
+    "source": "class C { effect render() { return <b>{try x}</b> } }",
+    "origins": [
+      "opus:clash2:18"
+    ]
+  },
+  {
+    "key": "opus:clash2:19",
+    "source": "const el = <A f={effect async () => 1} />",
+    "origins": [
+      "opus:clash2:19"
+    ]
+  },
+  {
+    "key": "opus:clash2:20",
+    "source": "const el = <A>{effect { return <b/> }}</A>",
+    "origins": [
+      "opus:clash2:20"
+    ]
+  },
+  {
+    "key": "opus:clash2:21",
+    "source": "const el = <A>{(e) => e}</A>",
+    "origins": [
+      "opus:clash2:21"
+    ]
+  },
+  {
+    "key": "opus:clash2:22",
+    "source": "schema S = <T/>",
+    "origins": [
+      "opus:clash2:22"
+    ]
+  },
+  {
+    "key": "opus:clash2:23",
+    "source": "service S { render(): JSX.Element!! }",
+    "origins": [
+      "opus:clash2:23"
+    ]
+  },
+  {
+    "key": "opus:clash2:24",
+    "source": "const el = <p>{x as A!!\n}</p>",
+    "origins": [
+      "opus:clash2:24"
+    ]
+  },
+  {
+    "key": "opus:clash2:25",
+    "source": "const el = <A b={y as A!!}c={1} />",
+    "origins": [
+      "opus:clash2:25"
+    ]
+  },
+  {
+    "key": "opus:clash3:1",
+    "source": "error Timeout\n<b/>",
+    "origins": [
+      "opus:clash3:1"
+    ]
+  },
+  {
+    "key": "opus:clash3:2",
+    "source": "error Timeout\n<App />",
+    "origins": [
+      "opus:clash3:2"
+    ]
+  },
+  {
+    "key": "opus:clash3:3",
+    "source": "schema error Bad\n<App />",
+    "origins": [
+      "opus:clash3:3"
+    ]
+  },
+  {
+    "key": "opus:clash3:4",
+    "source": "service Users\n<App />",
+    "origins": [
+      "opus:clash3:4"
+    ]
+  },
+  {
+    "key": "opus:clash3:5",
+    "source": "data D\n<App />",
+    "origins": [
+      "opus:clash3:5"
+    ]
+  },
+  {
+    "key": "opus:clash3:7",
+    "source": "type T = A!!\n<App />",
+    "origins": [
+      "opus:clash3:7"
+    ]
+  },
+  {
+    "key": "fable/probes:decl/tsx/card.tsx",
+    "source": "import { Effect } from \"effect\"\nexport class LoadFailed extends Error { readonly _tag = \"LoadFailed\" }\nexport function load(id: string): Effect.Effect<{ name: string }, LoadFailed> { return Effect.gen(function* () { return { name: id } }) }\nexport function Card(props: { id: string }) {\n  return <article class=\"card\">{props.id}!</article>\n}\nexport const Row = (props: { n: number }) => <li>{props.n % 2 ? \"odd\" : \"even\"}</li>",
+    "origins": [
+      "fable/probes:decl/tsx/card.tsx"
+    ]
+  },
+  {
+    "key": "fable/probes:decl/vibex/card.vibex",
+    "source": "import { Effect } from \"effect\"\nexport class LoadFailed extends Error { readonly _tag = \"LoadFailed\" }\nexport effect function load(id: string): { name: string }!LoadFailed { return { name: id } }\nexport function Card(props: { id: string }) {\n  return <article class=\"card\">{props.id}!</article>\n}\nexport const Row = (props: { n: number }) => <li>{props.n % 2 ? \"odd\" : \"even\"}</li>",
+    "origins": [
+      "fable/probes:decl/vibex/card.vibex"
+    ]
+  },
+  {
+    "key": "fable/probes:q/a.vibe",
+    "source": "const l1 = x as User!! ? 1 : 2",
+    "origins": [
+      "fable/probes:q/a.vibe"
+    ]
+  },
+  {
+    "key": "fable/probes:q/b.vibex",
+    "source": "const l2 = x as User!! ? 1 : 2\nconst l3 = <Foo run={x as User!! ? 1 : 2}/>\nconst l4 = <Foo run={(x as User!!) ? 1 : 2}/>\nconst l5 = <p>{x as User!! ? 1 : 2}</p>\nconst l6 = [x as User!! ? 1 : 2]\nconst l7 = f(x as User!! ? 1 : 2)",
+    "origins": [
+      "fable/probes:q/b.vibex"
+    ]
+  },
+  {
+    "key": "fable/probes:q/c.vibe",
+    "source": "const l8 = [x as User!! ? 1 : 2]\nconst l9 = f(x as User!! ? 1 : 2)\nconst l10 = { a: x as User!! ? 1 : 2 }",
+    "origins": [
+      "fable/probes:q/c.vibe"
+    ]
+  },
+  {
+    "key": "fable/probes:sel/p06-try-in-jsx.vibex",
+    "source": "effect function view() {\n  const el = <ul title={try url()}>{try itemsE()}</ul>\n  return el\n}",
+    "origins": [
+      "fable/probes:sel/p06-try-in-jsx.vibex",
+      "fable/probes:vibex/p06-try-in-jsx.vibex"
+    ]
+  },
+  {
+    "key": "fable/probes:sel/p07b-catch-value-jsx.vibex",
+    "source": "effect function view() {\n  return <p>{load() catch <Fallback/>}</p>\n}",
+    "origins": [
+      "fable/probes:sel/p07b-catch-value-jsx.vibex",
+      "fable/probes:vibex/p07b-catch-value-jsx.vibex"
+    ]
+  },
+  {
+    "key": "fable/probes:sel/p09-match-in-jsx.vibex",
+    "source": "function view() {\n  return <p>{match (s) { when \"a\": <A/>; default: <B/>; }}</p>\n}\nconst m = match (<A/>) { when { __jsx: true }: 1; default: 0; }\nconst n = <p>{x is \"a\"}</p>",
+    "origins": [
+      "fable/probes:sel/p09-match-in-jsx.vibex",
+      "fable/probes:vibex/p09-match-in-jsx.vibex"
+    ]
+  },
+  {
+    "key": "fable/probes:sel/p11-blocks-in-jsx.vibex",
+    "source": "const a = <Foo run={effect { return 1 }} p={do { 1 }} />\nconst b = <Foo run={effect () => { return try work() }}>{effect function () { return 1 }}</Foo>\nconst c = <Foo run={effect (v: number) => v}/>",
+    "origins": [
+      "fable/probes:sel/p11-blocks-in-jsx.vibex",
+      "fable/probes:vibex/p11-blocks-in-jsx.vibex"
+    ]
+  },
+  {
+    "key": "fable/probes:sel/p13b-fork-call-form.vibex",
+    "source": "effect function view() {\n  const a = fork (work())\n  return <div>{join a}</div>\n}",
+    "origins": [
+      "fable/probes:sel/p13b-fork-call-form.vibex",
+      "fable/probes:vibex/p13b-fork-call-form.vibex"
+    ]
+  },
+  {
+    "key": "fable/probes:sel/p14-declarations.vibex",
+    "source": "data Shape { Circle { r: number }; Square { side: number } }\nerror Oops { id: string }\nservice Users { find(id: string): User!Oops }\nschema Code = \"a\" | \"b\"\nfunction view(shape: Shape) {\n  return <p>{match (shape) { when Shape.Circle(let r): <A/>; when Shape.Square: <B/>; }}</p>\n}\nconst u = <p>{Users}{Oops}{Shape.Circle({ r: 1 })}</p>",
+    "origins": [
+      "fable/probes:sel/p14-declarations.vibex",
+      "fable/probes:vibex/p14-declarations.vibex"
+    ]
+  },
+  {
+    "key": "fable/probes:sel/p24-block-param.vibex",
+    "source": "const a = <p>{render { return 1 }}</p>\nconst b = <p>{render}{x}</p>\nconst c = <p>{render} {x}</p>\nconst d = <Foo p={render} {...x} />",
+    "origins": [
+      "fable/probes:sel/p24-block-param.vibex",
+      "fable/probes:vibe/p24-block-param.vibe",
+      "fable/probes:vibex/p24-block-param.vibex"
+    ]
+  },
+  {
+    "key": "fable/probes:sel/p26-try-jsx-operand.vibex",
+    "source": "effect function view() {\n  const e = try <Foo/>\n  return e\n}",
+    "origins": [
+      "fable/probes:sel/p26-try-jsx-operand.vibex",
+      "fable/probes:vibe/p26-try-jsx-operand.vibe",
+      "fable/probes:vibex/p26-try-jsx-operand.vibex"
+    ]
+  },
+  {
+    "key": "fable/probes:tsx/p01-type-assertion.tsx",
+    "source": "const a = <User>x",
+    "origins": [
+      "fable/probes:tsx/p01-type-assertion.tsx",
+      "fable/probes:vibe/p01-type-assertion.vibe",
+      "fable/probes:vibex/p01-type-assertion.vibex"
+    ]
+  },
+  {
+    "key": "fable/probes:tsx/p02a-generic-arrow-bare.tsx",
+    "source": "const id1 = <T>(v: T) => v",
+    "origins": [
+      "fable/probes:tsx/p02a-generic-arrow-bare.tsx",
+      "fable/probes:vibe/p02a-generic-arrow-bare.vibe",
+      "fable/probes:vibex/p02a-generic-arrow-bare.vibex"
+    ]
+  },
+  {
+    "key": "fable/probes:tsx/p02b-generic-arrow-ok.tsx",
+    "source": "const id2 = <T,>(v: T) => v\nconst id3 = <T extends unknown>(v: T) => v\nconst id4 = <const T,>(v: T) => v",
+    "origins": [
+      "fable/probes:tsx/p02b-generic-arrow-ok.tsx",
+      "fable/probes:vibe/p02b-generic-arrow-ok.vibe",
+      "fable/probes:vibex/p02b-generic-arrow-ok.vibex"
+    ]
+  },
+  {
+    "key": "fable/probes:tsx/p12-keyword-tags.tsx",
+    "source": "const t1 = <try></try>\nconst t2 = <match/>\nconst t3 = <effect/>\nconst t4 = <service/>\nconst t5 = <data/>\nconst t6 = <fork/>\nconst t7 = <provide/>\nconst t8 = <join/>\nconst t9 = <a:b/>\nconst t10 = <Ns.Bar/>\nconst t11 = <></>\nconst t12 = <button is=\"fancy-button\" match={1} try={2} effect={3} service=\"x\" data={4} fork provide=\"y\" />\nconst t13 = <svg xlink:href=\"#a\"/>",
+    "origins": [
+      "fable/probes:tsx/p12-keyword-tags.tsx",
+      "fable/probes:vibex/p12-keyword-tags.vibex"
+    ]
+  },
+  {
+    "key": "fable/probes:tsx/p15-comparison-after-as.tsx",
+    "source": "const a = x as number < 3 ? <A/> : <B/>\nconst b = (x as number) < 3",
+    "origins": [
+      "fable/probes:tsx/p15-comparison-after-as.tsx",
+      "fable/probes:vibex/p15-comparison-after-as.vibex"
+    ]
+  },
+  {
+    "key": "fable/probes:tsx/p16-typeargs.tsx",
+    "source": "const a = f<User>(x)\nconst b = g<User, Array<User>>(x)\nconst c = <Foo<User> p={1}/>\nconst d = <Foo<User>></Foo>",
+    "origins": [
+      "fable/probes:tsx/p16-typeargs.tsx",
+      "fable/probes:vibex/p16-typeargs.vibex"
+    ]
+  },
+  {
+    "key": "fable/probes:tsx/p17-jsx-text.tsx",
+    "source": "const a1 = <p>a |> b</p>\nconst a2 = <p>x > y</p>\nconst a3 = <p>a ! b % c</p>\nconst a4 = <p>{\"|>\"} 100% done! {`${x!}`}</p>\nconst a5 = <p>{/* a!b */}</p>\nconst a6 = <p>// not a comment % |></p>\nconst a7 = <p>when (x) { }</p>",
+    "origins": [
+      "fable/probes:tsx/p17-jsx-text.tsx",
+      "fable/probes:vibex/p17-jsx-text.vibex"
+    ]
+  },
+  {
+    "key": "fable/probes:tsx/p19-arrow-in-attr.tsx",
+    "source": "const a = <button onClick={(e) => run(e)} onKeyDown={async (e) => run(e)} />",
+    "origins": [
+      "fable/probes:tsx/p19-arrow-in-attr.tsx",
+      "fable/probes:vibex/p19-arrow-in-attr.vibex"
+    ]
+  },
+  {
+    "key": "fable/probes:tsx/p20-generics-in-containers.tsx",
+    "source": "const a = <p>{f<User>(x)}</p>\nconst b = <p>{(<T,>(v: T) => v)(1)}</p>\nconst c = <p>{x as any as (<T>(v: T) => T)}</p>",
+    "origins": [
+      "fable/probes:tsx/p20-generics-in-containers.tsx",
+      "fable/probes:vibex/p20-generics-in-containers.vibex"
+    ]
+  },
+  {
+    "key": "fable/probes:tsx/p25-solid-attrs.tsx",
+    "source": "const a = <div class=\"x\" classList={{ a: true }} on:click={() => 1} {...x} />",
+    "origins": [
+      "fable/probes:tsx/p25-solid-attrs.tsx",
+      "fable/probes:vibex/p25-solid-attrs.vibex"
+    ]
+  },
+  {
+    "key": "fable/probes:vibe2/plain.vibe",
+    "source": "export const Row2 = (props: { n: number }) => props.n % 2 ? \"odd\" : \"even\"\nexport const Row4 = (props: { n: number }) => { return props.n }\nexport function Card(props: { id: string }) { return props.id }",
+    "origins": [
+      "fable/probes:vibe2/plain.vibe"
+    ]
+  },
+  {
+    "key": "fable/probes:vibe3/p07c.vibe",
+    "source": "effect function view() {\n  const a = load() catch () => 1\n  const b = load() catch 1\n  return [a, b]\n}",
+    "origins": [
+      "fable/probes:vibe3/p07c.vibe",
+      "fable/probes:vibex/p07c-catch-value-form.vibex"
+    ]
+  },
+  {
+    "key": "fable/probes:vibex/p03-effect-generic-arrow.vibex",
+    "source": "const f1 = effect <T,>(v: T) => { return v }\nconst f2 = effect <T>(v: T) => { return v }\nconst f3 = effect <T extends unknown>(v: T) => { return v }",
+    "origins": [
+      "fable/probes:vibex/p03-effect-generic-arrow.vibex"
+    ]
+  },
+  {
+    "key": "fable/probes:vibex/p04-bang-in-containers.vibex",
+    "source": "effect function view(load: () => User!NotFound) {\n  const u = try load()\n  const n = x != 1 ? 1 : 2\n  return <div title={u!.name}>{u.name!}{x !== 2}{n}</div>\n}",
+    "origins": [
+      "fable/probes:vibex/p04-bang-in-containers.vibex"
+    ]
+  },
+  {
+    "key": "fable/probes:vibex/p05-effect-types-in-jsx.vibex",
+    "source": "const c = <Foo<User!NotFound> p={1}/>\nconst d = <Foo<User!!>></Foo>\nconst e = <Foo<User!NotFound!never>>{x}</Foo>\nconst h = f<User!!>(x)\nconst i = g<User!NotFound, User!!>(x)\nconst j = <Foo run={x as User!!}/>\nconst k = <Foo run={(x as User!!) || 1}/>\nconst l = <Foo run={(x as User!!) ? 1 : 2}/>",
+    "origins": [
+      "fable/probes:vibex/p05-effect-types-in-jsx.vibex"
+    ]
+  },
+  {
+    "key": "fable/probes:vibex/p07-catch-in-jsx.vibex",
+    "source": "effect function view() {\n  const a = <p>{load() catch () => <Err/>}</p>\n  const b = <p>{load() catch effect (e) => { return <Err e={e}/> }}</p>\n  return [a, b]\n}",
+    "origins": [
+      "fable/probes:vibex/p07-catch-in-jsx.vibex"
+    ]
+  },
+  {
+    "key": "fable/probes:vibex/p08-try-dotted.vibex",
+    "source": "effect function view() {\n  const a = <p>{try.all [work(), work()]}</p>\n  const b = <p>{try.race [work(), work()]}</p>\n  return [a, b]\n}",
+    "origins": [
+      "fable/probes:vibex/p08-try-dotted.vibex"
+    ]
+  },
+  {
+    "key": "fable/probes:vibex/p10-pipe-topic.vibex",
+    "source": "const a = <p>{items |> <List items={%}/>}</p>\nconst b = <p>{x |> % + 1}</p>\nconst c = items |> <List items={%}/>\nconst d = <p>{x % 2}{x |> % % 2}</p>",
+    "origins": [
+      "fable/probes:vibex/p10-pipe-topic.vibex"
+    ]
+  },
+  {
+    "key": "fable/probes:vibex/p13-fork-join.vibex",
+    "source": "effect function view() {\n  const fib = fork work()\n  return <div>{join fib}</div>\n}",
+    "origins": [
+      "fable/probes:vibex/p13-fork-join.vibex"
+    ]
+  },
+  {
+    "key": "fable/probes:vibex/p21-is-pattern.vibex",
+    "source": "function view(v: unknown) {\n  if (v is { name: let name }) return <p>{name}</p>\n  return <p>{v is \"a\"}</p>\n}",
+    "origins": [
+      "fable/probes:vibex/p21-is-pattern.vibex"
+    ]
+  },
+  {
+    "key": "fable/probes:vibex/p22-effect-return-type.vibex",
+    "source": "function fa(): User!! { return x }\nconst fb = (): User!! => x\nconst fc = (): JSX.Element!! => x\nfunction fd(): JSX.Element!NotFound {\n  return x\n}",
+    "origins": [
+      "fable/probes:vibex/p22-effect-return-type.vibex"
+    ]
+  },
+  {
+    "key": "fable/probes:vibex/p23-throw-expr.vibex",
+    "source": "const a = <p>{x ?? throw new NotFound({ id: \"1\" })}</p>",
+    "origins": [
+      "fable/probes:vibex/p23-throw-expr.vibex"
+    ]
+  },
+  {
+    "key": "fable/probes:vibex/p29-constrained-arrow.vibex",
+    "source": "const f1 = <T extends User!NotFound>(v: T) => v\nconst f2 = effect <T extends User!NotFound>(v: T) => { return v }",
+    "origins": [
+      "fable/probes:vibex/p29-constrained-arrow.vibex"
+    ]
+  },
+  {
+    "key": "fable/probes:vibex/p30-effect-member.vibex",
+    "source": "const o = { effect run() { return 1 }, view() { return <p>{this.run()}</p> } }\nclass C { effect run(): number!! { return 1 } }",
+    "origins": [
+      "fable/probes:vibex/p30-effect-member.vibex"
+    ]
+  },
+  {
+    "key": "fable/probes:vibex/p31-vibe-forms-in-text.vibex",
+    "source": "const a = <p>try x catch y; match (x) when fork join provide effect data service</p>",
+    "origins": [
+      "fable/probes:vibex/p31-vibe-forms-in-text.vibex"
+    ]
+  },
+  {
+    "key": "fable/probes:vibex/p32-plain-arrow-component.vibex",
+    "source": "export const Row = (props: { n: number }) => <li>{props.n % 2 ? \"odd\" : \"even\"}</li>\nexport const Row2 = (props: { n: number }) => props.n % 2 ? \"odd\" : \"even\"\nexport const Row3 = (props: { n: number }) => <li>{props.n}</li>",
+    "origins": [
+      "fable/probes:vibex/p32-plain-arrow-component.vibex"
+    ]
+  },
+  {
+    "key": "merged/probes/vibex:q01-generic-arrow-bare.vibex",
+    "source": "export const id = <T>(x: T) => x",
+    "origins": [
+      "merged/probes/vibex:q01-generic-arrow-bare.vibex"
+    ]
+  },
+  {
+    "key": "merged/probes/vibex:q02-generic-arrow-comma.vibex",
+    "source": "export const id = <T,>(x: T) => x",
+    "origins": [
+      "merged/probes/vibex:q02-generic-arrow-comma.vibex"
+    ]
+  },
+  {
+    "key": "merged/probes/vibex:q03-effect-generic-bare.vibex",
+    "source": "export const id = effect <T>(x: T) => x",
+    "origins": [
+      "merged/probes/vibex:q03-effect-generic-bare.vibex"
+    ]
+  },
+  {
+    "key": "merged/probes/vibex:q04-effect-generic-comma.vibex",
+    "source": "export const id = effect <T,>(x: T) => x",
+    "origins": [
+      "merged/probes/vibex:q04-effect-generic-comma.vibex"
+    ]
+  },
+  {
+    "key": "merged/probes/vibex:q05-angle-assert.vibex",
+    "source": "declare const y: unknown\nexport const s = <string>y",
+    "origins": [
+      "merged/probes/vibex:q05-angle-assert.vibex"
+    ]
+  },
+  {
+    "key": "merged/probes/vibex:q06-fork-jsx.vibex",
+    "source": "declare const work: number!!\nexport effect function f() { const a = fork <b/>; return a }",
+    "origins": [
+      "merged/probes/vibex:q06-fork-jsx.vibex"
+    ]
+  },
+  {
+    "key": "merged/probes/vibex:q07-error-newline-jsx.vibex",
+    "source": "error Timeout\nexport const el = <App />\ndeclare const App: () => JSX.Element",
+    "origins": [
+      "merged/probes/vibex:q07-error-newline-jsx.vibex"
+    ]
+  },
+  {
+    "key": "merged/probes/vibex:q07x.vibex",
+    "source": "error Timeout\n<App/>\ndeclare const App: (p: {children?: unknown}) => JSX.Element",
+    "origins": [
+      "merged/probes/vibex:q07x.vibex"
+    ]
+  },
+  {
+    "key": "merged/probes/vibex:q08-catch-generic.vibex",
+    "source": "declare const x: number!string\nexport effect function f() { return x catch <E,>(e: E) => 1 }",
+    "origins": [
+      "merged/probes/vibex:q08-catch-generic.vibex"
+    ]
+  },
+  {
+    "key": "merged/probes/vibex:q09-const-const.vibex",
+    "source": "export const node = <const const={1}/>",
+    "origins": [
+      "merged/probes/vibex:q09-const-const.vibex"
+    ]
+  },
+  {
+    "key": "merged/probes/vibex:q10-when-jsx.vibex",
+    "source": "declare const v: number\nexport const r = match (v) { when <b/>: 1; default: 2; }",
+    "origins": [
+      "merged/probes/vibex:q10-when-jsx.vibex"
+    ]
+  },
+  {
+    "key": "merged/probes/vibex:q11-keyword-tags.vibex",
+    "source": "export const t = <><try/><match/><effect/><service/><data value=\"1\"/><fork/><join/><provide/><catch/><when/><is/></>",
+    "origins": [
+      "merged/probes/vibex:q11-keyword-tags.vibex"
+    ]
+  },
+  {
+    "key": "merged/probes/vibex:q12-try-dotted-tag.vibex",
+    "source": "export const t = <try.all/>",
+    "origins": [
+      "merged/probes/vibex:q12-try-dotted-tag.vibex"
+    ]
+  },
+  {
+    "key": "merged/probes/vibex:q13-pipe-text.vibex",
+    "source": "declare const n: number\nexport const t = n |> <b title=\"%\">%</b>",
+    "origins": [
+      "merged/probes/vibex:q13-pipe-text.vibex"
+    ]
+  },
+  {
+    "key": "merged/probes/vibex:q14-pipe-arrow-capture.vibex",
+    "source": "declare const n: number\nexport const t = n |> <b onClick={() => %}>{%}</b>",
+    "origins": [
+      "merged/probes/vibex:q14-pipe-arrow-capture.vibex"
+    ]
+  },
+  {
+    "key": "merged/probes/vibex:q15-text-pipe.vibex",
+    "source": "export const t = <p>a |> b</p>",
+    "origins": [
+      "merged/probes/vibex:q15-text-pipe.vibex"
+    ]
+  },
+  {
+    "key": "merged/probes/vibex:q16-bang-typearg.vibex",
+    "source": "declare function Comp<T>(p: { v: T }): JSX.Element\ndeclare const task: number!string\nexport const t = <Comp<number!string> v={task} />",
+    "origins": [
+      "merged/probes/vibex:q16-bang-typearg.vibex"
+    ]
+  },
+  {
+    "key": "merged/probes/vibex:q17-plain-component.vibex",
+    "source": "export function Label(props: { text: string }) { return <b>{props.text}</b> }\nexport const use = <Label text=\"x\" />",
+    "origins": [
+      "merged/probes/vibex:q17-plain-component.vibex"
+    ]
+  },
+  {
+    "key": "merged/probes/vibex:q18-effect-try-jsx.vibex",
+    "source": "declare const load: () => string!!\nexport effect function r() { return <div title={try load()}>{try load()}</div> }",
+    "origins": [
+      "merged/probes/vibex:q18-effect-try-jsx.vibex"
+    ]
+  },
+  {
+    "key": "merged/probes/vibex:q19-as-bang-lt.vibex",
+    "source": "declare const x: number!!\nexport const c = x as number!! < 3",
+    "origins": [
+      "merged/probes/vibex:q19-as-bang-lt.vibex"
+    ]
+  },
+  {
+    "key": "merged/probes/vibex:q20-match-unimported.vibex",
+    "source": "export const m = <Match />",
+    "origins": [
+      "merged/probes/vibex:q20-match-unimported.vibex"
+    ]
+  },
+  {
+    "key": "merged/probes/vibex:q21-effect-attr-bare.vibex",
+    "source": "export const t = <Foo task=effect { return 1 } />\ndeclare const Foo: any",
+    "origins": [
+      "merged/probes/vibex:q21-effect-attr-bare.vibex"
+    ]
+  },
+  {
+    "key": "astra-expanded:witness-foldkit-async-atom",
+    "source": "import { Effect } from \"effect\"\n// Minimized from packages/website/src/snippet/atomCompareAtomAsync.tsx.\ndeclare const Api: Effect.Effect<{ getUser(): Effect.Effect<{ name: string }> }>\ndeclare const runtime: { atom<A,E,R>(task: Effect.Effect<A,E,R>): unknown }\ndeclare const AsyncResult: any, useAtomValue: any, Spinner: any, ErrorBanner: any, Profile: any, Cause: any\nconst userAtom = runtime.atom(effect {\n  const api = try Api\n  return try api.getUser()\n})\nexport const UserCard = () => {\n  const user = useAtomValue(userAtom)\n  return AsyncResult.builder(user)\n    .onInitial(() => <Spinner />)\n    .onFailure((cause: unknown) => <ErrorBanner message={Cause.pretty(cause)} />)\n    .onSuccess((user: {name: string}) => <Profile user={user} />)\n    .render()\n}\n",
+    "origins": [
+      "astra-expanded:witness-foldkit-async-atom"
+    ]
+  },
+  {
+    "key": "astra-expanded:witness-opencode-scoped-render",
+    "source": "import { Effect } from \"effect\"\n// Minimized from packages/tui/src/app.tsx: scoped acquisition + render callback.\ndeclare const acquire: Effect.Effect<{ destroy(): void }>\ndeclare function render(view: () => unknown): Promise<void>\ndeclare function Provider(props: { children?: unknown }): any\ndeclare function App(): any\nexport const program = Effect.scoped(effect {\n  const renderer = try Effect.acquireRelease(acquire, r => Effect.sync(() => r.destroy()))\n  try Effect.tryPromise(() => render(() => <Provider><App /></Provider>))\n  return renderer\n})\n",
+    "origins": [
+      "astra-expanded:witness-opencode-scoped-render"
+    ]
+  },
+  {
+    "key": "astra-expanded:witness-t3code-license-atom",
+    "source": "import { Effect } from \"effect\"\nimport { Atom } from \"effect/reactivity\"\n// Minimized from apps/web/src/components/settings/OpenSourceLicenses.tsx.\ndeclare const request: Effect.Effect<{ json: Effect.Effect<unknown> }>\ndeclare function decode(body: unknown): { name: string }\nexport const licenses = Atom.make(effect {\n  const response = try request\n  const body = try response.json\n  return try Effect.try(() => decode(body))\n})\nexport function LicenseNoticeRow(props: { name: string; sourceUrl?: string }) {\n  return <article className=\"notice\"><span>{props.name}</span>{\n    props.sourceUrl ? <a href={props.sourceUrl} target=\"_blank\">{props.name}</a> : null\n  }</article>\n}\n",
+    "origins": [
+      "astra-expanded:witness-t3code-license-atom"
+    ]
+  },
+  {
+    "key": "astra-expanded:keyword-tag-effect",
+    "source": "const node = <effect effect={1}/>;",
+    "origins": [
+      "astra-expanded:keyword-tag-effect"
+    ]
+  },
+  {
+    "key": "astra-expanded:keyword-tag-effect-context-effect",
+    "source": "effect function f() { return <effect effect={1}/>; }",
+    "origins": [
+      "astra-expanded:keyword-tag-effect-context-effect"
+    ]
+  },
+  {
+    "key": "astra-expanded:keyword-tag-error",
+    "source": "const node = <error error={1}/>;",
+    "origins": [
+      "astra-expanded:keyword-tag-error"
+    ]
+  },
+  {
+    "key": "astra-expanded:keyword-tag-effect-context-error",
+    "source": "effect function f() { return <error error={1}/>; }",
+    "origins": [
+      "astra-expanded:keyword-tag-effect-context-error"
+    ]
+  },
+  {
+    "key": "astra-expanded:keyword-tag-schema",
+    "source": "const node = <schema schema={1}/>;",
+    "origins": [
+      "astra-expanded:keyword-tag-schema"
+    ]
+  },
+  {
+    "key": "astra-expanded:keyword-tag-effect-context-schema",
+    "source": "effect function f() { return <schema schema={1}/>; }",
+    "origins": [
+      "astra-expanded:keyword-tag-effect-context-schema"
+    ]
+  },
+  {
+    "key": "astra-expanded:keyword-tag-data",
+    "source": "const node = <data data={1}/>;",
+    "origins": [
+      "astra-expanded:keyword-tag-data"
+    ]
+  },
+  {
+    "key": "astra-expanded:keyword-tag-effect-context-data",
+    "source": "effect function f() { return <data data={1}/>; }",
+    "origins": [
+      "astra-expanded:keyword-tag-effect-context-data"
+    ]
+  },
+  {
+    "key": "astra-expanded:keyword-tag-service",
+    "source": "const node = <service service={1}/>;",
+    "origins": [
+      "astra-expanded:keyword-tag-service"
+    ]
+  },
+  {
+    "key": "astra-expanded:keyword-tag-effect-context-service",
+    "source": "effect function f() { return <service service={1}/>; }",
+    "origins": [
+      "astra-expanded:keyword-tag-effect-context-service"
+    ]
+  },
+  {
+    "key": "astra-expanded:keyword-tag-provide",
+    "source": "const node = <provide provide={1}/>;",
+    "origins": [
+      "astra-expanded:keyword-tag-provide"
+    ]
+  },
+  {
+    "key": "astra-expanded:keyword-tag-effect-context-provide",
+    "source": "effect function f() { return <provide provide={1}/>; }",
+    "origins": [
+      "astra-expanded:keyword-tag-effect-context-provide"
+    ]
+  },
+  {
+    "key": "astra-expanded:keyword-tag-uninterruptible",
+    "source": "const node = <uninterruptible uninterruptible={1}/>;",
+    "origins": [
+      "astra-expanded:keyword-tag-uninterruptible"
+    ]
+  },
+  {
+    "key": "astra-expanded:keyword-tag-effect-context-uninterruptible",
+    "source": "effect function f() { return <uninterruptible uninterruptible={1}/>; }",
+    "origins": [
+      "astra-expanded:keyword-tag-effect-context-uninterruptible"
+    ]
+  },
+  {
+    "key": "astra-expanded:keyword-tag-interruptible",
+    "source": "const node = <interruptible interruptible={1}/>;",
+    "origins": [
+      "astra-expanded:keyword-tag-interruptible"
+    ]
+  },
+  {
+    "key": "astra-expanded:keyword-tag-effect-context-interruptible",
+    "source": "effect function f() { return <interruptible interruptible={1}/>; }",
+    "origins": [
+      "astra-expanded:keyword-tag-effect-context-interruptible"
+    ]
+  },
+  {
+    "key": "astra-expanded:keyword-tag-restore",
+    "source": "const node = <restore restore={1}/>;",
+    "origins": [
+      "astra-expanded:keyword-tag-restore"
+    ]
+  },
+  {
+    "key": "astra-expanded:keyword-tag-effect-context-restore",
+    "source": "effect function f() { return <restore restore={1}/>; }",
+    "origins": [
+      "astra-expanded:keyword-tag-effect-context-restore"
+    ]
+  },
+  {
+    "key": "astra-expanded:keyword-tag-fork",
+    "source": "const node = <fork fork={1}/>;",
+    "origins": [
+      "astra-expanded:keyword-tag-fork"
+    ]
+  },
+  {
+    "key": "astra-expanded:keyword-tag-effect-context-fork",
+    "source": "effect function f() { return <fork fork={1}/>; }",
+    "origins": [
+      "astra-expanded:keyword-tag-effect-context-fork"
+    ]
+  },
+  {
+    "key": "astra-expanded:keyword-tag-join",
+    "source": "const node = <join join={1}/>;",
+    "origins": [
+      "astra-expanded:keyword-tag-join"
+    ]
+  },
+  {
+    "key": "astra-expanded:keyword-tag-effect-context-join",
+    "source": "effect function f() { return <join join={1}/>; }",
+    "origins": [
+      "astra-expanded:keyword-tag-effect-context-join"
+    ]
+  },
+  {
+    "key": "astra-expanded:keyword-tag-concurrent",
+    "source": "const node = <concurrent concurrent={1}/>;",
+    "origins": [
+      "astra-expanded:keyword-tag-concurrent"
+    ]
+  },
+  {
+    "key": "astra-expanded:keyword-tag-effect-context-concurrent",
+    "source": "effect function f() { return <concurrent concurrent={1}/>; }",
+    "origins": [
+      "astra-expanded:keyword-tag-effect-context-concurrent"
+    ]
+  },
+  {
+    "key": "astra-expanded:keyword-tag-match",
+    "source": "const node = <match match={1}/>;",
+    "origins": [
+      "astra-expanded:keyword-tag-match"
+    ]
+  },
+  {
+    "key": "astra-expanded:keyword-tag-effect-context-match",
+    "source": "effect function f() { return <match match={1}/>; }",
+    "origins": [
+      "astra-expanded:keyword-tag-effect-context-match"
+    ]
+  },
+  {
+    "key": "astra-expanded:keyword-tag-is",
+    "source": "const node = <is is={1}/>;",
+    "origins": [
+      "astra-expanded:keyword-tag-is"
+    ]
+  },
+  {
+    "key": "astra-expanded:keyword-tag-effect-context-is",
+    "source": "effect function f() { return <is is={1}/>; }",
+    "origins": [
+      "astra-expanded:keyword-tag-effect-context-is"
+    ]
+  },
+  {
+    "key": "astra-expanded:keyword-tag-when",
+    "source": "const node = <when when={1}/>;",
+    "origins": [
+      "astra-expanded:keyword-tag-when"
+    ]
+  },
+  {
+    "key": "astra-expanded:keyword-tag-effect-context-when",
+    "source": "effect function f() { return <when when={1}/>; }",
+    "origins": [
+      "astra-expanded:keyword-tag-effect-context-when"
+    ]
+  },
+  {
+    "key": "astra-expanded:keyword-tag-and",
+    "source": "const node = <and and={1}/>;",
+    "origins": [
+      "astra-expanded:keyword-tag-and"
+    ]
+  },
+  {
+    "key": "astra-expanded:keyword-tag-effect-context-and",
+    "source": "effect function f() { return <and and={1}/>; }",
+    "origins": [
+      "astra-expanded:keyword-tag-effect-context-and"
+    ]
+  },
+  {
+    "key": "astra-expanded:keyword-tag-or",
+    "source": "const node = <or or={1}/>;",
+    "origins": [
+      "astra-expanded:keyword-tag-or"
+    ]
+  },
+  {
+    "key": "astra-expanded:keyword-tag-effect-context-or",
+    "source": "effect function f() { return <or or={1}/>; }",
+    "origins": [
+      "astra-expanded:keyword-tag-effect-context-or"
+    ]
+  },
+  {
+    "key": "astra-expanded:keyword-tag-not",
+    "source": "const node = <not not={1}/>;",
+    "origins": [
+      "astra-expanded:keyword-tag-not"
+    ]
+  },
+  {
+    "key": "astra-expanded:keyword-tag-effect-context-not",
+    "source": "effect function f() { return <not not={1}/>; }",
+    "origins": [
+      "astra-expanded:keyword-tag-effect-context-not"
+    ]
+  },
+  {
+    "key": "astra-expanded:keyword-tag-let",
+    "source": "const node = <let let={1}/>;",
+    "origins": [
+      "astra-expanded:keyword-tag-let"
+    ]
+  },
+  {
+    "key": "astra-expanded:keyword-tag-effect-context-let",
+    "source": "effect function f() { return <let let={1}/>; }",
+    "origins": [
+      "astra-expanded:keyword-tag-effect-context-let"
+    ]
+  },
+  {
+    "key": "astra-expanded:keyword-tag-const",
+    "source": "const node = <const const={1}/>;",
+    "origins": [
+      "astra-expanded:keyword-tag-const"
+    ]
+  },
+  {
+    "key": "astra-expanded:keyword-tag-effect-context-const",
+    "source": "effect function f() { return <const const={1}/>; }",
+    "origins": [
+      "astra-expanded:keyword-tag-effect-context-const"
+    ]
+  },
+  {
+    "key": "astra-expanded:keyword-tag-default",
+    "source": "const node = <default default={1}/>;",
+    "origins": [
+      "astra-expanded:keyword-tag-default"
+    ]
+  },
+  {
+    "key": "astra-expanded:keyword-tag-effect-context-default",
+    "source": "effect function f() { return <default default={1}/>; }",
+    "origins": [
+      "astra-expanded:keyword-tag-effect-context-default"
+    ]
+  },
+  {
+    "key": "astra-expanded:keyword-tag-async",
+    "source": "const node = <async async={1}/>;",
+    "origins": [
+      "astra-expanded:keyword-tag-async"
+    ]
+  },
+  {
+    "key": "astra-expanded:keyword-tag-effect-context-async",
+    "source": "effect function f() { return <async async={1}/>; }",
+    "origins": [
+      "astra-expanded:keyword-tag-effect-context-async"
+    ]
+  },
+  {
+    "key": "astra-expanded:keyword-tag-await",
+    "source": "const node = <await await={1}/>;",
+    "origins": [
+      "astra-expanded:keyword-tag-await"
+    ]
+  },
+  {
+    "key": "astra-expanded:keyword-tag-effect-context-await",
+    "source": "effect function f() { return <await await={1}/>; }",
+    "origins": [
+      "astra-expanded:keyword-tag-effect-context-await"
+    ]
+  },
+  {
+    "key": "astra-expanded:keyword-tag-yield",
+    "source": "const node = <yield yield={1}/>;",
+    "origins": [
+      "astra-expanded:keyword-tag-yield"
+    ]
+  },
+  {
+    "key": "astra-expanded:keyword-tag-effect-context-yield",
+    "source": "effect function f() { return <yield yield={1}/>; }",
+    "origins": [
+      "astra-expanded:keyword-tag-effect-context-yield"
+    ]
+  },
+  {
+    "key": "astra-expanded:keyword-tag-using",
+    "source": "const node = <using using={1}/>;",
+    "origins": [
+      "astra-expanded:keyword-tag-using"
+    ]
+  },
+  {
+    "key": "astra-expanded:keyword-tag-effect-context-using",
+    "source": "effect function f() { return <using using={1}/>; }",
+    "origins": [
+      "astra-expanded:keyword-tag-effect-context-using"
+    ]
+  },
+  {
+    "key": "astra-expanded:keyword-tag-mutable",
+    "source": "const node = <mutable mutable={1}/>;",
+    "origins": [
+      "astra-expanded:keyword-tag-mutable"
+    ]
+  },
+  {
+    "key": "astra-expanded:keyword-tag-effect-context-mutable",
+    "source": "effect function f() { return <mutable mutable={1}/>; }",
+    "origins": [
+      "astra-expanded:keyword-tag-effect-context-mutable"
+    ]
+  },
+  {
+    "key": "astra-expanded:keyword-tag-control",
+    "source": "const node = <control control={1}/>;",
+    "origins": [
+      "astra-expanded:keyword-tag-control"
+    ]
+  },
+  {
+    "key": "astra-expanded:keyword-tag-effect-context-control",
+    "source": "effect function f() { return <control control={1}/>; }",
+    "origins": [
+      "astra-expanded:keyword-tag-effect-context-control"
+    ]
+  },
+  {
+    "key": "astra-expanded:keyword-tag-layer",
+    "source": "const node = <layer layer={1}/>;",
+    "origins": [
+      "astra-expanded:keyword-tag-layer"
+    ]
+  },
+  {
+    "key": "astra-expanded:keyword-tag-effect-context-layer",
+    "source": "effect function f() { return <layer layer={1}/>; }",
+    "origins": [
+      "astra-expanded:keyword-tag-effect-context-layer"
+    ]
+  },
+  {
+    "key": "astra-expanded:keyword-tag-module",
+    "source": "const node = <module module={1}/>;",
+    "origins": [
+      "astra-expanded:keyword-tag-module"
+    ]
+  },
+  {
+    "key": "astra-expanded:keyword-tag-effect-context-module",
+    "source": "effect function f() { return <module module={1}/>; }",
+    "origins": [
+      "astra-expanded:keyword-tag-effect-context-module"
+    ]
+  },
+  {
+    "key": "astra-expanded:keyword-tag-handle",
+    "source": "const node = <handle handle={1}/>;",
+    "origins": [
+      "astra-expanded:keyword-tag-handle"
+    ]
+  },
+  {
+    "key": "astra-expanded:keyword-tag-effect-context-handle",
+    "source": "effect function f() { return <handle handle={1}/>; }",
+    "origins": [
+      "astra-expanded:keyword-tag-effect-context-handle"
+    ]
+  },
+  {
+    "key": "astra-expanded:keyword-tag-resume",
+    "source": "const node = <resume resume={1}/>;",
+    "origins": [
+      "astra-expanded:keyword-tag-resume"
+    ]
+  },
+  {
+    "key": "astra-expanded:keyword-tag-effect-context-resume",
+    "source": "effect function f() { return <resume resume={1}/>; }",
+    "origins": [
+      "astra-expanded:keyword-tag-effect-context-resume"
+    ]
+  },
+  {
+    "key": "astra-expanded:keyword-tag-abandon",
+    "source": "const node = <abandon abandon={1}/>;",
+    "origins": [
+      "astra-expanded:keyword-tag-abandon"
+    ]
+  },
+  {
+    "key": "astra-expanded:keyword-tag-effect-context-abandon",
+    "source": "effect function f() { return <abandon abandon={1}/>; }",
+    "origins": [
+      "astra-expanded:keyword-tag-effect-context-abandon"
+    ]
+  },
+  {
+    "key": "astra-expanded:bang-full-type-args",
+    "source": "const x = <Box<A!E!R> task={p}/>;",
+    "origins": [
+      "astra-expanded:bang-full-type-args"
+    ]
+  },
+  {
+    "key": "astra-expanded:bang-required-object-slots",
+    "source": "const x = <Box<A!{reason:string}!{service:number}> task={p}/>;",
+    "origins": [
+      "astra-expanded:bang-required-object-slots"
+    ]
+  },
+  {
+    "key": "astra-expanded:bang-inequality-vs-declaration",
+    "source": "const x = <Box a={a!=b} b={a!==b} task={do { let p: number!!=task; p; }}/>;",
+    "origins": [
+      "astra-expanded:bang-inequality-vs-declaration"
+    ]
+  },
+  {
+    "key": "astra-expanded:direct-jsx-attribute",
+    "source": "const x = <Box fallback=<div/> />;",
+    "origins": [
+      "astra-expanded:direct-jsx-attribute"
+    ]
+  },
+  {
+    "key": "astra-expanded:try-race-child",
+    "source": "effect function f(){ return <Box v={try.race [a,b]}/>; }",
+    "origins": [
+      "astra-expanded:try-race-child"
+    ]
+  },
+  {
+    "key": "astra-expanded:try-any-child",
+    "source": "effect function f(){ return <Box v={try.any [a,b]}/>; }",
+    "origins": [
+      "astra-expanded:try-any-child"
+    ]
+  },
+  {
+    "key": "astra-expanded:try-allsettled-child",
+    "source": "effect function f(){ return <Box v={try.allSettled [a,b]}/>; }",
+    "origins": [
+      "astra-expanded:try-allsettled-child"
+    ]
+  },
+  {
+    "key": "astra-expanded:fork-in-child",
+    "source": "effect function f(){ return <Box task={fork.in(scope) p}/>; }",
+    "origins": [
+      "astra-expanded:fork-in-child"
+    ]
+  },
+  {
+    "key": "astra-expanded:fork-scoped-child",
+    "source": "effect function f(){ return <Box task={fork.scoped p}/>; }",
+    "origins": [
+      "astra-expanded:fork-scoped-child"
+    ]
+  },
+  {
+    "key": "astra-expanded:fork-detached-child",
+    "source": "effect function f(){ return <Box task={fork.detached p}/>; }",
+    "origins": [
+      "astra-expanded:fork-detached-child"
+    ]
+  },
+  {
+    "key": "astra-expanded:quoted-attribute-punctuation",
+    "source": "const x = <Box title=\"! % |> {try p}\"/>;",
+    "origins": [
+      "astra-expanded:quoted-attribute-punctuation"
+    ]
+  },
+  {
+    "key": "astra-expanded:effect-newline",
+    "source": "const f = effect\n<T,>(x:T)=>x;",
+    "origins": [
+      "astra-expanded:effect-newline"
+    ]
+  },
+  {
+    "key": "astra-expanded:arrow-topic-explicit-temp",
+    "source": "const t = n; const x = <Box fn={() => t}/>;",
+    "origins": [
+      "astra-expanded:arrow-topic-explicit-temp"
+    ]
+  },
+  {
+    "key": "astra-expanded:declarations-in-do-separated",
+    "source": "const x = <Box v={do { data D { A; }; schema S { n: number }; error E; service API { get(): number!! }; D.A(); }}/>;",
+    "origins": [
+      "astra-expanded:declarations-in-do-separated"
+    ]
+  },
+  {
+    "key": "astra-expanded:nested-jsx-pipe-topic",
+    "source": "const x = n |> <Box v={<span>{%}</span>}/>;",
+    "origins": [
+      "astra-expanded:nested-jsx-pipe-topic"
+    ]
+  }
+]

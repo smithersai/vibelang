@@ -1,0 +1,2 @@
+// expect: valid KindJsxElement
+const x = <Comp<A!!>>{x as A!!}</Comp>; const f = (): JSX.Element!! => <div/>

@@ -1,0 +1,2 @@
+// expect: valid KindJsxElement
+effect function f() { return <p><try.all/><fork.in/><fork.scoped/>{try.all [a,b]}</p> }

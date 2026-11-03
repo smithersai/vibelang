@@ -1,0 +1,2 @@
+// expect: valid KindJsxSelfClosingElement
+const x = <Comp<User!NotFound> v={1} />

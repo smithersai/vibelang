@@ -1,0 +1,2 @@
+// expect: valid KindJsxElement KindArrowFunction
+const x = n |> <Box f={() => %}>{%}{n % 2}</Box>

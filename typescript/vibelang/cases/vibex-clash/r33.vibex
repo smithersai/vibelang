@@ -1,0 +1,2 @@
+// expect: codes=204 KindReturnStatement
+function f() { return <Box v={do { return 7 }} /> }

@@ -1,0 +1,2 @@
+// expect: valid KindJsxSelfClosingElement
+const x = <Box ok={x is { let name }} label={name} />

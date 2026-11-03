@@ -1,0 +1,2 @@
+// expect: valid KindJsxElement
+const x = value |> <b title="%">%</b>; const y = <p>Hi! 50% off</p>
