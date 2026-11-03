@@ -205,3 +205,5 @@ export effect function main() {
   ]
 }
 // VIP-7 evaluate subject once; rule: docs/design/vips/0007-match.md#326b9d72a14eea33
+// VIP-7 plain ordered dispatch evaluates subject once; rule: docs/design/vips/0007-match.md#9cf5497cf2b8159a
+// VIP-7 plain ordered dispatch evaluates subject once; rule: docs/design/vips/0007-match.md#3b459f8a7d9a3a1e

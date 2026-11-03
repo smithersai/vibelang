@@ -4,3 +4,4 @@ export const result = match (copy) {
   when Bad(let e): e.id;
   default: "no";
 };
+// VIP-7 generated tagged-error matcher accepts structural package copies; rule: docs/design/vips/0007-match.md#a1802db72d6cddd0

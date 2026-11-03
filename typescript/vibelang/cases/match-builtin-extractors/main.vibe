@@ -43,3 +43,7 @@ class Numeric {
 export function custom(s: unknown) {
   return match (s) { when Numeric(let n): n.toFixed(0); default: "other"; }
 }
+// VIP-7 own matcher extraction and predicate return/narrowing; rule: docs/design/vips/0007-match.md#b7fd66168f720810
+// VIP-7 own matcher extraction and predicate return/narrowing; rule: docs/design/vips/0007-match.md#22c723245fa611c2
+// VIP-7 own matcher extraction and predicate return/narrowing; rule: docs/design/vips/0007-match.md#d39f589488121233
+// VIP-7 own matcher extraction and predicate return/narrowing; rule: docs/design/vips/0007-match.md#e4a22515bbb4df54

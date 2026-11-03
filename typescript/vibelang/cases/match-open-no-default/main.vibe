@@ -104,3 +104,4 @@ export function point(x: number): Point {
 export function notFound(id: string): NotFound {
   return new NotFound({ id })
 }
+// VIP-7 open subject disables finite exhaustiveness but keeps runtime TypeError; rule: docs/design/vips/0007-match.md#888512b4733e6001
