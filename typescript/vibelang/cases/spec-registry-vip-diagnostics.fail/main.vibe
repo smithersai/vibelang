@@ -1,0 +1,12 @@
+// expect: EK0401 EK0406
+// VIP-5 retires EK0511 in favor of the plain-handler EK0401 rule.
+// VIP-7 throw arms follow VIP-4; VIP-27 source tags retain EK0406.
+// rule-evidence: docs/design/src/900-appendices.md#appendix-b-diagnostics docs/design/vips/0005-try-runs-effects.md#decision
+export function throwArm(value: boolean) {
+  return match (value) { when true: throw 1; default: 0; }
+}
+export effect function plainHandler() {
+  return Effect.fail(1) catch () => { throw 2 }
+}
+/** @throws {never} */
+export effect function tagged() { return 1 }
