@@ -126,14 +126,16 @@ func TestAmbientErrorDeclarationSubclass(t *testing.T) {
 }
 
 func TestAmbientErrorDeclarationKeepsIndependentErrors(t *testing.T) {
-	for _, form := range []string{"error", "schema error"} {
+	// A plain field's missing name is TS2304. A schema field's type must name a
+	// schema, so the same name is Appendix B's EK2109, as it is without declare.
+	for form, independent := range map[string]int32{"error": 2304, "schema error": EK2109.Code} {
 		t.Run(form, func(t *testing.T) {
 			source := "declare " + form + " Missing { id: NoSuchPayload }\nexport {}\n"
 			program, file, _, _ := editorProgram(t, source)
 			seenAmbient, seenPayload := false, false
 			for _, d := range program.GetSemanticDiagnostics(t.Context(), file) {
 				seenAmbient = seenAmbient || d.Code() == 1307
-				seenPayload = seenPayload || d.Code() == 2304
+				seenPayload = seenPayload || d.Code() == independent
 			}
 			if !seenAmbient || !seenPayload {
 				t.Fatalf("ambient=%v independent payload error=%v, want both", seenAmbient, seenPayload)
