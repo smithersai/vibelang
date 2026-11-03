@@ -94,9 +94,6 @@ func computeTrust(c *checker.Checker, call *ast.Node) *trust {
 	if isVibeLangFile(file) {
 		return &trust{kind: trustES}
 	}
-	if listedInManifest(c, file) {
-		return &trust{kind: trustEffect} // compiled from VibeLang (D500, manifest.go)
-	}
 	// A const that re-exports a library function with the tag trusts it (D23),
 	// so the tag on what the callee names wins over the library's declaration.
 	var candidates []*ast.Node

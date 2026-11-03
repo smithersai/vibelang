@@ -77,7 +77,7 @@ var foreignThrowingCall = EK0403.With("'{0}' may throw '{1}'. Wrap the call with
 // that old channel split, even while the checker uses the selected contract.
 func legacyForeignCallFailures(c *checker.Checker, call *ast.Node) []failure {
 	decl := signatureDeclaration(c, call)
-	if decl == nil || isParameterCall(c, call) || listedInManifest(c, ast.GetSourceFileOfNode(decl)) {
+	if decl == nil || isParameterCall(c, call) || legacyListedInManifest(c, ast.GetSourceFileOfNode(decl)) {
 		return nil
 	}
 	var candidates []*ast.Node

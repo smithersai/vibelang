@@ -2043,7 +2043,6 @@ func (p *Program) Emit(ctx context.Context, options EmitOptions) *EmitResult {
 
 	// wait for emit to complete
 	wg.RunAndWait()
-	p.writeVibeLangManifest(emitters, options)
 
 	// collect results from emit, preserving input order
 	return CombineEmitResults(core.Map(emitters, func(e *emitter) *EmitResult {

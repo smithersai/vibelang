@@ -1,6 +1,4 @@
-// A declaration file that the nearest vibelang.manifest.json lists was compiled
-// from VibeLang: its plain functions are trusted plain calls, in Effect
-// code as in plain code, and passing one to map passes the plain function.
+// The declaration contract makes this safe; the stale manifest is ignored.
 import { double } from "./lib/double.js"
 
 export const initial = double(3)

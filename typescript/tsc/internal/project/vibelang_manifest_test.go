@@ -10,13 +10,8 @@ import (
 	"gotest.tools/v3/assert"
 )
 
-// A vibelang.manifest.json lists the declaration files a VibeLang build
-// emitted (D500), and the checker trusts their plain functions. It reads the
-// manifest after the snapshot has stopped tracking the files a program
-// depends on, so the program itself never records it: a change to the
-// manifest must rebuild the program, as a change to a package.json does, or
-// the editor keeps the old manifest's diagnostics.
-func TestManifestChangeRebuildsTheProgram(t *testing.T) {
+// A stale manifest is unrelated JSON; editing it must preserve the importer program.
+func TestStaleManifestChangePreservesTheProgram(t *testing.T) {
 	t.Parallel()
 	files := map[string]any{
 		"/home/projects/app/tsconfig.json":              `{"compilerOptions": {"noLib": true, "noEmit": true}}`,
@@ -50,7 +45,7 @@ func TestManifestChangeRebuildsTheProgram(t *testing.T) {
 			change(session, utils, ctx, manifest)
 			after, err := session.GetLanguageService(ctx, index)
 			assert.NilError(t, err)
-			assert.Assert(t, after.GetProgram() != before.GetProgram(), "the program was not rebuilt after its vibelang.manifest.json changed")
+			assert.Assert(t, after.GetProgram() == before.GetProgram(), "unrelated stale manifest rebuilt the program")
 		})
 	}
 }

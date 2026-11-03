@@ -89,14 +89,13 @@ type ScriptTransformerHook = compiler.ScriptTransformerHook
 //go:linkname SetLoaderRoot github.com/microsoft/TypeScript/tsc/internal/compiler.SetLoaderRoot
 func SetLoaderRoot(root string)
 
+//go:linkname SidecarPath github.com/microsoft/TypeScript/tsc/internal/compiler.SidecarPath
+func SidecarPath(fileName string) string
+
 //go:linkname SortAndDeduplicateDiagnostics github.com/microsoft/TypeScript/tsc/internal/compiler.SortAndDeduplicateDiagnostics
 func SortAndDeduplicateDiagnostics(diagnostics []*ast.Diagnostic) []*ast.Diagnostic
 
 type SourceFileMayBeEmittedHost = compiler.SourceFileMayBeEmittedHost
 type SourceMapEmitResult = compiler.SourceMapEmitResult
-type VibeLangManifest = compiler.VibeLangManifest
-
-const VibeLangManifestName = compiler.VibeLangManifestName
-
 type WriteFile = compiler.WriteFile
 type WriteFileData = compiler.WriteFileData

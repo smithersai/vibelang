@@ -42,8 +42,6 @@ type emitter struct {
 	vibeDeclarationSidecar bool
 	writeFile              WriteFile
 	tr                     *tracing.Tracing
-
-	vibeLangDeclaration tspath.RootedFilePath // the declaration file written from a .vibe file (vibelang_manifest.go)
 }
 
 func (e *emitter) emit() {
@@ -311,9 +309,6 @@ func (e *emitter) emitDeclarationFile(emitResolver printer.EmitResolver, sourceF
 		// Explicitly do not pass through either inline option.
 	}
 	e.printSourceFile(emitContext, declarationFilePath, declarationMapPath, sourceFile, printer, declarationMapOptions, shouldEmitSourceMaps(declarationMapOptions, sourceFile))
-	if isVibeLangSource(sourceFile.FileName()) {
-		e.vibeLangDeclaration = declarationFilePath
-	}
 }
 
 // originalMapSource is the source a content-mapped file's source maps name:
