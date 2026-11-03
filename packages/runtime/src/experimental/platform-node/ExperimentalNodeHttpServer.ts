@@ -9,7 +9,7 @@
  * @experimental
  * @since 0.0.11
  */
-import { NodeHttpServer } from "@effect/platform-node"
+import * as NodeHttpServer from "@effect/platform-node/NodeHttpServer"
 import type * as Config from "effect/Config"
 import { createServer } from "node:http"
 

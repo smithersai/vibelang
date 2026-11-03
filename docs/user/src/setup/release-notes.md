@@ -609,6 +609,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Old bare `fork { ... }` blocks, including `fork{}`, stayed behind during migration; `vibelang --fix` now writes explicit Effect construction while preserving the body and captures.
 - Legacy `wire` calls kept their automatic dependency ordering after migration; `vibelang --fix` now writes explicit layer composition while preserving argument evaluation and public declaration types.
 - Typed statement catches and exit-aware finalizers stayed behind during migration; `vibelang --fix` now converts safe cases while preserving declaration types and observed exits.
+- Importing `vibelang-runtime/experimental/platform-node` loaded the whole `@effect/platform-node` root, Redis client included, so every process using it (a `vite build` with a migrated plugin) paid for about 900 extra modules; the entry now imports only the `NodeHttpServer` module.
+
 - Renaming a shorthand pattern binding could change the property it matched and add `TS2339`; rename now keeps the property key and writes an explicit binding.
 
 - Rolldown entry globs could bundle generated `.d.vibex.ts` declarations as empty entrypoints; the plugin now excludes those sidecars and retains the JSX source entries and aliases.
