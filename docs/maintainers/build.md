@@ -539,6 +539,9 @@ sh scripts/ci.sh //:spec-tests --jobs 8
   :spec-tests                   the Go tests that read docs/design (every Test...Quoted by name, registry, whole printed diagnostic numbers, VIP citations, pending lines), the cost guards of --fix and flow narrowing
 ```
 
+Migration and convert suites run only in `//packages:migrate-test`. The compiler target runs its own tests; importing a flow test into a compiler entrypoint repeats that suite. `scripts/test-runners.test.mjs` checks discovery coverage and this ownership boundary.
+
+
 ```text
 :srcs ─► :compiler ─┬─► :<case> x809 ◄─┬─ :runtime-dist ─► :runtime-test, :compiler-test, :migrate-test
                     ├─► :compiler-native ─► :compiler-test, :migrate-test, :vite-test, :unplugin-test, :release, :snippets, :docs-tools
@@ -939,7 +942,7 @@ A cached result is only as correct as its key is complete. Each target names:
   and `jj file list`, which the docs check runs while other targets restore
   their outputs, snapshots the working copy: an unignored temporary tree is
   tracked, then vanishes before the check reads it. Discovery prunes the Vite
-  The compiler-package migration fixtures also spawn `jj`; it is declared in the workspace host binaries and on `//packages:compiler-test` and `//packages:migrate-test`.
+  The compiler-package migration properties also spawn `jj`; it is declared in the workspace host binaries and on `//packages:compiler-test` and `//packages:migrate-test`.
   and unplugin test `.fixtures/` trees and the compiler case directory, which
   has no package declarations: their generated outputs may change while the
   compiler tests explain their migration-source cache inputs. This excludes

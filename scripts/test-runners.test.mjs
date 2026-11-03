@@ -1,6 +1,9 @@
 import assert from "node:assert/strict"
-import { readdirSync, readFileSync } from "node:fs"
-import { fileURLToPath } from "node:url"
+import { readdirSync, readFileSync, mkdtempSync, mkdirSync, writeFileSync, rmSync } from "node:fs"
+import { fileURLToPath, pathToFileURL } from "node:url"
+import { createRequire } from "node:module"
+import { dirname, resolve, relative, join, basename } from "node:path"
+import { tmpdir } from "node:os"
 import { test } from "node:test"
 
 // Every test file in the repository runs in a build-graph target, or is listed in `unrun` with what keeps it out.
@@ -138,4 +141,120 @@ test("the scaffold CLI unit suite has a fast native Node graph runner", () => {
   assert.equal(command, "node --test packages/create-vibelang/test/create.test.mjs")
   assert.ok(read(runner).includes(command), "the target must run the actual CLI unit suite")
   assert.ok(!unrun.some(([glob]) => matcher(glob).test(file)), "setup-dependent exceptions must not hide the fast CLI suite")
+})
+
+// Importing a flow test into a compiler entrypoint registers it in both targets.
+const runtimeRequire = createRequire(new URL("packages/runtime/package.json", root))
+const ts = runtimeRequire("typescript")
+const fc = runtimeRequire("fast-check")
+const corpus = JSON.parse(read("scripts/testdata/vibelang-duplicate-migration-entrypoints.json"))
+
+function moduleReferences(file, source) {
+  const ast = ts.createSourceFile(file, source, ts.ScriptTarget.Latest, true, ts.ScriptKind.JS)
+  const references = new Set()
+  const visit = node => {
+    let module
+    if (ts.isImportDeclaration(node) || ts.isExportDeclaration(node)) module = node.moduleSpecifier
+    else if (ts.isCallExpression(node) && node.expression.kind === ts.SyntaxKind.ImportKeyword) module = node.arguments[0]
+    if (module && ts.isStringLiteralLike(module)) references.add(resolve(dirname(file), module.text))
+    ts.forEachChild(node, visit)
+  }
+  visit(ast)
+  return references
+}
+
+test("migration suites run in their own target without compiler reimports", () => {
+  const repo = fileURLToPath(root)
+  const flowTests = new Set(testFiles().filter(file =>
+    matcher(".smithers/flows/migrate/test/*.test.mjs").test(file) ||
+    matcher(".smithers/flows/convert/*.test.mjs").test(file)))
+  assert.ok(flowTests.size > 0, "the standalone migration target has no suites")
+  const duplicates = []
+  for (const file of testFiles().filter(file => matcher("packages/compiler/test/*.test.mjs").test(file))) {
+    for (const module of moduleReferences(resolve(repo, file), read(file))) {
+      const target = relative(repo, module).split("\\").join("/")
+      if (flowTests.has(target)) duplicates.push(file + " -> " + target)
+    }
+  }
+  assert.deepEqual(duplicates, [], "flow suites already run in //packages:migrate-test; compiler imports repeat them")
+})
+
+test("entrypoint audit agrees with Node across import forms and ignores quoted examples", async () => {
+  assert.equal(corpus.key, "compiler-test:migrate-suites-timeout")
+  assert.ok(read("docs/maintainers/build.md").includes("Migration and convert suites run only"))
+  await fc.assert(fc.asyncProperty(
+    fc.constantFrom(...corpus.forms), fc.constantFrom(" ", "\n", " /* gap */ "),
+    fc.boolean(), fc.boolean(),
+    async (form, gap, dots, escaped) => {
+      const dir = mkdtempSync(join(tmpdir(), "vibelang-suite-audit-"))
+      const slot = Symbol.for("vibelang-suite-audit-modules")
+      const previous = globalThis[slot]
+      try {
+        const entry = resolve(dir, corpus.entry)
+        const target = resolve(dir, corpus.target)
+        mkdirSync(dirname(entry), { recursive: true })
+        mkdirSync(dirname(target), { recursive: true })
+        writeFileSync(target, "globalThis[Symbol.for('vibelang-suite-audit-modules')].push(import.meta.url)\nexport const token=1\nexport default token\n")
+        let specifier = relative(dirname(entry), target).split("\\").join("/")
+        if (dots) specifier = dirname(specifier) + "/./" + basename(specifier)
+        let literal = JSON.stringify(specifier)
+        if (escaped) literal = literal.replace("onepass", "\\u006fnepass")
+        const forms = {
+          sideEffect: "import" + gap + literal,
+          named: "import" + gap + "{token} from " + literal,
+          namespace: "import" + gap + "* as suite from " + literal,
+          exportStar: "export" + gap + "* from " + literal,
+          exportNamed: "export" + gap + "{token} from " + literal,
+          dynamic: "await" + gap + "import(" + literal + ")"
+        }
+        const source = "// import './not-loaded.test.mjs'\nconst example=\"import './not-loaded.test.mjs'\"\n" + forms[form] + "\n"
+        writeFileSync(entry, source)
+        globalThis[slot] = []
+        await import(pathToFileURL(entry).href)
+        const actual = [...new Set(globalThis[slot].map(url => fileURLToPath(url)))].sort()
+        assert.deepEqual([...moduleReferences(entry, source)].sort(), actual)
+        assert.deepEqual(actual, [target])
+      } finally {
+        if (previous === undefined) delete globalThis[slot]
+        else globalThis[slot] = previous
+        rmSync(dir, { recursive: true, force: true })
+      }
+    }
+  ), { seed: 110025, numRuns: 48, examples: corpus.forms.map(form => [form, " ", false, false]) })
+})
+
+test("entrypoint audit agrees with Node for a multi-suite forwarder and repeated imports", async () => {
+  await fc.assert(fc.asyncProperty(fc.boolean(), fc.boolean(), fc.boolean(), async (repeat, reverse, multiline) => {
+    const dir = mkdtempSync(join(tmpdir(), "vibelang-multi-suite-audit-"))
+    const slot = Symbol.for("vibelang-multi-suite-audit-modules")
+    const previous = globalThis[slot]
+    try {
+      const entry = resolve(dir, corpus.multipleEntry)
+      const targets = corpus.multipleTargets.map(target => resolve(dir, target))
+      assert.equal(targets.length, 2)
+      mkdirSync(dirname(entry), { recursive: true })
+      for (const target of targets) {
+        mkdirSync(dirname(target), { recursive: true })
+        writeFileSync(target, "globalThis[Symbol.for('vibelang-multi-suite-audit-modules')].push(import.meta.url)\n")
+      }
+      let imports = [...targets]
+      if (repeat) imports.push(targets[0])
+      if (reverse) imports.reverse()
+      const source = imports.map(target => {
+        let specifier = relative(dirname(entry), target).split("\\").join("/")
+        if (!specifier.startsWith(".")) specifier = "./" + specifier
+        return "import" + (multiline ? "\n" : " ") + JSON.stringify(specifier)
+      }).join("\n") + "\n"
+      writeFileSync(entry, source)
+      globalThis[slot] = []
+      await import(pathToFileURL(entry).href)
+      const actual = globalThis[slot].map(url => fileURLToPath(url)).sort()
+      assert.deepEqual(actual, [...targets].sort(), "each canonical suite registers once")
+      assert.deepEqual([...moduleReferences(entry, source)].sort(), actual)
+    } finally {
+      if (previous === undefined) delete globalThis[slot]
+      else globalThis[slot] = previous
+      rmSync(dir, { recursive: true, force: true })
+    }
+  }), { seed: 110026, numRuns: 32 })
 })

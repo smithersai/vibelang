@@ -1,0 +1,18 @@
+{
+  "key": "compiler-test:migrate-suites-timeout",
+  "entry": "packages/compiler/test/migrate-onepass.test.mjs",
+  "target": ".smithers/flows/migrate/test/onepass.test.mjs",
+  "forms": [
+    "sideEffect",
+    "named",
+    "namespace",
+    "exportStar",
+    "exportNamed",
+    "dynamic"
+  ],
+  "multipleEntry": "packages/compiler/test/migrate-stock-oracle.test.mjs",
+  "multipleTargets": [
+    ".smithers/flows/migrate/test/oracle.test.mjs",
+    ".smithers/flows/migrate/test/oracle-verify.test.mjs"
+  ]
+}
