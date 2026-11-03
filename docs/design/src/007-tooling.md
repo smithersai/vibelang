@@ -264,7 +264,7 @@ After the preserving codemods ship and all migration repositories have zero rema
 
 ### Legacy data receiver methods
 
-Legacy Effect data receiver methods migrate to the resolved module’s data-first function: `Option.some(1).map(f)` becomes `Option.map(Option.some(1), f)`. The preserving codemod runs under `--fix` and `--fix --fix-migration-only` before rejection. It keeps receiver and argument evaluation once and in order, import evaluation, comments and exact public declaration output. It refuses a shadowed module without a safely reusable namespace binding, an alias whose import elision or deferred evaluation cannot be preserved, explicit type arguments, trailing blocks or changed declarations. Native/own methods, namespace calls, computed access and optional chains are not rewritten by this migration.
+Legacy Effect data receiver methods migrate to the resolved module’s data-first function: `Option.some(1).map(f)` becomes `Option.map(Option.some(1), f)`. The preserving codemod runs under `--fix` and `--fix --fix-migration-only` before rejection. It keeps receiver and argument evaluation once and in order, import evaluation, comments and exact public declaration output. It refuses a shadowed module without a safely reusable namespace binding, an alias whose import elision or deferred evaluation cannot be preserved, explicit type arguments, trailing blocks or changed declarations. Native/own methods, namespace calls, computed access and optional chains are not rewritten by this migration. After the codemod ships and migration repositories have zero remaining uses, a resolved receiver-method extension call is `EK1402`.
 
 ### Legacy prelude shorthand
 
