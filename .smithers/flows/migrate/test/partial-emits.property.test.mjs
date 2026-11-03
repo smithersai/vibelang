@@ -38,6 +38,10 @@ async function fixture({ code = 2, emitted = true, compiler } = {}) {
       'if (' + emitted + ') {',
       'const file = path.join(out, "src/index.js"); fs.mkdirSync(path.dirname(file), { recursive: true });',
       'fs.writeFileSync(file, "export const answer = 42;\\n"); console.log("TSFILE: " + file)',
+      'if (process.argv[process.argv.indexOf("--sourceMap") + 1] === "true") {',
+      'const map = { version: 3, sourceRoot: process.cwd() + path.sep, sources: ["src/index.ts"], names: [], mappings: "" };',
+      'fs.writeFileSync(file + ".map", JSON.stringify(map)); console.log("TSFILE: " + file + ".map");',
+      '}',
       '}',
       'if (' + code + ' !== 0) console.log("test/index.ts(1,1): error TS6059: File ../core/test/fixture/git.ts is not under rootDir.")',
       'process.exitCode = ' + code

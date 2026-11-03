@@ -135,3 +135,19 @@ export function aliasImport(config, specifier) {
 
 /** Forgets the configs read so far, for a process that edits them. */
 export function forgetPaths() { settings.clear() }
+
+/** JSX output mode, including inherited configs, for emitted-source lookup. */
+export function jsxOf(config, seen = new Set()) {
+  if (config === undefined || seen.has(config)) return undefined
+  seen.add(config)
+  let parsed
+  try { parsed = parseConfig(readFileSync(config, "utf8")) } catch { return undefined }
+  let inherited
+  for (const parent of [parsed.extends ?? []].flat()) {
+    const path = typeof parent === "string" ? extendedConfig(config, parent) : undefined
+    const jsx = path === undefined ? undefined : jsxOf(path, seen)
+    if (jsx !== undefined) inherited = jsx
+  }
+  seen.delete(config)
+  return parsed.compilerOptions?.jsx ?? inherited
+}

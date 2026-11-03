@@ -141,7 +141,6 @@ test("native emitted-source: loader identity follows the native source extension
     }), { numRuns: 100 })
 })
 
-
 test("RD-017: Bun preload preserves the source's complete live export surface", { skip: skip || (!hasBun && "bun is not on PATH") }, (t) => {
   const { root, run } = workspace(t)
   for (const hasDefault of [true, false]) {
@@ -158,6 +157,36 @@ test("RD-017: Bun preload preserves the source's complete live export surface", 
     const result = JSON.parse(bun.out)
     assert.deepEqual(result[0], hasDefault ? ["bump", "current", "default"] : ["bump", "current"])
     assert.deepEqual(result[3], hasDefault ? [1, 1] : [null, null])
+  }
+})
+
+test("RD-018: Node and Bun load the Vibe source beside an independent JSX-preserve sibling", { skip: skip || (!hasBun && "bun is not on PATH") }, (t) => {
+  const { root, run } = workspace(t)
+  const schema = join(root, "packages/schema")
+  write(root, {
+    "packages/schema/tsconfig.json": JSON.stringify({
+      compilerOptions: { target: "ES2022", module: "ESNext", moduleResolution: "Bundler", jsx: "preserve", types: [], declaration: false, rootDir: ".", outDir: ".vibelang/js", sourceMap: true },
+      files: ["src/skill.vibe", "src/skill.tsx"]
+    }),
+    "packages/schema/src/skill.vibe": 'export const kind = "vibe"; export const token = {};',
+    "packages/schema/src/skill.tsx": 'export const kind = "tsx"; export const token = {};',
+    "packages/app/siblings.mjs": 'import * as a from "@demo/schema/skill"; import * as b from "../schema/src/skill.vibe"; console.log(JSON.stringify([a.kind, b.kind, a.token === b.token]));',
+    "packages/app/native-sibling.mjs": 'import * as a from "../schema/.vibelang/js/src/skill.jsx"; import * as b from "../schema/src/skill.tsx"; console.log(JSON.stringify([a.kind, b.kind, a.token === b.token]));'
+  })
+  const built = spawnSync(native, ["-p", "tsconfig.json", "--pretty", "false"], { cwd: schema, encoding: "utf8" })
+  assert.equal(built.status, 0, built.stdout + built.stderr)
+  assert.match(readFileSync(join(schema, ".vibelang/js/src/skill.js"), "utf8"), /"vibe"/)
+  assert.match(readFileSync(join(schema, ".vibelang/js/src/skill.jsx"), "utf8"), /"tsx"/)
+  assert.equal(sourceOfEmitted(join(schema, ".vibelang/js/src/skill.js")), join(schema, "src/skill.vibe"))
+  assert.equal(sourceOfEmitted(join(schema, ".vibelang/js/src/skill.jsx")), join(schema, "src/skill.tsx"))
+  for (const [command, args] of [
+    [process.execPath, ["--import", "vibelang/register", "siblings.mjs"]],
+    ["bun", ["--preload", "vibelang/bun", "siblings.mjs"]],
+    ["bun", ["--preload", "vibelang/bun", "native-sibling.mjs"]]
+  ]) {
+    const result = run(command, args)
+    assert.equal(result.status, 0, result.err)
+    assert.equal(result.out, args.at(-1) === "siblings.mjs" ? '["vibe","vibe",true]' : '["tsx","tsx",true]')
   }
 })
 

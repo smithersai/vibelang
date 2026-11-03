@@ -323,6 +323,8 @@ invalidates the cached result. An extensionless import resolves as TypeScript's
 `Bundler` resolution does: `../src/archive` reaches `archive.vibe` when there
 is no `archive.ts` or `archive.tsx`, and `./mount` reaches `mount/index.vibe`.
 
+When a package export names an emitted module under `.vibelang/js/`, both source loaders follow its source map or migration-generated source header. They distinguish `x.js` from `x.jsx` under the project’s inherited `jsx` mode. Without that metadata, a mirrored path redirects only when exactly one source can produce that output; ambiguous siblings leave the emitted module in place.
+
 ## Run sources with Bun
 
 Bun can run and test the project from source, without `dist/`. Preload `vibelang/bun`, in `bunfig.toml`:

@@ -227,7 +227,13 @@ function fixture(root, { before, emitted, exportsJs }) {
   const bin = join(target, "node_modules/.bin/vibelang")
   writeFileSync(bin, `#!/bin/sh
 while [ $# -gt 0 ]; do [ "$1" = "--outDir" ] && out="$2"; [ "$1" = "--estree" ] && exit 1; shift; done
-if [ -n "$out" ] && [ "\${out#*dts}" = "$out" ]; then mkdir -p "$out"; cp "$PWD/emitted.txt" "$out/main.js"; echo "TSFILE: $out/main.js"; fi
+if [ -n "$out" ] && [ "\${out#*dts}" = "$out" ]; then
+  mkdir -p "$out"
+  cp "$PWD/emitted.txt" "$out/main.js"
+  printf '{"version":3,"sources":["%s/main.vibe"],"names":[],"mappings":""}' "$PWD" > "$out/main.js.map"
+  echo "TSFILE: $out/main.js.map"
+  echo "TSFILE: $out/main.js"
+fi
 exit 0
 `)
   chmodSync(bin, 0o755)

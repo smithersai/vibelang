@@ -197,10 +197,11 @@ resolutions reached it.
 A package that the migrate flow migrated may name its emitted JavaScript,
 committed under `.vibelang/js/`, as its `default` export, for consumers that
 load no plugin, such as the `bun build` CLI and plain `node`. Both loaders run
-the `.vibe` source instead: `vibelang/register` resolves
-`<package>/.vibelang/js/<path>.js` to `<package>/<path>.vibe` when that exists,
-and `vibelang/bun` loads that file as a re-export of the source, so the source
-module has one instance whichever way it is imported. The Bun re-export preserves
+the source instead: `vibelang/register` follows the output’s source map or
+migration-generated source header, and `vibelang/bun` loads a re-export of that
+source, so it has one instance whichever way it is imported. A mapless mirrored
+path redirects only when one source matches the project’s inherited `jsx` mode;
+ambiguous siblings leave the emitted module in place. The Bun re-export preserves
 live named and `default` bindings, and adds no `default` to a source that lacks one. With the
 package's [loader record](#loader-records), a process with a cold cache runs
 that source from the recorded compile instead of compiling the package.

@@ -56,7 +56,11 @@ async function fixture({ dir = "src", asset = "snapshot.txt", form = "static", n
       "const file = path.join(out, " + JSON.stringify(dir + "/reader.js") + ")",
       'fs.mkdirSync(path.dirname(file), { recursive: true })',
       "fs.writeFileSync(file, " + JSON.stringify(decoys + body) + ")",
-      'console.log("TSFILE: " + file)'
+      'console.log("TSFILE: " + file)',
+      'if (process.argv[process.argv.indexOf("--sourceMap") + 1] === "true") {',
+      "const map = " + JSON.stringify({ version: 3, sourceRoot: pkg + "/", sources: [dir + "/reader.ts"], names: [], mappings: "" }),
+      'fs.writeFileSync(file + ".map", JSON.stringify(map)); console.log("TSFILE: " + file + ".map");',
+      '}'
     ].join("\n") + "\n", { mode: 0o755 })
     const result = await emitPackageJs({ compiler: native || compiler, tsconfigs: ["tsconfig.json"], packageDir: pkg, root })
     assert.equal(result.code, 0, JSON.stringify(result.diagnostics))
