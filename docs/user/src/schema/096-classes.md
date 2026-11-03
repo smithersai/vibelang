@@ -26,7 +26,6 @@ Pass the class itself as the `Self` type, a stable identifier, and its fields. T
 ## Constructing and checking instances
 
 ```vibe
-// pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
 // run: try Console.log((try constructPackage("pkg-94", 2)).pieces, (try Effect.try(() => constructWithNew("pkg-94"))).pieces); try Effect.catch(constructPackage("", 2), (issue) => Console.log(issue._tag))
 effect function constructPackage(reference: string, pieces: number) {
   return try Package.makeEffect({ reference, pieces })

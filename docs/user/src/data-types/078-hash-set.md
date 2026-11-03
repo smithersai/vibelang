@@ -5,7 +5,6 @@
 ## Choosing immutable or mutable sets
 
 ```vibe
-// pending: VIP-5, VIP-14
 // run: try Console.log(HashSet.has(snapshot, "red"), HashSet.has(revised, "red")); try Console.log(try Effect.try(() => JSON.stringify(Array.from(buildLocal()).sort())))
 const snapshot = HashSet.make("green", "blue")
 const revised = HashSet.add(snapshot, "red")
@@ -109,7 +108,6 @@ function uniqueRegions(regions: ReadonlyArray<string>) {
 ## Balancing performance and persistence
 
 ```vibe
-// pending: VIP-5, VIP-14
 // run: try Console.log(try Effect.try(() => JSON.stringify(snapshots([2, 2, 4]).map((set) => HashSet.size(set)))))
 function snapshots(values: ReadonlyArray<number>) {
   let current = HashSet.empty<number>()

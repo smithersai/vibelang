@@ -23,7 +23,6 @@ Each body reads the previous stage's result through `%`. Here `%` stands for a v
 Effect operators take Effect values directly, so nest them:
 
 ```vibe
-// pending: VIP-1, VIP-5, VIP-6, VIP-14
 // run: try Console.log(try preparedPrice())
 effect function preparedPrice() {
   return try withSpan(timeout(priceLabel(), "1 second"), "price-label")
@@ -56,7 +55,6 @@ Using the returned value replaces `Effect.map` for local transformations. A late
 ## Sequence dependent computations
 
 ```vibe
-// pending: VIP-1, VIP-3, VIP-4, VIP-5, VIP-13, VIP-14
 // run: try Console.log(try total())
 error InvalidRate
 
@@ -126,7 +124,6 @@ Effect data types, such as `Option`, `Stream`, `Chunk`, `Duration`, `Fiber`, and
 To pass a function as a callback, use its module name:
 
 ```vibe
-// pending: VIP-5, VIP-14
 // run: try Console.log(try Effect.try(() => JSON.stringify(totals([Option.some(2), Option.none()]))))
 function totals(values: ReadonlyArray<Option.Option<number>>) {
   return values.map(Option.getOrElse(() => 0))
@@ -137,7 +134,6 @@ function totals(values: ReadonlyArray<Option.Option<number>>) {
 ## Observe intermediate results
 
 ```vibe
-// pending: VIP-1, VIP-5, VIP-14
 // run: try Console.log(try quotedTotal())
 effect function quotedTotal() {
   const amount = try total()
@@ -153,7 +149,6 @@ The local variable stays available after logging, as with `Effect.tap`. An obser
 ## Collect multiple computations
 
 ```vibe
-// pending: VIP-1, VIP-5, VIP-6, VIP-14
 // run: try Console.log(try summary())
 effect function summary() {
   const details = try all({
@@ -172,7 +167,6 @@ For a dynamic collection, use `try forEach(values, (value) => work(value), { con
 ## Avoid discarded programs
 
 ```vibe
-// pending: VIP-1, VIP-5, VIP-14
 // run: try saveNotice()
 effect function saveNotice() {
   const notice = Console.log("saved")

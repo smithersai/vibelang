@@ -84,7 +84,6 @@ found found
 ## Choosing a form
 
 ```vibe
-// pending: VIP-1, VIP-5, VIP-6, VIP-14, VIP-23
 // run: try Console.log(try boundedLookup(), try reusableLookup)
 effect function boundedLookup() {
   return try retry(lookup(), { times: 2 })

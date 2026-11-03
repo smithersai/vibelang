@@ -26,7 +26,6 @@ The document holds `dialect` (default `"draft-2020-12"`), the root `schema`, and
 ## Selecting canonical representations and specification drafts
 
 ```vibe
-// pending: VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
 // run: try Console.log(try Effect.try(() => JSON.stringify(alternateDrafts())))
 function alternateDrafts() {
   const document = Schema.toJsonSchemaDocument(
@@ -47,7 +46,6 @@ Export derives `toCodecJson`, then describes its encoded side: `FiniteFromString
 ## Carrying annotations and encoded-side metadata
 
 ```vibe
-// pending: VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
 // run: try Console.log(try Effect.try(() => JSON.stringify(nameDocument().schema)))
 const DepotName = Schema.Trim.pipe(Schema.annotateEncoded({
   title: "Depot input",
@@ -73,7 +71,6 @@ function nameDocument() {
 ## Exporting constraints and optional fields
 
 ```vibe
-// pending: VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
 // run: try Console.log(try Effect.try(() => JSON.stringify(requestDocument().schema)))
 const DepotRequest = Schema.Struct({
   code: Schema.String.check(Schema.isPattern(/^[A-Z]{2}[0-9]{3}$/u)),
@@ -98,7 +95,6 @@ JavaScript counts string length in UTF-16 code units; JSON Schema counts Unicode
 ## Emitting references for recursive definitions
 
 ```vibe
-// pending: VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
 // run: try Console.log(try Effect.try(() => JSON.stringify(treeDocument())))
 interface DepotTree {
   name: string
@@ -123,7 +119,6 @@ An identifier creates a named definition referenced through `$ref`. Without one,
 ## Adjusting document generation
 
 ```vibe
-// pending: VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
 // run: try Console.log(try Effect.try(() => JSON.stringify(strictDocument().schema)))
 function strictDocument() {
   return Schema.toJsonSchemaDocument(DepotRequest, {

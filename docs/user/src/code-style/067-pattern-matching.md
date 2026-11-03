@@ -168,7 +168,6 @@ A `default` arm comes last and receives every unmatched input. When the caller n
 ## Reusable matchers with the Match module
 
 ```vibe
-// pending: VIP-5, VIP-14
 // run: try Console.log(try Effect.try(() => JSON.stringify(describeAll([3, "news"]))))
 const describe = pipe(
   Match.type<number | string>(),

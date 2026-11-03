@@ -27,7 +27,6 @@ Two plain aliases for `string` stay interchangeable; these branded types differ 
 ## Nominal brands
 
 ```vibe
-// pending: VIP-5, VIP-14
 // run: try Console.log(try Effect.try(() => JSON.stringify(knownInvoice("inv-3"))))
 type InvoiceId = string & Brand.Brand<"InvoiceId">
 const InvoiceId = Brand.nominal<InvoiceId>()

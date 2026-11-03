@@ -11,7 +11,6 @@ Every arm ends in `;`, the last one included, and a new line does not separate a
 Object properties run left to right. Cached pattern reads reuse getters across arms, while object rest copies normally and can read a getter again. Array patterns accept iterable primitives such as strings. Each elision comma skips one required position; a missing optional element consumes none, while a present `undefined` still gets tested. The `EK0703` fixed-extractor warning uses the required-to-total position interval, so `Option.None(1?)` is admitted.
 
 ```vibe
-// pending: VIP-5, VIP-7, VIP-13, VIP-14
 // run: try Console.log(try Effect.try(() => JSON.stringify([describe(new NotFound({ id: "7" })), describe(new Timeout()), describe(new Denied({ user: "Ada", reason: "admin" })), describe(new Denied({ user: "Ada", reason: "other" }))])))
 error NotFound { id: string }
 error Timeout
@@ -37,7 +36,6 @@ A synchronous `match` introduces no function or Effect boundary in any expressio
 An arm is one expression. Use `do { }` for several statements. It gives the block's normal completion value, retaining an earlier value when a later empty block inherits it. `do` introduces no function boundary. A `return`, `break` or `continue` reaches the enclosing function, loop or label, and `var` declares in the enclosing function. Its result follows the chosen branch's value type, including `undefined` when that completion is empty. The block cannot end with a lexical declaration, a loop or an `if` without `else` (`EK0201`). A `break` or `continue` from a `do` in a loop head cannot be unlabeled or target that loop (`EK0205`). Every label directly chained around that loop names it: `outer: inner: while (do { continue outer; true }) {}` is `EK0205` too. A label naming a different enclosing loop remains exempt from that early error. In a `for…in` or `for…of` right-hand operand with a `let` or `const` head, `do` runs in the head's lexical environment. A closure created there retains the head's uninitialized cells even after the loop; each iteration's body has separate initialized bindings. An assignment or `var` head uses its existing binding. These rules also apply in nested blocks. A `do` in a match arm retains that enclosing function and loop too. A nested function keeps its own declarations and control flow. For example:
 
 ```vibe
-// pending: VIP-1, VIP-2, VIP-5, VIP-7, VIP-14
 // run: try Console.log(try retryDelay(new Timeout())); try Console.log(try retryDelay(new NotFound({ id: "7" })))
 effect function retryDelay(failure: Failure) {
   return match (failure) {
@@ -78,7 +76,6 @@ A `return` or an outer labeled jump in `for try` head binding initialization sti
 `var` is not allowed in pattern bindings (`EK0107`).
 
 ```vibe
-// pending: VIP-5, VIP-7, VIP-14
 // run: try Console.log(try Effect.try(() => JSON.stringify([shape([]), shape([2]), shape([2, 3, 4]), shape({ kind: "box", size: 5 }), shape({ kind: "point", size: 1 }), shape({ kind: "other" })])))
 function shape(value: ReadonlyArray<number> | { kind: string; size?: number }) {
   return match (value) {
@@ -112,7 +109,6 @@ These matchers compile to the module's own test. A name means what it resolves t
 The public runtime `$extract` helper accepts constructor values whose type does not identify the function that runs. For `C: NumberConstructor` or `new () => Number`, its result can contain a primitive `number` or a `Number` object; handle `number | Number`. The other primitive constructors follow the same rule. A required nominal field can exclude the intrinsic constructor from that structural type. This helper typing does not grant an ordinary class an extractor pattern: the specification requires an own `Symbol.customMatcher` for `C(...)`, with `EK0704` for an ordinary class without one; that diagnostic remains a compiler gap.
 
 ```vibe
-// pending: VIP-1, VIP-3, VIP-4, VIP-5, VIP-6, VIP-7, VIP-14
 // run: try Console.log(greeting(Option.some("Ada"))); try Console.log(greeting(Option.none())); try Console.log(try report("ada")); try Console.log((try report("")).includes("NotFound"))
 function greeting(name: Option.Option<string>) {
   return match (name) {
@@ -144,7 +140,6 @@ effect function getUser(id: string): { name: string }!NotFound!never {
 A [`data` declaration](../data-types/073-data.md) creates tagged values. Match their `_tag` with an object pattern. Variant constructors have no custom matchers:
 
 ```vibe
-// pending: VIP-5, VIP-7, VIP-14, VIP-16
 // run: try Console.log(try Effect.try(() => JSON.stringify([track(Delivery.Sent({ tracking: "parcel-8" })), track(Delivery.Sent({ tracking: "parcel-9", carrier: "rail" })), track(Delivery.Waiting())]))); try Console.log(carrierOf(Delivery.Sent({ tracking: "p", carrier: "rail" })))
 data Delivery {
   Waiting
@@ -210,7 +205,6 @@ Same-keyword bindings in `or` alternatives share one cell. A later alternative c
 `and` requires both patterns, `or` accepts either, and `not` rejects its pattern. A guard, `if (condition)`, tests any expression and sees the bindings before it:
 
 ```vibe
-// pending: VIP-5, VIP-7, VIP-14
 // run: try Console.log(try Effect.try(() => JSON.stringify([classify({ status: "failed", attempts: 3 }), classify({ status: "failed", attempts: 1 }), classify({ status: "queued", attempts: 0 }), classify({ status: "done", attempts: 0 }), classify({ status: "cancelled", attempts: 0 })])))
 function classify(job: { status: string; attempts: number }) {
   return match (job) {
@@ -232,7 +226,6 @@ In `while` and `do…while`, lexical `is` bindings belong to a loop head and get
 `value is pattern` is `true` when the pattern matches. It binds as tightly as `instanceof`:
 
 ```vibe
-// pending: VIP-5, VIP-7, VIP-14
 // run: try Console.log(try Effect.try(() => JSON.stringify([isRetryable(new Timeout()), isRetryable(new Denied({ user: "Ada", reason: "root" })), isRetryable(new NotFound({ id: "7" }))])))
 function isRetryable(failure: Failure) {
   return failure is Timeout or Denied
@@ -243,7 +236,6 @@ function isRetryable(failure: Failure) {
 `is` may bind names in any expression. In an expression statement, a variable statement, a `return` or a `throw`, the bindings belong to the block that holds the statement; in a concise arrow body, to that body. In a `match` arm, the bindings belong to that arm, which is its own scope; in a class field or static field initializer, to that initializer, which ECMAScript evaluates as a separate method-like body. In a `for (init; test; update)` head, a binding from `init` is a `let` of the head, copied into each iteration as a `let` declared there is, and the compiler treats it as initialized throughout the loop (a skipped `init` binding reads `undefined` for now, where the specification has `TS2454`); a binding from `test` or `update` is a cell that each iteration's update, test and body share, so a read of a `test` binding in `update` is always `TS2454`, and a read of an `update` binding there before its pattern is `TS2448`. A head whose initializer is a `var` or `using` list has no `let` list to hold the bindings and keeps `EK4703`, as do `for…in` and `for…of` heads and computed member keys. A binding is visible in the nearest block, including an `if`'s `else` branch and the code after the statement. An unbraced loop or `if` body counts as its own block, so adding braces never changes a result. Two `is` tests that bind one name in the same block are a redeclaration, `TS2451`, as two `let` declarations are; `vibelang --fix` renames the later binding. It stays in the temporal dead zone until its binding pattern executes. A read where the pattern may not have run is TypeScript's `TS2454`, and a read before the binding's position is `TS2448`, as for a `let`; a read those checks can't see, such as one in a closure, throws `ReferenceError`. A binding written `const` keeps const immutability: a later assignment to it is TypeScript's `TS2588`, as for a `const` declared in the block, and a `let` binding is assignable. A following `&&` condition can use initialized bindings:
 
 ```vibe
-// pending: VIP-1, VIP-5, VIP-6, VIP-7, VIP-14
 // run: try Console.log(try firstFailure("ada")); try Console.log((try firstFailure("")).includes("NotFound"))
 effect function firstFailure(id: string) {
   const outcome = try exit(getUser(id))

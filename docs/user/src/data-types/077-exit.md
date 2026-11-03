@@ -73,7 +73,6 @@ true
 ## Relating exits to results
 
 ```vibe
-// pending: VIP-4, VIP-5, VIP-6, VIP-14
 // run: try Console.log(try Effect.try(() => Result.getOrThrow(asResult(Exit.succeed(12))))); const failed = asResult(Exit.failCause(Cause.combine(Cause.fail("rejected"), Cause.die("broken")))); if (Result.isFailure(failed)) try Console.log(try Effect.try(() => JSON.stringify(failed.failure.reasons.map((reason) => reason._tag))))
 function asResult<A, E>(outcome: Exit.Exit<A, E>) {
   if (Exit.isSuccess(outcome)) return Result.succeed(outcome.value)

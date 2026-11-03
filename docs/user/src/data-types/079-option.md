@@ -88,7 +88,6 @@ true true
 ## Extracting values with defaults or exceptions
 
 ```vibe
-// pending: VIP-5, VIP-6, VIP-14
 // run: try Console.log(try Effect.try(() => JSON.stringify([extract(Option.some("Mina")), extract(Option.none())]))); try Console.log(certain); const failed = try exit(Effect.try(() => Option.getOrThrow(Option.none()))); if (Exit.isFailure(failed)) try Console.log(Cause.hasDies(failed.cause), Cause.hasFails(failed.cause))
 function extract(value: Option.Option<string>) {
   return {
@@ -220,7 +219,6 @@ true
 ```
 
 ```vibe
-// pending: VIP-5, VIP-14
 // run: try Console.log(try Effect.try(() => JSON.stringify(Option.getOrNull(combinedData()))))
 function combinedData() {
   return Option.map(Option.all([Option.some(" Daily "), Option.some(3)]), ([title, total]) => ({

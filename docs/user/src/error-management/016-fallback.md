@@ -33,7 +33,6 @@ Saved issue
 The cache is read only if the primary computation fails. The fallback's errors become `title`'s; handling the primary doesn't handle them. A catch expression propagates defects and causes with only interruption. A typed failure beside a defect propagates as a defect, and one beside an interruption is handled.
 
 ```vibe
-// pending: VIP-1, VIP-5, VIP-14
 // run: try Console.log(try titleInline())
 effect function titleInline() {
   return latestTitle() catch effect () => {
@@ -59,7 +58,6 @@ An `async` or generator function is not a catch handler. Its quick fix removes `
 ## Supplying a default success
 
 ```vibe
-// pending: VIP-1, VIP-5, VIP-14
 // run: try Console.log(try titleOrPlaceholder())
 effect function titleOrPlaceholder() {
   return latestTitle() catch () => "No title available"
@@ -76,7 +74,6 @@ No title available
 ## Typing both sides
 
 ```vibe
-// pending: VIP-1, VIP-2, VIP-3, VIP-5, VIP-14
 // run: { const jsonValue = try lookup(); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 type Lookup = { _tag: "Found"; title: string } | { _tag: "Offline" }
 

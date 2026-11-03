@@ -63,7 +63,6 @@ Keep method requirements at `never` when dependencies are implementation details
 ## Constructing service layers
 
 ```vibe
-// pending: VIP-1, VIP-2, VIP-5, VIP-12, VIP-14
 // run: provide SettingsLive { provide PrinterLive { provide ReportsLive { try Console.log(try report("Inventory")) } } }
 const SettingsLive = Layer.succeed(Settings, {
   prefix: "reports"
@@ -92,7 +91,6 @@ A factory can register `try addFinalizer(...)` or acquire with `try acquireRelea
 ## Merging independent layers
 
 ```vibe
-// pending: VIP-1, VIP-5, VIP-12, VIP-14
 // run: provide SettingsLive { provide PrinterLive { provide Merged { const printer = try Printer; try printer.print("merged") }; provide Many { try Console.log(try report("many")) } } }
 const Merged = Layer.merge(SettingsLive, PrinterLive)
 // Layer<Settings | Printer, never, Settings>
@@ -109,7 +107,6 @@ Merging combines outputs and inputs and can initialize independent branches conc
 ## Wiring dependent layers
 
 ```vibe
-// pending: VIP-5, VIP-12, VIP-14
 // run: provide PrinterReady { const printer = try Printer; try printer.print("ready") }; provide PrinterAndSettings { try Console.log((try Settings).prefix) }; provide ReportsReady { try Console.log(try report("wired")) }; provide AppLive { try Console.log(try report("app")) }
 const PrinterReady = Layer.provide(PrinterLive, SettingsLive)
 // Layer<Printer, never, never>
@@ -170,7 +167,6 @@ effect function withBuiltContext() {
 ## Observing initialization and recovering failures
 
 ```vibe
-// pending: VIP-1, VIP-2, VIP-4, VIP-5, VIP-12, VIP-13, VIP-14, VIP-23
 // run: provide ResilientReports { try Console.log(try report("Inventory")) }
 error InitializationFailed
 
@@ -198,7 +194,6 @@ When a larger graph fails to initialize, acquired resources still release. Initi
 ## Declaring service factories and dependencies
 
 ```vibe
-// pending: VIP-1, VIP-3, VIP-5, VIP-9, VIP-12, VIP-14
 // run: provide BannerLive { const banner = try Banner; try Console.log(try banner.text("Orders")) }
 service Banner {
   text(title: string): string!!
@@ -220,7 +215,6 @@ A service declares only its members, besides `static readonly key` and `defaultV
 ## Replacing services in tests
 
 ```vibe
-// pending: VIP-1, VIP-2, VIP-5, VIP-12, VIP-14
 // run: { const jsonValue = [try testBannerDependency(), try testBannerDirectly(), try testBannerWithInlineSettings()]; try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 const SettingsTest = Layer.succeed(Settings, {
   prefix: "test"

@@ -7,7 +7,6 @@ An operation can stop for several reasons: concurrent work can fail together, or
 ## Representing multiple failures
 
 ```vibe
-// pending: VIP-5, VIP-14
 // run: try Console.log(try Effect.try(() => JSON.stringify(failureKinds())))
 function failureKinds() {
   const cause = Cause.combine(Cause.fail("delivery rejected"), Cause.die(new Error("release invariant failed")))

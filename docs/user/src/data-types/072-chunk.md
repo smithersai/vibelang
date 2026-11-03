@@ -5,7 +5,6 @@
 ## Choosing sequence storage
 
 ```vibe
-// pending: VIP-5, VIP-14
 // run: try Console.log(try Effect.try(() => JSON.stringify(Chunk.toReadonlyArray(collectBatches([["queued"], ["running", "done"]])))))
 function collectBatches(batches: ReadonlyArray<ReadonlyArray<string>>) {
   let result = Chunk.empty<string>()
@@ -41,7 +40,6 @@ const fromSet = Chunk.fromIterable(new Set(["center"]))
 ## Reusing an array unsafely
 
 ```vibe
-// pending: VIP-5, VIP-14
 // run: try Console.log(try Effect.try(() => JSON.stringify(Chunk.toReadonlyArray(ownedBatch()))))
 function ownedBatch() {
   const values = ["queued", "running"]

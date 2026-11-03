@@ -65,7 +65,6 @@ function quantityOr(text: string, fallback: number): number {
 A plain function may throw, and its thrown type is inferred. Finite recursive summaries stay precise; an expanding recursive thrown type that cannot stabilize as a representable contract conservatively becomes `unknown`, preserved as `@throws {unknown}` in declarations. A plain return annotation does not make a function effectful:
 
 ```vibe
-// pending: VIP-4, VIP-13
 function quantity(text: string): number {
   const value = Number(text)
   if (!Number.isInteger(value)) throw new InvalidQuantity({ text })

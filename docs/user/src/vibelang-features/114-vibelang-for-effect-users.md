@@ -164,7 +164,6 @@ Effect declarations and combinator calls ported from TypeScript compile in a `.v
 ## Calls return Effects; programs stay cold
 
 ```vibe
-// pending: VIP-1, VIP-5, VIP-14, VIP-18
 // run: { const jsonValue = [try sequential(), try concurrent()]; try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 effect function sequential() {
   const first = try greet("Ada")
@@ -209,7 +208,6 @@ A generic callback constrained to `Function` keeps this synchronous check: passi
 
 ```vibe
 // start.vibe
-// pending: VIP-1, VIP-5, VIP-6, VIP-14, VIP-26
 export effect function main() {
   try Console.log("started")
 }

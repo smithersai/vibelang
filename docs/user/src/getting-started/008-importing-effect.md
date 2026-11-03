@@ -31,7 +31,6 @@ const backoff = Schedule.exponential("50 millis")
 JavaScript's own globals keep their names: `Array`, `String`, `Number`, `Boolean`, `Symbol`, `BigInt`, `Function`, and `RegExp` mean JavaScript's, so import Effect's modules of those names under another name:
 
 ```vibe
-// pending: VIP-5, VIP-14
 // run: try Console.log(try Effect.try(() => JSON.stringify(firstTwo([1, 2, 3]))))
 import { Array as Arr } from "effect"
 

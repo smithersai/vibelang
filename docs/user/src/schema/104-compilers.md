@@ -102,7 +102,6 @@ Prepared 1 schema exports
 
 ```vibe
 // build.vibe
-// pending: VIP-1, VIP-5, VIP-6, VIP-14, VIP-26
 // run: void 0
 import { buildSchemas } from "./build-schema-aot.ts"
 

@@ -76,7 +76,6 @@ The host service bundle does not supply this client.
 All three module names below are in scope without imports.
 
 ```vibe
-// pending: VIP-1, VIP-5, VIP-6, VIP-12, VIP-14, VIP-26, VIP-33
 effect function requestJson(url: string) {
   provide FetchHttpClient.layer {
     const response = try HttpClient.get(url)

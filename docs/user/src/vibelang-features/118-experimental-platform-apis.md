@@ -108,7 +108,6 @@ effect function signature(secret: Redacted.Redacted<Uint8Array>, body: string) {
 
 ```vibe
 // alive.vibe
-// pending: VIP-1, VIP-5, VIP-6, VIP-12, VIP-14, VIP-26, VIP-33
 import { ExperimentalNodeServices } from "vibelang-runtime/experimental/platform-node"
 
 export effect function main() {
@@ -185,7 +184,6 @@ Both fail with a `PlatformError` whose reason says why:
 
 ```vibe
 // serve.vibe
-// pending: VIP-1, VIP-5, VIP-14, VIP-26, VIP-33
 import * as NodeRuntime from "@effect/platform-node/NodeRuntime"
 import * as Runtime from "effect/Runtime"
 import { ExperimentalNodeServices } from "vibelang-runtime/experimental/platform-node"
@@ -307,7 +305,6 @@ Interrupting `nextFrame` cancels its frame, and ending `frameDeltas` cancels the
 `nextFrameUnless(register)` is a cold Effect. Its synchronous registrar checks whether a commit is pending and returns that registration's cancel function, or returns `undefined` to choose a frame. The check and registration run together without a fiber yield; interruption cancels the chosen registration. A renderer requiring an immediate cancel function keeps its synchronous host integration in a `.ts` file.
 
 ```vibe
-// pending: VIP-1, VIP-5, VIP-6, VIP-12, VIP-14, VIP-33
 effect function afterCommit(isPending: () => boolean, onCommit: (listener: () => void) => () => void) {
   const animations = try Experimental.Animations.Animations
   try animations.nextFrameUnless((resume): (() => void) | undefined => {
@@ -387,7 +384,6 @@ The observer is acquired before its first `observe` call, so closing the scope a
 
 ```vibe
 // keys.vibe
-// pending: VIP-1, VIP-5, VIP-6, VIP-12, VIP-14, VIP-33
 effect function keys() {
   const document = try (try Experimental.Document.Document).current
   return Stream.fromEventListener<KeyboardEvent>(document, "keydown")

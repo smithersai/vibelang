@@ -95,7 +95,6 @@ Cause predicates test whether a kind of reason is present. Reason guards narrow 
 ## Formatting and inspecting errors
 
 ```vibe
-// pending: VIP-5, VIP-14
 // run: const result = inspect(Cause.combine(Cause.fail("missing"), Cause.die("broken"))); try Console.log(try Effect.try(() => JSON.stringify({ failures: result.failures, defects: result.defects }))); try Console.log(try Effect.try(() => JSON.stringify(inspect(Cause.empty))))
 function inspect<E>(cause: Cause.Cause<E>) {
   const failures = cause.reasons

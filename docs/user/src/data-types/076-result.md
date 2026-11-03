@@ -150,7 +150,6 @@ missing
 ```
 
 ```vibe
-// pending: VIP-4, VIP-5, VIP-6, VIP-14
 // run: { const jsonValue = try Effect.try(() => Result.getOrThrow(combinedData())); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 function combinedData() {
   return Result.map(Result.all([Result.succeed(" Weekly "), Result.succeed(6)]), ([title, count]) => ({

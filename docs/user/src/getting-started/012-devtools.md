@@ -60,7 +60,6 @@ Hover over an Effect-returning function to see its inferred `Effect<A, E, R>`. L
 ## Diagnostics, completions, and refactors
 
 ```vibe
-// pending: VIP-1, VIP-3, VIP-5
 // expect-error: EK9201
 // Rejected escapes a contract promising no failures.
 effect function promised(value: number): number!! {
@@ -101,7 +100,6 @@ Each entry gives the condition and the repair. The examples and language-service
 ## Configure compiler checks
 
 ```vibe
-// pending: VIP-1, VIP-3, VIP-5, VIP-14
 // run: try Console.log(try checked(2))
 effect function checked(value: number): number!Rejected {
   return try accepted(value)
@@ -505,7 +503,6 @@ Declaration forms keep the TypeScript the checker reads: `error NotFound { id: s
 ## Debugging in editors
 
 ```vibe
-// pending: VIP-1, VIP-5, VIP-6, VIP-14
 // run: try Console.log(try tracedSample())
 effect function tracedSample() {
   return try withSpan(sample(), "sample")

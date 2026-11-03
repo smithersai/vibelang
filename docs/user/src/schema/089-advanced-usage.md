@@ -28,7 +28,6 @@ SchemaError
 A declaration's guard establishes identity, with its type predicate inferred from `instanceof`; it does not validate members automatically, so add checks when fields need validation. Unlike a struct, an opaque declaration gives interpreters no structural description to traverse.
 
 ```vibe
-// pending: VIP-1, VIP-2, VIP-4, VIP-5, VIP-6, VIP-14, VIP-26
 // run: try Console.log((try Schema.decodeUnknownEffect(BoxedCount)(new Box("12"))).value); try Console.log((try Schema.encodeEffect(BoxedCount)(new Box(12))).value)
 class Box<A> {
   constructor(readonly value: A) {}
@@ -145,8 +144,8 @@ const Presence = Schema.Struct({
   prohibited: Schema.optionalKey(Schema.Never)
 })
 const WithDecodeDefault = Schema.Struct({
-  copies: Schema.FiniteFromString.pipe(Schema.withDecodingDefaultType(() => 1)),
-  rank: Schema.FiniteFromString.pipe(Schema.withDecodingDefaultTypeKey(() => 0))
+  copies: Schema.FiniteFromString.pipe(Schema.withDecodingDefaultType(Effect.succeed(1))),
+  rank: Schema.FiniteFromString.pipe(Schema.withDecodingDefaultTypeKey(Effect.succeed(0)))
 })
 ```
 

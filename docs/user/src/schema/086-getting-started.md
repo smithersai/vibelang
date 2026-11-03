@@ -148,7 +148,6 @@ Encoding reverses the conversion, numeric `pieces` included. `encodeEffect` acce
 ## Handling schema failures
 
 ```vibe
-// pending: VIP-1, VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
 // run: try Console.log(try receiveOrExplain({ tracking: "box-76", pieces: "2" })); try Console.log(try receiveOrExplain({}))
 effect function receiveOrExplain(input: unknown) {
   return effect {
@@ -195,7 +194,6 @@ Pass options when creating the parser or when calling it; call options take prec
 ## Deriving guards and assertions
 
 ```vibe
-// pending: VIP-2, VIP-5, VIP-6, VIP-14, VIP-26
 // run: try Console.log(shipmentTracking({ tracking: "box-76", pieces: 2 })); try Console.log(shipmentTracking({ tracking: "box-76", pieces: "2" })); try Console.log(try Effect.try(() => assertShipment({ tracking: "box-76", pieces: 2 })))
 const isShipment = Schema.is(Shipment)
 

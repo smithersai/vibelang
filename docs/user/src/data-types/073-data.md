@@ -103,7 +103,6 @@ const LoadState = Data.taggedEnum<$LoadState$Definition>()
 ## Creating values with structural equality
 
 ```vibe
-// pending: VIP-5, VIP-14
 // run: try Console.log(Equal.equals(first, second), Equal.equals(["inbox", 5] as const, ["inbox", 5] as const), Equal.equals([2, 4, 6], [2, 4, 6]), Equal.equals(makeRoute("inbox"), makeRoute("inbox")))
 const first = { route: "inbox", filters: { unread: true } }
 const second = { route: "inbox", filters: { unread: true } }
