@@ -1551,7 +1551,7 @@ function f(xs: number[]) {
 
 `|>` follows the pinned TC39 Hack pipe proposal with the [snapshot reconciliations](../vips/tc39-pipeline-operator/README.md) and effective [PipeExpression](900-appendices.md#pipeexpression) and [PipeBody](900-appendices.md#pipebody). `%` is the topic: the left input value, evaluated once at its source position. The input is the declared [ShortCircuitExpression](900-appendices.md#shortcircuitexpression), read with `GetValue`; the printed evaluator's [ConditionalExpression](900-appendices.md#conditionalexpression) is a stale reference, not a change of precedence.
 
-The missing-topic early error applies `ContainsOuterTopic` to the body's `AssignmentExpression` child; the [PipeBody](900-appendices.md#pipebody) boundary still returns `false`, so an inner topic cannot satisfy an outer body. A body whose whole unparenthesized expression is a pipe is also an early error, making a chain sequential and left-associated. Parenthesized nested pipes retain their separate topic scopes. The existing conditional, yield, assignment and arrow covering-production errors remain, and an [EffectArrow](900-appendices.md#effectarrow) is an arrow here. A pipe input cannot end in an open arrow handler, so a `|>` after `catch () => y` belongs to the handler's body, at the right edge of a pipe body too ([CatchExpression](900-appendices.md#catchexpression)). `GetPrimaryTopicValue` reads `topicEnv.[[TopicValues]]`, the environment it just acquired. Binary XOR `^` and XOR assignment `^=` keep their TypeScript meanings; the snapshot's duplicated `%` does not remove them, and `%` remains the topic or modulo according to its syntactic position.
+The missing-topic early error applies `ContainsOuterTopic` to the body's `AssignmentExpression` child; the [PipeBody](900-appendices.md#pipebody) boundary still returns `false`, so an inner topic cannot satisfy an outer body. A body whose whole unparenthesized expression is a pipe is also an early error, making a chain sequential and left-associated. Parenthesized nested pipes retain their separate topic scopes. The existing conditional, yield, assignment and arrow covering-production errors remain, and an [EffectArrow](900-appendices.md#effectarrow) is an arrow here. These adopted pipe grammar and early errors use `EK2301` unless a more specific code applies; parenthesize a whole arrow body, `x |> (() => %)`. A pipe input cannot end in an open arrow handler, so a `|>` after `catch () => y` belongs to the handler's body, at the right edge of a pipe body too ([CatchExpression](900-appendices.md#catchexpression)). `GetPrimaryTopicValue` reads `topicEnv.[[TopicValues]]`, the environment it just acquired. Binary XOR `^` and XOR assignment `^=` keep their TypeScript meanings; the snapshot's duplicated `%` does not remove them, and `%` remains the topic or modulo according to its syntactic position.
 
 ```vibe es
 // compiler-gap: pending VIP-23
@@ -1582,8 +1582,8 @@ const value = 7 |> %                       // 7
 const obj = {}; const same = obj |> % === obj // true
 const xor = 1 ^ 3; let assigned = 1; assigned ^= 3 // both 2
 const modulo = 7 |> % % 4                  // 3
-const bad = 1 |> f()                       // syntax error: missing topic
-const outer = 1 |> (2 |> % + 1)            // syntax error: outer body has no topic
+const bad = 1 |> f()                       // EK2301: missing topic
+const outer = 1 |> (2 |> % + 1)            // EK2301: outer body has no topic
 ```
 
 An unparenthesized conditional at either end of a pipe is `EK2301`: `x |> % ? 1 : 2 // EK2301`; write `(x |> %) ? 1 : 2` or `x |> (% ? 1 : 2)`.
