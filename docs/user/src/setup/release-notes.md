@@ -572,6 +572,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - A plain function expected to return an Effect typed its body by the Effect's success, so `probe: () => Effect.succeed({ kind: "a" })` widened the literal and failed with TS2375 where the same TypeScript compiled; the body now gets the Effect as its contextual type.
 | `when C(let x):` on a class without its own matcher | `EK0704`: `vibelang --fix` writes `when C and { … }:` for the written fields. |
 - A class pattern over a value it could never test compiled and failed at run time: `when Point(let x):` on a class without its own matcher reports `EK0704`, and the quick fix and `vibelang --fix` write the bare class test with an object pattern. A callee whose return type fits no pattern, or with no call or construct signature, reports `EK0702`, and `when Function:` reports `EK0107`.
+- Literal `__proto__` keys in patterns compiled despite the grammar restriction; they now report `EK0707`, while computed keys and binding shorthand remain valid.
 - Resolved schema-binding regressions still appeared as pending gaps; namespace, function and escaped-name coverage now checks `EK2109` strictly while keeping every keyed corpus.
 - Schema library-alias checks now compare array decoding and mutability with native TypeScript and explicit Schema controls; remaining decoder gaps keep precise pending records.
 

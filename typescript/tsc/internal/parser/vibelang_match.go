@@ -493,6 +493,12 @@ func (p *Parser) parseMatchObjectPattern(anchor core.TextRange) *pattern {
 			result.clauses = append(result.clauses, objectClause{key: key, computed: !isLiteralKey(key), pattern: sub})
 		default:
 			key := p.parsePropertyName()
+			// The pinned MatchProperty early error applies to literal
+			// property names only. Computed keys and binding shorthand
+			// have their own productions and remain admitted (VIP-7).
+			if key.Kind != ast.KindComputedPropertyName && key.Text() == "__proto__" {
+				result.items = append(result.items, &pattern{kind: patternInvalid, anchor: key.Loc, code: 707, detail: "A literal __proto__ key is not allowed in a pattern. Write [\"__proto__\"] to match that property."})
+			}
 			clause := objectClause{key: key}
 			if key.Kind == ast.KindComputedPropertyName {
 				clause.key = key.Expression()

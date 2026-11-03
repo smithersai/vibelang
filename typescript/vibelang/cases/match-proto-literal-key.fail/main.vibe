@@ -1,0 +1,9 @@
+// expect: EK0707 EK0707 EK0707 EK0707 EK0707 EK0707 EK0707 EK0707
+function a(x:unknown){return match(x){when {__proto__}:1;default:0;}}
+function b(x:unknown){return match(x){when {"__proto__":let value}:value;default:0;}}
+function c(x:unknown){return x is {'__proto__'}}
+function d(x:unknown){return x is {__pr\u006fto__:null}}
+function e(x:unknown){return x is {"__pr\u006fto__":null}}
+function f(x:unknown){return match(x){when {child:{__proto__:null}}:1;default:0;}}
+function g(x:unknown){return match(x){when {__proto__:let value}:value;default:0;}}
+function h(x:unknown){return match(x){when {"__proto__"}:1;default:0;}}

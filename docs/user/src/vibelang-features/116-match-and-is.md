@@ -388,3 +388,5 @@ A class pattern names a class. A `data` declaration's name, a `schema` declarati
 An extractor pattern whose argument count can never match what its matcher extracts is the warning `EK0703`: an `error` declaration and Effect's retained errors extract the subject, so `when NotFound():` or `when NotFound(let a, let b):` never matches; `Option.None` extracts nothing, so `when Option.None(let v):` never matches. Write the bare pattern, the right number of bindings, or a rest pattern.
 
 Coverage restrictions do not change TypeScript narrowing while a pattern runs or inside its arm. Nested `or` alternatives keep their ordinary flow types even when an enclosing `and` or `not` contributes no exhaustiveness coverage.
+
+An object pattern rejects a literal `__proto__` key, including quoted and escaped spellings, with `EK0707`. Write `{ ["__proto__"]: let value }` for that property. Computed keys, `{ let __proto__ }` binding shorthand and ordinary object literals retain their meanings.
