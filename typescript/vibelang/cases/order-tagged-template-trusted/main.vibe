@@ -2,7 +2,7 @@
 // A tagged template calls its tag with the tag's contract, as a call does: a
 // failure the tag lists is an expected failure that catch receives, also when
 // a substitution runs an Effect (chapter 13).
-import { tag } from "./helper.js"
+import { tag, Bad } from "./helper.js"
 
 effect function number(n: number) {
   try Effect.yieldNow
@@ -13,7 +13,12 @@ export effect function main() {
   let call = ""
   let tagged = ""
   let effect = ""
-  try { tag(Object.assign(["a", "b"], { raw: ["a", "b"] }), 0) } catch { call = "caught" }
+  try {
+    try ((ThrownBad: typeof Bad) => Effect.catch(
+      Effect.try({ try: () => tag(Object.assign(["a", "b"], { raw: ["a", "b"] }), 0), catch: (error) => error }),
+      (error) => error instanceof ThrownBad ? Effect.fail(error) : Effect.die(error)
+    ))(Bad)
+  } catch { call = "caught" }
   try { tag`a${0}b` } catch { tagged = "caught" }
   try { tag`a${try number(0)}b` } catch { effect = "caught" }
   return { call, tagged, effect, value: tag`a${7}b`, "effect value": tag`a${try number(7)}b` }

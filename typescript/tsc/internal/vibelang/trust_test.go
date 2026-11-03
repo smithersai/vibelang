@@ -15,9 +15,10 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/vfs/vfstest"
 )
 
-// TestTrustedMigrationWarnsAtChangedCalls keeps calls whose lowering does not
-// use a failure contract quiet, including plain-contract calls (D263).
-func TestTrustedMigrationWarnsAtChangedCalls(t *testing.T) {
+// TestForeignThrowsGateReplacesLegacyTrustWarning requires the bridge in
+// effect code even when an old trust tag is present. The legacy warning's
+// severity cannot suppress or promote the VIP-4 error; plain calls stay plain.
+func TestForeignThrowsGateReplacesLegacyTrustWarning(t *testing.T) {
 	t.Parallel()
 	files := map[string]string{
 		"/node_modules/effect/package.json": `{"name":"effect","types":"index.d.ts"}`,
@@ -72,8 +73,11 @@ export function recovered(text: string): number {
 		var positions []int
 		for _, d := range p.GetSemanticDiagnostics(t.Context(), p.GetSourceFile("/main.vibe")) {
 			if d.Code() == EK4406.Code {
-				if d.Category() != setting.category {
-					t.Errorf("migration category = %v", d.Category())
+				t.Errorf("obsolete trust warning beside the required bridge: %v", d)
+			}
+			if d.Code() == EK0403.Code {
+				if d.Category() != diagnostics.CategoryError {
+					t.Errorf("bridge category = %v", d.Category())
 				}
 				text := p.GetSourceFile("/main.vibe").Text()
 				allowed := []int{
@@ -81,21 +85,17 @@ export function recovered(text: string): number {
 					strings.Index(text, "ports.offset()"),
 				}
 				if d.Pos() != allowed[0] && d.Pos() != allowed[1] {
-					t.Errorf("migration diagnostic for a call whose lowering does not use the tag at %d", d.Pos())
+					t.Errorf("bridge diagnostic outside effect code at %d", d.Pos())
 				}
 				message := d.MessageText()
-				if strings.Contains(text[d.Pos():d.End()], "offset") {
-					if !strings.Contains(message, "Ports.offset") || !strings.Contains(message, "write an adapter") || !strings.Contains(message, "[Bad]") {
-						t.Errorf("method migration message: %s", message)
-					}
-				} else if strings.Contains(message, "[Errors]") {
-					t.Errorf("missing concrete contract: %s", message)
+				if !strings.Contains(message, "Bad") || !strings.Contains(message, "Effect.try") {
+					t.Errorf("bridge diagnostic omits contract or repair: %s", message)
 				}
 				positions = append(positions, d.Pos())
 			}
 		}
 		if len(positions) != 2 {
-			t.Fatalf("migration warnings at %v; want only the Effect calls whose tags affect emit", positions)
+			t.Fatalf("bridge errors at %v; want only the effect calls", positions)
 		}
 	}
 

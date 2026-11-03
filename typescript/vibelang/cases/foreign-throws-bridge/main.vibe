@@ -1,0 +1,9 @@
+import { range } from "./lib.js"
+export effect function probe(s: string): string!RangeError! {
+  return try ((ThrownRangeError: typeof RangeError) =>
+    Effect.catch(
+      Effect.try({ try: () => range(s), catch: (error) => error }),
+      (error) => error instanceof ThrownRangeError ? Effect.fail(error) : Effect.die(error)
+    )
+  )(RangeError)
+}

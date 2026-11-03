@@ -430,6 +430,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Native `Context.Service` classes accepted an undeclared `Key.Shape` namespace that TypeScript rejects. They now report the native TypeScript diagnostic; use `Context.Service.Shape<typeof Key>` or an explicitly declared namespace. Member-body `service` aliases keep working.
 
+- Foreign calls with a written throwing annotation could bypass the required bridge in effect code. They now report `EK0403`, and `--fix` preserves their former failures and defects.
+
 - Repository build checks could fail before inspecting compiler inputs after target declarations changed. Their isolated fixtures now retain the native source group and imported parser data while checking dependency and cache behavior.
 
 - A `do` expression with no normal result suppressed native iterator errors in loops, destructuring, delegated yields and call spreads, so migration missed a required cast. These uses now retain TypeScript's `never` protocol checks; array literal spreads keep their native behavior.

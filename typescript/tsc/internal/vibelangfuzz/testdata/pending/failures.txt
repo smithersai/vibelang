@@ -9,10 +9,8 @@ FuzzFailuresSpec  feature:direct-local  compiler  VIP-4: 003-failures.md rejects
 FuzzFailuresSpec  feature:direct-local-const  compiler  VIP-4: 003-failures.md rejects the marked call for "In effect code, a direct call of a function that may throw. Wrap it: `try Effect.try(() => parse(s))`"; lane w2-throw
 FuzzFailuresSpec  feature:direct-local-argument  compiler  VIP-4: 003-failures.md rejects the marked call for "In effect code, a direct call of a function that may throw. Wrap it: `try Effect.try(() => parse(s))`"; lane w2-throw
 FuzzFailuresSpec  feature:direct-local-return  compiler  VIP-4: 003-failures.md rejects the marked call for "In effect code, a direct call of a function that may throw. Wrap it: `try Effect.try(() => parse(s))`"; lane w2-throw
-FuzzFailuresSpec  feature:library-tagged  compiler  VIP-4: 003-failures.md rejects the marked call for "A non-effectful library or global function says what it throws with the JSDoc tag `@throws {ErrorType}`."; lane w2-throw
 FuzzFailuresSpec  feature:global-json-parse  compiler  VIP-4: 003-failures.md rejects the marked call for "VibeLang ships its own annotations for them, so `JSON.parse` throws `SyntaxError` and `Math.max` is known n…"; lane w2-throw
 FuzzFailuresSpec  feature:effect-decode-sync  compiler  VIP-4: 003-failures.md rejects the marked call for "VibeLang also ships annotations for Effect's non-effectful exports: `Option.some` throws `never`; `Schema.d…"; lane w2-throw
-FuzzFailuresSpec  feature:interface-member-opts-in  compiler  VIP-4: 003-failures.md rejects the marked call for "A function type or interface member without `@throws` is non-throwing; `@throws` on its declaration opts in."; lane w2-throw
 FuzzFailuresSpec  feature:function-type-opts-in  compiler  VIP-4: 003-failures.md as amended 2026-10-31 expects EK0401 at the marked code; main draws no error; lane nothrow-impl
 FuzzFailuresSpec  feature:new-tracked  compiler  VIP-4: 003-failures.md rejects the marked call for "`new X()` is throw-tracked; getter and setter access is not."; lane w2-throw
 FuzzFailuresSpec  feature:rethrows-throwing  compiler  VIP-4: 003-failures.md rejects the marked call for "`@rethrows callback` declares that a non-effectful call propagates the thrown type of the named callback."; lane w2-throw
@@ -43,10 +41,8 @@ FuzzFailuresSpec feature:effectful-unknown-return compiler VIP-4: 003-failures.m
 FuzzFailuresSpec corpus:direct-local-const compiler VIP-4: minimized reproduction of feature:direct-local-const; lane w2-throw
 FuzzFailuresSpec corpus:direct-local-argument compiler VIP-4: minimized reproduction of feature:direct-local-argument; lane w2-throw
 FuzzFailuresSpec corpus:direct-local-return compiler VIP-4: minimized reproduction of feature:direct-local-return; lane w2-throw
-FuzzFailuresSpec corpus:library-tagged compiler VIP-4: minimized reproduction of feature:library-tagged; lane w2-throw
 FuzzFailuresSpec corpus:global-json-parse compiler VIP-4: minimized reproduction of feature:global-json-parse; lane w2-throw
 FuzzFailuresSpec corpus:effect-decode-sync compiler VIP-4: minimized reproduction of feature:effect-decode-sync; lane w2-throw
-FuzzFailuresSpec corpus:interface-member-opts-in compiler VIP-4: minimized reproduction of feature:interface-member-opts-in; lane w2-throw
 FuzzFailuresSpec corpus:function-type-opts-in compiler VIP-4: minimized reproduction of feature:function-type-opts-in; lane w2-throw
 FuzzFailuresSpec corpus:new-tracked compiler VIP-4: minimized reproduction of feature:new-tracked; lane w2-throw
 FuzzFailuresSpec corpus:rethrows-throwing compiler VIP-4: minimized reproduction of feature:rethrows-throwing; lane w2-throw
@@ -75,12 +71,6 @@ FuzzFailuresSpec corpus:callable-union-throw compiler VIP-4: minimized reproduct
 FuzzFailuresSpec corpus:effectful-unknown-return compiler VIP-4: minimized reproduction of feature:effectful-unknown-return; lane w2-throw
 FuzzFailuresSpec feature:never-return-throw compiler VIP-4: never return types remain throw-tracked; effect function marker currently draws TS1434 before EK0403 can be checked; lane vip-core2
 FuzzFailuresSpec corpus:never-return-throw compiler VIP-4: minimized reproduction of feature:never-return-throw; lane vip-core2
-FuzzFailuresSpec feature:foreign-own-throw-over-type compiler VIP-4: 003-failures.md contract foreign-own-throw-over-type disagrees on main 84f966a6 (error TS1128; error TS1434; error TS2304); lane vip-core2
-FuzzFailuresSpec corpus:foreign-own-throw-over-type compiler VIP-4: minimized reproduction of feature:foreign-own-throw-over-type; lane vip-core2
-FuzzFailuresSpec feature:foreign-returned-signature compiler VIP-4: 003-failures.md contract foreign-returned-signature disagrees on main 84f966a6 (error TS1128; error TS1434; error TS2304); lane vip-core2
-FuzzFailuresSpec corpus:foreign-returned-signature compiler VIP-4: minimized reproduction of feature:foreign-returned-signature; lane vip-core2
-FuzzFailuresSpec feature:foreign-overload-number compiler VIP-4: 003-failures.md contract foreign-overload-number disagrees on main 84f966a6 (error TS1128; error TS1434; error TS2304); lane vip-core2
-FuzzFailuresSpec corpus:foreign-overload-number compiler VIP-4: minimized reproduction of feature:foreign-overload-number; lane vip-core2
 FuzzFailuresSpec feature:effect-decoder-sync-call compiler VIP-4 (decided detail 66): current 003-failures.md contract effect-decoder-sync-call cannot be checked before the effect marker parses (TS1434); lane vip-core2
 FuzzFailuresSpec corpus:effect-decoder-sync-call compiler VIP-4: minimized reproduction of feature:effect-decoder-sync-call; lane vip-core2
 
@@ -91,8 +81,6 @@ FuzzFailuresSpec feature:promise-new compiler VIP-4: chapter 3 contract promise-
 FuzzFailuresSpec corpus:promise-new compiler VIP-4: minimized reproduction of feature:promise-new; lane w2-throw
 FuzzFailuresSpec feature:inferred-callable-alias compiler VIP-4: chapter 3 contract inferred-callable-alias fails on main 405bac96 (initial probe: no required diagnostic); lane w2-throw
 FuzzFailuresSpec corpus:inferred-callable-alias compiler VIP-4: minimized reproduction of feature:inferred-callable-alias; lane w2-throw
-FuzzFailuresSpec feature:foreign-callable-alias compiler VIP-4: chapter 3 contract foreign-callable-alias fails on main 405bac96 (initial probe: no required diagnostic); lane w2-throw
-FuzzFailuresSpec corpus:foreign-callable-alias compiler VIP-4: minimized reproduction of feature:foreign-callable-alias; lane w2-throw
 FuzzFailuresSpec feature:alias-declaration-tag-not-admitted compiler VIP-4: 003-failures.md as amended 2026-10-31 expects EK0402 at the marked code; main draws no error; lane nothrow-impl
 FuzzFailuresSpec corpus:alias-declaration-tag-not-admitted compiler VIP-4: minimized reproduction of feature:alias-declaration-tag-not-admitted; lane w2-throw
 FuzzFailuresSpec feature:rethrows-multiple-parameters compiler VIP-4: chapter 3 contract rethrows-multiple-parameters fails on main 405bac96 (initial probe: EK4301); lane w2-throw

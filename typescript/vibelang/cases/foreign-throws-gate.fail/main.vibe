@@ -1,0 +1,7 @@
+// expect: EK0403
+import { plain, safe, range, anything } from "./lib.js"
+
+export effect function probe(s: string, xs: number[]) {
+  range(s)
+  return 0
+}

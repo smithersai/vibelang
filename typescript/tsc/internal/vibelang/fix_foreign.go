@@ -16,6 +16,9 @@ import (
 // meets one wherever a .vibe module calls a .ts one (VIP-4: a foreign callable
 // throws unknown unless annotated).
 //
+// EK0403 uses the same planner for a written foreign throws contract. Its
+// bridge preserves the former emitter's listed failures and other defects.
+//
 // In Effect TypeScript an exception such a call throws in a generator is a
 // defect, with the value that was thrown, and adds nothing to E. So in effect
 // code the call goes through Effect's own wrapper, which is what VIP-4 requires,
@@ -118,6 +121,11 @@ func planForeignCall(c *checker.Checker, file *ast.SourceFile, call *ast.Node) *
 	} else {
 		code = nodeText(file, target)
 	}
+	if bound, written := foreignThrowsContract(c, call); written && bound != "" && (len(inputs) > 0 || target != call) {
+		// Preserve the former callee, operand and constructor-read ordering.
+		// A running operand or a surrounding guard needs a manual bridge.
+		return nil
+	}
 	var edits []sourceEdit
 	var statement, branch *ast.Node
 	consts := ""
@@ -154,6 +162,37 @@ func planForeignCall(c *checker.Checker, file *ast.SourceFile, call *ast.Node) *
 		edits = append(edits, *identityImport)
 	}
 	wrapped := "try Effect.orDie(Effect.try({ try: () => " + code + ", catch: " + identity + " }))"
+	// A tagged call formerly lowered through $trusted: listed classes failed
+	// through E; every other exception was a defect. Preserve that distinction.
+	if bound, written := foreignThrowsContract(c, call); written && bound != "" {
+		failures := legacyForeignCallFailures(c, call)
+		if len(failures) > 0 {
+			var tests, parameters, classes []string
+			for _, failure := range failures {
+				module, name, ok := reachClass(c, file, failure)
+				if !ok {
+					return nil
+				}
+				symbol := c.ResolveName(name, call, ast.SymbolFlagsValue, false)
+				if symbol == nil || c.GetMergedSymbol(aliasTarget(c, symbol)) != failure.class {
+					if module == "" {
+						return nil
+					} // a shadowed global needs a manual bridge
+					exported := name
+					name = freshValueName(c, call, "foreign"+failure.name)
+					imported := trustedImportEdit(file, module, exported+" as "+name)
+					edits = append(edits, sourceEdit{imported.start, imported.end, imported.text})
+				}
+				captured := freshValueName(c, call, "foreign"+failure.name+"Class")
+				parameters = append(parameters, captured+": typeof "+name)
+				classes = append(classes, name)
+				tests = append(tests, "error instanceof "+captured)
+			}
+			// $trusted evaluated its class array before invoking the thunk. Capture
+			// the same constructors now: the callee can replace a global constructor.
+			wrapped = "try ((" + strings.Join(parameters, ", ") + ") => Effect.catch(Effect.try({ try: () => " + code + ", catch: (error) => error }), (error) => " + strings.Join(tests, " || ") + " ? Effect.fail(error) : Effect.die(error)))(" + strings.Join(classes, ", ") + ")"
+		}
+	}
 	if !standsAlone(target) {
 		wrapped = "(" + wrapped + ")"
 	}
@@ -174,7 +213,7 @@ func planForeignCall(c *checker.Checker, file *ast.SourceFile, call *ast.Node) *
 	default:
 		edits = append(edits, sourceEdit{at, target.End(), wrapped})
 	}
-	return &formRewrite{edits: edits, description: "the call through Effect.try, whose exceptions stay defects"}
+	return &formRewrite{edits: joinEditsAt(edits), description: "the call through Effect.try, preserving failures and defects"}
 }
 
 // branchStatement returns the statement that holds node when it is the
@@ -264,11 +303,13 @@ func runsBefore(statement, node *ast.Node) bool {
 	return statement.ForEachChild(visit)
 }
 
-// needsBoundary reports whether call needs the synchronous foreign-call fix: one
-// nothing says the exceptions of, or one whose @throws names a class this file
-// cant reach, which cant join E as a typed failure.
+// needsBoundary reports synchronous foreign calls needing a bridge, including
+// written non-never throws contracts and unannotated calls.
 func needsBoundary(c *checker.Checker, file *ast.SourceFile, call *ast.Node) bool {
 	t := callTrust(c, call)
+	if bound, written := foreignThrowsContract(c, call); written && bound != "" && !t.value && !t.promise && !returnsEffectful(c, call) {
+		return true
+	}
 	switch {
 	case t.promise, returnsEffectful(c, call):
 		return false
@@ -442,4 +483,13 @@ func returnsEffectGen(c *checker.Checker, fn *ast.Node) bool {
 		return node.ForEachChild(visit)
 	}
 	return body.ForEachChild(visit)
+}
+
+// freshValueName keeps imported or captured failure classes clear of lexical bindings.
+func freshValueName(c *checker.Checker, call *ast.Node, base string) string {
+	name := base
+	for c.ResolveName(name, call, ast.SymbolFlagsValue|ast.SymbolFlagsType|ast.SymbolFlagsAlias, false) != nil {
+		name += "_"
+	}
+	return name
 }

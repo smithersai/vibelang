@@ -101,7 +101,11 @@ func computeTrust(c *checker.Checker, call *ast.Node) *trust {
 	// so the tag on what the callee names wins over the library's declaration.
 	var candidates []*ast.Node
 	if symbol := calleeSymbol(c, call); symbol != nil {
-		candidates = append(candidates, symbol.Declarations()...)
+		for _, d := range symbol.Declarations() {
+			if ast.IsVariableDeclaration(d) || ast.IsPropertyDeclaration(d) || d.Kind == ast.KindPropertySignature {
+				candidates = append(candidates, d)
+			}
+		}
 	}
 	switch pkg := packageOf(c, file); {
 	case isLibFile(c, file):
@@ -112,9 +116,7 @@ func computeTrust(c *checker.Checker, call *ast.Node) *trust {
 		return tagged(c, call, candidates, &trust{kind: trustPlatform})
 	}
 	candidates = append(candidates, decl)
-	if symbol := decl.Symbol(); symbol != nil {
-		candidates = append(candidates, symbol.Declarations()...) // the other overloads
-	}
+
 	t := tagged(c, call, candidates, &trust{kind: trustForeign, promise: returnsPromise(c, call)})
 	if t.kind == trustForeign && reachedThroughTrustedPackage(c, call, file.IsDeclarationFile) {
 		return &trust{kind: trustEffect}
@@ -630,6 +632,17 @@ func checkCall(c *checker.Checker, a *analyzer, file *ast.SourceFile, call *ast.
 	t := callTrust(c, call)
 	callee := call.Expression()
 	name := nodeText(file, callee)
+	// @throws is a contract, not an implicit bridge. Keep explicit trusted
+	// values on their existing runtime contract; ordinary foreign signatures
+	// need Effect.try even when the thrown class is reachable.
+	if !t.value && !t.promise {
+		if bound, written := foreignThrowsContract(c, call); written {
+			if bound != "" {
+				report(c, callee, foreignThrowingCall, name, bound)
+			}
+			return
+		}
+	}
 	if t.kind == trustTagged && !t.value && len(t.failures) > 0 && a.legacyTrustUsesTag(call) {
 		reportLegacyTrust(c, callee, t)
 	}
