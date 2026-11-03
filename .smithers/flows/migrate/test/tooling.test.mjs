@@ -159,7 +159,7 @@ test("each oxlint invocation's .vibe pass uses the configuration it names with -
   const rulesOf = async (file) => (await import(join(root, ".vibelang", file))).default.find(entry => entry.languageOptions?.parser).rules
   assert.deepEqual(await rulesOf("eslint.config.mjs"), { "no-debugger": ["error"] })
   assert.deepEqual(await rulesOf("eslint.app.config.mjs"), { "sort-imports": ["error"] })
-  assert.deepEqual(await rulesOf("eslint.effect.config.mjs"), { "no-unused-vars": ["warn"] })
+  assert.deepEqual(await rulesOf("eslint.effect.config.mjs"), { "vibelang/no-unused-vars": ["warn"] })
   // The app configuration's JS plugin loads from that configuration's directory.
   assert.ok((await import(join(root, ".vibelang/eslint.app.config.mjs"))).default.some(entry => entry.plugins?.app))
   assert.deepEqual(wireDeveloperTools({ root, specsFor }).changed, [])

@@ -232,7 +232,7 @@ export function wireDeveloperTools({ root, specsFor, ts }) {
       if (d === ".") return null
     }
   }
-  let needsCompiler = oxlint.packages.length > 0, needsLint = oxlint.packages.length > 0
+  let needsCompiler = oxlint.packages.length > 0, needsLint = oxlint.packages.length > 0, vpLint = false
   const lintConfigs = new Map() // .vibelang file -> the Oxlint configuration a script names with -c
   for (const file of manifests) {
     const before = readFileSync(join(root, file), "utf8")
@@ -257,6 +257,7 @@ export function wireDeveloperTools({ root, specsFor, ts }) {
       if (commandAt(String.raw`oxlint|vp\s+lint`).test(next)) {
         // The config is the output of this flow, so a run on a new toolchain writes it again.
         needsCompiler = true; needsLint = true
+        if (commandAt(String.raw`vp\s+lint`).test(next)) vpLint = true
         const passes = oxlintPasses(next).map(({ config, paths, denyWarnings }) => {
           const rooted = config === null ? null : posix.normalize(posix.join(dir, config))
           const file = rooted === null || rooted === ".oxlintrc.json" ? "eslint.config.mjs" : eslintConfigName(rooted)
@@ -325,7 +326,8 @@ export function wireDeveloperTools({ root, specsFor, ts }) {
   }
   const eslintConfig = (oxlintrc) => `import { existsSync, readFileSync } from "node:fs"
 import parser from "vibelang/eslint"
-import { pathToFileURL } from "node:url"
+import { spawnSync } from "node:child_process"
+import { fileURLToPath, pathToFileURL } from "node:url"
 import oxc from "./oxlint-rules.mjs"
 import { withOxlintComments } from "./oxlint-comments.mjs"
 const aliases = new Map()
@@ -337,14 +339,43 @@ aliases.clear()
 // typescript-eslint or one of the configuration's JS plugins has the rule.
 // typescript-eslint's recommended rules stand in for Oxlint's default
 // correctness rules unless the configuration turns that category off. Rules of
-// Oxlint's other built-in plugins, such as unicorn, are not carried.
+// Oxlint's other built-in plugins, such as unicorn, are not carried: each run
+// names the rules that do not run.
 const read = (name) => {
   const url = new URL("../" + name, import.meta.url)
   return existsSync(url) ? readFileSync(url, "utf8") : null
 }
-const text = configPath ? readFileSync(configPath, "utf8") : ${oxlintrc ? "read(" + JSON.stringify(oxlintrc) + ")" : 'read(".oxlintrc.json") ?? read(".oxlintrc.jsonc")'}
+// vp lint reads the lint section of the Vite config before any .oxlintrc. A
+// config that fails to load fails this pass: a silent fallback lints .vibe
+// files with no rules.
+const viteLint = async () => {
+  for (const name of ["vite.config.ts", "vite.config.mts", "vite.config.vibe", "vite.config.js", "vite.config.mjs"]) {
+    const url = new URL("../" + name, import.meta.url)
+    if (!existsSync(url)) continue
+    const { default: loaded } = await import(url.href)
+    const config = await (typeof loaded === "function" ? loaded({ command: "build", mode: "production" }) : loaded)
+    return config?.lint ?? null
+  }
+  return null
+}
+const fromVite = ${vpLint && !oxlintrc ? "configPath ? null : await viteLint()" : "null"}
+const text = fromVite ? null : configPath ? readFileSync(configPath, "utf8") : ${oxlintrc ? "read(" + JSON.stringify(oxlintrc) + ")" : 'read(".oxlintrc.json") ?? read(".oxlintrc.jsonc")'}
 const base = configPath ? new URL("./", pathToFileURL(configPath)) : new URL("../" + ${JSON.stringify(oxlintrc && posix.dirname(oxlintrc) !== "." ? posix.dirname(oxlintrc) + "/" : "")}, import.meta.url)
-const oxlint = text ? JSON.parse(text.replace(/("(?:\\\\.|[^"\\\\])*")|\\/\\*[\\s\\S]*?\\*\\/|\\/\\/[^\\n]*/g, (all, string) => string ?? "").replace(/,(\\s*[}\\]])/g, "$1")) : {}
+const written = fromVite ?? text ? fromVite ?? JSON.parse(text.replace(/("(?:\\\\.|[^"\\\\])*")|\\/\\*[\\s\\S]*?\\*\\/|\\/\\/[^\\n]*/g, (all, string) => string ?? "").replace(/,(\\s*[}\\]])/g, "$1")) : {}
+// Categories and plugin defaults decide most of a .ts file's rules, so the
+// rules come from the tool's own resolution, with the written rules over them
+// (it leaves JS plugin rules out of its base rules). Without the tool installed
+// the written rules are all there is.
+const tool = new URL("../node_modules/.bin/" + (fromVite ? "vp" : "oxlint"), import.meta.url)
+const resolvedRules = () => {
+  if (!existsSync(tool) || (!fromVite && !text)) return {}
+  const named = configPath ?? ${oxlintrc ? JSON.stringify(oxlintrc) : `(read(".oxlintrc.json") ? ".oxlintrc.json" : ".oxlintrc.jsonc")`}
+  const args = fromVite ? ["lint", "--print-config"] : ["-c", named, "--print-config"]
+  const printed = spawnSync(fileURLToPath(tool), args, { cwd: fileURLToPath(new URL("../", import.meta.url)), encoding: "utf8", maxBuffer: 64 * 1024 * 1024 })
+  if (printed.status !== 0) throw new Error(tool.pathname + " " + args.join(" ") + " failed: " + printed.stdout + printed.stderr)
+  return JSON.parse(printed.stdout).rules ?? {}
+}
+const oxlint = { ...written, rules: { ...resolvedRules(), ...written.rules } }
 // An Oxlint JS plugin is an ESLint plugin. Each loads as Oxlint loads it: a
 // path from the configuration's directory, else a package, named by its alias,
 // else by its meta.name or package name less an eslint-plugin or oxlint-plugin
@@ -400,6 +431,30 @@ const tseslint = await import("typescript-eslint").then(({ default: loaded }) =>
 }, () => null)
 const core = await import("eslint/use-at-your-own-risk").then(({ builtinRules }) => builtinRules, () => null)
 const typed = new Set(Object.keys(tseslint?.plugin?.rules ?? {}))
+// Without typescript-eslint, ESLint's core no-unused-vars reads TypeScript as
+// JavaScript. Three reports are wrong on a .vibe file: a parameter of a type
+// signature names no binding; a name in a declare block merges with a type
+// elsewhere; and an effect import no code names stays because the declaration
+// file prints it (D501). Every other report and all options pass through.
+const coreUnused = core?.get("no-unused-vars")
+const signatures = new Set(["TSFunctionType", "TSConstructorType", "TSMethodSignature", "TSCallSignatureDeclaration", "TSConstructSignatureDeclaration", "TSDeclareFunction", "TSEmptyBodyFunctionExpression"])
+const patterns = new Set(["RestElement", "AssignmentPattern", "ArrayPattern", "ObjectPattern", "Property", "TSParameterProperty"])
+const namesNothing = (node) => {
+  let owner = node?.parent
+  while (owner && patterns.has(owner.type)) owner = owner.parent
+  if (owner && signatures.has(owner.type)) return true
+  if (owner?.type === "ImportDeclaration" || owner?.type === "ImportNamespaceSpecifier" || owner?.type === "ImportSpecifier" || owner?.type === "ImportDefaultSpecifier") {
+    const declaration = owner.type === "ImportDeclaration" ? owner : owner.parent
+    return /^effect(?:\\/|$)/.test(declaration?.source?.value ?? "")
+  }
+  for (let up = node?.parent; up; up = up.parent) if (up.type === "TSModuleDeclaration" && (up.declare || up.kind === "global")) return true
+  return false
+}
+const adaptedUnused = coreUnused && { ...coreUnused, create(context) {
+  const adapted = Object.create(context)
+  Object.defineProperty(adapted, "report", { value(descriptor) { if (!namesNothing(descriptor.node)) context.report(descriptor) } })
+  return coreUnused.create(adapted)
+} }
 const levels = { allow: "off", deny: "error", off: "off", warn: "warn", error: "error", 0: "off", 1: "warn", 2: "error" }
 const missing = new Set()
 const rules = (settings = {}) => Object.fromEntries(Object.entries(settings).flatMap(([name, setting]) => {
@@ -413,6 +468,10 @@ const rules = (settings = {}) => Object.fromEntries(Object.entries(settings).fla
     if (!typed.has(rule)) { if (levels[level] !== "off") missing.add(name); return [] }
     aliases.set(typedName, (plugin === "" || plugin === "eslint") ? "eslint/" + rule : "typescript/" + rule)
     return [[typedName, value]]
+  }
+  if ((plugin === "" || plugin === "eslint") && rule === "no-unused-vars" && adaptedUnused) {
+    aliases.set("vibelang/no-unused-vars", "eslint/no-unused-vars")
+    return [["vibelang/no-unused-vars", value]]
   }
   if (plugin === "" || plugin === "eslint") return !core || core.has(rule) ? [[rule, value]] : (levels[level] === "off" || missing.add(name), [])
   if (plugin === "oxc" && oxc.rules[rule]) return [[name, value]]
@@ -430,10 +489,11 @@ const correctness = levels[oxlint.categories?.correctness] !== "off"
 const configs = [
   { ignores: [...ignores, "**/node_modules/**", "**/dist/**", "**/build/**", "**/*.d.vibe.ts"] },
   ...(correctness && tseslint ? tseslint.configs.recommended.map((config) => ({ ...config, ...(config.plugins ? { plugins: { ...config.plugins, "@typescript-eslint": tseslint.plugin } } : {}), files: ["**/*.vibe"] })) : []),
-  { files: ["**/*.vibe"], linterOptions: { reportUnusedDisableDirectives: "off" }, languageOptions: { parser: withOxlintComments(parser, aliases) }, plugins: { oxc, ...(tseslint ? { "@typescript-eslint": tseslint.plugin } : {}), ...Object.fromEntries(jsPlugins) }, rules: { ...(correctness ? { "no-debugger": "error" } : {}), ...rules(oxlint.rules) } },
+  { files: ["**/*.vibe"], linterOptions: { reportUnusedDisableDirectives: "off" }, languageOptions: { parser: withOxlintComments(parser, aliases) }, plugins: { oxc, ...(adaptedUnused ? { vibelang: { rules: { "no-unused-vars": adaptedUnused } } } : {}), ...(tseslint ? { "@typescript-eslint": tseslint.plugin } : {}), ...Object.fromEntries(jsPlugins) }, rules: { ...(correctness ? { "no-debugger": "error" } : {}), ...rules(oxlint.rules) } },
   ...overrides
 ]
 if (strict && missing.size) throw new Error("Oxlint rules unavailable under ESLint: " + [...missing].join(", "))
+if (missing.size) console.error("vibelang: " + missing.size + " Oxlint rules do not run on .vibe files: " + [...missing].sort().join(", "))
 return configs
 }
 export default await configFor()
