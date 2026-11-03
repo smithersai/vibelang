@@ -389,7 +389,7 @@ bun .smithers/flows/migrate/eval.ts --update   # run and record baseline.json
 - The convert flow's cheat sheet and worked examples (`../convert/`).
 - Codemod formats only the files its write-ahead journal authored, including remaining TypeScript importers whose `.ts` specifier grows to `.vibe`. Protected tests and fixtures are excluded. The `formatted` receipt names every formatted file, exit status and `source-format.log`; `platform.formatted` retains the sibling subset. Revert formats only the files its reverse edits authored and records `revert-format.log`, so shortening a specifier also restores the target style. Unrelated local changes stay untouched.
 - Tests remain unchanged; their unconfigured source bundle graphs stay TypeScript. Inventory records `bundledBy` and `bundleReason` for each reached module, naming the test or test-only helper, line, input entry and bundler (decided detail 272). Static literal inputs, including `new URL(..., import.meta.url)` through `Path.fromFileUrl`, are followed through runtime imports, workspace export maps and aliases. Type-only edges and emitted JavaScript entry points are boundaries. A native adapter already supplied unconditionally by an ESM source plugin factory is proved through its exports, so that bundle needs no deferral. The draft reports each retained module, explicit plans cannot select it, and ordinary/one-pass rename guards recheck the current tests before writing. Inputs that cannot be resolved statically produce `bundleWarnings` for review; they are not certified as source-free.
-- `--route-bundled-imports` keeps such a graph eligible when its bundler is Bun. An unchanged `Bun.build`, `bun build` or `Bun.spawn([process.execPath, "build", ...])` in a test reads a relative `./x.vibe` as a file asset and fails with `No matching export`, and neither a plugin, a preload nor tsconfig `paths` reach it. With the flag, a TypeScript module the test bundles names its `.vibe` dependency as `#vibelang/emitted/src/x`, through an exact entry for each source in the package's `imports`: `types` for type checkers, `vibelang-source` for tools, `default` for the committed `.vibelang/js` output. Tests, type-only edges and modules no test bundles keep their spelling. The emitted graph mirrors the package, so a raw bundle holds both the TypeScript and the emitted copy of a TypeScript module that both graphs import; a test that executes such a bundle sees two instances. `verify` runs that test either way. Bundles setup wires, and `bun test` and Vite, read the source and see one instance. `revert` restores the routed edges first; the next emit routes again.
+- `--route-bundled-imports` permits planning modules in unchanged source bundle graphs. After conversion, native TypeScript value edges to migrated modules are routed automatically, including opaque esbuild entry arguments and bare Node children; see Native consumers of converted modules below. Tests and type-only edges keep their spelling. The emitted graph mirrors the package, so a native module reached through both source and emitted graphs can have two instances. Consumer runtime and API gates still decide whether the batch can record. `revert` restores routed edges first; the next emit routes remaining converted modules again.
 - A runner with no VibeLang loader cannot read a `.vibe` module, and nothing but running that tool shows it. Inventory finds each one and keeps what it reaches TypeScript, by name, in `plan.json`'s `deferred`, `setup.json`'s `bareRunners` and the module's `bareRunBy` and `bareRunReason` (`lib/bare-runners.mjs`): a package `bin` under Node, or under Bun with no preload in its package; a file with a `node`, `bun`, `tsx` or `ts-node` shebang; a package script's `node file`, `bun file`, `tsx file` where neither the command nor the directory it runs in has a loader; a Playwright config, its tests and any module importing `@playwright/test`. It follows runtime imports through relative paths, aliases and workspace export maps. Where a loader serves the script, the modules it reaches can migrate, but the file the script names keeps its name: no step rewrites a script's path, including one like `bun ../../tools/Cli.ts` into another package. A module already `.vibe` that a bare runner reaches is a setup warning. Bundlers other than the wired ones, such as vinext, are not followed. `lib/converted-paths.mjs` covers paths held as data in source and in manifests' `main`, `module`, `bin` and `sideEffects`; it does not read scripts.
 - Source-child launchers using Node `spawn`/`spawnSync` or Effect `ChildProcess.make` get native preloads for typed source entries. The helper resolves `vibelang/register` (Node) or `vibelang/bun` (Bun) in the parent package and passes an absolute preload to children, including those with another `cwd`. Node installs its preload after existing hooks; Bun preloads before `run`. Built JavaScript entries keep their original arguments. Literal or single-use const argv arrays are supported; shared/dynamic arrays, CommonJS and dynamic imports get located warnings. Setup leaves tests, fixtures, test-only helpers, generated files, vendored sources and project output unchanged. Published runtime launchers install `vibelang` as a dependency; private/build launchers use a development dependency.
 - A platform split must not add a published module; a published package with wildcard exports or no export map keeps the platform code in TypeScript. With `"platformModuleBodies": true` in the run's `config.json`, a module the sibling split refuses for any reason, a wildcard package included, moves the same code into a VIP-40 `module platform { }` in the `.vibe` file and re-exports what moved; `codemod.json` lists it in `platform.splits` with `platform: null` and `module` naming the body. A module with no value of its own left, a moved top-level statement, `import.meta` or `export =` in the moved code still keeps its platform code in TypeScript, with that reason in `platform.refused`. Off by default: a body's declarations are a new file, `x.vibe.platform.d.ts`, which the API declaration oracle rejects when it adds a published entrypoint. Private packages and packages with explicit entry points may still split; the declaration oracle rejects any new public declaration, including a `.platform.d.ts`. A refusal is recorded in `codemod.json`; it never writes a sibling or edits the source. Wildcard packages are handled conservatively because a package can publish more than one build layout.
@@ -815,6 +815,45 @@ With `--include-private-declarations`, setup also captures the stock compiler or
 Each JavaScript emit records repository-relative output paths and SHA-256 digests in `generatedFiles`. The codemod journal retains the latest receipts across verification and restart. Test-diff verification exempts a newly added generated file only while its pinned bytes match the receipt. A directory name alone never exempts a fixture; a pre-existing fixture and output changed after emission remain protected.
 
 Batch scope reads `codemod.packageScriptEdits` as well as Vite’s `scriptEdits`. Verification and final record replay the recorded script/module replacements against pinned before/after manifest snapshots. Only currently migrated modules authorize a replacement; historical receipts for reverted modules authorize none. Unrecorded scripts, flags and unrelated manifest changes gain no new scope. Manifest formatting alone does not change this proof.
+
+### Native consumers of converted modules
+
+A bare `node db/migrate.ts` and a test-local `esbuild.build` have no VibeLang
+loader. The flow now emits each migrated package, including a private package
+with no `exports`, and routes its native TypeScript runtime imports of converted
+modules through exact private `#vibelang/emitted/…` entries. `default` names
+JavaScript the compiler actually wrote under `.vibelang/js/`; `types` keeps the
+declaration sidecar and `vibelang-source` keeps the source. This also covers an
+esbuild entry passed through a helper, whose input cannot be found statically.
+No caller flag, test edit or user-authored configuration is required.
+
+For bare Node, we compared adding a loader to each spawn, package `imports`
+conditions, and the existing VibeLang source-loader contract. Setup still adds
+preloads to owned native launchers, but that cannot reach a protected test's
+spawn or an external invocation. Package conditions are the appropriate default:
+a TypeScript user expects the existing command to load compiled dependencies.
+Node does not interpret `.vibe` by itself, and a package map cannot intercept a
+relative specifier, so the flow changes the product import's spelling. It leaves
+the compiler's JavaScript bodies intact. Type-only imports, tests, fixtures and
+test-only helpers remain unchanged. Missing compiler output leaves a located
+warning in the emit receipt instead of inventing a working route.
+
+For direct esbuild calls in ordinary scripts, setup continues to insert
+`vibelang()` from `vibelang-unplugin/esbuild` after existing plugins. Calls it
+cannot edit safely receive file-and-line warnings. For the same call inside a
+protected test, detail 272 rules out inserting a plugin: the source graph's
+private imports provide the JavaScript instead. The call, options, plugins and
+assertions remain byte-identical. Runtime hooks alone do not configure esbuild.
+
+The emit step records changed sources and manifests in `packingFiles` and the
+routed modules in `routedImports`, before generating loader records against the
+final inputs. Repeated emission retains routes; revert restores source edges.
+Revert checks package manifests first and does not load a TypeScript compiler
+API for packages with no generated routes.
+The existing mixed-source/emitted-graph identity limitation of bundled imports
+still applies: a native module reached through both graphs can have two instances.
+Consumer runtime tests and API comparisons remain required; this routing is not
+a claim that every mixed graph preserves identity.
 
 ### Published declaration files
 

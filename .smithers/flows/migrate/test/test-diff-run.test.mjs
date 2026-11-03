@@ -7,6 +7,7 @@ import { fileURLToPath } from "node:url"
 import { dirname, join } from "node:path"
 import { test } from "node:test"
 import { runTests } from "../lib/tests.mjs"
+import { check } from "../lib/diagnostics.mjs"
 import { packRepository } from "../lib/pack-policy.mjs"
 import * as Jj from "../lib/jj.mjs"
 import { verifyRepositoryTests } from "../lib/test-diff-run.mjs"
@@ -193,13 +194,21 @@ test("dependency assertion proof reads both pinned manifests and reaches the PR 
 test("baseline VibeLang formatting survives pinned trees, record and the PR body; token changes do not", async () => fixture(async ({ target, run, p }) => {
   const old = "effect function check(){return try load()}\n// keep this comment\nexpect(1).toBe(1);\n"
   const next = "effect function check() {\n  return try load()\n}\n  // keep   this comment\nexpect(1).toBe(1)\n"
+  writeJson(join(target, "package.json"), { ...readJson(join(target, "package.json")), private: true })
+  put(target, "tsconfig.json", JSON.stringify({ compilerOptions: { noEmit: true, types: [] }, include: ["src/**/*.vibe"] }))
   put(target, "test/existing.test.vibe", old)
   const base = await Jj.commit(target, "baseline already contains VibeLang test")
   writeJson(join(p.baseline, "upstream-packs.json"), await packRepository(readJson(p.config), join(p.baseline, "upstream-packs")))
   await packVerification(p)
   writeJson(p.setup, { jj: { upgradeCommit: base } })
   const config = readJson(p.config)
-  config.packages = [{dir: "."}]
+  // record also emits packages with no exports; use a complete real project.
+  config.packages = [{ dir: ".", sources: ["src"], tsconfig: "tsconfig.json" }]
+  const baseline = await check({
+    compiler: fileURLToPath(new URL("../../../../packages/compiler/native/vibelang", import.meta.url)),
+    tsconfig: "tsconfig.json", cwd: target, root: target, log: join(p.baseline, "compile-root.log")
+  })
+  writeJson(join(p.baseline, "compile-root.json"), baseline.diagnostics)
   writeJson(p.config, config)
   mkdirSync(join(target, "node_modules/.bin"), {recursive: true})
   symlinkSync(fileURLToPath(new URL("../../../../packages/compiler/native/vibelang", import.meta.url)), join(target, "node_modules/.bin/vibelang"))

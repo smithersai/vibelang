@@ -27,6 +27,9 @@ async function check(code, diagnostic, { baselineEmit, migrated = true, expected
     writeFileSync(join(target, "node_modules/.bin/vibelang"), [
       "#!/usr/bin/env node",
       "const fs = require('node:fs'), path = require('node:path');",
+      // This declaration fixture must not write .d.ts files for JavaScript emission.
+      "const emitOnly = process.argv.indexOf('--emitDeclarationOnly');",
+      "if (emitOnly < 0 || process.argv[emitOnly + 1] === 'false') process.exit(0);",
       "const i = process.argv.indexOf('--outDir');",
       "if (i >= 0) { const out = process.argv[i+1]; fs.mkdirSync(out, { recursive: true });",
       "fs.writeFileSync(path.join(out, 'main.d.ts'), " + JSON.stringify(declaration) + ");",
@@ -54,7 +57,7 @@ async function check(code, diagnostic, { baselineEmit, migrated = true, expected
       return
     }
     const result = await verify({ run, batch: "01" })
-    assert.equal(result.checks.packs, true, "emit failures are checked after valid publication prerequisites")
+    assert.equal(result.checks.packs, true, "emit failures are checked after valid publication prerequisites: " + JSON.stringify(result.packs))
     assert.equal(result.checks.declarations, true, "the published APIs intentionally match")
     const emitOk = expectedEmit
     assert.equal(result.checks.declarationEmit, emitOk)

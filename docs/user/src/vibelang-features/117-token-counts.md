@@ -118,9 +118,9 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | **Build and test** | **16,000** |
 | [vibelang CLI](../setup/vibelang-cli.md) | 12,000 |
 | [Vite and Vitest](../setup/vite.md) | 3,400 |
-| **Format and lint** | **9,600** |
+| **Format and lint** | **9,800** |
 | [Format with dprint](../setup/formatting.md) | 2,600 |
-| [Developer tools](../setup/developer-tools.md) | 6,900 |
+| [Developer tools](../setup/developer-tools.md) | 7,200 |
 | **Frameworks** | **12,000** |
 | [React](../setup/react.md) | 2,100 |
 | [React Native and Metro](../setup/react-native.md) | 450 |

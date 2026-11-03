@@ -11,10 +11,12 @@ import { runtimeEdges } from "./emitted-imports.mjs"
 import { applyEdits, resolveRelative } from "./imports.mjs"
 import { isFixtureFile, isTestFile, listSources } from "./inventory.mjs"
 import { testBundleDeferrals } from "./test-bundles.mjs"
+import { packageDirOf } from "./codemod.mjs"
+import { packageScripts, testOnlyScripts } from "./test-files.mjs"
 
 export const routePrefix = "#vibelang/emitted/"
 const routeKey = routePrefix + "*"
-const nativeSource = /(?<!\.d)\.(?:[cm]?ts)$/
+const nativeSource = /(?<!\.d)\.(?:[cm]?tsx?)$/
 const owned = file => nativeSource.test(file) && !/\.d\.vibe\.ts$/.test(file) && !isTestFile(file) && !isFixtureFile(file)
 
 const route = sidecars => ({
@@ -32,20 +34,25 @@ const relativeTo = (file, target) => {
  * Routes each value edge from a package's TypeScript module to a `.vibe` module
  * a test bundles (testBundleDeferrals) through `#vibelang/emitted/*`, for
  * modules with committed emitted JavaScript. restore puts every routed edge
- * back and drops the entry. Returns the files changed and the routed modules.
+ * back and drops the entry. With native, every owned native value edge is
+ * eligible: an opaque entry argument in an unchanged test cannot establish a
+ * complete bundle graph, and bare Node children have no inherited loader.
+ * outputs, when supplied, is the actual compiler output map, repository-relative.
+ * Returns changed files, routed modules and unresolved-output warnings.
  */
-export function routeBundledImports({ root, packages, ts, compiler, restore = false, bundled }) {
-  const changed = [], modules = new Set()
+export function routeBundledImports({ root, packages, ts, compiler, restore = false, bundled, native = false, outputs }) {
+  const changed = [], modules = new Set(), warnings = []
   const vibes = packages.flatMap(pkg => listSources(root, pkg.dir).filter(file => file.endsWith(".vibe")))
-  const reached = bundled ?? new Set(restore ? [] : testBundleDeferrals(root, vibes, { ts }).map(item => item.file))
+  const reached = bundled ?? new Set(restore ? [] : native ? vibes : testBundleDeferrals(root, vibes, { ts }).map(item => item.file))
   const generated = value => value && typeof value === "object" &&
     typeof value["vibelang-source"] === "string" && typeof value.default === "string" &&
     value.default.startsWith("./.vibelang/js/")
   for (const pkg of packages) {
-    const dir = pkg.dir, sources = listSources(root, dir), all = new Set(sources)
+    const dir = pkg.dir, sources = listSources(root, dir).filter(file => packageDirOf(root, file) === dir), all = new Set(sources)
     const manifest = join(root, dir, "package.json")
     if (!existsSync(manifest)) continue
     const before = readFileSync(manifest, "utf8"), json = JSON.parse(before)
+    const protectedFiles = native ? testOnlyScripts(root, dir, packageScripts(root, dir), json) : new Set()
     const inPackage = file => dir === "." ? file : posix.relative(dir, file)
     const sidecars = existsSync(join(root, dir, ".vibe/declarations"))
     const targets = new Map(), used = new Set()
@@ -54,13 +61,23 @@ export function routeBundledImports({ root, packages, ts, compiler, restore = fa
         ? "./" + (sidecars ? ".vibe/declarations/" : "") + path + ".d.vibe.ts"
         : "./" + inPackage(source),
       "vibelang-source": "./" + inPackage(source),
-      default: "./.vibelang/js/" + path + ".js"
+      default: outputs?.[source] ? "./" + posix.relative(dir, outputs[source]) : "./.vibelang/js/" + path + ".js"
     })
     const keep = (key, source) => {
       used.add(key)
       const prior = json.imports?.[key]
       // Exact routes from normal project emission retain their own output.
       if (prior && typeof prior === "object" && typeof prior["vibelang-source"] === "string") {
+        const originalSource = posix.join(dir, prior["vibelang-source"])
+        if (native && outputs && generated(prior) && originalSource.endsWith(".vibe")) {
+          const output = outputs[originalSource]
+          if (!output || !existsSync(join(root, output))) {
+            warnings.push(posix.join(dir, "package.json") + ": missing emitted JavaScript for " + originalSource + " (" + key + ")")
+          } else {
+            targets.set(key, { ...prior, default: "./" + posix.relative(dir, output) })
+            return
+          }
+        }
         targets.set(key, prior)
         return
       }
@@ -74,6 +91,8 @@ export function routeBundledImports({ root, packages, ts, compiler, restore = fa
     // existing routes even though only native value edges need rewriting.
     for (const file of sources.filter(file => owned(file) || file.endsWith(".vibe") && !isTestFile(file) && !isFixtureFile(file))) {
       const text = readFileSync(join(root, file), "utf8"), edits = []
+      // A Vibe source only needs parsing to retain or restore an existing route.
+      if (file.endsWith(".vibe") && !text.includes(routePrefix)) continue
       for (const edge of runtimeEdges(text, file, ts, compiler, root)) {
         if (edge.specifier.startsWith(routePrefix)) {
           if (restore) {
@@ -85,11 +104,15 @@ export function routeBundledImports({ root, packages, ts, compiler, restore = fa
           } else keep(edge.specifier)
           continue
         }
-        if (restore || !owned(file)) continue
+        if (restore || !owned(file) || protectedFiles.has(file)) continue
         const source = resolveRelative(file, edge.specifier, all)
         if (!source?.endsWith(".vibe") || !reached.has(source)) continue
         const path = inPackage(source).replace(/\.vibe$/, "")
-        if (!existsSync(join(root, dir, ".vibelang/js", path + ".js"))) continue
+        const output = outputs ? outputs[source] : posix.join(dir, ".vibelang/js", path + ".js")
+        if (!output || !existsSync(join(root, output))) {
+          if (native) warnings.push(file + ":" + (text.slice(0, edge.start).split("\n").length) + ": missing emitted JavaScript for " + source + "; the native load path remains unresolved")
+          continue
+        }
         const key = routePrefix + path
         keep(key, source)
         edits.push({ start: edge.start, end: edge.end, text: key })
@@ -118,5 +141,5 @@ export function routeBundledImports({ root, packages, ts, compiler, restore = fa
     const after = JSON.stringify(json, null, 2) + "\n"
     if (after !== before) { writeFileSync(manifest, after); changed.push(posix.join(dir, "package.json")) }
   }
-  return { changed, modules: [...modules].sort() }
+  return { changed, modules: [...modules].sort(), ...(warnings.length ? { warnings } : {}) }
 }

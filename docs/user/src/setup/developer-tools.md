@@ -299,6 +299,23 @@ Migration recognizes TypeScript/TSX aliases without case sensitivity. With a JSX
 
 ## Bundlers inside unchanged tests
 
+After conversion, the flow emits JavaScript even for private packages without
+public exports. Native TypeScript runtime imports of a converted module use an
+exact private package `imports` entry: ordinary Node and unconfigured esbuild
+read the committed `.vibelang/js/` output, while source-aware tools and type
+checkers retain their source and declaration routes. A bare `node entry.ts`
+therefore needs no new flag, and an esbuild call inside a test keeps its options,
+plugins and assertions unchanged. Missing output is reported in the emit receipt.
+Revert restores these imports to their source paths. Packages without these
+routes retain their existing toolchain requirements.
+
+Setup still adds the `vibelang-unplugin/esbuild` plugin to supported calls in
+ordinary build scripts and reports unsupported shapes with a file and line.
+Tests and test-only helpers remain unchanged. Keep the consumer runtime and API
+gates: mixing native and emitted copies of a shared native module can still
+produce two instances, as with the existing bundled-import routes.
+
+
 A test may call Rolldown's API or start Vite's bundled config loader on a
 fixture that imports the package's own sources. Runtime register hooks do
 not configure those bundlers. When the package's existing `build` or

@@ -52,12 +52,12 @@ import * as Wire from "./wire.mjs"
 import { wireEsbuildBuilds } from "./esbuild-builds.mjs"
 import { wirePublishingScripts } from "./publishing.mjs"
 import { wireReactTools } from "./react-tools.mjs"
-import { hasNativeRuntimeExport, hasVibeSource, routeEmittedExports } from "./emitted-exports.mjs"
-import { withPackingScope, wireSidecarPacking, packRepository, comparePacks } from "./pack-policy.mjs"
+import { hasVibeSource, routeEmittedExports } from "./emitted-exports.mjs"
+import { syncPackPolicy, withPackingScope, wireSidecarPacking, packRepository, comparePacks } from "./pack-policy.mjs"
 import { wireDeveloperTools } from "./tooling.mjs"
 import { wireTypecheckBuild } from "./typecheck-build.mjs"
 import { planEmittedImports, applyEmittedImports } from "./emitted-imports.mjs"
-import { routeBundledImports } from "./bundled-imports.mjs"
+import { routeBundledImports, routePrefix as bundledImportPrefix } from "./bundled-imports.mjs"
 import { routeSourceDeclarationImports, sourceDeclarationPrefix } from "./source-declaration-imports.mjs"
 import { wireOxlintPlugins } from "./oxlint-plugins.mjs"
 import { wireNodeTests } from "./node-tests.mjs"
@@ -157,6 +157,19 @@ function sourceDeclarationImports(config, {ts,restore=false,emitted}={}) {
   })
   if(!needed)return {changed:[],modules:[],warnings:[]}
   return routeSourceDeclarationImports({root:config.target,packages:config.packages,ts:ts??typeScriptOf(config),compiler:compilerOf(config),restore,emitted})
+}
+
+// Routing is optional work: an ordinary revert or empty emit must keep working
+// without a TypeScript API or compiler. Actual routes still restore without a flag.
+function bundledImports(config, { root = config.target, restore = false, outputs } = {}) {
+  const packages = config.packages.filter(pkg => {
+    const directory = join(root, pkg.dir), manifest = join(directory, "package.json")
+    if (!existsSync(manifest)) return false
+    return !restore && hasVibeSource(directory) ||
+      Object.keys(JSON.parse(readFileSync(manifest, "utf8")).imports ?? {}).some(key => key.startsWith(bundledImportPrefix))
+  })
+  if (!packages.length) return { changed: [], modules: [] }
+  return routeBundledImports({ root, packages, ts: typeScriptOf(config), compiler: compilerOf(config), restore, native: !restore, outputs })
 }
 
 /** Every source file of the packages, repository-relative. */
@@ -1420,7 +1433,7 @@ export function aliasesOf(config) {
  * then checked against the final tree; an entry whose record misses says why.
  */
 export async function emitMigratedJs(config, t, logs) {
-  const emitted = [], sourceOutputs = new Map()
+  const emitted = [], sourceOutputs = new Map(), outputs = {}
   for (const pkg of config.packages) {
     const manifest = join(t, pkg.dir, "package.json")
     if (!existsSync(manifest)) continue
@@ -1430,24 +1443,32 @@ export async function emitMigratedJs(config, t, logs) {
       if(packingFiles.length) emitted.push({package:pkg.dir,files:0,code:0,packingFiles,restored:true})
       continue
     }
-    const packageText = readFileSync(manifest, "utf8")
-    if (!packageText.includes("./.vibelang/js/") && !hasNativeRuntimeExport(JSON.parse(packageText).exports)) continue
     const tsconfigs = Wire.projectsOf(typeScriptOf(config), join(t, pkg.dir), pkg.tsconfig)
     const result = await emitPackageJs({ compiler: compilerOf(config), tsconfigs, packageDir: join(t, pkg.dir), root: t, log: join(logs, `js-${slug(pkg.dir)}.log`) })
-    sourceOutputs.set(pkg.dir,result.outputs)
+    sourceOutputs.set(pkg.dir, result.outputs)
+    for (const [source, output] of Object.entries(result.outputs)) outputs[posix.join(pkg.dir, source)] = posix.join(pkg.dir, output)
     // Nonzero emits can still write valid package-owned files (for example TS6059).
     let runtimeRouting, packingFiles=[]
     const exportsChanged = routeEmittedExports(join(t, pkg.dir), result.outputs, { typescript:typeScriptOf(config), onGraph:graph=>runtimeRouting=graph, onPacking:files=>packingFiles=files.map(file=>posix.join(pkg.dir,file)) })
     emitted.push({ package: pkg.dir, files: result.files, generatedFiles: result.generatedFiles, code: result.code, exportsChanged, runtimeRouting, packingFiles, loaderRecords: [], diagnostics: result.diagnostics })
   }
   // Routing edits TypeScript the loader records name, so it comes first.
-  const routed = config.routeBundledImports ? routeBundledImports({ root: t, packages: config.packages, ts: typeScriptOf(config), compiler: compilerOf(config) }) : null
+  const routed = bundledImports(config, { root: t, outputs })
   const sourceDeclarations=sourceDeclarationImports(config,{emitted:sourceOutputs})
   // A restored package emitted nothing and gets no record, as before.
   const recorded = emitted.filter((entry) => !entry.restored)
+  // Private imports can be the first route in a package. Include their output
+  // in the package's packing policy before records fingerprint the manifest.
+  for (const entry of recorded) {
+    const directory = join(t, entry.package), manifest = join(directory, "package.json")
+    const before = readFileSync(manifest, "utf8"), pkg = JSON.parse(before)
+    const packing = syncPackPolicy(directory, pkg)
+    entry.packingFiles = [...new Set([...(entry.packingFiles ?? []), ...packing.files.map(file => posix.join(entry.package, file))])]
+    if (JSON.stringify(pkg) !== JSON.stringify(JSON.parse(before))) writeFileSync(manifest, JSON.stringify(pkg, null, 2) + "\n")
+  }
   for (const entry of recorded) entry.loaderRecords = await writeLoaderRecords({ compiler: compilerOf(config), packageDir: join(t, entry.package), root: t })
   for (const entry of recorded) entry.loaderRecords = await checkLoaderRecords({ compiler: compilerOf(config), packageDir: join(t, entry.package), root: t, records: entry.loaderRecords })
-  if (routed?.changed.length) emitted.push({ package: ".", files: 0, code: 0, restored: true, packingFiles: routed.changed, routedImports: routed.modules })
+  if (routed.changed.length || routed.warnings?.length) emitted.push({ package: ".", files: 0, code: 0, restored: true, packingFiles: routed.changed, routedImports: routed.modules, ...(routed.warnings ? { warnings: routed.warnings } : {}) })
   if(sourceDeclarations.changed.length || sourceDeclarations.warnings.length) emitted.push({package:".",files:0,code:0,restored:true,packingFiles:sourceDeclarations.changed,sourceDeclarations})
   return emitted
 }
@@ -1751,7 +1772,7 @@ export async function revertMany(options) {
   const requests = options.files ?? []
   if (!requests.length) throw new Error("revert needs at least one file")
   sourceDeclarationImports(config,{restore:true})
-  if (config.routeBundledImports) routeBundledImports({ root: config.target, packages: config.packages, ts: typeScriptOf(config), compiler: compilerOf(config), restore: true })
+  bundledImports(config, { restore: true })
   const seen = new Set(), prepared = []
   for (const item of requests) {
     const { file, reason = options.reason } = typeof item === "string" ? { file: item } : item
