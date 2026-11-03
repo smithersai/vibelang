@@ -887,6 +887,7 @@ typescript/vibelang/cases/conditional-record-environment/a.vibe:32:24 lambda pla
 typescript/vibelang/cases/conditional-record-environment/a.vibe:49:43 lambda plain annotation
 typescript/vibelang/cases/conditional-record-inexact.fail/a.vibe:2:24 lambda plain annotation
 typescript/vibelang/cases/conditional-record/a.vibe:1:24 lambda plain annotation
+typescript/vibelang/cases/conf-fork-object-operand.fail/main.vibe:12:9 lambda plain fallback
 typescript/vibelang/cases/conf-stream-head-environment/main.vibe:14:30 lambda plain annotation
 typescript/vibelang/cases/conf-stream-head-environment/main.vibe:15:30 lambda plain annotation
 typescript/vibelang/cases/conf-stream-head-environment/main.vibe:16:31 lambda plain table
@@ -5355,6 +5356,9 @@ typescript/vibelang/cases/service-value-lambdas/main.vibe:23:21 lambda effectFn 
 typescript/vibelang/cases/service-value-lambdas/main.vibe:25:21 lambda effectFn service
 typescript/vibelang/cases/service-value-lambdas/main.vibe:4:17 lambda plain table
 typescript/vibelang/cases/service-value-lambdas/main.vibe:4:23 lambda effectFn service
+typescript/vibelang/cases/spec-registry-vip-diagnostics.fail/main.vibe:6:37 lambda dual fallback
+typescript/vibelang/cases/spec-registry-vip-diagnostics.fail/main.vibe:9:10 lambda effectFn table
+typescript/vibelang/cases/spec-registry-vip-diagnostics.fail/main.vibe:9:31 lambda effectFn table
 typescript/vibelang/cases/stack-depth/stack-depth.vibe:45:20 lambda plain annotation
 typescript/vibelang/cases/stack-depth/stack-depth.vibe:53:29 lambda program table
 typescript/vibelang/cases/stack-depth/stack-depth.vibe:54:5 lambda effectFn table
