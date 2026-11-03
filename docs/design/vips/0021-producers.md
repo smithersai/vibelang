@@ -44,3 +44,5 @@ JavaScript's `async function*`, Kotlin's `flow { emit(x) }`, Python's async gene
 > "Accept"
 
 *Corrected 2026-10-29: one sequential emitter can run up to two elements ahead (one buffered, one waiting); concurrent emitters can each have a pending offer. The Effect TS needs `Queue.end(queue)` after the body, or the stream never completes (found by the differential fuzz suite).*
+
+- **Clarified 2026-11-03: written producer contracts.** Written return annotations follow TypeScript's ordinary contract checking on the `Stream.callback` counterpart. A written `Stream.Stream<A, E, R>` checks the yielded values, escaping errors and supplied requirements; otherwise infer the body channels and check the resulting Stream against the annotation. Aliases, `any`, `unknown` and compatible unions are admitted; an incompatible annotation is `EK2102`. This adds no annotation syntax.
