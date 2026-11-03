@@ -167,6 +167,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - The failure-spec fuzz suite still marked seven working Promise-wrapper and typed-failure rules as broken. Their stale pending markers are removed, so those regression cases now run normally.
 
+- The no-throw documentation check rejected a field decorator inside `async` or `effect` code as though it were a field initializer. It now checks decorator expressions in their surrounding context and field values in their own synchronous context.
+
 - A legacy typed catch with no written `throw` failed the no-throw documentation check when another function threw. The check now distinguishes source throws from generated fallback rethrows.
 
 - The no-throw documentation check rejected a legal `do` expression in an `async` parameter default; it now uses VibeLang’s parser and preserves the source callable context.

@@ -55,11 +55,13 @@ export function plainThrows(fence) {
       for (const parameter of node.params) visit(parameter, node.async && !node.generator && !effect, node)
       return
     }
-    if (["PropertyDefinition", "StaticBlock"].includes(node.type)) allowed = false
+    if (node.type === "StaticBlock") allowed = false
+    const field = ["PropertyDefinition", "TSAbstractPropertyDefinition", "AccessorProperty", "TSAbstractAccessorProperty"].includes(node.type)
     for (const [key, value] of Object.entries(node)) {
       if (["tokens", "comments"].includes(key)) continue
-      if (Array.isArray(value)) for (const child of value) visit(child, allowed, node)
-      else visit(value, allowed, node)
+      const childContext = field && key === "value" ? false : allowed
+      if (Array.isArray(value)) for (const child of value) visit(child, childContext, node)
+      else visit(value, childContext, node)
     }
   }
   visit(source)
@@ -359,4 +361,13 @@ test("plainThrows checks source throw expressions as well as statements", () => 
   assert.equal(plainThrows("function f(x: number | undefined) { return x ?? throw 1 }").length, 1)
   assert.deepEqual(plainThrows("effect function f(x: number | undefined) { return x ?? throw 1 }"), [])
   assert.deepEqual(plainThrows("async function f(x: number | undefined) { return x ?? throw 1 }"), [])
+})
+
+test("plainThrows keeps field decorators in the enclosing source context (PREVIEW-20)", () => {
+  fc.assert(fc.property(fc.constantFrom("async", "effect"), fc.integer(), fc.constantFrom("value", "other"), fc.constantFrom(" ", "\n  "), (modifier, value, field, layout) => {
+    const source = `export ${modifier} function f(flag: boolean) { class C { @(${layout}do { if (flag) throw ${value}; ((_value: undefined, _context: ClassFieldDecoratorContext) => {}) }) ${field} = 0 }; return C }`
+    assert.deepEqual(plainThrows(source), [])
+    assert.equal(plainThrows(`export ${modifier} function f(flag: boolean) { class C { ${field} = do { if (flag) throw ${value}; 0 } }; return C }`).length, 1)
+    assert.equal(plainThrows(`export ${modifier} function f() { class C { @(() => { throw ${value} }) ${field} = 0 }; return C }`).length, 1)
+  }), { seed: 9720, numRuns: 100 })
 })
