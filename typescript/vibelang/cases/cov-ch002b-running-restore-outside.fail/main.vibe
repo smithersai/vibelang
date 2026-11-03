@@ -1,0 +1,3 @@
+// expect: EK2111
+// Chapter 002: restore requires lexical mask; docs/design/src/002-running.md#83d76bf57a92866d
+export effect function invalid() { restore {} }

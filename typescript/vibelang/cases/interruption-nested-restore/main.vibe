@@ -19,3 +19,7 @@ export effect function main() {
   const exit = try Effect.exit(Fiber.join(fiber))
   return [Exit.hasInterrupts(exit), events, try ownMask()]
 }
+// Chapter 002: nested lexical mask restore and interruption trace; docs/design/src/002-running.md#e374924aeb645c4c
+// Chapter 002: nested lexical mask restore and interruption trace; docs/design/src/002-running.md#75a943a8b0682763
+// Chapter 002: nested lexical mask restore and interruption trace; docs/design/src/002-running.md#5740eb7a5817bc88
+// Chapter 002: nested lexical mask restore and interruption trace; docs/design/src/002-running.md#c3d8428c9c08506d

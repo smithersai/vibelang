@@ -1,0 +1,12 @@
+// Chapter 002: caller-side operand returns and per-item protocols after transparent regions; docs/design/src/002-running.md#501c2207dc7483bf
+// Chapter 002: caller-side operand returns and per-item protocols after transparent regions; docs/design/src/002-running.md#771ba86684b6d909
+import { Effect, Stream, Layer } from "effect"
+effect function protocols() {
+ const seen:number[]=[]
+ outer:for try(const n of Stream.make(1,2,3,4)) { provide Layer.empty {if(n===1)continue outer;if(n===4)break outer;seen.push(n)} }
+ each:for concurrent(1)(const n of [1,2,3]){ uninterruptible{if(n===2)continue each;seen.push(n+10)} }
+ const a=do{for try(const n of Stream.make(1)){};7}
+ const b=do{for concurrent(const n of [1]){};8}
+ return [seen,a,b]
+}
+export effect function main():unknown!! {return try protocols()}

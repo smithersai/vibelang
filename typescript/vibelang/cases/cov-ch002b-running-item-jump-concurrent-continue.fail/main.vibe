@@ -1,0 +1,5 @@
+// expect: EK1905
+// Chapter 002: per-item head and body reject outward source-function jumps; docs/design/src/002-running.md#3faf8a0e94f6daf7
+// Chapter 002: per-item head and body reject outward source-function jumps; docs/design/src/002-running.md#1ae522d672c22712
+// Chapter 002: per-item head and body reject outward source-function jumps; docs/design/src/002-running.md#f88525c9fb7a45b5
+export effect function invalid(){outer:for(const n of [1]){for concurrent(const x of [n]){continue outer}}}

@@ -1,0 +1,10 @@
+// Chapter 002: restore transparent regions Exit parity; docs/design/src/002-running.md#1f9fb1e5b9f714ff
+// Chapter 002: restore transparent regions Exit parity; docs/design/src/002-running.md#14726600cbba222f
+// Chapter 002: restore transparent regions Exit parity; docs/design/src/002-running.md#8a971819eca49cc3
+// Chapter 002: restore transparent regions Exit parity; docs/design/src/002-running.md#d682a1abb700f85a
+import {Effect,Layer,Stream} from "effect"
+service Svc{n:number}
+effect function provided(){uninterruptible{provide Layer.succeed(Svc,{n:1}){restore{return (try Svc).n}}}}
+effect function forced(){uninterruptible{interruptible{restore{return 2}}}}
+effect function streamed(){let total=0;uninterruptible{for try(const n of Stream.make(3)){restore{total+=n}}};return total}
+export effect function main():unknown!!{return [try provided(),try forced(),try streamed()]}

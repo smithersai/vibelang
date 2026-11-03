@@ -1,0 +1,6 @@
+// expect: EK2002
+// Chapter 002: per-item head and body reject outward source-function jumps; docs/design/src/002-running.md#3faf8a0e94f6daf7
+// Chapter 002: iteration jump diagnostics retain their identities; docs/design/src/002-running.md#a46d9c4d7b62814f
+// Chapter 002: per-item head and body reject outward source-function jumps; docs/design/src/002-running.md#1ae522d672c22712
+// Chapter 002: per-item head and body reject outward source-function jumps; docs/design/src/002-running.md#f88525c9fb7a45b5
+export effect function invalid(){for try(const {n=do{return 7}} of Stream.make({} as {n?:number})) {}}

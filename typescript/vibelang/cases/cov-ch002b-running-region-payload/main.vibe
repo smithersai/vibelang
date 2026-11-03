@@ -1,0 +1,67 @@
+// Chapter 002: primitive finalizer payload; docs/design/src/002-running.md#38e6a67e74b4ce42
+// Chapter 002: primitive finalizer payload; docs/design/src/002-running.md#0b22e830187ce1e3
+// Chapter 002: primitive finalizer payload; docs/design/src/002-running.md#0f47756770a52078
+// Chapter 002: primitive finalizer payload; docs/design/src/002-running.md#7919a2263ec77257
+// Chapter 002: primitive finalizer payload; docs/design/src/002-running.md#8b6beb99b4fe1cb8
+// Chapter 002: primitive finalizer payload; docs/design/src/002-running.md#4a9e2321e123248f
+// Chapter 002: primitive finalizer payload; docs/design/src/002-running.md#10fe2fc7ebf674b4
+// Chapter 002: primitive finalizer payload; docs/design/src/002-running.md#4de14a55951fee8d
+// Chapter 002: primitive finalizer payload; docs/design/src/002-running.md#0b94a05526e8648d
+// Chapter 002: primitive finalizer payload; docs/design/src/002-running.md#82e6d9fa6df266e3
+// Chapter 002: primitive finalizer payload; docs/design/src/002-running.md#0228ba7ba36954c4
+// Chapter 002: primitive finalizer payload; docs/design/src/002-running.md#265fd52d7fef456e
+// Chapter 002: primitive finalizer payload; docs/design/src/002-running.md#cd61749d81295e90
+// Chapter 002: primitive finalizer payload; docs/design/src/002-running.md#7119ce71e2994c1a
+// Chapter 002: primitive finalizer payload; docs/design/src/002-running.md#2622127080225055
+// Chapter 002: primitive finalizer payload; docs/design/src/002-running.md#8045815d34eb09ae
+// Chapter 002: primitive finalizer payload; docs/design/src/002-running.md#d8e5847293411f64
+// Chapter 002: primitive finalizer payload; docs/design/src/002-running.md#ba5d3fdc8ac437c2
+import { Effect, Exit, Layer } from "effect"
+type Payload = { readonly n: number }
+function observed(events: unknown[]) {
+ return Layer.effectDiscard(Effect.acquireRelease(Effect.void, (_resource, ex) => Effect.sync(() => {
+   events.push(Exit.isSuccess(ex) ? ex.value : "failure")
+ })))
+}
+effect function normal(events: unknown[]) {
+ return do { provide observed(events) { 7 } }
+}
+effect function returned(events: unknown[], value: Payload) {
+ provide observed(events) { uninterruptible { return value } }
+}
+effect function bare(events: unknown[]) { provide observed(events) { return } }
+effect function jumped(events: unknown[]) {
+ let count = 0
+ outer: for (let n = 0; n < 3; n++) {
+   provide observed(events) {
+     if (n === 0) continue outer
+     if (n === 2) break outer
+     count += n
+   }
+ }
+ return count
+}
+effect function completions() {
+ const empty = do { 5; uninterruptible {} }
+ const explicit = do { 5; uninterruptible { undefined } }
+ const value = do { interruptible { 7 } }
+ const restored = do { uninterruptible { restore { 9 } } }
+ const labeled = do { label: { provide Layer.empty { 11; break label } } }
+ return [empty, explicit === undefined, value, restored, labeled]
+}
+class Base {
+ n = 13
+ effect value() { provide Layer.empty { return this.n } }
+}
+class Child extends Base {
+ effect value() { uninterruptible { return try super.value() } }
+}
+export effect function main(): unknown!! {
+ const events: unknown[] = []
+ const payload = { n: 17 }
+ const result = try normal(events)
+ const same = (try returned(events, payload)) === payload
+ const nothing = (try bare(events)) === undefined
+ const count = try jumped(events)
+ return [result, same, nothing, count, events, try completions(), try new Child().value()]
+}

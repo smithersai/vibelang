@@ -1,0 +1,6 @@
+// Chapter 002: caller operand return Exit parity; docs/design/src/002-running.md#2b35eaa23844921c
+// Chapter 002: caller operand return Exit parity; docs/design/src/002-running.md#a0ad2df8bbcc28ef
+import {Effect,Stream} from "effect"
+effect function limit(){for concurrent(do{return 7})(const n of [1]){};return 0}
+effect function operand(){for try(const n of do{return 8;Stream.make(1)}){};return 0}
+export effect function main():unknown!!{return [try limit(),try operand()]}

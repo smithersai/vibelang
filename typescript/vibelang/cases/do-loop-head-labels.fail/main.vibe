@@ -30,3 +30,4 @@ export function enclosingContinue(): void {
     outer: middle: inner: while (do { continue enclosing; true }) {}
   }
 }
+// Chapter 002: do head jump early errors remain native; docs/design/src/002-running.md#183271dc7fe9162f

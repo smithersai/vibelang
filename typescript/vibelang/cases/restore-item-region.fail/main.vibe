@@ -33,3 +33,8 @@ export effect function acrossFunction() {
 export effect function acrossMethod() {
   uninterruptible { const o = { effect m() { restore { try poll } } }; try o.m() }
 }
+// Chapter 002: independent activations and concurrent items reject outer restore; docs/design/src/002-running.md#6bd023d928fd7cd0
+// Chapter 002: independent activations and concurrent items reject outer restore; docs/design/src/002-running.md#a2ee1f76e63e9fad
+// Chapter 002: independent Effect activation and concurrent head mask boundaries; docs/design/src/002-running.md#da90d4b96c946a12
+// Chapter 002: independent Effect activation and concurrent head mask boundaries; docs/design/src/002-running.md#b7e184990d614742
+// Chapter 002: independent Effect activation and concurrent head mask boundaries; docs/design/src/002-running.md#705d230ea6707e1f
