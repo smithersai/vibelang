@@ -824,6 +824,7 @@ function prepareComparison(ts, before, after, options, progress) {
   const checks = []
   const imports = []
   const bridges = new Map()
+  const genericBridges = new Map()
   let counter = 0
   const printer = ts.createPrinter()
   const sourceExports = (file, entry, side) => {
@@ -997,6 +998,12 @@ function prepareComparison(ts, before, after, options, progress) {
               else local = parent.name.text + "." + local
             }
           }
+          // Closure interning already proves the complete declaration and
+          // dependencies equivalent. Reuse its bridge by canonical module
+          // and full namespace path; a fresh alias would give the same
+          // recursive generic function two unnecessary tsc identities.
+          const key = JSON.stringify([equivalents.get(source.fileName) ?? source.fileName, local])
+          if (genericBridges.has(key)) return genericBridges.get(key)
           const exportAssignment = source.statements.some(s => ts.isExportAssignment(s) && s.isExportEquals)
           const definition = `export type ${id} = <${params}>() => ${local}<${args}>;`
           if (ambientModule || globalAugmentation || !ts.isExternalModule(source)) {
@@ -1016,10 +1023,13 @@ function prepareComparison(ts, before, after, options, progress) {
           // in the probe instead, preserving the original ambient environment.
           if (!ts.isExternalModule(source)) {
             imports.push(`type ${id} = <${params}>() => ${path}<${args}>;`)
+            genericBridges.set(key, id)
             return id
           }
           bridges.set(source.fileName, (bridges.get(source.fileName) ?? source.text) + text)
-          return `import(${JSON.stringify(slash(source.fileName))}).${id}`
+          const reference = `import(${JSON.stringify(slash(source.fileName))}).${id}`
+          genericBridges.set(key, reference)
+          return reference
         }
         recordCheck(entrypoint, name, bridge(a, apath), bridge(b, bpath), aspect)
       }

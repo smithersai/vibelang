@@ -197,3 +197,10 @@ erased generic bodies cannot hide changed constraints. Input diagnostics,
 error taint, export names and documentation remain checked. Profiling records
 each recovered assertion as `probe-reflexive-type`; every other depth error
 remains invalid.
+
+Generic type bridges are reused only for the same declaration in an already
+proven equivalent complete module closure. Their key includes the canonical
+module and full namespace path, so equal leaf names cannot merge different
+generic constraints. Reusing the original bridge also lets exact TypeScript
+type identity prove reflexive recursive generic comparisons. Input errors
+and documentation remain checked independently.

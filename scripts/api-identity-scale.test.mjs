@@ -399,3 +399,58 @@ test("different recursive operands retain changed generic constraints", () => {
     assert.ok(result.typeDifferences.some(d=>d.export==="make"),JSON.stringify(result))
   })
 })
+
+const bridgeCorpus = () => JSON.parse(readFileSync(new URL("./api-identity-corpus/opencode-reflexive-type-bridges.json", import.meta.url))).declarations
+test("generic type bridges preserve identity of recursive declarations and their copies", () => {
+  const text=bridgeCorpus()
+  fixture({"index.d.ts":text},{"index.d.ts":text},(a,b)=>{
+    for(const target of [a,b]){
+      const result=compareApiIdentity(ts,a,target,options)
+      assert.equal(result.identical,true,JSON.stringify(result))
+      assert.equal(result.comparisonComplete,true)
+    }
+  })
+})
+
+test("generic bridge keys retain full namespace identity and changed constraints", () => {
+  const implementation="export namespace A { export type X<T extends string> = string }\nexport namespace B { export type X<T extends number> = string }".replaceAll("\\n","\n")
+  const before={"implementation.d.ts":implementation,"index.d.ts":'export { A as N } from "./implementation.js";'}
+  const after={...before,"index.d.ts":'export { B as N } from "./implementation.js";'}
+  fixture(before,after,(a,b)=>{
+    const result=compareApiIdentity(ts,a,b,{...options,beforeEntrypoints:{".":join(a,"index.d.ts")},afterEntrypoints:{".":join(b,"index.d.ts")}})
+    assert.equal(result.identical,false,JSON.stringify(result))
+    assert.equal(result.comparisonComplete,true)
+    assert.ok(result.typeDifferences.some(d=>d.export==="N.X"),JSON.stringify(result))
+  })
+})
+
+test("generic bridge sharing cannot hide invalid exported input types", () => {
+  const text=bridgeCorpus()+"\nexport type Broken = Missing;".replaceAll("\\n","\n")
+  fixture({"index.d.ts":text},{"index.d.ts":text},(a,b)=>{
+    const result=compareApiIdentity(ts,a,b,options)
+    assert.equal(result.identical,false)
+    assert.equal(result.comparisonComplete,false)
+    assert.ok(result.environmentDiagnostics.some(d=>d.blocking&&/TS2304/.test(d.diagnostic)),JSON.stringify(result))
+  })
+})
+
+test("property: shared generic bridges preserve recursive namespaces and comments", async()=>{
+  await checkProperty(fc,{
+    name:"api-identity-reflexive-type-bridges",
+    rule:"Will: exported type identity and documentation are preserved in self and copy comparisons, including recursive generic declarations and namespace-qualified symbols",
+    command:"node --test scripts/api-identity-scale.test.mjs",
+    numRuns:6,
+    arbitrary:fc.record({namespace:fc.constantFrom("Alpha","Beta","Gamma"),tag:fc.integer({min:1,max:999}),changedDoc:fc.boolean(),batch:fc.integer({min:1,max:8})}),
+    check:({namespace,tag,changedDoc,batch})=>{
+      const body=bridgeCorpus().replaceAll("LayerNode.Tag","LayerNode.Tag"+tag)
+      const before={"implementation.d.ts":body,"index.d.ts":'export * as '+namespace+' from "./implementation.js";'}
+      const after={...before,"implementation.d.ts":changedDoc?body.replace("Decorate the implementation","Changed implementation"):body}
+      fixture(before,after,(a,b)=>{
+        const result=compareApiIdentity(ts,a,b,{...options,probeBatchSize:batch})
+        assert.equal(result.comparisonComplete,true,JSON.stringify(result))
+        assert.equal(result.identical,!changedDoc)
+        if(changedDoc)assert.ok(result.docDifferences.length>0)
+      })
+    }
+  })
+})
