@@ -316,6 +316,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Knip could hide an unused export when an ordinary comment followed `@public`; the adapter now preserves that comment and Knip applies the same attachment rules as for TypeScript.
 
 - Knip marked later names in a `@public` variable declaration as unused; all bindings in that declaration now keep the marker.
+
+- Migration regression checks now cover cold program branches, callbacks returning `Effect.void` and stored generator pipelines against their TypeScript originals.
 - The ESLint corpus check could report a missing identifier node for a name written with a Unicode escape; it now matches the decoded name at the same source position while still detecting missing nodes.
 - Nested schema alias rules still appeared as known gaps after their fix landed; those rules and their corpus inputs now run as strict checks of `EK2109`.
 

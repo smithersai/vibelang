@@ -1,0 +1,2 @@
+go test fuzz v1
+string("native-ts:\n-- main.vibe --\nimport { Effect } from \"effect\";\nimport * as SqlClient from \"effect/sql/SqlClient\";\nexport default Effect.asVoid(SqlClient.SqlClient);\nexport const main = () => Effect.succeed(1);\n")
