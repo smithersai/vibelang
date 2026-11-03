@@ -394,3 +394,21 @@ test("statement-continuation rejects round 17 OPUS-3's assertion line after an a
     expect.stringMatching(/^this line continues the one before it/)
   ])
 })
+
+test("diagnostic-priority rejects an appended priority row across code values", () => {
+  fc.assert(fc.property(fc.integer({ min: 0, max: 8000 }), n => {
+    const text = [
+      "| Rule | Diagnostic |", "| --- | --- |",
+      "| a constructor | EK1301 |", "| any other member | EK1304 |",
+      "| an ambient declaration comes ahead of other diagnostics | EK" + (1307 + n) + " |",
+      "", "The last row applies only when no other row applies."
+    ].join("\n")
+    expect(lint(new Map([["src/test.md", text]]), rule("diagnostic-priority"))).toHaveLength(1)
+    const corrected = text.replace("The last row", "The general member rule, EK1304,")
+    expect(lint(new Map([["src/test.md", corrected]]), rule("diagnostic-priority"))).toEqual([])
+  }), { numRuns: 100, seed: 17 })
+})
+test("diagnostic-priority accepts a genuinely last fallback", () => {
+  const text = "| Rule | Diagnostic |\n| --- | --- |\n| comes ahead of other diagnostics | EK1307 |\n| any other member | EK1304 |\n\nThe last row applies only when no other row applies."
+  expect(lint(new Map([["src/test.md", text]]), rule("diagnostic-priority"))).toEqual([])
+})

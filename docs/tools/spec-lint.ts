@@ -535,6 +535,31 @@ const plainUnknownCall: Rule = {
   }
 }
 rules.push(fallbackRow, plainUnknownCall)
+// A later priority row cannot also be a positional fallback. Name catch-all
+// diagnostics so appending a declaration-wide check cannot silently change them.
+const diagnosticPriority: Rule = {
+  name: "diagnostic-priority",
+  finding: "r17 ASTRA-1: last-row fallback prose suppressed the newly appended ambient error",
+  check(spec) {
+    const out: Violation[] = []
+    for (const [file, text] of chapters(spec)) {
+      for (const m of prose(text).matchAll(/The last row applies only when no other row applies\./g)) {
+        const before = text.slice(0, m.index)
+        const tables = [...before.matchAll(/(?:^\|[^\n]*\n)+/gm)]
+        const table = tables.at(-1)?.[0]
+        const last = table?.trimEnd().split("\n").at(-1)
+        if (last && /(?:ahead of|before).*diagnostic/i.test(last)) {
+          out.push({ rule: this.name, file, line: lineAt(text, m.index!), message: "the last diagnostic row claims priority and cannot also be the fallback; name the general member rule" })
+        }
+      }
+    }
+    return out
+  }
+}
+
+rules.push(diagnosticPriority)
+kinds.tables!.push("diagnostic-priority")
+
 // VIP-39 gives .vibex the .tsx language variant; VIP-40 preserves that
 // variant when exposing each body to TypeScript tools, not only on extraction.
 const moduleProjectionKind: Rule = {
