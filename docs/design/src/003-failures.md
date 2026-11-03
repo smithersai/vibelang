@@ -68,6 +68,31 @@ Where a throw is allowed at all remains [VIP-4's no-throw rule](#plain-code-neve
 
 VIP-7's direct match-arm body has its separate `"throw" Expression` production: `default: throw a + b;` throws the full operand, as a throw statement does. A throw expression nested within an arm still follows VIP-41.
 
+In effect code a throw expression fails the Effect, exactly as the corresponding throw statement does (VIP-41). Its counterpart is `yield* Effect.fail(e)` in the same expression position, with type `never`:
+
+```vibe es
+// compiler-gap: pending VIP-41
+error Missing
+effect function required(value: string | undefined) {
+  const v = value ?? throw new Missing()
+  return v
+}
+```
+
+```ts effect
+import { Data, Effect } from "effect"
+
+class Missing extends Data.TaggedError("Missing") {}
+function required(value: string | undefined) {
+  return Effect.gen(function* () {
+    const v = value ?? (yield* Effect.fail(new Missing()))
+    return v
+  })
+}
+```
+
+`required("a")` gives `Success("a")`; `required(undefined)` gives `Failure(Missing)`.
+
 ## Thrown types
 
 This section is the one definition of throw tracking; every other chapter refers to it. A callable declared outside VibeLang, in a `.ts`, `.js` or `.d.ts` file, an npm package or a `module` body (VIP-40), carries a thrown type by one rule, as TypeScript's own (VIP-4, amended 2026-11-02):
