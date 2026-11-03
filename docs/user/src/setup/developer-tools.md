@@ -270,6 +270,13 @@ options and reporting unused declarations.
 Setup installs neither an Oxlint patch nor a fork, and no platform-specific
 binary beyond the existing VibeLang compiler.
 
+Source launchers also keep Node child processes registered: setup adapts
+`spawn`, `spawnSync`, `execFile` and `execFileSync` calls with typed source
+entries. Each child receives a `vibelang/register` preload resolved from its
+parent package, including a child with another `cwd`. Starting the parent
+with `--import vibelang/register` alone does not preload a child Node process.
+The launcher's process options and `execFile` callback keep their order and values.
+
 ## ast-grep
 
 `vibelang-ast-grep <output>` compiles every parser declared by

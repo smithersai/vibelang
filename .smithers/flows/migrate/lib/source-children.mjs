@@ -73,7 +73,7 @@ function sourceChildJavaScript(code, ts, typed = true) {
 }
 
 const api = name => name === "node:child_process" || name === "child_process"
-  ? new Set(["spawn", "spawnSync"])
+  ? new Set(["spawn", "spawnSync", "execFile", "execFileSync"])
   : name === "effect/process/ChildProcess" ? new Set(["make"]) : null
 
 // Refresh only the URL binding owned by a previously emitted helper. A
@@ -229,7 +229,7 @@ function addCanonicalSourceChildLoaders(text, ts, { file = "child.ts", type = "m
     const named = clause?.namedBindings
     if (named && ts.isNamespaceImport(named)) namespaces.set(named, methods)
     if (named && ts.isNamedImports(named)) for (const item of named.elements) {
-      if (!item.isTypeOnly && methods.has((item.propertyName ?? item.name).text)) bindings.set(item, true)
+      if (!item.isTypeOnly && methods.has((item.propertyName ?? item.name).text)) bindings.set(item, (item.propertyName ?? item.name).text)
     }
   }
   const options = { noLib: true, noResolve: true, allowJs: true }
@@ -243,18 +243,19 @@ function addCanonicalSourceChildLoaders(text, ts, { file = "child.ts", type = "m
     return node
   }
   const nonSourceArgv = sourceChildArgvProof({ source, ts, checker, template })
-  const calls = []
+  const calls = [], callMethods = new Map()
   const visit = node => {
     if (ts.isCallExpression(node)) {
       const callee = unwrap(node.expression)
-      let known = ts.isIdentifier(callee) && bound(callee, bindings)
+      const binding = ts.isIdentifier(callee) && bound(callee, bindings)
+      let method = binding && bindings.get(binding)
       if (ts.isPropertyAccessExpression(callee) || ts.isElementAccessExpression(callee)) {
         const owner = ts.isIdentifier(callee.expression) && bound(callee.expression, namespaces)
         const property = ts.isPropertyAccessExpression(callee) ? callee.name.text
           : ts.isStringLiteralLike(callee.argumentExpression) ? callee.argumentExpression.text : undefined
-        known ||= owner && namespaces.get(owner).has(property)
+        if (owner && namespaces.get(owner).has(property)) method ||= property
       }
-      if (known) calls.push(node)
+      if (method) { calls.push(node); callMethods.set(node, method) }
       if ((node.expression.kind === ts.SyntaxKind.ImportKeyword ||
           ts.isIdentifier(node.expression) && node.expression.text === "require") &&
           node.arguments[0] && ts.isStringLiteralLike(node.arguments[0]) && api(node.arguments[0].text)) {
@@ -403,8 +404,9 @@ function addCanonicalSourceChildLoaders(text, ts, { file = "child.ts", type = "m
   const helper = fresh("__vibelangSourceChild"), url = fresh("__vibelangNodeURL"), schema = fresh("__vibelangSchema")
   const edits = []
   for (const call of calls) {
-    if (call.arguments.length < 2 || call.arguments.length > 3 || call.arguments.some(ts.isSpreadElement)) {
-      warn(call, "source-child arguments must be an explicit command, argv array and optional options object")
+    const maxArguments = callMethods.get(call) === "execFile" ? 4 : 3
+    if (call.arguments.length < 2 || call.arguments.length > maxArguments || call.arguments.some(ts.isSpreadElement)) {
+      warn(call, "source-child arguments must be an explicit command, argv array and optional options object, plus an optional callback for execFile")
       continue
     }
     const argument = unwrap(call.arguments[1])

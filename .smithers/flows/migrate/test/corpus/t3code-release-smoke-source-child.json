@@ -1,0 +1,6 @@
+{
+  "key": "t3code-ci:release-smoke-node-child",
+  "repo": "t3code",
+  "file": "scripts/release-smoke.ts",
+  "source": "import * as NodeChildProcess from \"node:child_process\";\nimport * as NodePath from \"node:path\";\nexport function launch(repoRoot: string) { return NodeChildProcess.execFileSync(process.execPath, [NodePath.resolve(repoRoot, \"child.ts\"), \"9.9.9-smoke.0\", \"--root\", repoRoot], { encoding: \"utf8\" }); }\n"
+}
