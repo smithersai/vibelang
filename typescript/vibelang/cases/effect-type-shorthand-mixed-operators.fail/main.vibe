@@ -1,0 +1,21 @@
+// expect: EK0301
+type A = string
+type B = number
+type E = Error
+type Union = A | B!E
+type Intersect = A & B!E
+type Conditional<T> = T extends string ? A!E : B
+type ReturnUnion = () => A!E | B
+export {}
+
+// VIP-3 unparenthesized unions intersections and conditional parts require grouping; rule: docs/design/vips/0003-effect-type-shorthand.md#9286568c1e97a32c
+
+// VIP-3 unparenthesized unions intersections and conditional parts require grouping; rule: docs/design/vips/0003-effect-type-shorthand.md#546afc9de3e52518
+
+// VIP-3 unparenthesized unions intersections and conditional parts require grouping; rule: docs/design/vips/0003-effect-type-shorthand.md#67114b9b8e4bb97a
+
+// VIP-3 unparenthesized unions intersections and conditional parts require grouping; rule: docs/design/vips/0003-effect-type-shorthand.md#91374d4e09cb4c63
+
+// VIP-3 unparenthesized unions intersections and conditional parts require grouping; rule: docs/design/vips/0003-effect-type-shorthand.md#8836d4592f3cadff
+
+// VIP-3 unparenthesized unions intersections and conditional parts require grouping; rule: docs/design/vips/0003-effect-type-shorthand.md#df3d2ec45ae57bea

@@ -1,0 +1,18 @@
+// expect: TS2362 TS2365
+declare const x: unknown
+const subtract = (x as number!!) - 1
+const product = x as number!! * 2
+const comparison = x as number!! < 3
+const chosen = x as number!! ? 1 : 2
+const negative = x as number!! - 1
+export {}
+
+// VIP-3 ordinary numeric checking after optional requirement and explicit assertion grouping; rule: docs/design/vips/0003-effect-type-shorthand.md#bd79b3edfaff0515
+
+// VIP-3 ordinary numeric checking after optional requirement and explicit assertion grouping; rule: docs/design/vips/0003-effect-type-shorthand.md#e0bb145c5e872ae5
+
+// VIP-3 ordinary numeric checking after optional requirement and explicit assertion grouping; rule: docs/design/vips/0003-effect-type-shorthand.md#f042d6ad361a9418
+
+// VIP-3 ordinary numeric checking after optional requirement and explicit assertion grouping; rule: docs/design/vips/0003-effect-type-shorthand.md#685213e5bb5d470f
+
+// VIP-3 ordinary numeric checking after optional requirement and explicit assertion grouping; rule: docs/design/vips/0003-effect-type-shorthand.md#5599de0b124fd136

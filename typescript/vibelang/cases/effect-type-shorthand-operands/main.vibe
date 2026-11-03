@@ -1,0 +1,37 @@
+// VIP-3 ordinary required and optional operands; rule: docs/design/vips/0003-effect-type-shorthand.md#d9033cc6e297d80b
+// VIP-3 ordinary required and optional operands; rule: docs/design/vips/0003-effect-type-shorthand.md#cf2d8196abe4c8d5
+// VIP-3 ordinary required and optional operands; rule: docs/design/vips/0003-effect-type-shorthand.md#6c8584324ebebea0
+// VIP-3 ordinary required and optional operands; rule: docs/design/vips/0003-effect-type-shorthand.md#e56e70ab2b582176
+// VIP-3 ordinary required and optional operands; rule: docs/design/vips/0003-effect-type-shorthand.md#6d1186ad8aa2eab7
+// VIP-3 ordinary required and optional operands; rule: docs/design/vips/0003-effect-type-shorthand.md#de2cf52baa6eba21
+// VIP-3 ordinary required and optional operands; rule: docs/design/vips/0003-effect-type-shorthand.md#4e08b2fe7fee6780
+// VIP-3 ordinary required and optional operands; rule: docs/design/vips/0003-effect-type-shorthand.md#6c701aea14e1000d
+// VIP-3 ordinary required and optional operands; rule: docs/design/vips/0003-effect-type-shorthand.md#602d79ca701fffdb
+// VIP-3 ordinary required and optional operands; rule: docs/design/vips/0003-effect-type-shorthand.md#8316c6c654ed76f2
+// VIP-3 ordinary required and optional operands; rule: docs/design/vips/0003-effect-type-shorthand.md#f0114eb75fef3b07
+// VIP-3 ordinary required and optional operands; rule: docs/design/vips/0003-effect-type-shorthand.md#2db238a80da80735
+// VIP-3 ordinary required and optional operands; rule: docs/design/vips/0003-effect-type-shorthand.md#87f7ca61d49b28f1
+// VIP-3 ordinary required and optional operands; rule: docs/design/vips/0003-effect-type-shorthand.md#3928a77f7749345b
+// VIP-3 ordinary required and optional operands; rule: docs/design/vips/0003-effect-type-shorthand.md#e78c68cf010b7575
+// VIP-3 ordinary required and optional operands; rule: docs/design/vips/0003-effect-type-shorthand.md#e906c24830078272
+// VIP-3 ordinary required and optional operands; rule: docs/design/vips/0003-effect-type-shorthand.md#7cb1fd5518014024
+// VIP-3 ordinary required and optional operands; rule: docs/design/vips/0003-effect-type-shorthand.md#89cc14f182a5602e
+import { Effect } from "effect"
+type Equal<A, B> = (<T>() => T extends A ? 1 : 2) extends (<T>() => T extends B ? 1 : 2) ? true : false
+type ObjectSlots = number!{ reason: string }!{ service: number }
+type ObjectRequirement = number!!({ service: number })
+type Negative = number!!-1
+type TupleRequirement = number!![0]
+type GenericRequirement = number!!(<T>() => T)
+type Find = (id: string) => number!string
+type Make = new () => number!string
+export const checks: [
+  Equal<ObjectSlots, Effect.Effect<number, { reason: string }, { service: number }>>,
+  Equal<ObjectRequirement, Effect.Effect<number, never, { service: number }>>,
+  Equal<Negative, Effect.Effect<number, never, -1>>,
+  Equal<TupleRequirement, Effect.Effect<number, never, [0]>>,
+  Equal<GenericRequirement, Effect.Effect<number, never, <T>() => T>>,
+  Equal<ReturnType<Find>, Effect.Effect<number, string>>,
+  Equal<InstanceType<Make>, Effect.Effect<number, string>>
+] = [true, true, true, true, true, true, true]
+export effect function main(): number!! { return 1 }

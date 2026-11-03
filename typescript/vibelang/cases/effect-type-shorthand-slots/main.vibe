@@ -1,0 +1,32 @@
+// VIP-3 slot defaults and alias identity; rule: docs/design/vips/0003-effect-type-shorthand.md#15a8317da19c0420
+// VIP-3 slot defaults and alias identity; rule: docs/design/vips/0003-effect-type-shorthand.md#77f627cd96c4f68e
+// VIP-3 slot defaults and alias identity; rule: docs/design/vips/0003-effect-type-shorthand.md#eb2b2a3273826f3c
+// VIP-3 slot defaults and alias identity; rule: docs/design/vips/0003-effect-type-shorthand.md#bf99b2499bf68d75
+// VIP-3 slot defaults and alias identity; rule: docs/design/vips/0003-effect-type-shorthand.md#920c069d90dba623
+// VIP-3 slot defaults and alias identity; rule: docs/design/vips/0003-effect-type-shorthand.md#4d0f7fa6ba21c85e
+// VIP-3 slot defaults and alias identity; rule: docs/design/vips/0003-effect-type-shorthand.md#4ed0b2751a60f75d
+// VIP-3 slot defaults and alias identity; rule: docs/design/vips/0003-effect-type-shorthand.md#fa3fafe73a2cd733
+// VIP-3 slot defaults and alias identity; rule: docs/design/vips/0003-effect-type-shorthand.md#ab213925a10064f9
+import { Effect } from "effect"
+type Equal<A, B> = (<T>() => T extends A ? 1 : 2) extends (<T>() => T extends B ? 1 : 2) ? true : false
+type User = { readonly name: string }
+type NotFound = { readonly _tag: "NotFound" }
+type Users = { readonly users: unique symbol }
+type Full = User!NotFound!Users
+type ErrorOnly = User!NotFound
+type NeedsOnly = User!!Users
+type Neither = User!!
+export const checks: [
+  Equal<Full, Effect.Effect<User, NotFound, Users>>,
+  Equal<ErrorOnly, Effect.Effect<User, NotFound, never>>,
+  Equal<NeedsOnly, Effect.Effect<User, never, Users>>,
+  Equal<Neither, Effect.Effect<User, never, never>>,
+  Equal<Array<User!!>, Array<Effect.Effect<User>>>
+] = [true, true, true, true, true]
+effect function value(): number!! { return 7 }
+effect function failure(): never!string { throw "missing" }
+export effect function main() {
+  return [try value(), failure() catch (e) => e]
+}
+
+// VIP-3 success type precedes the error and requirement slots; rule: docs/design/vips/0003-effect-type-shorthand.md#505fe2a6bf85513b
