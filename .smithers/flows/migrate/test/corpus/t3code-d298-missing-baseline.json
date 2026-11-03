@@ -1,0 +1,7 @@
+{
+  "key": "verify:D298-specifier-excuse-needs-baseline-declaration",
+  "available": "vcs",
+  "missing": "environmentHttp",
+  "before": "export * from \"./vcs.ts\";\nexport * from \"./environmentHttp.ts\";\n",
+  "after": "export * from \"./vcs.js\";\nexport * from \"./environmentHttp.js\";\n"
+}

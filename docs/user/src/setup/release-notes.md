@@ -174,6 +174,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Migration setup added star imports to source-child launchers and triggered their existing lint rules. Helpers now reuse runtime imports or add unaliased named imports, including inside private TypeScript modules, while retaining authored bindings and comments.
 
 - A one-pass migration stopped when a selected module's import closure exceeded `240` modules, such as t3code Mobile's `369`-module closure. The fix pass now uses the original whole project and its compiler safety gate, keeps only selected rewrites, and records why it fell back.
+- Migration verification lost valid `./x.ts` to `./x.js` spelling receipts when another declaration target was absent. It now records each proven pair independently and still refuses unresolved or changed APIs.
 - Migration verification marked every opted-in private module unproven because setup skipped its stock declarations. Setup now captures and checks their API identity, while changed or unavailable APIs still fail.
 - `EK4834`, `EK4835` and `EK4836` warned on `try Effect.succeed(1)` and the other form spellings in plain functions, where `try` is already `EK0501` and runs nothing. These warnings now appear only in effect code, as the specification requires.
 - `--fix` left `try (x |> Effect.catch(%, h))` as written after a pipeline migration. It writes `x catch h` again; the `EK4835` warning still reports only a direct `try` operand.

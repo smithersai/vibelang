@@ -484,7 +484,8 @@ function moduleSpecifiers(ts, text) {
 /**
  * Records the former D298 formatting-only specifier replacements. These
  * receipts explain source spelling changes; they never decide API identity.
- * Returns proved spelling pairs, or null when other text also differs.
+ * Returns independently proved spelling pairs, or null when non-specifier text differs.
+ * An unresolved pair supplies no receipt and cannot erase a proved neighbour.
  */
 function publishedEquivalent(ts, a, b, sides) {
   if (a === b) return []
@@ -501,14 +502,14 @@ function publishedEquivalent(ts, a, b, sides) {
   for (let i = 0; i < left.length; i++) {
     const before = left[i].text, after = right[i].text
     if (before === after) continue
-    if (!/^\.\.?\//.test(before) || !/^\.\.?\//.test(after)) return null
+    if (!/^\.\.?\//.test(before) || !/^\.\.?\//.test(after)) continue
     // Only D298's spellings: an extensionless or .ts name declared as its
     // emitted .js. Any other explicit extension stays as written.
     const base = before.replace(/\.ts$/, "").replace(/\/$/, "")
-    if (/\.(?:d\.[cm]?ts|[cm]?[jt]s|[jt]sx|json|vibe)$/.test(base)) return null
-    if (after !== base + ".js" && after !== base + "/index.js") return null
+    if (/\.(?:d\.[cm]?ts|[cm]?[jt]s|[jt]sx|json|vibe)$/.test(base)) continue
+    if (after !== base + ".js" && after !== base + "/index.js") continue
     const targets = sides.flatMap((side) => [before, after].flatMap((name) => side.targets(name)))
-    if (targets.some((target) => target === undefined) || new Set(targets).size !== 1) return null
+    if (targets.some((target) => target === undefined) || new Set(targets).size !== 1) continue
     excused.push({ line: right[i].line, before, after, declaration: targets[0] })
   }
   return excused
