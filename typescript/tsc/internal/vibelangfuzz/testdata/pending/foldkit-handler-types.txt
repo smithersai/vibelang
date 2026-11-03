@@ -11,3 +11,7 @@ FuzzEditor corpus:foldkit-109-optionmatch-wide-32 compiler VIP-27: keyed foldkit
 FuzzEditor corpus:foldkit-109-optionmatch-date-qualified compiler VIP-27: keyed foldkit handler-type source for the precise EK4839 annotation gap above; lane codemod-alchemy (foldkit-109)
 FuzzEditor corpus:foldkit-109-optionmatch-ignored-block compiler VIP-27: keyed foldkit handler-type source for the precise EK4839 annotation gap above; lane codemod-alchemy (foldkit-109)
 FuzzEditor corpus:foldkit-109-optionmatch-ignored-method compiler VIP-27: keyed foldkit handler-type source for the precise EK4839 annotation gap above; lane codemod-alchemy (foldkit-109)
+FuzzEditor corpus:t3code-qualified-option-handler-fields-16 compiler VIP-34: wide Option handler code action prints an abbreviated payload type instead of valid source; lane codemod-alchemy / conf-repair (foldkit-109)
+FuzzEditor corpus:t3code-qualified-option-handler-fields-17 compiler VIP-34: wide Option handler code action prints an abbreviated payload type instead of valid source; lane codemod-alchemy / conf-repair (foldkit-109)
+FuzzEditor corpus:t3code-qualified-option-handler-fields-32 compiler VIP-34: wide Option handler code action prints an abbreviated payload type instead of valid source; lane codemod-alchemy / conf-repair (foldkit-109)
+FuzzEditor corpus:t3code-qualified-option-handler-fields-64 compiler VIP-34: wide Option handler code action prints an abbreviated payload type instead of valid source; lane codemod-alchemy / conf-repair (foldkit-109)
