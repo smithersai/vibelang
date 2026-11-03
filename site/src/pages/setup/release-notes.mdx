@@ -14,6 +14,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - The specification gave the `EK4856` quick fix two triggers for the qualified `Effect.Effect<A, E, R>`: VIP-3 named only an interface heritage element, chapter 7 said "where the syntax requires it". Both now say it writes `A!E!R` where that needs no new parentheses and `Effect.Effect<A, E, R>` everywhere else, including `implements` clauses, unions and arrays of Effects (decided detail 260).
 - The JSX specification (VIP-39) said `x ?? throw <E/>` is not VibeLang and told you to write `x ?? do { throw <E/> }`, though throw expressions follow the TC39 proposal (decided detail 284). It now says a throw expression is allowed wherever a throw statement is, with a JSX operand as in `.tsx`, and synchronous code still reports `EK0401`.
 - A `throw` in a plain function drew `EK4804`, `EK4811` or `EK4815`, the advisories about what an Effect function's typed failure fails with, though a plain function's `throw` is JavaScript's (VIP-4); t3code's throwing plain helpers failed the migrate flow's style gate on them. Only an Effect function's `throw` reports them now.
+- The migrate flow's Smithers flow (`run.ts`) could not run the one-pass path: its plan step took only an agent, and a second execution planned the scope again after the rename and stopped with `scope module missing`; `run.ts --scope <scope.txt>` now plans one whole-scope pass with no agent, and a later execution keeps the recorded plan.
+- The migrate flow's setup wrote a `test/tsconfig.json` that extends the package's test project, so typed lint finds the tests, and then its own verify rejected that file as a forbidden test edit, so `record` refused every batch of a package whose tests sit in `test/` beside a `tsconfig.test.json` (Smithers' `@smthrs/canonical`); verify now accepts each bridge setup wrote while its bytes are unchanged.
 - The migrate flow's `record` formatted a batch's `.vibe` files with `vibelang-format`, which takes only the quote style and print width from a dprint configuration, so where that configuration loads VibeLang's dprint plugin, `dprint check` failed on them over settings such as `trailingCommas` and `arrowFunction.useParentheses` (Smithers: 258 files); `record` now runs the repository's `dprint fmt` on those files.
 - A `do` expression after a spread, as in `[...items, do { … }]` or `f(...items, do { … })`, compiled to JavaScript that did not parse, and an elision before one, `[, do { … }]`, crashed the compiler. A `do` after an object spread, a computed object key, an untagged template substitution, a tag or a property constructor also ran too early: the spread's getters, the key's conversion, the substitution's `toString`, the tag's getter and the constructor's getter ran after the block. Each operand before a `do` now finishes before the block runs, as in JavaScript.
 - A `do` expression ending in a declaration, a loop or an `if` without an `else` reported TypeScript's `TS1109`; it now reports `EK0201`, which names the statement (decided detail 247). A `do` ending in `break` or `continue` does not also report `EK0201`; a permitted jump keeps its enclosing target. A `do` ending in a labeled block, a `switch` (an empty case block included) or an empty statement is admitted, as the proposal's predicate admits them, and a `switch` clause ending in a loop, a bare `if` or a declaration is `EK0201`. A `do` ending in an empty interruption block, `do { uninterruptible {} }`, returned the block's marker call and failed to run; it is `undefined`.
@@ -168,6 +170,7 @@ A non-schema object used as a `schema` alias: If it has a public `Type` member, 
 
 | Before | After and repair |
 | --- | --- |
+| A `schema error` payload referencing a mutable-key codec, or a required payload referencing an optional-key codec | `EK2109`: run `vibelang --fix` to retain the codecs and decoding in an explicit Effect TypeScript class. |
 | Nested `schema` aliases containing named, optional or rest tuples | Normal compilation now maps the tuple positions. Run `vibelang --fix --fix-migration-only` to retain the previous `Schema.Unknown` placeholders and public declarations through explicit Effect codecs. |
 | Generic `data` with a default, such as `data Box<A = string>` | `EK2803`: run `vibelang --fix` to retain the default on an equivalent Effect TypeScript type alias and preserve the constructors. |
 
@@ -301,8 +304,11 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 ### Bugs fixed since 0.0.10
 - In the editor, an `is` that binds names and has a parenthesized subject, such as `(x as T) is [let a]` or `([3, r] as const) is [let n, let e]`, made the TypeScript 7 mapper report "invalid or overlapping edits" and pass the whole file through unchanged, so the editor checked VibeLang syntax as TypeScript; the file now maps as it does without the parentheses.
+- Running compiler cases with a missing, malformed or unbuilt runtime could delete previous output or look like a compiler failure; the harness now exits with status `2` before changing cases and names the invalid `VIBELANG_RUNTIME` installation.
 - After VIP-1, `vibelang --fix --fix-vip-only` could not see that a method of a service read as `const fs = FileSystem.FileSystem()` ran where it stood, so it refused the whole file's migration (`EK9202`) and left functions such as foldkit's `readLiveRecordFile` plain, building their reads at the call and skipping their later steps; it now writes `try FileSystem.FileSystem` and runs each such method with `try`.
 - A `match` whose last arm lacked its `;` beside a `do` could crash the compiler (`slice bounds out of range`) instead of reporting `EK0701`; a lowered `do` temporary no longer gets a range that ends before it starts.
+- A Date match regression check still rejected an object with `Date.prototype`; it now expects the prototype check required by VIP-7, in both bare and extractor patterns.
+- A native build or copy could replace a working compiler with a file that could not execute, even though the writer reported success; publication now requires a nonempty regular executable and preserves the previous binary on failure.
 - Running compiler cases with a missing Effect install could silently use the runtime's installation and replace previous case outputs; the harness now exits before changing cases, names the missing package and explains how to install it or set `EFFECT_NODE_MODULES`.
 - The match examples for schema guards and extractor counts failed in the Effect runner with `Not a valid effect`; their entry points now explicitly return Effects.
 
@@ -339,6 +345,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Migration could reject a retained schema class for its constructor warning; regression properties now keep the exemption limited to the correct class and file.
 
 - Sidecar identity properties used retired specification wording; they now check the current source-resolution rule while retaining the original hashed corpus and nominal-identity controls.
+
+- Compiler fuzz checks could miss local service shape visibility and recursion; they now compare those forms with native TypeScript and retain exact pending keys for compiler gaps.
 
 - Repaired native loop migrations now have strict corpus checks while retaining the remaining iterator gaps.
 
@@ -564,6 +572,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - The ESLint acceptance checks reported valid `effect` modifiers as missing variable names; they now recognize function and method prefixes while still detecting a missing node for a variable, parameter or method named `effect`.
 - Nested objects and index signatures inside a `data` payload were made readonly implicitly; they now keep their written TypeScript mutability.
 - Exact claim searches could miss another lane working on the same reproduction under a different key spelling; the advisory claim lookup now shows punctuation aliases, shared corpus names and each claim's age and status.
+
+- A direct `schema error` payload reference could silently make a readonly key writable or a required key optional; incompatible decoded-key flags now report `EK2109`, and `vibelang --fix` preserves the existing codecs in an explicit Effect TypeScript class.
 
 - The short compiler fuzz suite could exceed its CPU limit after adding migration coverage; repeated `--fix` checks now reuse unchanged dependency syntax while still checking every seed.
 
@@ -2484,6 +2494,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - A passing compiler-case suite gave no warning when a case or phase became slower; `scripts/bench/case-timings.mjs` now compares repeated timing reports, flags median increases over `50%` without blocking correctness checks, and rejects incomplete or mismatched evidence.
 
 - ESLint rules saw adjacent generic openings such as `F<<T>(x: T) => T>` as one `<<` token; they now receive both `<` tokens at their source positions, while left-shift operators stay intact.
+
+- Full validation skipped the Go regression suites for the ESLint exporter and formatter; it now runs both and checks that every VibeLang-owned Go test package has a graph selector.
 
 ### Known bugs
 
