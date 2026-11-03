@@ -41,7 +41,7 @@ For example, TypeScript’s [`${configDir}` substitution](https://www.typescript
 { "include": ["src"] }
 ```
 
-This includes `src/user.vibe` without also checking its stale `src/user.d.vibe.ts`. With `vibe.sidecarDir`, a sidecar under that directory whose source exists at the mirrored path is left out the same way.
+This includes `src/user.vibe` without also checking its stale `src/user.d.vibe.ts`. With `vibe.sidecarDir`, a sidecar under that directory whose source exists at the mirrored path is left out the same way. So is a [module body](001-functions.md#module-declarations)'s declaration written beside a sidecar, such as `src/main.vibe.parse.d.ts`, while its source declares that body ([VIP-40](../vips/0040-module-declarations.md#emit-declarations-source-maps)).
 
 Declaration sidecars are emit outputs like `.d.ts`. Under [VIP-27’s native overwrite amendment](../vips/0027-declaration-output.md#amendment-native-overwrite-protection-2026-11-02), a sidecar found through `include` yields to its source and emit may overwrite it. Listing both the source and its sidecar explicitly in `files` keeps the sidecar as an input: emit reports `TS5055`, exits `1`, and leaves its bytes untouched. The same rule applies in the `vibe.sidecarDir` directory.
 
