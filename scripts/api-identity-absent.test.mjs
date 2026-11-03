@@ -102,6 +102,20 @@ test("a declaration missing on one side only never compares equal", () => {
   }
 })
 
+test("t3code client-runtime: a module tsc refuses stays TypeScript, and a .vibe module that writes its declaration is refused", () => {
+  const { files, entries: keys, absent, candidateDeclaration } = corpus.clientRuntime
+  // Both snapshots keep the .ts: tsc reports TS7056 at the same nodes, so the absences compare equal.
+  const kept = compare(files, files, keys, same(absent), tsOptions)
+  assert.deepEqual(groupBlockers(kept), [], JSON.stringify(kept, null, 2))
+  assert.deepEqual(kept.absentDeclarations.map(d => d.equal), [true, true])
+  assert.deepEqual(unavailable(kept), ["packages/client-runtime/src/rpc/client.d.ts#connect"])
+  assert.deepEqual(kept.typeDifferences, [])
+  // A .vibe conversion compiles clean and writes the type tsc would not serialize: nothing proves it equal.
+  const written = compare(files, { ...files, ...candidateDeclaration }, keys, same(absent), tsOptions)
+  assert.equal(written.identical, false)
+  assert.ok(groupBlockers(written).some(d => /one-sided absence never compares equal/.test(d.diagnostic)))
+})
+
 test("negative controls: changed references into an absent module never pass", () => {
   const absent = same({ "absent.d.ts": [{ code: 2883, file: "absent.ts", line: 1, column: 1 }] })
   const control = (before, after) => {

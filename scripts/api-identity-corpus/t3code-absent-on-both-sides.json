@@ -1,5 +1,5 @@
 {
-  "origin": "t3code apps/mobile (TS2883) and apps/server with packages/contracts (TS7056), drive-t3code-apps 09:45Z and drive-t3code-server 11:20Z",
+  "origin": "t3code apps/mobile (TS2883) and apps/server with packages/contracts (TS7056), drive-t3code-apps 09:45Z and drive-t3code-server 11:20Z; packages/client-runtime and contracts modules whose .vibe conversion wrote what tsc refuses to, drive-t3code 21:14Z",
   "qualification": "Minimized shapes of the witnesses, not original t3code declaration bytes",
   "mobile": {
     "files": {
@@ -101,6 +101,45 @@
           "column": 14
         }
       ]
+    }
+  },
+  "clientRuntime": {
+    "files": {
+      "packages/client-runtime/src/rpc/client.d.ts": "import type { RpcClient } from \"./http.ts\";\nexport declare const connect: (url: string) => RpcClient;\nexport declare const clientVersion: string;\n",
+      "packages/client-runtime/src/rpc/session.d.ts": "export interface SessionOptions {\n  readonly retries?: number;\n}\n"
+    },
+    "entries": [
+      "packages/client-runtime/src/rpc/client.d.ts",
+      "packages/client-runtime/src/rpc/http.d.ts",
+      "packages/client-runtime/src/rpc/protocol.d.ts",
+      "packages/client-runtime/src/rpc/session.d.ts"
+    ],
+    "absent": {
+      "packages/client-runtime/src/rpc/http.d.ts": [
+        {
+          "code": "TS7056",
+          "file": "packages/client-runtime/src/rpc/http.ts",
+          "line": 97,
+          "column": 14
+        },
+        {
+          "code": "TS7056",
+          "file": "packages/client-runtime/src/rpc/http.ts",
+          "line": 102,
+          "column": 14
+        }
+      ],
+      "packages/client-runtime/src/rpc/protocol.d.ts": [
+        {
+          "code": "TS7056",
+          "file": "packages/client-runtime/src/rpc/protocol.ts",
+          "line": 5,
+          "column": 14
+        }
+      ]
+    },
+    "candidateDeclaration": {
+      "packages/client-runtime/src/rpc/http.d.ts": "export type RpcClient = { readonly call: (name: string) => unknown };\n"
     }
   },
   "oracle": "Same-reason absences compare equal; exports that do not reach them are compared in every group; exports that reach them are unavailable one by one; one-sided or different-reason absences, and changed types that refer to an absent module, never pass"

@@ -261,6 +261,15 @@ members around a shared declaration that contains an error fails the export.
 The corpus pair `scripts/api-identity-corpus/t3code-unrelated-diagnostic.json`
 keeps the t3code desktop shape.
 
+A `.vibe` module's declaration is exempt from `TS7056`, because stock checkers
+read its sidecar in place of its source, so its conversion compiles clean and
+writes the type that `tsc` refuses to serialize. That declaration exists on one
+side, and the source locations differ, so the module never compares equal. A
+module whose original stops at `TS7056` stays TypeScript until the original
+gets an explicit annotation: `client-runtime` `rpc/http` and `rpc/protocol`,
+and `contracts` `rpc`, `environmentHttp` and `guestStream`, are the corpus
+witnesses.
+
 Project `noUnusedLocals` and `noUnusedParameters` checks apply to the original
 input programs. They are disabled only for the synthetic probe program, whose
 private helper aliases and imports are not part of the package. Real unused
