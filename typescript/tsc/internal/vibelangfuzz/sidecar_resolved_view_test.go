@@ -14,7 +14,7 @@ import (
 // This checks checker identity/source selection. Input-overwrite protection
 // and relocated sidecar output remain separate owner contracts.
 func TestSidecarResolvedPathViewQuoted(t *testing.T) {
-	quote := "A non-relative specifier that TypeScript resolves to `x.d.vibe.ts` or `x.d.vibex.ts`, through a package `types` export, a `paths` entry or package `#imports`, resolves to the available `x.vibe` or `x.vibex` source when the final resolved path is outside `node_modules`."
+	quote := "A non-relative import reaching a known compatibility declaration uses its available mapped source only when TypeScript's final resolved path is outside `node_modules`."
 	if !strings.Contains(SpecText("007-tooling.md"), quote) {
 		t.Fatalf("Chapter7 no longer says %q", quote)
 	}

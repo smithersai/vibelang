@@ -29,3 +29,9 @@ export effect function main() {
   const ones = try Stream.runCollect(one())
   return { values, ones, evaluated }
 }
+
+// docs/design/vips/0021-producers.md#b344b15eac40fbc1 | VIP-21 valued-producer-return
+// `return value` in a producer is a compile error, because a Stream has no return value.
+
+// docs/design/vips/0021-producers.md#39d733a4b239eaaf | VIP-21 valued-producer-return
+// **Amended 2026-10-30: the producer-return diagnostic is `EK2128`.** `return value` in a producer is `EK2128`, because a Stream has no return value; a bare `return` ends the stream.

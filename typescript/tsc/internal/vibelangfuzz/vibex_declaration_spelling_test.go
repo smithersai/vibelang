@@ -9,7 +9,7 @@ import (
 )
 
 func TestVibexDeclarationSpellingQuoted(t *testing.T) {
-	const quote = "The public \x60x.d.ts\x60 is byte-identical to the one the fork writes for the \x60.tsx\x60 twin that carries the same \x60@throws\x60 tags."
+	const quote = "The public \x60x.d.ts\x60 is API-identical ([VIP-27](0027-declaration-output.md)) to the one the fork writes for the \x60.tsx\x60 twin that carries the same \x60@throws\x60 tags."
 	if !strings.Contains(SpecText("../vips/0039-vibex.md"), quote) {
 		t.Fatalf("VIP39 no longer says %q", quote)
 	}

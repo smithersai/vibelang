@@ -1,2 +1,0 @@
-FuzzFix fix:idempotence:false:1fcfb7ea539bc43e58443c0f10952dc49892d9ed560e60907b527bd4929b522c compiler VIP-34: second fix changes retained T3code service-tag and cold-program conversion; lane core-land
-FuzzFix corpus:t3code-codemod-exported-program-provide-namespace compiler VIP-34: second fix changes retained T3code service-tag and cold-program conversion; lane core-land

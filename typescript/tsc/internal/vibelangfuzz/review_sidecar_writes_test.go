@@ -12,10 +12,10 @@ import (
 const reviewSidecarWritesTarget = "FuzzReviewSidecarWrites"
 
 var reviewSidecarWriteQuotes = []string{
-	"A sidecar explicitly listed in `files` remains an input.",
-	"If the compatibility write would overwrite it, the compiler reports native `TS5055` (`Cannot write file … because it would overwrite input file`), exits `1` and leaves its bytes unchanged.",
-	"The compatibility write is independent of ordinary output:",
-	"neither disables the required compatibility sidecar or its overwrite check",
+	"Listing both the source and its sidecar explicitly in `files` keeps the sidecar as an input: emit reports `TS5055`, exits `1`, and leaves its bytes untouched.",
+	"an explicit `files` input keeps native overwrite protection (`TS5055`)",
+	"A compatibility sidecar is an emit output",
+	"The required sidecar write is independent of `noEmit` and `declaration: false`",
 }
 
 func requireReviewSidecarWriteQuotes(t testing.TB) {

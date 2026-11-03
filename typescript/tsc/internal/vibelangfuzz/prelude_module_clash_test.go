@@ -14,7 +14,7 @@ import (
 // `FileSystem`, `Headers`, `Response` and `Event`). In a value or namespace
 // position the table below decides." and "Bare `Worker` is Effect's
 // `effect/workers` namespace, by the precedence above, as `Headers`,
-// `Response` and `Event` are (decided detail 76)." The input picks one of the
+// `Response` and `Event` are." The input picks one of the
 // four names and a position: a value read of the module (compiles), `new
 // Name()` on the namespace (TypeScript's own "not constructable" error, the
 // same codes the imported namespace gets), a type position (the DOM type
@@ -43,7 +43,7 @@ func TestPreludeModuleClashQuoted(t *testing.T) { preludeClashChapters(t) }
 
 var preludeClashQuotes = []string{
 	"**Precedence applies per meaning, as in TypeScript.** In a type position, a bare name declared as a type by an ambient global declaration (a TypeScript `lib` file or `@types`) keeps that meaning (including the DOM's `Console`, `FileSystem`, `Headers`, `Response` and `Event`). In a value or namespace position the table below decides.",
-	"Bare `Worker` is Effect's `effect/workers` namespace, by the precedence above, as `Headers`, `Response` and `Event` are (decided detail 76).",
+	"Bare `Worker` is Effect's `effect/workers` namespace, by the precedence above, as `Headers`, `Response` and `Event` are.",
 	"A local or imported `Worker` shadows as usual, and `new Worker(url)` on the namespace gets TypeScript's own \"not constructable\" error.",
 }
 

@@ -19,7 +19,7 @@ import (
 // identifiers, object and array patterns, nesting and defaults, and arguments
 // from values that make binding throw (undefined, null, a number, a throwing
 // getter) or succeed.
-var producerBindingQuote = "a producer's gives a `Stream` that dies with it. The call itself never throws."
+var producerBindingQuote = "a producer's gives a `Stream` that dies with it, as an `async` function rejects. The call itself never throws."
 
 // Each parameter is a binding and its default, if any.
 var producerBindingParams = [][2]string{{"a", ""}, {"{ a }", ""}, {"{ a: { b } }", ""}, {"[a]", ""}, {"a", "1"}, {"{ a }", "{}"}, {"{ a = 2 }", ""}, {"[a]", "[]"}, {"{ [key()]: a }", ""}}

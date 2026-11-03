@@ -11,15 +11,15 @@ import (
 
 // sidecarIdentityQuote and sidecarExportQuote are Chapter 7's rule.
 const (
-	sidecarRealpathQuote      = "Classify the path after TypeScript's own `realpath` step, not the written name: a linked workspace package normally reads its source."
-	sidecarSymlinkQuote       = "With `preserveSymlinks: true` the logical path keeps its `node_modules` segment and therefore its declarations, as a published package does; TypeScript may then distinguish the source and declaration modules."
-	sidecarMapQuote           = "For relocated sidecars, follow the source that the sidecar map names rather than guessing from basenames."
-	sidecarRedirectInputQuote = "An explicitly listed sidecar remains an input even when another import redirects to its source, and its attempted overwrite keeps `TS5055` protection."
-	sidecarDiscoveryQuote     = "A compatibility sidecar is an emit output: when `include` or default discovery selects both `x.vibe` and `x.d.vibe.ts`, the source wins and the sidecar leaves the program, as discovery selects `x.ts` ahead of `x.d.ts`."
-	sidecarExplicitInputQuote = "A sidecar explicitly listed in `files` remains an input."
-	sidecarOverwriteQuote     = "If the compatibility write would overwrite it, the compiler reports native `TS5055` (`Cannot write file … because it would overwrite input file`), exits `1` and leaves its bytes unchanged."
-	sidecarIdentityQuote      = "VibeLang resolves a relative `./x.vibe` to source; plain `tsc` reads the compatibility declaration."
-	sidecarExportQuote        = "A non-relative specifier that TypeScript resolves to `x.d.vibe.ts` or `x.d.vibex.ts`, through a package `types` export, a `paths` entry or package `#imports`, resolves to the available `x.vibe` or `x.vibex` source when the final resolved path is outside `node_modules`."
+	sidecarRealpathQuote      = "Apply `realpath` and `preserveSymlinks` first; a retained logical dependency path keeps its declaration and native module identity."
+	sidecarSymlinkQuote       = "Apply `realpath` and `preserveSymlinks` first; a retained logical dependency path keeps its declaration and native module identity."
+	sidecarMapQuote           = "The rule also applies to the effective `sidecarDir` map"
+	sidecarRedirectInputQuote = "Explicitly selected declarations remain inputs subject to the ordinary overwrite guard."
+	sidecarDiscoveryQuote     = "A compatibility sidecar is an emit output: discovery selects the source ahead of its sidecar, while an explicit `files` input keeps native overwrite protection (`TS5055`)."
+	sidecarExplicitInputQuote = "Listing both the source and its sidecar explicitly in `files` keeps the sidecar as an input: emit reports `TS5055`, exits `1`, and leaves its bytes untouched."
+	sidecarOverwriteQuote     = "Listing both the source and its sidecar explicitly in `files` keeps the sidecar as an input: emit reports `TS5055`, exits `1`, and leaves its bytes untouched."
+	sidecarIdentityQuote      = "Compatibility declarations preserve the actual module selected by a source import."
+	sidecarExportQuote        = "A non-relative import reaching a known compatibility declaration uses its available mapped source only when TypeScript's final resolved path is outside `node_modules`."
 )
 
 // FuzzSidecarIdentity enforces sidecarExportQuote: a consumer that reaches a
