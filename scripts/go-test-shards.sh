@@ -50,6 +50,8 @@ fi
 # Coverage and profiling share one output path. Use one process so shards
 # cannot truncate each other's measurements.
 for arg in "$@"; do
+  # Go accepts one or two leading dashes. Inspect a copy; keep "$@" intact.
+  case $arg in --test.*) arg=${arg#-} ;; esac
   case $arg in
     -test.coverprofile|-test.coverprofile=*|-test.cpuprofile|-test.cpuprofile=*|-test.memprofile|-test.memprofile=*|-test.blockprofile|-test.blockprofile=*|-test.mutexprofile|-test.mutexprofile=*|-test.trace|-test.trace=*) exec "$bin" "$@" ;;
     -test.run|-test.run=*|-test.list|-test.list=*|-test.fuzz|-test.fuzz=*|-test.bench|-test.bench=*|-test.v=test2json) exec "$bin" "$@" ;;

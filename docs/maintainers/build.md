@@ -549,6 +549,11 @@ Discovery retains Unicode names from Go for tests, fuzz targets and examples,
 including when `LC_ALL=C`. Benchmark names and diagnostic lines containing
 whitespace do not become shard selectors.
 
+Native binary selectors, JSON mode and profile output flags accept Go's
+one-dash and two-dash forms, such as `-test.run=TestA` and
+`--test.run TestA`. Both forms pass through unchanged to one process; ordinary
+settings such as `--test.fuzztime=1x` still permit sharding.
+
 Discovery and execution both receive the original test arguments, including
 `-short`, `-timeout` and custom test flags. A `TestMain` that reads them sees
 the same configuration before the script assigns tests to shards.
