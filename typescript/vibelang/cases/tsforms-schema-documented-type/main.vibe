@@ -1,0 +1,22 @@
+// A Schema.Struct constant with a documented own type, type X = typeof X.Type
+// under its own JSDoc, draws EK4832 (D286) like any other. The fix writes the
+// schema declaration and keeps the documented type beside it, which replaces
+// the alias the declaration synthesizes (VIP-15, detail 256), so the
+// declaration file documents both names as the native pair did. foldkit's
+// canvas/shape.ts (one text on both) and runtime/modelPreservation.ts (two
+// texts) are the pattern; typescript/main.ts of the fixed twin is the pair.
+// tsforms-schema-documented-type-fixed is what vibelang --fix writes.
+
+/** A 2D point in canvas-local coordinates. */
+export const Point = Schema.Struct({ x: Schema.Number, y: Schema.Number })
+/** A 2D point in canvas-local coordinates. */
+export type Point = typeof Point.Type
+
+/** The preserved model, as stored. */
+export const Preserved = Schema.Struct({ version: Schema.Number })
+/** The decoded preserved model. */
+export type Preserved = typeof Preserved.Type
+
+/** Documented on the constant alone. */
+export const Bare = Schema.Struct({ id: Schema.String })
+export type Bare = typeof Bare.Type

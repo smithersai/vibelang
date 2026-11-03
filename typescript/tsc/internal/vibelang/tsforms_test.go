@@ -299,6 +299,81 @@ export const decode = Schema.decodeUnknownSync(Local)
 	}
 }
 
+// A documented own type, type X = typeof X.Type under its own JSDoc, stays
+// beside the schema declaration: "One written, nongeneric type X = typeof
+// X.Type in the same scope replaces the synthesized alias" and keeps its own
+// JSDoc (VIP-15, detail 256), so the declaration file documents the constant
+// and the type as the native pair did. foldkit's canvas/shape.ts documents
+// both names with one text and runtime/modelPreservation.ts with two. An
+// undocumented own type goes as before, a documented own type spelled
+// Schema.Schema.Type<typeof X> keeps the constant, and the alias form
+// (EK4841, which still keeps a documented constant) keeps a documented own
+// type the same way.
+func TestSchemaConstantKeepsDocumentedType(t *testing.T) {
+	source := `/** A 2D point in canvas-local coordinates. */
+export const Point = Schema.Struct({ x: Schema.Number, y: Schema.Number })
+/** A 2D point in canvas-local coordinates. */
+export type Point = typeof Point.Type
+
+/** The preserved model, as stored. */
+const Preserved = Schema.Struct({ version: Schema.Number })
+/** The decoded preserved model. */
+type Preserved = typeof Preserved.Type
+
+/** Documented on the constant alone. */
+export const Bare = Schema.Struct({ id: Schema.String })
+export type Bare = typeof Bare.Type
+
+export const Spelled = Schema.Struct({ id: Schema.String })
+/** A spelled own type keeps its constant. */
+export type Spelled = Schema.Schema.Type<typeof Spelled>
+
+export const Port = Schema.Number
+/** One port. */
+export type Port = typeof Port.Type
+
+export const decode = Schema.decodeUnknownSync(Preserved)
+`
+	want := `/** A 2D point in canvas-local coordinates. */
+export schema Point { x: number; y: number }
+/** A 2D point in canvas-local coordinates. */
+export type Point = typeof Point.Type
+
+/** The preserved model, as stored. */
+schema Preserved { version: number }
+/** The decoded preserved model. */
+type Preserved = typeof Preserved.Type
+
+/** Documented on the constant alone. */
+export schema Bare { id: string }
+
+export const Spelled = Schema.Struct({ id: Schema.String })
+/** A spelled own type keeps its constant. */
+export type Spelled = Schema.Schema.Type<typeof Spelled>
+
+export schema Port = number
+/** One port. */
+export type Port = typeof Port.Type
+
+export const decode = Schema.decodeUnknownSync(Preserved)
+`
+	for _, options := range []string{`"declaration":true,"emitDeclarationOnly":true,"outDir":"out"`, `"noEmit":true`} {
+		_, file, _, _ := editorProgram(t, source)
+		dir := filepath.Dir(file.FileName().AsString())
+		if err := os.WriteFile(filepath.Join(dir, "tsconfig.json"), []byte(`{"compilerOptions":{"target":"ES2022","module":"NodeNext","strict":true,"skipLibCheck":true,`+options+`},"files":["main.vibe"]}`), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		result := fixCase(t, dir)
+		got := source
+		if fixed := result.Files[file.FileName()]; fixed != nil {
+			got = fixed.Text
+		}
+		if got != want || len(result.Refused) != 0 {
+			t.Errorf("%s: --fix wrote\n%s\nwant\n%s\nrefused %+v", options, got, want, result.Refused)
+		}
+	}
+}
+
 func TestTypeScriptFormCasesFix(t *testing.T) {
 	root, err := filepath.Abs("../../../..")
 	if err != nil {

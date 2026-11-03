@@ -27,7 +27,11 @@ import (
 // when the only one is the struct's own type written beside it, as
 // type User = typeof User.Type, type User = Schema.Schema.Type<typeof User>,
 // or an empty interface that extends the latter, which it replaces; a type
-// alias becomes an interface. Anything else, a check, an annotation, a pipe,
+// alias becomes an interface. A documented type User = typeof User.Type stays
+// beside the declaration: one written, nongeneric alias of the name replaces
+// the alias the declaration synthesizes and keeps its own JSDoc (VIP-15,
+// detail 256), so the declaration file documents the constant and the type
+// as the native pair did. Anything else, a check, an annotation, a pipe,
 // Schema.optionalKey, a spread, a computed key, a comment, or a declaration
 // with a type annotation or more than one binding, keeps the constant and
 // draws no warning: no schema declaration says the same. So does an exported
@@ -114,8 +118,8 @@ func schemaConstantRewrite(c *checker.Checker, file *ast.SourceFile, name *ast.N
 		return nil
 	}
 	exported := ast.HasSyntacticModifier(statement, ast.ModifierFlagsExport)
-	edits, ok := schemaTypeEdits(c, file, statement, name, exported)
-	if !ok || exported && len(edits) == 0 && c.CompilerOptions().GetEmitDeclarations() {
+	edits, kept, ok := schemaTypeEdits(c, file, statement, name, exported)
+	if !ok || exported && len(edits) == 0 && !kept && c.CompilerOptions().GetEmitDeclarations() {
 		return nil
 	}
 	start := nodeStart(file, statement)
@@ -129,11 +133,13 @@ func schemaConstantRewrite(c *checker.Checker, file *ast.SourceFile, name *ast.N
 }
 
 // schemaTypeEdits returns the edits that remove the struct's own type written
-// beside statement, and false when another type of name is in scope.
-func schemaTypeEdits(c *checker.Checker, file *ast.SourceFile, statement *ast.Node, name *ast.Node, exported bool) ([]sourceEdit, bool) {
+// beside statement, whether a documented type X = typeof X.Type stays beside
+// the declaration instead (kept), and false when another type of name is in
+// scope.
+func schemaTypeEdits(c *checker.Checker, file *ast.SourceFile, statement *ast.Node, name *ast.Node, exported bool) (edits []sourceEdit, kept bool, ok bool) {
 	symbol := c.ResolveName(name.Text(), statement, ast.SymbolFlagsType, false)
 	if symbol == nil {
-		return nil, true
+		return nil, false, true
 	}
 	var declarations []*ast.Node
 	for _, d := range symbol.Declarations() {
@@ -142,16 +148,27 @@ func schemaTypeEdits(c *checker.Checker, file *ast.SourceFile, statement *ast.No
 		}
 	}
 	if len(declarations) == 0 {
-		return nil, true
+		return nil, false, true
 	}
 	// A private alias can be printed through an exported signature too.
 	// Preserve its written spelling whenever this project emits declarations.
 	if len(declarations) != 1 || declarations[0].Parent != statement.Parent || !isStructOwnType(file, declarations[0], name.Text(), c.CompilerOptions().GetEmitDeclarations()) ||
-		ast.HasSyntacticModifier(declarations[0], ast.ModifierFlagsExport) != exported || len(declarations[0].JSDoc(file)) != 0 {
-		return nil, false
+		ast.HasSyntacticModifier(declarations[0], ast.ModifierFlagsExport) != exported {
+		return nil, false, false
 	}
 	text := file.Text()
 	alias := declarations[0]
+	if len(alias.JSDoc(file)) != 0 {
+		// "One written, nongeneric type X = typeof X.Type in the same scope
+		// replaces the synthesized alias" and keeps its own JSDoc (VIP-15,
+		// detail 256): the documented alias stays, and the declaration file
+		// prints its comment as it did on the native pair. The other own
+		// forms print differently, so a documented one keeps the constant.
+		if isSchemaWrittenType(file, alias, name.Text()) {
+			return nil, true, true
+		}
+		return nil, false, false
+	}
 	start, end := nodeStart(file, alias), alias.End()
 	// Remove the line the type stands on when nothing else does.
 	lineStart := strings.LastIndexByte(text[:start], '\n') + 1
@@ -159,7 +176,15 @@ func schemaTypeEdits(c *checker.Checker, file *ast.SourceFile, statement *ast.No
 	if strings.TrimSpace(text[lineStart:start]) == "" && newline >= 0 && strings.TrimSpace(text[end:end+newline]) == "" {
 		start, end = lineStart, end+newline+1
 	}
-	return []sourceEdit{{start, end, ""}}, true
+	return []sourceEdit{{start, end, ""}}, false, true
+}
+
+// isSchemaWrittenType reports whether declaration is the written alias a
+// schema declaration admits beside it (VIP-15, detail 256): a nongeneric
+// type Name = typeof Name.Type.
+func isSchemaWrittenType(file *ast.SourceFile, declaration *ast.Node, name string) bool {
+	return ast.IsTypeAliasDeclaration(declaration) && declaration.TypeParameters() == nil &&
+		strings.Join(strings.Fields(expressionText(file, declaration.Type())), "") == "typeof"+name+".Type"
 }
 
 // isStructOwnType reports whether declaration is a struct's own type written

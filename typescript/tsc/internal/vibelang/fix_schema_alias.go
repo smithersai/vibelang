@@ -104,8 +104,8 @@ func schemaAliasRewrite(c *checker.Checker, file *ast.SourceFile, name *ast.Node
 	if !ok || !aliasTypeAfter(file, statement, name.Text()) {
 		return nil
 	}
-	edits, ok := schemaTypeEdits(c, file, statement, name, ast.HasSyntacticModifier(statement, ast.ModifierFlagsExport))
-	if !ok || len(edits) != 1 {
+	edits, kept, ok := schemaTypeEdits(c, file, statement, name, ast.HasSyntacticModifier(statement, ast.ModifierFlagsExport))
+	if !ok || len(edits) != 1 && !kept {
 		return nil // another type of the name
 	}
 	start := nodeStart(file, statement)
