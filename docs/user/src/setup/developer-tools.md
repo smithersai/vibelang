@@ -104,6 +104,12 @@ package that installs Knip or sets a `knip` key in `package.json` a
 file replaces it, and a JSON file cannot hold a compiler, so Knip then does not
 read `.vibe` modules: such a command needs a JavaScript configuration.
 
+ESLint treats an `effect { ... }` block as an Effect value. Callback-arity
+rules inspect written functions such as `effect (cause) => ...`, so a block
+passed as the program argument of `Effect.catchCause` is not mistaken for a
+handler. Captured names, local variables and control flow inside the block
+still receive their normal checks.
+
 ## Oxlint
 
 Oxlint's [JS plugin API](https://oxc.rs/docs/guide/usage/linter/js-plugins.html#api-support)

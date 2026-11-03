@@ -168,6 +168,7 @@ export function parseForESLint(code, options = {}) {
     sourceType: ast.sourceType
   }))
   hideSynthesized(scopeManager)
+  hideSynthesizedReads(scopeManager)
   markSchemaReads(scopeManager)
   // As @typescript-eslint/parser reports for a file outside any TypeScript
   // program: a rule that needs type information says so instead of crashing.
@@ -233,6 +234,18 @@ function hideSynthesized(scopeManager) {
       }
     }
     scope.variables.splice(0, scope.variables.length, ...kept)
+  }
+}
+
+// Intrinsic reads must not make author bindings look used or report undefined.
+// Keep this separate from synthesized-variable removal: a source binding can
+// share the intrinsic's spelling, and remains available to real source reads.
+function hideSynthesizedReads(scopeManager) {
+  for (const scope of scopeManager.scopes) {
+    for (const references of [scope.references, scope.through, ...scope.variables.map((variable) => variable.references)]) {
+      const kept = references.filter((reference) => reference.identifier.synthesized !== true)
+      references.splice(0, references.length, ...kept)
+    }
   }
 }
 

@@ -11,9 +11,9 @@ import (
 
 // The parser writes each VibeLang form as the TypeScript it abbreviates
 // (internal/parser/vibelang*.go), and most of that TypeScript is also the
-// right thing for a rule to read: a block param is an arrow function that
-// starts its own code path, a do expression returns its completion value,
-// an error is a class. The forms below would mislead a rule as TypeScript,
+// right thing for a rule to read: an effect block's builder contains a lexical
+// function that starts its own code path, a do expression returns its completion
+// value, and an error is a class. The forms below would mislead a rule as TypeScript,
 // so they convert to node types of their own, each with visitor keys
 // (packages/compiler/eslint.mjs) so rules and scope analysis still reach
 // every source node inside them:
@@ -641,4 +641,18 @@ func (c *converter) handleStatement(n *ast.Node) *obj {
 	}
 	body := c.node(block, "BlockStatement").set("body", blocks)
 	return result.set("handler", c.node(clause, "CatchClause").set("body", body).set("param", nil))
+}
+
+// An effect block is a program value, not a function argument. Preserve its
+// deferred lexical function for scopes and code-path analysis under the
+// intrinsic builder call, as Effect.gen does in TypeScript (VIP-2). Exposing
+// the arrow directly makes a handler-arity selector mistake the program
+// argument of Effect.catchCause for its handler (Smithers Egress).
+func (c *converter) effectBlockValue(n *ast.Node, arrow *obj) *obj {
+	keyword, _ := c.tokenAfter(n.Pos())
+	callee := identifierShape(c.nodeAt(keyword, "Identifier"), "$effect").set("synthesized", true)
+	return c.node(n, "CallExpression").
+		set("callee", callee).
+		set("arguments", []any{arrow}).
+		set("optional", false)
 }

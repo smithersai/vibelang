@@ -176,6 +176,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - API checks lost referenced ambient or library types when a declaration also contained a private class. Nominal alignment now preserves leading reference directives, and referenced type changes remain visible.
 
 - Migration verification rejected unchanged programs whose original declaration emit already reported errors; it now compares with the saved original diagnostics and rejects new or unexplained emit failures while retaining the declaration identity checks.
+- ESLint rules could mistake an `effect { ... }` program passed to `Effect.catchCause` for a handler that ignored its cause. Program blocks now appear as program values while real handlers retain their parameters and scope checks.
 - `vibelang --fix` refused an `Effect.gen` or `Effect.fn` whose body held a `.pipe` that changes type as `|>`, such as `.pipe(HttpEffect.toWebHandlerWith(context))`, whose stage takes its requirements from the `.pipe` (TS2345), and then wrote that `.pipe` as `|>` inside the generator it left, so the generator never converted. EK1002's fix now retries keeping the body's `.pipe` calls.
 - `vibelang --fix` refused an `Effect.fn` whose parameter annotation was the last read of an imported value binding that only types read, such as a namespace in `SessionSchema.ID`, with TS6133, so the module stayed on `EK1002`; the fix now removes that binding too, and keeps a bare import under `verbatimModuleSyntax`.
 

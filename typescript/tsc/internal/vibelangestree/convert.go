@@ -925,6 +925,9 @@ func (c *converter) convertNode(n *ast.Node, parent *ast.Node) *obj {
 			set("params", c.convertParameters(n.ParameterList(), n))
 		setReturnType(result, c, n)
 		setTypeParameters(result, c.convertTypeParameters(n.TypeParameterList(), n))
+		if c.vibe && n.Flags&ast.NodeFlagsVibeLangEffect != 0 && isProgramArrow(n) {
+			return c.effectBlockValue(n, result)
+		}
 		return result
 
 	case ast.KindYieldExpression:

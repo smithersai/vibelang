@@ -1,0 +1,2 @@
+import { Effect } from "effect"
+export const program = Effect.catchCause(effect { return 1 }, effect (cause) => cause)
