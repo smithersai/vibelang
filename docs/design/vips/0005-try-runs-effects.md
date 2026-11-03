@@ -71,6 +71,7 @@ effect function load(id) {
 - **Amended 2026-10-31: a `throw` in a plain handler is `EK0401`** (VIP-4). A call known to throw in its parameters or body is too. The quick fix is `catch effect`, which makes the throw a typed failure. The old lint warning `EK0511` retires.
 
 - **Amended 2026-10-31: the remaining `catch` grammar code.** `catch` mixed with `??`, `||` or `&&` without parentheses, and a member access or call after a function-expression handler, are `EK0512`. `EK0504` to `EK0510` keep their specific triggers; `EK0511` is retired (above). Decided by the agent under Will's rule "when I state a principle, the agent derives the concrete rule and acts; I can override later" (decided detail 247).
+- **Clarified 2026-11-03: every closed handler.** The member access or call in the `EK0512` trigger is the one after any closed handler: a parenthesized handler, a function expression or a block-bodied arrow, as the [Running Effects](../src/002-running.md#catch) prose and Appendix A's `ClosedCatchExpression` say since the 2026-11-03 block-bodied arrow correction. `a catch () => { }.call(o)` is `EK0512`, not an unassigned syntax error.
 
 
 ## Prior art
