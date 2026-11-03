@@ -3,7 +3,7 @@ import { cpSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writ
 import { join } from "node:path"
 import test from "node:test"
 import fc from "fast-check"
-import { diagnosticRegistry, lintAuthority, lintCopies, lintRegistry, lintTables, read, repository, section, table } from "./spec-rules.mjs"
+import { generateShared, diagnosticRegistry, lintAuthority, lintCopies, lintRegistry, lintTables, read, repository, section, table } from "./spec-rules.mjs"
 import { examples, removedHandlers, verdict } from "./spec-examples.mjs"
 
 function fixture(fn) {
@@ -358,3 +358,33 @@ test("fast-check: folded retirement prose is allowed but supported configuration
     }
   ), { seed: 310297, numRuns: 36 })
 })
+
+test("generated-resolution: the committed reference matches a fresh generation", () => fixture(root => {
+  generateShared(root)
+  assert.equal(read(root, "docs/design/generated/resolution.md"),
+    read(repository, "docs/design/generated/resolution.md"),
+    "regenerate the resolution reference when its VIP table changes")
+}))
+
+test("generated-resolution: source table mutations survive generation byte for byte", () => fixture(root => {
+  const vip = "docs/design/vips/0039-vibex.md"
+  const header = "| Specifier | Tries, in order |"
+  const original = read(root, vip)
+  const source = table(original, header)
+  fc.assert(fc.property(
+    fc.shuffledSubarray(["App.ts", "App.tsx", "App.vibe", "App.vibex"], { minLength: 4, maxLength: 4 }),
+    fc.constantFrom("", " (unchanged)", " — unchanged"),
+    (order, annotation) => {
+      const changed = source.replace("`App.ts`, `App.tsx`, `App.vibe`, `App.vibex`",
+        order.map(name => "`" + name + "`").join(", "))
+        .replace("| `./App.vibe` | `App.vibe`, `App.d.ts` |",
+          "| `./App.vibe` | `App.vibe`, `App.d.ts`" + annotation + " |")
+      writeFileSync(join(root, vip), original.replace(source, changed))
+      generateShared(root)
+      const generated = read(root, "docs/design/generated/resolution.md")
+      assert.equal(generated, "<!-- Generated from VIP-39 by //:spec-shared-tables. -->\n\n" + changed)
+      generateShared(root)
+      assert.equal(read(root, "docs/design/generated/resolution.md"), generated)
+    }
+  ), { seed: 539003, numRuns: 72 })
+}))

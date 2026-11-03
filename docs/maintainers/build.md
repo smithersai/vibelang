@@ -943,7 +943,7 @@ The table check compares decided config keys, denied VIP membership and
 repair forms, and resolution order. A property signature such as `sidecarDir?: string` is qualified by the top-level option object its VIP declares; an unrelated object's field does not authorize a `vibe` key. The copy check compares shared tables
 and explicitly marked `spec-copy` sections byte for byte. The
 `//:spec-shared-tables` generated target derives the resolution reference
-from VIP-39.
+from VIP-39. After editing that source table, run `node docs/tools/spec-rules.mjs generate` and commit the generated reference. Its regression check compares the committed bytes with a fresh generation.
 
 VIP examples, including fences indented under list items, run through the native compiler. A negative example uses
 `// expect-error: EK0509` with its required code; an inline marker also checks the source line. A different diagnostic or
