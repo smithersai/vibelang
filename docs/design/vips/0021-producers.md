@@ -13,11 +13,13 @@ effect function* ticks() {
 for try (const t of ticks()) { … }       // VIP-20
 
 // compiles to Effect's Stream.callback
-const ticks = () => Stream.callback<number>((queue) => Effect.gen(function* () {
-  yield* Queue.offer(queue, 1)
-  yield* Effect.sleep("1 second")
-  yield* Queue.offer(queue, 2)
-}).pipe(Effect.andThen(Queue.end(queue))), { bufferSize: 1, strategy: "suspend" })   // ends the stream when the body returns
+function ticks() {
+  return Stream.callback<number>((queue) => Effect.gen(function* () {
+    yield* Queue.offer(queue, 1)
+    yield* Effect.sleep("1 second")
+    yield* Queue.offer(queue, 2)
+  }).pipe(Effect.andThen(Queue.end(queue))), { bufferSize: 1, strategy: "suspend" })   // ends the stream when the body returns
+}
 ```
 
 - `effect function*` returns a Stream, as `async function*` returns an AsyncIterable. `yield x` emits `x`, and `try` runs Effects (VIP-5).
