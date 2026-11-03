@@ -260,3 +260,14 @@ func (l *LanguageService) fileDiagnostics(ctx context.Context, file *ast.SourceF
 	}
 	return result
 }
+
+// RenameEditHook supplies the source spelling for a parser-projected binding.
+// It returns a source range and replacement, or false for an ordinary occurrence.
+type RenameEditHook func(node *ast.Node, newName string) (core.TextRange, string, bool)
+
+var renameEditHooks []RenameEditHook
+
+// RegisterRenameEditHook registers an in-tree syntax extension at init time.
+func RegisterRenameEditHook(hook RenameEditHook) {
+	renameEditHooks = append(renameEditHooks, hook)
+}

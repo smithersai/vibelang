@@ -57,6 +57,8 @@ const (
 	NodeFlagsVibeLangPatternHoist          NodeFlags = 1 << 38 // If node is any declaration hoisted for a pattern binding, subject or extractor: its declared type comes from the pattern assignment, not ordinary evolving-variable flow.
 	NodeFlagsVibeLangDoCompletion          NodeFlags = 1 << 39 // If node is the variable declaration the VibeLang parser writes for a do expression's completion value, or for a value it evaluates early to keep source order (spill; parser/vibelang_do.go): an assignment to it takes the contextual type of the do's site (VibeLangDoSites), and its flow type keeps the assigned values' literal types (checker getContextualTypeForBinaryOperand, getTypeAtFlowAssignment).
 
+	NodeFlagsVibeLangShorthandBinding NodeFlags = 1 << 40 // A source object-pattern binder also supplies an implicit fixed property key; rename must expose that key.
+
 	NodeFlagsBlockScoped = NodeFlagsLet | NodeFlagsConst | NodeFlagsUsing
 	NodeFlagsConstant    = NodeFlagsConst | NodeFlagsUsing
 	NodeFlagsAwaitUsing  = NodeFlagsConst | NodeFlagsUsing // Variable declaration (NOTE: on a single node these flags would otherwise be mutually exclusive)

@@ -151,7 +151,20 @@ func (l *LanguageService) symbolAndEntriesToRename(ctx context.Context, params *
 			Range:   rng,
 			NewText: l.getTextForRename(data.OriginalNode, entry, params.NewName, ch, quotePreference, useAliasesForRename),
 		}
-		mappedEdits = append(mappedEdits, mappedRenameEdit{uri: uri, edit: textEdit})
+		for _, hook := range renameEditHooks {
+			if span, text, handled := hook(entry.node, params.NewName); handled {
+				mapped, fidelity := l.converters.ToLSPRange(ast.GetSourceFileOfNode(entry.node), span)
+				if !fidelity.IsExact() {
+					textEdit = nil
+					break
+				}
+				textEdit.Range, textEdit.NewText = mapped, text
+				break
+			}
+		}
+		if textEdit != nil {
+			mappedEdits = append(mappedEdits, mappedRenameEdit{uri: uri, edit: textEdit})
+		}
 	}
 	changes, ok := deduplicateRenameEdits(mappedEdits)
 	if !ok {

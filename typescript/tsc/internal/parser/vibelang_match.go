@@ -499,6 +499,7 @@ func (p *Parser) parseMatchObjectPattern(anchor core.TextRange) *pattern {
 			}
 		case p.token == ast.KindLetKeyword || p.token == ast.KindConstKeyword || p.token == ast.KindVarKeyword:
 			binding := p.parseMatchPrimaryPattern()
+			binding.name.Flags |= ast.NodeFlagsVibeLangShorthandBinding
 			key := p.vibelangSynthesized(p.factory.NewIdentifier(binding.name.Text()), binding.name.Loc)
 			clause := objectClause{key: key, pattern: binding}
 			clause.optional = p.parseOptional(ast.KindQuestionToken)

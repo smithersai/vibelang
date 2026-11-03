@@ -241,7 +241,7 @@ func (c *consistency) checkRename(probe consistencyProbe, refs map[consistencySp
 	for file, edits := range edited.edits {
 		for _, e := range edits {
 			aliased = aliased || e.text != name
-			if replaced := (consistencySpan{file, e.start, e.end}); !refs[replaced] && !probe.merged() {
+			if replaced := (consistencySpan{file, e.start, e.end}); !refs[replaced] && !probe.merged() && !consistencyPatternBindingEdit(p.files[file], file, e, name, refs) {
 				Gap(c.t, consistencyTarget, key+":edit-not-a-reference", "LSP 3.17: the rename at %s replaces %s %q, which is not among the symbol's references %v\n%s", c.where, replaced, p.files[file][e.start:e.end], consistencySorted(refs), c.archive)
 			}
 		}
