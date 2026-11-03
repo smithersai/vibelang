@@ -76,6 +76,8 @@ To continue during cleanup, fork the interruption (`const stopping = fork Fiber.
 
 ## Protecting work from interruption
 
+Interruption blocks require an `effect` function or `effect { }` block. Plain and `async` functions, `class` field and `enum` member initializers, `static` blocks and parameter defaults report `EK2201`; a plain callback nested in effect code is still plain. `vibelang --fix` removes the ignored keyword and preserves the ordinary JavaScript block the old compiler emitted.
+
 ```vibe
 // run: try saveReport(); try pollStatus(false); const stopped = try exit(pollStatus(true)); try Console.log(Exit.isFailure(stopped) && Cause.hasInterrupts(stopped.cause))
 effect function saveReport() {

@@ -273,8 +273,8 @@ type maskContext struct {
 	inFunction, masked, outerMasked, item bool
 }
 
-// checkPrimitives reports EK1001 at an interruption block at a module's top
-// level, which would run a program; EK2111 at a restore block that no
+// checkPrimitives reports EK2201 outside effect code before mask nesting;
+// EK2111 at a restore block that no
 // uninterruptible block encloses; and EK2202 at a restore block that would
 // capture an enclosing function's mask across an effect function, arrow,
 // method, producer or block, or that stands in a for concurrent item region,
@@ -305,6 +305,12 @@ func checkPrimitives(c *checker.Checker, file *ast.SourceFile) {
 				args[2].ForEachChild(func(child *ast.Node) bool { return visit(child, region) })
 				return false
 			}
+		}
+		// VIP-22: check source Effect-code ownership before mask nesting.
+		if maskWord(n) != "" && !inInterruptionEffectCode(n) {
+			note(report(c, n.AsBlock().Statements.Nodes[0], EK2201), "Use an effect function or effect block for masking. The --fix migration removes only this keyword, preserving the ordinary JavaScript block the old compiler emitted here.")
+			n.ForEachChild(func(child *ast.Node) bool { return visit(child, ctx) })
+			return false
 		}
 		switch maskWord(n) {
 		case "":

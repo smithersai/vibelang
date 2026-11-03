@@ -1,0 +1,14 @@
+// expect: EK2201 EK2201 EK2201 EK2201 EK2201 EK2201 EK2201 EK2201 EK2201 EK2201 EK2201 EK2201 EK2201 EK2201 EK2201
+// VIP-22: placement is checked before restore nesting.
+function witness() { uninterruptible { } }
+function plainRestore() { restore { } }
+async function asyncMask() { interruptible { } }
+const arrow = () => { uninterruptible { restore { } } }
+effect function outer() { uninterruptible { const callback = () => { restore { } }; } }
+effect function classSites() { class C { value = do { interruptible { }; 1 }; static { uninterruptible { } }; constructor() { interruptible { } }; get n() { restore { }; return 1 } } }
+effect function parameter(n = do { uninterruptible { }; 1 }) {}
+uninterruptible { }
+restore { }
+interruptible { }
+
+effect function enumInitializer() { enum E { A = do { interruptible { }; 1 } } }

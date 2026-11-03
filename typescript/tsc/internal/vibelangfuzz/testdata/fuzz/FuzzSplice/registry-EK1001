@@ -1,2 +1,2 @@
 go test fuzz v1
-string("-- main.vibe --\nuninterruptible {\n  1\n}\nexport {};\n")
+string("-- main.vibe --\ncontrol Approval { approve(): boolean!! }\ntry { Approval.approve() } handle Approval.approve() { resume(true) }\nexport {};\n")

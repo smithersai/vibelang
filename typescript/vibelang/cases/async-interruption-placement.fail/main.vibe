@@ -1,0 +1,18 @@
+// expect: EK2201 EK2201 EK2201 EK2201 EK2201 EK2201 EK2201 EK2201 EK2201 EK2201
+async function plain(){
+ uninterruptible {}
+ interruptible {}
+ restore {}
+}
+async function* gen():AsyncGenerator<number,void,unknown>{
+ uninterruptible {}
+ yield 1
+}
+const arrow=async()=>{restore {}}
+class Native {async method(){interruptible {}}}
+const object={async method(){restore {}}}
+async function nested(){uninterruptible {restore {}}}
+async function valid(){const e=effect {uninterruptible {restore {}}};return 0}
+export {}
+
+effect function outer(){uninterruptible {const later=async()=>{restore {}}}}

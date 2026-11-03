@@ -1,0 +1,23 @@
+// expect-result: 12
+// VIP-22: explicit effect activations work inside otherwise plain code.
+function make() {
+  return effect {
+    let n = 0
+    uninterruptible { n++; restore { n++ }; interruptible { n++ } }
+    return n
+  }
+}
+class C {
+  value = effect { uninterruptible { restore { return 3 } } }
+}
+function defaultProgram(p = effect { interruptible { return 3 } }) { return p }
+export effect function main() {
+  const f = effect () => { uninterruptible { restore { return 3 } } }
+  return (try make()) + (try new C().value) + (try defaultProgram()) + (try f())
+}
+
+effect function computed() {
+  const o = { [do { uninterruptible { }; "m" }]() {} }
+  class C { [do { interruptible { }; "n" }]() {} }
+  class D extends do { uninterruptible { }; (class {}) } {}
+}
