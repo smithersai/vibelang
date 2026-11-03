@@ -10,6 +10,7 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/core"
 	"github.com/microsoft/TypeScript/tsc/internal/ls"
 	"github.com/microsoft/TypeScript/tsc/internal/lsp/lsproto"
+	"github.com/microsoft/TypeScript/tsc/internal/parser"
 	"github.com/microsoft/TypeScript/tsc/internal/scanner"
 )
 
@@ -71,8 +72,8 @@ func isAsyncOrGenerator(fn *ast.Node) bool {
 
 func checkCatchHandler(c *checker.Checker, file *ast.SourceFile, call, fallback *ast.Node) {
 	handler := malformedCatchHandler(call, fallback)
-	if handler == nil {
-		return
+	if handler == nil || parser.IsVibeLangCatchHandlerContinuation(handler) {
+		return // EK0512 owns this closed-handler grammar violation.
 	}
 	d := reportAt(c, file, core.NewTextRange(scanner.SkipTrivia(file.Text(), handler.Pos()), handler.End()), EK0509)
 	if catchHandlerNeedsConversion(handler) {

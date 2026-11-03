@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("nonliteral-handler:\x00\x00\x00\x04")

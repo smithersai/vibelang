@@ -1,0 +1,16 @@
+// expect-result: [1,2,3,4,5,6,7,8]
+export effect function main() {
+  const missing: Effect.Effect<number, string> | undefined = undefined
+  const a = (missing ?? Effect.fail("first")) catch () => 1
+  const b = (missing || Effect.fail("second")) catch () => 2
+  const c = (Effect.succeed(99) && Effect.fail("third")) catch () => 3
+  const d = (Effect.fail("fourth") catch () => 4) ?? 0
+  const zero: number = 0
+  const absent: number | undefined = undefined
+  const truthy: number = 1
+  const e = Effect.fail("fifth") catch () => absent ?? 5
+  const f = Effect.fail("sixth") catch () => zero || 6
+  const g = Effect.fail("seventh") catch () => truthy && 7
+  const h = (Effect.fail("eighth") catch () => [8])[0]
+  return [a, b, c, d, e, f, g, h]
+}

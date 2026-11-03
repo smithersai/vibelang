@@ -26,7 +26,7 @@ func (p *Parser) isVibeLangCatchExpression() bool {
 }
 
 // parseVibeLangCatchRest parses the catch operators after left, which starts at
-// pos. catch binds looser than every binary operator, ?? and || included, and
+// pos. catch binds like ??, rejecting unparenthesized logical mixing, and
 // tighter than ? : and assignment; it associates to the left, so
 // a() catch b() catch c tries b() after a() fails and c after b() fails. A
 // handler is an arrow function, whose body extends as far as an arrow
@@ -34,11 +34,27 @@ func (p *Parser) isVibeLangCatchExpression() bool {
 func (p *Parser) parseVibeLangCatchRest(left *ast.Expression, pos int) *ast.Expression {
 	for p.isVibeLangCatchExpression() {
 		keyword := p.tokenRange()
+		if vibeLangCatchMixedHead(left) {
+			p.reportVibeLangCatchPrecedence(p.sourceRange(left))
+		}
 		p.nextToken() // catch
 		handlerStart := p.nodePos()
 		handler := p.parseVibeLangCatchHandler()
+		// A closed handler cannot take binary or postfix continuations. Keep
+		// the old fallback tree for recovery, so --fix can preserve it.
+		if handler != nil {
+			rest := p.parseCallExpressionRest(handlerStart, handler)
+			rest = p.parseBinaryExpressionRest(ast.OperatorPrecedenceLowest, rest, handlerStart)
+			if rest != handler {
+				p.reportVibeLangCatchPrecedence(p.sourceRange(rest))
+				handler = p.vibelangProgramArrow(nil, rest, core.NewTextRange(rest.Pos(), rest.Pos()))
+			}
+		}
 		if handler == nil {
 			fallback := p.parseBinaryExpressionOrHigher(ast.OperatorPrecedenceLowest)
+			if IsVibeLangCatchHandlerContinuation(fallback) {
+				p.reportVibeLangCatchPrecedence(p.sourceRange(fallback))
+			}
 			p.recordVibeSyntax(VibeSyntax{Kind: VibeSyntaxCatch, Word: keyword, Left: p.sourceRange(left), Right: p.sourceRange(fallback), Range: core.NewTextRange(p.sourceRange(left).Pos(), fallback.End())})
 			handler = p.vibelangProgramArrow(nil, fallback, core.NewTextRange(fallback.Pos(), fallback.Pos()))
 		} else {
