@@ -147,6 +147,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Publication checks for source-child packages could not install an already-published Effect dependency while simulating an unreleased VibeLang SDK. Their registry fixture now serves the pinned Effect release while continuing to withhold the SDK.
 
 
+- Specification checks for generic data helpers failed after the public wording dropped an internal decision reference. They now cite the current public rule; the existing collision-suffix compiler gaps remain tracked across all four generic arities.
+
 - Release validation rejected the VIP-7 reference tests because they had no runner; `//:release` now checks parallel installation and cleanup after a failed install.
 
 - The migration namespace corpus quoted a declaration-import-style guarantee removed from the specification, so its citation check failed. It now cites the current module-identity wording.

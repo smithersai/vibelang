@@ -14,7 +14,7 @@ import (
 // VIP-28 decided detail 83 makes the helper preference and collision suffix
 // deterministic. A user may declare both preferred names in the same module.
 func dataHelperNameRules() []dataRule {
-	const quote = "The helper for `data Outcome<A, E>` is named `$Outcome$Definition`, or `$Outcome$Definition$2`, `$3`, \u2026 when the module already declares that name, so it never collides with a user name and is the same on every build (decided detail 83)."
+	const quote = "The helper for `data Outcome<A, E>` is named `$Outcome$Definition`, or `$Outcome$Definition$2`, `$3`, \u2026 when the module already declares that name, so it never collides with a user name and is the same on every build."
 	var out []dataRule
 	for n := 1; n <= 4; n++ {
 		params := []string{"First", "Second", "Third", "Fourth"}[:n]
