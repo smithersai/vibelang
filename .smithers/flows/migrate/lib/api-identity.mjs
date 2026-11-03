@@ -13,6 +13,16 @@ const repo = resolve(dirname(fileURLToPath(import.meta.url)), "..")
 const declaration = /\.d\.(?:[cm]?ts|vibe\.ts)$/
 const slash = x => x.replaceAll("\\", "/")
 
+// pnpm stores one package per peer context. Keep those installations distinct,
+// while the ordinary non-peer store layout retains its existing logical key.
+function peerInstallation(root, manifest) {
+  const marker = "/node_modules/.pnpm/", at = slash(root).lastIndexOf(marker)
+  if (at < 0) return []
+  const folder = slash(root).slice(at + marker.length).split("/")[0]
+  const ordinary = `${String(manifest.name).replaceAll("/", "+")}@${manifest.version}`
+  return folder === ordinary ? [] : [folder]
+}
+
 export function loadTypeScript(dirs = []) {
   for (const dir of [...dirs, join(repo, "docs/tools"), join(repo, "packages/runtime"), join(repo, "experiments")]) {
     try {
@@ -321,7 +331,7 @@ function equivalentModules(ts, program, host, left, right, externalGroups, docum
       const root = file.slice(0, start + marker.length) + tail.slice(0, tail[0].startsWith("@") ? 2 : 1).join("/")
       let manifest = {}
       try { manifest = JSON.parse(readFileSync(join(root, "package.json"), "utf8")) } catch {}
-      origin = JSON.stringify([manifest.name ?? relative(dirname(root), root), manifest.version, slash(relative(root, file))])
+      origin = JSON.stringify([manifest.name ?? relative(dirname(root), root), manifest.version, slash(relative(root, file)), ...peerInstallation(root, manifest)])
     }
     origins.set(file, origin)
     return origin
@@ -743,7 +753,7 @@ function prepareComparison(ts, before, after, options, progress) {
           const root = file.slice(0, at + marker.length) + tail.slice(0, count).join("/")
           let manifest = {}
           try { manifest = JSON.parse(readFileSync(join(root, "package.json"), "utf8")) } catch {}
-          key = "package:" + JSON.stringify([manifest.name ?? tail.slice(0, count).join("/"), manifest.version, relative(root, file)])
+          key = "package:" + JSON.stringify([manifest.name ?? tail.slice(0, count).join("/"), manifest.version, relative(root, file), ...peerInstallation(root, manifest)])
         } else if (file === base || file.startsWith(base + "/")) key = "owned:" + relative(base, file)
         else key = "shared:" + file
         if (sources.has(key) && sources.get(key) !== file) {

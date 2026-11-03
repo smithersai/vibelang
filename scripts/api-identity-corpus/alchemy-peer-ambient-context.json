@@ -1,0 +1,16 @@
+{
+  "libraryManifest": {
+    "name": "peer-lib",
+    "version": "1.0.0",
+    "types": "index.d.ts",
+    "peerDependencies": {
+      "peer": "*"
+    }
+  },
+  "libraryDeclaration": "import type { Context } from \"peer\"; export declare const key: unique symbol; export interface Value { readonly [key]: Context } declare global { interface PeerMarker { readonly [key]: Context } }",
+  "contexts": [
+    "peer@1.0.0",
+    "peer@2.0.0",
+    "peer@3.0.0"
+  ]
+}
