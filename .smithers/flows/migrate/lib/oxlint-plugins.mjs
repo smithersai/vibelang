@@ -5,7 +5,7 @@
 // modules). Setup preloads the loader in each package script that runs
 // Oxlint and its generated ESLint pass, and in the plugin package's own
 // test scripts, whose RuleTester spawns Oxlint with their environment.
-import { existsSync, readFileSync, writeFileSync } from "node:fs"
+import { existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs"
 import { join, posix } from "node:path"
 import { oxlintConfigs, repositoryPackages } from "./wire.mjs"
 
@@ -46,7 +46,7 @@ export function preloadRegister(command, is) {
 }
 
 // A command that runs Oxlint: oxlint itself, or Vite+'s lint.
-const runsOxlint = (words) => words[0] === "oxlint" || ((words[0] === "vp" || words[0] === "vite-plus") && words[1] === "lint") ||
+const runsOxlint = (words) => words[0] === "oxlint" || ((words[0] === "vp" || words[0] === "vite-plus") && ["lint", "check"].includes(words[1])) ||
   (/^(?:npx|bunx|pnpm|yarn)$/.test(words[0]) && words.slice(1).some((w) => w === "oxlint"))
 // Generated ESLint configurations also import the migrated JS plugin.
 const runsGeneratedEslint = (words) => words[0] === "eslint" && words.some((word, index) =>
@@ -75,7 +75,7 @@ export function wireOxlintPlugins({ root, migrated, ts }) {
     }
   }
   if (!plugins.size) return []
-  const changed = []
+  const changed = wirePluginWorkflows(root)
   for (const { dir, manifest } of packages) {
     if (!manifest.scripts || typeof manifest.scripts !== "object") continue
     let edited = false
@@ -93,6 +93,45 @@ export function wireOxlintPlugins({ root, migrated, ts }) {
       writeFileSync(join(root, file), JSON.stringify(manifest, null, 2) + "\n")
       changed.push(file)
     }
+  }
+  return changed
+}
+
+// Workflow commands bypass package scripts, including the preload on lint.
+function wirePluginWorkflows(root) {
+  const directory = join(root, ".github/workflows")
+  if (!existsSync(directory)) return []
+  const changed = []
+  const register = command => preloadRegister(command, words => runsOxlint(words) || runsGeneratedEslint(words))
+  for (const name of readdirSync(directory).filter(name => /\.ya?ml$/.test(name))) {
+    const file = posix.join(".github/workflows", name)
+    const before = readFileSync(join(root, file), "utf8")
+    const lines = before.split("\n")
+    for (let i = 0; i < lines.length; i++) {
+      const run = /^(\s*(?:-\s+)?run:\s*)(.*)$/.exec(lines[i])
+      if (!run) continue
+      if (/^[|>][+-]?\s*(?:#.*)?$/.test(run[2])) {
+        const indent = lines[i].indexOf("run:")
+        while (i + 1 < lines.length && (!lines[i + 1].trim() || lines[i + 1].search(/\S/) > indent)) {
+          i++
+          lines[i] = register(lines[i])
+        }
+      } else {
+        const value = run[2]
+        let command = value, quote = ""
+        if (value.startsWith('"') && value.endsWith('"')) {
+          try { command = JSON.parse(value); quote = '"' } catch { continue }
+        } else if (value.startsWith("'") && value.endsWith("'")) {
+          command = value.slice(1, -1).replaceAll("''", "'"); quote = "'"
+        }
+        const next = register(command)
+        if (next !== command) lines[i] = run[1] + (quote === '"' ? JSON.stringify(next) : quote === "'" ? "'" + next.replaceAll("'", "''") + "'" : next)
+      }
+    }
+    const after = lines.join("\n")
+    if (after === before) continue
+    writeFileSync(join(root, file), after)
+    changed.push(file)
   }
   return changed
 }

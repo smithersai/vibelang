@@ -1,0 +1,12 @@
+name: CI
+jobs:
+  lint:
+    steps:
+      - name: Check
+        run: |
+          vp check
+          vpr lint
+          vpr fmt:check
+      - run: vp lint --fix
+      - name: "mentions vp check without running it"
+        run: echo ok

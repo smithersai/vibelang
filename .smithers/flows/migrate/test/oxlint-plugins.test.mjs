@@ -141,3 +141,35 @@ registerHooks({ load(url, context, next) {
   assert.equal(child.status, 0, child.stderr)
   assert.match(child.stdout, /plugin loaded/)
 })
+
+test("t3code CI: a direct vp check in a workflow loads migrated plugin sources", (t) => {
+  const files = structuredClone(corpus.files)
+  files[".github/workflows/ci.yml"] = readFileSync(new URL("./corpus/t3code-ci-vp-check-loader.yml", import.meta.url), "utf8")
+  const root = repo(t, files)
+  const changed = wireOxlintPlugins({ root, migrated: corpus.migrated, ts })
+  const workflow = readFileSync(join(root, ".github/workflows/ci.yml"), "utf8")
+  assert.ok(changed.includes(".github/workflows/ci.yml"))
+  assert.match(workflow, /          NODE_OPTIONS=.*--import=vibelang\/register.* vp check\n/)
+  assert.match(workflow, /- run: NODE_OPTIONS=.*--import=vibelang\/register.* vp lint --fix/)
+  assert.ok(workflow.includes("          vpr lint\n          vpr fmt:check"))
+  assert.ok(workflow.includes('      - name: "mentions vp check without running it"\n        run: echo ok'))
+  assert.deepEqual(wireOxlintPlugins({ root, migrated: corpus.migrated, ts }), [])
+})
+
+test("property: workflow run scalars and block styles preload plugin hosts exactly once", (t) => {
+  fc.assert(fc.property(fc.constantFrom("|", "|-", ">-", "plain", "single", "double"), fc.constantFrom("vp check", "vp lint --fix", "oxlint src"), fc.constantFrom(2, 4, 8), (style, command, width) => {
+    const pad = " ".repeat(width)
+    const scalar = style === "single" ? "'" + command + "'" : style === "double" ? JSON.stringify(command) : command
+    const step = ["|", "|-", ">-"].includes(style) ? pad + "run: " + style + "\n" + pad + "  " + command : pad + "run: " + scalar
+    const workflow = "jobs:\n" + step + "\n" + pad + 'name: "vp check is only a name"\n'
+    const files = structuredClone(corpus.files)
+    files[".github/workflows/check.yaml"] = workflow
+    const root = repo(t, files)
+    wireOxlintPlugins({ root, migrated: corpus.migrated, ts })
+    const actual = readFileSync(join(root, ".github/workflows/check.yaml"), "utf8")
+    assert.equal(actual.split("vibelang/register").length - 1, 1, actual)
+    assert.ok(actual.includes('name: "vp check is only a name"'))
+    assert.deepEqual(wireOxlintPlugins({ root, migrated: corpus.migrated, ts }), [])
+    assert.equal(readFileSync(join(root, ".github/workflows/check.yaml"), "utf8"), actual)
+  }), { numRuns: 100 })
+})

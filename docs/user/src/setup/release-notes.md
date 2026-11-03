@@ -498,6 +498,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Mixed interruption fuzz programs no longer put `restore` directly in a concurrent item; their masks use the existing helper-function form.
 - The ast-grep library and npm package kept only the original parser, omitting additional registered grammars; builds now include every parser in `tree-sitter.json`, and migration registers the `.vibex` parser when the installed compiler supplies it, with JSX-only rules kept on the JSX parser.
 
+- CI could fail to load a migrated local lint plugin when a GitHub workflow ran `vp check` or `oxlint` directly; setup now preloads `vibelang/register` in those workflow commands, retaining their flags and existing `NODE_OPTIONS`.
+
 - After migrating a local Oxlint JS plugin, lint reached ESLint and failed with `ERR_UNKNOWN_FILE_EXTENSION ".vibe"` because only Oxlint preloaded the loader; setup now registers `vibelang/register` in each generated ESLint command too, including on repeated setup.
 - The specification still listed `EK2007` for a legacy `for...of` or `for await` over a `Stream`, though the compiler keeps those loops native and reports `EK0102` for a `for await` in effect code; the specification and the diagnostic registry no longer list it.
 - The editor declined to convert an `async` function that returns an object whose `then` is not callable, such as `{ then: 7 }`, as though Promise adoption could change the result; it now offers the conversion, and still declines when `then` may be callable.

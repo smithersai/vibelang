@@ -82,7 +82,9 @@ invocation's `--deny-warnings` or `--max-warnings 0` policy. Running setup
 again refreshes its generated configurations and passes. When a local JS plugin is
 migrated, setup preloads `vibelang/register` separately for Oxlint and each
 generated ESLint command, so both Node processes can import its `.vibe`
-modules. The preload retains existing `NODE_OPTIONS`.
+modules. The preload retains existing `NODE_OPTIONS`. Direct `oxlint`, `vp lint` and
+`vp check` invocations in GitHub workflow `run` steps get the same preload;
+workflow names and unrelated commands stay as written.
 Setup adds `--no-error-on-unmatched-pattern` to the native invocation so a
 directory containing only `.vibe` files still reaches ESLint.
 It also follows local JavaScript and TypeScript runners launched by package
