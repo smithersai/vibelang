@@ -86,6 +86,15 @@ func planOptionGen(c *checker.Checker, file *ast.SourceFile, call *ast.Node) *fo
 			}
 			return false
 		case ast.KindYieldExpression:
+			// Option.gen abandons its generator at None. Returning from the
+			// IIFE would instead close every active for-of iterator.
+			for region := n; region.Parent != nil && region.Parent != gen; region = region.Parent {
+				parent := region.Parent
+				if ast.IsForOfStatement(parent) && parent.Statement() == region {
+					why = "a delegated None would close an enclosing for-of iterator"
+					return true
+				}
+			}
 			y := n.AsYieldExpression()
 			if y.AsteriskToken == nil || y.Expression == nil || !isOptionType(c, c.GetTypeAtLocation(y.Expression)) || containsOptionYield(y.Expression) {
 				why = "a yield does not delegate directly to an Option"

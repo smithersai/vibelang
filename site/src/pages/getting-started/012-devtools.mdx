@@ -172,7 +172,7 @@ A pure `Option.gen(function* () { … })` has an eager plain-function quick fix 
 statement-position `yield*` bindings, discarded yields, and `return yield*`.
 It evaluates each Option in order, returns `Option.none()` at the first `None`, and wraps normal
 completion in a fresh `Some`. A fallthrough or void return, nested expression yield, nested function,
-generator receiver, or `try`/`finally` keeps the diagnostic and its refusal
+generator receiver, `try`/`finally`, or a delegated yield inside a `for...of` body keeps the diagnostic and its refusal
 reason; those shapes need a manual rewrite.
 
 A plain `Option.match(value, { onNone, onSome })` has a native quick fix: the subject and the handler object are read once, in their original order, then a `match` chooses `when Option.Some(let value)` or the default. A choice whose arms return programs keeps the diagnostic and its reason.

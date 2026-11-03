@@ -10,6 +10,7 @@ import (
 
 func TestOptionGenQuickFixFoldkit(t *testing.T) {
 	for _, source := range []string{
+		"export function sum(a: Option.Option<number>, xs: readonly number[]): Option.Option<number> { return Option.gen(function* () { const n = yield* a; let result = n; for (const x of xs) { result += x; } return result }) }",
 		"export function sum(a: Option.Option<number>, b: Option.Option<number>): Option.Option<number> { return Option.gen(function* () { const first = yield* a; const second = yield* b; return first + second }) }",
 		"export function sum(a: Option.Option<{value: number}>, b: Option.Option<number>): Option.Option<number> { return Option.gen(function* () { const {value} = yield* a; let second = yield* b; second++; return value + second }) }",
 		"export const one = (a: Option.Option<number>): Option.Option<number> => Option.gen(function* () { if (true) return yield* a; return 1 })",
@@ -80,5 +81,35 @@ func TestOptionGenRefusesChangedGeneratorProtocols(t *testing.T) {
 		}
 		file.AsNode().ForEachChild(visit)
 		done()
+	}
+}
+
+func TestOptionGenRefusesIteratorClosingChanges(t *testing.T) {
+	for _, body := range []string{
+		"for (const x of xs) { const y = yield* a; }",
+		"for (const x of xs) { for (const y of xs) { yield* a; } }",
+		"for (const x of xs) { if (x) return yield* a; }",
+		"for (const x of xs) { while (true) { const y = yield* a; break; } }",
+	} {
+		source := "export const f = (a: Option.Option<number>, xs: Iterable<number>) => Option.gen(function* () { " + body + " return 1; })"
+		p, file, _, _ := editorProgram(t, source)
+		c, done := p.GetTypeCheckerForFile(t.Context(), file)
+		found := false
+		var visit func(*ast.Node) bool
+		visit = func(n *ast.Node) bool {
+			if ast.IsCallExpression(n) && isEffectFunction(c, n.Expression(), "Option", "gen") {
+				found = true
+				if r := planOptionGen(c, file, n); r.fixable() {
+					t.Errorf("iterator cleanup rewrite offered: %s", source)
+				}
+				return true
+			}
+			return n.ForEachChild(visit)
+		}
+		file.AsNode().ForEachChild(visit)
+		done()
+		if !found {
+			t.Fatal("Option.gen fixture unresolved")
+		}
 	}
 }

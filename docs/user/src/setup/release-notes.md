@@ -660,6 +660,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Schema fields without `readonly` incorrectly produced readonly keys, including nested object fields; they now produce writable keys, while explicit `readonly` and direct schema-error payload defaults keep their meaning. To retain older implicit readonly schema keys, run `vibelang -p tsconfig.json --fix --fix-migration-only`. The upgrade writes explicit `readonly` keys or preserves an explicit Effect codec when a source modifier cannot retain its decoded-key flags.
 
 - Programs created or reconfigured through the compiler API lost parsed `vibe` settings, so severity overrides and disabled Effect globals or modules stopped applying; both API paths now retain those settings.
+
+- The `Option.gen` quick fix could close iterators that native Effect leaves suspended on `None`; a delegated yield inside an active `for...of` body now keeps the diagnostic and explains why it needs a manual rewrite.
 - Resolved schema-binding regressions still appeared as pending gaps; namespace, function and escaped-name coverage now checks `EK2109` strictly while keeping every keyed corpus.
 - Schema library-alias checks now compare array decoding and mutability with native TypeScript and explicit Schema controls; remaining decoder gaps keep precise pending records.
 
