@@ -743,6 +743,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - A transport waiting for stdin to close had to consume its input; `Experimental.Stdio.awaitInputClosed` now observes closure while leaving bytes and errors to the transport.
 
+- Running an unannotated Vibe helper beside a foreign Effect could leave redundant subclasses in the inferred error channel; its channels now reduce as the equivalent `Effect.fn` program does. For a tagged catch that relied on the former inferred subclass, `--fix` preserves the local program's channel with an explicit return contract.
+
 - Release validation rejected the VIP-7 reference tests because they had no runner; `//:release` now checks parallel installation and cleanup after a failed install.
 
 - The migration namespace corpus quoted a declaration-import-style guarantee removed from the specification, so its citation check failed. It now cites the current module-identity wording.

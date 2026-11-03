@@ -25,7 +25,10 @@ const effectChannelsQuote = "Declarations are exactly what idiomatic Effect Type
 // finds no such member (alchemy-63; corpus alchemy-k8s-service-not-ready,
 // whose throw is an expression in alchemy-k8s-service-not-ready-expr). The
 // AWS sites read through a .vibe function with a contract
-// (alchemy-aws-contract-read-not-ready).
+// (alchemy-aws-contract-read-not-ready). Unannotated Vibe callees are
+// yielded Effects too: their actual success types decide whether subtype
+// reduction drops a run. The infallible, failing, nested and method callees
+// below exercise that distinction in both orders beside the foreign runs.
 func FuzzEffectChannelsDeclaration(f *testing.F) {
 	startShortBudget(f)
 	effectChannelsChapter(f)
@@ -76,6 +79,13 @@ var effectChannelRuns = []effectChannelRun{
 	{"not-ready", "if (n > 1) throw new NotReady()", "if (n > 1) return yield* Effect.fail(new NotReady())"},
 	{"not-ready-expr", "n > 2 ? n : throw new NotReady()", "n > 2 ? n : yield* Effect.fail(new NotReady())"},
 	{"vibe-read", "try vibeRead()", "yield* vibeRead()"},
+	{"string-callee", "try stringCallee(n)", "yield* stringCallee(n)"},
+	{"void-callee", "try voidCallee(n)", "yield* voidCallee(n)"},
+	{"fail-callee", "try failCallee(n)", "yield* failCallee(n)"},
+	{"env-callee", "try envCallee(n)", "yield* envCallee(n)"},
+	{"chain-callee", "try chainCallee(n)", "yield* chainCallee(n)"},
+	{"decl-callee", "try declCallee(n)", "yield* declCallee(n)"},
+	{"method-callee", "try methods.run(n)", "yield* methods.run(n)"},
 }
 
 const effectChannelsLib = `import { Effect } from "effect"
@@ -128,6 +138,28 @@ func parseEffectChannels(data []byte) []effectChannelRun {
 	return runs
 }
 
+// Both printers model the same helper calls; compare exact declarations,
+// including aliases and subtype reduction, rather than assignability alone.
+const effectChannelsVibeCallees = `
+const stringCallee = effect (n: number) => "quiet"
+const voidCallee = effect (n: number) => {}
+const failCallee = effect (n: number) => { if (n > 0) throw new A(); return n }
+const envCallee = effect (n: number) => { try envA(); return n }
+const chainCallee = effect (n: number) => try quiet(n)
+effect function declCallee(n: number) { return n }
+const methods = { effect run(n: number) { return n } }
+`
+
+const effectChannelsTwinCallees = `
+const stringCallee = Effect.fn(function* (n: number) { return "quiet" })
+const voidCallee = Effect.fn(function* (n: number) {})
+const failCallee = Effect.fn(function* (n: number) { if (n > 0) return yield* Effect.fail(new A()); return n })
+const envCallee = Effect.fn(function* (n: number) { yield* envA(); return n })
+const chainCallee = Effect.fn(function* (n: number) { return yield* quiet(n) })
+const declCallee = Effect.fn(function* (n: number) { return n })
+const methods = { run: Effect.fn(function* (n: number) { return n }) }
+`
+
 const effectChannelsConfig = `{"compilerOptions":{"target":"ES2022","lib":["esnext"],"module":"NodeNext","moduleResolution":"NodeNext","strict":true,"skipLibCheck":true,"types":[],"declaration":true,"emitDeclarationOnly":true,"outDir":"out"},"files":["lib.ts","%s"]}`
 
 // CheckEffectChannels compares what main.vibe and its Effect.fn twin declare.
@@ -137,7 +169,7 @@ func CheckEffectChannels(t *testing.T, w *Workspace, runs []effectChannelRun) {
 	if len(runs) == 0 {
 		return
 	}
-	vibe, twin := []string{effectChannelsImports, "const quiet = effect (n: number) => n\n\neffect function vibeRead(): (string | undefined)!(Error | ApiError)! { return undefined }\n\nexport const program = effect (n: number) => {\n"}, []string{"import { Effect } from \"effect\"\n", effectChannelsImports, "const quiet = Effect.fn(function* (n: number) {\n  return n\n})\n\nconst vibeRead = (): Effect.Effect<string | undefined, Error | ApiError> => Effect.succeed(undefined)\n\nexport const program = Effect.fn(function* (n: number) {\n"}
+	vibe, twin := []string{effectChannelsImports, "const quiet = effect (n: number) => n\n\neffect function vibeRead(): (string | undefined)!(Error | ApiError)! { return undefined }\n" + effectChannelsVibeCallees + "\nexport const program = effect (n: number) => {\n"}, []string{"import { Effect } from \"effect\"\n", effectChannelsImports, "const quiet = Effect.fn(function* (n: number) {\n  return n\n})\n\nconst vibeRead = (): Effect.Effect<string | undefined, Error | ApiError> => Effect.succeed(undefined)\n" + effectChannelsTwinCallees + "\nexport const program = Effect.fn(function* (n: number) {\n"}
 	for _, run := range runs {
 		vibe = append(vibe, "  "+run.vibe+"\n")
 		twin = append(twin, "  "+run.twin+"\n")
@@ -177,9 +209,6 @@ func CheckEffectChannels(t *testing.T, w *Workspace, runs []effectChannelRun) {
 	case len(vibeErrors) != 0:
 		g.Add("feature:effect-channels-compile", "%v\n%s", vibeErrors, vibeText)
 	case vibeDeclares != twinDeclares:
-		// An unannotated .vibe callee adds its channels but no run: its
-		// success is the type being inferred, so it adds no candidate to
-		// compare (feature:effect-channels:vibe-callee).
 		key := "feature:effect-channels"
 		if slices.ContainsFunc(runs, func(run effectChannelRun) bool { return run.name == "quiet" }) {
 			key += ":vibe-callee"

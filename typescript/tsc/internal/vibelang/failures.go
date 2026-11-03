@@ -220,6 +220,25 @@ func (a *analyzer) addCall(info *effectInfo, call *ast.Node) {
 			info.addRequirement(r, call)
 			info.addRun(a.checker, t)
 		} else if calleeInfo := a.effectOf(callee); calleeInfo != nil {
+			// A solved, nonrecursive callee contributes the Effect it returns,
+			// including its success type and never channels. Copying only E/R
+			// loses an inference candidate beside other yielded Effects.
+			// Inlined program arrows contribute their body's runs below; a
+			// cycle or a return type already being inferred keeps the fixed-point
+			// path instead of reentering TypeScript's return inference.
+			if !isProgramArrow(callee) && a.effects[callee] != nil && !a.recursive[callee] && !a.checker.IsResolvingReturnTypeOf(sig) {
+				t := runningCallResult(a.checker, call, sig)
+				e, r := channelType(a.checker, t, "_E"), channelType(a.checker, t, "_R")
+				if e != nil && r != nil {
+					info.addError(e, call)
+					info.addRequirement(r, call)
+					info.addRun(a.checker, t)
+					if info.effect == nil {
+						info.effect = effectInterface(a.checker, t)
+					}
+					return
+				}
+			}
 			info.addFrom(calleeInfo, call)
 			if isProgramArrow(callee) {
 				// A do or throw expression's body is the enclosing body's own

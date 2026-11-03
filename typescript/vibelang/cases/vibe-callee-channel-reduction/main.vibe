@@ -1,0 +1,12 @@
+// VIP-1/VIP-27: include a Vibe callee among the yielded Effect candidates.
+// The exact declaration snapshot also checks reduction, since Error and
+// Error | ApiError are mutually assignable and declaration identity alone
+// cannot distinguish them.
+import { hostname, tag } from "./lib.js"
+const quiet = effect (n: number) => n
+const annotated = effect (n: number): number!! => n
+export const program = effect (n: number) => { try quiet(n); try hostname() }
+export const reverse = effect (n: number) => { try hostname(); try quiet(n) }
+export const control = effect (n: number) => { try annotated(n); try hostname() }
+export const tagged = effect (n: number) => { try quiet(n); try tag() }
+export const only = effect (n: number) => { return try quiet(n) }
