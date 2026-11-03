@@ -51,7 +51,7 @@ export function plainThrows(fence) {
       const headStart = method ? Math.max(parent.range[0], ...(parent.decorators ?? []).map(d => d.range[1])) : node.range[0]
       const effect = method
         ? tokens.some(t => t.range[0] >= headStart && t.range[1] <= parent.key.range[0] && t.value === "effect")
-        : tokenAt(node.range[0])?.value === "effect"
+        : tokenAt(node.range[0])?.value === "effect" && !node.params.some(p => p.range[0] === tokenAt(node.range[0]).range[0])
       visit(node.body, effect || node.async, node)
       for (const parameter of node.params) visit(parameter, node.async && !node.generator && !effect, node)
       return
@@ -382,4 +382,16 @@ test("plainThrows excludes decorator names from method modifier detection", () =
       assert.deepEqual(plainThrows(prefix + `async method(flag: boolean, x = do { if (flag) throw ${value}; 0 }) { return x } }`), [])
     }
   }), { seed: 110322, numRuns: 100 })
+})
+
+test("plainThrows keeps a bare arrow parameter named effect synchronous", () => {
+  fc.assert(fc.property(fc.nat({ max: 1000000 }), fc.constantFrom(" ", "\n", "\n  "), (n, layout) => {
+    for (const name of ["effect", "value" + n]) {
+      const body = "{" + layout + "throw " + name + layout + "}"
+      assert.equal(plainThrows("const f = " + name + " => " + body).length, 1)
+      assert.equal(plainThrows("effect function outer() { return " + name + " => " + body + " }").length, 1)
+      assert.deepEqual(plainThrows("const f = async " + name + " => " + body), [])
+      assert.deepEqual(plainThrows("const f = effect (" + name + ") => " + body), [])
+    }
+  }), { seed: 110333, numRuns: 100 })
 })
