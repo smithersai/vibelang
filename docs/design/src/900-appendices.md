@@ -949,7 +949,6 @@ The TypeScript-form lint warnings also retain their existing `EK4830`–`EK4837`
 | `EK0201` | a `do` block whose last statement violates TC39's `EndsInIterationOrBareIfOrDeclaration` early error | 2 | [Running Effects](002-running.md#do-expressions) |
 | `EK0202` | a `break` or `continue` whose target is outside the block of an `effect { … }` expression | 2 | [Running Effects](002-running.md#effect-blocks) |
 | `EK0203` | `var` in a `do` expression in a parameter list | 2 | [Running Effects](002-running.md#do-expressions) |
-| `EK0204` | current compiler implementation limitation: an outward source completion cannot yet cross a generated function boundary in this position; this is not a TC39 early error | 2 | [Running Effects](002-running.md#do-expressions) |
 | `EK0205` | a `break` or `continue` in a loop head's `do` that leaves it unlabeled or targets that loop | 2 | [Running Effects](002-running.md#do-expressions) |
 | `EK0301` | `!` beside a union, an intersection, a conditional type, or a function or constructor type in a slot, without parentheses: `A \| B!E`, `() => A!E \| B`, `A!() => B` (write `A!(() => B)`) | 3 | [Functions](001-functions.md#the-aer-type-shorthand) |
 | `EK0302` | `A!!B!C`: write `(A!!B)!C` or `A!(B!C)` | 3 | [Appendix A](#notes-on-the-productions) |
@@ -1098,6 +1097,12 @@ A transitional compiler may still print compatibility diagnostics from the old l
 For example, `effect function bad(): number!! { throw new Bad() }`, with `error Bad`, fails ordinary Effect return-type checking: its error type is `Bad`, rather than `never`. `effect function run() { return try succeed(1) }` is valid and gives `Success(1)`. Removing the old statement warning never permits skipping an infallible Effect.
 
 The compiler also still prints `EK3008` for `0.0.10`'s static-key rule, which the normative table numbers `EK0901`; read an emitted `EK3008` as `EK0901` until the compiler is renumbered.
+
+The compiler also prints `EK0204`, a compiler gap rather than a language rule. Where it still compiles a `do` to a function (a parameter default, a declaration in a for-loop initializer, a class member, a `case` test, an optional chain, and the `catch` expressions, `throw` expressions and `fork` it writes as functions), it rejects a `return`, `var`, jump, `await` or `yield` that would leave the `do`. The admitted completions keep the meaning [Running Effects](002-running.md#parameter-defaults) gives; ordinary placement and early-error rules still apply. In particular, `function f(x = do { return null }) {}` returns `null` from `f`; the code retires when the compiler lowers those positions.
+
+| Code | Rule | VIP | Chapter |
+| --- | --- | --- | --- |
+| `EK0204` | compiler gap, not a language rule: a `return`, `var`, jump, `await` or `yield` that would leave a `do` the compiler still compiles to a function; admitted completions keep VIP-2’s meaning | 2 | [Running Effects](002-running.md#do-expressions) |
 
 The existing migration warnings retain their emitted codes until the compiler and documentation move together. They select repairs; they do not change the omitted-slot or service rules.
 
