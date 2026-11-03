@@ -119,7 +119,7 @@ The migration ships before enforcement: `vibelang --fix` repairs stale relative 
 
 ### Declaration import spelling
 
-Declaration import spelling follows TypeScript's source and tsconfig rules ([Declaration output](001-functions.md#declaration-output)). `declarationImportStyle` is retired: root `vibelang.declarationImportStyle` and `compilerOptions.vibelang.declarationImportStyle` are ignored with a nonfatal deprecation warning for every value, including invalid values (VIP-30, amended). No replacement option or spelling codemod is needed.
+Declaration import spelling follows TypeScript's source and tsconfig rules ([Declaration output](001-functions.md#declaration-output)). `declarationImportStyle` is retired: root `vibelang.declarationImportStyle` and `compilerOptions.vibelang.declarationImportStyle` are ignored with nonfatal deprecation warning `EK3011` for every value, including invalid values (VIP-30, amended). No replacement option or spelling codemod is needed.
 
 A published package carries JavaScript and ordinary `.d.ts` files. Compatibility `*.d.vibe.ts` and `*.d.vibex.ts` sidecars serve source tools and do not ship; published type exports point at the build’s ordinary declarations.
 
@@ -326,6 +326,7 @@ These are VibeLang’s own configurable warnings, distinct from the imported `EK
 | A plain call in effect code infers an Effect type argument outside a declared Effect position ([Inferred Effect arguments](002-running.md#inferred-effect-arguments); [VIP-5](../vips/0005-try-runs-effects.md#amendment-inferred-effect-arguments)) | `EK4802` | Run the direct argument with `try`, or explicitly write the type arguments to keep the program. Batch `--fix` chooses only the context-safe `try` repair. |
 | An `effect` function returns an Effect value unrun, so its caller gets the program instead of its result ([VIP-1](../vips/0001-effect-and-async-functions.md), [VIP-5](../vips/0005-try-runs-effects.md#decision)) | `EK4802` | `return try e`; no automatic fix in ordinary `--fix` |
 | A legacy severity map remains in the config | `EK3009` | Run `vibelang --fix` after resolving obsolete entries. |
+| A retired `declarationImportStyle` setting is ignored, for every value ([VIP-30](../vips/0030-config-files.md)) | `EK3011` | Remove the setting; declaration spelling follows the native TypeScript twin. |
 | `using` in effect code | `EK0801` | Use `acquireDisposable` inside `scoped`. |
 | An extractor's argument count cannot match its extraction list | `EK0703` | Use a bare class test or the matching number of subpatterns. |
 | `await` on a `Fiber` ([VIP-5](../vips/0005-try-runs-effects.md#decision)) | `EK4609` | `await runPromise(Fiber.join(fiber))` in `async` code; `join fiber` in effect code |

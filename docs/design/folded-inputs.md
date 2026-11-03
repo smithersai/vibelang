@@ -171,3 +171,9 @@ The directory amendment already follows TypeScript’s declaration source root. 
 Folded: 1793682039-declstyle-from-tsc.patch (applied at docs/design/src/001-functions.md’s Specifiers bullet, docs/design/src/007-tooling.md’s Emit names rule, and VIP-27, VIP-34 and VIP-39’s declaration-spelling amendments; declaration-style warning ownership is reconciled separately).
 
 The earlier fold’s claim that preserving `./dep.ts` means a package should preserve `./dep.vibe` is superseded here. Will’s standing TypeScript rule governs the consumer as well as the emitter. TypeScript `5.9.3` preserves written `./user.ts` in `.d.ts`; with only ordinary `user.d.ts` shipped, NodeNext resolves `./user.ts` and `./user.js`, but reports `TS2307` for `./user.vibe` even with `allowArbitraryExtensions`. Adopt the input’s native-twin spelling for package declarations, and retain its distinct source-reference spelling for compatibility sidecars. The old optional style setting does not return. The patch’s old matrix is evidence, not a new normative duplicate of the chapters; its proposed native warning code is subject to VIP-34’s diagnostic ownership rule.
+
+## Round 19: give the retired declaration-style warning its owner
+
+Folded: 1793682039-declstyle-from-tsc.patch (retired-setting warning reconciled at docs/design/vips/0030-config-files.md:26, docs/design/src/007-tooling.md:122 and Appendix B’s `EK3011` row).
+
+The named input’s retirement behavior is adopted for every value, invalid values included. Its proposed `TS5101` is replaced by `EK3011`: VIP-34 keeps `TS` codes for native TypeScript syntax/static errors and requires the owning VIP’s `EK` code for a VibeLang rule. Stock TypeScript `5.9.3` ignores the custom root section and produces no deprecation diagnostic for this key. VIP-30’s next unused allocation is `EK3011`; warning configuration and exit status follow the existing warning rules. No new deprecation policy is introduced.
