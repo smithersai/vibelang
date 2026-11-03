@@ -9,7 +9,7 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/scanner"
 )
 
-const VibeLangProvideCommaMessage = "A provider separator cannot have a line break on either side. Keep the providers on one line, or compose them with Layer.mergeAll(…)."
+const VibeLangProvideCommaMessage = "A provider separator cannot have a line break on either side. Keep the providers on one line, or compose them with Layer.mergeAll(…). A line break inside a comment has no automatic fix because the comment must stay unchanged."
 
 // Only the list's own commas are separators. Parentheses and every other
 // expression form keep their internal line breaks, as VIP-12 requires.

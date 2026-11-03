@@ -269,6 +269,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Published API checks merged ambient declarations across snapshots or rejected them as non-modules; ambient module exports and global contributions now compare in separate environments.
 
+- The `EK1202` provider-separator fix could flatten line breaks inside a comment. It now leaves that site unchanged and still joins whitespace around comments that fit on one line.
+
 - Published API checks rejected identical JSON exports as non-modules; JSON assets now retain their `resolveJsonModule` types, and real type changes still fail.
 
 - Source-child loader wiring introduced a `fileURLToPath` import alias and failed repositories’ native import policies. Setup now uses a namespace import and refreshes its own previously generated helpers while preserving manually observed bindings.

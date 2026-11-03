@@ -20,6 +20,20 @@ var provideCommaFix = &ls.CodeFixProvider{
 		if strings.Contains(trivia, "//") {
 			return nil, nil
 		}
+		// A line break inside a block comment is part of the comment's text.
+		// Removing it would satisfy the grammar by changing that text.
+		for tail := trivia; ; {
+			start := strings.Index(tail, "/*")
+			if start < 0 {
+				break
+			}
+			tail = tail[start+2:]
+			end := strings.Index(tail, "*/")
+			if end < 0 || strings.ContainsAny(tail[:end], "\r\n\u2028\u2029") {
+				return nil, nil
+			}
+			tail = tail[end+2:]
+		}
 		joined := strings.NewReplacer("\r\n", " ", "\r", " ", "\n", " ", "\u2028", " ", "\u2029", " ").Replace(trivia)
 		return []*ls.CodeAction{{Description: "Keep the provider separator on one line", Changes: replaceRange(fix, start, end, joined)}}, nil
 	},

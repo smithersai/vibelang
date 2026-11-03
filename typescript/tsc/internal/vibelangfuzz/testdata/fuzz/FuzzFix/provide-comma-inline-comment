@@ -1,0 +1,2 @@
+go test fuzz v1
+string("-- main.vibe --\nexport effect function main() { provide Layer.empty, /* separator */\n Layer.empty {} return 7 }\n")
