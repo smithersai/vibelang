@@ -1,0 +1,2 @@
+go test fuzz v1
+string("window:identifier:sync-wrapper:global")

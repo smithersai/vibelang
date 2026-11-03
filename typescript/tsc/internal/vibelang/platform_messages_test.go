@@ -140,7 +140,7 @@ export const run = () => mkdtemp("build-")`, []string{
 		{"gap", `import { uptime } from "node:os"
 export const run = () => uptime()`, []string{
 			"uptime from node:os is platform code, which a .vibe file does not import as a value.",
-			noServiceYet, "Import it in a module block or a .ts file, and use it there or in a hatch.",
+			noServiceYet, "Move the platform code into a .ts module and expose it through an Effect; wrapping it inside a .vibe file does not grant host access.",
 		}},
 		{"experimental", `import { hostname } from "node:os"
 export const run = () => hostname()`, []string{
@@ -169,7 +169,7 @@ export const run = () => homedir()`, []string{
 export const run = (emitter: unknown) => once(emitter, "exit")`, []string{
 			"once from node:events is platform code, which a .vibe file does not import as a value.",
 			noServiceYet, "Effect has no adapter for a Node.js EventEmitter; Stream.fromEventListener reads an event target.",
-			"Import it in a module block or a .ts file, and use it there or in a hatch.",
+			"Move the platform code into a .ts module and expose it through an Effect; wrapping it inside a .vibe file does not grant host access.",
 		}},
 		{"lstat", `import { lstat } from "node:fs/promises"
 export const run = (path: string) => lstat(path)`, []string{
@@ -194,7 +194,7 @@ export const run = (key: Uint8Array) => createHmac("sha256", key)`, []string{
 		}},
 		{"gap of a property", `export const run = () => process.umask()`, []string{
 			"process.umask is platform code, which VibeLang code does not use directly.",
-			noServiceYet, "Run it in a hatch:   sync(() => process.umask()), or with try when it can throw; or move it to a module block or a .ts file.",
+			noServiceYet, "Move the platform code into a .ts module and expose it through an Effect; wrapping it inside a .vibe file does not grant host access.",
 		}},
 		{"experimental property", `export const run = () => process.pid`, []string{
 			"process.pid is platform code, which VibeLang code does not use directly.",
@@ -236,7 +236,7 @@ export const run = (key: Uint8Array) => createHmac("sha256", key)`, []string{
 		{"gap", `export const run = () => document.title`, []string{
 			"document.title is platform code, which VibeLang code does not use directly.",
 			noServiceYet, "Effect has no service for the DOM; try (try Experimental.Document.Document).current gives an API that takes it the page's Document, and other UI code belongs in a .ts or .tsx file, such as a React component's.",
-			"Run it in a hatch:   sync(() => document.title), or with try when it can throw; or move it to a module block or a .ts file.",
+			"Move the platform code into a .ts module and expose it through an Effect; wrapping it inside a .vibe file does not grant host access.",
 		}},
 		{"clock", `export const run = () => Date.now()`, nil},
 		{"monotonic clock", `export const run = () => performance.now()`, []string{

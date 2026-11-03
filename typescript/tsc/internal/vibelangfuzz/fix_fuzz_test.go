@@ -17,6 +17,7 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/bundled"
 	"github.com/microsoft/TypeScript/tsc/internal/diagnostics"
 	"github.com/microsoft/TypeScript/tsc/internal/lsp/lsproto"
+	"github.com/microsoft/TypeScript/tsc/internal/tspath"
 	"github.com/microsoft/TypeScript/tsc/internal/vibelang"
 )
 
@@ -26,7 +27,8 @@ import (
 //
 //   - It never panics or hangs, and its rounds converge: "--fix repeats its
 //     rounds until no fix applies".
-//   - It changes only the project's own .vibe files.
+//   - It edits only the project's own .vibe files; new TypeScript adapters
+//     are owned program sources, not edits to existing foreign files (VIP-33).
 //   - "--fix writes a file only when the fixed program reports no error the
 //     original did not" (D291): the fixed project reports no error, by file
 //     and code, more often than the original.
@@ -163,18 +165,31 @@ func FuzzFix(f *testing.F) {
 				return
 			}
 			fixed := maps.Clone(files)
+			// VIP-33 moves platform implementations to TypeScript. A new local
+			// program source is owned by this project; existing foreign files
+			// and dependencies must still remain untouched.
+			var freshSources []string
+			movedComments := ""
+			for name, file := range result.Files {
+				rel := strings.TrimPrefix(name.AsString(), filepath.ToSlash(r.Dir)+"/")
+				_, existed := files[rel]
+				if !existed && file.Original == "" && filepath.IsLocal(rel) && strings.HasSuffix(rel, ".ts") && !strings.HasSuffix(rel, ".d.ts") {
+					freshSources = append(freshSources, rel)
+					movedComments += "\n" + file.Text
+				}
+			}
 			for name, file := range result.Files {
 				rel := strings.TrimPrefix(name.AsString(), filepath.ToSlash(r.Dir)+"/")
 				// Chapter 007: the selected project's own program sources, including .vibex.
-				if _, ok := files[rel]; !ok || !(strings.HasSuffix(rel, ".vibe") || strings.HasSuffix(rel, ".vibex")) {
-					Gap(t, "FuzzFix", "fix:scope", "--fix changed %s, which is not one of the project's own .vibe files:\n%s", name, archive)
+				if _, ok := files[rel]; (!ok || !(strings.HasSuffix(rel, ".vibe") || strings.HasSuffix(rel, ".vibex"))) && !slices.Contains(freshSources, rel) {
+					Gap(t, "FuzzFix", "fix:scope", "--fix changed %s, which is not one of the project's owned sources:\n%s", name, archive)
 				}
 				if strings.Contains("/"+filepath.ToSlash(rel)+"/", "/node_modules/") {
 					Gap(t, "FuzzFix", "fix:scope-dependency", "chapter 007 forbids dependency writes: %s", rel)
 				}
 				fixed[rel] = file.Text
 				// D372: comments survive every rewrite.
-				if lost := slices.DeleteFunc(toolsLostComments(file.Original, file.Text), fixRemovedThrowsTag.MatchString); len(lost) > 0 {
+				if lost := slices.DeleteFunc(toolsLostComments(file.Original, file.Text+movedComments), fixRemovedThrowsTag.MatchString); len(lost) > 0 {
 					Gap(t, "FuzzFix", "fix:comments", "--fix lost the comments %q of %s:\n%s\nfixed:\n%s", lost, rel, file.Original, file.Text)
 				}
 			}
@@ -182,6 +197,12 @@ func FuzzFix(f *testing.F) {
 			if len(result.Files) > 0 {
 				after = toolsCompile(t, w, "FuzzFix", fixed)
 				defer after.Remove()
+				for _, rel := range freshSources {
+					name := tspath.RootedFilePathFromAbsolute(filepath.ToSlash(filepath.Join(after.Dir, rel)))
+					if after.Program.GetSourceFile(name) == nil {
+						Gap(t, "FuzzFix", "fix:scope-new-source", "new TypeScript source is outside the selected program: %s", rel)
+					}
+				}
 				// D291: --fix writes a file only when the fixed program reports no
 				// error the original did not.
 				if added := toolsAddedErrors(r, after); len(added) > 0 {

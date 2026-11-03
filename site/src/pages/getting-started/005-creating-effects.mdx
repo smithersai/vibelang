@@ -85,7 +85,7 @@ effect function freeBlocks(path: string) {
 
 A platform API that neither Effect nor VibeLang's [experimental platform APIs](/vibelang-features/118-experimental-platform-apis) cover, such as `statfs`, which reports a file system's free space, needs a TypeScript adapter. A `.vibe` file imports no Node.js value directly, so `platform-fs.ts` re-exports `statfsSync`. `try Effect.try(() => statfsSync(path).bavail)` turns an exception into an expected failure, and the `catch` option above gives the failure a domain name.
 
-The wrapper's callback is plain TypeScript, evaluated when the Effect runs. Its arrow captures `path` from the enclosing function. `Effect.try` wraps synchronous code; `tryPromise` wraps a Promise.
+The wrapper's callback uses plain TypeScript execution semantics and is evaluated when the Effect runs. Platform restrictions still cover its body: direct host globals such as `window` and `document` belong in a `.ts` adapter. Its arrow captures `path` from the enclosing function. `Effect.try` wraps synchronous code; `tryPromise` wraps a Promise.
 
 A plain VibeLang function never throws: a `throw` outside effect code and `async` functions is `EK0401`. The compiler tracks what TypeScript and JavaScript functions may throw. JavaScript's built-ins have `@throws` annotations, so a function known not to throw, such as `Math.max`, can be called directly. A function that may throw must be wrapped with `Effect.try` before an effect function calls it.
 

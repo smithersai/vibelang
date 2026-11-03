@@ -10,7 +10,7 @@ import (
 
 // VibeLang's standard library is Effect's (design D6, Chapter 11). Node.js
 // reaches a .vibe file only through Effect's services, which layers inject,
-// or by escaping to TypeScript: a hatch, a module block, or a .ts file
+// or by moving the platform code to a .ts file
 // (D310). The platform globals in platformGlobals, Node's (process, Buffer,
 // require, __dirname, ...) and the web's that do I/O or read the clock or
 // randomness (fetch, setTimeout, crypto, performance, localStorage, ...), are
@@ -508,13 +508,11 @@ func checkPlatform(c *checker.Checker, file *ast.SourceFile) {
 			if arguments := node.Arguments(); len(arguments) > 0 && ast.IsStringLiteral(arguments[0]) {
 				if r, ok := platformModuleOf(arguments[0].Text()); ok {
 					d := report(c, arguments[0], platformModule, arguments[0].Text())
-					notePlatformAPI(d, platformAPI{service: r}, "sync(() => "+nodeText(file, node)+")")
+					notePlatformAPI(d, platformAPI{service: r})
 				}
 			}
-		case hatchOf(node) != "":
-			return forEachHatchVibeLang(node, visit) // a hatch's TypeScript may use the platform (D148)
-		case isWrappedCode(node):
-			return false // so may the code that Effect.try or Effect.tryPromise wraps (VIP-5)
+			// VIP-33 applies throughout the file. Native callback/throw semantics
+			// do not grant permission to reach the host, even inside wrappers.
 		case ast.IsCallExpression(node) || ast.IsNewExpression(node):
 			checkClockRead(c, file, node)
 		case ast.IsIdentifier(node) || globalPlatformName(c, node) != "":
@@ -545,14 +543,14 @@ func checkPlatformImport(c *checker.Checker, node *ast.Node) {
 	reportBinding := func(at *ast.Node, local string, decl *ast.Node) {
 		ref := platformRef{replacement: replacement, module: module, name: importedName(module, decl)}
 		d := report(c, at, platformValueImport, local, module)
-		notePlatformAPI(d, platformAPIOf(ref, nil), "")
+		notePlatformAPI(d, platformAPIOf(ref, nil))
 	}
 	var elements []*ast.Node
 	if ast.IsImportDeclaration(node) {
 		clause := node.ImportClause()
 		if clause == nil {
 			d := report(c, specifier, platformModule, module)
-			notePlatformAPI(d, platformAPI{service: replacement}, "")
+			notePlatformAPI(d, platformAPI{service: replacement})
 			return
 		}
 		if clause.IsTypeOnly() {
@@ -575,7 +573,7 @@ func checkPlatformImport(c *checker.Checker, node *ast.Node) {
 		}
 		if declaration.ExportClause == nil || !ast.IsNamedExports(declaration.ExportClause) {
 			d := report(c, specifier, platformModule, module)
-			notePlatformAPI(d, platformAPI{service: replacement}, "")
+			notePlatformAPI(d, platformAPI{service: replacement})
 			return
 		}
 		elements = declaration.ExportClause.Elements()
@@ -774,9 +772,9 @@ func checkPlatformUse(c *checker.Checker, file *ast.SourceFile, id *ast.Node) {
 	if ref.module != "" {
 		name += " from " + ref.module
 	}
-	members, top := accessChain(id)
+	members, _ := accessChain(id)
 	d := report(c, use, EK4402, name)
-	notePlatformAPI(d, platformAPIOf(ref, members), hatchExample(file, top))
+	notePlatformAPI(d, platformAPIOf(ref, members))
 	if call, method := consoleCall(use); call != nil {
 		if why := consoleFixRefusal(c, call, method); why != "" {
 			note(d, "No quick fix: {0}", why)
@@ -847,23 +845,6 @@ func platformAPIOf(ref platformRef, members []string) platformAPI {
 	}
 }
 
-// hatchExample shows top, the outermost expression in which code reads a
-// platform API, run in a sync hatch, with the call or new it makes.
-func hatchExample(file *ast.SourceFile, top *ast.Node) string {
-	text := nodeText(file, top)
-	if parent := top.Parent; parent != nil && (ast.IsCallExpression(parent) || ast.IsNewExpression(parent)) && parent.Expression() == top {
-		if ast.IsNewExpression(parent) {
-			text = "new " + text
-		}
-		if len(parent.Arguments()) == 0 {
-			text += "()"
-		} else {
-			text += "(...)"
-		}
-	}
-	return "sync(() => " + text + ")"
-}
-
 // platformRun reports whether the code runs value, an expression that
 // denotes a platform API, where it appears, and returns the expression that
 // names what runs: value itself for a call, a new, or a tagged template, and
@@ -915,19 +896,15 @@ func isValueUse(id *ast.Node) bool {
 
 // notePlatformAPI adds the lines that say what replaces api: the Effect API,
 // the import that brings it in, and the layer that provides it. For an API
-// Effect lacks, they say so and show hatch, the code that runs it in a hatch.
-func notePlatformAPI(d *ast.Diagnostic, api platformAPI, hatch string) {
+// Effect lacks, they direct the caller to a TypeScript adapter.
+func notePlatformAPI(d *ast.Diagnostic, api platformAPI) {
 	s := platformServices[api.service]
 	if s == nil {
 		note(d, "Effect, VibeLang's standard library, has no service for it yet, so escape to TypeScript for now.")
 		if api.note != "" {
 			note(d, api.note)
 		}
-		if hatch == "" {
-			note(d, "Import it in a module block or a .ts file, and use it there or in a hatch.")
-		} else {
-			note(d, "Run it in a hatch:   {0}, or with try when it can throw; or move it to a module block or a .ts file.", hatch)
-		}
+		note(d, "Move the platform code into a .ts module and expose it through an Effect; wrapping it inside a .vibe file does not grant host access.")
 		return
 	}
 	if example := cmp.Or(api.example, s.example); example != "" {

@@ -1,0 +1,6 @@
+// expect: EK4402
+// VIP-33: a failure wrapper does not grant host access.
+export effect function probe() { return try Effect.try(() => window.location.origin); }
+export effect function wrappedPromise() { return try Effect.tryPromise(async () => document.title); }
+export effect function nested() { return try Effect.try(() => (() => globalThis["window"].location.origin)()); }
+export effect function options() { return try Effect.try({ try: () => globalThis.document.title, catch: (error) => error }); }

@@ -11,4 +11,4 @@ FileSystem.makeTempDirectory creates a directory in it; nothing returns its path
 Use the experimental Process service:   Experimental.Process.hostname()
 Provide it in main with ExperimentalNodeServices.layer from "vibelang-runtime/experimental/platform-node", or ExperimentalBunServices.layer from "vibelang-runtime/experimental/platform-bun".
 Effect, VibeLang's standard library, has no service for it yet, so escape to TypeScript for now.
-Import it in a module block or a .ts file, and use it there or in a hatch.
+Move the platform code into a .ts module and expose it through an Effect; wrapping it inside a .vibe file does not grant host access.

@@ -11,6 +11,10 @@ Bare internal Node builtins, including `_http_client` and `_tls_wrap`, have the 
 
 The pure helpers `AbortSignal` and `URL` remain available, but `AbortSignal.timeout`, `URL.createObjectURL` and `URL.revokeObjectURL` reach the host and report `EK4402`. Move those operations into a sibling `.ts` module; `Effect.try`, `Effect.tryPromise` and `Effect.sync` arrows inside `.vibe` files keep the same restriction.
 
+The restriction covers the whole file: plain and `async` functions, nested callbacks, and `Effect.try`, `tryPromise`, `sync` and `callback` bodies all report `EK4402` for a host binding such as `window` or `document`. A local binding with the same name keeps its own meaning, and erased type queries remain allowed.
+
+For a self-contained wrapper, `vibelang --fix` moves the wrapper into a new sibling `.ts` factory and imports it. The factory builds the Effect at the original call site, so platform work stays deferred until the Effect runs. It keeps the rewrite only when checking succeeds and the public declaration stays identical. A wrapper that captures another source binding or lexical context needs a manual TypeScript adapter; an existing foreign module is never overwritten.
+
 ## Using platform services
 
 ```vibe

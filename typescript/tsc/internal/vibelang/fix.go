@@ -672,6 +672,11 @@ func FixProjectWithOptions(ctx context.Context, fs vfs.FS, libraryPath tspath.Ro
 		slices.SortFunc(result.Order, tspath.RootedFilePath.Compare)
 		return result
 	}
+	if !options.VIPOnly {
+		rewritePlatformWrappers(g, fs, program, texts, result)
+		verified(texts)
+		program = build(texts)
+	}
 	round := 0
 	changed := false // the program changed since the refusals were last retried
 	seen := map[[32]byte]bool{fixState(program): true}
@@ -1026,6 +1031,10 @@ type fixParsedFiles struct {
 // the files on disk, reusing the files of parsed whose text is unchanged.
 func fixProgram(fs vfs.FS, libraryPath tspath.RootedDirectoryPath, config *tsoptions.ParsedCommandLine, parsed *fixParsedFiles, overlay map[tspath.RootedFilePath]string) *compiler.Program {
 	overlaid := wrapvfs.Wrap(fs, wrapvfs.Replacements{
+		FileExists: func(name tspath.RootedFilePath) bool {
+			_, added := overlay[name]
+			return added || fs.FileExists(name)
+		},
 		ReadFile: func(name tspath.RootedFilePath) (string, bool) {
 			if text, ok := overlay[name]; ok {
 				return text, true

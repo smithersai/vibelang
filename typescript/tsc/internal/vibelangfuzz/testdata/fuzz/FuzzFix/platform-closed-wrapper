@@ -1,0 +1,2 @@
+go test fuzz v1
+string("-- main.vibe --\nexport effect function probe() { return try Effect.try(() => { /* keep adapter comment */ return window.location.origin; }); }\n-- existing.ts --\nexport const sentinel = 7;\n")

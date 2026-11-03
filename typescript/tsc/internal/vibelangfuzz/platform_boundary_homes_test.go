@@ -42,13 +42,17 @@ var platformBoundaryShapes = []platformBoundaryShape{
 }
 
 var platformBoundaryAccesses = []string{"identifier", "dot", "bracket"}
-var platformBoundaryHomes = []string{"function", "arrow", "async", "effect-wrapper"}
+var platformBoundaryHomes = []string{"function", "arrow", "async", "effect-wrapper", "promise-wrapper", "options-wrapper", "sync-wrapper", "callback-wrapper"}
 
 func platformBoundaryKeys() []string {
 	var keys []string
 	for _, shape := range platformBoundaryShapes {
 		for _, access := range platformBoundaryAccesses {
 			for _, home := range platformBoundaryHomes {
+				// Crypto's EK4403 retirement is a separate pending class.
+				if shape.name == "crypto" && home != "function" && home != "arrow" && home != "async" && home != "effect-wrapper" {
+					continue
+				}
 				for _, binding := range []string{"global", "local"} {
 					keys = append(keys, strings.Join([]string{shape.name, access, home, binding}, ":"))
 				}
@@ -86,6 +90,22 @@ func platformBoundarySource(key string, native bool) string {
 		return prefix + "export const probe = (): " + shape.result + " => " + expression + ";\n"
 	case "async":
 		return prefix + "export async function probe(): Promise<" + shape.result + "> { return " + expression + "; }\n"
+	case "promise-wrapper", "options-wrapper", "sync-wrapper", "callback-wrapper":
+		wrapped := ""
+		switch home {
+		case "promise-wrapper":
+			wrapped = "Effect.tryPromise(async () => " + expression + ")"
+		case "options-wrapper":
+			wrapped = "Effect.try({ try: () => " + expression + ", catch: (e) => e })"
+		case "sync-wrapper":
+			wrapped = "Effect.sync(() => " + expression + ")"
+		case "callback-wrapper":
+			wrapped = "Effect.callback<" + shape.result + ">((resume) => { const value = " + expression + "; resume(Effect.succeed(value)); })"
+		}
+		if native {
+			return prefix + "export function probe() { return " + wrapped + "; }\n"
+		}
+		return prefix + "export effect function probe() { return try " + wrapped + "; }\n"
 	case "effect-wrapper":
 		if native {
 			return prefix + "export function probe() { return Effect.try(() => " + expression + "); }\n"
