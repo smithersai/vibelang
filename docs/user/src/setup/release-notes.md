@@ -475,6 +475,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - The omitted-channel contract regression rejected the documented `EK4856` warnings for transitional `Effect<A>` annotations. Its expected diagnostics now include those warnings alongside the unchanged missing-error and missing-service errors.
 
 - The call-time default regression stayed marked pending after its native TypeScript comparison passed. It now runs as an active check that defaults run once per call and the body runs once per execution.
+- Computed presence keys such as `{ ["field"] }` incorrectly required a colon; they now test property presence without reading its value or creating a binding.
 
 - Vite coverage counted private tail-delegation wrappers as extra functions or uncovered statements, especially in callbacks and throwing catch handlers. It now counts the authored functions and statements through the composed source map.
 - Repository migration checks could stop at invalid fixture lockfiles or package metadata before checking build provenance, declaration exits or test regressions. The fixtures now retain valid publication prerequisites and reach those checks.

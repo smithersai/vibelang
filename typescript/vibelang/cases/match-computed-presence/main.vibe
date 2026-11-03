@@ -1,0 +1,18 @@
+// expect-result: [true,true,true,true,true,false,false,true,false,0,1]
+import { Effect } from "effect"
+const field="field"
+const symbol=Symbol.for("presence")
+let reads=0
+let keyReads=0
+const value={get field(){reads++;return 7}}
+const names={get field(){keyReads++;return "field"}}
+function literal(x:unknown){return x is {["field"]}}
+function identifier(x:unknown){return x is {[field]}}
+function numeric(x:unknown){return x is {[1]}}
+function symbolic(x:unknown){return x is {[symbol]}}
+function dynamic(x:unknown){return match(x){when {[names.field]}:true;default:false;}}
+export effect function main():readonly unknown[]!never {return try Effect.sync(():readonly unknown[] => [
+ literal(value),identifier(value),numeric({1:undefined}),symbolic({[symbol]:undefined}),
+ literal(Object.create({field:undefined})),literal({}),literal(1),
+ dynamic(value),dynamic(1),reads,keyReads
+])}

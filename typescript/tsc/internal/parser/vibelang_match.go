@@ -589,8 +589,10 @@ func (p *Parser) parseMatchObjectPattern(anchor core.TextRange) *pattern {
 			key := p.parseAssignmentExpressionOrHigher()
 			p.parseExpected(ast.KindCloseBracketToken)
 			optional := p.parseOptional(ast.KindQuestionToken)
-			p.parseExpected(ast.KindColonToken)
-			sub := p.parseMatchPattern()
+			var sub *pattern
+			if p.parseOptional(ast.KindColonToken) {
+				sub = p.parseMatchPattern()
+			}
 			if p.cloneIdentExpression(key) == nil && key.Kind != ast.KindStringLiteral && key.Kind != ast.KindNumericLiteral {
 				result.items = append(result.items, &pattern{kind: patternInvalid, anchor: keyAnchor, code: 4704, detail: "A computed key other than a name or a literal"})
 				continue

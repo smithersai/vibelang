@@ -3713,6 +3713,11 @@ typescript/vibelang/cases/match-class-patterns/main.vibe:135:75 lambda plain tab
 typescript/vibelang/cases/match-class-patterns/main.vibe:136:60 byname program annotation
 typescript/vibelang/cases/match-class-patterns/main.vibe:136:72 lambda plain table
 typescript/vibelang/cases/match-class-patterns/main.vibe:137:60 byname program annotation
+typescript/vibelang/cases/match-computed-presence/main.vibe:10:41 lambda plain fallback
+typescript/vibelang/cases/match-computed-presence/main.vibe:11:38 lambda plain fallback
+typescript/vibelang/cases/match-computed-presence/main.vibe:12:39 lambda plain fallback
+typescript/vibelang/cases/match-computed-presence/main.vibe:14:80 lambda plain table
+typescript/vibelang/cases/match-computed-presence/main.vibe:9:38 lambda plain fallback
 typescript/vibelang/cases/match-date-brand-r5/main.vibe:5:9 lambda dual fallback
 typescript/vibelang/cases/match-date-brand-r5/main.vibe:6:9 lambda dual fallback
 typescript/vibelang/cases/match-date-brand-r5/main.vibe:7:9 lambda dual fallback
