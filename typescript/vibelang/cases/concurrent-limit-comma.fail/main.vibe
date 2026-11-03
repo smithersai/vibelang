@@ -1,0 +1,12 @@
+// expect: TS1005 TS1005 TS1005 TS1005 TS1005
+// VIP-19: the optional limit is one AssignmentExpression.
+function mark(n: number) { return n }
+export effect function main(flag: boolean) {
+  for concurrent(mark(1), 1) (const n of [1]) {}
+  for concurrent(mark(1), /* keep */ 1) (const n of [1]) {}
+  for concurrent(mark(1),
+    1) (const n of [1]) {}
+  for concurrent(mark(1), mark(2), 1) (const n of [1]) {}
+  for concurrent((flag ? mark(1) : mark(2)), 1) (const n of [1]) {}
+  return 0
+}

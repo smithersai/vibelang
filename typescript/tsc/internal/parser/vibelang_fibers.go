@@ -552,6 +552,11 @@ func (p *Parser) parseVibeLangConcurrentFor(pos int) *ast.Node {
 			assignmentHead = first
 		} else {
 			// The limit runs before the loop head exists (detail 249).
+			// The optional limit is one AssignmentExpression (VIP-19). Keep
+			// the complete comma tree for recovery and its parentheses fix.
+			if ast.IsBinaryExpression(first) && first.AsBinaryExpression().OperatorToken.Kind == ast.KindCommaToken {
+				p.parseErrorAtRange(p.skipRangeTrivia(first.AsBinaryExpression().OperatorToken.Loc), diagnostics.X_0_expected, ")")
+			}
 			limit = p.hoistVibeLangIs(first)
 			p.parseExpected(ast.KindCloseParenToken)
 		}

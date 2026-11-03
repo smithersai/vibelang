@@ -890,6 +890,12 @@ typescript/vibelang/cases/concurrent-invalid-limits.fail/main.vibe:3:32 lambda e
 typescript/vibelang/cases/concurrent-invalid-limits.fail/main.vibe:4:35 lambda effectFn table
 typescript/vibelang/cases/concurrent-invalid-limits.fail/main.vibe:5:32 lambda effectFn table
 typescript/vibelang/cases/concurrent-invalid-limits.fail/main.vibe:6:30 lambda effectFn table
+typescript/vibelang/cases/concurrent-limit-comma-order/main.vibe:6:48 lambda effectFn table
+typescript/vibelang/cases/concurrent-limit-comma.fail/main.vibe:10:56 lambda effectFn table
+typescript/vibelang/cases/concurrent-limit-comma.fail/main.vibe:5:37 lambda effectFn table
+typescript/vibelang/cases/concurrent-limit-comma.fail/main.vibe:6:48 lambda effectFn table
+typescript/vibelang/cases/concurrent-limit-comma.fail/main.vibe:8:15 lambda effectFn table
+typescript/vibelang/cases/concurrent-limit-comma.fail/main.vibe:9:46 lambda effectFn table
 typescript/vibelang/cases/concurrent-return-computed.fail/main.vibe:10:23 lambda plain fallback
 typescript/vibelang/cases/concurrent-return-computed.fail/main.vibe:14:25 lambda effectFn table
 typescript/vibelang/cases/concurrent-return-computed.fail/main.vibe:15:29 lambda plain fallback

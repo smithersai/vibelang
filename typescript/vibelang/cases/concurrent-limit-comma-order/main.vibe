@@ -1,0 +1,10 @@
+// expect-result: [1,2,3]
+import { Effect } from "effect"
+export effect function main(): Effect.Effect<number[]> {
+  const events: number[] = []
+  function mark(n: number) { events.push(n); return 1 }
+  for concurrent((mark(1), mark(2), 1)) (const n of [3]) {
+    events.push(n)
+  }
+  return events
+}

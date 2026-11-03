@@ -44,6 +44,7 @@ The fixes keep a rewrite only when it adds no compiler error.
 | --- | --- |
 | Unicode escapes in an `error`, `schema`, `service` or `data` declaration keyword, such as `er\u0072or E` | Write the literal keyword (`TS1260`). Run `vibelang --fix` to unescape each keyword while preserving the declaration, escaped names and ordinary identifier expressions. |
 | `Key.Shape` for an ordinary native `Context.Service` class without a declared namespace | The native TypeScript namespace diagnostic now applies. The editor and `vibelang --fix` write `import("effect/Context").Service.Shape<typeof Key>` for a non-generic shape reference to that service key, including imported aliases. Explicit namespaces, shadows and type arguments remain unchanged. |
+| `for concurrent(record(), 4) (...)` | `for concurrent((record(), 4)) (...)`. `vibelang --fix` preserves the order of evaluation. |
 | `vibelang.tracing` or mapper `options.tracing` | Remove the unsupported option. Add named operation spans explicitly with `try withSpan(program, "name")`. |
 | `when var name:` or a `var` binding in an `is` pattern | Pattern bindings use `let` or `const` (`EK0107`, VIP-7). The quick fix and `vibelang --fix` replace the pattern's `var` with `let`. |
 | Bare compound types beside `!`, such as `number!Error \| string` or `number!! \| null` | `EK0301` (VIP-3). Run `vibelang --fix` to preserve the existing channels with parentheses, such as `number!(Error \| string)` or `number!!(\| null)`. To mean an Effect or `null`, write `(number!!) \| null`. |
@@ -1102,6 +1103,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - An empty `provide` at the end of `do` could replace its preceding value with a `Layer`. It now keeps that value while still building and releasing the layer.
 
 - An ordinary class used as an unchecked extractor could silently miss an instance. It now throws `TypeError` after successful `instanceof` recognition, as VIP-7 requires; noninstances still miss.
+
+- Bare comma lists in a `for concurrent` limit were accepted outside the documented grammar; they are now rejected, and `vibelang --fix` adds parentheses without reordering their evaluation.
 
 - Identical recursive generic declaration APIs could fail with `TS2589`; exact resolved type identity now proves those comparisons.
 - API checks treated identical JSDoc links as different when a private target resolved in only one snapshot. Link targets and labels now compare consistently while real comment changes remain differences.
