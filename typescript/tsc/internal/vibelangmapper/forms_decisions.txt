@@ -3955,6 +3955,13 @@ typescript/vibelang/cases/opencode-narrowed-property-call.fail/lib.vibe:29:22 la
 typescript/vibelang/cases/opencode-narrowed-property-call.fail/lib.vibe:8:24 lambda choice fallback
 typescript/vibelang/cases/opencode-native-pipe-fixed/lib.vibe:2:24 lambda plain fallback
 typescript/vibelang/cases/opencode-native-pipe-fixed/lib.vibe:2:78 lambda program table
+typescript/vibelang/cases/opencode-unused-name-beside-refusal-fixed/lib.vibe:11:22 lambda plain fallback
+typescript/vibelang/cases/opencode-unused-name-beside-refusal-fixed/lib.vibe:11:78 lambda program table
+typescript/vibelang/cases/opencode-unused-name-beside-refusal-fixed/lib.vibe:15:20 lambda choice fallback
+typescript/vibelang/cases/opencode-unused-name-beside-refusal-fixed/lib.vibe:3:21 lambda plain fallback
+typescript/vibelang/cases/opencode-unused-name-beside-refusal-fixed/lib.vibe:3:79 lambda program table
+typescript/vibelang/cases/opencode-unused-name-beside-refusal-fixed/lib.vibe:7:22 lambda plain fallback
+typescript/vibelang/cases/opencode-unused-name-beside-refusal-fixed/lib.vibe:7:80 lambda program table
 typescript/vibelang/cases/optional-callback-contract.fail/main.vibe:6:26 lambda effectFn annotation
 typescript/vibelang/cases/optional-callback-runs/main.vibe:11:15 lambda effectFn fallback
 typescript/vibelang/cases/optional-callback-runs/main.vibe:16:16 lambda plain fallback
