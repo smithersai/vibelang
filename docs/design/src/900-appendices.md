@@ -970,7 +970,7 @@ The operand and parent positions follow `UnaryExpression`; `throw` in statement 
 This implementation census records each parser or lowering hook and its specification authority. It does not admit syntax: the productions and prose above remain the independent grammar oracle. A `pending` row has no authority; `support` and `recovery` rows do not add language forms.
 
 <details>
-<summary>Parser and lowering hooks (886 records)</summary>
+<summary>Parser and lowering hooks (887 records)</summary>
 
 | Hook | Form | Authority | Status | Reason |
 | --- | --- | --- | --- | --- |
@@ -1746,6 +1746,7 @@ This implementation census records each parser or lowering hook and its specific
 | ` parser/vibelang_do.go:isPureRead ` | ` admission:do ` | ` 900-appendices.md `, ` 002-running.md ` | ` support ` | VIP-2: pinned TC39 do-expression lowering and completion support; introduces no additional syntax |
 | ` parser/vibelang_do.go:isSynthesizedArrow ` | ` admission:do ` | ` 900-appendices.md `, ` 002-running.md ` | ` support ` | VIP-2: pinned TC39 do-expression lowering and completion support; introduces no additional syntax |
 | ` parser/vibelang_do.go:isTryOperation ` | ` admission:do ` | ` 900-appendices.md `, ` 002-running.md ` | ` support ` | VIP-2: pinned TC39 do-expression lowering and completion support; introduces no additional syntax |
+| ` parser/vibelang_do.go:isVibeLangCompletionMarker ` | ` admission:do ` | ` 900-appendices.md `, ` 002-running.md ` | ` support ` | VIP-2/VIP-12: synthetic provider and interruption markers have empty source completion; introduces no additional syntax |
 | ` parser/vibelang_do.go:jumpTargetWithin ` | ` admission:do ` | ` 900-appendices.md `, ` 002-running.md ` | ` support ` | VIP-2: pinned TC39 do-expression lowering and completion support; introduces no additional syntax |
 | ` parser/vibelang_do.go:keywordOf ` | ` admission:do ` | ` 900-appendices.md `, ` 002-running.md ` | ` support ` | VIP-2: pinned TC39 do-expression lowering and completion support; introduces no additional syntax |
 | ` parser/vibelang_do.go:VibeLangDoHeadBinding ` | ` admission:do ` | ` 900-appendices.md `, ` 002-running.md ` | ` support ` | VIP-2: maps a do lowering's generated loop-head cell back to its source ForDeclaration binding for checking; introduces no additional syntax |

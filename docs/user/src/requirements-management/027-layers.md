@@ -250,6 +250,8 @@ Replace a dependency to exercise the real factory, or the service itself to isol
 
 Parentheses keep one provider expression intact. `provide (record(), Live) { … }` evaluates `record()` once and supplies the resulting `Live` layer. A parenthesized assignment is an ordinary assignment too. Write `provide A, B { … }` to supply both layers.
 
+A `provide` block keeps ordinary source completion values inside `do`: `do { 19; provide Layer.empty {} }` gives `19`. An empty body still builds and releases its layer. A value-producing statement inside the body replaces the preceding value; normal completion still gives the layer finalizers an Effect success payload of `undefined`.
+
 ## Coming from Effect
 
 `service` declarations, with layer constants beside them, replace hand-written key classes, and `effect { ... }` replaces generator-based factories. The Layer graph, memoization, and resource semantics stay Effect 4's. `Effect.provide(…)` draws `EK4836` only as the direct operand of bare `try`, including erased expression wrappers; a stored Effect, `fork` operand or batch element keeps its call without a warning. A safe statement or return has a quick fix to write a `provide` block; a wrapped operand keeps its written type effects and explains why it has no automatic fix. `Effect.provideService` retains its native call: `provide Key = value` builds a `Layer`, changing `Scope` and `Layer.CurrentMemoMap`. `EK4836` explains why the service call has no automatic block rewrite.

@@ -772,6 +772,7 @@ parser/vibelang_do.go:isLoopChain	admission:do	900-appendices.md,002-running.md	
 parser/vibelang_do.go:isPureRead	admission:do	900-appendices.md,002-running.md	support	VIP-2: pinned TC39 do-expression lowering and completion support; introduces no additional syntax
 parser/vibelang_do.go:isSynthesizedArrow	admission:do	900-appendices.md,002-running.md	support	VIP-2: pinned TC39 do-expression lowering and completion support; introduces no additional syntax
 parser/vibelang_do.go:isTryOperation	admission:do	900-appendices.md,002-running.md	support	VIP-2: pinned TC39 do-expression lowering and completion support; introduces no additional syntax
+parser/vibelang_do.go:isVibeLangCompletionMarker	admission:do	900-appendices.md,002-running.md	support	VIP-2/VIP-12: synthetic provider and interruption markers have empty source completion; introduces no additional syntax
 parser/vibelang_do.go:jumpTargetWithin	admission:do	900-appendices.md,002-running.md	support	VIP-2: pinned TC39 do-expression lowering and completion support; introduces no additional syntax
 parser/vibelang_do.go:keywordOf	admission:do	900-appendices.md,002-running.md	support	VIP-2: pinned TC39 do-expression lowering and completion support; introduces no additional syntax
 parser/vibelang_do.go:VibeLangDoHeadBinding	admission:do	900-appendices.md,002-running.md	support	VIP-2: maps a do lowering's generated loop-head cell back to its source ForDeclaration binding for checking; introduces no additional syntax

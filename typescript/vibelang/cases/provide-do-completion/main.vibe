@@ -1,0 +1,15 @@
+const observed: string[] = []
+const Live = Layer.effectDiscard(Effect.acquireRelease(Effect.succeed(undefined), (_, exit) => Effect.sync(() => {
+  observed.push(Exit.isSuccess(exit) ? String(exit.value) : exit._tag)
+})))
+effect function preceding(): number!! { return do { 19; provide Live {} } }
+effect function only(): undefined!! { return do { provide Live {} } }
+effect function declaration(): number!! { return do { const local = 99; 23; provide Live {} } }
+effect function nested(): number!! { return do { 29; provide Live { provide Live {} } } }
+effect function labeled(): number!! { return do { 31; empty: provide Live { ; {} } } }
+effect function value(): number!! { return do { 19; provide Live { 37 } } }
+effect function explicitUndefined(): undefined!! { return do { 19; provide Live { void 0 } } }
+export effect function main() {
+  const values = [try preceding(), try only(), try declaration(), try nested(), try labeled(), try value(), try explicitUndefined(), try preceding()]
+  return { values, observed }
+}

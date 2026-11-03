@@ -277,3 +277,71 @@ func init() {
 	registerCallbackJumps(12, false, true)
 	registerCallbackJumps(12, true, false)
 }
+
+// VIP-12 empty completion neighbourhood, appended to vip12_provide.go.
+func init() {
+	Register(&Construct{
+		Key: "vip12.do-empty-provide", VIP: 12,
+		Requires: []string{"vip01.effect-function", "vip05.try", "vip12.provide"},
+		Citations: []Citation{{VIP: 12, Template: "yield* Effect.provide(Effect.gen(function* () { ‹empty body› }), [‹layer›]); const ‹value› = ‹preceding value›",
+			Quote:   "A transparent block preserves the source completion's kind, value (including `empty`) and target.",
+			Reading: "An empty ordinary source block preserves the preceding do completion. The reference runs the same provider and empty source statements, then retains the preceding numeric value separately from the primitive undefined payload observed by finalizers."}},
+		Focus: func(g *Gen, s *Scope) []Stmt { return []Stmt{provideDoCompletion(g, s)} },
+		Stmt:  provideDoCompletion,
+	})
+}
+
+func provideDoCompletion(g *Gen, s *Scope) Stmt {
+	g.UseEffect()
+	g.UseModule("Layer", true)
+	live, name, label := g.Name("completionLive"), g.Name("completion"), g.Label()
+	decl := fmt.Sprintf("const %s = Layer.effectDiscard(Effect.acquireRelease(Effect.succeed(undefined), (_, exit) => Effect.sync(() => ev(%q + (exit._tag === \"Success\" ? String(exit.value) : exit._tag)))))", live, label+":")
+	g.AddDecl(&Code{V: decl, E: decl})
+	n := 1 + g.Intn(30)
+	depth := 1 + g.Intn(3)
+	shape := g.Intn(4)
+	s.Locals = append(s.Locals, name)
+	return &provideDoValue{Name: name, Live: live, Value: n, Depth: depth, Shape: shape}
+}
+
+type provideDoValue struct {
+	Name, Live          string
+	Value, Depth, Shape int
+}
+
+func (p *provideDoValue) Ends() bool { return false }
+func (p *provideDoValue) Vibe(w *Writer) {
+	w.Write(fmt.Sprintf("const %s: number = do { %d; ", p.Name, p.Value))
+	for range p.Depth {
+		w.Write("provide " + p.Live + " { ")
+	}
+	switch p.Shape {
+	case 1:
+		w.Write("; ; ")
+	case 2:
+		w.Write("{ {} } ")
+	case 3:
+		w.Write("{ } ")
+	}
+	for range p.Depth {
+		w.Write("} ")
+	}
+	w.Write("}; ev(\"completion:\" + " + p.Name + ")")
+}
+func (p *provideDoValue) Effect(w *Writer) {
+	for range p.Depth {
+		w.Write("yield* Effect.provide(Effect.gen(function* () { ")
+	}
+	switch p.Shape {
+	case 1:
+		w.Write("; ; ")
+	case 2:
+		w.Write("{ {} } ")
+	case 3:
+		w.Write("{ } ")
+	}
+	for range p.Depth {
+		w.Write("}), [" + p.Live + "]); ")
+	}
+	w.Write(fmt.Sprintf("const %s = %d; ev(\"completion:\" + %s)", p.Name, p.Value, p.Name))
+}

@@ -942,10 +942,17 @@ func (l *doLowering) completeList(name *ast.Node, statements []*ast.Node) []*ast
 	return out
 }
 
+// A provide block's marked first expression carries its layer, not a
+// source completion value. Interruption markers likewise have no value.
+// VIP-2/VIP-12: neither may replace the preceding source completion in do.
+func isVibeLangCompletionMarker(s *ast.Node) bool {
+	return isVibeLangMaskMarker(s) || s.Kind == ast.KindExpressionStatement && s.Flags&ast.NodeFlagsVibeLang != 0
+}
+
 // setsCompletion reports whether s sets or resets the completion value
 // before anything else it does can leave the block.
 func setsCompletion(s *ast.Node) bool {
-	if isVibeLangMaskMarker(s) {
+	if isVibeLangCompletionMarker(s) {
 		return false
 	}
 	switch s.Kind {
@@ -963,7 +970,7 @@ func (l *doLowering) reset(name *ast.Node, at core.TextRange) *ast.Node {
 // complete returns s with its completion values assigned to name, preceded
 // by the reset that an if, switch, try or loop makes.
 func (l *doLowering) complete(name *ast.Node, s *ast.Node) []*ast.Node {
-	if isVibeLangMaskMarker(s) {
+	if isVibeLangCompletionMarker(s) {
 		return []*ast.Node{s}
 	}
 	at := l.p.skipRangeTrivia(s.Loc)

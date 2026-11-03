@@ -683,6 +683,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Invalid `for concurrent` heads produced unrelated TypeScript parse errors. They now report `EK1906`; invalid `for try` heads report `EK2005`, including with `--noCheck`.
 
+- An empty `provide` at the end of `do` could replace its preceding value with a `Layer`. It now keeps that value while still building and releasing the layer.
+
 - Identical recursive generic declaration APIs could fail with `TS2589`; exact resolved type identity now proves those comparisons.
 - API checks treated identical JSDoc links as different when a private target resolved in only one snapshot. Link targets and labels now compare consistently while real comment changes remain differences.
 
