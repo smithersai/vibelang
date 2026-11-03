@@ -277,6 +277,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - A CommonJS program loading a migrated package through `vibelang/register` could fail with `Cannot find module` and a `file:` URL; it now resolves the source with the same module identity as an ESM import.
 
 - VIP-27 now emits the generated `@throws {never}` contract on every local non-effectful export signature; `Effect`, `Stream` and `Layer` return channels keep their own contract. API identity allows only the added tag and still rejects authored documentation changes.
+- Unchecked pattern values could reach a matcher call without a valid static signature. They now report `EK0702` for `any`, `unknown`, `Function`, and noncallable objects, including indexed references and values typed as `object`; `vibelang --fix` preserves legacy dynamic matching with an explicit runtime guard.
 
 - The failures conformance matrix still marked ten implemented contracts as pending, so successful checks failed as XPASS. Those contracts now run as required checks with additional saved source mutations.
 

@@ -72,5 +72,18 @@
         "output": "typescript/vibelang/cases/match-combinator-coverage-fixed-output"
       }
     ]
+  },
+  {
+    "code": "EK0702",
+    "cases": [
+      {
+        "input": "typescript/vibelang/cases/match-pattern-value-admission.fail",
+        "output": "typescript/vibelang/cases/match-pattern-value-admission-fixed-output"
+      },
+      {
+        "input": "typescript/vibelang/cases/match-vip7-invalid-values.fail",
+        "output": "typescript/vibelang/cases/match-vip7-invalid-values-fixed-output"
+      }
+    ]
   }
 ]
