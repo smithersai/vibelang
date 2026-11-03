@@ -1,0 +1,5 @@
+{
+  "repo": "opencode",
+  "origin": "packages/cli/script/postinstall.mjs; minimized npm CLI tuple and dynamic install argv, no package/body workaround",
+  "source": "import childProcess from \"node:child_process\"\nconst cli = process.env.npm_execpath?.endsWith(\"npm-cli.js\") ? [process.execPath, process.env.npm_execpath] : [\"npm\"]\nexport function install(name, directory) {\n  return childProcess.spawnSync(cli[0], [...cli.slice(1), \"install\", \"--ignore-scripts\", \"--no-save\", \"--prefix\", directory, name], { stdio: \"inherit\" })\n}\n"
+}

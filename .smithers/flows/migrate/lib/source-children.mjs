@@ -3,6 +3,7 @@
 import { readFileSync } from "node:fs"
 import { join, posix, resolve, sep } from "node:path"
 import { packageScripts, testOnlyScripts } from "./test-files.mjs"
+import { sourceChildArgvProof } from "./source-child-argv.mjs"
 
 const marker = "// VibeLang source-child loader arguments."
 const template = readFileSync(new URL("../templates/source-child.ts", import.meta.url), "utf8")
@@ -230,24 +231,7 @@ export function addSourceChildLoaders(text, ts, { file = "child.ts", type = "mod
       ts.isSatisfiesExpression(node) || ts.isNonNullExpression(node) || ts.isTypeAssertionExpression(node))) node = node.expression
     return node
   }
-  // A finite set of non-source strings cannot name a typed entry. Keep the
-  // native call untouched, including shell probes and already-built programs.
-  const nonSourceArgv = argument => {
-    let array = unwrap(argument)
-    if (ts.isIdentifier(array)) {
-      const binding = symbol(array), declaration = binding?.declarations?.find(ts.isVariableDeclaration)
-      let references = 0
-      const count = node => { if (ts.isIdentifier(node) && node !== declaration?.name && symbol(node) === binding) references++; ts.forEachChild(node, count) }
-      count(source)
-      if (!declaration || !(declaration.parent.flags & ts.NodeFlags.Const) || references !== 1) return false
-      array = unwrap(declaration.initializer)
-    }
-    if (!array || !ts.isArrayLiteralExpression(array)) return false
-    const notSource = type => type.isUnion() ? type.types.every(notSource)
-      : !!(type.flags & ts.TypeFlags.StringLiteral) &&
-        (/\.d\.(?:vibe\.)?[cm]?ts$/.test(type.value) || !/\.(?:[cm]?tsx?|vibex?)$/.test(type.value))
-    return array.elements.every(element => !ts.isSpreadElement(element) && notSource(checker.getTypeAtLocation(element)))
-  }
+  const nonSourceArgv = sourceChildArgvProof({ source, ts, checker, template })
   const calls = []
   const visit = node => {
     if (ts.isCallExpression(node)) {
@@ -285,7 +269,7 @@ export function addSourceChildLoaders(text, ts, { file = "child.ts", type = "mod
         if (inner && ts.isCallExpression(inner) && ts.isIdentifier(inner.expression) && symbol(inner.expression) === binding &&
             inner.arguments.length === 2 && !inner.arguments.some(ts.isSpreadElement)) wrappers.push({ spread, inner })
       }
-      if (wrappers.some(({ inner }) => nonSourceArgv(inner.arguments[1]))) {
+      if (wrappers.some(({ inner }) => nonSourceArgv(inner.arguments[1], inner.arguments[0]))) {
         const references = target => {
           const found = []
           const visit = node => {
@@ -301,7 +285,7 @@ export function addSourceChildLoaders(text, ts, { file = "child.ts", type = "mod
           visit(source)
           return found
         }
-        const unnecessary = wrappers.filter(({ inner }) => nonSourceArgv(inner.arguments[1]))
+        const unnecessary = wrappers.filter(({ inner }) => nonSourceArgv(inner.arguments[1], inner.arguments[0]))
         const owned = references(binding).every(node => wrappers.some(({ inner }) => inner.expression === node))
         let urlImport, urlBinding
         for (const node of source.statements) {
@@ -431,7 +415,7 @@ export function addSourceChildLoaders(text, ts, { file = "child.ts", type = "mod
       warn(call, "source-child argv is not a literal array or a single-use const array; wire native preloads by hand")
       continue
     }
-    if (nonSourceArgv(array)) continue
+    if (nonSourceArgv(array, call.arguments[0])) continue
     const command = unwrap(call.arguments[0])
     if (ts.isStringLiteralLike(command) && !/^(?:node|nodejs|bun)(?:\.exe)?$/i.test(command.text.replace(/\\/g, "/").split("/").at(-1))) continue
     const start = call.arguments[0].getStart(source), end = call.arguments[1].end
