@@ -65,9 +65,9 @@ export function label(raw: string): string { return `port ${port(raw)}` }  // co
 
 The rule that decides every detail below:
 
-> **A body is a TypeScript file stored inside a `.vibe` file.** Moving the body to a sibling `.ts` file, preserving its external-module classification as specified below, and replacing `from name` with that file's string specifier changes no diagnostic, type, emitted statement, declaration or run-time observation. Apart from the empty module marker needed to preserve that classification, the move is a copy: no VibeLang syntax, no identifier specifier, no `import.meta`.
+> **A body is a TypeScript file stored inside a `.vibe` file.** Moving the body to a sibling `.ts` file (`.tsx` for a body in `.vibex`), preserving its external-module classification as specified below, and replacing `from name` with that file's string specifier changes no diagnostic, type, emitted statement, declaration or run-time observation. Apart from the empty module marker needed to preserve that classification, the move is a copy: no VibeLang syntax, no identifier specifier, no `import.meta`.
 
-The rule is falsifiable by a differential test: compile every TypeScript module of the corpus once as a body and once as a sibling `.ts`, preserving external-module classification in both, and compare.
+The rule is falsifiable by a differential test: compile every TypeScript module of the corpus once as a body and once as a sibling `.ts` or `.tsx` of the same source kind, preserving external-module classification in both, and compare.
 
 **Module classification.** A body is always an external module before binding and checking, even without a written import or export and regardless of `moduleDetection`. This follows its TC39 `ModuleBody` grammar and the no-shared-lexical-scope rule below. Its virtual TypeScript source, JavaScript output and declaration output preserve that classification, with an effective empty module marker when needed. The extracted `.ts`/`.tsx` twin and the move refactor add `export {}` when the unchanged body would otherwise be a script under the project's options. The marker exports no names; ordinary TypeScript module-option diagnostics still apply. A side-effect import in the containing file does not classify the body as a module.
 
@@ -188,7 +188,17 @@ Each tool reads a body as the `.ts` file it is, mapped into the `.vibe` file thr
 - **Formatter.** VibeLang's one formatter (VIP-34) formats the body as `.ts`/`.tsx` with the repository's settings, indented one level, without sorting its imports (D372). It never moves code into or out of a body.
 - **Linters.** The ESLint parser gives the declaration a `VibeModuleDeclaration { id, body }` node whose statements are typescript-estree's, with its own scope (main: `packages/compiler/eslint.mjs`), so typescript-eslint rules read it as TypeScript and VibeLang "prefer VibeLang syntax" rules skip it. Oxlint's JS-plugin rules apply where they apply to `.ts`. Knip counts the body's imports and unused exports.
 - **TypeScript mapper.** The one-file projector for stock TypeScript tools refuses bodies today (`EK9100`). It projects each body as its own virtual `.ts` file.
-- **Refactor *Move module to a `.ts` file*.** Writes the body to `parse.ts` beside the `.vibe` file (another name if taken, compared case-insensitively), adds `export {}` if needed to preserve external-module classification, and rewrites identifier specifiers, including side-effect imports, to the string specifier. Valid under the classification-preserving copy rule. Offered in the editor, never run by `--fix`.
+- **Refactor *Move module to a TypeScript file*.** Writes a body from `.vibe` to `parse.ts`, or a body from `.vibex` to `parse.tsx`, beside the containing file (another name if taken, compared case-insensitively), adds `export {}` if needed to preserve external-module classification, and rewrites identifier specifiers, including side-effect imports, to the string specifier. Valid under the classification-preserving copy rule. Offered in the editor, never run by `--fix`.
+
+For example, extracting `module view { export const element = <div /> }` from `main.vibex` writes `view.tsx`, retaining TypeScript's JSX language variant even if a particular body has no JSX. The body is copied as:
+
+```tsx
+// fragment: JSX types come from the project's framework
+// module-extraction-twin
+export const element = <div />
+```
+
+Writing these same tokens to `view.ts` instead reports TypeScript's `TS1005`; a `jsx` compiler option does not turn a `.ts` file into a `.tsx` file.
 
 ## Diagnostics
 
