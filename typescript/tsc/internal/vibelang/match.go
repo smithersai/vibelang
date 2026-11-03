@@ -210,11 +210,10 @@ func afterIrrefutableArm(call *ast.Node) bool {
 	return false
 }
 
-// matchRemainder returns the declared type of the subject of call, the
+// matchRemainder returns the starting type of the subject of call, the
 // $noMatch call that ends a match, and its narrowed type there, what no arm
-// matched. It returns nils unless the declared type is a finite union. A
-// subject that is an identifier expression has the type its declaration
-// gives it, not the type the subject's capture has (match_capture.go).
+// matched. It returns nils unless the starting type is finite. The capture's
+// initializer supplies the type before the arms narrow the remainder.
 func matchRemainder(c *checker.Checker, call *ast.Node) (declared, left *checker.Type) {
 	declared, left = matchSubjectTypes(c, call)
 	if declared == nil {
@@ -233,9 +232,9 @@ func matchRemainder(c *checker.Checker, call *ast.Node) (declared, left *checker
 	return declared, c.GetReducedType(left)
 }
 
-// matchSubjectTypes returns the declared type of the subject of call, the
+// matchSubjectTypes returns the starting type of the subject of call, the
 // $noMatch call that ends a match, and its narrowed type there, whatever the
-// declared type is, or nils when the subject has no declaration.
+// starting type is, or nils when the subject has no capture or declaration.
 func matchSubjectTypes(c *checker.Checker, call *ast.Node) (declared, left *checker.Type) {
 	args := call.Arguments()
 	if len(args) != 1 {
@@ -246,11 +245,15 @@ func matchSubjectTypes(c *checker.Checker, call *ast.Node) (declared, left *chec
 	if left == nil {
 		return nil, nil
 	}
-	symbol := c.GetSymbolAtLocation(declaredSubject(c, subject))
-	if symbol == nil {
-		return nil, nil
+	// The capture's initializer is checked at the match evaluation point.
+	// Reading the original symbol's declared type loses preceding guards and
+	// assignments; reading the capture here would use the remainder after
+	// the arms instead of the starting domain.
+	if value := capturedSubject(c, subject); value != nil {
+		declared = c.GetTypeAtLocation(value)
+	} else if symbol := c.GetSymbolAtLocation(declaredSubject(c, subject)); symbol != nil {
+		declared = c.GetTypeOfSymbol(symbol)
 	}
-	declared = c.GetTypeOfSymbol(symbol)
 	if declared == nil {
 		return nil, nil
 	}

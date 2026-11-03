@@ -1,0 +1,15 @@
+export function complete(x: boolean | number) {
+  if (typeof x !== "boolean") return 0
+  return match (x) { when true: 1; when false: 0; }
+}
+export function open(x: boolean | number) {
+  return match (x) { when true: 1; }
+}
+export function fallback(x: boolean | number) {
+  if (typeof x !== "boolean") return 0
+  return match (x) { when true: 1; default: 0; }
+}
+export function assigned() {
+  let x: boolean | number = false
+  return match (x) { when false: 0; }
+}

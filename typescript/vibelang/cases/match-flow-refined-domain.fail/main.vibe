@@ -1,0 +1,13 @@
+// expect: EK4701 EK4701 EK4701
+export function booleanDomain(x: boolean | number) {
+  if (typeof x !== "boolean") return 0
+  return match (x) { when true: 1; }
+}
+export function undefinedDomain(x: string | undefined) {
+  if (x !== undefined) return 0
+  return match (x) { when undefined and if (false): 1; }
+}
+export function propertyDomain(box: { value: boolean | number }) {
+  if (typeof box.value !== "boolean") return 0
+  return match (box.value) { when true: 1; }
+}
