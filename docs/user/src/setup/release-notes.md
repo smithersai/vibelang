@@ -163,6 +163,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Editor consistency checks could report that renaming a TypeScript module block added or removed errors because its virtual filename changed. The checks now compare diagnostics under the original `.vibe` document, retaining every diagnostic (VIP-40).
 
 - Conformance checks kept stored-generator migrations marked unfinished after one `vibelang --fix` run already converged. They now reject stale idempotence markers and exercise the fixed migrations without them.
+
+- Acceptance cases could pass when `stdout` matched after their runner failed. A runner must now exit with status `0`, and failures retain its output and exit status.
 - API identity checks rejected two identical copies of a generic function using an `import()` type with literal type arguments. Copies now compare identically, while changed literal arguments and dependencies remain differences.
 
 - Publication checks for source-child packages could not install an already-published Effect dependency while simulating an unreleased VibeLang SDK. Their registry fixture now serves the pinned Effect release while continuing to withhold the SDK.

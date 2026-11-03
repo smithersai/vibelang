@@ -29,6 +29,7 @@
 // aggregate target can run alongside per-case targets without sharing out/ or
 // node_modules. Successful copies are removed; failed copies retain evidence.
 //
+// Every runner must exit successfully, including when its stdout matches.
 // Every case except a failing one must compile without errors. Every file in
 // expected/ other than stdout.txt and diagnostics.txt must equal the file at
 // the same path under out/. A runnable case with expected/stdout.txt compares
@@ -475,6 +476,10 @@ async function check(name, commands) {
     const detail = got?.trim().split("\n")[0] || `printed no result (exit ${ran.code})`
     const log = [`want: ${want.trimEnd()}`, `stdout:\n${ran.stdout.trimEnd()}`, ran.stderr.trimEnd()].filter(Boolean).join("\n")
     return { ok: false, detail: `${path.relative(dir, entry)} printed ${detail.slice(0, 160)}`, log }
+  }
+  if (ran.code !== 0) {
+    const log = [`stdout:\n${ran.stdout.trimEnd()}`, ran.stderr.trimEnd()].filter(Boolean).join("\n")
+    return { ok: false, detail: `${path.relative(dir, entry)} exited with ${ran.code} despite matching output`, log }
   }
   return { ok: true, detail: "", log: output }
 }
