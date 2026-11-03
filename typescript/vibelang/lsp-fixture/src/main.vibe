@@ -39,7 +39,7 @@ export effect function piped() {
 }
 
 // A throw expression and a do expression (D186, D187).
-export function required(id: number) {
+export effect function required(id: number) {
   return names[id] ?? throw new NotFound({ id })
 }
 

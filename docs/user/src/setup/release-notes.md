@@ -158,6 +158,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Find references on a `module` declaration's name returned only the declaration, and nothing from a specifier such as `from text`, while rename edited every specifier; renaming an imported type of the same name left `from M` naming the old module (`EK4006`). Find references now returns the declaration and each identifier specifier, and rename edits those specifiers in both cases.
 - Find references on a `module` declaration's name returned only the declaration, and nothing from a specifier such as `from text`, while rename edited every specifier; renaming an imported type of the same name left `from M` naming the old module (`EK4006`). Find references now returns the declaration and each identifier specifier, and rename edits those specifiers in both cases.
 
+- The language-server smoke fixture used a plain function for a throw expression; its function is now `effect`, keeping the fixture free of unintended no-throw errors.
+
 - The grammar inventory omitted the binding-preservation helpers used by retired hatch fixes; their migration authority is now recorded.
 
 - The no-throw documentation check missed plain functions with an `effect` parameter or a nested function on one line; it now parses callable contexts and checks both forms.
