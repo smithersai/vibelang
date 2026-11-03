@@ -86,7 +86,7 @@ func checkMigrationEffectOperand(t *testing.T, w *Workspace, rule migrationOpera
 		"const fiber = fork " + operand + "; return 0",
 	}[op]
 	body := "export effect function probe() { " + expression + " }"
-	source := rule.declarations + "\n/** @throws {never} */\ndeclare function make(): typeof input;\n" + body + "\n"
+	source := rule.declarations + "\ndeclare function make(): typeof input;\n" + body + "\n"
 	var result *Result
 	var err error
 	within(t, "compile", func() { result, err = w.Compile(t.Context(), Project{Files: map[string]string{"main.vibe": source}}) })

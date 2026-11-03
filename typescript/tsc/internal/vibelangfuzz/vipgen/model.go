@@ -226,8 +226,17 @@ func (p *Program) UsedKeys() []string {
 
 // The module both prints import their event log from: ev(label) appends to
 // the run's log. Its declaration says @throws {never}, so VIP-4 lets an
-// effect function call it directly.
+// effect function call it directly. raise(value) throws value; a print that
+// calls it imports it too (withRaise).
 const eventsModule = "vip-events"
+
+// withRaise adds raise to a print's vip-events import when the print calls it.
+func withRaise(s string) string {
+	if !strings.Contains(s, "raise(") {
+		return s
+	}
+	return strings.Replace(s, fmt.Sprintf("import { ev } from %q", eventsModule), fmt.Sprintf("import { ev, raise } from %q", eventsModule), 1)
+}
 
 // PrintVibe prints the program as main.vibe.
 func PrintVibe(p *Program) string {
@@ -246,7 +255,7 @@ func PrintVibe(p *Program) string {
 	importModules(w, p, true)
 	importFiles(w, p, "./")
 	printFuncs(w, p)
-	return w.String()
+	return withRaise(w.String())
 }
 
 // PrintEffect prints the program's reference: untyped JavaScript, in
@@ -259,7 +268,7 @@ func PrintEffect(p *Program) string {
 	importModules(w, p, false)
 	importFiles(w, p, "./"+OutDir+"/")
 	printFuncs(w, p)
-	return w.String()
+	return withRaise(w.String())
 }
 
 // importFiles imports the program's other modules, in path order, each by

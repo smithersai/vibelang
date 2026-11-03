@@ -239,13 +239,16 @@ func (*boundaryDefects) Ends() bool { return false }
 // catch receives every exception that reaches it, untracked ones included,
 // from a built-in, a getter, a coercion or a .ts helper, with or without a
 // variable. t3code's `try { return new URL(x).hostname } catch { return null }`
-// is the first host.
+// is the first host. A built-in known to throw (JSON.parse, BigInt,
+// decodeURIComponent) stands in the try block of its own try statement: a
+// plain arrow that called it outside one would be EK0401 (VIP-4, amended
+// 2026-10-31).
 func init() {
 	registerWitness(4, ChapterWitness{Key: "vip04.native-catch-plain", Chapter: "001-functions.md", Quote: "A `try { } catch { }` statement at the top level, or in a plain or `async` function, is JavaScript's, as in TypeScript.",
-		Vibe:    "function witness():unknown[]{const box=undefined as unknown as {value:number};const read=(f:()=>unknown):unknown=>{try{return f()}catch(e){return e instanceof Error?e.name:\"other\"}};const host=(x:string):string|null=>{try{return new URL(x).hostname}catch{return null}};const getter={get value():number{return box.value}};let n=0;try{n=getter.value}catch{n=-1};return [host(\"https://a.b/c\"),host(\"nope\"),read(()=>box.value),read(()=>JSON.parse(\"{\")),read(()=>BigInt(1.5)),read(()=>decodeURIComponent(\"%\")),read(()=>checked(\"bad\")),read(()=>checked(\"ok\")),n]}",
+		Vibe:    "function witness():unknown[]{const box=undefined as unknown as {value:number};const read=(f:()=>unknown):unknown=>{try{return f()}catch(e){return e instanceof Error?e.name:\"other\"}};const caught=(f:()=>unknown):unknown=>{const e=f();return e instanceof Error?e.name:\"other\"};const host=(x:string):string|null=>{try{return new URL(x).hostname}catch{return null}};const getter={get value():number{return box.value}};let n=0;try{n=getter.value}catch{n=-1};return [host(\"https://a.b/c\"),host(\"nope\"),read(()=>box.value),caught(()=>{try{return JSON.parse(\"{\")}catch(e){return e}}),caught(()=>{try{return BigInt(1.5)}catch(e){return e}}),caught(()=>{try{return decodeURIComponent(\"%\")}catch(e){return e}}),read(()=>checked(\"bad\")),read(()=>checked(\"ok\")),n]}",
 		Effect:  "function witness(){const box=undefined;const read=(f)=>{try{return f()}catch(e){return e instanceof Error?e.name:\"other\"}};const host=(x)=>{try{return new URL(x).hostname}catch{return null}};const getter={get value(){return box.value}};let n=0;try{n=getter.value}catch{n=-1};return [host(\"https://a.b/c\"),host(\"nope\"),read(()=>box.value),read(()=>JSON.parse(\"{\")),read(()=>BigInt(1.5)),read(()=>decodeURIComponent(\"%\")),read(()=>checked(\"bad\")),read(()=>checked(\"ok\")),n]}",
 		Modules: []string{}, Requires: []string{},
-		Cite: Citation{VIP: 4, Template: "try{return new URL(x).hostname}catch{return null}", Quote: "in a plain or `async` function, `throw` is JavaScript's throw;"},
+		Cite: Citation{VIP: 4, Template: "try{return new URL(x).hostname}catch{return null}", Quote: "A call in the `try` block of a `try` statement that has a `catch` clause, in the same function, is allowed, because the `catch` clause catches everything and the throw can't leave the function"},
 		Files: []ChapterWitnessFile{
 			{Name: "checked.ts", Source: "export function checked(s:string):string{if(s===\"bad\")throw new SyntaxError(\"bad\");return s}\n", Names: []string{"checked"}},
 		}})

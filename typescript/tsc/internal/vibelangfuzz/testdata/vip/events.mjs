@@ -7,6 +7,10 @@ export function ev(label) {
   log.push(String(label));
 }
 
+export function raise(value) {
+  throw value;
+}
+
 export function reset() {
   log = [];
 }

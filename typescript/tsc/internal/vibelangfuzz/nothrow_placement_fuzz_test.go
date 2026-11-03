@@ -202,9 +202,11 @@ func FuzzNothrowPlacement(f *testing.F) {
 		}
 		defer r.Remove()
 		call := nothrowPayloads[payload].key != "throw"
-		// effect code checks an unwrapped call itself (EK0403, EK4401), and an
-		// async function's calls are its own; neither is this rule
-		others := call && (kind.effect || kind.async) && !position.nested && kind.def == nil
+		// effect code and the code a fiber runs, a plain handler's body and an
+		// effect function's defaults, check an unwrapped call themselves
+		// (EK0403, EK4401), and an async function's calls are its own; none is
+		// this rule, which only counts EK0401
+		others := call && (kind.effect || kind.async || kind.key == "plain-handler") && !position.nested
 		reported := 0
 		var errs []string
 		for _, d := range r.Diagnostics {

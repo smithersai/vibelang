@@ -150,16 +150,24 @@ func FuzzPlainHandlerThrow(f *testing.F) {
 			return
 		}
 		want := !effect || nested
+		// A throw in a function nested in a handler has its own key: until
+		// VIP-1 makes unannotated functions plain (core-land), this compiler
+		// infers such a function to be an Effect (old D500), whose throw is
+		// Effect.fail, so the nested shapes wait for that flip.
+		missing := "missing:EK0401"
+		if nested {
+			missing = "missing:EK0401:nested"
+		}
 		switch {
 		case want && !rejected:
-			Gap(t, "FuzzPlainHandlerThrow", "missing:EK0401", "chapter 2: %s; no EK0401 for %s:\n%s", plainHandlerThrowQuotes[0], shape, source)
+			Gap(t, "FuzzPlainHandlerThrow", missing, "chapter 2: %s; no EK0401 for %s:\n%s", plainHandlerThrowQuotes[0], shape, source)
 			return
 		case rejected && !want:
 			Gap(t, "FuzzPlainHandlerThrow", "spurious:EK0401", "chapter 2: an effect handler's own throw is a typed failure; EK0401 for %s:\n%s", shape, source)
 			return
 		}
 		if want {
-			ExpectPending(t, "FuzzPlainHandlerThrow", "missing:EK0401")
+			ExpectPending(t, "FuzzPlainHandlerThrow", missing)
 		} else {
 			ExpectPending(t, "FuzzPlainHandlerThrow", "spurious:EK0401")
 		}

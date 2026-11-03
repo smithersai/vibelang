@@ -66,10 +66,10 @@ func FuzzTrySubtypeShapes(f *testing.F) {
 			setup = []string{"", `const bound = Config.String("FOLDKIT_REPRO_VALUE");`, "const alias = Config.String;", ""}
 			operands = []string{`Config.String("FOLDKIT_REPRO_VALUE")`, "bound", `alias("FOLDKIT_REPRO_VALUE")`, `identity(Config.String("FOLDKIT_REPRO_VALUE"))`}
 		}
-		factory := "/** @throws {never} */ declare function make(): typeof input;\n"
+		factory := "declare function make(): typeof input;\n"
 		header := "export effect function probe()"
 		if mode == 1 {
-			factory = "/** @throws {never} */ declare function make<T extends typeof input>(): T;\n"
+			factory = "declare function make<T extends typeof input>(): T;\n"
 			header = "export effect function probe<T extends typeof input>()"
 			setup = []string{"", "const bound = make<T>();", "const alias = make;", ""}
 			operands = []string{"make<T>()", "bound", "alias<T>()", "identity(make<T>())"}
@@ -77,7 +77,7 @@ func FuzzTrySubtypeShapes(f *testing.F) {
 		}
 		if mode == 2 {
 			factory = `type Deferred<U> = U extends string ? typeof input : typeof input & { readonly extra: "Branch" };` + "\n" +
-				"/** @throws {never} */ declare function make<U>(): Deferred<U>;\n"
+				"declare function make<U>(): Deferred<U>;\n"
 			header = "export effect function probe<U>()"
 			setup = []string{"", "const bound = make<U>();", "const alias = make;", ""}
 			operands = []string{"make<U>()", "bound", "alias<U>()", "identity(make<U>())"}
@@ -85,21 +85,21 @@ func FuzzTrySubtypeShapes(f *testing.F) {
 		}
 		if mode == 3 {
 			factory = "interface Container { readonly task: typeof input };\n" +
-				"/** @throws {never} */ declare function make<T extends Container>(): T[\"task\"];\n"
+				"declare function make<T extends Container>(): T[\"task\"];\n"
 			header = "export effect function probe<T extends Container>()"
 			setup = []string{"", "const bound = make<T>();", "const alias = make;", ""}
 			operands = []string{"make<T>()", "bound", "alias<T>()", "identity(make<T>())"}
 			shapes = []string{"indexed-call", "indexed-bound", "indexed-alias", "indexed-generic"}
 		}
 		if mode == 4 {
-			factory = "/** @throws {never} */ declare function make<T extends typeof input, U extends typeof input>(): T | U;\n"
+			factory = "declare function make<T extends typeof input, U extends typeof input>(): T | U;\n"
 			header = "export effect function probe<T extends typeof input, U extends typeof input>()"
 			setup = []string{"", "const bound = make<T, U>();", "const alias = make;", ""}
 			operands = []string{"make<T, U>()", "bound", "alias<T, U>()", "identity(make<T, U>())"}
 			shapes = []string{"union-call", "union-bound", "union-alias", "union-generic"}
 		}
 		if mode == 5 {
-			factory = `/** @throws {never} */ declare function make<T extends typeof input>(): T & { readonly extra: "Branch" };` + "\n"
+			factory = `declare function make<T extends typeof input>(): T & { readonly extra: "Branch" };` + "\n"
 			header = "export effect function probe<T extends typeof input>()"
 			setup = []string{"", "const bound = make<T>();", "const alias = make;", ""}
 			operands = []string{"make<T>()", "bound", "alias<T>()", "identity(make<T>())"}
@@ -107,7 +107,7 @@ func FuzzTrySubtypeShapes(f *testing.F) {
 		}
 		source := `import { Config, Effect, Exit, Option, Result, Stream, Layer, Fiber } from "effect";` + "\n" +
 			rule.declarations + "\n" + factory +
-			"/** @throws {never} */ function identity<T>(value: T): T { return value }\n" +
+			"function identity<T>(value: T): T { return value }\n" +
 			header + " { " + setup[n] + " return try " + operands[n] + " }\n" +
 			strings.Replace(header, "probe", "probeStatement", 1) + " { " + setup[n] + " try " + operands[n] + "; return 0 }"
 		result, err := w.Compile(t.Context(), Project{Files: map[string]string{"main.vibe": source}})

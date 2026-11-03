@@ -34,7 +34,7 @@ func init() {
 		Citations: []Citation{{
 			VIP:      5,
 			Template: "yield* Effect.catch(‹x›, (‹e›) => Effect.succeed(‹f›(‹e›)))",
-			Quote:    "| `x catch (e) => f(e)` (a plain function; a `throw` inside is a JavaScript exception, so a defect) | `Effect.catch(x, (e) => Effect.succeed(f(e)))` |",
+			Quote:    "| `x catch (e) => f(e)` (a plain function; a `throw` inside was a JavaScript exception, so a defect; since 2026-10-31 it is `EK0401`) | `Effect.catch(x, (e) => Effect.succeed(f(e)))` |",
 			Reading:  catchRuns,
 		}},
 		// The probe's plain handler throws what it caught: a defect, not a
@@ -109,7 +109,7 @@ func init() {
 		Citations: []Citation{{
 			VIP:      5,
 			Template: "yield* Effect.catch(‹x›, (‹e›) => Effect.succeed(‹f›(‹e›)))",
-			Quote:    "| `x catch (e) => f(e)` (a plain function; a `throw` inside is a JavaScript exception, so a defect) | `Effect.catch(x, (e) => Effect.succeed(f(e)))` |",
+			Quote:    "| `x catch (e) => f(e)` (a plain function; a `throw` inside was a JavaScript exception, so a defect; since 2026-10-31 it is `EK0401`) | `Effect.catch(x, (e) => Effect.succeed(f(e)))` |",
 			Reading:  catchRuns + " Here x is an effect block, which VIP-2 reads as Effect.gen(function* () { … }), so catch runs the block.",
 		}},
 		// The probe's operand is an effect block that logs, then fails:

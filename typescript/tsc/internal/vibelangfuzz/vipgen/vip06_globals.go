@@ -147,7 +147,10 @@ func (p *Settled) Vibe(w *Writer) {
 func (p *Settled) Effect(w *Writer) { p.Vibe(w) }
 
 // An EffectTry is Effect.try of a plain arrow that returns or throws, the
-// same text in both prints: () => { ev(<Label>); return <Value> }, or throw.
+// same text in both prints: () => { ev(<Label>); return <Value> }, or
+// return raise(<Value>). A throw statement in the thunk would be EK0401
+// (synchronous VibeLang code never throws, VIP-4 amended 2026-10-31); raise,
+// from vip-events, is a call known to throw, which the thunk may make.
 type EffectTry struct {
 	Label string
 	Throw bool
@@ -155,11 +158,13 @@ type EffectTry struct {
 }
 
 func (t *EffectTry) Vibe(w *Writer) {
-	end := "return"
 	if t.Throw {
-		end = "throw"
+		w.Write(fmt.Sprintf("Effect.try(() => { ev(%q); return raise(", t.Label))
+		w.Node(t.Value)
+		w.Write(") })")
+		return
 	}
-	w.Write(fmt.Sprintf("Effect.try(() => { ev(%q); %s ", t.Label, end))
+	w.Write(fmt.Sprintf("Effect.try(() => { ev(%q); return ", t.Label))
 	w.Node(t.Value)
 	w.Write(" })")
 }
