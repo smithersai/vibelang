@@ -1,0 +1,14 @@
+// expect: EK0505
+// VIP-5: erased wrappers are transparent, source parentheses are barriers.
+import { Effect, Fiber } from "effect"
+declare const p: Effect.Effect<Effect.Effect<number, string>, string>
+declare const fiber: Fiber.Fiber<Effect.Effect<number, string>, string>
+export effect function main() {
+  try p as Effect.Effect<number, string> catch () => 0;
+  <Effect.Effect<number, string>>try p catch () => 0;
+  try p satisfies Effect.Effect<number, string> catch () => 0;
+  try p! catch () => 0;
+  join fiber as Effect.Effect<number, string> catch () => 0;
+  fork p as Fiber.Fiber<Effect.Effect<number, string>> catch () => 0;
+  return 0
+}

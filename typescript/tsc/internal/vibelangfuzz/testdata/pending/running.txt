@@ -1,6 +1,4 @@
 # Chapter 2 static-rule controls and rejections; each named corpus selects its rule.
-FuzzRunningRules reject:try-catch compiler VIP-5: the forbidden form is accepted; lane core-catch
-FuzzRunningRules corpus:try-catch compiler VIP-5: minimized reproduction of reject:try-catch; lane core-catch
 FuzzRunningRules reject:try-finally compiler VIP-5: the forbidden form is accepted; lane core-catch
 FuzzRunningRules corpus:try-finally compiler VIP-5: minimized reproduction of reject:try-finally; lane core-catch
 FuzzRunningRules reject:try-statement compiler VIP-5: the forbidden form is accepted; lane core-catch

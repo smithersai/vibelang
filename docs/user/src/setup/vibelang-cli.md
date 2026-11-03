@@ -444,3 +444,5 @@ The explicit upgrade also writes `readonly` on legacy `service` body fields and 
 
 
 When `--fix` checks declaration imports across several modules, declaration emission runs in parallel and collects every module's result before comparing the proposed imports.
+
+For `EK0505`, `vibelang --fix` keeps a running `try` or operator head in an explicit `effect` block. Direct `join` and `fork` heads use `Fiber.join` and child-side recovery. Source jumps and wrapped forks need an explicit boundary choice; see [fallbacks](../error-management/016-fallback.md).

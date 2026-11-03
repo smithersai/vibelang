@@ -65,7 +65,7 @@ Registration reserves a code; it does not mean the compiler already implements e
 | `EK0502` | `try` on a value that is not an Effect |
 | `EK0503` | a `try` statement in effect code |
 | `EK0504` | `catch` outside effect code |
-| `EK0505` | `try x catch h` |
+| `EK0505` | An unparenthesized `try`, `fork` or `join` head before `catch`, including through erased TypeScript wrappers |
 | `EK0506` | `e catch h` where `e` is not an Effect |
 | `EK0507` | a handler whose result is a Promise or thenable |
 | `EK0508` | lint warning: a plain handler whose result is an Effect; use `catch effect` |

@@ -4,7 +4,6 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/ls/lsconv"
 	"github.com/microsoft/TypeScript/tsc/internal/lsp/lsproto"
-	"os"
 	"strings"
 	"testing"
 )
@@ -15,9 +14,6 @@ import (
 //
 //gate:spec-tests
 func TestCoverageRunningCatchQuickfix(t *testing.T) {
-	if os.Getenv("VIBELANG_COVERAGE_PROBE") == "" {
-		t.Skip("Chapter 002 pending: docs/design/src/002-running.md#" + "4b2763dda56abc3d" + " and docs/design/src/002-running.md#f6b6b49ab7a42b46; EK0505 and the LSP fixes are missing. Set VIBELANG_COVERAGE_PROBE=1 to run the witness.")
-	}
 	for _, test := range []struct{ name, source, fragment string }{
 		{"join", "export effect function invalid(f: Fiber.Fiber<number, string>) { return join f catch () => 0 }", "Fiber.join(f) catch"},
 		{"fork", "export effect function invalid(e: Effect.Effect<number, string>) { const f = fork e catch () => 0; return join f }", "fork Effect.catch(e,"},

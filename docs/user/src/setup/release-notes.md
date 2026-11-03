@@ -706,6 +706,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Existing optional schema decoders in projects with `exactOptionalPropertyTypes` had no compatibility upgrade. `vibelang --fix --fix-migration-only` now adds explicit `undefined` unions to keep their previous decoding behavior.
 
+- A `catch` after an unparenthesized `try`, `fork` or `join` could pass checking, including through `as`, `satisfies`, `!` and type assertions. These heads now report `EK0505`; source parentheses keep their explicit grouping.
+
 - The migration checks generated callback failure unions without their required parentheses and failed to parse them. They now write valid compound slots while checking the same preserved channels and refusal controls.
 
 
