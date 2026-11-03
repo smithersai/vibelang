@@ -7,3 +7,7 @@ schema error S0 { id: string; constructor() { super({ id: "x" }) } }
 schema error S1 { constructor(public n: number) { super({}) } }
 // A payload field named constructor is ordinary.
 error Field { constructor: string }
+
+// VIP-13 VIP-13 constructors rejected; rule: docs/design/vips/0013-error-declarations.md#9af0265ea721368a
+
+// VIP-29 VIP-13 constructors rejected; rule: docs/design/vips/0029-schema-errors.md#3265022041ad7c47

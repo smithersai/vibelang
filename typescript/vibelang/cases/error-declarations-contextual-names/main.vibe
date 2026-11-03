@@ -1,0 +1,12 @@
+import { Effect } from "effect"
+const error = 1
+const schema = 2
+const data = 3
+function caught() { try { throw 4 } catch (error) { return typeof error === "number" ? error : 0 } }
+export effect function main() { return [error, schema, data, caught()] }
+
+// VIP-13 declaration words remain ordinary bindings and catch parameters; rule: docs/design/vips/0013-error-declarations.md#b88558e6b3aad6bc
+
+// VIP-15 declaration words remain ordinary bindings and catch parameters; rule: docs/design/vips/0015-schema-declarations.md#93fa343c25c2171f
+
+// VIP-16 declaration words remain ordinary bindings and catch parameters; rule: docs/design/vips/0016-data-declarations.md#4c1db88d322666c1

@@ -1,0 +1,1 @@
+cov-decls conformance: plain catch inference gives number[] while the stock TypeScript 5.9.3 counterpart gives unknown[]

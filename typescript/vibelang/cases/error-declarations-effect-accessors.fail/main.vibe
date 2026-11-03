@@ -1,0 +1,7 @@
+// expect: EK0104 EK0105
+error Plain { async effect get x() { return 1 } }
+schema error Encoded { async effect get x() { return 1 } }
+export {}
+
+// VIP-13 function modifier diagnostics own rejected accessors; rule: docs/design/vips/0013-error-declarations.md#dc44545cc144c0c6
+// VIP-13 function modifier diagnostics own rejected accessors; rule: docs/design/vips/0013-error-declarations.md#09e9e25d26e70cd4

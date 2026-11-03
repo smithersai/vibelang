@@ -1,0 +1,14 @@
+// expect: EK2117
+error Base
+error Derived extends Base {}
+error Overridden { _tag: "Overridden" }
+schema error SchemaDerived extends Base {}
+schema error SchemaOverridden { _tag: "SchemaOverridden" }
+export {}
+
+// VIP-13 fixed TaggedError base and reserved discriminant; rule: docs/design/vips/0013-error-declarations.md#9af0265ea721368a
+// VIP-13 fixed TaggedError base and reserved discriminant; rule: docs/design/vips/0013-error-declarations.md#a2a18dbd5a096a3c
+// VIP-13 fixed TaggedError base and reserved discriminant; rule: docs/design/vips/0013-error-declarations.md#9496b413efc9e1f8
+// VIP-13 fixed TaggedError base and reserved discriminant; rule: docs/design/vips/0013-error-declarations.md#45664d57d77c0e44
+// VIP-13 fixed TaggedError base and reserved discriminant; rule: docs/design/vips/0013-error-declarations.md#b7a1aa1ed623f305
+// VIP-13 fixed TaggedError base and reserved discriminant; rule: docs/design/vips/0029-schema-errors.md#3265022041ad7c47

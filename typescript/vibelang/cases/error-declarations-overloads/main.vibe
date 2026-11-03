@@ -1,0 +1,21 @@
+import { Data, Effect, Schema } from "effect"
+error Plain {
+  label(x: string): string
+  label(x: number): number
+  label(x: string | number) { return x }
+}
+schema error Encoded {
+  label(x: string): string
+  label(x: number): number
+  label(x: string | number) { return x }
+}
+const plain = new Plain()
+const encoded = new Encoded()
+export const text: string = plain.label("ok")
+export const count: number = encoded.label(7)
+export effect function main() { return [text, count] }
+
+// VIP-13 ordinary class overloads in both error forms; rule: docs/design/vips/0013-error-declarations.md#d8ad4caac45519f6
+// VIP-13 ordinary class overloads in both error forms; rule: docs/design/vips/0013-error-declarations.md#f80508fe6f35c1df
+// VIP-13 ordinary class overloads in both error forms; rule: docs/design/vips/0013-error-declarations.md#64137e06632cbc1c
+// VIP-13 ordinary class overloads in both error forms; rule: docs/design/vips/0013-error-declarations.md#2cf7dd98ce600f4d

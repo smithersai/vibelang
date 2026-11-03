@@ -1,0 +1,6 @@
+import { Effect } from "effect"
+const error = 1
+const schema = 2
+const data = 3
+function caught() { try { throw 4 } catch (error) { return error } }
+export effect function main() { return [error, schema, data, caught()] }

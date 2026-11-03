@@ -36,3 +36,15 @@ export function fallback(s: unknown) {
 }
 // VIP-7 error pattern binding preserves subject tag members; rule: docs/design/vips/0007-match.md#9f0f3c24d8a7229b
 // VIP-7 error pattern binding preserves subject tag members; rule: docs/design/vips/0007-match.md#4530f44b8d12f0f9
+
+// VIP-13 VIP-13 tag-based structural narrowing and declared-class fallback; rule: docs/design/vips/0013-error-declarations.md#b35bd1f91109c7e7
+
+// VIP-13 VIP-13 tag-based structural narrowing and declared-class fallback; rule: docs/design/vips/0013-error-declarations.md#9d2fc26bc4cca727
+
+// VIP-13 VIP-13 tag-based structural narrowing and declared-class fallback; rule: docs/design/vips/0013-error-declarations.md#63248c66b36826ee
+
+// VIP-13 VIP-13 tag-based structural narrowing and declared-class fallback; rule: docs/design/vips/0013-error-declarations.md#c9749d36c585a505
+
+// VIP-13 VIP-13 tag-based structural narrowing and declared-class fallback; rule: docs/design/vips/0013-error-declarations.md#7fd68ac4218d7498
+
+// VIP-13 VIP-13 tag-based structural narrowing and declared-class fallback; rule: docs/design/vips/0013-error-declarations.md#54b87e136a348914
