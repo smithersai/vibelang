@@ -134,6 +134,9 @@ The workflow holds no secrets and its token only reads this repository. A hosted
 pass counts; a hosted failure sends the change back to a build host, which is the
 reference for rejecting it.
 
+The warmup includes `./internal/ls/...`, matching the language-service test
+target. `scripts/warm-go-cache.sh --print` prints its package inventory.
+
 A hosted run compiles every Go package that changed since the Go cache it
 restores. `.github/workflows/go-cache.yml` keeps that cache current: on each push
 to `main` it runs `scripts/warm-go-cache.sh`, which compiles and vets what
@@ -447,6 +450,9 @@ CI-health reports identify Node `Cannot find package` errors as `missing package
   :go-checker :go-parser :go-ls go test, one target per Go package tree (merge gate,
   :go-format :go-core           when the change edits that tree)
   :go-vibelangfmt               VibeLang formatter Go tests; required by :compiler-test
+  :go-project-vibelang          VibeLang manifest-change invalidation tests
+  :go-tsoptions-vibelang        VibeLang configuration and diagnostic tests
+  :go-tspath-vibelang           VibeLang and .vibex extension recognition tests
   :vibelang-files ...           Filegroups: one Go package's tests and testdata
 //typescript
   :compiler                     go build ./cmd/tsc -> typescript/built/local/tsc
@@ -838,6 +844,15 @@ records distinguish a loader timeout from a compiler failure while retaining
 the original `30000` millisecond child budget. Replay the property with the
 `FC_PROPERTY`, `FC_SEED` and `FC_PATH` printed in its failure.
 
+
+The full `smthrs ci //...` validation includes VibeLang's regressions in
+the shared `internal/project`, `internal/tsoptions` and `internal/tspath`
+Go packages. Their targets select the owned tests with anchored `-run`
+patterns, so optional upstream fixtures are not prerequisites. Each target keys
+on production sources and its package's tests. The Go warm-cache script also
+compiles these packages. `scripts/go-shared-test-inventory.test.mjs` discovers
+owned `vibelang*_test.go` files in shared packages and rejects missing,
+narrowed or overly broad selectors.
 
 The compiler and Vite package tests consume `//:migration-sources`, a root-owned filegroup that holds every file of the migrate flow, so a new flow file needs no entry in any `PACKAGE.ts`, and `packages/compiler/test/migrate-inputs-paths.test.mjs` fails when `packages/PACKAGE.ts` names a migrate or convert flow file by path. A `//` prefix roots a glob's path but does not change its package scope: a glob declared in `packages/PACKAGE.ts` selects none of the root-owned `.smithers/flows/migrate/` files, and `smthrs explain` shows it with `"files": []`. `migration-inputs.ts` defines the shared group without a declaration-module import cycle. The compiler package's cache-contract test (`packages/compiler/test/migrate-inputs.test.mjs`) reads `packages/PACKAGE.ts` to check that each consumer lists `migrationSources`, and uses `smthrs explain //:migration-sources` to check that every file under `.smithers/flows/migrate/` and `.smithers/flows/convert/` is an input with its current content digest. It explains only the filegroup: every `smthrs explain` walks the whole workspace and fails with `explain_failed` when a directory disappears during the walk, and the graph runs the test while other targets create and remove directories. A test that writes temporary files under a flow directory makes this check fail; put them in a directory from `mkdtemp(join(tmpdir(), ...))` instead.
 

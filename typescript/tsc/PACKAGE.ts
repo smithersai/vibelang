@@ -40,11 +40,11 @@ const files = (dir: string) => S.Filegroup({
 // `go test` over one package pattern, keyed on the module's sources, that
 // package's files and the `go` launcher. Go's own test cache in GOCACHE also
 // replays unchanged packages inside a run.
-const goTest = (summary: string, pkgs: string, dir: string) =>
+const goTest = (summary: string, pkgs: string, dir: string, run?: string) =>
   S.Shell.Test({
     summary,
     shell: "cd typescript/tsc && GOCACHE=$HOME/.cache/go-build-smthrs CGO_ENABLED=0 " +
-      `go test -p 8 -timeout 25m -trimpath ${pkgs}`,
+      `go test -p 8 -timeout 25m -trimpath ${run ? "-run '" + run + "' " : ""}${pkgs}`,
     data: [srcs, files(dir)],
     tools: [S.Host.bin("go")],
     sandbox: "none",
@@ -63,6 +63,10 @@ export const Package = S.Package({
     "go-vibelangestree": goTest("Go tests of VibeLang's ESLint tree exporter.", "./internal/vibelangestree/...", "internal/vibelangestree"),
     "go-vibelangfmt": goTest("Go tests of VibeLang's formatter and dprint packaging.", "./internal/vibelangfmt/...", "internal/vibelangfmt"),
     "go-ls": goTest("Go tests of the language service and VibeLang editor integration.", "./internal/ls/...", "internal/ls"),
+    // Run owned in-memory regressions without requiring upstream fixtures.
+    "go-project-vibelang": goTest("VibeLang manifest invalidation in the project service.", "./internal/project", "internal/project", "^TestManifestChangeRebuildsTheProgram$"),
+    "go-tsoptions-vibelang": goTest("VibeLang configuration validation and inheritance.", "./internal/tsoptions", "internal/tsoptions", "^TestVibeLang"),
+    "go-tspath-vibelang": goTest("VibeLang source and .vibex extension recognition.", "./internal/tspath", "internal/tspath", "^(TestIsVibeLangSource|TestVibexExtensionLists)$"),
     "go-checker": goTest("Go tests of internal/checker.", "./internal/checker/...", "internal/checker"),
     "go-parser": goTest("Go tests of internal/parser.", "./internal/parser/...", "internal/parser"),
     "go-format": goTest("Go tests of internal/format.", "./internal/format/...", "internal/format"),
