@@ -213,6 +213,7 @@ Appendix B supplies the current diagnostic assignments; compatibility declaratio
 | `FuzzMigrationPlainRoots`, `FuzzPlainMatchKinds`, `FuzzPlainTryCatch` | Resolved feature and corpus records now run strictly; all keyed corpus inputs retained | Native controls and unchanged specification oracles continue to report genuine pending gaps separately. |
 | `FuzzReviewNativeLoops` | Resolved corpus records now run strictly; all keyed corpus inputs retained | Native controls and unchanged specification oracles continue to report genuine pending gaps separately. |
 | `MigrationSchemaConstructorGate` | Actual T3code native constructor fixture and 120 properties across class/file identity, diagnostic category/order, batch scope and line endings | A refused class conversion preserves its constructor warning; errors and unrelated classes remain gated. Spec quotes are checked by `TestSchemaConstructorGateQuoted`. |
+| `MigrationDprintPinnedPlugins` | Smithers pinned-plugin setup: fresh and stale wiring, checksums, package scope, format modes and idempotence; exact stale own-plugin gap remains with `migfix-smithers`. | Fast-check property and keyed native configuration corpus. |
 | `FuzzSpecRules` | Retired | Current static targets quote their VIP chapters and gate those quotations through `specTests`. |
 | `FuzzSpecAllowed` | Retired | Current static targets and imported-scope controls cover the current forms. |
 | `FuzzSpecPrograms` | Retired | Semantics use `FuzzVIPDifferential`, with current chapter quotations and paired prints. |

@@ -1,0 +1,16 @@
+{
+  "key": "smithers:pinned-dprint:stale-own-plugin",
+  "source": "migrate-smithers: npm:vibelang/dprint-plugin.json",
+  "input": {
+    "directory": "packages/app",
+    "command": "dprint check",
+    "width": 100,
+    "plugins": ["https://plugins.dprint.dev/typescript-0.93.4.wasm@cdbf74066391bdb11ddaef9ea95299636a97d637f5a9bf7f121d584875647c7a"],
+    "stale": true
+  },
+  "pending": {
+    "key": "smithers:pinned-dprint:stale-own-plugin",
+    "owner": "migfix-smithers",
+    "reason": "An earlier setup's unpinned npm plugin prevents recognition of the otherwise pinned configuration; retain checksums and use the formatter script just as for fresh setup."
+  }
+}
