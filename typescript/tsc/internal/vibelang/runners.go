@@ -192,6 +192,12 @@ func checkProgramStarts(c *checker.Checker, file *ast.SourceFile) {
 // top level does (D282): a class field's initializer, a default parameter
 // value, a constructor, an accessor or a static block.
 func reportPlainCodeRun(c *checker.Checker, file *ast.SourceFile, call *ast.Node, plain *ast.Node) {
+	if analyzerFor(c).isThrowForm(call) {
+		// EK0401 reports the throw (nothrow.go). TypeScript's error that the
+		// form does not fit the declared type is part of the same mistake.
+		coverCodes(c, plain, 2322, 2345)
+		return
+	}
 	text := nodeText(file, call.Expression()) + "()"
 	switch plain.Kind {
 	case ast.KindPropertyDeclaration:
@@ -340,12 +346,8 @@ func reportTopLevelRun(c *checker.Checker, file *ast.SourceFile, call *ast.Node)
 	}
 	if isInvokedForm(file, call) && strings.HasPrefix(text, "throw") {
 		// throw x at the top level, which the parser writes as (() => { throw x })()
-		a := analyzerFor(c)
-		if source := a.firstFailureSource(invokedArrow(call)); source != nil && source.Parent != nil && source.Parent.Kind == ast.KindThrowStatement {
-			d := report(c, call, topLevelFailure, c.TypeToString(a.thrownType(source.Parent)))
-			note(d, "Throw inside a function that a program runs, such as main.")
-			note(d, moduleThrowNote)
-			return
+		if analyzerFor(c).isThrowForm(call) {
+			return // EK0401 reports the throw (nothrow.go)
 		}
 	}
 	d := report(c, call, EK1001, text)

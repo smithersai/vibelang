@@ -9,6 +9,7 @@
 // and drops an interruption beside it, as Effect.catch does (D306).
 import { all as $tryAllEffects } from "effect/Effect"
 import { referenceRows } from "./reference.js"
+import { closeDies, disposeDies } from "./disposers.js"
 
 error E
 error E2
@@ -103,7 +104,7 @@ effect function usingReleaseDies() {
 }
 
 effect function usingDisposeThrows() {
-  using resource = try sync(() => ({ [Symbol.dispose]() { throw new Error("D") } }))
+  using resource = try sync(() => disposeDies())
   throw new E()
 }
 
@@ -119,7 +120,7 @@ function* numbers() {
 function* closingItems() {
   const items = try sync(() => ({
     [Symbol.iterator]() {
-      return { next: () => ({ done: false, value: 1 }), return(): IteratorResult<number> { throw new Error("D") } }
+      return { next: () => ({ done: false, value: 1 }), return: closeDies }
     }
   }))
   yield* items
@@ -186,17 +187,17 @@ effect function allSettledMixed() {
 }
 
 effect function forUsingHead() {
-  for (using r = try sync(() => ({ [Symbol.dispose]() { throw new Error("D") } })); ;) {
+  for (using r = try sync(() => disposeDies()); ;) {
     throw new E()
   }
 }
 effect function forUsingOf() {
-  for (using r of try sync(() => [{ [Symbol.dispose]() { throw new Error("D") } }])) {
+  for (using r of try sync(() => [disposeDies()])) {
     throw new E()
   }
 }
 effect function callableDispose() {
-  using r = try sync(() => Object.assign(() => {}, { [Symbol.dispose]() { throw new Error("D") } }))
+  using r = try sync(() => Object.assign(() => {}, disposeDies()))
   throw new E()
 }
 effect function callableAsyncDispose() {
@@ -205,7 +206,7 @@ effect function callableAsyncDispose() {
 }
 effect function holderDispose() {
   using holder = try Effect.acquireRelease(
-    effect { return ({ value: try sync(() => ({ [Symbol.dispose]() { throw new Error("D") } })) }) },
+    effect { return ({ value: try sync(() => disposeDies()) }) },
     effect (h) => try sync((holder) => holder.value[Symbol.dispose](), h)
   )
   throw new E()

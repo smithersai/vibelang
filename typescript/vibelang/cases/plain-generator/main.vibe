@@ -1,5 +1,6 @@
 // expect-result: [1,[2,3],9,3,[4,5,6],"caught","kept",7]
 import { Effect } from "effect"
+import { halt } from "./halt.ts"
 
 export function* steps(): Generator<number, number, unknown> {
   yield 1
@@ -20,14 +21,12 @@ export function* iterator(): Iterator<number> { yield 4 }
 export function* iterableIterator(): IterableIterator<number> { yield 5 }
 export function* iterable(): Iterable<number> { yield 6 }
 
-export error Stop
-
-// Detail 205: a generator's try statement is JavaScript's. A throw it handles
-// stays inside, and so does an exception passed in with generator.throw().
+// Detail 205: a generator's try statement is JavaScript's. An exception it
+// handles stays inside, and so does one passed in with generator.throw().
 export function* recover(stop: boolean): Generator<string, void, unknown> {
   try {
     yield "ready"
-    if (stop) throw new Stop()
+    if (stop) halt()
   } catch {
     yield "caught"
   }

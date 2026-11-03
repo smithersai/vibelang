@@ -19,7 +19,7 @@ export effect function label(text: string) {
   // Allowed: an import, a global, a type, an error declaration, its own names.
   const ok = try sync((value: Label) => {
     const local = Str.trim(value)
-    if (local === "") throw new Bad({ reason: JSON.stringify(local) })
+    if (local === "") return new Bad({ reason: JSON.stringify(local) }).reason
     return local
   }, text)
   // Not allowed: a parameter, a local, a module constant, a module function,

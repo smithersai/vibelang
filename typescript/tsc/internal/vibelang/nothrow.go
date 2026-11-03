@@ -1,0 +1,182 @@
+package vibelang
+
+import (
+	"strings"
+
+	"github.com/microsoft/TypeScript/tsc/internal/ast"
+	"github.com/microsoft/TypeScript/tsc/internal/checker"
+	"github.com/microsoft/TypeScript/tsc/internal/parser"
+)
+
+// Synchronous VibeLang code never throws (Will, 2026-10-31: "If you throw in
+// vibelang itself in a sync function that's an error."). A throw statement is
+// EK0401 everywhere except in effect code, where it is Effect.fail, and in an
+// async function, where it rejects the Promise (decided detail 251):
+//
+//	function check(id: string) {
+//	  if (!id) throw new Error("no id")      // EK0401
+//	}
+//	effect function load(id: string) {
+//	  if (!id) throw new NotFound({ id })    // Effect.fail
+//	}
+//
+// Every throw counts, caught by its own try statement or not. A throw
+// expression and a do block are the throw statement they hold: the arrow the
+// parser writes for them (parser/vibelang_blocks.go) belongs to the code
+// around it. Code that must throw a JavaScript exception moves to a .ts file
+// or a module block, whose body is TypeScript (modules.go).
+
+var (
+	// throwOutsideEffect is EK0401's text for a throw in synchronous code.
+	throwOutsideEffect = EK0401.With("A 'throw' is not allowed outside effect code: synchronous VibeLang code never throws. Make the function 'effect' (its 'throw' becomes 'Effect.fail'), or move the code to a '.ts' file.")
+	// throwAtTopLevel is EK0401's text for a throw at a module's top level.
+	throwAtTopLevel = EK0401.With("A 'throw' is not allowed at the top level of a VibeLang module. Move the code to a '.ts' file, or run it in an 'effect' function.")
+)
+
+func init() {
+	fileChecks = append(fileChecks, checkThrowsOutsideEffect)
+}
+
+// checkThrowsOutsideEffect reports EK0401 at each throw statement of file
+// that runs in synchronous code outside effect code.
+func checkThrowsOutsideEffect(c *checker.Checker, file *ast.SourceFile) {
+	a := analyzerFor(c)
+	var visit func(node *ast.Node) bool
+	visit = func(node *ast.Node) bool {
+		if parser.IsVibeLangModuleDeclaration(node) {
+			return false // a module block's body is TypeScript
+		}
+		if node.Kind == ast.KindThrowStatement {
+			if home := a.plainHomeOf(node); home != nil {
+				if home.Kind == ast.KindSourceFile {
+					report(c, node, throwAtTopLevel)
+				} else {
+					report(c, node, throwOutsideEffect)
+				}
+			}
+		}
+		return node.ForEachChild(visit)
+	}
+	file.AsNode().ForEachChild(visit)
+}
+
+// plainHomeOf returns the synchronous code outside effect code that node
+// runs in, or nil when node runs in effect code, in an async function, or in
+// a module block. The code is a function, a class field or static block, or
+// the source file for a module's top level. A parameter list runs before the
+// function's Effect exists, so it is plain code even in an effect function.
+func (a *analyzer) plainHomeOf(node *ast.Node) *ast.Node {
+	inParameters := false
+	for n := node.Parent; n != nil; n = n.Parent {
+		switch {
+		case parser.IsVibeLangModuleDeclaration(n):
+			return nil
+		case n.Kind == ast.KindParameter:
+			inParameters = true
+		case n.Kind == ast.KindSourceFile, n.Kind == ast.KindPropertyDeclaration, n.Kind == ast.KindClassStaticBlockDeclaration:
+			return n
+		case ast.IsFunctionLike(n):
+			if isProgramArrow(n) && !isMarkedEffect(n) {
+				continue // a throw or do expression, a match arm, or a catch expression's side
+			}
+			if inParameters {
+				return n
+			}
+			if ast.GetFunctionFlags(n)&ast.FunctionFlagsAsync != 0 || a.runsAsEffect(n) {
+				return nil
+			}
+			return n
+		}
+	}
+	return nil
+}
+
+// runsAsEffect reports whether fn's body is effect code: fn is marked effect,
+// or the analyzer compiles it to an Effect. A plain catch handler is plain
+// whatever its body holds: its syntax decides its kind (VIP-5).
+func (a *analyzer) runsAsEffect(fn *ast.Node) bool {
+	if isMarkedEffect(fn) {
+		return true
+	}
+	if isCatchHandlerOf(fn) || !isLowerable(fn) {
+		return false
+	}
+	return a.isEffect(fn)
+}
+
+// failsBeyondThrows reports whether something other than a throw statement
+// adds an expected failure that can escape body: a call that runs an Effect,
+// or a call whose exceptions are typed failures. EK0401 reports each throw
+// statement itself, so a plain-code check that would report the same failure
+// again asks this first.
+func (a *analyzer) failsBeyondThrows(body *ast.Node) bool {
+	if body == nil {
+		return false
+	}
+	info := a.flowOf(body)
+	for i, t := range info.errors {
+		if t == nil || t.Flags()&checker.TypeFlagsNever != 0 {
+			continue
+		}
+		source := info.errorSources[i]
+		if source != nil && source.Parent != nil && source.Parent.Kind == ast.KindThrowStatement {
+			continue
+		}
+		if arrow := invokedArrow(source); arrow != nil && !a.failsBeyondThrows(arrow.Body()) {
+			continue
+		}
+		return true
+	}
+	return false
+}
+
+// isThrowForm reports whether call is a throw expression or a do block, which
+// the parser writes as (() => { … })(), that runs no Effect and fails only by
+// its throw statements. EK0401 reports each of those throws, so a check that
+// would report the form as a program run, such as EK1001 in a field
+// initializer or EK9203 at a plain return annotation, asks this first.
+func (a *analyzer) isThrowForm(call *ast.Node) bool {
+	arrow := invokedArrow(call)
+	if arrow == nil {
+		return false
+	}
+	file := ast.GetSourceFileOfNode(call)
+	text := nodeText(file, call)
+	if !isInvokedForm(file, call) || !strings.HasPrefix(text, "throw") && !strings.HasPrefix(text, "do") {
+		return false
+	}
+	return !a.failsBeyondThrows(arrow.Body()) && a.firstRunBeyondThrows(arrow) == nil
+}
+
+// firstRunBeyondThrows returns the first call in fn's body that runs an
+// Effect, looking inside throw expressions and do blocks, or nil when the
+// only programs fn's body runs are throw forms (isThrowForm).
+func (a *analyzer) firstRunBeyondThrows(fn *ast.Node) *ast.Node {
+	var first *ast.Node
+	a.forEachRunningCallInBody(fn, func(call *ast.Node) bool {
+		if !a.performs(call) {
+			return false
+		}
+		if arrow := invokedArrow(call); arrow != nil {
+			if inner := a.firstRunBeyondThrows(arrow); inner != nil {
+				first = inner
+				return true
+			}
+			if a.isThrowForm(call) {
+				return false
+			}
+		}
+		first = call
+		return true
+	})
+	return first
+}
+
+// typeListText returns the union of types as TypeScript writes it, or "never"
+// for none.
+func typeListText(c *checker.Checker, types []*checker.Type) string {
+	if len(types) == 0 {
+		return "never"
+	}
+	return c.TypeToString(c.GetUnionType(types))
+}

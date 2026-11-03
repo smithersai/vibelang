@@ -1,0 +1,81 @@
+// expect: EK0401
+// Will, 2026-10-31: "If you throw in vibelang itself in a sync function
+// that's an error." Every throw in synchronous code outside effect code is
+// EK0401, one per throw, caught by its own try or not. Effect code, async
+// functions (decided detail 251), module blocks and .ts files keep their
+// meaning: the controls below report nothing.
+import { legacy } from "./legacy.ts"
+
+error Bad { why: string }
+declare const maybe: number | undefined
+
+export function annotated(x: number): number {
+  if (x < 0) throw new Bad({ why: "declaration" })
+  return x
+}
+export const arrow = (x: number): number => {
+  if (x < 0) throw new Bad({ why: "arrow" })
+  return x
+}
+export const expression = function (x: number): number {
+  if (x < 0) throw new Bad({ why: "function expression" })
+  return x
+}
+export function caught(x: number): number {
+  try { throw new Bad({ why: "caught" }) } catch { return x }
+}
+export function viaExpression(x: number | undefined): number {
+  return x ?? throw new Bad({ why: "throw expression" })
+}
+export function withDefault(x: number = maybe ?? throw new Bad({ why: "default" })): number {
+  return x
+}
+export effect function effectDefault(x: number = maybe ?? throw new Bad({ why: "effect default" })) {
+  return x
+}
+export class Port {
+  field: number = maybe ?? throw new Bad({ why: "field" })
+  static shared: number = maybe ?? throw new Bad({ why: "static field" })
+  constructor(readonly value: number) {
+    if (value < 0) throw new Bad({ why: "constructor" })
+  }
+  get level(): number { throw new Bad({ why: "getter" }) }
+  set level(v: number) { throw new Bad({ why: "setter" }) }
+  read(): number { throw new Bad({ why: "method" }) }
+  static make(v: number): Port { if (v < 0) throw new Bad({ why: "static method" }); return new Port(v) }
+  static { if (maybe === 0) throw new Bad({ why: "static block" }) }
+}
+export const object = {
+  read(): number { throw new Bad({ why: "object method" }) },
+}
+export function* steps(): Generator<number> { throw new Bad({ why: "generator" }) }
+export effect function nested() {
+  const inner = (x: number): number => { if (x < 0) throw new Bad({ why: "plain arrow in effect code" }); return x }
+  return inner(1)
+}
+effect function load(): number!string { throw "missing" }
+export effect function handled() {
+  return try (load() catch (e) => { throw new Bad({ why: e }) })
+}
+if (maybe === 1) throw new Bad({ why: "top level" })
+
+// Controls: no diagnostic.
+export effect function failing(x: number) {
+  if (x < 0) throw new Bad({ why: "Effect.fail" })
+  return x
+}
+export const failingArrow = effect (x: number) => x < 0 ? throw new Bad({ why: "Effect.fail" }) : x
+export effect function rethrown() {
+  return try (load() catch effect (e) => { throw new Bad({ why: e }) })
+}
+export async function rejects(x: number) {
+  if (x < 0) throw new Error("rejects the Promise")
+  return x
+}
+export const rejectsArrow = async (x: number) => { if (x < 0) throw new Error("rejects"); return x }
+module hatchless {
+  export function thrown(): never { throw new Error("TypeScript") }
+}
+import { thrown } from hatchless
+export const fromTs = legacy
+export const fromModule = thrown

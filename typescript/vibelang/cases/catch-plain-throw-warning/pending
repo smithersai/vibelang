@@ -1,1 +1,0 @@
-sl1-apply EK0511 is registered but not yet reported (decided detail 239, loop round 1 ASTRA-9); the plain handler also still lowers its throw to Effect.fail, so plain is Fail, not Die (VIP-5 handler kinds, compiler-gap pending VIP-5)

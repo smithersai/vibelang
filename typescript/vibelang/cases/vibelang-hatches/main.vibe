@@ -3,6 +3,8 @@
 // JavaScript meaning, platform APIs such as setTimeout are allowed, and
 // runPromise leads back in to VibeLang. That TypeScript is self-contained
 // (D229): values reach it as inputs (D230).
+import { lengthOf as lengthOfText } from "./length.ts"
+
 error BadJson { error: unknown }
 
 effect function parse(text: string) {
@@ -10,10 +12,7 @@ effect function parse(text: string) {
 }
 
 effect function lengthOf(text: string) {
-  return try Effect.try(() => ((text) => {
-    if (text === "") throw new Error("empty")
-    return text.length
-  })(text))
+  return try Effect.try(() => lengthOfText(text))
 }
 
 effect function later() {

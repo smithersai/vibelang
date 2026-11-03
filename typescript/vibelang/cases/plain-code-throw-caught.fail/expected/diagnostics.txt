@@ -1,0 +1,4 @@
+main.vibe(13,22): error EK0401
+main.vibe(23,11): error EK0401
+main.vibe(29,3): error EK0401
+main.vibe(46,23): error EK0401

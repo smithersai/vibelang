@@ -1,8 +1,0 @@
-import { Bad } from "./bad.vibe"
-
-// A static block runs when the class is defined, as the module evaluates.
-export class Registry {
-  static {
-    throw new Bad({ why: "static" })
-  }
-}

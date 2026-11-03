@@ -2,14 +2,13 @@ import { foreign, tagged } from "./fixtures.js"
 
 export error Empty { value: string }
 
-// D282: a plain function never fails. It may throw what its own catch
-// handles, and the catch receives typed failures with their types.
+// D282: a plain function never fails, and never throws (EK0401). Its catch
+// receives a trusted call's typed failures with their types.
 export function declared(value: string): string {
   try {
-    if (!value) throw new Empty({ value })
-    return value
+    return tagged(value)
   } catch (e) {
-    return e.value === "" ? "empty" : "other"
+    return e.message === "tagged" ? "empty" : "other"
   } finally {
     steps.push(value)
   }

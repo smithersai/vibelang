@@ -1,0 +1,14 @@
+// expect: EK0401
+// Will, 2026-10-31: a throw in a plain catch handler is EK0401, an error, as
+// in any synchronous VibeLang code (it was lint warning EK0511, decided detail
+// 239). A throw the handler's own catch handles counts too. A throw in a
+// nested effect function, or in an effect handler, is a typed failure.
+effect function load(): number!string { throw "missing" }
+
+export effect function main() {
+  const plain = try Effect.exit(load() catch (e) => { throw `wrapped ${e}` })
+  const caught = try (load() catch (e) => { try { throw e } catch { return 0 } })
+  const nested = try (load() catch (e) => { const g = effect () => { throw e }; return 0 })
+  const typed = try Effect.exit(load() catch effect (e) => { throw `wrapped ${e}` })
+  return { plain, caught, nested, typed }
+}

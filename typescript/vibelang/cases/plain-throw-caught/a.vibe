@@ -1,24 +1,22 @@
-// throw is a typed failure everywhere. A plain function may throw what its own
-// catch handles; it still never fails. Its try statement is JavaScript's
-// (detail 205), so its catch also receives an exception from TypeScript code.
-import { hostile, tagged } from "./fixtures.js"
+// A plain function never throws (EK0401), but its try statement is
+// JavaScript's (detail 205): its catch receives what a trusted call lists, as
+// a typed failure, and an exception from TypeScript code.
+import { bounded, hostile, tagged } from "./fixtures.js"
 
 export error Invalid { value: string }
 
 export const clamp = (n: number): number => {
   try {
-    if (n > 10) throw new Invalid({ value: String(n) })
-    return n
+    return bounded(n)
   } catch (e) {
-    const caught: Invalid = e
-    return caught.value.length
+    const caught: RangeError = e
+    return caught.message.length
   }
 }
 
 // The catch receives the exception from hostile() too.
 export const passesThrough = (n: number): number => {
   try {
-    if (n < 0) throw new Invalid({ value: String(n) })
     return hostile(n)
   } catch (e) {
     return -1

@@ -1,8 +1,9 @@
 // `throw` fails with the value it is given (VIP-4), a Cause object
 // included: in an Effect function `throw cause` is Effect.fail(cause), whose
-// one reason is a Fail holding the Cause, and in a plain function it is
+// one reason is a Fail holding the Cause, and in TypeScript (plain.ts) it is
 // JavaScript's throw. Effect.failCause(cause) fails with every reason the
 // cause holds instead.
+import { plain } from "./plain.ts"
 effect function rethrown() {
   const outcome = try exit(Effect.die("boom"))
   if (outcome is Exit.Failure(let cause)) throw cause
@@ -17,9 +18,6 @@ effect function restored(cause: Cause<never>) {
   try Effect.failCause(cause)
 }
 
-function plain(cause: Cause<never>): string {
-  try { throw cause } catch (e) { return e === cause ? "same object" : "another value" }
-}
 
 function shape(outcome: Exit<unknown, unknown>): string {
   if (outcome is Exit.Success(let value)) return "Success"
@@ -36,6 +34,6 @@ export effect function main() {
     viaFail: shape(try exit(Effect.fail(cause))),
     inExpression: shape(try exit(inExpression(cause, undefined))),
     restored: shape(try exit(restored(cause))),
-    plain: plain(cause)
+    plain: try Effect.try(() => plain(cause))
   }
 }

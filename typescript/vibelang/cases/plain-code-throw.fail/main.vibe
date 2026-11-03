@@ -1,0 +1,70 @@
+// expect: EK0401
+// Will, 2026-10-31: synchronous VibeLang code never throws. A constructor, an
+// accessor, a class static block, a function a hatch runs and a module's top
+// level run as plain JavaScript, so a throw in any of them is EK0401. Only a
+// module declaration's body, which is TypeScript, keeps JavaScript's throw.
+error Bad { why: string }
+
+// A constructor of an error class (D278) and of an ordinary class.
+error Invalid {
+  constructor(raw: string) {
+    super()
+    if (raw === "") throw new Bad({ why: "empty" })
+  }
+}
+
+class Port {
+  constructor(readonly value: number) {
+    if (value < 0) throw new Bad({ why: "negative" })
+  }
+}
+
+// Accessors of a class and of an object literal.
+class Gauge {
+  get level(): number { throw new Bad({ why: "unread" }) }
+  set level(value: number) { throw new Bad({ why: "read-only" }) }
+}
+
+export const hostile = {
+  get boom(): never { throw new Bad({ why: "boom" }) }
+}
+
+// A static block, and a rethrow from a constructor's own catch.
+class Registry {
+  static {
+    throw new Bad({ why: "static" })
+  }
+}
+
+class Retry {
+  constructor() {
+    try {
+      throw new Bad({ why: "first" })
+    } catch (e) {
+      throw e
+    }
+  }
+}
+
+// A class inside a function: its constructor still runs as plain JavaScript.
+export function make() {
+  class Local {
+    constructor() { throw new Bad({ why: "local" }) }
+  }
+  return new Local()
+}
+
+// The module's top level: a throw statement, one in a block, and a throw
+// expression.
+throw new Bad({ why: "top" })
+
+if (Port.length > 5) {
+  throw new Bad({ why: "nested" })
+}
+
+const missing: string | undefined = undefined
+export const name = missing ?? throw new Bad({ why: "expression" })
+
+export function main() {
+  return [new Invalid("x"), new Port(1), new Gauge(), Registry, new Retry()]
+}

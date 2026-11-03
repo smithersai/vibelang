@@ -2,9 +2,7 @@
 // Detail 205: a try statement in a plain function is JavaScript's, as in
 // TypeScript. Its catch receives any exception that reaches it, tracked or not,
 // from a built-in, a package or a .ts helper, and its variable is unknown.
-import { identity } from "./identity.ts"
-
-error Empty
+import { EmptyText, identity, nonEmpty } from "./identity.ts"
 
 export function host(x: string): string | null {
   try { return new URL(x).hostname } catch { return null }
@@ -20,10 +18,9 @@ export const decoded = (text: string): string | undefined => {
 
 export function checked(text: string): unknown {
   try {
-    if (text === "") throw new Empty()
-    return identity(text)
+    return identity(nonEmpty(text))
   } catch (e) {
-    return e instanceof Empty ? "caught" : undefined
+    return e instanceof EmptyText ? "caught" : undefined
   }
 }
 

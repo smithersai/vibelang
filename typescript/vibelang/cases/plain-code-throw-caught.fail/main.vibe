@@ -1,0 +1,56 @@
+// expect: EK0401
+// Will, 2026-10-31: synchronous VibeLang code never throws. A throw that a
+// constructor's, an accessor's or the top level's own catch handles is still
+// EK0401: every throw counts. A module declaration's body is TypeScript, so
+// its throw is JavaScript's, and a throw in effect code is Effect.fail.
+error Bad { why: string }
+error Unreadable { message: string }
+
+class Port {
+  readonly value: number
+  constructor(value: number) {
+    try {
+      if (value < 0) throw new Bad({ why: "negative" })
+      this.value = value
+    } catch (e) {
+      this.value = -1
+    }
+  }
+}
+
+class Gauge {
+  get level(): number {
+    try { throw new Bad({ why: "unread" }) } catch (e) { return 0 }
+  }
+}
+
+let top = "missed"
+try {
+  throw new Bad({ why: "top" })
+} catch (e) {
+  top = "caught"
+}
+
+module hostile {
+  export const value = {
+    get boom(): string { throw new Error("getter blew up") }
+  }
+}
+import { value } from hostile
+
+export effect function main() {
+  const read = Effect.try({ try: () => ((v) => v.boom)(value), catch: (e) => new Unreadable({ message: (e as Error).message }) }) catch (e) => e.message
+  if (top === "missed") throw new Bad({ why: "effect code" })
+  const hatch = try sync(() => {
+    class Local {
+      constructor() { throw new Error("hatch") }
+    }
+    try {
+      new Local()
+      return "missed"
+    } catch (e) {
+      return (e as Error).message
+    }
+  })
+  return { port: new Port(-1).value, level: new Gauge().level, top, hostile: read, hatch }
+}
