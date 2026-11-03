@@ -96,6 +96,18 @@ cases.push({
   } satisfies Input
 });
 
+// A real supervisor startup failure and its successful same-key retry.
+cases.push({
+  name: "process-startup",
+  input: {
+    fixture: "fixture-startup",
+    split: "",
+    flaky: ["//packages:runtime-dist"],
+    tests: [],
+    causes: { "//packages:runtime-dist": "process startup" }
+  } satisfies Input
+});
+
 const score = (id: string, f: (input: Input, output: Output) => number) =>
   Scorer.make({ id: `ci-health/${id}`, version: "1", name: id, score: ({ input, output }) => Effect.succeed({ score: f(input as Input, output as Output) }) });
 

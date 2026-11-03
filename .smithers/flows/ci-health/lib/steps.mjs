@@ -166,6 +166,7 @@ export const CAUSES = [
   ["property counterexample", /property \S+ failed; saved/],
   ["disk full", /ENOSPC|no space left on device/i],
   ["killed", /signal: killed|SIGKILL|out of memory|exit code 137/i],
+  ["process startup", /\bTimedOut:\s+ChildProcess\.spawn\b|The machine was too busy to start the process within \d+(?:\.\d+)? s\b/i],
   ["timeout", /timed? ?out|exceeded (?:the )?time|timeout of \d+|deadline exceeded|\bwithin \d+ ?m?s\b/i],
   ["connection", /ECONNRESET|ECONNREFUSED|ETIMEDOUT|EAI_AGAIN|socket hang up|rate.?limit/i],
   // A resolved import's hashed compiled archive disappeared. Its bucket
@@ -189,6 +190,12 @@ export function targetLines(log, label) {
     if (line.startsWith("//")) {
       captured = line.startsWith(failed)
       if (line.startsWith(prefix)) out.push(line.slice(prefix.length))
+      // A supervisor can fail before there is any prefixed test output.
+      if (captured) {
+        // The command is metadata; its arguments are not diagnostic output.
+        const summary = line.slice(failed.length).trim().replace(/(command failed \(exit -?\d+\)): .*/, "$1")
+        out.push(summary)
+      }
     } else if (captured) out.push(line)
   }
   return out
@@ -242,6 +249,7 @@ export const ACTIONS = {
   "property counterexample": "Not a flake: replay the seed the log prints and fix the bug it found",
   "disk full": "Free the host; no code change",
   killed: "Reduce the target's memory, or run it alone on a smaller slot",
+  "process startup": "Inspect process-supervisor startup and host capacity; this is a startup failure, not evidence for changing a test deadline",
   timeout: "Find what the test waits for; a timeout that scales with load, or less work, beats a larger number",
   connection: "Replace the network dependency with a local fixture",
   "Go cache archive": "Inspect the Go build cache and its cleanup or transport: a compiled archive was missing; this log does not identify what removed it",

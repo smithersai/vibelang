@@ -25,6 +25,12 @@ cause `property counterexample`: it is a real bug, and the log prints the replay
 
 `missing package` identifies Node package-resolution failures before an enclosing assertion can mask them. Check the importing module's pinned package installation and module root; missing source files retain the separate `missing file` cause.
 
+The graph can place a failure's only diagnostic on the target summary line.
+The analyzer retains that diagnostic, excluding command arguments from failure
+evidence. `process startup` identifies a supervisor that could not start a
+process in time; inspect startup handling and host capacity. It does not name a
+failed test or imply that a test deadline needs changing.
+
 Check a test's last failure before fixing it. An old date usually means someone
 already did.
 
@@ -64,6 +70,11 @@ eval sets it as the file's mtime on a copy, which is what `collect` reads.
 The `go-cache-archive` eval runs the flow on `fixture-go-cache/`: a real failed build and its same-key successful retry. It checks cache attribution and the absence of fictional test names because compilation failed before tests ran. The duration-regression case remains separate.
 
 The `missing-package` eval runs the actual flow on `fixture-missing-package/`: one unchanged target succeeds with its local package installed and fails after only that package is removed. It checks the cause and an empty test-name set. The real-run, duration-regression and Go-cache cases remain independent.
+
+The `process-startup` eval runs the flow on `fixture-startup/`: a real
+runtime-build startup failure and successful retry with the same declared key.
+It checks startup attribution and the absence of invented test names. Existing
+package, cache and duration fixtures remain independent.
 
 | Scorer | 1 when |
 | --- | --- |
