@@ -19,7 +19,9 @@ Appendix A production, which the test resolves. A shared hook lists each
 authority separated by a comma. `admitted` is a syntax entry,
 `support` is implementation machinery for the cited construct, and
 `recovery` recognizes an invalid form to diagnose it. None authorizes other
-branches or type-directed legacy behavior in the same function.
+branches or type-directed legacy behavior in the same function. Effect callable
+binding helpers, including `bindSuperMethod`, cite the existing
+[bindings rule](../design/src/001-functions.md#bindings); they introduce no syntax.
 
 A `-` authority and `pending` status mean that no accepted authority was
 found. Those rows record audit debt, including denied and open proposals;
