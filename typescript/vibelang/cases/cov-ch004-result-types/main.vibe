@@ -1,0 +1,15 @@
+import { Effect } from "effect"
+// Chapter 004, result-types: docs/design/src/004-match.md#1174d0142bdc227e
+// Chapter 004, result-types: docs/design/src/004-match.md#eb6bb7ade2cec0ca
+
+function probe(): unknown {
+function classify(s: "a" | "b"): number | string { return match (s) { when "a": 1; when "b": "b"; } }
+function fail(s: boolean): number { return match (s) { when true: 1; default: throw "bad"; } }
+return [classify("a"),classify("b"),fail(true)]
+}
+
+export function main(): Effect.Effect<unknown> { return Effect.sync(probe) }
+
+// Chapter 004 rule: **Result.** A `match` expression has the union of its arm types; a `throw` arm contributes `never`.
+
+// Chapter 004 rule: A `match` with no `default` whose subject passes `EK4701` ([Exhaustiveness](#exhaustiveness)) adds nothing for the no-match path.

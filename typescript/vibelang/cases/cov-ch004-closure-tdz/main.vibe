@@ -1,0 +1,19 @@
+import { Effect } from "effect"
+// Chapter 004, closure-tdz: docs/design/src/004-match.md#4838362bbc216c34
+// Chapter 004, closure-tdz: docs/design/src/004-match.md#045adfa2a3e1db81
+
+function probe(): unknown {
+let read:()=>unknown=()=>0
+const s:unknown=[0]
+if(s is [1,let value]){}
+read=()=>value
+let name=""
+try{read()}catch(e){name=e instanceof ReferenceError?"ReferenceError":"other"}
+return name
+}
+
+export function main(): Effect.Effect<unknown> { return Effect.sync(probe) }
+
+// Chapter 004 rule: A read those checks can't see, such as one inside a closure, throws `ReferenceError` while the cell is uninitialized.
+
+// Chapter 004 rule: Each binding stays in TDZ until its pattern runs, under the checks in [`is` expressions](#is-expressions).

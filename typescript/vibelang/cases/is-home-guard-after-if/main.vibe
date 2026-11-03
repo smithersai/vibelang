@@ -24,3 +24,23 @@ function elseIf(x: unknown) {
 export effect function main() {
   return [guard({ id: 1 }), guard({}), either({ a: 1 }), either({ b: 2 }), nested({ n: 3 }), elseIf({ id: 1 })]
 }
+
+// Chapter 004, decided detail 245: an is binding in an if head belongs to the
+// Chapter 004, if binding remains visible after false guard: docs/design/src/004-match.md#7f1c948eda781f41
+// Chapter 004, if binding remains visible after false guard: docs/design/src/004-match.md#5d8cb5bf0c471a5a
+// Chapter 004, if binding remains visible after false guard: docs/design/src/004-match.md#8d231df744a2be49
+// Chapter 004, if binding remains visible after false guard: docs/design/src/004-match.md#80169b6900290096
+// Chapter 004, if binding remains visible after false guard: docs/design/src/004-match.md#d303e6a2629081b1
+// Chapter 004, nearest-block if binding after guard failure: docs/design/src/004-match.md#3780bb916abbbe4b
+
+// Chapter 004 rule: In an ordinary block expression or an `if` head, its `let` and `const` names belong to the nearest enclosing lexical block, as the pinned explainer's binding rule states.
+
+// Chapter 004 rule: They are in scope in both branches and after the `if`, shadow outer names throughout that block, and exist even when short-circuiting skips the expression or a preceding subpattern fails.
+
+// Chapter 004 rule: Lexical pattern bindings in an `if` condition or ordinary expression belong to the nearest enclosing source block, as the incorporated explainer's `is`/Bindings section expressly says; they are not scoped only to the successful branch.
+
+// Chapter 004 rule: A focused example is `function inspect(x: number) { if (x is let value and if (value > 0)) return value; return value }`: both paths can read `value`, because the unconditional binding executed before the guard, and the function returns `x`.
+
+// Chapter 004 rule: Its ordinary TypeScript/Effect counterpart is `function inspect(x: number) { let value = x; if (value > 0) return value; return value }`.
+
+// Chapter 004 rule: `if` keeps its existing nearest-block scope; the within-one-`or` replacement above is unchanged.

@@ -1,0 +1,22 @@
+import { Effect } from "effect"
+// Chapter 004, is-once: docs/design/src/004-match.md#676a6793145f0045
+// Chapter 004, is-once: docs/design/src/004-match.md#150bbe79c30d5f30
+// Chapter 004, is-once: docs/design/src/004-match.md#d8dbc8b44cf49c1e
+// Chapter 004, is-once: docs/design/src/004-match.md#6cc21e48661a109a
+
+function probe(): unknown {
+let calls = 0
+const no = (++calls) is 2
+const yes = (++calls) is 2
+return [no,yes,calls]
+}
+
+export function main(): Effect.Effect<unknown> { return Effect.sync(probe) }
+
+// Chapter 004 rule: `subject is P` evaluates the subject once and returns the pattern's Boolean result, using the same cache and finishing rules as `match`.
+
+// Chapter 004 rule: **The is evaluator retains Boolean results in a Completion and always finishes synchronous matching.** (live `004-is-result-conversion`; VIP-7 snapshot reconciliation, details 117/123.) Capture `Completion(MatchPatternMatches(...))` without an initial `?` unwrapping.
+
+// Chapter 004 rule: ```vibe const no = 2 is 1 // false const yes = 1 is 1 // true ``` Effect TS: `const a: number = 2, b: number = 1; const no = a === 1; const yes = b === 1` for these tests (widened subjects avoid TypeScript's unrelated disjoint-literal comparison diagnostic), with the pinned completion/finish machinery for general matching.
+
+// Chapter 004 rule: **`is` expression example and non-loop scope clarification (Opus round23 m26).** The operator runs the same ordered pattern test and extraction as a one-pattern match and returns a boolean; apply the same subject evaluation, cache, cleanup and predicate-narrowing rules, not `instanceof` merely because the pattern is a class.

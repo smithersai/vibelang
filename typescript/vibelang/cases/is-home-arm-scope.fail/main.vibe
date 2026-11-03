@@ -13,3 +13,7 @@ export class Box {
   a = ([1] is [let v]) ? v : 0
   b = v
 }
+
+// Chapter 004, arm-local names cannot escape: docs/design/src/004-match.md#e9a1d9cdd055158f
+
+// Chapter 004 rule: A match arm has its own lexical scope, so an `is` inside it does not export names to another arm.

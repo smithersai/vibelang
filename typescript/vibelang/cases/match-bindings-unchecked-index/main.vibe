@@ -92,3 +92,34 @@ export function isPattern(s: string[]): number {
   if (s is [let a, let b]) return a.length + b.length
   return -1
 }
+
+// Chapter 004, presence-proven binding types under strict index options: docs/design/src/004-match.md#d520d76bbe2fea43
+// Chapter 004, presence-proven binding types under strict index options: docs/design/src/004-match.md#86f60f6f70df4213
+// Chapter 004, presence-proven binding types under strict index options: docs/design/src/004-match.md#5d602ec27389d27e
+// Chapter 004, presence-proven binding types under strict index options: docs/design/src/004-match.md#ce14643915dfc7e8
+// Chapter 004, presence-proven binding types under strict index options: docs/design/src/004-match.md#2f020350721c8f13
+// Chapter 004, presence-proven binding types under strict index options: docs/design/src/004-match.md#34c3bf5c78d0de27
+// Chapter 004, presence-proven binding types under strict index options: docs/design/src/004-match.md#87a4a65bd877e6f9
+// Chapter 004, presence-proven binding types under strict index options: docs/design/src/004-match.md#e0ebf11cade129c5
+// Chapter 004, presence-proven binding types under strict index options: docs/design/src/004-match.md#96613391e6207e36
+// Chapter 004, strict binding type assignments: docs/design/src/004-match.md#7bb71e0a5b9831c6
+
+// Chapter 004 rule: Patterns type as the TypeScript counterpart this chapter shows for them, under the project's compiler options; the table below illustrates `tsc --strict` ([VIP-7](../vips/0007-match.md#decision), amended).
+
+// Chapter 004 rule: **Bindings.** A `let` binding has the type TypeScript gives the value it is bound to in the counterpart.
+
+// Chapter 004 rule: | object `{ _tag: "Sent", let tracking, id }` | `(typeof s === "object" \|\| typeof s === "function") && s !== null && "_tag" in s && s._tag === "Sent" && "tracking" in s && "id" in s` | `tracking`: the narrowed subject's property type |
+
+// Chapter 004 rule: | array `[let a, let b]` | members that are iterable | the element type of the subject's iterable (tuple element types for a tuple) |
+
+// Chapter 004 rule: | built-in `Array(let n)`, typed-array extractor | `Array.isArray(s)`, `s instanceof C` respectively | elements of the subject array or typed array (`number` or `bigint`) |
+
+// Chapter 004 rule: A pattern reads an element or key only after proving it exists, so `noUncheckedIndexedAccess` adds no `undefined` to that generated read.
+
+// Chapter 004 rule: Actual payload `undefined` remains: `[let v]` on `(number | undefined)[]` binds `number | undefined`.
+
+// Chapter 004 rule: A pattern key is not dotted property access, so `noPropertyAccessFromIndexSignature` reports no `TS4111` at it.
+
+// Chapter 004 rule: A payload that includes `undefined` keeps that type after the presence test.
+
+// Chapter 004 rule: The table shows `tsc --strict` types.

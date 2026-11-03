@@ -17,3 +17,7 @@ export function destructure(x: { a: number; b: number }) {
   if (x is { a: const a, b: let b }) { [a, b] = [b, a]; return a + b }
   return 0
 }
+
+// Chapter 004, is const binding rejects assignment: docs/design/src/004-match.md#a2bcedd10e2c7ef2
+
+// Chapter 004 rule: Source assignments keep ordinary `const` immutability; repeated binding patterns keep the pinned duplicate-initialization rules and their `or` replacement exception.

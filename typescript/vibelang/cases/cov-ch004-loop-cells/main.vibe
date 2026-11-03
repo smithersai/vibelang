@@ -1,0 +1,48 @@
+import { Effect } from "effect"
+// Chapter 004, loop-cells: docs/design/src/004-match.md#9d73f7f1dc3fb02b
+// Chapter 004, loop-cells: docs/design/src/004-match.md#8cc6863e7f3f0e7c
+// Chapter 004, loop-cells: docs/design/src/004-match.md#55ab432c3d9bb24c
+// Chapter 004, loop-cells: docs/design/src/004-match.md#e00999d1632c6cd7
+// Chapter 004, loop-cells: docs/design/src/004-match.md#e3863af189e8d711
+// Chapter 004, loop-cells: docs/design/src/004-match.md#6f349acfb048d4a7
+// Chapter 004, loop-cells: docs/design/src/004-match.md#0849f8569a30fc01
+// Chapter 004, loop-cells: docs/design/src/004-match.md#9d40d046b8a9df36
+// Chapter 004, loop-cells: docs/design/src/004-match.md#75b15990f86f63ed
+// Chapter 004, loop-cells: docs/design/src/004-match.md#740b1573c563ca02
+// Chapter 004, loop-cells: docs/design/src/004-match.md#24dd6b9063592528
+// Chapter 004, loop-cells: docs/design/src/004-match.md#d015674fd3db0418
+// Chapter 004, loop-cells: docs/design/src/004-match.md#9cdca846ba54696c
+
+function probe(): unknown {
+const x = 99; let n = 0; const readers: (() => number)[] = []
+while (n < 2 && (++n is let x)) { readers.push(() => x); x += 10; continue }
+return [x, ...readers.map(f => f())]
+}
+
+export function main(): Effect.Effect<unknown> { return Effect.sync(probe) }
+
+// Chapter 004 rule: An `is` in a loop head uses the pinned loop-head/per-iteration scopes.
+
+// Chapter 004 rule: Each complete `while` or `do…while` condition evaluation has fresh cells; the initial `do` body sees its uninitialized head cells.
+
+// Chapter 004 rule: Lexical `is` bindings in `while` and `do…while` have the pinned explainer's loop-head/per-iteration scope, rather than an enclosing block's scope.
+
+// Chapter 004 rule: Each complete condition evaluation starts with fresh uninitialized cells, including after `continue`; condition reads see TDZ until the matching pattern initializes them.
+
+// Chapter 004 rule: A successful condition and its following body share those cells, so closures see that body's later `let` writes.
+
+// Chapter 004 rule: `continue` reaches a fresh condition set, and false/`break` exits without exporting names.
+
+// Chapter 004 rule: **Lexical is bindings in while/do-while use the explainer's for-of-style loop scope and fresh iteration cells.** (live `004-is-loop-scope`; VIP-7 reconciliation, derives the specific loop model rather than applying nearest-block prose to a loop head.) Adopt the pinned explainer's explicit loop-head/per-iteration model.
+
+// Chapter 004 rule: Before each complete `while` condition evaluation, establish fresh uninitialized cells for that condition's lexical `is` bindings; all condition reads see their TDZ until the corresponding pattern initializes them.
+
+// Chapter 004 rule: A successful condition and its body share those cells, so closures observe that iteration's later `let` writes.
+
+// Chapter 004 rule: A next test, including after `continue`, gets new cells rather than reinitializing a prior `const` cell.
+
+// Chapter 004 rule: ```vibe function readLoop() { const x = 99; let n = 0; const readers: (() => number)[] = [] while (n < 2 && (++n is const x)) { readers.push(() => x) } return [x, ...readers.map(f => f())] // [99, 1, 2] } ``` For `do-while`, its first body executes in the loop's initial uninitialized head environment; a direct read is TDZ.
+
+// Chapter 004 rule: `continue` reaches the next condition with a new set; false/break exits without exporting names.
+
+// Chapter 004 rule: Effect TS: ordinary fresh lexical declarations per iteration give preserved outer `99` and captured `[1,2]`; native head-TDZ closures as in detail 109 model the initial do-body cell lifetime.
