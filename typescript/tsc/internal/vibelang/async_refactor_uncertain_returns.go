@@ -1,6 +1,8 @@
 package vibelang
 
 import (
+	"slices"
+
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/checker"
 )
@@ -22,6 +24,13 @@ func asyncReturnsUncertainValue(c *checker.Checker, body *ast.Node) bool {
 		const nonThenable = (checker.TypeFlagsPrimitive &^ checker.TypeFlagsVoid) | checker.TypeFlagsNever | checker.TypeFlagsIndex
 		for _, member := range unionMembers(t) {
 			if member.Flags()&nonThenable != 0 {
+				continue
+			}
+			// A then property the type holds to primitives is not callable, in
+			// this object or any subtype, so Promise adoption leaves it alone.
+			if then := c.GetTypeOfPropertyOfType(member, "then"); then != nil && !slices.ContainsFunc(unionMembers(then), func(part *checker.Type) bool {
+				return part.Flags()&nonThenable == 0
+			}) {
 				continue
 			}
 			if member.Flags()&checker.TypeFlagsInstantiableNonPrimitive == 0 {

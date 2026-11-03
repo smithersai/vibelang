@@ -32,7 +32,7 @@ func requireAsyncReturnAdoptionQuote(t testing.TB) {
 func FuzzAsyncReturnAdoption(f *testing.F) {
 	startShortBudget(f)
 	requireAsyncReturnAdoptionQuote(f)
-	for _, key := range []string{"any", "unknown", "object", "empty-object", "record", "array", "callable", "void", "generic", "number", "string-null", "boolean-undefined", "bigint", "symbol"} {
+	for _, key := range []string{"any", "unknown", "object", "empty-object", "record", "callable-then", "unknown-then", "noncallable-then", "optional-then", "array", "callable", "void", "generic", "number", "string-null", "boolean-undefined", "bigint", "symbol"} {
 		f.Add(key, uint8(0))
 		f.Add(key, uint8(7))
 	}
@@ -57,6 +57,14 @@ func FuzzAsyncReturnAdoption(f *testing.F) {
 			typ = "void"
 		case "generic":
 			typ = "T"
+		case "callable-then":
+			typ = "{ then: () => void }"
+		case "unknown-then":
+			typ = "{ then: unknown }"
+		case "noncallable-then":
+			typ, safe = "{ then: number }", true
+		case "optional-then":
+			typ, safe = "{ then?: string }", true
 		case "number":
 			typ, safe = "number", true
 		case "string-null":
