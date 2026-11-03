@@ -51,7 +51,7 @@ import (
 //	                                         { const $is1 = exit; if (Exit.isFailure($is1)) { const cause = $is1.cause; log(cause) } }
 //
 // A pattern form VibeLang does not support yet becomes a call of
-// $patternError, which the checker reports (EK4702-EK4705).
+// $patternError, which the checker reports (EK4703-EK4705).
 
 // patternKind is the kind of a pattern as written.
 type patternKind int
@@ -151,6 +151,7 @@ type matchCompile struct {
 	// with no default arm, for EK4701 (chapter 004, Coverage). With a default arm
 	// no coverage is checked, and the arms narrow as TypeScript does.
 	uncovered bool
+	bound     map[string]bool // the names an alternative has hoisted, with their keyword
 }
 
 // ---------------------------------------------------------------- parsing
@@ -1297,7 +1298,7 @@ func (p *Parser) compilePattern(pat *pattern, path matchPath, steps *[]matchStep
 		}
 	case patternBinding:
 		if ctx.inline {
-			test(p.patternErrorCall(4702, "", at))
+			test(p.inlineBinding(pat, path, ctx))
 			return
 		}
 		flags := pat.bindFlags
@@ -1664,10 +1665,44 @@ func (p *Parser) compileList(pat *pattern, path matchPath, n int, element func(i
 	}
 }
 
+// inlineBinding writes a binding inside or or not as the test that assigns it,
+// (name = value, true), after a let in the pattern's home. Chapter 004: an or
+// pattern "shares one lexical cell for a name bound with the same keyword in its
+// alternatives", and "a later alternative may replace a cell initialized by a
+// failed earlier alternative", so only the first alternative that binds a name
+// declares it. A different keyword declares the name again, which TypeScript
+// reports as it does two let statements.
+func (p *Parser) inlineBinding(pat *pattern, path matchPath, ctx *matchCompile) *ast.Node {
+	flags, value := pat.bindFlags, path()
+	if flags == ast.NodeFlagsNone {
+		// Keep the ordinary pattern binding's var diagnostic and let recovery
+		// when its home requires an inline assignment.
+		value = p.mParens(p.mBinary(p.patternErrorCall(107, "", pat.anchor), ast.KindCommaToken, value, pat.anchor), pat.anchor)
+		flags = ast.NodeFlagsLet
+	}
+	key := pat.name.Text() + "/" + strconv.Itoa(int(flags))
+	// A new name per lowering: a later lowering of the match discards its lets,
+	// and the first ones must keep a name that still has them for a parent.
+	// Preserve a written binding's identity: a synthesized identifier would
+	// make hoistDeclaration register its assignment as a hygienic temporary.
+	name := p.vibelangSpanning(p.factory.NewIdentifier(pat.name.Text()), pat.name.Loc)
+	assign := p.hoistDeclaration(p.mConst(name, flags, value, pat.name.Loc), pat.anchor)
+	if ctx.bound[key] {
+		last := len(p.reparseList) - 1
+		delete(p.vibelangHoists, p.reparseList[last])
+		p.reparseList = p.reparseList[:last]
+	}
+	ctx.bound[key] = true
+	return assign
+}
+
 // inlinePattern writes pat as one boolean expression, for or, not, and an
-// is outside an if or while condition. A binding there is EK4702.
+// is outside an if or while condition.
 func (p *Parser) inlinePattern(pat *pattern, path matchPath, ctx *matchCompile) *ast.Node {
-	inner := &matchCompile{anchor: ctx.anchor, inline: true, uncovered: ctx.uncovered}
+	if ctx.bound == nil {
+		ctx.bound = map[string]bool{}
+	}
+	inner := &matchCompile{anchor: ctx.anchor, inline: true, uncovered: ctx.uncovered, bound: ctx.bound}
 	var steps []matchStep
 	p.compilePattern(pat, path, &steps, inner)
 	var tests []*ast.Node
@@ -1789,9 +1824,11 @@ func (p *Parser) matchStatements(info *matchInfo, success func(value *ast.Node, 
 		arm := &info.arms[i]
 		span := core.NewTextRange(arm.anchor.Pos(), arm.end)
 		var steps []matchStep
+		patternMark := len(p.reparseList)
 		if arm.pattern != nil {
 			p.compilePattern(arm.pattern, path, &steps, &matchCompile{anchor: arm.anchor, uncovered: !hasDefault})
 		}
+		patternHoists := p.takeHoists(patternMark)
 		if !arm.hoisted {
 			// An arm is its own lexical scope (chapter 004): the bindings of
 			// an is in its value or in its guard are lets of the arm's block,
@@ -1806,7 +1843,7 @@ func (p *Parser) matchStatements(info *matchInfo, success func(value *ast.Node, 
 					p.hoistVibeLangIs(step.test)
 				}
 			}
-			arm.hoists = p.takeHoists(mark)
+			arm.hoists = append(patternHoists, p.takeHoists(mark)...)
 		}
 		if arm.pattern == nil {
 			statements := success(arm.value, span)

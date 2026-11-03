@@ -39,9 +39,6 @@ FuzzVIPDifferential exit:value/vip07.error-matcher-property-plain compiler VIP-7
 FuzzVIPDifferential corpus:data-vip07-error-matcher-property-plain compiler VIP-7: minimized vip07.error-matcher-property-plain witness; lane vip-decls
 FuzzVIPDifferential exit:value/vip07.is-binding-tdz-plain compiler VIP-7: a closure's read of a binding whose pattern was skipped returns undefined where chapter 004 has ReferenceError: the hoisted let lowering declares the cell before the pattern runs, so a run-time TDZ needs a per-reference guard (static reads are TS2454/TS2448); lane impl-hunt-data
 FuzzVIPDifferential corpus:data-vip07-is-binding-tdz-plain compiler VIP-7: minimized vip07.is-binding-tdz-plain witness (closure read of a skipped binding is undefined, not a ReferenceError); lane impl-hunt-data
-FuzzVIPDifferential compile:EK4702/vip07.or-binding-override-plain compiler VIP-7: vip07.or-binding-override-plain disagrees with its cited chapter pair (compile:EK4702); lane vip-match
-FuzzVIPDifferential compile:TS2304/vip07.or-binding-override-plain compiler VIP-7: vip07.or-binding-override-plain disagrees with its cited chapter pair (compile:TS2304); lane vip-match
-FuzzVIPDifferential corpus:data-vip07-or-binding-override-plain compiler VIP-7: minimized vip07.or-binding-override-plain witness; lane vip-match
 FuzzVIPDifferential exit:exit-tag/vip07.predicate-receiver-plain compiler VIP-7: vip07.predicate-receiver-plain disagrees with its cited chapter pair (exit:exit-tag); lane vip-match
 FuzzVIPDifferential corpus:data-vip07-predicate-receiver-plain compiler VIP-7: minimized vip07.predicate-receiver-plain witness; lane vip-match
 FuzzVIPDifferential compile:TS2367/vip07.throw-arm compiler VIP-7: vip07.throw-arm disagrees with its cited chapter pair (compile:TS2367); lane vip-match

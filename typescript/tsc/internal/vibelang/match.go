@@ -19,8 +19,6 @@ import (
 var (
 	// EK4701: a match over a finite union with no default arm misses a case. {0} is the subject's type, {1} the cases left.
 	EK4701 = message(4701, errorCategory, "This match does not handle every case of {0}: {1} is left.")
-	// EK4702: a binding inside an or or not pattern.
-	EK4702 = message(4702, errorCategory, "A binding cannot appear inside an or or not pattern yet.")
 	// EK4703: an is whose pattern binds names where the compiler gives them
 	// no home yet: a for head whose initializer is a var or using list, a
 	// for…in or for…of head, or a computed member key.
@@ -38,7 +36,7 @@ var (
 )
 
 func init() {
-	for _, m := range []*Message{EK4701, EK4702, EK4703, EK4704, EK4705, EK0702} {
+	for _, m := range []*Message{EK4701, EK4703, EK4704, EK4705, EK0702} {
 		registry[m.Code] = m
 	}
 	fileChecks = append(fileChecks, checkPatterns)
@@ -346,8 +344,6 @@ func reportPatternError(c *checker.Checker, file *ast.SourceFile, call *ast.Node
 		note(reportAt(c, file, at, EK0107), "A pattern binds a name with let or const: write when let x: or when const x:. The quick fix and vibelang --fix replace this var with let.")
 	case 1017:
 		reportAt(c, file, at, EK1017)
-	case 4702:
-		note(reportAt(c, file, at, EK4702), "Bind the whole value outside it, when let v and (A or B): …, or write one arm for each alternative.")
 	case 4703:
 		if unsettledIsBindingHome(file, call) {
 			note(reportAt(c, file, at, EK0705), "Use an explicit local block or an ordinary parameter when that preserves initialization order. Do not move the initializer into the body.")

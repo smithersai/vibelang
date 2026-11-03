@@ -22,13 +22,21 @@ func hoistedBindingType(c *checker.Checker, declaration *ast.Node) *checker.Type
 	if declaration.Flags&ast.NodeFlagsVibeLangPatternHoist == 0 || declaration.Initializer() != nil || declaration.Name() == nil || !ast.IsIdentifier(declaration.Name()) {
 		return nil
 	}
-	value := hoistedValue(declaration)
-	if value == nil {
+	values := hoistedValues(declaration)
+	if len(values) == 0 {
 		return nil
 	}
-	t := c.GetTypeAtLocation(value)
-	if t == nil {
-		return nil
+	// Chapter 004: "a name bound in every alternative gets the union of its types".
+	types := make([]*checker.Type, 0, len(values))
+	for _, value := range values {
+		t := c.GetTypeAtLocation(value)
+		if t == nil {
+			return nil
+		}
+		types = append(types, c.GetWidenedLiteralType(t))
 	}
-	return c.GetWidenedLiteralType(t)
+	if len(types) == 1 {
+		return types[0]
+	}
+	return c.GetUnionType(types)
 }

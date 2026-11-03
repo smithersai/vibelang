@@ -259,6 +259,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Loop-head fuzz campaigns stopped on retired `var` declarations. Their value comparisons now use equivalent assignment heads, while separate rejection tests retain the old syntax witnesses.
 
 - Go test shards hid discovery, assignments and completed workers until the slowest worker finished. These stages and exit statuses now appear as they happen.
+- A binding inside an `or` or a `not` pattern, such as `when { a: let v } or { b: let v }:`, reported `EK4702`; alternatives now share one cell, a later alternative replaces what a failed earlier one wrote, and the name has the union of its types. Written names retain their identity alongside generated temporaries, while invalid `var` bindings retain `EK0107`.
 - The ESLint corpus check rejected deliberately constant source literal conditions as generated code; it now checks each reported literal against its source while continuing to detect unwritten constants.
 - An optional-schema inverse check expected the retired `mutable` field spelling. It now checks that writable keys have no `readonly` modifier and readonly keys retain it, with exact optional-property conversion controls unchanged.
 

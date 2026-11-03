@@ -1,0 +1,3 @@
+go test fuzz v1
+string("or-pattern-const-write-1")
+byte(0)

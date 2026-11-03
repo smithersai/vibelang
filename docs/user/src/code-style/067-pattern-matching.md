@@ -89,7 +89,7 @@ can reopen can reopen archived
 true true false
 ```
 
-`not` matches what its pattern does not; `or` matches either pattern. Order still matters: a broad arm takes inputs meant for a later arm.
+`not` matches what its pattern does not; `or` matches either pattern. Order still matters: a broad arm takes inputs meant for a later arm. Alternatives can bind the same name, such as `{ left: let value } or { right: let value }`. They share one lexical cell and give `value` the union of the extracted types; `const` bindings retain their assignment checks.
 
 ## Fixing the return type
 

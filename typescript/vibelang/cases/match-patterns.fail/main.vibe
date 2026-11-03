@@ -1,17 +1,10 @@
-// expect: EK4701 EK4702 EK4703 EK4704 EK4705 EK0107
+// expect: EK4701 EK4703 EK4704 EK4705 EK0107
 error NotFound { id: string }
 error Timeout
 
 export function missing(e: NotFound | Timeout) {
   return match (e) {
     when NotFound: "no user";
-  }
-}
-
-export function bindInOr(x: unknown) {
-  return match (x) {
-    when [let a] or { length: let a }: 1;
-    default: 0;
   }
 }
 

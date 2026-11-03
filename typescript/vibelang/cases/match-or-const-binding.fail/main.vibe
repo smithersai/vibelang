@@ -1,0 +1,22 @@
+// expect: TS2451 TS2451 TS2588 EK0107
+// A const in an or alternative stays immutable, and two keywords for one name
+// are two declarations, as two let statements are.
+export function immutable(s: unknown) {
+  return match (s) {
+    when { a: const v } or { b: const v }: do { v = 1; v };
+    default: 0;
+  }
+}
+export function mixed(s: unknown) {
+  return match (s) {
+    when { a: let v } or { b: const v }: 1;
+    default: 0;
+  }
+}
+
+export function invalidVar(s: unknown) {
+  return match (s) {
+    when { a: var v } or { b: let v }: v;
+    default: 0;
+  }
+}

@@ -215,6 +215,55 @@ func hoistedValue(declaration *ast.Node) *ast.Node {
 	return found
 }
 
+// hoistedValues returns every value the pattern assigns to declaration, one per
+// alternative of an or pattern, which share the one cell (chapter 004). A nested
+// block that hoists the name again is its own cell.
+func hoistedValues(declaration *ast.Node) []*ast.Node {
+	if declaration.Name() == nil || !ast.IsIdentifier(declaration.Name()) {
+		return nil
+	}
+	name := declaration.Name().Text()
+	block := declaration.Parent
+	for block != nil && block.Kind != ast.KindBlock && block.Kind != ast.KindModuleBlock && block.Kind != ast.KindSourceFile {
+		block = block.Parent
+	}
+	if block == nil {
+		return nil
+	}
+	var values []*ast.Node
+	var visit func(*ast.Node) bool
+	visit = func(node *ast.Node) bool {
+		if node.Kind == ast.KindBlock && blockHoists(node, name) {
+			return false
+		}
+		if ast.IsBinaryExpression(node) {
+			b := node.AsBinaryExpression()
+			if b.OperatorToken.Kind == ast.KindEqualsToken && ast.IsIdentifier(b.Left) && b.Left.Text() == name && b.Left.Flags&ast.NodeFlagsReparsed != 0 {
+				values = append(values, b.Right)
+				return false
+			}
+		}
+		return node.ForEachChild(visit)
+	}
+	block.ForEachChild(visit)
+	return values
+}
+
+// blockHoists reports whether block itself holds a hoisted let of name.
+func blockHoists(block *ast.Node, name string) bool {
+	for _, statement := range block.Statements() {
+		if !ast.IsVariableStatement(statement) {
+			continue
+		}
+		for _, d := range statement.AsVariableStatement().DeclarationList.AsVariableDeclarationList().Declarations.Nodes {
+			if d.Flags&ast.NodeFlagsVibeLangPatternHoist != 0 && d.Name() != nil && ast.IsIdentifier(d.Name()) && d.Name().Text() == name {
+				return true
+			}
+		}
+	}
+	return false
+}
+
 // isCaptureName reports whether name is one the parser gives a capture:
 // $match or $is and a number.
 func isCaptureName(name string) bool {

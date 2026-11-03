@@ -76,7 +76,6 @@ var legacyDeclared = map[int32]string{
 	4607: "lane del-rest",                                                                                                             // fibers.go
 	4611: "lane del-rest",                                                                                                             // fibers.go
 	4612: "lane del-rest",                                                                                                             // fibers.go
-	4702: "lane del-rest",                                                                                                             // match.go
 	4703: "lane del-rest",                                                                                                             // match.go
 	4704: "lane del-rest",                                                                                                             // match.go
 	4705: "lane del-rest",                                                                                                             // match.go

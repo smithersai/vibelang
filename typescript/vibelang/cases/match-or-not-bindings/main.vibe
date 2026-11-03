@@ -1,0 +1,75 @@
+// expect-result: {"replace":1,"either":["left 1","right 2","miss"],"union":["n 2","s a"],"isHead":[3,0],"not":["miss","hit","other","zero"],"expression":[7,8],"failed":5,"closure":2,"hygiene":[7,2,3]}
+// Chapter 004, Pattern bindings: "An or pattern shares one lexical cell for a name bound
+// with the same keyword in its alternatives. A later alternative may replace a cell
+// initialized by a failed earlier alternative of that or; closures saved by that earlier
+// alternative observe the replacement." Typing: "a name bound in every alternative gets
+// the union of its types". Prefix not wins, so not(let x) negates a binding pattern.
+function not(s: unknown): [unknown] { return [s] }
+const helpers = { not }
+
+effect function replace() {
+  return match ([5]) { when ([let x and String]) or { length: let x }: x; default: 0; }
+}
+function either(s: unknown) {
+  return match (s) {
+    when { left: let v } or { right: let v }: `${"left" in (s as object) ? "left" : "right"} ${v}`;
+    default: "miss";
+  }
+}
+function union(s: { n: number } | { t: string }) {
+  return match (s) {
+    when { n: let v } or { t: let v }: typeof v === "number" ? `n ${v.toFixed(0)}` : `s ${v.toUpperCase().toLowerCase()}`;
+  }
+}
+function isHead(s: unknown) {
+  if (s is { a: let v } or { b: let v }) return v
+  return 0
+}
+function viaNot(s: unknown) {
+  return match (s) { when not(let x): "hit"; default: "miss"; }
+}
+function qualified(s: unknown) {
+  return match (s) { when helpers.not(let x): "hit"; default: "miss"; }
+}
+function element(s: readonly number[]) {
+  return match (s) { when not[0]: "other"; default: "zero"; }
+}
+function expression(s: unknown) {
+  const v = match (s) { when [let x] or { x: let x }: x; default: 0; }
+  return v
+}
+function failed(s: unknown) {
+  if (s is (let n and if (false)) or false) return 0
+  return n
+}
+function closure() {
+  const readers: (() => unknown)[] = []
+  const saved = match ({ a: 1, b: 2 }) {
+    when ({ a: let x } and if (do { readers.push(() => x); false })) or { b: let x }: readers[0]();
+    default: 0;
+  }
+  return saved
+}
+
+function hygiene(s: unknown) {
+  const $is1 = 2
+  const $match1 = 3
+  return match (s) {
+    when { a: let v2 } or { b: let v2 }: [v2, $is1, $match1];
+    default: [];
+  }
+}
+
+export effect function main() {
+  return {
+    replace: try replace(),
+    either: [either({ left: 1 }), either({ right: 2 }), either({})],
+    union: [union({ n: 2 }), union({ t: "a" })],
+    isHead: [isHead({ b: 3 }), isHead({})],
+    not: [viaNot(5), qualified(5), element([1]), element([0])],
+    expression: [expression([7]), expression({ x: 8 })],
+    failed: failed(5),
+    closure: closure(),
+    hygiene: hygiene({ b: 7 })
+  }
+}
