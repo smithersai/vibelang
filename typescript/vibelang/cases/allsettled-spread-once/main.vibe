@@ -26,3 +26,6 @@ export effect function main() {
 
 // docs/design/vips/0018-concurrent.md#6217795b4e8785ea | VIP-18 spread-native-iteration
 // **Amended 2026-10-31: spreads in a `try.allSettled` literal.** A literal containing a spread is evaluated once, in native element order, with each spread using its value's own iterator; the counterpart wraps that array by index (`source.map(Effect.exit)`) and adds no iteration of a compiler-created array, so a changed `Array.prototype[Symbol.iterator]` sees exactly the calls native `[a(), ...xs, b()]` makes.
+
+// docs/design/vips/0018-concurrent.md#6217795b4e8785ea | VIP-18 spread-native-iteration
+// **Amended 2026-10-31: spreads in a `try.allSettled` literal.** A literal containing a spread is evaluated once, in native element order, with each spread using its value's own iterator; the counterpart wraps that array by index (`source.map(Effect.exit)`) and adds no iteration of a compiler-created array, so a changed `Array.prototype[Symbol.iterator]` sees exactly the calls native `[a(), ...xs, b()]` makes.
