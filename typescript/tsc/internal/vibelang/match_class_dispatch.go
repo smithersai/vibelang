@@ -46,7 +46,7 @@ func checkClassPatternDispatch(c *checker.Checker, matcher *ast.Node, extractor 
 		return // their own diagnostics and forms
 	}
 	t := c.TypeOfPatternMatcher(matcher)
-	if t == nil || c.GetSymbolAtLocation(matcher) == nil {
+	if t == nil || t == c.GetErrorType() {
 		return // an unresolved name, which its own diagnostic reports
 	}
 	if t.Flags()&(checker.TypeFlagsAny|checker.TypeFlagsUnknown) != 0 {
@@ -100,7 +100,7 @@ func isObjectLikeMatcher(t *checker.Type) bool {
 		}
 		return true
 	}
-	return t.Flags()&(checker.TypeFlagsObject|checker.TypeFlagsIntersection) != 0
+	return t.Flags()&(checker.TypeFlagsObject|checker.TypeFlagsIntersection|checker.TypeFlagsNonPrimitive) != 0
 }
 
 // hasOwnPatternMatcher reports whether t, a class's static side or an object,

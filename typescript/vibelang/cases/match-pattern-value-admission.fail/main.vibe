@@ -1,0 +1,21 @@
+// expect: EK0702
+// VIP-7: static pattern admission is required even when an initializer is callable.
+const p: unknown = () => true
+export function f(s: unknown) {
+  return match (s) { when p: 1; default: 0; }
+}
+export function anyPattern(s: unknown, value: any) {
+  return s is value
+}
+export function functionPattern(s: unknown, value: Function) {
+  return match (s) { when value: 1; default: 0; }
+}
+export function objectPattern(s: unknown, value: object) {
+  return match (s) { when value(let x): x; default: 0; }
+}
+export function propertyPattern(s: unknown, holder: { predicate: unknown }) {
+  return s is holder.predicate
+}
+export function indexedPattern(s: unknown, holder: { predicate: Function }) {
+  return match (s) { when holder["predicate"]: 1; default: 0; }
+}

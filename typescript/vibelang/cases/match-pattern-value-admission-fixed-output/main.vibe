@@ -1,0 +1,33 @@
+// expect: EK0702
+// VIP-7: static pattern admission is required even when an initializer is callable.
+
+
+
+
+
+
+import { $is as $patternIs$4 } from "vibelang-runtime";
+import { $is as $patternIs$3 } from "vibelang-runtime";
+import { $extract as $patternExtract } from "vibelang-runtime";
+import { $is as $patternIs$2 } from "vibelang-runtime";
+import { $is as $patternIs$1 } from "vibelang-runtime";
+import { $is as $patternIs } from "vibelang-runtime";
+const p: unknown = () => true
+export function f(s: unknown) {
+  return match (s) { when (let $patternSubject and if ($patternIs(p, $patternSubject))): 1; default: 0; }
+}
+export function anyPattern(s: unknown, value: any) {
+  return s is (let $patternSubject$1 and if ($patternIs$1(value, $patternSubject$1)))
+}
+export function functionPattern(s: unknown, value: Function) {
+  return match (s) { when (let $patternSubject$2 and if ($patternIs$2(value, $patternSubject$2))): 1; default: 0; }
+}
+export function objectPattern(s: unknown, value: object) {
+  return match (s) { when (let $patternSubject$3 and if ($patternExtract(value, $patternSubject$3) is [let x])): x; default: 0; }
+}
+export function propertyPattern(s: unknown, holder: { predicate: unknown }) {
+  return s is (let $patternSubject$4 and if ($patternIs$3(holder.predicate, $patternSubject$4)))
+}
+export function indexedPattern(s: unknown, holder: { predicate: Function }) {
+  return match (s) { when (let $patternSubject$5 and if ($patternIs$4(holder["predicate"], $patternSubject$5))): 1; default: 0; }
+}

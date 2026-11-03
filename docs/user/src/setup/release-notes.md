@@ -266,6 +266,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - An erased assertion around `globalThis.Function` incorrectly rejected its permitted `instanceof` and prototype uses with `EK0107`. These uses now keep their exemption through `as`, type assertions, `satisfies` and non-null assertions; other reads stay rejected.
 
 - A `return`, `break`, or `continue` inside `do` in a flat array declaration default could be rejected with `EK0204`. These defaults now run in the enclosing function or loop, skip later bindings on a jump, and close unfinished iterators with native exception precedence. Effect defaults also preserve failure channels and close before enclosing `Scope` finalizers. Generated cleanup keeps the existing checks on source calls known to throw.
+- Unchecked pattern values could reach a matcher call without a valid static signature. They now report `EK0702` for `any`, `unknown`, `Function`, and noncallable objects, including indexed references and values typed as `object`; `vibelang --fix` preserves legacy dynamic matching with an explicit runtime guard.
 
 - The forms gate rejected explicit Effect callbacks after independently landed changes moved their source locations; its reviewed snapshot now records the written modifier at each affected site.
 

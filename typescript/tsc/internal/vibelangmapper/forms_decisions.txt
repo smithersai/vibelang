@@ -4037,6 +4037,8 @@ typescript/vibelang/cases/match-operand-reads/main.vibe:9:19 lambda plain table
 typescript/vibelang/cases/match-or-not-bindings/main.vibe:38:19 lambda dual fallback
 typescript/vibelang/cases/match-or-not-bindings/main.vibe:48:50 lambda plain fallback
 typescript/vibelang/cases/match-ordinary-extractor.fail/main.vibe:9:42 lambda effectFn fallback
+typescript/vibelang/cases/match-pattern-value-admission-fixed-output/main.vibe:15:20 lambda plain fallback
+typescript/vibelang/cases/match-pattern-value-admission.fail/main.vibe:3:20 lambda plain fallback
 typescript/vibelang/cases/match-patterns/main.vibe:116:28 lambda effectFn fallback
 typescript/vibelang/cases/match-patterns/main.vibe:116:57 lambda effectFn fallback
 typescript/vibelang/cases/match-patterns/main.vibe:120:35 byname program table
@@ -4283,6 +4285,9 @@ typescript/vibelang/cases/match-vip7-for-head-copies/main.vibe:5:165 lambda plai
 typescript/vibelang/cases/match-vip7-for-head-copies/main.vibe:5:194 lambda plain table
 typescript/vibelang/cases/match-vip7-for-head-copies/main.vibe:6:159 lambda plain fallback
 typescript/vibelang/cases/match-vip7-for-head-copies/main.vibe:6:188 lambda plain table
+typescript/vibelang/cases/match-vip7-invalid-values-fixed-output/main.vibe:10:16 lambda plain fallback
+typescript/vibelang/cases/match-vip7-invalid-values-fixed-output/main.vibe:11:24 lambda plain fallback
+typescript/vibelang/cases/match-vip7-invalid-values-fixed-output/main.vibe:12:26 lambda plain fallback
 typescript/vibelang/cases/match-vip7-invalid-values.fail/main.vibe:2:16 lambda plain fallback
 typescript/vibelang/cases/match-vip7-invalid-values.fail/main.vibe:3:24 lambda plain fallback
 typescript/vibelang/cases/match-vip7-invalid-values.fail/main.vibe:4:26 lambda plain fallback

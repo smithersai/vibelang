@@ -1,0 +1,17 @@
+// expect: EK0702
+
+
+
+
+import { $is as $patternIs$3 } from "vibelang-runtime";
+import { $is as $patternIs$2 } from "vibelang-runtime";
+import { $is as $patternIs$1 } from "vibelang-runtime";
+import { $is as $patternIs } from "vibelang-runtime";
+const pAny:any=()=>true
+const pUnknown:unknown=()=>true
+const pFunction:Function=()=>true
+const pObjectValue:object={}
+export function invalid(x:unknown) {
+ return match(x){when (let $patternSubject and if ($patternIs(pAny, $patternSubject))):1;when (let $patternSubject$1 and if ($patternIs$1(pUnknown, $patternSubject$1))):2;when (let $patternSubject$2 and if ($patternIs$2(pFunction, $patternSubject$2))):3;when (let $patternSubject$3 and if ($patternIs$3(pObjectValue, $patternSubject$3))):4;default:0;}
+}
+// VIP-7 any unknown Function and non-callable pattern values reject with EK0702; rule: docs/design/vips/0007-match.md#d8845449c968d35a
