@@ -264,7 +264,7 @@ The rejection applies once the preserving codemods ship and all migration reposi
 
 ### Legacy data receiver methods
 
-`EK1402` reports a legacy Effect data receiver method, such as `Option.some(1).map(f)`. `vibelang --fix`, including `--fix-migration-only`, rewrites it to the resolved module's data-first function: `Option.map(Option.some(1), f)`. A rewrite that can't preserve types, behavior and declaration output refuses at that site. Native/own methods, namespace calls, computed access and optional chains are not this form.
+`EK1402` reports a legacy Effect data receiver method, such as `Option.some(1).map(f)`. `vibelang --fix`, including `--fix-migration-only`, rewrites it to the resolved module's data-first function: `Option.map(Option.some(1), f)`. A rewrite that can't preserve types, behavior and declaration output refuses at that site. Native/own methods, namespace calls, computed access and optional chains are not this form. Rejection begins only after the preserving codemod ships and migration repositories have zero remaining uses, under Will's 2026-11-03 no-relics ruling.
 
 ### Legacy prelude shorthand
 
