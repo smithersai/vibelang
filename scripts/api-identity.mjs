@@ -651,7 +651,7 @@ function prepareComparison(ts, before, after, options, progress) {
     resolveJsonModule: projectJsonModules(ts, before) && projectJsonModules(ts, after),
     ...options.compilerOptions,
     strict: true, strictNullChecks: true, strictFunctionTypes: true, noImplicitAny: true, noImplicitThis: true,
-    noEmit: true, skipLibCheck: false, allowSyntheticDefaultImports: true,
+    noEmit: true, skipLibCheck: false, noCheck: false, allowSyntheticDefaultImports: true,
   }
   const virtual = new Map()
   const { host, moduleResolutions, externalGroups } = createIdentityHost(ts, compilerOptions, before, after, options, virtual)

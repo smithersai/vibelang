@@ -1,0 +1,7 @@
+{
+  "origin": "Project-options audit following the opencode declaration identity replay",
+  "before": "export interface X { value: string }",
+  "after": "export interface X { value: number }",
+  "compilerOptions": { "noCheck": true },
+  "oracle": "String and number exports are not type-identical; unchecked assertions are not a proof"
+}

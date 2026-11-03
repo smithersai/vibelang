@@ -286,3 +286,39 @@ test("property: project unused flags preserve declaration identity and real diff
     }
   })
 })
+
+test("a project noCheck setting cannot establish false API identity", () => {
+  const corpus = JSON.parse(readFileSync(new URL("./api-identity-corpus/opencode-project-no-check.json", import.meta.url)))
+  fixture({"index.d.ts":corpus.before},{"index.d.ts":corpus.after},(a,b)=>{
+    const result=compareApiIdentity(ts,a,b,{compilerOptions:{...options.compilerOptions,noCheck:true}})
+    assert.equal(result.identical,false,JSON.stringify(result))
+    assert.equal(result.comparisonComplete,true)
+    assert.ok(result.typeDifferences.some(d=>d.export==="X"&&!d.mutuallyAssignable))
+  })
+  fixture({"index.d.ts":"export type X = Missing;"},{"index.d.ts":"export type X = Missing;"},(a,b)=>{
+    const result=compareApiIdentity(ts,a,b,{compilerOptions:{...options.compilerOptions,noCheck:true}})
+    assert.equal(result.identical,false,JSON.stringify(result))
+    assert.equal(result.comparisonComplete,false)
+    assert.deepEqual(result.typeDifferences,[])
+    assert.ok(result.environmentDiagnostics.some(d=>d.blocking&&/TS2304/.test(d.diagnostic)))
+  })
+})
+
+test("property: project noCheck cannot bypass bidirectional identity", async () => {
+  await checkProperty(fc,{
+    name:"api-identity-project-no-check",
+    rule:"Will: each export type must be identical to tsc in both directions; a compiler flag cannot turn an unchecked assertion into proof",
+    command:"node --test scripts/api-identity-scale.test.mjs",
+    numRuns:8,
+    arbitrary:fc.record({noCheck:fc.boolean(),mutated:fc.boolean(),value:fc.integer({min:1,max:999})}),
+    check:({noCheck,mutated,value})=>{
+      fixture({"index.d.ts":`export interface X<T = string> { item: T; value: ${value} }`},
+        {"index.d.ts":`export interface X<T = string> { item: T; value: ${mutated?value+1:value} }`},(a,b)=>{
+        const result=compareApiIdentity(ts,a,b,{compilerOptions:{...options.compilerOptions,noCheck,skipLibCheck:true,strict:false,strictFunctionTypes:false,strictNullChecks:false}})
+        assert.equal(result.comparisonComplete,true,JSON.stringify(result))
+        assert.equal(result.identical,!mutated)
+        if(mutated)assert.ok(result.typeDifferences.some(d=>d.export==="X"))
+      })
+    }
+  })
+})

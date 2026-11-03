@@ -161,3 +161,7 @@ input programs. They are disabled only for the synthetic probe program, whose
 private helper aliases and imports are not part of the package. Real unused
 input diagnostics remain blocking; ordinary export type differences remain
 visible under either setting.
+
+The comparison always forces `noCheck: false`, alongside its strict type
+relation settings. A project's emission shortcut cannot turn unchecked
+identity assertions into a proof or suppress an invalid exported input type.
