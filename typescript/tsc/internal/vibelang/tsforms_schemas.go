@@ -152,7 +152,7 @@ func schemaTypeEdits(c *checker.Checker, file *ast.SourceFile, statement *ast.No
 	}
 	// A private alias can be printed through an exported signature too.
 	// Preserve its written spelling whenever this project emits declarations.
-	if len(declarations) != 1 || declarations[0].Parent != statement.Parent || !isStructOwnType(file, declarations[0], name.Text(), c.CompilerOptions().GetEmitDeclarations()) ||
+	if len(declarations) != 1 || declarations[0].Parent != statement.Parent || !isStructOwnType(c, file, declarations[0], name, c.CompilerOptions().GetEmitDeclarations()) ||
 		ast.HasSyntacticModifier(declarations[0], ast.ModifierFlagsExport) != exported {
 		return nil, false, false
 	}
@@ -191,19 +191,45 @@ func isSchemaWrittenType(file *ast.SourceFile, declaration *ast.Node, name strin
 // beside it: type X = typeof X.Type, which a schema declaration declares
 // (D501), and, unless declared says a declaration file prints it, type X =
 // Schema.Schema.Type<typeof X> or interface X extends Schema.Schema.Type<typeof X> {}.
-func isStructOwnType(file *ast.SourceFile, declaration *ast.Node, name string, declared bool) bool {
-	compact := func(node *ast.Node) string {
-		return strings.Join(strings.Fields(expressionText(file, node)), "")
-	}
-	ownType := map[string]bool{"typeof" + name + ".Type": true, "Schema.Schema.Type<typeof" + name + ">": !declared}
+func isStructOwnType(c *checker.Checker, file *ast.SourceFile, declaration *ast.Node, name *ast.Node, declared bool) bool {
+	var own *ast.Node
 	switch {
 	case ast.IsTypeAliasDeclaration(declaration) && declaration.TypeParameters() == nil:
-		return ownType[compact(declaration.Type())]
+		own = declaration.Type()
 	case ast.IsInterfaceDeclaration(declaration) && declaration.TypeParameters() == nil && len(declaration.Members()) == 0:
 		heritage := ast.GetExtendsHeritageClauseElements(declaration)
-		return len(heritage) == 1 && ownType[compact(heritage[0])]
+		if len(heritage) == 1 {
+			own = heritage[0]
+		}
 	}
-	return false
+	if own == nil {
+		return false
+	}
+	compact := strings.Join(strings.Fields(expressionText(file, own)), "")
+	if compact == "typeof"+name.Text()+".Type" {
+		return true
+	}
+	if declared || compact != "Schema.Schema.Type<typeof"+name.Text()+">" {
+		return false
+	}
+	// The helper's spelling alone does not identify the associated type:
+	// an imported or local namespace may declare its own Schema.Type.
+	var helper *ast.Node
+	switch {
+	case ast.IsTypeReferenceNode(own):
+		helper = own.AsTypeReferenceNode().TypeName
+	case ast.IsExpressionWithTypeArguments(own):
+		helper = own.Expression()
+	default:
+		return false
+	}
+	module, member := effectFunctionOf(c, rightmostName(helper))
+	arguments := own.TypeArguments()
+	if module != "Schema" || member != "Type" || len(arguments) != 1 || !ast.IsTypeQueryNode(arguments[0]) {
+		return false
+	}
+	queried := c.GetSymbolAtLocation(arguments[0].AsTypeQueryNode().ExprName)
+	return queried != nil && queried == c.GetSymbolAtLocation(name)
 }
 
 // structFieldsType returns the fields of call, a Schema.Struct call, as a

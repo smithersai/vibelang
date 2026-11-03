@@ -1,0 +1,5 @@
+import { Schema as S } from "effect";
+import type * as Schema from "./custom.js";
+export const User = S.Struct({});
+export type User = Schema.Schema.Type<typeof User>;
+export const sentinel: User = "sentinel";
