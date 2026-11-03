@@ -69,7 +69,7 @@ export interface MatchHint {
  * `{ matchType: "extractor" }`, still counts.
  */
 export interface CustomMatcher<R = unknown> {
-  [customMatcher](subject: any, hint: MatchHint): R
+  [customMatcher](subject: any, hint: MatchHint, receiver?: unknown): R
 }
 
 const primitiveTypes = new Map<unknown, string>([
@@ -147,18 +147,18 @@ function sameValue(pattern: unknown, subject: unknown): boolean {
  * of a parameter typed string | number, and the value overload would then
  * take the function and narrow the subject to it.
  */
-export function $is<C extends abstract new(...args: any) => any>(matcher: C, subject: unknown): subject is InstanceType<C>
-export function $is<S, T extends S>(matcher: (subject: S, hint: MatchHint) => subject is T, subject: unknown): subject is T
-export function $is<S>(matcher: CustomMatcher | ((subject: S, hint: MatchHint) => unknown) | RegExp, subject: unknown): boolean
-export function $is<const T>(matcher: T, subject: unknown): subject is T
-export function $is(matcher: unknown, subject: unknown): boolean {
+export function $is<C extends abstract new(...args: any) => any>(matcher: C, subject: unknown, receiver?: unknown): subject is InstanceType<C>
+export function $is<S, T extends S>(matcher: (subject: S, hint: MatchHint) => subject is T, subject: unknown, receiver?: unknown): subject is T
+export function $is<S>(matcher: CustomMatcher | ((subject: S, hint: MatchHint) => unknown) | RegExp, subject: unknown, receiver?: unknown): boolean
+export function $is<const T>(matcher: T, subject: unknown, receiver?: unknown): subject is T
+export function $is(matcher: unknown, subject: unknown, receiver: unknown = null): boolean {
   if (matcher !== null && (typeof matcher === "object" || typeof matcher === "function")) {
     const custom = matcherOf(matcher)
-    if (custom !== undefined) return !!custom.call(matcher, subject, { matchType: "boolean" })
+    if (custom !== undefined) return !!Reflect.apply(custom, matcher, [subject, { matchType: "boolean" }, receiver])
     const builtin = builtinTest(matcher, subject)
     if (builtin !== undefined) return builtin
     if (typeof matcher === "function") {
-      return isClass(matcher) ? subject instanceof (matcher as any) : !!(matcher as Function)(subject, { matchType: "boolean" })
+      return isClass(matcher) ? subject instanceof (matcher as any) : !!Reflect.apply(matcher, receiver, [subject, { matchType: "boolean" }])
     }
   }
   return sameValue(matcher, subject)
@@ -224,20 +224,20 @@ type BoxForConstructor<C> =
  * the map. An ordinary class throws TypeError after recognizing the subject;
  * a function that is no class is called with the matcher's hint.
  */
-export function $extract<S>(matcher: ArrayConstructor, subject: S): ArrayExtraction<S> | false
+export function $extract<S>(matcher: ArrayConstructor, subject: S, receiver?: unknown): ArrayExtraction<S> | false
 // Infer the constructor itself: inferring its result can lose the BigInt
 // constructors to the generic class overload during subtype selection.
-export function $extract<C extends TypedArrayClass<unknown>>(matcher: C, subject: unknown): InstanceType<C> | false
-export function $extract<T>(matcher: TypedArrayClass<T>, subject: unknown): T | false
-export function $extract<R>(matcher: CustomMatcher<R>, subject: unknown): Extracted<R> | false
-export function $extract(matcher: RegExp, subject: unknown): ReadonlyArray<RegExpMatchArray> | false
-export function $extract<C extends abstract new(...args: any) => any>(matcher: C, subject: unknown): readonly [InstanceType<C> | PrimitiveForConstructor<C>] | false
-export function $extract<C extends PrimitiveConstructor>(matcher: C, subject: unknown): readonly [PrimitiveForConstructor<C> | BoxForConstructor<C>] | false
-export function $extract<S, R>(matcher: (subject: S, hint: MatchHint) => R, subject: unknown): Extracted<R> | false
-export function $extract(matcher: unknown, subject: unknown): ReadonlyArray<any> | false
-export function $extract(matcher: unknown, subject: unknown): unknown {
+export function $extract<C extends TypedArrayClass<unknown>>(matcher: C, subject: unknown, receiver?: unknown): InstanceType<C> | false
+export function $extract<T>(matcher: TypedArrayClass<T>, subject: unknown, receiver?: unknown): T | false
+export function $extract<R>(matcher: CustomMatcher<R>, subject: unknown, receiver?: unknown): Extracted<R> | false
+export function $extract(matcher: RegExp, subject: unknown, receiver?: unknown): ReadonlyArray<RegExpMatchArray> | false
+export function $extract<C extends abstract new(...args: any) => any>(matcher: C, subject: unknown, receiver?: unknown): readonly [InstanceType<C> | PrimitiveForConstructor<C>] | false
+export function $extract<C extends PrimitiveConstructor>(matcher: C, subject: unknown, receiver?: unknown): readonly [PrimitiveForConstructor<C> | BoxForConstructor<C>] | false
+export function $extract<S, R>(matcher: (subject: S, hint: MatchHint) => R, subject: unknown, receiver?: unknown): Extracted<R> | false
+export function $extract(matcher: unknown, subject: unknown, receiver?: unknown): ReadonlyArray<any> | false
+export function $extract(matcher: unknown, subject: unknown, receiver: unknown = null): unknown {
   const custom = matcherOf(matcher)
-  if (custom !== undefined) return extractedList(custom.call(matcher, subject, { matchType: "extractor" }))
+  if (custom !== undefined) return extractedList(Reflect.apply(custom, matcher, [subject, { matchType: "extractor" }, receiver]))
   if (matcher instanceof RegExp) return regExpExtract(matcher, subject)
   if (typeof matcher === "function") {
     if (matcher === Array) return Array.isArray(subject) ? subject : false
@@ -249,7 +249,7 @@ export function $extract(matcher: unknown, subject: unknown): unknown {
       if (instanceExtractors.has(matcher)) return [subject]
       throw new TypeError("An ordinary class used as an extractor must return an object")
     }
-    return extractedList((matcher as Function)(subject, { matchType: "extractor" }))
+    return extractedList(Reflect.apply(matcher, receiver, [subject, { matchType: "extractor" }]))
   }
   throw new TypeError("An extractor pattern needs a class, a regular expression, or a value with a Symbol.customMatcher method")
 }

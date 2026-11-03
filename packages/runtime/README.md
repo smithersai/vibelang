@@ -117,13 +117,13 @@ or runtime references valid in first-release `.vibe` source.
 | `$eager` | Track eager-call depth and its shared limit | — |
 | `$errorSubclass` | Construct a tagged error subclass | — |
 | `$errors` | The key under which a `trusted` value carries its failure classes | D514 |
-| `$extract` | Extract pattern bindings | — |
+| `$extract` | Extract pattern bindings; optional third argument retains a member pattern receiver | — |
 | `$failureOf` | Find the first expected failure in a recoverable Cause | — |
 | `$finallyExit` | Run cleanup with the try block exit | — |
 | `$forConcurrent` | Run a concurrent loop | — |
 | `$freeze` | Captured Object.freeze intrinsic | — |
 | `$global` | Captured global object, for a global failure class such as SyntaxError that a binding of the module shadows | — |
-| `$is` | Test a lowered pattern | — |
+| `$is` | Test a lowered pattern; optional third argument retains a member pattern receiver | — |
 | `$join` | Join a fiber or collection of fibers | — |
 | `$try` | `try p` before an Effect value, which the lowering writes as `yield* p` (VIP-5) | — |
 | `$tryAll` | `try.all [a, b]`: run every Effect at once and keep their results in order (Effect.all, unbounded) | VIP-18 |

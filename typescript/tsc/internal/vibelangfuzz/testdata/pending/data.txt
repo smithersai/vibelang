@@ -37,8 +37,6 @@ FuzzVIPDifferential exit:value/vip07.error-matcher-property-plain compiler VIP-7
 FuzzVIPDifferential corpus:data-vip07-error-matcher-property-plain compiler VIP-7: minimized vip07.error-matcher-property-plain witness; lane vip-decls
 FuzzVIPDifferential exit:value/vip07.is-binding-tdz-plain compiler VIP-7: a closure's read of a binding whose pattern was skipped returns undefined where chapter 004 has ReferenceError: the hoisted let lowering declares the cell before the pattern runs, so a run-time TDZ needs a per-reference guard (static reads are TS2454/TS2448); lane impl-hunt-data
 FuzzVIPDifferential corpus:data-vip07-is-binding-tdz-plain compiler VIP-7: minimized vip07.is-binding-tdz-plain witness (closure read of a skipped binding is undefined, not a ReferenceError); lane impl-hunt-data
-FuzzVIPDifferential exit:exit-tag/vip07.predicate-receiver-plain compiler VIP-7: vip07.predicate-receiver-plain disagrees with its cited chapter pair (exit:exit-tag); lane vip-match
-FuzzVIPDifferential corpus:data-vip07-predicate-receiver-plain compiler VIP-7: minimized vip07.predicate-receiver-plain witness; lane vip-match
 FuzzVIPDifferential compile:TS2367/vip07.throw-arm compiler VIP-7: vip07.throw-arm disagrees with its cited chapter pair (compile:TS2367); lane vip-match
 FuzzVIPDifferential corpus:data-vip07-throw-arm compiler VIP-7: minimized vip07.throw-arm witness; lane vip-match
 FuzzVIPDifferential exit:value/vip15.schema-nested-plain compiler VIP-15: vip15.schema-nested-plain disagrees with its cited chapter pair (exit:value); lane ifix-data-r6
@@ -121,4 +119,3 @@ FuzzVIPDifferential corpus:data-vip07-optional-absence-plain compiler VIP-7: min
 FuzzVIPDifferential compile:EK4701/vip07.async-rejection-plain compiler VIP-7: cascade of the unparsed `async match` in a plain arrow (TS1005): its operand is typed as an Effect, so the match is checked over Effect<never>; lane vip-match
 FuzzVIPDifferential compile:TS2367/vip07.async-rejection-plain compiler VIP-7: cascade of the unparsed `async match` in a plain arrow (TS1005): an arm compares Effect<never> with a string; lane vip-match
 FuzzVIPDifferential compile:TS2367/vip07.async-success-plain compiler VIP-7: cascade of the unparsed `async match` in a plain arrow (TS1005): an arm compares Effect<never> with a string; lane vip-match
-FuzzVIPDifferential exit:kind/vip07.predicate-receiver-plain compiler VIP-7: a predicate pattern `when matcher.test` calls test without its receiver (Call(_func_, _receiver_, ...)), so this.limit throws; in a plain function the throw is a JavaScript crash, as exit:exit-tag records for the Effect form; lane vip-match

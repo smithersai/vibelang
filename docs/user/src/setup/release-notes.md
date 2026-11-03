@@ -2911,6 +2911,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - While an argument such as `Layer.effect(Reports, {` followed by `const printer = try Printer` was half written, the language server could recurse until its stack overflowed and the process died: checking the argument asked for the call's signature, whose resolution checked the argument again. The check now answers from the resolution already in progress.
 - An ordinary `.ts` file could get TypeScript errors that stock TypeScript does not report, in code TypeScript never checks, such as a function that error recovery reads as an import's module specifier (`import { a } from` followed by `function f() { missingName }`): a VibeLang pass whose diagnostics no longer apply to `.ts` files still asked the checker for types across the file. The pass no longer runs, so `.ts` files keep exactly TypeScript's diagnostics.
 
+- Member predicate and extractor patterns could lose their `this` value and throw. They now retain their receiver and evaluate its base and computed key once.
+
 #### Runtime
 
 - A `provide Key = value { … }` block built a one-service Layer on every pass, with a new Scope and Layer MemoMap around its statements, so a hot path paid about five times the cost of `Effect.provideService` and a layer the block's statements provided was memoized with the caller's layers. A `Key = value` provider now provides its service as `Effect.provideService` does; only a layer the block lists builds one.

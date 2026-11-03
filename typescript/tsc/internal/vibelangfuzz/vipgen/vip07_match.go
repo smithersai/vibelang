@@ -1015,3 +1015,39 @@ func init() {
 		Cite:    vip7Cite("let id=x.id"),
 	})
 }
+
+// VIP-7's pinned draft, Function.prototype[%Symbol.customMatcher%]:
+// "return ? Call(_func_, _receiver_, « _subject_, _hint_ »)."
+// Compare implicit pattern invocation with ordinary member calls, varying
+// thresholds, computed keys, nested receiver getters and matcher getters.
+func init() {
+	Register(&Construct{
+		Key:       "vip07.predicate-receiver-neighborhood-plain",
+		VIP:       7,
+		Plain:     true,
+		Citations: []Citation{{VIP: 7, Template: `(s,{matchType:"boolean"})`, Quote: matchOrder.Quote, Reading: "The pinned TC39 snapshot calls a predicate with its member reference receiver and matching hint; ordinary member calls express that invocation."}},
+		Focus: func(g *Gen, _ *Scope) []Stmt {
+			name := g.Name("receiverWitness")
+			limit := g.Intn(9) - 4
+			setup := fmt.Sprintf(`const log:string[]=[]; const matcher={limit:%d, test(s:unknown,h:{matchType:string}):boolean{log.push(h.matchType+":"+this.limit);return typeof s==="number"&&s>this.limit},extract(s:unknown,h:{matchType:string}):number[]|false{log.push(h.matchType+":"+this.limit);return typeof s==="number"&&s>this.limit?[s-this.limit]:false}};`, limit)
+			predicate, extractor := "matcher.test", "matcher.extract"
+			switch g.Intn(4) {
+			case 1:
+				setup += `const box={get inner(){log.push("base");return matcher}};`
+				predicate, extractor = "box.inner.test", "box.inner.extract"
+			case 2:
+				setup += `function testKey():"test"{log.push("test");return "test"};function extractKey():"extract"{log.push("extract");return "extract"};`
+				predicate, extractor = "matcher[testKey()]", "matcher[extractKey()]"
+			case 3:
+				setup += `const savedTest=matcher.test;const savedExtract=matcher.extract;Object.defineProperty(matcher,"test",{get(){log.push("test-get");return savedTest}});Object.defineProperty(matcher,"extract",{get(){log.push("extract-get");return savedExtract}});`
+			}
+			values := fmt.Sprintf(`const xs:unknown[]=[%d,%d,%d,null,"3"];`, limit-1, limit, limit+1)
+			source := "function " + name + "(){" + setup + values + "const hits=xs.map(s=>[match(s){when " + predicate + ":true;default:false;},s is " + predicate + ",match(s){when " + extractor + "(let n):n;default:null;}]);return [hits,log]}"
+			referenceSetup := strings.NewReplacer(":string[]", "", ":unknown", "", ":{matchType:string}", "", ":boolean", "", ":number[]|false", "", `:"test"`, "", `:"extract"`, "").Replace(setup)
+			referenceValues := strings.ReplaceAll(values, ":unknown[]", "")
+			reference := "function " + name + "(){" + referenceSetup + referenceValues + "const hits=xs.map(s=>[" + predicate + `(s,{matchType:"boolean"}),` + predicate + `(s,{matchType:"boolean"}),(()=>{const r=` + extractor + `(s,{matchType:"extractor"});return r===false?null:r[0]})()]);return [hits,log]}`
+			g.AddDecl(&FixedPair{Source: source, Reference: reference})
+			return []Stmt{&Return{Value: &Call{Name: name}, Succeed: true}}
+		},
+	})
+}

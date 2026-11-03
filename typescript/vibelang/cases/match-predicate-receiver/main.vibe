@@ -1,0 +1,61 @@
+// expect-result: {"witness":[true,false,false],"neighborhood":{"dotted":[4,0,0],"computed":[true,false,false],"extracted":[1,-1,-1],"negated":[false,true,true],"nested":true,"trace":["base","test","call:boolean:2","base","test","call:boolean:2","base","test","call:boolean:2","base","key","test","call:boolean:2","base","key","test","call:boolean:2","base","key","test","call:boolean:2","base","key","call:extractor:2","base","key","call:extractor:2","base","key","call:extractor:2","base","test","call:boolean:2","base","test","call:boolean:2","base","test","call:boolean:2","base","test","call:boolean:2"]},"protocols":{"bare":true,"extracted":7,"observations":[true,true,true,true]}}
+import { Effect } from "effect"
+import { customMatcher } from "vibelang-runtime"
+
+function witness(): boolean[] {
+  const matcher = { limit: 2, test(s: unknown): boolean { return typeof s === "number" && s > this.limit } }
+  const xs: unknown[] = [3, 1, null]
+  return xs.map(s => match (s) { when matcher.test: true; default: false; })
+}
+
+function neighborhood() {
+  const trace: string[] = []
+  const matcher = {
+    limit: 2,
+    test(s: unknown, hint: { matchType: string }): s is number {
+      trace.push("call:" + hint.matchType + ":" + this.limit)
+      return typeof s === "number" && s > this.limit
+    },
+    extract(s: unknown, hint: { matchType: string }): number[] | false {
+      trace.push("call:" + hint.matchType + ":" + this.limit)
+      return typeof s === "number" && s > this.limit ? [s - this.limit] : false
+    }
+  }
+  const test = matcher.test
+  Object.defineProperty(matcher, "test", { get() { trace.push("test"); return test } })
+  const holder = { get current() { trace.push("base"); return matcher } }
+  const keys = {
+    get test(): "test" { trace.push("key"); return "test" },
+    get extract(): "extract" { trace.push("key"); return "extract" }
+  }
+  const subjects: unknown[] = [3, 1, null]
+  const dotted = subjects.map(s => match (s) { when holder.current.test: s + 1; default: 0; })
+  const computed = subjects.map(s => s is holder.current[keys.test])
+  const extracted = subjects.map(s => match (s) { when holder.current[keys.extract](let n): n; default: -1; })
+  const negated = subjects.map(s => match (s) { when not holder.current.test: true; default: false; })
+  const nested = match ({ value: 3 }) { when { value: holder.current.test }: true; default: false; }
+  return { dotted, computed, extracted, negated, nested, trace }
+}
+
+function protocols() {
+  const observations: boolean[] = []
+  const method = function(this: unknown, _s: unknown, hint: { matchType: string }, receiver: unknown): boolean | number[] {
+    observations.push(this === owner.predicate, receiver === owner)
+    return hint.matchType === "extractor" ? [7] : true
+  }
+  const owner = {
+    limit: 2,
+    predicate: Object.assign(function(this: { limit: number }, s: unknown): boolean {
+      return typeof s === "number" && s > this.limit
+    }, { [customMatcher]: method })
+  }
+  Object.defineProperty(owner.predicate, "call", { value: () => false })
+  Object.defineProperty(owner.predicate, "bind", { value: () => () => false })
+  const bare = match (3) { when owner.predicate: true; default: false; }
+  const extracted = match (3) { when owner.predicate(let n): n; default: -1; }
+  return { bare, extracted, observations }
+}
+
+export function main() {
+  return Effect.succeed({ witness: witness(), neighborhood: neighborhood(), protocols: protocols() })
+}

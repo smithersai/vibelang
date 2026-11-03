@@ -142,3 +142,48 @@ test("match: no-match uses the host TypeError without observing the subject", ()
   expect((thrown as TypeError).message).toBe(new TypeError().message)
   expect(reads).toBe(0)
 })
+
+test("match: member predicates and extractors retain receivers and hints", () => {
+  const seen: string[] = []
+  const owner = {
+    limit: 2,
+    test(subject: unknown, hint: { matchType: string }) {
+      seen.push(hint.matchType)
+      return typeof subject === "number" && subject > this.limit
+    },
+    extract(subject: unknown, hint: { matchType: string }): number[] | false {
+      seen.push(hint.matchType)
+      return typeof subject === "number" && subject > this.limit ? [subject - this.limit] : false
+    }
+  }
+  Object.defineProperty(owner.test, "call", { value: () => false })
+  Object.defineProperty(owner.extract, "call", { value: () => false })
+  expect($is(owner.test, 3, owner)).toBe(true)
+  expect($is(owner.test, 1, owner)).toBe(false)
+  expect($extract(owner.extract, 3, owner)).toEqual([1])
+  expect($extract(owner.extract, 1, owner)).toBe(false)
+  expect(seen).toEqual(["boolean", "boolean", "extractor", "extractor"])
+})
+
+test("match: own custom matchers receive their member reference receiver", () => {
+  const owner = {}
+  const seen: unknown[] = []
+  const matcher = {
+    [customMatcher](subject: unknown, hint: { matchType: string }, receiver?: unknown) {
+      seen.push(this, receiver)
+      return hint.matchType === "boolean" ? subject === 3 : [subject]
+    }
+  }
+  expect($is(matcher, 3, owner)).toBe(true)
+  expect($extract(matcher, 3, owner)).toEqual([3])
+  expect(seen).toEqual([matcher, owner, matcher, owner])
+})
+
+test("match: unqualified predicates use the draft's null receiver", () => {
+  const receivers: unknown[] = []
+  function predicate(this: unknown): boolean { receivers.push(this); return true }
+  function extractor(this: unknown): number[] { receivers.push(this); return [1] }
+  expect($is(predicate, 3)).toBe(true)
+  expect($extract(extractor, 3)).toEqual([1])
+  expect(receivers).toEqual([null, null])
+})

@@ -191,6 +191,8 @@ func (tx *lowering) visitNode(node *ast.Node) *ast.Node {
 		return tx.visitVariantTest(node, tx.plan.variantTests[node]) // a data variant's pattern (data_lower.go)
 	case node.Kind == ast.KindCallExpression && tx.plan.builtinTests[node] != (builtinTest{}):
 		return tx.visitBuiltinTest(node, tx.plan.builtinTests[node]) // String, Option.None (match_builtins.go)
+	case isPatternCall(node, "$is") || isPatternCall(node, "$extract"):
+		return tx.visitPatternReceiver(node)
 	case node.Kind == ast.KindCallExpression && tx.plan.methods[node].module != "":
 		return tx.visitModuleMethodCall(node)
 	// A loop body that is not a block and owns a fork is the region of one
