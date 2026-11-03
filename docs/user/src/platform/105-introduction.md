@@ -191,7 +191,6 @@ export effect function main() {
 
 ```vibe
 // page.vibe
-// pending: VIP-14, VIP-26, VIP-33
 import { BrowserRuntime } from "@effect/platform-browser"
 import { ExperimentalBrowserCrypto } from "vibelang-runtime/experimental/platform-browser"
 import { main } from "./app.vibe"

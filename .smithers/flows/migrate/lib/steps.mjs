@@ -630,7 +630,12 @@ async function applyEarlierVipFixes(config, logs) {
 // projects after install and before their builds, only when their new check
 // still fails. Same-era switches never enter this pass.
 async function finishVipFixes(config, logs, previous) {
-  const result = { changed: [], projects: [], failed: [], checks: {} }
+  const result = {
+    changed: [],
+    projects: [],
+    failed: [],
+    checks: {},
+  }
   if (!previous.projects.length) return result
   const t = config.target, compiler = compilerOf(config)
   const native = (await Jj.trackedFiles(t)).filter(file => file.endsWith(".vibe") && !file.split("/").includes("node_modules"))
