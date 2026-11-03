@@ -1,0 +1,17 @@
+{
+  "key": "t3code-ci:lint-esm-loader",
+  "repo": "t3code",
+  "migrated": ["oxlint-plugin-t3code"],
+  "files": {
+    "package.json": {
+      "name": "t3code",
+      "private": true,
+      "scripts": {
+        "lint": "(NODE_OPTIONS=--import=vibelang/register vp lint --report-unused-disable-directives) && eslint --config .vibelang/eslint.config.mjs \"**/*.vibe\" --no-error-on-unmatched-pattern",
+        "other": "eslint src"
+      }
+    },
+    ".oxlintrc.json": "{\"jsPlugins\":[\"oxlint-plugin-t3code\"],\"rules\":{}}",
+    "oxlint-plugin-t3code/package.json": {"name":"oxlint-plugin-t3code","type":"module"}
+  }
+}

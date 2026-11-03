@@ -3,8 +3,8 @@
 // vibelang/register: without it every lint fails with
 // ERR_UNKNOWN_FILE_EXTENSION ".vibe" (t3code's oxlint-plugin-t3code, 16
 // modules). Setup preloads the loader in each package script that runs
-// Oxlint, and in the plugin package's own test scripts, whose RuleTester
-// spawns Oxlint with their environment.
+// Oxlint and its generated ESLint pass, and in the plugin package's own
+// test scripts, whose RuleTester spawns Oxlint with their environment.
 import { existsSync, readFileSync, writeFileSync } from "node:fs"
 import { join, posix } from "node:path"
 import { oxlintConfigs, repositoryPackages } from "./wire.mjs"
@@ -48,6 +48,9 @@ export function preloadRegister(command, is) {
 // A command that runs Oxlint: oxlint itself, or Vite+'s lint.
 const runsOxlint = (words) => words[0] === "oxlint" || ((words[0] === "vp" || words[0] === "vite-plus") && words[1] === "lint") ||
   (/^(?:npx|bunx|pnpm|yarn)$/.test(words[0]) && words.slice(1).some((w) => w === "oxlint"))
+// Generated ESLint configurations also import the migrated JS plugin.
+const runsGeneratedEslint = (words) => words[0] === "eslint" && words.some((word, index) =>
+  word === "--config" && /(?:^|\/)\.vibelang\/eslint\.(?:[\w-]+\.)?config\.mjs$/.test(words[index + 1] ?? ""))
 // A command that runs a test runner, which a RuleTester runs Oxlint under.
 const runsTests = (words) => /^(?:vitest|jest|mocha)$/.test(words[0]) || ((words[0] === "vp" || words[0] === "vite-plus") && words[1] === "test") ||
   (words[0] === "bun" && words[1] === "test") || (words[0] === "node" && words.includes("--test"))
@@ -78,7 +81,7 @@ export function wireOxlintPlugins({ root, migrated, ts }) {
     let edited = false
     for (const [script, command] of Object.entries(manifest.scripts)) {
       if (typeof command !== "string") continue
-      let next = preloadRegister(command, runsOxlint)
+      let next = preloadRegister(command, (words) => runsOxlint(words) || runsGeneratedEslint(words))
       if (plugins.has(dir) && /^test(?::|$)/.test(script)) next = preloadRegister(next, runsTests)
       if (next !== command) {
         manifest.scripts[script] = next

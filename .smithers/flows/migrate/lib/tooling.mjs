@@ -4,6 +4,7 @@ import { join, posix } from "node:path"
 import { wireSourceChildren } from "./source-children.mjs"
 import { wireRolldownSources } from "./rolldown-builds.mjs"
 import { wireOxlint } from "./oxlint.mjs"
+import { preloadRegister } from "./oxlint-plugins.mjs"
 import { addEslintIgnore, addEslintImportParsers, emittedIgnore, ownedPaths, sidecarIgnore } from "./wire.mjs"
 import { wireNodeSourceHooks } from "./node-hooks.mjs"
 import { wireTsdownConfigs } from "./tsdown.mjs"
@@ -196,7 +197,7 @@ function group(script) {
 // --no-error-on-unmatched-pattern ...: a run on a new toolchain writes them
 // again from the scripts oxlint invocations, so an older runs passes follow
 // the configurations the script names with -c.
-const generatedPasses = /^\((.*)\)((?: && eslint --config \S*\.vibelang\/eslint\.(?:[\w-]+\.)?config\.mjs(?: (?!--no-error)[^\s;&|]+)* --no-error-on-unmatched-pattern(?: --max-warnings(?:=| )0)?)+)$/
+const generatedPasses = /^\((.*)\)((?: && (?:NODE_OPTIONS=(?:"[^"]*"|'[^']*'|[^\s]+) )?eslint --config \S*\.vibelang\/eslint\.(?:[\w-]+\.)?config\.mjs(?: (?!--no-error)[^\s;&|]+)* --no-error-on-unmatched-pattern(?: --max-warnings(?:=| )0)?)+)$/
 export function wireDeveloperTools({ root, specsFor, ts }) {
   const changed = [], builds = [], warnings = []
   const write = (file, text) => {
@@ -262,7 +263,8 @@ export function wireDeveloperTools({ root, specsFor, ts }) {
           const rooted = config === null ? null : posix.normalize(posix.join(dir, config))
           const file = rooted === null || rooted === ".oxlintrc.json" ? "eslint.config.mjs" : eslintConfigName(rooted)
           if (file !== "eslint.config.mjs") lintConfigs.set(file, rooted)
-          return `eslint --config ${up}.vibelang/${file} ${paths.length ? paths.map(path => path.replace(/[.]\{([^}]+)\}/g, (all, extensions) => extensions.split(",").some(ext => /^[cm]?tsx?$/.test(ext)) ? ".vibe" : all).replace(/[.][cm]?tsx?(?=["']?$)/g, ".vibe")).join(" ") : '"**/*.vibe"'} --no-error-on-unmatched-pattern${denyWarnings ? " --max-warnings 0" : ""}`
+          const pass = `eslint --config ${up}.vibelang/${file} ${paths.length ? paths.map(path => path.replace(/[.]\{([^}]+)\}/g, (all, extensions) => extensions.split(",").some(ext => /^[cm]?tsx?$/.test(ext)) ? ".vibe" : all).replace(/[.][cm]?tsx?(?=["']?$)/g, ".vibe")).join(" ") : '"**/*.vibe"'} --no-error-on-unmatched-pattern${denyWarnings ? " --max-warnings 0" : ""}`
+          return /--import(?:=|\s+)vibelang\/register(?=["\'\s]|$)/.test(next) ? preloadRegister(pass, words => words[0] === "eslint") : pass
         })
         // A script that runs its own ESLint pass over .vibe keeps it.
         if (!/\.vibelang\/eslint\./.test(next)) next = `${group(next)} && ${[...new Set(passes)].join(" && ")}`

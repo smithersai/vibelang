@@ -79,7 +79,10 @@ including one in a subshell such as `(oxlint --disable-nested-config)`, over
 the same paths with the configuration named by `-c` or `--config`. ESLint
 checks `.vibe` through `vibelang/eslint`. Each generated pass retains its
 invocation's `--deny-warnings` or `--max-warnings 0` policy. Running setup
-again refreshes its generated configurations and passes.
+again refreshes its generated configurations and passes. When a local JS plugin is
+migrated, setup preloads `vibelang/register` separately for Oxlint and each
+generated ESLint command, so both Node processes can import its `.vibe`
+modules. The preload retains existing `NODE_OPTIONS`.
 Setup adds `--no-error-on-unmatched-pattern` to the native invocation so a
 directory containing only `.vibe` files still reaches ESLint.
 It also follows local JavaScript and TypeScript runners launched by package

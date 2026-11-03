@@ -2164,6 +2164,8 @@ typescript/vibelang/cases/ek3201-runner-services.fail/main.vibe:48:43 lambda eff
 typescript/vibelang/cases/ek3205-layers.fail/home.vibe:7:23 byname program table
 typescript/vibelang/cases/ek3205-layers.fail/unnamed.vibe:4:23 byname program table
 typescript/vibelang/cases/ek3205-layers.fail/upgraded.vibe:8:25 byname program table
+typescript/vibelang/cases/ek4002-module-default.fail/main.vibe:2:23 block appended/plain fallback
+typescript/vibelang/cases/ek4003-module-expression.fail/main.vibe:2:29 block appended/plain fallback
 typescript/vibelang/cases/ek4201.fail/main.vibe:15:34 lambda effectFn table
 typescript/vibelang/cases/ek4201.fail/main.vibe:19:26 lambda program table
 typescript/vibelang/cases/ek4201.fail/main.vibe:19:71 lambda program table

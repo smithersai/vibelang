@@ -1,5 +1,6 @@
 import assert from "node:assert/strict"
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
+import { spawnSync } from "node:child_process"
+import { chmodSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { createRequire } from "node:module"
 import { tmpdir } from "node:os"
 import { join, posix } from "node:path"
@@ -64,4 +65,79 @@ test("property: each Oxlint command loads vibelang/register once, every other co
       else assert.equal(out[i], part)
     })
   }), { numRuns: 300 })
+})
+
+test("corpus: t3code's generated ESLint process registers migrated plugin modules separately from Oxlint", (t) => {
+  const witness = JSON.parse(readFileSync(new URL("./corpus/t3code-eslint-jsplugin-loader.json", import.meta.url), "utf8"))
+  const root = repo(t, witness.files)
+  wireOxlintPlugins({ root, migrated: witness.migrated, ts })
+  const actual = scripts(root, "package.json")
+  const eslint = actual.lint.split(" && ")[1]
+  assert.match(eslint, /^NODE_OPTIONS=.*--import=vibelang\/register.* eslint --config /)
+  assert.equal(actual.other, witness.files["package.json"].scripts.other)
+  assert.deepEqual(wireOxlintPlugins({ root, migrated: witness.migrated, ts }), [])
+})
+
+test("generated ESLint registration survives first setup and repeated tooling refreshes", async (t) => {
+  const { wireDeveloperTools } = await import("../lib/tooling.mjs")
+  const witness = JSON.parse(readFileSync(new URL("./corpus/t3code-eslint-jsplugin-loader.json", import.meta.url), "utf8"))
+  const files = structuredClone(witness.files)
+  files["package.json"].scripts.lint = "vp lint --report-unused-disable-directives"
+  const root = repo(t, files)
+  const setup = () => {
+    wireOxlintPlugins({ root, migrated: witness.migrated, ts })
+    wireDeveloperTools({ root, ts, specsFor: () => ({ vibelang: "file:compiler.tgz" }) })
+    return scripts(root, "package.json")
+  }
+  const first = setup()
+  assert.match(first.lint.split(" && ")[1], /^NODE_OPTIONS=.*--import=vibelang\/register.* eslint --config /)
+  assert.deepEqual(setup(), first)
+  assert.deepEqual(setup(), first)
+})
+
+test("property: each generated ESLint invocation gets its own registration without changing other commands", (t) => {
+  fc.assert(fc.property(
+    fc.constantFrom("vp lint", "(vp lint --report-unused-disable-directives)", "NODE_OPTIONS=--trace-warnings oxlint src"),
+    fc.constantFrom(".vibelang/eslint.config.mjs", ".vibelang/eslint.effect.config.mjs", "../../.vibelang/eslint.app.config.mjs"),
+    fc.constantFrom("", "NODE_OPTIONS=--enable-source-maps ", "NODE_OPTIONS='--no-warnings' "),
+    fc.constantFrom(" && ", " ; ", " || "),
+    (native, config, env, separator) => {
+      const command = native + separator + env + "eslint --config " + config + ' "**/*.vibe" --no-error-on-unmatched-pattern'
+      const files = structuredClone(corpus.files)
+      files["package.json"].scripts = { lint: command, own: "eslint src && tsc -b" }
+      const root = repo(t, files)
+      wireOxlintPlugins({ root, migrated: corpus.migrated, ts })
+      const actual = scripts(root, "package.json")
+      const parts = actual.lint.split(separator)
+      for (const part of parts) assert.equal(part.split("vibelang/register").length - 1, 1, part)
+      if (env) assert.ok(parts[1].includes(env.includes("enable") ? "--enable-source-maps" : "--no-warnings"))
+      assert.equal(actual.own, "eslint src && tsc -b")
+      assert.deepEqual(wireOxlintPlugins({ root, migrated: corpus.migrated, ts }), [])
+    }
+  ), { numRuns: 120 })
+})
+
+test("the generated ESLint child loads a plugin source through the registered Node hook", (t) => {
+  const witness = JSON.parse(readFileSync(new URL("./corpus/t3code-eslint-jsplugin-loader.json", import.meta.url), "utf8"))
+  const files = structuredClone(witness.files)
+  files["node_modules/vibelang/package.json"] = { name: "vibelang", type: "module", exports: { "./register": "./register.mjs" } }
+  files["node_modules/vibelang/register.mjs"] = `import { registerHooks } from "node:module";
+import { readFileSync } from "node:fs";
+registerHooks({ load(url, context, next) {
+  if (url.endsWith(".vibe")) return { format: "module", source: readFileSync(new URL(url), "utf8"), shortCircuit: true };
+  return next(url, context);
+} });`
+  files[".vibelang/eslint.config.mjs"] = 'import "../oxlint-plugin-t3code/rule.vibe"; console.log("plugin loaded");'
+  files["oxlint-plugin-t3code/rule.vibe"] = "export default {};"
+  files["bin/vp"] = "#!/bin/sh\nexit 0\n"
+  files["bin/eslint"] = '#!/bin/sh\nexec "' + process.execPath + '" "$2"\n'
+  const root = repo(t, files)
+  chmodSync(join(root, "bin/vp"), 0o755)
+  chmodSync(join(root, "bin/eslint"), 0o755)
+  wireOxlintPlugins({ root, migrated: witness.migrated, ts })
+  const child = spawnSync("sh", ["-c", scripts(root, "package.json").lint], {
+    cwd: root, encoding: "utf8", env: { ...process.env, NODE_OPTIONS: "--trace-warnings", PATH: join(root, "bin") + ":" + process.env.PATH },
+  })
+  assert.equal(child.status, 0, child.stderr)
+  assert.match(child.stdout, /plugin loaded/)
 })
