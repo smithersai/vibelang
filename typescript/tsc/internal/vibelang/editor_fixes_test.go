@@ -45,10 +45,10 @@ func TestEditorQuickFixGoldens(t *testing.T) {
 		{"schema field comma", "schema Draft { readonly title: string, readonly count: number }", "Write ; for the comma", "schema Draft { readonly title: string; readonly count: number }", 1013},
 		{"data field comma", "data Shape { Rect { width: number, height: number } }", "Write ; for the comma", "data Shape { Rect { width: number; height: number } }", 1013},
 		{"data variant comma", "data Answer { Yes, No }", "Write ; for the comma", "data Answer { Yes; No }", 1013},
-		{"service separator block comment", "service Flags { a: number /* keep */ b: string }", "Insert ; between the members", "service Flags { a: number; /* keep */ b: string }", 908},
-		{"service separator JSDoc", "service Flags { a: number /** @throws {Error} */ read(): string }", "Insert ; between the members", "service Flags { a: number; /** @throws {Error} */ read(): string }", 908},
-		{"service separator Unicode", "service Flags { café: number /* 😀 */ b: string }", "Insert ; between the members", "service Flags { café: number; /* 😀 */ b: string }", 908},
-		{"service member separator", "service Flags { a: number b: string }", "Insert ; between the members", "service Flags { a: number; b: string }", 908},
+		{"service separator block comment", "service Flags { a: number /* keep */ b: string }", "Write ; between the members", "service Flags { a: number; /* keep */ b: string }", 908},
+		{"service separator JSDoc", "service Flags { a: number /** @throws {Error} */ read(): string }", "Write ; between the members", "service Flags { a: number; /** @throws {Error} */ read(): string }", 908},
+		{"service separator Unicode", "service Flags { café: number /* 😀 */ b: string }", "Write ; between the members", "service Flags { café: number; /* 😀 */ b: string }", 908},
+		{"service member separator", "service Flags { a: number b: string }", "Write ; between the members", "service Flags { a: number; b: string }", 908},
 		{"tagged schema", `// @vibelang-diagnostics EK4821:warning
 export const Person = Schema.Struct({ _tag: Schema.Literal("Person"), name: Schema.String })`, "Write Schema.TaggedStruct", `// @vibelang-diagnostics EK4821:warning
 export const Person = Schema.TaggedStruct("Person", { name: Schema.String })`, 4821},
