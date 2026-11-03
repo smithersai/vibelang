@@ -83,6 +83,19 @@ func inEffectCode(node *ast.Node) bool {
 	return fn != nil && (isMarkedEffect(fn) || isProducer(fn) || isProgramArrow(fn) && markedForm(fn) != formNone)
 }
 
+// inEffectParameterInitialization identifies a directly evaluated parameter
+// environment without making that environment effect code. Native nested
+// callables and class/enum contexts own their own await restrictions.
+func inEffectParameterInitialization(node *ast.Node) bool {
+	for child, parent := node, node.Parent; parent != nil; child, parent = parent, parent.Parent {
+		if !isFunctionBoundary(parent) || isCalledInPlace(parent) || isCatchLeftFunction(parent) {
+			continue
+		}
+		return ast.IsFunctionLike(parent) && child.Kind == ast.KindParameter && (isMarkedEffect(parent) || isProducer(parent))
+	}
+	return false
+}
+
 // checkTriesOutsideEffectCode reports EK0501 at each try of file outside
 // effect code.
 func checkTriesOutsideEffectCode(c *checker.Checker, file *ast.SourceFile) {

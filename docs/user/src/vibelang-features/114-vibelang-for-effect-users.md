@@ -379,3 +379,5 @@ The function `constructor` restriction applies to reading its value. Assigning o
 An inferred `effect` arrow or function expression may refer to its own callable value, as in `const same = effect () => same === same`. Such value-only references infer as the corresponding `Effect.gen` wrapper does. A recursive return whose type cannot be inferred still requires a return annotation and reports TypeScript's native inference error.
 
 Optional schema fields, schema-error payload fields and optional tuple elements follow the project's `exactOptionalPropertyTypes`: `?: T` uses `Schema.optionalKey` when enabled and `Schema.optional` by default; `?: T | undefined` keeps `Schema.optional` under both settings. Native `data` payloads retain TypeScript's own optional properties.
+
+`await` in an Effect function, arrow, method or producer parameter default reports `EK0102`, including destructuring defaults and computed binding keys. Parameter initialization runs when the callable is called and is outside effect code, so `try` there remains `EK0501`. Move Promise work into an appropriate callable body; a nested `async` callable keeps its native `await` rules.

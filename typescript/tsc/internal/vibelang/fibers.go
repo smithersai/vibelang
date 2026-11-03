@@ -201,7 +201,7 @@ func checkAwait(c *checker.Checker, file *ast.SourceFile, call *ast.Node) {
 	}
 	// VIP-1/VIP-5: placement forbids every operand in effect code. Keep
 	// the handle-specific repair notes without the retired await codes.
-	if inEffectCode(call) {
+	if inEffectCode(call) || inEffectParameterInitialization(call) {
 		d := reportAt(c, file, keyword, EK0102)
 		if t := c.GetTypeAtLocation(args[0]); t != nil {
 			switch {
