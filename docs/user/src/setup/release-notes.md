@@ -490,6 +490,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Migration loader-record receipts looked validated when the installed project module or checker was unavailable. They now distinguish completed, unavailable and failed validation while retaining the original write details.
 
+- Existing optional schema decoders in projects with `exactOptionalPropertyTypes` had no compatibility upgrade. `vibelang --fix --fix-migration-only` now adds explicit `undefined` unions to keep their previous decoding behavior.
+
 - The migration checks generated callback failure unions without their required parentheses and failed to parse them. They now write valid compound slots while checking the same preserved channels and refusal controls.
 
 
