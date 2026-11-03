@@ -142,6 +142,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 | Old diagnostic numbers, including `EK4617` | Appendix B numbering, including `EK0103`. Diagnostic triggers are unchanged. See the [old-to-new map](../vibelang-features/diagnostic-code-map.md). |
 
 ### Bugs fixed since 0.0.10
+
+- Release validation rejected the VIP-7 reference tests because they had no runner; `//:release` now checks parallel installation and cleanup after a failed install.
 - Release notes repeated the upgrade and bug-fix sections, hiding later fixes from readers and documentation tools. Each section now appears once, with the unique fixes and upgrade repairs retained.
 
 - A local binding named `fork` or `join` in effect code compiled with no error, and its calls silently became the fiber operation: `const fork = try FiberSet.makeRuntime(); fork(job)` waited for the fiber's cleanup instead of running the callback. Effect code that binds either name now reports `EK1702` (VIP-17), which it did not before, and `vibelang --fix` renames the binding and its calls. The fix also renames a `fork` or `join` that an `Effect.gen` or `Effect.fn` it rewrites reaches. An exported binding keeps its name through `export { fork2 as fork }`, an imported one through `import { join as join2 }`, and an object key stays `{ join: join2 }`.
@@ -179,7 +181,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - `vibelang --fix` refused `EK4401` on a plain TypeScript call that reads a property a guard narrowed, such as `o.p ? f(o.p) : 0` or `if (!o.p) return 0; return f(o.p)`, because `Effect.try`'s function no longer knew what the guard proved (`TS2345`). The guard now joins the call in that function, or a `const` under the guard keeps the read; a call that runs before the read still blocks the move.
 
-- Release validation rejected the stock-reference control suite because it had no test runner; `//:release` now runs those Exit, public-type, and version-pin checks.
+- Release validation rejected the stock-reference control suite because it had no test runner; `//:release` now runs checks for `Exit` values, public types, and version pins.
 
 - Release notes exposed an internal decision identifier while explaining curried service provision; the explanation now uses only the public API names.
 

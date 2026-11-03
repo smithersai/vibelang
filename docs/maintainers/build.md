@@ -48,7 +48,7 @@ and a failing file keeps the target's nonzero exit status. Tests within a file
 keep their own concurrency settings; child processes they spawn are additional
 to the eight file workers.
 
-The release target also runs `typescript/vibelang/coverage-stock-twins.test.mjs`. These compiler-independent controls verify that the stock reference detects changed Exit values, changed public types, and a mismatched Effect pin. The test inventory checks that this suite keeps its runner.
+The release target runs `typescript/vibelang/coverage-stock-twins.test.mjs`. Its controls check changes to `Exit` values and public types, plus Effect version mismatches. It also runs `typescript/vibelang/vip7-reference.test.mjs`, which checks concurrent reference installation and lock cleanup after a failed install. These tests use fixture packages and need no reference compiler install. The test inventory keeps both suites registered.
 
 ## Go package coverage
 
