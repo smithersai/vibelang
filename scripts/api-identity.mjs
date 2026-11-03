@@ -535,6 +535,42 @@ function createIdentityHost(ts, compilerOptions, before, after, options, virtual
   return { host, moduleResolutions, externalGroups }
 }
 
+// Checking every source with one TypeChecker retains every unrelated generic
+// instantiation until the whole dependency closure is done. Keep the identical
+// program roots/global environment, but diagnose bounded source groups with
+// fresh checkers and return only plain records.
+function collectInputDiagnostics(ts, roots, compilerOptions, host, files, options, progress, stage) {
+  const size = options.diagnosticBatchSize ?? 8
+  if (!Number.isSafeInteger(size) || size < 1)
+    throw new Error("diagnosticBatchSize must be a positive safe integer")
+  const records = new Map()
+  const capture = diagnostic => {
+    const item = { diagnostic: "TS" + diagnostic.code + ": " + ts.flattenDiagnosticMessageText(diagnostic.messageText, "\n"),
+      file: diagnostic.file?.fileName, start: diagnostic.start, length: diagnostic.length, code: diagnostic.code,
+      line: diagnostic.file && diagnostic.start !== undefined
+        ? diagnostic.file.getLineAndCharacterOfPosition(diagnostic.start).line + 1 : 0 }
+    records.set(JSON.stringify(item), item)
+  }
+  const group = (offset, batch) => {
+    progress(stage, { diagnosticOffset: offset, diagnosticCount: batch.length, totalDiagnosticFiles: files.length })
+    const program = ts.createProgram(roots, compilerOptions, host)
+    if (offset === 0) {
+      for (const diagnostic of [...program.getConfigFileParsingDiagnostics(),
+        ...program.getOptionsDiagnostics(), ...program.getGlobalDiagnostics()]) capture(diagnostic)
+    }
+    for (const file of batch) {
+      const source = program.getSourceFile(file)
+      for (const diagnostic of [...program.getSyntacticDiagnostics(source),
+        ...program.getSemanticDiagnostics(source)]) capture(diagnostic)
+    }
+  }
+  for (let offset = 0; offset < Math.max(1, files.length); offset += size)
+    group(offset, files.slice(offset, offset + size))
+  return [...records.values()].sort((a, b) => (a.file ?? "").localeCompare(b.file ?? "") ||
+    (a.start ?? -1) - (b.start ?? -1) || (a.length ?? 0) - (b.length ?? 0) ||
+    a.code - b.code || a.diagnostic.localeCompare(b.diagnostic))
+}
+
 function prepareComparison(ts, before, after, options, progress) {
   before = resolve(before); after = resolve(after)
   const entryMap = (base, supplied) => Object.fromEntries(Object.entries(supplied ?? publishedEntrypoints(base, ts))
@@ -563,14 +599,13 @@ function prepareComparison(ts, before, after, options, progress) {
   progress("create-input-program")
   let program = ts.createProgram(roots, compilerOptions, host)
   progress("input-diagnostics")
-  const originalDiagnostics = []
-  // Diagnose originals before asking for enum constants: tsc can cache a
-  // non-diagnostic enum computation when getConstantValue is called first.
-  for (const source of program.getSourceFiles()) {
-    if ([before, after].some(base => source.fileName === base || source.fileName.startsWith(base + "/")) &&
-        !source.fileName.includes("/node_modules/"))
-      originalDiagnostics.push(...program.getSyntacticDiagnostics(source), ...program.getSemanticDiagnostics(source))
-  }
+  // Retain plain records, never diagnostics whose SourceFiles keep an old
+  // checker's instantiation graph alive during the next validation group.
+  const originalDiagnostics = collectInputDiagnostics(ts, roots, compilerOptions, host,
+    program.getSourceFiles().filter(source => [before, after].some(base =>
+      (source.fileName === base || source.fileName.startsWith(base + "/")) &&
+      !source.fileName.includes("/node_modules/"))).map(source => source.fileName),
+    options, progress, "input-diagnostics")
 
   // A shared program merges ambient globals and module augmentations. Prove
   // these shared contributions equivalent using separate dependency closures.
@@ -658,8 +693,9 @@ function prepareComparison(ts, before, after, options, progress) {
     program = ts.createProgram(roots, compilerOptions, host)
   }
   progress("normalized-input-diagnostics")
+  const inputDiagnostics = collectInputDiagnostics(ts, roots, compilerOptions, host,
+    program.getSourceFiles().map(source => source.fileName), options, progress, "normalized-input-diagnostics")
   const checker = program.getTypeChecker()
-  const inputDiagnostics = ts.getPreEmitDiagnostics(program)
   // Error-any can make a strict identity probe pass vacuously. Inspect only
   // compared export types, so an unrelated error in a dependency is harmless.
   const invalidExports = []
@@ -807,7 +843,7 @@ function prepareComparison(ts, before, after, options, progress) {
         const d = symbol.valueDeclaration ?? symbol.declarations?.[0]
         const invalidParameter = symbol.declarations?.some(decl => decl.typeParameters?.some(parameter =>
           [parameter.constraint, parameter.default].some(type => type && erroneous(checker.getTypeAtLocation(type))) ||
-          inputDiagnostics.some(diagnostic => diagnostic.file?.fileName === parameter.getSourceFile().fileName &&
+          inputDiagnostics.some(diagnostic => diagnostic.file === parameter.getSourceFile().fileName &&
             diagnostic.start >= parameter.pos && diagnostic.start < parameter.end)))
         if (invalidParameter || (symbol.flags & ts.SymbolFlags.Type && erroneous(checker.getDeclaredTypeOfSymbol(symbol))) ||
             (d && symbol.flags & ts.SymbolFlags.Value && erroneous(checker.getTypeOfSymbolAtLocation(symbol, d))))
@@ -929,12 +965,9 @@ function prepareComparison(ts, before, after, options, progress) {
       virtual.set(to, (virtual.get(to) ?? host.readFile(to)) + text.slice(original.length))
     }
   }
-  const diagnosticText = d => "TS" + d.code + ": " + ts.flattenDiagnosticMessageText(d.messageText, "\n")
-  const diagnostics = [...originalDiagnostics, ...inputDiagnostics].map(d => ({
-    diagnostic: diagnosticText(d), file: d.file?.fileName,
-    line: d.file && d.start !== undefined ? d.file.getLineAndCharacterOfPosition(d.start).line + 1 : 0,
-    blocking: !d.file || [before, after].some(base =>
-      (d.file.fileName === base || d.file.fileName.startsWith(base + "/")) && !d.file.fileName.includes("/node_modules/"))
+  const diagnostics = [...originalDiagnostics, ...inputDiagnostics].map(({ start, length, code, ...d }) => ({
+    ...d, blocking: !d.file || [before, after].some(base =>
+      (d.file === base || d.file.startsWith(base + "/")) && !d.file.includes("/node_modules/"))
   }))
   // Only plain comparison data survives preparation. No Program, TypeChecker,
   // SourceFile or diagnostic node is retained while fresh probes are checked.

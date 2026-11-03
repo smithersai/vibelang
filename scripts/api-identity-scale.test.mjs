@@ -96,12 +96,12 @@ test("property: generated large package verdicts equal small-batch verdicts", as
         after[`m${m}.d.ts`] = lines.join("")
       }
       fixture(before, after, (a, b) => {
-        const whole = compareApiIdentity(ts, a, b, { ...options, entryBatchSize: 10000, probeBatchSize: 10000 })
-        const small = compareApiIdentity(ts, a, b, { ...options, entryBatchSize: 2, probeBatchSize: 7 })
+        const whole = compareApiIdentity(ts, a, b, { ...options, entryBatchSize: 10000, probeBatchSize: 10000, diagnosticBatchSize: 10000 })
+        const small = compareApiIdentity(ts, a, b, { ...options, entryBatchSize: 2, probeBatchSize: 7, diagnosticBatchSize: 2 })
         assert.equal(whole.comparisonComplete, true, JSON.stringify(whole))
         assert.equal(whole.identical, mutation === "none")
         assert.deepEqual(verdict(small), verdict(whole))
-        assert.equal(compareApiIdentity(ts, a, a, { ...options, entryBatchSize: 2, probeBatchSize: 7 }).identical, true)
+        assert.equal(compareApiIdentity(ts, a, a, { ...options, entryBatchSize: 2, probeBatchSize: 7, diagnosticBatchSize: 2 }).identical, true)
       })
     },
   })
@@ -156,5 +156,33 @@ process.exitCode = result.identical ? 0 : result.comparisonComplete ? 1 : 2;`
     const result = JSON.parse(child.stdout)
     assert.equal(result.comparisonComplete, true)
     assert.equal(result.identical, true)
+  })
+})
+
+test("dependency diagnostic batches release unrelated generic instantiations", () => {
+  const corpus = JSON.parse(readFileSync(new URL("./api-identity-corpus/opencode-dependency-diagnostics.json", import.meta.url)))
+  const files = { "index.d.ts": 'import "foreign"; export interface Api<T = string> { value: T }',
+    "node_modules/foreign/package.json": '{"name":"foreign","types":"index.d.ts"}',
+    "node_modules/foreign/index.d.ts": Array.from({length:corpus.moduleCount}, (_,i) => `import "./m${i}.js";`).join("\n") }
+  for (let i=0; i<corpus.moduleCount; i++) files[`node_modules/foreign/m${i}.d.ts`] =
+    `type Tuple<N extends number, T extends unknown[] = []> = T["length"] extends N ? T : Tuple<N, [...T, ${i}]>;
+type Assert<T extends true> = T;
+type Force = Assert<Tuple<${corpus.tupleDepth}>["length"] extends ${corpus.tupleDepth} ? true : false>;
+export type X = ${i};
+` + (i===corpus.moduleCount-1 ? "type Bad = Assert<false>;" : "")
+  fixture(files, files, (a,b) => {
+    const source = `import {readFileSync} from "node:fs";
+import {compareApiIdentity,loadTypeScript} from ${JSON.stringify(new URL("./api-identity.mjs",import.meta.url).href)};
+const [a,b] = JSON.parse(readFileSync(0,"utf8"));
+const result=compareApiIdentity(loadTypeScript(),a,b,{compilerOptions:{lib:["lib.es5.d.ts"]}});
+console.log(JSON.stringify(result));process.exitCode=result.identical?0:2;`
+    const child=spawnSync(process.execPath,[`--max-old-space-size=${corpus.heapLimitMiB}`,"--input-type=module","--eval",source],{
+      input:JSON.stringify([a,b]),encoding:"utf8",timeout:180000,maxBuffer:1024*1024})
+    assert.equal(child.status,0,child.stdout+child.stderr)
+    assert.equal(child.signal,null)
+    const result=JSON.parse(child.stdout)
+    assert.equal(result.comparisonComplete,true)
+    assert.ok(result.environmentDiagnostics.some(d=>!d.blocking && /TS2344/.test(d.diagnostic)),
+      "All dependency diagnostics, including the last batch, remain visible")
   })
 })

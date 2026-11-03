@@ -1,0 +1,8 @@
+{
+  "origin": "opencode API-identity scale profile: input diagnostic checker retention",
+  "qualification": "Generated neighbourhood witness, not original opencode declaration bytes",
+  "moduleCount": 128,
+  "tupleDepth": 192,
+  "heapLimitMiB": 256,
+  "oracle": "All dependency diagnostics stay visible; unrelated dependency errors do not become API differences"
+}

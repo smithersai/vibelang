@@ -139,3 +139,11 @@ Preparation passes virtual declaration text and serialized diagnostic/comparison
 records to a separate probe phase. Its input `Program` and `TypeChecker` can
 be collected before probe checkers allocate their own type relations.
 This also applies to a single entry point with many generic instantiations.
+
+Input diagnostics also use fresh groups of eight source files (the internal
+`diagnosticBatchSize` option controls this for qualification). Every group
+keeps the complete program roots, compiler options and global environment.
+All source diagnostics remain in the receipt, including unrelated dependency
+errors; only plain records survive a group. Profiling records
+`diagnosticOffset`, `diagnosticCount` and `totalDiagnosticFiles` so a stalled
+validation stage can be located without logging declaration contents.
