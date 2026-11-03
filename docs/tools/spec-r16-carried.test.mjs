@@ -8,7 +8,6 @@ import { SpecPath } from "../../scripts/testing/spec-path.mjs"
 
 const require = createRequire(new URL("../../packages/runtime/package.json", import.meta.url))
 const fc = require("fast-check")
-const ts = createRequire(import.meta.url)("typescript")
 const design = process.env.SPEC_DESIGN_ROOT ?? fileURLToPath(new URL("../design", import.meta.url))
 const files = ["src/000-intro.md", "src/001-functions.md", "src/003-failures.md",
   "src/005-services.md", "src/900-appendices.md", "vips/0009-service-declarations.md",
@@ -95,44 +94,6 @@ test("r16 guards retain each defect across generated neighboring prose and white
     const source = Object.fromEntries(Object.entries(frozen[key]).map(([path, text]) => [path, padding.repeat(count) + text + padding]))
     assert.ok(violations(key, source).length > 0, key)
   }), { seed: 0x16cafe, numRuns: 200 })
-})
-
-function declaration(source) {
-  const result = ts.transpileDeclaration(source, {
-    fileName: "twin.ts",
-    compilerOptions: { target: ts.ScriptTarget.ESNext, module: ts.ModuleKind.ESNext },
-    reportDiagnostics: true
-  })
-  assert.deepEqual(result.diagnostics.filter(d => d.category === ts.DiagnosticCategory.Error), [])
-  return result.outputText
-}
-
-test("ASTRA-5: native TypeScript distinguishes an unannotated and contract-complete add twin", () => {
-  const source = "export function add(a: number, b: number): number { return a + b }"
-  const raw = declaration(source)
-  const tagged = declaration("/** @throws {never} */\n" + source)
-  assert.doesNotMatch(raw, /@throws/)
-  assert.match(tagged, /@throws \{never\}/)
-  assert.equal(tagged.replace(/\/\*\* @throws \{never\} \*\/\s*/, ""), raw)
-})
-
-test("ASTRA-5: tsc preserves explicit never contracts and documentation across signature forms", () => {
-  const summary = fc.array(fc.constantFrom(..."abcdefghijklmnopqrstuvwxyz "), { minLength: 1, maxLength: 40 }).map(chars => chars.join(""))
-  fc.assert(fc.property(summary, fc.boolean(), fc.constantFrom("function", "const", "call", "method", "constructor", "overloads"), (description, deprecated, form) => {
-    const doc = `/** ${description}\n${deprecated ? " * @deprecated Use the replacement.\n" : ""} * @throws {never}\n */\n`
-    const sources = {
-      function: `${doc}export function read(value: number): number { return value }`,
-      const: `${doc}export const read: (value: number) => number = value => value`,
-      call: `export interface Reader {\n${doc}(value: number): number }`,
-      method: `export class Reader {\n${doc}read(value: number): number { return value } }`,
-      constructor: `export class Reader {\n${doc}constructor(readonly value: number) {} }`,
-      overloads: `${doc}export function read(value: number): number;\n${doc}export function read(value: string): string;\nexport function read(value: number | string): number | string { return value }`
-    }
-    const output = declaration(sources[form])
-    assert.equal((output.match(/@throws \{never\}/g) ?? []).length, form === "overloads" ? 2 : 1, output)
-    assert.equal(output.includes("@deprecated"), deprecated)
-    assert.ok(output.includes(description.trim()))
-  }), { seed: 0x27cafe, numRuns: 200 })
 })
 
 test("OPUS-14: native async defaults and callbacks reject while foreign plain calls throw synchronously", async () => {

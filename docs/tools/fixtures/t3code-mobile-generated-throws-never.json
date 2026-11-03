@@ -1,0 +1,6 @@
+{
+  "source": "t3code Mobile peerPairingCode exported async declaration",
+  "scope": "Minimized reported declaration and authored-doc suffix; native declaration-transpilation control only, not an independent type/API comparison.",
+  "authoredDoc": "The session may not create one.",
+  "signature": "export declare function mintPairingCodeOn(environmentId: EnvironmentId, access: AuthMcpClientAccess): Promise<Result.Result<string, unknown>>;"
+}

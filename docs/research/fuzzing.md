@@ -933,3 +933,5 @@ The current-vibe raw matrix admits all eight dotted shortcut variants and reject
 The `FuzzEditor` corpus retains T3code’s `ForwardCompatibleOptional` helper and eight `Schema.optionalKey` neighbourhoods. Required-reference `EK2109` and native codec controls run before code-action safety checks; optional source positions remain positive controls.
 
 The `FuzzFix` idempotence oracle checks the exact pending key derived from its input and mode after verifying that a second `--fix` invocation changes nothing. A passing idempotence check rejects its stale marker even when a later contract or runtime oracle finds a separate gap. The keyed `t3code-cold-generator-*` corpus covers stored and default-exported generators, direct and piped forms, and value and suspension bodies.
+
+The declaration-twin documentation controls include native async functions and async arrows. A minimized T3code Mobile declaration keeps authored prose unchanged while adding the required `@throws {never}` contract to its TypeScript twin; the raw untagged declaration remains a negative control, so generated metadata is never ignored wholesale.
