@@ -16,12 +16,11 @@ import (
 
 // TestThrowAdvisoriesOnlyInEffectFunctions checks that EK4804, EK4811 and
 // EK4815, the advisories about what a typed failure fails with, report only
-// an Effect function's throw (VIP-4). A plain function's throw is
-// JavaScript's; whether it may throw at all is the plain-function rules'
-// question. Every function below has the same form with or without VIP-1's
-// marked-only rule: the plain ones have a plain return annotation (D500).
-// Before the fix, t3code's throwing plain helpers (projectScriptKeybindings)
-// drew EK4804 and the migrate flow's style gate refused them.
+// an Effect function's throw (VIP-4). A plain function's throw is EK0401
+// (Plain code never throws, chapter 3), and none of these advisories is about
+// it: the plain functions below report it and no advisory. Every function has
+// the same form with or without VIP-1's marked-only rule: the plain ones have
+// a plain return annotation (D500).
 func TestThrowAdvisoriesOnlyInEffectFunctions(t *testing.T) {
 	t.Parallel()
 	const source = `export function plainError(x: number): number {

@@ -160,8 +160,12 @@ test("VIP-27 emits @throws {never} for .vibe callables and VIP-39 components thr
   const vip27 = read("docs/design/vips/0027-declaration-output.md")
   assert.match(vip27, /\*\*Amended 2026-10-31: `\.vibe` callables are emitted `@throws \{never\}`\.\*\*/)
   assert.match(vip27, /never writes `@rethrows`, so a TypeScript reader doesn't fall back to the foreign default `unknown`/)
-  assert.doesNotMatch(vip27, /if \(!s\) throw new BadInput\(\)/)
-  assert.doesNotMatch(vip27, /@throws \{BadInput\}/)
+  // Only the example of a local VibeLang definition: Details keeps a foreign alias's contract as written (PREVIEW-16).
+  const localDefinition = vip27.split("## Details")[0]
+  assert.doesNotMatch(localDefinition, /if \(!s\) throw new BadInput\(\)/)
+  assert.doesNotMatch(localDefinition, /@throws \{BadInput\}/)
+  assert.match(vip27, /an imported foreign contract as written/)
+  assert.match(vip27, /export declare const parse: \{ \/\*\* @throws \{BadInput\} \*\/ \(s: string\): string \}/)
   const vip39 = read("docs/design/vips/0039-vibex.md")
   assert.doesNotMatch(vip39, /A component's `@throws` comes from its own body/)
   assert.match(vip39, /A component written in `\.vibex` throws `never`, as every VibeLang callable does \(VIP-4, amended 2026-10-31\)/)

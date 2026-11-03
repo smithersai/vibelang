@@ -1,8 +1,8 @@
 package vibelang
 
 import (
-	"strconv"
 	"github.com/microsoft/TypeScript/tsc/internal/parser"
+	"strconv"
 	"strings"
 
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
