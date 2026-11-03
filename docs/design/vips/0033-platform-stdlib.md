@@ -4,8 +4,6 @@
 
 ## Decision
 
-**Amended 2026-11-03 (VIP-40):** The restrictions below apply to VibeLang code. A named top-level `module` body follows the rules of a sibling `.ts` file; VIP-40 supersedes VIP-25.
-
 ```ts
 import { NodeServices } from "@effect/platform-node"   // a platform package: imported, not in scope
 effect function readConfig(path: string) {
@@ -16,6 +14,8 @@ effect function main() {
   provide NodeServices.layer { try readConfig("app.json") }   // VIP-12; the platform layer is chosen at the edge
 }
 ```
+
+**Amended 2026-11-03 (VIP-40):** The restrictions below apply to VibeLang code. A named top-level `module` body follows the rules of a sibling `.ts` file; VIP-40 supersedes VIP-25.
 
 1. **Platform access only through injected Effect services** (`FileSystem`, `Path`, `ChildProcess`, `HttpClient`, …), each provided by a per-platform layer. Outside a TypeScript `module` body, a `.vibe` file has no `node:*` value imports and no Node globals (`process`, `Buffer`). Code that needs them lives in a `.ts` file or a named top-level `module` body ([VIP-40](0040-module-declarations.md), which supersedes VIP-25).
    - **Amended 2026-10-29: no exception inside `Effect.try` / `tryPromise` arrows.** A platform call there, such as `tryPromise(() => fetch(url))`, is the same error as anywhere in `.vibe`. Its quick fix and the codemod move the body into a sibling `.ts` module, or point to the Effect service (`HttpClient` for `fetch`). Recorded under Will's standing approval of recommendations.
