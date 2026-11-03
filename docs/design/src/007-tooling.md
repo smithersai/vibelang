@@ -286,11 +286,7 @@ The resolved `trusted(f, [])` runtime wrapper is retired with `EK0407`. Its pres
 
 ### Legacy entry-dispatch migration
 
-For source checked under the pinned legacy compiler, the preserving codemod follows these boundaries. Current source follows VIP-26’s explicit runner rule.
-
-In every scope, `--fix` can expand a legacy CommonJS entry to explicit calls of the existing entry dispatcher and the selected native runner and layers. It preserves the function's declaration and callable kind, entry-only execution and import-only behavior. An implicit ESM entry is retained when its host identity cannot be expressed by accepted source forms; the codemod does not guess a bundle's entry identity or add a forbidden host read. Once startup is explicit, `--fix` removes an inert compiler-only `vibelang/platform/*` marker. It retains a marker still needed by implicit ESM startup.
-
-A retained implicit ESM site is reported as not fixed until a preserving source expansion is available. This is migration status; it grants no new host-read permission under VIP-33.
+In every scope, `--fix` replaces legacy entry startup with an explicit call to the selected platform's runner, such as `NodeRuntime.runMain(main())` ([VIP-26](../vips/0026-top-level-and-main.md#decision)), and removes its compiler-only platform marker. The rewrite preserves entry-only execution, import-only behavior and the declaration's [API identity](001-functions.md#api-identity). If no preserving expansion exists, including for an ESM entry, it leaves the site unchanged, reports its file, line and reason as not fixed, and exits nonzero. Current compilation emits no implicit startup; a function named `main` is ordinary source under VIP-26.
 
 ### Selecting ordinary fix files
 
