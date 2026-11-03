@@ -187,7 +187,7 @@ For `EK0505`'s head search, [runtime-erased TypeScript expression wrappers](http
 import { Effect } from "effect"
 type Nested = Effect.Effect<Effect.Effect<number, string>, string>
 effect function rejectedCatchHeads(nested: Nested, genericEffect: (<T>() => T) & Nested) {
-  try nested as Effect.Effect<number, string> catch () => 7 // EK0505
+  try nested as Effect.Effect<number, string> catch () => 7; // EK0505
   <Effect.Effect<number, string>>try nested catch () => 7   // EK0505
   try nested satisfies Effect.Effect<number, string> catch () => 7 // EK0505
   try nested! catch () => 7                                // EK0505
