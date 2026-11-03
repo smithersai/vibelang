@@ -97,11 +97,11 @@ func findLegacyDefaults(c *checker.Checker, file *ast.SourceFile, report func(*a
 	var visit func(*ast.Node) bool
 	visit = func(n *ast.Node) bool {
 		if ast.IsPropertyDeclaration(n) {
-			if r := legacyDefaultRewrite(c, file, n); r.fixable() {
+			if r := legacyDefaultRewrite(c, file, n); r != nil {
 				report(n, r)
 			}
 		} else if declaration := legacyDefaultRead(c, n); declaration != nil && ast.GetSourceFileOfNode(declaration) != file {
-			if r := legacyDefaultRewrite(c, file, n); r.fixable() {
+			if r := legacyDefaultRewrite(c, file, n); r != nil {
 				report(n, r)
 			}
 			return false // the parts of a read are not reads
@@ -244,6 +244,10 @@ func legacyDefaultRewrite(c *checker.Checker, file *ast.SourceFile, n *ast.Node)
 		if m == n {
 			return false
 		}
+		if unhandledLegacyDefaultRead(c, m, n) {
+			r.why = "No quick fix: a corresponding type read of default needs a manual rewrite."
+			return true
+		}
 		if legacyDefaultReadNode(m) && legacyDefaultRead(c, m) == n {
 			r.edits = append(r.edits, legacyDefaultReadEdit(c, file, m))
 			reads++
@@ -252,8 +256,39 @@ func legacyDefaultRewrite(c *checker.Checker, file *ast.SourceFile, n *ast.Node)
 		return m.ForEachChild(visit)
 	}
 	file.AsNode().ForEachChild(visit)
+	if r.why != "" {
+		r.edits = nil
+		return r
+	}
 	if reads > 0 {
 		r.description = fmt.Sprintf("defaultValue thunk and %d %s of %s.default", reads, plural(reads, "read", "reads"), n.Parent.Name().Text())
 	}
 	return r
+}
+
+// Recognize resolved reads beyond the syntactic forms the editor can rewrite.
+// Refuse the whole declaration edit rather than leave a dangling type read.
+func unhandledLegacyDefaultRead(c *checker.Checker, n, declaration *ast.Node) bool {
+	if legacyDefaultRead(c, n) == declaration {
+		return false
+	}
+	if ast.IsTypeQueryNode(n) {
+		for e := n.AsTypeQueryNode().ExprName; e != nil && ast.IsQualifiedName(e); e = e.AsQualifiedName().Left {
+			name := e.AsQualifiedName().Right
+			if symbol := c.GetSymbolAtLocation(name); symbol != nil && symbol.ValueDeclaration() == declaration {
+				return true
+			}
+		}
+	}
+	if ast.IsIndexedAccessTypeNode(n) {
+		access := n.AsIndexedAccessTypeNode()
+		object := c.GetTypeFromTypeNode(access.ObjectType)
+		index := c.GetTypeFromTypeNode(access.IndexType)
+		if object != nil && index != nil {
+			symbol := c.GetPropertyOfType(object, "default")
+			return symbol != nil && symbol.ValueDeclaration() == declaration &&
+				(c.IsTypeAssignableTo(c.GetStringLiteralType("default"), index) || index.Flags()&checker.TypeFlagsTypeParameter != 0)
+		}
+	}
+	return false
 }

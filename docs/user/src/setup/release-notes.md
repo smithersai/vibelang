@@ -672,6 +672,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - `EK4402` told a `.vibe` file to use `NodeHttpServer.layer(createServer, { port })`, whose `createServer` it may not import; `ExperimentalNodeHttpServer.layer({ port })` now supplies it, `EK4402` names it, and the HTTP guide no longer needs a `.ts` companion file.
 
 - An animation frame timestamp earlier than its starting clock produced a negative delta; `Experimental.Animations.frameDeltas` now clamps negative deltas to zero.
+
+- A service-default editor repair could rename the declaration while leaving aliased, parenthesized, union-indexed or instantiated type reads broken; it now retains `EK4855` with a manual-repair explanation and offers no partial edit.
 - Resolved schema-binding regressions still appeared as pending gaps; namespace, function and escaped-name coverage now checks `EK2109` strictly while keeping every keyed corpus.
 - Schema library-alias checks now compare array decoding and mutability with native TypeScript and explicit Schema controls; remaining decoder gaps keep precise pending records.
 
