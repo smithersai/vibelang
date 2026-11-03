@@ -1,0 +1,18 @@
+// expect-result: {"native":true,"fake":"/test/temp"}
+import { ExperimentalNodeProcess } from "vibelang-runtime/experimental/platform-node"
+
+effect function location() {
+  return try (try Experimental.Process.Process).temporaryDirectory
+}
+effect function nativeLocation() {
+  provide ExperimentalNodeProcess.layer { return try location() }
+}
+effect function fakeLocation() {
+  provide Experimental.Process.layerTest({ temporaryDirectory: Effect.succeed("/test/temp") }) {
+    return try location()
+  }
+}
+export effect function main() {
+  const value = try nativeLocation()
+  return { native: typeof value === "string", fake: try fakeLocation() }
+}

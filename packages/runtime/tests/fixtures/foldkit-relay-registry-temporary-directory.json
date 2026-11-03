@@ -1,0 +1,18 @@
+{
+  "origin": "foldkit relayRegistry: native temporary directory query without creating a resource",
+  "oracle": "VIP-33 section2; native node:os.tmpdir, not FileSystem.makeTempDirectory",
+  "cases": [
+    {
+      "variable": null
+    },
+    {
+      "variable": "TMPDIR"
+    },
+    {
+      "variable": "TMP"
+    },
+    {
+      "variable": "TEMP"
+    }
+  ]
+}

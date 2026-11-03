@@ -120,8 +120,8 @@ export const run = () => typeof server`, nil},
 		{"tmpdir", `import { tmpdir } from "node:os"
 export const run = () => tmpdir()`, []string{
 			"tmpdir from node:os is platform code, which a .vibe file does not import as a value.",
-			"Use the FileSystem service:   FileSystem.makeTempDirectory()", provideNodeServices,
-			"FileSystem.makeTempDirectory creates a directory in it; nothing returns its path alone.",
+			"Use the experimental Process service:   try (try Experimental.Process.Process).temporaryDirectory", provideExperimental,
+			"Process.temporaryDirectory queries the native temporary directory without creating a directory or file.",
 		}},
 		{"mkdtemp", `import { mkdtemp } from "node:fs/promises"
 export const run = () => mkdtemp("build-")`, []string{

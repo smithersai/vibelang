@@ -144,6 +144,8 @@ export interface Process {
   readonly timeOrigin: Effect.Effect<number>
   /** This process's memory use now. */
   readonly memoryUsage: Effect.Effect<MemoryUsage>
+  /** The native temporary directory path. Queries without creating a directory or file. */
+  readonly temporaryDirectory: Effect.Effect<string>
   /**
    * Sends a signal to the process `pid`, or to its process group with
    * `group`. Fails with a `SystemError` `NotFound` when no such process
@@ -218,6 +220,7 @@ export const layerTest = (impl: Partial<Omit<Process, TypeId>> = {}): Layer.Laye
       availableParallelism: Effect.succeed(1),
       timeOrigin: Effect.succeed(0),
       memoryUsage: Effect.succeed({ rss: 0, heapTotal: 0, heapUsed: 0, external: 0, arrayBuffers: 0 }),
+      temporaryDirectory: Effect.succeed("/tmp"),
       kill: (pid) =>
         Effect.fail(
           PlatformError.systemError({ _tag: "NotFound", module: "Process", method: "kill", pathOrDescriptor: pid })

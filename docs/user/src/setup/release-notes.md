@@ -755,6 +755,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Migration could pass a package that did not install or load outside its workspace, such as a `file:` dependency in the pack or `export * from "./x.vibe"` under Bun; `verify` now installs each batch's packs in an empty directory, imports every export under Node and Bun, and refuses each regression by package, specifier and runtime.
 
 - With `jsx: preserve`, `.vibex` inputs emitted preserved JSX in `.js` files. They now emit `.jsx` files and `.jsx.map` source maps, including files with no JSX elements, as `.tsx` does.
+
+- Looking up the temporary directory was suggested as an allocation; `Experimental.Process.temporaryDirectory` now queries the native path without creating a directory or file.
 - Release notes repeated the upgrade and bug-fix sections, hiding later fixes from readers and documentation tools. Each section now appears once, with the unique fixes and upgrade repairs retained.
 
 - The source mapper crashed with a stack overflow on a regex pattern with an extractor, such as `s is /(\d+)/(let m)`, in a file it projected. It now projects that file.
@@ -3484,8 +3486,8 @@ New explanations for code that already failed, and improved messages:
 - EK4402 names each platform API's Effect replacement, named import and
   providing layer: `FileSystem` with `NodeServices.layer`,
   `HttpClient` with `FetchHttpClient.layer`, `Path.resolve()` for
-  `process.cwd()`, and `FileSystem.makeTempDirectory()` for
-  `os.tmpdir()`. Where Effect lacks an API, such as `os.hostname()`,
+  `process.cwd()`, and `Experimental.Process.temporaryDirectory` for
+  `os.tmpdir()` without creating a directory. Where Effect lacks an API, such as `os.hostname()`,
   it shows a `sync` hatch.
 - EK4403 preserves units and test advice:
   `performance.now()` becomes

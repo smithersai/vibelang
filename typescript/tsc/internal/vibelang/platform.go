@@ -270,7 +270,7 @@ var platformAPIs = map[string]platformAPI{
 	"tls.createServer": {"SocketServerTls", "", ""},
 	"tls.Server":       {"SocketServerTls", "", ""},
 
-	"os.tmpdir":               {"FileSystem", "FileSystem.makeTempDirectory()", "FileSystem.makeTempDirectory creates a directory in it; nothing returns its path alone."},
+	"os.tmpdir":               {"ExperimentalProcess", "try (try Experimental.Process.Process).temporaryDirectory", "Process.temporaryDirectory queries the native temporary directory without creating a directory or file."},
 	"os.hostname":             {"ExperimentalProcess", "Experimental.Process.hostname()", ""},
 	"os.homedir":              {"ExperimentalProcess", "try (try Experimental.Process.Process).homeDirectory", "homeDirectory delegates to os.homedir, including native account fallback; UserDirectories.home remains an environment resolver."},
 	"os.availableParallelism": {"ExperimentalProcess", "Experimental.Process.availableParallelism()", ""},

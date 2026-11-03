@@ -54,7 +54,7 @@ Each Node.js or web call has an Effect replacement, which needs no import. EK440
 | Call | Effect | Layer |
 | --- | --- | --- |
 | `fs.readFile` | `try (try FileSystem.FileSystem).readFileString(path)` | `NodeServices.layer` |
-| `os.tmpdir` | `try (try FileSystem.FileSystem).makeTempDirectory()` | `NodeServices.layer` |
+| `os.tmpdir` | `try (try Experimental.Process.Process).temporaryDirectory` | `ExperimentalNodeServices.layer` |
 | `path.join` | `(try Path.Path).join(directory, name)` | `NodeServices.layer` |
 | `process.cwd` | `(try Path.Path).resolve()` | `NodeServices.layer` |
 | `child_process.execFileSync` | `try (try ChildProcessSpawner.ChildProcessSpawner).string(ChildProcess.make(command, args))` | `NodeServices.layer` |

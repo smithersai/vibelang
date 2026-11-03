@@ -154,6 +154,9 @@ Look up `const process = try Experimental.Process.Process`. Each fact is an Effe
 | `try process.availableParallelism` | at least 1 | `os.availableParallelism()` |
 | `try process.timeOrigin` | when the process started, in epoch milliseconds | `performance.timeOrigin` |
 | `try process.memoryUsage` | `{ rss, heapTotal, heapUsed, external, arrayBuffers }` in bytes | `process.memoryUsage()` |
+| `try process.temporaryDirectory` | the native temporary directory path; creates nothing | `os.tmpdir()` |
+
+`try process.temporaryDirectory` delegates to the native `os.tmpdir()` query each time it runs, including the native environment lookup. It creates no directory or file. Use `FileSystem.makeTempDirectory()` when a program needs to allocate a temporary directory. Tests can provide `Experimental.Process.layerTest({ temporaryDirectory: Effect.succeed("/test/temp") })`; the default is `"/tmp"`.
 
 `homeDirectory` delegates to the native `os.homedir()` on each execution, including its account lookup when `HOME` (or `USERPROFILE` on Windows) is unset. Effect's `try (try UserDirectories.UserDirectories).home` reads the `ConfigProvider` environment and remains the resolver for application directories, provided by `UserDirectories.layer`. A `ConfigProvider` override does not change the native lookup. Tests can provide `Experimental.Process.layerTest({ homeDirectory: Effect.succeed("/test/home") })`; its default home is `"/test/home"`. A browser has no process to read, so `Process` has no browser layer.
 

@@ -24,6 +24,7 @@ interface Host {
 }
 
 interface Os {
+  readonly tmpdir: () => string
   readonly hostname: () => string
   readonly homedir: () => string
   readonly availableParallelism: () => number
@@ -146,6 +147,7 @@ const make = (): Process.Process => {
       const { rss, heapTotal, heapUsed, external, arrayBuffers } = host.memoryUsage()
       return { rss, heapTotal, heapUsed, external, arrayBuffers }
     }),
+    temporaryDirectory: Effect.sync(() => os.tmpdir()),
     kill: (pid, options) =>
       Effect.flatMap(target(host, "kill", pid, options?.group), (id) =>
         Effect.try({
