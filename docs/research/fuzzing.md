@@ -965,3 +965,5 @@ This tests resolution without prescribing a body filename encoding.
 The module-sidecar neighbourhood retains 19 precise `.vibex` emit gaps and
 23 corpus pending markers owned by `conf-data`. VIP-39 names the expected
 compatibility sidecars; the current emitter's spelling is not used as the oracle.
+
+The Effect pin oracle quotes the accepted previous-patch clarification verbatim; its older, previous-patch, next-patch, prerelease, exact-pin and nested-resolution checks remain unchanged.

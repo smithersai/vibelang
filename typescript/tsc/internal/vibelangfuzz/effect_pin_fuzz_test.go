@@ -8,7 +8,7 @@ import (
 	"testing"
 )
 
-const effectPinQuote = "any version other than `4.1.1` is `EK3201` in the CLI and editor"
+const effectPinQuote = "any version other than `4.1.1`, including `4.1.0`, is `EK3201` in the CLI and editor"
 
 func TestEffectPinQuoted(t *testing.T) { effectPinQuoted(t) }
 func effectPinQuoted(t testing.TB) {
