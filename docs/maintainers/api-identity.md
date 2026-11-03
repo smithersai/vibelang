@@ -22,7 +22,8 @@ patterns; matching patterns use the longest prefix and then the longest trailer.
 including under conditional wildcard exports. Ordered `exports` arrays select
 the first resolvable target for each import, require and custom-condition path;
 unreachable fallbacks are not extra entry points. Conditional objects also follow TypeScript's property order: an earlier matching `default`, `import` or `require` target can shadow a later `types` target. Discovery uses the same configuration and sidecar projection as the probes, so a published `.vibe` target can resolve through inherited `vibe.sidecarDir`. Source and runtime wildcard targets
-map to their emitted declarations; JSON and asset exports have no type surface.
+map to their emitted declarations; CSS and WebAssembly exports have no declaration
+surface. JSON exports retain their `resolveJsonModule` types.
 Separate import and require type conditions are checked separately. Explicit `resolution-mode` attributes on type imports are retained in both the probe resolver and the dependency-equivalence proof; two uses of one specifier may select different package conditions. Private
 files do not become entry points. A bare directory without publishing metadata
 compares each declaration module, suitable for sidecars and their TypeScript
