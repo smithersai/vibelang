@@ -46,6 +46,10 @@ test("the normative throws inventory is current for the exact pinned inputs", { 
 // docs/design/src/900-appendices.md#ac164d47dcfa1702 — Chapter 900: selected call, callback and returned-decoder contracts.
 // docs/design/src/900-appendices.md#8a66d1b86c46953f — Chapter 900: safe literals retain full signature thrown bounds.
 test("direct calls, callbacks, validation and returned decoders have separate contracts", () => {
+  // rule-evidence: docs/design/vips/0004-throw.md#e1cb2f42468e2280
+  // VIP-4: Examples: Option.some throws never; Schema.decodeUnknownSync throws SchemaError.
+  // rule-evidence: docs/design/vips/0004-throw.md#41624d80b14615b4
+  // VIP-4: vibe Option.some(1) // never Schema.decodeUnknownSync(S)(u) // SchemaError Effect TS: the
   const { entries, inputs } = JSON.parse(readFileSync(resolve(root, artifactPath), "utf8"))
   assert.equal(inputs.effect.version, "4.1.1")
   assert.ok(inputs.typescript.files.length > 100)
@@ -217,6 +221,8 @@ test("native proofs cover typed iterables, null targets and byte syntax", () => 
 // docs/design/src/900-appendices.md#65a3ab133e10d843 — Chapter 900: iterator hooks and dual-factory phases.
 // docs/design/src/900-appendices.md#ac95a42c7fe2f389 — Chapter 900: iterator hooks and dual-factory phases.
 test("protocol hooks are implicit and dual factories defer full invocations (detail 202)", () => {
+  // rule-evidence: docs/design/vips/0004-throw.md#5132540f29f7c1da
+  // VIP-4: Appendix E's shipped annotations cover Effect's dual exports.
   const { entries } = JSON.parse(readFileSync(resolve(root, artifactPath), "utf8"))
   const find = (module, declaration) => {
     const found = entries.filter(e => e.module === module && e.declaration === declaration)
@@ -268,6 +274,8 @@ test("dual selectors need a proof; numeric aliases and namespace imports remain 
 
 // docs/design/src/900-appendices.md#99557b212cbf9c49 — Chapter 900: generated throws inventory is published.
 test("normative chapters publish the throws inventory and its generator", () => {
+  // rule-evidence: docs/design/vips/0004-throw.md#8dfa7b5ffc4bb3b6
+  // VIP-4: Detail 40's generator applies this classification to the lib.d.ts globals,
   for (const page of ["docs/design/src/003-failures.md", "docs/design/src/900-appendices.md"]) {
     const text = readFileSync(resolve(root, page), "utf8")
     assert.ok(text.includes("https://github.com/smithersai/vibelang/blob/main/docs/design/inventory/throws.json"), page)
@@ -290,3 +298,27 @@ test("symbolic property contracts use source names rather than checker IDs", () 
     .some(e => e.callbacks.some(callback => callback.parameter === "matcher.[Symbol.match]")))
   assert.doesNotMatch(JSON.stringify(entries), /__@[^@"]+@[0-9]+/, "TypeScript's process-local symbol IDs are not declaration names")
 })
+
+// VIP-4: global rethrows are separate from Promise/timer callback boundaries.
+test("rethrowing array callbacks and deferred timer callbacks keep separate contracts", () => {
+  // rule-evidence: docs/design/vips/0004-throw.md#54934476f70669fb
+  // VIP-4: setTimeout does not rethrow, because it stores the callback.
+  // rule-evidence: docs/design/vips/0004-throw.md#1b601bbde4da8b95
+  // VIP-4: VibeLang ships the rethrowing globals: map, forEach, filter, reduce, find,
+  const { entries } = JSON.parse(readFileSync(resolve(root, artifactPath), "utf8"))
+  const globals = name => entries.filter(e => e.module === "global" && e.declaration === name)
+  for (const name of ["Array.map", "Array.forEach", "Array.filter", "Array.reduce", "Array.find", "Array.some", "Array.every", "Array.sort", "Array.from"]) {
+    assert.ok(globals(name).some(e => e.rethrows.length > 0), name + " propagates its callback contract")
+  }
+  assert.ok(globals("setTimeout").every(e => e.rethrows.length === 0))
+  let invoked = false
+  const handle = setTimeout(() => { invoked = true; throw new Error("deferred callback") }, 0)
+  try { assert.equal(invoked, false, "setTimeout stores the callback instead of invoking it at construction") }
+  finally { clearTimeout(handle) }
+})
+
+
+
+
+
+

@@ -2,6 +2,8 @@
 // rule: docs/design/src/003-failures.md#637c879448d77f44
 // 003-failures.md: native padding ToLength controls cover negative, infinite and NaN counts without count-range failures
 // rule: docs/design/src/003-failures.md#cd69e36986dd5b75
+// rule-evidence: docs/design/vips/0004-throw.md#749e8426efd42ae1
+// VIP-4: Update chapter 003, Appendix E, the generator and the affected
 import { readFileSync } from "node:fs"
 import assert from "node:assert/strict"
 import { test } from "node:test"

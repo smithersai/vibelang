@@ -1,3 +1,5 @@
+// rule-evidence: docs/design/vips/0004-throw.md#46040fae16094a8e
+// VIP-4: Examples in002/003 must identify their lists as nonexhaustive rather than
 import assert from "node:assert/strict"
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { createRequire } from "node:module"
