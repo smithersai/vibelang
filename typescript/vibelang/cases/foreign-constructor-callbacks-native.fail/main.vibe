@@ -1,0 +1,3 @@
+// expect: TS2345 TS2345
+import { Risky, Abstract, wrong, take } from "./helpers.js"
+export function check() {wrong(Risky);take(Abstract)}

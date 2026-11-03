@@ -1,0 +1,17 @@
+// expect: EK0402 EK0402 EK0402 EK0402 EK0402 EK0402 EK0402 EK0402 EK0402 EK0402
+import { Risky, Safe, tagged, anyThrows, Overloaded, take, takeUnsafe, type Pure } from "./helpers.js"
+export function check(flag:boolean) {
+ take(Risky)
+ const saved:Pure=Risky
+ const item:{ctor:Pure}={ctor:Risky}
+ const Alias=Risky
+ take(Alias)
+ take(tagged)
+ take(anyThrows)
+ takeUnsafe(Overloaded)
+ const Choice=flag?Risky:Safe
+ take(Choice)
+ const optional:Pure|null=Risky
+ return [saved,item,optional]
+}
+export function result():Pure {return Risky}

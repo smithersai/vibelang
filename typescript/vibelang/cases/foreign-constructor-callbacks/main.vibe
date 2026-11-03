@@ -1,0 +1,19 @@
+// expect:
+import { Safe, Risky, tagged, anyThrows, Overloaded, fx, genericFx, take, allow, allowAny,
+ takeSafe, takeOptional, takeFx, takeGenericFx, type Pure } from "./helpers.js"
+class Local { readonly value:number; constructor(value:number){this.value=value} }
+export function check(flag:boolean) {
+ take(Safe)
+ take(Local)
+ takeSafe(Overloaded)
+ allow(Risky)
+ allow(tagged)
+ allowAny(anyThrows)
+ takeOptional(flag?Safe:null)
+ takeFx(fx)
+ takeGenericFx(genericFx)
+ const Saved=Safe
+ take(Saved)
+ const item:{ctor:Pure}={ctor:Safe}
+ return item
+}
