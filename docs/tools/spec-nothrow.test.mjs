@@ -1,7 +1,7 @@
 import assert from "node:assert/strict"
 import { test } from "node:test"
 import fc from "fast-check"
-import ts from "typescript"
+import { parseESTree } from "../../packages/compiler/eslint.mjs"
 import { chapter, read, nothrowFoldPending } from "./spec-witness.mjs"
 
 // Will, 2026-10-31 ~14:00 PDT, recorded in core-decisions.md: "Plain functions are not allowed to throw I have said
@@ -15,109 +15,54 @@ const plainSection = () => {
   return text.slice(text.indexOf("### Plain code never throws"), text.indexOf("## Throw expressions"))
 }
 
-// Parse each fence after projecting contextual Effect modifiers to TypeScript's async syntax. Replacing an
-// ordinary identifier too is harmless: the parser only recognizes async as a modifier in modifier position.
-// Positions map back to the original fence so reports and expected-error comments retain their source lines.
+// Parse the source grammar with the compiler, including do expressions, effect modifiers and foreign modules.
+// ESTree ranges and tokens refer to the original UTF-16 source offsets; no TypeScript projection or recovery.
 export function plainThrows(fence) {
-  const { text, origins, expectedErrors } = typescriptFence(fence)
-  const source = ts.createSourceFile("fence.ts", text, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS)
+  if (!/\bthrow\b/.test(fence)) return []
+  const source = parseESTree(fence, "nothrow-fence.vibe")
   const lines = fence.split("\n")
-  const found = new Set()
-  function visit(node, allowed = false) {
-    if (ts.isModuleDeclaration(node) && /^(?:export\s+)?module\b/.test(text.slice(node.getStart(source)))) return // VIP-40.
-    if (ts.isThrowStatement(node)) {
-      const offset = origins[node.getStart(source)]
-      const lineIndex = fence.slice(0, offset).split("\n").length - 1
-      if (!allowed && !expectedErrors.has(lineIndex)) found.add(lineIndex)
+  const lineAt = offset => fence.slice(0, offset).split("\n").length - 1
+  const expectedErrors = new Set()
+  for (const comment of source.comments) {
+    if (/EK0401|EK1010/.test(comment.value)) {
+      for (let line = lineAt(comment.range[0]); line <= lineAt(comment.range[1]); line++) expectedErrors.add(line)
     }
-    if (ts.isFunctionLike(node)) {
-      const modifier = ts.getModifiers(node)?.find(m => m.kind === ts.SyntaxKind.AsyncKeyword)
-      const effect = modifier && fence.slice(origins[modifier.getStart(source)]).startsWith("effect")
-      const asyncParameters = modifier && !effect && !node.asteriskToken
-      ts.forEachChild(node, child => {
-        visit(child, child === node.body ? !!modifier : node.parameters?.includes(child) ? !!asyncParameters : allowed)
-      })
+  }
+  const tokens = source.tokens
+  const tokenAt = offset => tokens.find(t => t.range[0] >= offset)
+  const found = new Set()
+  function visit(node, allowed = false, parent) {
+    if (!node || typeof node !== "object" || !node.type) return
+    if (node.type === "VibeModuleDeclaration") return // VIP-40: foreign TypeScript.
+    if (node.type === "ThrowStatement") {
+      const line = lineAt(node.range[0])
+      if (!allowed && !expectedErrors.has(line)) found.add(line)
+    }
+    const callable = ["FunctionDeclaration", "FunctionExpression", "ArrowFunctionExpression"].includes(node.type)
+    // do/match lowering introduces arrows with no written => header. They retain the source activation.
+    // An effect block and an async match introduce their own activation even without a written arrow.
+    const first = callable && tokenAt(node.range[0])?.value
+    const writtenArrow = callable && tokens.some(t => t.range[0] >= node.range[0]
+      && t.range[1] <= node.body.range[0] && t.value === "=>")
+    const transparent = node.type === "ArrowFunctionExpression" && !writtenArrow && first !== "effect" && !node.async
+    if (callable && !transparent) {
+      const method = parent && ["Property", "MethodDefinition"].includes(parent.type) && parent.value === node
+      const effect = method
+        ? tokens.some(t => t.range[0] >= parent.range[0] && t.range[1] <= parent.key.range[0] && t.value === "effect")
+        : tokenAt(node.range[0])?.value === "effect"
+      visit(node.body, effect || node.async, node)
+      for (const parameter of node.params) visit(parameter, node.async && !node.generator && !effect, node)
       return
     }
-    // Initializers and static blocks run outside a surrounding fiber, including a class declared in effect code.
-    if (ts.isPropertyDeclaration(node) || ts.isClassStaticBlockDeclaration(node)) allowed = false
-    ts.forEachChild(node, child => visit(child, allowed))
+    if (["PropertyDefinition", "StaticBlock"].includes(node.type)) allowed = false
+    for (const [key, value] of Object.entries(node)) {
+      if (["tokens", "comments"].includes(key)) continue
+      if (Array.isArray(value)) for (const child of value) visit(child, allowed, node)
+      else visit(value, allowed, node)
+    }
   }
   visit(source)
   return [...found].sort((a, b) => a - b).map(i => lines[i].trim())
-}
-
-function typescriptFence(fence) {
-  // Slash tokens require parser context: a quote or brace in a regex is not a string or a block.
-  const regexStarts = new Set()
-  const original = ts.createSourceFile("fence.ts", fence, ts.ScriptTarget.Latest, false, ts.ScriptKind.TS)
-  function collectRegex(node) {
-    if (ts.isRegularExpressionLiteral(node)) regexStarts.add(node.getStart(original))
-    ts.forEachChild(node, collectRegex)
-  }
-  collectRegex(original)
-  const scanner = ts.createScanner(ts.ScriptTarget.Latest, false, ts.LanguageVariant.Standard, fence)
-  const tokens = []
-  const expectedErrors = new Set()
-  const templates = []
-  for (let kind = scanner.scan(); kind !== ts.SyntaxKind.EndOfFileToken; kind = scanner.scan()) {
-    if (regexStarts.has(scanner.getTokenPos())) kind = scanner.reScanSlashToken()
-    if (kind === ts.SyntaxKind.TemplateHead) templates.push(0)
-    else if (templates.length && kind === ts.SyntaxKind.OpenBraceToken) templates[templates.length - 1]++
-    else if (templates.length && kind === ts.SyntaxKind.CloseBraceToken) {
-      if (templates.at(-1) === 0) {
-        kind = scanner.reScanTemplateToken(false)
-        if (kind === ts.SyntaxKind.TemplateTail) templates.pop()
-      } else templates[templates.length - 1]--
-    }
-    if (kind === ts.SyntaxKind.SingleLineCommentTrivia || kind === ts.SyntaxKind.MultiLineCommentTrivia) {
-      if (/EK0401|EK1010/.test(scanner.getTokenText())) {
-        const start = fence.slice(0, scanner.getTokenPos()).split("\n").length - 1
-        const end = fence.slice(0, scanner.getTextPos()).split("\n").length - 1
-        for (let line = start; line <= end; line++) expectedErrors.add(line)
-      }
-    }
-    if (kind <= ts.SyntaxKind.LastTriviaToken) continue
-    tokens.push({ kind, start: scanner.getTokenPos(), end: scanner.getTextPos(), text: scanner.getTokenText() })
-  }
-  const replacements = []
-  for (let i = 0; i < tokens.length; i++) {
-    const token = tokens[i]
-    if (token.text === "effect" && token.kind === ts.SyntaxKind.Identifier) {
-      const block = tokens[i + 1]?.kind === ts.SyntaxKind.OpenBraceToken
-        && !/[\r\n]/.test(fence.slice(token.end, tokens[i + 1].start))
-        && ![ts.SyntaxKind.ClassKeyword, ts.SyntaxKind.InterfaceKeyword, ts.SyntaxKind.ModuleKeyword,
-          ts.SyntaxKind.NamespaceKeyword, ts.SyntaxKind.EnumKeyword].includes(tokens[i - 1]?.kind)
-      replacements.push({ ...token, text: block ? "async() =>" : "async " })
-    }
-    if (token.kind === ts.SyntaxKind.CatchKeyword) {
-      // An expression handler is an arrow, not a TypeScript catch clause. Project only that operator to a comma;
-      // preserve try/catch statements, whose parameters are followed by a block rather than an arrow.
-      let j = i + 1
-      if (tokens[j]?.text === "effect") j++
-      if (tokens[j]?.kind !== ts.SyntaxKind.OpenParenToken) continue
-      let depth = 0
-      for (; j < tokens.length; j++) {
-        if (tokens[j].kind === ts.SyntaxKind.OpenParenToken) depth++
-        if (tokens[j].kind === ts.SyntaxKind.CloseParenToken && --depth === 0) break
-      }
-      if (tokens[j + 1]?.kind === ts.SyntaxKind.EqualsGreaterThanToken) replacements.push({ ...token, text: "," })
-    }
-  }
-  let text = ""
-  const origins = []
-  let cursor = 0
-  function append(value, start, width = value.length) {
-    text += value
-    for (let i = 0; i < value.length; i++) origins.push(start + Math.min(i, width - 1))
-  }
-  for (const replacement of replacements.sort((a, b) => a.start - b.start)) {
-    append(fence.slice(cursor, replacement.start), cursor)
-    append(replacement.text, replacement.start, replacement.end - replacement.start)
-    cursor = replacement.end
-  }
-  append(fence.slice(cursor), cursor)
-  return { text, origins, expectedErrors }
 }
 
 const fences = (text) => [...text.matchAll(/```vibe es\n([\s\S]*?)```/g)].map(m => m[1])
@@ -362,10 +307,40 @@ test("plainThrows preserves templates, foreign modules and callable boundaries",
   for (const [code, expected] of witnesses) assert.equal(plainThrows(code).length, expected, code)
 })
 
-test("plainThrows keeps regex literals opaque during modifier projection", () => {
+test("plainThrows keeps regex literals opaque in the native parser", () => {
   fc.assert(fc.property(fc.constantFrom('/"/', '/[{}]/', '/effect/'), fc.integer(), (regex, value) => {
     const prefix = `const pattern = ${regex}; `
     assert.equal(plainThrows(prefix + `effect function f() { throw ${value} }`).length, 0)
     assert.equal(plainThrows(prefix + `function f() { throw ${value} }`).length, 1)
   }), { seed: 8818, numRuns: 100 })
+})
+
+test("plainThrows preserves async defaults containing do expressions (PREVIEW-19)", () => {
+  fc.assert(fc.property(fc.integer(), fc.integer({ min: 0, max: 4 }), (n, indent) => {
+    const pad = " ".repeat(indent)
+    const source = `export async function f(flag: boolean, x = do {\n${pad}if (flag) throw ${n};\n${pad}0\n}) { return x }`
+    assert.deepEqual(plainThrows(source), [])
+  }), { seed: 9419, numRuns: 100 })
+})
+
+test("plainThrows keeps do defaults transparent but nested callables independent", () => {
+  for (const [prefix, count] of [["async", 0], ["effect", 1], ["", 1], ["async function*", 1]]) {
+    const head = prefix.includes("function") ? prefix : `${prefix} function`
+    assert.equal(plainThrows(`${head} f(flag: boolean, x = do { if (flag) throw 1; 0 }) { return x }`).length, count)
+  }
+  assert.equal(plainThrows("async function f(x = do { const g = () => { throw 1 }; 0 }) {}").length, 1)
+  assert.equal(plainThrows("effect function f() { const x = do { if (flag) throw 1; 0 } }").length, 0)
+  assert.equal(plainThrows("async function f() { const x = do { const g = () => { throw 1 }; 0 } }").length, 1)
+})
+
+test("plainThrows preserves match lowering and rejects source callbacks inside it", () => {
+  for (const [modifier, count] of [["effect", 0], ["async", 0], ["", 1]]) {
+    assert.equal(plainThrows(`${modifier} function f(x) { return match (x) { default: throw 1 } }`).length, count)
+  }
+  assert.equal(plainThrows("effect function f(x) { return match (x) { default: (() => { throw 1 })() } }").length, 1)
+  assert.equal(plainThrows("effect function f(x) { return match (x) { default: do { throw 1; 0 } } }").length, 0)
+})
+
+test("plainThrows refuses an invalid parse instead of trusting a recovered tree", () => {
+  assert.throws(() => plainThrows("function f( { throw 1 }"), SyntaxError)
 })
