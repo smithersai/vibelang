@@ -94,7 +94,9 @@ func FuzzPlainTryCatch(f *testing.F) {
 		}
 		homeName := homes[int(home)%len(homes)]
 		key := fmt.Sprintf("%s:%s", homeName, form)
-		banned := homeName == "effect-function"
+		// A rethrow is a throw statement: outside effect and async code it is
+		// EK0401 whatever try statement holds it (chapter 3).
+		banned := homeName == "effect-function" || form == "catch-rethrow" && homeName != "async-function"
 		for _, native := range []bool{true, false} {
 			if native && banned {
 				continue

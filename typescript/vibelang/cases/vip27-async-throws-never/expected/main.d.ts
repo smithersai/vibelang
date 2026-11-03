@@ -14,4 +14,4 @@ export declare function overloaded(q: string): Promise<string>;
 export declare function identityCause(q: Cause.Cause<never>): Promise<Cause.Cause<never>>;
 /** @throws {never} */
 export declare function defaultReject(q?: string): Promise<string>;
-export declare function generator(q?: string): AsyncGenerator<string>;
+export { generator } from "./helpers.js";

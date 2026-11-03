@@ -33,7 +33,7 @@ import (
 // editor:quickfix-error:EK401:TS2394 and TS2416): an overload implementation,
 // whose overloads must stay compatible with it, and a method whose name a
 // base class, an implemented interface or the object's contextual type
-// declares.
+// declares, or a callback whose parameter type wants a value.
 
 func init() {
 	ls.RegisterCodeFixProvider(nothrowFix)
@@ -134,6 +134,18 @@ func makeEffectEdits(fix *ls.CodeFixContext, site *ast.Node, home *ast.Node) []*
 // base class, an implemented interface or the object literal's contextual
 // type declares (TS2416, TS2322).
 func effectBreaksContract(c *checker.Checker, home *ast.Node) bool {
+	if ast.IsFunctionExpressionOrArrowFunction(home) {
+		// a callback whose parameter type wants a value: an effect callback
+		// returns an Effect there (TS2345).
+		if t := c.GetContextualType(home, checker.ContextFlagsNone); t != nil {
+			for _, signature := range c.GetSignaturesOfType(t, checker.SignatureKindCall) {
+				result := c.GetReturnTypeOfSignature(signature)
+				if result.Flags()&(checker.TypeFlagsAnyOrUnknown|checker.TypeFlagsVoid|checker.TypeFlagsTypeVariable) == 0 && !isEffectfulType(c, result) {
+					return true
+				}
+			}
+		}
+	}
 	if ast.IsFunctionDeclaration(home) || ast.IsMethodDeclaration(home) {
 		if symbol := c.GetSymbolOfDeclaration(home); symbol != nil && len(symbol.Declarations()) > 1 {
 			return true

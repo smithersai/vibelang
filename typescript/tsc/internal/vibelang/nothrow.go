@@ -54,7 +54,7 @@ func checkThrowsOutsideEffect(c *checker.Checker, file *ast.SourceFile) {
 		if parser.IsVibeLangModuleDeclaration(node) {
 			return false // a module block's body is TypeScript
 		}
-		if node.Kind == ast.KindThrowStatement {
+		if node.Kind == ast.KindThrowStatement && !isSynthesizedCatchRethrow(node) {
 			if home := a.plainHomeOf(node); home != nil {
 				if home.Kind == ast.KindSourceFile {
 					report(c, node, throwAtTopLevel)
@@ -71,6 +71,14 @@ func checkThrowsOutsideEffect(c *checker.Checker, file *ast.SourceFile) {
 		return node.ForEachChild(visit)
 	}
 	file.AsNode().ForEachChild(visit)
+}
+
+// isSynthesizedCatchRethrow reports whether node is the rethrow the parser
+// writes for a typed catch clause (vibelangCatchChain). It isn't in the source:
+// the retired clause reports EK2105 or EK2112 for itself.
+func isSynthesizedCatchRethrow(node *ast.Node) bool {
+	operand := node.Expression()
+	return node.Flags&ast.NodeFlagsReparsed != 0 && ast.IsIdentifier(operand) && operand.Flags&ast.NodeFlagsReparserTransformedLiteral != 0
 }
 
 // knownThrows returns what node, a call or new expression, is known to throw

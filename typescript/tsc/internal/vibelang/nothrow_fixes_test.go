@@ -16,6 +16,20 @@ import (
 func TestThrowOutsideEffectCodeFixes(t *testing.T) {
 	for _, test := range []struct{ name, source, titles, title, want string }{
 		{
+			"callback whose parameter wants a value",
+			"export function run(f: () => number) { return f() }\nexport const v = run(() => { throw \"x\" })",
+			"",
+			"",
+			"",
+		},
+		{
+			"callback whose parameter ignores its result",
+			"export function run(f: () => void) { f() }\nexport const v = run(() => { throw \"x\" })",
+			"Make this function an effect function|Make this function an effect function and fail with a defect: die",
+			"Make this function an effect function",
+			"export function run(f: () => void) { f() }\nexport const v = run(effect () => { throw \"x\" })",
+		},
+		{
 			"declaration",
 			"error Bad\nexport function f(x: number): number {\n  if (x < 0) throw new Bad()\n  return x\n}",
 			"Make f an effect function|Make f an effect function and fail with a defect: die",

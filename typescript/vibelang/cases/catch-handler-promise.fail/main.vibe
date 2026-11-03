@@ -17,6 +17,5 @@ export effect function functionHandler() { return x catch function (e: string) {
 
 // Controls: no EK0507.
 export effect function valueHandler() { return x catch (e) => 7 }
-export effect function throwHandler() { return x catch (e) => { throw e } }
 export effect function anyHandler() { return x catch (e) => (e as any) }
 export effect function effectHandler() { return x catch effect (e) => try Effect.promise(() => queryDb(e)) }

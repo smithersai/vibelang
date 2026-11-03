@@ -5,14 +5,7 @@
 // module declaration's body, which is TypeScript, keeps JavaScript's throw.
 error Bad { why: string }
 
-// A constructor of an error class (D278) and of an ordinary class.
-error Invalid {
-  constructor(raw: string) {
-    super()
-    if (raw === "") throw new Bad({ why: "empty" })
-  }
-}
-
+// A constructor of an ordinary class. An error declaration has none (EK1301).
 class Port {
   constructor(readonly value: number) {
     if (value < 0) throw new Bad({ why: "negative" })
@@ -66,5 +59,5 @@ const missing: string | undefined = undefined
 export const name = missing ?? throw new Bad({ why: "expression" })
 
 export function main() {
-  return [new Invalid("x"), new Port(1), new Gauge(), Registry, new Retry()]
+  return [new Port(1), new Gauge(), Registry, new Retry()]
 }
