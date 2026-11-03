@@ -31,8 +31,12 @@ const resolution=ts.resolveModuleName("cli/dist/internal.js",consumer,options,ts
 assert.ok(resolution?.resolvedFileName.endsWith("dist/internal.d.ts"),JSON.stringify(resolution))
 assert.deepEqual(ts.getPreEmitDiagnostics(ts.createProgram([consumer],options)).map(d=>d.code),[])
 const comparison=compareDeclarations(ts,join(root,"before"),join(root,"after"))
-fc.assert(fc.property(fc.constantFrom("internal","nested/type","api/value"),fc.constantFrom("a","b","tool"),(path,name)=>{
+fc.assert(fc.property(fc.constantFrom("internal","nested/type","api/value"),fc.constantFrom("a","b","tool"),fc.boolean(),(path,name,rootTypes)=>{
  for(const [snapshot,text] of [["before","/** shipped "+name+" */\nexport type X = 'a' | 'b';\n"],["after","export type X = 'b' | 'a';\n"]]){
+  rmSync(join(root,snapshot),{recursive:true,force:true})
+  mkdirSync(join(root,snapshot,"dist"),{recursive:true})
+  writeFileSync(join(root,snapshot,"package.json"),JSON.stringify({...manifest,...(rootTypes?{types:"./dist/index.d.ts"}:{})}))
+  if(rootTypes)writeFileSync(join(root,snapshot,"dist/index.d.ts"),"export interface Root {value:string}\n")
   const target=join(root,snapshot,"dist",path+".d.ts")
   mkdirSync(join(target,".."),{recursive:true});writeFileSync(target,text)
  }

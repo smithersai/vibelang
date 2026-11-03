@@ -1,3 +1,9 @@
+// Chapter 007 / all project errors and warnings: docs/design/src/007-tooling.md#15266554647f83d7
+// Chapter 007 / public backend contract survives private narrowing: docs/design/src/007-tooling.md#8cb12d2692cf3a47
+// Chapter 007 / unrelated in-root native TypeScript diagnostics: docs/design/src/007-tooling.md#885c1b87f3457a45
+// Chapter 007 / Vibe output scope does not define diagnostic scope: docs/design/src/007-tooling.md#f6e2ee3d8da7d780
+// Chapter 007 / answer module project fixture: docs/design/src/007-tooling.md#54ff93673cf59133
+// Chapter 007 / full stock native project error control: docs/design/src/007-tooling.md#1b6cc374970d4910
 import assert from "node:assert/strict"
 import { mkdirSync, writeFileSync, symlinkSync, rmSync } from "node:fs"
 import { spawnSync } from "node:child_process"

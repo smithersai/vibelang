@@ -1,3 +1,4 @@
+// Chapter 007 / generated tag, custom matcher and retained fixed guard distinction: docs/design/src/007-tooling.md#6a91c4b25b602d72
 // A class arm over a closed class removes its class and every class below it
 // (D407, D428): an error declaration, a schema error, a family's base, and an
 // error class of effect cover a match with no default arm.
