@@ -362,6 +362,8 @@ Only a successful read with no test script skips the test step.
 
 The optional ESLint suite uses `fixtures/forms.vibe` as a clean source witness. Its `match` arms must end with `;`, including the final arm. `match-arm-fixture.property.test.mjs` checks the real fixture for recovered invalid arms and exercises generated layouts while retaining warnings on authored multiline calls.
 
+`error_constructor_members_test.go` checks that plain error payload fields and source methods survive together, including a field named `constructor`. The optional ESLint suite also checks the minimized compiler-case pattern and generated field names, getters, trivia and Unicode positions; an authored unused parameter must still be reported.
+
 ## Source labels in the ESLint corpus
 
 The ESLint corpus includes formatter and control-flow fixtures with deliberately

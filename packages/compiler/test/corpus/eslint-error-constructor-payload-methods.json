@@ -1,0 +1,8 @@
+{
+  "key": "vibelangestree:error-constructor-field-methods",
+  "source": "typescript/vibelang/cases/error-constructor-field/main.vibe",
+  "oracle": "VIP-34: Existing tools work; plain error payloads and written methods retain their source names and scopes.",
+  "input": {
+    "code": "export error Failure { constructor: string; get label() { return this.constructor } }\n"
+  }
+}

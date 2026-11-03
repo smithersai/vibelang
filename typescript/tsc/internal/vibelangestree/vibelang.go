@@ -628,6 +628,18 @@ func (c *converter) errorBody(n *ast.Node, fields *ast.Node) *obj {
 		property.set("value", nil)
 		properties = append(properties, property)
 	}
+	// Class-source reparsing can reject a payload named constructor as a
+	// TypeScript constructor declaration. Its written methods still belong
+	// to this error, alongside the fields retained in the TaggedError type.
+	for _, member := range listNodes(n.ClassLikeData().Members) {
+		if !synthesized(member) && member.Kind != ast.KindSemicolonClassElement {
+			properties = append(properties, c.convertChild(member, n))
+		}
+	}
+	open, kind := c.tokenAfter(n.Name().End())
+	if kind == ast.KindOpenBraceToken {
+		return c.nodeAt(span{open.start, n.End()}, "ClassBody").set("body", properties)
+	}
 	return c.node(fields, "ClassBody").set("body", properties)
 }
 
