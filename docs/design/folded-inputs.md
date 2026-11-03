@@ -95,3 +95,13 @@ Folded: sidecar-outside-root.patch (already stated at docs/design/src/007-toolin
 Folded: 1793693984-sl18-fix-astra-3.patch (already stated at docs/design/src/007-tooling.md:54)
 
 Will’s module-resolution ruling and VIP-27 govern the simplified text. Sidecar ownership/root inference was already present. The old source-extension rewriting prose is superseded: tsc 5.9.3 declaration emit preserves a written ./dep.ts with rewriteRelativeImportExtensions=true; the VibeLang twin preserves ./dep.vibe. JavaScript rewriting is separate. Generated old-resolution tables are not restored as normative chapters.
+
+## reconcile declaration spelling with the TypeScript twin
+
+Folded: 1793682039-declstyle-from-tsc.patch (applied at docs/design/src/001-functions.md:564)
+
+Folded: 1793667173-rc-entry1.patch (applied at docs/design/src/001-functions.md:484)
+
+Folded: 1793657310-vip3-sugar.patch (already stated at docs/design/src/900-appendices.md:1155)
+
+VIP-27/VIP-30’s later TypeScript-twin amendment wins over the patch’s old rule changing .vibe to .ts in declarations; written declaration specifiers remain written. tsc 5.9.3 emits ./dep.ts unchanged even with rewriteRelativeImportExtensions=true. The obsolete declarationImportStyle paths are ignored for every value with a nonfatal warning; no spelling option returns. VIP-3’s infer-slot retirement and VIP-26’s lexical main binding were already stated.

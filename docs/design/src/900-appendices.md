@@ -1291,6 +1291,8 @@ Imported rules from `@effect/tsgo@0.57.0` (commit `999942fa41462eb46dfcb2d718e76
 
 <!-- lint-codes:end -->
 
+The old `EK4843` entry-point warning is retired and will never be reassigned. Under VIP-26 an exported lexical `main` keeps its ordinary binding, with no entry warning or declaration-changing quick fix.
+
 ## Appendix C. Denied and open VIPs
 
 ### Denied VIPs
