@@ -878,6 +878,29 @@ export function removeVibeLangSetting(text, ts, key) {
 }
 
 /**
+ * A tsconfig's text without the `"moduleSuffixes": ["", ".d.vibe"]` an earlier
+ * setup wrote (Smithers: 76 tsconfigs). Bun warns on that option, so `bun build`
+ * writes to stderr where the TypeScript twin writes nothing. Any other value is
+ * the repository's own. ts is TypeScript's compiler API.
+ */
+export function removeWrittenModuleSuffixes(text, ts) {
+  const file = ts.parseJsonText("tsconfig.json", text)
+  const root = file.statements[0]?.expression
+  if (!root || !ts.isObjectLiteralExpression(root)) return text
+  const nameOf = (p) => ts.isPropertyAssignment(p) && p.name && (ts.isStringLiteral(p.name) || ts.isIdentifier(p.name)) ? p.name.text : undefined
+  const options = root.properties.find((p) => nameOf(p) === "compilerOptions")?.initializer
+  if (!options || !ts.isObjectLiteralExpression(options)) return text
+  const suffixes = options.properties.find((p) => nameOf(p) === "moduleSuffixes")
+  const elements = suffixes && ts.isArrayLiteralExpression(suffixes.initializer) ? suffixes.initializer.elements : []
+  if (elements.length !== 2 || !elements.every(ts.isStringLiteral) || elements[0].text !== "" || elements[1].text !== ".d.vibe") return text
+  const list = options.properties
+  const index = list.indexOf(suffixes)
+  if (index < list.length - 1) return text.slice(0, suffixes.getFullStart()) + text.slice(list[index + 1].getFullStart())
+  if (index > 0) return text.slice(0, list[index - 1].end) + text.slice(suffixes.end)
+  return text.slice(0, options.getStart(file) + 1) + text.slice(options.end - 1)
+}
+
+/**
  * Widen a tsconfig's include and exclude selectors to the same migrated
  * modules: .ts/.mts become .vibe, and .tsx becomes .vibex (VIP-39).
  * Directory patterns already match both. Declaration selectors stay as

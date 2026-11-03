@@ -871,7 +871,7 @@ function wirePackages({ t, ts, packages, specsFor, writeIfChanged, warnings, lay
       // Each compile writes x.d.vibe.ts beside x.vibe, which every other TypeScript checker reads,
       // and the project lists .vibe files where it lists .ts files. An earlier setup's
       // declarationSidecars setting is retired: the compiler rejects it (TS5023).
-      const current = Wire.removeVibeLangSetting(text, ts, "declarationSidecars")
+      const current = Wire.removeWrittenModuleSuffixes(Wire.removeVibeLangSetting(text, ts, "declarationSidecars"), ts)
       // ".js" is the default, so an earlier setup's other spelling goes; mixed sources keep what the file says.
       const styled = !spelling.style ? current
         : spelling.style === ".js" ? Wire.removeVibeLangSetting(current, ts, "declarationImportStyle")
@@ -1004,6 +1004,12 @@ export async function wireTarget(config, log) {
     const path = join(t, reaching.dir, "package.json")
     const next = Wire.addCompilerScripts(reaching.manifest, specsFor(reaching.dir).vibelang)
     if (JSON.stringify(next) !== JSON.stringify(reaching.manifest)) writeIfChanged(path, readFileSync(path, "utf8"), JSON.stringify(next, null, 2) + "\n")
+  }
+  // An earlier setup's moduleSuffixes goes from every project, wired or not: Bun warns on it wherever it reads the config.
+  for (const tsconfig of Wire.ownedTsconfigs(t).filter(file => !isProtectedFile(file))) {
+    const file = join(t, tsconfig)
+    const text = readFileSync(file, "utf8")
+    writeIfChanged(file, text, Wire.removeWrittenModuleSuffixes(text, ts))
   }
   // Every project resolves an import of ./x.vibe to its sidecar, as stock TypeScript does under this option.
   for (const tsconfig of Wire.rootTsconfigs(t, ts)) {
