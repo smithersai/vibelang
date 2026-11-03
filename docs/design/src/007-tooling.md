@@ -266,7 +266,9 @@ A forbidden write is refused with a not-fixed explanation and no change. A rewri
 
 Generated synchronous defect bridges use `Effect.orDie(Effect.try({ try: () => call(), catch: identity }))` with `identity` from `effect/Function`, reusing an existing visible import or choosing an unshadowed binding. The catch mapper adds no local function to the migrated module's coverage.
 
- [Scope flags](#fix-scopes) select passes; [`--only`](#selecting-ordinary-fix-files) further limits ordinary repairs.
+A program held in a variable keeps its initializer's original evaluation point: constructing the program and running it are distinct. The migration preserves eager factory calls, argument evaluation and closure state shared by repeated runs; it does not introduce a deferred factory around the initializer.
+
+[Scope flags](#fix-scopes) select passes; [`--only`](#selecting-ordinary-fix-files) further limits ordinary repairs.
 
 ### Trailing-block migration
 

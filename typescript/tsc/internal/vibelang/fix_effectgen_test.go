@@ -93,7 +93,7 @@ func TestEffectGenQuickFixes(t *testing.T) {
 		{"a default parameter stays bound at the call", "export function f(id = \"a\") {\n  return Effect.gen(function* () {\n    return yield* Effect.succeed(id)\n  })\n}\n",
 			"export function f(id = \"a\") {\n  return effect {\n    return id\n  }\n}\n"},
 		{"a program held in a const", "export const f = () => Effect.gen(function* () {\n  const p = Effect.succeed(1)\n  return yield* p\n})\n",
-			"export const f = effect () => {\n  const p = effect { return try Effect.succeed(1) }\n  return try p\n}\n"},
+			"export const f = effect () => {\n  const p = Effect.succeed(1)\n  return try p\n}\n"},
 		{"a throw is a defect", "export const f = (n: number) => Effect.gen(function* () {\n  if (n < 0) throw new Error(\"negative\")\n  return yield* Effect.succeed(n)\n})\n",
 			"export const f = effect (n: number) => {\n  if (n < 0) return try Effect.die(new Error(\"negative\"))\n  return n\n}\n"},
 		{"Effect.fn", "export const f = Effect.fn(function* (n: number) {\n  return yield* Effect.succeed(n)\n})\n",

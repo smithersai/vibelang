@@ -326,14 +326,9 @@ func planEffectGenWith(c *checker.Checker, file *ast.SourceFile, call *ast.Node,
 		}
 		edits = append(edits, sourceEdit{start, nodeStart(file, operand), "return try " + g.module + ".die("}, sourceEdit{operand.End(), operand.End(), ")"})
 	}
-	for _, held := range scan.held {
-		open, close := "effect { return try ", " }"
-		if (isPipe(ast.SkipParentheses(held)) || isPipeCall(held)) && !ast.IsParenthesizedExpression(held) {
-			open, close = "effect { return try (", ") }"
-		}
-		start := nodeStart(file, held)
-		edits = append(edits, sourceEdit{start, start, open}, sourceEdit{held.End(), held.End(), close})
-	}
+	// A held program is constructed at this binding and reused when run.
+	// Boxing its initializer would defer argument evaluation and recreate
+	// factory-owned state on every use.
 
 	opening := nodeStart(file, outer)
 	var fn *ast.Node
