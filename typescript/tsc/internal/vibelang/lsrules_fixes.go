@@ -101,6 +101,12 @@ var callEffectFix = &ls.CodeFixProvider{
 		}
 		called := analyzerFor(c).programOf(c.GetTypeAtLocation(value)) != nil
 		done()
+		// VIP-1 / VIP-5 return a held program as data. Only the distinct
+		// inferred-argument diagnostic has Chapter 7's explicit run repair;
+		// a returned Effect still has no automatic execution repair.
+		if fix.ErrorCode == EK4802.Code && !genericArgument {
+			return nil, nil
+		}
 		uncallable := some && !all
 		if uncallable {
 			return nil, nil // a member of its union is no program, so calling it does not check

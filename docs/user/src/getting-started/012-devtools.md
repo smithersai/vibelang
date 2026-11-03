@@ -598,3 +598,6 @@ Completion and token navigation accept `service`, `error`, and `schema error` de
 Signature help accepts positions throughout an `error` declaration, including comments and whitespace before payload fields.
 
 Renaming a service also updates its `Shape` qualifiers, including qualified names and imported aliases.
+
+For an inferred Effect argument such as `expect(awaited())`, `EK4802` offers `expect(try awaited())` when the function's written error and requirement channels accept it. Batch `--fix` applies that direct-argument repair only if checking accepts it. Arrays and callbacks need an explicit repair at the construction site. A returned Effect remains data and has no automatic execution repair.
+ The historical `--fix-vip-only` migration keeps its separate run-phase rules.

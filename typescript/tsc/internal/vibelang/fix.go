@@ -1604,7 +1604,7 @@ func fileFixes(ctx context.Context, program *compiler.Program, file *ast.SourceF
 	seen := map[string]bool{}
 	for _, d := range diagnostics {
 		// Providers opt their native diagnostics in explicitly.
-		if (d.Source() == diagnosticSource || d.Source() == "" && slices.Contains(nativeFixCodes, d.Code())) && (slices.Contains(codes, d.Code()) || d.Code() == EK4802.Code && strings.Contains(d.MessageText(), "infers an Effect in a plain function")) && d.File() == file {
+		if (d.Source() == diagnosticSource || d.Source() == "" && slices.Contains(nativeFixCodes, d.Code())) && slices.Contains(codes, d.Code()) && d.File() == file {
 			// The syntactic and semantic lists can both carry one diagnostic;
 			// identify it by position, not text, so two spellings of the same
 			// type on different lines keep their own fixes.
