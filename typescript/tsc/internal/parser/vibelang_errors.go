@@ -136,7 +136,9 @@ func (p *Parser) parseErrorDeclaration(pos int, jsdoc jsdocScannerInfo, modifier
 		p.nextToken()
 		d.mutable = map[*ast.Node]bool{}
 		saveAbstract, saveFieldBody, saveReadonly, saveService := p.vibelangAbstractMembers, p.vibelangFieldBody, p.vibelangImplicitReadonly, p.vibelangServiceMembers // an error inside a service body is not one of its members
-		p.vibelangAbstractMembers, p.vibelangFieldBody, p.vibelangImplicitReadonly, p.vibelangServiceMembers = false, true, true, false
+		// Payload keys gain readonly when their signatures are synthesized below.
+		// Nested types and method bodies keep TypeScript mutability (VIP-13/29).
+		p.vibelangAbstractMembers, p.vibelangFieldBody, p.vibelangImplicitReadonly, p.vibelangServiceMembers = false, true, false, false
 		list := p.parseList(PCClassMembers, func(p *Parser) *ast.Node {
 			if p.vibelangNoSeparator {
 				return p.parseVibeLangNoSeparator()

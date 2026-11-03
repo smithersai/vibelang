@@ -19,6 +19,8 @@ failure rules from 0.0.10 still apply.
 
 ### Upgrade from 0.0.10
 
+- Error payload readonlyness is shallow. To retain the old implicit readonly modifiers in nested payload types and method types, run `vibelang --fix --fix-migration-only`.
+
 - Run `vibelang --fix` to update imports and re-exports of older generated `data` helpers while preserving local bindings and exported names; native TypeScript consumers remain unchanged and need an explicit helper-import update.
 
 - To preserve interface and object-type APIs that relied on implicit readonly members, run `vibelang --fix --fix-migration-only` on those legacy modules before publishing their new declarations.
@@ -180,6 +182,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Bun emitted-source forwarding preserves live bindings and native TypeScript export erasure; its export inspection now has independent native-namespace regression coverage without executing source modules.
 - `var` declarations silently compiled despite the language restriction; every source `var` now reports `EK0107`, while ordinary property names and strings remain valid. Rewrite the declaration with its scope in mind; there is no blanket `var` to `let` quick fix.
+
+- Nested object properties and method types inside an `error` or `schema error` were implicitly readonly, so ordinary TypeScript writes failed. Nested types now keep their written mutability; payload keys remain readonly.
 - A service with a written shape annotation gained an extra public `Shape` namespace in its declarations. It now keeps the written shape directly and exposes no implicit namespace outside its own body.
 - Migration setup could add source-loader helpers to JavaScript CLI launches merely because later arguments were dynamic, introducing unnecessary install-time dependencies. Proven JavaScript entrypoints now keep their native launch; unknown and typed source entrypoints retain loader handling.
 - Reverting converted Mobile dependencies keeps the original import spellings in converted consumers; a named T3code corpus now protects this across both migration record formats.

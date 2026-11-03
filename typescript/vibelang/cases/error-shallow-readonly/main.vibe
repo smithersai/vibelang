@@ -1,0 +1,31 @@
+export error Plain {
+  value: { count: number }
+  values: { count: number }[]
+  make(): { count: number } { return { count: 1 } }
+  update(input: { count: number }): void { input.count = 4 }
+  local(): number {
+    const input: { count: number } = { count: 1 }
+    input.count = 5
+    return input.count
+  }
+}
+export schema error Serializable {
+  value: { count: number }
+  values: { count: number }[]
+  make(): { count: number } { return { count: 1 } }
+  update(input: { count: number }): void { input.count = 4 }
+  local(): number {
+    const input: { count: number } = { count: 1 }
+    input.count = 5
+    return input.count
+  }
+}
+export function mutate(error: Plain | Serializable): readonly number[] {
+  error.value.count = 2
+  error.values[0]!.count = 3
+  const result = error.make()
+  result.count = 6
+  const input = { count: 1 }
+  error.update(input)
+  return [error.value.count, error.values[0]!.count, result.count, error.local(), input.count]
+}
