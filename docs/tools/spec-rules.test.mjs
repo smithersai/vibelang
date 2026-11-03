@@ -309,3 +309,17 @@ test("fast-check: property signatures use their declared option root", () => fix
     assert.equal(rejected, owner !== "vibe")
   }), { seed: 30268, numRuns: 30 })
 }))
+
+test("folded retired diagnostic references do not become current assignments", () => {
+  assert.deepEqual(lintRegistry(repository).filter(f => f.severity === "error" && /EK1020|EK4843/.test(f.message)), [])
+})
+test("fast-check: retired diagnostics remain historical while an unmarked assignment fails", () => fixture(root => {
+  // VIP-1: "the old EK1020 check is deleted"; VIP-26: "Old VibeLang (D135, D517, EK4843)".
+  const path = join(root, "docs/design/src/999-retired-diagnostic.md")
+  fc.assert(fc.property(fc.constantFrom("EK1020", "EK4843"), fc.constantFrom("old", "retired", "obsolete"), (code, history) => {
+    writeFileSync(path, "The " + history + " `" + code + "` check is removed.\n")
+    assert.ok(!lintRegistry(root).some(f => f.path.endsWith("999-retired-diagnostic.md")))
+    writeFileSync(path, "The `" + code + "` check applies.\n")
+    assert.ok(lintRegistry(root).some(f => f.path.endsWith("999-retired-diagnostic.md") && f.severity === "error" && f.message.includes(code)))
+  }), { seed: 310219, numRuns: 24 })
+}))
