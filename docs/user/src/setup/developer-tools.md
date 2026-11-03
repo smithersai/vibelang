@@ -228,7 +228,7 @@ lines and columns:
 | --- | --- |
 | Starts on source text | Reported at the source position |
 | Starts on text the projection generated, such as `require-yield` on a lowered `function*` | Dropped |
-| `no-unused-vars` on an `effect` import, which declarations keep (D501) | Dropped, as in `vibelang/eslint` |
+| `no-unused-vars` on an `effect` import, which declarations keep | Dropped, as in `vibelang/eslint` |
 | `no-unsafe-declaration-merging` where the source does not write both an `interface` and a `class` of that name, such as a `service` | Dropped |
 | `no-unexpected-multiline` on the `(` of a `try (x)` at a line's start, and `no-unused-expressions` on the value of a `match` arm | Dropped |
 | A module the projection leaves unparsable | A `vibelang(unprojected)` warning on that module, because it got no rules |

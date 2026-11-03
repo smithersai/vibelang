@@ -176,6 +176,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - The TS7 mapper stopped parsing every `for try` loop after its head began lifting the Stream into a separate scope. The mapper now keeps the loop as written.
 - The TS7 mapper crashed on `x catch function (e) { ... }`, because it read every handler as an arrow function. It now projects a function expression handler.
 
+- Release checks used the old API comparison helper set and Go package census. They now include the split ambient helper and language-service package.
+
 - Catch-repair checks also failed on obsolete throws annotations in their VibeLang fixtures. Their sources now follow the no-throw rule while retaining the repair and comment assertions.
 
 - The ESLint tree check missed source functions inside an effect block. It now visits the generated builder call and checks those functions.

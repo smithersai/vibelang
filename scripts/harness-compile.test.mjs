@@ -29,7 +29,7 @@ function fixture(t, { diagnostic = "", header = "", identity = false, identityAf
   if (expectedDiagnostics) put(at + "/expected/diagnostics.txt", diagnostic.replace(/: [^:]*$/, "") + "\n")
   if (identity) {
     put(at + "/typescript/tsconfig.json", "{}")
-    for (const file of ["api-identity.mjs", "api-identity-nominal.mjs"])
+    for (const file of ["api-identity.mjs", "api-identity-ambient.mjs", "api-identity-nominal.mjs"])
       put("scripts/" + file, readFileSync(new URL("./" + file, import.meta.url)))
     mkdirSync(join(root, "docs/tools/node_modules"), { recursive: true })
     symlinkSync(new URL("../docs/tools/node_modules/typescript", import.meta.url).pathname, join(root, "docs/tools/node_modules/typescript"))
