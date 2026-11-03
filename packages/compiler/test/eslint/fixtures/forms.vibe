@@ -315,7 +315,7 @@ export function describe(id: string) {
   } catch (e) {
     return match (e) {
       when NotFound: `no user ${e.id}`;
-      default: throw e
+      default: throw e;
     }
   }
 }
