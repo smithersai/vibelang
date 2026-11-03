@@ -1,0 +1,10 @@
+// expect: TS1360
+data D { A; B { n: number } }
+function f(s: D) {
+  L: { return 1 }
+  return match (s) {
+    when { _tag: "A" }: 0;
+    when { _tag: "B", let n }: n satisfies string;
+  }
+}
+export {}

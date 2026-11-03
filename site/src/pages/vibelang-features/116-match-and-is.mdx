@@ -269,6 +269,8 @@ The compiler reports `EK0705` for an `is` binding that would need formal-paramet
 
 ## Exhaustiveness
 
+A match after an unconditional `return` or `throw` still checks finite coverage and the types of its extracted bindings. An exhaustive unreachable match compiles; a missing case still reports `EK4701`. The unreachable subject and arms do not run. Source references keep TypeScript’s ordinary unreachable-code narrowing rules.
+
 `match` is exhaustive for the specified finite cases. Without a `default` arm, `EK4701` checks a match when every normalized subject member is a supported finite case. These include literals, `boolean`, `null`, `undefined`, enums, data variants, `error` and `schema error` instances, `Option`, `Exit` and `Result` cases, retained Effect errors, and tagged members.
 
 An object, interface or class instance is tagged when its `_tag` has a literal type or a union of literal types. Only `_tag` counts as a discriminant. Each tag literal is a case. An optional `_tag` also has an `undefined` case. Members sharing a literal `_tag` are covered by that tag pattern even where TypeScript does not narrow the whole union. An error-class pattern also covers plain objects with the same tag; a member with several tag cases still needs all its cases covered.

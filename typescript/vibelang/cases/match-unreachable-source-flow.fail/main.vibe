@@ -1,0 +1,8 @@
+// expect: TS2339
+type D = { _tag: "A" } | { _tag: "B"; n: number }
+function f($match1: D) {
+  L: { return 1 }
+  if ($match1._tag === "B") return $match1.n
+  return 0
+}
+export {}

@@ -38,6 +38,7 @@ type SharedFlow struct {
 }
 
 type FlowState struct {
+	unreachablePatternCoverage bool
 	reference        *ast.Node
 	declaredType     *Type
 	initialType      *Type
@@ -106,7 +107,12 @@ func (c *Checker) getFlowTypeOfReferenceEx(reference *ast.Node, declaredType *Ty
 			if doTemporary != nil {
 				return c.neverType
 			}
-			return declaredType
+			return c.unreachablePatternCaptureType(reference, declaredType)
+		}
+	}
+	if flowNode.Flags&ast.FlowFlagsUnreachable != 0 {
+		if narrowed := c.unreachablePatternCaptureType(reference, declaredType); narrowed != declaredType {
+			return narrowed
 		}
 	}
 	// A do result is read from a parser-written completion temporary. Unlike
@@ -469,6 +475,9 @@ func (c *Checker) getTypeAtFlowCondition(f *FlowState, flow *ast.FlowNode) FlowT
 // Narrow the given type based on the given expression having the assumed boolean value. The returned type
 // will be a subtype or the same type as the argument.
 func (c *Checker) narrowType(f *FlowState, t *Type, expr *ast.Node, assumeTrue bool) *Type {
+	if f.unreachablePatternCoverage && !assumeTrue && c.isUnreachableUnionValuePattern(expr) {
+		return t
+	}
 	for _, hook := range flowNarrowingHooks {
 		if narrowed := hook(c, f.reference, t, expr, assumeTrue, func(reference *ast.Node, aliasType *Type, aliasExpr *ast.Node) *Type {
 			alias := *f

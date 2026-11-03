@@ -4128,6 +4128,7 @@ typescript/vibelang/cases/match-throw-plain.fail/main.vibe:6:79 lambda dual fall
 typescript/vibelang/cases/match-throw-plain.fail/main.vibe:8:69 lambda dual fallback
 typescript/vibelang/cases/match-undefined-pattern/main.vibe:16:14 lambda plain annotation
 typescript/vibelang/cases/match-undefined-pattern/main.vibe:17:12 lambda plain annotation
+typescript/vibelang/cases/match-unreachable-coverage/main.vibe:9:28 lambda dual fallback
 typescript/vibelang/cases/match-unused-names/main.vibe:17:16 lambda plain fallback
 typescript/vibelang/cases/match-unused-names/main.vibe:21:17 lambda dual fallback
 typescript/vibelang/cases/match-vip7-async-types/main.vibe:12:25 lambda plain table

@@ -1,0 +1,14 @@
+import { ev } from "./reference.js"
+data D0 { V0; V1 { n: number } }
+export effect function main() {
+  L1: {
+    ev("e0")
+    return 1
+  }
+  const d2 = ((1 > 0) ? D0.V1({ n: 1 }) : D0.V0()) as D0
+  const v0: number = match ((ev("e1"), d2)) {
+    when { _tag: "V0" }: 0;
+    when { _tag: "V1", n: let b3 }: b3;
+  }
+  return v0
+}

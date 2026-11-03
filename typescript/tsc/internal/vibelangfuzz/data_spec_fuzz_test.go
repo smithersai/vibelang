@@ -354,7 +354,8 @@ func dataRules() []dataRule {
 	rules = append(rules, dataPayloadMutabilityRules()...)
 	rules = append(rules, dataSchemaTypeMemberModifierRules()...)
 	rules = append(rules, dataOrdinaryExtractorRules()...)
-	return append(rules, dataReadonlyRecordAliasRules()...)
+	rules = append(rules, dataReadonlyRecordAliasRules()...)
+	return append(rules, dataUnreachableMatchRules()...)
 }
 
 const dataRuleTarget = "FuzzDataSpecRules"
