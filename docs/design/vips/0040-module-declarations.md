@@ -65,9 +65,22 @@ export function label(raw: string): string { return `port ${port(raw)}` }  // co
 
 The rule that decides every detail below:
 
-> **A body is a TypeScript file stored inside a `.vibe` file.** Moving the body to a sibling `.ts` file and replacing `from name` with that file's string specifier changes no diagnostic, type, emitted statement, declaration or run-time observation. A body may contain nothing that would stop that move from being a copy: no VibeLang syntax, no identifier specifier, no `import.meta`.
+> **A body is a TypeScript file stored inside a `.vibe` file.** Moving the body to a sibling `.ts` file, preserving its external-module classification as specified below, and replacing `from name` with that file's string specifier changes no diagnostic, type, emitted statement, declaration or run-time observation. Apart from the empty module marker needed to preserve that classification, the move is a copy: no VibeLang syntax, no identifier specifier, no `import.meta`.
 
-The rule is falsifiable by a differential test: compile every TypeScript module of the corpus once as a body and once as a sibling `.ts`, and compare. 
+The rule is falsifiable by a differential test: compile every TypeScript module of the corpus once as a body and once as a sibling `.ts`, preserving external-module classification in both, and compare.
+
+**Module classification.** A body is always an external module before binding and checking, even without a written import or export and regardless of `moduleDetection`. This follows its TC39 `ModuleBody` grammar and the no-shared-lexical-scope rule below. Its virtual TypeScript source, JavaScript output and declaration output preserve that classification, with an effective empty module marker when needed. The extracted `.ts`/`.tsx` twin and the move refactor add `export {}` when the unchanged body would otherwise be a script under the project's options. The marker exports no names; ordinary TypeScript module-option diagnostics still apply. A side-effect import in the containing file does not classify the body as a module.
+
+For example, `module privateState { const privateBodyValue = 7 }` imported by `import privateState;` keeps `privateBodyValue` private even with `moduleDetection: "legacy"`. Its extracted twin is:
+
+```ts
+// module-extraction-twin
+const privateBodyValue = 7
+export {}
+```
+
+A consumer containing `import "./privateState.js"; export const leaked = privateBodyValue` reports `TS2304` in both forms. Without the empty export, stock TypeScript treats the extracted file as a script and admits that leaked name, so the unchanged copy is not the twin.
+
 
 ## Syntax
 
@@ -175,7 +188,7 @@ Each tool reads a body as the `.ts` file it is, mapped into the `.vibe` file thr
 - **Formatter.** VibeLang's one formatter (VIP-34) formats the body as `.ts`/`.tsx` with the repository's settings, indented one level, without sorting its imports (D372). It never moves code into or out of a body.
 - **Linters.** The ESLint parser gives the declaration a `VibeModuleDeclaration { id, body }` node whose statements are typescript-estree's, with its own scope (main: `packages/compiler/eslint.mjs`), so typescript-eslint rules read it as TypeScript and VibeLang "prefer VibeLang syntax" rules skip it. Oxlint's JS-plugin rules apply where they apply to `.ts`. Knip counts the body's imports and unused exports.
 - **TypeScript mapper.** The one-file projector for stock TypeScript tools refuses bodies today (`EK9100`). It projects each body as its own virtual `.ts` file.
-- **Refactor *Move module to a `.ts` file*.** Writes the body to `parse.ts` beside the `.vibe` file (another name if taken, compared case-insensitively) and rewrites `from parse` to the string specifier. Always valid because of the copy rule. Offered in the editor, never run by `--fix`.
+- **Refactor *Move module to a `.ts` file*.** Writes the body to `parse.ts` beside the `.vibe` file (another name if taken, compared case-insensitively), adds `export {}` if needed to preserve external-module classification, and rewrites identifier specifiers, including side-effect imports, to the string specifier. Valid under the classification-preserving copy rule. Offered in the editor, never run by `--fix`.
 
 ## Diagnostics
 
