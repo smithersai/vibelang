@@ -299,6 +299,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - The fibers guide suggested Effect-body repairs inside ordinary async functions; it now shows `runPromise` bridges that run in the original Promise context.
 
 - Coverage and profiling with sharded Go tests could retain only one shard's measurements; profile output now comes from one complete test process.
+
+- Sharded Go tests could report success after a partitioning tool failed and omitted tests; any failed weighting, sorting, slicing or assignment stage now stops the run with a diagnostic.
 - The `EK0509` repair of an object-literal value fallback, `x catch { directory }`, wrote `() => { directory }`, a block that returns nothing, and refused with `TS2322`; it now writes `() => ({ directory })`.
 - After VIP-1, `vibelang --fix --fix-vip-only` left a call that ran inside a catch's head cold, as in `decode(fs.readFileString(path)) catch …` (`TS2375`, `EK9202`); it now writes the head as the program it was, `(effect { return decode(try fs.readFileString(path)) }) catch …`.
 
@@ -529,6 +531,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Compiler validation could report the documented arrow-head diagnostic `EK0109` as unsupported; it now recognizes the published rule.
 
+- Editor and compiler tests with a missing fixture package could fail with unrelated type or rewrite assertions; they now name the missing package directory and the `sh scripts/setup.sh` command before constructing the fixture.
+
 - Migration could break a plugin host that derives virtual module names from a resolved package entry and source-file extension; scope planning now keeps the observed packages native and records the source-enumeration cause, preserving the unchanged host.
 
 - The migrate flow rejected a native acquisition's unchanged `!Error` contract when its original function returned `Effect.callback<A, Error>`, as in foldkit's WebSocket example; it now recognizes that explicit returned channel when the callback becomes a platform service, while nested callbacks and changed contracts remain rejected.
@@ -546,6 +550,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - A closure created in a plain `for...of` loop's iterable expression could read an outer variable when the loop declared the same name in a destructured `let` or `const` head; it now captures the loop's uninitialized head binding and throws `ReferenceError`, as in TypeScript.
 
 - Quick-fix fuzz failures could show an existing error in another method when an edit added an error with the same code; they now show a diagnostic absent from the original program, while retaining the same error-count check.
+
+- Retired `await.all`, `await.race`, `await.any` and `await.allSettled` spellings in async code produced an unrelated parse error; they now report `EK1802` with async-context guidance and no effect-only automatic rewrite.
 
 - `vibelang --fix` deleted comments from legacy diagnostic maps, including empty maps and entries superseded by modern settings; it now keeps every comment in direct and extended configs, with the same settings and a stable second run.
 
@@ -573,6 +579,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - `vibelang --fix` could keep a repair that turned one existing error into two when one kept its message and the other kept its span; each existing error now accounts for at most one error after the repair, while changed messages and spans moved by edits still match.
 
 - The pattern-binding chapter cited unpublished decision numbers for binding homes and redeclarations. It now links a public VIP-7 amendment stating those same rules.
+
+- Native `await` warned about empty tuples, containers and objects with only a `Fiber` or `Deferred` marker; the warning now requires the corresponding interface, so these ordinary values compile even when the advisories are promoted to errors.
 - A typed catch clause whose binding destructures, such as `catch ({ id }: NotFound)`, crashed the compiler and the editor with `Unhandled case in Node.Text`; it now reports `EK2112`, suggesting `catch (e)`, and its quick fix leaves the pattern alone.
 
 - Bundling a package that mixed `.ts` and `.vibe` modules could include two copies of a shared service or schema, so a built CLI failed at startup although its tests passed. The bundler plugins now select the package's `vibelang-source` exports and preserve the bundler's existing conditions, keeping one source graph.
@@ -674,6 +682,10 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Piped compiler-case reports could lose diagnostics and the final summary when the harness exited; it now drains its output before returning the same success or failure status.
 
 - Compiler cases returning large Effect values could fail because their runner exited before printing the complete result; it now flushes the result and failure details before exiting.
+
+- An empty or whitespace-only `pending` file could hide a failing compiler case as an unowned pending result; the harness now reports the invalid marker as a failure before compiling and retains a diagnostic log.
+
+- Release checks could start a test-file worker for almost every CPU on a large host; they now run at most eight files at once while retaining every test and failure.
 - Awaiting a Fiber or Deferred in effect code reported an error using the configurable warning codes `EK4609` and `EK4610`; it now reports the fixed placement error `EK0102` separately, so advisory severity settings keep their meaning without allowing `await` in effect code.
 
 - `vibelang agents check` could report `no errors` and succeed when its compiler failed or was terminated; checks and hooks now fail with the compiler's status, signal or spawn error and standard error output, including failures caused by errors outside the selected files.
