@@ -326,6 +326,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - The editor could replace `Layer.mergeAll` with `wire`, switching a dependency from the caller's layer to a sibling layer. It now leaves the composition unchanged and explains that the provider must be chosen explicitly.
 
+- Private `trusted(impl, [])` wrappers had no migration away from the legacy trust form. `vibelang --fix` now rewrites safe direct calls through `Effect.try` and `Effect.orDie`, preserving the exact defect value and public declaration API; function values that escape remain for review.
 - The migration checks generated callback failure unions without their required parentheses and failed to parse them. They now write valid compound slots while checking the same preserved channels and refusal controls.
 
 

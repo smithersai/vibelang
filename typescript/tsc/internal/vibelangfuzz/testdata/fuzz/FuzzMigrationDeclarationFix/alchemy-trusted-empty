@@ -1,0 +1,2 @@
+go test fuzz v1
+string("-- main.vibe --\nimport { trusted } from \"vibelang-runtime\"\nconst Dialect = { integer: (n: number): number => n }\nconst integer = trusted(Dialect.integer, [])\nexport effect function value(n: number): number!! { return integer(n) }\n")

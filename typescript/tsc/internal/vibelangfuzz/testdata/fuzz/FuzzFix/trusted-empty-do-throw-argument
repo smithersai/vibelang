@@ -1,0 +1,2 @@
+go test fuzz v1
+string("-- main.vibe --\nimport { trusted } from \"vibelang-runtime\"\nconst safe = trusted((n: number): number => n, [])\nexport effect function main(): number!Error! { return safe(do { throw new Error(\"bad\"); 1 }) }\n")
