@@ -1,3 +1,5 @@
+// 006-data.md: ordinary schema keys admit a broad string domain
+// rule: docs/design/src/006-data.md#5410133e99bee15c
 // Chapter 006, decided detail 233: an ordinary schema's computed field keys
 // follow TypeScript's runtime object-literal computed property names, as the
 // emitted Schema.Struct fields object does. A concatenation, a call and a

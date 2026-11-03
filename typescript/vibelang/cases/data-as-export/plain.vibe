@@ -1,2 +1,4 @@
+// 006-data.md: data remains an ordinary identifier in export and expression positions
+// rule: docs/design/src/006-data.md#37b31ed7162e2d41
 import { Data } from "effect";
 export data as { Value }

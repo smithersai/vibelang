@@ -16,7 +16,7 @@ import (
 // (TestBugBashAwaitBinding, main 0d0c6b46ee6e).
 var awaitBindingRules = []struct {
 	key, text string
-	binding  bool
+	binding   bool
 }{
 	{"arrow-typed", "(await: number) => 1", true},
 	{"arrow-comma", "(await, b: number) => b", true},
@@ -40,7 +40,7 @@ var awaitBindingRules = []struct {
 // bindings go there.
 var awaitBindingPositions = []struct {
 	key, template string
-	topLevel     bool
+	topLevel      bool
 }{
 	{"declaration", "export const f = {X}\n", true},
 	{"argument", "const sink: unknown[] = []\nsink.push({X})\n", true},

@@ -1,3 +1,23 @@
+// 006-data.md: TestDataSpecRules/generic-default
+// rule: docs/design/src/006-data.md#8353b9ef2300dbee
+// 006-data.md: TestDataSpecRules/generic-constraint
+// rule: docs/design/src/006-data.md#5d4f39973bff21c6
+// 006-data.md: TestDataSpecRules/generic-limit
+// rule: docs/design/src/006-data.md#b534084f558d9ad2
+// 006-data.md: TestDataSpecRules/generic-constraint + generic-default
+// rule: docs/design/src/006-data.md#a51703f47dc6cc6c
+// 006-data.md: TestDataSpecRules/generic-1-hygiene through generic-4-hygiene and generic-limit
+// rule: docs/design/src/006-data.md#0f3220b3e461b03e
+// 006-data.md: TestDataSpecRules/class-pattern-data-type + class-pattern-data-type-extractor
+// rule: docs/design/src/006-data.md#4af217ad61362439
+// 006-data.md: TestDataSpecRules/data-constructor-nothrow
+// rule: docs/design/src/006-data.md#497a72acc29067fe
+// 006-data.md: TestDataSpecRules/data-variant-newline
+// rule: docs/design/src/006-data.md#90f5e16ae71ae1fe
+// 006-data.md: TestDataSpecRules/data-written-readonly + data-variant-newline + data-optional
+// rule: docs/design/src/006-data.md#911f92dc3820723b
+// 006-data.md: TestDataSpecRules/schema-reference-shadow + schema-reference-alias + schema-nonvalue-alias
+// rule: docs/design/src/006-data.md#b3bd8e7108efaca9
 // 006-data.md: TestDataSpecRules/schema-shallow-readonly + schema-shallow-mutable checks declaration admission and diagnostics
 // rule: docs/design/src/006-data.md#d15f534a13de9fa3
 // 006-data.md: TestDataSpecRules/schema-nonvalue-alias + schema-nonvalue-interface + schema-nonvalue-class checks declaration admission and diagnostics

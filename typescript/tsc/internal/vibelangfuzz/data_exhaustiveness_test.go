@@ -1,3 +1,7 @@
+// 006-data.md: an unchecked extra subject member disables closed-union coverage
+// rule: docs/design/src/006-data.md#b86b59cedbb8eb0a
+// 006-data.md: missing data/tagged alternatives trigger EK4701
+// rule: docs/design/src/006-data.md#cb731aded65134e8
 package vibelangfuzz
 
 // VIP-7 decided details 10, 78 and 102, quoted from the current chapter.

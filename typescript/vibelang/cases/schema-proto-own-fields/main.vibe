@@ -1,3 +1,9 @@
+// 006-data.md: missing and invalid proto values fail; string own fields decode
+// rule: docs/design/src/006-data.md#4b8c3ff9e39fdfa1
+// 006-data.md: proto input is validated rather than changing the schema-fields prototype
+// rule: docs/design/src/006-data.md#f00cc82285b4053d
+// 006-data.md: proto fields lower to computed own keys
+// rule: docs/design/src/006-data.md#d090e00684ff91b6
 // 006-data.md: emitted computed proto key preserves the field in Schema.Struct
 // rule: docs/design/src/006-data.md#5696ddfd55d75922
 // 006-data.md: unquoted, quoted, escaped and nested proto fields validate as own data properties

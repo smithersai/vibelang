@@ -1,3 +1,11 @@
+// 006-data.md: unprovable and conflicting decoded-key flags receive EK2109
+// rule: docs/design/src/006-data.md#ba17970a73609f7c
+// 006-data.md: decoded-key checks preserve the valid optional/writable controls
+// rule: docs/design/src/006-data.md#4e68acc8dbc10295
+// 006-data.md: FuzzSchemaDecodedKeyFlags checks required/readonly flags through aliases and nested structs
+// rule: docs/design/src/006-data.md#6ca4a34788ff9acb
+// 006-data.md: FuzzSchemaDecodedKeyFlags checks required/readonly flags through aliases and nested structs
+// rule: docs/design/src/006-data.md#932ecac7334d0a8f
 package vibelangfuzz
 
 import (

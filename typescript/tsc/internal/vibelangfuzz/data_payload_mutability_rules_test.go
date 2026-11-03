@@ -1,3 +1,5 @@
+// 006-data.md: payload readonly typing, nested values and constructor input contracts
+// rule: docs/design/src/006-data.md#7704d37d07cfd318
 package vibelangfuzz
 
 // VIP-16: TaggedEnum makes only variant keys readonly; payload types keep native mutability.

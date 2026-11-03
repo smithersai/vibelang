@@ -1,3 +1,5 @@
+// 006-data.md: schema-error-default-export cases require error-form EK1305
+// rule: docs/design/src/006-data.md#a9cf713695c4deb2
 package vibelangfuzz
 
 import (

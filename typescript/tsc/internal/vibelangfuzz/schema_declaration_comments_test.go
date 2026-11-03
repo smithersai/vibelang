@@ -1,3 +1,7 @@
+// 006-data.md: removeComments and stripInternal preserve native declaration behavior
+// rule: docs/design/src/006-data.md#6f42980fb6df70ed
+// 006-data.md: schema and data JSDoc attachment and declaration emission
+// rule: docs/design/src/006-data.md#f5211dee12b7b0f9
 package vibelangfuzz
 
 import (

@@ -1,3 +1,7 @@
+// 006-data.md: generic-1 through generic-4 compare emitted WithGenerics constructor contracts
+// rule: docs/design/src/006-data.md#5b286039eb01f158
+// 006-data.md: schema/data declaration consumers compare exact type and constructor contracts against independently emitted Effect counterparts
+// rule: docs/design/src/006-data.md#e72b20e8fe4c264b
 package vibelangfuzz
 
 import (

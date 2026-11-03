@@ -1,3 +1,9 @@
+// 006-data.md: codec transport witnesses retain bigint, explicit string encoding, symbol keys and nonfinite-number behavior
+// rule: docs/design/src/006-data.md#c04482d1bb169c47
+// 006-data.md: codec transport witnesses retain bigint, explicit string encoding, symbol keys and nonfinite-number behavior
+// rule: docs/design/src/006-data.md#ee94796c9b811fb8
+// 006-data.md: codec transport witnesses retain bigint, explicit string encoding, symbol keys and nonfinite-number behavior
+// rule: docs/design/src/006-data.md#5e00e3d8ce2ccfaf
 import assert from "node:assert/strict"
 import test from "node:test"
 import { block, chapter, run } from "./spec-witness.mjs"

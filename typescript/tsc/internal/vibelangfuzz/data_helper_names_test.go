@@ -1,3 +1,5 @@
+// 006-data.md: generic-helper-names-1 through -4 force occupied helper names and check the fresh emitted helper
+// rule: docs/design/src/006-data.md#a57e1155ce65ccf3
 package vibelangfuzz
 
 import (

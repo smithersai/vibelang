@@ -1,3 +1,5 @@
+// 006-data.md: the Schema value determines the emitted typeof Name.Type alias
+// rule: docs/design/src/006-data.md#2943a039672401bf
 // 006-data.md: public schema type is inferred from the actual schema constant
 // rule: docs/design/src/006-data.md#3e1dea0d19a611ef
 // A schema declaration declares type X = typeof X.Type (D501), so in a project

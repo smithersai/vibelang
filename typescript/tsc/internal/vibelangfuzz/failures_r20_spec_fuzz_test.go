@@ -1,3 +1,5 @@
+// 006-data.md: schema-error-computed-key-broad rejects a string domain containing the reserved tag
+// rule: docs/design/src/006-data.md#2abcaa1228285d16
 package vibelangfuzz
 
 // failuresRound20Cases checks the chapter-3 rules the round-20

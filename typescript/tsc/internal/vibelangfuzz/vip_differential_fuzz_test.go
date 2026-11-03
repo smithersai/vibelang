@@ -1,3 +1,15 @@
+// 006-data.md: TestVIPConstructs/vip16.no-validation-plain compares with its explicit Effect counterpart
+// rule: docs/design/src/006-data.md#d78eb8268a41bbbc
+// 006-data.md: TestVIPConstructs/vip16.empty-data-plain compares with its explicit Effect counterpart
+// rule: docs/design/src/006-data.md#64db863cbb5a3574
+// 006-data.md: TestVIPConstructs/vip16.data-plain compares with its explicit Effect counterpart
+// rule: docs/design/src/006-data.md#a7a7e5e045d10f6b
+// 006-data.md: TestVIPConstructs/vip15.tdz-plain compares with its explicit Effect counterpart
+// rule: docs/design/src/006-data.md#f76e7f72b8cab91f
+// 006-data.md: TestVIPConstructs/vip15.tdz-plain compares with its explicit Effect counterpart
+// rule: docs/design/src/006-data.md#825e5748825e8e1b
+// 006-data.md: vip15.computed-keys-plain and vip29.computed-fields-plain preserve admitted runtime keys
+// rule: docs/design/src/006-data.md#8216170e7ea0b58f
 // 006-data.md: TestVIPConstructs/vip15.computed-keys-plain compares schema shape, accepted inputs and Exit with Effect
 // rule: docs/design/src/006-data.md#1cdaf0e0cbc8a7a9
 // 006-data.md: TestVIPConstructs/vip15.schema-optional-plain compares schema shape, accepted inputs and Exit with Effect

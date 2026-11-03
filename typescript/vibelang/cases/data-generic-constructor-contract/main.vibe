@@ -1,4 +1,6 @@
 // expect-result: [7,true,true]
+// 006-data.md: generated variant constructors are called directly in effect code
+// rule: docs/design/src/006-data.md#8b6446168aae43a1
 export data Box<T> { Empty; Value { value:T } }
 export effect function main():readonly [number,boolean,boolean]!never {
   const value=Box.Value({value:7})
