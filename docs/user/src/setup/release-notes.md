@@ -240,6 +240,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - The `EK1202` provider-separator fix could flatten line breaks inside a comment. It now leaves that site unchanged and still joins whitespace around comments that fit on one line.
 
+- Find references on a `module` declaration's name returned only the declaration, and nothing from a specifier such as `from text`, while rename edited every specifier; renaming an imported type of the same name left `from M` naming the old module (`EK4006`). Find references now returns the declaration and each identifier specifier, and rename edits those specifiers in both cases.
+
 - The migration checks generated callback failure unions without their required parentheses and failed to parse them. They now write valid compound slots while checking the same preserved channels and refusal controls.
 
 
