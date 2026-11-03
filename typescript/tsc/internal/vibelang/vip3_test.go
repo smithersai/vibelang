@@ -18,6 +18,7 @@ func TestVIP3OmittedRequirementIsNever(t *testing.T) {
 	}
 }
 
+// Chapter 007 / transitional explicit requirement warning and migration: docs/design/src/007-tooling.md#1605bee798b7ae9f
 func TestVIP3RequirementMigration(t *testing.T) {
 	source := "service Input { value: number }\nexport effect function read(): number!never { return (try Input).value }\n"
 	got := applyQuickFix(t, source, EK4853.Code)

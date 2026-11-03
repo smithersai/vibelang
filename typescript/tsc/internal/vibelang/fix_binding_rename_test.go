@@ -113,6 +113,7 @@ var bindingRenameTests = []struct{ name, source, want string }{
 `, ""},
 }
 
+// Chapter 007 / conflicting Effect module import renames resolved uses: docs/design/src/007-tooling.md#319367fb13e0e601
 func TestBindingRenameQuickFix(t *testing.T) {
 	for _, test := range bindingRenameTests {
 		t.Run(test.name, func(t *testing.T) {

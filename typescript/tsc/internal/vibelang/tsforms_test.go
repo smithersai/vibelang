@@ -22,6 +22,16 @@ import (
 // VibeLang form exactly. Ask the language service for the fix of the one
 // diagnostic, apply every edit, compare the whole document, and check that
 // the result reports no error and no longer reports the code.
+// Chapter 007 / teaching repairs preserve classes, service keys, schema fields and run context: docs/design/src/007-tooling.md#a86eb109ac06b822
+// Chapter 007 / teaching repairs preserve classes, service keys, schema fields and run context: docs/design/src/007-tooling.md#a0f677b77e272550
+// Chapter 007 / teaching repairs preserve classes, service keys, schema fields and run context: docs/design/src/007-tooling.md#27d173a375f3d0d1
+// Chapter 007 / teaching repairs preserve classes, service keys, schema fields and run context: docs/design/src/007-tooling.md#21ed67f7082829ac
+// Chapter 007 / teaching repairs preserve classes, service keys, schema fields and run context: docs/design/src/007-tooling.md#4016d8e894bcd5ac
+// Chapter 007 / teaching repairs preserve classes, service keys, schema fields and run context: docs/design/src/007-tooling.md#f057bb3dc87e016d
+// Chapter 007 / teaching repairs preserve classes, service keys, schema fields and run context: docs/design/src/007-tooling.md#d371cd37f2cedaf7
+// Chapter 007 / teaching repairs preserve classes, service keys, schema fields and run context: docs/design/src/007-tooling.md#463e9d4e25b88138
+// Chapter 007 / teaching repairs preserve classes, service keys, schema fields and run context: docs/design/src/007-tooling.md#568a551a16a7c023
+// Chapter 007 / own diagnostics explain mechanical repairs and their actual editor actions: docs/design/src/007-tooling.md#dcce1a6fdc2157d3
 func TestTypeScriptFormQuickFixes(t *testing.T) {
 	for _, test := range []struct {
 		name   string
@@ -164,6 +174,7 @@ func applyQuickFixOf(t *testing.T, source string, code int32, category diagnosti
 
 // Where the VibeLang form would change what the program does, the rule says
 // so without a fix, or says nothing when VibeLang has no form at all.
+// Chapter 007 / untagged errors cannot gain a tag through a teaching fix: docs/design/src/007-tooling.md#127ef03dfd6edfb7
 func TestTypeScriptFormRefusals(t *testing.T) {
 	for _, test := range []struct {
 		name   string
@@ -231,6 +242,7 @@ func TestTypeScriptFormRefusals(t *testing.T) {
 
 // D241: the rules are adjustable lint, so a directive or the project's
 // setting turns one off, and a warning never becomes an error by itself.
+// Chapter 007 / teaching forms are configurable default warnings: docs/design/src/007-tooling.md#fcbb4213812bb3d3
 func TestTypeScriptFormDirectives(t *testing.T) {
 	source := "// @vibelang-diagnostics-next-line EK4833:off\nexport type A = Effect.Effect<number>\nexport type B = Effect.Effect<number>\n"
 	program, file, _, _ := editorProgram(t, source)
@@ -262,6 +274,7 @@ func TestTypeScriptFormDirectives(t *testing.T) {
 // the type to the declaration file, which the TypeScript did not export
 // (D501). With the struct's own type beside it, the pair becomes the
 // declaration, which declares the same two names.
+// Chapter 007 / schema teaching retains the original declaration surface: docs/design/src/007-tooling.md#6c87e5c10fe11c76
 func TestSchemaConstantKeepsDeclarations(t *testing.T) {
 	source := `export const Snapshot = Schema.Struct({ value: Schema.String })
 

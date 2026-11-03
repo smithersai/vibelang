@@ -706,6 +706,7 @@ func TestFormatGolden(t *testing.T) {
 
 // TestFormatForms formats every form and checks that the result is stable
 // and the same program.
+// Chapter 007 / formatter grammar inventory: docs/design/src/007-tooling.md#2d44d791057abb78
 func TestFormatForms(t *testing.T) {
 	formatter := dprintFormatter(t)
 	for name, source := range forms {

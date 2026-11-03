@@ -31,6 +31,7 @@ func TestSchemaAliasMissingInitializer(t *testing.T) {
 // D474, D501: EK4841's quick fix writes a schema constant and the type alias
 // just after it as one schema alias, which the parser writes back into the same
 // two declarations.
+// Chapter 007 / schema constant and own type alias migrate together: docs/design/src/007-tooling.md#a444053efb9354a1
 func TestSchemaAliasQuickFixes(t *testing.T) {
 	for _, test := range []struct{ name, source, want string }{
 		{"literals", "export const Kind = Schema.Literals([\"persistent\", \"incognito\"])\nexport type Kind = typeof Kind.Type\nexport const k: Kind = \"incognito\"\n",

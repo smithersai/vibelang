@@ -31,6 +31,8 @@ func pinDiagnostics(t *testing.T, program *compiler.Program, file *ast.SourceFil
 
 // VIP-32, 007 "The Effect version", decided detail 70: a resolved effect other
 // than the pin is EK3201, once, naming both versions and the VibeLang release.
+// Chapter 007 / resolved mismatched Effect reports one EK3201 naming both versions: docs/design/src/007-tooling.md#4078b3e12cdd2a36
+// Chapter 007 / resolved mismatched Effect reports one EK3201 naming both versions: docs/design/src/007-tooling.md#f26e9374b3808522
 func TestEffectPinMismatch(t *testing.T) {
 	for _, test := range []struct {
 		name, fixture, version string

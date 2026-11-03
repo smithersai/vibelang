@@ -41,6 +41,7 @@ func TestVIP9InvalidDefaultValue(t *testing.T) {
 	}
 }
 
+// Chapter 007 / transitional abstract service warning and migration: docs/design/src/007-tooling.md#1605bee798b7ae9f
 func TestVIP9ServiceMigration(t *testing.T) {
 	got := applyQuickFix(t, "export abstract class Users { abstract name: string }\n", EK4854.Code)
 	if got != "export service Users { name: string }\n" {
@@ -77,6 +78,7 @@ func TestVIP9DefaultValueMigrationKeepsPlainValues(t *testing.T) {
 // RC-19: the declaration carries one EK4855 whose fix rewrites every read in
 // the file, type reads as the type the factory returns, so the repaired file
 // compiles and its exported types keep their meaning.
+// Chapter 007 / service migration rewrites corresponding value and type reads: docs/design/src/007-tooling.md#baa12561dfbf9b00
 func TestVIP9DefaultValueMigrationRewritesReads(t *testing.T) {
 	source := "service Flags { static readonly key = \"vip9/Flags\"; static readonly default: Flags.Shape = { enabled: true }; enabled: boolean }\n" +
 		"export type Value = typeof Flags.default\n" +

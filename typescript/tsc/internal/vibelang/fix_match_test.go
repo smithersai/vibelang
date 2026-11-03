@@ -10,6 +10,7 @@ import (
 
 // D472: EK4839's quick fix writes a Match chain as a match expression with
 // the same arms, the same choice, and the same type.
+// Chapter 007 / supported Match chain finishers preserve the written handlers: docs/design/src/007-tooling.md#00ff7d35845ac8f0
 func TestMatchChainQuickFixes(t *testing.T) {
 	for _, test := range []struct{ name, source, want string }{
 		{"literals with a fallback", `export function label(status: "idle" | "busy" | "failed"): string {
@@ -111,6 +112,7 @@ export function kind(config: Config): string {
 // Where a match would choose differently, run what the chain only built, or
 // have another type, EK4839 has no quick fix and its note says why.
 // Destructuring fallbacks are positive cases in TestMatchDefaultDestructureFoldkit.
+// Chapter 007 / unsupported Match patterns and handlers retain source: docs/design/src/007-tooling.md#5d8fbe0b4f027c86
 func TestMatchChainRefusals(t *testing.T) {
 	for _, test := range []struct{ name, source, why string }{
 		{"a predicate", "export const f = (n: number) => Match.value(n).pipe(Match.when((x) => x > 1, () => \"big\"), Match.orElse(() => \"small\"))\n", "has no match pattern"},

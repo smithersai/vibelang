@@ -13,6 +13,7 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/vfs/osvfs"
 )
 
+// Chapter 007 / retired declarationSidecars is removed from owned configs: docs/design/src/007-tooling.md#9de90af42c444c61
 func TestSidecarConfigModernMigration(t *testing.T) {
 	for _, test := range []struct {
 		name, config, extended, want string
