@@ -20,6 +20,10 @@ await runPromise(main())        // or ES top-level await of a Promise (VIP-5); r
 
 Every source `.vibe` compilation unit is an external module before binding and checking, independently of written imports and exports, required prelude imports, `vibe.effectGlobals` and `vibe.effectModules`. Preserve that classification in emitted JavaScript and declaration sidecars with an effective empty module marker when needed. Ordinary TypeScript module emission and host rules, including incompatible-option diagnostics, apply. Top-level `await` therefore requires supported module and target options. This adds no implicit runner or special `main`. The `moduleDetection` exception is explicit in VIP-30.
 
+## Amendment: legacy entry markers
+
+The retired side-effect imports `vibelang/platform/node`, `vibelang/platform/bun` and `vibelang/platform/browser` report `EK2601`, naming `vibelang --fix`. The [entry migration](../src/007-tooling.md#legacy-entry-dispatch-migration) preserves the pinned legacy startup, including entry-only execution, layers and public types, or refuses with a file, line and reason and a nonzero exit. A refused marker remains an error; no implicit startup is retained and no ordinary `main` binding is rejected.
+
 ## What was not adopted
 
 Old VibeLang (D135, D517, EK4843) had the compiler emit `runMain(main())` for an exported `main`. That needed the platform, the entry file and rules for `const main`, which is behavior Effect doesn't have.
