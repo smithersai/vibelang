@@ -15,6 +15,7 @@ const require = createRequire(new URL("../../../../packages/runtime/package.json
 const typescript = dirname(require.resolve("typescript/package.json"))
 const corpus = JSON.parse(readFileSync(new URL("./corpus/alchemy-packed-runtime-file-dependency.json", import.meta.url)))
 const compilerCorpus = JSON.parse(readFileSync(new URL("./corpus/opencode-packed-source-child-compiler.json", import.meta.url)))
+const effectVersion = JSON.parse(readFileSync(new URL("../../../../packages/runtime/package.json", import.meta.url))).peerDependencies.effect
 async function packed(dir, out) {
   const result = await must("npm pack --ignore-scripts --json --pack-destination " + quote(out), { cwd: dir })
   return join(out, JSON.parse(result.stdout)[0].filename)
@@ -27,8 +28,11 @@ for (const manager of ["npm", "pnpm", "bun"]) for (const compilerRuntime of [fal
     try {
       const target = join(root, "target"), stage = join(root, "toolchain"), logs = join(root, "logs"), packs = join(root, "packs")
       for (const dir of [target, stage, logs, packs]) mkdirSync(dir)
-      const runtimeDir = join(root, "runtime"), compilerDir = join(root, "compiler")
-      mkdirSync(runtimeDir); mkdirSync(compilerDir)
+      const runtimeDir = join(root, "runtime"), compilerDir = join(root, "compiler"), effectDir = join(root, "effect")
+      mkdirSync(runtimeDir); mkdirSync(compilerDir); mkdirSync(effectDir)
+      const effectManifest = { name: compilerCorpus.publishedDependency, version: effectVersion, type: "module", exports: "./index.js", files: ["index.js"] }
+      writeJson(join(effectDir, "package.json"), effectManifest)
+      writeFileSync(join(effectDir, "index.js"), "export {}\n")
       const runtimeManifest = { name: "vibelang-runtime", version: corpus.runtimeVersion, type: "module", exports: "./index.js", files: ["index.js"] }
       writeJson(join(runtimeDir, "package.json"), runtimeManifest)
       writeFileSync(join(runtimeDir, "index.js"), 'export const marker = "from-runtime"\n')
@@ -36,21 +40,24 @@ for (const manager of ["npm", "pnpm", "bun"]) for (const compilerRuntime of [fal
       writeJson(join(compilerDir, "package.json"), compilerManifest)
       writeFileSync(join(compilerDir, "cli.mjs"), '#!/usr/bin/env node\nif (process.argv.includes("--version")) console.log("0.0.11")\n', { mode: 0o755 })
       writeFileSync(join(compilerDir, "register.mjs"), 'globalThis.__registryCompiler = "loaded"\n')
-      const runtimeTgz = await packed(runtimeDir, stage), compilerTgz = await packed(compilerDir, stage)
+      const runtimeTgz = await packed(runtimeDir, stage), compilerTgz = await packed(compilerDir, stage), effectTgz = await packed(effectDir, stage)
       mkdirSync(join(stage, "native"))
       writeFileSync(join(stage, "native/vibelang"), "#!/bin/sh\nexit 0\n", { mode: 0o755 })
       mkdirSync(join(stage, "node_modules"))
       symlinkSync(typescript, join(stage, "node_modules/typescript"), "dir")
-      writeJson(join(stage, "toolchain.json"), { version: corpus.runtimeVersion, effect: "4.1.1", commit: "0123456789abcdef0123456789abcdef0123456789", compiler: "native/vibelang", packages: { vibelang: compilerTgz.slice(stage.length + 1), "vibelang-runtime": runtimeTgz.slice(stage.length + 1) } })
+      writeJson(join(stage, "toolchain.json"), { version: corpus.runtimeVersion, effect: effectVersion, commit: "0123456789abcdef0123456789abcdef0123456789", compiler: "native/vibelang", packages: { vibelang: compilerTgz.slice(stage.length + 1), "vibelang-runtime": runtimeTgz.slice(stage.length + 1) } })
       const entries = [
         { manifest: runtimeManifest, bytes: readFileSync(runtimeTgz), archive: "/runtime.tgz" },
-        { manifest: compilerManifest, bytes: readFileSync(compilerTgz), archive: "/compiler.tgz" }
+        { manifest: compilerManifest, bytes: readFileSync(compilerTgz), archive: "/compiler.tgz" },
+        { manifest: effectManifest, bytes: readFileSync(effectTgz), archive: "/effect.tgz" }
       ], requests = []
       let registryOpen = false
       server = createServer((request, response) => {
         const path = new URL(request.url, "http://fixture").pathname
         requests.push(path)
-        if (!registryOpen) { response.writeHead(404); response.end(JSON.stringify({ error: "release is not published yet" })); return }
+        // Effect is already published; only the staged VibeLang SDK is withheld.
+        const publishedEffect = path === "/" + effectManifest.name || path === "/" + effectManifest.name + "/" + effectManifest.version || path === "/effect.tgz"
+        if (!registryOpen && !publishedEffect) { response.writeHead(404); response.end(JSON.stringify({ error: "release is not published yet" })); return }
         const entry = entries.find(entry => path === "/" + entry.manifest.name || path === "/" + entry.manifest.name + "/" + entry.manifest.version)
         if (entry) {
           const origin = "http://127.0.0.1:" + server.address().port
@@ -104,6 +111,10 @@ for (const manager of ["npm", "pnpm", "bun"]) for (const compilerRuntime of [fal
       assert.equal(JSON.parse(readFileSync(join(target, "node_modules/vibelang-runtime/package.json"), "utf8")).version, corpus.runtimeVersion)
       assert.equal(requests.some(path => path.startsWith("/vibelang")), false, "development must work while the release is unpublished")
       const localManifest = readFileSync(join(publicDir, "package.json"), "utf8")
+      if (compilerRuntime) {
+        assert.equal(JSON.parse(localManifest).dependencies[effectManifest.name], effectVersion)
+        assert.ok(requests.includes("/" + effectManifest.name), "development resolves already-published Effect while the SDK is withheld")
+      }
       const artifact = await packed(publicDir, packs)
       registryOpen = true
       const names = compilerRuntime ? ["vibelang"] : ["vibelang-runtime"]
@@ -120,6 +131,9 @@ for (const manager of ["npm", "pnpm", "bun"]) for (const compilerRuntime of [fal
         const loaded = await must((consumerManager === "npm" ? "node --input-type=module -e " : "bun -e ") + quote('console.log((await import(' + JSON.stringify(publicName) + ')).marker)'), { cwd: consumer, env: consumeEnv })
         assert.equal(loaded.stdout, compilerRuntime ? "from-child\n" : "from-runtime\n")
         if (compilerRuntime) {
+          const consumerRequire = createRequire(join(consumer, "node_modules", publicName, "package.json"))
+          const effectMain = consumerRequire.resolve(effectManifest.name)
+          assert.equal(JSON.parse(readFileSync(join(dirname(effectMain), "package.json"))).version, effectVersion)
           assert.ok(requests.includes("/compiler.tgz"))
           assert.equal((await must(quote(join(consumer, "node_modules/.bin/vibelang")) + " --version", { cwd: consumer, env: consumeEnv })).stdout, compilerCorpus.version + "\n")
           const loaderCommand = consumerManager === "npm" ? "node --import=vibelang/register -e " : "bun --preload=vibelang/bun -e "
