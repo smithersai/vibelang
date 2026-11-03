@@ -64,7 +64,7 @@ function equivalentEnvironment(ts, left, right, before, after, host) {
 }
 
 export function isolateAmbientSnapshots(ts, snapshots, compilerOptions, host, initialProgram, diagnose) {
-  const virtual = new Map(), surfaces = new Map(), diagnostics = [], names = new Map(), equivalentFiles = new Map()
+  const virtual = new Map(), surfaces = new Map(), diagnostics = [], names = new Map(), equivalentFiles = new Map(), sourceFiles = new Map()
   const owned = source => snapshots.some(({base}) => source.fileName === base || source.fileName.startsWith(base + '/')) && !source.fileName.includes('/node_modules/')
   const contributes = source => {
     if (!ts.isExternalModule(source) && !ts.isJsonSourceFile(source)) return true
@@ -78,7 +78,7 @@ export function isolateAmbientSnapshots(ts, snapshots, compilerOptions, host, in
   }
   if (initialProgram && !initialProgram.getSourceFiles().some(source => owned(source) && contributes(source))) {
     diagnostics.push(...diagnose(initialProgram, snapshots.flatMap(({entries}) => Object.values(entries)), initialProgram.getSourceFiles().filter(owned).map(source => source.fileName)))
-    return { virtual, surfaces, diagnostics, names, equivalentFiles }
+    return { virtual, surfaces, diagnostics, names, equivalentFiles, sourceFiles }
   }
   const programs = snapshots.map(({ entries }) => ts.createProgram(Object.values(entries), compilerOptions, host))
   const unifyGlobals = snapshots.length === 2 && equivalentEnvironment(ts, programs[0], programs[1], snapshots[0].base, snapshots[1].base, host)
@@ -110,6 +110,7 @@ export function isolateAmbientSnapshots(ts, snapshots, compilerOptions, host, in
     const checker = program.getTypeChecker()
     const own = source => (source.fileName === base || source.fileName.startsWith(base + '/')) && !source.fileName.includes('/node_modules/')
     const sources = program.getSourceFiles().filter(own)
+    sourceFiles.set(base, new Set(sources.map(source => source.fileName)))
     diagnostics.push(...diagnose(program, Object.values(entries), sources.map(source => source.fileName)))
     const globals = new Map(), modules = new Map()
     const prefix = '__api_identity_ambient_' + index + '_'
@@ -206,5 +207,5 @@ export function isolateAmbientSnapshots(ts, snapshots, compilerOptions, host, in
       }
     }
   }
-  return { virtual, surfaces, diagnostics, names, equivalentFiles }
+  return { virtual, surfaces, diagnostics, names, equivalentFiles, sourceFiles }
 }

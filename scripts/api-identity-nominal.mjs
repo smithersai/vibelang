@@ -14,9 +14,11 @@ export function alignNominalIdentity(ts, program, before, after, brandFile, entr
   const literal = text => factory.createStringLiteral(text.replaceAll("\\", "/"))
   const importType = (name, query = false) => factory.createImportTypeNode(
     factory.createLiteralTypeNode(literal(brandFile)), undefined, factory.createIdentifier(name), undefined, query)
+  // A nested snapshot belongs to its most specific input root.
+  const snapshots = [[entryMaps[0], before], [entryMaps[1], after]].sort((a, b) => b[1].length - a[1].length)
   const keyFor = (source, node) => {
     let path
-    for (const [entries, base] of [[entryMaps[0], before], [entryMaps[1], after]]) {
+    for (const [entries, base] of snapshots) {
       if (source.fileName !== base && !source.fileName.startsWith(base + "/")) continue
       const entry = Object.entries(entries).filter(([, file]) => file === source.fileName).map(([key]) => key).sort()[0]
       path = entry !== undefined ? "entry:" + entry : relative(base, source.fileName).replace(/\.d\.vibe\.ts$/, ".d.ts")

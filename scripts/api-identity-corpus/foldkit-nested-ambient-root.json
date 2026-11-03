@@ -1,0 +1,16 @@
+{
+  "layout": {
+    "before": "before",
+    "after": "before/after"
+  },
+  "before": {
+    "package.json": "{\"exports\":{\".\":{\"types\":\"./index.d.ts\"},\"./content\":{\"types\":\"./ambient.d.ts\"}}}",
+    "index.d.ts": "/// <reference path=\"./ambient.d.ts\" />\nexport type X = number;\n",
+    "ambient.d.ts": "declare module \"*.md\" { export const version: 1; }"
+  },
+  "after": {
+    "package.json": "{\"exports\":{\".\":{\"types\":\"./index.d.ts\"},\"./content\":{\"types\":\"./ambient.d.ts\"}}}",
+    "index.d.ts": "/// <reference path=\"./ambient.d.ts\" />\nexport type X = number;\n",
+    "ambient.d.ts": "declare module \"*.md\" { export const version: 1; }"
+  }
+}

@@ -73,6 +73,10 @@ generic constraints, namespace types, documentation and ambient declarations
 referenced by a published entry point remain observable. Corresponding nominal
 classes, enums and `unique symbol` keys retain their shared virtual identities.
 Changed global types and comments are compared through their isolated exports.
+Ambient contributions are attributed by each isolated snapshot's actual source
+closure. Being nested alone does not add one input's ambient declarations to the other.
+Nominal origins use the most specific input root, preserving corresponding
+private classes and real private-member differences in nested snapshots.
 Global overloads retain each snapshot's declaration order, so changed inferred
 results remain differences; reversing independent global imports stays identical.
 

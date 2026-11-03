@@ -862,7 +862,7 @@ function prepareComparison(ts, before, after, options, progress) {
     const items = [...(ambient.surfaces.get(file) ?? [])]
     if (entry === Object.keys(entries).sort()[0]) {
       for (const [source, contributions] of ambient.surfaces) {
-        if ((source === base || source.startsWith(base + "/")) && !Object.values(entries).includes(source)) items.push(...contributions)
+        if (ambient.sourceFiles.get(base)?.has(source) && !Object.values(entries).includes(source)) items.push(...contributions)
       }
     }
     for (const item of items) {
