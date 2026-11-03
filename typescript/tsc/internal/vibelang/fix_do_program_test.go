@@ -60,11 +60,7 @@ func TestFixDoProgramCommand(t *testing.T) {
 			}
 			result := FixProjectWithOptions(t.Context(), fs, bundled.LibPath(), config, options)
 			fixed := result.Files[file.FileName()]
-			exit := "Effect.exit"
-			if !options.VIPOnly {
-				exit = "exit" // VIP-6 canonicalizes an available, unshadowed global.
-			}
-			if fixed == nil || !strings.Contains(fixed.Text, exit+"(effect { return do {") || !strings.Contains(fixed.Text, "const immediate = do { 1 }") || !strings.Contains(fixed.Text, "Effect.exit(do { held })") {
+			if fixed == nil || !strings.Contains(fixed.Text, "Effect.exit(effect { return do {") || !strings.Contains(fixed.Text, "const immediate = do { 1 }") || !strings.Contains(fixed.Text, "Effect.exit(do { held })") {
 				t.Fatalf("missing migration: %+v; refused: %+v", fixed, result.Refused)
 			}
 			if err := os.WriteFile(file.FileName().AsString(), []byte(fixed.Text), 0600); err != nil {

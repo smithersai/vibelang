@@ -268,7 +268,7 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [Control operations and handlers](111-control-operations-and-handlers.md) | 65 |
 | [Producers](112-producers.md) | 3,100 |
 | [Building an HTTP API](113-building-an-http-api.md) | 1,500 |
-| [VibeLang for Effect users](114-vibelang-for-effect-users.md) | 6,900 |
+| [VibeLang for Effect users](114-vibelang-for-effect-users.md) | 6,800 |
 | [Cheat sheet](115-cheat-sheet.md) | 11,000 |
 | [Pattern matching with match and is](116-match-and-is.md) | 8,100 |
 | [Diagnostic code map](diagnostic-code-map.md) | 2,700 |

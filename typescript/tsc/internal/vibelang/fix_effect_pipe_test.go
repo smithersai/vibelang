@@ -38,7 +38,7 @@ export const f = (n: number) =>
   p(n)
     // add one
     |> Effect.map(%, (x) => x + 1)
-    |> retry(%, { times: 2 }) // twice
+    |> Effect.retry(%, { times: 2 }) // twice
     |> Effect.asVoid(%)
 `},
 		{"a stage with no data-first form", "const stage = <A>(e: Effect.Effect<A>) => e\nconst p = (n: number) => Effect.succeed(n)\nexport const f = (n: number) => p(n).pipe(stage)\n",

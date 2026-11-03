@@ -163,6 +163,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 ### Bugs fixed since 0.0.10
 - Repeated test-harness runs reported `declaration API comparison unavailable` ("Ambient declaration load order differs") for Chapter 4 and VIP-7 match cases: a case's runner left `typescript/node_modules/effect` linked to its pinned reference Effect, and the next run compiled the TypeScript twin against it. The harness now removes that link, so the twin compiles against the case's Effect on every run.
+- `vibelang --fix` rewrote every qualified call such as `Effect.succeed(1)` to the bare global `succeed(1)` once VIP-6 made every Effect export a global, so the fixed forms of the TypeScript-form and migration examples changed again on a second run and `--fix` built more checking programs than its bound allows. `--fix` again leaves qualified `Effect` calls as written.
 - A service with a written shape annotation gained an extra public `Shape` namespace in its declarations. It now keeps the written shape directly and exposes no implicit namespace outside its own body.
 - Migration setup could add source-loader helpers to JavaScript CLI launches merely because later arguments were dynamic, introducing unnecessary install-time dependencies. Proven JavaScript entrypoints now keep their native launch; unknown and typed source entrypoints retain loader handling.
 - Rerunning migration setup could leave obsolete subprocess loader helpers in shell launchers. Setup now writes the validated cleanup even when no source child remains, preserving the native launch without adding loader dependencies.
@@ -248,7 +249,6 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Grammar checks no longer report the private trailing-block migration helpers as unaccounted; they are recorded as recovery under `VIP-11`, while trailing blocks stay rejected.
 
 - The documentation sent readers to the removed `vibelang-forms -legacy` command. It now describes supported forms checks, and the unused legacy inventory is removed.
-- `vibelang --fix` left qualified calls such as `Effect.retry(...)` after the same function was available as an unshadowed global. It now writes the bare call, preserving comments, declaration imports and disabled-global settings.
 
 - After the migrate flow moved a module's platform code into a `.platform.ts` sibling, a private `const` it moved could fail `TS18047` ("possibly null") where kept code read it inside a closure under a guard. The module now binds the moved value to a local `const` of the same name, so the guard narrows it as before.
 - The migrate flow never split a module that an earlier pass returned to TypeScript for reading a host global such as `window`, `process.env` or `setTimeout` (`EK4402`), so the module went back to TypeScript on every pass. A run now lists earlier passes' `settle-causes.json` or `reverted.json` as `"platformCauses"` in its `config.json`, and the codemod moves the declarations that read each named global into the module's `.platform.ts` sibling.

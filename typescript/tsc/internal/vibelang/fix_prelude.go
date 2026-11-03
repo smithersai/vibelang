@@ -51,7 +51,7 @@ import (
 type preludeRewrite struct {
 	edits   []sourceEdit
 	imports int // imports of a module the prelude supplies, removed
-	keys    int // qualified module exports shortened
+	keys    int // M.M written M
 }
 
 // The kinds of rewrite, as the --fix report names them.
@@ -198,10 +198,6 @@ func preludeRewritesOf(c *checker.Checker, file *ast.SourceFile, declared map[st
 	visit = func(node *ast.Node) bool {
 		if ast.IsImportDeclaration(node) {
 			return false
-		}
-		if edit := effectGlobalCallEdit(c, file, node); edit != nil {
-			r.edits = append(r.edits, *edit)
-			r.keys++
 		}
 		// A name the parser writes, as for a schema declaration, has no text of its own.
 		if inner, outer := shortenableExport(c, node, removed); inner != nil && node.Flags&ast.NodeFlagsReparsed == 0 && !kept[firstIdentifier(inner).Text()] &&
