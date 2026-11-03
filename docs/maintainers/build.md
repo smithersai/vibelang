@@ -299,6 +299,8 @@ diagnostics remain visible to ESLint users.
 suite also checks minimized real corpus runs and generated labels with ESLint's
 actual `no-unused-labels` rule.
 
+Dollar-prefixed bindings such as `$assertMatch` and `$freeze` are also deliberate source witnesses. The corpus compares a quoted name with the native `Identifier` at the diagnostic location, including its `synthesized` flag. A dollar name elsewhere in the file cannot excuse an unwritten helper. `packages/compiler/test/eslint-corpus-names.test.mjs` runs without the optional ESLint install; the standalone suite checks six real corpus shapes and generated names with the pinned unused-variable rule.
+
 ## Forms-table checks
 
 `//typescript:forms-generator` builds `typescript/built/local/vibelang-forms`

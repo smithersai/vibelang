@@ -11,6 +11,7 @@ import { parseForESLint } from "../../eslint.mjs"
 import { config } from "./config.mjs"
 import { relativeToRepo, repositoryFiles, expectedParseError, matchesParseError, matchesLintParseError } from "./helpers.mjs"
 import { allVisitorKeys, problems, reportsSynthesizedLabel } from "./tree.mjs"
+import { reportsSynthesizedName } from "./lint-oracle.mjs"
 
 
 const keys = allVisitorKeys(typescriptKeys)
@@ -64,10 +65,11 @@ test("every .vibe file lints without a crash or a report about code the parser w
     if (expected && !messages.some((message) => matchesLintParseError(expected, message))) {
       failures.push(`${relativeToRepo(file)}: expected lint parsing error was not reported: ${expected.message}`)
     }
+    const sourceCode = linter.getSourceCode()
     for (const message of messages) {
       if (message.ruleId === "no-unused-labels" && !reportsSynthesizedLabel(message, linter.getSourceCode())) continue
       if (matchesLintParseError(expected, message)) continue
-      if (message.fatal || synthesizedFormRules.has(message.ruleId) || /'\$\w+'/.test(message.message)) {
+      if (message.fatal || synthesizedFormRules.has(message.ruleId) || reportsSynthesizedName(message, sourceCode)) {
         failures.push(`${relativeToRepo(file)}:${message.line}:${message.column} ${message.ruleId}: ${message.message}`)
       }
     }
