@@ -14,6 +14,38 @@ const target = name => {
   return pkg.slice(start, start + 400)
 }
 
+test("the archive target reads only its standalone Go files and corpus", () => {
+  const catalog = read("typescript/tsc/PACKAGE.ts")
+  assert.equal([...catalog.matchAll(/^[\t ]*"go-plugin-archive":/gm)].length, 1)
+  const start = catalog.indexOf('"go-plugin-archive":')
+  const end = catalog.indexOf("\n    }),", start)
+  assert.ok(end > start, "the archive target has its own definition")
+  const block = catalog.slice(start, end)
+  assert.match(block, /cd typescript\/tsc\/internal\/vibelangfmt/)
+  assert.match(block, /pack\.go pack_test\.go pack_concurrent_test\.go/)
+  assert.match(block, /TestWriteArchive\|FuzzWriteArchiveTemporaryOwnership/)
+  assert.match(block, /GOWORK=off/)
+  assert.doesNotMatch(block, /go\.work|tools\/go\./)
+  for (const moduleFile of ["go.mod", "go.sum"]) assert.ok(block.includes('S.file("' + moduleFile + '")'))
+  assert.doesNotMatch(block, /\b(?:srcs|tree)\s*(?:,|\])|\bfiles\s*\(/)
+  assert.ok(block.includes("internal/vibelangfmt/testdata/fuzz/FuzzWriteArchiveTemporaryOwnership/**"))
+  for (const name of ["pack.go", "pack_test.go", "pack_concurrent_test.go"]) {
+    assert.ok(block.includes('S.file("internal/vibelangfmt/' + name + '")'), name)
+    const source = read("typescript/tsc/internal/vibelangfmt/" + name)
+    if (name.endsWith("_test.go")) {
+      const functions = [...source.matchAll(/^func ((?:Test|Fuzz)\w+)\(/gm)].map(match => match[1])
+      assert.ok(functions.length > 0, name + " has executable tests")
+      for (const name of functions) assert.match(name, /^(TestWriteArchive|FuzzWriteArchiveTemporaryOwnership)/)
+    }
+    const imports = source.match(/^import\s*\(([\s\S]*?)\n\)/m)?.[1] ??
+      source.match(/^import\s+("[^"\n]+")/m)?.[1]
+    assert.ok(imports, name + " declares its imports")
+    const paths = [...imports.matchAll(/^[\t ]*(?:(?:[A-Za-z_]\w*|\.)[\t ]+)?"([^"]+)"/gm)].map(match => match[1])
+    assert.ok(paths.length > 0, name)
+    for (const path of paths) assert.ok(!path.split("/")[0].includes("."), name + " imports " + path)
+  }
+})
+
 test("//:flow-layout runs the layout test that exists", () => {
   const [, file] = target("flow-layout").match(/node --test (\S+\.test\.mjs)/)
   assert.ok(existsSync(new URL(file, root)), file)

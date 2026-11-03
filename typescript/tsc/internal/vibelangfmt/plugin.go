@@ -25,10 +25,6 @@ import (
 // settings (a host format request), so a .vibe file follows exactly the
 // style of the TypeScript beside it.
 
-// PluginName is the plugin's name, which is also the name of its executable
-// in a plugin archive.
-const PluginName = "dprint-plugin-vibelang"
-
 // PluginConfigKey is the key of the plugin's section of a dprint configuration.
 const PluginConfigKey = "vibelang"
 

@@ -12,6 +12,10 @@ import (
 	"runtime"
 )
 
+// PluginName is the plugin's name, which is also the name of its executable
+// in a plugin archive.
+const PluginName = "dprint-plugin-vibelang"
+
 // PluginManifest is the name of the dprint plugin manifest in the vibelang
 // package, which a dprint configuration names as npm:vibelang/dprint-plugin.json.
 const PluginManifest = "dprint-plugin.json"

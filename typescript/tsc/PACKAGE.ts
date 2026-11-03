@@ -56,6 +56,21 @@ export const Package = S.Package({
     srcs,
     "native-srcs": nativeSrcs,
     tree,
+    "go-plugin-archive": S.Shell.Test({
+      summary: "Archive unit and corpus tests without compiler dependencies.",
+      shell: "cd typescript/tsc/internal/vibelangfmt && GOWORK=off GOCACHE=$HOME/.cache/go-build-smthrs CGO_ENABLED=0 " +
+        "go test -p 8 -timeout 5m -trimpath -run '^(TestWriteArchive|FuzzWriteArchiveTemporaryOwnership)' pack.go pack_test.go pack_concurrent_test.go",
+      data: [
+        S.file("go.mod"), S.file("go.sum"),
+        S.file("internal/vibelangfmt/pack.go"),
+        S.file("internal/vibelangfmt/pack_test.go"),
+        S.file("internal/vibelangfmt/pack_concurrent_test.go"),
+        S.Filegroup({ srcs: [S.glob("internal/vibelangfmt/testdata/fuzz/FuzzWriteArchiveTemporaryOwnership/**")] })
+      ],
+      tools: [S.Host.bin("go")],
+      sandbox: "none",
+      timeout: "10m"
+    }),
     "effect-shim-files": files("internal/effecttsgo/shim/checker"),
     "vibelang-files": files("internal/vibelang"),
     "vibelangfuzz-files": files("internal/vibelangfuzz"),

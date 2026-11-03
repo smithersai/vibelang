@@ -90,6 +90,25 @@ Each target keys on its package's tests and fixtures as well as the compiler
 sources, and the validation graph runs each package independently. Go does not run
 a dependency's tests when another package imports it.
 
+For ZIP-writer work, `//typescript/tsc:go-plugin-archive` runs the archive tests
+and saved corpus without compiling the formatter. Its inputs are `pack.go`,
+the two archive test files, the archive corpus, this module’s `go.mod` and
+`go.sum`, and the Go tool. `GOWORK=off` keeps the command independent of the
+workspace’s other modules. A formatter implementation edit does not re-key this target.
+The full formatter target still runs these tests too.
+
+Run a focused fuzz search from the package directory so Go reads and writes
+its normal corpus there:
+
+```sh
+cd typescript/tsc/internal/vibelangfmt
+GOWORK=off go test -p 8 -trimpath -run '^$' -fuzz '^FuzzWriteArchiveTemporaryOwnership$' -fuzztime 30s \
+  pack.go pack_test.go pack_concurrent_test.go
+```
+
+`PluginName` remains the same exported constant in the same package; it lives
+beside the ZIP writer so this file set has only standard-library imports.
+
 `scripts/go-test-inventory.test.mjs` discovers VibeLang-owned Go test
 packages and the language service and checks the graph's package selectors. Add a target when adding
 a sibling package; `./internal/vibelang/...` covers that directory and
