@@ -281,16 +281,41 @@ export async function formatVibe(config, files, log) {
   }
   const done = []
   let code = 0
+  let part = 0
+  const receipts = []
+  // Linux limits the single bash -c argument as well as total argv bytes.
+  // Count escaped UTF-8 bytes, keeping room below its 128 KiB limit.
+  const format = async (prefix, files, cwd) => {
+    const head = prefix.map(quote).join(" ")
+    const commands = []
+    let command = head
+    for (const file of files) {
+      const arg = " " + quote(file)
+      if (command !== head && Buffer.byteLength(command + arg) > 64 * 1024) {
+        commands.push(command)
+        command = head
+      }
+      command += arg
+    }
+    if (command !== head) commands.push(command)
+    for (const command of commands) {
+      const chunkLog = log && log + ".part-" + (++part)
+      const result = await sh(command, { cwd, log: chunkLog })
+      code ||= result.code
+      if (log) {
+        receipts.push(readFileSync(chunkLog, "utf8"))
+        writeFileSync(log, receipts.join("\n"))
+      }
+    }
+  }
   for (const [dprintConfig, group] of byConfig) {
-    const result = await sh([group.dprint, "fmt", "--config", posix.basename(dprintConfig), ...group.files].map(quote).join(" "), { cwd: join(t, posix.dirname(dprintConfig)), log })
-    code ||= result.code
+    await format([group.dprint, "fmt", "--config", posix.basename(dprintConfig)], group.files, join(t, posix.dirname(dprintConfig)))
     done.push(...group.files.map((file) => posix.join(posix.dirname(dprintConfig), file)))
   }
   if (rest.length) {
     const tool = binary("vibelang-format", packageDirs)
     if (!tool) return { files: done, code: code || 127 }
-    const result = await sh([tool, "--write", ...rest].map(quote).join(" "), { cwd: t, log })
-    code ||= result.code
+    await format([tool, "--write"], rest, t)
     done.push(...rest)
   }
   return { files: targets.filter((file) => done.includes(file)), code }

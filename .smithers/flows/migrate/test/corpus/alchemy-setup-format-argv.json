@@ -1,0 +1,6 @@
+{
+  "repo": "alchemy",
+  "pattern": "setup formatExistingVibe single shell argument over 128 KiB",
+  "count": 3000,
+  "piece": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+}
