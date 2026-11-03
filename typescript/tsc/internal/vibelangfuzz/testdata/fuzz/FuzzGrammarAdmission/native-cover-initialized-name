@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("key:native-cover-initialized-name\nthrow { p = effect { return 1 ; } } ;")

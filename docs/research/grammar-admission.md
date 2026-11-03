@@ -49,7 +49,8 @@ duplication errors reported by TypeScript's checker are grammar rejection
 too, as are its module-element context errors (an `import`, `export` or
 `export =` inside a block, such as `TS1231`) and a binding pattern with no
 initializer (`const { p = 1 };`, `TS1182`, which ECMAScript's grammar does
-not derive); native type, name and module
+not derive) and an initializer in an object literal (`const x = { p = 1 };`,
+`TS1312`, ECMAScript's `CoverInitializedName` early error); native type, name and module
 resolution errors remain non-syntax errors. `EK1007`, a topic `%` outside
 every pipe body, is the early error of VIP-23's TC39 topic grammar and counts
 as syntax rejection. Warnings
@@ -61,6 +62,9 @@ compiler admission or lab/spec coverage before it is made pending. The
 subset keeps ECMAScript's `ExpressionStatement` lookahead exactly, including
 `async [no LineTerminator here] function`; Appendix A's contextual keywords are
 same-line, so `effect` before a line break is an identifier statement.
+The keyword table's member-position alternatives apply only in member
+positions: `effect[a]` is an element access, though `[` follows `effect` on an
+`interface` member.
 Type-directed meaning such as aggregate `join` is outside this syntax oracle.
 The outside-Effect prefix family includes `join {}`, which has no native
 call or element-access reading; `join(p)`, `join[0]` and an identifier before

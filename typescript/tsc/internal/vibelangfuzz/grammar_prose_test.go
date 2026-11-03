@@ -38,7 +38,7 @@ type grammarProseRule struct {
 
 var (
 	grammarTokenSet     = regexp.MustCompile("`([^`]+)` or `([^`]+)`")
-	grammarClassContext = regexp.MustCompile(`in a class or object literal[^;]*;?`)
+	grammarMemberContext = regexp.MustCompile("(?:in a class or object literal|on an `interface` or type literal member)[^;]*;?")
 	grammarBacktick     = regexp.MustCompile("`([^`]*)`")
 	grammarTableRow     = regexp.MustCompile(`^\|\s*(.+?)\s*\|\s*(.+?)\s*\|\s*.*\|\s*$`)
 	grammarSentences    = regexp.MustCompile(`[^.]*(?:\.[^ \n][^.]*)*\.`)
@@ -92,11 +92,12 @@ func grammarParseKeywordPhrase(words []string, phrase string) grammarKeywordRule
 		p = p[:at]
 	}
 	p = strings.TrimSuffix(p, ".")
-	// "in a class or object literal, a method name then `(`, or `*`": the
-	// table's tokens alone can't tell a class body, so either reading
-	// stays there.
-	if loc := grammarClassContext.FindStringIndex(p); loc != nil {
-		p = p[:loc[0]] + p[loc[1]:]
+	// "in a class or object literal, a method name then `(`, or `*`" and "on
+	// an `interface` or type literal member: a member name or `[`": the
+	// table's tokens alone can't tell a member position, so either reading
+	// stays there. Read as bare tokens, `[` would make `effect[a]` a keyword.
+	if grammarMemberContext.MatchString(p) {
+		p = grammarMemberContext.ReplaceAllString(p, "")
 		k.alts = append(k.alts, []grammarKwElem{{kind: 'C'}})
 	}
 	// "`{` or `<`" is one position that takes either token.

@@ -72,6 +72,13 @@ var grammarAdmissionSeeds = []struct{ key, source string }{
 	// pattern is TS1182, a native grammar rejection, not an admitted form.
 	{"native-destructuring-initializer", "const { p = effect { return 1 ; } } ;"},
 	{"native-destructuring-initializer-array", "const [a] ;"},
+	// campaign69 mutation:2ffe5d61119bd700: an object literal with `p = v`
+	// is TS1312, ECMAScript's CoverInitializedName early error.
+	{"native-cover-initialized-name", "throw { p = effect { return 1 ; } } ;"},
+	{"native-cover-initialized-name-const", "const x = { p = 1 };"},
+	// campaign71 mutation:00606103e5734e4a: `effect` before `[` outside a
+	// type member is an identifier, so this is an element access.
+	{"effect-element-access", "effect [ a\n] ;"},
 	{"fiber-binding-arrow", "const f = effect join => 1;"},
 	{"native-function-overload", "function f(p: number): number; function f(p: number) { return p; }"},
 	{"join-nested-plain", "effect effect => function f(p) { return join p; }"},
@@ -708,6 +715,27 @@ func TestGrammarAdmissionCore(t *testing.T) {
 			t.Errorf("valid control has no derivation: %q", src)
 		}
 	}
+	// `[` makes `effect` a keyword only on an interface or type literal member.
+	for _, source := range []string{"effect[a];", "effect [ a ] ;", "effect [ a\n] ;", "const x = effect[0];"} {
+		if r := lab.read(lab.g, grammarLexSource(source), grammarParseMode{prose: true, names: true}); r.count == 0 {
+			t.Errorf("element access on the identifier effect has no derivation: %q", source)
+		}
+	}
+	if r := lab.read(lab.g, grammarLexSource("effect x;"), grammarParseMode{prose: true, names: true}); r.count != 0 {
+		t.Error("effect before a bare name has a derivation")
+	}
+	// A cover grammar is a destructuring target only: `p = v` stays underived
+	// in an object literal, so the compiler must reject it (TS1312).
+	for _, source := range []string{"const { p = 1 } = {};", "const f = ({ p = 1 }) => p;", "const x = { p: 1 };"} {
+		if r := lab.read(lab.g, grammarLexSource(source), grammarParseMode{prose: true, names: true}); r.count == 0 {
+			t.Errorf("valid initializer control has no derivation: %s", source)
+		}
+	}
+	for _, source := range []string{"const x = { p = 1 };", "throw { p = 1 };"} {
+		if r := lab.read(lab.g, grammarLexSource(source), grammarParseMode{prose: true, names: true}); r.count != 0 {
+			t.Errorf("object literal initializer has a derivation: %s", source)
+		}
+	}
 	// Appendix A inherits TypeScript overload signatures. Only declarations
 	// can omit their body: a function expression still needs its Block.
 	for _, source := range []string{
@@ -796,6 +824,11 @@ func grammarAdmissionSyntaxDiagnostic(d *ast.Diagnostic) bool {
 	// derivation; TypeScript parses it for recovery and the checker rejects it.
 	case 1182:
 		return true
+	// checkGrammarObjectLiteralExpression: `{ p = 1 }` outside a destructuring
+	// pattern (TS1312). ECMAScript parses CoverInitializedName only to refine
+	// it, and its early error rejects the production in an ObjectLiteral.
+	case 1312:
+		return true
 	}
 	return false
 }
@@ -838,6 +871,10 @@ func TestGrammarAdmissionDiagnostics(t *testing.T) {
 		{"native-destructuring-initializer-warning", "", diagnostics.CategoryWarning, 1182, false},
 		{"external-destructuring-initializer-code-collision", "other", diagnostics.CategoryError, 1182, false},
 		{"ek-destructuring-initializer-code-collision", "EK", diagnostics.CategoryError, 1182, false},
+		{"native-cover-initialized-name", "", diagnostics.CategoryError, 1312, true},
+		{"native-cover-initialized-name-warning", "", diagnostics.CategoryWarning, 1312, false},
+		{"external-cover-initialized-name-code-collision", "other", diagnostics.CategoryError, 1312, false},
+		{"ek-cover-initialized-name-code-collision", "EK", diagnostics.CategoryError, 1312, false},
 		{"native-module-type-error", "", diagnostics.CategoryError, 1192, false},
 		{"native-return-type-error", "", diagnostics.CategoryError, 1064, false},
 		{"native-name-error", "", diagnostics.CategoryError, 2304, false},
