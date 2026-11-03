@@ -527,11 +527,33 @@ const vipReferences: Rule = {
   }
 }
 
-export const rules: Rule[] = [vipReferences, specLinks, resolutionClaims, nativeSourceResolution, configKeys, importStyleScope, declarationImportForm, deniedVipRepairs, retiredForms, platformImports, counterpartUsing, collisionConditional, rulingClaims, compilerGaps, moduleExtractionTwins]
+const serviceShapeGrammar: Rule = {
+  name: "service-shape-grammar",
+  finding: "accepted whole-shape services absent from the sole grammar",
+  check(spec) {
+    const chapter = spec.get("src/005-services.md") ?? ""
+    if (!/service \w+: \w+ \{/.test(chapter)) return []
+    const out: Violation[] = []
+    const file = "src/900-appendices.md", grammar = spec.get(file) ?? ""
+    if (!/ServiceStart\s+TypeParameters\?\s+":"\s+Type\s+"\{"/.test(grammar)) {
+      out.push({ rule: this.name, file, line: lineAt(grammar, Math.max(0, grammar.indexOf("ServiceDeclaration ="))),
+        message: "the admitted whole-shape service needs its colon/type alternative in Appendix A" })
+    }
+    for (const file of ["src/005-services.md", "vips/0009-service-declarations.md"]) {
+      const text = spec.get(file) ?? ""
+      const m = /\x60service \w+ \{[^\n]*?\}\x60 is the only way to declare a service/.exec(prose(text))
+      if (m) out.push({ rule: this.name, file, line: lineAt(text, m.index),
+        message: "the body-only service cannot be the only form when a whole-shape service is admitted" })
+    }
+    return out
+  }
+}
+
+export const rules: Rule[] = [serviceShapeGrammar, vipReferences, specLinks, resolutionClaims, nativeSourceResolution, configKeys, importStyleScope, declarationImportForm, deniedVipRepairs, retiredForms, platformImports, counterpartUsing, collisionConditional, rulingClaims, compilerGaps, moduleExtractionTwins]
 
 const kinds: Record<string, string[]> = {
   registry: ["config-keys"],
-  tables: ["native-source-resolution", "resolution-claims", "declaration-import-style-scope", "denied-vip-repairs", "collision-conditional", "compiler-gaps-not-rules"],
+  tables: ["service-shape-grammar", "native-source-resolution", "resolution-claims", "declaration-import-style-scope", "denied-vip-repairs", "collision-conditional", "compiler-gaps-not-rules"],
   copies: ["declaration-import-form", "counterpart-using"],
   authority: ["vip-references", "ruling-claims"],
   examples: ["retired-forms", "platform-imports", "module-extraction-twins"]

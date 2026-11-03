@@ -517,3 +517,31 @@ test("superseded denial cannot still remove the successor's accepted module form
   fixture.set("src/005-services.md", "[VIP-25](../vips/0025-inline-modules-denied.md) removed inline modules.")
   expect(lint(fixture, rule("vip-references"))).toHaveLength(1)
 })
+
+
+
+test("whole-shape service regression rejects a historical grammar and exclusive claims", () => {
+  const fixture: Spec = new Map([
+    ["src/005-services.md", "`service Name { members }` is the only way to declare a service.\n`service Name: Type { … }` supplies the exact whole Shape."],
+    ["src/900-appendices.md", 'ServiceDeclaration = ServiceStart TypeParameters? ClassHeritage? "{" (ServiceMember Separator)* "}"'],
+    ["vips/0009-service-declarations.md", "`service Name { members }` is the only way to declare a service."]
+  ])
+  expect(lint(fixture, rule("service-shape-grammar"))).toHaveLength(3)
+  fixture.set("src/900-appendices.md", 'ServiceDeclaration = ServiceStart TypeParameters? ":" Type "{" (ServiceMember Separator)* "}"')
+  fixture.set("src/005-services.md", "`service Name: Type { … }` supplies the exact whole Shape.")
+  fixture.set("vips/0009-service-declarations.md", "Both body-only and whole-shape services are admitted.")
+  expect(lint(fixture, rule("service-shape-grammar"))).toEqual([])
+})
+
+test("whole-shape service grammar property covers names and grammar layout", () => {
+  // Whole-shape service admission does not depend on its identifier.
+  fc.assert(fc.property(fc.constantFrom("Port", "Store", "S", "Node42"), fc.constantFrom(" ", "\n", "  "), (name, ws) => {
+    const fixture: Spec = new Map([
+      ["src/005-services.md", `\`service ${name}: Shape { … }\` supplies the exact whole Shape.`],
+      ["src/900-appendices.md", ["ServiceDeclaration =", "ServiceStart", "TypeParameters?", '":"', "Type", '"{"'].join(ws)]
+    ])
+    expect(lint(fixture, rule("service-shape-grammar"))).toEqual([])
+    fixture.set("src/900-appendices.md", fixture.get("src/900-appendices.md")!.replace('":"', '""'))
+    expect(lint(fixture, rule("service-shape-grammar"))).toHaveLength(1)
+  }), { seed: 16002, numRuns: 100 })
+})
