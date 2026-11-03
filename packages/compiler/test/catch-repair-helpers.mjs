@@ -5,6 +5,7 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { pathToFileURL } from "node:url"
 import { native, repo, skip, fc } from "./migration-helpers.mjs"
+import { encodeFrame, FrameDecoder } from "../../../typescript/vibelang/lsp-framing.mjs"
 export { skip, fc }
 
 // Chapter 002: "The quick fix wraps a value in a function literal, so the
@@ -33,23 +34,16 @@ function compile(dir, ...args) {
 }
 async function editor(dir, source) {
   const child = spawn(native, ["--lsp", "--stdio"], {cwd:dir,stdio:["pipe","pipe","pipe"]})
-  let buffer=Buffer.alloc(0), id=0
+  const decoder=new FrameDecoder()
+  let id=0
   const pending=new Map(), transcript=[], stderr=[]
   child.stderr.on("data", d=>stderr.push(d.toString()))
   const send = value => {
     transcript.push({send:value})
-    const body=Buffer.from(JSON.stringify({jsonrpc:"2.0",...value}))
-    child.stdin.write(Buffer.concat([Buffer.from("Content-Length: "+body.length+"\r\n\r\n"),body]))
+    child.stdin.write(encodeFrame({jsonrpc:"2.0",...value}))
   }
   child.stdout.on("data", data=>{
-    buffer=Buffer.concat([buffer,data])
-    while(true) {
-      const end=buffer.indexOf("\r\n\r\n")
-      if(end<0) return
-      const size=Number(/Content-Length: *(\d+)/i.exec(buffer.subarray(0,end).toString())[1])
-      if(buffer.length<end+4+size) return
-      const value=JSON.parse(buffer.subarray(end+4,end+4+size))
-      buffer=buffer.subarray(end+4+size)
+    for(const value of decoder.push(data)) {
       transcript.push({receive:value})
       if(value.method && value.id!==undefined) send({id:value.id,result:value.method==="workspace/configuration"?value.params.items.map(()=>({})):null})
       else pending.get(value.id)?.(value)

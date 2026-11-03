@@ -1,6 +1,8 @@
 // A dependency-free JSON-RPC client for a language server on stdio, such as
 // `vibelang --lsp --stdio`. It frames messages with Content-Length headers,
 // matches responses to requests, and answers the server's own requests.
+import { encodeFrame, FrameDecoder, FramingError } from "../../typescript/vibelang/lsp-framing.mjs"
+
 export type Server = {
   request(method: string, params: unknown): Promise<any>
   notify(method: string, params: unknown): void
@@ -26,9 +28,7 @@ export function startServer(command: string[]): Server {
     pending.clear()
   }
   const send = (message: object) => {
-    const body = Buffer.from(JSON.stringify({ jsonrpc: "2.0", ...message }))
-    child.stdin.write(`Content-Length: ${body.length}\r\n\r\n`)
-    child.stdin.write(body)
+    child.stdin.write(encodeFrame({ jsonrpc: "2.0", ...message }))
     child.stdin.flush()
   }
   // The server asks for settings and registrations; the defaults serve.
@@ -47,32 +47,15 @@ export function startServer(command: string[]): Server {
     for await (const chunk of child.stderr) stderr = (stderr + new TextDecoder().decode(chunk)).slice(-4000)
   })()
   void (async () => {
-    let buffer = Buffer.alloc(0)
+    const decoder = new FrameDecoder()
     for await (const chunk of child.stdout) {
       if (failure) return
-      buffer = Buffer.concat([buffer, chunk])
-      let stage = "header"
       try {
-        for (;;) {
-          stage = "header"
-          const head = buffer.indexOf("\r\n\r\n")
-          if (head < 0) break
-          const lengths = buffer.subarray(0, head).toString().split("\r\n").filter(line => /^Content-Length:/i.test(line))
-          const match = lengths.length === 1 ? /^Content-Length: *(\d+) *$/i.exec(lengths[0]) : null
-          const length = match ? Number(match[1]) : NaN
-          if (!Number.isSafeInteger(length)) throw new Error()
-          if (buffer.length < head + 4 + length) break
-          stage = "JSON"
-          const message = JSON.parse(buffer.subarray(head + 4, head + 4 + length).toString())
-          buffer = buffer.subarray(head + 4 + length)
-          stage = "message"
-          if (message === null || typeof message !== "object" || Array.isArray(message)) throw new Error()
-          receive(message)
-        }
-      } catch {
+        for (const message of decoder.push(chunk)) receive(message)
+      } catch (error) {
         // Reject the caller's requests so its finally can close the server;
         // never expose a malformed response's body through parser exceptions.
-        fail(new Error(`server sent malformed LSP ${stage}`))
+        fail(new Error(`server sent malformed LSP ${error instanceof FramingError ? error.stage : "message"}`))
         return
       }
     }

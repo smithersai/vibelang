@@ -12,6 +12,7 @@ import { spawn } from "node:child_process"
 import { readdirSync, readFileSync } from "node:fs"
 import path from "node:path"
 import { pathToFileURL } from "node:url"
+import { encodeFrame, FrameDecoder, FramingError } from "../../typescript/vibelang/lsp-framing.mjs"
 
 const args = process.argv.slice(2)
 const hovers = Number(args[2] ?? 20)
@@ -33,7 +34,7 @@ const uri = (file) => pathToFileURL(file).href
 const extra = (process.env.LSP_ARGS ?? "").split(" ").filter(Boolean)
 const child = spawn(server, ["--lsp", "--stdio", ...extra], { cwd: project, stdio: ["pipe", "pipe", "pipe"] })
 const closed = new Promise(resolve => child.once("close", resolve))
-let buffer = Buffer.alloc(0)
+const decoder = new FrameDecoder()
 let nextId = 1
 const pending = new Map()
 let failure
@@ -56,23 +57,8 @@ child.stdout.on("error", (error) => fail(`server stdout failed (${error.code ?? 
 child.stdin.on("error", (error) => fail(`server stdin failed (${error.code ?? error.message})`))
 child.stdout.on("data", (chunk) => {
   if (failure) return
-  buffer = Buffer.concat([buffer, chunk])
-  let stage = "header"
   try {
-    for (;;) {
-      stage = "header"
-      const end = buffer.indexOf("\r\n\r\n")
-      if (end < 0) return
-      const lengths = buffer.subarray(0, end).toString().split("\r\n").filter(line => /^Content-Length:/i.test(line))
-      const match = lengths.length === 1 && /^Content-Length: *(\d+) *$/i.exec(lengths[0])
-      const length = match ? Number(match[1]) : NaN
-      if (!Number.isSafeInteger(length)) throw new Error()
-      if (buffer.length < end + 4 + length) return
-      stage = "JSON"
-      const message = JSON.parse(buffer.subarray(end + 4, end + 4 + length).toString())
-      buffer = buffer.subarray(end + 4 + length)
-      stage = "message"
-      if (message === null || typeof message !== "object" || Array.isArray(message)) throw new Error()
+    for (const message of decoder.push(chunk)) {
       if (message.method === undefined) {
         const entry = pending.get(message.id)
         if (!entry) continue
@@ -84,18 +70,15 @@ child.stdout.on("data", (chunk) => {
         send({ jsonrpc: "2.0", id: message.id, result })
       }
     }
-  } catch {
+  } catch (error) {
     // Event callbacks cannot throw into benchmark()'s teardown. Reject the
     // active request instead, without copying response payloads into logs.
-    buffer = Buffer.alloc(0)
-    fail(`server sent malformed LSP ${stage}`)
+    fail(`server sent malformed LSP ${error instanceof FramingError ? error.stage : "message"}`)
   }
 })
 function send(message) {
   if (failure) throw new Error(`server transport unavailable: ${failure}`)
-  const body = Buffer.from(JSON.stringify(message))
-  child.stdin.write(`Content-Length: ${body.length}\r\n\r\n`)
-  child.stdin.write(body)
+  child.stdin.write(encodeFrame(message))
 }
 function request(method, params) {
   const id = nextId++

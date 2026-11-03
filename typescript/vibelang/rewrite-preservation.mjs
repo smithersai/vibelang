@@ -9,6 +9,7 @@ import { spawnSync, spawn } from "node:child_process"
 import fs from "node:fs"
 import path from "node:path"
 import { fileURLToPath } from "node:url"
+import { encodeFrame, FrameDecoder } from "./lsp-framing.mjs"
 
 export async function compareRewrite(url, expected, { mode = "fix", present = [], absent = [], editorClass = "Bad" } = {}) {
   const dir = path.dirname(fileURLToPath(url))
@@ -65,23 +66,15 @@ export async function compareRewrite(url, expected, { mode = "fix", present = []
 async function editorRewrite(compiler, cwd, file, source, className) {
   const child = spawn(compiler, ["--lsp", "--stdio"], { cwd, stdio: ["pipe", "pipe", "pipe"] })
   const transcript = []
-  let buffer = Buffer.alloc(0)
+  const decoder = new FrameDecoder()
   let next = 1
   const pending = new Map()
   function send(value) {
     transcript.push({ send: value })
-    const body = Buffer.from(JSON.stringify({ jsonrpc: "2.0", ...value }))
-    child.stdin.write(Buffer.concat([Buffer.from("Content-Length: " + body.length + "\r\n\r\n"), body]))
+    child.stdin.write(encodeFrame({ jsonrpc: "2.0", ...value }))
   }
   child.stdout.on("data", (data) => {
-    buffer = Buffer.concat([buffer, data])
-    while (true) {
-      const end = buffer.indexOf("\r\n\r\n")
-      if (end < 0) return
-      const size = Number(/Content-Length: (\d+)/i.exec(buffer.subarray(0, end).toString())[1])
-      if (buffer.length < end + 4 + size) return
-      const value = JSON.parse(buffer.subarray(end + 4, end + 4 + size))
-      buffer = buffer.subarray(end + 4 + size)
+    for (const value of decoder.push(data)) {
       transcript.push({ receive: value })
       if (value.method && value.id !== undefined) send({ id: value.id, result: value.method === "workspace/configuration" ? value.params.items.map(() => ({})) : null })
       else if (pending.has(value.id)) {

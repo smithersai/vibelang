@@ -613,7 +613,7 @@ deadline covers every stage it runs.
 The `//typescript/vibelang:lsp-smoke` target runs `lsp-smoke.sh --no-build`
 against the graph's compiler and runtime outputs. Its inputs cover the Go
 language service through `:compiler`, the runtime, the Effect lockfiles,
-`lsp-smoke.sh`, `lsp-smoke.mjs`, `lsp-connection.mjs` and `lsp-fixture/**`. Unchanged inputs
+`lsp-smoke.sh`, `lsp-smoke.mjs`, `lsp-connection.mjs`, `lsp-framing.mjs` and `lsp-fixture/**`. Unchanged inputs
 replay the cached result. Run it alone with:
 
 ```sh
@@ -631,6 +631,14 @@ Requests keep their `60_000` ms deadline while the server is alive; settled
 requests leave no pending waiter. Shutdown allows another `5_000` ms before
 killing a server that ignores EOF. Run the process-lifecycle regressions with
 `node --test scripts/lsp-connection.test.mjs` (also part of `//:release`).
+
+Every JavaScript LSP client in the repository frames messages through
+`typescript/vibelang/lsp-framing.mjs`: `encodeFrame` writes a frame, and
+`FrameDecoder.push` yields the messages a chunk completes and throws a
+`FramingError` naming the stage, `header`, `JSON` or `message`, where the stream
+stopped being valid. The error quotes no response bytes. Each client keeps its own
+lifecycle and reporting. `scripts/lsp-framing.test.mjs` decodes every split of a
+stream and refuses every malformed neighbour.
 
 For `// expect-result:` cases, the generated `out/run.mjs` drains stdout and
 stderr after printing the result or defect, before its forced exit. Large

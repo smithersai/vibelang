@@ -7,6 +7,7 @@ import { join } from "node:path"
 import { fileURLToPath, pathToFileURL } from "node:url"
 import { createHash } from "node:crypto"
 import { formatSource, typescriptPlugin } from "../format.mjs"
+import { encodeFrame, FrameDecoder } from "../../../typescript/vibelang/lsp-framing.mjs"
 
 const root = fileURLToPath(new URL("../../..", import.meta.url))
 const binary = process.env.VIBELANG_BINARY || join(root, "packages/compiler/native/vibelang")
@@ -37,23 +38,15 @@ test("formatSource follows the repository's quote style for unsaved source", t =
 
 function connection(dir) {
   const child = spawn(binary, ["--lsp", "--stdio"], { cwd: dir, stdio: ["pipe", "pipe", "pipe"] })
-  let buffer = Buffer.alloc(0), next = 1, stderr = ""
+  const decoder = new FrameDecoder()
+  let next = 1, stderr = ""
   const pending = new Map()
   child.stderr.on("data", data => { stderr += data })
   const send = message => {
-    const body = Buffer.from(JSON.stringify({ jsonrpc: "2.0", ...message }))
-    child.stdin.write("Content-Length: " + body.length + "\r\n\r\n")
-    child.stdin.write(body)
+    child.stdin.write(encodeFrame({ jsonrpc: "2.0", ...message }))
   }
   child.stdout.on("data", data => {
-    buffer = Buffer.concat([buffer, data])
-    for (;;) {
-      const end = buffer.indexOf("\r\n\r\n")
-      if (end < 0) return
-      const length = Number(/Content-Length:\s*(\d+)/i.exec(buffer.subarray(0, end).toString())[1])
-      if (buffer.length < end + 4 + length) return
-      const message = JSON.parse(buffer.subarray(end + 4, end + 4 + length))
-      buffer = buffer.subarray(end + 4 + length)
+    for (const message of decoder.push(data)) {
       if (message.method && message.id !== undefined) {
         send({ id: message.id, result: message.method === "workspace/configuration" ? message.params.items.map(() => null) : null })
       } else if (pending.has(message.id)) {

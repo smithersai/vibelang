@@ -38,7 +38,7 @@ export function baseKey(compiler: string): string {
   if (!binary) throw new Error(`Compiler not found: ${compiler}`)
   const inputs = [
     binary,
-    ...["docs/tools/hovers.ts", "docs/tools/lsp.ts", "docs/tools/check-snippets.ts"].map(path => join(repo, path)),
+    ...["docs/tools/hovers.ts", "docs/tools/lsp.ts", "typescript/vibelang/lsp-framing.mjs", "docs/tools/check-snippets.ts"].map(path => join(repo, path)),
     ...["experiments/bun.lock", "docs/tools/bun.lock", "packages/runtime/bun.lock", "packages/vite/src/index.d.ts"].map(path => join(repo, path)),
     join(runtimeDir(), "package.json"),
     ...files(join(runtimeDir(), "dist")).filter(path => path.endsWith(".d.ts")).sort()

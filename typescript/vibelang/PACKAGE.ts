@@ -30,6 +30,8 @@ const shared = [
   S.file("harness-command.mjs"),
   S.file("late-start-scheduler.mjs"),
   S.file("rewrite-preservation.mjs"),
+  S.file("lsp-connection.mjs"),
+  S.file("lsp-framing.mjs"),
   S.file("cases/package.json"),
   S.glob("cases/*.mjs"),
   S.file("//scripts/api-identity.mjs"),
@@ -98,6 +100,7 @@ targets["lsp-smoke"] = S.Shell.Test({
     S.file("lsp-smoke.mjs"),
     S.file("lsp-format-shape.mjs"),
     S.file("lsp-connection.mjs"),
+    S.file("lsp-framing.mjs"),
     S.glob("lsp-fixture/**")
   ],
   tools: [S.Host.bin("node")],

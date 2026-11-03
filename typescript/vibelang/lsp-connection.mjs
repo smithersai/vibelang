@@ -1,4 +1,5 @@
 import { spawn } from "node:child_process"
+import { encodeFrame, FrameDecoder, FramingError } from "./lsp-framing.mjs"
 
 export class Connection {
   constructor(command, args, cwd, { requestTimeoutMs = 60_000, shutdownTimeoutMs = 5_000 } = {}) {
@@ -7,7 +8,7 @@ export class Connection {
     this.failure = null
     this.exit = null
     this.process = spawn(command, args, { cwd, stdio: ["pipe", "pipe", "pipe"] })
-    this.buffer = Buffer.alloc(0)
+    this.decoder = new FrameDecoder()
     this.nextId = 1
     this.pending = new Map()
     this.registrations = []
@@ -37,15 +38,11 @@ export class Connection {
   }
 
   receive(chunk) {
-    this.buffer = Buffer.concat([this.buffer, chunk])
-    for (;;) {
-      const end = this.buffer.indexOf("\r\n\r\n")
-      if (end < 0) return
-      const length = Number(/Content-Length: *(\d+)/i.exec(this.buffer.subarray(0, end).toString())?.[1])
-      if (this.buffer.length < end + 4 + length) return
-      const message = JSON.parse(this.buffer.subarray(end + 4, end + 4 + length).toString())
-      this.buffer = this.buffer.subarray(end + 4 + length)
-      this.dispatch(message)
+    try {
+      for (const message of this.decoder.push(chunk)) this.dispatch(message)
+    } catch (error) {
+      if (!(error instanceof FramingError)) throw error
+      this.fail(error)
     }
   }
 
@@ -67,9 +64,7 @@ export class Connection {
   }
 
   send(message) {
-    const body = Buffer.from(JSON.stringify(message))
-    this.process.stdin.write(`Content-Length: ${body.length}\r\n\r\n`)
-    this.process.stdin.write(body)
+    this.process.stdin.write(encodeFrame(message))
   }
 
   request(method, params) {

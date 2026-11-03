@@ -2,11 +2,13 @@
 import assert from "node:assert/strict"
 import { spawn } from "node:child_process"
 import { pathToFileURL } from "node:url"
+import { encodeFrame, FrameDecoder, FramingError } from "../../../typescript/vibelang/lsp-framing.mjs"
 
 export function client(binary, args, cwd) {
   const child = spawn(binary, args, { cwd, stdio: ["pipe", "pipe", "pipe"] })
   const closed = new Promise(resolve => child.once("close", resolve))
-  let buffer = Buffer.alloc(0), stderr = "", nextId = 0, stopped = false
+  const decoder = new FrameDecoder({ maxBytes: 8 << 20 })
+  let stderr = "", nextId = 0, stopped = false
   let failure, closing
   const pending = new Map()
   const log = () => `${binary}: pending ${[...pending.values()].map(p => p.method).join(", ")}\n${stderr}`
@@ -18,9 +20,7 @@ export function client(binary, args, cwd) {
   }
   function send(message) {
     if (failure) throw new Error(`RPC transport unavailable: ${failure}`)
-    const body = Buffer.from(JSON.stringify({ jsonrpc: "2.0", ...message }))
-    child.stdin.write(`Content-Length: ${body.length}\r\n\r\n`)
-    child.stdin.write(body)
+    child.stdin.write(encodeFrame({ jsonrpc: "2.0", ...message }))
   }
   function close() {
     fail("client closed")
@@ -41,25 +41,8 @@ export function client(binary, args, cwd) {
   child.stdout.on("error", error => fail(`stdout failed (${error.code ?? "read"})`))
   child.stdout.on("data", chunk => {
     if (failure) return
-    let stage = "headers"
     try {
-      buffer = Buffer.concat([buffer, chunk])
-      assert.ok(buffer.length <= 8 << 20, "RPC frame exceeds 8 MiB")
-      for (;;) {
-        stage = "headers"
-        const end = buffer.indexOf("\r\n\r\n")
-        if (end < 0) return
-        const lengths = buffer.subarray(0, end).toString().split("\r\n").filter(line => /^Content-Length:/i.test(line))
-        const match = lengths.length === 1 ? /^Content-Length: *(\d+) *$/i.exec(lengths[0]) : null
-        assert.ok(match, "invalid RPC Content-Length")
-        const length = Number(match[1])
-        assert.ok(Number.isSafeInteger(length) && length <= 8 << 20, "invalid RPC frame length")
-        if (buffer.length < end + 4 + length) return
-        stage = "body"
-        const message = JSON.parse(buffer.subarray(end + 4, end + 4 + length).toString())
-        buffer = buffer.subarray(end + 4 + length)
-        stage = "dispatch"
-        assert.ok(message && typeof message === "object" && !Array.isArray(message), "invalid RPC message")
+      for (const message of decoder.push(chunk)) {
         if (message.method && message.id !== undefined) {
           send({ id: message.id, result: message.method === "workspace/configuration"
             ? message.params.items.map(() => null) : null })
@@ -70,9 +53,9 @@ export function client(binary, args, cwd) {
           else p.resolve(message.result)
         }
       }
-    } catch {
+    } catch (error) {
       // Parser errors can quote the response body; report only the protocol stage.
-      fail(`invalid response at ${stage}`)
+      fail(`invalid response at ${error instanceof FramingError ? error.stage : "dispatch"}`)
       void close()
     }
   })

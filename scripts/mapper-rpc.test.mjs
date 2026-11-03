@@ -92,9 +92,9 @@ async function fixture(t, mode, options = {}) {
 
 for (const [mode, stage] of [
   ["eof", "stdout closed"], ["header-eof", "stdout closed"], ["body-eof", "stdout closed"],
-  ["missing-length", "headers"], ["duplicate-length", "headers"], ["invalid-length", "headers"],
-  ["oversized-length", "headers"], ["unsafe-length", "headers"], ["json", "body"],
-  ["null", "dispatch"], ["array", "dispatch"], ["server-request", "dispatch"],
+  ["missing-length", "header"], ["duplicate-length", "header"], ["invalid-length", "header"],
+  ["oversized-length", "header"], ["unsafe-length", "header"], ["json", "JSON"],
+  ["null", "message"], ["array", "message"], ["server-request", "dispatch"],
   ["exit", "exited|stdout closed"], ["signal", "exited|stdout closed"]
 ]) {
   test("mapper RPC rejects every request after " + mode, async t => {

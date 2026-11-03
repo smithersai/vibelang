@@ -29,7 +29,7 @@ test("LSP smoke is a cached compiler-suite target with editor and fixture inputs
   assert.ok(target.data.includes(runtime))
   assert.ok(target.data.includes(published))
   assert.ok(target.data.includes(native), "editor formatting reads the dprint plugin compiler-native writes")
-  for (const input of ["lsp-smoke.sh", "lsp-smoke.mjs", "lsp-format-shape.mjs", "lsp-connection.mjs", "lsp-fixture/**",
+  for (const input of ["lsp-smoke.sh", "lsp-smoke.mjs", "lsp-format-shape.mjs", "lsp-connection.mjs", "lsp-framing.mjs", "lsp-fixture/**",
     "//experiments/package.json", "//experiments/bun.lock", "//packages/runtime/bun.lock",
     "//packages/compiler/format.mjs", "//packages/compiler/cache.mjs", "//packages/compiler/temporary.mjs",
     "//packages/compiler/package.json", "//packages/compiler/bun.lock"]) {

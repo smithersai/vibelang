@@ -11,6 +11,7 @@ let buffer = Buffer.alloc(0)
 const mode = process.argv[2]
 setInterval(() => {}, 10_000)
 const send = (message) => {
+  if (mode === "unframed") return void process.stdout.write("Content-Type: text\r\n\r\n{}")
   const body = Buffer.from(JSON.stringify(message))
   const frame = Buffer.concat([Buffer.from("Content-Length: " + body.length + "\r\n\r\n"), body])
   if (mode === "fragment") {
@@ -91,6 +92,13 @@ for (const [mode, cause] of [["exit", /23/], ["signal", /SIGTERM/]]) {
     if (mode === "exit") assert.match(c.log.join("\n"), /fixture peer stopped/)
   })
 }
+
+test("LSP output with no Content-Length rejects the pending request and close completes", async t => {
+  const c = connection(t, "unframed", { shutdownTimeoutMs: 50 })
+  await assert.rejects(promptly(c.request("hover", {})), /hover.*malformed LSP header/)
+  assert.equal(c.pending.size, 0)
+  await promptly(c.close())
+})
 
 test("LSP spawn failure rejects requests and close completes", async t => {
   const c = connection(t, "missing")
