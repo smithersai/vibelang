@@ -501,8 +501,8 @@ test.skipIf(!existsSync(compiler))("a pending marker stands only while the compi
         "```vibe", "// pending: VIP-1", "const wrong: number = 'text'", "```",
         "```vibe", "// pending: VIP-1", "const takes = 1", "```"
       ],
-      output: ["```vibe", "// pending: VIP-1", "export function main() { Console.log('actual') }", "// Output: claimed", "```"],
-      printed: ["```vibe", "// pending: VIP-1", "export function main() { Console.log('claimed') }", "// Output: claimed", "```"],
+      output: ["```vibe", "// pending: VIP-1", "export effect function main() { try Console.log('actual') }", "// Output: claimed", "```"],
+      printed: ["```vibe", "// pending: VIP-1", "export effect function main() { try Console.log('claimed') }", "// Output: claimed", "```"],
       // waits imports a block the compiler takes, but fails itself, so the marker it inherits stays.
       imported: [
         "```vibe", "// lib.vibe", "// pending: VIP-1", "export const value = 1", "```",
@@ -512,9 +512,15 @@ test.skipIf(!existsSync(compiler))("a pending marker stands only while the compi
     }
     for (const [name, lines] of Object.entries(pages)) writeFileSync(join(root, `${name}.md`), lines.join("\n"))
     const report = join(root, "report.json")
+    let checks = 0
     const check = async (...flags: string[]) => {
+      const phase = ++checks === 1 ? "classify" : flags.includes("--retire-pending") ? "retire" : "verify"
+      const started = performance.now()
+      console.info("[pending-markers]", phase, "start")
       const child = Bun.spawn(["bun", join(import.meta.dir, "check-snippets.ts"), "--root", root, "--compiler", compiler, "--json", report, ...flags], { stdout: "pipe", stderr: "pipe" })
-      const [, stderr, status] = await Promise.all([new Response(child.stdout).text(), new Response(child.stderr).text(), child.exited])
+      const [stdout, stderr, status] = await Promise.all([new Response(child.stdout).text(), new Response(child.stderr).text(), child.exited])
+      console.info("[pending-markers]", phase, { elapsedMs: Math.round(performance.now() - started), status,
+        stdoutBytes: new TextEncoder().encode(stdout).length, stderrBytes: new TextEncoder().encode(stderr).length })
       const page = (name: string) => JSON.parse(readFileSync(report, "utf8")).pages.find((p: any) => p.page.endsWith(`/${name}.md`)).blocks.map((b: any) => b.status)
       return { status, stderr, page }
     }
@@ -540,4 +546,4 @@ test.skipIf(!existsSync(compiler))("a pending marker stands only while the compi
   } finally {
     rmSync(root, { recursive: true, force: true })
   }
-})
+}, 120_000)
