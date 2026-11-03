@@ -1,4 +1,4 @@
-import { compareApiIdentity, formatResult as formatApiIdentity } from "./api-identity.mjs"
+import { compareApiIdentityInWorker as compareApiIdentity, formatResult as formatApiIdentity } from "./api-identity.mjs"
 import { prepareBuilds } from "./builds.mjs"
 import { ownedToolConfigs } from "./tool-config-references.mjs"
 // The migrate flow's steps. Each reads and writes the run directory, so it can

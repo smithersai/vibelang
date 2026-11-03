@@ -112,3 +112,9 @@ Comparison exceptions, including a stack overflow, return an invalid result:
 diagnostic. The `failure` record identifies the stage, elapsed milliseconds and
 process memory use. The CLI prints the same result with `--json` and exits `2`.
 A failed comparison supplies no type-difference verdict.
+
+The CLI runs its comparison in a child with a `2 GiB` V8 heap limit. A fatal
+allocation failure, a signal or an empty successful exit is an invalid receipt,
+printed as JSON with `--json` and exit `2`. The receipt records the child's
+signal, exit status and diagnostic byte count. Imported callers can use
+`compareApiIdentityInWorker(ts, before, after, options)` for the same isolation.

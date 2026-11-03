@@ -3,6 +3,7 @@
 // identity checked by tsc, and JSDoc. No declaration text canonicalizer.
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs"
 import { createRequire } from "node:module"
+import { spawnSync } from "node:child_process"
 import { dirname, join, relative, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
 import { alignNominalIdentity } from "./api-identity-nominal.mjs"
@@ -873,6 +874,46 @@ function compareUnchecked(ts, before, after, options, progress) {
   return result
 }
 
+
+// Run heavy comparisons in a bounded child so a fatal V8 allocation failure or
+// signal is still an explicit invalid receipt in the caller.
+export function compareApiIdentityInWorker(ts, before, after, options = {}) {
+  const started = performance.now()
+  let child
+  try {
+    const preload = []
+    if (!process.versions.bun) for (let i = 0; i < process.execArgv.length; i++) {
+      const arg = process.execArgv[i]
+      if (["--import", "--require", "-r"].includes(arg)) preload.push(arg, process.execArgv[++i])
+      else if (arg.startsWith("--import=") || arg.startsWith("--require=")) preload.push(arg)
+    }
+    const compilerOptions = options.compilerOptions && { ...options.compilerOptions, configFile: undefined }
+    child = spawnSync(process.versions.bun ? "node" : process.execPath,
+      [...preload, "--max-old-space-size=2048", fileURLToPath(import.meta.url), "--api-identity-worker"], {
+        input: JSON.stringify({ compiler: ts.sys.getExecutingFilePath(), before, after,
+          options: { ...options, compilerOptions } }),
+        encoding: "utf8", maxBuffer: 64 * 1024 * 1024,
+      })
+    if (options.profile && child.stderr) process.stderr.write(child.stderr)
+    if (!child.signal && !child.error && [0, 1, 2].includes(child.status)) {
+      const result = JSON.parse(child.stdout)
+      const valid = typeof result.identical === "boolean" && typeof result.comparisonComplete === "boolean" &&
+        ["nameDifferences", "typeDifferences", "docDifferences", "environmentDiagnostics"].every(k => Array.isArray(result[k]))
+      const exit = result.comparisonComplete === false ? 2 : result.identical ? 0 : 1
+      if (valid && child.status === exit && (!result.identical || result.comparisonComplete &&
+          !result.nameDifferences.length && !result.typeDifferences.length && !result.docDifferences.length &&
+          !result.environmentDiagnostics.some(d => d.blocking))) return result
+    }
+  } catch {}
+  return { identical: false, comparisonComplete: false, nameDifferences: [], typeDifferences: [], docDifferences: [],
+    failure: { stage: "worker", elapsedMs: Math.round(performance.now() - started),
+      exitCode: child?.status ?? null, signal: child?.signal ?? null, error: child?.error?.code,
+      stderrBytes: Buffer.byteLength(child?.stderr ?? "") },
+    environmentDiagnostics: [{ blocking: true,
+      diagnostic: "API identity worker failed to return a complete receipt" +
+        (child?.signal ? " (signal " + child.signal + ")" : " (exit " + (child?.status ?? "unavailable") + ")") }] }
+}
+
 export function formatResult(result) {
   return [
     ["Name differences", result.nameDifferences],
@@ -895,13 +936,21 @@ function main(args) {
   }
   if (!values.before || !values.after) throw new Error("--before and --after are required")
   const ts = loadTypeScript([values.before, values.after])
-  const result = compareApiIdentity(ts, values.before, values.after)
+  const result = compareApiIdentityInWorker(ts, values.before, values.after)
   console.log(values.json ? JSON.stringify(result, null, 2) : formatResult(result))
   return result.comparisonComplete === false ? 2 : result.identical ? 0 : 1
 }
 const evaluating = process.execArgv.some(arg => ["-e", "--eval", "-p", "--print"].includes(arg) ||
   arg.startsWith("--eval=") || arg.startsWith("--print="))
 if (!evaluating && process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  try { process.exitCode = main(process.argv.slice(2)) }
+  try {
+    if (process.argv[2] === "--api-identity-worker") {
+      const request = JSON.parse(readFileSync(0, "utf8"))
+      const ts = createRequire(import.meta.url)(request.compiler)
+      const result = compareApiIdentity(ts, request.before, request.after, request.options)
+      console.log(JSON.stringify(result))
+      process.exitCode = result.comparisonComplete === false ? 2 : result.identical ? 0 : 1
+    } else process.exitCode = main(process.argv.slice(2))
+  }
   catch (error) { console.error(error.stack ?? error); process.exitCode = 2 }
 }

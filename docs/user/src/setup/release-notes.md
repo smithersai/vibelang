@@ -477,6 +477,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 ### Bugs fixed since 0.0.10
 
+- A declaration API checker killed by the system or by heap exhaustion left no result; the CLI now returns an explicit invalid receipt with the worker's exit status or signal, including when a worker exits successfully without a result.
+
 - A declaration API comparison that overflowed the stack threw instead of returning a verdict; it now returns an explicit invalid result with its failed stage and memory use, and `--json` exits `2`.
 
 - Published-declaration checks could reject a package compared with itself when `vibe.sidecarDir` moved its declarations or a dependency had an unrelated TypeScript error. They now resolve moved sidecars, report environment errors separately, and distinguish an unavailable comparison from an API difference.

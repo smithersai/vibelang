@@ -895,3 +895,23 @@ test("property: compiler exceptions never establish API identity", async () => {
     }),
   })
 })
+
+test("fatal worker signals and empty successful exits are invalid CLI receipts", () => {
+  fixture({ "index.d.ts": "export type X = string;" }, { "index.d.ts": "export type X = string;" }, (a, b) => {
+    for (const action of ["process.kill(process.pid, 'SIGKILL')", "process.exit(0)"]) {
+      const hook = join(a, "worker-hook.mjs")
+      writeFileSync(hook, "if (process.argv.includes('--api-identity-worker')) " + action)
+      const run = spawnSync(process.execPath, ["--import", hook, "scripts/api-identity.mjs", "--before", a, "--after", b, "--json"],
+        { encoding: "utf8", timeout: 30000 })
+      assert.equal(run.signal, null, run.stderr)
+      assert.equal(run.status, 2, run.stderr)
+      const result = JSON.parse(run.stdout)
+      assert.equal(result.identical, false)
+      assert.equal(result.comparisonComplete, false)
+      assert.equal(result.failure.stage, "worker")
+      if (action.includes("SIGKILL")) assert.equal(result.failure.signal, "SIGKILL")
+      else assert.equal(result.failure.exitCode, 0)
+      assert.ok(result.environmentDiagnostics.some(d => d.blocking))
+    }
+  })
+})
