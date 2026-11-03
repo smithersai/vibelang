@@ -9,6 +9,7 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/core"
 	"github.com/microsoft/TypeScript/tsc/internal/ls"
 	"github.com/microsoft/TypeScript/tsc/internal/lsp/lsproto"
+	"github.com/microsoft/TypeScript/tsc/internal/parser"
 	"github.com/microsoft/TypeScript/tsc/internal/scanner"
 )
 
@@ -23,6 +24,7 @@ import (
 // still parses, as a labeled block around $select(...), so that EK4607 can.
 
 var (
+	EK1906 = message(parser.ConcurrentHeadDiagnosticCode, errorCategory, parser.ConcurrentHeadDiagnosticText)
 	// EK4601: await before a call that already runs. {0} is the call.
 	EK4601 = message(4601, errorCategory, "{0} already runs here, so there is nothing to await.")
 	// EK4602: await on a promise. {0} is the operand.
@@ -58,7 +60,7 @@ func isConcurrentBody(fn *ast.Node) bool {
 
 func init() {
 	checker.RegisterTransparentYieldFunctionHook(isConcurrentBody)
-	for _, m := range []*Message{EK4601, EK4602, EK4603, EK4604, EK1903, EK1904, EK4607, EK4609, EK4610, EK4611, EK4612} {
+	for _, m := range []*Message{EK4601, EK4602, EK4603, EK4604, EK1903, EK1904, EK1906, EK4607, EK4609, EK4610, EK4611, EK4612} {
 		registry[m.Code] = m
 	}
 	fileChecks = append(fileChecks, checkFiberForms)

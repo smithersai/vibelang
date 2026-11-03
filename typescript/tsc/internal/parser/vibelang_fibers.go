@@ -5,6 +5,7 @@ import (
 
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/core"
+	"github.com/microsoft/TypeScript/tsc/internal/diagnostics"
 	"github.com/microsoft/TypeScript/tsc/internal/scanner"
 )
 
@@ -487,9 +488,21 @@ func (p *Parser) nextTokenIsOpenParenOnSameLine() bool {
 	return p.token == ast.KindOpenParenToken && !p.hasPrecedingLineBreak()
 }
 
-func (p *Parser) nextTokenIsConstOrLet() bool {
+// nextTokenStartsConcurrentDeclaration recognizes both valid declarations
+// and native declaration kinds recovered for EK1906. `using` alone can be
+// a limit expression or an assignment head, so only consume its declaration
+// spelling here.
+func (p *Parser) nextTokenStartsConcurrentDeclaration() bool {
 	p.nextToken()
-	return p.token == ast.KindConstKeyword || p.token == ast.KindLetKeyword
+	switch p.token {
+	case ast.KindConstKeyword, ast.KindLetKeyword, ast.KindVarKeyword:
+		return true
+	case ast.KindUsingKeyword:
+		return p.lookAhead((*Parser).nextTokenIsBindingIdentifierOrStartOfDestructuringOnSameLineDisallowOf)
+	case ast.KindAwaitKeyword:
+		return p.lookAhead(func(p *Parser) bool { return p.nextToken() == ast.KindUsingKeyword })
+	}
+	return false
 }
 
 // parseVibeLangConcurrentFor parses, after for,
@@ -506,27 +519,57 @@ func (p *Parser) nextTokenIsConstOrLet() bool {
 func (p *Parser) parseVibeLangConcurrentFor(pos int) *ast.Node {
 	anchor := p.tokenRange()
 	p.nextToken() // concurrent
-	var limit *ast.Node
-	if p.token == ast.KindOpenParenToken && !p.lookAhead((*Parser).nextTokenIsConstOrLet) {
+	var limit, assignmentHead *ast.Node
+	var head core.TextRange
+	if p.token == ast.KindOpenParenToken && !p.lookAhead((*Parser).nextTokenStartsConcurrentDeclaration) {
 		p.nextToken()
-		// A binding in the limit belongs to the home around the loop: the
-		// limit runs before the loop head exists (decided detail 249).
-		limit = p.hoistVibeLangIs(p.parseExpressionAllowIn())
-		p.parseExpected(ast.KindCloseParenToken)
+		head = p.tokenRange()
+		first := p.parseExpressionAllowIn()
+		if p.token == ast.KindOfKeyword {
+			// An assignment head has no declaration keyword. Parse the group
+			// once, then recover it as the head instead of as a limit.
+			assignmentHead = first
+		} else {
+			// The limit runs before the loop head exists (detail 249).
+			limit = p.hoistVibeLangIs(first)
+			p.parseExpected(ast.KindCloseParenToken)
+		}
 	}
 	forKeyword := scanner.SkipTrivia(p.sourceText, pos)
 	p.recordVibeSyntax(VibeSyntax{Kind: VibeSyntaxForConcurrent, Word: core.NewTextRange(forKeyword, forKeyword+len("for")), Head: core.NewTextRange(anchor.Pos(), p.nodePos()), Range: core.NewTextRange(forKeyword, p.nodePos())})
-	p.parseExpected(ast.KindOpenParenToken)
 	declarationKind := ast.NodeFlagsConst
-	if p.token == ast.KindLetKeyword {
-		declarationKind = ast.NodeFlagsLet
-	}
-	if p.token == ast.KindConstKeyword || p.token == ast.KindLetKeyword {
-		p.nextToken()
+	var binding *ast.Node
+	if assignmentHead != nil {
+		p.diagnostics = append(p.diagnostics, ast.NewExternalDiagnostic(nil, head, "EK", diagnostics.CategoryError, ConcurrentHeadDiagnosticCode, ConcurrentHeadDiagnosticText))
+		binding = assignmentHead
+		if binding.Kind != ast.KindIdentifier {
+			binding = p.vibelangSynthesized(p.factory.NewIdentifier("$invalidConcurrentHead"), binding.Loc)
+		}
 	} else {
-		p.parseExpected(ast.KindConstKeyword)
+		p.parseExpected(ast.KindOpenParenToken)
+		head = p.tokenRange()
+		if p.token == ast.KindLetKeyword {
+			declarationKind = ast.NodeFlagsLet
+		}
+		valid := p.token == ast.KindConstKeyword || p.token == ast.KindLetKeyword
+		if !valid {
+			p.diagnostics = append(p.diagnostics, ast.NewExternalDiagnostic(nil, head, "EK", diagnostics.CategoryError, ConcurrentHeadDiagnosticCode, ConcurrentHeadDiagnosticText))
+		}
+		nativeDeclaration := valid || p.token == ast.KindVarKeyword || p.token == ast.KindUsingKeyword && p.lookAhead((*Parser).nextTokenIsBindingIdentifierOrStartOfDestructuringOnSameLineDisallowOf) || p.token == ast.KindAwaitKeyword && p.lookAhead(func(p *Parser) bool { return p.nextToken() == ast.KindUsingKeyword })
+		if nativeDeclaration {
+			if p.token == ast.KindAwaitKeyword {
+				p.nextToken()
+			}
+			p.nextToken()
+			binding = p.parseIdentifierOrPattern()
+		} else {
+			binding = p.parseLeftHandSideExpressionOrHigher()
+			if binding.Kind != ast.KindIdentifier {
+				binding = p.vibelangSynthesized(p.factory.NewIdentifier("$invalidConcurrentHead"), binding.Loc)
+			}
+		}
 	}
-	binding := p.parseIdentifierOrPattern()
+
 	ofKeyword := p.tokenRange()
 	p.parseExpected(ast.KindOfKeyword)
 	items := p.parseAssignmentExpressionOrHigher()

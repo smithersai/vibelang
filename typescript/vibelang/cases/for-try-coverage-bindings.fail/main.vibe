@@ -1,11 +1,10 @@
-// expect: EK0107 EK2002 EK2003 EK2004 EK2005
+// expect: EK0107 EK2002 EK2003 EK2004
 import { Stream } from "effect"
 // VIP-20 each rejected form has its own diagnostic.
 export effect function returns() { for try (const n of Stream.make(1)) return n }
 export effect function outside() { outer: { for try (const n of Stream.make(1)) break outer } }
 export effect function continueOutside() { outer: for (const s of [Stream.make(1)]) { for try (const n of s) { continue outer } } }
 export effect function iterable(xs: AsyncIterable<number>) { for try (const n of xs) {} }
-export effect function binding() { for try (var n of Stream.make(1)) {} }
 
 // docs/design/vips/0020-for-try.md#f38f8919ed4d33fd | VIP-20 Stream-loop-errors
 // `return` from the enclosing function is a compile error.

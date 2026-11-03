@@ -138,7 +138,7 @@ parser/vibelang_fibers.go:Parser.jumpKeywordRange	admission:fork	900-appendices.
 parser/vibelang_fibers.go:isFunctionOrClassBoundary	admission:fork	900-appendices.md#ForkExpression	support	VIP-17/19 fork and concurrent-loop helpers; legacy paths below
 parser/vibelang_fibers.go:Parser.isVibeLangConcurrentFor	admission:for-concurrent	900-appendices.md#ForConcurrent	support	VIP-19 concurrent loop
 parser/vibelang_fibers.go:Parser.nextTokenIsOpenParenOnSameLine	admission:fork	900-appendices.md#ForkExpression	support	VIP-17/19 fork and concurrent-loop helpers; legacy paths below
-parser/vibelang_fibers.go:Parser.nextTokenIsConstOrLet	admission:fork	900-appendices.md#ForkExpression	support	VIP-17/19 fork and concurrent-loop helpers; legacy paths below
+parser/vibelang_fibers.go:Parser.nextTokenStartsConcurrentDeclaration	admission:for-concurrent	900-appendices.md#ForConcurrent	support	VIP-19 declaration and assignment head recovery distinguishes the head from a limit; invalid heads receive EK1906
 parser/vibelang_fibers.go:Parser.parseVibeLangConcurrentFor	admission:for-concurrent	900-appendices.md#ForConcurrent	support	VIP-19 concurrent loop
 parser/vibelang_fibers.go:Parser.rewriteConcurrentJumps	admission:for-concurrent	900-appendices.md#ForConcurrent	support	VIP-19 concurrent loop
 parser/vibelang_match.go:Parser.isStartOfVibeLangMatch	admission:match	900-appendices.md#MatchExpression,900-appendices.md#AsyncMatchExpression	support	Appendix A: MatchExpression, AsyncMatchExpression; inherited TypeScript helpers and diagnostic recovery retain their stated boundaries

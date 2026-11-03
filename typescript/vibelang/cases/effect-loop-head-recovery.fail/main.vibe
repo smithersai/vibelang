@@ -1,0 +1,15 @@
+// expect: EK1906 EK1906 EK1906 EK1906 EK1906 EK2005 EK2005 EK2005 EK2005
+import { Stream } from "effect"
+export effect function load() {
+  let x = 0
+  const target = { x: 0 }
+  for concurrent (var n of [1]) { void n }
+  for concurrent (using n of [1]) { void n }
+  for concurrent (await using n of [1]) { void n }
+  for concurrent (x of [1]) { void x }
+  for concurrent(2) (target.x of [1]) { void target }
+  for try (var n of Stream.make(1)) { void n }
+  for try (using n of Stream.make(1)) { void n }
+  for try (await using n of Stream.make(1)) { void n }
+  for try (x of Stream.make(1)) { void x }
+}

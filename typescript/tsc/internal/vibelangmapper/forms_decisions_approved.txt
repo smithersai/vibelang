@@ -516,3 +516,6 @@ typescript/vibelang/cases/cov-ch004-not-prefix/main.vibe:15:17 lambda: dual fall
 # Removed typescript/vibelang/cases/data-declarations-default-export.fail/main.vibe:2:27 block appended/plain fallback: VIP-15/16 recover the rejected declaration body rather than classifying it as a trailing call block.
 
 # Removed typescript/vibelang/cases/schema-declarations-default-export.fail/main.vibe:2:29 block appended/plain fallback: VIP-15/16 recover the rejected declaration body rather than classifying it as a trailing call block.
+
+# VIP-19 head recovery: coordinate-only move, with the same lambda effectFn table decision.
+# typescript/vibelang/cases/cov-ch900a-ek1906.fail/main.vibe:2:49 -> 2:53 lambda effectFn table # consuming var correctly anchors the recovered callback at the actual of keyword

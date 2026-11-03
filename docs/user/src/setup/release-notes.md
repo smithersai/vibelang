@@ -724,6 +724,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Legacy `fork(program, options)` calls inside explicit `effect` code were left unchanged by `--fix`; they now become `try Effect.forkChild(program, options)` with their options preserved.
 
+- Invalid `for concurrent` heads produced unrelated TypeScript parse errors. They now report `EK1906`; invalid `for try` heads report `EK2005`, including with `--noCheck`.
+
 - Identical recursive generic declaration APIs could fail with `TS2589`; exact resolved type identity now proves those comparisons.
 - API checks treated identical JSDoc links as different when a private target resolved in only one snapshot. Link targets and labels now compare consistently while real comment changes remain differences.
 

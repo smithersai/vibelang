@@ -3,6 +3,7 @@ package vibelang
 import (
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/checker"
+	"github.com/microsoft/TypeScript/tsc/internal/parser"
 	"github.com/microsoft/TypeScript/tsc/internal/scanner"
 )
 
@@ -11,7 +12,7 @@ var (
 	EK2002     = message(2002, errorCategory, "return cannot leave a for try body; use break to stop consuming the Stream, then return after the loop.")
 	EK2003     = message(2003, errorCategory, "A labeled jump cannot leave a for try body; move the decision after the loop.")
 	EK2004     = message(2004, errorCategory, "for try requires a Stream; convert an AsyncIterable with Stream.fromAsyncIterable first.")
-	forTryHead = message(2005, errorCategory, "for try declares its element with const or let; write for try (const v of s) { x = v } to assign an existing variable.")
+	forTryHead = message(parser.StreamHeadDiagnosticCode, errorCategory, parser.StreamHeadDiagnosticText)
 )
 
 func isForTry(n *ast.Node) bool {
@@ -34,9 +35,6 @@ func checkForTry(c *checker.Checker, file *ast.SourceFile) {
 	var visit func(*ast.Node) bool
 	visit = func(n *ast.Node) bool {
 		if isForTry(n) {
-			if init := n.AsForInOrOfStatement().Initializer; init != nil && (!ast.IsVariableDeclarationList(init) || init.Flags&(ast.NodeFlagsLet|ast.NodeFlagsConst) == 0 || init.Flags&ast.NodeFlagsUsing != 0) {
-				report(c, init, forTryHead)
-			}
 			if !inEffectCode(n) { // a plain function is not effect code (VIP-1, VIP-20)
 				report(c, n, EK2001)
 				coverCodes(c, n.Expression(), 2488, 2504)

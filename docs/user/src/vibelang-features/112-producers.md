@@ -147,3 +147,5 @@ A plain `function*` is a JavaScript generator, with or without a return annotati
 ## Coming from Effect
 
 Declare a generator-based Stream source with `effect function*`. Write `try` for Effects between `yield` statements, and reserve `yield` for emitted values. Use Stream's existing operators when they express the transformation you need.
+
+A `for try` head must declare its element with `const` or `let`. A `var`, `using`, `await using`, or assignment head reports `EK2005`, including with `--noCheck`. To assign an existing variable, write `for try (const item of stream) { current = item }`.
