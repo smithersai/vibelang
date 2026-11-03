@@ -508,3 +508,11 @@ typescript/vibelang/cases/catch-absorbed-tag.fail/main.vibe:16:4 lambda: program
 typescript/vibelang/cases/optional-callback-runs/main.vibe:15:16 lambda: plain fallback -> effectFn fallback # VIP-1/VIP-5: `scaled` is explicitly `effect`; guarding its optional program gives a known Effect result. Site relocated from `16:16`.
 typescript/vibelang/cases/cov-ch004-not-prefix/main.vibe:15:17 lambda: dual fallback -> plain fallback # VIP-7: not(let x) is an admitted synchronous negated binding test; its fallback value is plain.
 typescript/vibelang/cases/cov-ch004-not-prefix/main.vibe:15:17 lambda: dual fallback -> plain fallback # VIP-7 permits binding initialization under not; accepting the pattern restores the plain value-returning probe tree used by syntax fallback.
+
+# Removed typescript/vibelang/cases/cov-ch900a-ek1501.fail/main.vibe:2:28 block appended/plain fallback: VIP-15/16 recover the rejected declaration body rather than classifying it as a trailing call block.
+
+# Removed typescript/vibelang/cases/cov-ch900a-ek1603.fail/main.vibe:2:27 block appended/plain fallback: VIP-15/16 recover the rejected declaration body rather than classifying it as a trailing call block.
+
+# Removed typescript/vibelang/cases/data-declarations-default-export.fail/main.vibe:2:27 block appended/plain fallback: VIP-15/16 recover the rejected declaration body rather than classifying it as a trailing call block.
+
+# Removed typescript/vibelang/cases/schema-declarations-default-export.fail/main.vibe:2:29 block appended/plain fallback: VIP-15/16 recover the rejected declaration body rather than classifying it as a trailing call block.

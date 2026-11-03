@@ -40,7 +40,7 @@ A variant cannot be named `$is` or `$match` (`EK1602`), including in generic dat
 
 Support for the new object patterns arrives with the compiler's VIP implementation.
 
-The specification assigns `EK1603` to `export default data D { … }`. Declare the name, then write `export { D as default }`. This keeps the type and constructors under that name.
+`export default data D { … }` reports `EK1603`, including for generic data declarations. Declare the name, then write `export { D as default }`. This keeps the type and constructors under that name.
 
 ## Generic data types
 

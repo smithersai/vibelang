@@ -13,7 +13,7 @@ A native `Schema.Struct({ __proto__: codec })` uses JavaScript's prototype-sette
 
 Encoding produces the selected codecs' encoded representation. For JSON boundaries, choose JSON-compatible codecs and property keys; raw bigints, symbols, undefined values, nonfinite numbers and cyclic values do not all survive ordinary JSON serialization. `Schema.BigIntFromString` gives a bigint a string representation.
 
-The specification assigns `EK1501` to a direct default `schema` declaration and `EK1502` to schema type parameters. Declare a name and use `export { Name as default }`; use an ordinary generic TypeScript factory for parameterized Schema construction.
+A direct default `schema` declaration, including the alias form, reports `EK1501`. The specification assigns `EK1502` to schema type parameters. Declare a name and use `export { Name as default }`; use an ordinary generic TypeScript factory for parameterized Schema construction.
 
 Optional fields in `schema` and `schema error` follow the project's `exactOptionalPropertyTypes` setting. With it off, `name?: T` uses `Schema.optional(S)` and accepts omission or explicit `undefined`. With it on, `name?: T` uses `Schema.optionalKey(S)` and accepts omission; write `name?: T | undefined` to accept a present `undefined` too. The existing `Schema.mutableKey` wrapping is unchanged. A repair from `Schema.mutableKey` writes a plain writable field; a readonly key writes `readonly`. Declarations match the Effect TypeScript twin under the same setting. Without exact optionals, a program needing `Schema.optionalKey` writes Effect's schema or class directly.
 

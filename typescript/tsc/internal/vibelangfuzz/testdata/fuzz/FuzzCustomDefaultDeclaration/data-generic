@@ -1,0 +1,3 @@
+go test fuzz v1
+[]byte("key:data-generic")
+uint8(0)

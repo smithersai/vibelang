@@ -1,0 +1,2 @@
+// expect: EK1603
+export default data Value {One}
