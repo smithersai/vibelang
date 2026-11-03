@@ -1,0 +1,28 @@
+import { Effect, pipe } from "effect"
+// VIP-23 once-only topic and nested-call equivalence; Effect.pipe stays usable.
+export effect function main(): Effect.Effect<number[]> {
+ const trace: number[] = []
+ function first() { trace.push(1); return 3 }
+ function next(n: number) { trace.push(n); return n + 1 }
+ const value = first() |> next(%) |> next(% + %)
+ const plain = pipe(2, next, next)
+ return [value, plain, ...trace]
+}
+
+// docs/design/vips/0023-pipe.md#c202d391be0c8e8b | VIP-23 topic-evaluated-once
+// Its Effect TS is nested calls, with each topic evaluated once into a temporary: `const t1 = fetchUser(id); const t2 = retry(t1, policy); const n = timeout(t2, "1 second")`.
+
+// docs/design/vips/0023-pipe.md#b3fbd3afaad47dea | VIP-23 topic-evaluated-once
+// `|>` is exactly TC39's Hack pipe operator, pinned to a dated snapshot of the proposal, like `do` (VIP-2) and `match` (VIP-7).
+
+// docs/design/vips/0023-pipe.md#f33bef281b02d584 | VIP-23 topic-evaluated-once
+// `%` is the topic: the left side's value, evaluated once.
+
+// docs/design/vips/0023-pipe.md#2810ad3cadd352db | VIP-23 topic-evaluated-once
+// Effect's `pipe(x, f, g)` function remains available through VIP-14.
+
+// docs/design/vips/0023-pipe.md#c5cf31ddc7c6b856 | VIP-23 pinned-pipe-and-native-Effect-output
+// **Amended 2026-10-29: the pinned snapshot.** `|>` is pinned to `tc39/proposal-pipeline-operator` commit `5ac4dfd624e68b649e6f947885bf5ef67bac19f4`, the head on 2026-10-28 (UTC), vendored in [`tc39-pipeline-operator/`](tc39-pipeline-operator/README.md), as pattern matching is pinned.
+
+// docs/design/vips/0031-runtime-guarantees.md#c6649474b25c9f2f | VIP-31 pinned-pipe-and-native-Effect-output
+// **Runtime helpers** are limited to small shims, such as defining `Symbol.customMatcher` where an engine lacks it (VIP-7).

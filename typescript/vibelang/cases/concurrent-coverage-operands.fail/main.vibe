@@ -1,0 +1,13 @@
+// expect: EK1801
+import { Effect } from "effect"
+// VIP-18 array domain: unknown, optional array, object, plain values.
+export effect function unknownOperand(xs: unknown) { return try.all xs }
+export effect function optional(xs: ReadonlyArray<Effect.Effect<number>> | undefined) { return try.all xs }
+export effect function object() { return try.all { a: Effect.succeed(1) } }
+export effect function values() { return try.any [1] }
+
+// docs/design/vips/0018-concurrent.md#67ce1a8191efed71 | VIP-18 array-domain-errors
+// Each takes an array of Effects under the operand rule; an invalid operand receives `EK1801`.
+
+// docs/design/vips/0018-concurrent.md#c9ab0aca54c3c5d0 | VIP-18 array-domain-errors
+// `unknown` and a union containing `undefined` are rejected when not assignable to the stated domain.

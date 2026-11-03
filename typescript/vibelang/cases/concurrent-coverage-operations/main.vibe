@@ -1,0 +1,43 @@
+import { Effect, Exit, Deferred } from "effect"
+// VIP-18 unbounded all, first completion versus first success, tuple Exits.
+export effect function main(): Effect.Effect<[number[], string, string, string[]], string> {
+  const ready = try Deferred.make<void>()
+  const xs = try.all [effect { try Deferred.await(ready); return 1 }, effect { try Deferred.succeed(ready, undefined); return 2 }]
+  const record = try all({ n: Effect.succeed(3) }, { concurrency: "unbounded" })
+  xs.push(record.n)
+  const raced = (effect { return try.race [Effect.fail("first"), Effect.never] }) catch (e) => e
+  const any = try.any [Effect.fail("ignored"), Effect.succeed("ok")]
+  const settled = try.allSettled [Effect.succeed(1), Effect.fail("failure"), Effect.die("defect"), Effect.interrupt]
+  const tags = settled.map(e => Exit.isSuccess(e) ? "Success" : e.cause.reasons[0]._tag)
+  return [xs, raced, any, tags]
+}
+
+// docs/design/vips/0018-concurrent.md#067bd48e3e247258 | VIP-18 concurrent-operation-Exit
+// These are TC39's await operations, run with `try` (VIP-5) instead of `await`.
+
+// docs/design/vips/0018-concurrent.md#2b3ffbcb08a6442c | VIP-18 concurrent-operation-Exit
+// The names keep JavaScript's meanings: `try.all` runs everything at once, like `Promise.all`, even though `Effect.all` defaults to one at a time.
+
+// docs/design/vips/0018-concurrent.md#b15baf3219f56283 | VIP-18 concurrent-operation-Exit
+// `try.race` gives the first to finish, and `try.any` the first to succeed.
+
+// docs/design/vips/0018-concurrent.md#6e0bdc226cb0543c | VIP-18 concurrent-operation-Exit
+// **Amended 2026-10-29:** `try.allSettled` gives each element's `Exit` (success, failure, defect or interruption), and the whole never fails, as `Promise.allSettled` never rejects.
+
+// docs/design/vips/0018-concurrent.md#f40638b81373ca62 | VIP-18 concurrent-operation-Exit
+// They use the same `keyword.name` shape as VIP-17's `fork.in`.
+
+// docs/design/vips/0018-concurrent.md#0304dad57c3a8327 | VIP-18 concurrent-operation-Exit
+// **Amended 2026-10-29: operands are arrays.** An object of Effects uses the `all` global: `try all({ u: fetchUser(id), o: fetchOrders(id) }, { concurrency: "unbounded" })`.
+
+// docs/design/vips/0018-concurrent.md#1712b8d353a20633 | VIP-18 concurrent-operation-Exit
+// **Amended 2026-10-29: the `try.allSettled` counterpart for an array literal.** The comment above writes `[…].map(Effect.exit)`, which is a TypeScript error when the elements differ in type.
+
+// docs/design/vips/0018-concurrent.md#b8aa9e03ed5b116d | VIP-18 concurrent-operation-Exit
+// For an array literal the counterpart wraps each element, `Effect.all([Effect.exit(a()), Effect.exit(b())], { concurrency: "unbounded" })`, which gives the same `Exit` and keeps the tuple type; any other operand uses `xs.map(Effect.exit)`.
+
+// docs/design/vips/0018-concurrent.md#8c87964ae178eca5 | VIP-18 concurrent-operation-Exit
+// **Ambiguity: none.** `try` is a reserved word, so `try.` can't start anything else.
+
+// docs/design/vips/0031-runtime-guarantees.md#d0dda6a7ca73ff0c | VIP-31 paired-declaration-and-Exit-check
+// **Checking it.** Each VIP's VibeLang and Effect TS pair is a differential test that compiles one, runs both, and compares their `Exit`s.

@@ -1,0 +1,1 @@
+cov-concurrency VIP-18: try.all rejects never with EK1801 instead of using ordinary assignability.

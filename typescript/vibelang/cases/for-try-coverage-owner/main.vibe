@@ -1,0 +1,38 @@
+import { Effect, Stream, Deferred, Fiber } from "effect"
+// VIP-17/VIP-20 consuming fiber owns the child after successful iteration.
+export effect function main(): Effect.Effect<number> {
+ const ready = try Deferred.make<void>()
+ const release = try Deferred.make<void>()
+ let child: Fiber.Fiber<number> | undefined
+ for try (const n of Stream.make(7)) {
+   child = fork effect {
+     try Deferred.succeed(ready, undefined)
+     try Deferred.await(release)
+     return n
+   }
+   try Deferred.await(ready)
+ }
+ try Deferred.succeed(release, undefined)
+ return join child!
+}
+
+// docs/design/vips/0020-for-try.md#bea1b1bbaf44f336 | VIP-20 consuming-fiber-owner
+// **Amended 2026-10-30: plain forks use the current consuming fiber.** `Stream.runForEachWhile` runs the item callback on that fiber, without creating a per-item owner.
+
+// docs/design/vips/0020-for-try.md#bc0d20d08b5e1192 | VIP-20 consuming-fiber-owner
+// A plain `fork` child can outlive an item and successful loop completion while that owner continues; it is not implicitly joined and is interrupted when the owner terminates.
+
+// docs/design/vips/0020-for-try.md#c42d363197e31589 | VIP-20 consuming-fiber-owner
+// Explicit fork-owner forms and `Stream` finalization keep their native behavior, without a new start-order guarantee or item scope.
+
+// docs/design/vips/0017-fork.md#11e40a448ad71895 | VIP-17 consuming-fiber-child-lifetime
+// **A plain `fork` in a `for try` item belongs to the loop's current consuming fiber.** (Opus round29 m51; accepted VIP-17/VIP-20; existing Stream.runForEachWhile counterpart.) The per-item callback executes on the current consuming fiber; a source item/iteration does not by itself create a fiber owner.
+
+// docs/design/vips/0017-fork.md#95fcc49a19051ac9 | VIP-17 consuming-fiber-child-lifetime
+// A plain `fork` child can therefore outlive that item and successful loop completion while its owner continues.
+
+// docs/design/vips/0017-fork.md#decdbd6481fd4ecf | VIP-17 consuming-fiber-child-lifetime
+// Explicit `fork.in`, `fork.scoped` and `fork.detached` retain their own native owners, and Stream finalization/for-try break/failure behavior stays unchanged.
+
+// docs/design/vips/0017-fork.md#5897c8744b602303 | VIP-17 consuming-fiber-child-lifetime
+// ```vibe effect function consume(items: Stream.Stream<number>) { for try (const item of items) { fork work(item) } try parentWork() // a plain fork child may still run while this consuming fiber continues } ``` Effect TS: `yield* Stream.runForEachWhile(items, item => Effect.gen(function* () { yield* Effect.forkChild(work(item)); return true })); yield* parentWork()`.

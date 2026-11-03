@@ -1,0 +1,28 @@
+import { Effect, Stream } from "effect"
+// VIP-20 item order, const/let patterns, local label, continue/break.
+export effect function main(): Effect.Effect<number[]> {
+ const seen: number[] = []
+ own: for try (let [n] of Stream.make([1], [2], [3], [4])) {
+   n += 10
+   if (n === 12) continue own
+   if (n === 14) break own
+   seen.push(n)
+ }
+ for try (const { n } of Stream.make({ n: 20 }, { n: 30 })) seen.push(n)
+ return seen
+}
+
+// docs/design/vips/0020-for-try.md#2ce35c114d597dde | VIP-20 Stream-binding-and-local-jump
+// `for try (const x of stream)` consumes a Stream inside an `effect` function or block, pulling one element at a time, in order.
+
+// docs/design/vips/0020-for-try.md#743e65b51c1758dc | VIP-20 Stream-binding-and-local-jump
+// `continue` skips one element, and `break` stops consuming.
+
+// docs/design/vips/0020-for-try.md#0c847e1b4f39409d | VIP-20 Stream-binding-and-local-jump
+// **Ambiguity: none.** `try` is a reserved word, and JavaScript's `for` can only be followed by `(` or `await`.
+
+// docs/design/vips/0020-for-try.md#229bdb34627d2171 | VIP-20 Stream-binding-and-local-jump
+// **Amended 2026-10-29: bindings and operands.** The head takes every `ForBinding` that `for…of` takes (`const`, `let`, destructuring), minus `var`.
+
+// docs/design/vips/0020-for-try.md#6aaf871c94fcd36b | VIP-20 Stream-binding-and-local-jump
+// `own: for try (const x of stream) { if (skip(x)) continue own; if (stop(x)) break own; }` is allowed: the target is this same Stream loop, so its Effect TypeScript counterpart returns `true`/`false` from the current item callback just as for the unlabelled forms.

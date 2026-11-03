@@ -1,0 +1,14 @@
+import { Effect } from "effect"
+// VIP-18 bottom and dynamic types satisfy ordinary assignability.
+// The never function is only a type witness; no runtime value is invented.
+export effect function bottom(xs: never) { return try.all xs }
+export effect function dynamic(xs: any) { return try.all xs }
+
+// docs/design/vips/0018-concurrent.md#2088c5e1d296e902 | VIP-18 bottom-and-any-assignability
+// **Stream iteration, concurrent iteration and `try.all` use ordinary assignability to their named operand domains.** (R10 Opus OPUS-4; accepted VIP-18/19/20, chapter002's operand-test rule, existing88/89/104/266; principles2/4.) Check `for try` against `Stream.Stream<any,any,any>` (`EK2004`), `for concurrent` against `Iterable<unknown>` (`EK1901`), and the general `try.all` operand against `ReadonlyArray<Effect.Effect<any,any,any>>` (`EK1801`).
+
+// docs/design/vips/0018-concurrent.md#4f1259874d410f8a | VIP-18 bottom-and-any-assignability
+// TypeScript assignability admits `any` and `never` and checks aliases, readonly arrays/tuples and unions normally.
+
+// docs/design/vips/0018-concurrent.md#11d30b7648d68d4c | VIP-18 bottom-and-any-assignability
+// ```vibe effect function bottom(programs: never) { return try.all programs } // operand type admitted effect function invalid(items: unknown) { for try (const item of items) {} // EK2004 } ```

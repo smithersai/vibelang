@@ -1,0 +1,26 @@
+// expect: EK2002 EK2003 EK2004 EK2005
+import { Stream } from "effect"
+// VIP-20 each rejected form has its own diagnostic.
+export effect function returns() { for try (const n of Stream.make(1)) return n }
+export effect function outside() { outer: { for try (const n of Stream.make(1)) break outer } }
+export effect function continueOutside() { outer: for (const s of [Stream.make(1)]) { for try (const n of s) { continue outer } } }
+export effect function iterable(xs: AsyncIterable<number>) { for try (const n of xs) {} }
+export effect function binding() { for try (var n of Stream.make(1)) {} }
+
+// docs/design/vips/0020-for-try.md#f38f8919ed4d33fd | VIP-20 Stream-loop-errors
+// `return` from the enclosing function is a compile error.
+
+// docs/design/vips/0020-for-try.md#1eec55b9fb6bd8c7 | VIP-20 Stream-loop-errors
+// The operand is a `Stream` only; an AsyncIterable is a compile error that points to `Stream.fromAsyncIterable`.
+
+// docs/design/vips/0020-for-try.md#60b356e43163f351 | VIP-20 Stream-loop-errors
+// **Amended 2026-10-29: no labeled jump out.** A labeled `break` or `continue` from a `for try` body to a statement outside it is a compile error, as `for concurrent` already rules.
+
+// docs/design/vips/0020-for-try.md#480345d678647e40 | VIP-20 Stream-loop-errors
+// (NW 11; VIP-20) A labeled `break` or `continue` from a `for try` body to a statement outside it is a compile error, as `for concurrent` already rules.
+
+// docs/design/vips/0020-for-try.md#f6927c0a42a09cd5 | VIP-20 Stream-loop-errors
+// ```vibe outer: for (const s of streams) { for try (const x of s) { continue outer } } // error ``` Effect TS: none; the body runs in `Stream.runForEachWhile`'s callback.
+
+// docs/design/vips/0020-for-try.md#6b1837890536bbe8 | VIP-20 Stream-loop-errors
+// A target outside the whole `for try` remains forbidden under this detail, for example `outer: { for try (const x of stream) { break outer } }`.

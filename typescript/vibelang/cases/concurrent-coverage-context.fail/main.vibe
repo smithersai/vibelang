@@ -1,0 +1,10 @@
+// expect: EK0501
+import { Effect } from "effect"
+// VIP-18 all four operators require effect code.
+export function a() { return try.all [Effect.succeed(1)] }
+export function b() { return try.race [Effect.succeed(1)] }
+export function c() { return try.any [Effect.succeed(1)] }
+export function d() { return try.allSettled [Effect.succeed(1)] }
+
+// docs/design/vips/0018-concurrent.md#d1be91c630b4497a | VIP-18 outside-effect-context
+// **Amended 2026-10-30: shared static rules.** `try.all`, `try.race`, `try.any` and `try.allSettled` all run Effects under VIP-5: outside effect code they receive `EK0501`.

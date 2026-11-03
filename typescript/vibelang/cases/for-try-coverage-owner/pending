@@ -1,0 +1,1 @@
+cov-concurrency VIP-17/VIP-20: EK4838 gives a plain fork in a Stream item the old iteration lifetime.

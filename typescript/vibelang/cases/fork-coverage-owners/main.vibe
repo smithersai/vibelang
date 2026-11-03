@@ -1,0 +1,53 @@
+import { Effect, Fiber, Deferred, Scope, Exit } from "effect"
+// VIP-17 caller ownership, fork.in evaluation order, native owner forms.
+export effect function main(): Effect.Effect<number[]> {
+  const values: number[] = []
+  const gate = try Deferred.make<void>()
+  const ready = try Deferred.make<void>()
+  effect function start() {
+    return fork effect {
+      try Deferred.succeed(ready, undefined)
+      try Deferred.await(gate)
+      return 7
+    }
+  }
+  const child = try start()
+  try Deferred.await(ready)
+  try Deferred.succeed(gate, undefined)
+  values.push(join(child))
+  try Effect.scoped(effect {
+    const scope = try Effect.scope
+    function owner() { values.push(1); return scope }
+    function work() { values.push(2); return Effect.succeed(3) }
+    const owned = fork.in(owner()) work()
+    values.push(9)
+    values.push(join owned)
+    const scopedChild = fork.scoped Effect.succeed(4)
+    values.push(join scopedChild)
+  })
+  const detached = fork.detached Effect.succeed(5)
+  values.push(join detached)
+  return values
+}
+
+// docs/design/vips/0017-fork.md#5bda472b5f01e6d9 | VIP-17 native-owner-and-caller-evaluation
+// Each form is exact sugar for Effect's function, used inside an `effect` function or block.
+
+// docs/design/vips/0017-fork.md#899439bd0e1bee89 | VIP-17 native-owner-and-caller-evaluation
+// The owner forms use JavaScript's `keyword.name` shape, like `new.target` and `import.meta`.
+
+// docs/design/vips/0017-fork.md#e3207c7d574be1e9 | VIP-17 native-owner-and-caller-evaluation
+// **Amended 2026-10-29: `fork.in` evaluates `scope` first.** Operands evaluate in source order: `fork.in(scope) e` is `const $s = scope; yield* Effect.forkIn(e, $s)`.
+
+
+// docs/design/vips/0017-fork.md#e1fdc01aecd0dc65 | VIP-17 native-owner-and-caller-evaluation
+// **`fork.in(scope) e` evaluates `scope` first** (NW 50; Fable m2, Opus design cost 3; r16-002; VIP-17 amendment).
+
+// docs/design/vips/0017-fork.md#d592127af8c02ace | VIP-17 native-owner-and-caller-evaluation
+// Operands evaluate in source order: `const $s = scope; yield* Effect.forkIn(e, $s)`, the same temporary rule `for concurrent(n)` uses.
+
+// docs/design/vips/0017-fork.md#36a6dcd378cba237 | VIP-17 native-owner-and-caller-evaluation
+// This removes the spec's only operand evaluated against source order, so chapter 002's exception list drops `fork.in`, and the circle-area rule 6 becomes "temporaries in source order, then `Effect.forkIn(e, $s)`".
+
+// docs/design/vips/0017-fork.md#72a1993a2eaa398f | VIP-17 native-owner-and-caller-evaluation
+// ```vibe const f = fork.in(makeScope()) work() // makeScope() runs, then work() ``` Effect TS: `const $s = makeScope(); const f = yield* Effect.forkIn(work(), $s)`.
