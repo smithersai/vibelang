@@ -43,7 +43,10 @@ keys, so unchanged private classes, enums and `unique symbol` keys compare as
 one API despite their different snapshot paths. Private getters, setters and
 methods retain their inferred types when declaration emit elides annotations;
 a getter/setter pair contributes one visibility marker on its instance or static
-side. Adding, removing or renaming a private member still changes nominal
+side. Leading `/// <reference path="..." />` and `/// <reference lib="..." />`
+directives stay ahead of nominal imports, so referenced ambient declarations
+and standard-library types remain in the comparison.
+Adding, removing or renaming a private member still changes nominal
 identity. Their member types, visibility and enum values remain part of the
 generated type checks. Identical deferred
 `infer` and mapped types share a virtual module only after proving their complete

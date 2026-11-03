@@ -150,7 +150,8 @@ export function alignNominalIdentity(ts, program, before, after, brandFile, entr
       const prelude = ts.isExternalModule(source)
         ? `import type * as __api_nominal from ${JSON.stringify(brandFile.replaceAll("\\", "/"))};\n`
         : `declare var __api_nominal: typeof import(${JSON.stringify(brandFile.replaceAll("\\", "/"))});\n`
-      output.set(resolve(source.fileName), prelude + printer.printFile(transformed.transformed[0]))
+      // Triple-slash directives must precede every statement, including imports.
+      output.set(resolve(source.fileName), printer.printFile(transformed.transformed[0]) + "\n" + prelude)
     }
     transformed.dispose()
   }

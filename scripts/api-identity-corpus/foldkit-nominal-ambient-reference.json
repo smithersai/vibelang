@@ -1,0 +1,12 @@
+{
+  "before": {
+    "index.d.ts": "/// <reference path=\"./ambient.d.ts\" />\nexport type Version = typeof import(\"virtual\").version;\nexport declare class Box<T> { private secret; value: T; }",
+    "ambient.d.ts": "declare module \"virtual\" { export const version: 1; }",
+    "package.json": "{\"types\":\"index.d.ts\"}"
+  },
+  "after": {
+    "index.d.ts": "/// <reference path=\"./ambient.d.ts\" />\nexport type Version = typeof import(\"virtual\").version;\nexport declare class Box<T> { private secret; value: T; }",
+    "ambient.d.ts": "declare module \"virtual\" { export const version: 1; }",
+    "package.json": "{\"types\":\"index.d.ts\"}"
+  }
+}
