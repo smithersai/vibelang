@@ -15,3 +15,6 @@ export effect function jumps(xs: number[]) {
   }
   return seen
 }
+
+// docs/design/vips/0002-effect-blocks-and-do.md#6d771b70c6091218
+// VIP-2: jumps out of an effect block reject outward break and continue

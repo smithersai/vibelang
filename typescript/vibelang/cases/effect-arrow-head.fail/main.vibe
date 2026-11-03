@@ -7,3 +7,6 @@
 // bare parameter of an effect arrow needs parentheses.
 export const f = effect x: number!! => x
 export const g = effect <T> x => x
+
+// docs/design/vips/0001-effect-and-async-functions.md#9f8a6e7bf9873789
+// VIP-1: effect arrow-head code rejects typed and generic bare parameters
