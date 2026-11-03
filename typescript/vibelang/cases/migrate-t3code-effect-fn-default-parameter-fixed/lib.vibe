@@ -1,0 +1,24 @@
+
+export interface Options {
+  readonly label?: string
+}
+
+// t3code packages/effect-codex-app-server make: a defaulted written alias.
+export const make = effect (options: Options | undefined = {}) => try withSpan(effect {
+  return options.label ?? "none"
+}, "make")
+
+// t3code packages/ssh auth: a defaulted object type.
+export const resolve = effect (input: { readonly host?: string; } | undefined = {}) => {
+  return input.host ?? "local"
+}
+
+// t3code packages/client-runtime session: a default after a required parameter.
+export const open = effect (name: string, retries: number | undefined = 2) => try withSpan(effect {
+  return name.length + retries
+}, "open")
+
+// A default whose type already holds undefined keeps its written union.
+export const pick = effect (value: number | undefined = 1) => {
+  return value
+}

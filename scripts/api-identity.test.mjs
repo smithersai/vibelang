@@ -171,6 +171,14 @@ test("opencode catalog minimized migration corpus is API-identical", () => {
   pass(corpus.before, corpus.after)
 })
 
+test("t3code defaulted Effect.fn parameter corpus: same type passes, a required parameter does not", () => {
+  const corpus = JSON.parse(readFileSync(new URL("./api-identity-corpus/t3code-defaulted-effect-fn-parameter.json", import.meta.url)))
+  pass(corpus.before, corpus.after)
+  // The text before the fix: the same type, which only the canonical byte comparison sees.
+  pass(corpus.before, corpus.retiredAfter)
+  fail(corpus.before, corpus.changedAfter, "typeDifferences")
+})
+
 test("nominal emit details, string exports and transitive type-only provenance", () => {
   pass("export declare class C { private brand; x: string }", "export declare class C { private brand; x: string }")
   pass('export declare class C { private x: number; get(): C["x"]; }', 'export declare class C { private x: number; get(): C["x"]; }')

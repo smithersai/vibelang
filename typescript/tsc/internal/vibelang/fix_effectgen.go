@@ -473,16 +473,22 @@ func effectFnText(c *checker.Checker, file *ast.SourceFile, g *generatorCall, bo
 	// The native Effect.fn result prints its inferred parameter tuple, not
 	// the generator's annotation syntax. Serialize each checked parameter
 	// type, keeping its generic scope rather than reading a widened overload.
+	// An optional or defaulted parameter is an optional tuple element, which
+	// tsc prints as T | undefined; a default's body still reads T. A rest
+	// parameter spreads into the tuple, which prints it as a mutable T[].
 	var head []sourceEdit
 	for _, parameter := range generator.Parameters() {
 		if annotation := parameter.Type(); annotation != nil {
 			inferred := c.GetTypeFromTypeNode(annotation)
-			if parameter.QuestionToken() != nil {
+			if parameter.QuestionToken() != nil || parameter.Initializer() != nil {
 				inferred = c.GetUnionType([]*checker.Type{inferred, c.GetUndefinedType()})
 			}
 			printed := c.TypeToStringEx(inferred, annotation, checker.TypeFormatFlagsNoTruncation|checker.TypeFormatFlagsUseFullyQualifiedType, nil)
 			if printed == "" {
 				return "", "an inferred parameter type cannot be written"
+			}
+			if parameter.AsParameterDeclaration().DotDotDotToken != nil && strings.HasSuffix(printed, "[]") {
+				printed = strings.TrimPrefix(printed, "readonly ")
 			}
 			if original := nodeText(file, annotation); printed != original {
 				if hasComment(original) {

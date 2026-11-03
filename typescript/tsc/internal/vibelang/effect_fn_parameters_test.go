@@ -13,6 +13,10 @@ func TestOpencodeEffectFnInferredParameters(t *testing.T) {
 		{"written readonly", "export const cleanup = Effect.fn(\"cleanup\")(function*(files: readonly string[]) { return files.length })\n", "files: readonly string[]"},
 		{"generic readonly alias", "export const cleanup = Effect.fn(function* <T extends string>(files: ReadonlyArray<T>) { return files })\n", "files: readonly T[]"},
 		{"optional callback", "export const cleanup = Effect.fn(function* (input?: () => number) { return input })\n", "input?: (() => number) | undefined"},
+		{"defaulted callback", "export const cleanup = Effect.fn(function* (input: () => number = () => 1) { return input })\n", "input: (() => number) | undefined = () => 1"},
+		{"defaulted object", "export const cleanup = Effect.fn(\"cleanup\")(function* (input: { readonly x?: number } = {}) { return input.x ?? 0 })\n", "| undefined = {}"},
+		{"member default", "export const client = { cleanup: Effect.fn(function* (input: number = 1) { return input }) }\n", "input: number | undefined = 1"},
+		{"readonly rest", "export const cleanup = Effect.fn(function* (...files: ReadonlyArray<string>) { return files.length })\n", "...files: string[]"},
 		{"brand alias", "export const Path = Schema.String.pipe(Schema.brand(\"Path\"))\nexport type Path = typeof Path.Type\nexport const cleanup = Effect.fn(\"cleanup\")(function*(input: Path) { return input })\n", "input: string &"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {

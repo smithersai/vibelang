@@ -1,0 +1,9 @@
+{
+  "origin": "t3code packages/effect-codex-app-server, ssh, client-runtime and provider-cursor, drive-t3code 21:14Z",
+  "qualification": "Minimized shape of the witnesses, not original t3code declaration bytes",
+  "rule": "An Effect.fn's declaration prints its parameter tuple, so a defaulted parameter is o?: T | undefined; vibelang --fix writes o: T | undefined = {}, which prints the same text",
+  "before": "export interface Options {\n    readonly logIncoming?: boolean;\n}\ndeclare const effect: unique symbol;\nexport declare const make: (options?: Options | undefined) => typeof effect;\nexport {};\n",
+  "after": "export interface Options {\n    readonly logIncoming?: boolean;\n}\ndeclare const effect: unique symbol;\nexport declare const make: (options?: Options | undefined) => typeof effect;\nexport {};\n",
+  "retiredAfter": "export interface Options {\n    readonly logIncoming?: boolean;\n}\ndeclare const effect: unique symbol;\nexport declare const make: (options?: Options) => typeof effect;\nexport {};\n",
+  "changedAfter": "export interface Options {\n    readonly logIncoming?: boolean;\n}\ndeclare const effect: unique symbol;\nexport declare const make: (options: Options) => typeof effect;\nexport {};\n"
+}

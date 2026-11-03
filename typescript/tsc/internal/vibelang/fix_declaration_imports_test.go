@@ -1,6 +1,7 @@
 package vibelang
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -81,9 +82,89 @@ export class Updates extends Context.Service<
 	}
 }
 
+// An Effect.fn's declaration prints its inferred parameter tuple, and the
+// effect function --fix writes must print the same text: t3code's
+// effect-codex-app-server client, ssh auth and client-runtime session each
+// have a defaulted parameter, which tsc prints o?: T | undefined and an
+// effect arrow with o: T = {} printed o?: T (drive-t3code 21:14Z). Each row
+// is one parameter list, with and without exactOptionalPropertyTypes. A
+// destructured parameter stays out: tsc names its tuple element args_0, a name
+// --fix cannot write, and the two declarations have the same type.
+func TestFixedEffectFnParametersKeepTheOriginalDeclaration(t *testing.T) {
+	const options = `{"target":"ES2022","module":"NodeNext","strict":true,"skipLibCheck":true,"declaration":true,"emitDeclarationOnly":true,"outDir":"out"`
+	for _, parameters := range []string{
+		`o: { readonly x?: number } = {}`,
+		`o: Options = {}`,
+		`o: Options | undefined = {}`,
+		`o: Options = {}, ...rest: ReadonlyArray<string>`,
+		`a: string, o: number = 1`,
+		`o: number = 1, a?: string`,
+		`o?: Options`,
+		`o: () => number = () => 1`,
+		`o: number | string = 1`,
+	} {
+		for _, exact := range []bool{false, true} {
+			t.Run(fmt.Sprintf("%s exact=%t", parameters, exact), func(t *testing.T) {
+				source := "import * as Effect from \"effect/Effect\"\n\nexport interface Options {\n  readonly x?: number\n}\n\n" +
+					"export const traced = Effect.fn(\"traced\")(function* (" + parameters + ") {\n  return 1\n})\n\n" +
+					"export const untraced = Effect.fnUntraced(function* (" + parameters + ") {\n  return 2\n})\n"
+				_, file, _, _ := editorProgram(t, source)
+				dir := filepath.Dir(file.FileName().AsString())
+				config := filepath.Join(dir, "tsconfig.json")
+				project := func(name string) {
+					text := `{"compilerOptions":` + options + fmt.Sprintf(`,"exactOptionalPropertyTypes":%t},"files":[%q]}`, exact, name)
+					if err := os.WriteFile(config, []byte(text), 0o600); err != nil {
+						t.Fatal(err)
+					}
+				}
+				// The original is the TypeScript: in a .vibe file function* is a producer.
+				twin := filepath.Join(dir, "main.ts")
+				if err := os.WriteFile(twin, []byte(source), 0o600); err != nil {
+					t.Fatal(err)
+				}
+				project("main.ts")
+				before := declarationText(t, config)
+				if err := os.Remove(twin); err != nil {
+					t.Fatal(err)
+				}
+				project("main.vibe")
+				fs := bundled.WrapFS(osvfs.FS())
+				parsed, errors := tsoptions.GetParsedCommandLineOfConfigFile(tspath.RootedFilePathFromAbsolute(filepath.ToSlash(config)), &core.CompilerOptions{}, nil, fs, nil)
+				if len(errors) != 0 {
+					t.Fatalf("config: %v", errors)
+				}
+				fixed := FixProject(t.Context(), fs, bundled.LibPath(), parsed)
+				rewritten := fixed.Files[file.FileName()]
+				if rewritten == nil || strings.Contains(rewritten.Text, "function*") {
+					t.Fatalf("--fix did not rewrite the generators: %+v refused %+v", rewritten, fixed.Refused)
+				}
+				if err := os.WriteFile(file.FileName().AsString(), []byte(rewritten.Text), 0o600); err != nil {
+					t.Fatal(err)
+				}
+				if after := declarationText(t, config); after != before {
+					t.Fatalf("--fix wrote\n%s\nwhose declaration\n%s\nwas\n%s", rewritten.Text, after, before)
+				}
+			})
+		}
+	}
+}
+
 // declarationImports returns the import lines of main.d.ts, which the
 // project of config emits.
 func declarationImports(t *testing.T, config string) string {
+	t.Helper()
+	dts := declarationText(t, config)
+	var imports []string
+	for line := range strings.Lines(dts) {
+		if strings.HasPrefix(line, "import ") {
+			imports = append(imports, strings.TrimSpace(line))
+		}
+	}
+	return strings.Join(imports, "\n")
+}
+
+// declarationText returns the main.d.ts that the project of config emits.
+func declarationText(t *testing.T, config string) string {
 	t.Helper()
 	fs := bundled.WrapFS(osvfs.FS())
 	parsed, errors := tsoptions.GetParsedCommandLineOfConfigFile(tspath.RootedFilePathFromAbsolute(filepath.ToSlash(config)), &core.CompilerOptions{}, nil, fs, nil)
@@ -101,11 +182,5 @@ func declarationImports(t *testing.T, config string) string {
 	if dts == "" {
 		t.Fatal("no main.d.ts emitted")
 	}
-	var imports []string
-	for line := range strings.Lines(dts) {
-		if strings.HasPrefix(line, "import ") {
-			imports = append(imports, strings.TrimSpace(line))
-		}
-	}
-	return strings.Join(imports, "\n")
+	return dts
 }
