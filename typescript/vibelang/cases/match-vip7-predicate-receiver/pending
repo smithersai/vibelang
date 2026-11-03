@@ -1,0 +1,1 @@
+fix-vip-match VIP-7: a call-only member predicate loses its receiver; this.limit throws instead of producing [false,true].

@@ -1,0 +1,1 @@
+cov-match VIP-7: negation follows actual tests; reference must pass independently before a compiler gap is counted.

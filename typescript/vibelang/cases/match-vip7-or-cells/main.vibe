@@ -1,0 +1,14 @@
+import { Effect } from "effect"
+export function alternativeCell(): readonly number[] {
+  const reads: (() => number)[] = []
+  return match ([1, 2]) {
+    when ([const n, ...] and if ((reads.push(() => n), false))) or { length: const n }: [n, reads[0]()];
+    default: [];
+  }
+}
+export function main(): Effect.Effect<unknown> { return Effect.sync(alternativeCell) }
+// VIP-7 fresh loop-head cells, initial do TDZ and shared or cells; rule: docs/design/vips/0007-match.md#f43d97838564ee9a
+// VIP-7 fresh loop-head cells, initial do TDZ and shared or cells; rule: docs/design/vips/0007-match.md#39b3c8b142768ff9
+
+export function alternativeType(s:{a:number}|{b:string}):number|string{return match(s){when {a:let n} or {b:let n}:n;}}
+// VIP-7 shared alternative binding type union; rule: docs/design/vips/0007-match.md#a406131b8596570e

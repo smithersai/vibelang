@@ -1,0 +1,7 @@
+import { Effect } from "effect"
+import { numbers } from "./native.js"
+effect function failed(log:string[]){return match(numbers(log)){when [let a,...]:do{throw "bad"};default:0;}}
+function witness():unknown{const log:string[]=[];return [Effect.runSyncExit(failed(log)),log]}
+export function main():Effect.Effect<unknown> {return Effect.sync(witness)}
+// VIP-7 iterator failure-abandons; rule: docs/design/vips/0007-match.md#32ac3d744874a23e
+// VIP-7 iterator failure-abandons; rule: docs/design/vips/0007-match.md#34d2d18a7faabf60

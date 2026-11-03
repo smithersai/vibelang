@@ -1,0 +1,4 @@
+import { Effect } from "effect"
+function witness():string[]{const s=2 as unknown as boolean;try{const value=match(s){when true:1;when false:0;};return ["matched",String(value)]}catch(e){return [e instanceof TypeError?"TypeError":"other",(e as Error).message]}}
+export function main():Effect.Effect<unknown>{return Effect.sync(witness)}
+// VIP-7 empty TypeError on no match; rule: docs/design/vips/0007-match.md#6a5e3afd50de5c02

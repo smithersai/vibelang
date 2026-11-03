@@ -1,0 +1,4 @@
+import { Effect } from "effect"
+import { boxes } from "./native.js"
+export function extracted(s:unknown):unknown {if(typeof s==="string"||s instanceof String)return ["string",typeof s==="string"?s:s.valueOf()];if(typeof s==="number"||s instanceof Number)return ["number",typeof s==="number"?s:s.valueOf()];if(typeof s==="boolean"||s instanceof Boolean)return ["boolean",typeof s==="boolean"?s:s.valueOf()];if(typeof s==="bigint"||s instanceof BigInt)return ["bigint",typeof s==="bigint"?s:s.valueOf()];if(typeof s==="symbol"||s instanceof Symbol)return ["symbol",String(typeof s==="symbol"?s:s.valueOf())];return "other"}
+export function main():Effect.Effect<readonly unknown[]> {return Effect.sync(()=>["x",new String("x"),2,new Number(2),true,new Boolean(false),3n,Object(3n),Symbol.for("x"),Object(Symbol.for("x")),null,{},...boxes()].map(extracted))}

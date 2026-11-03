@@ -1,0 +1,9 @@
+import { Effect } from "effect"
+import { boxes } from "./native.js"
+export function extracted(s:unknown):unknown {return match(s){when String(let x):["string",x];when Number(let x):["number",x];when Boolean(let x):["boolean",x];when BigInt(let x):["bigint",x];when Symbol(let x):["symbol",String(x)];default:"other";}}
+export function main():Effect.Effect<readonly unknown[]> {return Effect.sync(()=>["x",new String("x"),2,new Number(2),true,new Boolean(false),3n,Object(3n),Symbol.for("x"),Object(Symbol.for("x")),null,{},...boxes()].map(extracted))}
+// VIP-7 boxed primitive extraction; rule: docs/design/vips/0007-match.md#66e1a09d977e0a31
+// VIP-7 boxed primitive extraction; rule: docs/design/vips/0007-match.md#c18f2388d63e2994
+// VIP-7 boxed primitive extraction; rule: docs/design/vips/0007-match.md#a01cf69f2ca29443
+// VIP-7 cross realm boxed primitive divergence; rule: docs/design/vips/0007-match.md#1ae0a6081579bfa7
+// VIP-7 cross realm boxed primitive divergence; rule: docs/design/vips/0007-match.md#d2e1c0a1d1f8f139

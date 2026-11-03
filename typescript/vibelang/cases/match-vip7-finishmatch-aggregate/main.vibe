@@ -1,0 +1,6 @@
+import { Effect } from "effect"
+import { items } from "./native.js"
+function witness():unknown {const log:string[]=[];try{const value=match(items(log,true,true)){when [{value:0}]:"hit";default:"miss";};return [value,log]}catch(e){return [e instanceof AggregateError?e.errors.map((x:Error)=>x.message):[(e as Error).message],log]}}
+export function main():Effect.Effect<unknown> {return Effect.sync(witness)}
+// VIP-7 iterator aggregate; rule: docs/design/vips/0007-match.md#8baf307ebb05e722
+// VIP-7 iterator aggregate; rule: docs/design/vips/0007-match.md#a2923253f85ee5d5

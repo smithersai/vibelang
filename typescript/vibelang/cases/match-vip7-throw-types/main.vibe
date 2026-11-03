@@ -1,0 +1,4 @@
+import { Effect } from "effect"
+function probe(s:boolean){return match(s){when true:1 as const;when false:throw new Error("bad");}}
+export function main():Effect.Effect<readonly unknown[]>{const typed:ReturnType<typeof probe> extends 1?true:false=true;return Effect.sync(()=>[typed,probe(true),Effect.runSyncExit(Effect.sync(()=>probe(false)))])}
+// VIP-7 throw arms contribute never to the result union; rule: docs/design/vips/0007-match.md#1174d0142bdc227e

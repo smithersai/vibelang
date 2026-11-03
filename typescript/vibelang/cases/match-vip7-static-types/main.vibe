@@ -1,0 +1,21 @@
+import { Effect, Option, Exit, Result } from "effect"
+export function union(s: boolean) { return match(s) { when true: 1 as const; when false: "no" as const; } }
+export function narrow(s: {_tag:"A"; id:string|number}|{_tag:"B"; value:number}) {
+ return match(s) { when {_tag:"A", let id} and if (typeof id === "string"): id.toUpperCase(); default: s._tag; }
+}
+export function boolean(s:string|number) { const yes:boolean = s is String; if(s is String) return s.length; return yes ? 0 : s * 2 }
+export function both(s:{a:number;b:number}|null) { return match(s) { when {a:let a} and {b:let b}: a+b; default: 0; } }
+export function option(s:Option.Option<number>) { return match(s) { when Option.Some(let n): n; when Option.None: 0; } }
+export function result(s:Result.Result<number,string>) { return match(s) { when Result.Success(let n): n; when Result.Failure(let e): e.length; } }
+export function exit(s:Exit.Exit<number,string>) { return match(s) { when Exit.Success(let n): n; when Exit.Failure(let c): c.reasons.length; } }
+export function main():Effect.Effect<readonly unknown[]> { return Effect.sync(()=>[union(true),union(false),narrow({_tag:"A",id:"ab"}),narrow({_tag:"A",id:1}),narrow({_tag:"B",value:2}),boolean("abc"),boolean(2),both({a:1,b:2}),both(null),option(Option.some(2)),option(Option.none()),result(Result.succeed(3)),result(Result.fail("err")),exit(Exit.succeed(4)),exit(Exit.fail("err"))]) }
+// VIP-7 native narrowing unions guards and fixed never; rule: docs/design/vips/0007-match.md#41954d6e3f08b251
+// VIP-7 native narrowing unions guards and fixed never; rule: docs/design/vips/0007-match.md#f854946ca938b997
+// VIP-7 native narrowing unions guards and fixed never; rule: docs/design/vips/0007-match.md#844947efae5da623
+// VIP-7 native narrowing unions guards and fixed never; rule: docs/design/vips/0007-match.md#eccccbc18195ad64
+// VIP-7 native narrowing unions guards and fixed never; rule: docs/design/vips/0007-match.md#8b7bb470dea8509d
+// VIP-7 native narrowing unions guards and fixed never; rule: docs/design/vips/0007-match.md#83375a7dab9805c7
+// VIP-7 native narrowing unions guards and fixed never; rule: docs/design/vips/0007-match.md#98bec1db55b535c1
+// VIP-7 native narrowing unions guards and fixed never; rule: docs/design/vips/0007-match.md#1bbfdfdf04443189
+// VIP-7 native narrowing unions guards and fixed never; rule: docs/design/vips/0007-match.md#e86be2620ad45c2e
+// VIP-7 native narrowing unions guards and fixed never; rule: docs/design/vips/0007-match.md#cf9538082a414009

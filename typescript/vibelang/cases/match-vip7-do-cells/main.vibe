@@ -1,0 +1,15 @@
+import { Effect } from "effect"
+export function initialDo(): string {
+  let read: () => number = () => 0
+  let turn = 0
+  do {
+    // Intentional checking bypass: the first body's head cell stays in TDZ.
+    // @ts-ignore
+    if (turn === 0) read = () => n
+    turn++
+  } while (turn < 2 && [turn] is [let n])
+  try { return String(read()) } catch (error) { return error instanceof ReferenceError ? "tdz" : "wrong" }
+}
+export function main(): Effect.Effect<unknown> { return Effect.sync(initialDo) }
+// VIP-7 fresh loop-head cells, initial do TDZ and shared or cells; rule: docs/design/vips/0007-match.md#03fd26bcd6762fe7
+// VIP-7 fresh loop-head cells, initial do TDZ and shared or cells; rule: docs/design/vips/0007-match.md#9546f1703d609138

@@ -1,0 +1,6 @@
+import { Effect } from "effect"
+import { numbers } from "./native.js"
+function* subject(log:string[]):Generator<number,unknown,unknown>{return match(numbers(log)){when [let a,...]:do{yield a;0};default:0;}}
+function witness():unknown {const log:string[]=[];const g=subject(log);return [g.next(),g.return(5),log]}
+export function main():Effect.Effect<unknown> {return Effect.sync(witness)}
+// VIP-7 iterator generator-return; rule: docs/design/vips/0007-match.md#8310a37f00c68843

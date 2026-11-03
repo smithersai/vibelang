@@ -1,0 +1,14 @@
+import { Effect } from "effect"
+const matcher = {
+  limit: 2,
+  test(value: unknown, hint: { matchType: string }): boolean {
+    return hint.matchType === "boolean" && typeof value === "number" && value > this.limit
+  }
+}
+export function recognize(value: unknown): boolean { return value is matcher.test }
+export function main(): Effect.Effect<readonly boolean[]> {
+  return Effect.sync(() => [1, 3].map(recognize))
+}
+// VIP-7 call-only member predicate keeps its receiver and hint; rule: docs/design/vips/0007-match.md#1a6bc2e7cc3ef2dc
+// VIP-7 call-only member predicate keeps its receiver and hint; rule: docs/design/vips/0007-match.md#8ffd0105e8004c87
+// VIP-7 call-only member predicate keeps its receiver and hint; rule: docs/design/vips/0007-match.md#c87b6c468e2997c7

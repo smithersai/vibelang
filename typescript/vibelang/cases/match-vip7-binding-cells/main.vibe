@@ -1,0 +1,3 @@
+import { Effect } from "effect"
+export function initialized(): number { const ok = 1 is let n; return n }
+export function main(): Effect.Effect<number> { return Effect.sync(initialized) }

@@ -1,0 +1,20 @@
+// expect: TS2454 TS2448 TS2588
+export function skipped() {
+  if (true || (1 is const n)) return n
+  return 0
+}
+export function before() {
+  const value = n
+  const ok = 1 is let n
+  return value
+}
+export function immutable() {
+  const ok = 1 is const n
+  n = 1
+  return n
+}
+// VIP-7 native definite-assignment, TDZ and immutable source const; rule: docs/design/vips/0007-match.md#efc6ca6b231620d2
+// VIP-7 native definite-assignment, TDZ and immutable source const; rule: docs/design/vips/0007-match.md#5540a52dfee4e0d8
+// VIP-7 native definite-assignment, TDZ and immutable source const; rule: docs/design/vips/0007-match.md#6b3405ca9382f85d
+// VIP-7 native definite-assignment, TDZ and immutable source const; rule: docs/design/vips/0007-match.md#7b5affeb5632fcb8
+// VIP-7 native definite-assignment, TDZ and immutable source const; rule: docs/design/vips/0007-match.md#82819e64d52fc7bf

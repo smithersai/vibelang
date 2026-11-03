@@ -1,0 +1,12 @@
+import { Effect } from "effect"
+export function ordinary(s:Date|{kind:string}) { return match(s) { when not Date: s.kind; default: s.getUTCFullYear(); } }
+export function literal(s:"a"|"b"|null|undefined):"b"|"other" { return match(s) { when not ("a" or null or undefined): s; default: "other"; } }
+export function predicate(s:string|number) { const p=(x:string|number):x is string=>typeof x==="string";return match(s) { when not p: s.toFixed(1); default:s.toUpperCase(); } }
+export function opaque(s:string|number):string|number { const p=(x:unknown):boolean=>typeof x==="string";return match(s) { when not p: do { const a: typeof s=1; const b:typeof s="x"; s }; default: do { const a:typeof s=1; const b:typeof s="x"; s }; } }
+export function own(s:string|number):string|number { class C { static [customMatcher](x:unknown):boolean {return typeof x==="string"} };return match(s){when not C:do{const a:typeof s=1;const b:typeof s="x";s};default:do{const a:typeof s=1;const b:typeof s="x";s};} }
+export function main():Effect.Effect<readonly unknown[]> { return Effect.sync(()=>[ordinary(new Date(0)),ordinary({kind:"k"}),literal("a"),literal("b"),literal(null),literal(undefined),predicate("Ab"),predicate(2),opaque(2),opaque("x"),own(2),own("x")]) }
+// VIP-7 negation follows actual tests; rule: docs/design/vips/0007-match.md#102c61db6c00e4c3
+// VIP-7 negation follows actual tests; rule: docs/design/vips/0007-match.md#232e7397b1639a8a
+// VIP-7 negation follows actual tests; rule: docs/design/vips/0007-match.md#c32fad512821ecca
+// VIP-7 negation follows actual tests; rule: docs/design/vips/0007-match.md#26aec825de5e94d2
+// VIP-7 negation follows actual tests; rule: docs/design/vips/0007-match.md#e0b983dac09579cc

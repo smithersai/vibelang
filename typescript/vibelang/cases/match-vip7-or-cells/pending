@@ -1,0 +1,1 @@
+fix-vip-match VIP-7: independently check alternativeCell lexical cell identity against native TypeScript.
