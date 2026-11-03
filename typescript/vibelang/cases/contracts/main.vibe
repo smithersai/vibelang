@@ -1,3 +1,7 @@
+// 003-failures.md: infer Name is a per-channel annotation; inferred channels appear in emitted declarations
+// rule: docs/design/src/003-failures.md#dd3bf3c87b734282
+// 003-failures.md: written infer channels preserve A, E and R inference in bang and Effect annotations
+// rule: docs/design/src/003-failures.md#96f21c3029bb6387
 // A written contract is the function's whole computation: returns are checked
 // against A, and E and R may be wider than the body needs, never narrower.
 // A channel written `infer Name` comes from the body (D57), and the

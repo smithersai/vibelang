@@ -1,3 +1,7 @@
+// 003-failures.md: schema-error fields emit computed proto keys
+// rule: docs/design/src/003-failures.md#c89de8e6573d2c67
+// 003-failures.md: identifier, quoted, escaped and nested schema-error proto fields remain own validated data
+// rule: docs/design/src/003-failures.md#08840bab72cb7e54
 // 006-data.md: missing and invalid proto values fail; string own fields decode
 // rule: docs/design/src/006-data.md#4b8c3ff9e39fdfa1
 // 006-data.md: proto input is validated rather than changing the schema-fields prototype

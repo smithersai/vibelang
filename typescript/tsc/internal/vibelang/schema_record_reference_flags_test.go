@@ -1,3 +1,7 @@
+// 006-data.md: Record value references retain required and readonly decoded flags through aliases/nesting
+// rule: docs/design/src/006-data.md#bf2f23f3d3d5c78e
+// 006-data.md: Record value references retain required and readonly decoded flags through aliases/nesting
+// rule: docs/design/src/006-data.md#d7ce32349a515d74
 package vibelang
 
 import (

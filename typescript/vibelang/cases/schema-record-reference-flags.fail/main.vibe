@@ -1,4 +1,6 @@
 // expect: EK2109
+// 006-data.md: optional finite Record values are rejected with EK2109
+// rule: docs/design/src/006-data.md#a66d1875362e5adb
 const Optional = Schema.optionalKey(Schema.Number)
 const Mutable = Schema.mutableKey(Schema.Number)
 const Alias = Optional

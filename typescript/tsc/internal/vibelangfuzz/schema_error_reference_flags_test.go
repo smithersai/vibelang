@@ -1,3 +1,11 @@
+// 006-data.md: a schema-error payload is effectively readonly without a redundant modifier
+// rule: docs/design/src/006-data.md#c195b946ef7c743d
+// 006-data.md: a schema-error payload is effectively readonly without a redundant modifier
+// rule: docs/design/src/006-data.md#9af2eba338ba379d
+// 006-data.md: a schema-error payload is effectively readonly without a redundant modifier
+// rule: docs/design/src/006-data.md#8fcf1d81bf3392d4
+// 003-failures.md: implicit readonly, explicit readonly, aliases and unprovable schemas are checked in every schema-error payload
+// rule: docs/design/src/003-failures.md#56a747816bb91bf0
 package vibelangfuzz
 
 // VIP-29 requires admission checks on direct, implicitly readonly payload

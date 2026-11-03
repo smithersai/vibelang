@@ -1,3 +1,19 @@
+// 003-failures.md: TestFailuresSpec/catch-param-default + catch-effect-bridged
+// rule: docs/design/src/003-failures.md#4973cb51ea64e753
+// 003-failures.md: TestFailuresSpec/catch-param-default + catch-param-computed-key
+// rule: docs/design/src/003-failures.md#c30ee7ed074d285e
+// 003-failures.md: TestFailuresSpec/generic-unconstrained-substitution + generic-unconstrained-wrapped
+// rule: docs/design/src/003-failures.md#49f41114b0ceb860
+// 003-failures.md: TestFailuresSpec/generic-unconstrained-substitution + generic-constrained-effectful
+// rule: docs/design/src/003-failures.md#73eff5e3e521521c
+// 003-failures.md: TestFailuresSpec/generic-unconstrained-substitution + generic-constrained-effectful
+// rule: docs/design/src/003-failures.md#e7ec07b0695c3de3
+// 003-failures.md: TestFailuresSpec/error-method-overloads + schema-error-method-overloads
+// rule: docs/design/src/003-failures.md#59edbba0dddadf66
+// 003-failures.md: TestFailuresSpec/class-static-field-effect + class-static-block-effect + class-static-effectful-plain
+// rule: docs/design/src/003-failures.md#89a7fbc6a6fe1079
+// 003-failures.md: TestFailuresSpec/class-static-never + class-static-joins-plain
+// rule: docs/design/src/003-failures.md#b63c96775c9b1055
 // 003-failures.md: TestFailuresSpec/catch-effect-param-default + catch-effect-bridged checks its marked diagnostic or declaration contract
 // rule: docs/design/src/003-failures.md#c344b7721cbaac5c
 // 003-failures.md: TestFailuresSpec/catch-param-default + catch-param-computed-key checks its marked diagnostic or declaration contract

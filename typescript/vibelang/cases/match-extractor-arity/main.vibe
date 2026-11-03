@@ -17,3 +17,7 @@ export effect function main() {
   const missing = new NotFound({ id: "1" })
   return [zeroArgs(missing), twoArgs(missing), restAfterOne(missing), noneEmpty(Option.none()), noneOne(Option.none()), someOne(Option.some(1)), restOnly(missing)]
 }
+// 003-failures.md: Option.None has an empty extraction list
+// rule: docs/design/src/003-failures.md#25d3291d73a435f7
+// 003-failures.md: bare tagged errors match; zero-argument extractors reject singleton extractions
+// rule: docs/design/src/003-failures.md#ab456b1c6564f3f7

@@ -1,3 +1,9 @@
+// 006-data.md: FuzzSchemaDecodedKeyFlags checks required/readonly conflicts, aliases and unprovable schema types
+// rule: docs/design/src/006-data.md#cde2976a85762873
+// 006-data.md: FuzzSchemaDecodedKeyFlags checks required/readonly conflicts, aliases and unprovable schema types
+// rule: docs/design/src/006-data.md#de4e26a9346a74dd
+// 006-data.md: FuzzSchemaDecodedKeyFlags checks required/readonly conflicts, aliases and unprovable schema types
+// rule: docs/design/src/006-data.md#7670bce8e6404f2b
 // 006-data.md: unprovable and conflicting decoded-key flags receive EK2109
 // rule: docs/design/src/006-data.md#ba17970a73609f7c
 // 006-data.md: decoded-key checks preserve the valid optional/writable controls

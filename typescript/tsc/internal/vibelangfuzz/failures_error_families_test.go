@@ -1,3 +1,5 @@
+// 003-failures.md: both error forms reject extends; native parents do not bypass the tag-family prohibition
+// rule: docs/design/src/003-failures.md#c6b3c2a5c8791289
 package vibelangfuzz
 
 import "strings"

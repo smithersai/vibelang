@@ -1,3 +1,7 @@
+// 003-failures.md: TestFailuresSpec/plain/error declaration-member matrix and schema-error declaration-member matrix
+// rule: docs/design/src/003-failures.md#bc5d8bfb778877ab
+// 003-failures.md: TestFailuresSpec/error-interleaved + error-empty-elements + schema-error-empty-elements and rejected-member witnesses
+// rule: docs/design/src/003-failures.md#5c28b6282da69cf8
 // 003-failures.md: TestFailuresSpec/throws-upper-bound + throws-upper-bound-ok checks acceptance, rejection or emitted throws
 // rule: docs/design/src/003-failures.md#b7dd9f8559a5ef6d
 // 003-failures.md: TestFailuresSpec/rethrows-promise-executor checks acceptance, rejection or emitted throws

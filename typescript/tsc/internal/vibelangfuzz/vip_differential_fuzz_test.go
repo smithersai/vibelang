@@ -1,3 +1,15 @@
+// 003-failures.md: TestVIPConstructs/vip29.schema-error-round-trip-plain compares the explicit Effect counterpart
+// rule: docs/design/src/003-failures.md#889e2b037df2a652
+// 003-failures.md: TestVIPConstructs/vip29.schema-error compares the explicit Effect counterpart
+// rule: docs/design/src/003-failures.md#323c8324bcae81e7
+// 003-failures.md: TestVIPConstructs/vip13.error compares the explicit Effect counterpart
+// rule: docs/design/src/003-failures.md#46c5fdc6caee0bf0
+// 003-failures.md: TestVIPConstructs/vip07.error-cross-copy-plain compares the explicit Effect counterpart
+// rule: docs/design/src/003-failures.md#336904a21ee120ba
+// 003-failures.md: TestVIPConstructs/vip13.error-matcher-property-plain compares the explicit Effect counterpart
+// rule: docs/design/src/003-failures.md#68c0b750f973e354
+// 003-failures.md: TestVIPConstructs/vip13.error-matcher-property-plain + vip29.schema-error-matcher-property-plain compares the explicit Effect counterpart
+// rule: docs/design/src/003-failures.md#1003d2e84d41155a
 // 008-runtime.md: TestVIPConstructs/vip07.class-instanceof-plain compares canonical Exit and ordered events with Effect
 // rule: docs/design/src/008-runtime.md#58f3f78c2a26ed1b
 // 008-runtime.md: TestVIPConstructs/vip07.finishmatch-throw-close-plain + vip07.no-match-plain compares canonical Exit and ordered events with Effect

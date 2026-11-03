@@ -1,3 +1,9 @@
+// 003-failures.md: guard semantics admit branded plain objects and reject bare tag objects
+// rule: docs/design/src/003-failures.md#a135aff43ca63f7c
+// 003-failures.md: a tag-only impostor fails Cause.isTimeoutError
+// rule: docs/design/src/003-failures.md#71b4beec1ef682e3
+// 003-failures.md: retained TimeoutError guards preserve the subject as the extracted singleton
+// rule: docs/design/src/003-failures.md#1c6e6358486bd103
 // 000-intro.md: resolved retained-error aliases call branded guards rather than accepting tag-only impostors
 // rule: docs/design/src/000-intro.md#fc6aa2ec096149c5
 import { Cause as C } from "effect"

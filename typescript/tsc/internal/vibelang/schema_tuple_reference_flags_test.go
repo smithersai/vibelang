@@ -1,3 +1,7 @@
+// 006-data.md: required fixed tuple references are checked before and after rest elements
+// rule: docs/design/src/006-data.md#21dbcd684e2e8c02
+// 006-data.md: required fixed tuple references are checked before and after rest elements
+// rule: docs/design/src/006-data.md#97fa5707ebcc82d4
 package vibelang
 
 import (

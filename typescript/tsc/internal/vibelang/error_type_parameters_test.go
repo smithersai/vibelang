@@ -1,3 +1,5 @@
+// 003-failures.md: TestErrorTypeParameterBan rejects generic plain and schema errors with EK1303
+// rule: docs/design/src/003-failures.md#2b6dbd98a5d21169
 package vibelang
 
 import (

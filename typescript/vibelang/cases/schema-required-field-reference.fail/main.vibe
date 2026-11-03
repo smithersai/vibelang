@@ -9,3 +9,5 @@ schema Wide { readonly value: Uncertain }
 namespace N { export schema Nested { readonly value: Optional } }
 schema error Outer { readonly nested: { readonly value: Optional } }
 export {}
+// 006-data.md: optional schemas in required source fields receive EK2109
+// rule: docs/design/src/006-data.md#b470e2e6e21a92f5

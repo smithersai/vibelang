@@ -1,4 +1,6 @@
 // expect: EK2109
+// 006-data.md: optional and unprovable references cannot satisfy a required tuple position
+// rule: docs/design/src/006-data.md#d2d9cd88904b3662
 const OptionalNumber = Schema.optionalKey(Schema.Number)
 const OptionalUndefined = Schema.optional(Schema.Number)
 const Aliased = OptionalNumber
