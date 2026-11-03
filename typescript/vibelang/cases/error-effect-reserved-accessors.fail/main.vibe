@@ -1,0 +1,13 @@
+// expect: EK0104 EK0104 EK0104 EK0104 EK0104 EK0104 EK0104 EK0104
+// VIP-13: A member rejected by Functions for effect on a getter, setter or
+// constructor gets the applicable Functions diagnostics and no redundant
+// error-body category diagnostic, including in either error form.
+error PlainGet { effect get _tag() { return 1 } }
+error PlainQuoted { effect get ['_tag']() { return 1 } }
+error PlainComment { effect /* modifier */ get "_tag"() { return 1 } }
+error PlainSet { effect set _tag(value: string) {} }
+schema error SchemaGet { effect get _tag() { return 1 } }
+schema error SchemaQuoted { effect get ['_tag']() { return 1 } }
+schema error SchemaComment { effect /* modifier */ get "_tag"() { return 1 } }
+schema error SchemaSet { effect set _tag(value: string) {} }
+export {}

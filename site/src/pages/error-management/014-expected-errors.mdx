@@ -388,6 +388,8 @@ An `error` declaration is a named class. The keyword supplies its `Data.TaggedEr
 
 For a reserved `_tag` member, `EK2117` takes precedence over the generic body-member diagnostic `EK1304`. Unrelated errors in member expressions remain visible.
 
+An `effect` modifier on an error getter, setter or constructor reports `EK0104`. The modifier diagnostic takes priority over error-member checks, including the reserved `_tag` name; combining `async` and `effect` also reports `EK0105`. Independent TypeScript errors in the member remain visible.
+
 Empty `;` members are ignored in `error` and `schema error` bodies. The formatter can remove a member without JSDoc. A `;` with JSDoc stays, so the comment does not become the next member's contract.
 
 A typed field named `constructor` in `error` or `schema error`, such as `constructor: string` or `constructor?: string`, is ordinary payload. The constructor restriction applies to a `constructor(...) { ... }` method.

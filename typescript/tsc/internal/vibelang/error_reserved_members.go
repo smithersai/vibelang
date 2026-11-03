@@ -50,7 +50,7 @@ func checkErrorReservedMembers(c *checker.Checker, class *ast.Node) bool {
 		if member.Flags&ast.NodeFlagsReparsed != 0 || !errorMemberIsReservedTag(c, member) {
 			continue
 		}
-		if isMarkedEffect(member) && (ast.IsGetAccessorDeclaration(member) || ast.IsSetAccessorDeclaration(member) || ast.IsConstructorDeclaration(member)) {
+		if restrictedEffectMember(member) {
 			continue // VIP-1 owns forbidden Effect modifiers.
 		}
 		found = true
