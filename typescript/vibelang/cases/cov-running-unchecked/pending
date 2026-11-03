@@ -1,0 +1,1 @@
+cov-ch002a Tail return try any lowers to Effect.suspend, which treats a scalar as an invalid Effect instead of native delegated-yield TypeError; an empty iterable also must be admitted at runtime. docs/design/src/002-running.md#5c3afeb538a2beaf docs/design/src/002-running.md#4148e44b809b1e0e

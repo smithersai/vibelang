@@ -1,0 +1,6 @@
+// expect-result: 7
+// Chapter 2: try operands may start on the next line.
+// docs/design/src/002-running.md#f09fd5431ddc12c3
+import { Effect } from "effect"
+export effect function main() { return try
+ Effect.succeed(7) }

@@ -1,4 +1,6 @@
 // expect: EK0510 EK0510 EK0510
+// Chapter 2: running rules coverage.
+// docs/design/src/002-running.md#511ae7e4a8cc1a43
 import { Effect, Fiber } from "effect"
 declare const program: Effect.Effect<number>
 declare const fiber: Fiber.Fiber<number>

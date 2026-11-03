@@ -1,0 +1,1 @@
+cov-ch002a Computed class keys and extends clauses are wrongly outside effect code (EK0501). Rules: docs/design/src/002-running.md#935d663e87c062e1

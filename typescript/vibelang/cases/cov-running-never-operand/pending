@@ -1,0 +1,1 @@
+cov-ch002a Never is rejected as EK0502 despite assignability to Effect. Rules: docs/design/src/002-running.md#d3287cd8a116a594

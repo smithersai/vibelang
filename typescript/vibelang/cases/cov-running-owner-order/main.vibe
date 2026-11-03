@@ -1,0 +1,16 @@
+// Chapter 2: Where Effect's argument order differs from source order, the source order still governs: `fork.in(sc
+// docs/design/src/002-running.md#86abbf07e27e4f5f
+import { Effect, Scope, Exit } from "effect"
+export effect function main() {
+ const events: string[] = []
+ const scope = try Scope.make()
+ function scopeValue() { events.push("scope"); return scope }
+ function operand() { events.push("operand"); return Effect.succeed(10) }
+ const fiber = fork.in(scopeValue()) operand()
+ const value = join fiber
+ try Scope.close(scope, Exit.void)
+ function limit() { events.push("limit"); return 1 }
+ function items() { events.push("items"); return [1] }
+ for concurrent(limit()) (const item of items()) { events.push("item") }
+ return { events, value }
+}

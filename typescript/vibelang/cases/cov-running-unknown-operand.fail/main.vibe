@@ -1,0 +1,4 @@
+// expect: EK0502
+// Chapter 2: `never` and `any` pass this test, `never` as the success of an Effect that only fails; `unknown` doe
+// docs/design/src/002-running.md#d3287cd8a116a594
+effect function f(input: unknown) { return try input }

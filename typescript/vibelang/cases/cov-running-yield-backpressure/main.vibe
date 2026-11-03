@@ -1,0 +1,21 @@
+// Chapter 2: | `yield x` in a producer | one `Queue.offer`, waiting for buffer room |
+// docs/design/src/002-running.md#af2270f1166456cc
+import { Effect, Deferred, Stream } from "effect"
+export effect function main() {
+ const ready = try Deferred.make<void>()
+ const attempts: number[] = []
+ effect function* source() {
+   for (const n of [1, 2, 3, 4]) {
+     attempts.push(n)
+     if (n === 3) try Deferred.succeed(ready, undefined)
+     yield n
+   }
+ }
+ let observed: number[] = []
+ for try (const item of source()) {
+   try Deferred.await(ready)
+   observed = attempts.slice()
+   break
+ }
+ return observed
+}

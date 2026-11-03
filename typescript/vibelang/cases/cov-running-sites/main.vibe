@@ -1,0 +1,70 @@
+// Chapter 2: Native APIs retain their written runner behavior.
+// docs/design/src/002-running.md#abb5ffb761604607
+// Chapter 2: Calling an `effect` function constructs its cold Effect.
+// docs/design/src/002-running.md#df9749b1c8e80358
+// Chapter 2: | `try e` | one Effect, giving its success |
+// docs/design/src/002-running.md#124c55a3babb901b
+// Chapter 2: | `e catch (err) => y` | one Effect, handling its failure |
+// docs/design/src/002-running.md#f874919778a67bce
+// Chapter 2: | `fork e` and its forms | one Effect, in a new fiber |
+// docs/design/src/002-running.md#c9453703067d099e
+// Chapter 2: | `join f` | `Fiber.join(f)`, giving the fiber's success or propagating its failure |
+// docs/design/src/002-running.md#f1e372fc184d3ca0
+// Chapter 2: | `throw e` | `Effect.fail(e)`, failing the enclosing Effect with `e` as its error value |
+// docs/design/src/002-running.md#8b258b64c21fcf2a
+// Chapter 2: | `try.all`, `try.race`, `try.any`, `try.allSettled` | several Effects at once |
+// docs/design/src/002-running.md#a2e8d2fac0572b9e
+// Chapter 2: | `for concurrent` | one Effect per item, at once |
+// docs/design/src/002-running.md#5d659caa5466bee3
+// Chapter 2: | `for try` | one Effect per Stream element, in order |
+// docs/design/src/002-running.md#bd4a369872db281d
+// Chapter 2: | `provide`, `uninterruptible`, `interruptible`, `restore` | a block of statements ([Services](005-s
+// docs/design/src/002-running.md#eb9ffaf20f1519ea
+// Chapter 2: Every operand is evaluated once, left to right as written, with two exceptions: a `catch` handler is
+// docs/design/src/002-running.md#37ffcf36e9bc528f
+// Chapter 2: Where Effect's argument order differs from source order, the source order still governs: `fork.in(sc
+// Chapter 2: An Effect that can't fail is still run with `try`.
+// docs/design/src/002-running.md#36f2dc491eef8224
+// Chapter 2: `try` works like `await`: it is a unary operator with `await`'s precedence, so `try a.b()` runs `a.b
+// docs/design/src/002-running.md#123ead5d2ddff4ce
+// Chapter 2: As with `await`, the operand may start on the next line.
+// Chapter 2: `try e` is `yield* e`.
+// docs/design/src/002-running.md#a32575175bb027df
+// Chapter 2: A failure propagates to the enclosing Effect, as Zig's `try x` means `x catch |err| return err`.
+// docs/design/src/002-running.md#4de1a44f272d4052
+import { Effect, Exit, Fiber, Stream, Scope, Context, Layer, Config } from "effect"
+const nativeRun = Effect.runSync(Effect.succeed(11))
+service Counter { value: number }
+export effect function main() {
+ const events: string[] = []
+ let runs = 0
+ const task = (effect () => { runs++; return runs })()
+ const before = runs
+ const first = try task
+ const second = try task
+ const unary = try Effect.succeed(6) + 1
+ const fallback = Effect.fail("bad") catch (e) => e.length
+ const fiber = fork Effect.succeed(8)
+ const joined = join fiber
+ const failed = try exit(effect { throw "failed" })
+ const all = try.all [Effect.succeed(1), Effect.succeed(2)]
+ const raced = try.race [Effect.succeed(3)]
+ const any = try.any [Effect.fail("bad"), Effect.succeed(4)]
+ const settled = try.allSettled [Effect.succeed(5), Effect.fail("bad")]
+ let active = 0, maximum = 0
+ for concurrent (const item of [1, 2, 3]) {
+   active++; maximum = Math.max(maximum, active); try Effect.yieldNow; active--
+ }
+ const seen: number[] = []
+ for try (const item of Stream.make(1, 2)) { seen.push(item) }
+ let supplied = 0
+ provide Counter = { value: 9 } { supplied = (try Counter).value }
+ uninterruptible { events.push("mask"); restore { events.push("restore") } }
+ interruptible { events.push("interruptible") }
+ function limit() { events.push("limit"); return 1 }
+ function items() { events.push("items"); return [1] }
+ for concurrent(limit()) (const item of items()) { events.push("item") }
+ const config = try Config.succeed(7)
+ const exitValue = try Exit.succeed(8)
+ return { nativeRun, before, first, second, unary, fallback, joined, failed: failed._tag, all, raced, any, settled: settled.map(x => x._tag), maximum, seen, supplied, config, exitValue, events }
+}

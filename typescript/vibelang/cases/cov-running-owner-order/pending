@@ -1,0 +1,1 @@
+cov-ch002a fork.in(scope) operand is rejected by the parser (TS1109/TS1005), so its source-order witness cannot compile. docs/design/src/002-running.md#86abbf07e27e4f5f

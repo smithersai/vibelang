@@ -1,0 +1,9 @@
+// Chapter 2: The special `static readonly defaultValue` initializer of a `service` has that same source class-fie
+// docs/design/src/002-running.md#6cb456bda505ae65
+import { Effect } from "effect"
+function fork(n: number) { return n + 1 }
+function join(n: number) { return n + 2 }
+export effect function main() {
+ service Defaulted { value: number; static readonly defaultValue = () => ({ value: fork(join(4)) }) }
+ return (try Defaulted).value
+}

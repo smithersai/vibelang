@@ -1,0 +1,8 @@
+// Chapter 2: So `try new NotFound({ id })` fails like `throw`.
+// docs/design/src/002-running.md#a9587dbc1b99bde1
+import { Effect } from "effect"
+error Missing { id: string }
+export effect function main() {
+ const result = try Effect.exit(effect { return try new Missing({ id: "a" }) })
+ return result._tag === "Failure" ? result.cause.reasons.map(r => r._tag === "Fail" ? r.error._tag : r._tag) : []
+}

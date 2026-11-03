@@ -1,0 +1,5 @@
+// expect: EK1701
+// Chapter 2: A parameter list or `static` block that inherits the reservation still parses them as fiber operatio
+// docs/design/src/002-running.md#7ed3ae4827c1a000
+import { Fiber } from "effect"
+effect function f(p: Fiber.Fiber<number>, a = join(p)) { return a }

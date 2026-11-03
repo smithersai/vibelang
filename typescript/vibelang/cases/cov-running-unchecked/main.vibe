@@ -1,0 +1,15 @@
+import { inputs } from "./inputs.js"
+// Chapter 2: The static operand test adds no runtime Effect guard: an unchecked `any` follows native delegation, 
+// docs/design/src/002-running.md#5c3afeb538a2beaf
+// Chapter 2: A noniterable such as `5`, `undefined` or an ordinary Promise produces a native `TypeError` defect; 
+// docs/design/src/002-running.md#4148e44b809b1e0e
+import { Effect } from "effect"
+effect function unchecked(value: any) { return try value }
+export effect function main() {
+ const observations: unknown[] = []
+ for (const value of inputs()) {
+   const result = try Effect.exit(unchecked(value))
+   observations.push(result._tag === "Success" ? ["Success", result.value] : result.cause.reasons.map(r => r._tag === "Die" ? ["Die", r.defect instanceof TypeError] : [r._tag]))
+ }
+ return observations
+}

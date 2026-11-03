@@ -1,0 +1,11 @@
+// Chapter 2: A computed class key and an `extends` clause are effect code, as `await` is allowed there: in `effec
+// docs/design/src/002-running.md#935d663e87c062e1
+import { Effect } from "effect"
+export effect function main() {
+ let calls = 0
+ effect function key() { calls++; return "read" }
+ effect function base() { calls++; return class Base { value = 7 } }
+ class C extends (try base()) { [try key()]() { return this.value } }
+ const value = try Effect.try(() => (new C() as any).read())
+ return { calls, value }
+}

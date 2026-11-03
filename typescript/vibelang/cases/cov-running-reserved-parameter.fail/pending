@@ -1,0 +1,1 @@
+cov-ch002a Reserved join in a formal parameter is accepted rather than reporting EK1701. Rules: docs/design/src/002-running.md#7ed3ae4827c1a000

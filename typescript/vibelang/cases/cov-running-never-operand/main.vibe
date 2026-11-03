@@ -1,0 +1,6 @@
+// expect-result: 0
+// Chapter 2: never passes the structural Effect operand test.
+// docs/design/src/002-running.md#d3287cd8a116a594
+import { Effect } from "effect"
+export effect function admitted(input: never) { return try input }
+export effect function main() { return 0 }
