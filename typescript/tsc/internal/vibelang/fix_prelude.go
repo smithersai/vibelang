@@ -227,9 +227,9 @@ func preludeRewritesOf(c *checker.Checker, file *ast.SourceFile, declared map[st
 			r.edits = append(r.edits, sourceEdit{start, end, ""})
 			continue
 		}
-		for _, node := range going {
-			r.edits = append(r.edits, bindingRemoval(file, node))
-		}
+		// One edit for the list: removing two adjacent bindings one at a
+		// time overlaps at the comma between them.
+		r.edits = append(r.edits, bindingRemovals(file, statement, going)...)
 	}
 	r.importEdits = len(r.edits)
 	// M.M becomes M where D311 gives M that meaning.

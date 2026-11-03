@@ -1,0 +1,2 @@
+go test fuzz v1
+string("-- main.vibe --\nimport { HttpClient, HttpClientRequest, type HttpClientResponse } from \"effect/http\"\nexport const client = (held: HttpClient.HttpClient) => held\nconst get = (url: string) => HttpClientRequest.get(url)\nconst status = (r: HttpClientResponse.HttpClientResponse) => r.status\n")
