@@ -67,3 +67,11 @@ VIP-2/VIP-5/VIP-17 and denied VIP-24 settle the forms. HELD is an enforcement ro
 Folded: relic-trusted-empty-wrapper.patch (applied at docs/design/src/007-tooling.md:279)
 
 Will’s no-relics ruling removes the unapproved wrapper. Preserve defect identity rather than silently replacing a defect with an UnknownError failure. The source HOLD remains an enforcement prerequisite, not a spec-publication dependency.
+
+## state inferred Effect-argument warning boundaries
+
+Folded: fuzz-effect-generic-arg.patch (applied at docs/design/src/002-running.md:24)
+
+Folded: conf-auto-pipe-arrow-body-admission-d246-d247.patch (already stated at docs/design/src/900-appendices.md:1072)
+
+EK4802 remains a configurable advisory; explicit program-data type arguments opt out. VIP-23’s pipe-arrow grammar rejection and EK2301 ownership were already stated.

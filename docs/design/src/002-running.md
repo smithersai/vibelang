@@ -21,6 +21,12 @@ Calling an `effect` function constructs its cold Effect. Calls retain ordinary J
 
 Every operand is evaluated once, left to right as written, with two exceptions: a `catch` handler is evaluated only on failure, and the body of an `effect` block or function is evaluated on each run. Where Effect's argument order differs from source order, the source order still governs: `fork.in(scope) e` evaluates `scope` before `e`, and `for concurrent(n) (… of xs)` evaluates `n` before `xs`. Each operand retains its source lexical environment, including the loop head scope described below.
 
+### Inferred Effect arguments
+
+In effect code, a plain call whose own inferred type argument is an Effect reports `EK4802` at each argument that uses that type parameter outside a declared Effect position. This is the configurable warning for receiving an unrun program where a result may have been intended; inference alone does not express that intent. It covers `T`, containers such as `T[]` and `Promise<T>`, callback contracts, overloads and methods, including `T extends unknown`. An Effect-returning call already constructs a program and is excluded.
+
+Writing the call's type arguments explicitly opts out: `expect<Effect.Effect<number>>(e)` passes the program as data. To pass the result, write `expect(try e)`. The quick fix writes `try` for a direct Effect argument when the enclosing failure and requirement contract accepts it; for a container or callback, run the Effect where that value is constructed. A nested plain or `async` function keeps TypeScript's own inference and gets no diagnostic from this rule. A declared `Effect.Effect<T>` parameter still accepts a program without an explicit type argument.
+
 ## `try`
 
 ### Syntax
