@@ -133,7 +133,10 @@ func (tx *lowering) delegatedTail(node, thunk *ast.Node) *ast.Node {
 	value := f.NewConditionalExpression(index("0"), f.NewToken(ast.KindQuestionToken),
 		f.NewYieldExpression(f.NewToken(ast.KindAsteriskToken), valueName), f.NewToken(ast.KindColonToken), valueName)
 	body := f.NewBlock(f.NewNodeList([]*ast.Node{declare, f.NewReturnStatement(value)}), true)
-	generator := tx.generatorExpression(node, sourceName(node), nil, body)
+	// The generator runs the source body, which the callable already maps,
+	// so it maps to no source position (generated.go): coverage counts one
+	// function for the source function, not a second for its generator.
+	generator := tx.generatedFunctions(tx.generatorExpression(node, sourceName(node), nil, body))
 	callee := f.NewPropertyAccessExpression(tx.effectName(), nil, f.NewIdentifier("gen"), ast.NodeFlagsNone)
 	effect := f.NewCallExpression(callee, nil, nil, f.NewNodeList([]*ast.Node{generator}), ast.NodeFlagsNone)
 	parameter := f.NewParameterDeclaration(nil, nil, capture, nil, nil, nil)
