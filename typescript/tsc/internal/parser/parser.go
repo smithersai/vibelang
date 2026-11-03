@@ -920,7 +920,7 @@ func (p *Parser) isListElement(parsingContext ParsingContext, inErrorRecovery bo
 	case PCSwitchClauses:
 		return p.token == ast.KindCaseKeyword || p.token == ast.KindDefaultKeyword
 	case PCTypeMembers:
-		return p.lookAhead((*Parser).scanTypeMemberStart)
+		return p.isStartOfVibeLangEffectTypeMember() || p.lookAhead((*Parser).scanTypeMemberStart)
 	case PCClassMembers:
 		// We allow semicolons as class elements (as specified by ES6) as long as we're
 		// not in error recovery.  If we're in error recovery, we don't want an errant
@@ -3558,6 +3558,10 @@ func (p *Parser) parseTypeMember() *ast.Node {
 	jsdoc := p.jsdocScannerInfo()
 	mutable := p.isVibeLangFile() && p.parseVibeLangMutable() // readonly unless written mutable inside a data, schema or error body (vibelang.go)
 	modifiers := p.parseModifiers()
+	if p.isStartOfVibeLangEffectTypeMember() {
+		word := p.parseVibeLangEffectMember()
+		return p.markEffect(p.parsePropertyOrMethodSignature(pos, jsdoc, modifiers), word)
+	}
 	if p.parseContextualModifier(ast.KindGetKeyword) {
 		return p.parseAccessorDeclaration(pos, jsdoc, modifiers, ast.KindGetAccessor, ParseFlagsType)
 	}

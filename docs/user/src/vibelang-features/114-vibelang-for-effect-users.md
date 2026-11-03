@@ -35,7 +35,7 @@ Plain code may discard a runner's result: `function run(): void { Effect.runSync
 
 A plain `for...of` also keeps TypeScript's lexical scopes. A closure made in its iterable expression captures an uninitialized `let` or `const` head binding, even with destructuring. Calling that closure during or after the loop throws `ReferenceError`; initializing the separate per-iteration bindings does not initialize the captured cell. An assignment head keeps its outer shared binding instead. In `.vibe`, write an explicit outer `let` and an assignment head when migrating a shared `var` cell; `var` itself belongs in a `.ts` or `.js` file (VIP-1).
 
-A recognized `effect` modifier on an `abstract` declaration, in an ambient `declare` context, or on an `interface` or type literal member is `EK0108`. Remove the modifier from the signature, or put the implementation in an ordinary function or method. A method named `effect`, such as `interface Ordinary { effect(): number }`, keeps its ordinary TypeScript meaning.
+A recognized `effect` modifier on an `abstract` declaration, in an ambient `declare` context, or on an `interface` or type literal member is `EK0108`. Run `vibelang --fix` to remove only the modifier from the erased signature, retaining its return type and comments, or put the implementation in an ordinary function or method. Nonambient overload signatures may still use `effect`. A method named `effect`, such as `interface Ordinary { effect(): number }`, keeps its ordinary TypeScript meaning.
 
 Migration setup preserves the authored `rewriteRelativeImportExtensions` option, including its default when absent and values inherited through `extends`. It adds no local override in referenced projects or newly wired packages.
 

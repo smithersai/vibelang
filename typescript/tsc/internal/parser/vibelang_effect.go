@@ -339,3 +339,24 @@ func (p *Parser) tryParseVibeLangRestrictedEffectMember(pos int, jsdoc jsdocScan
 	}
 	return member
 }
+
+// Recover a recognized forbidden modifier as one type member, so EK0108
+// owns the rejection instead of a cascade of missing-separator errors.
+func (p *Parser) isStartOfVibeLangEffectTypeMember() bool {
+	return p.isVibeLangEffectWord() && p.lookAhead(func(p *Parser) bool {
+		p.nextToken()
+		if p.hasPrecedingLineBreak() {
+			return false
+		}
+		if p.token == ast.KindOpenBracketToken {
+			p.parseComputedPropertyName()
+		} else {
+			if !tokenIsIdentifierOrKeyword(p.token) && p.token != ast.KindStringLiteral && p.token != ast.KindNumericLiteral && p.token != ast.KindBigIntLiteral {
+				return false
+			}
+			p.nextToken()
+		}
+		p.parseOptionalToken(ast.KindQuestionToken)
+		return p.token == ast.KindOpenParenToken || p.token == ast.KindLessThanToken || p.token == ast.KindColonToken
+	})
+}

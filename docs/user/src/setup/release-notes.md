@@ -2408,6 +2408,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - A catch-handler editor fix removed `async` or `*` even when its body still used `await` or `yield`, leaving new compile errors; CLI, editor and diagnostic guidance now withhold that edit and ask for an explicit body conversion.
 - Removing `async` from a `catch` handler deleted comments after it; modifier repairs now preserve every comment and the handler body.
 - `vibelang --fix` removed an `effect` import with a doc comment before it, such as a module header, when the declaration did not write the import: tsc drops the comment with the import, so without it the comment led the declaration and the published `.d.ts` changed (Smithers `Canonical.d.ts`). `--fix` now keeps such an import when removing it would change the declaration.
+- An `effect` modifier on an ambient declaration, abstract method or type member could escape its rejection or produce parser errors. It now reports `EK0108`; `vibelang --fix` removes the modifier while keeping the signature.
+
 
 #### Compiler and diagnostics
 
@@ -2659,6 +2661,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - ESLint rules saw adjacent generic openings such as `F<<T>(x: T) => T>` as one `<<` token; they now receive both `<` tokens at their source positions, while left-shift operators stay intact.
 - Knip reported a public export as unused when its JSDoc followed a statement separated by CR, U+2028 or U+2029; these line terminators now keep the tag just as LF and CRLF do.
 - Knip reported an export marked with `@public` as unused when the comment followed an earlier statement on the same line; the adapter now preserves the context Knip reads in TypeScript.
+
 
 ### Known bugs
 

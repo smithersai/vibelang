@@ -1,0 +1,8 @@
+// expect: EK0108
+declare effect function ambientRead(): number!!;
+abstract class Abstract { abstract effect read(): number!! }
+declare class Ambient { effect read(): number!! }
+declare namespace API { effect function read(): number!! }
+interface Member { effect read(): number!! }
+type Literal = { effect read(): number!! }
+export {};
