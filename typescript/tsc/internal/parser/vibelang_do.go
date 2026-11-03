@@ -114,7 +114,7 @@ func GetDoNarrowingOrigin(binding *ast.Node) *DoNarrowingOrigin {
 
 // parseVibeLangDos checks and lowers the file's do expressions.
 func (p *Parser) parseVibeLangDos(file *ast.SourceFile) {
-	if len(p.vibelangDoOrder) == 0 {
+	if len(p.vibelangDoOrder) == 0 && len(p.vibelangForEachHomes) == 0 {
 		// for try also lifts its RHS out of the native loop. It needs the
 		// same uninitialized head cells even when the source contains no do.
 		var hasForTry func(*ast.Node) bool
@@ -2172,9 +2172,15 @@ func VibeLangDoHeadBinding(declaration *ast.Node) *ast.Node {
 // head environment. Consecutive source labels stay directly on the loop.
 func (l *doLowering) loopHead(loop *ast.Node, labels []*ast.Node) ([]*ast.Node, *ast.Node) {
 	f := loop.AsForInOrOfStatement()
+	sourceInit := f.Initializer
+	home := l.p.vibelangForEachHomes[loop]
+	delete(l.p.vibelangForEachHomes, loop)
 	var pre []*ast.Node
+	if home != nil {
+		pre = append(pre, home.head...)
+	}
 	f.Expression = l.expr(f.Expression, &pre)
-	init := f.Initializer
+	init := sourceInit
 	if loop.Kind == ast.KindForOfStatement && loop.Flags&ast.NodeFlagsVibeLang != 0 && !l.p.opts.VibeLangDoAsFunction &&
 		ast.IsVariableDeclarationList(init) && init.Flags&ast.NodeFlagsBlockScoped != 0 {
 		// Stream.runForEachWhile evaluates the RHS before entering its item
@@ -2185,6 +2191,9 @@ func (l *doLowering) loopHead(loop *ast.Node, labels []*ast.Node) ([]*ast.Node, 
 		pre = append(pre, l.p.mConst(temp, ast.NodeFlagsConst, l.valueOnly(rhs), rhs.Loc))
 		f.Expression = l.ref(temp, rhs.Loc)
 	}
+	if home != nil {
+		l.forEachIsHome(loop, home, &pre)
+	}
 	l.p.overrideParentInImmediateChildren(loop)
 	statement := loop
 	for i := len(labels) - 1; i >= 0; i-- {
@@ -2193,6 +2202,9 @@ func (l *doLowering) loopHead(loop *ast.Node, labels []*ast.Node) ([]*ast.Node, 
 		statement = labels[i]
 	}
 	if len(pre) == 0 || !ast.IsVariableDeclarationList(init) || init.Flags&ast.NodeFlagsBlockScoped == 0 {
+		if home != nil {
+			return nil, l.p.mBlock(append(pre, statement), statement.Loc)
+		}
 		return pre, statement
 	}
 	label := l.temp("$doHead", loop.Loc)
@@ -2226,4 +2238,49 @@ func (l *doLowering) loopHead(loop *ast.Node, labels []*ast.Node) ([]*ast.Node, 
 	}
 	block := l.p.mBlock(body, statement.Loc)
 	return nil, l.p.vibelangSpanning(l.p.factory.NewLabeledStatement(label, block), statement.Loc)
+}
+
+// forEachIsHome evaluates the RHS once, retains readers of its cells, and
+// declares independent item copies before evaluating the source head's
+// destructuring defaults. Keeping the native loop preserves iterator closing,
+// await, break/continue and the enclosing function's return/var semantics.
+func (l *doLowering) forEachIsHome(loop *ast.Node, home *forEachIsHome, pre *[]*ast.Node) {
+	p := l.p
+	f := loop.AsForInOrOfStatement()
+	at := p.skipRangeTrivia(f.Expression.Loc)
+	items := l.temp("$isItems", at)
+	*pre = append(*pre, p.mConst(items, ast.NodeFlagsConst, f.Expression, at))
+	var perItem []*ast.Node
+	for _, statement := range home.head {
+		declaration := hoistedDeclarator(statement)
+		if declaration.Flags&ast.NodeFlagsVibeLangIsBinding == 0 {
+			continue
+		}
+		name := declaration.Name()
+		// Defer the head read until an item starts: an iterator can change
+		// the original cell between items. This reader never copies item
+		// writes back into the head.
+		snapshot := l.temp("$isHead", name.Loc)
+		*pre = append(*pre, p.mConst(snapshot, ast.NodeFlagsConst, p.vibelangProgramArrow(nil, p.mIdent(name.Text(), name.Loc), name.Loc), name.Loc))
+		copy := p.mConst(p.mIdent(name.Text(), name.Loc), ast.NodeFlagsLet, p.mCall(l.ref(snapshot, name.Loc), nil, name.Loc), name.Loc)
+		hoistedDeclarator(copy).Flags |= declaration.Flags & (ast.NodeFlagsVibeLangConst | ast.NodeFlagsVibeLangIsBinding)
+		perItem = append(perItem, copy)
+	}
+	perItem = append(perItem, home.defaults...)
+	sourceInit := f.Initializer
+	item := l.temp("$isItem", sourceInit.Loc)
+	if ast.IsVariableDeclarationList(sourceInit) {
+		declaration := sourceInit.AsVariableDeclarationList().Declarations.Nodes[0]
+		declaration.AsVariableDeclaration().Initializer = l.ref(item, declaration.Name().Loc)
+		p.overrideParentInImmediateChildren(declaration)
+		perItem = append(perItem, p.vibelangSpanning(p.factory.NewVariableStatement(nil, sourceInit), sourceInit.Loc))
+	} else {
+		perItem = append(perItem, l.statement(l.assign(sourceInit, l.ref(item, sourceInit.Loc), sourceInit.Loc), sourceInit.Loc))
+	}
+	perItem = append(perItem, f.Statement)
+	f.Statement = p.mBlock(perItem, f.Statement.Loc)
+	list := p.mConst(item, ast.NodeFlagsConst, nil, sourceInit.Loc)
+	f.Initializer = list.AsVariableStatement().DeclarationList
+	f.Expression = l.ref(items, at)
+	p.overrideParentInImmediateChildren(loop)
 }

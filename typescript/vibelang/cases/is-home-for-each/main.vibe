@@ -1,0 +1,51 @@
+// VIP-7, chapter 004: the RHS has one home; every item receives a copy.
+export function probe(a: unknown): unknown[] {
+  const out: unknown[] = []
+  for (const item of ((a is let cell) && [cell]) || []) {
+    out.push([item, cell])
+  }
+  return out
+}
+export function copies(): number[] {
+  const read: (() => number)[] = []
+  for (const item of ((7 is let cell) && [1, 2, 3]) || []) {
+    read.push(() => cell)
+    cell += item
+  }
+  return read.map((get) => get())
+}
+export function defaults(): number[] {
+  const read: (() => number)[] = []
+  for (const { value = (7 is let cell) ? cell : 0 } of [{}, {}, {}] as {value?: number}[]) {
+    read.push(() => { cell++; return cell })
+    void value
+  }
+  return read.map((get) => get())
+}
+export function labels(): number[] {
+  const out: number[] = []
+  outer: inner: for (const item of ((7 is const cell) && [1, 2, 3]) || []) {
+    if (item === 2) continue outer
+    out.push(cell + item)
+    if (item === 3) break inner
+  }
+  return out
+}
+function sequence(set: (n: number) => void): Iterable<number> {
+  return { [Symbol.iterator]() {
+    let i = 0
+    return { next(): IteratorResult<number> {
+      set(++i)
+      return i <= 2 ? {done: false, value: i} : {done: true, value: undefined}
+    } }
+  } }
+}
+export function headWrites(): number[] {
+  const read: (() => number)[] = []
+  for (const item of (((0 as number) is let cell) && sequence((n) => { cell = n })) || []) {
+    cell += 10
+    read.push(() => cell)
+    void item
+  }
+  return read.map((get) => get())
+}

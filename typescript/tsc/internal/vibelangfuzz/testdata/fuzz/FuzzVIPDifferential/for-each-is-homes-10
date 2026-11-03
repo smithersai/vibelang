@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("key:vip07.for-each-is-homes-plain\u0000\u001eGp\u0099\u00c2\u00eb\u0014=f\u008f\u00b8\u00e1\n3\\\u0085\u00ae\u00d7\u0000)R{\u00a4\u00cd\u00f6\u001fHq\u009a\u00c3\u00ec\u0015")

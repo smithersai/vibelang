@@ -1,12 +1,4 @@
 # Precise gaps observed by r4 six/more Go runs; independent native controls retained.
-FuzzReviewIsBindingHomes for-of-default:0 compiler VIP-7 Chapter 4 binding homes: an is-pattern binding belongs to its specified lexical home and is EK0705 only where no home exists; lane impl-hunt-data
-FuzzReviewIsBindingHomes for-of-default:1 compiler VIP-7 Chapter 4 binding homes: an is-pattern binding belongs to its specified lexical home and is EK0705 only where no home exists; lane impl-hunt-data
-FuzzReviewIsBindingHomes for-of-head:0 compiler VIP-7 Chapter 4 binding homes: an is-pattern binding belongs to its specified lexical home and is EK0705 only where no home exists; lane impl-hunt-data
-FuzzReviewIsBindingHomes for-of-head:1 compiler VIP-7 Chapter 4 binding homes: an is-pattern binding belongs to its specified lexical home and is EK0705 only where no home exists; lane impl-hunt-data
-FuzzReviewIsBindingHomes corpus:for-of-default-0 compiler VIP-7 Chapter 4 binding homes: an is-pattern binding belongs to its specified lexical home and is EK0705 only where no home exists; keyed reproduction from the same raw Go run; lane impl-hunt-data
-FuzzReviewIsBindingHomes corpus:for-of-default-1 compiler VIP-7 Chapter 4 binding homes: an is-pattern binding belongs to its specified lexical home and is EK0705 only where no home exists; keyed reproduction from the same raw Go run; lane impl-hunt-data
-FuzzReviewIsBindingHomes corpus:for-of-head-0 compiler VIP-7 Chapter 4 binding homes: an is-pattern binding belongs to its specified lexical home and is EK0705 only where no home exists; keyed reproduction from the same raw Go run; lane impl-hunt-data
-FuzzReviewIsBindingHomes corpus:for-of-head-1 compiler VIP-7 Chapter 4 binding homes: an is-pattern binding belongs to its specified lexical home and is EK0705 only where no home exists; keyed reproduction from the same raw Go run; lane impl-hunt-data
 FuzzReviewIsRedeclarations within-one-pattern:0 compiler VIP-7/detail245: the pinned single-top-level-pattern exception permits repeated same-keyword bindings; current TS2451 is a static rejection; lane impl-hunt-data
 FuzzReviewIsRedeclarations corpus:r3-within-one-pattern-0 compiler VIP-7/detail245: the pinned single-top-level-pattern exception permits repeated same-keyword bindings; current TS2451 is a static rejection; lane impl-hunt-data
 FuzzReviewIsRedeclarations within-one-pattern:1 compiler VIP-7/detail245: the pinned single-top-level-pattern exception permits repeated same-keyword bindings; current TS2451 is a static rejection; lane impl-hunt-data

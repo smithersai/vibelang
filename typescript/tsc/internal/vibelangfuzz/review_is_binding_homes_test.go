@@ -42,6 +42,12 @@ func reviewIsBindingHomes() []reviewIsBindingHome {
 		{"for-test", false},
 		{"for-of-head", false},
 		{"for-of-default", false},
+		{"for-of-const-head", false},
+		{"for-in-head", false},
+		{"for-await-head", false},
+		{"for-of-var-head", false},
+		{"for-of-assignment-head", false},
+		{"for-of-array-default", false},
 		{"parameter-do-block", false},
 		{"parameter-match-arm", false},
 		{"parameter-nested-arrow", false},
@@ -107,21 +113,40 @@ func reviewIsBindingHomeProgram(home string, leak, native bool) string {
 			body += "void cell;\n"
 		}
 		body += "}\n"
-	case "for-of-head":
+	case "for-of-head", "for-of-const-head", "for-in-head", "for-await-head", "for-of-var-head", "for-of-assignment-head":
 		head := "for (const item of ((a is let cell) && [cell]) || [])"
 		loop := head + " { void item; void cell; }"
 		if native {
 			loop = "for (const item of [a]) { let cell = item; void cell; }"
+		}
+		switch home {
+		case "for-of-const-head":
+			loop = strings.ReplaceAll(loop, "is let cell", "is const cell")
+		case "for-in-head":
+			loop = strings.ReplaceAll(loop, " of ", " in ")
+			loop = strings.ReplaceAll(loop, "[cell]", "{value: cell}")
+			loop = strings.ReplaceAll(loop, "|| []", "|| {}")
+			loop = strings.ReplaceAll(loop, "[a]", "{value: a}")
+		case "for-await-head":
+			loop = strings.ReplaceAll(loop, "for (", "for await (")
+		case "for-of-var-head":
+			loop = strings.ReplaceAll(loop, "const item", "var item")
+		case "for-of-assignment-head":
+			loop = "let item: unknown; " + strings.ReplaceAll(loop, "const item", "item")
 		}
 		body = "export function probe(): void {\n" + loop + "\n"
 		if leak {
 			body += "void cell;\n"
 		}
 		body += "}\n"
-	case "for-of-default":
+	case "for-of-default", "for-of-array-default":
 		loop := "for (const { x = (a is let cell) && cell } of [{}] as { x?: unknown }[]) { void x; void cell; }"
 		if native {
 			loop = "for (const { x = a } of [{}] as { x?: unknown }[]) { let cell = x; void cell; }"
+		}
+		if home == "for-of-array-default" {
+			loop = strings.ReplaceAll(loop, "{ x =", "[ x =")
+			loop = strings.ReplaceAll(loop, " } of [{}] as { x?: unknown }[]", "] of [[]] as unknown[][]")
 		}
 		body = "export function probe(): void {\n" + loop + "\n"
 		if leak {
@@ -157,6 +182,9 @@ func reviewIsBindingHomeProgram(home string, leak, native bool) string {
 		body = "export function probe({ [(1 is let captured) ? \"x\" : \"y\"]: value }: { x?: number; y?: number } = {}) { return value }\n"
 	default:
 		panic("unknown binding home")
+	}
+	if home == "for-await-head" {
+		body = strings.ReplaceAll(body, "function probe(): void", "async function probe(): Promise<void>")
 	}
 	return "declare const a: unknown;\n" + body
 }
@@ -204,7 +232,13 @@ func FuzzReviewIsBindingHomes(f *testing.F) {
 			}
 			defer result.Remove()
 			missing, rejected, unexpected := false, false, false
+			independentVar := !native && home.name == "for-of-var-head"
+			varDiagnostics := 0
 			for _, diagnostic := range result.Diagnostics {
+				if independentVar && IsEK(diagnostic) && diagnostic.Code() == 107 {
+					varDiagnostics++
+					continue
+				}
 				if !IsEK(diagnostic) && diagnostic.Code() == 2304 && diagnostic.Pos() == strings.LastIndex(source, "cell") {
 					missing = true
 				} else if diagnostic.Category().Name() == "error" {
@@ -221,7 +255,10 @@ func FuzzReviewIsBindingHomes(f *testing.F) {
 			case leak:
 				matches = missing && !unexpected
 			default:
-				matches = !HasError(result.Diagnostics)
+				matches = !missing && !rejected && !unexpected
+			}
+			if independentVar && varDiagnostics != 1 {
+				matches = false
 			}
 			if !matches {
 				if native {
@@ -234,5 +271,6 @@ func FuzzReviewIsBindingHomes(f *testing.F) {
 		ExpectPending(t, reviewIsBindingHomesTarget, specCorpusKey(t))
 	})
 }
+
 // VIP-7 concise-arrow, field/static-field, static-block, enum and parameter home classification; rule: docs/design/vips/0007-match.md#ec1c2deae4f0a68f
 // VIP-7 concise-arrow, field/static-field, static-block, enum and parameter home classification; rule: docs/design/vips/0007-match.md#e78afe0e526bbf6a

@@ -970,7 +970,7 @@ The operand and parent positions follow `UnaryExpression`; `throw` in statement 
 This implementation census records each parser or lowering hook and its specification authority. It does not admit syntax: the productions and prose above remain the independent grammar oracle. A `pending` row has no authority; `support` and `recovery` rows do not add language forms.
 
 <details>
-<summary>Parser and lowering hooks (959 records)</summary>
+<summary>Parser and lowering hooks (961 records)</summary>
 
 | Hook | Form | Authority | Status | Reason |
 | --- | --- | --- | --- | --- |
@@ -1186,6 +1186,7 @@ This implementation census records each parser or lowering hook and its specific
 | ` parser/vibelang_match.go:Parser.hoistConciseBody ` | ` admission:is ` | ` 004-match.md ` | ` support ` | VIP-7 / Chapter 004 binding homes for `is`; synthesized `let` hoisting supports explicit source homes |
 | ` parser/vibelang_match.go:Parser.hoistInitializerBody ` | ` admission:is ` | ` 004-match.md ` | ` support ` | VIP-7 / Chapter 004 binding homes for `is`; synthesized `let` hoisting supports explicit source homes |
 | ` parser/vibelang_match.go:Parser.hoistForHead ` | ` admission:is ` | ` 004-match.md ` | ` support ` | VIP-7 / Chapter 004 binding homes for `is`; synthesized `let` hoisting supports explicit source homes |
+| ` parser/vibelang_match.go:Parser.recordForEachIsHome ` | ` admission:is ` | ` 004-match.md ` | ` support ` | VIP-7: records separate RHS and destructuring-default binding homes for for-in/of heads |
 | ` parser/vibelang_match.go:hoistedDeclarator ` | ` admission:is ` | ` 004-match.md ` | ` support ` | VIP-7 / Chapter 004 binding homes for `is`; synthesized `let` hoisting supports explicit source homes |
 | ` parser/vibelang_match.go:Parser.mLetList ` | ` admission:is ` | ` 004-match.md ` | ` support ` | VIP-7 / Chapter 004 binding homes for `is`; synthesized `let` hoisting supports explicit source homes |
 | ` parser/vibelang_match.go:Parser.takeHoists ` | ` admission:is ` | ` 004-match.md ` | ` support ` | VIP-7 / Chapter 004 binding homes for `is`; synthesized `let` hoisting supports explicit source homes |
@@ -1773,6 +1774,7 @@ This implementation census records each parser or lowering hook and its specific
 | ` parser/vibelang_do.go:keywordOf ` | ` admission:do ` | ` 900-appendices.md `, ` 002-running.md ` | ` support ` | VIP-2: pinned TC39 do-expression lowering and completion support; introduces no additional syntax |
 | ` parser/vibelang_do.go:VibeLangDoHeadBinding ` | ` admission:do ` | ` 900-appendices.md `, ` 002-running.md ` | ` support ` | VIP-2: maps a do lowering's generated loop-head cell back to its source ForDeclaration binding for checking; introduces no additional syntax |
 | ` parser/vibelang_do.go:doLowering.loopHead ` | ` admission:do ` | ` 900-appendices.md `, ` 002-running.md ` | ` support ` | VIP-2: evaluates a do in a lexical for-in/of head in TC39 TDZ order (ForIn/OfHeadEvaluation); introduces no additional syntax |
+| ` parser/vibelang_do.go:doLowering.forEachIsHome ` | ` admission:is ` | ` 004-match.md ` | ` support ` | VIP-7: copies head cells into fresh item homes before source destructuring defaults without adding a callable boundary |
 | ` parser/vibelang_do.go:setExpression ` | ` admission:do ` | ` 900-appendices.md `, ` 002-running.md ` | ` support ` | VIP-2: pinned TC39 do-expression lowering and completion support; introduces no additional syntax |
 | ` parser/vibelang_do.go:setStatement ` | ` admission:do ` | ` 900-appendices.md `, ` 002-running.md ` | ` support ` | VIP-2: pinned TC39 do-expression lowering and completion support; introduces no additional syntax |
 | ` parser/vibelang_do.go:setsCompletion ` | ` admission:do ` | ` 900-appendices.md `, ` 002-running.md ` | ` support ` | VIP-2: pinned TC39 do-expression lowering and completion support; introduces no additional syntax |

@@ -75,3 +75,62 @@ func TestUnsettledIsBindingHomeControls(t *testing.T) {
 }
 
 // VIP-7 reject parameter-environment bindings without relocating initialization; rule: docs/design/vips/0007-match.md#3f108270c1a50ebb
+
+// VIP-7, chapter 004: a for-of RHS binding belongs to the head and each item.
+func TestForEachIsBindingHomes(t *testing.T) {
+	for _, tc := range []struct{ name, source string }{
+		{"rhs", "declare const a: unknown; export function probe() { for (const item of ((a is let cell) && [cell]) || []) { void item; void cell; } }"},
+		{"default", "declare const a: unknown; export function probe() { for (const {x=(a is let cell) && cell} of [{}] as {x?:unknown}[]) { void x; void cell; } }"},
+		{"in", "declare const a: unknown; export function probe() { for (const item in ((a is let cell) && {key:cell}) || {}) { void item; void cell; } }"},
+		{"await", "declare const a: unknown; export async function probe() { for await (const item of ((a is let cell) && [cell]) || []) { void item; void cell; } }"},
+		{"var", "declare const a: unknown; export function probe() { for (var item of ((a is let cell) && [cell]) || []) { void item; void cell; } }"},
+		{"assignment", "declare const a: unknown; export function probe() { let item: unknown; for (item of ((a is let cell) && [cell]) || []) { void item; void cell; } }"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			program, file, _, _ := editorProgram(t, tc.source)
+			ds := program.GetSemanticDiagnostics(t.Context(), file)
+			if tc.name == "var" {
+				if len(ds) != 1 || ds[0].Source() != "EK" || ds[0].Code() != 107 {
+					t.Fatalf("retain the independent var rejection without a home error: %v", ds)
+				}
+			} else if len(ds) != 0 {
+				t.Fatalf("specified lexical home rejected: %v", ds)
+			}
+		})
+	}
+}
+
+func TestForEachIsBindingHomeBoundaries(t *testing.T) {
+	for _, tc := range []struct {
+		name, source string
+		code         int32
+	}{
+		{"rhs-no-leak", "for (const item of ((1 is let cell) && [cell]) || []) { void cell; } void cell;", 2304},
+		{"default-no-leak", "for (const {x=(1 is let cell) && cell} of [{}]) { void x; } void cell;", 2304},
+		{"const-copy", "for (const item of ((1 is const cell) && [cell]) || []) { cell = 2; }", 2588},
+		{"default-shadow", "for (const item of ((1 is let cell) && [cell]) || []) { const cell = item; void cell; }", 0},
+		{"head-collision", "for (const cell of ((1 is let cell) && [cell]) || []) { void cell; }", 2451},
+		{"default-collision", "for (const {x=(1 is let cell) && cell} of ((1 is let cell) && [{}]) || []) { void x; }", 2451},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			program, file, _, _ := editorProgram(t, tc.source)
+			ds := program.GetSemanticDiagnostics(t.Context(), file)
+			if tc.code == 0 {
+				if len(ds) != 0 {
+					t.Fatalf("separate source-body home rejected: %v", ds)
+				}
+				return
+			}
+			found := false
+			for _, d := range ds {
+				if d.Code() == 4703 {
+					t.Errorf("unsupported home: %v", d)
+				}
+				found = found || d.Code() == tc.code
+			}
+			if !found {
+				t.Fatalf("missing TS%d: %v", tc.code, ds)
+			}
+		})
+	}
+}

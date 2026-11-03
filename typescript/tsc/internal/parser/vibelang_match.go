@@ -704,8 +704,8 @@ func (p *Parser) isVibeLangIs() bool {
 }
 
 // parseVibeLangIs parses subject is pattern, after subject. Without bindings
-// it is a boolean expression; with bindings it is a marker that an if or
-// while condition rewrites (restructureVibeLangIs), and EK4703 anywhere else.
+// it is a boolean expression; with bindings it is a marker claimed by its
+// lexical home. A marker left without an implemented home reports EK4703.
 func (p *Parser) parseVibeLangIs(subject *ast.Node, pos int) *ast.Node {
 	info := &isInfo{anchor: p.tokenRange(), subject: subject}
 	p.nextToken() // is
@@ -980,6 +980,49 @@ func (p *Parser) hoistForHead(initializer, condition, incrementor *ast.Node, at 
 		declaration := p.vibelangSpanning(p.factory.NewVariableDeclaration(temp, nil, nil, p.valueOnly(initializer)), initializer.Loc)
 		return p.mLetList(append(declarators, declaration), at)
 	}
+}
+
+// forEachIsHome retains the two homes until statement lowering can keep
+// source labels on the loop and the RHS's lexical ForDeclaration in TDZ.
+// VIP-7 chapter 004 copies RHS bindings to each item; defaults declare fresh
+// bindings in that item's environment before the source body.
+type forEachIsHome struct {
+	head, defaults []*ast.Node
+}
+
+func (p *Parser) recordForEachIsHome(loop *ast.Node) {
+	if (loop.Kind != ast.KindForInStatement && loop.Kind != ast.KindForOfStatement) || len(p.vibelangIsBindings) == 0 {
+		return
+	}
+	f := loop.AsForInOrOfStatement()
+	if f.Initializer == nil {
+		return
+	}
+	// Keep native head-grammar diagnostics on malformed declarations rather
+	// than making them valid by moving them into an ordinary statement.
+	if ast.IsVariableDeclarationList(f.Initializer) {
+		declarations := f.Initializer.AsVariableDeclarationList().Declarations.Nodes
+		if len(declarations) != 1 {
+			return
+		}
+		declaration := declarations[0]
+		if declaration.Initializer() != nil || declaration.Type() != nil ||
+			loop.Kind == ast.KindForInStatement && ast.IsBindingPattern(declaration.Name()) {
+			return
+		}
+	}
+	mark := len(p.reparseList)
+	p.hoistVibeLangIs(f.Expression)
+	head := p.takeHoists(mark)
+	p.hoistVibeLangIs(f.Initializer)
+	defaults := p.takeHoists(mark)
+	if len(head)+len(defaults) == 0 {
+		return
+	}
+	if p.vibelangForEachHomes == nil {
+		p.vibelangForEachHomes = map[*ast.Node]*forEachIsHome{}
+	}
+	p.vibelangForEachHomes[loop] = &forEachIsHome{head: head, defaults: defaults}
 }
 
 // hoistedDeclarator returns the declaration of the let statement hoistDeclaration wrote.

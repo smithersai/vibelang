@@ -137,6 +137,8 @@ type Parser struct {
 	vibelangDoOrder          []*doExpression             // the same, in source order
 	vibelangDoSites          map[*ast.Node]*ast.Node     // each do completion temporary's declaration to the reference at the do's site (vibelang_do.go)
 	vibelangSchemaGenerics   []ast.SchemaGenericReference
+
+	vibelangForEachHomes map[*ast.Node]*forEachIsHome // lexical homes in for-in/of heads (vibelang_match.go)
 	vibelangSchemaOptionals  []ast.SchemaOptionalReference
 
 	// VIP-11 diagnostic marker, separate from syntax-extension state.
@@ -1510,6 +1512,7 @@ func (p *Parser) parseForOrForInOrForOfStatement() *ast.Node {
 		p.recordVibeSyntax(VibeSyntax{Kind: VibeSyntaxForTry, Word: core.NewTextRange(scanner.SkipTrivia(p.sourceText, pos), scanner.SkipTrivia(p.sourceText, pos)+3), Head: core.NewTextRange(scanner.SkipTrivia(p.sourceText, tryToken.Pos()), tryToken.End()), Range: core.NewTextRange(pos, p.nodePos())})
 	}
 	p.finishNode(result, pos)
+	p.recordForEachIsHome(result)
 	p.withJSDoc(result, jsdoc)
 	return result
 }

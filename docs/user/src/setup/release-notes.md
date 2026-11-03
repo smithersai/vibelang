@@ -1619,6 +1619,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - The specification no longer holds an example that waits on denied VIP-8, or one written as two statements that parses as one. `spec-lint` now rejects both.
 - Error-declaration guidance no longer gives the ambient-context error conflicting priorities; the generic member error is explicitly the fallback.
 
+- An `is` pattern binding in a `for…of` right-hand expression or destructuring default reported `EK4703` and missing-name errors. It now belongs to the loop head or iteration and stays out of the surrounding block.
+
 - Formatting refused a recovered `module { … }` declaration even when the parser reported no syntax error; it now formats the body and surrounding code while keeping the missing-name error `EK4003`.
 
 
