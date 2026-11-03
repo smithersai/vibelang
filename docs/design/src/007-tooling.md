@@ -280,6 +280,16 @@ After preserving migration, a bare `fork { … }` is `EK1707` and the resolved r
 
 The resolved `trusted(f, [])` runtime wrapper is retired with `EK0407`. Its preserving `vibelang --fix` migration captures `f` at the original declaration and replaces private direct synchronous calls in explicit Effect bodies with an identity-mapped `Effect.try` and `Effect.orDie` bridge. Preserve the callee read, forwarding function, argument order, coldness, exact defect value and declaration output. Refuse escaping function values, changed exported `Trusted` types, lost comments or reordered Effect operands. A reviewed `.ts` helper with `@throws {never}` is another replacement. Listed-failure wrappers are outside this migration. As with other held retirements, ship the codemod and migrate all consumers before enforcing rejection.
 
+### Selecting ordinary fix files
+
+`--only <files>` limits ordinary `--fix` to the listed modules ([VIP-34, amended](../vips/0034-compiler-and-tooling.md#decision)). `<files>` is a comma-separated list of paths relative to the current directory, or `@list.txt`, a file of such paths, one per line; the flag can repeat. An empty list, or a path that is not a `.vibe` module of the project, stops the invocation before it writes anything. The repairs write no other file, a config included, even when they are interrupted; the compilation after them still writes what any compilation writes, such as declaration sidecars. A fix that would edit another file is not applied. Only an error in a listed module refuses a fix: a fix that breaks an unlisted module is kept, and the compilation after `--fix` reports the error. The result is a partial repair and its report says so: a clean run does not verify the project. `--only` cannot be combined with `--fix-migration-only` or `--fix-vip-only`, because a project-wide migration changes what other modules mean. Alone, it is an unknown compiler option (`TS5023`).
+
+```sh
+vibelang --fix --only src/a.vibe,src/b.vibe -p tsconfig.json
+vibelang --fix --only @batch.txt -p tsconfig.json
+vibelang --only src/a.vibe # TS5023: add --fix
+```
+
 ## Effect's type-aware lint
 
 ```sh

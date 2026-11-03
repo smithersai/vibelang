@@ -75,3 +75,11 @@ Folded: fuzz-effect-generic-arg.patch (applied at docs/design/src/002-running.md
 Folded: conf-auto-pipe-arrow-body-admission-d246-d247.patch (already stated at docs/design/src/900-appendices.md:1072)
 
 EK4802 remains a configurable advisory; explicit program-data type arguments opt out. VIP-23’s pipe-arrow grammar rejection and EK2301 ownership were already stated.
+
+## fold ordinary fix file selection
+
+Folded: 1793683286-fixscope-alchemy.patch (applied at docs/design/src/007-tooling.md:283)
+
+Folded: 1793657811-trailing-blocks-final.patch (already stated at docs/design/src/007-tooling.md:237)
+
+VIP-34’s write boundary and VIP-11’s denied trailing blocks remain intact. The selected-file option affects repair writes, not the compiler’s normal declaration emission.
