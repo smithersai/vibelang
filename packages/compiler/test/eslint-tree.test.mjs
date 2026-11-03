@@ -16,7 +16,10 @@ const keys = {
   ReturnStatement: ["argument"], Identifier: [], Literal: [],
   VariableDeclaration: ["declarations"], VariableDeclarator: ["id", "init"],
   ObjectExpression: ["properties"], Property: ["key", "value"],
-  ClassDeclaration: ["id", "body"], ClassBody: ["body"], MethodDefinition: ["key", "value"]
+  ClassDeclaration: ["id", "body"], ClassBody: ["body"], MethodDefinition: ["key", "value"],
+  // An effect block is a program value: the synthesized $effect builder call
+  // around its lexical arrow (23723b612c20, VIP-2).
+  CallExpression: ["callee", "arguments"]
 }
 const forms = [
   (name) => `effect function ${name}() { return 1 }`,
