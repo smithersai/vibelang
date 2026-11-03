@@ -22,7 +22,15 @@ export function addTsdownPlugin(text, ts, file = "tsdown.config.ts") {
   const names = new Set()
   const identifiers = node => { if (ts.isIdentifier(node)) names.add(node.text); ts.forEachChild(node, identifiers) }
   identifiers(source)
-  let factory = null
+  // Bind the same parsed nodes used by the edit traversal. An unresolved
+  // dependency still has a local import symbol; no dependency files are read.
+  const host = ts.createCompilerHost({ allowJs: true, noLib: true, noResolve: true })
+  host.getSourceFile = name => ts.sys.resolvePath(name) === ts.sys.resolvePath(file) ? source : undefined
+  const checker = ts.createProgram([file], { allowJs: true, noLib: true, noResolve: true }, host).getTypeChecker()
+  const factories = []
+  const remember = (name, member = "") => factories.push({
+    name: name.text, text: name.text + member, symbol: checker.getSymbolAtLocation(name)
+  })
   const define = new Set(), namespaces = new Set()
   for (const node of source.statements.filter(ts.isImportDeclaration)) {
     if (!ts.isStringLiteralLike(node.moduleSpecifier) || node.importClause?.isTypeOnly) continue
@@ -34,18 +42,25 @@ export function addTsdownPlugin(text, ts, file = "tsdown.config.ts") {
       }
     }
     if (node.moduleSpecifier.text === moduleName) {
-      if (node.importClause?.name) factory = node.importClause.name.text
-      else if (bindings && ts.isNamespaceImport(bindings)) factory = bindings.name.text + ".default"
-      else if (bindings && ts.isNamedImports(bindings)) {
-        const item = bindings.elements.find(item => !item.isTypeOnly && item.propertyName?.text === "default")
-        if (item) factory = item.name.text
+      if (node.importClause?.name) remember(node.importClause.name)
+      if (bindings && ts.isNamespaceImport(bindings)) remember(bindings.name, ".default")
+      if (bindings && ts.isNamedImports(bindings)) {
+        for (const item of bindings.elements) {
+          if (!item.isTypeOnly && (item.propertyName ?? item.name).text === "default") remember(item.name)
+        }
       }
     }
   }
-  const imported = Boolean(factory)
-  if (!factory) {
-    factory = "vibelang"
-    for (let i = 1; names.has(factory); i++) factory = "vibelangPlugin" + i
+  const imported = factories.length > 0
+  let fresh
+  const factoryAt = node => {
+    const found = factories.find(factory => factory.symbol && checker.resolveName(factory.name, node, ts.SymbolFlags.Value, false) === factory.symbol)
+    if (found) return found.text
+    if (!fresh) {
+      fresh = "vibelang"
+      for (let i = 1; names.has(fresh); i++) fresh = "vibelangPlugin" + i
+    }
+    return fresh
   }
   const propertyName = node => {
     const name = node?.name
@@ -54,7 +69,14 @@ export function addTsdownPlugin(text, ts, file = "tsdown.config.ts") {
     if (ts.isComputedPropertyName(name) && ts.isStringLiteralLike(unwrap(name.expression))) return unwrap(name.expression).text
     return null
   }
-  const isFactory = node => ts.isCallExpression(unwrap(node)) && unwrap(unwrap(node).expression).getText(source) === factory
+  const isFactory = input => {
+    const call = unwrap(input)
+    if (!ts.isCallExpression(call)) return false
+    const callee = unwrap(call.expression)
+    const root = ts.isPropertyAccessExpression(callee) ? unwrap(callee.expression) : callee
+    return ts.isIdentifier(root) && factories.some(factory => factory.symbol &&
+      callee.getText(source) === factory.text && checker.getSymbolAtLocation(root) === factory.symbol)
+  }
   const binds = (pattern, name) => ts.isIdentifier(pattern) ? pattern.text === name :
     (ts.isObjectBindingPattern(pattern) || ts.isArrayBindingPattern(pattern)) && pattern.elements.some(e => ts.isBindingElement(e) && binds(e.name, name))
   // Resolve only immutable local options/helpers, respecting parameter and block shadows.
@@ -137,14 +159,15 @@ export function addTsdownPlugin(text, ts, file = "tsdown.config.ts") {
       if (!list) { warn(plugins, "plugins is not an immutable array; add vibelang() by hand"); continue }
       if (arrays.has(list) || list.elements.some(isFactory)) continue
       arrays.add(list)
-      edits.push({ at: list.elements[0]?.getStart(source) ?? list.getStart(source) + 1, text: factory + "()" + (list.elements.length ? ", " : "") })
+      edits.push({ at: list.elements[0]?.getStart(source) ?? list.getStart(source) + 1, text: factoryAt(list) + "()" + (list.elements.length ? ", " : "") })
     } else {
       const at = object.getStart(source) + 1
       const indent = /^\s*\n([ \t]+)\S/.exec(text.slice(at))?.[1]
+      const factory = factoryAt(object)
       edits.push({ at, text: indent ? "\n" + indent + "plugins: [" + factory + "()]," : " plugins: [" + factory + "()]," })
     }
   }
-  if (edits.length && !imported) {
+  if (edits.length && fresh) {
     const last = source.statements.filter(ts.isImportDeclaration).at(-1)
     const quote = /from\s+'/.test(text) ? "'" : '"'
     const semi = last && last.getText(source).trimEnd().endsWith(";") ? ";" : ""
@@ -152,7 +175,7 @@ export function addTsdownPlugin(text, ts, file = "tsdown.config.ts") {
     const next = last && source.statements[source.statements.indexOf(last) + 1]
     const bodyOnLine = next && (eol < 0 || next.getStart(source) < eol)
     const at = last ? (bodyOnLine || eol < 0 ? last.end : eol + 1) : (text.startsWith("#!") ? text.indexOf("\n") + 1 : 0)
-    edits.push({ at, text: (last && (bodyOnLine || eol < 0) ? "\n" : "") + "import " + factory + " from " + quote + moduleName + quote + semi + "\n" })
+    edits.push({ at, text: (last && (bodyOnLine || eol < 0) ? "\n" : "") + "import " + fresh + " from " + quote + moduleName + quote + semi + "\n" })
   }
   let after = text
   for (const edit of edits.sort((a, b) => b.at - a.at)) after = after.slice(0, edit.at) + edit.text + after.slice(edit.at)

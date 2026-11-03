@@ -26,6 +26,12 @@ entries, including expanded `tsdown` entry globs. Array order and named
 entry aliases stay as configured; `.ts` and `.vibe` sources still build.
 Use the `.vibe` source when choosing a single entry.
 
+Setup installs the `vibelang-unplugin/rolldown` plugin in each static `tsdown`
+configuration and local configuration factory. It reuses an imported plugin only
+where that binding is in scope. If a parameter or local declaration shadows it,
+setup adds a fresh import alias and preserves the user binding and every existing
+plugin. Default, namespace and named import aliases follow the same rule.
+
 ## Runners with no VibeLang loader
 
 Node on a package `bin`, `bun file` from a directory whose `bunfig.toml` has no `vibelang/bun` preload, and Playwright's Babel cannot read a `.vibe` module. The compile, declarations and tests pass, and the tool fails only when someone runs it. Setup wires the runners it can. A batched migration keeps the modules the others reach TypeScript, names them under `deferred` in `plan.json`, and lists the entries under `bareRunners` in `setup.json`:

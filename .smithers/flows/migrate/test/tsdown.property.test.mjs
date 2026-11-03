@@ -5,7 +5,7 @@ import { runInNewContext } from "node:vm"
 import { addTsdownPlugin } from "../lib/tsdown.mjs"
 const require = createRequire(new URL("../../../../packages/runtime/package.json", import.meta.url))
 const ts = require("typescript"), fc = require("fast-check")
-const execute = source => {
+const execute = (source, factory = false) => {
   const exports = {}
   const js = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, esModuleInterop: true } }).outputText
   runInNewContext(js, {
@@ -14,7 +14,7 @@ const execute = source => {
       name === "vibelang-unplugin/rolldown" ? { __esModule: true, default: () => ({ name: "native-vibelang" }) } :
       assert.fail("unexpected dependency " + name)
   }, { timeout: 1000 })
-  return JSON.parse(JSON.stringify(exports.default))
+  return JSON.parse(JSON.stringify(factory ? exports.default(() => ({ name: "user-plugin" })) : exports.default))
 }
 const withoutNative = configs => configs.map(config => {
   const result = { ...config }
@@ -91,4 +91,90 @@ test("static computed plugin keys work, while unknown overriding keys remain exp
   const unknown = 'import { defineConfig } from "tsdown"; export default defineConfig({ [unknown]: [] });'
   assert.equal(addTsdownPlugin(unknown, ts).text, unknown)
   assert.equal(addTsdownPlugin(unknown, ts).refusals.length, 1)
+})
+
+// Chapter 7: "Existing tools work." Resolve the binding, not
+// its spelling: every user plugin and user declaration survives setup.
+test("RD-016: shadowed default, namespace and named plugin aliases keep their bindings", () => {
+  const imports = [
+    ['import native from "vibelang-unplugin/rolldown";', "native()"],
+    ['import * as native from "vibelang-unplugin/rolldown";', "native.default()"],
+    ['import { default as native } from "vibelang-unplugin/rolldown";', "native()"]
+  ]
+  for (const [head, call] of imports) {
+    for (const scope of ["parameter", "destructured", "local", "block", "var", "catch", "loop", "function-name"]) {
+      for (const existing of [false, true]) {
+        const user = call.includes(".default") ? '{ default: () => ({ name: "user-plugin" }) }' : '() => ({ name: "user-plugin" })'
+        const object = '{ entry: ["src/index.ts"], plugins: [' + (existing ? call + ", " : "") + '{name:"kept"}] }'
+        let factory
+        if (scope === "parameter") factory = '(native = ' + user + ') => (' + object + ')'
+        if (scope === "destructured") factory = '({ native = ' + user + ' } = {}) => (' + object + ')'
+        if (scope === "local") factory = '() => { const native = ' + user + '; return ' + object + '; }'
+        if (scope === "block") factory = '() => { { const native = ' + user + '; return ' + object + '; } }'
+        if (scope === "var") factory = '() => { if (true) { var native = ' + user + '; } return ' + object + '; }'
+        if (scope === "catch") factory = '() => { try { throw ' + user + '; } catch (native) { return ' + object + '; } }'
+        if (scope === "loop") factory = '() => { for (const native of [' + user + ']) return ' + object + '; }'
+        if (scope === "function-name") factory = 'function native() { return ' + object + '; }'
+        // A function's self binding is itself a valid user plugin here.
+        if (scope === "function-name" && existing) continue
+        const source = head + '\nconst make = ' + factory + '; export default () => make();'
+        const result = addTsdownPlugin(source, ts, "tsdown.config.mjs")
+        assert.deepEqual(result.refusals, [], scope)
+        const before = execute(source, true), after = execute(result.text, true)
+        assert.equal(after.plugins.filter(p => p.name === "native-vibelang").length, 1, scope + ": " + result.text)
+        assert.deepEqual(after.plugins.filter(p => p.name !== "native-vibelang"), before.plugins)
+        assert.equal(result.text.includes("const native = " + user), source.includes("const native = " + user))
+        assert.equal(addTsdownPlugin(result.text, ts, "tsdown.config.mjs").text, result.text)
+      }
+    }
+  }
+})
+
+test("RD-016 property: generated nested shadows preserve every existing plugin", () => {
+  fc.assert(fc.property(
+    fc.constantFrom("default", "namespace", "named"),
+    fc.array(fc.constantFrom("parameter", "local", "block", "destructured", "var"), { minLength: 1, maxLength: 5 }),
+    fc.array(fc.oneof(fc.string(), fc.constant("native-vibelang")), { maxLength: 6 }), fc.boolean(),
+    (kind, scopes, plugins, existing) => {
+      const head = kind === "namespace" ? 'import * as native from "vibelang-unplugin/rolldown";' :
+        kind === "named" ? 'import { default as native } from "vibelang-unplugin/rolldown";' : 'import native from "vibelang-unplugin/rolldown";'
+      const call = kind === "namespace" ? "native.default()" : "native()"
+      const user = kind === "namespace" ? '{default:()=>({name:"user-plugin"})}' : '()=>({name:"user-plugin"})'
+      // Generate lexical nesting with named local helpers that gather follows.
+      let definition = 'const leaf = () => (' + '{plugins:[' + (existing ? call + "," : "") + plugins.map(name => JSON.stringify({name, user: true})).join(",") + ']}' + '); return leaf();'
+      for (const scope of scopes) {
+        const parameter = scope === "parameter" ? 'native=' + user : scope === "destructured" ? '{native=' + user + '}={}' : ""
+        const local = parameter ? "" : (scope === "var" ? "var" : "let") + ' native=' + user + ';'
+        definition = 'const nested = (' + parameter + ') => {' + (scope === "block" ? "{" : "") + local + definition + (scope === "block" ? "}" : "") + '}; return nested();'
+      }
+      const source = head + '\nconst vibelang=0, vibelangPlugin1=1; export default () => {' + definition + '};'
+      const result = addTsdownPlugin(source, ts)
+      assert.deepEqual(result.refusals, [])
+      const before = execute(source, true), after = execute(result.text, true)
+      assert.equal(after.plugins.filter(p => p.name === "native-vibelang" && !p.user).length, 1)
+      assert.deepEqual(after.plugins.filter(p => p.name !== "native-vibelang" || p.user), before.plugins)
+      assert.equal(addTsdownPlugin(result.text, ts).text, result.text)
+    }), { seed: 16016, numRuns: 120 })
+})
+
+test("RD-016: every imported default binding is recognized, including combined import clauses", () => {
+  for (const [head, call] of [
+    ['import unused, * as native from "vibelang-unplugin/rolldown";', "native.default()"],
+    ['import unused, { default as native } from "vibelang-unplugin/rolldown";', "native()"],
+    ['import { default as unused, default as native } from "vibelang-unplugin/rolldown";', "native()"]
+  ]) {
+    const source = head + ' export default { plugins: [' + call + '] };'
+    assert.equal(addTsdownPlugin(source, ts).text, source)
+  }
+})
+
+test("RD-016: imported binding identity is stable for nested and normalized config filenames", () => {
+  const source = 'import native from "vibelang-unplugin/rolldown"; export default (native) => ({plugins:[{name:"kept"}]});'
+  for (const file of ["./tsdown.config.mjs", "packages/worker/tsdown.config.ts"]) {
+    const result = addTsdownPlugin(source, ts, file)
+    assert.deepEqual(result.refusals, [])
+    const after = execute(result.text, true)
+    assert.deepEqual(after.plugins.map(p => p.name), ["native-vibelang", "kept"])
+    assert.equal(addTsdownPlugin(result.text, ts, file).text, result.text)
+  }
 })
