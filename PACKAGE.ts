@@ -575,6 +575,19 @@ const specLint = S.Shell.Test({
 })
 
 const targets = {
+  "spec-coverage-census": S.Shell.Run({
+    summary: "Inventory main rules with passing, pending, missing and tag-linked evidence.",
+    shell: 'bun docs/tools/coverage-census.ts --revision "$CENSUS_REVISION" --out "${CENSUS_OUT:-$HOME/vibe/review-spec/coverage}"',
+    env: { CENSUS_REVISION: process.env.CENSUS_REVISION ?? "main@github", CENSUS_OUT: process.env.CENSUS_OUT ?? "" },
+    data: [tree],
+    tools: [bun, S.Host.bin("jj")],
+    manual: true, sandbox: "none", timeout: "10m"
+  }),
+  "spec-coverage-census-test": S.Shell.Test({
+    summary: "Census extraction, immutable snapshots, stable ids and conservative evidence properties.",
+    shell: "bun test docs/tools/coverage-census.test.ts",
+    data: [tree], tools: [bun], sandbox: "none", timeout: "2m"
+  }),
   // A Run has no graph replay: revision and external decisions are runtime
   // inputs. The script pins the revision/diff verdict, including failures.
   // Platform owns attachment to the pre-gate; grounded violations reject by default.

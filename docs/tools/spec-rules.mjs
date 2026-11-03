@@ -14,13 +14,20 @@ export const reviewFindings = (root, kind) => lintKind(loadSpec(join(root, "docs
 export const issue = (kind, path, text, offset, message, severity = "error") =>
   ({ kind, path, line: text.slice(0, offset).split("\n").length, severity, message })
 
+export function vipRegistryFromSources(sources) {
+  return new Map([...sources].filter(([path]) => /^docs\/design\/vips\/\d+[^/]*\.md$/.test(path))
+    .sort(([a], [b]) => a.localeCompare(b)).map(([path, text]) => {
+      const status = text.match(/\*\*Status:\*\*\s*(accepted|denied|open)\b/i)?.[1]?.toLowerCase()
+      if (!status) throw new Error(path + ": missing VIP status")
+      return [Number(path.split("/").at(-1).slice(0, 4)), { path, text, status }]
+    }))
+}
 export function vipRegistry(root) {
-  return new Map(readdirSync(join(root, "docs/design/vips")).filter(x => /^\d+.*\.md$/.test(x)).sort().map(name => {
-    const path = "docs/design/vips/" + name, text = read(root, path)
-    const status = text.match(/\*\*Status:\*\*\s*(accepted|denied|open)\b/i)?.[1]?.toLowerCase()
-    if (!status) throw new Error(path + ": missing VIP status")
-    return [Number(name.slice(0, 4)), { path, text, status }]
-  }))
+  return vipRegistryFromSources(readdirSync(join(root, "docs/design/vips")).filter(x => /^\d+.*\.md$/.test(x))
+    .map(name => {
+      const path = "docs/design/vips/" + name
+      return [path, read(root, path)]
+    }))
 }
 
 // Switch only this adapter when lang-tables' one-file registry lands.

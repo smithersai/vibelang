@@ -1107,3 +1107,10 @@ keys its result on both immutable commit IDs, and is not wired into the pre-gate
 It requires explicit selection, so wildcard CI does not need a diff. See
 [the evidence contract](../tools/README.md#evidence-for-changed-specification-rules)
 for sentence classification, case references, twin layout and exit codes.
+
+The manual Smithers target `//:spec-coverage-census` inventories immutable
+`main@github` rules and their passing, pending, tag-linked and missing test evidence,
+excluding reviewed `not-rules/*.csv` rows;
+`//:spec-coverage-census-test` checks its extraction and matching contracts.
+See [the docs tools census contract](../tools/README.md#specification-coverage-census)
+for outputs, confidence rules, compiled twins and the 15-minute watcher.
