@@ -75,7 +75,7 @@ func mergeInsertions(edits []sourceEdit) []sourceEdit {
 func rewriteDoPrograms(g *fixGate, fs vfs.FS, program *compiler.Program, texts map[tspath.RootedFilePath]string, result *FixResult) {
 	rewrites := map[tspath.RootedFilePath][]sourceEdit{}
 	counts := map[tspath.RootedFilePath]int{}
-	for _, file := range fixableFiles(program) {
+	for _, file := range g.scope.fixable(program) {
 		program.GetSemanticDiagnostics(g.ctx, file)
 		c, done := program.GetTypeCheckerForFile(g.ctx, file)
 		edits, count := doProgramEdits(c, file)
@@ -88,11 +88,11 @@ func rewriteDoPrograms(g *fixGate, fs vfs.FS, program *compiler.Program, texts m
 	if len(rewrites) == 0 {
 		return
 	}
-	base := effectless(errorCounts(g.ctx, program))
+	base := effectless(g.errorCounts(program))
 	firstAdded := ""
 	passes := func(overlay map[tspath.RootedFilePath]string) bool {
 		var added []string
-		for key, n := range effectless(errorCounts(g.ctx, g.build(maps(texts, overlay)))) {
+		for key, n := range effectless(g.errorCounts(g.build(maps(texts, overlay)))) {
 			if n > base[key] {
 				added = append(added, key)
 			}

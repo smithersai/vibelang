@@ -30,6 +30,7 @@ type fixKeeper struct {
 	closed   bool
 	sys      tsc.System
 	config   map[tspath.RootedFilePath]string // sidecar config fixes the fixes were checked under
+	scope    *fixScope                        // the files it may write (fix_only.go)
 	stop     context.CancelFunc               // stops the run when a write fails
 	last     map[tspath.RootedFilePath]string // the text last written, by file
 	original map[tspath.RootedFilePath]string // the text before the run, by file written
@@ -56,6 +57,12 @@ func (k *fixKeeper) keep(texts map[tspath.RootedFilePath]string) {
 				continue
 			}
 			k.original[name] = string(original)
+		}
+		// The last line of defense for a list's promise: a run stopped at any
+		// moment leaves every unlisted file as it was.
+		if !k.scope.includes(name) {
+			k.fail(fmt.Errorf("%s: a fix reached a file --only does not list; wrote nothing", relativeName(k.sys, name)))
+			return
 		}
 		names = append(names, name)
 	}

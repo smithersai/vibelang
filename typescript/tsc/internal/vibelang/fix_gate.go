@@ -249,7 +249,7 @@ func (r *gateRound) trial(parts []part, files []tspath.RootedFilePath) checked {
 		whole = true
 	}
 	if whole {
-		errors = programErrors(r.g.ctx, program)
+		errors = r.g.errors(program)
 		added = r.addedBy(errors)
 	}
 	if r.firstError == "" {
@@ -456,7 +456,7 @@ func (r *gateRound) checkpoint() {
 		r.checks++
 		program := fresh(maps(r.texts, overlay))
 		r.g.progress.label("")
-		errors := programErrors(r.g.ctx, program)
+		errors := r.g.errors(program)
 		added := r.addedBy(errors)
 		if len(added) == 0 {
 			r.g.verified(maps(r.texts, overlay))

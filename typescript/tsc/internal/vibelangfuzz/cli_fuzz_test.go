@@ -159,6 +159,7 @@ var cliFlags = sync.OnceValue(func() []cliFlag {
 		{"--fix", cliBareOnly, "Chapter 28, Diagnostics (D291)"},
 		{"--fix-migration-only", cliBareOnly, "007-tooling.md, Compiler and tooling requirements; requires --fix"},
 		{"--fix-vip-only", cliBareOnly, "007-tooling.md, Compiler and tooling requirements; requires --fix"},
+		{"--only", []string{"main.vibe", "missing.vibe"}, "007-tooling.md, Compiler and tooling requirements; requires --fix"},
 		{"--loader-root", []string{".", "sub", "missing"}, "internal/vibelang/loaderroot.go"},
 		{"--lsp", cliBareOnly, "Chapter 28, The editor (D32)"},
 		{"--stdio", cliBareOnly, "Chapter 28, The editor (D32)"},
@@ -309,6 +310,7 @@ func cliSeeds() []cliSeed {
 		{"--ignoreConfig", "main.vibe"},
 		{"--fix", "--fix-migration-only", "--noEmit", "--pretty", "false", "-p", "tsconfig.json"},
 		{"--fix-vip-only", "--fix", "--noEmit", "--pretty", "false", "-p", "tsconfig.json"},
+		{"--fix", "--only", "main.vibe", "--noEmit", "--pretty", "false", "-p", "tsconfig.json"},
 	}
 	var cases []Seed
 	for _, seed := range CaseSeeds() {
@@ -642,8 +644,27 @@ func cliOptions(w *Workspace, dir string, args []string) *tsoptions.ParsedComman
 		return nil
 	}
 	fix := cliHasFix(args)
-	rest := slices.DeleteFunc(cliWithoutLoaderRoot(args), func(arg string) bool { return cliFixFlag(arg, fix) })
+	rest := slices.DeleteFunc(cliWithoutOnly(cliWithoutLoaderRoot(args), fix), func(arg string) bool { return cliFixFlag(arg, fix) })
 	return tsoptions.ParseCommandLine(rest, w.fs, tspath.RootedDirectoryPathFromAbsolute(filepath.ToSlash(dir)))
+}
+
+// cliWithoutOnly returns args without each --only and the list after it, which
+// the CLI removes beside --fix (internal/vibelang/fix_only.go). An argument
+// starting with - is no list, so it stays. Without --fix, --only stays for
+// TypeScript to report as an unknown option (TS5023).
+func cliWithoutOnly(args []string, fix bool) []string {
+	if !fix {
+		return args
+	}
+	var rest []string
+	for i := 0; i < len(args); i++ {
+		if !strings.EqualFold(args[i], "--only") {
+			rest = append(rest, args[i])
+		} else if i+1 < len(args) && !strings.HasPrefix(args[i+1], "-") {
+			i++
+		}
+	}
+	return rest
 }
 
 // cliWithoutLoaderRoot returns args without the --loader-root flag and the

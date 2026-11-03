@@ -428,8 +428,8 @@ func exportOfModuleReference(c *checker.Checker, module *ast.Node, right *ast.No
 	return symbol, export
 }
 
-// preludeRewriteProject plans the rewrites of every fixable file of program,
-// whose texts are texts, and returns each file's rewrite. A rewrite removes an
+// preludeRewriteProject plans the rewrites of files, the fixable files of
+// program in --fix scope, whose texts are texts, and returns each file's rewrite. A rewrite removes an
 // import the file's declaration writes only when the declaration is the same
 // bytes without it (decided detail 277): fresh builds the program with the
 // file rewritten both ways, the second keeping every import the declaration
@@ -445,10 +445,10 @@ func exportOfModuleReference(c *checker.Checker, module *ast.Node, right *ast.No
 // declaration drops those comments with the import, and without the import
 // they lead the next statement it prints, as a module header comment did in
 // @smthrs/canonical's Canonical.d.ts (s-53).
-func preludeRewriteProject(ctx context.Context, program *compiler.Program, texts map[tspath.RootedFilePath]string, fresh func(map[tspath.RootedFilePath]string) *compiler.Program) map[tspath.RootedFilePath]preludeRewrite {
+func preludeRewriteProject(ctx context.Context, program *compiler.Program, files []*ast.SourceFile, texts map[tspath.RootedFilePath]string, fresh func(map[tspath.RootedFilePath]string) *compiler.Program) map[tspath.RootedFilePath]preludeRewrite {
 	rewrites := map[tspath.RootedFilePath]preludeRewrite{}
 	keeping := map[tspath.RootedFilePath]preludeRewrite{}
-	for _, file := range fixableFiles(program) {
+	for _, file := range files {
 		program.GetSemanticDiagnostics(ctx, file)
 		declared := declaredImports(ctx, program, file)
 		c, done := program.GetTypeCheckerForFile(ctx, file)
