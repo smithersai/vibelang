@@ -63,12 +63,6 @@ var callEffectFix = &ls.CodeFixProvider{
 	Source:     diagnosticSource,
 	ErrorCodes: []int32{EK4801.Code, EK4802.Code},
 	GetCodeActions: func(ctx context.Context, fix *ls.CodeFixContext) ([]*ls.CodeAction, error) {
-		// VIP-1 / VIP-5 return a held program as data. Running that value
-		// changes the caller's result, channels or evaluation (Chapter 7).
-		// The explicit VIP migration uses its historical model separately.
-		if fix.ErrorCode == EK4802.Code {
-			return nil, nil
-		}
 		value := reportedNode(fix.SourceFile, fix.Span, func(node *ast.Node) bool {
 			parent := node.Parent
 			switch {
@@ -93,6 +87,14 @@ var callEffectFix = &ls.CodeFixProvider{
 		c, done := fix.Program.GetTypeCheckerForFile(ctx, fix.SourceFile)
 		some, all := analyzerFor(c).programMembers(c.GetTypeAtLocation(value))
 		genericArgument := directInferredEffectArgument(c, value)
+		// VIP-1 / VIP-5 return a held program as data. Running that value
+		// changes the caller's result, channels or evaluation (Chapter 7).
+		// The explicit VIP migration uses its historical model separately.
+		// Chapter 2 keeps try for a direct inferred Effect argument.
+		if fix.ErrorCode == EK4802.Code && !genericArgument {
+			done()
+			return nil, nil
+		}
 		rejected := contractRejectsCall(c, value)
 		if value.Parent != nil && ast.IsCallExpression(value.Parent) && !genericArgument {
 			rejected = true
