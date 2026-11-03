@@ -146,6 +146,7 @@ var grammarAdmissionSeeds = []struct{ key, source string }{
 	{"join-outside-effect-empty", "join [ ]"},
 	{"service-separators", "service S { n : number ; ; m : string }"},
 	{"effect-overload-line-break", "effect function f ( xs )\neffect { for ( const x of xs ) { try x ; } }"},
+	{"instantiation-before-operator", "schema\nC < T > ?? { a : T }"},
 	{"service-rejected-async-member", "service S { n : number ; async static readonly key : string = \"k\" ; }"},
 	{"join-for-head-line-break", "effect function f(xs) { for (join\nx\nof xs) { x; } }"},
 	{"interruption-outside-effect", "function f() { uninterruptible { return 1; } }"},
@@ -1136,6 +1137,16 @@ func TestGrammarAdmissionCore(t *testing.T) {
 	}
 	if r := lab.read(lab.g, grammarLexSource("a < b > c ;"), grammarParseMode{prose: true, names: true}); r.count == 0 {
 		t.Error("a relational chain has no derivation")
+	}
+	// A binary operator after the type arguments keeps the instantiation reading.
+	for _, source := range []string{"C < T > ?? { a : T } ;", "const v = f<T> || g;", "const v = f<T> === g;", "const v = f<T> ? a : b;", "const v = f<T> as F;"} {
+		if r := lab.read(lab.g, grammarLexSource(source), grammarParseMode{prose: true, names: true}); r.count == 0 {
+			t.Errorf("instantiation expression before an operator has no derivation: %q", source)
+		}
+	}
+	// A quoted "]" or "|" in a lookahead set ends neither the set nor the alternative.
+	if alts := grammarSplitAlts(`A [lookahead ∈ { "]", "|", "||" }] | B [no LineTerminator here] "|" C | D`); len(alts) != 3 {
+		t.Errorf("alternatives split as %q", alts)
 	}
 	// A quoted "," is a lookahead member, not the separator between members.
 	if s := grammarBracketSym(`lookahead ∉ { ",", "<" }`); len(s.seqs) != 2 || s.seqs[0][0] != "," || s.seqs[1][0] != "<" {

@@ -195,19 +195,21 @@ type grammarNdef struct {
 // grammarSplitAlts splits a production body at its top-level "|".
 func grammarSplitAlts(body string) []string {
 	var alts []string
-	depth, start := 0, 0
-	inQuote, inBracket := false, false
+	depth, start, brackets := 0, 0, 0
+	inQuote := false
 	rs := []rune(body)
 	for i, r := range rs {
 		switch {
 		case inQuote:
 			inQuote = r != '"'
-		case inBracket:
-			inBracket = r != ']'
 		case r == '"':
+			// A quoted token, inside a lookahead set too: `"]"` and `"|"` are members.
 			inQuote = true
 		case r == '[':
-			inBracket = true
+			brackets++
+		case r == ']' && brackets > 0:
+			brackets--
+		case brackets > 0:
 		case r == '(':
 			depth++
 		case r == ')':
@@ -445,7 +447,9 @@ func grammarSplitLookahead(set string) []string {
 // the choices TypeScript's parser makes greedily, where the written grammar
 // has two readings: a type after "as" takes a following "|" or "&", and a
 // type name takes a following "<" as its type arguments, and "(" … ")"
-// followed by "=>" is a function type. TypeScript's parser keeps its binary
+// followed by "=>" is a function type. An instantiation expression `f<T>`
+// stands where TypeScript's canFollowTypeArgumentsInExpression allows it: before
+// a binary operator (not < > + -) or a token that starts no expression. TypeScript's parser keeps its binary
 // loop going after "as T" or "satisfies T", so any operator may follow one:
 // `x as number % 2` is `(x as number) % 2`. The subset puts both on
 // UpdateExpression, which derives the same sentences. Script is the start symbol.
@@ -529,7 +533,7 @@ YieldExpression = "yield" [lookahead ∉ { "*" }] | "yield" [no LineTerminator h
 UpdateExpression = LeftHandSideExpression | LeftHandSideExpression [no LineTerminator here] "++" | "++" UnaryExpression | UpdateExpression [no LineTerminator here] "as" Type [lookahead ∉ { "|", "&" }] | UpdateExpression [no LineTerminator here] "satisfies" Type [lookahead ∉ { "|", "&" }]
 LeftHandSideExpression = NewExpression | CallExpression | OptionalExpression
 NewExpression = MemberExpression | "new" NewExpression
-MemberExpression = MemberExpression TypeArguments [lookahead ∈ { ";", ")", "]", "}", "," }] | PrimaryExpression | "super" "." IdentifierName | "super" "[" Expression "]" | MemberExpression "[" Expression "]" | MemberExpression "." IdentifierName | MemberExpression [no LineTerminator here] "!" | MemberExpression TemplateLiteral | "new" MemberExpression Arguments
+MemberExpression = MemberExpression TypeArguments [lookahead ∈ { ";", ")", "]", "}", ",", ":", "?", "??", "||", "&&", "|", "&", "^", "==", "!=", "===", "!==", "<=", ">=", "*", "/", "%", "**", "<<", ">>", ">>>", "instanceof", "in", "as", "satisfies", "=", "+=", "-=", "??=" }] | PrimaryExpression | "super" "." IdentifierName | "super" "[" Expression "]" | MemberExpression "[" Expression "]" | MemberExpression "." IdentifierName | MemberExpression [no LineTerminator here] "!" | MemberExpression TemplateLiteral | "new" MemberExpression Arguments
 CallExpression = MemberExpression Arguments | "super" Arguments | CallExpression Arguments | CallExpression "[" Expression "]" | CallExpression "." IdentifierName | CallExpression [no LineTerminator here] "!"
 OptionalExpression = MemberExpression OptionalChain | CallExpression OptionalChain | OptionalExpression OptionalChain
 OptionalChain = "?." IdentifierName | "?." Arguments
