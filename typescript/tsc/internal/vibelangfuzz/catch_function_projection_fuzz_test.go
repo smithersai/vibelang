@@ -14,7 +14,8 @@ import (
 
 const catchProjectionQuote = "The handler is always a function literal, and its syntax alone decides its kind"
 
-func TestCatchFunctionProjectionQuoted(t *testing.T) {
+func catchFunctionProjectionChapter(t testing.TB) {
+	t.Helper()
 	text, err := os.ReadFile(SpecPath("002-running.md"))
 	if err != nil {
 		t.Fatal(err)
@@ -24,10 +25,14 @@ func TestCatchFunctionProjectionQuoted(t *testing.T) {
 	}
 }
 
+func TestCatchFunctionProjectionQuoted(t *testing.T) { catchFunctionProjectionChapter(t) }
+
 // VIP-5 admits function expressions wherever an arrow is a catch handler.
 // Projection must preserve that admitted syntax rather than casting every
 // handler to an arrow. The keys retain each shape independently of ordering.
 func FuzzCatchFunctionProjection(f *testing.F) {
+	startShortBudget(f)
+	catchFunctionProjectionChapter(f)
 	for _, key := range []string{"function-expression", "named-function", "typed-function", "effect-function", "arrow-control"} {
 		for _, gap := range []string{" ", " /* handler */ ", "\n"} {
 			f.Add(key, gap)
