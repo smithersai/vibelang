@@ -1,0 +1,42 @@
+{
+  "property": "RevertWrittenSpecifier",
+  "key": "t3code:mobile:revert-written-specifier",
+  "rule": "Existing tools work.",
+  "repo": "t3code",
+  "pattern": "Mobile consumers converted in the same batch keep written extensionless imports when their dependencies revert to TypeScript",
+  "source": {
+    "src/connection/runtime.ts": "export const runtime = \"runtime\"\n",
+    "src/persistence/mobile-storage.ts": "export const storage = \"storage\"\n",
+    "src/connection/onboarding.ts": "import { runtime } from \"./runtime\"\nimport { storage } from \"../persistence/mobile-storage\"\nexport const onboarding = [runtime, storage]\n"
+  },
+  "input": {
+    "modules": [
+      {
+        "path": "src/connection/runtime.ts",
+        "name": "runtime"
+      },
+      {
+        "path": "src/persistence/mobile-storage.ts",
+        "name": "storage"
+      }
+    ],
+    "importers": [
+      {
+        "path": "src/connection/onboarding.ts",
+        "name": "onboarding",
+        "imports": [
+          {
+            "name": "runtime",
+            "specifier": "./runtime",
+            "target": "src/connection/runtime.ts"
+          },
+          {
+            "name": "storage",
+            "specifier": "../persistence/mobile-storage",
+            "target": "src/persistence/mobile-storage.ts"
+          }
+        ]
+      }
+    ]
+  }
+}

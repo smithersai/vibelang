@@ -946,3 +946,7 @@ It compares the VIP-40 native sibling with the embedded-body input and checks
 `TS5055` input protection. Independent stock `tsc --listFilesOnly` controls
 validate the native discovery oracle. Every body exports a value, keeping the
 separate no-export classification finding with its owner.
+
+### T3code Mobile revert spelling corpus
+
+The migration property in `revert-spelling.property.test.mjs` replays `t3code-mobile-revert-written-specifier.json` through journal and legacy codemod records. Its literal Mobile consumer keeps `./runtime` and `../persistence/mobile-storage` when both targets revert, even though the same batch converted the consumer. The tooling contract, “Existing tools work.”, and decided detail 272 require restoration of the written spelling. Sixty-four seeded models vary extensionless, `.js` and `.ts` imports, relative depth, converted consumers, target subsets and record format. A removed-restoration counterfactual must fail the literal witnesses; current restoration and stock compiler controls must pass.

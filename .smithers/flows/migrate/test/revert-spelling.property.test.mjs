@@ -74,12 +74,23 @@ async function fixture({ modules, importers, convert, reverted, journal, compile
   } finally { rmSync(root, { recursive: true, force: true }) }
 }
 
-const mobile = {
-  modules: [{ path: "src/connection/runtime.ts", name: "runtime" }, { path: "src/persistence/mobile-storage.ts", name: "storage" }],
-  importers: [{ path: "src/connection/onboarding.ts", name: "onboarding", imports: [
-    { name: "runtime", specifier: "./runtime", target: "src/connection/runtime.ts" },
-    { name: "storage", specifier: "../persistence/mobile-storage", target: "src/persistence/mobile-storage.ts" }] }]
-}
+const mobileCorpus = JSON.parse(readFileSync(new URL("./corpus/t3code-mobile-revert-written-specifier.json", import.meta.url), "utf8"))
+const mobile = mobileCorpus.input
+
+test("the keyed T3code Mobile reversion corpus quotes the tooling contract and retains its literal sources", () => {
+  const rule = "Existing tools work."
+  const spec = readFileSync(new URL("../../../../docs/design/src/007-tooling.md", import.meta.url), "utf8")
+  assert.ok(spec.includes(rule))
+  assert.equal(mobileCorpus.rule, rule)
+  assert.equal(mobileCorpus.repo, "t3code")
+  assert.equal(mobileCorpus.key, "t3code:mobile:revert-written-specifier")
+  for (const m of mobile.modules) {
+    assert.equal(mobileCorpus.source[m.path], `export const ${m.name} = ${JSON.stringify(m.name)}\n`)
+  }
+  for (const u of mobile.importers) {
+    assert.equal(mobileCorpus.source[u.path], u.imports.map(i => `import { ${i.name} } from "${i.specifier}"\n`).join("") + `export const ${u.name} = [${u.imports.map(i => i.name).join(", ")}]\n`)
+  }
+})
 
 for (const journal of [false, true]) {
   test(`revert keeps the written specifier in a consumer the same batch converted (t3code Mobile, ${journal ? "journal" : "codemod record"})`, () => fixture({
@@ -111,5 +122,5 @@ test("revert restores every importer's written spelling, converted or not", asyn
     const convert = [...modules.map(m => m.path), ...importers.filter((_, i) => convertImporters[i]).map(u => u.path)]
     const reverted = modules.filter((_, i) => revertMask[i]).map(m => m.path)
     await fixture({ modules, importers, convert, reverted, journal })
-  }), { seed: 20261103, numRuns: 25 })
+  }), { seed: 20261103, numRuns: 64 })
 })
