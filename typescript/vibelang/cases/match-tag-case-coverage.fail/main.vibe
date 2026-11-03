@@ -1,0 +1,20 @@
+// expect: EK4701 EK4701 EK4701
+// Chapter 004, Coverage: "Members that share a tag are covered one at a time,
+// and one left uncovered stays uncovered." Coverage is per member and tag case.
+type Shared = { _tag: "A"; x: number } | { _tag: "A"; y: number }
+type Cases = { _tag: "A" | "B"; x: number } | { _tag: "A" | "B"; y: string }
+type Mixed = { _tag: "A" | "B"; x: number } | { _tag: "C" }
+
+// Exhaustive: each member's every tag case has an unguarded arm.
+export function shared(s: Shared) { return match (s) { when { _tag: "A" }: 1; } }
+export function cases(s: Cases) { return match (s) { when { _tag: "A" }: 1; when { _tag: "B" }: 2; } }
+export function mixed(s: Mixed) { return match (s) { when { _tag: "A" }: 1; when { _tag: "B" }: 2; when { _tag: "C" }: 3; } }
+export function single(s: { _tag: 1 | 2 }) { return match (s) { when { _tag: 1 }: 1; when { _tag: 2 }: 2; } }
+export function required(s: Shared) { return match (s) { when { _tag: "A", x: let x }: x; when { _tag: "A", y: let y }: y; } }
+
+// EK4701: the y member is left.
+export function onlyX(s: Shared) { return match (s) { when { _tag: "A", x: let x }: x; } }
+// EK4701: the B case of both members is left.
+export function onlyA(s: Cases) { return match (s) { when { _tag: "A" }: 1; } }
+// EK4701: the B case of the x member is left.
+export function missingB(s: Mixed) { return match (s) { when { _tag: "A" }: 1; when { _tag: "C" }: 3; } }
