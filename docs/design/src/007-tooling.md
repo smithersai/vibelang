@@ -276,6 +276,10 @@ The `wire compositions` codemod replaces the retired resolved `wire` intrinsic u
 
 After preserving migration, a bare `fork { … }` is `EK1707` and the resolved retired `wire` intrinsic is `EK2401`. The held enforcement changes still require landed codemods and zero remaining uses in every migration repository. The spec does not wait for those code receipts.
 
+### Empty legacy trust wrappers
+
+The resolved `trusted(f, [])` runtime wrapper is retired with `EK0407`. Its preserving `vibelang --fix` migration captures `f` at the original declaration and replaces private direct synchronous calls in explicit Effect bodies with an identity-mapped `Effect.try` and `Effect.orDie` bridge. Preserve the callee read, forwarding function, argument order, coldness, exact defect value and declaration output. Refuse escaping function values, changed exported `Trusted` types, lost comments or reordered Effect operands. A reviewed `.ts` helper with `@throws {never}` is another replacement. Listed-failure wrappers are outside this migration. As with other held retirements, ship the codemod and migrate all consumers before enforcing rejection.
+
 ## Effect's type-aware lint
 
 ```sh

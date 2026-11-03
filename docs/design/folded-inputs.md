@@ -61,3 +61,9 @@ Folded: relic-try-forms-try-wire-codemods.patch (applied at docs/design/src/007-
 Folded: relic-try-forms-rejections-HELD.patch (applied at docs/design/src/900-appendices.md:1043)
 
 VIP-2/VIP-5/VIP-17 and denied VIP-24 settle the forms. HELD is an enforcement rollout constraint; the preserving migration and zero-use requirements are retained in published text.
+
+## fold empty legacy trust-wrapper retirement
+
+Folded: relic-trusted-empty-wrapper.patch (applied at docs/design/src/007-tooling.md:279)
+
+Will’s no-relics ruling removes the unapproved wrapper. Preserve defect identity rather than silently replacing a defect with an UnknownError failure. The source HOLD remains an enforcement prerequisite, not a spec-publication dependency.
