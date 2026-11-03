@@ -334,7 +334,6 @@ These are VibeLang’s own configurable warnings, distinct from the imported `EK
 | --- | --- | --- |
 | A plain `catch` handler returns an unrun Effect ([VIP-5](../vips/0005-try-runs-effects.md#decision)) | `EK0508` | `catch effect (e) => try …` |
 | A plain call in effect code infers an Effect type argument outside a declared Effect position ([Inferred Effect arguments](002-running.md#inferred-effect-arguments); [VIP-1, amended](../vips/0001-effect-and-async-functions.md#amendment-inferred-effect-arguments-2026-11-03)) | `EK4802` | The editor offers `try` for a direct Effect-valued argument when its written failure and requirement contract accepts it, or explicit type arguments to keep the program. Batch `--fix` chooses only `try` and refuses an edit that adds an error. |
-| An `effect` function returns an Effect value unrun, so its caller gets the program instead of its result ([VIP-1](../vips/0001-effect-and-async-functions.md), [VIP-5](../vips/0005-try-runs-effects.md#decision)) | `EK4802` | `return try e`; no automatic fix in ordinary `--fix` |
 | A legacy severity map remains in the config | `EK3009` | Run `vibelang --fix` after resolving obsolete entries. |
 | The retired `trustedPackages` key is ignored ([VIP-4](../vips/0004-throw.md), amended 2026-11-02) | `EK3010` | Remove the key; npm functions follow the ordinary foreign-callable contract. |
 | A retired `declarationImportStyle` setting is ignored, for every value ([VIP-30](../vips/0030-config-files.md)) | `EK3011` | Remove the setting; declaration spelling follows the native TypeScript twin. |
@@ -511,6 +510,6 @@ Only `--fix-vip-only` runs the VIP-1/VIP-2 function-kind and `try` passes, readi
 
 A value that fails that operand test, such as `Option.some(1)` or `Result.succeed(2)`, keeps `EK0502`: the migration inserts no conversion and unwraps nothing, whatever methods the value has ([VIP-5](../vips/0005-try-runs-effects.md#decision), amended).
 
-When `--fix-vip-only` refused any call, it sets `"vibe": { "severities": { "EK4802": "error" } }` in the project's config with a comment that says why, so all `EK4802` sites in the project, both unrun returns and inferred Effect arguments, fail to compile; the owner removes the setting once a run refuses none.
+When `--fix-vip-only` refused any call, it sets `"vibe": { "severities": { "EK4802": "error" } }` in the project's config with a comment that says why, so all `EK4802` inferred Effect argument sites in the project fail to compile; the owner removes the setting once a run refuses none.
 
 These commands have no Effect TypeScript runtime translation.

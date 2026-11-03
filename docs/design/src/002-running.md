@@ -428,7 +428,7 @@ async function promiseOrder() {
 
 Within the Effect, a successful `try` gives the immediate success value unchanged: it neither recursively runs an inner Effect nor assimilates a Promise or thenable stored in that value. An `effect` function's return and a plain `catch` handler's result use the same data rule. Explicit Promise runners retain native Promise resolution.
 
-The imported `returnEffectInGen` lint reports returned Effects in generators under its [imported lint code](900-appendices.md#imported-lint-codes); its configured severity does not change the returned value.
+The imported `returnEffectInGen` lint reports returned Effects in generators under `EK38103`, with the pinned eligibility, configuration and default `"suggestion"` category ([imported lint codes](900-appendices.md#imported-lint-codes); VIP-38). Returning an Effect is not a separate `EK4802` trigger; that code covers [inferred Effect arguments](#inferred-effect-arguments). A lint’s configured severity does not change the returned value.
 
 ```vibe es
 // compiler-gap: pending VIP-1
