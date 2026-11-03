@@ -10,7 +10,7 @@ const compiler = S.Shell.Build({
   summary: "Build the VibeLang compiler, typescript/built/local/tsc.",
   shell: "cd typescript/tsc && GOCACHE=$HOME/.cache/go-build-smthrs CGO_ENABLED=0 GOFLAGS=-trimpath " +
     "sh ../../scripts/native-output.sh build ../built/local/tsc ./cmd/tsc",
-  data: [Tsc.srcs, S.file("go.work"), S.file("//scripts/native-output.sh")],
+  data: [Tsc["native-srcs"], S.file("go.work"), S.file("//scripts/native-output.sh")],
   tools: [S.Host.bin("go")],
   outFiles: ["built/local/tsc"],
   sandbox: "none",
@@ -23,7 +23,7 @@ const formsGenerator = S.Shell.Build({
   summary: "Build the forms-table generator independently of its data inputs.",
   shell: "cd typescript/tsc && GOCACHE=$HOME/.cache/go-build-smthrs CGO_ENABLED=0 " +
     "sh ../../scripts/native-output.sh build ../built/local/vibelang-forms -p 8 -trimpath ./cmd/vibelang-forms",
-  data: [Tsc.srcs, S.file("go.work"), S.file("//scripts/native-output.sh")],
+  data: [Tsc["native-srcs"], S.file("go.work"), S.file("//scripts/native-output.sh")],
   tools: [S.Host.bin("go")],
   outFiles: ["built/local/vibelang-forms"],
   sandbox: "none",
@@ -39,14 +39,39 @@ const mapper = S.Shell.Build({
   summary: "Build the TypeScript mapper CLI, typescript/built/local/vibelang-mapper.",
   shell: "cd typescript/tsc && GOCACHE=$HOME/.cache/go-build-smthrs CGO_ENABLED=0 " +
     "go build -p 8 -trimpath -o ../built/local/vibelang-mapper ./cmd/vibelang-mapper",
-  data: [Tsc.srcs, S.file("go.work")],
+  data: [Tsc["native-srcs"], S.file("go.work")],
   tools: [S.Host.bin("go")],
   outFiles: ["built/local/vibelang-mapper"],
   sandbox: "none",
   timeout: "30m"
 })
 
+// Keep the real cache-key fixture out of the every-change release suite:
+// only build declarations and SDK inputs can change its cache-key fixtures.
+const nativeInputs = S.Shell.Test({
+  summary: "Check native cache isolation and production dependency coverage.",
+  shell: "node --test typescript/native-inputs.test.mjs",
+  data: [
+    S.file("tsc/PACKAGE.ts"), S.file("go.work"), S.file("PACKAGE.ts"), S.file("native-inputs.test.mjs"),
+    S.file("//.smithers/WORKSPACE.ts"), S.file("//.smithers/package.json"), S.file("//.smithers/bun.lock"),
+    S.file("//scripts/native-output.sh")
+  ],
+  tools: [S.Host.bin("node"), S.Host.bin("go"), S.Host.bin("bun")],
+  sandbox: "none",
+  timeout: "10m"
+})
+
+// This cheap audit follows production edits without rerunning SDK fixtures.
+const nativeDeps = S.Shell.Test({
+  summary: "Reject native executable imports of excluded fuzz packages.",
+  shell: "node --test typescript/native-deps.test.mjs",
+  data: [Tsc["native-srcs"], S.file("go.work"), S.file("native-deps.test.mjs")],
+  tools: [S.Host.bin("node"), S.Host.bin("go")],
+  sandbox: "none",
+  timeout: "10m"
+})
+
 /** Every file in typescript/ outside its subpackages, for the repository-wide checks. */
 const tree = S.Filegroup({ srcs: [...S.glob(["**"])] })
 
-export const Package = S.Package({ targets: { compiler, mapper, tree, "forms-generator": formsGenerator } })
+export const Package = S.Package({ targets: { compiler, mapper, tree, "forms-generator": formsGenerator, "native-inputs": nativeInputs, "native-deps": nativeDeps } })

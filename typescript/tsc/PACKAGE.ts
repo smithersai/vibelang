@@ -1,17 +1,18 @@
 import { readdirSync } from "node:fs"
 import { Smithers as S } from "@smthrs/targets"
 
-// The Go module: the TypeScript 7 compiler with VibeLang's packages under
-// internal/vibelang*. `srcs` is everything `go build` reads, so it is the
-// compiler binary's input; test files and testdata belong to the Go test
-// targets and never re-key the binary.
-const srcs = S.Filegroup({
+// Go tests retain all non-test sources, including the fuzz oracle helpers.
+// Native executables never import internal/vibelangfuzz; its independent
+// cache-input regression checks the real transitive Go dependency graph.
+const sources = (exclude: ReadonlyArray<string> = []) => S.Filegroup({
   srcs: [
     S.file("go.mod"),
     S.file("go.sum"),
-    ...S.glob(["**", "!**/*_test.go", "!**/testdata/**", "!go.mod", "!go.sum"])
+    ...S.glob(["**", "!**/*_test.go", "!**/testdata/**", "!go.mod", "!go.sum", ...exclude])
   ]
 })
+const srcs = sources()
+const nativeSrcs = sources(["!internal/vibelangfuzz/**"])
 
 /** Every file in the module, for checks that read the whole tree. */
 const tree = S.Filegroup({ srcs: [...S.glob(["**"])] })
@@ -47,6 +48,7 @@ const goTest = (summary: string, pkgs: string, dir: string) =>
 export const Package = S.Package({
   targets: {
     srcs,
+    "native-srcs": nativeSrcs,
     tree,
     "effect-shim-files": files("internal/effecttsgo/shim/checker"),
     "vibelang-files": files("internal/vibelang"),

@@ -21,6 +21,8 @@ compiler package, `experiments`, `docs/tools`) from their lockfiles, then runs
 `smthrs ci`, which runs build and test targets alike. `explain` prints a
 target's inputs, its key and whether the cache holds a result for it.
 
+The native compiler, mapper and forms-generator keys exclude `internal/vibelangfuzz/**`: those executables do not import the fuzz packages. Go test targets retain those oracle sources. Production Go files, embedded data, module checksums and compiler tools remain native inputs. `//typescript:native-inputs` runs actual Smithers cache-key fixtures, including 64 generated fuzz-file neighbours, while the fast `//typescript:native-deps` target checks the three commands' transitive dependencies with `go list -deps`. A production import of a fuzz package fails that check and requires restoring its native inputs. The cache-key fixtures rerun on build-declaration or SDK changes; production changes rerun the independently cached dependency audit.
+
 ## Remote contributor checks
 
 `scripts/remote.sh <command...>` synchronizes the current workspace to a

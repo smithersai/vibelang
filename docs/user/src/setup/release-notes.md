@@ -363,6 +363,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - A line break after `try` caused parse errors for expression operands; member calls and other operands now compose across whitespace and comments.
 - The migrate flow accepted a local object named `Effect` as a cold constructor and missed work in `Effect.gen` arguments. Its run-phase check now verifies import bindings, reports unknown constructors for review and blocks work that would move from the call to the Effect run.
 
+- Changes to fuzz-test helpers unnecessarily rebuilt the native compiler, mapper and forms generator; their cache keys now keep production inputs separate while Go tests still track the changed helpers.
+
 - Identical recursive generic declaration APIs could fail with `TS2589`; exact resolved type identity now proves those comparisons.
 - API checks treated identical JSDoc links as different when a private target resolved in only one snapshot. Link targets and labels now compare consistently while real comment changes remain differences.
 

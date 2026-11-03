@@ -16,6 +16,8 @@ const runs = [
   ["scripts/*.test.mjs", "PACKAGE.ts", "scripts/*.test.mjs"],
   ["scripts/bench/*.test.mjs", "scripts/bench/PACKAGE.ts", "node --test scripts/bench/gen-synthetic.test.mjs"],
   ["scripts/release/*.test.mjs", "PACKAGE.ts", "scripts/release/*.test.mjs"],
+  ["typescript/native-deps.test.mjs", "typescript/PACKAGE.ts", "node --test typescript/native-deps.test.mjs"],
+  ["typescript/native-inputs.test.mjs", "typescript/PACKAGE.ts", "node --test typescript/native-inputs.test.mjs"],
   ["typescript/vibelang/harness.test.mjs", "PACKAGE.ts", "typescript/vibelang/harness.test.mjs"],
   ["typescript/vibelang/coverage-twin.test.mjs", "typescript/vibelang/PACKAGE.ts", "node --test typescript/vibelang/coverage-twin.test.mjs"],
   ["typescript/vibelang/coverage-stock-twins.test.mjs", "PACKAGE.ts", "typescript/vibelang/coverage-stock-twins.test.mjs"],
