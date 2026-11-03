@@ -44,8 +44,8 @@ func checkAnyCallResult(c *checker.Checker, fn *ast.Node, value *ast.Node) {
 		return
 	}
 	value = ast.SkipParentheses(value)
-	if !ast.IsCallExpression(value) {
-		return
+	if !ast.IsCallExpression(value) || triedFlag(value) {
+		return // VIP-5 explicitly delegates this call; its result is run.
 	}
 	callee := value.Expression()
 	if missingCallPipe(c, callee) != nil {
