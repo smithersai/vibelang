@@ -156,31 +156,35 @@ const configKeys: Rule = {
   }
 }
 
-// The scope of `vibelang.declarationImportStyle` (round 14 ASTRA-1). Decided
-// detail 263 calls it "an opt-in package declaration spelling policy" and
-// says "source-adjacent sidecars retain their existing VibeLang-source
-// reference rules", and asks for VIP-27 and VIP-30 amendments. 001 and 007
-// stated the option with no sidecar boundary and neither VIP named it. Every
-// paragraph that names the option states the sidecar boundary, and VIP-27
-// and VIP-30 both publish it.
+// Declaration spelling is governed by VIP-27/30. Recognize a retired-key
+// notice without requiring it to describe the old live option. While the
+// separate spec publication is pending, validate the older scope contract;
+// once VIP-30 retires it, reject live-option claims in every chapter/VIP.
 const importStyleScope: Rule = {
   name: "declaration-import-style-scope",
-  finding: "r14 ASTRA-1 and OPUS-5: 001:483 and 007:107 gave declarationImportStyle no sidecar boundary and no `.vibex` rule; VIP-27 and VIP-30 did not name it",
+  finding: "r14 OPUS-3/5 and r15 OPUS-2: declaration spelling must follow its published VIP contract",
   check(spec) {
     const out: Violation[] = []
+    const retired = /There is no `declarationImportStyle` setting/.test(spec.get("vips/0030-config-files.md") ?? "")
     for (const [file, text] of [...chapters(spec), ...acceptedVips(spec)]) {
       for (const p of paragraphs(text)) {
-        if (p.text.includes("declarationImportStyle") && !/sidecar/i.test(p.text)) {
+        if (!p.text.includes("declarationImportStyle")) continue
+        const notice = /(?:retired|retire[sd]?|no `declarationImportStyle` setting)/i.test(p.text)
+        if (retired) {
+          if (!notice || /not yet decided|by default|the default|Declaration output selects|Package declarations use/.test(p.text)) {
+            out.push({ rule: this.name, file, line: lineAt(text, p.index), message: "the retired declarationImportStyle option cannot select declaration spelling" })
+          }
+          continue
+        }
+        if (!/sidecar/i.test(p.text)) {
           out.push({ rule: this.name, file, line: lineAt(text, p.index), message: "a paragraph naming `declarationImportStyle` does not say that source-adjacent sidecars keep their spelling" })
         }
-        // Round 14 OPUS-5: VIP-39 made `.vibex` a source kind beside `.vibe`;
-        // a chapter's declaration-spelling rule says what a `.vibex` import gets.
-        if (file.startsWith("src/") && p.text.includes("declarationImportStyle") && !/`\.\/[\w-]+\.vibex`/.test(p.text)) {
+        if (file.startsWith("src/") && !/`\.\/[\w-]+\.vibex`/.test(p.text)) {
           out.push({ rule: this.name, file, line: lineAt(text, p.index), message: "a chapter paragraph naming `declarationImportStyle` states no rule for a `./x.vibex` import" })
         }
       }
     }
-    for (const file of ["vips/0027-declaration-output.md", "vips/0030-config-files.md"]) {
+    if (!retired) for (const file of ["vips/0027-declaration-output.md", "vips/0030-config-files.md"]) {
       if (!spec.get(file)?.includes("`vibelang.declarationImportStyle`")) {
         out.push({ rule: this.name, file, line: 1, message: "the VIP does not publish `vibelang.declarationImportStyle`, as decided detail 263 asks" })
       }
