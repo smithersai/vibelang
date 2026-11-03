@@ -427,6 +427,7 @@ func failuresCases() []*failCase {
 // failuresNotAsserted are the chapter's bullets and rows no case checks,
 // each with the reason. Each key must be verbatim in the chapter.
 var failuresNotAsserted = map[string]string{
+	"| a custom `error` or `schema error` declaration in an ambient source context, inherited or its own `declare` | `EK1307` |": "asserted in internal/vibelang by TestAmbientErrorDeclaration*, across own declare, namespace and module contexts",
 	"| two members on one line with no separator, in either error form; write `;` or a line break between them (quick fix: insert `;`) | `EK1306` |": "not implemented on main: both error forms report TypeScript TS1442 instead of EK1306; compiler coverage and implementation owned by lane impl-hunt-fail (005-006-body-separator-code:compiler:EK1306)",
 	"| `throw e` means |": "table header",
 }

@@ -65,6 +65,7 @@ var VibeDiagnosticCategories = map[string]string{
 	"EK1304":  "error",
 	"EK1305":  "error",
 	"EK1306":  "error",
+	"EK1307":  "error",
 	"EK1401":  "error",
 	"EK1501":  "error",
 	"EK1502":  "error",
