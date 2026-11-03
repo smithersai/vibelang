@@ -121,6 +121,28 @@ function readTrials(dir) {
   return { files, reports }
 }
 
+// Resolve symlinked ancestors even when the output's final directories do not
+// exist yet. Check before mkdir/open so a bad output cannot pollute its inputs.
+function canonicalPath(value) {
+  let cursor = path.resolve(value)
+  const missing = []
+  for (;;) {
+    try { return path.join(fs.realpathSync(cursor), ...missing) }
+    catch (error) {
+      if (error.code !== "ENOENT") throw error
+      const parent = path.dirname(cursor)
+      if (parent === cursor) throw error
+      missing.unshift(path.basename(cursor))
+      cursor = parent
+    }
+  }
+}
+
+function inside(directory, file) {
+  const relative = path.relative(directory, file)
+  return relative === "" || (relative !== ".." && !relative.startsWith(".." + path.sep) && !path.isAbsolute(relative))
+}
+
 function main(args) {
   const usage = "usage: node scripts/bench/case-timings.mjs --baseline DIR --current DIR --out NEW.json"
   const options = {}
@@ -136,6 +158,17 @@ function main(args) {
   }
   if (Object.keys(options).length !== 3) {
     console.error(usage)
+    process.exitCode = 2
+    return
+  }
+  try {
+    const output = canonicalPath(options["--out"])
+    for (const key of ["--baseline", "--current"]) {
+      requireEvidence(!inside(options[key], options["--out"]) &&
+        !inside(canonicalPath(options[key]), output), "output must be outside both trial directories")
+    }
+  } catch (error) {
+    console.error(error.message)
     process.exitCode = 2
     return
   }

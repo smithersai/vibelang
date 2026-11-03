@@ -205,3 +205,93 @@ test("timing CLI rejects repeated and unknown options", t => {
     assert.match(result.stderr, /usage:/)
   }
 })
+
+const compareAt = (baseline, current, out) => spawnSync(process.execPath, [
+  script, "--baseline", baseline, "--current", current, "--out", out,
+], { encoding: "utf8", timeout: 30_000 })
+
+for (const scenario of ["baseline", "current", "nested", "input alias", "output alias", "normalized path", "escaped output alias"]) {
+  test("timing output preserves trial inputs: " + scenario, t => {
+    const f = fixture(t)
+    let baseline = f.baseline, current = f.current, out
+    if (scenario === "input alias") {
+      baseline = path.join(f.root, "baseline alias")
+      fs.symlinkSync(f.baseline, baseline, "dir")
+      out = path.join(f.baseline, "comparison.json")
+    } else if (scenario === "output alias") {
+      const alias = path.join(f.root, "output alias")
+      fs.symlinkSync(f.current, alias, "dir")
+      out = path.join(alias, "uncreated/result.json")
+    } else if (scenario === "escaped output alias") {
+      const outside = path.join(f.root, "outside")
+      fs.mkdirSync(outside)
+      const alias = path.join(f.baseline, "existing-output-directory")
+      fs.symlinkSync(outside, alias, "dir")
+      out = path.join(alias, "comparison.json")
+    } else if (scenario === "nested") out = path.join(f.baseline, "uncreated/result.json")
+    else if (scenario === "normalized path") out = path.join(f.root, "uncreated", "..", "current", "result.json")
+    else out = path.join(scenario === "baseline" ? baseline : current, "comparison.json")
+    const snapshot = dir => fs.readdirSync(dir).map(name => {
+      const file = path.join(dir, name), stat = fs.lstatSync(file)
+      return [name, stat.isSymbolicLink() ? ["symlink", fs.readlinkSync(file)]
+        : stat.isDirectory() ? ["directory"] : ["file", fs.readFileSync(file, "utf8")]]
+    })
+    const before = [f.baseline, f.current].map(snapshot)
+    const result = compareAt(baseline, current, out)
+    assert.ifError(result.error)
+    assert.equal(result.status, 2, result.stdout + result.stderr)
+    assert.match(result.stderr, /output.*outside.*trial|output.*inside.*trial/i)
+    assert.equal(fs.existsSync(out), false, "invalid output must not be created")
+    const after = [f.baseline, f.current].map(snapshot)
+    assert.deepEqual(after, before, "trial directories and bytes remain unchanged")
+  })
+}
+
+test("generated nested output mistakes do not create directories among trials", t => {
+  const f = fixture(t)
+  for (let i = 0; i < 32; i++) {
+    const input = i % 2 ? f.baseline : f.current
+    const out = path.join(input, "new-" + i, "more", "result.json")
+    const result = compareAt(f.baseline, f.current, out)
+    assert.ifError(result.error)
+    assert.equal(result.status, 2, result.stdout + result.stderr)
+    assert.match(result.stderr, /output.*outside.*trial|output.*inside.*trial/i)
+    assert.equal(fs.existsSync(path.join(input, "new-" + i)), false)
+    assert.equal(fs.readdirSync(input).length, 3)
+  }
+})
+
+test("sibling names and unrelated symlinked output directories remain valid", t => {
+  for (const alias of [false, true]) {
+    const f = fixture(t)
+    const sibling = f.baseline + "-comparisons"
+    fs.mkdirSync(sibling)
+    let dir = sibling
+    if (alias) {
+      dir = path.join(f.root, "unrelated alias")
+      fs.symlinkSync(sibling, dir, "dir")
+    }
+    const out = path.join(dir, "nested/result.json")
+    const result = compareAt(f.baseline, f.current, out)
+    assert.ifError(result.error)
+    assert.equal(result.status, 0, result.stdout + result.stderr)
+    assert.equal(JSON.parse(fs.readFileSync(out, "utf8")).valid, true)
+    assert.equal(fs.readdirSync(f.baseline).length, 3)
+    assert.equal(fs.readdirSync(f.current).length, 3)
+  }
+})
+
+test("bad input archives still retain an invalid-evidence receipt outside the trials", t => {
+  for (const unavailable of ["missing", "file"]) {
+    const f = fixture(t)
+    fs.rmSync(f.baseline, { recursive: true })
+    if (unavailable === "file") fs.writeFileSync(f.baseline, "not a directory")
+    const result = compareAt(f.baseline, f.current, f.out)
+    assert.ifError(result.error)
+    assert.equal(result.status, 2, result.stdout + result.stderr)
+    const report = JSON.parse(fs.readFileSync(f.out, "utf8"))
+    assert.equal(report.valid, false)
+    assert.equal(report.baselinePath, f.baseline)
+    assert.equal(report.currentPath, f.current)
+  }
+})
