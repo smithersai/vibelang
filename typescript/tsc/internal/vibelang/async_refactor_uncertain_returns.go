@@ -1,8 +1,6 @@
 package vibelang
 
 import (
-	"slices"
-
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/checker"
 )
@@ -26,13 +24,6 @@ func asyncReturnsUncertainValue(c *checker.Checker, body *ast.Node) bool {
 			if member.Flags()&nonThenable != 0 {
 				continue
 			}
-			// A then property the type holds to primitives is not callable, in
-			// this object or any subtype, so Promise adoption leaves it alone.
-			if then := c.GetTypeOfPropertyOfType(member, "then"); then != nil && !slices.ContainsFunc(unionMembers(then), func(part *checker.Type) bool {
-				return part.Flags()&nonThenable == 0
-			}) {
-				continue
-			}
 			if member.Flags()&checker.TypeFlagsInstantiableNonPrimitive == 0 {
 				return true
 			}
@@ -48,11 +39,32 @@ func asyncReturnsUncertainValue(c *checker.Checker, body *ast.Node) bool {
 		}
 		return false
 	}
+	// A fresh literal with an own noncallable data property then cannot
+	// acquire a hidden thenable before async return reads that property.
+	// Reject accessors, spreads and computed keys: their reads or writes
+	// need the adoption bridge even if the apparent property type is scalar.
+	safeLiteral := func(node *ast.Node) bool {
+		inner := ast.SkipOuterExpressions(node, ast.OEKParentheses|ast.OEKTypeAssertions|ast.OEKNonNullAssertions|ast.OEKSatisfies)
+		if !ast.IsObjectLiteralExpression(inner) {
+			return false
+		}
+		var then *ast.Node
+		for _, property := range inner.AsObjectLiteralExpression().Properties.Nodes {
+			if !ast.IsPropertyAssignment(property) || property.Name() == nil ||
+				!ast.IsIdentifier(property.Name()) && !ast.IsStringLiteral(property.Name()) {
+				return false
+			}
+			if property.Name().Text() == "then" {
+				then = property.Initializer()
+			}
+		}
+		return then != nil && !uncertain(c.GetTypeAtLocation(then))
+	}
 	returnsUncertain := func(node *ast.Node) bool {
 		if node == nil || ast.IsVoidExpression(ast.SkipParentheses(node)) {
 			return false // an absent value or an explicit void operator is undefined
 		}
-		return uncertain(c.GetTypeAtLocation(node))
+		return !safeLiteral(node) && uncertain(c.GetTypeAtLocation(node))
 	}
 	if body == nil {
 		return false

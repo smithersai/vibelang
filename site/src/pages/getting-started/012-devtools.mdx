@@ -262,7 +262,7 @@ Fixes retain field comments and comments before unwrapped succeed/fail arguments
 
 When `vibe.effectModules` is `false`, `--fix` keeps the explicit Effect imports the program needs. The editor offers those bindings through imports and local declarations.
 
-Before async conversion, await a returned `Promise` or `PromiseLike` explicitly, as in `return await input`. Async functions adopt returned thenables; effect bodies require explicit Promise handling. The refactors therefore require an explicit `await` for those returns, including a union that may contain a Promise.
+Before async conversion, await a returned `Promise` or `PromiseLike` explicitly, as in `return await input`. Async functions adopt returned thenables; effect bodies require explicit Promise handling. The refactors therefore require an explicit `await` for those returns, including a union that may contain a Promise. A fresh returned object literal with an explicit noncallable data property `then`, such as `{ then: 7 }`, keeps the conversion available. Promise adoption reads `then` even when its declared result is primitive, so a getter may run or throw. Getters, computed keys, spreads and aliased objects still require an adoption bridge.
 
 A primitive TypeScript type can still hide a boxed runtime value with a `then` method. For returned values that need adoption, conversion finishes the body in an `effect { … }` block before bridging its result through `Effect.tryPromise`. Iterator cleanup therefore completes before a thenable is adopted. The conversion retains source comments, template contents and strict-mode directives, and is unavailable when a local or type-only `Effect` binding would make the bridge invalid.
 

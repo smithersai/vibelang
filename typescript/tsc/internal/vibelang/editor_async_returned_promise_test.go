@@ -22,6 +22,16 @@ func TestEditorAsyncRefactorsReturnedPromises(t *testing.T) {
 		{"awaited", "async function /*cursor*/load(input: Promise<number>) { return await input }", 2},
 		{"scalar", "async function /*cursor*/load() { return 1 }", 1},
 		{"noncallable-then", "async function /*cursor*/load() { return { then: 7 } }", 1},
+		{"string-then", "async function /*cursor*/load() { return { then: \"no\" } }", 1},
+		{"null-then", "async function /*cursor*/load() { return { then: null } }", 1},
+		{"undefined-then", "async function /*cursor*/load() { return { then: undefined } }", 1},
+		{"asserted-literal", "async function /*cursor*/load() { return ({ then: 7 } as const) }", 1},
+		{"observed-getter-then", "async function /*cursor*/load(events: string[]) { return { get then() { events.push(\"read\"); return 7 } } }", 0},
+		{"getter-then", "async function /*cursor*/load() { return { get then() { return 7 } } }", 0},
+		{"spread-after-then", "async function /*cursor*/load(input: object) { return { then: 7, ...input } }", 0},
+		{"computed-after-then", "async function /*cursor*/load(key: string) { return { then: 7, [key]: 1 } }", 0},
+		{"aliased-then", "async function /*cursor*/load(input: { then: number }) { return input }", 0},
+
 		{"nested-function", "async function /*cursor*/load(input: Promise<number>) { function inner() { return input }; return await input }", 2},
 	} {
 		t.Run(test.name, func(t *testing.T) {

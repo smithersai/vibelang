@@ -61,10 +61,12 @@ func FuzzAsyncReturnAdoption(f *testing.F) {
 			typ = "{ then: () => void }"
 		case "unknown-then":
 			typ = "{ then: unknown }"
+		// A primitive-typed property may be a getter. Promise adoption
+		// reads it, so aliased structural objects still need a bridge.
 		case "noncallable-then":
-			typ, safe = "{ then: number }", true
+			typ = "{ then: number }"
 		case "optional-then":
-			typ, safe = "{ then?: string }", true
+			typ = "{ then?: string }"
 		case "number":
 			typ, safe = "number", true
 		case "string-null":
