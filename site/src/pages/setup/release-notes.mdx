@@ -151,10 +151,13 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - API checks invented ambient exports or hid an ambient type change when one input directory contained the other. Contributions now follow each snapshot’s dependency closure, and nested private-class origins remain distinct where required.
 
 - The editor outline merged separate `module` declarations as TypeScript namespaces and hid a later declaration with the same name; each VibeLang module now keeps its own outline entry and name range, including an invalid duplicate.
+- API comparisons of packages installed with multiple pnpm peer contexts could report an ambiguous ambient origin; corresponding peer installations now compare separately.
 - `vibelang --fix` left qualified calls such as `Effect.retry(...)` after the same function was available as an unshadowed global. It now writes the bare call, preserving comments, declaration imports and disabled-global settings.
 
 - Specification table and authority checks rejected the historical explanation that accepted `VIP-40` supersedes denied `VIP-25`. They now verify the accepted successor while continuing to reject positive authority claims based on the denied proposal.
 - API checks lost referenced ambient or library types when a declaration also contained a private class. Nominal alignment now preserves leading reference directives, and referenced type changes remain visible.
+
+- Migration verification rejected unchanged programs whose original declaration emit already reported errors; it now compares with the saved original diagnostics and rejects new or unexplained emit failures while retaining the declaration identity checks.
 - `vibelang --fix` refused an `Effect.gen` or `Effect.fn` whose body held a `.pipe` that changes type as `|>`, such as `.pipe(HttpEffect.toWebHandlerWith(context))`, whose stage takes its requirements from the `.pipe` (TS2345), and then wrote that `.pipe` as `|>` inside the generator it left, so the generator never converted. EK1002's fix now retries keeping the body's `.pipe` calls.
 - `vibelang --fix` refused an `Effect.fn` whose parameter annotation was the last read of an imported value binding that only types read, such as a namespace in `SessionSchema.ID`, with TS6133, so the module stayed on `EK1002`; the fix now removes that binding too, and keeps a bare import under `verbatimModuleSyntax`.
 
@@ -164,6 +167,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Identical recursive generic type exports could fail an API identity check because each side received a fresh comparison alias; proven equivalent declarations now share that alias.
 
 - A generic plain call such as `expect(awaited(p))` silently received an unrun Effect. In effect code it now reports `EK4802`; `--fix` writes `expect(try awaited(p))`, and explicit Effect type arguments keep the program as data.
+
+- Migration verification reported passing React Compiler coverage cases as missing after their source paths changed from `.ts` to `.vibe`; test titles now follow recorded source renames while retaining case counts and failures.
 
 - Identical recursive generic declaration APIs could fail with `TS2589`; exact resolved type identity now proves those comparisons.
 - API checks treated identical JSDoc links as different when a private target resolved in only one snapshot. Link targets and labels now compare consistently while real comment changes remain differences.
@@ -488,7 +493,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - The migrate flow's setup on a new toolchain emitted the baseline declarations of modules earlier runs had migrated with that toolchain, so a toolchain change to their public API, such as foldkit's `mount/index` losing `readonly` members, became the baseline and every batch passed against it. Setup now compares each such module's declaration with the sidecar the earlier run committed and records a setup issue for each change.
 - The migrate flow pointed a renamed module's package `exports` and `types` at `x.vibe`, so stock TypeScript, reading the module through its declaration sidecar, reported `TS2883` where a consumer's inferred type named one of the module's types; a `types` field or condition now names `x.d.vibe.ts`, and a bare entry becomes `{ "types": "./x.d.vibe.ts", "default": "./x.vibe" }`.
 - A `.vibe` module in a project with no declaration output failed to compile when its declaration sidecar could not print an export's type, such as foldkit's `AppTabs = Tabs.create<…>()` (`TS2883`), though `tsc` compiles the same TypeScript, which emits no declarations, without an error. Such an error is now reported only where a `.ts` file of the project imports the module, at that import, since that file reads the sidecar; a project that emits declarations still reports it at the export.
-- The migrate flow's `verify` passed a batch whose declaration emit failed in a migrated file, such as `TS7056` for a type too long to serialize, when the baseline's emit failed the same way and the two fallbacks were equal; it now fails the batch on any declaration emit error in a migrated file.
+- The migrate flow's `verify` passed a batch whose declaration emit failed in a migrated file, such as `TS7056` for a type too long to serialize, when the baseline's emit failed the same way and the two fallbacks were equal; it records emit failures separately from artifact equality. Newly introduced diagnostics fail the batch; inherited diagnostics require the saved original program receipt and do not establish API identity for a missing declaration.
 - `await` at a `.vibe` module's top level, such as `export const answer = await Promise.resolve(42)`, was VibeLang's await, so it reported `EK4602` and `EK1001` and emitted a runtime `$await` call. It is ES top-level await of a Promise now, in a declaration, a statement or a block, as the spec says (VIP-26); an Effect operand is `EK0103`, and a CommonJS file reports TypeScript's `TS1309`.
 - Migrating a service default could capture a user-defined `ReturnType` and change exported types; the repair now extracts the factory return type without relying on that name.
 - A legacy service `default` with no value could be silently accepted and had no usable migration; it now reports `EK0902`, while initialized defaults keep their migration warning and repair.
