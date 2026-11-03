@@ -939,3 +939,160 @@ class Timeout extends Schema.TaggedError<Timeout>()("Timeout", {}) {
   }
 }
 ```
+
+## Details
+
+Decided details folded in verbatim on 2026-11-03 (mechanical pass). Each keeps its old number as history; where one conflicts with the text above, the fold's conflict pass resolves it.
+
+### Detail 108
+
+**Plain generators' synchronous call throws come from parameter initialization, not their suspended body.** (live `003-generator-call-phase`; owner `spec-fix-b`; VIP-1/VIP-4.) For an ordinary synchronous or async generator declaration, expression, or method, infer/check the construction call's synchronous thrown type from parameter defaults and destructuring initialization only. Its body is suspended. Calling a synchronous iterator's `next`, `return`, or `throw` uses that method's ordinary signature contract (conservative `unknown` when unannotated); this decision does not invent body-to-iterator metadata. An async generator's resumption rejects its returned Promise on body throws, but its parameter initialization still throws synchronously when the generator is called. An ordinary `async function` instead rejects for a throwing default, as before.
+    **Current scope after Will's 2026-10-31 ruling:** local VibeLang thrown-type inference/annotations and any permission for synchronous source `throw` in this older record are superseded by `core-decisions.md`, `loop/WILL-ANSWERS.md` and detail 251. Do not implement those historical local clauses. Retain independently valid foreign-contract, native-phase and unrelated rules; reference receipts below are historical, not current VibeLang admission tests.
+    **Immutable-main source scope (d0cdbe, 108).** 003/VIP4 distinguish eager synchronous/async-generator parameter initialization from suspended-body/resumption throws. `root-main-d0cd-source-receipt.json` retains the complete31-file diff/hash/read scope. Source only; no decide-live compiler/gate rerun.
+    Status update: applied in78b64fc8af61 (spec-fix-b; queue accepted/held, not main). Carries291c6e9dc2c1 plus the Creating Effects synchronous/ordinary-async qualification and current unreleased note; Node7/Bun7 and regen/forms/spec/docs pass. Old queue entry superseded after guarded check.
+    Status: applied in 291c6e9dc2c1 (spec-fix-b; queued, not yet a main landing receipt).
+    ```vibe
+    function* lazy() { throw "body" }
+    function failDefault(): number { throw "default" }
+    function* eager(x = failDefault()) { yield x }
+    async function* asyncEager(x = failDefault()) { yield x }
+    effect function inspect() { const it = lazy(); return "not started" } // safe construction
+    ```
+    Effect TS: the same native generator declarations; `Effect.sync(() => { lazy(); return "not started" })` succeeds, `Effect.try(() => eager())` catches the default, and an ordinary async default rejects. Decided by the agent from principle 2 (ECMAScript generator execution phases) and VIP-4's “throws synchronously” contract, 2026-10-29. Applies to 003 and the generated declaration contract; not a source-language ban.
+
+    **Round26 generator-table follow-up (Fable m13):** the absence of a generator row in 003 is source-delivery work under this existing rule, not a choice to infer suspended-body throws at construction. Async iterator resumptions produce Promises and retain the explicit `EK0404`/`tryPromise` bridge rule; `Effect.try` alone does not execute/adopt the returned Promise. Keep ordinary selected-signature contracts instead of inventing body-to-iterator metadata.
+
+### Detail 115
+
+**Generic instantiation preserves the declaration signature's throw classification.** (live `003-effectful-generic-instantiation`; refines details 36/38/66.) Classify whether a generic declaration signature is wholly Effect/Stream/Layer before type-argument substitution, using constraints as TypeScript does for assignability. An unconstrained return `T` is not wholly effectful; `T extends Effect.Effect<…>` can be. Once a signature carries own-throws/rethrows metadata, instantiation substitutes type parameters within that contract and retains it; it does not erase it merely because the instantiated return happens to be an Effect. Preserve the classification through aliases and declaration output. A concretely effectful declaration still has the existing never-throws contract and cannot declare or contain tracked synchronous throws.
+    **Current scope after Will's 2026-10-31 ruling:** local VibeLang thrown-type inference/annotations and any permission for synchronous source `throw` in this older record are superseded by `core-decisions.md`, `loop/WILL-ANSWERS.md` and detail 251. Do not implement those historical local clauses. Retain independently valid foreign-contract, native-phase and unrelated rules; reference receipts below are historical, not current VibeLang admission tests.
+    **Immutable-main source receipt (54182a, 115).** Immutable main `54182a644026` contains the generic pre-instantiation classification and retained own/rethrows contracts in003 and public VIP4 (history `4a337dac4d5b`). This verifies source publication; no compiler/regression rerun by decide-live.
+    Status update: applied in1d1a6df63474 (spec-fix-b; queue accepted/held, not main). Replaces97b21dab7b1d with public VIP-4 generic/default-contract amendments and current-main changelog; Node3/Bun3, regeneration/forms/spec/docs pass.
+    Status: applied in 97b21dab7b1d (spec-fix-b; queued, replaces withdrawn 46c8217f1921; no main landing receipt yet).
+    ```vibe
+    /** @throws {"boom"} */
+    function keep<T>(value: T): T { throw "boom" }
+    effect function f() { return try keep(succeed(1)) } // EK0403: call may throw "boom"
+    // bridge construction first, then run the returned Effect:
+    effect function g() { const e = try Effect.try(() => keep(succeed(1))); return try e }
+    ```
+    Effect TS: `Effect.gen(function* () { const e = yield* Effect.try(() => keep(Effect.succeed(1))); return yield* e })`. Decided by the agent from VIP-4's known-synchronous-throw rule, detail 38 (contracts travel with signatures), principle 2 (generic instantiation substitutes an existing declaration contract) and principle 8 (a known throw cannot acquire an exemption through substitution), 2026-10-29. This settles an unspecified classification phase; no new runtime wrapper is inserted.
+
+### Detail 120
+
+**A rethrows parameter's possible default callback contributes to the callable's own thrown bound.** (live `003-rethrows-default-callback`; extends details 4/38/45/66.) Use the conservative single-bound model. A rethrows parameter admits a throwing default callback just as it admits an actual callback. Infer that callback value's thrown contract before assigning it to the nonthrowing-looking parameter type, union it into the callable's own thrown bound, and emit it in `@throws` so erasing the initializer in declarations loses nothing. Evaluating the default expression can itself throw; those immediate throws also belong to the own bound, distinct from invoking the callback value. At calls, union this own bound with actual callback throws as before. It applies even when a supplied callback is safe and the default is not selected; a later precision improvement can relax that rejection without breaking code. An explicit written `@throws` must bound these contributions or gets the ordinary bound error. No conditional-default metadata or new annotation syntax is introduced.
+    **Current scope after Will's 2026-10-31 ruling:** local VibeLang thrown-type inference/annotations and any permission for synchronous source `throw` in this older record are superseded by `core-decisions.md`, `loop/WILL-ANSWERS.md` and detail 251. Do not implement those historical local clauses. Retain independently valid foreign-contract, native-phase and unrelated rules; reference receipts below are historical, not current VibeLang admission tests.
+    **Immutable-main source receipt (54182a, 120).** Immutable main `54182a644026` contains conservative default-callback own bounds, immediate initialization contributions and declaration preservation in003/public VIP4 (history `4a337dac4d5b`). Source publication is verified; compiler semantics remain separately evidenced.
+    Status update: applied in1d1a6df63474 (spec-fix-b; queue accepted/held, not main). Replaces97b21dab7b1d with public VIP-4 generic/default-contract amendments and current-main changelog; Node3/Bun3, regeneration/forms/spec/docs pass.
+    Status: applied in 97b21dab7b1d (spec-fix-b; queued, replaces withdrawn 46c8217f1921; no main landing receipt yet).
+    ```vibe
+    /** @rethrows f */
+    function invoke(f: () => number = () => { throw "default" }): number { return f() }
+    effect function a() { return invoke() }             // EK0403
+    effect function b() { return invoke(undefined) }    // EK0403
+    effect function c() { return invoke(() => 7) }      // EK0403: conservative own bound
+    // emitted declaration retains @throws {"default"} and @rethrows f
+    ```
+    Effect TS: `Effect.try(() => invoke())`, `Effect.try(() => invoke(undefined))`, or `Effect.try(() => invoke(() => 7))` retains the synchronous exception boundary. Decided by the agent from principle 8 (never silently discard a known default throw), principle 4 (reuse the existing own-throws bound and declaration format), and VIP-4's rethrows contract, 2026-10-29. This settles an unspecified default case, not a new runtime behavior.
+
+### Detail 133
+
+**Plain error payload keys are type-only; schema field keys retain runtime evaluation.** (live `003-error-computed-key-erasure`; VIP-13/VIP-29.) A plain `error` declaration emits its fields in `Data.TaggedError`'s generic payload type. Computed payload keys there add no runtime lookup, evaluation, or TDZ read, as in a TypeScript type literal. The shared “one runtime key” statement applies to schema/schema-error fields' runtime schema objects only. Any admitted broad-key-to-index-signature mapping for plain errors is likewise type-only. Actual methods/getters keep ordinary TypeScript computed-name evaluation; declaration output retains the payload key type.
+    **Immutable-main error-key companion (9a7f38, 133).** Chapter003/publicVIP13 now publish plain-error TypeLiteral key admission/erasure versus runtime schema-error object admission, preserving existing reserved-tag checks and actual method/getter evaluation. The complete two-file,7,121-character diff was independently read. This verifies the B companion; it does not certify full233's separately owned006/AppendixA/publicVIP15/16/29 application, selector-test byte identity or compiler behavior. `main-9a7-source-receipt.json` records exact scope.
+    Earlier queued Chapter003/VIP13 companion receipt (before main `9a7f385aa855`): applied in6e02b2bc5970 (spec-fix-b; corrected replacement queued, not a main receipt; e37eee4a3b31 guarded-superseded after the decoder-selector repair). Native TypeLiteral payload admission/erasure and runtime schema-error object admission are distinct, including numeric entity-name acceptance and four TS1170 shape rejections. Node4/Bun4, strict TypeScript5.9.3 matrix, getter0/1 native controls and regen/forms/spec/docs pass. C retains006/AppendixA/VIP15/16/29; this does not claim the whole decision delivered.
+
+    Status update: applied in876299a03280 (spec-fix-b; queue accepted/held, not main). Carries85e5747082ba with public VIP-13 key-erasure/runtime distinction and current unreleased note; Node2/Bun2 and regen/forms/spec/docs pass. Old copy superseded after guarded queue check.
+    Status: applied in 85e5747082ba (spec-fix-b; queued, replaces withdrawn 4c45a2c53635; no main landing receipt yet).
+    ```vibe
+    function build() {
+      error Plain { [field]: number }
+      const field = "actual"
+      return new Plain({ actual: 1 })
+    } // field is not read while defining Plain
+    ```
+    Effect TS: `class Plain extends Data.TaggedError("Plain")<{ readonly [field]: number }> {}`, followed by the same const and construction. Decided by the agent from VIP-13's exact Data.TaggedError counterpart and principle 2 (TypeScript erases type-member keys), 2026-10-29. Distinguish the two declaration families in 003 instead of adding runtime reads to plain-error fields.
+
+
+    Landed003/VIP13/plain-error-guide companion: 6e02b2bc5970 -> main9a7f385aa855 (spec-fix-b10, officialmq-10310219-20). Original finite native TypeLiteral/erasure/required-field controls and all selector assertions retained; finalNode6/Bun6/fullDocsTools,regen/forms/spec/docs pass. This receipt covers this companion only; compiler conformance and other owners’ slices remain separate.
+
+### Detail 140
+
+**The plain-handler tracked-call check covers its eager parameters as well as its body.** (live `003-plain-handler-parameter-default`; extends detail 39 under VIP-4/VIP-5.) A known throwing call during a plain catch handler's parameter/default/destructuring initialization is `EK0403`, just like the same call in its body. Include computed binding keys. Move the throwing work into an effect handler's body and bridge it explicitly; placing it in the effect handler's parameter list instead still encounters its existing eager-parameter check. Implicit initialization exceptions and explicit JavaScript throw statements retain the existing defect policies. Do not reject a merely defined nested source function unless its call actually contributes to initialization.
+    **Throw-expression disposition (Will, 2026-11-02; VIP-40):** "Refer to tc39 spec for answer". Adopt the pinned proposal's grammar and precedence. General throw expressions remain supported; the retirement codemod is cancelled. Where a throw is allowed remains the 2026-10-31 no-throw ruling (EK0401).
+    **Current scope after Will's 2026-10-31 ruling:** local VibeLang thrown-type inference/annotations and any permission for synchronous source `throw` in this older record are superseded by `core-decisions.md`, `loop/WILL-ANSWERS.md` and detail 251. Do not implement those historical local clauses. Retain independently valid foreign-contract, native-phase and unrelated rules; reference receipts below are historical, not current VibeLang admission tests.
+    **Immutable-main source receipt (54182a, 140).** Immutable main `54182a644026` contains the plain-handler eager parameter/default/destructuring/computed-key check in002/003 and public VIP5 (history `b453ef86dce6`), distinguishing tracked calls from implicit defects and lazy nested definitions. No compiler execution by this lane.
+    Status: applied in 025f449d7ea4 (spec-fix-b; queued, not yet a main landing receipt). Eager/default/destructuring/computed-key and uncalled-function controls; public VIP-5 reconciled.
+    ```vibe
+    function defaultError(): never { throw "default" }
+    effect function recover() {
+      return fail(undefined) catch (e: unknown = defaultError()) => 7 // EK0403
+    }
+    ```
+    Effect TS: the plain handler's native parameter default runs inside `Effect.catch`'s invocation and can defect; the checked alternative is an effect handler whose generator uses `yield* Effect.try(() => defaultError())` where the default is selected. Decided by the agent from detail 39's no-unwrapped-known-throw policy, principle 4 (one synchronous invocation includes initialization and body), and principle 8 (do not silently lose a known throw at a parameter boundary), 2026-10-30. The explicit-throw-as-defect exception is not removed.
+
+    **Throw grammar and diagnostics (Will, 2026-11-02; VIP-40; details 189/232/284):** The TC39 snapshot at `78b887751db4e380870a0a6bfc47319c50aa1404` now defines general throw expressions. Earlier comparisons to native TypeScript did not establish VibeLang rejection. Keep the parser dispatch, adopt the proposal's unary recursion and punctuator lookahead, and retain EK1010 for that VibeLang syntax restriction. VIP-39 imports these productions in JSX mode too. The proposed conversion to do blocks is cancelled.
+
+### Detail 166
+
+**Nonrepresentable or expanding recursive thrown summaries widen conservatively to unknown.** (live `003-polymorphic-recursive-throws`; refines details 43/115 under VIP-4/VIP-27.) Keep precise least-fixed-point inference for ordinary stable recursive summaries. When polymorphic substitution creates an expanding summary cycle for which the pinned checker cannot produce a finite representable stable contract, widen the affected inferred SCC summary to unknown and emit @throws {unknown}. Never silently truncate the union, keep only its first type argument, or emit an invalid circular alias. A written checked upper bound, including unknown, cuts the corresponding inference dependency and is validated normally. Apply to mutual recursion too.
+    **Current scope after Will's 2026-10-31 ruling:** local VibeLang thrown-type inference/annotations and any permission for synchronous source `throw` in this older record are superseded by `core-decisions.md`, `loop/WILL-ANSWERS.md` and detail 251. Do not implement those historical local clauses. Retain independently valid foreign-contract, native-phase and unrelated rules; reference receipts below are historical, not current VibeLang admission tests.
+    **Immutable-main source scope (d0cdbe, 166).** 003/VIP4 widen nonrepresentable expanding inferred recursive throws to unknown within pinned checker bounds, without truncating contracts or changing independent source errors. `root-main-d0cd-source-receipt.json` retains the complete31-file diff/hash/read scope. Source only; no decide-live compiler/gate rerun.
+    Status update: applied in4bb15a41d1f3 (spec-fix-b; queue accepted/held, not main). Complete original0aad5cdcd238 fix/public VIP-4 amendment retained, moved its bug note to current unreleased section and regenerated on main; Node2/Bun2/spec/docs/forms green. Old entry superseded after guarded check.
+    Status: applied in 0aad5cdcd238 (spec-fix-b; queued, not yet a main landing receipt).
+    ```vibe
+    export function grow<T>(value: T, depth: number): void {
+      if (depth <= 0) throw value
+      grow([value], depth - 1)
+    } // inferred @throws {unknown}, not T or a finite T[] truncation
+    ```
+    Effect TS: the same native function; its emitted ordinary declaration has @throws {unknown}. Use the pinned TypeScript checker's recursion/instantiation/representation bounds for summary computation (current checker: recursive instantiation depth 100 or 5,000,000 instantiations per operation; node-builder representation depth 100), widening the summary rather than attempting an unbounded symbolic fixed point. Failure arising in independent source type checking still reports TypeScript's normal diagnostic; this fallback applies only to inferred throws. A resource-limited summary may conservatively lose precision, never soundness. Decided by the agent from principle 8 (unknown contains every real throw and admits no falsely nonthrowing call), principle 4 (reuse the existing unknown contract and declaration format), and VIP-27's valid-declaration requirement, 2026-10-30. An explicit annotation remains available without introducing a new mandatory-annotation error.
+
+### Detail 176
+
+**An outward parameter-default return in an ordinary async callable fulfills its Promise.** (live `003-async-default-return-completion`; makes detail 68's accepted moved-default/ordinary-return meaning explicit for VIP-1/VIP-2 integration.) Retain the existing early-return meaning rather than changing it to parameter-initialization rejection: evaluate the parameter/default work eagerly, skip the remaining defaults and source body on `return v`, and fulfill the returned Promise with the normal async adoption of `v`. A genuinely throwing default still rejects the Promise. Apply to ordinary nongenerator async declarations, expressions, methods and arrows, including concise arrows where their parameter default can return outward. Distinguish ReturnCompletion and ThrowCompletion; the native async algorithm's generic abrupt-initialization rejection branch cannot be imported literally for the return-bearing expression TypeScript does not have. Record that explicit do/async integration reconciliation in the do snapshot README and 002/003, together with the existing parameter-environment/length/evaluation-order guarantees. Details 163–164 for ordinary generators and 118 for source Effect/producer defaults remain separate.
+    ```vibe
+    async function early(x: unknown = do { return 7 }) { return 0 }
+    effect function inspect() {
+      return try tryPromise({ try: () => early(), catch: (e) => e }) // succeeds with 7
+    }
+    async function thrown(x: unknown = do { throw 7 }) { return 0 } // returned Promise rejects with 7
+    ```
+    Effect TS: `async function early(x = undefined) { if (x === undefined) return 7; return 0 }`; its explicit `Effect.tryPromise` bridge succeeds with `7`. Replacing that `return 7` by `throw 7` makes the bridge fail with `7`. Use the guarded body-return code only as a simple behavioral counterpart, not a general parameter-binding lowering recipe. Decided by the agent from detail 68's already-selected moved-default return meaning, principle 2 (an ordinary async `return` fulfills with normal Promise adoption), and principle 4 (retain one outward-return meaning rather than reinterpret it as a throw only during async parameter setup), 2026-10-30. This is class A because it preserves the settled recipe's result and does not change admitted source behavior; the alternative literal-initialization rejection would change that result. Primary ECMAScript's abrupt/reject branch was independently verified from its functions chapter on nyc-01; `decide-live-scratch/root-async-default-model.log` records literal-model `Fail(7)`, accepted-return counterpart `Success(7)`, and genuine-throw counterpart `Fail(7)` on Effect `4.1.0`. These are algorithm/reference checks, not native-do or compiler conformance.
+
+### Detail 185
+
+**Ordinary async declaration output preserves callback admission without synchronous rethrows.** (live `003-async-rethrows-declaration`; VIP-4/VIP-27 normalization, qualifies details 38/66/120's generic copy rule.) For a source nongenerator `async` callable, callback and parameter/default throws reject its Promise; the construction call's synchronous contract remains `never`. A source `@rethrows` parameter still admits arbitrary throwing callbacks. In emitted declarations, represent that admission with the existing per-parameter callable `@throws {unknown}` signature (or equivalent existing signature metadata), emit callee `@throws {never}`, and omit an active synchronous `@rethrows` tag. Merely dropping the tag loses callback admission; copying it unchanged invents synchronous throws after the `async` modifier is erased. Normalize async declarations, methods and arrows alike, through aliases and sidecars; create an appropriately annotated parameter type locally rather than mutating a shared type alias. Preserve any returned callable's own contract under detail 173. No additional runtime wrapper or async-identity annotation is needed.
+    **Current scope after Will's 2026-10-31 ruling:** local VibeLang thrown-type inference/annotations and any permission for synchronous source `throw` in this older record are superseded by `core-decisions.md`, `loop/WILL-ANSWERS.md` and detail 251. Do not implement those historical local clauses. Retain independently valid foreign-contract, native-phase and unrelated rules; reference receipts below are historical, not current VibeLang admission tests.
+    **Immutable-main source scope (d0cdbe, 185).** 001/003 and VIP4/27 normalize ordinary nongenerator async callback admission on emitted parameter signatures with callee never-throws and no active synchronous rethrows; plain Promise functions and async generators remain distinct. `root-main-d0cd-source-receipt.json` retains the complete31-file diff/hash/read scope. Source only; no decide-live compiler/gate rerun.
+    Status update: applied in78b64fc8af61 (spec-fix-b; queue accepted/held, not main). Carries291c6e9dc2c1 plus the Creating Effects synchronous/ordinary-async qualification and current unreleased note; Node7/Bun7 and regen/forms/spec/docs pass. Old queue entry superseded after guarded check.
+    Status: applied in 291c6e9dc2c1 (spec-fix-b; queued, not yet a main landing receipt).
+    ```vibe
+    /** @rethrows f */
+    export async function invoke(f: () => number) { return f() }
+    /** @throws {never} */
+    function build() { return invoke(() => { throw "callback" }) } // accepted from source or sidecar
+    ```
+    Effect TS: ordinary native `async invoke` returns a Promise rejected with `"callback"`; bridge it with `Effect.tryPromise`. Its emitted declaration has a `@throws {never}` callee and a parameter type such as `{ /** @throws {unknown} */ (): number }`, with no synchronous `@rethrows`. A plain function returning `Promise.resolve(f())` can instead throw before returning; keep its ordinary own-throws/rethrows contract and explicit `Effect.try` bridge. Do not infer the async exception from a Promise return type, and do not apply it to async generators, whose construction/default rules are details 108/163. Decided by the agent from principle 2 (ordinary async throws reject), VIP-4's already-settled async-never rule, VIP-27's source/declaration contract agreement, and principle 4 (reuse admission and signature metadata instead of adding a new async marker), 2026-10-30. Reconcile 001/003 and VIP-4/VIP-27's unconditional-copy wording; test source-versus-sidecar diagnostics and default/callback admission. `decide-live-scratch/root-async-rethrows-types.log` verifies native declaration erasure; `root-async-rethrows-reference.log` records equal ordinary declaration shapes, async rejection versus a genuine synchronous throw, and the matching typed-failure bridges on Effect `4.1.0`. These are reference/metadata-consistency checks, not VibeLang compiler-conformance results.
+
+### Detail 269
+
+**A bare `: infer _` return annotation is not a VibeLang form; the flip codemod deletes it and writes no `infer` into any signature.** (drive-t3code `V4/V5:nested-infer-annotation-lowering` in inbox/migrate-alchemy.md 2026-11-01T02:36Z and migfix-t3code `bf181747` in inbox/migfix-t3code-2.md; accepted VIP-1 and VIP-3, chapter 001 "A function's kind is decided by a keyword on the function, never by its body or by a type" and "To have the type inferred, leave the annotation out", existing194, principles2,4 and8.) Before the VIP-1 flip the migration tools wrote `: infer _` to keep a function plain (historical D282/D500; inbox/migrate-alchemy.md line152 says so explicitly: "until then"). Under VIP-1 a function with no `effect` or `async` keyword is plain by syntax, so the marker carries no information, and TypeScript admits `infer` only in the `extends` clause of a conditional type (TS1338). Rule: `infer` has no VibeLang meaning in a return annotation, bare or as an `Effect<…>` slot; a channel is written out or the whole annotation is left out (001 line374, VIP-3, 194). The flip codemod removes every bare `: infer _` that it or an earlier `--fix` wrote and leaves the return type to TypeScript inference; it never emits `infer` into a callback or any other signature, and "preserve the `infer _` marker when lowering nested callbacks" is not a requirement. Where the declared public type matters (an exported declaration whose emitted `.d.vibe.ts` must stay byte-identical under VIP-27), write the original TypeScript return type instead. The compiler's channel-slot `infer` hook (`inferChannel`, `effectTypeRewrite`) is a pre-flip implementation leftover to retire with the flip, not a spec form; the user-docs page getting-started/003-the-effect-type.md, which teaches `Effect<infer A, …>`, `number!!` as the fix for `EK2003` and D282, is stale against chapter 001 and Appendix B (`EK2003` is now the `for try` label error). No case under typescript/vibelang/cases uses a bare `: infer _`.
+
+    ```vibe
+    // before the flip a codemod wrote: try: (): infer _ => Promise.resolve(1), catch: (cause): infer _ => String(cause)
+    const run = effect () => {
+      return try Effect.tryPromise({ try: () => Promise.resolve(1), catch: (cause) => String(cause) }) // plain callbacks, TypeScript inference
+    }
+    export const describe = (cause: unknown): string => String(cause) // written type where the public declaration must not change
+    ```
+
+    Effect TS:
+
+    ```ts
+    const run = () => Effect.tryPromise({ try: () => Promise.resolve(1), catch: (cause) => String(cause) })
+    export const describe = (cause: unknown): string => String(cause)
+    ```
+
+    Decided by the agent from accepted VIP-1 (kind by keyword), VIP-3 and chapter 001 (an omitted slot is `never`; inference is the omitted annotation), existing194, principle2 (TypeScript's `infer` grammar), principle4 (no marker without meaning) and principle8, 2026-11-01. Class A; no Will question. Existing-code impact: a bare `: infer _` is a TypeScript syntax error in a flipped program and the flip codemod rewrites it in the same migration; no program meaning changes. Owners: flip-core/codemod-alchemy/migfix-t3code for the codemod, impl for the hook retirement with a regression case and a keyed fuzz mutation (`infer` in each annotation position), docs for the stale page.
+
+    - **Correction and addendum to detail 269 (2026-11-01T02:50:24Z): a channel written `infer Name` stays a form; only the bare `: infer _` whole-type marker is not.** The sentences "bare or as an `Effect<…>` slot" and "the compiler's channel-slot `infer` hook ... is a pre-flip implementation leftover to retire with the flip" are withdrawn. A slot written `infer Name` inside `Effect<A, E, R>`, or a bang-form slot, of a body return annotation is the per-channel inference form: Will's S2 ("Each channel is inferred or declared, inference is never silently confused with `never`") and the D57 row ("`infer Name` channels ... Document it, or connect the channels") in core-decisions.md; compiler case `typescript/vibelang/cases/contracts/main.vibe` ("A channel written `infer Name` comes from the body (D57)"), six user-docs pages and Appendix A's EffectOperand ("optionally after keyof, unique, readonly or infer") carry it. Chapter 001 line 374 speaks only of an omitted slot (`never`; omit the whole annotation to infer everything) and is silent on a written `infer`: that silence is the spec gap. Class A under D57's own default (document it): the spec owner adds to chapter 001, beside line 374, "A slot written `infer Name` is inferred from the body as `Effect.gen` would infer it; the name is documentation only, not a binding, and `infer _` is allowed", citing D57 and S2, and Appendix A keeps its grammar. No compiler change for the slot form; a keyed fuzz construct should pin `infer` in each slot of each annotation position. The bare marker rule, the codemod rule and the stale `EK2003`/D282/`number!!` sentences of getting-started/003 stand as written above.

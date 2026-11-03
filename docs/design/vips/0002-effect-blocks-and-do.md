@@ -62,3 +62,24 @@ Old VibeLang is a reference only; nothing in it is part of the language unless a
 - D322's exception, under which a `do { }` element of an await operation became a program.
 - D551's conversion of a function literal at an `Effect` parameter. This follows from VIP-1's "syntax decides".
 - The function-literal conversion of D480, where the parameter's type decided.
+
+## Details
+
+Decided details folded in verbatim on 2026-11-03 (mechanical pass). Each keeps its old number as history; where one conflicts with the text above, the fold's conflict pass resolves it.
+
+### Detail 18
+
+(VIP-2) `do` blocks follow TC39 exactly: no VibeLang limits on `var`, `break` or `continue` inside them (delete EK1019).
+
+### Detail 52
+
+(NW 14; VIP-2, VIP-23) The do-expressions and pipe-operator snapshots are the head commits of `tc39/proposal-do-expressions` and `tc39/proposal-pipeline-operator` on 2026-10-28 (UTC), vendored under `docs/design/vips/` with their SHAs, as `tc39-pattern-matching` is.
+    ```vibe
+    const x = do { if (a) 1; else 2 }
+    const y = v |> f(%)
+    ```
+    Effect TS: temporaries, as the spec lowers them. Decided by the agent from VIP-7's precedent (pin a dated snapshot, move deliberately); 2026-10-29.
+
+### Detail 68
+
+**`return` inside a `do` in a parameter default** (audit 002 D1; VIP-2 "everywhere, with no exceptions"). A parameter list containing a `do` expression with a `return` lowers by moving every default from that parameter on into the body: `function g(x = do { return null }) {}` becomes `function g(x = undefined) { if (x === undefined) { … } … }`, so the `return` returns from `g`. `g.length` is unchanged. The one documented divergence from TC39: a default that refers to a later parameter in its TDZ. Decided by the agent from VIP-2 and principle 2, 2026-10-30.

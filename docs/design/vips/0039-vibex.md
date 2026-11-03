@@ -367,3 +367,76 @@ Accept. `.vibex` is one extension that selects `.tsx`'s language variant plus Vi
 ## Context
 
 The proposals page lists "JSX source files" as not in VibeLang: components live in `.tsx` files that call `.vibe` functions. The earlier design left `.vibex` as a candidate that must not imply a stricter mode (research note D21). 45 opencode (Solid, `class=`, `jsxImportSource` from tsconfig), 218 t3code (React, `react-jsx`, `@effect/atom-react`) and 4 foldkit Effect modules are `.tsx` and can't become VibeLang today.
+
+## Details
+
+Decided details folded in verbatim on 2026-11-03 (mechanical pass). Each keeps its old number as history; where one conflicts with the text above, the fold's conflict pass resolves it.
+
+### Detail 265
+
+**Vibex output collisions follow the selected native output paths, not a shared source stem.** (Loop r6 Astra ASTRA-5; accepted VIP-39 exact TypeScript JSX checking/emit rule, VIP-27 output/sidecar names, principles2/3/4.) Do not reject `App.vibe` beside `App.vibex` merely because both are selected and share a stem. Compute the actual outputs under the native compiler options and host path identity; report native output-collision diagnostics only where the selected inputs really share a written path. With `jsx: preserve` and public declaration emission off, the pair has distinct `App.js` and `App.jsx` outputs and is admitted. With shared public declaration output enabled, both would write `App.d.ts`, so the normal collision applies. A JSX mode that writes both JavaScript inputs as `App.js` likewise collides. `noEmit`, declaration-only modes, output directories/maps and host filename identity keep their native rules, not a new VibeLang stem rule.
+
+    Selection and emission are separate. Default include/resolution priority may choose only one same-stem source; do not invent an include-both guarantee to manufacture a collision. Use explicit roots in the regression to ensure both selected files are actually tested. The same conditional output rule applies to a `.tsx`/`.vibex` pair: if both are selected and share a native output, report that collision; do not infer it from filenames alone when no corresponding file is emitted.
+
+    ```json
+    { "compilerOptions": { "jsx": "preserve", "declaration": false, "outDir": "dist" },
+      "files": ["App.vibe", "App.vibex"] }
+    ```
+
+    ```vibe
+    // App.vibe
+    export const plain = 1 // dist/App.js
+    ```
+
+    ```vibex
+    // App.vibex, JSX-free but still the JSX language variant
+    export const jsx = 2 // dist/App.jsx
+    ```
+
+    Effect TS: explicit `App.ts` and `App.tsx` roots containing the same two ordinary exports under those options emit `App.js` and `App.jsx`. Enabling declarations produces native `TS5056` for `App.d.ts`; `jsx: react` without declarations produces `TS5056` for `App.js`. None of these files contains Effect work or gains an implicit runner.
+
+    Compatibility sidecars stay separately named `App.d.vibe.ts` and `App.d.vibex.ts`; a common public `App.d.ts` is a different output concern. Keep VIP-39 exact native mode behavior, source maps, existing output/input overwrite diagnostics and host canonical path comparison. No new `EK` code, stricter JSX mode, source extension restriction or cross-file namespace is introduced.
+
+    Five stock TypeScript5.9.3 controls pass with explicit roots: preserve/no declarations emits both distinct files; preserve/declarations, React/no declarations and preserve/declaration-only each report native `TS5056`; React/noEmit reports no diagnostics and writes no files. Receipt: `jsx-output-collision-native-reference.json`. This is a native reference, not a VibeLang `.vibex`, sidecar, TypeScript7.1, product regression or fuzz result. Source/compiler owners retain the paired cases and property matrix over input selection, source kinds, JSX/declaration/noEmit modes, output/map directories and host path identity.
+
+    Decided by the agent from accepted VIP-39 exact `.tsx` emission/checking, principle2 (TypeScript already decides collisions), principle3 (actual output path identity), principle4 (one native collision procedure) and the five native controls, 2026-10-31. Class A; no Will question.
+
+
+
+    **Sidecar boundary clarification.** The native TypeScript `noEmit` control above concerns native output-collision behavior. It does not relax VIP-27 mandatory compatibility-sidecar creation or change the existing VibeLang sidecar writer; the two separately named sidecars remain governed by VIP-27/VIP-39.
+
+### Detail 298
+
+**RESOLVED by detail263's native declaration matrix, implementation pending; historical question: what `"extensionless"` and `".ts"` declare for a relative `./x.vibex` import.** (Round 14 Opus OPUS-5 at frozen `b48c60e5ee9a`, 001:483 and 007:107; lane spec-fix-r14 under Will's 2026-11-02 fix-on-find instruction.) Detail 263 defines `vibelang.declarationImportStyle` only for a reference written `./x.vibe`. VIP-39 settles the default for `.vibex`: "`x.vibex` emits `x.jsx` under `"jsx": "preserve"` and `x.js` otherwise", and "The public `x.d.ts` is byte-identical to the one the fork writes for the `.tsx` twin", so by default a `./x.vibex` import is declared through its JavaScript output, `./x.jsx` under `preserve` and `./x.js` otherwise. spec-fix-r14 published that default in 001, 007 and VIP-27's amendment, said the other two settings are not yet decided, and added the `.vibex` check to `//:spec-lint`'s `declaration-import-style-scope` rule.
+
+    **The compiler.** On main the compiler does not yet meet VIP-39's twin rule: public declarations keep `./x.vibex` (`testdata/pending/vibex-declaration-spelling.txt` in fuzz-findings' `d84df5f4d1b0`, compiler gap owned by lane `vibex-1`). This lane changed no compiler behavior.
+
+    **To decide.** For `"extensionless"`: `./x` (the reading of detail 263's "derived from the original package imports"). For `".ts"`: `./x.tsx`, the `.tsx` twin's own source extension, or `./x.ts`. Record the choice as a VIP-27/VIP-30 amendment.
+
+
+    **298 disposition, decide-live: decided as detail 298, Class A, 2026-11-02.** Apply the approved package-spelling convention to the actual native source twin: for a package declaration's relative written `./x.vibex` reference, `"extensionless"` writes `./x`, and `".ts"` writes `./x.tsx`. The latter is the TypeScript-source convention, retaining the JSX twin's source kind; it does not rename a `.tsx` module into a `.ts` module. Do not introduce a fourth setting `".tsx"`, change `.vibe`'s existing `".ts"` result, or make this mode depend on the JSX emit setting. The existing default `".js"` convention uses the target's actual JavaScript output, `./x.jsx` under `jsx: preserve` and `./x.js` otherwise, as accepted VIP-39 already requires.
+
+    ```vibe
+    // package declarations from: export { View } from "./view.vibex"
+    // "extensionless": export { View } from "./view"
+    // ".ts": export { View } from "./view.tsx"
+    // default ".js": export { View } from "./view.jsx" under jsx: preserve, else "./view.js"
+    ```
+
+    Effect TS counterpart:
+    ```ts
+    // The original JSX source is view.tsx, and its source-style import is:
+    export { View } from "./view.tsx"
+    // TypeScript declaration emit retains that written source specifier.
+    // An extensionless original retains "./view"; an output-style original
+    // retains "./view.jsx" or "./view.js", naming the actual target output.
+    ```
+
+    This is a declaration-spelling clarification under263's approved original-package convention and VIP-39's `.vibex`/`.tsx` twin. It grants no stale `.ts` source fallback (296 remains open), no source-resolution rows, runtime rewrite, alias, sidecar relocation or normalization waiver. Keep unrelated authored `.ts`/`.tsx`/`.js`/`.jsx` specifiers, package names, assets, import kind/order/quotes and native inferred-reference behavior unchanged under263/277. Source-sidecar spelling remains its distinct compatibility route. Source resolution and declaration consumers must preserve actual module identity; an output not satisfying the native/published gates remains an implementation gap, not permission to rewrite every extension or relax tests.
+
+    Decided by the agent from accepted VIP-39 (`.vibex` is to `.vibe` what `.tsx` is to `.ts`; public declaration twin fidelity), the approved C-prime package-spelling ruling in263, principle2 (mirror the native source kind), principle3 (module identity) and principle4 (one convention applied to both source kinds), 2026-11-02 under Will's 2026-10-29 delegation. No new Will choice, syntax, option value or public package API. Publish the exact matrix in VIP-27/VIP-30 and affected declaration/config pages under213; it is internally decided until that public amendment lands.
+
+    Validation scope: read immutable main2519454b6513 VIP-39 file-kind/output/declaration/resolution clauses and external298's reported compiler gap; no own native/compiler test. The existing `vibex-1` delivery owner retains compiler fixes and failing-old/passing-new, keyed spec-quoted coverage over all three styles, every supported JSX mode, imports/re-exports/import types/inferred references, unchanged native siblings, source-sidecars and actual consumer resolution. No completion/green-main claim follows.
+
+
+    **Superseded style question, decide-live cross-reference, 2026-11-02.** The final384-cell native-matrix amendment under263 retires `declarationImportStyle` entirely, including both paths and every supplied value (nonfatal deprecation warning). The older three-style table above is historical. Follow the actual `.tsx` twin's declaration spelling and native generated-import preferences, retaining source-sidecar identity and277's unchanged public-contract gate. The `5e496f0dc5ec` public text saying two JSX styles are undecided is stale against this newer ruling, not an open question for Will. See297's final cross-reference and the named delivery owner's actual verification receipts; no current compiler-conformance or landing claim is added.

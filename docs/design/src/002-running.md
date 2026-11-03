@@ -1591,3 +1591,402 @@ console.log(JSON.stringify(Effect.runSync(controls)))
 Effect's `pipe(x, f, g)` function stays available ([VIP-14](../vips/0014-effect-modules-in-scope.md)).
 
 The pinned snapshot is the [vendored copy](../vips/tc39-pipeline-operator/README.md) of `tc39/proposal-pipeline-operator` at commit `5ac4dfd624e68b649e6f947885bf5ef67bac19f4`, the head on 2026-10-28 (UTC), as pattern matching is pinned.
+
+## Details
+
+Decided details folded in verbatim on 2026-11-03 (mechanical pass). Each keeps its old number as history; where one conflicts with the text above, the fold's conflict pass resolves it.
+
+### Detail 61
+
+(NW 23; VIP-5) `(try x) catch h` is allowed: it catches the Effect that `x` succeeds with. VIP-5's "never both" covers only the unparenthesized `try x catch h`.
+    ```vibe
+    (try x) catch (e) => y   // ok when x succeeds with an Effect
+    try x catch (e) => y     // error (VIP-5)
+    ```
+    Effect TS: `Effect.catch(yield* x, (e) => Effect.succeed(y))`. Decided by the agent from principles 3 and 4 (parentheses mean what they say; no extra rule); 2026-10-29.
+
+
+    **61/99 catch-head argument execution, decide-live, 2026-11-02.** The current accepted `002-running.md` catch static rule explicitly states that a `try` inside arguments is outside the `EK0505` head search and `g(try a) catch h` catches `g`'s failure. Together with this detail's `Effect.catch(yield* x, h)` counterpart, VIP-5's native evaluation order and99/199's caller-side operand evaluation, this settles the Alchemy K2 catch-scope attribution question without a new language choice.
+
+    ```vibe
+    effect function read(text: string) {
+      return decode(try parse(text)) catch effect (cause) => { throw remap(cause) }
+    }
+    ```
+
+    Effect TypeScript: `function read(text: string) { return Effect.gen(function* () { return yield* Effect.catch(decode(yield* parse(text)), cause => Effect.fail(remap(cause))) }) }`. Here `parse` and `decode` return actual Effects. Evaluate the callee/receiver and arguments once in native order; running the argument `parse(text)` happens before `decode` is invoked and before the handler for its returned program is installed. Its failure propagates and does not enter this decode handler. A source `effect { const json = try parse(text); return try decode(json) } catch h` deliberately constructs a cold head program covering both runs and has a different catch extent. Do not silently substitute that wider generator for the ordinary head expression.
+
+    The auditor's original `a.pipe(Effect.flatMap(x => b(x).pipe(Effect.mapError(f))))` and written `b(try a) catch effect (e) => { throw f(e) }` match this accepted boundary in an enclosing Effect activation, subject to the actual surrounding syntax/bindings. A blanket claim that the written form must widen the catch is incorrect. The observed pre-flip emit's double mapping is real owner evidence, but actual parser/AST, compiler identity/version, generated run sites and emitted protection boundary must locate whether the product fault is lowering, a different codemod source shape or another legacy transformation. Do not attribute it to the codemod solely from the excerpt, weaken error/cause checks, or revive implicit running. Retention/refusal remains appropriate until the actual artifact preserves the native behavior.
+
+    Own native Effect4.1.0 controls (`catch-argument-native-reference/receipt.json`): original flatMap/mapError, accepted argument-before-catch counterpart and deliberately widened whole-generator catch, each on invalid JSON, schema mismatch and success (nine runs). The first two agree in every case. Invalid JSON preserves `SyntaxError` as the original cause, with zero decoder/handler calls; the widened variant calls the mapper once and nests a `K2SchemaError`. Schema mismatch and success agree across all three. This is native reference execution, not a Vibe compiler/Alchemy reproduction or a product attribution.
+
+    Decided by the agent as an application of existing61/99/199/277, accepted VIP-5's explicit head rule and principles1/2/3 (native Effect behavior, evaluation order and syntax-selected execution), 2026-11-02 under the 2026-10-29 delegation. No new code, numbered detail, Will question, compiler/target edit or oracle change. The owner should retain the exact Alchemy witness and add a quoted regression/fuzz neighborhood across head arguments, receivers/computed accesses, parentheses, nested cold blocks and parse/decode failure paths, without reclassifying ordinary native errors.
+
+
+    **Alchemy-63 channel boundary, decide-live, 2026-11-02 (existing61).** For `(try block) catch h`, the outer run completes before the returned Effect is protected. The handler receives only the error channel of the Effect in the outer run's successful value. A tag in the outer block's own error channel is not evidence that this handler must accept that tag. If the successful value is not an Effect, reject the catch operand instead of inventing implicit running or widening its error union. This is exactly `Effect.catch(yield* block, h)`; the enclosing generator propagates `block`'s failure before installing `h`. Recover the original native program, actual AST, nested success/error types, compiler identity and emitted protection boundary before attributing the reported tc3/tc6 difference. Preserve the owner's four TypeScript reversions and require a discriminating witness; the admitted non-discriminating repro cannot settle product attribution. Existing61/99/199/277 and principles1/2/3 settle scope; no cast, error-union widening, new decision or throw-expression retirement is authorized. Detail284 was pending at this receipt; its later recorded Will answer retains throw expressions under the pinned TC39 proposal. Decided by the agent from those existing rules, 2026-11-02 under the 2026-10-29 delegation.
+
+
+    **Alchemy-63 attribution update, 2026-11-02T11:00 owner receipt.** The owner now supplies a discriminating old/new example and native twins: an `Effect.gen` channel absorbs a tagged `Error` subclass into broader `Error`, while the original `flatMap` composition preserves an unreduced union. This supersedes the earlier absence of a discriminating witness. Apply61 as the accepted scope rule, not as a diagnosis of this separate generator/channel conversion defect. The legacy `(try effect { ... }) catch ...` excerpt alone does not establish a valid final-syntax AST or the successful nested Effect channel. Root has not replayed those compiler/static twins. Class-pattern conversion is separately bounded by277 below.
+
+
+    **61/99 program-argument clarification, decide-live, 2026-11-02.** A `catch` expression runs its head and gives the handled success value, even when its head is an `effect { ... }` block and the whole expression appears in another call's argument. It is not a cold `Effect.catch` composition. Thus the numeric caught expression in the first example below supplies a number to `withSpan`, not a program; parentheses around the caught expression do not change that. No call-site contextual reclassification is permitted.
+
+    ```vibe
+    effect function rejected() {
+      return try withSpan(effect { return 1 } catch effect () => 0, "read")
+    }
+    effect function coldComposition() {
+      return try withSpan(effect {
+        return (effect { return 1 }) catch effect () => 0
+      }, "read")
+    }
+    ```
+
+    The rejected native Effect TypeScript counterpart is `Effect.gen(function* () { return yield* Effect.withSpan(yield* Effect.catch(Effect.succeed(1), () => Effect.succeed(0)), "read") })`. The cold counterpart is `Effect.gen(function* () { return yield* Effect.withSpan(Effect.gen(function* () { return yield* Effect.catch(Effect.succeed(1), () => Effect.succeed(0)) }), "read") })`; direct native `Effect.withSpan(Effect.catch(Effect.succeed(1), () => Effect.succeed(0)), "read")` is also a program composition.
+
+    Own native TypeScript5.9.3 controls in `catch-program-argument-reference/receipt.json`: executed and parenthesized executed arguments each get `TS2769` plus the outer delegation's `TS2488`; cold-wrapper, native-composition and uncaught-program controls compile. These are five native static controls, not a Vibe/compiler/target or runtime-timing replay. The reported old8ecc/newe525 matched-runtime difference is evidence of compatibility behavior, not grounds to accept the invalid final source. Recover the original native producer and preserve its actual program argument, evaluation/span/error scope and declarations through274/277's migration; use a cold wrapper only when that reproduces the original, otherwise refuse/retain native source. Do not silently change new authored source or normalize away independent errors. Existing VIP-5's explicit execution rule,61/99, principle1 (idiomatic native Effect), principle3 (syntax selects execution), principle4 (one catch rule) and principle8 settle this; no new detail, language choice or Will question. Decided by the agent from those accepted rules, 2026-11-02 under the 2026-10-29 delegation.
+
+### Detail 93
+
+**Inherited static matchers stay unused** (NW 56; Fable r16 M2; r17-000, r17-004, r17-008; restates detail 67 so the next round stops copying it forward). A class pattern uses `Symbol.customMatcher` only when it is the class's own property (`Object.hasOwn(C, Symbol.customMatcher)`); for `class B extends A {}`, `when B:` tests `s instanceof B`. Fable's `Get` lookup is not adopted: a `.ts` `class Sub extends NotFound {}` would inherit `NotFound`'s generated matcher, which tests `_tag === "NotFound"` (003), so `when Sub:` would match every `NotFound`. Changing this needs a VIP-7 amendment with new evidence, not a NEEDS-WILL entry.
+    ```vibe
+    match (v) { when B: 1; default: 0; }   // v instanceof B
+    ```
+    Effect TS: `v instanceof B ? 1 : 0`. Decided by the agent from detail 67 and principle 1; 2026-10-29.
+
+68a. **Defaults that suspend or jump lower into the enclosing activation** (resolves Sol round-17 M1; generalizes detail 68, replacing chapter 002's blanket "the statements run in an arrow called in place"). A parameter or destructuring default whose expression contains a suspension (`try`, `await`, `yield`) or a `do` with an abrupt completion leaving the default (`return`, `break`, `continue`) is lowered into guarded statements in the enclosing function, at the default's evaluation point, never into an arrow: `const { x = do { try succeed(7) } } = o` becomes `const $o = o; let x = $o.x; if (x === undefined) { x = yield* Effect.succeed(7) }`, keeping the pattern's left-to-right evaluation order and its other bindings. A default with neither may still use the arrow form. Witnesses (Sol): `effect function f() { const { x = do { return 9 } } = {}; return 0 }` succeeds with 9; `effect function g() { const { x = do { try succeed(7) } } = {}; return x }` succeeds with 7. Decided by the agent from VIP-2 ("everywhere, with no exceptions") and the chapter's same-activation guarantee, 2026-10-30.
+
+81a. **The shipped thrown-signature inventory is a generated, published artifact** (resolves Sol round-17 M2; completes detail 81). The generator that annotates every TypeScript lib global and effect 4.1.0 non-Effect export writes a normative file, `docs/design/inventory/throws.json`, keyed by module, declaration and overload signature, recording own throws, `@rethrows` parameters, callback admission and returned callable contracts, with the exact TypeScript lib inputs and the Effect version it was generated from. Appendix E links it and states its classification rules (detail 81). Regenerating it on an Effect or TypeScript bump is part of the bump. Until the generator exists, the spec says the inventory is generated by that tool and links its path. Decided by the agent from VIP-4 and detail 81, 2026-10-30.
+    **Immutable-main source scope (f6fe7a, 81a).** The expanded shippedcontracts artifact is now published:16,258 unique module/declaration/kind/signature entries with required own/rethrows/callback/returnedcallable fields, including8,858Effect entries and7,400global entries. Input hashes match116immutableTSlibs and572declarations+572distfiles of the pinned installedEffect4.1package. This is structured publication/input consistency, not all classifier/coverage correctness or compilerconsumption. `root-mainf6-source-receipt.json` and `root-mainf6-throws-audit.json` preserve reviewed-prose/structured-artifact limits; no full raw9.19MB human-read or owncompiler/Go/generator/test/gate claim.
+    **Immutable-main source receipt (54182a, 81a).** The first global-own-throws snapshot and its coverage README are present in immutable main `54182a644026` (history lists `2e8757766ab7`). `throws.json` is explicitly a first slice: Effect exports, rethrows, callback admission and returned-callable contracts remain uncovered. Presence is not a correctness certification of current annotations; missing table entries remain unknown. This lane read the README/metadata/sample records and counted symbols/overloads without running the generator/tests or auditing every classification.
+
+    Independent root read: root-main54182-throws-receipt.json confirms54182a644026 is on fetched main, preserves the artifact SHA256 and its four false coverage flags (Effect exports/rethrows/callback admission/returned-callable contracts). The README explicitly leaves missing entries unknown and does not certify current annotations. No generator, freshness test or classification audit was run by this reader.
+
+31b. **VIP-5's table row "`x catch effect { … }` (an effect block; runs the fallback)" is superseded by 31a** (found by c9's fuzz suite, 2026-10-30). A `catch` handler is always a function literal, so `x catch effect { return 7 }` is a syntax error with the quick fix `x catch effect () => { return 7 }`, as chapter 2 says. Amend VIP-5's table to drop the row and cite 31a; the fuzz construct `vip05.catch-effect-block` is superseded. The value-form row `x catch guest` is the same kind of leftover: 31a replaced it with `x catch () => guest`, so drop that row too (fuzz construct `vip05.catch-value` deleted; `catch-function` covers the replacement). Recorded by the agent from Will's decision 31a, 2026-10-30.
+
+### Detail 99
+
+**`EK0505` covers `fork` and `join` heads** (NW 62; audit 002 interactions m2; amends VIP-5's "never both" and the `EK0505` row; VIP-17). `fork` and `join` run an Effect as `try` does and bind as tightly (detail 32), so `join f catch h` catches the Effect the fiber *succeeded with*, not the fiber's failure, and `fork e catch h` puts a handler on the fork, which never fails. Both are the misreading `EK0505` exists for. A `fork`, `fork.in(s)`, `fork.scoped`, `fork.detached` or `join` reachable from a `catch` head through unary and binary operator nodes only is `EK0505`, by the same tree rule as `try`. Quick fixes: for `join f catch h`, `Fiber.join(f) catch h` (handle the fiber's failure); for `fork e catch h`, `fork (e catch h)` (handle inside the fiber). The parenthesized forms `(join f) catch h` and `(fork e) catch h` are allowed, as detail 61 allows `(try x) catch h`.
+
+    Erased-wrapper source: applied in3861eba6cf53 (spec-fix-b; queued, not a main receipt). Complete five-kind transparent class, explicit source-parenthesis barrier and native admission checks; Node3/Bun3, strict .ts plus actual TS-emitted Node reference, regen183/forms/spec/docs pass. v16/v17 leftmost/binary/unary Circle generalized to erased wrappers without a lowering recipe.
+    ```vibe
+    join f catch (e) => 0        // EK0505: write Fiber.join(f) catch (e) => 0
+    fork e catch (e) => 0        // EK0505: write fork (e catch (e) => 0)
+    Fiber.join(f) catch (e) => 0 // ok
+    ```
+    Effect TS: `Effect.catch(Fiber.join(f), () => Effect.succeed(0))` and `Effect.forkChild(Effect.catch(e, () => Effect.succeed(0)))`. Decided by the agent from principle 4 (one rule for every operator that runs an Effect), detail 61's parenthesized precedent and principle 8 (an error relaxes later); no `.vibe` in the repository writes either form (grep, 2026-10-29); 2026-10-29. Restore the round-18 lane's 002 row with these quick fixes.
+
+    **Erased-wrapper clarification, 2026-10-30 (Opus r22 m19).** For the `EK0505` head search, runtime-erased TypeScript expression wrappers are transparent along the existing unary/binary path: `as`, angle-bracket assertions where admitted, `satisfies`, non-null `!`, and type-only instantiation expressions that add no call. This supplements the incomplete AST-kind list above. Actual source parentheses retain detail 61's boundary; runtime calls and source callable boundaries remain barriers. A compiler-added parenthesis in emitted JavaScript is not a source grouping choice.
+    ```vibe
+    declare const nested: (number!!)!!
+    effect function bad() { return try nested as (number!!) catch () => 0 } // EK0505
+    effect function explicit() { return (try nested) as (number!!) catch () => 0 } // allowed
+    ```
+    Effect TS for the explicit form is `yield* Effect.catch(yield* nested, () => Effect.succeed(0))`. Type wrappers still receive ordinary TypeScript checking and do not catch the outer execution or change its head. Quick fixes remain as superseded by detail 199. Decided by the agent from VIP-5's unparenthesized never-both rule, detail 61, principle 3 (syntax-selected execution without a type-only escape) and principle 4 (one traversal through erased wrappers), 2026-10-30. Add rejection controls for the erased wrappers and accepted explicit-parenthesis controls in the fixing tests; no new detail number or Will question is needed. `root-catch-wrapper-erasure.log` verifies all five native TypeScript 5.9.3 wrappers erase to the same operand. The first probe assertion was corrected to allow emitter-added grouping for an instantiation expression; its initial log is retained. This is erasure evidence, not VibeLang diagnostic conformance.
+
+90a. **Erratum to detail 90: `Config.String`, not `Config.string`.** Effect 4.1.0 exports `Config.String` only (`typeof Config.string === "undefined"`, re-probed 2026-10-29). Read detail 90's example as `try Config.String("API_KEY")`; the spec and the VIP-33 amendment already do. Recorded by the agent from the round-18 integrator's erratum, 2026-10-29.
+
+68b. **Destructuring defaults stay native where they can; the expanded form implements IteratorClose exactly** (resolves Sol and Astra round-18 M1; refines 68a). In an effect function the body is a generator, where `yield*` is allowed inside a destructuring default, so:
+   - A default whose suspending `do` (or `try`/`await`) can lower to one expression (expression statements and a final value: `do { try succeed(7); bad.value }` → `(yield* Effect.succeed(7), bad.value)`) stays native destructuring: `const [x = (yield* Effect.succeed(7), bad.value)] = xs`. ECMAScript's own IteratorClose and evaluation order apply unchanged.
+   - Only a default containing a statement that is not an expression, or an abrupt completion leaving the default (`return`, `break`, `continue`), uses 68a's expanded statements. There, closing the iterator follows ECMA-262 IteratorClose exactly, through a runtime helper `$iteratorClose(iterator, completion)` (VIP-31 allows specified adaptations): get `return` from the iterator and call it with the iterator as receiver; if the pending completion is a throw, it wins over any error from closing; otherwise an error from `return` propagates, and a non-object result is a `TypeError`. Not "`finally { $it.return?.() }`".
+   Witnesses (Sol r18): with an iterator whose `return` throws "close" and a getter that throws "body", `const [x = do { try succeed(7); bad.value }] = xs` exits `Die("body")`; with `return` returning `1`, it exits `Die(TypeError)`. Decided by the agent from VIP-2, 68a, VIP-31 and principle 2 (mirror ECMAScript), 2026-10-30.
+    **Witness qualification:** 68c's native-closing erratum overrides the overbroad final sentence here: a primitive close result gives TypeError when closing occurs with a non-throw incoming completion, including return or an outward jump; the historical default-value witness specifically needs normal default completion. An existing body throw wins, and a done iterator is not closed again. The lowering recipe remains superseded by68c.
+
+    **68a/68b assignment-pattern evaluation clarification, decide-live, 2026-11-02 (RC-41).** Native destructuring-assignment evaluation first obtains the RHS once, then performs the reached pattern steps. A `do` in an array/object assignment default or computed key/target must run at its actual native step; defaults run only for the corresponding `undefined` value. An assignment pattern is not an expression array/object whose children can be eagerly hoisted before the assignment.
+
+    ```vibe
+    const events: string[] = [];
+    let value = 0;
+    const rhs = (): number[] => { events.push("rhs"); return [2] };
+    [value = do { events.push("default"); 7 }] = rhs();
+    // events is ["rhs"]; the default never executes.
+    ```
+
+    Effect TS: for this no-jump plain witness, `[value = (() => { events.push("default"); return 7 })()] = rhs()` keeps the ordinary native assignment. It gives `2` without running the default. This is illustrative, not permission to wrap a general jumping/suspending default in another callable. Preserve reached key/target/getter/iterator order, native abrupt completion and closing, source lexical context and existing Effect-abandonment/execution-placement rules. Keep the already-correct declaration-pattern and ordinary RHS-`do` assignment paths. No new call/throw/context admission or suppression follows from fixing evaluation order.
+
+    Reviewer pass133 reports13 native/current scenarios, nine mismatches and four controls, with39 compiler/38 runtime calls; one older JSON.parse variant's known rejection is retained and excluded from runtime parity. Ordinary returned values/caught JavaScript errors are not Effect Exits. Chapter002/impl-hunt-run and core-block retain the failing-main regression and spec-quoted keyed fuzz for present/missing/nested defaults, computed targets/keys, state-changing or throwing RHS, custom iterators and skipped-error defaults. Existing68a/68b, accepted VIP-2, `002-running.md`'s default and evaluation rules, and principle2 settle this. Decided by the agent from those sources, 2026-11-02 under the 2026-10-29 delegation; no new numbered rule or Will question. Source: RC41/pass133/`pass133-pattern-matrix.json`.
+
+### Detail 109
+
+**Both custom for-of heads retain the RHS head environment and its uninitialized bindings.** (live `002-loop-head-rhs-tdz`; owner `spec-fix-b`; VIP-19/VIP-20; detail 48.) For `for concurrent` and `for try`, evaluate the operand in ECMAScript's separate `ForDeclaration` lexical environment, with all head-bound names in their TDZ. Closures created there retain that environment, whose head cells never become the initialized per-item cells. In `for concurrent(n)`, evaluate `n` before entering it. Preserve per-item fresh declarations and the body's separate block. Use hygienic cells if callbacks require them, preserving ReferenceError timing and const writes; do not resolve an RHS capture to an outer or per-item binding.
+    **Immutable-main source receipt (54182a, 109).** Immutable main `54182a644026` contains the source head lexical environment/TDZ, limit-before-head evaluation and whole-item jump rules in002 plus public VIP19/20 (history `d2f2bc108caf`). These are landed source rules; compiler parity is not inferred.
+    Status: applied in 8e5d16b01847 (spec-fix-b; queue accepted/held, not a main receipt). Replaces1ecc6d7f52ee with explicit limit-before-head environment, full initialization/body checks, and public VIP-19/20 amendments; Node6/Bun6 and strict5.9.3 pass.
+    ```vibe
+    let read = (): number => 0
+    const xs = [1]; let x = 42
+    for concurrent (let x of (read = (): number => x, xs)) { x = 7 }
+    read() // ReferenceError: the captured RHS-head x is still uninitialized
+    ```
+    Effect TS: the source lexical environment of `for (let x of (read = () => x, xs)) { x = 7 }`, with iteration work driven by `Effect.forEach` or `Stream.runForEachWhile`. Decided by the agent from principle 2 (ECMAScript ForDeclaration scope), VIP-19/VIP-20's adopted head, and 008's source-binding guarantee, 2026-10-29. No new diagnostic or source restriction.
+
+    **109 ordinary-loop preservation application, decide-live, 2026-11-02 (RC-37).** Detail109 mirrors the native `for-in`/`for-of` lexical-head rule; lowering a `do` in an ordinary loop's RHS must preserve that original environment too. A closure created in a lexical-declaration head's RHS retains its distinct uninitialized head cell forever. It must not capture an outer same-name variable or the later initialized per-iteration binding. A local declaration inside the `do` still shadows the head normally. Assignment heads introduce no new lexical head cells.
+
+    ```vibe
+    export function probe(): unknown {
+      const x = 7
+      let read: () => number = () => 0
+      for (const x of do { read = (): number => x; [1] }) {}
+      try { return read() }
+      catch (e) { return e instanceof Error ? e.name : String(e) }
+    }
+    ```
+
+    The ordinary TypeScript/Effect TypeScript counterpart retains the native loop and replaces only this no-jump RHS with `((): number[] => { read = (): number => x; return [1] })()`. It returns `"ReferenceError"`, not `7`; body initialization or reassignment cannot initialize the separate captured head cell. This is a plain-function binding control, not an Effect Exit. That plain arrow is illustrative only: a general lowering must also retain outward abrupt completions, source callable context and any admitted suspension rather than introducing a callback boundary. Preserve source binding identity and TDZ read/write timing for simple/pattern `const`/`let` heads, `for-in`/`for-of`, local/outer shadows, deferred/immediate reads, body captures and native assignment-head controls.
+
+    Reviewer pass125 reports25 compiler calls and25 runtime commands, all exit0 but six semantic mismatches on current `fe7b802fbf05`; five positive pairs and three older `509a2110` controls distinguish the scope regression. Paired declarations agree, which does not prove runtime binding identity. The already repaired RC24 destructured-head `closing.go` issue remains separately fixed; this is parser RHS hoisting, also affecting ordinary simple heads and `for-in`. Concurrent/`for try` reports keep their existing identities. Chapter002/impl-hunt-run, core-block and chapter008 own implementation and failing-main regression/keyed corpus/spec-quoted neighbourhood coverage. No root compiler execution, source/test edit, competing fix, closure or new diagnostic is claimed.
+
+    Decided by the agent from existing109's native lexical-head model, `000-intro.md`'s native plain/async guarantee, `002-running.md`'s source lexical-environment/evaluation rule, `008-runtime.md`'s binding preservation and principle2 (mirror TypeScript/ECMAScript), 2026-11-02 under the 2026-10-29 delegation. No new numbered detail or Will question. Source: `loop/scoped/rev-compiler/FINDINGS.md` pass125/`002:do-loop-head-loses-lexical-environment`; `pass125-loop-head.json` and `pass125-loop-controls.json`.
+
+### Detail 114
+
+**An outer restore capability cannot cross any independent effect activation.** (live `002-restore-function-boundaries`; generalizes detail 51's examples, retains 51a.) Crossing a nested `effect` function declaration/expression, arrow, method, producer, or block cannot capture an enclosing mask's restore: `EK2202`. A nested activation can introduce its own `uninterruptible` and restore that mask. Transparent region blocks and for-try callback lowering do not add a source function boundary; keep them allowed. A for-concurrent item retains detail 51a's ban even at limit 1.
+    **Immutable-main source portion (7ac03, 114).** Chapter002/AppendixB/publicVIP22 now distinguish an invalid capture of an outer mask across an independent source Effect activation from a valid own mask in that activation. Transparent regions and `for try` do not create boundaries; the separate `for concurrent` prohibition remains. This does not certify the separately queued detail51 nested-interruptible runtime repair. Full four-file,15,963-character diff independently read; documentation only, no own compiler/native/gate check. `main-7ac-source-receipt.json` records limits.
+    Status: applied inaa4bdb667ac2, landed as main7ac03c20d3a3 (spec-fix-b). Public VIP-22 publishes all callable forms and own-mask permission;002/AppendixB qualify outer capture and retain51a. Node2/Bun2, strict TS/native delayed-local-mask7, regen/forms/spec/docs pass.
+    ```vibe
+    uninterruptible {
+      effect function delayed() { restore { try sleep("1 millisecond") } } // EK2202
+    }
+    ```
+    Effect TS: a callback's `restore` belongs to the lexical `Effect.uninterruptibleMask`; do not export its use through a separately runnable Effect. Decided by the agent from detail 51's reason (a nested Effect can run after the mask ends), principle 4 (one activation-boundary rule for every callable spelling) and principle 8, 2026-10-29. Apply to 002, Appendix B, and VIP-22.
+
+    **Historical source-oracle quotation repair (later rejected and withdrawn as redundant).** Spec-fix-b reports `5d59b28a0976`/bookmark33 changes only the stale normative quotation after the7ac source publication. All six negative cases, positive lexical control, source-derived2202 and12 known pending records remain. Focused Go now reaches those cases with12 known skips and no XPASS; regen/forms/spec/docs pass as attributed. This is neither compiler conformance nor a main/green-postmerge or separate nested-mask observation receipt.
+
+    **Immutable-main quotation repair (9a7f385aa855).** The selected698-character `functions_spec_fuzz_test.go` diff changes only the stale source quotation; the case programs/assertions in that file remain untouched. The source owner identifies independently landed187eff99d94e as the equivalent quotation repair; overlappingB33/5d59b28a0976 was later rejected and withdrawn as redundant, so no copy relationship is claimed. This verifies source publication, not execution of pending cases, compiler behavior or a green postmerge. `root-main9a7-source-receipt.json` records the read.
+
+### Detail 125
+
+**Per-item jump restrictions cover head binding initialization as well as the loop body.** (live `002-loop-head-outward-return`; VIP-19/VIP-20, detail 48.) A source-function return in a `for concurrent` head's per-item defaults/computed binding keys is `EK1904`; the corresponding `for try` return is `EK2002`. Apply the existing per-item outward-jump restrictions to the entire head-initialization/body region, resolving nested source function boundaries independently. Do not discard the return as a callback result or invent cross-fiber return delivery. Limit and iterable/Stream operand evaluation remain in the enclosing activation, before item work, so a `do` return there keeps its ordinary enclosing target. Preserve the pinned do proposal's independent break/continue early errors in heads.
+    **Immutable-main source receipt (54182a, 125).** Immutable main `54182a644026` contains the whole head-initialization/body region scope and jump checks in002 plus public VIP19/20 (history `d2f2bc108caf`); nested source functions/limit/RHS retain their own source targets. Source landing only, not compiler conformance.
+    Status: applied in 8e5d16b01847 (spec-fix-b; queue accepted/held, not a main receipt). Replaces1ecc6d7f52ee with explicit limit-before-head environment, full initialization/body checks, and public VIP-19/20 amendments; Node6/Bun6 and strict5.9.3 pass.
+    Status: applied in 1ecc6d7f52ee (spec-fix-b; queued, not yet a main landing receipt).
+    ```vibe
+    for concurrent (const { n = do { return 7 } } of rows) {} // EK1904
+    for try (const { n = do { return 7 } } of stream) {}      // EK2002
+    for concurrent(do { return 7 }) (const n of rows) {}     // returns before launching work
+    ```
+    Effect TS: per-item initialization belongs to the `Effect.forEach`/`Stream.runForEachWhile` callback, whose return protocol cannot carry an enclosing-function return; operand evaluation precedes those calls. Decided by the agent from VIP-19/VIP-20's no-outward-return rule, principle 4 (one restriction for the whole per-item source region), and principle 8 (reject an unsupported cross-fiber exit), 2026-10-29. Apply to 002's tables/region rule and Appendix B; no new diagnostic code.
+
+    **Concurrent head mask boundary (Sol round25 M3).** The same per-item boundary also covers existing non-jump restrictions: a `restore` in a `for concurrent` binding default/computed-key initializer is `EK2202` under detail 51a, just as in its body, regardless of concurrency limit. It may not silently target the caller's mask because lowering put initialization in another callback. Limit/iterable expressions remain caller-side, so they keep any independently valid surrounding mask context. This is the already-decided source boundary from VIP-19/VIP-22 applied consistently, not a new restore form or a new per-item callback protocol. Decided by the agent from details 51a/109/125, principles 2 and 4, 2026-10-30.
+
+### Detail 136
+
+**Transparent regions preserve normal completion values and distinguish empty from undefined.** (live `002-region-normal-completion`; VIP-2/VIP-12/VIP-22.) `provide`, `uninterruptible`, `restore` and `interruptible` are source-transparent ordinary blocks. Extend their completion records (or an equivalent hygienic value tracker) to carry a normal completion's value and whether it is empty. A real value `undefined` differs from empty. Transfer that completion to the surrounding source expression only after the region Effect and its finalizers succeed; failure/defect/interruption transfers none. The enclosing do applies the pinned StatementList/UpdateEmpty semantics: an empty normal completion retains the previous statement-list value. Return/break/continue retain their existing value/target records.
+    **Immutable-main source scope (d0cdbe, 136).** 002/008 and VIP2/12/22/31 preserve source completion values, empty values and targets through transparent regions; implementation transport stays private. `root-main-d0cd-source-receipt.json` retains the complete31-file diff/hash/read scope. Source only; no decide-live compiler/gate rerun.
+    Status: applied in 804106b55fb6 (spec-fix-b; queue accepted, now held for diagnostic alignment, not a main landing receipt). Supersedes the source in c9df09482a10; preserves source types/completions plus original generator payloads and public VIP-12/22/31 amendments.
+    Status: applied in c9df09482a10 (spec-fix-b; queued, not yet a main landing receipt). Public VIP amendments are included.
+    Representation clarification: detail 217 supersedes this item's displayed record-as-Effect-success recipe. Its source completion/Empty/UpdateEmpty guarantee remains required; primitive observers must not see compiler carriers.
+    ```vibe
+    effect function a() { return do { uninterruptible { 7 } } }    // 7
+    effect function b() { return do { 5; uninterruptible {} } }    // 5
+    effect function c() { return do { 5; uninterruptible { undefined } } } // undefined
+    ```
+    Effect TS: execute the region via its existing Effect function, returning e.g. `{ _tag: "Normal", hasValue: true, value: 7 }` or `{ _tag: "Normal", hasValue: false }`; then update the source do's completion tracker. Source syntax-directed do checks traverse each transparent region's block as an ordinary BlockStatement, respecting actual nested source function boundaries, never the generated callback boundary. Per-item loops keep their separate discarded-result/jump rules. Decided by the agent from VIP-2's exact do semantics, VIP-12/VIP-22's ordinary-block control flow and principle 2 (ECMAScript Completion/UpdateEmpty), 2026-10-30. Choosing void regions would discard the already-promised ordinary-block completion and is not adopted.
+
+### Detail 145
+
+**Pipe evaluation follows the declared ShortCircuitExpression production.** (live `002-pipe-evaluation-production`; VIP-23 snapshot reconciliation, alongside detail 131.) Keep the snapshot's declared `PipeExpression : ShortCircuitExpression |> PipeBody` syntax. Attach Evaluation to that production and evaluate its actual ShortCircuitExpression child once, then GetValue and the existing EvaluateWithTopics operation. The printed evaluator's ConditionalExpression child is a stale production reference, not permission to change pipe precedence. Keep topic scope and the missing-topic early error unchanged.
+    **Immutable-main source receipt (695576, 145).** Verified at immutable main `695576acb44b`: 002/AppendixA and the pipe snapshot README evaluate the actual ShortCircuitExpression input once, preserving conditional precedence. This is source-publication evidence only; no compiler/native/regression suite was run by decide-live.
+    Status: applied in cb3692683d7d (spec-fix-a; queued, not yet a main landing receipt).
+    ```vibe
+    const a = true ? 1 : 2 |> % + 10   // 1: only the alternate is piped
+    const b = (true ? 1 : 2) |> % + 10 // 11: parenthesized whole conditional is piped
+    ```
+    Effect TS: `const a = true ? 1 : 2 + 10; const b = (true ? 1 : 2) + 10`, with hygienic once-only topic temporaries for general operands. Decided by the agent from VIP-23's adopted grammar, principle 2 (an evaluator operates on children its production defines), and principle 4 (correct the stale evaluator head rather than introduce a second grammar), 2026-10-30. List the erratum in the snapshot README, 002 and Appendix A; keep the upstream HTML unchanged.
+
+Landing receipt: source cb3692683d7d landed in main 695576acb44b (queue 1793370871-spec-fix-a, gate mq-10302026-7).
+
+### Detail 156
+
+**GetPrimaryTopicValue reads the topic environment it just acquired.** (live `002-pipe-topic-environment-read`; VIP-23 snapshot reconciliation.) Read topicEnv.[[TopicValues]] after GetTopicEnvironment returns and validates topicEnv; the printed envRec name belongs to a separate operation and is not in scope here. Keep existing topic lookup, binding and nested-pipeline scope unchanged. Record this local-name erratum alongside details 131/145 in README/002/Appendix A; retain the upstream HTML.
+    **Immutable-main source receipt (695576, 156).** Verified at immutable main `695576acb44b`: 002/AppendixA and the snapshot README read the acquired topicEnv instead of the stale unbound envRec. This is source-publication evidence only; no compiler/native/regression suite was run by decide-live.
+    Status: applied in cb3692683d7d (spec-fix-a; queued, not yet a main landing receipt).
+    ```vibe
+    const n = 7 |> % // 7
+    const same = obj |> % === obj // true, without reevaluating obj
+    ```
+    Effect TS: bind the input value once to a fresh topic temporary and read that same value at each permitted topic reference. Decided by the agent from VIP-23's once-bound topic meaning, principle 2 (an abstract operation uses its own bound variables), and principle 4 (correct the local name rather than invent another environment), 2026-10-30.
+
+Landing receipt: source cb3692683d7d landed in main 695576acb44b (queue 1793370871-spec-fix-a, gate mq-10302026-7).
+
+### Detail 157
+
+**The incorporated pipe punctuators retain TypeScript's binary XOR token.** (live `002-pipe-xor-punctuator`; VIP-23 snapshot erratum.) Keep ^ alongside ^= in the lexical inventory. The vendored OtherPunctuator table's duplicated % does not remove the existing XOR operator from TypeScript. Retain % as modulo and as the topic where pipe syntax permits it; no arithmetic/operator meaning changes. Document the table correction in README/002/Appendix A without editing upstream HTML.
+    **Immutable-main source receipt (695576, 157).** Verified at immutable main `695576acb44b`: 002/AppendixA and the snapshot README retain native XOR/XOR-assignment and topic-versus-modulo roles. This is source-publication evidence only; no compiler/native/regression suite was run by decide-live.
+    Status: applied in cb3692683d7d (spec-fix-a; queued, not yet a main landing receipt).
+    ```vibe
+    const a = 1 ^ 3 // 2
+    let b = 1; b ^= 3 // 2
+    const c = 7 |> % % 4 // 3: topic followed by modulo
+    ```
+    Effect TS: the same native XOR, XOR-assignment and modulo expressions with one topic temporary for the pipe. Decided by the agent from principle 2 (unchanged TypeScript operators), VIP-23's additive Hack pipe decision, and principle 4 (repair a token-table omission, no new exception), 2026-10-30.
+
+Landing receipt: source cb3692683d7d landed in main 695576acb44b (queue 1793370871-spec-fix-a, gate mq-10302026-7).
+
+### Detail 182
+
+**The added for loops use the native iteration rules in the do static predicates.** (live `002-do-iteration-predicate`; VIP-2/VIP-19/VIP-20 integration, distinct from detail 177's empty switch.) Define `EndsInIterationOrBareIfOrDeclaration` explicitly for every `ForTry` and `ForConcurrent` production: if `isLast` is true, return true; otherwise if `IsBreak` of its body Statement with the same `labelSet` is true, return true; otherwise recurse into that body with the same `labelSet` and `isLast`. These are the pinned native iteration steps, including the nonfinal body traversal; a blanket false fallback is insufficient. The added iteration statement itself has `IsEmpty = false` and `IsBreak = false`, matching native loop statements. Carry existing grammar parameters and loop jump restrictions unchanged. No implicit one-child forwarding exists for these multi-child productions.
+    **Current do-predicate conflict-repair source (ddcc0580).** Source `ddcc0580e1e6` is reported queued by spec-fix-a, superseding rejected `3d60171bb38d`. It retains both the complete empty-switch and added-loop static predicates/publicVIP2 amendment while preserving current main's call evaluation/source naming. Seven focused checks, exact strictTypeScript,43citations, regeneration/docs/tokens and the four-package spec target (30selected,27active passes,3retired skips) are attributed passes. No matching ORIGINS Circle, main landing or compiler conformance is claimed. Earlier29-target selection evidence remains historical rather than being silently reused as the current count.
+    Status: applied in fdb225af998c (spec-fix-a; queued, not yet a main landing receipt).
+    ```vibe
+    effect function first(rows: Stream.Stream<number>) {
+      return do { for try (const row of rows) {} 7 } // succeeds with 7
+    }
+    effect function second(rows: number[]) {
+      return do { for concurrent (const row of rows) {} 7 } // succeeds with 7
+    }
+    // do { for try (const row of rows) {} } and final for concurrent are early errors, like a final native loop.
+    ```
+    Effect TS: run the existing `Stream.runForEachWhile` or `Effect.forEach(..., { concurrency, discard: true })` counterpart, discard its item results, then return `7`. Decided by the agent from VIP-2's adopted prohibition on iteration endings, principle 2 (the pinned native-loop predicate and IsEmpty/IsBreak behavior), and principle 4 (one iteration classification for native and added loop statements), 2026-10-30. Reconcile the do snapshot README, 002 and Appendix A without modifying upstream `spec.emu`; cover both nonfinal successes and final-loop rejection, plus required body traversal. `decide-live-scratch/root-do-iteration-reference.log` verifies the missing multi-child cases, the primary ECMAScript chain-production definition and both `Success(7)` Effect `4.1.0` counterparts. This is static-algorithm/reference evidence, not native-do or VibeLang compiler conformance.
+
+**Replacement source queued:** 3fbdc9cdd5d3 (same bookmark9) supersedes rejectedfdb225af998c after rebasing onto main d50d73b32354. All three final tests fail against immutable raw-main inputs and six focused/grammar checks pass after; strict TypeScript5.9.3 and Effect4.1.0 controls pass. Fresh29 selected spec/cost functions, regen183/docs9/tokens/forms pass, no moved decisions. The repaired source preserves the current completion prose and explicitly acknowledges the snapshot reconciliations. ORIGINS grep finds no predicate/empty-switch Circle; earlier jump-target circles are outside this rule. Evidence do-predicates-refresh-* in spec-fix-a-scratch. This is queued source/native-reference evidence, not a main or compiler-emission receipt.
+
+**Earlier complete replacement receipt (before corrected `ddcc0580e1e6`):** 3d60171bb38d (bookmark9) supersedes3fbdc9cdd5d3 and the original rejectedfdb225af998c. Includes the explicit public VIP2 static-predicate amendment required under213. Four final regressions fail on immutable raw main d50; seven focused/grammar checks pass after. Strict TS5.9.3/Effect4.1 controls, regen183/docs9/tokens/forms pass with no form moves. Final Go selection29 exits0 on daf7ddaa51ff:26 top-level passes,3 explicitly retired legacy-oracle skips, plus one intentional superseded fixture subtest skip; native worker dependencies are required. Earlier all29 wording meant the configured target exit0, not29 executed passes. No tests/gates were weakened. Rebased onto fetched f10f3e12c5bb with only generated token conflicts, regenerated and repeated focused7/docs9/tokens before enqueue. Evidence do-predicates-publication-* and final-spec-receipt.json. Queued source/native-reference receipt only; no main or compiler-conformance claim.
+
+### Detail 192
+
+**A do expression uses source completion-value typing with ordinary expression literal treatment (class B, timed default A applied).** (live `002-do-result-type`; timed default A applied; originally class B because VIP-2's untyped runtime algorithm does not select literal-preserving expression typing over return-style widening.) Applied A: compute the type from the values that can reach a normal completion of the source do block, following its actual ECMAScript value/empty/UpdateEmpty flow, including handled local jumps. Union the normal value alternatives. Convert a final empty normal completion to `undefined`; do not add undefined merely because a statement's empty completion inherited an earlier value. A path leaving outward by return/throw/break/continue supplies no normal do value; if no normal path remains the expression type is `never`. Its outward return/typed failure is still checked and inferred at the enclosing activation under the existing rules. No generated function boundary is introduced.
+    **Immutable-main source scope (d0cdbe, 192).** 002/VIP2 publish source UpdateEmpty completion typing, ordinary fresh literal/const/let treatment and never for no normal path. This publishes the resolved A default, not compiler admission. `root-main-d0cd-source-receipt.json` retains the complete31-file diff/hash/read scope. Source only; no decide-live compiler/gate rerun.
+    Status: applied in 804106b55fb6 (spec-fix-b; queue accepted, now held for diagnostic alignment, not a main landing receipt). Supersedes the source in c9df09482a10; preserves source types/completions plus original generator payloads and public VIP-12/22/31 amendments.
+    Status: applied in c9df09482a10 (spec-fix-b; queued, not yet a main landing receipt). Public VIP amendments are included.
+    ```vibe
+    const exact = do { 1 } // A: type 1; B: number under uncontextualized return-style widening
+    let ordinary = do { 1 } // A: number, from ordinary TypeScript let widening
+    const checked: number = do { 1 } // declared/contextual type follows TypeScript
+    ```
+    Under A, contextual typing applies to expression alternatives whose values can reach the do result as it does for conditional/match result alternatives; intermediate discarded expressions and outward return expressions retain their own source contexts. Preserve the usual fresh-literal behavior through the source do node: an uncontextualized const initializer above retains `1`, a let initializer widens normally, and written annotations/const assertions obey normal TypeScript rules. Generated temporaries must not choose the source type or overload. Emit declarations from this source-level type. Alternative B applies ordinary function-return-style widening to the collected normal values, while preserving the same empty/abrupt/runtime rules.
+    Effect TS: runtime `do { 1 }` is an immediate evaluation of `1`; a source-level const initialized with that literal has type `1`, while `let tmp; tmp = 1; const result = tmp` has type `number`. With overloads `pick(1): Effect.Effect<number>` and `pick(number): Promise<number>`, those types select different signatures even though both values are 1. **Timed default A applied effective 2026-10-30 09:00 PT; processed 2026-10-30T16:00:22.159322+00:00. No Will answer was recorded at handling**. Recommended by the agent on 2026-10-30 because A matches expression alternatives and detail 79's match-result model and keeps emitter choices out of static dispatch. Class B is justified: TypeScript has no native do-expression typing rule, VIP-2 supplies runtime completions rather than this static policy, neither overload-sensitive alternative is uniformly more conservative, and choosing one can change a callable's selected type/declaration. This is not a request to reconfirm the settled runtime behavior. Add the chosen rule to 002/VIP-2 and expression-lowering contracts, with const/let/contextual, branch, empty, abrupt-only and overload witnesses. `do-result-type-reference.log` passes strict TypeScript with expected-error checks distinguishing literal versus temporary types and Effect versus Promise overloads. Existing parser representation as an invoked arrow is implementation evidence, not authority to infer a source rule. No VibeLang compiler typing result is claimed.
+
+
+
+    **192 current contextual-result application, decide-live, 2026-11-02.** The settled A policy applies through `do` to a surrounding return annotation, annotated binding, call parameter and match result. Give only the normal-result alternatives their actual source context; do not first widen object discriminants through an uncontextualized generated return/temporary. Discarded intermediate expressions and outward returns keep their own contexts.
+
+    ```vibe
+    type Selection =
+      | { readonly _tag: "SelectedEdge"; readonly value: number }
+      | { readonly _tag: "IgnoredEdge"; readonly reason: "GuardFailed" }
+    function select(condition: boolean): Selection {
+      return do {
+        ({ _tag: "Unrelated" })
+        condition
+          ? { _tag: "SelectedEdge", value: 1 }
+          : { _tag: "IgnoredEdge", reason: "GuardFailed" }
+      }
+    }
+    ```
+
+    Effect TS: the same plain function and `Selection` type, evaluating `({ _tag: "Unrelated" });` then returning the conditional expression directly. The return context preserves the two literal tags; it does not require the discarded object's tag to inhabit `Selection`. This is an illustration of existing192, not a new static policy or permission to add casts/const assertions.
+
+    Own primary postmerge receipt for `c9b86d733a10` is RED at17:17:51Z: `TestDoContextualResult` names25 failing variants. All25 diagnostic first lines and the first complete fixture were read:20 `TS2322` reports and five call-argument `TS2345` reports expose `_tag: string` instead of the required literal tags. This records compiler diagnostics, not execution of rejected programs or a proven code-level cause. The graph contains prefixed streaming output and an unprefixed complete copy; those were deduplicated, with no invented log truncation. Existing claims identify fuzz-findings and `main-red-docontext`; this lane starts no competing repair. Preserve the failing regression and neighbourhood under the accepted source rule. There is no new Will question, reversal of the applied default, numbered decision or root compiler/gate execution.
+
+### Detail 198
+
+**A `do` or `match` runs where JavaScript evaluates the expression that holds it.** (Replaces chapter 2's expression-lowering recipe.) Everything to its left runs first, in source order, callee and receiver included. How the compiler keeps this is its choice. Decided by the agent from the same reasoning as 68c, 2026-10-30.
+    **Immutable-main source scope (59c774, 198).** 002/publicVIP2 preserve native call references, receiver/callee/argument order and abrupt/noncallable errors without observable helper lookup. The illustrative mutable-global Reflect.apply recipe is replaced by a native call expression; no compiler emitter implementation/conformance is certified. `main-59c-source-receipt.json` records the complete five-file read; no own compiler/gate/native rerun.
+
+    Main receipt (spec-fix-b): 81a494b2a537 landed in59c77493d848; source verified on fetched main and native/spec/docs/forms proofs retained. This is not a compiler-conformance or all-green postmerge claim.
+    Partial source receipt: the normative ordering paragraph is present at main12d6a3b9ce5e, as revalidated by spec-fix-c. The concrete `total` counterpart at 002 line266 still invokes source-resolved mutable `Reflect.apply`; Sol r21/r22/r23 M1 therefore remains a source defect. `main-total-order-receipt.json` independently checks the immutable main source. This is not completed counterpart delivery or compiler-conformance evidence.
+
+    **Round26 native-call source receipt:** spec-fix-b reports `792e2c7347ee` queue-accepted for the actual native call counterpart and a public VIP-2 amendment. The original `total` example is still present at independently fetched main `b0387e3558d9`; the source repair is therefore queued, not verified landed. Fixer validation is attributed to live `002-reflect-apply-call-mapping`; decide-live did not run those regressions or query the queue.
+
+    **JSX prefix order for an outward-jumping `do` (Loop r4 Opus OPUS-5, existing198/VIP-2 plus acceptedVIP-39).** A JSX container creates no source function boundary. If an outward-jumping `do` must be materialized as statements, first preserve every source evaluation that precedes it, including tag/receiver reads, earlier attributes, spreads and earlier children, with their order, once-only evaluation and abrupt completions. Then execute the `do` and its jump; do not move it alone ahead of that prefix. In `preserve`/`react-native` output, the materialized prefix is passed as values, so an earlier property read in this witness is a snapshot rather than a framework's later reactive getter. That follows VIP-2's existing source jump/order contract, not a promise to preserve framework-specific laziness for a construct with no native `.tsx` outward-jump expression. Do not mandate unrelated hoisting where the existing lowering can preserve the source position and context.
+    ```vibex
+    function f(props: { a: number }, c: boolean) {
+      return <Box a={props.a} v={do { if (c) return 7; 1 }} />
+    }
+    ```
+    Effect TS for this minimized plain-function witness: `function f(props: { a: number }, c: boolean) { const Box0 = Box; const a0 = props.a; if (c) return 7; const v0 = 1; return <Box0 a={a0} v={v0}/> }`, with fresh hygienic helper names and the ordinary native JSX emit thereafter. This is a bounded counterpart, not an algorithm for all JSX constructs. Decided by the agent from existing198/VIP-2's everything-to-the-left-first rule and VIP-39's transparent containers, principle4 (one source-order rule, no JSX jump protocol), 2026-10-31. Reuses198, no new number or IIFE/function boundary. Add source-order/abrupt/once-only and prefix-getter/spread/child controls plus spec-quoted fuzz mutations across preserved/transformed modes; no compiler/framework behavior was tested here.
+
+### Detail 217
+
+**Transparent-region completion transport is private; observers see the accepted generator payload.** (live `002-region-exit-payload`; VIP-12/VIP-22/VIP-31; clarifies 136 and supersedes only its record-as-Effect-success recipe.) Preserve the original `Effect.provide(Effect.gen(B), layer)`/interruption-region counterpart at every observable Effect/Scope boundary. A normally completed source region yields primitive Effect success `undefined`, even when its ordinary source block completion is `7`, another value, or Empty. A source `return v` that exits the region yields primitive success `v`, including a legitimate Effect or record-shaped object returned as data; bare return yields `undefined`. An outward source `break`/`continue` exits the region successfully with primitive payload `undefined`: neither is a source return, and its source completion value/target belongs to control flow, not the Effect success channel. Preserve that source completion separately, including Empty versus explicit `undefined` and UpdateEmpty values/labels, and reissue it only after the region and its Effect finalizers succeed. Normal source completion `7` can therefore make the enclosing `do` evaluate to `7` while the region layer's finalizer observes `Exit.succeed(undefined)`. Nested transparent regions obey the same rule individually; an outward `return v` crosses each still-active region with logical payload `v`, after inner finalizers have succeeded.
+    **Immutable-main source scope (d0cdbe, 217).** 002/008 and VIP12/22/31 publish private source-completion transport with primitive observer payloads: normal/jumps undefined, returns their actual values, pending transfer only after successful finalization. `root-main-d0cd-source-receipt.json` retains the complete31-file diff/hash/read scope. Source only; no decide-live compiler/gate rerun.
+    Status: applied in 804106b55fb6 (spec-fix-b; queue accepted, now held for diagnostic alignment, not a main landing receipt). Supersedes the source in c9df09482a10; preserves source types/completions plus original generator payloads and public VIP-12/22/31 amendments.
+    Do not expose `{ _tag: "Normal" }`, a hasValue/value carrier, a Return/Break/Continue record, or any other compiler control representation as the primitive success value. An equivalent hygienic per-execution tracker is allowed, but its identity, lifetime and reset must preserve cold reruns, reentrancy and per-item isolation; construction-time shared state cannot leak a prior run's completion. Do not identify compiler control by a user-visible string/tag shape or unwrap a real returned user object. Preserve source value identity, ordinary evaluation order and the original failure/defect/interruption Exit. A failing, dying or interrupted body/finalizer transfers no pending source completion; Effect's own finalization/error-combination/interruption rules decide the final Exit. Do not retrofit observer Exits after finalizers already saw a private carrier. The separate per-item native callback protocols (`for try` true/false; `for concurrent` discard) remain their own contracts: an inner transparent region completes before the enclosing callback emits that protocol result.
+    ```vibe
+    effect function normal() { return do { provide observed { 7 } } }
+    // outer Success(7); observed layer finalizer sees Success(undefined)
+    effect function early() { provide observed { return 7 } }
+    // outer Success(7); observed layer finalizer sees Success(7)
+    effect function stop() { outer: while (true) { provide observed { break outer } }; return 7 }
+    // outer Success(7); observed layer finalizer sees Success(undefined)
+    ```
+    Effect TS: keep a hygienic source-completion tracker outside each region's body Effect. For normal `7`, record that source completion and let `Effect.gen(function* () { 7 })` fall through with `undefined`; for `return 7`, the body generator returns `7` and the caller reissues the source return after `yield* Effect.provide(...)`. For an outward jump, record its source target/value and return `undefined` from the body generator, then perform the source jump after the primitive finishes. This is an observational contract, not a prescribed record layout. Decided by the agent from VIP-12/VIP-22's original exact `Effect.gen(B)` counterpart, VIP-2/detail 136's already-promised source completion, principle 1 (idiomatic generator return versus fallthrough), principle 3 (only source return supplies the result, never a compiler record's spelling), and principle 4 (separate source control from the runtime API value), 2026-10-30. It is class A: choosing source normal-completion values or private records as primitive success would change the accepted counterpart's finalizer observations; preserving it requires no new Will choice. `root-region-exit-reference.log` has 22 asserted Effect4.1 controls: leaking-record versus out-of-band observations for eight source-completion models, real returned record identity, body/finalizer failure suppression, and nested normal/return observations. Break/continue controls are the chosen source reconciliation model, not execution of native VibeLang jumps. The fixer's independently read `region-release-values.log` shows all four outer Success(7) results with four different finalizer payloads. Add public VIP amendments per213 and 002/008 paired observer examples; no compiler-conformance or landing claim is made here.
+
+### Detail 221
+
+**Dynamic `import()` keeps native Promise failure timing and the explicit Effect bridge.** (Opus round27 m38; VIP-4; details74/89/219.) In Effect code a dynamic `import(specifier, options?)` is subject to `EK0404` under the existing Promise-result predicate, independently of whether the import can reject. Add `import()` explicitly to the prose/catalog invocation list; TypeScript5.9.3 actually represents this intrinsic as a `CallExpression` with `ImportKeyword`, not a distinct node outside call checking. The intrinsic import operation's own synchronous thrown type is `never`: loading, linking, evaluation and specifier-coercion failures follow native rejected-Promise behavior. Independently evaluated source argument expressions keep their existing thrown contracts and source evaluation order; do not erase a synchronous throw from evaluating `makeSpecifier()` merely because its consumer is `import()`. An explicit `tryPromise` thunk encloses the complete native import expression, including its arguments, once per execution. This neither auto-runs an import nor changes native async/plain-function rules. Static import declarations and type-only `import(...)` queries are not runtime import expressions. Existing literal specifier bans (detail74/VIP33) stay independent; bridging does not admit a forbidden module or a literal `data:`/`blob:` program.
+    Current source replacement: `33b84089aed0` is fixer-reported queued on `daf7ddaa51ff`, superseding rejected `0609b6610a2d` through the guarded queue API. It preserves main’s async contracts, tagged-template and eager-handler rules. Node5/Bun5, 183 kernel cases, regeneration/forms/spec/docs checks are attributed to spec-fix-b; no main landing or own compiler/native rerun is claimed.
+    Earlier source verification: superseded/rejected `0609b6610a2d` (spec-fix-b; checked on earlier aligned main `e0671f94`; this is historical, not the replacement base). Public003/AppendixB/VIP-4 reconciliation; Node2/Bun2, strict TS5.9.3 AST/runtime-import/type-query checks, native Node/Bun all failure-phase controls; regeneration/forms/spec/docs pass after rebase.
+    ```vibe
+    effect function bad() { const module = import("./worker.js") } // EK0404: Promise-producing runtime invocation
+    effect function good() { return try tryPromise(() => import("./worker.js")) }
+    type Worker = typeof import("./worker.js") // a type query, no runtime invocation
+    ```
+    Effect TS: `Effect.gen(function* () { return yield* Effect.tryPromise(() => import("./worker.js")) })`. Decided by the agent from VIP-4's always-explicit Promise bridge, principle2 (native dynamic-import Promise and evaluation semantics), principle3 (intrinsic syntax rather than a spelling-resolved function), and principle4 (one Promise-result rule for runtime invocations), 2026-10-30. `root-round27-reference.log` passes strict TypeScript5.9.3 AST/type/signature checks, an Effect4.1.0 import bridge returning the fixture's7, and a specifier-coercion failure that returns a Promise and rejects with the same marker exactly once. This is a native/reference receipt, not VibeLang compiler conformance or a landed source fix.
+
+    **Argument-phase native control.** `root-round27-import-arguments.log` additionally passes native assertions that both a throwing specifier argument expression and a throwing options argument expression throw synchronously before the intrinsic import operation. This directly verifies the argument/operation distinction above; it is separate from the specifier object's coercion failure, which rejects the returned Promise.
+
+    **Independent ImportCall operand-boundary receipt:** `round27-reference.log` checks a throwing specifier expression escapes synchronously before producing a Promise, while a throwing specifier `toString` rejects the returned Promise. `import-call-ecma-primary.txt` saves published ECMAScript2025 `EvaluateImportCall`: specifier/options Evaluation/GetValue precede PromiseCapability creation; later coercion/attribute failures use Promise rejection. The same batch confirms TypeScript CallExpression/ImportKeyword, bridge Success(7), and that `Effect.try` alone returns the Promise as data. Its initial contrary operand assertion failed and was corrected before any policy write; `round27-import-initial.log` preserves it. These independent native controls corroborate this rule, with no VibeLang test or new decision count.
+
+    Applied in 4789b0de2693 (spec-fix-b source queued; no main landing receipt): complete import runtime/argument-phase clarification, published inventory preserved; Node5/Bun5, strict native, regen183/forms/spec/docs and Go quotations/coverage pass. Replaces rejected33b84089aed0 with guarded supersession.
+
+    **221 dynamic-import lowering clarification, decide-live, 2026-11-02 (RC-36).** The runtime `ImportKeyword` is intrinsic syntax, not a first-class callee value. Lowering a `do` in either dynamic-import argument must retain the complete native `import(specifier, options?)` node and evaluate its arguments once in their source order. Never emit `const temporary = import` or replace the intrinsic with a captured function call. This applies the existing native plain/async guarantee and this detail's actual TypeScript AST identity; it adds no import form or permission.
+
+    ```vibe
+    export async function probe(): Promise<unknown> {
+      const m = await import(do { "./dep.js" })
+      return m.value
+    }
+    ```
+
+    For this no-jump witness, the native TypeScript counterpart is `export async function probe(): Promise<unknown> { const m = await import((() => "./dep.js")()); return m.value }`. That illustrative plain arrow is not a general lowering recipe: preserve outward jumps, source callable context, argument exceptions, native Promise/coercion/attribute rejection timing, import contextual types and module checks. Source `super`, direct `eval` where a native boundary admits it, and dynamic `import` are each governed by their native syntax/identity, never an ordinary-call rewrite based only on their common AST category. This does not relax VIP-33's literal-module bans or its native-boundary requirement for `eval`.
+
+    The review owner reports current `fe7b802fbf05` emits `const $do_t1 = import;` with compile exit0 and subsequent Node parse failure, while preceding `509a2110` and native controls execute the applicable witnesses. Cases cover specifier/options/both, async/plain/top-level and hoisted/typed-arrow controls. Its27 compiler calls and25 runtime attempts are attributed receipts, not this lane's execution or a full-suite claim. A secondary unannotated callback error and a pre-flip inferred-Effect callback control remain separated. Queued `971c7f13b2c4` still has the super-only exclusion and is not proof of this repair. Owners chapter002/impl-hunt-run, core-block and chapter003 retain the failing-main regression, keyed corpus and spec-quoted neighbourhood fuzz for those contexts, outer jumps, argument failures, import attributes and unchanged native calls. No compiler/source-test edit, new diagnostic, new detail or Will question here.
+
+    Decided by the agent from existing221, accepted VIP-2's source-position `do` semantics, `002-running.md`'s native evaluation rule, principle2 (mirror TypeScript/ECMAScript) and principle3 (syntax and intrinsic identity), 2026-11-02 under the 2026-10-29 delegation. Source: `loop/scoped/rev-compiler/FINDINGS.md` pass124/`002:do-dynamic-import-callee`, `pass124-dynamic-import.json`, `pass124-import-matrix.json` and `pass124-import-corrections.json`.
+
+### Detail 252
+
+**An `allSettled` literal preserves its source spreads without iterating compiler-created arrays.** (Follow-up to loop r1 ASTRA-1 and main `e3cf1d779348` `002-running.md:814`; accepted VIP-18 exact Effect sugar and literal-tuple amendment; principles 1 and 2, native source-array evaluation.) Evaluate source literal elements and each source spread once in native left-to-right construction order. A source spread uses that value's actual iterator, including an inherited or own array iterator, just as native `[...xs]` does. Wrapping yielded Effects in `Effect.exit` must not introduce an additional observable `Array.prototype[Symbol.iterator]` call on a generated array. In particular, `...[...$xs].map(Effect.exit)` is not an exact counterpart: the outer spread iterates its generated mapped array and can reverse values again, add side effects or throw through a user-modified prototype. Preserve source order and cold Effect construction, then run `Effect.all` with `concurrency: "unbounded"`. Preserve VIP-18's existing literal tuple typing, spread-as-array typing and non-literal heterogeneous-tuple restriction; a runtime reference using `.map` is not a request to widen every literal to an array. The operand remains an array expression; this admits no bare Set operand or new call mode.
+
+    ```vibe
+    effect function collected(xs: ReadonlySet<Effect<number>>) {
+      return try.allSettled [...xs] // one source spread; no hidden array re-spread
+    }
+    ```
+
+    Effect TS:
+
+    ```ts
+    function collected(xs: ReadonlySet<Effect.Effect<number>>) {
+      return Effect.gen(function* () {
+        const source = [...xs]
+        return yield* Effect.all(source.map(Effect.exit), { concurrency: "unbounded" })
+      })
+    }
+    ```
+
+    Bounded native evidence: `allsettled-hidden-array-iteration-reference.json` compares the published projection with the source-array counterpart in 64 cases over Sets, generators, own-iterator arrays and ordinary arrays, lengths 0–7 and counting/reversing prototype iterators. All64 published projections add one observable iterator call;24 change element/run order. Prefix/spread/suffix construction stays ordered and Effects stay cold in both controls. The temporary prototype change is restored before Effects execute. This establishes a source-counterpart defect, not a VibeLang compiler defect or a delivered fuzz generator. The fixer must retain the minimized foreign-TypeScript prototype fixture, add a failing regression and spec-quoted keyed fuzz coverage for protocol-call counts, order, input iterable shapes, empty/multiple spreads, coldness and tuple typing. Do not ban native prototype changes to hide the discrepancy. Current `sl1-apply` source and `fuzz-findings` coverage receipts are historical work on the earlier own-iterator hole; this new protocol edge needs their normal claim/implementation process.
+
+    Decided by the agent from principles 1 and 2 and accepted VIP-18's exact-sugar/source-order contract, 2026-10-31. Class A; no Will question.
+
+### Detail 305
+
+**Erased callee wrappers preserve a native method reference and its receiver.** (RC-39 `002:do-erased-callee-wrapper-loses-this`; accepted VIP-2, `002-running.md`'s method-call rule, principle2; related native Reference preservation178/199.) When a method callee is wrapped in native TypeScript non-null `!`, `as`, `satisfies`, admitted angle-bracket assertion or their reference-preserving combinations, a lifted `do` argument must not turn the reference into a detached function value. Preserve receiver/key/callee evaluation once in native order, before argument work, then invoke with the captured source receiver. Keep the written wrappers' ordinary static checks and callable type.
+
+    ```vibe
+    export function probe(): number {
+      const obj = { n: 5, m(x: number): number { return this.n + x } }
+      return obj.m!(do { 2 })
+    }
+    ```
+
+    Effect TS: the ordinary TypeScript counterpart is `export function probe(): number { const obj = { n: 5, m(x: number): number { return this.n + x } }; return obj.m!((() => 2)()) }`, returning `7`. If the argument sets `obj.n = 10` before yielding `2`, the same captured receiver observes `10` and the call returns `12`. The immediate arrow illustrates this no-jump witness only, not a general lowering with different callable/jump/suspension semantics.
+
+    A comma or other native value-producing operation can deliberately detach a method. Preserve that behavior: `(events.push("detach"), obj.m)(argument)` remains a plain function-value call with the same native receiver/error behavior. Do not bind every expression that contains a member, re-read a getter/receiver after its arguments, or invoke observable user-owned `call`/`bind` properties as a shortcut. Parentheses and actual erased reference wrappers keep their distinct native checking/Reference behavior; source call-site syntax and resolved identity still govern.
+
+    Reviewer pass128 reports26 compiler calls and26 runtime commands, all exit0 because fixtures catch exceptions, yet seven current/native wrapped dot/element pairs mismatch on `fe7b802fbf05`. Native and older `509a2110` controls retain the receiver; bare/parenthesized and intentionally detached controls discriminate the defect. Matching declarations and caught-process exit0 do not prove equivalence. Queued `971c7f13b2c4` still peels only parentheses in its method helper and is not a verified repair. This is distinct from RC29's earlier GetValue/tag/constructor timing issue. These are attributed reviewer receipts, not own Vibe execution or implementation.
+
+    Chapter002/impl-hunt-run, core-block and rc25-do-order own failing-main regression, keyed corpus and spec-quoted neighbourhood fuzz: all wrappers/combinations, dot/element, source typings/generics, receiver reassignment, mutable receiver state, getter/key order, intentional detachment and source abrupt completions. No new syntax, diagnostic or public package API. Decided by the agent from principle2 (mirror TypeScript/ECMAScript), accepted VIP-2 and the existing native receiver/evaluation rule, 2026-11-02 under the 2026-10-29 delegation. Class A; no Will question.
+
+    Sources: `loop/scoped/rev-compiler/FINDINGS.md` pass128; `pass128-wrapped-method.json`, `pass128-wrapper-matrix.json` and emitted/native controls.

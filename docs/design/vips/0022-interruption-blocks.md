@@ -43,3 +43,17 @@ Haskell's `mask $ \restore -> …`, Cats Effect's `uncancelable { poll => }`, ZI
 ## Will's words
 
 > "ok we are on a streak of me accepting your recomendation. Keep showing them to me 1 at a time but assume I accept now. I will interrupt you if I need to"
+
+## Details
+
+Decided details folded in verbatim on 2026-11-03 (mechanical pass). Each keeps its old number as history; where one conflicts with the text above, the fold's conflict pass resolves it.
+
+### Detail 51
+
+(NW 13; VIP-22) `restore` is lexical: a `restore` inside an `effect` arrow or `effect` block nested in an `uninterruptible` block is a compile error.
+    ```vibe
+    uninterruptible { const e = effect { restore { try poll() } }; try e }   // error
+    ```
+    Effect TS: `Effect.uninterruptibleMask((restore) => …)`; `restore` is only valid while the mask runs. Decided by the agent from principle 8 (a nested Effect can run after the mask ends); 2026-10-29.
+
+    Nested-mask source replacement: `961efe5b0efb` is fixer-reported queued, superseding rejected `d184d4aefca2`. It retains innermost-mask selection and possibly masked entry; the witness explicitly bridges its foreign scalar call under VIP-4 and distinguishes inner/outer traces despite both interruption Exits. Strict TypeScript5.9.3, Node2/Bun2, focused2 and regeneration/docs/forms/spec results are attributed to spec-fix-b. No own rerun, new restoration protocol, compiler conformance or main landing is claimed.

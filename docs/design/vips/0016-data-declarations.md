@@ -45,3 +45,11 @@ Rust and Swift enums with payloads, Kotlin sealed classes, Effect's `Data.Tagged
 *Corrected 2026-10-29: the example now binds with `let`, using TC39's `let tracking` shorthand (found by the differential fuzz suite).*
 
 *Corrected 2026-10-29: the example ends every `match` arm with `;`, the last one included, as the pinned TC39 grammar requires; a newline is not a separator (found by the round-3 review).*
+
+## Details
+
+Decided details folded in verbatim on 2026-11-03 (mechanical pass). Each keeps its old number as history; where one conflicts with the text above, the fold's conflict pass resolves it.
+
+### Detail 25
+
+(VIP-16) `data Empty {}` with zero variants is allowed: an exact empty `Data.TaggedEnum` (delete EK2122).

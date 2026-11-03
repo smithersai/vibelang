@@ -25,3 +25,25 @@ const Outcome = Data.taggedEnum<OutcomeDefinition>()
 ## History
 
 Old VibeLang's four-parameter limit (D374) was the same limit. No findings.
+
+## Details
+
+Decided details folded in verbatim on 2026-11-03 (mechanical pass). Each keeps its old number as history; where one conflicts with the text above, the fold's conflict pass resolves it.
+
+### Detail 26
+
+(VIP-28) The generated generic-data helper (`XDefinition`) is hygienic, not a reserved user-visible name.
+
+### Detail 27
+
+(VIP-28) Constraints on generic `data` type parameters (`<A extends string>`) are a compile error, since VIP-28 doesn't add them (EK2126 keeps that part).
+
+### Detail 63
+
+(NW 26; VIP-28) A default on a generic `data` type parameter is a compile error, as a constraint is (decided detail 27): VIP-28 adds neither. Write the default on a separate `type` alias.
+    ```vibe
+    data Box<A = string> { Value { value: A } }   // error
+    data Box<A> { Value { value: A } }
+    type StrBox = Box<string>                     // ok
+    ```
+    Effect TS: `type Box<A> = Data.TaggedEnum<{ Value: { value: A } }>`. Decided by the agent from decided detail 27's precedent and principle 8 (allowing it on the alias later breaks no code); 2026-10-29.

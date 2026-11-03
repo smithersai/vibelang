@@ -36,3 +36,13 @@ effect function reviewedCheckout(cartId) {
 ## History
 
 About 6 findings across 10 rounds.
+
+## Details
+
+Decided details folded in verbatim on 2026-11-03 (mechanical pass). Each keeps its old number as history; where one conflicts with the text above, the fold's conflict pass resolves it.
+
+### Detail 17
+
+(VIP-35, open) The first release has no handlers: remove `control`/`handle`/`resume`/`abandon` and the continuation runtime from the compiler, since no accepted VIP adds them.
+
+## Items 18–29 (diagnostic choices; sent to Will on Telegram 2026-10-29 12:28 under his standing rule "assume I accept"; no objection by 13:00)

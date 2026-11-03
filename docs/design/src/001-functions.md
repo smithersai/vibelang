@@ -653,3 +653,129 @@ function wrapped() {
 ```
 
 `wrapped()` fails with `Cause.UnknownError` whose `cause` is `"callback"`. An unwrapped JavaScript call inside `Effect.gen` would defect; the source `direct` is rejected rather than silently admitting that defect.
+
+## Details
+
+Decided details folded in verbatim on 2026-11-03 (mechanical pass). Each keeps its old number as history; where one conflicts with the text above, the fold's conflict pass resolves it.
+
+### Detail 129
+
+**Binding helpers stay inside the lexical environment that supplies their this/super/new.target.** (live `001-static-super-hoist`; VIP-1/VIP-2, refines 001's helper-placement recipe.) A class static block is an eligible source environment for helpers used by effect arrows/blocks constructed within it. Declare its lexical super accessor inside that static block, never at module scope or in an enclosing factory function that lacks that super binding. Preserve existing in-place class-field/parameter-default treatment. Constructing an accessor is eager, but invoking it and reading the actual super property occurs only where the cold source body does. Use the appropriate source environment for each captured binding; do not blindly hoist every helper to the nearest non-arrow function.
+    Status: applied in main 0a207dbf, revalidated by spec-fix-a against the source binding rule, explicit import-cycle hoisting sentence and the five passing native binding tests. Earlier helper-recipe fixes are superseded; no duplicate patch.
+    ```vibe
+    class Base { static value = 7 }
+    class Derived extends Base {
+      static program: number!!
+      static { this.program = effect { return super.value } }
+    }
+    const value = await runPromise(Derived.program) // 7
+    ```
+    Effect TS: inside the static block, `const getSuper = (k: "value") => super[k]; this.program = Effect.gen(function* () { return getSuper("value") })`. Decided by the agent from principle 2 (TypeScript's lexical super environments), VIP-1/VIP-2's source-binding guarantee, and principle 4 (environment-driven helper placement instead of an expanding list of hoisting exceptions), 2026-10-29. Apply to 001 and its 002/008 cross-references; no source restriction.
+
+### Detail 138
+
+**A local overloaded implementation satisfies every exposed signature's synchronous throws bound.** (live `001-overload-effectful-contract`; VIP-4/VIP-27, extends details 36/38/45/66/115.) A wholly Effect/Stream/Layer overload contributes the implicit `never` synchronous bound even though its declaration emits no throws tag. Check the local implementation's tracked synchronous throws, including parameter/default initialization, conservatively against every exposed overload bound. A mixed-return implementation cannot hide a known throw behind an effectful selected overload. Report `EK0401` for a violation. An explicit plain-overload @throws is its ordinary checked upper bound; an unannotated plain overload retains inference/default rules. Apply to methods too, preserving per-signature metadata in declaration output.
+    **Current scope after Will's 2026-10-31 ruling:** local VibeLang thrown-type inference/annotations and any permission for synchronous source `throw` in this older record are superseded by `core-decisions.md`, `loop/WILL-ANSWERS.md` and detail 251. Do not implement those historical local clauses. Retain independently valid foreign-contract, native-phase and unrelated rules; reference receipts below are historical, not current VibeLang admission tests.
+    **Immutable-main source receipt (695576, 138).** Verified at immutable main `695576acb44b`: 001/003/AppendixB state the conservative implementation-throws bound against every exposed overload, including the implicit never bound of an effectful overload. This is source-publication evidence only; no compiler/native/regression suite was run by decide-live.
+    Status: applied in ababa10f87d9 (spec-fix-a; queued, not yet a main landing receipt).
+    ```vibe
+    function choose(mode: true): number!!
+    function choose(mode: false): number
+    function choose(mode: boolean): Effect.Effect<number> | number { throw "boom" }
+    // EK0401: implementation may synchronously throw, but the true overload promises never
+    ```
+    Effect TS: the signatures themselves are ordinary TypeScript; VibeLang adds the VIP-4 contract check. Construct a throwing ordinary function through `Effect.try` instead of publishing an effectful never-throws overload over that implementation. The initial checker uses one inferred implementation thrown bound; argument-specialized inference may relax this later, but is not required or silently assumed. Foreign signatures retain their trusted declared effectful contract; no runtime wrapper is inserted. Decided by the agent from principle 6 (an effectful signature cannot throw), principle 8 (a known throw must not be lost at overload selection), and VIP-27's per-signature declaration guarantee, 2026-10-30.
+
+Landing receipt: source ababa10f87d9 landed in main 695576acb44b (queue 1793371604-spec-fix-a, gate mq-10302026-7).
+
+### Detail 139
+
+**Effect class methods retain TypeScript's decorator prefixes and placement.** (live `001-effect-method-decorators`; audit 001 interactions m1; source correction queued as `b1788126aa66`, spec-fix-a.) The grammar accepts the same decorator list as TypeScript on class effect methods/producers, in the same class-element position. Preserve ordinary TypeScript decorator checking/evaluation on the generated ordinary Effect/Stream-returning method; the compiler does not execute the cold body while applying it. Do not admit decorator lists on object-literal methods or other positions TypeScript forbids. Parsing a decorated effect accessor for its existing accessor diagnostic does not legalize effect accessors.
+    **Immutable-main source receipt (695576, 139).** Verified at immutable main `695576acb44b`: 001/AppendixA include class decorator prefixes/class-versus-object placement and overload-related method classification. This verifies the source-prefix portion; later decorator expression evaluation/emitter conformance remains separate. This is source-publication evidence only; no compiler/native/regression suite was run by decide-live.
+    Status: applied in 2a1c089083b1 (spec-fix-a; queued, not yet a main landing receipt).
+    ```vibe
+    class Repo {
+      @trace
+      effect load() { return 1 }
+    }
+    ```
+    Effect TS: `class Repo { @trace load() { return Effect.gen(function* () { return 1 }) } }`. Decided by the agent from principle 2 (TypeScript class-element modifiers and decorator semantics), VIP-1's method counterpart, and principle 4 (no decorator-specific execution rule), 2026-10-30. The claimed fix already has source-admission and coldness receipts; this decision records its rule, not a claim that its queued source or forms checks have landed.
+
+
+    **Round26 decorator-position clarification (Opus m37):** include decorator expressions in 002's execution-position table. Evaluate them in their enclosing source context, just like class heritage/computed keys: `@(try d)` is allowed when that evaluation occurs inside an Effect activation; a plain outer function gains no permission merely because the decorated method is effectful. Existing default/field/static/plain-callable exclusions still apply at their actual source boundary. Preserve native decorator evaluation/application order and coldness. TypeScript 5.9.3 accepts `@(await Promise.resolve(mark))` in an async enclosing function and `@(yield* Effect.succeed(mark))` in a generator, and rejects the direct plain-function await control. Its ordinary ES2022 decorator emitter moves those suspension expressions into generated static blocks and emits invalid JavaScript. `round26-reference.log` records that emitter limitation plus successful simple phase-preserving controls; it is source/checker/reference evidence, not a claim that raw TypeScript emit or the VibeLang compiler implements the rule. A simple no-heritage/no-computed-key fixture may evaluate the decorator to a local first; this is not a general hoist-across-class-evaluation recipe. Decided by the agent from VIP-1's native source-context rule, principle 2 (TypeScript decorator expression admission), and principle 4 (source boundaries before generated static blocks), 2026-10-30.
+
+    Applied in 732ad472f25a (spec-fix-b, bookmark 42); landed in main 77510050781c.
+
+    **Independent decorator receipt:** `root-try-turn-reference.log` and `root-try-decorator-literal-emission.stderr` independently reproduce the pinned checker/emitter distinction and execute both simple captured counterparts. This corroborates the existing round26 clarification above; it is not new source-admission policy or VibeLang conformance.
+
+Landing receipt: source 2a1c089083b1 landed in main 695576acb44b (queue 1793370440-spec-fix-a, gate mq-10302026-7).
+
+### Detail 148
+
+**Generated intrinsic captures are initialized before cyclic consumers can invoke hoisted exports.** (live `001-cyclic-apply-tdz`; VIP-1/VIP-26.) A hoisted exported effect declaration cannot acquire a generated module-const TDZ that its source did not have. Supply captured apply and other helpers through an acyclic runtime-helper dependency initialized before source imports can execute cyclic consumers, or an equivalent ordering with the same availability guarantee. Audit every generated module capture used by hoisted exports. Textually putting a const before an import does not establish this order. Retain captured intrinsic calls and do not read the callee's own call/apply property or replace the snapshot with a late mutable Reflect.apply lookup.
+    Related cache-counterpart follow-up: spec-fix-c reports c9b989606ad1c6ad093cf5ad264c7e6544f0e7d2 queued; this removes the remaining mutable-helper example. It is not a new main landing receipt or a reversal of the separate binding/cache status below.
+    Status: applied in main 0a207dbf, revalidated by spec-fix-a against the source binding rule, explicit import-cycle hoisting sentence and the five passing native binding tests. Earlier helper-recipe fixes are superseded; no duplicate patch.
+    ```vibe
+    import "./consumer.ts" // may call and run program during this module's dependency evaluation
+    export effect function program() {
+      class Base { ping() { return 7 } }
+      class Derived extends Base { effect go() { return super.ping() } }
+      return try new Derived().go()
+    }
+    ```
+    Effect TS: the same hoisted function, with apply imported from a noncyclic helper dependency evaluated before consumer.ts; the executed reference succeeds with 7 instead of a generated-capture ReferenceError. Decided by the agent from VIP-1's hoisting guarantee, principle 2 (ordinary ECMAScript module dependency evaluation), and VIP-26's unchanged module model, 2026-10-30. The live cycle probes provide reference/prescribed/fixed receipts; no source restriction or compiler-conformance claim is added.
+
+### Detail 163
+
+**Moved ordinary-generator defaults execute during the construction call.** (live `001-generator-moved-default-phase`; VIP-1/VIP-2; details 68/108.) For ordinary function* and async function* declarations, expressions and methods, perform moved parameter/default work eagerly outside the dormant source body, once at construction. Do not put it at the beginning of a suspended body. Preserve the source parameter environments, length and bindings. Synchronous default throws remain construction throws under detail 108, including async generators; source effect/producer wrapping under 118 stays separate. Outward-return representation is the next item's pending choice.
+    ```vibe
+    let seen = 0
+    function* g(x = do { seen += 1; return 7 }) { yield 1 }
+    const result = g()
+    const afterCall = seen // 1 before any resumption
+    ```
+    Effect TS: perform this eager work before constructing the source-body generator; the native phase oracle `function* g(x = (seen++, 7)) { yield 1 }` increments at the call. Decided by the agent from principle 2 (native generator parameter timing), VIP-1 and detail 108, 2026-10-30. Timing is settled independently of the early-return representation.
+
+### Detail 164
+
+**An outward return in an ordinary generator default uses a synthetic return iterator (class B, answered by Will).** (live `001-generator-moved-default-phase`; follows detail 163's timing.) Chosen A: after evaluating the prologue and return value v eagerly, return a native iterator over a synthetic return v, never starting the source body. First next is { done: true, value: v }; later next is done/undefined. Native return/throw-before-first-next behavior remains. Async generators use the corresponding async iterator. Include v in the iterator return type; the call keeps returning a generator. It is not literally an already-completed native generator, whose next would lose v.
+    ```vibe
+    function* g(x = do { return 7 }) { yield 1 }
+    const r = g()
+    // A (chosen by Will): r.next() is { done: true, value: 7 }; source body never starts
+    // B: r itself is 7; the parameter ReturnCompletion escapes before iterator construction
+    ```
+    Effect TS: A's early path is `return (function* () { return v })()` (async function* for an async generator), with source generator identity/prototype/length guarantees preserved by the full lowering. B follows literal parameter ReturnCompletion before iterator construction and requires a generator-or-value call type. **Answered by Will, 2026-10-30 03:14 PDT: A** ("that's my answer then everything about the do expreession should work liike that spec"). Recommended by the agent on 2026-10-30 because it preserves the calling kind and mirrors already-boxed Effect/Promise/Stream defaults. Native TypeScript has no return-bearing parameter expression, and no existing VIP/detail reconciles this ordinary-generator representation with the draft's construction phase. This choice is separate from eager timing; do not ban the placement or silently defer its side effects.
+
+### Detail 173
+
+**A rethrows admission cannot erase the callback's contract on a value or nested callable.** (live `001-rethrows-returned-contract`; conservative clarification of details 3/4/38/66/120 under VIP-4/VIP-27.) Choose the existing `unknown` upper bound instead of adding callback-dependent return annotations. A `@rethrows` parameter admitting arbitrary throwing callbacks has an admitted thrown bound of `unknown` outside the annotated callable's own synchronous rethrow propagation. Returning or storing the callback, assigning it to another callable value, or capturing/invoking it in a nested callable must preserve that bound rather than recover the parameter type's unannotated `never`. Infer a nested plain callable that can invoke such a capture with `@throws {unknown}` (plus its own throws, whose union remains `unknown`); do the same for returned object callable members and preserve the contract in declaration output. Assignment to an unannotated nonthrowing destination is `EK0402`; an unwrapped possibly-throwing invocation in effect code is `EK0403`. This applies at a static callable boundary even if the nested function happens to be immediately invoked; no runtime escape analysis is required. Ordinary async/Effect callback boundaries retain their existing Promise/failure-channel rules and throw checks.
+    **Current scope after Will's 2026-10-31 ruling:** local VibeLang thrown-type inference/annotations and any permission for synchronous source `throw` in this older record are superseded by `core-decisions.md`, `loop/WILL-ANSWERS.md` and detail 251. Do not implement those historical local clauses. Retain independently valid foreign-contract, native-phase and unrelated rules; reference receipts below are historical, not current VibeLang admission tests.
+    **Immutable-main source receipt (695576, 173).** Verified at immutable main `695576acb44b`: 001/003 preserve admitted callback unknown throws across returned/stored/nested callables, with separate direct synchronous rethrows calculation. This is source-publication evidence only; no compiler/native/regression suite was run by decide-live.
+    Status: applied in ababa10f87d9 (spec-fix-a; queued, not yet a main landing receipt).
+    ```vibe
+    /** @rethrows f */
+    export function later(f: () => number) { return () => f() }
+    const delayed = later(() => { throw "callback" }) // returned signature throws unknown
+    const unsafe: () => number = delayed             // EK0402
+    effect function bad() { return delayed() }        // EK0403
+    effect function good() { return try Effect.try(() => delayed()) }
+    ```
+    Effect TS: the JavaScript `later` implementation is unchanged; `Effect.gen(function* () { return delayed() })` dies with `"callback"`, while `Effect.gen(function* () { return yield* Effect.try({ try: () => delayed(), catch: (e) => e }) })` fails in its typed channel. The emitted return is a callable type literal carrying `/** @throws {unknown} */ (): number`. Keep the existing own-throws-plus-actual-callback calculation for direct synchronous invocation/forwarding within the annotated callable; merely returning/storing a callback is not itself an invocation. No callback-dependent thrown variable, higher-rank declaration syntax, new runtime wrapper or blanket ban on returning closures is introduced. Decided by the agent from principle 8 (retain a sound upper bound instead of silently accepting a callback throw as `never`), principle 6 (no unwrapped tracked throw in effect code), principle 4 (reuse `unknown` and per-signature metadata), and VIP-27's existing declaration-preservation requirement, 2026-10-30. Evidence: `decide-live-scratch/rethrows-escape-reference.log`, verified Effect `4.1.0`; reference behavior only, not compiler conformance. Apply to 001's own-signature/rethrows/declaration rules and 003's assignability/body-inference rules.
+
+Landing receipt: source ababa10f87d9 landed in main 695576acb44b (queue 1793371604-spec-fix-a, gate mq-10302026-7).
+
+### Detail 178
+
+**A super property used as a template tag retains its source receiver.** (live `001-super-tag-receiver`; VIP-1/VIP-31 binding preservation, extends the super-call row rather than adding syntax.) Treat a receiver-bearing super property reference used as a tag as a call reference, not as a detached value from `$super_get`. At the original tag-evaluation point, evaluate a computed key and look up the method once, before substitutions; retain the original source receiver for invocation. An implementation may return a fresh tag adapter that forwards the engine-created template object and substitutions through the captured intrinsic apply to that method/receiver pair. Never read or call the user function's own `call`/`bind` properties. Preserve source template-site caching, cooked/raw array identity and frozen state, substitution/evaluation order, callability-error order and the existing completion/error contract. Respect detail 110's cold lexical-this guarantee: do not read a derived constructor's `this` early merely to construct the enclosing cold Effect.
+    Status: applied in main 0a207dbf, revalidated by spec-fix-a against the source binding rule, explicit import-cycle hoisting sentence and the five passing native binding tests. Earlier helper-recipe fixes are superseded; no duplicate patch.
+    ```vibe
+    class Base {
+      n = 7
+      tag(_parts: TemplateStringsArray, value: number) { return this.n + value }
+    }
+    class Derived extends Base {
+      effect go() { return super.tag`value ${2}` } // succeeds with 9
+    }
+    ```
+    Effect TS: wrap the same native super-tag expression in `Effect.sync(() => ...)` inside the same derived method; that lexical arrow preserves its source receiver. A generated adapter invokes the once-captured tag with the source instance via the captured apply; a detached `$super_get` value used directly as a tag loses `this` and defects. Ordinary optional super calls follow the same source Reference rule: obtain the method once, test it for nullishness before evaluating arguments, and preserve the receiver on the taken path; this does not introduce optional tagged-template syntax. Decided by the agent from VIP-1's existing promise that the body sees its source bindings, principle 2 (TypeScript/ECMAScript tagged-template Reference receiver and evaluation order), and principle 4 (the same receiver-preserving operation for all call uses of a super reference), 2026-10-30. Add the tag row/witness to 001 and exact-Exit checks; audit optional calls under the same requirement. Evidence: `decide-live-scratch/root-super-tag-reference.log` gives native `Success(9)`, detached-get `Die(TypeError)` and receiver-preserving adapter `Success(9)` on Effect `4.1.0`; `root-super-tag-types.log` passes strict TypeScript. These are reference/recipe checks, not VibeLang compiler conformance.

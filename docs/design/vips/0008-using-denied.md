@@ -82,3 +82,11 @@ Old VibeLang is a reference only; nothing in it is part of the language unless a
 
 
 D14, D25, D94, D95, D342, D343, D344, D401, D425, D451, D459, D481, D490 and D553: the `using` rules for Effect resources.
+
+## Details
+
+Decided details folded in verbatim on 2026-11-03 (mechanical pass). Each keeps its old number as history; where one conflicts with the text above, the fold's conflict pass resolves it.
+
+### Detail 13
+
+(VIP-8) `using` in effect code gets a warning (it leaks on failure or interruption), with a quick fix to `acquireDisposable` inside `scoped`.

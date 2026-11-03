@@ -600,3 +600,172 @@ export type Message = typeof Message.Type
 ```
 
 Declaration emit retains the comment on the constant and leaves the type alias bare. To retain distinct documentation on a constant and its type alias, keep the ordinary TypeScript pair.
+
+## Details
+
+Decided details folded in verbatim on 2026-11-03 (mechanical pass). Each keeps its old number as history; where one conflicts with the text above, the fold's conflict pass resolves it.
+
+### Detail 111
+
+**Schema field objects emit a noncomputed __proto__ key as a computed string key.** (live `006-schema-proto-field`; owner `spec-fix-c`; VIP-15/VIP-29; detail 12.) For every noncomputed field whose property name is `"__proto__"`, emit `["__proto__"]:` in the generated schema-fields object. This includes identifier and quoted source keys, nested structs, and schema-error fields. Preserve already-computed keys and their evaluation order. An object-type property denotes an own field; JavaScript object-literal prototype-setting syntax must not remove it from validation.
+    ```vibe
+    schema Payload { "__proto__": string }
+    // {} and { ["__proto__"]: 42 } must fail decoding; a string field succeeds
+    ```
+    Effect TS: `const Payload = Schema.Struct({ ["__proto__"]: Schema.mutableKey(Schema.String) })`. Decided by the agent from principle 2 (TypeScript object-type field meaning) and VIP-15's per-field schema mapping, 2026-10-29. This repairs the counterpart's key construction without changing Effect or adding syntax.
+
+### Detail 130
+
+**Erratum to detail 122: the helper-name diagnostic is EK1602; EK1601 remains the payload-tag error.** (live `006-data-helper-code-collision`.) Read detail 122's code as `EK1602`. The queued, read-only r19-diffcheck candidate `68bae0bed8c2` already assigns `EK1601` to a data payload field named `_tag`; its 006 and Appendix B contain no `EK1602`. The decision log contains no other `EK1602` allocation. Preserve the earlier assignment instead of giving two distinct triggers/fixes the same code. The reserved-variant-name rule itself is unchanged.
+    **Immutable-main source scope (f6fe7a, 130).** AppendixB explicitly assigns1602 to$is/$match helper-name variants while1601 stays payload_tag. The rule/code source portion is published, with006row-placement followup separate. `root-mainf6-source-receipt.json` and `root-mainf6-throws-audit.json` preserve reviewed-prose/structured-artifact limits; no full raw9.19MB human-read or owncompiler/Go/generator/test/gate claim.
+    Current replacement: applied in 19fd0465084af57fee4f75742cfdd19e5fd8c106 (spec-fix-c; supersedes 83f85800f5ad after main rebase and current-release placement; queued, not a main receipt).
+    Status: applied in 83f85800f5adeb1558eb4e9cf01dbe365be302be (spec-fix-c; queued, not yet a main receipt).
+    ```vibe
+    data A { Bad { _tag: string } } // EK1601: variant name supplies the payload tag
+    data B { $match; Normal }        // EK1602: rename the reserved helper variant
+    ```
+    Effect TS: `Data.TaggedEnum` excludes an explicit payload `_tag`; `Data.taggedEnum` reserves its `$match` property. These are different constraints. Decided by the agent from detail 60 (preserve assigned codes; use a fresh code for a different rule), principle 4 (one meaning per diagnostic identifier), and the candidate's verified allocation, 2026-10-29. The original “first free” claim looked only at main and missed queued integration; it is withdrawn.
+    **Independent f6fe7 source portion (130).** AppendixB now publishesEK1602 for the already-rejected helper-name variants; no compiler diagnostic emission was tested. Full27,227-character nongenerateddiffread; sourceonly, no decide-livecompiler/gaterun. `main-f6f-source-receipt.json` records limits.
+
+### Detail 132
+
+**Source field modifiers control decoded keys; reject conflicting referenced-schema flags for now.** (live `006-reference-key-modifiers`; VIP-15/VIP-29; detail 12.) Choose the recommended conservative admission rule, not silent modifier loss. For a required source field, the reference's decoded `"~type.optionality"` must be `"required"`; for an explicitly readonly source field its decoded `"~type.mutability"` must be `"readonly"`. Check the inferred/aliased schema type's flags, not the spelling of a call or identifier. When the required flag cannot be established (including a union that may conflict), report `EK2109` and suggest using the unmodified value schema with the modifiers written on the field. Writable fields still use mutableKey; optional fields still use optional. Apply the check to nested structs and schema errors. Encoded/constructor-input defaults remain Effect's; the source property promise describes the decoded Type.
+    **Immutable-main source portion (fb3e96, 132).** 006/AppendixB publish decoded-key optionality/mutability proof checks at required and effectively readonly mapped positions, aliases/unions/nesting, EK2109 for conflict/unprovable flags, preserving encoded/default behavior. Complete10-file,47,460-character diff independently read. Source publication only; no own compiler/native/Go/gate check. `main-fb3-source-receipt.json` records exact limits.
+    Status: applied in 1f98199496d8b360641fefb4e2de6f59ed6c7db6 (spec-fix-c; queued, not yet a main receipt).
+    Current replacement: applied in 9db43ccce6abed9d140b7f8c6e86ebd68085d8ab (spec-fix-c; supersedes d2753525aef1 after main rebase and current-release placement; queued, not a main receipt).
+    **Immutable-main source receipt (54182a, 132).** Immutable main `54182a644026` publishes the conservative decoded-key optionality/mutability admission in public VIP15 and effective readonly schema-error payload keys in VIP29 (history `df720a2221da`). This is the public modifier/reference portion only, not a full proof of every schema JSON/transport or compiler requirement.
+    Public schema publication: relevant VIP15/29 amendments applied in 5a5f50ed1e2e14f0c674ecb6dad891316dc71ee0 (spec-fix-c; queued, not on main). This publishes the owned schema rules; other213 public-authority work remains with its owners.
+    Status: applied in d2753525aef1249635ae947ca7a12ad2cac6f4b7 (spec-fix-c; queued, not yet a main receipt).
+    ```vibe
+    const OptionalNumber = Schema.optional(Schema.Number)
+    const MutableString = Schema.mutableKey(Schema.String)
+    schema Bad { must: OptionalNumber; readonly frozen: MutableString } // EK2109 at each conflict
+    schema Good { must?: number; readonly frozen: string }
+    ```
+    Effect TS: `const Good = Schema.Struct({ must: Schema.optional(Schema.mutableKey(Schema.Number)), frozen: Schema.String })`, whose decoded keys match the written modifiers. No generic flag-reset/unwrap API is invented. A later supported normalization can relax the error. Decided by the agent from VIP-15/detail 12's TypeScript modifier promise, principle 2 (required/readonly decoded property meanings), and principle 8 (reject a contradictory reference now; relax later), 2026-10-29. No unconditional promise is weakened to follow an accidental nested flag.
+
+    **Transport clarification, 2026-10-30 (live `006-schema-json-compatibility`).** The selected schema preserves its actual `Type`/`Encoded` representation; encoding is not an implicit JSON conversion and adds no universal JSON, worker or RPC compatibility guarantee. Choose a codec or serializer supported by the actual transport. For example, raw `Schema.BigInt` encodes a `bigint`, which `JSON.stringify` rejects; `Schema.BigIntFromString` explicitly encodes a string and decodes it back. A structured-clone transport can preserve a raw `bigint`, so do not turn the JSON limitation into a blanket worker ban.
+    ```vibe
+    const DecimalBigInt = Schema.BigIntFromString
+    schema error RawCount { readonly value: bigint }
+    schema error TextCount { readonly value: DecimalBigInt }
+    ```
+    Effect TS: `class RawCount extends Schema.TaggedError<RawCount>()("RawCount", { value: Schema.BigInt }) {}` versus the same declaration using `Schema.BigIntFromString`; `Schema.encodeSync` preserves the selected codec's encoded type and `Schema.decodeUnknownSync` restores its decoded type. Decided by the agent from VIP-15/VIP-29's exact Schema counterparts and principle 1 (idiomatic Effect codec semantics), 2026-10-30. This clarifies an existing contract, changes no language/package API, and authorizes no automatic coercion. `schema-json-reference.log` independently verifies the raw JSON failure, successful raw structured clone, and explicit string-codec JSON round trip on Effect 4.1.0. It is native reference evidence, not compiler or RPC-library conformance.
+    Transport: landed on main f58798560fe7 (commit 22d525f4fe69; 003/006/user pages) and its public VIP-29 counterpart on main 9e56d6a17aaf (commit 3e963e0e6868).
+
+### Detail 134
+
+**Computed schema-error keys: preserve broad keys with a reserved-tag guard (class B default).** (live `006-computed-error-tag`; VIP-13/VIP-29.) The no-_tag-override rule is settled; the choice is how to enforce it while preserving the explicitly admitted broad-string computed keys. Option A rejects a key whose type might include `"_tag"` (`EK2117`, broad string included). Recommended option B keeps broad keys and evaluates each computed key once in source order, converts it to its actual property key once using ECMAScript ToPropertyKey, and rejects the string `"_tag"` with `TypeError("schema error fields cannot override _tag")` before evaluating that field's schema value or later keys. Symbols and other strings remain allowed. A statically known `"_tag"` remains `EK2117`. The declaration-time exception is implicit (a defect in effect code), not a new typed failure. Keep detail 111's separate __proto__ construction repair and plain-error type erasure in detail 133.
+    ```vibe
+    const key: string = getKey()
+    schema error Dynamic { [key]: number }
+    // A: EK2117 because string may include "_tag"
+    // B (recommended): valid for an ordinary key; TypeError at declaration if key becomes "_tag"
+    ```
+    Effect TS: `const k = toPropertyKey(key); if (k === "_tag") throw new TypeError("schema error fields cannot override _tag"); class Dynamic extends Schema.TaggedError<Dynamic>()("Dynamic", { [k]: Schema.Number }) {}`, with hygienic helpers and source evaluation order. **default, applies 2026-10-30 09:00 PT unless Will answers pending-computed-error-tag**. Recommended by the agent on 2026-10-30: this preserves existing broad-key programs while enforcing the already-decided tag identity. No principle uniquely chooses the static restriction over a runtime guard, and option A would narrow previously admitted code, so the enforcement tradeoff is class B, not a request to reconfirm that _tag overrides are banned. Do not apply the new default unconditionally before its deadline.
+    Status: superseded by detail 143, applied on main a899a2fcb3cc (003/006 EK2117 unless the computed key domain excludes _tag; verified by spec-fix-c 2026-10-31).
+
+### Detail 137
+
+**Required fixed tuple slots cannot inherit optional-element flags from schema references.** (live `006-tuple-reference-optionality`; extends detail 132 under VIP-15.) At every required fixed tuple position, before or after a rest element, require the inferred/aliased referenced element schema's decoded `"~type.optionality"` to be `"required"`. A tuple root's own required field flag does not establish its elements' cardinality. A conflict or unprovable required flag is `EK2109`; suggest an unmodified value schema, or a required union with undefined when a present undefined element is intended. Optional source slots keep their existing optional mapping. Apply recursively in nested structs and schema errors; do not add generic runtime unwrapping.
+    **Immutable-main source portion (fb3e96, 137).** 006 includes required fixed tuple slots before or after rest in the referenced-schema optionality check; this does not add optional/rest-position permissions. Complete10-file,47,460-character diff independently read. Source publication only; no own compiler/native/Go/gate check. `main-fb3-source-receipt.json` records exact limits.
+    Status: applied in 1f98199496d8b360641fefb4e2de6f59ed6c7db6 (spec-fix-c; queued, not yet a main receipt).
+    Current replacement: applied in 9db43ccce6abed9d140b7f8c6e86ebd68085d8ab (spec-fix-c; supersedes d2753525aef1 after main rebase and current-release placement; queued, not a main receipt).
+    Public schema publication: relevant VIP15/29 amendments applied in 5a5f50ed1e2e14f0c674ecb6dad891316dc71ee0 (spec-fix-c; queued, not on main). This publishes the owned schema rules; other213 public-authority work remains with its owners.
+    Status: applied in d2753525aef1249635ae947ca7a12ad2cac6f4b7 (spec-fix-c; queued, not yet a main receipt).
+    ```vibe
+    const OptionalNumber = Schema.optional(Schema.Number)
+    schema Bad { tuple: [OptionalNumber] } // EK2109: source slot is required
+    schema Good { tuple: [number | undefined] } // [] invalid, [undefined] valid
+    ```
+    Effect TS: `Schema.mutable(Schema.Tuple([Schema.Union([Schema.Number, Schema.Undefined])]))` preserves the required present slot. Decided by the agent from VIP-15/detail 12's TypeScript tuple promise, principle 2 (required slots retain their length even when undefined is a value), and principle 8 (the conflicting reference can be normalized/admitted later), 2026-10-30. This is the same conservative admission policy as detail 132, applied at the element that carries the flag.
+
+### Detail 143
+
+**A computed `schema error` field key whose type admits `"_tag"` is `EK2117`** (live `006-computed-error-tag`; VIP-13/VIP-29; replaces detail 134's runtime-guard default with its option A; keeps details 111 and 133). In a `schema error` body, a computed key is `EK2117` when the string literal type `"_tag"` is assignable to the key expression's type: `string`, `any`, `unknown`, `PropertyKey` and `` `${string}` `` all admit it. A key of a literal type other than `"_tag"`, a literal union without it, `number`, `symbol`, `unique symbol`, or a template type that excludes it (`` `x_${string}` ``) is accepted and emitted as written. A statically known `"_tag"` stays `EK2117`. No runtime `_tag` guard is emitted. The message says "use a literal key or a symbol". The rule can relax to detail 134's runtime guard later without breaking code.
+    Predicate correction: superseded by223; replacement source applied in a135733913d6b849719fbc706eda30217b25d26e (spec-fix-c, submitted). The older raw-predicate entry6f5437815f7b is superseded in the queue; it is not a main receipt.
+    Status: applied in 6f5437815f7bd6993dff0b62115f973e7e2da756 (spec-fix-c; queued, not yet a main receipt).
+    ```vibe
+    declare const k: string
+    const tag = Symbol("tag")
+    schema error Dynamic { [k]: number }             // EK2117: k may be "_tag"
+    schema error Keyed { ["count"]: number }         // ok
+    schema error Sym { [tag]: number }               // ok
+    ```
+    Effect TS: `class Keyed extends Schema.TaggedError<Keyed>()("Keyed", { count: Schema.Number }) {}`. Effect's `Schema.Struct` fields are a literal record; a `string`-typed key collapses the field type to an index signature the decoder does not validate. Decided by the agent from principle 8 (a compile error can relax later; an admitted key cannot be withdrawn) and principle 7 (dynamic error fields are not idiomatic Effect), 2026-10-30. Breaks no existing code: none of the 1117 `.vibe` files on `main@github` has a computed `schema error` key, and the current compiler (`postmerge`, 0.0.11) compiles `schema error Dynamic { [key]: number }` to `Schema.TaggedError()("Dynamic", {})` with a bare class field `[key]` (probe `~/vibe/fix/alpha/decide-r20-scratch/probe/a.vibe`), so no program works with broad keys today. Will can override in `will-overrides.md`.
+
+
+    **Predicate correction: detail223 supersedes only the raw nominal-assignability test above.** The accepted no-tag-override policy, safe-domain admission, diagnostic identity and no-runtime-guard rule remain. The earlier6f5437815f7b source receipt does not independently cover this later generic/enum/brand correction.
+
+### Detail 149
+
+**Record value-key flags obey source required/readonly modifiers at the mapped value, not just the outer field.** (follow-up under live `006-reference-key-modifiers`; extends details 132/137.) A Record<K,V> maps required properties, so require the mapped value reference's decoded optionality to be required; a readonly Record mapping likewise requires its decoded key mutability to be readonly before the source mapping is applied. Use inferred/aliased schema flags, not constructor spellings. A conflict or unprovable required flag is EK2109; recommend an unmodified value schema and source modifiers. Checking only the record root's field flags misses this conflict. Writable-record mutableKey mapping and optional source-field mapping remain unchanged.
+    **Immutable-main source portion (fb3e96, 149).** 006 includes required Record values and readonly Record-value positions in decoded-key modifier proof checks, separately from the outer field. Complete10-file,47,460-character diff independently read. Source publication only; no own compiler/native/Go/gate check. `main-fb3-source-receipt.json` records exact limits.
+    Status: applied in 1f98199496d8b360641fefb4e2de6f59ed6c7db6 (spec-fix-c; queued, not yet a main receipt).
+    Current replacement: applied in 9db43ccce6abed9d140b7f8c6e86ebd68085d8ab (spec-fix-c; supersedes d2753525aef1 after main rebase and current-release placement; queued, not a main receipt).
+    Public schema publication: relevant VIP15/29 amendments applied in 5a5f50ed1e2e14f0c674ecb6dad891316dc71ee0 (spec-fix-c; queued, not on main). This publishes the owned schema rules; other213 public-authority work remains with its owners.
+    Status: applied in d2753525aef1249635ae947ca7a12ad2cac6f4b7 (spec-fix-c; queued, not yet a main receipt).
+    ```vibe
+    const OptionalNumber = Schema.optional(Schema.Number)
+    schema Bad { entries: Record<"a", OptionalNumber> } // EK2109: a must remain required
+    schema Good { entries: Record<"a", number | undefined> } // {} invalid; { a: undefined } valid
+    ```
+    Effect TS: `Schema.Record(Schema.Literal("a"), Schema.mutableKey(Schema.Union([Schema.Number, Schema.Undefined])))` preserves the required finite property. Decided by the agent from VIP-15/detail 12's TypeScript mapped-property promise, principle 2 (Record does not make its keys optional), and principle 8 (the same conservative admission policy as named fields and fixed tuple slots), 2026-10-30. This is the existing schema-reference conflict in another mapped-key position, not a new runtime unwrapping API.
+
+### Detail 167
+
+**The schema-reference mutability check uses effective field readonlyness, including schema-error defaults.** (follow-up to live `006-reference-key-modifiers`; corrects detail 132's phrase explicitly readonly; VIP-13/VIP-29.) Every schema-error payload field is readonly even when no redundant readonly token is written. Therefore the referenced schema for each such field must have readonly decoded-key mutability under detail 132's conservative EK2109 admission rule. Apply the check to effective source modifiers, not just the presence of a token. This is shallow field readonlyness; it does not make a nested mutable value deeply readonly.
+    **Immutable-main source portion (fb3e96, 167).** 003/006/AppendixB apply referenced-key readonly checks to every schema-error payload by effective readonlyness, without deep-freezing mutable nested values. Complete10-file,47,460-character diff independently read. Source publication only; no own compiler/native/Go/gate check. `main-fb3-source-receipt.json` records exact limits.
+    Status: applied in 1f98199496d8b360641fefb4e2de6f59ed6c7db6 (spec-fix-c; queued, not yet a main receipt).
+    Current replacement: applied in 9db43ccce6abed9d140b7f8c6e86ebd68085d8ab (spec-fix-c; supersedes d2753525aef1 after main rebase and current-release placement; queued, not a main receipt).
+    Public schema publication: relevant VIP15/29 amendments applied in 5a5f50ed1e2e14f0c674ecb6dad891316dc71ee0 (spec-fix-c; queued, not on main). This publishes the owned schema rules; other213 public-authority work remains with its owners.
+    Status: applied in d2753525aef1249635ae947ca7a12ad2cac6f4b7 (spec-fix-c; queued, not yet a main receipt).
+    ```vibe
+    const MutableString = Schema.mutableKey(Schema.String)
+    schema error E { value: MutableString } // EK2109: the payload field is effectively readonly
+    schema error Good { value: string }      // readonly field, as already promised
+    ```
+    Effect TS: `class Good extends Schema.TaggedError<Good>()("Good", { value: Schema.String }) {}`; its field retains the default readonly key flag. Decided by the agent from VIP-13/VIP-29's existing readonly-payload rule, detail 132's source-modifier precedence, and principle 4 (one effective-modifier check), 2026-10-30. No separate new bug policy or deep-readonly transformation is introduced.
+
+### Detail 233
+
+**Computed-key admission follows the declaration's actual native counterpart.** (live `006-schema-computed-key-admission`; accepted VIP-15/VIP-29 Schema counterparts and VIP-13/VIP-16 payload counterparts; details 111/133/143/223/232.) Ordinary `schema` and `schema error` computed field keys use native TypeScript runtime object-literal computed-property-name grammar and key-type checks, as in the emitted Schema fields object. Do not apply TypeLiteral-member restrictions merely because a source field's value is written as a type. A numeric key call, parenthesized key or element-access key is admitted when its native runtime Schema object counterpart is admitted, even if the same expression in a TypeLiteral receives `TS1170`. Invalid native object keys retain TypeScript's own diagnostics; no new code is allocated.
+    **Immutable-main error-key companion (9a7f38, 233).** Chapter003/publicVIP13 now publish plain-error TypeLiteral key admission/erasure versus runtime schema-error object admission, preserving existing reserved-tag checks and actual method/getter evaluation. The complete two-file,7,121-character diff was independently read. This verifies the B companion; it does not certify full233's separately owned006/AppendixA/publicVIP15/16/29 application, selector-test byte identity or compiler behavior. `main-9a7-source-receipt.json` records exact scope.
+    Earlier queued Chapter003/VIP13 companion receipt (before main `9a7f385aa855`): applied in6e02b2bc5970 (spec-fix-b; corrected replacement queued, not a main receipt; e37eee4a3b31 guarded-superseded after the decoder-selector repair). Native TypeLiteral payload admission/erasure and runtime schema-error object admission are distinct, including numeric entity-name acceptance and four TS1170 shape rejections. Node4/Bun4, strict TypeScript5.9.3 matrix, getter0/1 native controls and regen/forms/spec/docs pass. C retains006/AppendixA/VIP15/16/29; this does not claim the whole decision delivered.
+
+    Status: landed on main ab92e0dad56f (commit 58349afe0ca0; spec-fix-c 006/Appendix A/VIP-15/16/29 half, queued as f277c4678e25). The 003/VIP-13 half is on main 9a7f385aa855 (spec-fix-b).
+    **Immutable-main source scope (d0cdbe, 233).** The new runtime-Schema versus erased-TypeLiteral admission distinction is not included in this batch; its source application remains separately pending. `root-main-d0cd-source-receipt.json` retains the complete31-file diff/hash/read scope. Source only; no decide-live compiler/gate rerun.
+    Evaluate admitted runtime keys once at their source declaration's existing execution point, in native property evaluation order. Preserve calls/getters, coercion, TDZ, thrown values and existing source-context throw checks; map value schemas/modifiers by the current rules. Infer the public schema type from the actual Schema value rather than fabricating a TypeLiteral containing a key call. A broad/indexed inferred key type does not promise validation of every possible key: the fields object contains its actual computed keys, with pinned Schema handling of extra input keys. Preserve reference-modifier admission, the noncomputed `__proto__` reconciliation and all unrelated declaration/member rules. `schema error` still additionally requires detail 223's runtime-domain proof excluding `_tag`, including enum/generic/branded domains; no runtime guard or reserved-tag escape is added, and transport compatibility is not implied.
+    Plain `error` payload fields and `data` variant fields instead retain native TypeLiteral-member admission and erasure under `Data.TaggedError`/`Data.TaggedEnum`. Native TypeScript accepts some broad entity-name keys but rejects several call, parenthesized and element-access forms with `TS1170`, even a literal-returning call; neither blanket rejection nor blanket admission by key type is correct. An admitted type-only key is never evaluated; a separate runtime initializer keeps its native behavior. Preserve Data's payload constraints and existing reserved-tag rules. Correct `006-data.md`'s universal 'any key type' sentence and the claim that these declaration families have identical key admission.
+    ```vibe
+    function key(): number { return 42 }
+    schema Counts { [key()]: number }           // runtime object key: admitted
+    schema error CountError { [key()]: number } // number domain excludes _tag
+    data CountsData { Row { [key()]: number } } // native TypeLiteral: TS1170
+    ```
+    Effect TS:
+    ```ts
+    const Counts = Schema.Struct({ [key()]: Schema.mutableKey(Schema.Number) })
+    type Counts = typeof Counts.Type
+    class CountError extends Schema.TaggedError<CountError>()("CountError", { [key()]: Schema.Number }) {}
+    type CountsData = Data.TaggedEnum<{ Row: { readonly [key()]: number } }> // TS1170
+    ```
+    Decided by the agent from accepted VIP-15/VIP-29's exact runtime Schema counterparts, VIP-13/VIP-16's exact erased payload counterparts, principle 1 (idiomatic Effect), principle 2 (the native rule for the actual emitted construct), and principle 4 (one counterpart distinction instead of expression-shape exceptions), 2026-10-30. This derives admission from approved counterparts and preserves existing bans; it adds no runtime API or breaking removal of a valid form and needs no Will question. Reconcile `003-failures.md`/`006-data.md`/Appendix A and public VIP amendments under detail 213. `root-key-admission-reference.log` independently checks strict TypeScript5.9.3/Effect4.1.0: ten runtime Schema key shapes admitted, four corresponding TypeLiteral `TS1170` rejections, once-only call/getter order, actual-key decoding/extra-input stripping, and a numeric schema-error key evaluated once. These are native references only; no VibeLang compiler admission/emission, source application or main landing is verified.
+
+
+    Landed003/VIP13/plain-error-guide companion: 6e02b2bc5970 -> main9a7f385aa855 (spec-fix-b10, officialmq-10310219-20). Original finite native TypeLiteral/erasure/required-field controls and all selector assertions retained; finalNode6/Bun6/fullDocsTools,regen/forms/spec/docs pass. This receipt covers this companion only; compiler conformance and other owners’ slices remain separate.
+
+### Detail 241
+
+**A missing member separator in a VibeLang declaration body gets the owning VIP code, never a TypeScript code.** (spec-fix-c `005-006-body-separator-code`, found 2026-10-31 on main a899a2fcb3cc; details 231/232; VIP-34; mirrors `EK0701`.) Appendix A `Separator` is a VibeLang production, so by detail 232 the rejection it produces belongs to the VIP that owns the body, whichever TypeScript parser helper implements it: `EK0908` for a `service` body (VIP-9), `EK1306` for an `error` or `schema error` body (VIP-13, amended by VIP-29), `EK1504` for a `schema` body (VIP-15) and `EK1605` for the field list of a `data` variant (VIP-16). Each is the next free code in its block after the codes of detail 231 (`EK0907`, `EK1503`, `EK1604`); the fixer confirms they are free on main and renumbers to the next free code if a queued commit took one. One rule for every body: the compiler stops printing `TS1442` (the class-parse message about a property initializer) and `TS1005` (the interface-parse expectation of `;`); 005 l.9, 006 l.9 and Appendix A l.840 name the code beside "syntax error". Message in plain words (VIP-34): the two members need a separator, write `;` or a line break between them. Quick fix: insert `;` after the first member, as `EK0701` does after a `match` arm; offered, never applied by formatting. Native `class` and `interface` members in `.ts` files keep the TypeScript codes (detail 232). What counts as a separator is unchanged: Appendix A `Separator`, defined as TypeScript parseTypeMemberSemicolon.
+    ```vibe
+    service S { a: number b: string }      // EK0908: write a: number; b: string, or put b on its own line
+    error E { a: number b: string }        // EK1306
+    schema P { a: number b: string }       // EK1504
+    data D { A { x: number y: string } }   // EK1605
+    service T { a: number; b: string }     // valid; one member per line is valid too
+    ```
+    Effect TS: the rejected lines have no counterpart; tsc 5.9.3 reports `TS1005` for `interface I { a: number b: string }` and `TS1442` for `class C { a: number b: string }` (spec-fix-c `c9/sep/`, compiler built from main a899a2fcb3cc). The repaired declarations keep the existing counterparts of 005 and 006 (the service class over `{ readonly a: number; readonly b: string }`; `Data.TaggedError`, `Schema.Struct` and the tagged-variant forms). Decided by the agent from detail 232 (a rejection that depends on a VibeLang production has the owning VIP code; implementing it with a TypeScript parser helper does not make the grammar native), detail 231 (owner-block codes per declaration form), VIP-34 (every diagnostic has an `EK` code and a message that says how to fix it) and principle 4 (one rule for every VibeLang body instead of a class/interface split), 2026-10-31. Add the four Appendix B rows with the quick fix, the 005/006 sentences and the Appendix A l.840 note; the `service` `TS1442` message is a compiler bug under either option and goes with this fix.
+    Status: spec half landed on main f58798560fe7 (commit 7e0750a37d08; spec-fix-c, stack 815bb0b4841c), extended to the data variant list; the 003 statement of EK1306 queued in 50332f45ca81. Compiler half handed off in fuzz-coverage/bugs.md as 005-006-body-separator-code:compiler.
+
+    **Immutable-main source publication (773bddb1d57f, 241).** Chapter 003 now states `EK1306` in its error declaration syntax and static table. Appendix B may point to Appendix A `Separator`, which supplies that same code. No parser/quick-fix implementation was checked. Complete 60,380-character/60,428-byte nine-file design diff was read in four contiguous slices; `main-resumed-source.json` preserves its hash and scope.
