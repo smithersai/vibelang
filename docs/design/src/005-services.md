@@ -569,24 +569,34 @@ const output = Console$.log("hi")
 
 `Crypto` is the DOM's: effect 4.1.1 has no root module `Crypto` (VIP-14, amended). Effect's cryptography is the `effect/crypto` namespaces (`Digest`, `Mac`, `SecureRandom`, …), in scope by rule 3 below.
 
+The prelude preserves the imported signatures' thrown contracts. These non-effectful npm calls have no written `@throws`, so their thrown type is `unknown`. Inside the example's effect function they need explicit `Effect.try` bridges under [Thrown types](003-failures.md#thrown-types), or report `EK0403`.
+
 ```vibe es
 // compiler-gap: pending VIP-14
-const Port = Schema.Number
-const two = pipe(1, (n: number) => n + 1)     // a root function, from effect/Function
-const first = Effect.Array.head([1, 2])        // JavaScript's Array keeps the bare name
-const o = Option.some(1)                       // Effect's Option: the DOM's Option is platform-specific
+effect function preludeExamples() {
+  const Port = Schema.Number
+  const two = try Effect.try(() => pipe(1, (n: number) => n + 1)) // a root function, from effect/Function
+  const first = try Effect.try(() => Effect.Array.head([1, 2]))  // JavaScript's Array keeps the bare name
+  const o = try Effect.try(() => Option.some(1)) // Effect's Option: the DOM's Option is platform-specific
+  return { Port, two, first, o }
+}
 ```
 
 ```ts effect
-// fragment
+import { Effect } from "effect"
 import * as Schema from "effect/Schema"
 import * as Array$ from "effect/Array"
 import * as Option from "effect/Option"
 import { pipe as pipe$ } from "effect/Function"
-const Port = Schema.Number
-const two = pipe$(1, (n: number) => n + 1)
-const first = Array$.head([1, 2])
-const o = Option.some(1)
+function preludeExamples() {
+  return Effect.gen(function* () {
+    const Port = Schema.Number
+    const two = yield* Effect.try(() => pipe$(1, (n: number) => n + 1))
+    const first = yield* Effect.try(() => Array$.head([1, 2]))
+    const o = yield* Effect.try(() => Option.some(1))
+    return { Port, two, first, o }
+  })
+}
 ```
 
 Where `Effect` is the compiler's implicit binding, `Effect.M`, where `M` is a module in the table's first two rows, is that module: the emitted code imports it under a fresh name, as `Array$` above. Every other `Effect.x` is the export `x` of `effect/Effect`. A written binding keeps its ordinary TypeScript meaning: an imported, aliased or local `Effect` shadows the implicit binding. The namespace from `import { Effect } from "effect"` has no `Array`, so `Effect.Array` there is `TS2339`; import `Array as Arr` from `effect` instead. With `vibe.effectModules: false` the implicit binding is absent, and explicitly importing `Effect` does not restore its collision-module qualifiers ([VIP-14](../vips/0014-effect-modules-in-scope.md#decision), amended).
