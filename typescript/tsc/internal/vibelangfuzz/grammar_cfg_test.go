@@ -501,6 +501,8 @@ InterfaceDeclaration = "interface" BindingIdentifier TypeParameters? InterfaceEx
 InterfaceExtends = "extends" TypeReference | InterfaceExtends "," TypeReference
 TypeAliasDeclaration = "type" [no LineTerminator here] BindingIdentifier TypeParameters? "=" Type StatementEnd
 ImportDeclaration = "import" ImportClause "from" StringLiteral StatementEnd | "import" StringLiteral StatementEnd
+TsImportDeclaration = "import" ImportClause "from" ModuleSpecifier StatementEnd
+ModuleBody = Statement | ModuleBody Statement
 ImportClause = "{" "}" | "{" ImportsList ","? "}" | "*" "as" BindingIdentifier | BindingIdentifier | "type" "{" ImportsList ","? "}"
 ImportsList = ImportSpecifier | ImportsList "," ImportSpecifier
 ImportSpecifier = BindingIdentifier | IdentifierName "as" BindingIdentifier | "type" IdentifierName
@@ -624,20 +626,12 @@ const grammarTc39Do = `
 DoExpression = "do" Block
 `
 
-// grammarModuleProduction is VIP-40's ModuleDeclaration as Appendix A writes it,
-// in an untyped block with ECMAScript's colon notation that the production
-// reader does not read. TestGrammarAdmissionQuoted pins it; grammarVip40Module
-// restates it in the lab's notation, with the IdentifierReference specifier.
-// ModuleBody is TypeScript; the lab reads it as Statements, VibeLang included,
-// so it admits more than the specification there and can miss a compiler that
-// accepts VibeLang in a body.
+// grammarModuleProduction is VIP-40's ModuleDeclaration, which Appendix A now
+// writes as a production the reader reads; TestGrammarAdmissionQuoted pins it.
+// ModuleBody is TypeScript; the subset reads it as Statements, VibeLang
+// included, so the lab admits more than the specification there and can miss
+// a compiler that accepts VibeLang in a body.
 const grammarModuleProduction = `"module" [no LineTerminator here] BindingIdentifier "{" ModuleBody? "}"`
-
-const grammarVip40Module = `
-ModuleDeclaration = "module" [no LineTerminator here] BindingIdentifier "{" ModuleBody? "}"
-ModuleBody = Statement | ModuleBody Statement
-ModuleImport = "import" IdentifierReference StatementEnd | "import" ImportClause "from" IdentifierReference StatementEnd
-`
 
 // grammarThrowPunctuators returns the body of Appendix A's
 // ThrowExpressionInvalidPunctuator, continuation lines included.
@@ -707,7 +701,6 @@ var grammarSubsetHooks = []struct{ at, name string }{
 	{"Statement", "DataDeclaration"},
 	{"UnaryExpression", "ThrowExpression"},
 	{"ScriptItem", "ModuleDeclaration"},
-	{"ImportDeclaration", "ModuleImport"},
 }
 
 // grammarPlacementComments are the production comments that say where a
@@ -735,6 +728,7 @@ var grammarProseMeanings = []struct {
 	{regexp.MustCompile(`^(a non-static MethodDeclaration|TypeScript's MethodDeclaration, without static)`), "NonStaticMethod", ""},
 	{regexp.MustCompile(`^(a non-static get accessor|TypeScript's get accessor, without static)`), "GetAccessor", ""},
 	{regexp.MustCompile(`^a LineTerminator before the next token`), "LineTerminator", ""},
+	{regexp.MustCompile(`^an ordinary TypeScript import declaration using ModuleSpecifier`), "TsImportDeclaration", "TypeScript's import with VIP-40's ModuleSpecifier; `import ModuleSpecifier ;` is the other alternative"},
 	{regexp.MustCompile(`^Undecided \(pending VIP\): UnaryExpression`), "UnaryExpression", "undecided; the search takes the first option, UnaryExpression"},
 }
 
@@ -935,17 +929,6 @@ func grammarBuildGrammar(a *grammarAppendixData) *grammarCfg {
 		d.source = "vips/tc39-throw-expressions/spec.emu"
 		defs = append(defs, d)
 		defined["ThrowExpression"] = true
-	}
-	// VIP-40's module declaration: a top-level statement only.
-	if strings.Contains(a.text, grammarModuleProduction) {
-		for _, line := range strings.Split(strings.TrimSpace(grammarVip40Module), "\n") {
-			name, body, _ := strings.Cut(line, " = ")
-			d := grammarParseDef(name, body, 0)
-			d.vibe = true
-			d.source = "vips/0040-module-declarations.md"
-			defs = append(defs, d)
-			defined[name] = true
-		}
 	}
 	all := map[string]bool{}
 	for _, d := range defs {

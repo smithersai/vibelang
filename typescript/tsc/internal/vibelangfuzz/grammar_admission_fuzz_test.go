@@ -30,14 +30,14 @@ func TestGrammarAdmissionQuoted(t *testing.T) {
 	if !strings.Contains(SpecText(grammarAppendix), grammarAdmissionQuote) {
 		t.Fatal("Appendix A admission quote changed; review the oracle")
 	}
-	// The fourth proposal is VIP-41's throw expression. Its production and VIP-40's
-	// module declaration are written in notations the production reader skips, so
-	// grammarBuildGrammar restates them; a reworded production must be restated again.
+	// The fourth proposal is VIP-41's throw expression, written in a notation the
+	// production reader skips, so grammarBuildGrammar restates it; a reworded
+	// production must be restated again. VIP-40's ModuleDeclaration is read directly.
 	if !strings.Contains(SpecText(grammarAppendix), grammarThrowQuote) {
 		t.Fatal("Appendix A ThrowExpression production changed; review grammarBuildGrammar's ThrowExpression")
 	}
 	if !strings.Contains(SpecText(grammarAppendix), grammarModuleProduction) || !strings.Contains(SpecText(grammarAppendix), grammarModuleImportQuote) {
-		t.Fatal("Appendix A ModuleDeclaration changed; review grammarVip40Module")
+		t.Fatal("Appendix A ModuleDeclaration changed; review the ScriptItem hook and TsImportDeclaration")
 	}
 	if !strings.Contains(SpecText(grammarAppendix), grammarAdmissionRecoveryQuote) {
 		t.Fatal("Appendix A shorthand recovery quote changed; review syntax rejection")
@@ -1219,6 +1219,8 @@ func TestGrammarAdmissionCore(t *testing.T) {
 		"module M { }",
 		"import M;",
 		"import { n } from M;",
+		"import { n } from \"m\";",
+		"import \"m\";",
 		"module\n{ }",
 	} {
 		if r := lab.read(lab.g, grammarLexSource(source), grammarParseMode{prose: true, names: true}); r.count == 0 {
