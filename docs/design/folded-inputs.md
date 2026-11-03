@@ -143,3 +143,9 @@ Both old registry patches mechanically centralized the then-current grammar/diag
 Folded: relic-rest-b-entry-marker-codemod.patch (applied at docs/design/src/007-tooling.md:287)
 
 VIP-26 and VIP-33 require explicit runner calls and retain the platform boundary. Expand proved legacy CommonJS startup without changing callable kind or import-only behavior; preserve and report unsupported ESM sites rather than guessing bundled entry identity. No new language form or Will question is required.
+
+## match TypeScript definite-assignment exemptions
+
+Folded: 1793695660-conf-auto-custommatcher-type-surface.patch (applied at docs/design/src/004-match.md:347)
+
+Standing TypeScript rule and VIP-7. TypeScript 5.9.3 strict twin: conditional assignment then read is accepted for any, unknown, void and number | undefined; number and string report TS2454. The update-clause read uses the same type-dependent check. Runtime uninitialized-cell behavior and use-before-declaration checks remain unchanged.
