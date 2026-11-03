@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"regexp"
+	"slices"
 	"strings"
 	"testing"
 )
@@ -20,13 +21,28 @@ export const shape = (input: { readonly value: string }) => input.value
 
 const unusedTypeNameSite = "export const f = Effect.fn(\"f\")(function* (box: Box) { return box.value })\n"
 
+// refusedNeighbour is a file whose one fix the gate refuses: try
+// Effect.succeed("fast") is a string, which the later push of "slow" needs.
+const refusedNeighbour = "export effect function modes() {\n  const mode = try Effect.succeed(\"fast\")\n  const all: Array<typeof mode> = [mode]\n  all.push(\"slow\")\n  return all\n}\n"
+
+// unusedNameConfig is noUnusedConfig with the neighbour in the project.
+var unusedNameConfig = strings.Replace(noUnusedConfig, `"files":["main.vibe","lib.vibe"]`, `"files":["main.vibe","lib.vibe","other.vibe"]`, 1)
+
 // fixUnusedTypeName runs --fix with noUnusedLocals on main, and returns its
 // text, having failed the test on a refusal. A fuzz body's t.Context is
 // canceled, and --fix stops at once under a canceled context.
 func fixUnusedTypeName(t *testing.T, main string) string {
 	t.Helper()
-	result := fixProjectIn(t, context.Background(), map[string]string{"main.vibe": main, "lib.vibe": unusedTypeNameLib, "tsconfig.json": noUnusedConfig})
-	if result.Err != nil || len(result.Refused) != 0 {
+	return fixUnusedTypeNameBeside(t, main, "export const other = 1\n")
+}
+
+// fixUnusedTypeNameBeside is fixUnusedTypeName with other.vibe holding other,
+// whose refusals it allows.
+func fixUnusedTypeNameBeside(t *testing.T, main, other string) string {
+	t.Helper()
+	result := fixProjectIn(t, context.Background(), map[string]string{"main.vibe": main, "lib.vibe": unusedTypeNameLib, "other.vibe": other, "tsconfig.json": unusedNameConfig})
+	refused := slices.ContainsFunc(result.Refused, func(r FixRefusal) bool { return !strings.HasSuffix(r.File.AsString(), "other.vibe") })
+	if result.Err != nil || refused {
 		t.Fatalf("--fix failed: %v, refused: %+v\nfrom:\n%s", result.Err, result.Refused, main)
 	}
 	got := fixedText(result, "main.vibe")
@@ -73,6 +89,18 @@ func TestEffectFnKeepsTheLoadOfARemovedTypeImport(t *testing.T) {
 	got := fixedText(result, "main.vibe")
 	if len(result.Refused) != 0 || !strings.HasPrefix(got, "import \"./lib.vibe\"\n") || strings.Contains(got, "Box") {
 		t.Fatalf("refused %+v, wrote:\n%s", result.Refused, got)
+	}
+}
+
+// A fix the gate refuses elsewhere in the project makes --fix retry its
+// refusals, and the retry takes the errors of the program it has as the
+// baseline, the unread name among them. The name is still the fix's to
+// remove: opencode's ai protocols, rpc runtime and server fetch handler kept
+// it, and --fix left them a TS6133 or TS6196 they did not have.
+func TestEffectFnRemovesTypeNameBesideARefusedFix(t *testing.T) {
+	got := fixUnusedTypeNameBeside(t, "import { type Box } from \"./lib.vibe\"\n"+unusedTypeNameSite, refusedNeighbour)
+	if strings.Contains(got, "Effect.fn") || regexp.MustCompile(`\bBox\b`).MatchString(got) {
+		t.Fatalf("Box stays beside a refused fix:\n%s", got)
 	}
 }
 
@@ -174,11 +202,11 @@ func FuzzEffectFnUnusedTypeNames(f *testing.F) {
 	for form := range len(declarations) {
 		for _, read := range []bool{false, true} {
 			for sites := uint8(1); sites <= 3; sites++ {
-				f.Add(uint8(form), sites, read)
+				f.Add(uint8(form), sites, read, sites == 2)
 			}
 		}
 	}
-	f.Fuzz(func(t *testing.T, form, sites uint8, read bool) {
+	f.Fuzz(func(t *testing.T, form, sites uint8, read, neighbour bool) {
 		d := declarations[int(form)%len(declarations)]
 		source := d.source
 		count := int(sites)%3 + 1
@@ -188,7 +216,11 @@ func FuzzEffectFnUnusedTypeNames(f *testing.F) {
 		for i := range count {
 			source += fmt.Sprintf("export const f%d = Effect.fn(\"f%d\")(function* (box: %s) { return box.value })\n", i, i, d.typ)
 		}
-		got := fixUnusedTypeName(t, source)
+		other := "export const other = 1\n"
+		if neighbour {
+			other = refusedNeighbour
+		}
+		got := fixUnusedTypeNameBeside(t, source, other)
 		if strings.Contains(got, "Effect.fn") {
 			t.Fatalf("a generator stayed:\n%s", got)
 		}

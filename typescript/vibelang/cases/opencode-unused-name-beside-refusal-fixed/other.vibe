@@ -1,0 +1,6 @@
+export effect function modes() {
+  const mode = try Effect.succeed("fast")
+  const all: Array<typeof mode> = [mode]
+  all.push("slow")
+  return all
+}

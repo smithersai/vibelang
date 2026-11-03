@@ -132,10 +132,10 @@ func removeUnusedTypeNames(g *fixGate, texts map[tspath.RootedFilePath]string, r
 	for range fixPassLimit {
 		program := g.build(texts)
 		errors := programErrors(g.ctx, program)
-		added := strictAddedCounts(errors, g.baseline)
+		added := strictAddedCounts(errors, g.original)
 		found := map[tspath.RootedFilePath][]*ast.Diagnostic{}
 		for _, d := range errors {
-			if isUnusedTypeName(d, g.baseline) && added[errorKey(d)] > 0 && result.Files[d.File().FileName()] != nil {
+			if isUnusedTypeName(d, g.original) && added[errorKey(d)] > 0 && result.Files[d.File().FileName()] != nil {
 				found[d.File().FileName()] = append(found[d.File().FileName()], d)
 			}
 		}
@@ -146,7 +146,7 @@ func removeUnusedTypeNames(g *fixGate, texts map[tspath.RootedFilePath]string, r
 		for name, reported := range found {
 			file := program.GetSourceFile(name)
 			c, done := program.GetTypeCheckerForFile(g.ctx, file)
-			cleaned[name] = applyEdits(file.Text(), unusedTypeNameEdits(c, file, reported, g.baseline))
+			cleaned[name] = applyEdits(file.Text(), unusedTypeNameEdits(c, file, reported, g.original))
 			done()
 		}
 		g.progress.enter("imports", 0, fixesApplied(result), len(result.Refused), "removing unused type names")

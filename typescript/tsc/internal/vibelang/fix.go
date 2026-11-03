@@ -480,6 +480,7 @@ func FixProjectWithOptions(ctx context.Context, fs vfs.FS, libraryPath tspath.Ro
 		return last
 	}
 	g := &fixGate{ctx: ctx, done: done, build: build, fresh: fresh, baseline: baselineOf(ctx, program), refused: map[string]bool{}, alone: map[[32]byte]map[string]int{}, verified: verified, progress: progress, isolationChecks: options.IsolationChecks, checkpointFirst: options.CheckpointFirst}
+	g.original = g.baseline
 	var roundRefusals []FixRefusal
 	sites := newFixSites(func(name tspath.RootedFilePath) string {
 		text, _ := fs.ReadFile(name)
@@ -1290,6 +1291,10 @@ type fixGate struct {
 	// return (gateRound.orderErrors); build when nil.
 	fresh    func(map[tspath.RootedFilePath]string) *compiler.Program
 	baseline errorBaseline
+	// original is baseline before any round: retryRefused adds the errors
+	// the gate accepted, which include the names fixes left unread, and
+	// removeUnusedTypeNames must not take those for the author's.
+	original errorBaseline
 	refused  map[string]bool // fixes refused, by fixKey
 	// verified is called with the texts of each set of fixes the gate
 	// verifies together (FixOptions.Verified).

@@ -150,6 +150,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Async-to-Effect conversion could skip a returned object's `then` getter or its error; conversions now preserve that Promise-adoption read by declining accessors and aliased objects, while keeping fresh data-property literals available.
 
 - The editor's `EK0401` fix using `die` could join the next statement to a return and leave a syntax error. It now preserves the written semicolon and comments.
+- `vibelang --fix` kept the type name an `Effect.fn` fix left unread, and so left a new TS6133 or TS6196, whenever another fix in the project was refused: retrying the refusals took the unread name for one the author had left. It now removes the name as it does when nothing is refused.
 - API checks invented ambient exports or hid an ambient type change when one input directory contained the other. Contributions now follow each snapshot’s dependency closure, and nested private-class origins remain distinct where required.
 
 - The editor outline merged separate `module` declarations as TypeScript namespaces and hid a later declaration with the same name; each VibeLang module now keeps its own outline entry and name range, including an invalid duplicate.
