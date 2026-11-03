@@ -217,6 +217,46 @@ test("the EK38 namespace accommodates the complete upstream registry", () => {
 // Chapter 007 / lint registry effecttsgo/flatMapIgnoredParamToAndThen: docs/design/src/007-tooling.md#b20b0d6d358e8cee
 // Chapter 007 / lint registry effecttsgo/flatMapToMap: docs/design/src/007-tooling.md#d1b5346d144487b9
 // Chapter 007 / lint registry effecttsgo/flatMapToTap: docs/design/src/007-tooling.md#435287cb8226452e
+// Chapter 007 / lint registry effecttsgo/floatingEffect: docs/design/src/007-tooling.md#1478ab531b042c01
+// Chapter 007 / lint registry effecttsgo/floatingEffectInVitest: docs/design/src/007-tooling.md#b7e4be9f5f78fe5e
+// Chapter 007 / lint registry effecttsgo/genericEffectServices: docs/design/src/007-tooling.md#bd3f4f17c9a85119
+// Chapter 007 / lint registry effecttsgo/globalConsole: docs/design/src/007-tooling.md#783af47df1f2492a
+// Chapter 007 / lint registry effecttsgo/globalConsoleInEffect: docs/design/src/007-tooling.md#64d2d309f993e346
+// Chapter 007 / lint registry effecttsgo/globalDate: docs/design/src/007-tooling.md#1562b7be5be04a3b
+// Chapter 007 / lint registry effecttsgo/globalDateInEffect: docs/design/src/007-tooling.md#5261f02c1809c83f
+// Chapter 007 / lint registry effecttsgo/globalErrorInEffectCatch: docs/design/src/007-tooling.md#d34465695b343a1e
+// Chapter 007 / lint registry effecttsgo/globalErrorInEffectFailure: docs/design/src/007-tooling.md#55854b437360ce4b
+// Chapter 007 / lint registry effecttsgo/globalFetch: docs/design/src/007-tooling.md#394f651639589974
+// Chapter 007 / lint registry effecttsgo/globalFetchInEffect: docs/design/src/007-tooling.md#4a2e46260164baf3
+// Chapter 007 / lint registry effecttsgo/globalRandom: docs/design/src/007-tooling.md#678d97d374b137e4
+// Chapter 007 / lint registry effecttsgo/globalRandomInEffect: docs/design/src/007-tooling.md#c4f1406a3252ac59
+// Chapter 007 / lint registry effecttsgo/globalTimers: docs/design/src/007-tooling.md#3aff46b5abbbad3d
+// Chapter 007 / lint registry effecttsgo/globalTimersInEffect: docs/design/src/007-tooling.md#2f218a9bc00d1829
+// Chapter 007 / lint registry effecttsgo/instanceOfSchema: docs/design/src/007-tooling.md#bc0647cec005f11f
+// Chapter 007 / lint registry effecttsgo/layerMergeAllWithDependencies: docs/design/src/007-tooling.md#11884bd4cf0ab720
+// Chapter 007 / lint registry effecttsgo/lazyEffect: docs/design/src/007-tooling.md#d69661dd0871e90c
+// Chapter 007 / lint registry effecttsgo/lazyPromiseInEffectSync: docs/design/src/007-tooling.md#df969cc96f906fd7
+// Chapter 007 / lint registry effecttsgo/leakingRequirements: docs/design/src/007-tooling.md#80b75ef802ad4eec
+// Chapter 007 / lint registry effecttsgo/mapSomeToAsSome: docs/design/src/007-tooling.md#bdf5ca0805e6d230
+// Chapter 007 / lint registry effecttsgo/matchEffectToMapBoth: docs/design/src/007-tooling.md#c801e347f2a668bc
+// Chapter 007 / lint registry effecttsgo/matchEffectToMatch: docs/design/src/007-tooling.md#9af88cbadef73147
+// Chapter 007 / lint registry effecttsgo/missedPipeableOpportunity: docs/design/src/007-tooling.md#04ac73df8e1c5719
+// Chapter 007 / lint registry effecttsgo/missingEffectContext: docs/design/src/007-tooling.md#aef283819725219e
+// Chapter 007 / lint registry effecttsgo/missingEffectError: docs/design/src/007-tooling.md#0983eb1f3d014264
+// Chapter 007 / lint registry effecttsgo/missingEffectServiceDependency: docs/design/src/007-tooling.md#8e62b230b7e12192
+// Chapter 007 / lint registry effecttsgo/missingLayerContext: docs/design/src/007-tooling.md#f7c22f9aa68806aa
+// Chapter 007 / lint registry effecttsgo/missingPipeableSignature: docs/design/src/007-tooling.md#f31a03c8a9ca8265
+// Chapter 007 / lint registry effecttsgo/missingReturnYieldStar: docs/design/src/007-tooling.md#498bef9ea29a7819
+// Chapter 007 / lint registry effecttsgo/missingStarInYieldEffectGen: docs/design/src/007-tooling.md#c51534de459a38a7
+// Chapter 007 / lint registry effecttsgo/multipleCatchTag: docs/design/src/007-tooling.md#f019ced59e0f5e74
+// Chapter 007 / lint registry effecttsgo/multipleEffectProvide: docs/design/src/007-tooling.md#77d2a0b8bea9a153
+// Chapter 007 / lint registry effecttsgo/nestedEffectGenYield: docs/design/src/007-tooling.md#7d364863969f0432
+// Chapter 007 / lint registry effecttsgo/newPromise: docs/design/src/007-tooling.md#863693d6f1edbd04
+// Chapter 007 / lint registry effecttsgo/newSchemaClass: docs/design/src/007-tooling.md#92241e499d882c3d
+// Chapter 007 / lint registry effecttsgo/nodeBuiltinImport: docs/design/src/007-tooling.md#b0cc92fb9591f313
+// Chapter 007 / lint registry effecttsgo/nonObjectEffectServiceType: docs/design/src/007-tooling.md#fda5e60cd8604d25
+// Chapter 007 / lint registry effecttsgo/obsoleteMatchImport: docs/design/src/007-tooling.md#c4bb22937affaaf4
+// Chapter 007 / lint registry effecttsgo/obsoleteSchemaImport: docs/design/src/007-tooling.md#386197ad7aa59bbb
 test("both tables expose every inventory code as an Appendix B diagnostic row", () => {
   const { inventory } = generateLintCodes()
   for (const [path, output] of lintOutputs()) {
