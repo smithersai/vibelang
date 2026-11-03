@@ -163,6 +163,10 @@ func TestFixVIPLegacyRunRefusals(t *testing.T) {
 
 // fixVIPOnlySource runs --fix-vip-only on a project whose main.vibe is source.
 func fixVIPOnlySource(t *testing.T, source string) (*FixResult, tspath.RootedFilePath) {
+	return fixSourceOptions(t, source, FixOptions{VIPOnly: true})
+}
+
+func fixSourceOptions(t *testing.T, source string, options FixOptions) (*FixResult, tspath.RootedFilePath) {
 	t.Helper()
 	_, file, _, _ := editorProgram(t, source)
 	dir := filepath.Dir(file.FileName().AsString())
@@ -174,7 +178,7 @@ func fixVIPOnlySource(t *testing.T, source string) (*FixResult, tspath.RootedFil
 	if len(errors) != 0 {
 		t.Fatalf("config: %v", errors)
 	}
-	return FixProjectWithOptions(t.Context(), fs, bundled.LibPath(), config, FixOptions{VIPOnly: true}), file.FileName()
+	return FixProjectWithOptions(t.Context(), fs, bundled.LibPath(), config, options), file.FileName()
 }
 
 // A position that held a call, as a declared Effect const, held it whatever

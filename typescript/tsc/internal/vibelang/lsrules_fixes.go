@@ -68,6 +68,8 @@ var callEffectFix = &ls.CodeFixProvider{
 			switch {
 			case ast.IsExpressionStatement(parent) && parent.Expression() == node:
 				return inEffectCode(parent) // plain code runs no Effect (VIP-1)
+			case ast.IsCallExpression(parent) && slices.Contains(parent.Arguments(), node):
+				return true
 			case ast.IsReturnStatement(parent):
 				return true
 			case ast.IsArrowFunction(parent):
@@ -84,7 +86,11 @@ var callEffectFix = &ls.CodeFixProvider{
 		}
 		c, done := fix.Program.GetTypeCheckerForFile(ctx, fix.SourceFile)
 		some, all := analyzerFor(c).programMembers(c.GetTypeAtLocation(value))
+		genericArgument := directInferredEffectArgument(c, value)
 		rejected := contractRejectsCall(c, value)
+		if value.Parent != nil && ast.IsCallExpression(value.Parent) && !genericArgument {
+			rejected = true
+		}
 		called := analyzerFor(c).programOf(c.GetTypeAtLocation(value)) != nil
 		done()
 		uncallable := some && !all
@@ -126,7 +132,7 @@ func contractRejectsCall(c *checker.Checker, value *ast.Node) bool {
 		return false
 	}
 	channels := []string{"_E", "_R"}
-	if !ast.IsExpressionStatement(value.Parent) {
+	if !ast.IsExpressionStatement(value.Parent) && !directInferredEffectArgument(c, value) {
 		channels = append(channels, "_A")
 	}
 	for _, name := range channels {

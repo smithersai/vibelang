@@ -501,6 +501,11 @@ func legacyHold(a *analyzer, n *ast.Node) (held bool, byName bool, reason string
 	if signature == nil {
 		return false, false, ""
 	}
+	// An inferred generic Effect is not a written program position.
+	// The direct-argument diagnostic and --fix now make this boundary explicit.
+	if len(path) == 1 && directInferredEffectArgument(c, n) {
+		return false, false, ""
+	}
 	if a.classify(a.expectedAt(owner, signature, path, n)).program || a.unmatchedOverloadExpectsProgram(owner, path) {
 		return true, true, "the expression is passed by name to a parameter that expects an Effect (D147), so the call in it ran inside that program"
 	}

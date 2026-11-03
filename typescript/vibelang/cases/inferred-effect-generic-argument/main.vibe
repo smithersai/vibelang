@@ -1,0 +1,9 @@
+// expect-result: [true,true]
+function expect<T>(actual: T, message?: string): boolean { return actual === 42 }
+function held<T>(actual: T): T { return actual }
+effect function awaited() { return 42 }
+export effect function main() {
+ const e = awaited()
+ const program = held<Effect.Effect<number>>(e)
+ return [expect(try awaited()), program === e]
+}

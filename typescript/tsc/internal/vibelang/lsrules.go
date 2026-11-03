@@ -78,6 +78,7 @@ func init() {
 	ls.RegisterCodeFixProvider(inferredFormFix)
 	ls.RegisterCodeFixProvider(trustedValueFix)
 	ls.RegisterCodeFixProvider(callEffectFix)
+	ls.RegisterCodeFixProvider(inferredEffectTypeArgumentFix)
 	ls.RegisterCodeFixProvider(mergeAllFix)
 	ls.RegisterCodeFixProvider(assertionFix)
 	ls.RegisterCodeFixProvider(outdatedAPIFix)
@@ -714,6 +715,7 @@ func isGlobal(c *checker.Checker, symbol *ast.Symbol) bool {
 // Layer.mergeAll (EK4807), JSON (EK4818), Effect.provide (EK4816), and
 // a running call that adds any or unknown to a channel (EK4811).
 func (r *ruleCheck) checkCall(call *ast.Node) {
+	r.checkInferredEffectArguments(call)
 	if inHatch(call) {
 		return
 	}

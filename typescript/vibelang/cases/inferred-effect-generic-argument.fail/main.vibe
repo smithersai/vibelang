@@ -1,0 +1,4 @@
+// expect: EK4802
+function expect<T>(actual: T, message?: string): boolean { return actual === 42 }
+effect function awaited() { return 42 }
+export effect function main() { return expect(awaited()) }
