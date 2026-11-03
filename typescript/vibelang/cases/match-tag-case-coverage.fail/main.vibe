@@ -1,4 +1,4 @@
-// expect: EK4701 EK4701 EK4701
+// expect: EK4701 EK4701 EK4701 EK4701
 // Chapter 004, Coverage: "Members that share a tag are covered one at a time,
 // and one left uncovered stays uncovered." Coverage is per member and tag case.
 type Shared = { _tag: "A"; x: number } | { _tag: "A"; y: number }
@@ -12,9 +12,18 @@ export function mixed(s: Mixed) { return match (s) { when { _tag: "A" }: 1; when
 export function single(s: { _tag: 1 | 2 }) { return match (s) { when { _tag: 1 }: 1; when { _tag: 2 }: 2; } }
 export function required(s: Shared) { return match (s) { when { _tag: "A", x: let x }: x; when { _tag: "A", y: let y }: y; } }
 
+// An enum member or a unique symbol names a tag case: $is(V, s._tag).
+enum Kind { A = "a", B = "b" }
+const Left: unique symbol = Symbol("Left")
+const Right: unique symbol = Symbol("Right")
+export function kinds(s: { _tag: Kind; v: number }) { return match (s) { when { _tag: Kind.A }: 1; when { _tag: Kind.B }: 2; } }
+export function sides(s: { _tag: typeof Left } | { _tag: typeof Right }) { return match (s) { when { _tag: Left }: 1; when { _tag: Right }: 2; } }
+
 // EK4701: the y member is left.
 export function onlyX(s: Shared) { return match (s) { when { _tag: "A", x: let x }: x; } }
 // EK4701: the B case of both members is left.
 export function onlyA(s: Cases) { return match (s) { when { _tag: "A" }: 1; } }
 // EK4701: the B case of the x member is left.
 export function missingB(s: Mixed) { return match (s) { when { _tag: "A" }: 1; when { _tag: "C" }: 3; } }
+// EK4701: the Kind.B case is left.
+export function kindA(s: { _tag: Kind; v: number }) { return match (s) { when { _tag: Kind.A }: 1; } }

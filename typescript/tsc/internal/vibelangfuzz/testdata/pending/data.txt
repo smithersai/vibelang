@@ -123,8 +123,6 @@ FuzzVIPDifferential exit:value/vip07.finish-is-normal-close-plain compiler VIP-7
 FuzzVIPDifferential corpus:data-vip07-finish-is-normal-close-plain compiler VIP-7: minimized vip07.finish-is-normal-close-plain completion witness; lane vip-match
 FuzzVIPDifferential exit:kind/vip07.finishmatch-generator-return-plain compiler VIP-7: a yield in a match arm is emitted inside an arrow function, so the module fails to parse; lane vip-match
 FuzzVIPDifferential corpus:data-vip07-finishmatch-generator-return-plain compiler VIP-7: minimized vip07.finishmatch-generator-return-plain completion witness; lane vip-match
-FuzzDataSpecRules feature:tagged-enum-complete compiler VIP-7: the documented tagged-member or open-subject coverage is incorrectly rejected with EK4701; lane vip-match
-FuzzDataSpecRules corpus:data-tagged-enum-complete compiler VIP-7: minimized tagged-enum-complete witness; lane vip-match
 FuzzVIPDifferential exit:value/vip07.empty-iterables-plain compiler VIP-7: an array pattern tests arrays only, not any iterable; lane vip-match
 FuzzVIPDifferential compile:EK0707/vip07.elision-width-plain compiler VIP-7: an elision in an array pattern does not parse; lane vip-match
 FuzzVIPDifferential compile:TS1005/vip07.elision-width-plain compiler VIP-7: an elision in an array pattern does not parse; lane vip-match

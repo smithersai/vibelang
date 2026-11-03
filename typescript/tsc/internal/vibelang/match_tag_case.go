@@ -12,7 +12,8 @@ import (
 // _tag only when _tag is a discriminant of a union, and it keeps a member
 // whose _tag is a union of literals whole when a test excludes one of them.
 //
-// So where a test the parser wrote, $match1._tag === "V", is false, a member
+// So where a test the parser wrote, $match1._tag === "V", or $is(V, $match1._tag)
+// for an enum member or unique symbol V, is false, a member
 // whose _tag is only V is gone, and a member whose _tag can be V keeps only
 // its other tag cases:
 //
@@ -24,18 +25,14 @@ import (
 func init() { checker.RegisterFlowNarrowingHook(narrowTagCase) }
 
 func narrowTagCase(c *checker.Checker, reference *ast.Node, t *checker.Type, test *ast.Node, assumeTrue bool, _ func(*ast.Node, *checker.Type, *ast.Node) *checker.Type) *checker.Type {
-	if assumeTrue || !ast.IsBinaryExpression(test) {
+	if assumeTrue {
 		return nil
 	}
-	binary := test.AsBinaryExpression()
-	if binary.OperatorToken.Kind != ast.KindEqualsEqualsEqualsToken || binary.OperatorToken.Flags&ast.NodeFlagsReparsed == 0 {
+	access, operand := tagCaseTest(test)
+	if access == nil || !ast.IsPropertyAccessExpression(access) || access.Name().Text() != "_tag" || !c.IsMatchingReference(reference, access.Expression()) {
 		return nil
 	}
-	access := ast.SkipParentheses(binary.Left)
-	if !ast.IsPropertyAccessExpression(access) || access.Name().Text() != "_tag" || !c.IsMatchingReference(reference, access.Expression()) {
-		return nil
-	}
-	value := c.GetTypeAtLocation(binary.Right)
+	value := c.GetTypeAtLocation(operand)
 	if value == nil || value.Flags()&checker.TypeFlagsUnit == 0 {
 		return nil
 	}
@@ -76,4 +73,22 @@ func narrowTagCase(c *checker.Checker, reference *ast.Node, t *checker.Type, tes
 // fresh literal and its regular type included.
 func sameUnitType(c *checker.Checker, a, b *checker.Type) bool {
 	return a.Flags()&checker.TypeFlagsUnit != 0 && c.IsTypeAssignableTo(a, b) && c.IsTypeAssignableTo(b, a)
+}
+
+// tagCaseTest returns the _tag read and the tested value of test when the
+// parser wrote it for a tag case: $match1._tag === V for a literal, or
+// $is(V, $match1._tag) for a name or a dotted name, which tests SameValue
+// when V is neither an object nor a function, as a unit type is not.
+func tagCaseTest(test *ast.Node) (access, value *ast.Node) {
+	switch {
+	case ast.IsBinaryExpression(test):
+		binary := test.AsBinaryExpression()
+		if binary.OperatorToken.Kind != ast.KindEqualsEqualsEqualsToken || binary.OperatorToken.Flags&ast.NodeFlagsReparsed == 0 {
+			return nil, nil
+		}
+		return ast.SkipParentheses(binary.Left), binary.Right
+	case isPatternCall(test, "$is") && len(test.Arguments()) == 2:
+		return ast.SkipParentheses(test.Arguments()[1]), test.Arguments()[0]
+	}
+	return nil, nil
 }
