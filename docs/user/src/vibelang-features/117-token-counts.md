@@ -118,7 +118,7 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [Vite and Vitest](../setup/vite.md) | 3,100 |
 | **Format and lint** | **7,000** |
 | [Format with dprint](../setup/formatting.md) | 2,500 |
-| [Developer tools](../setup/developer-tools.md) | 4,500 |
+| [Developer tools](../setup/developer-tools.md) | 4,600 |
 | **Frameworks** | **12,000** |
 | [React](../setup/react.md) | 2,100 |
 | [React Native and Metro](../setup/react-native.md) | 450 |
