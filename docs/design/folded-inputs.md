@@ -165,3 +165,9 @@ The earlier fold omitted the warning-table row and the explicit-type-argument ed
 Folded: 1793693984-sl18-fix-astra-3.patch (already stated at docs/design/src/007-tooling.md:54; the same root rule now also governs docs/design/vips/0027-declaration-output.md’s overlapping-directory paragraph).
 
 The directory amendment already follows TypeScript’s declaration source root. Remove the surviving unconditional config-relative claim from its later paragraph. Native TypeScript `5.9.3` emits `decl/x.d.ts` for a sole `src/x.ts` without `rootDir`, and `decl/src/x.d.ts` with explicit `rootDir: "."` or a composite project. Overlap, selected-output cleanup and native `rootDirs` resolution keep their existing rules. This corrects the omitted sentence, not the implementation owned by `sidecar-outside-root` or the earlier `sl18-review-astra` fix.
+
+## Round 19: make ordinary package declarations consumable
+
+Folded: 1793682039-declstyle-from-tsc.patch (applied at docs/design/src/001-functions.md’s Specifiers bullet, docs/design/src/007-tooling.md’s Emit names rule, and VIP-27, VIP-34 and VIP-39’s declaration-spelling amendments; declaration-style warning ownership is reconciled separately).
+
+The earlier fold’s claim that preserving `./dep.ts` means a package should preserve `./dep.vibe` is superseded here. Will’s standing TypeScript rule governs the consumer as well as the emitter. TypeScript `5.9.3` preserves written `./user.ts` in `.d.ts`; with only ordinary `user.d.ts` shipped, NodeNext resolves `./user.ts` and `./user.js`, but reports `TS2307` for `./user.vibe` even with `allowArbitraryExtensions`. Adopt the input’s native-twin spelling for package declarations, and retain its distinct source-reference spelling for compatibility sidecars. The old optional style setting does not return. The patch’s old matrix is evidence, not a new normative duplicate of the chapters; its proposed native warning code is subject to VIP-34’s diagnostic ownership rule.
