@@ -136,6 +136,7 @@ func checkFiberForms(c *checker.Checker, file *ast.SourceFile) {
 				}
 			}
 			if args := node.Arguments(); len(args) == 3 {
+				checkConcurrentLimit(c, file, args[1])
 				checkConcurrentBody(c, args[2].Body())
 			}
 		}

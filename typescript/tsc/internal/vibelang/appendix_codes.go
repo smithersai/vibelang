@@ -32,6 +32,7 @@ var (
 	EK1901 = message(1901, errorCategory, "A for concurrent operand that is not an Iterable. Iterate an Iterable inside effect code, and use continue to end an item.")
 	EK1902 = message(1902, errorCategory, "For concurrent outside effect code. Iterate an Iterable inside effect code, and use continue to end an item.")
 	EK1905 = message(1905, errorCategory, "continue cannot leave a for concurrent item: each item runs in its own fiber.")
+	EK1907 = message(1907, errorCategory, "A for concurrent limit must be assignable to Types.Concurrency: number or \"unbounded\".")
 	EK2102 = message(2102, errorCategory, "A producer whose written return type is not a Stream. Yield values from a producer and return without a value; its return type is a Stream.")
 	EK2103 = message(2103, errorCategory, "yield* is not supported in a producer. Loop over the source and yield each value instead.")
 	EK2201 = message(2201, errorCategory, "An interruption block outside effect code. Use interruption blocks inside effect code and restore inside the same uninterruptible region.")
@@ -43,7 +44,7 @@ var (
 )
 
 func init() {
-	for _, m := range []*Message{EK0101, EK0102, EK0104, EK0105, EK0107, EK0401, EK0402, EK0403, EK0404, EK0405, EK0503, EK0504, EK0505, EK0506, EK0507, EK0508, EK0511, EK0801, EK0901, EK0902, EK0903, EK1201, EK1401, EK1701, EK1901, EK1902, EK1905, EK2102, EK2103, EK2201, EK2202, EK2301, EK2803, EK3006} {
+	for _, m := range []*Message{EK0101, EK0102, EK0104, EK0105, EK0107, EK0401, EK0402, EK0403, EK0404, EK0405, EK0503, EK0504, EK0505, EK0506, EK0507, EK0508, EK0511, EK0801, EK0901, EK0902, EK0903, EK1201, EK1401, EK1701, EK1901, EK1902, EK1905, EK1907, EK2102, EK2103, EK2201, EK2202, EK2301, EK2803, EK3006} {
 		registry[m.Code] = m
 	}
 }

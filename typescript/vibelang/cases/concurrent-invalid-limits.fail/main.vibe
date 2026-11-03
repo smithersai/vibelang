@@ -1,0 +1,7 @@
+// expect: EK1907
+export effect function invalid(){
+ for concurrent("fast") (const x of [1]){}
+ for concurrent(undefined) (const x of [1]){}
+ for concurrent(void 0) (const x of [1]){}
+ for concurrent(null) (const x of [1]){}
+}

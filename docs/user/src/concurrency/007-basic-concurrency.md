@@ -44,6 +44,8 @@ A concurrency limit bounds running work, not iterable pulling. In pinned Effect,
 
 A written `for concurrent(limit())` limit is evaluated once, before the iterable expression, in both the native compiler and TypeScript mapper.
 
+A written concurrency limit must be assignable to Effect's `Types.Concurrency` (`number | "unbounded"`). Other types, including explicit `undefined` and `null`, report `EK1907`. Omitting the limit uses the default concurrency.
+
 ## Interrupting computations
 
 ```vibe
