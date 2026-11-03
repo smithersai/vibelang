@@ -1,0 +1,23 @@
+// expect-result: [1,2,1,2,1,true]
+function letters<T extends "A" | "B">(s:T) {
+ return match(s) { when "A": 1; when "B": 2; }
+}
+function tags<T extends {_tag:"A"} | {_tag:"B"}>(s:T) {
+ return match(s) { when {_tag:"A"}: 1; when {_tag:"B"}: 2; }
+}
+function isA<T extends {_tag:"A"} | {_tag:"B"}>(s:T): s is T & {_tag:"A"} {
+ return s._tag==="A"
+}
+function refined<T extends {_tag:"A"} | {_tag:"B"}>(s:T) {
+ if(isA(s)) return match(s){when {_tag:"A"}: 1;}
+ return 2
+}
+function oldBehavior<T extends "A" | "B">(s:T) {
+ return match(s) { when "A": 1; default: match (void 0 as unknown) { when false: (void 0 as never); }; }
+}
+function throwsNoMatch() {
+ try { oldBehavior("B"); return false } catch(e) { return e instanceof TypeError }
+}
+export effect function main() {
+ return [letters("A"),letters("B"),tags({_tag:"A"}),tags({_tag:"B"}),refined({_tag:"A"}),throwsNoMatch()]
+}

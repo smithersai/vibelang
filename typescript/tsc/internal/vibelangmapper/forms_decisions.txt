@@ -3514,6 +3514,7 @@ typescript/vibelang/cases/match-fixed-extractor-unchecked/main.vibe:5:21 lambda 
 typescript/vibelang/cases/match-fixed-extractor-unchecked/main.vibe:5:75 lambda dual fallback
 typescript/vibelang/cases/match-fixed-extractor-unchecked/main.vibe:9:24 lambda plain annotation
 typescript/vibelang/cases/match-fixed-extractor-unchecked/main.vibe:9:73 lambda dual fallback
+typescript/vibelang/cases/match-generic-constraint/main.vibe:16:48 lambda dual fallback
 typescript/vibelang/cases/match-getter-multiple-tests/main.vibe:11:24 lambda dual fallback
 typescript/vibelang/cases/match-getter-once/main.vibe:10:24 lambda dual fallback
 typescript/vibelang/cases/match-instanceof-repair-array/main.vibe:4:41 lambda plain table

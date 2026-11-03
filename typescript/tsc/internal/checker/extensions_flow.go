@@ -38,3 +38,10 @@ func (c *Checker) NarrowTypeByDiscriminant(t *Type, access *ast.Node, narrow fun
 func (c *Checker) NarrowTypeTo(t, candidate *Type, assumeTrue bool) *Type {
 	return c.getNarrowedType(t, candidate, assumeTrue, false)
 }
+
+// NarrowTypeByTest projects a reference type through a test without changing
+// the reference's flow type. Coverage checks use it with a generic constraint.
+func (c *Checker) NarrowTypeByTest(reference *ast.Node, t *Type, test *ast.Node, assumeTrue bool) *Type {
+	f := &FlowState{reference: reference, declaredType: t, initialType: t}
+	return c.narrowType(f, t, test, assumeTrue)
+}

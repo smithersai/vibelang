@@ -281,7 +281,7 @@ A signed Number-zero pattern such as `-0` or `+0` does not cover the whole TypeS
 
 Coverage starts from the subject's TypeScript type at the `match` expression. A preceding guard can make an otherwise open type finite: after excluding numbers from `boolean | number`, both `true` and `false` need coverage, or a `default` arm. This also applies to narrowed property reads and assignments. Tagged object intersections produced by an `in` test remain finite.
 
-A type parameter with a finite constraint is checked over that constraint: `T extends "A" | "B"` needs both cases. A broad constraint such as `string` stays open. A represented TypeScript flow refinement can reduce the domain; a reference still typed as bare `T` keeps its whole constraint. This does not change the subject's ordinary type in an arm.
+A type parameter with a finite constraint is checked over that constraint: `T extends "A" | "B"` needs both cases. A broad constraint such as `string` stays open. A represented TypeScript flow refinement can reduce the domain; a reference still typed as bare `T` keeps its whole constraint. This does not change the subject's ordinary type in an arm. An incomplete generic match reports `EK4701`; cover the missing cases or add `default`. `vibelang --fix` can add a default that preserves the previous no-match `TypeError` defect without adding a typed failure.
 
 A missing case is a compile error, EK4701, `This match does not handle every case of {type}: {cases} is left.`:
 

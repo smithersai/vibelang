@@ -216,6 +216,11 @@ func afterIrrefutableArm(call *ast.Node) bool {
 // initializer supplies the type before the arms narrow the remainder.
 func matchRemainder(c *checker.Checker, call *ast.Node) (declared, left *checker.Type) {
 	declared, left = matchSubjectTypes(c, call)
+	if declared != nil {
+		if constraint := c.GetBaseConstraintOfType(declared); constraint != nil && constraint != declared {
+			return genericMatchRemainder(c, call)
+		}
+	}
 	if declared == nil {
 		return nil, nil
 	}
