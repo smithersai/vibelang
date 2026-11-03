@@ -59,6 +59,8 @@ The server advertises these features to LSP clients. In VS Code and Cursor, use 
 
 These are language-server capabilities, not a guarantee that every construct offers a result. A client must enable and support each feature; for `.ts` files that import `.vibe`, use the VibeLang TypeScript handoff described above.
 
+**Show Call Hierarchy** reports written call sites. Compiler-generated constructors for `error` declarations do not add calls at the declaration's name; written constructor calls remain visible.
+
 **Expand Selection** follows nested source ranges in `schema` and `data` declarations, `match` and typed `catch` expressions, including mutable schema arrays with nested arrays or record values.
 
 Select a TypeScript `module` declaration and request **Move module to a .ts file** to copy its body to a sibling TypeScript file and rewrite its imports and re-exports. The [refactor guide](/getting-started/012-devtools#move-a-typescript-module-body-to-a-file) describes filename collisions and import extensions.

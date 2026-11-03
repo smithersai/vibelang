@@ -7,12 +7,9 @@
 # <target> <key> <owner> <what is missing, with the decision it breaks>
 FuzzEditorConsistency feature:layer-declaration compiler hang: the parser loops on a stray `)` or `]` in a `layer` declaration's body (FuzzFormat corpus parser-hang-layer-close-paren)
 FuzzEditorConsistency consistency:rename:ClassDeclaration:diagnostics:EK2117 compiler LSP 3.17, D372: renaming an `error` or `schema error` declaration leaves `extends Base` in another error's heritage unrenamed (its references miss it), so the renamed program adds EK2117 and TS2304
-FuzzEditorConsistency corpus:rename-error-extends compiler the minimal reproduction of consistency:rename:ClassDeclaration:diagnostics:EK2117
 FuzzEditorConsistency consistency:rename:ClassDeclaration:diagnostics:EK0502 compiler LSP 3.17, D372: renaming an `error` declaration changes its `_tag` but leaves the matching key of `Effect.catchTags(e, { A: … })` unrenamed, so the handlers no longer match and the renamed program adds EK0502, TS2769 and TS7006 (seed#8 on 8b4abee2)
 FuzzEditorConsistency consistency:rename:FunctionDeclaration:diagnostics:TS2304 compiler LSP 3.17, D372: renaming a function leaves its call inside a retired `select` arm unrenamed (references miss it, as hover does there, D77), which adds TS2304
-FuzzEditorConsistency consistency:call-hierarchy:incoming-missing:ClassDeclaration compiler LSP 3.17: the outgoing calls of `error Sub extends Base` hold a call of Base at Sub's name, from the constructor the declaration synthesizes, which Base's incoming calls do not hold; the Effect reading's class has no such call (D32)
 FuzzEditorConsistency consistency:call-hierarchy:incoming-missing:FunctionDeclaration compiler LSP 3.17: a call inside a retired `select` arm is among its function's outgoing calls but not among the callee's incoming calls, whose references miss it (D32, D77)
 FuzzEditorConsistency consistency:document-symbols:selection-outside:Block compiler LSP 3.17 (selectionRange "Must be contained by the `range`"): the document symbol of the temporary `$is1` that `outcome is Exit.Success(let value)` synthesizes selects bytes outside its range (D32)
-FuzzEditorConsistency corpus:calls-error-extends compiler the minimal reproduction of consistency:call-hierarchy:incoming-missing:ClassDeclaration
 FuzzEditorConsistency corpus:calls-select compiler the minimal reproduction of consistency:call-hierarchy:incoming-missing:FunctionDeclaration
 FuzzEditorConsistency corpus:rename-select-call compiler the minimal reproduction of consistency:rename:FunctionDeclaration:diagnostics:TS2304

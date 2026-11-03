@@ -716,6 +716,13 @@ type callSiteCollector struct {
 }
 
 func (c *callSiteCollector) recordCallSite(node *ast.Node) {
+	// VibeLang's parser anchors generated calls, such as an error's implicit
+	// super(args), on source names. They have no written call site. collect
+	// still visits their children, which may contain source expressions.
+	if node.Flags&ast.NodeFlagsReparsed != 0 {
+		return
+	}
+
 	var target *ast.Node
 
 	switch {
