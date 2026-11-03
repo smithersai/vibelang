@@ -1,0 +1,7 @@
+// expect: TS2345 TS2345
+import { leftArg, rightArg, argUnion, wrongParameter } from "./helpers.js"
+export function check(flag: boolean) {
+  const mixed = flag ? leftArg : rightArg
+  wrongParameter(mixed)
+  wrongParameter(argUnion)
+}

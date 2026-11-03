@@ -1,0 +1,28 @@
+// expect: EK0402 EK0402 EK0402 EK0402 EK0402 EK0402 EK0402 EK0402 EK0402 EK0402 EK0402 EK0402 EK0402 EK0402
+import { risky, safe, foreign, take, takeOptional, wrongByReturn, type Callback } from "./helpers.js"
+export function check(flag: boolean) {
+  const mixed = flag ? risky : safe
+  const reverse = flag ? safe : risky
+  const chained = mixed
+  const foreignAlias = foreign
+  take(mixed)
+  take(reverse)
+  take(chained)
+  take(foreign)
+  take(foreignAlias)
+  const saved: Callback = mixed
+  const savedForeign: Callback = foreign
+  const box: { run: Callback } = { run: mixed }
+  const list: Array<Callback> = [mixed]
+  let assigned: Callback
+  assigned = mixed
+  wrongByReturn(mixed)
+  const optional = flag ? risky : undefined
+  takeOptional(optional)
+  const optionalSaved: Callback | undefined = optional
+  return [saved, savedForeign, box, list, assigned]
+}
+export function back(flag: boolean): Callback {
+  const mixed = flag ? risky : safe
+  return mixed
+}

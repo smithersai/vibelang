@@ -222,6 +222,9 @@ func foreignAliasThrows(c *checker.Checker, expr *ast.Node) (throwContract, bool
 }
 
 func checkCallbackValue(c *checker.Checker, expr *ast.Node) {
+	if checkUnionCallbackValue(c, expr) {
+		return
+	}
 	src, ok := foreignThrows(c, expr)
 	if !ok || admittedByShippedContract(c, expr) {
 		return

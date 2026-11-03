@@ -1,0 +1,25 @@
+// expect:
+import { risky, safe, safeZero, unknownSource, foreign, foreignSafe, take, takeOptional, allow, wide, byReturn,
+  effectZero, effectOne, effectUse, type Callback, type Allowed, type Wide, type PerReturn } from "./helpers.js"
+export function check(flag: boolean) {
+  const safeUnion = flag ? safeZero : safe
+  const throwingUnion = flag ? risky : safe
+  const unknownUnion = flag ? unknownSource : safe
+  const effects = flag ? effectZero : effectOne
+  take(safeUnion)
+  take(foreignSafe)
+  const optionalSafe = flag ? safe : undefined
+  takeOptional(optionalSafe)
+  const optionalSaved: Callback | undefined = optionalSafe
+  allow(throwingUnion)
+  allow(foreign)
+  wide(unknownUnion)
+  byReturn(throwingUnion)
+  byReturn(foreign)
+  effectUse(effects)
+  const saved: Callback = safeUnion
+  const admitted: Allowed = throwingUnion
+  const broad: Wide = unknownUnion
+  const split: PerReturn = foreign
+  return [saved, admitted, broad, split]
+}
