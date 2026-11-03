@@ -1993,6 +1993,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - The diagnostic appendix omitted the native call-error codes named by trailing-block migration; it now lists `TS2345`, `TS2554` and `TS2769` with their triggers.
 - The entry-migration guide described rewriting unmarked `main` functions and retaining retired runtime helpers; it now limits repair to platform-marked modules, names the explicit runners and explains when repair refuses.
 - The retired-forms migration guide could fail to publish because its spec links escaped the user-docs root; those links now use the specification’s published URLs.
+- The specification could fail its publication check because a retirement rule included internal attribution; the public rule now states the same prerequisites without that attribution.
+
 
 - The diagnostic guide omitted the adjustable editor warning EK9100. It now identifies its default severity and editor-only behavior.
 - The platform guide lacked a complete HTTP request that read the response body. It now checks a JSON request with FetchHttpClient.layer.

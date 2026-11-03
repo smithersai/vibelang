@@ -5,6 +5,7 @@ import { resolve } from "node:path"
 import { fileURLToPath } from "node:url"
 import { test } from "node:test"
 import { publicHygiene } from "./public-hygiene.mjs"
+import fc from "fast-check"
 
 const root = process.env.VIBELANG_HYGIENE_ROOT ?? fileURLToPath(new URL("../../", import.meta.url))
 const files = process.env.VIBELANG_HYGIENE_ROOT
@@ -68,4 +69,25 @@ test("retired scratch rules preserve path, content and prefix boundaries", () =>
     assert.deepEqual(publicHygiene("README.md", root), [], root)
   }
   assert.deepEqual(publicHygiene("packages/compiler/README.md", "Ordinary public documentation."), [])
+})
+
+test("receiver retirement publishes its prerequisites without internal attribution", () => {
+  const tooling = readFileSync(resolve(root, "docs/design/src/007-tooling.md"), "utf8")
+  const appendix = readFileSync(resolve(root, "docs/design/src/900-appendices.md"), "utf8")
+  assert.match(tooling, /Rejection begins only after the preserving codemod ships and migration repositories have zero remaining uses(?:,|\.)/)
+  assert.deepEqual(publicHygiene("docs/design/src/007-tooling.md", tooling), [])
+  assert.deepEqual(publicHygiene("docs/design/src/900-appendices.md", appendix), [])
+})
+
+test("internal authority prose stays rejected across spec chapters and punctuation", () => {
+  fc.assert(fc.property(
+    fc.constantFrom("007-tooling", "900-appendices"),
+    fc.constantFrom("Will", "Codex", "Fable", "GPT-6"),
+    fc.constantFrom("'s", "’s", " —", ":", "\n"),
+    (chapter, owner, punctuation) => {
+      const text = `Rejection waits for a preserving codemod, under ${owner}${punctuation} dated ruling.`
+      assert.ok(publicHygiene(`docs/design/src/${chapter}.md`, text).includes("internal decision or review provenance"))
+      assert.deepEqual(publicHygiene(`docs/design/src/${chapter}.md`, "The preserving codemod will ship before rejection."), [])
+    }
+  ), { numRuns: 100, seed: 20261103 })
 })
