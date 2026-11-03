@@ -154,6 +154,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Contributor release checks could omit fixture tests or fail cancellation checks on a host running one Go test slice; launcher fixtures now run their complete intended suite independently of the host slice.
 
+- Comparing declarations that re-exported generic global types could report missing standard library types; API checks now preserve the global library while checking those aliases.
+
 - Custom compiler-case runners could fail before invoking the compiler; they now receive the same compiler executable that checked the case.
 - Loading a `.vibe` module through `vibelang/register`, `vibelang/bun` or a bundler plugin failed with `TS6305: Output file '…/lib/x.d.ts' has not been built from source file '…/src/x.ts'` when its tsconfig `references` a project that was not built yet, as in a fresh clone before `vibelang -b`; the loader's compile now reads a referenced project's types from its sources, as the editor does, and a relative import into that project no longer reports `TS2878`.
 

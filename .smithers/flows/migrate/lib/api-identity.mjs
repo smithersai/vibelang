@@ -895,6 +895,14 @@ function prepareComparison(ts, before, after, options, progress) {
           const text = exportAssignment
             ? `\ndeclare namespace ${local} { ${definition} }\n`
             : `\n${definition}\n`
+          // A global generic can be exported under an import alias. Adding an
+          // export to its script (notably lib.es5.d.ts) would turn the global
+          // library into a module. Instantiate it through the published alias
+          // in the probe instead, preserving the original ambient environment.
+          if (!ts.isExternalModule(source)) {
+            imports.push(`type ${id} = <${params}>() => ${path}<${args}>;`)
+            return id
+          }
           bridges.set(source.fileName, (bridges.get(source.fileName) ?? source.text) + text)
           return `import(${JSON.stringify(slash(source.fileName))}).${id}`
         }
