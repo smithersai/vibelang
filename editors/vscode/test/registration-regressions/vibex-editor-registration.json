@@ -1,0 +1,5 @@
+{
+  "property": "editor-vibex-registration",
+  "rule": "VIP-39: The existing id is `vibe`; `vibex` matches it and the extension.",
+  "input": { "key": "language", "reverse": false, "suffix": "x" }
+}

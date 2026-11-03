@@ -2,7 +2,7 @@
 
 > **Warning:** VibeLang is v0. The language will change in major, breaking ways. It is not suitable for production use.
 
-The extension `vibelang.vibelang` registers the VibeLang language for `.vibe` files and runs the VibeLang compiler, `vibelang --lsp --stdio`, as their language server. It works in VS Code 1.91 or later and in Cursor.
+The extension `vibelang.vibelang` registers `vibe` (VibeLang) for `.vibe` files and `vibex` (VibeLang JSX) for `.vibex` files and runs the VibeLang compiler, `vibelang --lsp --stdio`, as their language server. Opening either file type activates the extension and connects it to the language server. It works in VS Code 1.91 or later and in Cursor.
 
 | Feature | What you see |
 | --- | --- |
@@ -40,7 +40,7 @@ cursor --install-extension vibelang.vsix      # Cursor
 The extension runs the first of:
 
 1. The `vibelang.server.path` setting. A relative path is relative to the first workspace folder.
-2. The `node_modules/.bin/vibelang` nearest to the open `.vibe` file, then nearest to each workspace folder. `bun install` puts it there from `vibelang`.
+2. The `node_modules/.bin/vibelang` nearest to the open `.vibe` or `.vibex` file, then nearest to each workspace folder. `bun install` puts it there from `vibelang`.
 3. `vibelang` on `PATH`. `scripts/setup.sh` links `~/.local/bin/vibelang` when that directory is on `PATH`.
 
 If none exists, the extension says so and the status item next to the language mode reads "vibelang not found". After rebuilding the compiler, run **VibeLang: Restart Language Server**.

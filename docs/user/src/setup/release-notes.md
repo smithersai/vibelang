@@ -718,6 +718,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - `vibelang lint --config anything.json` tried to open an unsupported custom configuration; it now reports `TS5023`, including when an Oxlint configuration is present. Select a compiler project with `-p` or `--project`.
 
+- The VS Code extension README omitted JSX files; it now documents the distinct `vibex` language mode for `.vibex` files and its language server activation.
+
 - Identical recursive generic declaration APIs could fail with `TS2589`; exact resolved type identity now proves those comparisons.
 - API checks treated identical JSDoc links as different when a private target resolved in only one snapshot. Link targets and labels now compare consistently while real comment changes remain differences.
 
