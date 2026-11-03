@@ -167,6 +167,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - The failure-spec fuzz suite still marked seven working Promise-wrapper and typed-failure rules as broken. Their stale pending markers are removed, so those regression cases now run normally.
 
+- A legacy typed catch with no written `throw` failed the no-throw documentation check when another function threw. The check now distinguishes source throws from generated fallback rethrows.
+
 - The no-throw documentation check rejected a legal `do` expression in an `async` parameter default; it now uses VibeLang’s parser and preserves the source callable context.
 
 - Renaming a shorthand pattern binding could change the property it matched and add `TS2339`; rename now keeps the property key and writes an explicit binding.

@@ -29,12 +29,13 @@ export function plainThrows(fence) {
     }
   }
   const tokens = source.tokens
+  const writtenThrows = new Set(tokens.filter(t => t.type === "Keyword" && t.value === "throw").map(t => t.range[0]))
   const tokenAt = offset => tokens.find(t => t.range[0] >= offset)
   const found = new Set()
   function visit(node, allowed = false, parent) {
     if (!node || typeof node !== "object" || !node.type) return
     if (node.type === "VibeModuleDeclaration") return // VIP-40: foreign TypeScript.
-    if (node.type === "ThrowStatement") {
+    if (node.type === "ThrowStatement" && writtenThrows.has(node.range[0])) {
       const line = lineAt(node.range[0])
       if (!allowed && !expectedErrors.has(line)) found.add(line)
     }
@@ -343,4 +344,19 @@ test("plainThrows preserves match lowering and rejects source callbacks inside i
 
 test("plainThrows refuses an invalid parse instead of trusting a recovered tree", () => {
   assert.throws(() => plainThrows("function f( { throw 1 }"), SyntaxError)
+})
+
+test("plainThrows ignores typed-catch fallback rethrows regardless of unrelated source (PREVIEW-21)", () => {
+  fc.assert(fc.property(fc.integer(), fc.constantFrom(" ", "\n  "), (value, layout) => {
+    const source = `error Tagged {}\ndeclare function g(): unknown;\nfunction f() { try { g() } catch (e: Tagged) {${layout}} }`
+    assert.deepEqual(plainThrows(source), [])
+    assert.deepEqual(plainThrows(source + `\nasync function h() { throw ${value} }`), [])
+    assert.equal(plainThrows(source.replace(`{${layout}} }`, `{${layout}throw e } }`)).length, 1)
+  }), { seed: 9821, numRuns: 100 })
+})
+
+test("plainThrows checks source throw expressions as well as statements", () => {
+  assert.equal(plainThrows("function f(x: number | undefined) { return x ?? throw 1 }").length, 1)
+  assert.deepEqual(plainThrows("effect function f(x: number | undefined) { return x ?? throw 1 }"), [])
+  assert.deepEqual(plainThrows("async function f(x: number | undefined) { return x ?? throw 1 }"), [])
 })
