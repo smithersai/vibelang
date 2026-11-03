@@ -1,0 +1,10 @@
+{
+  "finding": "t3code:platform-sibling-moved-let-writer",
+  "note": "Minimized from t3code apps/web/src/hooks/useSettings.ts (230fd2f9). With the host globals of its EK4402 messages handed to the split, a function that reads window took the module's `let` state with it to useSettings.platform.ts, while a kept function still assigned that state, so the .vibe module failed TS2632 `Cannot assign to 'clientSettingsSnapshot' because it is an import` on the a444 compiler (platform-t3code web proof, pass 2). React hooks and Schema decoding are replaced by plain functions.",
+  "file": "src/useSettings.ts",
+  "globals": [
+    "window"
+  ],
+  "text": "let clientSettingsSnapshot = \"defaults\"\nlet clientSettingsHydrationGeneration = 0\n\nfunction readStoredSettings(): string | null {\n  return typeof window === \"undefined\" ? null : (window.localStorage?.getItem(\"settings\") ?? clientSettingsSnapshot)\n}\n\nexport function hydrateClientSettings(): string {\n  const generation = clientSettingsHydrationGeneration\n  const stored = readStoredSettings()\n  if (stored !== null && generation === clientSettingsHydrationGeneration) clientSettingsSnapshot = stored\n  return clientSettingsSnapshot\n}\n\nexport function resetClientSettingsForTests(): void {\n  clientSettingsSnapshot = \"defaults\"\n  clientSettingsHydrationGeneration += 1\n}\n\nexport function getClientSettings(): string {\n  return clientSettingsSnapshot\n}\n",
+  "ambient": "declare var window: { readonly localStorage?: { getItem(key: string): string | null } }\n"
+}

@@ -161,6 +161,12 @@ export function splitPlatform(text, file, ts, { globals = [] } = {}) {
         moved.add(needed); grew = true
       }
     }
+    // An import is read-only (TS2632): whatever writes a moved binding moves with it.
+    const movedNames = new Set([...moved].filter((d) => !typeOnly(d)).flatMap((d) => [...d.names]))
+    for (const d of declarations) {
+      if (moved.has(d) || typeOnly(d)) continue
+      if ([...writtenNames(d.statement, ts)].some((n) => movedNames.has(n) && !d.names.has(n))) { moved.add(d); grew = true }
+    }
   }
   for (const d of moved) {
     if (!isMovable(d.statement, ts)) return { refused: `${file}: ${firstLine(source, d.statement)} cannot move to ${posix.basename(platformPath(file))}` }

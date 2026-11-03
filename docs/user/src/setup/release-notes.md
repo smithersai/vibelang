@@ -190,6 +190,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Rolldown entry globs could bundle generated `.d.vibex.ts` declarations as empty entrypoints; the plugin now excludes those sidecars and retains the JSX source entries and aliases.
 
 - Published API checks rejected unchanged generic declarations when an import crossed a self-namespace export. Those copies now compare identically while changed exports and dependencies still fail.
+- After the migrate flow moved a module-level `let` into a `.platform.ts` sibling, a kept function that assigned it failed `TS2632` ("Cannot assign to ... because it is an import"). The codemod now moves every function that writes the moved binding with it, or keeps the module in TypeScript when such a writer must stay exported.
 - Generic `data` helper names used unstable suffixes and could collide with source names; they now use `$Name$Definition` and the first free numbered suffix.
 - Async-to-Effect conversion could skip a returned object's `then` getter or its error; conversions now preserve that Promise-adoption read by declining accessors and aliased objects, while keeping fresh data-property literals available.
 
