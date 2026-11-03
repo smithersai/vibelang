@@ -176,6 +176,8 @@ An `error` class has a `Symbol.customMatcher` that tests `_tag`, so two classes 
 
 Changing an `error` or `schema error` declaration's name also changes its `_tag`; update any `catchTag` or `catchTags` key that names it.
 
+An extractor on a class without its own matcher is `EK0704`: use `when C:`, or `when C and { x: let x }:` to read its properties. A callee that returns neither a boolean nor, as an extractor, an iterable or `false`, and one with no call or construct signature, is `EK0702`; test it in a guard.
+
 A value with a `[Symbol.customMatcher]` method decides for itself. `Symbol.customMatcher` comes from the proposal:
 
 ```vibe

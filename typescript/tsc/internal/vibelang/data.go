@@ -292,6 +292,7 @@ func checkData(c *checker.Checker, file *ast.SourceFile) {
 		case isPatternCall(node, "$is"):
 			if !reportValuePattern(c, node.Arguments()[0]) {
 				checkVariantPattern(c, file, node)
+				checkClassPatternDispatch(c, node.Arguments()[0], false)
 			}
 		case isPatternCall(node, "$extract"):
 			if reportValuePattern(c, node.Arguments()[0]) {
@@ -301,7 +302,9 @@ func checkData(c *checker.Checker, file *ast.SourceFile) {
 				matcher := node.Arguments()[0]
 				report(c, matcher, ek4706Extractor, scanner.GetTextOfNode(matcher))
 				cover(c, matcher)
+				break
 			}
+			checkClassPatternDispatch(c, node.Arguments()[0], true)
 		}
 		return node.ForEachChild(visit)
 	}

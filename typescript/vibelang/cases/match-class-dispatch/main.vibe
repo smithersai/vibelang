@@ -1,0 +1,29 @@
+// expect-result: {"own":["own 1","other"],"object":["obj 2","other"],"bare":["text","other"],"pair":["3 4","other"],"constructed":["point","other"],"builtin":["map 1","array 2","other"],"value":["five","other"]}
+// Chapter 004, Class patterns: an own matcher decides, a call signature selects
+// the call, a construct signature selects instanceof, and a primitive value
+// matches by SameValue.
+import { customMatcher } from "vibelang-runtime"
+class Own { static [customMatcher](s: unknown, _h: { matchType: "extractor" }): false | [number] { return s === 1 ? [s] : false } }
+const object = { [customMatcher](s: unknown, _h: { matchType: "extractor" }): false | [number] { return s === 2 ? [s] : false } }
+function isText(s: unknown): s is string { return typeof s === "string" }
+function pair(s: unknown): false | [number, number] { return s === 3 ? [3, 4] : false }
+class Point { constructor(readonly x: number) {} }
+const five = 5
+function own(s: unknown) { return match (s) { when Own(let n): `own ${n}`; default: "other"; } }
+function viaObject(s: unknown) { return match (s) { when object(let n): `obj ${n}`; default: "other"; } }
+function bare(s: unknown) { return match (s) { when isText: "text"; default: "other"; } }
+function extracted(s: unknown) { return match (s) { when pair(let a, let b): `${a} ${b}`; default: "other"; } }
+function constructed(s: unknown) { return match (s) { when Point: "point"; default: "other"; } }
+function builtin(s: unknown) { return match (s) { when Map(let m): `map ${m.size}`; when Array(let a, let b): `array ${b}`; default: "other"; } }
+function value(s: unknown) { return match (s) { when five: "five"; default: "other"; } }
+export effect function main() {
+  return {
+    own: [own(1), own(2)],
+    object: [viaObject(2), viaObject(1)],
+    bare: [bare("x"), bare(1)],
+    pair: [extracted(3), extracted(1)],
+    constructed: [constructed(new Point(1)), constructed({ x: 1 })],
+    builtin: [builtin(new Map([[1, 2]])), builtin([1, 2]), builtin(1)],
+    value: [value(5), value(6)]
+  }
+}

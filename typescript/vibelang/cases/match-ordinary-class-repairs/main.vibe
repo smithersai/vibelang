@@ -1,0 +1,15 @@
+// expect-result: {"sums":[3,5,0],"bare":[true,true,false],"own":[7,0]}
+// VIP-7, detail100: a bare class test followed by an object pattern.
+class Point { constructor(readonly x:number, readonly y:number) {} }
+class Child extends Point {}
+const Alias = Point
+class Own {
+ static [customMatcher](subject:unknown):readonly [number]|false { return typeof subject === "number" ? [subject] : false }
+}
+function sum(s:unknown):number { return match(s) { when Alias and {x:let x,y:let y}:x+y; default:0; } }
+function bare(s:unknown):boolean { return s is Point }
+function own(s:unknown):number { return match(s) { when Own(let x):x; default:0; } }
+export effect function main() {
+ const values:unknown[]=[new Point(1,2),new Child(2,3),{x:10,y:20}]
+ return {sums:values.map(sum),bare:values.map(bare),own:[own(7),own("no")]}
+}

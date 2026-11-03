@@ -65,7 +65,7 @@ effect function recover(): string!! {
 
 function classify(value: unknown): string {
   return match (value) {
-    when Validated(let error): `${error._tag} ${error.code}`;
+    when Validated and let error: `${error._tag} ${error.code}`;
     default: "other";
   }
 }

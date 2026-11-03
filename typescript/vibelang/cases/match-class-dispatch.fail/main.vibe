@@ -1,0 +1,27 @@
+// expect: EK0107 EK0702 EK0704
+import { customMatcher } from "vibelang-runtime"
+// Chapter 004, Class patterns: an extractor on an ordinary class without its own
+// matcher is EK0704, with any argument count, and an inherited matcher does not
+// count. A call-only callee must return a boolean, or as an extractor an iterable
+// or false; a callee with neither signature is EK0702.
+class Point { constructor(readonly x: number) {} }
+class Base { static [customMatcher](s: unknown) { return [s] } }
+class Derived extends Base {}
+function number(_s: unknown): number { return 1 }
+declare const anything: any
+declare const mystery: unknown
+const plain = { b: 1 }
+export function f(s: unknown) {
+  return match (s) {
+    when Point(let x): 1;
+    when Point(): 2;
+    when Derived(let d): 3;
+    when number: 4;
+    when number(let n): 5;
+    when anything: 6;
+    when mystery: 7;
+    when plain: 8;
+    when Function: 9;
+    default: 0;
+  }
+}

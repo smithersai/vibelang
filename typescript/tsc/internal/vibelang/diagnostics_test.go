@@ -78,7 +78,7 @@ var specAhead = map[int32]string{
 	302:  renumbering,
 	1601: renumbering, 1704: renumbering, 1906: renumbering,
 	// Assigned by the round-20 spec for decided detail 100 (an extractor on a class without its own matcher).
-	704: renumbering,
+	
 	// Incomplete custom declaration forms have assigned diagnostics before compiler registration.
 	1503: renumbering, 1604: renumbering,
 	// Missing member separators in VibeLang declaration bodies have assigned diagnostics before compiler registration.

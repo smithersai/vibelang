@@ -1,0 +1,9 @@
+// expect: EK0704
+// VIP-7, decided detail 100: parentheses require an own custom matcher.
+class Point { constructor(readonly x:number, readonly y:number) {} }
+const Alias = Point
+class Child extends Point {}
+function empty(s:unknown) { return match(s) { when Point():1; default:0; } }
+function binding(s:unknown) { return match(s) { when Alias(let value):1; default:0; } }
+function nested(s:unknown) { return match(s) { when [Child(let value)]:1; default:0; } }
+function predicate(s:unknown) { return s is Point() }

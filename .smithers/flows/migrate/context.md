@@ -170,6 +170,8 @@ Normal schema and nested struct fields use TypeScript type members, not class fi
 
 - Schema fields are type members. Remove an ignored initializer after the written type when `TS1247` reports it. Keep its codec, optionality, readonlyness and comments; never evaluate the discarded initializer. `vibelang --fix` applies the preserving edit.
 
+For `EK0704`, replace an ordinary-class extractor with its bare class test or the editor's parameter-property object pattern. A matcher inherited from a base class does not admit extraction (VIP-7, decided detail 100).
+
 ## The language
 
 The VibeLang skill follows: every form beside the Effect code it replaces, and the rules with their EK codes. Accepted VIPs and the call rule above take precedence over older examples.

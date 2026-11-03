@@ -61,7 +61,7 @@ effect function routeBase(error: AppError): string!! {
 function classify(value: unknown): string {
   return match (value) {
     when NotFound(let error): `NotFound ${error.path}`;
-    when AppError(let error): `AppError ${error.code}`;
+    when AppError and let error: `AppError ${error.code}`;
     default: "other";
   }
 }
