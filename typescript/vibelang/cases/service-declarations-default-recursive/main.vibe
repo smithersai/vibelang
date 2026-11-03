@@ -1,0 +1,11 @@
+import { Context, Effect } from "effect"
+service Reference {
+ static readonly key = "coverage/Reference"
+ static readonly defaultValue = (): Reference.Shape => ({ next: undefined })
+ next?: Reference.Shape
+}
+export const value: Context.Service.Shape<typeof Reference> = { next: { next: undefined } }
+const exact: Reference.Shape = value
+export effect function main() { return [(try Reference).next === undefined, exact.next?.next === undefined] }
+
+// VIP-9 recursive own Shape applies to Context.Reference services with defaults; rule: docs/design/vips/0009-service-declarations.md#2b404faa67ddef29

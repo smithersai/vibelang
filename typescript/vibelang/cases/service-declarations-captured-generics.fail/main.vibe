@@ -1,0 +1,13 @@
+// expect: EK3005
+service Generic<T> { static readonly key = "coverage/Generic"; value: T }
+function outer<T>() {
+  type Alias<U> = { value: U }
+  service Captured { static readonly key = "coverage/Captured"; value: Alias<T> }
+  service Constraint { static readonly key = "coverage/Constraint"; read<U extends T>(): U }
+  service Defaulted { static readonly key = "coverage/Defaulted"; read<U = T>(): U }
+  return 0
+}
+export {}
+
+// VIP-9 erased outer parameters cannot specialize a key; rule: docs/design/vips/0009-service-declarations.md#5c35414b7f0b9cce
+// VIP-9 erased outer parameters cannot specialize a key; rule: docs/design/vips/0009-service-declarations.md#b78078c939af185f

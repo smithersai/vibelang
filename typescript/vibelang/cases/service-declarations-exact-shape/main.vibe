@@ -1,0 +1,21 @@
+import { Context, Effect } from "effect"
+type Equal<A, B> = (<T>() => T extends A ? 1 : 2) extends (<T>() => T extends B ? 1 : 2) ? true : false
+export type Shape = { readonly value: string }
+service Port: Shape { static readonly key = "coverage/Port" }
+service DefaultPort: Shape {
+  static readonly key = "coverage/DefaultPort"
+  static readonly defaultValue = () => ({ value: "default" })
+}
+export const exact: Equal<Port.Shape, Shape> = true
+export const defaultExact: Equal<DefaultPort.Shape, Shape> = true
+export effect function main() {
+  const a = try Effect.provideService(effect { return (try Port).value }, Port, { value: "provided" })
+  return [a, (try DefaultPort).value, "Shape" in Port, "Shape" in DefaultPort]
+}
+
+// VIP-9 written exact shape without a runtime namespace; rule: docs/design/vips/0009-service-declarations.md#f26e49fba1ba6c6f
+// VIP-9 written exact shape without a runtime namespace; rule: docs/design/vips/0009-service-declarations.md#2451f4256d86a106
+// VIP-9 written exact shape without a runtime namespace; rule: docs/design/vips/0009-service-declarations.md#16d66c147dd5cd9c
+// VIP-9 written exact shape without a runtime namespace; rule: docs/design/vips/0009-service-declarations.md#f3bf2b7c6d497f53
+// VIP-9 written exact shape without a runtime namespace; rule: docs/design/vips/0009-service-declarations.md#08c675f5986c2322
+// VIP-9 written exact shape without a runtime namespace; rule: docs/design/vips/0009-service-declarations.md#a9a9121a68e5c67b

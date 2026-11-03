@@ -1,0 +1,10 @@
+// expect: TS2322
+service Bad {
+  static readonly key = "coverage/BadDefault"
+  static readonly defaultValue = () => ({ value: "wrong" })
+  value: number
+}
+export {}
+
+// VIP-9 default factory must satisfy the written shape; rule: docs/design/vips/0009-service-declarations.md#5a0ca8d725e3960b
+// VIP-9 default factory must satisfy the written shape; rule: docs/design/vips/0009-service-declarations.md#5597efb9cd3c4507

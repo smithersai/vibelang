@@ -1,0 +1,36 @@
+import { Context, Effect } from "effect"
+type Equal<A, B> = (<T>() => T extends A ? 1 : 2) extends (<T>() => T extends B ? 1 : 2) ? true : false
+service Users {
+  static readonly key = "coverage/Users"
+  readonly value: number
+  read(): number
+  identity<A>(value: A): A
+}
+service Flags {
+  static readonly key = "coverage/Flags"
+  static readonly defaultValue = () => ({ enabled: true })
+  enabled: boolean
+}
+abstract class Ordinary { abstract value: string }
+class Concrete extends Ordinary { value = "ordinary" }
+type Shape = { readonly value: number; read(): number; identity<A>(value: A): A }
+export const shape: Equal<Users.Shape, Shape> = true
+export const nativeShape: Equal<Users.Shape, Context.Service.Shape<typeof Users>> = true
+effect function read(): number!!Users { return (try Users).value }
+export const requirement: Equal<ReturnType<typeof read>, Effect.Effect<number, never, Users>> = true
+export effect function main() {
+  const a = try Effect.provideService(read(), Users, { value: 7, read: () => 8, identity: <A>(x: A) => x })
+  const b = (try Flags).enabled
+  const c = try Effect.provideService(effect { return (try Flags).enabled }, Flags, { enabled: false })
+  return [a, b, c, new Concrete().value, "Shape" in Users, Users.key]
+}
+
+// VIP-9 key identity, implementation shape, ordinary members and reference defaults; rule: docs/design/vips/0009-service-declarations.md#f8703eef39867821
+// VIP-9 key identity, implementation shape, ordinary members and reference defaults; rule: docs/design/vips/0009-service-declarations.md#3c045cd4c7b450f1
+// VIP-9 key identity, implementation shape, ordinary members and reference defaults; rule: docs/design/vips/0009-service-declarations.md#933ea98d15a24575
+// VIP-9 key identity, implementation shape, ordinary members and reference defaults; rule: docs/design/vips/0009-service-declarations.md#a2ee28b6eccfde8e
+// VIP-9 key identity, implementation shape, ordinary members and reference defaults; rule: docs/design/vips/0009-service-declarations.md#373bba7eb9c687a5
+// VIP-9 key identity, implementation shape, ordinary members and reference defaults; rule: docs/design/vips/0009-service-declarations.md#e0356b3071400e8c
+// VIP-9 key identity, implementation shape, ordinary members and reference defaults; rule: docs/design/vips/0009-service-declarations.md#8238b81c5bf8f83d
+// VIP-9 key identity, implementation shape, ordinary members and reference defaults; rule: docs/design/vips/0009-service-declarations.md#f4ee72eab7b033fe
+// VIP-9 key identity, implementation shape, ordinary members and reference defaults; rule: docs/design/vips/0009-service-declarations.md#47b3867ba5fb3cb6

@@ -1,0 +1,10 @@
+import { Effect } from "effect"
+function join(a: string, b: string): string { return a + b }
+service Flags {
+ static readonly key = "coverage/JoinedFlags"
+ static readonly defaultValue = () => ({ value: join("ordinary", "-join") })
+ value: string
+}
+export effect function main() { return (try Flags).value }
+
+// VIP-9 ordinary join helper remains a call in a service initializer; rule: docs/design/vips/0009-service-declarations.md#79239838bce6a741

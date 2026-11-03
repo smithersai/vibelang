@@ -1,0 +1,3 @@
+import { Context, Effect } from "effect"
+service Outside { static readonly key = "coverage/Outside"; value: number }
+export effect function main() { return Outside.key }

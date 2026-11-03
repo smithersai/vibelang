@@ -1,0 +1,13 @@
+// expect: EK0501
+effect function build() {
+  service Local {
+    static readonly key = "coverage/DefaultContext"
+    static readonly defaultValue = try Effect.succeed(() => ({ value: 1 }))
+    value: number
+  }
+  return 0
+}
+export {}
+
+// VIP-9 default initializer is outside enclosing Effect execution; rule: docs/design/vips/0009-service-declarations.md#7b1dc339952e2cf8
+// VIP-9 default initializer is outside enclosing Effect execution; rule: docs/design/vips/0009-service-declarations.md#42602c021d76fe36

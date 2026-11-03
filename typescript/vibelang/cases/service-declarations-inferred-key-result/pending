@@ -1,0 +1,1 @@
+cov-decls type conformance: an inferred service key result widens to string while the exact native Effect.gen counterpart retains the key literal

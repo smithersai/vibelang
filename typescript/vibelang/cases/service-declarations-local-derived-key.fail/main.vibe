@@ -1,0 +1,8 @@
+// expect: EK0901
+function local() { service Local { value: number } }
+export {}
+
+// VIP-9 a function-local service has no derived package key and needs an explicit key; rule: docs/design/vips/0009-service-declarations.md#1248469477ba9860
+
+// VIP-9 a function-local service has no derived package key and needs an explicit key; rule: docs/design/vips/0009-service-declarations.md#fdd8726f1a2d1231
+

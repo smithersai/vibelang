@@ -16,3 +16,7 @@ function block() {
 export effect function main() {
   return { local: local(), block: block() }
 }
+
+// VIP-9 local recursive Shape names the private member alias and outside uses Context.Service.Shape; rule: docs/design/vips/0009-service-declarations.md#4786ca00aa4d1c56
+
+// VIP-9 local recursive Shape names the private member alias and outside uses Context.Service.Shape; rule: docs/design/vips/0009-service-declarations.md#8ab50684056a556c

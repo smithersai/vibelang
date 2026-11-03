@@ -1,0 +1,1 @@
+cov-decls VIP-9: a service with no surrounding package compiles without the required explicit key; the explicit-key control passes

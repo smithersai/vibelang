@@ -1,0 +1,10 @@
+// expect: EK3002 EK3003 EK3004
+service Users { static readonly key = "coverage/Misuse"; value: number }
+class Derived extends Users {}
+const made = new Users()
+export function check(value: unknown) { return value instanceof Users }
+
+// VIP-9 service is a key rather than a constructible class; rule: docs/design/vips/0009-service-declarations.md#ccb2c0d163217710
+// VIP-9 service is a key rather than a constructible class; rule: docs/design/vips/0009-service-declarations.md#cb911279de9e83ae
+// VIP-9 service is a key rather than a constructible class; rule: docs/design/vips/0009-service-declarations.md#01b46d48a69cda02
+// VIP-9 service is a key rather than a constructible class; rule: docs/design/vips/0009-service-declarations.md#702b578acebdc072

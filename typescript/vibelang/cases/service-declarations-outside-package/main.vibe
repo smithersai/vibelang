@@ -1,0 +1,5 @@
+import { Context, Effect } from "effect"
+service Outside { static readonly key = "coverage/Outside"; value: number }
+export effect function main(): string!! { return Outside.key }
+
+// VIP-9 a service outside a named package needs an explicit key; rule: docs/design/vips/0009-service-declarations.md#11d042fc9d3a4d14

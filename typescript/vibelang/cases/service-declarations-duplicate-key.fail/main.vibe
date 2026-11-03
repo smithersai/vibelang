@@ -1,0 +1,6 @@
+// expect: EK3001
+service A { static readonly key = "coverage/Duplicate"; value: number }
+service B { static readonly key = "coverage/Duplicate"; value: string }
+export {}
+
+// VIP-9 duplicate explicit keys; rule: docs/design/vips/0009-service-declarations.md#b860812bc0248bcf
