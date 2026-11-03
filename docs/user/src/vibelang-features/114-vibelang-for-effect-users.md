@@ -283,6 +283,8 @@ A plain function's `for…of` keeps TypeScript's iterator closing behavior. If i
 
 A plain VibeLang function never throws (a `throw` there is `EK0401`), so an effect function calls it directly, as it does a `.ts` function known not to throw. Wrap a potentially throwing `.ts` call with `Effect.try`, then run it with `try`. Always wrap a Promise with `tryPromise` or `promise`. Callbacks capture local variables normally. Exported VibeLang declarations carry `@throws {never}`. A foreign callable without a signature contract may throw `unknown`, whether imported from source or an emitted `.d.ts` and whether its type is written or inferred. Shipped contracts precede defaults; for synchronous callables, `@rethrows f` adds the actual callback's thrown type to own throws. An `async` function's `throw` rejects its Promise. Effectful callables never add synchronous throws.
 
+A foreign function value keeps its written `@throws` contract when passed as a callback, including imports from `.d.ts` files. An untagged callback type such as `() => void` admits only `never`: passing a foreign function declared `@throws {Error}` reports `EK0402` as an argument, object member, spread member or initializer. Handle the throw in a wrapper or use a callback type whose `@throws` admits it. A foreign function declared `@throws {never}` fits the untagged type.
+
 Generic instantiation substitutes within the declaration's existing thrown contract; it does not erase it when the result becomes an Effect. A rethrowing synchronous callable's default callback contributes to its conservative own bound even when a safe callback is supplied, so declaration output cannot lose that default's throws.
 
 ## Trace and debug calls

@@ -74,8 +74,9 @@ const (
 )
 
 type callbackSource struct {
-	name, tag string
-	thrown    int // index into callbackBounds
+	name, tag   string
+	declaration bool
+	thrown      int // index into callbackBounds
 }
 
 // callbackBounds orders thrown types by subtyping for the oracle:
@@ -83,10 +84,12 @@ type callbackSource struct {
 var callbackBounds = []string{"never", "TypeError", "Error", "unknown"}
 
 var callbackSources = []callbackSource{
-	{"never", "/** @throws {never} */", 0},
-	{"type-error", "/** @throws {TypeError} */", 1},
-	{"error", "/** @throws {Error} */", 2},
-	{"unknown", "/** @throws {unknown} */", 3},
+	{"never", "/** @throws {never} */", false, 0},
+	{"type-error", "/** @throws {TypeError} */", false, 1},
+	{"error", "/** @throws {Error} */", false, 2},
+	{"unknown", "/** @throws {unknown} */", false, 3},
+	{"never-dts", "/** @throws {never} */", true, 0},
+	{"error-dts", "/** @throws {Error} */", true, 2},
 }
 
 var callbackDestinations = []struct {
@@ -144,13 +147,22 @@ func FuzzForeignCallbackSites(f *testing.F) {
 		site := callbackSites[i%len(callbackSites)]
 		dst := callbackDestinations[(i/len(callbackSites))%len(callbackDestinations)]
 		src := callbackSources[i/(len(callbackSites)*len(callbackDestinations))]
-		handlers := src.tag + "\nexport function source(): void {}\n" + dst.decl + "\n" +
+		source := "export function source(): void {}\n"
+		if src.declaration {
+			source = "export declare function source(): void\n"
+		}
+		handlers := src.tag + "\n" + source + dst.decl + "\n" +
 			"/** @throws {never} */\nexport declare function take(props: { onClick: Handler }): void\n" +
 			"/** @throws {never} */\nexport declare function call(f: Handler): void\n" +
 			"/** @throws {never} @rethrows f */\nexport declare function each(f: Handler): void\n"
 		main := "import { source, take, call, each, type Handler } from \"./handlers.ts\"\nexport function sites() {\n  " + site.code + "\n}\n"
-		files := map[string]string{"handlers.ts": handlers, "main.vibe": main}
-		config := strings.TrimSuffix(DefaultConfig, "\n  }\n}") + ",\n    \"allowImportingTsExtensions\": true,\n    \"noEmit\": true\n  },\n  \"files\": [\"main.vibe\", \"handlers.ts\"]\n}"
+		handlerFile := "handlers.ts"
+		if src.declaration {
+			handlerFile = "handlers.d.ts"
+			main = strings.ReplaceAll(main, "./handlers.ts", "./handlers.js")
+		}
+		files := map[string]string{handlerFile: handlers, "main.vibe": main}
+		config := strings.TrimSuffix(DefaultConfig, "\n  }\n}") + ",\n    \"allowImportingTsExtensions\": true,\n    \"noEmit\": true\n  },\n  \"files\": [\"main.vibe\", \"" + handlerFile + "\"]\n}"
 		r, err := w.Compile(t.Context(), Project{Files: files, Config: config})
 		if err != nil {
 			t.Fatal(err)

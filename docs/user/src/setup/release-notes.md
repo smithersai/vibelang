@@ -710,6 +710,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Caller ownership probes had to read the native uid directly; `Experimental.Process.currentUid` now queries it while preserving an unavailable uid, valid uid `0` and the original lookup error.
 
+- Foreign callbacks imported from `.d.ts` files could bypass callback throw admission. They now report `EK0402` when a throwing callback meets an untagged function type, while `@throws {never}` callbacks remain accepted. Regression coverage checks arguments, object members, spreads and initializers.
+
 - Identical recursive generic declaration APIs could fail with `TS2589`; exact resolved type identity now proves those comparisons.
 - API checks treated identical JSDoc links as different when a private target resolved in only one snapshot. Link targets and labels now compare consistently while real comment changes remain differences.
 

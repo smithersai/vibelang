@@ -1,0 +1,18 @@
+// expect: EK0402 EK0402 EK0402 EK0402
+// VIP-4 / decided detail 250: declaration-file imports retain their throws
+// contract at each contextual callback site from the conformance witness.
+import * as foreign from "./handlers.js"
+
+export function sites() {
+  foreign.call(foreign.risky)
+  foreign.take({ onClick: foreign.risky })
+  foreign.take({ ...{ onClick: foreign.risky } })
+  const rejected: () => void = foreign.risky
+
+  foreign.call(foreign.safe)
+  foreign.take({ onClick: foreign.safe })
+  foreign.take({ ...{ onClick: foreign.safe } })
+  const accepted: () => void = foreign.safe
+  const admits: foreign.Throwing = foreign.risky
+  return [rejected, accepted, admits]
+}
