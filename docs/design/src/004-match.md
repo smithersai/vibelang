@@ -535,7 +535,7 @@ Every other home follows the pinned explainer's rule that the usual binding scop
 - In a concise arrow body, a binding belongs to the arrow body's scope, where the block-body form would declare it.
 - In a class field or static field initializer, a binding belongs to that initializer's own scope, because ECMAScript evaluates each initializer as a separate method-like body. A `static` block is a block.
 - An `enum` member initializer has no lexical home in ECMAScript or the pinned explainer, so a binding introduced there is `EK0705`, as for a formal parameter: `enum E { A = (1 is let one) ? 1 : 0 }` is `EK0705`.
-- The statement body of `if`, `else`, `for`, `for…in`, `for…of`, `for await`, `for concurrent`, `for try`, `while`, `do…while` or a labeled statement, when it is not a Block, is the home of the bindings inside it, exactly as if it were wrapped in braces, and it is fresh each time the body runs, so braces around a body never change a result ([VIP-7](../vips/0007-match.md#binding-homes-and-redeclarations)). An `if` head is outside its own body: `if (!(x is { id: let id })) return; use(id)` in a block reads `id` after the `if`, and the head of an `else if` belongs to the `else` body's home.
+- The statement body of `if`, `else`, `for`, `for…in`, `for…of`, `for await`, `for concurrent`, `for try`, `while`, `do…while` or a labeled statement, when it is not a Block, cannot be the lexical home of an `is` pattern binding: report `EK0705`, matching TypeScript's `TS1156` for a `let` declaration in that position. The quick fix and `vibelang --fix` wrap that statement body in braces. An `if` head belongs to the home that contains the `if` statement; an `else if` head therefore needs braces around the `else` body when it binds. A binding inside an explicit `do` block, match arm, callable body or loop head keeps its own home. ([VIP-7](../vips/0007-match.md#binding-homes-and-redeclarations)).
 
 Each home holds one name once. Two top-level patterns that bind one name in the same home are a redeclaration, TypeScript's `TS2451`, as two `let` declarations in one block are; so is a binding that collides with another lexical declaration of that home, and a collision with a parameter keeps the native diagnostic for that collision. Inside one top-level pattern the pinned duplicate-initialization rule and its `or` exception stay. Separate blocks and match arms are separate homes, so braces or distinct names are the repair.
 
@@ -569,8 +569,8 @@ function countdown(src: { n: number }) {
 }
 function ids(xs: unknown[]) {
   const out: unknown[] = []
-  for (const x of xs) if (x is { id: let id }) out.push(id)
-  return out // [1, 2] for [{ id: 1 }, { id: 2 }], as with braces
+  for (const x of xs) { if (x is { id: let id }) out.push(id) }
+  return out // [1, 2] for [{ id: 1 }, { id: 2 }]
 }
 ```
 
@@ -650,7 +650,7 @@ VibeLang adds these checks to TC39's proposal; `EK4701` is the exhaustiveness ch
 | a `match` with no `default` over a finite union that misses a case | `EK4701` |
 | invalid `match`/`is` grammar or a pattern-specific early error without a more specific diagnostic | `EK0707` |
 | a missing `;` after a `match` arm, the last one included | `EK0701` |
-| an `is` pattern binding in formal-parameter or catch-parameter initialization with no explicit block/arm as its lexical home ([Parameter initialization](#is-bindings-in-parameter-initialization)) | `EK0705` |
+| an `is` pattern binding in an unbraced statement body, or in formal-parameter or catch-parameter initialization with no explicit block/arm as its lexical home ([Parameter initialization](#is-bindings-in-parameter-initialization)) | `EK0705` |
 | a class pattern naming a `data` declaration or variant, a `schema`, or a directly constructed `Context.Reference`; a call-only callee whose return type fails detail 94, or a callee with neither signature (services use `EK3004`; [Class patterns](#class-patterns)) | `EK0702` |
 | an ordinary-class extractor without an own matcher (detail 100) | `EK0704` |
 | lint warning: an extractor whose argument count can never match its pattern's list ([Class patterns](#class-patterns)) | `EK0703` |
