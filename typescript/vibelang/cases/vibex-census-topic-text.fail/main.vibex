@@ -1,0 +1,7 @@
+// expect: EK1006
+// VIP-39 existing diagnostic code families: docs/design/vips/0039-vibex.md#600ee6e6f420abfe
+// VIP-39 in text is never the pipe topic: docs/design/vips/0039-vibex.md#8ddc1f2ba0748463
+// VIP-39 there is not the topic probe q13 reports EK1006: docs/design/vips/0039-vibex.md#97e71d60294e2df9
+declare global { namespace JSX { type Element = unknown; interface IntrinsicElements { b: {title: string; children?: unknown} } } };
+declare function h(...args: any[]): any;
+const x = 1 |> <b title="%">%</b>

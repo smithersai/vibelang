@@ -1,0 +1,4 @@
+// expect: TS1005 TS1005
+// VIP-39 a b .source.length match s when b 1 default: docs/design/vips/0039-vibex.md#b1cea77ce4b6b98a
+// VIP-39 TS 5.9 TS1005 twice .tsx s in patterns too: docs/design/vips/0039-vibex.md#d086600b5c687c74
+const a = 1; const v = a </b/.source.length

@@ -1,0 +1,2 @@
+// VIP-39 x no form in .vibe fragment parseJsxOpeningOrSelfClosingElementOrOpeningFragment parseJsxClosingFragment Fragment: docs/design/vips/0039-vibex.md#6e33a6540dfcf229
+const v = <>{x}</>

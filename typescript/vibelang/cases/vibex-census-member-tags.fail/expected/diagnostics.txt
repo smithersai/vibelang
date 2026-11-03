@@ -1,0 +1,1 @@
+main.vibex(6,39): error TS2304

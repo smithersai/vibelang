@@ -18,6 +18,13 @@ func parseByName(name string, source string) *ast.SourceFile {
 
 // VIP-39: a .vibex file is VibeLang read as .tsx (ScriptKindTSX, so the JSX
 // language variant), with every VibeLang hook on.
+// VIP-39 file kind and ordinary TSX parsing: docs/design/vips/0039-vibex.md#d4ce11ce87592ed3
+// VIP-39 file kind and ordinary TSX parsing: docs/design/vips/0039-vibex.md#f0d79f16ef52c2d3
+// VIP-39 file kind and ordinary TSX parsing: docs/design/vips/0039-vibex.md#bd3ce56e08b34d94
+// VIP-39 file kind and ordinary TSX parsing: docs/design/vips/0039-vibex.md#e231dfdbbf588c68
+// VIP-39 file kind and ordinary TSX parsing: docs/design/vips/0039-vibex.md#e9e85afa59d96dc3
+// VIP-39 file kind and ordinary TSX parsing: docs/design/vips/0039-vibex.md#534503077346cdc6
+// VIP-39 file kind and ordinary TSX parsing: docs/design/vips/0039-vibex.md#a61bc18e5a967663
 func TestVibexFileKind(t *testing.T) {
 	t.Parallel()
 	if kind := core.GetScriptKindFromFileName(tspath.RootedFilePathFromAbsolute("/a.vibex")); kind != core.ScriptKindTSX {

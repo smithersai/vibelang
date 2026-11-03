@@ -1,0 +1,6 @@
+// expect: TS2304
+// VIP-39 member-tags: docs/design/vips/0039-vibex.md#018cf6712634488e
+// VIP-39 member-tags: docs/design/vips/0039-vibex.md#2277ac4f26ff59c4
+declare global { namespace JSX { type Element=unknown; interface IntrinsicElements { [tag:string]: Record<string,unknown> } } }
+declare function h(...args:any[]): any
+effect function main() { return <box><try.all/></box> }

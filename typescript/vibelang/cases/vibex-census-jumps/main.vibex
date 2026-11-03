@@ -1,0 +1,23 @@
+// VIP-39 return break and continue inside a do in a: docs/design/vips/0039-vibex.md#fb33cafc37337322
+// VIP-39 function f return Box v do return 7 return: docs/design/vips/0039-vibex.md#ed64e51a42e59248
+// VIP-39 If the do must become statements everything before it: docs/design/vips/0039-vibex.md#44ef73b0076fa8b6
+// VIP-39 A .vibex quick fix for try in JSX auto-hoisting: docs/design/vips/0039-vibex.md#3490af6d92b5aeed
+import { Effect } from "effect"
+import { h, type VNode } from "./jsx.js"
+declare global { namespace JSX {
+ type Element = VNode
+ interface IntrinsicElements { [tag: string]: Record<string, unknown> }
+}}
+export effect function main(): Effect.Effect<Array<unknown>> {
+ const trace: string[] = []
+ function mark(s: string) { trace.push(s); return s }
+ function jump(): number | VNode {
+  return <box first={mark("return:first")} second={do { return 7 }} />
+ }
+ const result = jump()
+ for(let i=0; i<3; i++) {
+  const value = <box first={mark("loop:"+i)} second={do { if(i===0) continue; break }} />
+  trace.push("unreachable")
+ }
+ return [result,trace]
+}

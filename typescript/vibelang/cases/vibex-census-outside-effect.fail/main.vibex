@@ -1,0 +1,4 @@
+// expect: EK0501
+declare global { namespace JSX { type Element = unknown; interface IntrinsicElements { p: {} } } };
+declare function h(...args:any[]):any;
+export function f() { return <p>{try succeed(1)}</p> }

@@ -1,0 +1,11 @@
+// VIP-39 The check of a tag against JSX.ElementType or JSX.ElementClass: docs/design/vips/0039-vibex.md#1b2f15e62748faf2
+// VIP-39 Two semantic meetings are rules in the Decision rather: docs/design/vips/0039-vibex.md#07b6bad6dfd78957
+// VIP-39 JSX elements as throw-tracked calls of the factory Sol: docs/design/vips/0039-vibex.md#32cf8ffd21ccfc59
+import { Component } from "./component.js"
+declare global { namespace JSX {
+ type Element = {tag:string}
+ interface IntrinsicElements { button: {} }
+}}
+declare function h(...args:any[]):JSX.Element
+export function SaveButton() { return <button/> }
+export function Wrapped() { return <Component/> }

@@ -1,0 +1,16 @@
+// VIP-39 An operand that starts with is JSX try A: docs/design/vips/0039-vibex.md#90ee59298429cac0
+// VIP-39 fork A join A try A throw A operand: docs/design/vips/0039-vibex.md#a6f8cf175ad766d8
+// VIP-39 The operand of try fork and join is a: docs/design/vips/0039-vibex.md#c319fb128d7f9f0f
+// VIP-39 Either way starts JSX: docs/design/vips/0039-vibex.md#ba1798135f09c3da
+// VIP-39 fork A stays a comparison Fable VIP-17 s amendment: docs/design/vips/0039-vibex.md#82d58e7bc6156ec1
+import {Effect} from "effect"
+import {h} from "./jsx.js"
+declare global { namespace JSX { type Element = Effect.Effect<number> } }
+let runs = 0
+function A() { return effect { runs++; return 3 } }
+export effect function main(): Effect.Effect<Array<number>> {
+ const fiber = fork <A/>
+ const joined = join fiber
+ const direct = try <A/>
+ return [joined, direct, runs]
+}

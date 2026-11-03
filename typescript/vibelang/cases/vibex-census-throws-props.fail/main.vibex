@@ -1,0 +1,11 @@
+// expect: EK0402
+// VIP-39 An attribute is an object member under VIP-4. TypeScript: docs/design/vips/0039-vibex.md#4fcdea297fa4cda8
+// VIP-39 A handler imported from a .ts file with throws: docs/design/vips/0039-vibex.md#066868408ec57567
+import { handler } from "./handler.js"
+declare global { namespace JSX {
+ type Element = unknown
+ interface IntrinsicElements { button: { onClick: () => void } }
+}}
+declare function h(...args:any[]):any
+const a = <button onClick={handler}/>
+const b = <button {...{onClick:handler}}/>

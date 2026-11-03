@@ -1,0 +1,2 @@
+// expect: TS1003
+const v = <a:b.c/>

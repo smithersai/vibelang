@@ -1,0 +1,13 @@
+// VIP-39 Tag names attribute names attribute strings and JSX text: docs/design/vips/0039-vibex.md#799cbf4b8f3b34b4
+// VIP-39 try.all is a member tag on an identifier try: docs/design/vips/0039-vibex.md#018cf6712634488e
+// VIP-39 try match effect service data fork join provide catch: docs/design/vips/0039-vibex.md#aad77dadc969be20
+// VIP-39 Covers fork join in effect code legacy words control: docs/design/vips/0039-vibex.md#7c7a034c6fb1fece
+// VIP-39 Show when x is a match 1 try 2: docs/design/vips/0039-vibex.md#b5962fdfcdba0a72
+// VIP-39 Solid s Show when Match when and the Web: docs/design/vips/0039-vibex.md#45530daf6fc1d97f
+// VIP-39 try.all fork.in fork.scoped vs try.all a b VIP-18 and: docs/design/vips/0039-vibex.md#2277ac4f26ff59c4
+// VIP-39 map select VIP-6 globals intrinsic string tags lowercase tags: docs/design/vips/0039-vibex.md#27706c0425570e64
+// VIP-39 Box title try p interpolated try quoted string scanJsxAttributeValue: docs/design/vips/0039-vibex.md#96965132fc14a484
+effect function task() {
+ const v = <><try/><match/><effect/><service/><data/><fork/><join/><provide/><catch/><when/><is/><control/><handle/><layer/><map/><select/></>
+ return <Show when={x} is="a" match={1} try={2} effect={3} fork provide="y" title="{try p}"><try.all/><fork.in/><fork.scoped/></Show>
+}

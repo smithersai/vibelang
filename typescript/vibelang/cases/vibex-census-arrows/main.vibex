@@ -1,0 +1,10 @@
+// VIP-39 A generic arrow writes T T extends U or: docs/design/vips/0039-vibex.md#00ecf7584568f61e
+// VIP-39 This includes effect T x T x async T: docs/design/vips/0039-vibex.md#f1c1384548acfe65
+// VIP-39 Write T T extends U T D same for: docs/design/vips/0039-vibex.md#09dc830d929cd76c
+// VIP-39 x catch E e E 1 Appendix A ArrowHandler: docs/design/vips/0039-vibex.md#63dc2f6ab8558ed6
+const id = <T,>(x: T) => x
+const constrained = <T extends string>(x: T) => x
+const defaulted = <T = string>(x: T) => x
+const asyncId = async <T,>(x: T) => x
+const lift = effect <T,>(x: T) => x
+effect function recover() { return input catch <E,>(e: E) => 1 }

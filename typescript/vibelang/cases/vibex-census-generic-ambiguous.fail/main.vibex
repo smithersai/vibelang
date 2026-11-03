@@ -1,0 +1,7 @@
+// expect: TS17008 TS1382 TS1005
+// VIP-39 Where they compete for the same tokens in expression: docs/design/vips/0039-vibex.md#3c925278958ccf87
+// VIP-39 TypeScript s own .tsx removed T x and made: docs/design/vips/0039-vibex.md#4ffca3be8c54d903
+// VIP-39 T x T x is JSX: docs/design/vips/0039-vibex.md#cf93205cd72e26ac
+// VIP-39 const id T x T x generic arrow element: docs/design/vips/0039-vibex.md#fe90db12891fc7c0
+// VIP-39 TS 5.9 TS17008 TS1382 .tsx s: docs/design/vips/0039-vibex.md#eaccc1fd24d3afa4
+const id = <T>(x: T) => x
