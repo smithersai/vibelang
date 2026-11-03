@@ -90,8 +90,8 @@ func vibelangSourceToken(sourceFile *ast.SourceFile, current *ast.Node, start in
 func vibelangWordNode(sourceFile *ast.SourceFile, current *ast.Node, s *scanner.Scanner, fullStart int, end int, flags ast.TokenFlags) *ast.Node {
 	switch s.TokenValue() {
 	case "error", "service", "control", "layer", "schema":
-		if ast.IsClassDeclaration(current) {
-			return sourceFile.GetOrCreateToken(ast.KindClassKeyword, fullStart, end, current, flags)
+		if kind := vibelangClassWordKind(sourceFile, current, s); kind != ast.KindUnknown {
+			return sourceFile.GetOrCreateToken(kind, fullStart, end, current, flags)
 		}
 		if ast.IsVariableStatement(current) {
 			if list := current.AsVariableStatement().DeclarationList; list != nil && list.Flags&ast.NodeFlagsReparsed == 0 {
@@ -100,4 +100,32 @@ func vibelangWordNode(sourceFile *ast.SourceFile, current *ast.Node, s *scanner.
 		}
 	}
 	return current
+}
+
+// A declaration word has one navigation kind regardless of whether an editor
+// touches it or asks for the preceding token. Restrict the spelling to the
+// declaration head, excluding decorators and a contextual word used as a name.
+func vibelangClassWordKind(file *ast.SourceFile, current *ast.Node, s *scanner.Scanner) ast.Kind {
+	if file == nil || !isVibeLangSourceFile(file) || !ast.IsClassDeclaration(current) || current.Name() == nil {
+		return ast.KindUnknown
+	}
+	if s.TokenEnd() > scanner.GetTokenPosOfNode(current.Name(), file, false) {
+		return ast.KindUnknown
+	}
+	head := scanner.GetTokenPosOfNode(current, file, false)
+	if modifiers := current.Modifiers(); modifiers != nil {
+		for _, modifier := range modifiers.Nodes {
+			if modifier.Flags&ast.NodeFlagsReparsed == 0 {
+				head = max(head, modifier.End())
+			}
+		}
+	}
+	if s.TokenStart() < head {
+		return ast.KindUnknown
+	}
+	switch s.TokenValue() {
+	case "error", "service", "control", "layer", "schema":
+		return ast.KindClassKeyword
+	}
+	return ast.KindUnknown
 }

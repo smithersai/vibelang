@@ -15,6 +15,11 @@ func shouldRescanLessThanLessThanToken(s *scanner.Scanner, containingNode *ast.N
 
 func scanNavigationToken(s *scanner.Scanner, containingNode *ast.Node) ast.Kind {
 	token := s.Token()
+	if token == ast.KindIdentifier {
+		if kind := vibelangClassWordKind(ast.GetSourceFileOfNode(containingNode), containingNode, s); kind != ast.KindUnknown {
+			return kind
+		}
+	}
 	if shouldRescanLessThanLessThanToken(s, containingNode, token) {
 		return s.ReScanJsxToken(true /*allowMultilineJsxText*/)
 	}

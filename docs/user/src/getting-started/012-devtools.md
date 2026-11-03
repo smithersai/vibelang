@@ -580,3 +580,5 @@ and does not introduce an `as` assertion.
 One `vibelang --fix` invocation repeats its passes until no fix applies. Running it again changes nothing. If the pass limit is reached, it reports the remaining fixes and exits with an error.
 
 `Convert to a pipe` keeps object literals and class expressions parenthesized at the pipe head, so the result remains an expression when used as a statement.
+
+Completion and token navigation accept `service`, `error`, and `schema error` declaration keywords, including declarations with decorators and modifiers.
