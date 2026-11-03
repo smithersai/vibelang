@@ -111,6 +111,86 @@ func TestFixProgramsShareParsedFiles(t *testing.T) {
 	}
 }
 
+// The programs of a --fix run share their module resolutions. A run builds
+// a program for each round and trial. When the set of created files is
+// unchanged, each import resolves as it did before. Resolving every
+// import again for each program took 11 to 15% of the CPU time of a
+// --fix run on a Smithers apps/mvp slice, half of it in stat calls
+// (fixperf-smithers, 2026-11-03).
+func TestFixProgramsShareModuleResolutions(t *testing.T) {
+	dir, config := fixFiles(t)
+	plain := tspath.RootedFilePathFromAbsolute(filepath.ToSlash(filepath.Join(dir, "plain.ts")))
+	// counting returns a file system that counts the programs built, by
+	// the reads of plain.ts, which no fix changes, and the lookups of a
+	// file in a node_modules directory, which only resolving an import
+	// such as "effect" makes.
+	counting := func() (*int, *int, vfs.FS) {
+		fs := bundled.WrapFS(osvfs.FS())
+		builds, lookups := new(int), new(int)
+		return builds, lookups, wrapvfs.Wrap(fs, wrapvfs.Replacements{
+			ReadFile: func(name tspath.RootedFilePath) (string, bool) {
+				if name == plain {
+					*builds++
+				}
+				return fs.ReadFile(name)
+			},
+			FileExists: func(name tspath.RootedFilePath) bool {
+				if strings.Contains(name.AsString(), "/node_modules/") {
+					*lookups++
+				}
+				return fs.FileExists(name)
+			},
+		})
+	}
+	_, once, fs := counting()
+	fixProgram(fs, bundled.LibPath(), config, &fixParsedFiles{}, nil)
+	if *once == 0 {
+		t.Fatal("a program build looked up no file in node_modules")
+	}
+	builds, lookups, fs := counting()
+	FixProject(t.Context(), fs, bundled.LibPath(), config)
+	if *builds < 3 {
+		t.Fatalf("the run built %d programs; the test needs several", *builds)
+	}
+	// Concurrent loading can look a file up twice; a run that resolves
+	// again for each program looks up about once per program.
+	if *lookups >= 2**once {
+		t.Fatalf("a --fix run that built %d programs looked up %d files in node_modules; one program looks up %d", *builds, *lookups, *once)
+	}
+}
+
+// A fix can create a file (fix_platform_wrappers.go), so the programs of a
+// run do not all see the same files: an import of the file resolves in
+// the programs that hold it, and in no others, whichever came first. The
+// shared resolver of TestFixProgramsShareModuleResolutions must not carry
+// an answer from one to the other (fixperf-smithers, 2026-11-03).
+func TestFixProgramsResolveCreatedFiles(t *testing.T) {
+	dir, config := fixFiles(t)
+	fs := bundled.WrapFS(osvfs.FS())
+	path := func(name string) tspath.RootedFilePath {
+		return tspath.RootedFilePathFromAbsolute(filepath.ToSlash(filepath.Join(dir, name)))
+	}
+	imports := "import { made } from \"./made.js\"\nexport const plain = made\n"
+	without := map[tspath.RootedFilePath]string{path("plain.ts"): imports}
+	with := map[tspath.RootedFilePath]string{path("plain.ts"): imports, path("made.ts"): "export const made = 1\n"}
+	parsed := &fixParsedFiles{}
+	for i, step := range []struct {
+		overlay  map[tspath.RootedFilePath]string
+		resolved bool
+	}{{without, false}, {with, true}, {without, false}, {with, true}} {
+		program := fixProgram(fs, bundled.LibPath(), config, parsed, step.overlay)
+		resolved := true
+		for _, d := range program.GetSemanticDiagnostics(t.Context(), program.GetSourceFile(path("plain.ts"))) {
+			if d.Code() == 2307 {
+				resolved = false
+			}
+		}
+		if resolved != step.resolved {
+			t.Fatalf("program %d: import of the created file resolved = %v, want %v", i, resolved, step.resolved)
+		}
+	}
+}
+
 // An interrupted --fix stops at the next program, without a panic.
 func TestFixProjectStopsWhenCanceled(t *testing.T) {
 	dir, config := fixFiles(t)

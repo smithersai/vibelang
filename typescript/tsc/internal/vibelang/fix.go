@@ -22,6 +22,7 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/ls/lsconv"
 	"github.com/microsoft/TypeScript/tsc/internal/ls/lsutil"
 	"github.com/microsoft/TypeScript/tsc/internal/lsp/lsproto"
+	"github.com/microsoft/TypeScript/tsc/internal/module"
 	"github.com/microsoft/TypeScript/tsc/internal/parser"
 	"github.com/microsoft/TypeScript/tsc/internal/sourcemap"
 	"github.com/microsoft/TypeScript/tsc/internal/tsoptions"
@@ -1109,15 +1110,69 @@ type fixSourceFiles interface {
 type fixParsedFiles struct {
 	collections.SyncMap[ast.SourceFileParseOptions, *ast.SourceFile]
 	sourceFiles fixSourceFiles
+	// resolvers holds a module resolver for each set of created files
+	// (created), shared by the run's programs that hold that set. A module
+	// resolves by what exists, so a program's imports resolve as they did
+	// in the last program with the same files. On a 10-module slice of
+	// Smithers' apps/mvp (3,185 files), resolving every import again for
+	// each of a run's 107 to 140 programs took 11 to 15% of its CPU time,
+	// half of it in stat calls; sharing the resolver made the slice's
+	// three runs 15% faster (fixperf-smithers, 2026-11-03).
+	resolvers map[string]module.Resolver
+	// onDisk says whether each file of an overlay was on disk when the
+	// run first saw it. The fixKeeper writes a created file during the
+	// run, and it stays created.
+	onDisk map[tspath.RootedFilePath]bool
+}
+
+// created returns the files of overlay the run created, sorted.
+func (p *fixParsedFiles) created(fs vfs.FS, overlay map[tspath.RootedFilePath]string) []tspath.RootedFilePath {
+	if p.onDisk == nil {
+		p.onDisk = map[tspath.RootedFilePath]bool{}
+	}
+	var created []tspath.RootedFilePath
+	for name := range overlay {
+		onDisk, seen := p.onDisk[name]
+		if !seen {
+			onDisk = fs.FileExists(name)
+			p.onDisk[name] = onDisk
+		}
+		if !onDisk {
+			created = append(created, name)
+		}
+	}
+	slices.SortFunc(created, tspath.RootedFilePath.Compare)
+	return created
+}
+
+// moduleResolver returns the module resolver factory of a program holding
+// the created files.
+func (p *fixParsedFiles) moduleResolver(created []tspath.RootedFilePath) func(module.ResolverOptions) module.Resolver {
+	var key strings.Builder
+	for _, name := range created {
+		key.WriteString(name.AsString())
+		key.WriteByte(0)
+	}
+	return func(options module.ResolverOptions) module.Resolver {
+		resolver, ok := p.resolvers[key.String()]
+		if !ok {
+			if p.resolvers == nil {
+				p.resolvers = map[string]module.Resolver{}
+			}
+			resolver = module.NewResolver(options)
+			p.resolvers[key.String()] = resolver
+		}
+		return resolver
+	}
 }
 
 // fixProgram builds config's program with the texts of overlay in place of
 // the files on disk, reusing the files of parsed whose text is unchanged.
 func fixProgram(fs vfs.FS, libraryPath tspath.RootedDirectoryPath, config *tsoptions.ParsedCommandLine, parsed *fixParsedFiles, overlay map[tspath.RootedFilePath]string) *compiler.Program {
+	created := parsed.created(fs, overlay)
 	overlaid := wrapvfs.Wrap(fs, wrapvfs.Replacements{
 		FileExists: func(name tspath.RootedFilePath) bool {
-			_, added := overlay[name]
-			return added || fs.FileExists(name)
+			return slices.Contains(created, name) || fs.FileExists(name)
 		},
 		ReadFile: func(name tspath.RootedFilePath) (string, bool) {
 			if text, ok := overlay[name]; ok {
@@ -1127,7 +1182,11 @@ func fixProgram(fs vfs.FS, libraryPath tspath.RootedDirectoryPath, config *tsopt
 		},
 	})
 	host := fixCompilerHost{compiler.NewCompilerHost(overlaid, libraryPath, nil, nil, nil), parsed}
-	return compiler.NewProgram(compiler.ProgramOptions{Config: config, Host: host})
+	return compiler.NewProgram(compiler.ProgramOptions{
+		ProgramConfig:    compiler.ProgramConfig{Config: config},
+		ProgramHosts:     compiler.ProgramHosts{Host: host},
+		ProgramFactories: compiler.ProgramFactories{CreateModuleResolver: parsed.moduleResolver(created)},
+	})
 }
 
 // fixCompilerHost lets a --fix run's programs share parsed files. The run

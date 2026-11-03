@@ -208,6 +208,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - An error accessor with a forbidden `effect` modifier and a reserved `_tag` name reported an extra tag error; it now reports the modifier error without the extra reserved-tag error, preserving independent TypeScript errors.
 
 - The compiler regression suite rejected accepted service defaults, readonly schema migrations, declaration sidecar imports and legacy trailing-block repairs after the language rules changed; those checks now use the current syntax and preserve their original migration and rename assertions.
+- `vibelang --fix` resolved every import of a large project again for each checking program. It now reuses module resolutions while the set of created files stays the same, reducing the time spent finding unchanged modules.
 - `Effect.forkChild(e)`, `Effect.forkDetach(e)` and other calls whose type parameter is constrained to an `Effect`, such as `<Arg extends Effect<any, any, any> | Options>`, warned `EK4802` that the call receives the unrun program. Such a parameter declares that it takes a program, so it no longer warns.
 - A function whose only statement is `return try value` showed V8 coverage, and tools that read it, a second function for the generator the compiler makes. That generator now maps to no source position, so coverage counts one function, as before tail `try` kept native delegation.
 
