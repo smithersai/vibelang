@@ -27,3 +27,6 @@ export function rest(){const s:any={_tag:"TimeoutError","~effect/Cause/TimeoutEr
 // VIP-7 root retained error inventory row; rule: docs/design/vips/0007-match.md#378dc48186a933cf
 // VIP-7 retained error extractor cardinality; rule: docs/design/vips/0007-match.md#759b3e31a286b66b
 // VIP-7 retained error extractor cardinality; rule: docs/design/vips/0007-match.md#ded61dfa387ea756
+// VIP-7 retained error extractor uses module guard and binds declared error; rule: docs/design/vips/0007-match.md#fac7d0854d622399
+// VIP-7 retained error extractor uses module guard and binds declared error; rule: docs/design/vips/0007-match.md#f80f71825c41b732
+// VIP-7 retained error extractor uses module guard and binds declared error; rule: docs/design/vips/0007-match.md#9e6b4f4a33836d20
