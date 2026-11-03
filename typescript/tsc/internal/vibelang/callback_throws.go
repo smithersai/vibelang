@@ -146,6 +146,17 @@ func (dst throwContract) admits(c *checker.Checker, src throwContract) bool {
 // reports false when expr names no foreign value, when a declaration of it
 // writes no @throws, or when its @throws names only never.
 func foreignThrows(c *checker.Checker, expr *ast.Node) (throwContract, bool) {
+	// Effectful returns intrinsically throw never, regardless of a foreign
+	// annotation. Classify the original signature before substitution.
+	if signatures := c.GetSignaturesOfType(c.GetTypeAtLocation(expr), checker.SignatureKindCall); len(signatures) == 1 {
+		signature := signatures[0]
+		for signature.Target() != nil {
+			signature = signature.Target()
+		}
+		if isEffectfulType(c, c.GetReturnTypeOfSignature(signature)) {
+			return throwContract{}, false
+		}
+	}
 	name := expr
 	if ast.IsPropertyAccessExpression(expr) {
 		name = expr.Name()

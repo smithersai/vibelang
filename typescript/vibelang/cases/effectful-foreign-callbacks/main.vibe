@@ -1,0 +1,16 @@
+// expect:
+import { fx, unknownFx, stream, layer, union, genericFx, genericStream, genericLayer,
+ takeFx, takeStream, takeLayer, takeUnion, takeGF, takeGS, takeGL, type Fx, type GF } from "./helpers.js"
+export function check() {
+ takeFx(fx)
+ takeFx(unknownFx)
+ takeStream(stream)
+ takeLayer(layer)
+ takeUnion(union)
+ takeGF(genericFx)
+ takeGS(genericStream)
+ takeGL(genericLayer)
+ const saved: Fx = fx
+ const savedGeneric: GF = genericFx
+ return [saved, savedGeneric]
+}

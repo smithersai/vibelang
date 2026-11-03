@@ -528,6 +528,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - `vibelang --fix` refused to remove two adjacent prelude bindings of one import, such as the last two of `import { HttpClient, HttpClientRequest, type HttpClientResponse } from "effect/http"`: its edit dropped the closing brace and added `TS1005`. It now writes the import with the bindings it keeps.
 - Nested `effect` activations inside concurrent items could report a missing interruption mask even with an outer mask; they now report `EK2202` for crossing that activation boundary.
 
+- Passing a foreign function returning `Effect`, `Stream` or `Layer` as a callback could report `EK0402` from its written `@throws`; these effectful signatures now keep their intrinsic synchronous thrown type `never`, including constrained generics.
 - A shorthand object member could hide a TypeScript callback's written throws contract. It now follows the same callback checks as an explicit property value, while destructuring targets and native type errors keep their usual behavior.
 - Saving a union of TypeScript callbacks could lose the alternatives' written throws contracts. Assignments and arguments now check each alternative against a compatible destination signature, including optional callbacks.
 - `Effect.forkChild(e)`, `Effect.forkDetach(e)` and other calls whose type parameter is constrained to an `Effect`, such as `<Arg extends Effect<any, any, any> | Options>`, warned `EK4802` that the call receives the unrun program. Such a parameter declares that it takes a program, so it no longer warns.

@@ -502,3 +502,5 @@ For a single-parameter arrow such as `x => …`, the effect fix writes `effect (
 The operand of `try` can start on the next line, including after a comment. Member calls and parenthesized expressions keep ordinary expression precedence: `try obj.run() + 4` runs `obj.run()` before adding `4`.
 
 For an old typed statement catch such as `try { ... } catch (e: Missing) { ... }` in effect code, run `vibelang --fix`. Its `try statements` codemod writes an explicit Effect and a `catch effect` handler, preserving structural `_tag` matching and declaration bytes. Unsupported outward jumps, whole-`Cause` catches and destructured bindings require manual migration.
+
+A foreign callback returning `Effect`, `Stream` or `Layer` has synchronous thrown type `never`, even if its declaration writes `@throws`. Generic signatures use their constraints before substitution. A `Promise` return alone does not provide this contract; neither do `any`, `unknown`, `never`, an unconstrained type parameter or a union containing a non-effectful member.

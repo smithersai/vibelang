@@ -1,0 +1,16 @@
+// expect: EK0402 EK0402 EK0402 EK0402 EK0402 EK0402 EK0402 EK0402 EK0402 EK0402
+import { promise, anyResult, unknownResult, neverResult, mixed, generic, defaultGeneric, fake,
+ takePromise, takeAny, takeUnknown, takeNever, takeMixed, takeGeneric, takeDefault, takeFake, type Pr, type Dg } from "./helpers.js"
+export function check() {
+ takePromise(promise)
+ takeAny(anyResult)
+ takeUnknown(unknownResult)
+ takeNever(neverResult)
+ takeMixed(mixed)
+ takeGeneric(generic)
+ takeDefault(defaultGeneric)
+ takeFake(fake)
+ const saved: Pr = promise
+ const savedGeneric: Dg = defaultGeneric
+ return [saved, savedGeneric]
+}

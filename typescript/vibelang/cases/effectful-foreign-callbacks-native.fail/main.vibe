@@ -1,0 +1,3 @@
+// expect: TS2345 TS2345
+import { fx, stream, wrongFx, wrongStream } from "./helpers.js"
+export function check() { wrongFx(fx); wrongStream(stream) }
