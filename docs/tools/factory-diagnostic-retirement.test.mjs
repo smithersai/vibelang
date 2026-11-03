@@ -5,7 +5,12 @@ import fc from "fast-check"
 import { auditIdentity, compilerCodes } from "./diagnostic-identity.mjs"
 
 const source = readFileSync(process.env.FACTORY_REGISTRY_SOURCE ?? new URL("../../typescript/tsc/internal/vibelang/diagnostics.go", import.meta.url), "utf8")
-const files = text => [{ path: "typescript/tsc/internal/vibelang/diagnostics.go", text }]
+// EK1010 takes its code from the parser's constant, so the registry reads both files.
+const throwLookahead = readFileSync(new URL("../../typescript/tsc/internal/parser/vibelang_throw_lookahead.go", import.meta.url), "utf8")
+const files = text => [
+  { path: "typescript/tsc/internal/parser/vibelang_throw_lookahead.go", text: throwLookahead },
+  { path: "typescript/tsc/internal/vibelang/diagnostics.go", text },
+]
 
 test("VIP-1 factory checks no longer register diagnostics without a reporting path", () => {
   const registered = compilerCodes(files(source))

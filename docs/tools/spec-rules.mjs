@@ -266,13 +266,17 @@ export function lintAuthority(root) {
     for (const m of text.matchAll(/^\| `((?:EK|TS)\d+)` \| .*? \| ([\d, ]+) \|.*$/gm)) {
       for (const id of m[2].match(/\d+/g) ?? []) {
         const vip = vips.get(Number(id))
-        if (vip?.status === "denied" && !/trailing block|shorthand|inline .module.|wire|not permitted|forbidden|removed|denied/i.test(m[0]))
+        // A denied VIP's dated amendments are accepted text, and may own a code.
+        const amended = vip?.text.split(/^## Amendments\s*$/m)[1]?.includes(m[1])
+        if (vip?.status === "denied" && !amended && !/trailing block|shorthand|inline .module.|wire|not permitted|forbidden|removed|denied/i.test(m[0]))
           findings.push(issue("authority", path, text, m.index, m[1] + " cites denied VIP-" + id + " as authority"))
       }
     }
     for (const m of text.matchAll(/VIP-(\d+)\b|\]\(\.\.\/vips\/(\d{4})-[^)]+\)/g)) {
       const id = Number(m[1] ?? m[2]), vip = vips.get(id)
       if (vip?.status !== "denied") continue
+      // A link to a denied VIP's Amendments cites what still applies after the denial.
+      if (/^(?:VIP-\d+)?\]\(\.\.\/vips\/\d{4}-[^)#]*#amendments\)/.test(text.slice(m.index, m.index + 200))) continue
       const boundary = text.lastIndexOf("\n\n", m.index)
       const begin = boundary < 0 ? 0 : boundary + 2
       const end = text.indexOf("\n\n", m.index)
@@ -295,7 +299,8 @@ export function lintAuthority(root) {
       // A standalone attributed quotation records historical rationale; it
       // does not assert that the denied proposal is part of the language.
       if (/^["“][\s\S]+["”]\s*\(VIP-\d+\)\.\s*$/.test(sentence.trim())) continue
-      if (/\b(?:denied|rejected|not permitted|not part of the language|no special syntax|removed|don.t exist|trailing block.*(?:error|EK1101))\b/i.test(sentence)) continue
+      // So is the codemod that moves source out of the denied form.
+      if (/\b(?:denied|rejected|not permitted|not part of the language|no special syntax|removed|don.t exist|trailing block.*(?:error|EK1101)|vibelang --fix. rewrites)\b/i.test(sentence)) continue
       findings.push(issue("authority", path, text, m.index, "denied VIP-" + id + " cannot authorize this chapter citation"))
     }
     for (const m of text.matchAll(/^.*(?:Sources?:|[Aa]uthority:|[Aa]uthorized by|[Pp]ermitted by|[Aa]llowed by|[Aa]s (?:specified|defined) (?:in|by)).*$/gm)) {

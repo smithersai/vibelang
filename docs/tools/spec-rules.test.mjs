@@ -133,38 +133,30 @@ test("r2 OPUS-2 / ASTRA-2: current resource warning cites an accepted public ame
   assert.ok(vip.includes("default warning `EK0801`"))
 })
 
+// A retired option stays in the spec only as its retirement note: every line
+// that names one says it is retired or ignored, so no row can configure it.
 function assertNoObsoleteConfigOptions(text) {
-  let current = text
-  if (text.includes("\n### Detail 297\n")) {
-    const retirement = section(text, "detail-297")
-    // Exclude only the verified retirement note, leaving every other detail checked.
-    assert.ok(retirement.includes("`trustedPackages` is removed."))
-    assert.ok(retirement.includes("deprecation warning and the key is ignored."))
-    assert.ok(!/^\|.*(?:trustedPackages|tracing|compilerOptions\.vibelang\.declarationImportStyle)/m.test(retirement), "retirement notes cannot define an obsolete option row")
-    current = text.replace(retirement, "")
-  }
   for (const obsolete of ["compilerOptions.vibelang.declarationImportStyle", "`trustedPackages`", "`tracing`"])
-    assert.ok(!current.includes(obsolete), obsolete + " is not a supported config option")
+    for (const line of text.split("\n"))
+      if (line.includes(obsolete)) assert.ok(/\b(?:retired|ignored)\b/.test(line), obsolete + " is not a supported config option: " + line)
 }
 
 test("r14 ASTRA-1 / OPUS-3: declaration spelling scope follows landed VIP-27 and VIP-30", () => {
-  for (const path of ["docs/design/src/001-functions.md", chapter]) {
-    const text = read(repository, path)
-    assert.ok(text.includes("declarationImportStyle"))
-    assert.ok(text.includes("sidecars"))
-    assert.ok(text.includes(".vibex"))
-  }
-  for (const path of ["docs/design/vips/0027-declaration-output.md", "docs/design/vips/0030-config-files.md"])
-    assert.ok(read(repository, path).includes("vibelang.declarationImportStyle"))
+  // 565522ee2518 retired both declaration-import configuration paths: spelling follows TypeScript.
   const tooling = read(repository, chapter)
+  for (const word of ["declarationImportStyle", "sidecars", ".vibex"]) assert.ok(tooling.includes(word), word)
+  assert.ok(read(repository, "docs/design/src/001-functions.md").includes(".vibex"))
+  assert.ok(read(repository, "docs/design/vips/0027-declaration-output.md").includes("declaration import spelling follows TypeScript"))
+  assert.ok(read(repository, "docs/design/vips/0030-config-files.md").includes("vibelang.declarationImportStyle"))
   assertNoObsoleteConfigOptions(tooling)
   assert.ok(!lintRegistry(repository).some(f => f.message.includes("declarationImportStyle")))
 })
 
 test("r14 OPUS-3: registry rejects the real second path and unapproved sibling keys", () => fixture((root, edit) => {
+  // compilerOptions.vibelang.declarationImportStyle has VIP-30's retirement as authority since 565522ee2518.
   edit(chapter, s => s + "\nRoot `compilerOptions.vibelang.declarationImportStyle` sits beside `trustedPackages` and `tracing`.\n")
   const findings = lintRegistry(root)
-  for (const token of ["compilerOptions.vibelang.declarationImportStyle", "trustedPackages", "tracing"])
+  for (const token of ["trustedPackages", "tracing"])
     assert.ok(findings.some(f => f.message.startsWith(token)), token)
 }))
 
@@ -172,6 +164,16 @@ test("r14 OPUS-3: removing the accepted VIP spelling removes option authority", 
   for (const name of readdirSync(join(root, "docs/design/vips")).filter(name => name.endsWith(".md")))
     edit("docs/design/vips/" + name, s => s.replaceAll("vibelang.declarationImportStyle", "vibelang.removed"))
   assert.ok(lintRegistry(root).some(f => f.message.startsWith("vibelang.declarationImportStyle has no accepted")))
+}))
+
+test("denied-VIP amendments: only an #amendments link or an amendment-owned code keeps authority", () => fixture((root, edit) => {
+  const appendix = "docs/design/src/900-appendices.md"
+  const count = () => lintAuthority(root).filter(f => /denied VIP-11/.test(f.message)).length
+  assert.equal(count(), 0)
+  edit(chapter, s => s + "\nThis form exists ([VIP-11](../vips/0011-trailing-blocks-denied.md#amendments)).\n")
+  assert.equal(count(), 0)
+  edit(chapter, s => s + "\nThis form exists ([VIP-11](../vips/0011-trailing-blocks-denied.md)).\n")
+  assert.ok(count() > 0, "a link without #amendments stays a denied citation")
 }))
 
 test("denied-link-filename: a link path containing denied cannot excuse positive authority", () => fixture((root, edit) => {
@@ -339,22 +341,14 @@ test("fast-check: retired diagnostics remain historical while an unmarked assign
 }))
 
 
-test("fast-check: folded retirement prose is allowed but supported configuration stays checked", () => {
-  // Detail 297: "`trustedPackages` is removed." Its description is not an option assignment.
-  const text = read(repository, chapter), current = text.split("\n## Details\n")[0]
-  const retirement = section(text, "detail-297")
+test("fast-check: a retirement note may name an obsolete option, an enabling row may not", () => {
+  const text = read(repository, chapter)
   fc.assert(fc.property(
     fc.constantFrom("compilerOptions.vibelang.declarationImportStyle", "`trustedPackages`", "`tracing`"),
-    fc.constantFrom("old", "retired", "obsolete"),
-    (option, historical) => {
-      const details = "\n## Details\n\n### Detail 297\n" + retirement +
-        "\nThe " + historical + " " + option + " option is removed.\n"
-      assert.doesNotThrow(() => assertNoObsoleteConfigOptions(current + details))
-      assert.throws(() => assertNoObsoleteConfigOptions(current + "\n| " + option + " | Enabled |\n" + details))
-      assert.throws(() => assertNoObsoleteConfigOptions(current + details + "\n### Detail 999\n| " + option + " | Enabled |\n"))
-      assert.throws(() => assertNoObsoleteConfigOptions(current + details + "\n| " + option + " | Enabled |\n"))
-      for (const required of ["`trustedPackages` is removed.", "deprecation warning and the key is ignored."])
-        assert.throws(() => assertNoObsoleteConfigOptions(current + details.replace(required, "The setting is enabled.")))
+    fc.constantFrom("retired", "ignored"),
+    (option, word) => {
+      assert.doesNotThrow(() => assertNoObsoleteConfigOptions(text + "\nThe " + option + " setting is " + word + ".\n"))
+      assert.throws(() => assertNoObsoleteConfigOptions(text + "\n| " + option + " | Enabled |\n"))
     }
   ), { seed: 310297, numRuns: 36 })
 })
