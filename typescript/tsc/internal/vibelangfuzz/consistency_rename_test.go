@@ -194,7 +194,8 @@ func consistencyCountDiff(before, after map[string]int, removedOnly bool) ([]str
 //
 //   - Each edit replaces a reference of the symbol.
 //   - The renamed program reports the same diagnostics by file, code and
-//     category.
+//     category, except TypeScript may repair or reclassify duplicate-declaration
+//     errors when separating colliding bindings. Their count cannot increase.
 //   - The new name's references are the old name's, mapped through the edit:
 //     each place the edit wrote the new name is a reference of it, each of its
 //     references is inside an edit or is an old reference the edit left as
@@ -251,7 +252,7 @@ func (c *consistency) checkRename(probe consistencyProbe, refs map[consistencySp
 	}
 	after := toolsCompile(c.t, c.w, consistencyTarget, edited.files)
 	defer after.Remove()
-	if diff, code := consistencyCountDiff(consistencyDiagnosticCounts(p.r, nil), consistencyDiagnosticCounts(after, nil), false); len(diff) > 0 && !consistencySpelled(p.files, old) && !consistencyImplicitTag(probe.declaration) {
+	if diff, code := consistencyRenameDiagnosticDiff(consistencyDiagnosticCounts(p.r, nil), consistencyDiagnosticCounts(after, nil)); len(diff) > 0 && !consistencySpelled(p.files, old) && !consistencyImplicitTag(probe.declaration) {
 		Gap(c.t, consistencyTarget, key+":diagnostics:"+code, "D372: the rename at %s changes the diagnostics:\n%s\n%s\nrenamed:\n%s", c.where, strings.Join(diff, "\n"), c.archive, Archive(edited.files))
 	}
 	if after.SourceFile(c.main) == nil || probe.merged() {

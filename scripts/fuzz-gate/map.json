@@ -29,6 +29,6 @@
   },
   "editor": {
     "paths": ["^typescript/vibelang/lsp-", "^packages/compiler/(extension|lsp)", "^typescript/tsc/internal/vibelang/.*(hover|quickfix|refactor|completion|codefix|rename)", "^typescript/tsc/internal/vibelangfuzz/(editor|consistency|async_refactor)"],
-    "tests": ["FuzzEditor", "FuzzEditorConsistency", "FuzzAsyncRefactorBridges"]
+    "tests": ["FuzzEditor", "FuzzEditorConsistency", "FuzzEditorRenameCollisionDiagnostics", "TestConsistencyRenameCollision", "FuzzAsyncRefactorBridges"]
   }
 }

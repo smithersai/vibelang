@@ -22,6 +22,18 @@ imports, a package-name literal, and multiple explicit runtime imports.
 The oracle rejects missing or invalid emitted JavaScript, so absent output
 cannot silently prove that the package is unnecessary.
 
+## Rename collision diagnostics
+
+The editor consistency oracle follows the specification's TypeScript counterpart
+rule for invalid programs too. Renaming one of several colliding bindings can
+remove duplicate-declaration errors or change remaining errors from `TS2451`
+to `TS2300`. The oracle compares their combined count per file and permits it
+to decrease. A new collision in another file, an increased combined count, or
+any other diagnostic change still fails. Reference sets and rename edits remain
+checked. `TestConsistencyRenameCollision` and
+`FuzzEditorRenameCollisionDiagnostics` cover schema companions, generic and
+interface collisions, declaration order, and native TypeScript controls.
+
 ## Current diagnostic oracle
 
 The registry and default severity oracle reads [Appendix B](../design/src/900-appendices.md#appendix-b-diagnostics), plus VibeLang’s own warning table in [Configuration and tooling](../design/src/007-tooling.md). A rule starting with `warning` or `lint warning` is a warning; other language rules are errors. Only those warnings and imported `EK38xx` codes are configurable through `vibe.severities`. Reused numbers are current rules, not retired codes.
