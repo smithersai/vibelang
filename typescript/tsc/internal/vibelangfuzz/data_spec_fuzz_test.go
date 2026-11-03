@@ -226,7 +226,7 @@ func dataRules() []dataRule {
 				if strings.HasPrefix(tuple.name, "rest") || strings.HasPrefix(tuple.name, "spread") {
 					quote = "rest elements map recursively, with any trailing required elements passed after the rest schema to `Schema.TupleWithRest`."
 				} else if strings.Contains(tuple.name, "optional") {
-					quote = "Optional tuple elements use `Schema.optional`, as optional fields do:"
+					quote = "With `exactOptionalPropertyTypes` off, optional tuple elements use `Schema.optional`, as optional fields do:"
 				}
 				add(name, data, quote, source, "", "impl-hunt-data")
 			}
