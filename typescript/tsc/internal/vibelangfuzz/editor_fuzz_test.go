@@ -436,6 +436,15 @@ func (e *toolsEditor) verifyQuickFix(title string, code int32, d *lsproto.Diagno
 		slices.Sort(codes)
 		Gap(e.t, "FuzzEditor", fmt.Sprintf("editor:quickfix-error:EK%04d:%s", code, strings.Join(codes, "+")), "the quick fix %q of EK%04d adds errors: %s\n%s\nfixed:\n%s", title, code, strings.Join(added, "\n"), e.archive, Archive(files))
 	}
+	// A quick fix keeps comments (quickFixCommentQuote): it may move one with
+	// its code, never copy it, as EK1301's class rewrite once copied a field's
+	// doc comment into TaggedError's arguments (Smithers SmithersError).
+	for _, comment := range toolsBlockComments(e.files[e.main]) {
+		if strings.Count(files[e.main], comment) > strings.Count(e.files[e.main], comment) {
+			Gap(e.t, "FuzzEditor", fmt.Sprintf("editor:quickfix-comment:EK%04d", code), "the quick fix %q of EK%04d copies the comment %q:\n%s\nfixed:\n%s", title, code, comment, e.archive, Archive(files))
+			break
+		}
+	}
 	file := fixed.SourceFile(e.main)
 	for _, after := range fixed.Diagnostics {
 		if after.File() == file && file != nil && after.Source() == "EK" && after.Code() == code && after.Pos() == start && after.End() == end {
@@ -481,4 +490,32 @@ func toolsEnclosingKind(name, text string, offset int) string {
 		return "none"
 	}
 	return strings.Join(kinds, "<")
+}
+
+// quickFixCommentQuote is the rule FuzzEditor's comment oracle checks
+// (chapter 7, built-in warnings).
+const quickFixCommentQuote = "A quick fix is offered only when it preserves evaluation order, coldness, types, comments, and declaration output"
+
+func TestQuickFixCommentRuleQuoted(t *testing.T) {
+	if !strings.Contains(SpecText("007-tooling.md"), quickFixCommentQuote) {
+		t.Fatal(quickFixCommentQuote)
+	}
+}
+
+// toolsBlockComments returns each block comment of text, /* */ or /** */,
+// in order.
+func toolsBlockComments(text string) []string {
+	var comments []string
+	for {
+		start := strings.Index(text, "/*")
+		if start < 0 {
+			return comments
+		}
+		end := strings.Index(text[start+2:], "*/")
+		if end < 0 {
+			return comments
+		}
+		comments = append(comments, text[start:start+2+end+2])
+		text = text[start+2+end+2:]
+	}
 }

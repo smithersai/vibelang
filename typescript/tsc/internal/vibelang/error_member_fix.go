@@ -140,6 +140,17 @@ var errorMemberClassFix = &ls.CodeFixProvider{
 			})
 			baseNode = visitor.VisitNode(baseNode)
 		}
+		// The tag argument "Name" as T copies a _tag field's type with its
+		// source range, so the printer would carry the comment that follows
+		// that type, the next field's doc comment, into the base's arguments.
+		// Field comments print with the fields.
+		if call := baseNode.Expression(); call != nil && ast.IsCallExpression(call) {
+			for _, argument := range call.Arguments() {
+				if ast.IsAsExpression(argument) && ast.IsStringLiteral(argument.Expression()) {
+					emit.AddEmitFlags(argument, printer.EFNoComments|printer.EFNoNestedComments)
+				}
+			}
+		}
 		p := printer.NewPrinter(printer.PrinterOptions{NewLine: core.NewLineKindLF}, printer.PrintHandlers{}, emit)
 		head := declarationPrefix + name.Text()
 		if params := class.ClassLikeData().TypeParameters; params != nil {

@@ -744,6 +744,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Array-pattern bindings on readonly arrays inferred `any`; they now retain the source element type, including type parameters and `undefined`.
 
 - The full site check omitted the 404 publication assertions. It now verifies the built fallback and ordinary-page metadata while reusing the existing production build.
+- `EK1301`'s quick fix, which rewrites an `error` declaration with a constructor as its Effect TypeScript class, copied the doc comment of the field after `_tag` into `TaggedError("Name" as string …)`'s arguments, so the class head carried a stray comment (Smithers `SmithersError`). The comment now stays only on its field.
 - API identity checks rejected two identical copies of a generic function using an `import()` type with literal type arguments. Copies now compare identically, while changed literal arguments and dependencies remain differences.
 
 - Publication checks for source-child packages could not install an already-published Effect dependency while simulating an unreleased VibeLang SDK. Their registry fixture now serves the pinned Effect release while continuing to withhold the SDK.
