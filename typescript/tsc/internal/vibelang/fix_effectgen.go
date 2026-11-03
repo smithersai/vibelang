@@ -257,6 +257,9 @@ func planEffectGenWith(c *checker.Checker, file *ast.SourceFile, call *ast.Node,
 	if rewrite := planOptionGen(c, file, call); rewrite != nil {
 		return rewrite
 	}
+	if rewrite := planResultGen(c, file, call); rewrite != nil {
+		return rewrite
+	}
 	g, why := readGeneratorCall(c, file, call)
 	if g == nil {
 		return nil
