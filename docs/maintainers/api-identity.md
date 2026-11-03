@@ -16,7 +16,12 @@ comparison. Invalid owned declarations, unresolved exported types and errors
 in probe setup make the comparison unavailable, with exit status `2`.
 
 Package inputs use `package.json`'s `exports` subpaths and `types` conditions,
-with `publishConfig` overrides applied. Exact subpaths override wildcard patterns; matching patterns use the longest prefix and then the longest trailer. `null` exclusions prevent private declarations from becoming entry points, including under conditional wildcard exports. Source and runtime wildcard targets
+with `publishConfig` overrides applied. Exact subpaths override wildcard
+patterns; matching patterns use the longest prefix and then the longest trailer.
+`null` exclusions prevent private declarations from becoming entry points,
+including under conditional wildcard exports. Ordered `exports` arrays select
+the first resolvable target for each import, require and custom-condition path;
+unreachable fallbacks are not extra entry points. Source and runtime wildcard targets
 map to their emitted declarations; JSON and asset exports have no type surface.
 Separate import and require type conditions are checked separately. Private
 files do not become entry points. A bare directory without publishing metadata

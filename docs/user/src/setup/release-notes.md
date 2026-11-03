@@ -144,6 +144,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 ### Bugs fixed since 0.0.10
 
+- Declaration comparison treated every package `exports` fallback as a published entry point, producing errors for missing or unreachable alternatives. It now follows TypeScript's ordered fallback resolution and compares only selected declarations.
+
 - Changing ambient overload import order could change an exported type while declaration comparison still passed. A changed ambient load order now makes the comparison unavailable, preserving the isolated types instead of merging away the difference.
 
 - Wildcard package exports could make declaration checks compare private files blocked by `null` exclusions, or override an exact subpath with a broad pattern. Discovery now follows the most-specific `exports` key, so only published entry points count.

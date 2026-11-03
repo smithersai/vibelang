@@ -46,7 +46,7 @@ function declarationPath(path) {
  * Bare declaration trees have no publishing metadata: every file is an entry.
  * An explicit unresolved entry remains in the map and fails closed.
  */
-export function publishedEntrypoints(directory) {
+export function publishedEntrypoints(directory, tsCompiler) {
   directory = resolve(directory)
   if (statSync(directory).isFile()) return { ".": directory }
   const manifestFile = join(directory, "package.json")
@@ -116,6 +116,44 @@ export function publishedEntrypoints(directory) {
   else {
     const root = declarationPath(join(directory, manifest.main ?? "index"))
     if (root) entries["."] = root
+  }
+  // Array exports are ordered resolution fallbacks, not independent entrypoints.
+  const containsArray = value => Array.isArray(value) || Boolean(value && typeof value === "object" &&
+    Object.values(value).some(containsArray))
+  if (containsArray(manifest.exports)) {
+    const ts = tsCompiler ?? loadTypeScript([directory])
+    const packageName = "__api_identity_snapshot__"
+    const publishedManifest = JSON.stringify({ ...manifest, name: packageName })
+    const host = { ...ts.sys, readFile: path => resolve(path) === manifestFile ? publishedManifest : ts.sys.readFile(path) }
+    const clean = key => key.replace(/#fallback\d+/g, "")
+    const conditionSets = [...new Set(Object.keys(entries).map(key => JSON.stringify(key.split("#").slice(1)
+      .filter(key => !/^fallback\d+$/.test(key) && !["import", "require", "default", "types"].includes(key)))))].map(JSON.parse)
+    for (const subpath of [...new Set(Object.keys(entries).map(key => key.split("#")[0]))]) {
+      const origin = exportMap ? selectedExport(subpath) : undefined
+      if (!containsArray(exportMap ? exportMap[origin] : manifest.exports)) continue
+      const candidates = Object.entries(entries).filter(([key]) => key.split("#")[0] === subpath)
+      for (const [key] of candidates) delete entries[key]
+      let found = false
+      for (const extra of [[], ...conditionSets]) {
+        for (const [mode, meaning] of [[ts.ModuleKind.ESNext, "import"], [ts.ModuleKind.CommonJS, "require"]]) {
+          const resolved = ts.resolveModuleName(packageName + (subpath === "." ? "" : subpath.slice(1)),
+            join(directory, "__api_identity_consumer.ts"), {
+              module: ts.ModuleKind.ESNext, moduleResolution: ts.ModuleResolutionKind.Bundler,
+              allowArbitraryExtensions: true, customConditions: extra
+            }, host, undefined, undefined, mode).resolvedModule
+          if (!resolved) continue
+          const target = declarationPath(resolved.resolvedFileName) ?? resolved.resolvedFileName
+          const applicable = candidates.filter(([key, path]) => path === target &&
+            clean(key).split("#").slice(1).every(condition =>
+              condition === meaning || condition === "default" || extra.includes(condition)))
+          if (!applicable.length) continue
+          const key = applicable.map(([key]) => clean(key)).sort((a, b) => a.length - b.length || a.localeCompare(b))[0]
+          entries[key] = target
+          found = true
+        }
+      }
+      if (!found && candidates.length) entries[subpath] = candidates.at(-1)[1]
+    }
   }
   return entries
 }
@@ -283,7 +321,7 @@ function equivalentModules(ts, program, host, left, right, externalGroups, docum
  */
 export function compareApiIdentity(ts, before, after, options = {}) {
   before = resolve(before); after = resolve(after)
-  const entryMap = (base, supplied) => Object.fromEntries(Object.entries(supplied ?? publishedEntrypoints(base))
+  const entryMap = (base, supplied) => Object.fromEntries(Object.entries(supplied ?? publishedEntrypoints(base, ts))
     .map(([key, path]) => [key, resolve(base, path)]))
   const left = entryMap(before, options.beforeEntrypoints)
   const right = entryMap(after, options.afterEntrypoints)
