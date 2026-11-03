@@ -495,7 +495,10 @@ export function wireSourceChildren({ root, all, manifests, ts, specsFor, write }
         continue
       }
       for (const refusal of result.refusals) warnings.push(file + ":" + refusal.line + ": " + refusal.reason)
-      if (!result.usesChild) continue
+      if (!result.usesChild) {
+        if (result.text !== text) write(file, result.text)
+        continue
+      }
       if (!specsFor(dir).vibelang) { warnings.push(file + ":1: no vibelang version is configured for source children"); continue }
       if (!effectVersion) { warnings.push(file + ":1: source-child Schema boundary needs the selected toolchain Effect pin or a declared effect dependency; retain the native launcher"); continue }
       if (result.text !== text) write(file, result.text)
