@@ -1,0 +1,8 @@
+{
+  "key": "setup-native-rewrite-option",
+  "pattern": "base.json sets rewriteRelativeImportExtensions false; the selected tsconfig only extends it",
+  "flags": [false, null],
+  "array": false,
+  "solution": false,
+  "newPackage": false
+}

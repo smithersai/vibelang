@@ -1,1 +1,0 @@
-cov-tooling VIP coverage: actual setup overwrites false/absent/inherited rewrite settings with true.

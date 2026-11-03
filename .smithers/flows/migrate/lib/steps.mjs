@@ -877,7 +877,8 @@ function wirePackages({ t, ts, packages, specsFor, writeIfChanged, warnings, lay
       const styled = !spelling.style ? current
         : spelling.style === ".js" ? Wire.removeVibeLangSetting(current, ts, "declarationImportStyle")
         : Wire.addVibeLangSetting(current, ts, "declarationImportStyle", spelling.style)
-      const next = Wire.addCompilerOptions(Wire.addVibeIncludes(styled, ts), { rewriteRelativeImportExtensions: true })
+      // Native rewriting keeps its authored value, inheritance and default (VIP-27, VIP-30).
+      const next = Wire.addVibeIncludes(styled, ts)
       writeIfChanged(file, text, enumerations.length ? Enumerations.addSidecarDir(next, ts, Enumerations.sidecarDirectory, file) : next)
       wiredTsconfigs.add(posix.join(pkg.dir, tsconfig))
     }

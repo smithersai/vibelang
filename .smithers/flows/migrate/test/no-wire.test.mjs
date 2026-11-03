@@ -152,7 +152,7 @@ test("property: --no-wire repairs generated workspaces once and preserves alread
           assert.equal(next.scripts.test, "custom-test")
           const project = generated[dirs.indexOf(at)].solution ? "tsconfig.src.json" : "tsconfig.json"
           assert.match(read(root, `${at}/${project}`), /src\/\*\*\/\*\.vibe/)
-          assert.match(read(root, `${at}/${project}`), /rewriteRelativeImportExtensions/)
+          assert.doesNotMatch(read(root, `${at}/${project}`), /rewriteRelativeImportExtensions/)
         }
         assert.ok(result.changed.every(path => expectedAdded.some(at => path.startsWith(at + "/"))))
       }

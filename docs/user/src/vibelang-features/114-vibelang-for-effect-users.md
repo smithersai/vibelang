@@ -28,6 +28,8 @@ A plain `for...of` also keeps TypeScript's lexical scopes. A closure made in its
 
 A recognized `effect` modifier on an `abstract` declaration, in an ambient `declare` context, or on an `interface` or type literal member is `EK0108`. Remove the modifier from the signature, or put the implementation in an ordinary function or method. A method named `effect`, such as `interface Ordinary { effect(): number }`, keeps its ordinary TypeScript meaning.
 
+Migration setup preserves the authored `rewriteRelativeImportExtensions` option, including its default when absent and values inherited through `extends`. It adds no local override in referenced projects or newly wired packages.
+
 When migrating an exported Effect value, keep it as a value: `export const stocked = effect { return try available("TEA") }`. A function such as `export effect function stocked()` exports a callable API and requires consumers to add a call. Compare the emitted declarations to keep the original export type and lazy behavior.
 
 ## Call VibeLang from TypeScript
