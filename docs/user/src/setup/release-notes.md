@@ -306,6 +306,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 ### Bugs fixed since 0.0.10
 - The compiler reported `EK1307` for an ambient `error` or `schema error` declaration, but Appendix B did not list the code; it does now.
+- `try` on a value that is not an Effect made the enclosing function `any`, which added a stray `EK3205` at `main`, and `try` on a value typed by a constrained type parameter lost its success and error types; the `try` now reports only `EK0502` and the type parameter keeps the channels of its constraint.
 - Resolved schema-binding regressions still appeared as pending gaps; namespace, function and escaped-name coverage now checks `EK2109` strictly while keeping every keyed corpus.
 
 

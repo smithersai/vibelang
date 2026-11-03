@@ -57,6 +57,33 @@ test("$try keeps the explicit three-type-argument overload", () => {
     'const service:Equal<Effect.Services<typeof result>,R>=true;')).toEqual([])
 })
 
+// A type parameter is read through its constraint, so its channels stay
+// concrete in the caller, as the single signature gave before held unions.
+test("$try reads a type parameter through its constraint", () => {
+  const check = checker()
+  const successes = ["string", "number", "boolean", "readonly number[]", "{readonly id:string}"]
+  fc.assert(fc.property(fc.constantFrom(...successes), fc.integer({ min: 0, max: 2 }), (success, kind) => {
+    const bound = ["Config.Config<" + success + ">", "Effect.Effect<" + success + ",\"E\",{readonly r:\"R\"}>", "Exit.Exit<" + success + ",\"E\">"][kind]
+    const source = prelude + equal + "function run<T extends " + bound + ">(held:T){const result=$try(held);" +
+      "const success:Equal<typeof result,Effect.Effect<Effect.Success<" + bound + ">,Effect.Error<" + bound + ">,Effect.Services<" + bound + ">>>=true;return success}"
+    expect(check(source)).toEqual([])
+  }), { seed: 334452, numRuns: 8 })
+}, 30_000)
+
+// A rejected call reports only itself: an any result would turn the function
+// that holds it into any, and the caller into a second diagnostic (EK3205).
+test("$try of a non-Effect reports the call and gives no any", () => {
+  const check = checker()
+  fc.assert(fc.property(fc.constantFrom("number", "string", "boolean", "null", "undefined", "{readonly id:string}", "readonly number[]"), (held) => {
+    const diagnostics = check(prelude + "declare const held:" + held + ";const result=$try(held);" +
+      "type NotAny<T>=0 extends 1&T?false:true;" +
+      "const success:NotAny<Effect.Success<typeof result>>=true;" +
+      "const failure:NotAny<Effect.Error<typeof result>>=true;" +
+      "const service:NotAny<Effect.Services<typeof result>>=true;")
+    expect(diagnostics.map((text) => text.split(":")[0])).toEqual(["TS2769"])
+  }), { seed: 334453, numRuns: 7 })
+}, 30_000)
+
 test("$try preserves held union channels", () => {
   const chapter = readFileSync(resolve(runtimeRoot, "../../docs/design/src/001-functions.md"), "utf8")
   expect(chapter).toContain("and its errors and requirements from the Effects its body runs, exactly as `Effect.gen` infers them.")

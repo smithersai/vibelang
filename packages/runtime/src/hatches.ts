@@ -82,11 +82,14 @@ export function sync(evaluate: unknown, ...inputs: Array<unknown>): Effect.Effec
  * code calls it. Preserve every union member's success, error and requirement
  * in the canonical Effect return type, as the original signature did. In
  * particular, a structural Effect subtype is still run, not returned as data.
- * The second signature keeps explicit A/E/R calls; never remains Effect<never>.
+ * A/E/R comes first: it reads a type parameter through its constraint, and a
+ * rejected call takes the first signature, so a non-Effect operand gives no
+ * any to whatever holds the result. T then takes the unions A/E/R cannot infer.
+ * The defaults keep never as Effect<never>.
  */
 export const $try: {
+  <A = never, E = never, R = never>(effect: Effect.Effect<A, E, R>): Effect.Effect<A, E, R>
   <T extends Effect.Effect<any, any, any>>(effect: T): Effect.Effect<Effect.Success<T>, Effect.Error<T>, Effect.Services<T>>
-  <A, E, R>(effect: Effect.Effect<A, E, R>): Effect.Effect<A, E, R>
 } = <T extends Effect.Effect<any, any, any>>(effect: T) => effect as Effect.Effect<Effect.Success<T>, Effect.Error<T>, Effect.Services<T>>
 
 /**
