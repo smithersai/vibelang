@@ -78,11 +78,16 @@ test("foldkit-104: compiler errors fail the switch even when every test stays gr
   } finally { rmSync(root, { recursive: true, force: true }) }
 })
 
+// docs/design/src/900-appendices.md#f360c5976e121cb4 — Chapter 900: upgrade validates original TypeScript without migrating modules or editing tests.
 test("foldkit-104: a clean actual upgrade still completes", async () => {
   const root = mkdtempSync(join(tmpdir(), "foldkit-toolchain-clean-"))
   try {
     const options = await fixture(root, { testsFail: false })
+    const source = readFileSync(join(options.target, "src/main.ts"), "utf8")
+    const originalTests = readFileSync(join(options.target, "vitest.mjs"), "utf8")
     const result = await steps.upgradeEffect(options)
+    assert.equal(readFileSync(join(options.target, "src/main.ts"), "utf8"), source)
+    assert.equal(readFileSync(join(options.target, "vitest.mjs"), "utf8"), originalTests)
     assert.equal(result.tests.code, 0)
     assert.equal(result.tests.failed.length, 0)
   } finally { rmSync(root, { recursive: true, force: true }) }
@@ -141,6 +146,7 @@ test("foldkit-104: legacy receipts cannot hide a recorded failed toolchain switc
 
 // smithers: both compiles print EK3870 as an error and exit 0; admission
 // compared the real 0 with a code derived from the categories (2).
+// docs/design/src/900-appendices.md#80fd8ce20774ee2a — Chapter 900: equal real zero exits stay zero.
 test("smithers: setup's admission compares the compiles' real exit codes, so Effect diagnostics that exit 0 pass", async () => {
   const { assertBaselineSafe } = await import("../lib/baseline.mjs")
   const corpus = JSON.parse(readFileSync(new URL("./corpus/smithers-baseline-effect-error-exit.json", import.meta.url), "utf8"))

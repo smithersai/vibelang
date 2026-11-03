@@ -96,6 +96,7 @@ async function fixture(root, files) {
   return { target, toolchain, base, calls }
 }
 
+// docs/design/src/900-appendices.md#11bbf54371f13339 — Chapter 900: an upgrade may adapt preexisting Vibe sources without new conversions.
 test("upgrade-effect runs the installed compiler's VIP migrations on the earlier run's .vibe modules before repinning", async () => {
   assert.ok(readFileSync(new URL("../README.md", import.meta.url), "utf8").includes(quote), "update the quoted step rule")
   const root = mkdtempSync(join(tmpdir(), "migrate-vip-switch-"))
