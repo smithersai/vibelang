@@ -1,0 +1,12 @@
+{
+  "key": "foldkit-162:effect-lint-requirement-import",
+  "pending": {
+    "key": "foldkit-162:effect-oxlint-vibe-type-import",
+    "owner": "fk-vite-foldkit/migfix-foldkit",
+    "reason": "The reported external Effect plugin verdict still needs its actual containing project/config. These controls verify stock TypeScript resolution and setup discovery, not that external plugin."
+  },
+  "declaration": "import { Effect, FileSystem } from \"effect\";\nexport type Needs = FileSystem.FileSystem;\nexport declare const program: Effect.Effect<number, never, Needs>;\n",
+  "native": "import { Effect } from \"effect\"\nimport type { Needs } from \"./dep.vibe\"\nexport const run = <A, E>(effect: Effect.Effect<A, E, Needs>) => Effect.runPromise(effect.pipe(Effect.provide(null as never)))\n",
+  "source": "export type Needs = FileSystem.FileSystem\nexport const program = effect (): number!!Needs => 1\n",
+  "sidecarControl": "import { Effect } from \"effect\"\nimport type { Needs } from \"./dep.d.vibe.ts\"\nexport const run = <A, E>(effect: Effect.Effect<A, E, Needs>) => Effect.runPromise(effect.pipe(Effect.provide(null as never)))\n"
+}
