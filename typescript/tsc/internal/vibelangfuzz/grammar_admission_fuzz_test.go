@@ -344,10 +344,6 @@ func grammarAdmissionDeclarationForm(ts []grammarToken) string {
 			if depth == 0 {
 				lastBang = i
 			}
-		case "module":
-			if i+1 < len(ts) && (ts[i+1].text == "{" || ts[i+1].kind == 'w' && i+2 < len(ts) && ts[i+2].text == "{") {
-				return "admission:inline-module"
-			}
 		case "concurrent":
 			if i > 0 && ts[i-1].text == "for" && i+1 < len(ts) && ts[i+1].nl {
 				return "admission:for-concurrent-line-break"
@@ -498,41 +494,40 @@ func TestGrammarAdmissionInterruptionKeys(t *testing.T) {
 
 func TestGrammarAdmissionDeclarationKeys(t *testing.T) {
 	for source, want := range map[string]string{
-		"type T = (A | B)!E;":                  "",
-		"type T = A!(B | E);":                  "",
-		"type T = A | B; type U = C!E;":        "",
-		"schema C<T> { a: T }":                 "admission:schema-type-parameters",
-		"schema C { a: number }":               "",
-		"schema C string":                      "admission:schema-no-body",
-		"schema C":                             "admission:schema-no-body",
-		"schema C = string;":                   "",
-		"schema error E effect { a: T }":       "admission:error-no-end",
-		"error E effect { a: T }":              "admission:error-no-end",
-		"error effect [a]":                     "admission:error-no-end",
-		"error E;":                             "",
-		"type T = A!B!;":                       "admission:effect-type-trailing-bang",
-		"type T = number ! 1 ! ;":              "admission:effect-type-trailing-bang",
-		"type T = A!(B | C)!;":                 "admission:effect-type-trailing-bang",
-		"const b = !x; const c = !y;":          "",
-		"type T = A!B!C;":                      "",
-		"type T = A!!;":                        "",
-		"schema error":                         "admission:schema-no-body",
-		"schema error;":                        "admission:schema-no-body",
-		"type T = number !\n! ;":               "admission:effect-type-line-break",
-		"type T = 1 !\n! ;":                    "admission:effect-type-line-break",
-		"type T = (A) !\n! ;":                  "admission:effect-type-line-break",
-		"const b = !\n!x;":                     "",
-		"module { export const n = catch 1; }": "admission:inline-module",
-		"module M { }":                         "admission:inline-module",
-		"module;":                              "",
-		"error E\nx;":                          "",
-		"error instanceof E;":                  "admission:error-no-end",
-		"schema error E { a: T }":              "",
-		"schema error E;":                      "",
-		"const schema = x; schema;":            "",
-		"for concurrent\n(const x of xs) x;":   "admission:for-concurrent-line-break",
-		"for\nconcurrent (const x of xs) x;":   "",
-		"const s = \"!\" + \"|\";":             "",
+		"type T = (A | B)!E;":                "",
+		"type T = A!(B | E);":                "",
+		"type T = A | B; type U = C!E;":      "",
+		"schema C<T> { a: T }":               "admission:schema-type-parameters",
+		"schema C { a: number }":             "",
+		"schema C string":                    "admission:schema-no-body",
+		"schema C":                           "admission:schema-no-body",
+		"schema C = string;":                 "",
+		"schema error E effect { a: T }":     "admission:error-no-end",
+		"error E effect { a: T }":            "admission:error-no-end",
+		"error effect [a]":                   "admission:error-no-end",
+		"error E;":                           "",
+		"type T = A!B!;":                     "admission:effect-type-trailing-bang",
+		"type T = number ! 1 ! ;":            "admission:effect-type-trailing-bang",
+		"type T = A!(B | C)!;":               "admission:effect-type-trailing-bang",
+		"const b = !x; const c = !y;":        "",
+		"type T = A!B!C;":                    "",
+		"type T = A!!;":                      "",
+		"schema error":                       "admission:schema-no-body",
+		"schema error;":                      "admission:schema-no-body",
+		"type T = number !\n! ;":             "admission:effect-type-line-break",
+		"type T = 1 !\n! ;":                  "admission:effect-type-line-break",
+		"type T = (A) !\n! ;":                "admission:effect-type-line-break",
+		"const b = !\n!x;":                   "",
+		"module M { }":                       "",
+		"module;":                            "",
+		"error E\nx;":                        "",
+		"error instanceof E;":                "admission:error-no-end",
+		"schema error E { a: T }":            "",
+		"schema error E;":                    "",
+		"const schema = x; schema;":          "",
+		"for concurrent\n(const x of xs) x;": "admission:for-concurrent-line-break",
+		"for\nconcurrent (const x of xs) x;": "",
+		"const s = \"!\" + \"|\";":           "",
 	} {
 		if got := grammarAdmissionDeclarationForm(grammarLexSource(source)); got != want {
 			t.Errorf("%q keyed %q; want %q", source, got, want)
@@ -607,6 +602,9 @@ func grammarAdmissionForm(source string) string {
 		open, arrow := i+1, true
 		if open < len(ts) && !ts[open].nl && ts[open].text == "function" {
 			open, arrow = open+1, false
+			if open < len(ts) && ts[open].text == "*" {
+				open++
+			}
 			if open < len(ts) && ts[open].kind == 'w' {
 				// Appendix A Name: a declaration's own name takes the
 				// enclosing context's parameters. The lab gives it [+Effect].
@@ -657,7 +655,11 @@ func grammarAdmissionForm(source string) string {
 		case "join":
 			// VIP-17: join is exactly as await, and `for (await x of xs)` is TS2487.
 			// The operand may follow a line break, as after await.
-			if i >= 2 && ts[i-1].text == "(" && ts[i-2].text == "for" && i+1 < len(ts) {
+			head := i - 1
+			for head >= 0 && slices.Contains([]string{"try", "fork", "await", "!", "-", "+", "~", "typeof", "void"}, ts[head].text) {
+				head--
+			}
+			if head >= 1 && ts[head].text == "(" && ts[head-1].text == "for" && i+1 < len(ts) {
 				// `for (join of of xs)` joins `of` in effect code; one `of` is a native head.
 				if n := ts[i+1]; n.kind == 'n' || n.kind == 's' || n.kind == 'w' && n.text != "of" && n.text != "in" && n.text != "as" && n.text != "satisfies" && n.text != "instanceof" || n.text == "of" && i+2 < len(ts) && ts[i+2].text == "of" {
 					return "admission:join-for-head"
@@ -666,10 +668,6 @@ func grammarAdmissionForm(source string) string {
 		case "catch":
 			if i+1 < len(ts) && (ts[i+1].kind == 'n' || ts[i+1].kind == 's') {
 				return "admission:catch-value"
-			}
-		case "throw":
-			if i > 0 && ts[i-1].text == "??" {
-				return "admission:throw-expression"
 			}
 		case "service":
 			if i+2 < len(ts) && ts[i+1].kind == 'w' && next(2) == ":" {
@@ -713,14 +711,7 @@ func grammarAdmissionForm(source string) string {
 				continue
 			}
 			word := source[start:end]
-			if word == "throw" {
-				// ArmBody = Expression | "throw" Expression: a match arm's throw is admitted.
-				before := grammarLexSource(source[:start])
-				if len(before) > 0 && before[len(before)-1].text == ":" && strings.Contains(source[:start], "match") {
-					continue
-				}
-				return "admission:throw-expression"
-			}
+			// VIP-41 admits throw expressions, so a throw prefix keys nothing.
 			if word != "fork" && word != "join" {
 				continue
 			}
@@ -755,8 +746,6 @@ func grammarAdmissionForm(source string) string {
 			return "admission:fork-block"
 		case parser.VibeSyntaxBlockParam:
 			return "admission:trailing-block"
-		case parser.VibeSyntaxModule:
-			return "admission:inline-module"
 		}
 	}
 	return ""
@@ -788,7 +777,7 @@ func grammarAdmissionEffectAt(file *ast.SourceFile, at int) bool {
 }
 
 func TestGrammarAdmissionMutationKeys(t *testing.T) {
-	for _, key := range []string{"catch-value", "throw-expression", "inline-module", "service-shape", "layer-declaration"} {
+	for _, key := range []string{"catch-value", "service-shape", "layer-declaration"} {
 		for _, seed := range grammarAdmissionSeeds {
 			if seed.key != key {
 				continue
@@ -862,10 +851,17 @@ func TestGrammarAdmissionMutationKeys(t *testing.T) {
 	if got := grammarAdmissionForm("function f(p) { return fork\nfork p; }"); got != "admission:fork-outside-effect" {
 		t.Errorf("outside-Effect prefix not keyed: %s", got)
 	}
-	for _, source := range []string{"const n = throw 1;", "effect function f(p) { return throw try p; }", "const n = (throw e);"} {
-		if got := grammarAdmissionForm(source); got != "admission:throw-expression" {
-			t.Errorf("throw expression family not keyed: %s: %s", source, got)
+	// VIP-41 and VIP-40 admit these; a mismatch in a program with one is keyed by its other form.
+	for _, source := range []string{"const n = throw 1;", "effect function f(p) { return throw try p; }", "const n = (throw e);", "module M { }"} {
+		if got := grammarAdmissionForm(source); got != "" {
+			t.Errorf("admitted form keyed: %s: %s", source, got)
 		}
+	}
+	if got := grammarAdmissionForm("join effect function f ( p ) { return throw try p ; }"); got != "admission:join-outside-effect" {
+		t.Errorf("module-level join with a throw expression keyed %s", got)
+	}
+	if got := grammarAdmissionForm("effect function * fork ( ) { yield 1 ; }"); got != "admission:fiber-function-name" {
+		t.Errorf("producer declaration named fork keyed %s", got)
 	}
 	for _, source := range []string{"function f() {}", "if (ok) { x(); }", "g(1)\n{}", "const x = 'catch 1';", "const x = 'module M {';", "const x = a ?? b;", "function f() { throw e; }", "effect function f() { throw e; }", "function f(p) { return fork(p); }", "function f(p) { return fork + p; }", "effect function f(p) { return fork p; }", "function f(p) { return effect () => fork p; }"} {
 		if key := grammarAdmissionForm(source); key != "" {
@@ -877,15 +873,13 @@ func TestGrammarAdmissionMutationKeys(t *testing.T) {
 			t.Errorf("%s: %s", source, got)
 		}
 	}
-	if got := grammarAdmissionForm("module { export const n = 1; }"); got != "admission:inline-module" {
-		t.Fatalf("nameless module: %s", got)
-	}
 	for _, source := range []string{
 		"effect function f(xs) { for (join x of xs) { x; } }",
 		"function f(xs) { for (join x of xs) { x; } }",
 		"effect function f(xs) { for (join x in xs) { x; } }",
 		"effect function f(xs) { for (join 1 of xs) { } }",
 		"effect function f(xs) { for (join of of xs) { } }",
+		"effect function f(xs) { for (try join x of xs) { x; } }",
 		"effect function f(xs) { for (join\nx\nof xs) { x; } }",
 	} {
 		if got := grammarAdmissionForm(source); got != "admission:join-for-head" {
