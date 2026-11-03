@@ -1,0 +1,26 @@
+// Chapter 002: erased callee wrappers retain receiver, getter count and intentional detachment; docs/design/src/002-running.md#d82797b122efe2b5
+// Chapter 002: erased callee wrappers retain receiver, getter count and intentional detachment; docs/design/src/002-running.md#9a70b1992056c60f
+// Chapter 002: erased callee wrappers retain receiver, getter count and intentional detachment; docs/design/src/002-running.md#c58151a462bb6164
+// Chapter 002: erased callee wrappers retain receiver, getter count and intentional detachment; docs/design/src/002-running.md#4f96184386326d93
+// Chapter 002: erased callee wrappers retain receiver, getter count and intentional detachment; docs/design/src/002-running.md#7199138fc6466db6
+// Chapter 002: erased callee wrappers retain receiver, getter count and intentional detachment; docs/design/src/002-running.md#79b46e098786fc5d
+import {Effect} from "effect"
+import {poison} from "./poison.js"
+export function probe(kind:number,mutate:boolean):unknown {
+ const events:string[]=[]
+ const obj={n:5,get m(){events.push("get");return poison(function(this:any,x:number):unknown{events.push("call");return this===undefined?"detached":this.n+x},events)}}
+ let result:unknown
+ switch(kind){
+ case 0:result=obj.m!(do{events.push("argument");if(mutate)obj.n=10;2});break
+ case 1:result=(obj.m as (x:number)=>unknown)(do{events.push("argument");if(mutate)obj.n=10;2});break
+ case 2:result=(obj.m satisfies (x:number)=>unknown)(do{events.push("argument");if(mutate)obj.n=10;2});break
+ case 3:result=(<(x:number)=>unknown>obj.m)(do{events.push("argument");if(mutate)obj.n=10;2});break
+ default:result=(events.push("detach"),obj.m)(do{events.push("argument");if(mutate)obj.n=10;2})
+ }
+ return [result,events]
+}
+export effect function main():unknown!! {
+ const results:unknown[]=[]
+ for(const mutate of [false,true])for(const kind of [0,1,2,3,4])results.push(probe(kind,mutate))
+ return results
+}
