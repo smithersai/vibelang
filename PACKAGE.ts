@@ -642,6 +642,14 @@ const targets = {
   }),
   "spec-foreign-call-contract": foreignCallExamples,
   "spec-sidecar-roots": sidecarRootContract,
+  "spec-object-pattern-counterpart": S.Shell.Test({
+    summary: "Executable object-pattern counterparts retain callable objects, property presence and read order.",
+    shell: "node docs/tools/spec-object-pattern-counterpart.mjs && node --test docs/tools/spec-object-pattern-counterpart.test.mjs",
+    data: [design, S.Filegroup({ srcs: [...S.glob(["docs/tools/spec-object-pattern-counterpart*.mjs"])] })],
+    tools: [bun],
+    sandbox: "none",
+    timeout: "5m"
+  }),
   // A Run has no graph replay: revision and external decisions are runtime
   // inputs. The script pins the revision/diff verdict, including failures.
   // Platform owns attachment to the pre-gate; grounded violations reject by default.

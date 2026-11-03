@@ -473,6 +473,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Setup needed a second run to finish refreshing a source-child loader helper when one call launched a typed source and another only probed a shell. It now removes the unnecessary wrapper and refreshes the retained helper in one pass.
 
 - CI-health reports mistook missing Node packages for test assertions; reports now identify package-install failures and point to the requesting module's installation and module root.
+
+- The pattern-matching reference example dropped callable objects with an `id` property; its TypeScript counterpart now includes them.
 - `vibelang --fix` refused `EK4401` on a plain TypeScript call that reads a property a guard narrowed, such as `o.p ? f(o.p) : 0` or `if (!o.p) return 0; return f(o.p)`, because `Effect.try`'s function no longer knew what the guard proved (`TS2345`). The guard now joins the call in that function, or a `const` under the guard keeps the read; a call that runs before the read still blocks the move.
 
 - Release validation rejected the stock-reference control suite because it had no test runner; `//:release` now runs checks for `Exit` values, public types, and version pins.
