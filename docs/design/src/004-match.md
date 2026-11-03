@@ -438,13 +438,13 @@ The table shows `tsc --strict` types. Other options change a binding as they cha
 // compiler-gap: pending VIP-7
 function isText(s: string | number): s is string { return typeof s === "string" }
 function classify(s: string | number) {
-  return match (s) { when isText: s.length; default: s.toFixed(0); }
+  return match (s) { when isText: s.length; default: String(s); }
 } // default s: number, although isText contributes no exhaustiveness coverage
 const adopted: Promise<number> = async match (true) { default: Promise.resolve(7); }
 class OnlyNumbers {
   static [Symbol.customMatcher](s: unknown): boolean { return typeof s === "number" }
 }
-// For s: OnlyNumbers | number, an arm `when not OnlyNumbers: s.toFixed(0);`
+// For s: OnlyNumbers | number, an arm `when not OnlyNumbers: s * 2;`
 // is a TypeScript error: this boolean matcher establishes no narrowing.
 ```
 
@@ -454,7 +454,7 @@ import { Effect } from "effect"
 function isText(s: string | number): s is string { return typeof s === "string" }
 function classify(s: string | number) {
   if (isText(s)) return s.length
-  return s.toFixed(0)
+  return String(s)
 }
 const adopted: Promise<number> = (async () => Promise.resolve(7))()
 const adoptedExit = await Effect.runPromiseExit(Effect.promise(() => adopted)) // Success(7)
@@ -466,7 +466,7 @@ class OnlyNumbers {
 function negated(s: OnlyNumbers | number) {
   if (!OnlyNumbers[customMatcher](s)) {
     // @ts-expect-error no implicit instanceof exclusion for an own boolean matcher
-    s.toFixed(0)
+    s * 2
   }
 }
 const defaultNarrowingExit = Effect.runSyncExit(Effect.sync(() => [classify("text"), classify(7)])) // Success([4, "7"])
@@ -506,15 +506,15 @@ class Numeric {
   }
 }
 function first(s: number[]) {
-  return match (s) { when Array(let n): n.toFixed(0); default: "other"; }
+  return match (s) { when Array(let n): String(n); default: "other"; }
 }
 function numeric(s: unknown) {
-  return match (s) { when Numeric(let n): n.toFixed(0); default: "other"; }
+  return match (s) { when Numeric(let n): String(n); default: "other"; }
 }
 // first([1]) is "1"; numeric(7) is "7", although 7 is not a Numeric instance.
 ```
 
-The following is a local typing witness for one `Array(let n)` arm and a tuple-returning custom matcher. The native loop preserves the element type, and its tagged result carries the fact that one element was obtained before the binding read; an array-length comparison alone does not carry it in TypeScript. Tuple extraction keeps its positional types. A payload that includes `undefined` keeps that type after the presence test. This witness does not replace the general cached Iterator Record, failed-extraction, ordered-arm or `FinishMatch` algorithms.
+The following is a local typing witness for one `Array(let n)` arm and a tuple-returning custom matcher. The native loop preserves the element type, and its tagged result carries the fact that one element was obtained before the binding read; an array-length comparison alone does not carry it in TypeScript. Tuple extraction keeps its positional types. The `number` annotation checks the selected element before the nonthrowing `String(n)` call. A payload that includes `undefined` keeps that type after the presence test. This witness does not replace the general cached Iterator Record, failed-extraction, ordered-arm or `FinishMatch` algorithms.
 
 ```ts effect
 const numericMatcher: unique symbol = Symbol.for("Symbol.customMatcher")
@@ -531,8 +531,8 @@ function first(s: number[]) {
     selected = { done: false, value }
   }
   if (!selected.done) {
-    const n = selected.value
-    return n.toFixed(0)
+    const n: number = selected.value
+    return String(n)
   }
   return "other"
 }
@@ -540,7 +540,7 @@ function numeric(s: unknown) {
   const extracted = Numeric[numericMatcher](s, { matchType: "extractor" })
   if (extracted !== false) {
     const [n] = extracted
-    return n.toFixed(0) // s remains unknown; n is number
+    return String(n) // s remains unknown; n is number
   }
   return "other"
 }
