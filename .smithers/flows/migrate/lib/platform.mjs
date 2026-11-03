@@ -33,7 +33,8 @@ export function isPlatformModule(specifier) {
 /**
  * The host globals that EK4402 messages name, as the identifiers a
  * declaration reads: "process.env is platform code" names process,
- * "globalThis.crypto.subtle is platform code" names globalThis. A builtin
+ * "globalThis.crypto.subtle is platform code" names globalThis, and "Blob
+ * reads a host global" (a global VIP-33 derives) names Blob. A builtin
  * import ("createHash from node:crypto is platform code") is split without
  * being named, and a message about anything else names nothing.
  */
@@ -42,7 +43,7 @@ export function platformGlobalsOf(messages) {
   for (const message of messages) {
     const text = String(message).replace(/^\s*(?:error\s+)?EK4402:\s*/, "")
     if (/^\S+ from \S+ is platform code/.test(text)) continue
-    const m = /^([A-Za-z_$][\w$]*)(?:\??\.[\w$.?]*|\[[^\]]*\])* is platform code/.exec(text)
+    const m = /^([A-Za-z_$][\w$]*)(?:\??\.[\w$.?]*|\[[^\]]*\])* (?:is platform code|reads a host global)/.exec(text)
     if (m && m[1] !== "import") names.add(m[1])
   }
   return [...names].sort()

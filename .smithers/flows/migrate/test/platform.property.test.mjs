@@ -142,6 +142,34 @@ test("platformGlobalsOf names the host globals that EK4402 messages report", () 
   ]), ["globalThis", "process"])
 })
 
+// VIP-33's derived ban reports a global the platform table does not list in
+// its own words. The reader takes every EK4402 text the compiler has, so
+// these read from the compiler's source and a reworded message fails here.
+test("platformGlobalsOf reads every EK4402 text that names a host global", () => {
+  const compiler = new URL("../../../../typescript/tsc/internal/vibelang/", import.meta.url)
+  const templates = [
+    /EK4402 = message\(4402, errorCategory, "([^"]+)"\)/.exec(readFileSync(new URL("diagnostics.go", compiler), "utf8"))[1],
+    /unlistedHostGlobal = EK4402\.With\("([^"]+)"\)/.exec(readFileSync(new URL("host_global_declarations.go", compiler), "utf8"))[1],
+  ]
+  assert.deepEqual(platformGlobalsOf(["Blob reads a host global. Use an injected Effect service, or move the platform code to a .ts file."]), ["Blob"])
+  const name = fc.stringMatching(/^[A-Za-z_$][\w$]{0,8}$/).filter((n) => n !== "import")
+  const member = fc.constantFrom("", ".subtle", "?.env", '["fetch"]', ".a.b")
+  fc.assert(fc.property(fc.constantFrom(...templates), name, member, fc.constantFrom("", "EK4402: ", "error EK4402: "), (template, global, tail, prefix) => {
+    assert.deepEqual(platformGlobalsOf([prefix + template.replace("{0}", () => global + tail)]), [global])
+  }))
+})
+
+test("smithers ShapeSource and kernel HttpClient: a derived host global moves with the declaration that reads it", () => {
+  const text = 'export const isBlob = (value: unknown): boolean => value instanceof Blob\nexport const one = (): number => 1\n'
+  const messages = ["EK4402: Blob reads a host global. Use an injected Effect service, or move the platform code to a .ts file."]
+  const result = splitPlatform(text, "m.ts", ts, { globals: platformGlobalsOf(messages) })
+  assert.ok(result && !result.refused, result?.refused)
+  assert.deepEqual(result.moved, ["isBlob"])
+  assert.deepEqual(result.wrapped, ["isBlob"])
+  assert.ok(!/instanceof Blob/.test(result.module), result.module)
+  assert.ok(/instanceof Blob/.test(result.platform), result.platform)
+})
+
 test("smithers platform-node HostLiveness: a host global a pass left moves with the declarations that read it", () => {
   const corpus = JSON.parse(readFileSync(new URL("./corpus/smithers-platform-globals.json", import.meta.url), "utf8"))
   for (const { file, text, messages, moved, wrapped } of corpus.modules) {
