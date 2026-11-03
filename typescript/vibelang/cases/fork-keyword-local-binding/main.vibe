@@ -5,6 +5,8 @@
 // rule: docs/design/src/000-intro.md#c6445bfbbb5f951d
 // Chapter 2: running rules coverage.
 // docs/design/src/002-running.md#971d86ca6d881aea
+// Chapter 2: running rules coverage.
+// docs/design/src/002-running.md#971d86ca6d881aea
 // VIP-17 reserves fork in Effect code. A plain helper can still call an
 // ordinary function named fork, while keyword forms start fibers.
 function fork(x: number) {
