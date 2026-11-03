@@ -1,1 +1,2 @@
 main.vibe(9,40): error EK0509
+main.vibe(9,40): warning EK4802
