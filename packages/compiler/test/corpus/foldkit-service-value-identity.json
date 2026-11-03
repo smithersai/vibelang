@@ -1,0 +1,9 @@
+{
+  "repo": "foldkit",
+  "pattern": "legacy static default migration repeats object allocation and mutable bindings",
+  "initializers": {
+    "object-identity": "{enabled:true}",
+    "mutable-snapshot": "current",
+    "eager-side-effect": "(made+=1,current)"
+  }
+}
