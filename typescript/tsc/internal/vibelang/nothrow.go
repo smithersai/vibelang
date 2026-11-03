@@ -112,15 +112,13 @@ func (a *analyzer) knownThrows(node *ast.Node) []*checker.Type {
 // throw sits in, is inside a function literal passed where throws are
 // admitted: the code Effect.try or Effect.tryPromise wraps, a Promise
 // executor, or an argument whose parameter type has a @throws call signature.
-// Such a literal may contain calls known to throw, in callbacks of its own
-// included; a throw statement in it is still EK0401.
+// Only the literal's own activation runs inside that call: a function nested
+// in it, whether it is returned, stored, passed on or called in place, is its
+// own plain code and keeps its own check (PREVIEW-5), since a returned
+// callback runs after Effect.try has finished. A throw statement in such a
+// literal is still EK0401.
 func (a *analyzer) throwsBelongToCall(home *ast.Node) bool {
-	for n := home; n != nil; n = n.Parent {
-		if ast.IsFunctionExpressionOrArrowFunction(n) && (isWrappedCode(n) || admitsThrows(a.checker, n)) {
-			return true
-		}
-	}
-	return false
+	return ast.IsFunctionExpressionOrArrowFunction(home) && (isWrappedCode(home) || admitsThrows(a.checker, home))
 }
 
 // admitsThrows reports whether fn, a function literal, is an argument whose

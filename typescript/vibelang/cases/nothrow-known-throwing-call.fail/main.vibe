@@ -32,6 +32,10 @@ export class Box {
 export const top: unknown = JSON.parse("{}")
 // An explicit @throws {unknown} is a contract (decided detail 255).
 export const viaRisky = (text: string): string => risky(text)
+// A callback nested in Effect.try's thunk is its own plain code (PREVIEW-5).
+export effect function wrappedCallback(texts: string[]) {
+  return try Effect.try(() => texts.map((text) => JSON.parse(text)))
+}
 
 // Controls: no diagnostic.
 export function caught(text: string): unknown {
@@ -46,9 +50,6 @@ export effect function wrapped(text: string) {
 }
 export async function rejects(text: string) {
   return JSON.parse(text)
-}
-export effect function wrappedCallback(texts: string[]) {
-  return try Effect.try(() => texts.map((text) => JSON.parse(text)))
 }
 export function executor(text: string) {
   return new Promise((resolve) => { resolve(JSON.parse(text)) })

@@ -188,7 +188,8 @@ func failuresCases() []*failCase {
 	add(&failCase{Name: "wrap-effect-try-function", Quote: q.wrapIt, Decls: failParse, Body: "const p = try Effect.try(function () { return parse(s) })"})
 	add(&failCase{Name: "wrap-effect-try-options", Quote: q.wrapIt, Decls: failParse, Body: "const p = try Effect.try({ try: () => parse(s), catch: (e) => e })"})
 	add(&failCase{Name: "wrap-effect-try-held", Quote: q.wrapIt, Decls: failParse, Body: "const program = Effect.try(() => parse(s))\nconst p = try program"})
-	add(&failCase{Name: "wrap-effect-try-nested-callback", Quote: q.wrapIt, Decls: failParse, Body: "const p = try Effect.try(() => xs.map((x) => parse(String(x))))"})
+	// PREVIEW-5: a callback nested in the thunk is its own plain code
+	add(&failCase{Name: "wrap-effect-try-nested-callback", Quote: nothrowQ.nested, Owner: "nothrow-impl", Decls: failParse, Body: "const p = try Effect.try(() => xs.map((x) => ⟦parse(String(x))⟧))", Code: 401})
 	add(&failCase{Name: "wrap-try-promise-async", Quote: q.promiseCall, Decls: failLater, Body: "const p = try tryPromise(() => later(s))"})
 	add(&failCase{Name: "wrap-promise", Quote: q.promiseCall, Decls: failLater, Body: "const p = try promise(() => later(s))"})
 	add(&failCase{Name: "nonthrowing-direct", Quote: q.callsDirectly, Decls: failAdd, Body: "add(1, 2)"})

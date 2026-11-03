@@ -12,5 +12,6 @@ affirmative "may throw anything" (decided detail 255): calling it in plain code
 is `EK0401`, unlike a `.ts` function with no tag.
 
 The controls report nothing: a caught call, a `.ts` call with no contract (its
-throwing is unknown), a call inside `Effect.try`'s thunk, and an `async`
+throwing is unknown), a call inside `Effect.try`'s thunk (not in a callback nested in it, which is
+its own plain code), and an `async`
 function, whose throw rejects its Promise (decided detail 251).

@@ -1,0 +1,9 @@
+main.vibe(9,27): error EK0401
+main.vibe(14,39): error EK0401
+main.vibe(20,39): error EK0401
+main.vibe(25,32): error EK0401
+main.vibe(30,47): error EK0401
+main.vibe(33,51): error EK0401
+main.vibe(36,14): warning EK4812
+main.vibe(36,60): error EK0401
+main.vibe(57,14): warning EK4812

@@ -1,0 +1,58 @@
+// expect: EK0401
+// PREVIEW-5: a function literal passed where throws are admitted, such as
+// Effect.try's thunk, may hold calls known to throw in its own body only. A
+// function nested in it is its own plain code (003, "Plain code never
+// throws"): returned, stored, passed on or called in place, it keeps its own
+// check, since a returned callback runs after Effect.try has finished.
+export effect function escapingArrow() {
+  return try Effect.try(() => {
+    return (): unknown => JSON.parse("{")
+  })
+}
+export effect function escapingNamed() {
+  return try Effect.try(() => {
+    function read(): unknown { return JSON.parse("{") }
+    return read
+  })
+}
+export effect function escapingMethod() {
+  return try Effect.try(() => {
+    return { read(): unknown { return JSON.parse("{") } }
+  })
+}
+export effect function storedCallback(sink: { read?: () => unknown }) {
+  return try Effect.try(() => {
+    sink.read = (): unknown => JSON.parse("{")
+    return sink
+  })
+}
+export effect function calledInPlace() {
+  return try Effect.try(() => ((): unknown => JSON.parse("{"))())
+}
+export effect function passedOn(texts: string[]) {
+  return try Effect.try(() => texts.map((text) => JSON.parse(text)))
+}
+export function executorNested(text: string) {
+  return new Promise((resolve) => { resolve((): unknown => JSON.parse(text)) })
+}
+
+// Controls: no diagnostic.
+export effect function direct(text: string) {
+  return try Effect.try(() => JSON.parse(text))
+}
+export effect function directBlock(text: string) {
+  return try Effect.try(() => {
+    const value: unknown = JSON.parse(text)
+    return value
+  })
+}
+export effect function nestedCaught(text: string) {
+  return try Effect.try(() => {
+    return (): unknown => {
+      try { return JSON.parse(text) } catch { return null }
+    }
+  })
+}
+export function executor(text: string) {
+  return new Promise((resolve) => { resolve(JSON.parse(text)) })
+}

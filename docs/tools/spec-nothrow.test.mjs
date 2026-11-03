@@ -58,12 +58,16 @@ test("VIP-5 makes a throw in a plain catch handler EK0401 and retires EK0511", (
 test("chapter 3 makes throw and calls known to throw EK0401 in synchronous code outside effect code", () => {
   const text = chapter("003-failures")
   assert.doesNotMatch(text, /`throw` is allowed everywhere/)
-  assert.match(text, /\| an `async` function, arrow or method, or an async generator \| JavaScript's `throw`: the returned Promise rejects with `e` \(decided detail 251\) \|/)
+  assert.match(text, /\| an `async` function, arrow or method, its parameter list included, or an `async` generator's body \| JavaScript's `throw`: the returned Promise rejects with `e` \(decided detail 251\) \|/)
   assert.match(text, /\| any other `\.vibe` code \| a compile error, `EK0401` \(\[Plain code never throws\]\(#plain-code-never-throws\)\) \|/)
   const section = text.slice(text.indexOf("### Plain code never throws"), text.indexOf("## Thrown types"))
   for (const construct of ["plain function declarations", "function expressions and arrows", "plain methods", "constructors", "getters and setters",
     "plain generators", "class field initializers", "`static` field initializers and `static` blocks", "every function's parameter list",
-    "plain `catch` handlers", "the module top level"]) assert.ok(section.includes(construct), construct)
+    "plain `catch` handlers", "the module top level, top-level `await` or not"]) assert.ok(section.includes(construct), construct)
+  // An ordinary async function's parameter list rejects its Promise; an async generator's runs at the call (detail 108).
+  assert.match(section, /every function's parameter list except an ordinary nongenerator `async` function's \(an `effect` function's and an `async` generator's included, since each runs at the call, before the Effect or the generator exists\)/)
+  assert.match(section, /its directly evaluated blocks, `do` expressions and `try` statements included/)
+  assert.match(section, /A function nested in such a literal, whether it is returned, stored, passed on or called in place, is its own plain code and keeps this check/)
   assert.match(section, /A `throw` statement is `EK0401`, whether or not a `try` statement in the same function catches it\./)
   assert.match(section, /A call whose throwing is unknown, such as an unannotated `\.ts` function, stays an ordinary call\./)
   assert.match(section, /A `throw` statement in such a literal is still `EK0401`\./)
@@ -123,7 +127,7 @@ test("chapter 7 lists the EK0401 quick fixes in order and drops the EK0511 warni
 test("Appendix B widens EK0401 and EK0406, narrows EK0403 and retires EK0405 and EK0511", () => {
   const text = chapter("900-appendices")
   const b = text.slice(text.indexOf("## Appendix B. Diagnostics"), text.indexOf("## Appendix C"))
-  assert.match(b, /\| `EK0401` \| a `throw` statement, or a call, `new` expression, tagged template or class evaluation known to throw outside the `try` block of a `try` statement with a `catch` clause, in synchronous code outside effect code: .*a plain `catch` handler, or the module top level; .*quick fixes: make the function `effect`, use `die`, or move the code to a `\.ts` file \| 4, 5 \|/)
+  assert.match(b, /\| `EK0401` \| a `throw` statement, or a call, `new` expression, tagged template or class evaluation known to throw outside the `try` block of a `try` statement with a `catch` clause, in synchronous code outside effect code: .*a parameter list \(an `effect` function's and an `async` generator's included, an ordinary `async` function's excluded\), a plain `catch` handler, or the module top level, top-level `await` or not; .*quick fixes: make the function `effect`, use `die`, or move the code to a `\.ts` file \| 4, 5, 26, 27 \|/)
   assert.match(b, /\| `EK0403` \| an unwrapped call, `new` expression, tagged template or class evaluation that may throw, in effect code \| 4 \|/)
   assert.match(b, /\| `EK0406` \| a `@throws` or `@rethrows` tag in a `\.vibe` file, on any declaration, signature or type; quick fix: remove the tag \|/)
   assert.doesNotMatch(b, /^\| `EK0405` \|/m)
