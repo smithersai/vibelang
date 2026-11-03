@@ -45,14 +45,16 @@ Stock `tsc` preserves the tag in the declaration, exactly as shown above. Withou
 
 ### Amendment: an opt-in sidecar directory (2026-11-01)
 
-The Location bullet stays the default: `x.d.vibe.ts` beside `x.vibe`, with no configuration. `vibe.sidecarDir` moves every sidecar of the project into one directory, conventionally `.vibe/declarations`, at the path the source has under the config's directory, so `src/x.vibe` gets `.vibe/declarations/src/x.d.vibe.ts`. The project's tsconfig adds the directory to `rootDirs` beside `.`, so stock `tsc`, TypeDoc and editors still resolve `import "./x.vibe"` under `allowArbitraryExtensions`:
+The Location bullet stays the default: `x.d.vibe.ts` beside `x.vibe`, with no configuration. `vibe.sidecarDir` moves every sidecar of the project into one directory, conventionally `.vibe/declarations`, at the source's path relative to TypeScript's declaration source root: explicit `rootDir`, the config directory for a composite project, or the common source directory otherwise. With `rootDir: "."`, `src/x.vibe` gets `.vibe/declarations/src/x.d.vibe.ts`. The project's tsconfig adds the directory to `rootDirs` beside `.`, so stock `tsc`, TypeDoc and editors still resolve `import "./x.vibe"` under `allowArbitraryExtensions`:
 
 ```jsonc
 {
-  "compilerOptions": { "allowArbitraryExtensions": true, "rootDirs": [".", ".vibe/declarations"] },
+  "compilerOptions": { "allowArbitraryExtensions": true, "rootDir": ".", "rootDirs": [".", ".vibe/declarations"] },
   "vibe": { "sidecarDir": ".vibe/declarations" }
 }
 ```
+
+An imported source outside the compiling config's directory follows that compiling project's root and `sidecarDir`; its nearest config does not change ownership. An explicit `rootDir` excluding it reports `TS6059`. Through a project reference, only the owning project emits that source's sidecar. With no `sidecarDir`, the sidecar stays beside its source. This follows TypeScript's declaration-layout rule; the config-relative example above explicitly fixes the root.
 
 The hidden directory keeps sidecars out of code that enumerates a source folder's `*.ts` files, such as a test that imports every `*.ts` but `*.d.ts`. Switching the setting on or off removes each module's sidecar from the other place. The migrate flow's setup turns it on where tracked code enumerates `*.ts` files in a folder that will hold `.vibe` files. Decided detail 268 (spec agent, 2026-11-01, common sense and precedent: TypeScript's `declarationDir` and `rootDirs`); it reverses nothing.
 
