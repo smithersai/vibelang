@@ -189,6 +189,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 | Old diagnostic numbers, including `EK4617` | Appendix B numbering, including `EK0103`. Diagnostic triggers are unchanged. See the [old-to-new map](../vibelang-features/diagnostic-code-map.md). |
 
 ### Bugs fixed since 0.0.10
+- ESLint reported extra newline warnings around method calls containing a lifted `do` expression; it now follows the source method and receiver boundaries while retaining warnings for written call or property newlines.
 
 - Service-member regression checks now distinguish forbidden constructors and index signatures from the separate service-class migration warning in the same module.
 - The resource-warning documentation check depended on an obsolete list position; it now checks the published ownership, unchanged diagnostic code and disposal safeguards directly.

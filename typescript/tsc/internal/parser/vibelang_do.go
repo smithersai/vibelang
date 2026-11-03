@@ -1410,7 +1410,7 @@ func (l *doLowering) expr(e *ast.Node, pre *[]*ast.Node) *ast.Node {
 			later = later || l.marked[argument]
 		}
 		if later && isMemberCallee(c.Expression) {
-			c.Expression = l.method(c.Expression, l.p.sourceRange(e), pre)
+			c.Expression = l.method(c.Expression, l.p.sourceRange(c.Expression), pre)
 			c.Arguments.Nodes = l.ordered(pre, c.Arguments.Nodes...)
 			break
 		}
@@ -1613,10 +1613,11 @@ func (l *doLowering) method(callee *ast.Node, at core.TextRange, pre *[]*ast.Nod
 		if object.Kind == ast.KindThisKeyword {
 			return object, this()
 		}
-		name := l.temp("$do_t", at)
+		objectRange := l.p.sourceRange(object)
+		name := l.temp("$do_t", objectRange)
 		value := l.expr(object, pre)
-		*pre = append(*pre, l.p.mConst(name, ast.NodeFlagsConst, l.p.valueOnly(value), at))
-		return l.ref(name, at), l.ref(name, at)
+		*pre = append(*pre, l.p.mConst(name, ast.NodeFlagsConst, l.p.valueOnly(value), objectRange))
+		return l.ref(name, objectRange), l.ref(name, objectRange)
 	}
 	var bound *ast.Node
 	if member.Kind == ast.KindPropertyAccessExpression {

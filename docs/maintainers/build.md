@@ -1357,3 +1357,10 @@ metadata assertions reuse that output. Standalone `npm run test:404` still
 builds the site first. Missing or invalid supplied output fails without a
 second build. `scripts/site-404-output.test.mjs` covers publication metadata,
 missing output and generated directory-name neighbours without build tools.
+
+Lowered `do` method calls retain the written callee and receiver ranges in
+ESTree. Generated `.bind` wrappers are omitted from the source view, while
+source-written calls, computed-access newlines and scope reads remain visible.
+The native `eslint-source-calls.property.test.mjs`, real ESLint
+`source-calls-property.test.mjs` and keyed corpus exercise those boundaries;
+`TestDoMethodCallSourceBoundaries` checks the Go exporter directly.

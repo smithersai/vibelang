@@ -1,0 +1,10 @@
+{
+  "property": "eslint-source-call-asi",
+  "rule": "VIP-34 existing tools work; eslint:do-loop-newline-noise",
+  "input": {
+    "code": "function f() {\n  for (const i of [0, 1]) {\n    out.push(1 + do { if (i === 0) continue; 0 })\n  }\n  return 0\n}\n",
+    "filePath": "/source-call.vibe",
+    "warnings": 0
+  },
+  "note": "Lowered method-call regression: source callees end before their own opening parenthesis, with no parser-generated bind call exposed to ESLint."
+}

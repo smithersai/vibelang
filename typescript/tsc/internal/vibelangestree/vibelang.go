@@ -267,6 +267,15 @@ func (c *converter) vibeCall(n *ast.Node) *obj {
 	arguments := listNodes(call.Arguments)
 	callee := call.Expression
 	switch {
+	case callee.Kind == ast.KindPropertyAccessExpression &&
+		isSynthesizedIdentifier(callee.AsPropertyAccessExpression().Name(), "bind") &&
+		len(arguments) == 1 && synthesized(arguments[0]):
+		// Do lowering captures a method as e.m.bind(e) before its arguments
+		// run. Only e.m is written: exposing the generated binding call makes
+		// rules inspect its imaginary parentheses and can duplicate reports.
+		// Keep the source method read, including computed keys and user bind
+		// properties; a source-written .bind call never has this marker.
+		return c.convertChild(callee.Expression(), n)
 	case len(arguments) == 1 && c.isPatternMatcher(callee):
 		// The parser captures a subject with an arrow invocation so it is
 		// evaluated once. There is no written call around the pattern:

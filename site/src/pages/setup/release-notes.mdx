@@ -194,6 +194,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 | Old diagnostic numbers, including `EK4617` | Appendix B numbering, including `EK0103`. Diagnostic triggers are unchanged. See the [old-to-new map](/vibelang-features/diagnostic-code-map). |
 
 ### Bugs fixed since 0.0.10
+- ESLint reported extra newline warnings around method calls containing a lifted `do` expression; it now follows the source method and receiver boundaries while retaining warnings for written call or property newlines.
 
 - Service-member regression checks now distinguish forbidden constructors and index signatures from the separate service-class migration warning in the same module.
 - A `catch` handler written as a parameter list followed by a block, `x catch (e) { … }`, was a syntax error (`TS1005`) that hid every other error in the file. It is now `EK0509`, with a quick fix to `x catch effect (e) => { … }` when the block has no `break`, `continue`, `await` or `yield` of its own.
