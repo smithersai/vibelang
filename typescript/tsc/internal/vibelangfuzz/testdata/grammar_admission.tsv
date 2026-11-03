@@ -95,6 +95,7 @@ parser/vibelang_errors.go:Parser.parseErrorDeclaration	admission:error	900-appen
 parser/vibelang_errors.go:Parser.parseVibeLangErrorHeritage	admission:error	900-appendices.md#ErrorDeclaration	support	VIP-13/29 error declarations, members and recovery
 parser/vibelang_errors.go:Parser.isVibeLangFieldComma	admission:error	900-appendices.md#ErrorDeclaration	support	VIP-13/29 error declarations, members and recovery
 parser/vibelang_errors.go:Parser.parseVibeLangFieldComma	admission:error	900-appendices.md#ErrorDeclaration	support	VIP-13/29 error declarations, members and recovery
+parser/vibelang_errors.go:vibelangErrorPayloadSeparators	admission:error	900-appendices.md#ErrorDeclaration	support	VIP-13/29 error declarations, members and recovery
 parser/vibelang_errors.go:Parser.parseVibeLangErrorElement	admission:error	900-appendices.md#ErrorBody	support	Appendix A: ErrorBody; inherited TypeScript helpers and diagnostic recovery retain their stated boundaries
 parser/vibelang_errors.go:isVibeLangErrorField	admission:error	900-appendices.md#ErrorDeclaration	support	VIP-13/29 error declarations, members and recovery
 parser/vibelang_errors.go:isVibeLangTagField	admission:error	900-appendices.md#ErrorDeclaration	support	VIP-13/29 error declarations, members and recovery
