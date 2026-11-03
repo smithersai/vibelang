@@ -19,12 +19,12 @@ const compile = text => ts.transpileModule(text, { compilerOptions: { module: ts
 const schemaURL = pathToFileURL(require.resolve("effect/Schema")).href
 const load = async text => (await import("data:text/javascript;base64," + Buffer.from(compile(text + "\nexport { __vibelangSourceChild }\n").replaceAll('"effect/Schema"', JSON.stringify(schemaURL))).toString("base64"))).__vibelangSourceChild
 
-function policy(text) {
+function policy(text, extension = ".ts") {
   const root = mkdtempSync(join(tmpdir(), "opencode-native-policy-"))
   try {
     cpSync(fileURLToPath(new URL("./fixtures/opencode-native-policy", import.meta.url)), root, { recursive: true })
     symlinkSync(join(repo, ".smithers/node_modules"), join(root, "node_modules"), "dir")
-    const file = join(root, "launch.ts")
+    const file = join(root, "launch" + extension)
     writeFileSync(file, text)
     const cli = join(dirname(policyRequire.resolve("oxlint")), "../bin/oxlint")
     const run = spawnSync(process.execPath, [cli, "--config", join(root, "config.json"), "--format", "json", file], {
@@ -190,4 +190,14 @@ test("property: detached package setup uses selected or declared pins and never 
       }
     } finally { rmSync(root, { recursive: true, force: true }) }
   }), { seed: 880053, numRuns: 80 })
+})
+
+
+test("JavaScript helper type comments preserve the unchanged native lint policy", () => {
+  const source = corpus.source.replace(": string", "")
+  assert.deepEqual(policy(source, ".mjs"), [])
+  const fixed = addSourceChildLoaders(source, ts, { file: "launch.mjs" })
+  assert.equal(fixed.usesChild, true)
+  assert.deepEqual(fixed.refusals, [])
+  assert.deepEqual(policy(fixed.text, ".mjs"), [])
 })

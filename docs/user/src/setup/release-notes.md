@@ -151,6 +151,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Declaration fuzz checks still rejected harmless spacing, member order and import spelling changes in migration output. They now compare complete declaration trees by exported names, types and comments.
 
+- JavaScript launch scripts could fail strict `checkJs` after setup inserted a source-child helper. Generated JavaScript now keeps the helper’s parameter and tuple types, preserves native declarations, and retains readable spacing.
+
 - Release validation rejected the VIP-7 reference tests because they had no runner; `//:release` now checks parallel installation and cleanup after a failed install.
 
 - The migration namespace corpus quoted a declaration-import-style guarantee removed from the specification, so its citation check failed. It now cites the current module-identity wording.

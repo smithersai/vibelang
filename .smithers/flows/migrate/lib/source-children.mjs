@@ -7,6 +7,67 @@ import { packageScripts, testOnlyScripts } from "./test-files.mjs"
 const marker = "// VibeLang source-child loader arguments."
 const template = readFileSync(new URL("../templates/source-child.ts", import.meta.url), "utf8")
 const legacyTemplate = readFileSync(new URL("../templates/source-child-legacy.ts", import.meta.url), "utf8")
+// JSDoc type queries can observe a generated binding without a runtime
+// identifier use. Include those nodes in ownership and fresh-name checks.
+function syntaxChildren(node, ts, visit) {
+  const children = new Set()
+  ts.forEachChild(node, child => { children.add(child) })
+  for (const doc of node.jsDoc ?? []) children.add(doc)
+  for (const child of children) visit(child)
+}
+
+// TypeScript annotations disappear in .mjs/.js output. Retain their
+// private helper contract as JSDoc, so checkJs sees the same tuple and args.
+function sourceChildJavaScript(code, ts, typed = true) {
+  if (typed) {
+    const source = ts.createSourceFile("source-child.ts", code, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS)
+    const edits = []
+    const doc = (tags, node) => {
+      if (!tags.length) return
+      const at = node.getStart(source)
+      const indent = /^[ \t]*/.exec(code.slice(code.lastIndexOf("\n", at) + 1, at))[0]
+      edits.push({ start: at, text: "/**\n" + tags.map(tag => indent + " * " + tag).join("\n") + "\n" + indent + " */\n" + indent })
+    }
+    const params = parameters => parameters.filter(parameter => parameter.type).map(parameter =>
+      "@param {" + parameter.type.getText(source) + "} " + (parameter.initializer || parameter.questionToken ? "[" + parameter.name.getText(source) + "]" : parameter.name.getText(source)))
+    const visit = node => {
+      if (ts.isFunctionDeclaration(node) && /^__vibelangSourceChild\d*$/.test(node.name?.text ?? "")) {
+        const tags = (node.typeParameters ?? []).map(parameter => "@template " + (parameter.constraint ? "{" + parameter.constraint.getText(source) + "} " : "") + parameter.name.text)
+        tags.push(...params(node.parameters))
+        if (node.type) tags.push("@returns {" + node.type.getText(source) + "}")
+        doc(tags, node)
+      }
+      if (ts.isVariableStatement(node) && node.declarationList.declarations.length === 1) {
+        const declaration = node.declarationList.declarations[0]
+        if (declaration.type) doc(["@type {" + declaration.type.getText(source) + "}"], node)
+        else if (declaration.initializer && ts.isArrowFunction(declaration.initializer)) doc(params(declaration.initializer.parameters), node)
+      }
+      syntaxChildren(node, ts, visit)
+    }
+    visit(source)
+    for (const edit of edits.sort((a, b) => b.start - a.start)) code = code.slice(0, edit.start) + edit.text + code.slice(edit.start)
+  }
+  let output = ts.transpileModule(code, {
+    compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022, removeComments: false }
+  }).outputText
+  if (typed) {
+    // The TS printer collapses structural blank lines. Keep generated JS
+    // statement groups readable under the target's unchanged native policy.
+    const source = ts.createSourceFile("source-child.mjs", output, ts.ScriptTarget.Latest, true)
+    const breaks = new Set()
+    const visit = node => {
+      if (ts.isSourceFile(node) || ts.isBlock(node)) for (let i = 1; i < node.statements.length; i++) {
+        const previous = node.statements[i - 1], current = node.statements[i]
+        if (!/\n[ \t]*\n/.test(output.slice(previous.end, current.getStart(source)))) breaks.add(previous.end)
+      }
+      syntaxChildren(node, ts, visit)
+    }
+    visit(source)
+    for (const at of [...breaks].sort((a, b) => b - a)) output = output.slice(0, at) + "\n" + output.slice(at)
+  }
+  return output
+}
+
 const api = name => name === "node:child_process" || name === "child_process"
   ? new Set(["spawn", "spawnSync"])
   : name === "effect/process/ChildProcess" ? new Set(["make"]) : null
@@ -37,7 +98,7 @@ function refreshSourceChildImport(text, source, ts, checker) {
           if (ts.isExportSpecifier(node.parent)) target = checker.getExportSpecifierLocalTargetSymbol(node.parent) ?? target
           if (target === binding) references.push(node)
         }
-        ts.forEachChild(node, visit)
+        syntaxChildren(node, ts, visit)
       }
       visit(source)
       if (!references.some(inside)) continue // An authored alias is not ours.
@@ -78,13 +139,22 @@ function refreshSourceChildPolicy(text, source, ts, checker, calls, file) {
   if (!urlImport) return null
   const url = urlImport.importClause.namedBindings.name.text
   if (currentSchema) {
-    let canonical = template.replaceAll("__vibelangSourceChild", helper.name.text).replaceAll("__vibelangNodeURL", url)
+    const canonical = template.replaceAll("__vibelangSourceChild", helper.name.text).replaceAll("__vibelangNodeURL", url)
       .replaceAll("__vibelangSchema", currentSchema.importClause.namedBindings.name.text)
-    if (/\.[cm]?jsx?$/.test(file)) canonical = ts.transpileModule(canonical, {
-      compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022, removeComments: false }
-    }).outputText
-    const parsed = ts.createSourceFile(file, canonical, ts.ScriptTarget.Latest, true)
-    if (helper.getText(source) === parsed.statements.find(ts.isFunctionDeclaration).getText(parsed)) return null
+    const javascript = /\.[cm]?jsx?$/.test(file)
+    const raw = javascript ? sourceChildJavaScript(canonical, ts, false) : canonical
+    const typed = javascript ? sourceChildJavaScript(canonical, ts) : canonical
+    const parsed = ts.createSourceFile(file, typed, ts.ScriptTarget.Latest, true)
+    const expected = parsed.statements.find(ts.isFunctionDeclaration)
+    const expectedDocs = (expected.jsDoc ?? []).map(doc => doc.getText(parsed)).join("\n")
+    const actualDocs = (helper.jsDoc ?? []).map(doc => doc.getText(source)).join("\n")
+    if (helper.getText(source) === expected.getText(parsed) && actualDocs === expectedDocs) return null
+    const previous = ts.createSourceFile(file, raw, ts.ScriptTarget.Latest, true)
+    if (javascript && helper.getText(source) === previous.statements.find(ts.isFunctionDeclaration).getText(previous) &&
+        (!actualDocs || actualDocs === expectedDocs)) {
+      const prefix = actualDocs ? "" : expectedDocs + "\n"
+      return { text: text.slice(0, helper.getStart(source)) + prefix + expected.getText(parsed) + text.slice(helper.end), usesChild: true, refusals: [] }
+    }
     return { text, usesChild: true, refusals: [{
       line: source.getLineAndCharacterOfPosition(helper.getStart(source)).line + 1,
       reason: "generated source-child helper has manual edits; retain it for policy review"
@@ -98,7 +168,7 @@ function refreshSourceChildPolicy(text, source, ts, checker, calls, file) {
   let owned = true
   const visit = node => {
     if (ts.isIdentifier(node) && node !== helper.name && checker.getSymbolAtLocation(node) === symbol && !wrappers.includes(node)) owned = false
-    ts.forEachChild(node, visit)
+    syntaxChildren(node, ts, visit)
   }
   visit(source)
   let rendered = legacyTemplate.replaceAll("__vibelangSourceChild", helper.name.text).replaceAll("__vibelangNodeURL", url)
@@ -114,16 +184,18 @@ function refreshSourceChildPolicy(text, source, ts, checker, calls, file) {
     reason: "generated source-child helper has manual observations or edits; retain it for policy review"
   }] }
   const names = new Set()
-  const collect = node => { if (ts.isIdentifier(node)) names.add(node.text); ts.forEachChild(node, collect) }
+  const collect = node => { if (ts.isIdentifier(node)) names.add(node.text); syntaxChildren(node, ts, collect) }
   collect(source)
   let schema = "__vibelangSchema"
   for (let i = 2; names.has(schema); i++) schema = "__vibelangSchema" + i
-  const next = render(template.replaceAll("__vibelangSourceChild", helper.name.text).replaceAll("__vibelangNodeURL", url).replaceAll("__vibelangSchema", schema))
+  const nextTemplate = template.replaceAll("__vibelangSourceChild", helper.name.text).replaceAll("__vibelangNodeURL", url).replaceAll("__vibelangSchema", schema)
+  const next = javascript ? sourceChildJavaScript(nextTemplate, ts) : nextTemplate
   const nextSource = ts.createSourceFile(file, next, ts.ScriptTarget.Latest, true)
   const nextImports = nextSource.statements.filter(ts.isImportDeclaration)
   const schemaImport = nextImports.find(node => node.moduleSpecifier.text === "effect/Schema")
   const nextFunction = nextSource.statements.find(ts.isFunctionDeclaration)
-  let after = text.slice(0, helper.getStart(source)) + nextFunction.getText(nextSource) + text.slice(helper.end)
+  const functionDocs = (nextFunction.jsDoc ?? []).map(doc => doc.getText(nextSource)).join("\n")
+  let after = text.slice(0, helper.getStart(source)) + (functionDocs ? functionDocs + "\n" : "") + nextFunction.getText(nextSource) + text.slice(helper.end)
   after = after.slice(0, urlImport.end) + "\n" + next.slice(schemaImport.getStart(nextSource), schemaImport.end) + after.slice(urlImport.end)
   return { text: after, usesChild: true, refusals: [] }
 }
@@ -194,7 +266,7 @@ export function addSourceChildLoaders(text, ts, { file = "child.ts", type = "mod
         warn(node, "a dynamically loaded child-process API needs native source preloads wired by hand")
       }
     }
-    ts.forEachChild(node, visit)
+    syntaxChildren(node, ts, visit)
   }
   visit(source)
   if (!calls.length) return { text, usesChild: false, refusals }
@@ -224,7 +296,7 @@ export function addSourceChildLoaders(text, ts, { file = "child.ts", type = "mod
               if (ts.isExportSpecifier(node.parent)) value = checker.getExportSpecifierLocalTargetSymbol(node.parent) ?? value
               if (value === target && node !== helper.name) found.push(node)
             }
-            ts.forEachChild(node, visit)
+            syntaxChildren(node, ts, visit)
           }
           visit(source)
           return found
@@ -256,14 +328,16 @@ export function addSourceChildLoaders(text, ts, { file = "child.ts", type = "mod
           rendered = base === legacy ? rendered.replaceAll("__vibelangFileURLToPath", urlBinding)
             : rendered.replaceAll("__vibelangNodeURL", urlBinding).replaceAll("__vibelangSchema", schema ?? "__vibelangSchema")
           if (namespace && base === legacy) rendered = rendered.replaceAll(urlBinding + "(", urlBinding + ".fileURLToPath(")
-          if (/\.[cm]?jsx?$/.test(file)) rendered = ts.transpileModule(rendered, {
-            compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022, removeComments: false }
-          }).outputText
-          const parsed = ts.createSourceFile(file, rendered, ts.ScriptTarget.Latest, true)
-          const imported = parsed.statements.filter(ts.isImportDeclaration).at(-1)
-          const body = rendered.slice(imported.end).replace(/^export \{\};?\s*$/gm, "")
-          const candidate = "\n" + body + "\n"
-          if (text.endsWith(candidate)) { append = candidate; break }
+          const versions = /\.[cm]?jsx?$/.test(file)
+            ? [sourceChildJavaScript(rendered, ts, false), ...(base === template ? [sourceChildJavaScript(rendered, ts)] : [])]
+            : [rendered]
+          for (const version of versions) {
+            const parsed = ts.createSourceFile(file, version, ts.ScriptTarget.Latest, true)
+            const imported = parsed.statements.filter(ts.isImportDeclaration).at(-1)
+            const body = version.slice(imported.end).replace(/^export \{\};?\s*$/gm, "")
+            const candidate = "\n" + body + "\n"
+            if (text.endsWith(candidate)) { append = candidate; break }
+          }
         }
         if (append) {
           const edits = unnecessary.map(({ spread, inner }) => ({ start: spread.getStart(source), end: spread.end,
@@ -304,7 +378,7 @@ export function addSourceChildLoaders(text, ts, { file = "child.ts", type = "mod
             !(ts.isCallExpression(node.parent) && node.parent.expression === node &&
               ts.isSpreadElement(node.parent.parent) && ts.isCallExpression(node.parent.parent.parent) &&
               calls.includes(node.parent.parent.parent))) observed = true
-        ts.forEachChild(node, inspect)
+        syntaxChildren(node, ts, inspect)
       }
       inspect(source)
       if (observed) return { text, usesChild: true, refusals: [{
@@ -321,7 +395,7 @@ export function addSourceChildLoaders(text, ts, { file = "child.ts", type = "mod
   }
 
   const identifiers = new Set()
-  const collect = node => { if (ts.isIdentifier(node)) identifiers.add(node.text); ts.forEachChild(node, collect) }
+  const collect = node => { if (ts.isIdentifier(node)) identifiers.add(node.text); syntaxChildren(node, ts, collect) }
   collect(source)
   const fresh = name => {
     const base = name
@@ -372,9 +446,7 @@ export function addSourceChildLoaders(text, ts, { file = "child.ts", type = "mod
   }
   if (!edits.length) return { text, usesChild: false, refusals }
   let rendered = template.replaceAll("__vibelangSourceChild", helper).replaceAll("__vibelangNodeURL", url).replaceAll("__vibelangSchema", schema)
-  if (/\.[cm]?jsx?$/.test(file)) rendered = ts.transpileModule(rendered, {
-    compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022, removeComments: false }
-  }).outputText
+  if (/\.[cm]?jsx?$/.test(file)) rendered = sourceChildJavaScript(rendered, ts)
   // Imports go after the directive prologue, before any executable statement,
   // including a call on the same line as an existing import.
   const helperSource = ts.createSourceFile(file, rendered, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS)
