@@ -1,0 +1,12 @@
+// expect: EK4701 EK4701 EK4701 EK4701 EK4701 EK4701 EK4701 EK4701 EK4701 EK4701
+declare const marker:unique symbol
+function numberBare(x:1|2) { return match(x) { when Number:1; } }
+function numberExtract(x:1|2) { return match(x) { when Number(let item):1; } }
+function stringBare(x:"a"|"b") { return match(x) { when String:1; } }
+function stringExtract(x:"a"|"b") { return match(x) { when String(let item):1; } }
+function booleanBare(x:boolean) { return match(x) { when Boolean:1; } }
+function booleanExtract(x:boolean) { return match(x) { when Boolean(let item):1; } }
+function bigintBare(x:1n|2n) { return match(x) { when BigInt:1; } }
+function bigintExtract(x:1n|2n) { return match(x) { when BigInt(let item):1; } }
+function symbolBare(x:typeof marker) { return match(x) { when Symbol:1; } }
+function symbolExtract(x:typeof marker) { return match(x) { when Symbol(let item):1; } }

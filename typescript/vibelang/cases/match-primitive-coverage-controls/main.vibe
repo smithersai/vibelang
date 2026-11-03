@@ -1,0 +1,9 @@
+// expect-result: [1,2,7,-1]
+import { Effect } from "effect"
+function choose(x:1|2):number {
+ return match(x) { when Number(let item):item; default:0; }
+}
+function narrow(x:unknown):number { if(x is Number) return x.valueOf(); return -1 }
+export effect function main():readonly number[]!never {
+ return try Effect.sync(():readonly number[] => [choose(1),choose(2),narrow(7),narrow("no")])
+}

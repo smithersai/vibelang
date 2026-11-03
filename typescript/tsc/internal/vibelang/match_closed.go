@@ -34,8 +34,8 @@ import (
 // Any other class arm, such as one over Error or a class that is not an
 // error class, or a class with its own membership test, removes nothing, as a guarded arm
 // does (D428), and a match that needs it to cover its subject is EK4701,
-// whose notes say why the arm did not count. The primitive classes test
-// typeof, which accepts every value of their type, so their arms count.
+// whose notes say why the arm did not count. Primitive guards retain
+// ordinary source narrowing; the coverage query ignores their tests.
 
 func init() {
 	checker.RegisterFlowNarrowingHook(narrowOpenClassArm)
@@ -80,11 +80,20 @@ func narrowUncoveredArm(_ *checker.Checker, reference *ast.Node, t *checker.Type
 // a match: where the arm fails, it leaves reference, the subject or a part of
 // it the arm tests, as it was when the arm does not count toward coverage.
 func narrowOpenClassArm(c *checker.Checker, reference *ast.Node, t *checker.Type, test *ast.Node, assumeTrue bool, narrowAlias func(*ast.Node, *checker.Type, *ast.Node) *checker.Type) *checker.Type {
-	if assumeTrue {
-		return nil
-	}
 	matcher, subject := classArmTest(test)
 	if matcher == nil || !c.IsMatchingReference(reference, subject) {
+		return nil
+	}
+	if primitiveCoverageReference(reference) {
+		symbol := c.GetSymbolAtLocation(matcher)
+		if symbol != nil && symbol.Flags()&ast.SymbolFlagsAlias != 0 {
+			symbol = c.GetAliasedSymbol(symbol)
+		}
+		if symbol != nil && isPrimitiveClass(c, symbol) {
+			return t
+		}
+	}
+	if assumeTrue {
 		return nil
 	}
 	if classArmCreditOf(c, matcher).counts {
@@ -161,7 +170,7 @@ func closedClassStateOf(c *checker.Checker) *closedClassState {
 // declares, whose static side is constructor.
 func classCreditOf(c *checker.Checker, symbol *ast.Symbol, constructor *checker.Type) classArmCredit {
 	if isPrimitiveClass(c, symbol) {
-		return classArmCredit{counts: true} // its test is typeof (D213)
+		return classArmCredit{counts: true} // ordinary source flow still follows the primitive test
 	}
 	if why := openClassReason(c, symbol); why != "" {
 		return classArmCredit{why: why}

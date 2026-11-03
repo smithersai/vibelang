@@ -196,6 +196,9 @@ func narrowBuiltinPattern(c *checker.Checker, reference *ast.Node, t *checker.Ty
 	if !ok {
 		return nil
 	}
+	if builtin.TypeOf != "" && primitiveCoverageReference(reference) {
+		return t
+	}
 	var candidate *checker.Type
 	switch builtin.TypeOf {
 	case "string":
@@ -323,6 +326,9 @@ func narrowBuiltinExtraction(c *checker.Checker, reference *ast.Node, t *checker
 		return nil
 	}
 	builtin, ok := builtinMatcherOf(c, call.Arguments()[0])
+	if ok && builtin.TypeOf != "" && primitiveCoverageReference(reference) {
+		return t
+	}
 	if !ok || builtin.Guard == "" {
 		return nil
 	}
