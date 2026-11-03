@@ -198,6 +198,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Migration returned modules containing TaggedError classes the compiler deliberately kept to preserve their published tags. The style gate now accepts those explicit refusals while retaining other style checks.
 - Two calls of a plain TypeScript function in one effect function, each with an Effect operand, made `vibelang --fix` refuse both with `TS2451`, because each fix named its operand's `const` the same; each now gets its own name, and `EK4401` is fixed.
 - Coverage parity's own negative controls were absent from the test graph and failed the test-discovery guard; a dedicated target now runs all five controls.
+- A `match` array or extractor pattern with something after its rest element that starts no pattern, such as `when [...a, *]`, hung the compiler and the editor until they ran out of memory. The parser now reports the misplaced element once and continues.
 - A `layer` body holding a token that cannot start a statement, such as `layer L: S { default }`, hung the compiler and the editor until they ran out of memory. The parser now reports the error once and continues.
 - Renaming a shorthand pattern binding could change the property it matched and add `TS2339`; rename now keeps the property key and writes an explicit binding.
 

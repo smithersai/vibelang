@@ -464,7 +464,13 @@ func (p *Parser) parseMatchListPattern(result *pattern, close ast.Kind) {
 						if p.token == close {
 							break
 						}
+						start := p.nodePos()
 						p.parseMatchPattern()
+						// A token that starts no pattern, such as `*`, is reported
+						// as an invalid pattern without being read: skip it.
+						if p.nodePos() == start {
+							p.nextToken()
+						}
 					}
 				}
 				result.items = append(result.items, misplacedRest(misplaced))
