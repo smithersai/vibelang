@@ -92,13 +92,13 @@ var bindingRenameTests = []struct{ name, source, want string }{
 	{"then shorthand and else shorthand", `export function pick(a:unknown,id:number):unknown { if (a is { id:let id }) return {id}; else return {id}; }
 `, `export function pick(a:unknown,id:number):unknown { if (a is { id:let id2 }) return {id: id2}; else return {id}; }
 `},
-	{"the next free number", `export function pick(a: unknown, b: { id: number }) {
+	{"the next free number", `export function pick(a: unknown, b: { readonly id: number }) {
   const id2 = 2
   if (a is { id: let id }) return id
   if (b is { id: let id }) return id + id2
   return 0
 }
-`, `export function pick(a: unknown, b: { id: number }) {
+`, `export function pick(a: unknown, b: { readonly id: number }) {
   const id2 = 2
   if (a is { id: let id }) return id
   if (b is { id: let id3 }) return id3 + id2
@@ -265,6 +265,7 @@ func TestBindingRenameLegacyScopeMetadata(t *testing.T) {
 		})
 	}
 }
+
 // VIP-7 rename only original binding references, preserving parameter/local/else/closure fallback; rule: docs/design/vips/0007-match.md#c4631b5aaa90d198
 // VIP-7 rename only original binding references, preserving parameter/local/else/closure fallback; rule: docs/design/vips/0007-match.md#b427fe2618b9c094
 // VIP-7 rename only original binding references, preserving parameter/local/else/closure fallback; rule: docs/design/vips/0007-match.md#a5f2cfddf27c2cc0

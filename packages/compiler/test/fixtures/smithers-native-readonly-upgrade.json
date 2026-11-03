@@ -1,0 +1,51 @@
+{
+  "smithers-options": {
+    "source": "export interface Options { cause?: unknown; name: string; readonly fixed: number }\nexport type Shape = { size: number }\n",
+    "declarations": {
+      "a.d.ts": "export interface Options {\n    readonly cause?: unknown;\n    readonly name: string;\n    readonly fixed: number;\n}\nexport type Shape = {\n    readonly size: number;\n};\n"
+    }
+  },
+  "nested": {
+    "source": "export interface Options { box: { inner: { value: number } }; read(input: {key:string}): {result:number} }\n",
+    "declarations": {
+      "a.d.ts": "export interface Options {\n    readonly box: {\n        readonly inner: {\n            readonly value: number;\n        };\n    };\n    read(input: {\n        readonly key: string;\n    }): {\n        readonly result: number;\n    };\n}\n"
+    }
+  },
+  "index": {
+    "source": "export interface Options { [key: string]: {value:number} }\n",
+    "declarations": {
+      "a.d.ts": "export interface Options {\n    readonly [key: string]: {\n        readonly value: number;\n    };\n}\n"
+    }
+  },
+  "mutable": {
+    "source": "export type Shape = { mutable open:number; mutable?:number; nested:{mutable x:number;y:number} }\n",
+    "declarations": {
+      "a.d.ts": "export type Shape = {\n    open: number;\n    readonly mutable?: number;\n    readonly nested: {\n        x: number;\n        readonly y: number;\n    };\n};\n"
+    }
+  },
+  "mapped": {
+    "source": "export type Shape<A> = { [K in keyof A]: {value:A[K]} }\n",
+    "declarations": {
+      "a.d.ts": "export type Shape<A> = {\n    [K in keyof A]: {\n        readonly value: A[K];\n    };\n};\n"
+    }
+  },
+  "class-control": {
+    "source": "export class Box { value = 1; field: { inner: number } = { inner: 1 } }\n",
+    "declarations": {
+      "a.d.ts": "export declare class Box {\n    value: number;\n    field: {\n        readonly inner: number;\n    };\n}\n"
+    }
+  },
+  "module-control": {
+    "source": "module Native { export interface Shape { value: number } }\nimport { Shape } from Native\nexport type Public = Shape\n",
+    "declarations": {
+      "a.d.ts": "import { Shape } from \"./a.vibe.native.js\";\nexport type Public = Shape;\n",
+      "a.vibe.native.d.ts": "export interface Shape {\n    value: number;\n}\n"
+    }
+  },
+  "namespace": {
+    "source": "export namespace N { export interface Shape { value: number } }\n",
+    "declarations": {
+      "a.d.ts": "export declare namespace N {\n    interface Shape {\n        readonly value: number;\n    }\n}\n"
+    }
+  }
+}

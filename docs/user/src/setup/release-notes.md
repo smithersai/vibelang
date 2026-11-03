@@ -18,6 +18,8 @@ failure rules from 0.0.10 still apply.
 
 - Run `vibelang --fix` to update imports and re-exports of older generated `data` helpers while preserving local bindings and exported names; native TypeScript consumers remain unchanged and need an explicit helper-import update.
 
+- To preserve interface and object-type APIs that relied on implicit readonly members, run `vibelang --fix --fix-migration-only` on those legacy modules before publishing their new declarations.
+
 - `data` payload readonlyness is shallow. To preserve the old implicit readonly modifiers on nested fields, run `vibelang --fix --fix-migration-only`; ordinary `--fix` keeps valid writable payloads unchanged.
 
 This release changes platform access and name resolution in `.vibe`.
@@ -167,6 +169,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - The no-throw documentation check missed plain functions with an `effect` parameter or a nested function on one line; it now parses callable contexts and checks both forms.
 - A service declaration could replace a written `Context` namespace alias with a new import in its public declaration. Generated service types now retain a visible namespace alias and preserve its import.
+- Upgrading a `.vibe` module could remove `readonly` from interface and object-type declarations, changing its published API. `vibelang --fix --fix-migration-only` now writes the old modifiers explicitly and preserves those declaration bytes.
 - API checks invented ambient exports or hid an ambient type change when one input directory contained the other. Contributions now follow each snapshot’s dependency closure, and nested private-class origins remain distinct where required.
 
 - The editor outline merged separate `module` declarations as TypeScript namespaces and hid a later declaration with the same name; each VibeLang module now keeps its own outline entry and name range, including an invalid duplicate.

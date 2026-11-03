@@ -22,7 +22,7 @@ func TestStreamLoopMigrationPreservesNativeProtocols(t *testing.T) {
 		{"return", "export effect function main(rows:Stream.Stream<number>&Iterable<number>){for(const row of rows){return row};return 0}"},
 		{"outward-jump", "export effect function main(rows:Stream.Stream<number>&Iterable<number>){outer: for(const x of [1]){for(const row of rows){if(row===x)continue outer}}}"},
 		{"assignment", "export function main(rows:Stream.Stream<number>&Iterable<number>):void{let row:number;for(row of rows){void row}}"},
-		{"destructuring", "export function main(rows:Stream.Stream<number>&Iterable<{x:number}>):void{for(const {x} of rows){void x}}"},
+		{"destructuring", "export function main(rows:Stream.Stream<number>&Iterable<{readonly x:number}>):void{for(const {x} of rows){void x}}"},
 		{"native-async-iterable", "export async function main(rows:AsyncIterable<number>):Promise<void>{for await(const row of rows){void row}}"},
 	} {
 		for _, mode := range []struct {

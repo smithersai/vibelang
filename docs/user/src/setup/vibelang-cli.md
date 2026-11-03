@@ -407,3 +407,8 @@ A migration batch retains the packing files its emit creates, including when ver
 The migrate flow discovers the compiler program before each fixing pass. Repairable `EK0301` union-slot errors can accompany the file list without stopping that pass. Its `.scope.log` receipt records that semantic checking is deferred; normal checks after fixing still report type errors. Configuration failures, other errors, crashes and empty file lists stop discovery.
 
 During migration, a generated source-child helper that cannot safely move to a platform sibling stays private in a TypeScript `module` body. The spawning module passes its `import.meta.url`, so loader resolution still starts in the parent package. This avoids platform imports in VibeLang and extra public exports. The `sourceChildModules` receipt lists conversions and warnings for helpers the flow cannot safely adopt.
+
+## Native readonly upgrade
+
+Use `vibelang --fix --fix-migration-only` when upgrading modules written for the former implicit readonly default. It writes `readonly` on native interface properties, object-type members and index signatures, including nested type annotations, to preserve their old declarations. It retains explicit `readonly` and `mutable` members, and preserves the TypeScript mutability of methods, class fields and embedded `module` bodies. Normal checking and ordinary `--fix` use the current written mutability.
+
