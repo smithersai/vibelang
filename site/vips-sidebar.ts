@@ -137,6 +137,10 @@ export const vipsSidebar = [
           {
             "text": "39. .vibex: VibeLang with JSX",
             "link": "/vips/0039-vibex"
+          },
+          {
+            "text": "40. module declarations: TypeScript inside a .vibe file",
+            "link": "/vips/0040-module-declarations"
           }
         ]
       },
