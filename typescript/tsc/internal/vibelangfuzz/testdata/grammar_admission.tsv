@@ -841,3 +841,8 @@ parser/vibelang_do.go:Parser.loopHeadOf	admission:do	900-appendices.md,002-runni
 parser/vibelang_do.go:Parser.isDoArrow	admission:do	900-appendices.md,002-running.md	support	VIP-2 / RC-32: identify transparent do arrows for source early errors; introduces no additional syntax
 parser/vibelang_do.go:forEachDoStatementThrough	admission:do	900-appendices.md,002-running.md	support	VIP-2 / RC-32: traverse nested do blocks for early errors while stopping at source functions and classes
 parser/vibelang_do.go:Parser.doOfArrow	admission:do	900-appendices.md,002-running.md	support	VIP-2 / RC-32: distinguish source do owners from transparent native match wrappers for early errors
+vibelang/try.go:assignsOrCaptures	admission:legacy-try	007-tooling.md	support	Codemod preserves an assigned or captured parameter cell, including a same-name input
+vibelang/try.go:evaluatedThunk	admission:legacy-try	007-tooling.md	support	Codemod evaluates every input once in source order before rebinding parameters
+vibelang/try.go:freshName	admission:legacy-try	007-tooling.md	support	Codemod avoids captures when introducing a temporary for an input
+vibelang/try.go:inlinedThunk	admission:legacy-try	007-tooling.md	support	Retired hatch migration preserves the callback body and its parameter bindings
+vibelang/try.go:isPlainValueInput	admission:legacy-try	007-tooling.md	support	Codemod inlines only inputs whose evaluation and binding semantics are preserved
