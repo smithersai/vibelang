@@ -1,0 +1,3 @@
+go test fuzz v1
+string("-- main.vibe --\nmodule text {\n  export const two = 2\n}\n\nmodule text {\n  export const three = 3\n}\n\nimport { two } from text\n\nexport function main() {\n  return two\n}\n")
+[]byte("\x00\x07\x00\x2a\x00\x50")

@@ -745,7 +745,15 @@ func (l *LanguageService) getSymbolAndEntries(
 }
 
 func (l *LanguageService) ProvideReferences(ctx context.Context, params *lsproto.ReferenceParams, orchestrator CrossProjectOrchestrator) (lsproto.ReferencesResponse, error) {
-	return l.handleCrossProject(
+	// At a module name, ask TypeScript at its declaration, whose symbol may
+	// merge with another of the name, then add the written specifiers.
+	declaration, occurrences, onModule := l.moduleDeclarationAt(params.TextDocument.Uri, params.Position)
+	if onModule {
+		at := *params
+		at.Position = declaration
+		params = &at
+	}
+	response, err := l.handleCrossProject(
 		ctx,
 		params,
 		orchestrator,
@@ -756,6 +764,14 @@ func (l *LanguageService) ProvideReferences(ctx context.Context, params *lsproto
 		symbolEntryTransformOptions{},
 		nil, /*defaultProjectData*/
 	)
+	if err != nil {
+		return response, err
+	}
+	if onModule {
+		return l.withModuleOccurrences(response, params.TextDocument.Uri, occurrences, params.Context != nil && params.Context.IncludeDeclaration), nil
+	}
+	l.followModuleDeclarationReferences(response)
+	return response, nil
 }
 
 func (l *LanguageService) provideReferencesFromData(ctx context.Context, params *lsproto.ReferenceParams, orchestrator CrossProjectOrchestrator, data SymbolAndEntriesData) (lsproto.ReferencesResponse, error) {

@@ -33,6 +33,6 @@ Add this line to the project's `.gitattributes`:
 
 Support for the new forms arrives with the compiler's VIP implementation.
 
-Named, top-level `module` declarations hold TypeScript bodies (VIP-40). Diagnostics in a body belong to the containing `.vibe` document; generated virtual filenames do not create a separate editor document. The server supports renaming across a body and organizing imports in a file containing one; identifier specifiers such as `from text` keep their module names. While a `module` declaration is missing its name, renaming other bindings still works.
+Named, top-level `module` declarations hold TypeScript bodies (VIP-40). Diagnostics in a body belong to the containing `.vibe` document; generated virtual filenames do not create a separate editor document. The server supports renaming across a body, finding references and organizing imports in a file containing one; identifier specifiers such as `from text` keep their module names. Find references on a module's name, at its declaration or a specifier, returns the declaration and each specifier, the names rename edits. Renaming a symbol the module's name merges with, such as an imported type of the same name, renames the specifiers too. While a `module` declaration is missing its name, renaming other bindings still works.
 
 The `_` in a legacy `infer _` return annotation is an inference placeholder, so the server declines its rename. Ordinary generic parameters and conditional `infer` bindings remain renameable.

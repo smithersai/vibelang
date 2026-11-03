@@ -70,7 +70,7 @@ func (l *LanguageService) ProvideRename(ctx context.Context, params *lsproto.Ren
 		}
 		return lsproto.WorkspaceEditOrNull{WorkspaceEdit: &lsproto.WorkspaceEdit{Changes: &changes}}, nil
 	}
-	return l.handleCrossProject(
+	response, err := l.handleCrossProject(
 		ctx,
 		params,
 		orchestrator,
@@ -81,6 +81,10 @@ func (l *LanguageService) ProvideRename(ctx context.Context, params *lsproto.Ren
 		symbolEntryTransformOptions{},
 		nil, /*defaultProjectData*/
 	)
+	if err == nil {
+		l.followModuleDeclarationRenames(response)
+	}
+	return response, err
 }
 
 func (l *LanguageService) GetRenameInfo(ctx context.Context, newName string, documentURI lsproto.DocumentUri, position lsproto.Position) RenameInfo {

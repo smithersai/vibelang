@@ -252,7 +252,7 @@ func (c *consistency) checkRename(probe consistencyProbe, refs map[consistencySp
 	}
 	after := toolsCompile(c.t, c.w, consistencyTarget, edited.files)
 	defer after.Remove()
-	if diff, code := consistencyRenameDiagnosticDiff(consistencyDiagnosticCounts(p.r, nil), consistencyDiagnosticCounts(after, nil)); len(diff) > 0 && !consistencySpelled(p.files, old) && !consistencyImplicitTag(probe.declaration) {
+	if diff, code := consistencyRenameDiagnosticDiff(consistencyDiagnosticCounts(p.r, nil), consistencyModuleFilesRenamed(consistencyDiagnosticCounts(after, nil), old, name)); len(diff) > 0 && !consistencySpelled(p.files, old) && !consistencyImplicitTag(probe.declaration) {
 		Gap(c.t, consistencyTarget, key+":diagnostics:"+code, "D372: the rename at %s changes the diagnostics:\n%s\n%s\nrenamed:\n%s", c.where, strings.Join(diff, "\n"), c.archive, Archive(edited.files))
 	}
 	if after.SourceFile(c.main) == nil || probe.merged() {
@@ -448,4 +448,22 @@ func TestConsistencyThisParameter(t *testing.T) {
 	if !slices.ContainsFunc(after.Diagnostics, func(d *ast.Diagnostic) bool { return d.Source() == "" && d.Code() == 2554 }) {
 		t.Fatalf("the changed call arity must report TS2554: %v", Keys(after.Dir, after.Diagnostics))
 	}
+}
+
+// consistencyModuleFilesRenamed keys diagnostics of a renamed module's body by
+// the module's old name. A module declaration's body is checked as the
+// supplemental file its name selects (parser.ModuleDeclarationFileSuffix,
+// VIP-40), so a rename from old to name moves its unchanged diagnostics from
+// main.vibe.old.ts to main.vibe.name.ts. name is fresh, so no file had its
+// suffix before the rename.
+func consistencyModuleFilesRenamed(counts map[string]int, old, name string) map[string]int {
+	from, to := ".vibe"+parser.ModuleDeclarationFileSuffix(name)+":", ".vibe"+parser.ModuleDeclarationFileSuffix(old)+":"
+	renamed := map[string]int{}
+	for key, count := range counts {
+		if file, rest, ok := strings.Cut(key, from); ok && !strings.Contains(file, ":") {
+			key = file + to + rest
+		}
+		renamed[key] += count
+	}
+	return renamed
 }
