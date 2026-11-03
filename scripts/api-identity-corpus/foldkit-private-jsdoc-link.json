@@ -1,0 +1,5 @@
+{
+  "rule": "Will: doc comments are compared with formatting ignored; resolving a private link target cannot change identical source comment text",
+  "before": "/** Pair it with {@link OnFocusLeave}. */\nexport interface X { value: string }",
+  "after": "declare const OnFocusLeave: unknown;\n/** Pair it with {@link OnFocusLeave}. */\nexport interface X { value: string }"
+}

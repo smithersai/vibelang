@@ -55,7 +55,11 @@ invalidates that proof. Separate installations with the same package name and
 version remain separate until proved equivalent. Dependency pair candidates
 are seeded independently of entry syntax, so reordering entry imports preserves
 unchanged external `unique symbol` types without hiding dependency changes. JSDoc is read through the TypeScript API, normalizing whitespace and retaining
-tags. Formatting, quotes, import order, equivalent module specifiers and
+tags. Inline `{@link ...}`, `{@linkcode ...}` and `{@linkplain ...}` comments
+retain their targets, labels and rendering kinds when a private target resolves
+in only one snapshot. Link formatting is normalized through TypeScript display
+parts, including the boundary between a resolved target and its label.
+Formatting, quotes, import order, equivalent module specifiers and
 member order do not fail the check when TypeScript sees the same API.
 Formatter tests may continue to compare bytes to test their formatting.
 

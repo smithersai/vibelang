@@ -281,10 +281,17 @@ export function publishedEntrypoints(directory, tsCompiler) {
 }
 
 const normalized = text => text.replace(/\s+/gu, " ").trim()
+  .replace(/\{@(link(?:code|plain)?)\s+([^}]*?)\s*\}/gu,
+    (_, kind, target) => `{@${kind} ${target.trim()}}`)
+function documentationText(ts, parts = []) {
+  return ts.displayPartsToString(parts.map((part, index) =>
+    part.kind === "linkText" && parts[index - 1]?.kind === "linkName" && !/^\s/u.test(part.text)
+      ? { ...part, text: " " + part.text } : part))
+}
 function docs(ts, checker, symbol) {
-  const text = normalized(ts.displayPartsToString(symbol.getDocumentationComment(checker)))
+  const text = normalized(documentationText(ts, symbol.getDocumentationComment(checker)))
   const tags = symbol.getJsDocTags(checker).map(tag =>
-    "@" + tag.name + " " + normalized(typeof tag.text === "string" ? tag.text : ts.displayPartsToString(tag.text)))
+    "@" + tag.name + " " + normalized(typeof tag.text === "string" ? tag.text : documentationText(ts, tag.text)))
   return [text, ...tags].join("\n").trim()
 }
 
