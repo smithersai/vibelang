@@ -248,6 +248,12 @@ The `EK4856` transition selects the resolved legacy symbol, never the identifier
 
 **Migration** rewrites toward the VIP form or native Effect TypeScript and preserves evaluation order, captures, the call-versus-run phase, coldness, error and environment channels, and public declarations. It never edits a test or a fixture: a test that bundles `.vibe` passes unchanged, or its modules stay `.ts`. A default plan leaves Effect type-only users in TypeScript. A legacy `try make()` of a removed plain wrapper loses its `try`, whatever the result's shape. An old call whose behavior it can't preserve keeps a `.ts` boundary, with an explicit refusal. It never invents `asEffect()`, never turns `Match.withReturnType<T>()` into an unchecked `as T`, and writes `try Effect.forkChild(program, options)` for the legacy `fork(program, options)`. Prelude cleanup keeps an explicit Effect import where removing it would change the declaration. A tool cache for type-directed compilation is reusable only while its source, declarations, configuration, versions and project are unchanged. A missing validation outcome is unverified: a later stage never inherits an earlier stage's exit.
 
+### Ordinary mutable-marker migration
+
+The redundant `mutable` marker on an ordinary interface or object-type property or index signature is removed by `vibelang --fix`, including `--fix-migration-only`. Written `readonly`, comments, declarations and behavior are preserved. A plain `error` payload with a legacy `mutable` marker becomes an explicit compatibility class using the existing runtime error factory, retaining tagged matching. The project gate refuses conversions that introduce an error. Schema fields, schema errors, schema tuples and `data` bodies use their separate rules.
+
+After the preserving codemods ship and all migration repositories have zero remaining accepted uses, these ordinary member and plain-error payload markers are rejected with `EK3410`. A method or identifier named `mutable` keeps its TypeScript meaning. This specifies the retirement target; it does not claim the held rejection implementation or consumer migration is complete.
+
 ## Effect's type-aware lint
 
 ```sh

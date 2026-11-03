@@ -25,3 +25,11 @@ Folded: relic-control.patch (applied at docs/design/src/000-intro.md:78)
 Folded: relic-trusted-stale-legacy-inventory.patch (already stated at docs/design/src/000-intro.md:7)
 
 Will’s no-relics ruling governs retirement. Historical D-numbers are not authority and VIP-35 remains open; no new handler facility is introduced.
+
+## fold ordinary mutable-marker migration and retirement
+
+Folded: relic-mutable-codemod.patch (applied at docs/design/src/007-tooling.md:251)
+
+Folded: relic-mutable-rejection-HELD.patch (applied at docs/design/src/007-tooling.md:255)
+
+Will’s no-relics ruling settles the language rule. The HELD note constrains enforcement rollout, not publication of approved spec text: preserving codemods and fresh zero-count receipts remain prerequisites to rejection.
