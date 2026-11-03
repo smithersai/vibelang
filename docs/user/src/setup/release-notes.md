@@ -483,6 +483,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - A throw expression followed by a comma (including an object property, array element or call argument) now warns with EK1010 until its parenthesizing `vibelang --fix` ships. Existing operator-left EK1010 errors stay errors.
 
+- A closure created in a `for try` `Stream` expression could read an outer variable or fail to resolve the loop head. Reading its captured head binding now throws `ReferenceError`, including when the `Stream` is empty or emits several items.
+
 - The new catch-handler projection fuzz target omitted its CPU-budget registration. It now participates in the same short-seed budget check as every other target.
 - The editor stopped offering "Run it with try" on a direct Effect argument that `EK4802` reports at a plain generic call. It offers it again when the enclosing contract accepts the Effect; a returned program stays data and gets no action.
 - The TS7 mapper stopped parsing every `for try` loop after its head began lifting the Stream into a separate scope. The mapper now keeps the loop as written.
@@ -1236,7 +1238,6 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Setup could call a local parameter or function instead of the `tsdown` plugin when it shadowed the imported name; it now uses an unshadowed import alias and preserves every existing plugin.
 
-- Closures created in a `for try` Stream expression could read an outer variable with the same name as the loop head; they now retain the head's uninitialized binding and throw `ReferenceError`, as in JavaScript iteration.
 - Schema repairs could reinterpret a value named `string` or another type keyword as a primitive schema; ambiguous aliases and fields now keep their library form.
 - `vibelang --fix` left `Result.gen` in a `.vibe` file as `EK1002` with no quick fix and no reason. It now rewrites it to a plain function called in place, which stops at the first failure as `Result.gen` does, or says why it can't.
 - Development checks could repeat the migration suites and exceed their time limit; compiler and migration suites now run once in their separate targets.

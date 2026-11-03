@@ -1,0 +1,9 @@
+// VIP-20 census witness, with no outer x and no closure return annotation.
+// noImplicitAny is disabled in both projects for native recursive TS7022 inference.
+import { ev } from "vip-events"
+import { Effect } from "effect"
+import { Stream } from "effect"
+
+export effect function main() {
+  ;{ ev("0"); let probe: () => unknown = () => 0; for try (const x of (probe = () => x, Stream.fromIterable([1]))) { ev("item" + x) }; return try Effect.sync(() => { try { probe(); return "read" } catch (e) { return (e as Error).name } }) }
+}

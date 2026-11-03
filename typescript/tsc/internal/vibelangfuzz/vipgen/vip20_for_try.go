@@ -194,15 +194,30 @@ func init() {
 			g.UseEffect()
 			g.UseModule("Stream", true)
 			// A return annotation avoids TypeScript's own recursive TS7022
-			// inference error. The outer x makes a missing TDZ cell observable:
-			// capturing it would return 99 rather than throw ReferenceError.
+			// inference error. An outer x detects accidental capture; without
+			// one, a missing TDZ cell is an unresolved name. Empty and repeated
+			// consumption must retain the same never-initialized RHS cells.
 			heads := []string{"const x", "let x", "const [x]", "let { x }"}
 			rows := []string{"[1]", "[1]", "[[1]]", "[{ x: 1 }]"}
 			i := g.Intn(len(heads))
-			prefix := "const x = 99; let probe: () => unknown = () => 0; "
+			switch g.Intn(3) {
+			case 0:
+				rows = []string{"[] as number[]", "[] as number[]", "[] as number[][]", "[] as { x: number }[]"}
+			case 2:
+				rows = []string{"[1, 2]", "[1, 2]", "[[1], [2]]", "[{ x: 1 }, { x: 2 }]"}
+			}
+			prefix := "let probe: () => unknown = () => 0; "
+			refPrefix := "let probe = () => 0; "
+			if g.Chance(2) {
+				prefix = "const x = 99; " + prefix
+				refPrefix = "const x = 99; " + refPrefix
+			}
+			// PrintEffect is executable JavaScript (.mjs), so the empty
+			// source array's type assertion and closure annotation stay Vibe-only.
+			refRow := strings.SplitN(rows[i], " as ", 2)[0]
 			ending := "return try Effect.sync(() => { try { probe(); return \"read\" } catch (e) { return (e as Error).name } })"
 			vibe := prefix + "for try (" + heads[i] + " of (probe = (): unknown => x, Stream.fromIterable(" + rows[i] + "))) { ev(\"item\" + x) }; " + ending
-			ref := "const x = 99; let probe = () => 0; let s; for (" + heads[i] + " of (probe = () => x, s = Stream.fromIterable(" + rows[i] + "), [])) {}; yield* Stream.runForEachWhile(s, (" + strings.TrimPrefix(strings.TrimPrefix(heads[i], "const "), "let ") + ") => Effect.gen(function* () { ev(\"item\" + x); return true })); return yield* Effect.sync(() => { try { probe(); return \"read\" } catch (e) { return e.name } })"
+			ref := refPrefix + "let s; for (" + heads[i] + " of (probe = () => x, s = Stream.fromIterable(" + refRow + "), [])) {}; yield* Stream.runForEachWhile(s, (" + strings.TrimPrefix(strings.TrimPrefix(heads[i], "const "), "let ") + ") => Effect.gen(function* () { ev(\"item\" + x); return true })); return yield* Effect.sync(() => { try { probe(); return \"read\" } catch (e) { return e.name } })"
 			return []Stmt{&catchEdge{vibe: vibe, ref: ref}}
 		},
 	})
