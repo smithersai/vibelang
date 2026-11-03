@@ -203,6 +203,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Valid declarations could fail API comparison when the project checked unused code, because generated identity helpers were reported as unused; those checks now apply to the original inputs while synthetic probes remain exempt.
 
+- Converting a retired `catch (cause: Cause)` could widen a public literal result such as `1 | 2` to `number`. The CLI and editor now leave that case unchanged unless an explicit return contract keeps its type.
+
 - The `EK1202` provider-separator fix could flatten line breaks inside a comment. It now leaves that site unchanged and still joins whitespace around comments that fit on one line.
 
 - The migration checks generated callback failure unions without their required parentheses and failed to parse them. They now write valid compound slots while checking the same preserved channels and refusal controls.

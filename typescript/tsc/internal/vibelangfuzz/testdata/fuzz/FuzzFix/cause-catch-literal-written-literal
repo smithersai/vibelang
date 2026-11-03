@@ -1,0 +1,2 @@
+go test fuzz v1
+string("-- main.vibe --\nexport effect function main(): Effect.Effect<1 | 2> { try { return 1 } catch (cause: Cause) { return 2 } }\n")

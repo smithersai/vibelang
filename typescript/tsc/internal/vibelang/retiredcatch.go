@@ -215,7 +215,10 @@ func checkRetiredCatches(c *checker.Checker, file *ast.SourceFile) {
 				for _, clause := range chain.clauses {
 					switch {
 					case clause.cause && clause.name != nil:
-						reportAt(c, file, annotationRange(text, clause.name), EK2113)
+						d := reportAt(c, file, annotationRange(text, clause.name), EK2113)
+						if chain.causeLiteralResult(c) {
+							note(d, "No automatic fix: matching the exit would widen a literal return type. Write a return contract that accepts the nested block's result before converting this catch.")
+						}
 					case clause.typeNode != nil:
 						name := "e" // a destructured binding is no name to test
 						if clause.name != nil && ast.IsIdentifier(clause.name) {
@@ -338,6 +341,9 @@ func rightmostName(name *ast.Node) *ast.Node {
 func (r *retiredCatch) rewrite(c *checker.Checker, file *ast.SourceFile) (string, int, string, bool) {
 	text := file.Text()
 	if r.causes {
+		if r.causeLiteralResult(c) {
+			return "", 0, "", false
+		}
 		return r.rewriteCause(text)
 	}
 	for _, clause := range r.clauses {
@@ -432,6 +438,39 @@ func (r *retiredCatch) matchForm(text, main string, patterns []string, base, uni
 		arms = append(arms, "default: throw "+main+";")
 	}
 	return "catch (" + main + ") {\n" + base + unit + "return match (" + main + ") {\n" + inner + strings.Join(arms, "\n"+inner) + "\n" + base + unit + "}\n" + base + "}", true
+}
+
+// causeLiteralResult rejects a protected return whose widening inside the
+// new effect block expands its original union or exceeds a written contract.
+func (r *retiredCatch) causeLiteralResult(c *checker.Checker) bool {
+	fn := ast.GetContainingFunction(r.try)
+	if fn == nil || !r.causes || len(r.clauses) != 1 {
+		return false
+	}
+	groups := [][]*ast.Node{r.try.AsTryStatement().TryBlock.AsBlock().Statements.Nodes, r.clauses[0].statements}
+	var types []*checker.Type
+	for _, statements := range groups {
+		if len(statements) != 1 || statements[0].Kind != ast.KindReturnStatement || statements[0].Expression() == nil {
+			return false
+		}
+		types = append(types, c.GetTypeAtLocation(statements[0].Expression()))
+	}
+	widened := c.GetBaseTypeOfLiteralType(types[0])
+	if widened == types[0] {
+		return false
+	}
+	accepts := c.GetUnionType(types)
+	if fn.Type() != nil {
+		declared := analyzerFor(c).declaredProgramReturn(fn)
+		if declared == nil {
+			return true
+		}
+		accepts = successType(c, declared)
+		if accepts == nil {
+			return true
+		}
+	}
+	return !c.IsTypeAssignableTo(widened, accepts)
 }
 
 // rewriteCause rewrites `try { return X } catch (cause: Cause) { return Y }`
