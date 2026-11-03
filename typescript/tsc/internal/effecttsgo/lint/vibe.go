@@ -1,7 +1,11 @@
 package lint
 
 import (
+	"slices"
+
+	"github.com/microsoft/TypeScript/tsc/internal/effecttsgo/internal/rule"
 	"github.com/microsoft/TypeScript/tsc/internal/effecttsgo/internal/rules"
+	"github.com/microsoft/TypeScript/tsc/internal/effecttsgo/internal/typeparser"
 	"github.com/microsoft/TypeScript/tsc/internal/effecttsgo/shim/ast"
 )
 
@@ -114,31 +118,58 @@ func ruleNamesFor(sf *ast.SourceFile) []string {
 	return nil
 }
 
-// lintMisreads are the rules `vibelang lint` leaves out of a .vibe file because
-// they misread its forms. On alchemy's 8,400 .vibe files, whose .ts twins pass
-// the same rules, these four were the only ones of the 105 to report: 207
-// errors, on code they read through `|>` and effect arrows. The compiler's own
-// check reports the same faults where it says so.
-var lintMisreads = map[string]string{
-	"catchUnfailableEffect":     "EK9204 reports it",
-	"missedPipeableOpportunity": "it reads a |> pipeline as nested calls",
-	"missingEffectContext":      "the compiler checks a contract's requirements",
-	"missingEffectError":        "the compiler checks a contract's failures",
-	"missingLayerContext":       "the compiler checks a layer's requirements",
-}
-
 // lintRuleNames are the rules `vibelang lint` runs on a .vibe file for an
 // Oxlint configuration: every rule but those it reports through a VibeLang
-// port, which would report the same fault twice, and those that misread the
-// file. A repository's lint script covers .vibe as it covers .ts (VIP-38, detail
-// 77), so a rule VibeLang answers with syntax still reports the file that spells
-// the pattern through Effect's API, as a migrated file does.
+// port, which would report the same fault twice. A repository's lint script
+// covers .vibe as it covers .ts (VIP-38, detail 77), so a rule VibeLang answers
+// with syntax still reports the file that spells the pattern through Effect's
+// API, as a migrated file does.
 var lintRuleNames = func() []string {
 	var names []string
 	for _, r := range rules.All {
-		if _, misreads := lintMisreads[r.Name]; vibeAnswers[r.Name].ek == "" && !misreads {
+		if vibeAnswers[r.Name].ek == "" {
 			names = append(names, r.Name)
 		}
 	}
 	return names
 }()
+
+// missedPipeableOpportunity counts each call of a nested chain as a stage. The
+// parser writes try x as $try(x) and x catch h as $catchExpression(() => x, h),
+// so on alchemy the rule told
+//
+//	(Option.getOrUndefined(try (items() |> Stream.runHead(%)))) catch effect (e) => ...
+//
+// to pipe items() |> Stream.runHead(%) into calls nobody wrote. On a .vibe
+// file, drop each report whose stages include a call the compiler wrote.
+func init() {
+	for i := range rules.All {
+		if r := &rules.All[i]; r.Name == "missedPipeableOpportunity" {
+			run := r.Run
+			r.Run = func(ctx *rule.Context) []*ast.Diagnostic {
+				diags := run(ctx)
+				if len(diags) == 0 || !ctx.SourceFile.FileName().IsVibeLangSource() {
+					return diags
+				}
+				minArgCount := 2
+				if ctx.Options != nil {
+					minArgCount = ctx.Options.GetPipeableMinArgCount()
+				}
+				written := map[[2]int]bool{}
+				for _, m := range rules.AnalyzeMissedPipeableOpportunity(ctx.TypeParser, ctx.Checker, ctx.SourceFile, minArgCount) {
+					if slices.ContainsFunc(m.PipeableTransformations, compilerWritten) {
+						written[[2]int{m.Location.Pos(), m.Location.End()}] = true
+					}
+				}
+				return slices.DeleteFunc(diags, func(d *ast.Diagnostic) bool { return written[[2]int{d.Pos(), d.End()}] })
+			}
+		}
+	}
+}
+
+// compilerWritten reports whether t calls a helper the parser wrote, such as
+// the $try of try x (ast.NodeFlagsVibeLangIntrinsic).
+func compilerWritten(t typeparser.PipingFlowTransformation) bool {
+	callee := t.Callee()
+	return callee != nil && ast.SkipParentheses(callee).Flags&ast.NodeFlagsVibeLangIntrinsic != 0
+}

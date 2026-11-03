@@ -8,8 +8,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/microsoft/TypeScript/tsc/internal/effecttsgo/etscore"
-	"github.com/microsoft/TypeScript/tsc/internal/effecttsgo/internal/rule"
 	"github.com/microsoft/TypeScript/tsc/internal/effecttsgo/internal/rules"
 	"github.com/microsoft/TypeScript/tsc/internal/tspath"
 )
@@ -52,6 +50,12 @@ var ruleWitnesses = map[string]struct {
 	"fn-iife":        {"effectFnIife", "export const a = Effect.fn(\"x\")(function* () { return 1 })()\n"},
 	"fn-implicit":    {"effectFnImplicitAny", "export const a = Effect.fn(\"x\")(function* (x) { return x })\n"},
 	"schema-tag":     {"redundantSchemaTagIdentifier", "export class P extends Schema.TaggedClass<P>(\"P\")(\"P\", { a: Schema.Number }) {}\n"},
+	// The rules alchemy's unbuilt tree made report unknown types (toolfix-alchemy, 2026-11-03).
+	"effect-error":   {"missingEffectError", "class E extends Data.TaggedError(\"E\")<{}> {}\nexport const a: Effect.Effect<number> = Effect.fail(new E())\n"},
+	"effect-context": {"missingEffectContext", "class S extends Context.Service<S, {}>()(\"S\") {}\nexport const f = (x: Effect.Effect<number, never, S>): Effect.Effect<number> => x\n"},
+	"layer-context":  {"missingLayerContext", "class S extends Context.Service<S, {}>()(\"S\") {}\nclass T extends Context.Service<T, {}>()(\"T\") {}\nexport const f = (l: Layer.Layer<S, never, T>): Layer.Layer<S> => l\n"},
+	"catch-never":    {"catchUnfailableEffect", "export const a = Effect.succeed(1).pipe(Effect.catch(() => Effect.succeed(2)))\n"},
+	"nested-calls":   {"missedPipeableOpportunity", "import * as E from \"effect/Effect\"\nexport const a = E.asVoid(E.flatten(E.succeed(E.succeed(1))))\n"},
 }
 
 // lintTwins lints each witness as a .vibe file and, through the same rules and
@@ -158,25 +162,13 @@ func TestLintReportsAnsweredRulesInVibeFiles(t *testing.T) {
 	}
 }
 
-// A rule VibeLang ports reports once, through the port, not again as itself.
+// A rule VibeLang ports reports once, through the port, not again as itself,
+// and every other rule runs.
 func TestLintDoesNotRunPortedRulesTwice(t *testing.T) {
-	for name, answer := range vibeAnswers {
-		if answer.ek != "" && slices.Contains(lintRuleNames, name) {
-			t.Errorf("%s is ported as %s and runs again", name, answer.ek)
-		}
-	}
 	for _, r := range rules.All {
-		_, misreads := lintMisreads[r.Name]
-		if vibeAnswers[r.Name].ek == "" && !misreads && !slices.Contains(lintRuleNames, r.Name) {
-			t.Errorf("%s has no port and does not run", r.Name)
-		}
-		if misreads && slices.Contains(lintRuleNames, r.Name) {
-			t.Errorf("%s misreads .vibe forms and runs", r.Name)
-		}
-	}
-	for name := range lintMisreads {
-		if !slices.ContainsFunc(rules.All, func(r rule.Rule) bool { return r.Name == name }) {
-			t.Errorf("lintMisreads names %s, which is no rule", name)
+		ported := vibeAnswers[r.Name].ek != ""
+		if ported == slices.Contains(lintRuleNames, r.Name) {
+			t.Errorf("%s: ported %v, runs %v", r.Name, ported, !ported)
 		}
 	}
 }
@@ -187,71 +179,6 @@ func TestBuildRulesAreUnchanged(t *testing.T) {
 		if slices.Contains(vibeRuleNames, name) {
 			t.Errorf("a build runs %s on .vibe files", name)
 		}
-	}
-}
-
-// The pipeline a .vibe file already writes is not a missed pipe, and no rule of
-// lintMisreads reports it. alchemy: 207 errors on .vibe files whose .ts twins pass.
-func TestLintLeavesRulesThatMisreadVibeFormsOut(t *testing.T) {
-	modules := os.Getenv("EFFECT_NODE_MODULES")
-	if modules == "" {
-		modules = "../../../../../experiments/node_modules"
-	}
-	effect, err := filepath.Abs(filepath.Join(modules, "effect"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, err := os.Stat(filepath.Join(effect, "package.json")); err != nil {
-		t.Skipf("effect is not installed: %v", err)
-	}
-	dir := t.TempDir()
-	if err := os.MkdirAll(filepath.Join(dir, "node_modules"), 0o755); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.Symlink(effect, filepath.Join(dir, "node_modules", "effect")); err != nil {
-		t.Fatal(err)
-	}
-	rc := map[string]string{}
-	for name := range lintMisreads {
-		rc[rulePrefix+kebabCase(name)] = "error"
-	}
-	var enabled []string
-	for name, severity := range rc {
-		enabled = append(enabled, `"`+name+`":"`+severity+`"`)
-	}
-	for name, text := range map[string]string{
-		"package.json":   `{"private":true,"type":"module"}`,
-		"tsconfig.json":  `{"compilerOptions":{"target":"es2022","lib":["es2023"],"module":"nodenext","moduleResolution":"nodenext","strict":true,"types":[],"skipLibCheck":true,"noEmit":true},"files":["pipe.vibe"]}`,
-		".oxlintrc.json": `{"rules":{` + strings.Join(enabled, ",") + `}}`,
-		"pipe.vibe":      "import { Effect } from \"effect\"\nexport const a = Effect.succeed(1) |> Effect.map(%, (n) => n + 1) |> Effect.map(%, (n) => n + 2)\nexport const b = Effect.succeed(1).pipe(Effect.catch(() => Effect.succeed(2)))\n",
-	} {
-		if err := os.WriteFile(filepath.Join(dir, name), []byte(text), 0o644); err != nil {
-			t.Fatal(err)
-		}
-	}
-	sys := &testSys{cwd: tspath.RootedDirectoryPathFromAbsolute(dir)}
-	if status := Command(context.Background(), sys, nil); status != 0 {
-		t.Errorf("status %d, want 0\n%s%s", status, sys.out.String(), sys.err.String())
-	}
-	for name := range lintMisreads {
-		if !strings.Contains(sys.err.String(), kebabCase(name)) {
-			t.Errorf("the note does not name %s:\n%s", kebabCase(name), sys.err.String())
-		}
-		if strings.Contains(sys.out.String(), name+":") {
-			t.Errorf("%s reports:\n%s", name, sys.out.String())
-		}
-	}
-}
-
-// A rule that runs, or a rule turned off, gets no note.
-func TestMisreadNoteNamesOnlyWhatIsOn(t *testing.T) {
-	off := &Config{Rules: map[string]etscore.Severity{"missingEffectError": etscore.SeverityOff, "effectSucceedWithVoid": etscore.SeverityError}}
-	if note := misreadNote(off); note != "" {
-		t.Errorf("unexpected note: %s", note)
-	}
-	override := &Config{Rules: map[string]etscore.Severity{}, Overrides: []Override{{Rules: map[string]etscore.Severity{"missedPipeableOpportunity": etscore.SeverityWarning}}}}
-	if note := misreadNote(override); !strings.Contains(note, "missed-pipeable-opportunity") {
-		t.Errorf("an override's rule is not named: %q", note)
 	}
 }
 

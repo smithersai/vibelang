@@ -50,10 +50,11 @@ A rule VibeLang ports reports under the port's code instead, once: floating-effe
 reports EK4801. An Oxlint rule outside effecttsgo/* does not run here; vibelang
 lint reads only the effecttsgo/* rules of the configuration.
 
-These do not run on .vibe files, because they misread its forms, and a note on
-standard error names the ones a configuration turns on: catch-unfailable-effect,
-missed-pipeable-opportunity, missing-effect-context, missing-effect-error,
-missing-layer-context. The compiler checks all but the pipe rule.
+The rules read the program's types, and vibelang lint does not print the
+compiler's own errors. Build referenced projects first (vibelang -b): a missing
+declaration file gives unknown types, which missing-effect-error,
+missing-effect-context and missing-layer-context report as Effect errors.
+missed-pipeable-opportunity does not count try or catch as a pipeline stage.
 `
 
 // Keep compiler diagnostics and options while preventing every output phase,
@@ -147,9 +148,6 @@ func Command(ctx context.Context, sys tsc.System, args []string) int {
 	if err != nil {
 		fmt.Fprintf(errOut, "vibelang lint: %v\n", err)
 		return 2
-	}
-	if note := misreadNote(config); configPath != "" && note != "" {
-		fmt.Fprint(errOut, note)
 	}
 	if len(paths) == 0 {
 		paths = []string{"."}
@@ -273,31 +271,6 @@ func lintProject(ctx context.Context, sys tsc.System, configFile string, files [
 		result = append(result, withoutDisabled(diags, sf.Text())...)
 	}
 	return result, skipped, nil
-}
-
-// misreadNote names the rules config turns on that lintMisreads leaves out, so a
-// clean lint does not read as those rules passing.
-func misreadNote(config *Config) string {
-	var named []string
-	for name := range lintMisreads {
-		on := config.Rules[name] != etscore.SeverityOff && hasRule(config.Rules, name)
-		for _, o := range config.Overrides {
-			on = on || (o.Rules[name] != etscore.SeverityOff && hasRule(o.Rules, name))
-		}
-		if on {
-			named = append(named, kebabCase(name))
-		}
-	}
-	if len(named) == 0 {
-		return ""
-	}
-	slices.Sort(named)
-	return "vibelang lint: these effecttsgo rules do not run on .vibe files: " + strings.Join(named, ", ") + ". See vibelang lint --help.\n"
-}
-
-func hasRule(severities map[string]etscore.Severity, name string) bool {
-	_, ok := severities[name]
-	return ok
 }
 
 // severityFor turns every rule the configuration leaves out off, as Oxlint does.
