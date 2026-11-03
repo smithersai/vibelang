@@ -82,6 +82,11 @@ func FuzzFix(f *testing.F) {
 	for _, data := range []string{"\x04\x00\x02", "\x14\x04\x03"} {
 		f.Add(trailingWhitespaceFixKey + data)
 	}
+	fuzzFixProjects(f, "FuzzFix")
+}
+
+// fuzzFixProjects shares the complete converter oracle with focused targets.
+func fuzzFixProjects(f *testing.F, target string) {
 	w := NewWorkspace(f)
 	codes := toolsFixCodes()
 	var node *Node
@@ -91,7 +96,7 @@ func FuzzFix(f *testing.F) {
 		}
 	})
 	f.Fuzz(func(t *testing.T, archive string) {
-		toolsGuard(t, "FuzzFix", func() {
+		toolsGuard(t, target, func() {
 			trailingWhitespace := strings.HasPrefix(archive, trailingWhitespaceFixKey)
 			var trailingReference string
 			if trailingWhitespace {
@@ -110,12 +115,15 @@ func FuzzFix(f *testing.F) {
 				TestOptionMatchFixQuoted(t)
 				archive = optionMatchFixArchive(archive)
 			}
-			options := vibelang.FixOptions{VIPOnly: strings.HasPrefix(corpusFile(t, "FuzzFix"), "fix-vip-only-")}
+			options := vibelang.FixOptions{VIPOnly: strings.HasPrefix(corpusFile(t, target), "fix-vip-only-")}
 			files := toolsUnarchive(archive)
-			if toolsMainFile(files) == "" || toolsTooLarge(files) || toolsLeftOut("FuzzFix", files) {
+			if strings.HasPrefix(archive, "match-instanceof:") {
+				files = matchInstanceOfProject(archive)
+			}
+			if toolsMainFile(files) == "" || toolsTooLarge(files) || toolsLeftOut(target, files) {
 				return
 			}
-			r := toolsCompile(t, w, "FuzzFix", files)
+			r := toolsCompile(t, w, target, files)
 			defer r.Remove()
 			// Native TypeScript migration inputs may be invalid in the old
 			// VibeLang execution model before fixing. Compare their native
@@ -129,7 +137,7 @@ func FuzzFix(f *testing.F) {
 				if trailingWhitespace {
 					reference = trailingReference
 				}
-				runtimeBefore = toolsCompile(t, w, "FuzzFix", map[string]string{"main.ts": reference})
+				runtimeBefore = toolsCompile(t, w, target, map[string]string{"main.ts": reference})
 				defer runtimeBefore.Remove()
 				if !toolsErrorFree(runtimeBefore) {
 					t.Skip("not an admissible native TypeScript reference")
@@ -147,21 +155,21 @@ func FuzzFix(f *testing.F) {
 					}
 				}
 				if !toolsErrorFree(r) || !found {
-					Gap(t, "FuzzFix", "fix:direct-option-match:diagnostic", "Chapter 7 requires EK4839 on a direct Option.match: %v\n%s", SortedKeys(Keys(r.Dir, r.Diagnostics)), archive)
+					Gap(t, target, "fix:direct-option-match:diagnostic", "Chapter 7 requires EK4839 on a direct Option.match: %v\n%s", SortedKeys(Keys(r.Dir, r.Diagnostics)), archive)
 				}
 			}
 			var result *vibelang.FixResult
-			toolsRun(t, "FuzzFix", "fix", archive, nil, func() {
+			toolsRun(t, target, "fix", archive, nil, func() {
 				result = vibelang.FixProjectWithOptions(t.Context(), w.fs, bundled.LibPath(), config, options)
 			})
 			if directOption && len(result.Files) == 0 {
-				Gap(t, "FuzzFix", "fix:direct-option-match:missing", "the direct Option.match must have a safe fix:\n%s", archive)
+				Gap(t, target, "fix:direct-option-match:missing", "the direct Option.match must have a safe fix:\n%s", archive)
 			}
 			if trailingWhitespace && len(result.Files) == 0 {
-				Gap(t, "FuzzFix", "fix:trailing-whitespace:missing", "Chapter 7 requires the mechanical trailing-block migration:\n%s", archive)
+				Gap(t, target, "fix:trailing-whitespace:missing", "Chapter 7 requires the mechanical trailing-block migration:\n%s", archive)
 			}
 			if result.Err != nil {
-				Gap(t, "FuzzFix", "fix:converge", "--fix did not reach a fixed point (%v):\n%s", result.Err, archive)
+				Gap(t, target, "fix:converge", "--fix did not reach a fixed point (%v):\n%s", result.Err, archive)
 				return
 			}
 			fixed := maps.Clone(files)
@@ -182,20 +190,20 @@ func FuzzFix(f *testing.F) {
 				rel := strings.TrimPrefix(name.AsString(), filepath.ToSlash(r.Dir)+"/")
 				// Chapter 007: the selected project's own program sources, including .vibex.
 				if _, ok := files[rel]; (!ok || !(strings.HasSuffix(rel, ".vibe") || strings.HasSuffix(rel, ".vibex"))) && !slices.Contains(freshSources, rel) {
-					Gap(t, "FuzzFix", "fix:scope", "--fix changed %s, which is not one of the project's owned sources:\n%s", name, archive)
+					Gap(t, target, "fix:scope", "--fix changed %s, which is not one of the project's owned sources:\n%s", name, archive)
 				}
 				if strings.Contains("/"+filepath.ToSlash(rel)+"/", "/node_modules/") {
-					Gap(t, "FuzzFix", "fix:scope-dependency", "chapter 007 forbids dependency writes: %s", rel)
+					Gap(t, target, "fix:scope-dependency", "chapter 007 forbids dependency writes: %s", rel)
 				}
 				fixed[rel] = file.Text
 				// D372: comments survive every rewrite.
 				if lost := slices.DeleteFunc(toolsLostComments(file.Original, file.Text+movedComments), fixRemovedThrowsTag.MatchString); len(lost) > 0 {
-					Gap(t, "FuzzFix", "fix:comments", "--fix lost the comments %q of %s:\n%s\nfixed:\n%s", lost, rel, file.Original, file.Text)
+					Gap(t, target, "fix:comments", "--fix lost the comments %q of %s:\n%s\nfixed:\n%s", lost, rel, file.Original, file.Text)
 				}
 			}
 			after := r
 			if len(result.Files) > 0 {
-				after = toolsCompile(t, w, "FuzzFix", fixed)
+				after = toolsCompile(t, w, target, fixed)
 				defer after.Remove()
 				for _, rel := range freshSources {
 					name := tspath.RootedFilePathFromAbsolute(filepath.ToSlash(filepath.Join(after.Dir, rel)))
@@ -206,7 +214,7 @@ func FuzzFix(f *testing.F) {
 				// D291: --fix writes a file only when the fixed program reports no
 				// error the original did not.
 				if added := toolsAddedErrors(r, after); len(added) > 0 {
-					Gap(t, "FuzzFix", "fix:new-error", "the fixed program reports errors the original does not: %s\n%s\nfixed:\n%s", strings.Join(added, "\n"), archive, Archive(fixed))
+					Gap(t, target, "fix:new-error", "the fixed program reports errors the original does not: %s\n%s\nfixed:\n%s", strings.Join(added, "\n"), archive, Archive(fixed))
 				}
 			}
 			// Chapter 7 (decided 2026-10-31): "One `vibelang --fix` run applies
@@ -215,7 +223,7 @@ func FuzzFix(f *testing.F) {
 			second := result
 			if len(result.Files) > 0 {
 				again := toolsConfig(w, after.Dir)
-				toolsRun(t, "FuzzFix", "fix", Archive(fixed), nil, func() {
+				toolsRun(t, target, "fix", Archive(fixed), nil, func() {
 					second = vibelang.FixProjectWithOptions(t.Context(), w.fs, bundled.LibPath(), again, options)
 				})
 			}
@@ -227,11 +235,11 @@ func FuzzFix(f *testing.F) {
 				for name, file := range second.Files {
 					changed = append(changed, fmt.Sprintf("-- %s --\n%s", filepath.Base(name.AsString()), file.Text))
 				}
-				Gap(t, "FuzzFix", idempotenceKey, "a second --fix changes the fixed project (%v):\n%s\nfixed:\n%s\nthen:\n%s", second.Err, archive, Archive(fixed), strings.Join(changed, "\n"))
+				Gap(t, target, idempotenceKey, "a second --fix changes the fixed project (%v):\n%s\nfixed:\n%s\nthen:\n%s", second.Err, archive, Archive(fixed), strings.Join(changed, "\n"))
 			}
 			// A repaired idempotence gap must retire its exact pending key even
 			// when a later contract or runtime check finds a different gap.
-			ExpectPending(t, "FuzzFix", idempotenceKey)
+			ExpectPending(t, target, idempotenceKey)
 			// Current tooling explicitly names this codemod, independently of
 			// implementation action availability. Keep main's VIP-only scope;
 			// the unscoped run checks its completion and safe refusals.
@@ -256,7 +264,7 @@ func FuzzFix(f *testing.F) {
 					if toolsContractMismatch(t, w, runtimeBefore, after, true) == "" {
 						key = "fix:types:directory-service-key"
 					}
-					Gap(t, "FuzzFix", key, "--fix changed a contract: %s\nsource:\n%s\nfixed:\n%s", mismatch, archive, Archive(fixed))
+					Gap(t, target, key, "--fix changed a contract: %s\nsource:\n%s\nfixed:\n%s", mismatch, archive, Archive(fixed))
 				}
 			}
 			// D372: compare every callable exported Effect, not only main fixtures
@@ -291,15 +299,15 @@ func FuzzFix(f *testing.F) {
 				// fixed program that stops running does break it.
 				if toolsInvalidOutcome(was) {
 					if nativeTS {
-						Gap(t, "FuzzFix", "fix:native-ts:runtime", "native reference must run: %+v\n%s", was, archive)
+						Gap(t, target, "fix:native-ts:runtime", "native reference must run: %+v\n%s", was, archive)
 					}
 					if directOption {
-						Gap(t, "FuzzFix", "fix:direct-option-match:runtime", "generated Option.match must run for value/event comparison: %+v\n%s", was, archive)
+						Gap(t, target, "fix:direct-option-match:runtime", "generated Option.match must run for value/event comparison: %+v\n%s", was, archive)
 					}
 					continue
 				}
 				if toolsInvalidOutcome(is) {
-					Gap(t, "FuzzFix", resultKey, "D372: %s:%s returned an invalid Effect outcome: original %+v; fixed %+v\n%s\nfixed:\n%s", entry.file, entry.name, was, is, archive, Archive(fixed))
+					Gap(t, target, resultKey, "D372: %s:%s returned an invalid Effect outcome: original %+v; fixed %+v\n%s\nfixed:\n%s", entry.file, entry.name, was, is, archive, Archive(fixed))
 				}
 				if toolsSameOutcome(was, is) {
 					continue
@@ -309,18 +317,18 @@ func FuzzFix(f *testing.F) {
 				// inconclusive; crashes, timeouts and plain results never do.
 				repeated := toolsFreshOutcome(t, w, runtimeBefore, entry)
 				if toolsInvalidOutcome(repeated) {
-					Gap(t, "FuzzFix", resultKey, "D372: a fresh original %s:%s returned %+v\n%s", entry.file, entry.name, repeated, archive)
+					Gap(t, target, resultKey, "D372: a fresh original %s:%s returned %+v\n%s", entry.file, entry.name, repeated, archive)
 				}
 				if !toolsSameOutcome(was, repeated) {
 					repeatedAgain := toolsFreshOutcome(t, w, runtimeBefore, entry)
 					if toolsInvalidOutcome(repeatedAgain) {
-						Gap(t, "FuzzFix", resultKey, "D372: a fresh original %s:%s returned %+v\n%s", entry.file, entry.name, repeatedAgain, archive)
+						Gap(t, target, resultKey, "D372: a fresh original %s:%s returned %+v\n%s", entry.file, entry.name, repeatedAgain, archive)
 					}
 					if !toolsSameOutcome(repeated, repeatedAgain) {
 						t.Skipf("inconclusive D372 comparison: the original %s:%s is nondeterministic across fresh modules: %+v then %+v", entry.file, entry.name, repeated, repeatedAgain)
 					}
 				}
-				Gap(t, "FuzzFix", resultKey, "%s:%s: the fixed program ends %+v, the original %+v\n%s\nfixed:\n%s", entry.file, entry.name, is, was, archive, Archive(fixed))
+				Gap(t, target, resultKey, "%s:%s: the fixed program ends %+v, the original %+v\n%s\nfixed:\n%s", entry.file, entry.name, is, was, archive, Archive(fixed))
 			}
 		})
 	})

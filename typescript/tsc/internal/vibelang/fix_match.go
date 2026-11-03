@@ -27,8 +27,9 @@ import (
 // with an arrow function as its handler; withReturnType gives the type. A
 // pattern is a literal, an object of patterns, Match.string and the other
 // primitive refinements, Match.null, Match.undefined, Match.defined, or
-// Match.instanceOf(C): each tests what Match's predicate tests. A handler's
-// parameter binds with let, and its fields with { let field }.
+// Match.instanceOf(C) for a proven ordinary class: each tests what Match's
+// predicate tests. A handler's parameter binds with let, and its fields
+// with { let field }.
 //
 // The warning has a quick fix when the match keeps the program's meaning
 // (Chapter 28): the patterns are the ones above, not a predicate function or
@@ -668,7 +669,7 @@ func matchPattern(c *checker.Checker, file *ast.SourceFile, pattern *ast.Node) (
 			value := (&freshNames{file: file}).freshName("$matchString" + strconv.Itoa(nodeStart(file, pattern)))
 			return "let " + value + " and if (" + value + ".startsWith(" + expressionText(file, pattern.Arguments()[0]) + "))", true
 		}
-		if module, name := effectMember(c, pattern.Expression()); module == "Match" && name == "instanceOf" && len(pattern.Arguments()) == 1 && ast.IsIdentifier(pattern.Arguments()[0]) {
+		if module, name := effectMember(c, pattern.Expression()); module == "Match" && name == "instanceOf" && pattern.TypeArguments() == nil && pattern.QuestionDotToken() == nil && len(pattern.Arguments()) == 1 && ast.IsIdentifier(pattern.Arguments()[0]) && matchInstanceOfClass(c, pattern.Arguments()[0]) {
 			return pattern.Arguments()[0].Text(), true
 		}
 		return "", false
@@ -691,6 +692,67 @@ func matchPattern(c *checker.Checker, file *ast.SourceFile, pattern *ast.Node) (
 		return nodeText(file, pattern), true
 	}
 	return "", false
+}
+
+// matchInstanceOfClass proves the class-pattern predicate is instanceof
+// (004-match, Class patterns; RC-15 / effectscript-75). A construct signature
+// alone is not enough: Number/String/Boolean accept primitives as patterns,
+// Array uses Array.isArray, and custom matchers may test something else.
+// Keep aliases to constructor values, ambient classes and derived/decorated
+// classes advisory-only when their runtime matcher cannot be established.
+func matchInstanceOfClass(c *checker.Checker, constructor *ast.Node) bool {
+	symbol := c.GetSymbolAtLocation(constructor)
+	if symbol != nil && symbol.Flags()&ast.SymbolFlagsAlias != 0 {
+		symbol = c.GetAliasedSymbol(symbol)
+	}
+	if symbol == nil {
+		return false
+	}
+	decl := symbol.ValueDeclaration()
+	if decl == nil || !ast.IsClassDeclaration(decl) || declarationWord(decl) != "" ||
+		ast.HasSyntacticModifier(decl, ast.ModifierFlagsAmbient|ast.ModifierFlagsExport|ast.ModifierFlagsDefault) ||
+		ast.GetClassExtendsHeritageElement(decl) != nil || len(decl.Decorators()) != 0 {
+		return false
+	}
+	if file := ast.GetSourceFileOfNode(decl); file == nil || file.IsDeclarationFile || file != ast.GetSourceFileOfNode(constructor) {
+		return false
+	}
+	for _, member := range decl.Members() {
+		// A computed key may be any alias of Symbol.customMatcher; static
+		// setup and decorators can install one without declaring that key.
+		if ast.IsClassStaticBlockDeclaration(member) || len(member.Decorators()) != 0 ||
+			(member.Name() != nil && ast.IsComputedPropertyName(member.Name())) ||
+			(ast.IsPropertyDeclaration(member) && ast.HasStaticModifier(member) && member.Initializer() != nil) {
+			return false
+		}
+	}
+	// Refuse constructor-value escapes and mutations: a helper or an alias
+	// could install an own custom matcher after the declaration. Keep the
+	// inert uses needed for ordinary construction, type references and tests.
+	unsafe := false
+	var visit func(*ast.Node) bool
+	visit = func(n *ast.Node) bool {
+		if ast.IsIdentifier(n) && c.GetSymbolAtLocation(n) == symbol && n != decl.Name() && !ast.IsPartOfTypeNode(n) {
+			p := n.Parent
+			safe := ast.IsNewExpression(p) && p.Expression() == n
+			if ast.IsBinaryExpression(p) && p.AsBinaryExpression().OperatorToken.Kind == ast.KindInstanceOfKeyword && p.AsBinaryExpression().Right == n {
+				safe = true
+			}
+			if ast.IsCallExpression(p) {
+				module, name := effectMember(c, p.Expression())
+				safe = module == "Match" && name == "instanceOf" && len(p.Arguments()) == 1 && p.Arguments()[0] == n
+			}
+			// Reading a class's non-configurable prototype for Object.create
+			// does not expose its constructor value to the called function.
+			if ast.IsPropertyAccessExpression(p) && p.Expression() == n && p.Name().Text() == "prototype" && !ast.IsAssignmentTarget(p) {
+				safe = true
+			}
+			unsafe = !safe
+		}
+		return unsafe || n.ForEachChild(visit)
+	}
+	ast.GetSourceFileOfNode(decl).AsNode().ForEachChild(visit)
+	return !unsafe
 }
 
 // matchHandlerArm returns the arm that handler, a Match handler, becomes with

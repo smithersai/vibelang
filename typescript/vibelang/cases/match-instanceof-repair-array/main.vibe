@@ -1,0 +1,7 @@
+import { Effect, Match } from "effect"
+export function choose(value: unknown): string {
+  return Match.value(value).pipe(
+    Match.when(Match.instanceOf(Array), (): string => "hit"),
+    Match.orElse((): string => "miss"))
+}
+export function main() { return Effect.succeed([[], [7], {}, "x", null].map(choose)) }

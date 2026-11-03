@@ -1,0 +1,8 @@
+import { Effect, Match } from "effect"
+class C { readonly value = 7 }
+export function choose(value: unknown): string {
+  return Match.value(value).pipe(
+    Match.when(Match.instanceOf(C), (): string => "hit"),
+    Match.orElse((): string => "miss"))
+}
+export function main() { return Effect.succeed([new C(), Object.create(C.prototype), {}, 7, new Number(7), null].map(choose)) }

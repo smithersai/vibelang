@@ -205,6 +205,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - `do` blocks could report implicit `any` errors on generated names, widen literal alternatives to `number` or erase `never`; `match` on `[]` could report implicit `any[]`. Generated bindings now keep the source expression's checked type, including in unreachable code.
 
+- `--fix` and the editor could make `Match.instanceOf` accept primitive values it previously rejected; unproven constructors now retain the `EK4839` warning without a repair, while proven ordinary classes still convert to `match`.
 - Documentation checks accepted throws in synchronous arrows whose parameter was named `effect`; they now apply the same rule after parameter renaming.
 - No-throw validation incorrectly failed after a plain catch handler became an effect handler; its regression fixtures now use catch's existing join point without a redundant `try`.
 - Migration setup could leave a nested workspace consumer on `tsc` when a semver peer or npm alias resolved to migrated workspace sources. Setup now follows installed workspace links for compiler, test-runner and worker wiring while respecting nearer registry packages.
