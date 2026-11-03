@@ -47,6 +47,7 @@ import { wireEsbuildBuilds } from "./esbuild-builds.mjs"
 import { wirePublishingScripts } from "./publishing.mjs"
 import { wireReactTools } from "./react-tools.mjs"
 import { hasNativeRuntimeExport, hasVibeSource, routeEmittedExports } from "./emitted-exports.mjs"
+import { withPackingScope } from "./pack-policy.mjs"
 import { wireDeveloperTools } from "./tooling.mjs"
 import { wireTypecheckBuild } from "./typecheck-build.mjs"
 import { planEmittedImports, applyEmittedImports } from "./emitted-imports.mjs"
@@ -1286,6 +1287,16 @@ async function emitMigratedJs(config, t, logs) {
   return emitted
 }
 
+function rememberPackingFiles(p, batch, emitted) {
+  const path = p.codemod(batch)
+  const previous = readJsonIf(path)
+  const next = withPackingScope(previous, emitted)
+  if (next && JSON.stringify(next.packingFiles) !== JSON.stringify(previous?.packingFiles)) {
+    durableWrite(path, JSON.stringify(next, null, 2) + "\n")
+  }
+  return next
+}
+
 /** codemod: rename the batch to .vibe, rewrite imports, and run vibelang --fix to a fixed point. */
 export async function codemod(options) {
   assertBaselineSafe(paths(options.run))
@@ -1419,8 +1430,9 @@ export async function codemod(options) {
   saveState(p.codemodState(b), state)
   const result = { batch: b, at: new Date().toISOString(), files, platform: platformResult, formatted, plain, functionModel, renames, exportEdits, buildEntries, importEdits, lintPaths: state.lintPaths, refEdits, scriptEdits, packageScriptEdits, packageScriptEdits, referenceEdits, referenceWarnings, referenceScan, selectorChecks, fix: { settled, rounds, byFile, totals: rewriteTotals(byFile), refused, restored: [...new Set(restored)].sort() } }
   result.emittedJs = emittedJs
-  durableWrite(p.codemod(b), JSON.stringify(result, null, 2) + "\n")
-  return result
+  const scopedResult = withPackingScope(result, emittedJs)
+  durableWrite(p.codemod(b), JSON.stringify(scopedResult, null, 2) + "\n")
+  return scopedResult
 }
 
 /** A migrated module's TypeScript source as the codemod journaled it, from whichever batch renamed it; null for runs that kept no state. */
@@ -1663,9 +1675,9 @@ export async function verify(options) {
   const compiler = compilerOf(config)
   const logs = join(p.batch(b), "logs")
 
-  const codemod = readJsonIf(p.codemod(b))
+  let codemod = readJsonIf(p.codemod(b))
   const testDiffBefore = await testEdits(config, p, thePlan, b, typeScriptOf(config))
-  const before = foreignChanges(await Jj.changedPaths(t), { files, codemod, testDiff: testDiffBefore })
+  const changedBefore = await Jj.changedPaths(t)
   const hooks = await regenerate(config,p,"verify-" + b)
   // Certify the generated and formatted text that record will commit.
   const formatted = await formatVibe(config, migrated, join(logs, "verify-format-vibe.log"))
@@ -1675,7 +1687,8 @@ export async function verify(options) {
   const selectorChecks = hasSelectorEdits ? checkSelectorEdits(codemodReceipt, [...new Set([...(await Jj.trackedFiles(t)), ...scopeFiles(config)])], { ts: typeScriptOf(config), read: file => readFileSync(join(t, file), "utf8") }) : []
   const baselineTests = readJson(join(p.baseline, "tests.json"))
   // Tests, including one-pass measurements, read current emitted JavaScript.
-  await emitMigratedJs(config, t, logs)
+  codemod = rememberPackingFiles(p, b, await emitMigratedJs(config, t, logs))
+  const before = foreignChanges(changedBefore, { files, codemod, testDiff: testDiffBefore })
   const candidateBuild = thePlan.mode === "one-pass" ? null : await prepareBuilds(config, logs, "candidate")
   const measurement = thePlan.mode === "one-pass" ? await measureTests(config,{run:p.run,batch:b}) : null
   const tests = measurement?.receipts.candidate ?? await runTests({ command: config.test.command, report: config.test.report, cwd: join(t, config.test.cwd), root: t, jsonFile: join(p.batch(b), "vitest.json"), log: join(logs, "tests.log") })
@@ -1791,7 +1804,7 @@ export async function record(options) {
   const formatted = await formatWritten(t, written, join(p.batch(b), "logs", "format.log"))
   const vibeFormatted = await formatRecorded(config, written, join(p.batch(b), "logs"))
   // Certify the emitted graph after all source formatting, before checking final bytes.
-  await emitMigratedJs(config, t, join(p.batch(b), "logs"))
+  rememberPackingFiles(p, b, await emitMigratedJs(config, t, join(p.batch(b), "logs")))
   const afterFormat = await Jj.commitId(t, "@")
   await assertScope()
   if (thePlan.mode === "one-pass" && (formatted.code !== 0 || vibeFormatted.code !== 0)) throw new Error("record refused: formatter failed")

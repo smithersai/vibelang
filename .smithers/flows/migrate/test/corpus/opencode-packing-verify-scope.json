@@ -1,0 +1,11 @@
+{
+ "property": "packing-phase-scope",
+ "rule": "Only the flow's recorded policy paths enter scope, including those first emitted during verification.",
+ "input": [
+  { "stage": "codemod", "ids": [] },
+  { "stage": "verify", "ids": [0] },
+  { "stage": "record", "ids": [] },
+  { "stage": "restore", "ids": [0] }
+ ],
+ "repoPattern": "An opencode mixed native barrel routes to .vibelang/js during verify, after one-pass settle has written a codemod receipt without emission metadata."
+}

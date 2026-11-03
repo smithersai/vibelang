@@ -23,6 +23,7 @@ export function batchScope({ files, codemod, testDiff }) {
       if (/\.(?:[cm]?ts|vibe)$/.test(path) && !/\.d\.(?:vibe\.)?[cm]?ts$/.test(path)) scope.add(path.replace(/\.(?:[cm]?ts|vibe)$/, ".d.vibe.ts"))
     }
   }
+  for (const file of codemod?.packingFiles ?? []) scope.add(file)
   for (const emit of codemod?.emittedJs ?? []) for(const file of emit.packingFiles ?? []) scope.add(file)
   for (const split of codemod?.platform?.splits ?? []) scope.add(split.platform)
   for (const edit of codemod?.exportEdits ?? []) scope.add(edit.manifest)

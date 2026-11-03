@@ -65,3 +65,15 @@ export function syncPackPolicy(root,pkg) {
   }
   return {changed,files:existsSync(path)?files():[]}
 }
+
+// A later emit can first create policy files, or remove them during restore.
+// Keep their ownership in the durable batch journal across every emit phase.
+export function withPackingScope(codemod, emitted = []) {
+  if (!codemod) return codemod
+  const files = new Set(codemod.packingFiles ?? [])
+  for (const row of [...(codemod.emittedJs ?? []), ...emitted]) {
+    for (const file of row.packingFiles ?? []) files.add(file)
+  }
+  if (!files.size && !Object.hasOwn(codemod, "packingFiles")) return codemod
+  return { ...codemod, packingFiles: [...files].sort() }
+}
