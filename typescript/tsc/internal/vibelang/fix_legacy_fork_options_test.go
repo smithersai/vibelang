@@ -8,6 +8,7 @@ import (
 
 	"github.com/microsoft/TypeScript/tsc/internal/bundled"
 	"github.com/microsoft/TypeScript/tsc/internal/core"
+	"github.com/microsoft/TypeScript/tsc/internal/diagnostics"
 	"github.com/microsoft/TypeScript/tsc/internal/tsoptions"
 	"github.com/microsoft/TypeScript/tsc/internal/tspath"
 	"github.com/microsoft/TypeScript/tsc/internal/vfs/osvfs"
@@ -82,5 +83,65 @@ func TestFixVIPLocalForkStays(t *testing.T) {
 	result, got := fixVIPForkSource(t, source)
 	if got != source || strings.Contains(got, "forkChild") || len(result.Refused) != 0 {
 		t.Fatalf("--fix-vip-only wrote\n%s\nrefused %+v", got, result.Refused)
+	}
+}
+
+// The parser has already reserved fork here: the old call is represented as
+// one parenthesized comma operand rather than two call arguments.
+func TestFixExplicitEffectForkOptions(t *testing.T) {
+	for _, tc := range []struct{ name, source, options string }{
+		{"witness", "export effect function start(){return fork(Effect.succeed(1),{startImmediately:true,uninterruptible:\"inherit\"})}", "{startImmediately:true,uninterruptible:\"inherit\"}"},
+		{"initializer", "export effect function start(){const f=fork(Effect.succeed(1),{startImmediately:false});return join f}", "{startImmediately:false}"},
+		{"block", "export const start=effect {fork(Effect.succeed(1),{});return 1}", "{}"},
+		{"arrow", "export const start=effect () => fork(Effect.succeed(1),{uninterruptible:false})", "{uninterruptible:false}"},
+		{"comments", "export effect function start(){return fork /*callee*/ (Effect.succeed(1) /*program*/,/*options*/ {startImmediately:true}/*end*/)}", "/*program*/,/*options*/ {startImmediately:true}/*end*/"},
+		{"named", "const options={startImmediately:true};export effect function start(){return fork(Effect.succeed(1),options)}", ",options)"},
+		{"import", "import {Effect} from \"effect\";export effect function start(){return fork(Effect.succeed(1),{startImmediately:true})}", "{startImmediately:true}"},
+	} {
+		for _, mode := range []struct {
+			name    string
+			options FixOptions
+		}{
+			{"ordinary", FixOptions{}}, {"VIP", FixOptions{VIPOnly: true}}, {"migration", FixOptions{MigrationOnly: true}},
+		} {
+			t.Run(tc.name+"/"+mode.name, func(t *testing.T) {
+				program, file, _, _ := editorProgram(t, tc.source)
+				fs := bundled.WrapFS(osvfs.FS())
+				result := FixProjectWithOptions(t.Context(), fs, bundled.LibPath(), program.CommandLine(), mode.options)
+				fixed := result.Files[file.FileName()]
+				if result.Err != nil || len(result.Refused) != 0 || fixed == nil || !strings.Contains(fixed.Text, "try Effect.forkChild") || !strings.Contains(fixed.Text, tc.options) {
+					t.Fatalf("legacy options not preserved: %+v; fixed %+v", result, fixed)
+				}
+				checked, next, _, _ := editorProgram(t, fixed.Text)
+				for _, d := range append(checked.GetSyntacticDiagnostics(t.Context(), next), checked.GetSemanticDiagnostics(t.Context(), next)...) {
+					if d.Category() == diagnostics.CategoryError {
+						t.Errorf("invalid repair: %s\n%s", d.String(), fixed.Text)
+					}
+				}
+				if err := os.WriteFile(file.FileName().AsString(), []byte(fixed.Text), 0600); err != nil {
+					t.Fatal(err)
+				}
+				again := FixProjectWithOptions(t.Context(), fs, bundled.LibPath(), program.CommandLine(), mode.options)
+				if again.Err != nil || len(again.Files) != 0 || len(again.Refused) != 0 {
+					t.Fatalf("not idempotent: %+v", again)
+				}
+			})
+		}
+	}
+}
+
+func TestExplicitEffectForkOptionsDoesNotGuess(t *testing.T) {
+	for _, source := range []string{
+		"export effect function start(){return fork(Effect.succeed(1))}",
+		"export effect function start(){return fork((Effect.succeed(1),{}))}",
+		"export effect function start(){return fork(Effect.succeed(1),{}, {})}",
+		"export effect function start(){return fork(1,{})}",
+		"const work=Effect.succeed(1);export effect function start(Effect:{forkChild(a:unknown,b:unknown):unknown}){return fork(work,{})}",
+	} {
+		program, file, _, _ := editorProgram(t, source)
+		result := FixProjectWithOptions(t.Context(), bundled.WrapFS(osvfs.FS()), bundled.LibPath(), program.CommandLine(), FixOptions{})
+		if fixed := result.Files[file.FileName()]; fixed != nil && strings.Contains(fixed.Text, "forkChild(") && fixed.Text != source {
+			t.Fatalf("guessed a legacy call: %s", fixed.Text)
+		}
 	}
 }

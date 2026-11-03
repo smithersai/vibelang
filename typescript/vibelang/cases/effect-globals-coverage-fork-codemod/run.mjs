@@ -15,4 +15,7 @@ assert.match(text,/try Effect\.forkChild\s*\(/,"VIP-6 codemod must preserve the 
 assert.match(text,/startImmediately\s*:\s*true/)
 assert.match(text,/uninterruptible\s*:\s*"inherit"/)
 assert.equal(fixed.status,0,fixed.stdout+fixed.stderr)
+const again=spawnSync(compiler,["-p",fileURLToPath(new URL("tsconfig.json",work)),"--fix","--noEmit"],{encoding:"utf8",timeout:30000})
+assert.equal(again.status,0,again.stdout+again.stderr)
+assert.equal(readFileSync(new URL("main.vibe",work),"utf8"),text,"a second --fix must be unchanged")
 console.log("legacy fork options preserved")

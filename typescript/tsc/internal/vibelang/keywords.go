@@ -446,6 +446,36 @@ func keywordOperandRewrite(c *checker.Checker, file *ast.SourceFile, call, opera
 	write := func(start, end int, text, description string) *formRewrite {
 		return &formRewrite{edits: []sourceEdit{{start, end, text}}, description: shortDescription(text, description)}
 	}
+	// In effect code the parser reads legacy fork(program, options) as
+	// the reserved operator over a parenthesized comma expression. Recover
+	// exactly two arguments, with an Effect first, before repairing ordinary
+	// keyword operands. Keep their source text (including comments) intact.
+	// Chapter 7 requires try Effect.forkChild(program, options) for this form.
+	if fork && ast.IsParenthesizedExpression(operand) && operand.Expression() == inner &&
+		ast.IsBinaryExpression(inner) && inner.AsBinaryExpression().OperatorToken.Kind == ast.KindCommaToken {
+		first := inner.AsBinaryExpression().Left
+		if ast.IsBinaryExpression(first) && first.AsBinaryExpression().OperatorToken.Kind == ast.KindCommaToken {
+			return nil // three or more arguments are not the legacy two-argument API
+		}
+		if !isEffectType(c, c.GetTypeAtLocation(first)) {
+			return nil
+		}
+		// A local Effect must never receive the migrated call. Resolve the
+		// actual module, accepting both the prelude and explicit imports.
+		module := c.ResolveName("Effect", call, ast.SymbolFlagsValue, false)
+		if module != nil && module.Flags()&ast.SymbolFlagsAlias != 0 {
+			module = c.GetAliasedSymbol(module)
+		}
+		if module == nil || module.ValueDeclaration() == nil ||
+			!isEffectModuleFile(ast.GetSourceFileOfNode(module.ValueDeclaration()), "Effect") {
+			return nil
+		}
+		text := "try Effect.forkChild" + file.Text()[call.Expression().End():call.End()]
+		if !unaryFits(call) {
+			text = "(" + text + ")"
+		}
+		return write(nodeStart(file, call), call.End(), text, "try Effect.forkChild(program, options)")
+	}
 	if ast.IsFunctionExpressionOrArrowFunction(inner) && !isForkBlock(inner) {
 		if !ast.IsArrowFunction(inner) || len(inner.Parameters()) != 0 || inner.TypeParameters() != nil || inner.Type() != nil {
 			return refuse("Only an arrow with no parameters and no annotation has a body to write in its place; write the operand's body yourself.")

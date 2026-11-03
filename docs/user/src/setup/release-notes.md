@@ -722,6 +722,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - The VS Code extension README omitted JSX files; it now documents the distinct `vibex` language mode for `.vibex` files and its language server activation.
 
+- Legacy `fork(program, options)` calls inside explicit `effect` code were left unchanged by `--fix`; they now become `try Effect.forkChild(program, options)` with their options preserved.
+
 - Identical recursive generic declaration APIs could fail with `TS2589`; exact resolved type identity now proves those comparisons.
 - API checks treated identical JSDoc links as different when a private target resolved in only one snapshot. Link targets and labels now compare consistently while real comment changes remain differences.
 
