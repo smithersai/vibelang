@@ -4,7 +4,7 @@ import path from "node:path"
 import {createRequire} from "node:module"
 import {fileURLToPath,pathToFileURL} from "node:url"
 const here=path.dirname(fileURLToPath(import.meta.url))
-const effectRoot=process.env.VIP7_PINNED_NODE_MODULES?path.join(process.env.VIP7_PINNED_NODE_MODULES,"effect"):path.resolve(here,"../../../.cache/match-vip7-reference/node_modules/effect")
+const effectRoot=process.env.VIP7_PINNED_NODE_MODULES?path.join(process.env.VIP7_PINNED_NODE_MODULES,"effect"):process.env.VIP7_REFERENCE_CACHE?path.join(process.env.VIP7_REFERENCE_CACHE,"node_modules/effect"):path.resolve(here,"../../../.cache/match-vip7-reference/node_modules/effect")
 assert.equal(JSON.parse(fs.readFileSync(effectRoot+"/package.json")).version,"4.1.0")
 const ts=createRequire(path.join(effectRoot,"package.json"))("typescript")
 assert.equal(ts.version,"5.9.3")

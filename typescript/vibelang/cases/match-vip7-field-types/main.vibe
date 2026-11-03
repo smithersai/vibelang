@@ -1,0 +1,8 @@
+import {Effect} from "effect"
+type Equal<A,B>=(<T>()=>T extends A?1:2) extends (<T>()=>T extends B?1:2)?true:false
+type Input={_tag:"Sent";tracking:string;id:number}|{_tag:"Other";id:number}
+export function fields(s:Input):string{return match(s){when {_tag:"Sent",let tracking,id}:do{const exact:Equal<typeof tracking,string>=true;tracking};default:"other";}}
+export function guard(s:{n:string|number}):string{return match(s){when {let n} and if(typeof n==="string"):do{const exact:Equal<typeof n,string>=true;n.toUpperCase()};default:"other";}}
+export function main():Effect.Effect<readonly unknown[]>{return Effect.sync(()=>[fields({_tag:"Sent",tracking:"x",id:1}),fields({_tag:"Other",id:1}),fields({_tag:"Sent",tracking:"x"} as unknown as Input),guard({n:"x"}),guard({n:1})])}
+// VIP-7 field bindings and guard narrowing; rule: docs/design/vips/0007-match.md#1bbfdfdf04443189
+// VIP-7 field bindings and guard narrowing; rule: docs/design/vips/0007-match.md#e86be2620ad45c2e

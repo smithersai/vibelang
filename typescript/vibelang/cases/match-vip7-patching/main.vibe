@@ -1,11 +1,51 @@
+import * as Fixed0 from "effect/Cause"
+import * as Fixed1 from "effect/Cause"
+import * as Fixed2 from "effect/Cause"
+import * as Fixed3 from "effect/Cause"
+import * as Fixed4 from "effect/Cause"
+import * as Fixed5 from "effect/Cause"
+import * as Fixed6 from "effect/Schema"
+import * as Fixed7 from "effect/Cron"
+import * as Fixed8 from "effect/PlatformError"
+import * as Fixed9 from "effect/SemVer"
+import * as Fixed10 from "effect/Terminal"
+import * as Fixed11 from "effect/TextDiff"
+import * as Fixed12 from "effect/ai/AiError"
+import * as Fixed13 from "effect/ai/McpClientError"
+import * as Fixed14 from "effect/crypto/CryptoError"
+import * as Fixed15 from "effect/encoding/Csv"
+import * as Fixed16 from "effect/encoding/EncodingError"
+import * as Fixed17 from "effect/encoding/JsonArray"
+import * as Fixed18 from "effect/encoding/Ndjson"
+import * as Fixed19 from "effect/encoding/Tar"
+import * as Fixed20 from "effect/encoding/Xml"
+import * as Fixed21 from "effect/encoding/Zip"
+import * as Fixed22 from "effect/graphql/GraphQLClientError"
+import * as Fixed23 from "effect/http/Cookies"
+import * as Fixed24 from "effect/http/Headers"
+import * as Fixed25 from "effect/http/HttpBody"
+import * as Fixed26 from "effect/http/HttpClientError"
+import * as Fixed27 from "effect/http/HttpServerError"
+import * as Fixed28 from "effect/http/Multipart"
+import * as Fixed29 from "effect/socket/DatagramSocket"
+import * as Fixed30 from "effect/socket/Socket"
+import * as Fixed31 from "effect/sql/SqlError"
+import * as Fixed32 from "effect/workers/WorkerError"
 import * as Predicate from "effect/Predicate"
 import * as HttpClient from "effect/http/HttpClient"
 import { Effect, Data, Schema, Cause, Config, PlatformError, Option, Exit, Result } from "effect"
 import * as AiError from "effect/ai/AiError"
 import * as SqlError from "effect/sql/SqlError"
 import * as CliError from "effect/cli/CliError"
+function fixedInvocations():readonly boolean[]{
+ const errors=[match(null as unknown){when Fixed0.NoSuchElementError:true;default:false;},match(null as unknown){when Fixed1.TimeoutError:true;default:false;},match(null as unknown){when Fixed2.IllegalArgumentError:true;default:false;},match(null as unknown){when Fixed3.ExceededCapacityError:true;default:false;},match(null as unknown){when Fixed4.AsyncFiberError:true;default:false;},match(null as unknown){when Fixed5.UnknownError:true;default:false;},match(null as unknown){when Fixed6.SchemaError:true;default:false;},match(null as unknown){when Fixed7.CronParseError:true;default:false;},match(null as unknown){when Fixed8.PlatformError:true;default:false;},match(null as unknown){when Fixed9.SemVerError:true;default:false;},match(null as unknown){when Fixed10.QuitError:true;default:false;},match(null as unknown){when Fixed11.TextDiffError:true;default:false;},match(null as unknown){when Fixed12.AiError:true;default:false;},match(null as unknown){when Fixed13.McpClientError:true;default:false;},match(null as unknown){when Fixed14.CryptoError:true;default:false;},match(null as unknown){when Fixed15.CsvError:true;default:false;},match(null as unknown){when Fixed16.EncodingError:true;default:false;},match(null as unknown){when Fixed17.JsonArrayError:true;default:false;},match(null as unknown){when Fixed18.NdjsonError:true;default:false;},match(null as unknown){when Fixed19.TarError:true;default:false;},match(null as unknown){when Fixed20.XmlError:true;default:false;},match(null as unknown){when Fixed21.ZipError:true;default:false;},match(null as unknown){when Fixed22.GraphQLClientError:true;default:false;},match(null as unknown){when Fixed23.CookiesError:true;default:false;},match(null as unknown){when Fixed24.HeaderParseError:true;default:false;},match(null as unknown){when Fixed25.HttpBodyError:true;default:false;},match(null as unknown){when Fixed26.HttpClientError:true;default:false;},match(null as unknown){when Fixed27.HttpServerError:true;default:false;},match(null as unknown){when Fixed28.MultipartError:true;default:false;},match(null as unknown){when Fixed29.DatagramSocketError:true;default:false;},match(null as unknown){when Fixed30.SocketError:true;default:false;},match(null as unknown){when Fixed31.SqlError:true;default:false;},match(null as unknown){when Fixed32.WorkerError:true;default:false;}]
+ const options=[Option.some(1),Option.none()].map(s=>match(s){when Option.Some(let n):n===1;when Option.None:true;})
+ const exits=[Exit.succeed(1),Exit.fail("x")].map(s=>match(s){when Exit.Success(let n):n===1;when Exit.Failure(let c):c.reasons.length===1;})
+ const results=[Result.succeed(1),Result.fail("x")].map(s=>match(s){when Result.Success(let n):n===1;when Result.Failure(let e):e==="x";})
+ return [...errors,...options,...exits,...results]
+}
 export function patching():readonly boolean[] {
- const roots:object[]=[Function.prototype,Array,Date,Map,Set,Error,RegExp,WeakMap,WeakSet,Promise,Uint8Array,ArrayBuffer,AggregateError,Cause.TimeoutError]
+ const roots:object[]=[Function.prototype,Array,Date,Map,Set,Error,RegExp,WeakMap,WeakSet,Promise,Uint8Array,ArrayBuffer,AggregateError,Cause.TimeoutError,Fixed0.NoSuchElementError,Fixed1.TimeoutError,Fixed2.IllegalArgumentError,Fixed3.ExceededCapacityError,Fixed4.AsyncFiberError,Fixed5.UnknownError,Fixed6.SchemaError,Fixed7.CronParseError,Fixed8.PlatformError,Fixed9.SemVerError,Fixed10.QuitError,Fixed11.TextDiffError,Fixed12.AiError,Fixed13.McpClientError,Fixed14.CryptoError,Fixed15.CsvError,Fixed16.EncodingError,Fixed17.JsonArrayError,Fixed18.NdjsonError,Fixed19.TarError,Fixed20.XmlError,Fixed21.ZipError,Fixed22.GraphQLClientError,Fixed23.CookiesError,Fixed24.HeaderParseError,Fixed25.HttpBodyError,Fixed26.HttpClientError,Fixed27.HttpServerError,Fixed28.MultipartError,Fixed29.DatagramSocketError,Fixed30.SocketError,Fixed31.SqlError,Fixed32.WorkerError]
  return [...roots.map(x=>Object.hasOwn(x,customMatcher)),Object.hasOwn(Option,"Some"),Object.hasOwn(Option,"None"),Object.hasOwn(Exit,"Success"),Object.hasOwn(Exit,"Failure"),Object.hasOwn(Result,"Success"),Object.hasOwn(Result,"Failure")]
 }
 class Plain {}
@@ -13,7 +53,7 @@ function constructed():readonly boolean[]{return [Object.create(Plain.prototype)
 function predicates(s:unknown):readonly boolean[]{return [s is Predicate.isError,s is CliError.isCliError,s is HttpClient.isTransientError]}
 export function localOption(s:unknown):number {const Option={Some:(x:unknown):x is number=>typeof x==="number"};return match(s){when Option.Some:1;default:0;}}
 export function ordinary(s:unknown):readonly boolean[] {return [s is Config.ConfigError,s is PlatformError.BadArgument,s is PlatformError.SystemError,s is AiError.RateLimitError,s is SqlError.ConnectionError,s is CliError.UnrecognizedOption,s is CliError.DuplicateOption,s is CliError.MissingOption,s is CliError.MissingArgument,s is CliError.UnexpectedArgument,s is CliError.InvalidValue,s is CliError.UnknownSubcommand,s is CliError.ValidationError,s is CliError.UserError,s is CliError.ShowHelp]}
-export function main():Effect.Effect<readonly unknown[]> {return Effect.sync(()=>[patching(),constructed(),[new Error("x"),null,{}, {_tag:"TimeoutError","~effect/Cause/TimeoutError":"~effect/Cause/TimeoutError"}].map(predicates),localOption(2),localOption("x"),[Config.ConfigError,PlatformError.BadArgument,PlatformError.SystemError,AiError.RateLimitError,SqlError.ConnectionError,CliError.UnrecognizedOption,CliError.DuplicateOption,CliError.MissingOption,CliError.MissingArgument,CliError.UnexpectedArgument,CliError.InvalidValue,CliError.UnknownSubcommand,CliError.ValidationError,CliError.UserError,CliError.ShowHelp].flatMap(C=>[Object.create(C.prototype),{_tag:C.name},null]).map(ordinary)])}
+export function main():Effect.Effect<readonly unknown[]> {return Effect.sync(()=>[fixedInvocations(),patching(),constructed(),[new Error("x"),null,{}, {_tag:"TimeoutError","~effect/Cause/TimeoutError":"~effect/Cause/TimeoutError"}].map(predicates),localOption(2),localOption("x"),[Config.ConfigError,PlatformError.BadArgument,PlatformError.SystemError,AiError.RateLimitError,SqlError.ConnectionError,CliError.UnrecognizedOption,CliError.DuplicateOption,CliError.MissingOption,CliError.MissingArgument,CliError.UnexpectedArgument,CliError.InvalidValue,CliError.UnknownSubcommand,CliError.ValidationError,CliError.UserError,CliError.ShowHelp].flatMap(C=>[Object.create(C.prototype),{_tag:C.name},null]).map(ordinary)])}
 // VIP-7 no global patching and ordinary excluded constructors; rule: docs/design/vips/0007-match.md#b7b215a8d1d591b9
 // VIP-7 no global patching and ordinary excluded constructors; rule: docs/design/vips/0007-match.md#4a63ee88d804ba73
 // VIP-7 no global patching and ordinary excluded constructors; rule: docs/design/vips/0007-match.md#e0b42d7043f172fd

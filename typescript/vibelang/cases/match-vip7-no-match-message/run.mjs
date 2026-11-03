@@ -1,3 +1,4 @@
+import { ensurePinnedReference } from "../../test/vip7-reference.mjs"
 // run-seconds: 300
 import assert from "node:assert/strict"
 import { copyFileSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs"
@@ -8,23 +9,13 @@ import { spawnSync } from "node:child_process"
 import { Effect } from "effect"
 
 const here = dirname(fileURLToPath(import.meta.url))
-const cache = resolve(here, "../../../.cache/match-vip7-reference")
-const versions = { typescript: "5.9.3", effect: "4.1.0" }
-const installed = name => {
-  try { return JSON.parse(readFileSync(resolve(cache, "node_modules", name, "package.json"))).version === versions[name] }
-  catch { return false }
-}
+const cache = process.env.VIP7_REFERENCE_CACHE || resolve(here, "../../../.cache/match-vip7-reference")
 const run = (command, args) => {
   const child = spawnSync(command, args, { cwd: here, encoding: "utf8", timeout: 240000 })
   assert.ifError(child.error)
   assert.equal(child.status, 0, `${command}: ${child.stdout}\n${child.stderr}`)
 }
-if (!Object.keys(versions).every(installed)) {
-  mkdirSync(cache, { recursive: true })
-  writeFileSync(resolve(cache, "package.json"), JSON.stringify({ private: true, type: "module" }))
-  run("npm", ["install", "--prefix", cache, "--ignore-scripts", "--no-audit", "--no-fund", "typescript@5.9.3", "effect@4.1.0"])
-}
-for (const name of Object.keys(versions)) assert.ok(installed(name), `missing pinned ${name}`)
+await ensurePinnedReference(cache)
 mkdirSync(resolve(here, "typescript/node_modules"), { recursive: true })
 rmSync(resolve(here, "typescript/node_modules/effect"), { recursive: true, force: true })
 symlinkSync(resolve(cache, "node_modules/effect"), resolve(here, "typescript/node_modules/effect"), "dir")

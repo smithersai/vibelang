@@ -1,0 +1,1 @@
+ok pinned TypeScript 5.9.3 / Effect 4.1.0 retained error binding and inferred label types types and Exit
