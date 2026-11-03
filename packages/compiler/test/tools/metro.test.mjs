@@ -28,11 +28,11 @@ export function greet(name: Name): string {
 `
 const markerLine = 7
 
-async function bundle(t, wrap) {
-  const root = project(t, {
-    "src/greet.vibe": greet,
-    "index.js": 'import { greet } from "./src/greet.vibe"\nglobalThis.result = greet("metro")\n'
-  }, ["metro", "metro-config", "metro-runtime", "metro-transform-worker", "metro-babel-transformer"])
+async function bundle(t, wrap, files = {
+  "src/greet.vibe": greet,
+  "index.js": 'import { greet } from "./src/greet.vibe"\nglobalThis.result = greet("metro")\n'
+}) {
+  const root = project(t, files, ["metro", "metro-config", "metro-runtime", "metro-transform-worker", "metro-babel-transformer"])
   const config = wrap(mergeConfig(await getDefaultConfig(root), {
     projectRoot: root,
     // Metro and its runtime are installed beside the test, outside the app.
@@ -52,6 +52,25 @@ test("Metro bundles a .vibe module through the app's transformer", async (t) => 
   const context = {}
   runInNewContext(code, Object.assign(context, { globalThis: context }))
   assert.equal(context.result, "metro-marker:metro")
+})
+
+// t3code's @t3tools/contracts has only an `import` condition.
+test("a .vibe module's import takes a package's import condition", async (t) => {
+  const { code } = await bundle(t, withVibeLang, {
+    "node_modules/dep/package.json": JSON.stringify({ name: "dep", exports: { ".": { types: "./index.d.ts", import: "./import.js" } } }),
+    "node_modules/dep/index.d.ts": "export declare const condition: string\n",
+    "node_modules/dep/import.js": 'export const condition = "import"\n',
+    "src/use.vibe": `type Name = string
+
+import { condition } from "dep"
+
+export const name: Name = condition
+`,
+    "index.js": 'import { name } from "./src/use.vibe"\nglobalThis.result = name\n'
+  })
+  const context = {}
+  runInNewContext(code, Object.assign(context, { globalThis: context }))
+  assert.equal(context.result, "import")
 })
 
 test("the bundle's source map names the .vibe module's lines", async (t) => {

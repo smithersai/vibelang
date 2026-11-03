@@ -78,14 +78,29 @@ function upstream() {
 let emit
 const vibelangEmit = () => (emit ??= require("./emit.mjs"))
 
+// Metro's importLocationsPlugin records each import's location while Babel
+// runs, as "line,column:line,column". Its transform worker then compares those
+// keys with the syntax tree's locations to tell an import from a require, and
+// so which of a package's `exports` conditions applies. The tree's locations
+// move to the .vibe source, so the keys have to move with them.
+function moveImportLocations(metadata, toSource) {
+  const locations = metadata?.metro?.unstable_importDeclarationLocs
+  if (!locations) return
+  metadata.metro.unstable_importDeclarationLocs = new Set([...locations].map((key) => key.replace(/(\d+),(\d+)/g, (_, line, column) => {
+    const position = toSource(Number(line), Number(column))
+    return `${position.line},${position.column}`
+  })))
+}
+
 /** Metro's Babel transformer interface: { filename, src, options, plugins } to { ast, metadata }. */
 function transform(args) {
   const file = isAbsolute(args.filename) ? args.filename : resolve(args.options?.projectRoot ?? process.cwd(), args.filename)
-  const { toolSource, remapLocations } = vibelangEmit()
+  const { toolSource, remapLocations, sourcePosition } = vibelangEmit()
   const source = file.endsWith(".vibe") ? toolSource(file, args.src) : undefined
   if (source === undefined) return upstream().transform(args)
   const moved = (result) => {
     if (result?.ast) remapLocations(result.ast, source.map)
+    moveImportLocations(result?.metadata, sourcePosition(source.map))
     return result
   }
   const result = upstream().transform({ ...args, src: source.code })

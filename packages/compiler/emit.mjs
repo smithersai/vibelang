@@ -79,33 +79,45 @@ export function toolArguments(filename, text, options) {
 const isPosition = (value) => typeof value?.line === "number" && typeof value?.column === "number"
 
 /**
- * Moves every location in a Babel or ESTree syntax tree parsed from emitted
- * JavaScript to the .vibe source position `map` gives it, in place: `loc`
- * lines are 1-based and columns 0-based, as Babel writes them. A position
- * between mappings takes the nearest mapping before it; one before the first
- * takes the start of the source. Returns `ast`.
+ * The function that moves a position in JavaScript emitted with `map` to its
+ * .vibe source position: `line` is 1-based and `column` 0-based, as Babel
+ * writes them. A position between mappings takes the nearest mapping before
+ * it; one before the first takes the start of the source.
  */
-export function remapLocations(ast, map) {
+export function sourcePosition(map) {
   const sourceMap = new SourceMap(map)
   const moved = new Map() // "line:column" of the emitted JavaScript to the .vibe position
-  // Babel shares one position object among nodes that end at the same token.
-  const done = new WeakSet()
-  const move = (position) => {
-    if (done.has(position)) return
-    done.add(position)
-    const key = `${position.line}:${position.column}`
+  return (line, column) => {
+    const key = `${line}:${column}`
     let original = moved.get(key)
     if (original === undefined) {
-      const entry = sourceMap.findEntry(position.line - 1, position.column)
+      const entry = sourceMap.findEntry(line - 1, column)
       original = entry.originalLine === undefined
         ? { line: 1, column: 0 }
         : {
             line: entry.originalLine + 1,
             // Within one mapped segment the text is the source's.
-            column: entry.originalColumn + (entry.generatedLine === position.line - 1 ? position.column - entry.generatedColumn : 0)
+            column: entry.originalColumn + (entry.generatedLine === line - 1 ? column - entry.generatedColumn : 0)
           }
       moved.set(key, original)
     }
+    return original
+  }
+}
+
+/**
+ * Moves every location in a Babel or ESTree syntax tree parsed from emitted
+ * JavaScript to the .vibe source position sourcePosition(map) gives it, in
+ * place. Returns `ast`.
+ */
+export function remapLocations(ast, map) {
+  const toSource = sourcePosition(map)
+  // Babel shares one position object among nodes that end at the same token.
+  const done = new WeakSet()
+  const move = (position) => {
+    if (done.has(position)) return
+    done.add(position)
+    const original = toSource(position.line, position.column)
     position.line = original.line
     position.column = original.column
   }
