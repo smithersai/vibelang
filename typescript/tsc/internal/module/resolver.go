@@ -1387,7 +1387,10 @@ func (r *resolutionState) preferVibeSource(resolved *resolved) {
 		return
 	}
 	sidecar := string(resolved.path)
-	if !strings.HasSuffix(sidecar, ".d"+tspath.ExtensionVibe+".ts") {
+	extension := tspath.ExtensionVibe
+	if strings.HasSuffix(sidecar, ".d"+tspath.ExtensionVibex+".ts") {
+		extension = tspath.ExtensionVibex
+	} else if !strings.HasSuffix(sidecar, ".d"+extension+".ts") {
 		return
 	}
 	// createResolvedModuleHandlingSymlink has already applied TypeScript's
@@ -1412,13 +1415,13 @@ func (r *resolutionState) preferVibeSource(resolved *resolved) {
 		}
 	}
 	if source == "" {
-		source = tspath.RootedFilePath(strings.TrimSuffix(sidecar, ".d"+tspath.ExtensionVibe+".ts") + tspath.ExtensionVibe)
+		source = tspath.RootedFilePath(strings.TrimSuffix(sidecar, ".d"+extension+".ts") + extension)
 	}
 	if !r.resolver.fs.FileExists(source) {
 		return
 	}
 	resolved.path = source
-	resolved.extension = tspath.ExtensionVibe
+	resolved.extension = tspath.VibeLangSourceExtension(string(source))
 }
 
 func (r *resolutionState) createResolvedModule(resolved *resolved, isExternalLibraryImport bool) *ResolvedModule {
@@ -1781,11 +1784,11 @@ func (r *resolutionState) tryAddingExtensions(extensionless tspath.FileNameStem,
 			}
 		}
 		return continueSearching()
-	case tspath.ExtensionVibe:
-		// A VibeLang import names its source file, ./welcome.vibe; where only
+	case tspath.ExtensionVibe, tspath.ExtensionVibex:
+		// A VibeLang import names its .vibe or .vibex source; where only
 		// the declaration file exists, as in a published package, it names that.
 		if extensions&extensionsTypeScript != 0 {
-			if resolved := r.tryExtension(tspath.ExtensionVibe, extensionless, true); !resolved.shouldContinueSearching() {
+			if resolved := r.tryExtension(originalExtension, extensionless, true); !resolved.shouldContinueSearching() {
 				return resolved
 			}
 		}
@@ -2399,7 +2402,7 @@ func matchesPatternWithTrailer(target string, name string) bool {
 /** True if `extension` is one of the supported `extensions`. */
 func extensionIsOk(extensions extensions, extension string) bool {
 	return (extensions&extensionsJavaScript != 0 && (extension == tspath.ExtensionJs || extension == tspath.ExtensionJsx || extension == tspath.ExtensionMjs || extension == tspath.ExtensionCjs) ||
-		(extensions&extensionsTypeScript != 0 && (extension == tspath.ExtensionTs || extension == tspath.ExtensionTsx || extension == tspath.ExtensionMts || extension == tspath.ExtensionCts || extension == tspath.ExtensionVibe)) ||
+		(extensions&extensionsTypeScript != 0 && (extension == tspath.ExtensionTs || extension == tspath.ExtensionTsx || extension == tspath.ExtensionMts || extension == tspath.ExtensionCts || extension == tspath.ExtensionVibe || extension == tspath.ExtensionVibex)) ||
 		(extensions&extensionsDeclaration != 0 && (extension == tspath.ExtensionDts || extension == tspath.ExtensionDmts || extension == tspath.ExtensionDcts)) ||
 		(extensions&extensionsJson != 0 && extension == tspath.ExtensionJson))
 }

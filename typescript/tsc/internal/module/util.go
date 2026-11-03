@@ -169,7 +169,7 @@ func GetResolutionDiagnostic(options *core.CompilerOptions, resolvedModule *Reso
 		tspath.ExtensionVibe:
 		// These are always allowed.
 		return nil
-	case tspath.ExtensionTsx:
+	case tspath.ExtensionTsx, tspath.ExtensionVibex:
 		return needJsx()
 	case tspath.ExtensionJsx:
 		if message := needJsx(); message != nil {

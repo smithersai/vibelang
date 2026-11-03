@@ -23,7 +23,8 @@ const VibeConventionalSidecarDir = ".vibe/declarations"
 // conventional directory's mirror, which a project that turned the setting
 // off leaves behind.
 func (options *CompilerOptions) VibeSidecarPaths(source string, caseSensitivity tspath.CaseSensitivity) (sidecar string, stale string) {
-	beside := strings.TrimSuffix(source, tspath.ExtensionVibe) + ".d" + tspath.ExtensionVibe + ".ts"
+	extension := tspath.VibeLangSourceExtension(source)
+	beside := strings.TrimSuffix(source, extension) + ".d" + extension + ".ts"
 	if options == nil || options.ConfigFilePath == "" {
 		return beside, ""
 	}
@@ -43,16 +44,20 @@ func (options *CompilerOptions) VibeSidecarPaths(source string, caseSensitivity 
 	return beside, mirror(tspath.CombinePaths(root, VibeConventionalSidecarDir))
 }
 
-// VibeSidecarSource returns the .vibe source whose sidecar is fileName in
+// VibeSidecarSource returns the .vibe or .vibex source whose sidecar is fileName in
 // this project, or "" when fileName is no sidecar of the project's layout.
 func (options *CompilerOptions) VibeSidecarSource(fileName string, caseSensitivity tspath.CaseSensitivity) string {
-	const suffix = ".d" + tspath.ExtensionVibe + ".ts"
+	extension := tspath.ExtensionVibe
+	if strings.HasSuffix(fileName, ".d"+tspath.ExtensionVibex+".ts") {
+		extension = tspath.ExtensionVibex
+	}
+	suffix := ".d" + extension + ".ts"
 	if !strings.HasSuffix(fileName, suffix) {
 		return ""
 	}
 	if options != nil && options.ConfigFilePath != "" && options.VibeLang != nil && options.VibeLang.SidecarDir != "" && tspath.ContainsPath(options.VibeLang.SidecarDir, fileName, caseSensitivity) {
 		relative := tspath.GetRelativePathFromDirectory(options.VibeLang.SidecarDir, fileName, caseSensitivity)
-		return tspath.CombinePaths(options.ConfigFilePath.Directory().AsString(), strings.TrimSuffix(relative, suffix)+tspath.ExtensionVibe)
+		return tspath.CombinePaths(options.ConfigFilePath.Directory().AsString(), strings.TrimSuffix(relative, suffix)+extension)
 	}
-	return strings.TrimSuffix(fileName, suffix) + tspath.ExtensionVibe
+	return strings.TrimSuffix(fileName, suffix) + extension
 }

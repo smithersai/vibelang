@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -85,8 +86,8 @@ func FuzzSidecarResolvedPathView(f *testing.F) {
 		lib := filepath.Join(w.Dir, filepath.FromSlash(relative))
 		mustWrite(filepath.Join(lib, "src", "Stage."+row.suffix), "export class Stage { private brand = 1; readonly value = 1; }\n")
 		mustWrite(filepath.Join(lib, "src", "Stage.d."+row.suffix+".ts"), "export declare class Stage { private brand; readonly value = 1; }\n")
-		manifest, _ := json.Marshal(map[string]any{"name": pkg, "type": "module", "exports": map[string]any{"./Stage": map[string]string{"types": "./src/Stage.d." + row.suffix + ".ts", "default": "./src/Stage.js"}}})
-		mustWrite(filepath.Join(lib, "package.json"), string(manifest))
+		manifest := sidecarViewManifest(pkg, "./src/Stage.d."+row.suffix+".ts", "./src/Stage.js")
+		mustWrite(filepath.Join(lib, "package.json"), manifest)
 		if !row.published {
 			if err := os.Symlink(filepath.Join("..", filepath.FromSlash(relative)), filepath.Join(w.Dir, "node_modules", pkg)); err != nil {
 				f.Fatal(err)
@@ -176,9 +177,68 @@ func sidecarViewErrorCodes(result *Result) []string {
 	var codes []string
 	for _, key := range Keys(result.Dir, result.Diagnostics) {
 		if key.Category.Name() == "error" {
-			codes = append(codes, fmt.Sprintf("%s%d", cmp(key.Source, "TS"), key.Code))
+			code := key.Code
+			// Native TypeScript chooses either nominal-assignment code based
+			// on whether the two class names print with the same qualifier.
+			if code == 2719 {
+				code = 2322
+			}
+			codes = append(codes, fmt.Sprintf("%s%d", cmp(key.Source, "TS"), code))
 		}
 	}
 	slices.Sort(codes)
 	return slices.Compact(codes)
+}
+
+// Conditional export order is significant. Marshaling nested maps sorts
+// "default" before "types", so a .js default resolves to the available .vibe
+// source before the test ever exercises its compatibility declaration.
+func sidecarViewManifest(pkg, declaration, runtime string) string {
+	return fmt.Sprintf(`{"name":%q,"type":"module","exports":{"./Stage":{"types":%q,"default":%q}}}`, pkg, declaration, runtime)
+}
+
+func TestSidecarExportConditionsMatchStock(t *testing.T) {
+	stock := StockTypeScript(t)
+	for _, typesFirst := range []bool{false, true} {
+		for _, preserve := range []bool{false, true} {
+			t.Run(fmt.Sprintf("types-first=%t/preserve=%t", typesFirst, preserve), func(t *testing.T) {
+				dir := t.TempDir()
+				write := func(name, text string) {
+					t.Helper()
+					path := filepath.Join(dir, filepath.FromSlash(name))
+					if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
+						t.Fatal(err)
+					}
+					if err := os.WriteFile(path, []byte(text), 0600); err != nil {
+						t.Fatal(err)
+					}
+				}
+				write("package.json", `{"type":"module"}`)
+				manifest := sidecarViewManifest("lib", "./src/Stage.d.ts", "./src/Stage.js")
+				if !typesFirst {
+					manifest = `{"name":"lib","type":"module","exports":{"./Stage":{"default":"./src/Stage.js","types":"./src/Stage.d.ts"}}}`
+				}
+				write("node_modules/lib/package.json", manifest)
+				write("node_modules/lib/src/Stage.ts", "export class Stage { private brand=1; readonly value=1 }")
+				write("node_modules/lib/src/Stage.d.ts", "export declare class Stage { private brand; readonly value=1 }")
+				write("main.ts", `import {Stage} from "lib/Stage"; import {Stage as DirectStage} from "./node_modules/lib/src/Stage.ts"; export const value:Stage=new DirectStage();`)
+				options := map[string]any{"strict": true, "noEmit": true, "skipLibCheck": true, "target": "es2022", "module": "nodenext", "moduleResolution": "nodenext", "allowImportingTsExtensions": true, "preserveSymlinks": preserve, "types": []string{}}
+				config, err := json.Marshal(map[string]any{"compilerOptions": options, "files": []string{"main.ts"}})
+				if err != nil {
+					t.Fatal(err)
+				}
+				write("tsconfig.json", string(config))
+				cmd := exec.CommandContext(t.Context(), stock, "-p", filepath.Join(dir, "tsconfig.json"))
+				output, err := cmd.CombinedOutput()
+				if typesFirst {
+					text := string(output)
+					if err == nil || strings.Count(text, "error TS") != 1 || !strings.Contains(text, "TS2322") && !strings.Contains(text, "TS2719") {
+						t.Fatalf("types-first exports must retain distinct native class identities: %v\n%s", err, output)
+					}
+				} else if err != nil {
+					t.Fatalf("default-first exports select the native source before types: %v\n%s", err, output)
+				}
+			})
+		}
+	}
 }
