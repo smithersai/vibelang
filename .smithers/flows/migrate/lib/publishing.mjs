@@ -33,7 +33,11 @@ export function rewritePublishingScript(text, ts, fileName = "pack.ts") {
   const edits = []
   const literals = []
   const maps = []
-  const suffix = (node) => node?.kind === ts.SyntaxKind.RegularExpressionLiteral && ["/\\.tsx?$/", "/\\.ts$/"].includes(node.text)
+  // A previous setup may already have expanded these mappers while wiring
+  // exports only. Recognize that output too, so newly supported import maps
+  // receive normalization without nesting another wrapper around old exports.
+  const suffix = (node) => node?.kind === ts.SyntaxKind.RegularExpressionLiteral &&
+    ["/\\.tsx?$/", "/\\.ts$/", "/\\.(?:tsx?|vibe)$/", "/\\.(?:ts|vibe)$/"].includes(node.text)
   const property = (node, name) => ts.isPropertyAccessExpression(node) && node.name.text === name
   const qualified = (node) => ts.isIdentifier(node) || (ts.isPropertyAccessExpression(node) && qualified(node.expression))
   // A publication mapper keeps the repository's own src/dist and declaration
@@ -165,6 +169,7 @@ export function rewritePublishingScript(text, ts, fileName = "pack.ts") {
     literals.push(...guards)
   }
   for (const literal of new Set(literals)) {
+    if (literal.text.includes("|vibe")) continue // Already expanded by setup.
     const expanded = literal.text === "/\\.ts$/" ? "/\\.(?:ts|vibe)$/" : "/\\.(?:tsx?|vibe)$/"
     edits.push({ start: literal.getStart(source), end: literal.end, text: expanded })
   }
