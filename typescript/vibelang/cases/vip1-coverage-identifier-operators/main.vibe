@@ -1,0 +1,14 @@
+// docs/design/vips/0001-effect-and-async-functions.md#b48a989dce1a0daf
+// VIP-1: complete heads preserve as/satisfies/is identifier operators
+// docs/design/vips/0001-effect-and-async-functions.md#6883b775c545a70e
+// VIP-1: complete heads preserve as/satisfies/is identifier operators
+// docs/design/vips/0001-effect-and-async-functions.md#8b05ff41c13653c5
+// VIP-1: complete heads preserve as/satisfies/is identifier operators
+import { Effect } from "effect"
+const effect = 2
+const typed = effect as number
+const checked = effect satisfies number
+const matched = effect is (2)
+export function main(): Effect.Effect<readonly [number, number, boolean]> {
+  return Effect.succeed([typed, checked, matched] as const)
+}

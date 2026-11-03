@@ -1,4 +1,8 @@
 // expect: TS7010
+// docs/design/vips/0001-effect-and-async-functions.md#9626f358c0d827d5
+// VIP-1: noImplicitAny checks unannotated signatures
+// docs/design/vips/0001-effect-and-async-functions.md#170fab20092e3327
+// VIP-1: noImplicitAny checks unannotated signatures
 // docs/design/vips/0001-effect-and-async-functions.md#22d90d2c88438b6e
 // VIP-1: unannotated overload exposes any with noImplicitAny error
 effect function f(x: string);

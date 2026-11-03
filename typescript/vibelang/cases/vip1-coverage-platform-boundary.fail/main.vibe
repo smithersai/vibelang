@@ -1,0 +1,4 @@
+// expect: EK4402
+// docs/design/vips/0001-effect-and-async-functions.md#0e00a9f93be73e70
+// VIP-1: host fetch stays forbidden even inside async Vibe code
+export async function load() { return await fetch("https://example.invalid") }

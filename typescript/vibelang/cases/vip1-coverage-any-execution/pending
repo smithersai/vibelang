@@ -1,0 +1,1 @@
+cov-effect out/main.d.ts declares another API than typescript/out/main.d.ts (12.4 s)

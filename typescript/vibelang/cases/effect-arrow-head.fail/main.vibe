@@ -1,4 +1,8 @@
 // expect: EK0109 EK0109
+// docs/design/vips/0001-effect-and-async-functions.md#d337564aafc0fd3f
+// VIP-1: decorated bare arrow heads require parentheses
+// docs/design/vips/0001-effect-and-async-functions.md#41a4e4888a51c5a4
+// VIP-1: decorated bare arrow heads require parentheses
 // Chapter 001, decided detail 247 (loop round 3, OPUS-7): a typed or generic
 // bare parameter of an effect arrow needs parentheses.
 export const f = effect x: number!! => x

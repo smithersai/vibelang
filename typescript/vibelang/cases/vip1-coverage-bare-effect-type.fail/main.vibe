@@ -1,0 +1,5 @@
+// expect: TS2709
+// docs/design/vips/0001-effect-and-async-functions.md#6b0316b4e947261e
+// VIP-1: implicit Effect namespace cannot be a bare generic type
+effect function f(): Effect<number> { return 1 }
+export {}

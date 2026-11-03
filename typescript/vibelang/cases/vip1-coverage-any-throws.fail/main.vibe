@@ -1,0 +1,8 @@
+// expect: EK0401
+// docs/design/vips/0001-effect-and-async-functions.md#de51d3f042050787
+// VIP-1: retiring EK4409 preserves unknown-throw errors without an obsolete warning
+// docs/design/vips/0001-effect-and-async-functions.md#9dbb6429883979a2
+// VIP-1: retiring EK4409 preserves unknown-throw errors without an obsolete warning
+// docs/design/vips/0001-effect-and-async-functions.md#4095e78aa9737471
+// VIP-1: retiring EK4409 preserves unknown-throw errors without an obsolete warning
+export effect function call(callee: any) { return callee() }

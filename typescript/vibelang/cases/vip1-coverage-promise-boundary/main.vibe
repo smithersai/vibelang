@@ -1,0 +1,4 @@
+// docs/design/vips/0001-effect-and-async-functions.md#0e00a9f93be73e70
+// VIP-1: Promise operations cross a native TypeScript import boundary
+import { queryDb } from "./boundary.ts"
+export effect function main() { return try Effect.tryPromise(queryDb) }

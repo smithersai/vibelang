@@ -1,0 +1,5 @@
+// expect: TS1005
+// docs/design/vips/0001-effect-and-async-functions.md#093a7a18650c8e24
+// VIP-1: function expressions require a body
+const f = effect function (x: string): string!!;
+export {}

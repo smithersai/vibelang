@@ -1,4 +1,6 @@
 // expect: EK0108
+// docs/design/vips/0001-effect-and-async-functions.md#d13d42ea0e96eecb
+// VIP-1: forbidden modifier positions remain rejected
 // docs/design/vips/0001-effect-and-async-functions.md#bdb0c01a5893ea5e
 // VIP-1: effect modifiers in forbidden native async positions
 // docs/design/vips/0001-effect-and-async-functions.md#af49d78b0ac68bf9

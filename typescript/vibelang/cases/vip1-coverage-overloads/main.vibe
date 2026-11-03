@@ -1,0 +1,18 @@
+// docs/design/vips/0001-effect-and-async-functions.md#be9301c81243ad8c
+// VIP-1: function and class overloads preserve exposed Effect contracts
+// docs/design/vips/0001-effect-and-async-functions.md#7f9d645e5bb24c97
+// VIP-1: function and class overloads preserve exposed Effect contracts
+// docs/design/vips/0001-effect-and-async-functions.md#8ff8cdce2d1a0874
+// VIP-1: function and class overloads preserve exposed Effect contracts
+import { Effect } from "effect"
+effect function pick(x: string): string!!;
+effect function pick(x: number): number!!;
+effect function pick(x: string | number) { return x }
+class C {
+  effect m(x: string): string!!;
+  effect m(x: number): number!!;
+  effect m(x: string | number) { return x }
+}
+export const stringResult = pick("ok")
+export const numberResult = new C().m(7)
+export effect function main(): readonly [string, number]!! { return [try stringResult, try numberResult] as const }

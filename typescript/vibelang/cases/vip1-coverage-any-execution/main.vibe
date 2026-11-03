@@ -1,0 +1,20 @@
+// docs/design/vips/0001-effect-and-async-functions.md#8bbfb6943245ec28
+// VIP-1: any-valued success remains data until explicit execution
+// docs/design/vips/0001-effect-and-async-functions.md#93e9850771f71b9e
+// VIP-1: any-valued success remains data until explicit execution
+// docs/design/vips/0001-effect-and-async-functions.md#8684a0b219cfc69f
+// VIP-1: any-valued success remains data until explicit execution
+import { Effect } from "effect"
+effect function keep(callee: any) { return try Effect.try(() => callee()) }
+effect function execute(callee: any) {
+  const returned = try Effect.try(() => callee())
+  return try returned
+}
+export effect function main() {
+ let runs = 0
+ const program = Effect.sync(() => ++runs)
+ const saved = try keep(() => program)
+ const before = runs
+ const value = try execute(() => program)
+ return [saved === program, before, value] as const
+}

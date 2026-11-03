@@ -1,0 +1,8 @@
+// docs/design/vips/0001-effect-and-async-functions.md#67fd46f55b5b4a62
+// VIP-1: omitted overload result is exposed as any, not inferred
+import { Effect } from "effect"
+effect function untyped(x: string);
+effect function untyped(x: string) { return x }
+type IsAny<T> = 0 extends (1 & T) ? true : false
+const anyResult: IsAny<ReturnType<typeof untyped>> = true
+export function main(): Effect.Effect<boolean> { return Effect.succeed(anyResult) }

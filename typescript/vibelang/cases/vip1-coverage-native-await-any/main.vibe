@@ -1,0 +1,11 @@
+// docs/design/vips/0001-effect-and-async-functions.md#54ea8430c653d22d
+// VIP-1: native await of any does not execute a nonthenable Effect
+// docs/design/vips/0001-effect-and-async-functions.md#4740dc302f7c311e
+// VIP-1: native await of any does not execute a nonthenable Effect
+import { Effect } from "effect"
+async function wait(value: any) { return await value }
+export function main(): readonly [boolean, number]!unknown {
+  let runs = 0
+  const program = Effect.sync(() => ++runs)
+  return Effect.map(Effect.tryPromise(() => wait(program)), held => [held === program, runs] as const)
+}

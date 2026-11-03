@@ -1,4 +1,8 @@
 // expect: TS1222
+// docs/design/vips/0001-effect-and-async-functions.md#1009da3c70b58392
+// VIP-1: native starred-signature rejection
+// docs/design/vips/0001-effect-and-async-functions.md#f47727376d4a33ad
+// VIP-1: native starred-signature rejection
 // docs/design/vips/0001-effect-and-async-functions.md#f4c970c935459f28
 // VIP-1: starred bodyless signatures retain native TS1222
 effect function* values(): Stream.Stream<number>;
