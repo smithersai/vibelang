@@ -8,3 +8,5 @@ import { Path } from "effect/Path"
 export effect function main() {
   try Console.log(try FileSystem.readFileString(try Path.join("data", "config.json")))
 }
+
+// VIP-33 entry runtime requires explicitly supplied platform layers; rule: docs/design/vips/0033-platform-stdlib.md#4bef5bc70016ec56

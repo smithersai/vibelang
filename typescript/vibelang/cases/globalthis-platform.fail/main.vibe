@@ -7,3 +7,9 @@ export const viaBracket = (): string | undefined => globalThis["process"].env.TM
 // Holding the process object as a value is platform code too (D310).
 export const held = globalThis.process
 export const local = (globalThis: { process: { env: { TMPDIR: string } } }): string => globalThis.process.env.TMPDIR
+
+// VIP-33 banned globalThis host members report EK4402; rule: docs/design/vips/0033-platform-stdlib.md#8ca4f358fe8b137a
+
+// VIP-33 banned globalThis host members report EK4402; rule: docs/design/vips/0033-platform-stdlib.md#36cf185323048558
+
+// VIP-33 banned globalThis host members report EK4402; rule: docs/design/vips/0033-platform-stdlib.md#3640d497a1cc9fdc

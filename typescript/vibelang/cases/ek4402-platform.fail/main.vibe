@@ -63,3 +63,9 @@ export function host(url: string) {
 export function size(text: string) {
   return new TextEncoder().encode(text).length
 }
+
+// VIP-33 Node value imports and globals require platform services; rule: docs/design/vips/0033-platform-stdlib.md#d8b50b5c5cbd0520
+
+// VIP-33 Node value imports and globals require platform services; rule: docs/design/vips/0033-platform-stdlib.md#d7bbc6dd9e96b925
+
+// VIP-33 Node value imports and globals require platform services; rule: docs/design/vips/0033-platform-stdlib.md#d31f865e9017160e

@@ -5,3 +5,9 @@ export const bufferValue = Buffer
 export const qualified = globalThis.fetch
 export const indexed = globalThis["fetch"]
 export const array = Array
+
+// VIP-33 absent host declarations retain native unresolved-name errors; rule: docs/design/vips/0033-platform-stdlib.md#ec995aeabe0395ff
+
+// VIP-33 absent host declarations retain native unresolved-name errors; rule: docs/design/vips/0033-platform-stdlib.md#46090c108c8e0c67
+
+// VIP-33 absent host declarations retain native unresolved-name errors; rule: docs/design/vips/0033-platform-stdlib.md#31e6fa91288d10ee

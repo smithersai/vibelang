@@ -13,3 +13,9 @@ export effect function main() {
   local({ globalThis: { fetch: "local" } }) === "local",
  ]
 }
+
+// VIP-33 statically named pure globalThis members and erased types; rule: docs/design/vips/0033-platform-stdlib.md#b09366a15c6b062e
+
+// VIP-33 statically named pure globalThis members and erased types; rule: docs/design/vips/0033-platform-stdlib.md#f986a96a0804cf21
+
+// VIP-33 statically named pure globalThis members and erased types; rule: docs/design/vips/0033-platform-stdlib.md#99cf71c779efc3ab

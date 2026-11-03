@@ -9,3 +9,5 @@ export class Ordinary {
   readonly name: string
   constructor() { this.name = new.target.name }
 }
+
+// VIP-33 import.meta.url remains a permitted module URL; rule: docs/design/vips/0033-platform-stdlib.md#10ea3ca56b0b802f

@@ -75,3 +75,13 @@ test("verify refuses missing proofs and inventory growth after a selector rewrit
   assert.equal(selectors.checkSelectorEdits({...receipt,selectorChecks:[]},catalog).every(c=>c.pass),false)
   for(const extra of ["page/new.ts","page/new.vibe"]) assert.equal(selectors.checkSelectorEdits(receipt,catalog.concat(extra)).every(c=>c.pass),false)
 })
+
+// VIP-33 selector rewrites preserve exact identities over the approved companion inventory; rule: docs/design/vips/0033-platform-stdlib.md#d32d71473414a82e
+
+// VIP-33 selector rewrites preserve exact identities over the approved companion inventory; rule: docs/design/vips/0033-platform-stdlib.md#8b2d712bc64db4a4
+
+// VIP-33 selector rewrites preserve exact identities over the approved companion inventory; rule: docs/design/vips/0033-platform-stdlib.md#223bf720dc903fbb
+
+// VIP-33 selector rewrites preserve exact identities over the approved companion inventory; rule: docs/design/vips/0033-platform-stdlib.md#f947873de36e623c
+
+// VIP-33 selector rewrites preserve exact identities over the approved companion inventory; rule: docs/design/vips/0033-platform-stdlib.md#0fb001e3bf0e877c

@@ -24,3 +24,5 @@ module host {
 }
 import { cwd } from host
 export const both = (): infer _ => [cwd(), hostOf()]
+
+// VIP-33 platform references are forbidden inside wrapper arrows; rule: docs/design/vips/0033-platform-stdlib.md#5e23090b375f0326

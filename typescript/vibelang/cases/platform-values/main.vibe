@@ -14,3 +14,7 @@ import { kind } from "./kind.ts"
 export effect function main() {
   return [kind(server), kind(lineEnd)]
 }
+
+// VIP-33 ECMAScript and pure web data utilities stay allowed; rule: docs/design/vips/0033-platform-stdlib.md#a7e96cdeb3083816
+
+// VIP-33 ECMAScript and pure web data utilities stay allowed; rule: docs/design/vips/0033-platform-stdlib.md#236a1bfaba3247d0

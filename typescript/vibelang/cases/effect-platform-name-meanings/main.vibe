@@ -28,3 +28,5 @@ export const result = [
   Event === EffectEvent, Worker === EffectWorker,
   Headers.isHeaders({}), Response.isPart({}), Event.isEvent({}), local()
 ]
+
+// VIP-33 Effect Worker namespace shadows the host constructor; rule: docs/design/vips/0033-platform-stdlib.md#2284fe2d24cd55d5

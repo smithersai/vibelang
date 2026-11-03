@@ -5,3 +5,21 @@ const typed: typeof AbortSignal.timeout = (_n: number): AbortSignal => AbortSign
 const simulated = { timeout: (_n: number): AbortSignal => AbortSignal.abort() } satisfies Pick<typeof AbortSignal, "timeout">
 type Timeout = typeof AbortSignal.timeout
 export const result = [pure, host, shadow({ timeout: (n: number): number => n+1 }), typed(0).aborted, simulated.timeout(0).aborted]
+
+// VIP-33 host-reaching AbortSignal and URL members including aliases and destructuring; rule: docs/design/vips/0033-platform-stdlib.md#498199d293294150
+
+// VIP-33 host-reaching AbortSignal and URL members including aliases and destructuring; rule: docs/design/vips/0033-platform-stdlib.md#7937b5d0b252a7de
+
+// VIP-33 host-reaching AbortSignal and URL members including aliases and destructuring; rule: docs/design/vips/0033-platform-stdlib.md#aec2b4f4bee6e06a
+
+// VIP-33 host-reaching AbortSignal and URL members including aliases and destructuring; rule: docs/design/vips/0033-platform-stdlib.md#75467f21a72f7161
+
+// VIP-33 host-reaching AbortSignal and URL members including aliases and destructuring; rule: docs/design/vips/0033-platform-stdlib.md#f4982bd84ff968d0
+
+// VIP-33 host-reaching AbortSignal and URL members including aliases and destructuring; rule: docs/design/vips/0033-platform-stdlib.md#b03084f0922df032
+
+// VIP-33 host-reaching AbortSignal and URL members including aliases and destructuring; rule: docs/design/vips/0033-platform-stdlib.md#9b99a88a5c2b94ed
+
+// VIP-33 host-reaching AbortSignal and URL members including aliases and destructuring; rule: docs/design/vips/0033-platform-stdlib.md#e020495c55b8fbfe
+
+// VIP-33 host-reaching AbortSignal and URL members including aliases and destructuring; rule: docs/design/vips/0033-platform-stdlib.md#c50746de9d0f2be0

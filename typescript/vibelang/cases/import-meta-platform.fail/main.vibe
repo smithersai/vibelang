@@ -26,3 +26,5 @@ export type Meta = ImportMeta
 export effect function wrapped() { return try Effect.sync(() => import.meta.dirname) }
 export const invalidUrlProperty = import.meta.url.notAProperty
 export { hostDirectory } from "./host.js"
+
+// VIP-33 other import.meta properties and captures require TypeScript; rule: docs/design/vips/0033-platform-stdlib.md#5d38a6069ac86031
