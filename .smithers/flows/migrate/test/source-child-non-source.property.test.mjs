@@ -61,11 +61,35 @@ test('legacy pruning preserves generated-file and CommonJS boundaries',()=>{
 })
 
 test('an unnecessary legacy call is unwrapped while a typed-source sibling keeps its helper',()=>{
- const original=corpus.legacy.replace('return spawnSync(...__vibelangSourceChild(shell, [mode, "-c", "env -0"]))','spawnSync(...__vibelangSourceChild(shell, ["entry.ts"])); return spawnSync(...__vibelangSourceChild(shell, [mode, "-c", "env -0"]))')
+ const mixed=JSON.parse(readFileSync(new URL('./corpus/opencode-mixed-source-child-argv.json',import.meta.url)))
+ const original=corpus.legacy.replace('return spawnSync(', 'spawnSync(...__vibelangSourceChild(shell, ['+JSON.stringify(mixed.typedEntry)+'])); return spawnSync(')
  assert.notEqual(original,corpus.legacy)
  const r=addSourceChildLoaders(original,ts)
  assert.equal(r.usesChild,true);assert.deepEqual(r.refusals,[])
  assert.ok(r.text.includes('return spawnSync(shell, [mode, "-c", "env -0"])'))
  assert.ok(r.text.includes('spawnSync(...__vibelangSourceChild(shell, ["entry.ts"]))'))
  assert.equal(addSourceChildLoaders(r.text,ts).text,r.text)
+})
+
+
+test('property: mixed legacy shell and source calls normalize in one pass',()=>{
+ fc.assert(fc.property(fc.boolean(),fc.constantFrom('alias','namespace-alias','namespace-fresh'),fc.integer({min:0,max:12}),fc.constantFrom('entry.ts','entry.mts','entry.vibe','entry.tsx'),(javascript,style,index,entry)=>{
+  let legacy=javascript?corpus.javascriptLegacy:corpus.legacy
+  legacy=legacy.replace('return spawnSync(', 'spawnSync(...__vibelangSourceChild(shell, ['+JSON.stringify(entry)+'])); return spawnSync(')
+  const suffix=index?String(index+1):''
+  const url=(style==='namespace-fresh'?'__vibelangNodeURL':'__vibelangFileURLToPath')+suffix
+  const helper='__vibelangSourceChild'+suffix
+  legacy=legacy.replaceAll('__vibelangSourceChild',helper).replaceAll('__vibelangFileURLToPath',url)
+  if(style!=='alias')legacy=legacy.replace('import { fileURLToPath as '+url+' }','import * as '+url).replaceAll(url+'(',url+'.fileURLToPath(')
+  const options={file:javascript?'probe.mjs':'probe.ts'}
+  const r=addSourceChildLoaders(legacy,ts,options)
+  assert.equal(r.usesChild,true);assert.deepEqual(r.refusals,[])
+  const native=javascript?corpus.javascriptNative:corpus.native
+  const shell=/return (spawnSync\([^;]*?\))/.exec(native)
+  assert.ok(shell,'native shell fixture')
+  assert.ok(r.text.includes('return '+shell[1]))
+  assert.ok(r.text.includes('spawnSync(...'+helper+'(shell, ['+JSON.stringify(entry)+']))'))
+  assert.ok(r.text.includes('import * as '+url+' from "node:url"'))
+  assert.equal(addSourceChildLoaders(r.text,ts,options).text,r.text)
+ }),{seed:860053,numRuns:150})
 })

@@ -1,0 +1,8 @@
+{
+  "key": "opencode:source-child:mixed-legacy-argv",
+  "repo": "opencode",
+  "legacyCorpus": "opencode-shell-non-source-argv.json",
+  "typedEntry": "entry.ts",
+  "rule": "Replaying setup refreshes the dedicated URL binding in older generated helpers.",
+  "source": "A typed-source launch keeps its generated helper while a shell environment probe is unwrapped; both changes complete in one setup pass."
+}

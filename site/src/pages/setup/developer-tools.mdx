@@ -10,6 +10,9 @@ rather than accepting a green command that skips VibeLang.
 
 ## Build entry points
 
+When setup removes an old loader wrapper from a shell probe but keeps a sibling launch of TypeScript or VibeLang sources, it refreshes the retained helper in the same pass. Replaying setup leaves the resulting file unchanged.
+
+
 A batched migration follows renamed sources in owned tool configurations,
 even when the package inventories only `src`. The `entry` arrays and maps used
 by `tsdown` or `tsup`, `rolldown`'s `input`, and Vite's `build.lib.entry`

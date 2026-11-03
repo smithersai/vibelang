@@ -161,6 +161,9 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Generated child-process launchers added runtime type checks, redundant assertions and dense spacing that failed existing lint rules. Setup now uses the toolchain’s `Schema.String` boundary, keeps native argument behavior and safely refreshes owned helpers.
 
 - Published declaration checks rejected even an unchanged namespace re-export when a generic type alias had the same name. They now resolve the namespace members through their module and still report changed names, types and comments.
+
+- Setup needed a second run to finish refreshing a source-child loader helper when one call launched a typed source and another only probed a shell. It now removes the unnecessary wrapper and refreshes the retained helper in one pass.
+
 - `vibelang --fix` refused `EK4401` on a plain TypeScript call that reads a property a guard narrowed, such as `o.p ? f(o.p) : 0` or `if (!o.p) return 0; return f(o.p)`, because `Effect.try`'s function no longer knew what the guard proved (`TS2345`). The guard now joins the call in that function, or a `const` under the guard keeps the read; a call that runs before the read still blocks the move.
 
 - Release validation rejected the stock-reference control suite because it had no test runner; `//:release` now runs those Exit, public-type, and version-pin checks.
