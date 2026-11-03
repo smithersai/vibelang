@@ -1,0 +1,5 @@
+// VIP-39 Users write as and T: docs/design/vips/0039-vibex.md#de6c6700016c4399
+// VIP-39 Its only source-visible cost is .tsx s as T: docs/design/vips/0039-vibex.md#c8a88da1271f5026
+// VIP-39 Write x as T: docs/design/vips/0039-vibex.md#b2ca9deab08d3264
+// VIP-39 TS17008 .tsx s y as string: docs/design/vips/0039-vibex.md#c4c28dbcdf73b973
+const s = y as string

@@ -1,0 +1,3 @@
+// expect: TS17008 TS1381 TS17002 TS1005
+// VIP-39 Same inside containers and after try try Eff y: docs/design/vips/0039-vibex.md#19248a223b14a42b
+effect function f() { return <p>{try <Eff>y}</p> }

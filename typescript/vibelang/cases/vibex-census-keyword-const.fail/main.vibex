@@ -1,0 +1,4 @@
+// expect: TS1359 TS1139 TS1005 TS1005
+// VIP-39 const const 1 element const generic-arrow const T modifier: docs/design/vips/0039-vibex.md#efd8d932220a4830
+// VIP-39 TS 5.9 and probe q09 TS1359 TS1139 .tsx s: docs/design/vips/0039-vibex.md#eb82c89e1a89e4cb
+const v = <const const={1}/>

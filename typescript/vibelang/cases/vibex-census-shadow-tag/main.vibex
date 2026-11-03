@@ -1,0 +1,4 @@
+// VIP-39 An import import Match from solid-js shadows it Opus: docs/design/vips/0039-vibex.md#2811062a65195322
+import { Match, h } from "./solid.js"
+declare global { namespace JSX { type Element = {tag:string} } }
+export const view = <Match/>

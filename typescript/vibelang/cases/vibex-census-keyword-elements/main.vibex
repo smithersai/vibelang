@@ -1,0 +1,19 @@
+// VIP-39 keyword names and text: docs/design/vips/0039-vibex.md#799cbf4b8f3b34b4
+// VIP-39 keyword names and text: docs/design/vips/0039-vibex.md#aad77dadc969be20
+// VIP-39 keyword names and text: docs/design/vips/0039-vibex.md#7fb12c925487c35d
+// VIP-39 keyword names and text: docs/design/vips/0039-vibex.md#7c7a034c6fb1fece
+// VIP-39 keyword names and text: docs/design/vips/0039-vibex.md#b5962fdfcdba0a72
+// VIP-39 keyword names and text: docs/design/vips/0039-vibex.md#45530daf6fc1d97f
+// VIP-39 keyword names and text: docs/design/vips/0039-vibex.md#27706c0425570e64
+// VIP-39 keyword names and text: docs/design/vips/0039-vibex.md#b7cfc047360fc42b
+// VIP-39 keyword names and text: docs/design/vips/0039-vibex.md#96965132fc14a484
+import {Effect} from "effect"
+import {h,type VNode} from "./jsx.js"
+declare global { namespace JSX { type Element=VNode; interface IntrinsicElements { [tag:string]: Record<string,unknown> } } }
+function Show(props: Record<string,unknown>): VNode { return {tag:"Show",props,children:[]} }
+export effect function main(): Effect.Effect<Array<VNode>> {
+ const names=<keywords><try/><match/><effect/><service/><data/><fork/><join/><provide/><catch/><when/><is/><control/><handle/><layer/><map/><select/></keywords>
+ const attrs=<Show when={true} is="a" match={1} try={2} effect={3} fork provide="y"/>
+ const text=<p title="{try p}">Hi! 50% off |&gt;</p>
+ return [names,attrs,text]
+}

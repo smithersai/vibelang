@@ -1,0 +1,2 @@
+// VIP-39 explicit vibe source and declaration fallback: docs/design/vips/0039-vibex.md#05bf490d8dfdaa1f
+import {kind} from "./leaf.vibe"; export const selected: "source"=kind

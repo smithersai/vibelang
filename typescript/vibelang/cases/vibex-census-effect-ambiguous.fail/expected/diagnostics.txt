@@ -1,0 +1,2 @@
+main.vibex(7,24): error TS1005
+main.vibex(7,29): error TS1005

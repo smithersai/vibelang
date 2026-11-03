@@ -1,0 +1,11 @@
+// VIP-39 public declarations match the tagged TSX twin: docs/design/vips/0039-vibex.md#9a2d1686fdcb1c40
+// VIP-39 A component s throws comes from its own body: docs/design/vips/0039-vibex.md#6665583467d4c353
+// VIP-39 SaveButton s declaration carries throws never VIP-27 the element: docs/design/vips/0039-vibex.md#b1521edd1214e74b
+import { Component } from "./component.js"
+declare global { namespace JSX {
+ type Element = {tag:string}
+ interface IntrinsicElements { button: {} }
+}}
+declare function h(...args:any[]):JSX.Element
+export function SaveButton() { return <button/> }
+export function Wrapped() { return <Component/> }

@@ -1,0 +1,7 @@
+// expect: TS1005
+// VIP-39 effect T x T x legal in .vibe is: docs/design/vips/0039-vibex.md#cbd06934a2e19092
+// VIP-39 const id effect T x T x effect arrow: docs/design/vips/0039-vibex.md#8d3eafe8f96e53e7
+// VIP-39 Probe q03 TS1005 2 q04 effect T parses .tsx: docs/design/vips/0039-vibex.md#381e92516ec697bf
+// VIP-39 vibex inherits the same cost and the same errors: docs/design/vips/0039-vibex.md#6af80d01260094a1
+// VIP-39 EK3901 a dedicated error for effect T x Opus: docs/design/vips/0039-vibex.md#1580563e214c1ad9
+const id = effect <T>(x: T) => x

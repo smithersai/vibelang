@@ -1,0 +1,1 @@
+{"compilerOptions":{"target":"es2022","module":"esnext","moduleResolution":"bundler","outDir":"out","strict":true,"types":[],"rewriteRelativeImportExtensions":true},"files":["main.vibe"]}

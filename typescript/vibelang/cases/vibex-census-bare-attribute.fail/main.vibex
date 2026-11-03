@@ -1,0 +1,4 @@
+// expect: TS1145 TS1005 TS1003 TS1128 TS1161
+// VIP-39 task effect is a syntax error write task effect: docs/design/vips/0039-vibex.md#c6a24a11fd635931
+// VIP-39 Box task effect return 1 Box v do 1: docs/design/vips/0039-vibex.md#9c0808ad2eea4516
+const v = <Box task=effect { return 1 } />

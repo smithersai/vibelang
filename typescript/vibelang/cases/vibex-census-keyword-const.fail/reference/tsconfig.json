@@ -1,0 +1,16 @@
+{
+  "compilerOptions": {
+    "target": "es2022",
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "jsx": "preserve",
+    "strict": true,
+    "types": [],
+    "skipLibCheck": true,
+    "noCheck": true,
+    "outDir": "out"
+  },
+  "files": [
+    "main.tsx"
+  ]
+}

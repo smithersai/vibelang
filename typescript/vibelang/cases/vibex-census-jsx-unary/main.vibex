@@ -1,0 +1,11 @@
+// VIP-39 fork A stays a comparison Fable VIP-17 s amendment: docs/design/vips/0039-vibex.md#82d58e7bc6156ec1
+// VIP-39 An operand that starts with is JSX try A: docs/design/vips/0039-vibex.md#90ee59298429cac0
+// VIP-39 fork A join A try A throw A operand: docs/design/vips/0039-vibex.md#a6f8cf175ad766d8
+// VIP-39 The operand of try fork and join is a: docs/design/vips/0039-vibex.md#c319fb128d7f9f0f
+// VIP-39 Either way starts JSX: docs/design/vips/0039-vibex.md#ba1798135f09c3da
+effect function task() {
+ const a = try <A/>
+ const b = fork <A/>
+ const c = join <A/>
+ throw <A/>
+}
