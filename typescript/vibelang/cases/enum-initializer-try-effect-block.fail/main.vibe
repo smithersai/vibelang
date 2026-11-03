@@ -1,0 +1,6 @@
+// expect: EK0501
+// Detail 216: an enum member initializer resets the Effect context, inside an effect block too.
+export const invalid = effect {
+  enum E { A = try Effect.succeed(1) }
+  return 1
+}

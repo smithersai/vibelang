@@ -153,6 +153,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Repository API regression checks failed after JSON support landed because they still expected explicitly published `package.json` exports to be ignored; those exports are now included in the expected surface.
 
+- `try` in an enum member initializer inside an `effect` function compiled to JavaScript that does not parse; it now reports `EK0501`, as a class field initializer does.
 - Published API checks rejected identical JSON exports as non-modules; JSON assets now retain their `resolveJsonModule` types, and real type changes still fail.
 
 - Source-child loader wiring introduced a `fileURLToPath` import alias and failed repositories’ native import policies. Setup now uses a namespace import and refreshes its own previously generated helpers while preserving manually observed bindings.

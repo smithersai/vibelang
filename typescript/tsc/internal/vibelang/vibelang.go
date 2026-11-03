@@ -77,5 +77,5 @@ func isLowerable(node *ast.Node) bool {
 // function from its parent, so a call inside it cannot be run with the
 // parent's yield*.
 func isFunctionBoundary(node *ast.Node) bool {
-	return ast.IsFunctionLike(node) || ast.IsClassLike(node) || node.Kind == ast.KindClassStaticBlockDeclaration
+	return ast.IsFunctionLike(node) || ast.IsClassLike(node) || node.Kind == ast.KindClassStaticBlockDeclaration || node.Kind == ast.KindEnumDeclaration
 }
