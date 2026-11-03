@@ -25,7 +25,7 @@ export function batchScope({ files, codemod, testDiff }) {
   }
   for (const file of codemod?.packingFiles ?? []) scope.add(file)
   for (const emit of codemod?.emittedJs ?? []) for(const file of emit.packingFiles ?? []) scope.add(file)
-  for (const split of codemod?.platform?.splits ?? []) scope.add(split.platform)
+  for (const split of codemod?.platform?.splits ?? []) if (split.platform) scope.add(split.platform)
   for (const edit of codemod?.exportEdits ?? []) scope.add(edit.manifest)
   for (const edit of codemod?.importEdits ?? []) scope.add(edit.file)
   for (const edit of codemod?.refEdits ?? []) scope.add(edit.file)

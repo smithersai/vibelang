@@ -1,0 +1,15 @@
+{
+  "repo": "opencode",
+  "pattern": "a module whose platform export is no function with written types, with a schema's value and type of one name and a default export",
+  "property": "platform-module-body",
+  "rule": "A body is a TypeScript file stored inside a `.vibe` file.",
+  "input": {
+    "fn": "alpha",
+    "value": true,
+    "twin": true,
+    "defaulted": true,
+    "helper": true,
+    "global": true,
+    "comment": true
+  }
+}

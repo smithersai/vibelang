@@ -1396,7 +1396,7 @@ export async function codemod(options) {
     const owned = Wire.ownedPaths(t)
     const manifests = tracked.filter((file) => /(?:^|\/)package\.json$/.test(file) && !/(?:^|\/)node_modules\//.test(file) && owned(file))
     const flipped = await toolchainKeepsFunctionsPlain({ compiler: compilerOf(config), modules: join(t, config.packages[0].dir, "node_modules"), dir: join(p.batch(b), "probe") })
-    state = prepareState(t, files, await importers(t), { ts: typeScriptOf(config), aliases: aliasesOf(config), references: references(), catalog: [...new Set([...tracked, ...references()])], bareEntries: bareVibeExports(t, manifests), tracked, plainGroups: plainGroupsOf(config, files, typeScriptOf(config), { flipped }) })
+    state = prepareState(t, files, await importers(t), { ts: typeScriptOf(config), moduleBodies: config.platformModuleBodies === true, aliases: aliasesOf(config), references: references(), catalog: [...new Set([...tracked, ...references()])], bareEntries: bareVibeExports(t, manifests), tracked, plainGroups: plainGroupsOf(config, files, typeScriptOf(config), { flipped }) })
     state.toolConfigReferences = 1
     state.referenceScan.toolConfigFiles = toolConfigs.length
     saveState(p.codemodState(b), state)
@@ -1483,12 +1483,12 @@ export async function codemod(options) {
   const sourceFiles = [...new Set([
     ...(state.writes ?? []).map(write => write.file),
     ...(state.referenceWrites ?? []).map(write => write.file),
-    ...platform.splits.map(split => split.platform)
+    ...platform.splits.flatMap(split => split.platform ?? [])
   ])].filter(file => !isProtectedFile(file))
   const sourceFormatLog = join(p.batch(b), "logs", "source-format.log")
   const sourceFormatted = await formatWritten(t, sourceFiles, sourceFormatLog)
   const formatted = { ...sourceFormatted, log: sourceFormatted.files.length ? posix.relative(p.run, sourceFormatLog) : null }
-  const platformFiles = new Set(platform.splits.map(split => split.platform))
+  const platformFiles = new Set(platform.splits.flatMap(split => split.platform ?? []))
   const platformFormattedFiles = formatted.files.filter(file => platformFiles.has(file))
   const platformResult = { ...platform, formatted: { ...formatted, files: platformFormattedFiles,
     code: platformFormattedFiles.length ? formatted.code : 0, log: platformFormattedFiles.length ? formatted.log : null } }
@@ -1672,7 +1672,7 @@ export async function revertMany(options) {
   for (const { ts, reason, source } of prepared) {
     const cm = readJsonIf(p.codemod(source.batch)) ?? readJsonIf(p.codemodState(source.batch)) ?? {}
     const split = cm.platform?.splits?.find(s => s.file === ts)
-    if (split) rmSync(join(config.target, split.platform), { force: true })
+    if (split?.platform) rmSync(join(config.target, split.platform), { force: true })
     const recordedBuildEntries = cm.buildEntries?.edits ?? []
     const buildEntryEdits = recordedBuildEntries.some(edit => edit.source === ts)
       ? restoreBuildEntrypoints(config.target, recordedBuildEntries, ts, typeScriptOf(config)) : []
