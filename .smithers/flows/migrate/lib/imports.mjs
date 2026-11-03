@@ -2,6 +2,7 @@
 // than a parser so that the codemod can read a .vibe file the TypeScript
 // parser rejects. Each specifier carries its offsets so it can be rewritten.
 import { posix } from "node:path"
+import { isTestMockCall, isTestMockLoader } from "./test-mock-loaders.mjs"
 
 const fromClause = /(?<=^|[;\n}])[ \t]*(import|export)\s+(type\s+)?((?:(?!\b(?:import|export)\b)[^'";=])*?)\s*from\s*(['"])([^'"\n]+)\4/dg
 const bare = /(?<=^|[;\n}])[ \t]*import\s*(['"])([^'"\n]+)\1/dg
@@ -9,7 +10,7 @@ const dynamic = /\bimport\(\s*(['"])([^'"\n]+)\1\s*\)/dg
 const mocked = /\bmock\.module\(\s*(['"])([^'"\n]+)\1/dg
 // Vitest's and Jest's module mocks name a module by a path as an import does:
 // vi.mock("./leaf.ts", …), vi.importActual("./leaf.ts"), jest.requireActual(…).
-const testMocked = /\b(?:vi|vitest|jest)\s*\.\s*(?:mock|doMock|unmock|doUnmock|importActual|importMock|requireActual|requireMock)(?:<[^;\n]*?>)?\(\s*(['"])([^'"\n]+)\1/dg
+const testMocked = /\b([A-Za-z_$][\w$]*)\s*\.\s*([A-Za-z_$][\w$]*)(?:<[^;\n]*?>)?\(\s*(['"])([^'"\n]+)\3/dg
 
 // Where a string or template ends, from just after its opening quote.
 const stringEnd = (text, at, quote) => {
@@ -94,8 +95,28 @@ export function parseImports(text) {
   for (const m of text.matchAll(bare)) found.push({ kind: "import", specifier: m[2], typeOnly: false, clause: "", start: m.indices[2][0], end: m.indices[2][1] })
   for (const m of text.matchAll(dynamic)) found.push({ kind: "dynamic", specifier: m[2], typeOnly: false, clause: "", start: m.indices[2][0], end: m.indices[2][1] })
   for (const m of text.matchAll(mocked)) found.push({ kind: "mock", specifier: m[2], typeOnly: false, clause: "", start: m.indices[2][0], end: m.indices[2][1] })
-  for (const m of text.matchAll(testMocked)) found.push({ kind: "test-mock", specifier: m[2], typeOnly: false, clause: "", start: m.indices[2][0], end: m.indices[2][1] })
   const comments = commentRanges(text)
+  // Resolve import provenance without parsing .vibe as TypeScript. Scope and
+  // mutation proofs remain the verifier's job; an import can never impersonate
+  // a runner global, including default, namespace and type-only imports.
+  const loaders = new Map()
+  const bind = (name, proven) => loaders.set(name, loaders.has(name) ? false : proven)
+  for (const i of found) {
+    if (i.kind !== "import" || !i.clause || comments.some(([a, b]) => a <= i.start && i.start < b)) continue
+    const clause = applyEdits(i.clause, commentRanges(i.clause).map(([start, end]) => ({ start, end, text: " " }))).replace(/^type\s+/, "")
+    const defaultName = /^([A-Za-z_$][\w$]*)/.exec(clause)?.[1]
+    if (defaultName) bind(defaultName, false)
+    const namespace = /\*\s+as\s+([A-Za-z_$][\w$]*)/.exec(clause)?.[1]
+    if (namespace) bind(namespace, false)
+    const named = /\{([^}]*)\}/.exec(clause)
+    if (named) for (const spec of named[1].split(",")) {
+      const m = /^(type\s+)?([A-Za-z_$][\w$]*)(?:\s+as\s+([A-Za-z_$][\w$]*))?$/.exec(spec.trim())
+      if (m) bind(m[3] ?? m[2], !i.typeOnly && !m[1] && isTestMockLoader(m[2], i.specifier))
+    }
+  }
+  const proven = name => loaders.has(name) ? loaders.get(name) : isTestMockLoader(name)
+  for (const m of text.matchAll(testMocked)) if (isTestMockCall(m[1], m[2], proven))
+    found.push({ kind: "test-mock", specifier: m[4], typeOnly: false, clause: "", start: m.indices[4][0], end: m.indices[4][1] })
   return found.filter((i) => !comments.some(([start, end]) => start <= i.start && i.start < end)).sort((a, b) => a.start - b.start)
 }
 

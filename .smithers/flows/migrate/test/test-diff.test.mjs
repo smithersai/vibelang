@@ -5,6 +5,7 @@ import { tmpdir } from "node:os"
 import { dirname, join } from "node:path"
 import { test } from "node:test"
 import { verifyTestDiff, loadGlob, testDiffMarkdown } from "../lib/test-diff.mjs"
+import { parseImports } from "../lib/imports.mjs"
 
 const require = createRequire(new URL("../../../../packages/runtime/package.json", import.meta.url))
 const ts = require("typescript")
@@ -442,4 +443,81 @@ test("an extensionless import stays unchanged across the module rename", () => {
   const source = 'import { f } from "../src/X"; expect(f()).toBe(1)'
   assert.equal(check(source, source).ok, true)
   assert.equal(check(source, source.replace("../src/X", "../src/X.vibe")).ok, false)
+})
+
+// Detail 272: "any other change to a test ... is still forbidden".
+// The t3code desktop mock is a module specifier; its factory remains the oracle.
+test("t3code desktop: vite-plus/test mock allows only the source-specifier rename", () => {
+  const c = JSON.parse(readFileSync(new URL("./corpus/t3code-desktop-vite-plus-mock.json", import.meta.url)))
+  const before = { ...c.files, [c.file]: c.before }
+  const after = { [c.file]: c.after }
+  for (const { to } of c.renames) after[to] = ""
+  const result = check("", "", { before, after, renames: c.renames })
+  assert.equal(result.ok, true, JSON.stringify(result))
+  assert.equal(result.files[0].hunks[0].kind, "specifier")
+  after[c.file] = c.after.replace("marker: 99", "marker: 100")
+  assert.equal(check("", "", { before, after, renames: c.renames }).ok, false)
+})
+
+test("vite-plus/test mock binding rejects local, foreign, type-only and shadowed vi", () => {
+  for (const prefix of [
+    'const vi = { mock: p => p };',
+    'import { vi } from "another-test-runner";',
+    'import type { vi } from "vite-plus/test";',
+    'import { type vi } from "vite-plus/test";',
+    'import * as vi from "vite-plus/test";',
+    'import vi from "vite-plus/test";',
+    'import { vi } from "vite-plus/test"; function nested(vi) {}',
+    'import { vi } from "vite-plus/test"; vi.mock = p => p;',
+    'import { vi } from "vitest"; function nested(vi) {}',
+    'import type { vi } from "vitest";',
+    'import { type vi } from "vitest";'
+  ]) {
+    const before = prefix + 'vi.mock("../src/X.ts", () => ({ marker: 99 }));'
+    assert.equal(check(before, before.replace("X.ts", "X.vibe")).ok, false, prefix)
+  }
+})
+
+test("property: mock import forms preserve loader provenance and protect non-specifier edits", () => {
+  fc.assert(fc.property(
+    fc.constantFrom("vitest", "vite-plus/test", "another-test-runner", "vite-plus", "vite-plus/test/helpers"),
+    fc.constantFrom("{ vi }", "{ expect, it, vi }", "{\n vi,\n it,\n}", "{ vi as vi }", "{ vi as mocks }", "{ /* runner */ vi }", "{ vi /* alias */ as mocks }", "{ nope as vi }", "* as vi", "vi", "type { vi }", "{ type vi }"),
+    fc.constantFrom('"', "'"), fc.constantFrom("mock", "doMock", "unmock", "doUnmock", "importActual", "importMock", "requireActual", "requireMock"), fc.boolean(), fc.integer(),
+    (module, clause, quote, method, extraEdit, n) => {
+      const local = clause.includes("as mocks") ? "mocks" : "vi"
+      const before = 'import ' + clause + ' from ' + quote + module + quote + ';\n' + local + "." + method + '(' +
+        quote + "../src/X.ts" + quote + ', () => ({ marker: ' + n + ' }));'
+      let after = before.replace("X.ts", "X.vibe")
+      if (extraEdit) after = after.replace("marker: " + n, "marker: changed")
+      const valueImport = clause.startsWith("{") && !clause.includes("type ") && !clause.includes("nope")
+      assert.equal(parseImports(before).some(i => i.kind === "test-mock"),
+        ["vitest", "vite-plus/test"].includes(module) && valueImport,
+        "codemod import provenance: " + JSON.stringify({ module, clause }))
+      assert.equal(check(before, after).ok,
+        ["vitest", "vite-plus/test"].includes(module) && valueImport && !extraEdit,
+        JSON.stringify({ module, clause, extraEdit }))
+    }
+  ), { numRuns: 400, seed: 27285 })
+})
+
+test("mock aliases and ambient names cannot bypass binding or factory protection", () => {
+  for (const name of ["vi", "mocks", "vitest", "jest"]) {
+    const imported = name === "jest" ? 'import { jest } from "@jest/globals";' :
+      'import { vi as ' + name + ' } from "vite-plus/test";'
+    for (const method of ["mock", "doMock", "importActual", "requireActual"]) {
+      const call = name + "." + method + '("../src/X.ts", () => ({ marker: 99 }));'
+      const before = imported + call
+      assert.equal(check(before, before.replace("X.ts", "X.vibe")).ok, true, before)
+      for (const shadow of [
+        "function nested(" + name + ") {}",
+        "const " + name + " = {};",
+        name + "." + method + " = p => p;",
+        name + " = other;"
+      ]) {
+        const a = imported + shadow + call
+        assert.equal(check(a, a.replace("X.ts", "X.vibe")).ok, false, a)
+      }
+      assert.equal(check(before, before.replace("X.ts", "X.vibe").replace("marker: 99", "marker: 100")).ok, false)
+    }
+  }
 })

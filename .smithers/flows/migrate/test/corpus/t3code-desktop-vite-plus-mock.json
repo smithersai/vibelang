@@ -1,0 +1,14 @@
+{
+  "file": "apps/desktop/src/snapShot/DesktopSnapShot.test.ts",
+  "before": "import { expect, it, vi } from \"vite-plus/test\";\nvi.mock(\"./ActiveWindow.ts\", () => ({ marker: 99 }));\n",
+  "after": "import { expect, it, vi } from \"vite-plus/test\";\nvi.mock(\"./ActiveWindow.vibe\", () => ({ marker: 99 }));\n",
+  "files": {
+    "apps/desktop/src/snapShot/ActiveWindow.ts": "export const marker = 73;\n"
+  },
+  "renames": [
+    {
+      "from": "apps/desktop/src/snapShot/ActiveWindow.ts",
+      "to": "apps/desktop/src/snapShot/ActiveWindow.vibe"
+    }
+  ]
+}

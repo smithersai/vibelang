@@ -1,6 +1,7 @@
 // Detail 272, fourth addendum. Interpret paths against pinned inventories;
 // never evaluate target code or inspect the host filesystem.
 import { posix } from "node:path"
+import { isTestMockCall } from "./test-mock-loaders.mjs"
 const literal = (ts, n) => n && (ts.isStringLiteral(n) || ts.isNoSubstitutionTemplateLiteral(n))
 const unwrap = (ts, n) => {
   while (n && (ts.isParenthesizedExpression(n) || ts.isAwaitExpression(n) || ts.isAsExpression(n) || ts.isNonNullExpression(n))) n = n.expression
@@ -185,7 +186,10 @@ export function provePathRename({ ts, file, old, next, a, b, before, after, rena
   // An unproven module-loader role must not fall back to the generic path rule.
   let parent = old.parent
   while (ts.isParenthesizedExpression(parent)) parent = parent.parent
-  if (ts.isCallExpression(parent) && /^(?:require|vi\.mock|jest\.mock)$/.test(parent.expression.getText()))
+  if (ts.isCallExpression(parent) && (
+    ts.isIdentifier(parent.expression) && parent.expression.text === "require" ||
+    ts.isPropertyAccessExpression(parent.expression) && ts.isIdentifier(parent.expression.expression) &&
+      isTestMockCall(parent.expression.expression.text, parent.expression.name.text, () => true)))
     throw new Error("module loader is shadowed or unproven")
   const from = pathsFor(ts, old, a.bindings, file, before), to = pathsFor(ts, next, b.bindings, file, after)
   if (from.length !== 1 || to.length !== 1) throw new Error("path does not resolve uniquely to a migrated file")

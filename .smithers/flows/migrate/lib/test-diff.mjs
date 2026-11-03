@@ -5,6 +5,7 @@ import { mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSyn
 import { createRequire } from "node:module"
 import { dirname, join, posix } from "node:path"
 import { isTestFile, isFixtureFile } from "./inventory.mjs"
+import { isTestMockCall, isTestMockLoader } from "./test-mock-loaders.mjs"
 import { pathCandidate, provePathRename } from "./test-diff-paths.mjs"
 import { proveFormatterOnly } from "./test-diff-format.mjs"
 import { dependencyCandidate, proveDependencyAddition } from "./test-diff-dependencies.mjs"
@@ -142,7 +143,7 @@ const moduleLiteral = (ts, node, bindings) => {
   const e = p.expression
   return e.kind === ts.SyntaxKind.ImportKeyword ||
     ts.isIdentifier(e) && e.text === "require" && bindings.role(e.text, "require") ||
-    property(ts, e, "mock") && ts.isIdentifier(e.expression) && ["vi", "jest"].includes(e.expression.text) && bindings.role(e.expression.text, "mock")
+    ts.isPropertyAccessExpression(e) && ts.isIdentifier(e.expression) && isTestMockCall(e.expression.text, e.name.text, bindings.mock)
 }
 
 function parsed(ts, text, file) {
@@ -164,7 +165,7 @@ function parsed(ts, text, file) {
     ["vitest", "@jest/globals", "bun:test", "chai"].includes(module) && name === "expect" ? "expect" :
     ["assert", "node:assert", "assert/strict", "node:assert/strict"].includes(module) && ["*", "default"].includes(name) ? "assert" :
     ["path", "node:path"].includes(module) ? (["join", "resolve"].includes(name) ? "path:" + name : ["*", "default"].includes(name) ? "path" : null) :
-    module === "vitest" && name === "vi" || module === "@jest/globals" && name === "jest" ? "mock" :
+    isTestMockLoader(name, module) ? "mock" :
     ["fs", "node:fs", "fs/promises", "node:fs/promises"].includes(module) ?
       ["readdir", "readdirSync"].includes(name) ? "reader" : ["*", "default"].includes(name) ? "fs" : null : null
   const declarationsVisit = n => {
@@ -174,10 +175,11 @@ function parsed(ts, text, file) {
       declare(n.name)
     if (ts.isImportDeclaration(n) && ts.isStringLiteral(n.moduleSpecifier) && n.importClause) {
       const clause = n.importClause, module = n.moduleSpecifier.text
-      if (clause.name) declare(clause.name, importedRole(module, "default"))
+      const role = name => clause.isTypeOnly ? null : importedRole(module, name)
+      if (clause.name) declare(clause.name, role("default"))
       const named = clause.namedBindings
-      if (named && ts.isNamespaceImport(named)) declare(named.name, importedRole(module, "*"))
-      else if (named) for (const spec of named.elements) declare(spec.name, importedRole(module, (spec.propertyName ?? spec.name).text))
+      if (named && ts.isNamespaceImport(named)) declare(named.name, role("*"))
+      else if (named) for (const spec of named.elements) declare(spec.name, spec.isTypeOnly ? null : role((spec.propertyName ?? spec.name).text))
     }
     if (ts.isImportEqualsDeclaration(n)) declare(n.name)
     ts.forEachChild(n, declarationsVisit)
@@ -187,6 +189,7 @@ function parsed(ts, text, file) {
   for (const [name, roles] of declarations) if (roles.length === 1 && (roles[0] === "path" || roles[0]?.startsWith("path:"))) bindings.set(name, null)
   bindings.role = (name, role) => !mutated.has(name) && (!declarations.has(name) ||
     declarations.get(name).length === 1 && declarations.get(name)[0] === role)
+  bindings.mock = name => bindings.role(name, "mock") && (declarations.has(name) || isTestMockLoader(name))
   const visit = n => {
     if (ts.isVariableDeclaration(n) && ts.isIdentifier(n.name) && n.initializer) {
       if (!(n.parent.flags & ts.NodeFlags.Const) || bindings.has(n.name.text)) bindings.set(n.name.text, null) // shadowing is ambiguous
