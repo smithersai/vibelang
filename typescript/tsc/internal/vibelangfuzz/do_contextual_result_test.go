@@ -50,7 +50,7 @@ declare function take(selection: Selection): void
 	}
 	contexts := []struct{ key, source string }{
 		// foldkit-121's shape: the match result is the arrow's written return type.
-		{"match-arm", "export const select = (edge: Edge): Selection => match (edge) {\n  when { _tag: \"When\" } and let guarded: do { %BODY% };\n  when { _tag: \"Otherwise\" }: ({ _tag: \"SelectedEdge\", value: 0 });\n}\n"},
+		{"match-arm", "export const select = (edge: Edge): Selection => match (edge) {\n  when { _tag: \"When\" } and let guarded: do { %BODY% };\n  when { _tag: \"Otherwise\" }: ({ _tag: \"SelectedEdge\", value: 0 });\n  default: match (void 0 as unknown) { when 0: (void 0 as never); };\n}\n"},
 		{"annotated-const", "export function select(guarded: { readonly condition: boolean }) {\n  const selection: Selection = do { %BODY% }\n  return selection\n}\n"},
 		{"arrow-return", "export const select = (guarded: { readonly condition: boolean }): Selection => do { %BODY% }\n"},
 		{"call-argument", "export function select(guarded: { readonly condition: boolean }) {\n  take(do { %BODY% })\n}\n"},

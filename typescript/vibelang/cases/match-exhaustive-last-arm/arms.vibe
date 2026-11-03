@@ -37,12 +37,12 @@ export function record(phase: Phase, log: Array<string>) {
   }
 }
 
-// The last arm still binds user and n.
+// The last arms still bind the whole error and the Option payload.
 export function describe(failure: Failure) {
   return match (failure) {
-    when NotFound and { let id }: `no user ${id}`;
+    when NotFound(let found): `no user ${found.id}`;
     when Timeout: "retry";
-    when Denied and { let user }: `denied ${user}`;
+    when Denied(let denied): `denied ${denied.user}`;
   }
 }
 

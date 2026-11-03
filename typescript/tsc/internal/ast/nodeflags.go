@@ -64,6 +64,8 @@ const (
 
 	NodeFlagsVibeLangBindingCleanup NodeFlags = 1 << 42 // Compiler-owned iterator cleanup try/catch/rethrow: native JavaScript completions, including inside Effect code
 
+	NodeFlagsVibeLangUncountedPattern NodeFlags = 1 << 40 // A match and/not test: ordinary flow narrowing applies, but not finite coverage.
+
 	NodeFlagsBlockScoped = NodeFlagsLet | NodeFlagsConst | NodeFlagsUsing
 	NodeFlagsConstant    = NodeFlagsConst | NodeFlagsUsing
 	NodeFlagsAwaitUsing  = NodeFlagsConst | NodeFlagsUsing // Variable declaration (NOTE: on a single node these flags would otherwise be mutually exclusive)

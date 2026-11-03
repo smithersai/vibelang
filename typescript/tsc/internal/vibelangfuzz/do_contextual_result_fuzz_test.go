@@ -159,7 +159,7 @@ func FuzzDoContextualResult(f *testing.F) {
 			counterpart = types + "declare function take(s: Selection): string\nexport const taken = (condition: boolean): string => take(" + conditional + ")"
 		default:
 			key = "foldkit-edge-selection"
-			source = types + edge + "export const select = (edge: Edge): Selection =>\n  match (edge) {\n    when { " + tag + ": 'When' } and let guarded: do {\n      const condition = guarded.condition;\n      " + wrap(conditional) + "\n    };\n    when { " + tag + ": 'Otherwise' }: ({ " + tag + ": 'SelectedEdge', value: 0 });\n  }"
+			source = types + edge + "export const select = (edge: Edge): Selection =>\n  match (edge) {\n    when { " + tag + ": 'When' } and let guarded: do {\n      const condition = guarded.condition;\n      " + wrap(conditional) + "\n    };\n    when { " + tag + ": 'Otherwise' }: ({ " + tag + ": 'SelectedEdge', value: 0 });\n    default: match (void 0 as unknown) { when 0: (void 0 as never); };\n  }"
 			counterpart = types + edge + "export const select = (edge: Edge): Selection => { if (edge." + tag + " === 'When') { const condition = edge.condition; return " + conditional + " } return { " + tag + ": 'SelectedEdge', value: 0 } }"
 			if variant == 0 {
 				raw, err := os.ReadFile(filepath.Join("testdata", "do-contextual", "foldkit-machine-edge-selection.vibe"))

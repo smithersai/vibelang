@@ -89,47 +89,45 @@ export function record(phase, log) {
         }
     }
 }
-// The last arm still binds user and n.
+// The last arms still bind the whole error and the Option payload.
 export function describe(failure) {
     {
-        const $match8 = failure;
+        const $match10 = failure;
         {
-            if ($is(NotFound, $match8) && (typeof $match8 === "function" || typeof $match8 === "object") && $match8
-                !== null && "id" in
-                $match8) {
-                let id = $match8.id;
-                return `no user ${id}`;
+            const $extracted11 = $extract(NotFound, $match10);
+            if ($extracted11 !== false && $extracted11.length === 1) {
+                let found = $extracted11[0];
+                return `no user ${found.id}`;
             }
         }
         {
-            if ($is(Timeout, $match8)) {
+            if ($is(Timeout, $match10)) {
                 return "retry";
             }
         }
         {
+            const $extracted12 = $extract(Denied, $match10);
             {
-                runtime.$assertMatch($is(Denied, $match8) && (typeof $match8 === "function" || typeof $match8 === "object") && $match8
-                    !== null && "user" in
-                    $match8, $match8);
-                let user = $match8.user;
-                return `denied ${user}`;
+                runtime.$assertMatch($extracted12 !== false && $extracted12.length === 1, $match10);
+                let denied = $extracted12[0];
+                return `denied ${denied.user}`;
             }
         }
     }
 }
 export function greeting(name) {
     {
-        const $match11 = name;
+        const $match15 = name;
         {
-            if ((subject_1 => Option_1.isOption(subject_1) && Option_1.isNone(subject_1))($match11)) {
+            if ((subject_1 => Option_1.isOption(subject_1) && Option_1.isNone(subject_1))($match15)) {
                 return "Hello";
             }
         }
         {
-            const $extracted12 = (subject_2 => Option_1.isOption(subject_2) && Option_1.isSome(subject_2) && [subject_2.value])($match11);
+            const $extracted16 = (subject_2 => Option_1.isOption(subject_2) && Option_1.isSome(subject_2) && [subject_2.value])($match15);
             {
-                runtime.$assertMatch($extracted12 !== false && $extracted12.length === 1, $match11);
-                let n = $extracted12[0];
+                runtime.$assertMatch($extracted16 !== false && $extracted16.length === 1, $match15);
+                let n = $extracted16[0];
                 return `Hello, ${n}`;
             }
         }
@@ -138,28 +136,28 @@ export function greeting(name) {
 // In an Effect function, whose arms run Effects.
 export function announce(arg_1) {
     return Effect_1.fnUntraced(function* announce(phase) {
-        $match14: {
-            const $match15 = phase;
+        $match18: {
+            const $match19 = phase;
             {
-                if ($match15
+                if ($match19
                     === "draft") {
                     yield* Effect.log("draft");
-                    break $match14;
+                    break $match18;
                 }
             }
             {
-                if ($match15
+                if ($match19
                     === "review") {
                     yield* Effect.log("review");
-                    break $match14;
+                    break $match18;
                 }
             }
             {
                 {
-                    runtime.$assertMatch($match15
-                        === "published", $match15);
+                    runtime.$assertMatch($match19
+                        === "published", $match19);
                     yield* Effect.log("published");
-                    break $match14;
+                    break $match18;
                 }
             }
         }

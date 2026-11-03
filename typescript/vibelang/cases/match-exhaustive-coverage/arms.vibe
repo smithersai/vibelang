@@ -21,7 +21,7 @@ export function phase(p: Phase) {
 export function failure(e: NotFound | Denied) {
   return match (e) {
     when NotFound: `missing ${e.id}`;
-    when Denied and { let user }: `denied ${user}`;
+    when Denied(let denied): `denied ${denied.user}`;
   }
 }
 

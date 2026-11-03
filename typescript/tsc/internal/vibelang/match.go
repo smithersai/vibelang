@@ -195,7 +195,7 @@ func afterIrrefutableArm(call *ast.Node) bool {
 		if s != statement {
 			continue
 		}
-		if i == 0 || !ast.IsBlock(statements[i-1]) {
+		if i == 0 || !ast.IsBlock(statements[i-1]) || statements[i-1].Flags&ast.NodeFlagsVibeLangUncountedPattern != 0 {
 			return false
 		}
 		for _, inner := range statements[i-1].Statements() {

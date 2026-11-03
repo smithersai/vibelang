@@ -1,6 +1,7 @@
 package vibelang
 
 import (
+	"slices"
 	"strconv"
 	"strings"
 
@@ -396,6 +397,24 @@ func matchChainRewrite(c *checker.Checker, file *ast.SourceFile, call *ast.Node)
 				return refuse("a comment stands in a one-line chain")
 			}
 			b.WriteString(" " + line)
+		}
+	}
+	// Match.exhaustive can use ordinary narrowing that VIP-7 deliberately
+	// gives no coverage credit. Keep its migrated native match compilable
+	// without changing any arm or adding a result/error/environment type.
+	if chain.finisher != "orElse" {
+		var subjectType *checker.Type
+		if chain.subject != nil {
+			subjectType = c.GetTypeAtLocation(chain.subject)
+		} else {
+			subjectType = c.GetTypeFromTypeNode(chain.typeArg)
+		}
+		if subjectType != nil && isFiniteMatchType(c, subjectType) && slices.ContainsFunc(arms, func(arm matchArm) bool { return matchPatternNeedsCombinatorFallback(arm.pattern) }) {
+			if multiline {
+				b.WriteString("\n" + indent + strings.TrimSpace(matchCombinatorFallback))
+			} else {
+				b.WriteString(matchCombinatorFallback)
+			}
 		}
 	}
 	if multiline {

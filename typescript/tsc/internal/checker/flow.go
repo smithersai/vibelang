@@ -478,6 +478,9 @@ func (c *Checker) narrowType(f *FlowState, t *Type, expr *ast.Node, assumeTrue b
 	if f.unreachablePatternCoverage && !assumeTrue && c.isUnreachableUnionValuePattern(expr) {
 		return t
 	}
+	if uncountedMatchCoverageTest(f.reference, expr) {
+		return t
+	}
 	for _, hook := range flowNarrowingHooks {
 		if narrowed := hook(c, f.reference, t, expr, assumeTrue, func(reference *ast.Node, aliasType *Type, aliasExpr *ast.Node) *Type {
 			alias := *f
@@ -1791,6 +1794,9 @@ func (c *Checker) getFlowReferenceKey(f *FlowState) CacheHashKey {
 }
 
 func (c *Checker) writeFlowCacheKey(b *keyBuilder, node *ast.Node, declaredType *Type, initialType *Type, flowContainer *ast.Node) bool {
+	if isMatchCoverageReference(node) {
+		b.writeNode(node)
+	}
 	switch node.Kind {
 	case ast.KindIdentifier:
 		if !ast.IsThisInTypeQuery(node) {

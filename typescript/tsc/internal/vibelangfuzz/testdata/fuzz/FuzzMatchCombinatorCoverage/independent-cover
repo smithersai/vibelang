@@ -1,0 +1,4 @@
+go test fuzz v1
+string("independent-cover")
+byte(1)
+byte(3)

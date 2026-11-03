@@ -45,3 +45,37 @@ func (c *Checker) NarrowTypeByTest(reference *ast.Node, t *Type, test *ast.Node,
 	f := &FlowState{reference: reference, declaredType: t, initialType: t}
 	return c.narrowType(f, t, test, assumeTrue)
 }
+
+// isMatchCoverageReference distinguishes the synthetic coverage query from
+// ordinary arm/default typing. Its loop cache must not reuse ordinary flow.
+func isMatchCoverageReference(reference *ast.Node) bool {
+	parent := reference.Parent
+	return parent != nil && ast.IsCallExpression(parent) && ast.IsIdentifier(parent.Expression()) &&
+		parent.Expression().Flags&ast.NodeFlagsVibeLangIntrinsic != 0 && parent.Expression().Text() == "$noMatch"
+}
+
+// Only tests in the same match affect its coverage projection. A nested match
+// and source is expressions retain their own ordinary flow and binding types.
+func uncountedMatchCoverageTest(reference, test *ast.Node) bool {
+	if !isMatchCoverageReference(reference) {
+		return false
+	}
+	statement := reference.Parent
+	for statement != nil && !ast.IsStatement(statement) {
+		statement = statement.Parent
+	}
+	if statement == nil || statement.Parent == nil {
+		return false
+	}
+	marked := false
+	for node := test; node != nil; node = node.Parent {
+		marked = marked || node.Flags&ast.NodeFlagsVibeLangUncountedPattern != 0
+		if node == statement.Parent {
+			return marked
+		}
+		if ast.IsFunctionLike(node) {
+			return false
+		}
+	}
+	return false
+}

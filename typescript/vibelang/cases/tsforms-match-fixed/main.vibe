@@ -18,6 +18,7 @@ export function area(shape: Shape): number {
   return match (shape) {
     when { _tag: "Circle", let radius }: 3 * radius * radius;
     when { _tag: "Square" } and let square: square.side * square.side;
+    default: match (void 0 as unknown) { when 0: (void 0 as never); };
   }
 }
 

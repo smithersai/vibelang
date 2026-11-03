@@ -45,6 +45,7 @@ export function area(shape: Shape): number {
   return match (shape) {
     when { _tag: "Circle" } and let $matchHandler: do { let { radius } = $matchHandler; (Math.PI * radius * radius); };
     when { _tag: "Square" } and let square: square.side * square.side;
+    default: match (void 0 as unknown) { when 0: (void 0 as never); };
   }
 }
 `},

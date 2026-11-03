@@ -147,8 +147,9 @@ type matchPath func() *ast.Node
 
 // matchCompile carries the state of compiling one top-level pattern.
 type matchCompile struct {
-	anchor core.TextRange
-	inline bool // inside or, not, or an is without an if or while: no declarations
+	coverage bool // match arms include binding-only and/not in finite coverage queries
+	anchor   core.TextRange
+	inline   bool // inside or, not, or an is without an if or while: no declarations
 	// uncovered marks the tests of and and not, which cover nothing, in a match
 	// with no default arm, for EK4701 (chapter 004, Coverage). With a default arm
 	// no coverage is checked, and the arms narrow as TypeScript does.
@@ -1301,6 +1302,27 @@ func (p *Parser) matcherTest(pat *pattern, path matchPath) *ast.Node {
 // compilePattern appends the steps that match pat against path to steps.
 func (p *Parser) compilePattern(pat *pattern, path matchPath, steps *[]matchStep, ctx *matchCompile) {
 	at := pat.anchor
+	if ctx.coverage && pat.kind != patternOr && patternHasCoverageCombinator(pat) {
+		start := len(*steps)
+		defer func() {
+			hasTest := false
+			for _, step := range (*steps)[start:] {
+				if step.test != nil {
+					hasTest = true
+					step.test.Flags |= ast.NodeFlagsVibeLangUncountedPattern
+				}
+			}
+			if !hasTest && ctx.uncovered {
+				// Binding-only combinators otherwise emit an unconditional
+				// arm, so native reachability erases the coverage query.
+				// This pure comparison is always true at runtime and leaves
+				// a false path in the flow graph for the coverage projection.
+				condition := p.mBinary(p.mNumber(0, at), ast.KindEqualsEqualsEqualsToken, p.mNumber(0, at), at)
+				condition.Flags |= ast.NodeFlagsVibeLangUncountedPattern
+				*steps = append(*steps, matchStep{test: condition})
+			}
+		}()
+	}
 	test := func(t *ast.Node) { *steps = append(*steps, matchStep{test: t}) }
 	if pat.code == 4705 {
 		// Combinators sharing a level have no meaning to compile; EK4705 reports them.
@@ -1545,6 +1567,29 @@ func (p *Parser) markUncovered(steps []matchStep, first int, ctx *matchCompile, 
 	}
 }
 
+// A containing object, array or extractor cannot turn an and/not subpattern
+// into a bare binding for coverage. Or is handled per alternative by
+// compilePattern, retaining the credit of its other alternatives.
+func patternHasCoverageCombinator(pat *pattern) bool {
+	if pat == nil {
+		return false
+	}
+	if pat.kind == patternAnd || pat.kind == patternNot {
+		return true
+	}
+	for _, item := range pat.items {
+		if patternHasCoverageCombinator(item) {
+			return true
+		}
+	}
+	for _, clause := range pat.clauses {
+		if patternHasCoverageCombinator(clause.pattern) {
+			return true
+		}
+	}
+	return patternHasCoverageCombinator(pat.rest)
+}
+
 // IsSignedNumberZero reports whether expr, a literal pattern, is a Number
 // literal whose value is zero written with a sign: -0, +0, -0.0, +0e0, -0x0
 // or -1e-400. Such a pattern matches by SameValue; unsigned 0 matches both
@@ -1763,7 +1808,7 @@ func (p *Parser) inlinePattern(pat *pattern, path matchPath, ctx *matchCompile) 
 	if ctx.bound == nil {
 		ctx.bound = map[string]bool{}
 	}
-	inner := &matchCompile{anchor: ctx.anchor, inline: true, uncovered: ctx.uncovered, bound: ctx.bound}
+	inner := &matchCompile{anchor: ctx.anchor, inline: true, coverage: ctx.coverage, uncovered: ctx.uncovered, bound: ctx.bound}
 	var steps []matchStep
 	p.compilePattern(pat, path, &steps, inner)
 	var tests []*ast.Node
@@ -1915,7 +1960,7 @@ func (p *Parser) matchStatements(info *matchInfo, success func(value *ast.Node, 
 		var steps []matchStep
 		patternMark := len(p.reparseList)
 		if arm.pattern != nil {
-			p.compilePattern(arm.pattern, path, &steps, &matchCompile{anchor: arm.anchor, uncovered: !hasDefault})
+			p.compilePattern(arm.pattern, path, &steps, &matchCompile{anchor: arm.anchor, uncovered: !hasDefault, coverage: true})
 		}
 		patternHoists := p.takeHoists(patternMark)
 		if !arm.hoisted {
@@ -1943,7 +1988,11 @@ func (p *Parser) matchStatements(info *matchInfo, success func(value *ast.Node, 
 			defaulted = true
 			continue
 		}
-		out = append(out, p.mBlock(append(slices.Clone(arm.hoists), p.emitSteps(steps, success(arm.value, span), arm.anchor)...), span))
+		block := p.mBlock(append(slices.Clone(arm.hoists), p.emitSteps(steps, success(arm.value, span), arm.anchor)...), span)
+		if arm.pattern.kind != patternOr && patternHasCoverageCombinator(arm.pattern) {
+			block.Flags |= ast.NodeFlagsVibeLangUncountedPattern
+		}
+		out = append(out, block)
 	}
 	if !defaulted && len(info.arms) > 0 {
 		noMatch := p.mCall(p.vibelangIntrinsic("$noMatch", info.anchor), []*ast.Node{path()}, info.anchor)

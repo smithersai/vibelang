@@ -14,13 +14,14 @@ effect function getUser(id: string): string!NotFound {
   return "Ada"
 }
 
-// Every case of a finite union, without a default arm.
+// Combinator tests keep their bindings; the default preserves implicit failure.
 function describe(e: Failure) {
   return match (e) {
     when NotFound and { let id }: `no user ${id}`;
     when Timeout: "retry";
     when Denied and { user: let who, reason: "root" or "admin" }: `denied ${who}`;
     when Denied: "denied";
+    default: match (void 0 as unknown) { when 0: (void 0 as never); };
   }
 }
 

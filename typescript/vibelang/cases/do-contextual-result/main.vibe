@@ -21,6 +21,7 @@ export const select = (edge: Edge): Selection =>
       condition ? { _tag: 'SelectedEdge', value: 1 } : { _tag: 'IgnoredEdge', reason: 'GuardFailed' }
     };
     when { _tag: 'Otherwise' }: ({ _tag: 'SelectedEdge', value: 0 });
+    default: match (void 0 as unknown) { when 0: (void 0 as never); };
   }
 
 // A plain do under a written return type.

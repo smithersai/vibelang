@@ -63,5 +63,14 @@
         "output": "typescript/vibelang/cases/match-vip7-invalid-values-fixed-output"
       }
     ]
+  },
+  {
+    "code": "EK4701",
+    "cases": [
+      {
+        "input": "typescript/vibelang/cases/match-combinator-coverage.fail",
+        "output": "typescript/vibelang/cases/match-combinator-coverage-fixed-output"
+      }
+    ]
   }
 ]

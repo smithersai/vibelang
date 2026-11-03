@@ -1,0 +1,14 @@
+export function choose(x: boolean): 0 | 1 {
+  return match (x) {
+    when true and true: 1;
+    when false: 0;
+    default: match (void 0 as unknown) { when 0: (void 0 as never); };
+  }
+}
+export effect function effectChoose(x: boolean): (0 | 1)!! {
+  return match (x) {
+    when true and true: 1;
+    when false: 0;
+    default: match (void 0 as unknown) { when 0: (void 0 as never); };
+  }
+}

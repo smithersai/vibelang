@@ -16,6 +16,7 @@ effect function describe(id: string): string!! {
     return match (e) {
       when NotFound and { let id }: `no user ${id}`;
       when Timeout: "retry";
+      default: match (void 0 as unknown) { when 0: (void 0 as never); };
     }
   }
 }

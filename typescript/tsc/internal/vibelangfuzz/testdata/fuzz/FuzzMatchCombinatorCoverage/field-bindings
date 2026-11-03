@@ -1,0 +1,4 @@
+go test fuzz v1
+string("field-bindings")
+byte(0)
+byte(0)

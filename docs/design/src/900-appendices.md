@@ -970,7 +970,7 @@ The operand and parent positions follow `UnaryExpression`; `throw` in statement 
 This implementation census records each parser or lowering hook and its specification authority. It does not admit syntax: the productions and prose above remain the independent grammar oracle. A `pending` row has no authority; `support` and `recovery` rows do not add language forms.
 
 <details>
-<summary>Parser and lowering hooks (922 records)</summary>
+<summary>Parser and lowering hooks (923 records)</summary>
 
 | Hook | Form | Authority | Status | Reason |
 | --- | --- | --- | --- | --- |
@@ -1896,6 +1896,7 @@ This implementation census records each parser or lowering hook and its specific
 | ` parser/vibelang_do_bindings.go:doLowering.bindingDefaultContextSite ` | ` admission:do ` | ` 000-intro.md `, ` 002-running.md ` | ` support ` | VIP-2: contextual typing reaches the normal default result only |
 | ` parser/vibelang_do_bindings.go:doLowering.bindingTypingPattern ` | ` admission:do ` | ` 000-intro.md `, ` 002-running.md ` | ` support ` | VIP-2: source binding context controls literal, tuple and declaration types |
 | ` parser/vibelang_do_bindings.go:doLowering.finishArrayBindings ` | ` admission:do ` | ` 002-running.md ` | ` support ` | VIP-2: unfinished iterators close with native jump and throw precedence while lexical cells are retained |
+| ` parser/vibelang_match.go:patternHasCoverageCombinator ` | ` admission:match ` | ` 004-match.md#exhaustiveness ` | ` support ` | VIP-7 and/not subpatterns cannot establish finite coverage through a containing pattern |
 
 </details>
 
