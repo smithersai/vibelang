@@ -37,6 +37,7 @@ set -euo pipefail
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 package="$(cd "$here/../.." && pwd)"
 root="$(cd "$package/../.." && pwd)"
+node --test "$here/../build-inputs.test.mjs"
 out="$here/out"
 ts7_version="${TS7_VERSION:-$(node -e 'process.stdout.write(require(process.argv[1]).devDependencies.typescript)' "$package/package.json")}"
 
@@ -55,13 +56,6 @@ echo "parity: go build ./cmd/tsc ./cmd/vibelang-mapper" >&2
 (cd "$root/typescript/tsc" &&
   CGO_ENABLED=0 sh "$root/scripts/native-output.sh" build "$out/bin/tsc" -trimpath -buildvcs=false ./cmd/tsc &&
   CGO_ENABLED=0 sh "$root/scripts/native-output.sh" build "$out/bin/vibelang-mapper" -trimpath -buildvcs=false ./cmd/vibelang-mapper)
-
-# The production --emit entry does not accept mapper-entry options yet.
-# Build a test-only entry against the same package with a Go source overlay;
-# the overlay and binary stay in out/, and production sources stay intact.
-bun -e 'console.log(JSON.stringify({ Replace: { [process.argv[1]]: process.argv[2] } }))' \
-  "$root/typescript/tsc/cmd/vibelang-mapper/main.go" "$here/emit-main.go" > "$out/emit-overlay.json"
-(cd "$root/typescript/tsc" && CGO_ENABLED=0 sh "$root/scripts/native-output.sh" build "$out/bin/vibelang-emit-options" -overlay "$out/emit-overlay.json" -trimpath -buildvcs=false ./cmd/vibelang-mapper)
 
 effect_modules="${EFFECT_NODE_MODULES:-}"
 if [ -z "$effect_modules" ]; then

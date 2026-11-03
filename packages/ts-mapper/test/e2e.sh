@@ -41,6 +41,7 @@ set -euo pipefail
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 package="$(cd "$here/.." && pwd)"
 root="$(cd "$package/../.." && pwd)"
+node --test "$here/build-inputs.test.mjs"
 ts7_version="${TS7_VERSION:-$(node -e 'process.stdout.write(require(process.argv[1]).devDependencies.typescript)' "$package/package.json")}"
 
 step() { printf '\n== %s\n' "$*"; }
@@ -111,10 +112,6 @@ if [ -z "${VIBELANG_BINARY:-}" ]; then
   VIBELANG_BINARY="$work/vibelang"
   (cd "$root/typescript/tsc" && CGO_ENABLED=0 sh "$root/scripts/native-output.sh" build "$VIBELANG_BINARY" -trimpath ./cmd/tsc)
 fi
-# Reuse parity's test-only adapter: the production --emit CLI has no tracing option.
-node -e 'require("node:fs").writeFileSync(process.argv[1], JSON.stringify({ Replace: { [process.argv[2]]: process.argv[3] } }))' \
-  "$work/emit-overlay.json" "$root/typescript/tsc/cmd/vibelang-mapper/main.go" "$here/parity/emit-main.go"
-(cd "$root/typescript/tsc" && CGO_ENABLED=0 sh "$root/scripts/native-output.sh" build "$work/emit-options" -overlay "$work/emit-overlay.json" -trimpath ./cmd/vibelang-mapper)
 (cd "$package" && M1_WORK="$work" M1_MAPPER="$package/bin/vibelang-mapper" M1_STOCK="$native" \
   VIBELANG_BINARY="$VIBELANG_BINARY" node --test "$here/protocol.property.test.mjs")
 
