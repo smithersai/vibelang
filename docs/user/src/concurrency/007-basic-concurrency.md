@@ -44,6 +44,8 @@ A non-iterable `for concurrent` operand reports `EK1901`; pass an `Iterable`, or
 
 A concurrency limit bounds running work, not iterable pulling. In pinned Effect, `for concurrent(1)` pulls incrementally and an item failure does not call the iterator's `return()`. The parallel branch, including an omitted limit or `"unbounded"`, first materializes a non-array iterable; an endless one cannot finish that step. An existing array is reused by reference and its custom iterator is not called in that branch. Use a Stream with `for try` for ordered Stream consumption. See the [runtime witness](https://vibelang.sh/spec/008-runtime#iterable-lifecycle).
 
+A `return` cannot leave a `for concurrent` item, including its head binding initialization, computed member names and class heritage. These positions report `EK1904`. A nested method or function keeps its own returns. Use `continue` to finish one item.
+
 A written `for concurrent(limit())` limit is evaluated once, before the iterable expression, in both the native compiler and TypeScript mapper.
 
 A written concurrency limit must be assignable to Effect's `Types.Concurrency` (`number | "unbounded"`). Other types, including explicit `undefined` and `null`, report `EK1907`. Omitting the limit uses the default concurrency. The `"unbounded"` sentinel also works through a variable, parameter, type alias or generic constrained to `Types.Concurrency`.

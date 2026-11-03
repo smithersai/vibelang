@@ -18,10 +18,6 @@ FuzzVIPDifferential compile:EK4838/vip05.catch-join-value compiler VIP-17: the r
 FuzzVIPDifferential corpus:fz-run-vip05-catch-join-value compiler VIP-17: minimal named probe reproduces compile:EK4838/vip05.catch-join-value; lane w2-removals
 FuzzVIPDifferential compile:TS1107/vip19.self-continue compiler VIP-19: a labeled `continue` naming the `for concurrent` itself draws TS1107 from the generated callback (queued fix 19e25b89faef); lane impl-hunt-run
 FuzzVIPDifferential corpus:fz-run-vip19-self-continue compiler VIP-19: minimal named probe reproduces compile:TS1107/vip19.self-continue; lane impl-hunt-run
-FuzzRunningRules diagnostic:concurrent-head-return compiler VIP-19: a `return` in a head default's `do` draws TS1108 from the generated callback, not EK1904; lane impl-hunt-run
-FuzzRunningRules corpus:concurrent-head-return compiler VIP-19: minimal reproduction of diagnostic:concurrent-head-return; lane impl-hunt-run
-FuzzRunningRules diagnostic:concurrent-head-computed-return compiler VIP-19: a `return` in a computed head key's `do` draws TS1108 from the generated callback, not EK1904; lane impl-hunt-run
-FuzzRunningRules corpus:concurrent-head-computed-return compiler VIP-19: minimal reproduction of diagnostic:concurrent-head-computed-return; lane impl-hunt-run
 FuzzRunningRules diagnostic:concurrent-head-break-outer compiler VIP-19: a labeled `break` in a head default's `do` draws the retired EK1019, not EK1903; lane core-block
 FuzzRunningRules corpus:concurrent-head-break-outer compiler VIP-19: minimal reproduction of diagnostic:concurrent-head-break-outer; lane core-block
 FuzzRunningRules diagnostic:concurrent-head-continue-outer compiler VIP-19: a labeled `continue` in a head default's `do` draws the retired EK1019, not EK1905; lane core-block

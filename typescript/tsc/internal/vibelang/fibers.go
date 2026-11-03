@@ -147,6 +147,9 @@ func checkFiberForms(c *checker.Checker, file *ast.SourceFile) {
 				checkConcurrentOperand(c, args[0])
 				checkConcurrentLimit(c, file, args[1])
 				checkConcurrentBody(c, args[2].Body())
+				for _, parameter := range args[2].Parameters() {
+					checkConcurrentBody(c, parameter.Name())
+				}
 			}
 		}
 		return node.ForEachChild(visit)
@@ -572,13 +575,11 @@ func checkConcurrentBody(c *checker.Checker, body *ast.Node) {
 			note(report(c, node, EK1903), "Use continue to end this item, or throw to stop every item.")
 			cover(c, node)
 			return false
-		case node.Kind == ast.KindReturnStatement && node.Flags&(ast.NodeFlagsReparsed|ast.NodeFlagsVibeLang) == 0:
+		case node.Kind == ast.KindReturnStatement && node.Flags&(ast.NodeFlagsReparsed|ast.NodeFlagsVibeLang) == 0 && isReturnKeyword(ast.GetSourceFileOfNode(body), node):
 			note(report(c, node, EK1904), "Use continue to end this item.")
 			return false
-		case isFunctionBoundary(node):
-			return false
 		}
-		return node.ForEachChild(visit)
+		return concurrentItemChildren(ast.GetSourceFileOfNode(body), node, visit)
 	}
 	body.ForEachChild(visit)
 }

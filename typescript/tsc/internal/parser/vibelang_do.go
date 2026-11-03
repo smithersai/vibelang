@@ -628,8 +628,8 @@ func (p *Parser) checkDoBoundary(d *doExpression, boundary *ast.Node, what strin
 			keyword = "yield"
 		}
 		if keyword != "" {
-			if p.doForTryHeadJump(boundary, n) {
-				return // The for try checker owns EK2002/EK2003, once.
+			if p.doForTryHeadJump(boundary, n) || p.doConcurrentItemReturn(boundary, n) {
+				return // The per-item checker owns its language diagnostic, once.
 			}
 			p.doError(p.skipRangeTrivia(n.Loc), DoBoundaryCode, DoBoundaryMessage, keyword, what)
 		}

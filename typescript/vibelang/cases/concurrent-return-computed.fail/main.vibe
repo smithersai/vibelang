@@ -1,0 +1,20 @@
+// expect: EK1904
+const rows: { x?: number }[] = [{}]
+export effect function objectName(flag: boolean) {
+  for concurrent (const x of [1]) {
+    const value = {[(do { if (flag) return 7; "m" })]() { return 1 }}
+  }
+}
+export effect function className(flag: boolean) {
+  for concurrent (const x of [1]) {
+    class Value {[(do { if (flag) return 7; "m" })]() { return 1 }}
+  }
+}
+export effect function heritage(flag: boolean) {
+  for concurrent (const x of [1]) {
+    class Value extends (do { if (flag) return (class {}); (class {}) }) {}
+  }
+}
+export effect function head(flag: boolean) {
+  for concurrent (const { x = do { if (flag) return 7; 0 } } of rows) {}
+}
