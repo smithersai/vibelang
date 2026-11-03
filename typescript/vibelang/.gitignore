@@ -2,3 +2,6 @@ out/
 node_modules
 # harness.mjs --isolated copies cases here; a failing copy stays for inspection.
 /.smthrs-harness-*/
+.coverage-types-*.ts
+.coverage-exit-*.mjs
+.companion-*/
