@@ -12,10 +12,10 @@ import (
 
 const localServiceShapeLabel = "local service shape"
 
-// VIP-9's Shape alias is a namespace member. TypeScript cannot declare
-// that namespace inside a function or block (chapter 005).
+// A body-only service has a public Shape namespace only at module scope.
+// A written whole-shape annotation has no implicit namespace (VIP-9 amended).
 func serviceShapeNamespaceScope(class *ast.Node) bool {
-	return class.Parent != nil && (ast.IsSourceFile(class.Parent) || ast.IsModuleBlock(class.Parent))
+	return serviceShape(class) == nil && class.Parent != nil && (ast.IsSourceFile(class.Parent) || ast.IsModuleBlock(class.Parent))
 }
 
 // serviceOwnShapeName admits VIP-9's type-only self-shape hook in the
@@ -23,6 +23,16 @@ func serviceShapeNamespaceScope(class *ast.Node) bool {
 // spelling alone cannot capture a shadowing declaration. Initializers, bodies,
 // computed names and static members do not form the instance member type.
 func serviceOwnShapeName(class *ast.Node, name *ast.Node) bool {
+	// An explicit annotation supplies the type inside its own key/default
+	// body, without creating a public namespace (VIP-9 amended).
+	if serviceShape(class) != nil {
+		for _, member := range class.Members() {
+			if ast.IsNodeDescendantOf(name, member) {
+				return true
+			}
+		}
+		return false
+	}
 	for _, member := range class.Members() {
 		if ast.IsStatic(member) {
 			continue

@@ -6149,6 +6149,7 @@ typescript/vibelang/cases/vip6-try-promise-global/main.vibe:18:40 lambda plain t
 typescript/vibelang/cases/vip6-try-promise-global/main.vibe:6:22 lambda plain fallback
 typescript/vibelang/cases/vip9-services/main.vibe:3:34 lambda plain fallback
 typescript/vibelang/cases/web-standard-globals/explicit.vibe:2:32 lambda plain annotation
+typescript/vibelang/cases/whole-service-shape-declarations/main.vibe:4:104 lambda plain fallback
 typescript/vibelang/cases/wire-resolved-callee/main.vibe:13:28 lambda program table
 typescript/vibelang/cases/wire-self-input.fail/main.vibe:7:35 lambda program table
 typescript/vibelang/cases/wire-spread-unlisted.fail/main.vibe:9:28 lambda program table

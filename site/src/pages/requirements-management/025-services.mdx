@@ -78,13 +78,15 @@ Service members form an object type, so a written `this` type there gets TypeScr
 
 ## Declaring a service of any shape
 
+Write `service Database: DatabaseService { static readonly key = "app/Database" }` to use an existing type directly. The annotation can name any TypeScript type. Its body contains only `key` and `defaultValue`. This form emits the written type directly, without a private shape helper or public `Database.Shape` namespace. Outside the declaration, write the type or `Context.Service.Shape<typeof Database>`. Within its own body, `Database.Shape` denotes the annotation. Body-only services retain their public `Shape` namespace.
+
 ```vibe
 interface SearchApi {
   find(query: string): string!!
 }
 
-class Search extends Context.Service<Search, SearchApi>()("app/Search") {}
-class Prefix extends Context.Service<Prefix, string>()("app/Prefix") {}
+service Search: SearchApi { static readonly key = "app/Search" }
+service Prefix: string { static readonly key = "app/Prefix" }
 
 effect function lookup(query: string) {
   const prefix = try Prefix
@@ -94,7 +96,7 @@ effect function lookup(query: string) {
 // Output: > hit:vibe
 ```
 
-Use Effect's `Context.Service` class for a service whose implementation has any type: an interface declared elsewhere, a primitive such as `string`, or a function type. `class Search extends Context.Service<Search, SearchApi>()("app/Search") {}` declares a key with an explicit identity. Its body can hold static members, such as `static readonly layer = Layer.succeed(Search, impl)`; declare implementation members in `SearchApi`. Read the implementation with `const search = try Search`, then run an Effect-returning member with `try search.find(q)`; `try Prefix` returns the string implementation. The type `Search` is the service's identifier, so type an implementation `SearchApi` or `Context.Service.Shape<typeof Search>`.
+A written whole-shape annotation accepts any implementation type: an interface declared elsewhere, a primitive such as `string`, or a function type. `class Search extends Context.Service<Search, SearchApi>()("app/Search") {}` is the Effect TypeScript counterpart with the same explicit key. Keep layers and helpers in separate declarations beside the VibeLang service; declare implementation members in `SearchApi`. Read the implementation with `const search = try Search`, then run an Effect-returning member with `try search.find(q)`; `try Prefix` returns the string implementation. The type `Search` is the service's identifier, so type an implementation `SearchApi` or `Context.Service.Shape<typeof Search>`.
 
 ## Requesting and supplying implementations
 
@@ -123,7 +125,7 @@ effect function readImplementation() {
 
 A service can declare `static readonly defaultValue = () => implementation` to supply an implementation without a provider. It compiles to a `Context.Reference`. The returned implementation is checked against the service shape, as with `Layer.succeed`. For `Layer.succeed`, the compiler reports a shape mismatch as a TypeScript error, an excess member failure as `EK9201`, and an undeclared call-time requirement as `EK3101`. Support for the new `defaultValue` form arrives with the compiler's VIP implementation. The `EK4855` repair also migrates supported value and type reads of an old `static readonly default`. If an aliased, parenthesized or union index, or an instantiated type query, cannot be preserved, the diagnostic explains the manual repair and the editor leaves the whole declaration unchanged.
 
-A reference has `Flags.Shape` for its implementation and `typeof Flags` for its key value, but no `Flags` identifier type. Writing `let value: Flags` reports `TS2749`, as for Effect's `Context.Reference`; references do not appear in `R`. An import type such as `import("./flags.vibe").Flags` reports `TS2694`; use `typeof import("./flags.vibe").Flags` for the key value.
+A reference declared with a member body has `Flags.Shape` for its implementation and `typeof Flags` for its key value, but no `Flags` identifier type. Writing `let value: Flags` reports `TS2749`, as for Effect's `Context.Reference`; references do not appear in `R`. An import type such as `import("./flags.vibe").Flags` reports `TS2694`; use `typeof import("./flags.vibe").Flags` for the key value.
 
 `try Sequence` looks up the implementation, to capture it or read value members; `try sequence.next()` runs its Effect-returning method. Supply every requirement before running the program.
 
@@ -243,6 +245,8 @@ Capture construction dependencies in the layer factory: `try reporter.write(...)
 Service members follow TypeScript interface typing. Omitting a method's return type gives `TS7010` under `noImplicitAny`; an untyped property gives `TS7008`. With that option disabled both are `any`, and an explicit `read(): any` works under strict checking. Write the intended type; no Effect return is required.
 
 A service declaration keeps a written namespace import for `effect/Context` in its declaration file, including aliases such as `import * as Ctx from "effect/Context"`. Its generated base type then uses `Ctx.ServiceClass`. A locally shadowed alias uses a visible binding instead.
+
+The public `Sequence.Shape` alias described above belongs to a member-body declaration. With a written whole-shape annotation, use its type or `Context.Service.Shape<typeof Sequence>` outside the declaration; the implicit `Sequence.Shape` name is confined to its own body. The same distinction applies to a reference declared with `defaultValue`.
 
 ---
 

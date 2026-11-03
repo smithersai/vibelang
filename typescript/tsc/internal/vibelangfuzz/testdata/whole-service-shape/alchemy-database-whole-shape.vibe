@@ -1,0 +1,3 @@
+import {Context} from "effect"
+interface Shape {readonly value:number}
+export service Port:Shape {static readonly key="BetterAuth.Database"}

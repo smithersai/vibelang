@@ -18,7 +18,7 @@ import (
 //	}
 //
 // TypeScript code that imports it must see what Effect TypeScript declares
-// for class Users extends Context.Service<Users, Shape>()(key) {} plus
+// for a body-only service: Context.Service<Users, Shape>()(key) {} plus
 // the public Shape namespace (VIP-9/VIP-27, detail 181): one private named
 // shape, a base constant typed with Effect's ServiceClass and that shape,
 // and the key class with its static members.
@@ -32,7 +32,8 @@ import (
 //
 // The key is the one the body writes, static readonly key = "<key>", which is
 // not a static member of its own, or the derived one. A service of any shape
-// (D281) writes its shape as written. A service with a static default and no
+// (D281) writes its annotation directly without a helper or namespace.
+// A service with a static default and no
 // other static member is Effect's reference, export declare const Flags:
 // Context.Reference<Shape>; with other static members, its base is the
 // runtime's ReferenceKey<Shape>. Public Users.Shape references keep that
@@ -55,8 +56,9 @@ func init() { compiler.RegisterDeclarationTransformerHook(serviceDeclarations) }
 // serviceEmit is what the declaration transform needs to know about one
 // service or control class.
 type serviceEmit struct {
-	key  string
-	kind classKind
+	key    string
+	kind   classKind
+	arrays map[*ast.Node]bool
 }
 
 func serviceDeclarations(resolver printer.EmitResolver, file *ast.SourceFile) func(*ast.SourceFile) *ast.SourceFile {
@@ -75,7 +77,7 @@ func serviceDeclarations(resolver printer.EmitResolver, file *ast.SourceFile) fu
 			for _, statement := range statements {
 				switch kind := classKindOf(statement); kind {
 				case serviceClass:
-					emits[statement] = &serviceEmit{key: s.key(statement), kind: kind}
+					emits[statement] = &serviceEmit{key: s.key(statement), kind: kind, arrays: wholeShapeArraySpellings(c, serviceShape(statement))}
 				case controlClass:
 					emits[statement] = &serviceEmit{key: s.key(statement), kind: kind}
 				default:
@@ -213,6 +215,17 @@ func (e *serviceEmitter) statements(statements []*ast.Node, ambient bool) ([]*as
 			} else {
 				written, hidden = e.control(statement, emit.key, ambient, exported)
 			}
+			// With no private carrier, an ambient namespace still exports all
+			// members implicitly, as TypeScript's Reference counterpart does.
+			if allExported && len(hidden) == 0 {
+				f := e.ec.Factory.AsNodeFactory()
+				for i, node := range written {
+					if ast.IsVariableStatement(node) {
+						flags := ast.GetCombinedModifierFlags(node) &^ ast.ModifierFlagsExport
+						written[i] = ast.ReplaceModifiers(f, node, f.NewModifierList(ast.CreateModifiersFromModifierFlags(flags, f.NewModifier)))
+					}
+				}
+			}
 			for _, statement := range hidden {
 				private[statement] = true
 			}
@@ -312,6 +325,10 @@ func (e *serviceEmitter) service(declared, class *ast.Node, emit *serviceEmit, a
 	instance, statics := splitMembers(e.ec, declared)
 	statics = withoutStatic(statics, serviceKeyName)
 	shape := writtenShape(declared, class)
+	if shape != nil && len(emit.arrays) > 0 {
+		shape = e.wholeShapeArrays(shape, emit.arrays)
+	}
+	written := shape != nil
 	if shape == nil {
 		shape = f.NewTypeLiteralNode(f.NewNodeList(instance))
 	}
@@ -319,10 +336,14 @@ func (e *serviceEmitter) service(declared, class *ast.Node, emit *serviceEmit, a
 	// The key and its public Shape alias name the same direct object type.
 	// Extracting the shape through typeof the key creates a base cycle for
 	// recursive members (VIP-9/VIP-27, decided detail 181).
-	shapeName := e.names.freshName(name + "_shape")
-	shapeAlias := f.NewTypeAliasDeclaration(nil /*modifiers*/, f.NewIdentifier(shapeName), nil /*typeParameters*/, shape)
-	shape = f.NewTypeReferenceNode(f.NewIdentifier(shapeName), nil /*typeArguments*/)
-	result, hidden := []*ast.Node{shapeAlias}, []*ast.Node{shapeAlias}
+	var result, hidden []*ast.Node
+	shapeName := ""
+	if !written {
+		shapeName = e.names.freshName(name + "_shape")
+		shapeAlias := f.NewTypeAliasDeclaration(nil /*modifiers*/, f.NewIdentifier(shapeName), nil /*typeParameters*/, shape)
+		shape = f.NewTypeReferenceNode(f.NewIdentifier(shapeName), nil /*typeArguments*/)
+		result, hidden = []*ast.Node{shapeAlias}, []*ast.Node{shapeAlias}
+	}
 	if hasDefaultValue(class) {
 		if others := withoutStatic(statics, "defaultValue"); len(others) == 0 {
 			// export declare const Flags: Context.Reference<Shape>
@@ -348,11 +369,14 @@ func (e *serviceEmitter) service(declared, class *ast.Node, emit *serviceEmit, a
 		)
 		result, hidden = append(result, base, keyClass(f, declared, base, ambient, exported, false /*abstract*/, statics)), append(hidden, base)
 	}
-	// A type-only namespace can merge with either the service class or a
-	// Context.Reference const; no runtime namespace is emitted.
-	publicShape := f.NewTypeAliasDeclaration(nil /*modifiers*/, f.NewIdentifier(serviceShapeName), nil /*typeParameters*/, f.NewTypeReferenceNode(f.NewIdentifier(shapeName), nil /*typeArguments*/))
-	shapeNamespace := f.NewModuleDeclaration(f.NewModifierList(declareModifiers(f, ambient, exported)), ast.KindNamespaceKeyword, f.NewIdentifier(name), nil /*attributes*/, f.NewModuleBlock(f.NewNodeList([]*ast.Node{publicShape})))
-	result = append(result, shapeNamespace)
+	if !written {
+		// A type-only namespace can merge with either the service class or a
+		// Context.Reference const; no runtime namespace is emitted.
+		publicShape := f.NewTypeAliasDeclaration(nil /*modifiers*/, f.NewIdentifier(serviceShapeName), nil /*typeParameters*/, f.NewTypeReferenceNode(f.NewIdentifier(shapeName), nil /*typeArguments*/))
+		shapeNamespace := f.NewModuleDeclaration(f.NewModifierList(declareModifiers(f, ambient, exported)), ast.KindNamespaceKeyword, f.NewIdentifier(name), nil /*attributes*/, f.NewModuleBlock(f.NewNodeList([]*ast.Node{publicShape})))
+		result = append(result, shapeNamespace)
+	}
+
 	if isDefault {
 		result = append(result, f.NewExportAssignment(nil /*modifiers*/, false /*isExportEquals*/, nil /*type*/, f.NewIdentifier(name)))
 	}
@@ -549,8 +573,7 @@ func emittedServiceShapeName(c *checker.Checker, name *ast.Node) bool {
 		return true
 	}
 	class := symbol.ValueDeclaration()
-	return classKindOf(class) == serviceClass && class.Parent != nil &&
-		(ast.IsSourceFile(class.Parent) || ast.IsModuleBlock(class.Parent))
+	return classKindOf(class) == serviceClass && serviceShapeNamespaceScope(class)
 }
 
 // shapeReferences writes compatibility references without a real companion

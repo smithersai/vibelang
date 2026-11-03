@@ -96,3 +96,5 @@ Each `withSeed` call installs a new deterministic generator, so both pairs hold 
 Default services behave as in Effect. Effect values such as `Random.next` run with `try Random.next`; provision and seed helpers take an Effect value such as `pair()`.
 
 The `static readonly defaultValue` initializer follows a source class-field boundary, even inside an Effect function. It cannot run `try e` there (`EK0501`). Compute an Effect-based factory first in the surrounding Effect body, then assign it with `static readonly defaultValue = factory`. Creating that value runs when the declaration is reached; invoking the factory follows `Context.Reference` fallback behavior.
+
+A default service with a written whole-shape annotation uses that annotation directly: `service Flags: Config { static readonly key = "app/Flags"; static readonly defaultValue: () => Config = () => config }`. It adds no public `Flags.Shape` namespace. Use `Config` or `Context.Service.Shape<typeof Flags>` outside its body; a member-body default service retains its public shape alias. See [Declaring a service of any shape](025-services.md#declaring-a-service-of-any-shape).

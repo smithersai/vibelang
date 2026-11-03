@@ -1,0 +1,4 @@
+import {Context} from "effect"
+export interface Shape {readonly value:number}
+export service Database:Shape {static readonly key="alchemy/Database"}
+export service Flags:Shape {static readonly key="alchemy/Flags";static readonly defaultValue:()=>Shape=()=>({value:7})}
