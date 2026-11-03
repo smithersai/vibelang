@@ -389,6 +389,8 @@ Function names and parameter bindings also require written identifier nodes when
 
 CI-health reports distinguish `Go cache archive` failures from missing repository inputs. The former identifies a missing compiled archive with a matching content hash and bucket; it calls for cache investigation without guessing what removed the archive. `.smithers/flows/ci-health/test/go-cache.test.mjs` covers the real log pair, generated diagnostic neighbours and competing causes, and the `go-cache-archive` eval runs the actual workflow on that pair.
 
+The `//typescript/vibelang:coverage-twin-oracle` target runs the parity oracle's five positive and negative controls with real stock TypeScript and the checkout's pinned Effect install. It checks success, error and service types separately from runtime `Exit` values, and needs no VibeLang compiler build. `scripts/test-runners.test.mjs` keeps this suite connected to its declared runner.
+
 ## Packages
 
 ```text

@@ -196,6 +196,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Migrating a discarded `yield*` result that was itself an Effect could leave a bare program statement and prevent the migration from compiling; the fixer now writes `void try`, preserving the discarded value and keeping the inner program cold.
 - Migration returned modules containing TaggedError classes the compiler deliberately kept to preserve their published tags. The style gate now accepts those explicit refusals while retaining other style checks.
 - Two calls of a plain TypeScript function in one effect function, each with an Effect operand, made `vibelang --fix` refuse both with `TS2451`, because each fix named its operand's `const` the same; each now gets its own name, and `EK4401` is fixed.
+- Coverage parity's own negative controls were absent from the test graph and failed the test-discovery guard; a dedicated target now runs all five controls.
 - Renaming a shorthand pattern binding could change the property it matched and add `TS2339`; rename now keeps the property key and writes an explicit binding.
 
 - Rolldown entry globs could bundle generated `.d.vibex.ts` declarations as empty entrypoints; the plugin now excludes those sidecars and retains the JSX source entries and aliases.

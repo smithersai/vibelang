@@ -105,6 +105,24 @@ targets["lsp-smoke"] = S.Shell.Test({
   timeout: "10m"
 })
 
+// These controls exercise the parity oracle itself using real stock
+// TypeScript declarations and Effect Exit values, without building VibeLang.
+targets["coverage-twin-oracle"] = S.Shell.Test({
+  summary: "Coverage parity rejects mismatched success, error, services and Exit values.",
+  shell: "EFFECT_NODE_MODULES=$PWD/experiments/node_modules " +
+    "node --test typescript/vibelang/coverage-twin.test.mjs",
+  data: [
+    S.file("coverage-twin.test.mjs"),
+    S.file("test/coverage-twin.mjs"),
+    S.file("//experiments/package.json"),
+    S.file("//experiments/bun.lock"),
+    S.file("//packages/runtime/package.json")
+  ],
+  tools: [S.Host.bin("node")],
+  sandbox: "none",
+  timeout: "5m"
+})
+
 /** Every file in typescript/vibelang, for the repository-wide checks. */
 const tree = S.Filegroup({ srcs: [...S.glob(["**"])] })
 
