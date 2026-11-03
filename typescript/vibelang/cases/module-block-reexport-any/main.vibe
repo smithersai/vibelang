@@ -1,0 +1,2 @@
+module platform { export const eol = (text: string): string => text + "\n"; }
+export { eol } from platform;

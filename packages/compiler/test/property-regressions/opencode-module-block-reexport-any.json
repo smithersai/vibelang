@@ -1,0 +1,13 @@
+{
+  "property": "module-source-sidecars",
+  "rule": "VIP-40: re-exported const arrow signatures stay typed for stock TypeScript consumers",
+  "input": {
+    "name": "platform",
+    "form": "named",
+    "layout": "",
+    "noEmit": false,
+    "discovery": false,
+    "inPlace": false,
+    "arrow": true
+  }
+}

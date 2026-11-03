@@ -29,6 +29,7 @@ function check(input) {
     writeFileSync(join(sourceDir, "main.vibe"), [
       "module " + input.name + " {",
       "  /** @throws {RangeError} */",
+      input.arrow ? "  export const port = (raw: string): number => Number(raw)" :
       "  export function port(raw: string): number { return Number(raw) }",
       "  export interface Port { readonly value: number }",
       "}",
@@ -109,7 +110,7 @@ test("module declarations accompany sidecars across layouts and re-export forms"
       name:fc.constantFrom("parse", "ports", "parser_2"),
       form:fc.constantFrom("named", "star", "namespace"),
       layout:fc.constantFrom("", "types", ".vibe/declarations"),
-      noEmit:fc.boolean(), discovery:fc.boolean(), inPlace:fc.boolean()
+      noEmit:fc.boolean(), discovery:fc.boolean(), inPlace:fc.boolean(), arrow:fc.boolean()
     }),
     regressions:new URL("./property-regressions/", import.meta.url),
     numRuns:40, diagnostics:()=>diagnostics, check
