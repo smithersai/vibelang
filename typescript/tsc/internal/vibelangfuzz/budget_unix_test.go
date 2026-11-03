@@ -29,11 +29,18 @@ func fuzzCPU() (time.Duration, error) {
 	return total, nil
 }
 
+// shortSeedCPULimit fails a target whose -short seeds use this much CPU. CPU
+// time is not steady between hosts: one FuzzFix binary used 3m10 on one 4-vCPU
+// box and 8m18 on another, so the limit leaves room for three times a heavy
+// target's usual 4m. The 120 s line below and VIBELANG_FUZZ_BUDGET_LOG report
+// growth before it fails.
+const shortSeedCPULimit = 12 * time.Minute
+
 func startShortBudget(f *testing.F) {
 	if !testing.Short() || toolsFuzzing() {
 		return
 	}
-	enforceFuzzBudget(f, 240*time.Second)
+	enforceFuzzBudget(f, shortSeedCPULimit)
 }
 
 func enforceFuzzBudget(t testing.TB, limit time.Duration) {
