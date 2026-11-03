@@ -1,0 +1,175 @@
+---
+title: "A Real Provider, Before and After"
+description: "Alchemy deploys cloud resources from Effect programs. This page compares one of its resource providers in both languages: RegistryPolicy, the permissions policy of a private Amazon ECR registry...."
+---
+
+# A Real Provider, Before and After
+
+[Alchemy](https://alchemy.run) deploys cloud resources from Effect programs. This page compares one of its resource providers in both languages: `RegistryPolicy`, the permissions policy of a private Amazon ECR registry. The TypeScript is Alchemy's own. The VibeLang is the conversion in [smithersai/alchemy](https://github.com/smithersai/alchemy/tree/vibe), which is a fork, with the hand edits listed below.
+
+Both listings show only `RegistryPolicyProvider`, with Alchemy's comments removed. In the rest of the file, the VibeLang drops the `effect/Effect` import, which it keeps in scope, and imports `../IAM/Policy.vibe` instead of `../IAM/Policy.ts`. The props interface and the doc comment read the same.
+
+## Effect TypeScript
+
+From `packages/aws/src/ECR/RegistryPolicy.ts`.
+
+```ts [Effect]
+// fragment
+export const RegistryPolicyProvider = () =>
+  Provider.effect(
+    RegistryPolicy,
+    Effect.gen(function* () {
+      const readPolicy = ecr
+        .getRegistryPolicy({})
+        .pipe(Effect.catchTag("RegistryPolicyNotFoundException", () => Effect.undefined));
+
+      const toPolicyText = (policy: PolicyDocument | string) =>
+        typeof policy === "string" ? policy : stringifyPolicyDocument(policy);
+
+      return {
+        stables: ["registryId"],
+        read: Effect.fn(function* () {
+          const observed = yield* readPolicy;
+          if (observed?.policyText === undefined) return undefined;
+          return {
+            registryId: observed.registryId ?? (yield* AWSEnvironment.current).accountId,
+            policy: observed.policyText,
+          };
+        }),
+        list: () =>
+          Effect.gen(function* () {
+            const observed = yield* readPolicy;
+            if (observed?.policyText === undefined) return [];
+            return [
+              {
+                registryId: observed.registryId ?? (yield* AWSEnvironment.current).accountId,
+                policy: observed.policyText,
+              },
+            ];
+          }),
+        reconcile: Effect.fn(function* ({ news, session }) {
+          const desired = toPolicyText(news.policy);
+
+          const observed = yield* readPolicy;
+          let registryId = observed?.registryId;
+          if (
+            observed?.policyText === undefined ||
+            normalizePolicyDocument(observed.policyText) !== normalizePolicyDocument(desired)
+          ) {
+            const put = yield* ecr.putRegistryPolicy({ policyText: desired });
+            registryId = put.registryId ?? registryId;
+          }
+          registryId ??= (yield* AWSEnvironment.current).accountId;
+
+          yield* session.note(registryId);
+          return { registryId, policy: desired };
+        }),
+        delete: Effect.fn(function* () {
+          yield* ecr
+            .deleteRegistryPolicy({})
+            .pipe(Effect.catchTag("RegistryPolicyNotFoundException", () => Effect.void));
+        }),
+      };
+    }),
+  );
+```
+
+## VibeLang
+
+From `packages/aws/src/ECR/RegistryPolicy.vibe`.
+
+```vibe
+// fragment
+export const RegistryPolicyProvider = () =>
+  Provider.effect(
+    RegistryPolicy,
+    effect {
+      const readPolicy = effect {
+        return ecr.getRegistryPolicy({}) catch effect (e) => match (e) {
+          when { _tag: "RegistryPolicyNotFoundException" }: undefined;
+          default: throw e;
+        }
+      }
+
+      const toPolicyText = (policy: PolicyDocument | string) =>
+        typeof policy === "string" ? policy : stringifyPolicyDocument(policy)
+
+      return {
+        stables: ["registryId"],
+        read: effect () => {
+          const observed = try readPolicy
+          if (observed?.policyText === undefined) return undefined
+          return {
+            registryId: observed.registryId ?? (try AWSEnvironment.current).accountId,
+            policy: observed.policyText,
+          }
+        },
+        list: effect () => {
+          const observed = try readPolicy
+          if (observed?.policyText === undefined) return []
+          return [
+            {
+              registryId: observed.registryId ?? (try AWSEnvironment.current).accountId,
+              policy: observed.policyText,
+            },
+          ]
+        },
+        reconcile: effect ({ news, session }) => {
+          const desired = toPolicyText(news.policy)
+
+          const observed = try readPolicy
+          let registryId = observed?.registryId
+          if (
+            observed?.policyText === undefined
+            || normalizePolicyDocument(observed.policyText) !== normalizePolicyDocument(desired)
+          ) {
+            const put = try ecr.putRegistryPolicy({ policyText: desired })
+            registryId = put.registryId ?? registryId
+          }
+          registryId ??= (try AWSEnvironment.current).accountId
+
+          try session.note(registryId)
+          return { registryId, policy: desired }
+        },
+        delete: effect () => {
+          ecr.deleteRegistryPolicy({}) catch effect (e) => match (e) {
+            when { _tag: "RegistryPolicyNotFoundException" }: undefined;
+            default: throw e;
+          }
+        },
+      }
+    },
+  )
+```
+
+## What changed
+
+| Effect TypeScript | VibeLang |
+| --- | --- |
+| `Effect.gen(function* () { ... })` | `effect { ... }` |
+| `Effect.fn(function* ({ news }) { ... })` | `effect ({ news }) => { ... }` |
+| `yield* e` | `try e` |
+| `e.pipe(Effect.catchTag("X", () => Effect.void))` | `e catch effect (err) => match (err) { when { _tag: "X" }: undefined; default: throw err; }` |
+
+Over the provider, the 9 `yield*`, 2 `Effect.gen`, 3 `Effect.fn` and 2 `.pipe` calls are gone. The listing takes 60 lines against 57, and 1372 characters against 1436, counting no whitespace.
+
+The catch is the one place VibeLang is longer. `Effect.catchTag` rethrows every other error for you, and `match` writes that rethrow out as `default: throw err`.
+
+## Hand edits
+
+The converter produced everything above except these, all made by hand:
+
+- `when { _tag: "..." }: try Effect.void` and `try Effect.undefined` became `undefined`.
+- `ecr.getRegistryPolicy({})` and `ecr.deleteRegistryPolicy({})` moved onto one line with their `catch`.
+- Two `: infer _` return annotations and every `mutable` member modifier, which an earlier converter wrote, were removed. The fork keeps the two annotations until it moves to the compiler this page documents.
+
+## How it was checked
+
+- **Compiler.** The current compiler reports no diagnostics for this module. The rest of the fork was still on its pinned compiler for these runs.
+- **Declarations.** The `.d.ts` this listing emits matches the one Alchemy's TypeScript emits, apart from the extensions of relative imports.
+- **Tests.** Alchemy's own test, `test/AWS/ECR/RegistryPolicy.test.ts`, passes unchanged on the JavaScript this listing compiles to. It deploys the policy, reads it back, deploys again and destroys it. It is a live AWS test and these runs had no AWS account, so its HTTP calls went to a local stand-in for ECR and STS. The test failed when a planted fault replaced the delete call.
+- **Formatting.** `vibelang-format --check` passes on the file.
+
+## Coming from Effect
+
+Nothing in `Provider.effect`'s signature changed, so TypeScript callers see the same module. See the [cheat sheet](/vibelang-features/115-cheat-sheet) for every form beside its Effect code, and [Alchemy](/platform/alchemy) for how the two fit together.

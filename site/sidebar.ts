@@ -16,6 +16,10 @@ export const sidebar = [
           {
             "text": "Why VibeLang?",
             "link": "/getting-started/002-why-effect"
+          },
+          {
+            "text": "A Real Provider, Before and After",
+            "link": "/getting-started/real-provider-before-after"
           }
         ]
       },

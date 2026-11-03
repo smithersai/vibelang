@@ -20,6 +20,7 @@ Code example count: one example per fenced code block in the source body, includ
 - **Start Here**
   - [Welcome](src/001-onboarding.md): `v4/onboarding.mdx`
   - [Why VibeLang?](src/getting-started/002-why-effect.md): `v4/getting-started/why-effect.mdx`
+  - [A Real Provider, Before and After](src/getting-started/real-provider-before-after.md)
 - **Learning Path**
   - [The Effect Type](src/getting-started/003-the-effect-type.md): `v4/getting-started/the-effect-type.mdx`
   - [Installation](src/getting-started/004-installation.md): `v4/getting-started/installation.mdx`
