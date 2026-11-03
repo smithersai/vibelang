@@ -1,0 +1,10 @@
+// expect: TS2493 TS2493
+function invalid() {
+  const [x = do { return 9 }, y] = [1] as [number]
+  return y
+}
+
+function literal() {
+  const [x = do { return 9 }, y] = [1]
+  return y
+}

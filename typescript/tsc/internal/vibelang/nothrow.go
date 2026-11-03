@@ -54,7 +54,8 @@ func checkThrowsOutsideEffect(c *checker.Checker, file *ast.SourceFile) {
 		if parser.IsVibeLangModuleDeclaration(node) {
 			return false // a module block's body is TypeScript
 		}
-		if node.Kind == ast.KindThrowStatement && !isSynthesizedCatchRethrow(node) {
+		// Iterator cleanup rethrows are compiler machinery, never source throws.
+		if node.Kind == ast.KindThrowStatement && node.Flags&ast.NodeFlagsVibeLangBindingCleanup == 0 && !isSynthesizedCatchRethrow(node) {
 			if home := a.plainHomeOf(node); home != nil {
 				if home.Kind == ast.KindSourceFile {
 					report(c, node, throwAtTopLevel)

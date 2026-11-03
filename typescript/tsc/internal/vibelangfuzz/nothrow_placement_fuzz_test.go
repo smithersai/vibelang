@@ -124,6 +124,9 @@ var nothrowKinds = []nothrowKind{
 	{key: "async-generator-default", async: true, plain: true, def: func(e string) string {
 		return "export async function* g(x: unknown = " + e + ") {\n  yield x\n}\n"
 	}},
+	{key: "do-binding", wrap: func(b string) string {
+		return "export function f(flag: boolean): number {\n  const [x = do { if (flag) { return 0 }; 0 }] = [] as number[];\n  " + b + "\n  return x\n}\n"
+	}},
 }
 
 // nothrowCallback writes body into an arrow passed to a .ts receiver between

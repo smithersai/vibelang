@@ -237,6 +237,10 @@ func (tx *lowering) visitNode(node *ast.Node) *ast.Node {
 		return tx.visitServiceClass(node)
 	case tx.inEffect && isHandleStatement(node):
 		return nil // retired handler syntax is diagnosed, never lowered to continuations
+	case node.Flags&ast.NodeFlagsVibeLangBindingCleanup != 0 && (node.Kind == ast.KindTryStatement || node.Kind == ast.KindThrowStatement):
+		// Keep generated iterator cleanup in the current generator. Source children
+		// still lower normally; the catch/rethrow and finally stay JavaScript's.
+		return tx.Visitor().VisitEachChild(node)
 	case tx.inEffect && node.Kind == ast.KindTryStatement:
 		return tx.visitTryStatement(node)
 	case maskMarkerWord(node) != "" || exitBindingOf(node) != nil:

@@ -596,3 +596,17 @@ func (c *Checker) inferTypeHasExtensionMeaning(node *ast.Node) bool {
 func (c *Checker) GetReturnTypeFromBody(fn *ast.Node) *Type {
 	return c.getReturnTypeFromBodyWorker(fn, CheckModeNormal)
 }
+
+// NativeBindingElementType preserves TypeScript's iterable checks, tuple bounds,
+// optional elements and rest inference for a parser-lowered binding read.
+func (c *Checker) NativeBindingElementType(element *ast.Node, allowMissing bool) *Type {
+	mode := CheckModeNormal
+	if hasDotDotDotToken(element) {
+		mode = CheckModeRestBindingElement
+	}
+	parentType := c.getTypeForBindingElementParent(element.Parent.Parent, mode)
+	if parentType == nil {
+		return c.errorType
+	}
+	return c.getBindingElementTypeFromParentType(element, parentType, allowMissing)
+}

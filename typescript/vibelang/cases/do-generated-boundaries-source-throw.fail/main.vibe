@@ -1,0 +1,5 @@
+// expect: EK0401
+export function sourceThrow(flag: boolean) {
+  const [x = do { if (flag) { return 9 }; 0 }] = [] as number[]
+  throw "source"
+}

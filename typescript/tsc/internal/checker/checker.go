@@ -23,6 +23,7 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/jsnum"
 	"github.com/microsoft/TypeScript/tsc/internal/module"
 	"github.com/microsoft/TypeScript/tsc/internal/modulespecifiers"
+	"github.com/microsoft/TypeScript/tsc/internal/parser"
 	"github.com/microsoft/TypeScript/tsc/internal/printer"
 	"github.com/microsoft/TypeScript/tsc/internal/scanner"
 	"github.com/microsoft/TypeScript/tsc/internal/stringutil"
@@ -17375,6 +17376,11 @@ func (c *Checker) getTypeForVariableLikeDeclaration(declaration *ast.Node, inclu
 }
 
 func (c *Checker) checkDeclarationInitializer(declaration *ast.Node, checkMode CheckMode, contextualType *Type) *Type {
+	if completion := parser.VibeLangDoBindingNormalContext(declaration); completion != nil {
+		if flow := getFlowNodeOfNode(completion); flow != nil && !c.isReachableFlowNode(flow) {
+			return c.neverType
+		}
+	}
 	initializer := declaration.Initializer()
 	t := c.getQuickTypeOfExpression(initializer)
 	if t == nil {
@@ -30329,8 +30335,14 @@ func (c *Checker) getContextualTypeForInitializerExpression(node *ast.Node, cont
 		if result != nil {
 			return result
 		}
-		if contextFlags&ContextFlagsSkipBindingPatterns == 0 && ast.IsBindingPattern(declaration.Name()) && len(declaration.Name().Elements()) > 0 {
-			return c.getTypeFromBindingPattern(declaration.Name(), true /*includePatternInType*/, false /*reportErrors*/)
+		if contextFlags&ContextFlagsSkipBindingPatterns == 0 {
+			pattern := declaration.Name()
+			if original := parser.VibeLangDoBindingContext(declaration); original != nil {
+				pattern = original
+			}
+			if ast.IsBindingPattern(pattern) && len(pattern.Elements()) > 0 {
+				return c.getTypeFromBindingPattern(pattern, true /*includePatternInType*/, false /*reportErrors*/)
+			}
 		}
 	}
 	return nil

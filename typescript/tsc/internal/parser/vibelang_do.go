@@ -185,6 +185,7 @@ func (p *Parser) parseVibeLangDos(file *ast.SourceFile) {
 	visit = func(n *ast.Node) bool {
 		n.ForEachChild(visit)
 		l.lowerIn(n)
+		l.finishArrayBindings(n)
 		return false
 	}
 	file.AsNode().ForEachChild(visit)
@@ -195,6 +196,9 @@ func (p *Parser) parseVibeLangDos(file *ast.SourceFile) {
 		file.GetOrComputeData(ast.VibeLangDoSites, func(*ast.SourceFile) map[*ast.Node]*ast.Node { return sites })
 	}
 	file.GetOrComputeData(doHeadCellsKey, func(*ast.SourceFile) map[*ast.Node]*ast.Node { return l.headCells })
+	file.GetOrComputeData(doBindingReadsKey, func(*ast.SourceFile) map[*ast.Node]*DoBindingRead { return l.bindingReads })
+	file.GetOrComputeData(doBindingContextsKey, func(*ast.SourceFile) map[*ast.Node]*ast.Node { return l.bindingContexts })
+	file.GetOrComputeData(doBindingNormalContextsKey, func(*ast.SourceFile) map[*ast.Node]*ast.Node { return l.bindingNormalContexts })
 	file.SetDiagnostics(attachFileToDiagnostics(p.diagnostics, file))
 }
 
@@ -878,8 +882,16 @@ func (p *Parser) doSite(do *ast.Node) *ast.Node {
 			if n.Parent.Kind != ast.KindPropertyAssignment {
 				return nil
 			}
+		case ast.KindBindingElement:
+			if child != n.Initializer() || !p.doArrayBinding(n.Parent) {
+				return nil
+			}
+		case ast.KindArrayBindingPattern:
+			if !p.doArrayBinding(n) {
+				return nil
+			}
 		case ast.KindVariableDeclaration:
-			if child != n.Initializer() {
+			if child != n.Initializer() && !(child == n.Name() && p.doArrayBinding(child) && n.Parent.Parent.Parent != nil && n.Parent.Parent.Parent.Kind == ast.KindBlock) {
 				return nil
 			}
 			list := n.Parent
@@ -920,6 +932,13 @@ func (p *Parser) doSite(do *ast.Node) *ast.Node {
 // ---------------------------------------------------------------- lowering
 
 type doLowering struct {
+	bindings                 map[*ast.Node]*ast.Node
+	bindingReads             map[*ast.Node]*DoBindingRead
+	bindingContexts          map[*ast.Node]*ast.Node
+	bindingDefaultValues     map[*ast.Node]*ast.Node
+	bindingDefaultConditions map[*ast.Node]*ast.Node
+	bindingNormalContexts    map[*ast.Node]*ast.Node
+
 	p         *Parser
 	marked    map[*ast.Node]bool // the nodes from each lowered do expression up to its statement
 	temps     int
@@ -1316,12 +1335,17 @@ func (l *doLowering) variableStatement(statement *ast.Node, pre *[]*ast.Node) *a
 	declarations := list.AsVariableDeclarationList().Declarations.Nodes
 	last := -1
 	for i, declaration := range declarations {
-		if init := declaration.Initializer(); init != nil && l.marked[init] {
+		if init := declaration.Initializer(); init != nil && (l.marked[init] || l.marked[declaration.Name()]) {
 			last = i
 		}
 	}
 	if last < 0 {
 		return statement
+	}
+	for _, declaration := range declarations {
+		if l.marked[declaration.Name()] && l.p.doArrayBinding(declaration.Name()) {
+			return l.arrayBindingStatement(statement, pre)
+		}
 	}
 	group := func(declarations []*ast.Node, at core.TextRange) *ast.Node {
 		var kinds []ast.Kind
@@ -1834,10 +1858,17 @@ func (l *doLowering) conditional(e *ast.Node, pre *[]*ast.Node) *ast.Node {
 	branch := func(x *ast.Node) *ast.Node {
 		var inner []*ast.Node
 		value := l.expr(x, &inner)
+		if _, keep := l.bindingDefaultValues[x]; keep {
+			l.bindingDefaultValues[x] = value
+		}
 		return l.p.mBlock(append(inner, l.statement(l.assign(l.ref(name, x.Loc), value, x.Loc), x.Loc)), x.Loc)
 	}
 	let, ref := l.letStatement(name, at), l.ref(name, l.p.sourceRange(e))
-	l.p.completionSite(let, ref)
+	if raw := l.bindingDefaultConditions[e]; raw != nil {
+		l.p.completionSite(let, l.bindingDefaultContextSite(name, raw, at))
+	} else {
+		l.p.completionSite(let, ref)
+	}
 	*pre = append(*pre, let, l.p.vibelangSpanning(l.p.factory.NewIfStatement(c.Condition, branch(c.WhenTrue), branch(c.WhenFalse)), e.Loc))
 	return ref
 }

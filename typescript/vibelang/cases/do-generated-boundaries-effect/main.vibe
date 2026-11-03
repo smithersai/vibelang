@@ -1,0 +1,34 @@
+// expect-result: [[9,["start","closed"]],[["Failure",[["Die","close"]]],["start","closed"]],[["Failure",[["Die","source"]]],["start","closed"]],[["Failure",[["Fail","typed"]]],["start"]],[9,["start","closed","finalized"]]]
+import { holes, throwValue, observe } from "./native-default-iterator.js"
+effect function returned(log: string[]) {
+  const [x = match (true) { default: do { return 9 }; }] = holes(log)
+  log.push("after")
+  return x
+}
+effect function closing(log: string[]) {
+  const [x = do { return 9 }] = holes(log, true)
+  return x
+}
+effect function throwing(log: string[], fail: boolean) {
+  const [x = do { if (log.length < 0) { return 9 }; if (fail) { throwValue("source") }; 0 }] = holes(log, true)
+  return x
+}
+const failure: number!string = Effect.fail("typed")
+effect function failing(log: string[], fail: boolean): number!string {
+  const [x = do { if (log.length < 0) { return 9 }; if (fail) { try failure }; 7 }] = holes(log)
+  return x
+}
+effect function scopedReturn(log: string[]) {
+  try Effect.addFinalizer(() => Effect.sync(() => { log.push("finalized") }))
+  const [x = do { return 9 }] = holes(log)
+  return x
+}
+export effect function main() {
+  const logs = Array.from({length: 5}, () => [] as string[])
+  const value = try returned(logs[0])
+  const close = try observe(closing(logs[1]))
+  const source = try observe(throwing(logs[2], true))
+  const typed = try observe(failing(logs[3], true))
+  const scopedValue = try Effect.scoped(scopedReturn(logs[4]))
+  return [[value, logs[0]], [close, logs[1]], [source, logs[2]], [typed, logs[3]], [scopedValue, logs[4]]]
+}

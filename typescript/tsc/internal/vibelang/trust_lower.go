@@ -345,7 +345,7 @@ func containsYield(node *ast.Node) bool {
 // (D54); elsewhere it propagates unchanged, as JavaScript's (D282).
 func inCatchingTry(node *ast.Node) bool {
 	for n := node; n.Parent != nil && !isFunctionBoundary(n.Parent); n = n.Parent {
-		if parent := n.Parent; parent.Kind == ast.KindTryStatement && parent.AsTryStatement().TryBlock == n && catches(parent) {
+		if parent := n.Parent; parent.Kind == ast.KindTryStatement && parent.Flags&ast.NodeFlagsVibeLangBindingCleanup == 0 && parent.AsTryStatement().TryBlock == n && catches(parent) {
 			return true
 		}
 	}

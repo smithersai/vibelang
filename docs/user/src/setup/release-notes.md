@@ -265,6 +265,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - An erased assertion around `globalThis.Function` incorrectly rejected its permitted `instanceof` and prototype uses with `EK0107`. These uses now keep their exemption through `as`, type assertions, `satisfies` and non-null assertions; other reads stay rejected.
 
+- A `return`, `break`, or `continue` inside `do` in a flat array declaration default could be rejected with `EK0204`. These defaults now run in the enclosing function or loop, skip later bindings on a jump, and close unfinished iterators with native exception precedence. Effect defaults also preserve failure channels and close before enclosing `Scope` finalizers. Generated cleanup keeps the existing checks on source calls known to throw.
+
 - The forms gate rejected explicit Effect callbacks after independently landed changes moved their source locations; its reviewed snapshot now records the written modifier at each affected site.
 
 - Combining the chained-assertion and pipe-parser changes stopped compiler builds; the assertion probe now passes the pipe parser's arrow-context argument, with continuation tests covering both assertion operators and conditional tails.

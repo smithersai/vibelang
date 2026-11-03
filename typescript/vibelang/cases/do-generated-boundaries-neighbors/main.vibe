@@ -1,0 +1,6 @@
+// expect-result: ["named",6]
+function run(stop: boolean) {
+  const [x = do { if (stop) { return 9 }; 7 }, named = () => 6] = [1, undefined] as [number, undefined]
+  return [named.name, named()]
+}
+export function main() { return Effect.succeed(run(false)) }

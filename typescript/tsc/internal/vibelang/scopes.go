@@ -151,10 +151,13 @@ func isNamedRegion(node *ast.Node) bool {
 	case ast.IsIterationStatement(parent, false /*lookInLabeledStatements*/):
 		return parent.Statement() == node
 	case parent.Kind == ast.KindTryStatement:
+		if parent.Flags&ast.NodeFlagsVibeLangBindingCleanup != 0 {
+			return false
+		}
 		try := parent.AsTryStatement()
 		return try.TryBlock == node || try.FinallyBlock == node
 	case parent.Kind == ast.KindCatchClause:
-		return parent.AsCatchClause().Block == node && (parent.Parent == nil || !isHandleStatement(parent.Parent)) // a handle statement's catch block only holds its clauses
+		return parent.AsCatchClause().Block == node && (parent.Parent == nil || parent.Parent.Flags&ast.NodeFlagsVibeLangBindingCleanup == 0 && !isHandleStatement(parent.Parent)) // a handle statement's catch block only holds its clauses
 	case node.Kind != ast.KindBlock:
 		return false
 	case handleClauseOfBlock(node) != nil, maskWord(node) != "":
@@ -163,6 +166,15 @@ func isNamedRegion(node *ast.Node) bool {
 	for _, statement := range node.AsBlock().Statements.Nodes {
 		if isBlockUsing(statement) {
 			return true
+		}
+		// The generated try holds this block's original statements without naming
+		// a new source Scope. A source using still makes the original block a region.
+		if statement.Kind == ast.KindTryStatement && statement.Flags&ast.NodeFlagsVibeLangBindingCleanup != 0 {
+			for _, original := range statement.AsTryStatement().TryBlock.AsBlock().Statements.Nodes {
+				if isBlockUsing(original) {
+					return true
+				}
+			}
 		}
 	}
 	return false

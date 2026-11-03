@@ -62,6 +62,8 @@ const (
 
 	NodeFlagsVibeLangDoMethodBind NodeFlags = 1 << 40 // If node is the parser-written intrinsic bind access for a captured do operand method; its type comes from CallableFunction, never the method's own bind property.
 
+	NodeFlagsVibeLangBindingCleanup NodeFlags = 1 << 42 // Compiler-owned iterator cleanup try/catch/rethrow: native JavaScript completions, including inside Effect code
+
 	NodeFlagsBlockScoped = NodeFlagsLet | NodeFlagsConst | NodeFlagsUsing
 	NodeFlagsConstant    = NodeFlagsConst | NodeFlagsUsing
 	NodeFlagsAwaitUsing  = NodeFlagsConst | NodeFlagsUsing // Variable declaration (NOTE: on a single node these flags would otherwise be mutually exclusive)

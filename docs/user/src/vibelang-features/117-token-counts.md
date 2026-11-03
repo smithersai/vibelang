@@ -290,7 +290,7 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [7. Configuration and tooling](../../../design/src/007-tooling.md) | 18,000 |
 | [8. Runtime guarantees](../../../design/src/008-runtime.md) | 7,900 |
 | **Appendices** | **110,000** |
-| [Grammar, diagnostics, and denied and open VIPs](../../../design/src/900-appendices.md) | 81,000 |
+| [Grammar, diagnostics, and denied and open VIPs](../../../design/src/900-appendices.md) | 82,000 |
 | [Module resolution matrix](../../../design/src/901-resolution-matrix.md) | 27,000 |
 | **All 11 pages** | **240,000** |
 

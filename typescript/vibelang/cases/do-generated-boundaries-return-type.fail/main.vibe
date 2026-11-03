@@ -1,0 +1,5 @@
+// expect: TS2322
+function wrong(source: Iterable<number | undefined>): string {
+  const [x = match (true) { default: do { return 9 }; }] = source
+  return "done"
+}

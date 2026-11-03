@@ -1,0 +1,11 @@
+// expect-result: [9,["start","closed"]]
+import { holes } from "./native-default-iterator.js"
+function f(log: string[]) {
+  const [x = match (true) { default: do { return 9 }; }] = holes(log)
+  log.push("after")
+  return x
+}
+export function main() {
+  const log: string[] = []
+  return Effect.succeed([f(log), log])
+}

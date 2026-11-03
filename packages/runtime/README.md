@@ -209,6 +209,7 @@ or runtime references valid in first-release `.vibe` source.
 | `$yield` | Perform the built-in yield operation | D26 |
 | `$yieldAll` | Yield every element of another producer, a Stream, or an iterable (`yield*`) | D26 |
 | `$forOf` | Pull a Stream, a producer included, or iterate a JavaScript iterable with IteratorClose, and lower loop completion records | D18, D26 |
+| `$bindingIterators` | Internal compiler state for statement-lowered array binding defaults; preserves native jumps and closes unfinished iterators in order | VIP-2 |
 | `$iteratorFrame` | Internal compiler adapter: unwind the native loops and array destructuring of an abandoned generator so JavaScript runs IteratorClose; a throwing `return()` is a defect beside the original cause | D26, D305 |
 | `$forStream`, `$toStream` | Kept for the prototype compiler's output: `$forOf`, and the identity | D26 |
 | `trusted` | Wrap a synchronous implementation as one plain function that carries its expected-failure classes | D249, D514 |

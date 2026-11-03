@@ -1,0 +1,22 @@
+export function fromBinding(source: Iterable<number | undefined>) {
+  const [x = do { return 9 }] = source
+  return x
+}
+export function normalOrReturn(source: Iterable<number | undefined>, stop: boolean) {
+  const [x = do { if (stop) { return 9 }; 7 }] = source
+  return x
+}
+
+export function annotated(source: (number | undefined)[], stop: boolean) {
+  const [x = do { if (stop) { return 9 }; 7 }]: (number | undefined)[] = source
+  return x
+}
+
+export function neighboringDefault(source: [number | undefined, ((n: number) => number)?], stop: boolean) {
+  const [x = do { if (stop) { return 9 }; 7 }, f = (n) => n]: [number | undefined, ((n: number) => number)?] = source
+  return f(6)
+}
+export function literalTuple(stop: boolean) {
+  const [x = do { if (stop) { return 9 }; 7 }, y, ...rest] = [1, "s", true]
+  return [x, y, rest] as const
+}

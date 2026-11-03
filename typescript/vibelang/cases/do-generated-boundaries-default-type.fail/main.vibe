@@ -1,0 +1,6 @@
+// expect: TS2322
+function incompatibleDefault(stop: boolean) {
+  const [x = do { if (stop) { return 0 }; "bad" }]: number[] = []
+  return x
+}
+export function main() { return Effect.succeed(0) }

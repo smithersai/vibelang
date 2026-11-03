@@ -1,0 +1,15 @@
+// expect: EK0401 EK0401 EK0401
+export function before(flag: boolean) {
+  JSON.parse("1")
+  const [x = do { if (flag) { return 9 }; 0 }] = [] as number[]
+  return x
+}
+export function inside(flag: boolean) {
+  const [x = do { if (flag) { return 9 }; JSON.parse("1"); 0 }] = [] as number[]
+  return x
+}
+export function after(flag: boolean) {
+  const [x = do { if (flag) { return 9 }; 0 }] = [] as number[]
+  JSON.parse("1")
+  return x
+}

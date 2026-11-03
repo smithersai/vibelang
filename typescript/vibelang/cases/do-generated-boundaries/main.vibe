@@ -1,0 +1,68 @@
+// expect-result: [[9,["start","closed"]],[7,["start","closed","after"]],[4,["start","closed","after"]],["close",["start","closed"]],["source",["start","closed"]],[12,["start","finally","closed"]],[null,["start","closed"]],[1,2,["start","closed","start","closed","start","closed"]],[7,7]]
+import { holes, throwValue } from "./native-default-iterator.js"
+function returned(log: string[]) {
+  const [x = match (true) { default: do { return 9 }; }, y = log.push("wrong")] = holes(log)
+  log.push("after")
+  return x
+}
+function normal(log: string[], present: boolean) {
+  const read = () => x
+  const [x = match (true) { default: do { if (present) { return 99 }; 7 }; }] = holes(log, false, present)
+  log.push("after")
+  return read()
+}
+function closing(log: string[]) {
+  try {
+    const [x = do { return 9 }] = holes(log, true)
+    return x
+  } catch (e) { return e }
+}
+function throwing(log: string[], fail: boolean) {
+  try {
+    const [x = do { if (log.length < 0) { return 9 }; if (fail) { throwValue("source") }; 0 }] = holes(log, true)
+    return x
+  } catch (e) { return e }
+}
+function finalizer(log: string[]) {
+  const [x = do { try { return 9 } finally { log.push("finally"); return 12 } }] = holes(log)
+  return x
+}
+function bare(log: string[]) {
+  const [x = do { return }] = holes(log)
+  log.push("wrong")
+}
+function loops(log: string[]) {
+  let n = 0
+  outer: for (let i = 0; i < 2; i++) {
+    n++
+    const [x = match (true) { default: do { continue outer }; }] = holes(log)
+    log.push("wrong")
+  }
+  let b = 0
+  outer: while (true) {
+    b++
+    const [x = do { break outer }] = holes(log)
+    log.push("wrong")
+  }
+  return [b, n, log]
+}
+function types() {
+  const [x = do { 7 }] = [] as number[]
+  const [y = do { 7 }] = [] as number[]
+  const a: number = x
+  const b: number = y
+  return [a, b]
+}
+export function main() {
+  const logs = Array.from({length: 8}, () => [] as string[])
+  return Effect.succeed([
+    [returned(logs[0]), logs[0]],
+    [normal(logs[1], false), logs[1]],
+    [normal(logs[2], true), logs[2]],
+    [closing(logs[3]), logs[3]],
+    [throwing(logs[4], true), logs[4]],
+    [finalizer(logs[5]), logs[5]],
+    [bare(logs[6]), logs[6]],
+    loops(logs[7]), types()
+  ])
+}

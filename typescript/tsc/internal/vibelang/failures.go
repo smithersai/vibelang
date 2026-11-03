@@ -45,6 +45,8 @@ func (a *analyzer) flowOf(node *ast.Node) *effectInfo {
 			info.add(a.tryFlow(n))
 		case isProvideBlock(n):
 			info.add(a.provideFlow(n)) // provide Layer { ... } (provide.go)
+		case n.Kind == ast.KindThrowStatement && n.Flags&ast.NodeFlagsVibeLangBindingCleanup != 0:
+			n.ForEachChild(visit) // generated native rethrow adds no expected failure
 		case n.Kind == ast.KindThrowStatement:
 			n.ForEachChild(visit)
 			thrown := a.thrownType(n)
@@ -105,10 +107,15 @@ func hasEscapingThrow(fn *ast.Node) bool {
 		switch {
 		case isFunctionBoundary(n):
 			return false
+		case n.Kind == ast.KindThrowStatement && n.Flags&ast.NodeFlagsVibeLangBindingCleanup != 0:
+			return false
 		case n.Kind == ast.KindThrowStatement && !caught:
 			return true
 		case n.Kind == ast.KindTryStatement:
 			try := n.AsTryStatement()
+			if n.Flags&ast.NodeFlagsVibeLangBindingCleanup != 0 {
+				return visit(try.TryBlock, caught) || try.FinallyBlock != nil && visit(try.FinallyBlock, caught)
+			}
 			discarded := caught || discardsInFlight(n)
 			return visit(try.TryBlock, discarded || catches(n)) ||
 				try.CatchClause != nil && visit(try.CatchClause, discarded) ||
@@ -156,6 +163,16 @@ func leavesAbruptly(statement *ast.Node) bool {
 func (a *analyzer) tryFlow(node *ast.Node) *effectInfo {
 	try := node.AsTryStatement()
 	body := a.tryBlockFlow(try.TryBlock)
+	if node.Flags&ast.NodeFlagsVibeLangBindingCleanup != 0 {
+		// Native cleanup observes JS exceptions only. Effect failures abandon the
+		// generator, so this catch neither handles E nor contributes its rethrow.
+		escapes := &effectInfo{}
+		escapes.add(body)
+		if try.FinallyBlock != nil {
+			escapes.add(a.flowOf(try.FinallyBlock))
+		}
+		return escapes
+	}
 	escapes := &effectInfo{effect: body.effect}
 	escapes.addRequirements(body)
 	discarded := discardsInFlight(node)
@@ -283,7 +300,7 @@ func catchVariableType(c *checker.Checker, declaration *ast.Node) *checker.Type 
 		return t // catch (cause: Cause) (primitives.go)
 	}
 	clause := declaration.Parent
-	if clause == nil || clause.Kind != ast.KindCatchClause || !inLowerableBody(clause.Parent) || isHandleStatement(clause.Parent) {
+	if clause == nil || clause.Kind != ast.KindCatchClause || clause.Parent == nil || clause.Parent.Flags&ast.NodeFlagsVibeLangBindingCleanup != 0 || !inLowerableBody(clause.Parent) || isHandleStatement(clause.Parent) {
 		return nil
 	}
 	a := analyzerFor(c)
@@ -304,7 +321,7 @@ func catchVariableType(c *checker.Checker, declaration *ast.Node) *checker.Type 
 // one there is the retired form, which catches typed failures.
 func (a *analyzer) isNativeTry(try *ast.Node) bool {
 	fn := ast.GetContainingFunction(try)
-	return fn == nil || !a.isEffect(fn)
+	return try.Flags&ast.NodeFlagsVibeLangBindingCleanup != 0 || fn == nil || !a.isEffect(fn)
 }
 
 func init() {

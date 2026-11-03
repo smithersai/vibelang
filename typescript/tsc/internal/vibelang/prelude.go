@@ -57,7 +57,8 @@ var preludeModules = map[string]string{
 	"$errorSubclass": runtimeModule,
 	"$ErrorArgs":     runtimeModule,
 	// Compiler-written global reads retain native types without source capture.
-	"$global": runtimeModule,
+	"$global":           runtimeModule,
+	"$bindingIterators": runtimeModule,
 	// How a schema error joins its family, which the parser writes (D304).
 	"$schemaErrorFamily":  runtimeModule,
 	"$schemaErrorMember":  runtimeModule,
