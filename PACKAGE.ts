@@ -781,6 +781,17 @@ const targets = {
     "65m",
     fuzzBudgetEnv
   ),
+  // The registry test alone, for spec-push (~/vibe/mq/mq.py SPEC_LINT_TARGETS; fix-main-red 2026-11-03): spec-direct
+  // commits gave Appendix B 15 codes the registry lacked, and only post-merge's //:spec-tests saw it. spec-push
+  // tolerates a target main carries red, so a target of one test still blocks while //:spec-tests is red for others.
+  "spec-registry-go": S.Shell.Test({
+    summary: "Every code Appendix B assigns is registered, or specAhead names the lane that registers it.",
+    shell: `cd typescript/tsc && GOCACHE=$HOME/.cache/go-build-smthrs CGO_ENABLED=0 go test -count=1 -trimpath -run '^TestRegistryMatchesSpec$' ./internal/vibelang/`,
+    data: [design, Tsc.srcs, Tsc["vibelang-files"]] as Array<never>,
+    tools: [go, node],
+    sandbox: "none",
+    timeout: "15m"
+  }),
   "spec-tests": S.Shell.Test({
     summary: "The Go tests that read docs/design (the registry, the VIP citations and coverage, the pending lines) and the cost guards of --fix and flow narrowing.",
     shell:

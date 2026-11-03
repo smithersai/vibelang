@@ -741,6 +741,8 @@ Launcher fixtures that expect the whole suite set `GO_TEST_SLICE=1/1` explicitly
 
 The `//:spec-tests` selector includes every `Test…Quoted` in its declared Go packages by name. Quote checks need no explicit list entry. `node --test scripts/spec-tests.test.mjs` and `bun test docs/tools/spec-quote-gates.test.mjs` check the executable selector, its package scope and the listed tests together.
 
+`//:spec-registry-go` runs `TestRegistryMatchesSpec` alone. `mq.py spec-push` runs it with the spec linters, so a spec-only commit that assigns an Appendix B code needs a registered message or a `specAhead` entry naming the lane that registers it. A target of one test still blocks a push while `//:spec-tests` is red for other reasons, because `spec-push` tolerates a target `main` already fails.
+
 A gate that needs only some checks names their labels, for example
 `sh scripts/ci.sh //packages/... //:docs-check --jobs 8`; a full run is
 `sh scripts/ci.sh //... --jobs 8`. Each checkout keeps its
