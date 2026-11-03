@@ -145,7 +145,7 @@ effect function captureLogs() {
 ## Choosing text, structured, and JSON formats
 
 ```vibe
-// run: const lines: string[] = []; const original = try Console.Console; try provideService(jsonExample(), Console.Console, { ...original, log: (line: string) => { lines.push(line) } }); const records = try Effect.try(() => lines.map((line) => JSON.parse(line))); { const jsonValue = records.map((record) => [record.level, record.message]); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
+// run: const lines: string[] = []; const original = try Console.Console; try provideService(jsonExample(), Console.Console, { ...original, log: (line: string) => { lines.push(line) } }); const records = try Effect.forEach(lines, (line) => Effect.try(() => JSON.parse(line))); { const jsonValue = records.map((record) => [record.level, record.message]); try Console.log(try Effect.try(() => JSON.stringify(jsonValue))) }
 const TextLogs = Logger.layer([Logger.consoleLogFmt, Logger.tracerLogger])
 const PrettyLogs = Logger.layer([Logger.consolePretty(), Logger.tracerLogger])
 const ObjectLogs = Logger.layer([Logger.consoleStructured, Logger.tracerLogger])

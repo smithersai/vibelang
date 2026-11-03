@@ -397,7 +397,6 @@ Calling a member of the document in a `.vibe` file is `EK0403`, because nothing 
 
 ```vibe
 // origin.vibe
-// pending: VIP-1, VIP-5, VIP-6, VIP-12, VIP-14, VIP-33
 effect function origin() {
   const window = try (try Experimental.Window.Window).current
   return window.location.origin
