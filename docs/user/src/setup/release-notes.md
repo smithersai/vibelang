@@ -152,6 +152,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 ### Bugs fixed since 0.0.10
 
+- Release notes exposed an internal decision identifier while explaining curried service provision; the explanation now uses only the public API names.
+
 - Contributor release checks could omit fixture tests or fail cancellation checks on a host running one Go test slice; launcher fixtures now run their complete intended suite independently of the host slice.
 
 - Compiler conformance and editor formatting checks could fail on a fresh checkout because the dprint plugin was missing; their build targets now prepare the compiler package before running.
@@ -180,7 +182,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Repository API regression checks failed after JSON support landed because they still expected explicitly published `package.json` exports to be ignored; those exports are now included in the expected surface.
 
 - `try` in an enum member initializer inside an `effect` function compiled to JavaScript that does not parse; it now reports `EK0501`, as a class field initializer does.
-- In a `.vibe` file, `x.pipe(Effect.provide(layer))` failed with `TS2345` (`… is not assignable to parameter of type '(_: Effect<…>) => never'`) where the same `.ts` compiled: the type VibeLang gives a curried `Effect.provide(…)` (D362) lost its symbol, so `pipe` could not infer its result. Calling it directly, `Effect.provide(layer)(x)`, was not affected.
+- In a `.vibe` file, `x.pipe(Effect.provide(layer))` failed with `TS2345` (`… is not assignable to parameter of type '(_: Effect<…>) => never'`) where the same `.ts` compiled: the type VibeLang gives a curried `Effect.provide(…)` lost its symbol, so `pipe` could not infer its result. Calling it directly, `Effect.provide(layer)(x)`, was not affected.
 - The migrate flow left a module under a test directory out of a package's emitted JavaScript even when the package exports it, such as `"./test/TestDatabase": "./src/test/TestDatabase.ts"`, so plain Node importing it from another package failed with `ERR_UNKNOWN_FILE_EXTENSION` on its `.vibe` imports. The flow now emits and routes an exported test-directory module and what it imports relatively; `.test` and `.spec` files stay out.
 - A nested Vitest project with its own `plugins` could miss the VibeLang loader even after setup wired the outer configuration. Setup now adds the loader to each inline project whose tests or setup files reach migrated sources, preserving the other project options.
 
