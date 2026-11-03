@@ -1,0 +1,20 @@
+// expect: EK3005 EK3005 EK3005 EK3005 EK3005 EK3005 EK3005 EK3005 EK3005 EK3005 EK3005 EK3005
+// VIP-9: an annotated whole shape cannot capture an enclosing generic.
+export function f0<T>():number { service S: {readonly value:T} { static readonly key="shape104/object" }; return 1 }
+export function f1<T>():number {type Box<U> = {readonly value:U}; service S: Box<T> { static readonly key="shape104/alias" }; return 1 }
+export function f2<T>():number { service S: {readonly values:ReadonlyArray<T>} { static readonly key="shape104/array" }; return 1 }
+export function f3<T>():number { service S: (value:T)=>T { static readonly key="shape104/callable" }; return 1 }
+export function f4<T>():number { service S: {pick<U extends T>(value:U):U} { static readonly key="shape104/member-bound" }; return 1 }
+export function f5<T>():number { service S: {pick<U>():U extends string ? T : number} { static readonly key="shape104/conditional" }; return 1 }
+export function f6<T extends object>():number { service S: {[K in keyof T]:T[K]} { static readonly key="shape104/mapped" }; return 1 }
+export function f7<T extends {value:unknown}>():number { service S: {readonly value:T["value"]} { static readonly key="shape104/indexed" }; return 1 }
+export function f8<T>():number { service S: T { static readonly key="shape104/direct" }; return 1 }
+export function f9<T>():number { service S: {get():T!!} { static readonly key="shape104/method-return" }; return 1 }
+export function f10<T>():number { service S: {readonly value:number} { static readonly key="shape104/concrete" }; return 1 }
+export function f11<T>():number { service S: {pick<U>(value:U):U} { static readonly key="shape104/member-local" }; return 1 }
+export function f12<T>():number {type Ignore<U> = {readonly value:number}; service S: Ignore<T> { static readonly key="shape104/erased" }; return 1 }
+export function f13<T>():number {interface Phantom<U> {readonly value:number}; service S: Phantom<T> { static readonly key="shape104/phantom" }; return 1 }
+export function f14<T>():number {interface Phantom<U> {readonly next?:Phantom<U[]>;readonly value:number}; service S: Phantom<T> { static readonly key="shape104/recursive-phantom" }; return 1 }
+
+export class ConstructorHost<T> { constructor() { service S: {readonly value:T} {static readonly key="shape104/constructor"} } }
+export class GetterHost<T> { get value():number { service S: {readonly value:T} {static readonly key="shape104/getter"}; return 1 } }

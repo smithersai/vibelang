@@ -32,6 +32,17 @@ func checkServiceOuterTypeParameters(c *checker.Checker, class *ast.Node) bool {
 	if !generic {
 		return false
 	}
+	// An annotated service writes its whole implementation contract in the
+	// shape node, rather than in body members. Apply the same resolved walk
+	// so specializing its enclosing scope cannot specialize the shared key.
+	if shape := serviceShape(class); shape != nil {
+		walk := &outerTypeWalk{c: c, class: class, seen: map[outerTypeSeen]*checker.Type{}}
+		if captured := walk.find(c.GetTypeFromTypeNode(shape)); captured != nil {
+			d := report(c, shape, serviceOuterTypeDiagnostic, "The shape of "+class.Name().Text(), captured.Symbol().Name())
+			note(d, "Declare the service outside the generic scope, or use a concrete shape that does not depend on {0}.", captured.Symbol().Name())
+			return true
+		}
+	}
 	for _, member := range class.Members() {
 		if ast.IsStatic(member) || member.Name() == nil {
 			continue

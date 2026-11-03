@@ -576,6 +576,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - A `return` inside a `do` in a `for concurrent` limit or operand was rejected with `EK0204`. It now leaves the enclosing function, and the limit still runs before the operand.
 - Reading `globalThis.eval` and `globalThis.Function` bypassed the legacy JavaScript restriction; these reads now report `EK0107`, with the permitted `Function` uses preserved.
 - ESLint could miss written methods and getters beside a plain `error` payload field named `constructor`. They now remain in the source tree alongside the fields, with their original names, scopes and locations.
+
+- A service with a whole-shape annotation could capture an enclosing generic type under one shared key. It now reports `EK3005`, as the equivalent member declaration does.
 - A service with a written shape annotation gained an extra public `Shape` namespace in its declarations. It now keeps the written shape directly and exposes no implicit namespace outside its own body.
 - Formatting a generated subprocess helper could make migration setup treat it as hand-edited and retain unused loader imports. Setup now recognizes formatting changes while preserving edited code, types, comments and documentation for review.
 - Migration setup could add source-loader helpers to JavaScript CLI launches merely because later arguments were dynamic, introducing unnecessary install-time dependencies. Proven JavaScript entrypoints now keep their native launch; unknown and typed source entrypoints retain loader handling.

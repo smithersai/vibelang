@@ -78,6 +78,8 @@ A service's shape may have properties named `key` or `defaultValue`. They are or
 
 Service members form an object type, so a written `this` type there gets TypeScript's `TS2526` rather than referring to a service instance. For recursive members, name the implementation type; a separately declared interface can use its ordinary polymorphic `this` type and become a service's shape. Ordinary classes keep their `this` types.
 
+A custom `service` has one key across every instantiation of its enclosing function or class. Its implementation contract must therefore use concrete types: capturing an enclosing type parameter reports `EK3005`, including in a whole-shape annotation such as `service S: { value: T } { ... }`. For generic operations, give individual members their own generic parameters.
+
 ## Declaring a service of any shape
 
 Write `service Database: DatabaseService { static readonly key = "app/Database" }` to use an existing type directly. The annotation can name any TypeScript type. Its body contains only `key` and `defaultValue`. This form emits the written type directly, without a private shape helper or public `Database.Shape` namespace. Outside the declaration, write the type or `Context.Service.Shape<typeof Database>`. Within its own body, `Database.Shape` denotes the annotation. Body-only services retain their public `Shape` namespace.
