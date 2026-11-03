@@ -149,3 +149,7 @@ VIP-26 and VIP-33 require explicit runner calls and retain the platform boundary
 Folded: 1793695660-conf-auto-custommatcher-type-surface.patch (applied at docs/design/src/004-match.md:347)
 
 Standing TypeScript rule and VIP-7. TypeScript 5.9.3 strict twin: conditional assignment then read is accepted for any, unknown, void and number | undefined; number and string report TS2454. The update-clause read uses the same type-dependent check. Runtime uninitialized-cell behavior and use-before-declaration checks remain unchanged.
+
+## Round 19: restore VIP-40’s accepted plain-call boundary
+
+Reconciled: 1793693643-sl18-fix-astra-2.patch at docs/design/vips/0040-module-declarations.md:154. Its service examples remain folded; its rejecting unannotated plain-call sentence is superseded by VIP-40’s accepted text before `8c554d6c31eb`. An unknown unannotated contract stays an ordinary call in plain code; an explicit `@throws {unknown}` is known throwing. Both require a bridge in effect code. This restores agreement with chapter 3 and the explicit program runners of VIP-26, without creating a runner exemption.
