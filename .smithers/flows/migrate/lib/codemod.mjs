@@ -315,6 +315,62 @@ export function rewriteExports(root, renames, { write = (file, text) => writeFil
   return edits
 }
 
+/** Refresh an existing module's declaration targets after setup moves its sidecars. */
+export function refreshSidecarExports(root, tracked, configs, {
+  write = (file, text) => writeFileSync(join(root, file), text), onWarning = () => {}
+} = {}) {
+  const owners = new Set([...configs].map(file => packageDirOf(root, file)))
+  const callbacks = new Map(), moved = new Map(), beside = new Set()
+  for (const file of tracked) {
+    if (file.endsWith(".d.vibe.ts")) beside.add(posix.normalize(file))
+    if (!file.endsWith(".vibe")) continue
+    const old = file.slice(0, -5) + ".d.vibe.ts"
+    beside.add(posix.normalize(old))
+    const dir = packageDirOf(root, file)
+    if (!owners.has(dir)) continue
+    if (!callbacks.has(dir)) callbacks.set(dir, sidecarOf(root, dir))
+    const sidecar = callbacks.get(dir), stem = "./" + posix.relative(dir, file).slice(0, -5)
+    const next = posix.normalize(posix.join(dir, sidecar(stem)))
+    if (posix.normalize(old) !== next) moved.set(posix.normalize(old), { next, dir, sidecar })
+  }
+  if (!moved.size) return []
+  const edits = []
+  for (const manifest of tracked.filter(file => posix.basename(file) === "package.json")) {
+    const dir = posix.dirname(manifest)
+    const pkg = JSON.parse(readFileSync(join(root, manifest), "utf8"))
+    const start = edits.length
+    const update = (value, path) => {
+      if (Array.isArray(value)) return value.map((item, index) => update(item, [...path, index]))
+      if (value && typeof value === "object") return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, update(item, [...path, key])]))
+      if (typeof value !== "string" || !value.endsWith(".d.vibe.ts")) return value
+      const target = posix.normalize(posix.join(dir, value))
+      let next = moved.get(target)?.next
+      if (target.includes("*")) {
+        const matches = [...moved].filter(([file]) => starOf(target, file) !== undefined)
+        if (!matches.length) return value
+        const first = matches[0][1]
+        const pattern = posix.normalize(posix.join(first.dir, first.sidecar("./" + posix.relative(first.dir, target).slice(0, -".d.vibe.ts".length))))
+        const uniform = [...beside].filter(file => starOf(target, file) !== undefined).every(file => moved.has(file)) &&
+          matches.every(([file, plan]) => pattern.replaceAll("*", starOf(target, file)) === plan.next)
+        if (!uniform) {
+          onWarning(manifest + ": " + path.join("/") + " has sidecars in more than one layout; retain the wildcard for review")
+          return value
+        }
+        next = pattern
+      }
+      if (next === undefined) return value
+      let relativeTarget = posix.relative(dir, next)
+      if (value.startsWith("./") && !relativeTarget.startsWith("./") && !relativeTarget.startsWith("../")) relativeTarget = "./" + relativeTarget
+      if (relativeTarget === value) return value
+      edits.push({ manifest, path, from: value, to: relativeTarget })
+      return relativeTarget
+    }
+    for (const field of ["types", "typings", "typesVersions", ...moduleMaps]) if (Object.hasOwn(pkg, field)) pkg[field] = update(pkg[field], [field])
+    if (edits.length !== start) write(manifest, JSON.stringify(pkg, null, 2) + "\n")
+  }
+  return edits
+}
+
 /**
  * Undoes the edits of rewriteExports for one module that revert returns to
  * .ts (repository-relative, now .ts): an added entry goes, and a rewritten one

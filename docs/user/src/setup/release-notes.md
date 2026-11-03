@@ -215,6 +215,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Published-declaration checks could accept a changed global type or doc comment because the two declaration trees merged their ambient declarations. They now prove ambient dependency closures and comments in isolation, and report an unavailable comparison when that proof fails.
 
 - Published-declaration checks could reject a package compared with itself when `vibe.sidecarDir` moved its declarations or a dependency had an unrelated TypeScript error. They now resolve moved sidecars, report environment errors separately, and distinguish an unavailable comparison from an API difference.
+- Migration setup moved existing declarations out of source folders but left package `types` pointing at deleted files, so TypeScript consumers could not resolve the package. Setup now refreshes owned declaration targets to the configured sidecar layout.
 - Declaration twins, semantic fuzz checks and emitted-import setup could reject the same exported API over declaration spelling; they now share the API identity checker, preserve frozen package-alias resolution, and report the changed export with its `tsc` diagnostic.
 
 - Bun build scripts using `Bun.Glob("**/*.ts")` silently omitted migrated modules and could emit declaration sidecars as JavaScript entries. Migration setup now includes `.vibe` and `.vibex` sources and filters their declaration sidecars, including when refreshing an already wired build script.

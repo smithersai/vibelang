@@ -1,0 +1,18 @@
+{
+  "name": "opencode-relocated-existing-sidecar-exports",
+  "manifest": {
+    "name": "@probe/a",
+    "version": "0.0.0",
+    "type": "module",
+    "exports": {
+      ".": {
+        "types": "./src/index.d.vibe.ts",
+        "vibelang-source": "./src/index.vibe",
+        "default": "./.vibelang/js/src/index.js"
+      }
+    }
+  },
+  "source": "export interface Box {\n  readonly value: number\n}\nexport const make = (value: number): Box => ({ value })\n",
+  "consumer": "import { make } from \"@probe/a\"\nconst n: number = make(1).value\nexport { n }\n",
+  "enumerator": "for (const file of new Bun.Glob(\"packages/a/src/*.ts\").scanSync(\".\")) console.log(file)\n"
+}

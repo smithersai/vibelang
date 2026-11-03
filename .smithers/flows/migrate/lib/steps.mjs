@@ -17,7 +17,7 @@ import { buildInventory, listSources, readCoverage, tsconfigPaths } from "./inve
 import * as Enumerations from "./enumerations.mjs"
 import { sidecarPath } from "./sidecar-config.mjs"
 import { defaultLimits, draftPlan, migrationScope, planPrompt, validatePlan } from "./plan.mjs"
-import { bareVibeExports, fixToFixedPoint, importerFile, pathAliases, restoreExports, restoreScripts, restoreSpecifiers, rewriteImports, rewriteTotals, vibePath } from "./codemod.mjs"
+import { refreshSidecarExports, bareVibeExports, fixToFixedPoint, importerFile, pathAliases, restoreExports, restoreScripts, restoreSpecifiers, rewriteImports, rewriteTotals, vibePath } from "./codemod.mjs"
 import { restoreViteScripts } from "./vite-config.mjs"
 import { applyState, durableWrite, prepareReferences, prepareState, saveState } from "./codemod-state.mjs"
 import { checkSelectorEdits, restoreSourceLiterals, rewriteSourceLiterals } from "./source-paths.mjs"
@@ -881,10 +881,14 @@ function finishSidecarLayout({ t, ts, layout, changed, warnings, log }) {
   }).filter(Boolean) : []
   const directories = [...new Set(sidecarProjects.map(project => project.directory))]
   for (const finding of enumerations) warnings.push("vibe.sidecarDir uses the configured project output directory, and that folder's .ts modules stay .ts: " + Enumerations.describe(finding))
+  // Existing exports were written by an earlier rename, before this layout
+  // existed. Repair their owned declaration paths even if cleanup ran before.
+  const declarationTargets = refreshSidecarExports(t, tracked.filter(Wire.ownedPaths(t)), wiredTsconfigs, { onWarning: warning => warnings.push(warning) })
+  changed.push(...new Set(declarationTargets.map(edit => edit.manifest).filter(file => !changed.includes(file))))
   const supersededSidecars = enumerations.length ? Enumerations.removeSupersededSidecars(t, tracked, wiredTsconfigs, ts) : []
   changed.push(...supersededSidecars.filter(file => !changed.includes(file)))
-  appendJsonl(join(log, "sidecar-layout.jsonl"), { at: new Date().toISOString(), projects: sidecarProjects, removed: supersededSidecars })
-  return enumerations.length ? { directory: directories.length === 1 ? directories[0] : null, projects: sidecarProjects, reasons: enumerations.map(Enumerations.describe), findings: enumerations, removed: supersededSidecars } : null
+  appendJsonl(join(log, "sidecar-layout.jsonl"), { at: new Date().toISOString(), projects: sidecarProjects, removed: supersededSidecars, declarationTargets })
+  return enumerations.length ? { directory: directories.length === 1 ? directories[0] : null, projects: sidecarProjects, reasons: enumerations.map(Enumerations.describe), findings: enumerations, removed: supersededSidecars, declarationTargets } : null
 }
 
 /**
