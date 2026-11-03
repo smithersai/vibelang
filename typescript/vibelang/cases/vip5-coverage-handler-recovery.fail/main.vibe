@@ -1,0 +1,13 @@
+// expect: EK0509
+// rule-evidence: docs/design/vips/0005-try-runs-effects.md#50cfa61d9687b499
+// VIP-5: diagnose the missing handler function first
+// rule-evidence: docs/design/vips/0005-try-runs-effects.md#3fa3177fec4bbe3c
+// VIP-5: Do not also report EK0505 for that same incomplete handler.
+// rule-evidence: docs/design/vips/0005-try-runs-effects.md#2d9dfde24a776344
+// VIP-5: A catch-like parameter block without a function literal gets the
+// rule-evidence: docs/design/vips/0005-try-runs-effects.md#b8ef0183f9d607c7
+// VIP-5: Do not additionally report EK0505 for that malformed whole expression;
+// rule-evidence: docs/design/vips/0005-try-runs-effects.md#65577ffc750943b3
+// VIP-5: This dominance is only for the same malformed-handler recovery; a
+// VIP-5: handler-recovery rejection; expected contract comes from the specification.
+effect function bad() { return try Effect.fail("x") catch (e) { return 0 } }

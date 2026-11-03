@@ -1,0 +1,5 @@
+// expect: EK0501
+// rule-evidence: docs/design/vips/0005-try-runs-effects.md#ad6e53366cb426c4
+// VIP-5: try works like await
+effect function bad(n = try Effect.succeed(1)) { return n }
+

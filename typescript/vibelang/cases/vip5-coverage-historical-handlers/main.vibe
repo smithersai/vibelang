@@ -1,0 +1,17 @@
+// rule-evidence: docs/design/vips/0005-try-runs-effects.md#a67b40883e159d1c
+// VIP-5: e catch y runs e, and on a failure evaluates
+// rule-evidence: docs/design/vips/0005-try-runs-effects.md#4e5016669f5a82e1
+// VIP-5: a non-literal function fallback
+// rule-evidence: docs/design/vips/0005-try-runs-effects.md#4819ec7f511704ce
+// VIP-5: A VIP-38 lint warning, with quick fixes to catch (e)
+// rule-evidence: docs/design/vips/0005-try-runs-effects.md#3f52ca5a6916f9a0
+// VIP-5: x catch (e) => v (also async arrows and function
+import { Effect } from "effect"
+const fallback = () => 7
+export effect function main(): Effect.Effect<readonly unknown[]> {
+  const value = Effect.fail("x") catch 7
+  const named = Effect.fail("x") catch fallback
+  const block = Effect.fail("x") catch effect { return 9 }
+  const asyncValue = Effect.fail("x") catch async () => 10
+  return [value,named === fallback,block,typeof asyncValue.then === "function"]
+}

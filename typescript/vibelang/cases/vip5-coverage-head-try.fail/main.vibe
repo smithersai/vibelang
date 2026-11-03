@@ -1,0 +1,5 @@
+// expect: EK0505
+// rule-evidence: docs/design/vips/0005-try-runs-effects.md#cf79c817fc7bbd5f
+// VIP-5: As in Zig, you write try x or x catch
+// VIP-5: head-try rejection; expected contract comes from the specification.
+effect function bad() { return try Effect.fail("x") catch () => 0 }

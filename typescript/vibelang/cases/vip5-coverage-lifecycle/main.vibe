@@ -1,0 +1,30 @@
+// rule-evidence: docs/design/vips/0005-try-runs-effects.md#ed9f69935bfa367a
+// VIP-5: Explicit try yieldNow requests a cooperative yield without promising a
+// rule-evidence: docs/design/vips/0005-try-runs-effects.md#be089cc1d97dbe06
+// VIP-5: Cleanup uses Effect's ensuring or onExit (VIP-6 globals): try ensuring(write(x),
+// rule-evidence: docs/design/vips/0005-try-runs-effects.md#c5098fe2a4738436
+// VIP-5: Corrected again 2026-10-30: the fix wrapped e in an effect
+// rule-evidence: docs/design/vips/0005-try-runs-effects.md#7f7ebe0ad3e0b2c8
+// VIP-5: fork e evaluates e on the caller, as const p
+// rule-evidence: docs/design/vips/0005-try-runs-effects.md#646f561cffda8a46
+// VIP-5: Use explicit try yieldNow when the program requires a cooperative
+// rule-evidence: docs/design/vips/0005-try-runs-effects.md#eedd20de40c3cba3
+// VIP-5: vibe let events = "" effect function order() { fork
+import { Effect, Exit, Fiber } from "effect"
+export effect function main(): Effect.Effect<readonly unknown[]> {
+  const events: string[] = []
+  const final = Effect.sync(() => { events.push("ensuring") })
+  const program = effect { events.push("body"); throw "stop" }
+  const failed = try Effect.exit(Effect.onExit(Effect.ensuring(program,final), () => Effect.sync(() => { events.push("onExit") })))
+  const child = fork effect { events.push("child") }
+  try Effect.succeed(1)
+  events.push("parent")
+  try Effect.yieldNow
+  join child
+  const order = events.slice()
+  const caller: string[] = []
+  effect function id(): Effect.Effect<number,string> { caller.push("id"); throw "id" }
+  effect function work(n: number) { caller.push("work"); return n }
+  const evaluated = try Effect.exit(effect { const f = fork work(try id()); return join f })
+  return [Exit.isFailure(failed),order,Exit.isFailure(evaluated),caller]
+}

@@ -1,0 +1,7 @@
+// rule-evidence: docs/design/vips/0005-try-runs-effects.md#85df09b091873b01
+// VIP-5: Preserve written/contextual annotations and the surrounding generator/Effect inference; unknown remains
+import { Effect } from "effect"
+// VIP-5: never is admitted by the static Effect assignability check.
+// No well-typed program can supply this bottom-valued parameter.
+effect function bottom(value: never) { try value; return 0 }
+export effect function main(): Effect.Effect<boolean> { return true }

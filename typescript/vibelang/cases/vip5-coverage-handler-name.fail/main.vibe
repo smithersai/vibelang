@@ -1,0 +1,8 @@
+// expect: EK0509
+// rule-evidence: docs/design/vips/0005-try-runs-effects.md#9be35d97eca43d30
+// VIP-5: A named function needs a wrapper, x catch (e) =>
+// rule-evidence: docs/design/vips/0005-try-runs-effects.md#37955cf2f5174ec0
+// VIP-5: a named function needs a wrapper (x catch (e) =>
+// VIP-5: handler-name rejection; expected contract comes from the specification.
+const handler = () => 7
+effect function bad() { return Effect.fail("x") catch handler }

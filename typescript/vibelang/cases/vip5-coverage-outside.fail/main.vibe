@@ -1,0 +1,14 @@
+// expect: EK0501 EK0501 EK0501 EK0501 EK0501
+// rule-evidence: docs/design/vips/0005-try-runs-effects.md#6c1d66d9812f792b
+// VIP-5: corresponding execution contexts
+// rule-evidence: docs/design/vips/0005-try-runs-effects.md#1813589b72c41a1b
+// VIP-5: Their Effect-body forms, join fiber and try Deferred.await(deferred), are outside-effect
+// VIP-5: outside rejection; expected contract comes from the specification.
+import { Effect } from "effect"
+function plain() { return try Effect.succeed(1) }
+effect function outer() {
+  const nested = () => try Effect.succeed(1)
+  class C { value = try Effect.succeed(1); static { const n = try Effect.succeed(1) } }
+}
+
+async function asyncBody() { return try Effect.succeed(1) }

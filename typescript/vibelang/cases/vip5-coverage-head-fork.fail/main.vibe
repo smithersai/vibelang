@@ -1,0 +1,7 @@
+// expect: EK0505 EK0505
+// rule-evidence: docs/design/vips/0005-try-runs-effects.md#6152af569eeb50c8
+// VIP-5: fork and join heads before catch
+// VIP-5: head-fork rejection; expected contract comes from the specification.
+import type { Fiber } from "effect"
+effect function forked() { const v = fork Effect.succeed(1) catch () => 0; void v; return 0 }
+effect function joined(f: Fiber.Fiber<number,string>) { const v = join f catch () => 0; void v; return 0 }

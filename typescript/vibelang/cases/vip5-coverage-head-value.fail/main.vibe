@@ -1,0 +1,5 @@
+// expect: EK0506
+// rule-evidence: docs/design/vips/0005-try-runs-effects.md#44a84386f6da170f
+// VIP-5: A catch head still needs an Effect-valued operand; a bare
+effect function bad() { return 1 catch () => 0 }
+

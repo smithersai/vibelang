@@ -1,0 +1,1 @@
+try precedence and ordinary left-to-right evaluation

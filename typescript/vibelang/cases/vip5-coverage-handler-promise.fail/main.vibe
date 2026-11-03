@@ -1,0 +1,5 @@
+// expect: EK0507
+// rule-evidence: docs/design/vips/0005-try-runs-effects.md#bbb2030c6ca352bf
+// VIP-5: EK0507 then covers only a plain handler whose body returns
+// VIP-5: handler-promise rejection; expected contract comes from the specification.
+effect function bad(p: Promise<number>) { return Effect.fail("x") catch () => p }

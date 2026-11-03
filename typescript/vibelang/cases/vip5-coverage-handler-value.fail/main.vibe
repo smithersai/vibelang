@@ -1,0 +1,9 @@
+// expect: EK0509
+// rule-evidence: docs/design/vips/0005-try-runs-effects.md#7268408253953eb4
+// VIP-5: x catch () => guest replaces the value form x
+// rule-evidence: docs/design/vips/0005-try-runs-effects.md#10dbd1f098c367d5
+// VIP-5: Corrected 2026-11-02: the Decision example's handler is catch () =>
+// rule-evidence: docs/design/vips/0005-try-runs-effects.md#9a5bdb6ec36912c5
+// VIP-5: x catch () => guest replaces the value form x
+// VIP-5: handler-value rejection; expected contract comes from the specification.
+effect function bad() { return Effect.fail("x") catch 7 }

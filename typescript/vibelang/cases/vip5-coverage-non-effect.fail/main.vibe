@@ -1,0 +1,23 @@
+// expect: EK0502 EK0502 EK0502 EK0502 EK0502 EK0502
+// rule-evidence: docs/design/vips/0004-throw.md#d9f903e6c90b44cd
+// VIP-4: Stream, Layer and Fiber do not pass the Effect execution
+// rule-evidence: docs/design/vips/0005-try-runs-effects.md#6a3920a7ddd3c1f8
+// VIP-5: try is only for Effects.
+// rule-evidence: docs/design/vips/0005-try-runs-effects.md#efe41fb68a36f9c2
+// VIP-5: try, catch and try.all keep assignability.
+// rule-evidence: docs/design/vips/0005-try-runs-effects.md#1496156ce986a617
+// VIP-5: no guessed operand conversion
+// rule-evidence: docs/design/vips/0005-try-runs-effects.md#a5cc47c1179031ea
+// VIP-5: An asEffect member does not grant permission to insert a
+// rule-evidence: docs/design/vips/0005-try-runs-effects.md#dd8df701b90dcb19
+// VIP-5: Option.some(1) and Result.succeed(2) fail the test in the pinned Effect
+// VIP-5: non-effect rejection; expected contract comes from the specification.
+import { Effect, Option, Result, Stream, Layer, Fiber } from "effect"
+export effect function rejected(unknown: unknown, fiber: Fiber.Fiber<number>) {
+  try Option.some(1)
+  try Result.succeed(2)
+  try Stream.empty
+  try Layer.empty
+  try fiber
+  try ({ asEffect() { return Effect.succeed(1) } })
+}
