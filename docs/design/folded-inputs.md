@@ -51,3 +51,13 @@ Folded: relic-rest-b-module-codemod.patch (applied at docs/design/src/007-toolin
 Folded: rc-ek4833-alias.patch (applied at docs/design/src/007-tooling.md:178)
 
 VIP-14 provides namespaces, not same-name export shorthands. Migrations and advisories use resolved identity; reordered/defaulted/wrapped Effect aliases must not change type meaning.
+
+## fold fork and wire migration contracts
+
+Folded: relic-try-forms-fork-codemod.patch (applied at docs/design/src/007-tooling.md:269)
+
+Folded: relic-try-forms-try-wire-codemods.patch (applied at docs/design/src/007-tooling.md:273)
+
+Folded: relic-try-forms-rejections-HELD.patch (applied at docs/design/src/900-appendices.md:1043)
+
+VIP-2/VIP-5/VIP-17 and denied VIP-24 settle the forms. HELD is an enforcement rollout constraint; the preserving migration and zero-use requirements are retained in published text.

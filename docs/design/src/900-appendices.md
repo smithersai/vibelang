@@ -982,7 +982,7 @@ The TypeScript-form lint warnings also retain their existing `EK4830`–`EK4837`
 | `EK0406` | a `@throws` or `@rethrows` tag in `.vibe` or `.vibex` source outside a `module` body, including on a service member or function-type signature; quick fix: remove the tag | 4 | [Failures](003-failures.md#thrown-types) |
 | `EK0501` | `try` outside effect code, the top level included; the same rule applies to `try.all`, `try.race`, `try.any` or `try.allSettled` | 5, 18, 9 | [Running Effects](002-running.md#try) |
 | `EK0502` | `try` on a value that is not an Effect | 5 | [Running Effects](002-running.md#try) |
-| `EK0503` | a `try` statement in effect code | 5 | [Running Effects](002-running.md#try) |
+| `EK0503` | a `try` statement in effect code; `vibelang --fix` applies the preserving `try statements` codemod | 5 | [Running Effects](002-running.md#try) |
 | `EK0504` | `catch` outside effect code | 5 | [Running Effects](002-running.md#catch) |
 | `EK0505` | `try x catch h`: a `try`, `try.all` (or another await operation), `fork` or `join` reachable from a `catch` head through unary and binary operator nodes only | 5, 17 | [Running Effects](002-running.md#catch) |
 | `EK0506` | `e catch h` where `e` is not an Effect | 5, 17 | [Running Effects](002-running.md#catch) |
@@ -1039,6 +1039,7 @@ The TypeScript-form lint warnings also retain their existing `EK4830`–`EK4837`
 | `EK1704` | a `join` operand not assignable to `Fiber.Fiber<any, any>` | 17 | [Running Effects](002-running.md#fork-and-join) |
 | `EK1705` | a `fork.` owner other than `in(s)`, `scoped` or `detached`: `fork.other e` | 17 | [Running Effects](002-running.md#fork-and-join) |
 | `EK1706` | a `fork.in(s)` scope operand not assignable to `Scope.Scope` | 17 | [Running Effects](002-running.md#fork-and-join) |
+| `EK1707` | a bare `fork { … }` block; write `fork effect { … }` or use the `fork blocks` codemod before rejection | 2, 17 | [Migration](007-tooling.md#legacy-fork-try-statement-and-wire-migration) |
 | `EK1801` | an operand that is not an array of Effects, using assignability to `ReadonlyArray<Effect.Effect<any, any, any>>`, for `try.all`, `try.race`, `try.any` or `try.allSettled` | 18 | [Running Effects](002-running.md#running-effects-concurrently) |
 | `EK1802` | a retired `await.all`, `await.race`, `await.any` or `await.allSettled`; quick fix: the `try` operation that replaces it | 18 | [Running Effects](002-running.md#running-effects-concurrently) |
 | `EK1803` | a name after `try.` other than `all`, `race`, `any` or `allSettled`: `try.map x` | 18 | [Running Effects](002-running.md#running-effects-concurrently) |
@@ -1065,6 +1066,7 @@ The TypeScript-form lint warnings also retain their existing `EK4830`–`EK4837`
 | `EK2201` | an interruption block outside effect code | 22 | [Running Effects](002-running.md#interruption-blocks) |
 | `EK2202` | `restore` that captures an outer mask across an independent `effect` function, arrow, method, producer or block, or `restore` in any `for concurrent` head binding initialization or body | 22 | [Running Effects](002-running.md#interruption-blocks) |
 | `EK2301` | adopted pipe grammar and early errors without a more specific code, including a missing topic and a whole bare plain, `async` or `effect` arrow as a pipe body; parenthesize the arrow, `x \|> (() => %)`. For an unparenthesized conditional at either end of a pipe, `x \|> f(%) ? a : b`: the pinned proposal's conditional-body error and a pipe as a conditional's test; write `(x \|> f(%)) ? a : b` to test the result or `x \|> (f(%) ? a : b)` to pipe into the conditional | 23 | [Running Effects](002-running.md#the-pipe-operator) |
+| `EK2401` | the retired resolved `wire` intrinsic; compose Layers explicitly or use the preserving `wire compositions` codemod before rejection | 24 | [Migration](007-tooling.md#legacy-fork-try-statement-and-wire-migration) |
 | `EK2801` | a `data` declaration with more than 4 type parameters | 28 | [Data](006-data.md#generic-unions) |
 | `EK2803` | a default on a generic `data` type parameter | 28 | [Data](006-data.md#generic-unions) |
 | `EK3001` | two services with the same key | 9 | [Services](005-services.md#static-rules) |

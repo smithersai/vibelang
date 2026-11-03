@@ -266,6 +266,16 @@ For a legacy bare prelude `Scope` type, `vibelang --fix` writes `Scope.Scope`; `
 
 `--fix`, including `--fix-vip-only` and `--fix-migration-only`, expands the retired same-named module-export shorthand using the resolved binding: `Option<A>` becomes `Option.Option<A>`, and `FileSystem.of(impl)` becomes `FileSystem.FileSystem.of(impl)`. VIP-14 supplies module namespaces; a local type, an ambient type, an already qualified export and a namespace's own member keep their meaning. Prelude import cleanup retains these explicit export names. The migration preserves the emitted declaration and the runtime lookup.
 
+### Legacy fork, try-statement and wire migration
+
+The transitional bare `fork { ... }` spelling migrates with `vibelang --fix` to `fork effect { ... }` (VIP-2 and VIP-17). The insertion preserves the cold body, lexical captures, return value, Exit and declaration output; explicit Effect operands are unchanged. Retire the old spelling only after migration consumers have no remaining uses.
+
+The `try statements` codemod migrates old Effect statement catches and finalizers to explicit Effects, `catch effect`, and native cleanup combinators under VIP-5. It keeps structural tag matching, handler order and the old successful finalizer input `Exit.void`. It refuses unsupported outward jumps, observed `do` completion and any rewrite whose emitted declaration bytes differ.
+
+The `wire compositions` codemod replaces the retired resolved `wire` intrinsic under VIP-24 with explicit `Layer.provideMerge` composition. It evaluates each supplied layer once in source order and preserves the dependency order of the old graph. Opaque, duplicate or cyclic graphs, spreads and rewrites that change declaration bytes require manual migration. An unrelated local function named `wire` keeps its TypeScript meaning.
+
+After preserving migration, a bare `fork { … }` is `EK1707` and the resolved retired `wire` intrinsic is `EK2401`. The held enforcement changes still require landed codemods and zero remaining uses in every migration repository. The spec does not wait for those code receipts.
+
 ## Effect's type-aware lint
 
 ```sh
