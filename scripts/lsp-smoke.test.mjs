@@ -14,11 +14,11 @@ test("LSP smoke is a cached compiler-suite target with editor and fixture inputs
   const source = stripTypeScriptTypes(read("typescript/vibelang/PACKAGE.ts"))
     .replace(/^import .*$/gm, "")
     .replace("export const Package", "globalThis.result")
-  const compiler = { compiler: true }, runtime = { runtime: true }, published = { published: true }
+  const compiler = { compiler: true }, runtime = { runtime: true }, published = { published: true }, native = { native: true }
   const context = {
     S: { Shell: { Test: (spec) => spec, Run: (spec) => spec }, file: (file) => file, glob: (glob) => glob,
       Filegroup: (spec) => spec, Package: (spec) => spec, Host: { bin: (bin) => bin } },
-    Typescript: { compiler }, Packages: { "runtime-dist": runtime, "runtime-published": published },
+    Typescript: { compiler }, Packages: { "compiler-native": native, "runtime-dist": runtime, "runtime-published": published },
     readdirSync, existsSync, join, dirname: () => new URL("typescript/vibelang/", root).pathname,
     fileURLToPath: () => "", importMetaUrl: ""
   }
@@ -28,8 +28,11 @@ test("LSP smoke is a cached compiler-suite target with editor and fixture inputs
   assert.ok(target.data.includes(compiler), "compiler input includes the Go language server")
   assert.ok(target.data.includes(runtime))
   assert.ok(target.data.includes(published))
-  for (const input of ["lsp-smoke.sh", "lsp-smoke.mjs", "lsp-connection.mjs", "lsp-fixture/**",
-    "//experiments/package.json", "//experiments/bun.lock", "//packages/runtime/bun.lock"]) {
+  assert.ok(target.data.includes(native), "editor formatting reads the dprint plugin compiler-native writes")
+  for (const input of ["lsp-smoke.sh", "lsp-smoke.mjs", "lsp-format-shape.mjs", "lsp-connection.mjs", "lsp-fixture/**",
+    "//experiments/package.json", "//experiments/bun.lock", "//packages/runtime/bun.lock",
+    "//packages/compiler/format.mjs", "//packages/compiler/cache.mjs", "//packages/compiler/temporary.mjs",
+    "//packages/compiler/package.json", "//packages/compiler/bun.lock"]) {
     assert.ok(target.data.includes(input), "missing cache input: " + input)
   }
   assert.match(target.shell, /sh typescript\/vibelang\/lsp-smoke\.sh --no-build/)

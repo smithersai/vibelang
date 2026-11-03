@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { hasWithSpanEffectBlock } from "./lsp-format-shape.mjs"
 // Headless language server test. Starts `vibelang --lsp --stdio` on
 // vibelang/lsp-fixture, a project with .vibe and .ts files, and checks
 // what an editor shows: pulled (and, for a client that cannot pull, pushed) diagnostics, hovers with inferred contracts,
@@ -733,7 +734,7 @@ try {
     assert(formatted.includes("return names[id] ?? throw new NotFound({ id })"), `formatted to ${JSON.stringify(formatted.split("\n").filter((l) => l.includes("throw")))}`)
     assert(formatted.includes("return do {") && formatted.includes("    word.toUpperCase()"), `formatted to ${JSON.stringify(formatted.split("\n").filter((l) => l.includes("do {") || l.includes("toUpperCase")))}`)
     // A program is an effect block, not an arrow (VIP-2).
-    assert(formatted.includes("return try withSpan(effect {") && formatted.includes("    return try greeting()") && formatted.includes('}, "load")'), `formatted to ${JSON.stringify(formatted.split("\n").filter((l) => l.includes("withSpan") || l.includes("return try greeting") || l.includes('"load"')))}`)
+    assert(hasWithSpanEffectBlock(formatted), `formatted to ${JSON.stringify(formatted.split("\n").filter((l) => l.includes("withSpan") || l.includes("return try greeting") || l.includes('"load"')))}`)
   })
 
   await check("completion: an Effect data type lists its module's functions as methods", async () => {

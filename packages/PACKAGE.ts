@@ -56,7 +56,8 @@ const compilerTest = S.Shell.Test({
   data: [compilerNative, Tsc["go-vibelangfmt"], runtimeDist, S.glob("compiler/**"), migrationSources,
     S.file("//docs/tools/package.json"), S.file("//docs/tools/bun.lock"),
     S.file("//scripts/testing/property.mjs"), S.file("//docs/design/src/001-functions.md"), S.file("//docs/design/src/007-tooling.md"),
-    S.file("vite/src/relative-imports.js"), S.file("vite/src/paths-imports.js"), S.file("unplugin/src/relative-imports.js"), ...install],
+    S.file("vite/src/relative-imports.js"), S.file("vite/src/paths-imports.js"), S.file("unplugin/src/relative-imports.js"),
+    S.file("//typescript/vibelang/lsp-format-shape.mjs"), ...install],
   tools: [S.Host.bin("node"), S.Host.bin("bun"), S.Host.bin("jj")],
   sandbox: "none",
   timeout: "15m"

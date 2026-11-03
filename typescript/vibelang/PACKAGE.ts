@@ -75,6 +75,8 @@ targets["fork-late-start"] = S.Shell.Test({
 // The editor smoke shares the graph's compiler and runtime outputs. Its shell
 // only links the fixture: it must not rebuild or mutate dependencies another
 // target is reading. The compiler key includes the Go language service.
+// Editor formatting runs packages/compiler/format.mjs, which loads the dprint
+// plugin compiler-native writes beside it.
 targets["lsp-smoke"] = S.Shell.Test({
   summary: "Headless language-server checks: diagnostics, hovers, quick fixes, refactors and watching.",
   shell: "EFFECT_NODE_MODULES=$PWD/experiments/node_modules " +
@@ -84,11 +86,17 @@ targets["lsp-smoke"] = S.Shell.Test({
     Packages["compiler-native"],
     Packages["runtime-dist"],
     Packages["runtime-published"],
+    S.file("//packages/compiler/format.mjs"),
+    S.file("//packages/compiler/cache.mjs"),
+    S.file("//packages/compiler/temporary.mjs"),
+    S.file("//packages/compiler/package.json"),
+    S.file("//packages/compiler/bun.lock"),
     S.file("//packages/runtime/bun.lock"),
     S.file("//experiments/package.json"),
     S.file("//experiments/bun.lock"),
     S.file("lsp-smoke.sh"),
     S.file("lsp-smoke.mjs"),
+    S.file("lsp-format-shape.mjs"),
     S.file("lsp-connection.mjs"),
     S.glob("lsp-fixture/**")
   ],

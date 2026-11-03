@@ -544,6 +544,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - JSX source files did not activate or reach VibeLang's VS Code language server as `.vibex` documents; the `vibex` language mode now selects the JSX parser and provides component and prop completions, hovers, diagnostics, definitions and paired-tag rename.
 
 - Invalid `for concurrent` limits could produce a TypeScript argument error or pass unchecked; they now report `EK1907` consistently.
+- The language-server smoke test rejected a correctly formatted multiline `withSpan` call; it now checks the effect block and arguments across line breaks while rejecting changed program shapes.
+
 - In the editor, an `is` that binds names and has a parenthesized subject, such as `(x as T) is [let a]` or `([3, r] as const) is [let n, let e]`, made the TypeScript 7 mapper report "invalid or overlapping edits" and pass the whole file through unchanged, so the editor checked VibeLang syntax as TypeScript; the file now maps as it does without the parentheses.
 - Migration returned converted services to TypeScript when every member kept the original service requirement. Verification now accepts the `EK4809` design warning and preserves those member contracts; a configured `EK4809` error still fails.
 - Declarations of imported Effect values could gain an extra import; cold values and decoders now have regression comparisons against TypeScript.
