@@ -11,6 +11,9 @@
     "test": "bun test --timeout 60000",
     "check:release": "node release-docs.mjs --check"
   },
+  "dependencies": {
+    "fast-check": "4.10.2"
+  },
   "devDependencies": {
     "marked": "18.0.12",
     "@effect/platform-node": "4.1.0",
@@ -21,8 +24,5 @@
     "@effect/platform-browser": "4.1.0",
     "js-tiktoken": "1.0.21",
     "typescript": "5.9.3"
-  },
-  "dependencies": {
-    "fast-check": "4.10.2"
   }
 }
