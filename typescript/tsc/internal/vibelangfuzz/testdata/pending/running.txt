@@ -26,17 +26,8 @@ FuzzRunningRules diagnostic:concurrent-head-break-outer compiler VIP-19: a label
 FuzzRunningRules corpus:concurrent-head-break-outer compiler VIP-19: minimal reproduction of diagnostic:concurrent-head-break-outer; lane core-block
 FuzzRunningRules diagnostic:concurrent-head-continue-outer compiler VIP-19: a labeled `continue` in a head default's `do` draws the retired EK1019, not EK1905; lane core-block
 FuzzRunningRules corpus:concurrent-head-continue-outer compiler VIP-19: minimal reproduction of diagnostic:concurrent-head-continue-outer; lane core-block
-FuzzVIPDifferential compile:TS2464/vip19.head-initialization-item compiler VIP-19: a `try` in a head computed key's `do` is not run on the item (TS2464, TS2538); lane impl-hunt-run
-FuzzVIPDifferential compile:TS2538/vip19.head-initialization-item compiler VIP-19: a `try` in a head computed key's `do` is not run on the item (TS2464, TS2538); lane impl-hunt-run
 FuzzVIPDifferential compile:TS2304/vip19.rhs-tdz compiler VIP-19: an RHS closure cannot name the head binding (TS2304); ECMAScript's head environment holds it uninitialized; lane impl-hunt-run
 FuzzVIPDifferential corpus:fz-run-vip19-rhs-tdz compiler VIP-19: minimal named probe reproduces compile:TS2304/vip19.rhs-tdz; lane impl-hunt-run
-FuzzVIPDifferential compile:EK0501/vip19.head-initialization-item compiler VIP-19: a `try` in a head computed key's `do` stands in the item function's parameter list, outside effect code, so it is EK0501 instead of running on the item (same gap as TS2464, TS2538); lane impl-hunt-run
-FuzzVIPDifferential compile:EK4801/vip19.head-initialization-item compiler VIP-19: cascade of compile:EK0501/vip19.head-initialization-item, the unrun head try; lane impl-hunt-run
-FuzzVIPDifferential compile:EK0204/vip19.limit-return compiler VIP-19: a `return` in the limit's `do` is still blocked by EK0204 at the compiler intrinsic boundary instead of leaving the enclosing function; lane impl-hunt-run
-FuzzVIPDifferential corpus:fz-run-vip19-limit-return compiler VIP-19: minimal named probe reproduces compile:EK0204/vip19.limit-return; lane impl-hunt-run
-FuzzVIPDifferential compile:EK0204/vip19.rhs-return compiler VIP-19: a `return` in the RHS `do` is still blocked by EK0204 at the compiler intrinsic boundary instead of leaving the enclosing function; lane impl-hunt-run
-FuzzVIPDifferential corpus:fz-run-vip19-rhs-return compiler VIP-19: minimal named probe reproduces compile:EK0204/vip19.rhs-return; lane impl-hunt-run
-FuzzVIPDifferential compile:EK1901/vip19.rhs-return compiler VIP-19: a `return` in the RHS `do` is still blocked at the compiler intrinsic boundary and leaves the `do`'s type as `7 | number[]` (EK1901, formerly the helper's TS2345); lane impl-hunt-run
 
 FuzzDoDeclarationBytes bytes:inferred-return:depth-1 compiler VIP-1, VIP-27: unannotated plain functions still infer Effect even without do, changing their public signature; lane vip-core2
 FuzzDoDeclarationBytes bytes:inferred-return:depth-2 compiler VIP-1, VIP-27: unannotated plain functions still infer Effect even without do, changing their public signature; lane vip-core2

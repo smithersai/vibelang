@@ -857,6 +857,11 @@ typescript/vibelang/cases/concurrent-coverage-operations/main.vibe:9:24 byname p
 typescript/vibelang/cases/concurrent-coverage-operations/main.vibe:9:48 byname program table
 typescript/vibelang/cases/concurrent-default-shadow/main.vibe:11:25 lambda effectFn table
 typescript/vibelang/cases/concurrent-default-shadow/main.vibe:5:25 lambda effectFn table
+typescript/vibelang/cases/concurrent-head-do-return/main.vibe:12:50 lambda effectFn table
+typescript/vibelang/cases/concurrent-head-do-return/main.vibe:17:25 lambda effectFn table
+typescript/vibelang/cases/concurrent-head-do-return/main.vibe:23:58 lambda effectFn table
+typescript/vibelang/cases/concurrent-head-do-return/main.vibe:3:15 lambda dual fallback
+typescript/vibelang/cases/concurrent-head-do-return/main.vibe:6:80 lambda effectFn table
 typescript/vibelang/cases/concurrent-head-newline/main.vibe:11:30 lambda effectFn table
 typescript/vibelang/cases/concurrent-head-newline/main.vibe:13:36 lambda effectFn table
 typescript/vibelang/cases/concurrent-head-newline/main.vibe:5:12 lambda effectFn table
@@ -1021,7 +1026,6 @@ typescript/vibelang/cases/cov-ch002b-running-allsettled-types/main.vibe:4:86 byn
 typescript/vibelang/cases/cov-ch002b-running-allsettled-types/main.vibe:5:51 byname program table
 typescript/vibelang/cases/cov-ch002b-running-allsettled-types/main.vibe:6:20 lambda choice fallback
 typescript/vibelang/cases/cov-ch002b-running-allsettled-types/main.vibe:6:96 lambda plain table
-typescript/vibelang/cases/cov-ch002b-running-caller-operand-return/main.vibe:4:42 lambda plain fallback
 typescript/vibelang/cases/cov-ch002b-running-caller-operand-return/main.vibe:4:60 lambda effectFn table
 typescript/vibelang/cases/cov-ch002b-running-catch-extent/main.vibe:23:52 lambda effectFn table
 typescript/vibelang/cases/cov-ch002b-running-catch-extent/main.vibe:23:9 lambda effectFn table
@@ -2954,7 +2958,6 @@ typescript/vibelang/cases/foldkit-config-effect-calls/main.vibe:8:21 lambda dual
 typescript/vibelang/cases/foldkit-config-effect-calls/main.vibe:9:26 lambda dual fallback
 typescript/vibelang/cases/for-concurrent-coverage-head/main.vibe:8:33 lambda program table
 typescript/vibelang/cases/for-concurrent-coverage-head/main.vibe:9:35 lambda effectFn table
-typescript/vibelang/cases/for-concurrent-coverage-head/main.vibe:9:43 lambda dual fallback
 typescript/vibelang/cases/for-concurrent-coverage-head/main.vibe:9:76 lambda choice fallback
 typescript/vibelang/cases/for-concurrent-coverage-jumps.fail/main.vibe:3:57 lambda effectFn table
 typescript/vibelang/cases/for-concurrent-coverage-jumps.fail/main.vibe:4:58 lambda effectFn table
@@ -2974,6 +2977,15 @@ typescript/vibelang/cases/for-concurrent-coverage-pulling/main.vibe:8:19 lambda 
 typescript/vibelang/cases/for-concurrent-coverage-pulling/main.vibe:8:20 lambda choice fallback
 typescript/vibelang/cases/for-concurrent-coverage-pulling/main.vibe:9:35 lambda effectFn table
 typescript/vibelang/cases/for-concurrent-coverage-unbounded/main.vibe:5:37 lambda effectFn table
+typescript/vibelang/cases/for-concurrent-operand-diagnostics.fail/main.vibe:12:25 lambda effectFn table
+typescript/vibelang/cases/for-concurrent-operand-diagnostics.fail/main.vibe:15:25 lambda effectFn table
+typescript/vibelang/cases/for-concurrent-operand-diagnostics.fail/main.vibe:4:25 lambda effectFn table
+typescript/vibelang/cases/for-concurrent-operand-diagnostics.fail/main.vibe:7:25 lambda effectFn table
+typescript/vibelang/cases/for-concurrent-operand-domains/main.vibe:11:25 lambda effectFn table
+typescript/vibelang/cases/for-concurrent-operand-domains/main.vibe:14:25 lambda effectFn table
+typescript/vibelang/cases/for-concurrent-operand-domains/main.vibe:5:28 lambda effectFn table
+typescript/vibelang/cases/for-concurrent-operand-domains/main.vibe:6:28 lambda effectFn table
+typescript/vibelang/cases/for-concurrent-operand-domains/main.vibe:7:28 lambda effectFn table
 typescript/vibelang/cases/for-of-close-failures/main.vibe:100:28 byname program table
 typescript/vibelang/cases/for-of-close-failures/main.vibe:100:40 lambda plain table
 typescript/vibelang/cases/for-of-close-failures/main.vibe:101:28 byname program table
@@ -5233,9 +5245,7 @@ typescript/vibelang/cases/restore-in-uninterruptible-expression/main.vibe:19:20 
 typescript/vibelang/cases/restore-in-uninterruptible-expression/main.vibe:25:30 lambda program table
 typescript/vibelang/cases/restore-in-uninterruptible-expression/main.vibe:8:22 lambda program table
 typescript/vibelang/cases/restore-in-uninterruptible-expression/main.vibe:9:32 lambda program table
-typescript/vibelang/cases/restore-item-region-controls/main.vibe:8:23 lambda dual fallback
 typescript/vibelang/cases/restore-item-region-controls/main.vibe:8:72 lambda effectFn table
-typescript/vibelang/cases/restore-item-region-controls/main.vibe:8:80 lambda dual fallback
 typescript/vibelang/cases/restore-item-region.fail/main.vibe:10:27 lambda effectFn table
 typescript/vibelang/cases/restore-item-region.fail/main.vibe:10:36 lambda dual fallback
 typescript/vibelang/cases/restore-item-region.fail/main.vibe:15:27 lambda effectFn table

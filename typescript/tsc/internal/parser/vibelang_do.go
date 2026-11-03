@@ -521,6 +521,15 @@ func (p *Parser) loopHeadOf(node *ast.Node) *ast.Node {
 			}
 			return nil
 		}
+		if ast.IsCallExpression(n) && isIntrinsicCall(n) == "$forConcurrent" {
+			// The limit and operand of for concurrent are its head; the
+			// call's statement is the loop (VIP-19, the do proposal's
+			// head early errors).
+			if args := n.Arguments(); len(args) == 3 && (child == args[0] || child == args[1]) {
+				return n.Parent
+			}
+			return nil
+		}
 	}
 	return nil
 }
@@ -796,6 +805,13 @@ func (p *Parser) doSite(do *ast.Node) *ast.Node {
 				case isAwaitLiteralOperation(name):
 					// D322: a do element is still a program by syntax.
 					return nil
+				case name == "$forConcurrent":
+					// VIP-19: the limit and the operand retain the enclosing
+					// activation's outward completions; the item function
+					// is the loop body, not part of the head.
+					if args := n.Arguments(); len(args) != 3 || (child != args[0] && child != args[1]) {
+						return nil
+					}
 				default:
 					return nil
 				}
@@ -1395,7 +1411,21 @@ func (l *doLowering) expr(e *ast.Node, pre *[]*ast.Node) *ast.Node {
 		a.Expression, a.ArgumentExpression = parts[0], parts[1]
 	case ast.KindCallExpression:
 		c := e.AsCallExpression()
-		if isIntrinsicCall(e) != "" {
+		if name := isIntrinsicCall(e); name == "$forConcurrent" && len(c.Arguments.Nodes) == 3 {
+			// for concurrent(limit) (const x of items): the limit, written
+			// first, runs before the items (VIP-19).
+			arguments := c.Arguments.Nodes
+			if limit := arguments[1]; !l.marked[limit] && limit.Kind == ast.KindVoidExpression {
+				// The omitted limit, void 0 (parseVibeLangConcurrentFor),
+				// reads nothing; the checker knows it in place.
+				arguments[0] = l.expr(arguments[0], pre)
+			} else {
+				parts := l.ordered(pre, arguments[1], arguments[0])
+				arguments[1], arguments[0] = parts[0], parts[1]
+			}
+			l.p.overrideParentInImmediateChildren(e)
+			return e
+		} else if name != "" {
 			// Parser intrinsics are syntax, not runtime callee reads.
 			c.Arguments.Nodes = l.ordered(pre, c.Arguments.Nodes...)
 			l.p.overrideParentInImmediateChildren(e)

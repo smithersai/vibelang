@@ -1,0 +1,40 @@
+// expect-result: [7,"limit",0,"limit,rhs,item1,item2",8,"limit,rhs",0,"limit,rhs,item1,item2",9,"rhs",0,"rhs,item3",4]
+const seen: string[] = []
+const drain = () => { const out = seen.join(","); seen.length = 0; return out }
+// A return in the limit's do leaves the function before the operand runs.
+effect function limitReturn(early: boolean) {
+  for concurrent(do { seen.push("limit"); if (early) { return 7 }; 1 }) (const x of (seen.push("rhs"), [1, 2])) { seen.push("item" + x) }
+  return 0
+}
+// A return in the operand's do leaves the function before any item starts;
+// the limit still runs first.
+effect function operandReturn(early: boolean) {
+  for concurrent((seen.push("limit"), 1)) (const x of do { seen.push("rhs"); if (early) { return 8 }; [1, 2] }) { seen.push("item" + x) }
+  return 0
+}
+// Without a limit the loop stays unbounded.
+effect function unboundedReturn(early: boolean) {
+  for concurrent (const x of do { seen.push("rhs"); if (early) { return 9 }; [3] }) { seen.push("item" + x) }
+  return 0
+}
+// A labeled continue in the operand's do targets the enclosing loop.
+effect function outerContinue() {
+  let n = 0
+  outer: for (const k of [1, 2]) { for concurrent (const x of do { if (k === 1) { continue outer }; [k, k] }) { n += x } }
+  return n
+}
+export effect function main() {
+  const a = try limitReturn(true)
+  const aSeen = drain()
+  const b = try limitReturn(false)
+  const bSeen = drain()
+  const c = try operandReturn(true)
+  const cSeen = drain()
+  const d = try operandReturn(false)
+  const dSeen = drain()
+  const e = try unboundedReturn(true)
+  const eSeen = drain()
+  const f = try unboundedReturn(false)
+  const fSeen = drain()
+  return [a, aSeen, b, bSeen, c, cSeen, d, dSeen, e, eSeen, f, fSeen, try outerContinue()]
+}
