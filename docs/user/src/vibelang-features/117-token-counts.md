@@ -114,7 +114,7 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [New project](../setup/new-project.md) | 540 |
 | [Existing project](../setup/existing-project.md) | 1,900 |
 | **Build and test** | **12,000** |
-| [vibelang CLI](../setup/vibelang-cli.md) | 9,300 |
+| [vibelang CLI](../setup/vibelang-cli.md) | 9,500 |
 | [Vite and Vitest](../setup/vite.md) | 3,000 |
 | **Format and lint** | **6,400** |
 | [Format with dprint](../setup/formatting.md) | 2,300 |
@@ -131,9 +131,9 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [Zed](../setup/zed.md) | 480 |
 | [Other editors](../setup/other-editors.md) | 490 |
 | [Coding agents](../setup/coding-agents.md) | 1,100 |
-| **Upgrade** | **100,000** |
-| [Release notes](../setup/release-notes.md) | 100,000 |
-| **All 19 pages** | **140,000** |
+| **Upgrade** | **110,000** |
+| [Release notes](../setup/release-notes.md) | 110,000 |
+| **All 19 pages** | **150,000** |
 
 ### Guides
 
