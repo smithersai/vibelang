@@ -180,3 +180,12 @@ Go declaration fuzz oracles pass complete emitted module trees to the same
 checker. Relative aliases and dependencies resolve within each snapshot;
 formatting, member order and equivalent import spelling do not fail a
 semantic declaration oracle. Dedicated formatting tests retain byte checks.
+
+If a generated assertion reaches `TS2589`, the checker resolves its actual
+operands through the same TypeScript checker. When both are the exact same
+non-error `Type` object, reflexivity establishes identity independently of
+the redundant assertion. Generic bridge operands are checked in full, so
+erased generic bodies cannot hide changed constraints. Input diagnostics,
+error taint, export names and documentation remain checked. Profiling records
+each recovered assertion as `probe-reflexive-type`; every other depth error
+remains invalid.

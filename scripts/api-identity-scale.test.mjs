@@ -322,3 +322,80 @@ test("property: project noCheck cannot bypass bidirectional identity", async () 
     }
   })
 })
+
+const reflexiveCorpus = () => JSON.parse(readFileSync(new URL("./api-identity-corpus/opencode-reflexive-make.json", import.meta.url))).declarations
+test("reflexive generic function identity does not instantiate a redundant equality assertion", () => {
+  const text = reflexiveCorpus()
+  const files = {"implementation.d.ts":text, "index.d.ts":'export { make } from "./implementation.js";'}
+  fixture(files,files,(a,b)=>{
+    const original=ts.createProgram([join(a,"index.d.ts")],{...options.compilerOptions,
+      noEmit:true,strict:true,types:[]})
+    assert.deepEqual(ts.getPreEmitDiagnostics(original),[],"stock tsc accepts the original declaration")
+    for(const target of [a,b]){
+      const result=compareApiIdentity(ts,a,target,{...options,
+        beforeEntrypoints:{".":join(a,"index.d.ts")},afterEntrypoints:{".":join(target,"index.d.ts")}})
+      assert.equal(result.identical,true,JSON.stringify(result))
+      assert.equal(result.comparisonComplete,true)
+    }
+  })
+})
+
+test("reflexive type proofs preserve other export, generic constraint and documentation differences", () => {
+  const implementation=reflexiveCorpus()
+  for(const mutation of ["none","type","constraint","doc","invalid"]){
+    const before={"implementation.d.ts":implementation,"index.d.ts":
+      'export { make } from "./implementation.js";\n/** Original */\nexport declare const marker: string;\nexport type Constraint<T extends string> = string;'.replaceAll("\\n","\n")}
+    const after={...before}
+    if(mutation==="type")after["index.d.ts"]=after["index.d.ts"].replace("marker: string","marker: number")
+    if(mutation==="constraint")after["index.d.ts"]=after["index.d.ts"].replace("T extends string","T extends number")
+    if(mutation==="doc")after["index.d.ts"]=after["index.d.ts"].replace("Original","Changed")
+    if(mutation==="invalid")after["index.d.ts"]=after["index.d.ts"].replace("marker: string","marker: Missing")
+    fixture(before,after,(a,b)=>{
+      const opts={...options,beforeEntrypoints:{".":join(a,"index.d.ts")},afterEntrypoints:{".":join(b,"index.d.ts")}}
+      const result=compareApiIdentity(ts,a,b,opts)
+      assert.equal(result.identical,mutation==="none",JSON.stringify({mutation,result}))
+      assert.equal(result.comparisonComplete,mutation!=="invalid",JSON.stringify({mutation,result}))
+      if(mutation==="type"||mutation==="constraint")assert.ok(result.typeDifferences.length>0)
+      if(mutation==="doc")assert.ok(result.docDifferences.some(d=>d.export==="marker"))
+      if(mutation==="invalid")assert.ok(result.environmentDiagnostics.some(d=>d.blocking&&/TS2304/.test(d.diagnostic)))
+    })
+  }
+})
+
+test("property: reflexive recursive functions preserve identity across batch sizes", async()=>{
+  await checkProperty(fc,{
+    name:"api-identity-reflexive-recursive-functions",
+    rule:"Will: identical trees report identical, while exported names, strict types and docs remain observable; exact tsc type object identity is reflexive",
+    command:"node --test scripts/api-identity-scale.test.mjs",
+    numRuns:6,
+    arbitrary:fc.record({count:fc.integer({min:1,max:5}),batch:fc.integer({min:1,max:8}),changed:fc.boolean()}),
+    check:({count,batch,changed})=>{
+      const source=reflexiveCorpus()
+      const before={"implementation.d.ts":source,"index.d.ts":'export { make } from "./implementation.js";\n'.replaceAll("\\n","\n")+
+        Array.from({length:count},(_,i)=>"export declare const x"+i+": "+i+";").join("\n")}
+      const after={...before,"index.d.ts":changed?before["index.d.ts"].replace("x"+(count-1)+": "+(count-1),"x"+(count-1)+": "+count):before["index.d.ts"]}
+      fixture(before,after,(a,b)=>{
+        const settings={...options,probeBatchSize:batch,beforeEntrypoints:{".":join(a,"index.d.ts")},afterEntrypoints:{".":join(b,"index.d.ts")}}
+        const result=compareApiIdentity(ts,a,b,settings)
+        assert.equal(result.comparisonComplete,true,JSON.stringify(result))
+        assert.equal(result.identical,!changed)
+        if(changed)assert.ok(result.typeDifferences.some(d=>d.export==="x"+(count-1)))
+      })
+    }
+  })
+})
+
+test("different recursive operands retain changed generic constraints", () => {
+  const before = reflexiveCorpus()
+  const after = before.replace("function make<const Implementation extends Layer.Any,",
+    "function make<const Implementation extends Layer.Any & { readonly extra: unknown },")
+  assert.notEqual(before, after)
+  fixture({"implementation.d.ts":before,"index.d.ts":'export { make } from "./implementation.js";'},
+    {"implementation.d.ts":after,"index.d.ts":'export { make } from "./implementation.js";'},(a,b)=>{
+    const result=compareApiIdentity(ts,a,b,{...options,
+      beforeEntrypoints:{".":join(a,"index.d.ts")},afterEntrypoints:{".":join(b,"index.d.ts")}})
+    assert.equal(result.identical,false,JSON.stringify(result))
+    assert.equal(result.comparisonComplete,true,JSON.stringify(result))
+    assert.ok(result.typeDifferences.some(d=>d.export==="make"),JSON.stringify(result))
+  })
+})

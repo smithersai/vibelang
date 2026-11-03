@@ -1149,6 +1149,27 @@ function checkComparison(ts, plan, progress) {
   const assignmentFailures = new Set(diagnostics.filter(d => d.file?.fileName === probe && d.start !== undefined)
     .map(d => assignmentLines.get(d.file.getLineAndCharacterOfPosition(d.start).line)).filter(Boolean))
   for (const d of diagnostics) {
+    // TypeScript's quantified equality helper can exceed its instantiation
+    // depth even for Same<F, F>. The exact same resolved Type object proves
+    // reflexivity without evaluating that helper. Compare the actual probe
+    // operands (including generic bridges), never rendered names or flags.
+    // All original input diagnostics and error-taint checks remain in force.
+    if (d.code === 2589 && d.file?.fileName === probe && d.start !== undefined) {
+      const line = d.file.getLineAndCharacterOfPosition(d.start).line
+      const check = byLine.get(line) ?? assignmentLines.get(line)
+      const alias = probeSource.statements.find(node => ts.isTypeAliasDeclaration(node) &&
+        node.pos <= d.start && d.start < node.end)
+      const operands = alias?.type?.typeArguments?.[0]?.typeArguments
+      if (check && operands?.length === 2) {
+        const checker = program.getTypeChecker()
+        const a = checker.getTypeFromTypeNode(operands[0]), b = checker.getTypeFromTypeNode(operands[1])
+        if (a === b && a.intrinsicName !== "error") {
+          progress("probe-reflexive-type", { probeOffset: offset, entrypoint: check.entrypoint,
+            export: check.export, aspect: check.aspect })
+          continue
+        }
+      }
+    }
     const line = d.file && d.start !== undefined ? d.file.getLineAndCharacterOfPosition(d.start).line : -1
     if (d.file?.fileName === probe && assignmentLines.has(line) && d.code === 2344) continue
     const check = d.file?.fileName === probe && d.code === 2344 ? byLine.get(line) : undefined
