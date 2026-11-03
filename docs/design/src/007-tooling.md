@@ -384,7 +384,7 @@ Pinned defaults are `diagnostics: true`, `includeSuggestionsInTsc: true`, `ignor
 
 ### Severity-key activation migration
 
-`EK3012` is a migration warning when a resolved config has an assigned `EK38xx` severity key, `"off"` included, without a resolved Effect plugin entry: `an imported lint severity needs an explicit Effect plugin entry; run vibelang --fix`. Any existing plugin entry, including a native disable setting, prevents this migration.
+`EK3012` is a migration warning when a resolved config has an assigned `EK38xx` severity key, `"off"` included, without a resolved Effect plugin entry: `an imported lint severity needs an explicit Effect plugin entry; run vibelang --fix`. An existing resolved plugin entry named `@effect/language-service`, including a native disable setting, prevents this migration. An unrelated plugin does not prevent it.
 
 Ordinary `--fix`, `--fix-migration-only` and `--fix-vip-only` append `{ "name": "@effect/language-service" }` to the selected project's own `compilerOptions.plugins`. Copy inherited plugin entries before appending; never edit an external base. Retain explicit disables, severities, JSONC comments and unrelated settings under the [ownership and preservation rules](#fix-ownership-and-preservation). Selected-file `--fix --only` writes no configs and cannot apply this repair.
 
