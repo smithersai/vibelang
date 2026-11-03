@@ -82,8 +82,6 @@ var specAhead = map[int32]string{
 	1503: renumbering, 1604: renumbering,
 	// Missing member separators in VibeLang declaration bodies have assigned diagnostics before compiler registration.
 	1504: renumbering,
-	// VIP-15 and VIP-16 catalog existing named/nongeneric declaration rejections.
-	1502: renumbering,
 	// Decided details 122/130 reserve a separate code for Data.taggedEnum helper variant names.
 	1602: renumbering,
 	// The round-24 trigger catalog gives unsupported fork owners, fork.in scopes, dotted try names and concurrency limits their codes.

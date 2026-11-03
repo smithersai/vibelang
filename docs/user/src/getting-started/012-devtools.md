@@ -91,6 +91,8 @@ If `parse.ts` or a conflicting sibling name is taken, compared case-insensitivel
 
 ## Diagnostic reference: additional codes
 
+`EK1502` rejects type parameters on a `schema` body or alias. Write a generic TypeScript factory for parameterized construction. If an older compiler accepted the header as an empty schema followed by a TypeScript expression, its quick fix and `vibelang --fix` make that empty body explicit and retain the expression, preserving the old decoder and public type.
+
 Each entry gives the condition and the repair. The examples and language-service tables on this page cover the other registered codes for these forms.
 
 | Code | Meaning | Remedy |

@@ -1,0 +1,2 @@
+// expect: EK1502
+schema User<T> = string

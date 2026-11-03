@@ -41,6 +41,8 @@ func (p *Parser) scanSchemaAliasStart() bool {
 		return false
 	}
 	p.nextToken()
+	// Recover forbidden generic alias headers through the same owning rule.
+	p.parseTypeParameters()
 	return p.token == ast.KindEqualsToken
 }
 
@@ -49,6 +51,7 @@ func (p *Parser) parseSchemaAliasDeclaration(pos int, jsdoc jsdocScannerInfo, mo
 	keyword := p.scanner.TokenRange()
 	p.nextToken() // schema
 	name := p.parseBindingIdentifier()
+	p.parseVibeLangSchemaTypeParameters()
 	p.parseExpected(ast.KindEqualsToken)
 	saved := p.vibelangImplicitReadonly
 	p.vibelangImplicitReadonly = true // as in a schema's fields (vibelang.go)

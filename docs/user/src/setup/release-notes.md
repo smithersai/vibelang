@@ -548,6 +548,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Passing or storing a function returning an Effect at a TypeScript-compatible callback type could report `EK4301`; these values now follow native TypeScript assignability, and calls still return their Effects unrun (VIP-1, detail303).
 
+- Generic `schema` headers fell through to TypeScript errors or created an empty schema; they now report `EK1502`. `vibelang --fix` preserves the old empty schema and following expression for previously accepted headers.
+
 - Direct default `schema` and `data` declarations produced TypeScript parser errors; they now report `EK1501` and `EK1603` with named-export guidance.
 
 - API checks invented ambient exports or hid an ambient type change when one input directory contained the other. Contributions now follow each snapshot’s dependency closure, and nested private-class origins remain distinct where required.
