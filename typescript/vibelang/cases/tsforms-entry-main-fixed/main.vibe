@@ -1,7 +1,4 @@
-// Only a function declaration named main starts when its module starts
-// (D135). A const or let main that holds a function draws EK4843, since node
-// runs nothing and prints nothing, and its quick fix writes the declaration
-// that tsforms-entry-main-fixed holds.
-export effect function main() {
+// VIP-26: an exported lexical main is ordinary and is not run implicitly.
+export const main = effect () => {
   try Console.log("Hello")
 }

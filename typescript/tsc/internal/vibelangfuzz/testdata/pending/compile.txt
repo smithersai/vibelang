@@ -190,8 +190,6 @@ FuzzCompile registry:EK4838 compiler Appendix B: "A transitional compiler may st
 FuzzCompile corpus:registry-EK4838 compiler Appendix B: reproduction of registry:EK4838; lane del-4.
 FuzzCompile registry:EK4840 compiler Appendix B: "A transitional compiler may still print compatibility diagnostics from the old language." The compiler emits 4840 with no current assignment; lane del-rest.
 FuzzCompile corpus:registry-EK4840 compiler Appendix B: reproduction of registry:EK4840; lane del-rest.
-FuzzCompile registry:EK4843 compiler Appendix B: "A transitional compiler may still print compatibility diagnostics from the old language." The compiler emits 4843 with no current assignment; lane del-4.
-FuzzCompile corpus:registry-EK4843 compiler Appendix B: reproduction of registry:EK4843; lane del-4.
 
 
 

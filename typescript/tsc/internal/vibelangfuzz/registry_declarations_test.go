@@ -108,7 +108,6 @@ var legacyDeclared = map[int32]string{
 	4825: "lane del-rest",                                                                                                             // messageOff in lsrules_style.go
 	4838: "lane del-4",                                                                                                                // fork_escape.go
 	4840: "lane del-rest",                                                                                                             // fix_option.go
-	4843: "lane del-4",                                                                                                                // entry_const_main.go
 	9100: "lane core-land; declaration only: annotation-migration report is an editor tool diagnostic",                                // lsrules_fixes.go
 	9101: "lane core-land; declaration only: data-method annotation report is an editor tool diagnostic",                              // lsrules_fixes.go
 }

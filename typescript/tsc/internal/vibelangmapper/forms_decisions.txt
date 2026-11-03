@@ -2332,6 +2332,7 @@ typescript/vibelang/cases/ek4823-effect-block.fail/main.vibe:7:23 lambda dual fa
 typescript/vibelang/cases/ek4823-effect-block.fail/main.vibe:7:43 lambda program table
 typescript/vibelang/cases/ek4823-effect-block.fail/main.vibe:8:22 lambda plain annotation
 typescript/vibelang/cases/ek4823-effect-block.fail/main.vibe:9:23 lambda choice fallback
+typescript/vibelang/cases/entry-const-main-tdz/main.vibe:5:21 lambda plain annotation
 typescript/vibelang/cases/entry-main-runner-names/main.vibe:3:27 lambda plain annotation
 typescript/vibelang/cases/entry-main-runner-variable/main.vibe:6:35 byname program table
 typescript/vibelang/cases/entry-main-runner/main.vibe:7:12 byname program table
@@ -5497,7 +5498,8 @@ typescript/vibelang/cases/tsforms-direct/main.vibe:35:23 lambda dual fallback
 typescript/vibelang/cases/tsforms-direct/main.vibe:38:14 lambda effectFn table
 typescript/vibelang/cases/tsforms-direct/main.vibe:38:28 lambda effectFn table
 typescript/vibelang/cases/tsforms-direct/main.vibe:42:21 byname program table
-typescript/vibelang/cases/tsforms-entry-main/main.vibe:5:21 lambda dual fallback
+typescript/vibelang/cases/tsforms-entry-main-fixed/main.vibe:2:21 lambda dual fallback
+typescript/vibelang/cases/tsforms-entry-main/main.vibe:2:21 lambda dual fallback
 typescript/vibelang/cases/tsforms-errors-fixed/main.vibe:21:10 lambda effectFn table
 typescript/vibelang/cases/tsforms-errors-fixed/main.vibe:21:25 lambda effectFn table
 typescript/vibelang/cases/tsforms-errors-fixed/main.vibe:21:38 lambda dual fallback
