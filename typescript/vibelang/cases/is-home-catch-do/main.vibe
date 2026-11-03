@@ -1,0 +1,7 @@
+// expect-result: [1,true]
+function caught() {
+  const result: unknown[] = []
+  try { throw {} as any } catch ({ code = do { const ok = (1 is let c); result.push(c); ok } }) { result.push(code) }
+  return result
+}
+export effect function main() { return caught() }

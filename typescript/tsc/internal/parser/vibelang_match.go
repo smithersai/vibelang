@@ -663,7 +663,7 @@ func (p *Parser) parseVibeLangIs(subject *ast.Node, pos int) *ast.Node {
 // (chapter 004, decided details 240 and 245): each binding and each subject
 // or extraction the pattern holds becomes a let statement before the
 // statement (through reparseList, which parseListIndex places there, or the
-// block an unbraced statement body gets, parseEmbeddedStatement), and the is
+// recovery block for an invalid unbraced body, parseEmbeddedStatement), and the is
 // becomes one boolean expression whose tests run in order and assign the
 // names as they succeed: `x is { id: let id }` is
 //
@@ -935,9 +935,9 @@ func (p *Parser) takeHoists(mark int) []*ast.Node {
 }
 
 // parseEmbeddedStatement parses the statement body of an if, else, loop or
-// labeled statement. When it is not a block and an is inside it hoisted
-// bindings, the body becomes a block holding them: an unbraced statement body
-// is its own home, created afresh each time it runs (decided detail 245).
+// labeled statement. A lexical declaration cannot live in an unbraced body
+// (TypeScript TS1156). Keep the recovery block for checking and the brace
+// repair, but report EK0705 instead of silently inventing a source home.
 func (p *Parser) parseEmbeddedStatement() *ast.Statement {
 	mark := len(p.reparseList)
 	statement := p.parseStatement()
@@ -948,7 +948,17 @@ func (p *Parser) parseEmbeddedStatement() *ast.Statement {
 	if len(hoists) == 0 {
 		return statement
 	}
-	return p.mBlock(append(hoists, statement), statement.Loc)
+	// One report per body, even when its pattern binds several names.
+	at := statement.Loc
+	for _, hoist := range hoists {
+		declaration := hoistedDeclarator(hoist)
+		if declaration.Flags&ast.NodeFlagsVibeLangIsBinding != 0 {
+			at = declaration.Name().Loc
+			break
+		}
+	}
+	marker := p.vibelangSpanning(p.factory.NewExpressionStatement(p.patternErrorCall(705, "", at)), at)
+	return p.mBlock(append(append(hoists, marker), statement), statement.Loc)
 }
 
 // patternHasBindings reports whether pat binds a name.

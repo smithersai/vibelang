@@ -189,6 +189,10 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Compiler regression checks now cover direct, optional, nested and statically keyed `globalThis.eval` and `globalThis.Function` references, including the `instanceof` and prototype exemptions.
 
+- An `is` binding in an `if` head was scoped to that `if` alone, so `if (!(x is { id: let id })) return; use(id)` reported `EK4703` and `||` or nested conditions could not bind; the bindings now live in the block that holds the `if` (chapter 004, decided detail 245), an unbraced binding body requires braces (`EK0705`), a `for concurrent` limit may bind, and two patterns binding one name in one block report TypeScript's `TS2451`. A binding written `const` keeps const immutability: an assignment to it is TypeScript's `TS2588`.
+
+- An `is` binding in an unbraced statement body silently acquired an implicit block; it now reports `EK0705`, and the quick fix and `vibelang --fix` add the required braces.
+
 - The forms gate rejected explicit Effect callbacks after independently landed changes moved their source locations; its reviewed snapshot now records the written modifier at each affected site.
 
 - Combining the chained-assertion and pipe-parser changes stopped compiler builds; the assertion probe now passes the pipe parser's arrow-context argument, with continuation tests covering both assertion operators and conditional tails.

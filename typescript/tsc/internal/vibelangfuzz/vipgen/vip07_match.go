@@ -1000,3 +1000,18 @@ func init() {
 	registerWitness(7, ChapterWitness{Key: "vip07.tagged-jose-joseerror-joseerror-plain", Chapter: "../vips/0007-match.md", Quote: "The retained tagged-error checks cover every public `effect/…` module, not only the root:", Vibe: "import * as M from \"effect/jose/JoseError\"\nfunction witness(){\nconst copy={_tag:\"JoseError\", [\"~effect/jose/JoseError\"]:\"~effect/jose/JoseError\"};\nconst subjects:unknown[]=[copy,{_tag:\"JoseError\"},null,{}];\nreturn subjects.map(s=>[match(s){when M.JoseError:true;default:false;},match(s){when M.JoseError(let e):e===s;default:false;},match(s){when M.JoseError():true;default:false;},match(s){when M.JoseError(let a,let b):true;default:false;}]);\n}", Effect: "import * as M from \"effect/jose/JoseError\"\nfunction witness(){\nconst copy={_tag:\"JoseError\", [\"~effect/jose/JoseError\"]:\"~effect/jose/JoseError\"};\nif(!M.isJoseError(copy))throw new Error(\"tagged-error fixture lacks its brand\");\nconst subjects=[copy,{_tag:\"JoseError\"},null,{}];\nreturn subjects.map(s=>[M.isJoseError(s),M.isJoseError(s),false,false]);\n}", Cite: vip7Cite("return")})
 	registerWitness(7, ChapterWitness{Key: "vip07.guard-jose-joseerror-joseerror-plain", Chapter: "../vips/0007-match.md", Quote: "The retained tagged-error checks cover every public `effect/…` module, not only the root:", Vibe: "import * as M from \"effect/jose/JoseError\"\nfunction witness(){const copy={_tag:\"JoseError\",[\"~effect/jose/JoseError\"]:\"~effect/jose/JoseError\"};\nconst subjects:unknown[]=[copy,{_tag:\"JoseError\"},null,{}];return subjects.map(s=>[match(s){when M.JoseError:true;default:false;},match(s){when M.JoseError(let e):e===s;default:false;}]);\n}", Effect: "import * as M from \"effect/jose/JoseError\"\nfunction witness(){const copy={_tag:\"JoseError\",[\"~effect/jose/JoseError\"]:\"~effect/jose/JoseError\"};\nif(!M.isJoseError(copy))throw new Error(\"guard fixture lacks its brand\");const subjects=[copy,{_tag:\"JoseError\"},null,{}];return subjects.map(s=>[M.isJoseError(s),M.isJoseError(s)]);\n}", Cite: vip7Cite("return")})
 }
+
+// The repaired body has a real block home: captured bindings stay distinct
+// across iterations, and the ordinary-object TypeScript twin has the same
+// inferred result and Exit. Unbraced rejection/repair is a static-rule target.
+func init() {
+	registerWitness(7, ChapterWitness{
+		Key:     "vip07.is-body-brace-repair-plain",
+		Chapter: "004-match.md",
+		Quote:   "Every other home follows the pinned explainer's rule that the usual binding scopes apply, with ECMAScript's environments:",
+		Vibe:    "function witness(){const xs:unknown[]=[{id:1},{id:2},{}];const out:(()=>unknown)[]=[];for(const x of xs) { if(x is {id:let id}) out.push(()=>id) } return out.map(f=>f())}",
+		Effect:  "function witness(){const xs=[{id:1},{id:2},{}];const out=[];for(const x of xs) { if(typeof x===\"object\"&&x!==null&&\"id\" in x) { let id=x.id;out.push(()=>id) } } return out.map(f=>f())}",
+		Modules: []string{},
+		Cite:    vip7Cite("let id=x.id"),
+	})
+}

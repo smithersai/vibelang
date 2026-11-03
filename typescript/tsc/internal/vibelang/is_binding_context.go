@@ -7,7 +7,7 @@ import (
 
 // VIP-7, details214/240/249 leave these initialization environments unsettled.
 // They do not authorize moving an initializer into a function body.
-var EK0705 = message(705, errorCategory, "This `is` binding has no lexical home in a parameter or enum initializer.")
+var EK0705 = message(705, errorCategory, "This `is` binding has no lexical home.")
 
 func init() { registry[EK0705.Code] = EK0705 }
 

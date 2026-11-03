@@ -5,6 +5,9 @@ import (
 	"slices"
 	"strings"
 	"testing"
+
+	"github.com/microsoft/TypeScript/tsc/internal/bundled"
+	"github.com/microsoft/TypeScript/tsc/internal/vibelang"
 )
 
 const reviewIsStatementHomesTarget = "FuzzReviewIsStatementHomes"
@@ -17,7 +20,7 @@ func TestReviewIsStatementHomesQuoted(t *testing.T) {
 }
 
 func reviewIsStatementHomes() []string {
-	return []string{"if", "else", "while", "do", "for", "for-in", "for-of", "for-await", "for-concurrent", "for-try", "label", "for-of-if-head", "if-body-if-head"}
+	return []string{"if", "else", "while", "do", "for", "for-in", "for-of", "for-await", "for-concurrent", "for-try", "label", "for-of-if-head", "if-body-if-head", "nested-label-if", "nested-for-while"}
 }
 
 func reviewIsStatementHomeProgram(home string, braced, leak, native bool) string {
@@ -31,7 +34,7 @@ func reviewIsStatementHomeProgram(home string, braced, leak, native bool) string
 			body = "let cell = a; void cell;"
 		}
 	}
-	if braced || native {
+	if braced {
 		body = "{ " + body + " }"
 	}
 	var statement string
@@ -66,6 +69,10 @@ func reviewIsStatementHomeProgram(home string, braced, leak, native bool) string
 		}
 	case "label":
 		statement = "mark: " + body
+	case "nested-label-if":
+		statement = "mark: if (true) " + body
+	case "nested-for-while":
+		statement = "for (const item of [a]) while (false) " + body
 	default:
 		panic("unknown statement home")
 	}
@@ -81,16 +88,14 @@ func reviewIsStatementHomeProgram(home string, braced, leak, native bool) string
 	return "export " + prefix + "function probe(a: unknown): " + returns + " {\n" + statement + "\n}\n"
 }
 
-// R3 OPUS-2, approved detail245: a non-block statement body is an implicit
-// fresh lexical home, exactly as if braces were written. The if HEAD inside
-// that body belongs to this home too. Do not infer this rule from today's
-// compiler. These are admission/name-visibility checks; the fresh-per-iteration
-// Exit equivalence still belongs in a VIP-7 differential construct/campaign.
+// Will, 2026-11-03: usual lexical scopes reject an unbraced binding home,
+// matching TypeScript's lexical-declaration restriction. Braced controls
+// still check admission and isolation against native TypeScript.
 func FuzzReviewIsStatementHomes(f *testing.F) {
 	startShortBudget(f)
 	homes := reviewIsStatementHomes()
 	for _, home := range homes {
-		for flags := range uint8(4) {
+		for flags := range uint8(8) {
 			f.Add(home, flags)
 		}
 	}
@@ -103,17 +108,20 @@ func FuzzReviewIsStatementHomes(f *testing.F) {
 			}
 			home = homes[int(home[0])%len(homes)]
 		}
-		flags %= 4
+		flags %= 8
 		braced, leak := flags&1 != 0, flags&2 != 0
 		for _, native := range []bool{true, false} {
 			source := reviewIsStatementHomeProgram(home, braced, leak, native)
+			if flags&4 != 0 {
+				source = strings.ReplaceAll(source, "let cell", "const cell")
+			}
 			file := "main.vibe"
 			if native {
 				file = "main.ts"
 			}
 			var result *Result
 			var err error
-			within(t, "check implicit statement home", func() { result, err = w.Compile(t.Context(), Project{Files: map[string]string{file: source}}) })
+			within(t, "check statement binding home", func() { result, err = w.Compile(t.Context(), Project{Files: map[string]string{file: source}}) })
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -127,16 +135,44 @@ func FuzzReviewIsStatementHomes(f *testing.F) {
 				}
 			}
 			matches := missing && !unexpected
-			if !leak {
+			if !braced {
+				if native {
+					matches = HasError(result.Diagnostics)
+				} else {
+					matches = false
+					for _, d := range result.Diagnostics {
+						matches = matches || IsEK(d) && d.Code() == 705
+					}
+				}
+			}
+			if braced && !leak {
 				matches = !HasError(result.Diagnostics)
 			}
 			if !matches {
 				if native {
-					t.Fatalf("invalid native braced lexical-home control: %v\n%s", SortedKeys(Keys(result.Dir, result.Diagnostics)), source)
+					t.Fatalf("invalid native lexical-home control: %v\n%s", SortedKeys(Keys(result.Dir, result.Diagnostics)), source)
 				}
 				key := fmt.Sprintf("%s:%d", home, flags)
-				Gap(t, reviewIsStatementHomesTarget, key, "Chapter4 usual scopes plus approved detail245 require missing outside binding=%t, got %v\n%s", leak, SortedKeys(Keys(result.Dir, result.Diagnostics)), source)
+				Gap(t, reviewIsStatementHomesTarget, key, "Chapter4 usual scopes and Will 2026-11-03 require EK0705 without braces and missing outside binding=%t, got %v\n%s", leak, SortedKeys(Keys(result.Dir, result.Diagnostics)), source)
 			}
+			if !native && !braced && !leak {
+				fixed := vibelang.FixProjectWithOptions(t.Context(), w.fs, bundled.LibPath(), toolsConfig(w, result.Dir), vibelang.FixOptions{})
+				if fixed.Err != nil || len(fixed.Refused) != 0 || len(fixed.Files) != 1 {
+					Gap(t, reviewIsStatementHomesTarget, home+":repair", "brace repair did not apply: %+v", fixed)
+					return
+				}
+				for _, file := range fixed.Files {
+					after, err := w.Compile(t.Context(), Single(file.Text))
+					if err != nil {
+						t.Fatal(err)
+					}
+					defer after.Remove()
+					if HasError(after.Diagnostics) {
+						Gap(t, reviewIsStatementHomesTarget, home+":repair", "brace repair must compile: %v\n%s", after.Diagnostics, file.Text)
+					}
+				}
+			}
+
 			if !native {
 				ExpectPending(t, reviewIsStatementHomesTarget, fmt.Sprintf("%s:%d", home, flags))
 				ExpectPending(t, reviewIsStatementHomesTarget, specCorpusKey(t))

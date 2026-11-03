@@ -336,6 +336,8 @@ func reportPatternError(c *checker.Checker, file *ast.SourceFile, call *ast.Node
 	switch code {
 	case 701:
 		note(reportAt(c, file, at, EK0701), "A new line or a comma does not separate arms.")
+	case 705:
+		note(reportAt(c, file, at, EK0705), "Wrap the statement body in braces. The quick fix and vibelang --fix apply this repair.")
 	case 707:
 		if len(args) > 1 && args[1].Kind == ast.KindStringLiteral {
 			reportAt(c, file, at, EK0707, args[1].Text())

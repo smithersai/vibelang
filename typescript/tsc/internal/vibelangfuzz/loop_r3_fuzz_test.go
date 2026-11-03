@@ -262,6 +262,7 @@ var isHomePositions = []struct{ name, source, want, key string }{
 	{"catch-nested-default", `try { work() } catch ({ a: { code = (1 is const c) } }: any) {}`, "EK0705", "catch:EK0705"},
 	{"catch-computed-key", `try { work() } catch ({ [(1 is let c) ? "x" : "y"]: value }: any) {}`, "EK0705", "catch:EK0705"},
 	{"catch-array-default", `try { work() } catch ([a = (1 is let c)]: any) {}`, "EK0705", "catch:EK0705"},
+	{"catch-local-do", `try { throw {} as any } catch ({ code = do { const ok = (1 is let c); ok } }) {}`, "", "catch:local-do"},
 	{"catch-binding-free", `try { work() } catch ({ code = (1 is Number) }: any) {}`, "", "catch:free"},
 	{"catch-body", `try { work() } catch (e: any) { if (e is { code: let c }) return c }`, "", "catch:body"},
 	{"guard-after-if", `const input: unknown = { code: 1 }; if (!(input is { code: let c })) return 0; c`, "", "guard:home"},

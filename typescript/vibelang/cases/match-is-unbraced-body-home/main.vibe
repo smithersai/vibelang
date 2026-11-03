@@ -1,6 +1,5 @@
-// expect-result: {"forOf":[1,2],"forIn":["a"],"forLoop":[1,2],"whileLoop":[1,2],"doLoop":[1],"closures":[1,2],"elseIf":"y"}
-// Chapter 004, decided detail 245 (loop round 3, OPUS-2): an unbraced statement
-// body is its own fresh home, so braces around a body never change a result.
+// expect: EK0705
+// Unbraced bodies cannot host lexical is bindings (Will, 2026-11-03; TS1156).
 function ids(xs: unknown[]) {
   const out: unknown[] = []
   for (const x of xs) if (x is { id: let id }) out.push(id)

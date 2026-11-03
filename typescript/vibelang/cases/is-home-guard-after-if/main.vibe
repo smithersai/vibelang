@@ -1,8 +1,5 @@
-// expect-result: [1,0,"a 1","b 2",3,"else-if"]
-// Chapter 004, decided detail 245: an is binding in an if head belongs to the
-// home that holds the if, so a negated guard leaves the name initialized for
-// the statements after it, a nested condition can bind, and an else body is
-// its own home.
+// expect: EK0705
+// Unbraced bodies cannot host lexical is bindings (Will, 2026-11-03; TS1156).
 function guard(x: unknown) {
   if (!(x is { id: let id })) return 0
   return id

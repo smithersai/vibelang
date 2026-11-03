@@ -1,7 +1,5 @@
-// expect-result: [1,2,3,[1,2]]
-// Chapter 004, decided detail 245: distinct names in one home, the same name
-// in separate blocks, and an unbraced loop body as its own home each compile;
-// braces around the body never change the result.
+// expect: EK0705
+// Unbraced bodies cannot host lexical is bindings (Will, 2026-11-03; TS1156).
 export function pickOk(a: unknown, b: unknown) {
   if (a is { id: let first }) return first
   if (b is { id: let second }) return second
