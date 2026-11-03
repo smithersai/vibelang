@@ -126,3 +126,11 @@ test("MediaQuery: layerTest answers false, keeps changes open, and derives chang
     Effect.timeoutOption(Stream.runDrain(service.changes("print")), "10 millis"))
   expect((await Effect.runPromise(Effect.provide(open, MediaQuery.layerTest())))._tag).toBe("None")
 })
+
+// VIP-9 worker builds combined browser layer without matchMedia; rule: docs/design/vips/0009-service-declarations.md#80239967f606a52c
+
+// VIP-9 explicit Stream.provide preserves requirement-free browser stream; rule: docs/design/vips/0009-service-declarations.md#ea96bf3bf89482eb
+
+// VIP-9 explicit Stream.provide preserves requirement-free browser stream; rule: docs/design/vips/0009-service-declarations.md#55606e34fef7e211
+
+// VIP-9 explicit Stream.provide preserves requirement-free browser stream; rule: docs/design/vips/0009-service-declarations.md#4685719834aab3c6

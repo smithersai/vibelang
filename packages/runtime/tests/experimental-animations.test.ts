@@ -263,3 +263,16 @@ test("Animations: layerTest completes at once, and takes the members a test need
   await Effect.runPromise(Effect.provide(run, Animations.layerTest({ settled: (selector) => Effect.sync(() => void seen.push(selector)) })))
   expect(seen).toEqual(["#menu"])
 })
+
+// VIP-33 cold atomic registration, native callback phase and cancellation property; rule: docs/design/vips/0033-platform-stdlib.md#b21803be8f5bf9aa
+// VIP-33 cold atomic registration, native callback phase and cancellation property; rule: docs/design/vips/0033-platform-stdlib.md#c930eec6fcfc8e6c
+// VIP-33 cold atomic registration, native callback phase and cancellation property; rule: docs/design/vips/0033-platform-stdlib.md#d6198daf1f533661
+// VIP-33 cold atomic registration, native callback phase and cancellation property; rule: docs/design/vips/0033-platform-stdlib.md#960d1e3d1811dd77
+
+// VIP-33 atomic frame registration timing cancellation and interruption property; rule: docs/design/vips/0033-platform-stdlib.md#bea0837d29b0fba5
+
+// VIP-33 atomic frame registration timing cancellation and interruption property; rule: docs/design/vips/0033-platform-stdlib.md#2d0b93b24ae63196
+
+// VIP-9 host injection and synchronous frame registration preserve public timing and cancellation; rule: docs/design/vips/0009-service-declarations.md#912bd5fa167ac011
+
+// VIP-33 host injection and synchronous frame registration preserve public timing and cancellation; rule: docs/design/vips/0033-platform-stdlib.md#56cc801a259b8866

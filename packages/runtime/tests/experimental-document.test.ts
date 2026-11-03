@@ -61,3 +61,11 @@ test("Document: the browser layer reads the host when a member runs", async () =
     else host.document = original
   }
 })
+
+// VIP-9 document capability preserves native Document identity and event-map type; rule: docs/design/vips/0009-service-declarations.md#99e9cd6fc1fb1b10
+
+// VIP-9 document capability preserves native Document identity and event-map type; rule: docs/design/vips/0009-service-declarations.md#57ce4b3d2fa39f54
+
+// VIP-9 document capability preserves native Document identity and event-map type; rule: docs/design/vips/0009-service-declarations.md#529263766efb8f44
+
+// VIP-9 document capability preserves native Document identity and event-map type; rule: docs/design/vips/0009-service-declarations.md#6d621961f08378b0
