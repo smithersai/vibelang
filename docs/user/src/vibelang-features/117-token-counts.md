@@ -101,7 +101,7 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [Running Effects](../getting-started/009-running-effects.md) | 1,800 |
 | [Sequencing Effects](../getting-started/010-using-generators.md) | 1,700 |
 | [Building Pipelines](../getting-started/011-building-pipelines.md) | 1,900 |
-| [Devtools](../getting-started/012-devtools.md) | 14,000 |
+| [Devtools](../getting-started/012-devtools.md) | 15,000 |
 | **All 12 pages** | **37,000** |
 
 ### Setup
@@ -126,7 +126,7 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [Svelte](../setup/svelte.md) | 2,700 |
 | [Foldkit](../setup/foldkit.md) | 3,400 |
 | **Editors** | **4,100** |
-| [VS Code and Cursor](../setup/vscode.md) | 1,000 |
+| [VS Code and Cursor](../setup/vscode.md) | 1,100 |
 | [Neovim](../setup/neovim.md) | 1,000 |
 | [Zed](../setup/zed.md) | 480 |
 | [Other editors](../setup/other-editors.md) | 490 |

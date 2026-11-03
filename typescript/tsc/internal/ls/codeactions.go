@@ -15,6 +15,7 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/ls/lsconv"
 	"github.com/microsoft/TypeScript/tsc/internal/lsp/lsproto"
 	"github.com/microsoft/TypeScript/tsc/internal/spanmap"
+	"github.com/microsoft/TypeScript/tsc/internal/tspath"
 )
 
 // CodeFixProvider represents a provider for a specific type of code fix
@@ -46,10 +47,19 @@ type FileTextChanges struct {
 // CodeAction represents a single code action fix, including edits to other files.
 type CodeAction struct {
 	AdditionalChanges []FileTextChanges
+	// CreatedFiles are new files that a refactor writes with its edits, which
+	// apply together, and which never overwrite a file.
+	CreatedFiles      []CreatedFile
 	Description       string
 	Changes           []*lsproto.TextEdit
 	FixID             string
 	FixAllDescription string
+}
+
+// CreatedFile is a new file of a refactor.
+type CreatedFile struct {
+	FileName tspath.RootedFilePath
+	Text     string
 }
 
 // Compare defines a total ordering for CodeAction values, comparing description
@@ -232,12 +242,35 @@ func wantsKind(only *[]lsproto.CodeActionKind, kind lsproto.CodeActionKind) bool
 
 func convertToLSPRefactor(action *CodeAction, uri lsproto.DocumentUri) lsproto.CommandOrCodeAction {
 	kind := lsproto.CodeActionKindRefactorRewrite
-	changes := map[lsproto.DocumentUri][]*lsproto.TextEdit{uri: action.Changes}
+	edit := &lsproto.WorkspaceEdit{}
+	if len(action.CreatedFiles) == 0 {
+		changes := map[lsproto.DocumentUri][]*lsproto.TextEdit{uri: action.Changes}
+		edit.Changes = &changes
+	} else {
+		var documentChanges []lsproto.TextDocumentEditOrCreateFileOrRenameFileOrDeleteFile
+		textEdit := func(uri lsproto.DocumentUri, edits ...*lsproto.TextEdit) lsproto.TextDocumentEditOrCreateFileOrRenameFileOrDeleteFile {
+			converted := make([]lsproto.TextEditOrAnnotatedTextEditOrSnippetTextEdit, len(edits))
+			for i, edit := range edits {
+				converted[i] = lsproto.TextEditOrAnnotatedTextEditOrSnippetTextEdit{TextEdit: edit}
+			}
+			return lsproto.TextDocumentEditOrCreateFileOrRenameFileOrDeleteFile{TextDocumentEdit: &lsproto.TextDocumentEdit{
+				TextDocument: lsproto.OptionalVersionedTextDocumentIdentifier{Uri: uri},
+				Edits:        converted,
+			}}
+		}
+		for _, created := range action.CreatedFiles {
+			target := lsconv.FileNameToDocumentURI(created.FileName)
+			documentChanges = append(documentChanges,
+				lsproto.TextDocumentEditOrCreateFileOrRenameFileOrDeleteFile{CreateFile: &lsproto.CreateFile{Uri: target}},
+				textEdit(target, &lsproto.TextEdit{NewText: created.Text}))
+		}
+		edit.DocumentChanges = new(append(documentChanges, textEdit(uri, action.Changes...)))
+	}
 	return lsproto.CommandOrCodeAction{
 		CodeAction: &lsproto.CodeAction{
 			Title: action.Description,
 			Kind:  &kind,
-			Edit:  &lsproto.WorkspaceEdit{Changes: &changes},
+			Edit:  edit,
 		},
 	}
 }

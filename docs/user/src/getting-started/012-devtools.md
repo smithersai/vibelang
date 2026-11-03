@@ -75,6 +75,12 @@ Use a throw statement to fail an Effect: `if (value === undefined) throw new Mis
 
 The server exposes TypeScript completions through the VibeLang checker, service member types included. Catch-specific completions are not implemented. Other diagnostic messages suggest repairs as text. Use an effect function and `try` for VibeLang sequencing.
 
+### Move a TypeScript module body to a file
+
+Place the cursor in a top-level `module parse { … }` declaration and request **Move module to a .ts file** (VIP-40). The refactor writes the TypeScript body to `parse.ts` beside the `.vibe` source and rewrites its identifier imports and re-exports to that file. Other module declarations stay in place. The new file keeps the body's comments, JSDoc, relative imports and runtime behavior.
+
+If `parse.ts` or a conflicting sibling name is taken, compared case-insensitively, the refactor chooses `main.parse.ts` for `main.vibe`, then adds a number if needed. The rewritten specifier ends in `.ts` when `rewriteRelativeImportExtensions` or `allowImportingTsExtensions` is enabled, and `.js` otherwise. The editor applies file creation and source edits together and does not overwrite an existing file. This move is an explicit refactor; `vibelang --fix` leaves legal module declarations in place.
+
 ## Diagnostic reference: additional codes
 
 Each entry gives the condition and the repair. The examples and language-service tables on this page cover the other registered codes for these forms.

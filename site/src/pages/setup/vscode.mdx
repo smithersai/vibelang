@@ -59,6 +59,8 @@ These are language-server capabilities, not a guarantee that every construct off
 
 **Expand Selection** follows nested source ranges in `schema` and `data` declarations, `match` and typed `catch` expressions, including mutable schema arrays with nested arrays or record values.
 
+Select a TypeScript `module` declaration and request **Move module to a .ts file** to copy its body to a sibling TypeScript file and rewrite its imports and re-exports. The [refactor guide](/getting-started/012-devtools#move-a-typescript-module-body-to-a-file) describes filename collisions and import extensions.
+
 ## Server settings and troubleshooting
 
 | Setting | Default | Purpose |

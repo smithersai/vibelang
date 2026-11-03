@@ -1,0 +1,5 @@
+{
+  "property": "module-move-copy",
+  "rule": "VIP-40: explicit move refactor preserves live bindings and multiline template values",
+  "input": { "name": "parse", "value": 7, "collision": true, "ts": true }
+}
