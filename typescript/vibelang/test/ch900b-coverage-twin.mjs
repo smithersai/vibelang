@@ -10,7 +10,7 @@ import { pathToFileURL } from "node:url"
 const require = createRequire(new URL("../../../packages/runtime/package.json", import.meta.url))
 const ts = require("typescript")
 
-export async function compareTwin(directory, expected) {
+export async function compareTwin(directory, expected, expectedTag = "Success") {
   assert.equal(ts.version, "5.9.3")
   const reference = join(directory, "effect-ts")
   const modules = join(reference, "node_modules")
@@ -47,7 +47,8 @@ export async function compareTwin(directory, expected) {
   const effectModules = await Promise.all([import(pathToFileURL(join(directory, "node_modules/effect/dist/Effect.js"))), import(pathToFileURL(join(effect, "dist/Effect.js")))])
   const exits = await Promise.all(sourceModules.map((module, i) => effectModules[i].runPromise(effectModules[i].exit(module.main()))))
   assert.deepEqual(JSON.parse(JSON.stringify(exits[0])), JSON.parse(JSON.stringify(exits[1])), "complete serialized Exit")
-  assert.equal(exits[0]._tag, "Success")
-  assert.deepEqual(exits[0].value, expected)
+  assert.equal(exits[0]._tag, expectedTag)
+  if (expectedTag === "Success") assert.deepEqual(exits[0].value, expected)
+  else assert.deepEqual(JSON.parse(JSON.stringify(exits[0])), expected)
   console.log("twins agree")
 }

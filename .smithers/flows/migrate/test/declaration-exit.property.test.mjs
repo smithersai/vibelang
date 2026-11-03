@@ -61,6 +61,8 @@ async function check(code, diagnostic) {
   } finally { rmSync(root, { recursive: true, force: true }) }
 }
 
+// docs/design/src/900-appendices.md#b8723587e5db5de5 — Chapter 900: nonzero emit evidence survives matching artifacts.
+// docs/design/src/900-appendices.md#c8c360d52bc23590 — Chapter 900: nonzero emit evidence survives matching artifacts.
 test("foldkit-103 verifier: identical files cannot hide option diagnostics or failed emit exits", async () => {
   for (const diagnostic of [corpus.diagnostic, "", "other.ts(1,1): error TS2304: Cannot find name 'missing'."]) await check(2, diagnostic)
   await check(0, "")

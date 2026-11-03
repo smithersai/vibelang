@@ -49,3 +49,13 @@ test("the twin oracle rejects an Exit value change with identical inferred types
   const source = prefix + "export function main() { return Effect.succeed(2) }\n"
   await assert.rejects(compareTwin(fixture(t, source), 1), /complete serialized Exit/)
 })
+test("the twin oracle checks the complete Failure Exit against the required witness", async t => {
+  const source = prefix + 'export function main() { return Effect.fail("bad") }\n'
+  const expected = { _id: "Exit", _tag: "Failure", cause: { _id: "Cause", reasons: [{ _tag: "Fail", error: "bad" }] } }
+  await compareTwin(fixture(t, source, source), expected, "Failure")
+})
+test("the twin oracle rejects Fail versus Die despite identical declared channels", async t => {
+  const source = prefix + 'export function main(): Effect.Effect<never, string> { return Effect.fail("bad") }\n'
+  const reference = prefix + 'export function main(): Effect.Effect<never, string> { return Effect.die("bad") }\n'
+  await assert.rejects(compareTwin(fixture(t, source, reference), {}, "Failure"), /complete serialized Exit/)
+})

@@ -61,6 +61,7 @@ async function fixture({ code = 2, emitted = true, compiler } = {}) {
   } finally { rmSync(root, { recursive: true, force: true }) }
 }
 test("opencode-55: codemod routes written JavaScript despite TS6059 and records the error", async () => fixture())
+// docs/design/src/900-appendices.md#ac3dfee9be206986 — Chapter 900: export routing requires an actual emitted package-owned file.
 test("partial emit routing follows actual outputs across successful and unsuccessful exit codes", async () => {
   await fc.assert(fc.asyncProperty(fc.constantFrom(0, 1, 2), fc.boolean(), async (code, emitted) => fixture({ code, emitted })), { seed: 550055, numRuns: 100 })
 })

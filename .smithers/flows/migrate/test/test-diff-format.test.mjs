@@ -25,6 +25,7 @@ const accepted = [
   ["regex and templates", "const r = /a[,;]b/g;\nconst t = `a${f()}b`;", "const r = /a[,;]b/g\nconst t = `a${f()}b`\n"],
   ["for body terminator only", "for (let i=0; i<2; i++) { f(); }", "for (let i=0; i<2; i++) { f() }"]
 ]
+// docs/design/src/900-appendices.md#3dec61c09fc04468 — Chapter 900: formatter may change statement terminators with equal AST.
 for (const [name, a, b] of accepted) test("formatter-only accepts " + name, () => {
   const result = check(a, b)
   assert.equal(result.ok, true, JSON.stringify(result))
@@ -51,6 +52,8 @@ const rejected = [
   ["invalid before", "effect function f( {", "effect function f() { return try load() }"],
   ["ASI changes AST", "function f(){return x}", "function f(){return\nx}"]
 ]
+// docs/design/src/900-appendices.md#ab9c3fe61ba616c2 — Chapter 900: directives, for-head semicolons and empty statements retain meaning.
+// docs/design/src/900-appendices.md#c490698ac5b8e08c — Chapter 900: directives, for-head semicolons and empty statements retain meaning.
 for (const [name, a, b] of rejected) test("formatter-only rejects " + name, () => assert.equal(check(a,b).ok, false))
 test("formatter allowance is only for baseline VibeLang tests", () => {
   for (const file of ["src/x.test.ts", "fixtures/x.vibe", "test/config.json"]) assert.equal(check("f();", "f()", file).ok, false)
