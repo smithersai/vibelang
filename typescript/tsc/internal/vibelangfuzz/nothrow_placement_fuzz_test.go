@@ -22,7 +22,7 @@ import (
 // the unknown call. Effect code's own checks of an unwrapped call (`EK0403`,
 // `EK4401`) are outside this rule.
 var nothrowPlacementQuotes = []string{
-	"A `throw` statement is `EK0401`, even when a `try` statement in the same function catches it.",
+	"A `throw` statement or throw expression is `EK0401`, even when a `try` statement in the same function catches it:",
 	"*known to throw* is `EK0401`, unless it sits in the `try` block of a `try` statement with a `catch` clause in the same function.",
 	"function orNull(s: string) { try { return JSON.parse(s) } catch { return null } } // allowed",
 	"A call whose throwing is unknown, such as an unannotated `.ts` function, stays an ordinary call",

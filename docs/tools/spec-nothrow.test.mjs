@@ -125,11 +125,11 @@ test("chapter 3 makes throw and calls known to throw EK0401 in synchronous code 
   for (const construct of ["plain functions and arrows (one nested in effect code included)", "plain methods", "constructors", "accessors",
     "plain generators", "class field initializers", "`static` blocks", "every parameter list except an ordinary `async` function's",
     "plain `catch` handlers (parameters and body)", "the module top level"]) assert.ok(section.includes(construct), construct)
-  assert.match(section, /A `throw` statement is `EK0401`, even when a `try` statement in the same function catches it\./)
+  assert.match(section, /A `throw` statement or throw expression is `EK0401`, even when a `try` statement in the same function catches it:/)
   assert.match(section, /unless it sits in the `try` block of a `try` statement with a `catch` clause in the same function/)
   assert.match(section, /Its callee has a written `@throws \{T\}` other than `@throws \{never\}` \(`@throws \{unknown\}` included\)/)
   assert.match(section, /A call whose throwing is unknown, such as an unannotated `\.ts` function, stays an ordinary call/)
-  assert.match(section, /A function nested in that literal is its own plain code\. A `throw` statement in the literal is still `EK0401`\./)
+  assert.match(section, /A function nested in that literal is its own plain code\. A `throw` statement or throw expression in the literal is still `EK0401`\./)
   assert.match(section, /function orNull\(s: string\) \{ try \{ return JSON\.parse\(s\) \} catch \{ return null \} \} \/\/ allowed/)
 })
 
