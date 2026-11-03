@@ -258,7 +258,7 @@ A run repairs only the selected project's own files ([VIP-34](../vips/0034-compi
 | File | Permitted repair writes |
 | --- | --- |
 | Owned `.vibe`/`.vibex` program sources | Includes an owned source an import reaches even when `exclude` omits it from root discovery. |
-| Owned configs | Legacy severity maps, retired `declarationSidecars` and the `EK3012` plugin-entry migration. Traverse `extends` only inside the repository and outside `node_modules`; report external configs without editing them. |
+| Owned configs | Legacy severity maps, retired `declarationSidecars`, the `EK3012` plugin-entry migration and the `--fix-vip-only` `EK4802` severity override ([below](#fix-scopes)). Traverse `extends` only inside the repository and outside `node_modules`; report external configs without editing them. |
 | Fresh sibling `.ts` | Only the platform repair, after proving preservation of run phase, captures, receiver and public types; it never overwrites an existing file. |
 | Dependencies, `typeRoots`, bundled libraries, foreign `.ts`, `.tsx`, `.js`, `.jsx`, `.mjs`, `.cjs`, declarations (`.d.ts`, `.d.vibe.ts`, `.d.vibex.ts`), emitted output, `tsBuildInfoFile`, lock files and other referenced projects | No repair writes. With `-b`, each project fixes its own files in build order. |
 
