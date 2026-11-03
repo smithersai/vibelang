@@ -241,14 +241,14 @@ platform, host name and other facts, `kill` and `isRunning`),
 `changes` over `window.matchMedia`). Each service has its own key; `FileSystem` is a superset of
 Effect's interface. The layers are in
 `vibelang-runtime/experimental/platform-node` (`ExperimentalNodeServices`,
-`ExperimentalNodeFileSystem`, `ExperimentalNodeCrypto`, `ExperimentalNodeProcess`, `ExperimentalNodeLocks`, `ExperimentalNodeHttpServer`), `-bun`
-(`ExperimentalBunServices`, `ExperimentalBunFileSystem`, `ExperimentalBunCrypto`, `ExperimentalBunProcess`) and `-browser`
+`ExperimentalNodeFileSystem`, `ExperimentalNodeCrypto`, `ExperimentalNodeProcess`, `ExperimentalNodeStdio`, `ExperimentalNodeLocks`, `ExperimentalNodeHttpServer`), `-bun`
+(`ExperimentalBunServices`, `ExperimentalBunFileSystem`, `ExperimentalBunCrypto`, `ExperimentalBunProcess`, `ExperimentalBunStdio`) and `-browser`
 (`ExperimentalBrowserServices`, `ExperimentalBrowserCrypto`, `ExperimentalBrowserLocks`, `ExperimentalBrowserMediaQuery`, `ExperimentalBrowserInfo`, `ExperimentalBrowserWindow`, `ExperimentalBrowserDocument`, `ExperimentalBrowserResizeObserver`, `ExperimentalBrowserFileReader`, `ExperimentalBrowserAnimations`). A layer of a service
 that extends Effect's provides the experimental service and Effect's service
 of the same name from one implementation; a `Crypto` layer provides the
 experimental `Crypto` and the platform's Effect crypto services, such as
 `SecureRandom` and `Digest`. `ExperimentalNodeServices` and `ExperimentalBunServices`
-are Effect's bundles plus `FileSystem`, `Crypto` and `Process`;
+are Effect's bundles plus `FileSystem`, `Crypto`, `Process` and `Stdio`;
 `ExperimentalBrowserServices` provides `Crypto`, Effect's crypto services, the browser services; `ExperimentalNodeLocks`, which requires Node 24.5 or later and locks
 within one process only, is in no bundle. Install the matching
 `@effect/platform-*` package, an optional peer dependency. The
@@ -406,3 +406,5 @@ stream when the body returns. The producer may run up to two elements ahead of
 its consumer, one in the buffer and one waiting to be offered. Closing the
 stream, as a loop that ends early does, interrupts that fiber, which runs the
 producer's cleanup; a failure of that cleanup reaches no one, as in Effect.
+
+`Experimental.Stdio` extends Effect standard I/O with `awaitInputClosed`, a cold listener-only wait for stdin end/close. It preserves transport input bytes and error ownership; Node/Bun layers and test overrides are available through the experimental subpaths.

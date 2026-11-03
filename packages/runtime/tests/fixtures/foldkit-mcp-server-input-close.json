@@ -1,0 +1,12 @@
+{
+  "key": "foldkit:mcp-server:stdin-end-without-consuming",
+  "oracle": "VIP-33 section2; the transport owns bytes and errors, while closure observation owns and releases only end/close listeners.",
+  "cases": [
+    { "mode": "pending", "event": "end", "cancel": false },
+    { "mode": "pending", "event": "close", "cancel": false },
+    { "mode": "pending", "event": "end", "cancel": true },
+    { "mode": "sync-end", "event": "end", "cancel": false },
+    { "mode": "sync-close", "event": "close", "cancel": false },
+    { "mode": "throw-close", "event": "close", "cancel": false }
+  ]
+}

@@ -111,6 +111,11 @@
       "types": "./dist/experimental/platform-node/index.d.ts",
       "import": "./dist/experimental/platform-node/index.js",
       "default": "./dist/experimental/platform-node/index.js"
+    },
+    "./experimental/Stdio": {
+      "types": "./dist/experimental/Stdio.d.ts",
+      "import": "./dist/experimental/Stdio.js",
+      "default": "./dist/experimental/Stdio.js"
     }
   },
   "files": [

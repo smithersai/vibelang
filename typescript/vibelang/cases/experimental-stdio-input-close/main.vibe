@@ -1,0 +1,11 @@
+// expect-result: {"closed":true,"args":["mcp"]}
+effect function observe() {
+  const stdio = try Experimental.Stdio.Stdio
+  try stdio.awaitInputClosed
+  return try stdio.args
+}
+export effect function main() {
+  provide Experimental.Stdio.layerTest({ args: Effect.succeed(["mcp"]) }) {
+    return { closed: true, args: try observe() }
+  }
+}

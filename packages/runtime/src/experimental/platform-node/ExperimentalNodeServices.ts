@@ -13,6 +13,8 @@ import type * as FileSystem from "../FileSystem.js"
 import * as CryptoExtension from "../internal/crypto.js"
 import * as FileSystemExtension from "../internal/nodeFileSystem.js"
 import type * as Process from "../Process.js"
+import type * as Stdio from "../Stdio.js"
+import * as StdioExtension from "../internal/stdio.js"
 import * as ExperimentalNodeProcess from "./ExperimentalNodeProcess.js"
 
 /**
@@ -26,6 +28,7 @@ export type ExperimentalNodeServices =
   | Crypto.Crypto
   | FileSystem.FileSystem
   | Process.Process
+  | Stdio.Stdio
 
 /**
  * `@effect/platform-node`'s `NodeServices.layer` plus the experimental
@@ -41,7 +44,8 @@ export const layer: Layer.Layer<ExperimentalNodeServices> = Layer.provideMerge(
   Layer.mergeAll(
     CryptoExtension.layer,
     FileSystemExtension.layer,
-    ExperimentalNodeProcess.layer
+    ExperimentalNodeProcess.layer,
+    StdioExtension.layer
   ),
   EffectNodeServices.layer
 )

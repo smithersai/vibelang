@@ -736,6 +736,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Bindings inside `not` patterns no longer produce `EK4702`. `not(let x)` keeps prefix negation, and a callable extractor named `not` remains available as `helpers.not(let x)`.
 
+- A transport waiting for stdin to close had to consume its input; `Experimental.Stdio.awaitInputClosed` now observes closure while leaving bytes and errors to the transport.
+
 - Release validation rejected the VIP-7 reference tests because they had no runner; `//:release` now checks parallel installation and cleanup after a failed install.
 
 - The migration namespace corpus quoted a declaration-import-style guarantee removed from the specification, so its citation check failed. It now cites the current module-identity wording.
