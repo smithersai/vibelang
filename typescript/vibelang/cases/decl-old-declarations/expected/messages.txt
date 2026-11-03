@@ -1,2 +1,1 @@
 warning EK2120:
-warning EK2121:

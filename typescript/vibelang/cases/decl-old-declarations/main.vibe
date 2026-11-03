@@ -1,7 +1,5 @@
 // expect-result: {"name":"Ada","greeting":"hi Ada","approved":"released v1"}
-// The older spellings still compile and run the same way, with warnings:
-// service class (D220, now EK2120) and the layer
-// declaration (EK2121). Their quick fixes write the current spellings.
+// Layer declarations were migrated with vibelang --fix; the result stays the same.
 service class Names {
   name(): string!!
 }
@@ -14,14 +12,16 @@ service Approval {
   approve(request: string): boolean!!
 }
 
-layer NamesLive: Names {
+const NamesLive = Layer.succeed(Names, {
   effect name() { return "Ada" }
-}
+})
 
-layer GreeterLive: Greeter {
+const GreeterLive = Layer.effect(Greeter, effect {
   const prefix = "hi"
-  effect greet(name) { return `${prefix} ${name}` }
-}
+  return {
+    effect greet(name) { return `${prefix} ${name}` }
+  }
+})
 
 effect function release(version: string) {
   if (!try (try Approval).approve(`deploy ${version}`)) return "declined"

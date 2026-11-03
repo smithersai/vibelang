@@ -1,6 +1,0 @@
-// expect:
-// VIP-34 keeps the migration warning without granting trailing-block syntax.
-service Labels { label(): string!! }
-layer LabelsLive: Labels {
-  effect label() { return "ok" }
-}

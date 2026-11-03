@@ -223,5 +223,18 @@
         "output": "typescript/vibelang/cases/concurrent-unused-head-fixed-output"
       }
     ]
+  },
+  {
+    "code": "EK2121",
+    "cases": [
+      {
+        "input": "typescript/vibelang/cases/retired-layer-declaration.fail",
+        "output": "typescript/vibelang/cases/retired-layer-declaration-fixed-output"
+      },
+      {
+        "input": "typescript/vibelang/cases/legacy-layer-diagnostic-authority.fail",
+        "output": "typescript/vibelang/cases/legacy-layer-diagnostic-authority-fixed-output"
+      }
+    ]
   }
 ]

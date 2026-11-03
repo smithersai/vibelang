@@ -9,10 +9,10 @@ import { fileURLToPath } from "node:url"
 const here = path.dirname(fileURLToPath(import.meta.url))
 const compiler = process.env.VIBELANG_TEST_COMPILER ?? path.resolve(here, "../../../built/local/tsc")
 const scratch = fs.mkdtempSync(path.join(os.tmpdir(), "layer-migration-"))
-const config = { compilerOptions: { target: "ES2022", module: "NodeNext", strict: true, skipLibCheck: true, declaration: true, outDir: "out", rootDir: "." }, files: ["main.vibe"] }
-const run = (command, args, cwd, timeout) => {
+const config = { compilerOptions: { target: "ES2022", module: "NodeNext", strict: true, skipLibCheck: true, declaration: true, outDir: "out", rootDir: ".", noEmitOnError: false }, files: ["main.vibe"] }
+const run = (command, args, cwd, timeout, expectedStatus = 0) => {
   const child = spawnSync(command, args, { cwd, encoding: "utf8", timeout, maxBuffer: 8 * 1024 * 1024 })
-  assert.equal(child.status, 0, `${path.basename(command)} failed: ${child.error ?? ""}\n${child.stdout}\n${child.stderr}`)
+  assert.equal(child.status, expectedStatus, `${path.basename(command)} failed: ${child.error ?? ""}\n${child.stdout}\n${child.stderr}`)
   return child.stdout
 }
 const project = (name, source) => {
@@ -24,7 +24,11 @@ const project = (name, source) => {
   fs.writeFileSync(path.join(dir, "main.vibe"), source)
   return dir
 }
-const compile = (dir, fix = false) => run(compiler, ["-p", ".", "--pretty", "false", ...(fix ? ["--fix"] : [])], dir, 30_000)
+const compile = (dir, fix = false, retired = false) => {
+ const output = run(compiler, ["-p", ".", "--pretty", "false", ...(fix ? ["--fix"] : [])], dir, 30_000, retired ? 2 : 0)
+ if (retired) assert.match(output, /error EK2121:.*vibelang --fix/)
+ return output
+}
 const exit = (dir) => JSON.parse(run(process.execPath, ["--input-type=module", "-e", 'import { Effect } from "effect"; import { main } from "./out/main.js"; console.log(JSON.stringify(Effect.runSyncExit(main())))'], dir, 10_000).trim())
 
 try {
@@ -44,7 +48,7 @@ export effect function main() {
 }
 `
     const dir = project(namespace + "-" + kind, source)
-    compile(dir)
+    compile(dir, false, true)
     const beforeDts = fs.readFileSync(path.join(dir, "out/main.d.ts"), "utf8")
     const before = exit(dir)
     assert.equal(before._tag, kind === "setup-failure" ? "Failure" : "Success")
@@ -64,7 +68,7 @@ export effect function main() {
   ]) {
     const source = prefix + 'service Counter { static readonly key = "test/LayerMigration"; value: number }\nlayer Live: Counter { readonly value = 7 }\nexport { Live }\n'
     const dir = project(name, source)
-    compile(dir, true)
+    compile(dir, true, true)
     assert.equal(fs.readFileSync(path.join(dir, "main.vibe"), "utf8"), source, "an unavailable constructor must not be captured")
   }
   console.log("layer migration preserves 9 APIs and Exits; 2 namespace refusals")

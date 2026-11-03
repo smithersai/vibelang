@@ -1718,6 +1718,8 @@ func grammarAdmissionSyntaxCode(code int32) bool {
 		return true
 	case 1304: // RejectedElement: an error body element that parses, then a static rule rejects.
 		return true
+	case 2121: // Retired layer recovery supports only diagnosis and migration.
+		return true
 	case 9207: // RejectedMember: a service element that parses, then a static rule rejects.
 		return true
 	// Appendix B's current numbers for the same VIP-9 rules: EK0902 rejects a
@@ -2006,6 +2008,8 @@ func TestGrammarAdmissionDiagnostics(t *testing.T) {
 		{"match-combined-early-error", "EK", diagnostics.CategoryError, 707, true},
 		{"native-assignment-target-warning", "", diagnostics.CategoryWarning, 2364, false},
 		{"service-implementation", "EK", diagnostics.CategoryError, 9207, true},
+		{"layer-retired", "EK", diagnostics.CategoryError, 2121, true},
+		{"layer-retired-warning", "EK", diagnostics.CategoryWarning, 2121, false},
 		{"service-class-warning", "EK", diagnostics.CategoryWarning, 2120, false},
 		{"native-generator-signature", "", diagnostics.CategoryError, 1222, true},
 		{"pipe-missing-topic", "EK", diagnostics.CategoryError, 2301, true},

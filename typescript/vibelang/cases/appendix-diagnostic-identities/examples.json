@@ -398,7 +398,7 @@
     "name": "appendix-archive-EK2121",
     "code": "EK2121",
     "archive": true,
-    "repairReference": "007-tooling#vibelang-warnings"
+    "repairReference": "007-tooling#retired-layer-declarations"
   },
   {
     "name": "appendix-archive-EK9204",

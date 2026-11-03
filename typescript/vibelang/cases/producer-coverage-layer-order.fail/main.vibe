@@ -1,5 +1,5 @@
-// expect: EK9209
-// The old layer declaration (D129) still compiles with the warning EK2121,
+// expect: EK9209 EK2121
+// The retired layer declaration reports EK2121 and retains its setup-order check,
 // and its setup statements must come before its members.
 service Counter {
   next(): number!!

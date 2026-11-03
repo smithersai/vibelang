@@ -255,8 +255,8 @@ func fuzzFixProjects(f *testing.F, target string) {
 			if directErrorMember && !errorMemberFixRunnable(r) {
 				Gap(t, "FuzzFix", "fix:error-member:original", "expected only the migrated error-member diagnostic: %v\n%s", SortedKeys(Keys(r.Dir, r.Diagnostics)), archive)
 			}
-			if (directLayer || directServiceClass) && !toolsErrorFree(r) {
-				Gap(t, "FuzzFix", "fix:"+declarationKind+":original", "generated declaration must typecheck: %v\n%s", SortedKeys(Keys(r.Dir, r.Diagnostics)), archive)
+			if (directLayer && !declarationRetirementRunnable(r, 2121)) || (directServiceClass && !toolsErrorFree(r)) {
+				Gap(t, "FuzzFix", "fix:"+declarationKind+":original", "generated declaration must have only its migration diagnostic: %v\n%s", SortedKeys(Keys(r.Dir, r.Diagnostics)), archive)
 			}
 			var result *vibelang.FixResult
 			toolsRun(t, target, "fix", archive, nil, func() {
@@ -424,7 +424,7 @@ func fuzzFixProjects(f *testing.F, target string) {
 			// write; a declaration may print it differently after a fix (an
 			// error class becomes an error declaration, D284-D290), so the
 			// contracts are compared by assignability in both directions.
-			if (toolsTrailingBlockRunnable(runtimeBefore) || directErrorMember && errorMemberFixRunnable(runtimeBefore) || directSatisfies && callbackSatisfiesFixRunnable(runtimeBefore)) && toolsErrorFree(after) {
+			if (toolsTrailingBlockRunnable(runtimeBefore) || directErrorMember && errorMemberFixRunnable(runtimeBefore) || directSatisfies && callbackSatisfiesFixRunnable(runtimeBefore) || directLayer && declarationRetirementRunnable(runtimeBefore, 2121)) && toolsErrorFree(after) {
 				if mismatch := toolsContractMismatch(t, w, runtimeBefore, after, false); mismatch != "" {
 					key := "fix:types"
 					if toolsContractMismatch(t, w, runtimeBefore, after, true) == "" {
@@ -435,13 +435,14 @@ func fuzzFixProjects(f *testing.F, target string) {
 			}
 			// D372: compare every callable exported Effect, not only main fixtures
 			// marked with expect-result. Chapter 26 requires the same exit.
-			originalRunnable := toolsTrailingBlockRunnable(runtimeBefore) || toolsMemberRepairRuntime(r) || directErrorMember && errorMemberFixRunnable(runtimeBefore) || directSatisfies && callbackSatisfiesFixRunnable(runtimeBefore)
-			if (directLayer || directServiceClass || directErrorMember || directSatisfies) && (!originalRunnable || !toolsErrorFree(after)) {
+			// Keep exact retired-declaration emission in the migration oracle.
+			afterRunnable := toolsErrorFree(after) || shadowedLayer && declarationRetirementRunnable(after, 2121)
+			originalRunnable := toolsTrailingBlockRunnable(runtimeBefore) || toolsMemberRepairRuntime(r) || directErrorMember && errorMemberFixRunnable(runtimeBefore) || directSatisfies && callbackSatisfiesFixRunnable(runtimeBefore) || directLayer && declarationRetirementRunnable(runtimeBefore, 2121)
+			if (directLayer || directServiceClass || directErrorMember || directSatisfies) && (!originalRunnable || !afterRunnable) {
 				Gap(t, "FuzzFix", "fix:"+declarationKind+":not-runnable", "generated original and fixed declarations must run for Exit comparison")
 			}
-			// Keep the published rejected-member runtime oracle alongside
-			// the direct constructor/generic/matcher migration cases.
-			if !originalRunnable || !toolsErrorFree(after) {
+			// Keep the published rejected-member oracle and precise refusals.
+			if !originalRunnable || !afterRunnable {
 				if nativeTS {
 					t.Logf("native-ts remaining diagnostics prevent runtime comparison: %v", SortedKeys(Keys(after.Dir, after.Diagnostics)))
 				}
@@ -957,3 +958,22 @@ func toolsContractMismatch(t *testing.T, w *Workspace, before, after *Result, sa
 // `@rethrows` tags. In a .vibe file each is EK0406, whose fix removes it
 // (chapter 3, Thrown types: "is `EK0406`: remove it"), so D372 does not count it.
 var fixRemovedThrowsTag = regexp.MustCompile(`^/\*\*\s*(?:(?:@throws\s*\{[^}]*\}|@rethrows\s+\w+)\s*)+\*/$`)
+
+// A retired declaration still emits its former implementation for the Chapter
+// 7 migration oracle. Require that exact error, and refuse unrelated errors.
+func declarationRetirementRunnable(r *Result, code int32) bool {
+	if r.EmitSkipped {
+		return false
+	}
+	found := false
+	for _, d := range r.Diagnostics {
+		if d.Category() != diagnostics.CategoryError {
+			continue
+		}
+		if !IsEK(d) || d.Code() != code {
+			return false
+		}
+		found = true
+	}
+	return found
+}

@@ -2338,3 +2338,9 @@ typescript/vibelang/cases/fork-arrow-body/main.vibe:14:10 lambda: choice fallbac
 typescript/vibelang/cases/fork-named-region/main.vibe:15:10 lambda: choice fallback -> program keyword # The cleanup callback returns an explicit effect block, an Effect program under VIP-2.
 typescript/vibelang/cases/fork-named-region/main.vibe:71:10 lambda: choice fallback -> program keyword # The cleanup callback returns an explicit effect block, an Effect program under VIP-2.
 typescript/vibelang/cases/service-member-run-head/main.vibe:9:47 lambda: effectFn table -> program keyword # The nested catch operand is a written effect block, an Effect program under VIP-2.
+
+typescript/vibelang/cases/decl-old-declarations/main.vibe:16:3 lambda: effectFn keyword -> effectFn keyword # The preserving layer codemod relocates the Names method from line 18 without changing its Effect function classification.
+typescript/vibelang/cases/decl-old-declarations/main.vibe:19:43 lambda: block appended/program table -> lambda program table # The preserving layer codemod replaces a synthesized setup block with an explicit effect argument.
+typescript/vibelang/cases/decl-old-declarations/main.vibe:22:5 lambda: effectFn keyword -> effectFn keyword # The preserving layer codemod relocates the Greeter method from line 23 without changing its Effect function classification.
+
+typescript/vibelang/cases/legacy-layer-diagnostic-authority.fail/main.vibe:5:3 lambda: effectFn keyword -> effectFn keyword # The fixture is renamed as a rejected layer declaration; its method keeps the same Effect function classification.

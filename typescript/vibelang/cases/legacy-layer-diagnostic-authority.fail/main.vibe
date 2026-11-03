@@ -1,0 +1,6 @@
+// expect: EK2121
+// A retired layer keeps its migration error without granting trailing-block syntax.
+service Labels { label(): string!! }
+layer LabelsLive: Labels {
+  effect label() { return "ok" }
+}

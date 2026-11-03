@@ -1,6 +1,7 @@
 package vibelang
 
 import (
+	"slices"
 	"strings"
 	"sync"
 	"testing"
@@ -33,7 +34,7 @@ func TestLayerDeclarationFixUsesExplicitEffect(t *testing.T) {
 		if errors := errorsOf(t, fixed); len(errors) != 0 {
 			t.Fatalf("migrated layer reports %v:\n%s", errors, fixed)
 		}
-		before := layerMigrationDeclarations(t, source)
+		before := layerMigrationDeclarations(t, source, EK2121.Code)
 		after := layerMigrationDeclarations(t, fixed)
 		if before != after {
 			t.Fatalf("declarations changed:\nbefore:\n%s\nafter:\n%s", before, after)
@@ -77,11 +78,11 @@ func TestLayerDeclarationFixNamespaceImports(t *testing.T) {
 
 // Use the installed Effect declarations, as editorProgram does, rather than
 // the computed-key helper's deliberately minimal virtual library.
-func layerMigrationDeclarations(t *testing.T, source string) string {
+func layerMigrationDeclarations(t *testing.T, source string, migrationCodes ...int32) string {
 	t.Helper()
 	p, _, _, _ := editorProgram(t, source)
 	for _, d := range p.GetSemanticDiagnostics(t.Context(), nil) {
-		if d.Category() == diagnostics.CategoryError {
+		if d.Category() == diagnostics.CategoryError && !slices.Contains(migrationCodes, d.Code()) {
 			t.Fatalf("source: %s", d.String())
 		}
 	}
@@ -96,7 +97,7 @@ func layerMigrationDeclarations(t *testing.T, source string) string {
 		return nil
 	}})
 	for _, d := range result.Diagnostics {
-		if d.Category() == diagnostics.CategoryError {
+		if d.Category() == diagnostics.CategoryError && !slices.Contains(migrationCodes, d.Code()) {
 			t.Fatalf("emit: %s", d.String())
 		}
 	}

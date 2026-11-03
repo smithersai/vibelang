@@ -56,7 +56,7 @@ func trailingBlockCalls(file *ast.SourceFile) []*ast.Node {
 // writes after it. The parser anchors a block param's arrow at the block's
 // brace (vibelang_trailing_legacy.go); the old layer declaration, layer L: S { … },
 // builds Layer.effect(S, () => { … }) from a synthesized callee instead, and
-// keeps its own warning, EK2121.
+// keeps its own diagnostic, EK2121.
 func isWrittenTrailingBlock(file *ast.SourceFile, call *ast.Node) bool {
 	if !isBlockParamCall(call) || call.Expression().Flags&ast.NodeFlagsReparsed != 0 {
 		return false

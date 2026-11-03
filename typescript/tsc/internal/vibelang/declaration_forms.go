@@ -18,7 +18,7 @@ import (
 //	control Approval { approve(request: string): boolean!! }
 //	const UsersLive = Layer.effect(Users, effect { const seen = new Set<string>(); return { find(id) { ... } } })
 //
-// The older spellings still compile and draw warnings with quick fixes:
+// Legacy spellings retain lowering only for preserving quick fixes:
 // service class Users { ... } and control class Approval { ... } (EK2120,
 // whose fix removes class), and layer UsersLive: Users { ... } (EK2121), whose
 // fix rewrites it into the Layer.effect block or Layer.succeed call it
@@ -27,13 +27,14 @@ import (
 var (
 	// EK2120: a service or control declaration written with class (D223). {0} is the word. A warning.
 	EK2120 = message(2120, warningCategory, "{0} class is the older spelling: write {0} without class.")
-	// EK2121: a layer declaration (D221). A warning.
-	EK2121 = message(2121, warningCategory, "layer declarations are the old spelling of a layer: write Layer.effect(Service, effect { ... }) or Layer.succeed(Service, { ... }).")
+	// EK2121: a retired layer declaration. Its repair retains setup timing.
+	EK2121 = message(2121, errorCategory, "layer declarations are retired: run vibelang --fix to write Layer.effect(Service, effect { ... }) or Layer.succeed(Service, { ... }).")
 )
 
 func init() {
 	registry[EK2120.Code] = EK2120
 	registry[EK2121.Code] = EK2121
+	vipMigrationFixCodes = append(vipMigrationFixCodes, EK2121.Code)
 	fileChecks = append(fileChecks, checkDeclarationSpelling)
 	ls.RegisterCodeFixProvider(serviceClassFix)
 	ls.RegisterCodeFixProvider(layerDeclarationFix)

@@ -425,7 +425,6 @@ The following own warnings default to `"warning"`; they are separate from import
 | A legacy catch clause tests its failure's type ([VIP-5](/vips/0005-try-runs-effects#decision)) | `EK2112` | Remove the annotation and test the value with `match` or `is`. |
 | A legacy `Cause`-typed catch clause ([VIP-5](/vips/0005-try-runs-effects#decision)) | `EK2113` | Match `exit(program)` with `Exit.Success` and `Exit.Failure`. |
 | A legacy `service class` or `control class` spelling | `EK2120` | Remove `class` from a service declaration; migrate retired control syntax to ordinary Effects ([VIP-9](/vips/0009-service-declarations#decision), [VIP-35](/vips/0035-handlers-open)). |
-| A legacy layer declaration | `EK2121` | Use an equivalent `Layer.effect` or `Layer.succeed` call, retaining construction timing and requirements. |
 | A plain `catch` handler returns an unrun Effect ([VIP-5](/vips/0005-try-runs-effects#decision)) | `EK0508` | `catch effect (e) => try …` |
 | A plain call in effect code infers an Effect type argument outside a declared Effect position ([Inferred Effect arguments](/spec/002-running#inferred-effect-arguments); [VIP-1, amended](/vips/0001-effect-and-async-functions#amendment-inferred-effect-arguments-2026-11-03)) | `EK4802` | The editor offers `try` for a direct Effect-valued argument when its written failure and requirement contract accepts it, or explicit type arguments to keep the program. Batch `--fix` chooses only `try` and refuses an edit that adds an error. |
 | Imported lint severities have no resolved Effect plugin entry | `EK3012` | Run `vibelang --fix` to preserve legacy plugin activation explicitly. |
@@ -614,3 +613,7 @@ A value that fails that operand test, such as `Option.some(1)` or `Result.succee
 When `--fix-vip-only` refused any call, it sets `"vibe": { "severities": { "EK4802": "error" } }` in the project's config with a comment that says why, so all `EK4802` inferred Effect argument sites in the project fail to compile; the owner removes the setting once a run refuses none.
 
 These commands have no Effect TypeScript runtime translation.
+
+### Retired layer declarations
+
+Legacy `layer Live: Service { … }` has no declaration production. Its transitional `EK2121` is an error naming `vibelang --fix`. The repair emits `Layer.succeed(Service, { … })` for eager members, or `Layer.effect(Service, effect { … })` for deferred setup, preserving declaration contracts and the Exit. A captured or type-only `Layer` binding prevents an automatic repair. Lowering of rejected source remains available only for migration and its equivalence checks.
