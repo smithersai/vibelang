@@ -412,6 +412,47 @@ const kinds: Record<string, string[]> = {
   authority: ["ruling-claims"],
   examples: ["retired-forms", "platform-imports"]
 }
+// A positional fallback must name a row that falls back (r18 OPUS-2). 005's
+// service table ended with EK0905, a declaration rule, under "The last row
+// applies only when no other row applies". The sentence holds only when the
+// table's last row begins "any".
+const fallbackRow: Rule = {
+  name: "fallback-row",
+  finding: "r18 OPUS-2: 005:297 called the last row the fallback; the table ends with EK0905, and the general member row is above it",
+  check(spec) {
+    const out: Violation[] = []
+    for (const [file, text] of chapters(spec)) {
+      for (const m of text.matchAll(/The last row applies only when no other row applies\./g)) {
+        const after = text.slice(m.index!).match(/^(?:\|[^\n]*\n)+/m)
+        const rows = after?.[0].trimEnd().split("\n") ?? []
+        if (!/^\|\s*any\b/.test(rows.at(-1) ?? "")) {
+          out.push({ rule: this.name, file, line: lineAt(text, m.index!), message: "the last row of this table is not a general fallback; name the general row" })
+        }
+      }
+    }
+    return out
+  }
+}
+
+// A rule stated twice (r18 OPUS-1). VIP-40 says a plain call of a function
+// whose throwing is unknown stays an ordinary call; chapter 3's section on
+// plain code has to say the same, because 000:3 makes the VIP win.
+const plainUnknownCall: Rule = {
+  name: "plain-unknown-call",
+  finding: "r18 OPUS-1: 003:45 listed an untagged foreign call as known to throw, against VIP-40's item 4",
+  check(spec) {
+    const vip = spec.get("vips/0040-module-declarations.md") ?? ""
+    if (!/whose throwing is unknown, stays an ordinary call/.test(vip)) return []
+    const file = "src/003-failures.md"
+    const text = spec.get(file) ?? ""
+    const start = text.indexOf("### Plain code never throws")
+    const end = text.indexOf("\n## ", start)
+    const section = text.slice(start, end < 0 ? undefined : end)
+    if (start >= 0 && /stays an ordinary call/.test(section) && !/has no tag on a foreign declaration/.test(section)) return []
+    return [{ rule: this.name, file, line: start < 0 ? 1 : lineAt(text, start), message: "Plain code never throws must keep VIP-40's rule: a call whose throwing is unknown stays an ordinary call" }]
+  }
+}
+rules.push(fallbackRow, plainUnknownCall)
 export const lint = (spec: Spec, only = rules) => only.flatMap(rule => rule.check(spec))
 export const lintKind = (spec: Spec, kind: string) =>
   lint(spec, rules.filter(rule => kinds[kind]?.includes(rule.name)))

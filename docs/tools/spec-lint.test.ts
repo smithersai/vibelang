@@ -232,3 +232,18 @@ test("compiler-gaps-not-rules checks gap wording only in the normative table", (
     }
   ), { numRuns: 100, seed: 1501 })
 })
+
+test("fallback-row rejects round 18 OPUS-2's positional fallback over a declaration row", () => {
+  const defect = withEdit("src/005-services.md", text => text.replace(/The general member row, the `EK0902` row beginning "any member", applies only when no other row applies\./, "The last row applies only when no other row applies."))
+  expect(lint(defect, rule("fallback-row")).map(v => v.file)).toEqual(["src/005-services.md"])
+})
+
+test("fallback-row accepts a table that does end in its fallback", () => {
+  const text = "The last row applies only when no other row applies.\n\n| Rule | Code |\n| --- | --- |\n| a static member | EK1 |\n| any other member | EK2 |\n"
+  expect(lint(new Map([["src/x.md", text]]), rule("fallback-row"))).toEqual([])
+})
+
+test("plain-unknown-call rejects round 18 OPUS-1's untagged call as known to throw", () => {
+  const defect = withEdit("src/003-failures.md", text => text.replace(/A call whose throwing is unknown, such as an unannotated `\.ts` function, stays an ordinary call[^.]*\./, "It has no tag on a foreign declaration (so throws `unknown`)."))
+  expect(lint(defect, rule("plain-unknown-call")).map(v => v.rule)).toEqual(["plain-unknown-call"])
+})
