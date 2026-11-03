@@ -24,8 +24,7 @@ func requireDeclarationPreludeModesQuote(t testing.TB) {
 func TestDeclarationPreludeModesQuoted(t *testing.T) { requireDeclarationPreludeModesQuote(t) }
 
 // VIP-27 permits this compiler-self comparison: ordinary TypeScript has the
-// explicit imports that the prelude supplies to VibeLang. Compare raw .d.ts
-// bytes, including import style, across emit kinds and package defaults.
+// explicit imports that the prelude supplies to VibeLang. Compare exported names, tsc type identity and JSDoc, across emit kinds and package defaults.
 // NodeNext stays ESM here; its cross-mode assertion requirement is independent
 // of Preserve/Bundler and is not relaxed by the product fix.
 func FuzzDeclarationPreludeModes(f *testing.F) {
@@ -147,8 +146,8 @@ func FuzzDeclarationPreludeModes(f *testing.F) {
 			return ""
 		}
 		got, want := declaration(vibe), declaration(native)
-		if got != want {
-			Gap(t, "FuzzDeclarationPreludeModes", fmt.Sprintf("%s/%s/%d", mode, key, pkg%3), "module=%s package=%s\nVibeLang:\n%s\nTypeScript:\n%s", mode, packageText, got, want)
+		if diff := compareDeclarationResults(t, native, vibe); diff != "" {
+			Gap(t, "FuzzDeclarationPreludeModes", fmt.Sprintf("%s/%s/%d", mode, key, pkg%3), "module=%s package=%s\nVibeLang:\n%s\nTypeScript:\n%s\nAPI:\n%s", mode, packageText, got, want, diff)
 		}
 	})
 }

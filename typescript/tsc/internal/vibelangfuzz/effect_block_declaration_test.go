@@ -66,8 +66,8 @@ func TestEffectBlockDeclarationNamesEffect(t *testing.T) {
 				}
 				got := compile("main.vibe", form.source)
 				want := compile("main.ts", "import { "+form.imports+" } from \"effect\"\n"+form.twin)
-				if got != want {
-					t.Errorf("VibeLang:\n%s\nTypeScript:\n%s", got, want)
+				if diff := compareDeclarationTexts(t, want, got); diff != "" {
+					t.Errorf("VibeLang:\n%s\nTypeScript:\n%s\nAPI:\n%s", got, want, diff)
 				}
 			})
 		}

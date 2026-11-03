@@ -1,3 +1,4 @@
+import { compareApiIdentity, formatResult as formatApiIdentity } from "./api-identity.mjs"
 import { prepareBuilds } from "./builds.mjs"
 import { ownedToolConfigs } from "./tool-config-references.mjs"
 // The migrate flow's steps. Each reads and writes the run directory, so it can
@@ -1045,7 +1046,7 @@ export async function wireTarget(config, log) {
 }
 
 /**
- * Only accept product wiring whose published declarations stay byte-identical.
+ * Only accept product wiring whose published declarations stay API-identical.
  * Roll back every planned edit if emitting or comparison fails.
  */
 export async function wireEmittedProjects(config, ts, log) {
@@ -1056,6 +1057,7 @@ export async function wireEmittedProjects(config, ts, log) {
     readJson(join(root, pkg.dir, "package.json")).private !== true)
   const snapshot = async label => {
     const result = new Map()
+    result.packages = new Map()
     for (const pkg of packages) {
       const outDir = join(log, label, slug(pkg.dir))
       const emitted = await emitPackageDeclarations({ compiler: compilerOf(config), ts, t: root, pkg, outDir, log: outDir + ".log" })
@@ -1068,6 +1070,7 @@ export async function wireEmittedProjects(config, ts, log) {
         }
       }
       visit(outDir)
+      result.packages.set(pkg.dir, outDir)
     }
     return result
   }
@@ -1078,13 +1081,31 @@ export async function wireEmittedProjects(config, ts, log) {
     const formatted = await formatWritten(root, plan.changed, join(log, "format.log"))
     if (formatted.code !== 0) throw new Error("emitted import wiring: formatting failed; see " + join(log, "format.log"))
     const after = await snapshot("after")
-    const changed = [...new Set([...before.keys(), ...after.keys()])].filter(file => before.get(file) !== after.get(file))
-    if (changed.length) throw new Error("emitted import wiring changes published declarations: " + changed.join(", "))
+    const snapshotSurface = dir => {
+      const file = join(dir, "public-surface.json")
+      if (!existsSync(file)) return {}
+      const surface = readJson(file)
+      if (surface.unresolved?.length)
+        throw new Error("emitted import wiring: unresolved published declaration metadata: " + surface.unresolved.join(", "))
+      return { entries: Object.fromEntries(surface.roots.map(file => [file, file])), resolutions: surface.resolutions }
+    }
+    for (const [pkg, baseline] of before.packages) {
+      const current = after.packages.get(pkg)
+      const a = snapshotSurface(baseline), b = snapshotSurface(current)
+      const compared = compareApiIdentity(ts, baseline, current, {
+        beforeEntrypoints: a.entries, afterEntrypoints: b.entries,
+        beforeResolutions: a.resolutions, afterResolutions: b.resolutions,
+        moduleRoots: [join(root, pkg, "node_modules"), join(root, "node_modules")]
+      })
+      if (!compared.identical) throw new Error((compared.comparisonComplete === false
+        ? "emitted import wiring cannot compare published declarations in "
+        : "emitted import wiring changes published declarations in ") + pkg + ":\n" + formatApiIdentity(compared))
+    }
   } catch (error) {
     applyEmittedImports(plan, { root, restore: true })
     throw error
   }
-  return { changed: plan.changed, modules: plan.modules, declarations: "byte-identical" }
+  return { changed: plan.changed, modules: plan.modules, declarations: "API-identical" }
 }
 
 /**

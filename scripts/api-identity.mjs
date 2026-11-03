@@ -33,10 +33,11 @@ function filesUnder(dir) {
 }
 
 function declarationPath(path) {
+  const emitted = path.replace(/\.(?:[cm]?[jt]sx?|vibe)$/, /\.m[jt]s$/.test(path) ? ".d.mts"
+    : /\.c[jt]s$/.test(path) ? ".d.cts" : ".d.ts")
   const candidates = declaration.test(path) ? [path] : [
-    path.replace(/\.(?:[cm]?jsx?|tsx?|vibe)$/, ".d.ts"),
-    path.replace(/\.mjs$/, ".d.mts"), path.replace(/\.cjs$/, ".d.cts"),
-    path + ".d.ts", join(path, "index.d.ts"),
+    ...(path.endsWith(".vibe") ? [path.replace(/\.vibe$/, ".d.vibe.ts")] : []),
+    emitted, path + ".d.ts", join(path, "index.d.ts"),
   ]
   return candidates.find(p => declaration.test(p) && existsSync(p))
 }
@@ -49,31 +50,46 @@ export function publishedEntrypoints(directory) {
   directory = resolve(directory)
   if (statSync(directory).isFile()) return { ".": directory }
   const manifestFile = join(directory, "package.json")
-  if (!existsSync(manifestFile)) return Object.fromEntries(filesUnder(directory).map(p => [slash(relative(directory, p)), p]))
-  const manifest = JSON.parse(readFileSync(manifestFile, "utf8"))
+  if (!existsSync(manifestFile)) {
+    const entries = {}
+    for (const file of filesUnder(directory)) {
+      const key = slash(relative(directory, file)).replace(/\.d\.vibe\.ts$/, ".d.ts")
+      if (entries[key]) throw new Error("Ambiguous declaration twins for " + key)
+      entries[key] = file
+    }
+    return entries
+  }
+  const raw = JSON.parse(readFileSync(manifestFile, "utf8"))
+  const manifest = { ...raw, ...raw.publishConfig }
   const entries = {}
   const all = filesUnder(directory)
   function add(key, target) {
     if (typeof target !== "string") return
+    // JSON/assets have no declaration surface. Missing declaration targets fail
+    // closed, including source/runtime targets whose expected declaration is absent.
+    if (/\.(?:json|css|wasm)$/.test(target)) return
     const path = resolve(directory, target)
     if (target.includes("*")) {
-      const pieces = slash(path).split("*")
+      const expected = declaration.test(path) ? path
+        : path.replace(/\.(?:[cm]?[jt]sx?|vibe)$/, path.endsWith(".mjs") || path.endsWith(".mts") ? ".d.mts"
+          : path.endsWith(".cjs") || path.endsWith(".cts") ? ".d.cts" : ".d.ts")
+      const pieces = slash(expected).split("*")
       const pattern = new RegExp("^" + pieces.map(p => p.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("(.*)") + "$")
-      // Wildcard targets often name .js, while the tree contains .d.ts.
-      const dpattern = new RegExp(pattern.source.replace(/\\\.js\$$/, "\\.d\\.ts$"))
+      let found = false
       for (const file of all) {
-        const match = slash(file).match(pattern) ?? slash(file).match(dpattern)
-        if (match) entries[key.replace("*", match[1])] = file
+        const match = slash(file).match(pattern)
+        if (match) { entries[key.replace("*", match[1])] = file; found = true }
       }
-      if (!Object.keys(entries).some(k => k.startsWith(key.split("*")[0]))) entries[key] = path
+      if (!found) entries[key] = expected
     } else entries[key] = declarationPath(path) ?? path
   }
+
   function visit(value, key) {
     if (typeof value === "string") return add(key, value)
     if (Array.isArray(value)) return value.forEach((v, i) => visit(v, key + "#fallback" + i))
     if (!value || typeof value !== "object") return
     // A types condition replaces the corresponding runtime target.
-    if (typeof value.types === "string") return add(key, value.types)
+    if (value.types !== undefined) return visit(value.types, key)
     for (const [condition, child] of Object.entries(value)) visit(child, key + "#" + condition)
   }
   if (manifest.exports !== undefined) {
@@ -97,12 +113,109 @@ function docs(ts, checker, symbol) {
   return [text, ...tags].join("\n").trim()
 }
 
-const identityPrelude = `type __Same<A, B> =
+const identityPrelude = `type __Assignable<A, B> = [A] extends [B] ? ([B] extends [A] ? true : false) : false;
+type __Same<A, B> =
   (<T>() => T extends A ? 1 : 2) extends (<T>() => T extends B ? 1 : 2)
     ? ((<T>() => T extends B ? 1 : 2) extends (<T>() => T extends A ? 1 : 2) ? true : false)
     : false;
 type __Assert<T extends true> = T;
 `
+
+// Deferred infer/mapped parameters carry declaration-local tsc identities.
+// Intern corresponding modules only after proving their complete resolved
+// dependency closures have the same syntax (comments/quotes/specifiers aside).
+// The final generated strict probe still imports both published entry points.
+// Changed or unresolved dependencies invalidate every ancestor, including cycles.
+function equivalentModules(ts, program, host, left, right, externalGroups) {
+  const printer = ts.createPrinter({ removeComments: true })
+  const nodes = new Map(), normalized = new Map(), origins = new Map()
+  function externalOrigin(file) {
+    if (origins.has(file)) return origins.get(file)
+    const marker = "/node_modules/"
+    const start = file.lastIndexOf(marker)
+    let origin
+    if (start >= 0) {
+      const tail = file.slice(start + marker.length).split("/")
+      const root = file.slice(0, start + marker.length) + tail.slice(0, tail[0].startsWith("@") ? 2 : 1).join("/")
+      let manifest = {}
+      try { manifest = JSON.parse(readFileSync(join(root, "package.json"), "utf8")) } catch {}
+      origin = JSON.stringify([manifest.name ?? relative(dirname(root), root), manifest.version, slash(relative(root, file))])
+    }
+    origins.set(file, origin)
+    return origin
+  }
+  function syntax(file) {
+    if (normalized.has(file)) return normalized.get(file)
+    const source = program.getSourceFile(file)
+    if (!source) return undefined
+    const imports = []
+    const transform = context => {
+      const visit = node => {
+        if (ts.isStringLiteral(node)) {
+          const p = node.parent
+          const module = (ts.isImportDeclaration(p) || ts.isExportDeclaration(p)) && p.moduleSpecifier === node ||
+            ts.isLiteralTypeNode(p) && ts.isImportTypeNode(p.parent)
+          if (module) { imports.push(node.text); return ts.factory.createStringLiteral("__edge" + (imports.length - 1)) }
+          return ts.factory.createStringLiteral(node.text)
+        }
+        return ts.visitEachChild(node, visit, context)
+      }
+      return source => ts.visitNode(source, visit)
+    }
+    const transformed = ts.transform(source, [transform])
+    const text = printer.printFile(transformed.transformed[0])
+    transformed.dispose()
+    const deps = host.resolveModuleNames(imports, file).map(x => x?.resolvedFileName)
+    for (const ref of source.referencedFiles) deps.push(resolve(dirname(file), ref.fileName))
+    for (const ref of source.typeReferenceDirectives)
+      deps.push(ts.resolveTypeReferenceDirective(ref.fileName, file, program.getCompilerOptions(), host).resolvedTypeReferenceDirective?.resolvedFileName)
+    const value = { text, deps }
+    normalized.set(file, value)
+    return value
+  }
+  function pair(a, b) {
+    const key = a + "\0" + b
+    if (nodes.has(key)) return nodes.get(key)
+    const node = { a, b, good: true, parents: [] }
+    nodes.set(key, node)
+    if (a === b) return node
+    if (externalOrigin(a) !== externalOrigin(b)) { node.good = false; return node }
+    const x = syntax(a), y = syntax(b)
+    if (!x || !y || x.text !== y.text || x.deps.length !== y.deps.length) { node.good = false; return node }
+    for (let i = 0; i < x.deps.length; i++) {
+      if (!x.deps[i] || !y.deps[i]) { node.good = false; continue }
+      pair(x.deps[i], y.deps[i]).parents.push(node)
+    }
+    return node
+  }
+  for (const key of Object.keys(left)) if (right[key]) pair(left[key], right[key])
+  // Entry syntax can legitimately differ (alias expansion/import order).
+  // Seed dependency pairs independently using tsc's package identities, then
+  // prove their full resolved closures before interning either copy.
+  for (const files of externalGroups.values()) {
+    const [a, b, ...extra] = [...files]
+    if (a && b && !extra.length) pair(a, b)
+  }
+  const bad = [...nodes.values()].filter(n => !n.good)
+  for (let i = 0; i < bad.length; i++) for (const parent of bad[i].parents) {
+    if (parent.good) { parent.good = false; bad.push(parent) }
+  }
+  // Only one-to-one pairings preserve the distinct nominal identities of two
+  // same-text modules in a single tree.
+  const candidates = [...nodes.values()].filter(n => n.good && n.a !== n.b)
+  const from = new Map(), to = new Map()
+  for (const n of candidates) {
+    from.set(n.b, (from.get(n.b) ?? new Set()).add(n.a))
+    to.set(n.a, (to.get(n.a) ?? new Set()).add(n.b))
+  }
+  for (const n of candidates) if (from.get(n.b).size !== 1 || to.get(n.a).size !== 1) {
+    n.good = false; bad.push(n)
+  }
+  for (let i = 0; i < bad.length; i++) for (const parent of bad[i].parents) {
+    if (parent.good) { parent.good = false; bad.push(parent) }
+  }
+  return new Map(candidates.filter(n => n.good).map(n => [n.b, n.a]))
+}
 
 /** Compile a generated .ts probe. Generic type exports get a local bridge
  * inside their own declaration module, so constraints and private aliases
@@ -115,12 +228,12 @@ export function compareApiIdentity(ts, before, after, options = {}) {
     .map(([key, path]) => [key, resolve(base, path)]))
   const left = entryMap(before, options.beforeEntrypoints)
   const right = entryMap(after, options.afterEntrypoints)
-  const result = { identical: false, nameDifferences: [], typeDifferences: [], docDifferences: [] }
+  const result = { identical: false, comparisonComplete: true, nameDifferences: [], typeDifferences: [], docDifferences: [], environmentDiagnostics: [] }
   const keys = [...new Set([...Object.keys(left), ...Object.keys(right)])].sort()
   const compilerOptions = {
     target: ts.ScriptTarget.ESNext, module: ts.ModuleKind.ESNext,
     moduleResolution: ts.ModuleResolutionKind.Bundler, strict: true,
-    noEmit: true, skipLibCheck: false, types: [], allowImportingTsExtensions: true,
+    noEmit: true, skipLibCheck: false, types: [], allowImportingTsExtensions: true, allowArbitraryExtensions: true,
     ...options.compilerOptions,
     strict: true, strictNullChecks: true, strictFunctionTypes: true, noImplicitAny: true, noImplicitThis: true,
     noEmit: true, skipLibCheck: false, allowSyntheticDefaultImports: true,
@@ -128,22 +241,99 @@ export function compareApiIdentity(ts, before, after, options = {}) {
   const virtual = new Map()
   const host = ts.createCompilerHost(compilerOptions)
   const read = host.readFile.bind(host)
-  host.readFile = path => virtual.get(resolve(path)) ?? read(path)
   const originalExists = host.fileExists.bind(host)
-  host.fileExists = path => virtual.has(resolve(path)) || originalExists(path)
+  const projectCache = new Map(), configCache = new Map()
+  function readProject(config, trail = new Set()) {
+    if (configCache.has(config)) return configCache.get(config)
+    if (trail.has(config)) return {}
+    trail = new Set([...trail, config])
+    const raw = ts.readConfigFile(config, read).config ?? {}
+    let inherited = {}
+    for (const extension of [raw.extends ?? []].flat()) {
+      try {
+        const base = extension.startsWith(".") || extension.startsWith("/")
+          ? resolve(dirname(config), extension)
+          : createRequire(config).resolve(extension)
+        inherited = { ...inherited, ...readProject(originalExists(base) ? base : base + ".json", trail) }
+      } catch {}
+    }
+    const parsed = ts.parseJsonConfigFileContent(raw, ts.sys, dirname(config), {}, config)
+    const value = { ...inherited, options: parsed.options,
+      ...(typeof raw.vibe?.sidecarDir === "string" ? { sidecar: raw.vibe.sidecarDir, sidecarBase: dirname(config) } : {}) }
+    configCache.set(config, value)
+    return value
+  }
+  function project(file) {
+    const start = dirname(resolve(file))
+    if (projectCache.has(start)) return projectCache.get(start)
+    let dir = start, value = {}
+    for (;;) {
+      const config = ["vibe.config.json", "tsconfig.json"].map(name => join(dir, name)).find(originalExists)
+      if (config) {
+        value = readProject(config)
+        value = { ...value, root: dirname(config), sidecar: value.sidecar === undefined ? undefined
+          : resolve(value.sidecarBase, value.sidecar.replaceAll("${configDir}", dirname(config))) }
+        break
+      }
+      if (dirname(dir) === dir) break
+      dir = dirname(dir)
+    }
+    projectCache.set(start, value)
+    return value
+  }
+  function sidecar(path) {
+    if (!path.endsWith(".d.vibe.ts")) return undefined
+    const config = project(path)
+    if (!config.sidecar) return undefined
+    const local = relative(config.root, path)
+    if (local.startsWith("../") || local === "..") return undefined
+    const mirror = join(config.sidecar, local)
+    return originalExists(mirror) ? mirror : undefined
+  }
+  // Project mirrored declarations at their logical beside-source paths. Relative
+  // imports inside a moved sidecar must resolve beside that source too.
+  host.readFile = path => virtual.get(resolve(path)) ?? read(path) ?? (sidecar(path) ? read(sidecar(path)) : undefined)
+  host.fileExists = path => virtual.has(resolve(path)) || originalExists(path) || Boolean(sidecar(path))
+  for (const entries of [left, right]) for (const [key, path] of Object.entries(entries)) {
+    if (path.endsWith(".vibe") && host.fileExists(path.replace(/\.vibe$/, ".d.vibe.ts")))
+      entries[key] = path.replace(/\.vibe$/, ".d.vibe.ts")
+  }
   // Fuzz/case snapshots live outside their original package. Resolve their
   // external dependencies through the caller's pinned Effect install only
   // after ordinary package resolution has failed.
   const moduleRoots = options.moduleRoots ?? [process.env.EFFECT_NODE_MODULES, join(repo, "experiments/node_modules")].filter(Boolean)
+  const frozenResolutions = new Map()
+  for (const [base, hints] of [[before, options.beforeResolutions], [after, options.afterResolutions]]) {
+    for (const [file, name, target] of hints ?? []) {
+      const key = resolve(base, file) + "\0" + name
+      const destination = resolve(base, target)
+      if (frozenResolutions.has(key) && frozenResolutions.get(key) !== destination)
+        throw new Error("Ambiguous frozen declaration resolution: " + file + " -> " + name)
+      frozenResolutions.set(key, destination)
+    }
+  }
+  const externalGroups = new Map()
   host.resolveModuleNames = (names, containingFile) => names.map(name => {
-    let resolved = ts.resolveModuleName(name, containingFile, compilerOptions, host).resolvedModule
+    const frozen = frozenResolutions.get(resolve(containingFile) + "\0" + name)
+    if (frozen) return { resolvedFileName: frozen, extension: frozen.endsWith(".d.mts") ? ts.Extension.Dmts
+      : frozen.endsWith(".d.cts") ? ts.Extension.Dcts : ts.Extension.Dts, isExternalLibraryImport: false }
+    const resolutionOptions = { ...compilerOptions, ...project(containingFile).options, ...options.compilerOptions, allowArbitraryExtensions: true }
+    let resolved = ts.resolveModuleName(name, containingFile, resolutionOptions, host).resolvedModule
     if (!resolved && !name.startsWith(".") && !name.startsWith("/")) {
       for (const modules of moduleRoots) {
         resolved = ts.resolveModuleName(name, join(dirname(resolve(modules)), "__api_identity__.ts"), compilerOptions, host).resolvedModule
         if (resolved) break
       }
     }
-    return resolved
+    // Do not let equal name/version hide a mutated installed snapshot. The
+    // closure proof above restores shared identity for equivalent dependency
+    // copies even when the published entry itself uses different syntax.
+    if (resolved?.packageId && resolved.resolvedFileName.includes("/node_modules/")) {
+      const id = JSON.stringify(resolved.packageId)
+      if (!externalGroups.has(id)) externalGroups.set(id, new Set())
+      externalGroups.get(id).add(resolved.resolvedFileName)
+    }
+    return resolved && { ...resolved, packageId: undefined }
   })
   const probe = join(repo, ".api-identity-probe.mts")
   const roots = [...new Set([...Object.values(left), ...Object.values(right)])]
@@ -156,7 +346,8 @@ export function compareApiIdentity(ts, before, after, options = {}) {
         !source.fileName.includes("/node_modules/"))
       originalDiagnostics.push(...program.getSyntacticDiagnostics(source), ...program.getSemanticDiagnostics(source))
   }
-  const nominal = alignNominalIdentity(ts, program, before, after, join(repo, ".api-identity-brands.d.ts"), [left, right])
+  const equivalents = equivalentModules(ts, program, host, left, right, externalGroups)
+  const nominal = alignNominalIdentity(ts, program, before, after, join(repo, ".api-identity-brands.d.cts"), [left, right])
   if (nominal.size > 1) {
     for (const [path, text] of nominal) {
       virtual.set(path, text)
@@ -165,6 +356,42 @@ export function compareApiIdentity(ts, before, after, options = {}) {
   }
   const checker = program.getTypeChecker()
   const inputDiagnostics = ts.getPreEmitDiagnostics(program)
+  // Error-any can make a strict identity probe pass vacuously. Inspect only
+  // compared export types, so an unrelated error in a dependency is harmless.
+  const invalidExports = []
+  function erroneous(type, seen = new Set(), expanded = new Set()) {
+    if (!type || seen.has(type)) return false
+    seen.add(type)
+    const identity = type.target ?? type
+    if (type.flags & ts.TypeFlags.Any && ["error", "unresolved"].includes(type.intrinsicName)) return true
+    const nested = [...(type.types ?? []), ...(type.aliasTypeArguments ?? [])]
+    if (type.flags & ts.TypeFlags.TypeParameter) nested.push(checker.getBaseConstraintOfType(type), type.getDefault?.())
+    if (type.flags & ts.TypeFlags.Conditional) nested.push(type.checkType, type.extendsType, type.resolvedTrueType, type.resolvedFalseType)
+    if (type.flags & ts.TypeFlags.IndexedAccess) nested.push(type.objectType, type.indexType)
+    if (type.flags & ts.TypeFlags.Object) {
+      if (type.objectFlags & ts.ObjectFlags.Reference) nested.push(...checker.getTypeArguments(type))
+      // Arguments are checked for every instantiation; expand a generic shape
+      // once to bound recursive Box<T[]> without hiding Box<Box<Missing>>.
+      if (!expanded.has(identity)) {
+      expanded.add(identity)
+      // Default-library methods are not declarations from the compared surface.
+      for (const prop of checker.getPropertiesOfType(type)) {
+        const d = prop.valueDeclaration ?? prop.declarations?.[0]
+        if (d && !d.getSourceFile().hasNoDefaultLib) nested.push(checker.getTypeOfSymbolAtLocation(prop, d))
+      }
+      for (const sig of [...type.getCallSignatures(), ...type.getConstructSignatures()]) {
+        if (sig.getDeclaration()?.getSourceFile().hasNoDefaultLib) continue
+        nested.push(checker.getReturnTypeOfSignature(sig), ...(sig.typeParameters ?? []))
+        for (const prop of sig.parameters) {
+          const d = prop.valueDeclaration ?? prop.declarations?.[0]
+          if (d) nested.push(checker.getTypeOfSymbolAtLocation(prop, d))
+        }
+      }
+      for (const index of checker.getIndexInfosOfType(type)) nested.push(index.type, index.keyType)
+      }
+    }
+    return nested.some(t => erroneous(t, seen, expanded))
+  }
   const checks = []
   const imports = []
   const bridges = new Map()
@@ -173,12 +400,12 @@ export function compareApiIdentity(ts, before, after, options = {}) {
   const sourceExports = (file, entry, side) => {
     const sf = program.getSourceFile(file)
     if (!sf) {
-      result.nameDifferences.push({ entrypoint: entry, export: "*", side, diagnostic: "Published declaration not found: " + file })
+      result.environmentDiagnostics.push({ entrypoint: entry, side, file, blocking: true, diagnostic: "Published declaration not found: " + file })
       return new Map()
     }
     const sym = checker.getSymbolAtLocation(sf)
     if (!sym) {
-      result.typeDifferences.push({ entrypoint: entry, export: "*", diagnostic: "Published declaration is not an external module: " + file })
+      result.environmentDiagnostics.push({ entrypoint: entry, file, blocking: true, diagnostic: "Published declaration is not an external module: " + file })
       return new Map()
     }
     // export = is not included in getExportsOfModule.
@@ -199,6 +426,7 @@ export function compareApiIdentity(ts, before, after, options = {}) {
           symbol.declarations?.some(d => d.getSourceFile() === source)) runtime.add(symbol.name)
     }
     for (const statement of source?.statements ?? []) {
+      if (ts.isExportAssignment(statement) && !statement.isExportEquals) runtime.add("default")
       if (!ts.isExportDeclaration(statement) || statement.isTypeOnly) continue
       const clause = statement.exportClause
       const target = statement.moduleSpecifier && checker.getSymbolAtLocation(statement.moduleSpecifier)
@@ -226,8 +454,9 @@ export function compareApiIdentity(ts, before, after, options = {}) {
       (d.getSourceFile().fileName === base || d.getSourceFile().fileName.startsWith(base + "/")) &&
       !d.getSourceFile().fileName.includes("/node_modules/")))
     const walk = (type, path) => {
-      if (!type || seen.has(type)) return
-      seen.add(type)
+      const identity = type?.target ?? type
+      if (!type || seen.has(identity)) return
+      seen.add(identity)
       for (const property of checker.getPropertiesOfType(type).sort((a, b) => a.name.localeCompare(b.name))) {
         if (!own(property)) continue
         const key = path + "." + property.name
@@ -242,7 +471,7 @@ export function compareApiIdentity(ts, before, after, options = {}) {
           walk(checker.getReturnTypeOfSignature(signature), path + "()")
       }
     }
-    if (symbol.flags & ts.SymbolFlags.Type) walk(checker.getDeclaredTypeOfSymbol(symbol), "")
+    if (symbol.flags & ts.SymbolFlags.Type) walk(checker.getDeclaredTypeOfSymbol(symbol), symbol.flags & ts.SymbolFlags.Class ? ".prototype" : "")
     const declaration = symbol.valueDeclaration ?? symbol.declarations?.[0]
     if (declaration && symbol.flags & ts.SymbolFlags.Value) walk(checker.getTypeOfSymbolAtLocation(symbol, declaration), "")
     return found
@@ -253,6 +482,18 @@ export function compareApiIdentity(ts, before, after, options = {}) {
     const bdoc = docs(ts, checker, b) || docs(ts, checker, unalias(b))
     if (adoc !== bdoc) result.docDifferences.push({ entrypoint, export: name, before: adoc, after: bdoc })
     a = unalias(a); b = unalias(b)
+    if (inputDiagnostics.length || originalDiagnostics.length) {
+      for (const symbol of [a, b]) {
+        const d = symbol.valueDeclaration ?? symbol.declarations?.[0]
+        const invalidParameter = symbol.declarations?.some(decl => decl.typeParameters?.some(parameter =>
+          [parameter.constraint, parameter.default].some(type => type && erroneous(checker.getTypeAtLocation(type))) ||
+          inputDiagnostics.some(diagnostic => diagnostic.file?.fileName === parameter.getSourceFile().fileName &&
+            diagnostic.start >= parameter.pos && diagnostic.start < parameter.end)))
+        if (invalidParameter || (symbol.flags & ts.SymbolFlags.Type && erroneous(checker.getDeclaredTypeOfSymbol(symbol))) ||
+            (d && symbol.flags & ts.SymbolFlags.Value && erroneous(checker.getTypeOfSymbolAtLocation(symbol, d))))
+          invalidExports.push({ entrypoint, export: name, blocking: true, diagnostic: "Compared export depends on an unresolved or erroneous type; identity probe cannot establish its API." })
+      }
+    }
     const amembers = memberDocs(a), bmembers = memberDocs(b)
     for (const key of [...new Set([...amembers.keys(), ...bmembers.keys()])].sort()) {
       if (amembers.get(key) !== bmembers.get(key)) result.docDifferences.push({
@@ -348,28 +589,54 @@ export function compareApiIdentity(ts, before, after, options = {}) {
     }
   }
   for (const [path, text] of bridges) virtual.set(resolve(path), text)
+  for (const [from, to] of equivalents) {
+    const text = bridges.get(from)
+    if (text) {
+      const original = program.getSourceFile(from).text
+      virtual.set(to, (virtual.get(to) ?? host.readFile(to)) + text.slice(original.length))
+    }
+  }
+  const resolveModules = host.resolveModuleNames
+  host.resolveModuleNames = (names, file) => resolveModules(names, file).map(resolved => resolved &&
+    { ...resolved, resolvedFileName: equivalents.get(resolved.resolvedFileName) ?? resolved.resolvedFileName })
   const lines = [...imports, ...identityPrelude.split("\n")]
   const byLine = new Map()
+  const assignmentLines = new Map()
   for (const check of checks) {
     byLine.set(lines.length, check)
     lines.push(`type __check${byLine.size} = __Assert<__Same<${check.a}, ${check.b}>>;`)
+    assignmentLines.set(lines.length, check)
+    lines.push(`type __assign${byLine.size} = __Assert<__Assignable<${check.a}, ${check.b}>>;`)
   }
   virtual.set(probe, lines.join("\n"))
   program = ts.createProgram([...roots, probe], compilerOptions, host)
   const diagnosticText = d => "TS" + d.code + ": " + ts.flattenDiagnosticMessageText(d.messageText, "\n")
+  const diagnostics = [...originalDiagnostics, ...inputDiagnostics, ...ts.getPreEmitDiagnostics(program)]
+  const assignmentFailures = new Set(diagnostics.filter(d => d.file?.fileName === probe && d.start !== undefined)
+    .map(d => assignmentLines.get(d.file.getLineAndCharacterOfPosition(d.start).line)).filter(Boolean))
   const seen = new Set()
-  for (const d of [...originalDiagnostics, ...inputDiagnostics, ...ts.getPreEmitDiagnostics(program)]) {
+  for (const d of diagnostics) {
     const line = d.file && d.start !== undefined ? d.file.getLineAndCharacterOfPosition(d.start).line : -1
-    const check = d.file?.fileName === probe ? byLine.get(line) : undefined
-    // Refuse unresolved/invalid inputs rather than proving identity of error-any.
+    if (d.file?.fileName === probe && assignmentLines.has(line) && d.code === 2344) continue
+    const check = d.file?.fileName === probe && d.code === 2344 ? byLine.get(line) : undefined
     const item = check
-      ? { entrypoint: check.entrypoint, export: check.export, aspect: check.aspect, diagnostic: diagnosticText(d), probe: lines[line] }
-      : { entrypoint: "*", export: "*", diagnostic: diagnosticText(d), file: d.file?.fileName, line: line + 1 }
+      ? { entrypoint: check.entrypoint, export: check.export, aspect: check.aspect, mutuallyAssignable: !assignmentFailures.has(check), diagnostic: diagnosticText(d), probe: lines[line] }
+      : { diagnostic: diagnosticText(d), file: d.file?.fileName, line: line + 1,
+          blocking: !d.file || d.file.fileName === probe || [before, after].some(base =>
+            (d.file.fileName === base || d.file.fileName.startsWith(base + "/")) && !d.file.fileName.includes("/node_modules/")) }
     const key = JSON.stringify(item)
-    if (!seen.has(key)) result.typeDifferences.push(item)
+    if (!seen.has(key)) (check ? result.typeDifferences : result.environmentDiagnostics).push(item)
     seen.add(key)
   }
-  result.identical = !result.nameDifferences.length && !result.typeDifferences.length && !result.docDifferences.length
+  for (const item of invalidExports) {
+    const key = JSON.stringify(item)
+    if (!seen.has(key)) result.environmentDiagnostics.push(item)
+    seen.add(key)
+  }
+  result.comparisonComplete = !result.environmentDiagnostics.some(d => d.blocking)
+  // No error-recovery probe result qualifies as an API difference.
+  if (!result.comparisonComplete) result.typeDifferences = []
+  result.identical = result.comparisonComplete && !result.nameDifferences.length && !result.typeDifferences.length && !result.docDifferences.length
   return result
 }
 
@@ -378,6 +645,7 @@ export function formatResult(result) {
     ["Name differences", result.nameDifferences],
     ["Type differences", result.typeDifferences],
     ["Doc-comment differences", result.docDifferences],
+    ["Environment diagnostics" + (result.comparisonComplete === false ? " (comparison unavailable)" : ""), result.environmentDiagnostics ?? []],
   ].map(([label, items]) => label + ":\n" + (items.length ? items.map(x => "  " + JSON.stringify(x)).join("\n") : "  (none)")).join("\n")
 }
 
@@ -396,9 +664,11 @@ function main(args) {
   const ts = loadTypeScript([values.before, values.after])
   const result = compareApiIdentity(ts, values.before, values.after)
   console.log(values.json ? JSON.stringify(result, null, 2) : formatResult(result))
-  return result.identical ? 0 : 1
+  return result.comparisonComplete === false ? 2 : result.identical ? 0 : 1
 }
-if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+const evaluating = process.execArgv.some(arg => ["-e", "--eval", "-p", "--print"].includes(arg) ||
+  arg.startsWith("--eval=") || arg.startsWith("--print="))
+if (!evaluating && process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   try { process.exitCode = main(process.argv.slice(2)) }
   catch (error) { console.error(error.stack ?? error); process.exitCode = 2 }
 }

@@ -1,11 +1,11 @@
 import assert from "node:assert/strict"
 import { spawnSync } from "node:child_process"
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync, symlinkSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { dirname, join } from "node:path"
 import test from "node:test"
 
-function fixture(t, { diagnostic = "", header = "", identity = false, pending = false, expectedDiagnostics = false } = {}) {
+function fixture(t, { diagnostic = "", header = "", identity = false, identityAfter, pending = false, expectedDiagnostics = false } = {}) {
   const root = mkdtempSync(join(tmpdir(), "harness compile "))
   t.after(() => rmSync(root, { recursive: true, force: true }))
   const put = (file, text, mode) => {
@@ -21,7 +21,13 @@ function fixture(t, { diagnostic = "", header = "", identity = false, pending = 
   put(at + "/expected/stdout.txt", "42\n")
   if (pending) put(at + "/pending", "fixture known failure\n")
   if (expectedDiagnostics) put(at + "/expected/diagnostics.txt", diagnostic.replace(/: [^:]*$/, "") + "\n")
-  if (identity) put(at + "/typescript/tsconfig.json", "{}")
+  if (identity) {
+    put(at + "/typescript/tsconfig.json", "{}")
+    for (const file of ["api-identity.mjs", "api-identity-nominal.mjs"])
+      put("scripts/" + file, readFileSync(new URL("./" + file, import.meta.url)))
+    mkdirSync(join(root, "docs/tools/node_modules"), { recursive: true })
+    symlinkSync(new URL("../docs/tools/node_modules/typescript", import.meta.url).pathname, join(root, "docs/tools/node_modules/typescript"))
+  }
   put("runtime/package.json", '{"name":"vibelang-runtime","files":[]}')
   put("modules/effect/package.json", '{"name":"effect","version":"4.1.1"}')
   put("runtime/dist/index.js", "")
@@ -34,13 +40,14 @@ function fixture(t, { diagnostic = "", header = "", identity = false, pending = 
     'fs.writeFileSync("out/main.js", "console.log(42)")',
     'fs.writeFileSync("out/main.d.ts", "export declare const answer = 42;")',
     'const secondary = process.cwd().endsWith("/typescript")',
+    'if (!secondary && process.env.FIXTURE_DECLARATION) fs.writeFileSync("out/main.d.ts", process.env.FIXTURE_DECLARATION)', 
     "if (!secondary) { console.log(" + JSON.stringify(diagnostic) + '); console.error("fixture compile stderr") }',
     "process.exit(secondary ? 0 : Number(process.env.FIXTURE_COMPILE_EXIT))",
   ].join("\n"), 0o755)
   put("typescript/package.json", '{"type":"module"}')
   const run = (code, args = []) => spawnSync(process.execPath, [join(root, "typescript/vibelang/harness.mjs"), "--jobs", "1", ...args, "sample"], {
     encoding: "utf8", timeout: 30_000, env: {
-      ...process.env, FIXTURE_COMPILE_EXIT: String(code), EFFECT_NODE_MODULES: join(root, "modules"), VIBELANG_RUNTIME: join(root, "runtime")
+      ...process.env, FIXTURE_COMPILE_EXIT: String(code), FIXTURE_DECLARATION: identityAfter, EFFECT_NODE_MODULES: join(root, "modules"), VIBELANG_RUNTIME: join(root, "runtime")
     }
   })
   const log = result => {
@@ -114,4 +121,27 @@ test("generated advisory categories never authorize nonzero success", t => {
     assert.equal(result.status, 1, result.stdout + result.stderr)
     assert.equal(f.log(result).commands.length, 1)
   }
+})
+
+test("declaration twins admit API-identical spelling", t => {
+  const result = fixture(t, { identity: true, identityAfter: "export declare const answer: 42;" }).run(0)
+  assert.equal(result.status, 0, result.stdout + result.stderr)
+})
+test("declaration twins reject a semantic change with tsc evidence", t => {
+  const f = fixture(t, { identity: true, identityAfter: "export declare const answer: 43;" })
+  const result = f.run(0)
+  assert.equal(result.status, 1, result.stdout + result.stderr)
+  const log = f.log(result)
+  assert.ok(log.commands.some(c => c.phase === "compare declarations"))
+  assert.match(JSON.stringify(log), /TS2344/)
+})
+
+test("declaration twins distinguish unavailable comparisons from API differences", t => {
+  const f = fixture(t, { identity: true, identityAfter: "export declare const answer: Missing;" })
+  const result = f.run(0)
+  assert.equal(result.status, 1, result.stdout + result.stderr)
+  assert.match(result.stdout, /declaration API comparison unavailable/)
+  const log = f.log(result)
+  assert.ok(log.commands.some(c => c.phase === "compare declarations" && c.exitCode === 2))
+  assert.match(JSON.stringify(log), /Environment diagnostics/)
 })

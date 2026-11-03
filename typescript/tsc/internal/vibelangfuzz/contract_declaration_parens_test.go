@@ -30,8 +30,8 @@ func TestContractDeclarationParensQuoted(t *testing.T) {
 
 // This reuses the compiler on two inputs whose declarations Chapter 1 says
 // agree: a parenthesized contract and its explicit Effect TypeScript twin.
-// Raw declaration bytes matter: canonicalizing parentheses would hide the
-// original migration gate defect.
+// Compare types through the shared tsc probe; redundant printed parentheses
+// are formatting, while parentheses that change a type still fail the probe.
 func FuzzContractDeclarationParens(f *testing.F) {
 	startShortBudget(f)
 	requireContractDeclarationQuote(f)
@@ -120,9 +120,9 @@ func FuzzContractDeclarationParens(f *testing.F) {
 			return ""
 		}
 		got, want := compile("main.vibe", vibe), compile("main.ts", twin)
-		if got != want {
+		if diff := compareDeclarationTexts(t, want, got); diff != "" {
 			Gap(t, "FuzzContractDeclarationParens", "shape:"+key,
-				"Chapter 1: %s\nVibeLang:\n%s\nEffect TypeScript:\n%s", contractDeclarationQuote, got, want)
+				"Chapter 1: %s\nVibeLang:\n%s\nEffect TypeScript:\n%s\nAPI:\n%s", contractDeclarationQuote, got, want, diff)
 		}
 	})
 }

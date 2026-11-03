@@ -1,3 +1,4 @@
+import { compareApiIdentity } from "../lib/api-identity.mjs"
 import assert from "node:assert/strict"
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { createRequire } from "node:module"
@@ -162,7 +163,7 @@ test("single-use options and safe spreads wire without changing written properti
   }
 })
 
-test("exported plugin factory declarations stay byte-identical under strict checking", () => {
+test("exported plugin factory declarations stay API-identical under strict checking", () => {
   const f = fixture()
   try {
     f.put("ambient.d.ts", 'declare module "rolldown" { export interface Plugin { name: string } } declare module "vibelang-unplugin/rolldown" { import type {Plugin} from "rolldown"; export default function vibelang(): Plugin }\n')
@@ -175,6 +176,13 @@ test("exported plugin factory declarations stay byte-identical under strict chec
       program.emit(undefined, (file, value) => { if (file.endsWith(".d.ts")) outputs.push(value) })
     }
     assert.equal(outputs.length, 2)
-    assert.equal(outputs[0], outputs[1])
+    f.put("before/package.json", JSON.stringify({ types: "./index.d.ts" }))
+    f.put("after/package.json", JSON.stringify({ types: "./index.d.ts" }))
+    f.put("before/index.d.ts", outputs[0])
+    f.put("after/index.d.ts", outputs[1])
+    const result = compareApiIdentity(ts, join(f.root, "before"), join(f.root, "after"), {
+      compilerOptions: { types: [join(f.root, "ambient.d.ts")] },
+    })
+    assert.equal(result.identical, true, JSON.stringify(result, null, 2))
   } finally { f.dispose() }
 })

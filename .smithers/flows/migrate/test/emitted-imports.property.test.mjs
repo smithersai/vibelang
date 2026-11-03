@@ -168,24 +168,40 @@ test("native product import edges use the compiler tree and ignore quoted exampl
   } finally { f.cleanup() }
 })
 
-test("setup accepts byte-identical published declarations and rolls back aliases that would change them", oracle, async () => {
-  for (const reexport of [false, true]) {
+test("setup accepts API-identical published declaration aliases", async () => {
+  for (const reexport of [true, false]) {
     const f = fixture({ native: false, published: true, reexport })
     try {
       const config = { target: f.root, packages: f.packages, emittedProjects: f.projects, toolchain: { kind: "npm" } }
       mkdirSync(join(f.root, "node_modules/.bin"), { recursive: true })
-      symlinkSync(compiler, join(f.root, "node_modules/.bin/vibelang"))
-      const before = ["src/entry.ts", "package.json"].map(file => readFileSync(join(f.root, file), "utf8"))
-      if (reexport) {
-        await assert.rejects(wireEmittedProjects(config, ts, join(f.root, ".logs")), /changes published declarations/)
-        assert.deepEqual(["src/entry.ts", "package.json"].map(file => readFileSync(join(f.root, file), "utf8")), before)
-      } else {
-        const result = await wireEmittedProjects(config, ts, join(f.root, ".logs"))
-        assert.equal(result.declarations, "byte-identical")
-        assert.equal(result.modules.length, 1)
-      }
+      symlinkSync(join(repo, "docs/tools/node_modules/typescript/bin/tsc"), join(f.root, "node_modules/.bin/vibelang"))
+      const result = await wireEmittedProjects(config, ts, join(f.root, ".logs"))
+      assert.equal(result.declarations, "API-identical")
+      assert.equal(result.modules.length, 1)
+      assert.ok(JSON.parse(readFileSync(join(f.root, "package.json"))).imports)
     } finally { f.cleanup() }
   }
+})
+
+test("setup rolls back product aliases when an exported type changes", async () => {
+  const f = fixture({ native: false, published: true })
+  try {
+    const config = { target: f.root, packages: f.packages, emittedProjects: f.projects, toolchain: { kind: "npm" } }
+    mkdirSync(join(f.root, "node_modules/.bin"), { recursive: true })
+    const wrapper = join(f.root, "api-identity-compiler.cjs")
+    writeFileSync(wrapper, [
+      "#!/usr/bin/env node",
+      "const { spawnSync } = require('node:child_process'); const fs = require('node:fs'); const path = require('node:path');",
+      "const args=process.argv.slice(2); const result=spawnSync(process.execPath, ["+JSON.stringify(join(repo,"docs/tools/node_modules/typescript/bin/tsc"))+", ...args], {stdio:'inherit'});",
+      "const out=args[args.indexOf('--outDir')+1];",
+      "if (result.status === 0 && out && out.includes('/after/')) { const file=path.join(out,'entry.d.ts'); fs.writeFileSync(file,fs.readFileSync(file,'utf8').replace('result: number','result: string')); }",
+      "process.exit(result.status ?? 1);"
+    ].join("\n"), {mode:0o755})
+    symlinkSync(wrapper, join(f.root, "node_modules/.bin/vibelang"))
+    const before = ["src/entry.ts", "package.json"].map(file => readFileSync(join(f.root,file),"utf8"))
+    await assert.rejects(wireEmittedProjects(config, ts, join(f.root,".logs")), /changes published declarations[\s\S]*TS2344/)
+    assert.deepEqual(["src/entry.ts", "package.json"].map(file => readFileSync(join(f.root,file),"utf8")),before)
+  } finally { f.cleanup() }
 })
 
 test("the standalone flow persists explicitly selected emitted projects", () => {

@@ -42,9 +42,9 @@
 // declaration identity case: typescript/ holds the Effect TypeScript that the
 // case's .vibe sources rewrite, and both must declare the same API. The
 // harness compiles typescript/ with the same compiler and node_modules, and
-// each .d.ts file it emits under typescript/out/ must equal, byte for byte,
-// the case's own .d.ts file of the same path under out/; neither side may
-// have a declaration file the other lacks. Give typescript/tsconfig.json its
+// each declaration module must export the same names, identical types checked
+// in both directions by tsc, and the same JSDoc. Formatting and equivalent
+// import spellings do not count. Give typescript/tsconfig.json its
 // own outDir, "out". Such a case needs nothing else to compare; it runs only
 // when it also has a run.mjs, an expect-result line or expected/stdout.txt.
 //
@@ -322,22 +322,14 @@ async function checkDeclarationIdentity(dir, commands) {
     return { ok: false, detail: `typescript/ did not compile (exit ${compiled.code})`, log: compiled.stdout + compiled.stderr }
   }
   const want = declarationFiles(path.join(original, "out"))
-  const got = declarationFiles(path.join(dir, "out"))
   if (want.length === 0) return { ok: false, detail: "typescript/ emitted no declaration files", log: compiled.stdout }
-  const missing = want.filter((file) => !got.includes(file))
-  const extra = got.filter((file) => !want.includes(file))
-  if (missing.length > 0 || extra.length > 0) {
-    const parts = [missing.length > 0 && `out/ lacks ${missing.join(" ")}`, extra.length > 0 && `typescript/out/ lacks ${extra.join(" ")}`]
-    return { ok: false, detail: `declaration files differ: ${parts.filter(Boolean).join("; ")}`, log: "" }
-  }
-  for (const file of want) {
-    const a = path.join(original, "out", file)
-    const b = path.join(dir, "out", file)
-    if (fs.readFileSync(a, "utf8") !== fs.readFileSync(b, "utf8")) {
-      const diff = await commands.run("diff", ["-u", a, b], { phase: "compare declarations", cwd: dir, timeout: 10_000 })
-      return { ok: false, detail: `out/${file} declares another API than typescript/out/${file}`, log: diff.stdout }
-    }
-  }
+  const compared = await commands.run(process.execPath, [
+    path.join(root, "../scripts/api-identity.mjs"),
+    "--before", path.join(original, "out"), "--after", path.join(dir, "out")
+  ], { phase: "compare declarations", cwd: dir, timeout: 120_000 })
+  if (compared.code !== 0)
+    return { ok: false, detail: compared.code === 2 ? "declaration API comparison unavailable" : "declaration API differs from typescript/", log: compared.stdout + compared.stderr }
+
   return undefined
 }
 
@@ -439,7 +431,7 @@ async function check(name, commands) {
     const failed = await checkDeclarationIdentity(dir, commands)
     if (failed) return failed
     if (!fs.existsSync(path.join(dir, "run.mjs")) && !headers.entry && !fs.existsSync(path.join(expectedDir, "stdout.txt"))) {
-      return { ok: true, detail: "declarations identical to typescript/", log: output }
+      return { ok: true, detail: "declaration API identical to typescript/", log: output }
     }
   }
 

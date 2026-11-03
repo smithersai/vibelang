@@ -51,7 +51,9 @@ export function alignNominalIdentity(ts, program, before, after, brandFile, entr
       const visit = node => {
         if (ts.isTypeOperatorNode(node) && node.operator === ts.SyntaxKind.KeyOfKeyword) {
           const resolved = checker.typeToTypeNode(checker.getTypeFromTypeNode(node), undefined, ts.NodeBuilderFlags.NoTruncation)
-          if (resolved && !(ts.isTypeOperatorNode(resolved) && resolved.operator === ts.SyntaxKind.KeyOfKeyword)) {
+          const literalKeys = n => ts.isLiteralTypeNode(n) || n.kind === ts.SyntaxKind.NeverKeyword ||
+            (ts.isUnionTypeNode(n) && n.types.every(literalKeys))
+          if (resolved && literalKeys(resolved)) {
             changed = true
             return resolved
           }

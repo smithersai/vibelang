@@ -8,14 +8,24 @@ both inputs without writing to them.
 
 The command reports three lists: exported-name differences, type differences
 with the generated probe's `tsc` diagnostic, and doc-comment differences.
-Exit status `0` means all three are empty; `1` means a difference or an
-invalid declaration input; `2` means the checker could not run.
+Exit status `0` means the comparison completed and all three are empty;
+`1` means an API difference; `2` means the comparison could not complete.
+Environment diagnostics are reported separately and never count as API
+differences. Unrelated diagnostics outside the compared trees do not fail the
+comparison. Invalid owned declarations, unresolved exported types and errors
+in probe setup make the comparison unavailable, with exit status `2`.
 
-Package inputs use `package.json`'s `exports` subpaths and `types` conditions.
+Package inputs use `package.json`'s `exports` subpaths and `types` conditions,
+with `publishConfig` overrides applied. Source and runtime wildcard targets
+map to their emitted declarations; JSON and asset exports have no type surface.
 Separate import and require type conditions are checked separately. Private
 files do not become entry points. A bare directory without publishing metadata
 compares each declaration module, suitable for sidecars and their TypeScript
-twins. An unresolved public declaration or dependency fails the check.
+twins. Resolution uses each file's nearest `vibe.config.json` or
+`tsconfig.json`, including inherited options and `vibe.sidecarDir`.
+Moved sidecars are read at their logical beside-source paths without writing
+to either input tree. An unresolved public declaration or exported dependency
+makes the comparison unavailable.
 
 Types are compared by a generated TypeScript program using the strict
 conditional-function identity helper in both directions, with `typeof` for
@@ -28,8 +38,13 @@ methods retain their inferred types when declaration emit elides annotations;
 a getter/setter pair contributes one visibility marker on its instance or static
 side. Adding, removing or renaming a private member still changes nominal
 identity. Their member types, visibility and enum values remain part of the
-generated type checks. JSDoc is read through the TypeScript API, normalizing
-whitespace and retaining
+generated type checks. Identical deferred
+`infer` and mapped types share a virtual module only after proving their complete
+resolved dependency closures equivalent, including cycles. A changed dependency
+invalidates that proof. Separate installations with the same package name and
+version remain separate until proved equivalent. Dependency pair candidates
+are seeded independently of entry syntax, so reordering entry imports preserves
+unchanged external `unique symbol` types without hiding dependency changes. JSDoc is read through the TypeScript API, normalizing whitespace and retaining
 tags. Formatting, quotes, import order, equivalent module specifiers and
 member order do not fail the check when TypeScript sees the same API.
 Formatter tests may continue to compare bytes to test their formatting.
@@ -37,13 +52,34 @@ Formatter tests may continue to compare bytes to test their formatting.
 The reusable synchronous API is
 `compareApiIdentity(ts, beforeDir, afterDir, options)` from
 `scripts/api-identity.mjs`. It returns `identical`, `nameDifferences`,
-`typeDifferences` and `docDifferences`. Callers with an existing published
+`typeDifferences`, `docDifferences`, `environmentDiagnostics` and
+`comparisonComplete`. `identical` is true only after a complete comparison.
+Each environment record has a `blocking` flag. Callers with an existing published
 surface snapshot can supply `beforeEntrypoints` and `afterEntrypoints`,
 maps from subpath/condition names to declaration paths relative to each tree.
 `compilerOptions` carries the package's stock TypeScript resolution settings.
+External library diagnostics are retained as environment records. A missing
+type used by a compared export blocks the comparison, including when reached
+through an external dependency; unrelated library defects do not block it.
+An explicit `skipLibCheck` cannot turn invalid owned declarations into a
+successful comparison. Type differences include `mutuallyAssignable`, measured by a second
+two-way assignability probe. Strict differences always fail, even when this
+additional result is `true`.
 `loadTypeScript()` loads the pinned compiler API; `formatResult(result)`
 prints the three lists.
 
 Run `smthrs test //:api-identity-test`, or
 `node --test scripts/api-identity.test.mjs`, for the regression corpus and
 the property that harmless rewrites pass while a semantic mutation fails.
+
+Migration snapshots can also supply `beforeResolutions` and
+`afterResolutions`: arrays of `[declarationFile, moduleSpecifier, targetFile]`
+recorded while the original package metadata was available. The checker then
+resolves those edges inside each frozen declaration tree, including package
+aliases, instead of reading changing source files in the working package.
+
+The standalone migrate flow includes generated copies of the checker under
+`.smithers/flows/migrate/lib/`. Edit the canonical `scripts/` sources, then run
+`node scripts/sync-api-identity.mjs --write`. Both `docs:check` and
+`//:api-identity-test` check their freshness so a staged flow keeps the same
+implementation without depending on files outside its stage.

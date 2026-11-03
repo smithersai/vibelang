@@ -120,8 +120,8 @@ export const make = ` + constructor + `(function* (options: { reconnect: Effect.
 		return ""
 	}
 	want, got := declaration(native), declaration(after)
-	if want != got {
-		Gap(t, pipeDeclarationAliasesTarget, key, "Chapter 7: %q\nnative:\n%s\nfixed:\n%s\nsource:\n%s", migrationDeclarationFixQuote, want, got, files["main.vibe"])
+	if diff := compareDeclarationResults(t, native, after); diff != "" {
+		Gap(t, pipeDeclarationAliasesTarget, key, "Chapter 7: %q\nnative:\n%s\nfixed:\n%s\nsource:\n%s\nAPI:\n%s", migrationDeclarationFixQuote, want, got, files["main.vibe"], diff)
 	}
 	if mode%6 == 5 && strings.Contains(files["main.vibe"], ".pipe(") {
 		t.Fatal("a primitive pipeline with unchanged inference must still get its quick fix")

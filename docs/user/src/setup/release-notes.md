@@ -144,6 +144,9 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 ### Bugs fixed since 0.0.10
 
+- Published-declaration checks could reject a package compared with itself when `vibe.sidecarDir` moved its declarations or a dependency had an unrelated TypeScript error. They now resolve moved sidecars, report environment errors separately, and distinguish an unavailable comparison from an API difference.
+- Declaration twins, semantic fuzz checks and emitted-import setup could reject the same exported API over declaration spelling; they now share the API identity checker, preserve frozen package-alias resolution, and report the changed export with its `tsc` diagnostic.
+
 - Bun's release-age setting blocked newly published VibeLang packages in example projects; the examples now exempt their pinned VibeLang packages from that age check.
 - Editor fixes could write invalid annotations around `this` or `super`, a loop binding or a `finally` binding; they now decline edits that cannot preserve the program.
 - Hover and rename missed references in match guards, `is` subjects, `and` patterns and error `extends` clauses; the editor now finds those original source references.

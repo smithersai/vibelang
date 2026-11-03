@@ -1,0 +1,7 @@
+{
+  "package.json": "{\"types\":\"./index.d.ts\"}",
+  "index.d.ts": "export type { WriteTally } from \"./internal/WriteTally.vibe\";\n",
+  "tsconfig.json": "{\"compilerOptions\":{\"rootDirs\":[\".\",\".vibe/declarations\"]},\"vibe\":{\"sidecarDir\":\".vibe/declarations\"}}",
+  "internal/WriteTally.vibe": "export const syntaxStockTscCannotParse = effect { 1 };\n",
+  ".vibe/declarations/internal/WriteTally.d.vibe.ts": "export interface WriteTally { readonly count: number }\n"
+}

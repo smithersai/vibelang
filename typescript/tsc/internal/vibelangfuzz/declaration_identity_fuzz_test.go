@@ -3,6 +3,7 @@ package vibelangfuzz
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -12,6 +13,7 @@ import (
 	"strings"
 	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/collections"
@@ -25,7 +27,7 @@ import (
 // "Declarations are exactly what idiomatic Effect TypeScript would declare."
 // Renaming ordinary .ts sources to .vibe, without editing their text (in
 // particular their ./x.js imports, D298), must preserve stock TypeScript's
-// declarations under the migration identity gate's canonicalize equivalence.
+// exported names, tsc type identity and JSDoc under the shared API gate.
 func FuzzDeclarationIdentity(f *testing.F) {
 	startShortBudget(f)
 	tsc := StockTypeScript(f)
@@ -320,48 +322,77 @@ func emitDeclarationIdentityStock(t *testing.T, w *Workspace, tsc string, stock 
 }
 
 func compareIdentityDeclarations(ctx context.Context, api, baseline, current string) (string, error) {
-	// Import the actual migration gate, never a Go copy of its equivalence.
-	// Added/removed files also show their canonical text in the line diff.
-	// A fuzz program publishes nothing. The gate compares a tree without a
-	// manifest or public-surface.json byte for byte (right for a real
-	// package), so such a tree is compared on a copy that records an empty
-	// public surface: every declaration takes the canonical, private
-	// comparison, and an added private file still counts, as it did before.
-	// A tree with its own metadata is compared as it is.
+	// All API-preservation oracles use the same generated tsc probe as
+	// migration verification. Formatting-specific oracles keep byte checks.
 	const script = `import { createRequire } from "node:module";
-import { cpSync, existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 const [gate, api, baseline, current] = process.argv.slice(1);
-const { canonicalize, compareDeclarations, lineDiff } = await import(pathToFileURL(gate));
+const { compareApiIdentity, formatResult } = await import(pathToFileURL(gate));
 const ts = createRequire(import.meta.url)(api);
-const scratch = mkdtempSync(join(tmpdir(), "identity-"));
-const privately = (dir, name) => {
-  if (!existsSync(dir) || existsSync(join(dir, "public-surface.json")) || existsSync(join(dir, "package.json"))) return dir;
-  const copy = join(scratch, name);
-  cpSync(dir, copy, { recursive: true });
-  writeFileSync(join(copy, "public-surface.json"), JSON.stringify({ roots: [], reachable: [], unresolved: [] }));
-  return copy;
-};
-const before = privately(baseline, "before"), after = privately(current, "after");
-const result = compareDeclarations(ts, before, after);
-const diffs = result.changed.map(({file, diff}) => file + "\n" + diff.join("\n"));
-for (const file of result.removed) diffs.push(file + " (removed)\n" + lineDiff(canonicalize(ts, readFileSync(join(before, file), "utf8"), file), "").join("\n"));
-for (const file of [...result.added, ...(result.addedPrivate ?? [])]) diffs.push(file + " (added)\n" + lineDiff("", canonicalize(ts, readFileSync(join(after, file), "utf8"), file)).join("\n"));
-rmSync(scratch, { recursive: true, force: true });
-console.log(JSON.stringify(diffs.join("\n")));`
-	gate := filepath.Join(Root(), ".smithers/flows/migrate/lib/declarations.mjs")
+const result = compareApiIdentity(ts, baseline, current);
+if (result.comparisonComplete === false) {
+  console.error(formatResult(result));
+  process.exit(2);
+}
+console.log(JSON.stringify(result.identical ? "" : formatResult(result)));`
+	gate := filepath.Join(Root(), "scripts/api-identity.mjs")
 	cmd := exec.CommandContext(ctx, "node", "--input-type=module", "-e", script, gate, api, baseline, current)
+	started := time.Now()
 	out, err := cmd.CombinedOutput()
 	if err != nil {
-		return "", fmt.Errorf("migration declaration identity gate: %w: %.1200s", err, out)
+		if ctx.Err() != nil {
+			return "", fmt.Errorf("migration declaration identity probe interrupted after %s: %w (process: %v): %.1200s", time.Since(started).Round(time.Millisecond), ctx.Err(), err, out)
+		}
+		return "", fmt.Errorf("migration declaration identity probe failed after %s: %w: %.1200s", time.Since(started).Round(time.Millisecond), err, out)
 	}
 	var diff string
 	if err := json.Unmarshal(out, &diff); err != nil {
 		return "", fmt.Errorf("migration declaration identity result: %w: %.600s", err, out)
 	}
 	return diff, nil
+}
+
+// Semantic declaration oracles preserve complete output trees so relative
+// references resolve exactly as they do in the emitted package.
+func compareDeclarationResults(t *testing.T, before, after *Result) string {
+	t.Helper()
+	dirs := []string{t.TempDir(), t.TempDir()}
+	for i, result := range []*Result{before, after} {
+		count := 0
+		for file, text := range result.Outputs {
+			if !isDeclaration(file) {
+				continue
+			}
+			if err := writeInside(dirs[i], file, text); err != nil {
+				t.Fatal(err)
+			}
+			count++
+		}
+		if count == 0 {
+			t.Fatal("project emitted no declarations")
+		}
+	}
+	return compareDeclarationTrees(t, dirs[0], dirs[1])
+}
+func compareDeclarationTexts(t *testing.T, before, after string) string {
+	t.Helper()
+	dirs := []string{t.TempDir(), t.TempDir()}
+	for i, text := range []string{before, after} {
+		if err := writeInside(dirs[i], "main.d.ts", text); err != nil {
+			t.Fatal(err)
+		}
+	}
+	return compareDeclarationTrees(t, dirs[0], dirs[1])
+}
+func compareDeclarationTrees(t *testing.T, before, after string) string {
+	t.Helper()
+	ctx, cancel := context.WithTimeout(t.Context(), 2*HangLimit)
+	defer cancel()
+	diff, err := compareIdentityDeclarations(ctx, declarationIdentityAPI(t), before, after)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return diff
 }
 
 func TestDeclarationIdentityAdmission(t *testing.T) {
@@ -447,15 +478,18 @@ func TestDeclarationIdentityCanonicalization(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	write(before, "main.d.ts", `/** baseline */
-export { value } from "./other.ts";
+	write(before, "main.d.ts", `export { value } from "./other.ts";
+/** shape */
 export type Shape = { b: number; a: string } | undefined;`)
-	write(after, "main.d.ts", `/** @throws {never} */
-export { value } from "./other.js";
+	write(after, "main.d.ts", `export { value } from "./other.js";
+/** shape */
 export type Shape = undefined | { a: string; b: number };`)
+	for _, dir := range []string{before, after} {
+		write(dir, "other.d.ts", "export declare const value: string;\n")
+	}
 	diff, err := compareIdentityDeclarations(t.Context(), api, before, after)
 	if err != nil || diff != "" {
-		t.Fatalf("migration equivalence: %v\n%s", err, diff)
+		t.Fatalf("API identity: %v\n%s", err, diff)
 	}
 	write(before, "changed.d.ts", "export declare const value: string;\n")
 	write(after, "changed.d.ts", "export declare const value: number;\n")
@@ -465,28 +499,25 @@ export type Shape = undefined | { a: string; b: number };`)
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, line := range []string{
-		"-1: export declare const value: string;", "+1: export declare const value: number;",
-		"removed.d.ts (removed)", "-1: export declare const removed: boolean;",
-		"added.d.ts (added)", "+1: export declare const added: boolean;",
-	} {
-		if !strings.Contains(diff, line) {
-			t.Errorf("declaration difference lacks %q:\n%s", line, diff)
+	for _, text := range []string{"changed.d.ts", "TS2344", "removed.d.ts", "added.d.ts"} {
+		if !strings.Contains(diff, text) {
+			t.Errorf("API difference lacks %q:\n%s", text, diff)
 		}
 	}
-	// A tree with its own manifest keeps the gate's own surface: main.d.ts
-	// is published, so the reordered union and the comment count.
+	// A manifest checks its public entry, not the private changed files.
 	for _, dir := range []string{before, after} {
 		write(dir, "package.json", `{"name":"published","types":"./main.d.ts"}`)
 	}
 	diff, err = compareIdentityDeclarations(t.Context(), api, before, after)
-	if err != nil {
-		t.Fatal(err)
+	if err != nil || diff != "" {
+		t.Fatalf("private file difference: %v\n%s", err, diff)
 	}
-	for _, line := range []string{"-1: /** baseline */", "+3: export type Shape = undefined | { a: string; b: number };"} {
-		if !strings.Contains(diff, line) {
-			t.Errorf("published declaration difference lacks %q:\n%s", line, diff)
-		}
+	write(after, "main.d.ts", `export { value } from "./other.js";
+/** changed shape */
+export type Shape = undefined | { a: string; b: number };`)
+	diff, err = compareIdentityDeclarations(t.Context(), api, before, after)
+	if err != nil || !strings.Contains(diff, "Doc-comment differences") || !strings.Contains(diff, "Shape") {
+		t.Fatalf("changed public JSDoc was not reported: %v\n%s", err, diff)
 	}
 }
 
@@ -510,5 +541,14 @@ func TestDeclarationIdentityRejectsStockErrors(t *testing.T) {
 		if !compiled || !child.Skipped() {
 			t.Errorf("%s: compared an invalid TypeScript source's recovery declarations", name)
 		}
+	}
+}
+
+func TestDeclarationIdentityCanceledProbe(t *testing.T) {
+	ctx, cancel := context.WithCancel(t.Context())
+	cancel()
+	_, err := compareIdentityDeclarations(ctx, "", t.TempDir(), t.TempDir())
+	if !errors.Is(err, context.Canceled) || !strings.Contains(err.Error(), "probe interrupted") {
+		t.Fatalf("expected an explicitly canceled probe, got %v", err)
 	}
 }

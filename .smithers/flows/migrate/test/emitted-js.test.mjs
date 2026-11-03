@@ -234,3 +234,17 @@ test("the migrate flow loads from a staged .smithers copy outside the repository
   assert.equal(entry.package, "packages/schema")
   assert.match(entry.error, /^vibelang\/project is not installed for this package/)
 })
+
+test("the staged API checker shares nominal identity in NodeNext CommonJS declarations", async t => {
+  const { top, flow } = stageFlow(t)
+  write(join(flow, "../.."), { "package.json": '{"type":"module"}' })
+  const before = join(top, "before"), after = join(top, "after")
+  write(before, { "index.d.cts": "export declare class C { private brand; x: string; }" })
+  write(after, { "index.d.cts": "export declare class C { x: string; private brand; }" })
+  const ts = require("typescript")
+  const { compareApiIdentity } = await import(pathToFileURL(join(flow, "lib/api-identity.mjs")))
+  const result = compareApiIdentity(ts, before, after, {
+    compilerOptions: { module: ts.ModuleKind.NodeNext, moduleResolution: ts.ModuleResolutionKind.NodeNext }
+  })
+  assert.equal(result.identical, true, JSON.stringify(result))
+})

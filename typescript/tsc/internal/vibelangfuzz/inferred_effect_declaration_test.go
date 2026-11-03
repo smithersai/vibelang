@@ -15,7 +15,7 @@ func TestInferredEffectDeclarationQuoted(t *testing.T) {
 }
 
 // OpenCode's workerd entry imports Layer, while only a native helper names
-// Effect. Compare raw native declarations across factories, function shapes
+// Effect. Compare the exported API of native declarations across factories, function shapes
 // and authored imports; do not replace import types by equivalent aliases.
 func FuzzInferredEffectDeclaration(f *testing.F) {
 	startShortBudget(f)
@@ -62,8 +62,8 @@ func FuzzInferredEffectDeclaration(f *testing.F) {
 			return ""
 		}
 		want, got := declaration(original), declaration(candidate)
-		if want != got {
-			Gap(t, inferredEffectDeclarationTarget, key, "Chapter 1: %q\nnative:\n%s\nvibe:\n%s\nsource:\n%s", migrationDefaultProgramQuote, want, got, main)
+		if diff := compareDeclarationResults(t, original, candidate); diff != "" {
+			Gap(t, inferredEffectDeclarationTarget, key, "Chapter 1: %q\nnative:\n%s\nvibe:\n%s\nsource:\n%s\nAPI:\n%s", migrationDefaultProgramQuote, want, got, main, diff)
 		}
 	})
 }
