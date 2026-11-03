@@ -22,13 +22,13 @@ export function loadTypeScript(dirs = []) {
   throw new Error("TypeScript compiler API unavailable; run (cd docs/tools && bun install --frozen-lockfile)")
 }
 
-function filesUnder(dir, includeJson = false) {
+function filesUnder(dir, includeJson = false, includeSource = false) {
   const out = []
   for (const item of readdirSync(dir, { withFileTypes: true })) {
     if (["node_modules", ".jj", ".git"].includes(item.name)) continue
     const path = join(dir, item.name)
-    if (item.isDirectory()) out.push(...filesUnder(path, includeJson))
-    else if (declaration.test(item.name) || (includeJson && item.name.endsWith(".json"))) out.push(path)
+    if (item.isDirectory()) out.push(...filesUnder(path, includeJson, includeSource))
+    else if (declaration.test(item.name) || (includeJson && item.name.endsWith(".json")) || (includeSource && /\.(?:[cm]?[jt]sx?|vibe)$/.test(item.name))) out.push(path)
   }
   return out.sort()
 }
@@ -123,6 +123,7 @@ export function publishedEntrypoints(directory, tsCompiler) {
   const manifest = { ...raw, ...raw.publishConfig }
   const entries = {}
   const all = filesUnder(directory, true)
+  const unresolvedPatterns = new Map()
   const exportMap = manifest.exports && !Array.isArray(manifest.exports) && typeof manifest.exports === "object" &&
     Object.keys(manifest.exports).some(key => key.startsWith(".")) ? manifest.exports : undefined
   // Exact subpaths override patterns; longest prefixes, then longest trailers,
@@ -140,7 +141,7 @@ export function publishedEntrypoints(directory, tsCompiler) {
     // Missing declaration targets fail closed.
     if (/\.(?:css|wasm)$/.test(target)) return
     const path = resolve(directory, target)
-    if (target.includes("*")) {
+    if (target.includes("*") && key.split("#")[0].includes("*")) {
       const expected = declaration.test(path) ? path
         : path.replace(/\.(?:[cm]?[jt]sx?|vibe)$/, path.endsWith(".mjs") || path.endsWith(".mts") ? ".d.mts"
           : path.endsWith(".cjs") || path.endsWith(".cts") ? ".d.cts" : ".d.ts")
@@ -155,7 +156,10 @@ export function publishedEntrypoints(directory, tsCompiler) {
           found = true
         }
       }
-      if (!found) entries[key] = expected
+      if (!found) {
+        entries[key] = expected
+        unresolvedPatterns.set(key, { target: path, origin })
+      }
     } else entries[key] = declarationPath(path) ?? path
   }
 
@@ -186,32 +190,90 @@ export function publishedEntrypoints(directory, tsCompiler) {
     const host = { ...ts.sys, readFile: path => resolve(path) === manifestFile ? publishedManifest : ts.sys.readFile(path) }
     projectSidecarHost(ts, host)
     const clean = key => key.replace(/#fallback\d+|#default/g, "")
+    const jsonModules = projectJsonModules(ts, directory)
+    const resolutionCaches = new Map()
+    const resolvePublished = (subpath, extra, mode) => {
+      const options = {
+        module: ts.ModuleKind.ESNext, moduleResolution: ts.ModuleResolutionKind.Bundler,
+        allowArbitraryExtensions: true, resolveJsonModule: jsonModules, customConditions: extra
+      }
+      const context = JSON.stringify([extra, mode])
+      if (!resolutionCaches.has(context))
+        resolutionCaches.set(context, ts.createModuleResolutionCache(directory, path => path, options))
+      return ts.resolveModuleName(packageName + (subpath === "." ? "" : subpath.slice(1)),
+        join(directory, "__api_identity_consumer.ts"), options, host,
+        resolutionCaches.get(context), undefined, mode).resolvedModule
+    }
+    const unrepresented = new Set()
+    const groups = new Map()
+    for (const [key, path] of Object.entries(entries)) {
+      const subpath = key.split("#")[0]
+      if (!groups.has(subpath)) groups.set(subpath, [])
+      groups.get(subpath).push([key, path])
+    }
     const conditionSets = [...new Set(Object.keys(entries).map(key => JSON.stringify(key.split("#").slice(1)
       .filter(key => !/^fallback\d+$/.test(key) && !["import", "require", "default", "types"].includes(key)))))].map(JSON.parse)
-    for (const subpath of [...new Set(Object.keys(entries).map(key => key.split("#")[0]))]) {
-      const candidates = Object.entries(entries).filter(([key]) => key.split("#")[0] === subpath)
+    for (const [subpath, candidates] of groups) {
       for (const [key] of candidates) delete entries[key]
       let found = false
       for (const extra of [[], ...conditionSets]) {
         for (const [mode, meaning] of [[ts.ModuleKind.ESNext, "import"], [ts.ModuleKind.CommonJS, "require"]]) {
-          const resolved = ts.resolveModuleName(packageName + (subpath === "." ? "" : subpath.slice(1)),
-            join(directory, "__api_identity_consumer.ts"), {
-              module: ts.ModuleKind.ESNext, moduleResolution: ts.ModuleResolutionKind.Bundler,
-              allowArbitraryExtensions: true, resolveJsonModule: projectJsonModules(ts, directory), customConditions: extra
-            }, host, undefined, undefined, mode).resolvedModule
+          const resolved = resolvePublished(subpath, extra, mode)
           if (!resolved) continue
           const target = declarationPath(resolved.resolvedFileName) ?? resolved.resolvedFileName
           const applicable = candidates.filter(([key, path]) =>
             (path === target || path.endsWith(".vibe") && path.replace(/\.vibe$/, ".d.vibe.ts") === target) &&
             clean(key).split("#").slice(1).every(condition =>
               condition === meaning || condition === "default" || extra.includes(condition)))
-          if (!applicable.length) continue
+          if (!applicable.length) { unrepresented.add(subpath); continue }
           const key = applicable.map(([key]) => clean(key)).sort((a, b) => a.length - b.length || a.localeCompare(b))[0]
           entries[key] = target
           found = true
         }
       }
       if (!found && candidates.length) entries[subpath] = candidates.at(-1)[1]
+    }
+    // An unmatched conditional target is a pattern, not a concrete public name.
+    // Drop its placeholder only after checking every existing alternative file:
+    // reachable source-only names or unresolved selected surfaces stay unavailable.
+    const wildcard = value => new RegExp("^" + slash(value).split("*")
+      .map(piece => piece.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("(.*)") + "$")
+    let sourceFiles
+    for (const [pattern, candidates] of groups) {
+      if (!pattern.includes("*") || !entries[pattern] || host.fileExists(entries[pattern])) continue
+      const matcher = wildcard(pattern)
+      const represented = new Set(Object.keys(entries).map(key => key.split("#")[0])
+        .filter(key => !key.includes("*") && matcher.test(key)))
+      if (!represented.size || [...represented].some(key => unrepresented.has(key))) continue
+      sourceFiles ??= filesUnder(directory, true, true)
+      let uncovered = false
+      for (const [key, path] of candidates) {
+        const item = unresolvedPatterns.get(key)
+        if (!item) continue
+        const variants = new Set([item.target, path])
+        const extension = /\.(?:[cm]?[jt]sx?|vibe)$/.exec(item.target)?.[0]
+        const replacements = extension === ".js" || extension === ".jsx" ? [".ts", ".tsx"]
+          : extension === ".mjs" ? [".mts"] : extension === ".cjs" ? [".cts"]
+          : extension === ".vibe" ? [".d.vibe.ts"] : []
+        for (const replacement of replacements) variants.add(item.target.slice(0, -extension.length) + replacement)
+        for (const target of variants) {
+          const files = wildcard(target)
+          for (const file of sourceFiles) {
+            const match = slash(file).match(files)
+            if (!match) continue
+            const subpath = pattern.replace("*", match[1])
+            if (exportMap && selectedExport(subpath) !== item.origin || represented.has(subpath)) continue
+            if ([[], ...conditionSets].some(extra =>
+              [ts.ModuleKind.ESNext, ts.ModuleKind.CommonJS].some(mode => resolvePublished(subpath, extra, mode)))) {
+              uncovered = true
+              break
+            }
+          }
+          if (uncovered) break
+        }
+        if (uncovered) break
+      }
+      if (!uncovered) delete entries[pattern]
     }
   }
   return entries

@@ -1,0 +1,25 @@
+{
+  "repo": "alchemy",
+  "rule": "Only concrete subpaths selected by TypeScript are published names; shadowed wildcard alternatives are not extra modules.",
+  "manifest": {
+    "name": "fixture",
+    "type": "module",
+    "exports": {
+      "./*": {
+        "types": "./lib/*/index.d.ts",
+        "bun": "./src/*/index.ts",
+        "default": "./lib/*/index.js"
+      }
+    }
+  },
+  "files": {
+    "lib/one/index.d.ts": "export type X=string;",
+    "lib/two/index.d.ts": "export type X=string;",
+    "src/one/index.ts": "export type X=string;",
+    "src/two/index.ts": "export type X=string;"
+  },
+  "expectedEntrypoints": [
+    "./one",
+    "./two"
+  ]
+}
