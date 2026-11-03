@@ -50,6 +50,8 @@ An `async` function's `throw` rejects its Promise, as in TypeScript, and its dec
 
 A foreign function value must fit the function type it is passed or assigned as. A function type without `@throws` admits only a function that throws `never`, `@throws {U}` admits subtypes of `U`, and `@throws {unknown}` admits anything. So a `.ts` function declared `@throws {Error}`, passed where `() => void` is expected, is `EK0402` as an argument, an object member, a spread member, an initializer, an array element or a returned value. A parameter named by `@rethrows`, the callback of `Array` iteration methods such as `map`, and the thunk of `Effect.try` and `tryPromise` admit any thrown type.
 
+`try value` delegates like `yield* value`, including in a tail return. An unchecked `any` adds no runtime Effect guard: a noniterable produces a native `TypeError` defect, while an ordinary iterator can delegate Effects or return a value. Typed operands must still pass the Effect operand check.
+
 In an effect function, `throw` is a typed failure and a catch expression receives typed failures only. A plain function can't throw: a `throw` there is `EK0401`, and so is a call known to throw, such as `JSON.parse(text)`, unless the call sits in the `try` block of a `try`/`catch` statement. Make the function `effect`, or move the code to a `.ts` file. A plain function's `try`/`catch` statement still handles exceptions from the calls it makes while returning a value:
 
 ```vibe

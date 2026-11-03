@@ -670,6 +670,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - An overflowing `GO_TEST_SLICE` value could skip every Go test and report `PASS`; the shard launcher now rejects it before discovering or running tests.
 
+- Returning `try` over an unchecked `any` could report an invalid Effect instead of a native iterator error. Tail returns now preserve native delegation, including `TypeError` defects and ordinary iterator completions.
+
 - Specification table and authority checks rejected the historical explanation that accepted `VIP-40` supersedes denied `VIP-25`. They now verify the accepted successor while continuing to reject positive authority claims based on the denied proposal.
 - API checks lost referenced ambient or library types when a declaration also contained a private class. Nominal alignment now preserves leading reference directives, and referenced type changes remain visible.
 

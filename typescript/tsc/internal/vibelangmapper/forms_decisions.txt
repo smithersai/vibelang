@@ -1393,8 +1393,12 @@ typescript/vibelang/cases/cov-running-sites/main.vibe:78:53 byname program table
 typescript/vibelang/cases/cov-running-sites/main.vibe:80:24 lambda effectFn table
 typescript/vibelang/cases/cov-running-sites/main.vibe:91:33 lambda effectFn table
 typescript/vibelang/cases/cov-running-sites/main.vibe:94:129 lambda plain fallback
-typescript/vibelang/cases/cov-running-unchecked/main.vibe:11:35 byname program table
-typescript/vibelang/cases/cov-running-unchecked/main.vibe:12:103 lambda plain fallback
+typescript/vibelang/cases/cov-running-unchecked/main.vibe:10:55 lambda plain fallback
+typescript/vibelang/cases/cov-running-unchecked/main.vibe:11:22 lambda plain fallback
+typescript/vibelang/cases/cov-running-unchecked/main.vibe:12:26 lambda plain fallback
+typescript/vibelang/cases/cov-running-unchecked/main.vibe:13:44 lambda dual fallback
+typescript/vibelang/cases/cov-running-unchecked/main.vibe:17:35 byname program table
+typescript/vibelang/cases/cov-running-unchecked/main.vibe:18:103 lambda plain fallback
 typescript/vibelang/cases/cov-running-yieldable-error/main.vibe:6:33 lambda program table
 typescript/vibelang/cases/cov-running-yieldable-error/main.vibe:7:62 lambda plain fallback
 typescript/vibelang/cases/cov2-002a-block-outward-jump.fail/main.vibe:4:63 lambda plain fallback

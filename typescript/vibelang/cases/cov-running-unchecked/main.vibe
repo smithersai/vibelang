@@ -4,7 +4,13 @@ import { inputs } from "./inputs.js"
 // Chapter 2: A noniterable such as `5`, `undefined` or an ordinary Promise produces a native `TypeError` defect; 
 // docs/design/src/002-running.md#4148e44b809b1e0e
 import { Effect } from "effect"
-effect function unchecked(value: any) { return try value }
+export effect function unchecked(value: any) { return try value }
+export effect function conditional(value: any) { return true ? try value : 0 }
+export effect function comma(value: any) { return (void 0, try value) }
+export effect function call(value: any) { return try (() => value)() }
+export const arrow = effect (value: any) => try value
+export const methods = { effect run(value: any) { return try value } }
+export function block(value: any) { return effect { return try value } }
 export effect function main() {
  const observations: unknown[] = []
  for (const value of inputs()) {
