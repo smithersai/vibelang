@@ -1,0 +1,14 @@
+// expect-result: {"listening":true}
+// foldkit's typing-game/server/src/index.ts: a real server, with no .ts file for node:http's createServer.
+import { ExperimentalNodeHttpServer } from "vibelang-runtime/experimental/platform-node"
+
+effect function listening() {
+  const server = try HttpServer.HttpServer
+  return "port" in server.address && server.address.port > 0
+}
+
+export effect function main() {
+  provide ExperimentalNodeHttpServer.layer({ port: 0 }) {
+    return { listening: try listening() }
+  }
+}

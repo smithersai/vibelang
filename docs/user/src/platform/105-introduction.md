@@ -48,7 +48,7 @@ Each Node.js or web call has an Effect replacement, which needs no import. EK440
 | `process.cwd` | `(try Path.Path).resolve()` | `NodeServices.layer` |
 | `child_process.execFileSync` | `try (try ChildProcessSpawner.ChildProcessSpawner).string(ChildProcess.make(command, args))` | `NodeServices.layer` |
 | `fetch` | `try HttpClient.get(url)` | `FetchHttpClient.layer` |
-| `http.createServer` | `try HttpRouter.serve(app)` | `NodeHttpServer.layer(createServer, { port })` |
+| `http.createServer` | `try HttpRouter.serve(app)` | `ExperimentalNodeHttpServer.layer({ port })` |
 | `crypto.randomUUID` | `try (try SecureRandom.SecureRandom).uuidV4()` | `NodeCrypto.layer` |
 | `crypto.subtle.digest` | `try (try Digest.Digest).digest(Digest.sha256, bytes)` | `NodeCrypto.layer` |
 | `process.argv` | `try (try Stdio.Stdio).args` | `NodeServices.layer` |

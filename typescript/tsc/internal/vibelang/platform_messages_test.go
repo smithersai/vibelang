@@ -84,7 +84,7 @@ export const run = () => execFileSync("git", ["status"])`, []string{
 export const run = () => createServer()`, []string{
 			"createServer from node:http is platform code, which a .vibe file does not import as a value.",
 			"Use HttpRouter:   HttpRouter.serve(app)",
-			`Provide it in main with NodeHttpServer.layer(createServer, { port }) from "@effect/platform-node", which runs createServer itself.`,
+			`Provide it in main with ExperimentalNodeHttpServer.layer({ port }) from "vibelang-runtime/experimental/platform-node", or BunHttpServer.layer({ port }) from "@effect/platform-bun".`,
 		}},
 		{"type-only import", `import type { Server } from "node:http"
 import { type Server as Other } from "node:http"

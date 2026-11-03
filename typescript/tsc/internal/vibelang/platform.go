@@ -81,7 +81,7 @@ var platformServices = map[string]*platformService{
 	"HttpClient": {"HttpClient", "HttpClient.get(url)", "",
 		`FetchHttpClient.layer from "effect/http", or NodeHttpClient.layerUndici from "@effect/platform-node"`},
 	"HttpServer": {"HttpRouter", "HttpRouter.serve(app)", "",
-		`NodeHttpServer.layer(createServer, { port }) from "@effect/platform-node", which runs createServer itself`},
+		`ExperimentalNodeHttpServer.layer({ port }) from "vibelang-runtime/experimental/platform-node", or BunHttpServer.layer({ port }) from "@effect/platform-bun"`},
 	"Socket":    {"the Socket service", "", "", `NodeSocket.layerNet({ host, port }) from "@effect/platform-node"`},
 	"SocketTls": {"the Socket service", "", "", `NodeSocket.layerTls(options) from "@effect/platform-node"`},
 	"WebSocket": {"the Socket service", "Socket.makeWebSocket(url)", "",

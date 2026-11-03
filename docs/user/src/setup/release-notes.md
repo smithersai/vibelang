@@ -662,6 +662,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Programs created or reconfigured through the compiler API lost parsed `vibe` settings, so severity overrides and disabled Effect globals or modules stopped applying; both API paths now retain those settings.
 
 - The `Option.gen` quick fix could close iterators that native Effect leaves suspended on `None`; a delegated yield inside an active `for...of` body now keeps the diagnostic and explains why it needs a manual rewrite.
+
+- `EK4402` told a `.vibe` file to use `NodeHttpServer.layer(createServer, { port })`, whose `createServer` it may not import; `ExperimentalNodeHttpServer.layer({ port })` now supplies it, `EK4402` names it, and the HTTP guide no longer needs a `.ts` companion file.
 - Resolved schema-binding regressions still appeared as pending gaps; namespace, function and escaped-name coverage now checks `EK2109` strictly while keeping every keyed corpus.
 - Schema library-alias checks now compare array decoding and mutability with native TypeScript and explicit Schema controls; remaining decoder gaps keep precise pending records.
 

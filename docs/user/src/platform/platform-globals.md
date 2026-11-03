@@ -300,21 +300,16 @@ effect function pageTitle() {
 }
 ```
 
-Keep Node.js imports in TypeScript too. For example, expose the `createServer` value needed by `NodeHttpServer.layer` from a separate file:
-
-```ts
-// fragment
-// server.ts
-// The snippet checker installs no @types/node, which declares node:http.
-import { createServer } from "node:http"
-export const server = createServer
-```
+Keep Node.js value imports in TypeScript too. For the default HTTP server, `ExperimentalNodeHttpServer.layer({ port })` supplies Node's `createServer` to Effect's existing layer:
 
 ```vibe
-// fragment
 // pending: VIP-14, VIP-33
-import { server } from "./server.ts"
+import { ExperimentalNodeHttpServer } from "vibelang-runtime/experimental/platform-node"
+
+export const Server = ExperimentalNodeHttpServer.layer({ port: 3000 })
 ```
+
+A server that needs custom `createServer` options belongs in a `.ts` file, which calls `NodeHttpServer.layer` with that constructor.
 
 ## Limits of static checks
 

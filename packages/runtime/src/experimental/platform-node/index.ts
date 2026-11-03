@@ -9,6 +9,7 @@
  */
 export * as ExperimentalNodeCrypto from "./ExperimentalNodeCrypto.js"
 export * as ExperimentalNodeFileSystem from "./ExperimentalNodeFileSystem.js"
+export * as ExperimentalNodeHttpServer from "./ExperimentalNodeHttpServer.js"
 export * as ExperimentalNodeLocks from "./ExperimentalNodeLocks.js"
 export * as ExperimentalNodeProcess from "./ExperimentalNodeProcess.js"
 export * as ExperimentalNodeServices from "./ExperimentalNodeServices.js"

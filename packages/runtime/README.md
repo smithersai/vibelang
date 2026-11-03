@@ -238,7 +238,7 @@ platform, host name and other facts, `kill` and `isRunning`),
 `changes` over `window.matchMedia`). Each service has its own key; `FileSystem` is a superset of
 Effect's interface. The layers are in
 `vibelang-runtime/experimental/platform-node` (`ExperimentalNodeServices`,
-`ExperimentalNodeFileSystem`, `ExperimentalNodeCrypto`, `ExperimentalNodeProcess`, `ExperimentalNodeLocks`), `-bun`
+`ExperimentalNodeFileSystem`, `ExperimentalNodeCrypto`, `ExperimentalNodeProcess`, `ExperimentalNodeLocks`, `ExperimentalNodeHttpServer`), `-bun`
 (`ExperimentalBunServices`, `ExperimentalBunFileSystem`, `ExperimentalBunCrypto`, `ExperimentalBunProcess`) and `-browser`
 (`ExperimentalBrowserServices`, `ExperimentalBrowserCrypto`, `ExperimentalBrowserLocks`, `ExperimentalBrowserMediaQuery`, `ExperimentalBrowserInfo`, `ExperimentalBrowserDocument`, `ExperimentalBrowserResizeObserver`, `ExperimentalBrowserFileReader`, `ExperimentalBrowserAnimations`). A layer of a service
 that extends Effect's provides the experimental service and Effect's service

@@ -65,23 +65,14 @@ export const App = HttpRouter.provideRequest(UsersLive)(Routes)
 
 ## Start the Node server
 
-Keep the Node.js import in a TypeScript companion file:
-
-```ts
-// node-server.ts
-// types: node
-export { createServer } from "node:http"
-```
-
 ```vibe
 // server.vibe
 // run: provide Logger.layer([]) { try scoped(effect { try Layer.build(server(0)); try Console.log("server acquired") }); try Console.log("server released") }
-import * as NodeHttpServer from "@effect/platform-node/NodeHttpServer"
-import { createServer } from "./node-server.ts"
+import { ExperimentalNodeHttpServer } from "vibelang-runtime/experimental/platform-node"
 import { App } from "./routes.vibe"
 
 function server(port: number) {
-  const Server = NodeHttpServer.layer(createServer, { port })
+  const Server = ExperimentalNodeHttpServer.layer({ port })
   return Layer.provide(HttpRouter.serve(App), Server)
 }
 const Live = server(3000)
@@ -93,7 +84,7 @@ export effect function main() {
 // Output: server released
 ```
 
-A `.vibe` file imports no Node.js value directly, so the TypeScript companion file brings in Node's `createServer`. `NodeHttpServer.layer` runs it and owns its lifetime. `HttpRouter.serve` builds the serving layer, and `Layer.launch` keeps it alive until shutdown.
+A `.vibe` file imports no Node.js value directly, so `ExperimentalNodeHttpServer.layer` is `NodeHttpServer.layer` with Node's `createServer` supplied. `NodeHttpServer.layer` runs it and owns its lifetime. `HttpRouter.serve` builds the serving layer, and `Layer.launch` keeps it alive until shutdown.
 
 The module top level constructs schemas, routes, and layers. Start the application from a separate entry module:
 

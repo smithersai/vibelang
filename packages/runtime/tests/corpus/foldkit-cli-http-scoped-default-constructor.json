@@ -1,0 +1,9 @@
+{
+  "key": "foldkit-73:cli-http-scoped-default-constructor",
+  "spec": "VIP-33: reuse Effect NodeHttpServer; its server closes with its scope",
+  "cycles": [
+    { "config": false, "contend": true },
+    { "config": true, "contend": false },
+    { "config": true, "contend": true }
+  ]
+}
