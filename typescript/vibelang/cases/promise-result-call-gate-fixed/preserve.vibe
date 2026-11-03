@@ -1,0 +1,26 @@
+const events: string[] = []
+const templates: TemplateStringsArray[] = []
+function value(n: number) { events.push("value:" + n); return n }
+const object = {
+  multiplier: 3,
+  async tag(parts: TemplateStringsArray, n: number) {
+    templates.push(parts)
+    events.push("tag:" + n)
+    return this.multiplier * n
+  }
+}
+effect function invoke(n: number) {
+  const p = try Effect.orDie(Effect.try({ try: () => object.tag`a${value(n)}b`, catch: (error) => error }))
+  return { p }
+}
+export effect function sequence() {
+  const a = try invoke(2)
+  const b = try invoke(3)
+  const pending = try Effect.orDie(Effect.try({ try: () => new Promise<number>(() => {}), catch: (error) => error }))
+  return { a: a.p, b: b.p, pending, events, sameTemplate: templates[0] === templates[1] }
+}
+import { bad, sentinel } from "./preserve-native.js"
+export { sentinel } from "./preserve-native.js"
+export effect function defect() {
+  return try Effect.orDie(Effect.try({ try: () => bad(), catch: (error) => error }))
+}

@@ -639,6 +639,9 @@ func checkTrust(c *checker.Checker, file *ast.SourceFile) {
 }
 
 func checkCall(c *checker.Checker, a *analyzer, file *ast.SourceFile, call *ast.Node) {
+	if unwrappedPromiseInvocation(c, call) {
+		return
+	}
 	if fn := enclosingFunction(call); fn != nil && !a.runsAsEffect(fn) {
 		return // D282: a plain function's calls of TypeScript code are JavaScript calls
 	}

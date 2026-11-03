@@ -1530,6 +1530,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - A schema struct repair could delete a custom associated type whose helper was also spelled `Schema.Schema.Type`. The repair now resolves the helper and preserves unrelated aliases and interfaces.
 
+- Promise-producing calls, constructors and tagged templates in effect code could bypass the required bridge, including union results. They now report `EK0404`; `--fix` preserves the Promise as data through a synchronous boundary.
+
 - The import-cleanup specification required identical declaration bytes even when the public API was unchanged. It now uses VIP-27 API identity, and a specification check rejects that contradictory requirement.
 - Loading a `.vibe` module through `vibelang/register`, `vibelang/bun` or a bundler plugin failed with `TS6305: Output file '…/lib/x.d.ts' has not been built from source file '…/src/x.ts'` when its tsconfig `references` a project that was not built yet, as in a fresh clone before `vibelang -b`; the loader's compile now reads a referenced project's types from its sources, as the editor does, and a relative import into that project no longer reports `TS2878`.
 - Interruption blocks in plain or `async` code were accepted, or `restore` reported a nesting error. All three forms now report `EK2201` outside effect code. `vibelang --fix` removes the ignored keyword and keeps the ordinary JavaScript block.

@@ -20,11 +20,6 @@ FuzzFailuresSpec  feature:rethrows-some-throwing  compiler  VIP-4: 003-failures.
 FuzzFailuresSpec  feature:rethrows-every-throwing  compiler  VIP-4: 003-failures.md rejects the marked call for "Shipped annotations cover `map`, `forEach`, `filter`, `reduce`, `find`, `some`, `every`, `sort`, `Array.fro…"; lane w2-throw
 FuzzFailuresSpec  feature:rethrows-sort-throwing  compiler  VIP-4: 003-failures.md rejects the marked call for "Shipped annotations cover `map`, `forEach`, `filter`, `reduce`, `find`, `some`, `every`, `sort`, `Array.fro…"; lane w2-throw
 FuzzFailuresSpec  feature:rethrows-array-from-throwing  compiler  VIP-4: 003-failures.md rejects the marked call for "Shipped annotations cover `map`, `forEach`, `filter`, `reduce`, `find`, `some`, `every`, `sort`, `Array.fro…"; lane w2-throw
-FuzzFailuresSpec  feature:promise-async-local  compiler  VIP-4: 003-failures.md rejects the marked call for "In effect code, a call returning a Promise or thenable, even if assigned to a variable and never awaited. M…"; lane w2-throw
-FuzzFailuresSpec  feature:promise-held  compiler  VIP-4: 003-failures.md rejects the marked call for "In effect code, a call returning a Promise or thenable, even if assigned to a variable and never awaited. M…"; lane w2-throw
-FuzzFailuresSpec  feature:promise-library  compiler  VIP-4: 003-failures.md rejects the marked call for "In effect code, a call returning a Promise or thenable, even if assigned to a variable and never awaited. M…"; lane w2-throw
-FuzzFailuresSpec  feature:promise-thenable  compiler  VIP-4: 003-failures.md rejects the marked call for "In effect code, a call returning a Promise or thenable, even if assigned to a variable and never awaited. M…"; lane w2-throw
-FuzzFailuresSpec  feature:promise-reject  compiler  VIP-4: 003-failures.md rejects the marked call for "`Promise.reject(e)`, like every Promise-producing call, must be inside a `tryPromise` or `promise` thunk in…"; lane w2-throw
 FuzzFailuresSpec  feature:effect-decoder-call  compiler  VIP-4: 003-failures.md rejects calling the decoder Schema.decodeUnknownSync returns in effect code (it throws SchemaError); lane w2-throw
 FuzzFailuresSpec feature:dynamic-any compiler VIP-4: 003-failures.md contract dynamic-any disagrees on unmodified main c9327b36 (error TS1128, error TS1434, error TS2304); lane vip-core2
 FuzzFailuresSpec feature:dynamic-function compiler VIP-4: 003-failures.md contract dynamic-function disagrees on unmodified main c9327b36 (error TS1128, error TS1434, error TS2304); lane vip-core2
@@ -45,11 +40,6 @@ FuzzFailuresSpec corpus:rethrows-some-throwing compiler VIP-4: minimized reprodu
 FuzzFailuresSpec corpus:rethrows-every-throwing compiler VIP-4: minimized reproduction of feature:rethrows-every-throwing; lane w2-throw
 FuzzFailuresSpec corpus:rethrows-sort-throwing compiler VIP-4: minimized reproduction of feature:rethrows-sort-throwing; lane w2-throw
 FuzzFailuresSpec corpus:rethrows-array-from-throwing compiler VIP-4: minimized reproduction of feature:rethrows-array-from-throwing; lane w2-throw
-FuzzFailuresSpec corpus:promise-async-local compiler VIP-4: minimized reproduction of feature:promise-async-local; lane w2-throw
-FuzzFailuresSpec corpus:promise-held compiler VIP-4: minimized reproduction of feature:promise-held; lane w2-throw
-FuzzFailuresSpec corpus:promise-library compiler VIP-4: minimized reproduction of feature:promise-library; lane w2-throw
-FuzzFailuresSpec corpus:promise-thenable compiler VIP-4: minimized reproduction of feature:promise-thenable; lane w2-throw
-FuzzFailuresSpec corpus:promise-reject compiler VIP-4: minimized reproduction of feature:promise-reject; lane w2-throw
 FuzzFailuresSpec corpus:effect-decoder-call compiler VIP-4: minimized reproduction of feature:effect-decoder-call; lane w2-throw
 FuzzFailuresSpec corpus:dynamic-any compiler VIP-4: minimized reproduction of feature:dynamic-any; lane w2-throw
 FuzzFailuresSpec corpus:dynamic-function compiler VIP-4: minimized reproduction of feature:dynamic-function; lane w2-throw
@@ -59,8 +49,6 @@ FuzzFailuresSpec feature:effect-decoder-sync-call compiler VIP-4 (decided detail
 FuzzFailuresSpec corpus:effect-decoder-sync-call compiler VIP-4: minimized reproduction of feature:effect-decoder-sync-call; lane vip-core2
 
 # Additional chapter-3 boundaries on post-VIP-1 main.
-FuzzFailuresSpec feature:promise-new compiler VIP-4: chapter 3 contract promise-new fails on main 405bac96 (initial probe: no required diagnostic); lane w2-throw
-FuzzFailuresSpec corpus:promise-new compiler VIP-4: minimized reproduction of feature:promise-new; lane w2-throw
 FuzzFailuresSpec feature:alias-declaration-tag-not-admitted compiler VIP-4: 003-failures.md as amended 2026-10-31 expects EK0402 at the marked code; main draws no error; lane nothrow-impl
 FuzzFailuresSpec corpus:alias-declaration-tag-not-admitted compiler VIP-4: minimized reproduction of feature:alias-declaration-tag-not-admitted; lane w2-throw
 FuzzFailuresSpec feature:rethrows-multiple-parameters compiler VIP-4: chapter 3 contract rethrows-multiple-parameters fails on main 405bac96 (initial probe: EK4301); lane w2-throw
@@ -79,12 +67,8 @@ FuzzFailuresSpec feature:builtin-json-stringify compiler VIP-4: the chapter repo
 FuzzFailuresSpec corpus:builtin-json-stringify compiler VIP-4: minimized reproduction of feature:builtin-json-stringify; lane w2-throw
 FuzzFailuresSpec feature:builtin-repeat compiler VIP-4: the chapter reports EK0403 at the marked code; the compiler reports no error there on main 90a26cf8; lane w2-throw
 FuzzFailuresSpec corpus:builtin-repeat compiler VIP-4: minimized reproduction of feature:builtin-repeat; lane w2-throw
-FuzzFailuresSpec feature:promise-union compiler VIP-4: the chapter reports EK0404 at the marked code; the compiler reports no error there on main 90a26cf8; lane w2-throw
-FuzzFailuresSpec corpus:promise-union compiler VIP-4: minimized reproduction of feature:promise-union; lane w2-throw
 FuzzFailuresSpec feature:rethrows-reduce-no-initial compiler VIP-4: the chapter reports EK0403 at the marked code; the compiler reports no error there on main 90a26cf8; lane w2-throw
 FuzzFailuresSpec corpus:rethrows-reduce-no-initial compiler VIP-4: minimized reproduction of feature:rethrows-reduce-no-initial; lane w2-throw
-FuzzFailuresSpec feature:promise-tagged-template compiler VIP-4: the chapter reports EK0404 at the marked code; the compiler reports no error there on main d0cdbe5a; lane w2-throw
-FuzzFailuresSpec corpus:promise-tagged-template compiler VIP-4: minimized reproduction of feature:promise-tagged-template; lane w2-throw
 
 # Extensible native bases witness the inheritance ban independently of tag compatibility.
 FuzzFailuresSpec feature:error-extends-native-string-empty compiler VIP-13/VIP-29: Chapter 3 rejects every extends clause with EK2117; native string-tag parents accept this child on main0d0c6b46, so legacy tag compatibility is not the rule; lane impl-hunt-fail
@@ -120,3 +104,5 @@ FuzzFailuresSpec corpus:schema-error-extends-native-union-optional compiler VIP-
 FuzzFailuresSpec feature:schema-error-extends-native-union-getter compiler VIP-13/VIP-29: Chapter 3 rejects every extends clause with EK2117; native union-tag parents accept this child on main0d0c6b46, so legacy tag compatibility is not the rule; lane impl-hunt-fail
 FuzzFailuresSpec corpus:schema-error-extends-native-union-getter compiler VIP-13/VIP-29: Chapter 3 rejects every extends clause with EK2117; native union-tag parents accept this child on main0d0c6b46, so legacy tag compatibility is not the rule; lane impl-hunt-fail
 FuzzFailuresSpec  feature:nothrow-generator  compiler  VIP-4: 003-failures.md, Plain code never throws: a throw in a plain generator draws no error; lane nothrow-impl
+FuzzPromiseResultGate feature:promise-gate-async-match compiler VIP-4: async match (VIP-7) is not parsed on vibe 5e229b77191c (TS1005, TS1128, TS2552), so the Promise-result gate cannot see this source form yet; lane conf-auto-async-match-lowering
+FuzzPromiseResultGate corpus:promise-gate-async-match compiler VIP-4: async match (VIP-7) is not parsed on vibe 5e229b77191c (TS1005, TS1128, TS2552), so the Promise-result gate cannot see this source form yet; lane conf-auto-async-match-lowering

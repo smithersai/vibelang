@@ -1,0 +1,9 @@
+function maybe(): Promise<number> | undefined { return undefined }
+async function tag(_parts: TemplateStringsArray) { return 7 }
+export effect function probe(s: string, xs: number[]) {
+  const p = try Effect.orDie(Effect.try({ try: () => new Promise<number>((resolve) => resolve(1)), catch: (error) => error }))
+  const q = try Effect.orDie(Effect.try({ try: () => Promise.resolve(2), catch: (error) => error }))
+  const optional = try Effect.orDie(Effect.try({ try: () => maybe(), catch: (error) => error }))
+  const tagged = try Effect.orDie(Effect.try({ try: () => tag`x`, catch: (error) => error }))
+  return { p, q, optional, tagged }
+}

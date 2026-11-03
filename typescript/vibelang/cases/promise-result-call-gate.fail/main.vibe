@@ -1,0 +1,10 @@
+// expect: EK0404 EK0404 EK0404 EK0404
+function maybe(): Promise<number> | undefined { return undefined }
+async function tag(_parts: TemplateStringsArray) { return 7 }
+export effect function probe(s: string, xs: number[]) {
+  const p = new Promise<number>((resolve) => resolve(1))
+  const q = Promise.resolve(2)
+  const optional = maybe()
+  const tagged = tag`x`
+  return { p, q, optional, tagged }
+}
