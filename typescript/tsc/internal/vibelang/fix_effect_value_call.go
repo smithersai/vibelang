@@ -42,6 +42,11 @@ func effectValueCallEditsLabeled(a *analyzer, file *ast.SourceFile, call *ast.No
 		return 0, "", nil, "", false
 	}
 	c := a.checker
+	// These two implicit globals were cold factories, unlike callable Effect
+	// values. Their migration must not introduce an unrequested run.
+	if !underTry(call) && implicitNativeFactoryName(c, file, call.Expression()) != "" {
+		return 0, "", nil, "", false
+	}
 	callee := call.Expression()
 	t := c.GetApparentType(c.GetTypeAtLocation(callee))
 	var memberIdentifier *checker.Type

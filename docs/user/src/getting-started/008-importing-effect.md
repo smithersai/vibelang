@@ -40,6 +40,8 @@ Store or pass the native interruption functions as `Effect.interruptible` and `E
 
 The compiler reads this list from the installed `effect` when it is built, so it follows the pinned Effect version's exports. The prelude's own names win over an export of the same name: `sync`, `callback`, `interrupt`, and `yieldNow` are the prelude's. To turn these globals off and write every one as `Effect.x`, set `"vibe": { "effectGlobals": false }` in `tsconfig.json` ([options](012-devtools.md)).
 
+`interrupt` and `yieldNow` are native Effect values: write `try interrupt` or `try yieldNow`. To select a numeric yield priority, write `try Effect.yieldNowWith(priority)`. When upgrading legacy bare `yieldNow(priority)`, `yieldNow()` or `interrupt()` factory calls in a `.vibe` file, `vibelang --fix` keeps held and returned Effects cold, including in plain functions and at the top level. It evaluates a priority argument once and selects `yieldNow` when it is `undefined`, or `Effect.yieldNowWith` when it is a number. An existing `try` still runs the Effect; a discarded Effect statement, already rejected with `EK4801`, gains an explicit `try`. An imported or local `yieldNow` keeps its binding.
+
 JavaScript's own globals keep their names: `Array`, `String`, `Number`, `Boolean`, `Symbol`, `BigInt`, `Function`, and `RegExp` mean JavaScript's, so import Effect's modules of those names under another name:
 
 ```vibe
