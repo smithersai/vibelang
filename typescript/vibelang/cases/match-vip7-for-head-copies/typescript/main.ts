@@ -9,5 +9,4 @@ export function skipped():readonly string[]{const seen:string[]=[];for(const v o
  // @ts-ignore TS2448 TS2454
  seen.push(String(n))
 }catch(e){seen.push(e instanceof ReferenceError?"tdz":"other")}continue;let n:number=0}return seen}
-export function main():Effect.Effect<readonly unknown[]>{return Effect.gen(function*(){return [forIn(),forOf(),awaitNever(),yield* Effect.promise(()=>forAwait()),yield* forConcurrent(),yield* forTry(),skipped()]})}
-function awaitNever():number{return 0}
+export function main():Effect.Effect<readonly unknown[]>{return Effect.gen(function*(){return [forIn(),forOf(),yield* Effect.promise(()=>forAwait()),yield* forConcurrent(),yield* forTry(),skipped()]})}

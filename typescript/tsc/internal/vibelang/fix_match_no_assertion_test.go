@@ -28,3 +28,9 @@ func TestMatchNoAssertionFoldkit(t *testing.T) {
 		}
 	}
 }
+// VIP-7 preserve checked withReturnType constraints in native match migration; rule: docs/design/vips/0007-match.md#f1b83552cfbb8893
+// VIP-7 preserve checked withReturnType constraints in native match migration; rule: docs/design/vips/0007-match.md#65d62b94bb87b19a
+// VIP-7 preserve checked withReturnType constraints in native match migration; rule: docs/design/vips/0007-match.md#7e49ccb88d6c9a2e
+// VIP-7 preserve checked withReturnType constraints in native match migration; rule: docs/design/vips/0007-match.md#a5131db28cc50fbf
+// VIP-7 preserve checked withReturnType constraints in native match migration; rule: docs/design/vips/0007-match.md#3d143ea0622ea081
+// VIP-7 preserve checked withReturnType constraints in native match migration; rule: docs/design/vips/0007-match.md#518923a4fa281c87

@@ -25,3 +25,4 @@ func TestArmSeparatorFix(t *testing.T) {
 		})
 	}
 }
+// VIP-7 mandatory final and intermediate arm semicolons; newline and comma fixes; rule: docs/design/vips/0007-match.md#4fa0bef7a356de99

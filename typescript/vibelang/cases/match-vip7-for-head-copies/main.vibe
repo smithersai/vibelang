@@ -9,7 +9,6 @@ export function skipped():readonly string[]{const seen:string[]=[];for(const v o
  // @ts-ignore TS2454
  seen.push(String(n))
 }catch(e){seen.push(e instanceof ReferenceError?"tdz":"other")}}return seen}
-export effect function main():Effect.Effect<readonly unknown[]>{return [forIn(),forOf(),awaitNever(),try promise(()=>forAwait()),try forConcurrent(),try forTry(),skipped()]}
-function awaitNever():number{return 0}
+export effect function main():Effect.Effect<readonly unknown[]>{return [forIn(),forOf(),try Effect.promise(()=>forAwait()),try forConcurrent(),try forTry(),skipped()]}
 // VIP-7 all five for head environments copy cells; rule: docs/design/vips/0007-match.md#efd59c9924614ebe
 // VIP-7 all five for head environments copy cells; rule: docs/design/vips/0007-match.md#43f61c208e1906e3

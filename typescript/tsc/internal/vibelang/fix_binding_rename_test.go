@@ -264,3 +264,9 @@ func TestBindingRenameLegacyScopeMetadata(t *testing.T) {
 		})
 	}
 }
+// VIP-7 rename only original binding references, preserving parameter/local/else/closure fallback; rule: docs/design/vips/0007-match.md#c4631b5aaa90d198
+// VIP-7 rename only original binding references, preserving parameter/local/else/closure fallback; rule: docs/design/vips/0007-match.md#b427fe2618b9c094
+// VIP-7 rename only original binding references, preserving parameter/local/else/closure fallback; rule: docs/design/vips/0007-match.md#a5f2cfddf27c2cc0
+// VIP-7 rename only original binding references, preserving parameter/local/else/closure fallback; rule: docs/design/vips/0007-match.md#fc189447d5899233
+// VIP-7 rename only original binding references, preserving parameter/local/else/closure fallback; rule: docs/design/vips/0007-match.md#7e36e007232676f1
+// VIP-7 rename only original binding references, preserving parameter/local/else/closure fallback; rule: docs/design/vips/0007-match.md#c786f8ffb7193c83
