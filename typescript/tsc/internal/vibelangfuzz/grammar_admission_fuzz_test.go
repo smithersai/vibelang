@@ -19,6 +19,7 @@ import (
 // errors do not authorize a syntax absent from the language.
 const grammarAdmissionQuote = "VibeLang's grammar is TypeScript's, plus three TC39 proposals and the productions below."
 const grammarAdmissionRecoveryQuote = "parses, then the top-level-shorthand rule rejects it"
+const grammarAdmissionPlainBodyQuote = "The body of any source callable without an `effect` modifier parses with `[~Effect]`"
 const grammarTopicQuote = "%` is the topic: the left side's value, evaluated once."
 
 func TestGrammarAdmissionQuoted(t *testing.T) {
@@ -27,6 +28,9 @@ func TestGrammarAdmissionQuoted(t *testing.T) {
 	}
 	if !strings.Contains(SpecText(grammarAppendix), grammarAdmissionRecoveryQuote) {
 		t.Fatal("Appendix A shorthand recovery quote changed; review syntax rejection")
+	}
+	if !strings.Contains(SpecText(grammarAppendix), grammarAdmissionPlainBodyQuote) {
+		t.Fatal("Appendix A source-callable context quote changed; review pending-key grouping")
 	}
 	// The topic grammar is incorporated from the pinned proposal, not TS.
 	if !strings.Contains(SpecText("../vips/0023-pipe.md"), grammarTopicQuote) {
@@ -70,6 +74,7 @@ var grammarAdmissionSeeds = []struct{ key, source string }{
 	{"native-destructuring-initializer-array", "const [a] ;"},
 	{"fiber-binding-arrow", "const f = effect join => 1;"},
 	{"native-function-overload", "function f(p: number): number; function f(p: number) { return p; }"},
+	{"join-nested-plain", "effect effect => function f(p) { return join p; }"},
 }
 
 func FuzzGrammarAdmission(f *testing.F) {
@@ -353,7 +358,7 @@ func grammarAdmissionForm(source string) string {
 	// These records classify a known mismatch; they do not decide admission.
 	// Appendix A remains the independent oracle above. A trailing block may
 	// follow a bare name, a member or a call.
-	_, forms := parser.ParseVibeLangSyntax(ast.SourceFileParseOptions{
+	file, forms := parser.ParseVibeLangSyntax(ast.SourceFileParseOptions{
 		FileName: "/fuzz/main.vibe", PathKey: "/fuzz/main.vibe",
 	}, source)
 	for _, form := range forms {
@@ -372,14 +377,10 @@ func grammarAdmissionForm(source string) string {
 			if word != "fork" && word != "join" {
 				continue
 			}
-			// Only group prefixes outside every explicit Effect span. Nested
-			// ordinary callables in an Effect span stay independent mutations.
-			insideEffect := false
-			for _, enclosing := range forms {
-				if enclosing.Kind == parser.VibeSyntaxEffect && enclosing.Range.Pos() <= start && start < enclosing.Range.End() {
-					insideEffect = true
-				}
-			}
+			// A nested plain source callable resets Effect context. Compiler
+			// generated in-place arrows (do/match) keep the source context.
+			// This only groups a proven mismatch; it never admits a program.
+			insideEffect := grammarAdmissionEffectAt(file, start)
 			operand := grammarLexSource(source[end:])
 			if insideEffect || len(operand) == 0 || operand[0].nl {
 				continue
@@ -408,6 +409,31 @@ func grammarAdmissionForm(source string) string {
 		}
 	}
 	return ""
+}
+
+// grammarAdmissionEffectAt follows source callable bodies for pending-key
+// grouping. Explicit Effect blocks/functions start Effect context; a plain
+// callable body resets it. Parser-generated arrows introduce no source scope.
+func grammarAdmissionEffectAt(file *ast.SourceFile, at int) bool {
+	effect := false
+	var visit func(*ast.Node, bool) bool
+	visit = func(n *ast.Node, current bool) bool {
+		if n == nil || at < n.Pos() || at >= n.End() {
+			return false
+		}
+		if ast.IsFunctionLike(n) && n.Body() != nil && n.Body().Pos() <= at && at < n.Body().End() {
+			if n.Flags&ast.NodeFlagsVibeLangEffect != 0 {
+				current = true
+			} else if n.Kind != ast.KindArrowFunction || n.AsArrowFunction().EqualsGreaterThanToken.Flags&ast.NodeFlagsReparsed == 0 {
+				current = false
+			}
+		}
+		effect = current
+		n.ForEachChild(func(child *ast.Node) bool { return visit(child, current) })
+		return true
+	}
+	visit(file.AsNode(), false)
+	return effect
 }
 
 func TestGrammarAdmissionMutationKeys(t *testing.T) {
@@ -539,6 +565,36 @@ func TestGrammarAdmissionMutationKeys(t *testing.T) {
 				t.Errorf("native call/access/ASI classified as %s: %q", got, word+tail)
 			}
 		}
+	}
+	for _, word := range []string{"fork", "join"} {
+		for _, source := range []string{
+			"effect p => function f(q) { return " + word + " q; }",
+			"effect p => (q) => " + word + " q",
+			"effect function outer(p) { const g = () => { return " + word + " p; }; }",
+			"effect function outer(p) { return { effect() { return " + word + " p; } }; }",
+			"effect p => async function f(q) { return " + word + " q; }",
+			"effect function outer(p) { return do { const g = () => " + word + " p; g; }; }",
+			"effect function outer(p) { return match (p) { default: () => " + word + " p; }; }",
+		} {
+			if got := grammarAdmissionForm(source); got != "admission:"+word+"-outside-effect" {
+				t.Errorf("nested plain callable prefix not keyed: %s: %s", source, got)
+			}
+		}
+		for _, source := range []string{
+			"effect p => effect q => " + word + " q",
+			"effect function f(p) { return do { " + word + " p; }; }",
+			"effect function f(p) { return match (p) { default: " + word + " p; }; }",
+			"effect function f(p) { return { effect inner() { return " + word + " p; } }; }",
+			"effect function f(p) { function inner() { return effect { return " + word + " p; }; } }",
+		} {
+			if got := grammarAdmissionForm(source); got != "" {
+				t.Errorf("Effect source context classified as %s: %s", got, source)
+			}
+		}
+	}
+	_, nestedSource := grammarAdmissionInput([]byte("key:join\n\x1d1002C00"))
+	if nestedSource != "effect effect => function f ( p ) { return join p ; }" || grammarAdmissionForm(nestedSource) != "admission:join-outside-effect" {
+		t.Errorf("nested callable campaign witness did not replay: %q", nestedSource)
 	}
 	// The minimized campaign witness keeps its seed key across seed reordering.
 	_, objectSource := grammarAdmissionInput([]byte("key:trailing-block-bare\nb800207"))

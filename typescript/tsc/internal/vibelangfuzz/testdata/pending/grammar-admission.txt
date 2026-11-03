@@ -21,3 +21,4 @@ FuzzGrammarAdmission admission:fork-block compiler VIP-17: a bare fork brace-bod
 FuzzGrammarAdmission corpus:fork-block compiler VIP-17: bare fork block statements have no Appendix A derivation; lane impl-hunt-admission
 FuzzGrammarAdmission corpus:fiber-binding-arrow compiler VIP-17 (amended): a bare Effect-arrow parameter reserves fork/join exactly as parenthesized parameters; lane impl-hunt-admission
 FuzzGrammarAdmission corpus:fiber-binding-arrow-nested compiler VIP-17 (amended): bare join parameter remains invalid even when the arrow returns an ordinary function; lane impl-hunt-admission
+FuzzGrammarAdmission corpus:join-nested-plain compiler VIP-1/17: a nested plain callable resets Effect context; join reports only an operand error instead of syntax placement; lane impl-hunt-admission

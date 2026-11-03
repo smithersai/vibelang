@@ -110,3 +110,11 @@ Valid typed overload and implementation controls keep this native syntax
 from being mistaken for an undefined VibeLang form. A keyed corpus also
 replays the campaign witness with a signature followed by a separate block;
 its native return-placement error does not make it an admission bug.
+
+Pending-prefix grouping follows source callable bodies: an enclosing
+Effect span does not make a nested plain function, arrow or method Effect
+code. Explicit nested Effect callables and blocks restore their own context;
+parser-generated in-place arrows for `do` and `match` preserve the source
+context. These parser flags choose only the known-gap key. Appendix A
+remains the independent derivation oracle. The nested plain-callable `join`
+witness stays under `admission:join-outside-effect`, with corpus XPASS coverage.
