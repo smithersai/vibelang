@@ -1,0 +1,13 @@
+{
+  "rule": "Will: a tree compared with itself must be identical; import type arguments retain their literal types.",
+  "before": {
+    "index.d.ts": "export declare const makeEventGroup: <T>(definitions: T) => T extends (infer Event)[] ? [Event, import(\"./brand\").Brand<\"Event.ID\">] : never;",
+    "brand.d.ts": "export interface Brand<Tag> { readonly tag: Tag }",
+    "package.json": "{\"types\":\"./index.d.ts\"}"
+  },
+  "after": {
+    "index.d.ts": "export declare const makeEventGroup: <T>(definitions: T) => T extends (infer Event)[] ? [Event, import(\"./brand\").Brand<\"Event.ID\">] : never;",
+    "brand.d.ts": "export interface Brand<Tag> { readonly tag: Tag }",
+    "package.json": "{\"types\":\"./index.d.ts\"}"
+  }
+}

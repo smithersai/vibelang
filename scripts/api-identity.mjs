@@ -354,7 +354,7 @@ function equivalentModules(ts, program, host, left, right, externalGroups, docum
         if (ts.isStringLiteral(node)) {
           const p = node.parent
           const module = p && ((ts.isImportDeclaration(p) || ts.isExportDeclaration(p)) && p.moduleSpecifier === node ||
-            ts.isLiteralTypeNode(p) && p.parent && ts.isImportTypeNode(p.parent) ||
+            ts.isLiteralTypeNode(p) && p.parent && ts.isImportTypeNode(p.parent) && p.parent.argument === p ||
             ts.isExternalModuleReference(p) && p.expression === node)
           if (module) { imports.push(node); return ts.factory.createStringLiteral("__edge" + (imports.length - 1)) }
           return ts.factory.createStringLiteral(node.text)

@@ -47,7 +47,10 @@ side. Adding, removing or renaming a private member still changes nominal
 identity. Their member types, visibility and enum values remain part of the
 generated type checks. Identical deferred
 `infer` and mapped types share a virtual module only after proving their complete
-resolved dependency closures equivalent, including cycles and `import = require(...)` edges. The proof ignores declaration import/member order and equivalent type-import spelling; overload order and distinct external nominal origins remain significant. A changed dependency
+resolved dependency closures equivalent, including cycles and `import = require(...)` edges. The proof ignores declaration import/member order and equivalent type-import spelling; overload order and distinct external nominal origins remain significant. Only the module argument of an `import()` type is a dependency edge; literal
+generic arguments keep their type meaning, even when they resemble module paths.
+This preserves identity for copied generic functions such as `makeEventGroup`.
+A changed dependency
 invalidates that proof. Separate installations with the same package name and
 version remain separate until proved equivalent. Dependency pair candidates
 are seeded independently of entry syntax, so reordering entry imports preserves
