@@ -34,6 +34,28 @@ test("compiler selection prefers explicit options, then environment, then instal
   assert.equal(findCompiler(root), join(installed, "bin/vibelang"))
 })
 
+test("a relative path finds the same project and compiler as an absolute one", (t) => {
+  // Metro hands a transformer a filename relative to the project root.
+  const root = fixture(t)
+  const app = join(root, "app")
+  const installed = join(app, "node_modules/vibelang")
+  mkdirSync(join(app, "src"), { recursive: true })
+  mkdirSync(installed, { recursive: true })
+  writeFileSync(join(app, "tsconfig.json"), "{}")
+  writeFileSync(join(installed, "package.json"), '{"name":"vibelang"}')
+  const previous = { cwd: process.cwd(), binary: process.env.VIBELANG_BINARY }
+  t.after(() => {
+    process.chdir(previous.cwd)
+    if (previous.binary === undefined) delete process.env.VIBELANG_BINARY
+    else process.env.VIBELANG_BINARY = previous.binary
+  })
+  delete process.env.VIBELANG_BINARY
+  process.chdir(join(app, "src"))
+  const here = realpathSync(".")
+  assert.equal(nearestProject("../src/main.vibe"), join(dirname(here), "tsconfig.json"))
+  assert.equal(findCompiler(".."), join(dirname(here), "node_modules/vibelang/bin/vibelang"))
+})
+
 test("diagnostic parsing preserves multiline detail, CRLF, global messages and dependency files", () => {
   const root = resolve("project with spaces")
   const input = [

@@ -27,7 +27,7 @@ const global = /^(error|warning)\s+(\w+\d+):\s?(.*)$/
 export function findCompiler(root, compiler) {
   if (compiler) return resolve(root, compiler)
   if (process.env.VIBELANG_BINARY) return resolve(root, process.env.VIBELANG_BINARY)
-  const require = createRequire(join(root, "package.json"))
+  const require = createRequire(join(resolve(root), "package.json"))
   return join(dirname(require.resolve("vibelang/package.json")), "bin/vibelang")
 }
 
@@ -454,7 +454,7 @@ export function checkLoaderRecord({ project, root = dirname(project), compiler =
 
 /** Returns the preferred config in the nearest directory above file, or undefined. */
 export function nearestProject(file) {
-  for (let directory = dirname(file); ; directory = dirname(directory)) {
+  for (let directory = dirname(resolve(file)); ; directory = dirname(directory)) {
     for (const name of ["vibe.config.json", "tsconfig.json", "jsconfig.json"]) {
       const candidate = join(directory, name)
       if (existsSync(candidate)) return candidate
