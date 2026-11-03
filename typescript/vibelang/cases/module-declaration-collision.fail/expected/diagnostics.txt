@@ -1,0 +1,5 @@
+main.vibe(3,8): error EK4005
+main.vibe(5,8): error EK4005
+main.vibe(8,8): error EK4005
+main.vibe(12,8): error EK4005
+main.vibe(15,8): error EK4005

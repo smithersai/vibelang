@@ -1,8 +1,6 @@
 package vibelang
 
 import (
-	"strings"
-
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/checker"
 	"github.com/microsoft/TypeScript/tsc/internal/compiler"
@@ -67,23 +65,20 @@ func checkModuleDeclarations(c *checker.Checker, file *ast.SourceFile) {
 				reportAt(c, file, keyword, EK4003)
 				return false
 			}
-			key := strings.ToLower(name)
+			key := name
+			duplicate := seen[key]
 			switch {
 			case node.Parent != file.AsNode():
 				report(c, node.Name(), EK4001)
 			case node.Modifiers() != nil && len(node.Modifiers().Nodes) != 0:
 				report(c, node.Modifiers().Nodes[0], EK4002, name)
-			case seen[key]:
-				report(c, node.Name(), EK4408.With("This file already declares a module named {0}."), name)
+			case duplicate:
+				report(c, node.Name(), EK4005, name)
 			}
 			seen[key] = true
-			if symbol := c.ResolveName(name, node, ast.SymbolFlagsValue, true); symbol != nil &&
+			if symbol := c.ResolveName(name, node, ast.SymbolFlagsValue, true); !duplicate && symbol != nil &&
 				c.GetSymbolFlags(symbol)&ast.SymbolFlagsValue != 0 && c.GetTypeOnlyAliasDeclaration(symbol) == nil {
-				// Unused modules with a colliding value already run correctly. Report
-				// the collision without rejecting those programs (D303).
-				collision := EK4408.With("A module named {0} shares its name with a value binding of this file; use a distinct module name.")
-				collision.Category = warningCategory
-				report(c, node.Name(), collision, name)
+				report(c, node.Name(), EK4005, name)
 			}
 			return false
 		case parser.IsVibeLangModuleReference(node):
@@ -95,7 +90,7 @@ func checkModuleDeclarations(c *checker.Checker, file *ast.SourceFile) {
 				report(c, node, EK4006, specifierName(file, node))
 			}
 			return false
-		case ast.IsIdentifier(node) && moduleNames[node.Text()] && (!ast.IsDeclarationName(node) || ast.IsShorthandPropertyAssignment(node.Parent)) && !ast.IsRightSideOfQualifiedNameOrPropertyAccess(node) && (!ast.IsPartOfTypeNode(node) || ast.IsPartOfTypeQuery(node)):
+		case ast.IsIdentifier(node) && moduleNames[node.Text()] && moduleNameUsedAsValue(node) && !ast.IsRightSideOfQualifiedNameOrPropertyAccess(node) && (!ast.IsPartOfTypeNode(node) || ast.IsPartOfTypeQuery(node)):
 			symbol := c.ResolveName(node.Text(), node, ast.SymbolFlagsValue|ast.SymbolFlagsNamespaceModule, false)
 			if symbol != nil && c.GetSymbolFlags(symbol)&ast.SymbolFlagsValue == 0 {
 				for _, declaration := range symbol.Declarations() {
@@ -118,12 +113,27 @@ func specifierName(file *ast.SourceFile, reference *ast.Node) string {
 	return file.Text()[scanner.SkipTrivia(file.Text(), reference.Pos()):reference.End()]
 }
 
-// checkModuleBody reports what a module declaration's body cannot hold
-// (EK4008): it is an ES module under every emit target (VIP-40).
+// checkModuleBody reports the VIP-40 profile errors for TypeScript bodies:
+// identifier specifiers, CommonJS forms and import.meta (EK4007–EK4009).
 func checkModuleBody(c *checker.Checker, file *ast.SourceFile) {
 	if file.EmbeddedModule() == nil {
 		return
 	}
+	var visit func(*ast.Node) bool
+	visit = func(node *ast.Node) bool {
+		if (ast.IsImportDeclaration(node) || ast.IsExportDeclaration(node)) && node.ModuleSpecifier() != nil && ast.IsIdentifier(node.ModuleSpecifier()) {
+			specifier := node.ModuleSpecifier()
+			coverCodes(c, specifier, 1141)
+			reportModuleBody(c, file, specifier, EK4007)
+		}
+		if ast.IsMetaProperty(node) && node.AsMetaProperty().KeywordToken == ast.KindImportKeyword {
+			cover(c, node)
+			reportModuleBody(c, file, node, EK4009)
+			return false
+		}
+		return node.ForEachChild(visit)
+	}
+	file.AsNode().ForEachChild(visit)
 	for _, statement := range file.Statements.Nodes {
 		var text string
 		switch {
@@ -136,7 +146,7 @@ func checkModuleBody(c *checker.Checker, file *ast.SourceFile) {
 		}
 		// VIP-40 profile errors belong to the containing .vibe file under any emit.
 		coverCodes(c, statement, 1202, 1203)
-		c.AddDiagnostic(ast.NewExternalDiagnostic(file, scanner.GetErrorRangeForNode(file, statement), diagnosticSource, errorCategory, EK4008.Code, text))
+		reportModuleBody(c, file, statement, EK4008.With(text))
 	}
 }
 
@@ -217,4 +227,37 @@ func moduleReferenceHasAttributes(node *ast.Node) bool {
 		return parent.AsExportDeclaration().Attributes != nil
 	}
 	return false
+}
+
+// Ordinary EK diagnostics deliberately refuse TypeScript source files. These
+// three VIP-40 profile errors are the explicit exception for module bodies.
+func reportModuleBody(c *checker.Checker, file *ast.SourceFile, node *ast.Node, message *Message) {
+	c.AddDiagnostic(ast.NewExternalDiagnostic(file, scanner.GetErrorRangeForNode(file, node), diagnosticSource, errorCategory, message.Code, message.Text))
+}
+
+// Module-name diagnostics apply to reads of the lexical binding. Import and
+// re-export member names, labels, binding keys and metadata use IdentifierName
+// without reading a binding of the containing file.
+func moduleNameUsedAsValue(node *ast.Node) bool {
+	parent := node.Parent
+	if parent == nil {
+		return false
+	}
+	if ast.IsExportSpecifier(parent) {
+		declaration := parent.Parent
+		if declaration != nil {
+			declaration = declaration.Parent
+		}
+		return ast.IsExportDeclaration(declaration) && declaration.ModuleSpecifier() == nil &&
+			!declaration.IsTypeOnly() && !parent.IsTypeOnly() && parent.PropertyNameOrName() == node
+	}
+	if ast.IsBindingElement(parent) && parent.PropertyName() == node {
+		return false
+	}
+	switch parent.Kind {
+	case ast.KindLabeledStatement, ast.KindBreakStatement, ast.KindContinueStatement,
+		ast.KindNamespaceExport, ast.KindImportAttribute, ast.KindMetaProperty, ast.KindJsxAttribute:
+		return false
+	}
+	return !ast.IsDeclarationNameOrImportPropertyName(node) || ast.IsShorthandPropertyAssignment(parent)
 }

@@ -1,0 +1,11 @@
+module Text { export const n = 1 }
+module text { export const n = 2 }
+module café { export const n = 3 }
+module café { export const n = 4 }
+module $env { export const n = 5 }
+import { n as a } from Text
+import { n as b } from text
+import { n as c } from café
+import { n as d } from café
+import { n as e } from $env
+export const result = [a,b,c,d,e]

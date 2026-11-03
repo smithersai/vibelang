@@ -96,7 +96,13 @@ func (l *LanguageService) moduleDeclarationOccurrences(uri lsproto.DocumentUri, 
 			start := scanner.SkipTrivia(file.Text(), target.Pos())
 			span, fidelity := l.converters.ToLSPRange(file, core.NewTextRange(start, target.End()))
 			if fidelity.IsExact() {
-				occurrences = append(occurrences, occurrence{file.Text()[start:target.End()], span, declaration})
+				name := target.Text()
+                if reference {
+                    if module := file.EmbeddedModuleBySpecifier(node.Text()); module != nil {
+                        name = module.EmbeddedModule().Name
+                    }
+                }
+                occurrences = append(occurrences, occurrence{name, span, declaration})
 			}
 			return false
 		}
@@ -203,4 +209,24 @@ func (l *LanguageService) followModuleDeclarationReferences(response lsproto.Ref
 			*response.Locations = append(*response.Locations, lsproto.Location{Uri: uri, Range: item.span})
 		}
 	}
+}
+
+// Module bindings keep their own references even when TypeScript merges a
+// type-only import into the namespace-shaped recovery declaration.
+func (l *LanguageService) moduleDeclarationReferences(params *lsproto.ReferenceParams) (lsproto.ReferencesResponse, bool) {
+	_, _, occurrences, ok := l.moduleDeclarationOccurrences(params.TextDocument.Uri, params.Position)
+	if !ok {
+		return lsproto.ReferencesResponse{}, false
+	}
+	var locations []lsproto.Location
+	for _, item := range occurrences {
+		if !item.declaration || params.Context.IncludeDeclaration {
+			locations = append(locations, lsproto.Location{Uri: params.TextDocument.Uri, Range: item.span})
+		}
+	}
+	return lsproto.ReferencesResponse{Locations: &locations}, true
+}
+
+func isModuleDeclarationName(node *ast.Node) bool {
+	return node != nil && node.Parent != nil && parser.IsVibeLangModuleDeclaration(node.Parent) && node.Parent.Name() == node
 }

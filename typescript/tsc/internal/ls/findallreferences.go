@@ -745,6 +745,10 @@ func (l *LanguageService) getSymbolAndEntries(
 }
 
 func (l *LanguageService) ProvideReferences(ctx context.Context, params *lsproto.ReferenceParams, orchestrator CrossProjectOrchestrator) (lsproto.ReferencesResponse, error) {
+	if response, ok := l.moduleDeclarationReferences(params); ok {
+		return response, nil
+	}
+
 	// At a module name, ask TypeScript at its declaration, whose symbol may
 	// merge with another of the name, then add the written specifiers.
 	declaration, occurrences, onModule := l.moduleDeclarationAt(params.TextDocument.Uri, params.Position)
@@ -1121,6 +1125,7 @@ func isDeclarationOfSymbol(node *ast.Node, target *ast.Symbol) bool {
 func (l *LanguageService) convertEntriesToLocations(entries []*ReferenceEntry, feature spanmap.Feature) []lsproto.Location {
 	locations := make([]lsproto.Location, 0, len(entries))
 	for _, entry := range entries {
+
 		location, ok := l.getLocationOfEntryForFeature(entry, feature)
 		if ok {
 			locations = append(locations, location)

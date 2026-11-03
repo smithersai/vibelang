@@ -1,5 +1,0 @@
-A module named X shares its name with a value binding of this file; use a distinct module name.
-A module named text shares its name with a value binding of this file; use a distinct module name.
-A module named callable shares its name with a value binding of this file; use a distinct module name.
-A module named Bound shares its name with a value binding of this file; use a distinct module name.
-A module named Imported shares its name with a value binding of this file; use a distinct module name.

@@ -1,4 +1,4 @@
-// expect: EK4002 EK4408 EK4008 TS1540 EK4001
+// expect: EK4002 EK4005 EK4008 TS1540 EK4001
 // A module declaration stands at a file's top level, is not exported, and
 // is declared once (D283). In a .vibe file module never means a namespace,
 // and a module's body is an ES module.

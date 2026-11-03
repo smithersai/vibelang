@@ -11,12 +11,17 @@ Diagnostic codes follow Appendix B of the specification: `EK`, the two-digit VIP
 | --- | --- | --- |
 | `EK4407` | `EK4006` | An identifier module specifier names no declaration, or has import attributes. Declare the module, fix the name, or quote a file or package name. |
 | `EK4408` (placement, export, expression, body) | `EK4001`, `EK4002`, `EK4003`, `EK4008` | Keep declarations named, at the top level and unexported; use ES imports and exports in their TypeScript bodies (VIP-40). |
+| `EK4408` (name collision) | `EK4005` | A module name redeclares a value binding or another module. Rename one; this is an error. |
+| `TS1141` (identifier specifier in a body) | `EK4007` | Share code through a `.ts` file or merge the bodies. |
+| Previously accepted `import.meta` in a body | `EK4009` | Pass metadata in as an argument or use a `.ts` file. |
 | `TS2708` (module name as a value) | `EK4004` | Import the module's exports with a static identifier import. |
 | `EK4618` | `EK0101` | A declaration such as `effect load() {}` or `async load() {}` needs `function`. The quick fix and `vibelang --fix` insert it. |
 | `EK4617` | `EK0103` | `await` does not run an Effect in an `async` function. Use `await runPromise(program)`. |
 | `EK1019` for `var` | `EK0107` | `var` inside `do` uses the global declaration restriction. `do` control-flow diagnostics use `EK0201` through `EK0205`. |
 
 The language server keeps the numeric code (`103`) with source `EK`; the terminal and diagnostic references write `EK0103`.
+
+Contextual identifiers such as `module`, `type` and `of` also work as module names and identifier specifiers. Module names are case-sensitive: `module Text` and `module text` are distinct. Generated filenames preserve lowercase ASCII letters, digits and `_`; each other code point becomes `-` followed by its hexadecimal value and `-`. Thus `Text` emits `main.vibe.-54-ext.js`, while `text` emits `main.vibe.text.js`. Unicode normalization twins also keep distinct filenames.
 
 ## Remaining renumberings
 
@@ -119,3 +124,5 @@ Registration reserves a code; it does not mean the compiler already implements e
 | `EK4701` | a `match` with no `default` over a finite union that misses a case; a guarded arm covers nothing |
 
 `EK0510` reports an unparenthesized `try`, `fork` or `join` on the left of `**`. The editor action wraps the whole execution expression, such as `(try program) ** 2`, in parentheses. `vibelang --fix` applies the same repair when it introduces no new error. Native TypeScript unary expressions retain `TS17006`.
+
+`EK4004` applies when a module name is used as a value. Imported or re-exported member names, destructuring property keys, labels, and names in `import.meta` or `new.target` do not read that binding. Re-export members with `export { member } from name`; exporting the module name itself is an error.

@@ -1,0 +1,10 @@
+module module { export const n = 1 }
+module type { export const n = 2 }
+module of { export const n = 3 }
+import { n as a } from module
+import { n as b } from type
+import { n as c } from of
+export const result = [a,b,c]
+import of
+export { n as fromType } from type
+export * as fromModule from module

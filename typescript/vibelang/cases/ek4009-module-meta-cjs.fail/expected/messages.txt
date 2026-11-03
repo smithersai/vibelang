@@ -1,0 +1,1 @@
+import.meta is not allowed inside a TypeScript module body. Pass the metadata in, or use a .ts file.

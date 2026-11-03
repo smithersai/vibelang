@@ -1,4 +1,4 @@
-// expect-result: 2
+// expect: EK4005
 module text { export const n = 1 }
 const text = 2
 export effect function main() { return text }

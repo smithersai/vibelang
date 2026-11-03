@@ -41,6 +41,29 @@ func (l *LanguageService) ProvideMultiDocumentHighlights(ctx context.Context, do
 
 func (l *LanguageService) provideDocumentHighlightsWorker(ctx context.Context, documentUri lsproto.DocumentUri, documentPosition lsproto.Position, filesToSearch []lsproto.DocumentUri) (lsproto.MultiDocumentHighlightsOrNull, error) {
 	program, sourceFile := l.getProgramAndFile(documentUri)
+	// Module bindings have identifier specifiers instead of TypeScript symbol references.
+	if _, _, occurrences, ok := l.moduleDeclarationOccurrences(documentUri, documentPosition); ok {
+		searchCurrent, validSearch := false, false
+		for _, uri := range filesToSearch {
+			if sf := program.GetSourceFile(uri.FileName()); sf != nil {
+				validSearch = true
+				searchCurrent = searchCurrent || sf.OriginalFileName() == sourceFile.OriginalFileName()
+			}
+		}
+		var documents []*lsproto.MultiDocumentHighlight
+		if !validSearch || searchCurrent {
+			var highlights []*lsproto.DocumentHighlight
+			for _, item := range occurrences {
+				kind := lsproto.DocumentHighlightKindRead
+				if item.declaration {
+					kind = lsproto.DocumentHighlightKindWrite
+				}
+				highlights = append(highlights, &lsproto.DocumentHighlight{Range: item.span, Kind: &kind})
+			}
+			documents = append(documents, &lsproto.MultiDocumentHighlight{Uri: documentUri, Highlights: highlights})
+		}
+		return lsproto.MultiDocumentHighlightsOrNull{MultiDocumentHighlights: &documents}, nil
+	}
 	positions := l.converters.FromLSPPositionForSourceFile(sourceFile, documentPosition, spanmap.FeatureDocumentHighlights)
 	results := make([]lsproto.MultiDocumentHighlightsOrNull, 0, len(positions))
 	for _, mapped := range positions {
@@ -148,6 +171,9 @@ func (l *LanguageService) getSemanticDocumentHighlights(ctx context.Context, pos
 	fileHighlights := make(map[string][]*lsproto.DocumentHighlight)
 	for _, entry := range referenceEntries {
 		for _, ref := range entry.references {
+			if isModuleDeclarationName(ref.node) {
+				continue
+			}
 			fileName, highlight := l.toDocumentHighlight(ref)
 			if highlight == nil {
 				continue

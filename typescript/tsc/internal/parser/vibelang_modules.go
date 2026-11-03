@@ -1,6 +1,8 @@
 package parser
 
 import (
+	"strconv"
+	"strings"
 	"unicode/utf8"
 
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
@@ -141,7 +143,7 @@ func (p *Parser) skipTypeScriptModuleBody() {
 // text, as the string literal that names the module declaration's file. It
 // returns nil when the current token is not an identifier in a .vibe file.
 func (p *Parser) parseVibeLangModuleReference() *ast.Node {
-	if !p.isVibeLangFile() || p.token != ast.KindIdentifier {
+	if !p.isVibeLangFile() || !p.isIdentifier() {
 		return nil
 	}
 	return p.vibelangModuleReference(p.parseIdentifier())
@@ -161,13 +163,18 @@ func (p *Parser) vibelangModuleReference(name *ast.Node) *ast.Node {
 // already parsed, is `import text;`, an import of a module declaration for
 // its effects.
 func (p *Parser) isVibeLangModuleImport() bool {
-	return p.isVibeLangFile() && p.token != ast.KindEqualsToken && p.token != ast.KindCommaToken && p.token != ast.KindFromKeyword && p.canParseSemicolon()
+	return (p.isVibeLangFile() || p.vibelangTypeScript) && p.token != ast.KindEqualsToken && p.token != ast.KindCommaToken && p.token != ast.KindFromKeyword && p.canParseSemicolon()
 }
 
 // parseVibeLangModuleImport finishes `import text;`, whose identifier is
 // already parsed.
 func (p *Parser) parseVibeLangModuleImport(pos int, jsdoc jsdocScannerInfo, modifiers *ast.ModifierList, name *ast.Node) *ast.Node {
-	specifier := p.vibelangModuleReference(name)
+	// Preserve a forbidden body specifier for EK4007 instead of recovering
+	// as import = and losing the remaining statements to native syntax errors.
+	specifier := name
+	if !p.vibelangTypeScript {
+		specifier = p.vibelangModuleReference(name)
+	}
 	p.parseSemicolon()
 	result := p.finishNode(p.factory.NewImportDeclaration(modifiers, nil /*importClause*/, specifier, nil /*attributes*/), pos)
 	p.withJSDoc(result, jsdoc)
@@ -175,16 +182,16 @@ func (p *Parser) parseVibeLangModuleImport(pos int, jsdoc jsdocScannerInfo, modi
 }
 
 // ModuleDeclarationFileSuffix is what a module declaration's file name adds
-// to the .vibe file's name: .text.ts for module text. The name is lower case,
-// so the file's path key is the same on every file system.
+// to the .vibe file's name: .text.ts for module text. VIP-40 encodes every
+// non-lowercase-ASCII code point, preserving exact names on every filesystem.
 func ModuleDeclarationFileSuffix(name string) string {
-	return "." + tspath.ToFileNameLowerCase(name) + tspath.ExtensionTs
+	return "." + moduleDeclarationFileNamePart(name) + tspath.ExtensionTs
 }
 
 // ModuleDeclarationSpecifier is the specifier that names module declaration
 // name of the .vibe file fileName: ./main.vibe.text.js.
 func ModuleDeclarationSpecifier(fileName tspath.RootedFilePath, name string) string {
-	return "./" + fileName.BaseName() + "." + tspath.ToFileNameLowerCase(name) + tspath.ExtensionJs
+	return "./" + fileName.BaseName() + "." + moduleDeclarationFileNamePart(name) + tspath.ExtensionJs
 }
 
 // IsVibeLangModuleDeclaration reports whether node is a module declaration
@@ -270,6 +277,7 @@ func parseModuleBody(opts ast.SourceFileParseOptions, text string, start int) *a
 	p := getParser()
 	defer putParser(p)
 	p.initializeState(opts, text, core.ScriptKindTS)
+	p.vibelangTypeScript = true
 	p.scanner.ResetPos(start)
 	p.nextToken()
 	return p.parseSourceFileWorker()
@@ -329,4 +337,20 @@ func (p *Parser) rejectVibeLangModule(code int32, message string) *ast.Node {
 	p.parseExpected(ast.KindCloseBraceToken)
 	p.diagnostics = append(p.diagnostics, ast.NewExternalDiagnostic(nil, keyword, "EK", diagnostics.CategoryError, code, message))
 	return p.finishNode(p.factory.NewKeywordExpression(ast.KindNullKeyword), pos)
+}
+
+// Lowercase ASCII, digits and underscores are unchanged. Hex escapes include
+// their delimiters, so even normalization and case twins have distinct paths.
+func moduleDeclarationFileNamePart(name string) string {
+	var out strings.Builder
+	for _, ch := range name {
+		if ch >= 'a' && ch <= 'z' || ch >= '0' && ch <= '9' || ch == '_' {
+			out.WriteRune(ch)
+		} else {
+			out.WriteByte('-')
+			out.WriteString(strconv.FormatInt(int64(ch), 16))
+			out.WriteByte('-')
+		}
+	}
+	return out.String()
 }

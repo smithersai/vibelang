@@ -1,0 +1,7 @@
+// expect: EK4009 EK4009 EK4009
+module text {
+  export const url = import.meta.url
+  export const whole = import.meta
+  export const get = () => import.meta["url"]
+}
+import text

@@ -1,1 +1,0 @@
-A module named text shares its name with a value binding of this file; use a distinct module name.

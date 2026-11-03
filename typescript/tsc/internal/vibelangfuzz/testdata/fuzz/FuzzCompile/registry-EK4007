@@ -1,0 +1,2 @@
+go test fuzz v1
+string("-- main.vibe --\nmodule first { export const n = 1 }\nmodule second { import { n } from first; export { n } }\nimport second\n")

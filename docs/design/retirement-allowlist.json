@@ -278,5 +278,125 @@
       "reference": "docs/design/vips/0014-effect-modules-in-scope.md: Status: accepted by Will, 2026-10-28. This cites existing published authority, not a new approval."
     },
     "reason": "Only coverage witness comments were appended. The executable fixture and existing disabled-globals diagnostics are unchanged."
+  },
+  {
+    "code": "EK4005",
+    "case": "typescript/vibelang/cases/module-declaration-collision-unused.fail",
+    "vip": "VIP-40",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0040-module-declarations.md: Status: accepted, 2026-11-03. Will: \"Are you asking me if I accept a vip I already asked you to add?\" Replaces denied [VIP-25](0025-inline-modules-denied.md). See the restricted syntax and module-name binding rules. This cites existing explicit acceptance, not a new approval."
+    },
+    "reason": "Accepted VIP-40 adopts a restricted TC39 module profile: the module name is a lexical binding and must not redeclare a value binding, including an unused binding. These fixtures directly exercise that approved restriction. Choosing which public/value/module binding to rename can change identity or API, so no speculative automatic rename is asserted."
+  },
+  {
+    "code": "EK4005",
+    "case": "typescript/vibelang/cases/module-declaration-collision.fail",
+    "vip": "VIP-40",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0040-module-declarations.md: Status: accepted, 2026-11-03. Will: \"Are you asking me if I accept a vip I already asked you to add?\" Replaces denied [VIP-25](0025-inline-modules-denied.md). See the restricted syntax and module-name binding rules. This cites existing explicit acceptance, not a new approval."
+    },
+    "reason": "Accepted VIP-40 adopts a restricted TC39 module profile: the module name is a lexical binding and must not redeclare a value binding, including an unused binding. These fixtures directly exercise that approved restriction. Choosing which public/value/module binding to rename can change identity or API, so no speculative automatic rename is asserted."
+  },
+  {
+    "code": "EK4002",
+    "case": "typescript/vibelang/cases/module-declaration-forms.fail",
+    "vip": "VIP-40",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0040-module-declarations.md: Status: accepted, 2026-11-03. Will: \"Are you asking me if I accept a vip I already asked you to add?\" Replaces denied [VIP-25](0025-inline-modules-denied.md). See the restricted syntax and module-name binding rules. This cites existing explicit acceptance, not a new approval."
+    },
+    "reason": "The executable fixture is unchanged. Its golden diagnostics change only the old collision owner EK4408 to the accepted VIP-40 owner EK4005; EK4002 is an unchanged inherited diagnostic."
+  },
+  {
+    "code": "EK4005",
+    "case": "typescript/vibelang/cases/module-declaration-forms.fail",
+    "vip": "VIP-40",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0040-module-declarations.md: Status: accepted, 2026-11-03. Will: \"Are you asking me if I accept a vip I already asked you to add?\" Replaces denied [VIP-25](0025-inline-modules-denied.md). See the restricted syntax and module-name binding rules. This cites existing explicit acceptance, not a new approval."
+    },
+    "reason": "The executable fixture is unchanged. Its golden diagnostics change only the old collision owner EK4408 to the accepted VIP-40 owner EK4005; EK4005 is that replacement identity for the same pre-existing rejection."
+  },
+  {
+    "code": "TS1540",
+    "case": "typescript/vibelang/cases/module-declaration-forms.fail",
+    "vip": "VIP-40",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0040-module-declarations.md: Status: accepted, 2026-11-03. Will: \"Are you asking me if I accept a vip I already asked you to add?\" Replaces denied [VIP-25](0025-inline-modules-denied.md). See the restricted syntax and module-name binding rules. This cites existing explicit acceptance, not a new approval."
+    },
+    "reason": "The executable fixture is unchanged. Its golden diagnostics change only the old collision owner EK4408 to the accepted VIP-40 owner EK4005; TS1540 is an unchanged inherited diagnostic."
+  },
+  {
+    "code": "EK4001",
+    "case": "typescript/vibelang/cases/module-declaration-forms.fail",
+    "vip": "VIP-40",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0040-module-declarations.md: Status: accepted, 2026-11-03. Will: \"Are you asking me if I accept a vip I already asked you to add?\" Replaces denied [VIP-25](0025-inline-modules-denied.md). See the restricted syntax and module-name binding rules. This cites existing explicit acceptance, not a new approval."
+    },
+    "reason": "The executable fixture is unchanged. Its golden diagnostics change only the old collision owner EK4408 to the accepted VIP-40 owner EK4005; EK4001 is an unchanged inherited diagnostic."
+  },
+  {
+    "code": "EK4008",
+    "case": "typescript/vibelang/cases/module-declaration-forms.fail",
+    "vip": "VIP-40",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0040-module-declarations.md: Status: accepted, 2026-11-03. Will: \"Are you asking me if I accept a vip I already asked you to add?\" Replaces denied [VIP-25](0025-inline-modules-denied.md). See the restricted syntax and module-name binding rules. This cites existing explicit acceptance, not a new approval."
+    },
+    "reason": "The executable fixture is unchanged. Its golden diagnostics change only the old collision owner EK4408 to the accepted VIP-40 owner EK4005; EK4008 is an unchanged inherited diagnostic."
+  },
+  {
+    "code": "EK4004",
+    "case": "typescript/vibelang/cases/ek4004-module-export.fail",
+    "vip": "VIP-40",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0040-module-declarations.md: Status: accepted, 2026-11-03. Will: \"Are you asking me if I accept a vip I already asked you to add?\" Replaces denied [VIP-25](0025-inline-modules-denied.md). Its One paragraph and Decision explicitly exclude these forms. This is existing acceptance, not a new approval."
+    },
+    "reason": "VIP-40 adopts only an unexported top-level module declaration; an exported declaration is explicitly rejected. This case narrowly witnesses that published restriction; removing an export, changing module identity or substituting a different meta object is not asserted to preserve the program."
+  },
+  {
+    "code": "EK4007",
+    "case": "typescript/vibelang/cases/ek4007-module-sibling-forms.fail",
+    "vip": "VIP-40",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0040-module-declarations.md: Status: accepted, 2026-11-03. Will: \"Are you asking me if I accept a vip I already asked you to add?\" Replaces denied [VIP-25](0025-inline-modules-denied.md). Its One paragraph and Decision explicitly exclude these forms. This is existing acceptance, not a new approval."
+    },
+    "reason": "VIP-40 explicitly forbids a module body naming a sibling declaration: the body is an independent TypeScript module with string specifiers only. This case narrowly witnesses that published restriction; removing an export, changing module identity or substituting a different meta object is not asserted to preserve the program."
+  },
+  {
+    "code": "EK4007",
+    "case": "typescript/vibelang/cases/ek4007-module-sibling.fail",
+    "vip": "VIP-40",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0040-module-declarations.md: Status: accepted, 2026-11-03. Will: \"Are you asking me if I accept a vip I already asked you to add?\" Replaces denied [VIP-25](0025-inline-modules-denied.md). Its One paragraph and Decision explicitly exclude these forms. This is existing acceptance, not a new approval."
+    },
+    "reason": "VIP-40 explicitly forbids a module body naming a sibling declaration: the body is an independent TypeScript module with string specifiers only. This case narrowly witnesses that published restriction; removing an export, changing module identity or substituting a different meta object is not asserted to preserve the program."
+  },
+  {
+    "code": "EK4009",
+    "case": "typescript/vibelang/cases/ek4009-module-meta-cjs.fail",
+    "vip": "VIP-40",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0040-module-declarations.md: Status: accepted, 2026-11-03. Will: \"Are you asking me if I accept a vip I already asked you to add?\" Replaces denied [VIP-25](0025-inline-modules-denied.md). Its One paragraph and Decision explicitly exclude these forms. This is existing acceptance, not a new approval."
+    },
+    "reason": "VIP-40 explicitly excludes import.meta from a module body, preserving the copy-to-sibling-TypeScript-file rule in both module modes. This case narrowly witnesses that published restriction; removing an export, changing module identity or substituting a different meta object is not asserted to preserve the program."
+  },
+  {
+    "code": "EK4009",
+    "case": "typescript/vibelang/cases/ek4009-module-meta.fail",
+    "vip": "VIP-40",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0040-module-declarations.md: Status: accepted, 2026-11-03. Will: \"Are you asking me if I accept a vip I already asked you to add?\" Replaces denied [VIP-25](0025-inline-modules-denied.md). Its One paragraph and Decision explicitly exclude these forms. This is existing acceptance, not a new approval."
+    },
+    "reason": "VIP-40 explicitly excludes import.meta from a module body, preserving the copy-to-sibling-TypeScript-file rule in both module modes. This case narrowly witnesses that published restriction; removing an export, changing module identity or substituting a different meta object is not asserted to preserve the program."
   }
 ]

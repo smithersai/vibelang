@@ -1,0 +1,9 @@
+// expect: EK4007 EK4007 EK4007 EK4007
+module first { export const n = 1; export type N = number }
+module second {
+  import first
+  import * as ns from first
+  import type { N } from first
+  export * from first
+}
+import second

@@ -1,0 +1,8 @@
+// expect: EK4007 EK4007
+module first { export const n = 1 }
+module second {
+  import { n } from first
+  export { n } from first
+  export const value = n
+}
+import second

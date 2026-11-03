@@ -1,0 +1,1 @@
+An identifier module specifier is not allowed inside a TypeScript module body. Move shared code to a .ts file, or merge the bodies.

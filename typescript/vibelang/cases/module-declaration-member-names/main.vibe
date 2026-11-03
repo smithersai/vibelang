@@ -1,0 +1,11 @@
+module M { export const n = 1 }
+import type { M as Foreign } from "./other.js"
+import { M as foreignValue } from "./other.js"
+export { M as exportedValue } from "./other.js"
+export type { M as ForeignType } from "./other.js"
+import { n } from M
+const { M: bound } = { M: 2 }
+M: { break M }
+export type Shape = Foreign
+export { n as M }
+export const result = n + foreignValue + bound

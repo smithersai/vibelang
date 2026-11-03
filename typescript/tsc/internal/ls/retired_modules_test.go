@@ -33,6 +33,7 @@ func (h retiredModulesHost) CaseSensitivity() tspath.CaseSensitivity { return ts
 func TestModuleDeclarationEdits(t *testing.T) {
 	for _, tc := range []struct{ name, source, old, replacement, want string }{
 		{"module-name", "module text { export const n = 1 }\nimport { n } from text\nimport text\nexport { n } from text\nexport const result = n\n", "text", "fresh", "module fresh { export const n = 1 }\nimport { n } from fresh\nimport fresh\nexport { n } from fresh\nexport const result = n\n"},
+		{"escaped-reference", "module text { export const n = 1 }\nimport { n } from \\u0074ext\nexport const result = n\n", "text", "fresh", "module fresh { export const n = 1 }\nimport { n } from fresh\nexport const result = n\n"},
 		{"body-export", "module text { export const n = 1 }\nimport { n } from text\nexport const result = n\n", "n =", "count", "module text { export const count = 1 }\nimport { count } from text\nexport const result = count\n"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -77,10 +78,17 @@ func TestModuleDeclarationEdits(t *testing.T) {
 }
 
 func moduleEditorService(t *testing.T, source string) (*ls.LanguageService, *compiler.Program, *lsconv.Converters) {
+	return moduleEditorServiceFiles(t, source, nil)
+}
+
+func moduleEditorServiceFiles(t *testing.T, source string, extra map[string]string) (*ls.LanguageService, *compiler.Program, *lsconv.Converters) {
 	t.Helper()
 	files := map[string]string{
 		"/project/main.vibe":     source,
 		"/project/tsconfig.json": `{"compilerOptions":{"target":"esnext","module":"esnext","moduleResolution":"bundler","strict":true,"skipLibCheck":true},"files":["main.vibe"]}`,
+	}
+	for name, text := range extra {
+		files[name] = text
 	}
 	fs := bundled.WrapFS(vfstest.FromMap(files, tspath.CaseInsensitive))
 	parsed, errors := tsoptions.GetParsedCommandLineOfConfigFile("/project/tsconfig.json", &core.CompilerOptions{}, nil, fs, nil)
@@ -149,12 +157,15 @@ func TestOrdinaryModuleEdits(t *testing.T) {
 	}
 }
 
-// VIP-40: "renaming parse renames identifier specifiers only".
-// Mutate the binding, cursor occurrence and trivia; a quoted package name
+// VIP-40: "renaming `parse` renames identifier specifiers only".
+// Mutate the binding, cursor occurrence and trivia; a quoted string
 // must never join the module's rename transaction.
 func FuzzModuleDeclarationRename(f *testing.F) {
-	for _, seed := range []string{"text", "Text", "x_1", "long_module_name"} {
-		f.Add(seed, uint8(0))
+	// The final byte seed normalizes to the contextual identifier module.
+	for _, seed := range []string{"text", "Text", "x_1", "long_module_name", "\x0e\x03\x14\x0b\x04"} {
+		for _, cursor := range []uint8{0, 5, 10, 15} {
+			f.Add(seed, cursor)
+		}
 	}
 	f.Fuzz(func(t *testing.T, raw string, cursor uint8) {
 		if len(raw) > 32 {
@@ -165,9 +176,17 @@ func FuzzModuleDeclarationRename(f *testing.F) {
 			name += string("abcdefghijklmnopqrstuvwxyz_"[int(ch)%27])
 		}
 		replacement := "fresh_" + name
-		source := "module " + name + " { export const n = 1 }\nimport { n } from /*keep*/ " + name + "\nimport " + name + "\nexport { n } from " + name + "\nexport const quoted = \"" + name + "\"\n"
+		declaration, reference := name, name
+		if cursor&4 != 0 {
+			reference = "\\u006d" + name[1:]
+		}
+		if cursor&8 != 0 {
+			declaration = "\\u006d" + name[1:]
+		}
+
+		source := "module " + declaration + " { export const n = 1 }\nimport { n } from /*keep*/ " + reference + "\nimport " + reference + "\nexport { n } from " + reference + "\nexport const quoted = \"" + name + "\"\n"
 		want := "module " + replacement + " { export const n = 1 }\nimport { n } from /*keep*/ " + replacement + "\nimport " + replacement + "\nexport { n } from " + replacement + "\nexport const quoted = \"" + name + "\"\n"
-		offsets := []int{len("module "), strings.Index(source, "/*keep*/ ") + len("/*keep*/ "), strings.Index(source, "\nimport "+name) + len("\nimport "), strings.Index(source, "\nexport { n } from ") + len("\nexport { n } from ")}
+		offsets := []int{len("module "), strings.Index(source, "/*keep*/ ") + len("/*keep*/ "), strings.Index(source, "\nimport "+reference) + len("\nimport "), strings.Index(source, "\nexport { n } from ") + len("\nexport { n } from ")}
 		service, p, converters := moduleEditorService(t, source)
 		file := p.GetSourceFile("/project/main.vibe")
 		pos, _ := converters.ToLSPPosition(file, core.TextPos(offsets[int(cursor)%4]))
@@ -183,8 +202,115 @@ func FuzzModuleDeclarationRename(f *testing.F) {
 		if len(changes) != 1 {
 			t.Fatalf("rename leaked virtual paths: %v", changes)
 		}
+		for _, include := range []bool{false, true} {
+			refs, err := service.ProvideReferences(t.Context(), &lsproto.ReferenceParams{TextDocument: lsproto.TextDocumentIdentifier{Uri: uri}, Position: pos, Context: &lsproto.ReferenceContext{IncludeDeclaration: include}}, nil)
+			if err != nil || refs.Locations == nil {
+				t.Fatalf("references: %v, %v", refs, err)
+			}
+			wantCount := len(changes[uri])
+			if !include {
+				wantCount--
+			}
+			if len(*refs.Locations) != wantCount {
+				t.Fatalf("references includeDeclaration=%v: got %v, want %d", include, *refs.Locations, wantCount)
+			}
+			for _, loc := range *refs.Locations {
+				if loc.Uri != uri || !slices.ContainsFunc(changes[uri], func(edit *lsproto.TextEdit) bool { return edit.Range == loc.Range }) {
+					t.Fatalf("reference is not a rename occurrence: %v", loc)
+				}
+			}
+		}
 		if got := applyModuleEdits(source, changes[uri]); got != want {
 			t.Fatalf("rename = %q, want %q", got, want)
 		}
 	})
+}
+
+// VIP-40: "The name is a lexical binding of the file." A type-only import
+// with the same spelling remains a separate TypeScript type binding.
+func TestTypeOnlyImportModuleRename(t *testing.T) {
+	for _, name := range []string{"M", "Text", "shape"} {
+		t.Run(name, func(t *testing.T) { checkTypeOnlyImportModuleRename(t, name) })
+	}
+}
+
+func FuzzTypeOnlyImportModuleRename(f *testing.F) {
+	for _, raw := range []string{"M", "Text", "shape", "long_name"} {
+		f.Add(raw)
+	}
+	f.Fuzz(func(t *testing.T, raw string) {
+		if len(raw) > 24 {
+			return
+		}
+		name := "M"
+		for _, ch := range []byte(raw) {
+			name += string("abcdefghijklmnopqrstuvwxyz_"[int(ch)%27])
+		}
+		checkTypeOnlyImportModuleRename(t, name)
+	})
+}
+
+func checkTypeOnlyImportModuleRename(t *testing.T, name string) {
+	t.Helper()
+	source := "import type { " + name + " } from \"./other.ts\"\nmodule " + name + " { export const n = 0 }\nimport { n } from " + name + "\nexport type Shape = " + name + "\nexport const result = n\n"
+	service, p, converters := moduleEditorServiceFiles(t, source, map[string]string{"/project/other.ts": "export interface " + name + " {}\n"})
+	file := p.GetSourceFile("/project/main.vibe")
+	pos, _ := converters.ToLSPPosition(file, core.TextPos(strings.Index(source, "{ "+name)+2))
+	uri := lsconv.FileNameToDocumentURI(file.FileName())
+	replacement := "Fresh" + name
+	refs, err := service.ProvideReferences(t.Context(), &lsproto.ReferenceParams{TextDocument: lsproto.TextDocumentIdentifier{Uri: uri}, Position: pos, Context: &lsproto.ReferenceContext{IncludeDeclaration: true}}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	modulePos, _ := converters.ToLSPPosition(file, core.TextPos(strings.Index(source, "module ")+len("module ")))
+    if refs.Locations == nil || !slices.ContainsFunc(*refs.Locations, func(loc lsproto.Location) bool { return loc.Uri == uri && loc.Range.Start == modulePos }) {
+        t.Error("merged type references lost the module declaration")
+    }
+
+	highlights, err := service.ProvideDocumentHighlights(t.Context(), uri, pos)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if highlights.DocumentHighlights != nil {
+		for _, h := range *highlights.DocumentHighlights {
+			if h.Range.Start == modulePos {
+				t.Error("type highlight includes independent module declaration")
+			}
+		}
+	}
+	moduleRefs, err := service.ProvideReferences(t.Context(), &lsproto.ReferenceParams{TextDocument: lsproto.TextDocumentIdentifier{Uri: uri}, Position: modulePos, Context: &lsproto.ReferenceContext{IncludeDeclaration: true}}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	moduleHighlights, err := service.ProvideDocumentHighlights(t.Context(), uri, modulePos)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if moduleRefs.Locations == nil || moduleHighlights.DocumentHighlights == nil || len(*moduleRefs.Locations) != len(*moduleHighlights.DocumentHighlights) {
+		t.Errorf("module highlights do not match module references: %v, %v", moduleRefs, moduleHighlights)
+	} else {
+		for _, h := range *moduleHighlights.DocumentHighlights {
+			if !slices.ContainsFunc(*moduleRefs.Locations, func(loc lsproto.Location) bool { return loc.Uri == uri && loc.Range == h.Range }) {
+				t.Errorf("module highlight crossed type binding: %v", h)
+			}
+		}
+	}
+	response, err := service.ProvideRename(t.Context(), &lsproto.RenameParams{TextDocument: lsproto.TextDocumentIdentifier{Uri: uri}, Position: pos, NewName: replacement}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if response.WorkspaceEdit == nil || response.WorkspaceEdit.Changes == nil {
+		t.Fatal("no type import rename edits")
+	}
+	changes := *response.WorkspaceEdit.Changes
+	got := applyModuleEdits(source, changes[uri])
+	if !strings.Contains(got, "module "+replacement+" {") || !strings.Contains(got, "from "+replacement+"\n") {
+		t.Errorf("merged type rename left a dangling module specifier: %q", got)
+	}
+	if !strings.Contains(got, "export type Shape = "+replacement+"\n") {
+		t.Errorf("type use was not renamed: %q", got)
+	}
+	if len(changes) != 1 {
+		t.Errorf("local type rename changed other files: %v", changes)
+	}
 }

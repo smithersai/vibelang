@@ -84,7 +84,7 @@ test("runs .vibe modules imported from TypeScript, with one compile and one copy
   assert.equal(compilations(), 1, "every .vibe module of a project comes from one compile")
 })
 
-test("loads a .vibe module's module declaration as a module of its own, with stack frames inside it (D283, D403)", { skip }, (t) => {
+test("loads a .vibe module's module declaration as a module of its own, with stack frames inside it (VIP-40)", { skip }, (t) => {
   const { run, compilations } = project(t, {
     "src/suffix.ts": "export const suffix = \"!\"\n",
     "src/shout.vibe": "export function shout(text: string): string { return text.toUpperCase() }\n",
@@ -96,32 +96,39 @@ test("loads a .vibe module's module declaration as a module of its own, with sta
       "    return shout(value.trim()) + suffix",
       "  }",
       "  export let cleaned = 0",
-      "  export const url = import.meta.url",
       "  import { suffix } from \"./suffix.ts\"",
       "  import { shout } from \"./shout.vibe\"",
       "}",
-      "import { clean } from tools",
-      "export { cleaned, url } from tools",
-      "export function tidy(value: string) {",
-      "  return sync((value) => clean(value), value)",
-      "}",
+      "export { clean, cleaned } from tools",
       ""
     ].join("\n"),
     "src/main.ts": [
       "import { Cause, Effect, Exit } from \"effect\"",
-      "import { cleaned, tidy, url } from \"./text.vibe\"",
+      "import { clean, cleaned } from \"./text.vibe\"",
+      "const tidy = (value: string) => Effect.sync(() => clean(value))",
       "const exit = Effect.runSyncExit(tidy(\"  \"))",
       "const defect = Exit.isFailure(exit) ? Cause.squash(exit.cause) as Error : undefined",
       "const text = Effect.runSync(tidy(\"  a  \"))",
-      "console.log(JSON.stringify({ text, cleaned, url: url.endsWith(\"/src/text.vibe.tools.js\"), defect: defect?.message, mapped: /text\\.vibe:3:/.test(String(defect?.stack)) }))",
+      "console.log(JSON.stringify({ text, cleaned, defect: defect?.message, mapped: /text\\.vibe:3:/.test(String(defect?.stack)) }))",
       ""
     ].join("\n")
   })
   const result = run("src/main.ts")
   assert.equal(result.stderr, "")
   assert.equal(result.status, 0)
-  assert.deepEqual(JSON.parse(result.stdout), { text: "A!", cleaned: 1, url: true, defect: "empty", mapped: true })
+  assert.deepEqual(JSON.parse(result.stdout), { text: "A!", cleaned: 1, defect: "empty", mapped: true })
   assert.equal(compilations(), 1)
+})
+
+test("reports EK4009 before loading import.meta in a TypeScript module body (VIP-40)", { skip }, (t) => {
+  const { run } = project(t, {
+    "src/meta.vibe": "module tools { export const url = import.meta.url }\nimport tools\nexport const value = 1\n",
+    "src/main.ts": "import { value } from \"./meta.vibe\"\nconsole.log(value)\n"
+  })
+  const result = run("src/main.ts")
+  assert.notEqual(result.status, 0)
+  assert.match(result.stderr, /EK4009: import\.meta is not allowed inside a TypeScript module body/)
+  assert.doesNotMatch(result.stderr, /ERR_MODULE_NOT_FOUND/)
 })
 
 test("resolves an extensionless import to the .vibe file TypeScript resolves it to", { skip }, (t) => {

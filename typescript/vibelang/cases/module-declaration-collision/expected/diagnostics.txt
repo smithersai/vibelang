@@ -1,5 +1,0 @@
-main.vibe(3,8): warning EK4408
-main.vibe(5,8): warning EK4408
-main.vibe(8,8): warning EK4408
-main.vibe(12,8): warning EK4408
-main.vibe(15,8): warning EK4408

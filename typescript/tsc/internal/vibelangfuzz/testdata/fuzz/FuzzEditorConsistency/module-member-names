@@ -1,0 +1,3 @@
+go test fuzz v1
+string("-- main.vibe --\nmodule M { export const n = 1 }\nimport type { M as Foreign } from \"./other.js\"\nimport { M as foreignValue } from \"./other.js\"\nexport { M as exportedValue } from \"./other.js\"\nexport type { M as ForeignType } from \"./other.js\"\nimport { n } from M\nconst { M: bound } = { M: 2 }\nM: { break M }\nexport type Shape = Foreign\nexport { n as M }\nexport const result = n + foreignValue + bound\n-- other.ts --\nexport interface M { readonly value: number }\nexport const M = 2\n")
+[]byte("\x00\x07")

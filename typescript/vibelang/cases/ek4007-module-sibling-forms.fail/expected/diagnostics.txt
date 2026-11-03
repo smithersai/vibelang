@@ -1,0 +1,4 @@
+main.vibe(4,10): error EK4007
+main.vibe(5,23): error EK4007
+main.vibe(6,26): error EK4007
+main.vibe(7,17): error EK4007

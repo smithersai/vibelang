@@ -1,0 +1,2 @@
+go test fuzz v1
+string("-- main.vibe --\nmodule text { export const url = import.meta.url }\nimport text\n")
