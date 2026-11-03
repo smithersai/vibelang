@@ -57,10 +57,22 @@ func (tx *lowering) lowerMethod(node *ast.Node) *ast.Node {
 	tx.inEffect, tx.frame, tx.plain = saved, savedFrame, savedPlain
 
 	if !hasSimpleParameters(node) || tx.plan.parameterWrites[node] {
+		if isMarkedEffect(node) {
+			parameters, block := tx.callTimeEffectBody(node, parameters, body)
+			lowered := f.UpdateMethodDeclaration(method, node.Modifiers(), method.AsteriskToken, node.Name(), method.PostfixToken, method.TypeParameters, parameters, method.Type, method.FullSignature, block)
+			ec.SetOriginal(lowered, node)
+			return lowered
+		}
 		return tx.perRunMethod(node, parameters, body)
 	}
 	if effect := tx.directEffect(node, body, thunkIsReturn); effect != nil {
 		block := f.NewBlock(f.NewNodeList([]*ast.Node{tx.generated(f.NewReturnStatement(effect))}), true /*multiLine*/)
+		lowered := f.UpdateMethodDeclaration(method, node.Modifiers(), method.AsteriskToken, node.Name(), method.PostfixToken, method.TypeParameters, parameters, method.Type, method.FullSignature, block)
+		ec.SetOriginal(lowered, node)
+		return lowered
+	}
+	if isMarkedEffect(node) && len(node.Parameters()) > 0 {
+		parameters, block := tx.callTimeEffectBody(node, parameters, body)
 		lowered := f.UpdateMethodDeclaration(method, node.Modifiers(), method.AsteriskToken, node.Name(), method.PostfixToken, method.TypeParameters, parameters, method.Type, method.FullSignature, block)
 		ec.SetOriginal(lowered, node)
 		return lowered

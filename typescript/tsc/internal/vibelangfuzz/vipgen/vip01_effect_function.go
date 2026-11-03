@@ -219,6 +219,31 @@ func init() {
 				V: decl + "effect function " + head + " {\n" + body1 + "\n}",
 				E: decl + "function " + strings.Replace(head, "p: number", "p", 1) + " {\nreturn Effect.gen(function* () {\n" + body1 + "\n})\n}",
 			}
+			// VIP-1's table gives the same call-time binding for all six
+			// callable forms; replay must retain their parameter writes.
+			refHead := strings.Replace(head, "p: number", "p", 1)
+			params, refParams := head[len(fn):], refHead[len(fn):]
+			refBody := " { return Effect.gen(function* () {\n" + body1 + "\n}) }"
+			switch g.Intn(6) {
+			case 1:
+				code.V = decl + "const " + fn + " = effect function " + params + " {\n" + body1 + "\n}"
+				code.E = decl + "const " + fn + " = function " + refParams + refBody
+			case 2:
+				code.V = decl + "const " + fn + " = effect " + params + " => {\n" + body1 + "\n}"
+				code.E = decl + "const " + fn + " = " + refParams + " => Effect.gen(function* () {\n" + body1 + "\n})"
+			case 3:
+				obj := g.Name("o")
+				code.V = decl + "const " + obj + " = { effect run" + params + " {\n" + body1 + "\n} }; const " + fn + " = " + obj + ".run"
+				code.E = decl + "const " + obj + " = { run" + refParams + refBody + " }; const " + fn + " = " + obj + ".run"
+			case 4, 5:
+				class := g.Name("C")
+				static, receiver := "", "new "+class+"()"
+				if g.Intn(2) == 1 {
+					static, receiver = "static ", class
+				}
+				code.V = decl + "class " + class + " { " + static + "effect run" + params + " {\n" + body1 + "\n} }; const " + fn + " = " + receiver + ".run"
+				code.E = decl + "class " + class + " { " + static + "run" + refParams + refBody + " }; const " + fn + " = " + receiver + ".run"
+			}
 			sum := g.Name("v")
 			s.Locals = append(s.Locals, sum)
 			return []Stmt{

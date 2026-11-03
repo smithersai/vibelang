@@ -425,9 +425,10 @@ func (tx *lowering) visitRunningCall(node *ast.Node) *ast.Node {
 	return run
 }
 
-// lowerFunction turns a function expression or arrow function into
-// `Effect.fnUntraced(function* (params) { body })`, or into the same kind of
-// function returning its direct Effect (direct.go).
+// lowerFunction keeps marked Effect parameters on the source callable,
+// outside its cold Effect body. Direct bodies keep the native frame; other
+// marked bodies return Effect.gen. Inferred compatibility callables retain
+// the fnUntraced path.
 func (tx *lowering) lowerFunction(node *ast.Node) *ast.Node {
 	parameters, body := tx.loweredBody(node)
 	if hasSimpleParameters(node) && !tx.plan.parameterWrites[node] {
@@ -441,6 +442,10 @@ func (tx *lowering) lowerFunction(node *ast.Node) *ast.Node {
 		if effect := tx.directEffect(node, body, role); effect != nil {
 			return tx.directFunction(node, parameters, effect)
 		}
+	}
+	if isMarkedEffect(node) && len(node.Parameters()) > 0 {
+		parameters, body = tx.callTimeEffectBody(node, parameters, body)
+		return tx.directFunctionBody(node, parameters, body)
 	}
 	if refersToOwnName(node) {
 		return tx.selfBoundFunction(node, parameters, body)
@@ -586,10 +591,9 @@ func functionName(fn *ast.Node) string {
 // visitEffectFunctionDeclaration keeps a hoisted JavaScript declaration in
 // every lexical block (including declarations after a return). Only its body
 // becomes an Effect factory; moving a const cannot cover switch clauses or
-// cyclic module imports. Keep the existing generator wrapper so
-// defaults, destructuring, this, arguments, and recursive references still run
-// inside the Effect, rather than eagerly in the forwarding declaration. A
-// body with a direct Effect (direct.go) is the declaration's own body.
+// cyclic module imports. Explicit Effect parameters bind once at the call;
+// its cold body retains the source this, arguments and recursive references.
+// A body with a direct Effect (direct.go) is the declaration's own body.
 func (tx *lowering) visitEffectFunctionDeclaration(node *ast.Node) *ast.Node {
 	f := tx.Factory()
 	loweredParameters, loweredBody := tx.loweredBody(node)
@@ -598,6 +602,10 @@ func (tx *lowering) visitEffectFunctionDeclaration(node *ast.Node) *ast.Node {
 			body := f.NewBlock(f.NewNodeList([]*ast.Node{tx.generated(f.NewReturnStatement(effect))}), true /*multiLine*/)
 			return tx.effectFunctionDeclaration(node, loweredParameters, body)
 		}
+	}
+	if isMarkedEffect(node) && len(node.Parameters()) > 0 {
+		parameters, body := tx.callTimeEffectBody(node, loweredParameters, loweredBody)
+		return tx.effectFunctionDeclaration(node, parameters, body)
 	}
 	// The declaration stands for the source function; the generator it
 	// forwards to maps to no source position (generated.go) and runs as the

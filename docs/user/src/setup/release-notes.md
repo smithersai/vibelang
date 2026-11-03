@@ -522,6 +522,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - A `.vibex` source and its package or mapped sidecar import could be treated as different modules, rejecting identical private class types; both now select the available source, and `.vibex` sidecars keep the correct extension in either layout.
 - Producer methods marked `effect` could be checked or emitted as JavaScript generators; they now return lazy, repeatable streams and preserve `this`, `super` and member modifiers.
 
+- Defaults in `effect` functions ran again on every execution and parameter writes were reset. Parameters now bind once at the call, and repeated runs share their bindings; binding exceptions become defects in the returned Effect (VIP-1).
+
 - Declaration checks could compare an unused `types` export instead of an earlier matching package condition, hiding a real API change. Published entry discovery now follows TypeScript's conditional export order and preserves mirrored `.vibe` sidecar resolution.
 
 - Declaration checks could miss a type change selected by an explicit `resolution-mode` import attribute. They now resolve each import using its own mode throughout the comparison.

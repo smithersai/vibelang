@@ -15,7 +15,10 @@ export const property = (value) => Effect_1.sync({ property: () => { return ++va
 // Plain exports are plain JavaScript functions (VIP-1).
 export function plain(n) { return ++n; }
 export function plainRest(...values) { return values.pop(); }
-export const hatch = (n) => Effect_1.suspend({ hatch: () => { return Effect_1.sync(((n) => ++n).bind(undefined, n)); } }.hatch);
+export const hatch = (n) => (_tail_1 => Effect_1.gen(function* hatch() {
+    const _completion_1 = _tail_1(), _value_1 = _completion_1[1];
+    return _completion_1[0] ? yield* _value_1 : _value_1;
+}))({ hatch: () => { return [true, Effect_1.sync(((n) => ++n).bind(undefined, n))]; } }.hatch);
 export const shorthand = (n) => Effect_1.sync({ shorthand: () => { return ({ n }); } }.shorthand);
 // Explicit program factories intentionally keep their eager outer state.
 export function factory(n) { return Effect_1.sync(() => ++n); }

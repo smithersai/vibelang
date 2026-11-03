@@ -1,0 +1,9 @@
+import { Effect } from "effect"
+import { sentinel, bindingDefaults } from "./binding-failure-native.js"
+export { sentinel }
+effect function f(p = bindingDefaults.value) { return p }
+effect function destructure({ n }: { n: number }) { return n }
+const arrow = effect (p = bindingDefaults.value) => p
+export const makeFailure = () => f()
+export const makeArrowFailure = () => arrow()
+export const makeDestructuringFailure = () => destructure(undefined as any)

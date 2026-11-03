@@ -1,0 +1,13 @@
+import { Effect } from "effect"
+function Witness(f = effect () => new.target === undefined ? 1 : 2) { return f() }
+export effect function constructDefault() {
+  return try (Reflect.construct(Witness, []) as ReturnType<typeof Witness>)
+}
+const offset = (n: number) => 30 + n
+Object.defineProperty(offset, "call", { value: () => -1000 })
+class Base { get offset() { return offset } }
+class Derived extends Base {
+  n = 7
+  effect value() { return this.n + super.offset(0) }
+}
+export function directSuper() { return new Derived().value() }
