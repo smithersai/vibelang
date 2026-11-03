@@ -4,4 +4,4 @@ Join the fiber with join f.
 Wait for the Deferred with try Deferred.await(d).
 join takes a Fiber or an array or object of fibers, but this is Deferred<number, never>.
 Wait for a Deferred with d.await().
-join is VibeLang syntax, but a hatch body is plain TypeScript.
+Fork or join outside effect code. Move fork or join into an effect function or effect block.

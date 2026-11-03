@@ -2,6 +2,8 @@
 
 A fiber is a running computation with a result and a lifetime. Effect's lightweight fibers overlap waiting work, inspect completion, and cancel safely. They give concurrency on the runtime's scheduler, not parallel CPU execution of JavaScript.
 
+A parsed `fork` or `join` runs only inside an `effect` function or `effect { ... }` block. A plain nested function, a class field, a static block or a parameter default is outside that code and reports `EK1701`. Ordinary helper calls such as `join(parts)` in plain code keep their TypeScript meaning. For previously accepted operators in plain code, `vibelang --fix` writes a cold API call and preserves the enclosing function's plain behavior; mark the function `effect` yourself when you intend to run the operation there.
+
 An `effect` function or producer expression cannot name itself `fork` or `join` (`EK1702`). A declaration uses its enclosing context: `export effect function fork() { return 1 }` is allowed in plain code, while a declaration named `fork` or `join` inside effect code is rejected. Method and property names remain ordinary names, so `{ effect join() { return 1 } }` is allowed.
 
 ## Forking and awaiting

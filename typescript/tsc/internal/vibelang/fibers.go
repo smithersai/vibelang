@@ -90,6 +90,13 @@ func fiberHelper(call *ast.Node) string {
 func checkFiberForms(c *checker.Checker, file *ast.SourceFile) {
 	var visit func(node *ast.Node) bool
 	visit = func(node *ast.Node) bool {
+		// VIP-17 placement precedes operand typing. Inspect the parser's
+		// operator marker so ordinary helpers in plain code stay ordinary.
+		if isFiberOperator(node) && !inEffectCode(node) {
+			reportAt(c, file, scanner.GetRangeOfTokenAtPosition(file, node.Pos()), EK1701)
+			cover(c, node)
+			return node.ForEachChild(visit)
+		}
 		// Native async await keeps JavaScript behavior. Awaiting a Fiber or
 		// Deferred does not run it, so report the configurable VIP-5 warning.
 		if node.Kind == ast.KindAwaitExpression {

@@ -245,6 +245,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - The grammar admission inventory stopped accounting for every compiler helper after a hatch operand helper was extracted; that helper now has an explicit pending row under the existing hatch audit.
 - The fuzz suite refused an editor regression’s pending record because it lacked a specification reference; it now cites `VIP-34` and retains the same reproducer.
 - The grammar admission audit could mistake TypeScript’s `for await…of` loops for undefined VibeLang syntax; its grammar now derives those loops and checks malformed heads separately.
+
+- `fork` and `join` in plain functions, nested callbacks, initializers and parameter defaults could compile or report an operand error. They now report `EK1701`; `vibelang --fix` preserves the old cold program construction with an explicit API call.
 - `Effect.forkChild(e)`, `Effect.forkDetach(e)` and other calls whose type parameter is constrained to an `Effect`, such as `<Arg extends Effect<any, any, any> | Options>`, warned `EK4802` that the call receives the unrun program. Such a parameter declares that it takes a program, so it no longer warns.
 - A function whose only statement is `return try value` showed V8 coverage, and tools that read it, a second function for the generator the compiler makes. That generator now maps to no source position, so coverage counts one function, as before tail `try` kept native delegation.
 

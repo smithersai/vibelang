@@ -1,0 +1,18 @@
+// expect-result: {"helpers":6,"fiber":1,"block":2}
+function fork(n: number) { return n + 1 }
+function join(n: number) { return n * 2 }
+class Helpers {
+  value = join(fork(2))
+  static value = join(fork(2))
+}
+effect function child() {
+  const fiber = fork Effect.succeed(1)
+  return join fiber
+}
+export effect function main() {
+  const block = effect {
+    const fiber = fork Effect.succeed(2)
+    return join fiber
+  }
+  return { helpers: new Helpers().value, fiber: try child(), block: try block }
+}

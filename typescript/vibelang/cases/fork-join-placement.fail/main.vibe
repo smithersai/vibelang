@@ -1,0 +1,17 @@
+// expect: EK1701 EK4801
+function f() { const child = fork Effect.succeed(1) }
+function j(child: Fiber.Fiber<number>) { return join child }
+const arrow = () => { const child = fork Effect.succeed(1) }
+effect function outer(child: Fiber.Fiber<number>) {
+  function nested() { return join child }
+  const nestedArrow = () => fork Effect.succeed(2)
+  class C {
+    value = fork Effect.succeed(3)
+    static { join child }
+    constructor() { fork Effect.succeed(4) }
+    get value2() { return join child }
+  }
+}
+effect function defaults(child = fork Effect.succeed(5)) { return 1 }
+function badJoin(n: number) { return join n }
+function badFork(n: number) { return fork n }

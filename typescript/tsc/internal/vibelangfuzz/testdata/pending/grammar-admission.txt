@@ -3,16 +3,10 @@ FuzzGrammarAdmission admission:service-shape compiler VIP-9: service declaration
 FuzzGrammarAdmission corpus:service-shape compiler VIP-9: service declarations require the member body, not a colon shape; lane impl-hunt-admission
 FuzzGrammarAdmission admission:layer-declaration compiler VIP-9/12: no layer declaration production is adopted; lane impl-hunt-admission
 FuzzGrammarAdmission corpus:layer-declaration compiler VIP-9/12: no layer declaration production is adopted; lane impl-hunt-admission
-FuzzGrammarAdmission admission:fork-outside-effect compiler VIP-1/17: a legacy fork prefix in plain code reports only name/discard errors instead of a syntax-placement rejection; lane impl-hunt-admission
-FuzzGrammarAdmission corpus:fork-outside-effect compiler VIP-1/17: plain-function unreachable fork prefix is outside the Effect grammar; lane impl-hunt-admission
-FuzzGrammarAdmission admission:join-outside-effect compiler VIP-1/17: a legacy join prefix in plain code reports only an operand type error instead of a syntax-placement rejection; lane impl-hunt-admission
-FuzzGrammarAdmission corpus:join-outside-effect compiler VIP-1/17: plain-function unreachable join prefix is outside the Effect grammar; lane impl-hunt-admission
 FuzzGrammarAdmission admission:fiber-function-name grammar-lab Appendix A Name: a declaration's own name takes the enclosing context's parameters, so effect function join() {} at module level derives; the lab applies [+Effect] to every name after effect; lane impl-hunt-admission
 FuzzGrammarAdmission corpus:fiber-function-name grammar-lab Appendix A Name: effect function join(p) derives as a module-level declaration; the lab does not model it yet; lane impl-hunt-admission
-FuzzGrammarAdmission corpus:join-outside-effect-object compiler VIP-1/17: same-line join with an object operand outside Effect code reports only EK4611, without syntax rejection; lane impl-hunt-admission
 FuzzGrammarAdmission admission:fork-block compiler VIP-17: a bare fork brace-body containing statements is not a UnaryExpression operand; the compiler wraps it in a program and accepts it; lane impl-hunt-admission
 FuzzGrammarAdmission corpus:fork-block compiler VIP-17: bare fork block statements have no Appendix A derivation; lane impl-hunt-admission
-FuzzGrammarAdmission corpus:join-nested-plain compiler VIP-1/17: a nested plain callable resets Effect context; join reports only an operand error instead of syntax placement; lane impl-hunt-admission
 FuzzGrammarAdmission admission:schema-type-parameters compiler VIP-15 (amended 2026-10-30): a schema declaration has no type parameters (EK1502); `schema C<T> { a: T }` reports only TS2304 on T; lane impl-hunt-admission
 FuzzGrammarAdmission corpus:schema-type-parameters compiler VIP-15 (amended 2026-10-30): a schema declaration has no type parameters (EK1502); `schema C<T> { a: T }` reports only TS2304 on T; lane impl-hunt-admission
 FuzzGrammarAdmission admission:for-concurrent-line-break compiler Appendix A: `concurrent` is a keyword only before `(` on the same line; a line break after `concurrent` still compiles as the loop; lane impl-hunt-admission
