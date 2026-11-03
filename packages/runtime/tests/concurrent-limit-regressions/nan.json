@@ -1,0 +1,11 @@
+{
+  "property": "concurrent-native-limits",
+  "rule": "VIP-19: native Effect concurrency and default unbounded",
+  "input": {
+    "kind": "nan",
+    "items": [
+      1,
+      2
+    ]
+  }
+}

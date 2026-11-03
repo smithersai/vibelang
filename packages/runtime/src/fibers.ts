@@ -1,4 +1,5 @@
 import { Deferred, Effect, Exit, Fiber, Scope } from "effect"
+import type * as Types from "effect/Types"
 
 // The fiber forms of a .vibe file (D166-D170). The parser writes `await x`
 // as $await(x), `select { ... }` as a call of $select, and `for concurrent`
@@ -195,13 +196,13 @@ const firstExit = (fibers: ReadonlyArray<Fiber.Fiber<unknown, unknown>>) =>
   })
 
 /**
- * D169: `for concurrent (const x of xs) body` runs the body for each item in
- * its own fiber, at most `concurrency` at once (no limit when undefined), and
- * joins them all before the loop ends. A failure interrupts the rest.
+ * VIP-19: delegate item execution to `Effect.forEach` with its native
+ * `Types.Concurrency`; undefined selects `"unbounded"`. The loop joins
+ * started item work, propagates its failure and discards its results.
  */
 export const $forConcurrent = <X, E, R>(
   items: Iterable<X>,
-  concurrency: number | undefined,
+  concurrency: Types.Concurrency | undefined,
   body: (item: X) => Effect.Effect<unknown, E, R>
 ): Effect.Effect<void, E, R> =>
   Effect.forEach(items, body, { concurrency: concurrency ?? "unbounded", discard: true })

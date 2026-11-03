@@ -860,6 +860,8 @@ typescript/vibelang/cases/concurrent-invalid-limits.fail/main.vibe:3:32 lambda e
 typescript/vibelang/cases/concurrent-invalid-limits.fail/main.vibe:4:35 lambda effectFn table
 typescript/vibelang/cases/concurrent-invalid-limits.fail/main.vibe:5:32 lambda effectFn table
 typescript/vibelang/cases/concurrent-invalid-limits.fail/main.vibe:6:30 lambda effectFn table
+typescript/vibelang/cases/concurrent-unbounded-limit/main.vibe:10:38 lambda effectFn table
+typescript/vibelang/cases/concurrent-unbounded-limit/main.vibe:5:32 lambda effectFn table
 typescript/vibelang/cases/conditional-factory-lambda-infers-channels/main.vibe:10:15 lambda effectFn annotation
 typescript/vibelang/cases/conditional-factory-lambda-infers-channels/main.vibe:11:19 lambda effectFn annotation
 typescript/vibelang/cases/conditional-factory-lambda-infers-channels/main.vibe:14:32 lambda plain fallback

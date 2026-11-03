@@ -1,0 +1,12 @@
+// expect-result: [6,6,6]
+import type { Types } from "effect"
+effect function collect(limit: Types.Concurrency) {
+  let total = 0
+  for concurrent(limit) (const item of [1,2,3]) { total += item }
+  return total
+}
+export effect function main() {
+  let direct = 0
+  for concurrent("unbounded") (const item of [1,2,3]) { direct += item }
+  return [direct, try collect("unbounded"), try collect(2)]
+}
