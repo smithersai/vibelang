@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"hash/fnv"
+	"regexp"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
@@ -37,6 +39,12 @@ func TestGrammarAdmissionQuoted(t *testing.T) {
 		t.Fatal("VIP-23 topic quote changed; review the external grammar")
 	}
 }
+
+var grammarFiberBinding = regexp.MustCompile(`\b(?:const|let|var)\s+(?:fork|join)\b`)
+
+var grammarFiberParameter = regexp.MustCompile(`\beffect\s+function\b[^(]*\([^)]*\b(?:fork|join)\b`)
+
+var grammarInterruptionBlock = regexp.MustCompile(`\b(?:uninterruptible|interruptible|restore)[ \t]*\{`)
 
 var admissionLab = sync.OnceValues(func() (*grammarLab, error) {
 	return grammarNewGrammarLab(SpecText(grammarAppendix), grammarAppendix)
@@ -79,6 +87,51 @@ var grammarAdmissionSeeds = []struct{ key, source string }{
 	// campaign71 mutation:00606103e5734e4a: `effect` before `[` outside a
 	// type member is an identifier, so this is an element access.
 	{"effect-element-access", "effect [ a\n] ;"},
+	// One valid program per Appendix A production, so mutation reaches each.
+	{"production-producer", "effect function* g() { yield 1; }"},
+	{"production-effect-class-method", "class C { effect m() { return 1; } }"},
+	{"production-producer-method", "class C { effect *g() { yield 1; } }"},
+	{"production-effect-object-method", "const o = { effect m() { return 1; } };"},
+	{"production-pipe-try", "effect function f(p) { return p |> try %; }"},
+	{"production-fork-scoped", "effect function f(p) { return fork.scoped p; }"},
+	{"production-fork-in", "effect function f(s, p) { return fork.in(s) p; }"},
+	{"production-try-all", "effect function f(p) { return try.all p; }"},
+	{"production-for-concurrent", "effect function f(xs) { for concurrent (const x of xs) { try x; } }"},
+	{"production-for-concurrent-limit", "effect function f(xs) { for concurrent (2) (const x of xs) { try x; } }"},
+	{"production-for-try", "effect function f(xs) { for try (const x of xs) { x; } }"},
+	{"production-interruption", "effect function f() { uninterruptible { restore { return 1; } } interruptible { return 2; } }"},
+	{"production-provide", "effect function f(K, L) { provide K = 1, L { return 1; } }"},
+	{"production-service", "service S { n: number; static readonly key: string = \"k\"; }"},
+	{"production-error", "error E { readonly id: string; m() { return 1; } effect n() { return 1; } }"},
+	{"production-schema-error", "schema error E { id: string }"},
+	{"production-schema", "schema C { id: string }"},
+	{"production-schema-alias", "schema C = string;"},
+	{"production-data", "data D { A { x: number }; B }"},
+	{"production-match", "const v = match (x) { when 1: 2; default: 3; };"},
+	{"production-match-patterns", "const v = match (x) { when [let a, ...]: a; when { k: let b }: b; default: throw 1; };"},
+	{"production-match-combined", "const v = match (x) { when not 1 and 2: 3; when (> 1 or < 0): 4; when if (y): 5; when P(let a): a; default: 6; };"},
+	{"production-is", "const b = x is [let a];"},
+	{"production-effect-type", "type T = number!string!boolean;"},
+	{"production-effect-type-omitted", "type T = number!!;"},
+	{"production-effect-type-as", "const v = x as number!!;"},
+	{"production-do", "const v = do { 1; };"},
+	// campaign83 mutation:2dc0b1c30d510141: a `!` opening a type is TS17020.
+	{"native-leading-bang", "type T = !\nstring ! ! boolean\n;\n; ;"},
+	{"production-effect-type-paren", "type T = (number!string)[];"},
+	{"production-effect-type-group", "type T = (1 | 2)!string;"},
+	{"production-call-signature", "type T = { (): void };"},
+	// Forms the compiler accepts and Appendix A does not derive.
+	{"effect-type-mix", "type T = number | string!boolean;"},
+	{"schema-type-parameters", "schema C<T> { a: T }"},
+	{"for-concurrent-line-break", "effect function f() { for concurrent\n(const x of [1]) x; }"},
+	{"schema-no-body", "schema C string"},
+	{"provider-expression", "effect function f(K, L) { provide K => 1, L { 1; } }"},
+	{"effect-type-trailing-bang", "type T = number!string!;"},
+	{"effect-type-line-break", "type T = number !\n! ;"},
+	{"service-class", "service class S { n: number }"},
+	{"interruption-outside-effect", "function f() { uninterruptible { return 1; } }"},
+	{"error-no-end", "error E effect { id: string }"},
+	{"error-no-end-schema", "schema error E effect { id: string }"},
 	{"fiber-binding-arrow", "const f = effect join => 1;"},
 	{"native-function-overload", "function f(p: number): number; function f(p: number) { return p; }"},
 	{"join-nested-plain", "effect effect => function f(p) { return join p; }"},
@@ -122,12 +175,18 @@ func grammarAdmissionMutate(seed string, data []byte) (string, string) {
 	// Insert/delete/replace/duplicate a token, or move a line boundary.
 	// Punctuation and contextual words deliberately cross form boundaries.
 	words := []string{"catch", "throw", "effect", "async", "join", "fork", "try", "|>", "%", "{", "}", "(", ")", ";", "=>", "??", "1"}
+	// A high operation byte draws from the production vocabulary instead, so
+	// the replay of every existing corpus file stays unchanged.
+	productionWords := []string{"[", "]", "=", ":", ",", "<", ">", "!", ".", "*", "...", "?", "match", "when", "default", "is", "not", "and", "or", "if", "do", "for", "concurrent", "of", "provide", "service", "error", "schema", "data", "let", "const", "as", "type", "class", "get", "static", "readonly", "uninterruptible", "restore", "x"}
 	for i := 1; i+2 < len(data) && i < 25; i += 3 {
 		if len(toks) == 0 {
 			break
 		}
 		at := int(data[i+1]) % len(toks)
 		choice := grammarLexSource(words[int(data[i+2])%len(words)])[0]
+		if data[i]&0x80 != 0 {
+			choice = grammarLexSource(productionWords[int(data[i+2])%len(productionWords)])[0]
+		}
 		switch data[i] % 5 {
 		case 0:
 			toks = append(toks[:at], append([]grammarToken{choice}, toks[at:]...)...)
@@ -236,11 +295,186 @@ func TestGrammarAdmissionPipes(t *testing.T) {
 	}
 }
 
+// grammarAdmissionDeclarationForm keys the known gaps a declaration or a type
+// shows in its own tokens.
+func grammarAdmissionDeclarationForm(ts []grammarToken) string {
+	depth := 0
+	bang, mixed := false, false
+	lastBang := -1
+	for i, tok := range ts {
+		if tok.kind == 's' || tok.kind == 't' {
+			continue
+		}
+		switch tok.text {
+		case "(", "[", "{":
+			depth++
+		case ")", "]", "}":
+			depth--
+		case ";":
+			if depth == 0 {
+				bang, mixed = false, false
+				lastBang = -1
+			}
+		case "!":
+			bang = bang || depth == 0
+			if i+1 < len(ts) && ts[i+1].text == "!" && ts[i+1].nl && i > 0 && (ts[i-1].kind != 'p' || slices.Contains([]string{")", "]", "}"}, ts[i-1].text)) {
+				return "admission:effect-type-line-break"
+			}
+			// A!E! with no R: only the omitted-E form A!! ends in a bang.
+			if depth == 0 && lastBang >= 0 && lastBang != i-1 && (i+1 == len(ts) || ts[i+1].nl || slices.Contains([]string{";", ",", ")", "}", "]"}, ts[i+1].text)) {
+				return "admission:effect-type-trailing-bang"
+			}
+			if depth == 0 {
+				lastBang = i
+			}
+		case "module":
+			if i+1 < len(ts) && (ts[i+1].text == "{" || ts[i+1].kind == 'w' && i+2 < len(ts) && ts[i+2].text == "{") {
+				return "admission:inline-module"
+			}
+		case "|", "&":
+			mixed = mixed || depth == 0
+		case "concurrent":
+			if i > 0 && ts[i-1].text == "for" && i+1 < len(ts) && ts[i+1].nl {
+				return "admission:for-concurrent-line-break"
+			}
+		case "service":
+			// The older spelling draws only the warning EK2120.
+			if i+1 < len(ts) && !ts[i+1].nl && ts[i+1].text == "class" {
+				return "admission:service-class"
+			}
+		case "provide":
+			// A provide head on one line whose provider Appendix A does not derive:
+			// `provide fork K = 1 { }`, `provide K => 1 { }`.
+			for j := i + 1; j < len(ts) && ts[j].text != ";"; j++ {
+				if ts[j].text == "{" && j > i+1 {
+					return "admission:provider-expression"
+				}
+			}
+		case "fork":
+			// A bare block operand keeps its own key wherever it stands.
+			if i+1 < len(ts) && !ts[i+1].nl && ts[i+1].text == "{" {
+				return "admission:fork-block"
+			}
+		case "schema", "error":
+			if i > 0 && !tok.nl && ts[i-1].text != ";" && ts[i-1].text != "}" && ts[i-1].text != "{" {
+				break
+			}
+			at := i + 1
+			if tok.text == "schema" && at < len(ts) && !ts[at].nl && ts[at].text == "error" {
+				at++
+			}
+			// `schema error` then a line break names the schema `error`.
+			if tok.text == "schema" && at == i+2 && (at >= len(ts) || ts[at].nl || ts[at].kind != 'w') {
+				if at >= len(ts) || ts[at].text != "{" && ts[at].text != "=" {
+					return "admission:schema-no-body"
+				}
+				break
+			}
+			if at >= len(ts) || ts[at].nl || ts[at].kind != 'w' {
+				break
+			}
+			if tok.text == "schema" && at == i+1 {
+				if at+1 < len(ts) && ts[at+1].text == "<" {
+					return "admission:schema-type-parameters"
+				}
+				if at+1 == len(ts) || ts[at+1].text != "{" && ts[at+1].text != "=" {
+					return "admission:schema-no-body"
+				}
+				break
+			}
+			if at+1 < len(ts) && !ts[at+1].nl && !slices.Contains([]string{"{", "<", "extends", ";", "}"}, ts[at+1].text) {
+				return "admission:error-no-end"
+			}
+		}
+		if bang && mixed {
+			return "admission:effect-type-mix"
+		}
+	}
+	return ""
+}
+
+func TestGrammarAdmissionFiberParameterKeys(t *testing.T) {
+	for source, want := range map[string]bool{
+		"effect function * g ( join ) { yield 1 ; }": true,
+		"effect function f(a, fork) { }":             true,
+		"effect function f(a) { return join(a); }":   false,
+		"function f(join) { }":                       false,
+	} {
+		if got := grammarFiberParameter.MatchString(source); got != want {
+			t.Errorf("%q matched %v; want %v", source, got, want)
+		}
+	}
+}
+
+func TestGrammarAdmissionInterruptionKeys(t *testing.T) {
+	for source, want := range map[string]bool{
+		"function f() { uninterruptible { return 1; } }":             true,
+		"function f() { restore { return 1; } }":                     true,
+		"effect function f() { uninterruptible { return 1; } }":      false,
+		"effect function f() { function g() { interruptible { } } }": true,
+		"const uninterruptible = 1; if (uninterruptible) { }":        false,
+	} {
+		if got := grammarAdmissionForm(source) == "admission:interruption-outside-effect"; got != want {
+			t.Errorf("%q keyed %v; want %v", source, got, want)
+		}
+	}
+}
+
+func TestGrammarAdmissionDeclarationKeys(t *testing.T) {
+	for source, want := range map[string]string{
+		"type T = number | string!boolean;":    "admission:effect-type-mix",
+		"type T = A & B!E;":                    "admission:effect-type-mix",
+		"type G = () => A!E | B;":              "admission:effect-type-mix",
+		"type T = (A | B)!E;":                  "",
+		"type T = A!(B | E);":                  "",
+		"type T = A | B; type U = C!E;":        "",
+		"schema C<T> { a: T }":                 "admission:schema-type-parameters",
+		"schema C { a: number }":               "",
+		"schema C string":                      "admission:schema-no-body",
+		"schema C":                             "admission:schema-no-body",
+		"schema C = string;":                   "",
+		"schema error E effect { a: T }":       "admission:error-no-end",
+		"error E effect { a: T }":              "admission:error-no-end",
+		"error effect [a]":                     "admission:error-no-end",
+		"error E;":                             "",
+		"type T = A!B!;":                       "admission:effect-type-trailing-bang",
+		"type T = number ! 1 ! ;":              "admission:effect-type-trailing-bang",
+		"type T = A!(B | C)!;":                 "admission:effect-type-trailing-bang",
+		"const b = !x; const c = !y;":          "",
+		"type T = A!B!C;":                      "",
+		"type T = A!!;":                        "",
+		"schema error":                         "admission:schema-no-body",
+		"schema error;":                        "admission:schema-no-body",
+		"type T = number !\n! ;":               "admission:effect-type-line-break",
+		"type T = 1 !\n! ;":                    "admission:effect-type-line-break",
+		"type T = (A) !\n! ;":                  "admission:effect-type-line-break",
+		"const b = !\n!x;":                     "",
+		"module { export const n = catch 1; }": "admission:inline-module",
+		"module M { }":                         "admission:inline-module",
+		"module;":                              "",
+		"error E\nx;":                          "",
+		"error instanceof E;":                  "admission:error-no-end",
+		"schema error E { a: T }":              "",
+		"schema error E;":                      "",
+		"const schema = x; schema;":            "",
+		"for concurrent\n(const x of xs) x;":   "admission:for-concurrent-line-break",
+		"for\nconcurrent (const x of xs) x;":   "",
+		"const s = \"!\" + \"|\";":             "",
+	} {
+		if got := grammarAdmissionDeclarationForm(grammarLexSource(source)); got != want {
+			t.Errorf("%q keyed %q; want %q", source, got, want)
+		}
+	}
+}
+
 // Corpus keys name the syntax that is actually present, rather than the seed
 // selected before mutation. Known gaps therefore cover their own neighbourhood
 // while a new form still receives an independent mutation key.
 func grammarAdmissionForm(source string) string {
 	ts := grammarLexSource(source)
+	if form := grammarAdmissionDeclarationForm(ts); form != "" {
+		return form
+	}
 	for i, tok := range ts {
 		// EffectFunction = EffectModifier [no LineTerminator here] "function":
 		// `effect` on the line before is its own statement after ASI.
@@ -368,6 +602,22 @@ func grammarAdmissionForm(source string) string {
 	file, forms := parser.ParseVibeLangSyntax(ast.SourceFileParseOptions{
 		FileName: "/fuzz/main.vibe", PathKey: "/fuzz/main.vibe",
 	}, source)
+	// EK2201: an interruption block outside effect code. The bare block has no
+	// other reading, so the key follows the source callable around the word.
+	// EK1702: fork and join are reserved in effect code, in any binding.
+	for _, at := range grammarFiberBinding.FindAllStringIndex(source, -1) {
+		if grammarAdmissionEffectAt(file, at[0]) {
+			return "admission:fiber-binding"
+		}
+	}
+	if grammarFiberParameter.MatchString(source) {
+		return "admission:fiber-binding"
+	}
+	for _, at := range grammarInterruptionBlock.FindAllStringIndex(source, -1) {
+		if !grammarAdmissionEffectAt(file, at[0]) {
+			return "admission:interruption-outside-effect"
+		}
+	}
 	for _, form := range forms {
 		switch form.Kind {
 		case parser.VibeSyntaxPrefix:
@@ -379,6 +629,11 @@ func grammarAdmissionForm(source string) string {
 			}
 			word := source[start:end]
 			if word == "throw" {
+				// ArmBody = Expression | "throw" Expression: a match arm's throw is admitted.
+				before := grammarLexSource(source[:start])
+				if len(before) > 0 && before[len(before)-1].text == ":" && strings.Contains(source[:start], "match") {
+					continue
+				}
 				return "admission:throw-expression"
 			}
 			if word != "fork" && word != "join" {
@@ -736,6 +991,59 @@ func TestGrammarAdmissionCore(t *testing.T) {
 			t.Errorf("object literal initializer has a derivation: %s", source)
 		}
 	}
+	// TypeScript's parseEntityName reads a reserved word as a type name and the
+	// checker reports TS2304, so `type T = try;` parses in TypeScript too.
+	for _, source := range []string{"type T = try;", "type T = class!!;", "let x: default;"} {
+		if r := lab.read(lab.g, grammarLexSource(source), grammarParseMode{prose: true, names: true}); r.count == 0 {
+			t.Errorf("TypeScript type name control has no derivation: %s", source)
+		}
+	}
+	// `<` makes `effect` a keyword only as an arrow's type parameters.
+	for _, source := range []string{"effect < 1;", "effect < [ a\n];", "const f = effect <T>(x) => 1;"} {
+		if r := lab.read(lab.g, grammarLexSource(source), grammarParseMode{prose: true, names: true}); r.count == 0 {
+			t.Errorf("effect before < has no derivation: %q", source)
+		}
+	}
+	// Native forms the subset carries: array holes and class overload signatures.
+	for _, source := range []string{"[ , ];", "[ , 1, , 2, ];", "class C { m(): void; m() { } }", "class C { *g() { yield 1; } }", "class C { async *g() { yield 1; } }", "class C { effect\n*g() { yield 1; } }"} {
+		if r := lab.read(lab.g, grammarLexSource(source), grammarParseMode{prose: true, names: true}); r.count == 0 {
+			t.Errorf("native control has no derivation: %s", source)
+		}
+	}
+	if r := lab.read(lab.g, grammarLexSource("[ 1 2 ];"), grammarParseMode{prose: true, names: true}); r.count != 0 {
+		t.Error("array elements with no comma have a derivation")
+	}
+	// A lookahead whose set holds "=>" is still a negative lookahead.
+	if r := lab.read(lab.g, grammarLexSource("type T = (number);"), grammarParseMode{prose: true, names: true}); r.count == 0 {
+		t.Error("a parenthesized type has no derivation")
+	}
+	if r := lab.read(lab.g, grammarLexSource("type T = (1) => 1;"), grammarParseMode{prose: true, names: true}); r.count != 0 {
+		t.Error("a parenthesized type before => has a derivation")
+	}
+	// A reworded production must not silently become an opaque terminal: the
+	// oracle would then report every program that uses it.
+	for _, p := range lab.g.prose {
+		if p.Meaning == "" {
+			t.Errorf("Appendix A prose production %s has no meaning; update grammarProseMeanings: %q", p.Name, p.Text)
+		}
+	}
+	for _, name := range lab.g.unresolved {
+		if name != "DecoratorList" && name != "RegularExpressionLiteral" {
+			t.Errorf("Appendix A name %s resolves to nothing; define it in the subset", name)
+		}
+	}
+	for _, seed := range grammarAdmissionSeeds {
+		if !strings.HasPrefix(seed.key, "production-") {
+			continue
+		}
+		if r := lab.read(lab.g, grammarLexSource(seed.source), grammarParseMode{prose: true, names: true}); r.count == 0 {
+			t.Errorf("Appendix A production control %s has no derivation: %s", seed.key, seed.source)
+		}
+	}
+	// ECMAScript's AsyncGeneratorDeclaration is inherited unchanged.
+	if r := lab.read(lab.g, grammarLexSource("async function * g ( ) { yield 1 ; }"), grammarParseMode{prose: true, names: true}); r.count == 0 {
+		t.Error("async generator declaration has no derivation")
+	}
 	// Appendix A inherits TypeScript overload signatures. Only declarations
 	// can omit their body: a function expression still needs its Block.
 	for _, source := range []string{
@@ -783,6 +1091,24 @@ func grammarAdmissionSyntaxCode(code int32) bool {
 		return true
 	case 1007: // VIP-23 keeps TC39's topic grammar: % outside a pipe body is an early error.
 		return true
+	case 1201, 1902, 2001, 2201: // [+Effect] placement of provide, for concurrent, for try and interruption blocks.
+		return true
+	case 1006: // VIP-23: the pinned pipe draft's early error for a body with no topic.
+		return true
+	case 1017: // ProvideStatement is a statement: provide where an expression stands.
+		return true
+	case 1202: // Provider-list line breaks: a recovered head, rejected.
+		return true
+	case 701, 707, 4704, 4705, 4706: // The pinned draft's match grammar and early errors; a regular expression pattern is not lexed by the lab.
+		return true
+	case 2005: // ForTry requires a ForDeclaration head.
+		return true
+	case 2109, 2125: // A schema or data Field requires its Type; a field with one is derived, so these codes cannot excuse it.
+		return true
+	case 1304: // RejectedElement: an error body element that parses, then a static rule rejects.
+		return true
+	case 3008, 9207: // RejectedMember: a service element that parses, then a static rule rejects.
+		return true
 	}
 	return false
 }
@@ -829,6 +1155,34 @@ func grammarAdmissionSyntaxDiagnostic(d *ast.Diagnostic) bool {
 	// it, and its early error rejects the production in an ObjectLiteral.
 	case 1312:
 		return true
+	// checkGrammarJSDocNonNullable: a `!` at the end or start of a type (TS17019,
+	// TS17020). No TypeScript type starts with `!`, and EffectType needs its operand.
+	case 17019, 17020:
+		return true
+	// Native early errors the checker reports on a parsed form: a class declaration
+	// with no name (TS1211), a strict-mode reserved word as a name (TS1212-1214),
+	// `const` with no initializer (TS1155) and a declaration list's trailing comma
+	// (TS1009). ECMAScript rejects each.
+	case 1009, 1155, 1211, 1212, 1213, 1214:
+		return true
+	// checkGrammarTypeOperatorNode: `readonly` on anything but an array or tuple type.
+	case 1354:
+		return true
+	// A definite assignment assertion with an initializer (TS1263) and a JSDoc-only
+	// type such as `*` (TS8020) parse for recovery; the checker rejects each.
+	case 1263, 8020:
+		return true
+	// An optional object member (TS1162) and a generator signature with no body (TS1222).
+	case 1162, 1222:
+		return true
+	// More native grammar checks on a parsed form: `{` where a body must stand (TS1005
+	// from the checker), `return` outside a function (TS1108), a definite assertion on a
+	// member (TS1255), a declaration under a label (TS1344) and an assignment to
+	// something that is no target (TS2364), which ECMAScript's grammar does not derive.
+	case 1005, 1108, 1255, 1344, 2364:
+		return true
+	case 1099: // An empty type argument list.
+		return true
 	}
 	return false
 }
@@ -872,6 +1226,39 @@ func TestGrammarAdmissionDiagnostics(t *testing.T) {
 		{"external-destructuring-initializer-code-collision", "other", diagnostics.CategoryError, 1182, false},
 		{"ek-destructuring-initializer-code-collision", "EK", diagnostics.CategoryError, 1182, false},
 		{"native-cover-initialized-name", "", diagnostics.CategoryError, 1312, true},
+		{"native-trailing-bang", "", diagnostics.CategoryError, 17019, true},
+		{"native-const-initializer", "", diagnostics.CategoryError, 1155, true},
+		{"native-strict-reserved", "", diagnostics.CategoryError, 1214, true},
+		{"native-strict-reserved-warning", "", diagnostics.CategoryWarning, 1214, false},
+		{"ek-strict-reserved-code-collision", "EK", diagnostics.CategoryError, 1214, false},
+		{"for-try-head", "EK", diagnostics.CategoryError, 2005, true},
+		{"schema-field-no-type", "EK", diagnostics.CategoryError, 2109, true},
+		{"data-field-no-type", "EK", diagnostics.CategoryError, 2125, true},
+		{"error-rejected-element", "EK", diagnostics.CategoryError, 1304, true},
+		{"native-readonly-operator", "", diagnostics.CategoryError, 1354, true},
+		{"native-definite-initializer", "", diagnostics.CategoryError, 1263, true},
+		{"native-optional-object-member", "", diagnostics.CategoryError, 1162, true},
+		{"native-missing-body", "", diagnostics.CategoryError, 1005, true},
+		{"native-return-placement", "", diagnostics.CategoryError, 1108, true},
+		{"native-member-definite", "", diagnostics.CategoryError, 1255, true},
+		{"native-labeled-declaration", "", diagnostics.CategoryError, 1344, true},
+		{"native-assignment-target", "", diagnostics.CategoryError, 2364, true},
+		{"native-empty-type-arguments", "", diagnostics.CategoryError, 1099, true},
+		{"service-member-rule", "EK", diagnostics.CategoryError, 3008, true},
+		{"match-combined-early-error", "EK", diagnostics.CategoryError, 4705, true},
+		{"native-assignment-target-warning", "", diagnostics.CategoryWarning, 2364, false},
+		{"service-implementation", "EK", diagnostics.CategoryError, 9207, true},
+		{"service-class-warning", "EK", diagnostics.CategoryWarning, 2120, false},
+		{"native-generator-signature", "", diagnostics.CategoryError, 1222, true},
+		{"pipe-missing-topic", "EK", diagnostics.CategoryError, 1006, true},
+		{"provide-expression", "EK", diagnostics.CategoryError, 1017, true},
+		{"native-jsdoc-type", "", diagnostics.CategoryError, 8020, true},
+		{"external-jsdoc-type-code-collision", "other", diagnostics.CategoryError, 8020, false},
+		{"native-readonly-operator-warning", "", diagnostics.CategoryWarning, 1354, false},
+		{"match-field-list", "EK", diagnostics.CategoryError, 4706, true},
+		{"native-leading-bang", "", diagnostics.CategoryError, 17020, true},
+		{"native-leading-bang-warning", "", diagnostics.CategoryWarning, 17020, false},
+		{"ek-leading-bang-code-collision", "EK", diagnostics.CategoryError, 17020, false},
 		{"native-cover-initialized-name-warning", "", diagnostics.CategoryWarning, 1312, false},
 		{"external-cover-initialized-name-code-collision", "other", diagnostics.CategoryError, 1312, false},
 		{"ek-cover-initialized-name-code-collision", "EK", diagnostics.CategoryError, 1312, false},
@@ -886,6 +1273,15 @@ func TestGrammarAdmissionDiagnostics(t *testing.T) {
 		{"topic-outside-pipe-error", "EK", diagnostics.CategoryError, 1007, true},
 		{"topic-outside-pipe-warning", "EK", diagnostics.CategoryWarning, 1007, false},
 		{"native-topic-code-collision", "", diagnostics.CategoryError, 1007, false},
+		{"provide-placement", "EK", diagnostics.CategoryError, 1201, true},
+		{"for-concurrent-placement", "EK", diagnostics.CategoryError, 1902, true},
+		{"for-try-placement", "EK", diagnostics.CategoryError, 2001, true},
+		{"interruption-placement", "EK", diagnostics.CategoryError, 2201, true},
+		{"provide-line-recovery", "EK", diagnostics.CategoryError, 1202, true},
+		{"match-arm-semicolon", "EK", diagnostics.CategoryError, 701, true},
+		{"match-early-error", "EK", diagnostics.CategoryError, 707, true},
+		{"match-early-error-warning", "EK", diagnostics.CategoryWarning, 707, false},
+		{"native-provide-code-collision", "", diagnostics.CategoryError, 1201, false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			d := ast.NewExternalDiagnostic(nil, core.TextRange{}, tc.source, tc.category, tc.code, tc.name)

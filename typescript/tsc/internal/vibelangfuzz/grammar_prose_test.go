@@ -37,11 +37,11 @@ type grammarProseRule struct {
 }
 
 var (
-	grammarTokenSet     = regexp.MustCompile("`([^`]+)` or `([^`]+)`")
+	grammarTokenSet      = regexp.MustCompile("`([^`]+)` or `([^`]+)`")
 	grammarMemberContext = regexp.MustCompile("(?:in a class or object literal|on an `interface` or type literal member)[^;]*;?")
-	grammarBacktick     = regexp.MustCompile("`([^`]*)`")
-	grammarTableRow     = regexp.MustCompile(`^\|\s*(.+?)\s*\|\s*(.+?)\s*\|\s*.*\|\s*$`)
-	grammarSentences    = regexp.MustCompile(`[^.]*(?:\.[^ \n][^.]*)*\.`)
+	grammarBacktick      = regexp.MustCompile("`([^`]*)`")
+	grammarTableRow      = regexp.MustCompile(`^\|\s*(.+?)\s*\|\s*(.+?)\s*\|\s*.*\|\s*$`)
+	grammarSentences     = regexp.MustCompile(`[^.]*(?:\.[^ \n][^.]*)*\.`)
 )
 
 func grammarReadKeywordTable(text string) []grammarKeywordRule {
@@ -103,6 +103,12 @@ func grammarParseKeywordPhrase(words []string, phrase string) grammarKeywordRule
 	// "`{` or `<`" is one position that takes either token.
 	p = grammarTokenSet.ReplaceAllString(p, "`$1\x00$2`")
 	for _, part := range grammarSplitKeywordAlts(p) {
+		// "`<` type parameters of such an arrow": the tokens alone can't tell an
+		// arrow head from `effect < 1`, so either reading stays there.
+		if strings.HasPrefix(part, "`<` type parameters") {
+			k.alts = append(k.alts, []grammarKwElem{{kind: 'C'}})
+			continue
+		}
 		k.alts = append(k.alts, grammarParseKeywordAlt(part)...)
 	}
 	return k
@@ -342,7 +348,9 @@ func (s *grammarProseSet) mark(toks []grammarToken, effect bool, g *grammarCfg) 
 			if k.effectOnly && !effect {
 				continue
 			}
-			if s.sameLine > 0 && i+1 < len(toks) && toks[i+1].nl && !(len(k.alts) > 0 && k.alts[0] != nil && k.alts[0][0].kind == 'P') {
+			// The TC39 row defers to the draft, whose words take line breaks after them.
+			tc39 := strings.HasPrefix(k.Phrase, "as TC39")
+			if s.sameLine > 0 && !tc39 && i+1 < len(toks) && toks[i+1].nl && !(len(k.alts) > 0 && k.alts[0] != nil && k.alts[0][0].kind == 'P') {
 				continue
 			}
 			for _, alt := range k.alts {

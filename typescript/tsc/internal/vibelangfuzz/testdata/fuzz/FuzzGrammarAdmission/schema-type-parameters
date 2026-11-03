@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("key:schema-type-parameters\nschema C<T> { a: T }")

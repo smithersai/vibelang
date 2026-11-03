@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("key:for-concurrent-line-break\neffect function f() { for concurrent\n(const x of [1]) x; }")

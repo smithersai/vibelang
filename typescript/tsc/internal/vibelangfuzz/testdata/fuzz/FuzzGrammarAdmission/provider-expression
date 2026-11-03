@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("key:provider-expression\neffect function f(K, L) { provide K => 1, L { 1; } }")

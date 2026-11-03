@@ -79,6 +79,13 @@ the subset by injecting arbitrary JavaScript source. Known gaps use `Gap` and
 `testdata/pending/grammar-admission.txt`; passing pending witnesses fail as
 `XPASS`, requiring their pending entries to be removed with the fix.
 
+Every Appendix A production has a valid seed, so mutation reaches `match`, `is`,
+`do`, declarations, loops, `provide` and `A!E!R`. The lab reads the pinned
+do-expression and pattern-matching drafts' productions and maps each prose
+production to a subset rule; a test fails when a reworded production becomes an
+opaque terminal. Bounds: no decorators, conditional types or regular
+expressions in the subset.
+
 The pipe lab recognizes `|>` as one token and incorporates the pinned
 proposal's `%` primary only in the VibeLang grammar. Its recognition models
 productions; it does not claim to implement every TC39 early-error predicate.

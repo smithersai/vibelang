@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("key:interruption-outside-effect\nfunction f() { uninterruptible { return 1; } }")

@@ -369,13 +369,18 @@ func grammarBracketSym(text string) *grammarGsym {
 	case t == "+Effect" || t == "~Effect":
 		return &grammarGsym{kind: grammarSymGuard, on: t == "+Effect"}
 	case strings.HasPrefix(t, "lookahead ∉") || strings.HasPrefix(t, "lookahead ≠") || strings.HasPrefix(t, "lookahead ∈") || strings.HasPrefix(t, "lookahead ="):
-		kind := grammarSymNotAhead
-		if strings.Contains(t, "∈") || strings.Contains(t, "=") {
-			kind = grammarSymAhead
+		// The operator follows "lookahead "; an "=" later on belongs to a token
+		// in the set, such as "=>".
+		operator, set := "", strings.TrimPrefix(t, "lookahead ")
+		for _, op := range []string{"∉", "≠", "∈", "="} {
+			if rest, ok := strings.CutPrefix(set, op); ok {
+				operator, set = op, rest
+				break
+			}
 		}
-		set := t[strings.IndexAny(t, "∉≠∈=")+len("∉"):]
-		if strings.ContainsAny(t, "=") {
-			set = t[strings.Index(t, "=")+1:]
+		kind := grammarSymNotAhead
+		if operator == "∈" || operator == "=" {
+			kind = grammarSymAhead
 		}
 		set = strings.TrimSpace(set)
 		set = strings.TrimSuffix(strings.TrimPrefix(set, "{"), "}")
@@ -430,7 +435,7 @@ BindingPropertyList = BindingProperty | BindingPropertyList "," BindingProperty
 BindingProperty = BindingIdentifier Initializer? | PropertyName ":" BindingIdentifier Initializer?
 BindingElementList = BindingIdentifier | BindingElementList "," BindingIdentifier
 EmptyStatement = ";"
-ExpressionStatement = [lookahead ∉ { "{", "function", "class", "let" "[", "async" [no LineTerminator here] "function", "effect" [no LineTerminator here] "function", "using" }] Expression StatementEnd
+ExpressionStatement = [lookahead ∉ { "{", "function", "class", "let" "[", "async" [no LineTerminator here] "function", "effect" [no LineTerminator here] "function", "using", "do" }] Expression StatementEnd
 StatementEnd = ";" | ASI
 IfStatement = "if" "(" Expression ")" Statement "else" Statement | "if" "(" Expression ")" Statement [lookahead ∉ { "else" }]
 WhileStatement = "while" "(" Expression ")" Statement
@@ -446,14 +451,14 @@ Finally = "finally" Block
 LabelledStatement = LabelIdentifier ":" Statement
 BreakStatement = "break" StatementEnd | "break" [no LineTerminator here] LabelIdentifier StatementEnd
 ContinueStatement = "continue" StatementEnd | "continue" [no LineTerminator here] LabelIdentifier StatementEnd
-FunctionDeclaration = "function" "*"? BindingIdentifier TypeParameters? "(" FormalParameters ")" TypeAnnotation? (Block | StatementEnd) | "async" [no LineTerminator here] "function" BindingIdentifier TypeParameters? "(" FormalParameters ")" TypeAnnotation? (Block | StatementEnd)
+FunctionDeclaration = "function" "*"? BindingIdentifier TypeParameters? "(" FormalParameters ")" TypeAnnotation? (Block | StatementEnd) | "async" [no LineTerminator here] "function" "*"? BindingIdentifier TypeParameters? "(" FormalParameters ")" TypeAnnotation? (Block | StatementEnd)
 ClassDeclaration = "class" BindingIdentifier TypeParameters? ClassHeritage? "{" ClassElement* "}"
 ClassHeritage = "extends" LeftHandSideExpression
 ClassElement = ClassMemberModifiers? MethodDefinition | FieldDefinition | ";"
 ClassMemberModifiers = ClassMemberModifier | ClassMemberModifiers ClassMemberModifier
 ClassMemberModifier = "static" | "readonly" [no LineTerminator here] | "public" [no LineTerminator here] | "private" [no LineTerminator here] | "protected" [no LineTerminator here] | "override" [no LineTerminator here]
 FieldDefinition = ClassMemberModifiers? PropertyName "?"? TypeAnnotation? Initializer? StatementEnd
-MethodDefinition = PropertyName "?"? TypeParameters? "(" FormalParameters ")" TypeAnnotation? Block | GetAccessor | "set" [no LineTerminator here] PropertyName "(" FormalParameter ")" Block | "async" [no LineTerminator here] PropertyName "(" FormalParameters ")" TypeAnnotation? Block
+MethodDefinition = PropertyName "?"? TypeParameters? "(" FormalParameters ")" TypeAnnotation? Block | "*" PropertyName TypeParameters? "(" FormalParameters ")" TypeAnnotation? Block | "async" [no LineTerminator here] "*" PropertyName TypeParameters? "(" FormalParameters ")" TypeAnnotation? Block | PropertyName "?"? TypeParameters? "(" FormalParameters ")" TypeAnnotation? StatementEnd | GetAccessor | "set" [no LineTerminator here] PropertyName "(" FormalParameter ")" Block | "async" [no LineTerminator here] PropertyName "(" FormalParameters ")" TypeAnnotation? Block
 GetAccessor = "get" [no LineTerminator here] PropertyName "(" ")" TypeAnnotation? Block
 NonStaticMethod = PropertyName "?"? TypeParameters? "(" FormalParameters ")" TypeAnnotation? Block | "async" [no LineTerminator here] PropertyName "(" FormalParameters ")" TypeAnnotation? Block
 InterfaceDeclaration = "interface" BindingIdentifier TypeParameters? InterfaceExtends? ObjectType
@@ -494,8 +499,10 @@ Arguments = "(" ")" | "(" ArgumentList ","? ")"
 ArgumentList = AssignmentExpression | "..." AssignmentExpression | ArgumentList "," AssignmentExpression | ArgumentList "," "..." AssignmentExpression
 PrimaryExpression = "this" | IdentifierReference | Literal | ArrayLiteral | ObjectLiteral | FunctionExpression | GeneratorExpression | AsyncFunctionExpression | AsyncGeneratorExpression | ClassExpression | TemplateLiteral | ParenthesizedExpression
 Literal = "null" | "true" | "false" | NumericLiteral | StringLiteral
-ArrayLiteral = "[" "]" | "[" ElementList ","? "]"
-ElementList = AssignmentExpression | "..." AssignmentExpression | ElementList "," AssignmentExpression | ElementList "," "..." AssignmentExpression
+ArrayLiteral = "[" ArrayElision? "]" | "[" ArrayElision? ElementList "]" | "[" ArrayElision? ElementList "," ArrayElision? "]"
+ArrayElision = "," | ArrayElision ","
+ElementList = ArrayItem | ElementList "," ArrayElision? ArrayItem
+ArrayItem = AssignmentExpression | "..." AssignmentExpression
 ObjectLiteral = "{" "}" | "{" PropertyDefinitionList ","? "}"
 PropertyDefinitionList = PropertyDefinition | PropertyDefinitionList "," PropertyDefinition
 PropertyDefinition = IdentifierReference | PropertyName ":" AssignmentExpression | MethodDefinition | "..." AssignmentExpression
@@ -525,14 +532,15 @@ IntersectionType = PostfixType | IntersectionType "&" PostfixType
 PostfixType = PrimaryType | PostfixType [no LineTerminator here] "[" "]" | PostfixType [no LineTerminator here] "[" Type "]" | "readonly" [no LineTerminator here] PostfixType | "keyof" [no LineTerminator here] PostfixType
 PrimaryType = TypeReference | "(" Type ")" [lookahead ∉ { "=>" }] | ObjectType | TupleType | StringLiteral | NumericLiteral | "void" | "null" | "true" | "false" | "typeof" IdentifierReference
 TypeReference = TypeName [lookahead ∉ { "<" }] | TypeName [no LineTerminator here] TypeArguments
-TypeName = IdentifierReference | TypeName "." IdentifierName
+TypeName = IdentifierName | TypeName "." IdentifierName
 TupleType = "[" "]" | "[" TypeList "]"
 FunctionType = TypeParameters? "(" FormalParameters ")" "=>" Type
 ObjectType = "{" "}" | "{" TypeMemberList TypeMemberEnd? "}"
 TypeMemberList = TypeMember | TypeMemberList TypeMemberSeparator TypeMember
 TypeMemberSeparator = ";" | "," | LineTerminator
 TypeMemberEnd = ";" | ","
-TypeMember = PropertySignature | MethodSignature
+TypeMember = PropertySignature | MethodSignature | CallSignature
+CallSignature = TypeParameters? "(" FormalParameters ")" TypeAnnotation?
 PropertySignature = PropertyName "?"? TypeAnnotation? | "readonly" [no LineTerminator here] PropertyName "?"? TypeAnnotation?
 MethodSignature = PropertyName "?"? TypeParameters? "(" FormalParameters ")" TypeAnnotation?
 ClassElementName = PropertyName | "#" IdentifierName
@@ -540,6 +548,43 @@ GeneratorExpression = "function" "*" BindingIdentifier? TypeParameters? "(" Form
 AsyncFunctionExpression = "async" [no LineTerminator here] "function" BindingIdentifier? TypeParameters? "(" FormalParameters ")" TypeAnnotation? Block
 AsyncGeneratorExpression = "async" [no LineTerminator here] GeneratorExpression
 Name = BindingIdentifier
+`
+
+// grammarTc39Patterns is the pinned draft's MatchPattern, with Appendix A's
+// ArrayPattern and RegularExpressionPattern. Its CombinedMatchPattern is
+// stratified, so a chain has one derivation; the set of sentences is the
+// draft's, and its early errors stay the compiler's. MetaProperty is outside
+// the subset, and templates are one token.
+const grammarTc39Patterns = `
+MatchPattern = MatchPrefixPattern | MatchPattern "and" MatchPrefixPattern | MatchPattern "or" MatchPrefixPattern
+MatchPrefixPattern = "not" MatchPrefixPattern | MatchPrimaryPattern
+MatchPrimaryPattern = "(" MatchPattern ")" | PrimitivePattern | VariableDeclarationPattern | MemberExpressionPattern | ObjectPattern | ArrayPattern | RegularExpressionPattern | UnaryAlgebraicPattern | RelationalPattern | IfPattern
+PrimitivePattern = Literal | TemplateLiteral
+VariableDeclarationPattern = LetOrConst BindingIdentifier
+MemberExpressionPattern = PatternMatchingMemberExpression | PatternMatchingMemberExpression "(" MatchList ")"
+PatternMatchingMemberExpression = "this" | IdentifierReference | "super" "." IdentifierName | PatternMatchingMemberExpression "." IdentifierName | PatternMatchingMemberExpression "." "#" IdentifierName | PatternMatchingMemberExpression "[" Expression "]"
+ObjectPattern = "{" "}" | "{" MatchRestProperty "}" | "{" MatchPropertyList "}" | "{" MatchPropertyList "," "}" | "{" MatchPropertyList "," MatchRestProperty "}"
+MatchList = MatchElision? MatchRestElement? | MatchElementList | MatchElementList "," MatchElision? MatchRestElement?
+MatchElision = "," | MatchElision ","
+MatchRestProperty = "..." MatchPattern
+MatchPropertyList = MatchProperty | MatchPropertyList "," MatchProperty
+MatchElementList = MatchElisionElement | MatchElementList "," MatchElisionElement
+MatchElisionElement = MatchElision? MatchElement
+MatchProperty = PropertyName "?"? | PropertyName "?"? ":" MatchPattern | LetOrConst BindingIdentifier "?"? | LetOrConst BindingIdentifier "?"? ":" MatchPattern
+MatchElement = MatchPattern "?"?
+MatchRestElement = "..." | "..." MatchPattern
+UnaryAlgebraicPattern = PatternMatchingUnaryAlgebraicExpression
+PatternMatchingUnaryAlgebraicExpression = "+" PatternMatchingMemberExpression | "-" PatternMatchingMemberExpression | "+" NumericLiteral | "-" NumericLiteral
+RelationalPattern = "<" PatternMatchingRelationalExpression | ">" PatternMatchingRelationalExpression | "<=" PatternMatchingRelationalExpression | ">=" PatternMatchingRelationalExpression | "instanceof" PatternMatchingMemberExpression | "in" PatternMatchingMemberExpression | "==" PatternMatchingRelationalExpression | "!=" PatternMatchingRelationalExpression | "===" PatternMatchingRelationalExpression | "!==" PatternMatchingRelationalExpression
+PatternMatchingRelationalExpression = Literal | TemplateLiteral | PatternMatchingMemberExpression | PatternMatchingUnaryAlgebraicExpression
+IfPattern = "if" "(" Expression ")"
+IsTest = RelationalExpression [no LineTerminator here] "is" MatchPattern
+`
+
+// grammarTc39Do is the pinned draft's DoExpression; its ExpressionStatement
+// lookahead is in the subset, where no other expression starts with "do".
+const grammarTc39Do = `
+DoExpression = "do" Block
 `
 
 // grammarSubsetHooks says where the subset admits each Appendix A production that
@@ -551,6 +596,9 @@ Name = BindingIdentifier
 // the table.
 var grammarSubsetHooks = []struct{ at, name string }{
 	{"PrimaryExpression", "PipeTopic"},
+	{"PrimaryExpression", "DoExpression"},
+	{"PrimaryExpression", "MatchExpression"},
+	{"RelationalExpression", "IsTest"},
 	{"PrimaryExpression", "EffectFunction"},
 	{"PrimaryExpression", "Producer"},
 	{"PrimaryExpression", "EffectBlock"},
@@ -601,7 +649,10 @@ var grammarProseMeanings = []struct {
 	meaning string
 	note    string
 }{
-	{regexp.MustCompile(`^a type at TypeScript.s type-operator level`), "PostfixType", "TypeScript type-operator level"},
+	{regexp.MustCompile(`^(a type at TypeScript.s type-operator level|an ordinary TypeScript source type at the type-operator level)`), "PostfixType", "TypeScript type-operator level"},
+	{regexp.MustCompile(`^an ordinary TypeScript class MethodDeclaration`), "MethodDefinition", "TypeScript class method or accessor"},
+	{regexp.MustCompile(`^a ClassElement \(an EffectAccessor included\) that is not`), "ClassElement", "parses, then a static rule rejects it; the exclusions are not modeled"},
+	{regexp.MustCompile(`^a ClassElement or a TypeScript TypeMember`), "ClassElement", "parses, then a static rule rejects it; the exclusions are not modeled"},
 	{regexp.MustCompile(`^a Type that is not an unparenthesized EffectType`), "TypeNoEffect", "Type without the EffectType alternative"},
 	{regexp.MustCompile(`^the class-member modifiers TypeScript allows before async`), "ClassMemberModifiers", ""},
 	{regexp.MustCompile(`^the head of ECMAScript's for…of before "of"`), "ForOfHead", ""},
@@ -772,6 +823,23 @@ func grammarBuildGrammar(a *grammarAppendixData) *grammarCfg {
 		topic.source = "vips/tc39-pipeline-operator/spec.html"
 		defs = append(defs, topic)
 		defined["PipeTopic"] = true
+	}
+	// Appendix A also incorporates the pinned do-expression and
+	// pattern-matching drafts; their productions are external, not TypeScript.
+	if defined["MatchExpression"] {
+		for _, source := range []struct{ source, text string }{
+			{"vips/tc39-pattern-matching/spec.emu", grammarTc39Patterns},
+			{"vips/tc39-do-expressions/spec.emu", grammarTc39Do},
+		} {
+			for _, line := range strings.Split(strings.TrimSpace(source.text), "\n") {
+				name, body, _ := strings.Cut(line, " = ")
+				d := grammarParseDef(name, body, 0)
+				d.vibe = true
+				d.source = source.source
+				defs = append(defs, d)
+				defined[name] = true
+			}
+		}
 	}
 	all := map[string]bool{}
 	for _, d := range defs {

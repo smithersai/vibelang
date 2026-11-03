@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("key:service-class\nservice class S { n: number }")

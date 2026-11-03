@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("key:native-leading-bang\ntype T = !\nstring ! ! boolean\n;\n; ;")
