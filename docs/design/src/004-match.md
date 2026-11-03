@@ -344,7 +344,7 @@ function defaultBit(o: { x?: number }, b: boolean) {
 
 An `is` in a loop head uses the pinned loop-head/per-iteration scopes. Each complete `while` or `do…while` condition evaluation has fresh cells; the initial `do` body sees its uninitialized head cells. A match arm has its own lexical scope, so an `is` inside it does not export names to another arm.
 
-These bindings take part in TypeScript's definite-assignment and use-before-declaration checks, as a `let` assigned where the pattern runs would. A read on a path where the binding may not have run, because short-circuiting skipped it or the pattern failed before reaching it, is `TS2454`; a read before the binding's position in its scope is `TS2448`. A read those checks can't see, such as one inside a closure, throws `ReferenceError` while the cell is uninitialized.
+These bindings take part in TypeScript's definite-assignment and use-before-declaration checks, as a `let` assigned where the pattern runs would. A read on a path where the binding may not have run, because short-circuiting skipped it or the pattern failed before reaching it, is `TS2454`; a read before the binding's position in its scope is `TS2448`. In `for (init; test; update)`, a direct read in `update` of a binding from `test` is `TS2454`: `update` starts in a fresh iteration environment before the `test` that initializes that cell. The previous body's initialization is not carried forward. Bindings introduced by `update` also start uninitialized; a read after that update's own pattern initializes its binding follows ordinary definite-assignment checking. A read those checks can't see, such as one inside a closure, throws `ReferenceError` while the cell is uninitialized.
 
 ```vibe es
 // compiler-gap: pending VIP-7
@@ -566,6 +566,25 @@ Every other home follows the pinned explainer's rule that the usual binding scop
 - In a class field or static field initializer, a binding belongs to that initializer's own scope, because ECMAScript evaluates each initializer as a separate method-like body. A `static` block is a block.
 - An `enum` member initializer has no lexical home in ECMAScript or the pinned explainer, so a binding introduced there is `EK0705`, as for a formal parameter: `enum E { A = (1 is let one) ? 1 : 0 }` is `EK0705`.
 - The statement body of `if`, `else`, `for`, `for…in`, `for…of`, `for await`, `for concurrent`, `for try`, `while`, `do…while` or a labeled statement, when it is not a Block, cannot be the lexical home of an `is` pattern binding: report `EK0705`, matching TypeScript's `TS1156` for a `let` declaration in that position. The quick fix and `vibelang --fix` wrap that statement body in braces. An `if` head belongs to the home that contains the `if` statement; an `else if` head therefore needs braces around the `else` body when it binds. A binding inside an explicit `do` block, match arm, callable body or loop head keeps its own home. ([VIP-7](../vips/0007-match.md#binding-homes-and-redeclarations)).
+
+
+A test binding is available to its following body, but not to the next update's direct reads. Creating a closure does not read the cell; invoking it before the test initializes that iteration's cell throws `ReferenceError`.
+
+```vibe es
+// compiler-gap: pending VIP-7
+function updateRead(next: () => number, use: (n: number) => void) {
+  for (; next() is let v; use(v)) {} // TS2454: this iteration's v is unassigned
+}
+function updateClosure(next: () => number) {
+  for (; next() is let v; () => v) {} // no direct read; closure retains the fresh cell
+}
+function bodyRead(next: () => number, use: (n: number) => void) {
+  for (; next() is let v;) { use(v); break } // initialized by this iteration's test
+}
+function updateBinding(next: () => number, use: (n: number) => void) {
+  for (;; (next() is let v) && use(v)) {} // initialized before the update's read
+}
+```
 
 Each home holds one name once. Two top-level patterns that bind one name in the same home are a redeclaration, TypeScript's `TS2451`, as two `let` declarations in one block are; so is a binding that collides with another lexical declaration of that home, and a collision with a parameter keeps the native diagnostic for that collision. Inside one top-level pattern the pinned duplicate-initialization rule and its `or` exception stay. Separate blocks and match arms are separate homes, so braces or distinct names are the repair.
 
