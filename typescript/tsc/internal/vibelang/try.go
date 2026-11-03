@@ -27,7 +27,8 @@ import (
 // reports it, with the quick fix, which vibelang --fix applies, that writes
 // Effect's own wrapper:
 //
-//	try((text) => JSON.parse(text), text)        try Effect.try(() => ((text) => JSON.parse(text))(text))
+//	try((text) => JSON.parse(text), text)        try Effect.try(() => JSON.parse(text))
+//	try((text) => JSON.parse(text), "1")         try Effect.try(() => { let text = "1"; return JSON.parse(text) })
 //	try(() => parse(text), (e) => new Bad({ e }))  try Effect.try({ try: () => parse(text), catch: (e) => new Bad({ e }) })
 //	try(async (signal) => load(signal))           try Effect.tryPromise(async (signal) => load(signal))
 
@@ -258,6 +259,10 @@ func retiredTryRewrite(c *checker.Checker, file *ast.SourceFile, call *ast.Node)
 		for i, input := range rest {
 			inputs[i] = nodeText(file, input)
 		}
+		if inlined, ok := inlinedThunk(file, evaluate, rest, async); ok {
+			thunk = inlined
+			break
+		}
 		callee := code
 		if literal && !ast.IsParenthesizedExpression(arguments[0]) {
 			callee = "(" + code + ")"
@@ -281,6 +286,72 @@ func retiredTryRewrite(c *checker.Checker, file *ast.SourceFile, call *ast.Node)
 		text = "try " + text
 	}
 	return &formRewrite{edits: []sourceEdit{{start, call.End(), text}}, description: text}
+}
+
+// inlinedThunk writes the thunk for a synchronous arrow literal called with
+// inputs as the arrow's own body, each parameter whose input is another
+// expression bound first with let (a body may assign its parameter):
+//
+//	try((text) => JSON.parse(text), text)   () => JSON.parse(text)
+//	try((text) => JSON.parse(text), "1")    () => { let text = "1"; return JSON.parse(text) }
+//
+// The thunk then holds no plain function of its own, so a call known to
+// throw in the body belongs to Effect.try, as chapter 3 has it, where the
+// arrow called in place would be plain code that throws (EK0401). The
+// arrow's written return type stays on the thunk. It reports false, keeping
+// the arrow called in place, for a function expression (its this and
+// arguments are its own), a type parameter, a parameter with a default, a
+// rest parameter or a pattern, a written type on a parameter whose input is
+// its own name, and an input that names a parameter the thunk rebinds.
+func inlinedThunk(file *ast.SourceFile, fn *ast.Node, inputs []*ast.Node, async bool) (string, bool) {
+	if async || fn.Kind != ast.KindArrowFunction || ast.GetFunctionFlags(fn)&ast.FunctionFlagsAsync != 0 || len(fn.TypeParameters()) != 0 {
+		return "", false
+	}
+	parameters := fn.Parameters()
+	if len(parameters) != len(inputs) {
+		return "", false
+	}
+	var bound []string
+	names := map[string]bool{}
+	for i, parameter := range parameters {
+		p := parameter.AsParameterDeclaration()
+		if !ast.IsIdentifier(p.Name()) || p.Initializer != nil || p.DotDotDotToken != nil || p.QuestionToken != nil {
+			return "", false
+		}
+		name := p.Name().Text()
+		input := ast.SkipParentheses(inputs[i])
+		if ast.IsIdentifier(input) && input.Text() == name {
+			if p.Type != nil {
+				return "", false
+			}
+			continue
+		}
+		names[name] = true
+		bound = append(bound, "let "+nodeText(file, parameter)+" = "+nodeText(file, inputs[i]))
+	}
+	for i := range parameters {
+		root := ast.SkipParentheses(inputs[i])
+		for ast.IsPropertyAccessExpression(root) {
+			root = ast.SkipParentheses(root.Expression())
+		}
+		if ast.IsIdentifier(root) && names[root.Text()] && !(ast.IsIdentifier(ast.SkipParentheses(inputs[i])) && ast.SkipParentheses(inputs[i]).Text() == parameters[i].Name().Text()) {
+			return "", false // let b = a after let a = … reads the new a
+		}
+	}
+	head := "() => "
+	if returns := fn.Type(); returns != nil {
+		head = "(): " + nodeText(file, returns) + " => "
+	}
+	body := fn.Body()
+	text := nodeText(file, body)
+	if len(bound) == 0 {
+		return head + text, true
+	}
+	prefix := head + "{ " + strings.Join(bound, "; ") + ";"
+	if ast.IsBlock(body) {
+		return prefix + text[1:], true
+	}
+	return prefix + " return " + text + " }", true
 }
 
 // retiredTryMapper splits the arguments after a retired try hatch's function

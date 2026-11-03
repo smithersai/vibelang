@@ -90,7 +90,7 @@ export effect function main() {
   ;(try load(11)).n
   const c = try load(9)
   const e = load(12) catch () => ({ n: 0 })
-  const parsed = try Effect.try({ try: () => ((text) => JSON.parse(text))("1"), catch: (cause) => new Bad({ cause }) })
+  const parsed = try Effect.try({ try: () => { let text = "1"; return JSON.parse(text) }, catch: (cause) => new Bad({ cause }) })
   join f
   return a.n + b + all[0].n + d + c.n + e.n + parsed + try box.get(10)
 }
@@ -187,7 +187,10 @@ export const block = effect () => { return try authorize(Effect.succeed(1)) }
 // mapper whatever its form (D330), so EK4616's fix makes it the catch, and
 // undefined there leaves the catch out. The hatch's function is TypeScript
 // that Effect.try wraps as it is: the hatch stands in a function marked effect
-// (VIP-1), and the fix leaves the hatch's own function plain.
+// (VIP-1), and the fix leaves the hatch's own function plain. An arrow whose
+// parameters take inputs of their own names becomes the thunk's body: called
+// in place inside the thunk, it would be plain code holding a call known to
+// throw (JSON.parse, EK0401), and the fix would be refused.
 func TestFixVIPRetiredHatchMapperByName(t *testing.T) {
 	source := `const documentOf = (n: number): { readonly a: number } => {
   if (n < 0) throw new Error("negative")
@@ -212,6 +215,14 @@ export const parse = effect (text: string): Effect<number, unknown> => {
   const n: number = try((text) => JSON.parse(text), undefined, text)
   return n
 }
+
+export const annotated = (text: string): Effect<number, unknown> => {
+  return try((text): number => JSON.parse(text), undefined, text)
+}
+
+export const generic = (n: number): Effect<number, unknown> => {
+  return try(<T>(value: T): T => value, undefined, n)
+}
 `
 	want := `const documentOf = (n: number): { readonly a: number } => {
   if (n < 0) throw new Error("negative")
@@ -221,20 +232,28 @@ export const parse = effect (text: string): Effect<number, unknown> => {
 const unsupported = (): Error => new Error("unsupported")
 
 export const project = effect (n: number): Effect<number, Error> => {
-  const { a } = try Effect.try({ try: () => ((documentOf, n) => documentOf(n))(documentOf, n), catch: unsupported })
+  const { a } = try Effect.try({ try: () => documentOf(n), catch: unsupported })
   return a
 }
 
 export const projectBlock = effect (n: number): Effect<number, Error> => {
-  const { a } = try Effect.try({ try: () => ((documentOf, n) => {
+  const { a } = try Effect.try({ try: () => {
     return documentOf(n)
-  })(documentOf, n), catch: unsupported })
+  }, catch: unsupported })
   return a
 }
 
 export const parse = effect (text: string): Effect<number, unknown> => {
-  const n: number = try Effect.try(() => ((text) => JSON.parse(text))(text))
+  const n: number = try Effect.try(() => JSON.parse(text))
   return n
+}
+
+export const annotated = effect (text: string): Effect<number, unknown> => {
+  return try Effect.try((): number => JSON.parse(text))
+}
+
+export const generic = effect (n: number): Effect<number, unknown> => {
+  return try Effect.try(() => (<T>(value: T): T => value)(n))
 }
 `
 	_, file, _, _ := editorProgram(t, source)
@@ -257,7 +276,7 @@ export const parse = effect (text: string): Effect<number, unknown> => {
 		}
 		t.Fatalf("--fix-vip-only wrote\n%s\nwant\n%s\nrefused %+v", got, want, result.Refused)
 	}
-	if fixed.Counts[EK4616.Code] != 3 {
-		t.Errorf("fixes %v; want three EK4616 fixes", fixed.Counts)
+	if fixed.Counts[EK4616.Code] != 5 {
+		t.Errorf("fixes %v; want five EK4616 fixes", fixed.Counts)
 	}
 }
