@@ -16,7 +16,8 @@ import (
 //
 //	function send(m: Message)   // TS2709: Message is Effect's module effect/cluster/Message
 //	function run(c: Command)    // TS2707: Command is Effect's module effect/cli/Command
-//	new Worker("./worker.js")   // TS2351: and the DOM's Worker is globalThis.Worker in a hatch
+//	new Worker("./worker.js")   // TS2351: and the DOM's Worker is platform code, in a .ts file
+//	x instanceof Response       // TS2359: Response is Effect's; the DOM's is platform code too
 //	w.postMessage("x")          // TS2339: w's Worker is Effect's; alias the DOM's in a .ts file
 //	Number.sum(1, 2)            // TS2339: Number is JavaScript's; import Effect's under another name
 //	Response.json(body)         // TS2339: Response is Effect's; the global's json is globalThis.Response.json
@@ -66,6 +67,8 @@ func explainPreludeCollisions(c *checker.Checker, file *ast.SourceFile, all []*a
 			all[i] = explainPreludeModule(c, file, d, token, false)
 		case preludeModuleValueCodes[d.Code()] && (ast.IsNewExpression(parent) || ast.IsCallExpression(parent)) && parent.Expression() == token:
 			all[i] = explainPreludeModule(c, file, d, token, true)
+		case d.Code() == 2359 && ast.IsBinaryExpression(parent) && parent.AsBinaryExpression().OperatorToken.Kind == ast.KindInstanceOfKeyword && parent.AsBinaryExpression().Right == token:
+			all[i] = explainPreludeModule(c, file, d, token, true)
 		case d.Code() == 2339 && ast.IsPropertyAccessExpression(parent) && parent.Name() == token:
 			all[i] = explainMissingMember(c, file, d, parent)
 		}
@@ -105,8 +108,11 @@ func explainMissingPreludePackage(c *checker.Checker, file *ast.SourceFile, d *a
 
 // explainPreludeModule adds to d, an error at name, a type reference or the
 // callee of new or a call, that name is the Effect module the prelude
-// supplies, when it is, and for a name the DOM declares too, how to reach the
-// DOM's. It returns d unchanged otherwise.
+// supplies, when it is, and for a name a global declares too, how to reach the
+// global: VIP-33 derives the ban from the declaration, so the DOM's belongs in
+// a .ts file (globalThis.Request is EK4402, in a hatch too), and a Worker
+// runtime's own `declare var Response` is globalThis.Response. A global class
+// is not a property of globalThis. It returns d unchanged otherwise.
 func explainPreludeModule(c *checker.Checker, file *ast.SourceFile, d *ast.Diagnostic, name *ast.Node, value bool) *ast.Diagnostic {
 	text := name.Text()
 	if !value && isBuiltinGlobalType(c, text) {
@@ -121,13 +127,20 @@ func explainPreludeModule(c *checker.Checker, file *ast.SourceFile, d *ast.Diagn
 		return d // a declaration or an import of the file's own
 	}
 	d = note(d.Clone(), "{0} is Effect's {0} module ({1}), in scope without an import. To use your own {0}, declare or import it.", text, module)
-	switch {
-	case value && domGlobal(c, text, ast.SymbolFlagsValue) != nil:
-		note(d, "For the DOM's {0}, write globalThis.{0} inside a hatch or a module block.", text)
-	case !value && domGlobal(c, text, ast.SymbolFlagsType) != nil:
-		note(d, "For the DOM's {0} type, alias it in a .ts file, as in export type Dom{0} = {0}, and import the alias.", text)
+	if !value {
+		if domGlobal(c, text, ast.SymbolFlagsType) != nil {
+			note(d, "For the DOM's {0} type, alias it in a .ts file, as in export type Dom{0} = {0}, and import the alias.", text)
+		}
+		return d
 	}
-	return d
+	global := c.GlobalSymbol(text, ast.SymbolFlagsValue)
+	if global == nil || global == symbol || declaredInEffect(global) || global.Flags()&(ast.SymbolFlagsFunctionScopedVariable|ast.SymbolFlagsFunction) == 0 {
+		return d
+	}
+	if _, platform := platformGlobals[text]; platform || isUnlistedHostGlobal(c, global) {
+		return note(d, "The global {0} is platform code, which lives in a .ts file.", text)
+	}
+	return note(d, "For the global {0}, write globalThis.{0}.", text)
 }
 
 // explainMissingMember adds to d, TS2339 at access, M.member, a note when

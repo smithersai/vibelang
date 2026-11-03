@@ -19,7 +19,11 @@ func TestPreludeCollisionNotes(t *testing.T) {
 		{"generic type", "export function run(c: Command) { return c }", 2707,
 			"Command is Effect's Command module (effect/cli/Command), in scope without an import."},
 		{"DOM constructor", `export function start() { return new Worker("./worker.js") }`, 2351,
-			"For the DOM's Worker, write globalThis.Worker inside a hatch or a module block."},
+			"The global Worker is platform code, which lives in a .ts file."},
+		{"DOM constructor with an Effect module of its name", `export const r = new Request("http://x")`, 2351,
+			"The global Request is platform code, which lives in a .ts file."},
+		{"instanceof of an Effect module", `export const isResponse = (x: object) => x instanceof Response`, 2359,
+			"The global Response is platform code, which lives in a .ts file."},
 		{"DOM type", "export function size(c: Cache<string>) { return c }", 2315, ""},
 		{"explicit Effect type", `export function post(w: Worker.Worker<string, string>) { return w.postMessage("x") }`, 2339, ""},
 		{"JavaScript global", "export function add() { return Number.sum(1, 2) }", 2339,
@@ -46,7 +50,7 @@ func TestPreludeCollisionNotes(t *testing.T) {
 				t.Fatalf("got %d TS%d diagnostics, want 1: %q", len(found), test.code, found)
 			}
 			if test.want == "" {
-				for _, phrase := range []string{"in scope without an import", "wins over Effect's", "The DOM's", "For the DOM's"} {
+				for _, phrase := range []string{"in scope without an import", "wins over Effect's", "The DOM's", "For the DOM's", "The global"} {
 					if strings.Contains(found[0], phrase) {
 						t.Fatalf("got a note on a name the prelude does not settle:\n%s", found[0])
 					}
