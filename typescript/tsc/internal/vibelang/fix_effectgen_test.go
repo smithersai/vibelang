@@ -173,7 +173,6 @@ func TestEffectGenRefusals(t *testing.T) {
 		{"this without self", "export class Box {\n  v = 1\n  read() {\n    return Effect.gen(function* (this: any) {\n      return yield* Effect.succeed(1)\n    })\n  }\n}\n", "not a function* () { … } written in place"},
 		{"arguments", "export function f(n: number) {\n  return Effect.gen(function* () {\n    return yield* Effect.succeed(arguments.length)\n  })\n}\n", "its own arguments"},
 		{"a nested function*", "export const f = (xs: ReadonlyArray<number>) => Effect.gen(function* () {\n  return yield* Effect.forEach(xs, (x) => Effect.gen(function* () { return yield* Effect.succeed(x) }))\n})\n", "another function*"},
-		{"a program as the value", "export const f = (make: () => Effect.Effect<Effect.Effect<number>>) => Effect.gen(function* () {\n  const inner = yield* make()\n  return yield* inner\n})\n", "gives a program as its value"},
 		{"a comment outside the body", "export const f = () => Effect.gen(/* why */ function* () {\n  return yield* Effect.succeed(1)\n})\n", "a comment stands between"},
 		{"another return type", "type G = Generator<never, number>\nexport const f = Effect.fn(function* (n: number): G {\n  return n\n})\n", "a return type other than Effect.fn.Return"},
 		{"a return annotation before stages", "export const f = Effect.fn(function* (n: number): Effect.fn.Return<number> {\n  return n\n}, Effect.map((x) => x + 1))\n", "names the Effect before its stages"},
@@ -269,6 +268,27 @@ func FuzzEffectGenBindingReads(f *testing.F) {
 			t.Fatalf("EK1002's notes %q do not say %q for:\n%s", notes, why, source)
 		}
 	})
+}
+
+// A yield* whose success is itself a program holds it: try runs one layer, and
+// the value stays a program until something runs it (explicit effects).
+func TestEffectGenKeepsAProgramAsAValue(t *testing.T) {
+	for _, test := range []struct{ name, source, want string }{
+		{"held, then run", "export const f = (make: () => Effect.Effect<Effect.Effect<number>>) => Effect.gen(function* () {\n  const inner = yield* make()\n  return yield* inner\n})\n", "const inner = try make()\n  return try inner"},
+		{"returned", "export const f = (make: () => Effect.Effect<Effect.Effect<number>>) => Effect.gen(function* () {\n  return yield* make()\n})\n", "return try make()"},
+		{"a helper's finalizer", "export const f = (listen: () => Effect.Effect<Effect.Effect<void>>) => Effect.gen(function* () {\n  const unsubscribe = yield* listen()\n  yield* Effect.addFinalizer(() => unsubscribe)\n})\n", "try Effect.addFinalizer(() => unsubscribe)"},
+		{"both layers", "export const f = (make: () => Effect.Effect<Effect.Effect<number>>) => Effect.gen(function* () {\n  return yield* yield* make()\n})\n", "try"},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			got, ok := effectGenQuickFix(t, test.source)
+			if !ok {
+				t.Fatalf("no quick fix for:\n%s\nnotes: %s", test.source, effectGenNotes(t, test.source))
+			}
+			if !strings.Contains(got, test.want) {
+				t.Fatalf("want %q in:\n%s", test.want, got)
+			}
+		})
+	}
 }
 
 // An Effect.fn with a pipeline argument is EK1002 too, though no overload

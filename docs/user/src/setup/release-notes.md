@@ -334,6 +334,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Migrating JSX files could include previously excluded stories or omit explicitly included sources. Setup now preserves `include` and `exclude` membership with `.vibex` counterparts for `.tsx` selectors and `.vibe` counterparts for `.ts` and `.mts`.
 - `vibelang --fix` read `input.arguments` in an `Effect.gen` or `Effect.fn` generator as the generator's own `arguments` and refused it; it now fixes it. Two reads it missed changed meaning: `{ arguments }`, and `self` in `Effect.gen(function* self() { … })`, which the fix left naming nothing. It now refuses both.
+- `vibelang --fix` refused a `yield*` whose success is itself a program, such as `const stop = yield* listen()` followed by `Effect.addFinalizer(() => stop)`, though `try` runs one layer and the value stays a program. It now writes `const stop = try listen()`.
 - Resolved schema-binding regressions still appeared as pending gaps; namespace, function and escaped-name coverage now checks `EK2109` strictly while keeping every keyed corpus.
 - Schema library-alias checks now compare array decoding and mutability with native TypeScript and explicit Schema controls; remaining decoder gaps keep precise pending records.
 

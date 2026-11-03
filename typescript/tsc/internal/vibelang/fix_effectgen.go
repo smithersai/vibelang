@@ -836,19 +836,6 @@ func effectGenTryEdit(c *checker.Checker, file *ast.SourceFile, y *ast.Node) ([]
 		return []sourceEdit{keyword, {operandStart, operandStart, "Effect.fail("}, {operand.End(), operand.End(), ")"}}, ""
 	}
 	if t != nil {
-		effect := t
-		if isInvocation(inner) {
-			if signature := c.GetResolvedSignature(inner); signature != nil {
-				effect = c.GetReturnTypeOfSignature(signature)
-			}
-		}
-		success := successType(c, effect)
-		if success == nil {
-			success = varianceChannel(c, effect, "_A")
-		}
-		if !runsYield(y) && (success != nil && holdsEffectValue(c, success) || holdsEffectValue(c, c.GetTypeAtLocation(y))) {
-			return nil, label + " gives a program as its value, which VibeLang would run or hold by its declared type"
-		}
 		// An Effect.Yieldable that is no Effect runs through asEffect().
 		if !isEffectValueType(c, t) && !isEffectType(c, t) && yieldsEffect(c, t) {
 			if needsOperandParentheses(operand) {
@@ -861,16 +848,6 @@ func effectGenTryEdit(c *checker.Checker, file *ast.SourceFile, y *ast.Node) ([]
 		return []sourceEdit{keyword, {operandStart, operandStart, "("}, {operand.End(), operand.End(), ")"}}, ""
 	}
 	return []sourceEdit{keyword}, ""
-}
-
-// runsYield reports whether y is the operand of a yield*, which runs the
-// program y gives: yield* yield* Service.
-func runsYield(y *ast.Node) bool {
-	parent := y.Parent
-	for ast.IsParenthesizedExpression(parent) {
-		parent = parent.Parent
-	}
-	return ast.IsYieldExpression(parent)
 }
 
 // tryOperandNeedsParentheses reports whether operand, once a yield*'s, must

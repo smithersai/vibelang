@@ -1,0 +1,39 @@
+
+export const log: Array<string> = []
+
+const listen = effect (): (void!!)!! =>
+  {
+    log.push("listen")
+    return Effect.sync(() => {
+      log.push("unsubscribe")
+    })
+  }
+
+const nested = (): (number!!)!! =>
+  Effect.succeed(
+    effect {
+      log.push("inner")
+      return 7
+    },
+  )
+
+export const finalized = effect {
+  const unsubscribe = try listen()
+  log.push("held")
+  try Effect.addFinalizer(() => unsubscribe)
+  log.push("body")
+}
+
+export const returned = effect {
+  return try nested()
+}
+
+export const ranLater = effect {
+  const inner = try nested()
+  log.push("before")
+  return try inner
+}
+
+export const bothLayers = effect {
+  return try try nested()
+}
