@@ -4,6 +4,8 @@ Researched 2026-10-27; suite built 2026-10-27 and 2026-10-28. This is a snapshot
 
 Compiled regression replays in the spec gate use the same `VIBELANG_FUZZ_HANG=120s` stage budget as the full seed suite, so emitted-output checks retain their normal allowance on a busy host.
 
+Spec quote checks from independent fuzz targets need distinct Go names. Keep each target's quote and assertions when combining coverage; package compilation must replay both checks without duplicate declarations.
+
 ## Quick-fix behavior oracle
 
 `FuzzQuickFixBehavior` reads the EK inventory from the compiler's registered
