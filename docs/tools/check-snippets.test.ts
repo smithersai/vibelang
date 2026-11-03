@@ -3,12 +3,15 @@ import { blockFilenames, classify, defaultCompiler, extract, linkModules, markdo
 
 const block = extract('```ts\nconst answer = 42\n```')[0]
 const diagnostic = (code: string, message = "example") => ({ code, message })
+// docs/design/src/900-appendices.md#d39863e3f1a87660 — Chapter 900: extracts vibe and ts fences, skips unnamed TypeScript examples, and preserves lines and directives.
 test("extracts vibe and ts fences, skips unnamed TypeScript examples, and preserves lines and directives", () => {
   const blocks = extract('heading\n```ts\n// TypeScript (.ts)\nconst ignored = 1\n```\n~~~vibe es\n// expect-error: EK9201 TS2322\nfunction f() {}\n~~~\n```json\n{}\n```\n```vibe\n// compiler-gap: return contract\nfunction g() {}\n```')
   expect(blocks.map(b => [b.number, b.line, b.firstLine])).toEqual([[2, 7, "function f() {}"], [3, 14, "function g() {}"]])
   expect(blocks[0].expected).toEqual(["EK9201", "TS2322"])
   expect(blocks[1].gap).toBe("return contract")
 })
+// docs/design/src/900-appendices.md#53946a6ef522dadf — Chapter 900: extracts Effect comparison fences and keeps explicit fragment markers.
+// docs/design/src/900-appendices.md#56090ea98d10c6d6 — Chapter 900: extracts Effect comparison fences and keeps explicit fragment markers.
 test("extracts Effect comparison fences and keeps explicit fragment markers", () => {
   const blocks = extract(["```ts effect", "// fragment", "const x = yield* work", "```", "```vibe es", "const x = work()", "```"].join("\n"))
   expect(blocks.map(b => [b.number, b.comparison, b.fragment])).toEqual([[1, true, true], [2, false, false]])
@@ -29,6 +32,7 @@ test("a filename caption must name a file of its fence's language", () => {
   expect(() => extract("```ts\n// main.vibe\nconst a = 1\n```")).toThrow("A ts fence names main.vibe")
   expect(() => extract("```vibe\n// helper.ts\nconst a = 1\n```")).toThrow("A vibe fence names helper.ts")
 })
+// docs/design/src/900-appendices.md#2a790069243d47f7 — Chapter 900: only unresolved names and local imports are automatic fragments.
 test("only unresolved names and local imports are automatic fragments", () => {
   expect(classify(block, []).status).toBe("ok")
   expect(classify(block, [diagnostic("TS2304")]).status).toBe("fragment")
@@ -37,12 +41,16 @@ test("only unresolved names and local imports are automatic fragments", () => {
   expect(classify(block, [diagnostic("TS2307", "Cannot find module 'missing-package'")]).status).toBe("fail")
   expect(classify(block, [diagnostic("TS2304"), diagnostic("TS2322")]).status).toBe("fail")
 })
+// docs/design/src/900-appendices.md#e1c026b67d61e2d9 — Chapter 900: expected diagnostics must occur and do not hide other errors.
 test("expected diagnostics must occur and do not hide other errors", () => {
   const expected = { ...block, expected: ["EK9201"] }
   expect(classify(expected, []).status).toBe("fail")
   expect(classify(expected, [diagnostic("EK9201")]).status).toBe("ok")
   expect(classify(expected, [diagnostic("EK9201"), diagnostic("TS2322")]).status).toBe("fail")
 })
+// docs/design/src/900-appendices.md#38901d9eba878c55 — Chapter 900: explicit gaps remain checked, and stale markers fail.
+// docs/design/src/900-appendices.md#8e6d38a46e549efa — Chapter 900: explicit gaps remain checked, and stale markers fail.
+// docs/design/src/900-appendices.md#26a54106f3b6a227 — Chapter 900: explicit gaps remain checked, and stale markers fail.
 test("explicit gaps remain checked, and stale markers fail", () => {
   const gap = { ...block, gap: "D56 program conversion" }
   expect(classify(gap, [diagnostic("TS2345")]).status).toBe("compiler-gap")

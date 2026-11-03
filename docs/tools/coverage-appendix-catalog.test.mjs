@@ -87,6 +87,56 @@ const expectations = [
   ["EK38104", "runEffectInsideEffect", "suggestion"],
   // docs/design/src/900-appendices.md#2f881cf84f9679c2 — Chapter 900: runOfExitToRunExit identity and default.
   ["EK38105", "runOfExitToRunExit", "suggestion"],
+  // docs/design/src/900-appendices.md#9f2f0b023ae409b1 — Chapter 900: schemaClassMissingBrand identity and default.
+  ["EK38106", "schemaClassMissingBrand", "suggestion"],
+  // docs/design/src/900-appendices.md#1f8ebe05085a4cdc — Chapter 900: schemaClassObjectLiteral identity and default.
+  ["EK38107", "schemaClassObjectLiteral", "warning"],
+  // docs/design/src/900-appendices.md#8bf6f1fcf6a8c550 — Chapter 900: schemaLiteralNonFinite identity and default.
+  ["EK38108", "schemaLiteralNonFinite", "error"],
+  // docs/design/src/900-appendices.md#a983499a022b126b — Chapter 900: schemaNumber identity and default.
+  ["EK38109", "schemaNumber", "suggestion"],
+  // docs/design/src/900-appendices.md#0f642835124742eb — Chapter 900: schemaOpaqueInstanceMember identity and default.
+  ["EK38110", "schemaOpaqueInstanceMember", "error"],
+  // docs/design/src/900-appendices.md#c1e841709260667a — Chapter 900: schemaStructWithTag identity and default.
+  ["EK38111", "schemaStructWithTag", "suggestion"],
+  // docs/design/src/900-appendices.md#4a2a2404c99bdb67 — Chapter 900: schemaSync identity and default.
+  ["EK38112", "schemaSync", "off"],
+  // docs/design/src/900-appendices.md#3f81053287aacdfd — Chapter 900: schemaSyncInEffect identity and default.
+  ["EK38113", "schemaSyncInEffect", "suggestion"],
+  // docs/design/src/900-appendices.md#e2674f0cd8581cb0 — Chapter 900: schemaUnionOfLiterals identity and default.
+  ["EK38114", "schemaUnionOfLiterals", "off"],
+  // docs/design/src/900-appendices.md#790de5384affcc58 — Chapter 900: scopeInLayerEffect identity and default.
+  ["EK38115", "scopeInLayerEffect", "warning"],
+  // docs/design/src/900-appendices.md#6670e9b4c9541cfd — Chapter 900: serviceNotAsClass identity and default.
+  ["EK38116", "serviceNotAsClass", "off"],
+  // docs/design/src/900-appendices.md#1e02e1e360c141d7 — Chapter 900: strictBooleanExpressions identity and default.
+  ["EK38117", "strictBooleanExpressions", "off"],
+  // docs/design/src/900-appendices.md#7213bda6d258d22e — Chapter 900: strictEffectProvide identity and default.
+  ["EK38118", "strictEffectProvide", "off"],
+  // docs/design/src/900-appendices.md#047b44e7bd83426f — Chapter 900: syncToSucceed identity and default.
+  ["EK38119", "syncToSucceed", "suggestion"],
+  // docs/design/src/900-appendices.md#7d7974ac2450ce93 — Chapter 900: timeoutCatchTagToTimeoutOrElse identity and default.
+  ["EK38120", "timeoutCatchTagToTimeoutOrElse", "suggestion"],
+  // docs/design/src/900-appendices.md#b1d1ad1cd85ade23 — Chapter 900: tryCatchInEffectGen identity and default.
+  ["EK38121", "tryCatchInEffectGen", "suggestion"],
+  // docs/design/src/900-appendices.md#d01da7d5ea451c92 — Chapter 900: unknownInEffectCatch identity and default.
+  ["EK38122", "unknownInEffectCatch", "warning"],
+  // docs/design/src/900-appendices.md#7c984e58cfb625df — Chapter 900: unnecessaryArrowBlock identity and default.
+  ["EK38123", "unnecessaryArrowBlock", "off"],
+  // docs/design/src/900-appendices.md#a635aca526a1adfd — Chapter 900: unnecessaryEffectGen identity and default.
+  ["EK38124", "unnecessaryEffectGen", "suggestion"],
+  // docs/design/src/900-appendices.md#45a35f66995f6e6f — Chapter 900: unnecessaryFailYieldableError identity and default.
+  ["EK38125", "unnecessaryFailYieldableError", "suggestion"],
+  // docs/design/src/900-appendices.md#8c706a545743ff1f — Chapter 900: unnecessaryPipe identity and default.
+  ["EK38126", "unnecessaryPipe", "suggestion"],
+  // docs/design/src/900-appendices.md#0aeece7beadcd87d — Chapter 900: unnecessaryPipeChain identity and default.
+  ["EK38127", "unnecessaryPipeChain", "suggestion"],
+  // docs/design/src/900-appendices.md#8f392f2e5ad901b1 — Chapter 900: unnecessaryTypeofType identity and default.
+  ["EK38128", "unnecessaryTypeofType", "suggestion"],
+  // docs/design/src/900-appendices.md#0835934b995a15bf — Chapter 900: unsafeEffectTypeAssertion identity and default.
+  ["EK38129", "unsafeEffectTypeAssertion", "off"],
+  // docs/design/src/900-appendices.md#783d2355bf1b9319 — Chapter 900: unstableApiUsage identity and default.
+  ["EK38130", "unstableApiUsage", "warning"],
 ]
 const shipped = JSON.parse(readFileSync(resolve(root, "docs/design/inventory/lint-codes.json"), "utf8"))
 const upstream = generateLintCodes().inventory
