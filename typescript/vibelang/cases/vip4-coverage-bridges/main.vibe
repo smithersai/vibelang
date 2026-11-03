@@ -1,0 +1,54 @@
+// rule-evidence: docs/design/vips/0004-throw.md#f2aa4852e551cb8e
+// VIP-4: The wrapped call is then run with try (VIP-5).
+// rule-evidence: docs/design/vips/0004-throw.md#b0ad1b813e8b9a43
+// VIP-4: The wrappers are Effect's own functions, which VIP-6 makes global:
+// rule-evidence: docs/design/vips/0004-throw.md#03edc6317518d71e
+// VIP-4: Updated by VIP-5 and VIP-6 (2026-10-28): wrapped calls run with
+// rule-evidence: docs/design/vips/0004-throw.md#6f03fbe4c6989943
+// VIP-4: vibe try sync(() => parse(s)) // error: use Effect.try try
+// rule-evidence: docs/design/vips/0004-throw.md#fa64311b05805dd3
+// VIP-4: Effect.try(() => foreignParse(s)) and Effect.tryPromise(() => foreignAsync(s)), including their options-object
+// rule-evidence: docs/design/vips/0004-throw.md#cd34efaaab86743c
+// VIP-4: Effect code that calls it wraps the Promise as for
+// rule-evidence: docs/design/vips/0004-throw.md#3787495c4e2f9efb
+// VIP-4: The claimed conflict is not inherent: when the original native
+// rule-evidence: docs/design/vips/0004-throw.md#5b128be58c701f2e
+// VIP-4: The identity mapper preserves the actual thrown value; orDie removes
+// rule-evidence: docs/design/vips/0004-throw.md#a0aed57924ff6b6a
+// VIP-4: This both uses the required explicit foreign bridge and preserves
+// rule-evidence: docs/design/vips/0004-throw.md#b0be4ebe00689d96
+// VIP-4: Default Effect.try(() => foreign(x)) followed by orDie instead defects with
+// rule-evidence: docs/design/vips/0004-throw.md#f7c64ccf0822546e
+// VIP-4: The ordinary existing Effect.try failure form remains appropriate when that
+// rule-evidence: docs/design/vips/0004-throw.md#f1c51bd54032a65e
+// VIP-4: vibe import { foreign } from "./foreign.ts" export effect function
+// rule-evidence: docs/design/vips/0004-throw.md#d64e475e88bb3ac5
+// VIP-4: ts import { Effect } from "effect" import { foreign
+// rule-evidence: docs/design/vips/0005-try-runs-effects.md#116a49a619737f11
+// VIP-5: A call that may throw, and a Promise, is first
+// rule-evidence: docs/design/vips/0005-try-runs-effects.md#c7f2c7afe2698862
+// VIP-5: promise you must wrap in an effect and then you
+import { Effect, Exit } from "effect"
+import { foreign, foreignAsync, reset, count } from "./foreign.js"
+// VIP-4: explicit foreign bridges stay cold; identity+orDie retains the
+// original defect, while the default wrapper introduces UnknownError.
+export effect function identity(n: number): Effect.Effect<number> {
+  return try Effect.orDie(Effect.try({ try: () => foreign(n), catch: (error) => error }))
+}
+export effect function main(): Effect.Effect<readonly unknown[], unknown> {
+  reset()
+  const held = Effect.try({ try: () => foreign(-1), catch: (error) => error })
+  const asyncHeld = Effect.tryPromise({ try: () => foreignAsync(-1), catch: (error) => error })
+  const cold = count()
+  const failed = try Effect.exit(held)
+  const asyncFailed = try Effect.exit(asyncHeld)
+  const defect = try Effect.exit(identity(-1))
+  const wrapped = try Effect.exit(Effect.orDie(Effect.try(() => foreign(-1))))
+  const success = try Effect.try(() => foreign(8))
+  const promiseSuccess = try Effect.tryPromise(() => foreignAsync(9))
+  const failureValue = Exit.isFailure(failed) && failed.cause.reasons[0]?._tag === "Fail" && failed.cause.reasons[0].error === "foreign"
+  const asyncValue = Exit.isFailure(asyncFailed) && asyncFailed.cause.reasons[0]?._tag === "Fail" && asyncFailed.cause.reasons[0].error === "async"
+  const original = Exit.isFailure(defect) && defect.cause.reasons[0]?._tag === "Die" && defect.cause.reasons[0].defect === "foreign"
+  const changed = Exit.isFailure(wrapped) && wrapped.cause.reasons[0]?._tag === "Die" && wrapped.cause.reasons[0].defect !== "foreign"
+  return [cold, count(), failureValue, asyncValue, original, changed, success, promiseSuccess]
+}

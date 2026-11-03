@@ -1,0 +1,1 @@
+async parity: rejection, assimilation and native await data

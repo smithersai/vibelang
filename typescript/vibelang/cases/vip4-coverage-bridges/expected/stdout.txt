@@ -1,0 +1,1 @@
+foreign bridge parity: cold construction, failure and defect identity

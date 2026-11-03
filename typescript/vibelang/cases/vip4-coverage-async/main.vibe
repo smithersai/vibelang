@@ -1,0 +1,46 @@
+// rule-evidence: docs/design/vips/0004-throw.md#91f3ac9ed46edc55
+// VIP-4: A nongenerator async callable instead rejects its Promise for body,
+// rule-evidence: docs/design/vips/0004-throw.md#eaee5ce5e6b94192
+// VIP-4: throw in an async VibeLang function rejects its Promise, as
+// rule-evidence: docs/design/vips/0004-throw.md#aadbd77823202189
+// VIP-4: An async VibeLang function carries no thrown type (Will: thrown-type
+// rule-evidence: docs/design/vips/0004-throw.md#d78882fe9f839e24
+// VIP-4: vibe async function load(id: string) { if (!id) throw new
+// rule-evidence: docs/design/vips/0005-try-runs-effects.md#75ee07ed265e1679
+// VIP-5: await keeps exactly JavaScript's meaning and belongs only to async
+// rule-evidence: docs/design/vips/0005-try-runs-effects.md#0881eed07ab4cc09
+// VIP-5: await fiber
+// rule-evidence: docs/design/vips/0005-try-runs-effects.md#06e0a20e058e18b2
+// VIP-5: await deferred
+// rule-evidence: docs/design/vips/0005-try-runs-effects.md#9b04dd8a689656be
+// VIP-5: An async return instead assimilates its returned Promise or thenable.
+// rule-evidence: docs/design/vips/0005-try-runs-effects.md#32d16bddfe7f8711
+// VIP-5: We don't overload await it just means promise await.
+// rule-evidence: docs/design/vips/0005-try-runs-effects.md#893ff47dd8c9ed2e
+// VIP-5: await fiber in async code has TypeScript's behavior, plus a
+// rule-evidence: docs/design/vips/0005-try-runs-effects.md#32e337fdb6d046bf
+// VIP-5: await deferred has TypeScript's behavior, plus a VIP-38 lint warning
+import { Effect, Exit, Fiber, Deferred } from "effect"
+async function rejects() { throw "async" }
+const arrow = async () => { throw "arrow" }
+class Worker { async method() { throw "method" } }
+async function nested() { return Promise.resolve(7) }
+async function observeFiber(f: Fiber.Fiber<number>) { return await f }
+async function observeDeferred(d: Deferred.Deferred<number>) { return await d }
+async function joinFiber(f: Fiber.Fiber<number>) { return await Effect.runPromise(Fiber.join(f)) }
+async function waitDeferred(d: Deferred.Deferred<number>) { return await Effect.runPromise(Deferred.await(d)) }
+export effect function main(): Effect.Effect<readonly unknown[],unknown> {
+  const a = try Effect.exit(Effect.tryPromise({ try: rejects, catch: (e) => e }))
+  const b = try Effect.exit(Effect.tryPromise({ try: arrow, catch: (e) => e }))
+  const c = try Effect.exit(Effect.tryPromise({ try: () => new Worker().method(), catch: (e) => e }))
+  const value = try Effect.tryPromise(nested)
+  const fiber = try Effect.forkChild(Effect.succeed(8))
+  const deferred = try Deferred.make<number>()
+  try Deferred.succeed(deferred, 9)
+  const fiberData = try Effect.tryPromise(() => observeFiber(fiber))
+  const deferredData = try Effect.tryPromise(() => observeDeferred(deferred))
+  const joined = try Effect.tryPromise(() => joinFiber(fiber))
+  const waited = try Effect.tryPromise(() => waitDeferred(deferred))
+  const failure = (x: Exit.Exit<unknown,unknown>) => Exit.isFailure(x) && x.cause.reasons[0]?._tag === "Fail" ? x.cause.reasons[0].error : null
+  return [failure(a),failure(b),failure(c),value,fiberData === fiber,deferredData === deferred,joined,waited]
+}

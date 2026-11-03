@@ -1,0 +1,3 @@
+// expect: EK0403 EK0403
+export effect function calls(a: any, b: Function) { a(); b(); return 0 }
+

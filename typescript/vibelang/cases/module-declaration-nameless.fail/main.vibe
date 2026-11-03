@@ -1,4 +1,6 @@
 // expect: EK4003
+// rule-evidence: docs/design/vips/0004-throw.md#7bef55cc0038a92c
+// VIP-4: Inline module {} stays denied (VIP-25).
 // A module declaration without its name (D283), not a block passed to
 // Node's module global.
 module { export function clean(): string { return "" } }

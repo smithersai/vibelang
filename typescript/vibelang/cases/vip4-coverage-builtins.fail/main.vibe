@@ -1,0 +1,17 @@
+// expect: EK0403 EK0403 EK0403 EK0403 EK0403
+// rule-evidence: docs/design/vips/0004-throw.md#6f7789d1fb21cdcf
+// VIP-4: vibe effect function f(xs: number[], s: string, v: object) {
+// rule-evidence: docs/design/vips/0004-throw.md#747a8e67fb646a5f
+// VIP-4: vibe effect function format(s: string) { const fixed = try
+// rule-evidence: docs/design/vips/0004-throw.md#f7ca480c2237ebd7
+// VIP-4: Detail56 permits the pure URL utility; it does not claim
+// rule-evidence: docs/design/vips/0004-throw.md#91ff29d2eb24b72a
+// VIP-4: The existing81/205 classification requires TypeError for native invalid-URL argument validation;
+export effect function bad() {
+  const json = JSON.parse("{}")
+  const cycle = JSON.stringify({})
+  const repeat = "x".repeat(1)
+  const fixed = (1.5).toFixed(2)
+  const url = new URL("https://example.test")
+  return [json,cycle,repeat,fixed,url]
+}

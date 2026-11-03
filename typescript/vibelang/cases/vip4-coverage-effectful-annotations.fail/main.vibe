@@ -1,0 +1,12 @@
+// expect: EK0406 EK0406 EK0406 EK0406
+/** @throws {Error} */
+effect function declaration() { return 1 }
+/** @rethrows callback */
+const arrow = effect (callback: () => number) => callback()
+class C {
+  /** @throws {Error} */
+  effect method() { return 1 }
+}
+/** @throws {Error} */
+function factory(): Effect.Effect<number> { return Effect.succeed(1) }
+

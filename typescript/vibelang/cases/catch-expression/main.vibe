@@ -1,3 +1,7 @@
+// rule-evidence: docs/design/vips/0005-try-runs-effects.md#c7d7aa5273009704
+// VIP-5: It handles failures with catch and match.
+// rule-evidence: docs/design/vips/0005-try-runs-effects.md#8b7e5a8ec17714a7
+// VIP-5: x catch effect (e) => … runs an Effect and
 // expect-result: {"orGuest":["user 1","guest"],"describe":["user 1","no user missing","retry"],"partial":"missing","partialSlow":"Timeout","firstOf":["user 1","user 2","none"],"wrapped":"Timeout","precedence":["fast","slow"],"nickname":["unknown","failed","x"],"defect":"died","piped":"none","lazy":["user 1",false]}
 error NotFound { id: string }
 error Timeout

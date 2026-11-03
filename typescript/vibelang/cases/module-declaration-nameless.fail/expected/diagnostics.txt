@@ -1,1 +1,1 @@
-main.vibe(4,1): error EK4003
+main.vibe(6,1): error EK4003
