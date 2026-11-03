@@ -1,6 +1,6 @@
 import assert from "node:assert/strict"
 import { spawnSync } from "node:child_process"
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs"
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync, readdirSync } from "node:fs"
 import { createRequire } from "node:module"
 import { tmpdir } from "node:os"
 import { join, resolve } from "node:path"
@@ -91,7 +91,9 @@ function runConfigs(outDirs, { bom = false } = {}) {
       const forwarded = JSON.parse(readFileSync(join(copy, "tsconfig.runtime.json"), "utf8"))
       assert.equal(forwarded.compilerOptions.outDir, resolve(copy, outDir), "stock TypeScript must receive the written path")
       assert.ok(existsSync(join(copy, outDir, "main.js")), "JavaScript must be emitted into " + outDir)
-      assert.ok(existsSync(join(copy, outDir, "run.mjs")), "the actual runner must use " + outDir)
+      // The runner has its own directory inside outDir, so no emitted module is overwritten.
+      const runner = readdirSync(join(copy, outDir)).find(name => name.startsWith(".parity-run-"))
+      assert.ok(runner && existsSync(join(copy, outDir, runner, "run.mjs")), "the actual runner must use " + outDir)
     }
   } finally { rmSync(temp, { recursive: true, force: true }) }
 }

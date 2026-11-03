@@ -22,11 +22,13 @@ function runJobs(value, valid = false) {
     cpSync(join(root, "packages/ts-mapper/test/parity"), harness, {
       recursive: true, filter: (src) => !src.split("/").includes("out")
     })
-    // Only relocate imports of the production snippet checker; every harness source stays real.
-    for (const name of ["parity.ts", "docs.ts"]) {
+    // Only relocate imports of production modules; every harness source stays real.
+    for (const name of ["parity.ts", "docs.ts", "runtime.ts"]) {
       const file = join(harness, name)
       writeFileSync(file, readFileSync(file, "utf8").replace(
         '"../../../../docs/tools/check-snippets.ts"', JSON.stringify(join(root, "docs/tools/check-snippets.ts"))
+      ).replace(
+        '"../../../compiler/cache.mjs"', JSON.stringify(join(root, "packages/compiler/cache.mjs"))
       ))
     }
     const fixture = join(temp, "fixture"), scope = join(temp, "scope")
