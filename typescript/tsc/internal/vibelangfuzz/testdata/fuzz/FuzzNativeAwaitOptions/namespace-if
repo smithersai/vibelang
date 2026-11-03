@@ -1,0 +1,4 @@
+go test fuzz v1
+string("namespace-if")
+byte(8)
+byte(0)

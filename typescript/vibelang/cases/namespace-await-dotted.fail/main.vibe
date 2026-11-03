@@ -1,0 +1,3 @@
+// expect: TS1308
+namespace Outer.Inner { export const x = await Promise.resolve(42) }
+export const answer = Outer.Inner.x

@@ -536,6 +536,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Pipe grammar no longer rejects a pipe after a closed catch arrow body; it applies to the recovered value.
 
 
+- An `await` in a TypeScript `namespace` was accepted and emitted invalid JavaScript; namespace bodies now report native `TS1308`, while explicit `async` functions keep their own await permission.
+
 - Declaration checks could compare an unused `types` export instead of an earlier matching package condition, hiding a real API change. Published entry discovery now follows TypeScript's conditional export order and preserves mirrored `.vibe` sidecar resolution.
 
 - Declaration checks could miss a type change selected by an explicit `resolution-mode` import attribute. They now resolve each import using its own mode throughout the comparison.

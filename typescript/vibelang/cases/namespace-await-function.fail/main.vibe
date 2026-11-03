@@ -1,0 +1,3 @@
+// expect: TS1308
+namespace N { export function load(): number { return await Promise.resolve(42) } }
+export const answer = N.load

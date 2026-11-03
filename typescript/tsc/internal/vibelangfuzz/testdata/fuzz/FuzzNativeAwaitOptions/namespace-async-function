@@ -1,0 +1,4 @@
+go test fuzz v1
+string("namespace-async-function")
+byte(8)
+byte(5)

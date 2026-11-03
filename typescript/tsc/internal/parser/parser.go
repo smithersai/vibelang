@@ -122,6 +122,7 @@ type Parser struct {
 	vibelangHoists           map[*ast.Node]bool          // the let statements hoistVibeLangIs put on reparseList, which an unbraced statement body keeps as its own home (vibelang_match.go)
 	vibelangSyntax           *[]VibeSyntax               // the forms recorded for ParseVibeLangSyntax, or nil (vibelang_syntax.go)
 	vibelangFiberContext     bool                        // fork/join reservation inherited by source grammar
+	vibelangNamespaceContext bool                        // native namespace syntax, independent of suspension permission
 	vibelangTypeScript       bool                        // reading a module declaration's body, which is TypeScript (vibelang_modules.go)
 	vibelangDos              map[*ast.Node]*doExpression // do expressions as written, by their call (vibelang_do.go)
 	vibelangDoOrder          []*doExpression             // the same, in source order
@@ -374,6 +375,7 @@ func (p *Parser) parseErrorAtRange(loc core.TextRange, message *diagnostics.Mess
 }
 
 type ParserState struct {
+	vibelangNamespaceContext    bool
 	vibelangDeniedTrailingBlock bool
 	vibelangFiberContext        bool
 	scannerState                scanner.ScannerState
@@ -391,6 +393,7 @@ type ParserState struct {
 func (p *Parser) mark() ParserState {
 	return ParserState{
 		vibelangDeniedTrailingBlock: p.vibelangDeniedTrailingBlock,
+		vibelangNamespaceContext:    p.vibelangNamespaceContext,
 		vibelangFiberContext:        p.vibelangFiberContext,
 		scannerState:                p.scanner.Mark(),
 		contextFlags:                p.contextFlags,
@@ -407,6 +410,7 @@ func (p *Parser) mark() ParserState {
 
 func (p *Parser) rewind(state ParserState) {
 	p.vibelangDeniedTrailingBlock = state.vibelangDeniedTrailingBlock
+	p.vibelangNamespaceContext = state.vibelangNamespaceContext
 	p.vibelangFiberContext = state.vibelangFiberContext
 	p.scanner.Rewind(state.scannerState)
 	p.token = p.scanner.Token()
@@ -2483,6 +2487,19 @@ func (p *Parser) parseAmbientExternalModuleDeclaration(pos int, jsdoc jsdocScann
 }
 
 func (p *Parser) parseModuleBlock() *ast.Node {
+	// VIP-26's ES top-level await permission stops at a namespace's
+	// synchronous wrapper. Keep recognizing native await syntax there so
+	// the checker owns TS1308 instead of recovering a legacy Effect await.
+	saveContextFlags := p.contextFlags
+	saveNamespaceContext := p.vibelangNamespaceContext
+	if p.isVibeLangFile() {
+		p.setContextFlags(ast.NodeFlagsAwaitContext, false)
+		p.vibelangNamespaceContext = true
+	}
+	defer func() {
+		p.contextFlags = saveContextFlags
+		p.vibelangNamespaceContext = saveNamespaceContext
+	}()
 	pos := p.nodePos()
 	var statements *ast.NodeList
 	if p.parseExpected(ast.KindOpenBraceToken) {

@@ -47,8 +47,10 @@ func TestTopLevelAwait(t *testing.T) {
 		"try":         "try { await {E} } finally { }\n",
 	}
 	effectCode := map[string]string{
-		"effect-function": "export effect function f() { return await {E} }\n",
-		"effect-block":    "export const p = effect { return await {E} }\n",
+		"effect-function":           "export effect function f() { return await {E} }\n",
+		"effect-block":              "export const p = effect { return await {E} }\n",
+		"namespace-effect-function": "namespace N { export effect function f() { return await {E} } }\n",
+		"namespace-effect-block":    "namespace N { export const p = effect { return await {E} } }\n",
 	}
 	check := func(t *testing.T, source string, want func(codes []int32, js string) string) {
 		r, err := w.Compile(t.Context(), Project{Files: map[string]string{"main.vibe": source}})

@@ -120,6 +120,7 @@ parser/vibelang_fibers.go:Parser.parseVibeLangFork	admission:fork	900-appendices
 parser/vibelang_fibers.go:Parser.isStartOfVibeLangJoin	admission:join	900-appendices.md#JoinExpression	support	VIP-17 single Fiber operand; aggregate meaning not admitted
 parser/vibelang_fibers.go:Parser.parseVibeLangJoin	admission:join	900-appendices.md#JoinExpression	support	VIP-17 single Fiber operand; aggregate meaning not admitted
 parser/vibelang_fibers.go:Parser.vibelangProgramArrow	admission:fork	900-appendices.md#ForkExpression	support	VIP-17/19 fork and concurrent-loop helpers; legacy paths below
+parser/vibelang_fibers.go:Parser.inNativeAwaitContext	admission:native-await-context	001-functions.md,007-tooling.md	support	VIP-26 native await grammar keeps TS1308 in synchronous namespace bodies without inheriting module suspension permission
 parser/vibelang_fibers.go:Parser.isVibeLangAwait	admission:legacy-await	-	pending	VIP-5/18 replace implicit await and await operations
 parser/vibelang_fibers.go:Parser.nextTokenStartsAwaitOperand	admission:legacy-await	-	pending	VIP-5/18 replace implicit await and await operations
 parser/vibelang_fibers.go:Parser.parseVibeLangAwait	admission:legacy-await	-	pending	VIP-5/18 replace implicit await and await operations

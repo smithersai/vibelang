@@ -1,0 +1,3 @@
+// expect: TS1308
+namespace N { if (true) { const x = await Promise.resolve(42); void x } }
+export {}

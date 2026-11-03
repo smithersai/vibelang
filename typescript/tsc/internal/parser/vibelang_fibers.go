@@ -130,12 +130,19 @@ func (p *Parser) vibelangProgramArrow(params []*ast.Node, body *ast.Node, anchor
 	return p.vibelangSpanning(arrow, core.NewTextRange(start, body.End()))
 }
 
+// inNativeAwaitContext selects the native expression grammar, without
+// granting NodeFlagsAwaitContext. Namespace bodies and their plain functions
+// retain TypeScript's syntax errors; effect code keeps its legacy recovery.
+func (p *Parser) inNativeAwaitContext() bool {
+	return p.inAwaitContext() || p.vibelangNamespaceContext && !p.vibelangFiberContext
+}
+
 // isVibeLangAwait reports whether the current token, await, is VibeLang's await:
 // in a .vibe file, outside an async function, followed on the same line
 // by an operand. Inside an async function, which only a boundary hatch may
 // declare, await is JavaScript's.
 func (p *Parser) isVibeLangAwait() bool {
-	return p.token == ast.KindAwaitKeyword && p.isVibeLangFile() && !p.inAwaitContext() && p.lookAhead((*Parser).nextTokenStartsAwaitOperand)
+	return p.token == ast.KindAwaitKeyword && p.isVibeLangFile() && !p.inNativeAwaitContext() && p.lookAhead((*Parser).nextTokenStartsAwaitOperand)
 }
 
 func (p *Parser) nextTokenStartsAwaitOperand() bool {
