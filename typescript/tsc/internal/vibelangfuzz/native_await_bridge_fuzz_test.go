@@ -94,7 +94,7 @@ func FuzzNativeAwaitBridge(f *testing.F) {
 		{"fiber-generic-intersection", "T & {readonly extra?: 1}", "<T extends Fiber.Fiber<number>|Fiber.Fiber<string>>", "number | string", true},
 	}
 	for _, domain := range domains {
-		for i := uint8(0); i < 6; i++ {
+		for i := uint8(0); i < 12; i++ {
 			f.Add(domain.key, i)
 		}
 	}
@@ -113,6 +113,14 @@ func FuzzNativeAwaitBridge(f *testing.F) {
 		source := "import type {Fiber, Deferred} from 'effect';\n" +
 			"export const probe=async " + domain.parameters + "(value:" + domain.typ + ",other:" + domain.typ + ",box:{value:" + domain.typ + "},get:()=>" + domain.typ + ",flag:boolean," +
 			"Effect=0,Fiber=0,Deferred=0,runPromise=0,$awaitRunPromise=0,$awaitJoin=0,$awaitDeferred=0)=>await " + operands[mode%6] + ";\n"
+		if mode%12 >= 6 {
+			// The census witness uses a declaration and a value import, rather
+			// than the shadowed async-arrow environment above.
+			source = "import {Fiber, Deferred} from 'effect';\n" +
+				"export async function probe" + domain.parameters + "(value:" + domain.typ +
+				",other:" + domain.typ + ",box:{value:" + domain.typ + "},get:()=>" + domain.typ +
+				",flag:boolean) { return await " + operands[mode%6] + " }\n"
+		}
 		fixed := nativeAwaitBridgeEdit(t, w, source, domain.key, domain.optional)
 		if fixed == "" {
 			return
@@ -127,11 +135,17 @@ func FuzzNativeAwaitBridge(f *testing.F) {
 		defer r.Remove()
 		for _, d := range r.Diagnostics {
 			if d.Category() == diagnostics.CategoryError || d.Source() == "EK" && (d.Code() == 4609 || d.Code() == 4610) {
-				Gap(t, nativeAwaitBridgeTarget, fmt.Sprintf("recheck:%s/%d", key, mode%6), "bridge adds diagnostics %v\n%s", Keys(r.Dir, r.Diagnostics), fixed)
+				Gap(t, nativeAwaitBridgeTarget, fmt.Sprintf("recheck:%s/%d", key, mode%12), "bridge adds diagnostics %v\n%s", Keys(r.Dir, r.Diagnostics), fixed)
 				return
 			}
 		}
-		twin := Project{Files: map[string]string{"main.ts": fixed}}
+		reference := fixed
+		if mode%12 >= 6 {
+			// VibeLang infers native declarations' throws; the TypeScript
+			// twin states that contract explicitly.
+			reference = strings.Replace(fixed, "export async function probe", "/** @throws {never} */\nexport async function probe", 1)
+		}
+		twin := Project{Files: map[string]string{"main.ts": reference}}
 		ref, err := w.Compile(t.Context(), twin)
 		if err != nil {
 			t.Fatal(err)
