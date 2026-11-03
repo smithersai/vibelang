@@ -1,4 +1,4 @@
-// expect: EK0107
+// expect: EK0107 EK0401
 globalThis.eval("1")
 globalThis["Function"]("return 1")
 export const exempt = (() => 1) instanceof globalThis.Function
@@ -8,3 +8,5 @@ export {}
 
 // Spec rule: docs/design/src/001-functions.md#fdf739fbef911702
 // Chapter 001: global-function-members.
+
+// The constructor call independently retains `EK0401` under VIP-4.

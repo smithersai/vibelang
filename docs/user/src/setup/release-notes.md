@@ -574,6 +574,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - An invalid Effect type operand such as `number!!(string?)` also offered an unrelated parenthesis repair; it now reports the ordinary syntax error.
 - ESLint suggested changing compiler-generated `do` temporaries to `const`; it now omits those temporaries from declaration queries while keeping genuine source warnings.
 - A `return` inside a `do` in a `for concurrent` limit or operand was rejected with `EK0204`. It now leaves the enclosing function, and the limit still runs before the operand.
+- Reading `globalThis.eval` and `globalThis.Function` bypassed the legacy JavaScript restriction; these reads now report `EK0107`, with the permitted `Function` uses preserved.
 - A service with a written shape annotation gained an extra public `Shape` namespace in its declarations. It now keeps the written shape directly and exposes no implicit namespace outside its own body.
 - Formatting a generated subprocess helper could make migration setup treat it as hand-edited and retain unused loader imports. Setup now recognizes formatting changes while preserving edited code, types, comments and documentation for review.
 - Migration setup could add source-loader helpers to JavaScript CLI launches merely because later arguments were dynamic, introducing unnecessary install-time dependencies. Proven JavaScript entrypoints now keep their native launch; unknown and typed source entrypoints retain loader handling.
