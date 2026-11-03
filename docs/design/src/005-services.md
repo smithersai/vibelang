@@ -294,7 +294,7 @@ const ambientContextRepairExit = Effect.runSyncExit(runtimeAlternative())
 console.log(ambientContextRepairExit) // Success(7)
 ```
 
-A member gets one diagnostic: the first row below that names it. The last row applies only when no other row applies.
+A member gets one diagnostic: the first row below that names it. The general member row, the `EK0902` row beginning "any member", applies only when no other row applies.
 
 | Rule | Code | Why |
 | --- | --- | --- |
