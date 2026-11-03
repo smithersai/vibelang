@@ -4,6 +4,8 @@ Resources need cleanup on success, failure, and cancellation. Use `ensuring` for
 
 [Upstream page](https://effect.website/docs/v4/resource-management/introduction)
 
+`using` keeps TypeScript’s synchronous disposal rules. An `async` callable keeps native `await using` disposal. Inside an `effect` function, producer or `effect { … }` block, `await using` reports `EK0102` at `await`. A nested `async` callable keeps its own disposal rules. For Effect resources, use `scoped` and `acquireRelease`.
+
 ## Guaranteeing cleanup
 
 ```vibe

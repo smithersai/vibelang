@@ -37,7 +37,7 @@ import (
 // outlive its region, so the value a fork gives may flow only where the
 // region keeps it, and anywhere else is EK4838 (D409, fork_escape.go). A function that
 // declares using is an Effect function (D54), even when it runs nothing else,
-// so its using is always a Scope region; await using is EK1003, and the
+// so its using is always a Scope region; await using in Effect code is EK0102, and the
 // lowering treats it as using.
 //
 // using runs its initializer with the block's Scope, so every release an

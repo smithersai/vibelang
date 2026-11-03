@@ -1,5 +1,5 @@
-// expect: EK1003
-// await using is not part of VibeLang: using already waits.
+// expect: EK0102
+// VIP-1: await using in Effect code reports the placement error.
 declare function open(path: string): AsyncDisposable
 
 export effect function read() {

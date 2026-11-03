@@ -13,7 +13,7 @@ import (
 // an Effect there is EK0103, since an Effect goes through runPromise first
 // (VIP-5). Native loops keep their TypeScript protocols and operand checks.
 // A for await in an Effect body is EK0102; it never implicitly consumes a
-// Stream (VIP-20, detail293). Await using retains its separate legacy check.
+// Stream (VIP-20, detail293). Await using in Effect code is EK0102 too.
 // The parser writes await outside an
 // async function as $await (fibers.go), so an AwaitExpression here is inside
 // an async function. D271 exempts
@@ -69,7 +69,11 @@ func checkSyntax(c *checker.Checker, file *ast.SourceFile) {
 				if inAsyncFunction(node) {
 					break
 				}
-				note(reportAt(c, file, scanner.GetRangeOfTokenAtPosition(file, node.Pos()), EK1003, "await using"), "Write using: it already waits for the acquisition and the release.")
+				if inLowerableBody(node) && analyzerFor(c).isEffect(ast.GetContainingFunction(node)) {
+					note(reportAt(c, file, scanner.GetRangeOfTokenAtPosition(file, node.Pos()), EK0102), "Use scoped and acquireRelease for Effect resources; await using belongs in async code.")
+				} else {
+					note(reportAt(c, file, scanner.GetRangeOfTokenAtPosition(file, node.Pos()), EK1003, "await using"), "Write using: it already waits for the acquisition and the release.")
+				}
 				cover(c, node)
 			}
 		}

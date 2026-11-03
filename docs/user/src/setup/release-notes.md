@@ -263,6 +263,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - The mapper's parity and end-to-end checks stopped at a missing `emit-main.go` after automatic tracing was retired; they now use the production mapper and verify Go overlay inputs before building.
 
+- An `await using` declaration in an `effect` function, producer or block reported the legacy `EK1003` diagnostic; it now reports the assigned placement error `EK0102` at `await`. Nested `async` functions retain native asynchronous disposal.
+
 - Declaration checks could compare an unused `types` export instead of an earlier matching package condition, hiding a real API change. Published entry discovery now follows TypeScript's conditional export order and preserves mirrored `.vibe` sidecar resolution.
 
 - Declaration checks could miss a type change selected by an explicit `resolution-mode` import attribute. They now resolve each import using its own mode throughout the comparison.
