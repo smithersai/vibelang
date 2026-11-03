@@ -264,11 +264,15 @@ function publishedSiblingRisk(root, file, { exists, read }) {
  * Returns { splits, refused }: the files written, and why each other file
  * keeps its platform code. With moduleBodies a module a sibling cannot serve
  * takes a VIP-40 module body instead: its split has platform null and module
- * the body's name.
+ * the body's name. With throwBodies, on by default, the declarations that
+ * throw in plain code move into `module throwing { }`, or into the module's
+ * platform body when it takes one; a split with such a body lists them in
+ * throwing. Without moduleBodies such a body may hold no export of the module.
  */
 export function splitBatchPlatform(root, files, ts, {
   globalsOf = () => [],
   moduleBodies = false,
+  throwBodies = true,
   exists = file => existsSync(join(root, file)),
   read = file => readFileSync(join(root, file), "utf8"),
   write = (file, text) => writeFileSync(join(root, file), text)
@@ -280,20 +284,34 @@ export function splitBatchPlatform(root, files, ts, {
     const sibling = platformPath(file)
     if (exists(sibling)) { refused.push(`${file}: ${sibling} already exists`); continue }
     const result = splitPlatform(read(file), file, ts, { globals: globalsOf(file) })
-    if (!result) continue
+    // Code that throws in plain code reports EK0401 in a .vibe module; a body
+    // keeps it TypeScript, the 2026-10-31 ruling's "ts module using module syntax".
+    const throwing = (text) => throwBodies ? splitPlatformToModule(text, file, ts, { throws: true, platform: moduleBodies, reexports: moduleBodies }) : null
+    if (!result) {
+      const body = throwing(read(file))
+      if (body?.refused) refused.push(body.refused)
+      else if (body) {
+        write(file, body.module)
+        splits.push({ file, platform: null, module: body.name, moved: body.moved, wrapped: [], throwing: body.throwing })
+      }
+      continue
+    }
     const risk = result.refused ? null : publishedSiblingRisk(root, file, { exists, read })
     const refusal = result.refused ?? (risk && file + ": refusing " + sibling + ": " + risk + "; keep the platform code in TypeScript")
     if (refusal) {
       // A sibling cannot serve this module. With moduleBodies, a VIP-40 body may.
-      const body = moduleBodies ? splitPlatformToModule(read(file), file, ts, { globals: globalsOf(file) }) : null
+      const body = moduleBodies ? splitPlatformToModule(read(file), file, ts, { globals: globalsOf(file), throws: throwBodies }) : null
       if (!body || body.refused) { refused.push(body?.refused ? refusal + "; " + body.refused : refusal); continue }
       write(file, body.module)
-      splits.push({ file, platform: null, module: body.name, moved: body.moved, wrapped: [] })
+      splits.push({ file, platform: null, module: body.name, moved: body.moved, wrapped: [], ...(body.throwing.length ? { throwing: body.throwing } : {}) })
       continue
     }
-    write(file, result.module)
+    const body = throwing(result.module)
+    if (body?.refused) refused.push(body.refused)
+    const kept = body && !body.refused ? body : null
+    write(file, kept ? kept.module : result.module)
     write(sibling, result.platform)
-    splits.push({ file, platform: sibling, moved: result.moved, wrapped: result.wrapped })
+    splits.push({ file, platform: sibling, moved: result.moved, wrapped: result.wrapped, ...(kept ? { module: kept.name, throwing: kept.throwing } : {}) })
   }
   return { splits, refused }
 }
@@ -532,7 +550,7 @@ function firstLine(source, statement) {
  * Returns { module, moved, kept, name }, or { refused } saying why the module
  * keeps its platform code, or null when it reaches no platform code.
  */
-export function splitPlatformToModule(text, file, ts, { globals = [] } = {}) {
+export function splitPlatformToModule(text, file, ts, { globals = [], throws = false, platform: platformCode = true, reexports = true } = {}) {
   const source = ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS)
   const imports = source.statements.filter((s) => ts.isImportDeclaration(s))
   const platform = new Set()
@@ -550,12 +568,13 @@ export function splitPlatformToModule(text, file, ts, { globals = [] } = {}) {
   const declared = new Map()
   for (const d of declarations) for (const name of d.names) declared.set(name, [...(declared.get(name) ?? []), d])
   for (const name of globals) if (!imported.has(name) && !declared.has(name)) platform.add(name)
-  if (!platform.size && !declarations.some((d) => importsPlatform(d.statement, ts))) return null
+  const platformSeed = !platformCode ? [] : declarations.filter((d) => !reexport_(d, ts) && ([...d.reads].some((n) => platform.has(n) && !declared.has(n)) || importsPlatform(d.statement, ts)))
+  const throwSeed = throws ? declarations.filter((d) => !reexport_(d, ts) && !platformSeed.includes(d) && throwsPlainly(d.statement, ts)) : []
+  if (!platformSeed.length && !throwSeed.length) return null
   if (source.statements.some((s) => ts.isExportAssignment(s) && s.isExportEquals)) return { refused: `${file}: export = has no place beside a module body (EK4008)` }
   const typeOnly = (d) => ts.isInterfaceDeclaration(d.statement) || ts.isTypeAliasDeclaration(d.statement)
   const reexport = (d) => ts.isExportDeclaration(d.statement)
-  const moved = new Set(declarations.filter((d) => !reexport(d) && ([...d.reads].some((n) => platform.has(n) && !declared.has(n)) || importsPlatform(d.statement, ts))))
-  if (!moved.size) return null
+  const moved = new Set([...platformSeed, ...throwSeed])
   for (let grew = true; grew; ) {
     grew = false
     const add = (d) => { if (!moved.has(d)) { moved.add(d); grew = true } }
@@ -574,10 +593,10 @@ export function splitPlatformToModule(text, file, ts, { globals = [] } = {}) {
     if (readsImportMeta(d.statement, ts)) return { refused: `${file}: ${firstLine(source, d.statement)} reads import.meta, which a module body cannot (EK4009)` }
   }
   const kept = declarations.filter((d) => !moved.has(d))
-  if (!kept.some((d) => !typeOnly(d) && !reexport(d))) return { refused: `${file} is platform code only` }
+  if (!kept.some((d) => !typeOnly(d) && !reexport(d))) return { refused: platformSeed.length ? `${file} is platform code only` : `${file}: every value of the module reaches a throw, so it stays TypeScript` }
   const keptReads = new Set(kept.flatMap((d) => [...d.reads]))
   const taken = new Set([...declared.keys(), ...imported, ...declarations.flatMap((d) => [...d.reads])])
-  const name = uniqueName("platform", taken)
+  const name = uniqueName(platformSeed.length ? "platform" : "throwing", taken)
   const isDefault = (d) => ts.isExportAssignment(d.statement) || (d.statement.modifiers ?? []).some((m) => m.kind === ts.SyntaxKind.DefaultKeyword)
   const movedList = declarations.filter((d) => moved.has(d))
   // What the module reads from the body, and what it re-exports, by meaning.
@@ -622,8 +641,13 @@ export function splitPlatformToModule(text, file, ts, { globals = [] } = {}) {
   if (exports_.length) from.push(`export { ${[...exports_].sort().join(", ")} } from ${name}`)
   if (typeExports.length) from.push(`export type { ${[...typeExports].sort().join(", ")} } from ${name}`)
   if (reexportsDefault) from.push(`export { default } from ${name}`)
+  // A re-export makes the body's declarations, x.vibe.<name>.d.ts, part of
+  // the module's published API, a file the declaration oracle has not seen.
+  if (!reexports && (exports_.length || typeExports.length || reexportsDefault)) {
+    return { refused: `${file}: ${[...exports_, ...typeExports, ...(reexportsDefault ? ["default"] : [])].join(", ")} would be declared by \`module ${name}\`, a new public declaration file; platformModuleBodies allows it` }
+  }
   const module = joinParts(leadingHeader(source), head, [body], from, kept.map((d) => statementText(source, d.statement)))
-  return { module, name, moved: movedList.flatMap((d) => [...d.names]), kept: kept.flatMap((d) => [...d.names]) }
+  return { module, name, moved: movedList.flatMap((d) => [...d.names]), kept: kept.flatMap((d) => [...d.names]), throwing: throwSeed.flatMap((d) => [...d.names]) }
 }
 
 const intersect = (a, b) => new Set([...a].filter((x) => b.has(x)))
@@ -724,6 +748,20 @@ function writtenNames(statement, ts) {
 function importsPlatform(node, ts) {
   if (ts.isCallExpression(node) && node.expression.kind === ts.SyntaxKind.ImportKeyword && node.arguments[0] && ts.isStringLiteralLike(node.arguments[0]) && isPlatformModule(node.arguments[0].text)) return true
   return !!ts.forEachChild(node, (child) => importsPlatform(child, ts) || undefined)
+}
+
+const reexport_ = (d, ts) => ts.isExportDeclaration(d.statement)
+
+// Whether statement holds a `throw` that VibeLang's plain code reports
+// (spec 003, "Plain code never throws", EK0401): one whose nearest function
+// is neither async (a rejection, detail 251) nor a generator (the codemod's
+// effect code), or one at the top level. A body is TypeScript, where the
+// throw keeps its meaning (VIP-40, "No VibeLang rule runs on a body").
+function throwsPlainly(node, ts, plain = true) {
+  if (ts.isThrowStatement(node)) return plain
+  let inner = plain
+  if (ts.isFunctionLike(node) && node.body) inner = !node.asteriskToken && !(node.modifiers ?? []).some((m) => m.kind === ts.SyntaxKind.AsyncKeyword)
+  return !!ts.forEachChild(node, (child) => throwsPlainly(child, ts, inner) || undefined)
 }
 
 function readsImportMeta(node, ts) {
