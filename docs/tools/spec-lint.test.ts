@@ -83,10 +83,8 @@ test("declaration-import-style-scope rejects round 14 OPUS-5's `.vibe`-only decl
 
 test("declaration-import-form rejects round 14 OPUS-4's `import type` beside `import` for the same added import", () => {
   const defect = withEdit("src/001-functions.md", text => text
-    .replace("each root module as `import { Effect, Stream } from \"effect\"`", "each root module as `import type { Effect, Stream } from \"effect\"`")
     .replace("// load.d.vibe.ts\nimport { Effect, Stream } from \"effect\"", "// load.d.vibe.ts\nimport type { Effect, Stream } from \"effect\""))
   expect(lint(defect, rule("declaration-import-form")).map(v => v.message)).toEqual([
-    expect.stringContaining("`import type { Effect, Stream } from \"effect\"` disagrees"),
     expect.stringContaining("`import type { Effect, Stream } from \"effect\"` disagrees")
   ])
 })

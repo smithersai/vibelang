@@ -189,7 +189,7 @@ src/Profile.tsx    ->  dist/Profile.jsx, dist/Profile.d.ts
 | --- | --- |
 | `./App`, `./App.js` | `App.ts`, `App.tsx`, `App.vibe`, `App.vibex`, `App.d.ts`, then JavaScript |
 | `./App.jsx` | `App.tsx`, `App.ts`, `App.vibex`, `App.vibe`, `App.d.ts`, `App.jsx`, `App.js` |
-| `./App.vibe` | `App.vibe`, `App.d.ts` (unchanged) |
+| `./App.vibe` | `App.vibe`, `App.d.ts` |
 | `./App.vibex` | `App.vibex`, `App.d.ts` |
 
 These orders apply after TypeScript's `exports`, `imports`, `paths`, `moduleSuffixes` and resolution-mode rules select a lookup; NodeNext still requires extensions where `.tsx` does. A live source beats its sidecar. `App.vibe` beside `App.vibex`, or `App.tsx` beside `App.vibex`, get TypeScript's TS5055/TS5056 only where the selected inputs write the same output path, as `App.ts` beside `App.tsx` does: under `"jsx": "preserve"` with declarations off, `App.vibe` and `App.vibex` write `App.js` and `App.jsx` and are both admitted; with declarations on both write `App.d.ts`, and under `"jsx": "react"` both write `App.js`, so those collide. Their compatibility sidecars stay distinct, `App.d.vibe.ts` and `App.d.vibex.ts`.
