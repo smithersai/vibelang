@@ -30,4 +30,6 @@ console.log(JSON.stringify(seen))`
   expect(loaded.length).toBeGreaterThan(10)
   expect(loaded.filter((url) => /\/(?:@redis|redis)\//.test(url))).toEqual([])
   expect(loaded.filter((url) => /@effect\/platform-node\/dist\/index\.js$/.test(url))).toEqual([])
+  // The HTTP server module and ws load when a server layer is built, not on import.
+  expect(loaded.filter((url) => /\/ws\/|\/NodeHttpServer\.js$/.test(url))).toEqual([])
 })
