@@ -1866,7 +1866,7 @@ func fileFixes(ctx context.Context, program *compiler.Program, file *ast.SourceF
 			if action.CodeAction == nil || action.CodeAction.Edit == nil || action.CodeAction.Edit.Changes == nil {
 				continue
 			}
-			if slices.Contains(dataHelperImportFixCodes, d.Code()) && action.CodeAction.Title != dataHelperFixTitle {
+			if slices.Contains(dataHelperImportFixCodes, d.Code()) && action.CodeAction.Title != dataHelperFixTitle && action.CodeAction.Title != retiredRuntimeFactoryTitle {
 				continue // preserve existing import and re-export bindings
 			}
 			if d.Source() == "" && d.Code() == 2322 && action.CodeAction.Title != serviceKeyWidenTitle {

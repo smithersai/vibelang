@@ -188,6 +188,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 ### Bugs fixed since 0.0.10
 - Calling an implementation method through a service key silently looked up the service and could hide native key properties. Keys now follow TypeScript; use an explicit `try` lookup, and `vibelang --fix` preserves the old direct call's run phase.
 
+- Calls imported from the retired `vibelang-runtime` `yieldNow` and `interrupt` factories stopped at missing-export errors; direct calls through named aliases and namespaces now migrate to cold native Effect values.
+
 - Declaration-identity tests for generic import types repeatedly checked unrelated browser libraries; they now load the fixture’s required libraries while retaining literal type arguments, dependency mutations and generated coverage.
 
 - Declaration-identity project-root tests repeatedly checked unrelated browser libraries; they now use the fixture’s required libraries while preserving project-root diagnostics, JSON exports and generated option coverage.
