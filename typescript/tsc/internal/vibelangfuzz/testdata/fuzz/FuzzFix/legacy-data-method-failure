@@ -1,0 +1,2 @@
+go test fuzz v1
+string("-- main.vibe --\nexport const changed = Effect.fail(\"old\").mapError((error) => \"mapped:\" + error)\nexport effect function main() { return try changed }\n")

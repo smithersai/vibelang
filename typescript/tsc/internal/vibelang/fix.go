@@ -612,6 +612,7 @@ func FixProjectWithOptions(ctx context.Context, fs vfs.FS, libraryPath tspath.Ro
 					p = pipeConditionalFixes(file, g.refused)
 				}
 				p = p.withFixes(dualBlockMigrationFixes(ctx, program, file, g.refused, refuse))
+				p = p.withFixes(dataMethodMigrationFixes(ctx, program, file, g.refused, refuse, fresh, texts))
 				p = p.withFixes(vipTypeMigrationFixes(ctx, program, file, g.refused))
 				p = p.withFixes(ambiguousRootMigrationFixes(ctx, program, file, g.refused))
 				p = p.withFixes(bindingRenameMigrationFixes(ctx, program, file, g.refused))

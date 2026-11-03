@@ -190,7 +190,9 @@ A plain `Option.match(value, { onNone, onSome })` has a native quick fix: the su
 
 A discarded `Option.match` result becomes a statement block; expression positions retain a `do` expression. A choice that starts a larger expression statement is parenthesized. Both evaluate the subject and callbacks once, in order.
 
-An Option pipe whose stage argument is a callback factory, a property read or an object literal, such as `pipe(value, Option.map(EffectArray.append(1)))`, is cached first: a `do` block evaluates the subject and each argument in pipe order, then calls the methods on the cached values, so no factory moves into the stage that uses it.
+Legacy Effect data extension calls have a preserving migration: `Option.some(1).map(f)` becomes `Option.map(Option.some(1), f)` under `vibelang -p tsconfig.json --fix` or `vibelang -p tsconfig.json --fix --fix-migration-only`. The compiler resolves the receiver first; array methods, own methods, namespace calls and optional chains stay as written. The rewrite evaluates the receiver and arguments once, retains comments, and checks public declaration bytes, emitted module evaluation order and new errors. It refuses a shadowed module without a safely reusable namespace binding, an alias whose erased, deferred or reordered import could change module initialization, a module format whose startup order cannot be proved, explicit type arguments, trailing blocks or changed declarations; use an explicit namespace call and verify those sites.
+
+An Option pipe whose stage argument is a callback factory, a property read or an object literal, such as `pipe(value, Option.map(EffectArray.append(1)))`, is cached first: a `do` block evaluates the subject and each argument in pipe order, then calls the module functions on the cached values, so no factory moves into the stage that uses it.
 
 A default `Match.orElse` handler that destructures its parameter, `({ _tag }) => _tag`, becomes a catch-all `let` arm whose `do` block performs the same destructure, defaults included, only when the default runs.
 

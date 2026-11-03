@@ -816,6 +816,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - A `catch` after an unparenthesized `try`, `fork` or `join` could pass checking, including through `as`, `satisfies`, `!` and type assertions. These heads now report `EK0505`; source parentheses keep their explicit grouping.
 
 - Public `vibelang/project` results omitted errors and warnings in native TypeScript files. Sync and async project checks now report diagnostics from every input, with a separate cache from loader compiles.
+- `vibelang --fix` left legacy Effect data extension calls such as `Option.some(1).map(f)` unchanged. It now writes namespace calls such as `Option.map(Option.some(1), f)`, preserving evaluation order, comments, public declarations and module initialization order, and explains unsafe rewrites.
 
 - The migration checks generated callback failure unions without their required parentheses and failed to parse them. They now write valid compound slots while checking the same preserved channels and refusal controls.
 

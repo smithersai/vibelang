@@ -1,0 +1,2 @@
+go test fuzz v1
+string("-- main.vibe --\nimport { Cause } from \"effect\"\nexport const value = Cause.findErrorOption(Cause.fail(\"bad\")).getOrThrow()\nexport effect function main() { return value }\n")

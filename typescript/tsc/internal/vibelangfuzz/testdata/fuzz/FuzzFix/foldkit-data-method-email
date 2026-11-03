@@ -1,0 +1,2 @@
+go test fuzz v1
+string("-- main.vibe --\nimport { Array as Arr, String as Str } from \"effect\"\nfunction fromEmail(email: string): string { return Arr.head(Str.split(\"@\")(email)).getOrElse((): string => email) }\nexport effect function main() { return fromEmail(\"a@b\") }\n")

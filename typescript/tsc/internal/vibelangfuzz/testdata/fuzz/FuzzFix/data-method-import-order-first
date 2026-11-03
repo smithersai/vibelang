@@ -1,0 +1,2 @@
+go test fuzz v1
+string("key:legacy-data-import-order\n\x00\x01\x00\x81\x82")

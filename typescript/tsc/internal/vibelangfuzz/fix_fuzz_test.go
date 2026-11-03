@@ -115,6 +115,22 @@ func fuzzFixProjects(f *testing.F, target string) {
 				TestOptionMatchFixQuoted(t)
 				archive = optionMatchFixArchive(archive)
 			}
+			dataOrder := strings.HasPrefix(archive, dataMethodImportOrderKey)
+			dataOrderSafe := false
+			if dataOrder {
+				TestDataMethodFixQuoted(t)
+				archive, dataOrderSafe = dataMethodImportOrderArchive(archive)
+			}
+			dataMethods := strings.HasPrefix(archive, dataMethodFixKey)
+			if dataMethods {
+				TestDataMethodFixQuoted(t)
+				archive = dataMethodFixArchive(archive)
+			}
+			dataImportPhase := strings.HasPrefix(archive, dataMethodImportPhaseKey)
+			if dataImportPhase {
+				TestDataMethodFixQuoted(t)
+				archive = dataMethodImportPhaseArchive(archive)
+			}
 			options := vibelang.FixOptions{VIPOnly: strings.HasPrefix(corpusFile(t, target), "fix-vip-only-")}
 			files := toolsUnarchive(archive)
 			if strings.HasPrefix(archive, "match-instanceof:") {
@@ -162,6 +178,21 @@ func fuzzFixProjects(f *testing.F, target string) {
 			toolsRun(t, target, "fix", archive, nil, func() {
 				result = vibelang.FixProjectWithOptions(t.Context(), w.fs, bundled.LibPath(), config, options)
 			})
+			if dataOrder {
+				changed := false
+				for name := range result.Files {
+					changed = changed || strings.HasSuffix(name.AsString(), "/subject.vibe")
+				}
+				if changed != dataOrderSafe {
+					Gap(t, "FuzzFix", "fix:legacy-data-import-order", "Chapter 7 preserves startup evaluation: subject changed=%t, safe layout=%t, refusals=%v\n%s", changed, dataOrderSafe, result.Refused, archive)
+				}
+			}
+			if dataMethods && len(result.Refused) != 0 {
+				Gap(t, "FuzzFix", "fix:legacy-data-method:refused", "these resolved, eager module cases must migrate safely: %+v\n%s", result.Refused, archive)
+			}
+			if dataMethods && (!toolsErrorFree(r) || len(result.Files) == 0) {
+				Gap(t, "FuzzFix", "fix:legacy-data-method:missing", "the legacy data method must have a preserving namespace fix: %v\n%s", SortedKeys(Keys(r.Dir, r.Diagnostics)), archive)
+			}
 			if directOption && len(result.Files) == 0 {
 				Gap(t, target, "fix:direct-option-match:missing", "the direct Option.match must have a safe fix:\n%s", archive)
 			}
@@ -215,6 +246,13 @@ func fuzzFixProjects(f *testing.F, target string) {
 				// error the original did not.
 				if added := toolsAddedErrors(r, after); len(added) > 0 {
 					Gap(t, target, "fix:new-error", "the fixed program reports errors the original does not: %s\n%s\nfixed:\n%s", strings.Join(added, "\n"), archive, Archive(fixed))
+				}
+			}
+			if dataMethods || dataImportPhase || dataOrder {
+				for name, text := range r.Outputs {
+					if strings.HasSuffix(name, ".d.ts") && after.Outputs[name] != text {
+						Gap(t, "FuzzFix", "fix:legacy-data-method:declarations", "public declaration bytes changed: %s\nbefore:\n%s\nafter:\n%s", name, text, after.Outputs[name])
+					}
 				}
 			}
 			// Chapter 7 (decided 2026-10-31): "One `vibelang --fix` run applies

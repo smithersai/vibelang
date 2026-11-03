@@ -1,0 +1,2 @@
+go test fuzz v1
+string("key:legacy-data-method\n\x01\x81\x01\x01")

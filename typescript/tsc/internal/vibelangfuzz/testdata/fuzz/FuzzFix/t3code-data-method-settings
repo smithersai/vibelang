@@ -1,0 +1,2 @@
+go test fuzz v1
+string("-- main.vibe --\nimport { Option } from \"effect\"\nfunction decodeClaudeSettings(): Option.Option<{idleCompaction:\"default\"|\"on\"}> { return Option.some({idleCompaction:\"on\"}) }\nexport const value = decodeClaudeSettings().map((config) => config.idleCompaction).getOrElse(() => \"default\" as const)\nexport effect function main() { return value }\n")

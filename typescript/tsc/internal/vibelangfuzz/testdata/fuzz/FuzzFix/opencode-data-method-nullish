@@ -1,0 +1,2 @@
+go test fuzz v1
+string("-- main.vibe --\nimport { Option } from \"effect\"\nfunction decodeURL(): Option.Option<{url:string}> { return Option.some({url:\"url\"}) }\nfunction source(url:string): string | undefined { return url || undefined }\nexport const value = decodeURL().flatMapNullishOr((input) => source(input.url))\nexport effect function main() { return Option.getOrElse(value, () => \"none\") }\n")
