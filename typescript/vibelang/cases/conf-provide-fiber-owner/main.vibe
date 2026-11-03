@@ -1,0 +1,28 @@
+// expect-result: [1,2,3,4]
+// VIP-12 / Chapter 5: provide is exact Effect.provide sugar, not a fiber owner.
+export effect function main() {
+  let direct: Fiber.Fiber<number>
+  provide Layer.empty { direct = fork Effect.succeed(1) }
+  const a = join direct!
+
+  let nested: Fiber.Fiber<number>
+  provide Layer.empty {
+    provide Layer.empty, Layer.empty { nested = fork Effect.succeed(2) }
+  }
+  const b = join nested!
+
+  let aliased: Fiber.Fiber<number>
+  provide Layer.empty {
+    const local = fork Effect.succeed(3)
+    aliased = local
+  }
+  const c = join aliased!
+
+  let d = 0
+  for (const n of [4]) {
+    let iteration: Fiber.Fiber<number>
+    provide Layer.empty { iteration = fork Effect.succeed(n) }
+    d = join iteration!
+  }
+  return [a, b, c, d]
+}

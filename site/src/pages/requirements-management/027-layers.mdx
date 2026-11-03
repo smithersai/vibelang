@@ -35,6 +35,8 @@ effect function stringify(value: unknown) {
 
 On this page, `Printer` depends on `Settings`, and `Reports` on both. `Layer.Layer<Out, E, In>` gives the services produced, construction failures, and construction requirements; the global `Layer` namespace holds the constructors and that type.
 
+A `provide` block does not create a fiber owner. A child started with `fork` can be joined after the block and keeps the provided services even after the layer is released, as with `Effect.provide`. Use `fork.scoped` inside `scoped(effect { … })` to end a child with that scope.
+
 A `provide` statement requires effect code. At module scope, `EK1201` points to moving it into an `effect function` or `effect { }` block.
 
 Do not break immediately before or after a provider-separating comma (`EK1202`). Line breaks inside a provider expression remain allowed; use `Layer.mergeAll(...)` for multiline composition.

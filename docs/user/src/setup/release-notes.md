@@ -639,6 +639,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Services inside functions or blocks, or outside a named package, now require an explicit key and report `EK0903`; their conformance checks cover the explicit-key controls too.
 
 - Site builds regenerated the same Markdown and LLM exports for every bundler environment; they now reuse that computation while preserving those exports and refreshing watch builds.
+
+- A child forked inside a `provide` block could be rejected when joined after the block, or interrupted as the block ended. It now stays with the enclosing owner and keeps its provided services after the layer is released.
 - Generic `data` helper names used unstable suffixes and could collide with source names; they now use `$Name$Definition` and the first free numbered suffix.
 - Async-to-Effect conversion could skip a returned object's `then` getter or its error; conversions now preserve that Promise-adoption read by declining accessors and aliased objects, while keeping fresh data-property literals available.
 

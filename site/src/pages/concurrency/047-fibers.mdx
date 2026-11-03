@@ -215,7 +215,7 @@ effect function request() {
 // Output: request finishing
 ```
 
-A plain `fork` belongs to the parent fiber. A nested block doesn't create a fiber owner. Use `fork.scoped` when work must end with a specific scope. Here `scoped` closes that scope, interrupts the reporter, and waits for cleanup before the outer finalizer runs.
+A plain `fork` belongs to the parent fiber. A nested block, including a `provide` block, doesn't create a fiber owner. A child can be joined after `provide` ends and retains the services that block supplied. Use `fork.scoped` when work must end with a specific scope. Here `scoped` closes that scope, interrupts the reporter, and waits for cleanup before the outer finalizer runs.
 
 Forked fibers inherit the current services and tracing context.
 

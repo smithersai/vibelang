@@ -13,9 +13,10 @@ import (
 // is a region the source names that owns a fork (D408): a function body, an
 // arrow's expression body included (D353); one iteration of a loop body; a
 // try, catch, or finally block; a handle clause, which compiles like a
-// function; and a provide or mask block. A block that is only braces, such as
-// an if branch or a bare block, owns nothing, and neither does a do block or
-// a match expression, whose code runs in the region around it, so
+// function; and a mask block. A provide block keeps the enclosing owner
+// (VIP-12). A block that is only braces, such as an if branch or a bare
+// block, owns nothing, and neither does a do block or a match expression,
+// whose code runs in the region around it, so
 // `if (ready) fork work()` and `if (ready) { fork work() }` mean the same. A
 // region runs under a Scope of its own, which only its using acquisitions
 // and the fibers it owns receive, and which closes when the region exits by
@@ -115,10 +116,10 @@ func isUsingForOf(node *ast.Node) bool {
 // ownerRegion returns the innermost region the source names around node
 // (D408): a function body, an arrow's expression body included (D353), a
 // loop body, a try, catch, or finally block, a handle clause, a block that
-// declares using, or a provide or mask block. A do block, a match
-// expression, and a catch expression's sides belong to the region around
-// them. It returns nil when no region of node's function encloses it, as in
-// a parameter list.
+// declares using, or a mask block. A provide block alone owns no fibers. A
+// do block, a match expression, and a catch expression's sides belong to the
+// region around them. It returns nil when no region of node's function
+// encloses it, as in a parameter list.
 func ownerRegion(node *ast.Node) *ast.Node {
 	for n := node; n.Parent != nil; n = n.Parent {
 		parent := n.Parent
@@ -140,8 +141,8 @@ func ownerRegion(node *ast.Node) *ast.Node {
 
 // isNamedRegion reports whether node, which is not a function body, is a
 // region that owns the forks in it (D408): a loop body, a try, catch, or
-// finally block, a handle clause, a block that declares using, or a provide
-// or mask block.
+// finally block, a handle clause, a block that declares using, or a mask
+// block. Provision alone does not change a child's owner (VIP-12).
 func isNamedRegion(node *ast.Node) bool {
 	parent := node.Parent
 	switch {
@@ -156,7 +157,7 @@ func isNamedRegion(node *ast.Node) bool {
 		return parent.AsCatchClause().Block == node && (parent.Parent == nil || !isHandleStatement(parent.Parent)) // a handle statement's catch block only holds its clauses
 	case node.Kind != ast.KindBlock:
 		return false
-	case handleClauseOfBlock(node) != nil, isProvideBlock(node), maskWord(node) != "":
+	case handleClauseOfBlock(node) != nil, maskWord(node) != "":
 		return true
 	}
 	for _, statement := range node.AsBlock().Statements.Nodes {
