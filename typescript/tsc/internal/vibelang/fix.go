@@ -531,6 +531,7 @@ func FixProjectWithOptions(ctx context.Context, fs vfs.FS, libraryPath tspath.Ro
 		text, _ := fs.ReadFile(name)
 		return text
 	})
+	g.sites = sites
 	refusedWhy := map[string]string{}
 	refuse := func(refusal FixRefusal, key string) {
 		g.refused[key] = true
@@ -666,8 +667,12 @@ func FixProjectWithOptions(ctx context.Context, fs vfs.FS, libraryPath tspath.Ro
 			if options.VIPOnly || options.MigrationOnly {
 				codes = vipMigrationFixCodes
 			}
-			for _, file := range fixableFiles(program) {
-				for _, d := range fileFixes(ctx, program, file, g.refused, codes).declined {
+			// The program of the run's last texts: a diagnostic of an earlier
+			// program that a later round or rewrite repaired is no site, and
+			// one the run moved is where it now stands.
+			final := build(texts)
+			for _, file := range fixableFiles(final) {
+				for _, d := range fileFixes(ctx, final, file, g.refused, codes).declined {
 					reason := refusedWhy[d.key]
 					if reason == "" {
 						reason = d.reason
@@ -984,20 +989,35 @@ func rewritePrelude(g *fixGate, fs vfs.FS, program *compiler.Program, texts map[
 	// the rewrites together added an error took about a minute a file on
 	// a 60-module slice of t3code's apps/server, and both the files and
 	// the check grow with the project (2026-11-01).
+	// A rewrite never edits a refused site, or a diagnostic --fix declines
+	// here: the edit goes, reported as a refused site of its own, and the
+	// file's other rewrites stay. An edit that removes an import takes the
+	// file's whole rewrite with it, since the shortened names need it gone.
 	proposals := make([]proposal, 0, len(names))
+	kept := names[:0]
 	for _, name := range names {
-		proposals = append(proposals, proposal{file: program.GetSourceFile(name), fixes: []fileFix{{edits: rewrites[name].edits, key: "prelude: " + name.AsString()}}})
+		r := rewrites[name]
+		if g.sites != nil {
+			r = g.keepPreludeEdits(program, program.GetSourceFile(name), r)
+			rewrites[name] = r
+		}
+		if len(r.edits) == 0 {
+			continue
+		}
+		kept = append(kept, name)
+		proposals = append(proposals, proposal{file: program.GetSourceFile(name), fixes: []fileFix{{edits: r.edits, key: "prelude: " + name.AsString()}}})
 	}
+	names = kept
 	g.progress.offered(len(proposals))
-	kept := map[tspath.RootedFilePath]string{}
+	texted := map[tspath.RootedFilePath]string{}
 	for _, p := range g.accept(texts, proposals, func(FixRefusal, string) {}) {
-		kept[p.file.FileName()] = p.text()
+		texted[p.file.FileName()] = p.text()
 	}
 	if g.done.Err() != nil {
 		return
 	}
 	for _, name := range names {
-		text, ok := kept[name]
+		text, ok := texted[name]
 		if !ok {
 			continue
 		}
@@ -1016,6 +1036,37 @@ func rewritePrelude(g *fixGate, fs vfs.FS, program *compiler.Program, texts map[
 		fixed.Text = text
 		texts[name] = text
 	}
+}
+
+// keepPreludeEdits returns r without the edits that touch a refused site or
+// a diagnostic --fix declines in file of program, and records each such edit as a
+// refused site.
+func (g *fixGate) keepPreludeEdits(program *compiler.Program, file *ast.SourceFile, r preludeRewrite) preludeRewrite {
+	name, text := file.FileName(), file.Text()
+	declined := fileFixes(g.ctx, program, file, g.refused, tsFormFixCodes).declined
+	var keep []sourceEdit
+	keys, importEdits := 0, 0
+	for i, e := range r.edits {
+		by := g.sites.touched(name, text, e.start, e.end, declined)
+		if by == "" {
+			keep = append(keep, e)
+			if i < r.importEdits {
+				importEdits++
+			} else {
+				keys++
+			}
+			continue
+		}
+		label := preludeKeyLabel
+		if i < r.importEdits {
+			label = preludeImportLabel
+		}
+		g.sites.note(name, text, e.start, e.end, label, "its rewrite would edit the refused site "+by)
+		if i < r.importEdits {
+			return preludeRewrite{}
+		}
+	}
+	return preludeRewrite{edits: keep, imports: r.imports, keys: keys, importEdits: importEdits}
 }
 
 // maps returns base with additions written over it.
@@ -1379,6 +1430,9 @@ type fixGate struct {
 	// removeUnusedTypeNames must not take those for the author's.
 	original errorBaseline
 	refused  map[string]bool // fixes refused, by fixKey
+	// sites is the run's refused sites (fix_sites.go); nil in a gate
+	// built without a run, as in tests.
+	sites *fixSites
 	// verified is called with the texts of each set of fixes the gate
 	// verifies together (FixOptions.Verified).
 	verified func(map[tspath.RootedFilePath]string)

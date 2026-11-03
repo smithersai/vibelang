@@ -47,6 +47,9 @@ type trackedSite struct {
 	seen       string
 	start, end int
 	resolved   bool // its own fix was accepted for a later round
+	// noted is a report only, a rewrite edit dropped for another site: it
+	// guards nothing, or it would block that site's own fix on a retry.
+	noted bool
 }
 
 type fixSites struct {
@@ -77,11 +80,22 @@ func (s *fixSites) add(name tspath.RootedFilePath, current string, start, end in
 	s.sites[name] = append(s.sites[name], &trackedSite{RefusedSite: site, seen: current, start: start, end: end})
 }
 
+// note records the rewrite edit [start, end) of current, dropped because it
+// would touch a refused site, for the report alone.
+func (s *fixSites) note(name tspath.RootedFilePath, current string, start, end int, code, reason string) {
+	s.add(name, current, start, end, code, reason)
+	if sites := s.sites[name]; len(sites) > 0 {
+		if t := sites[len(sites)-1]; t.Code == code && t.seen == current && t.start == start && t.end == end {
+			t.noted = true
+		}
+	}
+}
+
 // live returns the sites of name that hold in current, with their spans there.
 func (s *fixSites) live(name tspath.RootedFilePath, current string) (sites []*trackedSite, spans [][2]int) {
 	hunks := map[string][]textHunk{}
 	for _, t := range s.sites[name] {
-		if t.resolved {
+		if t.resolved || t.noted {
 			continue
 		}
 		h, ok := hunks[t.seen]
@@ -128,13 +142,34 @@ func (s *fixSites) guard(name tspath.RootedFilePath, current string, fixes []fil
 	return kept, blocked, by
 }
 
+// touched names the refused site, or the diagnostic --fix declines in
+// current (declined), that the edit [start, end) of name's text current would
+// touch, or returns "". A rewrite after the rounds drops such an edit before
+// the gate checks it, so the site keeps its bytes and the rest of the file's
+// rewrites still apply.
+func (s *fixSites) touched(name tspath.RootedFilePath, current string, start, end int, declined []declinedSite) string {
+	sites, spans := s.live(name, current)
+	for i, t := range sites {
+		if spanTouches(start, end, spans[i][0], spans[i][1]) {
+			return fmt.Sprintf("%s at %d:%d", t.Code, t.StartLine, t.StartColumn)
+		}
+	}
+	for _, d := range declined {
+		if spanTouches(start, end, d.start, d.end) {
+			line, column := lineColumn(current, d.start)
+			return fmt.Sprintf("%s at %d:%d", fixCodeName(d.code), line, column)
+		}
+	}
+	return ""
+}
+
 // check returns the sites of name that final changed. A site whose file a
 // fix never changed holds.
 func (s *fixSites) check(name tspath.RootedFilePath, final string) []RefusedSite {
 	var changed []RefusedSite
 	sites, _ := s.live(name, final)
 	for _, t := range s.sites[name] {
-		if !t.resolved && !slices.Contains(sites, t) {
+		if !t.resolved && !t.noted && !slices.Contains(sites, t) {
 			changed = append(changed, t.RefusedSite)
 		}
 	}

@@ -53,7 +53,10 @@ import (
 type preludeRewrite struct {
 	edits   []sourceEdit
 	imports int // imports of a module the prelude supplies, removed
-	keys    int // M.M written M
+	// importEdits counts the first edits, which remove those imports; the
+	// rest each shorten one qualified export.
+	importEdits int
+	keys        int // M.M written M
 }
 
 // The kinds of rewrite, as the --fix report names them.
@@ -195,6 +198,7 @@ func preludeRewritesOf(c *checker.Checker, file *ast.SourceFile, declared map[st
 			r.edits = append(r.edits, bindingRemoval(file, node))
 		}
 	}
+	r.importEdits = len(r.edits)
 	// M.M becomes M where D311 gives M that meaning.
 	var visit func(node *ast.Node) bool
 	visit = func(node *ast.Node) bool {

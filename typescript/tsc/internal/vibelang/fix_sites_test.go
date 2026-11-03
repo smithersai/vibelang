@@ -3,7 +3,9 @@ package vibelang
 import (
 	"bytes"
 	"fmt"
+	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 
@@ -204,4 +206,174 @@ func FuzzTextHunks(f *testing.F) {
 			t.Fatalf("site [%d,%d) of %q lost under %v: %q", site.Start, site.End, a, edits, b)
 		}
 	})
+}
+
+// A rewrite after the rounds drops an edit that touches a refused site, or a
+// diagnostic --fix declines, and keeps the file's other edits: overlapping,
+// nested either way, and adjacent edits (Smithers apps/mvp, 2026-11-03: the
+// module export rewrite of a declined site stopped the run with exit 3).
+func TestFixSitesTouched(t *testing.T) {
+	text := "aaaa bbbbb cccc dddd\n"
+	name := tspath.RootedFilePath("/p/main.vibe")
+	sites := newFixSites(func(tspath.RootedFilePath) string { return text })
+	sites.add(name, text, 5, 10, "EK2128", "r")                         // bbbbb
+	declined := []declinedSite{{start: 16, end: 20, code: EK2128.Code}} // dddd
+	for _, test := range []struct {
+		name       string
+		start, end int
+		want       string
+	}{
+		{"overlaps the start", 3, 7, "EK2128 at 1:6"},
+		{"overlaps the end", 8, 12, "EK2128 at 1:6"},
+		{"inside the site", 6, 8, "EK2128 at 1:6"},
+		{"around the site", 0, 12, "EK2128 at 1:6"},
+		{"insertion inside", 7, 7, "EK2128 at 1:6"},
+		{"adjacent before", 0, 5, ""},
+		{"adjacent after", 10, 11, ""},
+		{"insertion at the end", 10, 10, ""},
+		{"inside a declined diagnostic", 17, 18, "EK2128 at 1:17"},
+		{"adjacent to a declined diagnostic", 11, 16, ""},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			if got := sites.touched(name, text, test.start, test.end, declined); got != test.want {
+				t.Fatalf("touched [%d,%d) = %q; want %q", test.start, test.end, got, test.want)
+			}
+		})
+	}
+}
+
+// preludeFixCase runs --fix on source as main.vibe in a project that emits
+// nothing, as TestFixPreludeRewrites does: a project that emits declarations
+// keeps an import its declaration file would need (D501).
+func preludeFixCase(t *testing.T, source string) (*FixResult, tspath.RootedFilePath) {
+	t.Helper()
+	_, file, _, _ := editorProgram(t, source)
+	dir := filepath.Dir(file.FileName().AsString())
+	if err := os.WriteFile(filepath.Join(dir, "tsconfig.json"), []byte(`{"compilerOptions":{"target":"ES2022","module":"NodeNext","strict":true,"skipLibCheck":true,"noEmit":true},"files":["main.vibe"]}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	return fixCase(t, dir), file.FileName()
+}
+
+// End to end: the prelude's module export rewrite would shorten
+// Option.Option inside a plain generator's return, a site --fix declines.
+// That edit goes and is reported, and the one outside the site stays. Before,
+// the edit inside changed the diagnostic, so the gate refused the file's
+// whole rewrite and no export was shortened.
+func TestFixPreludeKeepsRefusedSite(t *testing.T) {
+	source := `import { Option } from "effect"
+
+function* g(x: unknown) {
+  yield 1
+  return x as Option.Option<number>
+}
+const first = (value: Option.Option<number>): number => Option.getOrElse(value, () => 0)
+`
+	result, name := preludeFixCase(t, source)
+	if len(result.Changed) != 0 {
+		t.Fatalf("a rewrite changed a refused site: %+v", result.Changed)
+	}
+	fixed := result.Files[name]
+	if fixed == nil {
+		t.Fatalf("no rewrite kept; sites %+v", result.Sites)
+	}
+	want := strings.Replace(strings.TrimPrefix(source, "import { Option } from \"effect\"\n"), "(value: Option.Option<number>)", "(value: Option<number>)", 1)
+	if fixed.Text != want || fixed.Rewrites[preludeKeyLabel] != 1 {
+		t.Fatalf("wrote %q\nwant %q\nrewrites %v", fixed.Text, want, fixed.Rewrites)
+	}
+	at := strings.Index(source, "x as Option.Option<number>")
+	var declined, dropped bool
+	for _, site := range result.Sites {
+		if site.Code == "EK2128" && site.Start == at && site.End == at+len("x as Option.Option<number>") {
+			declined = true
+		}
+		if site.Code == preludeKeyLabel && strings.HasPrefix(site.Reason, "its rewrite would edit the refused site EK2128 at 5:10") {
+			dropped = true
+		}
+	}
+	if !declined || !dropped {
+		t.Fatalf("sites %+v: want the EK2128 site at [%d,...) and the dropped rewrite", result.Sites, at)
+	}
+}
+
+// Property: whatever mix of qualified module exports sits inside a declined
+// site and outside it, --fix changes no refused site (no exit 3), every
+// declined site keeps its bytes, and only the exports outside are shortened.
+func FuzzFixPreludeRefusedSite(f *testing.F) {
+	f.Add(uint8(1), uint8(1))
+	f.Add(uint8(2), uint8(0))
+	f.Add(uint8(0), uint8(2))
+	f.Fuzz(func(t *testing.T, inside, outside uint8) {
+		inside, outside = inside%3, outside%3
+		var b strings.Builder
+		b.WriteString("import { Option } from \"effect\"\n\nfunction* g(x: unknown) {\n  yield 1\n  return [")
+		for i := range inside {
+			if i > 0 {
+				b.WriteString(", ")
+			}
+			b.WriteString("x as Option.Option<number>")
+		}
+		b.WriteString("]\n}\n")
+		for i := range outside {
+			fmt.Fprintf(&b, "const f%d = (v: Option.Option<number>): number => Option.getOrElse(v, () => %d)\n", i, i)
+		}
+		source := b.String()
+		result, name := preludeFixCase(t, source)
+		if len(result.Changed) != 0 {
+			t.Fatalf("a rewrite changed a refused site: %+v\n%s", result.Changed, source)
+		}
+		text := source
+		if fixed := result.Files[name]; fixed != nil {
+			text = fixed.Text
+		}
+		for _, site := range result.Sites {
+			if site.Code == "EK2128" && !SiteHolds(source, text, site) {
+				t.Fatalf("site %+v changed:\n%s", site, text)
+			}
+		}
+		if got := strings.Count(text, "Option.Option"); got != int(inside) {
+			t.Fatalf("%d Option.Option left, want the %d inside the site:\n%s", got, inside, text)
+		}
+	})
+}
+
+// The Smithers apps/mvp shape (2026-11-03, creationSteps.vibe): a round
+// refuses a fix and records its site; the prelude rewrite after the rounds
+// then has an edit inside that site. The edit goes, reported as a site of
+// its own; an edit outside or adjacent stays; an import removal that would
+// touch the site takes the file's whole prelude rewrite.
+func TestKeepPreludeEditsRefusedSite(t *testing.T) {
+	source := "export const a = 1\nexport const b = 2\n"
+	program, file, _, _ := editorProgram(t, source)
+	name := file.FileName()
+	sites := newFixSites(func(tspath.RootedFilePath) string { return source })
+	at := strings.Index(source, "1")
+	sites.add(name, source, at, at+1, "EK4835", "the fixed program would report TS2554")
+	g := &fixGate{ctx: t.Context(), refused: map[string]bool{}, sites: sites}
+	inside := sourceEdit{at, at + 1, "10"}
+	outside := sourceEdit{strings.Index(source, "2"), strings.Index(source, "2") + 1, "20"}
+	adjacent := sourceEdit{at + 1, at + 1, " as number"}
+	got := g.keepPreludeEdits(program, file, preludeRewrite{edits: []sourceEdit{inside, outside, adjacent}, keys: 3})
+	if !slices.Equal(got.edits, []sourceEdit{outside, adjacent}) || got.keys != 2 {
+		t.Fatalf("kept %+v", got)
+	}
+	var dropped *RefusedSite
+	for _, s := range sites.all() {
+		if s.Code == preludeKeyLabel {
+			dropped = &s
+		}
+	}
+	if dropped == nil || dropped.Start != at || dropped.Reason != "its rewrite would edit the refused site EK4835 at 1:18" {
+		t.Fatalf("sites %+v", sites.all())
+	}
+	// The note guards nothing: the refused site's own fix stays free to retry.
+	own := fileFix{code: EK4835.Code, edits: []sourceEdit{inside}, key: "own", siteStart: at, siteEnd: at + 1, sited: true}
+	if kept, blocked, _ := sites.guard(name, source, []fileFix{own}); len(kept) != 1 || len(blocked) != 0 {
+		t.Fatalf("the dropped edit's note blocked the site's own fix: kept %v, blocked %v", kept, blocked)
+	}
+	sites.add(name, source, at, at+1, "EK4835", "the fixed program would report TS2554")
+	whole := g.keepPreludeEdits(program, file, preludeRewrite{edits: []sourceEdit{{at - 2, at + 1, ""}, outside}, imports: 1, keys: 1, importEdits: 1})
+	if len(whole.edits) != 0 {
+		t.Fatalf("an import removal over a site kept %+v", whole)
+	}
 }
