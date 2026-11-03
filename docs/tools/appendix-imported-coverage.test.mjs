@@ -87,6 +87,54 @@ const rows = [
   {"rule": "docs/design/src/900-appendices.md#d1b5346d144487b9", "code": "EK3840", "name": "flatMapToMap", "severity": "suggestion"},
   // Appendix B: effecttsgo/flatMapToTap — spec-rule: docs/design/src/900-appendices.md#435287cb8226452e
   {"rule": "docs/design/src/900-appendices.md#435287cb8226452e", "code": "EK3841", "name": "flatMapToTap", "severity": "suggestion"},
+  // Appendix B: effecttsgo/floatingEffect — spec-rule: docs/design/src/900-appendices.md#1478ab531b042c01
+  {"rule": "docs/design/src/900-appendices.md#1478ab531b042c01", "code": "EK3801", "name": "floatingEffect", "severity": "error"},
+  // Appendix B: effecttsgo/floatingEffectInVitest — spec-rule: docs/design/src/900-appendices.md#b7e4be9f5f78fe5e
+  {"rule": "docs/design/src/900-appendices.md#b7e4be9f5f78fe5e", "code": "EK3842", "name": "floatingEffectInVitest", "severity": "error"},
+  // Appendix B: effecttsgo/genericEffectServices — spec-rule: docs/design/src/900-appendices.md#bd3f4f17c9a85119
+  {"rule": "docs/design/src/900-appendices.md#bd3f4f17c9a85119", "code": "EK3843", "name": "genericEffectServices", "severity": "warning"},
+  // Appendix B: effecttsgo/globalConsole — spec-rule: docs/design/src/900-appendices.md#783af47df1f2492a
+  {"rule": "docs/design/src/900-appendices.md#783af47df1f2492a", "code": "EK3844", "name": "globalConsole", "severity": "off"},
+  // Appendix B: effecttsgo/globalConsoleInEffect — spec-rule: docs/design/src/900-appendices.md#64d2d309f993e346
+  {"rule": "docs/design/src/900-appendices.md#64d2d309f993e346", "code": "EK3845", "name": "globalConsoleInEffect", "severity": "off"},
+  // Appendix B: effecttsgo/globalDate — spec-rule: docs/design/src/900-appendices.md#1562b7be5be04a3b
+  {"rule": "docs/design/src/900-appendices.md#1562b7be5be04a3b", "code": "EK3846", "name": "globalDate", "severity": "off"},
+  // Appendix B: effecttsgo/globalDateInEffect — spec-rule: docs/design/src/900-appendices.md#5261f02c1809c83f
+  {"rule": "docs/design/src/900-appendices.md#5261f02c1809c83f", "code": "EK3847", "name": "globalDateInEffect", "severity": "off"},
+  // Appendix B: effecttsgo/globalErrorInEffectCatch — spec-rule: docs/design/src/900-appendices.md#d34465695b343a1e
+  {"rule": "docs/design/src/900-appendices.md#d34465695b343a1e", "code": "EK3848", "name": "globalErrorInEffectCatch", "severity": "warning"},
+  // Appendix B: effecttsgo/globalErrorInEffectFailure — spec-rule: docs/design/src/900-appendices.md#55854b437360ce4b
+  {"rule": "docs/design/src/900-appendices.md#55854b437360ce4b", "code": "EK3849", "name": "globalErrorInEffectFailure", "severity": "warning"},
+  // Appendix B: effecttsgo/globalFetch — spec-rule: docs/design/src/900-appendices.md#394f651639589974
+  {"rule": "docs/design/src/900-appendices.md#394f651639589974", "code": "EK3850", "name": "globalFetch", "severity": "off"},
+  // Appendix B: effecttsgo/globalFetchInEffect — spec-rule: docs/design/src/900-appendices.md#4a2e46260164baf3
+  {"rule": "docs/design/src/900-appendices.md#4a2e46260164baf3", "code": "EK3851", "name": "globalFetchInEffect", "severity": "off"},
+  // Appendix B: effecttsgo/globalRandom — spec-rule: docs/design/src/900-appendices.md#678d97d374b137e4
+  {"rule": "docs/design/src/900-appendices.md#678d97d374b137e4", "code": "EK3852", "name": "globalRandom", "severity": "off"},
+  // Appendix B: effecttsgo/globalRandomInEffect — spec-rule: docs/design/src/900-appendices.md#c4f1406a3252ac59
+  {"rule": "docs/design/src/900-appendices.md#c4f1406a3252ac59", "code": "EK3853", "name": "globalRandomInEffect", "severity": "off"},
+  // Appendix B: effecttsgo/globalTimers — spec-rule: docs/design/src/900-appendices.md#3aff46b5abbbad3d
+  {"rule": "docs/design/src/900-appendices.md#3aff46b5abbbad3d", "code": "EK3854", "name": "globalTimers", "severity": "off"},
+  // Appendix B: effecttsgo/globalTimersInEffect — spec-rule: docs/design/src/900-appendices.md#2f218a9bc00d1829
+  {"rule": "docs/design/src/900-appendices.md#2f218a9bc00d1829", "code": "EK3855", "name": "globalTimersInEffect", "severity": "off"},
+  // Appendix B: effecttsgo/instanceOfSchema — spec-rule: docs/design/src/900-appendices.md#bc0647cec005f11f
+  {"rule": "docs/design/src/900-appendices.md#bc0647cec005f11f", "code": "EK3856", "name": "instanceOfSchema", "severity": "off"},
+  // Appendix B: effecttsgo/layerMergeAllWithDependencies — spec-rule: docs/design/src/900-appendices.md#11884bd4cf0ab720
+  {"rule": "docs/design/src/900-appendices.md#11884bd4cf0ab720", "code": "EK3857", "name": "layerMergeAllWithDependencies", "severity": "warning"},
+  // Appendix B: effecttsgo/lazyEffect — spec-rule: docs/design/src/900-appendices.md#d69661dd0871e90c
+  {"rule": "docs/design/src/900-appendices.md#d69661dd0871e90c", "code": "EK3858", "name": "lazyEffect", "severity": "suggestion"},
+  // Appendix B: effecttsgo/lazyPromiseInEffectSync — spec-rule: docs/design/src/900-appendices.md#df969cc96f906fd7
+  {"rule": "docs/design/src/900-appendices.md#df969cc96f906fd7", "code": "EK3859", "name": "lazyPromiseInEffectSync", "severity": "warning"},
+  // Appendix B: effecttsgo/leakingRequirements — spec-rule: docs/design/src/900-appendices.md#80b75ef802ad4eec
+  {"rule": "docs/design/src/900-appendices.md#80b75ef802ad4eec", "code": "EK3860", "name": "leakingRequirements", "severity": "suggestion"},
+  // Appendix B: effecttsgo/mapSomeToAsSome — spec-rule: docs/design/src/900-appendices.md#bdf5ca0805e6d230
+  {"rule": "docs/design/src/900-appendices.md#bdf5ca0805e6d230", "code": "EK3861", "name": "mapSomeToAsSome", "severity": "suggestion"},
+  // Appendix B: effecttsgo/matchEffectToMapBoth — spec-rule: docs/design/src/900-appendices.md#c801e347f2a668bc
+  {"rule": "docs/design/src/900-appendices.md#c801e347f2a668bc", "code": "EK3862", "name": "matchEffectToMapBoth", "severity": "suggestion"},
+  // Appendix B: effecttsgo/matchEffectToMatch — spec-rule: docs/design/src/900-appendices.md#9af88cbadef73147
+  {"rule": "docs/design/src/900-appendices.md#9af88cbadef73147", "code": "EK3863", "name": "matchEffectToMatch", "severity": "suggestion"},
+  // Appendix B: effecttsgo/missedPipeableOpportunity — spec-rule: docs/design/src/900-appendices.md#04ac73df8e1c5719
+  {"rule": "docs/design/src/900-appendices.md#04ac73df8e1c5719", "code": "EK3864", "name": "missedPipeableOpportunity", "severity": "off"},
 ]
 const { inventory } = generateLintCodes()
 const declared = readFileSync(new URL("../../typescript/tsc/internal/core/vibe_lint_codes.go", import.meta.url), "utf8")
