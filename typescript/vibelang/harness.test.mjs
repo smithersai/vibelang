@@ -155,6 +155,43 @@ fs.writeFileSync("out/main.js", 'import { name } from "@scope/platform"; console
   assert.equal(fs.realpathSync(path.join(at, "node_modules/@scope/platform")), fs.realpathSync(path.join(at, "stubs/platform")))
 })
 
+test("a declaration twin compiles against the case's Effect, not a reference Effect a runner linked", (t) => {
+  // cov-ch004 and match-vip7 runners link typescript/node_modules/effect to a
+  // pinned reference Effect. The link outlived the run, and every later run in
+  // that tree compiled typescript/ against it while out/ used the case's Effect.
+  const { root, harness, compiler } = fixture(t)
+  fs.writeFileSync(compiler, `#!/usr/bin/env node
+import fs from "node:fs"
+import path from "node:path"
+import { createRequire } from "node:module"
+const version = createRequire(path.join(process.cwd(), "resolve.js"))("effect/package.json").version
+fs.mkdirSync("out", { recursive: true })
+fs.writeFileSync("out/main.d.ts", "export declare const effect: " + JSON.stringify(version) + ";\\n")
+`, { mode: 0o755 })
+  const identity = path.join(root, "..", "scripts", "api-identity.mjs")
+  fs.mkdirSync(path.dirname(identity), { recursive: true })
+  fs.writeFileSync(identity, `import fs from "node:fs"
+const at = flag => process.argv[process.argv.indexOf(flag) + 1] + "/main.d.ts"
+const before = fs.readFileSync(at("--before"), "utf8"), after = fs.readFileSync(at("--after"), "utf8")
+if (before !== after) { console.log("before " + before + "after " + after); process.exit(1) }
+`)
+  const reference = path.join(root, ".cache", "reference", "node_modules", "effect")
+  fs.mkdirSync(reference, { recursive: true })
+  fs.writeFileSync(path.join(reference, "package.json"), '{"name":"effect","version":"4.0.0"}')
+  const at = path.join(root, "vibelang", "cases", "identity")
+  fs.mkdirSync(path.join(at, "typescript", "node_modules"), { recursive: true })
+  fs.writeFileSync(path.join(at, "tsconfig.json"), "{}")
+  fs.writeFileSync(path.join(at, "typescript", "tsconfig.json"), "{}")
+  fs.symlinkSync(reference, path.join(at, "typescript", "node_modules", "effect"), "dir")
+  const env = { ...process.env, EFFECT_NODE_MODULES: path.join(root, "modules"), VIBELANG_RUNTIME: path.join(root, "runtime") }
+  for (const args of [["identity"], ["--isolated", "identity"]]) {
+    const result = spawnSync(process.execPath, [harness, ...args], { env, encoding: "utf8", timeout: 10_000 })
+    assert.equal(result.status, 0, result.stdout + result.stderr)
+    assert.match(result.stdout, /^ok {6}identity$/m)
+  }
+  assert.equal(fs.readFileSync(path.join(at, "typescript", "out", "main.d.ts"), "utf8"), 'export declare const effect: "4.1.0";\n')
+})
+
 test("runtime files use the case's peers without exposing development dependencies", (t) => {
   const { root, harness, compiler } = fixture(t)
   const runtime = path.join(root, "runtime")

@@ -330,6 +330,13 @@ function declarationFiles(dir) {
 async function checkDeclarationIdentity(dir, commands) {
   const original = path.join(dir, "typescript")
   fs.rmSync(path.join(original, "out"), { recursive: true, force: true })
+  // typescript/ must compile against the Effect the case compiles against.
+  // Runners that check a pinned reference twin (cov-ch004, match-vip7) link
+  // typescript/node_modules/effect to that pin, and the link outlives the run:
+  // every later run in the tree then compared declarations built on two Effect
+  // versions and stopped at "Ambient declaration load order differs".
+  const linkedEffect = path.join(original, "node_modules", "effect")
+  if (fs.lstatSync(linkedEffect, { throwIfNoEntry: false })?.isSymbolicLink()) fs.unlinkSync(linkedEffect)
   const compiled = await commands.run(tsc, ["-p", ".", "--pretty", "false"], { phase: "compile typescript", cwd: original, timeout: 120_000 })
   if (compiled.code !== 0) {
     return { ok: false, detail: `typescript/ did not compile (exit ${compiled.code})`, log: compiled.stdout + compiled.stderr }

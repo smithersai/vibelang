@@ -6,10 +6,9 @@ await compare(fileURLToPath(new URL(".", import.meta.url)), Effect, [[true, true
 // Chapter 004: foreign errors need not carry the local fields/getters.
 // Mutate payload shape independently of the tag; recognition cannot read it.
 const {createRequire}=await import("node:module")
-const path=await import("node:path")
 const assert=await import("node:assert/strict")
-const require=createRequire(path.join(process.env.EFFECT_NODE_MODULES,"package.json"))
-const fc=require("fast-check")
+// fast-check comes from docs/tools, which declares it; Effect's install does not.
+const fc=createRequire(new URL("../../../../docs/tools/package.json",import.meta.url))("fast-check")
 const actual=await import("./out/main.js")
 const reference=await import("./typescript/out/main.js")
 fc.assert(fc.property(fc.dictionary(fc.string(),fc.jsonValue()),fc.boolean(),(payload,hit)=>{
