@@ -38,7 +38,7 @@ try {
  assert.equal(good.status, 0, good.stdout + good.stderr)
  const missing = check("service Outside { value: number }\nexport {}\n")
  assert.notEqual(missing.status, 0, "service outside every package compiled without an explicit key")
- assert.match(missing.stdout + missing.stderr, /error EK0901:/)
+ assert.match(missing.stdout + missing.stderr, /error EK0903:/)
 } finally { rmSync(fixture, { recursive: true, force: true }) }
 
 console.log("types and Exit agree")

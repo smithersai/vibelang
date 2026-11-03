@@ -1,4 +1,4 @@
-// expect: EK0901
+// expect: EK0903
 function local() { service Local { value: number } }
 export {}
 
