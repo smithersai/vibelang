@@ -53,7 +53,7 @@ func TestDualBlockKeepsTypeScriptErrorWithNote(t *testing.T) {
 		{"curried method", "export function f() { const s = Semaphore.makeUnsafe(1); return s.withPermits(1) { return work() } }", 2554, "`s.withPermits(1)` returns the function that takes the program: write `s.withPermits(1)(effect { … })`."},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			errors := errorsOf(t, dualBlockWork+test.source)
+			errors := legacyTrailingBlockErrorsOf(t, dualBlockWork+test.source)
 			if len(errors) != 1 || errors[0].Source() != "" || errors[0].Code() != test.code {
 				t.Fatalf("errors %v, want only TS%d", errors, test.code)
 			}
@@ -69,7 +69,7 @@ func TestDualBlockKeepsTypeScriptErrorWithNote(t *testing.T) {
 // now a program (VIP-2), which withSpan's data-last options parameter
 // rejects, so TypeScript's error stays, with the effect block spelling.
 func TestDualBlockOptionsSlotRejectsTheProgram(t *testing.T) {
-	errors := errorsOf(t, "export function f() { return withSpan(\"k\") { return { attributes: {} } } }")
+	errors := legacyTrailingBlockErrorsOf(t, "export function f() { return withSpan(\"k\") { return { attributes: {} } } }")
 	if len(errors) != 1 || errors[0].Code() != 2769 || errors[0].Source() != "" {
 		t.Fatalf("errors %v, want only TS2769", errors)
 	}
@@ -88,6 +88,8 @@ func TestDualBlockRecorderLeavesAppendedForms(t *testing.T) {
 		"export function f() { return Effect.Do |> Effect.bind(%, \"value\") { return Effect.succeed(1) } }",
 	} {
 		p, file, _, _ := editorProgram(t, source)
+		p = trailingBlockMigrationProgram(p)
+		file = p.GetSourceFile(file.FileName())
 		p.GetSemanticDiagnostics(t.Context(), file)
 		c, done := p.GetTypeCheckerForFile(t.Context(), file)
 		if calls := dualBlockCalls(c, file); len(calls) != 0 {
@@ -136,7 +138,7 @@ func TestDualBlockMigrationFixAndIdempotence(t *testing.T) {
 // why, so the site never changes silently.
 func TestDualBlockMigrationRefusesTypeArguments(t *testing.T) {
 	source := dualBlockWork + "export function f() { return withSpan<[]>(\"load\") { return work() } }"
-	errors := errorsOf(t, source)
+	errors := legacyTrailingBlockErrorsOf(t, source)
 	if !slices.ContainsFunc(errors, func(d *ast.Diagnostic) bool {
 		return strings.Contains(notesOf(d), "This block cannot be moved automatically: explicit type arguments")
 	}) {
@@ -188,8 +190,8 @@ func TestDualBlockCodeAction(t *testing.T) {
 	} {
 		program, file, service, converters := editorProgram(t, dualBlockWork+test.source)
 		var diagnostic *ast.Diagnostic
-		for _, d := range program.GetSemanticDiagnostics(t.Context(), file) {
-			if d.Category() == diagnostics.CategoryError {
+		for _, d := range program.GetSyntacticDiagnostics(t.Context(), file) {
+			if hasDualBlockMigrationNote(d) {
 				diagnostic = d
 			}
 		}

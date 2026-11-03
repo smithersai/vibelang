@@ -78,46 +78,6 @@ func (p *Parser) vibelangInvoked(body *ast.Node, anchor core.TextRange, pos int)
 	return p.finishNode(p.factory.NewCallExpression(callee, nil, nil, arguments, ast.NodeFlagsNone), pos)
 }
 
-// isStartOfVibeLangBlockParam reports whether a block param follows expression:
-// in a .vibe file, a { on the same line after a name, a property access,
-// or a call, which TypeScript cannot parse
-// (https://github.com/samuelgoto/proposal-block-params). A heritage clause
-// and a provide block's providers are followed by their own blocks.
-func (p *Parser) isStartOfVibeLangBlockParam(expression *ast.Node) bool {
-	if p.token != ast.KindOpenBraceToken || p.hasPrecedingLineBreak() || p.vibelangNoBlockParams || !p.isVibeLangFile() {
-		return false
-	}
-	return isVibeLangBlockParamHead(expression)
-}
-
-func isVibeLangBlockParamHead(expression *ast.Node) bool {
-	switch expression.Kind {
-	case ast.KindIdentifier, ast.KindPropertyAccessExpression, ast.KindCallExpression:
-		return expression.Flags&ast.NodeFlagsOptionalChain == 0
-	}
-	return false
-}
-
-// parseVibeLangBlockParam parses the block after expression as a program and
-// passes it as the last argument of one call (D188): `f { block }` is
-// f(() => { block }) and `f(args) { block }` is f(args, () => { block }). The
-// checker offers an Effect dual's call the forms that take the block as the
-// program, and the lowering moves it there (vibelang/blockparams.go).
-func (p *Parser) parseVibeLangBlockParam(pos int, expression *ast.Node) *ast.Node {
-	anchor := p.tokenRange()
-	body := p.parseFunctionBlock(ParseFlagsNone, nil /*diagnosticMessage*/)
-	p.recordVibeSyntaxBlock(VibeSyntaxBlockParam, p.sourceRange(expression), body)
-	program := p.vibelangProgramArrow(nil, body, anchor)
-	if expression.Kind == ast.KindCallExpression {
-		call := expression.AsCallExpression()
-		nodes := append(append([]*ast.Node{}, call.Arguments.Nodes...), program)
-		arguments := p.newNodeList(core.NewTextRange(call.Arguments.Pos(), program.End()), nodes)
-		return p.finishNode(p.factory.NewCallExpression(call.Expression, nil /*questionDotToken*/, call.TypeArguments, arguments, ast.NodeFlagsNone), pos)
-	}
-	arguments := p.newNodeList(program.Loc, []*ast.Node{program})
-	return p.finishNode(p.factory.NewCallExpression(expression, nil /*questionDotToken*/, nil /*typeArguments*/, arguments, ast.NodeFlagsNone), pos)
-}
-
 // isVibeLangMaskMarker reports whether statement is the marker call the parser
 // writes first in an interruption block, $uninterruptibleBlock(),
 // $restoreBlock() or $interruptibleBlock() (vibelang_primitives.go), which the

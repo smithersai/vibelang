@@ -38,7 +38,7 @@ func TestFiberFlows(t *testing.T) {
 		{"Fiber function returning a Fiber", "export effect function fib() { const scope = Scope.make(); const f = fork one(); Fiber.runIn(f, scope); return 0 }", "passed to Fiber.runIn, which may keep it"},
 		{"captured", "export effect function fib() { const f = fork one(); return () => f }", "captured by a function"},
 		{"captured though not returned", "export effect function fib() { const f = fork one(); const read = () => f; return join read() }", "captured by a function"},
-		{"captured by a block param", "export effect function fib() { const f = fork one(); return withSpan(\"s\") { return join f } }", "captured by a block param"},
+		{"captured by an explicit Effect function", "export effect function fib() { const f = fork one(); return withSpan(effect () => { return join f }, \"s\") }", "captured by a function"},
 		{"discarded", "export effect function fib() { fork one(); return 0 }", ""},
 		{"joined", "export effect function fib() { const f = fork one(); return join f }", ""},
 		{"joined in an array", "export effect function fib() { const a = fork one(); const b = fork one(); return join [a, b] }", ""},

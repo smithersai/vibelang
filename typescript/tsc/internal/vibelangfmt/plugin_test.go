@@ -141,7 +141,7 @@ func TestPluginAnswersDprint(t *testing.T) {
 
 	// Format a file: the plugin asks the host to format its TypeScript form,
 	// and the host's formatter indents it.
-	source := "function f(): string!Gone {\nreturn withSpan(\"x\") { return 1 }\n}\n"
+	source := "function f(): string!Gone {\nreturn withSpan(effect { return 1 }, \"x\")\n}\n"
 	formatID := h.send(messageFormat, "/repo/a.vibe", uint32(0), uint32(len(source)), uint32(1), "", source)
 	request := h.read()
 	if request.kind != messageHostFormat || request.body[0] != formatID || string(request.sized[0]) != "/repo/a.vibe.ts" {
@@ -151,13 +151,13 @@ func TestPluginAnswersDprint(t *testing.T) {
 		t.Fatalf("host formatting must preserve module evaluation order and the order of named imports and exports: %s", request.sized[1])
 	}
 	typescript := string(request.sized[2])
-	formatted := strings.Replace(strings.Replace(typescript, "\nreturn", "\n  return", 1), "{ return 1 })", "{\n    return 1\n  })", 1)
+	formatted := strings.Replace(typescript, "\nreturn", "\n  return", 1)
 	h.send(messageFormatResponse, request.id, uint32(1), formatted)
 	response := h.read()
 	if response.kind != messageFormatResponse || response.body[0] != formatID || response.body[1] != 1 {
 		t.Fatalf("format answered %+v", response)
 	}
-	if got, want := string(response.sized[0]), "function f(): string!Gone {\n  return withSpan(\"x\") {\n    return 1\n  }\n}\n"; got != want {
+	if got, want := string(response.sized[0]), "function f(): string!Gone {\n  return withSpan(effect { return 1 }, \"x\")\n}\n"; got != want {
 		t.Fatalf("formatted\n%s\nwant\n%s", got, want)
 	}
 

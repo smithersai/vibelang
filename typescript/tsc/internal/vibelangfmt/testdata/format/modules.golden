@@ -63,7 +63,10 @@ export function cleaned(input: string): Cleaned!Unclean {
 }
 
 export function retried(input: string) {
-  return withSpan("retried") {
-    return cleaned(input) |> retry(%, Schedule.recurs(settings.level))
-  }
+  return withSpan(
+    effect {
+      return cleaned(input) |> retry(%, Schedule.recurs(settings.level))
+    },
+    "retried"
+  )
 }

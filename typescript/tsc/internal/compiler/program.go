@@ -803,13 +803,16 @@ func (p *Program) collectCheckerDiagnosticsFromFiles(ctx context.Context, source
 }
 
 func (p *Program) GetSyntacticDiagnostics(ctx context.Context, sourceFile *ast.SourceFile) []*ast.Diagnostic {
-	return p.collectDiagnostics(ctx, sourceFile, false /*concurrent*/, func(_ context.Context, file *ast.SourceFile) []*ast.Diagnostic {
+	return p.collectDiagnostics(ctx, sourceFile, false /*concurrent*/, func(ctx context.Context, file *ast.SourceFile) []*ast.Diagnostic {
 		diags := core.Concatenate(file.Diagnostics(), file.JSDiagnostics())
 		// For JS files that won't be checked by the checker (no checkJs/ts-check), we need
 		// program-level syntactic checks that require compiler options. This mirrors Strada's
 		// getJSSyntacticDiagnosticsForFile in program.ts.
 		if ast.IsSourceFileJS(file) && !ast.IsCheckJSEnabledForFile(file, p.Options()) {
 			diags = append(diags, getAdditionalJSSyntacticDiagnostics(file, p.Options())...)
+		}
+		for _, hook := range syntacticDiagnosticsHooks {
+			diags = slices.Concat(diags, hook(ctx, p, file))
 		}
 		return diags
 	})

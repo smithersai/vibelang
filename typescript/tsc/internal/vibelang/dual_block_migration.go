@@ -278,20 +278,28 @@ func dualBlockRewrite(c *checker.Checker, file *ast.SourceFile, call *ast.Node) 
 }
 
 func dualBlockActions(ctx context.Context, fix *ls.CodeFixContext) ([]*ls.CodeAction, error) {
-	c, done := fix.Program.GetTypeCheckerForFile(ctx, fix.SourceFile)
+	program, file := fix.Program, fix.SourceFile
+	if !file.ParseOptions().VibeLangLegacyTrailingBlocks {
+		if !file.VibeLangDeniedTrailingBlock {
+			return nil, nil
+		}
+		program = trailingBlockMigrationProgram(program)
+		file = program.GetSourceFile(file.FileName())
+	}
+	c, done := program.GetTypeCheckerForFile(ctx, file)
 	defer done()
-	calls := dualBlockCalls(c, fix.SourceFile)
+	calls := dualBlockCalls(c, file)
 	// The innermost call whose span holds the diagnostic.
 	for i := len(calls) - 1; i >= 0; i-- {
 		call := calls[i]
 		if call.Pos() <= fix.Span.Pos() && fix.Span.End() <= call.End() {
-			r := dualBlockRewrite(c, fix.SourceFile, call)
+			r := dualBlockRewrite(c, file, call)
 			if !r.fixable() {
 				return nil, nil
 			}
 			changes := replaceRange(fix, r.edits[0].start, r.edits[0].end, r.edits[0].text)
 			changes = append(changes, replaceRange(fix, r.edits[1].start, r.edits[1].end, r.edits[1].text)...)
-			return []*ls.CodeAction{{Description: "Pass the block where " + nodeText(fix.SourceFile, call.Expression()) + " takes its program", Changes: changes}}, nil
+			return []*ls.CodeAction{{Description: "Pass the block where " + nodeText(file, call.Expression()) + " takes its program", Changes: changes}}, nil
 		}
 	}
 	return nil, nil

@@ -455,3 +455,24 @@ typescript/vibelang/cases/tsforms-option-fixed/main.vibe:24:24 lambda: plain fal
 # typescript/vibelang/cases/match-class-patterns/main.vibe:129:72 -> typescript/vibelang/cases/match-class-patterns/main.vibe:135:72 lambda plain table # Explicit class migration shifts this unchanged call; kind, form and origin are preserved.
 # typescript/vibelang/cases/match-class-patterns/main.vibe:130:60 -> typescript/vibelang/cases/match-class-patterns/main.vibe:136:60 byname program annotation # Explicit class migration shifts this unchanged call; kind, form and origin are preserved.
 # typescript/vibelang/cases/match-class-patterns/main.vibe:94:23 -> typescript/vibelang/cases/match-class-patterns/main.vibe:100:23 lambda dual fallback # Explicit class migration shifts this unchanged call; kind, form and origin are preserved.
+
+# VIP-11 ordinary parser retirement; all changed sites are negative fixtures.
+typescript/vibelang/cases/dual-block-legacy.fail/main.vibe:15:27 block: appended/plain table -> removed # VIP-11: native recovery supplies no trailing callback; private migration preserves the diagnostic and rewrite.
+typescript/vibelang/cases/dual-block-legacy.fail/main.vibe:21:30 block: appended/dual fallback -> removed # VIP-11: native recovery supplies no trailing callback; private migration preserves the diagnostic and rewrite.
+typescript/vibelang/cases/dual-block-legacy.fail/main.vibe:28:35 block: appended/dual fallback -> removed # VIP-11: native recovery supplies no trailing callback; private migration preserves the diagnostic and rewrite.
+typescript/vibelang/cases/dual-block-legacy.fail/main.vibe:34:30 block: appended/plain table -> removed # VIP-11: native recovery supplies no trailing callback; private migration preserves the diagnostic and rewrite.
+typescript/vibelang/cases/trailing-block-denied.fail/main.vibe:10:43 block: appended/plain fallback -> removed # VIP-11: native recovery supplies no trailing callback; private migration preserves the diagnostic and rewrite.
+typescript/vibelang/cases/trailing-block-denied.fail/main.vibe:11:41 block: appended/program table -> removed # VIP-11: native recovery supplies no trailing callback; private migration preserves the diagnostic and rewrite.
+typescript/vibelang/cases/trailing-block-denied.fail/main.vibe:11:58 lambda: effectFn service -> removed # VIP-11: native recovery supplies no trailing callback; private migration preserves the diagnostic and rewrite.
+typescript/vibelang/cases/trailing-block-denied.fail/main.vibe:12:49 block: appended/program table -> removed # VIP-11: native recovery supplies no trailing callback; private migration preserves the diagnostic and rewrite.
+typescript/vibelang/cases/trailing-block-denied.fail/main.vibe:13:49 block: appended/effectFn annotation -> removed # VIP-11: native recovery supplies no trailing callback; private migration preserves the diagnostic and rewrite.
+typescript/vibelang/cases/trailing-block-denied.fail/main.vibe:9:45 block: appended/effectFn annotation -> removed # VIP-11: native recovery supplies no trailing callback; private migration preserves the diagnostic and rewrite.
+typescript/vibelang/cases/with-provider-unsupported.fail/main.vibe:3:20 block: appended/plain fallback -> removed # VIP-11: native recovery supplies no trailing callback; private migration preserves the diagnostic and rewrite.
+typescript/vibelang/cases/trailing-block-denied.fail/main.vibe:11:65 lambda: absent -> plain fallback # VIP-11: this recovered arrow is in invalid statements, without service callback context.
+
+# VIP-11 native recovery in newer negative declaration fixtures.
+typescript/vibelang/cases/cov-ch900a-ek1501.fail/main.vibe:2:28 block: appended/plain fallback -> removed # VIP-11: invalid declaration recovery no longer synthesizes a trailing callback.
+typescript/vibelang/cases/cov-ch900a-ek1603.fail/main.vibe:2:27 block: appended/plain fallback -> removed # VIP-11: invalid declaration recovery no longer synthesizes a trailing callback.
+typescript/vibelang/cases/data-declarations-default-export.fail/main.vibe:2:27 block: appended/plain fallback -> removed # VIP-11: invalid declaration recovery no longer synthesizes a trailing callback.
+typescript/vibelang/cases/schema-declarations-default-export.fail/main.vibe:2:29 block: appended/plain fallback -> removed # VIP-11: invalid declaration recovery no longer synthesizes a trailing callback.
+typescript/vibelang/cases/vip1-coverage-bare-async-block.fail/main.vibe:4:7 block: appended/plain fallback -> removed # VIP-11: the invalid bare async head no longer receives an implicit callback.

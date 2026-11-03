@@ -107,7 +107,7 @@ func FuzzFix(f *testing.F) {
 			// Native TypeScript migration inputs may be invalid in the old
 			// VibeLang execution model before fixing. Compare their native
 			// reference, rather than silently dropping the runtime oracle.
-			runtimeBefore := r
+			runtimeBefore := toolsTrailingBlockBaseline(t, r)
 			if nativeTS {
 				if len(files) != 1 || files["main.vibe"] == "" {
 					return
@@ -211,7 +211,7 @@ func FuzzFix(f *testing.F) {
 			// write; a declaration may print it differently after a fix (an
 			// error class becomes an error declaration, D284-D290), so the
 			// contracts are compared by assignability in both directions.
-			if toolsErrorFree(runtimeBefore) && toolsErrorFree(after) {
+			if toolsTrailingBlockRunnable(runtimeBefore) && toolsErrorFree(after) {
 				if mismatch := toolsContractMismatch(t, w, runtimeBefore, after, false); mismatch != "" {
 					key := "fix:types"
 					if toolsContractMismatch(t, w, runtimeBefore, after, true) == "" {

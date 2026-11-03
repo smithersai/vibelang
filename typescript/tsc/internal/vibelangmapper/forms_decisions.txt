@@ -1223,8 +1223,6 @@ typescript/vibelang/cases/cov-ch900a-ek0508.fail/main.vibe:4:40 lambda effectFn 
 typescript/vibelang/cases/cov-ch900a-ek0508.fail/main.vibe:4:65 lambda effectFn table
 typescript/vibelang/cases/cov-ch900a-ek0511.fail/main.vibe:4:40 lambda effectFn table
 typescript/vibelang/cases/cov-ch900a-ek0511.fail/main.vibe:4:65 lambda effectFn table
-typescript/vibelang/cases/cov-ch900a-ek1501.fail/main.vibe:2:28 block appended/plain fallback
-typescript/vibelang/cases/cov-ch900a-ek1603.fail/main.vibe:2:27 block appended/plain fallback
 typescript/vibelang/cases/cov-ch900a-ek1706.fail/main.vibe:2:44 byname program table
 typescript/vibelang/cases/cov-ch900a-ek1802.fail/main.vibe:2:51 byname program table
 typescript/vibelang/cases/cov-ch900a-ek1901.fail/main.vibe:2:55 lambda effectFn table
@@ -1452,7 +1450,6 @@ typescript/vibelang/cases/d39-unions/main.vibe:17:30 lambda effectFn annotation
 typescript/vibelang/cases/d39-unions/main.vibe:19:22 lambda effectFn annotation
 typescript/vibelang/cases/data-declarations-core/main.vibe:7:23 lambda plain fallback
 typescript/vibelang/cases/data-declarations-core/main.vibe:8:24 lambda plain fallback
-typescript/vibelang/cases/data-declarations-default-export.fail/main.vibe:2:27 block appended/plain fallback
 typescript/vibelang/cases/data-methods-first-parameter.fail/main.vibe:10:43 lambda plain fallback
 typescript/vibelang/cases/data-methods-first-parameter/main.vibe:14:28 byname program table
 typescript/vibelang/cases/data-methods-first-parameter/main.vibe:21:51 lambda plain fallback
@@ -1953,10 +1950,6 @@ typescript/vibelang/cases/dual-block-legacy-fixed/main.vibe:15:19 lambda program
 typescript/vibelang/cases/dual-block-legacy-fixed/main.vibe:21:18 lambda program table
 typescript/vibelang/cases/dual-block-legacy-fixed/main.vibe:28:35 lambda dual fallback
 typescript/vibelang/cases/dual-block-legacy-fixed/main.vibe:34:19 lambda program table
-typescript/vibelang/cases/dual-block-legacy.fail/main.vibe:15:27 block appended/plain table
-typescript/vibelang/cases/dual-block-legacy.fail/main.vibe:21:30 block appended/dual fallback
-typescript/vibelang/cases/dual-block-legacy.fail/main.vibe:28:35 block appended/dual fallback
-typescript/vibelang/cases/dual-block-legacy.fail/main.vibe:34:30 block appended/plain table
 typescript/vibelang/cases/effect-arrow-head-controls/main.vibe:10:24 lambda choice fallback
 typescript/vibelang/cases/effect-arrow-head-controls/main.vibe:6:22 lambda plain fallback
 typescript/vibelang/cases/effect-arrow-head-controls/main.vibe:7:24 lambda plain fallback
@@ -4670,7 +4663,6 @@ typescript/vibelang/cases/s19-30-callback-finalizer/main.vibe:7:40 lambda plain 
 typescript/vibelang/cases/s19-30-callback-finalizer/main.vibe:7:57 lambda plain hatch
 typescript/vibelang/cases/s2170-function-hoisting/main.vibe:78:14 lambda plain annotation
 typescript/vibelang/cases/schema-class-recursive-contract/main.vibe:15:20 lambda plain table
-typescript/vibelang/cases/schema-declarations-default-export.fail/main.vibe:2:29 block appended/plain fallback
 typescript/vibelang/cases/schema-errors-constructor-defect/main.vibe:7:34 byname program table
 typescript/vibelang/cases/schema-errors-constructor-defect/main.vibe:8:88 lambda plain fallback
 typescript/vibelang/cases/schema-errors-implicit-copy/main.vibe:17:34 byname program table
@@ -5103,12 +5095,7 @@ typescript/vibelang/cases/traced-callback-diagnostic.fail/main.vibe:7:50 lambda 
 typescript/vibelang/cases/traced-callback-span/main.vibe:3:23 lambda program table
 typescript/vibelang/cases/traced-callback-span/main.vibe:9:10 lambda dual fallback
 typescript/vibelang/cases/traced-callback-span/main.vibe:9:36 lambda program table
-typescript/vibelang/cases/trailing-block-denied.fail/main.vibe:10:43 block appended/plain fallback
-typescript/vibelang/cases/trailing-block-denied.fail/main.vibe:11:41 block appended/program table
-typescript/vibelang/cases/trailing-block-denied.fail/main.vibe:11:58 lambda effectFn service
-typescript/vibelang/cases/trailing-block-denied.fail/main.vibe:12:49 block appended/program table
-typescript/vibelang/cases/trailing-block-denied.fail/main.vibe:13:49 block appended/effectFn annotation
-typescript/vibelang/cases/trailing-block-denied.fail/main.vibe:9:45 block appended/effectFn annotation
+typescript/vibelang/cases/trailing-block-denied.fail/main.vibe:11:65 lambda plain fallback
 typescript/vibelang/cases/trust-levels/main.vibe:26:26 lambda program table
 typescript/vibelang/cases/trust-levels/main.vibe:45:60 lambda plain table
 typescript/vibelang/cases/trust-levels/main.vibe:51:34 lambda plain table
@@ -5670,7 +5657,6 @@ typescript/vibelang/cases/vip1-coverage-any-execution/main.vibe:15:30 lambda pla
 typescript/vibelang/cases/vip1-coverage-any-execution/main.vibe:16:25 lambda plain fallback
 typescript/vibelang/cases/vip1-coverage-any-execution/main.vibe:18:28 lambda plain fallback
 typescript/vibelang/cases/vip1-coverage-any-execution/main.vibe:8:59 lambda plain table
-typescript/vibelang/cases/vip1-coverage-bare-async-block.fail/main.vibe:4:7 block appended/plain fallback
 typescript/vibelang/cases/vip1-coverage-bodyless-expression.fail/main.vibe:4:11 lambda effectFn annotation
 typescript/vibelang/cases/vip1-coverage-default-defect/main.vibe:4:45 lambda plain fallback
 typescript/vibelang/cases/vip1-coverage-default-defect/main.vibe:8:21 byname program table
@@ -5951,7 +5937,6 @@ typescript/vibelang/cases/web-standard-globals/explicit.vibe:2:32 lambda plain a
 typescript/vibelang/cases/wire-resolved-callee/main.vibe:13:28 lambda program table
 typescript/vibelang/cases/wire-self-input.fail/main.vibe:7:35 lambda program table
 typescript/vibelang/cases/wire-spread-unlisted.fail/main.vibe:9:28 lambda program table
-typescript/vibelang/cases/with-provider-unsupported.fail/main.vibe:3:20 block appended/plain fallback
 typescript/vibelang/cases/written-forms-plain-code.fail/main.vibe:16:34 lambda plain table
 typescript/vibelang/cases/written-forms-probes.fail/main.vibe:10:21 lambda effectFn annotation
 typescript/vibelang/cases/written-forms-probes.fail/main.vibe:16:29 byname program table

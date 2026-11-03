@@ -1008,6 +1008,7 @@ type fixCompilerHost struct {
 }
 
 func (h fixCompilerHost) GetSourceFile(opts ast.SourceFileParseOptions) *ast.SourceFile {
+	opts.VibeLangLegacyTrailingBlocks = opts.FileName.ExtensionIs(tspath.ExtensionVibe)
 	text, ok := h.FS().ReadFile(opts.FileName)
 	if !ok {
 		return nil

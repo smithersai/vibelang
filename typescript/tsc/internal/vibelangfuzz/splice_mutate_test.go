@@ -23,7 +23,8 @@ import (
 // The donors are the .vibe sources of the acceptance cases and the
 // documentation's snippets, each parsed once with the fork's parser.
 // ParseVibeLangSyntax also records each VibeLang form as written, which gives
-// the match arms, block params and VibeLang declarations their own spans.
+// match arms and VibeLang declarations their own spans. Function bodies
+// come from ordinary function and explicit callback nodes (VIP-11).
 //
 // The parser writes each VibeLang form as the TypeScript it abbreviates and
 // places some synthesized nodes at source spans that are not their syntax: a
@@ -44,13 +45,13 @@ const (
 	spliceObjectMember                       // a member of an object literal
 	spliceTypeMember                         // a member of an interface or a type literal
 	spliceArm                                // a match arm: when pattern: value, or default: value (D206)
-	spliceBlockParam                         // the block of a block param (D188)
+	spliceFunctionBody                       // a native function or explicit callback body (VIP-11)
 	spliceDeclaration                        // a top-level declaration, VibeLang's included
 	spliceCategories
 )
 
 func (c spliceCategory) String() string {
-	return [...]string{"statement", "expression", "type", "class member", "object member", "type member", "match arm", "block param", "declaration"}[c]
+	return [...]string{"statement", "expression", "type", "class member", "object member", "type member", "match arm", "function body", "declaration"}[c]
 }
 
 // spliceContexts holds the text before and after a node of each category
@@ -63,7 +64,7 @@ var spliceContexts = [spliceCategories][2]string{
 	spliceObjectMember: {"({\n", "\n})\n"},
 	spliceTypeMember:   {"interface $Splice {\n", "\n}\n"},
 	spliceArm:          {"match ($splice) {\n", "\n}\n"},
-	spliceBlockParam:   {"$splice() ", "\n"},
+	spliceFunctionBody: {"function $splice() ", "\n"},
 	spliceDeclaration:  {"", "\n"},
 }
 
@@ -107,6 +108,10 @@ func spliceNodes(text string) (nodes [spliceCategories][]spliceNode, syntaxError
 			for _, category := range spliceCategoriesOf(n) {
 				add(spliceNode{category, n.Kind.String(), start, n.End()})
 			}
+			if n.Kind == ast.KindBlock && n.Parent != nil && ast.IsFunctionLike(n.Parent) && n.Parent.Body() == n {
+				add(spliceNode{spliceFunctionBody, "function body", start, n.End()})
+			}
+
 		}
 		n.ForEachChild(visit)
 		return false
@@ -122,8 +127,6 @@ func spliceNodes(text string) (nodes [spliceCategories][]spliceNode, syntaxError
 				}
 				add(spliceNode{spliceArm, kind, arm.Head.Pos(), arm.Value.End()})
 			}
-		case parser.VibeSyntaxBlockParam:
-			add(spliceNode{spliceBlockParam, "block param", form.Open.Pos(), form.Close.End()})
 		case parser.VibeSyntaxDeclaration:
 			add(spliceNode{spliceDeclaration, form.Name + " declaration", form.Range.Pos(), form.Range.End()})
 		}

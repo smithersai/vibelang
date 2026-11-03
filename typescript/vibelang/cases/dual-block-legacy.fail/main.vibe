@@ -1,4 +1,4 @@
-// expect: TS2345 TS2554 TS2769 EK0502
+// expect: TS1005 TS2345 TS2554 TS2769
 // This accepted 0.0.10 source wrote a block where an Effect dual takes its
 // program (D188). A block is its call's last argument (D376), so each call
 // keeps TypeScript's error with a note that gives the effect block spelling,

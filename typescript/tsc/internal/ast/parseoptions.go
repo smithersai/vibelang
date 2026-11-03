@@ -6,6 +6,9 @@ import (
 )
 
 type SourceFileParseOptions struct {
+	// VibeLangLegacyTrailingBlocks is private to migration decoding and its
+	// diagnostics. Ordinary parsing never synthesizes a trailing callback.
+	VibeLangLegacyTrailingBlocks   bool
 	FileName                       tspath.RootedFilePath
 	PathKey                        tspath.PathKey
 	ExternalModuleIndicatorOptions ExternalModuleIndicatorOptions

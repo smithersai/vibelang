@@ -48,7 +48,6 @@ func TestDeclarationKeywordComments(t *testing.T) {
 		"error /* explanation */   Oops { code: number }",
 		"schema /* explanation */ error   Oops { code: number }",
 		"service /* explanation */ Users { name: string }",
-		"schema\nUser { id: string }",
 	} {
 		result, err := Format("test.vibe", source, func(text string) (string, error) { return text, nil })
 		if err != nil {

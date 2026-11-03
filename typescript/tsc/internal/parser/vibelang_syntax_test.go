@@ -107,8 +107,6 @@ func TestVibeLangSyntaxRecordsEachForm(t *testing.T) {
 			`declaration schema range="schema Ticket { id: string }" head="schema Ticket" open="{" close="}"`},
 		{"schema alias", `export schema Code = "a" | "b"`,
 			`declaration schema alias range="export schema Code = \"a\" | \"b\"" head="schema Code"`},
-		{"block param", `const v = withSpan("load") { return 1 }`,
-			`block-param range="withSpan(\"load\") { return 1 }" head="withSpan(\"load\")" open="{" close="}"`},
 		{"do", `const v = do { 2 }`,
 			`do range="do { 2 }" word="do" open="{" close="}"`},
 		{"fork", `function f() { const t = fork read(); fork { poll() } }`,

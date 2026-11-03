@@ -458,7 +458,8 @@ func TestFormatRejects(t *testing.T) {
 	identity := func(text string) (string, error) { return text, nil }
 	cases := []struct{ name, source, message string }{
 		{"syntax error", "const x = (\n", "1:"},
-		{"comment between a call and its block", "const v = withSpan(\"x\") /* why */ {\n  return 1\n}\n", "comment inside VibeLang syntax"},
+		{"newline declaration followed by a retired block", "schema\nUser { id: string }", "2:1"},
+		{"comment between a call and its block", "const v = withSpan(\"x\") /* why */ {\n  return 1\n}\n", "expected"},
 		{"comment between try clauses", "function f() {\n  try {\n    a()\n  } handle Ask.answer(q) {\n    resume(true)\n  } // next\n  catch (e) {\n    c()\n  }\n}\n", "comment between the clauses"},
 		// A module body's own syntax errors, which the .vibe file's tree does
 		// not hold (D283), are reported at their place in the .vibe file.
@@ -486,7 +487,7 @@ func TestFormatRejects(t *testing.T) {
 func TestFormatRefusesChangedPrograms(t *testing.T) {
 	t.Parallel()
 	swapped := func(text string) (string, error) { return strings.Replace(text, "a + b", "a - b", 1), nil }
-	if _, err := Format("x.vibe", "const v = withSpan(\"x\") { return a + b }\n", swapped); err == nil || !strings.Contains(err.Error(), "changed the program") {
+	if _, err := Format("x.vibe", "const v = withSpan(effect { return a + b }, \"x\")\n", swapped); err == nil || !strings.Contains(err.Error(), "changed the program") {
 		t.Fatalf("got %v, want a changed-program error", err)
 	}
 	// A module body's tree is checked too, though the .vibe file's tree holds

@@ -29,7 +29,7 @@ function g(n: number) { return n |> (% + (2 |> % * 3)) }`},
 	{"fibers", `function f(items: number[]) { const task = fork read(); const value = join task; const all = join [task]; for concurrent(2) (const item of items) write(item); return { value, all } }`},
 	{"await-operations", `function f() { const all = await.all [read(), do { 2 }]; const settled = await.allSettled { one: read() }; const race = await.race [read()]; return await.any [read()] }`},
 	{"hatches", `function f() { const a = sync((n) => n + 1, read()); const b = try read(); const c = try program; return callback((resume) => resume(a + b + c)) }`},
-	{"blocks", `function f() { const value = do { const x = read(); x + 1 }; return Effect.retry({ times: 2 }) { value } }`},
+	{"blocks", `function f() { const value = do { const x = read(); x + 1 }; return Effect.retry(effect { return value }, { times: 2 }) }`},
 	{"catches", `function f() { return read() catch (e) => 0 }
 function g() { try { return read() } catch (e: Gone) { return e.id } finally (exit) { write(exit) } }`},
 	{"primitives", `function f() { uninterruptible { restore { read() } }; return throw new Error("gone") }`},
@@ -168,13 +168,13 @@ func TestCurriedPipeSyntax(t *testing.T) {
 	}
 }
 
-func TestBlockParamPostfixSyntax(t *testing.T) {
+func TestExplicitBlockArgumentPostfixSyntax(t *testing.T) {
 	for _, source := range []string{
-		`const x = f { return 1 }.value`,
-		`const x = f { return 1 }[0]`,
-		`const x = f { return 1 }(2)`,
-		`const x = f { return 1 }?.value`,
-		`const x = f { return 1 }.g { return 2 }.value`,
+		`const x = f(() => { return 1 }).value`,
+		`const x = f(() => { return 1 })[0]`,
+		`const x = f(() => { return 1 })(2)`,
+		`const x = f(() => { return 1 })?.value`,
+		`const x = f(() => { return 1 }).g(() => { return 2 }).value`,
 	} {
 		checkSyntaxRoundTrip(t, source)
 	}

@@ -148,7 +148,7 @@ func TestSpliceMutation(t *testing.T) {
 	for _, seed := range []struct {
 		name  string
 		state uint64
-	}{{"original", 13}, {"rare-block-param", 12}} {
+	}{{"original", 13}, {"rare-function-body", 12}} {
 		t.Run(seed.name, func(t *testing.T) { testSpliceMutation(t, seed.state) })
 	}
 }

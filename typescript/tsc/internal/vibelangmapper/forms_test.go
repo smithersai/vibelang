@@ -154,7 +154,7 @@ export function f() { return Effect.sync(() => Date.now()) }`)
 func TestBlockIsTheLastArgument(t *testing.T) {
 	// D376: a block is its call's last argument, whatever the callee.
 	// withSpan's data-last form takes its options there, never the program.
-	r := resolve(t, `export function f() {
+	r := resolveTrailingMigration(t, `export function f() {
   return withSpan("load") {
     return 1
   }
@@ -164,7 +164,7 @@ func TestBlockIsTheLastArgument(t *testing.T) {
 		t.Errorf("withSpan block = %+v, want its last argument, which is not the program", d)
 	}
 	// Layer.effect(Key) { … }: the data-first form takes the program last.
-	r = resolve(t, `service Users { find(id: string): string!! }
+	r = resolveTrailingMigration(t, `service Users { find(id: string): string!! }
 export const UsersLive = Layer.effect(Users) {
   return { find(id) { return id } }
 }`)
@@ -172,7 +172,7 @@ export const UsersLive = Layer.effect(Users) {
 		t.Errorf("Layer.effect block = %+v, want a program from the table", d)
 	}
 	// A block after the pipe topic is the data-first form's last argument.
-	r = resolve(t, `import { Effect } from "effect"
+	r = resolveTrailingMigration(t, `import { Effect } from "effect"
 export function f() {
   return Effect.succeed({}) |> Effect.bind(%, "value") {
     return 1
@@ -406,6 +406,34 @@ func resolve(t *testing.T, text string) resolved {
 	return resolved{Resolver: NewResolver(file, table), text: text, file: file}
 }
 
+// resolveTrailingMigration retains the old form-classification evidence only
+// in the private decoder. Ordinary resolver tests keep the default parser.
+func resolveTrailingMigration(t *testing.T, text string) resolved {
+	t.Helper()
+	table, err := DefaultTable()
+	if err != nil {
+		t.Fatal(err)
+	}
+	file := parser.ParseSourceFile(ast.SourceFileParseOptions{
+		FileName:                     tspath.RootedFilePathFromAbsolute("/test.vibe"),
+		VibeLangLegacyTrailingBlocks: true,
+	}, text, core.ScriptKindTS)
+	return resolved{Resolver: NewResolver(file, table), text: text, file: file}
+}
+
+func TestResolverHasNoOrdinaryTrailingBlock(t *testing.T) {
+	r := resolve(t, "f() { return 1 }")
+	if len(r.file.Diagnostics()) == 0 {
+		t.Fatal("retired trailing block parsed without native errors")
+	}
+	calls := r.find("f()", func(n *ast.Node) bool {
+		return ast.IsCallExpression(n) && formsIsBlockCall(r.text, n)
+	})
+	if len(calls) != 0 {
+		t.Fatal("ordinary resolver received a synthesized trailing argument")
+	}
+}
+
 // find returns the nodes of kind accepted whose text starts with prefix.
 func (r resolved) find(prefix string, accept func(*ast.Node) bool) []*ast.Node {
 	var out []*ast.Node
@@ -497,7 +525,7 @@ export function f() {
 }
 
 func TestResolverSyntaxContexts(t *testing.T) {
-	r := resolve(t, `interface LineFile { readLine(): Effect<string | undefined, never, never> }
+	r := resolveTrailingMigration(t, `interface LineFile { readLine(): Effect<string | undefined, never, never> }
 service Banner {
   text(title: string): string!!
   static make(): Banner!! {
@@ -542,7 +570,7 @@ func TestBlockOnAValueIsItsLastArgument(t *testing.T) {
 	// argument is Semaphore's own, which returns a function of the program.
 	// The block is the call's last argument (D376), which no receiver's
 	// withPermits takes, so the table gives it no class.
-	r := resolve(t, `export function f() {
+	r := resolveTrailingMigration(t, `export function f() {
   const semaphore = Semaphore.make(1)
   return semaphore.withPermits(1) {
     return "guarded"
@@ -582,7 +610,7 @@ export const bumped = Effect.succeed(1).flatMap((n) => Effect.succeed(n + 1))`)
 }
 
 func TestResolverNeedsAChoice(t *testing.T) {
-	r := resolve(t, `import { route } from "./helpers.ts"
+	r := resolveTrailingMigration(t, `import { route } from "./helpers.ts"
 const hooks: { onResume?: (n: number) => void } = {}
 let maxDepth = 0
 function double(x: number): number { return x * 2 }

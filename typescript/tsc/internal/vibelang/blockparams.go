@@ -5,14 +5,11 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/scanner"
 )
 
-// Block params (D188, https://github.com/samuelgoto/proposal-block-params):
-// in a .vibe file, a block on the same line after a call or a name is a
-// program passed to it. A block param is always its call's last argument
-// (D376): the parser writes `f(args) { block }` as f(args, () => { block })
-// and `f { block }` as f(() => { block }), and the checker and the lowering
-// see an ordinary call. The callee's type never moves the block. Through
-// VibeLang 0.0.10 an Effect dual took the block in place of its program;
-// dual_block_migration.go keeps that rule as a recorder only (D382).
+// Retired block-parameter decoding is private to migration (VIP-11). It writes
+// the old callback as the call's last argument so diagnostics and codemods can
+// recover its original form. Ordinary parsing never constructs these calls.
+// The pre-0.0.10 Effect-dual placement is retained separately by
+// dual_block_migration.go.
 
 // isBlockParamCall reports whether call passes a block param: its last
 // argument is an arrow function with no parameters and a block body, written

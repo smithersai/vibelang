@@ -2403,7 +2403,12 @@ type SourceFile struct {
 	data   map[sourceFileDataKey]any
 
 	// Fields set by parser
-	VibeLangSchemaGenerics      []SchemaGenericReference
+	VibeLangSchemaGenerics []SchemaGenericReference
+
+	// VibeLangDeniedTrailingBlock marks a retired same-line brace. It requests
+	// compatibility diagnostics without admitting that form into the AST.
+	VibeLangDeniedTrailingBlock bool
+
 	diagnostics                 []*Diagnostic
 	jsDiagnostics               []*Diagnostic
 	jsdocDiagnostics            []*Diagnostic

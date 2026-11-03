@@ -1,7 +1,8 @@
 main.vibe(15,19): error TS2769
+main.vibe(15,27): error TS1005
 main.vibe(21,18): error TS2345
+main.vibe(21,30): error TS1005
+main.vibe(28,35): error TS1005
 main.vibe(28,35): error TS2554
 main.vibe(34,19): error TS2769
-main.vibe(38,11): error EK0502
-main.vibe(38,39): error EK0502
-main.vibe(38,54): error EK0502
+main.vibe(34,30): error TS1005

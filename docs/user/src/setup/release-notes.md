@@ -630,6 +630,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Declaration parity checks discarded named local export aliases and could report renamed public exports as identical; they now compare those exports alongside their declarations, including names that coincide with imported bindings.
 - The restore-region validation fixture called its service key as `Svc()` and failed with `TS2348`; it now reads it with `try Svc`, preserving the expected values across `provide` and interruption scopes.
 
+
 - Migrating an Effect pipeline could change its public declaration from an expanded intersection to a named alias, as in opencode's reconnect service; the quick fix now keeps the native `.pipe(...)` when uncurrying a stage would change inferred type names.
 - After VIP-1, a `catch` passed where an Effect is expected, as in `FiberMap.run(map, key, (effect { … }) catch effect (e) => …)`, ran instead of being passed, and `vibelang --fix --fix-vip-only` left it; the migration now writes it as `effect { return … catch … }`, the program the old compiler passed.
 
@@ -731,6 +732,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - VIP-1's written-return-type example used the bare type `Effect<User, NotFound, Users>`, which is not a VibeLang form; it now writes `User!NotFound!Users`, as chapter 1 does.
 - VIP-5's opening example still used the removed value handler `fetchUser(id) catch guest`, which no longer parses; it now writes `catch () => guest`.
 - The specification's `EK1101` trigger, "a `{` on the same line after a name, a property access or a call", read as covering `effect { … }`, `match (x) { … }` and declaration heads, and Appendix C gave the trailing-block denial two repairs where `EK1101` has three; the trigger now excludes every `{` a production reads and Appendix C lists the same three repairs.
+- A denied trailing block still became an implicit callback during parsing; ordinary compilation now leaves the call and block to TypeScript, while `EK1101`, `vibelang --fix` and editor quick fixes keep their existing messages and rewrites.
 - The specification gave two different spellings for the `effect` import a declaration file adds, `import type { Effect, Stream }` and `import { Effect }`; it now uses the value import throughout, as the compiler and the Effect TypeScript twin's declaration write it.
 - The specification said how a declaration spells an import of a `.vibe` module but not of a `.vibex` one; it now gives VIP-39's default, `./x.jsx` under `"jsx": "preserve"` and `./x.js` otherwise, and says the other `declarationImportStyle` settings are not yet decided for `.vibex`.
 - The specification applied `vibelang.declarationImportStyle` to every emitted declaration, which left open whether a source-adjacent `x.d.vibe.ts` sidecar changes its `./b.vibe` import; it now says the setting spells package declarations only, a sidecar keeps `./b.vibe` as the compiler writes it, and VIP-27 and VIP-30 publish the option.

@@ -12,22 +12,26 @@ import (
 func TestMalformedRegionProjection(t *testing.T) {
 	const source = "0000000000000000000000000000000000000000000(A0{0try {000000000000000(00}(}"
 	checking := Project(source, testContext)
-	if checking.Text != source {
-		t.Fatalf("invalid edits must preserve the original text: %q", checking.Text)
+	// Native recovery no longer synthesizes the trailing block that made
+	// this witness produce overlapping edits. Preserve its bytes and mapping
+	// even when the normal prelude marker precedes the invalid input.
+	if !strings.HasSuffix(checking.Text, source) {
+		t.Fatalf("invalid edit lost source text: %q", checking.Text)
 	}
+	assertValidMap(t, checking, source)
 	executable := Executable(source, testContext)
-	if executable.Text != "" {
-		t.Fatalf("invalid edits must not emit executable text: %s", executable.Text)
+	if executable.Text != "" && !strings.HasSuffix(executable.Text, source) {
+		t.Fatalf("invalid edit lost executable source bytes: %q", executable.Text)
 	}
-	for _, projection := range []Projection{checking, executable} {
-		if len(projection.Diagnostics) == 0 {
-			t.Fatal("invalid edit range was not diagnosed")
+	assertValidMap(t, executable, source)
+	js, _, diagnostics := Emit(source, testContext)
+	if strings.Contains(js, "=>") || len(diagnostics) == 0 {
+		t.Fatalf("native recovery must diagnose the source without a callback: %q; %v", js, diagnostics)
+	}
+	for _, d := range diagnostics {
+		if d.Code != CodeExecSyntax {
+			t.Fatalf("expected native syntax diagnostic: %+v", d)
 		}
-		diagnostic := projection.Diagnostics[len(projection.Diagnostics)-1]
-		if diagnostic.Code != CodeUnprojectedForm || diagnostic.Start < 0 || diagnostic.Start > len(source) || !strings.Contains(diagnostic.Message, "invalid or overlapping edits") {
-			t.Fatalf("unexpected diagnostic: %+v", diagnostic)
-		}
-		assertValidMap(t, projection, source)
 	}
 }
 

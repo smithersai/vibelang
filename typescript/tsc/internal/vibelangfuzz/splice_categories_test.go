@@ -19,7 +19,7 @@ var spliceCategoryFixtures = [spliceCategories]struct{ key, text string }{
 	spliceObjectMember: {"object-member", "const x = { a: 1, b: 2 };"},
 	spliceTypeMember:   {"type-member", "interface I { a: number; b: string; }"},
 	spliceArm:          {"match-arm", "const x = match (0) { when 0: 1; when 1: 2; };"},
-	spliceBlockParam:   {"block-param", "f() { 1 }; f() { 2 };"},
+	spliceFunctionBody: {"function-body", "f(() => { 1 }); f(() => { 2 });"},
 	spliceDeclaration:  {"declaration", "const a = 1; const b = 2;"},
 }
 
@@ -82,8 +82,12 @@ func FuzzSpliceMutation(f *testing.F) {
 			f.Add(fixture.key + "\x00" + string([]byte{0, byte(mode), 0}))
 		}
 	}
+	f.Add("block-param\x00\x00\x02\x00") // replay the historical keyed slot
 	f.Fuzz(func(t *testing.T, input string) {
 		key, rest, named := strings.Cut(input, "\x00")
+		if key == "block-param" {
+			key = "function-body"
+		} // old saved category key, same numeric slot
 		category := spliceCategory(0)
 		if named {
 			found := false

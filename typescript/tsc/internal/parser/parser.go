@@ -127,6 +127,9 @@ type Parser struct {
 	vibelangDoOrder          []*doExpression             // the same, in source order
 	vibelangDoSites          map[*ast.Node]*ast.Node     // each do completion temporary's declaration to the reference at the do's site (vibelang_do.go)
 	vibelangSchemaGenerics   []ast.SchemaGenericReference
+
+	// VIP-11 diagnostic marker, separate from syntax-extension state.
+	vibelangDeniedTrailingBlock bool // request migration diagnostics; never consume its block
 }
 
 func newParser() *Parser {
@@ -367,6 +370,7 @@ func (p *Parser) parseErrorAtRange(loc core.TextRange, message *diagnostics.Mess
 }
 
 type ParserState struct {
+	vibelangDeniedTrailingBlock bool
 	vibelangFiberContext        bool
 	scannerState                scanner.ScannerState
 	contextFlags                ast.NodeFlags
@@ -381,6 +385,7 @@ type ParserState struct {
 
 func (p *Parser) mark() ParserState {
 	return ParserState{
+		vibelangDeniedTrailingBlock: p.vibelangDeniedTrailingBlock,
 		vibelangFiberContext:        p.vibelangFiberContext,
 		scannerState:                p.scanner.Mark(),
 		contextFlags:                p.contextFlags,
@@ -395,6 +400,7 @@ func (p *Parser) mark() ParserState {
 }
 
 func (p *Parser) rewind(state ParserState) {
+	p.vibelangDeniedTrailingBlock = state.vibelangDeniedTrailingBlock
 	p.vibelangFiberContext = state.vibelangFiberContext
 	p.scanner.Rewind(state.scannerState)
 	p.token = p.scanner.Token()
@@ -522,6 +528,7 @@ func (p *Parser) finishSourceFile(result *ast.SourceFile, isDeclarationFile bool
 	result.Pragmas = getCommentPragmas(&p.factory, p.sourceText)
 	p.processPragmasIntoFields(result)
 	result.SetDiagnostics(attachFileToDiagnostics(p.diagnostics, result))
+	result.VibeLangDeniedTrailingBlock = p.vibelangDeniedTrailingBlock
 	result.SetJSDocDiagnostics(attachFileToDiagnostics(p.jsdocDiagnostics, result))
 	result.IsDeclarationFile = isDeclarationFile
 	result.LanguageVariant = p.languageVariant
@@ -5909,9 +5916,14 @@ func (p *Parser) parseCallExpressionRest(pos int, expression *ast.Expression) *a
 			name := p.createMissingIdentifier()
 			expression = p.finishNode(p.factory.NewPropertyAccessExpression(expression, questionDotToken, name, ast.NodeFlagsOptionalChain), pos)
 		}
-		if p.isStartOfVibeLangBlockParam(expression) {
-			expression = p.parseVibeLangBlockParam(pos, expression) // f(args) { block } (vibelang_blocks.go)
-			continue                                                // its result takes the same postfix operations as any call
+		if p.isLegacyTrailingBlockStart(expression) {
+			if p.opts.VibeLangLegacyTrailingBlocks {
+				expression = p.parseLegacyTrailingBlock(pos, expression)
+				continue
+			}
+			// VIP-11: leave the expression and brace to native parsing. The
+			// checker privately decodes the old form for its exact diagnostic.
+			p.vibelangDeniedTrailingBlock = true
 		}
 		break
 	}

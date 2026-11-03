@@ -6,12 +6,15 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/bundled"
 	"github.com/microsoft/TypeScript/tsc/internal/compiler"
 	"github.com/microsoft/TypeScript/tsc/internal/core"
+	"github.com/microsoft/TypeScript/tsc/internal/diagnostics"
+	"github.com/microsoft/TypeScript/tsc/internal/ls"
 	"github.com/microsoft/TypeScript/tsc/internal/ls/lsconv"
 	"github.com/microsoft/TypeScript/tsc/internal/lsp/lsproto"
 	"github.com/microsoft/TypeScript/tsc/internal/parser"
@@ -85,53 +88,68 @@ func TestTrailingBlockFixKeepsTheEmit(t *testing.T) {
 			"export function f() { return test(\"outer\", effect () => { return try Effect.scoped(effect { return twice(() => { return 3 }) }) }) }", false},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			source := trailingBlockPrelude + test.source
-			p, file, _, _ := editorProgram(t, source)
-			errors := errorsOf(t, source)
-			var ek1101 []*ast.Diagnostic
-			others := 0
-			for _, d := range errors {
-				switch {
-				case d.Source() == diagnosticSource && d.Code() == EK1101.Code:
-					ek1101 = append(ek1101, d)
-				case !test.program && d.Code() == 2345:
-				default:
-					others++
-				}
-			}
-			if len(ek1101) == 0 || others != 0 || source[ek1101[0].Pos():ek1101[0].End()] != "{" {
-				t.Fatalf("errors %v, want EK1101 at each block's brace", errors)
-			}
-			before := emittedJS(t, p)
-			result := FixProjectWithOptions(t.Context(), bundled.WrapFS(osvfs.FS()), bundled.LibPath(), p.CommandLine(), FixOptions{MigrationOnly: true})
-			if len(result.Refused) != 0 || len(result.Files) != 1 {
-				t.Fatalf("migration: %+v", result)
-			}
-			fixed := result.Files[file.FileName()]
-			if fixed.Text != trailingBlockPrelude+test.want {
-				t.Fatalf("--fix writes\n%s\nwant\n%s", fixed.Text, trailingBlockPrelude+test.want)
-			}
-			if errors := errorsOf(t, fixed.Text); len(errors) != 0 {
-				t.Fatalf("fixed source reports %v", errors)
-			}
-			if err := os.WriteFile(file.FileName().AsString(), []byte(fixed.Text), 0600); err != nil {
-				t.Fatal(err)
-			}
-			again := FixProjectWithOptions(t.Context(), bundled.WrapFS(osvfs.FS()), bundled.LibPath(), p.CommandLine(), FixOptions{MigrationOnly: true})
-			if len(again.Files) != 0 || len(again.Refused) != 0 {
-				t.Fatalf("second fix changed the project: %+v", again)
-			}
-			if !test.program {
-				return
-			}
-			// The unnamed package's directory is part of a derived service
-			// key (D1). Recheck at the original path, as --fix actually does.
-			after := compiler.NewProgram(compiler.ProgramOptions{
-				Config: p.CommandLine(),
-				Host:   compiler.NewCompilerHost(bundled.WrapFS(osvfs.FS()), bundled.LibPath(), nil, nil, nil),
-			})
-			if b, a := before["main.js"], emittedJS(t, after)["main.js"]; b == "" || trailingBlockEmitShape(t, a) != trailingBlockEmitShape(t, b) {
-				t.Fatalf("the rewrite changes the emit\nbefore:\n%s\nafter:\n%s", b, a)
+			for _, options := range []FixOptions{{MigrationOnly: true}, {}} {
+				t.Run(fmt.Sprintf("migrationOnly=%t", options.MigrationOnly), func(t *testing.T) {
+					source := trailingBlockPrelude + test.source
+					p, file, _, _ := editorProgram(t, source)
+					errors := trailingBlockErrorsOf(t, source)
+					var ek1101 []*ast.Diagnostic
+
+					for _, d := range errors {
+						if d.Source() == diagnosticSource && d.Code() == EK1101.Code {
+							ek1101 = append(ek1101, d)
+						}
+					}
+					legacy := trailingBlockMigrationProgram(p)
+					legacyFile := legacy.GetSourceFile(file.FileName())
+					var old []*ast.Diagnostic
+					for _, d := range legacy.GetSemanticDiagnostics(t.Context(), legacyFile) {
+						if d.Source() == diagnosticSource && d.Code() == EK1101.Code {
+							old = append(old, d)
+						}
+					}
+					if len(ek1101) == 0 || len(ek1101) != len(old) {
+						t.Fatalf("EK1101 changed: normal %v; legacy %v", ek1101, old)
+					}
+					for i, d := range ek1101 {
+						want := old[i]
+						if d.String() != want.String() || d.Loc() != want.Loc() || d.Category() != want.Category() ||
+							source[d.Pos():d.End()] != "{" {
+							t.Fatalf("EK1101 changed: %v at %v; legacy %v at %v", d, d.Loc(), want, want.Loc())
+						}
+					}
+					before := emittedJS(t, legacy)
+					result := FixProjectWithOptions(t.Context(), bundled.WrapFS(osvfs.FS()), bundled.LibPath(), p.CommandLine(), options)
+					if len(result.Refused) != 0 || len(result.Files) != 1 {
+						t.Fatalf("migration: %+v", result)
+					}
+					fixed := result.Files[file.FileName()]
+					if options.MigrationOnly && fixed.Text != trailingBlockPrelude+test.want {
+						t.Fatalf("--fix writes\n%s\nwant\n%s", fixed.Text, trailingBlockPrelude+test.want)
+					}
+					if errors := errorsOf(t, fixed.Text); len(errors) != 0 {
+						t.Fatalf("fixed source reports %v", errors)
+					}
+					if err := os.WriteFile(file.FileName().AsString(), []byte(fixed.Text), 0600); err != nil {
+						t.Fatal(err)
+					}
+					again := FixProjectWithOptions(t.Context(), bundled.WrapFS(osvfs.FS()), bundled.LibPath(), p.CommandLine(), options)
+					if len(again.Files) != 0 || len(again.Refused) != 0 {
+						t.Fatalf("second fix changed the project: %+v", again)
+					}
+					if !options.MigrationOnly || !test.program {
+						return
+					}
+					// The unnamed package's directory is part of a derived service
+					// key (D1). Recheck at the original path, as --fix actually does.
+					after := compiler.NewProgram(compiler.ProgramOptions{
+						Config: p.CommandLine(),
+						Host:   compiler.NewCompilerHost(bundled.WrapFS(osvfs.FS()), bundled.LibPath(), nil, nil, nil),
+					})
+					if b, a := before["main.js"], emittedJS(t, after)["main.js"]; b == "" || trailingBlockEmitShape(t, a) != trailingBlockEmitShape(t, b) {
+						t.Fatalf("the rewrite changes the emit\nbefore:\n%s\nafter:\n%s", b, a)
+					}
+				})
 			}
 		})
 	}
@@ -158,14 +176,18 @@ func TestTrailingBlockFixRefusesAComment(t *testing.T) {
 // (dual_block_migration.go), with no EK1101 beside it.
 // Chapter 007 / interargument comment refusal and dual compatibility: docs/design/src/007-tooling.md#c3c81017075e1310
 func TestTrailingBlockLeavesDualBlocksToTheirMigration(t *testing.T) {
-	errors := errorsOf(t, dualBlockWork+"export function f() { return withSpan(\"load\") { return work() } }")
+	errors := trailingBlockErrorsOf(t, dualBlockWork+"export function f() { return withSpan(\"load\") { return work() } }")
 	for _, d := range errors {
 		if d.Code() == EK1101.Code {
 			t.Fatalf("a dual block reports EK1101: %v", errors)
 		}
 	}
-	if len(errors) != 1 {
-		t.Fatalf("errors %v, want the dual block's own", errors)
+	found := false
+	for _, d := range errors {
+		found = found || hasDualBlockMigrationNote(d)
+	}
+	if !found {
+		t.Fatalf("errors %v lack the dual block's migration", errors)
 	}
 }
 
@@ -196,7 +218,7 @@ func TestTrailingBlockCodeAction(t *testing.T) {
 	source := trailingBlockPrelude + "export const live = Layer.effect(Users) { return { effect find(id: string) { return id } } }"
 	program, file, service, converters := editorProgram(t, source)
 	var diagnostic *ast.Diagnostic
-	for _, d := range program.GetSemanticDiagnostics(t.Context(), file) {
+	for _, d := range program.GetSyntacticDiagnostics(t.Context(), file) {
 		if d.Code() == EK1101.Code {
 			diagnostic = d
 		}
@@ -263,4 +285,137 @@ func trailingBlockEmitShape(t *testing.T, text string) string {
 	}
 	visit(file.AsNode())
 	return shape.String()
+}
+
+// legacyTrailingBlockErrorsOf checks the migration decoder rather than treating
+// retired syntax as an accepted ordinary program.
+func legacyTrailingBlockErrorsOf(t *testing.T, source string) []*ast.Diagnostic {
+	t.Helper()
+	p, file, _, _ := editorProgram(t, source)
+	p = trailingBlockMigrationProgram(p)
+	file = p.GetSourceFile(file.FileName())
+	var errors []*ast.Diagnostic
+	for _, d := range p.GetSemanticDiagnostics(t.Context(), file) {
+		if d.Category() == diagnostics.CategoryError {
+			errors = append(errors, d)
+		}
+	}
+	return errors
+}
+
+// The program holds an unsaved editor snapshot; disk deliberately has no call.
+// Diagnostics and fixes must use the snapshot without writing to the disk.
+func TestTrailingBlockUnsavedCodeAction(t *testing.T) {
+	for _, test := range []struct{ source, want string }{
+		{"export const n = twice() { return 2 }", "export const n = twice(() => { return 2 })"},
+		{"export const live = Layer.effect(Users) { return { effect find(id: string) { return id } } }", "export const live = Layer.effect(Users, effect { return { effect find(id: string) { return id } } })"},
+		{"export const n = test(\"one\") { return 1 }", "export const n = test(\"one\", effect () => { return 1 })"},
+		{"export const n = twice() /* keep */ { return 2 }", ""},
+	} {
+		t.Run(test.source, func(t *testing.T) {
+			source := trailingBlockPrelude + test.source
+			program, file, service, converters := editorProgram(t, source)
+			// Equal line lengths make the editor coordinate fixture independent
+			// of the disk contents; every line on disk is only a comment.
+			lines := strings.Split(source, "\n")
+			for i, line := range lines {
+				if len(line) >= 2 {
+					lines[i] = "//" + strings.Repeat(" ", len(line)-2)
+				}
+			}
+			sentinel := strings.Join(lines, "\n")
+			if err := os.WriteFile(file.FileName().AsString(), []byte(sentinel), 0600); err != nil {
+				t.Fatal(err)
+			}
+			found := false
+			for _, diagnostic := range program.GetSyntacticDiagnostics(t.Context(), file) {
+				if diagnostic.Source() != diagnosticSource || diagnostic.Code() != EK1101.Code {
+					continue
+				}
+				found = true
+				actions, err := trailingBlockFix.GetCodeActions(t.Context(), &ls.CodeFixContext{
+					SourceFile: file, Span: diagnostic.Loc(), ErrorCode: EK1101.Code, Program: program, LS: service,
+				})
+				if err != nil {
+					t.Fatal(err)
+				}
+				if test.want == "" {
+					if len(actions) != 0 {
+						t.Fatalf("comment refusal changed: %+v", actions)
+					}
+				} else {
+					if len(actions) != 1 {
+						t.Fatalf("want one snapshot action, got %+v", actions)
+					}
+					if got := applyEditorEdits(t, file, converters, actions[0].Changes); got != trailingBlockPrelude+test.want {
+						t.Fatalf("snapshot rewrite:\n%s\nwant:\n%s", got, trailingBlockPrelude+test.want)
+					}
+				}
+			}
+			if !found {
+				t.Fatal("snapshot lost EK1101")
+			}
+			disk, err := os.ReadFile(file.FileName().AsString())
+			if err != nil || string(disk) != sentinel {
+				t.Fatalf("quick fix wrote the disk: %v", err)
+			}
+		})
+	}
+}
+
+func trailingBlockErrorsOf(t *testing.T, source string) []*ast.Diagnostic {
+	t.Helper()
+	p, file, _, _ := editorProgram(t, source)
+	var result []*ast.Diagnostic
+	for _, d := range p.GetSyntacticDiagnostics(t.Context(), file) {
+		if d.Category() == diagnostics.CategoryError {
+			result = append(result, d)
+		}
+	}
+	return result
+}
+
+// project.compilerHost forbids parser-cache acquisition after a snapshot is
+// finalized. A migration can discover a dependency the recovered native AST
+// did not load, and must acquire it through its own host over the frozen FS.
+type finalizedTrailingHost struct {
+	compiler.CompilerHost
+	finalized *atomic.Bool
+}
+
+func (h finalizedTrailingHost) GetSourceFile(opts ast.SourceFileParseOptions) *ast.SourceFile {
+	if h.finalized.Load() {
+		panic("acquisition after snapshot initialization")
+	}
+	return h.CompilerHost.GetSourceFile(opts)
+}
+
+func TestTrailingBlockFinalizedHost(t *testing.T) {
+	source := trailingBlockPrelude + "export const n = twice() { return 2 }"
+	initial, file, _, _ := editorProgram(t, source)
+	var finalized atomic.Bool
+	original := compiler.NewProgram(compiler.ProgramOptions{
+		Config: initial.CommandLine(),
+		Host:   finalizedTrailingHost{CompilerHost: initial.Host(), finalized: &finalized},
+	})
+	finalized.Store(true)
+	migration := trailingBlockMigrationProgram(original)
+	extra := tspath.RootedFilePathFromAbsolute(filepath.ToSlash(filepath.Join(filepath.Dir(file.FileName().AsString()), "extra.ts")))
+	if err := os.WriteFile(extra.AsString(), []byte("export const value = 42"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	loaded := migration.Host().GetSourceFile(ast.SourceFileParseOptions{FileName: extra})
+	if loaded == nil || loaded.Text() != "export const value = 42" {
+		t.Fatal("migration did not acquire its new dependency")
+	}
+	diagnostics := original.GetSyntacticDiagnostics(t.Context(), original.GetSourceFile(file.FileName()))
+	found := false
+	for _, d := range diagnostics {
+		if d.Source() == diagnosticSource && d.Code() == EK1101.Code {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatalf("finalized snapshot lost EK1101: %v", diagnostics)
+	}
 }

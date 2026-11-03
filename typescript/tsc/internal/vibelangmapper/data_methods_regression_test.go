@@ -56,21 +56,22 @@ func TestD252RegressionNullableOptionalChain(t *testing.T) {
 	assert.Equal(t, len(native.Diagnostics), 0, "%v", native.Diagnostics)
 }
 
-// TestD252RegressionBareMethodBlock pins the checking and executable spellings
-// of a bare block without consuming its brace or losing its form diagnostic.
+// VIP-11: the ordinary mapper leaves a retired bare method block to native
+// parsing. Its source spans survive and Emit diagnoses the invalid rendering.
 func TestD252RegressionBareMethodBlock(t *testing.T) {
 	source := `import { lines } from "./opaque.js"; const audited = lines.ensuring { log("released"); log("finished") }`
 	projection := Project(source, testContext)
-	assert.Equal(t, virtualBody(t, projection), `import { lines } from "./opaque.js"; const audited = lines.ensuring ($dual($gen(function* () { ;(yield* $run(log("released"))); ;(yield* $run(log("finished"))) })))`)
-	assert.Equal(t, len(projection.Diagnostics), 1, "%v", projection.Diagnostics)
-	assert.Equal(t, projection.Diagnostics[0].Code, int32(CodeFormChoice))
-	assertParses(t, projection.Text)
+	assert.Equal(t, virtualBody(t, projection), source)
 	assertValidMap(t, projection, source)
-	executable := Executable(source, testContext)
-	assertParses(t, executable.Text)
-	_, body, ok := strings.Cut(executable.Text, "\n")
-	assert.Assert(t, ok)
-	assert.Equal(t, body, `import { lines } from "./opaque.js"; const audited = $method(lines, "ensuring", [ $dual($gen(function* () { ;(($t = log("released")), $isRun($t) ? (yield* $t) : $t); ;(($t = log("finished")), $isRun($t) ? (yield* $t) : $t) }))], $methodCandidates_ensuring)`)
+	js, _, diagnostics := Emit(source, testContext)
+	assert.Assert(t, !strings.Contains(js, "=>"), "retired block synthesized a callback: %s", js)
+	assert.Assert(t, len(diagnostics) > 0, "retired block must have native syntax diagnostics")
+	nativeSyntax := false
+	for _, d := range diagnostics {
+		nativeSyntax = nativeSyntax || d.Code == CodeExecSyntax
+		assert.Assert(t, d.Start >= 0 && d.Start+d.Length <= len(source), "%v", d)
+	}
+	assert.Assert(t, nativeSyntax, "%v", diagnostics)
 	// This is the complete third block that the docs census materializes.
 	page, err := os.ReadFile("../../../../docs/user/src/stream/058-resourceful-streams.md")
 	assert.NilError(t, err)

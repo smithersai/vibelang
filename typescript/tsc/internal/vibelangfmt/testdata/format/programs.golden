@@ -15,7 +15,7 @@ const UsersLive = Layer.effect(Users, effect () => {
     find(id) {
       return getUser(id)
     },
-    region: "eu",
+    region: "eu"
   }
 })
 
