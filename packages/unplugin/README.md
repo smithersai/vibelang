@@ -104,7 +104,9 @@ an ES module or as CommonJS, with this plugin or from the compiler's output:
 the runtime asks the file the host started which `main` it exports.
 
 Rolldown input arrays and named entry maps exclude generated `.d.vibe.ts`
-sidecars, including those selected by `tsdown` entry globs. Source order
+sidecars, including those selected by `tsdown` entry globs. This includes
+`.d.vibex.ts` sidecars beside JSX sources; the source entries and their public
+aliases remain in the bundle. Source order
 and entry aliases are preserved. Choose the `.vibe` source for a single
 entry.
 
