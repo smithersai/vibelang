@@ -1,0 +1,2 @@
+go test fuzz v1
+string("shape:shorthand\x00repo")

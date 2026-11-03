@@ -107,6 +107,7 @@ const specTests = [
   "TestContractDeclarationParensQuoted",
   "TestReviewSidecarWritesQuoted",
   "TestCatchScopeFixQuoted",
+  "TestCatchObjectFallbackQuoted",
   "TestReviewPatternOptionsQuoted",
   "TestNonrelativeAliasSpellingQuoted",
   "TestHelperReexportDeclarationsQuoted",
