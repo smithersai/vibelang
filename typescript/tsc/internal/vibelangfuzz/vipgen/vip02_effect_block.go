@@ -538,3 +538,39 @@ type doNarrowingProbe struct{ vibe, reference string }
 func (p *doNarrowingProbe) Vibe(w *Writer)   { w.Write(";{ " + p.vibe + " }") }
 func (p *doNarrowingProbe) Effect(w *Writer) { w.Write(";{ " + p.reference + " }") }
 func (p *doNarrowingProbe) Ends() bool       { return true }
+
+// VIP-2's parameter-default return escapes before later defaults or the body.
+// Keep direct do and nested-do neighbours separate from VIP-7's existing
+// match-in-default witness, so a pending match lowering cannot hide these.
+func init() {
+	for _, home := range []string{"function", "arrow", "method"} {
+		for _, form := range []string{"direct", "nested"} {
+			value := "do { log.push(\"first\"); return 9 }"
+			if form == "nested" {
+				value = "do { log.push(\"first\"); const inner = do { if (true) return 9; 0 }; inner }"
+			}
+			params := "a: number = " + value + ", b: number = (log.push(\"later\"), 0)"
+			body := "{ log.push(\"body\"); return a + b }"
+			declaration := "function f(" + params + "): number " + body
+			nativeBody := "{ if (a === undefined) { log.push(\"first\"); return 9 }; if (b === undefined) { log.push(\"later\"); b=0 }; log.push(\"body\"); return a+b }"
+			reference := "function f(a,b) " + nativeBody
+			if home == "arrow" {
+				declaration = "const f = (" + params + "): number => " + body
+				reference = "const f = (a,b) => " + nativeBody
+			}
+			if home == "method" {
+				declaration = "class Box { read(" + params + "): number " + body + " }; const box = new Box(); const f = (a?: number,b?: number): number => box.read(a,b)"
+				reference = "class Box { read(a,b) " + nativeBody + " }; const box = new Box(); const f = (a,b) => box.read(a,b)"
+			}
+			tail := "; return [[f(),f(undefined,3),f(2),f(2,3)],log] }"
+			registerWitness(2, ChapterWitness{
+				Key:     "vip02.do-parameter-return-" + home + "-" + form + "-plain",
+				Chapter: "../vips/0002-effect-blocks-and-do.md",
+				Quote:   "A `return` in a parameter default stays legal, as the pinned proposal says, and acts as `return` at the top of the body:",
+				Vibe:    "function witness(): unknown[] { const log: string[] = []; " + declaration + tail,
+				Effect:  "function witness() { const log = []; " + reference + tail,
+				Cite:    Citation{VIP: 2, Template: "return", Quote: "The behavior replaces the moved-default lowering of the amendments above"},
+			})
+		}
+	}
+}
