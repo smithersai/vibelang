@@ -1,0 +1,2 @@
+go test fuzz v1
+string("import { Effect } from \"effect\"\nexport const example = Effect.fn(\"example\")(function* (prefix = \"x\") {\n  return prefix as string\n})\n")

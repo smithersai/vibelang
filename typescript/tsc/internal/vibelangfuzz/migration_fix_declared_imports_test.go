@@ -41,6 +41,7 @@ func migrationFixImportPrograms() []string {
 				"export const ensure = %s.fn(function* (n: number) {\n  return n + 1\n})\n",
 				"export const two = () => %s.gen(function* () {\n  return 2\n})\n",
 				"export function count(n: number) {\n  return %s.gen(function* () {\n    return n\n  })\n}\n",
+				"export const example = %s.fn(\"example\")(function* (prefix = \"x\") {\n  return prefix as string\n})\n",
 			} {
 				sources = append(sources, prefix+strings.ReplaceAll(body, "%s", alias))
 			}
@@ -53,8 +54,8 @@ func FuzzMigrationFixDeclaredImports(f *testing.F) {
 	startShortBudget(f)
 	programs := migrationFixImportPrograms()
 	if testing.Short() && !toolsFuzzing() {
-		// The corpus keeps the t3code witness; campaigns explore all 16.
-		programs = []string{programs[2], programs[6], programs[9], programs[13]}
+		// The corpus keeps the t3code witness; campaigns explore all 20.
+		programs = []string{programs[2], programs[7], programs[11], programs[16], programs[4], programs[9], programs[14], programs[19]}
 	}
 	for _, source := range programs {
 		f.Add(source)

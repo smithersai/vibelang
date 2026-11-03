@@ -1,0 +1,2 @@
+go test fuzz v1
+string("native-ts:\n-- main.vibe --\nimport { Effect } from \"effect\";\nconst load = Effect.fn(\"load\")(function* (): Effect.fn.Return<number> { return 1; });\nexport const main = () => load();\n")
