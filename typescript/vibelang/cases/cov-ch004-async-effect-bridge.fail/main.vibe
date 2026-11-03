@@ -1,0 +1,9 @@
+// expect: EK4301 EK1001
+// Chapter 004, async-effect-bridge: docs/design/src/004-match.md#ba98d863ca1a7316
+// Chapter 004, async-effect-bridge: docs/design/src/004-match.md#a10b706c73213cab
+export effect function direct() { return async match (true) { default: await Promise.resolve(7); } }
+export function wrong() { return async match (true) { default: try Effect.succeed(7); } }
+
+// Chapter 004 rule: Inside effect code, a direct `async match` is a compile error under the [Promise-bridge rule](003-failures.md#calls-in-effect-code): like a Promise-returning call or `new` expression, it must run inside an explicit bridge's thunk.
+
+// Chapter 004 rule: Its subject, tests and arms form a plain async boundary (`[~Effect, +Await]`): `await` is allowed there and effect `try` is not, as in a nested TypeScript async function.

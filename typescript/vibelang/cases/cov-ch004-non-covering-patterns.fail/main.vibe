@@ -1,0 +1,6 @@
+// expect: EK4701
+// Chapter 004, non-covering-patterns: docs/design/src/004-match.md#392f09aff77a38a0
+export function andPattern(s:"a"|"b"){return match(s){when "a" and String:1;when "b":2;}}
+export function notPattern(s:boolean){return match(s){when not false:1;when false:0;}}
+
+// Chapter 004 rule: `and`, `not`, regex, relational, array, built-in matcher and user-matcher patterns cover nothing, so those arms need a `default`.

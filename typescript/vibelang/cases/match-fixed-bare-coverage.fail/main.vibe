@@ -16,3 +16,8 @@ export function empty(o: Option.Option<number>) {
 export function literal(o: Option.Option<number>) {
   return match (o) { when Option.Some(1): 1; when Option.None: 2; }
 }
+
+// Chapter 004, decided detail 78 (loop round 3, OPUS-6): a bare pattern covers
+// Chapter 004, fixed list payload restrictions do not cover the case: docs/design/src/004-match.md#c239c81eab2ff1fc
+
+// Chapter 004 rule: A fixed pattern (`Option.Some(let v)`, `Option.None`, `Exit.Success(…)`, `Exit.Failure(…)`, `Result.Success(…)`, `Result.Failure(…)`) and a retained error's bare or one-binding extractor cover their case only when their argument list has the required length and every argument pattern is a bare `let` or `const` binding.

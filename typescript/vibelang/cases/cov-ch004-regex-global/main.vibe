@@ -1,0 +1,15 @@
+import { Effect } from "effect"
+// Chapter 004, regex-global: docs/design/src/004-match.md#1daa134746133316
+// Chapter 004, regex-global: docs/design/src/004-match.md#b6691d76c37775c8
+
+function probe(): unknown {
+const regex = /\d/g
+const result = match ("12") { when regex(let a,let b): [a[0],b[0]]; default: []; }
+return [result,regex.lastIndex,Object.hasOwn(RegExp.prototype, (Symbol as any).customMatcher)]
+}
+
+export function main(): Effect.Effect<unknown> { return Effect.sync(probe) }
+
+// Chapter 004 rule: A global extractor returns `Array.from(regexp[Symbol.matchAll](subject))` directly, failing when empty.
+
+// Chapter 004 rule: Calls preserve the regex receiver and the draft's observable property reads and `lastIndex` effects.

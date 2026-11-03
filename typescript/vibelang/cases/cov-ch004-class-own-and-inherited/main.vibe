@@ -1,0 +1,15 @@
+import { Effect } from "effect"
+// Chapter 004, own versus inherited matcher: docs/design/src/004-match.md#26f3ee47721c5fca
+// Chapter 004 rule: A class arm whose class has its own `Symbol.customMatcher` (an own property, `Object.hasOwn(C, Symbol.customMatcher)`) reads and calls that matcher when the pattern runs, as the draft says.
+// Chapter 004, own versus inherited matcher: docs/design/src/004-match.md#26dec2164b73c6f3
+// Chapter 004 rule: A static matcher inherited from a superclass is not an own matcher: for `class B extends A {}`, `when B:` tests `s instanceof B` (decided details 67 and 93).
+function probe(): unknown {
+class A { static [Symbol.customMatcher](s: unknown): boolean { return typeof s === "number" } }
+class B extends A {}
+const subject: unknown = 7
+const forged = Object.create(B.prototype)
+const genuine = new B()
+Object.setPrototypeOf(genuine, null)
+return [subject is A, subject is B, forged is B, genuine is B]
+}
+export function main(): Effect.Effect<unknown> { return Effect.sync(probe) }

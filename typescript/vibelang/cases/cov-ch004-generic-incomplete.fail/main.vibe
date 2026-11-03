@@ -1,0 +1,15 @@
+// expect: EK4701
+// Chapter 004, generic-incomplete: docs/design/src/004-match.md#2de53d07580a26dc
+// Chapter 004, generic-incomplete: docs/design/src/004-match.md#5ad603ae0466cd7d
+// Chapter 004, generic-incomplete: docs/design/src/004-match.md#e4bdd38fdd3776a6
+// Chapter 004, generic-incomplete: docs/design/src/004-match.md#cab27e36e30d9c6c
+export function letters<T extends "A"|"B">(s:T) { return match(s){when "A":1;} }
+export function guarded<T extends {_tag:"A"}|{_tag:"B"}>(s:T){ if(s._tag==="A") return match(s){when {_tag:"A"}:1;};return 0;}
+
+// Chapter 004 rule: If TypeScript still exposes bare `T` after an equality or property guard, its whole constraint remains: the check does not invent extra narrowing from the guard's text.
+
+// Chapter 004 rule: ```vibe function tags<T extends { _tag: "A" } | { _tag: "B" }>(s: T) { return match (s) { when { _tag: "A" }: 1; when { _tag: "B" }: 2; } // exhaustive } function letters<T extends "A" | "B">(s: T) { return match (s) { when "A": 1; } // EK4701: B remains in the constraint } function open<T>(s: T) { return match (s) { when "A": 1; } } // open subject: no EK4701; unmatched execution still TypeError ``` A constrained `T` uses its finite constraint as a conservative domain: missing `B` in the tagged example is likewise `EK4701`; covering both cases suffices for every permitted instantiation.
+
+// Chapter 004 rule: If TypeScript still exposes the bare generic `T` after an equality/property guard, its constraint remains the domain: do not infer extra narrowing from source guard text just for coverage.
+
+// Chapter 004 rule: Native TypeScript may accept a one-case switch or assignment after a bounded literal guard while still reporting the source reference type as bare `T`; detail 210 deliberately keeps that reference's conservative full constraint for coverage.

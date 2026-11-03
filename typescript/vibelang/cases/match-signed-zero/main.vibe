@@ -57,3 +57,7 @@ export function onceNestedIs() {
   const box = { get n() { reads++; return reads === 1 ? -0 : 1 } }
   return [box is { n: -0 }, reads, $zero1]
 }
+
+// Chapter 004, unsigned zero matches both signs: docs/design/src/004-match.md#233a7274b3fbb112
+
+// Chapter 004 rule: Unsigned zero uses `SameValueZero` and covers both signs.

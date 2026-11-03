@@ -1,0 +1,30 @@
+import { Effect } from "effect"
+// Chapter 004, uniform-tag: docs/design/src/004-match.md#ca094597f310ddef
+// Chapter 004, uniform-tag: docs/design/src/004-match.md#481cb28a99ed3500
+// Chapter 004, uniform-tag: docs/design/src/004-match.md#a3119037dbc46489
+// Chapter 004, uniform-tag: docs/design/src/004-match.md#755503db5ce9aff2
+// Chapter 004, uniform-tag: docs/design/src/004-match.md#c0ea8cecf9cf6493
+// Chapter 004, uniform-tag: docs/design/src/004-match.md#25e4ffb4f1876582
+// Chapter 004, uniform-tag: docs/design/src/004-match.md#9896a48b3304cdbf
+
+function probe(): unknown {
+type Subject={_tag:"A"|"B"; x:number}|{_tag:"A"|"B"; y:string}
+function label(s: Subject): number { return match (s) { when {_tag:"A"}: 1; when {_tag:"B"}: 2; } }
+return [label({_tag:"A",x:1}),label({_tag:"B",y:"x"})]
+}
+
+export function main(): Effect.Effect<unknown> { return Effect.sync(probe) }
+
+// Chapter 004 rule: <a id="tagged-members"></a>**Tagged members.** Only `_tag` is a discriminant, Effect's convention, and `EK4701` counts the literal cases of `switch (s._tag)`.
+
+// Chapter 004 rule: Coverage is per normalized member and tag case, even when TypeScript does not narrow the whole subject because every member has the same `_tag` type.
+
+// Chapter 004 rule: A member is tagged when it is an object, interface or class instance and its `_tag` is what TypeScript calls a literal type: a string, number, bigint, boolean, enum, `null` or `undefined` literal, a `unique symbol`, or a union of those.
+
+// Chapter 004 rule: An object pattern with `_tag: "V"` covers case `V` of each `data` variant or tagged member when every other property it tests is a bare key or a `let` or `const` binding that the member declares as required: `"x" in s` removes a member from its false branch only where `x` is required.
+
+// Chapter 004 rule: `tsc --strict` checks the corresponding narrowing on the same shapes.
+
+// Chapter 004 rule: Its whole-subject `never` check is not a coverage oracle for a uniform tag: the pattern still recognizes each member's case.
+
+// Chapter 004 rule: Do not use the native switch's final whole-object `never` proof as a replacement for the stated coverage projection (likewise detail 200's uniform-tag distinction).

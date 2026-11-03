@@ -1,0 +1,8 @@
+// expect: EK4701
+// Chapter 004, optional-tag-coverage: docs/design/src/004-match.md#049c43169bea39bf
+// Chapter 004, optional-tag-coverage: docs/design/src/004-match.md#3e79b1a9af8e6367
+export function tag(s:{_tag?:"A"}){return match(s){when {_tag:"A"}:1;when {_tag:undefined}:0;}}
+
+// Chapter 004 rule: Each of those literals is a case of the member, and an optional `_tag` has the case `undefined`.
+
+// Chapter 004 rule: The `undefined` case of an optional `_tag` is covered only by a bare binding, because `{ _tag: undefined }` tests `"_tag" in s` first and an absent tag fails that test.

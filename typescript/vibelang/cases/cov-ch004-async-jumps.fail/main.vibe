@@ -1,0 +1,18 @@
+// expect: EK0706
+// Chapter 004, async-jumps: docs/design/src/004-match.md#c806404b697a85af
+// Chapter 004, async-jumps: docs/design/src/004-match.md#9f27ae8885d90798
+// Chapter 004, async-jumps: docs/design/src/004-match.md#d8ef0a53190a9e9b
+export function arm() { return async match (true) { default: do { return 7 }; } }
+export function subject() { return async match (do { return 7 }) { default: 0; } }
+export function guard() { return async match (true) { when true and if (do { return true }): 1; default: 0; } }
+export function outer() { while (true) { async match (true) { default: do { break }; }; } }
+
+// Chapter 004, diagnostic ownership and stable assigned codes: docs/design/src/004-match.md#02664103cf881dc8
+
+// Chapter 004, diagnostic ownership and stable assigned codes: docs/design/src/004-match.md#160b8f4ca46e49ad
+
+// Chapter 004 rule: Under VIP-7, a `return` in it, and a `break` or `continue` whose target is outside it, are syntax errors.
+
+// Chapter 004 rule: <a id="async-match-jumps"></a>`EK0706` reports a jump out of an `async match`: a `return` that belongs to the `async match`, or a `break` or `continue` whose target is outside it.
+
+// Chapter 004 rule: The rule covers the subject, patterns, guards and arm expressions, including a `do` expression in them.

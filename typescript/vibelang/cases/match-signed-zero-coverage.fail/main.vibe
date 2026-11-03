@@ -20,3 +20,25 @@ export function allZero(n: 0 | -1) {
 export function bigZero(n: 0n | 1n) {
   return match (n) { when -0n: "zero"; when 1n: "one"; }
 }
+
+// Chapter 004, signed zero arms do not cover collapsed zero type: docs/design/src/004-match.md#8fffbfcf05fe3e27
+// Chapter 004, signed zero arms do not cover collapsed zero type: docs/design/src/004-match.md#5a021dd594879312
+// Chapter 004, signed zero arms do not cover collapsed zero type: docs/design/src/004-match.md#e596a3287b391d59
+// Chapter 004, signed zero arms do not cover collapsed zero type: docs/design/src/004-match.md#672e8016ebbdcff8
+// Chapter 004, signed zero arms do not cover collapsed zero type: docs/design/src/004-match.md#eaf57d8149755d8e
+// Chapter 004, signed zero arms do not cover collapsed zero type: docs/design/src/004-match.md#c94a8bfd6c55f0f2
+// Chapter 004, signed zero arms do not cover collapsed zero type: docs/design/src/004-match.md#c5faa1db6f523307
+
+// Chapter 004 rule: A signed Number literal whose value is zero (`+0`, `-0`, `-0.0`, `+0e0`, and equivalent spellings) covers no zero case: its `SameValue` test distinguishes signs, while TypeScript's `0` type admits both.
+
+// Chapter 004 rule: Even both signed arms together give no whole-case proof; use unsigned zero or `default`.
+
+// Chapter 004 rule: **Signed Number-zero patterns do not cover TypeScript's collapsed zero case.** (live `004-signed-zero-coverage`; qualifies detail 78's literal coverage, VIP-7.) Preserve the pinned runtime tests: a syntactically signed Number NumericLiteral uses `SameValue`, while unsigned literal zero uses `SameValueZero`.
+
+// Chapter 004 rule: Because TypeScript's literal type `0` admits both positive and negative zero, neither a `+0` nor a `-0` pattern alone matches every value of that case.
+
+// Chapter 004 rule: The current conservative algorithm does not combine the two partial signed-zero arms into a new finer proof: use unsigned zero or `default` for that case.
+
+// Chapter 004 rule: ```vibe function label(n: 0 | 1) { return match (n) { when -0: "negative"; when 1: "one"; } } // EK4701: ordinary positive zero is not covered function complete(n: 0 | -1) { return match (n) { when 0: "zero"; when -1: "negative one"; } } // exhaustive: unsigned zero covers both signs; -1 covers its singleton ``` Effect TS: the first match tests `Object.is(n, -0)`, then `n === 1`, and otherwise throws `new TypeError()`; the second tests `n === 0`, then `n === -1`.
+
+// Chapter 004 rule: A positive `0` belongs to the first parameter type yet fails both tests.

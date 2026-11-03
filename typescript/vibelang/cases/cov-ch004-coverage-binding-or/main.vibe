@@ -1,0 +1,15 @@
+import { Effect } from "effect"
+// Chapter 004, coverage-binding-or: docs/design/src/004-match.md#89701065dcda414f
+// Chapter 004, coverage-binding-or: docs/design/src/004-match.md#19563001cfab08be
+
+function probe(): unknown {
+function binding(s:"a"|"b"):string{return match(s){when let v:v;}}
+function either(s:"a"|"b"):number{return match(s){when "a" or "b":1;}}
+return [binding("b"),either("a"),either("b")]
+}
+
+export function main(): Effect.Effect<unknown> { return Effect.sync(probe) }
+
+// Chapter 004 rule: A bare binding (`let x` or `const x`) covers every member.
+
+// Chapter 004 rule: `or` covers the union of its alternatives.

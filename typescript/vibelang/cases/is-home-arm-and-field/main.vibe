@@ -25,3 +25,10 @@ export class Box {
 export effect function main() {
   return [arms(1, { n: 1 }), arms("two", { s: "two" }), arms(1, {}), statementArm({ v: 3 }), statementArm(0), Box.base, new Box().first]
 }
+
+// Chapter 004, explicit arm and block homes: docs/design/src/004-match.md#fbe4e42bc95ee34f
+// Chapter 004, explicit arm and block homes: docs/design/src/004-match.md#653ded91038e46f8
+
+// Chapter 004 rule: A binding in an explicit source block within the initializer, including a `do` block or a match arm's scope, belongs to that block/arm and does not escape to other parameters or the body.
+
+// Chapter 004 rule: A binding in an explicit source block inside that initializer, including a `do` block or a match arm's already-defined scope, uses that block/arm and may be used there; it does not escape into other parameters or the source body.

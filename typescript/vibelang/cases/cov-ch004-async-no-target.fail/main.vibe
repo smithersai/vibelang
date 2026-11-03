@@ -1,0 +1,5 @@
+// expect: TS1105
+// Chapter 004, async-no-target: docs/design/src/004-match.md#bdc802fca3013f43
+export function nope() { return async match (true) { default: do { break }; } }
+
+// Chapter 004 rule: Ownership and targets come from the source, not from the generated async function; a `break` or `continue` with no target anywhere keeps TypeScript's own error.

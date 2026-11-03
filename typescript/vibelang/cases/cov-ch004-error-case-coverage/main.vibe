@@ -1,0 +1,12 @@
+import { Effect } from "effect"
+// Chapter 004, error-case-coverage: docs/design/src/004-match.md#9c1271a1dd4bbe1d
+
+function probe(): unknown {
+error Missing
+function test(s:Missing|{_tag:"Missing"; extra:number}):number{return match(s){when Missing(const value):1;}}
+return [test(new Missing()),test({_tag:"Missing",extra:1})]
+}
+
+export function main(): Effect.Effect<unknown> { return Effect.sync(probe) }
+
+// Chapter 004 rule: `when NotFound:`, `when NotFound(let e):` and `when NotFound(const e):` cover each member's `"NotFound"` tag case, including a plain object with that tag; other tag cases on that member remain; `when NotFound():` and `when NotFound({ id: "x" }):` cover nothing.

@@ -1,0 +1,1 @@
+export function f(){return async match(true){default:do{return 7};}}

@@ -1,0 +1,6 @@
+import { Effect } from "effect"
+// Chapter 004, async-inner-jumps: docs/design/src/004-match.md#a3f56a878d7de2f6
+function compute(): Promise<number> { return async match (true) { default: do { const f = () => { return 7 }; for (let i=0;i<2;i++) { if(i===0) continue; break }; f() }; } }
+export function main(): Effect.Effect<unknown> { return Effect.promise(compute) }
+
+// Chapter 004 rule: A `return` in a nested function belongs to that function, and a `break` or `continue` whose target is inside the `async match` follows the ordinary rules.

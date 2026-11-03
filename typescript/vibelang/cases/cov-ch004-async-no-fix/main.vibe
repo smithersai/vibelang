@@ -1,0 +1,4 @@
+// Chapter 004, async-no-fix: docs/design/src/004-match.md#2127ad1cbda3ff31
+export const anchor=true
+
+// Chapter 004 rule: No quick fix rewrites the jump, because no jump can cross the `Promise` boundary.

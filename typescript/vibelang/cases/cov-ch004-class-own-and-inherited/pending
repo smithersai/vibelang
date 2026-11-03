@@ -1,0 +1,1 @@
+compiler Chapter 004 own versus inherited matcher: docs/design/src/004-match.md#26f3ee47721c5fca, docs/design/src/004-match.md#26dec2164b73c6f3; Symbol.customMatcher is missing from SymbolConstructor (TS2339); own and inherited dispatch require the declared protocol
