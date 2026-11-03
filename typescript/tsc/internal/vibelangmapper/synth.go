@@ -630,6 +630,12 @@ func (p *projector) isMatchForm(node *ast.Node) bool {
 		// expression; the holder's expression, the parser's tests, ends at
 		// the is word, before the pattern.
 		close := scanner.SkipTrivia(p.text, node.Expression().End())
+		// Parser recovery leaves an unclosed parenthesis ending at its
+		// expression: `(let` in `/x/(let m)`. It is source, not a holder; a
+		// holder spans a pattern, and reading this as one recurses forever.
+		if node.End() <= node.Expression().End() {
+			return false
+		}
 		return close != node.End()-1 || close >= len(p.text) || p.text[close] != ')'
 	case ast.KindBlock:
 		return at("return") || at("if")
