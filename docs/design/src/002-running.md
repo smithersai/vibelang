@@ -2017,7 +2017,7 @@ Landing receipt: source 554f60ee7e77 landed in main d0cdbe5a0a7f (queue 17933863
 **An `allSettled` literal preserves its source spreads without iterating compiler-created arrays.** (Follow-up to loop r1 ASTRA-1 and main `e3cf1d779348` `002-running.md:814`; accepted VIP-18 exact Effect sugar and literal-tuple amendment; principles 1 and 2, native source-array evaluation.) Evaluate source literal elements and each source spread once in native left-to-right construction order. A source spread uses that value's actual iterator, including an inherited or own array iterator, just as native `[...xs]` does. Wrapping yielded Effects in `Effect.exit` must not introduce an additional observable `Array.prototype[Symbol.iterator]` call on a generated array. In particular, `...[...$xs].map(Effect.exit)` is not an exact counterpart: the outer spread iterates its generated mapped array and can reverse values again, add side effects or throw through a user-modified prototype. Preserve source order and cold Effect construction, then run `Effect.all` with `concurrency: "unbounded"`. Preserve VIP-18's existing literal tuple typing, spread-as-array typing and non-literal heterogeneous-tuple restriction; a runtime reference using `.map` is not a request to widen every literal to an array. The operand remains an array expression; this admits no bare Set operand or new call mode.
 
     ```vibe
-    effect function collected(xs: ReadonlySet<Effect<number>>) {
+    effect function collected(xs: ReadonlySet<Effect.Effect<number>>) {
       return try.allSettled [...xs] // one source spread; no hidden array re-spread
     }
     ```

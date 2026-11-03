@@ -222,7 +222,7 @@ Decided details folded in on 2026-11-03. Each keeps its old number as history. T
     For an eligible direct `try`, a quick fix is still offered only when it preserves evaluation order, coldness, types, comments, contracts and declaration output under007's existing safe-fix rule. Otherwise explain why the automatic fix is unavailable. Do not turn `fork Effect.fail(e)` into a caller-side throw, replace an Effect element with a raw value, move provider/recovery work to the caller, or move an eagerly evaluated handler/provider argument into deferred code. No new warning identity, severity, syntax or runtime call mode is allocated.
 
     ```vibe
-    effect function demo(e: Effect<number>, h: (x: unknown) => Effect<number>) {
+    effect function demo(e: Effect.Effect<number>, h: (x: unknown) => Effect.Effect<number>) {
       const one = try Effect.succeed(1) // EK4834; value repair when safe
       const child = fork Effect.catch(e, h) // no EK4835: recovery stays in child
       const failedChild = fork Effect.fail("boom") // no EK4834: not caller failure
