@@ -175,6 +175,8 @@ In the `EK4834`, `EK4835` and `EK4836` rows, the call is the direct operand of b
 | `EK4841` | A schema `const` immediately followed by its matching `typeof Name.Type` alias | Use the corresponding `schema Name = …` declaration where the schema mapping preserves both exports. |
 | `EK4842` | An Effect module imported under a conflicting JavaScript global name | Rename that import and its resolved uses, such as `Array as Arr`, only where emitted public types keep their meaning. |
 
+The `EK4833` advisory treats a custom qualified alias named `Effect` as an equivalent spelling only when its resolved type is Effect's own `Effect` interface and its written arguments match that type's success, error and requirements slots. An omitted slot must resolve to `never`. An exact forwarding alias may qualify; aliases whose parameter order, defaults, wrapped slots, added requirements or union branches would change the repaired type retain their spelling without this advisory.
+
 For example, the `EK4830` repair may replace this class with `error Missing { id: string }` while preserving `Fail(Missing { id: "x" })`:
 
 ```vibe es
@@ -257,6 +259,12 @@ After the preserving codemods ship and all migration repositories have zero rema
 ### Legacy data receiver methods
 
 Legacy Effect data receiver methods migrate to the resolved module’s data-first function: `Option.some(1).map(f)` becomes `Option.map(Option.some(1), f)`. The preserving codemod runs under `--fix` and `--fix --fix-migration-only` before rejection. It keeps receiver and argument evaluation once and in order, import evaluation, comments and exact public declaration output. It refuses a shadowed module without a safely reusable namespace binding, an alias whose import elision or deferred evaluation cannot be preserved, explicit type arguments, trailing blocks or changed declarations. Native/own methods, namespace calls, computed access and optional chains are not rewritten by this migration.
+
+### Legacy prelude shorthand
+
+For a legacy bare prelude `Scope` type, `vibelang --fix` writes `Scope.Scope`; `--fix-migration-only` and `--fix-vip-only` apply this migration too. It selects the resolved implicit binding and preserves comments, the declaration API and emitted JavaScript. A written import, local or ambient type, or type parameter named `Scope` keeps its TypeScript meaning. Prelude cleanup retains the qualified namespace type.
+
+`--fix`, including `--fix-vip-only` and `--fix-migration-only`, expands the retired same-named module-export shorthand using the resolved binding: `Option<A>` becomes `Option.Option<A>`, and `FileSystem.of(impl)` becomes `FileSystem.FileSystem.of(impl)`. VIP-14 supplies module namespaces; a local type, an ambient type, an already qualified export and a namespace's own member keep their meaning. Prelude import cleanup retains these explicit export names. The migration preserves the emitted declaration and the runtime lookup.
 
 ## Effect's type-aware lint
 

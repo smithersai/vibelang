@@ -41,3 +41,13 @@ Folded: relic-data-methods.patch (applied at docs/design/src/007-tooling.md:257)
 Folded: relic-data-methods-rejection.patch (applied at docs/design/src/900-appendices.md:1022)
 
 The no-relics ruling retires the compiler receiver extension. Namespace calls and actual native/own methods keep their meaning. Migration precedes rejection; this is specification publication, not an implementation rollout receipt.
+
+## fold resolved prelude and Effect-alias migrations
+
+Folded: relic-rest-a-scope-codemod.patch (applied at docs/design/src/007-tooling.md:265)
+
+Folded: relic-rest-b-module-codemod.patch (applied at docs/design/src/007-tooling.md:267)
+
+Folded: rc-ek4833-alias.patch (applied at docs/design/src/007-tooling.md:178)
+
+VIP-14 provides namespaces, not same-name export shorthands. Migrations and advisories use resolved identity; reordered/defaulted/wrapped Effect aliases must not change type meaning.
