@@ -12,6 +12,7 @@ const read = (path) => readFileSync(new URL(path, root), "utf8")
 
 // [test files, the file that runs them, the text in it that names them]
 const runs = [
+  ["site/scripts/not-found.test.mjs", "docs/tools/site-contrast.test.ts", "test:404"],
   ["site/scripts/patch-vocs-search.test.mjs", "site/package.json", "scripts/patch-vocs-search.test.mjs"],
   ["scripts/*.test.mjs", "PACKAGE.ts", "scripts/*.test.mjs"],
   ["scripts/bench/*.test.mjs", "scripts/bench/PACKAGE.ts", "node --test scripts/bench/gen-synthetic.test.mjs"],
@@ -63,7 +64,6 @@ const unrun = [
   ["site/scripts/cloudflare-stack.test.mjs", "requires the site's TypeScript install"],
   ["site/scripts/deploy-load.test.mjs", "requires the site's Alchemy install"],
   ["site/scripts/llms.test.mjs", "requires built site publication output"],
-  ["site/scripts/not-found.test.mjs", "builds the site using its npm install"],
   ["site/scripts/contrast.test.mjs", "requires the site's install, Chromium and a full site build"],
   ["editors/tree-sitter-vibelang/test/*.test.mjs", "the grammar property test fails on main"],
   [".smithers/flows/migrate/fixture/**", "the migrate eval's fixture package (@smthrs/canonical); eval.ts runs its tests before and after the flow"],

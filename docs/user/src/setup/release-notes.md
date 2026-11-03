@@ -728,6 +728,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - A bare arrow after `|>` produced unrelated TypeScript parser errors. Plain, `async` and `effect` arrows now report `EK2301`; `vibelang --fix` parenthesizes the arrow, preserving its topic capture.
 
 - Array-pattern bindings on readonly arrays inferred `any`; they now retain the source element type, including type parameters and `undefined`.
+
+- The full site check omitted the 404 publication assertions. It now verifies the built fallback and ordinary-page metadata while reusing the existing production build.
 - API identity checks rejected two identical copies of a generic function using an `import()` type with literal type arguments. Copies now compare identically, while changed literal arguments and dependencies remain differences.
 
 - Publication checks for source-child packages could not install an already-published Effect dependency while simulating an unreleased VibeLang SDK. Their registry fixture now serves the pinned Effect release while continuing to withhold the SDK.

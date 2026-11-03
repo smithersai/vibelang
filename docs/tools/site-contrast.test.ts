@@ -42,11 +42,16 @@ test("built install metadata resolves in the npm snapshot and both themes have z
       ["npm", "run", "test:infrastructure"],
       ["npm", "run", "typecheck"],
       ["bun", "run", "build"],
+      ["npm", "run", "test:404"],
       ["bun", "run", "test:contrast"],
     ]) {
       // Bun tests set NODE_ENV=test; React would embed development RSC stacks.
       // Keep npm ci in the test environment so it installs devDependencies.
-      const env = { ...process.env, ...(command.includes("build") ? { NODE_ENV: "production", PATH: bin + ":" + process.env.PATH } : {}) }
+      const env = {
+        ...process.env,
+        ...(command.includes("build") ? { NODE_ENV: "production", PATH: bin + ":" + process.env.PATH } : {}),
+        ...(command.includes("test:404") ? { VIBELANG_DOCS_TEST_OUTPUT: resolve(site, "dist/public") } : {}),
+      }
       delete env.VIBELANG_SITE_RELEASE_FILE
       delete env.VIBELANG_RELEASE_VERSION
       const { stdout, stderr, code } = await contrastStage(command, site, env)

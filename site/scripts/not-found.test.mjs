@@ -2,9 +2,13 @@ import assert from "node:assert/strict"
 import { spawnSync } from "node:child_process"
 import { readFileSync, statSync } from "node:fs"
 import { test } from "node:test"
+import { join, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
 
 const site = fileURLToPath(new URL("../", import.meta.url))
+// The full site check supplies the output it just built; standalone runs build it.
+const suppliedOutput = process.env.VIBELANG_DOCS_TEST_OUTPUT
+const output = suppliedOutput === undefined ? join(site, "dist/public") : resolve(suppliedOutput)
 
 function head(html) {
   const content = html.match(/<head\b[^>]*>([\s\S]*?)<\/head>/i)?.[1]
@@ -20,19 +24,21 @@ function head(html) {
   }
 }
 
-test("the site build publishes a non-indexable 404 at the Cloudflare assets root", { timeout: 600_000 }, async t => {
-  const build = spawnSync("npm", ["run", "build"], {
-    cwd: site,
-    encoding: "utf8",
-    timeout: 540_000,
-    maxBuffer: 20 * 1024 * 1024,
-  })
-  assert.equal(build.error, undefined, build.error?.message)
-  assert.equal(build.status, 0, (build.stdout + build.stderr).slice(-12_000))
+test("the published site has a non-indexable 404 at the Cloudflare assets root", { timeout: 600_000 }, async t => {
+  if (suppliedOutput === undefined) {
+    const build = spawnSync("npm", ["run", "build"], {
+      cwd: site,
+      encoding: "utf8",
+      timeout: 540_000,
+      maxBuffer: 20 * 1024 * 1024,
+    })
+    assert.equal(build.error, undefined, build.error?.message)
+    assert.equal(build.status, 0, (build.stdout + build.stderr).slice(-12_000))
+  }
 
   // cloudflare-stack.test.mjs pins StaticSite.outdir to dist/public and its
   // notFoundHandling to 404-page. A fallback outside this root is never uploaded.
-  const fallback = new URL("../dist/public/404.html", import.meta.url)
+  const fallback = join(output, "404.html")
   await t.test("404.html is a file at the published root", () => {
     assert.ok(statSync(fallback).isFile(), "Cloudflare needs dist/public/404.html")
   })
@@ -47,7 +53,7 @@ test("the site build publishes a non-indexable 404 at the Cloudflare assets root
     assert.match(notFound.meta("description")[0], /page.*(?:not found|does not exist|doesn.t exist)/i)
   })
   await t.test("ordinary pages retain their indexing and canonical metadata", () => {
-    const page = head(readFileSync(new URL("../dist/public/index.html", import.meta.url), "utf8"))
+    const page = head(readFileSync(join(output, "index.html"), "utf8"))
     assert.deepEqual(page.meta("robots"), ["index, follow"])
     assert.equal(page.canonical.length, 1)
     assert.equal(page.canonical[0].href, "https://vibelang.sh/")

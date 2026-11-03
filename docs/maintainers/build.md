@@ -1291,3 +1291,12 @@ untouched. The merge gate's `//:forms` target depends on
 `//:grammar-admission-check`. The Go inventory check independently verifies
 that hooks and specification authorities exist; generated projections do not
 turn a `pending` row into a language rule.
+
+
+The full `//:site-contrast` check runs `npm run test:404` after its production
+build and before the browser contrast checks. It passes the built
+`dist/public` directory through `VIBELANG_DOCS_TEST_OUTPUT`, so the 404
+metadata assertions reuse that output. Standalone `npm run test:404` still
+builds the site first. Missing or invalid supplied output fails without a
+second build. `scripts/site-404-output.test.mjs` covers publication metadata,
+missing output and generated directory-name neighbours without build tools.
