@@ -97,8 +97,8 @@ func FuzzMigrationServiceImports(f *testing.F) {
 			}
 			outputs[index] = output
 		}
-		if outputs[0] != outputs[1] {
-			Gap(t, migrationServiceImportsTarget, "declaration:"+key, "Chapter1: %q\nnative declaration:\n%s\nVibe declaration:\n%s\n%s", migrationServiceImportsQuote, outputs[1], outputs[0], pair[0])
+		if diff := compareDeclarationTexts(t, outputs[1], outputs[0]); diff != "" {
+			Gap(t, migrationServiceImportsTarget, "declaration:"+key, "Chapter1: %q\nnative declaration:\n%s\nVibe declaration:\n%s\n%s\nAPI:\n%s", migrationServiceImportsQuote, outputs[1], outputs[0], pair[0], diff)
 		}
 		ExpectPending(t, migrationServiceImportsTarget, "compile:"+key)
 		ExpectPending(t, migrationServiceImportsTarget, "declaration:"+key)

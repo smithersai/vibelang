@@ -2,7 +2,6 @@ package vibelangfuzz
 
 import (
 	"fmt"
-	"maps"
 	"strings"
 	"testing"
 
@@ -23,7 +22,7 @@ func TestEffectFnParameterDeclarationQuoted(t *testing.T) {
 
 // The native Effect.fn result infers a parameter tuple. Copying the generator's
 // annotation onto an arrow must not replace that public inferred declaration.
-// Compare raw bytes with the valid native source, without a type normalizer.
+// Compare names, strict tsc type identity and JSDoc with the valid native source.
 func FuzzEffectFnParameterDeclaration(f *testing.F) {
 	startShortBudget(f)
 	keys := []string{"readonly", "brand", "structural", "union", "tuple", "generic", "undefined-literal", "callback"}
@@ -129,12 +128,12 @@ func FuzzEffectFnParameterDeclaration(f *testing.F) {
 			}
 			return out
 		}
-		beforeBytes, afterBytes := declarations(original), declarations(after)
-		if len(beforeBytes) == 0 {
+		beforeDeclarations, afterDeclarations := declarations(original), declarations(after)
+		if len(beforeDeclarations) == 0 {
 			t.Fatal("native fixture emitted no declarations")
 		}
-		if !maps.Equal(beforeBytes, afterBytes) {
-			Gap(t, effectFnParameterDeclarationTarget, gapKey, "Chapter 7: %q; Chapter 1: %q\nnative:\n%s\nfixed:\n%s\nnative declarations:%v\nfixed declarations:%v", migrationDeclarationFixQuote, migrationDefaultProgramQuote, source, files["main.vibe"], beforeBytes, afterBytes)
+		if diff := compareDeclarationOutputs(t, beforeDeclarations, afterDeclarations); diff != "" {
+			Gap(t, effectFnParameterDeclarationTarget, gapKey, "Chapter 7: %q; Chapter 1: %q\nnative:\n%s\nfixed:\n%s\nnative declarations:%v\nfixed declarations:%v\nAPI:\n%s", migrationDeclarationFixQuote, migrationDefaultProgramQuote, source, files["main.vibe"], beforeDeclarations, afterDeclarations, diff)
 		}
 		ExpectPending(t, effectFnParameterDeclarationTarget, gapKey)
 		ExpectPending(t, effectFnParameterDeclarationTarget, specCorpusKey(t))

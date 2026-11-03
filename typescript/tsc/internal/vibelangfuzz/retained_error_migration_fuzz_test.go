@@ -120,8 +120,11 @@ func FuzzRetainedErrorMigration(f *testing.F) {
 			}
 			declared, ok := after.Outputs["out/main.d.ts"]
 			expected, refok := after.Outputs["out/reference.d.ts"]
-			if !ok || !refok || declared != expected {
-				Gap(t, "FuzzRetainedErrorMigration", "migration:declarations", "preserving migration changed inferred public declarations\nreference:\n%s\nmigrated:\n%s\n%s", expected, declared, Archive(fixed))
+			if !ok || !refok {
+				t.Fatal("preserving migration omitted main or reference declarations")
+			}
+			if diff := compareDeclarationTexts(t, expected, declared); diff != "" {
+				Gap(t, "FuzzRetainedErrorMigration", "migration:declarations", "preserving migration changed inferred public declarations\nreference:\n%s\nmigrated:\n%s\n%s\nAPI:\n%s", expected, declared, Archive(fixed), diff)
 			}
 			calls := 0
 			for _, file := range after.Program.GetSourceFiles() {

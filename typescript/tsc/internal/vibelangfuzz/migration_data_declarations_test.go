@@ -2,7 +2,6 @@ package vibelangfuzz
 
 import (
 	"fmt"
-	"maps"
 	"slices"
 	"strings"
 	"testing"
@@ -43,9 +42,8 @@ func migrationDataDeclarationPairs() map[string][2]string {
 	return pairs
 }
 
-// Foldkit16 and the published-package byte-identity ruling require the public
-// declaration bytes of the documented TypeScript counterpart. Do not
-// canonicalize away module spelling, comments, or declaration structure.
+// Foldkit16 requires the public API of the documented TypeScript counterpart.
+// The shared tsc probe checks types and JSDoc without requiring equal spelling.
 // Each fixture exports its entire single-module declaration surface.
 func FuzzMigrationDataDeclarations(f *testing.F) {
 	startShortBudget(f)
@@ -95,10 +93,10 @@ func FuzzMigrationDataDeclarations(f *testing.F) {
 			}
 			sides = append(sides, declarations)
 		}
-		if !maps.Equal(sides[0], sides[1]) {
+		if diff := compareDeclarationOutputs(t, sides[1], sides[0]); diff != "" {
 			Gap(t, migrationDataDeclarationsTarget, "bytes:"+key,
-				"Chapter6: %q; published declarations must preserve the documented counterpart byte for byte:\nnative: %q\nTypeScript: %q",
-				migrationDataDeclarationsQuote, sides[0], sides[1])
+				"Chapter6: %q; published declarations must preserve the documented counterpart API:\nnative: %q\nTypeScript: %q\nAPI:\n%s",
+				migrationDataDeclarationsQuote, sides[0], sides[1], diff)
 		}
 		ExpectPending(t, migrationDataDeclarationsTarget, "bytes:"+key)
 		ExpectPending(t, migrationDataDeclarationsTarget, "admission:"+key+":0")

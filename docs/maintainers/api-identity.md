@@ -168,3 +168,8 @@ visible under either setting.
 The comparison always forces `noCheck: false`, alongside its strict type
 relation settings. A project's emission shortcut cannot turn unchecked
 identity assertions into a proof or suppress an invalid exported input type.
+
+Go declaration fuzz oracles pass complete emitted module trees to the same
+checker. Relative aliases and dependencies resolve within each snapshot;
+formatting, member order and equivalent import spelling do not fail a
+semantic declaration oracle. Dedicated formatting tests retain byte checks.

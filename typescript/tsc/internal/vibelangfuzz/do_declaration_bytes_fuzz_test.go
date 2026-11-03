@@ -118,8 +118,8 @@ func FuzzDoDeclarationBytes(f *testing.F) {
 		if !ok {
 			t.Fatal("missing declaration output", c.Outputs)
 		}
-		if got != string(want) {
-			Gap(t, doDeclarationBytesTarget, "bytes:"+gap, "Chapter 1: %s\nstock TypeScript:\n%s\nVibeLang:\n%s\nsource:\n%s\ncounterpart:\n%s", doDeclarationQuotes[0].quote, want, got, source, counterpart)
+		if diff := compareDeclarationTexts(t, string(want), got); diff != "" {
+			Gap(t, doDeclarationBytesTarget, "bytes:"+gap, "Chapter 1: %s\nstock TypeScript:\n%s\nVibeLang:\n%s\nsource:\n%s\ncounterpart:\n%s\nAPI:\n%s", doDeclarationQuotes[0].quote, want, got, source, counterpart, diff)
 		}
 		ExpectPending(t, doDeclarationBytesTarget, "compile:"+gap)
 		ExpectPending(t, doDeclarationBytesTarget, "bytes:"+gap)

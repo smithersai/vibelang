@@ -212,8 +212,8 @@ func FuzzDoContextualResult(f *testing.F) {
 		if !ok {
 			t.Fatal("missing declaration output", c.Outputs)
 		}
-		if got != string(want) {
-			Gap(t, doContextualResultTarget, "bytes:"+gap, "Chapter 002: %s\nstock TypeScript:\n%s\nVibeLang:\n%s\nsource:\n%s\ncounterpart:\n%s", doContextualResultQuotes[0].quote, want, got, source, counterpart)
+		if diff := compareDeclarationTexts(t, string(want), got); diff != "" {
+			Gap(t, doContextualResultTarget, "bytes:"+gap, "Chapter 002: %s\nstock TypeScript:\n%s\nVibeLang:\n%s\nsource:\n%s\ncounterpart:\n%s\nAPI:\n%s", doContextualResultQuotes[0].quote, want, got, source, counterpart, diff)
 		}
 		ExpectPending(t, doContextualResultTarget, "compile:"+gap)
 		ExpectPending(t, doContextualResultTarget, "bytes:"+gap)

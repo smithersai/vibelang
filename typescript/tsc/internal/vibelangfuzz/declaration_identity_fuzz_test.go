@@ -356,10 +356,17 @@ console.log(JSON.stringify(result.identical ? "" : formatResult(result)));`
 // references resolve exactly as they do in the emitted package.
 func compareDeclarationResults(t *testing.T, before, after *Result) string {
 	t.Helper()
+	return compareDeclarationOutputs(t, before.Outputs, after.Outputs)
+}
+
+// Preserve all emitted modules; aliases and relative dependencies must resolve
+// within each complete tree, rather than comparing individual strings.
+func compareDeclarationOutputs(t *testing.T, before, after map[string]string) string {
+	t.Helper()
 	dirs := []string{t.TempDir(), t.TempDir()}
-	for i, result := range []*Result{before, after} {
+	for i, outputs := range []map[string]string{before, after} {
 		count := 0
-		for file, text := range result.Outputs {
+		for file, text := range outputs {
 			if !isDeclaration(file) {
 				continue
 			}

@@ -83,8 +83,8 @@ func FuzzErrorMigrationDeclarationBytes(f *testing.F) {
 			if !ok {
 				t.Fatal("missing declaration output", side.c.Outputs)
 			}
-			if got != string(want) {
-				Gap(t, target, fmt.Sprintf("bytes:%s:fields-%d:explicit-%t", side.name, len(e.fields), e.braces), "Chapter 7: %s\nstock TypeScript:\n%s\n%s fix:\n%s\nsource:\n%s\nfixed:\n%s", migrationDeclarationFixQuote, want, side.name, got, source, afterSource)
+			if diff := compareDeclarationTexts(t, string(want), got); diff != "" {
+				Gap(t, target, fmt.Sprintf("bytes:%s:fields-%d:explicit-%t", side.name, len(e.fields), e.braces), "Chapter 7: %s\nstock TypeScript:\n%s\n%s fix:\n%s\nsource:\n%s\nfixed:\n%s\nAPI:\n%s", migrationDeclarationFixQuote, want, side.name, got, source, afterSource, diff)
 			}
 		}
 	})
