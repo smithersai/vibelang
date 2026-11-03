@@ -49,6 +49,7 @@ The fixes keep a rewrite only when it adds no compiler error.
 | `for concurrent(record(), 4) (...)` | `for concurrent((record(), 4)) (...)`. `vibelang --fix` preserves the order of evaluation. |
 | `vibelang.tracing` or mapper `options.tracing` | Remove the unsupported option. Add named operation spans explicitly with `try withSpan(program, "name")`. |
 | `try load?.()` or `try program` with a possibly `undefined` Effect operand | Under `strictNullChecks`, `EK0502` requires narrowing or an Effect fallback before `try`. A callable proven present remains valid. |
+| `try load?.()` with `load: any` | An absent call delegates `undefined` and defects with `TypeError`. Write `try (load?.() ?? Effect.succeed(undefined))` to make absence succeed. |
 | `when var name:` or a `var` binding in an `is` pattern | Pattern bindings use `let` or `const` (`EK0107`, VIP-7). The quick fix and `vibelang --fix` replace the pattern's `var` with `let`. |
 | Bare compound types beside `!`, such as `number!Error \| string` or `number!! \| null` | `EK0301` (VIP-3). Run `vibelang --fix` to preserve the existing channels with parentheses, such as `number!(Error \| string)` or `number!!(\| null)`. To mean an Effect or `null`, write `(number!!) \| null`. |
 | A nested Effect error pattern used class identity, such as `Csv.CsvError`. | It now uses the module guard. `vibelang --fix --fix-migration-only` preserves the old class matcher through fresh constructor aliases and call-only extractors, with the same constructor, matcher observations and declared types. |
@@ -923,6 +924,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - An explicit `try` of an unchecked call could warn that its returned Effect would not run. That false `EK4409` warning is no longer shown; the Effect still runs normally.
 
 - Passing a local alias such as `const saved = parse` could hide a TypeScript function's written `@throws` contract. The `EK0402` callback check now follows the retained foreign call signature through bindings and destructuring.
+
+- An unchecked optional call could succeed when its factory was absent. `try` now delegates the actual optional result, so absence produces a native `TypeError` defect. Use an explicit Effect fallback when absence should succeed.
 
 - Documentation checks accepted throws in synchronous arrows whose parameter was named `effect`; they now apply the same rule after parameter renaming.
 - No-throw validation incorrectly failed after a plain catch handler became an effect handler; its regression fixtures now use catch's existing join point without a redundant `try`.

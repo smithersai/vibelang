@@ -1,0 +1,31 @@
+// expect-result: [["Failure","TypeError"],["Failure","TypeError"],["Failure","TypeError"],["Failure","TypeError"],["Failure","TypeError"],["Failure","TypeError"],["Failure","TypeError"],["Failure","TypeError"],["Success",7],["Success",9],["Success",11],["get","key","get","argument","argument","call:9","argument","call:11"]]
+import { Effect } from "effect"
+import { inspect } from "./inspect.js"
+const events: string[] = []
+function argument() { events.push("argument"); return 1 }
+effect function fn(make: any) { return try make?.(argument()) }
+effect function method(obj: any) { return try obj.run?.(argument()) }
+effect function receiver(obj: any) { return try obj?.run(argument()) }
+effect function both(obj: any) { return try obj?.run?.(argument()) }
+effect function key(obj: any) { return try obj[(events.push("key"), "run")]?.(argument()) }
+effect function nested(make: any) { return try make?.(try Effect.sync(argument)) }
+effect function block(make: any) { return try make?.(do { events.push("argument"); 1 }) }
+export effect function main() {
+ const missing = { get run(): any { events.push("get"); return undefined } }
+ const present = { value: 9, run(_n: number) { events.push("call:" + this.value); return Effect.succeed(this.value) } }
+ const viaNested: any = (_n: number) => { events.push("call:11"); return Effect.succeed(11) }
+ return [
+  inspect(try Effect.exit(fn(undefined))),
+  inspect(try Effect.exit(fn(null))),
+  inspect(try Effect.exit(method(missing))),
+  inspect(try Effect.exit(receiver(undefined))),
+  inspect(try Effect.exit(both(null))),
+  inspect(try Effect.exit(key(missing))),
+  inspect(try Effect.exit(nested(undefined))),
+  inspect(try Effect.exit(block(undefined))),
+  inspect(try Effect.exit(fn((_n: number) => Effect.succeed(7)))),
+  inspect(try Effect.exit(method(present))),
+  inspect(try Effect.exit(nested(viaNested))),
+  events
+ ]
+}

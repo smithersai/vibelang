@@ -76,17 +76,6 @@ func writesQuestionDot(node *ast.Node) bool {
 	return false
 }
 
-// unguardedOptional reports whether a ?. link at or under node, in node's
-// chain, is not yet tested.
-func (tx *lowering) unguardedOptional(node *ast.Node) bool {
-	for n := node; ast.IsOptionalChain(n); n = n.Expression() {
-		if optionalLink(n) && tx.chainGuards[n] == nil {
-			return true
-		}
-	}
-	return false
-}
-
 // mayYield reports whether lowering node may write a yield inside it, outside
 // its nested functions: a call there that runs an Effect or is trusted.
 func (tx *lowering) mayYield(node *ast.Node) bool {
