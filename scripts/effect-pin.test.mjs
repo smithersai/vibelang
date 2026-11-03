@@ -61,6 +61,17 @@ test("--write moves every pin and keeps each manifest's formatting", (t) => {
   assert.deepEqual(drift(root), [])
 })
 
+// packages/vite's tests copy the runtime's manifest under an ignored .fixtures,
+// so a workspace whose copy predates a pin move read as drift.
+test("a test's ignored fixture copy is not a pin", (t) => {
+  const root = fixture({
+    [RUNTIME]: JSON.stringify({ peerDependencies: { effect: "4.1.1" } }),
+    "packages/vite/test/.fixtures/vibelang-runtime/package.json": '{"dependencies":{"effect":"4.1.0"}}'
+  })
+  t.after(() => rmSync(root, { recursive: true, force: true }))
+  assert.deepEqual(drift(root), [])
+})
+
 test("rewrite refuses an edit that reaches beyond the pins", () => {
   assert.throws(() => rewrite('{"scripts":{"effect":"node effect.mjs"},"dependencies":{"effect":"4.0.6"}}', ["effect"], "4.1.0"), /more than their pins/)
 })

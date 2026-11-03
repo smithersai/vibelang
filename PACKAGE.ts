@@ -592,6 +592,9 @@ const targets = {
     [Typescript.compiler, Packages["runtime-dist"], Packages["compiler-native"]],
     [bun, node]
   ),
+  // A case copied from an older one keeps its pin, so stale pins landed on the
+  // stack, which gates only on a build. Fast enough for that gate.
+  "effect-pin": check("Every manifest and version literal pins the runtime's Effect version.", "node scripts/effect-pin.mjs", [], [node]),
   tokens: check("Token counts in the docs match a fresh count.", "bun docs/tools/token-counts.ts --check", [], [bun]),
   // The executable is source-keyed; generation still reads the entire tree.
   forms: check(

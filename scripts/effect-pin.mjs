@@ -24,7 +24,7 @@ export const SOURCES = [
 ]
 const SECTIONS = ["dependencies", "devDependencies", "peerDependencies", "optionalDependencies", "overrides", "resolutions"]
 // Installs, version control and run outputs: no tracked manifest lives under these.
-const SKIP = new Set(["node_modules", ".jj", ".git", ".flows", ".cache", "dist", "out"])
+const SKIP = new Set(["node_modules", ".jj", ".git", ".flows", ".cache", ".fixtures", "dist", "out"])
 const LOCKFILES = ["bun.lock", "package-lock.json", "pnpm-lock.yaml"]
 
 // Manifests that install Effect for a tool of their own, not for code VibeLang

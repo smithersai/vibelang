@@ -11,7 +11,8 @@ literals that state it in code:
 | `packages/runtime/src/version-guard.cts` | `PINNED_EFFECT_VERSION` |
 | `typescript/tsc/internal/vibelang/effectavailable.go` | `supportedEffectVersion` |
 
-`scripts/effect-pin.mjs` checks this, and its test runs in the `//:release`
+`scripts/effect-pin.mjs` checks this. The `//:effect-pin` target runs it in the
+merge queue's stacked gate, and its test runs in the `//:release`
 target of the merge gate:
 
 ```sh
