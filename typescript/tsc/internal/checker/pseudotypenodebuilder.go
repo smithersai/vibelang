@@ -269,6 +269,12 @@ func (b *NodeBuilderImpl) pseudoTypeToNode(t *pseudochecker.PseudoType) *ast.Nod
 					b.pseudoParametersToNodeList(d.Parameters),
 					b.pseudoTypeToNode(d.ReturnType),
 				)
+				// Match the semantic serializer's source provenance. Without
+				// it inferred object methods cannot carry a local declaration
+				// contract or preserve their signature documentation.
+				if b.ctx.enclosingFile != nil && b.ctx.enclosingFile.FileName().IsVibeLangSource() {
+					b.e.SetOriginal(newProp, e.Signature())
+				}
 			case pseudochecker.PseudoObjectElementKindPropertyAssignment:
 				d := e.AsPseudoPropertyAssignment()
 				newProp = b.f.NewPropertySignatureDeclaration(

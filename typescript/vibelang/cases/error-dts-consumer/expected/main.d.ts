@@ -25,7 +25,9 @@ declare const Denied_base: typeof AppError;
 export declare class Denied extends Denied_base {
     readonly _tag: "Denied";
     readonly user: string;
+    /** @throws {never} */
     constructor(args: $ErrorArgs<typeof AppError, Pick<Denied, "user">>);
 }
+/** @throws {never} */
 export declare function describe(e: NotFound | Timeout): string;
 export {};

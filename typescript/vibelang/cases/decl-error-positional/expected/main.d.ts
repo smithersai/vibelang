@@ -7,13 +7,16 @@ export declare class Failure extends Failure_base<{
     readonly code: string;
     readonly summary: string;
 }> {
+    /** @throws {never} */
     constructor(code: string, summary: string);
+    /** @throws {never} */
     toJSON(): Record<string, unknown>;
 }
 declare const Integration_base: typeof Failure;
 export declare class Integration extends Integration_base {
     readonly _tag: "Integration";
     readonly reason: string;
+    /** @throws {never} */
     constructor(reason: string, summary: string);
 }
 declare const Plain_base: typeof Failure;

@@ -1,4 +1,5 @@
 import { Effect } from "effect"
+/** @throws {never} */
 export function probe(value:unknown):string {
  class C {}
  const ctor=C as unknown as (s:unknown)=>readonly unknown[]|false

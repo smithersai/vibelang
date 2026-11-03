@@ -45,6 +45,7 @@ function fixedInvocations():readonly boolean[]{
  const results=[Result.succeed(1),Result.fail("x")].map(s=>Result.isSuccess(s)?s.success===1:s.failure==="x")
  return [...errors,...options,...exits,...results]
 }
+/** @throws {never} */
 export function patching():readonly boolean[] {
  const roots:object[]=[Function.prototype,Array,Date,Map,Set,Error,RegExp,WeakMap,WeakSet,Promise,Uint8Array,ArrayBuffer,AggregateError,Cause.TimeoutError,Fixed0.NoSuchElementError,Fixed1.TimeoutError,Fixed2.IllegalArgumentError,Fixed3.ExceededCapacityError,Fixed4.AsyncFiberError,Fixed5.UnknownError,Fixed6.SchemaError,Fixed7.CronParseError,Fixed8.PlatformError,Fixed9.SemVerError,Fixed10.QuitError,Fixed11.TextDiffError,Fixed12.AiError,Fixed13.McpClientError,Fixed14.CryptoError,Fixed15.CsvError,Fixed16.EncodingError,Fixed17.JsonArrayError,Fixed18.NdjsonError,Fixed19.TarError,Fixed20.XmlError,Fixed21.ZipError,Fixed22.GraphQLClientError,Fixed23.CookiesError,Fixed24.HeaderParseError,Fixed25.HttpBodyError,Fixed26.HttpClientError,Fixed27.HttpServerError,Fixed28.MultipartError,Fixed29.DatagramSocketError,Fixed30.SocketError,Fixed31.SqlError,Fixed32.WorkerError]
  return [...roots.map(x=>Object.hasOwn(x,customMatcher)),Object.hasOwn(Option,"Some"),Object.hasOwn(Option,"None"),Object.hasOwn(Exit,"Success"),Object.hasOwn(Exit,"Failure"),Object.hasOwn(Result,"Success"),Object.hasOwn(Result,"Failure")]
@@ -52,6 +53,8 @@ export function patching():readonly boolean[] {
 class Plain {}
 function constructed():readonly boolean[]{return [Object.create(Plain.prototype),new Plain(),{}].map(s=>s instanceof Plain)}
 function predicates(s:unknown):readonly boolean[]{return [Predicate.isError(s),CliError.isCliError(s),HttpClient.isTransientError(s)]}
+/** @throws {never} */
 export function localOption(s:unknown):number {const Option={Some:(x:unknown):x is number=>typeof x==="number"};return Option.Some(s)?1:0}
+/** @throws {never} */
 export function ordinary(s:unknown):readonly boolean[] {return [s instanceof Config.ConfigError,s instanceof PlatformError.BadArgument,s instanceof PlatformError.SystemError,s instanceof AiError.RateLimitError,s instanceof SqlError.ConnectionError,s instanceof CliError.UnrecognizedOption,s instanceof CliError.DuplicateOption,s instanceof CliError.MissingOption,s instanceof CliError.MissingArgument,s instanceof CliError.UnexpectedArgument,s instanceof CliError.InvalidValue,s instanceof CliError.UnknownSubcommand,s instanceof CliError.ValidationError,s instanceof CliError.UserError,s instanceof CliError.ShowHelp]}
 export function main():Effect.Effect<readonly unknown[]> {return Effect.sync(()=>[fixedInvocations(),patching(),constructed(),[new Error("x"),null,{}, {_tag:"TimeoutError","~effect/Cause/TimeoutError":"~effect/Cause/TimeoutError"}].map(predicates),localOption(2),localOption("x"),[Config.ConfigError,PlatformError.BadArgument,PlatformError.SystemError,AiError.RateLimitError,SqlError.ConnectionError,CliError.UnrecognizedOption,CliError.DuplicateOption,CliError.MissingOption,CliError.MissingArgument,CliError.UnexpectedArgument,CliError.InvalidValue,CliError.UnknownSubcommand,CliError.ValidationError,CliError.UserError,CliError.ShowHelp].flatMap(C=>[Object.create(C.prototype),{_tag:C.name},null]).map(ordinary)])}

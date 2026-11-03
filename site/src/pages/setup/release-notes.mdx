@@ -585,6 +585,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - `--fix` and the editor could make `Match.instanceOf` accept primitive values it previously rejected; unproven constructors now retain the `EK4839` warning without a repair, while proven ordinary classes still convert to `match`.
 - Retired `declarationImportStyle` and `trustedPackages` settings could still change compilation or reject malformed values. They now warn, ignore every value and omit the keys from `--showConfig`; foreign-call advice recommends an explicit boundary instead of retired package trust.
 
+- Exported plain functions, methods, constructors and callable constants could lose their nonthrowing contract in declarations, making downstream VibeLang callers treat calls as potentially throwing. Their emitted signatures now carry `@throws {never}`, including interface and object-type signatures, while preserving documentation.
+
 - Documentation checks accepted throws in synchronous arrows whose parameter was named `effect`; they now apply the same rule after parameter renaming.
 - No-throw validation incorrectly failed after a plain catch handler became an effect handler; its regression fixtures now use catch's existing join point without a redundant `try`.
 - Migration setup could leave a nested workspace consumer on `tsc` when a semver peer or npm alias resolved to migrated workspace sources. Setup now follows installed workspace links for compiler, test-runner and worker wiring while respecting nearer registry packages.

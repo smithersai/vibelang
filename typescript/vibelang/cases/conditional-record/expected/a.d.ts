@@ -1,1 +1,4 @@
-export declare const consume: (present: boolean) => Readonly<Record<string, string>>;
+export declare const consume: {
+    /** @throws {never} */
+    (present: boolean): Readonly<Record<string, string>>;
+};

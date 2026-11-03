@@ -5,5 +5,8 @@ import type { Helper } from "./helper.ts"
 
 export * from "./Contribution.ts"
 export * as C from './Contribution.ts'
-export const bind = (x: Helper): Refusal => refuse(String(x.n))
+export const bind: {
+    /** @throws {never} */
+    (x: Helper): Refusal;
+} = (x: Helper): Refusal => refuse(String(x.n))
 export type Later = typeof import("./Contribution.ts")

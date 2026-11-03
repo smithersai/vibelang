@@ -49,6 +49,7 @@ export declare class UsersInMemory implements Context.Service.Shape<typeof Users
         name: string;
     }, never, never>;
 }
+/** @throws {never} */
 export declare function sourceOf(users: Users.Shape): string;
 export declare function current(): Effect.Effect<{
     find(id: string): Effect.Effect<User>;

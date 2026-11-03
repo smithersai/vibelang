@@ -14,10 +14,14 @@ export declare class Validated extends Validated_base<{
     #private;
     static readonly docs = "https://example.com/errors";
     private readonly prefix;
+    /** @throws {never} */
     constructor(code: string, attempts?: number);
+    /** @throws {never} */
     static make(code: string): Validated;
     get label(): string;
+    /** @throws {never} */
     describe(): string;
+    /** @throws {never} */
     toJSON(): Record<string, unknown>;
 }
 declare const Wrapped_base: new <A extends Record<string, any> = {}>(args: import("effect/Types").VoidIfEmpty<{ readonly [P in keyof A as P extends "_tag" ? never : P]: A[P]; }>) => import("effect/Cause").YieldableError & {

@@ -1,0 +1,1 @@
+declaration contracts match TypeScript 5.9.3

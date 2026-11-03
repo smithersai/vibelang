@@ -1,0 +1,2 @@
+FuzzDeclarationThrowsContract shape:effect-constructor compiler VIP-4 / Chapter 1: the shared effectful-return classifier recognizes the Effect interface but not a class inheriting it, so a constructor returning an Effect subtype receives @throws {never}; declaration normalization follows that classifier. Separate subtype-classification gap retained by lane conf-auto-declaration-throws-contract.
+FuzzDeclarationThrowsContract corpus:effect-constructor compiler VIP-4 / Chapter 1: keyed reproduction of shape:effect-constructor.

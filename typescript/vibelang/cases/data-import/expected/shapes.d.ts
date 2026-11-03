@@ -30,4 +30,5 @@ export interface $Tree$Definition extends Data.TaggedEnum.WithGenerics<1> {
     readonly taggedEnum: Tree<this["A"]>;
 }
 export declare const Tree: Data.TaggedEnum.GenericConstructor<$Tree$Definition>;
+/** @throws {never} */
 export declare function area(shape: Shape): number;

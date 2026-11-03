@@ -10,4 +10,5 @@ export function accepted<T extends Effect.Effect<number>>() {
     return [a,s,l,n,g]
   })
 }
+/** @throws {never} */
 export function accessor(value: Foreign) { const n = value.value; value.value = n; return n }

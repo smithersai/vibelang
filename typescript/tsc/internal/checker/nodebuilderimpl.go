@@ -2090,6 +2090,24 @@ func (b *NodeBuilderImpl) signatureToSignatureDeclarationHelper(signature *Signa
 	// 	node.TypeArguments = b.f.NewNodeList(typeArguments)
 	// }
 
+	// VibeLang's declaration normalization needs the signature's origin even
+	// when an inferred object or class type synthesizes its call/construct
+	// members. Keep foreign declarations distinguishable from local ones.
+	if b.ctx.enclosingFile != nil && b.ctx.enclosingFile.FileName().IsVibeLangSource() {
+		original := signature.declaration
+		// A default constructor has no written declaration. Its result still
+		// names the class that owns the synthesized construct signature.
+		if (original == nil || ast.NodeIsSynthesized(original)) && kind == ast.KindConstructSignature {
+			if result := b.ch.getReturnTypeOfSignature(signature); result.Symbol() != nil {
+				if declaration := result.Symbol().ValueDeclaration(); declaration != nil && ast.IsClassLike(declaration) {
+					original = declaration
+				}
+			}
+		}
+		if original != nil {
+			b.e.SetOriginal(node, original)
+		}
+	}
 	cleanup()
 	return node
 }

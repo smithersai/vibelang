@@ -1,5 +1,6 @@
 import {Effect} from "effect"
 import {poison} from "./poison.js"
+/** @throws {never} */
 export function probe(kind:number,mutate:boolean):unknown {
  const events:string[]=[]
  const obj={n:5,get m(){events.push("get");return poison(function(this:any,x:number):unknown{events.push("call");return this===undefined?"detached":this.n+x},events)}}

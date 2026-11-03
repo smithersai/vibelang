@@ -18,6 +18,7 @@ declare const Locked_base: Schema.Class<Locked, Schema.TaggedStruct<"Locked", {
     readonly holder: Schema.String;
 }>, import("effect/Cause").YieldableError>;
 export declare class Locked extends Locked_base {
+    /** @throws {never} */
     describe(): string;
 }
 export declare function main(): Effect.Effect<{

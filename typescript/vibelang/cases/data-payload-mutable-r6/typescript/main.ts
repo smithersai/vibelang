@@ -12,6 +12,7 @@ export type Payload = Data.TaggedEnum<{
     };
 }>;
 export const Payload = Data.taggedEnum<Payload>();
+/** @throws {never} */
 export function mutate(value: Payload): number[] {
     value.nested.count++;
     value.dictionary["count"] = value.nested.count;

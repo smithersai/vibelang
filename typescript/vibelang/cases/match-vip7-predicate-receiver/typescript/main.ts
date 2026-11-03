@@ -5,6 +5,7 @@ const matcher = {
     return hint.matchType === "boolean" && typeof value === "number" && value > this.limit
   }
 }
+/** @throws {never} */
 export function recognize(value: unknown): boolean { return matcher.test(value, { matchType: "boolean" }) }
 export function main(): Effect.Effect<readonly boolean[]> {
   return Effect.sync(() => [1, 3].map(recognize))

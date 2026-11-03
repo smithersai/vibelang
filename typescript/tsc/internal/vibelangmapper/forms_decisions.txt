@@ -1911,6 +1911,9 @@ typescript/vibelang/cases/declaration-recursive-inferred-vibe/main.vibe:4:21 lam
 typescript/vibelang/cases/declaration-recursive-inferred-vibe/main.vibe:6:10 lambda plain fallback
 typescript/vibelang/cases/declaration-recursive-inferred/main.vibe:6:34 lambda plain table
 typescript/vibelang/cases/declaration-recursive-inferred/main.vibe:7:32 lambda plain table
+typescript/vibelang/cases/declaration-throws-contract/main.vibe:11:22 lambda plain fallback
+typescript/vibelang/cases/declaration-throws-contract/main.vibe:23:2 lambda plain annotation
+typescript/vibelang/cases/declaration-throws-contract/main.vibe:27:3 lambda plain annotation
 typescript/vibelang/cases/declaration-written-ts-import-vibe-target/consumer.vibe:6:23 lambda plain annotation
 typescript/vibelang/cases/declaration-written-ts-import-vibe-target/consumer.vibe:8:22 lambda plain annotation
 typescript/vibelang/cases/declaration-written-ts-import-vibe-target/target.vibe:3:25 lambda plain annotation

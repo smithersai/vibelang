@@ -37,6 +37,7 @@ export interface $LoadState$Definition extends Data.TaggedEnum.WithGenerics<2> {
     readonly taggedEnum: LoadState<this["A"], this["B"]>;
 }
 export declare const LoadState: Data.TaggedEnum.GenericConstructor<$LoadState$Definition>;
+/** @throws {never} */
 export declare function describe(delivery: Delivery): string;
 export declare function main(): Effect.Effect<{
     described: string[];

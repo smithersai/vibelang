@@ -1,0 +1,31 @@
+export interface Shapes {
+ method(x: number): number
+ (x: number): string
+ new (x: number): { n: number }
+ callback: (x: number) => number
+}
+export type Fn = (x: number) => number;
+/** Earlier identity documentation. */
+/** Preserve identity documentation. */
+export function identity(x: number): number { return x; }
+export const arrow = (x: number) => x;
+export class Box {
+ constructor(readonly n: number) {}
+ /** Read the value. */
+ read(): number { return this.n }
+ get size(): number { return this.n }
+}
+export function overloaded(x: number): number;
+export function overloaded(x: string): string;
+export function overloaded(x: number | string) { return x }
+export const methods = {
+ /** Inferred method documentation. */
+ method(x: number): number { return x }
+};
+export function makeMethods() {
+ return {
+  method(x: number): number { return x }
+ };
+}
+export const Default = class {};
+export function makeDefault() { return class {} }

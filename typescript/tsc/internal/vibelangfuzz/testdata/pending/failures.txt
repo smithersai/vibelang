@@ -31,10 +31,8 @@ FuzzFailuresSpec  feature:promise-held  compiler  VIP-4: 003-failures.md rejects
 FuzzFailuresSpec  feature:promise-library  compiler  VIP-4: 003-failures.md rejects the marked call for "In effect code, a call returning a Promise or thenable, even if assigned to a variable and never awaited. M…"; lane w2-throw
 FuzzFailuresSpec  feature:promise-thenable  compiler  VIP-4: 003-failures.md rejects the marked call for "In effect code, a call returning a Promise or thenable, even if assigned to a variable and never awaited. M…"; lane w2-throw
 FuzzFailuresSpec  feature:promise-reject  compiler  VIP-4: 003-failures.md rejects the marked call for "`Promise.reject(e)`, like every Promise-producing call, must be inside a `tryPromise` or `promise` thunk in…"; lane w2-throw
-FuzzFailuresSpec  feature:declaration-throws  compiler  VIP-27, VIP-4: 001-functions.md, Declaration output as amended 2026-10-31: every non-effectful .vibe call signature carries @throws {never}; main emits no @throws on parse, add's call signature or Id's constructor; lane nothrow-impl
 FuzzFailuresSpec  feature:effect-decoder-call  compiler  VIP-4: 003-failures.md rejects calling the decoder Schema.decodeUnknownSync returns in effect code (it throws SchemaError); lane w2-throw
 FuzzFailuresSpec  corpus:direct-local  compiler  the minimal reproduction of feature:direct-local
-FuzzFailuresSpec  corpus:declaration-throws  compiler  the minimal reproduction of feature:declaration-throws
 FuzzFailuresSpec feature:dynamic-any compiler VIP-4: 003-failures.md contract dynamic-any disagrees on unmodified main c9327b36 (error TS1128, error TS1434, error TS2304); lane vip-core2
 FuzzFailuresSpec feature:dynamic-function compiler VIP-4: 003-failures.md contract dynamic-function disagrees on unmodified main c9327b36 (error TS1128, error TS1434, error TS2304); lane vip-core2
 FuzzFailuresSpec feature:effectful-mixed-return compiler VIP-4: 003-failures.md contract effectful-mixed-return disagrees on unmodified main c9327b36 (error EK2003, error TS1128, error TS1434, error TS2552); lane vip-core2
@@ -77,8 +75,6 @@ FuzzFailuresSpec corpus:callable-union-throw compiler VIP-4: minimized reproduct
 FuzzFailuresSpec corpus:effectful-unknown-return compiler VIP-4: minimized reproduction of feature:effectful-unknown-return; lane w2-throw
 FuzzFailuresSpec feature:never-return-throw compiler VIP-4: never return types remain throw-tracked; effect function marker currently draws TS1434 before EK0403 can be checked; lane vip-core2
 FuzzFailuresSpec corpus:never-return-throw compiler VIP-4: minimized reproduction of feature:never-return-throw; lane vip-core2
-FuzzFailuresSpec feature:declaration-global-throws compiler VIP-4: 003-failures.md contract declaration-global-throws disagrees on main 84f966a6 (required metadata or diagnostic missing); lane w2-throw
-FuzzFailuresSpec corpus:declaration-global-throws compiler VIP-4: minimized reproduction of feature:declaration-global-throws; lane w2-throw
 FuzzFailuresSpec feature:foreign-own-throw-over-type compiler VIP-4: 003-failures.md contract foreign-own-throw-over-type disagrees on main 84f966a6 (error TS1128; error TS1434; error TS2304); lane vip-core2
 FuzzFailuresSpec corpus:foreign-own-throw-over-type compiler VIP-4: minimized reproduction of feature:foreign-own-throw-over-type; lane vip-core2
 FuzzFailuresSpec feature:foreign-returned-signature compiler VIP-4: 003-failures.md contract foreign-returned-signature disagrees on main 84f966a6 (error TS1128; error TS1434; error TS2304); lane vip-core2
@@ -115,8 +111,6 @@ FuzzFailuresSpec feature:builtin-json-stringify compiler VIP-4: the chapter repo
 FuzzFailuresSpec corpus:builtin-json-stringify compiler VIP-4: minimized reproduction of feature:builtin-json-stringify; lane w2-throw
 FuzzFailuresSpec feature:builtin-repeat compiler VIP-4: the chapter reports EK0403 at the marked code; the compiler reports no error there on main 90a26cf8; lane w2-throw
 FuzzFailuresSpec corpus:builtin-repeat compiler VIP-4: minimized reproduction of feature:builtin-repeat; lane w2-throw
-FuzzFailuresSpec feature:declaration-interface-member compiler VIP-4: declaration output tags read with @throws '', the chapter requires '{never}' on main 90a26cf8; lane w2-throw
-FuzzFailuresSpec corpus:declaration-interface-member compiler VIP-4: minimized reproduction of feature:declaration-interface-member; lane w2-throw
 FuzzFailuresSpec feature:promise-union compiler VIP-4: the chapter reports EK0404 at the marked code; the compiler reports no error there on main 90a26cf8; lane w2-throw
 FuzzFailuresSpec corpus:promise-union compiler VIP-4: minimized reproduction of feature:promise-union; lane w2-throw
 FuzzFailuresSpec feature:rethrows-reduce-no-initial compiler VIP-4: the chapter reports EK0403 at the marked code; the compiler reports no error there on main 90a26cf8; lane w2-throw
@@ -162,4 +156,3 @@ FuzzFailuresSpec corpus:schema-error-extends-native-union-optional compiler VIP-
 FuzzFailuresSpec feature:schema-error-extends-native-union-getter compiler VIP-13/VIP-29: Chapter 3 rejects every extends clause with EK2117; native union-tag parents accept this child on main0d0c6b46, so legacy tag compatibility is not the rule; lane impl-hunt-fail
 FuzzFailuresSpec corpus:schema-error-extends-native-union-getter compiler VIP-13/VIP-29: Chapter 3 rejects every extends clause with EK2117; native union-tag parents accept this child on main0d0c6b46, so legacy tag compatibility is not the rule; lane impl-hunt-fail
 FuzzFailuresSpec  feature:nothrow-generator  compiler  VIP-4: 003-failures.md, Plain code never throws: a throw in a plain generator draws no error; lane nothrow-impl
-FuzzFailuresSpec  feature:nothrow-declaration-no-rethrows  compiler  VIP-27, VIP-4: 001-functions.md, Declaration output as amended 2026-10-31: a .vibe function with a callback parameter is emitted @throws {never} and no @rethrows; main emits no @throws; lane nothrow-impl

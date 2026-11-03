@@ -1,4 +1,5 @@
 import { Effect } from "effect"
+/** @throws {never} */
 export function initialDo(): string {
   let read: () => number = () => 0
   initial: {

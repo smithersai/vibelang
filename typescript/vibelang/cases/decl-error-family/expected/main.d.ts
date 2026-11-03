@@ -14,6 +14,7 @@ declare const NotFound_base: typeof AppError;
 export declare class NotFound extends NotFound_base {
     readonly _tag: "NotFound";
     readonly path: string;
+    /** @throws {never} */
     constructor(args: $ErrorArgs<typeof AppError, Pick<NotFound, "path">>);
 }
 declare const Timeout_base: typeof AppError;
@@ -24,6 +25,7 @@ declare const Typed_base: typeof AppError;
 export declare class Typed<T extends string> extends Typed_base {
     readonly _tag: "Typed";
     readonly value: T;
+    /** @throws {never} */
     constructor(args: $ErrorArgs<typeof AppError, Pick<Typed<T>, "value">>);
 }
 declare const HttpError_base: new <A extends Record<string, any> = {}>(args: import("effect/Types").VoidIfEmpty<{ readonly [P in keyof A as P extends "_tag" ? never : P]: A[P]; }>) => import("effect/Cause").YieldableError & {
@@ -33,16 +35,19 @@ declare const HttpError_base: new <A extends Record<string, any> = {}>(args: imp
 export declare abstract class HttpError extends HttpError_base<{
     readonly status: number;
 }> {
+    /** @throws {never} */
     abstract describe(): string;
 }
 declare const Missing_base: typeof HttpError;
 export declare class Missing extends Missing_base {
     readonly _tag: "Missing";
+    /** @throws {never} */
     describe(): string;
 }
 declare const Gone_base: typeof HttpError;
 export declare class Gone extends Gone_base {
     readonly _tag: "Gone";
+    /** @throws {never} */
     describe(): string;
 }
 export declare function main(): Effect.Effect<{

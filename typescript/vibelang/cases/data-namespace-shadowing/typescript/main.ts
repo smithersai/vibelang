@@ -4,6 +4,7 @@ export type Parcel = Data_1.TaggedEnum<{ Empty: {}; Value: { readonly value: num
 export const Parcel = Data_1.taggedEnum<Parcel>()
 export const empty = Parcel.Empty()
 export const value = Parcel.Value({ value: 7 })
+/** @throws {never} */
 export function generic(): string {
   const Data = "local namespace"
   type Box<Data> = Data_1.TaggedEnum<{ Value: { readonly value: Data } }>

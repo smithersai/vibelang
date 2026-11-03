@@ -1,6 +1,7 @@
 import { Effect } from "effect"
 import { inputs, Foreign, CrossRealm, TaggedBase, TaggedSub } from "./subjects.js"
 
+/** @throws {never} */
 export function recognize(value: unknown): readonly boolean[] {
   return [
     Array.isArray(value), value instanceof Date, value instanceof Map, value instanceof Error,
@@ -11,6 +12,7 @@ export function recognize(value: unknown): readonly boolean[] {
   ]
 }
 function isText(value: string | number): value is string { return typeof value === "string" }
+/** @throws {never} */
 export function narrow(value: string | number): number {
   if (isText(value)) return value.length
   return value * 2

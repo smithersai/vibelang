@@ -1,4 +1,10 @@
-export declare const render: () => Promise<number>;
-export declare const renderPage: (request: {
-    readonly path: string;
-}) => Promise<string>;
+export declare const render: {
+    /** @throws {never} */
+    (): Promise<number>;
+};
+export declare const renderPage: {
+    /** @throws {never} */
+    (request: {
+        readonly path: string;
+    }): Promise<string>;
+};

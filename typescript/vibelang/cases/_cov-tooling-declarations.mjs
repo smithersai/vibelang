@@ -158,10 +158,10 @@ export function nativeContract(mode) {
     })
   } else if (mode === "async-contracts") { fixture(({dir,put,invoke,config,options})=>{
     Object.assign(options,{declaration:true,emitDeclarationOnly:true})
-    put("main.vibe","/** @rethrows f */\nexport async function each(f: () => void) { f() }\n")
+    put("main.vibe","export async function each(f: () => void) { f() }\n")
     config({files:["main.vibe"]});const r=invoke("-p",".","--pretty","false");assert.equal(r.status,0,r.text)
     const text=readFileSync(join(dir,"out/main.d.ts"),"utf8")
-    assert.match(text,/@throws \{never\}/);assert.match(text,/@throws \{unknown\}/,"callback admission survives erasing async");assert.doesNotMatch(text,/@rethrows/)
+    assert.match(text,/@throws \{never\}/);assert.match(text,/f: \(\) => void/,"bare callback types retain their written form");assert.doesNotMatch(text,/@throws \{unknown\}|@rethrows/)
     const native=ts.createProgram([join(dir,"out/main.d.ts")],{noEmit:true,types:[],skipLibCheck:true})
     assert.deepEqual(ts.getPreEmitDiagnostics(native).map(d=>d.code),[])
     })

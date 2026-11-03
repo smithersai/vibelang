@@ -1,4 +1,5 @@
 import { Effect } from "effect"
+/** @throws {never} */
 export function whileCells(): readonly unknown[] {
   const n = 99
   let turn = 0

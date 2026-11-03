@@ -8,4 +8,7 @@ export declare const again: (box: {
 export declare const count: (input: {
     readonly n: number;
 }) => Effect.Effect<number, never, never>;
-export declare const run: () => number;
+export declare const run: {
+    /** @throws {never} */
+    (): number;
+};

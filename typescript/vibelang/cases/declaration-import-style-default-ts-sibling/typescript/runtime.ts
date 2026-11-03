@@ -1,1 +1,4 @@
-export const start = (): number => 1
+export const start: {
+    /** @throws {never} */
+    (): number;
+} = (): number => 1

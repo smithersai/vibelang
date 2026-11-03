@@ -11,11 +11,13 @@ export declare namespace Count {
 export interface CounterApi {
     count(): Effect.Effect<number>;
     read(): Effect.Effect<number, never, Count>;
+    /** @throws {never} */
     label(): string;
 }
 export declare class Counter {
     count(): Effect.Effect<number>;
     read(): Effect.Effect<number, never, Count>;
+    /** @throws {never} */
     label(): string;
 }
 export declare function total(): Effect.Effect<string, never, Count>;

@@ -9,7 +9,10 @@ interface Tree {
 export declare const holds: (tree: Tree, name: string) => Effect.Effect<boolean, never, never>;
 export declare const walk: (n: number) => Effect.Effect<number, never, never>;
 export declare const count: (n: number) => Effect.Effect<number>;
-export declare const plainCount: (n: number) => number;
+export declare const plainCount: {
+    /** @throws {never} */
+    (n: number): number;
+};
 declare const Rejected_base: new <A extends Record<string, any> = {}>(args: import("effect/Types").VoidIfEmpty<{ readonly [P in keyof A as P extends "_tag" ? never : P]: A[P]; }>) => import("effect/Cause").YieldableError & {
     readonly _tag: "Rejected";
 } & Readonly<A>;
