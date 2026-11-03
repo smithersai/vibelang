@@ -1,8 +1,12 @@
 // The target repository's version control, through jj only. A Git checkout
 // becomes a colocated jj repository, so its Git history stays as it was.
+import { execFile } from "node:child_process"
 import { existsSync } from "node:fs"
 import { join } from "node:path"
+import { promisify } from "node:util"
 import { must, quote, run } from "./util.mjs"
+
+const execFileAsync = promisify(execFile)
 
 export async function ensureRepo(root) {
   if (existsSync(join(root, ".jj"))) return { initialized: false }
@@ -113,6 +117,34 @@ export async function restore(root, revision, paths) {
 export async function fileAt(root, revision, path) {
   const result = await run(`jj file show -r ${quote(revision)} ${quote(path)}`, { cwd: root })
   return result.code === 0 ? result.stdout : null
+}
+
+/** A file's exact bytes at a revision, or null when it does not exist there. Reads no working copy, so calls can run in parallel. */
+export async function bytesAt(root, revision, path) {
+  try {
+    const { stdout } = await execFileAsync("jj", ["--ignore-working-copy", "file", "show", "-r", revision, "--", `root-file:${JSON.stringify(path)}`], { cwd: root, encoding: "buffer", maxBuffer: 2 ** 30 })
+    return stdout
+  } catch (error) {
+    if (String(error.stderr).includes("No such path")) return null
+    throw error
+  }
+}
+
+/** The commits of base..head, oldest first, each with its one parent. */
+export async function stack(root, base, head) {
+  const template = 'commit_id ++ " " ++ parents.map(|p| p.commit_id()).join(" ") ++ "\\n"'
+  const { stdout } = await must(`jj --ignore-working-copy log --no-graph --reversed -r ${quote(`${base}..${head}`)} -T ${quote(template)}`, { cwd: root })
+  return stdout.split("\n").filter(Boolean).map(line => {
+    const [commit, ...parents] = line.split(" ")
+    if (parents.length !== 1) throw new Error(`${commit} has ${parents.length} parents; a stack gate needs one`)
+    return { commit, parent: parents[0] }
+  })
+}
+
+/** The paths a commit touches, as changedPaths reports the working copy's. */
+export async function changedPathsAt(root, revision) {
+  const { stdout } = await must(`jj --ignore-working-copy diff --summary --color never -r ${quote(revision)}`, { cwd: root })
+  return parseChangedPaths(stdout)
 }
 
 /** The repository-relative paths of the files a revision tracks under dir. */

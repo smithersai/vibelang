@@ -136,6 +136,27 @@ For tests that bundle a package's sources through Rolldown or Vite's bundled con
 
 Reverting an importer and its dependency restores their original TypeScript specifiers in either order. Recorded import edits follow a restored importer back from its `.vibe` path; a still-native importer continues to name the explicit source file.
 
+### Stale conversions
+
+A `.vibe` converted from a `.ts` older than the commit it lands on is a stale conversion: the commit deletes the newer `.ts`, so every later change to it is reverted with no conflict and no failing test. `record` writes `batches/NN/source-digests.json`, the SHA-256 of the bytes each module's conversion read (`{ "version": 1, "modules": [{ "from", "to", "sha256", "shape" }] }`, from the codemod journal), and refuses the batch when any module differs from its `.ts` at `@-`, before it verifies and again before it commits. `--force` does not reach this check. A refused module goes back to `.ts` and is converted again from that base; a hand merge is not an answer.
+
+Before a push, check the whole stack:
+
+```sh
+node .smithers/flows/migrate/step.mjs source-digests --run <dir> --base <push-base> [--head <revision>]
+node .smithers/flows/migrate/step.mjs source-digests --target <repo> --manifest <file>... --base <push-base>
+```
+
+Each commit in `base..head` that removes a `.ts` and adds its `.vibe` is compared with that commit's parent, and a stack rebased onto a changed `.ts` is refused. `shape` is the digest with relative specifier extensions erased: one pass split across commits lands a later module on a `.ts` whose specifier an earlier commit rewrote, and that edit alone is not staleness. The check exits 1 on a stale module and on a converted module with no digest, and prints its whole result. A driver that converts outside the flow writes the manifest from the tree it converts, before converting:
+
+```sh
+node .smithers/flows/migrate/step.mjs source-manifest --tree <dir> --list <modules.txt> --out <manifest>
+```
+
+`record` has no such refusal for a run with no journal, so run the check before any push.
+
+A conversion can also be stale by converter: fresh source, old writer. Before b7be67a09d50 EK4832 left a schema's readonly keys bare, and a compiler after it reads a bare key as writable, so the published declarations change with no source change. Each manifest entry therefore names its producer in `toolchain`: the VibeLang commit a staged toolchain was built from (`toolchain.json`'s `commit`; `step.mjs toolchain` stages the compiler and the flow from one checkout), or `vibelang@<version>`. `record` refuses a batch whose toolchain records no commit, and `--force` does not reach that check. `source-manifest` needs `--toolchain <commit>`. The push gate refuses an entry with no producer, and with repeated `--producer <commit>` it refuses a conversion any other toolchain wrote. A switch to a newer toolchain does not convert, so the gate does not see modules an older writer produced earlier: re-convert those as part of the switch.
+
 ### Restart and measurement rules for a whole-scope pass
 
 The pass banks each completed package in `fix-bank.json` and skips it after a

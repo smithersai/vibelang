@@ -11,12 +11,14 @@
 //   node .smithers/flows/migrate/step.mjs repair --run <dir> [--batch NN] [--agent "<command>" | --done]
 //   node .smithers/flows/migrate/step.mjs revert --run <dir> --file <path.vibe> --reason "<text>"
 //   node .smithers/flows/migrate/step.mjs next|report --run <dir>
+//   node .smithers/flows/migrate/step.mjs source-digests (--run <dir> | --target <repo>) [--manifest <file>...] [--producer <commit>...] --base <revision> [--head <revision>]
+//   node .smithers/flows/migrate/step.mjs source-manifest --tree <dir> --list <file> --toolchain <commit> --out <manifest>
 import { parseArgs, many, one } from "./lib/args.mjs"
-import { steps, nextStep } from "./lib/steps.mjs"
+import { sourceDigests, sourceManifest, steps, nextStep } from "./lib/steps.mjs"
 import { stageToolchain } from "./lib/toolchain.mjs"
 
 const usage = `usage: node .smithers/flows/migrate/step.mjs <step> --run <dir> [options]
-steps: toolchain, upgrade-effect, setup, plan, rename, fix, check, settle, codemod, compile, repair, revert, verify, record, report, next
+steps: toolchain, upgrade-effect, setup, plan, rename, fix, check, settle, codemod, compile, repair, revert, verify, record, report, next, source-digests, source-manifest
 upgrade-effect options, which setup reads from the run: --target <repo> --package <dir>... --source <dir>... --test "<command>" [--test-cwd <dir>]
                (--toolchain <dir> | --vibelang-version <v>) [--tsconfig <file>] [--dts-tsconfig <file>] [--stock-compiler <path>]
                [--install "<command>"] [--no-wire] [--max-files N] [--max-lines N] [--allow-dirty]
@@ -26,6 +28,13 @@ async function main(argv) {
   const { step, options } = parseArgs(argv)
   if (!step || step === "help" || options.help) return console.log(usage)
   if (step === "toolchain") return print(await stageToolchain({ vibelang: one(options, "vibelang"), out: one(options, "out") }))
+  if (step === "source-digests") {
+    const result = await sourceDigests({ run: options.run, target: options.target, manifests: many(options.manifest), producers: many(options.producer), base: one(options, "base"), head: options.head })
+    if (!result.ok) process.exitCode = 1
+    // Whole, unlike print: a driver reads every stale module from this.
+    return new Promise((resolve) => process.stdout.write(JSON.stringify(result, null, 2) + "\n", resolve))
+  }
+  if (step === "source-manifest") return print(sourceManifest({ tree: one(options, "tree"), list: one(options, "list"), out: one(options, "out"), toolchain: one(options, "toolchain") }))
   const run = one(options, "run")
   if (step === "next") return print(nextStep(run))
   const fn = step === "revert" && many(options.file).length > 1 ? steps.revertMany : steps[step]

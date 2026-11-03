@@ -45,6 +45,7 @@ import { countTokens } from "./tokens.mjs"
 import { readIssues } from "./issues.mjs"
 import { repairPrompt } from "./repair.mjs"
 import * as Jj from "./jj.mjs"
+import { assertSourcesCurrent, checkStack, manifestOf, manifestOfTree, producerOf, readManifest } from "./source-digest.mjs"
 import { resolveAliased, resolveRelative } from "./imports.mjs"
 import { restoreReferences } from "./references.mjs"
 import * as Upgrade from "./upgrade.mjs"
@@ -98,6 +99,7 @@ export function paths(runDir) {
     verify: (b) => join(batch(b), "verify.json"),
     lostWrapperAllow: join(r, "lost-wrappers-allow.json"),
     record: (b) => join(batch(b), "record.json"),
+    sourceDigests: (b) => join(batch(b), "source-digests.json"),
     reverted: (b) => join(batch(b), "reverted.json")
   }
 }
@@ -2144,6 +2146,12 @@ export async function record(options) {
   if (!verified?.ok && !options.force) throw new Error(`batch ${b} has not passed verify; run verify, or record with --force <reason>`)
   const t = config.target
   const files = batchFiles(config, thePlan, b)
+  // A journal's originals are what the conversion read. A run with no journal has no record to compare: the push gate refuses those modules.
+  const originals = readJsonIf(p.codemodState(b))?.originals
+  const manifest = originals ? manifestOf(originals, producerOf(config.toolchain)) : null
+  if (manifest) writeJson(p.sourceDigests(b), manifest)
+  const assertSources = async () => { if (manifest) await assertSourcesCurrent(t, manifest.modules, await Jj.commitId(t, "@-")) }
+  await assertSources()
   const assertScope = async () => {
     const testDiff = await testEdits(config, p, thePlan, b, typeScriptOf(config))
     if (!testDiff.ok) throw new Error("batch " + b + ": forbidden test/fixture edits; see " + join(p.batch(b), "test-diff.md"))
@@ -2196,6 +2204,7 @@ export async function record(options) {
   const testDiff = await testEdits(config, p, thePlan, b, typeScriptOf(config))
   if (!testDiff.ok) throw new Error(`batch ${b}: forbidden test/fixture edits; see ${join(p.batch(b), "test-diff.md")}; revert the edit or leave its module TypeScript`)
   await assertScope()
+  await assertSources()
   const commit = await Jj.commit(t, lines.join("\n"))
   if (commit) await Jj.setBookmark(t, config.bookmark, commit)
   const result = {
@@ -2209,10 +2218,33 @@ export async function record(options) {
     vibeFormatted,
     verificationRefreshed,
     testDiff,
+    sourceDigests: manifest ? manifest.modules.length : null,
     forced: verified?.ok ? null : options.force
   }
   writeJson(p.record(b), result)
   return result
+}
+
+/**
+ * source-digests: the push gate over base..head. Digests come from a run's journals, from
+ * --manifest files a driver outside the flow wrote, or both; a later source overrides an earlier one.
+ */
+export async function sourceDigests({ run, target, manifests = [], producers = [], base, head = "@-" }) {
+  const { p, config, plan: thePlan } = run ? loadRun(run) : {}
+  const root = target ?? config?.target
+  if (!root) throw new Error("source-digests needs --run or --target")
+  const journals = (thePlan?.batches ?? []).flatMap((_, i) => {
+    const originals = readJsonIf(p.codemodState(batchName(i)))?.originals
+    return originals ? [manifestOf(originals, producerOf(config.toolchain)).modules] : []
+  })
+  return checkStack(root, [...journals, ...manifests.map(readManifest)], base, head, { producers })
+}
+
+/** source-manifest: the digests of a pass outside the flow, from the tree it converts; list has one repository-relative .ts per line. */
+export function sourceManifest({ tree, list, out, toolchain }) {
+  const manifest = manifestOfTree(tree, readFileSync(list, "utf8").split("\n").map(line => line.trim()).filter(Boolean), toolchain)
+  writeJson(out, manifest)
+  return { modules: manifest.modules.length, out }
 }
 
 /** report: every batch's outcome, the token totals and the run's issues, as Markdown and JSON. */
