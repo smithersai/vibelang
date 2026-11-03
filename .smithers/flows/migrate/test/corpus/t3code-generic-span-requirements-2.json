@@ -1,0 +1,8 @@
+{
+  "property": "MigrationGenericRequirements",
+  "rule": "Preserve generic requirements and declaration output; owner codemod-alchemy, original TC3 drift remains pending",
+  "input": {
+    "suffix": "",
+    "exports": 2
+  }
+}

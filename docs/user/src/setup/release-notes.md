@@ -297,6 +297,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - `try` on a value that is not an Effect made the enclosing function `any`, which added a stray `EK3205` at `main`, and `try` on a value typed by a constrained type parameter lost its success and error types; the `try` now reports only `EK0502` and the type parameter keeps the channels of its constraint.
 
 - Migration checks now exercise filtered tagged catches, dependent cold-program construction, nested callbacks, and untraced context restoration across both Effect import forms; unsafe rewrites remain subject to refusal.
+
+- Migration declaration checks now cover generic span rewrites that accidentally remove a requirement, while accepting equivalent formatting and union order.
 - Resolved schema-binding regressions still appeared as pending gaps; namespace, function and escaped-name coverage now checks `EK2109` strictly while keeping every keyed corpus.
 - Schema library-alias checks now compare array decoding and mutability with native TypeScript and explicit Schema controls; remaining decoder gaps keep precise pending records.
 
