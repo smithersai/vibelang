@@ -1,0 +1,10 @@
+// expect: TS1103
+// A plain function is TypeScript (VIP-1), so for await outside an async
+// function draws the native diagnostic (VIP-20, decided detail 293).
+declare const lines: AsyncIterable<string>
+
+export function count() {
+  let n = 0
+  for await (const line of lines) n += line.length
+  return n
+}

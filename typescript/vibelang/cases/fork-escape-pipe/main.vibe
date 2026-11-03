@@ -9,5 +9,5 @@ export effect function main() {
   const b = f |> Fiber.join(%)
   const g = fork Effect.succeed(4)
   const c = g |> (% |> Fiber.join(%))
-  return [a, b, c]
+  return [try a, try b, try c]
 }

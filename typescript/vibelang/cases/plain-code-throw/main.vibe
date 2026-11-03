@@ -2,10 +2,12 @@
 // A constructor, an accessor, a class static block and a module's top level
 // are plain JavaScript (VIP-1, VIP-26), so a throw there is JavaScript's
 // throw (VIP-4), which a plain caller's catch catches.
+import { Data } from "effect"
 import { Bad } from "./bad.vibe"
 
-// A constructor of an error class and of an ordinary class.
-error Invalid {
+// A constructor of an Effect TypeScript error class and of an ordinary class.
+// An error declaration has no constructor (EK1301, VIP-13).
+class Invalid extends Data.TaggedError("Invalid")<{}> {
   constructor(raw: string) {
     super()
     if (raw === "") throw new Bad({ why: "empty" })

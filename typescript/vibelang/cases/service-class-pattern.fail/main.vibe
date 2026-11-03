@@ -8,8 +8,8 @@ export service Users {
 }
 declare const impl: unknown
 export function bare(): number {
-  return match (impl) { when Users: 1; default: 0 }
+  return match (impl) { when Users: 1; default: 0; }
 }
 export function extractor(): number {
-  return match (impl) { when Users(let u): 1; default: 0 }
+  return match (impl) { when Users(let u): 1; default: 0; }
 }
