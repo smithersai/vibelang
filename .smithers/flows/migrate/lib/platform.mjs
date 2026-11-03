@@ -15,6 +15,9 @@
 // module back with their messages. platformGlobalsOf reads the globals from
 // those messages, and the next pass splits only the declarations that read
 // them (the hand-off agreed with migfix-t3code-2, inbox migfix-smithers.md).
+// A run names the earlier passes' receipts in its config.json,
+// "platformCauses": [paths to settle-causes.json or reverted.json], and
+// platformGlobalsFromCauses turns them into the split's globalsOf.
 import { builtinModules } from "node:module"
 import { existsSync, readFileSync, writeFileSync } from "node:fs"
 import { dirname, join, posix, resolve } from "node:path"
@@ -43,6 +46,51 @@ export function platformGlobalsOf(messages) {
     if (m && m[1] !== "import") names.add(m[1])
   }
   return [...names].sort()
+}
+
+/**
+ * globalsOf(file) for splitBatchPlatform, from earlier passes' receipts:
+ * settle-causes.json ({ "src/a.vibe": { diagnostics: [{ code, message }] } })
+ * or reverted.json ([{ file, reason: "compile error: EK4402 ..." }]). A
+ * receipt names a module by its .vibe or .ts path; file is the TypeScript
+ * path the split reads. Only EK4402 messages count.
+ */
+export function platformGlobalsFromCauses(receipts) {
+  const messages = new Map()
+  const add = (file, message) => {
+    if (typeof file !== "string" || typeof message !== "string") return
+    for (const key of /\.vibe$/.test(file) ? [file.replace(/\.vibe$/, ".ts"), file.replace(/\.vibe$/, ".mts")] : [file]) {
+      messages.set(key, [...(messages.get(key) ?? []), message])
+    }
+  }
+  for (const receipt of receipts) {
+    if (Array.isArray(receipt)) {
+      for (const r of receipt) {
+        const m = /\bEK4402:?\s+(.*)$/s.exec(String(r?.reason ?? ""))
+        if (m) add(r.file, m[1])
+      }
+    } else if (receipt && typeof receipt === "object") {
+      for (const [file, cause] of Object.entries(receipt)) {
+        for (const d of cause?.diagnostics ?? []) if (d?.code === "EK4402") add(file, d.message)
+      }
+    }
+  }
+  return (file) => platformGlobalsOf(messages.get(file) ?? [])
+}
+
+/**
+ * The run's "platformCauses" (config.json), read relative to the run
+ * directory, as globalsOf for splitBatchPlatform. A listed receipt that is
+ * missing is an error, not an empty hand-off.
+ */
+export function platformCausesOf(config, runDir) {
+  const listed = config.platformCauses ?? []
+  if (!Array.isArray(listed) || listed.some((p) => typeof p !== "string")) throw new Error("platformCauses must be a list of receipt paths")
+  return platformGlobalsFromCauses(listed.map((p) => {
+    const file = resolve(runDir, p)
+    if (!existsSync(file)) throw new Error("platformCauses receipt missing: " + file)
+    return JSON.parse(readFileSync(file, "utf8"))
+  }))
 }
 
 /** The sibling module a split writes for file, src/Open.ts: src/Open.platform.ts. */

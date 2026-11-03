@@ -1,0 +1,19 @@
+{
+  "finding": "t3code:ek4402-host-global-causes-handoff",
+  "note": "Minimized from t3code apps/web/src/state/desktopCliCommand.ts (230fd2f9). The web whole-pass returned it to TypeScript with `EK4402 window is platform code` (drive-t3code-apps reverted.json); the sibling split never saw the global because no pass handed the message to it. The Effect, Schema and Atom code is replaced by a plain declaration that must stay.",
+  "file": "apps/web/src/state/desktopCliCommand.ts",
+  "text": "/** The desktop shell's t3 command bridge. */\nexport interface DesktopCliCommandBridge {\n  readonly getState: () => Promise<string>\n}\n\nexport function getDesktopCliCommandBridge(): DesktopCliCommandBridge | undefined {\n  return typeof window === \"undefined\" ? undefined : window.desktopBridge?.cliCommand\n}\n\nexport function describeDesktopCliCommand(state: string): string {\n  return `t3 command: ${state}`\n}\n",
+  "ambient": "declare var window: { readonly desktopBridge?: { readonly cliCommand?: { readonly getState: () => Promise<string> } } }\n",
+  "settleCauses": {
+    "apps/web/src/state/desktopCliCommand.vibe": {
+      "cause": "platform access",
+      "codes": ["EK4402"],
+      "diagnostics": [{ "code": "EK4402", "message": "window is platform code, which VibeLang code does not use directly." }]
+    }
+  },
+  "reverted": [
+    { "file": "apps/web/src/state/desktopCliCommand.ts", "reason": "compile error: EK4402 window is platform code, which VibeLang code does not use directly." }
+  ],
+  "moved": ["getDesktopCliCommandBridge"],
+  "wrapped": ["getDesktopCliCommandBridge"]
+}

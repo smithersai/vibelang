@@ -1,6 +1,7 @@
 // Repository-independent whole-scope conversion. The run directory owns every receipt.
 import { applyState, prepareState, saveState, durableWrite } from "./codemod-state.mjs"
 import { toolchainKeepsFunctionsPlain } from "./plain.mjs"
+import { platformCausesOf } from "./platform.mjs"
 import { createHash } from "node:crypto"
 import { existsSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { join, posix, resolve } from "node:path"
@@ -455,7 +456,7 @@ export async function onePassStep(step, options) {
         fileURLToPath(new URL("../../../../packages/runtime", import.meta.url))
       ])
       const catalog = await Jj.trackedFiles(config.target)
-      state = prepareState(config.target, files, await importers(config.target), { ts, moduleBodies: config.platformModuleBodies === true, aliases: aliasesOf(config), referenceFiles: catalog, references: catalog, catalog, tracked: catalog, plainGroups: plainGroupsOf(config, files, ts, { flipped: await toolchainKeepsFunctionsPlain({ compiler: compilerOf(config), modules: join(config.target, config.packages[0].dir, "node_modules"), dir: join(p.run, "probe") }) }) })
+      state = prepareState(config.target, files, await importers(config.target), { ts, moduleBodies: config.platformModuleBodies === true, globalsOf: platformCausesOf(config, p.run), aliases: aliasesOf(config), referenceFiles: catalog, references: catalog, catalog, tracked: catalog, plainGroups: plainGroupsOf(config, files, ts, { flipped: await toolchainKeepsFunctionsPlain({ compiler: compilerOf(config), modules: join(config.target, config.packages[0].dir, "node_modules"), dir: join(p.run, "probe") }) }) })
       saveState(p.codemodState("01"), state)
     }
     if (state.target !== config.target || JSON.stringify(state.files) !== JSON.stringify(files)) throw new Error("rename journal does not match target and scope")

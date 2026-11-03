@@ -22,7 +22,7 @@ import { restoreViteScripts } from "./vite-config.mjs"
 import { applyState, durableWrite, prepareReferences, prepareState, saveState } from "./codemod-state.mjs"
 import { checkSelectorEdits, restoreSourceLiterals, rewriteSourceLiterals } from "./source-paths.mjs"
 import { followLintRenames } from "./lint-paths.mjs"
-import { splitBatchPlatform } from "./platform.mjs"
+import { platformCausesOf, splitBatchPlatform } from "./platform.mjs"
 import { restoreBuildEntrypoints } from "./build-entrypoints.mjs"
 import { toolchainKeepsFunctionsPlain } from "./plain.mjs"
 import { check, newErrors, styleProblems, summarize } from "./diagnostics.mjs"
@@ -1454,7 +1454,7 @@ export async function codemod(options) {
     const owned = Wire.ownedPaths(t)
     const manifests = tracked.filter((file) => /(?:^|\/)package\.json$/.test(file) && !/(?:^|\/)node_modules\//.test(file) && owned(file))
     const flipped = await toolchainKeepsFunctionsPlain({ compiler: compilerOf(config), modules: join(t, config.packages[0].dir, "node_modules"), dir: join(p.batch(b), "probe") })
-    state = prepareState(t, files, await importers(t), { ts: typeScriptOf(config), moduleBodies: config.platformModuleBodies === true, aliases: aliasesOf(config), references: references(), catalog: [...new Set([...tracked, ...references()])], bareEntries: bareVibeExports(t, manifests), tracked, plainGroups: plainGroupsOf(config, files, typeScriptOf(config), { flipped }) })
+    state = prepareState(t, files, await importers(t), { ts: typeScriptOf(config), moduleBodies: config.platformModuleBodies === true, globalsOf: platformCausesOf(config, p.run), aliases: aliasesOf(config), references: references(), catalog: [...new Set([...tracked, ...references()])], bareEntries: bareVibeExports(t, manifests), tracked, plainGroups: plainGroupsOf(config, files, typeScriptOf(config), { flipped }) })
     state.toolConfigReferences = 1
     state.referenceScan.toolConfigFiles = toolConfigs.length
     saveState(p.codemodState(b), state)

@@ -172,6 +172,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - API comparisons could reject identical copies of classes that imported Node ambient modules; those imports now use the declarations TypeScript resolves.
 - `vibelang --fix` left qualified calls such as `Effect.retry(...)` after the same function was available as an unshadowed global. It now writes the bare call, preserving comments, declaration imports and disabled-global settings.
 
+- The migrate flow never split a module that an earlier pass returned to TypeScript for reading a host global such as `window`, `process.env` or `setTimeout` (`EK4402`), so the module went back to TypeScript on every pass. A run now lists earlier passes' `settle-causes.json` or `reverted.json` as `"platformCauses"` in its `config.json`, and the codemod moves the declarations that read each named global into the module's `.platform.ts` sibling.
 - Specification table and authority checks rejected the historical explanation that accepted `VIP-40` supersedes denied `VIP-25`. They now verify the accepted successor while continuing to reject positive authority claims based on the denied proposal.
 - API checks lost referenced ambient or library types when a declaration also contained a private class. Nominal alignment now preserves leading reference directives, and referenced type changes remain visible.
 
