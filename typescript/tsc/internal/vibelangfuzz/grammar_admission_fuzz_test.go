@@ -144,6 +144,7 @@ var grammarAdmissionSeeds = []struct{ key, source string }{
 	{"data-separators", "data D { A { x : number } ; ; B }"},
 	{"join-for-head", "effect function f(xs) { for (join x of xs) { x; } }"},
 	{"join-outside-effect-empty", "join [ ]"},
+	{"service-separators", "service S { n : number ; ; m : string }"},
 	{"join-for-head-line-break", "effect function f(xs) { for (join\nx\nof xs) { x; } }"},
 	{"interruption-outside-effect", "function f() { uninterruptible { return 1; } }"},
 	{"error-no-end", "error E effect { id: string }"},
@@ -379,6 +380,26 @@ func grammarAdmissionDeclarationForm(ts []grammarToken) string {
 			if i+1 < len(ts) && !ts[i+1].nl && ts[i+1].text == "class" {
 				return "admission:service-class"
 			}
+			// ServiceDeclaration is "{" (ServiceMember Separator)* "}", members
+			// separated as interface members: no Separator stands alone.
+			if i+2 < len(ts) && ts[i+1].kind == 'w' && ts[i+2].text == "{" {
+				inner := 0
+				for j := i + 2; j < len(ts); j++ {
+					switch ts[j].text {
+					case "{":
+						inner++
+					case "}":
+						inner--
+					case ";", ",":
+						if inner == 1 && (ts[j-1].text == ";" || ts[j-1].text == "," || ts[j-1].text == "{") {
+							return "admission:service-separators"
+						}
+					}
+					if inner == 0 {
+						break
+					}
+				}
+			}
 		case "provide":
 			// A provide head on one line whose provider Appendix A does not derive:
 			// `provide fork K = 1 { }`, `provide K => 1 { }`.
@@ -400,8 +421,9 @@ func grammarAdmissionDeclarationForm(ts []grammarToken) string {
 			if tok.text == "schema" && at < len(ts) && !ts[at].nl && ts[at].text == "error" {
 				at++
 			}
-			// `schema error` then a line break names the schema `error`.
-			if tok.text == "schema" && at == i+2 && (at >= len(ts) || ts[at].nl || ts[at].kind != 'w') {
+			// `schema error` then a line break, or a reserved word, which is no
+			// BindingIdentifier, names the schema `error`.
+			if tok.text == "schema" && at == i+2 && (at >= len(ts) || ts[at].nl || ts[at].kind != 'w' || grammarReservedWords[ts[at].text]) {
 				if at >= len(ts) || ts[at].text != "{" && ts[at].text != "=" {
 					return "admission:schema-no-body"
 				}
@@ -442,10 +464,17 @@ func TestGrammarAdmissionFiberParameterKeys(t *testing.T) {
 
 func TestGrammarAdmissionDataSeparatorKeys(t *testing.T) {
 	for source, want := range map[string]string{
-		"data D { A { x : number } ; ; B }":     "admission:data-separators",
-		"data D { ; A }":                        "admission:data-separators",
-		"data D { A; B; }":                      "",
-		"data D { A { x: number; y: string } }": "",
+		"data D { A { x : number } ; ; B }":       "admission:data-separators",
+		"data D { ; A }":                          "admission:data-separators",
+		"data D { A; B; }":                        "",
+		"data D { A { x: number; y: string } }":   "",
+		"service S { n : number ; ; m : string }": "admission:service-separators",
+		"service S { ; n : number }":              "admission:service-separators",
+		"service S { n : number , , m : string }": "admission:service-separators",
+		"service S { n : number ; m : string ; }": "",
+		"service S { m ( ) { a ; ; } }":           "",
+		"schema error throw { id : string }":      "admission:schema-no-body",
+		"schema error E { id : string }":          "",
 	} {
 		if got := grammarAdmissionDeclarationForm(grammarLexSource(source)); got != want {
 			t.Errorf("%q keyed %q; want %q", source, got, want)

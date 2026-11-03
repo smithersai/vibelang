@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("key:service-separators\nservice S { n : number ; ; m : string }")
