@@ -28,6 +28,8 @@ const Delivery = Data.taggedEnum<Delivery>()
 
 - **Amended 2026-10-30: incomplete declaration diagnostics.** A recognized data declaration missing its required variant body is `EK1604`. An explicitly written empty body remains admitted; recovery does not supply one automatically. These codes label existing rejections; they add no admitted syntax.
 
+- **Amended 2026-10-31: malformed variants.** A malformed `data` variant or a payload member that is not a `Field` is `EK1606`. `EK1601` to `EK1605` keep their specific triggers. Decided by the agent under Will's rule "when I state a principle, the agent derives the concrete rule and acts; I can override later" (decided detail 247).
+
 ## History
 
 One lego finding (D405): an exhaustive `match` over a `data` value skipped its last arm's test. VIP-7 settles it, because the exhaustiveness check never changes what runs.

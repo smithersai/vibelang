@@ -87,7 +87,7 @@ type Code = typeof Code.Type
 
 In this table, `S`, `A` and `B` are the recursively mapped schemas of the corresponding type syntax. A reference names a Schema value, not an expanded TypeScript type alias, interface, enum or class. The generic built-ins `Array<T>`, `ReadonlyArray<T>`, `Record<K, V>` and `Readonly<T>` in the table mean the corresponding TypeScript-library type bindings, selected by ordinary type lookup and alias resolution, not by spelling. A local or imported type binding can shadow a library type; a value-only binding does not by itself replace the separate library type binding. When the resolved binding is not a mapped built-in, apply the existing Schema-value lookup and arity rules. A reference with no suitable Schema value is `EK2109`: declare a schema or name a Schema value. This does not expand arbitrary user type aliases or introduce generic Schema declarations. The generic rows require these resolved library bindings; `T[]` and `readonly T[]` are syntax mappings independent of a written `Array` name.
 
-| Type or field | Effect 4.1.0 schema |
+| Type or field | Effect 4.1.1 schema |
 | --- | --- |
 | `(T)` | the mapping of `T`; parentheses only group |
 | `string`, `number`, `boolean`, `bigint`, `symbol` | `Schema.String`, `Schema.Number`, `Schema.Boolean`, `Schema.BigInt`, `Schema.Symbol` |
@@ -339,6 +339,7 @@ The generated constants keep TypeScript declaration order and temporal dead zone
 | type parameters on a `schema` declaration; use an ordinary generic TypeScript factory returning a Schema value | `EK1502` |
 | a recognized ordinary schema declaration missing its required body or admitted alias form | `EK1503` |
 | two fields on one line with no separator, `{ a: string b: number }`; write `;` or a line break between them (quick fix: insert `;`) | `EK1504` |
+| a member of a `schema` body that is not a [Field](900-appendices.md#field): `schema S { m(): string }`, `schema S { [k: string]: number }` | `EK1505` |
 | a field type outside the mapping (including a shadowing type without a suitable Schema value), or a referenced schema with conflicting or unprovable decoded-key flags at a required or effectively readonly position; use an unmodified value schema and write the modifiers on the declaration (for `Date`, use `Schema.Date`) | `EK2109` |
 
 
@@ -499,6 +500,7 @@ VIP-7 includes `data` unions and [tagged members](004-match.md#tagged-members) i
 | `export default data D { … }`; declare the name and write `export { D as default }` | `EK1603` |
 | a recognized data declaration missing its required variant body | `EK1604` |
 | two variants, or two fields of a variant, on one line with no separator, `data D { A B }` or `A { x: number y: string }`; write `;` or a line break between them (quick fix: insert `;`) | `EK1605` |
+| a malformed variant or a payload member that is not a [Field](900-appendices.md#field): `data D { A(x: number) }`, `data D { A { m(): void } }`; write `A { x: number }` | `EK1606` |
 
 
 The named default-export counterpart is:

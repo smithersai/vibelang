@@ -310,7 +310,7 @@ function defaultBit(o: { x?: number }, b: boolean) {
 
 ## `is` expressions
 
-`subject is P` evaluates the subject once and returns the pattern's Boolean result, using the same cache and finishing rules as `match`. In an ordinary block expression or an `if` head, its `let` and `const` names belong to the nearest enclosing lexical block, as the pinned explainer's binding rule states. They are in scope in both branches and after the `if`, shadow outer names throughout that block, and exist even when short-circuiting skips the expression or a preceding subpattern fails. Each cell stays in TDZ until its binding pattern executes. A failed overall test does not undo bindings already initialized; a skipped binding is still uninitialized. Source assignments keep ordinary `const` immutability; repeated binding patterns keep the pinned duplicate-initialization rules and their `or` replacement exception.
+`subject is P` evaluates the subject once and returns the pattern's Boolean result, using the same cache and finishing rules as `match`. In an ordinary block expression or an `if` head, its `let` and `const` names belong to the nearest enclosing lexical home, as the pinned explainer's binding rule states for a block: a block, a match arm or one of the [other homes](#pattern-bindings). They are in scope in both branches and after the `if` within that home, shadow outer names throughout it, and exist even when short-circuiting skips the expression or a preceding subpattern fails. Each cell stays in TDZ until its binding pattern executes. A failed overall test does not undo bindings already initialized; a skipped binding is still uninitialized. Source assignments keep ordinary `const` immutability. The pinned duplicate-initialization rules and their `or` replacement exception apply within one top-level pattern. Two top-level patterns that bind one name in the same lexical home are a redeclaration, as two `let` declarations are, and report what such a `let` reports: `TS2451` beside another lexical declaration, `TS2300` beside a parameter ([VIP-7](../vips/0007-match.md#binding-homes-and-redeclarations)). Separate blocks, match arms and the [other homes](#pattern-bindings) are separate homes. The diagnostic offers to rename the later binding and its uses, and `vibelang --fix` applies that rename.
 
 An `is` in a loop head uses the pinned loop-head/per-iteration scopes. Each complete `while` or `do…while` condition evaluation has fresh cells; the initial `do` body sees its uninitialized head cells. A match arm has its own lexical scope, so an `is` inside it does not export names to another arm.
 
@@ -331,6 +331,17 @@ effect function skippedBinding() {
   if (true || (1 is const n)) return n
   return 0
 } // Die(ReferenceError)
+function pick(a: unknown, b: unknown) {
+  if (a is { id: let id }) return id
+  // @ts-expect-error: TS2451, id is already declared in this block
+  if (b is { id: let id }) return id
+  return 0
+}
+function pickOk(a: unknown, b: unknown) {
+  if (a is { id: let first }) return first
+  if (b is { id: let second }) return second
+  return 0 // pickOk({}, { id: 1 }) is 1
+}
 ```
 
 The object counterpart specializes its stated subject type. Native lexical-cell witnesses check initialization before a failed guard and TDZ after a skipped initialization:
@@ -515,16 +526,16 @@ An `or` pattern shares one lexical cell for a name bound with the same keyword i
 
 Lexical `is` bindings in `while` and `do…while` have the pinned explainer's loop-head/per-iteration scope, rather than an enclosing block's scope. The loop head shadows outer names and does not leak outside the loop. Each complete condition evaluation starts with fresh uninitialized cells, including after `continue`; condition reads see TDZ until the matching pattern initializes them. A successful condition and its following body share those cells, so closures see that body's later `let` writes. Short-circuiting past a binding leaves it uninitialized even if the condition is true. Nested source blocks/functions retain their own scopes.
 
-The first `do…while` body runs with the initial uninitialized head cells. Its direct reads precede the binding, so they are `TS2448`, and with the check suppressed they throw `ReferenceError`; closures captured there keep those cells permanently in TDZ. Each subsequent condition gets new cells; its true result shares them with the following body. `continue` reaches a fresh condition set, and false/`break` exits without exporting names. The initial closures are never rebound to a later condition. `if` keeps its existing nearest-block scope; the within-one-`or` replacement above is unchanged.
+The first `do…while` body runs with the initial uninitialized head cells. Its direct reads precede the binding, so they are `TS2448`, and with the check suppressed they throw `ReferenceError`; closures captured there keep those cells permanently in TDZ. Each subsequent condition gets new cells; its true result shares them with the following body. `continue` reaches a fresh condition set, and false/`break` exits without exporting names. The initial closures are never rebound to a later condition. An `if` head belongs to the home that contains the `if` statement; the within-one-`or` replacement above is unchanged.
 
 Every other home follows the pinned explainer's rule that the usual binding scopes apply, with ECMAScript's environments:
 
 - In `for (init; test; update)`, a binding from `init` belongs to the loop head, as a name declared by a `let` or `const` declaration in `init` would, whether `init` is a declaration or an expression: CreatePerIterationEnvironment copies a `let` binding into each iteration, and a `const` binding stays in the loop scope. A binding from `test` or `update` is a fresh, uninitialized cell in each environment CreatePerIterationEnvironment creates, shared by the update, test and body that run there and never copied forward, as for a `while` condition.
-- In `for…in`, `for…of`, `for await`, `for concurrent` and `for try`, a binding from the head expression, which runs once in the head's own environment, is copied into each iteration's binding environment; a skipped binding is copied uninitialized. A binding from a default inside the head declaration belongs to that iteration's fresh binding environment.
+- In `for…in`, `for…of`, `for await`, `for concurrent` and `for try`, a binding from the head expression, which runs once in the head's own environment, is copied into each iteration's binding environment; a skipped binding is copied uninitialized. A binding from a default inside the head declaration belongs to that iteration's fresh binding environment. A binding in a `for concurrent` limit belongs to the nearest home that encloses the loop, because the limit runs before the head environment exists ([VIP-7](../vips/0007-match.md#binding-homes-and-redeclarations)); it is one cell, not copied into items.
 - In a concise arrow body, a binding belongs to the arrow body's scope, where the block-body form would declare it.
 - In a class field or static field initializer, a binding belongs to that initializer's own scope, because ECMAScript evaluates each initializer as a separate method-like body. A `static` block is a block.
 - An `enum` member initializer has no lexical home in ECMAScript or the pinned explainer, so a binding introduced there is `EK0705`, as for a formal parameter: `enum E { A = (1 is let one) ? 1 : 0 }` is `EK0705`.
-- The statement body of `if`, `else`, `for`, `for…in`, `for…of`, `for await`, `for concurrent`, `for try`, `while`, `do…while` and a labeled statement, when it is not a block, is the home of the `is` bindings inside it, exactly as if it were wrapped in braces, and is created fresh each time the body runs.
+- The statement body of `if`, `else`, `for`, `for…in`, `for…of`, `for await`, `for concurrent`, `for try`, `while`, `do…while` or a labeled statement, when it is not a Block, is the home of the bindings inside it, exactly as if it were wrapped in braces, and it is fresh each time the body runs, so braces around a body never change a result ([VIP-7](../vips/0007-match.md#binding-homes-and-redeclarations)). An `if` head is outside its own body: `if (!(x is { id: let id })) return; use(id)` in a block reads `id` after the `if`, and the head of an `else if` belongs to the `else` body's home.
 
 Each home holds one name once. Two top-level patterns that bind one name in the same home are a redeclaration, TypeScript's `TS2451`, as two `let` declarations in one block are; so is a binding that collides with another lexical declaration of that home, and a collision with a parameter keeps the native diagnostic for that collision. Inside one top-level pattern the pinned duplicate-initialization rule and its `or` exception stay. Separate blocks and match arms are separate homes, so braces or distinct names are the repair.
 
@@ -556,6 +567,11 @@ function countdown(src: { n: number }) {
   for (src.n is let n; n > 0; n--) seen.push(() => n)
   return seen.map(g => g()) // [3, 2, 1] for n = 3: copied each iteration, as a let is
 }
+function ids(xs: unknown[]) {
+  const out: unknown[] = []
+  for (const x of xs) if (x is { id: let id }) out.push(id)
+  return out // [1, 2] for [{ id: 1 }, { id: 2 }], as with braces
+}
 ```
 
 ```ts effect
@@ -576,7 +592,14 @@ function countdown(src: { n: number }) {
   for (let n = src.n; n > 0; n--) seen.push(() => n)
   return seen.map(g => g())
 }
-const loopHomesExit = Effect.runSyncExit(Effect.sync(() => [drain([1, 2, 3][Symbol.iterator]()), countdown({ n: 3 })])) // Success([[1, 2, 3], [3, 2, 1]])
+function ids(xs: unknown[]) {
+  const out: unknown[] = []
+  for (const x of xs) {
+    if (typeof x === "object" && x !== null && "id" in x) { let id = x.id; out.push(id) }
+  }
+  return out
+}
+const loopHomesExit = Effect.runSyncExit(Effect.sync(() => [drain([1, 2, 3][Symbol.iterator]()), countdown({ n: 3 }), ids([{ id: 1 }, { id: 2 }])])) // Success([[1, 2, 3], [3, 2, 1], [1, 2]])
 ```
 
 ```vibe es
@@ -627,7 +650,7 @@ VibeLang adds these checks to TC39's proposal; `EK4701` is the exhaustiveness ch
 | a `match` with no `default` over a finite union that misses a case | `EK4701` |
 | invalid `match`/`is` grammar or a pattern-specific early error without a more specific diagnostic | `EK0707` |
 | a missing `;` after a `match` arm, the last one included | `EK0701` |
-| an `is` pattern binding in formal-parameter initialization with no explicit block/arm as its lexical home ([Parameter initialization](#is-bindings-in-parameter-initialization)) | `EK0705` |
+| an `is` pattern binding in formal-parameter or catch-parameter initialization with no explicit block/arm as its lexical home ([Parameter initialization](#is-bindings-in-parameter-initialization)) | `EK0705` |
 | a class pattern naming a `data` declaration or variant, a `schema`, or a directly constructed `Context.Reference`; a call-only callee whose return type fails detail 94, or a callee with neither signature (services use `EK3004`; [Class patterns](#class-patterns)) | `EK0702` |
 | an ordinary-class extractor without an own matcher (detail 100) | `EK0704` |
 | lint warning: an extractor whose argument count can never match its pattern's list ([Class patterns](#class-patterns)) | `EK0703` |
@@ -640,7 +663,7 @@ One algorithm decides every subject (VIP-7, amended):
 - **Subjects.** Start from TypeScript's type of the subject expression at that evaluation point, including its represented flow refinements. Resolve its effective base constraint when one exists; otherwise keep that type. Normalize the result into a union of members, expanding `boolean` to `true | false`, an enum to its members, a `data` type to its variants, `Option.Option<A>` to `None | Some`, and `Exit.Exit<A, E>` and `Result.Result<A, E>` to `Success | Failure`. `EK4701` applies when every member is a literal type, `true`, `false`, `null`, `undefined`, an enum member, a `data` variant, an `error` or `schema error` instance, one of those six `Option`, `Exit` and `Result` cases, a retained Effect error ([Retained fixed patterns](#retained-fixed-patterns)), or a tagged member. Any other member (`string`, `number`, an untagged object or class instance, `unknown`, `any`) turns the check off for that `match`, which keeps TC39's run-time `TypeError`.
 - **Generic constraints and flow.** A constrained type parameter uses its finite constraint as a conservative domain; an unconstrained parameter or a broad constraint stays open. A represented refinement such as `T & { _tag: "A" }` can reduce that domain to `"A"`. If TypeScript still exposes bare `T` after an equality or property guard, its whole constraint remains: the check does not invent extra narrowing from the guard's text. Ordinary literals keep their literal types, without apparent-type boxing to `Number`, `String` or `Boolean`. This coverage projection neither casts the subject nor changes arm or default-flow types.
 - <a id="tagged-members"></a>**Tagged members.** Only `_tag` is a discriminant, Effect's convention, and `EK4701` counts the literal cases of `switch (s._tag)`. Coverage is per normalized member and tag case, even when TypeScript does not narrow the whole subject because every member has the same `_tag` type. A member is tagged when it is an object, interface or class instance and its `_tag` is what TypeScript calls a literal type: a string, number, bigint, boolean, enum, `null` or `undefined` literal, a `unique symbol`, or a union of those. Each of those literals is a case of the member, and an optional `_tag` has the case `undefined`. A `_tag` of any other type, such as `string` or a template type, is not tagged, because TypeScript checks no `switch` over it.
-- **Coverage.** Only an unguarded arm covers anything. A literal, `null`, `undefined` or enum-member pattern covers that member. A signed Number literal whose value is zero (`+0`, `-0`, `-0.0`, `+0e0`, and equivalent spellings) covers no zero case: its `SameValue` test distinguishes signs, while TypeScript's `0` type admits both. Even both signed arms together give no whole-case proof; use unsigned zero or `default`. Unsigned zero uses `SameValueZero` and covers both signs. Valid signed nonzero literals retain singleton coverage; bigint zero has no distinct negative zero. The same rule applies to a checked zero-valued enum case. A bare binding (`let x` or `const x`) covers every member. `when NotFound:`, `when NotFound(let e):` and `when NotFound(const e):` cover each member's `"NotFound"` tag case, including a plain object with that tag; other tag cases on that member remain; `when NotFound():` and `when NotFound({ id: "x" }):` cover nothing. A fixed pattern (`Option.Some(let v)`, `Option.None`, `Exit.Success(…)`, `Exit.Failure(…)`, `Result.Success(…)`, `Result.Failure(…)`) and a retained error's bare or one-binding extractor cover their case only when their argument list has the required length and every argument pattern is a bare `let` or `const` binding. An object pattern with `_tag: "V"` covers case `V` of each `data` variant or tagged member when every other property it tests is a bare key or a `let` or `const` binding that the member declares as required: `"x" in s` removes a member from its false branch only where `x` is required. Members that share a tag are covered one at a time, and one left uncovered stays uncovered. The `undefined` case of an optional `_tag` is covered only by a bare binding, because `{ _tag: undefined }` tests `"_tag" in s` first and an absent tag fails that test. `or` covers the union of its alternatives. `and`, `not`, regex, relational, array, built-in matcher and user-matcher patterns cover nothing, so those arms need a `default`.
+- **Coverage.** Only an unguarded arm covers anything. A literal, `null`, `undefined` or enum-member pattern covers that member. A signed Number literal whose value is zero (`+0`, `-0`, `-0.0`, `+0e0`, and equivalent spellings) covers no zero case: its `SameValue` test distinguishes signs, while TypeScript's `0` type admits both. Even both signed arms together give no whole-case proof; use unsigned zero or `default`. Unsigned zero uses `SameValueZero` and covers both signs. Valid signed nonzero literals retain singleton coverage; bigint zero has no distinct negative zero. The same rule applies to a checked zero-valued enum case. A bare binding (`let x` or `const x`) covers every member. `when NotFound:`, `when NotFound(let e):` and `when NotFound(const e):` cover each member's `"NotFound"` tag case, including a plain object with that tag; other tag cases on that member remain; `when NotFound():` and `when NotFound({ id: "x" }):` cover nothing. A fixed pattern (`Option.Some`, `Option.None`, `Exit.Success`, `Exit.Failure`, `Result.Success`, `Result.Failure`) or a retained error covers its case when it is bare, or when its argument list has the required length and every argument pattern is a bare `let` or `const` binding. A bare pattern has no argument list, which is not an empty list: `when Option.Some:` and `when Option.Some(let v):` cover `Some`; `when Option.Some():` and `when Option.Some(1):` do not. An object pattern with `_tag: "V"` covers case `V` of each `data` variant or tagged member when every other property it tests is a bare key or a `let` or `const` binding that the member declares as required: `"x" in s` removes a member from its false branch only where `x` is required. Members that share a tag are covered one at a time, and one left uncovered stays uncovered. The `undefined` case of an optional `_tag` is covered only by a bare binding, because `{ _tag: undefined }` tests `"_tag" in s` first and an absent tag fails that test. `or` covers the union of its alternatives. `and`, `not`, regex, relational, array, built-in matcher and user-matcher patterns cover nothing, so those arms need a `default`.
 
 ```vibe es
 // compiler-gap: pending VIP-7
@@ -673,6 +696,7 @@ const unsignedZeroExit = Effect.runSyncExit(Effect.sync(() => [allZero(0), allZe
 ```vibe es
 // compiler-gap: pending VIP-7
 match (o) { when Option.Some(let v): v; when Option.None: 0; }          // ok: Option<number>, covered
+match (o) { when Option.Some: 1; when Option.None: 0; }                  // ok: a bare pattern covers its case
 match (r) { when NotFound: 1; when undefined: 2; }                       // ok: NotFound | undefined
 data Delivery { Waiting; Sent { tracking: string } }
 declare const d: Delivery
@@ -1006,7 +1030,7 @@ A signed zero pattern, `+0` or `-0`, covers no case of TypeScript's literal type
 
 ## `is` bindings in parameter initialization
 
-An `is` test in formal-parameter initialization is `EK0705` if a `let` or `const` pattern binding would need the parameter environment as its lexical home. This includes direct defaults, defaults nested in parameter destructuring, and evaluated computed binding keys. The pinned explainer leaves that scope unfinished, so no parameter-home binding is invented or moved into the body.
+An `is` test in formal-parameter initialization is `EK0705` if a `let` or `const` pattern binding would need the parameter environment as its lexical home. This includes direct defaults, defaults nested in parameter destructuring, and evaluated computed binding keys. The same holds for a catch clause's parameter, whose environment is distinct from the catch Block ([VIP-7](../vips/0007-match.md#binding-homes-and-redeclarations)). The pinned explainer leaves that scope unfinished, so no parameter-home binding is invented or moved into the body.
 
 A binding-free test remains allowed. A binding in an explicit source block within the initializer, including a `do` block or a match arm's scope, belongs to that block/arm and does not escape to other parameters or the body. Nested source callable bodies keep their own scopes and boundaries. Ordinary call arguments in a lexical block retain that block's binding rule; they are not formal parameters.
 
@@ -1017,6 +1041,7 @@ A repair preserves eager, left-to-right, once-only initialization, parameter/bod
 function bad(a = (1 is let captured)) { return a } // EK0705
 function nested({ a = (1 is const captured) } = {}) {} // EK0705
 function key({ [(1 is let captured) ? "x" : "y"]: value }: { x?: number; y?: number } = {}) {} // EK0705
+function caught() { try { work() } catch ({ code = (1 is let c) }: any) {} } // EK0705
 function testOnly(a = (1 is 1)) { return a } // allowed: no new binding
 function good(a = do { const ok = 1 is let captured; [ok, captured] }) { return a }
 function arm(a = match (1) { when let x: (1 is let captured) ? captured : 0; }) { return a }
@@ -1094,7 +1119,7 @@ A class arm whose class has its own `Symbol.customMatcher` (an own property, `Ob
 - An `error` class ([Failures](003-failures.md#error-declarations)), including a `schema error`, gets a matcher that tests `_tag`. It returns `[subject]` on a match and `false` otherwise; `when NotFound(let e):` binds that subject. `when NotFound():` never matches: the matcher returns one element, but the extractor has zero argument patterns. Write `when NotFound:` for a bare test. Thus `when NotFound:` matches across copies of the same package. The TypeScript counterpart is in [Failures](003-failures.md#error-declarations).
 - `data` variants get no custom matchers. Match them with object patterns on `_tag`: `when { _tag: "Sent", let tracking }: …` ([Data](006-data.md#data-declarations)). Only `error` and `schema error` declarations, and the retained Effect checks, have their own matcher.
 - A class pattern whose expression resolves to a `data` declaration or variant constructor, a `schema` declaration or a directly constructed `Context.Reference` is `EK0702` (decided detail 67b): under the draft such a function would be called with the subject and match almost anything. The quick fix for a variant writes `when { _tag: "Sent" }:`; for a schema, test `Schema.is(Address)(x)` in a guard. Every `service` declaration, with or without `defaultValue`, reports `EK3004` instead ([Services](005-services.md#static-rules)).
-- **No run-time patching of Effect.** The thirty-nine fixed patterns below are compiler intrinsics until Effect ships matchers. The names are pattern syntax, not values exported by Effect 4.1.0. Recognition follows the resolved module binding, including aliases: `import * as O from "effect/Option"` permits `when O.Some(let v):`. A local `Option` instead uses TC39's matcher lookup; spelling alone never selects an intrinsic.
+- **No run-time patching of Effect.** The thirty-nine fixed patterns below are compiler intrinsics until Effect ships matchers. The names are pattern syntax, not values exported by Effect 4.1.1. Recognition follows the resolved module binding, including aliases: `import * as O from "effect/Option"` permits `when O.Some(let v):`. A local `Option` instead uses TC39's matcher lookup; spelling alone never selects an intrinsic.
 - Thirty-three of the thirty-nine are Effect’s tagged errors, each tested with its module’s own guard (decided detail 53). The alias and shadowing rule above applies. Neither `instanceof`, a universal `_tag` test nor the subject’s static type replaces the guard.
 - Built-in constructor patterns use `Array.isArray(subject)` for `Array`, and `subject instanceof C` for every other built-in, including native errors, `AggregateError`, `Date`, `RegExp`, collections, `Promise`, typed arrays and `ArrayBuffer` (decided detail 67a). A cross-realm array matches; other cross-realm built-ins may fail. Native-error matching follows the current prototype chain, not an inaccessible original native-error kind. `String`, `Number`, `Boolean`, `BigInt` and `Symbol` test the primitive or its boxed object, `typeof s === "string" || s instanceof String` and so on, and extract `[s]` for a primitive and `[s.valueOf()]` for a boxed object (decided detail 87). Extraction otherwise follows the draft; no methods are defined on globals. Ordinary classes without an explicit matcher, including classes imported from untouched `.ts` or `.js`, instead test `subject instanceof C`, then extract as the draft specifies (decided detail 67). No helper patches `Function.prototype` or records construction identity. This deliberately differs from the snapshot's `[[ConstructedBy]]` test: changing a genuine instance's prototype can make it stop matching, while forging a prototype can make an object match. A future switch to engine matchers requires a VIP. Where an engine lacks `Symbol.customMatcher`, the runtime defines the symbol ([Runtime guarantees](008-runtime.md)).
 
@@ -1228,7 +1253,7 @@ Effect.runSync(classify(fake)) // "yes"
 
 ## Retained fixed patterns
 
-VIP-7 keeps today's fixed checks (D208) until Effect ships matchers: the six `Option`, `Exit` and `Result` patterns and Effect 4.1.0's thirty-three tagged errors (decided details 53, 86 and 92). Each is recognized by its resolved module binding, aliases included, shadowing excluded. `s` is the subject, evaluated once. A bare pattern only runs the test. An extractor matches the listed array against its argument patterns by the snapshot's list rules: without rest, the extracted length must fit the required-to-total position interval and every present sub-pattern must match. Zero arguments match only `[]`; absent optionals consume zero positions, so `Option.None(1?)` also matches. An arity mismatch is a failed match (`EK0703` warns).
+VIP-7 keeps today's fixed checks (D208) until Effect ships matchers: the six `Option`, `Exit` and `Result` patterns and Effect 4.1.1's thirty-three tagged errors (decided details 53, 86 and 92). Each is recognized by its resolved module binding, aliases included, shadowing excluded. `s` is the subject, evaluated once. A bare pattern only runs the test. An extractor matches the listed array against its argument patterns by the snapshot's list rules: without rest, the extracted length must fit the required-to-total position interval and every present sub-pattern must match. Zero arguments match only `[]`; absent optionals consume zero positions, so `Option.None(1?)` also matches. An arity mismatch is a failed match (`EK0703` warns).
 
 | Pattern | Ordered test on `s` | List |
 | --- | --- | --- |

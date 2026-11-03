@@ -42,7 +42,7 @@ VibeLang is TypeScript with a small set of constructs for writing Effect program
 | `x.vibex` | a `.vibe` file read with `.tsx`'s JSX language variant | 39 | [Configuration and tooling](007-tooling.md#vibex) |
 | `module name { … }`, `import { a } from name` | a sibling `.ts` file and `import { a } from "./name.ts"` | 40 | [Modules and the top level](001-functions.md#modules-and-the-top-level) |
 
-The table abbreviates the full translations: preserve [source function bindings](001-functions.md#meaning), dispatch [outward jumps](002-running.md#region-bodies) after `provide` and interruption blocks, and add the [custom matcher](004-match.md#class-patterns) to error classes. All Effect TypeScript meanings use the [pinned `effect` 4.1.0](007-tooling.md#the-effect-version).
+The table abbreviates the full translations: preserve [source function bindings](001-functions.md#meaning), dispatch [outward jumps](002-running.md#region-bodies) after `provide` and interruption blocks, and add the [custom matcher](004-match.md#class-patterns) to error classes. All Effect TypeScript meanings use the [pinned `effect` 4.1.1](007-tooling.md#the-effect-version).
 
 Classes without an own `Symbol.customMatcher` use `instanceof`, built-ins use `Array.isArray` or `instanceof`, and primitives test `typeof` too, because compiled JavaScript can't read the pinned draft's engine slots. [Class patterns](004-match.md#class-patterns) gives the full rule.
 

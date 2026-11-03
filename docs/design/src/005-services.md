@@ -75,13 +75,18 @@ declare namespace Users { type Shape = $Users$Shape }
   ```
 
 - **Two types,** as in Effect. `Users` is the identifier, the type that appears in R. `Users.Shape` is the members, the type an implementation has; Effect writes it `Context.Service.Shape<typeof Users>`, and the compiler declares `Users.Shape` as a direct alias of the written member object, named by a fresh private type such as `$Users$Shape` above. It does not extract that alias through its own key while resolving the class base: self- and mutually recursive member types remain ordinary recursive object types. Private helper names are hygienic, including in declaration output; member modifiers and callable throw metadata are retained. A `Context.Reference` is a value, not a class, and never appears in R, so a service with a `defaultValue` has `Flags.Shape` and no identifier type. `EK3001` to `EK3004` apply to it unchanged: `when Flags:` is `EK3004`, as for any `service`. `EK0702` covers only a reference built with `Context.Reference(…)` directly ([chapter 004](004-match.md)). A member's throw contract is an interface member's: without `@throws` it admits only `never` ([Assignability](003-failures.md#assignability); decided detail 3).
-- **Inside a function or block** the counterpart is a private named member type and the class (or `const`), without a namespace, because TypeScript allows a `namespace` only at the top level of a module or namespace (TS1235). There `Users.Shape` is not declared; write `Context.Service.Shape<typeof Users>`:
+- **Inside a function or block** the counterpart is a private named member type and the class (or `const`), without a namespace, because TypeScript allows a `namespace` only at the top level of a module or namespace (TS1235). Inside the service's own members `Users.Shape` names that private type, by [VIP-9](../vips/0009-service-declarations.md)'s type-only hook, so recursive members work. Elsewhere `Users.Shape` is not declared; write `Context.Service.Shape<typeof Users>`:
 
   ```vibe es
   // compiler-gap: pending VIP-9
   effect function test() {
     service Users { static readonly key = "test/Users"; find(id: string): User!NotFound }
     const fake: Context.Service.Shape<typeof Users> = { find: (id) => succeed(user) }
+  }
+  function linked() {
+    service Local { static readonly key = "app/Local"; value: number; next?: Local.Shape }
+    const impl: Context.Service.Shape<typeof Local> = { value: 9, next: { value: 10 } }
+    return impl.next?.value // 10
   }
   ```
 
@@ -93,6 +98,12 @@ declare namespace Users { type Shape = $Users$Shape }
       class Users extends Context.Service<Users, $Users$Shape>()("test/Users") {}
       const fake: Context.Service.Shape<typeof Users> = { find: (id) => Effect.succeed(user) }
     })
+  }
+  function linked() {
+    type $Local$Shape = { value: number; next?: $Local$Shape }
+    class Local extends Context.Service<Local, $Local$Shape>()("app/Local") {}
+    const impl: Context.Service.Shape<typeof Local> = { value: 9, next: { value: 10 } }
+    return impl.next?.value // 10
   }
   ```
 
@@ -423,7 +434,7 @@ VibeLang adds no typing rules of its own: Effect's `provide` types everything.
 
 ### Meaning
 
-`provide providers { … }` is exact sugar for `Effect.provide`. It is a statement that runs where it stands, and every Effect inside it is still run with `try`. A provider is a Layer (or, alone, a `Context`), or `Key = value`, which means `Layer.succeed(Key, value)`. One provider lowers to `Effect.provide(gen, p)`; two or more lower to `Effect.provide(gen, [p1, …, pn])`. Effect's overloads then decide what a provider may be: a sole provider may be a `Layer` or a `Context`; in a list each is a `Layer`. Where two providers supply one service, the later wins. As `Effect.provide` documents in effect 4.1.0, a layer an enclosing `provide` already built is reused, and a sibling `provide` builds its own copy. A fiber forked inside the block keeps the block's services after the layer is released, as in `Effect.provide`; use `fork.scoped` inside `scoped(effect { … })` to tie it to a scope.
+`provide providers { … }` is exact sugar for `Effect.provide`. It is a statement that runs where it stands, and every Effect inside it is still run with `try`. A provider is a Layer (or, alone, a `Context`), or `Key = value`, which means `Layer.succeed(Key, value)`. One provider lowers to `Effect.provide(gen, p)`; two or more lower to `Effect.provide(gen, [p1, …, pn])`. Effect's overloads then decide what a provider may be: a sole provider may be a `Layer` or a `Context`; in a list each is a `Layer`. Where two providers supply one service, the later wins. As `Effect.provide` documents in effect 4.1.1, a layer an enclosing `provide` already built is reused, and a sibling `provide` builds its own copy. A fiber forked inside the block keeps the block's services after the layer is released, as in `Effect.provide`; use `fork.scoped` inside `scoped(effect { … })` to tie it to a scope.
 
 ```vibe es
 // compiler-gap: pending VIP-12
@@ -462,13 +473,13 @@ A `provide` block is an ordinary block, as in TypeScript: its `return`, `break`,
 
 ## Effect's functions are globals
 
-Every value export of Effect's `Effect` module is a global variable in a `.vibe` file: `retry`, `sleep`, `log`, `all`, `race`, `tryPromise`, `sync`, `callback`, `map`, `scoped`, `ensuring`, `runPromise`, and so on. The non-function value exports are globals too; in effect 4.1.0, after the clash rule below, they are `Do`, `TypeId`, `abortSignal`, `currentParentSpan`, `currentSpan`, `fiber`, `fiberId`, `interrupt`, `never`, `succeedNone`, `tracer`, `txRetry` and `yieldNow`. A local declaration or import shadows one, as with any global, so a local `fiber` or `TypeId` silently replaces Effect's. These Effect functions do not inherit the `@rethrows` contracts of `Array.prototype.map`, `Array.prototype.forEach`, `Array.prototype.filter` or `Array.prototype.reduce`; a throwing callback needs the explicit wrapper required by [Failures](003-failures.md). Type exports are not global types: write `Effect.Effect<A, E, R>`, or `A!E!R`.
+Every value export of Effect's `Effect` module is a global variable in a `.vibe` file: `retry`, `sleep`, `log`, `all`, `race`, `tryPromise`, `sync`, `callback`, `map`, `scoped`, `ensuring`, `runPromise`, and so on. The non-function value exports are globals too; in effect 4.1.1, after the clash rule below, they are `Do`, `TypeId`, `abortSignal`, `currentParentSpan`, `currentSpan`, `fiber`, `fiberId`, `interrupt`, `never`, `succeedNone`, `tracer`, `txRetry` and `yieldNow`. A local declaration or import shadows one, as with any global, so a local `fiber` or `TypeId` silently replaces Effect's. These Effect functions do not inherit the `@rethrows` contracts of `Array.prototype.map`, `Array.prototype.forEach`, `Array.prototype.filter` or `Array.prototype.reduce`; a throwing callback needs the explicit wrapper required by [Failures](003-failures.md). Type exports are not global types: write `Effect.Effect<A, E, R>`, or `A!E!R`.
 
 A name that clashes is not a global, and is written `Effect.x` instead. A name clashes if it is:
 
 - a reserved word: `try`, `catch`, `void`, `let`;
 - a JavaScript global: `undefined`;
-- a VibeLang keyword. In effect 4.1.0 these are `match`, `when`, `service`, `provide`, `uninterruptible` and `interruptible`, so `Effect.match` keeps its prefix.
+- a VibeLang keyword. In effect 4.1.1 these are `match`, `when`, `service`, `provide`, `uninterruptible` and `interruptible`, so `Effect.match` keeps its prefix.
 
 When a later VIP adds a keyword with the name of an Effect export, that global is removed.
 
@@ -502,7 +513,7 @@ function lookup(q: string, s: string) {
 
 ## Effect's modules are in scope
 
-Every root export of the core `effect` package is in scope in a `.vibe` file without an import. In effect 4.1.0 these are 143 namespaces (`Schema`, `Layer`, `Stream`, `Option`, `Data`, `Context`, `Schedule`, `Duration`, …) and six functions (`pipe`, `flow`, `identity`, `absurd`, `cast`, `hole`). Emitted code imports each namespace from `effect/<Module>` and each function from `effect/Function`, under a fresh name. A local declaration or import shadows one, as with any global. `"vibe": { "effectModules": false }` in the config turns this off.
+Every root export of the core `effect` package is in scope in a `.vibe` file without an import. In effect 4.1.1 these are 143 namespaces (`Schema`, `Layer`, `Stream`, `Option`, `Data`, `Context`, `Schedule`, `Duration`, …) and six functions (`pipe`, `flow`, `identity`, `absurd`, `cast`, `hole`). Emitted code imports each namespace from `effect/<Module>` and each function from `effect/Function`, under a fresh name. A local declaration or import shadows one, as with any global. `"vibe": { "effectModules": false }` in the config turns this off.
 
 **Precedence applies per meaning, as in TypeScript.** In a type position, a bare name declared as a type by an ambient global declaration (a TypeScript `lib` file or `@types`) keeps that meaning (including the DOM's `Console`, `FileSystem`, `Headers`, `Response` and `Event`). In a value or namespace position the table below decides. JavaScript globals that aren't platform-specific keep their meaning; Effect's module of the same name is then written `Effect.X` through the unshadowed implicit `Effect`, or imported under another name. Emitted namespace imports use fresh names so they do not shadow those global types.
 
@@ -524,7 +535,7 @@ type HostConsole = Console
 const output = Console$.log("hi")
 ```
 
-`Crypto` is the DOM's: effect 4.1.0 has no root module `Crypto` (VIP-14, amended). Effect's cryptography is the `effect/crypto` namespaces (`Digest`, `Mac`, `SecureRandom`, …), in scope by rule 3 below.
+`Crypto` is the DOM's: effect 4.1.1 has no root module `Crypto` (VIP-14, amended). Effect's cryptography is the `effect/crypto` namespaces (`Digest`, `Mac`, `SecureRandom`, …), in scope by rule 3 below.
 
 ```vibe es
 // compiler-gap: pending VIP-14
@@ -552,9 +563,9 @@ Where `Effect` is the compiler's implicit binding, `Effect.M`, where `M` is a mo
 
 1. **Platform access is only through injected Effect services** (`FileSystem`, `Path`, `ChildProcess`, `HttpClient`, …), each provided by a per-platform layer. A `.vibe` file has no `node:*` value imports, no Node globals (`process`, `Buffer`) and no platform calls such as `fetch`, anywhere: in plain and `async` functions, and inside `Effect.try` and `tryPromise` arrows too (VIP-33, amended). A wrapper changes how a failure is represented, not whether the platform may be called. Code that needs the platform lives in a `.ts` file, which is the escape ([VIP-25](../vips/0025-inline-modules-denied.md) removed inline modules).
 2. **What Effect lacks goes under `Experimental.X`,** named after the Effect module it extends, and is written so it can be proposed upstream. Nothing that Effect already provides is reimplemented.
-3. **Subpath namespaces are in scope:** the namespaces exported by the 22 lowercase subpaths in effect 4.1.0's package `exports`: `effect/ai`, `effect/cli`, `effect/cluster`, `effect/crypto`, `effect/devtools`, `effect/encoding`, `effect/eventlog`, `effect/graphql`, `effect/http`, `effect/http-api`, `effect/net`, `effect/observability`, `effect/persistence`, `effect/process`, `effect/reactivity`, `effect/rpc`, `effect/schema`, `effect/socket`, `effect/sql`, `effect/testing`, `effect/workers` and `effect/workflow` (`HttpClient` comes from `effect/http`, `ChildProcess` from `effect/process`). The capitalized `effect/<Module>` subpaths are the root modules above. These namespaces come in scope with the precedence above, so a subpath namespace whose name is a web platform global names Effect's. In effect 4.1.0 these are `Headers` (`effect/http`), `Response` (`effect/ai`, not an HTTP response), `Event` (`effect/eventlog`) and `Worker` (`effect/workers`). `FileSystem` and `Path` are root modules. Emitted code imports each namespace from its subpath.
+3. **Subpath namespaces are in scope:** the namespaces exported by the 23 lowercase subpaths in effect 4.1.1's package `exports`: `effect/ai`, `effect/cli`, `effect/cluster`, `effect/crypto`, `effect/devtools`, `effect/encoding`, `effect/eventlog`, `effect/graphql`, `effect/http`, `effect/http-api`, `effect/jose`, `effect/net`, `effect/observability`, `effect/persistence`, `effect/process`, `effect/reactivity`, `effect/rpc`, `effect/schema`, `effect/socket`, `effect/sql`, `effect/testing`, `effect/workers` and `effect/workflow` (`HttpClient` comes from `effect/http`, `ChildProcess` from `effect/process`). The capitalized `effect/<Module>` subpaths are the root modules above. These namespaces come in scope with the precedence above, so a subpath namespace whose name is a web platform global names Effect's. In effect 4.1.1 these are `Headers` (`effect/http`), `Response` (`effect/ai`, not an HTTP response), `Event` (`effect/eventlog`) and `Worker` (`effect/workers`). `KeyFormat` (`effect/crypto`) and `Transferable` (`effect/workers`) are DOM types only, so a bare type position keeps the DOM's meaning and `Transferable.X` names Effect's module, as for `Console`. `FileSystem` and `Path` are root modules. Emitted code imports each namespace from its subpath.
 
-   A name that two subpaths export, or a subpath and the root, is not in scope bare: using it is a compile error (`EK1401`) that names every exporter and offers one import per exporter. In effect 4.1.0 this covers `Model` (`effect/ai`, `effect/schema`), `Prompt` (`effect/ai`, `effect/cli`) and `Utils` (`effect`, `effect/rpc`). `Model.make(…)` is that error; `import { Model } from "effect/ai"` fixes it.
+   A name that two subpaths export, or a subpath and the root, is not in scope bare: using it is a compile error (`EK1401`) that names every exporter and offers one import per exporter. In effect 4.1.1 this covers `Model` (`effect/ai`, `effect/schema`), `Prompt` (`effect/ai`, `effect/cli`) and `Utils` (`effect`, `effect/rpc`). `Model.make(…)` is that error; `import { Model } from "effect/ai"` fixes it.
 
 ```vibe es
 // compiler-gap: pending VIP-33

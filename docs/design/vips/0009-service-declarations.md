@@ -47,13 +47,14 @@ class Users extends Context.Service<Users, {
 
 
 - **Amended 2026-10-30: recursive member shapes.** Declare the written member shape under a private type alias before constructing the service key. Inside that service's own shape, `S.Shape` denotes that alias directly, so recursive members do not project through the not-yet-constructed `typeof S`. Outside the shape it retains `Context.Service.Shape<typeof S>`. Apply this to both class services and defaulted `Context.Reference` services, using resolved service identity rather than spelling. The hook is type-only; no runtime namespace or `Shape` property is created.
+- **Amended 2026-10-31: local services.** The own-shape hook applies in every admitted declaration scope, a function or block included, and creates no namespace. Outside its own shape, a service declared in a function or block has no `S.Shape`; write `Context.Service.Shape<typeof S>`. Decided by the agent under Will's rule "when I state a principle, the agent derives the concrete rule and acts; I can override later" (decided detail 181).
 - **Amended 2026-10-30: outer generic capture.** The generic-service diagnostic also rejects a resolved written Shape contract that depends on a free type parameter from an enclosing scope. Follow aliases, constraints, defaulted type arguments and callable thrown contracts; erased type arguments must not specialize one runtime key. A member's own generic parameters are allowed when their contracts do not depend on an outer parameter. A concrete parameter-independent shape inside a generic function remains allowed, as do unrelated generic value computations.
 
 ```vibe es
 // compiler-gap: pending VIP-9
 service NodeKey { static readonly key = "test/NodeKey"; next?: NodeKey.Shape }
 function bad<T>() {
-  service Store { static readonly key = "test/Store"; value: T } // error: the Shape depends on outer T
+  service Store { static readonly key = "test/Store"; value: T } // expect-error: EK3005; the Shape depends on outer T
   return Store
 }
 service Fixed { static readonly key = "test/Fixed"; identity<T>(value: T): T }

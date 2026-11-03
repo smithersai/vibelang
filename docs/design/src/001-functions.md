@@ -42,8 +42,8 @@ const b = async effect { return 7 } // EK0105: remove async
 ```vibe es
 // compiler-gap: pending VIP-1
 // Arrow-head syntax controls
-const f: (x: number) => (number!!) = effect x: number!! => x // syntax error: parenthesize x
-const g: (x: number) => (number!!) = effect <T> x => x       // syntax error: parenthesize parameters
+const f: (x: number) => (number!!) = effect x: number!! => x // EK0109: parenthesize x
+const g: (x: number) => (number!!) = effect <T> x => x       // EK0109: parenthesize parameters
 const a: (x: number) => (number!!) = effect (x): number!! => x // allowed
 const b = effect <T>(x: T) => x                              // allowed
 const c: (x: number) => (number!!) = effect x => x             // allowed

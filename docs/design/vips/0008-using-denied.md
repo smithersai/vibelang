@@ -24,6 +24,8 @@ const load = (p, q) => Effect.gen(function* () {
 
 - **Amended 2026-10-29: a warning for `using` in effect code.** There it leaks on a failure or interruption, so it gets a warning, with a quick fix to `acquireDisposable` inside `scoped`. `using` keeps TypeScript's meaning. Sent to Will on Telegram 2026-10-29 11:28 under his standing rule 'assume I accept'; no objection by 12:00.
 
+The warning amendment above is historical; its accepted authority is [VIP-34's native-resource warning](0034-compiler-and-tooling.md#decision). This VIP remains denied and adds no language rule.
+
 ## What was proposed
 
 **A. No syntax.** `using` keeps TypeScript's meaning, and Effect resources use `scoped(effect { … })`. This is the outcome of the denial.
@@ -55,7 +57,7 @@ About 35 review findings over 10 rounds: 13 in rounds 2 to 4, 17 in rounds 6 to 
 
 Why it was hard: Effect has no block scope. A resource lives until the nearest `Effect.scoped`, so block-scoped `using` needed rules about which block is a scope, on top of telling two kinds of initializer apart. With no special syntax, none of these rules exist.
 
-## Effect's scope functions (effect 4.1.0)
+## Effect's scope functions (effect 4.1.1)
 
 ```ts
 scoped(self: Effect<A, E, R>): Effect<A, E, Exclude<R, Scope>>   // a fresh Scope, closed when self ends

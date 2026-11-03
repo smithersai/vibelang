@@ -9,6 +9,7 @@
 > **A `.vibex` file is a `.vibe` file read with TypeScript's JSX language variant. Every JSX production, and its scanning, checking and emit, is exactly `.tsx`'s. Every VibeLang production is exactly `.vibe`'s. Where they compete for the same tokens, `<` in expression position takes its `.tsx` reading. JSX adds no other rule.**
 
 ```vibex
+// compiler-gap: VIP-39 TS6054; file-kind support waits for the Preconditions below
 // Profile.vibex   tsconfig: "jsx": "preserve", "jsxImportSource": "solid-js"
 error ProfileMissing { id: string }
 
@@ -63,6 +64,7 @@ export function ProfileCard(props: { name: string; role: "admin" | "member" }) {
 - An operand that starts with `<` is JSX: `try <A/>`, `fork <A/>`, `join <A/>`, `throw <A/>`, as `await <A/>` is in `.tsx`.
 
 ```vibex
+// compiler-gap: VIP-39 TS6054; file-kind support waits for the Preconditions below
 const id = <T,>(x: T) => x
 const lift = effect <T,>(x: T) => x
 const n = input as number
@@ -85,6 +87,7 @@ The cost is the one every `.tsx` author already pays. `effect <T>(x: T) => x`, l
 - **An attribute value is a string, a container or an element**, as in `.tsx`. `task=effect { … }` is a syntax error; write `task={effect { … }}`.
 
 ```vibex
+// compiler-gap: VIP-39 TS6054; file-kind support waits for the Preconditions below
 export effect function Row(id: string) {
   const item = try loadItem(id)
   return (
@@ -118,6 +121,7 @@ export function Row(id: string) {
 - **Pattern position is not expression position.** After `when`, `is`, `and`, `or` and `not`, `<` is TC39's relational pattern, as in `.vibe`, except that `</` is one token in every `.vibex` context (row 39): write `when < /re/:`. A JSX value goes after the arm's `:`.
 
 ```vibex
+// compiler-gap: VIP-39 TS6054; file-kind support waits for the Preconditions below
 const view = <Task<User!NotFound> run={load} />
 const size = match (n) { when < 5: <Small/>; default: <Big/>; }
 ```
@@ -135,6 +139,7 @@ const size = n < 5 ? <Small/> : <Big/>
 - **An attribute is an object member under VIP-4.** TypeScript checks the attributes against the props type member by member, so a function value in an attribute must fit the prop's call signature, as in `f({ onClick: … })` ([Assignability](../src/003-failures.md#assignability)). A handler imported from a `.ts` file with `/** @throws {Error} */` is `EK0402` against an untagged `onClick`, in `onClick={handler}` and in a spread `{...{ onClick: handler }}` alike. The check of a tag against `JSX.ElementType` or `JSX.ElementClass` is not an assignability site: an element is not a tracked call (Rejected: "JSX elements as throw-tracked calls"), so an imported component is never rejected for what it may throw.
 
 ```vibex
+// compiler-gap: VIP-39 TS6054; file-kind support waits for the Preconditions below
 export effect function Greeting() {
   const name = try currentUser()
   return <p>Hello, {name}</p>
@@ -192,6 +197,7 @@ These orders apply after TypeScript's `exports`, `imports`, `paths`, `moduleSuff
 *Corrected 2026-11-02: the collision follows the selected native output paths, not a shared source stem (decided detail 265; found by the round-6 review).*
 
 ```vibex
+// compiler-gap: VIP-39 TS6054; file-kind support waits for the Preconditions below
 // main.vibex
 import { ProfileCard } from "./Profile"      // Profile.vibex
 import { format } from "./format.js"         // format.vibe
@@ -204,6 +210,8 @@ import { format } from "./format.js"         // format.ts
 ```
 
 ### Preconditions
+
+The `.vibex` examples explicitly name the current unsupported-file diagnostic, `TS6054`, with a `// compiler-gap:` marker while these prerequisites and file-kind support are pending. This records the planned feature, not successful compilation. The check rejects a stale marker once that code disappears; remaining diagnostics then retain their own checks.
 
 `.vibex` ships after these, each fixed in VibeLang with a test (see Clashes, rows marked **gap**):
 
@@ -221,7 +229,7 @@ Every place any panelist found where the same tokens could read two ways, or whe
 | 1 | `const id = <T>(x: T) => x` | generic arrow | element `<T>` | `isParenthesizedArrowFunctionExpressionWorker` "JSX overrides": `<` Identifier is an arrow only before `,`, `=` or `extends`. TS 5.9: TS17008, TS1382 | `.tsx`'s. Write `<T,>`, `<T extends U>`, `<T = D>`; same for `async <T,>` | all four |
 | 2 | `const id = effect <T>(x: T) => x` | effect arrow (legal in `.vibe`) | `effect<T>(x: T)`, a generic call | `tryParseVibeLangEffectArrow` (`vibelang_effect.go`) calls the same worker, gets false, rewinds. Probe `q03`: TS1005 ×2; `q04` `effect <T,>` parses | `.tsx`'s: `effect <T,>(x: T) => x`. No new diagnostic | all four |
 | 3 | `const s = <string>y` | type assertion | element `<string>` | `parseSimpleUnaryExpression` sends `<` to the JSX parser; `parseTypeAssertion` asserts it never runs in JSX. TS17008 | `.tsx`'s: `y as string`. Same inside containers and after `try`: `try <Eff>y` is JSX | all four |
-| 4 | `fork <A/>`, `join <A/>`, `try <A/>`, `throw <A/>` | operand is a type assertion | operand is JSX, as `await <A/>` | `parseSimpleUnaryExpression`; TS 5.9 accepts `await <b/>` and the statement `throw <b/>` | `.tsx`'s. The operand of `try`, `fork` and `join` is a `UnaryExpression` (VIP-5, VIP-17 amended); `throw <A/>` is JavaScript's `throw` statement, whose operand is an `Expression`. Either way `<` starts JSX. `throw` is never an operand: `x ?? throw <E/>` is not VibeLang (TS 5.9: TS1109); in effect code write `x ?? do { throw <E/> }` (VIP-2). **Gap:** `nextTokenStartsForkOperand`/`nextTokenStartsJoinOperand` (`vibelang_fibers.go`) exclude `<`; probe `q06` gives TS1109 | Opus (fork, join), Fable (try, throw) |
+| 4 | `fork <A/>`, `join <A/>`, `try <A/>`, `throw <A/>` | operand is a type assertion | operand is JSX, as `await <A/>` | `parseSimpleUnaryExpression`; TS 5.9 accepts `await <b/>` and the statement `throw <b/>` | `.tsx`'s. The operand of `try`, `fork` and `join` is a `UnaryExpression` (VIP-5, VIP-17 amended); `throw <A/>` is JavaScript's `throw` statement, whose operand is an `Expression`. Either way `<` starts JSX. `x ?? throw <E/>` is a throw expression, adopted from the [TC39 throw-expressions proposal](https://github.com/tc39/proposal-throw-expressions/tree/78b887751db4e380870a0a6bfc47319c50aa1404) (decided detail 284; Will, 2026-11-02: "Refer to tc39 spec for answer"): its operand is a `UnaryExpression`, so `<` starts JSX there too. It is allowed where a throw statement is: synchronous VibeLang code cannot throw, so a throw expression there is `EK0401` (VIP-4, amended 2026-10-31). TypeScript's `TS1109` on it shows only that the proposal adds syntax. **Gap:** `nextTokenStartsForkOperand`/`nextTokenStartsJoinOperand` (`vibelang_fibers.go`) exclude `<`; probe `q06` gives TS1109 | Opus (fork, join), Fable (try, throw) |
 | 5 | `x catch <E,>(e: E) => 1` | Appendix A `ArrowHandler` admits a generic arrow | generic arrow needs `<E,>` | no `catch` expression in TS | `.tsx`'s: `<E,>`. **Gap:** `parseVibeLangCatchHandler` (`vibelang_catch.go`) never tries `<`; probe `q08` fails even with the comma | Opus |
 | 6 | `<const const={1}/>` | element `const` | generic-arrow `const T` modifier lookahead | the arrow lookahead runs first. TS 5.9 and probe `q09`: TS1359, TS1139 | `.tsx`'s. Keyword tag names parse only once the outer lookahead has chosen JSX | Astra |
 | 7 | `<Box v={id<T>(x)} less={a < b} />` | type arguments or comparison | type arguments or tag opener | `tryParseTypeArgumentsInExpression`, `canFollowTypeArgumentsInExpression` speculate and roll back | Agrees: unchanged | Astra, Sol |

@@ -18,7 +18,7 @@ async function get(url) { return Promise.reject(new Error("no")) }  // allowed, 
 effect function load(id) {
   if (!user) throw new NotFound(id)            // the same as failing with Effect.fail(new NotFound(id))
   add(1, 2)                                    // ok: doesn't throw
-  parse(s)                                     // error: may throw, so wrap it and run it with try
+  parse(s)                                     // expect-error: EK0403; may throw, so wrap it and run it with try
   try Effect.try(() => parse(s))               // ok: Effect.try (a reserved word, so not a global)
   try tryPromise(() => queryDb(q))             // a Promise is always wrapped (VIP-6 global)
 }
@@ -35,10 +35,10 @@ effect function load(id) {
 - Implicit throws, such as reading a property of `undefined` or a stack overflow, are not tracked. They are defects, as in `Effect.sync`. So are receiver or environment state in a built-in, and the pattern protocol.
 - A function type or interface member with no `@throws` admits only `never`. A call through `any` or `Function` throws `unknown`, and a union of callables throws the union of its alternatives. `new X()` is tracked; getters and setters are not.
 - **Amended 2026-10-29: contracts sit on call signatures.** `@throws` and `@rethrows` attach to a call signature, as TypeScript attaches JSDoc to each overload; a returned function's contract sits on its own signature. Declaration output writes the contract on every emitted call signature. Decided by the agent on 2026-10-29 under Will's rule "when I state a principle, the agent derives the concrete rule and acts; I can override later" (decided detail 38).
-- **Amended 2026-10-29: generated annotations.** The remaining annotations of `lib.d.ts` globals and effect 4.1.0's non-Effect exports are generated: `@throws {never}` only when the source has no `throw` reachable from well-typed input, a named class when one is known (`SchemaError`), otherwise `unknown`. Decided by the agent on 2026-10-29 under Will's rule "when I state a principle, the agent derives the concrete rule and acts; I can override later" (decided detail 40).
+- **Amended 2026-10-29: generated annotations.** The remaining annotations of `lib.d.ts` globals and effect 4.1.1's non-Effect exports are generated: `@throws {never}` only when the source has no `throw` reachable from well-typed input, a named class when one is known (`SchemaError`), otherwise `unknown`. Decided by the agent on 2026-10-29 under Will's rule "when I state a principle, the agent derives the concrete rule and acts; I can override later" (decided detail 40).
 - **Amended 2026-10-29: only two wrappers take a throwing thunk.** Only `Effect.try` and `Effect.tryPromise` admit a throwing thunk. `sync`, `promise`, `callback` and `suspend` take `LazyArg`, which has no `@throws`, so a throwing thunk there is a compile error with a quick fix to the matching wrapper. Decided by the agent on 2026-10-29 under Will's rule "when I state a principle, the agent derives the concrete rule and acts; I can override later" (decided detail 41).
 
-*Corrected 2026-10-29: in effect 4.1.0, `Schema.decodeUnknownSync(schema)` only builds a decoder and throws nothing; the decoder it returns is what throws `SchemaError`. The annotation amendment above means that returned decoder (found by the round-4 review).*
+*Corrected 2026-10-29: in effect 4.1.1, `Schema.decodeUnknownSync(schema)` only builds a decoder and throws nothing; the decoder it returns is what throws `SchemaError`. The annotation amendment above means that returned decoder (found by the round-4 review).*
 
 ## Prior art
 

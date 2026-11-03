@@ -35,13 +35,15 @@ For example, TypeScript’s [`${configDir}` substitution](https://www.typescript
 // Effective paths: outDir is app/dist; rootDir is configs/src.
 ```
 
-`.vibe` and `.vibex` are supported source extensions: `files` may list them, and `include`, `exclude` and the default `**/*` treat `.vibe` as they treat `.ts` and `.vibex` as they treat `.tsx` ([below](#vibex)). A compatibility sidecar is an emit output: when `include` or default discovery selects both `x.vibe` and `x.d.vibe.ts`, the source wins and the sidecar leaves the program, as discovery selects `x.ts` ahead of `x.d.ts`. A sidecar explicitly listed in `files` remains an input. If the compatibility write would overwrite it, the compiler reports native `TS5055` (`Cannot write file … because it would overwrite input file`), exits `1` and leaves its bytes unchanged. The same rule applies to `x.d.vibex.ts` and mapped sidecar locations. The compatibility write is independent of ordinary output: `noEmit: true` suppresses JavaScript and public declarations, and `declaration: false` suppresses public declarations but leaves ordinary JavaScript behavior unchanged; neither disables the required compatibility sidecar or its overwrite check ([VIP-27](../vips/0027-declaration-output.md#decision), amended). VibeLang resolves a relative `./x.vibe` to source; plain `tsc` reads the compatibility declaration. A non-relative specifier that TypeScript resolves to `x.d.vibe.ts` or `x.d.vibex.ts`, through a package `types` export, a `paths` entry or package `#imports`, resolves to the available `x.vibe` or `x.vibex` source when the final resolved path is outside `node_modules`. Classify the path after TypeScript's own `realpath` step, not the written name: a linked workspace package normally reads its source. With `preserveSymlinks: true` the logical path keeps its `node_modules` segment and therefore its declarations, as a published package does; TypeScript may then distinguish the source and declaration modules. For relocated sidecars, follow the source that the sidecar map names rather than guessing from basenames. An explicitly listed sidecar remains an input even when another import redirects to its source, and its attempted overwrite keeps `TS5055` protection. Ordinary `.ts` and `.d.ts` resolution does not change ([VIP-27](../vips/0027-declaration-output.md#decision), amended).
+`.vibe` and `.vibex` are supported source extensions: `files` may list them, and `include`, `exclude` and the default `**/*` treat `.vibe` as they treat `.ts` and `.vibex` as they treat `.tsx` ([below](#vibex)). A compatibility sidecar is an emit output: discovery selects the source ahead of its sidecar, while an explicit `files` input keeps native overwrite protection (`TS5055`). The required sidecar write is independent of `noEmit` and `declaration: false` ([VIP-27](../vips/0027-declaration-output.md#decision), amended).
 
 ```json
 { "include": ["src"] }
 ```
 
 This includes `src/user.vibe` without also checking its stale `src/user.d.vibe.ts`. With `vibe.sidecarDir`, a sidecar under that directory whose source exists at the mirrored path is left out the same way.
+
+Declaration sidecars are emit outputs like `.d.ts`. Under [VIP-27’s native overwrite amendment](../vips/0027-declaration-output.md#amendment-native-overwrite-protection-2026-11-02), a sidecar found through `include` yields to its source and emit may overwrite it. Listing both the source and its sidecar explicitly in `files` keeps the sidecar as an input: emit reports `TS5055`, exits `1`, and leaves its bytes untouched. The same rule applies in the `vibe.sidecarDir` directory.
 
 A non-relative import reaching a known compatibility declaration uses its available mapped source only when TypeScript's final resolved path is outside `node_modules`. This includes package exports, `paths` and package `#imports`. Apply `realpath` and `preserveSymlinks` first; a retained logical dependency path keeps its declaration and native module identity. The rule also applies to the effective `sidecarDir` map ([VIP-27's dated amendment](../vips/0027-declaration-output.md#amendment-an-opt-in-sidecar-directory-2026-11-01)). Explicitly selected declarations remain inputs subject to the ordinary overwrite guard.
 
@@ -148,12 +150,14 @@ Relative specifiers resolve as follows, after TypeScript's `exports`, `imports`,
 | --- | --- |
 | `./App`, `./App.js` | `App.ts`, `App.tsx`, `App.vibe`, `App.vibex`, `App.d.ts`, then JavaScript |
 | `./App.jsx` | `App.tsx`, `App.ts`, `App.vibex`, `App.vibe`, `App.d.ts`, `App.jsx`, `App.js` |
-| `./App.vibe` | `App.vibe`, `App.d.ts` |
+| `./App.vibe` | `App.vibe`, `App.d.ts` (unchanged) |
 | `./App.vibex` | `App.vibex`, `App.d.ts` |
 
 ## TypeScript spellings with VibeLang forms
 
 These built-in warnings suggest an accepted VibeLang form without changing the meaning of TypeScript-style source. They are warnings by default and use `vibe.severities`, independently of the imported Effect lint table. A quick fix is offered only when it preserves evaluation order, coldness, types, comments, and declaration output; otherwise the diagnostic explains why it has no automatic fix. A warning does not itself rewrite code, and a warning-only run exits zero. Untagged `Data.Error` has no equivalent tagged declaration: keep its library form rather than adding a tag. An unsupported legacy repair is retired, rather than treated as a language requirement.
+
+In the `EK4834`, `EK4835` and `EK4836` rows, the call is the direct operand of bare `try` in effect code. Parentheses and erased TypeScript expression forms (`as`, `satisfies`, `!`) around it still leave it the direct operand; the call is recognized by its resolved symbol, so an import alias counts and a local binding that shadows `Effect` does not. An operand of `fork` in any form, of `join`, of `try.all`, `try.race`, `try.any` or `try.allSettled` or one of its elements, an argument of an Effect API, the head of a `catch`, and a stored or returned Effect are not direct operands, and these rows do not warn on them: `fork Effect.catch(e, h)` keeps recovery in the child ([`fork` and `join`](002-running.md#fork-and-join)), and `fork Effect.fail(e)` fails the child, not the caller.
 
 | Code | Trigger | Repair |
 | --- | --- | --- |
@@ -161,9 +165,9 @@ These built-in warnings suggest an accepted VibeLang form without changing the m
 | `EK4831` | A class written with `Context.Service` | Use `service Name { … }`, preserving the key with `static readonly key`. |
 | `EK4832` | A `const` holding `Schema.Struct({ … })` | Use `schema Name { … }` where the field mapping and associated type are preserved. In a declaration-emitting project, preserve an own type written as `Schema.Schema.Type<typeof Name>`, private or exported, because a `schema` declaration prints `typeof Name.Type`. |
 | `EK4833` | A written `Effect.Effect<A, E, R>` type, except an interface's `extends` element, which `A!E!R` cannot spell | Use the equivalent `A!E!R` spelling, preserving `never` slots and required parentheses. |
-| `EK4834` | An explicitly run `Effect.succeed(v)` or `Effect.fail(e)` in effect code | Use the value `v` or `throw e`; do not apply this to an unrun Effect value. |
-| `EK4835` | An explicitly run `Effect.catch`, `Effect.catchTag`, or `Effect.catchTags` in effect code | Use a `catch effect` handler, with `match` on the failure for tag cases and a typed `throw` for unmatched failures. |
-| `EK4836` | An explicitly run `Effect.provide` or `Effect.provideService` in effect code | Use a `provide` statement with Layers or `Key = value`, preserving operand evaluation order. |
+| `EK4834` | `Effect.succeed(v)` or `Effect.fail(e)` as the direct operand of bare `try` in effect code | Use the value `v` or `throw e`. |
+| `EK4835` | `Effect.catch`, `Effect.catchTag`, or `Effect.catchTags` as the direct operand of bare `try` in effect code | Use a `catch effect` handler, with `match` on the failure for tag cases and a typed `throw` for unmatched failures. |
+| `EK4836` | `Effect.provide` or `Effect.provideService` as the direct operand of bare `try` in effect code | Use a `provide` statement with Layers or `Key = value`, preserving operand evaluation order. |
 | `EK4837` | A class written with `Schema.TaggedError` | Use `schema error Name { … }` when the schema and tag are preserved; an ordinary `error` would lose the schema. |
 | `EK4839` | An Effect `Match` chain with a supported finisher, or a direct `Option.match(value, handlers)` call | Use `match`, or a function returning `match` for `Match.type`, only for patterns and handlers whose tests and results are preserved. Direct `Option.match` keeps subject evaluation, handler construction, property reads and the selected callback in their original order. The fix refuses a choice returning a program or comments between its arguments; `Match` chains also keep refusals for unsupported patterns, handlers or return types. |
 | `EK4841` | A schema `const` immediately followed by its matching `typeof Name.Type` alias | Use the corresponding `schema Name = …` declaration where the schema mapping preserves both exports. |
@@ -188,13 +192,40 @@ if (reason._tag !== "Fail") throw new Error("expected a typed failure")
 console.log(JSON.stringify([reason._tag, reason.error._tag, reason.error.id]))
 ```
 
+Only the first line of `demo` warns. The other three run their Effect in a child fiber or as an element, where the suggested form would change meaning: a `throw` in place of `fork Effect.fail("boom")` would fail `demo` itself, while the child's failure lets `demo` go on and inspect it.
+
+```vibe es
+// compiler-gap: pending VIP-34
+effect function demo(e: number!string, h: (x: string) => number!!) {
+  const one = try Effect.succeed(1)              // EK4834
+  const child = fork Effect.catch(e, h)          // no EK4835: recovery stays in the child
+  const failedChild = fork Effect.fail("boom")   // no EK4834: it fails the child, not demo
+  const both = try.all [Effect.succeed(one), e]  // no EK4834 on an element
+  return [child, failedChild, both]
+}
+```
+
+```ts effect
+// TypeScript-form advisory reference
+import { Effect } from "effect"
+function demo(e: Effect.Effect<number, string>, h: (x: string) => Effect.Effect<number>) {
+  return Effect.gen(function* () {
+    const one = yield* Effect.succeed(1)
+    const child = yield* Effect.forkChild(Effect.catch(e, h))
+    const failedChild = yield* Effect.forkChild(Effect.fail("boom"))
+    const both = yield* Effect.all([Effect.succeed(one), e], { concurrency: "unbounded" })
+    return [child, failedChild, both]
+  })
+}
+```
+
 ## The Effect version
 
-During alpha, VibeLang pins exactly one Effect version, and the pin moves to each new Effect release. The pinned dependency artifact is `effect@4.1.0`, and 4.1 is the earliest supported version (VIP-32, amended). Every Effect TypeScript mapping in this specification, and the `Exit` guarantee of [Runtime guarantees](008-runtime.md), is relative to the pin. The pin controls variables during alpha; it is not the long-term plan, and supported version ranges get their own VIP after alpha.
+During alpha, VibeLang pins exactly one Effect version, and the pin moves to each new Effect release. The pinned dependency artifact is `effect@4.1.1`, and 4.1 is the earliest supported version (VIP-32, amended). Every Effect TypeScript mapping in this specification, and the `Exit` guarantee of [Runtime guarantees](008-runtime.md), is relative to the pin. The pin controls variables during alpha; it is not the long-term plan, and supported version ranges get their own VIP after alpha.
 
 A migration upgrades the target repository to the pinned Effect first, on its own: it fixes what breaks and lands that commit with green tests. Only then does it convert files to `.vibe`, so each breakage shows its real cause. A repository that already uses VibeLang upgrades Effect together with the VibeLang release pinned to the new Effect, because the published `vibelang-runtime` enforces its exact pin.
 
-VibeLang declares an exact `effect` peer dependency. The compiler reads the resolved `effect/package.json`; any version other than `4.1.0` is `EK3201` in the CLI and editor ([VIP-32](../vips/0032-effect-version.md#decision)). For example, resolving `effect@4.0.3` reports: `the resolved effect is 4.0.3; VibeLang Y pins 4.1.0: upgrade both together`, where `Y` is the VibeLang release.
+VibeLang declares an exact `effect` peer dependency. The compiler reads the resolved `effect/package.json`; any version other than `4.1.1` is `EK3201` in the CLI and editor ([VIP-32](../vips/0032-effect-version.md#decision)). For example, resolving `effect@4.0.3` reports: `the resolved effect is 4.0.3; VibeLang Y pins 4.1.1: upgrade both together`, where `Y` is the VibeLang release.
 
 ## Compiler and tooling requirements
 
@@ -207,9 +238,9 @@ VibeLang declares an exact `effect` peer dependency. The compiler reads the reso
 5. **Emit names.** `x.vibe` emits `x.js` beside `x.d.ts` in `outDir`; JavaScript output rewrites relative `./x.vibe` specifiers to `./x.js`. Declaration output selects `./x.js` (default), `./x` (`"extensionless"`) or `./x.ts` through `vibelang.declarationImportStyle`; every other written specifier stays as written under every style, including `./helper.ts` ([VIP-27](../vips/0027-declaration-output.md#decision), amended). The setting applies to package declarations only: a source-adjacent sidecar keeps `./x.vibe`. `x.vibex` emits `x.jsx` under `"jsx": "preserve"` and `x.js` otherwise, as `x.tsx` does, and a relative `./x.vibex` specifier becomes the target file's actual output name (VIP-39). Bundler plugins use the same names ([VIP-34](../vips/0034-compiler-and-tooling.md#decision)). The `.d.vibe.ts` compatibility route above remains for tools reading `.vibe` specifiers.
 6. **Severities.** Only VibeLang's own warning codes and all imported `EK38xx` lint codes can be configured in `vibe.severities`. Entries for VibeLang's own error codes, interim `EK92xx` codes or unknown codes are config errors (`EK3006`), even if the requested severity is `"error"`.
 
-The transitional compiler also emits four migration warnings: `EK4853` writes previously inferred requirements explicitly under VIP-3; `EK4854` changes the retired abstract-class service spelling to `service`; `EK4855` changes a service's `default` value to a `defaultValue` factory under VIP-9; and `EK4856` replaces a use of the retired global `Effect<A, E, R>` alias with `A!E!R`, or qualified `Effect.Effect<A, E, R>` where the syntax requires it under VIP-3. Their [compatibility inventory](900-appendices.md#transitional-compiler-diagnostics) records the emitted codes. `vibelang --fix` keeps the existing safe-fix checks and refusal rules. These repairs do not run Effects or change the normative omitted-slot and service semantics.
+The transitional compiler also emits four migration warnings: `EK4853` writes previously inferred requirements explicitly under VIP-3; `EK4854` changes the retired abstract-class service spelling to `service`; `EK4855` changes a service's `default` value to a `defaultValue` factory under VIP-9; and `EK4856` replaces a use of the retired global `Effect<A, E, R>` alias with `A!E!R` where that needs no new parentheses, and with qualified `Effect.Effect<A, E, R>` otherwise, heritage elements included, under VIP-3. Their [compatibility inventory](900-appendices.md#transitional-compiler-diagnostics) records the emitted codes. `vibelang --fix` keeps the existing safe-fix checks and refusal rules. These repairs do not run Effects or change the normative omitted-slot and service semantics.
 
-The `EK4856` transition selects the resolved legacy symbol, never the identifier spelling: a local or imported type named `Effect` retains its TypeScript meaning. Its quick fix preserves grouping and default slots, keeps required imports when globals are disabled, and leaves declarations qualified. The alias is removed only in a coordinated release of compiler, codemod and docs. Afterwards, module-only `Effect<number>` is native `TS2709`; an unbound name follows ordinary TypeScript resolution ([VIP-3](../vips/0003-effect-type-shorthand.md#decision), amended).
+The `EK4856` transition selects the resolved legacy symbol, never the identifier spelling: a local or imported type named `Effect` retains its TypeScript meaning. Its quick fix keeps existing parentheses and written default slots, keeps required imports when globals are disabled, and is refused where it cannot keep the `Effect` namespace binding; emitted declarations already print `Effect.Effect<…>` and do not change. The alias is removed only in a coordinated release of compiler, codemod and docs. Afterwards, module-only `Effect<number>` is native `TS2709`; an unbound name follows ordinary TypeScript resolution ([VIP-3](../vips/0003-effect-type-shorthand.md#decision), amended).
 
 **Formatting** preserves program meaning and contracts, not emitted bytes: bindings, evaluation order, receivers, runtime effects, failures and finalizers. Source maps are regenerated to describe the formatted source.
 
@@ -389,12 +420,14 @@ Imported rules from `@effect/tsgo@0.57.0` (commit `999942fa41462eb46dfcb2d718e76
 
 Tools that only analyze code, such as cycle checkers (madge) and dependency graphs, may run on VibeLang's compiled output. Formatters cannot; they read `.vibe` itself.
 
-`vibelang lint` accepts the compiler’s options, including `-p`/`--project` and file arguments, with no lint-specific options; for example, `vibelang lint --project tsconfig.json` selects that project ([VIP-38](../vips/0038-effect-lint-built-in.md#decision)). `vibelang --fix` remains the codemod entry point. Two flags scope that invocation:
+`vibelang lint` accepts the compiler’s options, including `-p`/`--project` and file arguments, with no lint-specific options; for example, `vibelang lint --project tsconfig.json` selects that project ([VIP-38](../vips/0038-effect-lint-built-in.md#decision)). `vibelang --fix` remains the codemod entry point. Two flags scope that invocation ([VIP-34, amended](../vips/0034-compiler-and-tooling.md#decision)):
 
 | Flag | Scope when used with `--fix` |
 | --- | --- |
 | `--fix-migration-only` | Migration fixes, excluding TypeScript-form teaching rewrites and prelude/import cleanup. |
 | `--fix-vip-only` | The existing VIP migration passes, including the VIP-1/VIP-2 function-kind and `try` migration, excluding prelude/import cleanup. |
+
+In every scope, `--fix` keeps an import that a module's declaration needs, in its place and under its name, so the declaration stays the same bytes: an import goes only where the module's declaration is the same bytes without it. The prelude supplying a name does not make its import unneeded: without `import { Layer, Schema } from "effect"` written before a relative import, the declaration can list it after that import, and print an inferred `Schema.String` as an `import("effect/Schema")` type, so the import stays. Where the declaration is the same without it, as when it writes `import { Option } from "effect"` for `Option.Option<number>` either way, the import goes. Under `noUnusedLocals`, an import the fixes leave unused in the source is removed, since it would report `TS6133`. Every `.vibe` module has a declaration, its sidecar, so `noEmit` and `declaration: false` change nothing here.
 
 Either scope flag requires `--fix` somewhere in the argument list, before or after it; alone, each is an unknown compiler option (`TS5023`). The ordinary `--fix` invocation and its project options keep their existing meaning.
 
