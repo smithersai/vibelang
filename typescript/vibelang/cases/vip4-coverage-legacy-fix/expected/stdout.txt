@@ -1,0 +1,1 @@
+legacy fix removes var and arguments in a plain function

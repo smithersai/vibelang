@@ -1,0 +1,1 @@
+legacy JavaScript remains in foreign TypeScript

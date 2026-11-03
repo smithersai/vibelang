@@ -1,0 +1,5 @@
+// rule-evidence: docs/design/vips/0004-throw.md#70f274462d9285ea
+// VIP-4: Legacy JavaScript lives in .ts/.js files.
+import { Effect } from "effect"
+import { legacy } from "./foreign.js"
+export effect function main(): Effect.Effect<readonly unknown[],unknown> { return try Effect.try(() => legacy()) }

@@ -1,0 +1,4 @@
+// expect: EK0401
+// rule-evidence: docs/design/vips/0004-throw.md#25d78eb7a52c4781
+// VIP-4: vibe function f(x: unknown) { return match (x) { when
+function bad(s: string) { return match (s) { when let t and if (JSON.parse(t)): 1; default: 0; } }

@@ -1,0 +1,31 @@
+// rule-evidence: docs/design/vips/0004-throw.md#40a7555007b24e22
+// VIP-4: Implicit throws, such as reading a property of undefined or
+// rule-evidence: docs/design/vips/0004-throw.md#6984a4ad01a1c280
+// VIP-4: They are defects, as in Effect.sync.
+// rule-evidence: docs/design/vips/0004-throw.md#74a9f6220b7a045b
+// VIP-4: Native JavaScript catch clarification (late migration inquiry). The existing final
+// rule-evidence: docs/design/vips/0004-throw.md#8eeda677a54a3165
+// VIP-4: It catches any native thrown completion reaching that handler, including
+// rule-evidence: docs/design/vips/0004-throw.md#98424df4abedea5a
+// VIP-4: Native binding initialization, handler rethrows, finally and ordinary async await
+// rule-evidence: docs/design/vips/0004-throw.md#78dfe68f62863225
+// VIP-4: vibe function catchesImplicit(o: { readonly value: string }): string {
+// rule-evidence: docs/design/vips/0004-throw.md#ebeabc526930425f
+// VIP-4: @throws is a static call-signature contract, not a runtime JavaScript-catch
+import { Effect } from "effect"
+import { getter, rejected, sentinel } from "./foreign.js"
+function catches() {
+  let finalized = 0
+  let same = false
+  try { getter().value } catch (e) { same = e === sentinel } finally { finalized++ }
+  let nullCaught = false
+  try { const value: { n: number } = undefined as any; void value.n } catch (e) { nullCaught = e instanceof TypeError }
+  return [same, finalized, nullCaught]
+}
+async function catchesAsync() {
+  try { await rejected(); return false } catch (e) { return e === sentinel }
+}
+export effect function main(): Effect.Effect<readonly unknown[],unknown> {
+  const died = try Effect.exit(effect { return getter().value })
+  return [catches(), try Effect.tryPromise(catchesAsync), died._tag === "Failure" && died.cause.reasons[0]?._tag === "Die" && died.cause.reasons[0].defect === sentinel]
+}

@@ -1,0 +1,17 @@
+// rule-evidence: docs/design/vips/0004-throw.md#4c3a49dcd2d41518
+// VIP-4: throws from the pattern protocol are implicit
+// rule-evidence: docs/design/vips/0004-throw.md#324c67f3de24c650
+// VIP-4: A match with no matching arm throwing TypeError, the implicit
+// rule-evidence: docs/design/vips/0004-throw.md#35df2764448e688b
+// VIP-4: vibe effect function f(it: Iterable<number>) { return Array.from(it) } //
+import { Effect, Exit } from "effect"
+import { iterable } from "./foreign.js"
+function unknownValue(x: unknown): number { return match (x) { when "one": 1; } }
+export effect function main(): Effect.Effect<readonly unknown[],unknown> {
+  const noMatch = try Effect.exit(Effect.sync(() => unknownValue("other")))
+  const iteration = try Effect.exit(Effect.sync(() => Array.from(iterable())))
+  return [
+    Exit.isFailure(noMatch) && noMatch.cause.reasons[0]?._tag === "Die" && noMatch.cause.reasons[0].defect instanceof TypeError,
+    Exit.isFailure(iteration) && iteration.cause.reasons[0]?._tag === "Die" && iteration.cause.reasons[0].defect === "iterator"
+  ]
+}

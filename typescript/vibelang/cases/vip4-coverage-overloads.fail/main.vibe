@@ -1,0 +1,9 @@
+// expect: EK0403 EK0403 EK0403
+// rule-evidence: docs/design/vips/0004-throw.md#b92d3f89a46a2c6a
+// VIP-4: contracts sit on call signatures
+// rule-evidence: docs/design/vips/0004-throw.md#5dffb9c1f043db05
+// VIP-4: An emitted .d.ts and its source agree;
+import { overloaded, factory } from "./foreign.js"
+import { overloaded as declared } from "./foreign-declarations.js"
+effect function bad() { const a = overloaded("x"); const b = declared("x"); const f = factory(); return [a,b,f()] }
+

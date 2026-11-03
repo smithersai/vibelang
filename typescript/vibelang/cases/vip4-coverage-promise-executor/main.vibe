@@ -1,0 +1,20 @@
+// rule-evidence: docs/design/vips/0004-throw.md#417f3f77ebfed69e
+// VIP-4: new Promise(() => { throw e }) rejects; it never
+// rule-evidence: docs/design/vips/0004-throw.md#f7c8576bd7efa5ca
+// VIP-4: new Promise(exec) is not throw-tracked, and the executor's throws become
+// rule-evidence: docs/design/vips/0004-throw.md#d39abe391900221e
+// VIP-4: The Promise executor does not rethrow: its throws reject the
+import { Effect } from "effect"
+import { executor } from "./foreign.js"
+function build() { return new Promise<never>(executor) }
+async function observed() {
+  let synchronous = false
+  let same = false
+  let held: Promise<never> | undefined
+  try { held = build() } catch { synchronous = true }
+  try { await held } catch (error) { same = error === "executor" }
+  return [synchronous,same]
+}
+export effect function main(): Effect.Effect<readonly unknown[],unknown> {
+  return try Effect.tryPromise(observed)
+}

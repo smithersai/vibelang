@@ -1,0 +1,11 @@
+// expect: EK0402 EK0402
+// rule-evidence: docs/design/vips/0004-throw.md#3da3c01cde01aa97
+// VIP-4: only two wrappers take a throwing thunk
+// rule-evidence: docs/design/vips/0004-throw.md#a65448f47d549429
+// VIP-4: sync, promise, callback and suspend take LazyArg, which has no
+// rule-evidence: docs/design/vips/0004-throw.md#156da3e7c444990b
+// VIP-4: Only Effect.try and Effect.tryPromise admit a throwing thunk.
+import { bare } from "./foreign.js"
+const a = Effect.sync(() => bare())
+const b = Effect.suspend(() => Effect.succeed(bare()))
+

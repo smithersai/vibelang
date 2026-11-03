@@ -1,0 +1,4 @@
+// expect: EK4701
+// rule-evidence: docs/design/vips/0004-throw.md#7985c7292e90389c
+// VIP-4: The static side is EK4701: an exhaustive match on a
+function bad(x: "one" | "two") { return match (x) { when "one": 1; } }

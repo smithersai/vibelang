@@ -1,0 +1,10 @@
+// rule-evidence: docs/design/vips/0004-throw.md#d9ba9def2a4c14f1
+// VIP-4: else a callable declared in .vibe gives never: VibeLang functions
+import { Effect } from "effect"
+function local(n: number) { return n + 1 }
+const arrow = (n: number) => n + 1
+const object = { method(n: number) { return n + 1 } }
+function factory() { return (n: number) => n + 1 }
+export effect function main(): Effect.Effect<readonly unknown[],unknown> {
+  return [local(1), arrow(2), object.method(3), factory()(4)]
+}

@@ -1,0 +1,3 @@
+// expect: EK0107
+function bad() { return eval("1") }
+

@@ -1,0 +1,15 @@
+// expect: EK0403 EK0403 EK0403 EK0403
+// rule-evidence: docs/design/vips/0004-throw.md#33ca75ee2d3dc0c0
+// VIP-4: any, unknown and a union with a non-effectful member (Effect.Effect<number>
+// rule-evidence: docs/design/vips/0004-throw.md#c2b62a82c6d881a7
+// VIP-4: dynamic and union calls
+// rule-evidence: docs/design/vips/0004-throw.md#e757831937057804
+// VIP-4: any, unknown and any union with a non-effectful member (Effect.Effect<number>
+// rule-evidence: docs/design/vips/0004-throw.md#786693f5a3e41766
+// VIP-4: vibe declare function g(): any // tracked: try g() needs
+// rule-evidence: docs/design/vips/0004-throw.md#21990c4f5f76428b
+// VIP-4: A call through any, unknown-typed callables or Function throws unknown.
+// rule-evidence: docs/design/vips/0004-throw.md#154c55130ec5f4e3
+// VIP-4: vibe const f: any = parse; f(s) // throws unknown
+import { loose, uncertain, mixed, generic } from "./foreign.js"
+effect function f() { loose(); uncertain(); mixed(); generic<number>(); return 0 }

@@ -1,0 +1,12 @@
+// expect: EK0403
+// rule-evidence: docs/design/vips/0004-throw.md#c3d25dbcd4f3100b
+// VIP-4: rethrows
+// rule-evidence: docs/design/vips/0004-throw.md#f79abbe8897f562f
+// VIP-4: Finally union the own thrown type with the actual callback
+// rule-evidence: docs/design/vips/0004-throw.md#181188448115a4df
+// VIP-4: Rethrows is declared with a @rethrows <param> JSDoc tag.
+// rule-evidence: docs/design/vips/0004-throw.md#280f56d0930ff0df
+// VIP-4: Rethrows: at each invocation, union the callee's own thrown type
+import { invoke, callback } from "./foreign.js"
+effect function bad() { return invoke(callback) }
+

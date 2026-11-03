@@ -1,0 +1,1 @@
+native catch parity: implicit exceptions, identity, finally and rejection

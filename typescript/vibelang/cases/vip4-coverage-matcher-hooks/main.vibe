@@ -1,0 +1,12 @@
+import { Effect, Exit } from "effect"
+import { GetterPattern, CallPattern, matcher } from "./foreign.js"
+function read(x: unknown) { return match (x) { when GetterPattern: 1; default: 0; } }
+function call(x: unknown) { return match (x) { when CallPattern: 1; default: 0; } }
+export effect function main(): Effect.Effect<readonly unknown[]> {
+  const getter = try Effect.exit(Effect.sync(() => read({})))
+  const called = try Effect.exit(Effect.sync(() => call({})))
+  return [
+    Exit.isFailure(getter) && getter.cause.reasons[0]?._tag === "Die" && getter.cause.reasons[0].defect === "getter",
+    Exit.isFailure(called) && called.cause.reasons[0]?._tag === "Die" && called.cause.reasons[0].defect === "call"
+  ]
+}

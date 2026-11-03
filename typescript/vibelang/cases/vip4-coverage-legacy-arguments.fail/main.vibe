@@ -1,0 +1,5 @@
+// expect: EK0107
+// rule-evidence: docs/design/vips/0004-throw.md#d509fa16dd5857bc
+// VIP-4: legacy JavaScript banned in all .vibe code
+function bad() { return arguments.length }
+

@@ -1,0 +1,11 @@
+// expect: EK0404 EK0404
+// rule-evidence: docs/design/vips/0004-throw.md#0cfe78dbf070a3c8
+// VIP-4: Promise-producing tagged templates use the existing explicit Promise bridge rule.
+// rule-evidence: docs/design/vips/0004-throw.md#12d3d21dc1279177
+// VIP-4: In Effect code, apply EK0404 to that invocation when its
+// rule-evidence: docs/design/vips/0004-throw.md#c69579c9c4b8aac4
+// VIP-4: An async tag's synchronous thrown type can be never; that
+// rule-evidence: docs/design/vips/0004-throw.md#b64071d8cdbb409f
+// VIP-4: vibe async function tag(parts: TemplateStringsArray) { return 7 } effect
+import { api } from "./foreign.js"
+effect function bad() { const a = api.tag`value${3}`; const b = import("./payload.js"); return [a,b] }

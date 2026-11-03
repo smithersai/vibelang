@@ -1,0 +1,8 @@
+// expect: EK0701 EK0701
+// rule-evidence: docs/design/vips/0005-try-runs-effects.md#4fa0bef7a356de99
+// VIP-5: Corrected 2026-10-29: the example ends every match arm with ;,
+function last(x: "a") { return match (x) { when "a": 1 } }
+function newline(x: "a"|"b") { return match (x) {
+  when "a": 1
+  when "b": 2;
+} }

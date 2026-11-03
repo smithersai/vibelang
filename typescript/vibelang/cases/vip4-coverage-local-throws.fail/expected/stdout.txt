@@ -1,0 +1,1 @@
+synchronous source throw rejection across six callable kinds

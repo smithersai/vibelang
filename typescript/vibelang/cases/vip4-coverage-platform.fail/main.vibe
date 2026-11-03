@@ -1,0 +1,6 @@
+// expect: EK4402
+// rule-evidence: docs/design/vips/0004-throw.md#0e00a9f93be73e70
+// VIP-4: Corrected 2026-10-29: the examples call queryDb, a Promise-returning function imported
+// rule-evidence: docs/design/vips/0005-try-runs-effects.md#0e00a9f93be73e70
+// VIP-5: Corrected 2026-10-29: the examples call queryDb, a Promise-returning function imported
+effect function bad() { return try Effect.tryPromise(() => fetch("https://example.invalid")) }
