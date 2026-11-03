@@ -378,6 +378,15 @@ const goTestProgress = S.Filegroup({ srcs: [...S.glob(["scripts/go-test-progress
 
 const apiIdentityFiles = createApiIdentityInputs(S, Packages.tree)
 
+const declarationPreservation = S.Shell.Test({
+  summary: "VIP-27 declaration-preservation prose uses API identity; regression and generated wording checks.",
+  shell: "node --test docs/tools/spec-declaration-preservation.test.mjs",
+  data: [design, S.Filegroup({ srcs: [...S.glob(["docs/tools/spec-declaration-preservation*.mjs", "docs/tools/package.json", "docs/tools/bun.lock"])] })],
+  tools: [node],
+  sandbox: "none",
+  timeout: "5m"
+})
+
 const targets = {
   // Root ownership keeps template globs in scope without introducing a new
   // package boundary that would narrow the repository-wide tree checks.
@@ -418,6 +427,7 @@ const targets = {
     sandbox: "none",
     timeout: "5m"
   }),
+  "spec-declaration-preservation": declarationPreservation,
   // A Run has no graph replay: revision and external decisions are runtime
   // inputs. The script pins the revision/diff verdict, including failures.
   // Platform owns attachment to the pre-gate; grounded violations reject by default.
