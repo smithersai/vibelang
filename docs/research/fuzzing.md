@@ -548,6 +548,12 @@ the checked parser/lowering inventory, and the distinction between syntax
 and legacy semantic admission are documented in
 [Grammar admission audit](grammar-admission.md).
 
+When a private compatibility decoder moves, update its inventory row to the new
+helper name and retain its `recovery` classification. `VIP-11` decoding exists
+only for diagnosis and preserving migration; it does not admit trailing blocks.
+The focused `TestLegacyTrailingBlockHooksAreRecovery` regression checks these
+helpers alongside the complete source census.
+
 
 The grammar engine in `internal/vibelangfuzz/grammar_*_test.go` loads the
 current Appendix A through `SpecPath` at test time. It expands optional and

@@ -55,3 +55,41 @@ func TestCheckRejectsUnaccountedAndDuplicateHooks(t *testing.T) {
 		}
 	}
 }
+
+// Private legacy decoding is recovery under VIP-11, never language admission.
+// Keep this focused census in addition to the complete inventory check so a
+// helper move cannot silently leave stale rows that only describe old symbols.
+func TestLegacyTrailingBlockHooksAreRecovery(t *testing.T) {
+	root := repositoryRoot(t)
+	hooks, err := Hooks(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	data, err := os.ReadFile(filepath.Join(root, Table))
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := map[string]bool{
+		"parser/vibelang_trailing_legacy.go:Parser.isLegacyTrailingBlockStart": true,
+		"parser/vibelang_trailing_legacy.go:Parser.parseLegacyTrailingBlock":   true,
+		"parser/vibelang_trailing_legacy.go:isLegacyTrailingBlockHead":         true,
+	}
+	for hook := range want {
+		if !hooks[hook] {
+			t.Errorf("private recovery hook %s is absent from the compiler census", hook)
+		}
+	}
+	specPath := func(chapter string) string { return filepath.Join(root, "docs/design/src", chapter) }
+	errs, _ := Check(want, string(data), specPath)
+	for _, err := range errs {
+		t.Error(err)
+	}
+	for _, line := range strings.Split(string(data), "\n") {
+		fields := strings.Split(line, "\t")
+		if len(fields) == 5 && want[fields[0]] {
+			if fields[1] != "admission:trailing-block" || fields[2] != "900-appendices.md" || fields[3] != "recovery" {
+				t.Errorf("private trailing-block decoder must remain VIP-11 recovery: %s", line)
+			}
+		}
+	}
+}
