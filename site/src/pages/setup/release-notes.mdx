@@ -11,6 +11,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 
 ## 0.0.11 (unreleased)
+- The migrate flow's setup stopped with `TS2307: Cannot find module './calendarDate.vibe'` in a package whose committed declaration sidecars import a migrated neighbour as `./x.vibe`, such as `packages/foldkit` in Foldkit: the check of earlier runs' declarations copied the sidecars into a tree that holds only `x.d.ts`. It now spells those imports as the emitted declarations do, `./x.js`, and compares the APIs.
+- The migrate flow's codemod still rewrote an extensionless import in a test fixture, such as `../target` in `src/fixtures/a.ts`, to `../target.vibe`, and its own test check then refused the batch. A fixture now keeps an extensionless import as written, as a test does.
 - In a package where the migrate flow's setup turned on `vibe.sidecarDir`, `verify` and `record` refused every batch: the batch's own sidecar and a rewritten importer's counted as outside its scope, and a `*.fixture.d.vibe.ts` that setup moved counted as a renamed fixture. Those are now compiler output wherever they live; a sidecar with no `.vibe` source stays protected.
 - Oxlint's native rules now run on `.vibe` and `.vibex` files. Setup's lint scripts run stock Oxlint on the projected TypeScript through `.vibelang/oxlint.mjs --vibe-native`, with the repository's overrides and `ignorePatterns`, reports mapped back to source lines and reports on generated code dropped. `vibelang --ts-projection <file>` prints the projection and its span map, and `vibelang/oxlint` is the pass. Rerun setup to get it; existing findings a `.ts` file would get now appear on `.vibe` files.
 Update `vibelang`, `vibelang-runtime` and your bundler plugin together to
@@ -190,12 +192,20 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - The specification linter failed to load after independent updates repeated its declaration-retirement fixture; the fixture and its exact repeated tests are now declared once.
 
+- A build with only an imported Effect warning, such as `promiseInEffectSuccess`, incorrectly exited successfully and could emit under `noEmitOnError`. Imported diagnostics now follow the pinned Effect TypeScript compiler's exit and emission options, including ignored warnings and explicitly enabled suggestions; VibeLang's own warnings retain their existing policy.
 - Migrating a discarded `yield*` result that was itself an Effect could leave a bare program statement and prevent the migration from compiling; the fixer now writes `void try`, preserving the discarded value and keeping the inner program cold.
+- Migration returned modules containing TaggedError classes the compiler deliberately kept to preserve their published tags. The style gate now accepts those explicit refusals while retaining other style checks.
+- Two calls of a plain TypeScript function in one effect function, each with an Effect operand, made `vibelang --fix` refuse both with `TS2451`, because each fix named its operand's `const` the same; each now gets its own name, and `EK4401` is fixed.
 - Renaming a shorthand pattern binding could change the property it matched and add `TS2339`; rename now keeps the property key and writes an explicit binding.
 
 - Rolldown entry globs could bundle generated `.d.vibex.ts` declarations as empty entrypoints; the plugin now excludes those sidecars and retains the JSX source entries and aliases.
 
 - Published API checks rejected unchanged generic declarations when an import crossed a self-namespace export. Those copies now compare identically while changed exports and dependencies still fail.
+- After the migrate flow moved a module-level `let` into a `.platform.ts` sibling, a kept function that assigned it failed `TS2632` ("Cannot assign to ... because it is an import"). The codemod now moves every function that writes the moved binding with it, or keeps the module in TypeScript when such a writer must stay exported.
+
+- Declaration-twin checks missed async signatures; regression coverage now verifies their explicit `@throws {never}` contract while preserving authored documentation.
+
+- Regression coverage now checks that typed lint projects retain real Effect requirement types through native imports and declaration sidecars, including nested tests and aliases.
 - Generic `data` helper names used unstable suffixes and could collide with source names; they now use `$Name$Definition` and the first free numbered suffix.
 - Async-to-Effect conversion could skip a returned object's `then` getter or its error; conversions now preserve that Promise-adoption read by declining accessors and aliased objects, while keeping fresh data-property literals available.
 
@@ -340,6 +350,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - The editor could replace `Layer.mergeAll` with `wire`, switching a dependency from the caller's layer to a sibling layer. It now leaves the composition unchanged and explains that the provider must be chosen explicitly.
 
 - Private `trusted(impl, [])` wrappers had no migration away from the legacy trust form. `vibelang --fix` now rewrites safe direct calls through `Effect.try` and `Effect.orDie`, preserving the exact defect value and public declaration API; function values that escape remain for review.
+- Removing an Effect type assertion in the editor could widen a public failure or requirement channel. The action now refuses instead of changing the exported contract.
+
 - The migration checks generated callback failure unions without their required parentheses and failed to parse them. They now write valid compound slots while checking the same preserved channels and refusal controls.
 
 
@@ -521,6 +533,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - `--fix` wrote a `JSON.parse` or `new TextDecoder().decode` in an `Effect.gen` bare in the `effect` block, which turned a defect into a typed failure and changed the module's declared error channel, or failed with TS2375 against a written one; it now keeps the exception a defect through `Effect.orDie(Effect.try(...))`.
 - An unfinished module declaration could crash the parser; it now reports syntax errors.
 - An unfinished variable initializer or `catch` annotation could crash diagnostics or quick fixes; syntax errors now remain reported and unsafe rewrites are declined.
+- `--fix` rewrote `.pipe(observe((o) => o._tag))`, a curried generic stage, to `observe((o) => o._tag)(%)`, where its type arguments fell back to their constraints and the program's type widened, failing with TS2375; such a stage now keeps its `.pipe`.
 - `vibelang --fix --fix` reported `TS5023` instead of fixing the project; repeated `--fix` flags now apply the fixes once.
 - The migration instructions omitted throwing synchronous helpers; they now explain when to use an expected failure, a defect or a retained TypeScript helper.
 - The migrate flow's Effect upgrade left versioned pnpm selectors and patch metadata on the old release; matching selectors, patch filenames and `package.json` version references now move together while unrelated settings stay intact.
