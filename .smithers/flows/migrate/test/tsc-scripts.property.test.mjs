@@ -7,7 +7,7 @@ import { createRequire } from "node:module"
 import { tmpdir } from "node:os"
 import { dirname, join } from "node:path"
 import { test } from "node:test"
-import { replaceTscInScript, wireBunBuilds } from "../lib/wire.mjs"
+import { addEffectExitOptions, effectExitOptions, effectPatchesCompiler, replaceTscInScript, wireBunBuilds } from "../lib/wire.mjs"
 
 const require = createRequire(new URL("../../../../packages/runtime/package.json", import.meta.url))
 const ts = require("typescript")
@@ -117,4 +117,81 @@ test("tsc-only-scripts: setup rewrites exactly the build scripts whose Bun shell
       rmSync(root, { recursive: true, force: true })
     }
   }), { seed: 47047, numRuns: 150 })
+})
+
+// opencode http-recorder publish: script/build.ts ran stock `bunx tsc
+// --emitDeclarationOnly` (TypeScript 6, no Effect patch anywhere in the
+// repository), which ignores the tsconfig's @effect/language-service entry and
+// exited 0. vibelang runs the entry's rules and exited 2 on unstableApiUsage
+// warnings, so script/pack.ts failed. Setup now writes the plugin's own exit
+// options into the entry (VIP-38 R3) when nothing patches the compiler.
+test("opencode-tsc-warnings-exit: setup writes the plugin's exit options into the entry", () => {
+  const corpus = JSON.parse(readFileSync(new URL("./corpus/opencode-tsc-warnings-exit.json", import.meta.url), "utf8"))
+  assert.equal(addEffectExitOptions(corpus.before, ts), corpus.after)
+  assert.equal(addEffectExitOptions(corpus.after, ts), corpus.after, "a second setup changes nothing")
+  const plugin = ts.parseConfigFileTextToJson("tsconfig.json", corpus.after).config.compilerOptions.plugins[0]
+  assert.deepEqual(plugin, { name: "@effect/language-service", transform: "@effect/language-service/transform", namespaceImportPackages: ["effect", "@effect/*"], ...effectExitOptions })
+})
+
+// Generated repositories: Effect patches the compiler exactly when some
+// package script runs effect-tsgo or effect-language-service in command
+// position (decoys: another word, a path segment that is not the command, a
+// dependency name, a dependency's own script).
+const effectCommand = fc.constantFrom("effect-tsgo patch", "effect-language-service patch", "bunx effect-tsgo --noEmit", "node_modules/.bin/effect-tsgo patch")
+const effectDecoy = fc.constantFrom("my-effect-tsgo-helper", "echo effect-tsgoish", "bun add @effect/tsgo-x", "husky")
+test("effect-patched-compiler: setup finds a script that patches the compiler", () => {
+  fc.assert(fc.property(fc.array(fc.tuple(fc.boolean(), effectCommand, effectDecoy), { minLength: 1, maxLength: 4 }), (packages) => {
+    const root = mkdtempSync(join(tmpdir(), "migrate-effect-patch-"))
+    try {
+      writeFileSync(join(root, "package.json"), JSON.stringify({ name: "demo", private: true, workspaces: ["packages/*"] }))
+      packages.forEach(([real, command, decoy], i) => {
+        mkdirSync(join(root, `packages/p${i}`), { recursive: true })
+        writeFileSync(join(root, `packages/p${i}/package.json`), JSON.stringify({ name: `p${i}`, scripts: { setup: real ? `${decoy} && ${command}` : decoy } }))
+      })
+      mkdirSync(join(root, "node_modules/x"), { recursive: true })
+      writeFileSync(join(root, "node_modules/x/package.json"), JSON.stringify({ scripts: { postinstall: "effect-tsgo patch" } }))
+      assert.equal(effectPatchesCompiler(root), packages.some(([real]) => real))
+    } finally {
+      rmSync(root, { recursive: true, force: true })
+    }
+  }), { seed: 38130, numRuns: 120 })
+})
+
+// Generated tsconfigs (JSONC: comments, trailing commas, one-line and
+// multi-line entries): every @effect/language-service entry ends with both
+// exit options, an author's own value for either stays as written, other
+// plugins and options are untouched, comments survive, and a second pass is
+// a no-op.
+const authorValue = fc.constantFrom(undefined, true, false)
+const effectEntry = fc.record({ warnings: authorValue, errors: authorValue, extra: fc.boolean(), multiline: fc.boolean() }).map((e) => ({ effect: true, ...e }))
+const otherEntry = fc.constantFrom({ name: "next" }, { name: "typescript-plugin-css-modules", options: {} })
+test("effect-exit-options: each Effect entry gains the options it lacks, nothing else moves", () => {
+  fc.assert(fc.property(fc.array(fc.oneof(effectEntry, otherEntry), { maxLength: 4 }), fc.boolean(), fc.boolean(), (entries, comments, trailing) => {
+    const render = (e) => {
+      if (!e.effect) return JSON.stringify(e)
+      const props = [["name", "@effect/language-service"]]
+      if (e.extra) props.push(["namespaceImportPackages", ["effect"]])
+      if (e.warnings !== undefined) props.push(["ignoreEffectWarningsInTscExitCode", e.warnings])
+      if (e.errors !== undefined) props.push(["ignoreEffectErrorsInTscExitCode", e.errors])
+      const parts = props.map(([k, v]) => `${JSON.stringify(k)}: ${JSON.stringify(v)}`)
+      return e.multiline ? `{\n        ${parts.join(",\n        ")}${comments ? " // the author's" : ""}\n      }` : `{ ${parts.join(", ")} }`
+    }
+    const text = `{\n  ${comments ? "// a comment\n  " : ""}"compilerOptions": {\n    "strict": true,\n    "plugins": [\n      ${entries.map(render).join(",\n      ")}${trailing && entries.length ? "," : ""}\n    ]\n  }\n}\n`
+    const next = addEffectExitOptions(text, ts)
+    const parsed = ts.parseConfigFileTextToJson("tsconfig.json", next)
+    assert.equal(parsed.error, undefined, next)
+    const plugins = parsed.config.compilerOptions.plugins
+    assert.equal(plugins.length, entries.length, next)
+    entries.forEach((e, i) => {
+      if (!e.effect) return assert.deepEqual(plugins[i], e, next)
+      assert.equal(plugins[i].ignoreEffectWarningsInTscExitCode, e.warnings ?? true, next)
+      assert.equal(plugins[i].ignoreEffectErrorsInTscExitCode, e.errors ?? true, next)
+      assert.equal(plugins[i].namespaceImportPackages?.[0], e.extra ? "effect" : undefined, next)
+    })
+    assert.equal(parsed.config.compilerOptions.strict, true)
+    if (comments) assert.ok(next.includes("// a comment"), next)
+    assert.equal(next.split("// the author's").length, text.split("// the author's").length, next)
+    if (entries.every((e) => !e.effect || (e.warnings !== undefined && e.errors !== undefined))) assert.equal(next, text)
+    assert.equal(addEffectExitOptions(next, ts), next, "idempotent")
+  }), { seed: 38131, numRuns: 300 })
 })

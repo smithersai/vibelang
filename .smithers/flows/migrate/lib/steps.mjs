@@ -1023,10 +1023,13 @@ export async function wireTarget(config, log) {
     if (JSON.stringify(next) !== JSON.stringify(reaching.manifest)) writeIfChanged(path, readFileSync(path, "utf8"), JSON.stringify(next, null, 2) + "\n")
   }
   // An earlier setup's moduleSuffixes goes from every project, wired or not: Bun warns on it wherever it reads the config.
+  // A compiler the repository never patched with Effect ignored the plugin entry; vibelang exits as it did (VIP-38 R3).
+  const inertEffectPlugin = !Wire.effectPatchesCompiler(t)
   for (const tsconfig of Wire.ownedTsconfigs(t).filter(file => !isProtectedFile(file))) {
     const file = join(t, tsconfig)
     const text = readFileSync(file, "utf8")
-    writeIfChanged(file, text, Wire.removeWrittenModuleSuffixes(text, ts))
+    const next = Wire.removeWrittenModuleSuffixes(text, ts)
+    writeIfChanged(file, text, inertEffectPlugin ? Wire.addEffectExitOptions(next, ts) : next)
   }
   // Every project resolves an import of ./x.vibe to its sidecar, as stock TypeScript does under this option.
   for (const tsconfig of Wire.rootTsconfigs(t, ts)) {

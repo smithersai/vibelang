@@ -75,6 +75,73 @@ export function inSubmodule(submodules, path) {
 export const typeScriptCompilers = ["tsc", "tsgo", "tsrs"]
 
 /**
+ * Whether the repository runs Effect's diagnostics in its TypeScript compiler:
+ * a package script runs `effect-tsgo` (the Effect compiler, or its `patch` of
+ * tsgo) or `effect-language-service` (its `patch` of tsc). Otherwise `tsc`,
+ * `tsgo` and `tsrs` ignore the tsconfig's @effect/language-service entry, and
+ * its diagnostics never decide a build's exit status.
+ */
+export function effectPatchesCompiler(root) {
+  const effect = /(^|[\s;&|(/])(?:effect-tsgo|effect-language-service)(?=[\s;&|)]|$)/
+  const walk = (dir) => readdirSync(join(root, dir), { withFileTypes: true }).some((entry) => {
+    const path = dir ? posix.join(dir, entry.name) : entry.name
+    if (entry.isDirectory()) return !skippedDirectory(entry.name) && walk(path)
+    if (entry.name !== "package.json") return false
+    try {
+      return Object.values(JSON.parse(readFileSync(join(root, path), "utf8")).scripts ?? {}).some((script) => typeof script === "string" && effect.test(script))
+    } catch {
+      return false
+    }
+  })
+  return walk("")
+}
+
+/** The Effect plugin options that keep its diagnostics out of a build's exit status, as an unpatched compiler did. */
+export const effectExitOptions = { ignoreEffectWarningsInTscExitCode: true, ignoreEffectErrorsInTscExitCode: true }
+
+/**
+ * Adds effectExitOptions to each @effect/language-service entry in a
+ * tsconfig's compilerOptions.plugins, after its last property, keeping every
+ * key the entry already sets (an author's own value stays) and the JSONC
+ * around it. vibelang runs that entry's rules, and VIP-38 R3 counts their
+ * warnings and errors toward the exit status unless these options say not
+ * to; a compiler the repository never patched with Effect (setup tests
+ * effectPatchesCompiler) ignored the entry, so its replacement keeps the exit
+ * status it had (opencode's http-recorder build: tsc exited 0 on
+ * unstableApiUsage warnings, vibelang 2). The diagnostics still print.
+ * Setup creates no entry: without one vibelang runs no Effect rules.
+ */
+export function addEffectExitOptions(text, ts) {
+  const file = ts.parseJsonText("tsconfig.json", text)
+  const root = file.statements[0]?.expression
+  if (!root || !ts.isObjectLiteralExpression(root)) return text
+  const nameOf = (p) => ts.isPropertyAssignment(p) && p.name && (ts.isStringLiteral(p.name) || ts.isIdentifier(p.name)) ? p.name.text : undefined
+  const options = root.properties.find((p) => nameOf(p) === "compilerOptions")?.initializer
+  if (!options || !ts.isObjectLiteralExpression(options)) return text
+  const plugins = options.properties.find((p) => nameOf(p) === "plugins")?.initializer
+  if (!plugins || !ts.isArrayLiteralExpression(plugins)) return text
+  const edits = []
+  for (const entry of plugins.elements) {
+    if (!ts.isObjectLiteralExpression(entry)) continue
+    const name = entry.properties.find((p) => nameOf(p) === "name")?.initializer
+    if (!name || !ts.isStringLiteral(name) || name.text !== "@effect/language-service") continue
+    const missing = Object.entries(effectExitOptions).filter(([key]) => !entry.properties.some((p) => nameOf(p) === key))
+    if (!missing.length) continue
+    const last = entry.properties.at(-1)
+    if (!last) {
+      edits.push({ at: entry.getStart(file) + 1, text: " " + missing.map(([k, v]) => `${JSON.stringify(k)}: ${v}`).join(", ") + " " })
+      continue
+    }
+    const lineStart = text.lastIndexOf("\n", last.getStart(file)) + 1
+    const multiline = text.slice(entry.getStart(file), last.getStart(file)).includes("\n")
+    const indent = multiline ? /^[ \t]*/.exec(text.slice(lineStart))[0] : ""
+    edits.push({ at: last.end, text: missing.map(([k, v]) => (multiline ? `,\n${indent}` : ", ") + `${JSON.stringify(k)}: ${v}`).join("") })
+  }
+  for (const edit of edits.reverse()) text = text.slice(0, edit.at) + edit.text + text.slice(edit.at)
+  return text
+}
+
+/**
  * Replaces a TypeScript compiler with vibelang in package scripts: `tsc -b x`
  * becomes `vibelang -b x`, as do `tsgo -b x` and `tsrs -b x`, and so does a
  * compiler a shell separator ends, as in `tsc; node x`.
