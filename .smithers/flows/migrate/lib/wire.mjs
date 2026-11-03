@@ -17,6 +17,7 @@ import { join, posix } from "node:path"
 import { wireNativeViteConfigs } from "./vite-config.mjs"
 import { addVitestProjectPlugins } from "./vitest-projects.mjs"
 import { wireBunFixtureTests } from "./bun-fixtures.mjs"
+import { localPackageDependencies } from "./workspace-dependencies.mjs"
 import { workspaceGlobs, workspaceManifests } from "./upgrade.mjs"
 import { must, quote } from "./util.mjs"
 import { packageScripts, testLeftAsIs, testOnlyScripts } from "./test-files.mjs"
@@ -367,6 +368,7 @@ export function startsWorkers(root, dir) {
   const owns = ownedPaths(root)
   const byName = new Map(all.filter(pkg => pkg.manifest.name && owns(posix.join(pkg.dir, "package.json"))).map(pkg => [pkg.manifest.name, pkg]))
   const byDir = new Map(all.map(pkg => [pkg.dir, pkg]))
+  const local = localPackageDependencies(root, byName)
   const pending = [dir], seen = new Set()
   for (let i = 0; i < pending.length; i++) {
     const current = pending[i]
@@ -374,7 +376,7 @@ export function startsWorkers(root, dir) {
     seen.add(current)
     if (walk(current === "." ? "" : current)) return true
     const pkg = byDir.get(current)
-    if (pkg) pending.push(...localPackageDependencies(pkg, byName).map(dependency => dependency.dir))
+    if (pkg) pending.push(...local(pkg).map(dependency => dependency.dir))
   }
   return false
 }
@@ -640,16 +642,6 @@ export function repositoryPackages(root) {
 const viteConfigFile = /^(?:vite(?:st)?(?:\.[\w-]+)?|electron\.vite)\.config(?:\.(?!(?:d|test|spec)\.)[\w-]+)?\.m?[jt]s$/
 const electronViteConfigFile = /^electron\.vite\.config\.m?[jt]s$/
 
-// A dependency on a workspace package by its source: workspace:, file:, link: or *.
-const localSpec = /^(?:workspace:|file:|link:|\*$)/
-
-const localPackageDependencies = (pkg, byName) => Object.entries({
-  ...pkg.manifest.dependencies, ...pkg.manifest.devDependencies,
-  ...pkg.manifest.peerDependencies, ...pkg.manifest.optionalDependencies
-}).filter(([name, spec]) => typeof spec === "string" && localSpec.test(spec) && byName.has(name))
-  .map(([name]) => byName.get(name))
-
-
 /**
  * The repository's packages that load migrated sources: each migrated package
  * and each that depends on one through workspace packages
@@ -658,7 +650,7 @@ const localPackageDependencies = (pkg, byName) => Object.entries({
 export function packagesReaching(root, migrated) {
   const all = repositoryPackages(root)
   const byName = new Map(all.filter((pkg) => pkg.manifest.name).map((pkg) => [pkg.manifest.name, pkg]))
-  const local = (pkg) => localPackageDependencies(pkg, byName)
+  const local = localPackageDependencies(root, byName)
   // Propagate from the migrated packages through reverse dependency edges.
   // A recursive walk cannot memoize false while a dependency cycle is open:
   // another branch may still connect the whole cycle to a migrated package.

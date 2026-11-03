@@ -11,6 +11,7 @@ import { existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs"
 import { join, posix } from "node:path"
 import { preloadRegister } from "./oxlint-plugins.mjs"
 import { packagesReaching } from "./wire.mjs"
+import { localPackageDependencies } from "./workspace-dependencies.mjs"
 
 const registration = "vibelang/register"
 
@@ -88,8 +89,6 @@ function packageFiles(root) {
   return found
 }
 
-const localSpec = /^(?:workspace:|file:|link:|\*$)/
-
 /**
  * Preloads vibelang/register for Node's test runner where it reaches
  * migrated sources (packages holds the migrated packages' directories):
@@ -106,7 +105,7 @@ export function wireNodeTests({ root, packages, ts, specsFor }) {
   }
   const reaching = packagesReaching(root, packages.map((pkg) => pkg.dir))
   const reached = new Set(reaching.map((pkg) => pkg.dir))
-  const names = new Set(reaching.map((pkg) => pkg.manifest.name).filter(Boolean))
+  const localDependencies = localPackageDependencies(root, new Map(reaching.filter(pkg => pkg.manifest.name).map(pkg => [pkg.manifest.name, pkg])))
   const manifests = new Map(reaching.map((pkg) => [pkg.dir, pkg.manifest]))
   // A PACKAGE.ts belongs to its nearest package.json. A hidden directory's
   // package (.smithers/flows) is outside the workspace walk: it reaches
@@ -117,8 +116,7 @@ export function wireNodeTests({ root, packages, ts, specsFor }) {
         if (reached.has(dir)) return dir
         try {
           const manifest = JSON.parse(readFileSync(join(root, dir, "package.json"), "utf8"))
-          const deps = { ...manifest.dependencies, ...manifest.devDependencies }
-          if (Object.entries(deps).some(([name, spec]) => names.has(name) && typeof spec === "string" && localSpec.test(spec))) {
+          if (localDependencies({ dir, manifest }).length) {
             manifests.set(dir, manifest)
             return dir
           }

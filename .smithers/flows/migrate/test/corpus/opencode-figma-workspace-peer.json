@@ -1,0 +1,49 @@
+{
+  "finding": "wire:packagesReaching:workspace-semver-peer",
+  "origin": "opencode packages/plugins/figma -> @opencode/plugin -> @opencode/ai",
+  "packages": {
+    "@opencode/ai": "packages/ai",
+    "@opencode/plugin": "packages/plugin",
+    "@opencode/plugin-figma": "packages/plugins/figma"
+  },
+  "files": {
+    "package.json": {
+      "private": true,
+      "type": "module",
+      "workspaces": [
+        "packages/*",
+        "packages/plugins/*"
+      ]
+    },
+    "packages/ai/package.json": {
+      "name": "@opencode/ai",
+      "version": "2.2.0",
+      "type": "module",
+      "exports": "./index.js"
+    },
+    "packages/ai/index.js": "export const value = 1\n",
+    "packages/ai/index.vibe": "export const value = 1\n",
+    "packages/plugin/package.json": {
+      "name": "@opencode/plugin",
+      "version": "2.2.0",
+      "type": "module",
+      "exports": "./index.js",
+      "dependencies": {
+        "@opencode/ai": "workspace:*"
+      }
+    },
+    "packages/plugin/index.js": "export { value } from '@opencode/ai'\n",
+    "packages/plugins/figma/package.json": {
+      "name": "@opencode/plugin-figma",
+      "version": "2.2.0",
+      "type": "module",
+      "scripts": {
+        "typecheck:tsc": "tsc --noEmit"
+      },
+      "peerDependencies": {
+        "@opencode/plugin": "^2.0.27 || ^0.0.0-dev"
+      }
+    },
+    "packages/plugins/figma/index.ts": "import { value } from '@opencode/plugin'\nexport { value }\n"
+  }
+}
