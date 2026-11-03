@@ -324,3 +324,16 @@ The pre-VIP-1 migration repairs a legacy `fork(program, options)` even when an
 earlier pass already marked its function `effect`: it writes
 `try Effect.forkChild(program, options)`. A single-operand `fork program`
 keeps its operator form.
+
+When migrating pre-VIP-1 code with `vibelang --fix --fix-vip-only`, a call
+passed to an unconstrained generic parameter keeps its old run phase. For
+example, `expect(awaited(p))` becomes `expect(try awaited(p))` in effect code:
+`expect<T>(actual: T, message?: string)` does not ask for an Effect. A parameter
+declared as an Effect, including `T extends Effect.Effect<unknown>`, still
+receives the unrun program. Explicit type arguments that select an Effect also
+keep that program unrun.
+
+Another provided argument can also fix the same generic parameter to an Effect,
+including through a record, tuple or callback. That independent context still
+keeps the argument as a program, and the migration runs the generic call's
+result where the old code ran it.

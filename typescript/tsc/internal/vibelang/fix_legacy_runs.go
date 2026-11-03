@@ -89,6 +89,9 @@ func (m *legacyModel) runOf(call *ast.Node) (legacyRun, string) {
 // keeps each round free of the errors a mark alone adds, as x + 1 for x the
 // call of a newly marked function.
 func (m *legacyModel) effectResult(call *ast.Node) bool {
+	if m.givesRunArgument(call) {
+		return false
+	}
 	if legacyEffectResult(m.a.checker, call) || legacyValueReceiverCall(m.a, call) || legacyServiceMemberResult(m.a, call) {
 		return true
 	}
@@ -498,6 +501,9 @@ func legacyHeldAt(a *analyzer, n *ast.Node) (bool, string) {
 // name (D147, D155): a program that runs the calls in n when it runs.
 func legacyHold(a *analyzer, n *ast.Node) (held bool, byName bool, reason string) {
 	c := a.checker
+	if a.atBareGenericParameter(n) {
+		return false, false, ""
+	}
 	if holdsProgram(c, n) {
 		// A declared Effect const (D262, D269); a contextual Effect field
 		// (D265) passes its expression by name.
@@ -812,6 +818,121 @@ func (m *legacyModel) blockText(file *ast.SourceFile, block *ast.Node) string {
 		}
 	}
 	return "effect { return " + body + " }"
+}
+
+// givesRunArgument reports whether call returns its own bare generic argument,
+// as check<T>(actual: T): T does, and that argument is a call that gives an
+// Effect. The migration runs that argument, so T is its success: check(load(1))
+// is a number once written check(try load(1)), though it types as an Effect now.
+func (m *legacyModel) givesRunArgument(call *ast.Node) bool {
+	if !ast.IsCallExpression(call) || len(call.TypeArguments()) > 0 {
+		return false
+	}
+	signature := m.a.checker.GetResolvedSignature(call)
+	if signature == nil {
+		return false
+	}
+	declared := m.a.declaredSignature(signature)
+	if declared == nil {
+		return false
+	}
+	result := m.a.checker.GetReturnTypeOfSignature(declared)
+	if result == nil || result.Flags()&checker.TypeFlagsTypeParameter == 0 {
+		return false
+	}
+	for i, argument := range call.Arguments() {
+		operand := ast.SkipParentheses(argument)
+		if m.a.checker.GetTypeAtPosition(declared, i) == result && m.a.bareGenericParameter(call, signature, []pathStep{{argument: i}}) && isInvocation(operand) && m.effectResult(operand) {
+			return true
+		}
+	}
+	return false
+}
+
+// atBareGenericParameter reports whether n is an argument of a call written in
+// the source, at a bareGenericParameter. It answers before the contextual type
+// does, which is that same instantiated T.
+func (a *analyzer) atBareGenericParameter(n *ast.Node) bool {
+	owner, path := ownerCall(n)
+	if owner == nil || !ast.IsCallExpression(owner) || isTryCall(owner) || len(owner.TypeArguments()) > 0 {
+		return false
+	}
+	if ast.SkipParentheses(owner.Expression()).Flags&(ast.NodeFlagsReparsed|ast.NodeFlagsVibeLangIntrinsic) != 0 {
+		return false
+	}
+	signature := a.checker.GetResolvedSignature(owner)
+	return signature != nil && a.bareGenericParameter(owner, signature, path)
+}
+
+// bareGenericParameter reports whether the parameter at path is declared as an
+// unconstrained type parameter inferred from this argument alone, as
+// expect<T>(actual: T, message?: string) does.
+// Its instantiated type is the argument's own, so an Effect there says nothing:
+// no declaration asked for a program, and the old compiler ran the call
+// (Smithers agent/fs Incur.test.vibe: expect(awaited(paths(cli))).toEqual(…);
+// holding it compiled, and the test received the program).
+func (a *analyzer) bareGenericParameter(call *ast.Node, signature *checker.Signature, path []pathStep) bool {
+	if len(path) != 1 {
+		return false
+	}
+	declared := a.declaredSignature(signature)
+	if declared == nil {
+		return false
+	}
+	t := a.checker.GetTypeAtPosition(declared, path[0].argument)
+	if t == nil || t.Flags()&checker.TypeFlagsTypeParameter == 0 {
+		return false
+	}
+	constraint := a.checker.GetBaseConstraintOfType(t)
+	if constraint != nil && constraint != t && constraint.Flags()&(checker.TypeFlagsAny|checker.TypeFlagsUnknown) == 0 {
+		return false
+	}
+	// D44 permits a contextual Effect independently fixed by another argument.
+	// Unlike expect's optional string message, a sibling declared using T can
+	// supply that evidence. Preserve the old context rather than guessing that
+	// every inferred Effect came only from this argument's call.
+	declaration := declared.Declaration()
+	var parameters []*ast.Node
+	if declaration != nil && ast.IsFunctionLike(declaration) && declaration.ParameterList() != nil {
+		parameters = declaration.ParameterList().Nodes
+	}
+	var mentions func(*ast.Node) bool
+	mentions = func(node *ast.Node) bool {
+		if node == nil {
+			return false
+		}
+		if node.Kind == ast.KindTypeReference && a.checker.GetTypeFromTypeNode(node) == t {
+			return true
+		}
+		return node.ForEachChild(mentions)
+	}
+	for other := range call.Arguments() {
+		if other == path[0].argument {
+			continue
+		}
+		shared := a.checker.GetTypeAtPosition(declared, other) == t
+		if len(parameters) != 0 {
+			// A signature with its first parameter moved to this, or with an
+			// explicit this parameter, omits that parameter from Parameters.
+			index := other + len(parameters) - len(declared.Parameters())
+			if index >= len(parameters) {
+				index = len(parameters) - 1
+			}
+			shared = shared || index >= 0 && mentions(parameters[index].Type())
+		}
+		if shared {
+			argument := call.Arguments()[other]
+			expected := a.checker.GetTypeAtPosition(signature, other)
+			// A mismatched plain value cannot independently establish the
+			// candidate's Effect context. It may start matching once this
+			// argument's legacy call is run. A spread retains the old context:
+			// its one syntax node can stand for several inferred parameters.
+			if ast.IsSpreadElement(argument) || expected != nil && a.checker.IsTypeAssignableTo(a.checker.GetTypeAtLocation(argument), expected) {
+				return false
+			}
+		}
+	}
+	return true
 }
 
 // unmatchedOverloadExpectsProgram reports whether call has no matching overload

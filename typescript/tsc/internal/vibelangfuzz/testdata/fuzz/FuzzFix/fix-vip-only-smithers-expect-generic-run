@@ -1,0 +1,2 @@
+go test fuzz v1
+string("-- main.vibe --\nimport { Effect } from \"effect\"\n\ndeclare function expect<T>(actual: T, message?: string): { toEqual(expected: unknown): void }\n\nfunction awaited<A>(promise: PromiseLike<A>): Effect<A> {\n  return sync(async (promise) => promise, promise)\n}\n\ndeclare const p: Promise<number>\n\nexport const test = effect () => {\n  expect(awaited(p)).toEqual(1)\n}\n")

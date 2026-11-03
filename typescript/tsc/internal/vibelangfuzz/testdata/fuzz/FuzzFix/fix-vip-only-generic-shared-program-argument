@@ -1,0 +1,2 @@
+go test fuzz v1
+string("-- main.vibe --\nimport { Effect } from \"effect\"\ndeclare function check<T>(actual: T, other: T): T\nconst other = Effect.succeed(2)\nconst work = effect (n: number): number!! => n + 1\nexport effect function main(): number!! {\n  return check(work(1), other)\n}\n")
