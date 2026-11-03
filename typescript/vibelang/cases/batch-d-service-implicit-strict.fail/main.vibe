@@ -4,3 +4,7 @@ export service Reader {
  read()
  value
 }
+
+// VIP-9 VIP-9 native noImplicitAny signature diagnostics; rule: docs/design/vips/0009-service-declarations.md#5e7d3098be169818
+
+// VIP-9 untyped service method retains native TS7010 rather than an Effect-only contract; rule: docs/design/vips/0009-service-declarations.md#49a5d84870351ee3

@@ -4,3 +4,7 @@ export service Reader {
  read()
  value
 }
+
+// VIP-9 VIP-9 explicit noImplicitAny override; rule: docs/design/vips/0009-service-declarations.md#b5773ffd82a5f788
+
+// VIP-9 VIP-9 explicit noImplicitAny override; rule: docs/design/vips/0009-service-declarations.md#e60cb24827b600d8

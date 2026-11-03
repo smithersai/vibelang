@@ -4,3 +4,11 @@ export service Reader {
  read()
  value
 }
+
+// VIP-9 VIP-9 native loose implicit any; rule: docs/design/vips/0009-service-declarations.md#c2f3dfa0ce9b7150
+
+// VIP-9 VIP-9 native loose implicit any; rule: docs/design/vips/0009-service-declarations.md#1daa59b07e4f68fa
+
+// VIP-9 VIP-9 native loose implicit any; rule: docs/design/vips/0009-service-declarations.md#37e1c4eac26cc319
+
+// VIP-9 VIP-9 native loose implicit any; rule: docs/design/vips/0009-service-declarations.md#255237a368a616a7

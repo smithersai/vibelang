@@ -23,3 +23,19 @@ export error Gone {
 export class MissingBuildId extends Data.TaggedError("MissingBuildId")<{}> {}
 
 export error TimeoutWithBraces {}
+
+// VIP-13 VIP-13 fieldless declarations keep the no-type-argument ABI; rule: docs/design/vips/0013-error-declarations.md#c635f510892d8d91
+
+// VIP-13 VIP-13 fieldless declarations keep the no-type-argument ABI; rule: docs/design/vips/0013-error-declarations.md#5b4938b641d4ad64
+
+// VIP-13 VIP-13 fieldless declarations keep the no-type-argument ABI; rule: docs/design/vips/0013-error-declarations.md#e4c99246ea3a1c43
+
+// VIP-13 VIP-13 fieldless declarations keep the no-type-argument ABI; rule: docs/design/vips/0013-error-declarations.md#e21fa183fe47f299
+
+// VIP-13 VIP-13 fieldless declarations keep the no-type-argument ABI; rule: docs/design/vips/0013-error-declarations.md#ab7a055b32eaba0a
+
+// VIP-13 VIP-13 fieldless declarations keep the no-type-argument ABI; rule: docs/design/vips/0013-error-declarations.md#dd8d5d15dd892532
+
+// VIP-13 VIP-13 fieldless declarations keep the no-type-argument ABI; rule: docs/design/vips/0013-error-declarations.md#aba3914ef78d0b9e
+
+// VIP-13 VIP-13 fieldless declarations keep the no-type-argument ABI; rule: docs/design/vips/0013-error-declarations.md#68c1d6105589f1a0

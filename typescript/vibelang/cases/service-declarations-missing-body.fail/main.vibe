@@ -1,0 +1,11 @@
+// expect: EK0906
+service Missing
+export {}
+
+// VIP-9 recognized service requires its body; rule: docs/design/vips/0009-service-declarations.md#8ee4ec6a1f0cf74e
+
+// VIP-9 incomplete custom declaration forms use their owner diagnostics; rule: docs/design/vips/0009-service-declarations.md#cba536191f939baf
+
+// VIP-9 incomplete custom declaration forms use their owner diagnostics; rule: docs/design/vips/0009-service-declarations.md#b855bec149066ae2
+
+// VIP-9 incomplete custom declaration forms use their owner diagnostics; rule: docs/design/vips/0009-service-declarations.md#620450d2fcce8af1

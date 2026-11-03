@@ -5,3 +5,9 @@ export service Reader {
  value: any
  count(): number
 }
+
+// VIP-9 VIP-9 explicit any and ordinary return types remain admitted; rule: docs/design/vips/0009-service-declarations.md#6cd6bf8f1fa2a2de
+
+// VIP-9 VIP-9 explicit any and ordinary return types remain admitted; rule: docs/design/vips/0009-service-declarations.md#d8f3a5d8c65411aa
+
+// VIP-9 VIP-9 explicit any and ordinary return types remain admitted; rule: docs/design/vips/0009-service-declarations.md#8478f0889cf4c529

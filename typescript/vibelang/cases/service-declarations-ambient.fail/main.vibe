@@ -1,0 +1,30 @@
+// expect: EK0907
+declare service Explicit { value: number }
+declare service Missing
+declare namespace Ambient {
+  export service Nested { static readonly key = "coverage/Ambient"; value: number }
+  namespace Inner {
+    service Deeper { static readonly key = "coverage/Deeper"; value: number }
+  }
+}
+declare global {
+  service Global { static readonly key = "coverage/Global"; value: number }
+}
+declare class Native { value: number }
+declare const native: Native
+error Plain
+schema error Encoded
+export {}
+
+// VIP-9 native ambient source contexts reject custom services; rule: docs/design/vips/0009-service-declarations.md#52f0ebce6b0caa56
+// VIP-9 native ambient source contexts reject custom services; rule: docs/design/vips/0009-service-declarations.md#09a61a95723f3b9f
+// VIP-9 native ambient source contexts reject custom services; rule: docs/design/vips/0009-service-declarations.md#0e81ee9e346d97ff
+// VIP-9 native ambient source contexts reject custom services; rule: docs/design/vips/0009-service-declarations.md#68c576b0ff68f063
+// VIP-9 native ambient source contexts reject custom services; rule: docs/design/vips/0009-service-declarations.md#d5ddbad2aecec45c
+// VIP-9 native ambient source contexts reject custom services; rule: docs/design/vips/0009-service-declarations.md#532156efb74de0e1
+// VIP-9 native ambient source contexts reject custom services; rule: docs/design/vips/0009-service-declarations.md#f4cc18656788dc88
+// VIP-9 native ambient source contexts reject custom services; rule: docs/design/vips/0009-service-declarations.md#d2d70512351fb974
+// VIP-9 native ambient source contexts reject custom services; rule: docs/design/vips/0009-service-declarations.md#5d59918550cf7973
+// VIP-9 native ambient source contexts reject custom services; rule: docs/design/vips/0009-service-declarations.md#92889d25e8c68863
+// VIP-9 native ambient source contexts reject custom services; rule: docs/design/vips/0009-service-declarations.md#afa4d002e6cab8e6
+// VIP-9 native ambient source contexts reject custom services; rule: docs/design/vips/0009-service-declarations.md#fe8c94d13deeb170

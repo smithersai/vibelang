@@ -7,3 +7,7 @@ schema error SchemaField { static x = 1 }
 schema error SchemaMethod { static helper() { return 1 } }
 schema error SchemaGetter { static get count() { return 1 } }
 schema error SchemaBlock { static {} }
+
+// VIP-13 VIP-13 static members rejected in both error forms; rule: docs/design/vips/0013-error-declarations.md#f41193397fcba5ec
+
+// VIP-13 VIP-13 static members rejected in both error forms; rule: docs/design/vips/0013-error-declarations.md#1a81ea4f94e204e9

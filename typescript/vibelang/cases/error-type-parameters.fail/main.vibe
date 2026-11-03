@@ -1,3 +1,7 @@
 // expect: EK1303
 error E<T> { value: T }
 schema error S<T> {}
+
+// VIP-13 VIP-13 generic errors rejected; rule: docs/design/vips/0013-error-declarations.md#6cb3ccab68859674
+
+// VIP-13 VIP-13 generic errors rejected; rule: docs/design/vips/0013-error-declarations.md#07a5941f8742f897
