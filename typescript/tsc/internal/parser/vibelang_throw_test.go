@@ -2,6 +2,7 @@ package parser_test
 
 import (
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
+	"github.com/microsoft/TypeScript/tsc/internal/diagnostics"
 	"github.com/microsoft/TypeScript/tsc/internal/parser"
 	"strings"
 	"testing"
@@ -190,4 +191,46 @@ func TestTC39ThrowClassASI(t *testing.T) {
 			t.Fatal("a method error after ASI is not a throw lookahead error")
 		}
 	}
+}
+
+// Keep the new punctuator restriction visible until its --fix ships, while
+// D186/S10-12 operator-left violations and native TS1010 remain errors.
+func TestEK1010PunctuatorSeverity(t *testing.T) {
+	for _, tc := range []struct {
+		source   string
+		category diagnostics.Category
+	}{
+		{"const xs = [throw e, 1];", diagnostics.CategoryWarning},
+		{"const obj = { value: cond ? x : throw E({ id: 1 }), };", diagnostics.CategoryWarning},
+		{"f(cond ? x : throw E({ id: 1 }), 1);", diagnostics.CategoryWarning},
+		{"const x = throw e + 1;", diagnostics.CategoryError},
+		{"const x = a ?? throw e ? 1 : 2;", diagnostics.CategoryError},
+		{"f(throw e\n+f());", diagnostics.CategoryError},
+	} {
+		t.Run(tc.source, func(t *testing.T) {
+			file, _ := parser.ParseVibeLangSyntax(ast.SourceFileParseOptions{FileName: "/main.vibe", PathKey: "/main.vibe"}, tc.source)
+			count := 0
+			for _, d := range file.Diagnostics() {
+				if d.Source() == "EK" && d.Code() == parser.VibeLangThrowLookaheadCode {
+					count++
+					if d.Category() != tc.category {
+						t.Errorf("EK1010 category = %v, want %v", d.Category(), tc.category)
+					}
+					if tc.category == diagnostics.CategoryWarning && !strings.HasSuffix(d.String(), " This becomes an error once vibelang --fix can parenthesize it.") {
+						t.Errorf("warning must explain enforcement timing: %s", d.String())
+					}
+				}
+			}
+			if count != 1 {
+				t.Fatalf("wanted one EK1010, got %d: %v", count, file.Diagnostics())
+			}
+		})
+	}
+	file, _ := parser.ParseVibeLangSyntax(ast.SourceFileParseOptions{FileName: "/main.vibe", PathKey: "/main.vibe"}, "const x = throw e; /* unfinished")
+	for _, d := range file.Diagnostics() {
+		if d.Code() == 1010 && d.Source() == "" && d.Category() == diagnostics.CategoryError {
+			return
+		}
+	}
+	t.Fatal("unfinished comment must remain native error TS1010")
 }

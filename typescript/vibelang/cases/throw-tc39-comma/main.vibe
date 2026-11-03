@@ -1,0 +1,9 @@
+// expect-result: "Missing"
+error Missing
+effect function comma() {
+  const xs = [throw new Missing(), 1]
+  return xs
+}
+export effect function main() {
+  return comma() catch (e) => e._tag
+}

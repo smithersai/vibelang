@@ -11,7 +11,8 @@
     "types": [],
     "skipLibCheck": true,
     "rewriteRelativeImportExtensions": true,
-    "outDir": "out"
+    "outDir": "out",
+    "noEmitOnError": true
   },
   "include": [
     "*.vibe",

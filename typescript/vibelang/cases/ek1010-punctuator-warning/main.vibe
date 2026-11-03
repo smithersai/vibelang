@@ -1,0 +1,22 @@
+// expect-result: [7,"object",7,"array",7,"call"]
+error Missing { id: string }
+effect function objectShape(cond: boolean) {
+  const obj = {
+    value: cond ? 7 : throw new Missing({ id: "object" }),
+  }
+  return obj.value
+}
+effect function arrayShape(cond: boolean) {
+  const xs = [cond ? 7 : throw new Missing({ id: "array" }), 9]
+  return xs[0]
+}
+function first(x: number, y: number) { return x }
+effect function callShape(cond: boolean) {
+  return first(cond ? 7 : throw new Missing({ id: "call" }), 9)
+}
+export effect function main() {
+  const obj = objectShape(false) catch (e) => e.id
+  const arr = arrayShape(false) catch (e) => e.id
+  const arg = callShape(false) catch (e) => e.id
+  return [try objectShape(true), obj, try arrayShape(true), arr, try callShape(true), arg]
+}
