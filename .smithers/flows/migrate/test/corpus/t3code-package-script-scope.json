@@ -1,0 +1,7 @@
+{
+  "key": "verify:package-script-edits-outside-batch-scope",
+  "manifest": "infra/relay/package.json",
+  "script": "push:android:smoke",
+  "module": "infra/relay/scripts/android-push-smoke.vibe",
+  "before": "node --import vibelang/register scripts/android-push-smoke.ts"
+}

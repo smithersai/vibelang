@@ -1,3 +1,4 @@
+import { packageScriptProofs } from "./package-script-scope.mjs"
 import { isProtectedFile } from "./test-diff.mjs"
 
 // What a batch may change in the repository. A batch renames its modules to
@@ -15,7 +16,7 @@ import { isProtectedFile } from "./test-diff.mjs"
 const emitted = /(?:^|\/)\.vibelang\/js\//
 
 /** Every path the batch may touch, repository-relative. */
-export function batchScope({ files, codemod, testDiff, sidecar = () => null }) {
+export function batchScope({ files, codemod, testDiff, manifestSnapshots, sidecar = () => null }) {
   const scope = new Set()
   const withSidecars = (path) => {
     if (/\.(?:[cm]?ts|vibe)$/.test(path) && !/\.d\.(?:vibe\.)?[cm]?ts$/.test(path)) scope.add(path.replace(/\.(?:[cm]?ts|vibe)$/, ".d.vibe.ts"))
@@ -40,6 +41,7 @@ export function batchScope({ files, codemod, testDiff, sidecar = () => null }) {
   for (const edit of codemod?.refEdits ?? []) scope.add(edit.file)
   for (const edit of codemod?.referenceEdits ?? []) scope.add(edit.file)
   for (const edit of codemod?.scriptEdits ?? []) scope.add(edit.manifest)
+  for (const proof of packageScriptProofs({ files, codemod, manifestSnapshots })) if (proof.ok) scope.add(proof.manifest)
   if (testDiff?.ok === true) for (const proof of testDiff.files ?? []) {
     if (proof.ok === true && isProtectedFile(proof.file)) scope.add(proof.file)
   }
@@ -53,6 +55,7 @@ export function batchScope({ files, codemod, testDiff, sidecar = () => null }) {
  */
 export function foreignChanges(changed, batch) {
   const scope = batchScope(batch)
-  const own = (path) => scope.has(path) || emitted.test(path)
+  const rejected = new Set(packageScriptProofs(batch).filter(proof => !proof.ok).map(proof => proof.manifest))
+  const own = (path) => !rejected.has(path) && (scope.has(path) || emitted.test(path))
   return changed.filter((c) => !own(c.path) || (c.from !== undefined && !own(c.from)))
 }

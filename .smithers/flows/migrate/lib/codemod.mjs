@@ -405,7 +405,7 @@ export function restoreExports(root, edits, module) {
 }
 
 /** text with each word that is path, or ./path, replaced by replacement: a word is bounded by the command's spaces, quotes, = and ;&|(). */
-function replaceWord(text, path, replacement) {
+export function replaceWord(text, path, replacement) {
   const escaped = path.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
   return text.replace(new RegExp(`(^|[\\s"'=(])(\\./)?${escaped}(?=$|[\\s"';&|)])`, "g"), (_, before, dot) => before + (dot ?? "") + replacement)
 }

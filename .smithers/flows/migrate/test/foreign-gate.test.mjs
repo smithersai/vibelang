@@ -4,19 +4,20 @@ import { createRequire } from "node:module"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { test } from "node:test"
+import { rewriteScripts } from "../lib/codemod.mjs"
 import { makeConfig, paths, record, verify } from "../lib/steps.mjs"
 import { must, quote, slug, writeJson } from "../lib/util.mjs"
 
 const require = createRequire(new URL("../../../../packages/runtime/package.json", import.meta.url))
 
-async function fixture(action, { before = false, during = false } = {}) {
+async function fixture(action, { before = false, during = false, packageScripts = false } = {}) {
   const root = mkdtempSync(join(tmpdir(), "alchemy-foreign-gate-"))
   const target = join(root, "repo"), run = join(root, "run")
   try {
     mkdirSync(join(target, "src"), { recursive: true })
     mkdirSync(join(target, "node_modules/.bin"), { recursive: true })
     symlinkSync(require.resolve("typescript/package.json").replace(/\/package.json$/, ""), join(target, "node_modules/typescript"))
-    writeJson(join(target, "package.json"), { private: true })
+    writeJson(join(target, "package.json"), { private: true, ...(packageScripts ? { scripts: { smoke: "node src/main.ts", test: "vitest" } } : {}) })
     writeJson(join(target, "tsconfig.json"), { include: ["src/**/*.ts", "src/**/*.vibe"] })
     writeFileSync(join(target, ".gitignore"), "node_modules/\n")
     writeFileSync(join(target, "src/main.ts"), "export const value = 1\n")
@@ -27,6 +28,10 @@ async function fixture(action, { before = false, during = false } = {}) {
     await must("jj commit -m fixture", { cwd: target })
     renameSync(join(target, "src/main.ts"), join(target, "src/main.vibe"))
     const p = paths(run)
+    if (packageScripts) {
+      const renames = [{ from: "src/main.ts", to: "src/main.vibe" }]
+      writeJson(p.codemod("01"), { renames, packageScriptEdits: rewriteScripts(target, renames) })
+    }
     const command = during ? "node -e " + quote('require("node:fs").writeFileSync("src/main.test.ts", ' + JSON.stringify("export const changed = 1\n") + ')') : "true"
     writeJson(p.config, makeConfig({ target, test: command, vibelangVersion: "0.0.11" }))
     writeJson(p.plan, { batches: [{ files: ["src/main.ts"] }] })
@@ -76,4 +81,15 @@ test("record rechecks scope after verify, including with --force", async () => {
     const { stdout } = await must("jj log -r @- --no-graph -T description", { cwd: target })
     assert.equal(stdout.trim(), "fixture")
   })
+})
+
+test("t3code package scripts pass verify, but extra manifest edits fail verify and forced record", async () => {
+  await fixture(async ({ run, target }) => {
+    assert.equal((await verify({ run, batch: "01" })).ok, true)
+    writeJson(join(target, "package.json"), { private: true, scripts: { smoke: "node src/main.vibe", test: "true" } })
+    const bad = await verify({ run, batch: "01" })
+    assert.equal(bad.checks.foreignFiles, false)
+    assert.deepEqual(bad.foreign.map(change => change.path), ["package.json"])
+    await assert.rejects(record({ run, batch: "01", force: "negative control" }), /outside.*scope/)
+  }, { packageScripts: true })
 })

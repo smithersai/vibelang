@@ -1907,6 +1907,16 @@ async function checkLostWrappers({ config, p, plan, batch, migrated, emittedJs, 
   return lostWrapperCheck({ ts, files: migrated, original: file => originalSourceOf(p, plan, file), emitted, renamed: file => renamed.has(file), allow: readAllowList(p.lostWrapperAllow) })
 }
 
+async function foreignBatchChanges(target, changed, batch) {
+  const base = await Jj.commitId(target, "@-")
+  const tip = await Jj.commitId(target, "@")
+  const manifestSnapshots = {}
+  for (const manifest of new Set((batch.codemod?.packageScriptEdits ?? []).map(edit => edit.manifest))) {
+    manifestSnapshots[manifest] = { before: await Jj.fileAt(target, base, manifest), after: await Jj.fileAt(target, tip, manifest) }
+  }
+  return foreignChanges(changed, { ...batch, manifestSnapshots })
+}
+
 export async function verify(options) {
   assertBaselineSafe(paths(options.run))
   const { p, config, plan: thePlan } = loadRun(options.run)
@@ -1931,7 +1941,7 @@ export async function verify(options) {
   // Tests, including one-pass measurements, read current emitted JavaScript.
   const emittedJs = await emitMigratedJs(config, t, logs)
   codemod = rememberPackingFiles(p, b, emittedJs)
-  const before = foreignChanges(changedBefore, { files, codemod, testDiff: testDiffBefore, sidecar: batchSidecarLocator(config) })
+  const before = await foreignBatchChanges(t, changedBefore, { files, codemod, testDiff: testDiffBefore, sidecar: batchSidecarLocator(config) })
   const candidateBuild = thePlan.mode === "one-pass" ? null : await prepareBuilds(config, logs, "candidate", { distList: true })
   const measurement = thePlan.mode === "one-pass" ? await measureTests(config,{run:p.run,batch:b}) : null
   const tests = measurement?.receipts.candidate ?? await runTests({ command: config.test.command, report: config.test.report, cwd: join(t, config.test.cwd), root: t, jsonFile: join(p.batch(b), "vitest.json"), log: join(logs, "tests.log") })
@@ -1990,7 +2000,7 @@ export async function verify(options) {
     const names = declarationNames(ts, join(t, pkg.dir), projects.map((tsconfig) => ({ tsconfig, prefix: projects.length === 1 ? "." : slug(tsconfig) })))
     unproven.push(...unprovenMigrations({ migrated, pkgDir: pkg.dir, names, oracle: stock }))
   }
-  const after = foreignChanges(await Jj.changedPaths(t), { files, codemod, testDiff, sidecar: batchSidecarLocator(config) })
+  const after = await foreignBatchChanges(t, await Jj.changedPaths(t), { files, codemod, testDiff, sidecar: batchSidecarLocator(config) })
   const foreign = [...new Map([...before, ...after].map(c => [c.path, c])).values()]
   const batchErrors = checked.diagnostics.filter((d) => migrated.includes(d.file) && d.category === "error")
   const runPhase = runPhaseCheck({ compiler, ts, target: t, files: migrated, original: file => originalSourceOf(p, thePlan, file) })
@@ -2065,7 +2075,7 @@ export async function record(options) {
   const assertScope = async () => {
     const testDiff = await testEdits(config, p, thePlan, b, typeScriptOf(config))
     if (!testDiff.ok) throw new Error("batch " + b + ": forbidden test/fixture edits; see " + join(p.batch(b), "test-diff.md"))
-    const foreign = foreignChanges(await Jj.changedPaths(t), { files, codemod: readJsonIf(p.codemod(b)), testDiff, sidecar: batchSidecarLocator(config) })
+    const foreign = await foreignBatchChanges(t, await Jj.changedPaths(t), { files, codemod: readJsonIf(p.codemod(b)), testDiff, sidecar: batchSidecarLocator(config) })
     if (foreign.length) throw new Error("files outside the batch's scope: " + foreign.map(c => c.path).join(", "))
   }
   await assertScope()
