@@ -33,3 +33,11 @@ Folded: relic-mutable-codemod.patch (applied at docs/design/src/007-tooling.md:2
 Folded: relic-mutable-rejection-HELD.patch (applied at docs/design/src/007-tooling.md:255)
 
 Will’s no-relics ruling settles the language rule. The HELD note constrains enforcement rollout, not publication of approved spec text: preserving codemods and fresh zero-count receipts remain prerequisites to rejection.
+
+## fold data receiver-method retirement
+
+Folded: relic-data-methods.patch (applied at docs/design/src/007-tooling.md:257)
+
+Folded: relic-data-methods-rejection.patch (applied at docs/design/src/900-appendices.md:1022)
+
+The no-relics ruling retires the compiler receiver extension. Namespace calls and actual native/own methods keep their meaning. Migration precedes rejection; this is specification publication, not an implementation rollout receipt.

@@ -254,6 +254,10 @@ The redundant `mutable` marker on an ordinary interface or object-type property 
 
 After the preserving codemods ship and all migration repositories have zero remaining accepted uses, these ordinary member and plain-error payload markers are rejected with `EK3410`. A method or identifier named `mutable` keeps its TypeScript meaning. This specifies the retirement target; it does not claim the held rejection implementation or consumer migration is complete.
 
+### Legacy data receiver methods
+
+Legacy Effect data receiver methods migrate to the resolved module’s data-first function: `Option.some(1).map(f)` becomes `Option.map(Option.some(1), f)`. The preserving codemod runs under `--fix` and `--fix --fix-migration-only` before rejection. It keeps receiver and argument evaluation once and in order, import evaluation, comments and exact public declaration output. It refuses a shadowed module without a safely reusable namespace binding, an alias whose import elision or deferred evaluation cannot be preserved, explicit type arguments, trailing blocks or changed declarations. Native/own methods, namespace calls, computed access and optional chains are not rewritten by this migration.
+
 ## Effect's type-aware lint
 
 ```sh
