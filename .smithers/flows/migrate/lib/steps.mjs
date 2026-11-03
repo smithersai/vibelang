@@ -1943,7 +1943,7 @@ export async function record(options) {
   const now = migrated.reduce((sum, r) => sum + r.after, 0)
   const tokens = { before, after: now, delta: now - before, percent: before ? Number((100 * (now - before) / before).toFixed(1)) : null }
   const lines = [
-    `migrate(vibelang): batch ${b}: ${migrated.map((r) => posix.basename(r.path)).join(", ") || "no file migrated"}`,
+    batchSubject(b, migrated.map((r) => posix.basename(r.path))),
     "",
     ...rows.map((r) => (r.migrated ? `- ${r.planned} -> ${r.path} (${r.before} -> ${r.after} tokens)` : `- ${r.planned} stays .ts: ${reverted.find((x) => x.file === r.planned)?.reason ?? "not migrated"}`)),
     "",
@@ -2108,4 +2108,19 @@ export async function flowStep(step, options) {
   }
   if (step === "repair" && !options.agent && readJson(p.plan).mode !== "one-pass") throw new Error(`repair needs an agent: set MIGRATE_AGENT, or follow ${p.repairPrompt(next.batch)} and run step.mjs repair --done`)
   return done(next.batch, await steps[step]({ ...options, batch: next.batch }))
+}
+
+/** A batch commit's subject: as many migrated names as fit a target's wrap gate; the body lists every file. */
+export function batchSubject(batch, names, width = 72) {
+  const head = `migrate(vibelang): batch ${batch}: `
+  if (!names.length) return head + "no file migrated"
+  const all = head + names.join(", ")
+  if (all.length <= width) return all
+  const kept = []
+  for (const name of names) {
+    const left = names.length - kept.length - 1
+    if ((head + [...kept, name].join(", ") + `, and ${left} more`).length > width) break
+    kept.push(name)
+  }
+  return kept.length ? head + kept.join(", ") + `, and ${names.length - kept.length} more` : head + `${names.length} files`
 }

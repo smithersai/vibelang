@@ -69,10 +69,37 @@ export async function trackedFiles(root, revision = "@") {
   return stdout.split("\n").filter(Boolean)
 }
 
+const bodyWidth = 72
+
+/**
+ * Wraps a commit message's body at spaces, since a target's own gate may enforce
+ * it (foldkit wraps at 80). The subject stays whole, a bullet's continuation lines
+ * hang under its text, and a word longer than the width keeps its own line.
+ */
+export function wrapMessage(message) {
+  const [subject, ...body] = message.split("\n")
+  const wrapped = body.flatMap((line) => {
+    if (line.length <= bodyWidth) return [line]
+    const [lead, indent, bullet = ""] = /^(\s*)(- )?/.exec(line)
+    const hanging = indent + (bullet ? "  " : "")
+    const lines = []
+    let current = lead, empty = true
+    for (const word of line.slice(lead.length).split(" ").filter(Boolean)) {
+      if (!empty && current.length + 1 + word.length > bodyWidth) {
+        lines.push(current)
+        current = hanging + word
+      } else current = empty ? current + word : current + " " + word
+      empty = false
+    }
+    return [...lines, current]
+  })
+  return [subject, ...wrapped].join("\n")
+}
+
 /** Commits the working-copy change with message and returns the new commit's id, or null when nothing changed. */
 export async function commit(root, message) {
   if (!(await changedPaths(root)).length) return null
-  await must(`jj commit -m ${quote(message)}`, { cwd: root })
+  await must(`jj commit -m ${quote(wrapMessage(message))}`, { cwd: root })
   return commitId(root, "@-")
 }
 

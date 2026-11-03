@@ -1,0 +1,5 @@
+{
+  "key": "migrate-flow:commit-body-wrap",
+  "source": "foldkit-143: foldkit's check:commit-message-line-length (80 columns, a space after column 80 fails) on batch commit 3b2c560b",
+  "message": "migrate(vibelang): batch 01: create.vibe, validateName.vibe, files.vibe\n\n- packages/create-foldkit-app/src/commands/create.ts -> packages/create-foldkit-app/src/commands/create.vibe (1993 -> 2057 tokens)\n- packages/create-foldkit-app/src/rendering.ts stays .ts: foldkit-16: native data cannot retain the original TaggedEnum public declarations; retry the decided counterpart-emission fix when landed.\n- packages/create-foldkit-app/src/validateName.ts -> packages/create-foldkit-app/src/validateName.vibe (198 -> 172 tokens)\n\nTokens (o200k) of the migrated files: 3941 -> 3787 (-3.9%).\nVerify: tests, declarations and style pass."
+}
