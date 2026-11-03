@@ -1,3 +1,5 @@
+// 008-runtime.md: TestCanonicalVIPExitRejectsInvalidReasonTags checks nested invalid tags and encoding failures
+// rule: docs/design/src/008-runtime.md#8f3f9849e3c3bdcd
 package vibelangfuzz
 
 import (

@@ -1,3 +1,7 @@
+// 008-runtime.md: TestVIPEncodedFieldNames distinguishes marker-like fields and computed proto own fields
+// rule: docs/design/src/008-runtime.md#4bd38d94e8f5a7ca
+// 008-runtime.md: TestVIPCanonicalFieldNames and TestVIPEncodedFieldNames keep marker-like and proto field names as data
+// rule: docs/design/src/008-runtime.md#c05572e44de7d598
 package vibelangfuzz
 
 import (

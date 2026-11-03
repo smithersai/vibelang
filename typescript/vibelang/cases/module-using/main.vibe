@@ -1,3 +1,5 @@
+// 008-runtime.md: native using retains JavaScript lexical disposal
+// rule: docs/design/src/008-runtime.md#c3b75dcb6a2c046e
 const events: string[] = []
 function open(name: string): Disposable {
   events.push("open:" + name)

@@ -1,3 +1,7 @@
+// 008-runtime.md: top/cause/exit/reasons controls assert [0,1,2,0] and [0,0,0,0]
+// rule: docs/design/src/008-runtime.md#80d5121350308fbe
+// 008-runtime.md: TestVIPFiberIDNumberEquality checks SameValueZero classes for NaN, infinities and signed zero
+// rule: docs/design/src/008-runtime.md#38c00238e9be564d
 package vibelangfuzz
 
 import (

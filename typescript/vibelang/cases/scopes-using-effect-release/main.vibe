@@ -1,3 +1,5 @@
+// 008-runtime.md: Effect acquireRelease finalizers run across typed failure and other exits
+// rule: docs/design/src/008-runtime.md#ea969b82c5b4560b
 // Exactly one owner releases a using value, decided by what an acquisition
 // recorded at run time, never by Scope in a contract (D401). An acquisition
 // that registers the value's release records it, and using adds nothing:

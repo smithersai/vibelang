@@ -1,4 +1,6 @@
 // expect-result: {"before":0,"results":[1,1],"after":2}
+// 008-runtime.md: two runs rerun a cold block and append one body event per run
+// rule: docs/design/src/008-runtime.md#215c9368832942d1
 // VIP-2's first example (loop round 5 ASTRA-3): an effect block that logs with
 // Effect's log global is an Effect, not yet run; each run reruns the block.
 let runs = 0

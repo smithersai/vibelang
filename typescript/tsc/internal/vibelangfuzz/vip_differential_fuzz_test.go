@@ -1,3 +1,39 @@
+// 008-runtime.md: TestVIPConstructs/vip07.class-instanceof-plain compares canonical Exit and ordered events with Effect
+// rule: docs/design/src/008-runtime.md#58f3f78c2a26ed1b
+// 008-runtime.md: TestVIPConstructs/vip07.finishmatch-throw-close-plain + vip07.no-match-plain compares canonical Exit and ordered events with Effect
+// rule: docs/design/src/008-runtime.md#7ef7df22f0f61053
+// 008-runtime.md: TestVIPConstructs/vip07.throw-arm + vip07.finishmatch-failure-abandons-plain compares canonical Exit and ordered events with Effect
+// rule: docs/design/src/008-runtime.md#4a4d596a72cc7da7
+// 008-runtime.md: TestVIPConstructs/vip07.finishmatch-failure-abandons-plain compares canonical Exit and ordered events with Effect
+// rule: docs/design/src/008-runtime.md#f5383579ebc524c8
+// 008-runtime.md: TestVIPConstructs/vip05.try + vip07.finishmatch-failure-abandons-plain compares canonical Exit and ordered events with Effect
+// rule: docs/design/src/008-runtime.md#7714ff81f51633e2
+// 008-runtime.md: TestVIPConstructs/vip07.finishmatch-failure-abandons-plain compares canonical Exit and ordered events with Effect
+// rule: docs/design/src/008-runtime.md#15162acd2bc9342e
+// 008-runtime.md: TestVIPConstructs/vip07.async-rejection-plain compares canonical Exit and ordered events with Effect
+// rule: docs/design/src/008-runtime.md#f99c6feb3c7557d4
+// 008-runtime.md: TestVIPConstructs/vip22.failure-not-completion + vip22.return-evaluation + vip22.nested-completions compares canonical Exit and ordered events with Effect
+// rule: docs/design/src/008-runtime.md#beb35d639e120800
+// 008-runtime.md: TestVIPConstructs/vip01.this + vip01.super + vip01.new-target + vip12.jumps + vip22.jumps + vip02.do-order compares canonical Exit and ordered events with Effect
+// rule: docs/design/src/008-runtime.md#9d2fff49a5216002
+// 008-runtime.md: TestVIPConstructs/vip07.no-global-patching-plain compares canonical Exit and ordered events with Effect
+// rule: docs/design/src/008-runtime.md#4a63ee88d804ba73
+// 008-runtime.md: TestVIPConstructs/vip07.class-instanceof-plain compares canonical Exit and ordered events with Effect
+// rule: docs/design/src/008-runtime.md#908a5ddfff9dbd0e
+// 008-runtime.md: TestVIPConstructs/vip07.class-instanceof-plain + vip07.builtin-brands-plain + vip07.predicate-receiver-plain compares canonical Exit and ordered events with Effect
+// rule: docs/design/src/008-runtime.md#1ce336bc5286dbe2
+// 008-runtime.md: TestVIPConstructs/vip07.guard-cause-timeouterror-plain and retained subpath guard probes compares canonical Exit and ordered events with Effect
+// rule: docs/design/src/008-runtime.md#e6b76a09e5a83791
+// 008-runtime.md: TestVIPConstructs/vip07.no-global-patching-plain + vip07.no-effect-patching-plain compares canonical Exit and ordered events with Effect
+// rule: docs/design/src/008-runtime.md#cae4cb24777b4a88
+// 008-runtime.md: TestVIPConstructs/vip01.call-time compares canonical Exit and ordered events with Effect
+// rule: docs/design/src/008-runtime.md#60608a5c169d1480
+// 008-runtime.md: TestVIPConstructs/all registered VIP probes compares canonical Exit and ordered events with Effect
+// rule: docs/design/src/008-runtime.md#91cc7b8c80d47a73
+// 008-runtime.md: TestVIPConstructs/all registered VIP probes compares canonical Exit and ordered events with Effect
+// rule: docs/design/src/008-runtime.md#fe531f9e40ce9f42
+// 008-runtime.md: TestVIPConstructs/all registered VIP probes compares canonical Exit and ordered events with Effect
+// rule: docs/design/src/008-runtime.md#2f3eab0c9179fc6b
 // 006-data.md: TestVIPConstructs/vip16.no-validation-plain compares with its explicit Effect counterpart
 // rule: docs/design/src/006-data.md#d78eb8268a41bbbc
 // 006-data.md: TestVIPConstructs/vip16.empty-data-plain compares with its explicit Effect counterpart

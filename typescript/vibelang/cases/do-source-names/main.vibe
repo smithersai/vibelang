@@ -1,3 +1,5 @@
+// 008-runtime.md: anonymous and source-named functions/classes preserve creation-time names in all captures
+// rule: docs/design/src/008-runtime.md#bf439893cdc31449
 // RC-33: compare every source naming context with native IIFE returns.
 export function names(): unknown[] {
  const out: unknown[] = []

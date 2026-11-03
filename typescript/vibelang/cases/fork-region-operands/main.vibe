@@ -1,4 +1,6 @@
 // expect-result: {"all":[1,2],"record":{"f":1,"g":2},"settled":true,"raced":1,"any":1,"forked":1,"interrupted":true,"looped":true}
+// 008-runtime.md: fork region operands retain source evaluation order
+// rule: docs/design/src/008-runtime.md#58e595c9d23e5274
 // Direct reads in concurrent operands stay with the owning region.
 import { all as $tryAllEffects } from "effect/Effect"
 import { $global as $tryGlobals } from "vibelang-runtime"

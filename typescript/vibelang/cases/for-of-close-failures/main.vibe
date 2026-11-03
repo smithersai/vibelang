@@ -1,3 +1,11 @@
+// 008-runtime.md: normal and abrupt JavaScript completion invoke native iterator cleanup
+// rule: docs/design/src/008-runtime.md#a03fe81386b6a35f
+// 008-runtime.md: close failure replaces a normal break or return
+// rule: docs/design/src/008-runtime.md#136206f5843ea31d
+// 008-runtime.md: an existing body exception wins over a close exception
+// rule: docs/design/src/008-runtime.md#d7a9086923200286
+// 008-runtime.md: native for-of closing preserves the pending thrown object
+// rule: docs/design/src/008-runtime.md#295445f82cf3060b
 // Plain loops keep ECMAScript IteratorClose: a pending body or binding
 // exception wins over a close failure by identity (effectscript-75, RC-23).
 // Effect frames retain their existing failure-combining behavior. In either

@@ -1,3 +1,11 @@
+// 008-runtime.md: hot, hot-later and later controls detect coldness despite equal Exits
+// rule: docs/design/src/008-runtime.md#283caa11bc3faa25
+// 008-runtime.md: TestVIPExitEncoding distinguishes called-stage events from ordered run-stage events
+// rule: docs/design/src/008-runtime.md#ad162812e50dd99e
+// 008-runtime.md: TestVIPCanonicalExit preserves reason order, class/payload fields and first-appearance fiber renaming
+// rule: docs/design/src/008-runtime.md#3e0787437a91e0ac
+// 008-runtime.md: TestVIPExitEncoding compares ordered finalizer events separately from canonical Exit
+// rule: docs/design/src/008-runtime.md#e0a742aae053a254
 package vibelangfuzz
 
 import (

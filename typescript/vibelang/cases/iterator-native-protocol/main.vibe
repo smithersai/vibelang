@@ -1,3 +1,7 @@
+// 008-runtime.md: next/default/exhaustion paths retain the native close trace and failure identity
+// rule: docs/design/src/008-runtime.md#c6ad86f23278e11e
+// 008-runtime.md: iterator acquisition/advancement and native closing retain reached order and exception identity
+// rule: docs/design/src/008-runtime.md#cdc83d82c8028394
 import { events, values, reference } from "./helper.js"
 
 effect function boom(): number!string! { throw "boom" }
