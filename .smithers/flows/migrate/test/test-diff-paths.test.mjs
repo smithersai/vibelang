@@ -25,6 +25,7 @@ const paths = [
   'const file = new URL("../src/X.ts", import.meta.url)',
   'import { join as p } from "node:path"; const file = p(__dirname, "../src/X.ts")'
 ]
+// docs/design/src/900-appendices.md#44c57eb628a09765 — Chapter 900: resolved source-path extension changes.
 for (const a of paths) test("migrated path resolves: " + a, () => {
   const r = check(a)
   assert.equal(r.ok, true, JSON.stringify(r))
@@ -56,6 +57,7 @@ const reads = [
   'const text = readFileSync("../src/X.ts", "utf8"); checkSourceShape(text)',
   'const file = "../src/X.ts"; expect(file).toBe("../src/X.ts")'
 ]
+// docs/design/src/900-appendices.md#42f9b3990d0b220d — Chapter 900: source-text assertions keep their source TypeScript.
 for (const a of reads) test("source text or path assertion stays TypeScript: " + a, () => {
   const r = check(a)
   assert.equal(r.ok, false, JSON.stringify(r))

@@ -35,6 +35,8 @@ const forms = [
   'vi.mock(("../src/X.ts"))',
   'jest.mock(("../src/X.ts"))'
 ]
+// docs/design/src/900-appendices.md#85fd984eb14d570b — Chapter 900: mechanical specifier renames preserve module identity.
+// docs/design/src/900-appendices.md#d05fdd7479c54be7 — Chapter 900: mechanical specifier renames preserve module identity.
 for (const before of forms) test("allows module specifier: " + before, () => {
   const result = check(before, before.replace("X.ts", "X.vibe"))
   assert.equal(result.ok, true, JSON.stringify(result))
@@ -101,6 +103,7 @@ test("fixtures, additions, deletions and malformed source fail closed", () => {
 // Detail 272 addenda: "any other change to a test ... is still forbidden";
 // selectors require "same count, same names". Mix permitted literals with
 // independent forbidden edits so one allowed hunk cannot hide another.
+// docs/design/src/900-appendices.md#015400b60fa30152 — Chapter 900: an allowed hunk never hides an assertion edit.
 test("property: random allowed and forbidden test hunks obey detail 272", () => {
   assert.ok(readFileSync(new URL("../README.md", import.meta.url), "utf8").includes("every byte outside the permitted literal or selector must stay unchanged"))
 
@@ -113,6 +116,8 @@ test("property: random allowed and forbidden test hunks obey detail 272", () => 
     }), { numRuns: 250, seed: 272 })
 })
 
+// docs/design/src/900-appendices.md#fec6bab552afb170 — Chapter 900: fixture and declaration-import-style renames.
+// docs/design/src/900-appendices.md#ea561cd7dfcbc03a — Chapter 900: fixture and declaration-import-style renames.
 test("specifier styles and TSX renames keep the same module identity", () => {
   for (const [old, next, style] of [["X.ts", "X.js", "js"], ["X.js", "X.vibe", "vibe"], ["X.js", "X.ts", "ts"]]) {
     const a = 'import "../src/' + old + '"'
@@ -140,6 +145,7 @@ test("module rename plus assertion in a fixture is still forbidden", () => {
     after: { "src/X.vibe": "", "fixtures/sample.ts": a.replace("X.ts", "X.vibe").replace("toBe(1)", "toBe(2)") }
   }).ok, false)
 })
+// docs/design/src/900-appendices.md#7ea817327cbffaf5 — Chapter 900: selectors preserve equal names and counts.
 test("property: widening selectors preserves exactly the original file identities", () => {
   fc.assert(fc.property(fc.uniqueArray(fc.stringMatching(/^[a-z]{1,8}$/), { minLength: 1, maxLength: 8 }),
     fc.constantFrom("same", "add", "drop"), (names, operation) => {
@@ -428,4 +434,12 @@ test("a test-project bridge setup wrote is its own addition only with the bytes 
     assert.equal(diff({ "test/tsconfig.json": text.replace("test.json", "json") }, bridges).ok, false, "a bridge edited after setup is a test edit")
     assert.equal(diff({ "test/tsconfig.json": text, "test/b.test.ts": "it(\"b\", () => {})\n" }, bridges).ok, false, "a bridge never excuses an added test")
   } finally { rmSync(scratch, { recursive: true, force: true }) }
+})
+
+// Chapter 900: extensionless module paths retain their spelling and identity.
+// docs/design/src/900-appendices.md#0c441992a918924a — Chapter 900: an extensionless specifier needs no edit.
+test("an extensionless import stays unchanged across the module rename", () => {
+  const source = 'import { f } from "../src/X"; expect(f()).toBe(1)'
+  assert.equal(check(source, source).ok, true)
+  assert.equal(check(source, source.replace("../src/X", "../src/X.vibe")).ok, false)
 })

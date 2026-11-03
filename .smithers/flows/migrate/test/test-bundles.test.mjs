@@ -25,6 +25,9 @@ function fixture() {
   return {root,base,put,packages,inventory() {return buildInventory({root,packages})},dispose(){rmSync(base,{recursive:true,force:true})}}
 }
 
+// docs/design/src/900-appendices.md#d1de7f634a7f4091 — Chapter 900: test-owned bundle sources stay TypeScript without editing the oracle.
+// docs/design/src/900-appendices.md#78860931c73723ff — Chapter 900: test-owned bundle sources stay TypeScript without editing the oracle.
+// docs/design/src/900-appendices.md#26487b7595c0c0a1 — Chapter 900: test-owned bundle sources stay TypeScript without editing the oracle.
 test("alchemy: inventory and default plans retain the whole graph bundled by an unchanged test", () => {
   const f = fixture()
   try {

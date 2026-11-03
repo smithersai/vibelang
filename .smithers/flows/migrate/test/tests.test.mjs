@@ -158,6 +158,7 @@ test("a Vitest run that writes no report is not read from the previous run's rep
   }
 })
 
+// docs/design/src/900-appendices.md#021098a3bb0b0717 — Chapter 900: raw failed exit survives an unchanged passing report.
 test("a passing report from a run that exits nonzero, after a baseline that exited 0, is a regression", async () => {
   const root = mkdtempSync(join(tmpdir(), "migrate-nonzero-report-"))
   try {

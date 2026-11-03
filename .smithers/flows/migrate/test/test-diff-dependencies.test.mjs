@@ -22,6 +22,7 @@ const pairs = [
   ['const deps = pkg.dependencies; expect(deps).toEqual({effect: "4.1.0"})', 'const deps = pkg.dependencies; expect(deps).toEqual({effect: "4.1.0", "vibelang-runtime": "0.0.12"})'],
   ['expect(pkg).toEqual({name: "app", dependencies: {effect: "4.1.0"}})', 'expect(pkg).toEqual({name: "app", dependencies: {effect: "4.1.0", "vibelang-runtime": "0.0.12"}})']
 ]
+// docs/design/src/900-appendices.md#a1b73264d4246ebf — Chapter 900: exactly one gained runtime dependency.
 for (const [a, b] of pairs) test("one dependency assertion addition: " + a, () => {
   const r = check(a, b)
   assert.equal(r.ok, true, JSON.stringify(r))
@@ -60,6 +61,7 @@ test("dependency context cannot bless an ordinary list, embedded config or versi
     ['expect(pkg.devDependencies).toEqual(["effect"])', 'expect(pkg.devDependencies).toEqual(["effect", "vibelang-runtime"])']
   ]) assert.equal(check(old, next).ok, false)
 })
+// docs/design/src/900-appendices.md#6d8303c84e30f2b4 — Chapter 900: other assertion changes remain forbidden.
 test("property: fifth addendum accepts exactly one actual runtime dependency addition", () => {
   // Detail 272: "may gain exactly one ... entry, only in a package that gained
   // that dependency, only in a list or object of dependencies".
