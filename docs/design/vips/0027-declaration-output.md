@@ -92,3 +92,5 @@ Decided detail 281 replaces detail 280: compatibility sidecars are emit outputs 
 
 
 - **Amended 2026-11-02: written schema types (foldkit-9, accepted by Will).** For either ordinary `schema X` form, one written, nongeneric `type X = typeof X.Type` in the same scope replaces the synthesized alias, in either source order. Its type query resolves to that schema value. Preserve each declaration’s own JSDoc, order and export status as on the native constant/type pair; native comment/visibility emit options still apply. Other type-name collisions remain errors.
+
+- **Clarified 2026-11-03: matcher type scope and initialization.** The ambient `SymbolConstructor` augmentation is program-wide under TypeScript, so `.ts` files in a program containing the provider see it too. The property has the same unique symbol type as the runtime's `customMatcher` export. A type reference does not execute initialization; [VIP-31](0031-runtime-guarantees.md) separately requires emitted VibeLang modules using the key to depend on runtime initialization before their bodies. Native `.ts` modules keep ordinary dependency order.
