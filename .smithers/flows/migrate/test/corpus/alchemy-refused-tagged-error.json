@@ -1,0 +1,5 @@
+{
+  "key": "alchemy-refused-tagged-error",
+  "vibe": "import * as Data from \"effect/Data\"\nexport class BucketNotCreated extends Data.TaggedError(\"Railway.BucketNotCreated\")<{ readonly id: string }> {}\n",
+  "output": "main.vibe(2,14): warning EK4830: BucketNotCreated extends Data.TaggedError.\n  No quick fix: an error declaration's tag is its name, so the tag would become \"BucketNotCreated\" instead of \"Railway.BucketNotCreated\". Keep the class if something depends on that.\n"
+}

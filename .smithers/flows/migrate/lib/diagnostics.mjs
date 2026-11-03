@@ -70,8 +70,9 @@ export function summarize(diagnostics, files = []) {
  * What a batch may not keep in the given files: TypeScript-style Effect forms
  * (EK48xx), platform globals (EK4402), and a catch that can never run (EK9204).
  * EK4832 stays out: the Struct constant --fix leaves is one a schema
- * declaration would add a public type to. So does an EK4831, EK4837 or EK4805
- * that says it has no quick fix: a service declaration lists its members
+ * declaration would add a public type to. So does an EK4830, EK4831, EK4837 or EK4805
+ * that says it has no quick fix: a TaggedError class keeps its published tag;
+ * a service declaration lists its members
  * inline, so a named shape, static members or a dynamic key cannot keep the
  * class's declaration; a schema error has no annotations argument, type
  * parameters or constructor, so a Schema.TaggedError class with one stays a
@@ -86,7 +87,7 @@ export function summarize(diagnostics, files = []) {
  */
 export function styleProblems(diagnostics, files, preservedErrors = new Set()) {
   const inFiles = new Set(files)
-  const refused = (d) => ["EK4805", "EK4831", "EK4837"].includes(d.code) && d.notes.some((note) => note.startsWith("No quick fix"))
+  const refused = (d) => ["EK4805", "EK4830", "EK4831", "EK4837"].includes(d.code) && d.notes.some((note) => note.startsWith("No quick fix"))
   // The class a diagnostic names first: `E extends …`, `E overrides …`.
   const className = (d) => /^(\S+) (?:extends|overrides) /.exec(d.message)?.[1]
   const keptClasses = new Set(diagnostics.filter((d) => d.code === "EK4837" && refused(d)).map((d) => `${d.file}\0${className(d)}`))

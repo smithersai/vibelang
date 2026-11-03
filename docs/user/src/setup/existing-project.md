@@ -123,3 +123,5 @@ Run `vibelang` to write adjacent `.d.vibe.ts` declarations, even with `--noEmit`
 If you use a coding agent, run `npx vibelang agents init` to give it the VibeLang skill, the language server and a check after each edit ([Coding agents](coding-agents.md)).
 
 Set up the build: [React](react.md), [Vue](vue.md), or [Svelte](svelte.md) with Vite; [Vite and Vitest](vite.md) for other Vite or Vitest projects; [Build with the vibelang CLI](vibelang-cli.md) without a bundler. For another bundler, see step 3 of [Set up VibeLang](../setup.md).
+
+Migration keeps a `Data.TaggedError` class when `EK4830` says `No quick fix:` because its published tag differs from the class name. That refusal is accepted by the style gate; a diagnostic with an available safe repair still blocks conversion.

@@ -90,10 +90,12 @@ test("styleProblems leaves a Context.Service class no service declaration can wr
     "  Its quick fix writes service Users { … }; vibelang --fix applies every such fix in the project.",
     "src/d.vibe(1,14): warning EK4830: Gone extends Data.TaggedError; in VibeLang an error is an error declaration: error Gone { … }.",
     "  No quick fix: the fields come from Fields.",
+    "src/e.vibe(1,14): warning EK4830: Missing extends Data.TaggedError; an error declaration preserves its tag.",
+    "  Its quick fix writes an error declaration.",
     ""
   ].join("\n"))
-  const files = ["src/a.vibe", "src/b.vibe", "src/c.vibe", "src/d.vibe"]
-  assert.deepEqual(styleProblems(diagnostics, files).map((d) => d.file), ["src/c.vibe", "src/d.vibe"])
+  const files = ["src/a.vibe", "src/b.vibe", "src/c.vibe", "src/d.vibe", "src/e.vibe"]
+  assert.deepEqual(styleProblems(diagnostics, files).map((d) => d.file), ["src/c.vibe", "src/e.vibe"])
 })
 
 test("styleProblems leaves a Schema.TaggedError class no schema error can write, and rejects one it can", () => {
