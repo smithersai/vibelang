@@ -67,3 +67,5 @@ the command prints `no runnable cases`, names any selectors, and exits with
 status `2` before creating its runtime workspace. An empty corpus has the
 same failure status. Regression and generated selector checks run with
 `node --test scripts/mapper-runtime-selection.test.mjs`.
+
+Runtime emission resolves `rootDir` and each source relative to the copied case. The runner follows that emitted entry even when `rootDir` is a parent directory or `outDir` is nested. Its private runner directory remains separate from compiler output. Regression and generated layout checks run the pinned stock compiler with `node --test scripts/mapper-runtime-rootdir.test.mjs`.

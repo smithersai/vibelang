@@ -142,7 +142,8 @@ async function runCase(c: RuntimeCase, o: RuntimeOptions, nm: string): Promise<R
   // tsc's layout: outputs mirror the sources' common directory (every
   // runnable case keeps its sources at the top level).
   const common = options.rootDir ? path.relative(dir, path.resolve(dir, options.rootDir)) : commonDirectory(sources)
-  const outputOf = (rel: string) => emittedPath(path.join(outDir, path.relative(common, rel)))
+  // Resolve both paths within the copied case, independently of the harness CWD.
+  const outputOf = (rel: string) => emittedPath(path.join(outDir, path.relative(path.resolve(dir, common), path.resolve(dir, rel))))
 
   for (const rel of sources.filter((f) => f.endsWith(".vibe"))) {
     const argv = [o.mapper, "--emit", path.join(dir, rel), "--out", outputOf(rel)]
@@ -171,7 +172,7 @@ async function runCase(c: RuntimeCase, o: RuntimeOptions, nm: string): Promise<R
   // owned directory so no emitted module is overwritten.
   const runnerDir = fs.mkdtempSync(path.join(outDir, ".parity-run-"))
   const entry = path.join(runnerDir, "run.mjs")
-  fs.writeFileSync(entry, runner("../" + header.entry))
+  fs.writeFileSync(entry, runner(path.relative(runnerDir, outputOf(header.entry)).split(path.sep).join("/")))
   const ran = await exec(["node", entry], dir, 60_000)
   result.actual = ran.stdout.split("\n").findLast((line) => line.startsWith(resultMarker))?.slice(resultMarker.length) ?? null
   // Keep the result for diagnosis, and require the process to finish successfully.
