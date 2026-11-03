@@ -145,6 +145,7 @@ var grammarAdmissionSeeds = []struct{ key, source string }{
 	{"join-for-head", "effect function f(xs) { for (join x of xs) { x; } }"},
 	{"join-outside-effect-empty", "join [ ]"},
 	{"service-separators", "service S { n : number ; ; m : string }"},
+	{"service-rejected-async-member", "service S { n : number ; async static readonly key : string = \"k\" ; }"},
 	{"join-for-head-line-break", "effect function f(xs) { for (join\nx\nof xs) { x; } }"},
 	{"interruption-outside-effect", "function f() { uninterruptible { return 1; } }"},
 	{"error-no-end", "error E effect { id: string }"},
@@ -360,8 +361,9 @@ func grammarAdmissionDeclarationForm(ts []grammarToken) string {
 							inner++
 						case "}":
 							inner--
-						case ";":
-							if inner == 1 && (ts[j-1].text == ";" || ts[j-1].text == "{") {
+						case ";", ",":
+							// Separator is ";", "," or a line break: two in a row, or one first, is none.
+							if inner == 1 && (ts[j-1].text == ";" || ts[j-1].text == "," || ts[j-1].text == "{") {
 								return "admission:data-separators"
 							}
 						}
@@ -462,6 +464,9 @@ func TestGrammarAdmissionDataSeparatorKeys(t *testing.T) {
 	for source, want := range map[string]string{
 		"data D { A { x : number } ; ; B }":       "admission:data-separators",
 		"data D { ; A }":                          "admission:data-separators",
+		"data D { A { x : number } , ; B }":       "admission:data-separators",
+		"data D { A , , B }":                      "admission:data-separators",
+		"data D { A , B }":                        "",
 		"data D { A; B; }":                        "",
 		"data D { A { x: number; y: string } }":   "",
 		"service S { n : number ; ; m : string }": "admission:service-separators",
@@ -1325,6 +1330,10 @@ func grammarAdmissionSyntaxCode(code int32) bool {
 		return true
 	case 3008, 9207: // RejectedMember: a service element that parses, then a static rule rejects.
 		return true
+	// Appendix B's current numbers for the same VIP-9 rules: EK0902 rejects a
+	// RejectedMember, EK0901 a malformed static key (printed as EK3008 before).
+	case 901, 902:
+		return true
 	case 908, 1306: // A service member or error Field with no Separator after it.
 		return true
 	}
@@ -1492,6 +1501,9 @@ func TestGrammarAdmissionDiagnostics(t *testing.T) {
 		{"error-field-separator", "EK", diagnostics.CategoryError, 1306, true},
 		{"service-member-separator-warning", "EK", diagnostics.CategoryWarning, 908, false},
 		{"service-member-rule", "EK", diagnostics.CategoryError, 3008, true},
+		{"service-rejected-member", "EK", diagnostics.CategoryError, 902, true},
+		{"service-static-key", "EK", diagnostics.CategoryError, 901, true},
+		{"service-rejected-member-warning", "EK", diagnostics.CategoryWarning, 902, false},
 		{"match-combined-early-error", "EK", diagnostics.CategoryError, 4705, true},
 		{"native-assignment-target-warning", "", diagnostics.CategoryWarning, 2364, false},
 		{"service-implementation", "EK", diagnostics.CategoryError, 9207, true},
