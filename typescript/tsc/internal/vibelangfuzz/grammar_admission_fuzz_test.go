@@ -322,7 +322,9 @@ func TestGrammarAdmissionPipes(t *testing.T) {
 // grammarAdmissionDeclarationForm keys the known gaps a declaration or a type
 // shows in its own tokens.
 func grammarAdmissionDeclarationForm(ts []grammarToken) string {
-	depth := 0
+	// base is the bracket depth of the current `type Name =` alias, so an alias
+	// inside a block reads its own top-level bangs.
+	depth, base := 0, 0
 	lastBang := -1
 	for i, tok := range ts {
 		if tok.kind == 's' || tok.kind == 't' {
@@ -333,8 +335,12 @@ func grammarAdmissionDeclarationForm(ts []grammarToken) string {
 			depth++
 		case ")", "]", "}":
 			depth--
+		case "=":
+			if i >= 2 && ts[i-2].text == "type" {
+				base, lastBang = depth, -1
+			}
 		case ";":
-			if depth == 0 {
+			if depth == base {
 				lastBang = -1
 			}
 		case "!":
@@ -344,10 +350,10 @@ func grammarAdmissionDeclarationForm(ts []grammarToken) string {
 				return "admission:effect-type-line-break"
 			}
 			// A!E! with no R: only the omitted-E form A!! ends in a bang.
-			if depth == 0 && lastBang >= 0 && lastBang != i-1 && (i+1 == len(ts) || ts[i+1].nl || slices.Contains([]string{";", ",", ")", "}", "]"}, ts[i+1].text)) {
+			if depth == base && lastBang >= 0 && lastBang != i-1 && (i+1 == len(ts) || ts[i+1].nl || slices.Contains([]string{";", ",", ")", "}", "]"}, ts[i+1].text)) {
 				return "admission:effect-type-trailing-bang"
 			}
-			if depth == 0 {
+			if depth == base {
 				lastBang = i
 			}
 		case "concurrent":
@@ -542,6 +548,8 @@ func TestGrammarAdmissionDeclarationKeys(t *testing.T) {
 		"type T = 1 !\n! ;":                        "admission:effect-type-line-break",
 		"type T = (A) !\n! ;":                      "admission:effect-type-line-break",
 		"{ type T =\nnumber ! string !\nboolean }": "admission:effect-type-line-break",
+		"{ type T =\nnumber ! string ! }":          "admission:effect-type-trailing-bang",
+		"{ type T = A | (B!E) }":                   "",
 		"type T = number !\nstring ;":              "admission:effect-type-line-break",
 		"const v = p !\nfoo ;":                     "",
 		"const b = !\n!x;":                         "",
