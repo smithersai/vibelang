@@ -1,10 +1,10 @@
 // expect-result: {"name":"Ada","greeting":"hi Ada","approved":"released v1"}
 // Layer declarations were migrated with vibelang --fix; the result stays the same.
-service class Names {
+service Names {
   name(): string!!
 }
 
-service class Greeter {
+service Greeter {
   greet(name: string): string!!
 }
 

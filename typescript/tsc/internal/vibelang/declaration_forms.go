@@ -18,20 +18,22 @@ import (
 //	control Approval { approve(request: string): boolean!! }
 //	const UsersLive = Layer.effect(Users, effect { const seen = new Set<string>(); return { find(id) { ... } } })
 //
-// Legacy spellings retain lowering only for preserving quick fixes:
-// service class Users { ... } and control class Approval { ... } (EK2120,
-// whose fix removes class), and layer UsersLive: Users { ... } (EK2121), whose
-// fix rewrites it into the Layer.effect block or Layer.succeed call it
-// abbreviates.
+// Retired service class and layer declarations report errors naming --fix.
+// Control class retains its existing warning. Legacy lowering remains available
+// so --fix can preserve declaration APIs and execution before removing syntax.
 
 var (
-	// EK2120: a service or control declaration written with class (D223). {0} is the word. A warning.
+	EK0909 = message(909, errorCategory, "service class declarations are retired: run vibelang --fix to write service without class.")
+	// EK2120: the existing control class warning. {0} is the word.
 	EK2120 = message(2120, warningCategory, "{0} class is the older spelling: write {0} without class.")
 	// EK2121: a retired layer declaration. Its repair retains setup timing.
 	EK2121 = message(2121, errorCategory, "layer declarations are retired: run vibelang --fix to write Layer.effect(Service, effect { ... }) or Layer.succeed(Service, { ... }).")
 )
 
 func init() {
+	registry[EK0909.Code] = EK0909
+	tsFormFixCodes = append(tsFormFixCodes, EK0909.Code)
+	vipMigrationFixCodes = append(vipMigrationFixCodes, EK0909.Code)
 	registry[EK2120.Code] = EK2120
 	registry[EK2121.Code] = EK2121
 	vipMigrationFixCodes = append(vipMigrationFixCodes, EK2121.Code)
@@ -102,7 +104,11 @@ func checkDeclarationSpelling(c *checker.Checker, file *ast.SourceFile) {
 		if ast.IsClassDeclaration(n) {
 			if word, ok := declarationWordRange(n); ok {
 				if stop, ok := classKeywordAfter(text, word.End()); ok {
-					reportAt(c, file, core.NewTextRange(word.Pos(), stop), EK2120, text[word.Pos():word.End()])
+					if text[word.Pos():word.End()] == "service" {
+						reportAt(c, file, core.NewTextRange(word.Pos(), stop), EK0909)
+					} else {
+						reportAt(c, file, core.NewTextRange(word.Pos(), stop), EK2120, "control")
+					}
 				}
 			}
 		}
@@ -119,7 +125,7 @@ func checkDeclarationSpelling(c *checker.Checker, file *ast.SourceFile) {
 // class, which the diagnostic spans, with the word alone.
 var serviceClassFix = &ls.CodeFixProvider{
 	Source:     diagnosticSource,
-	ErrorCodes: []int32{EK2120.Code},
+	ErrorCodes: []int32{EK2120.Code, EK0909.Code},
 	GetCodeActions: func(_ context.Context, fix *ls.CodeFixContext) ([]*ls.CodeAction, error) {
 		text := fix.SourceFile.Text()
 		if fix.Diagnostic == nil || fix.Span.End() > len(text) {

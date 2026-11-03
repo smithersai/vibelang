@@ -18,6 +18,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - A callback returned by a throwing factory could inherit the factory's errors and be rejected as an argument or assignment; its own explicit throw contract now stays separate.
 
 - The resource quick fix could give an anonymous class an empty name, including the name seen by its static initializer. The editor now withholds the action when the initializer would lose its inferred name.
+- Breaking: `service class Name { … }` compiled with a warning. It now fails with `EK0909`; `vibelang --fix` removes `class` while keeping the service key, shape and comments.
 - A class pattern naming a schema, such as `when Address { let street }`, reported `EK0702` and then `TS2339` for each field. It now reports only `EK0702`.
 
 - The TypeScript replacement guide told npm to install an unavailable package. It now names the version included in this release and retains the source-checkout option.

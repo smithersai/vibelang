@@ -255,7 +255,7 @@ func fuzzFixProjects(f *testing.F, target string) {
 			if directErrorMember && !errorMemberFixRunnable(r) {
 				Gap(t, "FuzzFix", "fix:error-member:original", "expected only the migrated error-member diagnostic: %v\n%s", SortedKeys(Keys(r.Dir, r.Diagnostics)), archive)
 			}
-			if (directLayer && !declarationRetirementRunnable(r, 2121)) || (directServiceClass && !toolsErrorFree(r)) {
+			if (directLayer && !declarationRetirementRunnable(r, 2121)) || (directServiceClass && !declarationRetirementRunnable(r, 909)) {
 				Gap(t, "FuzzFix", "fix:"+declarationKind+":original", "generated declaration must have only its migration diagnostic: %v\n%s", SortedKeys(Keys(r.Dir, r.Diagnostics)), archive)
 			}
 			var result *vibelang.FixResult
@@ -424,7 +424,7 @@ func fuzzFixProjects(f *testing.F, target string) {
 			// write; a declaration may print it differently after a fix (an
 			// error class becomes an error declaration, D284-D290), so the
 			// contracts are compared by assignability in both directions.
-			if (toolsTrailingBlockRunnable(runtimeBefore) || directErrorMember && errorMemberFixRunnable(runtimeBefore) || directSatisfies && callbackSatisfiesFixRunnable(runtimeBefore) || directLayer && declarationRetirementRunnable(runtimeBefore, 2121)) && toolsErrorFree(after) {
+			if (toolsTrailingBlockRunnable(runtimeBefore) || directErrorMember && errorMemberFixRunnable(runtimeBefore) || directSatisfies && callbackSatisfiesFixRunnable(runtimeBefore) || directLayer && declarationRetirementRunnable(runtimeBefore, 2121) || directServiceClass && declarationRetirementRunnable(runtimeBefore, 909)) && toolsErrorFree(after) {
 				if mismatch := toolsContractMismatch(t, w, runtimeBefore, after, false); mismatch != "" {
 					key := "fix:types"
 					if toolsContractMismatch(t, w, runtimeBefore, after, true) == "" {
@@ -437,7 +437,7 @@ func fuzzFixProjects(f *testing.F, target string) {
 			// marked with expect-result. Chapter 26 requires the same exit.
 			// Keep exact retired-declaration emission in the migration oracle.
 			afterRunnable := toolsErrorFree(after) || shadowedLayer && declarationRetirementRunnable(after, 2121)
-			originalRunnable := toolsTrailingBlockRunnable(runtimeBefore) || toolsMemberRepairRuntime(r) || directErrorMember && errorMemberFixRunnable(runtimeBefore) || directSatisfies && callbackSatisfiesFixRunnable(runtimeBefore) || directLayer && declarationRetirementRunnable(runtimeBefore, 2121)
+			originalRunnable := toolsTrailingBlockRunnable(runtimeBefore) || toolsMemberRepairRuntime(r) || directErrorMember && errorMemberFixRunnable(runtimeBefore) || directSatisfies && callbackSatisfiesFixRunnable(runtimeBefore) || directLayer && declarationRetirementRunnable(runtimeBefore, 2121) || directServiceClass && declarationRetirementRunnable(runtimeBefore, 909)
 			if (directLayer || directServiceClass || directErrorMember || directSatisfies) && (!originalRunnable || !afterRunnable) {
 				Gap(t, "FuzzFix", "fix:"+declarationKind+":not-runnable", "generated original and fixed declarations must run for Exit comparison")
 			}

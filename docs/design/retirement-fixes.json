@@ -236,5 +236,14 @@
         "output": "typescript/vibelang/cases/legacy-layer-diagnostic-authority-fixed-output"
       }
     ]
+  },
+  {
+    "code": "EK0909",
+    "cases": [
+      {
+        "input": "typescript/vibelang/cases/retired-service-class.fail",
+        "output": "typescript/vibelang/cases/retired-service-class-fixed-output"
+      }
+    ]
   }
 ]

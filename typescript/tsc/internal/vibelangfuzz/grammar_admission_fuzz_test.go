@@ -524,7 +524,7 @@ func grammarAdmissionDeclarationForm(ts []grammarToken) string {
 				}
 			}
 		case "service":
-			// The older spelling draws only the warning EK2120.
+			// VIP-9 excludes class from ServiceStart; EK0909 names the preserving repair.
 			if i+1 < len(ts) && !ts[i+1].nl && ts[i+1].text == "class" {
 				return "admission:service-class"
 			}
@@ -1718,7 +1718,7 @@ func grammarAdmissionSyntaxCode(code int32) bool {
 		return true
 	case 1304: // RejectedElement: an error body element that parses, then a static rule rejects.
 		return true
-	case 2121: // Retired layer recovery supports only diagnosis and migration.
+	case 909, 2121: // Retired declaration recovery supports only diagnosis and migration.
 		return true
 	case 9207: // RejectedMember: a service element that parses, then a static rule rejects.
 		return true
@@ -2010,7 +2010,9 @@ func TestGrammarAdmissionDiagnostics(t *testing.T) {
 		{"service-implementation", "EK", diagnostics.CategoryError, 9207, true},
 		{"layer-retired", "EK", diagnostics.CategoryError, 2121, true},
 		{"layer-retired-warning", "EK", diagnostics.CategoryWarning, 2121, false},
-		{"service-class-warning", "EK", diagnostics.CategoryWarning, 2120, false},
+		{"service-class-retired", "EK", diagnostics.CategoryError, 909, true},
+		{"service-class-retired-warning", "EK", diagnostics.CategoryWarning, 909, false},
+		{"control-class-warning", "EK", diagnostics.CategoryWarning, 2120, false},
 		{"native-generator-signature", "", diagnostics.CategoryError, 1222, true},
 		{"pipe-missing-topic", "EK", diagnostics.CategoryError, 2301, true},
 		{"provide-expression", "EK", diagnostics.CategoryError, 1017, true},

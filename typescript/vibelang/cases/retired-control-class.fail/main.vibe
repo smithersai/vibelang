@@ -1,0 +1,2 @@
+// expect: EK3501
+control class Approval { approve(): boolean!! }

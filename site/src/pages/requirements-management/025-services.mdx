@@ -278,7 +278,7 @@ For a class written as `class Database extends Context.Service<Database, Databas
 
 An ordinary native `class Key extends Context.Service<…>` declares no `Key.Shape` namespace. Extract its implementation with `Context.Service.Shape<typeof Key>`, or use an explicitly declared TypeScript namespace. A member-body `service` declaration supplies its public `Shape` alias. The editor and `vibelang --fix` replace an invalid non-generic native-key shape reference with a type import of Effect's extractor, preserving local bindings and foreign source files. An explicit namespace or type arguments are left for the owner to check.
 
-For older `service class Users { … }` declarations, `vibelang --fix` removes only `class`, retaining the service key, shape and comments between the keywords. The editor offers the same repair on `EK2120`.
+Retired `service class Users { … }` declarations fail with `EK0909`. Run `vibelang --fix` to remove only `class`, retaining the service key, shape and comments between the keywords. The editor offers the same repair on `EK0909`.
 
 ---
 

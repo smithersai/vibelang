@@ -12,6 +12,8 @@ type quickfixGolden struct{ before, reference string }
 
 func quickfixGoldenPrograms() map[int32]quickfixGolden {
 	return map[int32]quickfixGolden{
+		// VIP-9 and Chapter 7: removing class retains the service key and public contract.
+		909: {before: "service class Users { static readonly key = \"quickfix/Users\"; readonly value: number }\nexport function main() { return Users.key }\n", reference: "service Users { static readonly key = \"quickfix/Users\"; readonly value: number }\nexport function main() { return Users.key }\n"},
 		// Chapter 7: the preserving layer migration retains deferred setup and its result.
 		2121: {before: "service Users { static readonly key = \"quickfix/Users\"; readonly value: number }\nlayer Live: Users { const value = 1; readonly value = value }\nexport effect function main() { provide Live { return (try Users).value } }\n", reference: "service Users { static readonly key = \"quickfix/Users\"; readonly value: number }\nconst Live = Layer.effect(Users, effect { const value = 1; return { value } })\nexport effect function main() { provide Live { return (try Users).value } }\n"},
 		704:  {before: "class C{constructor(readonly n:number){}}\nexport function main(){return match(new C(7)){when C(let n):n;default:0;}}\n", reference: "class C{constructor(readonly n:number){}}\nexport function main(){return match(new C(7)){when C and {n:let n}:n;default:0;}}\n"},

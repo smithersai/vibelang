@@ -1,0 +1,2 @@
+go test fuzz v1
+string("-- main.vibe --\n// expect: EK0909\nservice class Users { static readonly key = \"example/Users\"; get(): string }\n")

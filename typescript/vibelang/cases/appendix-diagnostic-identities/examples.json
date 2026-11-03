@@ -304,6 +304,12 @@
     "archive": true
   },
   {
+    "name": "appendix-archive-EK0909",
+    "code": "EK0909",
+    "archive": true,
+    "repairReference": "005-services#syntax"
+  },
+  {
     "name": "appendix-archive-EK1101",
     "code": "EK1101",
     "archive": true
@@ -389,10 +395,10 @@
     "archive": true
   },
   {
-    "name": "appendix-archive-EK2120",
     "code": "EK2120",
-    "archive": true,
-    "repairReference": "007-tooling#vibelang-warnings"
+    "host": "editor-semantic",
+    "testPath": "typescript/tsc/internal/vibelang/retired_service_class_rejection_test.go",
+    "testName": "TestAppendixEditorHostExamplesRetiredControlClassWarning"
   },
   {
     "name": "appendix-archive-EK2121",

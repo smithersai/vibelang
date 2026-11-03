@@ -17,8 +17,8 @@ An agent that writes VibeLang loads the skill first: its forms, rules and idioms
 
 | Load | Tokens |
 | --- | ---: |
-| The VibeLang skill, `packages/compiler/skills/vibelang/SKILL.md` | 5,069 |
-| The skill and the [cheat sheet](115-cheat-sheet.md) | 16,933 |
+| The VibeLang skill, `packages/compiler/skills/vibelang/SKILL.md` | 5,088 |
+| The skill and the [cheat sheet](115-cheat-sheet.md) | 16,952 |
 | The skill and the user guide (144 pages) | 520,000 |
 | The user guide alone | 520,000 |
 | The specification (11 chapters) | 250,000 |
@@ -158,7 +158,7 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [Parallel and Sequential Errors](../error-management/023-parallel-and-sequential-errors.md) | 810 |
 | [Custom Error Classes](../error-management/024-yieldable-errors.md) | 1,200 |
 | **Requirements Management** | **13,000** |
-| [Managing Services](../requirements-management/025-services.md) | 6,300 |
+| [Managing Services](../requirements-management/025-services.md) | 6,400 |
 | [Default Services](../requirements-management/026-default-services.md) | 1,400 |
 | [Managing Layers](../requirements-management/027-layers.md) | 3,700 |
 | [Layer Memoization](../requirements-management/028-layer-memoization.md) | 1,100 |

@@ -33,8 +33,7 @@
 // rule-evidence: docs/design/src/900-appendices.md#appendix-b-diagnostics | Example: `catch (e: NotFound) { recover(e) }` in legacy effect code Replay [example: main.vibe:15:15](../../../typescript/vibelang/cases/catch-retired/main.vibe).
 // rule-evidence: docs/design/src/900-appendices.md#appendix-b-diagnostics | | `EK2113` | warning: a legacy Cause-typed catch clause; migrate to matching `exit(program)` with `Exit.Success` and `Exit.Failure`.
 // rule-evidence: docs/design/src/900-appendices.md#appendix-b-diagnostics | Example: `catch (cause: Cause.Cause<E>) { recover(cause) }` in legacy effect code Replay [example: main.vibe:13:19](../../../typescript/vibelang/cases/primitives.fail/main.vibe).
-// rule-evidence: docs/design/src/900-appendices.md#appendix-b-diagnostics | | `EK2120` | warning: the legacy `service class` or `control class` declaration spelling; its preserving migration removes `class`.
-// rule-evidence: docs/design/src/900-appendices.md#appendix-b-diagnostics | Example: `service class Users { get(): string }` Replay [example: main.vibe:3:1](../../../typescript/vibelang/cases/decl-old-declarations/main.vibe).
+// rule-evidence: docs/design/src/900-appendices.md#appendix-b-diagnostics | | `EK2120` | warning: the legacy `control class` declaration spelling in editor semantic diagnostics; its editor repair removes `class`.
 // rule-evidence: docs/design/src/900-appendices.md#appendix-b-diagnostics | | `EK2121` | error: a retired layer declaration; migrate to an equivalent `Layer.effect` or `Layer.succeed` call, retaining construction timing and requirements.
 // rule-evidence: docs/design/src/900-appendices.md#appendix-b-diagnostics | Example: `layer UsersLive: Users { get() { return "Ada" } }` Replay [example: main.vibe:8:8](../../../typescript/vibelang/cases/decl-layer-order.fail/main.vibe).
 // rule-evidence: docs/design/src/900-appendices.md#transitional-compiler-diagnostics | | interim `EK1308` | warning: an abstract error root is a legacy declaration form.
@@ -332,3 +331,5 @@ if(process.argv[1]&&resolve(process.argv[1])===fileURLToPath(import.meta.url)) {
 }
 // rule-evidence: docs/design/src/900-appendices.md | The old `EK4403` is retired and will never be reassigned: VIP-33 reports host clock and randomness reads as `EK4402` by resolved host origin.
 // rule-evidence: docs/design/src/900-appendices.md | The old `EK9210` is retired and will never be reassigned: the first-release continuation retirement reports `EK3501` before provider or operation-contract analysis; VIP-35 remains open.
+
+// rule-evidence: docs/design/src/900-appendices.md#appendix-b-diagnostics | | `EK0909` | retired `service class Name { … }`; run `vibelang --fix` to remove `class` while preserving the service key and contract. Example: `service class Users { get(): string }` Replay [example: main.vibe:2:1](../../../typescript/vibelang/cases/retired-service-class.fail/main.vibe). | 9 | [Services](005-services.md#syntax) |

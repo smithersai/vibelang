@@ -9,10 +9,10 @@ const here = path.dirname(fileURLToPath(import.meta.url))
 const scratch = fs.mkdtempSync(path.join(os.tmpdir(), "service-class-fix-"))
 fs.mkdirSync(scratch, { recursive: true })
 const compiler = process.env.VIBELANG_TEST_COMPILER ?? path.join(here, "../../../built/local/tsc")
-const config = {compilerOptions:{target:"ES2022",module:"NodeNext",strict:true,skipLibCheck:true,declaration:true,outDir:"out",rootDir:"."},files:["main.vibe"]}
-const run = (exe,args,cwd) => {
+const config = {compilerOptions:{target:"ES2022",module:"NodeNext",strict:true,skipLibCheck:true,declaration:true,outDir:"out",rootDir:".",noEmitOnError:false},files:["main.vibe"]}
+const run = (exe,args,cwd,expectedStatus=0) => {
  const r=spawnSync(exe,args,{cwd,encoding:"utf8",timeout:30000})
- assert.equal(r.status,0,`${r.error ?? ""}\n${r.stdout}\n${r.stderr}`)
+ assert.equal(r.status,expectedStatus,`${r.error ?? ""}\n${r.stdout}\n${r.stderr}`)
  return r.stdout.trim()
 }
 try {
@@ -30,7 +30,8 @@ export effect function main() {
 }
 `
  fs.writeFileSync(path.join(dir,"main.vibe"),source)
- run(compiler,["-p",".","--pretty","false"],dir)
+ const diagnostic=run(compiler,["-p",".","--pretty","false"],dir,2)
+ assert.match(diagnostic,/error EK0909:.*vibelang --fix/)
  const beforeDts=fs.readFileSync(path.join(dir,"out/main.d.ts"),"utf8")
  const exit=()=>run(process.execPath,["--input-type=module","-e",'import {Effect} from "effect";import {main} from "./out/main.js"; console.log(JSON.stringify(Effect.runSyncExit(main())))'],dir)
  const beforeExit=exit()

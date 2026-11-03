@@ -1,2 +1,0 @@
-main.vibe(3,1): warning EK2120
-main.vibe(7,1): warning EK2120
