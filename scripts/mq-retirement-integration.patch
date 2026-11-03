@@ -1,0 +1,70 @@
+--- a/mq.py
++++ b/mq.py
+@@ -18,6 +18,9 @@
+ """
+ import glob
+ import calendar, collections, json, os, re, shlex, shutil, subprocess, sys, time, fcntl
++
++sys.path.insert(0, os.path.expanduser("~/vibe/mq/checks"))
++from retirement_precheck import retirement_check
+ 
+ HOME = os.path.expanduser("~")
+ REPO = f"{HOME}/vibe/fix/alpha/base"
+@@ -633,6 +636,10 @@
+     if conflicted.strip():
+         sys.exit(f"refused: conflicted commits in the stack: {conflicted}")
+ 
++    blocked, reason = retirement_check(own_base(HEAD_REF, c), c, os.getcwd(), precheck=True)
++    if blocked:
++        sys.exit(reason)
++
+     try:
+         es = load()
+         cands = [e["rev"] for e in es if e.get("state") == "rejected" and (e.get("reason") or "").startswith("conflicts with main")]
+@@ -1656,6 +1663,9 @@
+     command: where it runs and how large. Returns (tip, failures, summary)."""
+     ws = ws or WS
+     repo = REPO if ws == WS else ws
++    retirement_bad, retirement_reason = retirement_check(base, tip, ws, precheck=True)
++    if retirement_bad:
++        return tip, [retirement_reason], retirement_reason
+     steps = gate_steps()
+     # smthrs ci judges the graph itself: --fail-fast stops at the first failure post-merge did not already see on main,
+     # and --known-red excuses those it did, matched by failure digest. Until the installed @smthrs/cli has --fail-fast
+@@ -1672,6 +1682,9 @@
+     extra = f'GATE_EXTRA="{" ".join(red_targets)}" ' if red_targets else ""
+     sh(f'MQ_GATE=1 {extra}{judge}GATE_BASE={base} VALIDATE_GOCACHE={HOME}/.cache/go-build-mq ONLY="{steps}" {place} bash {VALIDATE} {ws} {tag}', check=False)
+     tip, fails, summary = verdict(tip, tag, repo, base, judged)
++    retirement_bad, retirement_reason = retirement_check(base, tip, ws)
++    if retirement_bad:
++        fails = fails + [retirement_reason]
+ 
+     if red_targets and not fails:
+         why = main_red_progress(tag, red_sha, red_targets, red_line)
+--- a/validate.sh
++++ b/validate.sh
+@@ -30,6 +30,13 @@
+ L=${VALIDATE_LOGS:-$HOME/vibe/fix/alpha/logs}; mkdir -p $L
+ cd "$D" || exit 1
+ 
++# retirement-needs-fix precheck: always enforce, even in the build-only stacked gate.
++if [ -n "${MQ_GATE:-}" ] && [ -z "${VALIDATE_PRINT_TARGETS:-}" ]; then
++  node "$HOME/vibe/mq/checks/retirement-gate.mjs" --root "$PWD" --base "${GATE_BASE:-vibe@github}" --head @ --precheck > "$L/$T-retirement-precheck.log" 2>&1
++  retirement_rc=$?
++  echo "retirement precheck $retirement_rc"
++  if [ "$retirement_rc" != 0 ]; then echo "DONE $(date -u +%FT%TZ)"; exit 0; fi
++fi
+ 
+ # deps DIR: install DIR's dependencies. A node_modules linked into ~/vibe/deps is a shared install other checkouts read:
+ # point it at the install DIR's lockfile pins instead of running bun install into it. bun install re-chmods the shared
+@@ -254,6 +261,10 @@
+   step=${f##*/}; step=${step#"$T-"}; step=${step%.log}
+   python3 $HOME/vibe/fix/alpha/ls/failure-evidence.py --direct "$step" "$f"
+ done
++if [ -n "${MQ_GATE:-}" ] && [ -z "${VALIDATE_PRINT_TARGETS:-}" ]; then
++  node "$HOME/vibe/mq/checks/retirement-gate.mjs" --root "$PWD" --base "${GATE_BASE:-vibe@github}" --head @ > "$L/$T-retirement-final.log" 2>&1
++  echo "retirement final $?"
++fi
+ echo "DONE $(date -u +%FT%TZ)"
+ exit 0
+ }

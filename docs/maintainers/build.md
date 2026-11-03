@@ -1436,3 +1436,62 @@ lookups. When an API test gains another repository read, extend the input
 group and its selected-input control before relying on cached results. The
 target command, source-sync guard, property counts and failure rules are
 unchanged.
+
+
+## Retirement admission
+
+Will's codemod-before-error rule is recorded in the VIP process. The offline
+`docs/tools/retirement-gate.mjs` reads immutable jj snapshots and checks every
+commit in the requested range, including each parent of a merge. A later fix
+cannot excuse an earlier retirement. New error severities and new or changed
+error witnesses in `typescript/vibelang/cases/*.fail` require a fix or a scoped,
+reviewed exception. Changes only to diagnostic wording on unchanged failing
+source do not establish a newly retired form. Without an earlier compiler,
+the check conservatively treats new failing witnesses as retirements.
+
+Register a fix in `docs/design/retirement-fixes.json`:
+
+```json
+[
+  {
+    "code": "EK1010",
+    "cases": [
+      {
+        "input": "typescript/vibelang/cases/throw-parenthesize.fail",
+        "output": "typescript/vibelang/cases/throw-parenthesize-fixed"
+      }
+    ]
+  }
+]
+```
+
+Both directories are committed fixtures; the input includes `tsconfig.json`.
+Every widened failing case needs its own matching input. The runner requires
+the original error, a nonzero applied-fix count for that diagnostic, exact
+expected source output, unchanged configuration, and successful compilation
+with and without `--fix`. Dependencies come only from this checkout's local
+install. Missing compilers, malformed registries and unavailable checks refuse
+admission. A reviewed `retirement-allowlist.json` entry must contain `code`,
+`vip` (for example `VIP-41`), `reason`, `approval: { "by": "Will",
+"reference": "<approval record>" }`, and either a matching `case` directory
+or `severity: "error"`.
+
+Run `node docs/tools/retirement-gate.mjs --base BASE --head HEAD`, or select
+`//:spec-retirement-gate` with full commit IDs in `RETIREMENT_BASE` and
+`RETIREMENT_HEAD`. The normal `//:spec-linters-test` includes the regression
+fixtures and 500 seeded fast-check registry diffs. An optional
+`--previous-compiler PATH` can establish that a failing form was already
+rejected. Its `PATH.retirement.json` receipt must contain the exact parent
+`commit` and binary `sha256`; a missing or mismatched receipt fails closed.
+Only an earlier source EK error can exempt a witness, never a missing module,
+bad option or failed compiler process. This checkout's forms command has no
+`-legacy` mode, so that flag is not used as an acceptance oracle.
+
+The queue adapter is `scripts/mq-retirement-precheck.py`; its external queue
+hooks are preserved in `scripts/mq-retirement-integration.patch`. Install it
+as `checks/retirement_precheck.py` beside `retirement-gate.mjs` and
+`diagnostic-identity.mjs` in the queue's directory. The precheck rejects missing
+evidence before expensive builds, and final admission executes the witnesses
+after building the candidate compiler. The validation hooks also cover queue
+processes started before the adapter was installed. Neither known-red target
+tolerance nor an optional semantic judge disables this check.
