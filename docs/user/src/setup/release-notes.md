@@ -519,6 +519,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - The sidecar documentation always based source paths on the config directory, which gave wrong paths when TypeScript inferred another source root. It now follows the declaration layout, with an explicit root in the config-relative example.
 
 - A TypeScript consumer could accept a wrong argument or result type from a function re-exported through a `module` body because its type became `any`. The body declaration beside the source now preserves the function signature; regression checks cover exported arrow functions too.
+- The Alchemy union-and-`pipe` inference check incorrectly demanded a `TS2345` error from TypeScript 7.1; it now uses the migration’s TypeScript 5.9.3 baseline and verifies that the provider retains requirement `B`.
 - Loading a `.vibe` module through `vibelang/register`, `vibelang/bun` or a bundler plugin failed with `TS6305: Output file '…/lib/x.d.ts' has not been built from source file '…/src/x.ts'` when its tsconfig `references` a project that was not built yet, as in a fresh clone before `vibelang -b`; the loader's compile now reads a referenced project's types from its sources, as the editor does, and a relative import into that project no longer reports `TS2878`.
 - Interruption blocks in plain or `async` code were accepted, or `restore` reported a nesting error. All three forms now report `EK2201` outside effect code. `vibelang --fix` removes the ignored keyword and keeps the ordinary JavaScript block.
 

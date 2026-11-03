@@ -492,6 +492,7 @@ Where upstream TypeScript 7.1 rejects ordinary TypeScript that 5.9 and 7.0 accep
 | Upstream change | TypeScript 7.1 | VibeLang |
 | --- | --- | --- |
 | microsoft/TypeScript #64461 (834e7862c031), "Report cyclic structures and truncation during declaration emit" | An inferred type that meets its own anonymous type again, such as a builder whose method returns the builder, reports TS5088 and declares nothing | Declares the type met again as `/*elided*/ any`, as 5.9 and 7.0.2 do (alchemy's `packages/aws`) |
+| microsoft/TypeScript #64553 (`c8e9b7d25926`), "Cache inferences made from type arguments" | A local `configure` function piping a union of Effects inside `Effect.gen` can infer `R = never` and report `TS2345` | Infers from type arguments on every visit, retaining `R = B` as TypeScript 5.9.3 does; `FuzzAlchemyUnionPipeRequirements` compares against the runtime’s pinned compiler |
 
 ## What the lowering does
 

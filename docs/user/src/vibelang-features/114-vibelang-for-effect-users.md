@@ -20,7 +20,7 @@ effect function main() {
 // Output: Hello, Ada
 ```
 
-Calling `greet("Ada")` returns an Effect. `try greet("Ada")` runs it and returns its string. Pass that Effect directly to `retry`, `timeout`, or another Effect function. Use `effect { ... }` to build an Effect from several statements. Plain and `async` functions keep their TypeScript meaning. `await` waits for Promises in `async` functions.
+Calling `greet("Ada")` returns an Effect. `try greet("Ada")` runs it and returns its string. Pass that Effect directly to `retry`, `timeout`, or another Effect function. Use `effect { ... }` to build an Effect from several statements. Plain and `async` functions keep their TypeScript meaning. `await` waits for Promises in `async` functions. Generic inference for an implementation built inside `Effect.gen` also preserves the requirements inferred by TypeScript 5.9.3: binding a function that pipes a union of Effects to a local `const` retains the same requirements as writing it directly in the returned object.
 
 Plain code may discard a runner's result: `function run(): void { Effect.runSyncExit(Effect.succeed(1)) }` runs the Effect and discards its `Exit`, just as in TypeScript. The same applies to plain callbacks, `async` functions and module statements. Discarding a constructed Effect value does not run it; use explicit execution when that is intended.
 
