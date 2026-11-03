@@ -1117,7 +1117,7 @@ The TypeScript-form lint warnings also retain their existing `EK4830`–`EK4837`
 | `EK4841` | lint warning: A schema `const` immediately followed by its matching `typeof Name.Type` alias | 15, 34 | [Configuration and tooling](007-tooling.md#typescript-spellings-with-vibelang-forms) |
 | `EK4842` | lint warning: An Effect module imported under a conflicting JavaScript global name | 14, 34 | [Configuration and tooling](007-tooling.md#typescript-spellings-with-vibelang-forms) |
 
-Trailing blocks are rejected by [VIP-11](../vips/0011-trailing-blocks-denied.md#amendments); their preserving repair and native-parser recovery follow VIP-34. Classification requires proven legacy lowering, never the callee's parameter type alone. Versioned dual compatibility retains its native call error or transitional `EK1023`, without duplicate `EK1101`.
+Trailing blocks are rejected by [VIP-11](../vips/0011-trailing-blocks-denied.md#amendments); their preserving repair and native-parser recovery follow VIP-34. Classification requires proven legacy lowering, never the callee's parameter type alone. Versioned dual compatibility retains its native call error (`TS2345` for an incompatible argument, `TS2554` for a wrong argument count or `TS2769` when no overload matches), or transitional `EK1023` when appending the block type-checks with changed meaning, without duplicate `EK1101`.
 
 ### Transitional compiler diagnostics
 
