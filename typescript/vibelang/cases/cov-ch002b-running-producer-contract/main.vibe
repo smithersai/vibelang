@@ -1,0 +1,21 @@
+// Chapter 002: producer body execution, native generator boundary and Stream failure; docs/design/src/002-running.md#979b45d3b1e83f82
+// Chapter 002: producer body execution, native generator boundary and Stream failure; docs/design/src/002-running.md#20cc319186272162
+import { Effect, Stream, Exit, Cause } from "effect"
+export effect function* values(): Stream.Stream<number | string | undefined> {
+ yield try Effect.succeed(1)
+ uninterruptible { yield 2 }
+ yield
+}
+export effect function* empty(): Stream.Stream<never> {}
+export effect function* failed(): Stream.Stream<never, string> { try Effect.fail("boom") }
+export effect function main(): unknown!! {
+ const valuesExit = try Effect.exit(Stream.runCollect(values()))
+ const emptyExit = try Effect.exit(Stream.runCollect(empty()))
+ const failedExit = try Effect.exit(Stream.runCollect(failed()))
+ return [
+   Exit.isSuccess(valuesExit) ? valuesExit.value : [],
+   Exit.isSuccess(emptyExit) ? emptyExit.value : ["wrong"],
+   Exit.isFailure(failedExit),
+   Exit.isFailure(failedExit) ? Cause.squash(failedExit.cause) : "wrong"
+ ]
+}

@@ -1,0 +1,25 @@
+// Chapter 002: bidirectional empty, union, error and Scope inference checks; docs/design/src/002-running.md#2a9fc03ea7fc24db
+// Chapter 002: bidirectional empty, union, error and Scope inference checks; docs/design/src/002-running.md#af4c6bec8e974bed
+// Chapter 002: bidirectional empty, union, error and Scope inference checks; docs/design/src/002-running.md#ee1b6375a67e0fc1
+// Chapter 002: bidirectional empty, union, error and Scope inference checks; docs/design/src/002-running.md#fac27500deb201e0
+import {Effect,Stream,Exit,Cause} from "effect"
+import type {Scope} from "effect"
+declare const scopeValue:Scope.Scope
+declare const foreign:Stream.Stream<number,never,Scope.Scope>
+export effect function* empty(){}
+export effect function* failed(){try Effect.fail("typed")}
+export effect function* mixed(){yield 1;yield "a"}
+export effect function* scopeValueYield(){yield scopeValue}
+export effect function ordinary(){try Effect.scope;return 7}
+export function foreignStream(){return foreign}
+const emptyBack:ReturnType<typeof empty>=null as unknown as Stream.Stream<never>
+const failedBack:ReturnType<typeof failed>=null as unknown as Stream.Stream<never,string>
+const mixedBack:ReturnType<typeof mixed>=null as unknown as Stream.Stream<number|string>
+const valueBack:ReturnType<typeof scopeValueYield>=null as unknown as Stream.Stream<Scope.Scope>
+const ordinaryBack:ReturnType<typeof ordinary>=null as unknown as Effect.Effect<number,never,Scope.Scope>
+const foreignBack:ReturnType<typeof foreignStream>=null as unknown as Stream.Stream<number,never,Scope.Scope>
+export effect function main():unknown!!{
+ const a=try Stream.runCollect(empty())
+ const b=try Effect.exit(Stream.runCollect(failed()))
+ return [a,Exit.isFailure(b)?Cause.squash(b.cause):"wrong"]
+}

@@ -1,4 +1,6 @@
 // expect-result: [7,"undefined",null,"undefined"]
+// Chapter 002: yield expression and bare yield produce undefined; docs/design/src/002-running.md#e753a14f1549e0fd
+// Chapter 002: yield expression and bare yield produce undefined; docs/design/src/002-running.md#8b78e0322018f8d4
 // VIP-21: yield evaluates to undefined after offering its operand; an
 // annotation supplies context independently of the separate TS7057 gap.
 import { Stream } from "effect"

@@ -1,0 +1,76 @@
+// Chapter 002: source region flow and completion; docs/design/src/002-running.md#981cddb400a1b27a
+// Chapter 002: source region flow and completion; docs/design/src/002-running.md#4e36432d6941d3f9
+// Chapter 002: source region flow and completion; docs/design/src/002-running.md#5048ced08840c9e6
+// Chapter 002: source region flow and completion; docs/design/src/002-running.md#e1b7aaa09a9f7134
+// Chapter 002: source region flow and completion; docs/design/src/002-running.md#ea4630572be68198
+// Chapter 002: source region flow and completion; docs/design/src/002-running.md#68bd20f8eaaed38c
+// Chapter 002: source region flow and completion; docs/design/src/002-running.md#3c69c4142d15692f
+// Chapter 002: source region flow and completion; docs/design/src/002-running.md#2d29755a7d1f7731
+// Chapter 002: source region flow and completion; docs/design/src/002-running.md#c2e1fd4dc94b5dfb
+// Chapter 002: source region flow and completion; docs/design/src/002-running.md#803c9260134d1293
+// Chapter 002: source region flow and completion; docs/design/src/002-running.md#64f1caf47b0fb162
+// Chapter 002: source region flow and completion; docs/design/src/002-running.md#91347adc73fcb149
+// Chapter 002: source region flow and completion; docs/design/src/002-running.md#c7a11cfd50594ab7
+// Chapter 002: source region flow and completion; docs/design/src/002-running.md#56f95407fbb82e70
+// Chapter 002: source region flow and completion; docs/design/src/002-running.md#1851f18e86ecf9db
+// Chapter 002: source region flow and completion; docs/design/src/002-running.md#bfc8ef7e3854e109
+// Chapter 002: source region flow and completion; docs/design/src/002-running.md#7ec65fbdcc7fc160
+// Chapter 002: source region flow and completion; docs/design/src/002-running.md#ba3daf7970a896aa
+// Chapter 002: source region flow and completion; docs/design/src/002-running.md#4f884ca2f602008d
+// Chapter 002: source region flow and completion; docs/design/src/002-running.md#47fdbe6f5b712df7
+// Chapter 002: normal region completion updates source do completion tracker; docs/design/src/002-running.md#7012c6cf6de63d7f
+// Chapter 002: source region flow and completion; docs/design/src/002-running.md#ea517b187e25b80d
+import { Effect, Exit, Layer, Cause, Fiber } from "effect"
+type Payload = { readonly n: number }
+function observed(events: unknown[]) {
+ return Layer.effectDiscard(Effect.acquireRelease(Effect.void, (_resource, ex) => Effect.sync(() => {
+   events.push("released")
+ })))
+}
+effect function normal(events: unknown[]) {
+ return do { provide observed(events) { 7 } }
+}
+effect function returned(events: unknown[], value: Payload) {
+ provide observed(events) { uninterruptible { return value } }
+}
+effect function bare(events: unknown[]) { provide observed(events) { return } }
+effect function jumped(events: unknown[]) {
+ let count = 0
+ outer: for (let n = 0; n < 3; n++) {
+   provide observed(events) {
+     if (n === 0) continue outer
+     if (n === 2) break outer
+     count += n
+   }
+ }
+ return count
+}
+effect function completions() {
+ const empty = do { 5; uninterruptible {} }
+ const explicit = do { 5; uninterruptible { undefined } }
+ const value = do { interruptible { 7 } }
+ const restored = do { uninterruptible { restore { 9 } } }
+ const labeled = do { label: { provide Layer.empty { 11; break label } } }
+ return [empty, explicit === undefined, value, restored, labeled]
+}
+class Base {
+ n = 13
+ effect value() { provide Layer.empty { return this.n } }
+}
+class Child extends Base {
+ effect value() { uninterruptible { return try super.value() } }
+}
+export effect function main(): unknown!! {
+ const events: unknown[] = []
+ const payload = { n: 17 }
+ const result = try normal(events)
+ const same = (try returned(events, payload)) === payload
+ const nothing = (try bare(events)) === undefined
+ const count = try jumped(events)
+ const failure = try Effect.exit(effect { provide Layer.empty { throw "failure" } })
+ const defect = try Effect.exit(effect { interruptible { try Effect.die("defect") } })
+ const child = fork effect { provide Layer.empty { try Effect.interrupt } }
+ const interrupted = try Fiber.await(child)
+
+ return [result, same, nothing, count, events, try completions(), try new Child().value(), [Exit.isFailure(failure) ? Cause.squash(failure.cause) : "wrong", Exit.isFailure(defect) ? Cause.squash(defect.cause) : "wrong", Exit.hasInterrupts(interrupted)]]
+}

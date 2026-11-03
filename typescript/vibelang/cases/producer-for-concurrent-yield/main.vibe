@@ -1,4 +1,6 @@
 // expect-result: [["user a","user b"],[1,2,3],["x",1,"y",2],[9,10]]
+// Chapter 002: concurrent item offers yield into enclosing producer; docs/design/src/002-running.md#d405770bd1ae4333
+// Chapter 002: concurrent item offers yield into enclosing producer; docs/design/src/002-running.md#3d59b13e2ca06fab
 // Chapter 2, Producers, Meaning: a for concurrent body is not an activation of its own, so a
 // yield in it emits from the producer around the loop (the chapter's Feed.items example):
 // unbounded, with a limit, with a destructuring head, and beside the producer's own yields.

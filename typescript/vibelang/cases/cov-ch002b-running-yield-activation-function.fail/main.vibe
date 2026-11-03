@@ -1,0 +1,5 @@
+// expect: EK2104
+// Chapter 002: yield belongs to its own producer activation; docs/design/src/002-running.md#807d91c6e39b87c7
+// Chapter 002: yield belongs to its own producer activation; docs/design/src/002-running.md#89993d73fb236ebc
+// Chapter 002: yield belongs to its own producer activation; docs/design/src/002-running.md#d55e34c974c4bef6
+export effect function invalid(){yield 1}

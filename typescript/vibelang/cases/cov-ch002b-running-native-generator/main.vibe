@@ -1,0 +1,4 @@
+// Chapter 002: native generator boundary Exit parity; docs/design/src/002-running.md#b63f30cb20334964
+import {Effect,Stream} from "effect"
+effect function* values(){function* native(){yield "native"};for(const n of native())yield n}
+export effect function main():unknown!!{return try Stream.runCollect(values())}

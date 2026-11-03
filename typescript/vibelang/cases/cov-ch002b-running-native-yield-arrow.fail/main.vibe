@@ -1,0 +1,3 @@
+// expect: TS1163
+// Chapter 002: native generator boundary Exit parity; docs/design/src/002-running.md#b63f30cb20334964
+export effect function* outer(){const f=()=>{yield 1};yield 2}

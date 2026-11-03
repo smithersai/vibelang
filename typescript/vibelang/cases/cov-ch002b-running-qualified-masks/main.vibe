@@ -1,0 +1,6 @@
+// Chapter 002: a source variable restore remains visible in a mask; docs/design/src/002-running.md#eb69db65deb5630a
+// Chapter 002: mask functions remain qualified Effect exports; docs/design/src/002-running.md#c6fa4e308d9dba33
+export effect function main():unknown!! {
+ const restore="visible"
+ uninterruptible { return [try Effect.uninterruptible(Effect.succeed(1)), try Effect.interruptible(Effect.succeed(2)),restore] }
+}

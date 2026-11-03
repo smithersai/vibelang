@@ -1,0 +1,6 @@
+// Chapter 002: producer source context Exit parity; docs/design/src/002-running.md#e667ebc595beca3e
+import {Effect,Stream} from "effect"
+class Parent{n=4;effect *items(){yield this.n}}
+class Child extends Parent{effect *items(){for try(const n of super.items())yield n+1}}
+effect function* target(){yield new.target===undefined}
+export effect function main():unknown!!{return [try Stream.runCollect(new Child().items()),try Stream.runCollect(target())]}

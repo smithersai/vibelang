@@ -1,0 +1,18 @@
+// Chapter 002: one-element buffer, pending concurrent offers, inference and source producer bindings; docs/design/src/002-running.md#37750e8226ef0a43
+// Chapter 002: one-element buffer, pending concurrent offers, inference and source producer bindings; docs/design/src/002-running.md#d438dd5a951f913b
+import { Effect, Stream } from "effect"
+effect function* mixed() { yield 1; yield "a" }
+const checked: Stream.Stream<number | string> = mixed()
+const backward: ReturnType<typeof mixed> = null as unknown as Stream.Stream<number|string>
+effect function* sequential(events: string[]) {
+ for (const n of [1,2,3,4]) { events.push("offer"+n); yield n; events.push("done"+n) }
+}
+effect function* concurrent(events: string[]) {
+ for concurrent (const n of [1,2,3,4]) { events.push("offer"+n); yield n; events.push("done"+n) }
+}
+export effect function main(): unknown!! {
+ const events: string[] = []
+ const sequentialValues = try Stream.runCollect(Stream.take(sequential(events),1))
+ const concurrentValues = try Stream.runCollect(Stream.take(concurrent(events),1))
+ return [try Stream.runCollect(checked),sequentialValues,concurrentValues,events]
+}

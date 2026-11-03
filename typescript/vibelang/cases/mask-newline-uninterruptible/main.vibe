@@ -1,2 +1,3 @@
 const uninterruptible=1;export function probe(){uninterruptible
 {let x=2};return uninterruptible}
+// Chapter 002: mask contextual keyword requires same-line brace; docs/design/src/002-running.md#7f69a9ed4627e7cb

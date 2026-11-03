@@ -1,4 +1,6 @@
 // expect-result: [3,"a,b",3]
+// Chapter 002: Stream producer contract and ordinary element checks; docs/design/src/002-running.md#357b32d07251a49f
+// Chapter 002: Stream producer contract and ordinary element checks; docs/design/src/002-running.md#23171dfce0e30253
 // Chapter 2 (VIP-21): a producer may write its Stream return type. The body is
 // checked as the generator it is, yields against the Stream's element type,
 // and callers and the declaration see the written Stream.
