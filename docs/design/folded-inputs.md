@@ -117,3 +117,15 @@ Folded: 1793653095-impl-hunt-run.patch (already stated at docs/design/src/002-ru
 Folded: 1793658761-vip-throw-expr.patch (already stated at docs/design/src/003-failures.md:61)
 
 VIP-9’s later native namespace reconciliation governs Name.Shape visibility. The old producer patch rejected `any`/`unknown`/compatible unions; the standing TypeScript rule and current Stream.callback twin supersede that restriction. TC39 throw expressions use the current VIP-41 number; VIP-40 belongs to TypeScript module declarations, so the obsolete conflicting number is not restored. Existing do-expression label-chain and EK0204 compiler-gap rules remain intact.
+
+## record already folded review and table inputs
+
+Folded: 1793689134-sl17-fix-opus-1.patch (already stated at docs/design/src/002-running.md:514)
+
+Folded: 1793689877-sl17-fix-astra-2.patch (already stated at docs/design/src/900-appendices.md:321)
+
+Folded: 1793692491-sl18-fix-opus-1.patch (already stated at docs/design/src/003-failures.md:450)
+
+Folded: 1793692940-sl18-fix-astra-1.patch (already stated at docs/design/src/007-tooling.md:78)
+
+These round-17/18 corrections are already in the publication tip. This receipt changes no language rule.
