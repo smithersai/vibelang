@@ -113,6 +113,7 @@ func checkMigrationEffectOperand(t *testing.T, w *Workspace, rule migrationOpera
 	ExpectPending(t, migrationOperandTarget, specCorpusKey(t))
 }
 
+// Chapter 007 / try migration never coerces Option or Result into Effects: docs/design/src/007-tooling.md#e66eadcae061180d
 func FuzzMigrationEffectOperands(f *testing.F) {
 	startShortBudget(f)
 	rules := migrationOperandRules()

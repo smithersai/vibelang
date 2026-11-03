@@ -36,6 +36,8 @@ func vibexDeclarationCases() []vibexDeclarationCase {
 // VIP39 explicitly compares public declarations with this fork's .tsx
 // twin. Both projects omit declarationImportStyle: the undecided .vibex
 // mapping of its nondefault values is not inferred from current behavior.
+// Chapter 007 / explicit vibex source and declaration resolution follows TSX: docs/design/src/007-tooling.md#5fd2918efd46b2f8
+// Chapter 007 / default vibex declarations use the native JSX output name: docs/design/src/007-tooling.md#13acd5d5e7019188
 func FuzzVibexDeclarationSpelling(f *testing.F) {
 	startShortBudget(f)
 	rows := vibexDeclarationCases()

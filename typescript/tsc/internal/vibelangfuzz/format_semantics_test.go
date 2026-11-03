@@ -2,6 +2,9 @@ package vibelangfuzz
 
 import "testing"
 
+// Chapter 007 / semantic comparison preserves directives, receivers, literal values and raw templates: docs/design/src/007-tooling.md#acf50e7788cd53bb
+// Chapter 007 / semantic comparison preserves directives, receivers, literal values and raw templates: docs/design/src/007-tooling.md#9ce5d03719823cde
+// Chapter 007 / semantic comparison preserves directives, receivers, literal values and raw templates: docs/design/src/007-tooling.md#91d061dfbfe52381
 func TestToolsFormatSemanticContract(t *testing.T) {
 	cases := []struct {
 		name, before, after string

@@ -31,6 +31,8 @@ func TestCatchNativeHandlerRepairQuoted(t *testing.T) { catchNativeHandlerRepair
 // The oracle is static: removing a native function flag must leave an
 // admitted plain handler, with no native suspension or Promise result stranded
 // in it. Catch's runtime meaning remains in FuzzVIPDifferential.
+// Chapter 007 / native catch handler warnings and safe effect repair: docs/design/src/007-tooling.md#a7d0f348dd33fceb
+// Chapter 007 / native catch handler warnings and safe effect repair: docs/design/src/007-tooling.md#86306e071ced89aa
 func FuzzCatchNativeHandlerRepair(f *testing.F) {
 	startShortBudget(f)
 	catchNativeHandlerRepairQuotes(f)

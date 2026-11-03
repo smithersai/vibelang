@@ -23,6 +23,8 @@ import (
 // arrow whose block only returns draws the code once, and no effect block
 // draws it. alchemy's InMemory, Foldkit, Redis Protocol and Model each need a
 // single-return effect block (corpus alchemy-effect-block-arrow-lint).
+// Chapter 007 / discarded cold Effect blocks report floatingEffect: docs/design/src/007-tooling.md#206c25a2bc17dc81
+// Chapter 007 / discarded cold Effect blocks report floatingEffect: docs/design/src/007-tooling.md#1347710ba586effe
 func FuzzEffectBlockLint(f *testing.F) {
 	startShortBudget(f)
 	effectBlockLintChapters(f)

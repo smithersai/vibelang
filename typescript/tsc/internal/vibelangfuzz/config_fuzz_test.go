@@ -16,6 +16,9 @@ import (
 
 // FuzzConfig checks the current top-level vibe configuration (VIP-30),
 // severities from Appendix B, and inheritance from 007-tooling.md.
+// Chapter 007 / every registered lint code admits all four severity values: docs/design/src/007-tooling.md#bac4a99fafef4013
+// Chapter 007 / every registered lint code admits all four severity values: docs/design/src/007-tooling.md#6283cc6ae5c871fe
+// Chapter 007 / every registered lint code admits all four severity values: docs/design/src/007-tooling.md#5f9d2730ee737f4b
 func FuzzConfig(f *testing.F) {
 	startShortBudget(f)
 	w := NewWorkspace(f)

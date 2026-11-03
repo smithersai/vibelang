@@ -29,6 +29,7 @@ func legacyAliasQuotes(t testing.TB) {
 }
 func TestLegacyEffectAliasQuoted(t *testing.T) { legacyAliasQuotes(t) }
 
+// Chapter 007 / transitional legacy Effect alias warning follows the resolved symbol: docs/design/src/007-tooling.md#1605bee798b7ae9f
 func FuzzLegacyEffectAlias(f *testing.F) {
 	startShortBudget(f)
 	keys := append([]string{"legacy-global", "local-type", "imported-type"}, legacyHeritageKeys...)
@@ -163,6 +164,7 @@ func aliasShorthand(slots []string) string {
 	return a + "!" + slots[1] + "!" + slots[2]
 }
 
+// Chapter 007 / legacy Effect alias migration follows resolved bindings: docs/design/src/007-tooling.md#1a09c1e0aa1b713f
 func FuzzLegacyEffectAliasRepair(f *testing.F) {
 	startShortBudget(f)
 	keys := aliasRepairKeys()

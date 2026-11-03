@@ -42,6 +42,13 @@ import (
 // as format.FormatDocument calls it for a .vibe file); set VIBELANG_DPRINT to
 // a dprint binary to format with dprint and the repository's TypeScript
 // style instead, as vibelangfmt's own tests do.
+// Chapter 007 / formatter preserves parsed meaning, diagnostics, comments and idempotence: docs/design/src/007-tooling.md#d1e05f7a848b57b0
+// Chapter 007 / formatter preserves parsed meaning, diagnostics, comments and idempotence: docs/design/src/007-tooling.md#c7f4ea1dba1f2aee
+// Chapter 007 / formatter preserves parsed meaning, diagnostics, comments and idempotence: docs/design/src/007-tooling.md#742e5f8dfb48a772
+// Chapter 007 / formatter preserves parsed meaning, diagnostics, comments and idempotence: docs/design/src/007-tooling.md#6b6e274d198aeb01
+// Chapter 007 / formatter preserves parsed meaning, diagnostics, comments and idempotence: docs/design/src/007-tooling.md#7affcc0cdffd20e4
+// Chapter 007 / formatter preserves parsed meaning, diagnostics, comments and idempotence: docs/design/src/007-tooling.md#317a5c729175d305
+// Chapter 007 / formatter preserves parsed meaning, diagnostics, comments and idempotence: docs/design/src/007-tooling.md#f974d998eeccfd00
 func FuzzFormat(f *testing.F) {
 	startShortBudget(f)
 	seen := map[string]bool{}

@@ -35,6 +35,8 @@ func TestReviewSidecarWritesQuoted(t *testing.T) { requireReviewSidecarWriteQuot
 // Stock TypeScript is the selection/overwrite control; Chapter 7 explicitly
 // makes VibeLang's required compatibility output independent of noEmit and
 // declaration:false, so its no-write result is deliberately not copied.
+// Chapter 007 / explicit sidecar overwrite and required output under noEmit or declaration false: docs/design/src/007-tooling.md#814102f8570dcd4e
+// Chapter 007 / explicit sidecar overwrite and required output under noEmit or declaration false: docs/design/src/007-tooling.md#520298eaa196e373
 func FuzzReviewSidecarWrites(f *testing.F) {
 	startShortBudget(f)
 	requireReviewSidecarWriteQuotes(f)

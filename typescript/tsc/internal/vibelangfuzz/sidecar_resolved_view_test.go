@@ -56,6 +56,9 @@ func sidecarViewCases() []sidecarViewCase {
 	return rows
 }
 
+// Chapter 007 / package, paths and imports source views follow final real or logical path: docs/design/src/007-tooling.md#53fcdcf637e8582a
+// Chapter 007 / package, paths and imports source views follow final real or logical path: docs/design/src/007-tooling.md#af882888697e3917
+// Chapter 007 / package, paths and imports source views follow final real or logical path: docs/design/src/007-tooling.md#e07f023638e0a6e3
 func FuzzSidecarResolvedPathView(f *testing.F) {
 	startShortBudget(f)
 	const target = "FuzzSidecarResolvedPathView"

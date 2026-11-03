@@ -32,6 +32,7 @@ func missingRuntimeQuoted(t testing.TB) {
 }
 func TestMissingRuntimeQuoted(t *testing.T) { missingRuntimeQuoted(t) }
 
+// Chapter 007 / missing emitted runtime imports report one TS2307 without generated helper errors: docs/design/src/007-tooling.md#f56386b47f58c5b3
 func FuzzMissingRuntimeDependency(f *testing.F) {
 	startShortBudget(f)
 	missingRuntimeQuoted(f)

@@ -75,6 +75,7 @@ func TestCompileKeepsCompatibilitySidecars(t *testing.T) {
 	}
 }
 
+// Chapter 007 / lint takes project and file arguments without emitting: docs/design/src/007-tooling.md#ce6b930ccbda8788
 func FuzzLintNoEmit(f *testing.F) {
 	startShortBudget(f)
 	lintNoEmitQuoted(f)

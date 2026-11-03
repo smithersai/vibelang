@@ -44,6 +44,7 @@ import (
 // A corpus file named fix-vip-only-* runs vibelang --fix --fix-vip-only
 // instead, the first step the migrate flow takes on a repository written
 // for VibeLang 0.0.10 or earlier, under the same checks.
+// Chapter 007 / trailing-block codemod and documented refusal boundaries preserve programs: docs/design/src/007-tooling.md#e8fbaefe60690b11
 func FuzzFix(f *testing.F) {
 	startShortBudget(f)
 	if !strings.Contains(SpecText("007-tooling.md"), "the selected project's own files") {

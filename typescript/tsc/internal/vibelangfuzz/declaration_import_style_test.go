@@ -32,6 +32,7 @@ import (
 // opencode's "./runtime.vibe" declared "./runtime.js" for "./runtime", and
 // foldkit's added import { Effect } from "effect" in single-quoted files
 // (inbox/migrate-smithers.md, 2026-10-31).
+// Chapter 007 / public declaration styles and compatibility sidecar scope: docs/design/src/007-tooling.md#56e3469cde8b8996
 func TestDeclarationImportStyleMatrix(t *testing.T) {
 	tsc := StockTypeScript(t)
 	w := NewWorkspace(t)

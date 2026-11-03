@@ -34,6 +34,7 @@ var configPathBaseKeys = []string{
 	"relative", "template", "child-relative", "child-template", "array-relative", "array-template",
 }
 
+// Chapter 007 / configDir and ordinary inherited paths use distinct bases: docs/design/src/007-tooling.md#6115a83cb803fd46
 func TestConfigPathBases(t *testing.T) {
 	for _, key := range configPathBaseKeys {
 		for mode := uint8(0); mode < 6; mode++ {

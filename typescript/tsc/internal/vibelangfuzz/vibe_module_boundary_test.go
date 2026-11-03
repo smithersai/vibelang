@@ -31,6 +31,11 @@ func moduleBoundaryConfig(mode string, mask int, names []string, emit bool) stri
 	return string(data)
 }
 
+// Chapter 007 / source modules stay isolated across detection and prelude settings: docs/design/src/007-tooling.md#47bacae032e10222
+// Chapter 007 / source modules stay isolated across detection and prelude settings: docs/design/src/007-tooling.md#e2d50080cb4fddcd
+// Chapter 007 / source modules stay isolated across detection and prelude settings: docs/design/src/007-tooling.md#babb356d8e880a4b
+// Chapter 007 / source modules stay isolated across detection and prelude settings: docs/design/src/007-tooling.md#1d2ba0350eebd5fb
+// Chapter 007 / source modules stay isolated across detection and prelude settings: docs/design/src/007-tooling.md#49c805cf371bee3d
 func TestVibeModuleBoundaryRegression(t *testing.T) {
 	w := NewWorkspace(t)
 	for _, mode := range []string{"legacy", "auto", "force"} {

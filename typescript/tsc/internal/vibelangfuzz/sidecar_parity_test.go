@@ -72,6 +72,7 @@ func (*sidecarParitySystem) Spawn([]string, string, io.Writer) (io.ReadWriteClos
 	return nil, fmt.Errorf("sidecar emit parity must not spawn external tools")
 }
 
+// Chapter 007 / include yields to source while explicit files retain input bytes: docs/design/src/007-tooling.md#fee0a31ad53ffc12
 func FuzzSidecarEmitParity(f *testing.F) {
 	startShortBudget(f)
 	checkSidecarEmitRulesQuoted(f)

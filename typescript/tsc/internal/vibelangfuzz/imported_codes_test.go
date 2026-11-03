@@ -10,6 +10,7 @@ import (
 
 // TestImportedLintCodes holds the compiler's imported lint codes to Appendix
 // B's generated table, row by row (VIP-38, decided details 77 and 106).
+// Chapter 007 / compiler lint registry agrees with generated stable full EK codes: docs/design/src/007-tooling.md#2e9db2c30dec4843
 func TestImportedLintCodes(t *testing.T) {
 	want := Facts().Imported
 	if len(want) == 0 {
