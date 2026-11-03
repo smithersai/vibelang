@@ -169,6 +169,24 @@ its `stderr` visible.
 
 Every native build and copy uses `scripts/native-output.sh`: it writes a private sibling temporary output, closes the writer, then renames the executable into place. Concurrent readers keep executing the previous binary until the complete replacement is published, avoiding `ETXTBSY`. Failed builds leave the previous executable intact and clean up their temporary output. This applies to the compiler, forms generator, mapper, standalone test builds and release platform binaries; release rebuilds retain existing binaries while compiling replacements. Remote release transfers use `rsync` without `--inplace`, which also replaces completed files by rename.
 
+### Changed-path fast targets
+
+The merge queue lands on `vibe` after a build, so the full suites run only after
+landing. The queue's `validate.sh` adds a few fast targets to that build when a
+batch changes the files they cover, so a commit that breaks one stops at the
+queue:
+
+| Target | Runs when a batch changes |
+| --- | --- |
+| `//:effect-pin` | a `package.json` or `scripts/effect-pin*` |
+| `//:flow-layout` | the migrate flow's `lib/steps.mjs` or its layout test |
+| `//:grammar-inventory` | a VibeLang parser file, a file in `internal/vibelang/`, or the admission table |
+| `//:mapper-scripts` | `scripts/mapper-*`, `packages/ts-mapper/`, the compiler's `cache.mjs` or the LSP fixture |
+| `//typescript/vibelang:lsp-smoke` | `typescript/vibelang/lsp-*`, its `PACKAGE.ts`, or the compiler's `format.mjs` |
+
+Fuzz suites, `//:docs-tools` and `//:snippets` stay out of this list. They take
+minutes and depend on most of the tree, so no small set of paths selects them.
+
 ### Changed-path fuzz seeds
 
 Hosted pre-gates set `CI_GATE_BASE` to their tested base. Before running the

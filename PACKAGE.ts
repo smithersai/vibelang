@@ -597,6 +597,25 @@ const targets = {
   // A case copied from an older one keeps its pin, so stale pins landed on the
   // stack, which gates only on a build. Fast enough for that gate.
   "effect-pin": check("Every manifest and version literal pins the runtime's Effect version.", "node scripts/effect-pin.mjs", [], [node]),
+  // Fast targets the queue's build-only gate selects by changed path (the merge
+  // queue's validate.sh), so a commit that breaks one stops at the queue, not in
+  // post-merge. scripts/fast-gate-targets.test.mjs keeps what they name real.
+  "flow-layout": check("Each migrate step's result literal lists one property per line.", "node --test .smithers/flows/migrate/test/layout.test.mjs", [], [node]),
+  "grammar-inventory": S.Shell.Test({
+    summary: "Every parser and lowering hook has a row in the grammar admission inventory, and every row has a hook.",
+    shell: "cd typescript/tsc && GOCACHE=$HOME/.cache/go-build-smthrs CGO_ENABLED=0 go test -count=1 -trimpath ./internal/vibelangfuzz/grammaradmission/",
+    data: [design, Tsc.srcs, Tsc["vibelang-files"], Tsc["vibelangfuzz-files"]] as Array<never>,
+    tools: [go],
+    sandbox: "none",
+    timeout: "10m"
+  }),
+  "mapper-scripts": check(
+    "The mapper's hover, parity and RPC runners work on the current fixtures and compiler.",
+    "node --test --test-concurrency=4 scripts/mapper-*.test.mjs",
+    [Typescript.compiler, Packages["runtime-dist"], Packages["compiler-native"]],
+    [bun, node],
+    "10m"
+  ),
   tokens: check("Token counts in the docs match a fresh count.", "bun docs/tools/token-counts.ts --check", [], [bun]),
   // The executable is source-keyed; generation still reads the entire tree.
   forms: check(
