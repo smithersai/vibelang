@@ -76,3 +76,11 @@ R8 (2026-10-28, "no throw in .vibe"), and the form rules that made `throw` an Ef
 ## Later VIPs
 
 - "Effectify the universe": replace non-Effect functions such as `Array.map` with Effect-aware versions. Will: "a very complex and controversial one that we might not even do and won't be in our initial release". It will be proposed, but not accepted right away.
+
+
+
+## Amendment, 2026-11-02: all TypeScript follows one throws rule
+
+Will: “A typescript function without a @throws has an unknown error type that it throws. This is literally how typescript already works. Trusted packages does not make sense as a concept nor does it make any sense why you are even thinking about treating npm packages any different than a normal .ts file.”
+
+An npm package's functions follow exactly the rule a local `.ts` file's do: no `@throws` means it may throw `unknown`, and `@throws` means what it says. Package names, re-exports, returned values and compiler inventories grant no different thrown-type contract. Effectful return types and explicit wrapper-thunk and intrinsic global annotations retain their ordinary rules. This supersedes an earlier reading of the Effect-annotation inventory as implicit library signature annotations: an npm signature needs its own annotation.

@@ -141,6 +141,10 @@ export const vipsSidebar = [
           {
             "text": "40. module declarations: TypeScript inside a .vibe file",
             "link": "/vips/0040-module-declarations"
+          },
+          {
+            "text": "41. TC39 throw expressions",
+            "link": "/vips/0041-throw-expressions"
           }
         ]
       },
@@ -163,7 +167,13 @@ export const vipsSidebar = [
           {
             "text": "24. wire, automatic layer composition",
             "link": "/vips/0024-wire-denied"
-          },
+          }
+        ]
+      },
+      {
+        "text": "Superseded",
+        "collapsed": true,
+        "items": [
           {
             "text": "25. Inline module declarations as a TypeScript escape",
             "link": "/vips/0025-inline-modules-denied"

@@ -263,8 +263,38 @@ const pairCacheExit = Effect.runSyncExit(Effect.sync(pairCacheWitness)) // Succe
   VibeLang does not adopt the draft's disputed early error rejecting a `MatchProperty` name coverable by `BindingIdentifier`, either as a bare presence key or before `:`. Identifier keys such as `_tag:` remain valid; the separate `__proto__` pattern-key restriction and unrelated early errors remain.
 - Prefix `not` wins whenever the same token sequence can also be a member/extractor rooted at an identifier `not`. Parsing never consults a local binding or its type, and does not retry that identifier parse to evade an early error. Thus `not(let x)` negates a parenthesized binding pattern and `not[0]` negates an array pattern; `helpers.not(let x)` remains a qualified extractor. `not` stays an ordinary name outside the prefix collision and in property/binding-name positions.
 - Pattern bindings use `let` or `const`; `when var x:` is `EK0107`, as `var` is everywhere in `.vibe`.
-- An arm's body may be `throw e`, as VIP-5's example writes it. It means what `throw` means where the arm stands ([Failures](/spec/003-failures#throw)): in effect code it fails the Effect, in an `async` function or an `async match` it rejects the Promise, and in any other `.vibe` code it is `EK0401`.
+- An arm's body may be `throw e`, as VIP-5's example writes it. It means what `throw` means where the arm stands ([Failures](/spec/003-failures#throw)): in effect code it fails the Effect, in an `async` function or an `async match` it rejects the Promise, and in any other `.vibe` code it is `EK0401`. Nested source callables keep their own contexts.
 - No-match `TypeError`, implicit matcher reads/calls and protocol checks are implicit throws: never tracked, and defects in effect code. Written calls in subjects, guards, arms and call-only predicates are tracked normally ([Thrown types](/spec/003-failures#thrown-types)).
+
+```vibe [VibeLang]
+// compiler-gap: pending VIP-4, VIP-7
+function plainArm(b: boolean) {
+  return match (b) { when true: 1; default: throw new Error("missing"); } // EK0401
+}
+effect function effectArm(b: boolean) {
+  return match (b) { when true: 1; default: throw new Error("missing"); }
+}
+function asyncArm(b: boolean) {
+  return async match (b) { when true: 1; default: throw new Error("missing"); }
+} // asyncArm(false) rejects its Promise
+```
+
+```ts [Effect]
+import { Effect } from "effect"
+
+function effectArm(b: boolean) {
+  return Effect.gen(function* () {
+    if (b === true) return 1
+    return yield* Effect.fail(new Error("missing"))
+  })
+}
+function asyncArm(b: boolean) {
+  return (async () => {
+    if (b === true) return 1
+    throw new Error("missing")
+  })()
+}
+```
 
 The empty array pattern uses [ArrayPattern](/spec/900-appendices#arraypattern) with its one nullable-list derivation. It matches an empty iterable, including an empty string, and is not a wildcard or an array-only test. Every array pattern and extractor list receives a cached Iterator Record; its finishing paths never receive the original subject instead of that record.
 
@@ -318,7 +348,7 @@ function defaultBit(o: { x?: number }, b: boolean) {
 
 An `is` in a loop head uses the pinned loop-head/per-iteration scopes. Each complete `while` or `do…while` condition evaluation has fresh cells; the initial `do` body sees its uninitialized head cells. A match arm has its own lexical scope, so an `is` inside it does not export names to another arm.
 
-These bindings take part in TypeScript's definite-assignment and use-before-declaration checks, as a `let` assigned where the pattern runs would. A read on a path where the binding may not have run, because short-circuiting skipped it or the pattern failed before reaching it, is `TS2454`; a read before the binding's position in its scope is `TS2448`. A read those checks can't see, such as one inside a closure, throws `ReferenceError` while the cell is uninitialized.
+These bindings take part in TypeScript's definite-assignment and use-before-declaration checks, as a `let` assigned where the pattern runs would. A read on a path where the binding may not have run, because short-circuiting skipped it or the pattern failed before reaching it, is `TS2454`; a read before the binding's position in its scope is `TS2448`. In `for (init; test; update)`, a direct read in `update` of a binding from `test` is `TS2454`: `update` starts in a fresh iteration environment before the `test` that initializes that cell. The previous body's initialization is not carried forward. Bindings introduced by `update` also start uninitialized; a read after that update's own pattern initializes its binding follows ordinary definite-assignment checking. A read those checks can't see, such as one inside a closure, throws `ReferenceError` while the cell is uninitialized.
 
 ```vibe [VibeLang]
 // compiler-gap: pending VIP-7
@@ -539,7 +569,26 @@ Every other home follows the pinned explainer's rule that the usual binding scop
 - In a concise arrow body, a binding belongs to the arrow body's scope, where the block-body form would declare it.
 - In a class field or static field initializer, a binding belongs to that initializer's own scope, because ECMAScript evaluates each initializer as a separate method-like body. A `static` block is a block.
 - An `enum` member initializer has no lexical home in ECMAScript or the pinned explainer, so a binding introduced there is `EK0705`, as for a formal parameter: `enum E { A = (1 is let one) ? 1 : 0 }` is `EK0705`.
-- The statement body of `if`, `else`, `for`, `for…in`, `for…of`, `for await`, `for concurrent`, `for try`, `while`, `do…while` or a labeled statement, when it is not a Block, is the home of the bindings inside it, exactly as if it were wrapped in braces, and it is fresh each time the body runs, so braces around a body never change a result ([VIP-7](/vips/0007-match#binding-homes-and-redeclarations)). An `if` head is outside its own body: `if (!(x is { id: let id })) return; use(id)` in a block reads `id` after the `if`, and the head of an `else if` belongs to the `else` body's home.
+- The statement body of `if`, `else`, `for`, `for…in`, `for…of`, `for await`, `for concurrent`, `for try`, `while`, `do…while` or a labeled statement, when it is not a Block, cannot be the lexical home of an `is` pattern binding: report `EK0705`, matching TypeScript's `TS1156` for a `let` declaration in that position. The quick fix and `vibelang --fix` wrap that statement body in braces. An `if` head belongs to the home that contains the `if` statement; an `else if` head therefore needs braces around the `else` body when it binds. A binding inside an explicit `do` block, match arm, callable body or loop head keeps its own home. ([VIP-7](/vips/0007-match#binding-homes-and-redeclarations)).
+
+
+A test binding is available to its following body, but not to the next update's direct reads. Creating a closure does not read the cell; invoking it before the test initializes that iteration's cell throws `ReferenceError`.
+
+```vibe [VibeLang]
+// compiler-gap: pending VIP-7
+function updateRead(next: () => number, use: (n: number) => void) {
+  for (; next() is let v; use(v)) {} // TS2454: this iteration's v is unassigned
+}
+function updateClosure(next: () => number) {
+  for (; next() is let v; () => v) {} // no direct read; closure retains the fresh cell
+}
+function bodyRead(next: () => number, use: (n: number) => void) {
+  for (; next() is let v;) { use(v); break } // initialized by this iteration's test
+}
+function updateBinding(next: () => number, use: (n: number) => void) {
+  for (;; (next() is let v) && use(v)) {} // initialized before the update's read
+}
+```
 
 Each home holds one name once. Two top-level patterns that bind one name in the same home are a redeclaration, TypeScript's `TS2451`, as two `let` declarations in one block are; so is a binding that collides with another lexical declaration of that home, and a collision with a parameter keeps the native diagnostic for that collision. Inside one top-level pattern the pinned duplicate-initialization rule and its `or` exception stay. Separate blocks and match arms are separate homes, so braces or distinct names are the repair.
 
@@ -573,8 +622,8 @@ function countdown(src: { n: number }) {
 }
 function ids(xs: unknown[]) {
   const out: unknown[] = []
-  for (const x of xs) if (x is { id: let id }) out.push(id)
-  return out // [1, 2] for [{ id: 1 }, { id: 2 }], as with braces
+  for (const x of xs) { if (x is { id: let id }) out.push(id) }
+  return out // [1, 2] for [{ id: 1 }, { id: 2 }]
 }
 ```
 
@@ -654,9 +703,9 @@ VibeLang adds these checks to TC39's proposal; `EK4701` is the exhaustiveness ch
 | a `match` with no `default` over a finite union that misses a case | `EK4701` |
 | invalid `match`/`is` grammar or a pattern-specific early error without a more specific diagnostic | `EK0707` |
 | a missing `;` after a `match` arm, the last one included | `EK0701` |
-| an `is` pattern binding in formal-parameter or catch-parameter initialization with no explicit block/arm as its lexical home ([Parameter initialization](/spec/004-match#is-bindings-in-parameter-initialization)) | `EK0705` |
-| a class pattern naming a `data` declaration or variant, a `schema`, or a directly constructed `Context.Reference`; a call-only callee whose return type fails detail 94, or a callee with neither signature (services use `EK3004`; [Class patterns](/spec/004-match#class-patterns)) | `EK0702` |
-| an ordinary-class extractor without an own matcher (detail 100) | `EK0704` |
+| an `is` pattern binding in an unbraced statement body, or in formal-parameter or catch-parameter initialization with no explicit block/arm as its lexical home ([Parameter initialization](/spec/004-match#is-bindings-in-parameter-initialization)) | `EK0705` |
+| a class pattern naming a `data` declaration or variant, a `schema`, or a directly constructed `Context.Reference`; a call-only callee whose return type fails the rule of [Class patterns](/spec/004-match#class-patterns), or a callee with neither signature (services use `EK3004`; [Class patterns](/spec/004-match#class-patterns)) | `EK0702` |
+| an ordinary-class extractor without an own matcher | `EK0704` |
 | lint warning: an extractor whose argument count can never match its pattern's list ([Class patterns](/spec/004-match#class-patterns)) | `EK0703` |
 | a `return`, `break` or `continue` that leaves an `async match` ([Async jumps](/spec/004-match#async-match-jumps)) | `EK0706` |
 
@@ -1122,10 +1171,10 @@ A class arm whose class has its own `Symbol.customMatcher` (an own property, `Ob
 
 - An `error` class ([Failures](/spec/003-failures#error-declarations)), including a `schema error`, gets a matcher that tests `_tag`. It returns `[subject]` on a match and `false` otherwise; `when NotFound(let e):` binds that subject. `when NotFound():` never matches: the matcher returns one element, but the extractor has zero argument patterns. Write `when NotFound:` for a bare test. Thus `when NotFound:` matches across copies of the same package. The TypeScript counterpart is in [Failures](/spec/003-failures#error-declarations).
 - `data` variants get no custom matchers. Match them with object patterns on `_tag`: `when { _tag: "Sent", let tracking }: …` ([Data](/spec/006-data#data-declarations)). Only `error` and `schema error` declarations, and the retained Effect checks, have their own matcher.
-- A class pattern whose expression resolves to a `data` declaration or variant constructor, a `schema` declaration or a directly constructed `Context.Reference` is `EK0702` (decided detail 67b): under the draft such a function would be called with the subject and match almost anything. The quick fix for a variant writes `when { _tag: "Sent" }:`; for a schema, test `Schema.is(Address)(x)` in a guard. Every `service` declaration, with or without `defaultValue`, reports `EK3004` instead ([Services](/spec/005-services#static-rules)).
+- A class pattern whose expression resolves to a `data` declaration or variant constructor, a `schema` declaration or a directly constructed `Context.Reference` is `EK0702`: under the draft such a function would be called with the subject and match almost anything. The quick fix for a variant writes `when { _tag: "Sent" }:`; for a schema, test `Schema.is(Address)(x)` in a guard. Every `service` declaration, with or without `defaultValue`, reports `EK3004` instead ([Services](/spec/005-services#static-rules)).
 - **No run-time patching of Effect.** The thirty-nine fixed patterns below are compiler intrinsics until Effect ships matchers. The names are pattern syntax, not values exported by Effect 4.1.1. Recognition follows the resolved module binding, including aliases: `import * as O from "effect/Option"` permits `when O.Some(let v):`. A local `Option` instead uses TC39's matcher lookup; spelling alone never selects an intrinsic.
-- Thirty-three of the thirty-nine are Effect’s tagged errors, each tested with its module’s own guard (decided detail 53). The alias and shadowing rule above applies. Neither `instanceof`, a universal `_tag` test nor the subject’s static type replaces the guard.
-- Built-in constructor patterns use `Array.isArray(subject)` for `Array`, and `subject instanceof C` for every other built-in, including native errors, `AggregateError`, `Date`, `RegExp`, collections, `Promise`, typed arrays and `ArrayBuffer` (decided detail 67a). A cross-realm array matches; other cross-realm built-ins may fail. Native-error matching follows the current prototype chain, not an inaccessible original native-error kind. `String`, `Number`, `Boolean`, `BigInt` and `Symbol` test the primitive or its boxed object, `typeof s === "string" || s instanceof String` and so on, and extract `[s]` for a primitive and `[s.valueOf()]` for a boxed object (decided detail 87). Extraction otherwise follows the draft; no methods are defined on globals. Ordinary classes without an explicit matcher, including classes imported from untouched `.ts` or `.js`, instead test `subject instanceof C`, then extract as the draft specifies (decided detail 67). No helper patches `Function.prototype` or records construction identity. This deliberately differs from the snapshot's `[[ConstructedBy]]` test: changing a genuine instance's prototype can make it stop matching, while forging a prototype can make an object match. A future switch to engine matchers requires a VIP. Where an engine lacks `Symbol.customMatcher`, the runtime defines the symbol ([Runtime guarantees](/spec/008-runtime)).
+- Thirty-three of the thirty-nine are Effect’s tagged errors, each tested with its module’s own guard. The alias and shadowing rule above applies. Neither `instanceof`, a universal `_tag` test nor the subject’s static type replaces the guard.
+- Built-in constructor patterns use `Array.isArray(subject)` for `Array`, and `subject instanceof C` for every other built-in, including native errors, `AggregateError`, `Date`, `RegExp`, collections, `Promise`, typed arrays and `ArrayBuffer`. A cross-realm array matches; other cross-realm built-ins may fail. Native-error matching follows the current prototype chain, not an inaccessible original native-error kind. `String`, `Number`, `Boolean`, `BigInt` and `Symbol` test the primitive or its boxed object, `typeof s === "string" || s instanceof String` and so on, and extract `[s]` for a primitive and `[s.valueOf()]` for a boxed object. Extraction otherwise follows the draft; no methods are defined on globals. Ordinary classes without an explicit matcher, including classes imported from untouched `.ts` or `.js`, instead test `subject instanceof C`, then extract as the draft specifies. No helper patches `Function.prototype` or records construction identity. This deliberately differs from the snapshot's `[[ConstructedBy]]` test: changing a genuine instance's prototype can make it stop matching, while forging a prototype can make an object match. A future switch to engine matchers requires a VIP. Where an engine lacks `Symbol.customMatcher`, the runtime defines the symbol ([Runtime guarantees](/spec/008-runtime)).
 
 For an ordinary class without an own matcher, the draft’s successful test returns `true`, not `[s]`: using it as an extractor throws `TypeError`, rather than binding an instance. Built-in adapters retain their own extraction rules: `Array` and typed arrays return the subject as the list; `Map` and `Set` return `[subject]`.
 
@@ -1257,7 +1306,7 @@ Effect.runSync(classify(fake)) // "yes"
 
 ## Retained fixed patterns
 
-VIP-7 keeps today's fixed checks (D208) until Effect ships matchers: the six `Option`, `Exit` and `Result` patterns and Effect 4.1.1's thirty-three tagged errors (decided details 53, 86 and 92). Each is recognized by its resolved module binding, aliases included, shadowing excluded. `s` is the subject, evaluated once. A bare pattern only runs the test. An extractor matches the listed array against its argument patterns by the snapshot's list rules: without rest, the extracted length must fit the required-to-total position interval and every present sub-pattern must match. Zero arguments match only `[]`; absent optionals consume zero positions, so `Option.None(1?)` also matches. An arity mismatch is a failed match (`EK0703` warns).
+VIP-7 keeps today's fixed checks until Effect ships matchers: the six `Option`, `Exit` and `Result` patterns and Effect 4.1.1's thirty-three tagged errors. Each is recognized by its resolved module binding, aliases included, shadowing excluded. `s` is the subject, evaluated once. A bare pattern only runs the test. An extractor matches the listed array against its argument patterns by the snapshot's list rules: without rest, the extracted length must fit the required-to-total position interval and every present sub-pattern must match. Zero arguments match only `[]`; absent optionals consume zero positions, so `Option.None(1?)` also matches. An arity mismatch is a failed match (`EK0703` warns).
 
 | Pattern | Ordered test on `s` | List |
 | --- | --- | --- |

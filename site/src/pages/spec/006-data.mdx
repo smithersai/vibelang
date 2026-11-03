@@ -344,6 +344,7 @@ The generated constants keep TypeScript declaration order and temporal dead zone
 | a recognized ordinary schema declaration missing its required body or admitted alias form | `EK1503` |
 | two fields on one line with no separator, `{ a: string b: number }`; write `;` or a line break between them (quick fix: insert `;`) | `EK1504` |
 | a member of a `schema` body that is not a [Field](/spec/900-appendices#field): `schema S { m(): string }`, `schema S { [k: string]: number }` | `EK1505` |
+| a `schema` declaration in an ambient source context, explicit or inherited, as for a [service](/spec/005-services#static-rules); it comes ahead of the same declaration’s `EK1503` | `EK1506` |
 | a field type outside the mapping (including a shadowing type without a suitable Schema value), or a referenced schema with conflicting or unprovable decoded-key flags at a required or effectively readonly position; use an unmodified value schema and write the modifiers on the declaration (for `Date`, use `Schema.Date`) | `EK2109` |
 
 
@@ -430,7 +431,7 @@ A data payload is emitted as a TypeScript type literal in `Data.TaggedEnum`. Its
 ```vibe [VibeLang]
 // compiler-gap: pending VIP-16
 let keyReads = 0; let initializerRuns = 0
-const Keys = { get field(): number { keyReads++; throw new Error("not evaluated") } }
+const Keys = { get field(): number { keyReads++; return 1 } }
 const initializedKey = (++initializerRuns, 2)
 data Reads { Item { [Keys.field]: string } }
 data Initialized { Item { [initializedKey]: string } }
@@ -505,6 +506,7 @@ VIP-7 includes `data` unions and [tagged members](/spec/004-match#tagged-members
 | a recognized data declaration missing its required variant body | `EK1604` |
 | two variants, or two fields of a variant, on one line with no separator, `data D { A B }` or `A { x: number y: string }`; write `;` or a line break between them (quick fix: insert `;`) | `EK1605` |
 | a malformed variant or a payload member that is not a [Field](/spec/900-appendices#field): `data D { A(x: number) }`, `data D { A { m(): void } }`; write `A { x: number }` | `EK1606` |
+| a `data` declaration in an ambient source context, explicit or inherited, as for a [service](/spec/005-services#static-rules); it comes ahead of the same declaration’s `EK1604` | `EK1607` |
 
 
 The named default-export counterpart is:
@@ -590,7 +592,7 @@ type S = typeof S.Type
 
 Exported `schema` and `data` declarations emit the TypeScript declarations of their Effect TypeScript counterparts above: a schema constant and its `typeof Name.Type` alias, or a `Data.TaggedEnum` alias and typed constructor constant. Generic data also emits the `WithGenerics` helper, named as above, when the exported constant references it; the helper is an implementation name, not a reserved source identifier. TypeScript declaration emission preserves inferred readonly payloads and the constructor signatures; it adds no runtime matcher.
 
-A JSDoc comment on a `schema` declaration is emitted on its `declare const` only; its `typeof Name.Type` alias has no comment. This includes `@internal`, `@public` and `@deprecated`, as on the ordinary Effect TypeScript pair. Native `removeComments` and `stripInternal` behavior is unchanged.
+A JSDoc comment on a `schema` declaration is emitted on its `declare const` only; its synthesized `typeof Name.Type` alias has no comment. This includes `@internal`, `@public` and `@deprecated`, as on the ordinary Effect TypeScript pair. Native `removeComments` and `stripInternal` behavior is unchanged.
 
 ```vibe [VibeLang]
 import * as Schema from "effect/Schema"
@@ -607,4 +609,20 @@ export const Message = Schema.Struct({ id: Schema.String })
 export type Message = typeof Message.Type
 ```
 
-Declaration emit retains the comment on the constant and leaves the type alias bare. To retain distinct documentation on a constant and its type alias, keep the ordinary TypeScript pair.
+Without a written alias, declaration emit retains the comment on the constant and leaves the synthesized type alias bare. A written alias keeps its own JSDoc, order and export status under the [written schema alias rule](/spec/006-data#schema-declarations). For example:
+
+```vibe [VibeLang]
+import { Schema } from "effect";
+/** The constant's documentation. */
+export schema Message { id: string }
+/** The type's documentation. */
+export type Message = typeof Message.Type;
+```
+
+```ts [Effect]
+import { Schema } from "effect";
+/** The constant's documentation. */
+export const Message = Schema.Struct({ id: Schema.mutableKey(Schema.String) });
+/** The type's documentation. */
+export type Message = typeof Message.Type;
+```

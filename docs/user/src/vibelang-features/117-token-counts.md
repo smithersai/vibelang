@@ -280,15 +280,15 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [Introduction](../../../design/src/000-intro.md) | 2,800 |
 | **The language** | **120,000** |
 | [1. Functions and Effect types](../../../design/src/001-functions.md) | 12,000 |
-| [2. Running Effects](../../../design/src/002-running.md) | 28,000 |
-| [3. Failures](../../../design/src/003-failures.md) | 9,000 |
-| [4. Pattern matching](../../../design/src/004-match.md) | 22,000 |
-| [5. Services and the environment](../../../design/src/005-services.md) | 12,000 |
-| [6. Data](../../../design/src/006-data.md) | 8,600 |
-| [7. Configuration and tooling](../../../design/src/007-tooling.md) | 15,000 |
-| [8. Runtime guarantees](../../../design/src/008-runtime.md) | 7,200 |
-| **Appendices** | **31,000** |
-| [Grammar, diagnostics, and denied and open VIPs](../../../design/src/900-appendices.md) | 31,000 |
+| [2. Running Effects](../../../design/src/002-running.md) | 29,000 |
+| [3. Failures](../../../design/src/003-failures.md) | 10,000 |
+| [4. Pattern matching](../../../design/src/004-match.md) | 23,000 |
+| [5. Services and the environment](../../../design/src/005-services.md) | 13,000 |
+| [6. Data](../../../design/src/006-data.md) | 8,800 |
+| [7. Configuration and tooling](../../../design/src/007-tooling.md) | 16,000 |
+| [8. Runtime guarantees](../../../design/src/008-runtime.md) | 7,500 |
+| **Appendices** | **32,000** |
+| [Grammar, diagnostics, and denied and open VIPs](../../../design/src/900-appendices.md) | 32,000 |
 | **All 10 pages** | **150,000** |
 
 <!-- token-counts: end -->

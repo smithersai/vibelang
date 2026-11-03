@@ -21,9 +21,21 @@ export declare function add(a: number, b: number): number
 
 - **Content.** Declarations are exactly what idiomatic Effect TypeScript would declare, per Will's earlier ruling (D501).
 - **Amended 2026-11-03: API identity (Will).** Declarations are API-identical to `tsc`'s for the Effect TypeScript twin: the same exported names, each export's type identical to `tsc`'s in both directions (a type-level check), and the same doc comment on each export. Formatting, quote style, import extension spelling, and import and member order where `tsc` doesn't care don't count ("Byte identical seems a bit extreme shouldn't it have some level of discretion?"). [Chapter 1](https://github.com/smithersai/vibelang/blob/main/docs/design/src/001-functions.md#api-identity) states it once; codemods and migration point there.
+
 - **Location.** `x.d.vibe.ts` is written next to each `x.vibe`, which TypeScript's `allowArbitraryExtensions` resolves, so plain `tsc` and TypeDoc understand `.vibe` imports. A package build also writes ordinary `.d.ts` files to its output directory.
 - **`@throws`.** A non-effectful exported function carries `@throws {never}`, because a `.vibe` function can't throw (VIP-4) and a TypeScript function with no `@throws` throws `unknown`. The effect function `load` carries none. A re-exported foreign callable keeps its actual contract.
 - The `@throws` annotations VibeLang ships for JavaScript's globals (VIP-4) use the same spelling.
+Construct the twin with the explicit `@throws {never}` contract on each non-effectful signature for which VibeLang emits it. Preserve the source documentation and add that tag to the twin's JSDoc before running `tsc`; do not add it to the `.vibe` source, where it is `EK0406`. This makes the same-comment comparison include the required cross-module contract: an unannotated TypeScript twin would instead advertise `unknown` and would not represent the same API. Effectful signatures and re-exported foreign callables retain their own declaration rules.
+
+For the `add` example, the Effect TypeScript twin used for declaration comparison is:
+
+```ts
+/** @throws {never} */
+export function add(a: number, b: number) { return a + b }
+```
+
+Stock `tsc` preserves the tag in the declaration, exactly as shown above. Without the tag, `tsc` emits the same function type with no JSDoc; that is a foreign callable with thrown type `unknown` under VIP-4.
+
 
 - **Amended 2026-10-30: the generated matcher.** A declaration file that declares an `error` or `schema error` keeps its static `[Symbol.customMatcher]` member and begins with `/// <reference types="vibelang-runtime" />`, which declares the `Symbol.customMatcher` type, so plain `tsc` checks it and matching across packages works at run time. Decided by the agent on 2026-10-30 under Will's rule "when I state a principle, the agent derives the concrete rule and acts; I can override later" (decided detail 67c).
 
@@ -33,22 +45,24 @@ export declare function add(a: number, b: number): number
 
 `bun check` runs the project's `check` script; a script that invokes a TypeScript checker uses that checker's sidecar resolution. [Bun's script runner](https://bun.com/docs/runtime) executes the configured command.
 
-- **Amended 2026-11-01: documented schemas.** A JSDoc comment on a `schema` declaration is emitted on its `declare const` only; its `typeof Name.Type` alias has no comment. This includes `@internal`, `@public` and `@deprecated`, as on the ordinary Effect TypeScript pair. Native `removeComments` and `stripInternal` behavior is unchanged. A separate type-comment form is not introduced.
+- **Amended 2026-11-01: documented schemas.** A JSDoc comment on a `schema` declaration is emitted on its `declare const` only; its synthesized `typeof Name.Type` alias has no comment. This includes `@internal`, `@public` and `@deprecated`, as on the ordinary Effect TypeScript pair. Native `removeComments` and `stripInternal` behavior is unchanged. Without a written alias, synthesize the same bare alias.
 
 ### Amendment: an opt-in sidecar directory (2026-11-01)
 
-The Location bullet stays the default: `x.d.vibe.ts` beside `x.vibe`, with no configuration. `vibe.sidecarDir` moves every sidecar of the project into one directory, conventionally `.vibe/declarations`, at the path the source has under the config's directory, so `src/x.vibe` gets `.vibe/declarations/src/x.d.vibe.ts`. The project's tsconfig adds the directory to `rootDirs` beside `.`, so stock `tsc`, TypeDoc and editors still resolve `import "./x.vibe"` under `allowArbitraryExtensions`:
+The Location bullet stays the default: `x.d.vibe.ts` beside `x.vibe`, with no configuration. `vibe.sidecarDir` moves every sidecar of the project into one directory, conventionally `.vibe/declarations`, at the source's path relative to TypeScript's declaration source root: explicit `rootDir`, the config directory for a composite project, or the common source directory otherwise. With `rootDir: "."`, `src/x.vibe` gets `.vibe/declarations/src/x.d.vibe.ts`. The project's tsconfig adds the directory to `rootDirs` beside `.`, so stock `tsc`, TypeDoc and editors still resolve `import "./x.vibe"` under `allowArbitraryExtensions`:
 
 ```jsonc
 {
-  "compilerOptions": { "allowArbitraryExtensions": true, "rootDirs": [".", ".vibe/declarations"] },
+  "compilerOptions": { "allowArbitraryExtensions": true, "rootDir": ".", "rootDirs": [".", ".vibe/declarations"] },
   "vibe": { "sidecarDir": ".vibe/declarations" }
 }
 ```
 
+An imported source outside the compiling config's directory follows that compiling project's root and `sidecarDir`; its nearest config does not change ownership. An explicit `rootDir` excluding it reports `TS6059`. Through a project reference, only the owning project emits that source's sidecar. With no `sidecarDir`, the sidecar stays beside its source. This follows TypeScript's declaration-layout rule; the config-relative example above explicitly fixes the root.
+
 The hidden directory keeps sidecars out of code that enumerates a source folder's `*.ts` files, such as a test that imports every `*.ts` but `*.d.ts`. Switching the setting on or off removes each module's sidecar from the other place. The migrate flow's setup turns it on where tracked code enumerates `*.ts` files in a folder that will hold `.vibe` files. Decided detail 268 (spec agent, 2026-11-01, common sense and precedent: TypeScript's `declarationDir` and `rootDirs`); it reverses nothing.
 
-Compatibility references preserve the source module selected by the original program, including explicit `.vibe` imports with a same-basename native `.ts` sibling. Written imports, re-exports and inferred import types retain that identity before relocation. The public declaration import style continues to govern ordinary `.d.ts` output; it cannot change which module a compatibility declaration represents. This follows the accepted Content contract and chapter 7’s source-import resolution.
+Compatibility references preserve the source module selected by the original program, including explicit `.vibe` imports with a same-basename native `.ts` sibling. Written imports, re-exports and inferred import types retain that identity before relocation. Ordinary `.d.ts` spelling is separate, under the 2026-11-03 amendment below; it cannot change which module a compatibility declaration represents. This follows the accepted Content contract and chapter 7’s source-import resolution.
 
 Relative module references are written from the sidecar's final location. A reference to a VibeLang module targets that module's selected compatibility declaration; a reference to a native TypeScript module targets its native location. A consuming project does not inherit the producer's `rootDirs`, so producer-only virtual roots are not a substitute for correct relative specifiers. Public declarations still follow native `declarationDir` and `outDir` independently.
 
@@ -64,7 +78,7 @@ Svelte's and Vue's TypeScript tooling; CSS modules' `.d.css.ts`; TypeScript's `a
 
 - **Amended 2026-11-01: sidecars reached by non-relative names.** After native resolution and `realpath`/`preserveSymlinks` handling, a non-relative export, `paths` or `#imports` resolution to a known `.d.vibe.ts`/`.d.vibex.ts` sidecar uses its available source only when the final path is outside `node_modules`. With relocated sidecars, follow the recorded source map, never a guessed basename. A retained logical `node_modules` path under `preserveSymlinks` keeps declarations. This Vibe-aware source preference changes which file is read, not native discovery or explicit-input overwrite protection; an explicitly listed declaration remains an input. Ordinary TypeScript source/declaration resolution is unchanged.
 
-- **Amended 2026-11-02: declaration import spelling.** `vibelang.declarationImportStyle` ([VIP-30](/vips/0030-config-files)) spells a relative reference the source writes as `./x.vibe` in package declarations, the `.d.ts` files in the output directory: `./x.js` by default, `./x` for `"extensionless"` and `./x.ts` for `".ts"`. A source-adjacent sidecar, `x.d.vibe.ts` or `x.d.vibex.ts`, keeps `./x.vibe` under every setting, so plain `tsc` resolves it through `allowArbitraryExtensions`; JavaScript output keeps `./x.js`. A `./x.vibex` reference is declared through its JavaScript output by default, `./x.jsx` under `"jsx": "preserve"` and `./x.js` otherwise ([VIP-39](/vips/0039-vibex#options-output-and-declarations)); what `"extensionless"` and `".ts"` declare for it is not yet decided. Every other written specifier, `./helper.ts` included, stays as written. Recorded from decided detail 263 (C-prime, Will via proxy, 2026-10-31): "an opt-in package declaration spelling policy" ... "source-adjacent sidecars retain their existing VibeLang-source reference rules".
+- **Amended 2026-11-03: declaration import spelling follows TypeScript.** Written relative specifiers stay as written in package declarations and compatibility sidecars, including `./x.vibe` and `./x.vibex`, as the `.ts`/`.tsx` twin preserves its source extensions. Synthesized import types follow TypeScript's inference under the same imports and tsconfig, substituting VibeLang source extensions. Neither extension switch rewrites declaration specifiers. JavaScript output rewriting is separate. The retired `declarationImportStyle` paths are ignored with a nonfatal deprecation warning for every value (VIP-30).
 
 An empty `vibe.sidecarDir` string names the directory of its declaring config, as an empty TypeScript path does. A present child value overrides an inherited path; an absent child value inherits. Non-string values report `EK3007`. This is the path-inheritance contract of the directory setting.
 
@@ -77,3 +91,6 @@ Declaration serialization retains TypeScript 5.9 and 7.0 behavior at the anonymo
 ### Amendment: native overwrite protection (2026-11-02)
 
 Decided detail 281 replaces detail 280: compatibility sidecars are emit outputs like `.d.ts`. An `include` source/sidecar pair selects the source and allows silent regeneration. Explicit `files` inputs retain native `TS5055` protection: exit `1` and unchanged declaration bytes, including under `vibe.sidecarDir`. There is no generated marker, backup directory or warning. The independent compatibility write schedule of detail 283 remains unchanged.
+
+
+- **Amended 2026-11-02: written schema types (foldkit-9, accepted by Will).** For either ordinary `schema X` form, one written, nongeneric `type X = typeof X.Type` in the same scope replaces the synthesized alias, in either source order. Its type query resolves to that schema value. Preserve each declaration’s own JSDoc, order and export status as on the native constant/type pair; native comment/visibility emit options still apply. Other type-name collisions remain errors.

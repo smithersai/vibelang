@@ -6,7 +6,7 @@ title: "Grammar, diagnostics, and denied and open VIPs"
 
 ## Appendix A. Grammar
 
-VibeLang's grammar is TypeScript's, plus three TC39 proposals and the productions below. This appendix is the only place a VibeLang production is written, and a `.vibex` file uses these productions unchanged, read with TypeScript's JSX language variant ([VIP-39](/vips/0039-vibex) adds no production); chapters show examples and link here by production name. Pattern matching is pinned to commit `ba73ffe42f30f0cf56ece28bebdc28f955f2a52e` with its reconciliations ([Pattern matching](/spec/004-match)). Do expressions are pinned to `tc39/proposal-do-expressions` commit `3ef6d463b8163cbf222846b40d17178cca36e9e1` and the Hack pipe operator to `tc39/proposal-pipeline-operator` commit `5ac4dfd624e68b649e6f947885bf5ef67bac19f4`, each repository's head on 2026-10-28 (UTC), vendored in `vips/tc39-do-expressions/` and `vips/tc39-pipeline-operator/`. Names not defined here (`Block`, `Type`, `UnaryExpression`, `ConciseBody`, …) are TypeScript's or ECMAScript's. `"x"` is a token; `X?` is optional; `X*` repeats; `[no LineTerminator here]` and `[lookahead ∉ …]` are ECMAScript's restrictions.
+VibeLang's grammar is TypeScript's, plus four TC39 proposals and the productions below. This appendix is the only place a VibeLang production is written, and a `.vibex` file uses these productions unchanged, read with TypeScript's JSX language variant ([VIP-39](/vips/0039-vibex) adds no production); chapters show examples and link here by production name. Pattern matching is pinned to commit `ba73ffe42f30f0cf56ece28bebdc28f955f2a52e` with its reconciliations ([Pattern matching](/spec/004-match)). Do expressions are pinned to `tc39/proposal-do-expressions` commit `3ef6d463b8163cbf222846b40d17178cca36e9e1` and the Hack pipe operator to `tc39/proposal-pipeline-operator` commit `5ac4dfd624e68b649e6f947885bf5ef67bac19f4`, each repository's head on 2026-10-28 (UTC), vendored in `vips/tc39-do-expressions/` and `vips/tc39-pipeline-operator/`. Names not defined here (`Block`, `Type`, `UnaryExpression`, `ConciseBody`, …) are TypeScript's or ECMAScript's. `"x"` is a token; `X?` is optional; `X*` repeats; `[no LineTerminator here]` and `[lookahead ∉ …]` are ECMAScript's restrictions.
 
 ### The `[Effect]` parameter
 
@@ -322,7 +322,7 @@ PipeBody = AssignmentExpression
 
 These productions carry the enclosing `In`, `Yield`, `Await` and `Effect` grammar parameters consistently. Alongside the pinned covering-production restrictions on conditional, yield, assignment and arrow bodies, an `EffectArrow` included, reject a body whose whole unparenthesized expression is a `PipeExpression`. Thus an unparenthesized chain has its unique sequential left-associated derivation; a parenthesized nested pipe remains valid with a separate topic scope. This restriction tests the whole body, not every nested occurrence of a pipe.
 
-It is a Syntax Error if the `ShortCircuitExpression` of a `PipeExpression` is a `CatchExpression` whose handler is an `ArrowHandler`; the `|>` then belongs to the arrow's body, as `?` does under [ConditionalExpression](/spec/900-appendices#conditionalexpression). So `a catch () => b |> % + 1` is `a catch (() => (b |> % + 1))`; write `(a catch () => b) |> % + 1` to pipe the recovered value.
+The open-arrow restriction is defined once under [CatchExpression](/spec/900-appendices#catchexpression). It distinguishes an expression body, which can absorb a following pipe, from a closed block body.
 
 #### EffectType
 
@@ -632,6 +632,7 @@ Provider = LeftHandSideExpression "=" AssignmentExpression   (Key = value)
 
 ```text
 ServiceDeclaration = ServiceStart TypeParameters? ClassHeritage? "{" (ServiceMember Separator)* "}"   (a member that ends in a Block needs no Separator, as a class method)
+                   | ServiceStart TypeParameters? ":" Type "{" (ServiceMember Separator)* "}"   (only KeyMember and DefaultMember are admitted; other members parse for EK0902)
 ```
 
 <a id="servicemember"></a>
@@ -930,11 +931,34 @@ service S { x: number = 1 }       RejectedMember: an initializer
 
 **Match arms.** [MatchArm](/spec/900-appendices#matcharm) is the pinned draft's clause with VIP-7's `when` prefix and VIP-5's `throw` arm body. `default` is last, guards belong to `MatchPattern`, and every arm ends with `;`, the last one included; a newline is not a separator.
 
+
+### ThrowExpression
+
+<a id="throwexpressioninvalidpunctuator"></a>
+
+[VIP-41](/vips/0041-throw-expressions) imports the TC39 specification at commit `78b887751db4e380870a0a6bfc47319c50aa1404`. The following are its productions, with ECMAScript's other unary alternatives retained.
+
+```text
+UnaryExpression[Yield, Await] =
+  "throw" UnaryExpression[?Yield, ?Await] [lookahead ∉ ThrowExpressionInvalidPunctuator]
+ThrowExpressionInvalidPunctuator = "," | "<" | ">" | "<=" | ">="
+  | "==" | "!=" | "===" | "!==" | "+" | "-" | "*" | "/" | "%" | "**"
+  | "<<" | ">>" | ">>>" | "&" | "|" | "^" | "&&" | "||" | "??"
+  | "=" | "+=" | "-=" | "*=" | "/=" | "%=" | "**=" | "<<=" | ">>=" | ">>>="
+  | "&=" | "|=" | "^=" | "&&=" | "||=" | "??=" | "?"
+ExpressionStatement[Yield, Await] =
+  [lookahead ∉ { "{", "function", "async" [no LineTerminator here] "function",
+                 "class", "let [", "throw" }] Expression[+In, ?Yield, ?Await] ";"
+```
+
+The operand and parent positions follow `UnaryExpression`; `throw` in statement position is `ThrowStatement`. The expression production has no no-line-terminator restriction after `throw`. The invalid-punctuator lookahead also applies to comma separators. Parenthesize the operand or the throw to place an operator inside or outside it. ECMAScript automatic semicolon insertion applies. ASI can end a class field before the `*` of a following generator method. Rules about generators and where a throw is permitted remain separate. Where throwing is permitted is separately VIP-4's 2026-10-31 no-throw ruling (`EK0401`).
+
+
 ## Appendix B. Diagnostics
 
-Every diagnostic has an `EK` code and a message that says how to fix it (VIP-34). VibeLang's own rules take one hundred-block per VIP, `EK` then the two-digit VIP number then two digits, so VIP-19's rules are `EK19xx` (VIP-34, amended). Imported lint rules use the growing `EK38` decimal suffix below (VIP-34, amended). A code assigned before that scheme is kept where its rule is unchanged, or only widened or downgraded: `EK0801`, `EK2109`, `EK2111`, `EK2117`, `EK2126`, `EK3001` to `EK3005`, `EK4402`, `EK4609`, `EK4610` and `EK4701`. Codes are unique across the table, so a kept code may sit inside another VIP's block. Each rule's chapter links to its definition. A row whose rule starts "warning" or "lint warning" is a warning; every other code is an error. Only a warning's code, or an `EK38xx` code, may appear in `vibe.severities` (VIP-30, amended): `{ "EK0801": "off" }` is valid, `{ "EK4701": "off" }` is `EK3006`. Reused numbers: `EK2001` to `EK2005`, `EK2102` to `EK2104`, `EK3006`, `EK3007` and `EK3201` previously named different rules in the [old language’s diagnostic table](https://github.com/smithersai/vibelang/blob/main/docs/design/history/src/428-part4-ch28-tooling.md); in this table they mean only the rows below. `EK3008` is not reused: `0.0.10`'s static-key rule is now `EK0901`. VibeLang's own syntax errors have codes too, each in its VIP's block (`EK0509`, `EK1906`, `EK2005`, …). TypeScript's own diagnostics keep their `TS` codes. Diagnostic ownership follows the source rule, not the parser helper: new VibeLang productions, placement rules, adopted proposal early errors and explicit reconciliations use their owning VIP's `EK` code. Imported proposal syntax is not ordinary native TypeScript syntax. Independent errors in native embedded expressions and types keep their native diagnostics. Each Effect language-service rule that VIP-38 imports (`effecttsgo/*`) gets one stable `EK38xx` code, listed in a table generated from the pinned effect-tsgo version; the CLI prints the code and the rule name (`EK3801 floatingEffect: …`), a VIP-32 bump regenerates the table, and a code never changes once assigned. Every `EK38xx` code is a lint code that `vibe.severities` may set to any value, `"off"` included (VIP-38, amended). The [Imported lint codes](/spec/900-appendices#imported-lint-codes) table below is generated from that pin.
+Every diagnostic has an `EK` code and a message that says how to fix it (VIP-34). VibeLang's own rules take one hundred-block per VIP, `EK` then the two-digit VIP number then two digits, so VIP-19's rules are `EK19xx` (VIP-34, amended). Imported lint rules use the growing `EK38` decimal suffix below (VIP-34, amended). A code assigned before that scheme is kept where its rule is unchanged, or only widened or downgraded: `EK0801`, `EK1010`, `EK2109`, `EK2111`, `EK2117`, `EK2126`, `EK3001` to `EK3005`, `EK4402`, `EK4609`, `EK4610`, `EK4701` and `EK4802`. Codes are unique across the table, so a kept code may sit inside another VIP's block. Each rule's chapter links to its definition. A row whose rule starts "warning" or "lint warning" is a warning; every other code is an error. Only a warning's code, or an `EK38xx` code, may appear in `vibe.severities` (VIP-30, amended): `{ "EK0801": "off" }` is valid, `{ "EK4701": "off" }` is `EK3006`. Reused numbers: `EK2001` to `EK2005`, `EK2102` to `EK2104`, `EK3006`, `EK3007` and `EK3201` previously named different rules in the [old language’s diagnostic table](https://github.com/smithersai/vibelang/blob/main/docs/design/history/src/428-part4-ch28-tooling.md); in this table they mean only the rows below. `EK3008` is not reused: `0.0.10`'s static-key rule is now `EK0901`. VibeLang's own syntax errors have codes too, each in its VIP's block (`EK0509`, `EK1906`, `EK2005`, …). TypeScript's own diagnostics keep their `TS` codes. Diagnostic ownership follows the source rule, not the parser helper: new VibeLang productions, placement rules, adopted proposal early errors and explicit reconciliations use their owning VIP's `EK` code. Imported proposal syntax is not ordinary native TypeScript syntax. Independent errors in native embedded expressions and types keep their native diagnostics. Each Effect language-service rule that VIP-38 imports (`effecttsgo/*`) gets one stable `EK38xx` code, listed in a table generated from the pinned effect-tsgo version; the CLI prints the code and the rule name (`EK3801 floatingEffect: …`), a VIP-32 bump regenerates the table, and a code never changes once assigned. Every `EK38xx` code is a lint code that `vibe.severities` may set to any value, `"off"` included (VIP-38, amended). The [Imported lint codes](/spec/900-appendices#imported-lint-codes) table below is generated from that pin.
 
-The old `EK2101` is retired and will never be reassigned: it rejected a bodyless declaration whose return type was not an Effect, a restriction VIP-9 removed.
+The old `EK2101` is retired and will never be reassigned: it rejected a bodyless declaration whose return type was not an Effect, a restriction VIP-9 removed. The old `EK0511` is retired too: VIP-4 makes a `throw` in a plain `catch` handler the error `EK0401`.
 
 The TypeScript-form lint warnings also retain their existing `EK4830`–`EK4837`, `EK4839`, `EK4841` and `EK4842` assignments. Their triggers and safe repairs are in [TypeScript spellings with VibeLang forms](/spec/007-tooling#typescript-spellings-with-vibelang-forms). They are configurable warnings, separate from the imported Effect rules and their `EK38xx` codes. Obsolete owned-fiber, Option extension-method and magic-entry rules have no rows here.
 
@@ -952,7 +976,6 @@ The TypeScript-form lint warnings also retain their existing `EK4830`–`EK4837`
 | `EK0201` | a `do` block whose last statement violates TC39's `EndsInIterationOrBareIfOrDeclaration` early error | 2 | [Running Effects](/spec/002-running#do-expressions) |
 | `EK0202` | a `break` or `continue` whose target is outside the block of an `effect { … }` expression | 2 | [Running Effects](/spec/002-running#effect-blocks) |
 | `EK0203` | `var` in a `do` expression in a parameter list | 2 | [Running Effects](/spec/002-running#do-expressions) |
-| `EK0204` | current compiler implementation limitation: an outward source completion cannot yet cross a generated function boundary in this position; this is not a TC39 early error | 2 | [Running Effects](/spec/002-running#do-expressions) |
 | `EK0205` | a `break` or `continue` in a loop head's `do` that leaves it unlabeled or targets that loop | 2 | [Running Effects](/spec/002-running#do-expressions) |
 | `EK0301` | `!` beside a union, an intersection, a conditional type, or a function or constructor type in a slot, without parentheses: `A \| B!E`, `() => A!E \| B`, `A!() => B` (write `A!(() => B)`) | 3 | [Functions](/spec/001-functions#the-aer-type-shorthand) |
 | `EK0302` | `A!!B!C`: write `(A!!B)!C` or `A!(B!C)` | 3 | [Appendix A](/spec/900-appendices#notes-on-the-productions) |
@@ -960,7 +983,7 @@ The TypeScript-form lint warnings also retain their existing `EK4830`–`EK4837`
 | `EK0402` | a function that may throw where a function type doesn't admit its thrown type | 4, 39 | [Failures](/spec/003-failures#assignability) |
 | `EK0403` | an unwrapped call, `new` expression, tagged template or class evaluation that may throw, in effect code | 4 | [Failures](/spec/003-failures#calls-in-effect-code) |
 | `EK0404` | an unwrapped Promise-producing call (runtime `import()` included), `new` expression, tagged template or `async match` in effect code | 4, 5 | [Failures](/spec/003-failures#calls-in-effect-code) |
-| `EK0406` | a `@throws` or `@rethrows` tag in a `.vibe` file; quick fix: remove the tag | 4 | [Failures](/spec/003-failures#thrown-types) |
+| `EK0406` | a `@throws` or `@rethrows` tag in `.vibe` or `.vibex` source outside a `module` body, including on a service member or function-type signature; quick fix: remove the tag | 4 | [Failures](/spec/003-failures#thrown-types) |
 | `EK0501` | `try` outside effect code, the top level included; the same rule applies to `try.all`, `try.race`, `try.any` or `try.allSettled` | 5, 18, 9 | [Running Effects](/spec/002-running#try) |
 | `EK0502` | `try` on a value that is not an Effect | 5 | [Running Effects](/spec/002-running#try) |
 | `EK0503` | a `try` statement in effect code | 5 | [Running Effects](/spec/002-running#try) |
@@ -971,13 +994,12 @@ The TypeScript-form lint warnings also retain their existing `EK4830`–`EK4837`
 | `EK0508` | lint warning: a plain handler whose result is an Effect; use `catch effect` | 5, 38 | [Running Effects](/spec/002-running#catch) |
 | `EK0509` | a `catch` handler that is not a plain or `effect` arrow or function expression: `a catch b`, `a catch effect { }`, `a catch async (e) => b`, `a catch function* (e) { }`; a parameter list followed directly by a block, as in `try x catch (e) { }`, gets `EK0509` without adding `EK0505` for the same malformed handler | 5 | [Running Effects](/spec/002-running#catch) |
 | `EK0510` | an unparenthesized `try`, `try.all`, `try.race`, `try.any`, `try.allSettled`, `fork`, `fork.in(s)`, `fork.scoped`, `fork.detached` or `join` expression on the left of `**`, as ECMAScript rejects `await a ** b`; parenthesize it: `(try a) ** b` | 5, 17, 18 | [Running Effects](/spec/002-running#static-rules) |
-| `EK0511` | lint warning: an explicit `throw` that can complete a plain `catch` handler, not one caught inside it or in a nested function; use `catch effect` | 5, 38 | [Running Effects](/spec/002-running#catch) |
 | `EK0512` | `catch` mixed with `??`, `\|\|` or `&&` without parentheses, or a member access or call after a function-expression handler; parenthesize | 5 | [Running Effects](/spec/002-running#catch) |
 | `EK0701` | a missing `;` after a `match` arm, the last one included | 7 | [Pattern matching](/spec/004-match#syntax-and-meaning) |
 | `EK0702` | a class pattern that [Class patterns](/spec/004-match#class-patterns) rejects: it names a `data` declaration or variant, a `schema` or a directly built `Context.Reference`, or its callee has no usable signature or return type (a `service` is `EK3004`) | 7 | [Pattern matching](/spec/004-match#class-patterns) |
 | `EK0703` | lint warning: an extractor whose argument count can never match its pattern's list, `when NotFound():` | 7, 38 | [Pattern matching](/spec/004-match#class-patterns) |
 | `EK0704` | an extractor `when C(…)`, `C()` included, on an ordinary class without its own `Symbol.customMatcher` (an inherited one does not count); write `when C:` or `when C and { x: let x }:` (VIP-7, amended) | 7 | [Pattern matching](/spec/004-match#class-patterns) |
-| `EK0705` | an `is` lexical binding that would need formal-parameter or catch-parameter initialization as its home; use an explicit local block preserving the intended result and call phase; also a binding in an `enum` member initializer, which has no lexical home | 7 | [Pattern matching](/spec/004-match#is-bindings-in-parameter-initialization) |
+| `EK0705` | an `is` lexical binding in an unbraced statement body (matching `TS1156`; the quick fix and `vibelang --fix` add braces), or one that would need formal-parameter or catch-parameter initialization as its home; use an explicit local block preserving the intended result and call phase; also a binding in an `enum` member initializer, which has no lexical home | 7 | [Pattern matching](/spec/004-match#is-bindings-in-parameter-initialization) |
 | `EK0706` | a `return`, `break` or `continue` that leaves an `async match`; a nested function keeps its own `return` | 7 | [Pattern matching](/spec/004-match#async-match-jumps) |
 | `EK0707` | invalid `match`/`is` grammar or a pattern-specific early error without a more specific assigned diagnostic; includes an interpolated primitive template pattern | 7 | [Pattern matching](/spec/004-match#syntax-and-meaning) |
 | `EK0801` | warning: `using` in effect code; use `acquireDisposable` inside `scoped` | 34 | [Runtime](/spec/008-runtime) |
@@ -989,6 +1011,7 @@ The TypeScript-form lint warnings also retain their existing `EK4830`–`EK4837`
 | `EK0906` | a recognized service declaration missing its required body | 9 | [Services](/spec/005-services#static-rules) |
 | `EK0907` | a custom `service` declaration in a native ambient source context, explicit or inherited; includes `declare service`, ahead of the same missing-body recovery | 9 | [Services](/spec/005-services#static-rules) |
 | `EK0908` | two `service` members with no separator between them, such as `a: number b: string` on one line; write `;` or a line break between them (quick fix: insert `;`) | 9 | [Services](/spec/005-services#static-rules) |
+| `EK1010` | a throw expression followed by a punctuator forbidden by the pinned proposal; parenthesize the operand or the throw | 41 | [Failures](/spec/003-failures#throw-expressions) |
 | `EK1101` | a trailing block: a `{` on the same line after a name, a property access or a call, `f(x) { … }` or `f { … }`, outside a heritage clause and a `provide` block's providers, where no TypeScript or VibeLang production admits the `{` (so `effect { … }`, `match (x) { … }`, `namespace A.B { … }` and declaration heads such as `service S { … }` are not trailing blocks); quick fix: pass the block as the call's last argument, `f(x, effect { … })` where it ran as a program, `f(x, effect () => { … })` where it ran as an Effect function, `f(x, () => { … })` otherwise | 11 | [Configuration and tooling](/spec/007-tooling#compiler-and-tooling-requirements) |
 | `EK1201` | `provide` outside effect code | 12 | [Services](/spec/005-services#provide-blocks) |
 | `EK1202` | a line break immediately before or after a top-level provider-separating `,` | 12 | [Services](/spec/005-services#provide-blocks) |
@@ -1005,22 +1028,24 @@ The TypeScript-form lint warnings also retain their existing `EK4830`–`EK4837`
 | `EK1503` | a recognized ordinary schema declaration missing its required body or admitted alias form | 15 | [Data](/spec/006-data#schema-declarations) |
 | `EK1504` | two `schema` fields with no separator between them; write `;` or a line break between them (quick fix: insert `;`) | 15 | [Data](/spec/006-data#schema-declarations) |
 | `EK1505` | a member of a `schema` body that is not a `Field` | 15 | [Data](/spec/006-data#schema-declarations) |
+| `EK1506` | a `schema` declaration in an ambient source context, explicit or inherited | 15 | [Data](/spec/006-data#schema-declarations) |
 | `EK1601` | a `data` variant field named `_tag` | 16 | [Data](/spec/006-data#data-declarations) |
 | `EK1603` | `export default data D { … }`; write `export { D as default }` | 16 | [Data](/spec/006-data#data-declarations) |
 | `EK1602` | a `data` variant named `$is` or `$match`; rename it and its resolved references | 16, 28 | [Data](/spec/006-data#data-declarations) |
 | `EK1604` | a recognized data declaration missing its required variant body | 16 | [Data](/spec/006-data#data-declarations) |
 | `EK1605` | two variants of a `data` declaration, or two fields of a variant, with no separator between them; write `;` or a line break between them (quick fix: insert `;`) | 16 | [Data](/spec/006-data#data-declarations) |
 | `EK1606` | a malformed `data` variant or a payload member that is not a `Field` | 16 | [Data](/spec/006-data#data-declarations) |
+| `EK1607` | a `data` declaration in an ambient source context, explicit or inherited | 16 | [Data](/spec/006-data#data-declarations) |
 | `EK1701` | `fork` or `join` outside effect code | 17 | [Running Effects](/spec/002-running#fork-and-join) |
 | `EK1702` | `fork` or `join` as a variable, parameter or label name in effect code, in the parameters of an `effect` function, arrow, method or producer, or in a plain or `async` arrow head inheriting that reservation, including one in an Effect callable's parameters; the arrow body has its own context; or a reserved `fork` or `join` as a shorthand property, `{ join }` | 17 | [Running Effects](/spec/002-running#fork-and-join) |
 | `EK1703` | a `fork`, `fork.in(s)`, `fork.scoped` or `fork.detached` operand that fails the operand test of `try` | 5, 17 | [Running Effects](/spec/002-running#fork-and-join) |
 | `EK1704` | a `join` operand not assignable to `Fiber.Fiber<any, any>` | 17 | [Running Effects](/spec/002-running#fork-and-join) |
 | `EK1705` | a `fork.` owner other than `in(s)`, `scoped` or `detached`: `fork.other e` | 17 | [Running Effects](/spec/002-running#fork-and-join) |
 | `EK1706` | a `fork.in(s)` scope operand not assignable to `Scope.Scope` | 17 | [Running Effects](/spec/002-running#fork-and-join) |
-| `EK1801` | an operand that is not an array of Effects, for `try.all`, `try.race`, `try.any` or `try.allSettled` | 18 | [Running Effects](/spec/002-running#running-effects-concurrently) |
+| `EK1801` | an operand that is not an array of Effects, using assignability to `ReadonlyArray<Effect.Effect<any, any, any>>`, for `try.all`, `try.race`, `try.any` or `try.allSettled` | 18 | [Running Effects](/spec/002-running#running-effects-concurrently) |
 | `EK1802` | a retired `await.all`, `await.race`, `await.any` or `await.allSettled`; quick fix: the `try` operation that replaces it | 18 | [Running Effects](/spec/002-running#running-effects-concurrently) |
 | `EK1803` | a name after `try.` other than `all`, `race`, `any` or `allSettled`: `try.map x` | 18 | [Running Effects](/spec/002-running#running-effects-concurrently) |
-| `EK1901` | a `for concurrent` operand that is not an `Iterable` | 19 | [Running Effects](/spec/002-running#for-concurrent) |
+| `EK1901` | a `for concurrent` operand not assignable to `Iterable<unknown>` | 19 | [Running Effects](/spec/002-running#for-concurrent) |
 | `EK1902` | `for concurrent` outside effect code | 19 | [Running Effects](/spec/002-running#for-concurrent) |
 | `EK1903` | `break` leaving head binding initialization or the body of `for concurrent` | 19 | [Running Effects](/spec/002-running#for-concurrent) |
 | `EK1904` | `return` in head binding initialization or the body of `for concurrent` | 19 | [Running Effects](/spec/002-running#for-concurrent) |
@@ -1030,9 +1055,9 @@ The TypeScript-form lint warnings also retain their existing `EK4830`–`EK4837`
 | `EK2001` | `for try` outside effect code | 20 | [Running Effects](/spec/002-running#for-try) |
 | `EK2002` | `return` in head binding initialization or the body of `for try` | 20 | [Running Effects](/spec/002-running#for-try) |
 | `EK2003` | a labeled `break` or `continue` from `for try` head binding initialization or the body to a statement that encloses the `for try`; one naming the `for try` itself is its unlabeled `break` or `continue` | 20 | [Running Effects](/spec/002-running#for-try) |
-| `EK2004` | a `for try` operand that is not a `Stream` | 20 | [Running Effects](/spec/002-running#for-try) |
+| `EK2004` | a `for try` operand not assignable to `Stream.Stream<any, any, any>` | 20 | [Running Effects](/spec/002-running#for-try) |
 | `EK2005` | a `var`, `using`, `await using` or assignment head in `for try`: any head other than a `const` or `let` declaration | 20 | [Running Effects](/spec/002-running#for-try) |
-| `EK2102` | a producer whose written return type is not a `Stream` | 21 | [Running Effects](/spec/002-running#producers) |
+| `EK2102` | a producer whose written return type is incompatible with its Stream result, under TypeScript's ordinary return checking | 21 | [Running Effects](/spec/002-running#producers) |
 | `EK2103` | `yield*` in a producer | 21 | [Running Effects](/spec/002-running#producers) |
 | `EK2104` | `yield` in nonproducer effect code (an `effect` function, arrow or block), whether or not an outer producer exists, or in directly evaluated formal-parameter initialization of an Effect callable or producer | 21 | [Running Effects](/spec/002-running#producers) |
 | `EK2109` | a `schema` field type outside the mapping (including a shadowing type without a suitable Schema value), or conflicting/unprovable referenced-schema decoded-key flags at a required or effectively readonly position | 15 | [Data](/spec/006-data#schema-declarations) |
@@ -1042,7 +1067,7 @@ The TypeScript-form lint warnings also retain their existing `EK4830`–`EK4837`
 | `EK2128` | `return value` in a producer: a Stream has no return value; write a bare `return` to end the stream | 21 | [Running Effects](/spec/002-running#producers) |
 | `EK2201` | an interruption block outside effect code | 22 | [Running Effects](/spec/002-running#interruption-blocks) |
 | `EK2202` | `restore` that captures an outer mask across an independent `effect` function, arrow, method, producer or block, or `restore` in any `for concurrent` head binding initialization or body | 22 | [Running Effects](/spec/002-running#interruption-blocks) |
-| `EK2301` | an unparenthesized conditional at either end of a pipe, `x \|> f(%) ? a : b`: the pinned proposal's conditional-body error and a pipe as a conditional's test; write `(x \|> f(%)) ? a : b` to test the result or `x \|> (f(%) ? a : b)` to pipe into the conditional | 23 | [Running Effects](/spec/002-running#the-pipe-operator) |
+| `EK2301` | adopted pipe grammar and early errors without a more specific code, including a missing topic and a whole bare plain, `async` or `effect` arrow as a pipe body; parenthesize the arrow, `x \|> (() => %)`. For an unparenthesized conditional at either end of a pipe, `x \|> f(%) ? a : b`: the pinned proposal's conditional-body error and a pipe as a conditional's test; write `(x \|> f(%)) ? a : b` to test the result or `x \|> (f(%) ? a : b)` to pipe into the conditional | 23 | [Running Effects](/spec/002-running#the-pipe-operator) |
 | `EK2801` | a `data` declaration with more than 4 type parameters | 28 | [Data](/spec/006-data#generic-unions) |
 | `EK2803` | a default on a generic `data` type parameter | 28 | [Data](/spec/006-data#generic-unions) |
 | `EK3001` | two services with the same key | 9 | [Services](/spec/005-services#static-rules) |
@@ -1080,6 +1105,8 @@ The TypeScript-form lint warnings also retain their existing `EK4830`–`EK4837`
 | `EK4841` | lint warning: A schema `const` immediately followed by its matching `typeof Name.Type` alias | 15, 34 | [Configuration and tooling](/spec/007-tooling#typescript-spellings-with-vibelang-forms) |
 | `EK4842` | lint warning: An Effect module imported under a conflicting JavaScript global name | 14, 34 | [Configuration and tooling](/spec/007-tooling#typescript-spellings-with-vibelang-forms) |
 
+Trailing blocks are rejected by [VIP-11](/vips/0011-trailing-blocks-denied#amendments); their preserving repair and native-parser recovery follow VIP-34. Classification requires proven legacy lowering, never the callee's parameter type alone. Versioned dual compatibility retains its native call error or transitional `EK1023`, without duplicate `EK1101`.
+
 ### Transitional compiler diagnostics
 
 A transitional compiler may still print compatibility diagnostics from the old language. The following inventory covers the `EK92xx` codes in its registry, separately from the normative rules above: an interim code does not establish a language rule or reserve a new VIP block. Their retirement follows the named VIPs; a compiler renumbering must update this inventory with the registry.
@@ -1099,6 +1126,12 @@ For example, `effect function bad(): number!! { throw new Bad() }`, with `error 
 
 The compiler also still prints `EK3008` for `0.0.10`'s static-key rule, which the normative table numbers `EK0901`; read an emitted `EK3008` as `EK0901` until the compiler is renumbered.
 
+The compiler also prints `EK0204`, a compiler gap rather than a language rule. Where it still compiles a `do` to a function (a parameter default, a declaration in a for-loop initializer, a class member, a `case` test, an optional chain, and the `catch` expressions, `throw` expressions and `fork` it writes as functions), it rejects a `return`, `var`, jump, `await` or `yield` that would leave the `do`. The admitted completions keep the meaning [Running Effects](/spec/002-running#parameter-defaults) gives; ordinary placement and early-error rules still apply. In particular, `function f(x = do { return null }) {}` returns `null` from `f`; the code retires when the compiler lowers those positions.
+
+| Code | Rule | VIP | Chapter |
+| --- | --- | --- | --- |
+| `EK0204` | compiler gap, not a language rule: a `return`, `var`, jump, `await` or `yield` that would leave a `do` the compiler still compiles to a function; admitted completions keep VIP-2’s meaning | 2 | [Running Effects](/spec/002-running#do-expressions) |
+
 The existing migration warnings retain their emitted codes until the compiler and documentation move together. They select repairs; they do not change the omitted-slot or service rules.
 
 | Code | Rule | VIP | Chapter |
@@ -1107,6 +1140,7 @@ The existing migration warnings retain their emitted codes until the compiler an
 | `EK4854` | warning: migration of the retired abstract-class service spelling to a `service` declaration, retaining its contract and key | 9 | [Configuration and tooling](/spec/007-tooling#compiler-and-tooling-requirements) |
 | `EK4855` | warning: migration of `static readonly default = shape` to `static readonly defaultValue = () => shape`, including the corresponding type and value reads | 9 | [Configuration and tooling](/spec/007-tooling#compiler-and-tooling-requirements) |
 | `EK4856` | warning: a type use resolves to the retired global `Effect<A, E, R>` alias; write `A!E!R` or `Effect.Effect<A, E, R>`; local and imported types are unchanged | 3, 14, 34 | [Configuration and tooling](/spec/007-tooling#compiler-and-tooling-requirements) |
+| `EK4857` | error: a legacy Effect return slot written `infer`; write the inferred slot type, or omit the whole return annotation | 3 | [Configuration and tooling](/spec/007-tooling#compiler-and-tooling-requirements) |
 
 An abstract class retains ordinary TypeScript class semantics until explicitly migrated. A migrated service default is a factory of type `() => Shape`; these warnings use the existing safe codemod and its refusal rules ([Configuration and tooling](/spec/007-tooling#compiler-and-tooling-requirements)).
 
@@ -1263,9 +1297,10 @@ A denied VIP is not part of the language. Each records what was proposed and why
 | --- | --- | --- |
 | [8](/vips/0008-using-denied) | special syntax for Effect resources (`using` with Effect meaning, a `scoped` keyword) | `using` is TypeScript's; Effect resources use `scoped(effect { … })` |
 | [10](/vips/0010-service-call-shorthand-denied) | the `Users.find(id)` shorthand | `try (try Users).find(id)` |
-| [11](/vips/0011-trailing-blocks-denied) | trailing blocks, `f(x) { … }` | `f(x, () => { … })`, `f(x, effect () => { … })` or `f(x, effect { … })`, as `EK1101`'s quick fix chooses |
+| [11](/vips/0011-trailing-blocks-denied) | trailing blocks, `f(x) { … }` | `f(x, () => { … })`, `f(x, effect () => { … })` or `f(x, effect { … })`, as the proven legacy lowering chooses; refuse an unproved choice (VIP-11) |
 | [24](/vips/0024-wire-denied) | `wire`, automatic layer composition | Effect's `Layer.provide` and `Layer.provideMerge` |
-| [25](/vips/0025-inline-modules-denied) | inline `module` declarations as a TypeScript escape; superseded by [VIP-40](/vips/0040-module-declarations) | a `.ts` file, or a `module` declaration |
+
+[VIP-25](/vips/0025-inline-modules-denied) is superseded by accepted [VIP-40](/vips/0040-module-declarations): named top-level `module` declarations are TypeScript escapes. Its denial is historical.
 
 ### Open VIPs
 
@@ -1298,7 +1333,7 @@ When the compiler implements VIP-N:
 
 ## Appendix E. Shipped `@throws` and `@rethrows` annotations
 
-These are the annotations [Thrown types](/spec/003-failures#thrown-types) refers to. VibeLang ships them for JavaScript's globals and for Effect's non-effectful exports, plus the thunk annotations of VIP-4's two wrappers. Every other callback parameter of any function, Effect's and the globals' alike, `LazyArg` included, is a function type with no `@throws`, so it admits only non-throwing functions: `sync(() => parse(s))` is an error; use `Effect.try`.
+These are the annotations [Thrown types](/spec/003-failures#thrown-types) refers to. VibeLang ships the intrinsic global annotations and the thunk annotations of VIP-4's two wrappers. An npm signature uses the library rows below only when it carries the annotation; the inventory does not supply package trust. Every other callback parameter of any function, Effect's and the globals' alike, `LazyArg` included, is a function type with no `@throws`, so it admits only non-throwing functions: `sync(() => parse(s))` is an error; use `Effect.try`.
 
 | Function | Annotation |
 | --- | --- |
@@ -1316,7 +1351,7 @@ These are the annotations [Thrown types](/spec/003-failures#thrown-types) refers
 | `new Promise(executor)` | `@throws {never}`, no `@rethrows`: a throw in the executor rejects the Promise, as in JavaScript; it never throws at the construction site |
 | the `executor` parameter's call signature | `@throws {unknown}`: it admits a throwing executor, whose throw becomes the rejection, not part of the constructor's thrown type |
 
-In a `.ts` file, `setTimeout` does not rethrow, because it stores the callback; in a `.vibe` file it is a banned platform global ([Services](/spec/005-services#the-platform-standard-library)). The array annotations attach to every `lib.d.ts` call signature of the named method, on `Array<T>` and `ReadonlyArray<T>` alike; a tuple uses `Array<T>`'s. An Effect function's data-first overload returns an Effect and is effectful; its data-last overload returns a function and is non-effectful with `@throws {never}`, so `fetchUser(id).pipe(Effect.map(toDto), Effect.retry(policy))` is accepted. Their callbacks have no `@throws`. A library declares the same tags in its own declarations:
+In a `.ts` file, `setTimeout` does not rethrow, because it stores the callback; in a `.vibe` file it is a banned platform global ([Services](/spec/005-services#the-platform-standard-library)). The array annotations attach to every `lib.d.ts` call signature of the named method, on `Array<T>` and `ReadonlyArray<T>` alike; a tuple uses `Array<T>`'s. An Effect function's data-first overload returns an Effect and is effectful; its data-last overload returns a function and is non-effectful. When that signature carries `@throws {never}`, `fetchUser(id).pipe(Effect.map(toDto), Effect.retry(policy))` is accepted. Their callbacks have no `@throws`. A library declares the same tags in its own declarations:
 
 ```ts
 /** @throws {never} @rethrows f */
@@ -1327,7 +1362,7 @@ export declare function each<T>(xs: readonly T[], f: (x: T) => void): void
 
 Reachability quantifies over the selected signature's receiver and parameter types; a safe literal or local range check does not change that signature's thrown type. Thus `toFixed(2)` and `repeat(81)` retain `RangeError` and use `Effect.try`, while `padStart` and `padEnd` have own thrown type `never`: their `ToLength` conversion clamps nonpositive counts, with resource limits still implicit.
 
-Every remaining global and effect 4.1.1 non-Effect export is annotated by a generator, not by hand: `@throws {never}` only when its source has no `throw` reachable from well-typed input, a named class when one is known (`SchemaError`), otherwise `@throws {unknown}`. The normative [`throws.json`](https://github.com/smithersai/vibelang/blob/main/docs/design/inventory/throws.json) is generated by `node docs/tools/throws-inventory.mjs --write`. It records the bundled TypeScript lib version and every input file's hash, the exact Effect package version and hashes of its declarations and shipped `dist` sources. Every entry is keyed by `module`, `declaration`, `kind` and `signature`, with `ownThrows`, `rethrows`, `callbacks` and `returns` contracts; non-callable values have `ownThrows: null`. Native argument-validation contracts follow [Implicit and tracked built-in throws](/spec/003-failures#implicit-throws) (detail 81); source analysis follows imported helpers and constructors, separates returned function bodies and treats incomplete proofs as `unknown`. Function-type callbacks admit `never` by default, while the explicit wrapper thunks, Promise executor and rethrowing parameters carry their admitted thrown type. Native proofs use finite sets of known methods; unmodeled APIs remain `unknown`. Iterable protocol hooks are implicit for `Array.from(it)`, `new Map(it)` and `new Set(it)` (detail 202). Numeric `dual` arities distinguish a data-last factory, whose own thrown type is `never`, from a full invocation of its body; the returned callable keeps that body's contract. Dynamic arity predicates need a separate proof and stay conservative. Detail 202 separately settles `Effect.catchTag`'s data-last factory as `never`; its shipped selector only tests `isEffect`. The JavaScript `dist` files erase parameter types, so scalar-call proofs require known safe arguments or an intrinsic that accepts every value. Unresolved iterator protocols, disposal, tagged-template calls and computed method keys remain `unknown` rather than a guessed `never`. A TypeScript or Effect bump regenerates this artifact; `node --test docs/tools/throws-inventory.test.mjs` rejects stale output. Written contracts still take precedence over shipped annotations, then inference or defaults, as the three-step procedure requires. `@throws` and `@rethrows` attach to a call signature, as TypeScript attaches JSDoc to each overload, so a returned function's contract sits on its own signature:
+Every remaining global is annotated by a generator; the same generator records proposed annotations for effect 4.1.1 non-Effect exports, without granting those library signatures an implicit contract: `@throws {never}` only when its source has no `throw` reachable from well-typed input, a named class when one is known (`SchemaError`), otherwise `@throws {unknown}`. The normative [`throws.json`](https://github.com/smithersai/vibelang/blob/main/docs/design/inventory/throws.json) is generated by `node docs/tools/throws-inventory.mjs --write`. It records the bundled TypeScript lib version and every input file's hash, the exact Effect package version and hashes of its declarations and shipped `dist` sources. Every entry is keyed by `module`, `declaration`, `kind` and `signature`, with `ownThrows`, `rethrows`, `callbacks` and `returns` contracts; non-callable values have `ownThrows: null`. Native argument-validation contracts follow [Implicit and tracked built-in throws](/spec/003-failures#implicit-throws); source analysis follows imported helpers and constructors, separates returned function bodies and treats incomplete proofs as `unknown`. Function-type callbacks admit `never` by default, while the explicit wrapper thunks, Promise executor and rethrowing parameters carry their admitted thrown type. Native proofs use finite sets of known methods; unmodeled APIs remain `unknown`. Iterable protocol hooks are implicit for `Array.from(it)`, `new Map(it)` and `new Set(it)`. Numeric `dual` arities distinguish a data-last factory, whose own thrown type is `never`, from a full invocation of its body; the returned callable keeps that body's contract. Dynamic arity predicates need a separate proof and stay conservative. `Effect.catchTag`'s data-last factory has thrown type `never`; its shipped selector only tests `isEffect`. The JavaScript `dist` files erase parameter types, so scalar-call proofs require known safe arguments or an intrinsic that accepts every value. Unresolved iterator protocols, disposal, tagged-template calls and computed method keys remain `unknown` rather than a guessed `never`. A TypeScript or Effect bump regenerates this artifact; `node --test docs/tools/throws-inventory.test.mjs` rejects stale output. An npm signature follows the single external-callable rule in chapter 003: its written annotation, or `unknown` without one, subject to the ordinary effectful-return rule. Source-analysis inventory entries do not override that rule. `@throws` and `@rethrows` attach to a call signature, as TypeScript attaches JSDoc to each overload, so a returned function's contract sits on its own signature:
 
 ```ts
 import type { Schema } from "effect"

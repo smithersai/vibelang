@@ -21,7 +21,7 @@ class Users extends Context.Service<Users, {
 }>()("@acme/app/src/users#Users") {}
 ```
 
-- `service Name { members }` is the only way to declare a service. An `abstract class` is no longer a service.
+- `service Name { members }` and `service Name: Type { … }` declare services. An `abstract class` is no longer a service.
 - **The key.** The key is Effect's run-time identity for the service. It is derived from the package, the file and the name. A service can write it explicitly instead, `static readonly key = "app/Users"`, as a migrated service does to keep its key. A duplicate key anywhere in the program is a compile error (EK3001).
 - **A default.** `static readonly defaultValue`, of the same type as `Context.Reference`'s `defaultValue` (`() => Shape`), makes the service a `Context.Reference`. Nothing has to provide it, and providing it overrides the default.
 
@@ -115,3 +115,6 @@ Old VibeLang is a reference only; nothing in it is part of the language unless a
 D40's abstract-class services, and `static readonly default`, which becomes `defaultValue`.
 
 - **Amended 2026-11-01: omitted member types.** Bodyless method and property signatures follow TypeScript's interface rules. Under `noImplicitAny`, `read()` reports `TS7010` and an untyped property reports `TS7008`; with that option off they have implicit `any`. An explicit `read(): any` is valid under strict checking. No separate VibeLang error, inferred Effect contract or Effect-only return restriction applies. The repair is the intended written type.
+
+
+**Amended 2026-11-02 (accepted foldkit-48):** In `service Name: Type { … }`, the annotation supplies the exact whole Shape, including a non-object type. The required body admits only the existing `key` and `defaultValue` members; another member is `EK0902`. Pass the type directly to `Context.Service<Name, Type>`, or `Context.Reference<Type>` with a default, preserving its name and modifiers. `Name.Shape` resolves to that type wherever chapter 005 permits it, without an added helper or namespace. Existing key, default, ambient and generic-capture rules apply. Body-only services are unchanged.
