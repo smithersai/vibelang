@@ -1,0 +1,8 @@
+// VIP-14: DOM types keep their meaning while Effect supplies the namespace.
+export type HostKey = KeyFormat
+export type HostTransfer = Transferable
+export const format = KeyFormat.pem
+export const collector = Transferable.Collector
+export const key: HostKey = "raw"
+export type PublicFormat = KeyFormat.Format<"public", "decode", Uint8Array>
+export type Collector = Transferable.Collector
