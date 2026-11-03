@@ -9,7 +9,7 @@ import (
 // JavaScript evaluates that expression, and how the compiler keeps that is
 // its choice." So everything JavaScript does before the do, in source
 // order, is done before the do's statements run: a spread before it is
-// iterated, an object spread copies its properties, a computed key is
+// iterated, an object spread copies its properties, a computed object-literal key is
 // converted to a property key, an untagged template converts each earlier
 // substitution to a string, and a tag is read with its receiver (RC-25 to
 // RC-29). The construct nests array, call and constructor spreads, object
@@ -172,7 +172,7 @@ func init() {
 		Citations: []Citation{{
 			VIP: 2, Template: "yield* Effect.succeed(‹n›)",
 			Quote:   "A `do` or `match` inside a larger expression runs where JavaScript evaluates that expression, and how the compiler keeps that is its choice.",
-			Reading: "The reference writes each do as an immediately invoked arrow, which JavaScript runs where the do stands, after every operand before it is finished: spreads iterated, object spreads copied, computed keys converted, substitutions converted to strings and tags read. Its body holds no yield.",
+			Reading: "The reference writes each do as an immediately invoked arrow, which JavaScript runs where the do stands, after every operand before it is finished: spreads iterated, object spreads copied, computed object-literal keys converted, substitutions converted to strings and tags read. Its body holds no yield.",
 		}},
 		Focus: func(g *Gen, s *Scope) []Stmt {
 			g.UseEffect()
@@ -393,3 +393,86 @@ func (o *doOperands) context(depth int, must bool) doPiece {
 		return b.String()
 	}
 }
+
+// R34 OPUS-1: assignment keys follow the operator's native conversion timing.
+// Keep the operator in the reference; do not pre-coerce or duplicate its key.
+func init() {
+	Register(&Construct{
+		Key: "vip02.do-computed-assignment-key-plain", VIP: 2, Plain: true,
+		Citations: []Citation{{
+			VIP: 2, Template: "‹target›[‹key›] ‹operator› (() => { ‹body›; return ‹value› })()",
+			Quote:   "A `do` or `match` inside a larger expression runs where JavaScript evaluates that expression, and how the compiler keeps that is its choice.",
+			Reading: "The independent native twin retains the assignment operator, target, key object, getters and setters. Only no-jump do operands become IIFEs. It therefore preserves the operator's own ToPropertyKey, GetValue, short-circuit and PutValue ordering, including abrupt completions.",
+		}},
+		Focus: func(g *Gen, s *Scope) []Stmt { return []Stmt{doComputedAssignmentKey(g, s)} },
+		Stmt:  doComputedAssignmentKey,
+	})
+}
+
+func doComputedAssignmentKey(g *Gen, s *Scope) Stmt {
+	g.AddFile("computed-assignment.ts", computedAssignmentFixture, "assignmentProbe", "assignmentResult")
+	name := g.Name("computedAssignment")
+	op := []string{"=", "+=", "-=", "||=", "&&=", "??="}[g.Intn(6)]
+	initial := []string{"0", "4", "null", "undefined"}[g.Intn(4)]
+	mode, amount, depth := g.Intn(9), 1+g.Intn(17), g.Intn(4)
+	body := func(native bool) string {
+		rhs := "p.rhs()"
+		for i := 0; i <= depth; i++ {
+			note := fmt.Sprintf("p.note(%q); ", fmt.Sprintf("do-%d", i))
+			if native {
+				rhs = "(() => { " + note + "return " + rhs + "; })()"
+			} else {
+				rhs = "(do { " + note + rhs + " })"
+			}
+		}
+		head, resultType, catchError := "function "+name+"()", ": string", "(e as Error).message"
+		if native {
+			resultType, catchError = "", "e.message"
+		}
+		locals := "let result: unknown = null; let error: string | null = null;"
+		if native {
+			locals = "let result = null; let error = null;"
+		}
+		return fmt.Sprintf("%s%s { const p = assignmentProbe(%s, %d, %d); %s try { result = p.target[p.key] %s %s; } catch (e) { error = %s; } return assignmentResult(p, result, error); }",
+			head, resultType, initial, mode, amount, locals, op, rhs, catchError)
+	}
+	g.AddDecl(&FixedPair{Source: body(false), Reference: body(true)})
+	return &computedAssignmentEvent{Name: name}
+}
+
+type computedAssignmentEvent struct{ Name string }
+
+func (s *computedAssignmentEvent) Vibe(w *Writer)   { w.Write("ev(" + s.Name + "())") }
+func (s *computedAssignmentEvent) Effect(w *Writer) { s.Vibe(w) }
+func (s *computedAssignmentEvent) Ends() bool       { return false }
+
+const computedAssignmentFixture = `/** @throws {never} */
+export function assignmentProbe(initial: any, mode: number, amount: number) {
+  const events: string[] = [], symbol = Symbol("assignment")
+  const store: Record<PropertyKey, any> = { before: initial, after: 3 }
+  store[symbol] = initial
+  let phase = "before"
+  const key = {
+    [Symbol.toPrimitive](hint: string): any {
+      events.push("key:" + hint + ":" + phase)
+      if (mode === 3 || mode === 8) throw new Error("key")
+      if (mode === 7) return {}
+      return mode === 2 ? symbol : phase
+    }
+  }
+  const target: Record<string, any> = {}
+  for (const k of ["before", "after", symbol]) Object.defineProperty(target, k, {
+    get() { events.push("get:" + String(k)); if (mode === 4) throw new Error("get"); return store[k] },
+    set(value: any) { events.push("set:" + String(k)); if (mode === 6) throw new Error("set"); store[k] = value }
+  })
+  return {
+    target, key: key as unknown as string, store, events,
+    note(label: string) { events.push(label) },
+    rhs() { events.push("rhs"); if (mode === 1) phase = "after"; if (mode === 5 || mode === 8) throw new Error("rhs"); return amount }
+  }
+}
+/** @throws {never} */
+export function assignmentResult(p: ReturnType<typeof assignmentProbe>, result: unknown, error: string | null): string {
+  return JSON.stringify([String(result), error, Reflect.ownKeys(p.store).map(k => [typeof k === "symbol" ? "symbol" : k, String(p.store[k])]), p.events])
+}
+`

@@ -189,6 +189,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Source-map fuzz checks could confuse a loop's shadowed binding with an outer declaration of the same name. They now distinguish written binding sites while retaining strict checks for misplaced mappings of real declarations.
 
+- Computed assignment keys around `do` now have native-JavaScript differential coverage, including compound and logical assignments, coercion side effects and abrupt completion.
+
 - Vite coverage counted private tail-delegation wrappers as extra functions or uncovered statements, especially in callbacks and throwing catch handlers. It now counts the authored functions and statements through the composed source map.
 - Repository migration checks could stop at invalid fixture lockfiles or package metadata before checking build provenance, declaration exits or test regressions. The fixtures now retain valid publication prerequisites and reach those checks.
 

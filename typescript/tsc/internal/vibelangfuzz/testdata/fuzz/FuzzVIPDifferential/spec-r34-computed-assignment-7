@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("key:vip02.do-computed-assignment-key-plain\x00\x07\x15\x31\x4d\x00\x01\x02\x03")
