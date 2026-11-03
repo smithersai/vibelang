@@ -70,6 +70,9 @@ func (p *projector) lambda(fn *ast.Node, e env) {
 		// returned or bound, it reads as () => Effect<A, E, R>.
 		form = FormEffectFn
 	}
+	if p.lintEffectArrows[p.tokenStart(fn)] {
+		form = FormEffectFn
+	}
 	switch form {
 	case FormFactory:
 		p.rejectFactoryCallback(fn, p.forms.Argument(fn))

@@ -231,7 +231,7 @@ function group(script) {
 // --no-error-on-unmatched-pattern ...: a run on a new toolchain writes them
 // again from the scripts oxlint invocations, so an older runs passes follow
 // the configurations the script names with -c.
-const generatedPasses = /^\((.*)\)((?: && (?:NODE_OPTIONS=(?:"[^"]*"|'[^']*'|[^\s]+) )?eslint --config \S*\.vibelang\/eslint\.(?:[\w-]+\.)?config\.mjs(?: (?!--no-error)[^\s;&|]+)* --no-error-on-unmatched-pattern(?: --max-warnings(?:=| )0)?)+)$/
+const generatedPasses = /^\((.*)\)((?: && (?:(?:NODE_OPTIONS=(?:"[^"]*"|'[^']*'|[^\s]+) )?eslint --config \S*\.vibelang\/eslint\.(?:[\w-]+\.)?config\.mjs(?: (?!--no-error)[^\s;&|]+)* --no-error-on-unmatched-pattern(?: --max-warnings(?:=| )0)?|node \S*\.vibelang\/oxlint\.mjs --vibe-native(?: [^\s;&|]+)*))+)$/
 export function wireDeveloperTools({ root, specsFor, ts }) {
   const changed = [], builds = [], warnings = []
   const write = (file, text) => {
@@ -297,11 +297,14 @@ export function wireDeveloperTools({ root, specsFor, ts }) {
           const rooted = config === null ? null : posix.normalize(posix.join(dir, config))
           const file = rooted === null || rooted === ".oxlintrc.json" ? "eslint.config.mjs" : eslintConfigName(rooted)
           if (file !== "eslint.config.mjs") lintConfigs.set(file, rooted)
-          const pass = `eslint --config ${up}.vibelang/${file} ${paths.length ? paths.map(path => path.replace(/[.]\{([^}]+)\}/g, (all, extensions) => {
+          const vibePaths = paths.length ? paths.map(path => path.replace(/[.]\{([^}]+)\}/g, (all, extensions) => {
             const mapped = [...new Set(extensions.split(",").map(ext => ext === "tsx" ? "vibex" : /^[cm]?ts$/.test(ext) ? "vibe" : ext))]
             return mapped.length === 1 ? "." + mapped[0] : ".{" + mapped.join(",") + "}"
-          }).replace(/[.]([cm]?ts|tsx)(?=["']?$)/g, (all, ext) => ext === "tsx" ? ".vibex" : ".vibe")).join(" ") : '"**/*.{vibe,vibex}"'} --no-error-on-unmatched-pattern${denyWarnings ? " --max-warnings 0" : ""}`
-          return /--import(?:=|\s+)vibelang\/register(?=["\'\s]|$)/.test(next) ? preloadRegister(pass, words => words[0] === "eslint") : pass
+          }).replace(/[.]([cm]?ts|tsx)(?=["']?$)/g, (all, ext) => ext === "tsx" ? ".vibex" : ".vibe")).join(" ") : '"**/*.{vibe,vibex}"'
+          const eslintPass = `eslint --config ${up}.vibelang/${file} ${vibePaths} --no-error-on-unmatched-pattern${denyWarnings ? " --max-warnings 0" : ""}`
+          const pass = /--import(?:=|\s+)vibelang\/register(?=["\'\s]|$)/.test(next) ? preloadRegister(eslintPass, words => words[0] === "eslint") : eslintPass
+          const projected = `node ${up}.vibelang/oxlint.mjs --vibe-native${config === null ? "" : ` -c ${config}`}${paths.length ? ` ${vibePaths}` : ""}${denyWarnings ? " --deny-warnings" : ""}`
+          return `${pass} && ${projected}`
         })
         // A script that runs its own ESLint pass over .vibe keeps it.
         if (!/\.vibelang\/eslint\./.test(next)) next = `${group(next)} && ${[...new Set(passes)].join(" && ")}`
@@ -380,6 +383,8 @@ import { fileURLToPath, pathToFileURL } from "node:url"
 import oxc from "./oxlint-rules.mjs"
 import { withOxlintComments } from "./oxlint-comments.mjs"
 const aliases = new Map()
+export const writtenConfigs = new Map()
+const nativePlugins = new Set(["eslint", "typescript", "@typescript-eslint", "unicorn", "react", "react_perf", "react-perf", "react-hooks", "jsx-a11y", "jsx_a11y", "nextjs", "next", "oxc", "deepscan", "import", "import-x", "jsdoc", "jest", "vitest", "promise", "node", "n", "regex", "vue"])
 export const oxlintRuleName = name => aliases.get(name) ?? (name.includes("/") ? name : "eslint/" + name)
 export async function configFor(configPath, strict = false) {
 aliases.clear()
@@ -388,8 +393,9 @@ aliases.clear()
 // typescript-eslint or one of the configuration's JS plugins has the rule.
 // typescript-eslint's recommended rules stand in for Oxlint's default
 // correctness rules unless the configuration turns that category off. Rules of
-// Oxlint's other built-in plugins, such as unicorn, are not carried: each run
-// names the rules that do not run.
+// Oxlint's other built-in plugins, such as unicorn, are not carried:
+// vibelang/oxlint runs them on the projected TypeScript. Each run names any
+// JS plugin rule that runs nowhere.
 const read = (name) => {
   const url = new URL("../" + name, import.meta.url)
   return existsSync(url) ? readFileSync(url, "utf8") : null
@@ -425,6 +431,7 @@ const resolvedRules = () => {
   return JSON.parse(printed.stdout).rules ?? {}
 }
 const oxlint = { ...written, rules: { ...resolvedRules(), ...written.rules } }
+writtenConfigs.set(configPath ?? null, { written, base: fileURLToPath(base) })
 // An Oxlint JS plugin is an ESLint plugin. Each loads as Oxlint loads it: a
 // path from the configuration's directory, else a package, named by its alias,
 // else by its meta.name or package name less an eslint-plugin or oxlint-plugin
@@ -548,13 +555,15 @@ const configs = [
   { files: ["**/*.{vibe,vibex}"], linterOptions: { reportUnusedDisableDirectives: "off" }, languageOptions: { parser: withOxlintComments(parser, aliases) }, plugins: { oxc, ...(adaptedUnused ? { vibelang: { rules: { "no-unused-vars": adaptedUnused } } } : {}), ...(tseslint ? { "@typescript-eslint": tseslint.plugin } : {}), ...Object.fromEntries(jsPlugins) }, rules: { ...(correctness ? { "no-debugger": "error" } : {}), ...rules(oxlint.rules) } },
   ...overrides
 ]
-if (strict && missing.size) throw new Error("Oxlint rules unavailable under ESLint: " + [...missing].join(", "))
-if (missing.size) console.error("vibelang: " + missing.size + " Oxlint rules do not run on .vibe files: " + [...missing].sort().join(", "))
+// vibelang/oxlint runs the native plugins' other rules on the projected TypeScript.
+const unrun = [...missing].filter((name) => name.includes("/") && !nativePlugins.has(name.slice(0, name.lastIndexOf("/"))))
+if (strict && unrun.length) throw new Error("Oxlint rules unavailable on .vibe files: " + unrun.join(", "))
+if (unrun.length) console.error("vibelang: " + unrun.length + " Oxlint rules do not run on .vibe files: " + unrun.sort().join(", "))
 return configs
 }
 export default await configFor()
 `
-  if (oxlint.packages.length) {
+  if (oxlint.packages.length || needsLint) {
     write(".vibelang/oxlint.mjs", readFileSync(new URL("../templates/oxlint.mjs", import.meta.url), "utf8"))
     chmodSync(join(root, ".vibelang/oxlint.mjs"), 0o755)
   }

@@ -612,3 +612,6 @@ export function projects({ root, project, compiler, cache, debug = () => {} }) {
     }
   }
 }
+
+/** The executable and arguments that run the compiler with args. */
+export { command as compilerCommand }

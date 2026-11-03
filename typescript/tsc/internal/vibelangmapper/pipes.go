@@ -30,6 +30,17 @@ func (p *projector) pipeExpression(node *ast.Node, e env) {
 	topic := p.freshWord("$topic")
 	p.names.words[topic] = true
 	p.pipeTopics[node] = topic
+	if p.ctx.Lint && !e.effect {
+		// No function boundary: the input may hold a yield or an await, and a
+		// linter reads no scope into the name it never sees reported.
+		start := p.tokenStart(node)
+		p.plan.insert(start, "("+topic+" = ")
+		p.visit(binary.Left, e)
+		p.plan.replace(binary.Left.End(), p.tokenStart(binary.Right), ", ")
+		p.visit(binary.Right, e)
+		p.plan.insert(node.End(), ")")
+		return
+	}
 	start := p.tokenStart(node)
 	if p.statementStarts[start] {
 		p.plan.insert(start, ";")
@@ -42,7 +53,8 @@ func (p *projector) pipeExpression(node *ast.Node, e env) {
 		p.plan.insert(start, "(() => ")
 	}
 	p.plan.insert(start, "{ const "+topic+" = ")
-	byName := p.pipeProgramTopic(node)
+	// A linter reads syntax, so Lint keeps the input where it is written.
+	byName := !p.ctx.Lint && p.pipeProgramTopic(node)
 	if byName {
 		p.delayedProgram(binary.Left)
 	} else {
@@ -87,7 +99,7 @@ func (p *projector) pipeValueTopics(pipe *ast.Node) bool {
 			}
 			if d.Call != nil {
 				sigs, _ := r.signaturesOf(d.Callee)
-				if d.Ambiguous || len(formsCandidates(sigs, len(d.Call.Arguments()))) == 0 {
+				if !p.ctx.Lint && (d.Ambiguous || len(formsCandidates(sigs, len(d.Call.Arguments()))) == 0) {
 					p.formChoice(node, "The mapper cannot decide whether this pipe topic is a value or a program. Annotate the callee's parameter, or bind the input to an explicitly annotated value before the pipe.")
 					ok = false
 				}
@@ -108,6 +120,9 @@ func (p *projector) pipeValueTopics(pipe *ast.Node) bool {
 		// D155 requires a running left side before a topic can pass it by
 		// name. An opaque call does not prove that native condition.
 		left := pipe.AsBinaryExpression().Left
+		if p.ctx.Lint {
+			return ok
+		}
 		if pauses, _ := p.runningExpressionCalls(left); ok && pauses {
 			text := p.text[p.tokenStart(left):left.End()]
 			p.fiberDiagnostic(valueTopic, 1008, "% stands for "+text+", which this pipe passes by name to a program elsewhere, so it cannot also be a value here.")

@@ -11,7 +11,7 @@ import { wireDeveloperTools } from "../lib/tooling.mjs"
 const require = createRequire(new URL("../../../../packages/runtime/package.json", import.meta.url))
 const fc = require("fast-check")
 const docs = new URL("../../../../docs/user/src/setup/developer-tools.md", import.meta.url)
-const quote = "one pass for each `oxlint` invocation in it,\nincluding one in a subshell"
+const quote = "two passes for each `oxlint` invocation in it,\nincluding one in a subshell"
 const specsFor = () => ({ vibelang: "0.0.11" })
 
 // wire runs setup's tool wiring on a package with one script and returns the
@@ -40,7 +40,7 @@ const oxlint = fc.record({
 }).map(({ config, spelling, flags, paths }) => ({
   text: ["oxlint", ...(config ? [spelling + config] : []), ...flags, ...paths].join(" "),
   nativeText: ["oxlint", "--no-error-on-unmatched-pattern", ...(config ? [spelling + config] : []), ...flags, ...paths].join(" "),
-  pass: `eslint --config .vibelang/${configFile[config ?? ".oxlintrc.json"]} ${paths.length ? paths.join(" ") : '"**/*.{vibe,vibex}"'} --no-error-on-unmatched-pattern${flags.includes("--deny-warnings") ? " --max-warnings 0" : ""}`
+  pass: `eslint --config .vibelang/${configFile[config ?? ".oxlintrc.json"]} ${paths.length ? paths.join(" ") : '"**/*.{vibe,vibex}"'} --no-error-on-unmatched-pattern${flags.includes("--deny-warnings") ? " --max-warnings 0" : ""} && node .vibelang/oxlint.mjs --vibe-native${config ? ` -c ${config}` : ""}${paths.length ? ` ${paths.join(" ")}` : ""}${flags.includes("--deny-warnings") ? " --deny-warnings" : ""}`
 }))
 const other = fc.constantFrom("pnpm build", "echo done", "tsc -b").map(text => ({ text, nativeText: text, pass: null }))
 const step = fc.tuple(fc.oneof(oxlint, other), fc.boolean()).map(([s, parens]) => parens ? { ...s, text: `(${s.text})`, nativeText: `(${s.nativeText})` } : s)

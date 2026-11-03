@@ -86,7 +86,9 @@ func (p *projector) synthesized(node *ast.Node, start, end int, e env) {
 			continue
 		}
 		s := p.tokenStart(c.node)
-		if s >= cursor && c.node.End() <= end {
+		// A form that prints as itself has no lowering here: walking it again
+		// would never end, so it stays source text the host diagnoses.
+		if s >= cursor && c.node.End() <= end && c.node != node {
 			flush(s)
 			p.visit(c.node, c.env)
 			cursor = c.node.End()

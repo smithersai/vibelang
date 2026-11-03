@@ -192,11 +192,16 @@ func (p *projector) joinType(t *ast.Node, level, depth int) (valid, known bool) 
 // before anything but a call, at the source position (VIP-5). Before a call,
 // try is the call itself, whose keyword visit removes.
 func (p *projector) tryValue(call *ast.Node, e env) {
+	operand := call.Arguments()[0]
+	if !e.effect && p.ctx.Lint {
+		p.plan.replace(p.tokenStart(call), p.tokenStart(operand), "")
+		p.visit(operand, e)
+		return
+	}
 	if !e.effect {
 		p.formChoice(call, "A try must run in an Effect body; move it into an Effect function with an explicit contract.")
 		return
 	}
-	operand := call.Arguments()[0]
 	start := p.tokenStart(call)
 	if p.statementStarts[start] {
 		p.plan.insert(start, ";")
@@ -275,7 +280,7 @@ func restoreWrittenEffectDeclarationMarks(file *ast.SourceFile, marks map[writte
 // effect becomes ()=> and spaces. catch can follow the block but not an arrow,
 // so a block that catch follows becomes (()=> { … }), the ) over the space
 // after it.
-func vipKeywords(file *ast.SourceFile, text string) []keyword {
+func vipKeywords(file *ast.SourceFile, text string, lint bool) []keyword {
 	var keywords []keyword
 	var visit func(node *ast.Node) bool
 	visit = func(node *ast.Node) bool {
@@ -292,7 +297,32 @@ func vipKeywords(file *ast.SourceFile, text string) []keyword {
 				with := "      "
 				if body := node.Body(); ast.IsArrowFunction(node) && body != nil && ast.IsBlock(body) && len(node.Parameters()) == 0 && scanner.SkipTrivia(text, at+len("effect")) == scanner.SkipTrivia(text, body.Pos()) {
 					with = "()=>  " // effect { … }: the parser's arrow has no => of its own
-					if end := body.End(); catchFollows(text, end) {
+					if lint {
+						// try effect { … } reparses as a call of try on (), and a
+						// linter does not need the run.
+						if word := tryBefore(text, at); word >= 0 {
+							keywords = append(keywords, keyword{word, "   "})
+						}
+					}
+					if lint {
+						// A statement guards against the line before it running on.
+						// A block-bodied arrow ends at its }, so one continued by a
+						// |>, .pipe or as needs parentheses; the ) writes over the
+						// space after the block. }.pipe with no space stays text.
+						statement := node.Parent != nil && node.Parent.Kind == ast.KindExpressionStatement
+						end := body.End()
+						switch continued := continuationFollows(text, end); {
+						case continued && statement:
+							with = ";(()=>"
+						case continued:
+							with = "(()=> "
+						case statement:
+							with = ";()=> "
+						}
+						if continuationFollows(text, end) {
+							keywords = append(keywords, keyword{end, ")"})
+						}
+					} else if end := body.End(); catchFollows(text, end) {
 						with = "(()=> "
 						keywords = append(keywords, keyword{end, ")"})
 					}
@@ -305,6 +335,34 @@ func vipKeywords(file *ast.SourceFile, text string) []keyword {
 	file.AsNode().ForEachChild(visit)
 	slices.SortFunc(keywords, func(a, b keyword) int { return cmp.Compare(a.at, b.at) }) // withoutKeywords walks them in order
 	return keywords
+}
+
+// continuationFollows reports whether a block's end at end is followed, past a
+// space, a tab or a line break it can write over, by what continues an expression.
+func continuationFollows(text string, end int) bool {
+	if end >= len(text) || !strings.ContainsRune(" \t\r\n", rune(text[end])) {
+		return false
+	}
+	rest := text[scanner.SkipTrivia(text, end):]
+	for _, word := range []string{"|>", ".", "?.", "as ", "satisfies ", "catch"} {
+		if strings.HasPrefix(rest, word) {
+			return true
+		}
+	}
+	return false
+}
+
+// tryBefore returns the position of the word try that ends just before at, or -1.
+func tryBefore(text string, at int) int {
+	before := strings.TrimRight(text[:at], " \t\r\n")
+	if !strings.HasSuffix(before, "try") {
+		return -1
+	}
+	word := len(before) - len("try")
+	if word > 0 && scanner.IsIdentifierPart(rune(text[word-1])) {
+		return -1
+	}
+	return word
 }
 
 // catchFollows reports whether a space or tab at end, the end of a block,

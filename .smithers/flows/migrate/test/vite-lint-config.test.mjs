@@ -79,7 +79,7 @@ test("rules a category turns on reach .vibe files through the tool's resolution"
     "package.json": vp,
     "house.mjs": house,
     "vite.config.mjs": `export default ${JSON.stringify({ lint: { categories: { perf: "warn" }, jsPlugins: ["./house.mjs"], rules: { "house/own": "error" } } })}`,
-    "node_modules/.bin/vp": printer({ "no-await-in-loop": "warn", "unicorn/not-under-eslint": "warn" }),
+    "node_modules/.bin/vp": printer({ "no-await-in-loop": "warn", "unicorn/not-under-eslint": "warn", "shadow/not-loaded": "warn" }),
   })
   chmodSync(join(root, "node_modules/.bin/vp"), 0o755)
   const logged = []
@@ -87,7 +87,7 @@ test("rules a category turns on reach .vibe files through the tool's resolution"
   const configs = await load(root)
   assert.deepEqual(ruleOf(configs, "no-await-in-loop"), ["warn"])
   assert.deepEqual(ruleOf(configs, "house/own"), ["error"])
-  assert.match(logged.join(""), /1 Oxlint rules do not run on \.vibe files: unicorn\/not-under-eslint/)
+  assert.match(logged.join(""), /1 Oxlint rules do not run on \.vibe files: shadow\/not-loaded/)
 })
 
 test("a failing rule resolution fails the pass", async t => {

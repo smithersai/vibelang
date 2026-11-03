@@ -654,6 +654,10 @@ func handleClauses(node *ast.Node) (groups []handleGroup, ok bool) {
 		}
 		s := link.AsIfStatement()
 		block := s.ThenStatement
+		if block.Kind != ast.KindBlock {
+			// catch (e) { if (x) throw e } has no clause block.
+			return nil, false
+		}
 		inner := block.Statements()
 		if len(inner) == 0 || inner[0].Kind != ast.KindVariableStatement || inner[0].Flags&ast.NodeFlagsVibeLang == 0 {
 			return nil, false

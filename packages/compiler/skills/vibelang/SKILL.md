@@ -72,6 +72,10 @@ VibeLang is TypeScript with syntax for Effect. An `effect` function returns an E
 11. Configuration lives in `vibe.config.json`, a superset of `tsconfig.json`, or under a top-level `"vibe"` key in `tsconfig.json` or `jsconfig.json`. It can turn the Effect globals off. `vibe.severities` maps warning codes and assigned `EK38xx` lint codes to `"error"`, `"warning"`, `"suggestion"` or `"off"`; `extends` merges by code. Invalid entries are `EK3006`; unknown or wrong-typed `vibe` options are `EK3007`. Warnings keep exit status zero; use `"error"` to fail CI. `vibelang --fix` migrates legacy `vibelang.diagnostics` (`EK3009`).
 12. Tests use `@effect/vitest`: `it.effect("loads a user", () => effect { const user = try load("1"); try Effect.try(() => expect(user.name).toBe("Ada")) })`; an assertion may throw, so it runs in `Effect.try`. `it.effect` runs on a test clock, so `sleep` waits until `try TestClock.adjust("1 second")` moves time; `it.live` uses real time.
 
+## Linting
+
+`vibelang lint` runs Effect's rules. A repository's Oxlint rules run on `.vibe` through the lint script setup wires: ESLint for JS plugin rules, and `node .vibelang/oxlint.mjs --vibe-native` for Oxlint's native rules on the projected TypeScript. To see what a linter reads, run `vibelang --ts-projection src/app.vibe < src/app.vibe`; reports on generated code are dropped, and `--fix` does not apply to `.vibe`.
+
 ## Idioms
 
 - Errors: an `error` per failure, `throw` to fail, `x catch () => fallback` for a default, `match` to choose: `error-management/014-expected-errors`, `error-management/016-fallback`, `error-management/017-matching`.

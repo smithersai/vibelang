@@ -296,7 +296,14 @@ func (r checking) text(e edit) (string, bool) {
 		if e.arg == "self" {
 			gen = helperRef("$gen") + "({ self: this }, function* () "
 		}
-		text = pick(e.part, " { return "+helperRef("$contract")+"<", ">()("+gen, "))}")
+		arrow := ""
+		if arg, ok := strings.CutSuffix(e.arg, lintArrowSuffix); ok {
+			arrow = " =>"
+			if arg == "self" {
+				gen = helperRef("$gen") + "({ self: this }, function* () "
+			}
+		}
+		text = pick(e.part, arrow+" { return "+helperRef("$contract")+"<", ">()("+gen, "))}")
 	case editProgram:
 		gen := helperRef("$gen") + "(function* () "
 		if strings.Contains(e.arg, "self") {

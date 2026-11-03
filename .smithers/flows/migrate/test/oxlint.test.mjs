@@ -126,8 +126,11 @@ function adapterFixture(t) {
     ".eslint.json": "[]",
     "node_modules/oxlint/package.json": '{"name":"oxlint","bin":{"oxlint":"bin.cjs"}}',
     "node_modules/oxlint/bin.cjs": 'const fs = require("node:fs"); fs.writeFileSync(".native-args.json", JSON.stringify(process.argv.slice(2))); process.stdout.write(fs.readFileSync(".native.json")); process.exitCode = Number(process.env.NATIVE_EXIT ?? 0)\n',
-    "node_modules/vibelang/package.json": '{"name":"vibelang","type":"module","exports":{"./eslint":"./eslint.mjs"}}',
+    "node_modules/vibelang/package.json": '{"name":"vibelang","type":"module","exports":{"./eslint":"./eslint.mjs","./register":"./register.mjs","./oxlint":"./oxlint.mjs"}}',
     "node_modules/vibelang/eslint.mjs": "export default { parseForESLint() {} }\n",
+    "node_modules/vibelang/register.mjs": "",
+    ".projected.json": "[]",
+    "node_modules/vibelang/oxlint.mjs": 'import fs from "node:fs"; export const formatUnix = (list) => list.map((d) => d.filename + "\\n").join(""); export async function lintProjected(options) { fs.writeFileSync(".projected-options.json", JSON.stringify({ ...options, elsewhere: [...options.elsewhere] })); return { output: { diagnostics: JSON.parse(fs.readFileSync(".projected.json", "utf8")), number_of_files: 1, number_of_rules: 100 } } }\n',
     "node_modules/eslint/package.json": '{"name":"eslint","type":"module","exports":{".":"./index.mjs","./use-at-your-own-risk":"./risk.mjs"}}',
     "node_modules/eslint/risk.mjs": 'export const builtinRules = new Map([["no-debugger", {}]])',
     "node_modules/eslint/index.mjs": 'import fs from "node:fs"; export class ESLint { constructor(options) { fs.writeFileSync(".eslint-options.json", JSON.stringify(options)) } async lintFiles(paths) { fs.writeFileSync(".eslint-paths.json", JSON.stringify(paths)); return JSON.parse(fs.readFileSync(".eslint.json")) } async loadFormatter() { return { format: () => "" } } }'
@@ -333,12 +336,42 @@ test("an adapter call with only declaration sidecars does not scan the working d
   assert.equal(existsSync(join(root, ".native-args.json")), false)
   assert.equal(existsSync(join(root, ".eslint-paths.json")), false)
 })
-test("a file-list runner names enabled native rules it cannot carry instead of silently omitting them", t => {
+test("a file-list runner names enabled JS plugin rules that run nowhere instead of silently omitting them", t => {
   const { root } = adapterFixture(t)
-  writeFileSync(join(root, ".oxlintrc.json"), '{"categories":{"correctness":"off"},"rules":{"oxc/no-unimplemented-rule":"warn"}}')
+  writeFileSync(join(root, ".oxlintrc.json"), '{"categories":{"correctness":"off"},"rules":{"house/no-such-rule":"warn"}}')
   const result = spawnSync(process.execPath, [join(root, ".vibelang/oxlint.mjs"), "src/main.vibe"], { cwd: root, encoding: "utf8" })
   assert.equal(result.status, 1)
-  assert.match(result.stderr, /Oxlint rules unavailable under ESLint: oxc\/no-unimplemented-rule/)
+  assert.match(result.stderr, /Oxlint rules unavailable on \.vibe files: house\/no-such-rule/)
+})
+
+test("the native pass gets what ESLint does not carry, and its reports merge", t => {
+  const { root, run } = adapterFixture(t)
+  writeFileSync(join(root, ".oxlintrc.json"), '{"categories":{"correctness":"off"},"rules":{"no-debugger":"warn","no-new":"off","oxc/erasing-op":"error"}}')
+  writeFileSync(join(root, ".projected.json"), JSON.stringify([{ code: "oxc(erasing-op)", severity: "error", filename: "src/main.vibe", labels: [{ span: { offset: 3, length: 1, line: 1, column: 4 } }] }]))
+  const result = run("src/main.vibe", "--threads", "2", "-W", "oxc/erasing-op", "--type-aware", "--max-warnings", "9")
+  assert.equal(result.status, 1)
+  assert.deepEqual(result.output.diagnostics.map(d => d.code), ["oxc(erasing-op)"])
+  const options = JSON.parse(readFileSync(join(root, ".projected-options.json")))
+  assert.deepEqual(options.paths, [join(root, "src/main.vibe")])
+  assert.ok(options.elsewhere.includes("eslint/no-debugger"), "ESLint carries it")
+  assert.ok(!options.elsewhere.includes("eslint/no-new"), "off in ESLint, so not carried")
+  assert.ok(!options.elsewhere.includes("oxc/erasing-op"))
+  assert.equal(options.config.rules["oxc/erasing-op"], "error")
+  assert.deepEqual(options.forward, ["--threads", "2", "-W", "oxc/erasing-op", "--type-aware"])
+})
+
+test("--vibe-native runs only the native pass, with the invocation's configuration", t => {
+  const { root, run } = adapterFixture(t)
+  writeFileSync(join(root, "custom.json"), '{"categories":{"correctness":"off"},"rules":{"oxc/erasing-op":"warn"}}')
+  writeFileSync(join(root, ".projected.json"), JSON.stringify([{ code: "oxc(erasing-op)", severity: "warning", filename: "src/main.vibe", labels: [{ span: { line: 1, column: 1 } }] }]))
+  const allowed = run("--vibe-native", "-c", "custom.json", "src")
+  assert.equal(allowed.status, 0)
+  assert.equal(existsSync(join(root, ".native-args.json")), false)
+  assert.equal(existsSync(join(root, ".eslint-paths.json")), false)
+  const options = JSON.parse(readFileSync(join(root, ".projected-options.json")))
+  assert.equal(options.base, root + "/")
+  assert.deepEqual(options.forward, ["--disable-nested-config"])
+  assert.equal(run("--vibe-native", "-c", "custom.json", "--deny-warnings", "src").status, 1)
 })
 
 test("generated Oxlint passes refresh their configuration and current warning budget", t => {

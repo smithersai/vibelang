@@ -38,6 +38,8 @@ func runMain() int {
 			return runWriteDprintPlugin(args[1:])
 		case "--estree":
 			return runESTree(args[1:]) // VibeLang ESLint parser (estree.go)
+		case "--ts-projection":
+			return runTSProjection(args[1:]) // virtual TypeScript for vibelang/oxlint (tsprojection.go)
 		case "lint":
 			ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 			defer stop()

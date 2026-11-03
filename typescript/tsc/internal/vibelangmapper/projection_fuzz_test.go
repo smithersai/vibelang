@@ -152,3 +152,38 @@ func TestIncompletePipePreservesFollowingFunction(t *testing.T) {
 		}
 	}
 }
+
+// FuzzLintProjection holds a Lint projection to what vibelang/oxlint relies on:
+// a valid span map, and every source line at its own number in the virtual text
+// wherever the lowering wrote no line break of its own before it.
+func FuzzLintProjection(f *testing.F) {
+	for _, seed := range []string{
+		"",
+		"// only a comment\n",
+		"/// <reference path=\"./a.d.ts\" />\nexport const a = 1\n",
+		"export const a = (s: S) => f(s) |> g(%)\n",
+		"export const a = (s: S): infer _ => f(s)\n  |> g<T>({ a: 1 })(%)\n",
+		"export function m() { return try (f(1) |> g(%)) }\n",
+		"const a = (effect { return 1 } |> f(%))\n",
+		"function h(x: string) { for (const y of z) { try { a() } catch (e) { if (x) throw e } } }\n",
+		"const e = |> %; export function main() { return 1 }",
+		"service Users {\n  find(id: string): string!!\n}\nexport function f() {\n  return try Users.find(\"a\")\n}\n",
+	} {
+		f.Add(seed, false)
+		f.Add(seed, true)
+	}
+	f.Fuzz(func(t *testing.T, source string, jsx bool) {
+		name := "/src/a.vibe"
+		if jsx {
+			name = "/src/a.vibex"
+		}
+		projection := Project(source, FileContext{FileName: name, ModuleKey: "p/src/a", Lint: true})
+		assertValidMap(t, projection, source)
+		if strings.TrimSpace(source) == "" && strings.Contains(projection.Text, PreludeModule) {
+			t.Fatalf("a file with no statements got the prelude line: %q", projection.Text)
+		}
+		if first := strings.Index(projection.Text, PreludeModule); first >= 0 && !strings.Contains(projection.Text[first:], "\n") {
+			t.Fatalf("the prelude line is not last and complete: %q", projection.Text)
+		}
+	})
+}

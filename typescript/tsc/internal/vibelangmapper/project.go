@@ -90,6 +90,11 @@ type FileContext struct {
 	// declares, as the fork computes it (module.go): "app/src/users" for
 	// src/users.vibe in the package app.
 	ModuleKey string
+	// Lint asks for a projection a syntax tool reads, not one a checker
+	// checks (vibelang --ts-projection): a form the mapper cannot decide
+	// without types takes its value reading instead of staying as VibeLang
+	// syntax no TypeScript parser reads, and the prelude import comes last.
+	Lint bool
 }
 
 // Projection is the virtual TypeScript or TSX for one VibeLang file.
@@ -166,6 +171,9 @@ type projector struct {
 	// Effect body that a statement list holds, so a run that begins one can
 	// guard against ASI.
 	statementStarts map[int]bool
+	// lintEffectArrows holds the start of each arrow written with effect, for
+	// a Lint projection, which has no types to tell its form by.
+	lintEffectArrows map[int]bool
 	// pipeTopics names the lexical value of each pipe's input (D154).
 	pipeTopics map[*ast.Node]string
 	// completions counts the completion records of region statements, for
@@ -186,7 +194,17 @@ func Project(text string, ctx FileContext) Projection {
 	p := lower(text, ctx)
 	text = p.text // without the try keywords lower blanks
 	p.brandPureExports()
-	out, segments, overlap, ok := p.plan.render(checking{names: p.names}, text, p.names.importLine)
+	prefix := p.names.importLine
+	if ctx.Lint {
+		// Imports hoist, so a syntax tool can read the prelude line last. Every
+		// source line then keeps its number, a leading /// directive stays
+		// leading, and a file with no statements stays empty.
+		prefix = func() string { return "" }
+	}
+	out, segments, overlap, ok := p.plan.render(checking{names: p.names}, text, prefix)
+	if ctx.Lint && ok && len(p.file.Statements.Nodes) > 0 {
+		out += "\n" + p.names.importLine()
+	}
 	if !ok {
 		// Invalid or overlapping edits cannot render; pass the file through
 		// unchanged rather than send TypeScript a broken map.
@@ -214,7 +232,7 @@ func lower(text string, ctx FileContext) *projector {
 	file := parser.ParseSourceFile(ast.SourceFileParseOptions{FileName: fileName, VibeLangDoAsFunction: true}, text, kind)
 	effectDeclarations := writtenEffectDeclarationMarks(file)
 	operandTries := tryOperandMarks(file, text)
-	keywords := vipKeywords(file, text)
+	keywords := vipKeywords(file, text, ctx.Lint)
 	if len(keywords) > 0 {
 		text = blank(text, keywords)
 		file = parser.ParseSourceFile(ast.SourceFileParseOptions{FileName: fileName, VibeLangDoAsFunction: true}, text, kind)
@@ -234,6 +252,9 @@ func lower(text string, ctx FileContext) *projector {
 		statementStarts: map[int]bool{},
 		reported:        map[*ast.Node]bool{},
 	}
+	if ctx.Lint {
+		p.lintEffectArrows = lintEffectArrows(text, keywords)
+	}
 	for _, statement := range file.Statements.Nodes {
 		if isServiceClass(statement) || isServiceShapeClass(statement) {
 			p.services[statement.Name().Text()] = statement
@@ -246,6 +267,9 @@ func lower(text string, ctx FileContext) *projector {
 		p.statement = statement
 		p.visit(statement, env{})
 	}
+	if ctx.Lint {
+		p.lintSweep()
+	}
 	p.checkSyntaxDiagnostics()
 	p.checkDoControlFlow()
 	p.checkCatchExpressionHatches()
@@ -255,6 +279,9 @@ func lower(text string, ctx FileContext) *projector {
 
 // visit walks node and records the edits that lower it.
 func (p *projector) visit(node *ast.Node, e env) {
+	if p.ctx.Lint && p.lintForm(node, e) {
+		return
+	}
 	if e.holdCalls && node != e.rawTry && node.Flags&ast.NodeFlagsVibeLangTry != 0 {
 		p.tryOperandExpression(node, e)
 		return
@@ -644,6 +671,9 @@ func (p *projector) functionLike(fn *ast.Node, body *ast.Node) {
 			return
 		}
 		self := selfArg(body)
+		if p.ctx.Lint && fn.Kind == ast.KindArrowFunction {
+			self = lintArrowContract(self)
+		}
 		p.plan.mark(editContract, partOpen, colon, p.tokenStart(returnType), self)
 		p.effectType(returnType, true /*slotsOnly*/)
 		p.plan.mark(editContract, partMiddle, returnType.End(), open, self)
