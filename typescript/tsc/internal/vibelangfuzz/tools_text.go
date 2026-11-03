@@ -627,8 +627,18 @@ func toolsRun(t *testing.T, target, stage, input string, onPanic func(), fn func
 	if onPanic != nil {
 		onPanic()
 	}
-	key := "crash:" + toolsPanicFrame(stack) // one root cause, whichever request reaches it
+	key := toolsPanicKey(toolsPanicFrame(stack), recovered)
 	Gap(t, target, key, "%s panics: %v\ninput:\n%s\n%s", stage, recovered, input, stack)
+}
+
+// Separate known containment defects reached through the same editor routine;
+// retiring an error payload gap must not mask a match arm's block-span gap.
+func toolsPanicKey(frame string, failure any) string {
+	key := "crash:" + frame
+	if frame == "ls.getContainingArgumentInfo" && strings.Contains(fmt.Sprint(failure), "Child: KindVariableStatement, parent: KindBlock") {
+		return key + ":VariableStatement:Block"
+	}
+	return key
 }
 
 // toolsPanicFrame returns the compiler function a panic started in, such as

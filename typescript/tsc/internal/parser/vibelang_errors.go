@@ -417,8 +417,9 @@ func (p *Parser) vibelangErrorFields(d *errorDeclaration) *ast.Node {
 	if len(fields) == 0 {
 		return p.vibelangSynthesized(p.factory.NewTypeLiteralNode(p.newNodeList(d.name.Loc, nil)), d.name.Loc)
 	}
-	// From the first field's token, so a comment before it stays the field's.
-	loc := core.NewTextRange(scanner.SkipTrivia(p.sourceText, fields[0].Pos()), fields[len(fields)-1].End())
+	// Include the first field's leading trivia: the type literal must contain
+	// every child span, including comments attached to a field.
+	loc := core.NewTextRange(fields[0].Pos(), fields[len(fields)-1].End())
 	return p.vibelangSpanning(p.factory.NewTypeLiteralNode(p.newNodeList(loc, p.vibelangErrorFieldSignatures(d, fields))), loc)
 }
 

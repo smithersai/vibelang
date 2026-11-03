@@ -582,3 +582,5 @@ One `vibelang --fix` invocation repeats its passes until no fix applies. Running
 `Convert to a pipe` keeps object literals and class expressions parenthesized at the pipe head, so the result remains an expression when used as a statement.
 
 Completion and token navigation accept `service`, `error`, and `schema error` declaration keywords, including declarations with decorators and modifiers.
+
+Signature help accepts positions throughout an `error` declaration, including comments and whitespace before payload fields.
