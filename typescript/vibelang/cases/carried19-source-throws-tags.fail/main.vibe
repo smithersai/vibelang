@@ -1,0 +1,9 @@
+// VIP-4: source contracts cannot opt into synchronous throws.
+/** @throws {Error} */
+export function local() { return 1 }
+service Port {
+  static readonly key = "carried19/Port"
+  /** @throws {Error} */
+  read: () => number
+}
+export type Reader = { /** @throws {Error} */ (): number }
