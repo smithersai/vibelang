@@ -252,6 +252,15 @@ within one process only, is in no bundle. Install the matching
 platform-neutral modules import only `effect`, and the service keys are pure,
 so a program that does not use them bundles none of them.
 
+### Browser conformance tests
+
+From `packages/runtime`, install Chromium with `bunx playwright install chromium`,
+then run `VIBELANG_REQUIRE_BROWSER_TESTS=1 bun test tests/experimental-browser-services.test.ts`.
+The tests bundle the browser service layer and run it in a real Chromium page
+and a worker. The required mode fails if Chromium is missing; ordinary runtime
+test runs report the browser tests as skipped when it is unavailable. Browser
+fixture failures include page errors and console errors.
+
 ## Fast calls without types
 
 The text-only projector (decision (B)) can't see types, so `$isRun`, `$direct`,
