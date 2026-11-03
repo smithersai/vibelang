@@ -2368,6 +2368,15 @@ type TokenCacheKey struct {
 	loc    core.TextRange
 }
 
+// SchemaOptionalReference keeps the written type span of a mapped optional
+// field or tuple element for the explicit compatibility migration.
+type SchemaOptionalReference struct {
+	Expression      *Node
+	TypeRange       core.TextRange
+	AllowsUndefined bool
+	Parenthesize    bool
+}
+
 // SchemaGenericReference retains candidate codecs until the checker resolves
 // a mapped generic's TypeScript type binding (VIP-15, detail 286).
 type SchemaGenericReference struct {
@@ -2404,6 +2413,7 @@ type SourceFile struct {
 
 	// Fields set by parser
 	VibeLangSchemaGenerics []SchemaGenericReference
+	VibeLangSchemaOptionals     []SchemaOptionalReference
 
 	// VibeLangDeniedTrailingBlock marks a retired same-line brace. It requests
 	// compatibility diagnostics without admitting that form into the AST.
@@ -2752,6 +2762,7 @@ func (node *SourceFile) copyFrom(other *SourceFile) {
 	node.LanguageVariant = other.LanguageVariant
 	node.ScriptKind = other.ScriptKind
 	node.VibeLangSchemaGenerics = other.VibeLangSchemaGenerics
+	node.VibeLangSchemaOptionals = other.VibeLangSchemaOptionals
 	node.IsDeclarationFile = other.IsDeclarationFile
 	node.UsesUriStyleNodeCoreModules = other.UsesUriStyleNodeCoreModules
 	node.imports = other.imports

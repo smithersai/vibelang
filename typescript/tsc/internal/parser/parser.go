@@ -128,6 +128,7 @@ type Parser struct {
 	vibelangDoOrder          []*doExpression             // the same, in source order
 	vibelangDoSites          map[*ast.Node]*ast.Node     // each do completion temporary's declaration to the reference at the do's site (vibelang_do.go)
 	vibelangSchemaGenerics   []ast.SchemaGenericReference
+	vibelangSchemaOptionals  []ast.SchemaOptionalReference
 
 	// VIP-11 diagnostic marker, separate from syntax-extension state.
 	vibelangDeniedTrailingBlock bool       // request migration diagnostics; never consume its block
@@ -520,6 +521,7 @@ func (p *Parser) parseSourceFileWorker() *ast.SourceFile {
 		}
 	}
 	result.VibeLangSchemaGenerics = p.vibelangSchemaGenerics
+	result.VibeLangSchemaOptionals = p.vibelangSchemaOptionals
 	p.attachVibeLangSchemaGenericScopes(result)
 	collectExternalModuleReferences(result)
 	if ast.IsInJSFile(node) {

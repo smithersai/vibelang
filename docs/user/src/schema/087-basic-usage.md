@@ -280,3 +280,7 @@ Schema aliases use the same mappings inside functions and namespaces. An unsuppo
 Older compiler versions lowered unsupported keyword types in function-local or namespace `schema` aliases to `Schema.Unknown`. These aliases now report `EK2109`. Their first quick fix, also used by `vibelang --fix`, writes `Schema.Unknown` to preserve the codec and decoded type. The keyword’s explicit schema remains a separate editor action; module-level aliases and struct fields keep their existing suggestions.
 
 Tuple-rest generic names use the same type-binding lookup as other schema generics. A local type named `Array` or `ReadonlyArray` does not select a library mapping. For a previously accepted shadowed spelling, `vibelang --fix` writes the explicit tuple codec to preserve its decoder.
+
+## Preserving optional schema decoding during an upgrade
+
+For projects with `exactOptionalPropertyTypes: true`, the explicit compatibility command `vibelang --fix --fix-migration-only` writes `name?: T | undefined` for existing optional schema fields and adds `undefined` to optional tuple element types. This keeps the previous decoder's acceptance of a present `undefined`. It covers nested mappings and `schema error` payloads, keeps existing `undefined` unions, and leaves native `data` payload types alone. Ordinary `--fix` preserves newly written optional fields. Projects using TypeScript's default optional-property setting need no such upgrade.

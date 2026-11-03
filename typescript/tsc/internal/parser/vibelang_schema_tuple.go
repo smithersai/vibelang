@@ -36,7 +36,7 @@ func (p *Parser) vibelangSchemaTuple(typeNode *ast.Node) *ast.Node {
 			})
 		}
 		if position.optional {
-			value = p.vibelangSchemaCall("optional", position.typ.Loc, value)
+			value = p.vibelangOptionalSchema(position.typ, position.typ.Loc, value, true)
 		}
 		if inRest {
 			rest = append(rest, value)

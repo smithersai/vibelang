@@ -486,6 +486,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - A `do` expression whose paths all leave outward could be typed as `any` or `undefined` and fail a `never` annotation; it now has type `never`. For calls or property uses that relied on the old `any`, `vibelang --fix` adds an erased assertion that preserves the outward jump.
 
+- Existing optional schema decoders in projects with `exactOptionalPropertyTypes` had no compatibility upgrade. `vibelang --fix --fix-migration-only` now adds explicit `undefined` unions to keep their previous decoding behavior.
+
 - The migration checks generated callback failure unions without their required parentheses and failed to parse them. They now write valid compound slots while checking the same preserved channels and refusal controls.
 
 
