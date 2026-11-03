@@ -58,6 +58,13 @@ the batch. A path the check cannot prove either way, such as ``import(`./${name}
 goes under `pathReferences.reports` and does not fail the batch. Comments, URLs,
 prose, assertions, generated outputs and files that were not renamed stay clean.
 
+A build can also drop a module without naming it: an entry glob such as
+`src/**/*.ts` leaves `Local.vibe` out of `dist`, and the build still exits 0. A
+batched migration builds the repository from clean output before and after each
+batch, and `verify` fails the batch for each file the build no longer writes,
+under `distList.refusals` in `verify.json`. With no build script it records
+that the check did not run.
+
 ## Prettier and Oxfmt
 
 Setup and record split large formatter file lists into bounded argument chunks. Their format log retains each command and exit status. A failing chunk makes the step fail after all selected files have been attempted.

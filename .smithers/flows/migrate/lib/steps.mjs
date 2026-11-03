@@ -2,6 +2,7 @@ import { formatResult as formatApiIdentity } from "./api-identity.mjs"
 import { prepareToolchainPublication, stagedToolchainSpecs } from "./toolchain-publication.mjs"
 import { prepareBuilds } from "./builds.mjs"
 import { checkConvertedPaths } from "./converted-paths.mjs"
+import { compareDistLists } from "./dist-list.mjs"
 import { generatedTree, ownedPathSources, ownedToolConfigs } from "./tool-config-references.mjs"
 // The migrate flow's steps. Each reads and writes the run directory, so it can
 // run as a step of flow.ts or alone from step.mjs, and a later step reads what
@@ -1255,7 +1256,8 @@ export async function setup(options) {
   const { stdout: version } = await must(`${JSON.stringify(compiler)} --version`)
 
   // The baseline every batch is compared with: the tests with VibeLang set up and nothing migrated.
-  const baselineBuild = await prepareBuilds(config, logs, "baseline")
+  // Built from clean outputs, its dist list is what each batch's build must still ship.
+  const baselineBuild = await prepareBuilds(config, logs, "baseline", { distList: true })
   const tests = await runTests({ command: config.test.command, report: config.test.report, cwd: join(t, config.test.cwd), root: t, jsonFile: join(p.baseline, "baseline.vitest.json"), log: join(logs, "baseline-tests.log") })
   writeJson(join(p.baseline, "tests.json"), { code: tests.code, tests: tests.tests, build: baselineBuild })
   assertBaselineSafe(p)
@@ -1921,7 +1923,7 @@ export async function verify(options) {
   const emittedJs = await emitMigratedJs(config, t, logs)
   codemod = rememberPackingFiles(p, b, emittedJs)
   const before = foreignChanges(changedBefore, { files, codemod, testDiff: testDiffBefore, sidecar: batchSidecarLocator(config) })
-  const candidateBuild = thePlan.mode === "one-pass" ? null : await prepareBuilds(config, logs, "candidate")
+  const candidateBuild = thePlan.mode === "one-pass" ? null : await prepareBuilds(config, logs, "candidate", { distList: true })
   const measurement = thePlan.mode === "one-pass" ? await measureTests(config,{run:p.run,batch:b}) : null
   const tests = measurement?.receipts.candidate ?? await runTests({ command: config.test.command, report: config.test.report, cwd: join(t, config.test.cwd), root: t, jsonFile: join(p.batch(b), "vitest.json"), log: join(logs, "tests.log") })
   const testRenames = (thePlan.batches ?? []).slice(0, Number(b)).flatMap((_, i) =>
@@ -1986,6 +1988,10 @@ export async function verify(options) {
   const lostWrappers = await checkLostWrappers({ config, p, plan: thePlan, batch: b, migrated, emittedJs, ts, logs })
   const style = checked.style.filter((d) => migrated.includes(d.file))
   // Paths held as data: nothing above runs the line that opens one (alchemy's DevWatchProvider).
+  // The dist-list diff: a build that selects sources by .ts drops a converted module and still exits 0.
+  const renamed = (thePlan?.batches ?? []).slice(0, Number(b)).flatMap((_, i) => readJsonIf(p.codemod(batchName(i)))?.renames ?? [])
+  const distList = compareDistLists(readJsonIf(join(p.baseline, "logs", "baseline-dist.json")),
+    candidateBuild ? readJsonIf(join(logs, "candidate-dist.json")) : { state: "not-run", reason: "a one-pass run builds in its measurement workspaces, not the target" }, renamed)
   const pathReferences = checkConvertedPaths({ ts, tracked: await Jj.trackedFiles(t), read: file => readFileSync(join(t, file), "utf8"), owned: Wire.ownedPaths(t), generated: generatedTree })
   const result = {
     batch: b,
@@ -2003,6 +2009,7 @@ export async function verify(options) {
     runPhase,
     lostWrappers,
     pathReferences,
+    distList,
     testDiff,
     compile: { batchErrors, newErrors: checked.newErrors, style, emitErrors, declarationEmits },
     foreign,
@@ -2020,6 +2027,7 @@ export async function verify(options) {
       runPhase: runPhase.blocking.length === 0,
       lostWrappers: lostWrappers.blocking.length === 0 && lostWrappers.unchecked.length === 0,
       pathReferences: pathReferences.ok,
+      distList: distList.ok,
       batchErrors: batchErrors.length === 0,
       newErrors: checked.newErrors.length === 0,
       style: style.length === 0,
@@ -2142,7 +2150,9 @@ export async function report(options) {
     testDiffs: batches.map(b => ({ batch: b.batch, result: b.record?.testDiff ?? b.verify?.testDiff })).filter(b => b.result),
     fixRefusals: batches.flatMap((b) => b.codemod?.fix.refused ?? []),
     // Paths the check could not prove either way; a refusal fails its batch and never reaches a record.
-    pathReports: batches.flatMap((b) => b.verify?.pathReferences?.reports ?? [])
+    pathReports: batches.flatMap((b) => b.verify?.pathReferences?.reports ?? []),
+    // A dist-list diff that did not run says so for each batch, so no report reads as a pass it never made.
+    distList: batches.filter(b => b.verify?.distList).map(b => ({ batch: b.batch, state: b.verify.distList.state, reason: b.verify.distList.reason, refusals: b.verify.distList.refusals?.length ?? 0, extras: b.verify.distList.extraCount ?? 0 }))
   }
   const rewrites = {}
   for (const b of batches) for (const [k, n] of Object.entries(b.codemod?.fix.totals ?? {})) rewrites[k] = (rewrites[k] ?? 0) + n

@@ -545,6 +545,40 @@ comments, URLs, prose, types, assertions, test names, imports, generated outputs
 To clear a refusal, `revert` the module, or change the caller in its own commit
 before the batch: `foreignFiles` fails a batch that edits a file outside it.
 
+### Dist-list diff
+
+A text check reads paths; a build can still drop a module without naming it. A
+build that selects sources by `.ts`, such as a `**/*.ts` entry glob, an
+`endsWith(".ts")` walk or a `/\.tsx?$/` filter, leaves a renamed module out of
+`dist` and exits 0: opencode's core lost 118 of 440 files that way. So `setup` and
+each batch's `verify` run the repository's own build from clean output and compare
+the files it wrote.
+
+Before building, each built package's output directories move aside: the first
+directory of every `main`, `module`, `types`, `bin`, `exports` and `files` target
+that holds no tracked file, else `dist`. A cached `dist` proves nothing. A directory
+the build does not recreate moves back and is listed under `notBuilt`, not compared.
+`setup` writes the baseline list to `baseline/logs/baseline-dist.json`, and each
+batch's build writes `logs/candidate-dist.json`.
+
+Each file the baseline shipped and the batch does not is a `dist-missing` refusal
+under `distList.refusals` in `verify.json`, with the renamed modules whose name it
+carries, and `checks.distList` fails the batch. Make the build take `.vibe`, or
+`revert` the module. These are paired, not refused: a shipped source copy that moved
+with its rename (`X.ts` to `X.vibe`, under `renamedSources`) and a hashed bundler
+chunk whose hash or name changed within its directory (under `rehashed`). New files,
+such as `vibelang.manifest.json` and `.d.vibe.js` outputs, are listed under `extras`.
+
+The check never passes silently. With no build script, a target outside jj, a
+one-pass run, or a baseline from before this check, `distList.state` is `not-run`
+with the reason, and `report.json` lists it per batch under `distList`.
+
+Cost: the baseline is built once per run, in `setup`, and reused by every batch;
+`verify` already built the candidate. The added cost is that neither build is
+incremental. On alchemy's 30 packages at be1fa00d94e1, the diff of clean builds
+finds 0 missing files, 15 renamed chunks and one `vibelang.manifest.json` extra per
+converted package.
+
 ### Source filename wiring
 
 Before the compiler starts, `codemod` scans the inventory's source files

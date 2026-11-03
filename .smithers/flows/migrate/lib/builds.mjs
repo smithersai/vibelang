@@ -6,6 +6,7 @@ import * as Jj from "./jj.mjs"
 import { workspaceGlobs, workspaceManifests } from "./upgrade.mjs"
 import { packageManager } from "./wire.mjs"
 import { readJson, run, writeJson } from "./util.mjs"
+import { cleanBuildList, outputDirs } from "./dist-list.mjs"
 
 /** Choose existing aggregate builds, otherwise the selected workspace dependency closure. */
 export function buildPlan(manifests, packages, manager) {
@@ -32,7 +33,22 @@ export function buildPlan(manifests, packages, manager) {
   return ordered
 }
 
-export async function prepareBuilds(config, logs, phase) {
+/** The packages a plan builds: each step's package, or every member with a build script under an aggregate build. */
+export function builtPackages(manifests, plan) {
+  const dirs = new Set()
+  for (const step of plan) {
+    if (!step.command.endsWith(" run build:packages")) { dirs.add(normalize(step.cwd)); continue }
+    for (const f of manifests) if (f.path !== "package.json" && Object.keys(f.manifest.scripts ?? {}).some(name => /^build(?::|$)/.test(name))) dirs.add(dirname(f.path))
+  }
+  return [...dirs].sort().map(dir => ({ dir, manifest: manifests.find(f => dirname(f.path) === dir)?.manifest ?? {} }))
+}
+
+/**
+ * Runs the declared builds. With `distList`, each built package's output
+ * directories are moved aside first, so the list in `<phase>-dist.json` is
+ * what this build wrote and not a cached `dist`.
+ */
+export async function prepareBuilds(config, logs, phase, { distList = false } = {}) {
   const t = config.target
   const versioned = existsSync(join(t,".jj"))
   const files = versioned ? await Jj.trackedFiles(t) : ["package.json",...config.packages.map(p=>join(p.dir,"package.json"))]
@@ -52,16 +68,29 @@ export async function prepareBuilds(config, logs, phase) {
   }
   const path = join(logs,phase + "-build.json")
   writeJson(path,receipt)
-  for (const [index, item] of plan.entries()) {
-    const step = {...item, startedAt:new Date().toISOString(), state:"running", log:phase+"-build-"+(index+1)+".log"}
-    receipt.steps.push(step); writeJson(path,receipt)
-    const result = await run(item.command,{cwd:join(t,item.cwd),log:join(logs,step.log)})
-    Object.assign(step,{state:result.code===0&&!result.signal?"complete":"failed",code:result.code,signal:result.signal??null,durationMs:result.ms,finishedAt:new Date().toISOString()})
-    if (step.state === "failed") {
-      receipt.state="failed";receipt.finishedAt=step.finishedAt;writeJson(path,receipt)
-      throw new Error("build prerequisite failed (" + item.cwd + ", exit " + result.code + (result.signal ? ", " + result.signal : "") + "); see " + join(logs,step.log))
+  const runPlan = async () => {
+    for (const [index, item] of plan.entries()) {
+      const step = {...item, startedAt:new Date().toISOString(), state:"running", log:phase+"-build-"+(index+1)+".log"}
+      receipt.steps.push(step); writeJson(path,receipt)
+      const result = await run(item.command,{cwd:join(t,item.cwd),log:join(logs,step.log)})
+      Object.assign(step,{state:result.code===0&&!result.signal?"complete":"failed",code:result.code,signal:result.signal??null,durationMs:result.ms,finishedAt:new Date().toISOString()})
+      if (step.state === "failed") {
+        receipt.state="failed";receipt.finishedAt=step.finishedAt;writeJson(path,receipt)
+        throw new Error("build prerequisite failed (" + item.cwd + ", exit " + result.code + (result.signal ? ", " + result.signal : "") + "); see " + join(logs,step.log))
+      }
+      writeJson(path,receipt)
     }
-    writeJson(path,receipt)
+  }
+  if (!distList) await runPlan()
+  else if (!plan.length || !versioned) {
+    receipt.dist = { state: "not-run", reason: !versioned ? "the target is not a jj repository, so tracked sources cannot be told from outputs" : "no build script: the repository declares no build:packages and no package build, so the dist-list diff did not run" }
+    if (plan.length) await runPlan()
+    writeJson(join(logs, phase + "-dist.json"), { ...receipt.dist, files: [] })
+  } else {
+    const dirs = builtPackages(manifests, plan).flatMap(pkg => outputDirs(pkg.manifest, pkg.dir, files))
+    const listed = await cleanBuildList({ t, dirs, scratch: logs, build: runPlan })
+    receipt.dist = { state: "complete", dirs: listed.dirs, notBuilt: listed.notBuilt, files: listed.files.length, list: phase + "-dist.json" }
+    writeJson(join(logs, phase + "-dist.json"), { state: "complete", sourceCommit: receipt.sourceCommit, dirs: listed.dirs, notBuilt: listed.notBuilt, files: listed.files })
   }
   receipt.state="complete";receipt.finishedAt=new Date().toISOString();receipt.sourceAfter=versioned ? await Jj.commitId(t,"@") : null;writeJson(path,receipt)
   return receipt
