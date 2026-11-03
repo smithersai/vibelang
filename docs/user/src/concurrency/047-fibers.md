@@ -225,6 +225,8 @@ A plain `fork` belongs to the parent fiber. A nested block doesn't create a fibe
 
 Forked fibers inherit the current services and tracing context.
 
+A service declared inside a function or block needs an explicit `static readonly key`. Its `static readonly defaultValue` initializer keeps the class-field context, so ordinary helpers named `fork` or `join` remain ordinary calls there.
+
 ## Selecting scoped or detached lifetimes
 
 ```vibe
