@@ -58,6 +58,11 @@ func FuzzFiberUnaryOperands(f *testing.F) {
 				}
 			}
 		}
+		operand := operands[index]
+		if keys[index] == "object" && len(parts) > 2 {
+			objects := []string{"{value: value}", "{}", "{value}", "{[value]: value}", "{...obj}", "{get value() { return 1 }}", "{value() { return 1 }}"}
+			operand = objects[len(parts[2])%len(objects)]
+		}
 		gap := " "
 		if len(parts) > 2 {
 			gap = []string{" ", "\n", " /* operand */ ", " /* operand\n */ "}[len(parts[2])%4]
@@ -68,10 +73,10 @@ func FuzzFiberUnaryOperands(f *testing.F) {
 		if len(parts) > 2 {
 			wrap = len(parts[2]) % len(wrappers)
 		}
-		source := strings.Replace(wrappers[wrap], "%s", operator+gap+operands[index], 1)
+		source := strings.Replace(wrappers[wrap], "%s", operator+gap+operand, 1)
 		// Keep native early-error contexts valid while testing their operand head.
 		if keys[index] == "super" {
-			source = "class C extends B { effect f() { return " + operator + gap + operands[index] + " } }"
+			source = "class C extends B { effect f() { return " + operator + gap + operand + " } }"
 		}
 		if keys[index] == "new-target" {
 			source = "function outer() { " + source + " }"

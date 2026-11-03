@@ -1,0 +1,12 @@
+main.vibe(6,7): error EK1703
+main.vibe(6,9): error TS2353
+main.vibe(7,7): error EK1703
+main.vibe(8,7): error EK1703
+main.vibe(8,9): error TS2353
+main.vibe(9,7): error EK1703
+main.vibe(9,9): error TS2353
+main.vibe(10,7): error EK1703
+main.vibe(11,7): error EK1703
+main.vibe(11,13): error TS2353
+main.vibe(12,7): error EK1703
+main.vibe(12,9): error TS2353

@@ -50,13 +50,44 @@ func (p *Parser) nextTokenStartsLegacyForkOperand() bool {
 	return false
 }
 
+// forkBraceIsObjectOperand reports whether a brace after fork in Effect code is
+// an object UnaryExpression (VIP-17), as it is after await. `{ a = 1 }` parses as
+// a cover grammar object, but only assignment statements can mean it here.
+func (p *Parser) forkBraceIsObjectOperand() bool {
+	if !p.vibelangFiberContext {
+		return false
+	}
+	dos := len(p.vibelangDoOrder)
+	defer func() {
+		// mark and rewind do not cover do expressions read by the speculation.
+		for _, d := range p.vibelangDoOrder[dos:] {
+			delete(p.vibelangDos, d.call)
+		}
+		p.vibelangDoOrder = p.vibelangDoOrder[:dos]
+	}()
+	return p.lookAhead(func(p *Parser) bool {
+		errors := len(p.diagnostics)
+		object := p.parseObjectLiteralExpression()
+		if len(p.diagnostics) != errors {
+			return false
+		}
+		for _, property := range object.AsObjectLiteralExpression().Properties.Nodes {
+			if ast.IsShorthandPropertyAssignment(property) && property.AsShorthandPropertyAssignment().ObjectAssignmentInitializer != nil {
+				return false
+			}
+		}
+		return true
+	})
+}
+
 // parseVibeLangFork parses `fork operand` as fork(operand) and `fork { ... }` as
 // fork(() => { ... }) (D166). The operand binds as await's does: fork
 // getUser(id).name forks getUser(id).name, and fork a + b adds b to a fiber.
 // In source Effect context fork is reserved, even before a parenthesis.
 // Outside it, valid TypeScript calls keep their identifier reading. The
 // synthesized callee marks the operator independently of local bindings.
-// Bare brace-body recovery stays until the legacy block fixtures migrate.
+// Bare brace-body recovery stays for statements until the legacy block
+// fixtures migrate; in Effect code a brace that reads as an object is one.
 func (p *Parser) parseVibeLangFork() *ast.Node {
 	pos := p.nodePos()
 	keyword := p.tokenRange()
@@ -66,7 +97,7 @@ func (p *Parser) parseVibeLangFork() *ast.Node {
 		p.rejectVibeLangBlockDo("fork")
 	}
 	var program *ast.Node
-	if p.token == ast.KindOpenBraceToken {
+	if p.token == ast.KindOpenBraceToken && !p.forkBraceIsObjectOperand() {
 		body := p.parseFunctionBlock(ParseFlagsNone, nil /*diagnosticMessage*/)
 		p.recordVibeSyntaxBlock(VibeSyntaxForkBlock, keyword, body)
 		program = p.vibelangProgramArrow(nil, body, keyword)

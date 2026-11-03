@@ -117,6 +117,7 @@ parser/vibelang_errors.go:Parser.vibelangSynthesizedEntityName	admission:error	9
 parser/vibelang_fibers.go:Parser.tokenRange	admission:fork	900-appendices.md#ForkExpression	support	VIP-17/19 fork and concurrent-loop helpers; legacy paths below
 parser/vibelang_fibers.go:Parser.isStartOfVibeLangFork	admission:fork	900-appendices.md#ForkExpression	support	VIP-17/19 fork and concurrent-loop helpers; legacy paths below
 parser/vibelang_fibers.go:Parser.parseVibeLangFork	admission:fork	900-appendices.md#ForkExpression	support	VIP-17/19 fork and concurrent-loop helpers; legacy paths below
+parser/vibelang_fibers.go:Parser.forkBraceIsObjectOperand	admission:fork	900-appendices.md#ForkExpression	support	VIP-17 brace after fork in Effect code is an object UnaryExpression, as after await
 parser/vibelang_fibers.go:Parser.isStartOfVibeLangJoin	admission:join	900-appendices.md#JoinExpression	support	VIP-17 single Fiber operand; aggregate meaning not admitted
 parser/vibelang_fibers.go:Parser.parseVibeLangJoin	admission:join	900-appendices.md#JoinExpression	support	VIP-17 single Fiber operand; aggregate meaning not admitted
 parser/vibelang_fibers.go:Parser.vibelangProgramArrow	admission:fork	900-appendices.md#ForkExpression	support	VIP-17/19 fork and concurrent-loop helpers; legacy paths below

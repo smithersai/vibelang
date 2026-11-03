@@ -1,0 +1,13 @@
+// expect: EK1703 TS2353
+export effect function main() {
+ const value = 1
+ const name = "item"
+ const object = { value: 1 }
+ fork { value: 1 }
+ fork {}
+ fork { value }
+ fork { [name]: value }
+ fork { ...object }
+ fork { get value() { return 1 } }
+ fork { value() { return 1 } }
+}
