@@ -1,0 +1,13 @@
+// platform-buffer-bytelength.fail, as vibelang --fix writes it.
+/// <reference path="./types-node/index.d.ts" />
+// Buffer.byteLength of a string draws EK4402 (D310). Its quick fix counts the
+// bytes with TextEncoder, which chapter 5 allows: the same number, in plain
+// code as in effect code, so each function's type stays as it was.
+export const plain = (text: string): number => new TextEncoder().encode(text).length
+export const named = (text: string): number => new TextEncoder().encode(text).length
+export const dashed = (text: string): number => new TextEncoder().encode(text).length
+export const nested = (text: string): number => new TextEncoder().encode(`${new TextEncoder().encode(text).length}:`).length
+export const literal = (kind: "a" | "b"): number => new TextEncoder().encode(kind).length
+export effect function report(text: string): number!never!never {
+  return new TextEncoder().encode(text).length
+}

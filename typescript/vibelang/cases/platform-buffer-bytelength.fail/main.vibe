@@ -1,0 +1,13 @@
+// expect: EK4402
+/// <reference path="./types-node/index.d.ts" />
+// Buffer.byteLength of a string draws EK4402 (D310). Its quick fix counts the
+// bytes with TextEncoder, which chapter 5 allows: the same number, in plain
+// code as in effect code, so each function's type stays as it was.
+export const plain = (text: string): number => Buffer.byteLength(text)
+export const named = (text: string): number => Buffer.byteLength(text, "utf8")
+export const dashed = (text: string): number => Buffer.byteLength(text, "utf-8")
+export const nested = (text: string): number => Buffer.byteLength(`${Buffer.byteLength(text, "utf8")}:`, "utf8")
+export const literal = (kind: "a" | "b"): number => Buffer.byteLength(kind)
+export effect function report(text: string): number!never!never {
+  return Buffer.byteLength(text)
+}

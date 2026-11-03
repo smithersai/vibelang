@@ -328,6 +328,7 @@ var platformAPIs = map[string]platformAPI{
 	"window.addEventListener":       {"BrowserStream", `BrowserStream.fromEventListenerWindow("resize")`, ""},
 	"document.addEventListener":     {"BrowserStream", `BrowserStream.fromEventListenerDocument("visibilitychange")`, ""},
 	"Buffer.from":                   {"Bytes", "new TextEncoder().encode(text)", "Base64.decode(text) and Hex.decode(text) read encoded bytes."},
+	"Buffer.byteLength":             {"Bytes", "new TextEncoder().encode(text).length", ""},
 	"Buffer.alloc":                  {"Bytes", "new Uint8Array(size)", ""},
 	"Buffer.concat":                 {"Bytes", "new Uint8Array([...a, ...b])", ""},
 
@@ -781,6 +782,11 @@ func checkPlatformUse(c *checker.Checker, file *ast.SourceFile, id *ast.Node) {
 	notePlatformAPI(d, platformAPIOf(ref, members))
 	if call, method := consoleCall(use); call != nil {
 		if why := consoleFixRefusal(c, call, method); why != "" {
+			note(d, "No quick fix: {0}", why)
+		}
+	}
+	if call := bufferByteLengthCall(use); call != nil {
+		if why := bufferByteLengthRefusal(c, file, call); why != "" {
 			note(d, "No quick fix: {0}", why)
 		}
 	}
