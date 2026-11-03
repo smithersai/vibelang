@@ -726,6 +726,12 @@ func (p *Parser) hoistVibeLangIs(expression *ast.Node) *ast.Node {
 func (p *Parser) hoistDeclaration(decl *ast.Node, at core.TextRange) *ast.Node {
 	declaration := decl.AsVariableStatement().DeclarationList.AsVariableDeclarationList().Declarations.Nodes[0]
 	name, value := declaration.Name(), declaration.Initializer()
+	// A nested not has already separated this declaration from the
+	// conditional initialization in its test. Move only its lexical home.
+	if value == nil {
+		p.reparseList = append(p.reparseList, decl)
+		return p.mKeyword(ast.KindTrueKeyword, at)
+	}
 	hoisted := p.mConst(name, ast.NodeFlagsLet, nil, name.Loc)
 	hoisted.AsVariableStatement().DeclarationList.AsVariableDeclarationList().Declarations.Nodes[0].Flags |= ast.NodeFlagsVibeLangPatternHoist
 	if name.Flags&ast.NodeFlagsReparsed == 0 {
@@ -1461,7 +1467,7 @@ func (p *Parser) compilePattern(pat *pattern, path matchPath, steps *[]matchStep
 		test(p.mParens(p.joinTests(alternatives, ast.KindBarBarToken, at), at))
 	case patternNot:
 		first := len(*steps)
-		inner := p.mParens(p.inlinePattern(pat.items[0], path, ctx), at)
+		inner := p.mParens(p.inlineNotPattern(pat.items[0], path, steps, ctx), at)
 		test(p.vibelangSpanning(p.factory.NewPrefixUnaryExpression(ast.KindExclamationToken, inner), at))
 		p.markUncovered(*steps, first, ctx, at)
 	}
@@ -1708,6 +1714,34 @@ func (p *Parser) inlinePattern(pat *pattern, path matchPath, ctx *matchCompile) 
 	var tests []*ast.Node
 	for _, step := range steps {
 		if step.test != nil {
+			tests = append(tests, step.test)
+		}
+	}
+	if len(tests) == 0 {
+		return p.mKeyword(ast.KindTrueKeyword, pat.anchor)
+	}
+	return p.joinTests(tests, ast.KindAmpersandAmpersandToken, pat.anchor)
+}
+
+// inlineNotPattern keeps negation's initializations in its test. Its lexical
+// declarations belong to the enclosing pattern home, while the assignments
+// run only when their preceding tests succeed, just as for an is expression.
+func (p *Parser) inlineNotPattern(pat *pattern, path matchPath, outer *[]matchStep, ctx *matchCompile) *ast.Node {
+	// An enclosing inline or still has its existing binding restriction.
+	if ctx.inline {
+		return p.inlinePattern(pat, path, ctx)
+	}
+	var steps []matchStep
+	p.compilePattern(pat, path, &steps, ctx)
+	var tests []*ast.Node
+	for _, step := range steps {
+		if step.decl != nil {
+			mark := len(p.reparseList)
+			tests = append(tests, p.hoistDeclaration(step.decl, pat.anchor))
+			for _, declaration := range p.takeHoists(mark) {
+				*outer = append(*outer, matchStep{decl: declaration})
+			}
+		} else {
 			tests = append(tests, step.test)
 		}
 	}

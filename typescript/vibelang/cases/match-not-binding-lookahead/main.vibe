@@ -1,0 +1,16 @@
+// expect-result: [0,5,"miss","hit","other","zero",1,[false,7],[true,7]]
+import { Effect } from "effect"
+let calls = 0
+function not(s: unknown): [unknown] { calls++; return [s] }
+const helpers = { not }
+export function probe() { return match(5) { when not(let x): x; default: 0; } }
+function partial(s: unknown) { return match(s) { when not { value: let x }: "miss"; default: "hit"; } }
+function boundAfterNot() { const hit = 7 is not(let value); return [hit, value] }
+function boundAfterDoubleNot() { const hit = 7 is not not(let value); return [hit, value] }
+export function main() { return Effect.succeed([
+  probe(),
+  match(5) { when helpers.not(let x): x; default: 0; },
+  partial({}), partial({ value: 1 }),
+  match([1]) { when not[0]: "other"; default: "zero"; },
+  match([0]) { when not[0]: "other"; default: "zero"; }, calls, boundAfterNot(), boundAfterDoubleNot()
+]) }

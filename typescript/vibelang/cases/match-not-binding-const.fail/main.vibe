@@ -1,0 +1,6 @@
+// expect: TS2588
+export function probe(input: number = 7) {
+  const hit = input is not(const value)
+  value = 8
+  return hit
+}
