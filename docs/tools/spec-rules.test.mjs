@@ -134,9 +134,15 @@ test("r2 OPUS-2 / ASTRA-2: current resource warning cites an accepted public ame
 })
 
 function assertNoObsoleteConfigOptions(text) {
-  // The fold keeps retired settings in Details as historical decisions.
-  // Keep rejecting those spellings in the current chapter contract.
-  const current = text.split("\n## Details\n")[0]
+  let current = text
+  if (text.includes("\n### Detail 297\n")) {
+    const retirement = section(text, "detail-297")
+    // Exclude only the verified retirement note, leaving every other detail checked.
+    assert.ok(retirement.includes("`trustedPackages` is removed."))
+    assert.ok(retirement.includes("deprecation warning and the key is ignored."))
+    assert.ok(!/^\|.*(?:trustedPackages|tracing|compilerOptions\.vibelang\.declarationImportStyle)/m.test(retirement), "retirement notes cannot define an obsolete option row")
+    current = text.replace(retirement, "")
+  }
   for (const obsolete of ["compilerOptions.vibelang.declarationImportStyle", "`trustedPackages`", "`tracing`"])
     assert.ok(!current.includes(obsolete), obsolete + " is not a supported config option")
 }
@@ -334,16 +340,21 @@ test("fast-check: retired diagnostics remain historical while an unmarked assign
 
 
 test("fast-check: folded retirement prose is allowed but supported configuration stays checked", () => {
-  // Detail 297: "`trustedPackages` is removed." Its historical description is not an option assignment.
-  const current = read(repository, chapter).split("\n## Details\n")[0]
+  // Detail 297: "`trustedPackages` is removed." Its description is not an option assignment.
+  const text = read(repository, chapter), current = text.split("\n## Details\n")[0]
+  const retirement = section(text, "detail-297")
   fc.assert(fc.property(
     fc.constantFrom("compilerOptions.vibelang.declarationImportStyle", "`trustedPackages`", "`tracing`"),
     fc.constantFrom("old", "retired", "obsolete"),
     (option, historical) => {
-      const details = "\n## Details\n\n### Detail 297\n\nThe " + historical + " " + option +
-        " option is removed. Its value is ignored with a deprecation warning.\n"
+      const details = "\n## Details\n\n### Detail 297\n" + retirement +
+        "\nThe " + historical + " " + option + " option is removed.\n"
       assert.doesNotThrow(() => assertNoObsoleteConfigOptions(current + details))
       assert.throws(() => assertNoObsoleteConfigOptions(current + "\n| " + option + " | Enabled |\n" + details))
+      assert.throws(() => assertNoObsoleteConfigOptions(current + details + "\n### Detail 999\n| " + option + " | Enabled |\n"))
+      assert.throws(() => assertNoObsoleteConfigOptions(current + details + "\n| " + option + " | Enabled |\n"))
+      for (const required of ["`trustedPackages` is removed.", "deprecation warning and the key is ignored."])
+        assert.throws(() => assertNoObsoleteConfigOptions(current + details.replace(required, "The setting is enabled.")))
     }
   ), { seed: 310297, numRuns: 36 })
 })

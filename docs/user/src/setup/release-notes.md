@@ -220,6 +220,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Editor regression tests now exercise qualified Option handlers around anonymous payload-size boundaries and verify that every input reaches its actual quick fix.
 
 - `npm create vibelang` failed on Node 22, whose npm 10 crashes installing the pinned Vitest (`Cannot read properties of null (reading 'edgesOut')`), as do the install pages' `npm install` commands. The starter and those pages now pin Vitest 5.1.0, which npm 10 installs.
+- The specification checks could overlook an obsolete setting in a folded detail. They now check every other detail and verify that the `trustedPackages` retirement note still requires removal, ignored values and a deprecation warning.
+
 - Bun's release-age setting blocked newly published VibeLang packages in example projects; the examples now exempt their pinned VibeLang packages from that age check.
 - Editor fixes could write invalid annotations around `this` or `super`, a loop binding or a `finally` binding; they now decline edits that cannot preserve the program.
 - Hover and rename missed references in match guards, `is` subjects, `and` patterns and error `extends` clauses; the editor now finds those original source references.
@@ -382,7 +384,6 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - The specification checks rejected the folded explanation that `trustedPackages` was removed. They now permit historical retirement notes while still rejecting obsolete settings in the current configuration documentation.
 
-- The specification's folded details referred to removed `EK1020` and `EK4843` checks as though they still needed diagnostic registry entries. Both references now explicitly identify historical checks, matching VIP-1 and VIP-26.
 
 - A legacy service member call in a `catch` head could typecheck but throw a `TypeError` instead of handling its typed failure. Accepted service calls in `catch`, `try` and pipe heads now look up the service before calling its member, and the lookup remains in the inferred requirements.
 
