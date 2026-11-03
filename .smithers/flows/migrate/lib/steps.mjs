@@ -56,6 +56,7 @@ import { wireTypecheckBuild } from "./typecheck-build.mjs"
 import { planEmittedImports, applyEmittedImports } from "./emitted-imports.mjs"
 import { routeBundledImports } from "./bundled-imports.mjs"
 import { wireOxlintPlugins } from "./oxlint-plugins.mjs"
+import { wireNodeTests } from "./node-tests.mjs"
 import { readToolchain } from "./toolchain.mjs"
 import { probeVip1, probeTargetVip1 } from "./vip-flip.mjs"
 import { assertPortable, machineRoots } from "./portable.mjs"
@@ -1048,6 +1049,10 @@ export async function wireTarget(config, log) {
   const bunTests = Wire.wireBunTests({ root: t, packages: packages, specsFor, ts })
   changed.push(...bunTests.changed.filter((file) => !changed.includes(file)))
   warnings.push(...bunTests.warnings)
+  // Node's test runner loads .vibe modules only through vibelang/register: each `node --test` script and Smithers Node runtime that reaches them preloads it.
+  const nodeTests = wireNodeTests({ root: t, packages: packages, ts, specsFor })
+  changed.push(...nodeTests.changed.filter((file) => !changed.includes(file)))
+  warnings.push(...nodeTests.warnings)
   // The plugin goes into the config the tests load: the shared one the test command names, else each package's.
   const vite = Wire.wireVite({ root: t, packages: packages, test: config.test, ts, specsFor })
   changed.push(...vite.changed.filter((file) => !changed.includes(file)))

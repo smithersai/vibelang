@@ -204,6 +204,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - JavaScript launch scripts could fail strict `checkJs` after setup inserted a source-child helper. Generated JavaScript now keeps the helper’s parameter and tuple types, preserves native declarations, and retains readable spacing.
 
 - A denied trailing block reported `TS1005` beside `EK1101` at the same brace; the compiler now omits that duplicate separator error while retaining independent syntax errors and preserving quick fixes.
+- After the migrate flow set VibeLang up, a test that plain `node --test` ran failed with `ERR_UNKNOWN_FILE_EXTENSION ".vibe"` once it reached a migrated module, as in Smithers' `NodeTest` targets. Setup now preloads `vibelang/register` in each `node --test` package script and in each literal Smithers `Runtime.Node({ ... })` of a package that reaches migrated sources.
 
 - Release validation rejected the VIP-7 reference tests because they had no runner; `//:release` now checks parallel installation and cleanup after a failed install.
 
