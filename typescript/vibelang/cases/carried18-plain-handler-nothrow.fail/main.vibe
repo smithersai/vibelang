@@ -1,0 +1,5 @@
+// VIP-4: a synchronous plain catch handler cannot throw.
+import { Effect } from "effect"
+export effect function rejected() {
+  return Effect.fail("missing") catch (error) => { throw error }
+}
