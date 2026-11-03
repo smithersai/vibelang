@@ -349,7 +349,7 @@ effect function discard() {
 | Effect-native | `preferSchemaOverJson` | EK4818, off by default | `JSON.parse(text)` |
 | Effect-native | `processEnv` | Covered: EK4402 | `process.env.PORT`; use `Config` |
 | Effect-native | `processEnvInEffect` | Covered: EK4402 | `process.env.PORT` |
-| Effect-native | `unsafeEffectTypeAssertion` | EK4810, warning, with a quick fix | `program as Effect.Effect<number>` drops a failure |
+| Effect-native | `unsafeEffectTypeAssertion` | `EK4810`, warning; removing the assertion has no automatic fix | `program as Effect.Effect<number>` drops a failure |
 | Style | `catchAllToMapError` | Not needed: a catch that rethrows is the one form | `catch effect (e) => { throw new Failed({ cause: e }) }` |
 | Style | `deterministicKeys` | Not needed: the compiler derives each service key from its package, module, and name | `@acme/app/src/users#Users` |
 | Style | `effectDoNotation` | Not needed: `const` statements bind values | `const user = try (try Users).find(id)` |

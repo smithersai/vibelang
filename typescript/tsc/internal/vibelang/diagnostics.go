@@ -317,6 +317,9 @@ func newDiagnosticAt(options *core.CompilerOptions, file *ast.SourceFile, loc co
 	if m.Code == EK4807.Code {
 		note(d, "No automatic fix: wire changes which layer supplies a dependency and the exported requirement. Review the provider and build order before composing manually.")
 	}
+	if m.Code == EK4810.Code {
+		note(d, "No automatic fix: removing this assertion changes the program's public channel types. Write and check the intended contract explicitly.")
+	}
 	return d
 }
 

@@ -164,17 +164,9 @@ var mergeAllFix = &ls.CodeFixProvider{
 var assertionFix = &ls.CodeFixProvider{
 	Source:     diagnosticSource,
 	ErrorCodes: []int32{EK4810.Code},
-	GetCodeActions: func(_ context.Context, fix *ls.CodeFixContext) ([]*ls.CodeAction, error) {
-		assertion := reportedNode(fix.SourceFile, fix.Span, func(node *ast.Node) bool {
-			return ast.IsAsExpression(node) || ast.IsTypeAssertion(node)
-		})
-		if assertion == nil {
-			return nil, nil
-		}
-		return []*ls.CodeAction{{
-			Description: "Remove the assertion",
-			Changes:     replaceRange(fix, nodeStart(fix.SourceFile, assertion), assertion.End(), scanner.GetTextOfNode(assertion.Expression())),
-		}}, nil
+	GetCodeActions: func(_ context.Context, _ *ls.CodeFixContext) ([]*ls.CodeAction, error) {
+		// Chapter 7 / VIP-34: this rewrite changes the public API or behavior.
+		return nil, nil
 	},
 }
 

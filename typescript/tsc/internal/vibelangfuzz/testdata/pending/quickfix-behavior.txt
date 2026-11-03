@@ -34,7 +34,6 @@ FuzzQuickFixBehavior corpus:registry-EK4402 quickfix-generators Chapter 7 / VIP-
 FuzzQuickFixBehavior corpus:registry-EK4406 quickfix-generators Chapter 7 / VIP-34: keyed census EK4406; delete this marker once all its preservation oracles pass
 FuzzQuickFixBehavior corpus:registry-EK4609 quickfix-generators Chapter 7 / VIP-34: keyed census native-await-single-interfaces.fail; delete this marker once all its preservation oracles pass
 FuzzQuickFixBehavior corpus:registry-EK4801 quickfix-generators Chapter 7 / VIP-34: keyed census ek2003-bare-return.fail; delete this marker once all its preservation oracles pass
-FuzzQuickFixBehavior corpus:registry-EK4810 compiler Chapter 7 / VIP-34: EK4810:editor:api; lane fuzz-quickfix-behavior
 FuzzQuickFixBehavior corpus:registry-EK4819 quickfix-generators Chapter 7 / VIP-34: keyed census EK4819; delete this marker once all its preservation oracles pass
 FuzzQuickFixBehavior corpus:registry-EK4820 quickfix-generators Chapter 7 / VIP-34: keyed census EK4820; delete this marker once all its preservation oracles pass
 FuzzQuickFixBehavior corpus:registry-EK4821 compiler Chapter 7 / VIP-34: EK4821:editor:api; lane fuzz-quickfix-behavior
@@ -44,7 +43,6 @@ FuzzQuickFixBehavior corpus:registry-EK9201 quickfix-generators Chapter 7 / VIP-
 FuzzQuickFixBehavior opencode-mixed-generators:editor:api compiler Chapter 7 / VIP-34: an isolated Effect.gen/fn editor repair leaves another native generator broken; lane silentfix-opencode/conf-effect
 FuzzQuickFixBehavior opencode-mixed-generators:editor:outcome compiler Chapter 7 / VIP-34: an isolated Effect.gen/fn editor repair leaves another native generator broken; lane silentfix-opencode/conf-effect
 FuzzQuickFixBehavior corpus:opencode-mixed-generators compiler Chapter 7 / VIP-34: opencode-mixed-generators:editor:outcome; lane silentfix-opencode/conf-effect
-FuzzQuickFixBehavior EK4810:editor:api compiler Chapter 7 / VIP-34: removing an assertion widens the exported failure channel; lane fuzz-quickfix-behavior
 FuzzQuickFixBehavior EK4821:editor:api compiler Chapter 7 / VIP-34: TaggedStruct changes make input and the JavaScript constructor result; lane fuzz-quickfix-behavior
 FuzzQuickFixBehavior EK4821:editor:outcome compiler Chapter 7 / VIP-34: TaggedStruct changes make input and the JavaScript constructor result; lane fuzz-quickfix-behavior
 FuzzQuickFixBehavior EK4817:editor:outcome compiler Chapter 7 / VIP-34: Schema.is evaluates the right operand before the left; lane fuzz-quickfix-behavior
