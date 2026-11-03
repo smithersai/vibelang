@@ -1,0 +1,49 @@
+import { report } from "./report.ts"
+
+error NF { id: string }
+effect function op(fail: boolean): string!NF {
+  if (fail) throw new NF({ id: "missing" })
+  return "ok"
+}
+export const recover = effect (fail: boolean) => {
+  op(fail) catch effect (e) => match (e) {
+    when { _tag: "NF" }: try Effect.void;
+    default: throw e;
+  }
+}
+export effect function value(n: boolean, undefined: number): void!! {
+  return match (n) {
+    when true: try Effect.void;
+    default: try Effect.undefined;
+  }
+}
+export effect function statement(n: boolean): void!! {
+  match (n) { when true: try Effect.void; default: try Effect.undefined; }
+}
+export const held = Effect.void
+
+report([
+  typeof await runPromise(recover(true)),
+  typeof await runPromise(recover(false)),
+  typeof await runPromise(value(true, 42)),
+  typeof await runPromise(value(false, 42)),
+  typeof await runPromise(statement(true)),
+  typeof await runPromise(statement(false))
+])
+
+let receiverReads = 0
+function programSource() {
+  receiverReads++
+  return Effect
+}
+export effect function observed(): void!! {
+  return match (true) { when true: try programSource().void; default: try Effect.void; }
+}
+export effect function commented(n: boolean): void!! {
+  return match (n) { when true: try Effect /* retain operand */ .void; default: try Effect.undefined; }
+}
+report([
+  typeof await runPromise(observed()),
+  String(receiverReads),
+  typeof await runPromise(commented(true))
+])

@@ -9,6 +9,7 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/checker"
 	"github.com/microsoft/TypeScript/tsc/internal/compiler"
 	"github.com/microsoft/TypeScript/tsc/internal/core"
+	"github.com/microsoft/TypeScript/tsc/internal/scanner"
 )
 
 // vibelang --fix writes the last stage of a pipeline, and a program built from
@@ -178,17 +179,34 @@ func wrapperStageRewrite(c *checker.Checker, file *ast.SourceFile, site, pipe *a
 	return siteRewrite(c, file, site, text, "a provide block")
 }
 
-// voidRewrite plans the removal of site, try Effect.void, which runs nothing,
-// from the statement it stands in, or nil.
+// voidRewrite removes an unobserved no-op or keeps its value in expression
+// contexts. Match arms and do completions have parser-created statement
+// wrappers; their source still needs an expression.
 func voidRewrite(c *checker.Checker, file *ast.SourceFile, site *ast.Node) *formRewrite {
 	operand := tryOperand(site)
-	if operand == nil || !ast.IsPropertyAccessExpression(operand) || !isEffectFunction(c, operand, "Effect", "void") {
+	if operand == nil || !ast.IsPropertyAccessExpression(operand) || !isEffectFunction(c, operand, "Effect", "void", "undefined") {
 		return nil
 	}
+	// Dropping the program must not discard a receiver call/getter or a
+	// comment embedded in the expression. Leave such sites to the author.
+	if !isNamespaceValue(c, operand.Expression()) || hasComment(file.Text()[nodeStart(file, site):site.End()]) {
+		return nil
+	}
+	zero := "undefined"
+	if shadowed(site, "undefined") {
+		zero = "(void 0)"
+	}
+	value := zero
+	if operand.Name().Text() == "void" {
+		// A void success is not an undefined success in an inferred API.
+		// Parentheses keep the assertion local in larger expressions.
+		value = "(" + zero + " as void)"
+	}
+	edit := sourceEdit{nodeStart(file, site), site.End(), value}
 	statement := site.Parent
-	var edit sourceEdit
 	switch {
-	case ast.IsExpressionStatement(statement) && ast.IsBlock(statement.Parent):
+	case ast.IsExpressionStatement(statement) && ast.IsBlock(statement.Parent) &&
+		nodeStart(file, statement) == nodeStart(file, site):
 		edit = sourceEdit{nodeStart(file, statement), statement.End(), ""}
 		text := file.Text()
 		for edit.end < len(text) && (text[edit.end] == ' ' || text[edit.end] == ';') {
@@ -199,11 +217,16 @@ func voidRewrite(c *checker.Checker, file *ast.SourceFile, site *ast.Node) *form
 			edit.end++
 		}
 	case ast.IsReturnStatement(statement):
-		edit = sourceEdit{statement.Expression().Pos(), site.End(), ""}
-	default:
-		return nil
+		token := scanner.GetRangeOfTokenAtPosition(file, nodeStart(file, statement))
+		if file.Text()[token.Pos():token.End()] == "return" {
+			if operand.Name().Text() == "void" {
+				edit = sourceEdit{statement.Expression().Pos(), site.End(), ""}
+			} else {
+				edit.text = zero
+			}
+		}
 	}
-	return withImportRemovals(c, file, &formRewrite{edits: []sourceEdit{edit}, description: "the statement without Effect.void"})
+	return withImportRemovals(c, file, &formRewrite{edits: []sourceEdit{edit}, description: "the value without a no-op Effect"})
 }
 
 // triedCatchRewrite plans the removal of the try around a catch expression,
