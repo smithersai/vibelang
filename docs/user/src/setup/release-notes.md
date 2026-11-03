@@ -166,6 +166,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Migration regression checks could reject a preserving empty-trust rewrite after prelude cleanup shortened `Effect.orDie` to `orDie`. They now accept either spelling while retaining declaration and execution checks.
 
+- Packed packages could leave private emitted imports pointing at compatibility declarations that were absent from the archive. Publication now maps each exact source to the package’s regular built declarations while preserving its runtime targets.
 - Documentation checks accepted throws in synchronous arrows whose parameter was named `effect`; they now apply the same rule after parameter renaming.
 - No-throw validation incorrectly failed after a plain catch handler became an effect handler; its regression fixtures now use catch's existing join point without a redundant `try`.
 - Migration setup could leave a nested workspace consumer on `tsc` when a semver peer or npm alias resolved to migrated workspace sources. Setup now follows installed workspace links for compiler, test-runner and worker wiring while respecting nearer registry packages.

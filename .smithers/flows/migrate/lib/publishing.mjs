@@ -48,6 +48,44 @@ export function rewritePublishingScript(text, ts, fileName = "pack.ts") {
     while (node && (ts.isParenthesizedExpression(node) || ts.isAsExpression(node) || ts.isSatisfiesExpression(node))) node = node.expression
     return node
   }
+  const isJS = /\.[cm]?jsx?$/.test(fileName)
+  const normalization = (expression, imports = false) => {
+    const key = imports && expression === "key" ? "__vibelangKey" : "key"
+    const target = imports && expression === "target" ? "__vibelangTarget" : "target"
+    const parameter = isJS ? "[" + key + ", " + target + "]" : "[" + key + ", " + target + "]: [string, unknown]"
+    const explicit = target + ' !== null && typeof ' + target + ' === "object" && "vibelang-source" in ' + target + ' && typeof ' + target + '["vibelang-source"] === "string"'
+    const paired = target + ' !== null && typeof ' + target + ' === "object" && "default" in ' + target + ' && typeof ' + target + '.default === "string" && ' + target + '.default.endsWith(".vibe") && "types" in ' + target + ' && ' + target + '.types === ' + target + '.default.slice(0, -5) + ".d.vibe.ts"'
+    let value = explicit + " ? " + target + '["vibelang-source"] : ' + paired + " ? " + target + ".default : " + target
+    // Only the owning migration condition supplies a types source. Runtime
+    // conditions retain the repository's own publication mapping policy.
+    if (imports) value = key + ' === "types" && typeof ' + expression + '["vibelang-source"] === "string" ? ' + expression + '["vibelang-source"] : ' + value
+    return "Object.fromEntries(Object.entries(" + expression + ").map((" + parameter + ") => [" + key + ", " + value + "]))"
+  }
+  const shape = (node) => {
+    node = unwrap(node)
+    if (ts.isIdentifier(node) || ts.isStringLiteralLike(node) || ts.isNumericLiteral(node)) return [node.kind, node.text]
+    const children = []
+    ts.forEachChild(node, child => { children.push(shape(child)) })
+    return [node.kind, ...children]
+  }
+  const expressionNode = (text) => ts.createSourceFile("publication-normalizer.ts", "const normalized = (" + text + ");", ts.ScriptTarget.Latest, true)
+    .statements[0].declarationList.declarations[0].initializer
+  // Recognize only our exact old/new expression, independent of formatter
+  // trivia, parentheses, casts and quote style. Unrelated maps stay opaque.
+  const originalArgument = (argument) => {
+    const call = unwrap(argument)
+    if (!ts.isCallExpression(call) || !property(call.expression, "fromEntries") ||
+        !ts.isIdentifier(call.expression.expression) || call.expression.expression.text !== "Object" || call.arguments.length !== 1) return argument
+    const map = unwrap(call.arguments[0])
+    if (!ts.isCallExpression(map) || !property(map.expression, "map")) return argument
+    const entries = unwrap(map.expression.expression)
+    if (!ts.isCallExpression(entries) || !property(entries.expression, "entries") ||
+        !ts.isIdentifier(entries.expression.expression) || entries.expression.expression.text !== "Object" ||
+        entries.arguments.length !== 1 || !qualified(entries.arguments[0])) return argument
+    const original = entries.arguments[0], expression = original.getText(source)
+    const actual = JSON.stringify(shape(call))
+    return [false, true].some(imports => actual === JSON.stringify(shape(expressionNode(normalization(expression, imports))))) ? original : argument
+  }
   const addFunction = (name, fn, binding = fn) => {
     const named = functions.get(name) || []
     named.push(fn)
@@ -129,7 +167,7 @@ export function rewritePublishingScript(text, ts, fileName = "pack.ts") {
       const callback = node.arguments[0]
       if (ts.isCallExpression(entries) && entries.arguments.length === 1 &&
           property(entries.expression, "entries") && ts.isIdentifier(entries.expression.expression) &&
-          entries.expression.expression.text === "Object" && ((property(entries.arguments[0], "exports") && qualified(entries.arguments[0])) || importsConditions(entries.arguments[0])) &&
+          entries.expression.expression.text === "Object" && ((property(originalArgument(entries.arguments[0]), "exports") && qualified(originalArgument(entries.arguments[0]))) || importsConditions(originalArgument(entries.arguments[0]))) &&
           ts.isArrowFunction(callback) && callback.parameters.length === 1) {
         const binding = callback.parameters[0].name
         if (ts.isArrayBindingPattern(binding) && binding.elements.length === 2 && binding.elements[0].name && binding.elements[1].name && ts.isIdentifier(binding.elements[0].name) && ts.isIdentifier(binding.elements[1].name)) {
@@ -148,7 +186,7 @@ export function rewritePublishingScript(text, ts, fileName = "pack.ts") {
           }
           scan(callback.body)
           if (guards.length || outputs.length) {
-            maps.push({ argument: entries.arguments[0], guards })
+            maps.push({ argument: entries.arguments[0], original: originalArgument(entries.arguments[0]), guards })
             literals.push(...outputs)
           }
         }
@@ -158,14 +196,12 @@ export function rewritePublishingScript(text, ts, fileName = "pack.ts") {
   }
   visit(source)
   if (!literals.length || !maps.length) return { text, changed: false }
-  const isJS = /\.[cm]?jsx?$/.test(fileName)
-  for (const { argument, guards } of maps) {
-    const expression = argument.getText(source)
-    const parameter = isJS ? "[key, target]" : "[key, target]: [string, unknown]"
-    const explicit = 'target !== null && typeof target === "object" && "vibelang-source" in target && typeof target["vibelang-source"] === "string"'
-    const paired = 'target !== null && typeof target === "object" && "default" in target && typeof target.default === "string" && target.default.endsWith(".vibe") && "types" in target && target.types === target.default.slice(0, -5) + ".d.vibe.ts"'
-    const normalized = `Object.fromEntries(Object.entries(${expression}).map((${parameter}) => [key, ${explicit} ? target["vibelang-source"] : ${paired} ? target.default : target]))`
-    edits.push({ start: argument.getStart(source), end: argument.end, text: isJS ? normalized : `(${normalized} as typeof ${expression})` })
+  for (const { argument, original, guards } of maps) {
+    const expression = original.getText(source)
+    const normalized = normalization(expression, importsConditions(original))
+    if (JSON.stringify(shape(argument)) !== JSON.stringify(shape(expressionNode(normalized)))) {
+      edits.push({ start: argument.getStart(source), end: argument.end, text: isJS ? normalized : "(" + normalized + " as typeof " + expression + ")" })
+    }
     literals.push(...guards)
   }
   for (const literal of new Set(literals)) {
@@ -173,6 +209,7 @@ export function rewritePublishingScript(text, ts, fileName = "pack.ts") {
     const expanded = literal.text === "/\\.ts$/" ? "/\\.(?:ts|vibe)$/" : "/\\.(?:tsx?|vibe)$/"
     edits.push({ start: literal.getStart(source), end: literal.end, text: expanded })
   }
+  if (!edits.length) return { text, changed: false }
   edits.sort((a, b) => b.start - a.start)
   for (const edit of edits) text = text.slice(0, edit.start) + edit.text + text.slice(edit.end)
   return { text, changed: true }

@@ -15,6 +15,8 @@ its `default` export, as it does without the plugin. A workspace package
 that mixes `.ts` and `.vibe` modules therefore uses one source graph, even
 when its default export points at emitted JavaScript under `.vibelang/js`.
 
+The migration flow keeps bundled private imports as exact source entries. When a publication helper maps them to build output, its `types` condition selects the package’s regular declarations in its own output directory. Compatibility sidecars under `.vibe/declarations/` are for source checking and need not be packed. Runtime import targets and declaration contents stay unchanged.
+
 
 ## 1. Add the plugin to Vite
 

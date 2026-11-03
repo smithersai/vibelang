@@ -1416,7 +1416,7 @@ export async function emitMigratedJs(config, t, logs) {
     emitted.push({ package: pkg.dir, files: result.files, code: result.code, exportsChanged, runtimeRouting, packingFiles, loaderRecords: [], diagnostics: result.diagnostics })
   }
   // Routing edits TypeScript the loader records name, so it comes first.
-  const routed = config.routeBundledImports ? routeBundledImports({ root: t, packages: config.packages, ts: typeScriptOf(config) }) : null
+  const routed = config.routeBundledImports ? routeBundledImports({ root: t, packages: config.packages, ts: typeScriptOf(config), compiler: compilerOf(config) }) : null
   // A restored package emitted nothing and gets no record, as before.
   const recorded = emitted.filter((entry) => !entry.restored)
   for (const entry of recorded) entry.loaderRecords = await writeLoaderRecords({ compiler: compilerOf(config), packageDir: join(t, entry.package), root: t })
@@ -1723,7 +1723,7 @@ export async function revertMany(options) {
   const aliases = aliasesOf(config)
   const requests = options.files ?? []
   if (!requests.length) throw new Error("revert needs at least one file")
-  if (config.routeBundledImports) routeBundledImports({ root: config.target, packages: config.packages, ts: typeScriptOf(config), restore: true })
+  if (config.routeBundledImports) routeBundledImports({ root: config.target, packages: config.packages, ts: typeScriptOf(config), compiler: compilerOf(config), restore: true })
   const seen = new Set(), prepared = []
   for (const item of requests) {
     const { file, reason = options.reason } = typeof item === "string" ? { file: item } : item

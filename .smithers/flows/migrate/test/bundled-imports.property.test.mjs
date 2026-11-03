@@ -51,7 +51,15 @@ test("opencode core: a route changes the bundled value edges and nothing else, a
     assert.equal(readFileSync(join(root, "src/free.ts"), "utf8"), before["src/free.ts"])
     for (const file of Object.keys(corpus.tests)) assert.equal(readFileSync(join(root, file), "utf8"), before[file])
     const manifest = JSON.parse(readFileSync(join(root, "package.json"), "utf8"))
-    assert.deepEqual(manifest.imports["#vibelang/emitted/*"], { types: "./*.d.vibe.ts", "vibelang-source": "./*.vibe", default: "./.vibelang/js/*.js" })
+    assert.equal(manifest.imports["#vibelang/emitted/*"], undefined)
+    for (const source of corpus.routed) {
+      const path = source.replace(/\.vibe$/, "")
+      assert.deepEqual(manifest.imports["#vibelang/emitted/" + path], {
+        types: "./" + path + ".d.vibe.ts",
+        "vibelang-source": "./" + source,
+        default: "./.vibelang/js/" + path + ".js"
+      })
+    }
     assert.equal(manifest.imports["#sqlite"], "./src/sqlite.js")
     const after = snapshot(root)
     assert.deepEqual(routeBundledImports({ root, packages, ts }).changed, [], "a second route changes nothing")
@@ -135,4 +143,23 @@ test("bundled-import-routes: only reached value edges move; tests and restore ho
     } finally { rmSync(root, { recursive: true, force: true }) }
     }
   })
+})
+
+test("a native importer migrated later keeps its exact route through native Vibe syntax", () => {
+  const root = fixture()
+  const compiler = process.env.VIBELANG_NATIVE_COMPILER || join(repo, "packages/compiler/native/vibelang")
+  assert.ok(existsSync(compiler), "native compiler required for Vibe import routing")
+  try {
+    routeBundledImports({ root, packages, ts, compiler })
+    const native = "src/database/database.ts", vibe = "src/database/database.vibe"
+    const routed = readFileSync(join(root, native), "utf8")
+    put(root, vibe, routed)
+    rmSync(join(root, native))
+    const before = readFileSync(join(root, "package.json"), "utf8")
+    assert.deepEqual(routeBundledImports({ root, packages, ts, compiler }).changed, [])
+    assert.equal(readFileSync(join(root, "package.json"), "utf8"), before)
+    routeBundledImports({ root, packages, ts, compiler, restore: true })
+    assert.match(readFileSync(join(root, vibe), "utf8"), /from "\.\/count\.vibe"/)
+    assert.equal(JSON.parse(readFileSync(join(root, "package.json"), "utf8")).imports["#sqlite"], "./src/sqlite.js")
+  } finally { rmSync(root, { recursive: true, force: true }) }
 })
