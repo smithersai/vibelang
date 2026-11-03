@@ -34,8 +34,7 @@ var legacyDeclared = map[int32]string{
 	2112: "lane del-rest",                                                                                                                                                 // diagnostics.go
 	2113: "lane del-2",                                                                                                                                                    // diagnostics.go
 	2114: "lane del-rest",                                                                                                                                                 // catch_expressions.go
-	2115: "lane del-rest; declaration only: no emission since VIP-1 deleted factory call-time bodies",                                                                     // diagnostics.go
-	2116: "lane del-rest; declaration only: no emission since VIP-1 deleted factory call-time bodies",                                                                     // diagnostics.go
+	2115: "lane gate6-codes; declaration only: native check removed; stock TypeScript mapper still emits EK2115",                                                          // diagnostics.go
 	2118: "lane del-rest",                                                                                                                                                 // diagnostics.go
 	2119: "lane d-handlers",                                                                                                                                               // handle_results.go
 	2120: "lane del-2",                                                                                                                                                    // declaration_forms.go

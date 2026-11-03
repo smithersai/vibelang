@@ -1137,7 +1137,7 @@ The existing `//:spec-registry` checks VIP authority and citations in specificat
 chapters; it does not inventory every compiler message declaration.
 
 This target is exclusive and omitted from normal wildcard test runs while `fold-details` folds the complete Appendix B
-inventory from `gate6-codes`. Its mutation tests already run in
+inventory from `gate6-codes`. Its mutation tests and the unused-factory-diagnostic retirement properties run in
 `//:spec-linters-test`. To require the real inventory, fold the missing rows,
 regenerate compiler category/doc projections, run
 `node docs/tools/diagnostic-identity.mjs` with zero findings, remove

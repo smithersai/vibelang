@@ -508,8 +508,10 @@ const vibelangTopicTargets = Object.fromEntries(
 // gate selection reaches these dependencies without a pre-gate change.
 const specInputs = S.Filegroup({ srcs: [...S.glob([
   "docs/design/**", "docs/tools/spec-rules*", "docs/tools/spec-examples*", "docs/tools/spec-lint*",
-  "docs/tools/package.json", "docs/tools/bun.lock", "docs/maintainers/build.md", "docs/user/src/getting-started/012-devtools.md",
-  "docs/tools/diagnostic-identity*", "docs/tools/property-regressions/gate6-ek4804.json", "docs/tools/property-regressions/gate6-mapper-ek2115.json", "PACKAGE.ts",
+  "docs/tools/package.json", "docs/tools/bun.lock", "docs/maintainers/build.md",
+  "docs/tools/diagnostic-identity*", "docs/tools/factory-diagnostic-retirement.test.mjs",
+  "docs/tools/property-regressions/gate6-ek4804.json", "docs/tools/property-regressions/gate6-mapper-ek2115.json", "typescript/tsc/internal/vibelang/diagnostics.go",
+  "docs/user/src/getting-started/012-devtools.md", "PACKAGE.ts",
   "typescript/tsc/internal/diagnostics/diagnosticMessages.json",
   "typescript/tsc/internal/tsoptions/declarations_generated.go"
 ])] })
@@ -555,7 +557,7 @@ const specExamples = S.Shell.Test({
 })
 const specLinterTests = S.Shell.Test({
   summary: "Historical spec defects, seeded properties and native example checks reject regressions.",
-  shell: "node --test docs/tools/spec-rules.test.mjs docs/tools/spec-examples-compiler.test.mjs docs/tools/diagnostic-identity.test.mjs && cd docs/tools && bun test --timeout 60000 spec-lint.test.ts",
+  shell: "node --test docs/tools/spec-rules.test.mjs docs/tools/spec-examples-compiler.test.mjs docs/tools/diagnostic-identity.test.mjs docs/tools/factory-diagnostic-retirement.test.mjs && cd docs/tools && bun test --timeout 60000 spec-lint.test.ts",
   data: [specInputs, Packages["compiler-native"], Packages["runtime-dist"]] as Array<never>,
   tools: [node, bun], sandbox: "none", timeout: "5m"
 })
