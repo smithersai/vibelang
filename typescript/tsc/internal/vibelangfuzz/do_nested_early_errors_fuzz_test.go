@@ -23,10 +23,11 @@ func FuzzDoNestedEarlyErrors(f *testing.F) {
 	startShortBudget(f)
 	chapterSays(f, "900-appendices.md", doLoopHeadQuote)
 	chapterSays(f, "002-running.md", nestedDoParameterQuote)
-	keys := []string{"break", "continue", "label", "parameter", "pattern", "parameter-match", "parameter-do-match", "match-break", "match-continue", "match-local", "local", "function", "class", "enclosing", "nested-local"}
+	keys := []string{"break", "continue", "label", "parameter", "pattern", "array-pattern", "arrow-parameter", "method-parameter", "constructor-parameter", "parameter-match", "parameter-do-match", "match-break", "match-continue", "match-local", "local", "function", "class", "enclosing", "nested-local"}
 	for _, key := range keys {
 		f.Add(key, uint8(1), uint8(0))
 		f.Add(key, uint8(3), uint8(1))
+		f.Add(key, uint8(2), uint8(2))
 	}
 	f.Fuzz(func(t *testing.T, key string, depth, head uint8) {
 		if !slices.Contains(keys, key) {
@@ -39,7 +40,7 @@ func FuzzDoNestedEarlyErrors(f *testing.F) {
 			body = "continue; []"
 		case "label":
 			body = "break a; []"
-		case "parameter", "pattern", "parameter-match", "parameter-do-match":
+		case "parameter", "pattern", "array-pattern", "arrow-parameter", "method-parameter", "constructor-parameter", "parameter-match", "parameter-do-match":
 			body, want = "var v = 1; v", parser.DoParameterVarCode
 		case "local", "match-local":
 			body, want = "while (true) { break; } []", 0
@@ -63,6 +64,14 @@ func FuzzDoNestedEarlyErrors(f *testing.F) {
 		switch key {
 		case "parameter", "function", "class":
 			source = "function f(x = " + body + ") {}"
+		case "array-pattern":
+			source = "function f([x = " + body + "] = []) {}"
+		case "arrow-parameter":
+			source = "const f = (x = " + body + ") => x"
+		case "method-parameter":
+			source = "class C { m(x = " + body + ") {} }"
+		case "constructor-parameter":
+			source = "class C { constructor(x = " + body + ") {} }"
 		case "pattern":
 			source = "function f({x = " + body + "} = {}) {}"
 		case "parameter-match":

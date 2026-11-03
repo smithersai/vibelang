@@ -1,0 +1,13 @@
+// expect: EK0205 EK0205 EK0205 EK0205 EK0205 EK0203 EK0203 EK0203 EK0203
+// RC-32 / VIP-2: source do nesting keeps the surrounding loop and parameter.
+export function probe(): void { while (do { (do { break; true }) }) {} }
+export function forOf(): void { for (const x of do { (do { break; [] }) }) {} }
+export function forIn(): void { for (const x in do { (do { continue; ({}) }) }) {} }
+export function forOfLabel(): void { a: b: for (const x of do { (do { break a; [] }) }) {} }
+export function forInLabel(): void { a: b: for (const x in do { (do { continue a; ({}) }) }) {} }
+export function arrayParameter([x = do { (do { var v = 1; v }) }] = []): unknown { return x }
+export const arrowParameter = (x = do { (do { var v = 1; v }) }): unknown => x
+export class Parameters {
+  constructor(x = do { (do { var v = 1; v }) }) {}
+  method(x = do { (do { var v = 1; v }) }): unknown { return x }
+}

@@ -1,0 +1,4 @@
+go test fuzz v1
+string("array-pattern")
+byte(3)
+byte(0)
