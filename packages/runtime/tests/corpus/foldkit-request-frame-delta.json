@@ -1,0 +1,29 @@
+{
+  "repo": "foldkit",
+  "pattern": "requestAnimationFrame timestamp can precede subscription in the same frame",
+  "start": 100,
+  "schedules": [
+    [
+      -1
+    ],
+    [
+      0
+    ],
+    [
+      -1,
+      0,
+      1
+    ],
+    [
+      16,
+      -2,
+      20
+    ],
+    [
+      0,
+      0,
+      -50,
+      50
+    ]
+  ]
+}

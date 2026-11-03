@@ -81,8 +81,8 @@ export interface Animations {
    */
   readonly nextFrameUnless: (register: (resume: () => void) => (() => void) | undefined) => Effect.Effect<void>
   /**
-   * The milliseconds since the previous frame, once a frame; the first is since
-   * the Stream started. The browser pauses frames in a hidden tab, so a delta
+   * The milliseconds since the previous frame, once a frame, never negative; the
+   * first is since the Stream started. The browser pauses frames in a hidden tab, so a delta
    * after one can be seconds long. Ending the Stream cancels the next frame.
    */
   readonly frameDeltas: Stream.Stream<number>
@@ -134,7 +134,8 @@ export const make = (host: Host): Animations => {
         Effect.sync(() => {
           const state = { id: 0, last: host.now() }
           const tick = (time: number): void => {
-            Queue.offerUnsafe(queue, time - state.last)
+            // A timestamp is when the frame began, so one can precede a Stream that started during that frame.
+            Queue.offerUnsafe(queue, Math.max(0, time - state.last))
             state.last = time
             state.id = host.requestAnimationFrame(tick)
           }

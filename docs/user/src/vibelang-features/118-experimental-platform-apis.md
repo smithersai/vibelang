@@ -294,7 +294,7 @@ export effect function closeMenu() {
 | `animations.frameDeltas` | a `Stream` of the milliseconds between frames | a loop of `requestAnimationFrame` |
 | `try animations.settled(selector)` | nothing, once the element's animations and transitions end | `element.getAnimations()`, then each `finished` |
 
-Interrupting `nextFrame` cancels its frame, and ending `frameDeltas` cancels the next one. The first delta is the time since the Stream started. The browser pauses frames in a hidden tab, so a delta can be seconds long.
+Interrupting `nextFrame` cancels its frame, and ending `frameDeltas` cancels the next one. The first delta is the time since the Stream started, and no delta is negative, though a frame's timestamp can precede a Stream that started during that frame. The browser pauses frames in a hidden tab, so a delta can be seconds long.
 
 `settled` waits a frame, so styles set just before it apply, then waits for the first element that matches `selector`, and completes when none does. A cancelled animation counts as ended, and one with infinite iterations never ends. A selector the browser rejects is a defect.
 

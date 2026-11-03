@@ -222,6 +222,31 @@ test("Animations: frameDeltas gives the time since the last frame, the first sin
   }), { numRuns: 50 })
 })
 
+test("Animations: frameDeltas is never negative, though a frame's timestamp can precede the Stream's start", async () => {
+  const corpus = await Bun.file(new URL("./corpus/foldkit-request-frame-delta.json", import.meta.url)).json()
+  const check = async (steps: number[]) => {
+    const { fireFrames, frames, host, log } = fakeHost(() => null)
+    const stream = Animations.make(host).frameDeltas
+    expect(frames.size).toBe(0)
+    const deltas = await Effect.runPromise(Effect.gen(function*() {
+      const fiber = yield* Effect.forkChild(Stream.runCollect(Stream.take(stream, steps.length)))
+      let time = 100
+      for (const step of steps) {
+        yield* until(() => frames.size === 1)
+        time += step
+        fireFrames(time)
+      }
+      return yield* Fiber.join(fiber)
+    }))
+    expect(deltas).toEqual(steps.map((step) => step < 0 ? 0 : step))
+    expect(frames.size).toBe(0)
+    expect(log.at(-1)).toBe("cancel")
+  }
+  for (const steps of corpus.schedules) await check(steps)
+  await fc.assert(fc.asyncProperty(fc.array(fc.integer({ min: -1000, max: 1000 }),
+    { minLength: 1, maxLength: 12 }), check), { seed: 7315, numRuns: 200 })
+})
+
 test("Animations: the browser layer reads the host when a member runs", async () => {
   const host = globalThis as { requestAnimationFrame?: unknown; cancelAnimationFrame?: unknown; document?: unknown }
   const frame = Effect.flatMap(Effect.service(Animations.Animations), (animations) => animations.nextFrame)
