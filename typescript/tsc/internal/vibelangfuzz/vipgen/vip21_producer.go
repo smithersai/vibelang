@@ -1,6 +1,7 @@
 package vipgen
 
 import (
+	"fmt"
 	"slices"
 	"strings"
 )
@@ -273,7 +274,10 @@ func init() {
 			g.UseEffect()
 			g.UseModule("Stream", true)
 			g.UseModule("Queue", false)
-			return []Stmt{&catchEdge{vibe: "class Base { value() { return 2 } }; class C extends Base { n = 5; effect *values() { ev(\"yield\" + this.n); yield this.n; try Effect.sleep(1); yield super.value() } }; const c = new C(); const stream = c.values(); ev(\"created\"); c.n = 7; const first = try Stream.runCollect(stream); c.n = 9; const second = try Stream.runCollect(stream); return [first, second]", ref: "class Base { value() { return 2 } }; class C extends Base { n = 5; values() { const self = this; const parentValue = () => super.value(); return Stream.callback(q => Effect.gen(function* () { ev(\"yield\" + self.n); yield* Queue.offer(q, self.n); yield* Effect.sleep(1); yield* Queue.offer(q, parentValue()) }).pipe(Effect.andThen(Queue.end(q))), { bufferSize: 1, strategy: \"suspend\" }) } }; const c = new C(); const stream = c.values(); ev(\"created\"); c.n = 7; const first = yield* Stream.runCollect(stream); c.n = 9; const second = yield* Stream.runCollect(stream); return [first, second]"}}
+			initial, first, second, parent := g.Intn(20), 1+g.Intn(20), 21+g.Intn(20), g.Intn(10)
+			vibe := fmt.Sprintf("class Base { value() { return %d } }; class C extends Base { n = %d; effect *values() { ev(\"yield\" + this.n); yield this.n; try Effect.sleep(1); yield super.value() } }; const c = new C(); const stream = c.values(); ev(\"created\"); c.n = %d; const first = try Stream.runCollect(stream); c.n = %d; const second = try Stream.runCollect(stream); return [first, second]", parent, initial, first, second)
+			ref := fmt.Sprintf("class Base { value() { return %d } }; class C extends Base { n = %d; values() { const self = this; const parentValue = () => super.value(); return Stream.callback(q => Effect.gen(function* () { ev(\"yield\" + self.n); yield* Queue.offer(q, self.n); yield* Effect.sleep(1); yield* Queue.offer(q, parentValue()) }).pipe(Effect.andThen(Queue.end(q))), { bufferSize: 1, strategy: \"suspend\" }) } }; const c = new C(); const stream = c.values(); ev(\"created\"); c.n = %d; const first = yield* Stream.runCollect(stream); c.n = %d; const second = yield* Stream.runCollect(stream); return [first, second]", parent, initial, first, second)
+			return []Stmt{&catchEdge{vibe: vibe, ref: ref}}
 		},
 	})
 }

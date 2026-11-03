@@ -1,0 +1,25 @@
+// expect-result: [[[7,2],[9,2]],["0","created","yield7","yield9"]]
+import { Effect, Stream } from "effect"
+
+export effect function main(): readonly unknown[]!never!never {
+  const events: string[] = []
+  events.push("0")
+  class Base { value() { return 2 } }
+  class C extends Base {
+    n = 5
+    effect *values() {
+      events.push("yield" + this.n)
+      yield this.n
+      try Effect.sleep(1)
+      yield super.value()
+    }
+  }
+  const c = new C()
+  const stream = c.values()
+  events.push("created")
+  c.n = 7
+  const first = try Stream.runCollect(stream)
+  c.n = 9
+  const second = try Stream.runCollect(stream)
+  return [[first, second], events]
+}

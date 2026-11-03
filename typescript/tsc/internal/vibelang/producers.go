@@ -33,16 +33,18 @@ import (
 // two elements ahead of its consumer (VIP-21). To TypeScript, and to
 // every caller, a producer is therefore a function that returns
 // Stream<T, E, R>: T joins the types of its yields, and E and R are what its
-// body can fail with and needs. Generator methods stay JavaScript's.
+// body can fail with and needs. A method marked effect is a producer too;
+// unmarked generator methods stay JavaScript's (VIP-21).
 //
 // VIP-20: for try consumes a Stream with Stream.runForEachWhile.
 // Ordinary for...of always retains its JavaScript iterator meaning.
 
 // isProducer reports whether fn is a producer: a function* declaration or
 // function expression, not async, with a body, in a .vibe file, without
-// a JavaScript iterator return annotation (D271, amending D26).
+// a JavaScript iterator return annotation (D271, amending D26). VIP-21
+// also admits an explicitly marked generator method.
 func isProducer(fn *ast.Node) bool {
-	if fn.Kind != ast.KindFunctionDeclaration && fn.Kind != ast.KindFunctionExpression || fn.Body() == nil {
+	if fn.Kind != ast.KindFunctionDeclaration && fn.Kind != ast.KindFunctionExpression && !(fn.Kind == ast.KindMethodDeclaration && isMarkedEffect(fn)) || fn.Body() == nil {
 		return false
 	}
 	flags := ast.GetFunctionFlags(fn)
@@ -361,6 +363,9 @@ func (tx *lowering) visitProducer(node *ast.Node) *ast.Node {
 	var lowered *ast.Node
 	if node.Kind == ast.KindFunctionDeclaration {
 		lowered = f.UpdateFunctionDeclaration(node.AsFunctionDeclaration(), node.Modifiers(), nil /*asteriskToken*/, node.Name(), nil /*typeParameters*/, parameters, nil /*type*/, nil /*fullSignature*/, block)
+	} else if node.Kind == ast.KindMethodDeclaration {
+		method := node.AsMethodDeclaration()
+		lowered = f.UpdateMethodDeclaration(method, node.Modifiers(), nil /*asteriskToken*/, node.Name(), method.PostfixToken, method.TypeParameters, parameters, method.Type, method.FullSignature, block)
 	} else {
 		lowered = f.UpdateFunctionExpression(node.AsFunctionExpression(), node.Modifiers(), nil /*asteriskToken*/, node.Name(), nil /*typeParameters*/, parameters, nil /*type*/, nil /*fullSignature*/, block)
 	}

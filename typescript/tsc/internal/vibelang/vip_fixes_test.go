@@ -16,7 +16,7 @@ func TestVIPCodemodCases(t *testing.T) {
 		t.Fatal(err)
 	}
 	cases := filepath.Join(root, "typescript/vibelang/cases")
-	for _, name := range []string{"producer-return-value"} {
+	for _, name := range []string{"producer-return-value", "producer-method-return-value"} {
 		t.Run(name, func(t *testing.T) {
 			result := fixCase(t, copyCompilerFixture(t, filepath.Join(cases, name+".fail"), root))
 			if len(result.Refused) != 0 || len(result.Files) != 1 {

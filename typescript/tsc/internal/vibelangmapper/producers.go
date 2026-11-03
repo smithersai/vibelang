@@ -18,13 +18,13 @@ import (
 // the Stream's E and R, and leaves any other iterable as it is (D26).
 
 // isProducer reports whether node is a producer: a generator function
-// declaration with a body, not async, without a JavaScript iterator contract.
+// declaration or explicitly marked method with a body, not async, without
+// a JavaScript iterator contract (VIP-21).
 func isProducer(node *ast.Node) bool {
-	if node.Kind != ast.KindFunctionDeclaration || node.Flags&ast.NodeFlagsReparsed != 0 {
+	if node.Kind != ast.KindFunctionDeclaration && !(node.Kind == ast.KindMethodDeclaration && node.Flags&ast.NodeFlagsVibeLangEffect != 0) || node.Flags&ast.NodeFlagsReparsed != 0 {
 		return false
 	}
-	fn := node.AsFunctionDeclaration()
-	return fn.Body != nil && fn.AsteriskToken != nil && !ast.HasSyntacticModifier(node, ast.ModifierFlagsAsync) && !HasJavaScriptIteratorReturn(node)
+	return node.Body() != nil && node.BodyData().AsteriskToken != nil && !ast.HasSyntacticModifier(node, ast.ModifierFlagsAsync) && !HasJavaScriptIteratorReturn(node)
 }
 
 // HasJavaScriptIteratorReturn recognizes D271's explicit JavaScript iterator
@@ -50,14 +50,13 @@ func HasJavaScriptIteratorReturn(fn *ast.Node) bool {
 // producerDeclaration lowers a producer to the function that returns its
 // Stream.
 func (p *projector) producerDeclaration(node *ast.Node) {
-	fn := node.AsFunctionDeclaration()
-	body := fn.Body
+	body := node.Body()
 	open := p.tokenStart(body)
 	closing := body.End() - 1
 	if open >= len(p.text) || p.text[open] != '{' || closing <= open || p.text[closing] != '}' {
 		return
 	}
-	asterisk := fn.AsteriskToken
+	asterisk := node.BodyData().AsteriskToken
 	p.plan.replace(p.tokenStart(asterisk), asterisk.End(), "")
 	node.ForEachChild(func(child *ast.Node) bool {
 		if child != body && child != asterisk {
@@ -146,4 +145,33 @@ func (p *projector) forOfStatement(node *ast.Node, e env) {
 	p.visit(expression, e)
 	p.plan.mark(editEach, partClose, expression.End(), expression.End(), kind)
 	p.visit(statement.Statement, e)
+}
+
+// producerMethodMarks keeps the syntax-selected producer form when the
+// projector blanks VIP keywords and reparses. Body positions do not change.
+func producerMethodMarks(file *ast.SourceFile) map[int]bool {
+	marks := map[int]bool{}
+	var visit func(*ast.Node) bool
+	visit = func(node *ast.Node) bool {
+		if node.Kind == ast.KindMethodDeclaration && node.Body() != nil && node.Flags&ast.NodeFlagsVibeLangEffect != 0 && ast.GetFunctionFlags(node)&ast.FunctionFlagsGenerator != 0 {
+			marks[node.Body().Pos()] = true
+		}
+		return node.ForEachChild(visit)
+	}
+	visit(file.AsNode())
+	return marks
+}
+
+func restoreProducerMethodMarks(file *ast.SourceFile, marks map[int]bool) {
+	if len(marks) == 0 {
+		return
+	}
+	var visit func(*ast.Node) bool
+	visit = func(node *ast.Node) bool {
+		if node.Kind == ast.KindMethodDeclaration && node.Body() != nil && marks[node.Body().Pos()] {
+			node.Flags |= ast.NodeFlagsVibeLangEffect
+		}
+		return node.ForEachChild(visit)
+	}
+	visit(file.AsNode())
 }

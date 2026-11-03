@@ -1,0 +1,32 @@
+// expect-result: [[10,20],[7],["secret"],[2,3],[4],8]
+import { Effect, Stream } from "effect"
+
+class Base {
+  protected effect *values<T>(value: T): Stream.Stream<T> { yield value }
+}
+class C extends Base {
+  protected override effect *values<T>(value: T): Stream.Stream<T> { yield value }
+  effect *#hidden() { yield "secret" }
+  public static effect *valuesStatic<T>(value: T): Stream.Stream<T> { yield value; return }
+  run() { return Stream.concat(this.values(10), this.values(20)) }
+  secret() { return this.#hidden() }
+}
+const key = "values"
+const object = {
+  n: 2,
+  effect *[key]() { yield this.n; try Effect.void; yield this.n + 1 }
+}
+class WithParameters {
+  effect *values({n}: {n: number} = {n: 4}) { yield n }
+  *native() { yield 8 }
+}
+export effect function main(): readonly unknown[]!never!never {
+  return [
+    try Stream.runCollect(new C().run()),
+    try Stream.runCollect(C.valuesStatic(7)),
+    try Stream.runCollect(new C().secret()),
+    try Stream.runCollect(object.values()),
+    try Stream.runCollect(new WithParameters().values()),
+    new WithParameters().native().next().value
+  ]
+}

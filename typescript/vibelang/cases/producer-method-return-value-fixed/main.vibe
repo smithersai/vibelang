@@ -1,0 +1,10 @@
+// expect-result: [[1],[3],[2,4]]
+
+export effect function main(): readonly unknown[]!never!never {
+  const events: number[] = []
+  class C { effect *values() { yield 1; { events.push(2); return } } }
+  const object = { effect *values() { yield 3; { events.push(4); return } } }
+  const first = try Stream.runCollect(new C().values())
+  const second = try Stream.runCollect(object.values())
+  return [first, second, events]
+}
