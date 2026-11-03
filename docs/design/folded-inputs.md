@@ -17,3 +17,11 @@ Folded: 1793656127-no-trusted-packages.patch (applied at docs/design/src/007-too
 Folded: 1793693643-sl18-fix-astra-2.patch (applied at docs/design/src/005-services.md:574)
 
 Will’s 2026-11-02 ruling and VIP-4 supersede the stale VIP-40 sentence that permitted an unannotated foreign call in plain code. Preserve explicit intrinsic/thunk annotations; neither the prelude nor an inventory grants package trust. The paired prelude bridge examples were already present.
+
+## fold continuation retirement without admitting handlers
+
+Folded: relic-control.patch (applied at docs/design/src/000-intro.md:78)
+
+Folded: relic-trusted-stale-legacy-inventory.patch (already stated at docs/design/src/000-intro.md:7)
+
+Will’s no-relics ruling governs retirement. Historical D-numbers are not authority and VIP-35 remains open; no new handler facility is introduced.
