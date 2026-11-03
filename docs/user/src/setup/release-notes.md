@@ -170,6 +170,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 
 - Module body declarations could escape discovery regression checks; fuzz coverage now compares rebuild input selection and overwrite protection with native TypeScript.
+- Editor fuzz checks treated a `schema error` declaration name as a reference and could reject empty completion replies; declared-reference probes now exclude those names and deduplicate source positions.
 - A service with a written shape annotation gained an extra public `Shape` namespace in its declarations. It now keeps the written shape directly and exposes no implicit namespace outside its own body.
 - Migration setup could add source-loader helpers to JavaScript CLI launches merely because later arguments were dynamic, introducing unnecessary install-time dependencies. Proven JavaScript entrypoints now keep their native launch; unknown and typed source entrypoints retain loader handling.
 - Rerunning migration setup could leave obsolete subprocess loader helpers in shell launchers. Setup now writes the validated cleanup even when no source child remains, preserving the native launch without adding loader dependencies.

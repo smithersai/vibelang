@@ -226,6 +226,23 @@ func (e *toolsEditor) requests(offsets []byte) {
 // in this project. A declaration's own name is a new-name completion context,
 // so probe its uses, where Chapter 28 promises in-scope editor answers.
 func (e *toolsEditor) declaredReferences() []int {
+	text := e.files[e.main]
+	// A lowered schema declaration can copy its name into a generated read.
+	// Classify the source token before visiting those reads: the same written
+	// name is still a declaration, where TypeScript permits an empty response.
+	names := map[int]bool{}
+	var collectNames func(*ast.Node) bool
+	collectNames = func(node *ast.Node) bool {
+		if node.Kind == ast.KindIdentifier && node.Parent != nil && ast.IsDeclarationName(node) {
+			start := node.End() - len(node.Text())
+			if start >= 0 && node.End() <= len(text) && text[start:node.End()] == node.Text() {
+				names[start] = true
+			}
+		}
+		return node.ForEachChild(collectNames)
+	}
+	e.r.SourceFile(e.main).AsNode().ForEachChild(collectNames)
+	seen := map[int]bool{}
 	checker, done := e.r.Program.GetTypeChecker(e.ctx)
 	defer done()
 	var positions []int
@@ -246,8 +263,9 @@ func (e *toolsEditor) declaredReferences() []int {
 					rel := strings.TrimPrefix(file.FileName().AsString(), filepath.ToSlash(e.r.Dir)+"/")
 					if _, own := e.files[rel]; own {
 						start := node.End() - len(node.Text())
-						if start >= 0 && e.files[e.main][start:node.End()] == node.Text() {
+						if start >= 0 && node.End() <= len(text) && text[start:node.End()] == node.Text() && !names[start] && !seen[start] {
 							positions = append(positions, start)
+							seen[start] = true
 						}
 						break
 					}

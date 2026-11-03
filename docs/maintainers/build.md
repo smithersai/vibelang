@@ -308,6 +308,8 @@ actual `no-unused-labels` rule.
 
 Dollar-prefixed bindings such as `$assertMatch` and `$freeze` are also deliberate source witnesses. The corpus compares a quoted name with the native `Identifier` at the diagnostic location, including its `synthesized` flag. A dollar name elsewhere in the file cannot excuse an unwritten helper. `packages/compiler/test/eslint-corpus-names.test.mjs` runs without the optional ESLint install; the standalone suite checks six real corpus shapes and generated names with the pinned unused-variable rule.
 
+The editor fuzz target's declared-reference probes use distinct source token positions and exclude declaration-name tokens, including copies made by lowering. Completion, hover and definition checks remain on selected source references; TypeScript permits an empty completion response at a declaration name. The source-selection regression covers native classes, errors and schema errors with ASCII/Unicode names and shifted source positions.
+
 ## Forms-table checks
 
 `//typescript:forms-generator` builds `typescript/built/local/vibelang-forms`
