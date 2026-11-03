@@ -1,0 +1,5 @@
+{
+  "file": "src/Trace.ts",
+  "source": "import * as ChildProcess from \"effect/process/ChildProcess\"\nexport function launch() { return ChildProcess.make(\"node\", [\"./worker.ts\"]) }\n",
+  "exports": { "./*": "./src/*.ts" }
+}

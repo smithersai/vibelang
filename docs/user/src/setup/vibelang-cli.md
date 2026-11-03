@@ -403,3 +403,5 @@ The migrate flow keeps packed runtime exports reachable: when `default` names `.
 A migration batch retains the packing files its emit creates, including when verification first creates them. Repeated verification, recording and revert recognize those exact files as the batch's output.
 
 The migrate flow discovers the compiler program before each fixing pass. Repairable `EK0301` union-slot errors can accompany the file list without stopping that pass. Its `.scope.log` receipt records that semantic checking is deferred; normal checks after fixing still report type errors. Configuration failures, other errors, crashes and empty file lists stop discovery.
+
+During migration, a generated source-child helper that cannot safely move to a platform sibling stays private in a TypeScript `module` body. The spawning module passes its `import.meta.url`, so loader resolution still starts in the parent package. This avoids platform imports in VibeLang and extra public exports. The `sourceChildModules` receipt lists conversions and warnings for helpers the flow cannot safely adopt.

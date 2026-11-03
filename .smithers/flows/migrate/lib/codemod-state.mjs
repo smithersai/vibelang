@@ -4,6 +4,7 @@ import { closeSync, existsSync, fsyncSync, lstatSync, mkdirSync, openSync, readF
 import { dirname, join } from "node:path"
 import { pathReadDeferrals, rewriteReferences } from "./references.mjs"
 import { splitBatchPlatform } from "./platform.mjs"
+import { prepareSourceChildModules } from "./source-child-module.mjs"
 import { markPlainFunctions } from "./plain.mjs"
 import { rewriteViteScripts } from "./vite-config.mjs"
 import { rewriteSourceLiterals } from "./source-paths.mjs"
@@ -53,6 +54,7 @@ export function prepareState(target, files, scope, { ts, aliases, referenceFiles
     else writes.push({ file, before: disk(file), after, mode: existsSync(join(target, fromOf.get(file) ?? file)) ? statSync(join(target, fromOf.get(file) ?? file)).mode & 0o777 : 0o644 })
   }
   const platform = ts ? splitBatchPlatform(target, files, ts, { read, write, moduleBodies }) : { splits: [], refused: [] }
+  const sourceChildModules = ts ? prepareSourceChildModules(files, ts, { read, write }) : { converted: [], refused: [] }
   // Read the TypeScript after platform splitting and before renaming. Detail
   // 269: a post-VIP-1 compiler needs no legacy plain return annotation.
   const plain = {}
@@ -81,7 +83,7 @@ export function prepareState(target, files, scope, { ts, aliases, referenceFiles
     selectorChecks.push(...(changed.selectorChecks ?? []))
     if (changed.edits.length) write(file, changed.text)
   }
-  return { version: 1, target, files, phase: "prepared", referenceVersion: 1, referencePending: false, referenceScan: { files: references.length, patterns: matcherCache.size, durationMs: Math.round(performance.now() - started) }, referenceEdits, referenceWarnings, selectorChecks, platform, plain, functionModel: plainGroups.length ? (plainGroups.every(g => g.flipped) ? "plain-by-syntax" : "legacy-inference") : "unprobed", renames, originals, writes, exportEdits, buildEntries, importEdits, refEdits, scriptEdits, packageScriptEdits, attempts: [] }
+  return { version: 1, target, files, phase: "prepared", referenceVersion: 1, referencePending: false, referenceScan: { files: references.length, patterns: matcherCache.size, durationMs: Math.round(performance.now() - started) }, referenceEdits, referenceWarnings, selectorChecks, platform, sourceChildModules, plain, functionModel: plainGroups.length ? (plainGroups.every(g => g.flipped) ? "plain-by-syntax" : "legacy-inference") : "unprobed", renames, originals, writes, exportEdits, buildEntries, importEdits, refEdits, scriptEdits, packageScriptEdits, attempts: [] }
 }
 
 /** Replay a prepared transaction, accepting each operation before or after its atomic write. */

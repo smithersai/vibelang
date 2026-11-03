@@ -1558,6 +1558,7 @@ export async function codemod(options) {
     at: new Date().toISOString(),
     files,
     platform: platformResult,
+    sourceChildModules: state.sourceChildModules ?? { converted: [], refused: [] },
     formatted,
     plain,
     functionModel,
