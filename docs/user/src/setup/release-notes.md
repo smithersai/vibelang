@@ -170,6 +170,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Packed packages could leave private emitted imports pointing at compatibility declarations that were absent from the archive. Publication now maps each exact source to the package’s regular built declarations while preserving its runtime targets.
 - No-throw documentation and fuzz checks failed after VIP-41 clarified `throw` expressions; their citations now match the current rule.
 - The `effect` quick fix was missing for arrows with one bare parameter; it now adds the required parentheses and preserves comments.
+- A `match` array or extractor pattern with something after its rest element that starts no pattern, such as `when [...a, *]`, hung the compiler and the editor until they ran out of memory. The parser now reports the misplaced element once and continues.
 - A `layer` body holding a token that cannot start a statement, such as `layer L: S { default }`, hung the compiler and the editor until they ran out of memory. The parser now reports the error once and continues.
 - Documentation checks accepted throws in synchronous arrows whose parameter was named `effect`; they now apply the same rule after parameter renaming.
 - No-throw validation incorrectly failed after a plain catch handler became an effect handler; its regression fixtures now use catch's existing join point without a redundant `try`.
