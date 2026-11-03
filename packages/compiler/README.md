@@ -273,7 +273,13 @@ recognizes;
 the cache when nothing changed. A compile runs `vibelang -p <tsconfig>
 --loader-root <root>`, which type-checks and emits only the `.vibe` files under
 `root`, the modules it serves; the project's `.ts` files only supply types. When the compiler is the `vibelang` launcher, the compile
-runs the native compiler the launcher would run, without starting Node for it. `compileProjectSync`, `projectBackend`, and
+runs the native compiler the launcher would run, without starting Node for it.
+
+The public `compileProjectSync` and `projectBackend().compile` results include
+errors and warnings from every project input, including native TypeScript
+files. Their output maps contain the project’s own `.vibe` modules. Public
+compiles use a separate cache from loader compiles and never reuse a narrowed
+loader record. `compileProjectSync`, `projectBackend`, and
 `projects` take `cache: false` to turn the cache off, or `cache: { directory }`
 to move it.
 

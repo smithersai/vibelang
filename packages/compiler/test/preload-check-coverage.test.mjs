@@ -1,3 +1,4 @@
+import { loaderScope } from "../loader-scope.mjs"
 // RD-024: checking coverage advertised for the preload must match its scoped
 // compiler invocation. Native TypeScript tests need the full compiler command.
 import { strict as assert } from "node:assert"
@@ -42,7 +43,7 @@ test("RD-024: Bun loads a clean Vibe module while the full command diagnoses an 
     const errors = parseOutput(full.stdout + full.stderr, root).diagnostics
     assert.ok(errors.some((d) => d.file === join(root, "unused.test.ts") && d.code === "TS2322"), full.stdout)
     assert.ok(errors.some((d) => d.file === join(root, "unused.test.ts") && /TS(2593|2304)/.test(d.code)), full.stdout)
-    const loaded = compileProjectSync({ project: join(root, "tsconfig.json"), compiler, cache: false })
+    const loaded = compileProjectSync({ [loaderScope]: true, project: join(root, "tsconfig.json"), compiler, cache: false })
     assert.deepEqual(loaded.errors, [])
     assert.deepEqual([...loaded.outputs.keys()], [join(root, "main.vibe")])
 

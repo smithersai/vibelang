@@ -1,3 +1,4 @@
+import { loaderScope } from "../loader-scope.mjs"
 // RD-023: VIP-1 preserves ordinary TypeScript values, and VIP-34's loader
 // consumes compiler output. A record is a pure cache of that output:
 // "vibelang/register and vibelang/bun use it in place of the compile while
@@ -57,9 +58,9 @@ function compare(at, expected, originalSource) {
   const project = join(at, "tsconfig.json")
   assert.equal(readFileSync(join(at, "main.vibe"), "utf8"), originalSource)
   const trace = []
-  const recorded = compileProjectSync({ project, compiler, cache: { directory: join(at, ".cache") }, debug: (line) => trace.push(line) })
+  const recorded = compileProjectSync({ [loaderScope]: true, project, compiler, cache: { directory: join(at, ".cache") }, debug: (line) => trace.push(line) })
   assert.ok(trace.some((line) => line.includes("from its loader record")), trace.join("\n"))
-  const fresh = compileProjectSync({ project, compiler, cache: false })
+  const fresh = compileProjectSync({ [loaderScope]: true, project, compiler, cache: false })
   assert.deepEqual(fresh.errors, [])
   assert.deepEqual(recorded.errors, [])
   const source = join(at, "main.vibe")

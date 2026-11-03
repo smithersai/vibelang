@@ -1,3 +1,4 @@
+import { loaderScope } from "./loader-scope.mjs"
 import { extensionlessImport } from "./relative-imports.mjs"
 import { sourceOfEmitted } from "./emitted-js.mjs"
 import { diagnosticsForFile } from "./diagnostics.mjs"
@@ -94,7 +95,7 @@ function emitted(file) {
   if (compiled === undefined) {
     const started = Date.now()
     const clock = performance.now()
-    compiled = { started, result: compileProjectSync({ project, debug }), missing: new Set() }
+    compiled = { started, result: compileProjectSync({ project, debug, [loaderScope]: true }), missing: new Set() }
     results.set(project, compiled)
     spent.projects++
     spent.compile += since(clock)

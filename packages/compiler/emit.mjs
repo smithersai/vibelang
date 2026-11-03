@@ -1,3 +1,4 @@
+import { loaderScope } from "./loader-scope.mjs"
 // vibelang/emit: a .vibe module's JavaScript, for a tool that reads one file.
 //
 // Metro's Babel transformer, a Babel preset and the React Compiler's Oxc
@@ -45,7 +46,7 @@ export function projectOf(file) {
 export function emitModule(file) {
   file = resolve(file)
   const project = projectOf(file)
-  const result = compileProjectSync({ project })
+  const result = compileProjectSync({ project, [loaderScope]: true })
   if (!result.outputs.has(file) && !owners.has(file)) {
     const other = findProject(file, { tried: project, compiler: findCompiler(dirname(project)), programs }).project
     if (other !== undefined) {

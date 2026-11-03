@@ -1,3 +1,4 @@
+import { loaderScope } from "./loader-scope.mjs"
 import Module, { createRequire } from "node:module"
 import { exportsDefault } from "./bun-export-surface.mjs"
 import { extensionlessImport, pathSpecifier } from "./relative-imports.mjs"
@@ -105,7 +106,7 @@ function emitted(file) {
   const project = projectOf(file)
   let result = results.get(project)
   if (result === undefined) {
-    result = compileProjectSync({ project })
+    result = compileProjectSync({ project, [loaderScope]: true })
     results.set(project, result)
   }
   if (!result.outputs.has(file) && !owners.has(file)) {

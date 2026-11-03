@@ -53,6 +53,7 @@
     "cache.mjs",
     "temporary.mjs",
     "diagnostics.mjs",
+    "loader-scope.mjs",
     "dprint-plugin.json",
     "eslint.mjs",
     "oxlint.mjs",

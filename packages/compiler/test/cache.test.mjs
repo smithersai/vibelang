@@ -1,3 +1,4 @@
+import { loaderScope } from "../loader-scope.mjs"
 import { strict as assert } from "node:assert"
 import { spawn, spawnSync } from "node:child_process"
 import { once } from "node:events"
@@ -383,7 +384,7 @@ test("a loader compile checks only .vibe sources: a TypeScript file's own error 
   assert.deepEqual(ok(warm), { text: "HI!", mapped: true })
   assert.match(warm.stderr, /tsconfig\.json from the cache in \d+ms/)
   assert.equal(compiles(), 1, "the warm process compiles nothing")
-  const result = compileProjectSync({ project: join(app, "tsconfig.json"), compiler: native, cache: false })
+  const result = compileProjectSync({ [loaderScope]: true, project: join(app, "tsconfig.json"), compiler: native, cache: false })
   assert.deepEqual(result.errors, [], "no .ts file under the root is checked")
   assert.deepEqual([...new Set([...result.outputs.keys()].map((path) => path.replace(/^.*\.(vibe(?:\.\w+\.js)?)$/, "$1")))], ["vibe"],
     "only .vibe modules are emitted")
@@ -476,7 +477,7 @@ test("a default cache directory another user can write to is not used", { skip: 
   assert.deepEqual(readdirSync(join(temporary, `vibelang-cache-${process.getuid()}`)), [])
 })
 
-test("projects() and compileProjectSync share the cache, and a warm load costs under 50 ms", { skip }, async (t) => {
+test("projects() and private synchronous loader compiles share the cache, and a warm load costs under 50 ms", { skip }, async (t) => {
   const { app, cache, compiler, compiles } = await fixture(t)
   const project = join(app, "tsconfig.json")
   const cold = await projects({ root: app, project, compiler, cache: { directory: cache } }).load(join(app, "src/shout.vibe"))
@@ -489,13 +490,13 @@ test("projects() and compileProjectSync share the cache, and a warm load costs u
   const times = []
   for (let attempt = 0; attempt < 5; attempt++) {
     const started = performance.now()
-    const result = compileProjectSync({ project, compiler, cache: { directory: cache } })
+    const result = compileProjectSync({ [loaderScope]: true, project, compiler, cache: { directory: cache } })
     times.push(performance.now() - started)
     assert.equal(result.outputs.get(join(app, "src/shout.vibe")).code, cold.code)
   }
   assert.equal(compiles(), 1)
   const median = times.sort((a, b) => a - b)[2]
   assert.ok(median < 50, `a warm load took ${median.toFixed(1)} ms`)
-  assert.equal(compileProjectSync({ project, compiler, cache: false }).outputs.size, 2)
+  assert.equal(compileProjectSync({ [loaderScope]: true, project, compiler, cache: false }).outputs.size, 2)
   assert.equal(compiles(), 2, "cache: false compiles")
 })

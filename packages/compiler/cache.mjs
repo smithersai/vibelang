@@ -94,7 +94,7 @@ export function prepare(cache) {
 }
 
 const entryFile = (cache, key) =>
-  join(cache.path, `${digest(JSON.stringify([format, version, key.project, key.root])).slice(0, 32)}.json`)
+  join(cache.path, `${digest(JSON.stringify([format, version, key.project, key.root, key.scope])).slice(0, 32)}.json`)
 
 // A stamp is what a stat says about a file's content: [size, mtimeMs, ctimeMs, ino].
 const stampOf = (stat) => [stat.size, stat.mtimeMs, stat.ctimeMs, stat.ino]
@@ -486,10 +486,10 @@ function nearestFile(directory, name, found) {
  *   begin()                        a snapshot of the inputs known before the compile
  *   store(snapshot, result, files) caches a successful compile and the files it read
  */
-export function projectCache({ project, root, compiler, cache, debug = () => {} }) {
+export function projectCache({ project, root, compiler, cache, debug = () => {}, scope = "loader" }) {
   const location = cacheDirectory(cache)
   if (location === undefined) return undefined
-  const key = { project, root }
+  const key = { project, root, scope }
   const file = entryFile(location, key)
 
   function lookup() {
@@ -509,7 +509,7 @@ export function projectCache({ project, root, compiler, cache, debug = () => {} 
   }
 
   function validate(entry) {
-    if (entry.format !== format || entry.version !== version || entry.project !== project || entry.root !== root) {
+    if (entry.format !== format || entry.version !== version || entry.project !== project || entry.root !== root || entry.scope !== scope) {
       return { miss: "entry for another version" }
     }
     const identity = compilerIdentity(compiler)
@@ -568,7 +568,7 @@ export function projectCache({ project, root, compiler, cache, debug = () => {} 
   function write(snapshot, result, files) {
     const built = entryOf({ project, root, snapshot, result, files })
     if (built.reason !== undefined) return debug(`not caching ${project}: ${built.reason}`)
-    const entry = built.entry
+    const entry = { ...built.entry, scope }
     const temporary = `${file}.${process.pid}.${randomBytes(6).toString("hex")}.tmp`
     try {
       prepare(location)

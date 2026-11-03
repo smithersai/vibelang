@@ -1,3 +1,4 @@
+import { loaderScope } from "../loader-scope.mjs"
 import { strict as assert } from "node:assert"
 import { spawnSync } from "node:child_process"
 import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, statSync, symlinkSync, utimesSync, writeFileSync } from "node:fs"
@@ -160,9 +161,9 @@ async function checkHistory(input, loaders = false) {
       assert.deepEqual(loaded.code, concurrent.code)
       assert.deepEqual(loaded.errors, concurrent.errors)
       const beforeWarm = calls(root)
-      const warm = compileProjectSync(options)
+      const warm = compileProjectSync({ ...options, [loaderScope]: true })
       if (!loaded.errors.length) assert.equal(calls(root), beforeWarm, "settled successful revisions must actually reuse the cache")
-      const fresh = compileProjectSync({ ...options, cache: false })
+      const fresh = compileProjectSync({ [loaderScope]: true, ...options, cache: false })
       assert.deepEqual([...warm.outputs], [...fresh.outputs], `revision ${stage}: outputs and maps`)
       for (const key of ["errors", "warnings", "inputs"]) assert.deepEqual(warm[key], fresh[key], `revision ${stage}: ${key}`)
       assert.deepEqual(loaded.errors, fresh.errors)
@@ -240,7 +241,7 @@ test("cache-save: saves after compiler reads cannot publish stale results", asyn
         writeFileSync(join(app, "src/n0.vibe"), `export const part: number = ${value}\n`)
         writeFileSync(join(root, "release"), "release")
         const results = await loading
-        const fresh = compileProjectSync({ ...options, cache: false })
+        const fresh = compileProjectSync({ [loaderScope]: true, ...options, cache: false })
         assert.deepEqual(fresh.errors, [])
         for (const [index, loaded] of results.entries()) {
           const expected = fresh.outputs.get(index === 0 ? source : changed)

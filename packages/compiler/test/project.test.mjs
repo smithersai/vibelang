@@ -1,3 +1,4 @@
+import { loaderScope } from "../loader-scope.mjs"
 import { strict as assert } from "node:assert"
 import { spawnSync } from "node:child_process"
 import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, statSync, symlinkSync, utimesSync, writeFileSync } from "node:fs"
@@ -226,7 +227,7 @@ test("a module outside root compiles with its own package's project, once per re
   assert.deepEqual(compiles().slice(2), [join(root, "dep/tsconfig.json")], "a new revision compiles only the project asked for")
 })
 
-test("a project's compile checks its own files; an imported workspace package's source only supplies types", { skip }, async (t) => {
+test("a private loader compile checks its own files; an imported workspace package's source only supplies types", { skip }, async (t) => {
   // Each module holds one warning (EK4833), which a check of that module reports.
   // Checking every imported package in each project's compile checked a
   // package once per project that imports it.
@@ -239,7 +240,7 @@ test("a project's compile checks its own files; an imported workspace package's 
     writeFileSync(join(root, path), text)
     utimesSync(join(root, path), new Date(Date.now() - 60_000), new Date(Date.now() - 60_000))
   }
-  const compile = (dir) => projectBackend({ root: dir, compiler, cache: false }).compile(join(dir, "tsconfig.json"))
+  const compile = (dir) => projectBackend({ root: dir, compiler, cache: false, [loaderScope]: true }).compile(join(dir, "tsconfig.json"))
   const warnings = (result) => result.warnings.map(({ file, code }) => [file, code])
   const main = await compile(app)
   assert.deepEqual(main.errors, [])

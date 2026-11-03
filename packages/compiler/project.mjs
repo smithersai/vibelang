@@ -1,3 +1,4 @@
+import { loaderScope } from "./loader-scope.mjs"
 import { diagnosticsForFile } from "./diagnostics.mjs"
 // Whole-project compilation for the bundler plugins (vibelang-vite,
 // vibelang-unplugin) and the Node and Bun loaders (vibelang/register,
@@ -179,18 +180,13 @@ export function formatDiagnostic(diagnostic) {
   return `${where}${diagnostic.category} ${diagnostic.code}: ${diagnostic.text}`
 }
 
-// The compile emits from the filesystem root, not from root: a project may
-// hold sources above its directory, as a test project whose tsconfig sets
-// rootDir to the repository does, and a narrower --rootDir than the project's
-// own fails it with TS6059. Only root's .vibe outputs are collected, so
-// --loader-root checks and emits only the .vibe files under root: the
-// project's .ts files, which the runtime or bundler loads itself, and the
-// sources of another workspace package the project imports only supply types,
-// and that package's .vibe sources are checked by its own compile.
+// Emit from the filesystem root because a project may include sources above
+// its directory. Public project results check every input; loader compiles
+// privately narrow checking and emission to their own Vibe sources.
 const emitRoot = (root) => parse(resolve(root)).root
 
-const emitArgs = (project, root, out) => [
-  "--project", project, "--loader-root", resolve(root),
+const emitArgs = (project, root, out, loader) => [
+  "--project", project, ...(loader ? ["--loader-root", resolve(root)] : []),
   "--pretty", "false", "--listFiles", "true", "--rootDir", emitRoot(root),
   "--outDir", out, "--sourceMap", "true", "--inlineSources", "true",
   "--inlineSourceMap", "false", "--sourceRoot", slash(emitRoot(root)).replace(/\/?$/, "/"), "--declaration", "false", "--declarationMap", "false",
@@ -293,10 +289,10 @@ function stopwatch() {
 // Serves a compile from the cache, or runs it and caches its result. The
 // debug report names the time of each stage: the cache lookup, the snapshot of
 // the inputs, the compiler process, reading its outputs, and the cache write.
-function cached({ project, root, compiler, cache, debug }, run) {
+function cached({ project, root, compiler, cache, debug, loader }, run) {
   const started = performance.now()
   const stages = stopwatch()
-  const store = projectCache({ project, root, compiler, cache, debug })
+  const store = projectCache({ project, root, compiler, cache, debug, scope: loader ? "loader" : "project" })
   const hit = stages.time("lookup", () => store?.lookup())
   if (hit?.result) {
     debug(`${project} from the cache in ${elapsed(started)}`)
@@ -304,7 +300,7 @@ function cached({ project, root, compiler, cache, debug }, run) {
   }
   // A cold cache: the project's committed loader record (cache.mjs) serves the
   // compile when every input it names still holds, and the cache keeps it.
-  const recorded = store && existsSync(loaderRecordFile(project))
+  const recorded = loader && store && existsSync(loaderRecordFile(project))
     ? stages.time("record", () => loaderRecord({ project, root, compiler }).lookup()) : undefined
   if (recorded?.result) {
     stages.time("store", () => store.store(store.begin(), recorded.result, recorded.files))
@@ -330,7 +326,7 @@ function cached({ project, root, compiler, cache, debug }, run) {
  * compile(project) resolves to the result described above. `cache` is false to
  * turn the cache off, or { directory } to move it.
  */
-export function projectBackend({ root, compiler, cache, debug = () => {} }) {
+export function projectBackend({ root, compiler, cache, debug = () => {}, [loaderScope]: loader = false }) {
   const children = new Set()
   const pending = new Set()
   let closed = false, closing
@@ -384,11 +380,11 @@ export function projectBackend({ root, compiler, cache, debug = () => {} }) {
     if (closed) return Promise.reject(new Error("vibelang: compiler backend is closed"))
     const work = Promise.resolve().then(() => {
       if (closed) throw new Error("vibelang: compiler backend is closed")
-      return cached({ project, root, compiler, cache, debug }, async (stages) => {
+      return cached({ project, root, compiler, cache, debug, loader }, async (stages) => {
         // Outside the project: webpack and esbuild rebuild when a directory they resolved through changes.
         const out = mkdtempSync(join(temporaryRoot(), "vibelang-project-"))
         try {
-          const output = await stages.time("compiler", () => run(emitArgs(project, root, out)))
+          const output = await stages.time("compiler", () => run(emitArgs(project, root, out, loader)))
           return stages.time("collect", () => collect(output, root, out))
         } finally {
           // Outputs are in memory now. The next compile starts from an empty directory.
@@ -408,15 +404,15 @@ export function projectBackend({ root, compiler, cache, debug = () => {} }) {
  * compileProjectSync is projectBackend's compile for callers that cannot wait,
  * such as Node's synchronous module hooks.
  */
-export function compileProjectSync({ project, root = packageRoot(project), compiler = findCompiler(root), cache, debug = () => {} }) {
-  return cached({ project, root, compiler, cache, debug }, (stages) => compileOnce(project, root, compiler, stages))
+export function compileProjectSync({ project, root = packageRoot(project), compiler = findCompiler(root), cache, debug = () => {}, [loaderScope]: loader = false }) {
+  return cached({ project, root, compiler, cache, debug, loader }, (stages) => compileOnce(project, root, compiler, stages, loader))
 }
 
 // One compiler run over a project, as a loader runs it.
-function compileOnce(project, root, compiler, stages = stopwatch()) {
+function compileOnce(project, root, compiler, stages = stopwatch(), loader = true) {
   const out = mkdtempSync(join(temporaryRoot(), "vibelang-project-"))
   try {
-    const [file, argv] = command(compiler, emitArgs(project, root, out))
+    const [file, argv] = command(compiler, emitArgs(project, root, out, loader))
     const run = stages.time("compiler", () => spawnSync(file, argv, { cwd: root, encoding: "utf8", maxBuffer: 1 << 30 }))
     if (run.error) throw new Error(`vibelang: ${run.error.message}\nCompiler: ${compiler}`)
     return stages.time("collect", () => collect({ status: run.status, signal: run.signal, output: run.stdout + run.stderr }, root, out))
@@ -672,7 +668,7 @@ export function projects({ root, project, compiler, cache, debug = () => {} }) {
     let state = states.get(tsconfig)
     if (state === undefined) {
       const projectRoot = tsconfig === project ? root : packageRoot(tsconfig)
-      state = { tsconfig, backend: projectBackend({ root: projectRoot, compiler, cache, debug }), result: undefined, pending: undefined, compiled: -1, reported: -1 }
+      state = { tsconfig, backend: projectBackend({ root: projectRoot, compiler, cache, debug, [loaderScope]: true }), result: undefined, pending: undefined, compiled: -1, reported: -1 }
       states.set(tsconfig, state)
     }
     return state

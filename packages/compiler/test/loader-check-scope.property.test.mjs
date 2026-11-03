@@ -1,3 +1,4 @@
+import { loaderScope } from "../loader-scope.mjs"
 import { strict as assert } from "node:assert"
 import { spawnSync } from "node:child_process"
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs"
@@ -125,7 +126,7 @@ async function check(input) {
     assert.ifError(run.error)
     const full = parseOutput(run.stdout + run.stderr, app).diagnostics.filter((d) => d.category === "error")
     diagnostics += `full compile:\n${run.stdout}${run.stderr}\n`
-    const loaded = compileProjectSync({ project, compiler, cache: false })
+    const loaded = compileProjectSync({ [loaderScope]: true, project, compiler, cache: false })
     diagnostics += `loader errors: ${JSON.stringify(loaded.errors)}\n`
 
     // The loader reports exactly the full compile's errors in .vibe sources under the root.
@@ -151,8 +152,8 @@ async function check(input) {
       await sleep(120) // cache.mjs keeps a file stamped too near a compile's start out of the cache
       const directory = join(root, "cache")
       const trace = []
-      compileProjectSync({ project, compiler, cache: { directory }, debug: (line) => trace.push(line) })
-      compileProjectSync({ project, compiler, cache: { directory }, debug: (line) => trace.push(line) })
+      compileProjectSync({ [loaderScope]: true, project, compiler, cache: { directory }, debug: (line) => trace.push(line) })
+      compileProjectSync({ [loaderScope]: true, project, compiler, cache: { directory }, debug: (line) => trace.push(line) })
       diagnostics += trace.join("\n")
       assert.match(trace.at(-1), /from the cache/)
     }
