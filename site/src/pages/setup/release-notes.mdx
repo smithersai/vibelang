@@ -11,6 +11,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 
 ## 0.0.11 (unreleased)
+- Under the `vibelang/bun` preload, a `module` body importing a package, an `imports` map entry or an extensionless relative `.ts` file, such as `import { theme } from "../theme"`, failed with `Cannot find module` from a `vibelang-module:` path. It now resolves as it does in a `.ts` file beside the `.vibe` file.
 - Compiler test cases added after the Effect `4.1.1` pin still pinned `4.1.0`, and `interruption-restore-regions` read a service with the retired call form, `try Svc()`, so the repository's own checks failed. Every case now pins the runtime's Effect version and reads the service as `try Svc` (VIP-9).
 - A file added to a project whose `include` writes a leading dot, such as `.source-collector-*.vibe`, was invisible to the compile cache, so the Node loader reported that the project excludes it until something else changed. The cache now sees it, and still ignores dotted files a pattern does not name.
 - `vibelang --estree` declared the temporary a `do` expression assigns as `const`, so ESLint's `no-const-assign` reported `'$do1' is constant` at `do` expressions in `.vibe` files. It is now `let`. An author's pattern binding stays `const`.

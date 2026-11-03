@@ -148,11 +148,33 @@ const pathOf = (importer) => importer?.startsWith(`${moduleNamespace}:`) ? impor
 // type-only imports. A CommonJS require and `import x = require()` reach a
 // .vibe module through the CommonJS resolve hook above instead.
 const esImports = (code, loader) => new Bun.Transpiler({ loader }).scan(code).imports
+const relativeJs = /^\.\.?\/.*\.js$/
 const escapeRegExp = (value) => value.replace(/[.*+?^{}$()|[\]\\]/g, "\\$&")
-function resolveImports(path, contents, loader) {
+// What a module declaration's output imports, from its .vibe file's directory.
+// A relative .js name is the emitted name of a .vibe or .ts file beside it.
+// Bun.resolveSync would pass it to the onResolve hook below with the directory
+// as its importer, one level too high, so it is looked up here.
+function fromModuleOutput(directory, specifier) {
+  if (relativeJs.test(specifier)) {
+    const target = resolve(directory, specifier)
+    if (existsSync(target)) return target
+    const stem = target.slice(0, -".js".length)
+    return [".vibe", ".ts", ".tsx"].map((extension) => stem + extension).find(existsSync)
+  }
+  try {
+    const resolved = Bun.resolveSync(specifier, directory)
+    return isAbsolute(resolved) ? resolved : undefined
+  } catch { return undefined /* Bun reports it at the import. */ }
+}
+function resolveImports(path, contents, loader, inNamespace = false) {
   const replacements = new Map()
   for (const entry of esImports(contents, loader)) {
-    const source = vibeImport(dirname(path), entry.path)
+    let source = vibeImport(dirname(path), entry.path)
+    // Bun resolves an import from a plugin namespace's path as a directory of
+    // its own, /vibelang-module:/x, so it finds no extensionless file, package
+    // or imports map, and a dynamic import reaches no onResolve hook. A module
+    // declaration's output resolves from its .vibe file's directory.
+    if (source === undefined && inNamespace) source = fromModuleOutput(dirname(path), entry.path)
     if (source !== undefined) replacements.set(entry.path, source)
   }
   if (replacements.size === 0) return { contents, loader }
@@ -269,7 +291,7 @@ Bun.plugin({
     // .ts file by the same .js name. From source, a missing ./x.js is the .vibe
     // file beside it, or a module declaration's output. Bun maps a missing .js
     // to its .ts or .tsx file itself, except from a module declaration's output.
-    build.onResolve({ filter: /^\.\.?\/.*\.js$/ }, ({ path, importer }) => {
+    build.onResolve({ filter: relativeJs }, ({ path, importer }) => {
       if (discovering) return undefined
       const fromModule = importer?.startsWith(`${moduleNamespace}:`)
       importer = pathOf(importer)
@@ -295,6 +317,6 @@ Bun.plugin({
     })
     // Bun 1.4.2 ignores a plugin's source maps, so the module is its JavaScript alone.
     build.onLoad({ filter: /\.vibe$/ }, ({ path }) => { const code = emitted(path).code; discover(path, code, "js"); return resolveImports(path, code, "js") })
-    build.onLoad({ filter: /\.js$/, namespace: moduleNamespace }, ({ path }) => { const code = emitted(path).code; discover(path, code, "js"); return resolveImports(path, code, "js") })
+    build.onLoad({ filter: /\.js$/, namespace: moduleNamespace }, ({ path }) => { const code = emitted(path).code; discover(path, code, "js"); return resolveImports(path, code, "js", true) })
   }
 })

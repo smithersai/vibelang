@@ -1,0 +1,17 @@
+{
+  "property": "bun-module-body-imports",
+  "rule": "A body is a TypeScript file stored inside a `.vibe` file.",
+  "repo": "opencode",
+  "pattern": "a module body with an extensionless relative import of a .ts file, as tui/src/mini/theme imports ../theme",
+  "input": {
+    "forms": [
+      "extensionless ts",
+      "extensionless tsx",
+      "directory index",
+      "vibe with a parent twin",
+      "js name of a vibe with a parent twin"
+    ],
+    "dynamic": false,
+    "name": "platform"
+  }
+}
