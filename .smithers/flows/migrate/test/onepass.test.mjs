@@ -115,7 +115,8 @@ test("three-package one-pass checks every project, reverts the root cause, and k
     assert.equal(existsSync(join(f.target, "core/src/index.vibe")), false)
     assert.equal(existsSync(join(f.target, "core/src/index.d.vibe.ts")), false)
     assert.equal(existsSync(join(f.target, "app/src/index.vibe")), true)
-    assert.match(text(f.target, "app/src/index.vibe"), /core\/src\/index.ts/)
+    // The converted importer keeps its written ../../core/src/index.js (detail 272).
+    assert.match(text(f.target, "app/src/index.vibe"), /core\/src\/index.js/)
     assert.match(text(f.target, "consumer/src/index.ts"), /core\/src\/index.ts/)
     assert.match(text(f.target, "entry.vibe"), /core\/src\/index.ts/)
     assert.match(text(f.target, "run.sh"), /core\/src\/index.ts/)
@@ -179,7 +180,8 @@ test("bulk reverts restore arbitrary subsets, exports, path references, sources 
         assert.match(text(f.target, "run.sh"), /index.ts/)
         assert.match(text(f.target, "PACKAGE.ts"), /index.ts/)
         const app = subset.includes("app") ? "app/src/index.ts" : "app/src/index.vibe"
-        assert.match(text(f.target, app), subset.includes("app") ? /index.js/ : /index.ts/)
+        // Converted or reverted, app keeps its written ../../core/src/index.js.
+        assert.match(text(f.target, app), /index.js/)
       }
     } finally { rmSync(f.root, { recursive: true, force: true }) }
   }), { seed: 1101, numRuns: 20 })
@@ -356,7 +358,7 @@ test("one-pass rename, root attribution and bulk revert preserve main's paths-al
     const result = await onePassStep("settle", { run: f.run })
     assert.equal(result.settled, true)
     assert.deepEqual(Object.keys(result.causes), ["core/src/index.vibe"])
-    assert.match(text(f.target, "app/src/index.vibe"), /@core\/index.ts/)
+    assert.match(text(f.target, "app/src/index.vibe"), /@core\/index.js/)
   } finally { rmSync(f.root, { recursive: true, force: true }) }
 })
 

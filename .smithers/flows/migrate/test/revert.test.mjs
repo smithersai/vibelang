@@ -85,16 +85,17 @@ test("revert returns a file to .ts and points every import the codemod rewrote b
     assert.equal(existsSync(join(target, "src/b.vibe")), false)
     assert.equal(readFileSync(join(target, "src/a.ts"), "utf8"), 'import { b } from "./b.ts"\nexport const a = b\n')
     assert.equal(readFileSync(join(target, "src/b.test.ts"), "utf8"), 'import { b } from "./b.ts"\n')
-    // A .vibe importer names the module by its source name, now .ts.
-    assert.equal(readFileSync(join(target, "src/c.vibe"), "utf8"), 'import { b } from "./b.ts"\nexport const c = b\n')
+    // A .vibe importer the same batch converted gets back what it wrote too
+    // (detail 272): ./b.js resolves to b.ts from VibeLang as from TypeScript.
+    assert.equal(readFileSync(join(target, "src/c.vibe"), "utf8"), 'import { b } from "./b.js"\nexport const c = b\n')
     // A TypeScript importer gets back the specifier it had: ./b.js stays ./b.js.
     assert.equal(readFileSync(join(target, "src/d.ts"), "utf8"), 'import { b } from "./b.js"\nexport const d = b\n')
     assert.equal(existsSync(join(target, "src/b.d.vibe.ts")), false)
     assert.deepEqual(reverted.importEdits, [
       { file: "src/a.ts", from: "./b.vibe", to: "./b.ts" },
       { file: "src/b.test.ts", from: "./b.vibe", to: "./b.ts" },
-      { file: "src/d.ts", from: "./b.vibe", to: "./b.js" },
-      { file: "src/c.vibe", from: "./b.vibe", to: "./b.ts" }
+      { file: "src/c.vibe", from: "./b.vibe", to: "./b.js" },
+      { file: "src/d.ts", from: "./b.vibe", to: "./b.js" }
     ])
     assert.deepEqual(readJson(paths(run).reverted("01")).map((r) => [r.file, r.reason]), [["src/b.ts", "blocked on an issue"]])
   } finally {

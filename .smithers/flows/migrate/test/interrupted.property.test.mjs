@@ -159,7 +159,8 @@ test("foldkit-74: per-file revert works before the compiler completes", async ()
     assert.equal(existsSync(paths(f.run).codemod("01")), false)
     await revert({ run: f.run, batch: "01", file: "src/value.vibe", reason: "interrupted compiler" })
     assert.equal(readFileSync(join(f.target, "src/value.ts"), "utf8"), corpus.files["src/value.ts"])
-    assert.equal(readFileSync(join(f.target, "src/meta.vibe"), "utf8"), corpus.files["src/meta.ts"].replace("./value.js", "./value.ts"))
+    // The converted importer keeps its written ./value.js (detail 272).
+    assert.equal(readFileSync(join(f.target, "src/meta.vibe"), "utf8"), corpus.files["src/meta.ts"])
   } finally { rmSync(f.root, { recursive: true, force: true }) }
 })
 

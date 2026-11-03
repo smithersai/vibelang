@@ -1763,8 +1763,6 @@ export async function revertMany(options) {
       if (settings) rmSync(sidecarPath(join(config.target, vibe), settings), { force: true })
     }
   }
-  const priorFiles = new Map()
-  for (const revision of groups.keys()) priorFiles.set(revision, new Set(await Jj.trackedFiles(config.target, revision)))
   const results = []
   for (const { ts, reason, source } of prepared) {
     const cm = readJsonIf(p.codemod(source.batch)) ?? readJsonIf(p.codemodState(source.batch)) ?? {}
@@ -1776,14 +1774,13 @@ export async function revertMany(options) {
     const exportEdits = restoreExports(config.target, cm.exportEdits ?? [], ts)
     const scriptEdits = restoreViteScripts(config.target, cm.scriptEdits ?? [], ts)
     const packageScriptEdits = restoreScripts(config.target, cm.packageScriptEdits ?? [], ts)
-    // A newly migrated consumer keeps its source spelling; an existing
-    // VibeLang consumer keeps the name recorded before this migration.
-    const before = source.original ? null : priorFiles.get(source.revision)
-    const created = source.original ? new Set(source.renames.map(rename => rename.to)) : null
-    const priorEdits = (cm.importEdits ?? []).filter(edit =>
-      !edit.file.endsWith(".vibe") || !existsSync(join(config.target, edit.file)) ||
-      (created ? !created.has(edit.file) : before.has(edit.file)))
-    const importEdits = restoreSpecifiers(config.target, priorEdits, ts, aliases)
+    // Every consumer gets back the specifier the repository wrote, a
+    // TypeScript one, an earlier VibeLang one, and one this batch converted:
+    // VibeLang resolves ./x, ./x.js and an alias to x.ts as TypeScript does,
+    // and an inferred declaration prints the written name (detail 272), so
+    // revert leaves what a codemod that never converted x would (t3code
+    // Mobile: 87 specifiers in 53 converted consumers came back as ./x.ts).
+    const importEdits = restoreSpecifiers(config.target, cm.importEdits ?? [], ts, aliases)
     const refEdits = restoreReferences(config.target, cm.refEdits ?? [], ts)
     const referenceEdits = []
     const history = (plan?.batches ?? []).map((_, i) => readJsonIf(p.codemod(batchName(i))) ?? readJsonIf(p.codemodState(batchName(i)))).filter(Boolean)
@@ -1840,7 +1837,7 @@ async function revertSource(t, p, plan, b, ts, vibe) {
     const batch = batchName(i)
     const journal = readJsonIf(p.codemodState(batch))
     const original = journal?.originals?.find(o => o.from === ts && o.to === vibe)
-    if (original) return { batch, original, renames: journal.renames ?? journal.originals.map(({from,to}) => ({from,to})) }
+    if (original) return { batch, original }
   }
   if ((await Jj.fileAt(t, "@-", ts)) !== null) return { revision: "@-", batch: b }
   for (let i = (plan?.batches?.length ?? 0) - 1; i >= 0; i--) {

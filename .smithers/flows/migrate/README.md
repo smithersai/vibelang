@@ -741,7 +741,7 @@ A runtime host that resolves a package entry, reads its extension and scans sour
 
 Inventory treats executable bare filename literals such as `alchemy.run.ts` or an explicit `index.ts` as lookup names, so those modules remain TypeScript. It ignores comments, embedded code strings, type-only filename literals, module specifiers and fixture code. It parses only potential lookup-bearing files, including escaped filenames; directory resolution alone does not pin an `index.ts` module.
 
-Revert restores recorded imports of native and previously existing VibeLang consumers, preserving the original alias and suffix. The migration's baseline or write-ahead rename journal identifies whether the importer was already `.vibe`; a consumer converted in that batch still names the restored native source as `.ts`. The fallback repairs unrecorded references without rewriting an original name it just restored.
+Revert restores recorded imports of native and previously existing VibeLang consumers, preserving the original alias and suffix. A consumer the same batch converted gets its written specifier back too: `./runtime` stays `./runtime`, not `./runtime.ts`, because VibeLang resolves it to the same TypeScript file and an inferred declaration prints the written name (detail 272). The result equals a codemod that never converted the module. The fallback repairs unrecorded references without rewriting an original name it just restored.
 
 Import rewrites accept recorded `preserve` names together with injected `read` and `write` callbacks; the callbacks keep transactional source access while the recorded names stay intact.
 
