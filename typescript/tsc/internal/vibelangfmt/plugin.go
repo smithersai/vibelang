@@ -11,15 +11,17 @@ import (
 	"strings"
 	"sync"
 	"sync/atomic"
+
+	"github.com/microsoft/TypeScript/tsc/internal/core"
 )
 
 // The dprint process plugin (dprint's process plugin schema version 5,
 // https://github.com/dprint/dprint/blob/main/docs/process-plugin-development.md).
 //
 // dprint starts the plugin's executable with --parent-pid and talks to it
-// over stdin and stdout. The plugin claims .vibe files. To format one it
+// over stdin and stdout. The plugin claims .vibe and .vibex files. To format one it
 // writes the file as TypeScript and asks dprint to format that with the
-// plugin that formats .ts files, under the configuration's "typescript"
+// plugin that formats .ts or .tsx files, under the configuration's "typescript"
 // settings (a host format request), so a .vibe file follows exactly the
 // style of the TypeScript beside it.
 
@@ -294,14 +296,14 @@ func (s *pluginServer) handleMessage() (bool, error) {
 			}
 			slices.Sort(keys)
 			for _, key := range keys {
-				diagnostics = append(diagnostics, map[string]string{"propertyName": key, "message": "Unknown property in configuration. The vibelang plugin formats .vibe files with the \"typescript\" settings."})
+				diagnostics = append(diagnostics, map[string]string{"propertyName": key, "message": "Unknown property in configuration. The vibelang plugin formats .vibe and .vibex files with the \"typescript\" settings."})
 			}
 			return false, s.json(id, diagnostics)
 		case messageGetFileMatchingInfo:
 			if !ok {
 				return false, s.fail(id, fmt.Errorf("did not find configuration for id: %d", configID))
 			}
-			return false, s.json(id, map[string]any{"fileExtensions": []string{"vibe"}, "fileNames": []string{}})
+			return false, s.json(id, map[string]any{"fileExtensions": []string{"vibe", "vibex"}, "fileNames": []string{}})
 		default:
 			if !ok {
 				return false, s.fail(id, fmt.Errorf("did not find configuration for id: %d", configID))
@@ -440,8 +442,12 @@ func (s *pluginServer) handleFormat(id uint32) error {
 			return
 		}
 		source := string(text)
+		extension := ".ts"
+		if core.GetScriptKindFromFileName(sourceOptions(string(path)).FileName) == core.ScriptKindTSX {
+			extension = ".tsx"
+		}
 		formatTypeScript := func(typescript string) (string, error) {
-			reply, err := s.sendHostFormat(id, string(path)+".ts", typescript)
+			reply, err := s.sendHostFormat(id, string(path)+extension, typescript)
 			if err != nil {
 				return "", err
 			}

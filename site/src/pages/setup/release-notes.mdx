@@ -326,6 +326,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Nested `do` expressions hid forbidden loop-head jumps and reported parameter `var` declarations as `EK0204`; they now report `EK0205` and `EK0203` exactly once across nested blocks.
 
+- Formatting JSX in a `.vibex` file failed or skipped the file. The native formatter, `vibelang-format`, `vibelang/prettier` and the dprint plugin now select TSX mode and preserve JSX text, entities, comments and `<T,>` generic arrows (VIP-39).
+
 - Published API checks rejected identical JSON exports as non-modules; JSON assets now retain their `resolveJsonModule` types, and real type changes still fail.
 
 - Source-child loader wiring introduced a `fileURLToPath` import alias and failed repositories’ native import policies. Setup now uses a namespace import and refreshes its own previously generated helpers while preserving manually observed bindings.

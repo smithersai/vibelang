@@ -166,3 +166,50 @@ test("an is projection keeps a fitting line within the configured print width", 
     quoteStyle: "alwaysDouble", lineWidth: source.trimEnd().length,
   }), source)
 })
+
+import { vibexSource } from "./vibex-format-fixture.mjs"
+import fc from "fast-check"
+
+test("formatSource and CLI discover .vibex and preserve TSX", () => {
+  const formatted = formatSource(vibexSource, "view.vibex")
+  assert.match(formatted, /<T,>/)
+  assert.match(formatted, /\/\* c \*\//)
+  assert.match(formatted, /&amp;/)
+  assert.equal(formatSource(formatted, "view.vibex"), formatted)
+  const dir = repository({ "view.vibex": vibexSource })
+  try {
+    const run = (...args) => spawnSync(process.execPath, [cli, ...args], { cwd: dir, encoding: "utf8" })
+    assert.equal(run("--check").status, 1)
+    const write = run("--write")
+    assert.equal(write.status, 0, write.stderr)
+    assert.equal(readFileSync(join(dir, "view.vibex"), "utf8"), formatted)
+    assert.equal(run("--check").status, 0)
+    assert.equal(run("--check", "*.vibex").status, 0)
+  } finally { rmSync(dir, { recursive: true, force: true }) }
+})
+
+// VIP-39: "Tag names, attribute names, attribute strings and JSX text are JSX's alone."
+// Vary nesting, names, text, entities and VibeLang expression containers together.
+test("VIP-39 .vibex formatting property preserves JSX text and is idempotent", () => {
+  fc.assert(fc.property(
+    fc.constantFrom("div", "Box", "UI.Box", "svg:path", "effect"),
+    fc.constantFrom("Hello  50%!", "A &amp; B", "|&gt; % !", "// text"),
+    fc.integer({ min: 0, max: 100 }),
+    fc.boolean(),
+    (tag, text, n, fragment) => {
+      const element = `<${tag} title="{try p} %">\n${text}{/* kept */}{${n} |> String(%)}\n</${tag}>`
+      const source = `const id=${n % 2 ? "effect " : ""}<T,>(x:T)=>x\nconst el=${fragment ? "<>" + element + "</>" : element}\n`
+      const once = formatSource(source, "property.vibex")
+      assert.ok(once.includes("const id ="), "formatter skipped the .vibex buffer")
+      assert.ok(once.includes(text), once)
+      assert.ok(once.includes("/* kept */"), once)
+      assert.ok(once.includes('title="{try p} %"'), once)
+      assert.ok(once.includes("<T,>"), once)
+      assert.equal(formatSource(once, "property.vibex"), once)
+    }), { numRuns: 40, seed: 39 })
+})
+
+test("VIP-39 formatter property quote remains in the accepted proposal", () => {
+  const vip = readFileSync(new URL("../../../docs/design/vips/0039-vibex.md", import.meta.url), "utf8")
+  assert.ok(vip.includes("Tag names, attribute names, attribute strings and JSX text are JSX's alone."))
+})

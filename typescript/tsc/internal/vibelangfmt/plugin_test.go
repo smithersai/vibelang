@@ -131,7 +131,7 @@ func TestPluginAnswersDprint(t *testing.T) {
 		t.Fatalf("register config answered %+v", m)
 	}
 	h.send(messageGetFileMatchingInfo, uint32(1))
-	if m := h.read(); m.kind != messageDataResponse || string(m.sized[0]) != `{"fileExtensions":["vibe"],"fileNames":[]}` {
+	if m := h.read(); m.kind != messageDataResponse || string(m.sized[0]) != `{"fileExtensions":["vibe","vibex"],"fileNames":[]}` {
 		t.Fatalf("file matching answered %s", m.sized[0])
 	}
 	h.send(messageGetConfigDiagnostic, uint32(1))
@@ -226,4 +226,26 @@ func TestPluginFormatsConcurrently(t *testing.T) {
 		t.Fatalf("concurrent formats answered %+v", got)
 	}
 	h.in.Close()
+}
+
+func TestPluginVibexHostPath(t *testing.T) {
+	h, done := startPlugin(t)
+	h.send(messageRegisterConfig, uint32(1), "{}", "{}")
+	h.read()
+	source := "const el = <p>{x |> f(%)}</p>\n"
+	id := h.send(messageFormat, "/repo/view.vibex", uint32(0), uint32(len(source)), uint32(1), "", source)
+	request := h.read()
+	if request.kind != messageHostFormat || string(request.sized[0]) != "/repo/view.vibex.tsx" {
+		t.Fatalf("want TSX host request, got %+v", request)
+	}
+	h.send(messageFormatResponse, request.id, uint32(0))
+	response := h.read()
+	if response.kind != messageFormatResponse || response.body[0] != id || response.body[1] != 0 {
+		t.Fatalf("format response %+v", response)
+	}
+	h.send(messageClose)
+	h.read()
+	if err := <-done; err != nil {
+		t.Fatal(err)
+	}
 }

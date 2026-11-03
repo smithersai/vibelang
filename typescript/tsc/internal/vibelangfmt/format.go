@@ -15,7 +15,7 @@ import (
 // unchanged when the file is already formatted.
 type TypeScriptFormatter func(text string) (string, error)
 
-// Format formats source, the text of a .vibe file, with formatter, which
+// Format formats source, the text of a .vibe or .vibex file, with formatter, which
 // formats TypeScript. fileName names the file in errors. Format fails, and
 // changes nothing, on a file with syntax errors, and when the result would not
 // parse to the program source parses to.
@@ -42,7 +42,7 @@ func Format(fileName, source string, formatter TypeScriptFormatter) (string, err
 	if err != nil {
 		return "", prefix(fileName, err)
 	}
-	if err := SameProgram(source, result); err != nil {
+	if err := sameProgram(fileName, source, result); err != nil {
 		return "", prefix(fileName, fmt.Errorf("vibelang format: internal error: formatting changed the program: %w", err))
 	}
 	return result, nil
@@ -62,8 +62,14 @@ func prefix(fileName string, err error) error {
 // specifiers. Declaration order participates in module evaluation and stays
 // significant. It returns nil when they are the same.
 func SameProgram(before, after string) error {
-	a := parser.ParseSourceFile(vibeOptions, before, core.ScriptKindTS)
-	b := parser.ParseSourceFile(vibeOptions, after, core.ScriptKindTS)
+	return sameProgram("", before, after)
+}
+
+func sameProgram(fileName, before, after string) error {
+	options := sourceOptions(fileName)
+	kind := core.GetScriptKindFromFileName(options.FileName)
+	a := parser.ParseSourceFile(options, before, kind)
+	b := parser.ParseSourceFile(options, after, kind)
 	if diagnostics := b.Diagnostics(); len(diagnostics) != 0 && len(a.Diagnostics()) == 0 {
 		return syntaxError(after, diagnostics[0])
 	}
@@ -187,6 +193,8 @@ func associatedDocCount(node *ast.Node, text string) int {
 // leafText returns the text of a name or literal.
 func leafText(node *ast.Node) (string, bool) {
 	switch node.Kind {
+	case ast.KindJsxText:
+		return node.AsJsxText().Text, true
 	case ast.KindIdentifier, ast.KindPrivateIdentifier, ast.KindStringLiteral, ast.KindNumericLiteral, ast.KindBigIntLiteral,
 		ast.KindNoSubstitutionTemplateLiteral, ast.KindTemplateHead, ast.KindTemplateMiddle, ast.KindTemplateTail, ast.KindRegularExpressionLiteral:
 		return node.Text(), true

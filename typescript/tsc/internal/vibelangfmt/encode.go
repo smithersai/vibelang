@@ -1,4 +1,4 @@
-// Package vibelangfmt formats .vibe files with a TypeScript formatter.
+// Package vibelangfmt formats .vibe and .vibex files with a TypeScript formatter.
 //
 // A .vibe file is TypeScript plus VibeLang's forms (D276). Format
 // writes the file as TypeScript that keeps every VibeLang form's shape, has
@@ -68,6 +68,7 @@ const (
 	placeholderClassHead                                   // a class name for a service or control header
 	placeholderCatch                                       // a method name for catch
 	placeholderMutableIndex                                // [ and the key name after mutable
+	placeholderGenericComma                        // a temporary second arrow type parameter
 	placeholderEmptyClassElement                           // a JSDoc-owning empty class element
 	placeholderEmptyStatement                              // a JSDoc-owning empty statement
 	placeholderClassMemberSeparator                        // a temporary method standing for a service comma
@@ -124,6 +125,8 @@ type edit struct {
 
 // encoding is a .vibe file written as TypeScript, with what decoding needs.
 type encoding struct {
+	jsxText      []jsxTextLayout
+	scriptKind   core.ScriptKind
 	source       string
 	text         string
 	sentinel     string
@@ -171,6 +174,22 @@ var typeScriptOptions = ast.SourceFileParseOptions{FileName: "/vibelang-format.t
 // extension matters to the parser.
 var vibeOptions = ast.SourceFileParseOptions{FileName: "/vibelang-format.vibe", PathKey: "/vibelang-format.vibe"}
 
+// sourceOptions selects JSX independently of the VibeLang dialect (VIP-39).
+// Keep synthetic VibeLang names: callers historically supplied names for errors.
+func sourceOptions(fileName string) ast.SourceFileParseOptions {
+	if strings.HasSuffix(fileName, ".vibex") {
+		return ast.SourceFileParseOptions{FileName: "/vibelang-format.vibex", PathKey: "/vibelang-format.vibex"}
+	}
+	return vibeOptions
+}
+
+func projectionOptions(kind core.ScriptKind) ast.SourceFileParseOptions {
+	if kind == core.ScriptKindTSX {
+		return ast.SourceFileParseOptions{FileName: "/vibelang-format.tsx", PathKey: "/vibelang-format.tsx"}
+	}
+	return typeScriptOptions
+}
+
 // encoder builds an encoding.
 type encoder struct {
 	file     *ast.SourceFile
@@ -185,7 +204,7 @@ type encoder struct {
 
 // encode writes source, a .vibe file, as TypeScript.
 func encode(fileName, source string) (*encoding, error) {
-	file, forms := parser.ParseVibeLangSyntax(vibeOptions, source)
+	file, forms := parser.ParseVibeLangSyntax(sourceOptions(fileName), source)
 	if diagnostics := file.Diagnostics(); len(diagnostics) != 0 {
 		return nil, syntaxError(source, diagnostics[0])
 	}
@@ -222,6 +241,7 @@ func encode(fileName, source string) (*encoding, error) {
 		return nil, err
 	}
 	e.normalizeErrorFieldCommas()
+	e.encodeTSXArrows()
 	return e.finish()
 }
 
@@ -937,13 +957,16 @@ func (e *encoder) finish() (*encoding, error) {
 		cursor = ed.end
 	}
 	copySource(len(e.source))
-	result := &encoding{source: e.source, text: out.String(), sentinel: e.sentinel, placeholders: e.holders, modules: e.modules, references: e.references}
+	result := &encoding{scriptKind: e.file.ScriptKind, source: e.source, text: out.String(), sentinel: e.sentinel, placeholders: e.holders, modules: e.modules, references: e.references}
 
-	file := parser.ParseSourceFile(typeScriptOptions, result.text, core.ScriptKindTS)
+	file := parser.ParseSourceFile(projectionOptions(result.scriptKind), result.text, result.scriptKind)
 	if diagnostics := file.Diagnostics(); len(diagnostics) != 0 {
 		line, column := lineColumn(result.text, diagnostics[0].Pos())
 		// Only the line that does not parse: the whole form is the file again.
 		return nil, fmt.Errorf("vibelang format: internal error: the TypeScript form does not parse at %d:%d: %s\n%s", line, column, diagnostics[0].String(), sourceLine(result.text, diagnostics[0].Pos()))
+	}
+	if result.scriptKind == core.ScriptKindTSX {
+		result.jsxText = jsxTextLayouts(file, result.text)
 	}
 	result.recordPatternBodies(file)
 	result.recordLabels(file)

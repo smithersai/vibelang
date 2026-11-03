@@ -2,7 +2,7 @@
 // Prettier's quote style and print width.
 // Keeping the formatted text as one doc prevents Prettier from changing it.
 import { formatSource } from "./format.mjs"
-export const languages = [{ name: "VibeLang", parsers: ["vibelang"], extensions: [".vibe"], vscodeLanguageIds: ["vibelang"] }]
+export const languages = [{ name: "VibeLang", parsers: ["vibelang"], extensions: [".vibe", ".vibex"], vscodeLanguageIds: ["vibe", "vibex"] }]
 export const parsers = {
   vibelang: {
     parse: (text, options) => ({

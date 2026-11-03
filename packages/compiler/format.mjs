@@ -204,10 +204,10 @@ function formatBatch(files, clean) {
 export function formatFiles(args) {
   const check = args.includes("--check")
   const paths = args.filter(arg => arg !== "--check" && arg !== "--write")
-  const inputs = paths.length ? paths : ["**/*.vibe"]
+  const inputs = paths.length ? paths : ["**/*.{vibe,vibex}"]
   const files = [...new Set(inputs.flatMap(pattern => globSync(pattern, {
     exclude: path => /(^|[/\\])(?:node_modules|dist|build|coverage|\.git|\.jj)([/\\]|$)/.test(path)
-  })))].filter(file => file.endsWith(".vibe"))
+  })))].filter(file => /\.vibex?$/.test(file))
   const clean = cleanTexts()
   const batched = formatBatch(files, clean)
   const keys = new Set()

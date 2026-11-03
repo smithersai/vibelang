@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
-	"github.com/microsoft/TypeScript/tsc/internal/core"
 	"github.com/microsoft/TypeScript/tsc/internal/parser"
 	"github.com/microsoft/TypeScript/tsc/internal/scanner"
 )
@@ -31,7 +30,8 @@ func collectTokens(file *ast.SourceFile, text string) tokens {
 		if modifiers := node.Modifiers(); modifiers != nil {
 			for _, m := range modifiers.Nodes {
 				if m.Kind == ast.KindAsyncKeyword {
-					t.asyncs = append(t.asyncs, scanner.SkipTrivia(text, m.Pos()))
+					pos := scanner.SkipTrivia(text, m.Pos())
+					t.asyncs = append(t.asyncs, pos)
 				}
 			}
 		}
@@ -91,12 +91,15 @@ type decoder struct {
 // decode returns formatted, the TypeScript formatter's output for enc.text,
 // written as VibeLang.
 func (enc *encoding) decode(formatted string) (string, error) {
-	file := parser.ParseSourceFile(typeScriptOptions, formatted, core.ScriptKindTS)
+	file := parser.ParseSourceFile(projectionOptions(enc.scriptKind), formatted, enc.scriptKind)
 	if diagnostics := file.Diagnostics(); len(diagnostics) != 0 {
 		line, column := lineColumn(formatted, diagnostics[0].Pos())
 		return "", fmt.Errorf("vibelang format: internal error: the formatted TypeScript form does not parse at %d:%d: %s", line, column, diagnostics[0].String())
 	}
 	d := &decoder{enc: enc, text: formatted, file: file, seen: make([]bool, len(enc.placeholders))}
+	if err := d.restoreJSXText(); err != nil {
+		return "", err
+	}
 	if err := d.restoreReturnTypes(); err != nil {
 		return "", err
 	}
@@ -303,6 +306,19 @@ func (d *decoder) node(node *ast.Node) error {
 		return fmt.Errorf("vibelang format: internal error: the placeholder for %q lost its place", holder.text)
 	}
 	switch holder.kind {
+	case placeholderGenericComma:
+		if parent.Kind != ast.KindTypeParameter || parent.Parent == nil || parent.Parent.Kind != ast.KindArrowFunction {
+			return lost()
+		}
+		params := parent.Parent.TypeParameterList()
+		if len(params.Nodes) != 2 || params.Nodes[1] != parent {
+			return lost()
+		}
+		_, commaEnd, ok := d.nextToken(params.Nodes[0].End(), ',')
+		if !ok {
+			return lost()
+		}
+		d.replace(commaEnd, params.End(), "")
 	case placeholderText:
 		d.replace(start, end, d.reindent(holder, start))
 	case placeholderEmptyStatement:
@@ -677,7 +693,7 @@ func (d *decoder) apply() (string, error) {
 			line, column := lineColumn(d.text, ed.pos)
 			return "", fmt.Errorf("vibelang format: internal error: overlapping edits at %d:%d of the formatted TypeScript", line, column)
 		}
-		if replaced := d.text[ed.pos:ed.end]; hasComment(replaced) {
+		if replaced := d.text[ed.pos:ed.end]; !ed.opaque && hasComment(replaced) {
 			line, column := lineColumn(d.text, ed.pos)
 			return "", fmt.Errorf("vibelang format: internal error: the formatter moved a comment into VibeLang syntax at %d:%d", line, column)
 		}

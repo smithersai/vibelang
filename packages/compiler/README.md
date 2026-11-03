@@ -322,6 +322,9 @@ it beside dprint's TypeScript plugin, and add `vibe` to `includes`:
 }
 ```
 
+The formatter and `vibelang/prettier` recognize `.vibe` and `.vibex`. Include `**/*.{vibe,vibex}` in dprint's `includes`; `vibelang-format` discovers both by default. JSX in `.vibex` uses the host's TSX mode, keeping comments, text, entities and the comma in `<T,>` generic arrows.
+
+
 `dprint fmt` and `dprint check` then format `.vibe` files with the
 configuration's `typescript` settings, so they read like the project's `.ts`
 files. See [Format with dprint](https://vibelang.sh/setup/formatting).

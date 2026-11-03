@@ -15,7 +15,7 @@ const dprint = process.env.VIBELANG_DPRINT
 const skip = !dprint ? "set VIBELANG_DPRINT to a dprint binary" : !existsSync(native) ? "run sh scripts/build-vibelang.sh" : false
 
 const config = {
-  includes: ["**/*.{ts,vibe}"],
+  includes: ["**/*.{ts,vibe,vibex}"],
   excludes: ["node_modules"],
   indentWidth: 2,
   lineWidth: 120,
@@ -106,4 +106,20 @@ test("dprint reports a .vibe file the formatter cannot read and leaves it alone"
   } finally {
     rmSync(dir, { recursive: true, force: true })
   }
+})
+
+import { vibexSource } from "./vibex-format-fixture.mjs"
+test("dprint discovers .vibex and routes its projection to TSX", { skip }, () => {
+  const dir = project({ "view.vibex": vibexSource })
+  try {
+    const check = run(dir, "check")
+    assert.equal(check.status, 20, check.stdout + check.stderr)
+    const result = run(dir, "fmt")
+    assert.equal(result.status, 0, result.stdout + result.stderr)
+    const formatted = readFileSync(join(dir, "view.vibex"), "utf8")
+    assert.match(formatted, /<T,>/)
+    assert.match(formatted, /\/\* c \*\//)
+    assert.match(formatted, /&amp;/)
+    assert.equal(run(dir, "check").status, 0)
+  } finally { rmSync(dir, { recursive: true, force: true }) }
 })

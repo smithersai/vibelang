@@ -635,9 +635,16 @@ func TestFormatModuleCases(t *testing.T) {
 // and testdata/dprint.json, the Smithers repository's TypeScript style. The
 // tests that need it skip without it.
 func dprintFormatter(t *testing.T) TypeScriptFormatter {
+	return dprintFormatterForFile(t, "file.ts")
+}
+
+func dprintFormatterForFile(t *testing.T, fileName string) TypeScriptFormatter {
 	t.Helper()
 	binary := os.Getenv("VIBELANG_DPRINT")
 	if binary == "" {
+		if os.Getenv("VIBELANG_FORMAT_REQUIRE_DPRINT") == "1" {
+			t.Fatal("VIBELANG_DPRINT is required for the formatter regression run")
+		}
 		t.Skip("set VIBELANG_DPRINT to a dprint binary to run the formatter tests")
 	}
 	config, err := filepath.Abs(filepath.Join("testdata", "dprint.json"))
@@ -645,7 +652,7 @@ func dprintFormatter(t *testing.T) TypeScriptFormatter {
 		t.Fatal(err)
 	}
 	return func(text string) (string, error) {
-		command := exec.Command(binary, "fmt", "--config", config, "--stdin", "file.ts")
+		command := exec.Command(binary, "fmt", "--config", config, "--stdin", fileName)
 		command.Stdin = strings.NewReader(text)
 		var stdout, stderr bytes.Buffer
 		command.Stdout, command.Stderr = &stdout, &stderr
@@ -865,5 +872,159 @@ func TestFormatKeepsIsWithItsSubject(t *testing.T) {
 				t.Fatal("lost subject comment")
 			}
 		}
+	}
+}
+
+// VIP-39 slice 9: the host formats the projection as TSX. JSX text and
+// strings are not VibeLang syntax; expressions in containers are.
+func TestFormatVibex(t *testing.T) {
+	inputs := map[string]string{
+		"element":                "const el = <p>{x |> f(%)}</p>\n",
+		"keyword-props":          "const el = <Show when={x} is=\"a\" match={1} try={2} effect={3} fork provide=\"y\"/>\n",
+		"constrained-arrow":      "const id = <T extends User!Missing>(x: T) => x\n",
+		"effect-return":          "const f = (): JSX.Element!! => <div/>\n",
+		"effect-type-assertion":  "const el = <p>{x as A!!}</p>\n",
+		"effect-type-child":      "const el = <Comp<A!!>>text</Comp>\n",
+		"jsx-operands":           "effect function f() { const child = fork <b/>; const x = join <b/>; return try <b/> }\n",
+		"error-before-jsx":       "error Timeout\n<App/>\n",
+		"generic-catch":          "const el = <p>{x catch <E,>(e: E) => 1}</p>\n",
+		"relational-pattern":     "const el = match (s) { when < /b/: <A/>; default: <B/>; }\n",
+		"effect-type-assignment": "const el = <p>{do { const p: A!!=src; p }}</p>\n",
+		"regex-comparison":       "const el = <p>{a < /re/.source.length}</p>\n",
+		"self-closing":           "const el = <Box value={tryIt()}/>\n",
+		"fragment":               "const el = <><b/><i/></>\n",
+		"assertion":              "const el = <p>{x as T}</p>\n",
+		"generic-arrow":          "const id = <T,>(x: T) => x\nconst el = <p>{id(1)}</p>\n",
+		"effect-generic-arrow":   "const id = effect <T,>(x: T) => x\n",
+		"component-type":         "const el = <Box<string!!> value={x}/>\n",
+		"remainder":              "const el = <p>{n % 2}</p>\n",
+		"non-null":               "const el = <p>{x!}</p>\n",
+		"keywords":               "const el = <effect><try.all/><fork.in/><error/><schema/><data/><service/><match/><do/></effect>\n",
+		"member":                 "const el = <UI.Box><svg:path /></UI.Box>\n",
+		"comparison":             "const el = <p>{a < b ? a : b}</p>\n",
+		"text":                   "const el = <p>Hi! 50% off &amp; |&gt; // text</p>\n",
+		"whitespace":             "const el = <p> first  second\n third &nbsp; fourth </p>\n",
+		"attribute-string":       "const el = <Box title=\"{try p} % !\"/>\n",
+		"template":               "const el = <p>{`! % |> ${x}`}</p>\n",
+		"regex":                  "const el = <p>{/[!%>]/.test(s)}</p>\n",
+		"comment":                "const el = <p>{/* c */}{x}</p>\n",
+		"match":                  "const el = <p>{match (x) { when 0: <Zero/>; default: <Other/>; }}</p>\n",
+		"topic-arrow":            "const el = x |> <Box f={() => %}>{%}</Box>\n",
+		"do":                     "const el = <p>{do { const n = 1; n }}</p>\n",
+		"effect-prop":            "const el = <Box run={effect () => try load()} job={effect { return try load() }}/>\n",
+		"catch":                  "const el = <p>{load() catch () => <b/>}</p>\n",
+		"try-prop":               "effect function view() { return <Box value={try load()}/> }\n",
+		"try-child":              "effect function view() { return <p>{try load()}</p> }\n",
+		"spread":                 "effect function view() { return <Box {...try props()}/> }\n",
+		"batch":                  "effect function view() { return <p>{try.all [a(), b()]}</p> }\n",
+		"fork-join":              "effect function view() { const child = fork task(); return <p>{join child}</p> }\n",
+		"throw":                  "effect function view() { return <p>{x ?? throw <Missing/>}</p> }\n",
+		"declarations":           "error Missing\nconst id = <T,>(x: T) => x\nclass C { effect render() { return <b/> } }\n",
+		"solid-project-icons":    "export function Icon(p: { name: string }) { return <Show when={p.name}><svg class=\"icon\"><path d=\"M0 0\"/></svg></Show> }\n",
+		"react-licenses":         "export function Licenses(p: { names: string[] }) { return <section>{p.names.map(name => <article key={name}>{name}</article>)}</section> }\n",
+		"solid-history":          "const pick = <T extends { id: string },>(x: T) => x\nexport function History(p) { return <For each={p.rows}>{row => <span>{pick(row).id}</span>}</For> }\n",
+	}
+	// Accepted VIP-39 panel witnesses, retained as named repository corpus.
+	witnesses, err := filepath.Glob("testdata/vibex/*.vibex")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(witnesses) != 3 {
+		t.Fatalf("want three VIP-39 witnesses, got %d", len(witnesses))
+	}
+	for _, path := range witnesses {
+		text, err := os.ReadFile(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		inputs[filepath.Base(path)] = string(text)
+	}
+	for _, host := range []string{"identity", "dprint"} {
+		t.Run(host, func(t *testing.T) {
+			formatter := TypeScriptFormatter(func(text string) (string, error) { return text, nil })
+			if host == "dprint" {
+				formatter = dprintFormatterForFile(t, "file.tsx")
+			}
+			for name, source := range inputs {
+				t.Run(name, func(t *testing.T) {
+					once, err := Format("view.vibex", source, formatter)
+					if err != nil {
+						t.Fatal(err)
+					}
+					if err := sameProgram("view.vibex", source, once); err != nil {
+						t.Fatal(err)
+					}
+					twice, err := Format("view.vibex", once, formatter)
+					if err != nil {
+						t.Fatal(err)
+					}
+					if twice != once {
+						t.Fatalf("not idempotent:\n%s\nthen:\n%s", once, twice)
+					}
+					// The identity host must preserve every byte, including JSX text.
+					if host == "identity" && once != source {
+						t.Fatalf("identity changed source:\n%s", once)
+					}
+					for _, kept := range []string{"/* c */", "Hi! 50% off &amp; |&gt; // text", " first  second\n third &nbsp; fourth ", "<T,>"} {
+						if strings.Contains(source, kept) && !strings.Contains(once, kept) {
+							t.Fatalf("lost %q:\n%s", kept, once)
+						}
+					}
+				})
+			}
+		})
+	}
+}
+
+func TestFormatVibexRejectsTSXAmbiguities(t *testing.T) {
+	for _, source := range []string{
+		"const x = <T>value",
+		"const f = <T>(x: T) => x",
+		"const f = effect <T>(x: T) => x",
+		"const el = <p>a |> b</p>",
+		"const el = <p>{</p>",
+		"const x = a </b/.source.length",
+		"const x = match (n) { when <b/>: 1; default: 2; }",
+	} {
+		if got, err := Format("bad.vibex", source, func(s string) (string, error) { return s, nil }); err == nil {
+			t.Fatalf("formatted invalid TSX %q as %q", source, got)
+		}
+	}
+}
+
+func TestFormatVibexRefusesChangedJSX(t *testing.T) {
+	for _, pair := range [][2]string{
+		{"Hello", "Goodbye"}, {"50%", "51%"}, {"&amp;", "&lt;"},
+		{"one", "two"},
+	} {
+		source := "const el = <p title=\"one\">Hello 50% &amp; a  b</p>\n"
+		_, err := Format("view.vibex", source, func(s string) (string, error) { return strings.Replace(s, pair[0], pair[1], 1), nil })
+		if err == nil {
+			t.Fatalf("accepted JSX change %q -> %q", pair[0], pair[1])
+		}
+	}
+}
+
+func TestFormatVibeKeepsTSMode(t *testing.T) {
+	source := "const id = <T>(x: T) => x\nconst value = <number>n\n"
+	once, err := Format("plain.vibe", source, func(s string) (string, error) { return s, nil })
+	if err != nil {
+		t.Fatal(err)
+	}
+	if once != source {
+		t.Fatalf("changed TS syntax: %s", once)
+	}
+}
+
+func TestFormatVibexRestoresHostTextWhitespace(t *testing.T) {
+	source := "const el = <p> one  two &amp; three </p>\n"
+	got, err := Format("view.vibex", source, func(s string) (string, error) {
+		return strings.Replace(s, " one  two &amp; three ", "\n  one two &amp; three\n", 1), nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got != source {
+		t.Fatalf("JSX whitespace changed:\n%s", got)
 	}
 }

@@ -69,3 +69,12 @@ test("Prettier's singleQuote and printWidth decide the .vibe file's quotes and w
   assert.equal(await prettier.format(input, { filepath: "style.vibe", plugins: [plugin], singleQuote: true, printWidth: 100 }), expected)
   assert.equal(await prettier.check(expected, { filepath: "style.vibe", plugins: [plugin], singleQuote: true, printWidth: 100 }), true)
 })
+
+import { vibexSource } from "./vibex-format-fixture.mjs"
+test("Prettier infers .vibex and preserves JSX and VibeLang containers", async () => {
+  const options = { filepath: "view.vibex", plugins: [plugin] }
+  const formatted = await prettier.format(vibexSource, options)
+  assert.equal(formatted, formatSource(vibexSource, "view.vibex", { quoteStyle: "preferDouble", lineWidth: 80 }))
+  assert.equal(await prettier.format(formatted, options), formatted)
+  assert.deepEqual(plugin.languages[0].vscodeLanguageIds, ["vibe", "vibex"])
+})

@@ -41,11 +41,13 @@ Setup and record split large formatter file lists into bounded argument chunks. 
 
 Install `vibelang` and configure Prettier's `plugins` with
 `"vibelang/prettier"` (or pass `--plugin vibelang/prettier`). The plugin infers
-`.vibe` and delegates the entire file to the shipped dprint process plugin,
+`.vibe` and `.vibex` and delegates the entire file to the shipped dprint process plugin,
 the same formatter used by `vibelang format --write`, the language server and `vibelang-format --write` and
 `vibelang-format --check`. Prettier's `singleQuote` and `printWidth` decide
 the quote style and line width; its other layout options do not alter the
 result.
+
+The dprint plugin recognizes both `.vibe` and `.vibex`; include `**/*.{vibe,vibex}` in a repository's dprint configuration. The `vibelang-format` companion discovers both extensions by default. A `.vibex` file uses the host's TSX mode.
 
 For editor integrations, `formatSource(text, filePath)` from `vibelang/format` formats the supplied buffer even when its path is ignored or under `node_modules`. The full path selects the repository's style; the caller selects which buffers to format. The Prettier plugin uses the same behavior and reports syntax errors in unsaved input. File-scanning commands apply their ignore rules when selecting files.
 
