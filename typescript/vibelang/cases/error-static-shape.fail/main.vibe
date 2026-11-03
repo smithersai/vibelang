@@ -1,0 +1,12 @@
+// expect: EK1302 EK1302 EK1302 EK1302 EK1302 EK1302 EK1302 EK1302
+error OverrideField { static override extra = 1 }
+error OverrideMethod { static override extra() { return 1 } }
+error OverrideGetter { static override get extra() { return 1 } }
+error BuiltinName { static name = 1 }
+schema error SchemaOverrideField { static override extra = 1 }
+schema error SchemaOverrideMethod { static override extra() { return 1 } }
+schema error SchemaPrototype { static prototype = 1 }
+schema error SchemaPrivateName { private static name = "hidden" }
+error TypoOverride { static override makeOptio() { return 1 } }
+schema error SchemaTypoOverride { static override makeOptio() { return 1 } }
+schema error MissingOverride { static make = 1 }

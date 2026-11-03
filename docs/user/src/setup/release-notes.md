@@ -869,6 +869,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - A method called through a TypeScript assertion, `satisfies`, or `!` lost its receiver when an argument contained `do`; these calls now keep JavaScript receiver and evaluation order, and preserve the asserted function type.
 
+- A forbidden `static` member in an `error` or `schema error` could report native class-shape errors alongside `EK1302`. It now reports the owning `EK1302`; independent errors in method bodies and payloads remain visible.
+
 - Contributor release checks could omit fixture tests or fail cancellation checks on a host running one Go test slice; launcher fixtures now run their complete intended suite independently of the host slice.
 
 - Compiler conformance and editor formatting checks could fail on a fresh checkout because the dprint plugin was missing; their build targets now prepare the compiler package before running.

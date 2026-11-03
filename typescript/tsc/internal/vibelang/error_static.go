@@ -12,6 +12,7 @@ var EK1302 = message(1302, errorCategory, "An error declaration cannot contain a
 func init() {
 	registry[EK1302.Code] = EK1302
 	fileChecks = append(fileChecks, checkErrorStaticMembers)
+	checker.RegisterDiagnosticsFilterHook(filterErrorStaticShapeDiagnostics)
 }
 
 func checkErrorStaticMembers(c *checker.Checker, file *ast.SourceFile) {
