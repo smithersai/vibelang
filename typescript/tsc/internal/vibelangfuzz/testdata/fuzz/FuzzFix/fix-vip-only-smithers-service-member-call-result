@@ -1,0 +1,2 @@
+go test fuzz v1
+string("-- main.vibe --\nimport { Context, Effect } from \"effect\"\n\nexport class Hasher extends Context.Service<Hasher, {\n  readonly digest: (input: Uint8Array) => Effect.Effect<Uint8Array>\n}>()(\"Hasher\") {}\n\nexport const head = (input: Uint8Array): number!!Hasher => {\n  const digest = (Hasher()).digest(input)\n  return digest.slice(0, 1)[0]!\n}\n")

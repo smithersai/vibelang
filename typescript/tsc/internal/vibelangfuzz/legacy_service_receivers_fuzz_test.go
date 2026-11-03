@@ -82,6 +82,13 @@ var legacyReceiverPositions = map[string]struct{ ret, body string }{
 	"argument":    {"number", "  const fs = FileSystem.FileSystem()\n  return legacyLength(fs.readFileString(path))"},
 	"catch-head":  {"Option.Option<string>", "  const fs = FileSystem.FileSystem()\n  return legacyDecode(fs.readFileString(path)) catch () => Option.none<string>()"},
 	"conditional": {"number", "  const fs = FileSystem.FileSystem()\n  return path.length > 0 ? legacyLength(fs.readFileString(path)) : 0"},
+	// The same runs on the read itself, with no const between (Smithers
+	// flows/crypto Uuid.vibe: const digest = (Hasher()).digest(input)).
+	"member-statement":   {"number", "  FileSystem.FileSystem().remove(path)\n  return 0"},
+	"member-initializer": {"number", "  const text = (FileSystem.FileSystem()).readFileString(path)\n  return text.length"},
+	"member-argument":    {"number", "  return legacyLength(FileSystem.FileSystem().readFileString(path))"},
+	"member-catch-head":  {"Option.Option<string>", "  return legacyDecode((FileSystem.FileSystem()).readFileString(path)) catch () => Option.none<string>()"},
+	"member-conditional": {"number", "  return path.length > 0 ? legacyLength(FileSystem.FileSystem().readFileString(path)) : 0"},
 }
 
 const legacyReceiverHelpers = `import { FileSystem } from "effect"

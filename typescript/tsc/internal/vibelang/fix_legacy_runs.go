@@ -85,7 +85,7 @@ func (m *legacyModel) runOf(call *ast.Node) (legacyRun, string) {
 // keeps each round free of the errors a mark alone adds, as x + 1 for x the
 // call of a newly marked function.
 func (m *legacyModel) effectResult(call *ast.Node) bool {
-	if legacyEffectResult(m.a.checker, call) || legacyValueReceiverCall(m.a, call) {
+	if legacyEffectResult(m.a.checker, call) || legacyValueReceiverCall(m.a, call) || legacyServiceMemberResult(m.a, call) {
 		return true
 	}
 	signature := m.a.checker.GetResolvedSignature(call)
@@ -109,6 +109,43 @@ func legacyEffectResult(c *checker.Checker, call *ast.Node) bool {
 		t = presentCallResult(c, t)
 	}
 	return isEffectType(c, t)
+}
+
+// legacyServiceMemberResult reports whether call is a method call on a
+// legacy call of an Effect value itself, (S()).m(args) or S().m(args), whose
+// method returns an Effect, as legacyValueReceiverCall does for a const that
+// such a call initializes. The old compiler gave S() the service (D501) and
+// ran the method's Effect where it stood; post-flip S() is TS2349, so the
+// checker resolves no signature for the method, and the migration reads it on
+// the Effect's success type (Smithers flows/crypto Uuid.vibe:
+// const digest = (Hasher()).digest(input)).
+func legacyServiceMemberResult(a *analyzer, call *ast.Node) bool {
+	if !ast.IsCallExpression(call) || call.QuestionDotToken() != nil {
+		return false
+	}
+	callee := ast.SkipParentheses(call.Expression())
+	if !ast.IsPropertyAccessExpression(callee) || ast.IsPrivateIdentifier(callee.Name()) {
+		return false
+	}
+	receiver := ast.SkipParentheses(callee.Expression())
+	if !legacyEffectValueCall(a, ast.GetSourceFileOfNode(call), receiver) {
+		return false
+	}
+	c := a.checker
+	success := varianceChannel(c, c.GetApparentType(c.GetTypeAtLocation(receiver.Expression())), "_A")
+	if success == nil {
+		return false
+	}
+	member := c.GetPropertyOfType(c.GetApparentType(success), callee.Name().Text())
+	if member == nil {
+		return false
+	}
+	for _, signature := range c.GetSignaturesOfType(c.GetApparentType(c.GetTypeOfSymbol(member)), checker.SignatureKindCall) {
+		if isEffectType(c, c.GetReturnTypeOfSignature(signature)) {
+			return true
+		}
+	}
+	return false
 }
 
 // plainOwner decides call in the body of owner, a function without the
