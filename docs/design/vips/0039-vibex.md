@@ -267,7 +267,7 @@ Every place any panelist found where the same tokens could read two ways, or whe
 | # | `.vibex` snippet | VibeLang reading | JSX reading | How `.tsx` resolves it | Rule | Found by |
 | --- | --- | --- | --- | --- | --- | --- |
 | 25 | `<p>a \|> b</p>` | pipe | text with a bare `>` | `ScanJsxTokenEx` (`scanner.go`) reports TS1382 (TS 5.9 and probe `q15` identical) | `.tsx`'s. Write `{"\|>"}` or `\|&gt;` | all four |
-| 26 | `<p>Hi! 50% off</p>`, `x \|> <b title="%">%</b>` | non-null, topic | text, attribute string | `ScanJsxTokenEx`, `scanJsxAttributeValue` | Text. `%` there is not the topic: probe `q13` reports EK1006 "This pipe's body does not use its topic" | all four |
+| 26 | `<p>Hi! 50% off</p>`, `x \|> <b title="%">%</b>` | non-null, topic | text, attribute string | `ScanJsxTokenEx`, `scanJsxAttributeValue` | Text. `%` there is not the topic: probe `q13` reports the missing-topic error, `EK2301` in Appendix B (the probed compiler printed its interim `EK1006`) | all four |
 | 27 | `<Box title="{try p}" />` | interpolated `try` | quoted string | `scanJsxAttributeValue`: no escapes, no interpolation | String | Astra |
 | 28 | ``{`! % \|> ${x}`}``, `{/[!%>]/.test(s)}`, `{/* try p */}`, `<p>// text</p>` | templates, regex, comments | same, and text | template rescanning, `ReScanSlashToken`, empty container, `ScanJsxTokenEx` | Agrees: unchanged lexical states | Astra, Sol, Fable |
 
