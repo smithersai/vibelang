@@ -22,11 +22,11 @@ An agent that writes VibeLang loads the skill first: its forms, rules and idioms
 
 | Load | Tokens |
 | --- | ---: |
-| The VibeLang skill, `packages/compiler/skills/vibelang/SKILL.md` | 4,559 |
-| The skill and the [cheat sheet](/vibelang-features/115-cheat-sheet) | 15,607 |
+| The VibeLang skill, `packages/compiler/skills/vibelang/SKILL.md` | 4,654 |
+| The skill and the [cheat sheet](/vibelang-features/115-cheat-sheet) | 15,604 |
 | The skill and the user guide (141 pages) | 410,000 |
 | The user guide alone | 410,000 |
-| The specification (10 chapters) | 150,000 |
+| The specification (11 chapters) | 180,000 |
 | The decision log, `docs/design/history/DECISIONS.md` | 140,000 |
 
 ## Effect TypeScript beside VibeLang
@@ -63,7 +63,7 @@ Each row is one [cheat sheet](/vibelang-features/115-cheat-sheet) entry: its Eff
 | Interruption | 65 | 66 | -1.5% |
 | No imports from `effect` or its subpath packages | 29 | 16 | 44.8% |
 | Look up platform services | 63 | 31 | 50.8% |
-| Common functions without the `Effect.` prefix | 43 | 34 | 20.9% |
+| Effect's functions without the `Effect.` prefix | 43 | 34 | 20.9% |
 | Operators on Effect's data types | 54 | 53 | 1.9% |
 | The pipe operator | 34 | 27 | 20.6% |
 | Fail on a missing value | 41 | 43 | -4.9% |
@@ -96,15 +96,15 @@ Each row is one [cheat sheet](/vibelang-features/115-cheat-sheet) entry: its Eff
 | [Welcome](/001-onboarding) | 1,800 |
 | [Why VibeLang?](/getting-started/002-why-effect) | 660 |
 | [A Real Provider, Before and After](/getting-started/real-provider-before-after) | 1,700 |
-| **Learning Path** | **12,000** |
-| [The Effect Type](/getting-started/003-the-effect-type) | 2,500 |
+| **Learning Path** | **11,000** |
+| [The Effect Type](/getting-started/003-the-effect-type) | 2,400 |
 | [Installation](/getting-started/004-installation) | 2,900 |
 | [Creating Effects](/getting-started/005-creating-effects) | 3,100 |
-| [Two Types of Errors](/error-management/006-two-error-types) | 670 |
+| [Two Types of Errors](/error-management/006-two-error-types) | 650 |
 | [Basic Concurrency](/concurrency/007-basic-concurrency) | 2,500 |
-| **Core Concepts** | **24,000** |
-| [Effect's Modules](/getting-started/008-importing-effect) | 3,000 |
-| [Running Effects](/getting-started/009-running-effects) | 1,800 |
+| **Core Concepts** | **25,000** |
+| [Effect's Modules](/getting-started/008-importing-effect) | 3,300 |
+| [Running Effects](/getting-started/009-running-effects) | 1,700 |
 | [Sequencing Effects](/getting-started/010-using-generators) | 1,800 |
 | [Building Pipelines](/getting-started/011-building-pipelines) | 1,900 |
 | [Devtools](/getting-started/012-devtools) | 16,000 |
@@ -116,20 +116,20 @@ Each row is one [cheat sheet](/vibelang-features/115-cheat-sheet) entry: its Eff
 | --- | ---: |
 | [Set up VibeLang](/setup) | 1,900 |
 | [Known limitations](/setup/known-limitations) | 550 |
-| **Start a project** | **2,500** |
+| **Start a project** | **2,600** |
 | [New project](/setup/new-project) | 540 |
-| [Existing project](/setup/existing-project) | 2,000 |
-| **Build and test** | **13,000** |
-| [vibelang CLI](/setup/vibelang-cli) | 10,000 |
+| [Existing project](/setup/existing-project) | 2,100 |
+| **Build and test** | **14,000** |
+| [vibelang CLI](/setup/vibelang-cli) | 11,000 |
 | [Vite and Vitest](/setup/vite) | 3,100 |
-| **Format and lint** | **7,500** |
-| [Format with dprint](/setup/formatting) | 2,500 |
-| [Developer tools](/setup/developer-tools) | 5,000 |
+| **Format and lint** | **9,200** |
+| [Format with dprint](/setup/formatting) | 2,600 |
+| [Developer tools](/setup/developer-tools) | 6,600 |
 | **Frameworks** | **12,000** |
 | [React](/setup/react) | 2,100 |
 | [React Native and Metro](/setup/react-native) | 450 |
 | [Vue](/setup/vue) | 3,000 |
-| [Svelte](/setup/svelte) | 2,700 |
+| [Svelte](/setup/svelte) | 2,600 |
 | [Foldkit](/setup/foldkit) | 3,400 |
 | **Editors** | **4,400** |
 | [VS Code and Cursor](/setup/vscode) | 1,200 |
@@ -137,80 +137,80 @@ Each row is one [cheat sheet](/vibelang-features/115-cheat-sheet) entry: its Eff
 | [Zed](/setup/zed) | 480 |
 | [Other editors](/setup/other-editors) | 630 |
 | [Coding agents](/setup/coding-agents) | 1,100 |
-| **Upgrade** | **110,000** |
-| [Release notes](/setup/release-notes) | 110,000 |
-| **All 19 pages** | **150,000** |
+| **Upgrade** | **120,000** |
+| [Release notes](/setup/release-notes) | 120,000 |
+| **All 19 pages** | **160,000** |
 
 ### Guides
 
 | Page | Tokens |
 | --- | ---: |
 | [Getting Started](/013-getting-started) | 1,100 |
-| **Error Management** | **18,000** |
-| [Expected Errors](/error-management/014-expected-errors) | 6,900 |
-| [Unexpected Errors](/error-management/015-unexpected-errors) | 1,700 |
-| [Fallback](/error-management/016-fallback) | 1,600 |
-| [Matching](/error-management/017-matching) | 850 |
-| [Retrying](/error-management/018-retrying) | 830 |
-| [Timing Out](/error-management/019-timing-out) | 940 |
-| [Sandboxing](/error-management/020-sandboxing) | 810 |
-| [Error Accumulation](/error-management/021-error-accumulation) | 740 |
-| [Error Channel Operations](/error-management/022-error-channel-operations) | 1,500 |
-| [Parallel and Sequential Errors](/error-management/023-parallel-and-sequential-errors) | 860 |
-| [Custom Error Classes](/error-management/024-yieldable-errors) | 1,200 |
-| **Requirements Management** | **9,900** |
-| [Managing Services](/requirements-management/025-services) | 4,500 |
+| **Error Management** | **17,000** |
+| [Expected Errors](/error-management/014-expected-errors) | 6,800 |
+| [Unexpected Errors](/error-management/015-unexpected-errors) | 1,500 |
+| [Fallback](/error-management/016-fallback) | 1,500 |
+| [Matching](/error-management/017-matching) | 790 |
+| [Retrying](/error-management/018-retrying) | 760 |
+| [Timing Out](/error-management/019-timing-out) | 830 |
+| [Sandboxing](/error-management/020-sandboxing) | 750 |
+| [Error Accumulation](/error-management/021-error-accumulation) | 680 |
+| [Error Channel Operations](/error-management/022-error-channel-operations) | 1,400 |
+| [Parallel and Sequential Errors](/error-management/023-parallel-and-sequential-errors) | 810 |
+| [Custom Error Classes](/error-management/024-yieldable-errors) | 1,100 |
+| **Requirements Management** | **9,800** |
+| [Managing Services](/requirements-management/025-services) | 4,400 |
 | [Default Services](/requirements-management/026-default-services) | 1,300 |
-| [Managing Layers](/requirements-management/027-layers) | 3,000 |
+| [Managing Layers](/requirements-management/027-layers) | 3,100 |
 | [Layer Memoization](/requirements-management/028-layer-memoization) | 1,100 |
-| **Resource Management** | **4,800** |
-| [Introduction](/resource-management/029-introduction) | 1,800 |
-| [Scope](/resource-management/030-scope) | 3,000 |
-| **Observability** | **7,400** |
-| [Logging](/observability/031-logging) | 2,200 |
+| **Resource Management** | **4,600** |
+| [Introduction](/resource-management/029-introduction) | 1,700 |
+| [Scope](/resource-management/030-scope) | 2,800 |
+| **Observability** | **6,900** |
+| [Logging](/observability/031-logging) | 2,100 |
 | [Metrics](/observability/032-metrics) | 1,500 |
-| [Tracing](/observability/033-tracing) | 2,700 |
-| [Tracking Fibers](/observability/034-tracking-fibers) | 1,000 |
+| [Tracing](/observability/033-tracing) | 2,500 |
+| [Tracking Fibers](/observability/034-tracking-fibers) | 900 |
 | [Configuration](/035-configuration) | 2,900 |
-| [Runtime](/036-runtime) | 1,600 |
-| **Scheduling** | **5,500** |
+| [Runtime](/036-runtime) | 1,500 |
+| **Scheduling** | **5,200** |
 | [Using schedules](/scheduling/037-using-schedules) | 1,000 |
-| [Choosing and combining schedules](/scheduling/038-choosing-and-combining-schedules) | 1,800 |
-| [Scheduling work with cron](/scheduling/039-cron) | 1,400 |
+| [Choosing and combining schedules](/scheduling/038-choosing-and-combining-schedules) | 1,700 |
+| [Scheduling work with cron](/scheduling/039-cron) | 1,300 |
 | [Schedule cookbook](/scheduling/040-cookbook) | 1,300 |
-| **State Management** | **2,800** |
+| **State Management** | **2,700** |
 | [Ref](/state-management/041-ref) | 1,100 |
-| [SynchronizedRef](/state-management/042-synchronizedref) | 850 |
+| [SynchronizedRef](/state-management/042-synchronizedref) | 810 |
 | [SubscriptionRef](/state-management/043-subscriptionref) | 830 |
-| [Batching](/044-batching) | 2,600 |
-| **Caching** | **2,200** |
-| [Caching Effects](/caching/045-caching-effects) | 1,000 |
+| [Batching](/044-batching) | 2,500 |
+| **Caching** | **2,000** |
+| [Caching Effects](/caching/045-caching-effects) | 950 |
 | [Cache](/caching/046-cache) | 1,100 |
-| **Concurrency** | **8,800** |
+| **Concurrency** | **8,600** |
 | [Fibers](/concurrency/047-fibers) | 3,400 |
 | [Deferred](/concurrency/048-deferred) | 1,100 |
-| [Queue](/concurrency/049-queue) | 1,500 |
-| [PubSub](/concurrency/050-pubsub) | 1,400 |
+| [Queue](/concurrency/049-queue) | 1,400 |
+| [PubSub](/concurrency/050-pubsub) | 1,300 |
 | [Semaphore](/concurrency/051-semaphore) | 790 |
 | [Latch](/concurrency/052-latch) | 630 |
 | **Stream** | **12,000** |
 | [Introduction](/stream/053-introduction) | 1,200 |
 | [Creating Streams](/stream/054-creating) | 2,800 |
 | [Consuming Streams](/stream/055-consuming-streams) | 860 |
-| [Error Handling](/stream/056-error-handling) | 1,700 |
-| [Operations](/stream/057-operations) | 4,400 |
-| [Resourceful Streams](/stream/058-resourceful-streams) | 830 |
+| [Error Handling](/stream/056-error-handling) | 1,600 |
+| [Operations](/stream/057-operations) | 4,300 |
+| [Resourceful Streams](/stream/058-resourceful-streams) | 760 |
 | **Sink** | **4,400** |
 | [Introduction](/sink/059-introduction) | 650 |
 | [Creating Sinks](/sink/060-creating) | 2,200 |
-| [Operations](/sink/061-operations) | 860 |
+| [Operations](/sink/061-operations) | 830 |
 | [Leftovers](/sink/062-leftovers) | 680 |
-| **Testing** | **1,500** |
-| [TestClock](/testing/063-testclock) | 1,500 |
-| **Code Style** | **8,600** |
+| **Testing** | **1,400** |
+| [TestClock](/testing/063-testclock) | 1,400 |
+| **Code Style** | **8,500** |
 | [Guidelines](/code-style/064-guidelines) | 850 |
 | [Dual APIs](/code-style/065-dual) | 1,000 |
-| [Branded Types](/code-style/066-branded-types) | 1,300 |
+| [Branded Types](/code-style/066-branded-types) | 1,200 |
 | [Pattern Matching](/code-style/067-pattern-matching) | 1,800 |
 | [Excessive Nesting](/code-style/068-do) | 1,800 |
 | [Control Flow Operators](/code-style/069-control-flow) | 1,900 |
@@ -225,7 +225,7 @@ Each row is one [cheat sheet](/vibelang-features/115-cheat-sheet) entry: its Eff
 | [Exit](/data-types/077-exit) | 1,100 |
 | [HashSet](/data-types/078-hash-set) | 1,600 |
 | [Option](/data-types/079-option) | 2,400 |
-| [Redacted](/data-types/080-redacted) | 810 |
+| [Redacted](/data-types/080-redacted) | 770 |
 | **Trait** | **1,700** |
 | [Equal](/trait/081-equal) | 1,000 |
 | [Hash](/trait/082-hash) | 620 |
@@ -234,7 +234,7 @@ Each row is one [cheat sheet](/vibelang-features/115-cheat-sheet) entry: its Eff
 | [Order](/behaviour/084-order) | 1,400 |
 | **Schema** | **35,000** |
 | [Introduction](/schema/085-introduction) | 1,400 |
-| [Getting Started](/schema/086-getting-started) | 3,200 |
+| [Getting Started](/schema/086-getting-started) | 3,300 |
 | [Basic Usage](/schema/087-basic-usage) | 4,700 |
 | [Filters](/schema/088-filters) | 1,500 |
 | [Advanced Usage](/schema/089-advanced-usage) | 2,900 |
@@ -247,20 +247,20 @@ Each row is one [cheat sheet](/vibelang-features/115-cheat-sheet) entry: its Eff
 | [Class APIs](/schema/096-classes) | 1,900 |
 | [Default Constructors](/schema/097-default-constructors) | 1,400 |
 | [Effect Data Types](/schema/098-effect-data-types) | 1,800 |
-| [Standard Schema](/schema/099-standard-schema) | 960 |
+| [Standard Schema](/schema/099-standard-schema) | 880 |
 | [Arbitrary](/schema/100-arbitrary) | 1,900 |
 | [JSON Schema](/schema/101-json-schema) | 1,900 |
 | [Equivalence](/schema/102-equivalence) | 770 |
 | [Formatter](/schema/103-formatter) | 540 |
 | [Schema Compilers](/schema/104-compilers) | 2,200 |
 | **Platform** | **19,000** |
-| [Introduction](/platform/105-introduction) | 3,100 |
-| [FileSystem](/platform/106-file-system) | 1,400 |
+| [Introduction](/platform/105-introduction) | 3,000 |
+| [FileSystem](/platform/106-file-system) | 1,300 |
 | [Path](/platform/107-path) | 950 |
 | [PlatformLogger](/platform/108-platformlogger) | 790 |
-| [Runtime](/platform/109-runtime) | 1,400 |
-| [Terminal](/platform/110-terminal) | 1,800 |
-| [Platform globals in VibeLang](/platform/platform-globals) | 6,600 |
+| [Runtime](/platform/109-runtime) | 1,300 |
+| [Terminal](/platform/110-terminal) | 1,600 |
+| [Platform globals in VibeLang](/platform/platform-globals) | 6,700 |
 | [Cloudflare Workers](/platform/cloudflare-workers) | 760 |
 | [Alchemy](/platform/alchemy) | 2,500 |
 | **All 101 pages** | **170,000** |
@@ -270,14 +270,14 @@ Each row is one [cheat sheet](/vibelang-features/115-cheat-sheet) entry: its Eff
 | Page | Tokens |
 | --- | ---: |
 | [Control operations and handlers](/vibelang-features/111-control-operations-and-handlers) | 65 |
-| [Producers](/vibelang-features/112-producers) | 3,100 |
-| [Building an HTTP API](/vibelang-features/113-building-an-http-api) | 1,600 |
-| [VibeLang for Effect users](/vibelang-features/114-vibelang-for-effect-users) | 6,400 |
+| [Producers](/vibelang-features/112-producers) | 3,000 |
+| [Building an HTTP API](/vibelang-features/113-building-an-http-api) | 1,500 |
+| [VibeLang for Effect users](/vibelang-features/114-vibelang-for-effect-users) | 6,700 |
 | [Cheat sheet](/vibelang-features/115-cheat-sheet) | 11,000 |
-| [Pattern matching with match and is](/vibelang-features/116-match-and-is) | 7,900 |
+| [Pattern matching with match and is](/vibelang-features/116-match-and-is) | 8,100 |
 | [Diagnostic code map](/vibelang-features/diagnostic-code-map) | 2,700 |
 | [Experimental platform APIs](/vibelang-features/118-experimental-platform-apis) | 6,600 |
-| **All 8 pages** | **39,000** |
+| **All 8 pages** | **40,000** |
 
 ### Specification
 
@@ -293,6 +293,7 @@ Each row is one [cheat sheet](/vibelang-features/115-cheat-sheet) entry: its Eff
 | [6. Data](/spec/006-data) | 8,800 |
 | [7. Configuration and tooling](/spec/007-tooling) | 16,000 |
 | [8. Runtime guarantees](/spec/008-runtime) | 7,500 |
-| **Appendices** | **32,000** |
+| **Appendices** | **55,000** |
 | [Grammar, diagnostics, and denied and open VIPs](/spec/900-appendices) | 32,000 |
-| **All 10 pages** | **150,000** |
+| [Module resolution matrix](/spec/901-resolution-matrix) | 23,000 |
+| **All 11 pages** | **180,000** |

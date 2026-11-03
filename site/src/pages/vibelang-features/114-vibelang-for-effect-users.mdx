@@ -319,3 +319,23 @@ Inferred parameter types of retained SDK error constructors keep their Effect na
 `vibelang --fix` shortens an `Effect.member(...)` call when the bare name resolves to the same available Effect export. It keeps qualified calls when a value shadows that name, when `vibe.effectGlobals` is `false`, or when shortening would remove a prefix comment. A function value such as `const run = Effect.retry` keeps its spelling. Native TypeScript module bodies are left unchanged, and imports needed by declaration sidecars stay even when `declaration` is `false`.
 
 A generic assertion such as `expect(awaited(p))` in effect code reports `EK4802` when `awaited(p)` returns an Effect: the assertion would receive the unrun program. Write `expect(try awaited(p))` to inspect its result; `--fix` applies this direct-argument repair when its failure and requirement contract fits. To inspect the program object intentionally, write `expect<Effect.Effect<number>>(e)`. Generic arrays, Promises and callback contracts also report the warning; run their Effects where those values are constructed.
+
+The pre-VIP-1 migration repairs a legacy `fork(program, options)` even when an
+earlier pass already marked its function `effect`: it writes
+`try Effect.forkChild(program, options)`. A single-operand `fork program`
+keeps its operator form.
+
+When migrating pre-VIP-1 code with `vibelang --fix --fix-vip-only`, a call
+passed to an unconstrained generic parameter keeps its old run phase. For
+example, `expect(awaited(p))` becomes `expect(try awaited(p))` in effect code:
+`expect<T>(actual: T, message?: string)` does not ask for an Effect. A parameter
+declared as an Effect, including `T extends Effect.Effect<unknown>`, still
+receives the unrun program. Explicit type arguments that select an Effect also
+keep that program unrun.
+
+Another provided argument can also fix the same generic parameter to an Effect,
+including through a record, tuple or callback. That independent context still
+keeps the argument as a program, and the migration runs the generic call's
+result where the old code ran it.
+
+A plain callback keeps its TypeScript body even when an `effect` function passes it as an argument. A captured `Effect.runSyncWith(context)` runner can be called from that callback, as from an assigned or returned plain function; passing the callback does not add an Effect activation. An explicitly `effect` callback remains Effect code.

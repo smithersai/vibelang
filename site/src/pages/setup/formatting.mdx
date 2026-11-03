@@ -120,10 +120,12 @@ VibeLang has one formatter (VIP-34).
 
 The language server's `textDocument/formatting`, `textDocument/rangeFormatting` and `textDocument/onTypeFormatting` requests format the current editor text, saved or not, through the same formatter as `vibelang format`, `vibelang-format` and `vibelang/prettier`. All of them read the nearest Oxfmt, Prettier or dprint configuration for the file's quote style and print width ([Developer tools](/setup/developer-tools)), and the package supplies the VibeLang plugin itself; without a configuration they use double quotes and width 120. A file the formatter refuses is left as it is and the editor shows the error.
 
-`vibelang format --write` formats `.vibe` files with the shared formatter; `vibelang format --check` reports files that need formatting without writing them. `vibelang format --help` lists the options. Both accept file paths or glob patterns. Both run dprint once per quote style, width and core, over all the selected files, and remember the file contents dprint left unchanged, so a check of a clean tree starts no dprint. `VIBELANG_DISABLE_CACHE=1` turns that memory off and `VIBELANG_CACHE_DIR` moves it, as for the compile cache.
+`vibelang format --write` formats `.vibe` and `.vibex` files with the shared formatter; `vibelang format --check` reports files that need formatting without writing them. `vibelang format --help` lists the options. Both accept file paths or glob patterns. Both run dprint once per quote style, width and core, over all the selected files, and remember the file contents dprint left unchanged, so a check of a clean tree starts no dprint. `VIBELANG_DISABLE_CACHE=1` turns that memory off and `VIBELANG_CACHE_DIR` moves it, as for the compile cache.
 
 ## Prettier, Oxfmt and migration
 
 The compiler also ships `vibelang/prettier` and `vibelang-format`. See [Developer tools after migration](/setup/developer-tools) for the integrations, their shared formatter, and how migration extends existing checks.
 
 The Prettier plugin formats the supplied buffer even when its path matches an ignore rule, and reports syntax errors in unsaved input. File-scanning commands select files using their ignore rules.
+
+JSX lives in `.vibex` files. The shared formatter sends their encoded source to the host's TSX formatter, preserving JSX text, entities and comments in containers. Use `x as T` for an assertion and `<T,>(x: T) => x` for an unconstrained generic arrow, as in `.tsx`. The formatter keeps the comma that distinguishes the arrow from JSX.

@@ -40,6 +40,29 @@ Node on a package `bin`, `bun file` from a directory whose `bunfig.toml` has no 
 
 Where a loader does serve a script, as in `node --import vibelang/register src/x.ts`, the modules it reaches can migrate, and `src/x.ts` keeps its name because no step rewrites a script's path. To migrate a module this keeps, wire its runner or change the entry in its own commit first. A module already `.vibe` that such a runner reaches is a setup warning. Other bundlers, such as vinext, are not followed.
 
+## Paths to converted files
+
+Renaming `X.ts` to `X.vibe` updates imports, but not a path held as data, and
+that path fails only when the program runs it. A batched migration rewrites a
+static path it can resolve. `verify` fails the batch for what is left, naming
+each `path-to-converted-file` refusal by module, file and line under
+`pathReferences.refusals` in `verify.json`:
+
+```ts
+// Each of these fails the batch while Local.ts is now Local.vibe.
+import.meta.resolve(`./Local${moduleExtension(import.meta.url)}`)
+spawn("bun", ["src/Local.ts"])
+export default { include: ["src/**/*.ts"], test: /\.tsx?$/ }
+
+// In a module that became .vibe, this silently takes its other branch.
+const fromSource = import.meta.url.endsWith(".ts")
+```
+
+Revert the module to TypeScript, or change the caller in its own commit before
+the batch. A path the check cannot prove either way, such as ``import(`./${name}`)``,
+goes under `pathReferences.reports` and does not fail the batch. Comments, URLs,
+prose, assertions, generated outputs and files that were not renamed stay clean.
+
 A build can also drop a module without naming it: an entry glob such as
 `src/**/*.ts` leaves `Local.vibe` out of `dist`, and the build still exits 0. A
 batched migration builds the repository from clean output before and after each
@@ -127,6 +150,12 @@ package that installs Knip or sets a `knip` key in `package.json` a
 `knip.config.ts` with the `vibelang/knip` compiler. A `--config` that names a JSON
 file replaces it, and a JSON file cannot hold a compiler, so Knip then does not
 read `.vibe` modules: such a command needs a JavaScript configuration.
+
+ESLint treats an `effect { ... }` block as an Effect value. Callback-arity
+rules inspect written functions such as `effect (cause) => ...`, so a block
+passed as the program argument of `Effect.catchCause` is not mistaken for a
+handler. Captured names, local variables and control flow inside the block
+still receive their normal checks.
 
 ## Oxlint
 

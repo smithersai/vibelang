@@ -32,7 +32,7 @@ Provide a platform layer at the application boundary. The layers live beside Eff
 
 | Module | Layers |
 | --- | --- |
-| `vibelang-runtime/experimental/platform-node` | `ExperimentalNodeServices.layer`: `@effect/platform-node`'s bundle plus `FileSystem`, `Crypto` and `Process`; `ExperimentalNodeFileSystem.layer`, `ExperimentalNodeCrypto.layer`, `ExperimentalNodeProcess.layer`; `ExperimentalNodeLocks.layer`, within one process |
+| `vibelang-runtime/experimental/platform-node` | `ExperimentalNodeServices.layer`: `@effect/platform-node`'s bundle plus `FileSystem`, `Crypto` and `Process`; `ExperimentalNodeFileSystem.layer`, `ExperimentalNodeCrypto.layer`, `ExperimentalNodeProcess.layer`; `ExperimentalNodeLocks.layer`, within one process; `ExperimentalNodeHttpServer.layer` and `layerConfig` |
 | `vibelang-runtime/experimental/platform-bun` | `ExperimentalBunServices.layer`: `@effect/platform-bun`'s bundle plus `FileSystem`, `Crypto` and `Process`; `ExperimentalBunFileSystem.layer`, `ExperimentalBunCrypto.layer`, `ExperimentalBunProcess.layer` |
 | `vibelang-runtime/experimental/platform-browser` | `ExperimentalBrowserServices.layer`: `Crypto`, `@effect/platform-browser`'s crypto services and the browser services; `ExperimentalBrowserCrypto.layer`, `ExperimentalBrowserLocks.layer`, `ExperimentalBrowserMediaQuery.layer`, `ExperimentalBrowserInfo.layer`, `ExperimentalBrowserDocument.layer`, `ExperimentalBrowserResizeObserver.layer`, `ExperimentalBrowserFileReader.layer`, `ExperimentalBrowserAnimations.layer` |
 
@@ -408,6 +408,10 @@ Each fact is an Effect that cannot fail, as `Experimental.Process`'s are:
 | `try browser.userAgent` | the `User-Agent` string | `navigator.userAgent` |
 
 `ExperimentalBrowserInfo.layer`, also in `ExperimentalBrowserServices.layer`, reads the host when a member runs. A host without a field, such as a server, is not isolated and has an empty user agent. `Experimental.BrowserInfo.layerTest()` is a plain page whose user agent is `"vibelang-test"`; pass the members a test sets.
+
+## ExperimentalNodeHttpServer
+
+`NodeHttpServer.layer` from `@effect/platform-node` takes Node's `createServer`, and a `.vibe` file does not import `node:http` as a value. `ExperimentalNodeHttpServer.layer({ port })` is Effect's layer with that argument supplied, and `layerConfig({ port: Config.Port("PORT") })` reads the options from `Config`. It adds no service: it provides Effect's `HttpServer`. A server that needs its own `createServer` options belongs in a `.ts` file. Bun's `BunHttpServer.layer({ port })` takes no constructor, so it has no such layer.
 
 ## When Effect ships them
 
