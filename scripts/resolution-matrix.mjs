@@ -1,0 +1,106 @@
+// TypeScript 5.9.3 is the oracle (decided detail 296). No compiler-derived expectations.
+import ts from "../docs/tools/node_modules/typescript/lib/typescript.js"
+import { readFileSync, writeFileSync } from "node:fs"
+import { fileURLToPath } from "node:url"
+
+export const forms = [
+  ["extensionless", "./target", "target.ts", "./target", "target.vibe"],
+  ["js", "./target.js", "target.ts", "./target.js", "target.vibe"],
+  ["jsx", "./target.jsx", "target.tsx", "./target.jsx", "target.vibex"],
+  ["ts", "./target.ts", "target.ts", "./target.ts", "target.ts"],
+  ["tsx", "./target.tsx", "target.tsx", "./target.tsx", "target.tsx"],
+  ["vibe", "./target.ts", "target.ts", "./target.vibe", "target.vibe"],
+  ["vibex", "./target.tsx", "target.tsx", "./target.vibex", "target.vibex"],
+  ["mjs", "./target.mjs", "target.mts", "./target.mjs", "target.mts"],
+  ["mts", "./target.mts", "target.mts", "./target.mts", "target.mts"],
+  ["directory", "./target", "target/index.ts", "./target", "target/index.vibe"],
+  ["stale-ts", "./target.ts", "unrelated.ts", "./target.ts", "target.vibe"],
+  ["stale-tsx", "./target.tsx", "unrelated.ts", "./target.tsx", "target.vibex"],
+]
+const root = "/__resolution_matrix__"
+const host = ts.createCompilerHost({})
+const libSources = new Map()
+const originalGet = host.getSourceFile.bind(host)
+function specifiers(source) {
+  const result = []
+  const file = ts.createSourceFile("out.js", source, ts.ScriptTarget.Latest, true)
+  function visit(node) {
+    if ((ts.isImportDeclaration(node) || ts.isExportDeclaration(node)) && node.moduleSpecifier)
+      result.push(node.moduleSpecifier.text)
+    if (ts.isCallExpression(node) && ts.isIdentifier(node.expression) && node.expression.text === "require" && ts.isStringLiteral(node.arguments[0])) result.push(node.arguments[0].text)
+    ts.forEachChild(node, visit)
+  }
+  visit(file)
+  return result
+}
+export function probe(resolution, allow, rewrite, form, packageType = "module") {
+  if (ts.version !== "5.9.3") throw new Error("Expected TypeScript 5.9.3; got " + ts.version)
+  const [, written, target] = form
+  const raw = { target: "es2022", module: ["node16", "nodenext"].includes(resolution) ? resolution : "esnext",
+    moduleResolution: resolution, allowImportingTsExtensions: allow, rewriteRelativeImportExtensions: rewrite,
+    jsx: "preserve", outDir: root + "/out", rootDir: root, types: [], skipLibCheck: true }
+  const { options, errors } = ts.convertCompilerOptionsFromJson(raw, root)
+  const files = new Map([
+    [root + "/main.ts", "import { value } from " + JSON.stringify(written) + ";\nexport const copy = value;\n"],
+    [root + "/" + target, "export const value: number = 1;\n"],
+    [root + "/package.json", JSON.stringify({type: packageType})],
+  ])
+  const outputs = {}
+  const localHost = { ...host,
+    getCurrentDirectory: () => root,
+    fileExists: name => files.has(name) || host.fileExists(name),
+    readFile: name => files.get(name) ?? host.readFile(name),
+    directoryExists: name => name.startsWith(root) || host.directoryExists(name),
+    getSourceFile: (name, languageVersion, onError, shouldCreateNewSourceFile) => {
+      if (files.has(name)) return ts.createSourceFile(name, files.get(name), languageVersion, true)
+      if (!libSources.has(name)) libSources.set(name, originalGet(name, languageVersion, onError, shouldCreateNewSourceFile))
+      return libSources.get(name)
+    },
+    writeFile: (name, text) => { outputs[name] = text },
+  }
+  const program = ts.createProgram([root + "/main.ts", root + "/" + target], options, localHost)
+  const diagnostics = [...errors, ...ts.getPreEmitDiagnostics(program)]
+  diagnostics.push(...program.emit().diagnostics)
+  const resolved = ts.resolveModuleName(written, root + "/main.ts", options, localHost,
+    undefined, undefined, packageType === "module" && ["node16", "nodenext"].includes(resolution) ? ts.ModuleKind.ESNext : undefined).resolvedModule
+  return {
+    key: [resolution, +allow, +rewrite, packageType, form[0]].join("/"),
+    resolution, allow, rewrite, packageType, form: form[0], nativeSpecifier: written,
+    nativeTarget: target, vibeSpecifier: form[3], vibeTarget: form[4],
+    resolved: resolved?.resolvedFileName.replace(root + "/", "") ?? null,
+    diagnostics: [...new Set(diagnostics.map(d => d.code))].sort((a,b) => a-b),
+    emitted: specifiers(outputs[root + "/out/main.js"] ?? ""),
+  }
+}
+export function matrix() {
+  const rows = []
+  for (const resolution of ["node10", "node16", "nodenext", "bundler"])
+    for (const allow of [false, true])
+      for (const rewrite of [false, true])
+        for (const packageType of ["module", "commonjs"])
+          for (const form of forms) rows.push(probe(resolution, allow, rewrite, form, packageType))
+  return { typescript: ts.version, rows }
+}
+const code = s => String.fromCharCode(96) + s + String.fromCharCode(96)
+function markdown(data) {
+  return "<!-- Generated by scripts/resolution-matrix.mjs; do not edit. -->\n\n# Module resolution matrix\n\n" +
+    "TypeScript " + code(data.typescript) + " is the oracle for decided detail " + code("296") + ". Regenerate with " + code("node scripts/resolution-matrix.mjs --write") + "; check with " + code("node scripts/resolution-matrix.mjs --check") + ".\n\n" +
+    "Each row runs a real TypeScript program, checks diagnostics and emits JavaScript even on errors. " + code("module") + " matches " + code("node16") + " or " + code("nodenext") + ", otherwise it is " + code("esnext") + "; " + code("target") + " is " + code("es2022") + " and " + code("jsx") + " is " + code("preserve") + ". Both package types are tested. The native and VibeLang columns name the import and its sole target. Source names " + code(".vibe") + " and " + code(".vibex") + " stand where the native control names " + code(".ts") + " and " + code(".tsx") + ". Written native " + code(".ts") + " and " + code(".tsx") + " names keep their native target; stale-name controls instead have only " + code("unrelated.ts") + " in TypeScript and the migrated target in VibeLang, so neither written native extension can find it. " + code("TS5096") + " is an option error even when a module resolves. An absent diagnostic list means success. The emitted column is the native specifier; replace a retained native source extension by the corresponding VibeLang source extension. No source extension is rewritten without " + code("rewriteRelativeImportExtensions") + ".\n\n" +
+    "| Resolution | Allow TS extensions | Rewrite | Package type | Native import → target | VibeLang import → target | Resolves | Diagnostics | Emitted specifier |\n| --- | --- | --- | --- | --- | --- | --- | --- | --- |\n" +
+    data.rows.map(r => "| " + [code(r.resolution), code(r.allow), code(r.rewrite), code(r.packageType),
+      code(r.nativeSpecifier) + " → " + code(r.nativeTarget), code(r.vibeSpecifier) + " → " + code(r.vibeTarget),
+      r.resolved ? code(r.resolved) : "—", r.diagnostics.map(n => code("TS" + n)).join(", ") || "—",
+      r.emitted.map(code).join(", ") || "—"].join(" | ") + " |").join("\n") + "\n"
+}
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
+  const data = matrix()
+  const outputs = [
+    [new URL("../docs/design/resolution-matrix.json", import.meta.url), "{\n  \"typescript\": " + JSON.stringify(data.typescript) + ",\n  \"rows\": [\n" + data.rows.map(r => "    " + JSON.stringify(r)).join(",\n") + "\n  ]\n}\n"],
+    [new URL("../docs/design/src/901-resolution-matrix.md", import.meta.url), markdown(data)],
+  ]
+  for (const [path, text] of outputs) {
+    if (process.argv.includes("--write")) writeFileSync(path, text)
+    else if (readFileSync(path, "utf8") !== text) throw new Error("Stale resolution matrix: " + fileURLToPath(path))
+  }
+  console.log("TypeScript " + data.typescript + ": " + data.rows.length + " resolution cells " + (process.argv.includes("--write") ? "written" : "checked"))
+}

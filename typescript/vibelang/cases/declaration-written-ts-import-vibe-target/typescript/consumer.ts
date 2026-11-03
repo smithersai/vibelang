@@ -1,7 +1,7 @@
-import { type Factory } from './target.ts'
-import { greeting } from './target.ts'
+import { type Factory } from './target.js'
+import { greeting } from './target.js'
 
-export type { Factory as Maker } from './target.ts'
+export type { Factory as Maker } from './target.js'
 
 export const invoke = (fn: Factory): string => fn()
 

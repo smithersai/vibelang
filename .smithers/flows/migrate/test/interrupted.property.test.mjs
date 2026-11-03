@@ -24,7 +24,7 @@ async function fixture(files = corpus.files, batch = corpus.batch, manifest = { 
   const put = (file, text) => { mkdirSync(join(target, file, ".."), { recursive: true }); writeFileSync(join(target, file), text) }
   for (const [file, text] of Object.entries(files)) put(file, text)
   put("package.json", JSON.stringify(manifest))
-  put("tsconfig.json", '{"include":["src/**/*"]}')
+  put("tsconfig.json", '{"compilerOptions":{"noEmit":true,"allowImportingTsExtensions":true},"include":["src/**/*"]}')
   await must("jj git init && jj config set --repo user.name test && jj config set --repo user.email test@localhost", { cwd: target })
   await Jj.commit(target, "original sources")
   mkdirSync(join(target, "node_modules/.bin"), { recursive: true })

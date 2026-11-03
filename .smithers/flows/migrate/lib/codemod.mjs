@@ -24,6 +24,7 @@ import { fixProgramFiles, withFixFiles } from "./fix-scope.mjs"
 export function pathAliases(ts, root) {
   const byConfig = new Map()
   const rewriteByConfig = new Map()
+  const optionsByConfig = new Map()
   const host = { ...ts.sys, onUnRecoverableConfigFileDiagnostic() {} }
   // TypeScript tries an exact pattern first, then the longest prefix before the *.
   const rank = (pattern) => pattern.includes("*") ? pattern.indexOf("*") : Number.MAX_SAFE_INTEGER
@@ -41,6 +42,7 @@ export function pathAliases(ts, root) {
       try {
         const parsed = ts.getParsedCommandLineOfConfigFile(join(root, config), {}, host)
         rewriteByConfig.set(config, parsed?.options.rewriteRelativeImportExtensions === true)
+        optionsByConfig.set(config, parsed?.options ?? {})
         const paths = parsed?.options.paths ?? {}
         const base = parsed?.options.pathsBasePath ?? parsed?.options.baseUrl ?? posix.dirname(join(root, config))
         aliases = Object.entries(paths)
@@ -54,6 +56,14 @@ export function pathAliases(ts, root) {
   aliasesFor.rewriteRelativeImportExtensions = (file) => {
     aliasesFor(file)
     return rewriteByConfig.get(nearest(file)) === true
+  }
+  aliasesFor.migratedSourceExtension = (file, sourceExt) => {
+    aliasesFor(file)
+    const options = optionsByConfig.get(nearest(file))
+    if (!options) return sourceExt
+    if (options.rewriteRelativeImportExtensions ||
+        options.allowImportingTsExtensions && (options.noEmit || options.emitDeclarationOnly)) return sourceExt
+    return sourceExt === ".vibex" && options.jsx === ts.JsxEmit.Preserve ? ".jsx" : ".js"
   }
   return aliasesFor
 }
@@ -601,6 +611,13 @@ export function rewriteImports(root, scope, moved, aliases, { preserve = [], rea
         // Use the same resolved source through a name the compiler can emit.
         next = posix.relative(posix.dirname(file), target)
         if (!next.startsWith(".")) next = "./" + next
+      }
+      // Detail 296: use the project's native emission policy for a
+      // relative name of a migrated source, including a newly renamed file.
+      if (next.startsWith(".") && /\.vibex?$/.test(next) && /\.vibex?$/.test(target)) {
+        const sourceExt = posix.extname(target)
+        const chosen = aliases?.migratedSourceExtension?.(file, sourceExt) ?? sourceExt
+        next = next.slice(0, -sourceExt.length) + chosen
       }
       if (next !== i.specifier) {
         changes.push({ start: i.start, end: i.end, text: next })

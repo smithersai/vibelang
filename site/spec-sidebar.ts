@@ -55,6 +55,10 @@ export const specSidebar = [
           {
             "text": "Grammar, diagnostics, and denied and open VIPs",
             "link": "/spec/900-appendices"
+          },
+          {
+            "text": "Module resolution matrix",
+            "link": "/spec/901-resolution-matrix"
           }
         ]
       }

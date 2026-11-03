@@ -563,6 +563,12 @@ func FixProjectWithOptions(ctx context.Context, fs vfs.FS, libraryPath tspath.Ro
 	propose := func(program *compiler.Program) []proposal {
 		var proposals []proposal
 		for _, file := range scope.fixable(program) {
+			// Detail 296's preserving import migration also runs in VIP-only
+			// mode, before the compatibility resolver is retired.
+			if p := staleSpecifierFixes(program, file, g.refused); len(p.fixes) > 0 {
+				proposals = append(proposals, p)
+				continue
+			}
 			var p proposal
 			if options.VIPOnly {
 				p = fileFixes(ctx, program, file, g.refused, vipMigrationFixCodes)

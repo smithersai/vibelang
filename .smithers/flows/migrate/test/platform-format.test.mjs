@@ -21,7 +21,7 @@ async function fixture({ file = corpus.file, source = corpus.source, formatter =
   symlinkSync(dirname(runtimeRequire.resolve("typescript/package.json")), join(target, "node_modules/typescript"), "dir")
   writeJson(join(target, "package.json"), { type: "module", private: true, scripts: { "format:check": formatter === "dprint" ? "dprint check ." : formatter + " --check ." } })
   writeFileSync(join(target, ".gitignore"), "node_modules/\n")
-  writeJson(join(target, "tsconfig.json"), { compilerOptions: { noEmit: true }, include: ["src/**/*"] })
+  writeJson(join(target, "tsconfig.json"), { compilerOptions: { noEmit: true, allowImportingTsExtensions: true }, include: ["src/**/*"] })
   writeFileSync(join(target, file), source)
   writeFileSync(join(target, "unrelated.ts"), "export const  untouched=1\n")
   writeProbeAwareCompiler(join(target, "node_modules/.bin/vibelang"), "#!/bin/sh\nexit 0\n", { mode: 0o755 })

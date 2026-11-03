@@ -210,6 +210,7 @@ Code example count: one example per fenced code block in the source body, includ
   - [8. Runtime guarantees](../design/src/008-runtime.md)
 - **Appendices**
   - [Grammar, diagnostics, and denied and open VIPs](../design/src/900-appendices.md)
+  - [Module resolution matrix](../design/src/901-resolution-matrix.md)
 
 ## Page inventory
 
