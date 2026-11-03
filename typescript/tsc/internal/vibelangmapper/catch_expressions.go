@@ -37,7 +37,7 @@ func (p *projector) catchExpression(call *ast.Node, e env) {
 	p.plan.insert(start, helperRef("$catch")+"(")
 	left, handler := call.Arguments()[0].Body(), call.Arguments()[1]
 	p.catchProgram(left)
-	if handler.AsArrowFunction().EqualsGreaterThanToken.Flags&ast.NodeFlagsReparsed != 0 {
+	if handler.Kind == ast.KindArrowFunction && handler.AsArrowFunction().EqualsGreaterThanToken.Flags&ast.NodeFlagsReparsed != 0 {
 		fallback := handler.Body()
 		p.plan.replace(left.End(), p.tokenStart(fallback), ", () => ")
 		p.catchProgram(fallback)
