@@ -160,6 +160,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - `try` in an enum member initializer inside an `effect` function compiled to JavaScript that does not parse; it now reports `EK0501`, as a class field initializer does.
 - In a `.vibe` file, `x.pipe(Effect.provide(layer))` failed with `TS2345` (`… is not assignable to parameter of type '(_: Effect<…>) => never'`) where the same `.ts` compiled: the type VibeLang gives a curried `Effect.provide(…)` (D362) lost its symbol, so `pipe` could not infer its result. Calling it directly, `Effect.provide(layer)(x)`, was not affected.
+- The migrate flow left a module under a test directory out of a package's emitted JavaScript even when the package exports it, such as `"./test/TestDatabase": "./src/test/TestDatabase.ts"`, so plain Node importing it from another package failed with `ERR_UNKNOWN_FILE_EXTENSION` on its `.vibe` imports. The flow now emits and routes an exported test-directory module and what it imports relatively; `.test` and `.spec` files stay out.
 - Published API checks rejected identical JSON exports as non-modules; JSON assets now retain their `resolveJsonModule` types, and real type changes still fail.
 
 - Source-child loader wiring introduced a `fileURLToPath` import alias and failed repositories’ native import policies. Setup now uses a namespace import and refreshes its own previously generated helpers while preserving manually observed bindings.
