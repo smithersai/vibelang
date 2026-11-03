@@ -4296,6 +4296,14 @@ typescript/vibelang/cases/producer-scope-unions/main.vibe:46:45 lambda plain tab
 typescript/vibelang/cases/producer-scope-unions/main.vibe:46:54 lambda plain table
 typescript/vibelang/cases/producer-scope-unions/main.vibe:47:42 lambda plain table
 typescript/vibelang/cases/producer-scope-unions/main.vibe:47:51 lambda plain table
+typescript/vibelang/cases/producer-written-stream-contracts/main.vibe:14:34 lambda plain table
+typescript/vibelang/cases/producer-written-stream-contracts/main.vibe:14:43 lambda plain table
+typescript/vibelang/cases/producer-written-stream-contracts/main.vibe:15:33 lambda plain table
+typescript/vibelang/cases/producer-written-stream-contracts/main.vibe:15:42 lambda plain table
+typescript/vibelang/cases/producer-written-stream-contracts/main.vibe:16:38 lambda plain table
+typescript/vibelang/cases/producer-written-stream-contracts/main.vibe:16:47 lambda plain table
+typescript/vibelang/cases/producer-written-stream-contracts/main.vibe:17:34 lambda plain table
+typescript/vibelang/cases/producer-written-stream-contracts/main.vibe:17:43 lambda plain table
 typescript/vibelang/cases/producer-written-stream/main.vibe:11:45 lambda plain table
 typescript/vibelang/cases/producer-written-stream/main.vibe:11:54 lambda plain table
 typescript/vibelang/cases/producer-written-stream/main.vibe:12:48 lambda plain table
