@@ -1,23 +1,26 @@
-// expect: EK9206 EK9206 EK9206 TS7023
-// A recursive function whose contract leaves E or R to inference must write
-// every channel when a call of itself stands where TypeScript needs the
-// contract to type it: an argument, a logical operand, or a generic call.
-// EK9206 suggests the whole contract, which compiles (D52).
+// expect: TS7023
+// A recursive function must write its contract when a call of itself stands
+// where TypeScript needs the contract to type it: an argument, a logical
+// operand, or a generic call. Written whole, as biggest, either and depth
+// write it, the contract compiles (D52); left out, as in plain, it is
+// TypeScript's TS7023, as for its Effect.gen twin. These contracts once
+// wrote infer R, which EK9206 asked to write out; that form is retired
+// (VIP-3, amended 2026-11-02).
 error Neg { n: number }
 service Audit { note(n: number): void!! }
 
-export effect function biggest(n: number): Effect<number, Neg, infer R> {
+export effect function biggest(n: number): Effect<number, Neg, Audit> {
   try Audit.note(n)
   if (n < 0) throw new Neg({ n })
   return n === 0 ? 0 : Math.max(try biggest(n - 1), n)
 }
 
-export effect function either(n: number): Effect<number, Neg, infer R> {
+export effect function either(n: number): Effect<number, Neg, never> {
   if (n < 0) throw new Neg({ n })
   return n === 0 ? 0 : (try either(n - 1) || n)
 }
 
-export effect function depth<T>(xs: ReadonlyArray<T>, n: number): Effect<number, Neg, infer R> {
+export effect function depth<T>(xs: ReadonlyArray<T>, n: number): Effect<number, Neg, never> {
   if (n < 0) throw new Neg({ n })
   return xs.length === 0 ? n : 1 + try depth(xs.slice(1), n)
 }

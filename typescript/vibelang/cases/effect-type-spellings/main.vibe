@@ -1,8 +1,10 @@
 // expect-result: {"full":"Ada","noDependencies":1,"inferred":"Ada","neither":3,"onlyDependencies":2,"arrow":2,"find":"none","either":4,"unwrap":5}
 // D309: the Effect<...> spelling stays valid beside the ! form. This is
 // terse-contracts as 0.0.8's vibelang --fix rewrote it under D308, which
-// still compiles and runs unchanged: infer R where a ! form on a function
-// with a body left the dependencies out, and nothing elsewhere.
+// still compiles and runs unchanged. It once wrote infer R where a ! form on
+// a function with a body left the dependencies out; that form is retired
+// (VIP-3, amended 2026-11-02), and --fix wrote the dependencies the body
+// needs.
 error NotFound { id: string }
 error Timeout
 
@@ -30,7 +32,7 @@ effect function noDependencies(n: number): Effect<number, Timeout> {
   return n
 }
 
-effect function inferred(id: string): Effect<string, NotFound, infer R> {
+effect function inferred(id: string): Effect<string, NotFound, Users> {
   return try Users.find(id)
 }
 
@@ -42,7 +44,7 @@ effect function onlyDependencies(): Effect<number, never, Users> {
   return try Users.count()
 }
 
-const arrow = effect (n: number): Effect<number, Timeout, infer R> => try noDependencies(n) + 1
+const arrow = effect (n: number): Effect<number, Timeout, never> => try noDependencies(n) + 1
 
 type Finder = (id: string) => Effect<string, NotFound>
 type Maybe = Effect<number> | undefined

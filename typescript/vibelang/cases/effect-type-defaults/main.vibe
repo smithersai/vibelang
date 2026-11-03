@@ -3,7 +3,8 @@
 // form, means what the same type means in TypeScript. A type argument left
 // out is never: Effect<A> cannot fail and needs nothing, and Effect<A, E>
 // needs nothing, on a function with a body as everywhere.
-// infer in a return annotation still takes a channel from the body (D57),
+// infer in a return annotation is retired (VIP-3, amended 2026-11-02), so
+// these contracts write what the body gives each channel,
 // and a service's members write Effect types with the same defaults.
 // effect-type-defaults.fail holds the bodies these contracts reject.
 error Gone { id: string }
@@ -44,16 +45,16 @@ export effect function guest(id: string): Effect<string, never, Users> {
   return (try Users).find(id) catch () => "guest"
 }
 
-export effect function inferred(id: string): Effect<string, Gone, infer R> {
+export effect function inferred(id: string): Effect<string, Gone, Users> {
   return try Users.find(id)
 }
 
-export effect function onlyErrors(id: string): Effect<string, infer E> {
+export effect function onlyErrors(id: string): Effect<string, Gone> {
   if (id === "") throw new Gone({ id })
   return id
 }
 
-export effect function partial(id: string): Effect<string, infer E, infer R> {
+export effect function partial(id: string): Effect<string, Gone, Users> {
   return try Users.find(id)
 }
 

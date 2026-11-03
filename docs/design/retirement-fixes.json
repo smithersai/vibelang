@@ -85,5 +85,14 @@
         "output": "typescript/vibelang/cases/match-vip7-invalid-values-fixed-output"
       }
     ]
+  },
+  {
+    "code": "EK4857",
+    "cases": [
+      {
+        "input": "typescript/vibelang/cases/vip3-infer-slot.fail",
+        "output": "typescript/vibelang/cases/vip3-infer-slot-migration-output"
+      }
+    ]
   }
 ]

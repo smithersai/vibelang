@@ -266,7 +266,8 @@ export function getUser(id: string): User!NotFound!Users {
 }
 
 /**
- * Leaves its failures to its body (D57).
+ * Leaves its failures to its body (D57), a form retired by VIP-3's
+ * 2026-11-02 amendment (EK4857) that the parser still reads.
  *
  * @category constructors
  * @since 0.0.2

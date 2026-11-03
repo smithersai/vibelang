@@ -18,7 +18,7 @@ const Announce = Layer.effectDiscard(effect {
 
 const AppLive = wire(Announce)
 
-export effect function launch(): Effect<never, never, infer R> {
+export effect function launch(): Effect<never, never, Mailer> {
   return try Layer.launch(AppLive)
 }
 

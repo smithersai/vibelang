@@ -22,7 +22,7 @@ export declare function failing(id: string): Effect.Effect<string, Gone>;
 export declare function found(id: string): Effect.Effect<string, Gone, Users>;
 export declare function guest(id: string): Effect.Effect<string, never, Users>;
 export declare function inferred(id: string): Effect.Effect<string, Gone, Users>;
-export declare function onlyErrors(id: string): Effect.Effect<string, Gone, never>;
+export declare function onlyErrors(id: string): Effect.Effect<string, Gone>;
 export declare function partial(id: string): Effect.Effect<string, Gone, Users>;
 export declare function run(program: Effect.Effect<number>): Effect.Effect<number>;
 export declare function main(): Effect.Effect<{

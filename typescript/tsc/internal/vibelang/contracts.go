@@ -16,9 +16,11 @@ import (
 // does not accept is EK9202. A contract may be wider than the body, never
 // narrower (Chapter 14).
 //
-// A channel written `infer Name` comes from the body (D57). The signature's
-// return type holds what was inferred, so callers and declaration files see
-// the full contract. A type argument left out of Effect<...> means what it
+// A channel written `infer Name` comes from the body (D57). The form is
+// retired (VIP-3, amended 2026-11-02): EK4857 reports it, and its fix writes
+// what was inferred (infer_slots.go). Until the form is removed, the
+// signature's return type holds what was inferred, so callers and
+// declaration files see the full contract. A type argument left out of Effect<...> means what it
 // means in TypeScript: Effect<User> checks E and R as never (D309). A
 // non-Effect annotation makes a plain function,
 // which never fails and needs nothing (D67, D282): a failure that can escape

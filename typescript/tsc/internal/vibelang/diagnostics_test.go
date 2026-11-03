@@ -102,7 +102,6 @@ var specAhead = map[int32]string{
 	4005: "lane vip40-core registers EK4005 (queued 14d1abd64058)",
 	4007: "lane vip40-core registers EK4007 (queued 14d1abd64058)",
 	4009: "lane vip40-core registers EK4009 (queued 14d1abd64058)",
-	4857: "lane vip3-sugar registers EK4857 (queued 10e5a99c3de8)",
 }
 
 // TestRegistryMatchesSpec checks the registry against Appendix B of the

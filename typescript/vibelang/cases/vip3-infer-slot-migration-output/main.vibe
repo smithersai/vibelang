@@ -1,0 +1,40 @@
+// expect: EK4857 EK4857 EK4857 EK4857 EK4857
+// VIP-3, amended 2026-11-02: an effect function's return annotation means
+// what the same annotation means in Effect TypeScript, which has no infer
+// outside a conditional type (TS1338). Each Effect slot written infer is
+// EK4857; vibelang --fix writes vip3-infer-slot-fixed, whose declaration
+// file is this one's: the type the checker inferred for each slot, or no
+// annotation where every slot was infer.
+error Gone { id: string }
+service Users { find(id: string): string!Gone }
+
+const UsersLive = Layer.succeed(Users, {
+  effect find(id: string) {
+    if (id === "") throw new Gone({ id })
+    return "Ada"
+  }
+})
+
+export effect function errors(id: string): string!Gone!Users {
+  return try (try Users).find(id)
+}
+
+export effect function needs(id: string): string!Gone!Users {
+  return try (try Users).find(id)
+}
+
+export effect function value(id: string): { name: string; }!Gone!Users {
+  return { name: try (try Users).find(id) }
+}
+
+export effect function bang(id: string): string!Gone!Users {
+  return try (try Users).find(id)
+}
+
+export const everything = effect (id: string) => try (try Users).find(id)
+
+export effect function main() {
+  provide UsersLive {
+    return [try errors("1"), try needs("2"), (try value("3")).name, try bang("4"), try everything("5")]
+  }
+}

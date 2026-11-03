@@ -90,6 +90,36 @@
     "reason": "Diagnostic-only compatibility fixture update authorized by VIP-16/detail 247. EK2122 is an unchanged pre-existing compiler bug: VIP-16 allows zero variants. This entry does not approve or add that rejection. The fixture's program text is unchanged apart from comments and its golden diagnostics change only EK2125 to EK1606."
   },
   {
+    "code": "TS7023",
+    "case": "typescript/vibelang/cases/ek2102-by-name-self-call.fail",
+    "vip": "VIP-3",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0003-effect-type-shorthand.md: accepted written-infer amendment (2026-11-03), following Will's 2026-11-02 ruling that Effect syntax is syntax sugar"
+    },
+    "reason": "The accepted annotation-twin rule removes retired infer R annotations. The unannotated recursive functions have exactly the TS7023 errors reported by the TypeScript 5.9.3 Effect.gen twin; this is native TypeScript return inference, not a new language restriction."
+  },
+  {
+    "code": "EK9201",
+    "case": "typescript/vibelang/cases/vibelang-wire-discard.fail",
+    "vip": "VIP-3",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0003-effect-type-shorthand.md: accepted written-infer amendment (2026-11-03), following Will's 2026-11-02 ruling that Effect syntax is syntax sugar"
+    },
+    "reason": "Retain the existing EK9201 negative control, unchanged from the pre-migration fixture. VIP-3 replaces this fixture's retired infer R slot with its explicit Mailer requirement; the same line already reported this error before the annotation migration. No new rejection authority is claimed."
+  },
+  {
+    "code": "EK3201",
+    "case": "typescript/vibelang/cases/vibelang-wire-discard.fail",
+    "vip": "VIP-3",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0003-effect-type-shorthand.md: accepted written-infer amendment (2026-11-03), following Will's 2026-11-02 ruling that Effect syntax is syntax sugar"
+    },
+    "reason": "Retain the existing EK3201 negative control, unchanged from the pre-migration fixture. VIP-3 replaces this fixture's retired infer R slot with its explicit Mailer requirement; the same line already reported this error before the annotation migration. No new rejection authority is claimed."
+  },
+  {
     "code": "EK3201",
     "vip": "VIP-32",
     "case": "typescript/vibelang/cases/effect-pin-project.fail",

@@ -13,8 +13,9 @@ import (
 //	Effect.Effect<User, NotFound, Db>   User!NotFound!Db
 //	Effect.Effect<User>                 User!!
 //
-// An omitted slot is never everywhere (VIP-3). Explicit infer types have
-// no shorthand rewrite: the ! form is exactly an alias of Effect<A, E, R>.
+// An omitted slot is never everywhere (VIP-3). A slot written infer has no
+// shorthand rewrite: it is EK4857, whose fix writes the inferred type first
+// (infer_slots.go).
 
 func init() {
 	tsFormRules[EK4833.Code] = &tsFormRule{

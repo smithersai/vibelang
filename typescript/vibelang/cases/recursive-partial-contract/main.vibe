@@ -1,8 +1,9 @@
-// A recursive function, with a written contract or one that leaves E or R
-// to inference with infer (D52, D57): a call of itself in its body that
-// stands for its value, such as an operand or an initializer, is typed by A while E and R
-// come from the cycle's fixpoint. These were TS2577, "Return type annotation
-// circularly references itself".
+// A recursive function with a written contract (D52): a call of itself in
+// its body that stands for its value, such as an operand or an initializer,
+// is typed by the contract. These were TS2577, "Return type annotation
+// circularly references itself". inferred once wrote E and R as infer; that
+// form is retired (VIP-3, amended 2026-11-02) and --fix wrote what the body
+// gave them.
 error Neg { n: number }
 service Audit { note(n: number): void!! }
 
@@ -26,7 +27,7 @@ effect function audited(n: number): number!Neg!Audit {
   return n * try audited(n - 1)
 }
 
-effect function inferred(n: number): Effect<number, infer E, infer R> {
+effect function inferred(n: number): Effect<number, Neg, never> {
   if (n < 0) throw new Neg({ n })
   if (n <= 1) return 1
   return n * try inferred(n - 1)

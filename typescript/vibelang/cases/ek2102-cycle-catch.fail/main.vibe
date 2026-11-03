@@ -1,12 +1,14 @@
-// expect: EK9206
-// A catch whose try block calls into a call cycle with inferred contracts
-// handles failures the cycle's fixpoint finds (D52). The checker typed its
-// variable before the fixpoint knew them, so the cycle needs a written
-// contract: writing g's breaks the cycle.
+// expect: TS7023 TS7023
+// A call cycle without return annotations has no type to start from, so
+// f and g need a written contract: TypeScript's TS7023, as for their
+// Effect.gen twins. An Effect slot written infer, which once took E and R
+// from the cycle's fixpoint (D52), is retired (VIP-3, amended 2026-11-02).
+// Writing g's contract breaks the cycle, and f's catch then types its
+// variable as X | Y.
 export class X extends TaggedError("X")<{}> {}
 export class Y extends TaggedError("Y")<{}> {}
 
-export effect function f(n: number): Effect<number, infer E, infer R> {
+export effect function f(n: number) {
   try {
     return try g(n)
   } catch (e) {
@@ -15,14 +17,14 @@ export effect function f(n: number): Effect<number, infer E, infer R> {
   }
 }
 
-export effect function g(n: number): Effect<number, infer E, infer R> {
+export effect function g(n: number) {
   if (n > 5) throw new Y()
   if (n > 3) throw new X()
   return try f(n + 1)
 }
 
 // With g's contract written, f's catch types its variable as X | Y.
-export effect function h(n: number): Effect<number, infer E, infer R> {
+export effect function h(n: number): Effect<number, Y, never> {
   try {
     return try k(n)
   } catch (e) {

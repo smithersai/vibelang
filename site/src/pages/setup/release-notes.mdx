@@ -170,6 +170,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 | Before | Now |
 | --- | --- |
+| A written Effect return slot such as `Effect.Effect<A, infer E, R>` or `A!(infer E)!R` | Run `vibelang --fix` for `EK4857`: it writes the inferred slot types, or omits an all-`infer` return annotation while preserving its declared API. New code omits the annotation to infer its return type (VIP-3). |
 | A schema field with a JavaScript initializer | `TS1247`: run `vibelang --fix` to remove the ignored expression. Choose an explicit codec default when a default is intended. |
 | A required schema field whose referenced codec has optional or uncertain decoded key flags | `EK2109`: run `vibelang --fix` to keep the existing codec as an explicit `Schema.Struct` value. Written optional fields keep their optional behavior. |
 | A `Record` value referenced optional decoded keys or a readonly `Record` referenced mutable decoded keys | `EK2109`; `vibelang --fix` preserves the existing codecs, declarations and decoding. Schema-error declarations retain their constructors and matchers. |
@@ -413,6 +414,10 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Release-history checks could time out on busy build hosts. Their generated-fixture property now has an explicit bounded timeout while retaining every assertion and generated case.
 - A type-predicate matcher could make an incomplete finite `match` appear exhaustive. User matcher functions now cover no cases for `EK4701`; their arm and `default` reads still narrow normally. Add explicit case patterns or a `default`.
 - A call-only extractor could accept a broken `Symbol.iterator` protocol and fail at run time, while rejecting `never` or reporting an internal property error for a matcher returning only `false`. Extractor return types now follow TypeScript assignability to `Iterable<unknown> | false`, reporting `EK0702` for an invalid protocol.
+- Migrating legacy service calls with an inferred error slot could freeze that slot as `never` and then refuse to insert `try`. `--fix-vip-only` now migrates the body before writing inferred slot types.
+
+- Effect return annotations accepted a written `infer` slot that TypeScript rejects. They now report `EK4857`; `vibelang --fix` writes the inferred slot types, or removes an all-`infer` return annotation, preserving the declared API.
+
 - ESLint reported extra newline warnings around method calls containing a lifted `do` expression; it now follows the source method and receiver boundaries while retaining warnings for written call or property newlines.
 
 

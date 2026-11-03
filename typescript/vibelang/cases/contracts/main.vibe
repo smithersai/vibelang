@@ -4,8 +4,10 @@
 // rule: docs/design/src/003-failures.md#96f21c3029bb6387
 // A written contract is the function's whole computation: returns are checked
 // against A, and E and R may be wider than the body needs, never narrower.
-// A channel written `infer Name` comes from the body (D57), and the
-// declaration file carries the full contract.
+// The declaration file carries the contract as written. The partial
+// annotations below once wrote channels as infer; that form is retired
+// (VIP-3, amended 2026-11-02), and --fix wrote the types the bodies gave them,
+// or removed the annotation that wrote every channel as infer.
 import { Data } from "effect"
 
 export class UserNotFound extends Data.TaggedError("UserNotFound")<{ readonly id: string }> {}
@@ -39,12 +41,12 @@ export effect function point(): Effect<{ x: number; kind: "point" }, never, neve
   return { x: 1, kind: "point" }
 }
 
-// Partial annotations: infer E, infer R, and infer A.
-export effect function greeting(id: string): Effect<string, infer E, infer R> {
+// Annotations --fix wrote from infer E, infer R and infer A.
+export effect function greeting(id: string): Effect<string, UserNotFound, never> {
   return `Hello, ${(try find(id)).name}`
 }
 
-export effect function safe(id: string): Effect<string, never, infer R> {
+export effect function safe(id: string): Effect<string, never, never> {
   try {
     return (try find(id)).name
   } catch (e) {
@@ -52,11 +54,11 @@ export effect function safe(id: string): Effect<string, never, infer R> {
   }
 }
 
-export effect function named(id: string): Effect<infer A, UserNotFound, never> {
+export effect function named(id: string): Effect<{ id: string; name: string; }, UserNotFound, never> {
   return { id, name: (try find(id)).name }
 }
 
-export effect function everything(id: string): Effect<infer _, infer _, infer _> {
+export effect function everything(id: string) {
   return try find(id)
 }
 

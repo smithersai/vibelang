@@ -51,3 +51,12 @@ test("each existing migration warning has an Appendix B row and an owning VIP am
     assert.ok(read("design/vips/" + vip).includes("`EK" + code + "`"), "missing owning VIP amendment EK" + code)
   }
 })
+
+test("the infer-slot migration is an error with an Appendix B row and an owning VIP amendment", () => {
+  const source = read("../typescript/tsc/internal/vibelang/infer_slots.go")
+  assert.match(source, /EK4857 = message\(4857, errorCategory,/)
+  const row = appendix().split("\n").find(line => line.startsWith("| `EK4857` |"))
+  assert.ok(row?.startsWith("| `EK4857` | error:"), "missing migration-error row EK4857")
+  assert.ok(row.includes("`infer`"), "the EK4857 row names the written `infer` channel")
+  assert.ok(read("design/vips/0003-effect-type-shorthand.md").includes("`EK4857`"), "missing owning VIP amendment EK4857")
+})

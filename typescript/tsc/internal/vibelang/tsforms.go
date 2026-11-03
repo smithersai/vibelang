@@ -111,7 +111,13 @@ var tsFormFixCodes = []int32{4830, 4831, 4832, 4833, 4834, 4835, 4836, 4837, 211
 
 // checkTypeScriptForms reports the rules' warnings in file.
 func checkTypeScriptForms(c *checker.Checker, file *ast.SourceFile) {
-	for _, m := range tsFormMessages {
+	checkFormRules(c, file, tsFormMessages)
+}
+
+// checkFormRules shares rewrite diagnostics between teaching warnings and
+// mandatory migration errors, without making errors adjustable lint.
+func checkFormRules(c *checker.Checker, file *ast.SourceFile, messages []*Message) {
+	for _, m := range messages {
 		rule := tsFormRules[m.Code]
 		if rule == nil {
 			continue

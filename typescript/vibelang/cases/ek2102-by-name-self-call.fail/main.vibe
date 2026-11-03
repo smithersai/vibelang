@@ -1,17 +1,19 @@
-// expect: EK9206
+// expect: TS7023 TS7023
 // A function that passes a call of itself by name reads its own E and R
-// while its callees are being found. Where its contract leaves R to
-// inference with infer R, that read cannot be exact, so the contract must
-// write it.
+// while its callees are being found. Without a return annotation that read
+// cannot be exact, so the function must write its contract: here, as for
+// its Effect.gen twin, that is TypeScript's TS7023 for both named functions.
+// An Effect slot written infer R, which once left R to the body, is
+// retired (VIP-3, amended 2026-11-02).
 declare const guarded: (body: number!unknown) => number!unknown
 
-export effect function healthy(index: number): Effect<number, unknown, infer R> {
+export effect function healthy(index: number) {
   if (index < 0) return 1
   return try guarded(healthy(index - 1))
 }
 
 export effect function wrap(body: number!unknown): number!unknown {
-  const layer = effect (index: number): Effect<number, unknown, infer R> => {
+  const layer = effect (index: number) => {
     if (index < 0) return try body
     return try guarded(layer(index - 1))
   }

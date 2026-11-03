@@ -1,0 +1,2 @@
+main.vibe(10,24): error TS7023
+main.vibe(16,9): error TS7023

@@ -1,8 +1,8 @@
 // expect-result: {"loaded":3,"checked":"ok","held":"held","callback":4,"maybe":5,"nested":6,"kept":7}
 // An explicit Effect type draws EK4833 (D287); a safe fix writes ! without
 // changing declarations. Required grouping is added; source-written parentheses
-// and explicit infer channels retain the qualified type. An omitted slot is
-// never, and the directive keeps an additional qualified spelling.
+// retain the qualified type. An omitted slot is never; written infer return
+// slots are retired by VIP-3. The directive keeps an additional qualified spelling.
 // tsforms-types-fixed is what vibelang --fix writes.
 error Missing { id: string }
 
@@ -11,7 +11,7 @@ effect function load(id: string): number!Missing {
   return id.length
 }
 
-effect function checked(program: number!Missing): Effect.Effect<string, never, infer R> {
+effect function checked(program: number!Missing): string!! {
   const n = program catch () => -1
   return n >= 0 ? "ok" : "missing"
 }

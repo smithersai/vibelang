@@ -624,6 +624,10 @@ func FixProjectWithOptions(ctx context.Context, fs vfs.FS, libraryPath tspath.Ro
 		g.refused = map[string]bool{}
 		g.baseline = g.baseline.with(baselineOf(ctx, program))
 	}
+	// Legacy running calls must become explicit before a retired infer slot
+	// is frozen: before try is inserted its error channel can look like never.
+	inferSlotsReady := !options.VIPOnly || options.MigrationOnly
+	inferSlotsDeferred := false
 	// propose returns a round's fixes: in each fixable file of program, the
 	// fixes options select whose edits do not overlap.
 	propose := func(program *compiler.Program) []proposal {
@@ -680,6 +684,15 @@ func FixProjectWithOptions(ctx context.Context, fs vfs.FS, libraryPath tspath.Ro
 			p = withoutRetiredStatementTypedFixes(p)
 			p = p.withFixes(preserveRelicDeclarations(ctx, program, texts, relicTryStatementFixes(ctx, program, file, g.refused), build, refuse))
 			p = p.withFixes(calleeChannelContractFixes(ctx, program, file, g.refused))
+			if !inferSlotsReady {
+				p.fixes = slices.DeleteFunc(p.fixes, func(f fileFix) bool {
+					if f.code != EK4857.Code {
+						return false
+					}
+					inferSlotsDeferred = true
+					return true
+				})
+			}
 			p.cleanImports = !options.MigrationOnly && !options.VIPOnly
 			// Refuse each fix that would edit a refused site (fix_sites.go).
 			name, text := p.file.FileName(), p.file.Text()
@@ -903,6 +916,18 @@ func FixProjectWithOptions(ctx context.Context, fs vfs.FS, libraryPath tspath.Ro
 		}
 		if done.Err() != nil {
 			return finish()
+		}
+		if !inferSlotsReady && inferSlotsDeferred {
+			// The legacy body is now normalized. Even an already-modern body
+			// needs the final diagnostic round when infer was its only fix.
+			inferSlotsReady = true
+			if sameTexts(before, texts) {
+				if pass == fixPassLimit {
+					result.Remaining = remainingFixes(ctx, program, texts, fresh, propose, options)
+					break
+				}
+				continue
+			}
 		}
 		if sameTexts(before, texts) {
 			break // the pass changed nothing: no fix applies

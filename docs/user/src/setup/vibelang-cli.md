@@ -102,7 +102,7 @@ For a private `const f = trusted(impl, [])`, `vibelang --fix` and `--fix-migrati
 
 Generated synchronous defect bridges reuse `identity` from `effect/Function` as their catch mapper. They keep the original thrown value and add no unused local catch function to the module's coverage.
 
-The VIP migration also marks Effect functions `effect`, including arrows with an Effect return annotation such as `const value = (): number!! => 1`. Run `vibelang --fix --fix-vip-only` to apply only the VIP migrations.
+The VIP migration also marks Effect functions `effect`, including arrows with an Effect return annotation such as `const value = (): number!! => 1`. Run `vibelang --fix --fix-vip-only` to apply only the VIP migrations. Legacy running calls migrate before retired `infer` slots are written explicitly, so the error and requirement channels describe the migrated body.
 
 When an `Effect.gen` body binds an Effect returned by a factory, `--fix` keeps the factory call at that binding. Reusing the bound program preserves one factory invocation and its shared closure state; it does not postpone startup validation until each run.
 

@@ -37,7 +37,7 @@ func TestIsEffectSubjectDoesNotInventRecursion(t *testing.T) {
 			})
 		}
 	}
-	for _, contract := range []string{"", ": Effect.Effect<string[], string, infer R>", ": Effect.Effect<string[], infer E, infer R>", ": string[]!string!never"} {
+	for _, contract := range []string{"", ": Effect.Effect<string[], string, never>", ": Effect.Effect<string[], string>", ": string[]!string!never"} {
 		t.Run(fmt.Sprintf("source-callee/%s", contract), func(t *testing.T) {
 			source := prefix + "export effect function lex(s: string)" + contract + " { if(s === \"bad\") throw \"bad\"; return [s] }; test(effect () => { expect(try exit(lex(\"bad\")) is Exit.Failure).toBe(true) })"
 			if ds := errorsOf(t, source); len(ds) != 0 {
@@ -47,14 +47,15 @@ func TestIsEffectSubjectDoesNotInventRecursion(t *testing.T) {
 	}
 }
 
-// A real partial-contract cycle still needs its complete channel contract.
-// Avoiding resolution of a Boolean predicate must not hide that diagnostic.
+// VIP-3 retires the written infer slot, so this partial-contract cycle now
+// reports the EK4857 migration error instead of EK9206. Avoiding resolution of
+// a Boolean predicate must not hide that diagnostic.
 func TestIsEffectSubjectRetainsSourceRecursion(t *testing.T) {
 	source := "error Neg { n: number }; export effect function either(n: number): Effect<number, Neg, infer R> { if (n < 0) throw new Neg({ n }); return n === 0 ? 0 : (try either(n - 1) || n) }"
 	for _, d := range errorsOf(t, source) {
-		if d.Code() == EK9206.Code {
+		if d.Code() == EK4857.Code {
 			return
 		}
 	}
-	t.Fatal("real recursive partial contract must still report EK9206")
+	t.Fatal("the retired written-infer cycle fixture must still report EK4857")
 }

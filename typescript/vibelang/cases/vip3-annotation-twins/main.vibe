@@ -1,0 +1,67 @@
+// VIP-3, amended 2026-11-02: an effect function's return annotation means
+// exactly what the same annotation means on the equivalent Effect.fn or
+// Effect.gen TypeScript, typescript/main.ts. tsc 5.9.3 with Effect 4.1.0
+// accepts each twin, and both sides declare the same API.
+
+// Three slots: the declared type is the annotation.
+export effect function full(text: string): number!TypeError!Scope {
+  try Effect.addFinalizer(() => Effect.void)
+  const n = Number(text)
+  if (Number.isNaN(n)) throw new TypeError(text)
+  return n
+}
+
+// Wider than the body: still the annotation, not the body's type.
+export effect function wide(text: string): (number | string)!(TypeError | RangeError)!Scope {
+  try Effect.addFinalizer(() => Effect.void)
+  if (text === "") throw new TypeError(text)
+  return text
+}
+
+// An omitted slot is never, as in Effect.Effect<number, TypeError>.
+export effect function parse(text: string): number!TypeError {
+  const n = Number(text)
+  if (Number.isNaN(n)) throw new TypeError(text)
+  return n
+}
+
+export effect function total(): number!! {
+  return 1
+}
+
+export effect function scoped(): number!!Scope {
+  try Effect.addFinalizer(() => Effect.void)
+  return 1
+}
+
+// Returns are checked against A as Effect.fn.Return<A> checks them, so a
+// literal keeps its literal type.
+export effect function literal(): ("a" | "b")!! {
+  return "a"
+}
+
+export effect function tagged(): ({ kind: "a" } | { kind: "b" })!! {
+  return { kind: "a" }
+}
+
+// An alias, and the long form, mean what they name.
+export type Load = number!TypeError!Scope
+export effect function aliased(text: string): Load {
+  return try full(text)
+}
+
+export effect function longForm(text: string): Effect.Effect<number, TypeError> {
+  return try parse(text)
+}
+
+// No annotation: all three slots come from the body.
+export effect function inferred(text: string) {
+  const n = Number(text)
+  if (Number.isNaN(n)) throw new TypeError(text)
+  return n
+}
+
+export const arrow = effect (n: number): number!RangeError => {
+  if (n < 0) throw new RangeError("negative")
+  return n
+}
