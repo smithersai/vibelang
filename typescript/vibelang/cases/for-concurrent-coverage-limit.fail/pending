@@ -1,0 +1,1 @@
+cov-concurrency VIP-19: an invalid inherit limit reports TS2345 rather than EK1907.

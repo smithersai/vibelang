@@ -1,0 +1,26 @@
+import { Effect } from "effect"
+// VIP-19 explicit unbounded is a Types.Concurrency value, just as omission is.
+export effect function main(): Effect.Effect<number[]> {
+ let active = 0, peak = 0
+ for concurrent("unbounded") (const n of [1,2,3]) {
+   active++; peak = Math.max(peak,active)
+   try Effect.yieldNow
+   active--
+ }
+ return [peak]
+}
+
+// docs/design/vips/0019-for-concurrent.md#50449424e1b2d7f8 | VIP-19 explicit-unbounded-Concurrency-domain
+// **Amended 2026-10-29: the limit.** In `for concurrent(n)`, `n` is any Effect `Concurrency`, passed straight to `concurrency`.
+
+// docs/design/vips/0019-for-concurrent.md#e9a8984ae9118e6b | VIP-19 explicit-unbounded-Concurrency-domain
+// In effect 4.1.0, `Concurrency` is a number or `"unbounded"` (`Types.d.ts`); the decision as sent also listed `"inherit"`, which 4.1.0 doesn't have.
+
+// docs/design/vips/0019-for-concurrent.md#a1216551cdf364cd | VIP-19 explicit-unbounded-Concurrency-domain
+// **Amended 2026-10-30: the full numeric limit domain.** Keep the limit assignable to pinned `Types.Concurrency` and pass its evaluated value unchanged to `Effect.forEach`, without positive/integer/finite validation, clamping or rounding in VibeLang.
+
+// docs/design/vips/0019-for-concurrent.md#15942273fbc9cf8f | VIP-19 explicit-unbounded-Concurrency-domain
+// (VIP-19; pinned Effect4.1.0, detail222) In `for concurrent(n)`, `n` is Effect `Types.Concurrency` (`number | "unbounded"`), passed straight to `concurrency`.
+
+// docs/design/vips/0019-for-concurrent.md#c8fdbd7d45e97f2e | VIP-19 explicit-unbounded-Concurrency-domain
+// **`for concurrent(n)` delegates the numeric limit's meaning to pinned Effect.** (Opus round27 m40; accepted VIP-19 limit amendment; details48/109/125/212.) Keep `n` assignable to `Types.Concurrency` (`number | "unbounded"` in Effect4.1.0), evaluate it once in the existing caller-side order before the head environment, and pass the resulting value straight to `Effect.forEach`'s `concurrency`.

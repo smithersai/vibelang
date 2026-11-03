@@ -1,0 +1,6 @@
+// expect: EK1907
+// VIP-19 pinned Types.Concurrency has no inherit member.
+export effect function main() { for concurrent("inherit") (const x of [1]) {} }
+
+// docs/design/vips/0019-for-concurrent.md#335c74d4169175ee | VIP-19 pinned-limit-domain
+// The early provisional `"inherit"` spelling is superseded by the pinned type and the already-decided `EK1907` operand contract; it is not an extra admitted option.

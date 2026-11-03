@@ -1,0 +1,54 @@
+import { Effect } from "effect"
+import { items } from "./iterable.js"
+// VIP-19 incremental sequential pulling versus materialization in parallel.
+export effect function main(): Effect.Effect<string[]> {
+ const out: string[] = []
+ for (const limit of [1, 2] as const) {
+   const log: string[] = []
+   const result = (effect {
+     for concurrent(limit) (const n of items(log)) {
+       log.push("body:" + n)
+       if (n === 1) throw "stop"
+     }
+     return "ok"
+   }) catch () => "failed"
+   out.push(result, ...log)
+ }
+ const parent = try Effect.withFiber(f => Effect.succeed(f))
+ for (const limit of [1, 2] as const) {
+   const flags: boolean[] = []
+   for concurrent(limit) (const n of [1, 2, 3]) {
+     const item = try Effect.withFiber(f => Effect.succeed(f))
+     flags.push(item === parent)
+   }
+   out.push(flags.join(","))
+ }
+ return out
+}
+
+// docs/design/vips/0019-for-concurrent.md#176c56aadc507ba8 | VIP-19 native-iterator-lifecycle-and-item-fiber
+// In Effect `4.1.0`, concurrency `1` runs items sequentially on the enclosing fiber; higher limits and `"unbounded"` fork per item.
+
+// docs/design/vips/0019-for-concurrent.md#e97c5408798edd49 | VIP-19 native-iterator-lifecycle-and-item-fiber
+// **Amended 2026-10-30: iterable pulling and closing follow pinned Effect.** Effective concurrency `1` pulls incrementally without calling iterator `return()` merely on item failure.
+
+// docs/design/vips/0019-for-concurrent.md#c5ab850b384997b9 | VIP-19 native-iterator-lifecycle-and-item-fiber
+// The parallel branch obtains its items through `Array.fromIterable` before starting item Effects: a non-array iterable is materialized, while an existing array is reused by reference without consulting its custom iterator.
+
+// docs/design/vips/0019-for-concurrent.md#45fa010e584793b2 | VIP-19 native-iterator-lifecycle-and-item-fiber
+// Preserve `discard:true`, failure interruption, item/source binding semantics and the separate operand/type diagnostics.
+
+// docs/design/vips/0019-for-concurrent.md#df0313d9ebe5d949 | VIP-19 native-iterator-lifecycle-and-item-fiber
+// **`for concurrent` inherits Effect's iterable pulling and closing behavior, not native for-of backpressure.** (Opus round29 m50; accepted VIP-19/VIP-31/VIP-32; details109/125/222.) Pass the iterable and checked concurrency value to the existing pinned `Effect.forEach` counterpart.
+
+// docs/design/vips/0019-for-concurrent.md#38389e6dd9d17f60 | VIP-19 native-iterator-lifecycle-and-item-fiber
+// With effective concurrency1, it pulls incrementally and does not call the iterator's `return()` merely because an item Effect fails; do not add IteratorClose/ensuring.
+
+// docs/design/vips/0019-for-concurrent.md#fe00d09686d6a5ed | VIP-19 native-iterator-lifecycle-and-item-fiber
+// In the other native branch, including effective limits above1 and `"unbounded"`, Effect4.1.0 obtains its item array through `Array.fromIterable` before starting item Effects.
+
+// docs/design/vips/0019-for-concurrent.md#c93807da25cfe044 | VIP-19 native-iterator-lifecycle-and-item-fiber
+// ```vibe effect function sequential(items: Iterable<number>) { for concurrent(1) (const item of items) { try work(item) } // pulls incrementally; item failure does not add IteratorClose } effect function parallel(items: Iterable<number>) { for concurrent(2) (const item of items) { try work(item) } // materializes input before running item Effects } ``` Effect TS: `yield* Effect.forEach(items, item => Effect.gen(function* () { yield* work(item) }), { concurrency: 1, discard: true })`, or the same unchanged2.
+
+// docs/design/vips/0019-for-concurrent.md#0333d13b40145f1c | VIP-19 native-iterator-selection
+// Pinned `internal/effect.js` selects forEachSequential only at resolved1, otherwise Arr.fromIterable before concurrent work.

@@ -1,0 +1,10 @@
+import { Effect, Stream } from "effect"
+// VIP-21 shorthand producer methods return Streams, not native Generators.
+export effect function main(): Effect.Effect<number[]> {
+ const methods = { effect *items() { yield 3 } }
+ class Box { effect *items() { yield 4 } }
+ return [...(try Stream.runCollect(methods.items())), ...(try Stream.runCollect(new Box().items()))]
+}
+
+// docs/design/vips/0021-producers.md#410acd22dcec7caf | VIP-21 producer-method-shorthand
+// The shorthand `effect *name()` exists only for methods, as `async *gen()` does in TypeScript.

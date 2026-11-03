@@ -47,3 +47,6 @@ export effect function main() {
     try Stream.runFold(scopeOnlyItems(), () => 0, (sum: number, value: number) => sum + value)
   ]
 }
+
+// docs/design/vips/0021-producers.md#f95f196a23124490 | VIP-21 Scope-value-and-requirement-contracts
+// Explicit annotations keep ordinary contract checking, and values of type `Scope.Scope` is unchanged.

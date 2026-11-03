@@ -1,0 +1,7 @@
+// expect: EK1903 EK1904
+// VIP-19 these jumps would leave an item's callback.
+export effect function breaks() { for concurrent (const x of [1]) break }
+export effect function returns() { for concurrent (const x of [1]) return x }
+
+// docs/design/vips/0019-for-concurrent.md#abed383c4e1aef4f | VIP-19 per-item-outward-jumps
+// `break` and `return` are compile errors, because no loop runs on the body's fiber.

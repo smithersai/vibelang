@@ -25,3 +25,15 @@ export effect function main() {
   const plain = try Stream.runFold(plainItem(), () => 0, (sum: number, x: number) => sum + x)
   return [first, second, plain]
 }
+
+// docs/design/vips/0021-producers.md#c23128e912ee385f | VIP-21 inferred-requirements-exclude-provided-Scope
+// **Amended 2026-10-30: inferred producer requirements.** Infer the body requirements `RBody` as for an `Effect`, then expose `Exclude<RBody, Scope.Scope>` on the `Stream`: the accepted `Stream.callback` supplies its `Scope`.
+
+// docs/design/vips/0021-producers.md#756fdaf1d9beacf8 | VIP-21 inferred-requirements-exclude-provided-Scope
+// **A producer's inferred requirements exclude the Scope supplied by its accepted Stream callback.** (Opus round28 m44; accepted VIP-21/VIP-32 counterpart.) Infer the producer body with the existing Effect/producer rules, then expose environment `Exclude<R, Scope.Scope>` on the resulting `Stream.Stream<A, E, ...>`, exactly as pinned Effect4.1.0 `Stream.callback` does.
+
+// docs/design/vips/0021-producers.md#50072a1c838132a5 | VIP-21 inferred-requirements-exclude-provided-Scope
+// Its callback already receives `R | Scope.Scope`; a producer's `fork.scoped` therefore does not impose an external Scope requirement just because the same operation in an ordinary unscoped Effect body would.
+
+// docs/design/vips/0021-producers.md#395fdebfb1368b71 | VIP-21 inferred-requirements-exclude-provided-Scope
+// ```vibe effect function* values() { fork.scoped never // Scope is supplied by the accepted producer counterpart yield 1 } // inferred Stream.Stream<number>; callers need no external Scope for this body ``` Effect TS: ```ts const values = Stream.callback<number>(queue => Effect.gen(function* () { yield* Effect.forkScoped(Effect.never) yield* Queue.offer(queue, 1) yield* Queue.end(queue) }), { bufferSize: 1, strategy: "suspend" }) // Stream<number, never, never> ``` Decided by the agent from accepted VIP-21's exact `Stream.callback` counterpart, VIP-32's Effect4.1.0 pin, principle1 (idiomatic Effect provides this Scope) and principle2 (the pinned generic signature determines the environment), 2026-10-30.

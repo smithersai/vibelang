@@ -1,0 +1,13 @@
+// expect: EK1901
+import { Stream } from "effect"
+// VIP-19 a Stream is not the named Iterable operand domain.
+export effect function main() { for concurrent (const x of Stream.make(1)) {} }
+
+// docs/design/vips/0019-for-concurrent.md#b571ecd014763316 | VIP-19 Iterable-operand-domain
+// The operand is an `Iterable` only; a Stream is a compile error that points to `for try`.
+
+// docs/design/vips/0019-for-concurrent.md#cf4612b496a1f9a3 | VIP-19 Iterable-operand-domain
+// `for concurrent` takes an `Iterable` only; `for try` takes a `Stream` only.
+
+// docs/design/vips/0019-for-concurrent.md#820bc33338f38ce3 | VIP-19 Iterable-operand-domain
+// Any other operand is a compile error.

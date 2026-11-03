@@ -1,0 +1,1 @@
+cov-concurrency VIP-21: effect generator methods return native Generators instead of Streams.

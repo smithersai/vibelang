@@ -13,3 +13,12 @@ export effect function main() {
     before the limit */ (1) (const x of [7, 8]) { seen.push(x) }
   return seen
 }
+
+// docs/design/vips/0019-for-concurrent.md#8c1f9d5425188820 | VIP-19 newline-and-ordinary-for-parsing
+// **`for concurrent` allows a line terminator after `for`, as native `for await` does.** (Opus round22 m21; live `900-for-concurrent-line-break`; VIP-19/VIP-20 grammar clarification.) Remove the special `[no LineTerminator here]` between `for` and `concurrent` from Appendix A and align the contextual table.
+
+// docs/design/vips/0019-for-concurrent.md#bb1fe319effc3d05 | VIP-19 newline-and-ordinary-for-parsing
+// VIP-19 names `for await` as its syntax precedent and imposes no special same-line condition; `for try` already admits this spacing.
+
+// docs/design/vips/0019-for-concurrent.md#b5c53181b104ec31 | VIP-19 newline-and-ordinary-for-parsing
+// Ordinary `for (concurrent of xs)` is unchanged; a bare identifier immediately after `for` is not a competing ordinary TypeScript loop production, so no previously valid program acquires a different parse.

@@ -1,0 +1,16 @@
+import { Effect } from "effect"
+import { operand } from "./helper.js"
+// VIP-19 limit precedes the RHS environment, whose head binding is in TDZ.
+export effect function main(): Effect.Effect<string[]> {
+ const trace: string[] = []
+ const x = 99
+ function limit() { trace.push("limit"); return 1 }
+ const result = try Effect.exit(effect {
+   for concurrent(limit()) (const x of do { trace.push("operand"); operand(() => x, trace) }) { trace.push("body:" + x) }
+ })
+ trace.push(result._tag)
+ return trace
+}
+
+// docs/design/vips/0019-for-concurrent.md#5726bf28226ee9f5 | VIP-19 limit-before-separate-RHS-head-environment
+// **Amended 2026-10-30: source head scope and item checks.** Evaluate the limit before entering the right-hand operand's separate lexical environment with uninitialized head bindings, as ECMAScript's `ForIn/OfHeadEvaluation` requires.

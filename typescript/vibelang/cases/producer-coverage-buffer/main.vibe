@@ -1,0 +1,23 @@
+import { Effect, Stream, Deferred } from "effect"
+// VIP-21 one buffered element and one pending offer, beyond the consumer's item.
+export effect function main(): Effect.Effect<number> {
+ const ready = try Deferred.make<void>()
+ let evaluated = 0, observed = -1
+ effect function* values() {
+   for (const n of [1,2,3,4,5]) {
+     evaluated++
+     if (n === 3) try Deferred.succeed(ready, undefined)
+     yield n
+   }
+ }
+ for try (const n of values()) {
+   try Deferred.await(ready)
+   try Effect.yieldNow
+   observed = evaluated
+   break
+ }
+ return observed
+}
+
+// docs/design/vips/0021-producers.md#15de2357df86988e | VIP-21 one-buffered-and-one-pending-offer
+// It compiles to Effect's `Stream.callback` with one element of buffer.

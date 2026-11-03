@@ -1,0 +1,1 @@
+cov-concurrency VIP-21: a plain generator becomes a Stream and its native return value gets EK2128.

@@ -1,0 +1,40 @@
+import { Effect, Stream, Queue } from "effect"
+// VIP-21 cold Stream callback, one buffer slot, bare return, native generators.
+export effect function main(): Effect.Effect<string[]> {
+ const trace: string[] = []
+ effect function* values() {
+   const r = try Effect.acquireRelease(Effect.sync(() => { trace.push("open"); return 1 }), () => Effect.sync(() => { trace.push("close") }))
+   yield r
+   yield try Effect.succeed(2)
+   return
+ }
+ const stream = values()
+ trace.push("cold:" + trace.length)
+ for (const _ of [1, 2]) {
+   const xs = try Stream.runCollect(stream)
+   trace.push(xs.join(","))
+ }
+ return trace
+}
+
+// docs/design/vips/0021-producers.md#357b32d07251a49f | VIP-21 cold-callback-Stream-lifecycle
+// `effect function*` returns a Stream, as `async function*` returns an AsyncIterable.
+
+// docs/design/vips/0021-producers.md#8b38a1c100b38b8b | VIP-21 cold-callback-Stream-lifecycle
+// `yield x` emits `x`, and `try` runs Effects (VIP-5).
+
+// docs/design/vips/0021-producers.md#81cb24880a0f43cf | VIP-21 cold-callback-Stream-lifecycle
+// Each callback consumption owns that provided `Scope`; this adds no new scheduling or finalizer order.
+
+
+// docs/design/vips/0021-producers.md#3bcbacbabc3cc9fe | VIP-21 cold-callback-Stream-lifecycle
+// A bare `return` ends the stream.
+
+// docs/design/vips/0021-producers.md#9d14f85b66ec2e66 | VIP-21 cold-callback-Stream-lifecycle
+// **Ambiguity: none** for `effect function* name()`.
+
+// docs/design/vips/0021-producers.md#4b6ed45cfbb7df6a | VIP-21 cold-callback-Stream-lifecycle
+// The Effect TS needs `Queue.end(queue)` after the body, or the stream never completes (found by the differential fuzz suite).*
+
+// docs/design/vips/0021-producers.md#7dc03311fed6049e | VIP-21 cold-callback-Stream-lifecycle
+// The typed two-consumption witness records cold construction and a fresh/finalized callback `Scope.Scope` per consumption.

@@ -1,0 +1,28 @@
+import { Effect, Stream, Queue, Scope } from "effect"
+// VIP-21 aliases normalize to a single Stream; channel unions remain Streams.
+export effect function main(): Effect.Effect<Array<number | string>> {
+ type Numbers = Stream.Stream<number>
+ effect function* one(): Numbers | never { yield 1 }
+ effect function* union(): Stream.Stream<number | string> { yield 2; yield "x" }
+ effect function* scopes() { yield try Effect.scope }
+ const check: Stream.Stream<Scope.Scope> = scopes()
+ const a = try Stream.runCollect(one())
+ const b = try Stream.runCollect(union())
+ return [...a, ...b]
+}
+
+
+// docs/design/vips/0021-producers.md#da6b6b0c357df4f6 | VIP-21 written-Stream-contract-and-methods
+// **A producer's written return annotation must expose its Stream contract, just as an Effect function's annotation exposes its Effect contract.** (R10 Opus OPUS-3; accepted VIP-21, chapter002's existing `EK2102` row, chapter001's `EK0106` rule; principles1/4/8.) After normal type-alias resolution, an explicit producer annotation must resolve to `Stream.Stream<A,E,R>`.
+
+// docs/design/vips/0021-producers.md#13eb8bac10836d21 | VIP-21 written-Stream-contract-and-methods
+// Ordinary TypeScript normalization still applies: an alias such as `Stream.Stream<number> | never` that resolves to the single Stream type is not a new rejection.
+
+// docs/design/vips/0021-producers.md#67eb22a012dbc665 | VIP-21 written-Stream-contract-and-methods
+// A union success channel inside `Stream.Stream<A | B,E,R>` is likewise a Stream.
+
+// docs/design/vips/0021-producers.md#52ff910e159f694b | VIP-21 written-Stream-contract-and-methods
+// Effect TypeScript counterpart for the type boundary is `const values = (): Stream.Stream<number> => Stream.make(1)`; the general producer expansion remains VIP-21's `Stream.callback`.
+
+// docs/design/vips/0021-producers.md#e3c752238f49d129 | VIP-21 written-Stream-contract-and-methods
+// VibeLang's producer is the promised Stream-producing callable, with the same explicit-container requirement as `EK0106`, not an instruction to inherit every native generator return annotation.

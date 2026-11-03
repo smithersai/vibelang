@@ -26,3 +26,6 @@ export effect function main() {
   const d = Array.from(try Stream.runCollect(around([1, 2])))
   return [a, b, c, d]
 }
+
+// docs/design/vips/0021-producers.md#d438dd5a951f913b | VIP-21 concurrent-yield-pending-offers
+// With concurrent yields, each active item fiber can evaluate a value before waiting in `Queue.offer`; the one-element buffer does not bound all pending offers or upstream work.
