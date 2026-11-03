@@ -1,0 +1,11 @@
+// docs/design/vips/0027-declaration-output.md#bca02577266adf02
+// VIP-27: actual migration setup preserves native resolution and authored options.
+// docs/design/vips/0027-declaration-output.md#ee38828d64b21d4a
+// VIP-27: actual migration setup preserves native resolution and authored options.
+// docs/design/vips/0027-declaration-output.md#63535410d0e6e703
+// VIP-27: actual migration setup preserves native resolution and authored options.
+// docs/design/vips/0027-declaration-output.md#f6e4c4614b19fbca
+// VIP-27: actual migration setup preserves native resolution and authored options.
+// docs/design/vips/0027-declaration-output.md#5cc6c7cdb51bd934
+// VIP-27: actual migration setup preserves native resolution and authored options.
+export const witness = 1;

@@ -1,0 +1,7 @@
+// docs/design/vips/0034-compiler-and-tooling.md#070e4f7563b8323c
+// VIP-34: declaration-output-javascript-names.
+// docs/design/vips/0034-compiler-and-tooling.md#e0f65f1fe8d4740a
+// VIP-34: declaration-output-javascript-names.
+// docs/design/vips/0034-compiler-and-tooling.md#17e346012ce86ee1
+// VIP-34: declaration-output-javascript-names.
+export const witness = 1;

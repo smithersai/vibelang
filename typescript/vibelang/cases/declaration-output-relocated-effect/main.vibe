@@ -1,0 +1,4 @@
+// docs/design/vips/0027-declaration-output.md#1776d4603150814e
+// VIP-27: Effect.gen has no relocation operation; stock rootDirs selects its declaration.
+import { Effect } from "effect"
+export effect function start() { return try Effect.succeed("up") }

@@ -56,3 +56,6 @@ test("format preserves shorthand diagnostics; --fix alone migrates declarations"
   assert.match(readFileSync(path, "utf8"), /\beffect function work\b/)
   assert.match(readFileSync(path, "utf8"), /\basync function wait\b/)
 })
+
+// docs/design/vips/0034-compiler-and-tooling.md#5121e51bfb0b5dc6
+// VIP-34: diagnostic names the missing function keyword and its mechanical fix.

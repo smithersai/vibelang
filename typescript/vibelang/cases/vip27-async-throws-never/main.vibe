@@ -1,5 +1,7 @@
 // 003-failures.md: ordinary async defaults reject their Promise and emit a never synchronous contract
 // rule: docs/design/src/003-failures.md#f840ec37fbcc5aa9
+// docs/design/vips/0027-declaration-output.md#9a2581a649fb31af
+// VIP-27: async Promise rejection versus generator initializer synchronous exception.
 import { failDefault } from "./helpers.js"
 export async function get(q: string) { if (!q) throw new Error("empty"); return q }
 /** @throws {never} */

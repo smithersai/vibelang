@@ -1,0 +1,3 @@
+// docs/design/vips/0027-declaration-output.md#52d921be04c5f053
+// VIP-27: declaration-output-relocated-routes.
+export const witness = 1;

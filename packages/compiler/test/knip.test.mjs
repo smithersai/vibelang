@@ -1,3 +1,7 @@
+// docs/design/vips/0034-compiler-and-tooling.md#1eb5649782c8696d
+// VIP-34: real tooling reads Vibe imports exports and declarations.
+// docs/design/vips/0034-compiler-and-tooling.md#723d204e746beecc
+// VIP-34: Knip sees real Vibe imports and exports; ESLint, register and bundler suites are complementary tool readers.
 import { strict as assert } from "node:assert"
 import { existsSync } from "node:fs"
 import { createRequire } from "node:module"

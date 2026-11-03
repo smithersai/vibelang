@@ -1,3 +1,5 @@
+// docs/design/vips/0034-compiler-and-tooling.md#b800f23f36b5c9ca
+// VIP-34: formatter wiring retains Oxfmt and routes Vibe through the formatter companion; Prettier and dprint plugin suites provide execution controls.
 import assert from "node:assert/strict"
 import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { createRequire } from "node:module"

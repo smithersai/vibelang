@@ -1,3 +1,7 @@
+// docs/design/vips/0034-compiler-and-tooling.md#167c07fbf7bca676
+// VIP-34: only fresh private platform companions may be added; existing siblings never overwritten.
+// docs/design/vips/0034-compiler-and-tooling.md#c05d7904ea78f624
+// VIP-34: only fresh private platform companions may be added; existing siblings never overwritten.
 import assert from "node:assert/strict"
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, existsSync, writeFileSync } from "node:fs"
 import { createRequire } from "node:module"
@@ -114,4 +118,18 @@ test("publication checks honor the batch's virtual read/exists/write callbacks",
     assert.equal(result.splits.length,privatePackage?1:0)
     assert.deepEqual(writes,privatePackage?["src/Module.ts","src/Module.platform.ts"]:[])
   }
+})
+
+
+test("a fresh platform sibling is never overwritten on repeated migration",()=>{
+ const f=fixture({private:true})
+ try{
+  const first=splitBatchPlatform(f.root,[f.file],ts);assert.equal(first.splits.length,1)
+  const sibling=platformPath(f.file), saved=readFileSync(join(f.root,sibling),"utf8")
+  writeFileSync(join(f.root,f.file),corpus.text)
+  const second=splitBatchPlatform(f.root,[f.file],ts)
+  assert.equal(second.splits.length,0);assert.match(second.refused.join("\\n"),/already exists/)
+  assert.equal(readFileSync(join(f.root,sibling),"utf8"),saved)
+  assert.equal(readFileSync(join(f.root,f.file),"utf8"),corpus.text)
+ }finally{f.dispose()}
 })

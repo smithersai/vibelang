@@ -1,0 +1,14 @@
+// docs/design/vips/0027-declaration-output.md#2728f229e719e6f9
+// VIP-27: declaration-output-effect-start.
+// docs/design/vips/0027-declaration-output.md#f3f1a88521ef8c52
+// VIP-27: declaration-output-effect-start.
+// docs/design/vips/0027-declaration-output.md#45566dce267413c0
+// VIP-27: declaration-output-effect-start.
+// docs/design/vips/0027-declaration-output.md#0cecabbb48f483aa
+// VIP-27: declaration-output-effect-start.
+// docs/design/vips/0027-declaration-output.md#0379dc075ff5a4be
+// VIP-27: declaration-output-effect-start.
+// docs/design/vips/0027-declaration-output.md#f5f99d04e6c2deaa
+// VIP-27: declaration-output-effect-start.
+import { Effect } from "effect"
+export effect function start() { return try Effect.succeed("up") }

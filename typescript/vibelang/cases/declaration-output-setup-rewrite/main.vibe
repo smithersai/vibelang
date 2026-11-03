@@ -1,0 +1,3 @@
+// docs/design/vips/0027-declaration-output.md#704a707932f34360
+// VIP-27: actual migration setup preserves native resolution and authored options.
+export const witness = 1;

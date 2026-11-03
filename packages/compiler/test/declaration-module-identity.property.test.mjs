@@ -1,5 +1,7 @@
 // VIP-27 resolved module identity across specifier spellings.
 // VIP-27 resolved module identity across specifier spellings: docs/design/vips/0027-declaration-output.md#b68d99728039c6d2
+// docs/design/vips/0027-declaration-output.md#10c4b54a749cefe2
+// VIP-27: migration rejects required API and module identity changes.
 import assert from "node:assert/strict"
 import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
