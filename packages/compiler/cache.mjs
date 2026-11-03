@@ -35,7 +35,8 @@ import { basename, dirname, isAbsolute, join, relative, resolve, sep } from "nod
 // 6: a directory record names the vibe.sidecarDir children its listing omits.
 // 7: configured sidecar layouts fingerprint inputs, including overlapping roots.
 // 8: discard cached results populated by text-rewriting loader records.
-const format = 8
+// 9: a pattern that writes a leading dot scans dotted names.
+const format = 9
 const version = JSON.parse(readFileSync(new URL("./package.json", import.meta.url), "utf8")).version
 
 // A file whose timestamp is this close to a compile's start may have changed
@@ -306,10 +307,13 @@ function scannedDirectories(main) {
   const specs = include !== undefined
     ? [include.value].flat().map((spec) => expand(spec, include.base))
     : files === undefined ? [join(home, "**/*")] : []
+  // TypeScript's wildcards skip a dotted name unless the pattern writes the dot.
+  let hidden = false
   const roots = specs.map((spec) => {
     // A backslash is a separator on Windows alone; elsewhere it is a name's.
     const parts = spec.split(process.platform === "win32" ? /[\\/]/ : /\//)
     const wild = parts.findIndex((part) => /[*?]/.test(part))
+    if (parts.slice(wild === -1 ? -1 : wild).some((part) => part.startsWith("."))) hidden = true
     if (wild === -1) {
       // TypeScript reads a last component without '.', '*' or '?' as a directory.
       return /[.*?]/.test(parts.at(-1)) ? { path: dirname(spec), recursive: false } : { path: spec, recursive: true }
@@ -327,15 +331,16 @@ function scannedDirectories(main) {
     }
   }
   const sidecars = setting(main, (json) => typeof json.vibe?.sidecarDir === "string" ? json.vibe.sidecarDir : undefined)
-  return { roots, skip, home, sidecarDir: sidecars === undefined ? undefined : expand(sidecars.value, sidecars.base) }
+  return { roots, skip, home, hidden, sidecarDir: sidecars === undefined ? undefined : expand(sidecars.value, sidecars.base) }
 }
 
 // What a directory holds that could become part of a program: its source
-// files and subdirectories, without the dotted names TypeScript's globs skip.
+// files and subdirectories, without the dotted names TypeScript's globs skip
+// unless a pattern writes the dot (hidden).
 const sourceName = /\.(?:[cm]?[jt]sx?|vibe|json)$/i
 // omitted names excluded child directories, such as outDir, so creating
 // or removing one is no change.
-function listing(path, omitted = []) {
+function listing(path, omitted = [], hidden = false) {
   let entries
   try {
     entries = readdirSync(path, { withFileTypes: true })
@@ -350,7 +355,7 @@ function listing(path, omitted = []) {
   const sources = new Set(entries.filter((entry) => entry.name.endsWith(".vibe") &&
     (entry.isFile() || entry.isSymbolicLink() && statOf(join(path, entry.name))?.isFile())).map((entry) => entry.name))
   for (const entry of entries) {
-    if (entry.name.startsWith(".")) continue
+    if (entry.name.startsWith(".") && !hidden) continue
     let directory = entry.isDirectory()
     if (entry.isSymbolicLink()) directory = statOf(join(path, entry.name))?.isDirectory() ?? false
     if (directory) {
@@ -371,7 +376,7 @@ const ignoredDirectories = new Set(["node_modules", "bower_components", "jspm_pa
 // throughout each scanned root, omitting paired outputs and empty directories.
 // This sees a new source even in a previously output-only directory, while
 // creating a nested sidecar directory does not invalidate a successful compile.
-function sidecarInputNames(root, { recursive, excluded, sidecarDir, home }) {
+function sidecarInputNames(root, { recursive, excluded, sidecarDir, home, hidden = false }) {
   if (!statOf(root)?.isDirectory()) return null
   const names = []
   const ancestors = new Set()
@@ -394,7 +399,7 @@ function sidecarInputNames(root, { recursive, excluded, sidecarDir, home }) {
     } catch { unreadable = true; return }
     ancestors.add(canonical)
     for (const entry of entries) {
-      if (entry.name.startsWith(".")) continue
+      if (entry.name.startsWith(".") && !hidden) continue
       const child = join(path, entry.name)
       const directory = entry.isDirectory() || entry.isSymbolicLink() && statOf(child)?.isDirectory()
       if (directory) {
@@ -410,9 +415,9 @@ function sidecarInputNames(root, { recursive, excluded, sidecarDir, home }) {
 // Records each scanned directory's stamp and listing before the compile, so a
 // file added or removed while the compiler runs shows up as a change.
 function snapshotDirectories(main) {
-  const { roots, skip, home, sidecarDir } = scannedDirectories(main)
+  const { roots, skip, home, hidden, sidecarDir } = scannedDirectories(main)
   if (sidecarDir !== undefined) return roots.map(({ path, recursive }) => {
-    const options = { recursive, excluded: [...skip], sidecarDir, home }
+    const options = { recursive, excluded: [...skip], sidecarDir, home, hidden }
     return [path, null, sidecarInputNames(path, options), [], options]
   })
   const records = new Map()
@@ -420,8 +425,8 @@ function snapshotDirectories(main) {
     if (records.has(path) || skip.has(path)) return
     const stat = statOf(path)
     const omitted = [...skip].filter((skipped) => dirname(skipped) === path).map((skipped) => basename(skipped))
-    const { names, directories } = listing(path, omitted)
-    records.set(path, [path, stat === undefined ? null : [stat.mtimeMs, stat.ino], names, omitted])
+    const { names, directories } = listing(path, omitted, hidden)
+    records.set(path, [path, stat === undefined ? null : [stat.mtimeMs, stat.ino], names, omitted, undefined, hidden])
     if (!recursive || depth > 64) return
     for (const child of directories) if (!ignoredDirectories.has(basename(child))) visit(child, true, depth + 1)
   }
@@ -429,11 +434,11 @@ function snapshotDirectories(main) {
   return [...records.values()]
 }
 
-function directoryHolds([path, stamp, names, omitted = [], sidecarOptions]) {
-  if (sidecarOptions !== undefined) return sidecarInputNames(path, sidecarOptions) === names
+function directoryHolds([path, stamp, names, omitted = [], sidecarOptions, hidden = false]) {
+  if (sidecarOptions) return sidecarInputNames(path, sidecarOptions) === names
   const stat = statOf(path)
   if (stat !== undefined && stamp !== null && stat.mtimeMs === stamp[0] && stat.ino === stamp[1]) return true
-  return listing(path, omitted).names === names
+  return listing(path, omitted, hidden).names === names
 }
 
 const installFiles = [
