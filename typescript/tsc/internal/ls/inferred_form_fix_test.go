@@ -5,6 +5,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/bundled"
 	"github.com/microsoft/TypeScript/tsc/internal/compiler"
 	"github.com/microsoft/TypeScript/tsc/internal/core"
@@ -12,6 +13,7 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/ls"
 	"github.com/microsoft/TypeScript/tsc/internal/ls/lsconv"
 	"github.com/microsoft/TypeScript/tsc/internal/lsp/lsproto"
+	"github.com/microsoft/TypeScript/tsc/internal/parser"
 	"github.com/microsoft/TypeScript/tsc/internal/tsoptions"
 	"github.com/microsoft/TypeScript/tsc/internal/tspath"
 	"github.com/microsoft/TypeScript/tsc/internal/vfs"
@@ -123,13 +125,13 @@ func TestInferredFormFix(t *testing.T) {
 	}{
 		{"named method contract", `export class C { f(): ReadonlyArray<string>!! { return ["x"] } }`, 0},
 		{"program argument", `import { takesProgram } from "./host"; export function run() { return takesProgram(effect { return try work(1) }) }`, 1},
-		{"program block", `import { takesProgram } from "./host"; export function run() { return takesProgram { return try work(1) } }`, 1},
+		{"program migrated block", `import { takesProgram } from "./host"; export function run() { return takesProgram(effect { return try work(1) }) }`, 1},
 		{"cross-file Effect callback", `import { takesFn } from "./host"; export function run() { return takesFn((x: number) => { const n=work(x); return n }) }`, 1},
 		{"symlinked named function", `export function fn(x: number) { const y=work(x); return y }`, 0},
 		{"symlinked exported arrow", `export const fn = (x: number) => { const y=work(x); return y }`, 1},
 		{"symlinked property", `export const obj = { f: (x: number) => { work(x); return x } }`, 1},
 		{"exported arrow", `export const fn = (x: number) => { const y=work(x); return y }`, 1},
-		{"program host block", `declare const host: any; host { try work(1); return 1 }`, 1},
+		{"program host argument", `declare const host: any; host(effect { try work(1); return 1 })`, 1},
 		{"failure and requirement", `interface Bad { bad: true }; interface Env { env: true }; declare function fail(): number!Bad!Env; export const obj = { f: () => { const x = fail(); return x } }`, 1},
 		{"object method", `export const obj = { f(x: number) { work(x); return x } }`, 1},
 		{"function expression", `declare const host: any; host(function(x: number) { work(x); return x })`, 1},
@@ -303,5 +305,29 @@ func TestInferredFormFixDeclinesPausingPlainCallback(t *testing.T) {
 	}
 	if actions, _ := inferredActions(t, files); len(actions) != 0 {
 		t.Fatalf("offered %q", actions[0].Title)
+	}
+}
+
+// VIP-11 denies trailing blocks. Preserve the two historical inference fixtures
+// as rejection witnesses; only ordinary Effect arguments participate in the
+// successful inference and emit comparisons above.
+func TestInferredFormRejectsRetiredTrailingBlocks(t *testing.T) {
+	for _, head := range []string{"host", "host()", "host(1)", "api.host", "api.host(1)"} {
+		for _, gap := range []string{" ", "  ", "\t"} {
+			for _, body := range []string{"return 1", "try work(1); return 1", "return try work(1)"} {
+				source := "export function run() { return " + head + gap + "{ " + body + " } }"
+				t.Run(head+gap+body, func(t *testing.T) {
+					file := parser.ParseSourceFile(ast.SourceFileParseOptions{FileName: tspath.RootedFilePathFromAbsolute("/src/main.vibe")}, source, core.ScriptKindTS)
+					if len(file.Diagnostics()) == 0 {
+						t.Fatal("retired trailing block parsed without a native rejection")
+					}
+					for _, d := range vibelangmapper.Project(source, vibelangmapper.FileContext{}).Diagnostics {
+						if d.Code == 9100 {
+							t.Fatalf("retired trailing block received a form-inference choice: %+v", d)
+						}
+					}
+				})
+			}
+		}
 	}
 }

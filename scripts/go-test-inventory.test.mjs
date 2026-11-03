@@ -32,7 +32,7 @@ function ownedTestPackages() {
     for (const entry of entries) if (entry.isDirectory() && entry.name !== "testdata") walk(`${path}/${entry.name}`)
   }
   for (const entry of readdirSync(new URL("typescript/tsc/internal/", root), { withFileTypes: true })) {
-    if (entry.isDirectory() && entry.name.startsWith("vibelang")) walk(`internal/${entry.name}`)
+    if (entry.isDirectory() && (entry.name.startsWith("vibelang") || entry.name === "ls")) walk(`internal/${entry.name}`)
   }
   return packages.sort()
 }

@@ -54,13 +54,14 @@ The release target runs `typescript/vibelang/coverage-stock-twins.test.mjs`. Its
 
 Full validation's `//typescript/tsc/...` selection includes
 `//typescript/tsc:go-vibelangestree` for the ESLint exporter and
-`//typescript/tsc:go-vibelangfmt` for formatting and dprint packaging.
+`//typescript/tsc:go-vibelangfmt` for formatting and dprint packaging, and
+`//typescript/tsc:go-ls` for the language service and VibeLang editor integration.
 Each target keys on its package's tests and fixtures as well as the compiler
-sources, and the hosted cache warmer compiles both packages. Go does not run
+sources, and the validation graph runs each package independently. Go does not run
 a dependency's tests when another package imports it.
 
 `scripts/go-test-inventory.test.mjs` discovers VibeLang-owned Go test
-packages and checks the graph's package selectors. Add a target when adding
+packages and the language service and checks the graph's package selectors. Add a target when adding
 a sibling package; `./internal/vibelang/...` covers that directory and
 its children, including no sibling such as `internal/vibelangfmt`.
 
@@ -394,7 +395,7 @@ CI-health reports distinguish `Go cache archive` failures from missing repositor
 .smithers/WORKSPACE.ts          toolchain (node, go, bun), cache in .flows/
 //typescript/tsc                the Go module
   :srcs                         Filegroup: what go build reads (no *_test.go, no testdata/)
-  :go-checker :go-parser        go test, one target per Go package tree (merge gate,
+  :go-checker :go-parser :go-ls go test, one target per Go package tree (merge gate,
   :go-format :go-core           when the change edits that tree)
   :go-vibelangfmt               VibeLang formatter Go tests; required by :compiler-test
   :vibelang-files ...           Filegroups: one Go package's tests and testdata

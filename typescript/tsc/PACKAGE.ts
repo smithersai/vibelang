@@ -43,6 +43,7 @@ export const Package = S.Package({
     "vibelangmapper-files": files("internal/vibelangmapper"),
     "go-vibelangestree": goTest("Go tests of VibeLang's ESLint tree exporter.", "./internal/vibelangestree/...", "internal/vibelangestree"),
     "go-vibelangfmt": goTest("Go tests of VibeLang's formatter and dprint packaging.", "./internal/vibelangfmt/...", "internal/vibelangfmt"),
+    "go-ls": goTest("Go tests of the language service and VibeLang editor integration.", "./internal/ls/...", "internal/ls"),
     "go-checker": goTest("Go tests of internal/checker.", "./internal/checker/...", "internal/checker"),
     "go-parser": goTest("Go tests of internal/parser.", "./internal/parser/...", "internal/parser"),
     "go-format": goTest("Go tests of internal/format.", "./internal/format/...", "internal/format"),
