@@ -17,8 +17,8 @@ An agent that writes VibeLang loads the skill first: its forms, rules and idioms
 
 | Load | Tokens |
 | --- | ---: |
-| The VibeLang skill, `packages/compiler/skills/vibelang/SKILL.md` | 4,435 |
-| The skill and the [cheat sheet](115-cheat-sheet.md) | 15,436 |
+| The VibeLang skill, `packages/compiler/skills/vibelang/SKILL.md` | 4,438 |
+| The skill and the [cheat sheet](115-cheat-sheet.md) | 15,439 |
 | The skill and the user guide (140 pages) | 400,000 |
 | The user guide alone | 390,000 |
 | The specification (10 chapters) | 150,000 |
@@ -99,37 +99,37 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | **Core Concepts** | **23,000** |
 | [Effect's Modules](../getting-started/008-importing-effect.md) | 3,000 |
 | [Running Effects](../getting-started/009-running-effects.md) | 1,800 |
-| [Sequencing Effects](../getting-started/010-using-generators.md) | 1,700 |
+| [Sequencing Effects](../getting-started/010-using-generators.md) | 1,800 |
 | [Building Pipelines](../getting-started/011-building-pipelines.md) | 1,900 |
 | [Devtools](../getting-started/012-devtools.md) | 15,000 |
-| **All 12 pages** | **37,000** |
+| **All 12 pages** | **38,000** |
 
 ### Setup
 
 | Page | Tokens |
 | --- | ---: |
 | [Set up VibeLang](../setup.md) | 1,900 |
-| [Known limitations](../setup/known-limitations.md) | 510 |
+| [Known limitations](../setup/known-limitations.md) | 550 |
 | **Start a project** | **2,500** |
 | [New project](../setup/new-project.md) | 540 |
 | [Existing project](../setup/existing-project.md) | 2,000 |
 | **Build and test** | **13,000** |
 | [vibelang CLI](../setup/vibelang-cli.md) | 9,900 |
 | [Vite and Vitest](../setup/vite.md) | 3,100 |
-| **Format and lint** | **6,700** |
+| **Format and lint** | **6,900** |
 | [Format with dprint](../setup/formatting.md) | 2,400 |
-| [Developer tools](../setup/developer-tools.md) | 4,300 |
+| [Developer tools](../setup/developer-tools.md) | 4,500 |
 | **Frameworks** | **12,000** |
 | [React](../setup/react.md) | 2,100 |
 | [React Native and Metro](../setup/react-native.md) | 450 |
 | [Vue](../setup/vue.md) | 3,000 |
 | [Svelte](../setup/svelte.md) | 2,700 |
 | [Foldkit](../setup/foldkit.md) | 3,400 |
-| **Editors** | **4,200** |
-| [VS Code and Cursor](../setup/vscode.md) | 1,100 |
+| **Editors** | **4,300** |
+| [VS Code and Cursor](../setup/vscode.md) | 1,200 |
 | [Neovim](../setup/neovim.md) | 1,000 |
 | [Zed](../setup/zed.md) | 480 |
-| [Other editors](../setup/other-editors.md) | 500 |
+| [Other editors](../setup/other-editors.md) | 550 |
 | [Coding agents](../setup/coding-agents.md) | 1,100 |
 | **Upgrade** | **110,000** |
 | [Release notes](../setup/release-notes.md) | 110,000 |
@@ -254,7 +254,7 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [PlatformLogger](../platform/108-platformlogger.md) | 790 |
 | [Runtime](../platform/109-runtime.md) | 1,400 |
 | [Terminal](../platform/110-terminal.md) | 1,800 |
-| [Platform globals in VibeLang](../platform/platform-globals.md) | 6,500 |
+| [Platform globals in VibeLang](../platform/platform-globals.md) | 6,600 |
 | [Cloudflare Workers](../platform/cloudflare-workers.md) | 760 |
 | [Alchemy](../platform/alchemy.md) | 2,500 |
 | **All 101 pages** | **170,000** |
@@ -270,8 +270,8 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [Cheat sheet](115-cheat-sheet.md) | 11,000 |
 | [Pattern matching with match and is](116-match-and-is.md) | 7,600 |
 | [Diagnostic code map](diagnostic-code-map.md) | 2,600 |
-| [Experimental platform APIs](118-experimental-platform-apis.md) | 6,300 |
-| **All 8 pages** | **38,000** |
+| [Experimental platform APIs](118-experimental-platform-apis.md) | 6,600 |
+| **All 8 pages** | **39,000** |
 
 ### Specification
 
