@@ -1,4 +1,5 @@
 import Module, { createRequire } from "node:module"
+import { spawnSync } from "node:child_process"
 import { extensionlessImport, pathSpecifier } from "./relative-imports.mjs"
 import { reexportOf, sourceOfEmitted } from "./emitted-js.mjs"
 import { aliasImport } from "./paths-imports.mjs"
@@ -202,18 +203,20 @@ Bun.plugin({
     // that never import a .vibe module.
     const commonJS = (file, code) => /\.(?:cjs|cts)$/.test(file) ||
       /\bmodule\s*(?:\.\s*exports|\[\s*["']exports["']\s*\])|\bexports\s*[.[]/.test(code)
-    // Whether a module exports `default` itself, as Bun's namespace of it
-    // has: a .vibe module by its JavaScript, a CommonJS one always (Bun's
-    // interop default is module.exports). Code that does not read, compile or
-    // scan keeps the default; loading the source then reports the error.
+    // Scan runtime exports after Bun erases native TypeScript declarations.
+    // VibeLang sources are inspected through their actual emitted JavaScript.
     function exportsDefault(file) {
-      try {
-        if (file.endsWith(".vibe")) return new Bun.Transpiler({ loader: "js" }).scan(emitted(file).code).exports.includes("default")
-        const code = readFileSync(file, "utf8")
-        return commonJS(file, code) || new Bun.Transpiler({ loader: loaderOf(file) }).scan(code).exports.includes("default")
-      } catch {
-        return true
-      }
+      const vibe = /\.vibex?$/.test(file)
+      const code = vibe ? emitted(file).code : readFileSync(file, "utf8")
+      const transpiler = new Bun.Transpiler({ loader: vibe ? (file.endsWith(".vibex") ? "jsx" : "js") : loaderOf(file) })
+      const { exports } = transpiler.scan(transpiler.transformSync(code))
+      if (exports.includes("default")) return true
+      if (vibe || exports.length > 0) return false
+      // For an ambiguous native script, Bun decides CommonJS interop without
+      // executing the module. Keep this synchronous for require() callers.
+      const built = spawnSync(process.execPath, ["build", file, "--format=esm", "--target=bun", "--external=*"], { encoding: "utf8" })
+      if (built.status !== 0) throw new Error("vibelang/bun: cannot inspect exports of " + file + "\n" + built.stderr)
+      return new Bun.Transpiler({ loader: "js" }).scan(built.stdout).exports.includes("default")
     }
     const exactly = (file, physical) => new RegExp("^(?:" + [...new Set([file, physical])].map(escapeRegExp).join("|") + ")$")
     function discover(file, code, loader = loaderOf(file)) {

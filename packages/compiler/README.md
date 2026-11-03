@@ -200,8 +200,8 @@ load no plugin, such as the `bun build` CLI and plain `node`. Both loaders run
 the `.vibe` source instead: `vibelang/register` resolves
 `<package>/.vibelang/js/<path>.js` to `<package>/<path>.vibe` when that exists,
 and `vibelang/bun` loads that file as a re-export of the source, so the source
-module has one instance whichever way it is imported, and the same keys: the
-re-export has a `default` only when the source has one. With the
+module has one instance whichever way it is imported. The Bun re-export preserves
+live named and `default` bindings, and adds no `default` to a source that lacks one. With the
 package's [loader record](#loader-records), a process with a cold cache runs
 that source from the recorded compile instead of compiling the package.
 

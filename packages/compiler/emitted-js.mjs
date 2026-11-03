@@ -30,15 +30,10 @@ export function sourceOfEmitted(path) {
  * re-export of the source module. Bun's runtime calls no onResolve for an
  * import it resolves itself, so the emitted path stays, and re-exporting keeps
  * one instance of the source module for the package's own relative imports
- * and its consumers' package imports alike. It exports `default` only when the
- * source has one (hasDefault), since `export *` never re-exports it: an
- * unconditional `export default source.default` gave a source with none an
- * undefined `default` key, so opencode's CLI `run` entry had 3 keys under the
- * preload and 2 without it.
+ * and its consumers' package imports alike. A default is forwarded only when
+ * the source actually exports one, and remains a live binding.
  */
-export function reexportOf(source, hasDefault) {
+export function reexportOf(source, hasDefault = false) {
   const name = JSON.stringify(source)
-  return hasDefault
-    ? `export * from ${name}\nimport * as source from ${name}\nexport default source.default\n`
-    : `export * from ${name}\n`
+  return `export * from ${name}\n` + (hasDefault ? `export { default } from ${name}\n` : "")
 }

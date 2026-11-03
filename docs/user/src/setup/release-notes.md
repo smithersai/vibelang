@@ -577,6 +577,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - `new Request(url)` in a `.vibe` file drew a note advising `globalThis.Request` inside a hatch or a module block, which the compiler then refused with `EK4402`, and `x instanceof Response` drew no note; both now say the global is platform code that lives in a `.ts` file.
 - An `effect` prefix on a getter, setter, or class constructor was parsed as unrelated members or an ordinary method; it now reports `EK0104` on the prefix, while ordinary methods with those names keep working. `vibelang --fix` preserves supported parameterless constructors with a cold Effect return; parameter initialization and constructor-specific bindings require manual migration.
 
+- Under the Bun preload, a live `default` export stayed at its initial value and a module without one gained a `default`; emitted-source forwarding now preserves the source’s live bindings and export names.
+
 - Setup could call a local parameter or function instead of the `tsdown` plugin when it shadowed the imported name; it now uses an unshadowed import alias and preserves every existing plugin.
 
 - Bun's release-age setting blocked newly published VibeLang packages in example projects; the examples now exempt their pinned VibeLang packages from that age check.
