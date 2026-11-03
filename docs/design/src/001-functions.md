@@ -237,7 +237,7 @@ console.log(JSON.stringify(Effect.runSync(names)))
 | `eval` | every `IdentifierReference` named `eval`: a direct `eval(s)` as ECMAScript defines it, and indirect uses such as `(0, eval)(s)`, `eval?.(s)` and `const e = eval` | move the code to a `.ts` or `.js` file |
 | `Function` | every `IdentifierReference` resolving to the global `Function` constructor, except the right operand of `instanceof` (VIP-1, amended) and the object of a statically named `prototype` access, `Function.prototype`, `Function?.prototype` or `Function["prototype"]` (VIP-1, amended): `new Function("a", "return a")`, `Function("return 1")`, `Function?.(s)`, `const F = Function`, `Function.call(null, "return 7")`, `Function.name`. `x instanceof Function` and `Function.prototype.toString.call(f)` are allowed; the type `Function`, as in `const f: Function = g`, stays TypeScript's | move the code to a `.ts` or `.js` file |
 | `arguments` | every `IdentifierReference` named `arguments` | a rest parameter |
-| `var` | every `var` declaration, `for (var …)` included | `let`, or `const` when the binding is never assigned |
+| `var` | every `var` declaration, `for (var …)` included; a declaration rejected by a `do` early error uses the [specific diagnostics](002-running.md#do-expressions) | `let`, or `const` when the binding is never assigned |
 | `with` | every `with` statement (already an early error in strict code, which a module is) | rewrite the property reads |
 
 Property names on ordinary objects, such as `o.arguments`, `o.eval` and `{ var: 1 }`, are names, not references, and are unaffected. Three more rules close the other ways to reach these globals (VIP-33 and VIP-1, amended):

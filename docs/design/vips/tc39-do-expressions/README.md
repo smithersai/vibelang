@@ -39,7 +39,7 @@ The upstream `spec.emu` stays unchanged. These are the missing empty case-block 
 
 ## Variable statements at the end
 
-For `Statement : VariableStatement`, the pinned predicate returns `isLast`. A final `var` declaration is therefore `EK0201`, including when only empty statements or empty blocks follow it. A nonfinal `var` remains legal and hoists to the enclosing function: `do { var value = 1; value }` keeps that behavior. The separate parameter-list restriction remains `EK0203`. This follows the existing vendored `Statement : VariableStatement` algorithm; it does not change the pinned snapshot.
+For `Statement : VariableStatement`, the pinned predicate returns `isLast`. A final `var` declaration is therefore `EK0201`, including when only empty statements or empty blocks follow it. The pinned proposal permits a nonfinal `var` and hoists it to the enclosing function, but VIP-4's amended legacy-JavaScript ban rejects it in `.vibe` code. For the same declaration, the specific `do` errors replace `EK0107` (VIP-34): a final `var` reports `EK0201`, a `var` in a parameter list reports `EK0203`, and a final `var` in a parameter list reports both. A nonfinal `var` outside a parameter list reports `EK0107`. This follows the existing vendored `Statement : VariableStatement` algorithm; it does not change the pinned snapshot.
 
 ## Where the compiler falls short of it
 

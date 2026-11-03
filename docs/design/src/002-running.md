@@ -541,7 +541,22 @@ function leaveDo() { return Effect.gen(function* () { return 7 }) }
 
 **Static predicates.** For `EndsInIterationOrBareIfOrDeclaration`, `CaseBlock : { }` returns `false` for either value of `isLast` and any `labelSet`, including when the switch is nonfinal. Every [ForTry](900-appendices.md#fortry) and [ForConcurrent](900-appendices.md#forconcurrent) production, with or without a concurrency limit, uses the native iteration rule: `isLast` equal to `true` gives `true`; otherwise a body passing `IsBreak` with that label set gives `true`; otherwise apply the predicate to the body with the same `labelSet` and `isLast`. The loop statement itself has `IsEmpty` and `IsBreak` equal to `false`. Thus nonfinal loop bodies are still visited, and a final added loop is rejected like a final native loop. Ordinary switch completion and loop jump restrictions stay unchanged. The [snapshot receipt](../vips/tc39-do-expressions/README.md#static-predicate-reconciliations) and [Appendix A](900-appendices.md#notes-on-the-productions) record these cases.
 
-For `Statement : VariableStatement`, the pinned predicate returns `isLast`. A final `var` declaration is therefore `EK0201`, including when only empty statements or empty blocks follow it. A nonfinal `var` is still the legacy-JavaScript compile error ([Legacy JavaScript](001-functions.md#direct-eval)): `var` is banned in all `.vibe` code (VIP-4, amended). The separate parameter-list restriction remains `EK0203`.
+For `Statement : VariableStatement`, the pinned predicate returns `isLast`. A final `var` declaration is therefore `EK0201`, including when only empty statements or empty blocks follow it. A nonfinal `var` is still the legacy-JavaScript compile error ([Legacy JavaScript](001-functions.md#direct-eval)): `var` is banned in all `.vibe` code (VIP-4, amended). The separate parameter-list restriction remains `EK0203`. For the same `var` declaration, `EK0201` and `EK0203` replace `EK0107`, following [VIP-34](../vips/0034-compiler-and-tooling.md#decision)'s specific-diagnostic rule. When both specific rules apply, report both `EK0201` and `EK0203`: ending in a declaration and declaring `var` in a parameter list are separate early errors. A nonfinal `var` outside a parameter list remains `EK0107`.
+
+```vibe es
+// expect-error: EK0203
+function nonfinalParameterVar(x = do { var y = 1; 2 }) {} // EK0203
+```
+
+```vibe es
+// expect-error: EK0201
+function finalBodyVar() { return do { var y = 1 } } // EK0201
+```
+
+```vibe es
+// expect-error: EK0201 EK0203
+function finalParameterVar(x = do { var y = 1 }) {} // EK0201, EK0203
+```
 
 ```vibe es
 // compiler-gap: pending VIP-2, VIP-19, VIP-20

@@ -978,12 +978,12 @@ The TypeScript-form lint warnings also retain their existing `EK4830`–`EK4837`
 | `EK0104` | `effect` on a getter, setter or constructor | 1 | [Functions](001-functions.md#static-rules) |
 | `EK0105` | `effect` and `async` on one function or block | 1 | [Functions](001-functions.md#static-rules) |
 | `EK0106` | an `effect` function whose written return type is not an Effect | 1 | [Functions](001-functions.md#static-rules) |
-| `EK0107` | `eval`, `Function`, `arguments`, `var` or `with` in a `.vibe` file; `globalThis` other than as the object of a statically named member; `.constructor` of a function; a `data:` or `blob:` import specifier; `var` in a pattern binding | 1, 4, 33 | [Functions](001-functions.md#direct-eval) |
+| `EK0107` | `eval`, `Function`, `arguments`, `var` or `with` in a `.vibe` file; `globalThis` other than as the object of a statically named member; `.constructor` of a function; a `data:` or `blob:` import specifier; `var` in a pattern binding; a `do` early error uses `EK0201` or `EK0203` instead for the same declaration | 1, 4, 33 | [Functions](001-functions.md#direct-eval) |
 | `EK0108` | a recognized `effect` modifier on an `abstract` declaration, in an ambient `declare` context, or on an `interface` or type literal member | 1 | [Functions](001-functions.md#static-rules) |
 | `EK0109` | a recognized `effect` arrow head that breaks its required form: a typed or generic bare parameter; parenthesize the parameters | 1 | [Functions](001-functions.md#static-rules) |
-| `EK0201` | a `do` block whose last statement violates TC39's `EndsInIterationOrBareIfOrDeclaration` early error | 2 | [Running Effects](002-running.md#do-expressions) |
+| `EK0201` | a `do` block whose last statement violates TC39's `EndsInIterationOrBareIfOrDeclaration` early error; replaces `EK0107` for the same `var`, and reports alongside `EK0203` when both apply | 2 | [Running Effects](002-running.md#do-expressions) |
 | `EK0202` | a `break` or `continue` whose target is outside the block of an `effect { … }` expression | 2 | [Running Effects](002-running.md#effect-blocks) |
-| `EK0203` | `var` in a `do` expression in a parameter list | 2 | [Running Effects](002-running.md#do-expressions) |
+| `EK0203` | `var` in a `do` expression in a parameter list; replaces `EK0107` for the same declaration, and reports alongside `EK0201` when both apply | 2 | [Running Effects](002-running.md#do-expressions) |
 | `EK0205` | a `break` or `continue` in a loop head's `do` that leaves it unlabeled or targets that loop | 2 | [Running Effects](002-running.md#do-expressions) |
 | `EK0301` | `!` beside a union, an intersection, a conditional type, or a function or constructor type in a slot, without parentheses: `A \| B!E`, `() => A!E \| B`, `A!() => B` (write `A!(() => B)`) | 3 | [Functions](001-functions.md#the-aer-type-shorthand) |
 | `EK0302` | `A!!B!C`: write `(A!!B)!C` or `A!(B!C)` | 3 | [Appendix A](#notes-on-the-productions) |
