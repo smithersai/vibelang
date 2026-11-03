@@ -53,7 +53,7 @@ type Output = {
   readonly regressed: Readonly<Record<string, number>>;
 };
 
-const cases = [{
+const cases: Array<{ readonly name: string; readonly input: Input }> = [{
   name: "real-runs",
   input: {
     fixture: "fixture",
@@ -81,6 +81,18 @@ cases.push({
     flaky: ["//:spec-tests"],
     tests: [],
     causes: { "//:spec-tests": "Go cache archive" }
+  } satisfies Input
+});
+
+// Real same-key Node executions with the package installed and then absent.
+cases.push({
+  name: "missing-package",
+  input: {
+    fixture: "fixture-missing-package",
+    split: "",
+    flaky: ["//:dependency"],
+    tests: [],
+    causes: { "//:dependency": "missing package" }
   } satisfies Input
 });
 

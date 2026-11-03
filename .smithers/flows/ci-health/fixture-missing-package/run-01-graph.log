@@ -1,0 +1,18 @@
+verb: ci
+pattern: "//:dependency"
+jobs: 32
+durationMs: 1249.7265800000005
+counts:
+  hit: 0
+  ran: 1
+  failed: 0
+  skipped: 0
+ok: true
+results[1]{label,target,status,durationMs,key}:
+  "//:dependency",Shell.Test,ran,1241.2091739999996,db27a297c8772802bf5ca334b2a04dd91b66793f26d957513c7e026f246148b4
+cta:
+  description: "Suggested commands:"
+  commands[3]{command,description}:
+    "smthrs explain '//:dependency' --workspace '<fixture>'",Inspect the target and its dependencies
+    smthrs targets --workspace '<fixture>',Discover available targets
+    smthrs cache status --workspace '<fixture>',Inspect local cache usage

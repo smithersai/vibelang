@@ -23,6 +23,8 @@ cause `property counterexample`: it is a real bug, and the log prints the replay
 
 `Go cache archive` identifies a Go import whose content-addressed compiled archive was missing. The hash must match its two-digit cache bucket. Inspect the cache and its cleanup or transport; this log does not identify what removed the file. Missing repository inputs keep the separate `missing file` cause and its input-declaration guidance.
 
+`missing package` identifies Node package-resolution failures before an enclosing assertion can mask them. Check the importing module's pinned package installation and module root; missing source files retain the separate `missing file` cause.
+
 Check a test's last failure before fixing it. An old date usually means someone
 already did.
 
@@ -61,9 +63,11 @@ eval sets it as the file's mtime on a copy, which is what `collect` reads.
 
 The `go-cache-archive` eval runs the flow on `fixture-go-cache/`: a real failed build and its same-key successful retry. It checks cache attribution and the absence of fictional test names because compilation failed before tests ran. The duration-regression case remains separate.
 
+The `missing-package` eval runs the actual flow on `fixture-missing-package/`: one unchanged target succeeds with its local package installed and fails after only that package is removed. It checks the cause and an empty test-name set. The real-run, duration-regression and Go-cache cases remain independent.
+
 | Scorer | 1 when |
 | --- | --- |
-| `flaky` | The report names exactly the three flaky targets, and not the target that was really broken |
+| `flaky` | The report names exactly the known flaky targets for each fixture, excluding targets that never passed |
 | `tests` | The report names the known flaky tests |
 | `causes` | Each target's top cause matches the logs |
 | `slow` | Targets rank by run time, and a target that only replayed never ranks |

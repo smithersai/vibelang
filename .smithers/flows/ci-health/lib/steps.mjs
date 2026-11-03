@@ -171,6 +171,7 @@ export const CAUSES = [
   // A resolved import's hashed compiled archive disappeared. Its bucket
   // must match the hash; the log does not identify what removed the file.
   ["Go cache archive", /^(?:vet: )?.+\.go:\d+:\d+: could not import \S+ \(open .+\/([0-9a-f]{2})\/\1[0-9a-f]{62}-d: no such file or directory\)$/],
+  ["missing package", /Cannot find package ['"][^'"]+['"] (?:imported from|from)/i],
   ["missing file", /ENOENT|Cannot find module|no such file or directory|missing output/i],
   ["assertion", /AssertionError|expected|--- FAIL|\(fail\)|✖/i]
 ]
@@ -244,6 +245,7 @@ export const ACTIONS = {
   timeout: "Find what the test waits for; a timeout that scales with load, or less work, beats a larger number",
   connection: "Replace the network dependency with a local fixture",
   "Go cache archive": "Inspect the Go build cache and its cleanup or transport: a compiled archive was missing; this log does not identify what removed it",
+  "missing package": "Check the requesting module's pinned package install and module root",
   "missing file": "Declare the input or output the target reads: its key ignored it",
   assertion: "Read the test: it depends on timing, order or an input its key ignores",
   unknown: "Read the log"

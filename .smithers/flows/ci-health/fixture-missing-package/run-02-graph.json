@@ -1,0 +1,18 @@
+{
+  "ok": false,
+  "counts": {
+    "hit": 0,
+    "ran": 0,
+    "failed": 1,
+    "skipped": 0
+  },
+  "results": [
+    {
+      "label": "//:dependency",
+      "status": "failed",
+      "key": "db27a297c8772802bf5ca334b2a04dd91b66793f26d957513c7e026f246148b4",
+      "durationMs": 377.3221149999995
+    }
+  ],
+  "version": 1
+}

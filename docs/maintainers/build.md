@@ -400,6 +400,8 @@ CI-health reports distinguish `Go cache archive` failures from missing repositor
 
 The `//typescript/vibelang:coverage-twin-oracle` target runs the parity oracle's five positive and negative controls with real stock TypeScript and the checkout's pinned Effect install. It checks success, error and service types separately from runtime `Exit` values, and needs no VibeLang compiler build. `scripts/test-runners.test.mjs` keeps this suite connected to its declared runner.
 
+CI-health reports identify Node `Cannot find package` errors as `missing package` before a surrounding assertion can mask the missing install. The requester's pinned package installation and module root are the first checks. Native Node diagnostics and real same-key graph receipts cover this classification; the `missing-package` eval runs the actual workflow, preserving its Go-cache and duration-regression cases.
+
 ## Packages
 
 ```text
