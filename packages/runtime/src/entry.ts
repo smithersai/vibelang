@@ -63,7 +63,6 @@ export const {
   $provideService,
   $reference,
   $region,
-  $registerErrorMatcher,
   $relation,
   $rest,
   $runMain,

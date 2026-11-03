@@ -977,6 +977,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - A plain `catch` handler returning an Effect missed its advisory; `EK0508` now warns and recommends `catch effect`, while the returned Effect remains data.
 
+- A custom extractor returning `true` could silently miss an arm. It now throws `TypeError`, as every successful extractor result must be an iterable object; `false` still means no match.
+
 - Specification table and authority checks rejected the historical explanation that accepted `VIP-40` supersedes denied `VIP-25`. They now verify the accepted successor while continuing to reject positive authority claims based on the denied proposal.
 - API checks lost referenced ambient or library types when a declaration also contained a private class. Nominal alignment now preserves leading reference directives, and referenced type changes remain visible.
 

@@ -206,7 +206,7 @@ function parity(n: number) {
 // Output: even, odd
 ```
 
-For an extractor, the method receives `{ matchType: "extractor" }` as its second argument and returns `false` or the values to match against the list. Any other value matches when it is equal, with `NaN` matching `NaN`.
+For an extractor, the method receives `{ matchType: "extractor" }` as its second argument and returns `false` or an iterable object containing the values to match against the list. A nonobject result, including `true` or a primitive string, throws `TypeError`; only `false` means no match. An iterable function is an object for this check and can supply the values. Any other value matches when it is equal, with `NaN` matching `NaN`.
 
 Built-in classes extract as the proposal says: `when Array(let first, let second):` matches an array of exactly two elements, a typed array such as `Uint8Array(0x89, 0x50, ...)` lists its elements, and any other built-in, such as `Map(let m)`, gives the value itself. `BigInt64Array(let n)` and `BigUint64Array(let n)` bind a `bigint` element; numeric typed-array extractors bind a `number`. A function that is not a class can extract too: `when pair(let a, let b):` calls `pair(value, { matchType: "extractor" })`, which returns `false` or the values to match.
 

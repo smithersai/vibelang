@@ -15,7 +15,7 @@
 /**
  * The proposal's `Symbol.customMatcher`: a static method that decides whether
  * a subject matches. `x is M` tests its result for truthiness; an extractor
- * pattern `M(...)` accepts `false`, `true`, or the extracted values. The runtime
+ * pattern `M(...)` accepts `false` or an iterable object of extracted values. The runtime
  * defines `Symbol.customMatcher` when the engine lacks it, as the registered
  * symbol the proposal's polyfills use, so every copy of the runtime agrees.
  * Like a well-known symbol it is non-writable, non-enumerable and
@@ -194,10 +194,9 @@ const instanceExtractors = new Set<unknown>([
 /** The list a matcher or a call-only extractor returned, or false. */
 function extractedList(result: unknown): ReadonlyArray<any> | false {
   if (result === false) return false
-  if (result === true) return []
   if (Array.isArray(result)) return result
-  if (result !== null && typeof result === "object" && Symbol.iterator in result) return [...result as Iterable<unknown>]
-  throw new TypeError("A matcher used as an extractor must return true, false, an array, or an iterable")
+  if (result !== null && (typeof result === "object" || typeof result === "function") && Symbol.iterator in result) return [...result as Iterable<unknown>]
+  throw new TypeError("A matcher used as an extractor must return false or an iterable object")
 }
 
 // Constructor types are structural: a parameter can hold a primitive

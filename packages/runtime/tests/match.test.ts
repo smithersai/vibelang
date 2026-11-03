@@ -32,7 +32,7 @@ test("match: $extract follows a custom matcher's result", () => {
   expect($extract(pair, [1, 2])).toEqual([1, 2])
   expect($extract(pair, [1])).toBe(false)
   const always = { [customMatcher]: () => true }
-  expect($extract(always, 1)).toEqual([])
+  expect(() => $extract(always, 1)).toThrow(TypeError)
   const set = { [customMatcher]: () => new Set([1, 2]) }
   expect($extract(set, 1)).toEqual([1, 2])
   expect($extract(String, "s")).toEqual(["s"])
@@ -114,7 +114,7 @@ test("match: a custom matcher sees its receiver and the boolean or extractor hin
   expect($extract(matcher, 42)).toEqual([42])
   expect(calls).toEqual([[42, { matchType: "boolean" }], [42, { matchType: "extractor" }]])
   for (const result of [null, undefined, 1, "invalid"]) {
-    expect(() => $extract({ [customMatcher]: () => result }, 42)).toThrow("must return true, false, an array, or an iterable")
+    expect(() => $extract({ [customMatcher]: () => result }, 42)).toThrow("must return false or an iterable object")
   }
 })
 
