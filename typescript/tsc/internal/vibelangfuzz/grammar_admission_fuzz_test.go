@@ -147,6 +147,7 @@ var grammarAdmissionSeeds = []struct{ key, source string }{
 	{"service-separators", "service S { n : number ; ; m : string }"},
 	{"effect-overload-line-break", "effect function f ( xs )\neffect { for ( const x of xs ) { try x ; } }"},
 	{"instantiation-before-operator", "schema\nC < T > ?? { a : T }"},
+	{"effect-type-slot-line-break", "{ type T =\nnumber ! string !\nboolean }"},
 	{"service-rejected-async-member", "service S { n : number ; async static readonly key : string = \"k\" ; }"},
 	{"join-for-head-line-break", "effect function f(xs) { for (join\nx\nof xs) { x; } }"},
 	{"interruption-outside-effect", "function f() { uninterruptible { return 1; } }"},
@@ -337,7 +338,9 @@ func grammarAdmissionDeclarationForm(ts []grammarToken) string {
 				lastBang = -1
 			}
 		case "!":
-			if i+1 < len(ts) && ts[i+1].text == "!" && ts[i+1].nl && i > 0 && (ts[i-1].kind != 'p' || slices.Contains([]string{")", "]", "}"}, ts[i-1].text)) {
+			// EffectType has [no LineTerminator here] around each bang: neither the
+			// next bang nor the next slot may start a line.
+			if i+1 < len(ts) && ts[i+1].nl && (ts[i+1].text == "!" || (ts[i+1].kind != 'p' || ts[i+1].text == "(") && grammarInTypeAlias(ts, i)) && i > 0 && (ts[i-1].kind != 'p' || slices.Contains([]string{")", "]", "}"}, ts[i-1].text)) {
 				return "admission:effect-type-line-break"
 			}
 			// A!E! with no R: only the omitted-E form A!! ends in a bang.
@@ -449,6 +452,20 @@ func grammarAdmissionDeclarationForm(ts []grammarToken) string {
 	return ""
 }
 
+// grammarInTypeAlias reports whether ts[i] is in the type of a `type Name =`
+// alias, so a bang there is EffectType's and not a non-null assertion.
+func grammarInTypeAlias(ts []grammarToken, i int) bool {
+	for k := i - 1; k >= 2; k-- {
+		if ts[k].text == ";" {
+			return false
+		}
+		if ts[k].text == "=" && ts[k-2].text == "type" {
+			return true
+		}
+	}
+	return false
+}
+
 func TestGrammarAdmissionFiberParameterKeys(t *testing.T) {
 	for source, want := range map[string]bool{
 		"effect function * g ( join ) { yield 1 ; }": true,
@@ -501,40 +518,43 @@ func TestGrammarAdmissionInterruptionKeys(t *testing.T) {
 
 func TestGrammarAdmissionDeclarationKeys(t *testing.T) {
 	for source, want := range map[string]string{
-		"type T = (A | B)!E;":                "",
-		"type T = A!(B | E);":                "",
-		"type T = A | B; type U = C!E;":      "",
-		"schema C<T> { a: T }":               "admission:schema-type-parameters",
-		"schema C { a: number }":             "",
-		"schema C string":                    "admission:schema-no-body",
-		"schema C":                           "admission:schema-no-body",
-		"schema C = string;":                 "",
-		"schema error E effect { a: T }":     "admission:error-no-end",
-		"error E effect { a: T }":            "admission:error-no-end",
-		"error effect [a]":                   "admission:error-no-end",
-		"error E;":                           "",
-		"type T = A!B!;":                     "admission:effect-type-trailing-bang",
-		"type T = number ! 1 ! ;":            "admission:effect-type-trailing-bang",
-		"type T = A!(B | C)!;":               "admission:effect-type-trailing-bang",
-		"const b = !x; const c = !y;":        "",
-		"type T = A!B!C;":                    "",
-		"type T = A!!;":                      "",
-		"schema error":                       "admission:schema-no-body",
-		"schema error;":                      "admission:schema-no-body",
-		"type T = number !\n! ;":             "admission:effect-type-line-break",
-		"type T = 1 !\n! ;":                  "admission:effect-type-line-break",
-		"type T = (A) !\n! ;":                "admission:effect-type-line-break",
-		"const b = !\n!x;":                   "",
-		"module M { }":                       "",
-		"module;":                            "",
-		"error E\nx;":                        "",
-		"error instanceof E;":                "admission:error-no-end",
-		"schema error E { a: T }":            "",
-		"schema error E;":                    "",
-		"const schema = x; schema;":          "",
-		"for concurrent\n(const x of xs) x;": "admission:for-concurrent-line-break",
-		"for\nconcurrent (const x of xs) x;": "",
-		"const s = \"!\" + \"|\";":           "",
+		"type T = (A | B)!E;":                      "",
+		"type T = A!(B | E);":                      "",
+		"type T = A | B; type U = C!E;":            "",
+		"schema C<T> { a: T }":                     "admission:schema-type-parameters",
+		"schema C { a: number }":                   "",
+		"schema C string":                          "admission:schema-no-body",
+		"schema C":                                 "admission:schema-no-body",
+		"schema C = string;":                       "",
+		"schema error E effect { a: T }":           "admission:error-no-end",
+		"error E effect { a: T }":                  "admission:error-no-end",
+		"error effect [a]":                         "admission:error-no-end",
+		"error E;":                                 "",
+		"type T = A!B!;":                           "admission:effect-type-trailing-bang",
+		"type T = number ! 1 ! ;":                  "admission:effect-type-trailing-bang",
+		"type T = A!(B | C)!;":                     "admission:effect-type-trailing-bang",
+		"const b = !x; const c = !y;":              "",
+		"type T = A!B!C;":                          "",
+		"type T = A!!;":                            "",
+		"schema error":                             "admission:schema-no-body",
+		"schema error;":                            "admission:schema-no-body",
+		"type T = number !\n! ;":                   "admission:effect-type-line-break",
+		"type T = 1 !\n! ;":                        "admission:effect-type-line-break",
+		"type T = (A) !\n! ;":                      "admission:effect-type-line-break",
+		"{ type T =\nnumber ! string !\nboolean }": "admission:effect-type-line-break",
+		"type T = number !\nstring ;":              "admission:effect-type-line-break",
+		"const v = p !\nfoo ;":                     "",
+		"const b = !\n!x;":                         "",
+		"module M { }":                             "",
+		"module;":                                  "",
+		"error E\nx;":                              "",
+		"error instanceof E;":                      "admission:error-no-end",
+		"schema error E { a: T }":                  "",
+		"schema error E;":                          "",
+		"const schema = x; schema;":                "",
+		"for concurrent\n(const x of xs) x;":       "admission:for-concurrent-line-break",
+		"for\nconcurrent (const x of xs) x;":       "",
+		"const s = \"!\" + \"|\";":                 "",
 	} {
 		if got := grammarAdmissionDeclarationForm(grammarLexSource(source)); got != want {
 			t.Errorf("%q keyed %q; want %q", source, got, want)

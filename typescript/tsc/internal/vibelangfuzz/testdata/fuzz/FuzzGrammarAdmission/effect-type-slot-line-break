@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("key:effect-type-slot-line-break\n{ type T =\nnumber ! string !\nboolean }")
