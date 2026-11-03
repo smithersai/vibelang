@@ -321,6 +321,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Regression coverage now checks ambient `error` and `schema error` quick fixes across explicit and inherited declaration contexts, so a repair that introduces executable class code is detected. Known compiler gaps remain tracked separately.
 
+- Migration verification could crash or record hashes from stale JavaScript when a package emitted into batch scratch. Content receipts now name and hash the files actually written.
+
 - The specification coverage census tests could hit Bun's default five-second deadline under load. The build graph now gives each test an explicit sixty-second budget within the existing two-minute target limit.
 
 - The new catch-handler projection fuzz target omitted its CPU-budget registration. It now participates in the same short-seed budget check as every other target.

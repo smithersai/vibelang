@@ -2,12 +2,13 @@
 // .vibelang/js/, which its `default` exports name, so the `bun build` CLI
 // (which loads no plugin) and plain Node read JavaScript.
 import assert from "node:assert/strict"
+import { createHash } from "node:crypto"
 import { spawnSync } from "node:child_process"
 import { chmodSync, cpSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs"
 import { createRequire } from "node:module"
 import { tmpdir } from "node:os"
 import { fileURLToPath, pathToFileURL } from "node:url"
-import { dirname, join, relative } from "node:path"
+import { dirname, join, relative, sep } from "node:path"
 import { test } from "node:test"
 import { emitPackageJs, writeLoaderRecords } from "../lib/declarations.mjs"
 import { loaderRecord } from "../../../../packages/compiler/cache.mjs"
@@ -405,4 +406,63 @@ test("RD-018: a standalone staged flow attributes mapped sibling outputs", async
     "./src/model.tsx": "./.vibelang/js/src/model.jsx"
   })
   assert.equal(existsSync(join(target, ".vibelang/js/src/model.js.map")), false)
+})
+
+test("custom output receipts hash physical scratch files while preserving package output aliases", async () => {
+  for (const stale of [false, true]) {
+    const parent = mkdtempSync(join(tmpdir(), "migrate-scratch-receipt-"))
+    try {
+      const root = join(parent, "repo"), packageDir = join(root, "pkg")
+      const outDir = join(parent, "batch scratch")
+      write(root, {
+        "pkg/package.json": JSON.stringify({ exports: { "./support": { "vibelang-source": "./test/support.vibe", default: "./.vibelang/js/test/support.js" } } }),
+        "pkg/src/main.vibe": "", "pkg/test/support.vibe": ""
+      })
+      const canonical = join(packageDir, ".vibelang/js/src/main.js")
+      if (stale) write(root, { "pkg/.vibelang/js/src/main.js": "export const stale = 99\n" })
+      const bin = fakeCompiler(root, [
+        { path: "src/main.js", source: "pkg/src/main.vibe", text: "export const value = 7" },
+        { path: "test/support.js", source: "pkg/test/support.vibe", text: "export const support = 3" }
+      ])
+      const result = await emitPackageJs({ compiler: bin, tsconfigs: ["tsconfig.json"], packageDir, root, outDir })
+      assert.equal(result.files, 2)
+      assert.deepEqual(result.outputs, {
+        "./src/main.vibe": "./.vibelang/js/src/main.js",
+        "./test/support.vibe": "./.vibelang/js/test/support.js"
+      })
+      const expected = ["src/main.js", "test/support.js"].map(name => {
+        const file = join(outDir, name)
+        return { file: relative(root, file).split(sep).join("/"), sha256: createHash("sha256").update(readFileSync(file)).digest("hex") }
+      })
+      assert.deepEqual(result.generatedFiles, expected)
+      if (stale) assert.equal(readFileSync(canonical, "utf8"), "export const stale = 99\n")
+      else assert.equal(existsSync(canonical), false)
+    } finally { rmSync(parent, { recursive: true, force: true }) }
+  }
+})
+
+test("property: custom output receipts follow physical paths and content across source names and scratch roots", async () => {
+  await fc.assert(fc.asyncProperty(
+    fc.constantFrom("alpha", "beta.part", "with-dash"),
+    fc.constantFrom("src", "src/deep", "lib"),
+    fc.constantFrom(".vibe", ".ts", ".mts"),
+    fc.integer({ min: -1000, max: 1000 }),
+    fc.boolean(),
+    async (name, dir, extension, value, outside) => {
+      const parent = mkdtempSync(join(tmpdir(), "migrate-receipt-property-"))
+      try {
+        const root = join(parent, "repo"), packageDir = join(root, "pkg")
+        const outDir = outside ? join(parent, "external scratch") : join(root, "local scratch")
+        const source = dir + "/" + name + extension
+        const output = dir + "/" + name + (extension === ".mts" ? ".mjs" : ".js")
+        write(root, { "pkg/package.json": "{}", ["pkg/" + source]: "" })
+        const bin = fakeCompiler(root, [{ path: output, source: "pkg/" + source, text: "export const value = " + value }])
+        const result = await emitPackageJs({ compiler: bin, tsconfigs: ["tsconfig.json"], packageDir, root, outDir })
+        const file = join(outDir, output)
+        assert.deepEqual(result.outputs, { ["./" + source]: "./.vibelang/js/" + output })
+        assert.deepEqual(result.generatedFiles, [{ file: relative(root, file).split(sep).join("/"), sha256: createHash("sha256").update(readFileSync(file)).digest("hex") }])
+        assert.equal(existsSync(join(packageDir, ".vibelang/js")), false)
+      } finally { rmSync(parent, { recursive: true, force: true }) }
+    }
+  ), { seed: 160018, numRuns: 24 })
 })
