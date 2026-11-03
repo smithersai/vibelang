@@ -1,0 +1,45 @@
+// expect-result: ["dataUrl","declaration","expression","arrow","method","getter","async","effect"]
+import { Effect } from "effect"
+
+type Ref = { type: "dataUrl"; value: string }
+type AIError = { readonly _tag: "AIError" }
+
+export function make(a: string): Ref!AIError {
+  return Effect.succeed({ type: "dataUrl", value: a })
+}
+export function qualified(a: string): Effect.Effect<Ref, AIError> {
+  return Effect.succeed({ type: "dataUrl", value: a })
+}
+export const expression = function (a: string): Ref!AIError {
+  return Effect.succeed({ type: "dataUrl", value: a })
+}
+export const arrow = (a: string): Ref!AIError => Effect.succeed({ type: "dataUrl", value: a })
+export class Factory {
+  make(a: string): Ref!AIError {
+    return Effect.succeed({ type: "dataUrl", value: a })
+  }
+  get ref(): Ref!AIError {
+    return Effect.succeed({ type: "dataUrl", value: "getter" })
+  }
+}
+export async function asyncMake(a: string): Promise<Ref!AIError> {
+  return Effect.succeed({ type: "dataUrl", value: a })
+}
+// Only effect bodies return the success value.
+export effect function marked(a: string): Ref!AIError {
+  return { type: "dataUrl", value: a }
+}
+export effect function main() {
+  const factory = new Factory()
+  const asyncRef = try Effect.promise(() => asyncMake("async"))
+  return [
+    (try make("value")).type,
+    (try qualified("declaration")).value,
+    (try expression("expression")).value,
+    (try arrow("arrow")).value,
+    (try factory.make("method")).value,
+    (try factory.ref).value,
+    (try asyncRef).value,
+    (try marked("effect")).value
+  ]
+}

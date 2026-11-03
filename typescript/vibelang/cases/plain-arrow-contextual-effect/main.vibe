@@ -8,14 +8,14 @@ type Checker<C = unknown> = { readonly id: string; readonly probe: (context: num
 
 export const session: Checker = { id: "session", probe: () => Effect.succeed({ activity: "unknown", reason: "ok" }) }
 export const annotated: () => Report!! = () => Effect.succeed({ activity: "idle" })
-export const blockBody: () => "a" | "b"!string = () => {
+export const blockBody: () => ("a" | "b")!string = () => {
   return Effect.succeed("a")
 }
 export const expression: () => readonly [1, "x"]!! = function () {
   return Effect.succeed([1, "x"])
 }
 export const exit: () => Exit.Exit<"a" | "b"> = () => Exit.succeed("a")
-export const factory: () => () => "a" | "b"!! = () => () => Effect.succeed("a")
+export const factory: () => () => ("a" | "b")!! = () => () => Effect.succeed("a")
 
 // An effect function's body gives the success value, so it is typed by that.
 export const marked: () => Report!! = effect () => ({ activity: "unknown", reason: "late" })

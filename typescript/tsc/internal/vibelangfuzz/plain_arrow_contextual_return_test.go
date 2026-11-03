@@ -23,6 +23,7 @@ const plainContextualQuote = "| plain | `function f() { }`, `() => …` | its re
 type plainContextualValue struct{ key, expected, value string }
 
 var plainContextualValues = []plainContextualValue{
+	{"opencode-ref", `Effect.Effect<{ type: "dataUrl"; value: string }, { readonly _tag: "AIError" }>`, `Effect.succeed({ type: "dataUrl", value: "url" })`},
 	{"object", `Effect.Effect<{ readonly k: "a" | "b"; readonly o?: "x" | undefined }, unknown>`, `Effect.succeed({ k: "a", o: "x" })`},
 	{"literal", `Effect.Effect<"a" | "b", string>`, `Effect.succeed("a")`},
 	{"tuple", `Effect.Effect<readonly [1, "x"]>`, `Effect.succeed([1, "x"])`},
@@ -36,6 +37,13 @@ var plainContextualValues = []plainContextualValue{
 // The destinations of a plain function; %[1]s is the type expected of what it
 // returns, %[2]s what it returns.
 var plainContextualDestinations = []struct{ key, source string }{
+	{"written-declaration", "export function x(): %[1]s {\n  return %[2]s\n}\n"},
+	{"written-expression", "export const x = function (): %[1]s {\n  return %[2]s\n}\n"},
+	{"written-arrow", "export const x = (): %[1]s => %[2]s\n"},
+	{"written-block-arrow", "export const x = (): %[1]s => {\n  return %[2]s\n}\n"},
+	{"written-method", "export class X { x(): %[1]s {\n  return %[2]s\n} }\n"},
+	{"written-getter", "export class X { get x(): %[1]s {\n  return %[2]s\n} }\n"},
+	{"written-async", "export async function x(): Promise<%[1]s> {\n  return %[2]s\n}\n"},
 	{"member", "export const x: { readonly p: () => %[1]s } = { p: () => %[2]s }\n"},
 	{"member-parameter", "export const x: { p: (a: number) => %[1]s } = { p: (_a) => %[2]s }\n"},
 	{"annotated", "export const x: () => %[1]s = () => %[2]s\n"},
@@ -93,8 +101,8 @@ func FuzzPlainArrowContextualReturn(f *testing.F) {
 	startShortBudget(f)
 	for i, d := range plainContextualDestinations {
 		for j, v := range plainContextualValues {
-			// Seeds: every destination and every value, not their product.
-			if i == 0 || j == 0 {
+			// Keep the original object seeds and cover the written return witness.
+			if i == 0 || d.key == "member" || j == 0 || v.key == "object" {
 				f.Add(d.key, v.key)
 			}
 		}

@@ -235,6 +235,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Repeated automatic fixes no longer recheck the same refused syntax rewrite when only other files' types change.
 - When a type imported by a global declaration changed during `vibelang --fix`, an earlier refused rewrite could stay skipped. The fixer now checks it again, including through re-exports and import-type queries.
 - `vibelang --fix` checked again, in each later pass of a run, every prelude rewrite it had refused, though nothing the refusal read had changed; on a Smithers slice that was 13 or 14 rewrites a pass and about a fifth of each run. A run now refuses such a rewrite again without a check while its file, the files it reads and their imports, and the files that declare globals are unchanged.
+- Plain functions with written `Effect` return types previously widened object literals and rejected valid returns such as `Effect.succeed({ type: "dataUrl", value })`; return expressions now keep their literal types from the written `Effect` result, as in TypeScript.
 
 - The forms gate rejected explicit Effect callbacks after independently landed changes moved their source locations; its reviewed snapshot now records the written modifier at each affected site.
 
