@@ -45,3 +45,4 @@ export effect function main() {
     getter: try trace(withGetter(true, props)),
   }
 }
+// Chapter 002: expression prefix executes before a lifted source jump; docs/design/src/002-running.md#2bbc665a6e5c1492

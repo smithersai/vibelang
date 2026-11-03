@@ -3,3 +3,5 @@ export async function probe() {
   const loaded = await import(do { events.push("specifier"); "./dep.js" })
   return [loaded.value, events]
 }
+// Chapter 002: dynamic import do specifier matches native import; docs/design/src/002-running.md#695e97b2541562d5
+// Chapter 002: dynamic import do specifier matches native import; docs/design/src/002-running.md#3a1629f94c3563eb

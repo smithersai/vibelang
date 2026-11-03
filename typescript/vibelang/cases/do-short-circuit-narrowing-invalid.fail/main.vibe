@@ -27,3 +27,5 @@ export function leftWrite(x: string | undefined) {
 export function propertyInvalidated(x: { value: string | undefined }) {
   return (x.value !== undefined && (x.value = maybe(), true)) && do { x.value.length }
 }
+// Chapter 002: guard invalidation still rejects native unsafe access; docs/design/src/002-running.md#af9f4cb9b4ca1337
+// Chapter 002: guard invalidation still rejects native unsafe access; docs/design/src/002-running.md#a81aa1412b634c26

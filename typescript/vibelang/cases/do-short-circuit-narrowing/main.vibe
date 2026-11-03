@@ -100,3 +100,6 @@ export function main(): (Scalar | Observed[])[] {
     unrelatedProperty({ kind: "a", n: 7, count: 0 }), unrelatedProperty({ kind: "b", count: 0 })
   ]
 }
+// Chapter 002: do retains source guard narrowing; docs/design/src/002-running.md#df51d0dec4875972
+// Chapter 002: do retains source guard narrowing; docs/design/src/002-running.md#e4d2ed991226bd7a
+// Chapter 002: do retains source guard narrowing; docs/design/src/002-running.md#a3c850b8972d93e9

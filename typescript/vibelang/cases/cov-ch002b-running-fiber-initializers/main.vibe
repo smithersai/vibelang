@@ -1,0 +1,15 @@
+// Chapter 002: class fields, enum initializers and plain static blocks retain ordinary helper calls; docs/design/src/002-running.md#0245e2165bd53f1a
+// Chapter 002: class fields, enum initializers and plain static blocks retain ordinary helper calls; docs/design/src/002-running.md#c6139ae754dc7f50
+// Chapter 002: class fields, enum initializers and plain static blocks retain ordinary helper calls; docs/design/src/002-running.md#3a61974754001832
+// Chapter 002: class fields, enum initializers and plain static blocks retain ordinary helper calls; docs/design/src/002-running.md#946e8267a01e05ce
+import {Effect} from "effect"
+const seen:number[]=[]
+function join(n:number){return n+1}
+function fork(n:number){return n+2}
+class Plain{static{seen.push(join(1),fork(1))}}
+export effect function main():unknown!!{
+ class C{value=join(1)}
+ enum E{A=join(1)}
+ const names={join:3,fork:4}
+ return [new C().value,E.A,seen,names.join+names.fork]
+}

@@ -1,0 +1,4 @@
+// expect: EK0107
+// Chapter 002: explicit Promise bridge does not admit literal executable module URLs; docs/design/src/002-running.md#b124195620fb4d50
+// Chapter 002: explicit Promise bridge does not admit literal executable module URLs; docs/design/src/002-running.md#08fba8957bd436e8
+export effect function invalid(){return try Effect.tryPromise(()=>import("blob:forbidden"))}

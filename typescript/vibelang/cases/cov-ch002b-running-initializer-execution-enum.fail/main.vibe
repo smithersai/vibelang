@@ -1,0 +1,3 @@
+// expect: EK0501
+// Chapter 002: fields and enum initializers cannot execute Effect operators; docs/design/src/002-running.md#43a54996c35a7009
+export effect function invalid(){enum E{A=try Effect.succeed(1)}}

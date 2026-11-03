@@ -1,0 +1,4 @@
+// Chapter 002: do never typing Exit parity; docs/design/src/002-running.md#18da8c80d68b0292
+import {Effect} from "effect"
+function stopped(){const value:never=do{return 5};return value}
+export effect function main():unknown!!{return stopped()}

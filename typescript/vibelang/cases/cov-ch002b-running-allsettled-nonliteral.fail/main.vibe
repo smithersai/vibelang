@@ -1,0 +1,4 @@
+// expect: TS2345
+// Chapter 002: nonliteral heterogeneous tuple keeps native map callback error; docs/design/src/002-running.md#bdd9017182de5056
+const t:readonly [Effect.Effect<number>,Effect.Effect<string>]=[Effect.succeed(1),Effect.succeed("a")]
+export effect function invalid(){return try.allSettled t}

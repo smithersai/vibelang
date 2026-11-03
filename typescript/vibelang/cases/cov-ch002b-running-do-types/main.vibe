@@ -1,0 +1,15 @@
+// Chapter 002: source completion types preserve empty, never and overload selection; docs/design/src/002-running.md#9ba2643c7dbb8e53
+// Chapter 002: source completion types preserve empty, never and overload selection; docs/design/src/002-running.md#a3eafe1971afcdfd
+// Chapter 002: source completion types preserve empty, never and overload selection; docs/design/src/002-running.md#25f8d4a6762e2b57
+import {Effect} from "effect"
+function pick(n:1):Effect.Effect<number>
+function pick(n:number):Promise<number>
+function pick(n:number):Effect.Effect<number>|Promise<number> {return Effect.succeed(n)}
+export effect function main():unknown!! {
+ const exact=do{1};const checked:1=exact
+ let wide=do{1};wide=2
+ const inherited:7=do{7;{}}
+ const voided:undefined=do{}
+ const program:Effect.Effect<number>=pick(do{1})
+ return [checked,wide,inherited,voided===undefined,try program]
+}

@@ -15,3 +15,6 @@ export effect function main() {
   const empty = try.allSettled [...none]
   return { set: one.map(tag), custom: it.map(tag), generated: gen.map(tag), mixed: mixed.map(tag), empty: empty.map(tag), log }
 }
+// Chapter 002: Sets, generators and own iterators supply the yielded Effects; docs/design/src/002-running.md#f13b9edc7c16ab78
+// Chapter 002: Sets, generators and own iterators supply the yielded Effects; docs/design/src/002-running.md#fcc801d389903778
+// Chapter 002: Sets, generators and own iterators supply the yielded Effects; docs/design/src/002-running.md#ad7b61bf0a9ec730

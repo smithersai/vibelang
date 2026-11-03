@@ -1,0 +1,24 @@
+// Chapter 002: JSX prefix snapshots precede outward source return; docs/design/src/002-running.md#a868b34ac1795450
+// Chapter 002: JSX prefix snapshots precede outward source return; docs/design/src/002-running.md#30e37d99755cd52e
+// Chapter 002: JSX prefix snapshots precede outward source return; docs/design/src/002-running.md#c79d8c1bd98bf78b
+// Chapter 002: JSX prefix snapshots precede outward source return; docs/design/src/002-running.md#42a1c13fa0e47d92
+// Chapter 002: JSX prefix snapshots precede outward source return; docs/design/src/002-running.md#f06019449a1e8fe5
+// Chapter 002: JSX prefix snapshots precede outward source return; docs/design/src/002-running.md#c2be4932ef52688d
+import {Effect} from "effect"
+type VNode={props:Record<string,unknown>|null;children:unknown[]}
+declare global{namespace JSX{type Element=VNode}}
+let events:string[]=[]
+let n=2
+function h(tag:unknown,props:Record<string,unknown>|null,...children:unknown[]):VNode{events.push("h");return {props,children}}
+function Box(props:{a:number;v:number}):VNode{return {props,children:[]}}
+const tags={get Box(){events.push("tag");return Box}}
+const attrs={get value(){events.push("attribute");return n}}
+function spread(){events.push("spread");return {s:3}}
+function build(stop:boolean){
+ return <tags.Box a={attrs.value} {...spread()} v={do{n=10;if(stop)return 7;events.push("body");1}}/>
+}
+export effect function main():unknown!!{
+ const result:unknown[]=[]
+ for(const stop of [true,false]){events=[];n=2;const value=build(stop);result.push([value,[...events]])}
+ return result
+}

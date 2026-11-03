@@ -3,3 +3,7 @@ export async function probe() {
   const loaded = await import(do { events.push("specifier"); "./dep.js" }, do { events.push("options"); ({ with: {} }) })
   return [loaded.value, events]
 }
+// Chapter 002: dynamic import keeps intrinsic callee and both operands in order; docs/design/src/002-running.md#38f08a038c9b1b57
+// Chapter 002: dynamic import keeps intrinsic callee and both operands in order; docs/design/src/002-running.md#e730352e11ae8d07
+// Chapter 002: dynamic import keeps intrinsic callee and both operands in order; docs/design/src/002-running.md#f7f8075dd94a0671
+// Chapter 002: dynamic import keeps intrinsic callee and both operands in order; docs/design/src/002-running.md#cde1af1805fa5e26

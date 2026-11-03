@@ -1,0 +1,7 @@
+// Chapter 002: nonliteral heterogeneous tuple keeps native map callback error; docs/design/src/002-running.md#bdd9017182de5056
+import {Effect,Exit} from "effect"
+export effect function main():unknown!!{
+ const exact:[Exit.Exit<number>,Exit.Exit<string>]=try.allSettled [Effect.succeed(1),Effect.succeed("a")]
+ const spread:Exit.Exit<number>[]=try.allSettled [...new Set([Effect.succeed(2)])]
+ return [exact.map((e:Exit.Exit<number|string>)=>Exit.isSuccess(e)?e.value:"wrong"),spread.map(e=>Exit.isSuccess(e)?e.value:"wrong")]
+}

@@ -1,0 +1,18 @@
+// Chapter 002: native import Promise failures and synchronous operand failures stay distinct; docs/design/src/002-running.md#3becb7df42dfc018
+// Chapter 002: native import Promise failures and synchronous operand failures stay distinct; docs/design/src/002-running.md#4cfd17dc66c3b88c
+// Chapter 002: native import Promise failures and synchronous operand failures stay distinct; docs/design/src/002-running.md#b7314c1c70aa81aa
+// Chapter 002: native import Promise failures and synchronous operand failures stay distinct; docs/design/src/002-running.md#f89dc57834999469
+// Chapter 002: native import Promise failures and synchronous operand failures stay distinct; docs/design/src/002-running.md#e97d341b1b8d6ff6
+import {Effect,Exit,Cause} from "effect"
+import {badSpecifier,badOptions,badCoercion} from "./arguments.js"
+type Worker=typeof import("./dep.js")
+import {value as staticValue} from "./dep.js"
+export effect function main():unknown!! {
+ const events:string[]=[]
+ const loaded:Worker=try Effect.orDie(Effect.tryPromise(()=>import("./dep.js")))
+ const a=try Effect.exit(Effect.tryPromise({try:()=>import(badSpecifier(events)),catch:e=>e}))
+ const b=try Effect.exit(Effect.tryPromise({try:()=>import("./dep.js",badOptions(events)),catch:e=>e}))
+ const c=try Effect.exit(Effect.tryPromise({try:()=>import(badCoercion(events)),catch:e=>e}))
+ const value=(ex:Exit.Exit<unknown,unknown>)=>Exit.isFailure(ex)?Cause.squash(ex.cause):"wrong"
+ return [loaded.value,staticValue,events,value(a),value(b),value(c)]
+}

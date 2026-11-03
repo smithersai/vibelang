@@ -1,0 +1,10 @@
+// Chapter 002: fixed fork operand evaluates arguments on caller before child execution; docs/design/src/002-running.md#120ed734b4e1027c
+import {Effect} from "effect"
+effect function id(events:string[]){events.push("id");return 1}
+function worker(n:number,events:string[]):Effect.Effect<number,string>{events.push("build");return Effect.sync(()=>{events.push("run");return n})}
+export effect function main():unknown!!{
+ const events:string[]=[]
+ const child=fork Effect.catch(worker(try id(events),events),e=>Effect.succeed(e.length))
+ events.push("parent")
+ return [join child,events]
+}

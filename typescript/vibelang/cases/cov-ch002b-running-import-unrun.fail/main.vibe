@@ -1,0 +1,5 @@
+// expect: EK0404
+// Chapter 002: unbridged dynamic import is a Promise-producing invocation; docs/design/src/002-running.md#2a9a7e67f00b18ed
+// Chapter 002: unbridged dynamic import is a Promise-producing invocation; docs/design/src/002-running.md#894857f005eab6ab
+// Chapter 002: unbridged dynamic import is a Promise-producing invocation; docs/design/src/002-running.md#6aafd7a54d96a651
+export effect function invalid(){const module=import("./dep.js");return module}

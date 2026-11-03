@@ -16,3 +16,7 @@ export effect function main() {
   const edgeCalls = calls()
   return { setCount: sc.map(tag), setCalls, arrCount: ac.map(tag), arrCalls, arrReverse: ar.map(tag), setReverse: sr.map(tag), edges: ed.map(tag), edgeCalls, order: [...order] }
 }
+// Chapter 002: literal array preserves exactly the source iterator calls and order; docs/design/src/002-running.md#53e1ebcdf7b56c25
+// Chapter 002: literal array preserves exactly the source iterator calls and order; docs/design/src/002-running.md#23403d00cd8d2c89
+// Chapter 002: literal array preserves exactly the source iterator calls and order; docs/design/src/002-running.md#3a0852aef0c31295
+// Chapter 002: literal array preserves exactly the source iterator calls and order; docs/design/src/002-running.md#f341ae1263f014ad

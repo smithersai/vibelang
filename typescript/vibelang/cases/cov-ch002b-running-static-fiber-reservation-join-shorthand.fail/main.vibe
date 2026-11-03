@@ -1,0 +1,8 @@
+// expect: EK1702
+// Chapter 002: inherited static-block reservation differs from Effect execution; docs/design/src/002-running.md#7d697264e1d5d62d
+// Chapter 002: inherited static-block reservation differs from Effect execution; docs/design/src/002-running.md#04385ab66d0754a5
+// Chapter 002: inherited static-block reservation differs from Effect execution; docs/design/src/002-running.md#bbfb4de93df7350e
+// Chapter 002: inherited static-block reservation differs from Effect execution; docs/design/src/002-running.md#20717f1014bfb592
+function join(n:number){return n}
+function fork(n:number){return n}
+export effect function invalid(){return {join}}
