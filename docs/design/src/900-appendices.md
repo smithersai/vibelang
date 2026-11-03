@@ -1147,6 +1147,7 @@ The existing migration warnings retain their emitted codes until the compiler an
 
 | Code | Rule | VIP | Chapter |
 | --- | --- | --- | --- |
+| `EK1023` | transitional error: a block after an Effect dual that `0.0.10` ran as the dual's program, where appending it as the last argument type-checks with changed meaning; the versioned dual migration reports it instead of a duplicate `EK1101` and keeps the original argument position | 11, 34 | [Configuration and tooling](007-tooling.md#compiler-and-tooling-requirements) |
 | `EK4853` | warning: migration of an omitted requirement slot: write the previously inferred requirements explicitly, or omit the whole return annotation to infer the contract | 3 | [Configuration and tooling](007-tooling.md#compiler-and-tooling-requirements) |
 | `EK4854` | warning: migration of the retired abstract-class service spelling to a `service` declaration, retaining its contract and key | 9 | [Configuration and tooling](007-tooling.md#compiler-and-tooling-requirements) |
 | `EK4855` | warning: migration of `static readonly default = shape` to `static readonly defaultValue = () => shape`, including the corresponding type and value reads | 9 | [Configuration and tooling](007-tooling.md#compiler-and-tooling-requirements) |
