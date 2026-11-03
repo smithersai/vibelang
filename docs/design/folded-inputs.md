@@ -105,3 +105,15 @@ Folded: 1793667173-rc-entry1.patch (applied at docs/design/src/001-functions.md:
 Folded: 1793657310-vip3-sugar.patch (already stated at docs/design/src/900-appendices.md:1155)
 
 VIP-27/VIP-30’s later TypeScript-twin amendment wins over the patch’s old rule changing .vibe to .ts in declarations; written declaration specifiers remain written. tsc 5.9.3 emits ./dep.ts unchanged even with rewriteRelativeImportExtensions=true. The obsolete declarationImportStyle paths are ignored for every value with a nonfatal warning; no spelling option returns. VIP-3’s infer-slot retirement and VIP-26’s lexical main binding were already stated.
+
+## record already folded grammar and running rules
+
+Folded: 1793639574-sl15-fix-opus-1.patch (already stated at docs/design/src/002-running.md:671)
+
+Folded: 1793652497-fk48-service-shape.patch (already stated at docs/design/src/005-services.md:44)
+
+Folded: 1793653095-impl-hunt-run.patch (already stated at docs/design/src/002-running.md:1156)
+
+Folded: 1793658761-vip-throw-expr.patch (already stated at docs/design/src/003-failures.md:61)
+
+VIP-9’s later native namespace reconciliation governs Name.Shape visibility. The old producer patch rejected `any`/`unknown`/compatible unions; the standing TypeScript rule and current Stream.callback twin supersede that restriction. TC39 throw expressions use the current VIP-41 number; VIP-40 belongs to TypeScript module declarations, so the obsolete conflicting number is not restored. Existing do-expression label-chain and EK0204 compiler-gap rules remain intact.
