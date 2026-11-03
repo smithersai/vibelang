@@ -978,3 +978,8 @@ compatibility sidecars; the current emitter's spelling is not used as the oracle
 The Effect pin oracle quotes the accepted previous-patch clarification verbatim; its older, previous-patch, next-patch, prerelease, exact-pin and nested-resolution checks remain unchanged.
 
 `FuzzNativeCrossVariantResolution` checks both native source-extension substitutions against stock TypeScript, with declaration decoys, type/value imports, re-exports, nesting, JSX settings and `NodeNext`. Keyed R25 corpora retain direction and options.
+
+The unplugin sidecar-entry quotation guard reads VIP-27's authoritative
+compatibility-declaration amendment alongside Chapter 007's tooling rule.
+Its existing 80 seeded entry models retain source, alias, query and declaration
+lookalike checks; changing the citation does not change their filtering oracle.

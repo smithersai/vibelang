@@ -182,6 +182,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Parameter-default coverage missed outward `return` in `do` expressions; tests now check early exits before later defaults and body execution across functions, arrows and methods, with compiler gaps tracked explicitly.
 - The pin regression suite stopped after the specification explicitly named the previous patch; its citation now matches the accepted rule while retaining all version checks.
 - Resolution coverage omitted explicit native imports whose sibling has the other source extension; regressions now compare both directions with stock TypeScript and declaration-file decoys.
+- Bundler sidecar checks failed on an obsolete specification quote; they now read the current declaration-output contract.
 
 - Migration regression checks could reject a preserving empty-trust rewrite after prelude cleanup shortened `Effect.orDie` to `orDie`. They now accept either spelling while retaining declaration and execution checks.
 

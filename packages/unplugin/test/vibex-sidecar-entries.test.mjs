@@ -6,11 +6,12 @@ import { SpecPath } from "../../../scripts/testing/spec-path.mjs"
 import plugin from "../src/rolldown.js"
 
 const sidecarRule = "Type checkers work through " + String.fromCharCode(96) + ".d.vibe.ts" + String.fromCharCode(96) + ", and linters, Knip, bundlers and test runners each read " + String.fromCharCode(96) + ".vibe" + String.fromCharCode(96) + "."
-const vibexRule = "The same rule applies to " + String.fromCharCode(96) + "x.d.vibex.ts" + String.fromCharCode(96) + " and mapped sidecar locations."
+const vibexRule = "This includes " + String.fromCharCode(96) + ".d.vibex.ts" + String.fromCharCode(96) + " and mapped sidecar locations."
 test("VIP-39 sidecar entry oracle quotes the tooling contract", () => {
   const chapter = readFileSync(SpecPath("007-tooling.md"), "utf8")
   assert.ok(chapter.includes(sidecarRule))
-  assert.ok(chapter.includes(vibexRule))
+  const declarations = readFileSync(SpecPath("../vips/0027-declaration-output.md"), "utf8")
+  assert.ok(declarations.includes(vibexRule))
 })
 function entries(input) {
   const hook = plugin({ root: process.cwd() }).options
