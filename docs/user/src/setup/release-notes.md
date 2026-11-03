@@ -143,6 +143,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 | Old diagnostic numbers, including `EK4617` | Appendix B numbering, including `EK0103`. Diagnostic triggers are unchanged. See the [old-to-new map](../vibelang-features/diagnostic-code-map.md). |
 
 ### Bugs fixed since 0.0.10
+- `vibelang --fix` left qualified calls such as `Effect.retry(...)` after the same function was available as an unshadowed global. It now writes the bare call, preserving comments, declaration imports and disabled-global settings.
 
 - Specification table and authority checks rejected the historical explanation that accepted `VIP-40` supersedes denied `VIP-25`. They now verify the accepted successor while continuing to reject positive authority claims based on the denied proposal.
 - API checks lost referenced ambient or library types when a declaration also contained a private class. Nominal alignment now preserves leading reference directives, and referenced type changes remain visible.

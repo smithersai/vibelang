@@ -315,3 +315,5 @@ Inside an Effect function, `throw` adds an expected failure to the function's er
 See [Control operations and handlers](111-control-operations-and-handlers.md) for the proposal's status.
 
 Inferred parameter types of retained SDK error constructors keep their Effect namespace spelling in declarations. For example, exporting `AsyncFiberError` writes its inferred fiber parameter as `Fiber.Fiber<unknown, unknown>` with an import from `effect`, independently of nearby matching code. Explicit import types and local or generic `Fiber` bindings retain their written scope.
+
+`vibelang --fix` shortens an `Effect.member(...)` call when the bare name resolves to the same available Effect export. It keeps qualified calls when a value shadows that name, when `vibe.effectGlobals` is `false`, or when shortening would remove a prefix comment. A function value such as `const run = Effect.retry` keeps its spelling. Native TypeScript module bodies are left unchanged, and imports needed by declaration sidecars stay even when `declaration` is `false`.

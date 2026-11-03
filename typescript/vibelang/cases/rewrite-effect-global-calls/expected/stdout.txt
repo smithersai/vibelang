@@ -1,0 +1,1 @@
+rewrite preserves effect-global-calls

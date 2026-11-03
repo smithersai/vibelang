@@ -791,7 +791,7 @@ func removeUnusedEffectImports(g *fixGate, program *compiler.Program, texts map[
 		}
 		var declared map[string]bool
 		if file := program.GetSourceFile(name); file != nil {
-			declared = declarationImportKeys(g.ctx, program, file)
+			declared = emittedImportKeys(g.ctx, program, file)
 		}
 		if text, ok := withoutUnusedEffectImports(name, result.Files[name].Original, texts[name], declared); ok {
 			cleaned[name] = text

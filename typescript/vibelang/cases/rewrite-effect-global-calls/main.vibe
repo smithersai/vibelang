@@ -1,0 +1,11 @@
+import { report } from "./report.ts"
+
+export const program = effect {
+  let calls = 0
+  const held = Effect.retry(Effect.sync(() => ++calls), { times: 1 })
+  const cold = calls
+  const value = try held
+  const list = try Effect.forEach([1, 2], (n) => Effect.succeed(n + calls))
+  return [cold, value, calls, list]
+}
+report(await Effect.runPromise(program))

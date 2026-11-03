@@ -243,7 +243,14 @@ import { Effect } from "effect"
 
 const run = Effect.runSync(Effect.succeed(1))
 export const answer: number = run
-`, ""},
+`, `/**
+ * What this module is for.
+ */
+import { Effect } from "effect"
+
+const run = runSync(Effect.succeed(1))
+export const answer: number = run
+`},
 		{"a header comment the declaration keeps", `/**
  * What this module is for.
  */
