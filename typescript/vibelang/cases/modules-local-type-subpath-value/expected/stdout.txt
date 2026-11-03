@@ -1,0 +1,1 @@
+local type namespaces ok

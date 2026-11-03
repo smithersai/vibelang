@@ -1,0 +1,16 @@
+// VIP-9 / VIP-14 / Chapter 5: lookup preserves each declaration meaning.
+type KeyFormat = { readonly local: true }
+export const foreign = KeyFormat.jwk
+export type LocalFormat = KeyFormat
+interface Transferable { readonly local: true }
+export const collect = Transferable.makeCollectorUnsafe
+export type LocalTransferable = Transferable
+export function nested() {
+  type KeyFormat = { readonly nested: true }
+  const local: KeyFormat = { nested: true }
+  return { local, foreign: KeyFormat.jwk }
+}
+export function valueShadow() {
+  const KeyFormat = { jwk: "local" as const }
+  return KeyFormat.jwk
+}

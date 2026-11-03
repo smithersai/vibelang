@@ -444,6 +444,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - A `schema error` class pattern rejected errors with the same `_tag` from another package copy; bare and extracting patterns now match that tag and keep the original subject. Class upgrades made by `vibelang --fix` retain the same matching.
 
+- A local type alias or interface named `KeyFormat` or `Transferable` hid Effect's namespace in expressions such as `KeyFormat.jwk`; the type and value meanings now resolve independently, including in nested scopes.
 - Published API checks rejected identical JSON exports as non-modules; JSON assets now retain their `resolveJsonModule` types, and real type changes still fail.
 
 - Source-child loader wiring introduced a `fileURLToPath` import alias and failed repositories’ native import policies. Setup now uses a namespace import and refreshes its own previously generated helpers while preserving manually observed bindings.

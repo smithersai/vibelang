@@ -181,7 +181,7 @@ func declaresService(file *ast.SourceFile) bool {
 
 // mayUsePrelude reports whether file has an identifier with a prelude name,
 // and one with the name of an effect root export, that no top-level
-// declaration or import of file declares, and returns the packages of the
+// value declaration or import of file declares, and returns the packages of the
 // subpath modules whose names it has, sorted. It runs before binding, so it
 // reads names from the syntax, and a property named pipe or an inner
 // declaration counts as a use, which only loads a module. A subpath package
@@ -190,6 +190,11 @@ func declaresService(file *ast.SourceFile) bool {
 func mayUsePrelude(file *ast.SourceFile) (prelude bool, root bool, barrels []string) {
 	declared := map[string]bool{}
 	for _, statement := range file.Statements.Nodes {
+		// Type-only declarations cannot suppress loading an implicit value
+		// namespace. The checker resolves each meaning after binding.
+		if ast.IsTypeAliasDeclaration(statement) || ast.IsInterfaceDeclaration(statement) {
+			continue
+		}
 		forEachTopLevelName(statement, func(name string) { declared[name] = true })
 	}
 	loaded := map[string]bool{}
@@ -441,7 +446,7 @@ func resolvePreludeName(c *checker.Checker, location *ast.Node, name string, mea
 	// A namespace lookup of a name written in an expression, such as the
 	// Resource of `Resource.App.stage` in an Effect body, which VibeLang asks
 	// for and TypeScript never does, reaches here when a scope declares the
-	// name only as a value or a type: `import { Resource } from
+	// name as a value: `import { Resource } from
 	// "sst/resource"`, `const Option = { … }`. That binding is the name's
 	// meaning (Chapter 5: a local declaration or import shadows one), so the
 	// prelude's module does not stand in for it; otherwise the emit imports
@@ -450,9 +455,11 @@ func resolvePreludeName(c *checker.Checker, location *ast.Node, name string, mea
 	// TypeScript's does (`maybe: Option.Option<number>` beside `const Option`),
 	// and the compiler's own references, which the lowering writes and flags,
 	// still reach the prelude: data's Data.TaggedEnum beside a const Data.
+	// A type alias or interface is erased and does not supply a value; it
+	// must not hide the implicit namespace in an expression (VIP-14).
 	if meaning&ast.SymbolFlagsNamespaceModule != 0 && meaning&ast.SymbolFlagsVariable == 0 &&
 		ast.IsIdentifier(location) && location.Text() == name && !inTypeNode(location) &&
-		location.Flags&(ast.NodeFlagsVibeLangIntrinsic|ast.NodeFlagsReparsed) == 0 && shadowed(location, name) {
+		location.Flags&(ast.NodeFlagsVibeLangIntrinsic|ast.NodeFlagsReparsed) == 0 && shadowedByValue(location, name) {
 		return nil
 	}
 	// VIP-14 resolves each meaning independently: ambient types survive

@@ -1,0 +1,4 @@
+go test fuzz v1
+string("KeyFormat")
+byte(10)
+bool(true)

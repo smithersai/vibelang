@@ -1,0 +1,6 @@
+type Effect = { readonly local: true }
+interface Option { readonly local: true }
+export type LocalEffect = Effect
+export type LocalOption = Option
+export const succeedKind = typeof Effect.succeed
+export const someKind = typeof Option.some

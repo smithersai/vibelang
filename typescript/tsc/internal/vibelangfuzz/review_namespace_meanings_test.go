@@ -34,6 +34,9 @@ func reviewNamespaceMeaningPair(name string, form uint8, local bool) [2]string {
 	head := ""
 	if local {
 		head = "type " + name + " = { readonly local: true };\n"
+		if form >= 6 {
+			head = "interface " + name + " { readonly local: true }\n"
+		}
 	}
 	body := head + types[int(form)%len(types)]
 	return [2]string{
@@ -50,8 +53,11 @@ func reviewNamespaceMeaningPair(name string, form uint8, local bool) [2]string {
 func FuzzReviewNamespaceMeanings(f *testing.F) {
 	startShortBudget(f)
 	for _, name := range []string{"KeyFormat", "Transferable"} {
-		for form := range uint8(6) {
+		for form := range uint8(12) {
 			for _, local := range []bool{false, true} {
+				if form >= 6 && !local {
+					continue // Interfaces add a local-type variant only.
+				}
 				f.Add(name, form, local)
 			}
 		}
@@ -62,7 +68,7 @@ func FuzzReviewNamespaceMeanings(f *testing.F) {
 		if name != "Transferable" {
 			name = "KeyFormat"
 		}
-		form %= 6
+		form %= 12
 		pair := reviewNamespaceMeaningPair(name, form, local)
 		key := fmt.Sprintf("%s:%d:%t", name, form, local)
 		for _, index := range []int{1, 0} {
