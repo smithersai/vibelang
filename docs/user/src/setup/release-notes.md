@@ -174,6 +174,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - The `effect` quick fix was missing for arrows with one bare parameter; it now adds the required parentheses and preserves comments.
 - A `match` array or extractor pattern with something after its rest element that starts no pattern, such as `when [...a, *]`, hung the compiler and the editor until they ran out of memory. The parser now reports the misplaced element once and continues.
 - A `layer` body holding a token that cannot start a statement, such as `layer L: S { default }`, hung the compiler and the editor until they ran out of memory. The parser now reports the error once and continues.
+- The specification evidence check rejected deleted rules and unchanged rules with shorter wording. Deletions now add no obligation, and repointed test citations retain their existing evidence; new or changed rules still require evidence.
+
 - Documentation checks accepted throws in synchronous arrows whose parameter was named `effect`; they now apply the same rule after parameter renaming.
 - No-throw validation incorrectly failed after a plain catch handler became an effect handler; its regression fixtures now use catch's existing join point without a redundant `try`.
 - Migration setup could leave a nested workspace consumer on `tsc` when a semver peer or npm alias resolved to migrated workspace sources. Setup now follows installed workspace links for compiler, test-runner and worker wiring while respecting nearer registry packages.

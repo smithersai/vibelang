@@ -350,13 +350,14 @@ A sentence with inline code, an `EK` or `TS` diagnostic code, `must`,
 are examples, not prose rules. Generated pages, headings, unchanged sentences
 moved or copied between chapters and VIPs, whitespace, emphasis, link destinations, citation-only
 replacements, Effect version citations in otherwise unchanged prose and a
-closed list of common prose typos are exempt. A note that an existing
+closed list of common prose typos are exempt. Deleted sentences need no new
+evidence: they add no obligation. A note that an existing
 diagnostic range keeps its specific triggers is also prose. Inline code
 never receives typo correction. This lexical check cannot decide arbitrary
 semantic equivalence or whether an assertion proves a rule; `rule-judge`
 reviews those questions.
 
-Each sentence needs a new or changed executable compiler case in that
+Each new or changed rule needs a new or changed executable compiler case in that
 entry, a nearby pair of complete `vibe` and `ts effect` fences, or an explicit
 pending test for an unimplemented rule (Will, 2026-11-03). A changed
 case must contain a diagnostic or form named by the sentence; member names
@@ -376,6 +377,29 @@ rule before any heading). Comments alone, deleted cases and generated case
 outputs do not count. Diagnostic `// expect:` changes are executable evidence.
 A changed case manifest that updates its Effect dependency to the version named
 by the pin rule exercises the supported-version branch.
+
+An unchanged rule can inherit an existing test's evidence when its citation is
+repointed. For a compiler case, quote the exact sentence after the chapter
+reference, then update only that quote when rewording the spec:
+
+```text
+// rule-evidence: docs/design/src/001-functions.md#meaning | The `try` form must run.
+```
+
+The old citation must name a sentence replaced in the same chapter section;
+the new citation must name the replacement. The case's executable source and
+`// expect:` checks must remain identical and nonempty. In `docs/tools/*.test.ts`
+or `docs/tools/*.test.mjs`, an existing `toContain` or `includes` quote assertion
+can instead be repointed: it must run in a top-level `test` or `it` callback
+imported from `bun:test` or `node:test`, name the chapter path, and keep the
+rest of its source unchanged. Skipped tests, pending tests and fixture strings
+do not qualify. These witnesses
+are reported separately as `inherited`, rather than as new cases or pending
+obligations. If either sentence names diagnostic codes, their sets must match.
+A shared diagnostic code or keyword alone never exempts a changed trigger or
+meaning. Repointing a citation asserts that the rule is unchanged; `rule-judge`
+still reviews that assertion. New or changed behavior needs executable evidence
+or an exact pending witness.
 
 A twin pair stays in the rule's heading section, within 40 lines. Neither
 block may be a fragment, pending, a compiler gap or an expected failure.

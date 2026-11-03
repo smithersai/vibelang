@@ -1,3 +1,4 @@
+// rule-evidence: docs/design/src/002-running.md#do-expressions | Calls retain ECMA-262's `CallExpression` evaluation, `EvaluateCall` and `ArgumentListEvaluation` behavior, including the receiver, callee lookup, abrupt completions and native non-callable errors; generated invocation machinery must add no observable helper lookup.
 // expect-result: [7,["argument","call"]]
 // VIP-2: compiler invocation machinery performs no observable helper lookup.
 export effect function main() {

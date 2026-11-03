@@ -1,3 +1,4 @@
+// rule-evidence: docs/design/src/002-running.md#meaning | Native `for...of` and `for await` keep TypeScript's protocol checks and JavaScript meaning, even when their operand also implements `Stream`.
 // expect-result: [[2],[3],[1],[1,1,1]]
 import {Effect,Stream} from "effect"
 import {make,counts,type Dual} from "./native.js"

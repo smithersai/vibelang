@@ -1,3 +1,4 @@
+// rule-evidence: docs/design/src/002-running.md#meaning | On a failure in its error channel it calls `h` with the error, as Zig's `catch |err|` does.
 // rule-evidence: docs/design/vips/0005-try-runs-effects.md#c7d7aa5273009704
 // VIP-5: It handles failures with catch and match.
 // rule-evidence: docs/design/vips/0005-try-runs-effects.md#8b7e5a8ec17714a7

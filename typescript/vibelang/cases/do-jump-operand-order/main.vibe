@@ -1,3 +1,5 @@
+// rule-evidence: docs/design/src/002-running.md#do-expressions | Everything to its left runs first, in source order, the callee and a method's receiver included, so `o.m(try a(), match (x) { … })` reads `o.m`, runs `a()`, runs the `match`, and calls the method with `this` as `o`.
+// rule-evidence: docs/design/src/002-running.md#do-expressions | A `do` or `match` is an expression, and this is the one rule for it inside a larger expression: it runs where JavaScript evaluates the expression that holds it, never earlier or more often.
 // expect-result: {"call":[7,["callee","a","b"]],"callStay":[["a","b","v","z"],["callee","a","b","v","z","call"]],"object":[8,["a","b"]],"array":[9,["a"]],"loop":[[1],["a","a"]],"getter":[7,["get"]]}
 // Loop round 4, OPUS-5 (decided detail 198, chapter 002 Evaluation order):
 // a do that jumps out of a larger expression runs after everything to its

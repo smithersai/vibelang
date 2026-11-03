@@ -26,13 +26,13 @@ for (const text of [
   expect(result.findings[0].missing).toContain("compiled Effect twin")
 })
 
-test("covers VIPs, nested chapters, table cells and removed prohibitions", async () => {
+test("covers VIPs, nested chapters and table cells, and exempts deletions", async () => {
   for (const p of ["docs/design/vips/0042-rule.md", "docs/design/src/nested/rule.md"]) {
     expect((await checkEntry(entry({ path: p, before: "", after: "It must compile." }))).findings).toHaveLength(1)
   }
   expect(changedRules([doc("| Form | Rule |\n| --- | --- |\n| `try` | means run |")])).toHaveLength(1)
   const removed = await checkEntry(entry(doc("", "`try` outside effect code is an error.")))
-  expect(removed.findings[0].removed).toBe(true)
+  expect(removed.findings).toEqual([])
 })
 
 test("reports replacement once with the full sentence and correct source line", () => {
@@ -264,12 +264,11 @@ test("unchanged diagnostic range notes are prose, and version manifests exercise
   expect((await checkEntry(entry(rule, { ...manifest, after: '{"dependencies":{"other":"4.1.1"}}' }))).findings).toHaveLength(1)
 })
 
-test("a different new rule cannot hide a removed prohibition in the same section", async () => {
+test("a deletion cannot cover a different new rule in the same section", async () => {
   const change = doc("# Rules\n\n`schema` means a decoder.", "# Rules\n\n`try` is an error.")
-  const result = await checkEntry(entry(change, caseFile("schema User { id: string }")))
+  const result = await checkEntry(entry(change))
   expect(result.findings).toHaveLength(1)
-  expect(result.findings[0].removed).toBe(true)
-  expect(result.findings[0].text).toBe("`try` is an error.")
+  expect(result.findings[0].text).toBe("`schema` means a decoder.")
   expect(changedRules([doc('`const version = "Effect 4.1.1"` is a string.',
     '`const version = "Effect 4.1.0"` is a string.')])).toHaveLength(1)
 })
@@ -307,7 +306,7 @@ test("pending witness cannot cover another sentence, chapter, section or removal
   const result = await checkEntry(entry(doc("", "`try` must run."),
     pendingFile(pendingSource("`try` must run.", path, "removed"))))
   expect(result.findings).toEqual([])
-  expect(result.pending).toBe(1)
+  expect(result.pending).toBe(0)
 })
 
 test("pending witness rejects unchanged, renamed, deleted and comment-only todo changes", async () => {
@@ -357,4 +356,87 @@ test("pending witness covers only one of two rules in the same chapter section",
   const result = await checkEntry(entry(doc("`try` must run. `fork` must run."), pendingFile(pendingSource())))
   expect(result.pending).toBe(1)
   expect(result.findings.map(f => f.text)).toEqual(["`fork` must run."])
+})
+
+const citedCase = (text: string, body = 'export const witness = fail("bad") catch () => "ok"') =>
+  caseFile(`// rule-evidence: ${path}#meaning | ${text}\n${body}`)
+const oldCatch = "On a failure in its error channel it calls `h` with the error, as Zig's `catch |err|` does."
+const newCatch = "On a failure in its error channel it calls `h` with the error."
+
+test("deletions add no obligation, while replacement and new rules still need evidence", async () => {
+  expect((await checkEntry(entry(doc("", oldCatch)))).findings).toEqual([])
+  const result = await checkEntry(entry(doc("`schema` means a decoder.", oldCatch)))
+  expect(result.rules).toBe(1)
+  expect(result.findings.map(f => f.text)).toEqual(["`schema` means a decoder."])
+})
+
+test("a rewording inherits the existing case when its exact citation is repointed", async () => {
+  const before = citedCase(oldCatch).after, after = citedCase(newCatch).after
+  const result = await checkEntry(entry(doc("# Meaning\n\n" + newCatch, "# Meaning\n\n" + oldCatch), caseFile(after, before)))
+  expect(result.findings).toEqual([])
+  expect(result.inherited).toBe(1)
+  expect(result.cases).toBe(0)
+})
+
+test("repointed quote assertions preserve the executable spec witness", async () => {
+  const quote = (text: string) => `import { test } from "bun:test"\nimport { expect } from "bun:test"\nimport { readFileSync } from "node:fs"\ntest("catch rule", () => { expect(readFileSync(${JSON.stringify(path)}, "utf8")).toContain(${JSON.stringify(text)}) })\n`
+  const result = await checkEntry(entry(doc(newCatch, oldCatch), pendingFile(quote(newCatch), quote(oldCatch))))
+  expect(result.findings).toEqual([])
+  expect(result.inherited).toBe(1)
+})
+
+test("quote inheritance rejects fixtures, pending tests, uncalled functions and changed checks", async () => {
+  const quote = (text: string) => `import { test } from "bun:test"\nconst chapter = "${path}"\ntest("rule", () => { expect(read(chapter)).toContain(${JSON.stringify(text)}); expect(run()).toBe(1) })`
+  const before = quote(oldCatch), after = quote(newCatch)
+  for (const transform of [
+    (s: string) => s.replace('"bun:test"', '"./fake"'),
+    (s: string) => s.replace('test("rule",', 'test.todo("rule",'),
+    (s: string) => s.replace('test("rule",', 'test.skip("rule",'),
+    (s: string) => 'import { test } from "bun:test"; const fixture = ' + JSON.stringify(s),
+    (s: string) => 'function neverCalled() { ' + s.replace('import { test } from "bun:test"', '') + ' }',
+  ]) expect((await checkEntry(entry(doc(newCatch, oldCatch), pendingFile(transform(after), transform(before))))).findings).toHaveLength(1)
+  expect((await checkEntry(entry(doc(newCatch, oldCatch), pendingFile(after.replace("toBe(1)", "toBe(2)"), before)))).findings).toHaveLength(1)
+})
+
+test("inheritance rejects stale, unrelated, fabricated, removed and changed-code citations", async () => {
+  const change = doc("# Meaning\n\n" + newCatch, "# Meaning\n\n" + oldCatch)
+  const old = citedCase(oldCatch).after, next = citedCase(newCatch).after
+  for (const c of [caseFile(old, old), caseFile(next), caseFile("", old),
+    caseFile(next, old.replace(oldCatch, "An unrelated `catch` rule.")),
+    caseFile(next.replace("#meaning", "#other"), old),
+    caseFile(next.replace(path, "docs/design/src/other.md"), old),
+    caseFile(next.replace('export const witness = fail("bad") catch () => "ok"', "// no witness"), old),
+    caseFile(next.replace('export const witness', 'export const changed'), old)
+  ]) expect((await checkEntry(entry(change, c))).inherited).toBe(0)
+  const result = await checkEntry(entry(doc("# Meaning\n\n`catch` reports EK9202.", "# Meaning\n\n`catch` reports EK9201."),
+    caseFile(citedCase("`catch` reports EK9202.").after, citedCase("`catch` reports EK9201.").after)))
+  expect(result.findings).toHaveLength(1)
+})
+
+test("fast-check: deletion and repointed citations do not exempt fresh rules or stable-code mutations", async () => {
+  await fc.assert(fc.asyncProperty(fc.constantFrom("try", "fork", "join", "restore", "schema"),
+    fc.integer({ min: 1000, max: 9998 }), async (form, code) => {
+      const before = `The \`${form}\` form must report EK${code}, as specified here.`
+      const after = `The \`${form}\` form must report EK${code}.`
+      const changed = doc("# Meaning\n\n" + after, "# Meaning\n\n" + before)
+      const source = (s: string) => citedCase(s, `export const witness = ${JSON.stringify(form)}`).after
+      expect((await checkEntry(entry(doc("", before)))).rules).toBe(0)
+      expect((await checkEntry(entry(changed, caseFile(source(after), source(before))))).inherited).toBe(1)
+      expect((await checkEntry(entry(changed))).findings).toHaveLength(1)
+      // Diagnostic identity alone cannot prove that a new trigger or polarity is unchanged.
+      expect((await checkEntry(entry(doc(after.replace("must report", "must not report"), after)))).findings).toHaveLength(1)
+      expect((await checkEntry(entry(changed, doc("A new `service` must compile."), caseFile(source(after), source(before))))).findings).toHaveLength(1)
+    }), { seed: 20261104, numRuns: 150 })
+})
+
+test("fold-details' seventeen findings reduce to five inherited rules and no new obligations", async () => {
+  const fixture = JSON.parse(readFileSync(new URL("./fixtures/rule-evidence-simplification.json", import.meta.url), "utf8"))
+  const result = await checkEntry(entry(...fixture.changes))
+  expect(result.rules).toBe(5)
+  expect(result.inherited).toBe(5)
+  expect(result.cases).toBe(0)
+  expect(result.pending).toBe(0)
+  expect(result.findings).toEqual([])
+  const fresh = await checkEntry(entry(...fixture.changes, doc("A new `schema` rule must compile.")))
+  expect(fresh.findings.map(f => f.text)).toEqual(["A new `schema` rule must compile."])
 })

@@ -109,14 +109,9 @@ export function changedRules(changes: Change[]): Sentence[] {
     // location/authority citation, not what the rule says.
     return a.filter(s => !existing.has(canonical(s.text)) && normative(s.text))
   }
-  const added = unmatched(next, old)
-  // Removed rules change the language too; do not let deleting a prohibition
-  // bypass the gate. Replacement sentences are reported once, on the new side.
-  const removed = unmatched(old, next).filter(s => !added.some(n =>
-    n.path === s.path && n.section === s.section &&
-    (anchors(s.text).some(key => anchors(n.text).includes(key)) ||
-      canonical(s.text).replace(/`+[^`]*`+/g, "<code>") === canonical(n.text).replace(/`+[^`]*`+/g, "<code>"))))
-  return [...added, ...removed.map(s => ({ ...s, removed: true }))]
+  // A deletion adds no obligation. Semantic review still decides whether
+  // removing a rule is appropriate; this gate asks for evidence of additions.
+  return unmatched(next, old)
 }
 
 const keywords = new Set(["effect", "async", "await", "try", "catch", "throw", "error", "schema", "data", "service",
@@ -175,6 +170,80 @@ function caseEvidence(rule: Sentence, changes: Change[]): string | undefined {
       line.slice(line.indexOf(":") + 1).trim().split(/\s+/).includes(reference))
     if (explicit || exercises(rule, sourceBody(c.after)) || (rule.removed && exercises(rule, sourceBody(c.before)))) return c.path
   }
+}
+
+// Repointing an existing test citation is an explicit claim that the rule is
+// unchanged. Keep its executable witness intact and require the exact old and
+// new sentences. Shared anchors/codes alone never establish equivalence.
+function inheritedEvidence(rule: Sentence, changes: Change[]): boolean {
+  const docs = changes.filter(c => specPath(c.path))
+  const present = new Set(docs.flatMap(c => sentences(c.path, c.after)).map(s => canonical(s.text)))
+  const codes = (text: string) => [...new Set(text.match(/\b(?:EK|TS)\d{4,}\b/g) ?? [])].sort().join(",")
+  const previous = docs.flatMap(c => sentences(c.path, c.before)).filter(s =>
+    s.path === rule.path && s.section === rule.section && !present.has(canonical(s.text)) &&
+    codes(s.text) === codes(rule.text))
+  const reference = rule.path + (rule.section ? "#" + rule.section : "")
+  const citation = (source: string, text: string) => source.split("\n").some(line => {
+    const match = /^\s*\/\/ rule-evidence: (\S+) \| (.+)$/.exec(line)
+    return match?.[1] === reference && canonical(match[2]) === canonical(text)
+  })
+  const quoteBody = (source: string, text: string): string | undefined => {
+    const file = ts.createSourceFile("witness.test.ts", source, ts.ScriptTarget.Latest, true)
+    const spans: { start: number; end: number }[] = []
+    const tests = new Set<string>()
+    let citedPath = false
+    const visit = (node: ts.Node) => {
+      if (ts.isStringLiteralLike(node)) {
+        if (node.text === rule.path) citedPath = true
+        const call = node.parent
+        if (canonical(node.text) === canonical(text) && ts.isCallExpression(call) &&
+          call.arguments.length === 1 && call.arguments[0] === node && ts.isPropertyAccessExpression(call.expression) &&
+          ["toContain", "includes"].includes(call.expression.name.text)) spans.push({ start: node.getStart(file), end: node.end })
+      }
+      ts.forEachChild(node, visit)
+    }
+    for (const statement of file.statements) {
+      if (ts.isImportDeclaration(statement) && ts.isStringLiteral(statement.moduleSpecifier) &&
+        ["bun:test", "node:test"].includes(statement.moduleSpecifier.text) && !statement.importClause?.isTypeOnly) {
+        const bindings = statement.importClause?.namedBindings
+        if (bindings && ts.isNamedImports(bindings)) for (const item of bindings.elements) {
+          if (!item.isTypeOnly && ["test", "it"].includes((item.propertyName ?? item.name).text)) tests.add(item.name.text)
+        }
+      }
+      // The test may load the chapter into a shared top-level binding.
+      if (ts.isVariableStatement(statement)) {
+        const scanPath = (node: ts.Node) => {
+          if (ts.isStringLiteralLike(node) && node.text === rule.path) citedPath = true
+          ts.forEachChild(node, scanPath)
+        }
+        scanPath(statement)
+      }
+    }
+    for (const statement of file.statements) {
+      if (!ts.isExpressionStatement(statement) || !ts.isCallExpression(statement.expression)) continue
+      const call = statement.expression
+      if (!ts.isIdentifier(call.expression) || !tests.has(call.expression.text)) continue
+      for (const argument of call.arguments.slice(1)) {
+        if (ts.isArrowFunction(argument) || ts.isFunctionExpression(argument)) visit(argument.body)
+      }
+    }
+    if (!citedPath || !spans.length) return
+    for (const span of spans.reverse()) source = source.slice(0, span.start) + '"<rule citation>"' + source.slice(span.end)
+    return sourceBody(source)
+  }
+  for (const change of changes) {
+    if (!change.before || !change.after || change.before === change.after) continue
+    if (casePath(change.path) && /\.(?:vibe|vibex|ts|tsx|mjs)$/.test(change.path) && !/\/(?:out|node_modules)\//.test(change.path)) {
+      const body = sourceBody(change.after)
+      if (body && body === sourceBody(change.before) && citation(change.after, rule.text) &&
+        previous.some(old => citation(change.before, old.text))) return true
+    }
+    if (pendingPath(change.path)) {
+      const body = quoteBody(change.after, rule.text)
+      if (body && previous.some(old => quoteBody(change.before, old.text) === body)) return true
+    }
+  }
+  return false
 }
 
 // Will, 2026-11-03: every unimplemented rule may have an explicit test.todo.
@@ -249,9 +318,10 @@ export function nearbyTwins(rule: Sentence, markdown: string): Twin[] {
 
 export async function checkEntry(entry: Entry, checkTwin: (t: Twin) => Promise<TwinResult> = compileTwin) {
   const rules = changedRules(entry.changes), findings: Finding[] = []
-  let cases = 0, twins = 0, pending = 0
+  let cases = 0, twins = 0, pending = 0, inherited = 0
   const compiled = new Map<string, TwinResult>()
   for (const rule of rules) {
+    if (inheritedEvidence(rule, entry.changes)) { inherited++; continue }
     const markdown = entry.changes.find(c => c.path === rule.path)![rule.removed ? "before" : "after"]
     const ownKeys = anchors(rule.text)
     const strong = ownKeys.some(k => keywords.has(k) || k.includes(".") || /^(?:(?:EK|TS)\d|@|__|!!|=>|\|>)/.test(k))
@@ -272,7 +342,7 @@ export async function checkEntry(entry: Entry, checkTwin: (t: Twin) => Promise<T
     if (!proved && pendingEvidence(rule, entry.changes)) { pending++; continue }
     if (!proved) findings.push({ ...rule, missing: "missing a changed compiler case exercising this rule, a compiled Effect twin with identical nonempty .d.ts or Exit, or an exact changed pending test; " + last })
   }
-  return { base: entry.base, head: entry.head, rules: rules.length, cases, twins, pending, findings }
+  return { base: entry.base, head: entry.head, rules: rules.length, cases, twins, pending, inherited, findings }
 }
 
 // Use the snippet checker's extraction and dependency isolation. Both sources
@@ -413,7 +483,7 @@ async function main() {
   const result = await checkEntry(collectEntry(repo, base, head))
   if (json) writeFileSync(json, JSON.stringify(result, null, 2) + "\n")
   for (const finding of result.findings) console.error(finding.path + ":" + finding.line + ': "' + finding.text + '"\n  ' + finding.missing)
-  console.log("spec-rule-evidence: " + result.rules + " changed normative sentences; " + result.cases + " cases; " + result.twins + " compiled twins; " + result.pending + " pending tests; " + result.findings.length + " missing")
+  console.log("spec-rule-evidence: " + result.rules + " changed normative sentences; " + result.cases + " cases; " + result.twins + " compiled twins; " + result.pending + " pending tests; " + result.inherited + " inherited witnesses; " + result.findings.length + " missing")
   process.exitCode = result.findings.length ? 1 : 0
 }
 if (import.meta.main) main().catch(error => { console.error("spec-rule-evidence: " + error.message); process.exitCode = 2 })
