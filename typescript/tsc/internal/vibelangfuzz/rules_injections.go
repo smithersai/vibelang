@@ -48,7 +48,7 @@ var (
 const loadDecl = "effect function load$$() { try yieldNow(); return 1; }"
 
 var ruleInjections = []*ruleInjection{
-	{Code: 1101, Name: "trailing-block", Chapter: "007-tooling.md", Quote: "For example, a trailing block ([VIP-11](../vips/0011-trailing-blocks-denied.md)) is `EK1101`, and its codemod writes the block as the call's last argument in the spelling of what it ran as:", Slots: top,
+	{Code: 1101, Name: "trailing-block", Chapter: "007-tooling.md", Quote: "| `EK1101` | A rejected trailing block | Pass the block as the last argument:", Slots: top,
 		Text: "function invoke$$(body: () => number): number { return body(); }\nexport const value$$ = invoke$$() ⟦{ return 1; }⟧;"},
 	{Code: 1201, Name: "top-provide", Chapter: "005-services.md", Quote: "`provide L { }` outside effect code. The parser reads it as a `provide` statement to report this, so the statement `provide / a / { }` in `function f(provide: number, a: number) { provide / a / { } }` is `EK1201`, not TypeScript's division: the provide reading wins in any code (decided detail 34). After `return`, a statement cannot start, so `return provide / a / { }` is a division. `provide(x)` without a same-line `{` stays a call", Slots: top,
 		Decls: "service Nm$$ {\n  name(): string!!\n}\nconst NmLive$$ = Layer.succeed(Nm$$, { name() { return \"Ada\"; } });",
@@ -172,7 +172,7 @@ var ruleInjections = []*ruleInjection{
 	{Code: 702, Name: "arguments-on-variant", Chapter: "004-match.md", Quote: "a class pattern naming a `data` declaration or variant, a `schema`, or a directly constructed `Context.Reference`; a call-only callee whose return type fails detail 94, or a callee with neither signature (services use `EK3004`; [Class patterns](#class-patterns))", Slots: top,
 		Decls: "data Delivery$$ {\n  Waiting\n  Sent { tracking: string }\n}",
 		Text:  "export function tracking$$(d: Delivery$$) {\n  return match (d) {\n    when Delivery$$.Sent(let sent): sent;\n    default: \"\";\n  };\n}"},
-	{Code: 3801, Name: "floating-effect", Chapter: "007-tooling.md", Quote: "An `effect { … }` expression statement builds an Effect and discards it without running it ([Effect blocks](002-running.md#effect-blocks)). The imported `floatingEffect` rule reports it under its `EK38xx` code, just as it reports a discarded Effect in TypeScript.", Slots: effectOnly,
+	{Code: 3801, Name: "floating-effect", Chapter: "007-tooling.md", Quote: "An `effect { … }` expression statement builds and discards an unrun Effect; imported `floatingEffect` reports it as `EK3801`, as in TypeScript.", Slots: effectOnly,
 		Decls: "declare const program$$: Effect<number>;", Text: "program$$;"},
 	{Code: 102, Name: "await-using", Chapter: "001-functions.md", Quote: "`await`, `for await` or `await using` in effect code: an `effect` function, a producer or an `effect` block", Slots: effectOnly,
 		Decls: "declare effect function open$$(path: string): AsyncDisposable;", Text: "await using handle$$ = open$$(\"/tmp/a\");"},

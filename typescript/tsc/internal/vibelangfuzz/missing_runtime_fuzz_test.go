@@ -13,8 +13,8 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/vfs"
 )
 
-const missingRuntimeQuote = "A compilation whose emitted JavaScript imports `vibelang-runtime` and cannot resolve that package fails with one error naming it, TypeScript's `TS2307` for a missing module"
-const missingRuntimeModulesQuote = "| `vibe.effectModules` | Boolean switch, default `true`, for Effect's modules in scope"
+const missingRuntimeQuote = "When emitted JavaScript needs `vibelang-runtime` and the package cannot resolve, report one `TS2307` naming that package"
+const missingRuntimeModulesQuote = "| `vibe.effectModules` | Boolean; default `true`. Put Effect's modules in scope"
 const missingRuntimeIndependentQuote = "including independent errors in embedded expressions and types."
 
 func missingRuntimeQuoted(t testing.TB) {

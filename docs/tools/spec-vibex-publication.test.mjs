@@ -24,7 +24,7 @@ test("the chapters name .vibex where they state a rule for .vibe files", () => {
   const tooling = chapter("007-tooling")
   assert.ok(tooling.includes("[VIP-39](../vips/0039-vibex.md)"))
   assert.ok(tooling.includes("`.vibe` and `.vibex` are supported source extensions"))
-  assert.ok(tooling.includes("`x.vibex` emits `x.jsx` under `\"jsx\": \"preserve\"` and `x.js` otherwise"))
+  assert.ok(tooling.includes("`x.vibex` emits `x.jsx` under `\"jsx\": \"preserve\"`, otherwise `x.js`"))
   assert.ok(tooling.includes('<a id="vibex"></a>\n\n## JSX source files: `.vibex`'))
   assert.ok(chapter("000-intro").includes("| `x.vibex` | a `.vibe` file read with `.tsx`'s JSX language variant | 39 | [Configuration and tooling](007-tooling.md#vibex) |"))
   assert.ok(chapter("900-appendices").includes("a `.vibex` file uses these productions unchanged, read with TypeScript's JSX language variant ([VIP-39](../vips/0039-vibex.md) adds no production)"))

@@ -41,7 +41,7 @@ var ambientServiceQuotes = []struct{ chapter, quote string }{
 	{"005-services.md", "In a type position, a bare name declared as a type by an ambient global declaration (a TypeScript `lib` file or `@types`) keeps that meaning"},
 	{"005-services.md", "the module FileSystem exports the service key FileSystem"},
 	{"900-appendices.md", "a requirement escapes the written requirement contract"},
-	{"007-tooling.md", "Every breaking change ships a `vibelang --fix` codemod, so code that compiled under the previous release migrates mechanically."},
+	{"007-tooling.md", "Every breaking change ships a codemod."},
 }
 
 // ambientServices are modules whose name names a service (D311), with the

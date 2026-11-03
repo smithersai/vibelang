@@ -9,7 +9,7 @@ import { checkProperty } from "../../../scripts/testing/property.mjs"
 
 const workspace = fileURLToPath(new URL("../../..", import.meta.url))
 const here = fileURLToPath(new URL(".", import.meta.url))
-const rule = "Type checkers work through `.d.vibe.ts`, and linters, Knip, bundlers and test runners each read `.vibe`."
+const rule = "Type checkers use `.d.vibe.ts`; linters, Knip, bundlers and test runners read `.vibe`."
 const regressions = new URL("./property-regressions/", import.meta.url)
 const bundled = ["bun", "rolldown", "vite", "esbuild", "webpack", "rspack"]
 const selected = (process.env.SOURCE_CONDITION_BUNDLERS || bundled.join(",")).split(",")

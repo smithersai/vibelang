@@ -9,7 +9,7 @@ import (
 )
 
 const sidecarFullTypesTarget = "FuzzSidecarFullTypes"
-const sidecarFullTypesQuote = "Type checkers work through `.d.vibe.ts`"
+const sidecarFullTypesQuote = "Type checkers use `.d.vibe.ts`"
 
 // sidecarFullTypesSource is a module whose one export's inferred type grows
 // with n: an object of literal properties, a tuple of literals, or a struct of

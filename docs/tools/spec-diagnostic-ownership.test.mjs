@@ -11,12 +11,12 @@ for (const path of ["docs/design/src/007-tooling.md", "docs/design/vips/0034-com
  test(path + " assigns diagnostics by the rejected source rule", () => {
   const text = read(path)
   assert.match(text, /Every VibeLang diagnostic/, "native diagnostics need their own identity")
-  assert.match(text, /TypeScript.*own lexical, syntax and static errors.*`TS`/s)
+  assert.match(text, /(?:TypeScript.*own|Native) lexical, syntax and static errors.*`TS`/s)
   assert.match(text, /embedded expressions and types/)
-  assert.match(text, /VibeLang production, placement rule, proposal-specific early error.*reconciliation/s)
-  assert.match(text, /owning VIP.*`EK`/s)
+  assert.match(text, /VibeLang production, placement rule, proposal(?:-specific)? early error.*reconciliation/s)
+  assert.match(text, /(?:owning VIP.*`EK`|its `EK` code.*owning VIP)/s)
   assert.match(text, /TypeScript parser helper/)
-  assert.match(text, /specific diagnostic.*same rejection/s)
+  assert.match(text, /(?:specific diagnostic|assigned code).*same rejection/s)
   assert.match(text, /independent native errors/)
  })
 }

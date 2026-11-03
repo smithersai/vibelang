@@ -367,23 +367,24 @@ func toolsRunnableExports(r *Result) []toolsRunnable {
 // Only current tooling's explicit trailing-block codemod enters this check.
 // Historical lint ranges, retired spellings and editor quick-fix availability
 // do not establish a command-line completion promise.
-const currentFixCodesQuote = "For example, a trailing block ([VIP-11](../vips/0011-trailing-blocks-denied.md)) is `EK1101`, and its codemod writes the block as the call's last argument in the spelling of what it ran as:"
-const currentFixSafetyQuote = "`vibelang --fix` keeps the existing safe-fix checks and refusal rules."
+const currentFixCodesQuote = "| `EK1101` | A rejected trailing block | Pass the block as the last argument:"
+const currentFixSafetyQuote = "`vibelang --fix` retains its safety checks and refusal rules."
 
 var toolsFixCodes = sync.OnceValue(func() []int32 {
 	text := currentSpecText(toolingChapter)
 	requireQuote(text, currentFixCodesQuote)
 	requireQuote(text, currentFixSafetyQuote)
-	// The quoted current sentence names the codemod's diagnostic.
-	match := regexp.MustCompile("a trailing block .*? is \x60(EK[0-9]{4})\x60").FindStringSubmatch(text)
-	if match == nil {
-		panic("current tooling no longer names the trailing-block codemod diagnostic")
+	// The current table names the codemod's diagnostic beside its trigger.
+	for _, row := range diagnosticTable(text, []string{"Code", "Trigger", "Repair"}, true) {
+		if row[1] == "A rejected trailing block" {
+			codes := codesIn(row[0])
+			if len(codes) != 1 {
+				panic("invalid current trailing-block codemod code")
+			}
+			return codes
+		}
 	}
-	codes := codesIn(match[1])
-	if len(codes) != 1 {
-		panic("invalid current trailing-block codemod code")
-	}
-	return codes
+	panic("current tooling no longer names the trailing-block codemod diagnostic")
 })
 
 // toolsUnappliedFixes requires every spec-promised repair to remove its code

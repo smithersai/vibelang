@@ -9,7 +9,7 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/diagnostics"
 )
 
-const legacyAliasQuote = "The `EK4856` transition selects the resolved legacy symbol, never the identifier spelling"
+const legacyAliasQuote = "`EK4856` selects the resolved legacy symbol: local and imported types named `Effect` retain their TypeScript meaning."
 
 func TestLegacyEffectAliasQuoted(t *testing.T) {
 	if !strings.Contains(SpecText("007-tooling.md"), legacyAliasQuote) {

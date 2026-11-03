@@ -13,7 +13,7 @@ import { checkProperty } from "../../../../scripts/testing/property.mjs"
 const repo = fileURLToPath(new URL("../../../../", import.meta.url))
 const fc = createRequire(join(repo, "packages/runtime/package.json"))("fast-check")
 const compiler = process.env.VIBELANG_BINARY || join(repo, "packages/compiler/native/vibelang")
-const rule = "Type checkers work through `.d.vibe.ts`, and linters, Knip, bundlers and test runners each read `.vibe`."
+const rule = "Type checkers use `.d.vibe.ts`; linters, Knip, bundlers and test runners read `.vibe`."
 const corpusDir = new URL("./corpus/", import.meta.url)
 const write = (root, file, text) => { const path = join(root, file); mkdirSync(dirname(path), { recursive: true }); writeFileSync(path, text) }
 

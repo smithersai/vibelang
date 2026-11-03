@@ -4,11 +4,11 @@ import { chapter, read } from "./spec-witness.mjs"
 
 test("severities recover effective entries independently after extends merging", () => {
   const text = chapter("007-tooling")
-  assert.match(text, /validate each effective entry independently/)
-  assert.match(text, /invalid child entry.*does not restore.*base entry/)
-  assert.match(text, /other valid entries and independent options still apply/)
-  assert.match(text, /language-service configuration.*default/)
-  assert.match(text, /configuration errors retain.*exit.*emit/)
+  assert.match(text, /Merge `extends` before validating each effective severity entry/)
+  assert.match(text, /invalid child entry.*displaces its inherited entry without restoring it/)
+  assert.match(text, /valid entries and independent options still apply/)
+  assert.match(text, /language-service setting.*default/)
+  assert.match(text, /Configuration errors keep.*exit.*emit/)
 })
 
 test("the public VIP and user CLI guide publish the same recovery rule", () => {

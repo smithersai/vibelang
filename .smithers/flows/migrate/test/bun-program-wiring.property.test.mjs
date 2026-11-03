@@ -15,7 +15,7 @@ import { test } from "node:test";
 import { SpecPath } from "../../../../scripts/testing/spec-path.mjs";
 import { wireBunTests } from "../lib/wire.mjs";
 
-const specQuote = "linters, Knip, bundlers and test runners each read `.vibe`.";
+const specQuote = "linters, Knip, bundlers and test runners read `.vibe`.";
 const require = createRequire(
   new URL("../../../../packages/runtime/package.json", import.meta.url),
 );

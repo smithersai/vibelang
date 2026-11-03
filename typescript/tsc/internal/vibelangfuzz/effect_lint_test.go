@@ -166,7 +166,7 @@ func withoutEffectLint(ds []*ast.Diagnostic) []*ast.Diagnostic {
 // keep Effect's diagnostics out of the exit status and noEmitOnError, and
 // the rules print EK38xx codes, not Effect's (smithers, 2026-10-31: every
 // package's check failed on EK3801 with both options set).
-const exitCodeQuote = "A repository's existing Effect language-service configuration selects and configures them"
+const exitCodeQuote = "The existing Effect language-service configuration in `compilerOptions.plugins` selects the imported `effecttsgo/*` rules."
 
 func TestEffectLintConfigurationQuoted(t *testing.T) {
 	chapter, err := os.ReadFile(SpecPath("007-tooling.md"))

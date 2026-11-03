@@ -133,7 +133,7 @@
   },
   {
     "key": "growing-lint-ordinal",
-    "claim": "prefix also accommodates this pin",
+    "claim": "Codes have the prefix `EK38` and a decimal ordinal of at least two digits",
     "sources": [
       {
         "file": "0038-effect-lint-built-in.md",

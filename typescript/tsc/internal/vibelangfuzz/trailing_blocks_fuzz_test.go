@@ -10,8 +10,9 @@ import (
 )
 
 const trailingBlocksQuote = "a trailing block: a \x60{\x60 on the same line after a name, a property access or a call"
-const trailingBlocksFixQuote = "The rewrite preserves runtime behavior."
-const trailingBlocksBoundaryQuote = "A line break before the block, an optional chain, a heritage clause, and the providers of a \x60provide\x60 block are outside this form."
+const trailingBlocksFixQuote = "Preserve runtime behavior and comments;"
+const trailingBlocksSeparatorQuote = "suppressing only a redundant missing-separator `TS1005` for the same rejection and retaining independent native errors."
+const trailingBlocksBoundaryQuote = "A newline before the block, an optional chain, a heritage clause and `provide` providers are outside this form."
 
 func trailingBlocksQuoted(t testing.TB) {
 	for file, quote := range map[string]string{
