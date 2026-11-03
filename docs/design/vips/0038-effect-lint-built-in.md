@@ -20,6 +20,8 @@
 
   Conformance uses an actual pinned rule witness, such as `promiseInEffectSuccess` (`EK3897`, native `TS377108`): no plugin with or without an imported severity entry reports no imported diagnostics; an explicit default plugin reports the warning; native disable settings plus a severity override remain disabled. Controls cover inherited configuration, per-rule `"off"`, native suggestion/error/warning options, unchanged standalone lint behavior and the migration above.
 
+- **Amended 2026-11-03: imported Effect diagnostics keep the pinned compiler's exit policy.** VibeLang's own warnings do not change compiler exit status unless configured as errors. Compiler diagnostics imported under VIP-38 retain the pinned native Effect TypeScript compiler's exit and `noEmitOnError` policy under the same effective rule, category, inclusion and ignore options; imported warnings affect both by default. The standalone `vibelang lint` command retains its existing warning policy. This narrows the unqualified 2026-10-30 warning rule in VIP-34 (decided detail 71); it does not restate that old rule as already limited to VibeLang diagnostics. The agent's R3 decision (`decide-live-r3-warning-scope.md`) applies Will's standing direction, "It is already implied we match typescript" (`WILL-ANSWERS.md`, 2026-11-03), to the measured pinned compiler. It is an agent derivation from that direction, not a new personal answer from Will.
+
 ## Will's words
 
 > "1. The effect ts go should absolutely be built into Vibelang in fact this was always supposed to be part of the spec"
