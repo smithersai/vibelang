@@ -1,0 +1,8 @@
+import { Effect, Stream } from "effect"
+error Missing { code: number; effect * values() { yield this.code }; effect() { return 4 } }
+export effect function main() {
+ const item = new Missing({ code: 2 })
+ return [(try Stream.runCollect(item.values())).length, item.effect()]
+}
+
+// Appendix A: cov-ch900a-error-producer-method — spec-rule: docs/design/src/900-appendices.md#9005dc27e82ab9f6

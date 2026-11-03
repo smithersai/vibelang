@@ -14,3 +14,5 @@ export effect function main() {
   for try (const { value = try Effect.succeed(10) } of Stream.make({} as {value?: number})) seen.push(value)
   return seen
 }
+
+// Appendix A: vip20-bindings — spec-rule: docs/design/src/900-appendices.md#8c64af609dfefe08

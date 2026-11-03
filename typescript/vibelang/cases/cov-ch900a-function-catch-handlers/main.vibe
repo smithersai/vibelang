@@ -1,0 +1,10 @@
+import { Effect } from "effect"
+export effect function main() {
+ const a = Effect.fail(1) catch function (e: number) { return e + 1 }
+ const b = Effect.fail(1) catch effect function (e: number) { return try Effect.succeed(e + 2) }
+ const c = Effect.fail(1) catch (function (e: number) { return e + 1 })
+ const d = Effect.fail(1) catch (effect function (e: number) { return try Effect.succeed(e + 2) })
+ return [a,b,c,d]
+}
+
+// Appendix A: cov-ch900a-function-catch-handlers — spec-rule: docs/design/src/900-appendices.md#6101387d3fa837bd

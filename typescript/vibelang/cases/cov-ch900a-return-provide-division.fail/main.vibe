@@ -1,0 +1,4 @@
+// expect: TS2363
+function f(provide: number, a: number) { return provide / a / {} }
+
+// Appendix A: return keeps provide as a division operand — spec-rule: docs/design/src/900-appendices.md#2d23b461ac301911

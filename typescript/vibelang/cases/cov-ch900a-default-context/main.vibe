@@ -1,0 +1,8 @@
+import { Effect } from "effect"
+function join(n: number) { return () => ({ value: n }) }
+export effect function main() {
+ service Flags { static readonly key = "app/Flags"; static readonly defaultValue = join(7); value: number }
+ return (try Flags).value
+}
+
+// Appendix A: cov-ch900a-default-context — spec-rule: docs/design/src/900-appendices.md#75a861c471215f3b

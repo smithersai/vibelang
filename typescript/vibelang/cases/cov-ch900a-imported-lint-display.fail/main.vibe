@@ -1,0 +1,5 @@
+// expect: EK3801
+import { Effect } from "effect"
+export effect function main() { const p = Effect.succeed(1); p; return 1 }
+
+// Appendix B: cov-ch900a-imported-lint-display.fail — spec-rule: docs/design/src/900-appendices.md#3d96c66cac7d6eea

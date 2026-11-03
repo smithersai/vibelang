@@ -1,0 +1,4 @@
+// expect: TS7023
+export function recursive(n: number) { return n ? recursive(n - 1) : 1 }
+
+// Appendix B: cov-ch900a-native-recursion.fail — spec-rule: docs/design/src/900-appendices.md#f59de55b7111dabc

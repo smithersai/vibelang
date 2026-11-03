@@ -1,0 +1,11 @@
+import { Effect } from "effect"
+type A = [number!string?]
+type B = [number!!?]
+type C = [number!!-1?]
+type Same<X,Y> = (<T>() => T extends X ? 1 : 2) extends (<T>() => T extends Y ? 1 : 2) ? true : false
+const a: Same<A, [Effect.Effect<number,string>?]> = true
+const b: Same<B, [Effect.Effect<number>?]> = true
+const c: Same<C, [Effect.Effect<number,never,-1>?]> = true
+export effect function main() { return 1 }
+
+// Appendix A: cov-ch900a-slot-optional-tuples — spec-rule: docs/design/src/900-appendices.md#a990eb49461c0275

@@ -1,0 +1,5 @@
+import { Effect } from "effect"
+service Users { static readonly key = "app/Users"; a: number, b: string }
+const shape: Users.Shape = { a: 1, b: "ok" }
+export effect function main() { return shape.a }
+// Appendix A: service comma members — spec-rule: docs/design/src/900-appendices.md#f8099cea7d10481f

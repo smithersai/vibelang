@@ -26,3 +26,5 @@ export effect function main() {
     fiber: join f
   }
 }
+
+// Appendix A: ordinary property names — spec-rule: docs/design/src/900-appendices.md#882b91d91f357e06

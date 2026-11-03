@@ -1,0 +1,19 @@
+// expect: EK0104 EK1301 EK1302 EK1303 EK2117
+error Ctor { constructor() {} }
+schema error SchemaCtor { constructor() {} }
+error StaticMember { static value = 1 }
+error Setter { set value(x: number) {} }
+error Generic<T> {}
+error OwnTag { _tag: string }
+error EffectMembers {
+  effect get value() { return 1 }
+  effect set value(x: number) {}
+  effect constructor() {}
+}
+schema error SchemaEffectMembers {
+  effect get value() { return 1 }
+  effect set value(x: number) {}
+  effect constructor() {}
+}
+
+// Appendix A: cov-ch900a-error-member-priority.fail — spec-rule: docs/design/src/900-appendices.md#0454a1e546e81c9d

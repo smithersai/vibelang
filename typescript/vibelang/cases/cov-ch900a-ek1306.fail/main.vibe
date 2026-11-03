@@ -1,0 +1,6 @@
+// expect: EK1306
+error Bad { a: number b: string }
+
+// Appendix B: EK1306 — spec-rule: docs/design/src/900-appendices.md#37741a6dd1066524
+
+// Appendix B: cov-ch900a-ek1306.fail — spec-rule: docs/design/src/900-appendices.md#cff51dce9c1f6552

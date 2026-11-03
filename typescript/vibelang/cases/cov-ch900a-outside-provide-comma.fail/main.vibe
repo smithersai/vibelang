@@ -1,0 +1,5 @@
+// expect: EK1201 EK1202
+function load() { provide Layer.empty,
+Layer.empty {} }
+
+// Appendix A: cov-ch900a-outside-provide-comma.fail — spec-rule: docs/design/src/900-appendices.md#688469f012e91815

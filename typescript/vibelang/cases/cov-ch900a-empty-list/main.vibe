@@ -1,0 +1,21 @@
+import { Effect } from "effect"
+let reads = 0
+function classify(xs: Iterable<number>) { return match (xs) { when []: 1; default: 0; } }
+function sample(empty: boolean) {
+ const source = { get [Symbol.iterator]() { reads++; return () => {
+ let used = false
+ return {
+  next() {
+   if (used || empty) return { done: true as const, value: undefined }
+   used = true
+   return { done: false as const, value: 1 }
+  },
+  return() { return { done: true as const, value: undefined } }
+ }
+} } }
+ return classify(source)
+}
+export effect function main() { return [sample(true), sample(false), reads] }
+
+// Appendix A: cov-ch900a-empty-list — spec-rule: docs/design/src/900-appendices.md#8b1ebfa30a4575ca
+// Appendix A: cov-ch900a-empty-list — spec-rule: docs/design/src/900-appendices.md#981b5bc4f4a64c03

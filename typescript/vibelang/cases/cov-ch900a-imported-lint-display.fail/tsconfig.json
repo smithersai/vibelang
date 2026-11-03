@@ -1,0 +1,27 @@
+{
+  "compilerOptions": {
+    "target": "es2022",
+    "lib": [
+      "esnext",
+      "dom"
+    ],
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "strict": true,
+    "skipLibCheck": true,
+    "declaration": true,
+    "types": [],
+    "outDir": "out",
+    "plugins": [
+      {
+        "name": "@effect/language-service",
+        "diagnosticSeverity": {
+          "floatingEffect": "error"
+        }
+      }
+    ]
+  },
+  "include": [
+    "*.vibe"
+  ]
+}

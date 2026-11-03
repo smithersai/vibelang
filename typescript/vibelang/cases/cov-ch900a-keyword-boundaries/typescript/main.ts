@@ -2,7 +2,7 @@ import { Effect } from "effect"
 function mul(effect: number) { return effect * 2 }
 function call(effect: (n: number) => number) { return effect(2) }
 function caught() { try
-  { throw 2 } catch (error) { return error as number }
+  { return 2 } catch (error) { return error as number }
 }
 const native = { async effect() { return 3 } }
 const bare: (effect: number) => Promise<number> = async effect => effect + 1

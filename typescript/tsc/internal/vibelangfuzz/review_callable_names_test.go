@@ -60,6 +60,11 @@ func TestReviewCallableNamesQuoted(t *testing.T) {
 // context; declaration names use the enclosing context. Property names never
 // receive the BindingIdentifier reservation. Plain expressions reset it.
 // These expectations follow the specified async counterpart, not current emit.
+// Appendix A: expression-name own Effect context — spec-rule: docs/design/src/900-appendices.md#58d0bf5fd15232a4
+// Appendix A: reserved expression names — spec-rule: docs/design/src/900-appendices.md#bc92a0f1645d0fc2
+// Appendix A: declaration-name enclosing context — spec-rule: docs/design/src/900-appendices.md#46a8f711c214f642
+// Appendix A: property names remain unreserved — spec-rule: docs/design/src/900-appendices.md#45c724db94743400
+// Appendix A: fork and join reservation — spec-rule: docs/design/src/900-appendices.md#67ac43df3269004d
 func FuzzReviewCallableNames(f *testing.F) {
 	startShortBudget(f)
 	rules := reviewCallableNameRules()

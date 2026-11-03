@@ -73,6 +73,11 @@ func TestVibeLangFiberUnaryOperands(t *testing.T) {
 	}
 }
 
+// Appendix A: Effect grammar contexts — spec-rule: docs/design/src/900-appendices.md#19ffe070e9d9d885
+// Appendix A: Effect callable heads and bodies — spec-rule: docs/design/src/900-appendices.md#eda83de19217574f
+// Appendix A: plain callable body reset — spec-rule: docs/design/src/900-appendices.md#06e1828e9967b3df
+// Appendix A: field and enum initializer reset — spec-rule: docs/design/src/900-appendices.md#a9e2e1316cb8a2f9
+// Appendix A: plain fork and join identifiers — spec-rule: docs/design/src/900-appendices.md#8eca98c7370ba3e6
 func TestVibeLangFiberReservationBoundaries(t *testing.T) {
 	for _, source := range []string{
 		"effect function f() { const result = fork +value }",

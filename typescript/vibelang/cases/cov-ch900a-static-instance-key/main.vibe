@@ -1,0 +1,5 @@
+import { Effect } from "effect"
+service Users { static readonly key = "app/Users"; key: string }
+export effect function main() { return try Effect.provideService(effect { return (try Users).key }, Users, { key: "payload" }) }
+
+// Appendix B: cov-ch900a-static-instance-key — spec-rule: docs/design/src/900-appendices.md#a2dc96c4871b5486

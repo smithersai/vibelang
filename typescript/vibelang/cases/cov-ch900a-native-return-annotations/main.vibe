@@ -1,0 +1,12 @@
+import { throwingPlain, throwingProducer } from "./native.js"
+import { Effect } from "effect"
+function plain(): number { return 7 }
+function* producer(): Generator<number> { yield 7 }
+export effect function main() {
+ const annotations: [number, Generator<number>] = [plain(), producer()]; void annotations
+ const a = try Effect.exit(Effect.try(() => throwingPlain()))
+ const b = try Effect.exit(Effect.try(() => throwingProducer().next()))
+ return [a._tag, b._tag]
+}
+
+// Appendix B: cov-ch900a-native-return-annotations — spec-rule: docs/design/src/900-appendices.md#362471a6dce8cb66

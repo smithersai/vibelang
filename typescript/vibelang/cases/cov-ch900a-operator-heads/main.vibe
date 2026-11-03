@@ -1,0 +1,12 @@
+class Point {}
+export effect function main() {
+  const effect: unknown = new Point()
+  const async = 3
+  let hits = 0
+  effect is (Point) && (hits += 1)
+  async is < 5 && (hits += 1)
+  return hits
+}
+
+// Appendix A: cov-ch900a-operator-heads — spec-rule: docs/design/src/900-appendices.md#8bad0f21ebbd88d6
+// Appendix A: cov-ch900a-operator-heads — spec-rule: docs/design/src/900-appendices.md#e52265e65e1b03f8

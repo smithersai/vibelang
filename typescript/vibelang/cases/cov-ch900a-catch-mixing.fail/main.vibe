@@ -1,0 +1,4 @@
+// expect: EK0512
+export effect function main() { return Effect.fail(1) ?? Effect.fail(2) catch () => 0 }
+
+// Appendix A: cov-ch900a-catch-mixing.fail — spec-rule: docs/design/src/900-appendices.md#111291658e11e009

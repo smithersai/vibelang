@@ -10,3 +10,5 @@ export const load = effect (s: string) => {
 }
 
 // Appendix B: EK0509 — spec-rule: docs/design/src/900-appendices.md#d1df57aeffec8f88
+
+// Appendix B: own syntax errors retain VIP codes — spec-rule: docs/design/src/900-appendices.md#cff51dce9c1f6552

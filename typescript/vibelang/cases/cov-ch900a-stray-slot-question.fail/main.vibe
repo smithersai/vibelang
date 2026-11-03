@@ -1,0 +1,4 @@
+// expect: TS17019
+type X = number!!?
+
+// Appendix A: cov-ch900a-stray-slot-question.fail — spec-rule: docs/design/src/900-appendices.md#50989a14cfbfa550

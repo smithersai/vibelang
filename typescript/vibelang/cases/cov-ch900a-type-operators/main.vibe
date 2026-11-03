@@ -1,0 +1,24 @@
+import { Effect } from "effect"
+type Prefix = keyof { a: number }!string
+type Postfix = number[]!string
+type ObjectRequirement = number!!({ service: number })
+type UnionSuccess = (string | number)!boolean
+type UnionEffect = string | (number!boolean)
+type Three = number!string!boolean
+type Nested = (number!string)!boolean
+export effect function main() { return 1 }
+
+// Appendix A: cov-ch900a-type-operators — spec-rule: docs/design/src/900-appendices.md#ed7184068a58109d
+// Appendix A: cov-ch900a-type-operators — spec-rule: docs/design/src/900-appendices.md#c8601aaf436cc359
+// Appendix A: cov-ch900a-type-operators — spec-rule: docs/design/src/900-appendices.md#8b09317cf9d1a2f0
+
+type Same<X,Y> = (<T>() => T extends X ? 1 : 2) extends (<T>() => T extends Y ? 1 : 2) ? true : false
+const prefixMatches: Same<Prefix, Effect.Effect<keyof { a: number }, string>> = true
+const postfixMatches: Same<Postfix, Effect.Effect<number[], string>> = true
+const objectRequirementMatches: Same<ObjectRequirement, Effect.Effect<number, never, { service: number }>> = true
+const unionSuccessMatches: Same<UnionSuccess, Effect.Effect<string | number, boolean>> = true
+const unionEffectMatches: Same<UnionEffect, string | Effect.Effect<number, boolean>> = true
+const threeMatches: Same<Three, Effect.Effect<number, string, boolean>> = true
+const nestedMatches: Same<Nested, Effect.Effect<Effect.Effect<number, string>, boolean>> = true
+
+// Appendix A: cov-ch900a-type-operators — spec-rule: docs/design/src/900-appendices.md#cd7fb6304a178700

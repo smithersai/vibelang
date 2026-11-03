@@ -1,0 +1,4 @@
+// expect: EK0104 EK0105
+class C { async effect get value() { return 1 } }
+
+// Appendix A: cov-ch900a-async-effect-accessor.fail — spec-rule: docs/design/src/900-appendices.md#6158ab008bf755f7

@@ -1,0 +1,6 @@
+import { Effect } from "effect"
+const not = (_x: unknown) => true
+function classify(x: number) { return match (x) { when not(1): "other"; default: "one"; } }
+export effect function main() { return [classify(1), classify(2)] }
+
+// Appendix A: cov-ch900a-not-prefix — spec-rule: docs/design/src/900-appendices.md#3b36f29bd166524b

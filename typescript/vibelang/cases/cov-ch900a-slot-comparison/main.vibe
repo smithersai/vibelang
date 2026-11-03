@@ -1,0 +1,8 @@
+import { Effect } from "effect"
+function witness(x: unknown) {
+ // @ts-expect-error: native comparison checking remains
+ const result = x as number!! < 3
+}
+export effect function main() { return 1 }
+
+// Appendix A: cov-ch900a-slot-comparison — spec-rule: docs/design/src/900-appendices.md#6a3ace1c5666e9c6

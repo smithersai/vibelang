@@ -22,3 +22,5 @@ export effect function main() { return empty.length }
 // VIP-3 VIP-3 optional tuple omission and indexed undefined; rule: docs/design/vips/0003-effect-type-shorthand.md#cb87b6f4b655d2fe
 
 // VIP-3 VIP-3 optional tuple omission and indexed undefined; rule: docs/design/vips/0003-effect-type-shorthand.md#10463b6872997056
+
+// Appendix A: effect-type-tuple-optional — spec-rule: docs/design/src/900-appendices.md#5010e0fc10e971dd

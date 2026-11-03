@@ -47,3 +47,6 @@ export effect function within(): number!never!Scope {
 // Chapter 001: all channel spellings declare the same API as explicit Effect TypeScript (declaration-identity-effect-slots).
 // Spec rule: docs/design/src/001-functions.md#4ed0b2751a60f75d
 // Chapter 001: all channel spellings declare the same API as explicit Effect TypeScript (declaration-identity-effect-slots).
+// Appendix A: declaration-identity-effect-slots — spec-rule: docs/design/src/900-appendices.md#ee38565f327ba156
+// Appendix A: declaration-identity-effect-slots — spec-rule: docs/design/src/900-appendices.md#9906a9a8b16125fa
+// Appendix A: declaration-identity-effect-slots — spec-rule: docs/design/src/900-appendices.md#82d0bcc660939337

@@ -1,0 +1,6 @@
+// expect: EK3201
+export const x = 1
+
+// Appendix B: cov-ch900a-effect-version.fail — spec-rule: docs/design/src/900-appendices.md#c4980ee7447031f3
+
+// Appendix B: current meanings of reused codes — spec-rule: docs/design/src/900-appendices.md#30fc1b092c29cde5

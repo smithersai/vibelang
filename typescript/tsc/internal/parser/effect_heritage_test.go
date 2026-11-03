@@ -8,6 +8,8 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/parser"
 )
 
+// Appendix A: effect identifier in heritage — spec-rule: docs/design/src/900-appendices.md#b1a0d6ca178e887a
+// Appendix A: ordinary effect heritage — spec-rule: docs/design/src/900-appendices.md#5dd1950a1c4d35e8
 func TestEffectHeritageBody(t *testing.T) {
 	for _, source := range []string{
 		"class C extends effect {}",

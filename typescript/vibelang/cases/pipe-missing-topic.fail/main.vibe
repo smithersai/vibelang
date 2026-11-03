@@ -3,3 +3,5 @@
 export function label(name: string) {
   return name |> "anonymous"
 }
+
+// Appendix A: pipe-missing-topic.fail — spec-rule: docs/design/src/900-appendices.md#5a05926aa18cdc42

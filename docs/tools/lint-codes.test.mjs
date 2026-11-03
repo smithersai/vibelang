@@ -707,3 +707,6 @@ test("VIP-38 normative pin and three error defaults match the published inventor
   const update = readFileSync(resolve(root, "typescript/tsc/internal/effecttsgo/sync.sh"), "utf8")
   assert.ok(update.includes("UPSTREAM"), "the upstream sync driver must update its pin")
 })
+
+// Appendix B: generated lint tables — spec-rule: docs/design/src/900-appendices.md#9fecd6b034330448
+// Appendix B: growing EK38 ordinals — spec-rule: docs/design/src/900-appendices.md#84411e328a1abab6

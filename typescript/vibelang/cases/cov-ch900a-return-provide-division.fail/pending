@@ -1,0 +1,3 @@
+cov-ch900a
+docs/design/src/900-appendices.md#2d23b461ac301911
+return's provide identifier is misparsed as the retired provide expression (EK1017); stock TypeScript 5.9.3 reports TS2363

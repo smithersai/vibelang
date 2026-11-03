@@ -1,0 +1,15 @@
+// expect: TS1213 TS1308 TS2304
+effect function outer() {
+ service Flags {
+  static readonly key = "app/Flags"
+  static readonly defaultValue = await Promise.resolve(() => ({ value: 1 }))
+  value: number
+ }
+ service Other {
+  static readonly key = "app/Other"
+  static readonly defaultValue = yield (() => ({ value: 1 }))
+  value: number
+ }
+}
+
+// Appendix A: cov-ch900a-default-member-await-yield.fail — spec-rule: docs/design/src/900-appendices.md#0139dc9c7612d40b

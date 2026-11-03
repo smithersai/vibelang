@@ -1,0 +1,16 @@
+import { Effect } from "effect"
+function read(provide: number[]) {
+  provide[0]
+  {}
+  provide
+  [0]
+  {}
+  const value = provide[0] - 1
+  return value
+}
+function call(provide: (n: number) => number) { return provide(2) }
+export effect function main() { return [read([3]), call(n => n + 1)] }
+
+// Appendix A: cov-ch900a-ordinary-provide — spec-rule: docs/design/src/900-appendices.md#7d0301efe65a6790
+// Appendix A: cov-ch900a-ordinary-provide — spec-rule: docs/design/src/900-appendices.md#bb45df023b072b5d
+// Appendix A: cov-ch900a-ordinary-provide — spec-rule: docs/design/src/900-appendices.md#9dfc54fb3f6dea75

@@ -1,0 +1,7 @@
+// expect: EK0908
+service Users { static readonly key = "app/Users"; a: number b: string }
+
+// Appendix B: EK0908 — spec-rule: docs/design/src/900-appendices.md#445fd57a539d7e98
+
+// Appendix A: cov-ch900a-ek0908.fail — spec-rule: docs/design/src/900-appendices.md#080472bfdfc57056
+// Appendix A: cov-ch900a-ek0908.fail — spec-rule: docs/design/src/900-appendices.md#3932946f5bee79f3

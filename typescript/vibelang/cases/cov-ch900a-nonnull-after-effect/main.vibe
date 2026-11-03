@@ -1,0 +1,5 @@
+import { Effect } from "effect"
+function cast(x: unknown) { return x as number!!! }
+export effect function main() { return try cast(Effect.succeed(1)) }
+
+// Appendix A: cov-ch900a-nonnull-after-effect — spec-rule: docs/design/src/900-appendices.md#c29656fd967f6205

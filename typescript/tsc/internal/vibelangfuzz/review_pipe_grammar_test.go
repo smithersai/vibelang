@@ -28,6 +28,8 @@ func TestReviewPipeGrammarQuoted(t *testing.T) {
 // ASTRA-2 and OPUS-2: the conditional cannot take an unparenthesized pipe
 // as its test. The two explicit repairs and ordinary branch pipes are valid.
 // This checks syntax admission, not the runtime value of either grouping.
+// Appendix A: pipe grammar contexts — spec-rule: docs/design/src/900-appendices.md#233e0b31432272ab
+// Appendix A: pipe-body exclusions — spec-rule: docs/design/src/900-appendices.md#a235bf1ee08cbd78
 func FuzzReviewPipeGrammar(f *testing.F) {
 	startShortBudget(f)
 	forms := []string{"identity", "arithmetic", "body-grouping"}

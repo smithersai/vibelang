@@ -1,0 +1,16 @@
+import { Effect, Stream } from "effect"
+error Missing {
+ code: number
+ private helper() { return this.code }
+ get label() { return this.helper() }
+ effect compute() { return this.label + 1 }
+ effect() { return 4 }
+}
+export effect function main() {
+ const item = new Missing({ code: 2 })
+ return [item.label, try item.compute(), item.effect()]
+}
+
+// Appendix A: cov-ch900a-error-methods — spec-rule: docs/design/src/900-appendices.md#1947541e4541f855
+
+// Appendix A: native error methods — spec-rule: docs/design/src/900-appendices.md#1482c41d444966c7

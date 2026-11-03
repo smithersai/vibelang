@@ -1,0 +1,9 @@
+import { Effect } from "effect"
+function witness(x: unknown) {
+ const tuple: Effect.Effect<number, never, [0]> = x as number!![0]
+ // @ts-expect-error: completed Effect value has no numeric index
+ const indexed = (x as number!!)[0]
+}
+export effect function main() { return 1 }
+
+// Appendix A: cov-ch900a-slot-tuple-or-index — spec-rule: docs/design/src/900-appendices.md#a3f80d0b305c45a7

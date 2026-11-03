@@ -1,0 +1,6 @@
+import { Effect } from "effect"
+function dec(_original: unknown, _context: ClassMethodDecoratorContext) {}
+class C { @dec effect read() { return 1 } }
+export effect function main() { return try new C().read() }
+
+// Appendix A: cov-ch900a-decorated-method — spec-rule: docs/design/src/900-appendices.md#a6eb96e69bfbee76

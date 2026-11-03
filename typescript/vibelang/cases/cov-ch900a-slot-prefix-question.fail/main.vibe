@@ -1,0 +1,4 @@
+// expect: TS17020
+type X = number!(?string)
+
+// Appendix A: cov-ch900a-slot-prefix-question.fail — spec-rule: docs/design/src/900-appendices.md#9579c9b3ec53d3dc

@@ -1,0 +1,4 @@
+// expect: TS8020
+type X = number!(*)
+
+// Appendix A: cov-ch900a-slot-jsdoc-star.fail — spec-rule: docs/design/src/900-appendices.md#9579c9b3ec53d3dc

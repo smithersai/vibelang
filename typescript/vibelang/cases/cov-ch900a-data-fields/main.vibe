@@ -1,0 +1,15 @@
+import { Effect } from "effect"
+data D { A
+ { x: string
+ | number; readonly n: number } }
+type Equal<X,Y> = (<T>() => T extends X ? 1 : 2) extends (<T>() => T extends Y ? 1 : 2) ? true : false
+if (false) {
+ const item = D.A({ x: "ok", n: 1 })
+ // @ts-expect-error: data payloads are readonly without a written modifier
+ item.x = "no"
+}
+export effect function main() { const item = D.A({ x: "ok", n: 1 }); return [item.x, item.n ] }
+
+// Appendix A: cov-ch900a-data-fields — spec-rule: docs/design/src/900-appendices.md#49f5d7ebd5c39425
+// Appendix A: cov-ch900a-data-fields — spec-rule: docs/design/src/900-appendices.md#47720fd4502aabc4
+// Appendix A: cov-ch900a-data-fields — spec-rule: docs/design/src/900-appendices.md#d15e6ffd719b26b1

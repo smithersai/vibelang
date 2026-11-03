@@ -1,0 +1,4 @@
+import { Effect } from "effect"
+export effect function main() { return Effect.succeed(2) catch () => 0 }
+
+// Appendix B: cov-ch900a-infallible-catch — spec-rule: docs/design/src/900-appendices.md#5da78066df93ef5e

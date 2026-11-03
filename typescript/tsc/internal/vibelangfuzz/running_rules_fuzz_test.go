@@ -130,6 +130,7 @@ func runningRulesChapter(f testing.TB) string {
 
 func TestRunningRulesQuoted(t *testing.T) { runningRulesChapter(t) }
 
+// Appendix A: outside-Effect recovery — spec-rule: docs/design/src/900-appendices.md#da424a77a71e960a
 func FuzzRunningRules(f *testing.F) {
 	startShortBudget(f)
 	chapter := runningRulesChapter(f)

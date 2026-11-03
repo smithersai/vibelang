@@ -1,0 +1,4 @@
+// expect: EK0504
+export effect function main() { return Effect.fail(1) catch () => Effect.fail(2) catch () => 3 }
+
+// Appendix A: cov-ch900a-catch-long-arrow-body.fail — spec-rule: docs/design/src/900-appendices.md#ae7c9658b0b95f57

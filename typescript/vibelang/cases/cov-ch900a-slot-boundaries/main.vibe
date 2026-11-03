@@ -1,0 +1,61 @@
+import { Effect } from "effect"
+type RequiredObjects = number!{ reason: string }!{ service: number }
+type OptionalError = [number!string?]
+type OptionalSuccess = [number!!?]
+type OptionalNegative = [number!!-1?]
+type GenericRequirement = number!!(<T>() => T)
+type as = { service: number }
+type satisfies = { other: string }
+type NamedRequirement = number!!as
+type OtherRequirement = number!string!satisfies
+
+function assertions(x: unknown) {
+  const asserted = x as number!! as unknown
+  const checked = x as number!! satisfies unknown
+  const named = x as number!!as satisfies unknown
+  const tuple = x as number!![0]
+  // @ts-expect-error: Effect values are not comparison operands
+  const comparison = x as number!! < 3
+  // @ts-expect-error: an Effect has no numeric index
+  const indexed = (x as number!!)[0]
+}
+
+function lineBreak(x: unknown, B: unknown) {
+  x as number!!as
+  B // a second statement: the assertion above supplies R = as
+}
+
+export effect function main() {
+  const empty: OptionalError = []
+  const noError: OptionalSuccess = []
+  return [empty.length, noError.length, empty[0] === undefined] as const
+}
+
+function preference(x: unknown, B: unknown) {
+  const y = x as number!!as
+  B
+  const check: Effect.Effect<number, never, as> = y
+  return check
+}
+function operands(x: unknown) {
+  const compact: Effect.Effect<number, never, -1> = x as number!!-1
+  const spaced: Effect.Effect<number, never, -1> = x as number!! - 1
+  const nonnull: Effect.Effect<number> = x as number!!!
+  const chosen = x as number!! ? 1 : 2
+  // @ts-expect-error: Effect values are not arithmetic operands
+  const product = x as number!! * 2
+  // @ts-expect-error: parenthesize the omitted R before subtraction
+  const subtract = (x as number!!) - 1
+  return [compact, spaced, nonnull, chosen, product, subtract]
+}
+
+// Appendix A: cov-ch900a-slot-boundaries — spec-rule: docs/design/src/900-appendices.md#a7359fe78e4fa3b9
+
+type Same<X,Y> = (<T>() => T extends X ? 1 : 2) extends (<T>() => T extends Y ? 1 : 2) ? true : false
+const requiredObjectsMatches: Same<RequiredObjects, Effect.Effect<number, { reason: string }, { service: number }>> = true
+const optionalErrorMatches: Same<OptionalError, [Effect.Effect<number, string>?]> = true
+const optionalSuccessMatches: Same<OptionalSuccess, [Effect.Effect<number>?]> = true
+const optionalNegativeMatches: Same<OptionalNegative, [Effect.Effect<number, never, -1>?]> = true
+const genericRequirementMatches: Same<GenericRequirement, Effect.Effect<number, never, <T>() => T>> = true
+const namedRequirementMatches: Same<NamedRequirement, Effect.Effect<number, never, as>> = true
+const otherRequirementMatches: Same<OtherRequirement, Effect.Effect<number, string, satisfies>> = true

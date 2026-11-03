@@ -1,0 +1,9 @@
+import { Effect } from "effect"
+function witness(x: unknown) {
+ const chosen = x as number!! ? 1 : 2
+ // @ts-expect-error: Effect values are not arithmetic operands
+ const product = x as number!! * 2
+}
+export effect function main() { return 1 }
+
+// Appendix A: cov-ch900a-slot-expression-operators — spec-rule: docs/design/src/900-appendices.md#10ff145d302ab492

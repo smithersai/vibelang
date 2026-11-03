@@ -1,0 +1,6 @@
+// expect: EK0509
+export effect function load() { return try Effect.succeed(1) catch (e) {} }
+
+// Appendix A: cov-ch900a-malformed-catch-block.fail — spec-rule: docs/design/src/900-appendices.md#8f82286b6ace08e2
+
+// Appendix B: cov-ch900a-malformed-catch-block.fail — spec-rule: docs/design/src/900-appendices.md#0dce3ad7a76dc166

@@ -71,6 +71,7 @@ func TestReviewExecutionDiagnosticsQuoted(t *testing.T) {
 
 // ASTRA-10: exercise the diagnostic's semantic distinction, not just rejection.
 // Good controls preserve ordinary native expressions and nested jump ownership.
+// Appendix A: dotted-operation trivia — spec-rule: docs/design/src/900-appendices.md#6fcf3dfc203ce612
 func FuzzReviewExecutionDiagnostics(f *testing.F) {
 	startShortBudget(f)
 	rules := reviewExecutionRules()

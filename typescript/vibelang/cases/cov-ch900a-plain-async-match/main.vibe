@@ -1,0 +1,5 @@
+import { Effect } from "effect"
+function plain() { return async match (1) { default: await Promise.resolve(2); } }
+export effect function main() { return try Effect.promise(() => plain()) }
+
+// Appendix A: cov-ch900a-plain-async-match — spec-rule: docs/design/src/900-appendices.md#02314388ac9ba1b1

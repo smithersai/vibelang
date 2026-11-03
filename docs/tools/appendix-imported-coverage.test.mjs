@@ -151,3 +151,15 @@ for (const row of rows) {
     assert.equal(actual.defaultSeverity, row.severity, "upstream default severity")
   })
 }
+
+// Appendix B: whole diagnostic ordinals — spec-rule: docs/design/src/900-appendices.md#5721e7552bf8d726
+test("Appendix B whole code strings keep EK3810 distinct from EK38100", () => {
+ const ten = inventory.rules.find(r => r.code === "EK3810")
+ const hundred = inventory.rules.find(r => r.code === "EK38100")
+ assert.ok(ten)
+ assert.ok(hundred)
+ assert.notEqual(ten.rule, hundred.rule)
+ assert.equal(registry.get(ten.code), ten.rule)
+ assert.equal(registry.get(hundred.code), hundred.rule)
+ assert.ok([...registry.keys()].every(code => /^EK38[0-9]{2,}$/.test(code)))
+})

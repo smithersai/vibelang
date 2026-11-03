@@ -1,0 +1,4 @@
+import { Effect } from "effect"
+export effect function main() { return [do { switch (0) {} }, do { switch (0) {}; 3 }] }
+
+// Appendix A: cov-ch900a-do-empty-switch — spec-rule: docs/design/src/900-appendices.md#35f9f11e05e7dd73

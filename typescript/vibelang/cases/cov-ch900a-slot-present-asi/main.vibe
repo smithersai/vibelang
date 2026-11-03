@@ -1,0 +1,12 @@
+import { Effect } from "effect"
+type as = { service: number }
+function witness(x: unknown, B: unknown) {
+ const y = x as number!!as
+ B
+ const check: Effect.Effect<number,never,as> = y
+ return check
+}
+export effect function main() { return 1 }
+
+// Appendix A: cov-ch900a-slot-present-asi — spec-rule: docs/design/src/900-appendices.md#9e4a2fd9df549e43
+// Appendix A: cov-ch900a-slot-present-asi — spec-rule: docs/design/src/900-appendices.md#885afaae490b2372

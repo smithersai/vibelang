@@ -35,3 +35,5 @@ export effect function main() {
     described: [try describe("7"), try describe("slow")]
   }
 }
+
+// Appendix B: tsforms-errors — spec-rule: docs/design/src/900-appendices.md#44f3b4ad3c1cdb61

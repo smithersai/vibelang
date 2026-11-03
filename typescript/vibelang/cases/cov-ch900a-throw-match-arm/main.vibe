@@ -1,0 +1,5 @@
+import { Effect } from "effect"
+function choose(n: number) { return n }
+export effect function main(): number!string { return match (choose(2)) { when 1: 0; default: throw "bad"; } }
+
+// Appendix A: cov-ch900a-throw-match-arm — spec-rule: docs/design/src/900-appendices.md#4c7c7145eecde3fb

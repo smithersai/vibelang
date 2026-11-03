@@ -66,7 +66,10 @@ func TestSeverityCodesMatchAppendixB(t *testing.T) {
 	}
 }
 
-// docs/design/src/900-appendices.md#46cd5f51a92486e0 — Chapter 900: Appendix B only warnings and EK38xx codes in vibe.severities.
+// docs/design/src/900-appendices.md#46cd5f51a92486e0 — Appendix B severity eligibility.
+// Appendix B: severity code eligibility — spec-rule: docs/design/src/900-appendices.md#46cd5f51a92486e0
+// Appendix B: imported lint severity overrides — spec-rule: docs/design/src/900-appendices.md#53a3b1fdda08aa2b
+// Appendix B: own style-warning severity overrides — spec-rule: docs/design/src/900-appendices.md#2ea57576f35921bc
 func TestAppendixBSeveritySettingsTakeEffect(t *testing.T) {
 	own := appendixBSeverityCodes(t)
 	for _, severity := range []string{"error", "warning", "suggestion", "off"} {

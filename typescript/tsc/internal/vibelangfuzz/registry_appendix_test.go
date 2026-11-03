@@ -6,6 +6,7 @@ import (
 	"testing"
 )
 
+// Appendix B: interim diagnostics do not allocate language blocks — spec-rule: docs/design/src/900-appendices.md#5081598211cf8cd6
 func TestRegistryUsesCurrentAppendix(t *testing.T) {
 	facts := Facts()
 	for _, tc := range []struct {

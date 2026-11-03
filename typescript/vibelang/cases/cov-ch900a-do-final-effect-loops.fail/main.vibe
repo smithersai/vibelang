@@ -1,0 +1,11 @@
+// expect: EK0201
+export effect function main() {
+ const a = do { for try (const x of Stream.empty) {} }
+ const b = do { for concurrent (const x of []) {} }
+ const c = do { for concurrent(2) (const x of []) {} }
+ const d = do { for try (const x of Stream.empty) { break }; 1 }
+ return [a,b,c,d]
+}
+
+// Appendix A: cov-ch900a-do-final-effect-loops.fail — spec-rule: docs/design/src/900-appendices.md#4959d94a640a09cc
+// Appendix A: cov-ch900a-do-final-effect-loops.fail — spec-rule: docs/design/src/900-appendices.md#8eb1fb833fa20f1d

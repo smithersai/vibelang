@@ -1,0 +1,4 @@
+import { Effect } from "effect"
+export effect function main() { let x = 6; x ^= 3; return [x, 6 ^ 3, 2 |> % ^ 3] }
+
+// Appendix A: cov-ch900a-xor — spec-rule: docs/design/src/900-appendices.md#7abde2cf1d1fc0f1

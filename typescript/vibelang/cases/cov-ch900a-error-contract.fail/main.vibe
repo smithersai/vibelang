@@ -1,0 +1,6 @@
+// expect: EK9201
+error Bad
+export effect function main(): number!! { throw new Bad() }
+
+// Appendix B: cov-ch900a-error-contract.fail — spec-rule: docs/design/src/900-appendices.md#a1d4c61f4a7e5703
+// Appendix B: cov-ch900a-error-contract.fail — spec-rule: docs/design/src/900-appendices.md#3f5f45010c0a714a

@@ -1,0 +1,9 @@
+import { Effect } from "effect"
+function witness(x: unknown) {
+ const asserted: unknown = x as number!! as unknown
+ const checked: Effect.Effect<number> = x as number!! satisfies unknown
+}
+export effect function main() { return 1 }
+
+// Appendix A: cov-ch900a-slot-chained-assertions — spec-rule: docs/design/src/900-appendices.md#7ed43412b9ef643b
+// Appendix A: cov-ch900a-slot-chained-assertions — spec-rule: docs/design/src/900-appendices.md#72f43e9eca4bd9d1

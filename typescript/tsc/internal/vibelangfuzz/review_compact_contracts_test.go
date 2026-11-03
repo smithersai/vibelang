@@ -52,6 +52,7 @@ func TestReviewCompactContractsQuoted(t *testing.T) {
 // before the next native assignment, equality or arrow token. The grammar
 // bans a line terminator before an arrow, without requiring a space.
 // Native inequality controls keep their ordinary unsplit token reading.
+// Appendix A: bang rescanning before native tokens — spec-rule: docs/design/src/900-appendices.md#bd15ef21a0958200
 func FuzzReviewCompactContracts(f *testing.F) {
 	// Spec rule: docs/design/src/001-functions.md#375737adf99cf4bc
 	// Chapter 001: compact bang completion before assignment/equality/arrow; ordinary inequality controls (FuzzReviewCompactContracts).

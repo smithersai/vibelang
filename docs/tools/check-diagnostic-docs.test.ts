@@ -38,6 +38,7 @@ test("every registered diagnostic has a user-doc reference", () => {
   expect(undocumentedCodes(diagnosticCodes(sources), pages)).toEqual([])
 })
 
+// Appendix B: registry renumbering inventory — spec-rule: docs/design/src/900-appendices.md#6371772a0c689cbc
 test("Appendix B codes, including leading zeros, have matching registry declarations", () => {
   const appendix = readFileSync(join(repo, "docs/design/src/900-appendices.md"), "utf8")
     .split("## Appendix B. Diagnostics")[1].split("\n## Appendix C.")[0]

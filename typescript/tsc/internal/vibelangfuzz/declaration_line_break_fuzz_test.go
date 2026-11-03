@@ -35,6 +35,11 @@ func declarationLineBreakChapter(t testing.TB) {
 	}
 }
 
+// Appendix A: contextual declaration start — spec-rule: docs/design/src/900-appendices.md#0e7f6e4c1fc1955f
+// Appendix A: declaration-body line breaks — spec-rule: docs/design/src/900-appendices.md#f76c3b9e24cc4b29
+// Appendix A: optional error-body continuation — spec-rule: docs/design/src/900-appendices.md#5c62640472bb75fa
+// Appendix A: next-line generic arrow — spec-rule: docs/design/src/900-appendices.md#f1fc5ba0f5e76e09
+// Appendix A: declaration keywords need an adjacent binding name — spec-rule: docs/design/src/900-appendices.md#1b4fcdea9fcaafaa
 func FuzzDeclarationTypeParameterLineBreak(f *testing.F) {
 	startShortBudget(f)
 	declarationLineBreakChapter(f)

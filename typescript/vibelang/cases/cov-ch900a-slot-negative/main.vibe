@@ -1,0 +1,12 @@
+import { Effect } from "effect"
+function witness(x: unknown) {
+ const compact: Effect.Effect<number, never, -1> = x as number!!-1
+ const spaced: Effect.Effect<number, never, -1> = x as number!! - 1
+ // @ts-expect-error: native arithmetic checking after the omitted slot
+ const subtract = (x as number!!) - 1
+}
+export effect function main() { return 1 }
+
+// Appendix A: cov-ch900a-slot-negative — spec-rule: docs/design/src/900-appendices.md#21d1f9f751f8caf3
+// Appendix A: cov-ch900a-slot-negative — spec-rule: docs/design/src/900-appendices.md#7c4a8564647d35b3
+// Appendix A: cov-ch900a-slot-negative — spec-rule: docs/design/src/900-appendices.md#62e1eae1b15e269d

@@ -18,3 +18,5 @@ function values(one: number, ok: boolean, nothing: number | undefined) {
 export effect function main() {
   return values(1, true, undefined)
 }
+
+// Appendix A: pipe-conditional-controls — spec-rule: docs/design/src/900-appendices.md#05952a6317f3b0df

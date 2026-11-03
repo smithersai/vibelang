@@ -8,3 +8,5 @@ export effect function g(): number!! { return 1 }
 export const h = effect (n: number): string => `${n}`
 
 // Appendix B: EK0106 — spec-rule: docs/design/src/900-appendices.md#fa72230abce6eed2
+
+// Appendix A: vip1-effect-return-type.fail — spec-rule: docs/design/src/900-appendices.md#b8da47725a0ea3b4

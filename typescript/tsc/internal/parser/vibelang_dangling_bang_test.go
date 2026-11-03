@@ -11,6 +11,10 @@ import (
 // Functions, "The A!E!R type shorthand" (VIP-3): each !, and the slot after
 // it, start on the line where the previous slot ends. A ! with no slot on its
 // line and no second ! is TypeScript's postfix !, which is TS17019.
+// Appendix A: Effect type newline boundary — spec-rule: docs/design/src/900-appendices.md#cec785777f6e82b5
+// Appendix A: native type newline boundary — spec-rule: docs/design/src/900-appendices.md#aff6a56387710248
+// Appendix A: slot starts beside its bang — spec-rule: docs/design/src/900-appendices.md#7f601b21f08ea1e2
+// Appendix A: dangling bang diagnostic — spec-rule: docs/design/src/900-appendices.md#78fe099476011694
 func TestVibeLangDanglingBang(t *testing.T) {
 	for _, test := range []struct {
 		name, text string

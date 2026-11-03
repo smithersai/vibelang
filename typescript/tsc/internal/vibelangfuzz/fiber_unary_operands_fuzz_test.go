@@ -29,6 +29,7 @@ func TestFiberUnaryOperandsQuoted(t *testing.T) { fiberUnaryChapter(t) }
 // These are the independent UnaryExpression alternatives in Appendix A's
 // TypeScript grammar. Static grammar acceptance, rather than operand type or
 // runtime behavior, is the oracle: most literals are not actual Effects.
+// Appendix A: unary operand regexp and line break — spec-rule: docs/design/src/900-appendices.md#9442bab15a4474c5
 func FuzzFiberUnaryOperands(f *testing.F) {
 	startShortBudget(f)
 	fiberUnaryChapter(f)

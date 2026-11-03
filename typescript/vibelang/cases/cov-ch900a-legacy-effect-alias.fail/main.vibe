@@ -1,0 +1,4 @@
+// expect: EK4856
+export const value: Effect<number> = Effect.succeed(1)
+
+// Appendix B: cov-ch900a-legacy-effect-alias.fail — spec-rule: docs/design/src/900-appendices.md#04e6709a385af2a3

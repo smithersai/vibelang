@@ -1,0 +1,7 @@
+import { Effect } from "effect"
+function boolean(s: string) { return match (s) { when /ab/: 1; default: 0; } }
+function extract(s: string) { return match (s) { when /(a)(b)/(let whole, let a, let b): whole + ":" + a + ":" + b; default: ""; } }
+export effect function main() { return [boolean("ab"), boolean("cd"), extract("ab"), extract("cd")] }
+
+// Appendix A: cov-ch900a-regexp-pattern — spec-rule: docs/design/src/900-appendices.md#6902c0d33e85a183
+// Appendix A: cov-ch900a-regexp-pattern — spec-rule: docs/design/src/900-appendices.md#82a882a3f6936842

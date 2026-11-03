@@ -1,0 +1,8 @@
+// expect: EK0501
+service Flags {
+ static readonly key = "app/Flags"
+ static readonly defaultValue = try Effect.succeed(() => ({ value: 1 }))
+ value: number
+}
+
+// Appendix A: cov-ch900a-default-member-run.fail — spec-rule: docs/design/src/900-appendices.md#0587739b6d0b5073

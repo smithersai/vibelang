@@ -33,3 +33,6 @@ function increment(n: number) { return n + 1 }
 export effect function main() {
   return { getter: getter(), rebound: rebound(), stable: 7 |> increment(%) }
 }
+
+// Appendix A: order-pipe-topic-first — spec-rule: docs/design/src/900-appendices.md#3bad5dbbdd4d1d46
+// Appendix A: order-pipe-topic-first — spec-rule: docs/design/src/900-appendices.md#6f8785367214483e

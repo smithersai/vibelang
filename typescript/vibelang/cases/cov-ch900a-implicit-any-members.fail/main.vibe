@@ -1,0 +1,4 @@
+// expect: TS7010 TS7008
+service Users { static readonly key = "app/Users"; read(); value }
+
+// Appendix B: cov-ch900a-implicit-any-members.fail — spec-rule: docs/design/src/900-appendices.md#6d514386e7752820

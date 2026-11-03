@@ -1,0 +1,5 @@
+// expect: EK9202
+service Users { static readonly key = "app/Users"; value: number }
+export effect function main(): number!! { return (try Users).value }
+
+// Appendix B: cov-ch900a-requirement-contract.fail — spec-rule: docs/design/src/900-appendices.md#82677ed56820e47a

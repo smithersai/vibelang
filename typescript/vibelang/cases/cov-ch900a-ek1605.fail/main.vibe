@@ -1,0 +1,4 @@
+// expect: EK1605
+data Value { One Two }
+
+// Appendix B: EK1605 — spec-rule: docs/design/src/900-appendices.md#e604a349ef087595

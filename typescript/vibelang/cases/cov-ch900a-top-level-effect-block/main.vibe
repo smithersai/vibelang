@@ -1,0 +1,5 @@
+import { Effect } from "effect"
+const program = effect { return 1 }
+export effect function main() { return try program }
+
+// Appendix A: cov-ch900a-top-level-effect-block — spec-rule: docs/design/src/900-appendices.md#b2708591e09fa400

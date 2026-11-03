@@ -58,6 +58,8 @@ func TestReviewProvideRecoveryQuoted(t *testing.T) {
 // Calls/arrays can contain their own line breaks, and ordinary provide calls
 // stay native expressions. LF, CRLF, Unicode line terminators and multiline
 // comments exercise the same no-LineTerminator grammar restriction.
+// Appendix A: provider comma recovery — spec-rule: docs/design/src/900-appendices.md#2b3b3eaef53ac9b6
+// Appendix A: two-sided provider comma recovery — spec-rule: docs/design/src/900-appendices.md#688469f012e91815
 func FuzzReviewProvideRecovery(f *testing.F) {
 	// Spec rule: docs/design/src/005-services.md#a16c456a08094b38
 	// Chapter 005: two-sided top-level comma recovery, inner multiline controls and retained ordinary calls (FuzzReviewProvideRecovery).

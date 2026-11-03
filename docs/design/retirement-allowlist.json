@@ -398,5 +398,25 @@
       "reference": "docs/design/vips/0040-module-declarations.md: Status: accepted, 2026-11-03. Will: \"Are you asking me if I accept a vip I already asked you to add?\" Replaces denied [VIP-25](0025-inline-modules-denied.md). Its One paragraph and Decision explicitly exclude these forms. This is existing acceptance, not a new approval."
     },
     "reason": "VIP-40 explicitly excludes import.meta from a module body, preserving the copy-to-sibling-TypeScript-file rule in both module modes. This case narrowly witnesses that published restriction; removing an export, changing module identity or substituting a different meta object is not asserted to preserve the program."
+  },
+  {
+    "code": "EK0509",
+    "case": "typescript/vibelang/cases/vip1-accept-catch-value-fallback.fail",
+    "vip": "VIP-5",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0005-try-runs-effects.md: Status: accepted by Will, 2026-10-28. Existing published acceptance; no new approval is asserted."
+    },
+    "reason": "Only an appendix rule-citation comment was appended to an existing negative fixture. Its executable program and expected diagnostics are unchanged; this receipt authorizes no new rejection."
+  },
+  {
+    "code": "EK0106",
+    "case": "typescript/vibelang/cases/vip1-effect-return-type.fail",
+    "vip": "VIP-1",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0001-effect-and-async-functions.md: Status: accepted by Will, 2026-10-28. Existing published acceptance; no new approval is asserted."
+    },
+    "reason": "Only an appendix rule-citation comment was appended to an existing negative fixture. Its executable program and expected diagnostics are unchanged; this receipt authorizes no new rejection."
   }
 ]

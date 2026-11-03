@@ -36,6 +36,7 @@ func TestCatchParenthesizedHandlersQuoted(t *testing.T) {
 // Admission and contextual typing come from the chapter's function-literal
 // grammar, not today's AST. Runtime Exit comparison stays in the existing
 // vip05.catch-parenthesized-arrow differential construct.
+// Appendix A: closed catch-handler suffixes — spec-rule: docs/design/src/900-appendices.md#0e6d4b246424a991
 func FuzzCatchParenthesizedHandlers(f *testing.F) {
 	startShortBudget(f)
 	catchParenthesesChapter(f)
