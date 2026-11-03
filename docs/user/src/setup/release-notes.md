@@ -177,6 +177,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - The no-throw documentation check rejected a legal `do` expression in an `async` parameter default; it now uses VibeLang’s parser and preserves the source callable context.
 
+- Editor validation still reported four repaired wide `Option` handler cases as failing. They now run as normal passing regression cases.
+
 - Renaming a shorthand pattern binding could change the property it matched and add `TS2339`; rename now keeps the property key and writes an explicit binding.
 
 - Rolldown entry globs could bundle generated `.d.vibex.ts` declarations as empty entrypoints; the plugin now excludes those sidecars and retains the JSX source entries and aliases.
