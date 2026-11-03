@@ -1,0 +1,11 @@
+// expect: EK2109 EK2109 EK2109 EK2109 EK2109 EK2109
+// foldkit-167: an Effect collection type is not in the schema mapping table, and
+// no Schema value named Option, HashSet, HashMap or Chunk exists, so each
+// reference is EK2109. Before the fix they derived readonly string[] or an index
+// object without a diagnostic.
+schema Probe { readonly value: Option<string> }
+schema Ids { readonly ids: HashSet<string> }
+schema Copies { readonly copies: HashMap<string, number> }
+schema Items { readonly items: Chunk<number> }
+schema Bare = Option<string>
+schema error Missing { readonly value: Option<number> }
