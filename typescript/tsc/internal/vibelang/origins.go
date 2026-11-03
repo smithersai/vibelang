@@ -220,14 +220,14 @@ func doPropertyKey(node *ast.Node) *ast.Node {
 }
 
 // doBindingMethod identifies only the parser's virtual binding call. The
-// checker uses its bind signature for generics and explicit this parameters;
+// checker uses the intrinsic bind signature for generics and explicit this parameters;
 // the emitter uses the runtime's captured invocation intrinsic.
 func doBindingMethod(bind *ast.Node) *ast.Node {
 	if bind == nil || !ast.IsCallExpression(bind) || len(bind.Arguments()) != 1 || !ast.IsPropertyAccessExpression(bind.Expression()) {
 		return nil
 	}
 	name := bind.Expression().Name()
-	if name.Flags&ast.NodeFlagsReparsed == 0 || name.Text() != "bind" {
+	if bind.Expression().Flags&ast.NodeFlagsVibeLangDoMethodBind == 0 || name.Text() != "bind" {
 		return nil
 	}
 	return bind.Expression().Expression()

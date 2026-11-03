@@ -1658,7 +1658,8 @@ func isMemberCallee(callee *ast.Node) bool {
 // preserving both getter order and its receiver (VIP-2 expression lowering):
 // o.m(do { … }) is const f = o.m.bind(o); …; f(…), and o.tag`${do { … }}`
 // is const f = o.tag.bind(o); …; f`…`. bind keeps the method's type,
-// generics included, for the checker; the emitter calls the runtime's
+// generics included, for the checker. The marked access uses CallableFunction's
+// intrinsic bind signature, ignoring the method's own bind. The emitter calls the runtime's
 // $bindMethod for it (vibelang/lower.go), which reads nothing from the
 // method.
 func (l *doLowering) method(callee *ast.Node, at core.TextRange, pre *[]*ast.Node) *ast.Node {
@@ -1690,7 +1691,9 @@ func (l *doLowering) method(callee *ast.Node, at core.TextRange, pre *[]*ast.Nod
 		access.ArgumentExpression = l.expr(access.ArgumentExpression, pre)
 	}
 	l.p.overrideParentInImmediateChildren(member)
-	return l.spill(l.p.mCall(l.p.mProperty(callee, "bind", at), []*ast.Node{bound}, at), pre)
+	bind := l.p.mProperty(callee, "bind", at)
+	bind.Flags |= ast.NodeFlagsVibeLangDoMethodBind
+	return l.spill(l.p.mCall(bind, []*ast.Node{bound}, at), pre)
 }
 
 // properties lowers an object literal's properties in order.

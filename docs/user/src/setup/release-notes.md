@@ -1236,6 +1236,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Liveness checks rejected PID `0` even though the native signal-zero query can inspect the current process group. `Experimental.Process.isRunning(0)` now preserves that query; actual signal delivery still requires a positive PID.
 
 - Returning an explicit service key widened its literal type to `string`; inferred function results now retain the key literal, as the native `Context.Service` counterpart does.
+- A method's custom `bind` property could reject calls with a `do` argument or give them incorrect declaration types; calls and template tags now keep the original method's signatures.
+
 - Schema conformance checks rejected the dangling aliases that TypeScript itself emits with `stripInternal`; these cases now verify exact native output and the same TypeScript diagnostics.
 - `vibelang --fix` refused an `Effect.fn` whose parameter annotation was a type name's last read under `noUnusedLocals`, because writing the checked parameter type left the name unused (TS6133, TS6196), so the module stayed on `EK1002`; the fix now also removes that type-only import binding or module-local type alias.
 

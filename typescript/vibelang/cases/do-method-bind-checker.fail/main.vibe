@@ -1,0 +1,7 @@
+// expect: TS2345
+const f = Object.assign((n: number): number => n + 1, {
+  bind: (_self: unknown) => (_n: string): number => 0
+})
+const obj = { f }
+export function wrongArgument() { return obj.f(do { "wrong" }) }
+export function wrongElement() { return obj["f"](do { "wrong" }) }

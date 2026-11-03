@@ -60,6 +60,8 @@ const (
 	NodeFlagsVibeLangShorthandBinding NodeFlags = 1 << 40 // A source object-pattern binder also supplies an implicit fixed property key; rename must expose that key.
 	NodeFlagsVibeLangTemporary        NodeFlags = 1 << 41 // Identifier introduced by mTemp, rather than a source binding synthesized with mIdent
 
+	NodeFlagsVibeLangDoMethodBind NodeFlags = 1 << 40 // If node is the parser-written intrinsic bind access for a captured do operand method; its type comes from CallableFunction, never the method's own bind property.
+
 	NodeFlagsBlockScoped = NodeFlagsLet | NodeFlagsConst | NodeFlagsUsing
 	NodeFlagsConstant    = NodeFlagsConst | NodeFlagsUsing
 	NodeFlagsAwaitUsing  = NodeFlagsConst | NodeFlagsUsing // Variable declaration (NOTE: on a single node these flags would otherwise be mutually exclusive)

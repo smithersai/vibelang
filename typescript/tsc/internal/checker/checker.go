@@ -11599,6 +11599,16 @@ func (c *Checker) isInAmbientOrTypeNode(node *ast.Node) bool {
 }
 
 func (c *Checker) checkPropertyAccessExpression(node *ast.Node, checkMode CheckMode, writeOnly bool) *Type {
+	if node.Flags&ast.NodeFlagsVibeLangDoMethodBind != 0 {
+		// The do lowering captures a method through the runtime invocation
+		// intrinsic. Check the source member, but never look up its own bind:
+		// that property has no role in the call or its emitted declaration.
+		c.checkNonNullExpression(node.Expression())
+		if bind := c.getTypeOfPropertyOfType(c.getGlobalType("CallableFunction", 0, true), "bind"); bind != nil {
+			return bind
+		}
+		return c.errorType
+	}
 	if node.Flags&ast.NodeFlagsOptionalChain != 0 {
 		return c.checkPropertyAccessChain(node, checkMode)
 	}
