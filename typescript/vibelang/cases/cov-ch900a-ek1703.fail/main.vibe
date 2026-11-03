@@ -1,0 +1,4 @@
+// expect: EK1703
+export effect function load() { return fork 1 }
+
+// Appendix B: EK1703 — spec-rule: docs/design/src/900-appendices.md#f1d14ba93268620e

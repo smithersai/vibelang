@@ -1,0 +1,4 @@
+// expect: EK1702
+// Appendix A: arrow-head — spec-rule: docs/design/src/900-appendices.md#698249d26c1db574
+// Appendix A: arrow-head — spec-rule: docs/design/src/900-appendices.md#279d68fad1462f76
+effect function f() { const g = (join: number) => 1; const h = async (join: number) => 1; }

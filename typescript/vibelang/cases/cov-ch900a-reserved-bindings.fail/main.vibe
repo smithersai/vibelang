@@ -1,0 +1,3 @@
+// expect: EK1702
+// Appendix A: reserved-bindings — spec-rule: docs/design/src/900-appendices.md#7761fe3c3979aac1
+effect function f() { let join = 1; fork: while (false) {} }

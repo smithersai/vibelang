@@ -1,0 +1,4 @@
+// expect: EK1702
+export effect function load(join: number) { return 1 }
+
+// Appendix B: EK1702 — spec-rule: docs/design/src/900-appendices.md#6bde46c640fb4b16

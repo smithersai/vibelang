@@ -1,0 +1,7 @@
+// expect: EK4842
+import { Array } from "effect"
+export const xs = Array.make(1, 2)
+
+// Appendix B: EK4842 — spec-rule: docs/design/src/900-appendices.md#960cc3090fa2ae28
+
+// Appendix B: retained TypeScript-form warning codes — spec-rule: docs/design/src/900-appendices.md#44f3b4ad3c1cdb61

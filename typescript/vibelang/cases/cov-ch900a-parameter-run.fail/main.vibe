@@ -1,0 +1,4 @@
+// expect: EK0501
+// Appendix A: parameter-run — spec-rule: docs/design/src/900-appendices.md#25f04e8f48b22587
+// Appendix A: parameter-run — spec-rule: docs/design/src/900-appendices.md#0e5a10f9e0527816
+effect function f(x = try Effect.succeed(1)) { return x }

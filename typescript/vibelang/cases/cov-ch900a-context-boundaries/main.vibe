@@ -1,0 +1,19 @@
+// Appendix A: source callable and initializer boundaries — spec-rule: docs/design/src/900-appendices.md#a05fea2822793457
+// Appendix A: source callable and initializer boundaries — spec-rule: docs/design/src/900-appendices.md#76931f8f52c98753
+// Appendix A: source callable and initializer boundaries — spec-rule: docs/design/src/900-appendices.md#49005dbb5338de9f
+import { Effect } from "effect"
+function join(n: number): number { return n + 1 }
+function fork(n: number): number { return n + 2 }
+class Plain { static { join(9); fork(9) } }
+const outsideAsync = async (fork: number) => fork + 1
+export effect function main(): readonly [number, number, number]!! {
+  class Base {}
+  class C extends (try Effect.succeed(Base)) {
+    [try Effect.succeed("read")]() { return 1 }
+    value = join(1)
+    program = effect { return try Effect.succeed(7) }
+  }
+  enum E { A = fork(1) }
+  const c = new C()
+  return [c.value, E.A, try c.program] as const
+}

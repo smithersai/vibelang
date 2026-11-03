@@ -5,3 +5,5 @@ export effect function numbers() { return try.all [1, 2] }
 export effect function functions() { return try.all [() => 1] }
 export effect function functionArray(xs: ReadonlyArray<() => number>) { return try.all xs }
 export effect function effectFunctionArray(xs: ReadonlyArray<() => Effect.Effect<number>>) { return try.all xs }
+
+// Appendix B: EK1801 — spec-rule: docs/design/src/900-appendices.md#cbbe6ca6bdb37b31

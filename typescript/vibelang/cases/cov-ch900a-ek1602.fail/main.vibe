@@ -1,0 +1,4 @@
+// expect: EK1602
+data Value { $is }
+
+// Appendix B: EK1602 — spec-rule: docs/design/src/900-appendices.md#654f9342636bf9c8

@@ -1,0 +1,4 @@
+// expect: EK3009
+export const x = 1
+
+// Appendix B: EK3009 — spec-rule: docs/design/src/900-appendices.md#425e3a319094302a

@@ -1,0 +1,7 @@
+// expect: EK4839
+import { Option } from "effect"
+export const n = Option.match(Option.some(1), { onNone: () => 0, onSome: n => n })
+
+// Appendix B: EK4839 — spec-rule: docs/design/src/900-appendices.md#d2e90f50f3d93f78
+
+// Appendix B: retained TypeScript-form warning codes — spec-rule: docs/design/src/900-appendices.md#44f3b4ad3c1cdb61

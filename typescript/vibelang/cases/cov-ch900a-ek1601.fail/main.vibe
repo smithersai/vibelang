@@ -1,0 +1,4 @@
+// expect: EK1601
+data Value { One { _tag: string } }
+
+// Appendix B: EK1601 — spec-rule: docs/design/src/900-appendices.md#09d17daba0b9d25b

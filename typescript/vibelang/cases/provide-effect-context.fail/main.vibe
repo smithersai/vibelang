@@ -12,3 +12,5 @@ provide Layer.empty {}
 
 // Spec rule: docs/design/src/005-services.md#32b33b8005c938e8
 // Chapter 005: unparenthesized effect starts an EffectBlock; parenthesized local name is a provider expression (provide-effect-context.fail).
+
+// Appendix B: EK1201 — spec-rule: docs/design/src/900-appendices.md#28ed96a7bf9ffbfd

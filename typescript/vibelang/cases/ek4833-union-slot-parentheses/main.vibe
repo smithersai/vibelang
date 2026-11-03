@@ -3,3 +3,7 @@
 // VIP-3 requires grouping the union success slot: (number | string)!!.
 export let u: Effect.Effect<number | string>;
 export let w: Effect.Effect<number | string, Error>;
+
+// Appendix B: EK4833 — spec-rule: docs/design/src/900-appendices.md#bd2b6979a6e8cc0d
+
+// Appendix B: retained TypeScript-form warning codes — spec-rule: docs/design/src/900-appendices.md#44f3b4ad3c1cdb61

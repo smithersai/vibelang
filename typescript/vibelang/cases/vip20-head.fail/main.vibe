@@ -8,3 +8,11 @@ export effect function main() {
   for try (box.value of Stream.make(3)) { void box }
   return last
 }
+
+// Appendix B: EK2005 — spec-rule: docs/design/src/900-appendices.md#5065c801f8f77d90
+
+// Appendix A: vip20-head.fail — spec-rule: docs/design/src/900-appendices.md#e57b6a0f5d2feed6
+
+// Appendix B: vip20-head.fail — spec-rule: docs/design/src/900-appendices.md#30fc1b092c29cde5
+
+// Appendix B: own syntax errors retain VIP codes — spec-rule: docs/design/src/900-appendices.md#cff51dce9c1f6552

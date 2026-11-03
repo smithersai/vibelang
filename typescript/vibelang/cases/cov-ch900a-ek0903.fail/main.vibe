@@ -1,0 +1,4 @@
+// expect: EK0903
+service Users { name: string }
+
+// Appendix B: EK0903 — spec-rule: docs/design/src/900-appendices.md#dde9422a669c895d

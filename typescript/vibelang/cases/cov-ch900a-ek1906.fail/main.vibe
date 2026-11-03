@@ -1,0 +1,6 @@
+// expect: EK1906
+export effect function load() { for concurrent (var n of [1]) { void n } }
+
+// Appendix B: EK1906 — spec-rule: docs/design/src/900-appendices.md#7b15218fd86a3431
+
+// Appendix B: own syntax errors retain VIP codes — spec-rule: docs/design/src/900-appendices.md#cff51dce9c1f6552

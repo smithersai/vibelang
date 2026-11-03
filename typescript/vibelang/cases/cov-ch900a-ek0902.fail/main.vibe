@@ -1,0 +1,6 @@
+// expect: EK0902
+service Users { static readonly key = "app/Users"; constructor() {} }
+
+// Appendix B: EK0902 — spec-rule: docs/design/src/900-appendices.md#36b5cfc7c7f7f258
+
+// Appendix B: cov-ch900a-ek0902.fail — spec-rule: docs/design/src/900-appendices.md#e3fd04878d9168ef

@@ -1,0 +1,4 @@
+// expect: EK1705
+export effect function load() { return fork.other Effect.succeed(1) }
+
+// Appendix B: EK1705 — spec-rule: docs/design/src/900-appendices.md#410423d5937d80c6

@@ -1,2 +1,6 @@
 // expect: EK1305
 export default error Missing { id: string }
+
+// Appendix B: EK1305 — spec-rule: docs/design/src/900-appendices.md#6453c9f5396cb00e
+
+// Appendix A: error-default-export.fail — spec-rule: docs/design/src/900-appendices.md#248770b3e9daa707

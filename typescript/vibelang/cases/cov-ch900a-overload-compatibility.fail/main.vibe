@@ -1,0 +1,5 @@
+// expect: TS2394
+effect function load(x: string): string!!;
+effect function load(x: number) { return x }
+
+// Appendix A: cov-ch900a-overload-compatibility.fail — spec-rule: docs/design/src/900-appendices.md#5d4fff73ec18d4d1

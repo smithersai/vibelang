@@ -1,3 +1,5 @@
 // expect: EK2803
 data Box<A = string> { Value { value: A } }
 data Pair<A, B = number> { Value { first: A; second: B } }
+
+// Appendix B: EK2803 — spec-rule: docs/design/src/900-appendices.md#f9ab808cd94e1099

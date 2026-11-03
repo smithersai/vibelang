@@ -1,0 +1,17 @@
+import { Effect } from "effect"
+function mul(effect: number) { return effect * 2 }
+function call(effect: (n: number) => number) { return effect(2) }
+function caught() { try
+  { throw 2 } catch (error) { return error as number }
+}
+const native = { async effect() { return 3 } }
+const bare: (effect: number) => Promise<number> = async effect => effect + 1
+const obj = { effect async() { return 6 }, effect get() { return 2 } }
+export effect function main() {
+  return [mul(3), call(n => n + 1), try obj.async(), try obj.get(), try Effect.promise(() => native.effect()), try Effect.promise(() => bare(8)), caught()]
+}
+
+// Appendix A: cov-ch900a-keyword-boundaries — spec-rule: docs/design/src/900-appendices.md#5aa64ef491512f0f
+// Appendix A: cov-ch900a-keyword-boundaries — spec-rule: docs/design/src/900-appendices.md#a9d79c529d41f37a
+// Appendix A: cov-ch900a-keyword-boundaries — spec-rule: docs/design/src/900-appendices.md#b69e620a6c41fc4c
+// Appendix A: cov-ch900a-keyword-boundaries — spec-rule: docs/design/src/900-appendices.md#05934735e8ff16b5

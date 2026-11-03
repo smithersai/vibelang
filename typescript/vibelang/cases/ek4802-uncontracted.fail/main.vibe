@@ -1,3 +1,5 @@
 // expect: EK4802
 import { Effect } from "effect"
 export effect function load(migration: Effect.Effect<void>) { try Effect.yieldNow; return migration }
+
+// Appendix B: EK4802 — spec-rule: docs/design/src/900-appendices.md#6ef8d6e05271a426

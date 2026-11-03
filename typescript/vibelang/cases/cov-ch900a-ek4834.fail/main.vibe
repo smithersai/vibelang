@@ -1,0 +1,6 @@
+// expect: EK4834
+export effect function load() { return try Effect.succeed(1) }
+
+// Appendix B: EK4834 — spec-rule: docs/design/src/900-appendices.md#4567b0ddd2f5c4f1
+
+// Appendix B: retained TypeScript-form warning codes — spec-rule: docs/design/src/900-appendices.md#44f3b4ad3c1cdb61

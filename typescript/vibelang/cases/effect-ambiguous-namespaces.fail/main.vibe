@@ -3,3 +3,5 @@ const model = Model
 const prompt = Prompt
 const utils = Utils
 export {}
+
+// Appendix B: EK1401 — spec-rule: docs/design/src/900-appendices.md#49fd658dd5bcb0a8

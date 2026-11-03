@@ -1,0 +1,6 @@
+// expect: EK1802
+export effect function load() { return await.all [Effect.succeed(1)] }
+
+// Appendix B: EK1802 — spec-rule: docs/design/src/900-appendices.md#ed859a858034d55f
+
+// Appendix A: cov-ch900a-ek1802.fail — spec-rule: docs/design/src/900-appendices.md#60cbc80518c64d54

@@ -13,3 +13,7 @@ export function bare(): number {
 export function extractor(): number {
   return match (impl) { when Users(let u): 1; default: 0; }
 }
+
+// Appendix B: EK3004 — spec-rule: docs/design/src/900-appendices.md#0e549ead3bd12330
+
+// Appendix B: retained diagnostic assignments — spec-rule: docs/design/src/900-appendices.md#cdec71a264c09607

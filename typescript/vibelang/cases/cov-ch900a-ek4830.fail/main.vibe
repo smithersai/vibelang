@@ -1,0 +1,7 @@
+// expect: EK4830
+import { Data } from "effect"
+class Missing extends Data.TaggedError("Missing")<{ readonly id: string }> {}
+
+// Appendix B: EK4830 — spec-rule: docs/design/src/900-appendices.md#946c4cc19b8466ea
+
+// Appendix B: retained TypeScript-form warning codes — spec-rule: docs/design/src/900-appendices.md#44f3b4ad3c1cdb61

@@ -1,0 +1,9 @@
+import { Effect } from "effect"
+declare namespace Native { function count(): number }
+declare function load(): number
+const value: ReturnType<typeof load> = 1
+export effect function main() { return value }
+
+// Appendix A: cov-ch900a-native-declarations — spec-rule: docs/design/src/900-appendices.md#bb382b41f20e77f5
+// Appendix A: cov-ch900a-native-declarations — spec-rule: docs/design/src/900-appendices.md#633b44e14262a107
+// Appendix B: cov-ch900a-native-declarations — spec-rule: docs/design/src/900-appendices.md#e77f13b4db077490

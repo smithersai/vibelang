@@ -30,3 +30,7 @@ export effect function chainedLabels() {
     }
   }
 }
+
+// Appendix B: EK1905 — spec-rule: docs/design/src/900-appendices.md#f011b1cfdfa361f8
+
+// Appendix B: concurrent-continue-outer.fail — spec-rule: docs/design/src/900-appendices.md#e6aa38b66f153dc7

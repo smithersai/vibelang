@@ -11,3 +11,5 @@ export function bare() { return obj.plain { return 7 } }
 export const live = Layer.effect(Users) { return { find: effect () => 7 } }
 export function scoped() { return Effect.scoped { return 7 } }
 export function tested() { return test("loads") { return 7 } }
+
+// Appendix B: EK1101 — spec-rule: docs/design/src/900-appendices.md#0670b7432b3b1083

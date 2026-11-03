@@ -1,0 +1,8 @@
+// expect: EK0907
+declare service Users { name: string }
+
+// Appendix B: EK0907 — spec-rule: docs/design/src/900-appendices.md#e8ba42546c881d77
+
+// Appendix A: cov-ch900a-ek0907.fail — spec-rule: docs/design/src/900-appendices.md#8240d78098015c49
+
+// Appendix A: cov-ch900a-ek0907.fail — spec-rule: docs/design/src/900-appendices.md#152c00ea85e16b49

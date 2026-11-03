@@ -1,0 +1,6 @@
+// expect: TS1222
+effect function* load(): Stream.Stream<number>;
+effect function* load() { yield 1 }
+
+// Appendix A: cov-ch900a-starred-overload.fail — spec-rule: docs/design/src/900-appendices.md#4b5764f4fa6cd563
+// Appendix A: cov-ch900a-starred-overload.fail — spec-rule: docs/design/src/900-appendices.md#ea59ceb09033745c

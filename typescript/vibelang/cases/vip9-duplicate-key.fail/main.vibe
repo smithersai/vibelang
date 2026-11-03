@@ -1,3 +1,7 @@
 // expect: EK3001 EK3001
 service First { static readonly key = "app/shared"; value: number }
 service Second { static readonly key = "app/shared"; value: number }
+
+// Appendix B: EK3001 — spec-rule: docs/design/src/900-appendices.md#49d09963ccb95d2a
+
+// Appendix B: vip9-duplicate-key.fail — spec-rule: docs/design/src/900-appendices.md#cdec71a264c09607

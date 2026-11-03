@@ -5,3 +5,5 @@ schema error S<T> {}
 // VIP-13 VIP-13 generic errors rejected; rule: docs/design/vips/0013-error-declarations.md#6cb3ccab68859674
 
 // VIP-13 VIP-13 generic errors rejected; rule: docs/design/vips/0013-error-declarations.md#07a5941f8742f897
+
+// Appendix B: EK1303 — spec-rule: docs/design/src/900-appendices.md#584f343694adb3d8

@@ -1,3 +1,7 @@
 // expect: EK2001
 import { Stream } from "effect"
 for try (const x of Stream.make(1)) { void x }
+
+// Appendix B: EK2001 — spec-rule: docs/design/src/900-appendices.md#5edf4f9480e7239e
+
+// Appendix B: current meanings of reused codes — spec-rule: docs/design/src/900-appendices.md#30fc1b092c29cde5

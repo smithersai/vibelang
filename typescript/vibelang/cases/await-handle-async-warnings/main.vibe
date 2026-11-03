@@ -1,3 +1,8 @@
 import type { Fiber, Deferred } from "effect"
 export async function waitFiber(value: Fiber.Fiber<number>) { return await value }
 export async function waitDeferred(value: Deferred.Deferred<number>) { return await value }
+
+// Appendix B: EK4609 — spec-rule: docs/design/src/900-appendices.md#fcfa83e16515c0cc
+// Appendix B: EK4610 — spec-rule: docs/design/src/900-appendices.md#c4a650ffc31d68d9
+
+// Appendix B: retained diagnostic assignments — spec-rule: docs/design/src/900-appendices.md#cdec71a264c09607

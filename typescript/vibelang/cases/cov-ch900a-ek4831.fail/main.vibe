@@ -1,0 +1,7 @@
+// expect: EK4831
+import { Context } from "effect"
+class Users extends Context.Service<Users, { readonly name: string }>()("Users") {}
+
+// Appendix B: EK4831 — spec-rule: docs/design/src/900-appendices.md#f0477f128fe85d68
+
+// Appendix B: retained TypeScript-form warning codes — spec-rule: docs/design/src/900-appendices.md#44f3b4ad3c1cdb61

@@ -1,0 +1,4 @@
+// expect: EK1701
+export function load(p: Effect.Effect<number>) { return fork p }
+
+// Appendix B: EK1701 — spec-rule: docs/design/src/900-appendices.md#42de0d897c9f7042

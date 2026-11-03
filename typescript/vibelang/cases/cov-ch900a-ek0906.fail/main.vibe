@@ -1,0 +1,6 @@
+// expect: EK0906
+service Users
+
+// Appendix B: EK0906 — spec-rule: docs/design/src/900-appendices.md#25e98a327a1d986c
+
+// Appendix A: cov-ch900a-ek0906.fail — spec-rule: docs/design/src/900-appendices.md#60d89431464b429e

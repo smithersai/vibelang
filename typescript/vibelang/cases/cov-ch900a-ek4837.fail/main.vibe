@@ -1,0 +1,7 @@
+// expect: EK4837
+import { Schema } from "effect"
+class Missing extends Schema.TaggedError<Missing>()("Missing", { id: Schema.String }) {}
+
+// Appendix B: EK4837 — spec-rule: docs/design/src/900-appendices.md#1806bd334bb5999b
+
+// Appendix B: retained TypeScript-form warning codes — spec-rule: docs/design/src/900-appendices.md#44f3b4ad3c1cdb61

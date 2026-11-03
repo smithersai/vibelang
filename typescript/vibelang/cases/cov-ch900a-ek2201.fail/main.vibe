@@ -1,0 +1,4 @@
+// expect: EK2201
+export function load() { uninterruptible {} }
+
+// Appendix B: EK2201 — spec-rule: docs/design/src/900-appendices.md#8fd256f4944475fa

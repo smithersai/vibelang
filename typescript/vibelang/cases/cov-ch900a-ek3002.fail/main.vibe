@@ -1,0 +1,7 @@
+// expect: EK3002
+service Users { static readonly key = "app/Users"; name: string }
+class C extends Users {}
+
+// Appendix B: EK3002 — spec-rule: docs/design/src/900-appendices.md#fe7c989ff0155981
+
+// Appendix B: retained diagnostic assignments — spec-rule: docs/design/src/900-appendices.md#cdec71a264c09607

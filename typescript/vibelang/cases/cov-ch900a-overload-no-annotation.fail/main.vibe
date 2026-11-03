@@ -1,0 +1,5 @@
+// expect: TS7010
+effect function load();
+effect function load() { return 1 }
+
+// Appendix A: cov-ch900a-overload-no-annotation.fail — spec-rule: docs/design/src/900-appendices.md#4f8fa19c61ef49d8

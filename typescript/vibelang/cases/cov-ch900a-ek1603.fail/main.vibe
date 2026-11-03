@@ -1,0 +1,4 @@
+// expect: EK1603
+export default data Value { One }
+
+// Appendix B: EK1603 — spec-rule: docs/design/src/900-appendices.md#2398704f9ea5ab35

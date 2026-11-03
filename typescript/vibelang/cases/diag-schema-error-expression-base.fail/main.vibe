@@ -1,3 +1,7 @@
 // expect: EK2117
 schema error E extends { id: string }
 export function main() {}
+
+// Appendix B: EK2117 — spec-rule: docs/design/src/900-appendices.md#a199b9b56991446e
+
+// Appendix B: retained diagnostic assignments — spec-rule: docs/design/src/900-appendices.md#cdec71a264c09607

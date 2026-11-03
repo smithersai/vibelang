@@ -4,3 +4,6 @@ export effect function main() { outer: for (const x of [1]) { for try (const row
 
 // VIP-12 item-body-jump-owner
 // rule: docs/design/vips/0012-provide.md#273b8596954389b6
+
+// Appendix B: EK2003 — spec-rule: docs/design/src/900-appendices.md#2d643f4bb1ba9700
+// Appendix B: current meanings of reused codes — spec-rule: docs/design/src/900-appendices.md#30fc1b092c29cde5

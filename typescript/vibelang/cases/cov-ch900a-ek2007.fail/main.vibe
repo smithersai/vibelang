@@ -1,0 +1,4 @@
+// expect: EK2007
+export function load() { for (const n of Stream.make(1)) { void n } }
+
+// Appendix B: EK2007 — spec-rule: docs/design/src/900-appendices.md#a7c1677f7d34ab85

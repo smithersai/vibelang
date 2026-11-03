@@ -1,0 +1,4 @@
+// expect: EK1901
+export effect function load() { for concurrent (const n of 1) { void n } }
+
+// Appendix B: EK1901 — spec-rule: docs/design/src/900-appendices.md#029d3ddb25b9a91f

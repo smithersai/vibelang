@@ -1,0 +1,14 @@
+import { Effect } from "effect"
+export effect function main() {
+  let a = 0, b = 0
+  for
+  concurrent (const x of [1,2]) { a += x }
+  for concurrent(2) (const x of [1,2]) { b += x }
+  return [a,b]
+}
+
+// Appendix A: cov-ch900a-loop-layouts — spec-rule: docs/design/src/900-appendices.md#0d1573864fa70d55
+// Appendix A: cov-ch900a-loop-layouts — spec-rule: docs/design/src/900-appendices.md#ceb3db89797399d3
+// Appendix A: cov-ch900a-loop-layouts — spec-rule: docs/design/src/900-appendices.md#ced7d2f8c7c073e7
+// Appendix A: cov-ch900a-loop-layouts — spec-rule: docs/design/src/900-appendices.md#919b0b6f7c240f2c
+// Appendix A: cov-ch900a-loop-layouts — spec-rule: docs/design/src/900-appendices.md#daee03ead3326d93

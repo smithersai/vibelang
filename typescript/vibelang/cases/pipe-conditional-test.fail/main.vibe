@@ -17,3 +17,7 @@ export function rejected(x: number) {
 // Chapter 002: reject unparenthesized conditional pipe tests; docs/design/src/002-running.md#79e4929682d394db
 // Chapter 002: reject unparenthesized conditional pipe tests; docs/design/src/002-running.md#ee73c41511b7eed2
 // Chapter 002: reject unparenthesized conditional pipe tests; docs/design/src/002-running.md#827ed216503a8ad3
+
+// Appendix B: EK2301 — spec-rule: docs/design/src/900-appendices.md#7cd6f87a401e3d0c
+// Appendix A: pipe-conditional-test.fail — spec-rule: docs/design/src/900-appendices.md#313a0d012d44a85b
+// Appendix A: pipe-conditional-test.fail — spec-rule: docs/design/src/900-appendices.md#3747bd8dcbafd1bf

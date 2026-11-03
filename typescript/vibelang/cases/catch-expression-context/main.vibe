@@ -69,3 +69,5 @@ export effect function main() {
     mode: try mode(-1)
   }
 }
+
+// Appendix A: catch-expression-context — spec-rule: docs/design/src/900-appendices.md#713ffd292621dd06

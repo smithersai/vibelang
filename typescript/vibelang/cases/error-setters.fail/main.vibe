@@ -1,3 +1,7 @@
 // expect: EK1302
 error E { set value(x: string) {} }
 schema error S { set value(x: string) {} }
+
+// Appendix B: EK1302 — spec-rule: docs/design/src/900-appendices.md#670fa6713228c1f2
+
+// Appendix A: error-setters.fail — spec-rule: docs/design/src/900-appendices.md#c93c057b96827851

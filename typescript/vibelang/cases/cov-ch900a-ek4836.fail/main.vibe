@@ -1,0 +1,7 @@
+// expect: EK4836
+service Users { static readonly key = "app/Users"; name: string }
+export effect function load() { return try Effect.provideService(Effect.succeed(1), Users, { name: "Ada" }) }
+
+// Appendix B: EK4836 — spec-rule: docs/design/src/900-appendices.md#bcbb5371b2fa8b1d
+
+// Appendix B: retained TypeScript-form warning codes — spec-rule: docs/design/src/900-appendices.md#44f3b4ad3c1cdb61

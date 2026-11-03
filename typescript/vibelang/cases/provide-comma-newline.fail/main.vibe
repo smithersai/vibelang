@@ -21,3 +21,5 @@ export effect function f() {
 // rule: docs/design/vips/0012-provide.md#3d3d4b577b8d4257
 // VIP-12 bounded-provider-comma-recovery
 // rule: docs/design/vips/0012-provide.md#536635703ae06736
+
+// Appendix B: EK1202 — spec-rule: docs/design/src/900-appendices.md#e07dc00a66d6d6dd

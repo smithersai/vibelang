@@ -1,0 +1,4 @@
+// expect: EK1501
+export default schema User { name: string }
+
+// Appendix B: EK1501 — spec-rule: docs/design/src/900-appendices.md#b54aa918ad36b227

@@ -1,0 +1,7 @@
+// expect: EK3003
+service Users { static readonly key = "app/Users"; name: string }
+const x = new Users()
+
+// Appendix B: EK3003 — spec-rule: docs/design/src/900-appendices.md#e72ba9dddbc3f663
+
+// Appendix B: retained diagnostic assignments — spec-rule: docs/design/src/900-appendices.md#cdec71a264c09607

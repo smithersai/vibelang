@@ -1,0 +1,6 @@
+// expect: EK3007
+export const x = 1
+
+// Appendix B: EK3007 — spec-rule: docs/design/src/900-appendices.md#9821bc0c76609b62
+
+// Appendix B: current meanings of reused codes — spec-rule: docs/design/src/900-appendices.md#30fc1b092c29cde5

@@ -8,3 +8,8 @@ interface Shape { n: number }
 export service Extended extends Base { n: number }
 
 export service Implemented implements Shape { n: number }
+
+// Appendix B: EK0904 — spec-rule: docs/design/src/900-appendices.md#647bb96174867f45
+
+// Appendix A: ek0904-service-heritage.fail — spec-rule: docs/design/src/900-appendices.md#1eba818f1336dccc
+// Appendix A: ek0904-service-heritage.fail — spec-rule: docs/design/src/900-appendices.md#e018c7622d2d7a10

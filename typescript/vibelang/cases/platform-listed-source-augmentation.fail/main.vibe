@@ -3,3 +3,7 @@ export const request = XMLHttpRequest
 export const events = EventSource
 export const socket = WebSocket
 export const worker = SharedWorker
+
+// Appendix B: EK4402 — spec-rule: docs/design/src/900-appendices.md#eba4d0992bd23c6b
+
+// Appendix B: retained diagnostic assignments — spec-rule: docs/design/src/900-appendices.md#cdec71a264c09607

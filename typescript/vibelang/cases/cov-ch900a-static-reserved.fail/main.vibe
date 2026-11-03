@@ -1,0 +1,4 @@
+// expect: EK1701
+// Appendix A: static-reserved — spec-rule: docs/design/src/900-appendices.md#62de51a8b14ba4d1
+// Appendix A: static-reserved — spec-rule: docs/design/src/900-appendices.md#129fdc84e3adae32
+export effect function main() { class C { static { join(1) } } }

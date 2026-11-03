@@ -1,2 +1,4 @@
 // expect: EK0905
 export default service Missing { readonly value: number }
+
+// Appendix B: EK0905 — spec-rule: docs/design/src/900-appendices.md#d05bc050fcaa4327

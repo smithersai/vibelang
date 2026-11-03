@@ -1,0 +1,4 @@
+// expect: EK1604
+data Value
+
+// Appendix B: EK1604 — spec-rule: docs/design/src/900-appendices.md#4fa395b1b246c62d

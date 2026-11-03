@@ -11,3 +11,5 @@ error Field { constructor: string }
 // VIP-13 VIP-13 constructors rejected; rule: docs/design/vips/0013-error-declarations.md#9af0265ea721368a
 
 // VIP-29 VIP-13 constructors rejected; rule: docs/design/vips/0029-schema-errors.md#3265022041ad7c47
+
+// Appendix B: EK1301 — spec-rule: docs/design/src/900-appendices.md#a6dd1735c040095d

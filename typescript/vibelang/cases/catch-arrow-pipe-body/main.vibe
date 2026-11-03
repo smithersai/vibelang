@@ -18,3 +18,8 @@ export effect function main() {
   const twoPipes = oops() catch () => 0 |> % + 1 |> % * 2
   return { body, caught, outer, outerCaught, effectBody, conditional, twoPipes }
 }
+
+// Appendix A: catch-arrow-pipe-body — spec-rule: docs/design/src/900-appendices.md#ba727356c6e25c5b
+// Appendix A: catch-arrow-pipe-body — spec-rule: docs/design/src/900-appendices.md#68692b58bc56b7df
+
+// Appendix A: catch-arrow-pipe-body — spec-rule: docs/design/src/900-appendices.md#0b69300d590ea178

@@ -1,0 +1,4 @@
+// expect: EK0102 EK2104
+// Appendix A: parameter-await-yield — spec-rule: docs/design/src/900-appendices.md#7d86e3ee67dfff91
+effect function f(x = await Promise.resolve(1)) { return x }
+effect function* p(x = yield 1) { yield x }

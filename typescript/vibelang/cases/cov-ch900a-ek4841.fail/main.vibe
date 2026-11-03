@@ -1,0 +1,8 @@
+// expect: EK4841
+import { Schema } from "effect"
+export const User = Schema.Struct({ name: Schema.String })
+export type User = typeof User.Type
+
+// Appendix B: EK4841 — spec-rule: docs/design/src/900-appendices.md#088e04bcd72dbe4b
+
+// Appendix B: retained TypeScript-form warning codes — spec-rule: docs/design/src/900-appendices.md#44f3b4ad3c1cdb61

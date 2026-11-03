@@ -1,0 +1,6 @@
+// expect: EK3005
+service Users<T> { static readonly key = "app/Users"; name: T }
+
+// Appendix B: EK3005 — spec-rule: docs/design/src/900-appendices.md#85fe0cabfe2e6380
+
+// Appendix B: retained diagnostic assignments — spec-rule: docs/design/src/900-appendices.md#cdec71a264c09607

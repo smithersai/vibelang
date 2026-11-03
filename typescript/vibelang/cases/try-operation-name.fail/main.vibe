@@ -5,3 +5,5 @@ import { poll } from "./held.ts"
 export effect function mapped() { return try.map poll }
 export effect function each() { return try.each poll }
 export effect function fine() { return try.all [poll] }
+
+// Appendix B: EK1803 — spec-rule: docs/design/src/900-appendices.md#7b28db8f66e3e089

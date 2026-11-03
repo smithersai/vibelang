@@ -4,3 +4,8 @@ data Five<A, B, C, D, E> { Empty }
 data Constrained<A extends string> { Value { readonly value: A } }
 data Both<A, B, C, D, E extends string> { Empty }
 export {}
+
+// Appendix B: EK2126 — spec-rule: docs/design/src/900-appendices.md#1c3aa6fe9a18cbf0
+// Appendix B: EK2801 — spec-rule: docs/design/src/900-appendices.md#ebbee38dc078949c
+
+// Appendix B: retained diagnostic assignments — spec-rule: docs/design/src/900-appendices.md#cdec71a264c09607

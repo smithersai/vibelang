@@ -8,3 +8,7 @@ export function label(status: Status) {
     when let other and if (other.length > 3): "Other " + other;
   }
 }
+
+// Appendix B: EK4701 — spec-rule: docs/design/src/900-appendices.md#a318284fb359bda9
+
+// Appendix B: retained diagnostic assignments — spec-rule: docs/design/src/900-appendices.md#cdec71a264c09607

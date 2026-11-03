@@ -1,0 +1,6 @@
+// expect: EK2111
+export effect function load() { restore { try Effect.void } }
+
+// Appendix B: EK2111 — spec-rule: docs/design/src/900-appendices.md#3aedada62c48dae0
+
+// Appendix B: retained diagnostic assignments — spec-rule: docs/design/src/900-appendices.md#cdec71a264c09607

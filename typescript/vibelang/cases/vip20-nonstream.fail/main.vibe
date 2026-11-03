@@ -2,3 +2,7 @@
 export effect function main() {
   for try (const value of [1, 2]) { void value }
 }
+
+// Appendix B: EK2004 — spec-rule: docs/design/src/900-appendices.md#d1f8818787d9e1ef
+
+// Appendix B: current meanings of reused codes — spec-rule: docs/design/src/900-appendices.md#30fc1b092c29cde5

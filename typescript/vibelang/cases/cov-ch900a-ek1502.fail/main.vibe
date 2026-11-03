@@ -1,0 +1,4 @@
+// expect: EK1502
+schema User<T> { name: string }
+
+// Appendix B: EK1502 — spec-rule: docs/design/src/900-appendices.md#d6db0baeceb0e176

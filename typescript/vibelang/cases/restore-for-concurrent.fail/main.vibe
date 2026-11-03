@@ -30,3 +30,5 @@ export effect function innerMask(xs: number[]) {
     x
   }
 }
+
+// Appendix B: EK2202 — spec-rule: docs/design/src/900-appendices.md#b61c390ed34312e3

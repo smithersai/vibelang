@@ -1,0 +1,9 @@
+// expect: TS1222 TS1243 TS1040
+async function* load(): AsyncGenerator<number>;
+async function* load() { yield 1 }
+abstract class C { abstract async read(): Promise<number> }
+declare async function f(): Promise<number>;
+
+// Appendix A: cov-ch900a-native-async-declarations.fail — spec-rule: docs/design/src/900-appendices.md#d777cbd077a43c06
+
+// Appendix B: cov-ch900a-native-async-declarations.fail — spec-rule: docs/design/src/900-appendices.md#2da5a9447ff023dc

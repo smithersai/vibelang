@@ -1,0 +1,18 @@
+import { Effect } from "effect"
+function join(n: number) { return n + 1 }
+function fork(n: number) { return n + 2 }
+const seen: number[] = []
+class Plain { static { seen.push(join(9), fork(9)) } }
+const outsideAsync = async (fork: number) => fork + 1
+export effect function main() {
+ function h(join: number) { return join + 1 }
+ const plainArrow = () => { const join = 5; return join }
+ const asyncArrow = async () => { const join = 7; return join }
+ return [h(3), plainArrow(), try Effect.promise(() => outsideAsync(5)), try Effect.promise(() => asyncArrow()), ...seen]
+}
+
+// Appendix A: cov-ch900a-native-callable-boundaries — spec-rule: docs/design/src/900-appendices.md#a1025a49b9386bd5
+// Appendix A: cov-ch900a-native-callable-boundaries — spec-rule: docs/design/src/900-appendices.md#64418157b813fbd5
+// Appendix A: cov-ch900a-native-callable-boundaries — spec-rule: docs/design/src/900-appendices.md#407fe9bcedfed169
+// Appendix A: cov-ch900a-native-callable-boundaries — spec-rule: docs/design/src/900-appendices.md#490c52c449946191
+// Appendix A: cov-ch900a-native-callable-boundaries — spec-rule: docs/design/src/900-appendices.md#1db29dcd6f6e200b

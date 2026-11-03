@@ -1,0 +1,9 @@
+import { Effect } from "effect"
+export effect function main() {
+  let n = 0
+  uninterruptible { n += try Effect.succeed(1); restore { n += try Effect.succeed(2) } }
+  interruptible { n += try Effect.succeed(4) }
+  return n
+}
+
+// Appendix A: cov-ch900a-interruption-blocks — spec-rule: docs/design/src/900-appendices.md#4876cc74033f7332

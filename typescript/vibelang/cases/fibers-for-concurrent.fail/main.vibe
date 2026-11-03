@@ -10,3 +10,6 @@ export effect function returns() {
     if (n === 2) return
   }
 }
+
+// Appendix B: EK1903 — spec-rule: docs/design/src/900-appendices.md#e89ec9d6f0214205
+// Appendix B: EK1904 — spec-rule: docs/design/src/900-appendices.md#604d8adc12ff902e

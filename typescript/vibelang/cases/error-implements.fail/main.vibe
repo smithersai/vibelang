@@ -2,3 +2,5 @@
 interface Shape {}
 error Ordinary implements Shape {}
 schema error Serializable implements Shape {}
+
+// Appendix B: EK1304 — spec-rule: docs/design/src/900-appendices.md#f1543a9b598f121d

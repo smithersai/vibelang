@@ -1,0 +1,4 @@
+// expect: EK1503
+schema User
+
+// Appendix B: EK1503 — spec-rule: docs/design/src/900-appendices.md#6745b4678b6f7e59

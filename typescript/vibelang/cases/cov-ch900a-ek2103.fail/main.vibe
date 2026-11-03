@@ -1,0 +1,6 @@
+// expect: EK2103
+export effect function* load() { yield* [1, 2] }
+
+// Appendix B: EK2103 — spec-rule: docs/design/src/900-appendices.md#a88808a97b275051
+
+// Appendix B: current meanings of reused codes — spec-rule: docs/design/src/900-appendices.md#30fc1b092c29cde5

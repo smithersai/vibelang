@@ -2,3 +2,7 @@
 export {}
 type Array<T> = { own: T }
 schema S { readonly a: Array<number> }
+
+// Appendix B: EK2109 — spec-rule: docs/design/src/900-appendices.md#fcb9969631b13978
+
+// Appendix B: retained diagnostic assignments — spec-rule: docs/design/src/900-appendices.md#cdec71a264c09607
