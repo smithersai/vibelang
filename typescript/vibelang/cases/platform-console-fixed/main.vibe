@@ -12,5 +12,3 @@ export effect function report(name: string): number!never!never {
 export effect function main(): number!never!never {
   return try report("Ada")
 }
-
-// VIP-33 console migration produces Console.log in effect code; rule: docs/design/vips/0033-platform-stdlib.md#25bcc63572d8add7

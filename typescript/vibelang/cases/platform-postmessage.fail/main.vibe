@@ -5,4 +5,3 @@ export const bracket = globalThis["postMessage"]
 export const local = (postMessage: () => number) => postMessage()
 export const localGlobal = (globalThis: { postMessage: () => number }) => globalThis.postMessage()
 
-// VIP-33 web I/O and host-state references require Effect services; rule: docs/design/vips/0033-platform-stdlib.md#971a3048add093c4

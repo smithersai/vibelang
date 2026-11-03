@@ -270,3 +270,5 @@ func TestBindingRenameLegacyScopeMetadata(t *testing.T) {
 // VIP-7 rename only original binding references, preserving parameter/local/else/closure fallback; rule: docs/design/vips/0007-match.md#fc189447d5899233
 // VIP-7 rename only original binding references, preserving parameter/local/else/closure fallback; rule: docs/design/vips/0007-match.md#7e36e007232676f1
 // VIP-7 rename only original binding references, preserving parameter/local/else/closure fallback; rule: docs/design/vips/0007-match.md#c786f8ffb7193c83
+
+// VIP-16 variant rename follows resolved bindings without changing sibling constructors; rule: docs/design/vips/0016-data-declarations.md#39d812e34a5dd91e

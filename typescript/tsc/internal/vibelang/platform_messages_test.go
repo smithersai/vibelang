@@ -334,3 +334,9 @@ func TestPlatformServicesTable(t *testing.T) {
 		}
 	}
 }
+
+// VIP-33 platform diagnostics name the replacement service or TypeScript boundary; rule: docs/design/vips/0033-platform-stdlib.md#af700d45440d7ea1
+
+// VIP-33 platform diagnostics name the replacement service or TypeScript boundary; rule: docs/design/vips/0033-platform-stdlib.md#62d8805f69f4827a
+
+// VIP-33 platform diagnostics name the replacement service or TypeScript boundary; rule: docs/design/vips/0033-platform-stdlib.md#7d95861f74bde022

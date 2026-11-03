@@ -1,0 +1,7 @@
+// expect: TS2709
+import { Effect } from "effect"
+export let invalid: Effect<number>
+
+// VIP-3 explicit module namespace cannot be a generic type; rule: docs/design/vips/0003-effect-type-shorthand.md#70d0c61bc23b3403
+
+// VIP-3 namespace-as-type use reports native TS2709; rule: docs/design/vips/0003-effect-type-shorthand.md#c04f68c160b79bb9

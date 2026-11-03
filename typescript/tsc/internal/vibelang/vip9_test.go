@@ -115,3 +115,6 @@ func TestVIP9DefaultValueMigrationRewritesReads(t *testing.T) {
 		}
 	}
 }
+
+// VIP-9 abstract-service and default-thunk migration, including corresponding reads; rule: docs/design/vips/0009-service-declarations.md#2af24879e9d81ad6
+// VIP-9 abstract-service and default-thunk migration, including corresponding reads; rule: docs/design/vips/0009-service-declarations.md#c375919198020a1c

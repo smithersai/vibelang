@@ -12,7 +12,3 @@ export effect function report(name: string): number!never!never {
 export effect function main(): number!never!never {
   return try report("Ada")
 }
-
-// VIP-33 console and timers require Effect replacements; rule: docs/design/vips/0033-platform-stdlib.md#093c988811ed784d
-
-// VIP-33 console and timers require Effect replacements; rule: docs/design/vips/0033-platform-stdlib.md#32aac479219e72bf

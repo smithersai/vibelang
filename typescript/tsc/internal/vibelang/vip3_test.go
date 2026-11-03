@@ -52,3 +52,5 @@ func TestVIP3RequirementMigrationSkipsUnnameableRequirements(t *testing.T) {
 		}
 	}
 }
+
+// VIP-3 requirement migration warning and mechanical fix, cycles and unnameable controls; rule: docs/design/vips/0003-effect-type-shorthand.md#26cd1ca9d30326dc

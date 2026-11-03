@@ -1,0 +1,18 @@
+import { Context, Effect } from "effect"
+import { Document } from "vibelang-runtime/experimental"
+type Equal<A, B> = (<T>() => T extends A ? 1 : 2) extends (<T>() => T extends B ? 1 : 2) ? true : false
+type Shape = Context.Service.Shape<typeof Document.Document>
+type Actual = Effect.Success<Shape["current"]>
+export const exactDocument: Equal<Actual, globalThis.Document> = true
+export const eventMap: Equal<Parameters<Actual["getElementById"]>, [elementId: string]> = true
+export effect function main(): number!! { return 1 }
+
+// VIP-9 Document.current retains the complete DOM Document type and its members.
+
+// VIP-9 document capability preserves native Document identity and event-map type; rule: docs/design/vips/0009-service-declarations.md#99e9cd6fc1fb1b10
+
+// VIP-9 document capability preserves native Document identity and event-map type; rule: docs/design/vips/0009-service-declarations.md#57ce4b3d2fa39f54
+
+// VIP-9 document capability preserves native Document identity and event-map type; rule: docs/design/vips/0009-service-declarations.md#529263766efb8f44
+
+// VIP-9 document capability preserves native Document identity and event-map type; rule: docs/design/vips/0009-service-declarations.md#6d621961f08378b0

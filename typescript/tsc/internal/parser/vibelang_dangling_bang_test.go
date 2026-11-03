@@ -52,3 +52,9 @@ func TestVibeLangDanglingBang(t *testing.T) {
 		})
 	}
 }
+
+// VIP-3 VIP-3 slot line boundaries and grouped multiline operand; rule: docs/design/vips/0003-effect-type-shorthand.md#e20b7a8d84b7cb50
+
+// VIP-3 VIP-3 slot line boundaries and grouped multiline operand; rule: docs/design/vips/0003-effect-type-shorthand.md#e28967693d877faa
+
+// VIP-3 VIP-3 slot line boundaries and grouped multiline operand; rule: docs/design/vips/0003-effect-type-shorthand.md#1bf4a9f675b4b066

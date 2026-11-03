@@ -16,6 +16,7 @@ import (
 
 // vibelang --fix writes platform-console-fixed for platform-console.fail,
 // apart from the expectation line, and fixing the twin changes nothing.
+// VIP-33 console migration produces Console.log in effect code; rule: docs/design/vips/0033-platform-stdlib.md#25bcc63572d8add7
 func TestPlatformConsoleCase(t *testing.T) {
 	root, err := filepath.Abs("../../../..")
 	if err != nil {

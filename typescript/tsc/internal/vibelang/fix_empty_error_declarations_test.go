@@ -74,3 +74,5 @@ func TestFixExplicitEmptyErrorDeclarations(t *testing.T) {
 		})
 	}
 }
+
+// VIP-13 declaration-preserving refusal for native explicit empty payload; rule: docs/design/vips/0013-error-declarations.md#ce15d244fbb608cf

@@ -1,0 +1,8 @@
+import { imported } from "./imported.js"
+type Effect<A,E=never,R=never>={value:A;error?:E;requirements?:R}
+export const local:Effect<number>={value:1}
+export effect function main() {return [local.value,imported.value]}
+
+// VIP-3 local and imported Effect types retain ordinary TypeScript meaning; rule: docs/design/vips/0003-effect-type-shorthand.md#ff9d7b53a8806655
+
+// VIP-3 local and imported Effect types retain ordinary TypeScript meaning; rule: docs/design/vips/0003-effect-type-shorthand.md#125a3ef66524afe1

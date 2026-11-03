@@ -30,3 +30,5 @@ export effect function main() {
 }
 
 // VIP-3 success type precedes the error and requirement slots; rule: docs/design/vips/0003-effect-type-shorthand.md#505fe2a6bf85513b
+
+// VIP-3 shorthand expands to the qualified namespace type; rule: docs/design/vips/0003-effect-type-shorthand.md#f91800a47a00914a

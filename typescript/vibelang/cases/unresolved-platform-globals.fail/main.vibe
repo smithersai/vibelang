@@ -11,3 +11,5 @@ export const array = Array
 // VIP-33 absent host declarations retain native unresolved-name errors; rule: docs/design/vips/0033-platform-stdlib.md#46090c108c8e0c67
 
 // VIP-33 absent host declarations retain native unresolved-name errors; rule: docs/design/vips/0033-platform-stdlib.md#31e6fa91288d10ee
+
+// VIP-33 unresolved names preserve TypeScript errors and no invented host binding; rule: docs/design/vips/0033-platform-stdlib.md#5e8c9e97997de2a3

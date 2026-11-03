@@ -244,3 +244,5 @@ func TestEffectNameCollisionsDocumented(t *testing.T) {
 		t.Errorf("the page's collision table is\n%s\nthe installed effect gives\n%s", strings.Join(got, "\n"), strings.Join(want, "\n"))
 	}
 }
+
+// VIP-33 implicit subpath namespaces follow Effect exports; rule: docs/design/vips/0033-platform-stdlib.md#e6ded71d7db14c05

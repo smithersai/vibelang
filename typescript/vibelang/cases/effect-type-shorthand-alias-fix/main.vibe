@@ -1,0 +1,20 @@
+import { Effect } from "effect"
+export effect function main(): number!! { return 1 }
+
+// VIP-3 legacy warning and repair preserve scope grouping defaults heritage and idempotence; rule: docs/design/vips/0003-effect-type-shorthand.md#b157b5606cfcc948
+
+// VIP-3 legacy warning and repair preserve scope grouping defaults heritage and idempotence; rule: docs/design/vips/0003-effect-type-shorthand.md#914e7a31424a9b2c
+
+// VIP-3 legacy warning and repair preserve scope grouping defaults heritage and idempotence; rule: docs/design/vips/0003-effect-type-shorthand.md#a95470ce8293bd46
+
+// VIP-3 legacy warning and repair preserve scope grouping defaults heritage and idempotence; rule: docs/design/vips/0003-effect-type-shorthand.md#57f59657c16eb830
+
+// VIP-3 legacy warning and repair preserve scope grouping defaults heritage and idempotence; rule: docs/design/vips/0003-effect-type-shorthand.md#56b1efbcbde49ef0
+
+// VIP-3 legacy warning and repair preserve scope grouping defaults heritage and idempotence; rule: docs/design/vips/0003-effect-type-shorthand.md#44ca8ba26c9c3b94
+
+// VIP-3 legacy warning and repair preserve scope grouping defaults heritage and idempotence; rule: docs/design/vips/0003-effect-type-shorthand.md#ea8ebf94fbeac5f2
+
+// VIP-3 legacy warning and repair preserve scope grouping defaults heritage and idempotence; rule: docs/design/vips/0003-effect-type-shorthand.md#722bb3afcb7245a2
+
+// VIP-3 legacy warning and repair preserve scope grouping defaults heritage and idempotence; rule: docs/design/vips/0003-effect-type-shorthand.md#065fd45133e7c491

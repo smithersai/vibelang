@@ -1,0 +1,4 @@
+// expect: TS2304
+export let invalid: Effect<number>
+
+// VIP-3 absent Effect binding uses native name resolution with implicit modules disabled; rule: docs/design/vips/0003-effect-type-shorthand.md#7016d3e891234dcf

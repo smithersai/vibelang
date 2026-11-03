@@ -1,0 +1,4 @@
+import { Effect } from "effect"
+type Equal<A,B> = (<T>()=>T extends A?1:2) extends (<T>()=>T extends B?1:2)?true:false
+export const alias: Equal<number!!, Effect.Effect<number>> = true
+export effect function main(): number!! { return 1 }
