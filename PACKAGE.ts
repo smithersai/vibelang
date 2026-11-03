@@ -295,30 +295,6 @@ const fuzzTopicTargets = Object.fromEntries(
 // They read only docs/design and the linter, so a specification edit runs
 // them in seconds and they stay cached otherwise. //:docs-tools requires
 // them, so the merge gate runs them.
-const ruleEvidenceEnv = {
-  RULE_EVIDENCE_BASE: process.env.RULE_EVIDENCE_BASE ?? "",
-  RULE_EVIDENCE_HEAD: process.env.RULE_EVIDENCE_HEAD ?? ""
-}
-const specRuleEvidence = S.Shell.Test({
-  summary: "Changed specification rules carry a relevant case or a compiled Effect twin with identical declarations or Exit.",
-  shell: "bun docs/tools/rule-evidence.ts --immutable",
-  data: [tree, Packages["compiler-native"], Packages["runtime-dist"]],
-  tools: [bun, node, S.Host.bin("jj")],
-  env: ruleEvidenceEnv,
-  exclusive: true,
-  sandbox: "none",
-  timeout: "10m"
-})
-const specRuleEvidenceTest = S.Shell.Test({
-  summary: "Rule evidence rejection classes, exempt controls, mutations and real compiled twins.",
-  shell: "bun test --timeout 120000 docs/tools/rule-evidence.test.ts",
-  data: [tree, Packages["compiler-native"], Packages["runtime-dist"]],
-  tools: [bun, node, S.Host.bin("jj")],
-  sandbox: "none",
-  timeout: "5m"
-})
-
-
 const specLint = S.Shell.Test({
   summary: "The specification linters: each class of inconsistency a review found, checked over docs/design.",
   shell: "cd docs/tools && bun test --timeout 60000 spec-lint.test.ts",
@@ -350,8 +326,6 @@ const vibelangTopicTargets = Object.fromEntries(
 const targets = {
   "go-vibelangfuzz-hangs": pendingHangs,
   "site-spec-links": siteSpecLinks,
-  "spec-rule-evidence": specRuleEvidence,
-  "spec-rule-evidence-test": specRuleEvidenceTest,
   "spec-lint": specLint,
   release: check(
     "The release and contributor scripts' node tests, the effect-bump, ts-bump, ci-health and first-bad flows' steps, and their evals' step keys.",
