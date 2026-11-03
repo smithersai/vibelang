@@ -81,7 +81,7 @@ func FuzzDoDeclarationBytes(f *testing.F) {
 			counterpart = "export function update(n: number) { if (n > 0) return 'early'; const value = n; return value }"
 			if key == "async-inferred-return" {
 				source = strings.Replace(source, "export function", "export async function", 1)
-				counterpart = strings.Replace(counterpart, "export function", "export async function", 1)
+				counterpart = strings.Replace(counterpart, "export function", "/** @throws {never} */\nexport async function", 1)
 			}
 		default:
 			key = "foldkit-match-return"
