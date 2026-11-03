@@ -499,7 +499,8 @@ sh scripts/ci.sh //:spec-tests --jobs 8
   :compiler-test                node --test (compiler package)
   :migrate-test                 node --test (the migrate and convert flows)
   :vite-test :unplugin-test      the bundler plugins' test/run.sh (source maps, builds, watch)
-//                              checks that read the whole repository
+//                              repository and focused checks
+  :create-cli                   node --test (fast scaffolder CLI unit tests; no compiler or install)
   :tree                         Filegroup: every file
   :go-vibelang :go-vibelang-race :go-vibelangmapper :go-vibelangfuzz
   :go-vibelangfuzz-hangs        bounded child probes for stale hang markers (merge gate)
@@ -992,8 +993,12 @@ The mapper runtime parity column requires stock TypeScript to exit `0` before it
   installs its own. Its targets are declared in `packages/PACKAGE.ts`.
 - **`:tree` is coarse.** Any change reruns the repository-wide checks. Naming
   what each one reads would let a case change skip the docs checks.
-- **Not yet in the graph.** `ts-mapper`, `create-vibelang`, the
-  editors, the examples and `scripts/e2e.sh` run outside it.
+- **Not yet in the graph.** `ts-mapper`, the editors, the examples and
+  `scripts/e2e.sh` run outside it. The `create-vibelang` install/build,
+  package-manager property and formatting fixtures also require their own
+  setup. Its dependency-free CLI unit suite runs separately in
+  `//:create-cli`, keyed on the CLI, template,
+  manifest, test file and documentation Essentials.
 
 The [specification contracts](#specification-contracts) run in `//:spec-lint`. A new class of inconsistency gets a rule and a failing-defect test in the commit that fixes it.
 

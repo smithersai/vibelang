@@ -360,6 +360,22 @@ const sidecarRootContract = S.Shell.Test({
 const goTestProgress = S.Filegroup({ srcs: [...S.glob(["scripts/go-test-progress.mjs"])] })
 
 const targets = {
+  // Root ownership keeps template globs in scope without introducing a new
+  // package boundary that would narrow the repository-wide tree checks.
+  "create-cli": S.Shell.Test({
+    summary: "Run the scaffolder's fast CLI unit tests.",
+    shell: "node --test packages/create-vibelang/test/create.test.mjs",
+    data: [
+      S.file("packages/create-vibelang/package.json"),
+      S.file("packages/create-vibelang/bin/create-vibelang.mjs"),
+      S.file("packages/create-vibelang/test/create.test.mjs"),
+      S.glob("templates/app/**"),
+      S.file("docs/user/llms-essentials.md")
+    ],
+    tools: [node],
+    sandbox: "none",
+    timeout: "1m"
+  }),
   "spec-coverage-census": S.Shell.Run({
     summary: "Inventory main rules with passing, pending, missing and tag-linked evidence.",
     shell: 'bun docs/tools/coverage-census.ts --revision "$CENSUS_REVISION" --out "${CENSUS_OUT:-$HOME/vibe/review-spec/coverage}"',

@@ -40,6 +40,7 @@ const runs = [
   [".smithers/flows/first-bad/test/*.test.mjs", "PACKAGE.ts", ".smithers/flows/first-bad/test/*.test.mjs"],
   [".smithers/flows/test/*.test.mjs", "PACKAGE.ts", ".smithers/flows/test/*.test.mjs"],
   ["packages/vite/test/*.test.mjs", "packages/vite/test/run.sh", "test/*.test.mjs"],
+  ["packages/create-vibelang/test/create.test.mjs", "PACKAGE.ts", "node --test packages/create-vibelang/test/create.test.mjs"],
   // A fixture project: coverage.test.mjs runs Vitest over it.
   ["packages/vite/test/coverage/test/*.test.ts", "packages/vite/test/coverage.test.mjs", "test/coverage"],
   // run.sh names each file on its node --test line; a file it leaves out runs nowhere.
@@ -59,7 +60,10 @@ const unrun = [
   ["editors/vscode/**", "validate.sh's vscode step runs them, outside the build graph"],
   ["packages/ts-mapper/test/**", "validate.sh's go step runs them, outside the build graph"],
   ["packages/compiler/test/eslint/*.test.mjs", "run.sh installs its own lockfile; remaining failures cover synthesized match reports, corpus parsing and declaration token ranges; the effect-modifier oracle runs in compiler-test"],
-  ["packages/create-vibelang/test/*.test.mjs", "1 of 29 fails on main: the scaffold's main reports EK3205"],
+  ["packages/create-vibelang/test/e2e.test.mjs", "requires workspace compiler/runtime/Vite setup; scripts/e2e.sh covers the install/build/run path"],
+  ["packages/create-vibelang/test/format.test.mjs", "requires VIBELANG_DPRINT and the built compiler formatting plugin"],
+  ["packages/create-vibelang/test/create.property.test.mjs", "requires real packed compiler/runtime packages and package-manager installs for the scaffold build matrix"],
+  ["packages/create-vibelang/test/yarn-classic.test.mjs", "requires the packed toolchain and Yarn Classic installation fixture"],
   ["site/scripts/patch-vocs-search.test.mjs", "requires the site's TypeScript and Vocs vendor files"],
   ["site/scripts/cloudflare-stack.test.mjs", "requires the site's TypeScript install"],
   ["site/scripts/deploy-load.test.mjs", "requires the site's Alchemy install"],
@@ -122,4 +126,15 @@ for (const [name, file] of [
   const [, runner, command] = entry
   assert.equal(runner, "PACKAGE.ts")
   assert.ok(read(runner).includes(command), "the declared release command must select the controls")
+})
+
+test("the scaffold CLI unit suite has a fast native Node graph runner", () => {
+  const file = "packages/create-vibelang/test/create.test.mjs"
+  const entry = runs.find(([glob]) => matcher(glob).test(file))
+  assert.ok(entry, file + " has no graph runner")
+  const [, runner, command] = entry
+  assert.equal(runner, "PACKAGE.ts")
+  assert.equal(command, "node --test packages/create-vibelang/test/create.test.mjs")
+  assert.ok(read(runner).includes(command), "the target must run the actual CLI unit suite")
+  assert.ok(!unrun.some(([glob]) => matcher(glob).test(file)), "setup-dependent exceptions must not hide the fast CLI suite")
 })
