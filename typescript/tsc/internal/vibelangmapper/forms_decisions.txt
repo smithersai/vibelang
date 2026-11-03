@@ -1433,7 +1433,7 @@ typescript/vibelang/cases/cov-running-catch-chains/main.vibe:15:16 lambda effect
 typescript/vibelang/cases/cov-running-catch-chains/main.vibe:15:40 lambda effectFn table
 typescript/vibelang/cases/cov-running-catch-chains/main.vibe:15:72 lambda effectFn table
 typescript/vibelang/cases/cov-running-catch-chains/main.vibe:16:17 lambda effectFn table
-typescript/vibelang/cases/cov-running-catch-chains/main.vibe:16:40 lambda effectFn keyword
+typescript/vibelang/cases/cov-running-catch-chains/main.vibe:16:40 lambda effectFn table
 typescript/vibelang/cases/cov-running-catch-chains/main.vibe:16:53 lambda effectFn table
 typescript/vibelang/cases/cov-running-catch-chains/main.vibe:16:76 lambda effectFn table
 typescript/vibelang/cases/cov-running-catch-chains/main.vibe:17:18 lambda effectFn table

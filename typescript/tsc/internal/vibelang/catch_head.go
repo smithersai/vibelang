@@ -7,9 +7,8 @@ import (
 
 // A catch protects only the Effect produced by its head. Source execution
 // in that head belongs to the surrounding activation, before recovery starts.
-// Parenthesized try heads retain their separate operand-type path for now.
 func inlineCatchLeft(fn *ast.Node) bool {
-	return fn != nil && isCatchLeftFunction(fn) && fn.Body() != nil && !isTry(ast.SkipParentheses(fn.Body()))
+	return fn != nil && isCatchLeftFunction(fn) && fn.Body() != nil
 }
 
 func inlineCatchHead(node *ast.Node) bool {

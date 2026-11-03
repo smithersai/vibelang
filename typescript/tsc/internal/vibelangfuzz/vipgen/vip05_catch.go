@@ -488,3 +488,41 @@ func init() {
 		},
 	})
 }
+
+// Parenthesized try evaluates an outer Effect first. The Effect it succeeds
+// with supplies the caught channels, independently of that outer execution.
+func init() {
+	Register(&Construct{
+		Key: "vip05.catch-returned-effect", VIP: 5,
+		Requires: []string{"vip01.effect-function", "vip02.effect-block", "vip05.try"},
+		Citations: []Citation{{VIP: 5, Template: "yield* Effect.catch(‹head›, ‹handler›)",
+			Quote:   "`e catch y` runs `e`, and on a failure evaluates `y`",
+			Reading: "The Effect.catch argument is the successful value of the parenthesized yield* execution. Its inner error channel belongs to the handler; the outer execution happens before recovery starts.",
+		}},
+		Focus: func(g *Gen, s *Scope) []Stmt {
+			g.UseEffect()
+			g.UseModule("Exit", true)
+			make, first, second := g.Name("make"), g.Name("first"), g.Name("second")
+			vibe := fmt.Sprintf("function %s(bad:boolean):Effect.Effect<Effect.Effect<number,string>,string>{ev(\"make\");return bad?Effect.fail(\"outer\"):Effect.succeed(Effect.fail(\"inner\"))}; ", make)
+			ref := fmt.Sprintf("function %s(bad){ev(\"make\");return bad?Effect.fail(\"outer\"):Effect.succeed(Effect.fail(\"inner\"))}; ", make)
+			handlerV := "e => {ev(\"handler\");return e.length}"
+			handlerT := "e => {ev(\"handler\");return Effect.succeed(e.length)}"
+			if g.Chance(2) {
+				handlerV = "effect (e) => {ev(\"handler\");return e.length}"
+				handlerT = "e => Effect.gen(function*(){ev(\"handler\");return e.length})"
+			}
+			extra := g.Chance(2)
+			for i, out := range []string{first, second} {
+				bad := []string{"true", "false"}[i]
+				head := "(try " + make + "(" + bad + "))"
+				if extra {
+					head = "(" + head + ")"
+				}
+				vibe += fmt.Sprintf("const %s=try Effect.exit(effect {return %s catch %s}); ", out, head, handlerV)
+				ref += fmt.Sprintf("const %s=yield* Effect.exit(Effect.gen(function*(){return yield* Effect.catch(yield* %s(%s),%s)})); ", out, make, bad, handlerT)
+			}
+			end := fmt.Sprintf("return [Exit.isSuccess(%s)?%s.value:-1,Exit.isSuccess(%s)?%s.value:-2]", first, first, second, second)
+			return []Stmt{&catchEdge{vibe: vibe + end, ref: ref + end}}
+		},
+	})
+}

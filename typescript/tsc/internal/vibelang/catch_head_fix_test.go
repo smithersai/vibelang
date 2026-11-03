@@ -9,6 +9,7 @@ import (
 func TestCatchHeadPreservingFix(t *testing.T) {
 	for _, test := range []struct{ name, head string }{
 		{"number", "identity(try Effect.succeed(1))"},
+		{"parenthesized-try", "(try Effect.succeed(1))"},
 		{"failure", "identity(try Effect.fail(\"outer\"))"},
 		{"comment", "identity(/* keep */ try Effect.succeed(1))"},
 		{"chain", "(Effect.fail(1) catch effect ()=>7)"},

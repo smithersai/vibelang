@@ -139,6 +139,8 @@ Write `try x` or `x catch h`. An unparenthesized `try`, `fork` or `join` reached
 
 A `catch` protects the Effect its head produces. In `decode(try parse(input)) catch (e) => fallback(e)`, a failure from `parse` escapes before the catch is installed; only a failure from the returned `decode` Effect reaches the handler. To protect both executions, write `(effect { return try decode(try parse(input)) }) catch (e) => fallback(e)`. If an older catch head executes code and returns a plain value, `--fix` wraps the head in an `effect` block to preserve its previous recovery boundary. Heads with jumps, owned resources or narrowed property reads can need a manual rewrite.
 
+For `(try x) catch (e) => fallback(e)`, `x` must succeed with an Effect. The handler receives that returned Effect's error type; an error from executing `x` still escapes before recovery. For example, `(try Effect.succeed(Effect.fail("inner"))) catch (e) => e.length` returns `5`.
+
 ---
 
 The matching Effect page: [effect.website/docs/v4/error-management/fallback](https://effect.website/docs/v4/error-management/fallback/)

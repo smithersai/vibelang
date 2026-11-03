@@ -1,3 +1,4 @@
+// expect-result: [7,8,9]
 // Chapter 2: `catch` sits beside `??` in ECMAScript's precedence chain: it has the precedence of `??` and is left
 // docs/design/src/002-running.md#bf5faabc49d93845
 // Chapter 2: So `a catch effect (e) => b catch () => c` means `a catch (effect (e) => (b catch (() => c)))`.

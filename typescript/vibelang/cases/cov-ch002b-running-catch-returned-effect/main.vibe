@@ -1,3 +1,4 @@
+// expect-result: 5
 // Chapter 002: returned Effect catch Exit parity; docs/design/src/002-running.md#8f756815d1ebf847
 // Chapter 002: returned Effect catch Exit parity; docs/design/src/002-running.md#b3d137fbf3475f80
 // Chapter 002: returned Effect catch Exit parity; docs/design/src/002-running.md#606467dced3cce41
