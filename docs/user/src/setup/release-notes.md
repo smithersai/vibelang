@@ -35,6 +35,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - Migrated helpers with an inferred return could expand a written `ReturnType` assertion in declarations. They now preserve the assertion and its imported name.
 
+- A closure in the iterable expression of `for concurrent` could not refer to the loop-head binding, or captured an outer binding instead. It now retains the uninitialized head binding, including destructuring, so calling it after the loop throws `ReferenceError`; a written limit still reads the enclosing scope. When the corrected head type rejects an old outer capture, `--fix` renames the item binding and its uses while preserving that outer capture.
+
 - The grammar admission audit could stop when an unsupported `import.meta` value occupied a static import or export specifier. It now records that diagnostic gap while keeping ordinary metadata reads and dynamic imports as controls.
 
 - The grammar admission audit could mistake valid bitwise AND and XOR expressions for undefined syntax. It now derives these TypeScript expressions, including their continuations after an `is` pattern.
@@ -219,6 +221,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 ### Upgrade from 0.0.11
 | Before | After and repair |
 | --- | --- |
+| RHS closures in `for concurrent` that formerly captured an outer name with an incompatible type | `--fix` renames the item binding and its uses, keeping the RHS closure on the original outer binding |
 | Extra modifiers or `?`/`!` on a whole-shape service’s `key` or `defaultValue`, or a default factory without `readonly` | `EK0902`: run `vibelang --fix` to remove extra header syntax while retaining an existing `readonly` initializer. Supply a missing factory explicitly; adding `readonly` to a mutable default chooses `Context.Reference` fallback behavior and needs a manual migration. |
 | An index signature or constructor in `service Name: Type { … }` | `EK0902`: put the signature in `Type` and create the implementation in a layer. Move constructor behavior explicitly; the compiler does not discard or relocate it. |
 

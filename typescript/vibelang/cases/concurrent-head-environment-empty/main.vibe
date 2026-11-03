@@ -1,0 +1,20 @@
+// expect-result: {"reads":["ReferenceError","ReferenceError","ReferenceError"],"kept":["kept",9],"count":0}
+import { Effect } from "effect"
+
+export effect function main() {
+  const probes: Array<() => unknown> = []
+  const $concurrentHead1 = "kept"
+  const $concurrentLimit2 = 9
+  let count = 0
+  for (const round of [1, 2]) {
+    for concurrent(1) (let value of (probes.push(() => value), [] as number[])) { count++ }
+  }
+  for concurrent(1) (const value of ["outer"]) {
+    for concurrent (const value of (probes.push(() => value), [] as number[])) { count++ }
+  }
+  return try Effect.sync(() => ({
+    reads: probes.map((read) => { try { read(); return "read" } catch (e) { return (e as Error).name } }),
+    kept: [$concurrentHead1, $concurrentLimit2],
+    count
+  }))
+}

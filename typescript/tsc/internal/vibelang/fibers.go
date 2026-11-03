@@ -605,12 +605,15 @@ func concurrentContinueEscapes(node, body *ast.Node) bool {
 		}
 		if parent.Kind == ast.KindLabeledStatement && parent.Label().Text() == label.Text() {
 			target := parent.Statement()
-			for target.Kind == ast.KindLabeledStatement {
+			for ast.IsLabeledStatement(target) {
 				target = target.Statement()
 			}
-			// A label on this for concurrent names the item itself.
-			return outside && target != body.Parent.Parent.Parent && (ast.IsIterationStatement(target, false /*lookInLabeledStatements*/) ||
-				target.Kind == ast.KindExpressionStatement && fiberHelper(target.Expression()) == "$forConcurrent")
+			// A source label on this item stays within it. Generated head
+			// and limit blocks do not change the source loop it names.
+			if call := parser.VibeLangConcurrentCall(target); call != nil {
+				return outside && call != body.Parent.Parent
+			}
+			return outside && ast.IsIterationStatement(target, false /*lookInLabeledStatements*/)
 		}
 	}
 	return false

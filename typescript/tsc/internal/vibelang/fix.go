@@ -660,6 +660,7 @@ func FixProjectWithOptions(ctx context.Context, fs vfs.FS, libraryPath tspath.Ro
 			} else if options.VIPOnly {
 				p = fileFixes(ctx, program, file, g.refused, vipMigrationFixCodes)
 				p = p.withFixes(fiberNameMigrationFixes(ctx, program, file, g.refused))
+				p = p.withFixes(concurrentHeadMigrationFixes(ctx, program, file, g.refused))
 				p = p.withFixes(preludeShorthandMigrationFixes(ctx, program, file, g.refused))
 			} else {
 				p = trustedEmptyMigrationFixes(ctx, program, file, g.refused)
@@ -673,6 +674,7 @@ func FixProjectWithOptions(ctx context.Context, fs vfs.FS, libraryPath tspath.Ro
 				p = p.withFixes(bindingRenameMigrationFixes(ctx, program, file, g.refused))
 				p = p.withFixes(collectionBindingMigrationFixes(ctx, program, file, g.refused))
 				p = p.withFixes(fiberNameMigrationFixes(ctx, program, file, g.refused))
+				p = p.withFixes(concurrentHeadMigrationFixes(ctx, program, file, g.refused))
 				p = p.withFixes(localServiceShapeMigrationFixes(ctx, program, file, g.refused))
 				p = p.withFixes(preludeShorthandMigrationFixes(ctx, program, file, g.refused))
 				p = p.withFixes(mutableRelicFixes(file, g.refused))

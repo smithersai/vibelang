@@ -15,6 +15,7 @@ func TestFixDoConcurrentEnding(t *testing.T) {
 		"for concurrent(2) (const n of [1]) n;",
 		"if (true) for concurrent (const n of [1]) n; else 3;",
 		"label: for concurrent (const n of [1]) { n }",
+		"outer: inner: for concurrent(2) (const n of [1]) { n }",
 		"{ for concurrent (const n of [1]) { n } }; {};",
 	} {
 		t.Run(body, func(t *testing.T) {

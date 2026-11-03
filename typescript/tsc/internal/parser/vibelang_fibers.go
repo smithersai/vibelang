@@ -644,7 +644,70 @@ func (p *Parser) parseVibeLangConcurrentFor(pos int) *ast.Node {
 	}
 	callee := p.vibelangIntrinsic("$forConcurrent", anchor)
 	call := p.vibelangSpanning(p.factory.NewCallExpression(callee, nil, nil, p.newNodeList(core.NewTextRange(items.Pos(), body.End()), []*ast.Node{items, limit, arrow}), ast.NodeFlagsNone), core.NewTextRange(anchor.Pos(), body.End()))
-	return p.finishNode(p.factory.NewExpressionStatement(call), pos)
+	statement := p.finishNode(p.factory.NewExpressionStatement(call), pos)
+	if p.opts.VibeLangDoAsFunction {
+		return statement
+	}
+	return p.concurrentHeadEnvironment(statement, binding, parameter, declarationKind)
+}
+
+// concurrentHeadEnvironment reuses the native-loop TDZ cells from do
+// lowering (VIP-19). The item callback shadows these never-initialized
+// cells. A written limit runs in the enclosing scope, before entering them.
+func (p *Parser) concurrentHeadEnvironment(statement, binding, parameter *ast.Node, kind ast.NodeFlags) *ast.Node {
+	call := statement.Expression()
+	args := call.Arguments()
+	p.vibelangMatchTemps++
+	id := strconv.Itoa(p.vibelangMatchTemps)
+	label := p.mTemp("$concurrentHead"+id, statement.Loc)
+	leave := p.vibelangSpanning(p.factory.NewBreakStatement(p.mTemp(label.Text(), statement.Loc)), statement.Loc)
+	statements := []*ast.Node{statement, leave}
+	if p.vibelangHeadCells == nil {
+		p.vibelangHeadCells = map[*ast.Node]*ast.Node{}
+	}
+	var cells func(*ast.Node)
+	cells = func(source *ast.Node) {
+		name := source.Name()
+		if ast.IsIdentifier(name) {
+			cell := p.mConst(p.mIdent(name.Text(), name.Loc), ast.NodeFlagsLet, nil, name.Loc)
+			decl := cell.AsVariableStatement().DeclarationList.AsVariableDeclarationList().Declarations.Nodes[0]
+			if kind&ast.NodeFlagsConst != 0 {
+				decl.Flags |= ast.NodeFlagsVibeLangConst
+			}
+			decl.AsVariableDeclaration().ExclamationToken = p.vibelangSynthesized(p.factory.NewToken(ast.KindExclamationToken), name.Loc)
+			p.overrideParentInImmediateChildren(decl)
+			p.vibelangHeadCells[decl] = source
+			statements = append(statements, cell)
+		} else if ast.IsBindingPattern(name) {
+			for _, element := range name.AsBindingPattern().Elements.Nodes {
+				if element.Kind != ast.KindOmittedExpression {
+					cells(element)
+				}
+			}
+		}
+	}
+	if ast.IsIdentifier(binding) {
+		cells(parameter)
+	} else {
+		for _, element := range binding.AsBindingPattern().Elements.Nodes {
+			if element.Kind != ast.KindOmittedExpression {
+				cells(element)
+			}
+		}
+	}
+	head := p.vibelangSpanning(p.factory.NewLabeledStatement(label, p.mBlock(statements, statement.Loc)), statement.Loc)
+	limit := args[1]
+	if limit.Flags&ast.NodeFlagsReparsed != 0 {
+		return head
+	}
+	name := "$concurrentLimit" + id
+	declaration := p.mConst(p.mTemp(name, limit.Loc), ast.NodeFlagsConst, limit, limit.Loc)
+	ref := p.mTemp(name, limit.Loc)
+	// It still represents a written limit for source-aware checks.
+	ref.Flags &^= ast.NodeFlagsReparsed
+	args[1] = ref
+	p.overrideParentInImmediateChildren(call)
+	return p.mBlock([]*ast.Node{declaration, head}, statement.Loc)
 }
 
 // rewriteConcurrentJumps replaces each unlabeled continue in node that would
@@ -740,19 +803,45 @@ func (p *Parser) rewriteConcurrentLabelContinues(node *ast.Node) {
 	if !p.isVibeLangFile() {
 		return
 	}
-	statement := node.Statement()
-	for ast.IsLabeledStatement(statement) {
-		statement = statement.Statement()
-	}
-	if !ast.IsExpressionStatement(statement) {
-		return
-	}
-	call := statement.Expression()
-	if !ast.IsCallExpression(call) || isIntrinsicCall(call) != "$forConcurrent" || len(call.Arguments()) != 3 {
+	call := VibeLangConcurrentCall(node.Statement())
+	if call == nil {
 		return
 	}
 	if p.rewriteConcurrentJumps(call.Arguments()[2].Body(), false, node.Label().Text()) {
 		// The item return still references this source label for unused-label checks.
 		node.Label().Flags |= ast.NodeFlagsVibeLang
 	}
+}
+
+// VibeLangConcurrentCall finds a source concurrent loop through the generated
+// limit and RHS head environment. Ordinary source blocks are not transparent.
+func VibeLangConcurrentCall(statement *ast.Node) *ast.Node {
+	for statement != nil {
+		switch {
+		case ast.IsLabeledStatement(statement):
+			statement = statement.Statement()
+		case ast.IsBlock(statement):
+			statements := statement.Statements()
+			if len(statements) == 2 && ast.IsVariableStatement(statements[0]) &&
+				ast.IsLabeledStatement(statements[1]) && statements[1].Label().Flags&ast.NodeFlagsReparsed != 0 {
+				statement = statements[1]
+			} else if len(statements) >= 2 && ast.IsExpressionStatement(statements[0]) &&
+				ast.IsCallExpression(statements[0].Expression()) && isIntrinsicCall(statements[0].Expression()) == "$forConcurrent" &&
+				statements[1].Kind == ast.KindBreakStatement && statements[1].Label() != nil &&
+				statements[1].Label().Flags&ast.NodeFlagsReparsed != 0 {
+				statement = statements[0]
+			} else {
+				return nil
+			}
+		case ast.IsExpressionStatement(statement):
+			call := statement.Expression()
+			if ast.IsCallExpression(call) && isIntrinsicCall(call) == "$forConcurrent" && len(call.Arguments()) == 3 {
+				return call
+			}
+			return nil
+		default:
+			return nil
+		}
+	}
+	return nil
 }

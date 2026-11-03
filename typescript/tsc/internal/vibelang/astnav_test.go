@@ -73,5 +73,6 @@ func TestVibeLangWords(t *testing.T) {
 
 	// Any other word stands for the form that contains it.
 	assert.Equal(t, at("join fiber", 1).Kind, ast.KindCallExpression)
+	assert.Equal(t, at("concurrent(2)", 0).Kind, ast.KindCallExpression)
 	assert.Equal(t, at("concurrent(2)", 1).Kind, ast.KindCallExpression)
 }

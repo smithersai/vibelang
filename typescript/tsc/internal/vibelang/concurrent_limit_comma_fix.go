@@ -5,6 +5,7 @@ import (
 
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/ls"
+	"github.com/microsoft/TypeScript/tsc/internal/parser"
 	"github.com/microsoft/TypeScript/tsc/internal/scanner"
 )
 
@@ -51,8 +52,28 @@ func concurrentLimitCommaAt(file *ast.SourceFile, pos int) *ast.Node {
 	var limit *ast.Node
 	var visit func(*ast.Node) bool
 	visit = func(node *ast.Node) bool {
+		var value *ast.Node
 		if fiberHelper(node) == "$forConcurrent" && len(node.Arguments()) == 3 {
-			value := node.Arguments()[1]
+			value = node.Arguments()[1]
+		} else if ast.IsBlock(node) {
+			// A written limit is evaluated before entering the RHS head cells.
+			// Recover its source expression from that generated declaration.
+			if call := parser.VibeLangConcurrentCall(node); call != nil {
+				statements := node.Statements()
+				if len(statements) == 2 && ast.IsVariableStatement(statements[0]) {
+					declarations := statements[0].AsVariableStatement().DeclarationList.AsVariableDeclarationList().Declarations.Nodes
+					if len(declarations) == 1 {
+						declaration := declarations[0].AsVariableDeclaration()
+						ref := call.Arguments()[1]
+						if ast.IsIdentifier(declaration.Name()) && ast.IsIdentifier(ref) &&
+							declaration.Name().Flags&ast.NodeFlagsReparsed != 0 && declaration.Name().Text() == ref.Text() {
+							value = declaration.Initializer
+						}
+					}
+				}
+			}
+		}
+		if value != nil {
 			if ast.IsBinaryExpression(value) && value.AsBinaryExpression().OperatorToken.Kind == ast.KindCommaToken {
 				comma := scanner.GetRangeOfTokenAtPosition(file, value.AsBinaryExpression().OperatorToken.Pos())
 				if comma.Pos() <= pos && pos <= comma.End() &&

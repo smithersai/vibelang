@@ -1,0 +1,27 @@
+// expect-result: {"reads":["ReferenceError","ReferenceError","ReferenceError","ReferenceError"],"items":[1,2,3,4],"limit":1}
+import { Effect } from "effect"
+
+export effect function main() {
+  const reads: Array<() => unknown> = []
+  const items: number[] = []
+  let probe: () => unknown = () => 0
+  for concurrent (const x of (probe = () => x, [1])) { items.push(x) }
+  reads.push(probe)
+  const x = 1
+  let limit = 0
+  for concurrent((limit = x, x)) (let x of (probe = () => x.toFixed(), [2])) { items.push(x); x = 20 }
+  reads.push(probe)
+  for concurrent(1) (const { n } of (probe = () => n.toFixed(), [{ n: 3 }])) { items.push(n) }
+  reads.push(probe)
+  for concurrent (let [a, ...rest] of (probe = () => [a.toFixed(), rest.length], [[4, 5]])) {
+    items.push(a)
+    a = 40
+  }
+  reads.push(probe)
+  for concurrent(1) (const unusedCell of [0]) { void unusedCell }
+  return try Effect.sync(() => ({
+    reads: reads.map((read) => { try { read(); return "read" } catch (e) { return (e as Error).name } }),
+    items,
+    limit
+  }))
+}

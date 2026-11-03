@@ -114,6 +114,10 @@ func GetDoNarrowingOrigin(binding *ast.Node) *DoNarrowingOrigin {
 
 // parseVibeLangDos checks and lowers the file's do expressions.
 func (p *Parser) parseVibeLangDos(file *ast.SourceFile) {
+	if p.vibelangHeadCells == nil {
+		p.vibelangHeadCells = map[*ast.Node]*ast.Node{}
+	}
+	headCells := file.GetOrComputeData(doHeadCellsKey, func(*ast.SourceFile) map[*ast.Node]*ast.Node { return p.vibelangHeadCells })
 	if len(p.vibelangDoOrder) == 0 && len(p.vibelangForEachHomes) == 0 && !p.hasYieldingMatch() {
 		// for try also lifts its RHS out of the native loop. It needs the
 		// same uninitialized head cells even when the source contains no do.
@@ -160,7 +164,7 @@ func (p *Parser) parseVibeLangDos(file *ast.SourceFile) {
 			marked[n] = true
 		}
 	}
-	l := &doLowering{p: p, marked: marked, headCells: map[*ast.Node]*ast.Node{}, origins: map[*ast.Node]*DoNarrowingOrigin{}}
+	l := &doLowering{p: p, marked: marked, headCells: headCells, origins: map[*ast.Node]*DoNarrowingOrigin{}}
 	for i, d := range p.vibelangDoOrder {
 		statements := d.block.AsBlock().Statements
 		if p.opts.VibeLangDoAsFunction {
@@ -467,11 +471,13 @@ func endsBadlyStatement(s *ast.Node, labels []string, isLast bool) *ast.Node {
 }
 
 func doConcurrentBody(s *ast.Node) *ast.Node {
-	if !ast.IsExpressionStatement(s) {
+	// Let completion checking descend through written labels so diagnostics
+	// and preserving repairs retain the source loop's range.
+	if ast.IsLabeledStatement(s) && s.Label().Flags&ast.NodeFlagsReparsed == 0 {
 		return nil
 	}
-	call := s.Expression()
-	if !ast.IsCallExpression(call) || !ast.IsIdentifier(call.Expression()) || call.Expression().Text() != "$forConcurrent" || call.Expression().Flags&ast.NodeFlagsVibeLangIntrinsic == 0 {
+	call := VibeLangConcurrentCall(s)
+	if call == nil {
 		return nil
 	}
 	args := call.Arguments()
@@ -609,6 +615,15 @@ func (p *Parser) loopHeadOf(node *ast.Node) *ast.Node {
 		if ast.IsClassLike(n) || ast.IsFunctionLike(n) && !p.isDoArrow(n) {
 			return nil
 		}
+		if ast.IsBlock(n) {
+			statements := n.Statements()
+			if len(statements) == 2 && child == statements[0] &&
+				ast.IsVariableStatement(child) && VibeLangConcurrentCall(n) != nil {
+				// The generated declaration evaluates the written limit before
+				// the RHS head environment, but it remains in the source head.
+				return n
+			}
+		}
 		if ast.IsIterationStatement(n, false) {
 			if child != n.Statement() {
 				return n
@@ -620,7 +635,15 @@ func (p *Parser) loopHeadOf(node *ast.Node) *ast.Node {
 			// call's statement is the loop (VIP-19, the do proposal's
 			// head early errors).
 			if args := n.Arguments(); len(args) == 3 && (child == args[0] || child == args[1]) {
-				return n.Parent
+				loop := n.Parent
+				for outer := loop.Parent; outer != nil; outer = loop.Parent {
+					if ast.IsLabeledStatement(outer) && outer.Label().Flags&ast.NodeFlagsReparsed == 0 ||
+						VibeLangConcurrentCall(outer) != n {
+						break
+					}
+					loop = outer
+				}
+				return loop
 			}
 			return nil
 		}
@@ -2214,10 +2237,11 @@ func (p *Parser) mapperCompletionOf(statement *ast.Node) *ast.Node {
 var doHeadCellsKey = ast.NewSourceFileDataKey[map[*ast.Node]*ast.Node]()
 
 // VibeLangDoHeadBinding returns the source iteration binding for an
-// uninitialized cell introduced while lowering a do in a lexical loop head.
+// uninitialized RHS cell introduced for a concurrent loop or while lowering
+// a do in a lexical loop head.
 func VibeLangDoHeadBinding(declaration *ast.Node) *ast.Node {
 	file := ast.GetSourceFileOfNode(declaration)
-	if file == nil || !strings.HasSuffix(file.FileName().AsString(), ".vibe") {
+	if file == nil || !file.FileName().IsVibeLangSource() {
 		return nil
 	}
 	return file.GetOrComputeData(doHeadCellsKey, func(*ast.SourceFile) map[*ast.Node]*ast.Node { return nil })[declaration]

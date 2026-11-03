@@ -88,6 +88,31 @@ func vibelangSourceToken(sourceFile *ast.SourceFile, current *ast.Node, start in
 // definition move to the declared name. Any other word stands for the form
 // itself, the node that contains it, which hovers describe.
 func vibelangWordNode(sourceFile *ast.SourceFile, current *ast.Node, s *scanner.Scanner, fullStart int, end int, flags ast.TokenFlags) *ast.Node {
+	if s.TokenValue() == "concurrent" {
+		// Head cells and an extracted limit wrap the helper in blocks.
+		// Find the helper whose callee still spans this exact source word.
+		var found *ast.Node
+		var visit func(*ast.Node) bool
+		visit = func(node *ast.Node) bool {
+			if node.Pos() > end || node.End() < end {
+				return false
+			}
+			if ast.IsCallExpression(node) {
+				callee := node.Expression()
+				if ast.IsIdentifier(callee) && callee.Flags&ast.NodeFlagsReparsed != 0 && callee.Text() == "$forConcurrent" && callee.End() == end {
+					found = node
+					return true
+				}
+			}
+			return node.ForEachChild(visit)
+		}
+		for scope := current; scope != nil && found == nil; scope = scope.Parent {
+			visit(scope)
+		}
+		if found != nil {
+			return found
+		}
+	}
 	switch s.TokenValue() {
 	case "error", "service", "control", "layer", "schema":
 		if kind := vibelangClassWordKind(sourceFile, current, s); kind != ast.KindUnknown {

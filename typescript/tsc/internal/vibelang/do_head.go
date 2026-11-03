@@ -20,6 +20,15 @@ func checkDoHeadCellScaffolding(c *checker.Checker, file *ast.SourceFile) {
 		if ast.IsVariableDeclaration(node) {
 			if binding := parser.VibeLangDoHeadBinding(node); binding != nil {
 				coverCodes(c, ast.GetRootDeclaration(binding), 7027)
+				// This cell implements the lexical environment, even when the
+				// source has no RHS capture. It is not an unused source local.
+				symbol := c.GetSymbolAtLocation(node.Name())
+				if c.IsSymbolReferencedInFile(file, node.Name().AsIdentifier(), symbol) {
+					// TypeScript counts a source head used by its RHS as used,
+					// although these are distinct cells at runtime.
+					c.MarkSymbolReferenced(c.GetSymbolAtLocation(binding.Name()))
+				}
+				c.MarkSymbolReferenced(symbol)
 			}
 		}
 		return node.ForEachChild(visit)

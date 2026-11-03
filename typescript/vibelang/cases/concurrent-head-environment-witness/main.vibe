@@ -1,0 +1,11 @@
+// expect-result: "ReferenceError"
+import { Effect } from "effect"
+
+export effect function main() {
+  let probe: () => unknown = () => 0
+  for concurrent (const x of (probe = () => x, [1])) {}
+  return try Effect.sync(() => {
+    try { probe(); return "read" }
+    catch (e) { return (e as Error).name }
+  })
+}

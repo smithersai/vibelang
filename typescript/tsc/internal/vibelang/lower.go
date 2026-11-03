@@ -115,6 +115,16 @@ func (tx *lowering) visitSource(node *ast.Node) *ast.Node {
 		return tx.visitTopicClosure(node, pipes)
 	}
 	visited := tx.visitNode(node)
+	if ast.IsVariableStatement(node) {
+		for _, declaration := range node.AsVariableStatement().DeclarationList.AsVariableDeclarationList().Declarations.Nodes {
+			if parser.VibeLangDoHeadBinding(declaration) != nil {
+				// A never-initialized head cell is scaffolding, not the source
+				// declaration with the same name in another lexical scope.
+				tx.generated(visited)
+				break
+			}
+		}
+	}
 	if ast.IsForStatement(node) && ast.IsForStatement(visited) {
 		visited = tx.resetIsBindingIteration(node, visited)
 	}

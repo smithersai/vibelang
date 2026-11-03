@@ -1,0 +1,2 @@
+go test fuzz v1
+string("-- main.vibe --\nexport effect function main() { const x = 3; let read: () => number = () => 0; for concurrent(x) (let x of (read = (): number => x, [1])) { x = 7 } return read }\n-- tsconfig.json --\n{\"compilerOptions\":{\"target\":\"ES2022\",\"module\":\"NodeNext\",\"moduleResolution\":\"NodeNext\",\"strict\":true,\"skipLibCheck\":true,\"sourceMap\":true,\"declaration\":true,\"outDir\":\"out\"}}\n")
