@@ -68,6 +68,8 @@ The same foundation serves streams, caches, validated input, configuration, and 
 
 ## Learn with practical programs
 
+To see these forms in production code, read [a real provider, before and after](real-provider-before-after.md).
+
 Start with one operation that reads data, validates it, and returns a result. Test its success and failure cases, then add a service boundary and a deadline. Continue with [The Effect Type](003-the-effect-type.md) and [Creating Effects](005-creating-effects.md).
 
 ## Coming from Effect
