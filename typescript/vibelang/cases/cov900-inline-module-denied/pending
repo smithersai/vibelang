@@ -1,0 +1,3 @@
+cov-ch900b Chapter 900: An inline module declaration is accepted despite VIP-25's denial.
+Rules: docs/design/src/900-appendices.md#971db37fc8615da7
+Witness: typescript/vibelang/cases/cov900-inline-module-denied/main.vibe

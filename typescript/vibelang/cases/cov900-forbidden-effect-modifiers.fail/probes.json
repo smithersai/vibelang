@@ -1,0 +1,38 @@
+[
+  {
+    "name": "abstract",
+    "source": "export abstract class Bad {abstract effect read():number!!}",
+    "status": "error",
+    "diagnostic": {
+      "code": "EK0108",
+      "category": "error"
+    },
+    "errorCodes": [
+      "EK0108"
+    ]
+  },
+  {
+    "name": "interface",
+    "source": "export interface Bad {effect read():number!!}",
+    "status": "error",
+    "diagnostic": {
+      "code": "EK0108",
+      "category": "error"
+    },
+    "errorCodes": [
+      "EK0108"
+    ]
+  },
+  {
+    "name": "declare",
+    "source": "export declare effect function read():number!!",
+    "status": "error",
+    "diagnostic": {
+      "code": "EK0108",
+      "category": "error"
+    },
+    "errorCodes": [
+      "EK0108"
+    ]
+  }
+]

@@ -1,0 +1,50 @@
+[
+  {
+    "name": "receiver ??",
+    "source": "export effect function f(a: Effect.Effect<number,string>){return a ?? Effect.fail(\"bad\") catch ()=>0}",
+    "status": "error",
+    "diagnostic": {
+      "code": "EK0512",
+      "category": "error"
+    },
+    "errorCodes": [
+      "EK0512"
+    ]
+  },
+  {
+    "name": "receiver ||",
+    "source": "export effect function f(a: Effect.Effect<number,string>){return a || Effect.fail(\"bad\") catch ()=>0}",
+    "status": "error",
+    "diagnostic": {
+      "code": "EK0512",
+      "category": "error"
+    },
+    "errorCodes": [
+      "EK0512"
+    ]
+  },
+  {
+    "name": "receiver &&",
+    "source": "export effect function f(a: Effect.Effect<number,string>){return a && Effect.fail(\"bad\") catch ()=>0}",
+    "status": "error",
+    "diagnostic": {
+      "code": "EK0512",
+      "category": "error"
+    },
+    "errorCodes": [
+      "EK0512"
+    ]
+  },
+  {
+    "name": "postfix",
+    "source": "export effect function f(){return Effect.succeed(1) catch function(){return 2}.call(null)}",
+    "status": "error",
+    "diagnostic": {
+      "code": "EK0512",
+      "category": "error"
+    },
+    "errorCodes": [
+      "EK0512"
+    ]
+  }
+]

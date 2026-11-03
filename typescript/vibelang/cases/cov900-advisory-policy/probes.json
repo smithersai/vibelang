@@ -1,0 +1,134 @@
+[
+  {
+    "name": "default",
+    "source": "import {Option} from \"effect\"; export const value=Option.match(Option.some(1),{onNone:()=>0,onSome:n=>n})\n",
+    "prefix": [],
+    "vibe": {},
+    "status": "zero",
+    "options": {
+      "noEmitOnError": true
+    },
+    "emitted": true,
+    "diagnostic": {
+      "code": "EK4839",
+      "category": "warning"
+    },
+    "messages": [
+      "Option.match"
+    ]
+  },
+  {
+    "name": "lint-default",
+    "source": "import {Option} from \"effect\"; export const value=Option.match(Option.some(1),{onNone:()=>0,onSome:n=>n})\n",
+    "prefix": [
+      "lint"
+    ],
+    "vibe": {},
+    "status": "zero",
+    "options": {
+      "noEmitOnError": true
+    },
+    "diagnostic": {
+      "code": "EK4839",
+      "category": "warning"
+    },
+    "messages": [
+      "Option.match"
+    ]
+  },
+  {
+    "name": "promoted",
+    "source": "import {Option} from \"effect\"; export const value=Option.match(Option.some(1),{onNone:()=>0,onSome:n=>n})\n",
+    "prefix": [],
+    "vibe": {
+      "severities": {
+        "EK4839": "error"
+      }
+    },
+    "status": "error",
+    "options": {
+      "noEmitOnError": true
+    },
+    "emitted": false,
+    "diagnostic": {
+      "code": "EK4839",
+      "category": "error"
+    },
+    "messages": [
+      "Option.match"
+    ]
+  },
+  {
+    "name": "lint-promoted",
+    "source": "import {Option} from \"effect\"; export const value=Option.match(Option.some(1),{onNone:()=>0,onSome:n=>n})\n",
+    "prefix": [
+      "lint"
+    ],
+    "vibe": {
+      "severities": {
+        "EK4839": "error"
+      }
+    },
+    "status": "error",
+    "options": {
+      "noEmitOnError": true
+    },
+    "diagnostic": {
+      "code": "EK4839",
+      "category": "error"
+    },
+    "messages": [
+      "Option.match"
+    ]
+  },
+  {
+    "name": "off",
+    "source": "import {Option} from \"effect\"; export const value=Option.match(Option.some(1),{onNone:()=>0,onSome:n=>n})\n",
+    "prefix": [],
+    "vibe": {
+      "severities": {
+        "EK4839": "off"
+      }
+    },
+    "status": "zero",
+    "options": {
+      "noEmitOnError": true
+    },
+    "emitted": true,
+    "absent": [
+      "EK4839"
+    ]
+  },
+  {
+    "name": "named alias",
+    "source": "import {Option as O} from \"effect\";export const value=O.match(O.some(1),{onNone:()=>0,onSome:n=>n})",
+    "status": "zero",
+    "diagnostic": {
+      "code": "EK4839",
+      "category": "warning"
+    },
+    "messages": [
+      "Option.match"
+    ]
+  },
+  {
+    "name": "namespace alias",
+    "source": "import * as O from \"effect/Option\";export const value=O.match(O.some(1),{onNone:()=>0,onSome:n=>n})",
+    "status": "zero",
+    "diagnostic": {
+      "code": "EK4839",
+      "category": "warning"
+    },
+    "messages": [
+      "Option.match"
+    ]
+  },
+  {
+    "name": "unrelated local",
+    "source": "const Option={match:(n:number,h:{onSome:(n:number)=>number})=>h.onSome(n)};export const value=Option.match(1,{onSome:n=>n})",
+    "status": "zero",
+    "absent": [
+      "EK4839"
+    ]
+  }
+]

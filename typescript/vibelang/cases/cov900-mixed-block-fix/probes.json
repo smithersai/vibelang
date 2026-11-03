@@ -1,0 +1,14 @@
+[
+  {
+    "name": "remove only async",
+    "source": "export const p=async effect {return 1}",
+    "args": [
+      "--fix"
+    ],
+    "status": "zero",
+    "fixed": {
+      "includes": "effect\\s*\\{",
+      "excludes": "\\basync\\b"
+    }
+  }
+]

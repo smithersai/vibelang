@@ -1,0 +1,20 @@
+// docs/design/src/900-appendices.md#8e164ca00f1c6aca — Chapter 900: cov900-throw-expression.
+// docs/design/src/900-appendices.md#aa8f4667ced6c59c — Chapter 900: cov900-throw-expression.
+// docs/design/src/900-appendices.md#968ce92e427fe01d — Chapter 900: cov900-throw-expression.
+// docs/design/src/900-appendices.md#2dba1b169106c225 — Chapter 900: cov900-throw-expression.
+// docs/design/src/900-appendices.md#317ca4a5523c4837 — Chapter 900: cov900-throw-expression.
+// docs/design/src/900-appendices.md#d755c84f44a5b154 — Chapter 900: cov900-throw-expression.
+// docs/design/src/900-appendices.md#66c458372f6679d5 — Chapter 900: cov900-throw-expression.
+async function requireValue(x: number | null | undefined) { return x ?? throw new Error("missing") }
+async function requireProperty(input: {readonly value: number | null | undefined}) { return input.value ?? throw new Error("missing") }
+async function witness() {
+ let reads = 0
+ const input = { get value() { reads++; return 7 } }
+ const missing = { get value() { reads++; return undefined } }
+ const value = await requireProperty(input)
+ const first = await requireValue(null).then(() => new Error("unexpected"), (e: Error) => e)
+ const second = await requireValue(undefined).then(() => new Error("unexpected"), (e: Error) => e)
+ const third = await requireProperty(missing).then(() => new Error("unexpected"), (e: Error) => e)
+ return [value, reads, first.name+":"+first.message, second.name+":"+second.message, third.name+":"+third.message, first!==second && second!==third]
+}
+export effect function main() { return try Effect.tryPromise(() => witness()) }

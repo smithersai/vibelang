@@ -1,0 +1,26 @@
+[
+  {
+    "name": "binding",
+    "source": "export effect function f(){const join=1;return 1}",
+    "status": "error",
+    "diagnostic": {
+      "code": "EK1702",
+      "category": "error"
+    },
+    "errorCodes": [
+      "EK1702"
+    ]
+  },
+  {
+    "name": "shorthand",
+    "source": "const join=1;export effect function f(){return {join}}",
+    "status": "error",
+    "diagnostic": {
+      "code": "EK1702",
+      "category": "error"
+    },
+    "errorCodes": [
+      "EK1702"
+    ]
+  }
+]

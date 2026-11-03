@@ -1,0 +1,7 @@
+// docs/design/src/900-appendices.md#e96d71bb8cea8aee — Chapter 900: cov900-catch-home-control.
+import { work } from "./helpers.js"
+function local() {
+ try { work() } catch ({code = do { const ok = 1 is let captured; [ok,captured] }}: any) { return code }
+ return []
+}
+export effect function main() { return local() }

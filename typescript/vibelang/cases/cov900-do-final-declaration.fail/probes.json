@@ -1,0 +1,26 @@
+[
+  {
+    "name": "last let",
+    "source": "export const x=do {let n=1}",
+    "status": "error",
+    "diagnostic": {
+      "code": "EK0201",
+      "category": "error"
+    },
+    "errorCodes": [
+      "EK0201"
+    ]
+  },
+  {
+    "name": "direct var",
+    "source": "export const x=do {var n=1;n}",
+    "status": "error",
+    "diagnostic": {
+      "code": "EK0201",
+      "category": "error"
+    },
+    "errorCodes": [
+      "EK0201"
+    ]
+  }
+]

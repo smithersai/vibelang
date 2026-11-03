@@ -1,0 +1,50 @@
+[
+  {
+    "name": "all",
+    "source": "export effect function f(){return try.all [1]}",
+    "status": "error",
+    "diagnostic": {
+      "code": "EK1801",
+      "category": "error"
+    },
+    "errorCodes": [
+      "EK1801"
+    ]
+  },
+  {
+    "name": "race",
+    "source": "export effect function f(){return try.race [1]}",
+    "status": "error",
+    "diagnostic": {
+      "code": "EK1801",
+      "category": "error"
+    },
+    "errorCodes": [
+      "EK1801"
+    ]
+  },
+  {
+    "name": "any",
+    "source": "export effect function f(){return try.any [1]}",
+    "status": "error",
+    "diagnostic": {
+      "code": "EK1801",
+      "category": "error"
+    },
+    "errorCodes": [
+      "EK1801"
+    ]
+  },
+  {
+    "name": "allSettled",
+    "source": "export effect function f(){return try.allSettled [1]}",
+    "status": "error",
+    "diagnostic": {
+      "code": "EK1801",
+      "category": "error"
+    },
+    "errorCodes": [
+      "EK1801"
+    ]
+  }
+]

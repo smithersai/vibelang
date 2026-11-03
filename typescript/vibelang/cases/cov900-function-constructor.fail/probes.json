@@ -1,0 +1,50 @@
+[
+  {
+    "name": "plain arrow",
+    "source": "export const value=(()=>1).constructor",
+    "status": "error",
+    "diagnostic": {
+      "code": "EK0107",
+      "category": "error"
+    },
+    "errorCodes": [
+      "EK0107"
+    ]
+  },
+  {
+    "name": "async arrow",
+    "source": "export const value=(async()=>1).constructor",
+    "status": "error",
+    "diagnostic": {
+      "code": "EK0107",
+      "category": "error"
+    },
+    "errorCodes": [
+      "EK0107"
+    ]
+  },
+  {
+    "name": "prototype",
+    "source": "export const value=Function.prototype.constructor",
+    "status": "error",
+    "diagnostic": {
+      "code": "EK0107",
+      "category": "error"
+    },
+    "errorCodes": [
+      "EK0107"
+    ]
+  },
+  {
+    "name": "Function type",
+    "source": "export const value=(null as unknown as Function).constructor",
+    "status": "error",
+    "diagnostic": {
+      "code": "EK0107",
+      "category": "error"
+    },
+    "errorCodes": [
+      "EK0107"
+    ]
+  }
+]

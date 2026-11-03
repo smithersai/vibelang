@@ -1,0 +1,6 @@
+// docs/design/src/900-appendices.md#c01615a826156f71 — Chapter 900: cov900-native-option-match.
+// docs/design/src/900-appendices.md#58a5e7e8bd327d14 — Chapter 900: cov900-native-option-match.
+import { Option } from "effect"
+const value = Option.some(1)
+const result = match (value) { when Option.Some(let n): n; default: 0; }
+export effect function main() { return [result] }

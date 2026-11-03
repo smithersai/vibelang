@@ -1,0 +1,26 @@
+[
+  {
+    "name": "async effect",
+    "source": "export const value=async effect {return 1}",
+    "status": "error",
+    "diagnostic": {
+      "code": "EK0105",
+      "category": "error"
+    },
+    "errorCodes": [
+      "EK0105"
+    ]
+  },
+  {
+    "name": "effect async",
+    "source": "export const value=effect async {return 1}",
+    "status": "error",
+    "diagnostic": {
+      "code": "EK0105",
+      "category": "error"
+    },
+    "errorCodes": [
+      "EK0105"
+    ]
+  }
+]

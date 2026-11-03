@@ -1,0 +1,11 @@
+// docs/design/src/900-appendices.md#d5d55c71b25135f8 — Chapter 900: cov900-error-constructors.
+// docs/design/src/900-appendices.md#0e96dab754b64151 — Chapter 900: cov900-error-constructors.
+error NotFound { id: string }
+data Delivery { Sent { tracking: string } }
+schema error Invalid { name: Schema.NonEmptyString }
+export effect function main() {
+ const n = new NotFound({id: "x"})
+ const d = Delivery.Sent({tracking: "y"})
+ const invalid = try Effect.exit(effect { throw new Invalid({name: ""}) })
+ return [n.id, d.tracking, invalid._tag === "Failure" ? invalid.cause.reasons[0]._tag : "unexpected"]
+}

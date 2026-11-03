@@ -1,0 +1,38 @@
+[
+  {
+    "name": "Promise",
+    "source": "namespace Bad {export const x=await Promise.resolve(42)};export {}",
+    "status": "error",
+    "diagnostic": {
+      "code": "TS1308",
+      "category": "error"
+    },
+    "errorCodes": [
+      "TS1308"
+    ]
+  },
+  {
+    "name": "literal",
+    "source": "namespace Bad {export const x=await 1};export {}",
+    "status": "error",
+    "diagnostic": {
+      "code": "TS1308",
+      "category": "error"
+    },
+    "errorCodes": [
+      "TS1308"
+    ]
+  },
+  {
+    "name": "nested ordinary block",
+    "source": "namespace Bad.Nested {{const x=await 1}};export {}",
+    "status": "error",
+    "diagnostic": {
+      "code": "TS1308",
+      "category": "error"
+    },
+    "errorCodes": [
+      "TS1308"
+    ]
+  }
+]

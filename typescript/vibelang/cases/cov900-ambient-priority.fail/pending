@@ -1,0 +1,3 @@
+cov-ch900b Chapter 900: Bodyless ambient schema/data fall through to TS1434 instead of EK1506/EK1607.
+Rules: docs/design/src/900-appendices.md#95ad581c3248e90d
+Witness: typescript/vibelang/cases/cov900-ambient-priority.fail/main.vibe

@@ -1,0 +1,38 @@
+[
+  {
+    "name": "function",
+    "source": "export effect function f(){yield 1}",
+    "status": "error",
+    "diagnostic": {
+      "code": "EK2104",
+      "category": "error"
+    },
+    "errorCodes": [
+      "EK2104"
+    ]
+  },
+  {
+    "name": "arrow",
+    "source": "export const f=effect()=>{yield 1}",
+    "status": "error",
+    "diagnostic": {
+      "code": "EK2104",
+      "category": "error"
+    },
+    "errorCodes": [
+      "EK2104"
+    ]
+  },
+  {
+    "name": "block",
+    "source": "export const f=effect{yield 1}",
+    "status": "error",
+    "diagnostic": {
+      "code": "EK2104",
+      "category": "error"
+    },
+    "errorCodes": [
+      "EK2104"
+    ]
+  }
+]

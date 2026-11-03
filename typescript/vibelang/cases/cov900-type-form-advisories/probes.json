@@ -1,0 +1,20 @@
+[
+  {
+    "name": "error class",
+    "source": "export class NotFound extends Data.TaggedError(\"NotFound\")<{readonly id:string}>{}",
+    "status": "zero",
+    "diagnostic": {
+      "code": "EK4830",
+      "category": "warning"
+    }
+  },
+  {
+    "name": "effect type",
+    "source": "export type Load=Effect.Effect<number,string,never>",
+    "status": "zero",
+    "diagnostic": {
+      "code": "EK4833",
+      "category": "warning"
+    }
+  }
+]

@@ -1,0 +1,3 @@
+// expect: EK1305
+// Chapter 900: cov900-default-error.fail.
+export default error E { value: number }

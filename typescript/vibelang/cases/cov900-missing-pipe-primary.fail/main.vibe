@@ -1,0 +1,5 @@
+// expect: TS1109
+// docs/design/src/900-appendices.md#8ca712b00151748a — Chapter 900: cov900-missing-pipe-primary.fail.
+// docs/design/src/900-appendices.md#0ea04cb8ef7879eb — Chapter 900: cov900-missing-pipe-primary.fail.
+export const value = |> 2
+// docs/design/src/900-appendices.md#d31b9bf5f3a86933 — Chapter 900: missing pipe primary uses native Expression_expected diagnostic.

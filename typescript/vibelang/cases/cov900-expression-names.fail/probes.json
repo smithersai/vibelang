@@ -1,0 +1,38 @@
+[
+  {
+    "name": "expression",
+    "source": "export const f=effect function join(){return 1}",
+    "status": "error",
+    "diagnostic": {
+      "code": "EK1702",
+      "category": "error"
+    },
+    "errorCodes": [
+      "EK1702"
+    ]
+  },
+  {
+    "name": "producer expression",
+    "source": "export const f=effect function* fork(){yield 1}",
+    "status": "error",
+    "diagnostic": {
+      "code": "EK1702",
+      "category": "error"
+    },
+    "errorCodes": [
+      "EK1702"
+    ]
+  },
+  {
+    "name": "nested declaration",
+    "source": "export effect function outer(){effect function join(){}}",
+    "status": "error",
+    "diagnostic": {
+      "code": "EK1702",
+      "category": "error"
+    },
+    "errorCodes": [
+      "EK1702"
+    ]
+  }
+]

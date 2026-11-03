@@ -1,0 +1,4 @@
+// expect: EK1502
+// Chapter 900: cov900-generic-schema.fail.
+schema Generic<T> { value: number }
+export {}

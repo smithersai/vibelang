@@ -1,0 +1,26 @@
+[
+  {
+    "name": "plain nested function",
+    "source": "export effect function f(){function ordinary(){yield 1};return ordinary}",
+    "status": "error",
+    "diagnostic": {
+      "code": "TS1163",
+      "category": "error"
+    },
+    "errorCodes": [
+      "TS1163"
+    ]
+  },
+  {
+    "name": "plain nested arrow",
+    "source": "export effect function f(){const arrow=()=>{yield 2};return arrow}",
+    "status": "error",
+    "diagnostic": {
+      "code": "TS1163",
+      "category": "error"
+    },
+    "errorCodes": [
+      "TS1163"
+    ]
+  }
+]

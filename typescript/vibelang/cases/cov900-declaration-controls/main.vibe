@@ -1,0 +1,17 @@
+// docs/design/src/900-appendices.md#e53ecb1bb8a6352a — Chapter 900: cov900-declaration-controls.
+// docs/design/src/900-appendices.md#b6b6d198a065756f — Chapter 900: cov900-declaration-controls.
+// docs/design/src/900-appendices.md#3b8785b4c24dc908 — Chapter 900: cov900-declaration-controls.
+import { box } from "./helpers.js"
+declare class Erased { readonly value: number }
+declare const ambient: Erased
+export type NativeAmbient = typeof ambient
+error Missing
+schema Item { ["id"]: number }
+schema Alias = Item
+schema error Fault { n: number; doubled(): number { return this.n * 2 } }
+export { Item as default }
+export effect function main() {
+ const row = try Effect.try(() => Schema.decodeUnknownSync(Alias)({id: 3}))
+ const accepted = try Effect.try(() => Schema.is(box(Schema.Number))({value:1}))
+ return [new Missing()._tag,new Fault({n:2}).doubled(),row.id,accepted]
+}

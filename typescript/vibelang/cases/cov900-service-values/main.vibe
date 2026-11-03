@@ -1,0 +1,12 @@
+// docs/design/src/900-appendices.md#7518edfc1a63ea9c — Chapter 900: cov900-service-values.
+// docs/design/src/900-appendices.md#310c9327d20cf1d4 — Chapter 900: cov900-service-values.
+// docs/design/src/900-appendices.md#c195bdcea88a5be7 — Chapter 900: cov900-service-values.
+service Store { static readonly key = "cov900/Store"; value: number }
+service Flags { static readonly key = "cov900/Flags"; active: boolean; static readonly defaultValue = () => ({ active: false }) }
+service Users { find(id: string): string!! }
+effect function read(): number!!Store { return (try Store).value }
+export effect function main() {
+ const value = try Effect.provide(read(), Layer.succeed(Store, {value: 7}))
+ const id = try Effect.provide(effect { return try (try Users).find("x") }, Layer.succeed(Users, {find: (id) => Effect.succeed(id)}))
+ return [value, (try Flags).active, id]
+}

@@ -1,0 +1,3 @@
+cov-ch900b Chapter 900: Generic schema falls through to TS2304/TS2693 instead of EK1502.
+Rules: 
+Witness: typescript/vibelang/cases/cov900-generic-schema.fail/main.vibe

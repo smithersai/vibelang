@@ -1,0 +1,3 @@
+cov-ch900b Chapter 900: Default data falls through to TS1005 instead of EK1603.
+Rules: 
+Witness: typescript/vibelang/cases/cov900-default-data.fail/main.vibe

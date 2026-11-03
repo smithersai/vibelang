@@ -1,0 +1,4 @@
+// expect: EK1606
+// docs/design/src/900-appendices.md#fd413b1c9355aeff — Chapter 900: cov900-data-variant.fail.
+data Bad { A(x: number) }
+export {}

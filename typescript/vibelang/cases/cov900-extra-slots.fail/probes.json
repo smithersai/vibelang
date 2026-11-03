@@ -1,0 +1,26 @@
+[
+  {
+    "name": "empty third separator",
+    "source": "export type A=number!string!!",
+    "status": "error",
+    "diagnostic": {
+      "code": "EK0302",
+      "category": "error"
+    },
+    "errorCodes": [
+      "EK0302"
+    ]
+  },
+  {
+    "name": "fourth slot",
+    "source": "export type B=number!string!never!boolean",
+    "status": "error",
+    "diagnostic": {
+      "code": "EK0302",
+      "category": "error"
+    },
+    "errorCodes": [
+      "EK0302"
+    ]
+  }
+]

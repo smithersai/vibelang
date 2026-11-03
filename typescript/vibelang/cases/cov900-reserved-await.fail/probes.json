@@ -1,0 +1,38 @@
+[
+  {
+    "name": "formal binding",
+    "source": "export function f(await:number){return 1}",
+    "status": "error",
+    "diagnostic": {
+      "code": "TS1359",
+      "category": "error"
+    },
+    "errorCodes": [
+      "TS1359"
+    ]
+  },
+  {
+    "name": "arrow binding",
+    "source": "export const f=(await:number)=>1",
+    "status": "error",
+    "diagnostic": {
+      "code": "TS1359",
+      "category": "error"
+    },
+    "errorCodes": [
+      "TS1359"
+    ]
+  },
+  {
+    "name": "destructured binding",
+    "source": "export function h({await}:{await:number}){return 1}",
+    "status": "error",
+    "diagnostic": {
+      "code": "TS1359",
+      "category": "error"
+    },
+    "errorCodes": [
+      "TS1359"
+    ]
+  }
+]

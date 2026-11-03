@@ -1,0 +1,3 @@
+cov-ch900b Chapter 900: A destructured await binding is accepted in a module instead of TS1359.
+Rules: docs/design/src/900-appendices.md#7bf0c1a7a7c93766, docs/design/src/900-appendices.md#c5be81b59d8d0b42
+Witness: typescript/vibelang/cases/cov900-reserved-await.fail/main.vibe

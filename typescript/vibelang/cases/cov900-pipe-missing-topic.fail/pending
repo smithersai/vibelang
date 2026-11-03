@@ -1,0 +1,3 @@
+cov-ch900b Chapter 900: A topic-free pipe still reports retired EK1006 instead of EK2301.
+Rules: docs/design/src/900-appendices.md#008dc7e2893b81bf, docs/design/src/900-appendices.md#069e18ca674e00a9, docs/design/src/900-appendices.md#6ff2ea805aee8afd, docs/design/src/900-appendices.md#391878f74400c9cb, docs/design/src/900-appendices.md#161f763079b1d36a, docs/design/src/900-appendices.md#257c5e8370e8de94
+Witness: typescript/vibelang/cases/cov900-pipe-missing-topic.fail/main.vibe

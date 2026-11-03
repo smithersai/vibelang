@@ -1,0 +1,7 @@
+// expect: TS2454
+// docs/design/src/900-appendices.md#850bf357b18ca12b — Chapter 900: cov900-loop-fresh-binding.fail.
+// docs/design/src/900-appendices.md#e8247c39cc318369 — Chapter 900: cov900-loop-fresh-binding.fail.
+function use(n: number) {}
+export function fresh(it: { next(): IteratorResult<number> }) {
+ for (; it.next() is {done: false, value: let v}; use(v)) {}
+}

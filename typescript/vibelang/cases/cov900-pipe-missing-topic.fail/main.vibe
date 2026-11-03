@@ -1,0 +1,8 @@
+// expect: EK2301
+// docs/design/src/900-appendices.md#008dc7e2893b81bf — Chapter 900: cov900-pipe-missing-topic.fail.
+// docs/design/src/900-appendices.md#069e18ca674e00a9 — Chapter 900: cov900-pipe-missing-topic.fail.
+// docs/design/src/900-appendices.md#6ff2ea805aee8afd — Chapter 900: cov900-pipe-missing-topic.fail.
+// docs/design/src/900-appendices.md#391878f74400c9cb — Chapter 900: cov900-pipe-missing-topic.fail.
+// docs/design/src/900-appendices.md#161f763079b1d36a — Chapter 900: cov900-pipe-missing-topic.fail.
+// docs/design/src/900-appendices.md#257c5e8370e8de94 — Chapter 900: cov900-pipe-missing-topic.fail.
+export const value = 1 |> 2

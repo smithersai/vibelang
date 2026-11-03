@@ -1,0 +1,43 @@
+[
+  {
+    "name": "history",
+    "source": "history.pushState({},'', '/x');export {}",
+    "status": "error",
+    "diagnostic": {
+      "code": "EK4402",
+      "category": "error"
+    },
+    "errorCodes": [
+      "EK4402"
+    ]
+  },
+  {
+    "name": "animation",
+    "source": "requestAnimationFrame(()=>{});export {}",
+    "status": "error",
+    "diagnostic": {
+      "code": "EK4402",
+      "category": "error"
+    },
+    "errorCodes": [
+      "EK4402"
+    ]
+  },
+  {
+    "name": "file reader",
+    "source": "export const reader=new FileReader()",
+    "status": "error",
+    "diagnostic": {
+      "code": "EK4402",
+      "category": "error"
+    },
+    "errorCodes": [
+      "EK4402"
+    ]
+  },
+  {
+    "name": "allowed resolved names",
+    "source": "const signal=new AbortController().signal;const allowed=signal instanceof AbortSignal;const name='Ada';export const local=[allowed,name.length]",
+    "status": "zero"
+  }
+]

@@ -1,0 +1,7 @@
+// expect: EK0705
+// docs/design/src/900-appendices.md#a694f708e59e15e8 — Chapter 900: cov900-catch-binding-home.fail.
+// docs/design/src/900-appendices.md#77750454b70bb7ca — Chapter 900: cov900-catch-binding-home.fail.
+export function bad() {
+ try { (null as any).code }
+ catch ({code = (1 is let captured)}: any) {}
+}

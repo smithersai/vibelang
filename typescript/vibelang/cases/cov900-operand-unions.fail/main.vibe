@@ -1,0 +1,6 @@
+// expect: EK1901 EK2004
+// docs/design/src/900-appendices.md#14b986fa20bc0cf7 — Chapter 900: cov900-operand-unions.fail.
+export effect function f(items: number[] | boolean, stream: Stream.Stream<number> | boolean) {
+ for concurrent (const n of items) {}
+ for try (const n of stream) {}
+}

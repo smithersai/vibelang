@@ -1,0 +1,6 @@
+// expect: TS2322
+// docs/design/src/900-appendices.md#28529248d8aab896 — Chapter 900: cov900-error-contract.fail.
+import { succeed } from "effect/Effect"
+error Bad
+export effect function bad(): number!! { throw new Bad() }
+export effect function valid(): number!! { return try succeed(1) }

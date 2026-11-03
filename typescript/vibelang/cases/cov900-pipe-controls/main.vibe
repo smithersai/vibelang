@@ -1,0 +1,11 @@
+// docs/design/src/900-appendices.md#7bced96910165c7c — Chapter 900: cov900-pipe-controls.
+// docs/design/src/900-appendices.md#494c7f1f3d221822 — Chapter 900: cov900-pipe-controls.
+// docs/design/src/900-appendices.md#41d2fec49b4263c3 — Chapter 900: cov900-pipe-controls.
+// docs/design/src/900-appendices.md#8f25fb4a171cf8f8 — Chapter 900: cov900-pipe-controls.
+export effect function main() {
+ const left = 2 |> % + 1 |> % * 2
+ const captured = 7 |> (effect () => %)
+ const closed = Effect.succeed(5) |> % catch () => { return 0 } |> % + 1
+ const grouped = (Effect.succeed(5) |> % catch () => 0) |> % + 1
+ return [left,try captured(),closed,grouped,1 |> % + 2]
+}

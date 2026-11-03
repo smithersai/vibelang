@@ -1,0 +1,8 @@
+// docs/design/src/900-appendices.md#7984c53fd8d1454f — Chapter 900: cov900-infallible-catch.
+// docs/design/src/900-appendices.md#ac484596a7beeac2 — Chapter 900: cov900-infallible-catch.
+export effect function main() {
+ let calls = 0
+ const n = try Effect.sync(() => { calls++; return 1 })
+ const m = Effect.succeed(2) catch () => { calls += 100; return 0 }
+ return [n+m,calls]
+}

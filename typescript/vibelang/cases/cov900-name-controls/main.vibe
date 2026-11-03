@@ -1,0 +1,14 @@
+// docs/design/src/900-appendices.md#4d4a327838a72334 — Chapter 900: cov900-name-controls.
+// docs/design/src/900-appendices.md#b9d03bc8962d8d09 — Chapter 900: cov900-name-controls.
+// docs/design/src/900-appendices.md#acdb195a07c80c33 — Chapter 900: cov900-name-controls.
+// docs/design/src/900-appendices.md#288dcdc73dd9d53c — Chapter 900: cov900-name-controls.
+// docs/design/src/900-appendices.md#1cd7ebbffa1ccf69 — Chapter 900: cov900-name-controls.
+// docs/design/src/900-appendices.md#4dc955b8af955161 — Chapter 900: cov900-name-controls.
+export effect function fork(): number!! { return 2 }
+const declaredFork = fork
+const o = { effect join(): number!! { return 3 } }
+const effect = (x: number) => x + 1
+const names = { fork: 4, join: 5 }
+export effect function main() {
+ return [try declaredFork(), try o.join(), effect(5), names.fork, names.join]
+}

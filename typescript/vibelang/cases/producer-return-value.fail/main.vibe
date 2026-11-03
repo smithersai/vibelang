@@ -39,3 +39,6 @@ export effect function main() {
 // Appendix B: EK2128 — spec-rule: docs/design/src/900-appendices.md#32ef3187929cb2e8
 
 // Appendix B: EK2128 — spec-rule: docs/design/src/900-appendices.md#32ef3187929cb2e8
+
+// docs/design/src/900-appendices.md#96eb0c8568b0d6d8 — Chapter 900: producer-return-value.fail.
+// docs/design/src/900-appendices.md#263148b24ba87cc6 — Chapter 900: producer-return-value.fail.

@@ -1,0 +1,4 @@
+// expect: TS7009
+// docs/design/src/900-appendices.md#9d6ac82eb2290a95 — Chapter 900: cov900-native-new.fail.
+function f() { return { value: 1 } }
+export const value = new f()

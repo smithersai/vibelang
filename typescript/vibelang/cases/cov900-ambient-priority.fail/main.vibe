@@ -1,0 +1,5 @@
+// expect: EK1506 EK1607
+// docs/design/src/900-appendices.md#95ad581c3248e90d — Chapter 900: cov900-ambient-priority.fail.
+declare schema Missing
+declare data Choice
+export {}

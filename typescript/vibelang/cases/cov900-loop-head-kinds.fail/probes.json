@@ -1,0 +1,74 @@
+[
+  {
+    "name": "using concurrent",
+    "source": "const xs=[{[Symbol.dispose](){}}];export effect function f(){for concurrent (using x of xs){}}",
+    "status": "error",
+    "diagnostic": {
+      "code": "EK1906",
+      "category": "error"
+    },
+    "errorCodes": [
+      "EK1906"
+    ],
+    "options": {
+      "lib": [
+        "esnext",
+        "dom"
+      ]
+    }
+  },
+  {
+    "name": "var concurrent",
+    "source": "export effect function f(){for concurrent (var x of [1]){}}",
+    "status": "error",
+    "diagnostic": {
+      "code": "EK1906",
+      "category": "error"
+    },
+    "errorCodes": [
+      "EK1906"
+    ],
+    "options": {
+      "lib": [
+        "esnext",
+        "dom"
+      ]
+    }
+  },
+  {
+    "name": "using stream",
+    "source": "const xs=Stream.make({[Symbol.dispose](){}});export effect function f(){for try (using x of xs){}}",
+    "status": "error",
+    "diagnostic": {
+      "code": "EK2005",
+      "category": "error"
+    },
+    "errorCodes": [
+      "EK2005"
+    ],
+    "options": {
+      "lib": [
+        "esnext",
+        "dom"
+      ]
+    }
+  },
+  {
+    "name": "var stream",
+    "source": "export effect function f(){for try (var x of Stream.make(1)){}}",
+    "status": "error",
+    "diagnostic": {
+      "code": "EK2005",
+      "category": "error"
+    },
+    "errorCodes": [
+      "EK2005"
+    ],
+    "options": {
+      "lib": [
+        "esnext",
+        "dom"
+      ]
+    }
+  }
+]

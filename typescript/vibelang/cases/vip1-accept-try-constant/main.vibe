@@ -81,3 +81,5 @@ export effect function main() {
     annotated: try annotated(),
   }
 }
+
+// docs/design/src/900-appendices.md#e4e4dbef15de3b12 — Chapter 900: vip1-accept-try-constant.

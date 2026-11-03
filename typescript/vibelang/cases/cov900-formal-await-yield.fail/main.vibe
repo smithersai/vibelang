@@ -1,0 +1,5 @@
+// expect: EK0102 EK2104
+// docs/design/src/900-appendices.md#8349e2a257b6ff83 — Chapter 900: cov900-formal-await-yield.fail.
+// docs/design/src/900-appendices.md#9217c5cbd8b1233a — Chapter 900: cov900-formal-await-yield.fail.
+export effect function f(x = await Promise.resolve(1)) { return x }
+export effect function* g(x = yield 1) { yield x }

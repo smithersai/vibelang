@@ -1,0 +1,3 @@
+cov-ch900b Chapter 900: The native any catch parameter is treated as a typed Effect catch (EK2105), and the binding gate emits EK4703 rather than EK0705.
+Rules: docs/design/src/900-appendices.md#a694f708e59e15e8, docs/design/src/900-appendices.md#77750454b70bb7ca
+Witness: typescript/vibelang/cases/cov900-catch-binding-home.fail/main.vibe

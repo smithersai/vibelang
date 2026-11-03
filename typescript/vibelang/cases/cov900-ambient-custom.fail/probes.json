@@ -1,0 +1,50 @@
+[
+  {
+    "name": "declare error",
+    "source": "declare error Missing;export {}",
+    "status": "error",
+    "diagnostic": {
+      "code": "EK1307",
+      "category": "error"
+    },
+    "errorCodes": [
+      "EK1307"
+    ]
+  },
+  {
+    "name": "ambient schema error",
+    "source": "declare namespace Ambient {schema error Invalid {message:string}};export {}",
+    "status": "error",
+    "diagnostic": {
+      "code": "EK1307",
+      "category": "error"
+    },
+    "errorCodes": [
+      "EK1307"
+    ]
+  },
+  {
+    "name": "ambient schema",
+    "source": "declare namespace Ambient {schema Row {n:number}};export {}",
+    "status": "error",
+    "diagnostic": {
+      "code": "EK1506",
+      "category": "error"
+    },
+    "errorCodes": [
+      "EK1506"
+    ]
+  },
+  {
+    "name": "ambient data",
+    "source": "declare namespace Ambient {data Choice {A;B {n:number}}};export {}",
+    "status": "error",
+    "diagnostic": {
+      "code": "EK1607",
+      "category": "error"
+    },
+    "errorCodes": [
+      "EK1607"
+    ]
+  }
+]

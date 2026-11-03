@@ -1,0 +1,66 @@
+[
+  {
+    "name": "outside",
+    "source": "export const n=Effect.succeed(1) catch ()=>2",
+    "diagnostic": {
+      "code": "EK0504",
+      "category": "error"
+    }
+  },
+  {
+    "name": "head",
+    "source": "export effect function f(){return try Effect.succeed(1) catch ()=>2}",
+    "diagnostic": {
+      "code": "EK0505",
+      "category": "error"
+    }
+  },
+  {
+    "name": "operand",
+    "source": "export effect function f(){return 1 catch ()=>2}",
+    "diagnostic": {
+      "code": "EK0506",
+      "category": "error"
+    }
+  },
+  {
+    "name": "promise",
+    "source": "export effect function f(){return Effect.fail(1) catch ()=>Promise.resolve(2)}",
+    "diagnostic": {
+      "code": "EK0507",
+      "category": "error"
+    }
+  },
+  {
+    "name": "effect-result",
+    "source": "export effect function f(){return Effect.fail(1) catch ()=>Effect.succeed(2)}",
+    "diagnostic": {
+      "code": "EK0508",
+      "category": "warning"
+    }
+  },
+  {
+    "name": "handler",
+    "source": "export effect function f(){return Effect.fail(1) catch 2}",
+    "diagnostic": {
+      "code": "EK0509",
+      "category": "error"
+    }
+  },
+  {
+    "name": "power",
+    "source": "export effect function f(){return try Effect.succeed(1) ** 2}",
+    "diagnostic": {
+      "code": "EK0510",
+      "category": "error"
+    }
+  },
+  {
+    "name": "throw-handler",
+    "source": "export effect function f(){return Effect.fail(1) catch (e)=>{throw e}}",
+    "diagnostic": {
+      "code": "EK0511",
+      "category": "warning"
+    }
+  }
+]

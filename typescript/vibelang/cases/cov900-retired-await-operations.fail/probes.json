@@ -1,0 +1,50 @@
+[
+  {
+    "name": "all",
+    "source": "export effect function f(){return await.all [Effect.succeed(1)]}",
+    "status": "error",
+    "diagnostic": {
+      "code": "EK1802",
+      "category": "error"
+    },
+    "errorCodes": [
+      "EK1802"
+    ]
+  },
+  {
+    "name": "race",
+    "source": "export effect function f(){return await.race [Effect.succeed(1)]}",
+    "status": "error",
+    "diagnostic": {
+      "code": "EK1802",
+      "category": "error"
+    },
+    "errorCodes": [
+      "EK1802"
+    ]
+  },
+  {
+    "name": "any",
+    "source": "export effect function f(){return await.any [Effect.succeed(1)]}",
+    "status": "error",
+    "diagnostic": {
+      "code": "EK1802",
+      "category": "error"
+    },
+    "errorCodes": [
+      "EK1802"
+    ]
+  },
+  {
+    "name": "allSettled",
+    "source": "export effect function f(){return await.allSettled [Effect.succeed(1)]}",
+    "status": "error",
+    "diagnostic": {
+      "code": "EK1802",
+      "category": "error"
+    },
+    "errorCodes": [
+      "EK1802"
+    ]
+  }
+]

@@ -1,0 +1,5 @@
+// docs/design/src/900-appendices.md#e309fb5848793df6 — Chapter 900: options wrapper preserves its mapped typed failure.
+error BadJson { cause: string }
+export effect function main() {
+ return try Effect.try({try: () => JSON.parse("{"), catch: () => new BadJson({cause: "invalid"})})
+}

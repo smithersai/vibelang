@@ -1,0 +1,3 @@
+cov-ch900b Chapter 900: Effect.sync accepts a JSON.parse thunk that may throw; the callback never contract is not enforced.
+Rules: docs/design/src/900-appendices.md#6f6a438d16e362ef, docs/design/src/900-appendices.md#e3a6001f201852c3, docs/design/src/900-appendices.md#a42359b6bb25674d, docs/design/src/900-appendices.md#03259cc60a228a62, docs/design/src/900-appendices.md#705fbc284c30af19
+Witness: typescript/vibelang/cases/cov900-throwing-callbacks.fail/main.vibe

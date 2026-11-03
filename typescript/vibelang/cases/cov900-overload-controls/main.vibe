@@ -1,0 +1,8 @@
+// docs/design/src/900-appendices.md#95563b9ea96b4f07 — Chapter 900: cov900-overload-controls.
+function double(x: number): number
+function double(x: string): string
+function double(x: number | string) { return typeof x === "number" ? x * 2 : x + x }
+effect function load(x: number): number!!
+effect function load(x: string): string!!
+effect function load(x: number | string) { return x }
+export effect function main() { return [double(2),double("a"),try load(3),try load("b")] }

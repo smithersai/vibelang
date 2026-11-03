@@ -1,0 +1,4 @@
+// docs/design/src/900-appendices.md#b5f3e45fd2461141 — Chapter 900: cov900-block-return.
+// docs/design/src/900-appendices.md#68e18577bd0b0b7a — Chapter 900: cov900-block-return.
+const p = effect { while (true) { break }; return do { let n = 1; n } }
+export effect function main() { return [try p] }

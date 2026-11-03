@@ -19,3 +19,12 @@ export effect function main() {
 
 // Chapter 002: open arrow handler keeps pipe on its right edge
 // Spec rule: docs/design/src/002-running.md#d9a441da456c4677
+
+// docs/design/src/900-appendices.md#371b41afe81e2cec — Chapter 900: pipe-catch-arrow-right-edge.
+// docs/design/src/900-appendices.md#7d62ccd112ceaa0d — Chapter 900: pipe-catch-arrow-right-edge.
+// docs/design/src/900-appendices.md#09268c70c2a7d94a — Chapter 900: pipe-catch-arrow-right-edge.
+// docs/design/src/900-appendices.md#a33325b2d53ab5dc — Chapter 900: pipe-catch-arrow-right-edge.
+// docs/design/src/900-appendices.md#a88d0a2824738a1c — Chapter 900: pipe-catch-arrow-right-edge.
+// docs/design/src/900-appendices.md#b954bcd7687f5d3d — Chapter 900: pipe-catch-arrow-right-edge.
+// docs/design/src/900-appendices.md#463862e7e6eafbd4 — Chapter 900: pipe-catch-arrow-right-edge.
+// docs/design/src/900-appendices.md#0d0ec338544e67a0 — Chapter 900: pipe-catch-arrow-right-edge.

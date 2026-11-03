@@ -15,3 +15,7 @@ export effect function good() {
   const n = (try . any [a]) ** 2
   return [r, n, 2 ** try.race [a]]
 }
+
+// docs/design/src/900-appendices.md#af4a29c83677a568 — Chapter 900: unary-pow-dotted-heads.fail.
+// docs/design/src/900-appendices.md#c20e1c5357f29543 — Chapter 900: unary-pow-dotted-heads.fail.
+// docs/design/src/900-appendices.md#a559b68a2e0a58be — Chapter 900: unary-pow-dotted-heads.fail.

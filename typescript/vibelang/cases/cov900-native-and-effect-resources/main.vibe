@@ -1,0 +1,12 @@
+import { scoped, acquireRelease } from "effect/Effect"
+// docs/design/src/900-appendices.md#51f3557fec7743d8 — Chapter 900: cov900-native-and-effect-resources.
+function native(events: string[]) { return {[Symbol.dispose]() { events.push("native") }} }
+export effect function main() {
+ const events: string[] = []
+ { using resource = native(events) }
+ try scoped(effect {
+  const resource = try acquireRelease(Effect.succeed("effect"), value => Effect.sync(() => { events.push(value) }))
+  events.push(resource)
+ })
+ return events
+}

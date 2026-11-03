@@ -9,3 +9,6 @@ export const effectful = 1 |> effect () => %
 // **Amended 2026-10-31: arrows at the right edge.** An `EffectArrow` is an arrow for the pinned pipe-body restriction.
 
 // Chapter 900: Appendix B EK2301 bare arrow pipe body — spec-rule: docs/design/src/900-appendices.md#dc40286816b41b66
+
+// docs/design/src/900-appendices.md#12afc76c9471dd29 — Chapter 900: pipe-effect-arrow-body.fail.
+// docs/design/src/900-appendices.md#a66a276fbd03dd3b — Chapter 900: pipe-effect-arrow-body.fail.

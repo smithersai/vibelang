@@ -1,0 +1,5 @@
+// expect: EK0104 EK0105
+// docs/design/src/900-appendices.md#a7f3ff3adf53d1b5 — Chapter 900: cov900-error-member-diagnostics.fail.
+// docs/design/src/900-appendices.md#b38c886a27c6e280 — Chapter 900: cov900-error-member-diagnostics.fail.
+error BadMember { async effect get value() { return 1 } }
+export {}

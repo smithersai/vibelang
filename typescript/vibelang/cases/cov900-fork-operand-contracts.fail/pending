@@ -1,0 +1,3 @@
+cov-ch900b Chapter 900: Fork modifier/scope witnesses fall through to native parse errors instead of EK1705/EK1706; the limit contract remains in the matrix.
+Rules: docs/design/src/900-appendices.md#625e5b6ee2005f42, docs/design/src/900-appendices.md#f3a392ed35570eb9
+Witness: typescript/vibelang/cases/cov900-fork-operand-contracts.fail/main.vibe

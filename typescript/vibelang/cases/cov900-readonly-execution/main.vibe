@@ -1,0 +1,7 @@
+// docs/design/src/900-appendices.md#a8bd7afecc08ee2b — Chapter 900: cov900-readonly-execution.
+const tuple: readonly [number!!,number!!] = [Effect.succeed(1),Effect.succeed(2)]
+export effect function main() {
+ const values = try.all tuple
+ const settled = try.allSettled tuple
+ return [values,settled.map(e => e._tag)]
+}

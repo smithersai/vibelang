@@ -1,0 +1,26 @@
+[
+  {
+    "name": "typed bare",
+    "source": "export const f=effect x: number!! => x",
+    "status": "error",
+    "diagnostic": {
+      "code": "EK0109",
+      "category": "error"
+    },
+    "errorCodes": [
+      "EK0109"
+    ]
+  },
+  {
+    "name": "generic bare",
+    "source": "export const f=effect <T> x: T => x",
+    "status": "error",
+    "diagnostic": {
+      "code": "EK0109",
+      "category": "error"
+    },
+    "errorCodes": [
+      "EK0109"
+    ]
+  }
+]

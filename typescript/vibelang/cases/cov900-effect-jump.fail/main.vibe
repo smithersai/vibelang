@@ -1,0 +1,5 @@
+// expect: EK0202
+// docs/design/src/900-appendices.md#b403808d8483910f — Chapter 900: cov900-effect-jump.fail.
+export effect function f() {
+ while (true) { const block = effect { break }; return block }
+}

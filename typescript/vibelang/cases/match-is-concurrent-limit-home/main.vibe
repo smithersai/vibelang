@@ -8,3 +8,6 @@ export effect function main() {
 }
 
 // Chapter 004: match-is-concurrent-limit-home; rule-evidence: docs/design/src/004-match.md#c9c869a0319ce7c7
+
+// docs/design/src/900-appendices.md#9a9b87fac0722981 — Chapter 900: a limit binding remains in its enclosing home.
+// docs/design/src/900-appendices.md#bb417d75b6768a86 — Chapter 900: a limit binding remains in its enclosing home.

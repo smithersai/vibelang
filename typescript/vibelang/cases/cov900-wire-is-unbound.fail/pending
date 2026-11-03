@@ -1,0 +1,3 @@
+cov-ch900b Chapter 900: The retired wire macro remains bound and reports an argument type error instead of native TS2304.
+Rules: docs/design/src/900-appendices.md#ec21c02b4d57759a
+Witness: typescript/vibelang/cases/cov900-wire-is-unbound.fail/main.vibe

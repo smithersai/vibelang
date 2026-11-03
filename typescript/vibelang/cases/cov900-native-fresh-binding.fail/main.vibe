@@ -1,0 +1,6 @@
+// expect: TS2454
+// Chapter 900: cov900-native-fresh-binding.fail.
+function use(n: number) {}
+let v: number
+use(v)
+export {}

@@ -1,0 +1,4 @@
+// docs/design/src/900-appendices.md#fe71730cb1414d5b — Chapter 900: cov900-namespace-control.
+namespace Good { export async function run() { return await Promise.resolve(42) } }
+const value = await Good.run()
+export effect function main() { return [value] }

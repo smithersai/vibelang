@@ -1,0 +1,3 @@
+cov-ch900b Chapter 900: Ambient schema reports TS1254 instead of EK1506; the full ambient-family code matrix is pending.
+Rules: docs/design/src/900-appendices.md#65ad3593e83a3662, docs/design/src/900-appendices.md#561375cc571b4840, docs/design/src/900-appendices.md#f9fa1143be7db43d, docs/design/src/900-appendices.md#967a5c9d15386556, docs/design/src/900-appendices.md#001d85e0a70e3542
+Witness: typescript/vibelang/cases/cov900-ambient-custom.fail/main.vibe

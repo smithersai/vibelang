@@ -1,0 +1,41 @@
+[
+  {
+    "name": "sync",
+    "source": "export const value=Effect.sync(()=>JSON.parse(\"{\"))",
+    "status": "error",
+    "messages": [
+      "throw"
+    ]
+  },
+  {
+    "name": "catch",
+    "source": "export const value=Effect.try({try:()=>1,catch:()=>JSON.parse(\"{\")})",
+    "status": "error",
+    "messages": [
+      "throw"
+    ]
+  },
+  {
+    "name": "promise",
+    "source": "export const value=Effect.promise(()=>{JSON.parse(\"{\");return Promise.resolve(1)})",
+    "status": "error",
+    "messages": [
+      "throw"
+    ]
+  },
+  {
+    "name": "sync-control",
+    "source": "export const value=Effect.sync(()=>1)",
+    "status": "zero"
+  },
+  {
+    "name": "catch-control",
+    "source": "export const value=Effect.try({try:()=>1,catch:()=>0})",
+    "status": "zero"
+  },
+  {
+    "name": "promise-control",
+    "source": "export const value=Effect.promise(()=>Promise.resolve(1))",
+    "status": "zero"
+  }
+]

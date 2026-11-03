@@ -1,0 +1,6 @@
+// docs/design/src/900-appendices.md#b1a50d70d37f7ae3 — Chapter 900: cov900-constructor-controls.
+// docs/design/src/900-appendices.md#43d9c9be2a00ae88 — Chapter 900: cov900-constructor-controls.
+class Point { value = 1 }
+const point = { constructor: Point }
+const opaque: any = () => 1
+export effect function main() { return [new point.constructor().value, typeof opaque.constructor] }

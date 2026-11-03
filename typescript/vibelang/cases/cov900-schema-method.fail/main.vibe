@@ -1,0 +1,4 @@
+// expect: EK1505
+// docs/design/src/900-appendices.md#b9e8dea99193d46d — Chapter 900: cov900-schema-method.fail.
+schema Bad { m(): string }
+export {}
