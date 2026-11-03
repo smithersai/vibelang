@@ -281,14 +281,14 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | --- | ---: |
 | [Introduction](../../../design/src/000-intro.md) | 3,000 |
 | **The language** | **120,000** |
-| [1. Functions and Effect types](../../../design/src/001-functions.md) | 12,000 |
+| [1. Functions and Effect types](../../../design/src/001-functions.md) | 13,000 |
 | [2. Running Effects](../../../design/src/002-running.md) | 30,000 |
 | [3. Failures](../../../design/src/003-failures.md) | 10,000 |
 | [4. Pattern matching](../../../design/src/004-match.md) | 23,000 |
 | [5. Services and the environment](../../../design/src/005-services.md) | 13,000 |
 | [6. Data](../../../design/src/006-data.md) | 9,200 |
 | [7. Configuration and tooling](../../../design/src/007-tooling.md) | 18,000 |
-| [8. Runtime guarantees](../../../design/src/008-runtime.md) | 7,500 |
+| [8. Runtime guarantees](../../../design/src/008-runtime.md) | 7,900 |
 | **Appendices** | **56,000** |
 | [Grammar, diagnostics, and denied and open VIPs](../../../design/src/900-appendices.md) | 33,000 |
 | [Module resolution matrix](../../../design/src/901-resolution-matrix.md) | 23,000 |

@@ -58,11 +58,14 @@ export function readText(path: string): string { /* as above */ }
 // config.ts
 import { Data, Effect } from "effect"
 import { port, readText } from "./parse.ts"
-export class BadPort extends Data.TaggedError("BadPort")<{ readonly raw: string }> {}
-export const loadPort = (raw: string) =>
-  Effect.try({ try: () => port(raw), catch: () => new BadPort({ raw }) })
+class BadPort extends Data.TaggedError("BadPort")<{ readonly raw: string }> {}
+export function loadPort(raw: string) {
+  return Effect.gen(function* () { return yield* Effect.try({ try: () => port(raw), catch: () => new BadPort({ raw }) }) })
+}
 export function label(raw: string): string { return `port ${port(raw)}` }  // compiles; may throw
 ```
+
+*Corrected 2026-11-03: the counterpart keeps `loadPort` a function declaration returning `Effect.gen`, and `BadPort` unexported, as the source writes them: VIP-1 puts `effect` "exactly where TypeScript allows `async`", and [Functions](https://github.com/smithersai/vibelang/blob/main/docs/design/src/001-functions.md#meaning) says "A declaration stays a hoisted function declaration".*
 
 The rule that decides every detail below:
 
@@ -123,7 +126,7 @@ A module declaration is a module record, so ECMAScript's module evaluation decid
 
 1. **Once at most** per realm, however many times it is imported.
 2. **Only if imported for a value.** A body the file never imports, or imports only types from (`import type`, or imports TypeScript elides), never evaluates and emits no JavaScript; it is still checked. `import name;` evaluates it for effects.
-3. **In import order.** The file's dependencies, its module declarations among them, evaluate in the order of its import and re-export declarations, then the file's own body. Declarations are hoisted: `import { port } from parse` above `module parse { }` is ordinary (case `module-declaration-order`).
+3. **In import order.** The file's source dependencies, its module declarations among them, evaluate in the order of its import and re-export declarations, then the file's own body. A required matcher initialization dependency precedes those source dependencies ([VIP-31](/vips/0031-runtime-guarantees)); a TypeScript body arranges its own initialization before using `Symbol.customMatcher`, as a sibling `.ts` file would. Declarations are hoisted: `import { port } from parse` above `module parse { }` is ordinary (case `module-declaration-order`).
 4. **Live bindings.** An `export let` the body reassigns is seen by the importer (case `module-declaration-live-bindings`).
 5. **Failure.** An uncaught `throw` or rejected top-level `await` fails module evaluation, before any effect code runs, as for a `.ts` import; it is never an Effect error. Retryable initialization belongs in an exported function called through `Effect.try`.
 
@@ -160,13 +163,13 @@ Will, 2026-10-31: `@throws` and thrown-type tracking exist only for functions im
 
 ## Emit, declarations, source maps
 
-- **One JavaScript module per body,** beside the file's output, as D403 and main do. `main.vibe` with `module parse` emits `main.js` and `main.vibe.parse.js`, and `main.js` imports `"./main.vibe.parse.js"` where the source wrote `parse`. A separate module is the one lowering whose order, liveness, TDZ, cycles and top-level `await` are ECMAScript's by construction; old VibeLang's two inline lowerings each broke one (D303's snapshot exports, fixed by D364; hoisted body imports running out of order, fixed by D403). Under `"jsx": "preserve"` a `.vibex` body emits `.jsx`.
-- **File names keep the exact name.** The name part keeps `a`–`z`, `0`–`9` and `_`, and writes every other code point as `-` plus its hex value plus `-` (`Text` → `main.vibe.-54-ext.js`). The encoding is injective, so case-only and Unicode-normalization twins get different files on every file system, and all-lowercase names (every name in main's cases) are unchanged. Main lower-cases the name today, so `module Text` and `module text` collide and `from text` resolves to `Text`'s body (probe `case2`, rerun: `EK4408` plus `TS2305`).
+- **One JavaScript module per body,** beside the file's output, as D403 and main do. `main.vibe` with `module parse` emits `main.js` and `main.vibe.parse.js`, and `main.js` imports `"./main.vibe.parse.js"` where the source wrote `parse`. A separate module is the one lowering whose order, liveness, TDZ, cycles and top-level `await` are ECMAScript's by construction; old VibeLang's two inline lowerings each broke one (D303's snapshot exports, fixed by D364; hoisted body imports running out of order, fixed by D403). A body in `main.vibex` uses the source basename `main.vibex`, so `module parse` emits `main.vibex.parse.jsx` under `"jsx": "preserve"`, or `main.vibex.parse.js` with transformed JSX, as TypeScript does for `.tsx`.
+- **File names keep the exact name.** The name part encodes the decoded identifier's Unicode code points without case folding or Unicode normalization. It keeps `a`–`z`, `0`–`9` and `_`, and writes every other code point as `-`, its code point in lowercase hexadecimal without leading zeros, and `-` (`Text` → `-54-ext`, `Über` → `-dc-ber`, `$x` → `-24-x`). Identifier escapes and their literal characters have the same decoded name. The output stem is the source file's full basename, including `.vibe` or `.vibex`, followed by `.` and the encoded name: `main.vibe.-dc-ber` or `main.vibex.-dc-ber`. JavaScript, declaration and map outputs, and generated references to them, share that stem. The encoding is injective within one parent: case-only and Unicode-normalization twins get different ASCII filenames on every file system, and names containing only the retained characters are unchanged. Main lower-cases the name today, so `module Text` and `module text` collide and `from text` resolves to `Text`'s body (probe `case2`, rerun: `EK4408` plus `TS2305`).
 - **CommonJS.** Under CommonJS emit the body is a CommonJS module that `main.js` requires, as a sibling `.ts` would be (case `module-declaration-cjs`). `export =` and `import x = require()` in a body are `EK4008` under any emit: a TC39 module body has no such forms.
-- **Declarations.** A body's declarations are TypeScript's own declaration emit of it, `main.vibe.parse.d.ts` beside `main.d.ts`, with JSDoc (`@throws` included) as TypeScript writes it. When the file's VIP-27 sidecar `main.d.vibe.ts` refers to the body, `main.vibe.parse.d.ts` is also written beside `main.vibe`, so stock `tsc` resolves it. A declaration file cannot hold the body inline (`declare module "./x"` with a relative name is `TS2436`).
+- **Declarations.** A body's declarations are TypeScript's own declaration emit of it, `main.vibe.parse.d.ts` beside `main.d.ts`, with JSDoc (`@throws` included) as TypeScript writes it. The canonical stem also gives `main.vibex.parse.d.ts` and `main.vibe.-dc-ber.d.ts` for the examples above. When the file's VIP-27 sidecar `main.d.vibe.ts` refers to the body, `main.vibe.parse.d.ts` is also written beside `main.vibe`, so stock `tsc` resolves it. A declaration file cannot hold the body inline (`declare module "./x"` with a relative name is `TS2436`).
 - **Source maps.** The body's virtual source is the `.vibe` text with everything outside the body blanked, so offsets, lines and columns are the `.vibe` file's. `main.vibe.parse.js.map` and `.d.ts.map` name `main.vibe` with its full `sourcesContent`.
 - **`import.meta` is `EK4009` anywhere in a body.** TC39 says a body's `import.meta.url` is the containing module's; the separate file's is its own (probe `p1`, rerun: `main.vibe.meta.js`, `import.meta.main` false). No body in main's 50 files uses it. A body that needs metadata receives it as an argument or lives in a `.ts` file.
-- **Loaders and bundlers.** `vibelang/register`, the Bun plugin, Vite and unplugin serve `main.vibe.<name>.js` from the compiled parent, cached by the parent's version, as main does today. An edit to a body invalidates its output and its importers.
+- **Loaders and bundlers.** `vibelang/register`, the Bun plugin, Vite and unplugin serve each body's canonical filename from the compiled parent, using the same source basename, encoded name and output suffix as the compiler, cached by the parent's version. An edit to a body invalidates its output and its importers.
 
 ## Tooling
 

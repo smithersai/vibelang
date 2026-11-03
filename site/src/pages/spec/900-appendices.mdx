@@ -499,6 +499,7 @@ ok ? x |> % + 1 : 0         a pipe in a branch
 
 ```text
 ClosedCatchExpression = CatchHead "catch" NonArrowHandler
+                      | CatchHead "catch" BlockArrowHandler
 ```
 
 <a id="catchhead"></a>
@@ -510,13 +511,19 @@ CatchHead = ClosedCatchExpression | BitwiseORExpression
 #### CatchHandler
 
 ```text
-CatchHandler = ArrowHandler | NonArrowHandler   (always a function literal; VIP-5, amended 2026-10-29)
+CatchHandler = ArrowHandler | BlockArrowHandler | NonArrowHandler   (always a function literal; VIP-5, amended 2026-10-29)
 ```
 
 <a id="arrowhandler"></a>
 
 ```text
-ArrowHandler = ArrowFunction | EffectArrow   (no AsyncArrowFunction: VIP-5, amended)
+ArrowHandler = ArrowFunction | EffectArrow   (expression ConciseBody only; no AsyncArrowFunction: VIP-5, amended)
+```
+
+<a id="blockarrowhandler"></a>
+
+```text
+BlockArrowHandler = ArrowFunction | EffectArrow   (block ConciseBody only; no AsyncArrowFunction: VIP-5, amended)
 ```
 
 <a id="nonarrowhandler"></a>
@@ -814,7 +821,6 @@ ModuleSpecifier = StringLiteral | IdentifierReference
 
 ```text
 ImportDeclaration = an ordinary TypeScript import declaration using ModuleSpecifier
-                  | "import" ModuleSpecifier ";"
 ```
 
 VIP-40: TC39's module declaration, restricted to a top-level statement of a `.vibe` or `.vibex` file. `ModuleBody` is TypeScript. An identifier `ModuleSpecifier` appears in VibeLang code of the same file only. `module` stays an identifier everywhere else.
@@ -825,7 +831,7 @@ VIP-40: TC39's module declaration, restricted to a top-level statement of a `.vi
 
 **Pipe snapshot reconciliations.** The missing-topic early error checks the `AssignmentExpression` child with `ContainsOuterTopic`; the `PipeBody` boundary still returns `false`. Evaluation uses the actual `ShortCircuitExpression` input once, with `GetValue`, rather than the stale `ConditionalExpression` reference. `GetPrimaryTopicValue` reads `topicEnv.[[TopicValues]]`, not the unbound `envRec`. Binary XOR `^` and XOR assignment `^=` remain ordinary TypeScript operators despite the duplicated `%` in the token table. The snapshot receipt records these corrections without changing the upstream HTML; [Running Effects](/spec/002-running#the-pipe-operator) gives the examples.
 
-**`catch`.** [CatchExpression](/spec/900-appendices#catchexpression) sits in ECMAScript's precedence chain beside `CoalesceExpression`, and its head mirrors `CoalesceExpressionHead`: it binds like `??`, is left-associative, and can't be mixed with `??`, `||` or `&&` without parentheses, for the same structural reason `a ?? b || c` is a syntax error. The handler is a plain or `effect` arrow or function expression, possibly parenthesized, so its kind is decided by its syntax alone; any other handler is `EK0509` ([Running Effects](/spec/002-running#catch)). An unparenthesized arrow handler ends the chain: its `ConciseBody` is the longest `AssignmentExpression`, as in an ECMAScript arrow, so a later `catch` belongs to the body. Any other handler is a closed expression, after which only another `catch` or a lower-precedence operator can follow.
+**`catch`.** [CatchExpression](/spec/900-appendices#catchexpression) sits in ECMAScript's precedence chain beside `CoalesceExpression`, and its head mirrors `CoalesceExpressionHead`: it binds like `??`, is left-associative, and can't be mixed with `??`, `||` or `&&` without parentheses, for the same structural reason `a ?? b || c` is a syntax error. The handler is a plain or `effect` arrow or function expression, possibly parenthesized, so its kind is decided by its syntax alone; any other handler is `EK0509` ([Running Effects](/spec/002-running#catch)). An unparenthesized expression-bodied arrow handler ends the chain: its `ConciseBody` is the longest `AssignmentExpression`, as in an ECMAScript arrow, so a later `catch` belongs to the body. Any other handler is a closed expression, after which only another `catch` or a lower-precedence operator can follow.
 
 ```text
 a catch (() => b) catch (() => c)    (a catch (() => b)) catch (() => c); type-checks only when the inner catch gives an Effect: a's success (never, if a only fails) and b are both Effects
@@ -964,9 +970,9 @@ The operand and parent positions follow `UnaryExpression`; `throw` in statement 
 
 Every diagnostic has an `EK` code and a message that says how to fix it (VIP-34). VibeLang's own rules take one hundred-block per VIP, `EK` then the two-digit VIP number then two digits, so VIP-19's rules are `EK19xx` (VIP-34, amended). Imported lint rules use the growing `EK38` decimal suffix below (VIP-34, amended). A code assigned before that scheme is kept where its rule is unchanged, or only widened or downgraded: `EK0801`, `EK1010`, `EK2109`, `EK2111`, `EK2117`, `EK2126`, `EK3001` to `EK3005`, `EK4402`, `EK4609`, `EK4610`, `EK4701` and `EK4802`. Codes are unique across the table, so a kept code may sit inside another VIP's block. Each rule's chapter links to its definition. A row whose rule starts "warning" or "lint warning" is a warning; every other code is an error. Only a warning's code, or an `EK38xx` code, may appear in `vibe.severities` (VIP-30, amended): `{ "EK0801": "off" }` is valid, `{ "EK4701": "off" }` is `EK3006`. Reused numbers: `EK2001` to `EK2005`, `EK2102` to `EK2104`, `EK3006`, `EK3007` and `EK3201` previously named different rules in the [old language’s diagnostic table](https://github.com/smithersai/vibelang/blob/main/docs/design/history/src/428-part4-ch28-tooling.md); in this table they mean only the rows below. `EK3008` is not reused: `0.0.10`'s static-key rule is now `EK0901`. VibeLang's own syntax errors have codes too, each in its VIP's block (`EK0509`, `EK1906`, `EK2005`, …). TypeScript's own diagnostics keep their `TS` codes. Diagnostic ownership follows the source rule, not the parser helper: new VibeLang productions, placement rules, adopted proposal early errors and explicit reconciliations use their owning VIP's `EK` code. Imported proposal syntax is not ordinary native TypeScript syntax. Independent errors in native embedded expressions and types keep their native diagnostics. Each Effect language-service rule that VIP-38 imports (`effecttsgo/*`) gets one stable `EK38xx` code, listed in a table generated from the pinned effect-tsgo version; the CLI prints the code and the rule name (`EK3801 floatingEffect: …`), a VIP-32 bump regenerates the table, and a code never changes once assigned. Every `EK38xx` code is a lint code that `vibe.severities` may set to any value, `"off"` included (VIP-38, amended). The [Imported lint codes](/spec/900-appendices#imported-lint-codes) table below is generated from that pin.
 
-The old `EK2101` is retired and will never be reassigned: it rejected a bodyless declaration whose return type was not an Effect, a restriction VIP-9 removed. The old `EK0511` is retired too: VIP-4 makes a `throw` in a plain `catch` handler the error `EK0401`.
+The old `EK2101` is retired and will never be reassigned: it rejected a bodyless declaration whose return type was not an Effect, a restriction VIP-9 removed. The old `EK0511` is retired too: VIP-4 makes a `throw` in a plain `catch` handler the error `EK0401`. The old module-declaration codes `EK4407` and `EK4408` are retired by [VIP-40](/vips/0040-module-declarations#diagnostics); its current rules use `EK4001`–`EK4009`.
 
-The TypeScript-form lint warnings also retain their existing `EK4830`–`EK4837`, `EK4839`, `EK4841` and `EK4842` assignments. Their triggers and safe repairs are in [TypeScript spellings with VibeLang forms](/spec/007-tooling#typescript-spellings-with-vibelang-forms). They are configurable warnings, separate from the imported Effect rules and their `EK38xx` codes. Obsolete owned-fiber, Option extension-method and magic-entry rules have no rows here.
+The TypeScript-form lint warnings also retain their existing `EK4830`–`EK4837`, `EK4839`, `EK4841` and `EK4842` assignments. Their triggers and safe repairs are in [TypeScript spellings with VibeLang forms](/spec/007-tooling#typescript-spellings-with-vibelang-forms). They are configurable warnings, separate from the imported Effect rules and their `EK38xx` codes. Transitional, migration and removal codes keep the assignments their sources give them, outside their VIPs' blocks, until a coordinated renumber: `EK1023` ([rejected trailing blocks](/vips/0011-trailing-blocks-denied#amendments)), `EK4607` ([retired `select`](/spec/000-intro#retired-continuation-forms)) and `EK4853` to `EK4857` (VIP-3 and VIP-9, amended). Obsolete owned-fiber, Option extension-method and magic-entry rules have no rows here.
 
 | Code | Rule | VIP | Chapter |
 | --- | --- | --- | --- |
@@ -1001,7 +1007,7 @@ The TypeScript-form lint warnings also retain their existing `EK4830`–`EK4837`
 | `EK0508` | lint warning: a plain handler whose result is an Effect; use `catch effect` | 5, 38 | [Running Effects](/spec/002-running#catch) |
 | `EK0509` | a `catch` handler that is not a plain or `effect` arrow or function expression: `a catch b`, `a catch effect { }`, `a catch async (e) => b`, `a catch function* (e) { }`; a parameter list followed directly by a block, as in `try x catch (e) { }`, gets `EK0509` without adding `EK0505` for the same malformed handler | 5 | [Running Effects](/spec/002-running#catch) |
 | `EK0510` | an unparenthesized `try`, `try.all`, `try.race`, `try.any`, `try.allSettled`, `fork`, `fork.in(s)`, `fork.scoped`, `fork.detached` or `join` expression on the left of `**`, as ECMAScript rejects `await a ** b`; parenthesize it: `(try a) ** b` | 5, 17, 18 | [Running Effects](/spec/002-running#static-rules) |
-| `EK0512` | `catch` mixed with `??`, `\|\|` or `&&` without parentheses, or a member access or call after a function-expression handler; parenthesize | 5 | [Running Effects](/spec/002-running#catch) |
+| `EK0512` | `catch` mixed with `??`, `\|\|` or `&&` without parentheses (parenthesize the mixed operands), or a member access or call after any closed handler (a parenthesized handler, a function-expression handler or a block-bodied arrow handler); parenthesize the whole catch expression | 5 | [Running Effects](/spec/002-running#catch) |
 | `EK0701` | a missing `;` after a `match` arm, the last one included | 7 | [Pattern matching](/spec/004-match#syntax-and-meaning) |
 | `EK0702` | a class pattern that [Class patterns](/spec/004-match#class-patterns) rejects: it names a `data` declaration or variant, a `schema` or a directly built `Context.Reference`, or its callee has no usable signature or return type (a `service` is `EK3004`) | 7 | [Pattern matching](/spec/004-match#class-patterns) |
 | `EK0703` | lint warning: an extractor whose argument count can never match its pattern's list, `when NotFound():` | 7, 38 | [Pattern matching](/spec/004-match#class-patterns) |
@@ -1030,7 +1036,7 @@ The TypeScript-form lint warnings also retain their existing `EK4830`–`EK4837`
 | `EK1306` | two `error` or `schema error` body members with no separator between them; write `;` or a line break between them (quick fix: insert `;`) | 13 | [Appendix A](/spec/900-appendices#separator) |
 | `EK1307` | a recognized custom `error` or `schema error` declaration in an ambient source context, whether its own `declare` or an enclosing ambient namespace, module, global region or declaration file; write a native ambient class, or move the declaration to runtime code | 13 | [Failures](/spec/003-failures#error-declarations) |
 | `EK1401` | a namespace name that two subpaths export, or a subpath and the root | 14 | [Services](/spec/005-services#the-platform-standard-library) |
-| `EK1402` | retired Effect data receiver-method extension, such as `Option.some(1).map(f)`; use `Option.map(Option.some(1), f)` or the preserving `vibelang --fix` migration; refuse unsafe bindings or changed declarations | 14 | [Migration](/spec/007-tooling#legacy-data-receiver-methods) |
+| `EK1402` | retirement-target error, after the migration gate in chapter 007: retired Effect data receiver-method extension, such as `Option.some(1).map(f)`; use `Option.map(Option.some(1), f)` or the preserving `vibelang --fix` migration; refuse unsafe bindings or changed declarations | 14 | [Migration](/spec/007-tooling#legacy-data-receiver-methods) |
 | `EK1501` | `export default schema S …`; write `export { S as default }` | 15 | [Data](/spec/006-data#schema-declarations) |
 | `EK1502` | type parameters on a `schema` declaration; use an ordinary generic TypeScript factory | 15 | [Data](/spec/006-data#schema-declarations) |
 | `EK1503` | a recognized ordinary schema declaration missing its required body or admitted alias form | 15 | [Data](/spec/006-data#schema-declarations) |

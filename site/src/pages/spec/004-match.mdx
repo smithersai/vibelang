@@ -463,7 +463,8 @@ function classify(s: string | number) {
 const adopted: Promise<number> = (async () => Promise.resolve(7))()
 const adoptedExit = await Effect.runPromiseExit(Effect.promise(() => adopted)) // Success(7)
 // Stand-in for the runtime-provided Symbol.customMatcher key.
-const customMatcher: unique symbol = Symbol.for("Symbol.customMatcher")
+const customMatcher: unique symbol =
+  ((Symbol as typeof Symbol & { readonly customMatcher?: symbol }).customMatcher ?? Symbol.for("Symbol.customMatcher")) as any
 class OnlyNumbers {
   static [customMatcher](s: unknown): boolean { return typeof s === "number" }
 }
@@ -521,7 +522,8 @@ function numeric(s: unknown) {
 The following is a local typing witness for one `Array(let n)` arm and a tuple-returning custom matcher. The native loop preserves the element type, and its tagged result carries the fact that one element was obtained before the binding read; an array-length comparison alone does not carry it in TypeScript. Tuple extraction keeps its positional types. The `number` annotation checks the selected element before the nonthrowing `String(n)` call. A payload that includes `undefined` keeps that type after the presence test. This witness does not replace the general cached Iterator Record, failed-extraction, ordered-arm or `FinishMatch` algorithms.
 
 ```ts [Effect]
-const numericMatcher: unique symbol = Symbol.for("Symbol.customMatcher")
+const numericMatcher: unique symbol =
+  ((Symbol as typeof Symbol & { readonly customMatcher?: symbol }).customMatcher ?? Symbol.for("Symbol.customMatcher")) as any
 class Numeric {
   static [numericMatcher](s: unknown, _options: { matchType: "extractor" }): false | [number] {
     return typeof s === "number" ? [s] : false
@@ -1178,6 +1180,8 @@ A class arm whose class has its own `Symbol.customMatcher` (an own property, `Ob
 - Thirty-three of the thirty-nine are Effect’s tagged errors, each tested with its module’s own guard. The alias and shadowing rule above applies. Neither `instanceof`, a universal `_tag` test nor the subject’s static type replaces the guard.
 - Built-in constructor patterns use `Array.isArray(subject)` for `Array`, and `subject instanceof C` for every other built-in, including native errors, `AggregateError`, `Date`, `RegExp`, collections, `Promise`, typed arrays and `ArrayBuffer`. A cross-realm array matches; other cross-realm built-ins may fail. Native-error matching follows the current prototype chain, not an inaccessible original native-error kind. `String`, `Number`, `Boolean`, `BigInt` and `Symbol` test the primitive or its boxed object, `typeof s === "string" || s instanceof String` and so on, and extract `[s]` for a primitive and `[s.valueOf()]` for a boxed object. Extraction otherwise follows the draft; no methods are defined on globals. Ordinary classes without an explicit matcher, including classes imported from untouched `.ts` or `.js`, instead test `subject instanceof C`, then extract as the draft specifies. No helper patches `Function.prototype` or records construction identity. This deliberately differs from the snapshot's `[[ConstructedBy]]` test: changing a genuine instance's prototype can make it stop matching, while forging a prototype can make an object match. A future switch to engine matchers requires a VIP. Where an engine lacks `Symbol.customMatcher`, the runtime defines the symbol ([Runtime guarantees](/spec/008-runtime)).
 
+Every `.vibe` and `.vibex` source file sees the runtime's declaration of `SymbolConstructor.customMatcher`, including when `vibe.effectModules` or `vibe.effectGlobals` is disabled. Thus an ordinary class or object may declare its own `[Symbol.customMatcher]` method without a source import or reference directive. The ambient `SymbolConstructor` augmentation is program-wide, so `.ts` files in the same TypeScript program see it too; a standalone `.ts` program without the provider does not. `Symbol.customMatcher` has the same unique symbol type as the runtime's `customMatcher` export. This supplies the type required by VIP-7; matching still uses the own-matcher rules above. A type reference does not execute runtime initialization: emitted VibeLang modules using the key request the [runtime initialization dependency](/spec/008-runtime) first. TypeScript modules, including VIP-40 bodies, keep ordinary dependency order and arrange initialization before using the key, normally with `import "vibelang-runtime"` first. The ambient type alone does not establish that the property exists at run time. Emitted declarations that name `Symbol.customMatcher` carry the runtime type reference under [Declaration output](/spec/001-functions#declaration-output).
+
 For an ordinary class without an own matcher, the draft’s successful test returns `true`, not `[s]`: using it as an extractor throws `TypeError`, rather than binding an instance. Built-in adapters retain their own extraction rules: `Array` and typed arrays return the subject as the list; `Map` and `Set` return `[subject]`.
 
 After own matchers, fixed patterns, built-ins and declaration diagnostics, dispatch uses the callee’s static signatures: a construct signature selects `instanceof`, including ES5 constructors declared as constructable; call signatures only select `C(subject, { matchType })`, preserving a member receiver. A bare call-only pattern requires a return type assignable to `boolean`; an extractor requires `Iterable<unknown> | false`. Other return types, and callees with neither signature (`any`, `unknown`, `Function`, non-callable objects), are `EK0702`; quick fix: test the call in a guard. Type predicates narrow as ordinary TypeScript calls do. The global `Function` still reports `EK0107`; use a `typeof` guard.
@@ -1242,7 +1246,8 @@ function builtin(s: unknown) {
 ```
 
 ```ts [Effect]
-const customMatcher: unique symbol = Symbol.for("Symbol.customMatcher")
+const customMatcher: unique symbol =
+  ((Symbol as typeof Symbol & { readonly customMatcher?: symbol }).customMatcher ?? Symbol.for("Symbol.customMatcher")) as any
 class A {
   static [customMatcher](s: unknown, _options: { matchType: "boolean" }) {
     return s === "inherited"

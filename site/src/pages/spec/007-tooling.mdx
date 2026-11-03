@@ -162,8 +162,8 @@ Relative specifiers resolve as follows, after TypeScript's `exports`, `imports`,
 | --- | --- |
 | `./App`, `./App.js` | `App.ts`, `App.tsx`, `App.vibe`, `App.vibex`, `App.d.ts`, then JavaScript |
 | `./App.jsx` | `App.tsx`, `App.ts`, `App.vibex`, `App.vibe`, `App.d.ts`, `App.jsx`, `App.js` |
-| `./App.vibe` | `App.vibe`, `App.d.ts` |
-| `./App.vibex` | `App.vibex`, `App.d.ts` |
+| `./App.vibe` | `App.vibe`, `App.vibex`, `App.d.ts` |
+| `./App.vibex` | `App.vibex`, `App.vibe`, `App.d.ts` |
 
 ## TypeScript spellings with VibeLang forms
 
@@ -268,7 +268,7 @@ The rejection applies once the preserving codemods ship and all migration reposi
 
 ### Legacy data receiver methods
 
-`EK1402` reports a legacy Effect data receiver method, such as `Option.some(1).map(f)`. `vibelang --fix`, including `--fix-migration-only`, rewrites it to the resolved module's data-first function: `Option.map(Option.some(1), f)`. A rewrite that can't preserve types, behavior and declaration output refuses at that site. Native/own methods, namespace calls, computed access and optional chains are not this form. Rejection begins only after the preserving codemod ships and migration repositories have zero remaining uses.
+At the retirement target, `EK1402` is an error for a legacy Effect data receiver method, such as `Option.some(1).map(f)`. `vibelang --fix`, including `--fix-migration-only`, rewrites it to the resolved module's data-first function: `Option.map(Option.some(1), f)`. A rewrite that can't preserve types, behavior and declaration output refuses at that site. Native/own methods, namespace calls, computed access and optional chains are not this form. This specifies the retirement target; enforcement waits for the preserving codemod to ship and migration repositories to have zero remaining uses. It does not specify an interim diagnostic or claim that the held rejection implementation or consumer migration is complete.
 
 ### Legacy prelude shorthand
 
@@ -296,7 +296,7 @@ The resolved `trusted(f, [])` runtime wrapper is retired with `EK0407`. `vibelan
 
 The side-effect imports `vibelang/platform/node`, `vibelang/platform/bun` and `vibelang/platform/browser` are retired compiler-only entry markers, including in a module without `main`: `EK2601`, `legacy platform entry marker: run vibelang --fix and write an explicit runner`. The migration input is a marked module, not an ordinary exported `main` without a marker. An eligible legacy startup is an exported, non-default, zero-parameter function declaration `main` with a body, without a checker-resolved top-level runner call under the pinned legacy compiler and options. A marked module without an eligible startup has no startup to expand: `vibelang --fix` removes its inert marker and keeps any existing explicit runner unchanged.
 
-For an eligible startup, `vibelang --fix` writes an explicit Effect platform runner call and removes the marker. The `node` marker selects `NodeRuntime.runMain` from `@effect/platform-node/NodeRuntime`; `bun` selects that same runner with the legacy `BunServices.layer` from `@effect/platform-bun/BunServices`; `browser` selects `BrowserRuntime.runMain` from `@effect/platform-browser/BrowserRuntime`. Preserve the layers the pinned legacy compiler actually selected: `NodeServices.layer`, `BunServices.layer` or `BrowserServices.layer`, the selected experimental layers and their nesting order. A marker does not by itself add a layer. The runner receives `main()` for a legacy Effect function and `Effect.sync(main)` otherwise, keeping the declaration's callable kind and public types.
+For an eligible startup, `vibelang --fix` writes an explicit Effect platform runner call and removes the marker. The `node` marker selects `NodeRuntime.runMain` from `@effect/platform-node/NodeRuntime`; `bun` selects that same runner, with `BunServices.layer` from `@effect/platform-bun/BunServices` when the legacy compiler selected it; `browser` selects `BrowserRuntime.runMain` from `@effect/platform-browser/BrowserRuntime`. Preserve the layers the pinned legacy compiler actually selected: `NodeServices.layer`, `BunServices.layer` or `BrowserServices.layer`, the selected experimental layers and their nesting order. A marker does not by itself add a layer. The runner receives `main()` for a legacy Effect function and `Effect.sync(main)` otherwise, keeping the declaration's callable kind and public types.
 
 A rewrite that can't preserve types, behavior and declaration output refuses at that site. In particular, preserve entry-only execution and import-only behavior; refuse an unavailable selected runner or layer, or an entry test that cannot be expressed in admitted source. CommonJS does not authorize retaining the retired runtime entry dispatcher, and an ESM rewrite cannot introduce the forbidden `import.meta.main` read. If either needs such a form to preserve startup, leave the marker unchanged and report its file, line and reason as not fixed, with a nonzero exit. No retired runtime dispatcher or fallback runner is a migration target. A remaining marker still reports `EK2601`. A function named `main` alone remains ordinary source and gets no entry diagnostic, and current compilation emits no implicit startup ([VIP-26](/vips/0026-top-level-and-main#decision), [VIP-34](/vips/0034-compiler-and-tooling#decision)).
 
