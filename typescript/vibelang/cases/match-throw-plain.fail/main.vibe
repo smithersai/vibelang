@@ -1,0 +1,9 @@
+// expect: EK0401 EK0401 EK0401
+// VIP-4 / Will's 2026-10-31 ruling: a throw arm in plain sync code is an error.
+export function plain(flag: boolean) {
+  return match (flag) { when true: 1; default: throw "missing"; }
+}
+export const arrow = (flag: boolean) => match (flag) { when true: 1; default: throw "missing"; }
+export class Plain {
+  run(flag: boolean) { return match (flag) { when true: 1; default: throw "missing"; } }
+}

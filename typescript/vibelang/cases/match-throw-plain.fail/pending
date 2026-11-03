@@ -1,0 +1,1 @@
+nothrow-impl VIP-4 / carried item 22: plain match throw arms must report EK0401; the current compiler accepts them.

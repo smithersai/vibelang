@@ -1,0 +1,4 @@
+// VIP-4 and VIP-7: a throw arm in effect code fails with the typed error.
+export effect function effectArm(flag: boolean) {
+  return match (flag) { when true: 1; default: throw "missing"; }
+}

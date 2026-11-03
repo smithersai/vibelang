@@ -1,0 +1,16 @@
+# CLI witnesses from the unchanged vibe compiler are recorded in the lane report.
+# Keys remain precise; a passing pending context is an XPASS.
+FuzzMatchThrowContexts context:plain-function compiler VIP-4: plain match throw arms compile without EK0401; lane nothrow-impl
+FuzzMatchThrowContexts corpus:plain-function compiler VIP-4/VIP-7: minimized context:plain-function witness; lane nothrow-impl
+FuzzMatchThrowContexts context:plain-arrow compiler VIP-4: plain match throw arms compile without EK0401; lane nothrow-impl
+FuzzMatchThrowContexts corpus:plain-arrow compiler VIP-4/VIP-7: minimized context:plain-arrow witness; lane nothrow-impl
+FuzzMatchThrowContexts context:plain-method compiler VIP-4: plain match throw arms compile without EK0401; lane nothrow-impl
+FuzzMatchThrowContexts corpus:plain-method compiler VIP-4/VIP-7: minimized context:plain-method witness; lane nothrow-impl
+FuzzMatchThrowContexts context:plain-in-effect compiler VIP-4: plain match throw arms compile without EK0401; lane nothrow-impl
+FuzzMatchThrowContexts corpus:plain-in-effect compiler VIP-4/VIP-7: minimized context:plain-in-effect witness; lane nothrow-impl
+FuzzMatchThrowContexts context:plain-in-async compiler VIP-4: plain match throw arms compile without EK0401; lane nothrow-impl
+FuzzMatchThrowContexts corpus:plain-in-async compiler VIP-4/VIP-7: minimized context:plain-in-async witness; lane nothrow-impl
+FuzzMatchThrowContexts context:plain-in-async-match compiler VIP-7: async match fails parsing with TS1005 before its nested plain throw arm can be checked under VIP-4; lane vip-match
+FuzzMatchThrowContexts corpus:plain-in-async-match compiler VIP-4/VIP-7: minimized context:plain-in-async-match witness; lane vip-match
+FuzzMatchThrowContexts context:async-match compiler VIP-7: async match fails parsing with TS1005; lane vip-match
+FuzzMatchThrowContexts corpus:async-match compiler VIP-4/VIP-7: minimized context:async-match witness; lane vip-match

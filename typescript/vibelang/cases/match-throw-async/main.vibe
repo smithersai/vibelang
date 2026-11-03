@@ -1,0 +1,4 @@
+// VIP-7: a throw in an async match rejects its Promise.
+export function asyncArm(flag: boolean) {
+  return async match (flag) { when true: 1; default: throw "missing"; }
+}

@@ -3691,6 +3691,13 @@ typescript/vibelang/cases/match-tagged-error-guards/guard9.vibe:1:201 lambda dua
 typescript/vibelang/cases/match-tagged-error-guards/guard9.vibe:1:255 lambda dual fallback
 typescript/vibelang/cases/match-tagged-error-guards/guard9.vibe:1:309 lambda dual fallback
 typescript/vibelang/cases/match-tagged-error-guards/guard9.vibe:1:371 lambda dual fallback
+typescript/vibelang/cases/match-throw-async/main.vibe:3:54 lambda dual fallback
+typescript/vibelang/cases/match-throw-contexts/main.vibe:3:48 lambda dual fallback
+typescript/vibelang/cases/match-throw-plain.fail/main.vibe:4:48 lambda dual fallback
+typescript/vibelang/cases/match-throw-plain.fail/main.vibe:6:22 lambda plain fallback
+typescript/vibelang/cases/match-throw-plain.fail/main.vibe:6:47 lambda dual fallback
+typescript/vibelang/cases/match-throw-plain.fail/main.vibe:6:79 lambda dual fallback
+typescript/vibelang/cases/match-throw-plain.fail/main.vibe:8:69 lambda dual fallback
 typescript/vibelang/cases/match-undefined-pattern/main.vibe:16:14 lambda plain annotation
 typescript/vibelang/cases/match-undefined-pattern/main.vibe:17:12 lambda plain annotation
 typescript/vibelang/cases/match-unused-names/main.vibe:17:16 lambda plain fallback
