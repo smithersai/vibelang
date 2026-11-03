@@ -4,7 +4,7 @@
 
 TypeScript `5.9.3` is the oracle for decided detail `296`. Regenerate with `node scripts/resolution-matrix.mjs --write`; check with `node scripts/resolution-matrix.mjs --check`.
 
-Each row runs a real TypeScript program, checks diagnostics and emits JavaScript even on errors. `module` matches `node16` or `nodenext`, otherwise it is `esnext`; `target` is `es2022` and `jsx` is `preserve`. Both package types are tested. The native and VibeLang columns name the import and its sole target. Source names `.vibe` and `.vibex` stand where the native control names `.ts` and `.tsx`. Written native `.ts` and `.tsx` names keep their native target; stale-name controls instead have only `unrelated.ts` in TypeScript and the migrated target in VibeLang, so neither written native extension can find it. `TS5096` is an option error even when a module resolves. An absent diagnostic list means success. The emitted column is the native specifier; replace a retained native source extension by the corresponding VibeLang source extension. No source extension is rewritten without `rewriteRelativeImportExtensions`.
+Each row runs a real TypeScript program, checks diagnostics and emits JavaScript even on errors. `module` matches `node16` or `nodenext`, otherwise it is `esnext`; `target` is `es2022` and `jsx` is `preserve`. Both package types are tested. The native and VibeLang columns name the import and its sole target. Cross-variant rows give a written source extension only its sibling variant, as TypeScript substitutes `.tsx` for `.ts` and back. Source names `.vibe` and `.vibex` stand where the native control names `.ts` and `.tsx`. Written native `.ts` and `.tsx` names keep their native target; stale-name controls instead have only `unrelated.ts` in TypeScript and the migrated target in VibeLang, so neither written native extension can find it. `TS5096` is an option error even when a module resolves. An absent diagnostic list means success. The emitted column is the native specifier; replace a retained native source extension by the corresponding VibeLang source extension. No source extension is rewritten without `rewriteRelativeImportExtensions`.
 
 | Resolution | Allow TS extensions | Rewrite | Package type | Native import → target | VibeLang import → target | Resolves | Diagnostics | Emitted specifier |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -20,6 +20,8 @@ Each row runs a real TypeScript program, checks diagnostics and emits JavaScript
 | `node10` | `false` | `false` | `module` | `./target` → `target/index.ts` | `./target` → `target/index.vibe` | `target/index.ts` | — | `./target` |
 | `node10` | `false` | `false` | `module` | `./target.ts` → `unrelated.ts` | `./target.ts` → `target.vibe` | — | `TS2307` | `./target.ts` |
 | `node10` | `false` | `false` | `module` | `./target.tsx` → `unrelated.ts` | `./target.tsx` → `target.vibex` | — | `TS2307` | `./target.tsx` |
+| `node10` | `false` | `false` | `module` | `./target.ts` → `target.tsx` | `./target.vibe` → `target.vibex` | `target.tsx` | `TS5097` | `./target.ts` |
+| `node10` | `false` | `false` | `module` | `./target.tsx` → `target.ts` | `./target.vibex` → `target.vibe` | `target.ts` | `TS5097` | `./target.tsx` |
 | `node10` | `false` | `false` | `commonjs` | `./target` → `target.ts` | `./target` → `target.vibe` | `target.ts` | — | `./target` |
 | `node10` | `false` | `false` | `commonjs` | `./target.js` → `target.ts` | `./target.js` → `target.vibe` | `target.ts` | — | `./target.js` |
 | `node10` | `false` | `false` | `commonjs` | `./target.jsx` → `target.tsx` | `./target.jsx` → `target.vibex` | `target.tsx` | — | `./target.jsx` |
@@ -32,6 +34,8 @@ Each row runs a real TypeScript program, checks diagnostics and emits JavaScript
 | `node10` | `false` | `false` | `commonjs` | `./target` → `target/index.ts` | `./target` → `target/index.vibe` | `target/index.ts` | — | `./target` |
 | `node10` | `false` | `false` | `commonjs` | `./target.ts` → `unrelated.ts` | `./target.ts` → `target.vibe` | — | `TS2307` | `./target.ts` |
 | `node10` | `false` | `false` | `commonjs` | `./target.tsx` → `unrelated.ts` | `./target.tsx` → `target.vibex` | — | `TS2307` | `./target.tsx` |
+| `node10` | `false` | `false` | `commonjs` | `./target.ts` → `target.tsx` | `./target.vibe` → `target.vibex` | `target.tsx` | `TS5097` | `./target.ts` |
+| `node10` | `false` | `false` | `commonjs` | `./target.tsx` → `target.ts` | `./target.vibex` → `target.vibe` | `target.ts` | `TS5097` | `./target.tsx` |
 | `node10` | `false` | `true` | `module` | `./target` → `target.ts` | `./target` → `target.vibe` | `target.ts` | — | `./target` |
 | `node10` | `false` | `true` | `module` | `./target.js` → `target.ts` | `./target.js` → `target.vibe` | `target.ts` | — | `./target.js` |
 | `node10` | `false` | `true` | `module` | `./target.jsx` → `target.tsx` | `./target.jsx` → `target.vibex` | `target.tsx` | — | `./target.jsx` |
@@ -44,6 +48,8 @@ Each row runs a real TypeScript program, checks diagnostics and emits JavaScript
 | `node10` | `false` | `true` | `module` | `./target` → `target/index.ts` | `./target` → `target/index.vibe` | `target/index.ts` | — | `./target` |
 | `node10` | `false` | `true` | `module` | `./target.ts` → `unrelated.ts` | `./target.ts` → `target.vibe` | — | `TS2307` | `./target.js` |
 | `node10` | `false` | `true` | `module` | `./target.tsx` → `unrelated.ts` | `./target.tsx` → `target.vibex` | — | `TS2307` | `./target.jsx` |
+| `node10` | `false` | `true` | `module` | `./target.ts` → `target.tsx` | `./target.vibe` → `target.vibex` | `target.tsx` | — | `./target.js` |
+| `node10` | `false` | `true` | `module` | `./target.tsx` → `target.ts` | `./target.vibex` → `target.vibe` | `target.ts` | — | `./target.jsx` |
 | `node10` | `false` | `true` | `commonjs` | `./target` → `target.ts` | `./target` → `target.vibe` | `target.ts` | — | `./target` |
 | `node10` | `false` | `true` | `commonjs` | `./target.js` → `target.ts` | `./target.js` → `target.vibe` | `target.ts` | — | `./target.js` |
 | `node10` | `false` | `true` | `commonjs` | `./target.jsx` → `target.tsx` | `./target.jsx` → `target.vibex` | `target.tsx` | — | `./target.jsx` |
@@ -56,6 +62,8 @@ Each row runs a real TypeScript program, checks diagnostics and emits JavaScript
 | `node10` | `false` | `true` | `commonjs` | `./target` → `target/index.ts` | `./target` → `target/index.vibe` | `target/index.ts` | — | `./target` |
 | `node10` | `false` | `true` | `commonjs` | `./target.ts` → `unrelated.ts` | `./target.ts` → `target.vibe` | — | `TS2307` | `./target.js` |
 | `node10` | `false` | `true` | `commonjs` | `./target.tsx` → `unrelated.ts` | `./target.tsx` → `target.vibex` | — | `TS2307` | `./target.jsx` |
+| `node10` | `false` | `true` | `commonjs` | `./target.ts` → `target.tsx` | `./target.vibe` → `target.vibex` | `target.tsx` | — | `./target.js` |
+| `node10` | `false` | `true` | `commonjs` | `./target.tsx` → `target.ts` | `./target.vibex` → `target.vibe` | `target.ts` | — | `./target.jsx` |
 | `node10` | `true` | `false` | `module` | `./target` → `target.ts` | `./target` → `target.vibe` | `target.ts` | `TS5096` | `./target` |
 | `node10` | `true` | `false` | `module` | `./target.js` → `target.ts` | `./target.js` → `target.vibe` | `target.ts` | `TS5096` | `./target.js` |
 | `node10` | `true` | `false` | `module` | `./target.jsx` → `target.tsx` | `./target.jsx` → `target.vibex` | `target.tsx` | `TS5096` | `./target.jsx` |
@@ -68,6 +76,8 @@ Each row runs a real TypeScript program, checks diagnostics and emits JavaScript
 | `node10` | `true` | `false` | `module` | `./target` → `target/index.ts` | `./target` → `target/index.vibe` | `target/index.ts` | `TS5096` | `./target` |
 | `node10` | `true` | `false` | `module` | `./target.ts` → `unrelated.ts` | `./target.ts` → `target.vibe` | — | `TS2307`, `TS5096` | `./target.ts` |
 | `node10` | `true` | `false` | `module` | `./target.tsx` → `unrelated.ts` | `./target.tsx` → `target.vibex` | — | `TS2307`, `TS5096` | `./target.tsx` |
+| `node10` | `true` | `false` | `module` | `./target.ts` → `target.tsx` | `./target.vibe` → `target.vibex` | `target.tsx` | `TS5096` | `./target.ts` |
+| `node10` | `true` | `false` | `module` | `./target.tsx` → `target.ts` | `./target.vibex` → `target.vibe` | `target.ts` | `TS5096` | `./target.tsx` |
 | `node10` | `true` | `false` | `commonjs` | `./target` → `target.ts` | `./target` → `target.vibe` | `target.ts` | `TS5096` | `./target` |
 | `node10` | `true` | `false` | `commonjs` | `./target.js` → `target.ts` | `./target.js` → `target.vibe` | `target.ts` | `TS5096` | `./target.js` |
 | `node10` | `true` | `false` | `commonjs` | `./target.jsx` → `target.tsx` | `./target.jsx` → `target.vibex` | `target.tsx` | `TS5096` | `./target.jsx` |
@@ -80,6 +90,8 @@ Each row runs a real TypeScript program, checks diagnostics and emits JavaScript
 | `node10` | `true` | `false` | `commonjs` | `./target` → `target/index.ts` | `./target` → `target/index.vibe` | `target/index.ts` | `TS5096` | `./target` |
 | `node10` | `true` | `false` | `commonjs` | `./target.ts` → `unrelated.ts` | `./target.ts` → `target.vibe` | — | `TS2307`, `TS5096` | `./target.ts` |
 | `node10` | `true` | `false` | `commonjs` | `./target.tsx` → `unrelated.ts` | `./target.tsx` → `target.vibex` | — | `TS2307`, `TS5096` | `./target.tsx` |
+| `node10` | `true` | `false` | `commonjs` | `./target.ts` → `target.tsx` | `./target.vibe` → `target.vibex` | `target.tsx` | `TS5096` | `./target.ts` |
+| `node10` | `true` | `false` | `commonjs` | `./target.tsx` → `target.ts` | `./target.vibex` → `target.vibe` | `target.ts` | `TS5096` | `./target.tsx` |
 | `node10` | `true` | `true` | `module` | `./target` → `target.ts` | `./target` → `target.vibe` | `target.ts` | — | `./target` |
 | `node10` | `true` | `true` | `module` | `./target.js` → `target.ts` | `./target.js` → `target.vibe` | `target.ts` | — | `./target.js` |
 | `node10` | `true` | `true` | `module` | `./target.jsx` → `target.tsx` | `./target.jsx` → `target.vibex` | `target.tsx` | — | `./target.jsx` |
@@ -92,6 +104,8 @@ Each row runs a real TypeScript program, checks diagnostics and emits JavaScript
 | `node10` | `true` | `true` | `module` | `./target` → `target/index.ts` | `./target` → `target/index.vibe` | `target/index.ts` | — | `./target` |
 | `node10` | `true` | `true` | `module` | `./target.ts` → `unrelated.ts` | `./target.ts` → `target.vibe` | — | `TS2307` | `./target.js` |
 | `node10` | `true` | `true` | `module` | `./target.tsx` → `unrelated.ts` | `./target.tsx` → `target.vibex` | — | `TS2307` | `./target.jsx` |
+| `node10` | `true` | `true` | `module` | `./target.ts` → `target.tsx` | `./target.vibe` → `target.vibex` | `target.tsx` | — | `./target.js` |
+| `node10` | `true` | `true` | `module` | `./target.tsx` → `target.ts` | `./target.vibex` → `target.vibe` | `target.ts` | — | `./target.jsx` |
 | `node10` | `true` | `true` | `commonjs` | `./target` → `target.ts` | `./target` → `target.vibe` | `target.ts` | — | `./target` |
 | `node10` | `true` | `true` | `commonjs` | `./target.js` → `target.ts` | `./target.js` → `target.vibe` | `target.ts` | — | `./target.js` |
 | `node10` | `true` | `true` | `commonjs` | `./target.jsx` → `target.tsx` | `./target.jsx` → `target.vibex` | `target.tsx` | — | `./target.jsx` |
@@ -104,6 +118,8 @@ Each row runs a real TypeScript program, checks diagnostics and emits JavaScript
 | `node10` | `true` | `true` | `commonjs` | `./target` → `target/index.ts` | `./target` → `target/index.vibe` | `target/index.ts` | — | `./target` |
 | `node10` | `true` | `true` | `commonjs` | `./target.ts` → `unrelated.ts` | `./target.ts` → `target.vibe` | — | `TS2307` | `./target.js` |
 | `node10` | `true` | `true` | `commonjs` | `./target.tsx` → `unrelated.ts` | `./target.tsx` → `target.vibex` | — | `TS2307` | `./target.jsx` |
+| `node10` | `true` | `true` | `commonjs` | `./target.ts` → `target.tsx` | `./target.vibe` → `target.vibex` | `target.tsx` | — | `./target.js` |
+| `node10` | `true` | `true` | `commonjs` | `./target.tsx` → `target.ts` | `./target.vibex` → `target.vibe` | `target.ts` | — | `./target.jsx` |
 | `node16` | `false` | `false` | `module` | `./target` → `target.ts` | `./target` → `target.vibe` | — | `TS2835` | `./target` |
 | `node16` | `false` | `false` | `module` | `./target.js` → `target.ts` | `./target.js` → `target.vibe` | `target.ts` | — | `./target.js` |
 | `node16` | `false` | `false` | `module` | `./target.jsx` → `target.tsx` | `./target.jsx` → `target.vibex` | `target.tsx` | — | `./target.jsx` |
@@ -116,6 +132,8 @@ Each row runs a real TypeScript program, checks diagnostics and emits JavaScript
 | `node16` | `false` | `false` | `module` | `./target` → `target/index.ts` | `./target` → `target/index.vibe` | — | `TS2834` | `./target` |
 | `node16` | `false` | `false` | `module` | `./target.ts` → `unrelated.ts` | `./target.ts` → `target.vibe` | — | `TS2307` | `./target.ts` |
 | `node16` | `false` | `false` | `module` | `./target.tsx` → `unrelated.ts` | `./target.tsx` → `target.vibex` | — | `TS2307` | `./target.tsx` |
+| `node16` | `false` | `false` | `module` | `./target.ts` → `target.tsx` | `./target.vibe` → `target.vibex` | `target.tsx` | `TS5097` | `./target.ts` |
+| `node16` | `false` | `false` | `module` | `./target.tsx` → `target.ts` | `./target.vibex` → `target.vibe` | `target.ts` | `TS5097` | `./target.tsx` |
 | `node16` | `false` | `false` | `commonjs` | `./target` → `target.ts` | `./target` → `target.vibe` | `target.ts` | — | `./target` |
 | `node16` | `false` | `false` | `commonjs` | `./target.js` → `target.ts` | `./target.js` → `target.vibe` | `target.ts` | — | `./target.js` |
 | `node16` | `false` | `false` | `commonjs` | `./target.jsx` → `target.tsx` | `./target.jsx` → `target.vibex` | `target.tsx` | — | `./target.jsx` |
@@ -128,6 +146,8 @@ Each row runs a real TypeScript program, checks diagnostics and emits JavaScript
 | `node16` | `false` | `false` | `commonjs` | `./target` → `target/index.ts` | `./target` → `target/index.vibe` | `target/index.ts` | — | `./target` |
 | `node16` | `false` | `false` | `commonjs` | `./target.ts` → `unrelated.ts` | `./target.ts` → `target.vibe` | — | `TS2307` | `./target.ts` |
 | `node16` | `false` | `false` | `commonjs` | `./target.tsx` → `unrelated.ts` | `./target.tsx` → `target.vibex` | — | `TS2307` | `./target.tsx` |
+| `node16` | `false` | `false` | `commonjs` | `./target.ts` → `target.tsx` | `./target.vibe` → `target.vibex` | `target.tsx` | `TS5097` | `./target.ts` |
+| `node16` | `false` | `false` | `commonjs` | `./target.tsx` → `target.ts` | `./target.vibex` → `target.vibe` | `target.ts` | `TS5097` | `./target.tsx` |
 | `node16` | `false` | `true` | `module` | `./target` → `target.ts` | `./target` → `target.vibe` | — | `TS2835` | `./target` |
 | `node16` | `false` | `true` | `module` | `./target.js` → `target.ts` | `./target.js` → `target.vibe` | `target.ts` | — | `./target.js` |
 | `node16` | `false` | `true` | `module` | `./target.jsx` → `target.tsx` | `./target.jsx` → `target.vibex` | `target.tsx` | — | `./target.jsx` |
@@ -140,6 +160,8 @@ Each row runs a real TypeScript program, checks diagnostics and emits JavaScript
 | `node16` | `false` | `true` | `module` | `./target` → `target/index.ts` | `./target` → `target/index.vibe` | — | `TS2834` | `./target` |
 | `node16` | `false` | `true` | `module` | `./target.ts` → `unrelated.ts` | `./target.ts` → `target.vibe` | — | `TS2307` | `./target.js` |
 | `node16` | `false` | `true` | `module` | `./target.tsx` → `unrelated.ts` | `./target.tsx` → `target.vibex` | — | `TS2307` | `./target.jsx` |
+| `node16` | `false` | `true` | `module` | `./target.ts` → `target.tsx` | `./target.vibe` → `target.vibex` | `target.tsx` | — | `./target.js` |
+| `node16` | `false` | `true` | `module` | `./target.tsx` → `target.ts` | `./target.vibex` → `target.vibe` | `target.ts` | — | `./target.jsx` |
 | `node16` | `false` | `true` | `commonjs` | `./target` → `target.ts` | `./target` → `target.vibe` | `target.ts` | — | `./target` |
 | `node16` | `false` | `true` | `commonjs` | `./target.js` → `target.ts` | `./target.js` → `target.vibe` | `target.ts` | — | `./target.js` |
 | `node16` | `false` | `true` | `commonjs` | `./target.jsx` → `target.tsx` | `./target.jsx` → `target.vibex` | `target.tsx` | — | `./target.jsx` |
@@ -152,6 +174,8 @@ Each row runs a real TypeScript program, checks diagnostics and emits JavaScript
 | `node16` | `false` | `true` | `commonjs` | `./target` → `target/index.ts` | `./target` → `target/index.vibe` | `target/index.ts` | — | `./target` |
 | `node16` | `false` | `true` | `commonjs` | `./target.ts` → `unrelated.ts` | `./target.ts` → `target.vibe` | — | `TS2307` | `./target.js` |
 | `node16` | `false` | `true` | `commonjs` | `./target.tsx` → `unrelated.ts` | `./target.tsx` → `target.vibex` | — | `TS2307` | `./target.jsx` |
+| `node16` | `false` | `true` | `commonjs` | `./target.ts` → `target.tsx` | `./target.vibe` → `target.vibex` | `target.tsx` | — | `./target.js` |
+| `node16` | `false` | `true` | `commonjs` | `./target.tsx` → `target.ts` | `./target.vibex` → `target.vibe` | `target.ts` | — | `./target.jsx` |
 | `node16` | `true` | `false` | `module` | `./target` → `target.ts` | `./target` → `target.vibe` | — | `TS2835`, `TS5096` | `./target` |
 | `node16` | `true` | `false` | `module` | `./target.js` → `target.ts` | `./target.js` → `target.vibe` | `target.ts` | `TS5096` | `./target.js` |
 | `node16` | `true` | `false` | `module` | `./target.jsx` → `target.tsx` | `./target.jsx` → `target.vibex` | `target.tsx` | `TS5096` | `./target.jsx` |
@@ -164,6 +188,8 @@ Each row runs a real TypeScript program, checks diagnostics and emits JavaScript
 | `node16` | `true` | `false` | `module` | `./target` → `target/index.ts` | `./target` → `target/index.vibe` | — | `TS2834`, `TS5096` | `./target` |
 | `node16` | `true` | `false` | `module` | `./target.ts` → `unrelated.ts` | `./target.ts` → `target.vibe` | — | `TS2307`, `TS5096` | `./target.ts` |
 | `node16` | `true` | `false` | `module` | `./target.tsx` → `unrelated.ts` | `./target.tsx` → `target.vibex` | — | `TS2307`, `TS5096` | `./target.tsx` |
+| `node16` | `true` | `false` | `module` | `./target.ts` → `target.tsx` | `./target.vibe` → `target.vibex` | `target.tsx` | `TS5096` | `./target.ts` |
+| `node16` | `true` | `false` | `module` | `./target.tsx` → `target.ts` | `./target.vibex` → `target.vibe` | `target.ts` | `TS5096` | `./target.tsx` |
 | `node16` | `true` | `false` | `commonjs` | `./target` → `target.ts` | `./target` → `target.vibe` | `target.ts` | `TS5096` | `./target` |
 | `node16` | `true` | `false` | `commonjs` | `./target.js` → `target.ts` | `./target.js` → `target.vibe` | `target.ts` | `TS5096` | `./target.js` |
 | `node16` | `true` | `false` | `commonjs` | `./target.jsx` → `target.tsx` | `./target.jsx` → `target.vibex` | `target.tsx` | `TS5096` | `./target.jsx` |
@@ -176,6 +202,8 @@ Each row runs a real TypeScript program, checks diagnostics and emits JavaScript
 | `node16` | `true` | `false` | `commonjs` | `./target` → `target/index.ts` | `./target` → `target/index.vibe` | `target/index.ts` | `TS5096` | `./target` |
 | `node16` | `true` | `false` | `commonjs` | `./target.ts` → `unrelated.ts` | `./target.ts` → `target.vibe` | — | `TS2307`, `TS5096` | `./target.ts` |
 | `node16` | `true` | `false` | `commonjs` | `./target.tsx` → `unrelated.ts` | `./target.tsx` → `target.vibex` | — | `TS2307`, `TS5096` | `./target.tsx` |
+| `node16` | `true` | `false` | `commonjs` | `./target.ts` → `target.tsx` | `./target.vibe` → `target.vibex` | `target.tsx` | `TS5096` | `./target.ts` |
+| `node16` | `true` | `false` | `commonjs` | `./target.tsx` → `target.ts` | `./target.vibex` → `target.vibe` | `target.ts` | `TS5096` | `./target.tsx` |
 | `node16` | `true` | `true` | `module` | `./target` → `target.ts` | `./target` → `target.vibe` | — | `TS2835` | `./target` |
 | `node16` | `true` | `true` | `module` | `./target.js` → `target.ts` | `./target.js` → `target.vibe` | `target.ts` | — | `./target.js` |
 | `node16` | `true` | `true` | `module` | `./target.jsx` → `target.tsx` | `./target.jsx` → `target.vibex` | `target.tsx` | — | `./target.jsx` |
@@ -188,6 +216,8 @@ Each row runs a real TypeScript program, checks diagnostics and emits JavaScript
 | `node16` | `true` | `true` | `module` | `./target` → `target/index.ts` | `./target` → `target/index.vibe` | — | `TS2834` | `./target` |
 | `node16` | `true` | `true` | `module` | `./target.ts` → `unrelated.ts` | `./target.ts` → `target.vibe` | — | `TS2307` | `./target.js` |
 | `node16` | `true` | `true` | `module` | `./target.tsx` → `unrelated.ts` | `./target.tsx` → `target.vibex` | — | `TS2307` | `./target.jsx` |
+| `node16` | `true` | `true` | `module` | `./target.ts` → `target.tsx` | `./target.vibe` → `target.vibex` | `target.tsx` | — | `./target.js` |
+| `node16` | `true` | `true` | `module` | `./target.tsx` → `target.ts` | `./target.vibex` → `target.vibe` | `target.ts` | — | `./target.jsx` |
 | `node16` | `true` | `true` | `commonjs` | `./target` → `target.ts` | `./target` → `target.vibe` | `target.ts` | — | `./target` |
 | `node16` | `true` | `true` | `commonjs` | `./target.js` → `target.ts` | `./target.js` → `target.vibe` | `target.ts` | — | `./target.js` |
 | `node16` | `true` | `true` | `commonjs` | `./target.jsx` → `target.tsx` | `./target.jsx` → `target.vibex` | `target.tsx` | — | `./target.jsx` |
@@ -200,6 +230,8 @@ Each row runs a real TypeScript program, checks diagnostics and emits JavaScript
 | `node16` | `true` | `true` | `commonjs` | `./target` → `target/index.ts` | `./target` → `target/index.vibe` | `target/index.ts` | — | `./target` |
 | `node16` | `true` | `true` | `commonjs` | `./target.ts` → `unrelated.ts` | `./target.ts` → `target.vibe` | — | `TS2307` | `./target.js` |
 | `node16` | `true` | `true` | `commonjs` | `./target.tsx` → `unrelated.ts` | `./target.tsx` → `target.vibex` | — | `TS2307` | `./target.jsx` |
+| `node16` | `true` | `true` | `commonjs` | `./target.ts` → `target.tsx` | `./target.vibe` → `target.vibex` | `target.tsx` | — | `./target.js` |
+| `node16` | `true` | `true` | `commonjs` | `./target.tsx` → `target.ts` | `./target.vibex` → `target.vibe` | `target.ts` | — | `./target.jsx` |
 | `nodenext` | `false` | `false` | `module` | `./target` → `target.ts` | `./target` → `target.vibe` | — | `TS2835` | `./target` |
 | `nodenext` | `false` | `false` | `module` | `./target.js` → `target.ts` | `./target.js` → `target.vibe` | `target.ts` | — | `./target.js` |
 | `nodenext` | `false` | `false` | `module` | `./target.jsx` → `target.tsx` | `./target.jsx` → `target.vibex` | `target.tsx` | — | `./target.jsx` |
@@ -212,6 +244,8 @@ Each row runs a real TypeScript program, checks diagnostics and emits JavaScript
 | `nodenext` | `false` | `false` | `module` | `./target` → `target/index.ts` | `./target` → `target/index.vibe` | — | `TS2834` | `./target` |
 | `nodenext` | `false` | `false` | `module` | `./target.ts` → `unrelated.ts` | `./target.ts` → `target.vibe` | — | `TS2307` | `./target.ts` |
 | `nodenext` | `false` | `false` | `module` | `./target.tsx` → `unrelated.ts` | `./target.tsx` → `target.vibex` | — | `TS2307` | `./target.tsx` |
+| `nodenext` | `false` | `false` | `module` | `./target.ts` → `target.tsx` | `./target.vibe` → `target.vibex` | `target.tsx` | `TS5097` | `./target.ts` |
+| `nodenext` | `false` | `false` | `module` | `./target.tsx` → `target.ts` | `./target.vibex` → `target.vibe` | `target.ts` | `TS5097` | `./target.tsx` |
 | `nodenext` | `false` | `false` | `commonjs` | `./target` → `target.ts` | `./target` → `target.vibe` | `target.ts` | — | `./target` |
 | `nodenext` | `false` | `false` | `commonjs` | `./target.js` → `target.ts` | `./target.js` → `target.vibe` | `target.ts` | — | `./target.js` |
 | `nodenext` | `false` | `false` | `commonjs` | `./target.jsx` → `target.tsx` | `./target.jsx` → `target.vibex` | `target.tsx` | — | `./target.jsx` |
@@ -224,6 +258,8 @@ Each row runs a real TypeScript program, checks diagnostics and emits JavaScript
 | `nodenext` | `false` | `false` | `commonjs` | `./target` → `target/index.ts` | `./target` → `target/index.vibe` | `target/index.ts` | — | `./target` |
 | `nodenext` | `false` | `false` | `commonjs` | `./target.ts` → `unrelated.ts` | `./target.ts` → `target.vibe` | — | `TS2307` | `./target.ts` |
 | `nodenext` | `false` | `false` | `commonjs` | `./target.tsx` → `unrelated.ts` | `./target.tsx` → `target.vibex` | — | `TS2307` | `./target.tsx` |
+| `nodenext` | `false` | `false` | `commonjs` | `./target.ts` → `target.tsx` | `./target.vibe` → `target.vibex` | `target.tsx` | `TS5097` | `./target.ts` |
+| `nodenext` | `false` | `false` | `commonjs` | `./target.tsx` → `target.ts` | `./target.vibex` → `target.vibe` | `target.ts` | `TS5097` | `./target.tsx` |
 | `nodenext` | `false` | `true` | `module` | `./target` → `target.ts` | `./target` → `target.vibe` | — | `TS2835` | `./target` |
 | `nodenext` | `false` | `true` | `module` | `./target.js` → `target.ts` | `./target.js` → `target.vibe` | `target.ts` | — | `./target.js` |
 | `nodenext` | `false` | `true` | `module` | `./target.jsx` → `target.tsx` | `./target.jsx` → `target.vibex` | `target.tsx` | — | `./target.jsx` |
@@ -236,6 +272,8 @@ Each row runs a real TypeScript program, checks diagnostics and emits JavaScript
 | `nodenext` | `false` | `true` | `module` | `./target` → `target/index.ts` | `./target` → `target/index.vibe` | — | `TS2834` | `./target` |
 | `nodenext` | `false` | `true` | `module` | `./target.ts` → `unrelated.ts` | `./target.ts` → `target.vibe` | — | `TS2307` | `./target.js` |
 | `nodenext` | `false` | `true` | `module` | `./target.tsx` → `unrelated.ts` | `./target.tsx` → `target.vibex` | — | `TS2307` | `./target.jsx` |
+| `nodenext` | `false` | `true` | `module` | `./target.ts` → `target.tsx` | `./target.vibe` → `target.vibex` | `target.tsx` | — | `./target.js` |
+| `nodenext` | `false` | `true` | `module` | `./target.tsx` → `target.ts` | `./target.vibex` → `target.vibe` | `target.ts` | — | `./target.jsx` |
 | `nodenext` | `false` | `true` | `commonjs` | `./target` → `target.ts` | `./target` → `target.vibe` | `target.ts` | — | `./target` |
 | `nodenext` | `false` | `true` | `commonjs` | `./target.js` → `target.ts` | `./target.js` → `target.vibe` | `target.ts` | — | `./target.js` |
 | `nodenext` | `false` | `true` | `commonjs` | `./target.jsx` → `target.tsx` | `./target.jsx` → `target.vibex` | `target.tsx` | — | `./target.jsx` |
@@ -248,6 +286,8 @@ Each row runs a real TypeScript program, checks diagnostics and emits JavaScript
 | `nodenext` | `false` | `true` | `commonjs` | `./target` → `target/index.ts` | `./target` → `target/index.vibe` | `target/index.ts` | — | `./target` |
 | `nodenext` | `false` | `true` | `commonjs` | `./target.ts` → `unrelated.ts` | `./target.ts` → `target.vibe` | — | `TS2307` | `./target.js` |
 | `nodenext` | `false` | `true` | `commonjs` | `./target.tsx` → `unrelated.ts` | `./target.tsx` → `target.vibex` | — | `TS2307` | `./target.jsx` |
+| `nodenext` | `false` | `true` | `commonjs` | `./target.ts` → `target.tsx` | `./target.vibe` → `target.vibex` | `target.tsx` | — | `./target.js` |
+| `nodenext` | `false` | `true` | `commonjs` | `./target.tsx` → `target.ts` | `./target.vibex` → `target.vibe` | `target.ts` | — | `./target.jsx` |
 | `nodenext` | `true` | `false` | `module` | `./target` → `target.ts` | `./target` → `target.vibe` | — | `TS2835`, `TS5096` | `./target` |
 | `nodenext` | `true` | `false` | `module` | `./target.js` → `target.ts` | `./target.js` → `target.vibe` | `target.ts` | `TS5096` | `./target.js` |
 | `nodenext` | `true` | `false` | `module` | `./target.jsx` → `target.tsx` | `./target.jsx` → `target.vibex` | `target.tsx` | `TS5096` | `./target.jsx` |
@@ -260,6 +300,8 @@ Each row runs a real TypeScript program, checks diagnostics and emits JavaScript
 | `nodenext` | `true` | `false` | `module` | `./target` → `target/index.ts` | `./target` → `target/index.vibe` | — | `TS2834`, `TS5096` | `./target` |
 | `nodenext` | `true` | `false` | `module` | `./target.ts` → `unrelated.ts` | `./target.ts` → `target.vibe` | — | `TS2307`, `TS5096` | `./target.ts` |
 | `nodenext` | `true` | `false` | `module` | `./target.tsx` → `unrelated.ts` | `./target.tsx` → `target.vibex` | — | `TS2307`, `TS5096` | `./target.tsx` |
+| `nodenext` | `true` | `false` | `module` | `./target.ts` → `target.tsx` | `./target.vibe` → `target.vibex` | `target.tsx` | `TS5096` | `./target.ts` |
+| `nodenext` | `true` | `false` | `module` | `./target.tsx` → `target.ts` | `./target.vibex` → `target.vibe` | `target.ts` | `TS5096` | `./target.tsx` |
 | `nodenext` | `true` | `false` | `commonjs` | `./target` → `target.ts` | `./target` → `target.vibe` | `target.ts` | `TS5096` | `./target` |
 | `nodenext` | `true` | `false` | `commonjs` | `./target.js` → `target.ts` | `./target.js` → `target.vibe` | `target.ts` | `TS5096` | `./target.js` |
 | `nodenext` | `true` | `false` | `commonjs` | `./target.jsx` → `target.tsx` | `./target.jsx` → `target.vibex` | `target.tsx` | `TS5096` | `./target.jsx` |
@@ -272,6 +314,8 @@ Each row runs a real TypeScript program, checks diagnostics and emits JavaScript
 | `nodenext` | `true` | `false` | `commonjs` | `./target` → `target/index.ts` | `./target` → `target/index.vibe` | `target/index.ts` | `TS5096` | `./target` |
 | `nodenext` | `true` | `false` | `commonjs` | `./target.ts` → `unrelated.ts` | `./target.ts` → `target.vibe` | — | `TS2307`, `TS5096` | `./target.ts` |
 | `nodenext` | `true` | `false` | `commonjs` | `./target.tsx` → `unrelated.ts` | `./target.tsx` → `target.vibex` | — | `TS2307`, `TS5096` | `./target.tsx` |
+| `nodenext` | `true` | `false` | `commonjs` | `./target.ts` → `target.tsx` | `./target.vibe` → `target.vibex` | `target.tsx` | `TS5096` | `./target.ts` |
+| `nodenext` | `true` | `false` | `commonjs` | `./target.tsx` → `target.ts` | `./target.vibex` → `target.vibe` | `target.ts` | `TS5096` | `./target.tsx` |
 | `nodenext` | `true` | `true` | `module` | `./target` → `target.ts` | `./target` → `target.vibe` | — | `TS2835` | `./target` |
 | `nodenext` | `true` | `true` | `module` | `./target.js` → `target.ts` | `./target.js` → `target.vibe` | `target.ts` | — | `./target.js` |
 | `nodenext` | `true` | `true` | `module` | `./target.jsx` → `target.tsx` | `./target.jsx` → `target.vibex` | `target.tsx` | — | `./target.jsx` |
@@ -284,6 +328,8 @@ Each row runs a real TypeScript program, checks diagnostics and emits JavaScript
 | `nodenext` | `true` | `true` | `module` | `./target` → `target/index.ts` | `./target` → `target/index.vibe` | — | `TS2834` | `./target` |
 | `nodenext` | `true` | `true` | `module` | `./target.ts` → `unrelated.ts` | `./target.ts` → `target.vibe` | — | `TS2307` | `./target.js` |
 | `nodenext` | `true` | `true` | `module` | `./target.tsx` → `unrelated.ts` | `./target.tsx` → `target.vibex` | — | `TS2307` | `./target.jsx` |
+| `nodenext` | `true` | `true` | `module` | `./target.ts` → `target.tsx` | `./target.vibe` → `target.vibex` | `target.tsx` | — | `./target.js` |
+| `nodenext` | `true` | `true` | `module` | `./target.tsx` → `target.ts` | `./target.vibex` → `target.vibe` | `target.ts` | — | `./target.jsx` |
 | `nodenext` | `true` | `true` | `commonjs` | `./target` → `target.ts` | `./target` → `target.vibe` | `target.ts` | — | `./target` |
 | `nodenext` | `true` | `true` | `commonjs` | `./target.js` → `target.ts` | `./target.js` → `target.vibe` | `target.ts` | — | `./target.js` |
 | `nodenext` | `true` | `true` | `commonjs` | `./target.jsx` → `target.tsx` | `./target.jsx` → `target.vibex` | `target.tsx` | — | `./target.jsx` |
@@ -296,6 +342,8 @@ Each row runs a real TypeScript program, checks diagnostics and emits JavaScript
 | `nodenext` | `true` | `true` | `commonjs` | `./target` → `target/index.ts` | `./target` → `target/index.vibe` | `target/index.ts` | — | `./target` |
 | `nodenext` | `true` | `true` | `commonjs` | `./target.ts` → `unrelated.ts` | `./target.ts` → `target.vibe` | — | `TS2307` | `./target.js` |
 | `nodenext` | `true` | `true` | `commonjs` | `./target.tsx` → `unrelated.ts` | `./target.tsx` → `target.vibex` | — | `TS2307` | `./target.jsx` |
+| `nodenext` | `true` | `true` | `commonjs` | `./target.ts` → `target.tsx` | `./target.vibe` → `target.vibex` | `target.tsx` | — | `./target.js` |
+| `nodenext` | `true` | `true` | `commonjs` | `./target.tsx` → `target.ts` | `./target.vibex` → `target.vibe` | `target.ts` | — | `./target.jsx` |
 | `bundler` | `false` | `false` | `module` | `./target` → `target.ts` | `./target` → `target.vibe` | `target.ts` | — | `./target` |
 | `bundler` | `false` | `false` | `module` | `./target.js` → `target.ts` | `./target.js` → `target.vibe` | `target.ts` | — | `./target.js` |
 | `bundler` | `false` | `false` | `module` | `./target.jsx` → `target.tsx` | `./target.jsx` → `target.vibex` | `target.tsx` | — | `./target.jsx` |
@@ -308,6 +356,8 @@ Each row runs a real TypeScript program, checks diagnostics and emits JavaScript
 | `bundler` | `false` | `false` | `module` | `./target` → `target/index.ts` | `./target` → `target/index.vibe` | `target/index.ts` | — | `./target` |
 | `bundler` | `false` | `false` | `module` | `./target.ts` → `unrelated.ts` | `./target.ts` → `target.vibe` | — | `TS2307` | `./target.ts` |
 | `bundler` | `false` | `false` | `module` | `./target.tsx` → `unrelated.ts` | `./target.tsx` → `target.vibex` | — | `TS2307` | `./target.tsx` |
+| `bundler` | `false` | `false` | `module` | `./target.ts` → `target.tsx` | `./target.vibe` → `target.vibex` | `target.tsx` | `TS5097` | `./target.ts` |
+| `bundler` | `false` | `false` | `module` | `./target.tsx` → `target.ts` | `./target.vibex` → `target.vibe` | `target.ts` | `TS5097` | `./target.tsx` |
 | `bundler` | `false` | `false` | `commonjs` | `./target` → `target.ts` | `./target` → `target.vibe` | `target.ts` | — | `./target` |
 | `bundler` | `false` | `false` | `commonjs` | `./target.js` → `target.ts` | `./target.js` → `target.vibe` | `target.ts` | — | `./target.js` |
 | `bundler` | `false` | `false` | `commonjs` | `./target.jsx` → `target.tsx` | `./target.jsx` → `target.vibex` | `target.tsx` | — | `./target.jsx` |
@@ -320,6 +370,8 @@ Each row runs a real TypeScript program, checks diagnostics and emits JavaScript
 | `bundler` | `false` | `false` | `commonjs` | `./target` → `target/index.ts` | `./target` → `target/index.vibe` | `target/index.ts` | — | `./target` |
 | `bundler` | `false` | `false` | `commonjs` | `./target.ts` → `unrelated.ts` | `./target.ts` → `target.vibe` | — | `TS2307` | `./target.ts` |
 | `bundler` | `false` | `false` | `commonjs` | `./target.tsx` → `unrelated.ts` | `./target.tsx` → `target.vibex` | — | `TS2307` | `./target.tsx` |
+| `bundler` | `false` | `false` | `commonjs` | `./target.ts` → `target.tsx` | `./target.vibe` → `target.vibex` | `target.tsx` | `TS5097` | `./target.ts` |
+| `bundler` | `false` | `false` | `commonjs` | `./target.tsx` → `target.ts` | `./target.vibex` → `target.vibe` | `target.ts` | `TS5097` | `./target.tsx` |
 | `bundler` | `false` | `true` | `module` | `./target` → `target.ts` | `./target` → `target.vibe` | `target.ts` | — | `./target` |
 | `bundler` | `false` | `true` | `module` | `./target.js` → `target.ts` | `./target.js` → `target.vibe` | `target.ts` | — | `./target.js` |
 | `bundler` | `false` | `true` | `module` | `./target.jsx` → `target.tsx` | `./target.jsx` → `target.vibex` | `target.tsx` | — | `./target.jsx` |
@@ -332,6 +384,8 @@ Each row runs a real TypeScript program, checks diagnostics and emits JavaScript
 | `bundler` | `false` | `true` | `module` | `./target` → `target/index.ts` | `./target` → `target/index.vibe` | `target/index.ts` | — | `./target` |
 | `bundler` | `false` | `true` | `module` | `./target.ts` → `unrelated.ts` | `./target.ts` → `target.vibe` | — | `TS2307` | `./target.js` |
 | `bundler` | `false` | `true` | `module` | `./target.tsx` → `unrelated.ts` | `./target.tsx` → `target.vibex` | — | `TS2307` | `./target.jsx` |
+| `bundler` | `false` | `true` | `module` | `./target.ts` → `target.tsx` | `./target.vibe` → `target.vibex` | `target.tsx` | — | `./target.js` |
+| `bundler` | `false` | `true` | `module` | `./target.tsx` → `target.ts` | `./target.vibex` → `target.vibe` | `target.ts` | — | `./target.jsx` |
 | `bundler` | `false` | `true` | `commonjs` | `./target` → `target.ts` | `./target` → `target.vibe` | `target.ts` | — | `./target` |
 | `bundler` | `false` | `true` | `commonjs` | `./target.js` → `target.ts` | `./target.js` → `target.vibe` | `target.ts` | — | `./target.js` |
 | `bundler` | `false` | `true` | `commonjs` | `./target.jsx` → `target.tsx` | `./target.jsx` → `target.vibex` | `target.tsx` | — | `./target.jsx` |
@@ -344,6 +398,8 @@ Each row runs a real TypeScript program, checks diagnostics and emits JavaScript
 | `bundler` | `false` | `true` | `commonjs` | `./target` → `target/index.ts` | `./target` → `target/index.vibe` | `target/index.ts` | — | `./target` |
 | `bundler` | `false` | `true` | `commonjs` | `./target.ts` → `unrelated.ts` | `./target.ts` → `target.vibe` | — | `TS2307` | `./target.js` |
 | `bundler` | `false` | `true` | `commonjs` | `./target.tsx` → `unrelated.ts` | `./target.tsx` → `target.vibex` | — | `TS2307` | `./target.jsx` |
+| `bundler` | `false` | `true` | `commonjs` | `./target.ts` → `target.tsx` | `./target.vibe` → `target.vibex` | `target.tsx` | — | `./target.js` |
+| `bundler` | `false` | `true` | `commonjs` | `./target.tsx` → `target.ts` | `./target.vibex` → `target.vibe` | `target.ts` | — | `./target.jsx` |
 | `bundler` | `true` | `false` | `module` | `./target` → `target.ts` | `./target` → `target.vibe` | `target.ts` | `TS5096` | `./target` |
 | `bundler` | `true` | `false` | `module` | `./target.js` → `target.ts` | `./target.js` → `target.vibe` | `target.ts` | `TS5096` | `./target.js` |
 | `bundler` | `true` | `false` | `module` | `./target.jsx` → `target.tsx` | `./target.jsx` → `target.vibex` | `target.tsx` | `TS5096` | `./target.jsx` |
@@ -356,6 +412,8 @@ Each row runs a real TypeScript program, checks diagnostics and emits JavaScript
 | `bundler` | `true` | `false` | `module` | `./target` → `target/index.ts` | `./target` → `target/index.vibe` | `target/index.ts` | `TS5096` | `./target` |
 | `bundler` | `true` | `false` | `module` | `./target.ts` → `unrelated.ts` | `./target.ts` → `target.vibe` | — | `TS2307`, `TS5096` | `./target.ts` |
 | `bundler` | `true` | `false` | `module` | `./target.tsx` → `unrelated.ts` | `./target.tsx` → `target.vibex` | — | `TS2307`, `TS5096` | `./target.tsx` |
+| `bundler` | `true` | `false` | `module` | `./target.ts` → `target.tsx` | `./target.vibe` → `target.vibex` | `target.tsx` | `TS5096` | `./target.ts` |
+| `bundler` | `true` | `false` | `module` | `./target.tsx` → `target.ts` | `./target.vibex` → `target.vibe` | `target.ts` | `TS5096` | `./target.tsx` |
 | `bundler` | `true` | `false` | `commonjs` | `./target` → `target.ts` | `./target` → `target.vibe` | `target.ts` | `TS5096` | `./target` |
 | `bundler` | `true` | `false` | `commonjs` | `./target.js` → `target.ts` | `./target.js` → `target.vibe` | `target.ts` | `TS5096` | `./target.js` |
 | `bundler` | `true` | `false` | `commonjs` | `./target.jsx` → `target.tsx` | `./target.jsx` → `target.vibex` | `target.tsx` | `TS5096` | `./target.jsx` |
@@ -368,6 +426,8 @@ Each row runs a real TypeScript program, checks diagnostics and emits JavaScript
 | `bundler` | `true` | `false` | `commonjs` | `./target` → `target/index.ts` | `./target` → `target/index.vibe` | `target/index.ts` | `TS5096` | `./target` |
 | `bundler` | `true` | `false` | `commonjs` | `./target.ts` → `unrelated.ts` | `./target.ts` → `target.vibe` | — | `TS2307`, `TS5096` | `./target.ts` |
 | `bundler` | `true` | `false` | `commonjs` | `./target.tsx` → `unrelated.ts` | `./target.tsx` → `target.vibex` | — | `TS2307`, `TS5096` | `./target.tsx` |
+| `bundler` | `true` | `false` | `commonjs` | `./target.ts` → `target.tsx` | `./target.vibe` → `target.vibex` | `target.tsx` | `TS5096` | `./target.ts` |
+| `bundler` | `true` | `false` | `commonjs` | `./target.tsx` → `target.ts` | `./target.vibex` → `target.vibe` | `target.ts` | `TS5096` | `./target.tsx` |
 | `bundler` | `true` | `true` | `module` | `./target` → `target.ts` | `./target` → `target.vibe` | `target.ts` | — | `./target` |
 | `bundler` | `true` | `true` | `module` | `./target.js` → `target.ts` | `./target.js` → `target.vibe` | `target.ts` | — | `./target.js` |
 | `bundler` | `true` | `true` | `module` | `./target.jsx` → `target.tsx` | `./target.jsx` → `target.vibex` | `target.tsx` | — | `./target.jsx` |
@@ -380,6 +440,8 @@ Each row runs a real TypeScript program, checks diagnostics and emits JavaScript
 | `bundler` | `true` | `true` | `module` | `./target` → `target/index.ts` | `./target` → `target/index.vibe` | `target/index.ts` | — | `./target` |
 | `bundler` | `true` | `true` | `module` | `./target.ts` → `unrelated.ts` | `./target.ts` → `target.vibe` | — | `TS2307` | `./target.js` |
 | `bundler` | `true` | `true` | `module` | `./target.tsx` → `unrelated.ts` | `./target.tsx` → `target.vibex` | — | `TS2307` | `./target.jsx` |
+| `bundler` | `true` | `true` | `module` | `./target.ts` → `target.tsx` | `./target.vibe` → `target.vibex` | `target.tsx` | — | `./target.js` |
+| `bundler` | `true` | `true` | `module` | `./target.tsx` → `target.ts` | `./target.vibex` → `target.vibe` | `target.ts` | — | `./target.jsx` |
 | `bundler` | `true` | `true` | `commonjs` | `./target` → `target.ts` | `./target` → `target.vibe` | `target.ts` | — | `./target` |
 | `bundler` | `true` | `true` | `commonjs` | `./target.js` → `target.ts` | `./target.js` → `target.vibe` | `target.ts` | — | `./target.js` |
 | `bundler` | `true` | `true` | `commonjs` | `./target.jsx` → `target.tsx` | `./target.jsx` → `target.vibex` | `target.tsx` | — | `./target.jsx` |
@@ -392,3 +454,5 @@ Each row runs a real TypeScript program, checks diagnostics and emits JavaScript
 | `bundler` | `true` | `true` | `commonjs` | `./target` → `target/index.ts` | `./target` → `target/index.vibe` | `target/index.ts` | — | `./target` |
 | `bundler` | `true` | `true` | `commonjs` | `./target.ts` → `unrelated.ts` | `./target.ts` → `target.vibe` | — | `TS2307` | `./target.js` |
 | `bundler` | `true` | `true` | `commonjs` | `./target.tsx` → `unrelated.ts` | `./target.tsx` → `target.vibex` | — | `TS2307` | `./target.jsx` |
+| `bundler` | `true` | `true` | `commonjs` | `./target.ts` → `target.tsx` | `./target.vibe` → `target.vibex` | `target.tsx` | — | `./target.js` |
+| `bundler` | `true` | `true` | `commonjs` | `./target.tsx` → `target.ts` | `./target.vibex` → `target.vibe` | `target.ts` | — | `./target.jsx` |
