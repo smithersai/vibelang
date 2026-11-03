@@ -644,10 +644,12 @@ function countdown(src: { n: number }) {
 function ids(xs: unknown[]) {
   const out: unknown[] = []
   for (const x of xs) {
-    if (typeof x === "object" && x !== null && "id" in x) { let id = x.id; out.push(id) }
+    if ((typeof x === "object" || typeof x === "function") && x !== null && "id" in x) { let id = x.id; out.push(id) }
   }
   return out
 }
+const callable = Object.assign(() => 0, { id: 7 })
+const callableObjectExit = Effect.runSyncExit(Effect.sync(() => ids([callable]))) // Success([7])
 const loopHomesExit = Effect.runSyncExit(Effect.sync(() => [drain([1, 2, 3][Symbol.iterator]()), countdown({ n: 3 }), ids([{ id: 1 }, { id: 2 }])])) // Success([[1, 2, 3], [3, 2, 1], [1, 2]])
 ```
 
