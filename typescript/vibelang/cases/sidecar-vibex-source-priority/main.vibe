@@ -1,0 +1,4 @@
+import { Stage } from "./Stage.vibex"
+
+// The compatibility declaration is stale: only the source has this member.
+export const value: 42 = new Stage().sourceOnly
