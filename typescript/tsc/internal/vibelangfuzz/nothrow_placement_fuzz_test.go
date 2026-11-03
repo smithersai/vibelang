@@ -29,6 +29,8 @@ var nothrowPlacementQuotes = []string{
 	"| an `async` function, arrow or method, its parameter list included, or an `async` generator's body | JavaScript's `throw`: the returned Promise rejects with `e` (decided detail 251) |",
 	"plain function declarations, function expressions and arrows (one nested in effect code included), plain methods, constructors, getters and setters, plain generators",
 	"Its callee has a written or shipped `@throws {T}` other than `@throws {never}` (`@throws {unknown}` included)",
+	"may contain calls known to throw: they belong to the enclosing call",
+	"for a rest parameter, its element type or the tuple member at the argument's position",
 	"every function's parameter list except an ordinary nongenerator `async` function's (an `effect` function's and an `async` generator's included, since each runs at the call, before the Effect or the generator exists)",
 }
 
@@ -47,10 +49,14 @@ func TestNothrowPlacementQuoted(t *testing.T) { nothrowPlacementChapter(t) }
 // around body; effect marks effect code and async an async function, where
 // no payload is EK0401. A kind with a default writes the payload as an
 // expression into a parameter's default, in the direct position only; plain
-// marks a parameter list that is synchronous code (quote 7).
+// marks a parameter list that is synchronous code (quote 9). admitted marks a
+// function literal passed where its parameter admits throws (quotes 7 and 8):
+// a rest parameter's element or a tuple-rest member at the argument's
+// position (PREVIEW-10), where a known call belongs to the receiving call.
 type nothrowKind struct {
 	key           string
 	effect, async bool
+	admitted      bool
 	wrap          func(body string) string
 	def           func(expr string) string
 	plain         bool
@@ -96,6 +102,13 @@ var nothrowKinds = []nothrowKind{
 	}},
 	{key: "async", async: true, wrap: func(b string) string { return "export async function f(x: number) {\n  " + b + "\n  return x\n}\n" }},
 	{key: "async-arrow", async: true, wrap: func(b string) string { return "export const f = async (x: number) => {\n  " + b + "\n  return x\n}\n" }},
+	{key: "rest-first", admitted: true, wrap: nothrowCallback("rest(", ")")},
+	{key: "rest-later", admitted: true, wrap: nothrowCallback("rest(() => 0, ", ")")},
+	{key: "rest-after-fixed", admitted: true, wrap: nothrowCallback("afterFixed(\"a\", ", ")")},
+	{key: "tuple-reader", admitted: true, wrap: nothrowCallback("pair(", ", () => 0)")},
+	{key: "tuple-plain", wrap: nothrowCallback("pair(() => 0, ", ")")},
+	{key: "fixed-reader", admitted: true, wrap: nothrowCallback("fixed(", ")")},
+	{key: "fixed-plain", wrap: nothrowCallback("fixedPlain(", ")")},
 	{key: "declaration-default", plain: true, def: func(e string) string { return "export function f(x: unknown = " + e + "): unknown {\n  return x\n}\n" }},
 	{key: "effect-default", effect: true, plain: true, def: func(e string) string { return "export effect function f(x: unknown = " + e + ") {\n  return x\n}\n" }},
 	{key: "async-default", async: true, def: func(e string) string { return "export async function f(x: unknown = " + e + ") {\n  return x\n}\n" }},
@@ -103,6 +116,14 @@ var nothrowKinds = []nothrowKind{
 	{key: "async-generator-default", async: true, plain: true, def: func(e string) string {
 		return "export async function* g(x: unknown = " + e + ") {\n  yield x\n}\n"
 	}},
+}
+
+// nothrowCallback writes body into an arrow passed to a .ts receiver between
+// open and close.
+func nothrowCallback(open, close string) func(string) string {
+	return func(b string) string {
+		return "export function f(): unknown {\n  return " + open + "(): unknown => {\n    " + b + "\n    return 1\n  }" + close + "\n}\n"
+	}
 }
 
 // nothrowPosition places a statement. caught marks the try block of a try
@@ -144,7 +165,13 @@ var nothrowPayloads = []nothrowPayload{
 }
 
 const nothrowLegacy = "export function legacy(text: string): string {\n  if (!text) throw new Error(\"empty\")\n  return text\n}\n" +
-	"/** @throws {unknown} */\nexport function risky(text: string): string {\n  if (!text) throw new Error(\"empty\")\n  return text\n}\n"
+	"/** @throws {unknown} */\nexport function risky(text: string): string {\n  if (!text) throw new Error(\"empty\")\n  return text\n}\n" +
+	"export type Reader = {\n  /** @throws {unknown} */\n  (): unknown\n}\nexport type Plain = () => unknown\n" +
+	"/** @throws {never} */\nexport function rest(...fs: Reader[]): unknown {\n  try { return fs.map((g) => g()) } catch { return 0 }\n}\n" +
+	"/** @throws {never} */\nexport function afterFixed(label: string, ...fs: Reader[]): unknown {\n  try { return [label, fs.map((g) => g())] } catch { return 0 }\n}\n" +
+	"/** @throws {never} */\nexport function pair(...fs: [Reader, Plain]): unknown {\n  try { return fs.map((g) => g()) } catch { return 0 }\n}\n" +
+	"/** @throws {never} */\nexport function fixed(g: Reader): unknown {\n  try { return g() } catch { return 0 }\n}\n" +
+	"/** @throws {never} */\nexport function fixedPlain(g: Plain): unknown {\n  try { return g() } catch { return 0 }\n}\n"
 
 // nothrowShape reads a keyed input ("arrow/try/known-call") or, for other
 // bytes, picks the kind, position and payload by byte.
@@ -177,7 +204,7 @@ func FuzzNothrowPlacement(f *testing.F) {
 			f.Add([]byte("declaration/" + p.key + "/" + l.key))
 		}
 	}
-	for _, seed := range []string{"declaration/try/unknown-contract-call", "declaration/catch/unknown-contract-call", "constructor/try/known-call", "plain-handler/catch/known-call", "nested-plain/try-nested-arrow/known-call", "effect/nested-arrow/throw", "async/nested-arrow/known-call", "top-level/try/throw", "generator/finally/known-call", "getter/try-finally/known-call"} {
+	for _, seed := range []string{"rest-later/if/known-call", "tuple-plain/loop/known-call", "rest-after-fixed/nested-arrow/known-call", "rest-first/catch/unknown-contract-call", "declaration/try/unknown-contract-call", "declaration/catch/unknown-contract-call", "constructor/try/known-call", "plain-handler/catch/known-call", "nested-plain/try-nested-arrow/known-call", "effect/nested-arrow/throw", "async/nested-arrow/known-call", "top-level/try/throw", "generator/finally/known-call", "getter/try-finally/known-call"} {
 		f.Add([]byte(seed))
 	}
 	w := NewWorkspace(f)
@@ -195,7 +222,7 @@ func FuzzNothrowPlacement(f *testing.F) {
 		} else {
 			code = kind.wrap(position.open + nothrowPayloads[payload].text + position.close)
 		}
-		source := "import { legacy, risky } from \"./legacy.ts\"\nerror Bad\ndeclare const maybe: unknown\n" + code
+		source := "import { legacy, risky, rest, afterFixed, pair, fixed, fixedPlain } from \"./legacy.ts\"\nerror Bad\ndeclare const maybe: unknown\n" + code
 		r, err := w.Compile(t.Context(), Project{Files: map[string]string{"main.vibe": source, "legacy.ts": nothrowLegacy}})
 		if err != nil {
 			t.Fatal(err)
@@ -231,8 +258,8 @@ func FuzzNothrowPlacement(f *testing.F) {
 				want = 1 // quote 0, and quote 4 for async
 			}
 		case "known-call", "unknown-contract-call":
-			if plain && !position.caught {
-				want = 1 // quotes 1 and 2
+			if plain && !position.caught && !(kind.admitted && !position.nested) {
+				want = 1 // quotes 1 and 2; an admitted callback's own body, quotes 7 and 8
 			}
 		}
 		if reported != want {

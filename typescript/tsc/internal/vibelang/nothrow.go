@@ -110,20 +110,39 @@ func (a *analyzer) knownThrows(node *ast.Node) []*checker.Type {
 
 // throwsBelongToCall reports whether home, the plain code a call known to
 // throw sits in, is inside a function literal passed where throws are
-// admitted: the code Effect.try or Effect.tryPromise wraps, a Promise
-// executor, or an argument whose parameter type has a @throws call signature.
+// admitted: the code Effect.try or Effect.tryPromise wraps, a retired try(…)
+// hatch's function, a Promise executor, or an argument whose parameter type has a @throws call signature.
 // Only the literal's own activation runs inside that call: a function nested
 // in it, whether it is returned, stored, passed on or called in place, is its
 // own plain code and keeps its own check (PREVIEW-5), since a returned
 // callback runs after Effect.try has finished. A throw statement in such a
 // literal is still EK0401.
 func (a *analyzer) throwsBelongToCall(home *ast.Node) bool {
-	return ast.IsFunctionExpressionOrArrowFunction(home) && (isWrappedCode(home) || admitsThrows(a.checker, home))
+	return ast.IsFunctionExpressionOrArrowFunction(home) && (isWrappedCode(home) || isRetiredHatchFunction(home) || admitsThrows(a.checker, home))
+}
+
+// isRetiredHatchFunction reports whether fn is the function of a retired
+// try(…) hatch. The hatch is EK4616, whose fix writes fn as Effect.try's
+// thunk, so a call known to throw in fn belongs to that call and is not
+// reported a second time.
+func isRetiredHatchFunction(fn *ast.Node) bool {
+	n := fn
+	for n.Parent != nil && (ast.IsParenthesizedExpression(n.Parent) || ast.IsBinaryExpression(n.Parent) && n.Parent.AsBinaryExpression().OperatorToken.Kind == ast.KindCommaToken) {
+		n = n.Parent
+	}
+	call := n.Parent
+	if !isTryCall(call) {
+		return false
+	}
+	arguments := retiredTryArguments(tryOperand(call))
+	return len(arguments) > 0 && ast.SkipParentheses(arguments[0]) == fn
 }
 
 // admitsThrows reports whether fn, a function literal, is an argument whose
 // parameter admits throws: the executor of the global Promise, or a parameter
 // whose function type's call signature carries a @throws other than never.
+// A rest parameter's element, or a tuple-rest member, is the parameter of the
+// arguments in its positions.
 func admitsThrows(c *checker.Checker, fn *ast.Node) bool {
 	node := fn
 	for node.Parent != nil && ast.IsParenthesizedExpression(node.Parent) {
@@ -145,11 +164,10 @@ func admitsThrows(c *checker.Checker, fn *ast.Node) bool {
 		ast.IsIdentifier(call.Expression()) && call.Expression().Text() == "Promise" {
 		return true
 	}
-	parameters := signature.Parameters()
-	if index >= len(parameters) {
-		return false
-	}
-	for _, target := range c.GetSignaturesOfType(c.GetTypeOfSymbol(parameters[index]), checker.SignatureKindCall) {
+	// The argument's effective parameter type: a fixed parameter's, a rest
+	// array's element, or the tuple-rest member at the argument's position
+	// (PREVIEW-10). A position no parameter covers is any, with no signature.
+	for _, target := range c.GetSignaturesOfType(c.GetTypeAtPosition(signature, index), checker.SignatureKindCall) {
 		decl := target.Declaration()
 		if decl == nil {
 			continue

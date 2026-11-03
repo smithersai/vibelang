@@ -1,0 +1,20 @@
+// expect: EK0401
+// PREVIEW-10: a function literal passed where the parameter's function type
+// admits throws may hold calls known to throw (003, "Plain code never
+// throws"). The parameter is the argument's effective one: a rest array's
+// element type, or the tuple-rest member at the argument's position.
+import { rest, afterFixed, pair, fixed, fixedPlain } from "./readers.js"
+
+// Admitted, no diagnostic: the first and a later rest position, a rest after
+// a fixed parameter, the tuple-rest member whose type has @throws, and a
+// fixed parameter.
+export function firstRest(): unknown { return rest((): unknown => JSON.parse("{")) }
+export function laterRest(): unknown { return rest(() => 1, (): unknown => JSON.parse("{")) }
+export function restAfterFixed(): unknown { return afterFixed("a", (): unknown => JSON.parse("{")) }
+export function tupleReader(): unknown { return pair((): unknown => JSON.parse("{"), () => 2) }
+export function fixedReader(): unknown { return fixed((): unknown => JSON.parse("{")) }
+
+// Not admitted, EK0401: the tuple-rest member typed Plain, and a fixed Plain
+// parameter.
+export function tuplePlain(): unknown { return pair(() => 1, (): unknown => JSON.parse("{")) }
+export function fixedPlainCall(): unknown { return fixedPlain((): unknown => JSON.parse("{")) }
