@@ -1,0 +1,62 @@
+[
+  {
+    "key": "next-line",
+    "source": "import { Effect } from \"effect\";\nexport function pause() {\n// oxlint-disable-next-line effecttsgo/effect-sleep-zero-to-yield-now -- Alchemy12 retained directive\nEffect.sleep(0);\nreturn 1;\n}\n",
+    "expected": 0,
+    "rootSeverity": false
+  },
+  {
+    "key": "same-line",
+    "source": "import { Effect } from \"effect\";\nexport function pause() {\nEffect.sleep(0); // oxlint-disable-line effecttsgo/effect-sleep-zero-to-yield-now\nreturn 1;\n}\n",
+    "expected": 0,
+    "rootSeverity": false
+  },
+  {
+    "key": "block",
+    "source": "import { Effect } from \"effect\";\nexport function pause() {\n/* oxlint-disable effecttsgo/effect-sleep-zero-to-yield-now */\nEffect.sleep(0);\nreturn 1;\n}\n",
+    "expected": 0,
+    "rootSeverity": false
+  },
+  {
+    "key": "block-enable",
+    "source": "import { Effect } from \"effect\";\nexport function pause() {\n/* oxlint-disable effecttsgo/effect-sleep-zero-to-yield-now */\n/* oxlint-enable effecttsgo/effect-sleep-zero-to-yield-now */\nEffect.sleep(0);\nreturn 1;\n}\n",
+    "expected": 1,
+    "rootSeverity": false
+  },
+  {
+    "key": "other-rule",
+    "source": "import { Effect } from \"effect\";\nexport function pause() {\n// oxlint-disable-next-line no-console\nEffect.sleep(0);\nreturn 1;\n}\n",
+    "expected": 1,
+    "rootSeverity": false
+  },
+  {
+    "key": "next-line-gap",
+    "source": "import { Effect } from \"effect\";\nexport function pause() {\n// oxlint-disable-next-line effecttsgo/effect-sleep-zero-to-yield-now\nvoid 0;\nEffect.sleep(0);\nreturn 1;\n}\n",
+    "expected": 1,
+    "rootSeverity": false
+  },
+  {
+    "key": "literal-double",
+    "source": "import { Effect } from \"effect\";\nexport function pause() {\nconst marker = \"// oxlint-disable-next-line effecttsgo/effect-sleep-zero-to-yield-now -- ordinary data\";\nEffect.sleep(0);\nreturn 1;\n}\n",
+    "expected": 1,
+    "rootSeverity": false
+  },
+  {
+    "key": "literal-single",
+    "source": "import { Effect } from \"effect\";\nexport function pause() {\nconst marker = '// oxlint-disable-next-line effecttsgo/effect-sleep-zero-to-yield-now -- ordinary data';\nEffect.sleep(0);\nreturn 1;\n}\n",
+    "expected": 1,
+    "rootSeverity": false
+  },
+  {
+    "key": "literal-template",
+    "source": "import { Effect } from \"effect\";\nexport function pause() {\nconst marker = `/* oxlint-disable effecttsgo/effect-sleep-zero-to-yield-now */`;\nEffect.sleep(0);\nreturn 1;\n}\n",
+    "expected": 1,
+    "rootSeverity": false
+  },
+  {
+    "key": "same-effective-config",
+    "source": "import { Effect } from \"effect\";\nexport function pause() {\nEffect.sleep(0);\nreturn 1;\n}\n",
+    "expected": 1,
+    "rootSeverity": true
+  }
+]
