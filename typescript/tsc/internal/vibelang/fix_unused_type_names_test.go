@@ -90,21 +90,71 @@ func TestEffectFnKeepsTypeNamesItDidNotLeaveUnused(t *testing.T) {
 }
 
 // A value is not a type name: a fix that leaves one unread may have dropped a
-// use, so the gate still refuses it. typeof in the annotation was this one's read.
+// use, so the gate still refuses it. typeof in the annotation was this one's
+// read, and a local declaration is not an import binding, so it stays.
 func TestEffectFnStillRefusesAValueItLeavesUnused(t *testing.T) {
 	const site = "export const f = Effect.fn(\"f\")(function* (box: typeof made) { return box.value })\n"
+	source := "const made = { value: \"x\" } as const\n" + site
+	result := fixProjectIn(t, context.Background(), map[string]string{"main.vibe": source, "lib.vibe": unusedTypeNameLib, "tsconfig.json": noUnusedConfig})
+	refused := false
+	for _, r := range result.Refused {
+		refused = refused || strings.Contains(r.Error, "TS6133")
+	}
+	if !refused {
+		t.Errorf("--fix did not refuse with TS6133: %+v\nwrote:\n%s", result.Refused, fixedText(result, "main.vibe"))
+	}
+}
+
+// An import binding that only erased type positions read loses no run-time
+// read when the fix writes the checked type, so it goes with its last read,
+// value or not. opencode's restart module read SessionSchema only in
+// SessionSchema.ID and stayed at EK1002 behind TS6133.
+func TestEffectFnRemovesAnImportOnlyTypesRead(t *testing.T) {
+	for _, tc := range []struct{ name, source, gone, kept string }{
+		{"namespace import, restart", "import * as L from \"./lib.vibe\"\nexport const f = Effect.fn(\"f\")(function* (box: L.Box) { return box.value })\n", "L.", ""},
+		{"value import read by typeof", "import { made } from \"./lib.vibe\"\nexport const f = Effect.fn(\"f\")(function* (box: typeof made) { return box.value })\n", "made", ""},
+		{"value specifier beside a kept one", "import { Box, shape } from \"./lib.vibe\"\nexport const s = shape\n" + unusedTypeNameSite, "Box", "shape"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			got := fixUnusedTypeName(t, tc.source)
+			if strings.Contains(got, "Effect.fn") || !strings.Contains(got, "readonly value: string") {
+				t.Fatalf("the fix did not write the checked parameter type:\n%s", got)
+			}
+			if strings.Contains(got, tc.gone) || strings.Contains(got, "import \"./lib.vibe\"") {
+				t.Fatalf("%q stays, or a bare import was added:\n%s", tc.gone, got)
+			}
+			if tc.kept != "" && !strings.Contains(got, tc.kept) {
+				t.Fatalf("%q went:\n%s", tc.kept, got)
+			}
+		})
+	}
+}
+
+// A binding something runs keeps refusing the fix that leaves it unread: its
+// read was a value read, so the fix may have dropped it. The property access
+// names a value, and typeof's read does not make the binding type-only.
+func TestEffectFnRefusesAnImportARunTimeReadUsed(t *testing.T) {
+	const site = "export const f = Effect.fn(\"f\")(function* (box: typeof made) { return box.value })\n"
 	for _, source := range []string{
-		"import { made } from \"./lib.vibe\"\n" + site,
-		"const made = { value: \"x\" } as const\n" + site,
+		"import { made } from \"./lib.vibe\"\nexport const v = Effect.fn(\"v\")(function* () { return made.value })\n" + site,
 	} {
 		result := fixProjectIn(t, context.Background(), map[string]string{"main.vibe": source, "lib.vibe": unusedTypeNameLib, "tsconfig.json": noUnusedConfig})
-		refused := false
-		for _, r := range result.Refused {
-			refused = refused || strings.Contains(r.Error, "TS6133")
+		got := fixedText(result, "main.vibe")
+		if got != "" && !strings.Contains(got, "import { made }") {
+			t.Fatalf("a binding with a run-time read went:\n%s", got)
 		}
-		if !refused {
-			t.Errorf("--fix did not refuse with TS6133: %+v\nfrom:\n%s\nwrote:\n%s", result.Refused, source, fixedText(result, "main.vibe"))
-		}
+	}
+}
+
+// Under verbatimModuleSyntax a value import loads its module, so removing the
+// last binding leaves import "m".
+func TestEffectFnKeepsTheLoadOfARemovedValueImport(t *testing.T) {
+	config := strings.Replace(noUnusedConfig, `"noEmit":true`, `"noEmit":true,"verbatimModuleSyntax":true`, 1)
+	source := "import * as L from \"./lib.vibe\"\nexport const f = Effect.fn(\"f\")(function* (box: L.Box) { return box.value })\n"
+	result := fixProjectIn(t, context.Background(), map[string]string{"main.vibe": source, "lib.vibe": unusedTypeNameLib, "tsconfig.json": config})
+	got := fixedText(result, "main.vibe")
+	if len(result.Refused) != 0 || !strings.HasPrefix(got, "import \"./lib.vibe\"\n") || strings.Contains(got, "L.") {
+		t.Fatalf("refused %+v, wrote:\n%s", result.Refused, got)
 	}
 }
 
@@ -112,11 +162,14 @@ func TestEffectFnStillRefusesAValueItLeavesUnused(t *testing.T) {
 // not refused, every generator is converted, and the name is there exactly when
 // something other than a converted annotation reads it.
 func FuzzEffectFnUnusedTypeNames(f *testing.F) {
-	declarations := []string{
-		"import { type Box } from \"./lib.vibe\"\n",
-		"import type { Box } from \"./lib.vibe\"\n",
-		"import { type Box, made } from \"./lib.vibe\"\nexport const m = () => made\n",
-		"import { shape } from \"./lib.vibe\"\nexport const s = shape\ntype Box = Parameters<typeof shape>[0]\n",
+	declarations := []struct{ source, name, typ string }{
+		{"import { type Box } from \"./lib.vibe\"\n", "Box", "Box"},
+		{"import type { Box } from \"./lib.vibe\"\n", "Box", "Box"},
+		{"import { type Box, made } from \"./lib.vibe\"\nexport const m = () => made\n", "Box", "Box"},
+		{"import { shape } from \"./lib.vibe\"\nexport const s = shape\ntype Box = Parameters<typeof shape>[0]\n", "Box", "Box"},
+		{"import * as L from \"./lib.vibe\"\n", "L", "L.Box"},
+		{"import { Box } from \"./lib.vibe\"\n", "Box", "Box"},
+		{"import { made } from \"./lib.vibe\"\n", "made", "typeof made"},
 	}
 	for form := range len(declarations) {
 		for _, read := range []bool{false, true} {
@@ -126,20 +179,21 @@ func FuzzEffectFnUnusedTypeNames(f *testing.F) {
 		}
 	}
 	f.Fuzz(func(t *testing.T, form, sites uint8, read bool) {
-		source := declarations[int(form)%len(declarations)]
+		d := declarations[int(form)%len(declarations)]
+		source := d.source
 		count := int(sites)%3 + 1
 		if read {
-			source += "export const reader = (b: Box) => b\n"
+			source += "export const reader = (b: " + d.typ + ") => b\n"
 		}
 		for i := range count {
-			source += fmt.Sprintf("export const f%d = Effect.fn(\"f%d\")(function* (box: Box) { return box.value })\n", i, i)
+			source += fmt.Sprintf("export const f%d = Effect.fn(\"f%d\")(function* (box: %s) { return box.value })\n", i, i, d.typ)
 		}
 		got := fixUnusedTypeName(t, source)
 		if strings.Contains(got, "Effect.fn") {
 			t.Fatalf("a generator stayed:\n%s", got)
 		}
-		if has := regexp.MustCompile(`\bBox\b`).MatchString(got); has != read {
-			t.Fatalf("Box present=%t with another read=%t:\n%s\nfrom:\n%s", has, read, got, source)
+		if has := regexp.MustCompile(`\b` + d.name + `\b`).MatchString(got); has != read {
+			t.Fatalf("%s present=%t with another read=%t:\n%s\nfrom:\n%s", d.name, has, read, got, source)
 		}
 	})
 }

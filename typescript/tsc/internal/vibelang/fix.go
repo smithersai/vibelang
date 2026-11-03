@@ -1001,6 +1001,9 @@ type errorBaseline struct {
 	errors          []*ast.Diagnostic
 	messages, spans map[string]int
 	texts           map[string]string
+	// typeReads holds, by file name, the import bindings that only erased
+	// type positions read before any fix (typeReadImports).
+	typeReads map[string]map[string]bool
 }
 
 func baselineOf(ctx context.Context, program *compiler.Program) errorBaseline {
@@ -1012,12 +1015,21 @@ func baselineOf(ctx context.Context, program *compiler.Program) errorBaseline {
 			b.texts[d.File().FileName().AsString()] = d.File().Text()
 		}
 	}
+	b.typeReads = map[string]map[string]bool{}
+	for _, file := range program.SourceFiles() {
+		if file.IsDeclarationFile || strings.Contains(file.FileName().AsString(), "/node_modules/") || program.IsSourceFileFromExternalLibrary(file) {
+			continue
+		}
+		if names := typeReadImports(file); len(names) != 0 {
+			b.typeReads[file.FileName().AsString()] = names
+		}
+	}
 	return b
 }
 
 // with returns b holding other's errors too, each key at the larger count.
 func (b errorBaseline) with(other errorBaseline) errorBaseline {
-	merged := errorBaseline{errors: slices.Concat(b.errors, other.errors), messages: map[string]int{}, spans: map[string]int{}, texts: map[string]string{}}
+	merged := errorBaseline{errors: slices.Concat(b.errors, other.errors), messages: map[string]int{}, spans: map[string]int{}, texts: map[string]string{}, typeReads: map[string]map[string]bool{}}
 	for _, from := range []errorBaseline{b, other} {
 		for key, count := range from.messages {
 			merged.messages[key] = max(merged.messages[key], count)
@@ -1027,6 +1039,11 @@ func (b errorBaseline) with(other errorBaseline) errorBaseline {
 		}
 		for name, text := range from.texts {
 			merged.texts[name] = text
+		}
+		for name, names := range from.typeReads {
+			if merged.typeReads[name] == nil {
+				merged.typeReads[name] = names
+			}
 		}
 	}
 	return merged
@@ -1052,7 +1069,7 @@ func countErrors(errors []*ast.Diagnostic, spanKey func(*ast.Diagnostic) string)
 // unrelated helper causes. A span in a file a fix edits is compared where it
 // lay before the edits (spanKeys).
 func addedCounts(errors []*ast.Diagnostic, baseline errorBaseline) map[string]int {
-	return strictAddedCounts(slices.DeleteFunc(slices.Clone(errors), isUnusedTypeName), baseline)
+	return strictAddedCounts(slices.DeleteFunc(slices.Clone(errors), func(d *ast.Diagnostic) bool { return isUnusedTypeName(d, baseline) }), baseline)
 }
 
 // strictAddedCounts is addedCounts with the type names a fix left unused
