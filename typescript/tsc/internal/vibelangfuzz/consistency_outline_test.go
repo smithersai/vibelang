@@ -304,9 +304,20 @@ func (c *consistency) checkSymbols() {
 			}
 		}
 		walk(*response.DocumentSymbols)
+		modules := map[string]bool{}
 		for _, d := range declarations {
+			// TypeScript merges the namespaces of one name into the first one's
+			// document symbol (ls.mergeExpandos, as its navigation tree does), so
+			// a later module declaration of the name is named by that symbol.
+			merged := d.kind == "ModuleDeclaration" && modules[d.name]
+			if d.kind == "ModuleDeclaration" {
+				modules[d.name] = true
+			}
 			// TypeScript names `namespace A.B { }` "A.B".
 			if !slices.ContainsFunc(found, func(s consistencySpan) bool {
+				if merged && s.file == d.name {
+					return true
+				}
 				return (s.file == d.name || d.kind == "ModuleDeclaration" && strings.HasPrefix(s.file, d.name+".")) && s.start <= d.start && d.end <= s.end
 			}) {
 				Gap(c.t, consistencyTarget, "consistency:document-symbols:missing:"+d.kind+":"+p.kindAt(c.main, d.start), "LSP 3.17: no document symbol names the top-level %s %q at bytes %d-%d: %v\n%s", d.kind, d.name, d.start, d.end, found, c.archive)
