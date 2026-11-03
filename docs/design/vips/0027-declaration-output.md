@@ -17,9 +17,21 @@ export declare function add(a: number, b: number): number
 
 - **Content.** Declarations are exactly what idiomatic Effect TypeScript would declare, per Will's earlier ruling (D501).
 - **Amended 2026-11-03: API identity (Will).** Declarations are API-identical to `tsc`'s for the Effect TypeScript twin: the same exported names, each export's type identical to `tsc`'s in both directions (a type-level check), and the same doc comment on each export. Formatting, quote style, import extension spelling, and import and member order where `tsc` doesn't care don't count ("Byte identical seems a bit extreme shouldn't it have some level of discretion?"). [Chapter 1](../src/001-functions.md#api-identity) states it once; codemods and migration point there.
+
 - **Location.** `x.d.vibe.ts` is written next to each `x.vibe`, which TypeScript's `allowArbitraryExtensions` resolves, so plain `tsc` and TypeDoc understand `.vibe` imports. A package build also writes ordinary `.d.ts` files to its output directory.
 - **`@throws`.** A non-effectful exported function carries `@throws {never}`, because a `.vibe` function can't throw (VIP-4) and a TypeScript function with no `@throws` throws `unknown`. The effect function `load` carries none. A re-exported foreign callable keeps its actual contract.
 - The `@throws` annotations VibeLang ships for JavaScript's globals (VIP-4) use the same spelling.
+Construct the twin with the explicit `@throws {never}` contract on each non-effectful signature for which VibeLang emits it. Preserve the source documentation and add that tag to the twin's JSDoc before running `tsc`; do not add it to the `.vibe` source, where it is `EK0406`. This makes the same-comment comparison include the required cross-module contract: an unannotated TypeScript twin would instead advertise `unknown` and would not represent the same API. Effectful signatures and re-exported foreign callables retain their own declaration rules.
+
+For the `add` example, the Effect TypeScript twin used for declaration comparison is:
+
+```ts effect
+/** @throws {never} */
+export function add(a: number, b: number) { return a + b }
+```
+
+Stock `tsc` preserves the tag in the declaration, exactly as shown above. Without the tag, `tsc` emits the same function type with no JSDoc; that is a foreign callable with thrown type `unknown` under VIP-4.
+
 
 - **Amended 2026-10-30: the generated matcher.** A declaration file that declares an `error` or `schema error` keeps its static `[Symbol.customMatcher]` member and begins with `/// <reference types="vibelang-runtime" />`, which declares the `Symbol.customMatcher` type, so plain `tsc` checks it and matching across packages works at run time. Decided by the agent on 2026-10-30 under Will's rule "when I state a principle, the agent derives the concrete rule and acts; I can override later" (decided detail 67c).
 
