@@ -1,0 +1,31 @@
+// expect: EK0401
+// Decided detail 253: a module body has no exception to "synchronous VibeLang
+// code never throws": a throw at the top level, in a top-level block or in a
+// top-level try statement is EK0401. 003 Async contracts and detail 108: an
+// ordinary async function rejects its Promise for a throw in its parameter
+// list (no error), but an async generator runs its parameter list at the
+// call, so a throw there is EK0401, and so is one in a plain arrow called
+// from an async default.
+error Bad { why: string }
+declare const maybe: number | undefined
+
+if (maybe === 0) throw new Bad({ why: "top level" })
+{
+  if (maybe === 1) throw new Bad({ why: "top-level block" })
+}
+try {
+  if (maybe === 2) throw new Bad({ why: "top-level try" })
+} catch {
+}
+export async function* counts(start: number = maybe ?? throw new Bad({ why: "async generator default" })) {
+  yield start
+}
+export async function viaArrow(a: number = ((): number => { throw new Bad({ why: "plain arrow" }) })()) {
+  return a
+}
+
+// Controls: no diagnostic.
+export async function rejectsDefault(a: number = maybe ?? throw new Bad({ why: "rejects the Promise" })) {
+  return a
+}
+export const rejectsArrow = async (a: number = maybe ?? throw new Bad({ why: "rejects" })) => a

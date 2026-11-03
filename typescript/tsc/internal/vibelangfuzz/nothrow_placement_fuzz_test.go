@@ -26,9 +26,10 @@ var nothrowPlacementQuotes = []string{
 	"*known to throw* is `EK0401`, unless it sits in the `try` block of a `try` statement that has a `catch` clause, in the same function",
 	"A call in the `catch` or `finally` block, or in a `try` statement with only `finally`, is the error.",
 	"A call whose throwing is unknown, such as an unannotated `.ts` function, stays an ordinary call.",
-	"| an `async` function, arrow or method, or an async generator | JavaScript's `throw`: the returned Promise rejects with `e` (decided detail 251) |",
+	"| an `async` function, arrow or method, its parameter list included, or an `async` generator's body | JavaScript's `throw`: the returned Promise rejects with `e` (decided detail 251) |",
 	"plain function declarations, function expressions and arrows (one nested in effect code included), plain methods, constructors, getters and setters, plain generators",
 	"Its callee has a written or shipped `@throws {T}` other than `@throws {never}` (`@throws {unknown}` included)",
+	"every function's parameter list except an ordinary nongenerator `async` function's (an `effect` function's and an `async` generator's included, since each runs at the call, before the Effect or the generator exists)",
 }
 
 func nothrowPlacementChapter(tb testing.TB) {
@@ -44,11 +45,15 @@ func TestNothrowPlacementQuoted(t *testing.T) { nothrowPlacementChapter(t) }
 
 // nothrowKind is a kind of code that holds the payload. wrap writes a module
 // around body; effect marks effect code and async an async function, where
-// no payload is EK0401.
+// no payload is EK0401. A kind with a default writes the payload as an
+// expression into a parameter's default, in the direct position only; plain
+// marks a parameter list that is synchronous code (quote 7).
 type nothrowKind struct {
 	key           string
 	effect, async bool
 	wrap          func(body string) string
+	def           func(expr string) string
+	plain         bool
 }
 
 var nothrowKinds = []nothrowKind{
@@ -91,6 +96,13 @@ var nothrowKinds = []nothrowKind{
 	}},
 	{key: "async", async: true, wrap: func(b string) string { return "export async function f(x: number) {\n  " + b + "\n  return x\n}\n" }},
 	{key: "async-arrow", async: true, wrap: func(b string) string { return "export const f = async (x: number) => {\n  " + b + "\n  return x\n}\n" }},
+	{key: "declaration-default", plain: true, def: func(e string) string { return "export function f(x: unknown = " + e + "): unknown {\n  return x\n}\n" }},
+	{key: "effect-default", effect: true, plain: true, def: func(e string) string { return "export effect function f(x: unknown = " + e + ") {\n  return x\n}\n" }},
+	{key: "async-default", async: true, def: func(e string) string { return "export async function f(x: unknown = " + e + ") {\n  return x\n}\n" }},
+	{key: "async-arrow-default", async: true, def: func(e string) string { return "export const f = async (x: unknown = " + e + ") => x\n" }},
+	{key: "async-generator-default", async: true, plain: true, def: func(e string) string {
+		return "export async function* g(x: unknown = " + e + ") {\n  yield x\n}\n"
+	}},
 }
 
 // nothrowPosition places a statement. caught marks the try block of a try
@@ -117,15 +129,18 @@ var nothrowPositions = []nothrowPosition{
 // nothrowPayloads: a throw, a call known to throw (a built-in's shipped
 // contract), a call whose throwing is unknown (a .ts function with no tag),
 // and a call to a .ts function tagged @throws {unknown}, an affirmative
-// contract (decided detail 255). quote is the chapter quote each one checks.
-var nothrowPayloads = []struct {
-	key, text string
-	quote     int
-}{
-	{"throw", "throw new Bad()", 0},
-	{"known-call", "JSON.parse(\"1\")", 1},
-	{"unknown-call", "legacy(\"1\")", 3},
-	{"unknown-contract-call", "risky(\"1\")", 6},
+// contract (decided detail 255). quote is the chapter quote each one checks;
+// expr is the payload as a parameter default.
+type nothrowPayload struct {
+	key, text, expr string
+	quote           int
+}
+
+var nothrowPayloads = []nothrowPayload{
+	{"throw", "throw new Bad()", "maybe ?? throw new Bad()", 0},
+	{"known-call", "JSON.parse(\"1\")", "JSON.parse(\"1\")", 1},
+	{"unknown-call", "legacy(\"1\")", "legacy(\"1\")", 3},
+	{"unknown-contract-call", "risky(\"1\")", "risky(\"1\")", 6},
 }
 
 const nothrowLegacy = "export function legacy(text: string): string {\n  if (!text) throw new Error(\"empty\")\n  return text\n}\n" +
@@ -138,12 +153,7 @@ func nothrowShape(data []byte) (kind nothrowKind, position nothrowPosition, payl
 	if len(parts) == 3 {
 		k := slices.IndexFunc(nothrowKinds, func(k nothrowKind) bool { return k.key == parts[0] })
 		p := slices.IndexFunc(nothrowPositions, func(p nothrowPosition) bool { return p.key == parts[1] })
-		l := slices.IndexFunc(nothrowPayloads, func(l struct {
-			key, text string
-			quote     int
-		}) bool {
-			return l.key == parts[2]
-		})
+		l := slices.IndexFunc(nothrowPayloads, func(l nothrowPayload) bool { return l.key == parts[2] })
 		if k >= 0 && p >= 0 && l >= 0 {
 			return nothrowKinds[k], nothrowPositions[p], l
 		}
@@ -173,13 +183,19 @@ func FuzzNothrowPlacement(f *testing.F) {
 	w := NewWorkspace(f)
 	f.Fuzz(func(t *testing.T, data []byte) {
 		kind, position, payload := nothrowShape(data)
-		if kind.effect && position.try {
-			// A try statement in effect code is EK0503, outside this rule.
+		if kind.effect && position.try || kind.def != nil {
+			// A try statement in effect code is EK0503, outside this rule;
+			// a default holds an expression, so it has no position.
 			position = nothrowPositions[0]
 		}
 		shape := kind.key + "/" + position.key + "/" + nothrowPayloads[payload].key
-		body := position.open + nothrowPayloads[payload].text + position.close
-		source := "import { legacy, risky } from \"./legacy.ts\"\nerror Bad\n" + kind.wrap(body)
+		var code string
+		if kind.def != nil {
+			code = kind.def(nothrowPayloads[payload].expr)
+		} else {
+			code = kind.wrap(position.open + nothrowPayloads[payload].text + position.close)
+		}
+		source := "import { legacy, risky } from \"./legacy.ts\"\nerror Bad\ndeclare const maybe: unknown\n" + code
 		r, err := w.Compile(t.Context(), Project{Files: map[string]string{"main.vibe": source, "legacy.ts": nothrowLegacy}})
 		if err != nil {
 			t.Fatal(err)
@@ -188,7 +204,7 @@ func FuzzNothrowPlacement(f *testing.F) {
 		call := nothrowPayloads[payload].key != "throw"
 		// effect code checks an unwrapped call itself (EK0403, EK4401), and an
 		// async function's calls are its own; neither is this rule
-		others := call && (kind.effect || kind.async) && !position.nested
+		others := call && (kind.effect || kind.async) && !position.nested && kind.def == nil
 		reported := 0
 		var errs []string
 		for _, d := range r.Diagnostics {
@@ -205,7 +221,7 @@ func FuzzNothrowPlacement(f *testing.F) {
 			Gap(t, "FuzzNothrowPlacement", "compile:"+shape, "%s should have no error but EK0401:\n%s\n%s", shape, source, strings.Join(errs, "\n"))
 			return
 		}
-		plain := position.nested || !kind.effect && !kind.async
+		plain := position.nested || !kind.effect && !kind.async || kind.def != nil && kind.plain
 		want := 0
 		switch nothrowPayloads[payload].key {
 		case "throw":

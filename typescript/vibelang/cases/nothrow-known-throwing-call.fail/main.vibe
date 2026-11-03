@@ -47,3 +47,12 @@ export effect function wrapped(text: string) {
 export async function rejects(text: string) {
   return JSON.parse(text)
 }
+export effect function wrappedCallback(texts: string[]) {
+  return try Effect.try(() => texts.map((text) => JSON.parse(text)))
+}
+export function executor(text: string) {
+  return new Promise((resolve) => { resolve(JSON.parse(text)) })
+}
+export async function rejectsDefault(value: unknown = JSON.parse("1")) {
+  return value
+}

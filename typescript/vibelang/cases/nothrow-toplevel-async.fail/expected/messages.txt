@@ -1,0 +1,2 @@
+A 'throw' is not allowed at the top level of a VibeLang module.
+A 'throw' is not allowed outside effect code: synchronous VibeLang code never throws.

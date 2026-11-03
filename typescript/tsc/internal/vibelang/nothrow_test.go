@@ -50,7 +50,7 @@ func TestThrowOutsideEffectCodeIsEK0401(t *testing.T) {
 					continue
 				}
 				switch d.Code() {
-				case EK9203.Code, EK1001.Code, EK2115.Code, EK4301.Code, EK0511.Code:
+				case EK9203.Code, EK1001.Code, EK2115.Code, EK4301.Code, 511:
 					t.Errorf("EK%04d reported beside EK0401: %s", d.Code(), diagnosticWithNotes(d))
 				}
 			}

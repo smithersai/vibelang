@@ -1,6 +1,7 @@
 package vibelang
 
 import (
+	"slices"
 	"strings"
 
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
@@ -23,8 +24,9 @@ import (
 // Every throw counts, caught by its own try statement or not. A call known to
 // throw, such as JSON.parse(text), is EK0401 too, unless it stands in the try
 // block of a try statement with a catch clause in the same function, or in
-// the function that Effect.try or Effect.tryPromise wraps. A throw
-// expression and a do block are the throw statement they hold: the arrow the
+// a function literal whose throws belong to the call it is passed to
+// (throwsBelongToCall). A throw expression and a do block are the throw
+// statement they hold: the arrow the
 // parser writes for them (parser/vibelang_blocks.go) belongs to the code
 // around it. Code that must throw a JavaScript exception moves to a .ts file
 // or a module block, whose body is TypeScript (modules.go).
@@ -62,7 +64,7 @@ func checkThrowsOutsideEffect(c *checker.Checker, file *ast.SourceFile) {
 			}
 		}
 		if failures := a.knownThrows(node); failures != nil {
-			if home := a.plainHomeOf(node); home != nil && !isWrappedCode(home) {
+			if home := a.plainHomeOf(node); home != nil && !a.throwsBelongToCall(home) {
 				report(c, node, throwingCallOutsideEffect, nodeText(file, ast.GetInvokedExpression(node)), typeListText(c, failures))
 			}
 		}
@@ -106,11 +108,74 @@ func (a *analyzer) knownThrows(node *ast.Node) []*checker.Type {
 	return types
 }
 
+// throwsBelongToCall reports whether home, the plain code a call known to
+// throw sits in, is inside a function literal passed where throws are
+// admitted: the code Effect.try or Effect.tryPromise wraps, a Promise
+// executor, or an argument whose parameter type has a @throws call signature.
+// Such a literal may contain calls known to throw, in callbacks of its own
+// included; a throw statement in it is still EK0401.
+func (a *analyzer) throwsBelongToCall(home *ast.Node) bool {
+	for n := home; n != nil; n = n.Parent {
+		if ast.IsFunctionExpressionOrArrowFunction(n) && (isWrappedCode(n) || admitsThrows(a.checker, n)) {
+			return true
+		}
+	}
+	return false
+}
+
+// admitsThrows reports whether fn, a function literal, is an argument whose
+// parameter admits throws: the executor of the global Promise, or a parameter
+// whose function type's call signature carries a @throws other than never.
+func admitsThrows(c *checker.Checker, fn *ast.Node) bool {
+	node := fn
+	for node.Parent != nil && ast.IsParenthesizedExpression(node.Parent) {
+		node = node.Parent
+	}
+	call := node.Parent
+	if call == nil || !ast.IsCallExpression(call) && !ast.IsNewExpression(call) {
+		return false
+	}
+	index := slices.Index(call.Arguments(), node)
+	if index < 0 {
+		return false
+	}
+	signature := c.GetResolvedSignature(call)
+	if signature == nil {
+		return false
+	}
+	if decl := signature.Declaration(); ast.IsNewExpression(call) && decl != nil && isLibFile(c, ast.GetSourceFileOfNode(decl)) &&
+		ast.IsIdentifier(call.Expression()) && call.Expression().Text() == "Promise" {
+		return true
+	}
+	parameters := signature.Parameters()
+	if index >= len(parameters) {
+		return false
+	}
+	for _, target := range c.GetSignaturesOfType(c.GetTypeOfSymbol(parameters[index]), checker.SignatureKindCall) {
+		decl := target.Declaration()
+		if decl == nil {
+			continue
+		}
+		for _, host := range jsdocHosts(decl) {
+			if !hasThrowsTag(host) {
+				continue
+			}
+			failures, _, unknown := throwsOf(c, host)
+			if unknown || len(failures) != 0 {
+				return true
+			}
+		}
+	}
+	return false
+}
+
 // plainHomeOf returns the synchronous code outside effect code that node
 // runs in, or nil when node runs in effect code, in an async function, or in
 // a module block. The code is a function, a class field or static block, or
 // the source file for a module's top level. A parameter list runs before the
-// function's Effect exists, so it is plain code even in an effect function.
+// function's Effect exists, so it is plain code even in an effect function;
+// an ordinary async function's parameter list rejects its Promise instead,
+// and an async generator's runs at the call.
 func (a *analyzer) plainHomeOf(node *ast.Node) *ast.Node {
 	inParameters := false
 	for n := node.Parent; n != nil; n = n.Parent {
@@ -125,10 +190,15 @@ func (a *analyzer) plainHomeOf(node *ast.Node) *ast.Node {
 			if isProgramArrow(n) && !isMarkedEffect(n) {
 				continue // a throw or do expression, a match arm, or a catch expression's side
 			}
+			flags := ast.GetFunctionFlags(n)
+			async := flags&ast.FunctionFlagsAsync != 0
 			if inParameters {
+				if async && flags&ast.FunctionFlagsGenerator == 0 {
+					return nil
+				}
 				return n
 			}
-			if ast.GetFunctionFlags(n)&ast.FunctionFlagsAsync != 0 || a.runsAsEffect(n) {
+			if async || a.runsAsEffect(n) {
 				return nil
 			}
 			return n
