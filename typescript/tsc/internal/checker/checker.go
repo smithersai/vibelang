@@ -17245,6 +17245,11 @@ func (c *Checker) getTypeForVariableLikeDeclaration(declaration *ast.Node, inclu
 	if declaredType != nil {
 		return c.addOptionalityEx(declaredType, isProperty, isOptional)
 	}
+	if ast.IsPropertyDeclaration(declaration) {
+		if t := c.propertyDeclarationTypeFromHooks(declaration); t != nil {
+			return c.addOptionalityEx(t, isProperty, isOptional)
+		}
+	}
 	if ast.IsVariableDeclaration(declaration) && declaration.Initializer() == nil && ast.IsIdentifier(declaration.Name()) {
 		if t := c.applyDeclaredTypeHooks(declaration); t != nil {
 			return t
