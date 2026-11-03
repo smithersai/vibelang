@@ -932,6 +932,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Public `vibelang/project` results omitted errors and warnings in native TypeScript files. Sync and async project checks now report diagnostics from every input, with a separate cache from loader compiles.
 - `vibelang --fix` left legacy Effect data extension calls such as `Option.some(1).map(f)` unchanged. It now writes namespace calls such as `Option.map(Option.some(1), f)`, preserving evaluation order, comments, public declarations and module initialization order, and explains unsafe rewrites.
 
+- Liveness checks rejected PID `0` even though the native signal-zero query can inspect the current process group. `Experimental.Process.isRunning(0)` now preserves that query; actual signal delivery still requires a positive PID.
+
 - The migration checks generated callback failure unions without their required parentheses and failed to parse them. They now write valid compound slots while checking the same preserved channels and refusal controls.
 
 

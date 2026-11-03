@@ -9,7 +9,7 @@ effect function observe() {
     platform: typeof try (try Process).platform === "string",
     running: try Process.isRunning(pid),
     missing: (try Process).kill(4194000) catch (e) => e.reason._tag, // no S.m(x) shorthand (VIP-10)
-    refused: (try Process).isRunning(0) catch (e) => e.reason._tag,
+    refused: (try Process).isRunning(-1) catch (e) => e.reason._tag,
   }
 }
 

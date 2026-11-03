@@ -203,13 +203,15 @@ await runPromise(main())
 
 `try process.kill(pid, { killSignal, group })` sends `killSignal`, `"SIGTERM"` by default, one of Effect's `ChildProcess.Signal` names. `try process.isRunning(pid, { group })` sends signal 0: a process that belongs to another user still runs, and so does a child that exited before its parent reaped it. `group: true` signals the process group whose id is `pid`, as `ChildProcessSpawner` starts each child in one. A child the program spawned also stops with its handle's `try child.kill()`; `process.kill` reaches any process, such as one named in a pid file. One `ExperimentalNodeServices.layer` provides both `ChildProcessSpawner` and `Process`.
 
+`try process.isRunning(0)` delegates a signal-zero lookup without delivering a signal; on POSIX this probes the current process group. The query remains cold and follows native host error handling. `kill(0)` remains refused before any host call, including with `group: true`. For a negative native group id, pass its positive magnitude with `group: true` as before.
+
 Both fail with a `PlatformError` whose reason says why:
 
 | Reason | When |
 | --- | --- |
 | `NotFound` | No process has that id. |
 | `PermissionDenied` | This process may not signal it. |
-| `BadArgument` | `pid` is not a positive integer, the platform has no such signal, or `group` on Windows. |
+| `BadArgument` | `kill` needs a positive safe integer; `isRunning` accepts zero or a positive safe integer. Other causes include an unsupported signal or explicit `group` on Windows. |
 
 ### Which signal ended the program
 

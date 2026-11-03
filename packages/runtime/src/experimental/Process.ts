@@ -163,7 +163,10 @@ export interface Process {
    * Whether the process `pid`, or any process of its group with `group`,
    * exists: signal 0. A process this one may not signal still exists, and a
    * child that has exited but that its parent has not yet reaped is still
-   * running. Fails with a `BadArgument` when `pid` is not a positive integer.
+   * running. Zero delegates the native signal-zero query: on POSIX it looks
+   * for the caller's process group. No signal is delivered. Fails with a
+   * `BadArgument` when `pid` is not a nonnegative safe integer; explicit
+   * `group` remains POSIX-only. `kill` still requires a positive id.
    */
   readonly isRunning: (pid: number, options?: IsRunningOptions) => Effect.Effect<boolean, PlatformError.PlatformError>
   /**

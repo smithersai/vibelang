@@ -55,20 +55,21 @@ const failure = (method: "kill" | "isRunning", pid: number, error: unknown): Pla
   })
 }
 
-// The id process.kill takes: the process, or its group's negated id. A pid
-// that is not a positive integer is refused, since 0 and negative ids name
-// this process's own group or every process the user may signal.
+// Actual signals require a positive id: zero and negative native ids can
+// signal an entire group or every permitted process. A signal-zero liveness
+// query may safely use zero for the caller's group; no signal is delivered.
 const target = (
   host: Host,
   method: "kill" | "isRunning",
   pid: number,
   group: boolean | undefined
 ): Effect.Effect<number, PlatformError.PlatformError> => {
-  if (!Number.isSafeInteger(pid) || pid <= 0) {
+  const query = method === "isRunning"
+  if (!Number.isSafeInteger(pid) || pid < 0 || (pid === 0 && !query)) {
     return Effect.fail(PlatformError.badArgument({
       module: "Process",
       method,
-      description: `pid must be a positive integer, got ${pid}; signal a process group with { group: true }`
+      description: `pid must be a ${query ? "nonnegative" : "positive"} integer, got ${pid}; signal a process group with { group: true }`
     }))
   }
   if (group === true && host.platform === "win32") {
@@ -78,7 +79,7 @@ const target = (
       description: "process groups are POSIX only; Windows has none"
     }))
   }
-  return Effect.succeed(group === true ? -pid : pid)
+  return Effect.succeed(pid === 0 ? 0 : group === true ? -pid : pid)
 }
 
 // No process receives these: POSIX stops or kills it without a handler. Node.js

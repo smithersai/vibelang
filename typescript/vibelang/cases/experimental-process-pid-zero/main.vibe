@@ -1,0 +1,20 @@
+// expect-result: {"matchesNative":true,"fake":false}
+import { ExperimentalNodeProcess } from "vibelang-runtime/experimental/platform-node"
+import { nativeZero } from "./host.js"
+
+effect function query() {
+  return try (try Experimental.Process.Process).isRunning(0)
+}
+effect function nativeQuery() {
+  provide ExperimentalNodeProcess.layer {
+    const service = try Experimental.Process.Process
+    const observed = service.isRunning(0) catch (error) => error.reason._tag
+    return observed === nativeZero
+  }
+}
+effect function fakeQuery() {
+  provide Experimental.Process.layerTest() { return try query() }
+}
+export effect function main() {
+  return { matchesNative: try nativeQuery(), fake: try fakeQuery() }
+}
