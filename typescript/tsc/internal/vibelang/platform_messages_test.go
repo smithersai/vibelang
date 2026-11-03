@@ -153,9 +153,8 @@ export const run = () => hostname()`, []string{
 		{"home directory", `import { homedir } from "node:os"
 export const run = () => homedir()`, []string{
 			"homedir from node:os is platform code, which a .vibe file does not import as a value.",
-			"Use the UserDirectories service:   UserDirectories.home()",
-			"Provide it in main with UserDirectories.layer.",
-			"UserDirectories.home() reads HOME, or USERPROFILE on Windows; os.homedir() also falls back to the user database.",
+			"Use the experimental Process service:   try (try Experimental.Process.Process).homeDirectory", provideExperimental,
+			"homeDirectory delegates to os.homedir, including native account fallback; UserDirectories.home remains an environment resolver.",
 		}},
 		{"experimental service with a note", `export const run = (pid: number) => process.kill(pid, "SIGINT")`, []string{
 			"process.kill is platform code, which VibeLang code does not use directly.",

@@ -1,0 +1,12 @@
+{
+  "origin": "foldkit relayRegistry: native os.homedir lookup must work without HOME",
+  "oracle": "VIP-33 section2; node:os.homedir, not the ConfigProvider directory resolver",
+  "cases": [
+    {
+      "unsetHome": true
+    },
+    {
+      "home": "/vibe-native-home-151"
+    }
+  ]
+}

@@ -2459,6 +2459,7 @@ typescript/vibelang/cases/experimental-module-services/main.vibe:49:85 byname pr
 typescript/vibelang/cases/experimental-module-services/main.vibe:9:28 lambda choice fallback
 typescript/vibelang/cases/experimental-platform/main.vibe:17:35 byname program table
 typescript/vibelang/cases/experimental-platform/main.vibe:9:28 lambda choice fallback
+typescript/vibelang/cases/experimental-process-home-directory/main.vibe:5:14 byname program table
 typescript/vibelang/cases/experimental-process-signals/main.vibe:19:38 lambda program table
 typescript/vibelang/cases/experimental-process-signals/main.vibe:24:21 lambda effectFn table
 typescript/vibelang/cases/experimental-process-signals/main.vibe:24:35 byname program table

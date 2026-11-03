@@ -62,6 +62,7 @@ Each Node.js or web call has an Effect replacement, which needs no import. EK440
 | `crypto.subtle.digest` | `try (try Digest.Digest).digest(Digest.sha256, bytes)` | `NodeCrypto.layer` |
 | `process.argv` | `try (try Stdio.Stdio).args` | `NodeServices.layer` |
 | `os.hostname` | `try (try Experimental.Process.Process).hostname` | `ExperimentalNodeServices.layer` |
+| `os.homedir` | `try (try Experimental.Process.Process).homeDirectory`, including native account fallback | `ExperimentalNodeServices.layer` |
 | `process.kill` | `try (try Experimental.Process.Process).kill(pid, { killSignal })` | `ExperimentalNodeServices.layer` |
 | `fs.constants.X_OK` | `try (try Experimental.FileSystem.FileSystem).access(path, { executable: true })` | `ExperimentalNodeServices.layer` |
 | `crypto.createHmac` | `try (try Mac.Mac).sign(key, data)` | `NodeCrypto.layer` |

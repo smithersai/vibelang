@@ -6,8 +6,9 @@
  * `ChildProcessSpawner` signals only the children it spawned, through their
  * handles, and nothing reads the process id, the platform or the host name.
  * This module adds it in Effect's style, until Effect ships its own. The
- * user's home directory is Effect's: `UserDirectories.home` in
- * `effect/persistence/UserDirectories`.
+ * native home directory is `homeDirectory`, including the account lookup
+ * when the environment has no home. `UserDirectories.home` in
+ * `effect/persistence/UserDirectories` reads the ConfigProvider environment.
  *
  * Every fact is an Effect, as `Stdio.args` is, so a test replaces it with
  * {@link layerTest}. `kill`, `isRunning` and `observeSignals` fail with a
@@ -135,6 +136,8 @@ export interface Process {
   readonly versions: Effect.Effect<Readonly<Record<string, string>>>
   /** The host's name. */
   readonly hostname: Effect.Effect<string>
+  /** The native user home directory, as `node:os.homedir()`, including account fallback. */
+  readonly homeDirectory: Effect.Effect<string>
   /** How many tasks the host can run in parallel: at least 1. */
   readonly availableParallelism: Effect.Effect<number>
   /** When this process started, in milliseconds since the Unix epoch, with a fraction: `performance.timeOrigin`. */
@@ -211,6 +214,7 @@ export const layerTest = (impl: Partial<Omit<Process, TypeId>> = {}): Layer.Laye
       execPath: Effect.succeed("/usr/local/bin/node"),
       versions: Effect.succeed({}),
       hostname: Effect.succeed("localhost"),
+      homeDirectory: Effect.succeed("/test/home"),
       availableParallelism: Effect.succeed(1),
       timeOrigin: Effect.succeed(0),
       memoryUsage: Effect.succeed({ rss: 0, heapTotal: 0, heapUsed: 0, external: 0, arrayBuffers: 0 }),

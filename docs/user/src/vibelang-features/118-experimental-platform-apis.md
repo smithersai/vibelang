@@ -131,11 +131,12 @@ Look up `const process = try Experimental.Process.Process`. Each fact is an Effe
 | `try process.execPath` | the runtime's executable | `process.execPath` |
 | `try process.versions` | `{ node: "26.5.0", ... }` | `process.versions` |
 | `try process.hostname` | the host's name | `os.hostname()` |
+| `try process.homeDirectory` | the native user home directory, including account fallback | `os.homedir()` |
 | `try process.availableParallelism` | at least 1 | `os.availableParallelism()` |
 | `try process.timeOrigin` | when the process started, in epoch milliseconds | `performance.timeOrigin` |
 | `try process.memoryUsage` | `{ rss, heapTotal, heapUsed, external, arrayBuffers }` in bytes | `process.memoryUsage()` |
 
-The user's home directory is Effect's own, `try (try UserDirectories.UserDirectories).home`, which needs no import (D310), provided by `UserDirectories.layer`. A browser has no process to read, so `Process` has no browser layer.
+`homeDirectory` delegates to the native `os.homedir()` on each execution, including its account lookup when `HOME` (or `USERPROFILE` on Windows) is unset. Effect's `try (try UserDirectories.UserDirectories).home` reads the `ConfigProvider` environment and remains the resolver for application directories, provided by `UserDirectories.layer`. A `ConfigProvider` override does not change the native lookup. Tests can provide `Experimental.Process.layerTest({ homeDirectory: Effect.succeed("/test/home") })`; its default home is `"/test/home"`. A browser has no process to read, so `Process` has no browser layer.
 
 ### Signalling processes
 

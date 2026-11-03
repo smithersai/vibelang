@@ -25,6 +25,7 @@ interface Host {
 
 interface Os {
   readonly hostname: () => string
+  readonly homedir: () => string
   readonly availableParallelism: () => number
 }
 
@@ -138,6 +139,7 @@ const make = (): Process.Process => {
       return versions
     }),
     hostname: Effect.sync(() => os.hostname()),
+    homeDirectory: Effect.sync(() => os.homedir()),
     availableParallelism: Effect.sync(() => os.availableParallelism()),
     timeOrigin: Effect.sync(() => globalThis.performance.timeOrigin),
     memoryUsage: Effect.sync(() => {

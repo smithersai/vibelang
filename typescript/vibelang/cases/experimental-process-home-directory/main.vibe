@@ -1,0 +1,18 @@
+// expect-result: {"native":true,"fake":"/test/foldkit-home"}
+import { ExperimentalNodeProcess } from "vibelang-runtime/experimental/platform-node"
+
+effect function home() {
+  return try (try Experimental.Process.Process).homeDirectory
+}
+effect function nativeHome() {
+  provide ExperimentalNodeProcess.layer { return try home() }
+}
+effect function fakeHome() {
+  provide Experimental.Process.layerTest({ homeDirectory: Effect.succeed("/test/foldkit-home") }) {
+    return try home()
+  }
+}
+export effect function main() {
+  const value = try nativeHome()
+  return { native: typeof value === "string", fake: try fakeHome() }
+}

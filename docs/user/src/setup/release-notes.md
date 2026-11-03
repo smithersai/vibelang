@@ -611,6 +611,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Logical assignments with a `do` right operand reread global accessors and could return a setter's transformed value. They now read once and return the original value when skipped or the right operand's value when assigned.
 
+- Native home-directory lookups could fail with `HOME` unset when replaced by the environment-based `UserDirectories.home`. `Experimental.Process.homeDirectory` now preserves `os.homedir()` account fallback through the Node and Bun layers.
+
 
 - Source-child loader wiring introduced a `fileURLToPath` import alias and failed repositories’ native import policies. Setup now uses a namespace import and refreshes its own previously generated helpers while preserving manually observed bindings.
 
@@ -2836,8 +2838,9 @@ listed with an upgrade step.
     of Effect 4.0's `Crypto`, which Effect 4.1 replaced with `effect/crypto`.
   - `Experimental.Process` reads the process id, platform, architecture,
     executable, versions, host name, available parallelism, time origin and
-    memory use, and signals processes with `kill` and `isRunning`. The home
-    directory is Effect's `UserDirectories.home()`. Browsers have no
+    memory use, and signals processes with `kill` and `isRunning`. Its native
+    `homeDirectory` query follows `os.homedir()` account fallback; Effect's
+    `UserDirectories.home` resolves the configured environment. Browsers have no
     `Process` layer.
   - `Experimental.Locks` holds Web Locks with `hold`, `tryHold` and `query`.
     Node.js's `ExperimentalNodeLocks.layer` locks only within one process; Bun has no
@@ -2859,8 +2862,8 @@ listed with an upgrade step.
   `Experimental.FileSystem` for `X_OK` and `O_NONBLOCK`, `Experimental.Process` for `os.hostname()`,
   `process.pid`, `process.kill` and the other calls it replaces, and
   `Experimental.Locks` for `navigator.locks`. It names Effect's own
-  `FileSystem.lstat` for `lstat`, `UserDirectories.home()` for
-  `os.homedir()`, and `effect/crypto`'s `Mac`, `Signature`, `Aead` and
+  `FileSystem.lstat` for `lstat`, `Experimental.Process.homeDirectory` for
+  native `os.homedir()`, and `effect/crypto`'s `Mac`, `Signature`, `Aead` and
   `Cipher` for HMAC, signatures and ciphers.
 
 ### Prelude

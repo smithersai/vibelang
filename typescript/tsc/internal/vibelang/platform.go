@@ -272,7 +272,7 @@ var platformAPIs = map[string]platformAPI{
 
 	"os.tmpdir":               {"FileSystem", "FileSystem.makeTempDirectory()", "FileSystem.makeTempDirectory creates a directory in it; nothing returns its path alone."},
 	"os.hostname":             {"ExperimentalProcess", "Experimental.Process.hostname()", ""},
-	"os.homedir":              {"UserDirectories", "UserDirectories.home()", "UserDirectories.home() reads HOME, or USERPROFILE on Windows; os.homedir() also falls back to the user database."},
+	"os.homedir":              {"ExperimentalProcess", "try (try Experimental.Process.Process).homeDirectory", "homeDirectory delegates to os.homedir, including native account fallback; UserDirectories.home remains an environment resolver."},
 	"os.availableParallelism": {"ExperimentalProcess", "Experimental.Process.availableParallelism()", ""},
 	"os.platform":             {"ExperimentalProcess", "Experimental.Process.platform()", ""},
 	"os.arch":                 {"ExperimentalProcess", "Experimental.Process.arch()", ""},
