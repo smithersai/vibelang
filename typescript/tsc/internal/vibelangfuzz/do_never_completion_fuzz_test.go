@@ -7,11 +7,11 @@ import (
 )
 
 const doNeverCompletionTarget = "FuzzDoNeverCompletion"
-const doNeverCompletionQuote = "Paths leaving outward by `return`, `break`, `continue` or `throw` supply no normal result, and a do expression with no normal path has type `never`."
+const doNeverOutwardPathsQuote = "Paths leaving outward by `return`, `break`, `continue` or `throw` supply no normal result, and a do expression with no normal path has type `never`."
 
-func TestDoNeverCompletionQuoted(t *testing.T) {
-	if !strings.Contains(SpecText("002-running.md"), doNeverCompletionQuote) {
-		t.Fatalf("VIP-2 no longer says %q; update the oracle", doNeverCompletionQuote)
+func TestDoNeverOutwardPathsQuoted(t *testing.T) {
+	if !strings.Contains(SpecText("002-running.md"), doNeverOutwardPathsQuote) {
+		t.Fatalf("VIP-2 no longer says %q; update the oracle", doNeverOutwardPathsQuote)
 	}
 }
 
@@ -26,7 +26,7 @@ func FuzzDoNeverCompletion(f *testing.F) {
 		f.Add(key, uint8(3))
 	}
 	f.Fuzz(func(t *testing.T, key string, variant uint8) {
-		TestDoNeverCompletionQuoted(t)
+		TestDoNeverOutwardPathsQuoted(t)
 		defer recoverCompilerPanic(t, doNeverCompletionTarget)
 		body, before, after := "return 5", "", ""
 		wantError := false
@@ -74,7 +74,7 @@ func FuzzDoNeverCompletion(f *testing.F) {
 		}
 		gap := fmt.Sprintf("%s:depth-%d", key, variant%4)
 		if fmt.Sprint(codes) != want {
-			Gap(t, doNeverCompletionTarget, gap, "VIP-2: %s; want %s, got %v\n%s", doNeverCompletionQuote, want, codes, source)
+			Gap(t, doNeverCompletionTarget, gap, "VIP-2: %s; want %s, got %v\n%s", doNeverOutwardPathsQuote, want, codes, source)
 		}
 		ExpectPending(t, doNeverCompletionTarget, gap)
 	})
