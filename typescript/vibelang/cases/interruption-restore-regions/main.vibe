@@ -5,7 +5,7 @@ import { Effect, Layer } from "effect"
 service Svc { n: number }
 effect function viaProvide() {
   uninterruptible {
-    provide (Layer.succeed(Svc, { n: 1 })) { restore { return (try Svc()).n } }
+    provide (Layer.succeed(Svc, { n: 1 })) { restore { return (try Svc).n } }
   }
 }
 effect function viaInterruptible() {
