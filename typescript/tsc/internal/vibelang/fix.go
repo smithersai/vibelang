@@ -671,6 +671,7 @@ func FixProjectWithOptions(ctx context.Context, fs vfs.FS, libraryPath tspath.Ro
 				p = p.withFixes(vipTypeMigrationFixes(ctx, program, file, g.refused))
 				p = p.withFixes(ambiguousRootMigrationFixes(ctx, program, file, g.refused))
 				p = p.withFixes(bindingRenameMigrationFixes(ctx, program, file, g.refused))
+				p = p.withFixes(collectionBindingMigrationFixes(ctx, program, file, g.refused))
 				p = p.withFixes(fiberNameMigrationFixes(ctx, program, file, g.refused))
 				p = p.withFixes(localServiceShapeMigrationFixes(ctx, program, file, g.refused))
 				p = p.withFixes(preludeShorthandMigrationFixes(ctx, program, file, g.refused))

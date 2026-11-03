@@ -1,0 +1,73 @@
+// VIP-7: Map and Set extract [subject], retaining its specialization.
+const Maps = Map
+const Sets = Set
+class NamedMap extends Map<string, number> { readonly name = "named" }
+class NamedSet extends Set<number> { readonly name = "named" }
+
+export function read(s: Map<string, number>): Map<string, number> {
+  return match (s) { when Map(let m): m; default: s; }
+}
+export function generic<K, V>(s: Map<K, V>): Map<K, V> {
+  return match (s) { when Maps(const m): m; default: s; }
+}
+export function setGeneric<A>(s: Set<A>): Set<A> {
+  return match (s) { when Sets(let m): m; default: s; }
+}
+export function mapUnion(s: Map<string, number> | Set<boolean>): Map<string, number> | undefined {
+  return match (s) { when Map(let m): m; default: undefined; }
+}
+export function setUnion(s: Map<string, number> | Set<boolean>): Set<boolean> | undefined {
+  return match (s) { when Set(const m): m; default: undefined; }
+}
+export function subclass(s: NamedMap): NamedMap {
+  return match (s) { when Map(let m): m; default: s; }
+}
+export function setSubclass(s: NamedSet): NamedSet {
+  return match (s) { when Set(let m): m; default: s; }
+}
+export function constrained<S extends Map<string, number>>(s: S): S {
+  return match (s) { when Map(let m): m; default: s; }
+}
+export function nested(s: { value: Map<string, number> }): number | undefined {
+  return match (s) { when { value: Map(let m) }: m.get("x"); default: undefined; }
+}
+export function isPattern(s: Map<string, number> | null): number | undefined {
+  if (s is Map(let m)) return m.get("x")
+  return undefined
+}
+export function rest(s: Map<string, number>): Map<string, number> | undefined {
+  return match (s) { when Map(...let maps): maps[0]; default: undefined; }
+}
+export function optional(s: Map<string, number | undefined>): number | undefined {
+  return match (s) { when Map(let m): do {
+    // @ts-expect-error: payload undefined is real, even in a successful extraction.
+    const required: number = m.get("x");
+    // @ts-expect-error: extraction must retain the key type.
+    m.get(123);
+    m.get("x");
+  }; default: undefined; }
+}
+export function setElement(s: Set<string>): boolean {
+  return match (s) { when Set(let m): do {
+    // @ts-expect-error: extraction must retain the element type.
+    m.has(123);
+    m.has("x");
+  }; default: false; }
+}
+// Local matchers with built-in names retain their own extraction types.
+export function shadow(s: unknown): string {
+  const Map = (_: unknown) => ["custom"] as const
+  return match (s) { when Map(let m): m; default: "fallback"; }
+}
+// expect-result: [7,8,true,9,null,"named","named",10,11,12,13,null,true,"custom",true]
+export effect function main() {
+  const m = new Map([["x", 7]])
+  return [read(m).get("x"), generic(new Map([[true, 8]])).get(true),
+    setGeneric(new Set(["x"])).has("x"),
+    mapUnion(new Map([["x", 9]]))?.get("x"), mapUnion(new Set([true])),
+    subclass(new NamedMap()).name, setSubclass(new NamedSet()).name,
+    constrained(new Map([["x", 10]])).get("x"),
+    nested({ value: new Map([["x", 11]]) }), isPattern(new Map([["x", 12]])),
+    rest(new Map([["x", 13]]))?.get("x"), optional(new Map([["x", undefined]])),
+    setElement(new Set(["x"])), shadow(null), setUnion(new Set([true]))?.has(true)]
+}

@@ -28,6 +28,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - Generated proposal examples could reuse an existing diagnostic code. They now choose an unassigned code while preserving coverage of the published assignment.
 
 - Severity settings could accept a diagnostic code that still reports mandatory errors in some contexts. Codes with both error and warning variants now reject those settings with `EK3006`.
+
+- `Map(let m)` and `Set(let s)` patterns lost the subject's type arguments; their bindings now keep the matched collection's specialized type.
 - An inherited `schema error` could report an extra TypeScript base-type error alongside `EK2117`. It now reports the inheritance diagnostic while preserving independent errors inside the declaration.
 
 - The `data` guide left multiline assertions ambiguous; it now explains how parentheses preserve an assertion whose type continues on another line.
