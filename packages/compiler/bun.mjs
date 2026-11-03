@@ -18,7 +18,7 @@ import { diagnosticsForFile } from "./diagnostics.mjs"
 // on disk; its JavaScript comes from the same compile.
 import { existsSync, readFileSync, realpathSync, statSync } from "node:fs"
 import { dirname, join, resolve, isAbsolute } from "node:path"
-import { compileProjectSync, formatDiagnostic, moduleDeclarationSource, nearestProject, workspaceProject } from "./project.mjs"
+import { compileProjectSync, findCompiler, findProject, formatDiagnostic, moduleDeclarationSource, nearestProject, workspaceProject } from "./project.mjs"
 
 if (typeof Bun === "undefined") {
   throw new Error("vibelang/bun is a Bun preload; under Node, use node --import vibelang/register")
@@ -85,7 +85,12 @@ Module._resolveFilename = parentless ? resolveFilename : resolveVibeFilename
 
 const results = new Map()
 
+// Modules their first project left out, each with the project findProject named.
+const owners = new Map()
+const programs = new Map()
+
 function projectOf(file) {
+  if (owners.has(file)) return owners.get(file)
   if (process.env.VIBELANG_PROJECT) {
     const named = resolve(process.env.VIBELANG_PROJECT)
     return workspaceProject(file, dirname(named), named)
@@ -102,6 +107,13 @@ function emitted(file) {
   if (result === undefined) {
     result = compileProjectSync({ project })
     results.set(project, result)
+  }
+  if (!result.outputs.has(file) && !owners.has(file)) {
+    const other = findProject(file, { tried: project, compiler: findCompiler(dirname(project)), programs }).project
+    if (other !== undefined) {
+      owners.set(file, other)
+      return emitted(file)
+    }
   }
   const errors = diagnosticsForFile(result.errors, file, result.files)
   if (errors.length) {

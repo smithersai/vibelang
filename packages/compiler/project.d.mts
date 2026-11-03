@@ -78,7 +78,7 @@ export function findCompiler(root: string, compiler?: string): string
  */
 export function moduleDeclarationSource(path: string): string | undefined
 export function parseOutput(output: string, root: string): { files: Array<string>; diagnostics: Array<Diagnostic> }
-export function parseExplainFiles(output: string, root: string): { files: Array<string>; imports: Array<Import>; diagnostics: Array<Diagnostic> }
+export function parseExplainFiles(output: string, root: string): { files: Array<string>; roots: Array<string>; imports: Array<Import>; diagnostics: Array<Diagnostic> }
 export function projectImports(options: { project: string; root?: string; compiler?: string }): Imports
 export function formatDiagnostic(diagnostic: Diagnostic): string
 export function projectBackend(options: {
@@ -121,12 +121,20 @@ export function checkLoaderRecord(options: {
   compiler?: string
 }): { modules: number } | { miss: string }
 export function nearestProject(file: string): string | undefined
+/** The nearest package.json directory, or the path's directory when none exists. */
+export function packageRoot(path: string): string
+/** Find a containing program after the initial config excludes a source. */
+export function findProject(file: string, options: {
+  project?: string
+  tried?: string
+  compiler?: string
+  programs?: Map<string, Imports & { roots: Array<string>; composite?: boolean }>
+}): { project: string | undefined; searched: string[] }
 
 /**
  * The project that compiles `file` when `project` (in directory `root`) is asked
- * for: `project` for a module inside root; for one of another workspace package,
- * outside root or nested inside it with its own package.json and tsconfig.json,
- * the nearest tsconfig.json above it.
+ * for: the nearest nested config, otherwise `project`. Other workspace packages
+ * use their own nearest config. A missing module is resolved by findProject.
  */
 export function workspaceProject(file: string, root: string, project: string): string
 export function projects(options: {

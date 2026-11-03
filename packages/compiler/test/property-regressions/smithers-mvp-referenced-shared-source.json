@@ -1,0 +1,26 @@
+{
+  "property": "project-sibling-tsconfig",
+  "input": {
+    "a": {
+      "includesDb": true,
+      "includesSelf": false,
+      "imports": false
+    },
+    "m": {
+      "includesDb": false,
+      "includesSelf": false,
+      "imports": false
+    },
+    "z": {
+      "includesDb": false,
+      "includesSelf": false,
+      "imports": false
+    },
+    "rootIncludesDb": true,
+    "rootImports": false,
+    "own": "none",
+    "references": [
+      "a"
+    ]
+  }
+}

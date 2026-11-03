@@ -14,7 +14,7 @@ import { createRequire } from "node:module"
 import { temporaryRoot } from "./temporary.mjs"
 import { performance } from "node:perf_hooks"
 import { basename, dirname, isAbsolute, join, parse, relative, resolve } from "node:path"
-import { launcherBinary, loaderRecord, loaderRecordFile, projectCache } from "./cache.mjs"
+import { launcherBinary, loaderRecord, loaderRecordFile, parseJsonc, projectCache } from "./cache.mjs"
 
 const slash = (path) => path.replaceAll("\\", "/")
 const located = /^(.+?)\((\d+),(\d+)\):\s+(error|warning)\s+(\w+\d+):\s?(.*)$/
@@ -84,11 +84,13 @@ export function parseOutput(output, root) {
 
 const imported = /^\s+Imported via (".*"|'.*') from file '(.+?)'(?: with packageId '[^']*')?( to import .+)?$/
 const supplemental = /^\s+Supplemental virtual file produced by the content mapper for file '(.+)'\.$/
+const rooted = /^\s+(?:Matched by (?:default )?include pattern|Part of 'files' list|Root file specified)/
 
 /**
  * Parses `vibelang --pretty false --explainFiles --listFilesOnly` output into
- * the program's files, the imports its sources write, and the diagnostics the
- * compiler reported. Each import is { importer, specifier, file }: the file
+ * the program's files, the ones its config lists (roots: an include pattern or
+ * `files` names them, where the rest are only imported), the imports its sources
+ * write, and the diagnostics the compiler reported. Each import is { importer, specifier, file }: the file
  * the compiler resolved `specifier` to. Imports the compiler adds itself, such
  * as JSX factories and import helpers, and its bundled libraries are left out.
  * A virtual file the compiler derives from a source, such as the body of a
@@ -98,6 +100,7 @@ const supplemental = /^\s+Supplemental virtual file produced by the content mapp
  */
 export function parseExplainFiles(output, root) {
   const files = []
+  const roots = []
   const imports = []
   const diagnostics = []
   const sources = new Map() // each virtual file, to the source it is part of
@@ -112,6 +115,8 @@ export function parseExplainFiles(output, root) {
         imports.push({ importer: resolve(root, match[2]), specifier: match[1].slice(1, -1), file })
       } else if (file && (match = line.match(supplemental))) {
         sources.set(file, resolve(root, match[1]))
+      } else if (file && rooted.test(line)) {
+        roots.push(file)
       }
       continue
     }
@@ -132,6 +137,7 @@ export function parseExplainFiles(output, root) {
   }
   return {
     files: files.filter((file) => !sources.has(file)),
+    roots: roots.filter((file) => !sources.has(file)),
     imports: imports.map((entry) => sources.has(entry.importer) ? { ...entry, importer: sources.get(entry.importer) } : entry),
     diagnostics
   }
@@ -145,7 +151,13 @@ export function parseExplainFiles(output, root) {
  * specifiers itself. It returns { files, imports, errors }; errors holds the
  * diagnostics that stopped the compiler from reading the project.
  */
-export function projectImports({ project, root, compiler }) {
+export function projectImports(options) {
+  const { files, imports, errors } = projectProgram(options)
+  return { files, imports, errors }
+}
+
+// projectImports' listing, with the files the config lists as roots.
+function projectProgram({ project, root, compiler }) {
   project = resolve(project)
   root = resolve(root ?? dirname(project))
   compiler ??= findCompiler(root)
@@ -153,12 +165,12 @@ export function projectImports({ project, root, compiler }) {
   const run = spawnSync(file, argv, { cwd: root, encoding: "utf8", maxBuffer: 1 << 30 })
   if (run.error) throw new Error(`vibelang: ${run.error.message}\nCompiler: ${compiler}`)
   const output = run.stdout + run.stderr
-  const { files, imports, diagnostics } = parseExplainFiles(output, root)
+  const { files, roots, imports, diagnostics } = parseExplainFiles(output, root)
   const errors = diagnostics.filter((diagnostic) => diagnostic.category === "error")
   if (run.status !== 0 && !errors.length) {
     errors.push({ category: "error", code: "vibelang", text: output.trim() || `exited with ${run.signal || run.status}` })
   }
-  return { files, imports, errors }
+  return { files, roots, imports, errors }
 }
 
 /** Formats a diagnostic as `file:line:column - error TS2322: text`. */
@@ -396,7 +408,7 @@ export function projectBackend({ root, compiler, cache, debug = () => {} }) {
  * compileProjectSync is projectBackend's compile for callers that cannot wait,
  * such as Node's synchronous module hooks.
  */
-export function compileProjectSync({ project, root = dirname(project), compiler = findCompiler(root), cache, debug = () => {} }) {
+export function compileProjectSync({ project, root = packageRoot(project), compiler = findCompiler(root), cache, debug = () => {} }) {
   return cached({ project, root, compiler, cache, debug }, (stages) => compileOnce(project, root, compiler, stages))
 }
 
@@ -422,7 +434,7 @@ function compileOnce(project, root, compiler, stages = stopwatch()) {
  * modules }, or { errors } when the project does not compile, which leaves no
  * record. An input that changes during the compile is retried twice.
  */
-export function writeLoaderRecord({ project, root = dirname(project), compiler = findCompiler(root) }) {
+export function writeLoaderRecord({ project, root = packageRoot(project), compiler = findCompiler(root) }) {
   project = resolve(project)
   const record = loaderRecord({ project, root: resolve(root), compiler })
   rmSync(record.file, { force: true })
@@ -446,42 +458,154 @@ export function writeLoaderRecord({ project, root = dirname(project), compiler =
  * { miss } naming the first that does not. The migrate flow checks each record
  * once every package is emitted and routed.
  */
-export function checkLoaderRecord({ project, root = dirname(project), compiler = findCompiler(root) }) {
+export function checkLoaderRecord({ project, root = packageRoot(project), compiler = findCompiler(root) }) {
   project = resolve(project)
   const found = loaderRecord({ project, root: resolve(root), compiler }).lookup()
   return found.miss !== undefined ? { miss: found.miss } : { modules: new Set(found.result.outputs.values()).size }
 }
 
+// The preferred config in directory, or undefined. A custom name such as
+// tsconfig.app.json is never discovered, as in TypeScript: it must be named.
+const configIn = (directory) =>
+  ["vibe.config.json", "tsconfig.json", "jsconfig.json"].map((name) => join(directory, name)).find((path) => existsSync(path))
+
 /** Returns the preferred config in the nearest directory above file, or undefined. */
 export function nearestProject(file) {
   for (let directory = dirname(resolve(file)); ; directory = dirname(directory)) {
-    for (const name of ["vibe.config.json", "tsconfig.json", "jsconfig.json"]) {
-      const candidate = join(directory, name)
-      if (existsSync(candidate)) return candidate
-    }
+    const config = configIn(directory)
+    if (config !== undefined) return config
     if (dirname(directory) === directory) return undefined
   }
 }
 
 /**
- * workspaceProject names the project that compiles a module when `project`
- * (whose directory is `root`) is the one asked for: `project` for a module
- * inside root; for one of another workspace package, outside root or nested
- * inside it with its own package.json and tsconfig.json, the nearest
- * tsconfig.json above it, its own package's project.
+ * Returns the directory of the package that holds `path`: the nearest above it
+ * with a package.json, else path's own directory. A project of a package
+ * compiles from here, so a worker/tsconfig.json that includes ../db emits db's
+ * modules too.
+ */
+export function packageRoot(path) {
+  path = resolve(path)
+  for (let directory = dirname(path); ; directory = dirname(directory)) {
+    if (existsSync(join(directory, "package.json"))) return directory
+    if (dirname(directory) === directory) return dirname(path)
+  }
+}
+
+/**
+ * workspaceProject names the project to try first for a module when `project`
+ * (whose directory is `root`) is the one asked for: the nearest config above
+ * the module, as TypeScript's language service starts, and `project` where
+ * that config would be root's own. A module of another workspace package,
+ * outside root or nested inside it with its own package.json, gets its
+ * package's project. findProject takes over when this one leaves the module out.
  */
 export function workspaceProject(file, root, project) {
   const path = relative(root, file)
   if (path.startsWith("..") || isAbsolute(path)) return nearestProject(file) ?? project
-  // A workspace package nested inside root, such as packages/a/b inside
-  // packages/a, compiles with its own tsconfig.json: the innermost package.json
-  // below root, with a tsconfig.json between it and the module.
+  // A nested package without a config of its own, such as a test fixture, stays in project.
   for (let directory = dirname(file); directory !== root && dirname(directory) !== directory; directory = dirname(directory)) {
-    if (!existsSync(join(directory, "package.json"))) continue
-    const own = nearestProject(file)
-    return own !== undefined && !relative(directory, own).startsWith("..") ? own : project
+    const own = configIn(directory)
+    if (own !== undefined) return own
+    if (existsSync(join(directory, "package.json"))) return project
   }
   return project
+}
+
+// Every config in a package, sorted by path: not in node_modules or a dot
+// directory, and not in a nested package, which owns its modules.
+function packageConfigs(directory) {
+  const found = []
+  const visit = (current) => {
+    const own = configIn(current)
+    if (own !== undefined) found.push(own)
+    for (const entry of readdirSync(current, { withFileTypes: true })) {
+      if (!entry.isDirectory() || entry.name === "node_modules" || entry.name.startsWith(".")) continue
+      const child = join(current, entry.name)
+      if (!existsSync(join(child, "package.json"))) visit(child)
+    }
+  }
+  visit(directory)
+  return found.sort()
+}
+
+// The configs a config's `references` name.
+function referencesOf(tsconfig) {
+  let config
+  try {
+    config = parseJsonc(readFileSync(tsconfig, "utf8"))
+  } catch {
+    return []
+  }
+  return (Array.isArray(config.references) ? config.references : []).filter((reference) => typeof reference?.path === "string").map((reference) => {
+    const target = resolve(dirname(tsconfig), reference.path)
+    return target.endsWith(".json") ? target : join(target, "tsconfig.json")
+  })
+}
+
+/**
+ * findProject names the project for a module that `tried` left out, by
+ * TypeScript's search for a file's default project: each config from the
+ * module's directory up to its package's, each followed by its references,
+ * breadth first (`project`, the one asked for, is last among them). TypeScript
+ * ends with the open projects that hold the file, first by path. A loader has
+ * none open, so it asks every config of the module's package, by path, and
+ * prefers one whose include lists the module over one that only imports it:
+ * the importer's options are not the ones the module was written for.
+ *
+ * Returns { project, searched }: project is undefined when none holds the
+ * module, and searched names the configs it asked. `programs` keeps each
+ * config's listing, which runs the compiler, for the caller's next module.
+ */
+export function findProject(file, { project, tried, compiler, programs = new Map() }) {
+  file = moduleDeclarationSource(file) ?? file
+  const paths = new Set([file, realpath(file)])
+  const scope = packageRoot(nearestProject(file) ?? file)
+  const searched = new Set()
+  const programOf = (tsconfig) => {
+    searched.add(tsconfig)
+    if (!programs.has(tsconfig)) programs.set(tsconfig, projectProgram({ project: tsconfig, compiler }))
+    return programs.get(tsconfig)
+  }
+  // TypeScript's configured-project search rejects an indirect inclusion in a
+  // composite reference. Ask the compiler for merged options, including extends.
+  const compositeReference = (tsconfig) => {
+    const program = programOf(tsconfig)
+    if (program.composite === undefined) {
+      const [executable, args] = command(compiler ?? findCompiler(dirname(tsconfig)), ["--project", tsconfig, "--showConfig"])
+      const run = spawnSync(executable, args, { cwd: dirname(tsconfig), encoding: "utf8", maxBuffer: 1 << 30 })
+      if (run.error) throw new Error(`vibelang: ${run.error.message}\nCompiler: ${compiler}`)
+      try { program.composite = JSON.parse(run.stdout).compilerOptions?.composite === true }
+      catch { program.composite = false } // the project compile reports invalid config diagnostics
+    }
+    return program.composite
+  }
+  // A project compiles from its package, so another package's can't emit this module.
+  const serves = (tsconfig) => {
+    const path = relative(packageRoot(tsconfig), file)
+    return tsconfig !== tried && !path.startsWith("..") && !isAbsolute(path)
+  }
+  const holds = (tsconfig, list) => serves(tsconfig) && programOf(tsconfig)[list].some((path) => paths.has(path))
+  const starts = []
+  for (let directory = dirname(file); ; directory = dirname(directory)) {
+    const config = configIn(directory)
+    if (config !== undefined) starts.push(config)
+    if (directory === scope || dirname(directory) === directory) break
+  }
+  if (project !== undefined) starts.push(project)
+  const visited = new Set()
+  for (const start of starts) {
+    const queue = [start]
+    for (const tsconfig of queue) {
+      if (visited.has(tsconfig)) continue
+      visited.add(tsconfig)
+      if (holds(tsconfig, "files") && (tsconfig === start || !compositeReference(tsconfig) || holds(tsconfig, "roots"))) return { project: tsconfig, searched: [...searched] }
+      queue.push(...referencesOf(tsconfig))
+    }
+  }
+  const rest = packageConfigs(scope).filter((tsconfig) => !visited.has(tsconfig))
+  const found = rest.find((tsconfig) => holds(tsconfig, "roots")) ?? rest.find((tsconfig) => holds(tsconfig, "files"))
+  return { project: found, searched: [...searched] }
 }
 
 // Compare the config across the compile, including persistent stat failures.
@@ -511,16 +635,15 @@ const failed = "throw new Error(\"vibelang: this module did not compile; see the
 
 /**
  * projects compiles .vibe modules for a bundler, one whole-project compile per
- * tsconfig. A module inside root belongs to `project`; one of another
- * workspace package, outside root or nested inside it with its own package.json
- * and tsconfig.json, belongs to the nearest tsconfig.json above it, its own
- * package's project. Each project
- * compiles once per revision; invalidate() starts a new revision.
+ * tsconfig. A module belongs to the nearest config above it, which is `project`
+ * for root's own directories, and to the one findProject names when that config
+ * leaves it out. Each project compiles once per revision; invalidate() starts a
+ * new revision.
  *
  * load(file) resolves to { project, code, map, inputs, errors, warnings, first, error }.
  * errors and warnings belong to the loaded source or are project-wide.
  * first is true for the first module loaded from that compile. `error`
- * says that the project does not include the module. `cache` is as for
+ * says that no project includes the module. `cache` is as for
  * projectBackend: a compile a revision needs may come from the cache.
  */
 export function projects({ root, project, compiler, cache, debug = () => {} }) {
@@ -528,12 +651,27 @@ export function projects({ root, project, compiler, cache, debug = () => {} }) {
   let revision = 0
   let closed = false, closing
 
-  const projectOf = (file) => workspaceProject(resolve(file), root, project)
+  // What findProject learned this revision: each module it moved, and each listing.
+  const moved = new Map(), programs = new Map()
+  let searchedIn = revision
+
+  function forgetStale() {
+    if (searchedIn === revision) return
+    searchedIn = revision
+    moved.clear()
+    programs.clear()
+  }
+
+  const projectOf = (file) => {
+    file = resolve(file)
+    forgetStale()
+    return moved.get(file) ?? workspaceProject(file, root, project)
+  }
 
   function stateOf(tsconfig) {
     let state = states.get(tsconfig)
     if (state === undefined) {
-      const projectRoot = tsconfig === project ? root : dirname(tsconfig)
+      const projectRoot = tsconfig === project ? root : packageRoot(tsconfig)
       state = { tsconfig, backend: projectBackend({ root: projectRoot, compiler, cache, debug }), result: undefined, pending: undefined, compiled: -1, reported: -1 }
       states.set(tsconfig, state)
     }
@@ -593,8 +731,18 @@ export function projects({ root, project, compiler, cache, debug = () => {} }) {
       if (closed) throw new Error("vibelang: projects are closed")
       // Vite uses forward slashes on Windows; compiler output keys use native paths.
       file = resolve(file)
-      const state = stateOf(projectOf(file))
-      const result = await compiled(state)
+      let state = stateOf(projectOf(file))
+      let result = await compiled(state)
+      let others = []
+      if (!result.outputs.has(file)) {
+        const found = findProject(file, { project, tried: state.tsconfig, compiler, programs })
+        others = found.searched
+        if (found.project !== undefined) {
+          moved.set(file, found.project)
+          state = stateOf(found.project)
+          result = await compiled(state)
+        }
+      }
       const { outputs, inputs } = result
       const errors = diagnosticsForFile(result.errors, file, result.files)
       const warnings = diagnosticsForFile(result.warnings, file, result.files)
@@ -606,7 +754,7 @@ export function projects({ root, project, compiler, cache, debug = () => {} }) {
       return {
         project: state.tsconfig, code: output?.code ?? failed, map: output?.map, inputs, errors, warnings, first,
         error: !output && {
-          message: `vibelang: ${file} is not part of ${state.tsconfig}. Add it to the tsconfig's include.`, id: file
+          message: `vibelang: ${file} is not part of ${[state.tsconfig, ...others].join(" or ")}. Add it to the tsconfig's include.`, id: file
         }
       }
     }

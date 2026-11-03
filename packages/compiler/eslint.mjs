@@ -20,7 +20,7 @@ import { createRequire } from "node:module"
 import { tmpdir } from "node:os"
 import { basename, dirname, join, parse as parsePath, relative, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
-import { nearestProject, workspaceProject } from "./project.mjs"
+import { findProject, nearestProject, packageRoot, workspaceProject } from "./project.mjs"
 
 const manifest = JSON.parse(readFileSync(new URL("./package.json", import.meta.url), "utf8"))
 
@@ -368,6 +368,11 @@ export function typedProgram(options = {}) {
   const compiler = options.compiler ? resolve(root, options.compiler) : nativeCompiler()
   const projectRoot = dirname(project)
   const compiled = new Map() // tsconfig -> Map(declaration path -> text)
+  const owners = new Map(), programs = new Map() // what findProject learned
+  const declarations = (owner) => {
+    if (!compiled.has(owner)) compiled.set(owner, vibeDeclarations(compiler, owner, owner === project ? projectRoot : packageRoot(owner)))
+    return compiled.get(owner)
+  }
   // The declaration of the .vibe module or module declaration at path, from
   // its own project's compile, or undefined.
   // A workspace package's file is asked for by its path through
@@ -377,10 +382,14 @@ export function typedProgram(options = {}) {
     const listed = vibeSourceOf(path)
     if (listed === undefined || !existsSync(listed)) return undefined
     const source = realpathSync(listed)
-    const owner = workspaceProject(source, projectRoot, project)
+    const owner = owners.get(source) ?? workspaceProject(source, projectRoot, project)
     if (owner === undefined) return undefined
-    if (!compiled.has(owner)) compiled.set(owner, vibeDeclarations(compiler, owner, owner === project ? projectRoot : dirname(owner)))
-    return compiled.get(owner).get(join(dirname(source), basename(path)))
+    const declaration = join(dirname(source), basename(path))
+    if (declarations(owner).has(declaration) || owners.has(source)) return declarations(owner).get(declaration)
+    const other = findProject(source, { project, tried: owner, compiler, programs }).project
+    if (other === undefined) return undefined
+    owners.set(source, other)
+    return declarations(other).get(declaration)
   }
   const compilerOptions = { ...parsed.options, allowArbitraryExtensions: true, noEmit: true }
   const host = ts.createCompilerHost(compilerOptions, true)

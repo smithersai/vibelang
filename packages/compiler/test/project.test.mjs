@@ -5,7 +5,7 @@ import { tmpdir } from "node:os"
 import { dirname, join, resolve } from "node:path"
 import { test } from "node:test"
 import { fileURLToPath } from "node:url"
-import { compileProjectSync, findCompiler, formatDiagnostic, moduleDeclarationSource, nearestProject, parseExplainFiles, parseOutput, projectBackend, projectImports, projects } from "../project.mjs"
+import { compileProjectSync, findCompiler, findProject, formatDiagnostic, moduleDeclarationSource, nearestProject, packageRoot, parseExplainFiles, parseOutput, projectBackend, projectImports, projects, workspaceProject } from "../project.mjs"
 
 const repo = fileURLToPath(new URL("../../../", import.meta.url))
 const native = process.env.VIBELANG_BINARY || join(repo, "typescript/built/local/tsc")
@@ -252,6 +252,214 @@ test("a project's compile checks its own files; an imported workspace package's 
   assert.deepEqual(compiles(), [join(app, "tsconfig.json"), join(root, "dep/tsconfig.json")])
 })
 
+// A package with several tsconfigs and no package.json in each, as Smithers'
+// apps/mvp: the app's own, the worker's (which also includes ../db), and others.
+function siblings(t, files) {
+  const root = fixture(t)
+  const options = {
+    target: "ES2022", module: "NodeNext", moduleResolution: "NodeNext", strict: true, types: [], skipLibCheck: true,
+    allowImportingTsExtensions: true, rewriteRelativeImportExtensions: true, noEmit: true
+  }
+  const old = new Date(Date.now() - 60_000)
+  for (const [path, value] of Object.entries({ "package.json": '{"type":"module"}', ...files })) {
+    const text = typeof value === "string" ? value : JSON.stringify({ compilerOptions: options, ...value })
+    mkdirSync(dirname(join(root, path)), { recursive: true })
+    writeFileSync(join(root, path), text)
+    utimesSync(join(root, path), old, old)
+  }
+  const modules = projects({ root, project: join(root, "tsconfig.json"), compiler: native, cache: false })
+  t.after(() => modules.close())
+  return { root, modules }
+}
+
+const value = "export const value: number = 1\n"
+
+test("smithers-mvp: a module only a sibling tsconfig includes compiles under that tsconfig", { skip }, async (t) => {
+  const { root, modules } = siblings(t, {
+    "tsconfig.json": { include: ["src"] },
+    "src/app.vibe": "export const app: string = \"app\"\n",
+    "worker/tsconfig.json": { include: [".", "../db"] },
+    "worker/main.vibe": "import { x } from \"../db/x.vibe\"\nexport const worker: number = x + 1\n",
+    "db/x.vibe": "export const x: number = 41\n"
+  })
+  const db = await modules.load(join(root, "db/x.vibe"))
+  assert.deepEqual([db.project, db.errors, db.error], [join(root, "worker/tsconfig.json"), [], false])
+  assert.match(db.code, /x = 41/)
+  const worker = await modules.load(join(root, "worker/main.vibe"))
+  assert.deepEqual([worker.project, worker.errors, worker.error], [join(root, "worker/tsconfig.json"), [], false])
+  const app = await modules.load(join(root, "src/app.vibe"))
+  assert.deepEqual([app.project, app.errors, app.error], [join(root, "tsconfig.json"), [], false])
+  assert.equal(modules.projectOf(join(root, "db/x.vibe")), join(root, "worker/tsconfig.json"))
+})
+
+test("smithers-mvp: sibling project selection preserves worker ambient types", { skip }, async (t) => {
+  const { root, modules } = siblings(t, {
+    "tsconfig.json": { include: ["src"] },
+    "src/app.vibe": value,
+    "src/env.d.ts": 'type HostKind = "client"\n',
+    "worker/tsconfig.json": { include: [".", "../db"] },
+    "worker/env.d.ts": 'type HostKind = "worker"\n',
+    "db/x.vibe": 'export const host: HostKind = "worker"\n'
+  })
+  const loaded = await modules.load(join(root, "db/x.vibe"))
+  assert.deepEqual([loaded.project, loaded.errors, loaded.error], [join(root, "worker/tsconfig.json"), [], false])
+  assert.match(loaded.code, /host = "worker"/)
+})
+
+test("a root project with nothing to compile does not hide a sibling tsconfig's module (TS18003)", { skip }, async (t) => {
+  const { root, modules } = siblings(t, {
+    "tsconfig.json": { include: ["src"] },
+    "worker/tsconfig.json": { include: [".", "../db"] },
+    "db/x.vibe": "export const x: number = 41\n"
+  })
+  const db = await modules.load(join(root, "db/x.vibe"))
+  assert.deepEqual([db.project, db.errors, db.error], [join(root, "worker/tsconfig.json"), [], false])
+})
+
+test("a module two tsconfigs include compiles under the nearest, as TypeScript's language service picks", { skip }, async (t) => {
+  const { root, modules } = siblings(t, {
+    "tsconfig.json": { include: ["."] },
+    "worker/tsconfig.json": { include: ["."] },
+    "worker/a.vibe": value,
+    "src/b.vibe": value
+  })
+  assert.equal((await modules.load(join(root, "worker/a.vibe"))).project, join(root, "worker/tsconfig.json"))
+  assert.equal((await modules.load(join(root, "src/b.vibe"))).project, join(root, "tsconfig.json"))
+})
+
+test("an imported module of the nearest project stays there, even when a sibling includes it", { skip }, async (t) => {
+  const { root, modules } = siblings(t, {
+    "tsconfig.json": { include: ["src"] },
+    "src/app.vibe": "import { value } from \"../db/x.vibe\"\nexport const app: number = value\n",
+    "worker/tsconfig.json": { include: ["../db"] },
+    "db/x.vibe": value
+  })
+  assert.equal((await modules.load(join(root, "db/x.vibe"))).project, join(root, "tsconfig.json"))
+})
+
+test("of siblings, the first by path that includes a module wins; one that only imports it loses", { skip }, async (t) => {
+  const { root, modules } = siblings(t, {
+    "tsconfig.json": { include: ["src"] },
+    "src/app.vibe": value,
+    // First by path, but it only imports the module, as evals/ imports ../db in apps/mvp.
+    "a/tsconfig.json": { include: ["."] },
+    "a/main.vibe": "import { value } from \"../db/x.vibe\"\nexport const main: number = value\n",
+    "m/tsconfig.json": { include: ["../db"] },
+    "z/tsconfig.json": { include: ["../db"] },
+    "db/x.vibe": value
+  })
+  assert.equal((await modules.load(join(root, "db/x.vibe"))).project, join(root, "m/tsconfig.json"))
+})
+
+test("a sibling that only imports a module serves it when no tsconfig includes it", { skip }, async (t) => {
+  const { root, modules } = siblings(t, {
+    "tsconfig.json": { include: ["src"] },
+    "src/app.vibe": value,
+    "b/tsconfig.json": { include: ["."] },
+    "b/main.vibe": "import { value } from \"../db/x.vibe\"\nexport const main: number = value\n",
+    "db/x.vibe": value
+  })
+  assert.equal((await modules.load(join(root, "db/x.vibe"))).project, join(root, "b/tsconfig.json"))
+})
+
+test("references come before other tsconfigs, in the order they are written, as tsc -b reads them", { skip }, async (t) => {
+  const { root, modules } = siblings(t, {
+    "tsconfig.json": { files: [], references: [{ path: "./z" }, { path: "./m/tsconfig.json" }] },
+    "a/tsconfig.json": { include: ["../db"] },
+    "m/tsconfig.json": { include: ["../db"] },
+    "z/tsconfig.json": { include: ["../db"] },
+    "db/x.vibe": value
+  })
+  assert.equal((await modules.load(join(root, "db/x.vibe"))).project, join(root, "z/tsconfig.json"))
+})
+
+test("a module no tsconfig includes is an error that names every tsconfig asked", { skip }, async (t) => {
+  const { root, modules } = siblings(t, {
+    "tsconfig.json": { include: ["src"] },
+    "src/app.vibe": value,
+    "worker/tsconfig.json": { include: ["."] },
+    "worker/main.vibe": value,
+    "tests/orphan.vibe": value
+  })
+  const orphan = await modules.load(join(root, "tests/orphan.vibe"))
+  assert.equal(orphan.error.id, join(root, "tests/orphan.vibe"))
+  assert.match(orphan.error.message, /orphan\.vibe is not part of .*\/tsconfig\.json or .*\/worker\/tsconfig\.json\. Add it to the tsconfig's include\./)
+  assert.match(orphan.code, /did not compile/)
+})
+
+test("a custom-named tsconfig and a nested package's tsconfig are never asked", { skip }, async (t) => {
+  const { root, modules } = siblings(t, {
+    "tsconfig.json": { include: ["src"] },
+    "src/app.vibe": value,
+    "tsconfig.tools.json": { include: ["db"] },
+    "tools/tsconfig.tools.json": { include: ["../db"] },
+    "inner/package.json": '{"type":"module"}',
+    "inner/tsconfig.json": { include: ["../db"] },
+    "db/x.vibe": value
+  })
+  const db = await modules.load(join(root, "db/x.vibe"))
+  assert.match(db.error.message, /x\.vibe is not part of [^ ]*\/tsconfig\.json\. Add it/)
+})
+
+test("a saved tsconfig moves a module on the next revision", { skip }, async (t) => {
+  const { root, modules } = siblings(t, {
+    "tsconfig.json": { include: ["src"] },
+    "src/app.vibe": value,
+    "a/tsconfig.json": { include: ["../db"] },
+    "b/tsconfig.json": { include: ["."] },
+    "b/main.vibe": value,
+    "db/x.vibe": value
+  })
+  const file = join(root, "db/x.vibe")
+  assert.equal((await modules.load(file)).project, join(root, "a/tsconfig.json"))
+  const config = JSON.parse(readFileSync(join(root, "a/tsconfig.json"), "utf8"))
+  writeFileSync(join(root, "a/tsconfig.json"), JSON.stringify({ ...config, include: ["."] }))
+  writeFileSync(join(root, "a/main.vibe"), value)
+  writeFileSync(join(root, "b/tsconfig.json"), JSON.stringify({ ...config, include: [".", "../db"] }))
+  modules.invalidate()
+  assert.equal((await modules.load(file)).project, join(root, "b/tsconfig.json"))
+})
+
+test("workspaceProject starts at the nearest config; a nested package without one stays in the project asked for", (t) => {
+  const root = fixture(t)
+  for (const path of ["tsconfig.json", "worker/tsconfig.json", "plain/package.json", "plain/deep/x.txt"]) {
+    mkdirSync(dirname(join(root, path)), { recursive: true })
+    writeFileSync(join(root, path), "{}")
+  }
+  const project = join(root, "tsconfig.json")
+  assert.equal(workspaceProject(join(root, "worker/deep/a.vibe"), root, project), join(root, "worker/tsconfig.json"))
+  assert.equal(workspaceProject(join(root, "db/a.vibe"), root, project), project)
+  assert.equal(workspaceProject(join(root, "plain/deep/a.vibe"), root, project), project)
+})
+
+test("a package root is the nearest package.json's directory, else the path's own", (t) => {
+  const root = fixture(t)
+  mkdirSync(join(root, "app/worker"), { recursive: true })
+  writeFileSync(join(root, "app/package.json"), "{}")
+  assert.equal(packageRoot(join(root, "app/worker/tsconfig.json")), join(root, "app"))
+  assert.equal(packageRoot(join(root, "other/tsconfig.json")), join(root, "other"))
+})
+
+test("findProject reports the configs it asked and keeps each listing for the next module", { skip }, (t) => {
+  const { root } = siblings(t, {
+    "tsconfig.json": { include: ["src"] },
+    "src/app.vibe": value,
+    "worker/tsconfig.json": { include: ["../db"] },
+    "db/x.vibe": value,
+    "db/y.vibe": value
+  })
+  const programs = new Map()
+  const tried = join(root, "tsconfig.json")
+  const found = findProject(join(root, "db/x.vibe"), { tried, compiler: native, programs })
+  assert.deepEqual(found, { project: join(root, "worker/tsconfig.json"), searched: [join(root, "worker/tsconfig.json")] })
+  assert.deepEqual([...programs.keys()], [join(root, "worker/tsconfig.json")])
+  const listing = programs.get(join(root, "worker/tsconfig.json"))
+  assert.equal(findProject(join(root, "db/y.vibe"), { tried, compiler: native, programs }).project, join(root, "worker/tsconfig.json"))
+  assert.equal(programs.get(join(root, "worker/tsconfig.json")), listing)
+  // A module declaration's output asks for its .vibe file.
+  assert.equal(findProject(join(root, "db/x.vibe.text.js"), { tried, compiler: native, programs }).project, join(root, "worker/tsconfig.json"))
+})
+
 test("a module of a package nested inside root compiles with that package's own project", { skip }, async (t) => {
   const { app, compiler, compiles } = workspace(t)
   const modules = projects({ root: app, project: join(app, "tsconfig.json"), compiler, cache: false })
@@ -447,6 +655,7 @@ test("explainFiles parsing keeps written imports with their resolved files and d
   ].join("\r\n")
   assert.deepEqual(parseExplainFiles(input, root), {
     files: [join(root, "src/b.vibe"), resolve(root, "../node_modules/effect/dist/index.d.ts"), join(root, "src/a.ts")],
+    roots: [join(root, "src/b.vibe"), join(root, "src/a.ts")],
     imports: [
       { importer: join(root, "src/a.ts"), specifier: "./b.vibe", file: join(root, "src/b.vibe") },
       { importer: join(root, "src/it's.ts"), specifier: "./b.vibe", file: join(root, "src/b.vibe") },
@@ -489,6 +698,7 @@ test("explainFiles parsing gives a module declaration's imports to its .vibe fil
   ].join("\n")
   assert.deepEqual(parseExplainFiles(input, root), {
     files: [join(root, "src/loud.ts"), join(root, "src/main.vibe")],
+    roots: [join(root, "src/loud.ts"), join(root, "src/main.vibe")],
     imports: [{ importer: join(root, "src/main.vibe"), specifier: "./loud.ts", file: join(root, "src/loud.ts") }],
     diagnostics: []
   })

@@ -25,7 +25,7 @@ import { registerHooks } from "node:module"
 import { dirname, resolve } from "node:path"
 import { performance } from "node:perf_hooks"
 import { fileURLToPath, pathToFileURL } from "node:url"
-import { compileProjectSync, formatDiagnostic, moduleDeclarationSource, nearestProject, workspaceProject } from "./project.mjs"
+import { compileProjectSync, findCompiler, findProject, formatDiagnostic, moduleDeclarationSource, nearestProject, workspaceProject } from "./project.mjs"
 
 if (typeof registerHooks !== "function") {
   throw new Error(`vibelang/register needs module.registerHooks, in Node 22.15 or later; this is Node ${process.version}`)
@@ -56,7 +56,12 @@ if (debug) {
   })
 }
 
+// Modules their first project left out, each with the project findProject named.
+const owners = new Map()
+const programs = new Map()
+
 function projectOf(file) {
+  if (owners.has(file)) return owners.get(file)
   if (process.env.VIBELANG_PROJECT) {
     const named = resolve(process.env.VIBELANG_PROJECT)
     return workspaceProject(file, dirname(named), named)
@@ -95,6 +100,13 @@ function emitted(file) {
     spent.compile += since(clock)
   }
   const { result } = compiled
+  if (!result.outputs.has(file) && !owners.has(file)) {
+    const other = findProject(file, { tried: project, compiler: findCompiler(dirname(project)), programs }).project
+    if (other !== undefined) {
+      owners.set(file, other)
+      return emitted(file)
+    }
+  }
   const errors = diagnosticsForFile(result.errors, file, result.files)
   if (errors.length) {
     throw failure("ERR_VIBELANG_COMPILE", `vibelang: ${project} did not compile\n${errors.map(formatDiagnostic).join("\n")}`)

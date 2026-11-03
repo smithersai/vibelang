@@ -95,7 +95,19 @@ Support for the new forms and configuration files arrives with the compiler's VI
 The plugin compiles the project `tsconfig.json` describes, with its options and diagnostics. Its compile backend automatically enables `rewriteRelativeImportExtensions` when emitting JavaScript, so source imports such as `./greet.vibe` work with Vite's `allowImportingTsExtensions` configuration. Check two things:
 
 1. `include` selects the app's `.vibe` files under Vite's root. A `.vibe` file of another workspace package, such as one the app imports by name, compiles with the nearest `tsconfig.json` above it instead: that package's own project. This holds outside the root and for a package nested inside it, one with its own `package.json` and `tsconfig.json`.
-2. If `tsconfig.json` has `"files": []` and only lists `references`, as Vite's templates do, pass the referenced configuration that includes `src` to the plugin, for example `vibelang({ project: "tsconfig.app.json" })`.
+2. If `tsconfig.json` has `"files": []` and only lists `references`, each module compiles under the first referenced configuration whose program contains it. You can also name a configuration explicitly, for example `vibelang({ project: "tsconfig.app.json" })`.
+
+A package may have separate projects for its app, worker and tools without a
+`package.json` beside each config. A module first uses its nearest config,
+then that config's `references`, then parent configs. When those exclude it,
+the loader searches the package's other configs: first by path among configs
+whose `include` or `files` lists the module, then among programs that import it.
+For example, `worker/tsconfig.json` with `include: [".", "../db"]` serves
+`db/x.vibe` even when the plugin selects a root `tsconfig.json` that includes
+only `src`. The worker's compiler options apply. A module no project contains
+still fails; the loader names the configs searched. Nested packages keep their
+own project boundaries. A composite referenced project must list
+the source among its roots, as TypeScript requires.
 
 When emitting JavaScript directly with the `vibelang` CLI, set `"rewriteRelativeImportExtensions": true` in that project's `compilerOptions`. It permits source-extension imports and rewrites them for the emitted JavaScript; `allowImportingTsExtensions` alone produces TS5096 during CLI emission ([CLI setup](vibelang-cli.md#1-configure-tsconfigjson)).
 

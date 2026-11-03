@@ -181,6 +181,20 @@ test("names VIBELANG_PROJECT when the nearest tsconfig does not include a module
   assert.equal(accepted.stdout, "42\n")
 })
 
+test("smithers-mvp: a module only a sibling tsconfig includes loads under that tsconfig", { skip }, (t) => {
+  const { bun } = project(t, {
+    "tsconfig.json": tsconfig(["src/**/*"]),
+    "src/index.ts": "export {}\n",
+    "worker/tsconfig.json": tsconfig(["**/*", "../db/**/*"]),
+    "worker/main.ts": "export {}\n",
+    "db/x.vibe": "export const answer: number = 42\n",
+    "db/run.ts": "import { answer } from \"./x.vibe\"\nconsole.log(answer)\n"
+  })
+  const result = bun(["--preload", preload, "db/run.ts"])
+  assert.equal(result.status, 0, result.stderr)
+  assert.equal(result.stdout, "42\n")
+})
+
 test("bun resolves a TypeScript module's .js import to the .vibe file that replaced its .ts file", { skip }, (t) => {
   const bundler = JSON.stringify({
     compilerOptions: { target: "ESNext", module: "ESNext", moduleResolution: "Bundler", strict: true, types: [], skipLibCheck: true, noEmit: true },

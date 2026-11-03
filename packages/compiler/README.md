@@ -81,7 +81,9 @@ has to build it first. Set `VIBELANG_PROJECT` to a tsconfig path to
 choose another project, such as `tsconfig.test.json` for an example beside a
 library; it compiles the modules in its directory, and a module of another
 workspace package, such as a dependency linked to its source, still compiles
-with that package's own `tsconfig.json`. A module keeps its source URL, so a `.ts` file imported
+with that package's own `tsconfig.json`. When the project leaves a module out,
+the loader looks for the tsconfig of the package that holds it, as
+`vibelang/project` does below. A module keeps its source URL, so a `.ts` file imported
 by both a TypeScript and a `.vibe` module loads once. A `module` declaration in
 `main.vibe` is a module of its own, `main.vibe.text.js` beside it, which is not
 on disk; the hook serves it from the same compile. Errors in the loaded source and project-wide errors are thrown at the import;
@@ -98,7 +100,7 @@ module that changed after the project compiled, or that did not exist yet, so
 a watcher that re-imports an edited file under a new URL gets its new code. The
 errors carry a `code`, as Node's module errors do: `ERR_VIBELANG_COMPILE` when
 the loaded source has errors or a project-wide error prevents compilation, and
-`ERR_VIBELANG_PROJECT` when the module is outside the project.
+`ERR_VIBELANG_PROJECT` when no project includes the module.
 
 ### The compile cache
 
@@ -253,10 +255,16 @@ passes through unchanged.
 `vibelang/project` is the whole-project compile that `vibelang-vite`,
 `vibelang-unplugin`, `vibelang/register`, and `vibelang/bun` share. `projects({
 root, project, compiler })` serves each `.vibe` module from one compile per
-tsconfig: a module inside `root` belongs to `project`; one of another workspace
-package, such as a package another package imports, belongs to the nearest
-`tsconfig.json` above it. Another package is one outside `root`, or one nested
-inside it with its own `package.json` and `tsconfig.json`. `load(file)` returns
+tsconfig. A module compiles under the tsconfig that holds it, found as TypeScript's language
+service finds it: each config from the module's directory up to its package's,
+nearest first, each followed by its `references`. A composite referenced project must list
+the source among its roots, as TypeScript requires. The loader additionally
+discovers closed sibling projects. When none of those holds the
+module, a `tsconfig.json` elsewhere in the package does, such as a
+`worker/tsconfig.json` that includes `../db`: the first by path that lists the
+module, else the first by path that imports it. Sibling discovery does not enter
+nested packages. Custom-named configs must be selected explicitly or referenced. `project` stands for
+the config of `root`'s own directories. `load(file)` returns
 the module's JavaScript, its source map, and its source diagnostics and project-wide diagnostics, for a
 `.vibe` file or for the output of one of its `module` declarations,
 `main.vibe.text.js` beside `main.vibe`, which `moduleDeclarationSource(path)`
@@ -439,7 +447,7 @@ In the tsconfig that includes the tests, add `"bun"` to `compilerOptions.types` 
 { "compilerOptions": { "types": ["bun"] } }
 ```
 
-Keep any existing type names in that array. Run `vibelang -p tsconfig.json` to check every selected project file, including native TypeScript tests selected by `include`. The preload checks and emits only the project's own `.vibe` files under its directory. Selected native TypeScript files supply types to those modules, but their independent errors are not checked. Errors in the loaded `.vibe` module and project-wide errors fail its import; an unrelated `.vibe` module's errors do not. In `bunfig.toml`:
+Keep any existing type names in that array. Run `vibelang -p tsconfig.json` to check every selected project file, including native TypeScript tests selected by `include`. The preload checks and emits only the project's own `.vibe` files under its package directory, including sibling directories selected by that project's config. Selected native TypeScript files supply types to those modules, but their independent errors are not checked. Errors in the loaded `.vibe` module and project-wide errors fail its import; an unrelated `.vibe` module's errors do not. In `bunfig.toml`:
 
 ```toml
 [test]

@@ -13,14 +13,20 @@ import { readFileSync } from "node:fs"
 import { SourceMap } from "node:module"
 import { dirname, resolve } from "node:path"
 import { diagnosticsForFile } from "./diagnostics.mjs"
-import { compileProjectSync, formatDiagnostic, nearestProject, workspaceProject } from "./project.mjs"
+import { compileProjectSync, findCompiler, findProject, formatDiagnostic, nearestProject, workspaceProject } from "./project.mjs"
+
+// Modules their first project left out, each with the project findProject named.
+const owners = new Map()
+const programs = new Map()
 
 /**
  * The project that compiles `file`: VIBELANG_PROJECT for a module in its
  * directory, else the nearest tsconfig.json above the module, as for
- * vibelang/register and vibelang/bun.
+ * vibelang/register and vibelang/bun; or the project findProject named when
+ * that one left the module out.
  */
 export function projectOf(file) {
+  if (owners.has(file)) return owners.get(file)
   if (process.env.VIBELANG_PROJECT) {
     const named = resolve(process.env.VIBELANG_PROJECT)
     return workspaceProject(file, dirname(named), named)
@@ -40,6 +46,13 @@ export function emitModule(file) {
   file = resolve(file)
   const project = projectOf(file)
   const result = compileProjectSync({ project })
+  if (!result.outputs.has(file) && !owners.has(file)) {
+    const other = findProject(file, { tried: project, compiler: findCompiler(dirname(project)), programs }).project
+    if (other !== undefined) {
+      owners.set(file, other)
+      return emitModule(file)
+    }
+  }
   const errors = diagnosticsForFile(result.errors, file, result.files)
   if (errors.length) {
     throw Object.assign(new Error(`vibelang: ${project} did not compile\n${errors.map(formatDiagnostic).join("\n")}`), { code: "ERR_VIBELANG_COMPILE" })

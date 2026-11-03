@@ -193,6 +193,20 @@ test("names VIBELANG_PROJECT when the nearest tsconfig does not include a module
   assert.equal(accepted.stdout, "42\n")
 })
 
+test("smithers-mvp: a module only a sibling tsconfig includes loads under that tsconfig", { skip }, (t) => {
+  const { run } = project(t, {
+    "tsconfig.json": tsconfig(["src/**/*"]),
+    "src/index.ts": "export {}\n",
+    "worker/tsconfig.json": tsconfig(["**/*", "../db/**/*"]),
+    "worker/main.ts": "export {}\n",
+    "db/x.vibe": "export const answer: number = 42\n",
+    "db/run.ts": "import { answer } from \"./x.vibe\"\nconsole.log(answer)\n"
+  })
+  const result = run("db/run.ts")
+  assert.equal(result.status, 0, result.stderr)
+  assert.equal(result.stdout, "42\n")
+})
+
 test("VIBELANG_PROJECT compiles its own modules; another workspace package's source compiles with its own tsconfig", { skip }, (t) => {
   const { root, run } = project(t, {
     "app/package.json": '{"type":"module"}',

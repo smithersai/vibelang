@@ -209,6 +209,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - The compiler regression suite rejected accepted service defaults, readonly schema migrations, declaration sidecar imports and legacy trailing-block repairs after the language rules changed; those checks now use the current syntax and preserve their original migration and rename assertions.
 - `vibelang --fix` resolved every import of a large project again for each checking program. It now reuses module resolutions while the set of created files stays the same, reducing the time spent finding unchanged modules.
+
+- Vite, Vitest, source loaders and typed ESLint rejected `.vibe` modules included only by a sibling `tsconfig.json`, sometimes preventing tests from starting. They now find a containing project within the package and use its compiler options. Overlapping projects follow nearest-config and project-reference selection; modules no project contains still fail clearly.
 - `Effect.forkChild(e)`, `Effect.forkDetach(e)` and other calls whose type parameter is constrained to an `Effect`, such as `<Arg extends Effect<any, any, any> | Options>`, warned `EK4802` that the call receives the unrun program. Such a parameter declares that it takes a program, so it no longer warns.
 - A function whose only statement is `return try value` showed V8 coverage, and tools that read it, a second function for the generator the compiler makes. That generator now maps to no source position, so coverage counts one function, as before tail `try` kept native delegation.
 

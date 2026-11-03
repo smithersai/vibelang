@@ -66,6 +66,15 @@ package's project, with that package's settings. That holds outside `root` and
 for a package nested inside it, a directory with its own `package.json` and
 `tsconfig.json`. Each project compiles once per build or watch rebuild.
 
+Inside your package, project selection starts as it does in TypeScript:
+the nearest config above the module, then that config's `references`, then
+the parent directories' configs. A composite referenced project must list
+the source among its roots, as TypeScript requires. The loader also discovers closed sibling
+projects: when none of those holds it, a `tsconfig.json`
+elsewhere in the package does, such as a `worker/tsconfig.json` that includes
+`../db`: the first by path that lists the module, else the first by path that
+imports it. A module no tsconfig holds fails the build and names each one asked.
+
 For package exports that provide `vibelang-source`, the Bun, Rolldown,
 esbuild, webpack and Rspack adapters select that source condition. A package
 that mixes `.ts` and `.vibe` modules then shares one source graph instead of
