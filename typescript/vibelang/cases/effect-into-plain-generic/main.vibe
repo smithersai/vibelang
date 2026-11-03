@@ -1,0 +1,25 @@
+// VIP-1/VIP-5: a generic data parameter keeps an Effect cold.
+// expect-result: {"cold":0,"same":true,"value":7,"runs":1,"explicit":8,"total":2}
+function expect<T>(value: T): { readonly value: T } {
+  return { value }
+}
+
+export effect function main() {
+  let runs = 0
+  effect function awaited(p: number) {
+    runs++
+    return p
+  }
+  const program = awaited(7)
+  const observed = expect(program)
+  const inferred: number!! = observed.value
+  // A generic parameter infers the Effect, never its success or any.
+  // @ts-expect-error An unrun Effect is not a number.
+  const wrong: number = observed.value
+  const cold = runs
+  const same = observed.value === program
+  const value = try inferred
+  const once = runs
+  const explicit = expect(try awaited(8)).value
+  return { cold, same, value, runs: once, explicit, total: runs }
+}

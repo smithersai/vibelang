@@ -26,6 +26,8 @@ A plain function's written return type checks the whole value it returns. For `f
 
 Choose one function kind: `effect` returns an Effect and `async` returns a Promise. Combining them in either order, including on arrows, methods and blocks, reports `EK0105`. The editor can remove either modifier from a function; for a block it removes `async` and keeps `effect { ... }`. `vibelang --fix` removes `effect` from functions to preserve the native `Promise` API previously emitted for accepted mixed declarations and methods; for blocks it removes `async`.
 
+A generic plain function also keeps TypeScript's inference. In `expect(awaited(p))`, where `awaited` returns an Effect and `expect<T>(value: T)` accepts any value, `T` is the Effect type. The call receives the cold program. To assert on its success, first write `const value = try awaited(p)`, then `try Effect.try(() => expect(value).toBe(expected))`, since an assertion can throw. Passing the Effect directly remains useful when the assertion inspects the program itself. In effect code, an inferred Effect argument to a plain generic parameter reports the advisory `EK4802` warning. Ignoring that warning or configuring it off keeps the program cold; a project-wide error policy requires an explicit preserving repair.
+
 An optional call can return `undefined`, which is not an Effect (`EK0502`). Keep the optional call's normal TypeScript evaluation, then guard its result before `try`:
 
 ```vibe
