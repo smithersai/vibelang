@@ -46,6 +46,24 @@ func migrationPlainRootPrograms() map[string][2]string {
 		"import * as Effect from \"effect/Effect\";\nexport effect function make() {\n  const run = Effect.runPromiseWith(try Effect.context<never>());\n  const a = (): Promise<number> => run(effect { return 1; });\n  function b(): Promise<number> { return run(effect { return 1; }); }\n  return { a, b };\n}\n",
 		"import * as Effect from \"effect/Effect\";\nexport function make() { return Effect.gen(function* () {\n const run = Effect.runPromiseWith(yield* Effect.context<never>());\n const a = (): Promise<number> => run(Effect.gen(function* () { return 1; }));\n function b(): Promise<number> { return run(Effect.gen(function* () { return 1; })); }\n return {a,b};\n}); }\n",
 	}
+
+	// Alchemy43/Opencode rf3: a plain callback passed from an Effect factory
+	// has the same native body as a returned closure or named function.
+	for _, runner := range []string{"runSyncWith", "runSyncExitWith", "runPromiseWith"} {
+		for home, body := range map[string]string{
+			"argument": "transform(() => { run(Effect.void) });",
+			"nested":   "transform(() => transform(() => { run(Effect.void) }));",
+			"array":    "[1].forEach(() => { run(Effect.void) });",
+			"returned": "return () => run(Effect.void);",
+		} {
+			head := "import { Effect } from \"effect\";\n"
+			setup := "const run = Effect." + runner + "(% Effect.context<never>()); const transform = (f: () => void) => f(); "
+			programs["alchemy-"+runner+":"+home] = [2]string{
+				head + "export const a = effect { " + strings.ReplaceAll(setup, "%", "try") + body + " };\n",
+				head + "export const a = Effect.gen(function* () { " + strings.ReplaceAll(setup, "%", "yield*") + body + " });\n",
+			}
+		}
+	}
 	return programs
 }
 
@@ -77,7 +95,7 @@ func FuzzMigrationPlainRoots(f *testing.F) {
 		}
 		known := programs[key][0]
 		reference := source
-		if key == "captured-sdk" {
+		if programs[key][1] != known {
 			if source != known {
 				return
 			} // The explicit factory counterpart is a keyed generator case.
@@ -105,10 +123,27 @@ func FuzzMigrationPlainRoots(f *testing.F) {
 			key += fmt.Sprintf(":mutation:%x", sha256.Sum256([]byte(source)))
 		}
 		errors := []string{}
+		// This independent legacy discard diagnostic belongs to the queued
+		// plain-structured-result-discard fix. Never admit EK1005 here.
+		structuredKey := ""
+		if source == known && strings.HasPrefix(key, "alchemy-runSyncExitWith:") && key != "alchemy-runSyncExitWith:returned" {
+			structuredKey = "root:" + key + ":structured-discard"
+		}
+		structuredErrors := []string{}
 		for _, d := range after.Diagnostics {
 			if d.Category().Name() == "error" && (source == known || IsEK(d) && d.Code() == 1005) {
-				errors = append(errors, diagnosticKey(d))
+				if structuredKey != "" && IsEK(d) && d.Code() == 4301 {
+					structuredErrors = append(structuredErrors, diagnosticKey(d))
+				} else {
+					errors = append(errors, diagnosticKey(d))
+				}
 			}
+		}
+		if len(structuredErrors) > 0 {
+			Gap(t, migrationPlainRootsTarget, structuredKey, "VIP-1 plain body: %q; legacy structured-result discard reports %v", migrationPlainRootsNestedQuote, structuredErrors)
+		}
+		if structuredKey != "" {
+			ExpectPending(t, migrationPlainRootsTarget, structuredKey)
 		}
 		if len(errors) > 0 {
 			Gap(t, migrationPlainRootsTarget, "root:"+key, "Chapter1: %q; %q. Native TypeScript counterpart passes, Vibe callable reports %v\n%s", migrationPlainRootsQuote, migrationPlainRootsNestedQuote, errors, source)

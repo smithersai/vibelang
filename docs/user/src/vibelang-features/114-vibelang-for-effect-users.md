@@ -337,3 +337,5 @@ Another provided argument can also fix the same generic parameter to an Effect,
 including through a record, tuple or callback. That independent context still
 keeps the argument as a program, and the migration runs the generic call's
 result where the old code ran it.
+
+A plain callback keeps its TypeScript body even when an `effect` function passes it as an argument. A captured `Effect.runSyncWith(context)` runner can be called from that callback, as from an assigned or returned plain function; passing the callback does not add an Effect activation. An explicitly `effect` callback remains Effect code.

@@ -4246,6 +4246,10 @@ typescript/vibelang/cases/plain-recursion-const-arrow/main.vibe:20:22 lambda pla
 typescript/vibelang/cases/plain-recursion-const-arrow/main.vibe:23:16 lambda plain annotation
 typescript/vibelang/cases/plain-recursion-const-arrow/main.vibe:7:19 lambda plain annotation
 typescript/vibelang/cases/plain-recursion-const-arrow/main.vibe:9:13 lambda plain annotation
+typescript/vibelang/cases/plain-runner-callbacks/main.vibe:5:21 lambda plain fallback
+typescript/vibelang/cases/plain-runner-callbacks/main.vibe:6:31 lambda effectFn annotation
+typescript/vibelang/cases/plain-runner-callbacks/main.vibe:7:22 lambda choice fallback
+typescript/vibelang/cases/plain-runner-callbacks/main.vibe:9:52 byname program table
 typescript/vibelang/cases/plain-stream-byname/layers.vibe:11:27 lambda plain annotation
 typescript/vibelang/cases/plain-stream-byname/layers.vibe:12:22 byname program table
 typescript/vibelang/cases/plain-stream-byname/layers.vibe:15:24 lambda plain annotation

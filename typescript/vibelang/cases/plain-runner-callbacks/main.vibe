@@ -1,0 +1,10 @@
+import { report } from "./report.ts"
+
+export effect function boot() {
+  const run = Effect.runSyncWith(try Effect.context<never>())
+  const transform = (f: () => number) => f()
+  const immediate = transform(() => run(Effect.succeed(1)))
+  return [immediate, () => run(Effect.succeed(2))] as const
+}
+const [immediate, later] = await Effect.runPromise(boot())
+report([immediate, later()])

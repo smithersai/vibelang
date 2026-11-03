@@ -544,16 +544,11 @@ func isBoundaryCallback(c *checker.Checker, fn *ast.Node) bool {
 	return inside
 }
 
-// outsideFibers reports whether node is code that no fiber runs: at the
-// module's top level, in an async function, in a plain function (VIP-1: a
-// function that effect does not mark is plain JavaScript, and its caller
-// decides where it runs), or in a plain callback that such a place passes to a
-// TypeScript function, such as a describe body or a route handler. A runner
-// may be called there (D38), and a plain call there is an ordinary JavaScript
-// call, as at the top level (D51). A plain callback runs where the call that
-// receives it runs: on the fiber when Effect code passes it, as in
-// xs.forEach((x) => …) in an effect function. An effect function that
-// receives one runs it on its own fiber.
+// outsideFibers reports whether node belongs to native TypeScript code:
+// the module, an async function or a plain function. VIP-1 gives argument
+// callbacks the same plain body as assigned and returned callbacks, regardless
+// of the caller's function kind. Only an explicit Effect activation owns the
+// Effect restrictions; passing a plain callback does not change its kind.
 func outsideFibers(c *checker.Checker, a *analyzer, node *ast.Node) bool {
 	if inHatch(node) {
 		return true // a hatch's body is the way back in to TypeScript (D148)
@@ -568,24 +563,7 @@ func outsideFibers(c *checker.Checker, a *analyzer, node *ast.Node) bool {
 	if a.isEffect(fn) {
 		return false
 	}
-	call, _ := ownerCall(fn)
-	if !isLambda(fn) || call == nil {
-		return true // a plain function, or a plain function value (VIP-1)
-	}
-	if !ast.IsCallExpression(call) || callsEffectFunction(c, a, call) {
-		return false
-	}
-	return outsideFibers(c, a, call)
-}
-
-// callsEffectFunction reports whether call calls a .vibe function that effect
-// marks, which runs the callbacks it receives on its own fiber.
-func callsEffectFunction(c *checker.Checker, a *analyzer, call *ast.Node) bool {
-	decl := signatureDeclaration(c, call)
-	if decl == nil || !ast.IsFunctionLike(decl) || !isVibeLangFile(ast.GetSourceFileOfNode(decl)) {
-		return false
-	}
-	return a.isEffect(implementationOf(decl))
+	return true // every unmarked callback retains its TypeScript body (VIP-1)
 }
 
 // enclosingFunction returns the function whose body holds node, or nil at

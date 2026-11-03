@@ -1,0 +1,3 @@
+go test fuzz v1
+string("alchemy-runSyncExitWith:array")
+string("import { Effect } from \"effect\";\nexport const a = effect { const run = Effect.runSyncExitWith(try Effect.context<never>()); const transform = (f: () => void) => f(); [1].forEach(() => { run(Effect.void) }); };\n")
