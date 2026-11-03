@@ -1,0 +1,10 @@
+// expect: TS2503 TS2503 TS2694 TS2503
+export type Unknown=Missing.Shape
+export type Nested=Missing.Inner.Shape
+namespace Holder { export const value=1 }
+export type Absent=Holder.Missing.Shape
+{ service Local {static readonly key="tests/OutOfScope"; readonly n:number} }
+export type Escaped=Local.Shape
+
+import * as Models from "./models.js"
+const imported:Models.Shape=1

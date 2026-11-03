@@ -45,6 +45,14 @@ func serviceShapeQualifierSymbol(c *checker.Checker, entity *ast.Node) *ast.Symb
 		parent.AsQualifiedName().Right.Text() != serviceShapeName || !ast.IsTypeReferenceNode(parent.Parent) {
 		return nil
 	}
+	// Type meaning includes namespace meanings. Asking for it before a
+	// class/import exists can re-enter this hook for the same qualifier.
+	// Resolve through aliases: an alias can name a module or a type, too.
+	// Only an actual class can supply the service Shape namespace.
+	class := c.ResolveEntityName(entity, ast.SymbolFlagsClass)
+	if class == nil || class.Flags()&ast.SymbolFlagsClass == 0 {
+		return nil
+	}
 	q := parent.AsQualifiedName()
 	if resolveServiceShapeName(c, parent, q.Left, q.Right, ast.SymbolFlagsType) == nil {
 		return nil

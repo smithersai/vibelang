@@ -1,0 +1,190 @@
+[
+  {
+    "key": "namespace",
+    "source": "namespace Holder { export type Shape=number }; export const value:Holder.Shape=1",
+    "native": "namespace Holder { export type Shape=number }; export const value:Holder.Shape=1",
+    "errors": []
+  },
+  {
+    "key": "missing-root",
+    "source": "export type Value=Missing.Shape",
+    "native": "export type Value=Missing.Shape",
+    "errors": [
+      "TS2503"
+    ]
+  },
+  {
+    "key": "missing-chain",
+    "source": "export type Value=Missing.Inner.Shape",
+    "native": "export type Value=Missing.Inner.Shape",
+    "errors": [
+      "TS2503"
+    ]
+  },
+  {
+    "key": "missing-member",
+    "source": "namespace Holder { export const value=1 }; export type Value=Holder.Missing.Shape",
+    "native": "namespace Holder { export const value=1 }; export type Value=Holder.Missing.Shape",
+    "errors": [
+      "TS2694"
+    ]
+  },
+  {
+    "key": "out-of-scope",
+    "source": "{ service Local {static readonly key=\"tests/Local\"; readonly n:number} }; export type Value=Local.Shape",
+    "native": "{ class Local {} }; export type Value=Local.Shape",
+    "errors": [
+      "TS2503"
+    ]
+  },
+  {
+    "key": "type-parameter",
+    "source": "export type Value<T>=T.Shape",
+    "native": "export type Value<T>=T.Shape",
+    "errors": [
+      "TS2702"
+    ]
+  },
+  {
+    "key": "ordinary-class",
+    "source": "class Native {}; export type Value=Native.Shape",
+    "native": "class Native {}; export type Value=Native.Shape",
+    "errors": [
+      "TS2702"
+    ]
+  },
+  {
+    "key": "value-only",
+    "source": "const Native={}; export type Value=Native.Shape",
+    "native": "const Native={}; export type Value=Native.Shape",
+    "errors": [
+      "TS2503"
+    ]
+  },
+  {
+    "key": "indexed",
+    "source": "export type Value=Missing[\"Shape\"]",
+    "native": "export type Value=Missing[\"Shape\"]",
+    "errors": [
+      "TS2304"
+    ]
+  },
+  {
+    "key": "type-query",
+    "source": "export type Value=typeof Missing.Shape",
+    "native": "export type Value=typeof Missing.Shape",
+    "errors": [
+      "TS2304"
+    ]
+  },
+  {
+    "key": "service",
+    "source": "service Key { static readonly key=\"tests/QualifierKey\"; readonly n:number }; export type Value=Key.Shape",
+    "native": "class Key { static readonly key=\"tests/QualifierKey\" }; namespace Key { export type Shape={readonly n:number} }; export type Value=Key.Shape",
+    "errors": []
+  },
+  {
+    "key": "value-shadow",
+    "source": "service Key { static readonly key=\"tests/QualifierKey\"; readonly n:number }; export function f(){const Key={}; const x:Key.Shape={n:1}; return x.n}",
+    "native": "class Key { static readonly key=\"tests/QualifierKey\" }; namespace Key { export type Shape={readonly n:number} }; export function f(){const Key={}; const x:Key.Shape={n:1}; return x.n}",
+    "errors": []
+  },
+  {
+    "key": "local-service-shape",
+    "source": "export function f(){service Key {static readonly key=\"tests/LocalQualifier\"; readonly n:number};const x:Key.Shape={n:1};return x.n}",
+    "native": "export function f(){class Key {readonly n!:number}; const x:Key.Shape={n:1};return x.n}",
+    "errors": [
+      "TS2702"
+    ]
+  },
+  {
+    "key": "local-service-extraction",
+    "source": "export function f(){service Key {static readonly key=\"tests/LocalQualifier\"; readonly n:number};const x:Context.Service.Shape<typeof Key>={n:1};return x.n}",
+    "native": "export function f(){class Key {readonly n!:number}; const x:InstanceType<typeof Key>={n:1};return x.n}",
+    "errors": []
+  },
+  {
+    "key": "namespace-import",
+    "source": "import * as Models from \"./models.js\"; export const x:Models.Shape=1;",
+    "native": "import * as Models from \"./models.js\"; export const x:Models.Shape=1;",
+    "files": {
+      "models.vibe": "export type Shape=number;"
+    },
+    "nativeFiles": {
+      "models.ts": "export type Shape=number;"
+    },
+    "errors": []
+  },
+  {
+    "key": "namespace-import-missing-shape",
+    "source": "import * as Models from \"./models.js\"; export const x:Models.Shape=1;",
+    "native": "import * as Models from \"./models.js\"; export const x:Models.Shape=1;",
+    "files": {
+      "models.vibe": "export type Other=number;"
+    },
+    "nativeFiles": {
+      "models.ts": "export type Other=number;"
+    },
+    "errors": [
+      "TS2694"
+    ]
+  },
+  {
+    "key": "internal-namespace-alias",
+    "source": "namespace Holder { export type Shape=number }; import Models=Holder; export const x:Models.Shape=1;",
+    "native": "namespace Holder { export type Shape=number }; import Models=Holder; export const x:Models.Shape=1;",
+    "errors": []
+  },
+  {
+    "key": "imported-type-alias",
+    "source": "import type { Model as Value } from \"./models.js\"; export const x:Value.Shape=1;",
+    "native": "import type { Model as Value } from \"./models.js\"; export const x:Value.Shape=1;",
+    "files": {
+      "models.vibe": "export type Model=number;"
+    },
+    "nativeFiles": {
+      "models.ts": "export type Model=number;"
+    },
+    "errors": [
+      "TS2702"
+    ]
+  },
+  {
+    "key": "namespace-reexport",
+    "source": "import { Models } from \"./barrel.js\"; export const x:Models.Shape=1;",
+    "native": "import { Models } from \"./barrel.js\"; export const x:Models.Shape=1;",
+    "files": {
+      "barrel.vibe": "export * as Models from \"./models.js\";",
+      "models.vibe": "export type Shape=number;"
+    },
+    "nativeFiles": {
+      "barrel.ts": "export * as Models from \"./models.js\";",
+      "models.ts": "export type Shape=number;"
+    },
+    "errors": []
+  },
+  {
+    "key": "imported-service-alias",
+    "source": "import { Key as Port } from \"./key.js\"; export const x:Port.Shape={value:1};",
+    "native": "import { Key as Port } from \"./key.js\"; export const x:Port.Shape={value:1};",
+    "files": {
+      "key.vibe": "export service Key { static readonly key=\"qualifier/Key\"; value:number }"
+    },
+    "nativeFiles": {
+      "key.ts": "export class Key {}; export namespace Key { export type Shape={value:number} }"
+    },
+    "errors": []
+  },
+  {
+    "key": "imported-class-namespace",
+    "source": "import { Key as Port } from \"./key.js\"; export const x:Port.Shape=1;",
+    "native": "import { Key as Port } from \"./key.js\"; export const x:Port.Shape=1;",
+    "files": {
+      "key.ts": "export class Key {}; export namespace Key { export type Shape=number }"
+    },
+    "nativeFiles": {
+      "key.ts": "export class Key {}; export namespace Key { export type Shape=number }"
+    },
+    "errors": []
+  }
+]

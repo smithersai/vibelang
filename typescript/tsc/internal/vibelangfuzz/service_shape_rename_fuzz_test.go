@@ -29,7 +29,7 @@ func FuzzServiceShapeRename(f *testing.F) {
 			key = kinds[int(choice)%len(kinds)]
 		}
 		name := []string{"Settings", "Flags", "Café"}[int(choice)%3]
-		declaration := fmt.Sprintf(`service %s { static readonly key="tests/Settings"; prefix:string; static readonly fallback:%s.Shape={prefix:"x"} }`, name, name)
+		declaration := fmt.Sprintf(`service %s { static readonly key="tests/Settings"; prefix:string; static readonly defaultValue=():%s.Shape=>({prefix:"x"}) }`, name, name)
 		prefix, qualifier, probeName := declaration, name, name
 		files := map[string]string{}
 		switch key {
@@ -47,7 +47,7 @@ func FuzzServiceShapeRename(f *testing.F) {
 			qualifier = "Local"
 			probeName = "Local"
 		case "shadow":
-			prefix += fmt.Sprintf(` function inner(){ service %s {static readonly key="tests/Inner"; prefix:number}; const value:%s.Shape={prefix:1};return value.prefix }`, name, name)
+			prefix += fmt.Sprintf(` function inner(){ service %s {static readonly key="tests/Inner"; prefix:number}; const value:Context.Service.Shape<typeof %s>={prefix:1};return value.prefix }`, name, name)
 		}
 		files["main.vibe"] = prefix + fmt.Sprintf(`; export function label(x:%s.Shape){return x.prefix};export const key=%s`, qualifier, qualifier)
 		r := toolsCompile(t, w, consistencyTarget, files)
