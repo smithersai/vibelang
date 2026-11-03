@@ -1,0 +1,2 @@
+go test fuzz v1
+string("-- banners.ts --\nimport type { View } from \"./view\";\nexport declare function item(): View;\n-- bridge.ts --\nexport function use(value: number): number { return value; }\n-- main.ts --\nimport { item } from \"./banners\";\nimport { use } from \"./bridge\";\nexport function run(flag: boolean) { use(1); return { now: flag ? item() : null }; }\n-- view.ts --\nexport interface View { readonly id: string; }\n")

@@ -20,7 +20,8 @@ func TestUnrelatedDeclarationSpecifierQuoted(t *testing.T) {
 // infers a type from a different TSX module. Neither the unrelated import nor
 // the project containing one VibeLang source may respell that inferred type.
 // Compare raw declarations from the native project and its one-file migration;
-// no declaration canonicalizer is allowed to hide a changed import specifier.
+// this tests the selected native spelling, which is stricter than general
+// API identity (VIP-27 permits equivalent import extension spellings).
 func unrelatedDeclarationSeed(ext, prefix, quote string, conditional bool) string {
 	result := "item()"
 	if conditional {
@@ -43,6 +44,35 @@ func unrelatedDeclarationAnnotatedSeed(ext string) string {
 	return Archive(files)
 }
 
+// Exercise native spelling signals and import order around an unrelated migration.
+// Saved archives remain the mutation input, with repository/pattern corpus names.
+func unrelatedDeclarationStyleSeeds() []string {
+	var seeds []string
+	for _, ext := range []string{".ts", ".tsx"} {
+		for _, ending := range []string{"", ".ts", ".js"} {
+			files := Unarchive(unrelatedDeclarationSeed(ext, "", `"`, true))
+			if ending != "" {
+				// .js resolves to the actual .ts/.tsx module. A source suffix must
+				// match that module's kind.
+				spelling := ending
+				if ending == ".ts" {
+					spelling = ext
+				}
+				files["main"+ext] = strings.Replace(files["main"+ext], `"./banners"`, `"./banners`+spelling+`"`, 1)
+				files["banners"+ext] = strings.Replace(files["banners"+ext], `"./view"`, `"./view`+spelling+`"`, 1)
+			}
+			seeds = append(seeds, Archive(files))
+			// The migrated import is last, so native preferences must not
+			// depend on whether it precedes the unchanged native import.
+			lines := strings.Split(files["main"+ext], "\n")
+			lines[0], lines[1] = lines[1], lines[0]
+			files["main"+ext] = strings.Join(lines, "\n")
+			seeds = append(seeds, Archive(files))
+		}
+	}
+	return seeds
+}
+
 func FuzzUnrelatedDeclarationSpecifier(f *testing.F) {
 	startShortBudget(f)
 	for _, ext := range []string{".ts", ".tsx"} {
@@ -55,6 +85,9 @@ func FuzzUnrelatedDeclarationSpecifier(f *testing.F) {
 	f.Add(unrelatedDeclarationSeed(".tsx", "", `"`, false))
 	f.Add(unrelatedDeclarationAnnotatedSeed(".ts"))
 	f.Add(unrelatedDeclarationAnnotatedSeed(".tsx"))
+	for _, seed := range unrelatedDeclarationStyleSeeds() {
+		f.Add(seed)
+	}
 	for _, args := range CorpusInputs("FuzzUnrelatedDeclarationSpecifier") {
 		if len(args) == 1 {
 			f.Add(args[0])
@@ -151,6 +184,7 @@ func TestUnrelatedDeclarationNativeControls(t *testing.T) {
 			seeds = append(seeds, args[0])
 		}
 	}
+	seeds = append(seeds, unrelatedDeclarationStyleSeeds()...)
 	for n, archive := range seeds {
 		t.Run(fmt.Sprint(n), func(t *testing.T) {
 			result, err := w.Compile(t.Context(), Project{Files: Unarchive(archive), Config: unrelatedDeclarationConfig(t)})

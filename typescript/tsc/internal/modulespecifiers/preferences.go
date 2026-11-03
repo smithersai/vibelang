@@ -19,7 +19,9 @@ func usesExtensionsOnImports(file SourceFileForSpecifierGeneration) bool {
 	for _, ref := range file.Imports() {
 		text := ref.Text()
 		if tspath.PathIsRelative(text) && !tspath.FileExtensionIsOneOf(text, tspath.ExtensionsNotSupportingExtensionlessResolution) {
-			return tspath.HasTSFileExtension(text) || tspath.HasJSFileExtension(text)
+			// Preserve TypeScript's first-relative-import rule: a custom suffix
+			// is not a native TS/JS ending.
+			return !tspath.IsVibeLangSource(text) && (tspath.HasTSFileExtension(text) || tspath.HasJSFileExtension(text))
 		}
 	}
 	return false
@@ -47,8 +49,9 @@ func inferPreference(
 				// We're trying to decide a preference for a CommonJS module specifier, but looking at an ESM import.
 				continue
 			}
-			if tspath.FileExtensionIsOneOf(path, tspath.ExtensionsNotSupportingExtensionlessResolution) {
-				// These extensions are not optional, so do not indicate a preference.
+			if tspath.IsVibeLangSource(path) || tspath.FileExtensionIsOneOf(path, tspath.ExtensionsNotSupportingExtensionlessResolution) {
+				// Required source suffixes, including .vibe/.vibex, do not
+				// indicate a native .ts/.js ending preference (VIP-27).
 				continue
 			}
 			if tspath.HasTSFileExtension(path) {

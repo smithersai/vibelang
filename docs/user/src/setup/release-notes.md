@@ -523,6 +523,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Host globals inside `Effect.try`, `tryPromise`, `sync` and `callback` bodies could bypass platform checks. They now report `EK4402` throughout the file; `vibelang --fix` extracts self-contained wrappers into a checked TypeScript adapter.
 
 - Acceptance cases could pass when `stdout` matched after their runner failed. A runner must now exit with status `0`, and failures retain its output and exit status.
+- Migrating an unrelated module could change an inferred native import type from `import("./view").View` to `import("./view.ts").View`. Native import types now retain TypeScript's ending preferences.
+
 
 - Source-child loader wiring introduced a `fileURLToPath` import alias and failed repositories’ native import policies. Setup now uses a namespace import and refreshes its own previously generated helpers while preserving manually observed bindings.
 

@@ -644,7 +644,10 @@ func processEnding(
 	host ModuleSpecifierGenerationHost,
 ) tspath.ModuleSpecifier {
 	fileName := specifier.AsString()
-	if tspath.FileExtensionIsOneOf(fileName, []string{tspath.ExtensionJson, tspath.ExtensionMjs, tspath.ExtensionCjs}) {
+	// A custom source suffix identifies the module until the declaration
+	// emitter applies its output spelling. Dropping it here would also lose
+	// the provenance needed to compute the native twin's ending preference.
+	if tspath.IsVibeLangSource(fileName) || tspath.FileExtensionIsOneOf(fileName, []string{tspath.ExtensionJson, tspath.ExtensionMjs, tspath.ExtensionCjs}) {
 		return specifier
 	}
 
