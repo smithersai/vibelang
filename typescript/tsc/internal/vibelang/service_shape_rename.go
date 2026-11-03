@@ -14,17 +14,25 @@ func init() {
 // resolver already supplies that member; editor symbol lookup must retain the
 // qualifier's class/import identity when it asks for namespace meaning.
 func serviceShapeQualifierName(c *checker.Checker, location *ast.Node, name string, meaning ast.SymbolFlags) *ast.Symbol {
-	if meaning&ast.SymbolFlagsNamespace == 0 || !ast.IsIdentifier(location) || location.Text() != name {
+	if !asksForModule(meaning) || !ast.IsIdentifier(location) || location.Text() != name {
 		return nil
 	}
 	return serviceShapeQualifierSymbol(c, location)
 }
 
 func serviceShapeQualifierMember(c *checker.Checker, name *ast.Node, namespace *ast.Symbol, right *ast.Node, meaning ast.SymbolFlags) *ast.Symbol {
-	if meaning&ast.SymbolFlagsNamespace == 0 {
+	if !asksForModule(meaning) {
 		return nil
 	}
 	return serviceShapeQualifierSymbol(c, name)
+}
+
+// asksForModule reports whether meaning is a qualifier's namespace lookup.
+// SymbolFlagsType shares SymbolFlagsEnum with SymbolFlagsNamespace, so testing
+// that mask lets resolveServiceShapeName's own type lookup back into these
+// hooks, which overflows the stack on a name no scope declares.
+func asksForModule(meaning ast.SymbolFlags) bool {
+	return meaning&(ast.SymbolFlagsValueModule|ast.SymbolFlagsNamespaceModule) != 0
 }
 
 func serviceShapeQualifierSymbol(c *checker.Checker, entity *ast.Node) *ast.Symbol {
