@@ -1,0 +1,21 @@
+
+export interface Tool {
+  readonly arguments: ReadonlyArray<string>
+  readonly load: number
+}
+
+export const argumentCount = effect (tool: Tool) => {
+  return tool.arguments.length
+}
+
+export const firstArgument = effect (tool?: Tool | undefined) => try withSpan(effect {
+  return tool?.arguments[0] ?? "none"
+}, "firstArgument")
+
+export const asRecord = effect (tool: Tool) => {
+  return { arguments: tool.arguments.length }
+}
+
+export const named = effect (tool: Tool) => {
+  return tool.load
+}

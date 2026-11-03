@@ -1,6 +1,7 @@
 package vibelang
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"slices"
@@ -189,6 +190,85 @@ func TestEffectGenRefusals(t *testing.T) {
 			}
 		})
 	}
+}
+
+// A member named arguments, or named as the generator is, reads no binding of
+// the generator: only arguments and the generator's name themselves do.
+func TestEffectGenMemberNamesAreNotBindings(t *testing.T) {
+	for _, test := range []struct{ name, source, want string }{
+		{"a parameter's member", "export const f = Effect.fnUntraced(function* (input: { arguments: string[] }) {\n  return yield* Effect.succeed(input.arguments)\n})\n", "input.arguments"},
+		{"an optional member", "export const f = Effect.fnUntraced(function* (input?: { arguments: string[] }) {\n  return yield* Effect.succeed(input?.arguments)\n})\n", "input?.arguments"},
+		{"a property of a literal", "export const f = Effect.fnUntraced(function* (n: number) {\n  return yield* Effect.succeed({ arguments: n })\n})\n", "{ arguments: n }"},
+		{"a member named as the generator", "export const f = (o: { load: number }) => Effect.gen(function* load() {\n  return yield* Effect.succeed(o.load)\n})\n", "o.load"},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			got, ok := effectGenQuickFix(t, test.source)
+			if !ok {
+				t.Fatalf("no quick fix for:\n%s\nnotes: %s", test.source, effectGenNotes(t, test.source))
+			}
+			if !strings.Contains(got, test.want) {
+				t.Fatalf("the fix lost %q:\n%s", test.want, got)
+			}
+		})
+	}
+	// Shorthand and a computed key read the binding, so these stay refused.
+	for name, source := range map[string]string{
+		"shorthand":    "export function f() {\n  return Effect.gen(function* () {\n    return yield* Effect.succeed({ arguments })\n  })\n}\n",
+		"computed key": "export function f() {\n  return Effect.gen(function* () {\n    return yield* Effect.succeed({ [arguments.length]: 1 })\n  })\n}\n",
+		"element":      "export function f(o: Record<number, number>) {\n  return Effect.gen(function* () {\n    return yield* Effect.succeed(o[arguments.length])\n  })\n}\n",
+	} {
+		t.Run(name, func(t *testing.T) {
+			if got, ok := effectGenQuickFix(t, source); ok {
+				t.Fatalf("unexpected quick fix:\n%s", got)
+			}
+			if notes := effectGenNotes(t, source); !strings.Contains(notes, "its own arguments") {
+				t.Fatalf("EK1002's notes %q do not name the arguments", notes)
+			}
+		})
+	}
+}
+
+// A generator's reads of arguments and of its name, in every position a name
+// can stand: a position that names a member gets the quick fix and keeps its
+// text, and one that reads the binding keeps EK1002 with the reason.
+func FuzzEffectGenBindingReads(f *testing.F) {
+	memberForms := []string{"o.%s", "o?.%s", "o.%s.length", "(o).%s", "{ %s: 1 }", "{ %s() { return 1 } }", "o[\"%s\"]"}
+	readForms := []string{"%s", "{ %s }", "{ [%s.length]: 1 }", "o[%s.length]", "[%s]", "%s.length", "(%s)"}
+	for form := range len(memberForms) + len(readForms) {
+		f.Add(uint8(form), uint8(0))
+		f.Add(uint8(form), uint8(1))
+	}
+	f.Fuzz(func(t *testing.T, form, name uint8) {
+		i := int(form) % (len(memberForms) + len(readForms))
+		isMember := i < len(memberForms)
+		text, why, head := "arguments", "its own arguments", "function* ()"
+		if name%2 == 1 {
+			text, why, head = "self", "by its name", "function* self()"
+		}
+		expression := ""
+		if isMember {
+			expression = fmt.Sprintf(memberForms[i], text)
+		} else {
+			expression = fmt.Sprintf(readForms[i-len(memberForms)], text)
+		}
+		source := "export function f(o: any) {\n  return Effect.gen(" + head + " {\n    return yield* Effect.succeed(" + expression + ")\n  })\n}\n"
+		got, ok := effectGenQuickFix(t, source)
+		if isMember {
+			if !ok {
+				t.Fatalf("no quick fix for:\n%s\nnotes: %s", source, effectGenNotes(t, source))
+			}
+			if !strings.Contains(got, expression) {
+				t.Fatalf("the fix lost %q:\n%s", expression, got)
+			}
+			return
+		}
+		if ok {
+			t.Fatalf("a read of %s got a quick fix:\n%s\nfrom:\n%s", text, got, source)
+		}
+		if notes := effectGenNotes(t, source); !strings.Contains(notes, why) {
+			t.Fatalf("EK1002's notes %q do not say %q for:\n%s", notes, why, source)
+		}
+	})
 }
 
 // An Effect.fn with a pipeline argument is EK1002 too, though no overload

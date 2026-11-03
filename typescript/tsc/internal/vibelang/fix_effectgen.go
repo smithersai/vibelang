@@ -697,9 +697,9 @@ func scanEffectGenBody(c *checker.Checker, a *analyzer, file *ast.SourceFile, ge
 			if lexical {
 				s.why = "the generator reads new.target"
 			}
-		case ast.IsIdentifier(node) && node.Text() == "arguments" && lexical && ast.IsExpressionNode(node):
+		case ast.IsIdentifier(node) && node.Text() == "arguments" && lexical && readsBinding(node):
 			s.why = "the generator reads its own arguments"
-		case ast.IsIdentifier(node) && name != "" && node.Text() == name && node != generator.Name() && ast.IsExpressionNode(node) && !generatorKeepsName(generator):
+		case ast.IsIdentifier(node) && name != "" && node.Text() == name && node != generator.Name() && readsBinding(node) && !generatorKeepsName(c, generator):
 			s.why = "the generator refers to itself by its name, " + name
 		case ast.IsYieldExpression(node):
 			if node.AsYieldExpression().AsteriskToken == nil || node.Expression() == nil {
@@ -755,11 +755,21 @@ func scanEffectGenBody(c *checker.Checker, a *analyzer, file *ast.SourceFile, ge
 	return s
 }
 
+// readsBinding reports whether an identifier reads a binding: an expression
+// that is not the member name of input.arguments, or the name of the shorthand
+// { arguments }, which reads the binding it names.
+func readsBinding(node *ast.Node) bool {
+	if ast.IsShorthandPropertyAssignment(node.Parent) && node.Parent.Name() == node {
+		return true
+	}
+	return ast.IsExpressionNode(node) && !ast.IsRightSideOfPropertyAccess(node)
+}
+
 // generatorKeepsName reports whether generator's rewrite keeps its name: an
 // Effect.fn's keeps it, as effect function name.
-func generatorKeepsName(generator *ast.Node) bool {
+func generatorKeepsName(c *checker.Checker, generator *ast.Node) bool {
 	parent := generator.Parent
-	return parent != nil && ast.IsCallExpression(parent) && (len(parent.Arguments()) > 0 && parent.Arguments()[0] == generator)
+	return parent != nil && ast.IsCallExpression(parent) && len(parent.Arguments()) > 0 && parent.Arguments()[0] == generator && !isEffectFunction(c, parent.Expression(), "Effect", "gen")
 }
 
 // effectGenCallMeaning returns why call, which no yield* runs, would mean
