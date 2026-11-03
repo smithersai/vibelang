@@ -1,3 +1,6 @@
+// VIP-27 native declaration emit retains written TypeScript specifiers.
+// VIP-27 native declaration emit retains written TypeScript specifiers: docs/design/vips/0027-declaration-output.md#c7e3caa9afb8fa5d
+// VIP-34 native declaration emit retains written TypeScript specifiers: docs/design/vips/0034-compiler-and-tooling.md#0b9f771c5bbc9e2a
 import assert from "node:assert/strict"
 import test from "node:test"
 import fc from "fast-check"

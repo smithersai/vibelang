@@ -1,3 +1,5 @@
+// VIP-27 actual Bun project-script selection and stock TypeScript sidecar resolution.
+// VIP-27 actual Bun project-script selection and stock TypeScript sidecar resolution: docs/design/vips/0027-declaration-output.md#70decd41300d6864
 import assert from "node:assert/strict"
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { createRequire } from "node:module"

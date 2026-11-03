@@ -1,3 +1,5 @@
+// VIP-27 resolved module identity across specifier spellings.
+// VIP-27 resolved module identity across specifier spellings: docs/design/vips/0027-declaration-output.md#b68d99728039c6d2
 import assert from "node:assert/strict"
 import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
