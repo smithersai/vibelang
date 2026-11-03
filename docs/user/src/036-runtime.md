@@ -43,7 +43,7 @@ const result = Effect.runSyncWith(context)(label())
 
 `Context.make` pairs a service key with its implementation. The `run*With` variants take that context and run a program whose requirements it satisfies; `runPromiseWith` and `runForkWith` serve asynchronous and fiber-based entry points. Plain runners require no remaining application services.
 
-Call runners only where no fiber runs the code: a module's top level, an `async` function, a plain function (one that `effect` does not mark), or a plain callback registered from one of those places. A runner call inside a running program (an `effect` function or block, or a plain callback it passes on) is EK1005; run the Effect with `try` or use `fork`.
+Call runners only where no fiber runs the code: a module's top level, an `async` function, or a plain function or callback (one that `effect` does not mark), wherever it is passed. A runner call directly inside a running program (an `effect` function or block) is EK1005; run the Effect with `try` or use `fork`.
 
 Most applications build their context from layers. Use an explicit context when the host already has one, or a managed runtime when several entry points must share layer resources.
 
@@ -89,7 +89,6 @@ effect function roll(): number!! {
 
 ```vibe
 // notifications.vibe
-// pending: VIP-1, VIP-3, VIP-5, VIP-9, VIP-12, VIP-14
 // run: provide NotificationsLive { try notify("direct event") }
 export service Notifications {
   send(message: string): void!!

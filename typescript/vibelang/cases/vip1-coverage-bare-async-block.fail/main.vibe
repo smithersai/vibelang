@@ -1,4 +1,6 @@
-// expect: TS2552 EK1101
+// expect: TS1434 EK1101
+// TypeScript 5.9.3 on the .ts twin `async { 1 }`: TS1434 Unexpected keyword or identifier,
+// which hides the semantic TS2552; VIP-11 retired trailing-block parsing (0f6bb08b2eef).
 // docs/design/vips/0001-effect-and-async-functions.md#d6e1a64a95bd7859
 // VIP-1: bare async block is not an accepted expression
 async { 1 }

@@ -183,7 +183,6 @@ An extractor on a class without its own matcher is `EK0704`: use `when C:`, or `
 A value with a `[Symbol.customMatcher]` method decides for itself. `Symbol.customMatcher` comes from the proposal:
 
 ```vibe
-// pending: VIP-5, VIP-7, VIP-14
 // run: try Console.log([parity(2), parity(3)].join(", "))
 const Even = {
   [Symbol.customMatcher](subject: unknown) {

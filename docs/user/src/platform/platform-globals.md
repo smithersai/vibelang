@@ -305,7 +305,6 @@ effect function pageTitle() {
 Keep Node.js value imports in TypeScript too. For the default HTTP server, `ExperimentalNodeHttpServer.layer({ port })` supplies Node's `createServer` to Effect's existing layer:
 
 ```vibe
-// pending: VIP-14, VIP-33
 import { ExperimentalNodeHttpServer } from "vibelang-runtime/experimental/platform-node"
 
 export const Server = ExperimentalNodeHttpServer.layer({ port: 3000 })

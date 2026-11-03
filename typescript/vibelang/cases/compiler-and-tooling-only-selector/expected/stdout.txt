@@ -1,1 +1,1 @@
-compiler fix interface has no migration-driver --only selector
+--fix --only limits repairs to listed modules, and --only requires --fix

@@ -8,14 +8,14 @@
 // tsforms-schema-documented-type-fixed is what vibelang --fix writes.
 
 /** A 2D point in canvas-local coordinates. */
-export schema Point { x: number; y: number }
+export schema Point { readonly x: number; readonly y: number }
 /** A 2D point in canvas-local coordinates. */
 export type Point = typeof Point.Type
 
 /** The preserved model, as stored. */
-export schema Preserved { version: number }
+export schema Preserved { readonly version: number }
 /** The decoded preserved model. */
 export type Preserved = typeof Preserved.Type
 
 /** Documented on the constant alone. */
-export schema Bare { id: string }
+export schema Bare { readonly id: string }

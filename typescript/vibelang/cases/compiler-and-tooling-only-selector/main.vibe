@@ -1,3 +1,5 @@
-// docs/design/vips/0034-compiler-and-tooling.md#29eaf575be4d53ab
-// VIP-34: compiler fix interface has no migration-driver --only selector.
+// docs/design/vips/0034-compiler-and-tooling.md#caa3ea599380d0b2
+// VIP-34, amended (fab37b46453e): `--fix --only <files>` limits repair writes to the listed project modules.
+// docs/design/vips/0034-compiler-and-tooling.md#7475a348b94d1935
+// VIP-34: The option requires `--fix`.
 export const witness = 1;

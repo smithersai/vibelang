@@ -1,10 +1,10 @@
-step: 2 in 2 ops
+step: 2 in 3 ops
 record called, body runs: 0
-record: 7 in 2 ops
-record again: 7 in 2 ops
+record: 7 in 3 ops
+record again: 7 in 3 ops
 record ran, body runs: 2
 ignore: undefined in 1 ops
-resolve cached: "hit" in 2 ops
-resolve load: "miss" in 2 ops
+resolve cached: "hit" in 3 ops
+resolve load: "miss" in 3 ops
 greet: "hello ada" in 1 ops
 first: Failure, defect true

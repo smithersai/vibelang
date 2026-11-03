@@ -154,8 +154,11 @@ export function nativeContract(mode) {
     })
   } else if (mode === "only-option") fixture(({put,invoke,config,options})=>{
     Object.assign(options,{noEmit:true});put("main.vibe","export const value = 1;");config({files:["main.vibe"]})
+    // VIP-34, amended (fab37b46453e): --fix --only limits repairs to the listed modules; --only requires --fix.
     const r=invoke("--fix","--only","main.vibe","-p",".","--pretty","false")
-    assert.notEqual(r.status,0);assert.match(r.text,/TS5023.*only/)
+    assert.equal(r.status,0,r.text)
+    const bare=invoke("--only","main.vibe","-p",".","--pretty","false")
+    assert.notEqual(bare.status,0);assert.match(bare.text,/TS5023.*only/)
   })
   else throw new Error("unknown coverage oracle "+mode)
   assert.deepEqual(failures, [], mode)

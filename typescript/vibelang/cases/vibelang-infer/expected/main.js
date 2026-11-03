@@ -4,12 +4,12 @@ class NotFound extends Data.TaggedError("NotFound") {
 }
 const names = ["ada", "grace", "barbara"];
 // No annotations: lookup is Effect<string, NotFound, never>.
-function lookup(arg_1) {
-    return Effect_1.fnUntraced(function* lookup(id) {
+function lookup(id) {
+    return Effect_1.gen(function* () {
         if (id >= names.length)
             yield* Effect.fail(new NotFound({ id }));
         return names[id];
-    }).apply(this, arguments);
+    });
 }
 // main is Effect<void, NotFound, never>: lookup's error flows into it.
 export function main() {
@@ -21,4 +21,13 @@ export function main() {
 }
 // The module top level is not inside a program, so a runner starts one: it
 // receives a program, a function with no parameters (D7, D38).
-Effect.runPromise(Effect_1.suspend(() => Effect.catch(Effect_1.suspend(() => main()), (e) => Effect_1.suspend(() => { return Console.log(`caught ${e._tag} ${e.id}`); }))));
+Effect.runPromise((_tail_1 => Effect_1.gen(function* () {
+    const _completion_1 = _tail_1(), _value_1 = _completion_1[1];
+    return _completion_1[0] ? yield* _value_1 : _value_1;
+}))(() => [true, Effect.catch((_tail_2 => Effect_1.gen(function* () {
+        const _completion_2 = _tail_2(), _value_2 = _completion_2[1];
+        return _completion_2[0] ? yield* _value_2 : _value_2;
+    }))(() => [true, main()]), (e) => (_tail_3 => Effect_1.gen(function* () {
+        const _completion_3 = _tail_3(), _value_3 = _completion_3[1];
+        return _completion_3[0] ? yield* _value_3 : _value_3;
+    }))(() => { return [true, Console.log(`caught ${e._tag} ${e.id}`)]; }))]));

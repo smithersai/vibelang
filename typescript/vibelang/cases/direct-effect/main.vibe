@@ -1,7 +1,9 @@
-// A function whose body is a single result returns its Effect without a
-// generator (D274): Effect.suspend for a program, Effect.sync for a value,
-// Effect.void for an empty body. The body runs each time the Effect runs and
-// never when the function is called, and a throw in it is a defect.
+// A function whose body is a single result returns its Effect without
+// fnUntraced (D274): Effect.sync for a value, Effect.void for an empty body,
+// and Effect.gen around a lexical thunk for a program, whose yield* keeps
+// native delegation (VIP-5, detail 226; b40d0f27912c), one run-loop operation
+// more than Effect.suspend. The body runs each time the Effect runs and never
+// when the function is called, and a throw in it is a defect.
 // A program result.
 export effect function step(n: number) {
   return try Effect.succeed(n + 1)

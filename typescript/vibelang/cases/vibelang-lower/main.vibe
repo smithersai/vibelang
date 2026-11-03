@@ -15,8 +15,8 @@ effect function greet(name: string) {
 }
 
 // An arrow function that runs an Effect becomes one too. Its body is a single
-// call, so it returns that call's Effect, suspended until it runs, without a
-// generator.
+// call, so it returns that call's Effect through Effect.gen, which delegates
+// with yield* as try does (VIP-5), and runs nothing until it runs.
 const shout = effect (text: string) => try Console.log(text.toUpperCase())
 
 export effect function main() {
