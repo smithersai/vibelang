@@ -49,7 +49,15 @@ func (o *RawCompilerOptions) UnmarshalJSONFrom(dec *json.Decoder) error {
 			return decodeErr
 		}
 		var value any
-		if key == "paths" && dec.PeekKind() == '{' {
+		if key == "vibelang" {
+			// API options serialize core.CompilerOptions, including both modern
+			// and legacy Vibe fields. This is not the legacy tsconfig object.
+			var vibe *core.VibeLangOptions
+			if decodeErr := json.UnmarshalDecode(dec, &vibe); decodeErr != nil {
+				return decodeErr
+			}
+			value = vibe
+		} else if key == "paths" && dec.PeekKind() == '{' {
 			paths := collections.NewOrderedMapWithSizeHint[string, any](0)
 			if decodeErr := json.UnmarshalDecode(dec, paths); decodeErr != nil {
 				return decodeErr
@@ -71,6 +79,10 @@ func (o *RawCompilerOptions) Finalize(basePath tspath.RootedDirectoryPath) (*cor
 	}
 	var diagnostics []*ast.Diagnostic
 	for key, value := range o.values.Entries() {
+		if key == "vibelang" {
+			options.VibeLang, _ = value.(*core.VibeLangOptions)
+			continue
+		}
 		option := CommandLineCompilerOptionsMap.Get(key)
 		if option != nil && key != option.Name {
 			continue
