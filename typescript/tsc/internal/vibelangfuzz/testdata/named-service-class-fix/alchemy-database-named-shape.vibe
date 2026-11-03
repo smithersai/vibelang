@@ -1,0 +1,7 @@
+import * as Context from "effect/Context"
+export interface DatabaseService {
+  readonly provider: "sqlite" | "postgres"
+  readonly runtime: { readonly database: string }
+  readonly migrate?: { readonly identity: Readonly<Record<string, unknown>> }
+}
+export class Database extends Context.Service<Database, DatabaseService>()("BetterAuth.Database") {}

@@ -110,8 +110,13 @@ export class Svc extends Context.Service<Svc, Shape>()("t3/Svc") {}
 		}
 		result := FixProject(t.Context(), fs, bundled.LibPath(), config)
 		fixed := result.Files[file.FileName()]
-		if fixed != nil {
-			t.Errorf("--fix rewrote\n%s\nto\n%s", source, fixed.Text)
+		if strings.Contains(source, "class Svc extends Context.Service") {
+			if fixed == nil || !strings.Contains(fixed.Text, "export service Svc: Shape") ||
+				!strings.Contains(fixed.Text, `import * as Context from "effect/Context"`) {
+				t.Errorf("--fix must migrate the class and keep its declaration import: %+v", fixed)
+			}
+		} else if fixed != nil {
+			t.Errorf("--fix rewrote an already canonical service\n%s\nto\n%s", source, fixed.Text)
 		}
 	}
 }

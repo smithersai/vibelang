@@ -1,0 +1,23 @@
+import * as Context from "effect/Context"
+import { report } from "./report.ts"
+
+export interface DatabaseService {
+  readonly value: number
+  readonly optional?: string
+}
+
+/** The database key retains its native identity and shape. */
+export class Database extends Context.Service<Database, DatabaseService>()("BetterAuth.Database") {
+  /* retain the class body */
+}
+
+export const read = effect {
+  const database = try Database
+  return database.value
+}
+const run = Effect.runSyncWith(Context.make(Database, { value: 7 }))
+report([Database.key, run(read)])
+
+declare const queryShape: { readonly n: number }
+/** A private typeof shape preserves the public API. */
+export class QueryPort extends Context.Service<QueryPort, typeof queryShape>()("alchemy/QueryPort") {}

@@ -218,6 +218,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Publication property checks stopped at retired output-name wording. They now cite the native output-name rule and retain the packed-type, shadowing and refusal checks.
 
 - Loading `vibelang-runtime` through its guarded entry lacked `$registerErrorMatcher`, which the main entry exports, so the two entries disagreed on the runtime's exports. Both entries now export the same names.
+- Classes extending `Context.Service` with a named shape had no automatic migration. `vibelang --fix` now writes a whole-shape service declaration that preserves the shape type, key and public declaration.
 - The function-controls example read the callable `Function` constructor and reported `EK0107`. Its erased constructor comparison now uses the explicit `any` boundary allowed by VIP-1, while the `instanceof` and prototype controls remain checked.
 
 - The operation-operands example declared a `.vibe` function with `@throws {never}`, which VIP-4 rejects with `EK0406`. The example now uses the declaration’s implicit `never` thrown type and keeps all operation-operand checks.

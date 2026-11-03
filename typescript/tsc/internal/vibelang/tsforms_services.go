@@ -26,10 +26,10 @@ import (
 // derives from the package, the module, and the name (D93), so its key, which
 // "Service not found" messages show and a Context.Service elsewhere with the
 // same string shares, and its declaration file stay what they were. A class
-// whose shape is a named type draws the warning
-// without a fix: the declaration needs the members written out. A shape that
-// is not an object type, such as Context.Service<Port, number>, draws
-// nothing.
+// whose shape is a named type keeps it as written in the whole-shape form,
+// service Name: Shape { static readonly key = "<key>" } (VIP-9, written
+// whole shapes; namedServiceClassRewrite), whether or not the shape is an
+// object type, such as Context.Service<Port, number>.
 //
 // A module export keeps its declaration output, which chapter 7 requires of
 // every quick fix: the body form above declares a public Users.Shape
@@ -117,8 +117,13 @@ func serviceClassRewrite(c *checker.Checker, file *ast.SourceFile, class *ast.No
 		}
 	}
 	shapeType := c.GetTypeFromTypeNode(shape)
-	if shapeType == nil || shapeType.Flags()&checker.TypeFlagsObject == 0 || len(c.GetSignaturesOfType(shapeType, checker.SignatureKindCall)) != 0 || len(c.GetPropertiesOfType(shapeType)) == 0 {
-		return nil // a service declares members
+	if shapeType == nil {
+		return nil
+	}
+	// A written whole shape can be any type (VIP-9). Inline member bodies
+	// retain their existing object/member proof.
+	if ast.IsTypeLiteralNode(shape) && (shapeType.Flags()&checker.TypeFlagsObject == 0 || len(c.GetSignaturesOfType(shapeType, checker.SignatureKindCall)) != 0 || len(c.GetPropertiesOfType(shapeType)) == 0) {
+		return nil
 	}
 	// Removing the heritage expression requires proof that evaluating the key
 	// has no effects. A dynamic key can call code, read a getter, or throw.
@@ -135,7 +140,10 @@ func serviceClassRewrite(c *checker.Checker, file *ast.SourceFile, class *ast.No
 		keyNote = " Keep its key in the declaration: static readonly key = " + keyText + "."
 	}
 	if !ast.IsTypeLiteralNode(shape) {
-		return &formRewrite{why: "No quick fix: its members come from " + expressionText(file, shape) + "; write them in the declaration." + keyNote}
+		if statics {
+			return &formRewrite{why: "No quick fix: move its static members into the declaration." + keyNote}
+		}
+		return namedServiceClassRewrite(c, file, class, shape, keyText)
 	}
 	if statics {
 		return &formRewrite{why: "No quick fix: move its static members into the declaration." + keyNote}
@@ -199,6 +207,50 @@ func isModuleExport(c *checker.Checker, file *ast.SourceFile, class *ast.Node) b
 		}
 	}
 	return false
+}
+
+// namedServiceClassRewrite uses the accepted VIP-9 whole-shape spelling.
+// Retain body and brace trivia verbatim; a removed header comment needs an
+// author rather than being silently discarded or changing directive scope.
+func namedServiceClassRewrite(c *checker.Checker, file *ast.SourceFile, class, shape *ast.Node, key string) *formRewrite {
+	text := file.Text()
+	start := nodeStart(file, class)
+	if modifiers := class.Modifiers(); modifiers != nil && len(modifiers.Nodes) > 0 {
+		start = scanner.SkipTrivia(text, modifiers.End())
+	}
+	token := scanner.GetRangeOfTokenAtPosition(file, start)
+	if text[token.Pos():token.End()] != "class" {
+		return nil
+	}
+	heritage := ast.GetClassExtendsHeritageElement(class)
+	nativeKey, _ := serviceClassOf(c, class)
+	// Comments inside the retained shape or literal key remain there. Inspect
+	// only the parts of the heritage that the rewrite actually removes.
+	if hasComment(text[token.End():nodeStart(file, shape)]) ||
+		hasComment(text[shape.End():nodeStart(file, nativeKey)]) ||
+		hasComment(text[nativeKey.End():heritage.End()]) {
+		return &formRewrite{why: "No quick fix: preserve its service class header comments when writing the whole-shape declaration."}
+	}
+	bodyStart := scanner.SkipTrivia(text, heritage.End())
+	if bodyStart >= class.End() || text[bodyStart] != '{' {
+		return nil
+	}
+	body := text[bodyStart:class.End()]
+	if key != "" {
+		body = withServiceKey(body, key)
+	}
+	trivia := text[heritage.End():bodyStart]
+	if trivia == "" {
+		trivia = " "
+	}
+	declaration := "service " + class.Name().Text() + ": " + sourceText(file, shape) + trivia + body
+	// Keep the original Context binding available to declaration emit. Its
+	// namespace alias can be part of the exported ServiceClass base type even
+	// when the surface service declaration no longer mentions it.
+	return &formRewrite{
+		edits:       []sourceEdit{{start, class.End(), declaration}},
+		description: shortText(declaration, "the service with its written shape"),
+	}
 }
 
 // withServiceKey returns body, a service declaration's body, with

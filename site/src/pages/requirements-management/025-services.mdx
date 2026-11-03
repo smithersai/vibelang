@@ -250,6 +250,8 @@ The public `Sequence.Shape` alias described above belongs to a member-body decla
 
 The same declaration-import checks run with `noEmit` or `declaration: false`, because every VibeLang module has a sidecar. With `noUnusedLocals`, source checking takes priority: a binding left unread by the repair is removed.
 
+For a class written as `class Database extends Context.Service<Database, DatabaseService>()("BetterAuth.Database") {}`, `vibelang --fix` preserves the written whole shape: `service Database: DatabaseService { static readonly key = "BetterAuth.Database" }`. It keeps the existing shape type and runtime key, without adding a shape helper or namespace. Body comments and trivia before the brace stay in the declaration. A dynamic key, additional class members or header comments whose placement cannot be preserved stay for manual review with an explanation.
+
 ---
 
 The matching Effect page: [effect.website/docs/v4/requirements-management/services](https://effect.website/docs/v4/requirements-management/services/)
