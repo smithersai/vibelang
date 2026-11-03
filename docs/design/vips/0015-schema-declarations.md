@@ -30,7 +30,17 @@ const user = try Schema.decodeUnknownEffect(User)(input)   // fails with a Schem
 
 - `schema Name { fields }` and `schema Name = type` declare a Schema constant and its type under one name.
 - Each field's schema is written from its TypeScript type: primitives, literals, unions, arrays, tuples, `Record`, nested object types, or another schema's name. A type outside that mapping is a compile error.
-- `name?: T` means `Schema.optional`, which accepts a missing key or `undefined`, matching TypeScript's default.
+- With `exactOptionalPropertyTypes` off, `name?: T` means `Schema.optional`, which accepts a missing key or `undefined`, matching TypeScript's default. With it on, use the optional-wrapper rule below.
+
+The project's `exactOptionalPropertyTypes` setting controls mapped optional fields and tuple elements, matching TypeScript under that same configuration:
+
+| Source optional field or tuple element | Setting off (default) | Setting on |
+| --- | --- | --- |
+| `name?: T` / `T?` | `Schema.optional(S)`: missing or present `undefined` | `Schema.optionalKey(S)`: missing only |
+| `name?: T | undefined` / `(T | undefined)?` | `Schema.optional(S)` | `Schema.optional(S)` |
+
+The rule applies to ordinary schemas, schema errors, and nested mappings; `Schema.mutableKey` keeps its current position outside the optional wrapper. Native `data` payloads follow TypeScript's optional-property types directly. Declarations are identical to the Effect TypeScript twin under the same setting. Without `exactOptionalPropertyTypes`, TypeScript has no exact optional key, so neither does the sugar: a program needing `Schema.optionalKey` writes Effect's class or schema directly. This is not a gap to fill.
+
 - Refinements and transformations stay Schema constants, which a field names, as in `name: NonEmptyString`.
 - **Ambiguity: none.** `schema` is a contextual keyword on the same line as its name.
 - **Amended 2026-10-29: the type mappings mirror TypeScript, mutability included.**
