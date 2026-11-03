@@ -6,6 +6,8 @@ import { packageScripts, testOnlyScripts } from "./test-files.mjs"
 import { sourceChildArgvProof } from "./source-child-argv.mjs"
 import { sameGeneratedCode, sameGeneratedDocumentation, generatedHelperSuffix } from "./generated-helper-shape.mjs"
 
+import { canonicalSourceChildImports, nativeSourceChildImports, sourceChildImportRefusals } from "./source-child-imports.mjs"
+
 const marker = "// VibeLang source-child loader arguments."
 const template = readFileSync(new URL("../templates/source-child.ts", import.meta.url), "utf8")
 const legacyTemplate = readFileSync(new URL("../templates/source-child-legacy.ts", import.meta.url), "utf8")
@@ -203,6 +205,14 @@ function refreshSourceChildPolicy(text, source, ts, checker, calls, file) {
 }
 
 export function addSourceChildLoaders(text, ts, { file = "child.ts", type = "module" } = {}) {
+  const canonical = canonicalSourceChildImports(text, ts, file)
+  const result = addCanonicalSourceChildLoaders(canonical, ts, {file,type})
+  if (result.refusals.length) return {...result,text:canonical === text ? result.text : text,refusals:sourceChildImportRefusals(text,canonical,result.refusals,ts,file)}
+  const adapted = nativeSourceChildImports(result.text, ts, file)
+  return {...result, text:result.text === canonical && canonical !== text ? text : adapted.text, refusals:[...result.refusals,...adapted.refusals]}
+}
+
+function addCanonicalSourceChildLoaders(text, ts, { file = "child.ts", type = "module" } = {}) {
   const source = ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true, ts.getScriptKindFromFileName(file))
   const refusals = []
   const warn = (node, reason) => refusals.push({
@@ -339,7 +349,7 @@ export function addSourceChildLoaders(text, ts, { file = "child.ts", type = "mod
           }
           let after = text
           for (const edit of edits.sort((a,b) => b.start-a.start)) after = after.slice(0,edit.start) + edit.text + after.slice(edit.end)
-          return addSourceChildLoaders(after, ts, { file, type })
+          return addCanonicalSourceChildLoaders(after, ts, { file, type })
         }
         warn(helper, "non-source launcher has a manually edited or observed generated helper; retain it for review")
         return { text, usesChild: true, refusals }
@@ -375,7 +385,7 @@ export function addSourceChildLoaders(text, ts, { file = "child.ts", type = "mod
     }
     const refreshed = refreshSourceChildImport(text, source, ts, checker)
     if (refreshed?.refusals.length) return refreshed
-    if (refreshed && refreshed.text !== text) return addSourceChildLoaders(refreshed.text, ts, { file, type })
+    if (refreshed && refreshed.text !== text) return addCanonicalSourceChildLoaders(refreshed.text, ts, { file, type })
     const upgraded = refreshSourceChildPolicy(text, source, ts, checker, calls, file)
     if (upgraded) return upgraded
     if (refreshed) return refreshed

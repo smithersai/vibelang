@@ -1,0 +1,7 @@
+{
+  "repository": "opencode",
+  "pattern": "packages/core/src/persistent-pty/daemon.ts",
+  "native": "import { spawn } from \"node:child_process\"\nimport { Schema } from \"effect\"\nexport const Lifecycle = Schema.Struct({ status: Schema.Literal(\"running\") })\nexport function launch(command: string, entry: string) { return spawn(command, [entry]) }\n",
+  "rules": ["no-star-import", "no-import-alias"],
+  "expectation": "Reuse the native Schema binding and add only an unaliased fileURLToPath import; native imports and declarations remain intact."
+}

@@ -182,7 +182,7 @@ test("property: detached package setup uses selected or declared pins and never 
         assert.equal(pkg.dependencies, undefined)
         assert.equal(pkg.devDependencies, undefined)
       } else {
-        assert.ok(text.includes('"effect/Schema"'))
+        assert.match(text, /import \{ \/\* VibeLang source-child binding\. \*\/ Schema \} from "effect"/)
         assert.deepEqual(result.warnings, [])
         const field = runtime ? "dependencies" : "devDependencies"
         assert.equal(pkg[field].effect, selected ? "4.1.1" : rootPin)

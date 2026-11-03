@@ -1,10 +1,18 @@
 // A generated launcher can be private inside the migrated file (VIP-40).
 // Its native imports must not become platform globals in Vibe code.
 import { readFileSync } from "node:fs"
+import { canonicalSourceChildImports, sourceChildImportRefusals } from "./source-child-imports.mjs"
 const template = readFileSync(new URL("../templates/source-child.ts", import.meta.url), "utf8")
 const marker = "// VibeLang source-child loader arguments."
 
 export function sourceChildModule(text, file, ts) {
+  const canonical = canonicalSourceChildImports(text, ts, file)
+  const result = canonicalSourceChildModule(canonical, file, ts)
+  if (!result.converted.length) return {...result,text,refused:sourceChildImportRefusals(text,canonical,result.refused,ts,file)}
+  return result
+}
+
+function canonicalSourceChildModule(text, file, ts) {
   const source = ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS)
   const unchanged = { text, converted: [], refused: [] }
   if (!text.includes(marker) || source.parseDiagnostics.length) return unchanged
@@ -84,20 +92,29 @@ export function sourceChildModule(text, file, ts) {
     if(imports.some(decl=>references(symbol(decl.importClause.namedBindings.name)).some(node=>node!==decl.importClause.namedBindings.name && !inside(node)))){
       refuse("source-child helper shares authored imports; retain it for review");continue
     }
-    const moduleName=fresh("__vibelangSourceChildPlatform"), native=fresh("__vibelangNodeModule"), parent=fresh("__vibelangParentURL")
+    const moduleName=fresh("__vibelangSourceChildPlatform"), parent=fresh("__vibelangParentURL")
     const f=ts.factory
     const prop=(object,key)=>f.createPropertyAccessExpression(object,key)
     const call=(expression,args)=>f.createCallExpression(expression,undefined,args)
-    const resolved=call(prop(call(prop(f.createIdentifier(native),"createRequire"),[f.createIdentifier(parent)]),"resolve"),[f.createIdentifier("specifier")])
+    const resolved=call(prop(call(f.createIdentifier("createRequire"),[f.createIdentifier(parent)]),"resolve"),[f.createIdentifier("specifier")])
     // These two compiler exports are file targets for both Node conditions.
     // Return a URL just as import.meta.resolve did, including escaped paths.
-    const loader=prop(call(prop(f.createIdentifier(url),"pathToFileURL"),[resolved]),"href")
+    const loader=prop(call(f.createIdentifier("pathToFileURL"),[resolved]),"href")
     const resolver=f.createArrowFunction(undefined,undefined,[f.createParameterDeclaration(undefined,undefined,"specifier")],undefined,f.createToken(ts.SyntaxKind.EqualsGreaterThanToken),loader)
     const old=helper.parameters[2]
     const parameter=f.updateParameterDeclaration(old,old.modifiers,old.dotDotDotToken,old.name,old.questionToken,old.type,resolver)
     const parentParameter=f.createParameterDeclaration(undefined,undefined,parent,undefined,f.createKeywordTypeNode(ts.SyntaxKind.StringKeyword),f.createStringLiteral(""))
     const fn=f.updateFunctionDeclaration(helper,[f.createModifier(ts.SyntaxKind.ExportKeyword)],helper.asteriskToken,helper.name,helper.typeParameters,[...helper.parameters.slice(0,2),parameter,parentParameter],helper.type,helper.body)
-    const body=['import * as '+native+' from "node:module"',...imports.map(node=>node.getText(source)),print(fn)].join("\n\n")
+    const transformed=ts.transform(fn,[context=>node=>{
+      const visit=node=>{
+        if(ts.isPropertyAccessExpression(node) && ts.isIdentifier(node.expression) && node.expression.text===url && node.name.text==="fileURLToPath") return f.createIdentifier("fileURLToPath")
+        if(ts.isIdentifier(node) && node.text===schema) return f.createIdentifier("Schema")
+        return ts.visitEachChild(node,visit,context)
+      }
+      return ts.visitNode(node,visit)
+    }])
+    const body=['import { createRequire } from "node:module"','import { fileURLToPath, pathToFileURL } from "node:url"','import { Schema } from "effect"',print(transformed.transformed[0])].join("\n\n")
+    transformed.dispose()
     const rendered="module "+moduleName+" {\n"+body.split("\n").map(line=>line?"  "+line:"").join("\n")+"\n}\nimport { "+helper.name.text+" } from "+moduleName+"\n"
     const at=Math.min(...imports.map(node=>node.getStart(source)))
     edits.push({start:at,end:at,text:rendered})

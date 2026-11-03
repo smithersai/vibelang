@@ -5,15 +5,23 @@ import { dirname, join } from "node:path"
 import { tmpdir } from "node:os"
 import { fileURLToPath } from "node:url"
 import { test } from "node:test"
+import { canonicalSourceChildImports } from "../lib/source-child-imports.mjs"
 import { addSourceChildLoaders } from "../lib/source-children.mjs"
 
 const repo = fileURLToPath(new URL("../../../../", import.meta.url))
 const require = createRequire(join(repo, "packages/runtime/package.json"))
 const ts = require("typescript"), fc = require("fast-check")
 const corpus = JSON.parse(readFileSync(new URL("./corpus/opencode-source-child-checkjs.json", import.meta.url)))
-const runtimeText = source => ts.transpileModule(source, {
+const runtimeText = source => {
+  const canonical = canonicalSourceChildImports(source, ts, "launch.mjs")
+  const parsed = ts.createSourceFile("launch.mjs", canonical, ts.ScriptTarget.Latest, true)
+  const imports = parsed.statements.filter(ts.isImportDeclaration).sort((a,b)=>a.moduleSpecifier.text.localeCompare(b.moduleSpecifier.text))
+  const body = parsed.statements.filter(node=>!ts.isImportDeclaration(node))
+  const ordered = ts.createPrinter().printFile(ts.factory.updateSourceFile(parsed,[...imports,...body]))
+  return ts.transpileModule(ordered, {
   compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ESNext, removeComments: true }
 }).outputText
+}
 
 function check(modules, { emit = false } = {}) {
   const root = mkdtempSync(join(tmpdir(), "source-child-checkjs-"))

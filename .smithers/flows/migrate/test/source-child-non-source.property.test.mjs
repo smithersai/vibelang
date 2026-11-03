@@ -89,7 +89,7 @@ test('property: mixed legacy shell and source calls normalize in one pass',()=>{
   assert.ok(shell,'native shell fixture')
   assert.ok(r.text.includes('return '+shell[1]))
   assert.ok(r.text.includes('spawnSync(...'+helper+'(shell, ['+JSON.stringify(entry)+']))'))
-  assert.ok(r.text.includes('import * as '+url+' from "node:url"'))
+  assert.match(r.text, /import \{ \/\* VibeLang source-child binding\. \*\/ fileURLToPath \} from "node:url"/)
   assert.equal(addSourceChildLoaders(r.text,ts,options).text,r.text)
  }),{seed:860053,numRuns:150})
 })
