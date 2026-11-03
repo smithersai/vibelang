@@ -1,6 +1,6 @@
 # Failures
 
-Sources: [VIP-4](../vips/0004-throw.md), [VIP-13](../vips/0013-error-declarations.md), [VIP-29](../vips/0029-schema-errors.md). Handling failures with `catch` is in [Running Effects](002-running.md#catch), and matching them is in [Pattern matching](004-match.md).
+Sources: [VIP-4](../vips/0004-throw.md), [VIP-13](../vips/0013-error-declarations.md), [VIP-29](../vips/0029-schema-errors.md), [VIP-41](../vips/0041-throw-expressions.md). Handling failures with `catch` is in [Running Effects](002-running.md#catch), and matching them is in [Pattern matching](004-match.md).
 
 ## `throw`
 
@@ -15,7 +15,8 @@ Synchronous VibeLang code never throws (VIP-4, amended 2026-10-31): a function t
 | any other `.vibe` code | a compile error, `EK0401` ([Plain code never throws](#plain-code-never-throws)) |
 | a `.ts` or JavaScript file, or a `module` body (VIP-40) | JavaScript's `throw`; callers see it through `@throws` ([Thrown types](#thrown-types)) |
 
-`throw` as an expression follows the [TC39 throw-expressions proposal](https://tc39.es/proposal-throw-expressions/) for grammar and precedence (`EK1010` reports its syntax restriction). It is allowed wherever a `throw` statement is allowed.
+A throw expression follows [VIP-41](../vips/0041-throw-expressions.md) and its [pinned TC39 proposal](../vips/tc39-throw-expressions/README.md). Its syntax restriction is `EK1010`; [Appendix A](900-appendices.md#throwexpression) gives the grammar.
+
 ```vibe es
 // compiler-gap: pending VIP-4
 effect function load(id: string) {
@@ -56,6 +57,16 @@ function orNull(s: string) { try { return JSON.parse(s) } catch { return null } 
 ```
 
 Quick fixes, in order: make the function `effect`, so `throw` is `Effect.fail` and a call known to throw runs with `try Effect.try(() => …)`; make it `effect` and write `return try die(e)`; or move the code to a `.ts` file. Code that can't be `effect` (constructors, accessors, plain generators, initializers, `static` blocks, parameter lists, the top level) gets only the `.ts` fix. A plain handler gets `x catch effect (e) => { throw e }` and `x catch effect (e) => { return try die(e) }`. An exported function of a published package offers the `.ts` fix first, because `effect` changes its declaration.
+
+## Throw expressions
+
+[VIP-41](../vips/0041-throw-expressions.md) adopts the [pinned TC39 proposal](../vips/tc39-throw-expressions/README.md) exactly for grammar, precedence and parentheses. See [Appendix A](900-appendices.md#throwexpression) for the productions. A throw expression takes a unary operand: `value ?? throw new Missing()`, `condition ? throw error : fallback`, and unary nesting such as `!throw error` parse. A statement starting with `throw` is still a throw statement.
+
+A token in [ThrowExpressionInvalidPunctuator](900-appendices.md#throwexpressioninvalidpunctuator) immediately after the operand is an error (`EK1010`). Parenthesize the operand to throw a compound value, `value ?? throw (a + b)`, or parenthesize the throw before another operator, `(throw error) + b`. Commas count: `f(throw error, b)` is invalid; `f((throw error), b)` parses. The first arm of `condition ? throw error : fallback` needs no parentheses because `:` is not forbidden. Neither are the keyword operators `in` and `instanceof`, or TypeScript's `as` and `satisfies`. ECMAScript automatic semicolon insertion still applies: a line break can end an initializer before a new statement or class member.
+
+Where a throw is allowed at all remains [VIP-4's no-throw rule](#plain-code-never-throws) (`EK0401`). This grammar does not authorize a plain function to throw or change eager parameter-initialization rules. Throw expressions remain supported; no migration to `do { throw (operand); }` is required.
+
+VIP-7's direct match-arm body has its separate `"throw" Expression` production: `default: throw a + b;` throws the full operand, as a throw statement does. A throw expression nested within an arm still follows VIP-41.
 
 ## Thrown types
 

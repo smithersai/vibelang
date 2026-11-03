@@ -67,7 +67,7 @@ The compiler is being changed to match the VIPs. Until it does, a VibeLang examp
 
 1. [Functions and Effect types](001-functions.md): VIP-1, VIP-3, VIP-4 (legacy JavaScript), VIP-26, VIP-27, VIP-40.
 2. [Running Effects](002-running.md): VIP-5, VIP-2, VIP-17 to VIP-23.
-3. [Failures](003-failures.md): VIP-4, VIP-13, VIP-29.
+3. [Failures](003-failures.md): VIP-4, VIP-13, VIP-29, VIP-41.
 4. [Pattern matching](004-match.md): VIP-7.
 5. [Services and the environment](005-services.md): VIP-9, VIP-12, VIP-6, VIP-14, VIP-33.
 6. [Data](006-data.md): VIP-15, VIP-16, VIP-28.

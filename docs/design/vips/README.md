@@ -36,6 +36,7 @@ Will decides each VibeLang language decision as a VIP, one at a time. Nothing is
 | [38](0038-effect-lint-built-in.md) | Effect's type-aware lint is built into VibeLang | accepted 2026-10-29 |
 | [39](0039-vibex.md) | `.vibex`: VibeLang with JSX | accepted 2026-10-31 |
 | [40](0040-module-declarations.md) | `module` declarations: TypeScript inside a `.vibe` file | accepted 2026-11-03 |
+| [41](0041-throw-expressions.md) | TC39 throw expressions | accepted 2026-11-02 |
 
 
 ## Denied
