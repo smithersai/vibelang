@@ -1,26 +1,28 @@
 // opencode stats/core geo.ts: a guard proves a property, then a plain TypeScript
 // call reads it. Effect.try's function does not know what the guard proved.
 import { double } from "./plain.ts"
+import { identity } from "effect/Function";
+
 
 type Options = { readonly p?: number }
 
 export const ternary = effect (o: Options) => {
-  return try Effect.orDie(Effect.try({ try: () => o.p ? double(o.p) : 0, catch: (error) => error }))
+  return try Effect.orDie(Effect.try({ try: () => o.p ? double(o.p) : 0, catch: identity }))
 }
 
 export const nested = effect (o: Options, n: number) => {
-  const v = try Effect.orDie(Effect.try({ try: () => o.p ? double(o.p) : n > 0 ? double(n) : double(0), catch: (error) => error }))
+  const v = try Effect.orDie(Effect.try({ try: () => o.p ? double(o.p) : n > 0 ? double(n) : double(0), catch: identity }))
   return v
 }
 
 export const both = effect (o: Options) => {
-  return try Effect.orDie(Effect.try({ try: () => o.p !== undefined && double(o.p) > 0, catch: (error) => error }))
+  return try Effect.orDie(Effect.try({ try: () => o.p !== undefined && double(o.p) > 0, catch: identity }))
 }
 
 export const block = effect (o: Options) => {
   if (o.p) {
     const n = o.p
-    const r = try Effect.orDie(Effect.try({ try: () => double(n), catch: (error) => error }))
+    const r = try Effect.orDie(Effect.try({ try: () => double(n), catch: identity }))
     return r
   }
   return 0
@@ -29,5 +31,5 @@ export const block = effect (o: Options) => {
 export const early = effect (o: Options) => {
   if (!o.p) return 0
   const n = o.p
-  return try Effect.orDie(Effect.try({ try: () => double(n), catch: (error) => error }))
+  return try Effect.orDie(Effect.try({ try: () => double(n), catch: identity }))
 }

@@ -262,7 +262,11 @@ A run repairs only the selected project's own files ([VIP-34](../vips/0034-compi
 | Fresh sibling `.ts` | Only the platform repair, after proving preservation of run phase, captures, receiver and public types; it never overwrites an existing file. |
 | Dependencies, `typeRoots`, bundled libraries, foreign `.ts`, `.tsx`, `.js`, `.jsx`, `.mjs`, `.cjs`, declarations (`.d.ts`, `.d.vibe.ts`, `.d.vibex.ts`), emitted output, `tsBuildInfoFile`, lock files and other referenced projects | No repair writes. With `-b`, each project fixes its own files in build order. |
 
-A forbidden write is refused with a not-fixed explanation and no change. A rewrite that can't preserve types, behavior and declaration output refuses at that site. [Scope flags](#fix-scopes) select passes; [`--only`](#selecting-ordinary-fix-files) further limits ordinary repairs.
+A forbidden write is refused with a not-fixed explanation and no change. A rewrite that can't preserve types, behavior and declaration output refuses at that site.
+
+Generated synchronous defect bridges use `Effect.orDie(Effect.try({ try: () => call(), catch: identity }))` with `identity` from `effect/Function`, reusing an existing visible import or choosing an unshadowed binding. The catch mapper adds no local function to the migrated module's coverage.
+
+ [Scope flags](#fix-scopes) select passes; [`--only`](#selecting-ordinary-fix-files) further limits ordinary repairs.
 
 ### Trailing-block migration
 

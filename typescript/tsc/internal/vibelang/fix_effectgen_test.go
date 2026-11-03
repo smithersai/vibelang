@@ -227,7 +227,7 @@ func TestEffectGenProgramValueIsHeld(t *testing.T) {
 // the block, its class would join E. Smithers' Route and ElectricCollection kept
 // their generators over this (new TextDecoder().decode, TS2375).
 func TestEffectGenTrackedThrowStaysDefect(t *testing.T) {
-	const wrapped = "try Effect.orDie(Effect.try({ try: () => JSON.parse(s), catch: (error) => error }))"
+	const wrapped = "try Effect.orDie(Effect.try({ try: () => JSON.parse(s), catch: identity }))"
 	for _, test := range []struct{ name, source, want string }{
 		{"a statement", "export const f = (s: string): Effect.Effect<void> => Effect.gen(function* () {\n  JSON.parse(s)\n  yield* Effect.void\n})\n", wrapped},
 		{"a value", "export const f = (s: string): Effect.Effect<number> => Effect.gen(function* () {\n  yield* Effect.void\n  const n = JSON.parse(s)\n  return n\n})\n", "const n = " + wrapped},

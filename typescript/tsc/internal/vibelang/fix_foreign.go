@@ -22,7 +22,7 @@ import (
 // and Effect.orDie keeps the exception a defect and the declaration as it was:
 //
 //	const kind = Dialect.integer(sql)
-//	const kind = try Effect.orDie(Effect.try({ try: () => Dialect.integer(sql), catch: (error) => error }))
+//	const kind = try Effect.orDie(Effect.try({ try: () => Dialect.integer(sql), catch: identity }))
 //
 // Listing the function in trustedPackages or in trusted(impl, []) would say the
 // same to the compiler, but on no evidence: trust is a claim about the code,
@@ -139,7 +139,11 @@ func planForeignCall(c *checker.Checker, file *ast.SourceFile, call *ast.Node) *
 	if !isMarkedEffect(fn) && (ast.IsArrowFunction(fn) || ast.IsFunctionExpression(fn)) {
 		edits = append(edits, sourceEdit{nodeStart(file, fn), nodeStart(file, fn), "effect "}) // try needs effect code
 	}
-	wrapped := "try Effect.orDie(Effect.try({ try: () => " + code + ", catch: (error) => error }))"
+	identity, identityImport := defectBridgeIdentity(c, file, []*ast.Node{call})
+	if identityImport != nil {
+		edits = append(edits, *identityImport)
+	}
+	wrapped := "try Effect.orDie(Effect.try({ try: () => " + code + ", catch: " + identity + " }))"
 	if !standsAlone(target) {
 		wrapped = "(" + wrapped + ")"
 	}

@@ -100,11 +100,11 @@ func TestForeignCallFixKeepsNarrowing(t *testing.T) {
 		t.Fatal(err)
 	}
 	for name, tc := range map[string]struct{ body, want string }{
-		"ternary":        {"return o.p ? double(o.p) : 0", "return try Effect.orDie(Effect.try({ try: () => o.p ? double(o.p) : 0, catch: (error) => error }))"},
-		"nested ternary": {"return o.p ? double(o.p) : n > 0 ? double(n) : double(0)", "return try Effect.orDie(Effect.try({ try: () => o.p ? double(o.p) : n > 0 ? double(n) : double(0), catch: (error) => error }))"},
+		"ternary":        {"return o.p ? double(o.p) : 0", "return try Effect.orDie(Effect.try({ try: () => o.p ? double(o.p) : 0, catch: identity }))"},
+		"nested ternary": {"return o.p ? double(o.p) : n > 0 ? double(n) : double(0)", "return try Effect.orDie(Effect.try({ try: () => o.p ? double(o.p) : n > 0 ? double(n) : double(0), catch: identity }))"},
 		"and":            {"return o.p !== undefined && double(o.p) > 0", "try: () => o.p !== undefined && double(o.p) > 0"},
-		"if block":       {"if (o.p) {\n    const r = double(o.p)\n    return r\n  }\n  return 0", "const n2 = o.p\n    const r = try Effect.orDie(Effect.try({ try: () => double(n2), catch: (error) => error }))"},
-		"early return":   {"if (!o.p) return 0\n  return double(o.p)", "const n2 = o.p\n  return try Effect.orDie(Effect.try({ try: () => double(n2), catch: (error) => error }))"},
+		"if block":       {"if (o.p) {\n    const r = double(o.p)\n    return r\n  }\n  return 0", "const n2 = o.p\n    const r = try Effect.orDie(Effect.try({ try: () => double(n2), catch: identity }))"},
+		"early return":   {"if (!o.p) return 0\n  return double(o.p)", "const n2 = o.p\n  return try Effect.orDie(Effect.try({ try: () => double(n2), catch: identity }))"},
 	} {
 		t.Run(name, func(t *testing.T) {
 			dir := copyCompilerFixture(t, filepath.Join(root, "typescript/vibelang/cases/ek4401-fix.fail"), root)
