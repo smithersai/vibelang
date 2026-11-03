@@ -1,0 +1,9 @@
+const key = "computed" as const
+export error Entry { "quoted": number; 7: number; [key]: number }
+export const entry = new Entry({ quoted: 1, 7: 2, computed: 3 })
+
+export schema error SchemaEntry { "quoted": number; 7: number; [key]: number }
+export const schemaEntry = new SchemaEntry({ quoted: 4, 7: 5, computed: 6 })
+
+export const fields: readonly [number, number, number] = [entry.quoted, entry[7], entry.computed]
+export const schemaFields: readonly [number, number, number] = [schemaEntry.quoted, schemaEntry[7], schemaEntry.computed]
