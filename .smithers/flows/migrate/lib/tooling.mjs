@@ -457,11 +457,15 @@ const adaptedUnused = coreUnused && { ...coreUnused, create(context) {
 } }
 const levels = { allow: "off", deny: "error", off: "off", warn: "warn", error: "error", 0: "off", 1: "warn", 2: "error" }
 const missing = new Set()
+// Oxlint does not run these two on TypeScript files, whose checker reports
+// them (TS2378, TS2393); VibeLang's checker reports them in .vibe files.
+const typescriptChecked = new Set(["getter-return", "no-dupe-class-members"])
 const rules = (settings = {}) => Object.fromEntries(Object.entries(settings).flatMap(([name, setting]) => {
   const [level, ...options] = [setting].flat()
   const value = [levels[level] ?? level, ...options]
   const plugin = name.includes("/") ? name.slice(0, name.lastIndexOf("/")) : ""
   const rule = name.slice(name.lastIndexOf("/") + 1)
+  if ((plugin === "" || plugin === "eslint") && typescriptChecked.has(rule)) return []
   const typedName = "@typescript-eslint/" + rule
   // A core rule typescript-eslint extends for TypeScript, as Oxlint's does, is typescript-eslint's.
   if (plugin === "typescript" || plugin === "@typescript-eslint" || ((plugin === "" || plugin === "eslint") && typed.has(rule))) {

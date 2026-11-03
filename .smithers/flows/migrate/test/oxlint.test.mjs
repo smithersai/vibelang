@@ -233,6 +233,58 @@ test("directory overrides retain every JS rule and its severity on .vibe files",
   assert.ok(configs.find(config => config.plugins)?.plugins.oxc.rules["no-accumulating-spread"])
 })
 
+// Oxlint skips getter-return and no-dupe-class-members on TypeScript files,
+// whose checker reports them; t3code's exhaustive-switch getters in
+// mcpApps.vibe and preview.vibe got three getter-return warnings their .ts
+// originals never had. The .vibe configuration drops the same two.
+const typescriptCheckedProbes = {
+  "getter-return": 'type R = "a" | "b"\nexport class E { constructor(readonly r: R) {} get message(): string { switch (this.r) { case "a": return "x"; case "b": return "y" } } }\n',
+  "no-dupe-class-members": "export class A { m() { return 1 } m() { return 2 } }\n",
+  "no-unreachable": "export function f() { return 1; console.log(2) }\n",
+  "no-const-assign": "const c = 1\nc = 2\nexport { c }\n",
+}
+const typescriptCheckedFixture = t => fixture(t, {
+  "package.json": '{"scripts":{"lint":"oxlint"}}',
+  ".oxlintrc.json": JSON.stringify({
+    categories: { correctness: "off" },
+    rules: Object.fromEntries(Object.keys(typescriptCheckedProbes).map((rule, index) => [index % 2 ? "eslint/" + rule : rule, "error"])),
+    overrides: [{ files: ["src/**/*.ts"], rules: { "getter-return": "warn", "eslint/no-dupe-class-members": "warn", "no-debugger": "warn" } }],
+  }),
+  "node_modules/vibelang/package.json": '{"name":"vibelang","type":"module","exports":{"./eslint":"./eslint.mjs"}}',
+  "node_modules/vibelang/eslint.mjs": "export default { parseForESLint() {} }",
+})
+const carriedRules = configs => new Set(configs.flatMap(config => Object.keys(config.rules ?? {})))
+
+test("rules Oxlint leaves to TypeScript's checker are not carried to .vibe files", async t => {
+  const root = typescriptCheckedFixture(t)
+  wireDeveloperTools({ root, specsFor, ts })
+  const { default: configs, configFor } = await import(join(root, ".vibelang/eslint.config.mjs"))
+  const carried = carriedRules(configs)
+  for (const rule of ["getter-return", "no-dupe-class-members"]) assert.equal(carried.has(rule), false, rule)
+  for (const rule of ["no-unreachable", "no-const-assign"]) assert.equal(carried.has(rule), true, rule)
+  assert.deepEqual(configs.at(-1).rules, { "no-debugger": ["warn"] })
+  // Strict mode names rules it cannot carry; these two are dropped on purpose.
+  await configFor(null, true)
+})
+
+test("the .vibe configuration drops exactly the core rules installed Oxlint skips on .ts", { skip: !installed && "set VIBELANG_OXLINT_NODE_MODULES", timeout: 180000 }, async t => {
+  const root = typescriptCheckedFixture(t)
+  for (const [rule, text] of Object.entries(typescriptCheckedProbes)) {
+    writeFileSync(join(root, rule + ".ts"), text)
+    writeFileSync(join(root, rule + ".js"), text.replace(/^type .*\n/, "").replace("(readonly r: R)", "(r)").replace(/\): string/, ")").replace("{} get", "{ this.r = r } get"))
+  }
+  wireDeveloperTools({ root, specsFor, ts })
+  const carried = carriedRules((await import(join(root, ".vibelang/eslint.config.mjs"))).default)
+  for (const rule of Object.keys(typescriptCheckedProbes)) {
+    const reports = file => {
+      const result = spawnSync(join(installed, ".bin/oxlint"), ["--format", "json", "-c", ".oxlintrc.json", file], { cwd: root, encoding: "utf8" })
+      return JSON.parse(result.stdout).diagnostics.filter(d => d.code === "eslint(" + rule + ")").length
+    }
+    assert.ok(reports(rule + ".js") > 0, rule + ": the JavaScript probe must report")
+    assert.equal(carried.has(rule), reports(rule + ".ts") > 0, rule)
+  }
+})
+
 test("the source-tree accumulating-spread rule agrees with upstream Oxlint across reducers, loops and shadowing", { skip: !installed && "set VIBELANG_OXLINT_NODE_MODULES", timeout: 180000 }, async t => {
   const root = fixture(t, {
     "package.json": '{"type":"module","scripts":{"lint":"oxlint"}}',

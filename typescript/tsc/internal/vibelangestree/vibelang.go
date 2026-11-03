@@ -131,6 +131,10 @@ func (c *converter) convertVibeLang(n *ast.Node, parent *ast.Node) (*obj, bool) 
 		if result := c.vibeCall(n); result != nil {
 			return result, true
 		}
+	case ast.KindTaggedTemplateExpression:
+		if n.Flags&ast.NodeFlagsVibeLangTry != 0 {
+			return c.triedTaggedTemplate(n), true
+		}
 	case ast.KindBlock:
 		if result := c.vibeBlock(n, parent); result != nil {
 			return result, true
@@ -296,6 +300,27 @@ func (c *converter) vibeCall(n *ast.Node) *obj {
 			set("right", right)
 	}
 	return nil
+}
+
+// triedTaggedTemplate converts try tag`…`, which the parser writes as the
+// tagged template itself, flagged and starting at try (parser/vibelang_try.go),
+// as $try(tag`…`): the call the parser writes for any operand other than a
+// call. A tagged template statement reads to ESLint as an unused expression;
+// a tried one runs its Effect, as a call statement does.
+func (c *converter) triedTaggedTemplate(n *ast.Node) *obj {
+	tagged := n.AsTaggedTemplateExpression()
+	keyword, _ := c.tokenAfter(n.Pos())
+	template := c.nodeAt(span{c.start(tagged.Tag), n.End()}, "TaggedTemplateExpression").
+		set("quasi", c.convertChild(tagged.Template, n)).
+		set("tag", c.convertChild(tagged.Tag, n))
+	if typeArguments := c.convertTypeArguments(tagged.TypeArguments, n); typeArguments != nil {
+		template.set("typeArguments", typeArguments)
+	}
+	callee := identifierShape(c.nodeAt(keyword, "Identifier"), "$try").set("synthesized", true)
+	return c.node(n, "CallExpression").
+		set("arguments", []any{template}).
+		set("callee", callee).
+		set("optional", false)
 }
 
 // isPatternMatcher recognizes only the parser's subject-capturing arrow at

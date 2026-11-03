@@ -196,9 +196,13 @@ function moduleDeclaration(node) {
 
 // hideSynthesized removes the variables of names the parser wrote, such as a
 // match's $match1 or a catch clause's $caught, so no rule reports a name the
-// author never wrote. A reference to one resolves to nothing.
+// author never wrote. A reference to one resolves to nothing. A reference to
+// a synthesized name nothing declares, such as try's $try, leaves each
+// scope's through list, which no-undef reads.
 function hideSynthesized(scopeManager) {
   for (const scope of scopeManager.scopes) {
+    const through = scope.through.filter((reference) => reference.identifier.synthesized !== true)
+    scope.through.splice(0, scope.through.length, ...through)
     const kept = []
     for (const variable of scope.variables) {
       if (variable.identifiers.length !== 0 && variable.identifiers.every((identifier) => identifier.synthesized === true)) {
