@@ -23,7 +23,7 @@ including under conditional wildcard exports. Ordered `exports` arrays select
 the first resolvable target for each import, require and custom-condition path;
 unreachable fallbacks are not extra entry points. Source and runtime wildcard targets
 map to their emitted declarations; JSON and asset exports have no type surface.
-Separate import and require type conditions are checked separately. Private
+Separate import and require type conditions are checked separately. Explicit `resolution-mode` attributes on type imports are retained in both the probe resolver and the dependency-equivalence proof; two uses of one specifier may select different package conditions. Private
 files do not become entry points. A bare directory without publishing metadata
 compares each declaration module, suitable for sidecars and their TypeScript
 twins. Resolution uses each file's nearest `vibe.config.json` or

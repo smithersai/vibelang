@@ -235,7 +235,7 @@ function equivalentModules(ts, program, host, left, right, externalGroups, docum
           const module = (ts.isImportDeclaration(p) || ts.isExportDeclaration(p)) && p.moduleSpecifier === node ||
             ts.isLiteralTypeNode(p) && ts.isImportTypeNode(p.parent) ||
             ts.isExternalModuleReference(p) && p.expression === node
-          if (module) { imports.push(node.text); return ts.factory.createStringLiteral("__edge" + (imports.length - 1)) }
+          if (module) { imports.push(node); return ts.factory.createStringLiteral("__edge" + (imports.length - 1)) }
           return ts.factory.createStringLiteral(node.text)
         }
         const visited = ts.visitEachChild(node, visit, context)
@@ -251,7 +251,7 @@ function equivalentModules(ts, program, host, left, right, externalGroups, docum
     const transformed = ts.transform(source, [transform])
     const text = printer.printFile(transformed.transformed[0]) + (documentation?.get(file) ?? "")
     transformed.dispose()
-    const deps = host.resolveModuleNames(imports, file).map(x => x?.resolvedFileName)
+    const deps = host.resolveModuleNameLiterals(imports, file, undefined, program.getCompilerOptions(), source).map(x => x.resolvedModule?.resolvedFileName)
     for (const ref of source.referencedFiles) deps.push(resolve(dirname(file), ref.fileName))
     for (const ref of source.typeReferenceDirectives)
       deps.push(ts.resolveTypeReferenceDirective(ref.fileName, file, program.getCompilerOptions(), host).resolvedTypeReferenceDirective?.resolvedFileName)
@@ -410,15 +410,16 @@ export function compareApiIdentity(ts, before, after, options = {}) {
     }
   }
   const externalGroups = new Map()
-  host.resolveModuleNames = (names, containingFile) => names.map(name => {
+  host.resolveModuleNames = (names, containingFile, modes = []) => names.map((name, index) => {
+    const mode = modes[index]
     const frozen = frozenResolutions.get(resolve(containingFile) + "\0" + name)
     if (frozen) return { resolvedFileName: frozen, extension: frozen.endsWith(".d.mts") ? ts.Extension.Dmts
       : frozen.endsWith(".d.cts") ? ts.Extension.Dcts : ts.Extension.Dts, isExternalLibraryImport: false }
     const resolutionOptions = { ...compilerOptions, ...project(containingFile).options, ...options.compilerOptions, allowArbitraryExtensions: true }
-    let resolved = ts.resolveModuleName(name, containingFile, resolutionOptions, host).resolvedModule
+    let resolved = ts.resolveModuleName(name, containingFile, resolutionOptions, host, undefined, undefined, mode).resolvedModule
     if (!resolved && !name.startsWith(".") && !name.startsWith("/")) {
       for (const modules of moduleRoots) {
-        resolved = ts.resolveModuleName(name, join(dirname(resolve(modules)), "__api_identity__.ts"), compilerOptions, host).resolvedModule
+        resolved = ts.resolveModuleName(name, join(dirname(resolve(modules)), "__api_identity__.ts"), compilerOptions, host, undefined, undefined, mode).resolvedModule
         if (resolved) break
       }
     }
@@ -432,6 +433,14 @@ export function compareApiIdentity(ts, before, after, options = {}) {
     }
     return resolved && { ...resolved, packageId: undefined }
   })
+  // A name alone discards import attributes and import/require resolution mode.
+  // Keep the usage's mode all the way through the original and final probes.
+  host.resolveModuleNameLiterals = (literals, file, redirected, compiler, source) => {
+    const resolverOptions = { ...compilerOptions, ...project(file).options, ...options.compilerOptions }
+    return host.resolveModuleNames(literals.map(literal => literal.text), file,
+      literals.map(literal => ts.getModeForUsageLocation(source, literal, resolverOptions)))
+      .map(resolvedModule => ({ resolvedModule }))
+  }
   const probe = join(repo, ".api-identity-probe.mts")
   const roots = [...new Set([...Object.values(left), ...Object.values(right)])]
   let program = ts.createProgram(roots, compilerOptions, host)
@@ -776,7 +785,7 @@ export function compareApiIdentity(ts, before, after, options = {}) {
     }
   }
   const resolveModules = host.resolveModuleNames
-  host.resolveModuleNames = (names, file) => resolveModules(names, file).map(resolved => resolved &&
+  host.resolveModuleNames = (names, file, modes) => resolveModules(names, file, modes).map(resolved => resolved &&
     { ...resolved, resolvedFileName: equivalents.get(resolved.resolvedFileName) ?? resolved.resolvedFileName })
   const lines = [...imports, ...identityPrelude.split("\n")]
   const byLine = new Map()
