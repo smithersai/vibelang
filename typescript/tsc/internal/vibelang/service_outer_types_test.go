@@ -76,14 +76,26 @@ func TestServiceOuterTypeParameters(t *testing.T) {
 			program, file, _, _ := editorProgram(t, test.source)
 			var codes []int32
 			var text string
+			// a4185773d9f1 made every @throws tag in a .vibe file EK0406
+			// (VIP-4: VibeLang functions never throw). Each tag here is a
+			// written contract the service check still reads, so count one
+			// EK0406 per tag and check the rest.
+			tags := 0
 			for _, d := range program.GetSemanticDiagnostics(t.Context(), file) {
 				if d.Category() != diagnostics.CategoryError {
+					continue
+				}
+				if d.Code() == EK0406.Code {
+					tags++
 					continue
 				}
 				codes = append(codes, d.Code())
 				if d.Code() == EK3005.Code {
 					text = d.MessageText()
 				}
+			}
+			if want := strings.Count(test.source, "@throws"); tags != want {
+				t.Fatalf("want %d EK0406 for the @throws tags, got %d", want, tags)
 			}
 			if test.captured == "" {
 				if len(codes) != 0 {
