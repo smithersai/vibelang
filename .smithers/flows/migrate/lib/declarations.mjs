@@ -861,31 +861,36 @@ export async function writeLoaderRecords({ compiler, packageDir, root }) {
 }
 
 /**
- * Checks each record writeLoaderRecords wrote (records, its receipt entries)
- * against the final tree, with the same installed vibelang/project's
- * checkLoaderRecord, and adds `miss` to an entry whose record does not hold.
- * A record names the package.json of every package its compile read, so one
- * written before another package's routing changed that manifest missed on
- * every cold start (opencode's ai package, 76 .vibe modules). An installed
- * vibelang without checkLoaderRecord leaves the entries as they are.
+ * Checks each record writeLoaderRecords wrote against the final tree with
+ * the installed vibelang/project's checker. `validation` distinguishes a
+ * completed check from an unavailable checker or a failed invocation. Keep
+ * the write's file and module count even when validation is unavailable.
  */
 export async function checkLoaderRecords({ compiler, packageDir, root, records }) {
+  const receipt = (entry, status, details = {}) => {
+    const result = { ...entry, validation: status }
+    delete result.unchecked
+    delete result.miss
+    return { ...result, ...details }
+  }
+  const unavailable = (reason) => records.map((entry) => entry.file === undefined
+    ? entry : receipt(entry, "unavailable", { unchecked: reason }))
   let check
   try {
     check = (await import(pathToFileURL(createRequire(join(packageDir, "package.json")).resolve("vibelang/project")).href)).checkLoaderRecord
   } catch {
-    return records
+    return unavailable("vibelang/project is unavailable")
   }
-  if (typeof check !== "function") return records
-  return records.map((entry) => {
+  if (typeof check !== "function") return unavailable("vibelang/project exports no checkLoaderRecord")
+  return Promise.all(records.map(async (entry) => {
     if (entry.file === undefined) return entry
     try {
-      const found = check({ project: join(root ?? packageDir, entry.project), compiler })
-      return found.miss === undefined ? entry : { ...entry, miss: found.miss }
+      const found = await check({ project: join(root ?? packageDir, entry.project), compiler })
+      return receipt(entry, "checked", found.miss === undefined ? {} : { miss: found.miss })
     } catch (error) {
-      return { ...entry, miss: String(error?.message ?? error).split("\n")[0] }
+      return receipt(entry, "failed", { miss: String(error?.message ?? error).split("\n")[0] })
     }
-  })
+  }))
 }
 
 // Assets are not compiler outputs. Keep their original file identity when

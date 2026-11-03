@@ -314,7 +314,7 @@ node --import vibelang/register src/start.ts
 The first `.vibe` import compiles the project in the nearest `tsconfig.json`.
 The loaders leave an absent application `TMPDIR` untouched: compilation and the default cache use its nearest existing parent directory. An explicit `VIBELANG_CACHE_DIR` still names the exact cache directory to create.
 
-A committed loader record from `writeLoaderRecord` in `vibelang/project` can move with the checkout. It relocates recorded file paths and source-map sources while preserving emitted JavaScript bytes, including strings containing the old checkout path. Records from the older format are ignored and compiled again.
+A committed loader record from `writeLoaderRecord` in `vibelang/project` can move with the checkout. It relocates recorded file paths and source-map sources while preserving emitted JavaScript bytes, including strings containing the old checkout path. Records from the older format are ignored and compiled again. The migrate flow’s `loaderRecords` receipts preserve each written file and module count and record validation separately: `"checked"`, `"unavailable"` with an `unchecked` reason, or `"failed"` with a `miss` reason. An unavailable checker never counts as completed validation.
 
 The result is cached on disk, so the next process starts in milliseconds until
 a source, a tsconfig, an installed package, or the compiler changes. Set

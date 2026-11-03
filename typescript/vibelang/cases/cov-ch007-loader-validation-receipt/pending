@@ -1,1 +1,0 @@
-cov-ch007 docs/design/src/007-tooling.md#81f803590b7c4cfb, docs/design/src/007-tooling.md#306cfb3f27039261: checkLoaderRecords returns an indistinguishable write receipt when its checker cannot be imported or is unavailable.
