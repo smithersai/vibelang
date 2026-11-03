@@ -1380,3 +1380,6 @@ node-declaration lookup even after scope lists have been filtered. Preserve
 all authored variable objects, including dollar-prefixed names, in both views.
 The pinned ESLint synthetic-declarations property replays the minimized
 optional-`do` witness and checks generated scope, provenance and write controls.
+
+The Go target catalog declares every literal target name once. `scripts/fast-gate-targets.test.mjs` rejects duplicate declarations before a later object property can silently replace one, and exercises nonadjacent duplicates across generated layouts.
+

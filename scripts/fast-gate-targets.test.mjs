@@ -65,3 +65,35 @@ test("//:mapper-scripts matches the mapper's runner tests", () => {
   const found = readdirSync(new URL("scripts/", root)).filter(file => /^mapper-.*\.test\.mjs$/.test(file))
   for (const file of ["mapper-hover.test.mjs", "mapper-rpc.test.mjs"]) assert.ok(found.includes(file), file)
 })
+
+// These declarations deliberately use quoted literal names and goTest calls:
+// duplicates are otherwise silently overwritten when Bun loads the graph.
+const goTargetNames = source => [...source.matchAll(/^[\t ]*"([^"\r\n]+)":\s*goTest\(/gm)].map(match => match[1])
+const duplicateGoTargets = source => {
+  const seen = new Set(), repeated = new Set()
+  for (const name of goTargetNames(source)) {
+    if (seen.has(name)) repeated.add(name)
+    seen.add(name)
+  }
+  return [...repeated].sort()
+}
+
+test("the Go target catalog declares each literal target once", () => {
+  const source = read("typescript/tsc/PACKAGE.ts")
+  const names = goTargetNames(source)
+  for (const required of ["go-parser", "go-vibelangfmt"]) assert.ok(names.includes(required), required)
+  assert.deepEqual(duplicateGoTargets(source), [], "a duplicate object key silently shadows a target")
+})
+
+test("the catalog guard catches distant duplicate declarations across generated layouts", () => {
+  for (let index = 0; index < 128; index++) {
+    const newline = index % 2 ? "\r\n" : "\n"
+    const indent = index % 3 ? "    " : "\t"
+    const name = "go-package-" + index
+    const row = key => indent + '"' + key + '": goTest(' + newline + indent + '"summary", "./internal/pkg", "internal/pkg"),'
+    const unique = [row(name), "// unrelated target", row(name + "-other")].join(newline)
+    assert.deepEqual(duplicateGoTargets(unique), [])
+    assert.deepEqual(duplicateGoTargets(unique + newline + row(name)), [name])
+    assert.deepEqual(duplicateGoTargets(unique + newline + row(name + "-other") + newline + row(name)), [name, name + "-other"])
+  }
+})
