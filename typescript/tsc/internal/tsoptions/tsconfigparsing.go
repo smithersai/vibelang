@@ -959,7 +959,7 @@ func getExtendedConfig(
 
 	if cacheEntry.extendedResult != nil {
 		if sourceFile != nil {
-			sourceFile.LegacyWarnings = append(sourceFile.LegacyWarnings, legacySeverityWarnings(cacheEntry.extendedResult.SourceFile)...)
+			sourceFile.LegacyWarnings = append(sourceFile.LegacyWarnings, configMigrationWarnings(cacheEntry.extendedResult.SourceFile)...)
 			sourceFile.LegacyWarnings = append(sourceFile.LegacyWarnings, cacheEntry.extendedResult.LegacyWarnings...)
 		}
 		if sourceFile != nil {

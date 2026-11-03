@@ -80,12 +80,69 @@ export function nativeContract(mode) {
       })
     })
   } else if (mode === "retired-option") {
-    for (const value of [".js", ".ts", "extensionless", null, false, 7]) for (const nested of [false,true]) fixture(({put,invoke,config,options}) => {
-      Object.assign(options,{ noEmit: true })
+    for (const value of [".js", ".ts", "extensionless", null, false, 42, [], {}, [false, "["]]) for (const nested of [false,true]) fixture(({dir,put,invoke,config,options}) => {
+      Object.assign(options,{ noEmitOnError: true })
       put("main.vibe","export const value = 1;")
-      config({ files: ["main.vibe"], ...(nested ? { compilerOptions: { ...options, vibelang: { declarationImportStyle: value } } } : { vibelang: { declarationImportStyle: value } }) })
+      put("main.ts","export const value = 1;")
+      const retired = { declarationImportStyle: value, trustedPackages: value }
+      config({ files: ["main.vibe"], ...(nested ? { compilerOptions: { ...options, vibelang: retired } } : { vibelang: retired }) })
+      // Stock TypeScript owns the native twin: custom root keys are ignored,
+      // while an unknown compilerOptions.vibelang is TS5023.
+      const nativeConfig = ts.readConfigFile(join(dir,"tsconfig.json"), ts.sys.readFile)
+      nativeConfig.config.files = ["main.ts"]
+      const native = ts.parseJsonConfigFileContent(nativeConfig.config, ts.sys, dir)
+      assert.deepEqual(native.errors.map(d=>d.code), nested ? [5023] : [])
       const r=invoke("-p",".","--pretty","false")
-      check(JSON.stringify({nested,value}),()=>{ assert.equal(r.status,0,r.text); assert.match(r.text,/warning EK\d+.*declarationImportStyle/,r.text) })
+      check(JSON.stringify({nested,value}),()=>{
+        assert.equal(r.status,0,r.text)
+        assert.equal((r.text.match(/warning EK301[01]:/g)||[]).length,2,r.text)
+        for (const key of Object.keys(retired)) assert.match(r.text,new RegExp("warning EK"+(key === "trustedPackages" ? "3010" : "3011")+":.*"+key+".*ignored"),r.text)
+        assert.ok(existsSync(join(dir,"out/main.js")),"warnings must not block noEmitOnError")
+        const shown=invoke("-p",".","--showConfig")
+        assert.equal(shown.status,0,shown.text)
+        const effective=JSON.parse(shown.stdout)
+        assert.doesNotMatch(JSON.stringify(effective), /declarationImportStyle|trustedPackages/)
+      })
+    })
+    fixture(({put,invoke,config}) => {
+      put("main.vibe","export const value = 1;")
+      config({files:["main.vibe"],vibe:{effectGlobals:false,effectModules:false,trustedPackages:42}})
+      const r=invoke("-p",".","--pretty","false")
+      assert.equal(r.status,0,r.text);assert.match(r.text,/warning EK3010:.*trustedPackages.*ignored/)
+      const shown=invoke("-p",".","--showConfig")
+      assert.equal(shown.status,0,shown.text);assert.doesNotMatch(JSON.stringify(JSON.parse(shown.stdout)),/trustedPackages/)
+    })
+    fixture(({dir,put,invoke,config,options}) => {
+      put("node_modules/retired-config-fixture/package.json", { type:"module", exports:{ types:"./index.d.ts", default:"./index.js" } })
+      put("node_modules/retired-config-fixture/index.d.ts", "export declare function risky(fail: boolean): number; export declare const marker: object;")
+      put("node_modules/retired-config-fixture/index.js", "export const marker = {}; export function risky(fail) { if (fail) throw marker; return 42 }")
+      put("main.vibe", 'import { Effect } from "effect"; import { risky } from "retired-config-fixture"; export effect function main(fail: boolean) { return risky(fail) }')
+      Object.assign(options,{ noEmitOnError:true, declaration:true })
+      config({ files:["main.vibe"], vibelang:{trustedPackages:["retired-config-fixture"]} })
+      const rejected=invoke("-p",".","--pretty","false")
+      assert.notEqual(rejected.status,0,rejected.text)
+      assert.match(rejected.text,/EK0403/)
+      assert.doesNotMatch(rejected.text,/list its package.*trustedPackages/,"foreign-call advice must not recommend a retired setting")
+      const fixed=invoke("-p",".","--fix","--pretty","false")
+      assert.equal(fixed.status,0,fixed.text)
+      put("api.ts", 'import { main } from "./out/main.js"; import { Effect } from "effect"; type Native = (fail: boolean) => Effect.Effect<number>; const native: Native = main; const vibe: typeof main = (fail: boolean) => Effect.succeed(42);')
+      const contract=ts.createProgram([join(dir,"api.ts")], { noEmit:true, strict:true, types:[], skipLibCheck:true, target:ts.ScriptTarget.ES2022, module:ts.ModuleKind.NodeNext, moduleResolution:ts.ModuleResolutionKind.NodeNext })
+      assert.deepEqual(ts.getPreEmitDiagnostics(contract).map(d=>ts.flattenDiagnosticMessageText(d.messageText,"\n")),[],"repair must preserve the native twin's Effect type in both directions")
+      const source=readFileSync(join(dir,"main.vibe"),"utf8")
+      const again=invoke("-p",".","--fix","--pretty","false")
+      assert.equal(again.status,0,again.text)
+      assert.equal(readFileSync(join(dir,"main.vibe"),"utf8"),source,"repair must converge")
+      const probe=spawnSync(process.execPath,["--input-type=module","-e",`
+        import assert from "node:assert/strict";
+        import { Effect, Exit, Cause } from "effect";
+        import { marker } from "retired-config-fixture";
+        import { main } from "./out/main.js";
+        const success=Effect.runSyncExit(main(false));
+        assert.ok(Exit.isSuccess(success)); assert.equal(success.value,42);
+        const failure=Effect.runSyncExit(main(true));
+        assert.ok(Exit.isFailure(failure)); assert.equal(Cause.squash(failure.cause),marker);
+      `],{cwd:dir,encoding:"utf8",timeout:30000})
+      assert.ifError(probe.error);assert.equal(probe.status,0,probe.stdout+probe.stderr)
     })
   } else if (mode === "sidecar-config") {
     for (const value of [false,true,null,[],["types"],42,{}]) fixture(({put,invoke,config,options})=>{

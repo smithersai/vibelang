@@ -36,7 +36,7 @@ func TestVibeLangConfigRoundTrip(t *testing.T) {
 	for _, category := range []string{"error", "warning", "off"} {
 		t.Run(category, func(t *testing.T) {
 			var policies []string
-			want := &core.VibeLangOptions{TrustedPackages: []string{"@smthrs/*", "exact-package"}, Diagnostics: map[string]string{}}
+			want := &core.VibeLangOptions{Diagnostics: map[string]string{}}
 			for _, code := range core.VibeLangAdjustableCodes {
 				policies = append(policies, fmt.Sprintf("%q:%q", code, category))
 				want.Diagnostics[code] = category
@@ -80,9 +80,6 @@ func TestVibeLangConfigDiagnosticLocations(t *testing.T) {
 		{"category type", `{"diagnostics":{"EK4403":false}}`, `false`, "vibelang.diagnostics.EK4403", 6046},
 		{"diagnostics type", `{"diagnostics":[]}`, `[]`, "vibelang.diagnostics", 5024},
 		{"diagnostics null", `{"diagnostics":null}`, `null`, "vibelang.diagnostics", 5024},
-		{"trusted packages type", `{"trustedPackages":"@smthrs/*"}`, `"@smthrs/*"`, "vibelang.trustedPackages", 5024},
-		{"trusted package element", `{"trustedPackages":[false]}`, `false`, "vibelang.trustedPackages", 5024},
-		{"trusted package glob", `{"trustedPackages":["["]}`, `"["`, "valid package-name glob", 6046},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			// The emoji before the options also exercises byte-based AST spans.
@@ -106,8 +103,8 @@ func TestVibeLangConfigInheritance(t *testing.T) {
 		name, override string
 		want           *core.VibeLangOptions
 	}{
-		{"inherit", "", &core.VibeLangOptions{TrustedPackages: []string{"@smthrs/*"}, Diagnostics: map[string]string{"EK4403": "off"}}},
-		{"replace", `,"compilerOptions":{"vibelang":{"trustedPackages":["other"]}}`, &core.VibeLangOptions{TrustedPackages: []string{"other"}}},
+		{"inherit", "", &core.VibeLangOptions{Diagnostics: map[string]string{"EK4403": "off"}}},
+		{"replace", `,"compilerOptions":{"vibelang":{"trustedPackages":["other"]}}`, &core.VibeLangOptions{}},
 		{"empty object replaces", `,"compilerOptions":{"vibelang":{}}`, &core.VibeLangOptions{}},
 		{"null resets", `,"compilerOptions":{"vibelang":null}`, nil},
 	} {
@@ -155,11 +152,11 @@ func TestVibeLangNonAdjustableDiagnostic(t *testing.T) {
 // through extends (D275).
 func TestVibeLangTopLevelSettings(t *testing.T) {
 	inherited := vibeConfig(t, `{"extends":"./base.json","files":["main.vibe"]}`, `{"compilerOptions":{"strict":true},"vibelang":{"trustedPackages":["@smthrs/*"]}}`)
-	if len(inherited.Errors) != 0 || inherited.CompilerOptions().VibeLang == nil || !reflect.DeepEqual(inherited.CompilerOptions().VibeLang.TrustedPackages, []string{"@smthrs/*"}) {
+	if len(inherited.Errors) != 0 || inherited.CompilerOptions().VibeLang == nil || len(inherited.CompilerOptions().VibeLang.TrustedPackages) != 0 {
 		t.Fatalf("extends did not carry top-level settings: %+v; errors %v", inherited.CompilerOptions().VibeLang, inherited.Errors)
 	}
 	own := vibeConfig(t, `{"vibelang":{"trustedPackages":["other"]},"files":["main.vibe"]}`, "{}")
-	if len(own.Errors) != 0 || own.CompilerOptions().VibeLang == nil || !reflect.DeepEqual(own.CompilerOptions().VibeLang.TrustedPackages, []string{"other"}) {
+	if len(own.Errors) != 0 || own.CompilerOptions().VibeLang == nil || len(own.CompilerOptions().VibeLang.TrustedPackages) != 0 {
 		t.Fatalf("top-level settings without compilerOptions: %+v; errors %v", own.CompilerOptions().VibeLang, own.Errors)
 	}
 	invalid := vibeConfig(t, `{"compilerOptions":{},"vibelang":{"trustedPackage":["zod"]},"files":["main.vibe"]}`, "{}")

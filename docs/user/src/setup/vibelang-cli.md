@@ -68,21 +68,9 @@ Both legacy paths, root `vibelang.diagnostics` and `compilerOptions.vibelang.dia
 Each map reports migration warning `EK3009`. Setting `EK3009` to `"off"` only hides the warning; it leaves the supported legacy settings active. Run `vibelang -p tsconfig.json --fix` to move eligible maps to root `vibe.severities`, including in extended configs, preserving JSONC comments, unrelated settings and existing modern entries. Maps containing retired or nonconfigurable codes remain in place; resolve those entries, then rerun `--fix`. Plain `tsc` ignores the custom root keys but rejects `compilerOptions.vibelang` with `TS5023`. JSONC comments, including comments containing braces, stay intact while the migrated settings remain active. Comments in an empty legacy map, around its wrapper, after its final entry, or on an entry superseded by a modern setting survive too. Comments that cannot move with an entry stay beside the removed map; a second `--fix` run leaves the config unchanged.
 
 
-### Keep the package's import spelling in declarations
+### Retired declaration and package-trust settings
 
-A `.d.ts` file names another VibeLang module through its output, `./user.js` for `./user.vibe`, because no TypeScript resolves `./user.vibe` to `user.d.ts`. A package whose sources write `./user` or `./user.ts` sets the spelling its declarations use:
-
-```json
-{ "vibelang": { "declarationImportStyle": ".ts" } }
-```
-
-| Value | `import { find } from "./user.vibe"` is declared as |
-| --- | --- |
-| `".js"` (default) | `import { find } from "./user.js"` |
-| `"extensionless"` | `import { find } from "./user"` |
-| `".ts"` | `import { find } from "./user.ts"` |
-
-Under every value, every other specifier keeps the source's spelling, as `tsc` keeps it, so a `.vibe` file's `./plain.ts` stays `./plain.ts`. An import written before its module became VibeLang keeps working too: `./user.ts` resolves to `user.vibe`, `rewriteRelativeImportExtensions` emits it as `./user.js`, and the declaration keeps `./user.ts` under every value. A type the compiler infers from a VibeLang module the file does not import, `import("./user.ts").User`, is spelled as `tsc` spells it for the file before migration: `./user.ts` under `module: nodenext` with `rewriteRelativeImportExtensions` or `allowImportingTsExtensions`, even in a file that writes `./x.js`, and otherwise the ending its imports use. Any other value is a configuration error. The migrate flow's setup sets it for each package from the spelling its relative imports already use. Plain `tsc` ignores the top-level `vibelang` key.
+`declarationImportStyle` is ignored under root `vibelang` and `compilerOptions.vibelang`, with warning `EK3011`. `trustedPackages` is ignored under both legacy sections and root `vibe`, with warning `EK3010`. Every value, including malformed values, gets a deprecation warning by default. The keys do not appear in `--showConfig`; default warnings do not block `noEmitOnError`. Remove the keys; there is no replacement setting. Declaration spelling follows the source and TypeScript compiler options. Run `vibelang --fix` to wrap eligible foreign calls in Effect's exception boundary while preserving their defect behavior. Use `vibe.severities` to configure these warnings.
 
 An import a declaration file adds, such as `import { Effect } from 'effect'` for a file that writes `number!!`, takes the quotes of the file's first written import or export specifier, as an import the TypeScript language service adds does; a file with none gets double quotes. Module types written through the file's own import, `HashSet<string>` through `import { HashSet, Option } from 'effect'`, keep that one import, and an added `Effect` joins it.
 
@@ -263,7 +251,7 @@ A TypeScript `module parse { … }` body in `src/main.vibe` also gets `src/main.
 
 A `schema` declaration's JSDoc is emitted on its constant only; the generated `typeof Name.Type` alias has no comment. This includes visibility and deprecation tags, following ordinary TypeScript declaration emit. One written, nongeneric `type Name = typeof Name.Type` beside either ordinary `schema Name` form replaces the generated alias in the same scope, in either order. The written declarations keep their own comments, order and exports; `removeComments` and `stripInternal` apply as on the native pair. `vibelang --fix` keeps such a documented type when it rewrites the native pair to a `schema` declaration, and removes an undocumented one.
 
-A compatibility declaration keeps an explicit `./tag.vibe` import bound to that source when `tag.ts` is also present. The same applies to inferred import types and every `declarationImportStyle`: sidecar resolution preserves the selected source before computing its output-relative path. Public `.d.ts` files keep their configured import spelling.
+A compatibility declaration keeps an explicit `./tag.vibe` import bound to that source when `tag.ts` is also present. The same applies to inferred import types: sidecar resolution preserves the selected source before computing its output-relative path.
 
 The Node and Bun loaders reuse a cached compile when generated sidecars beside their sources, or anywhere under `vibe.sidecarDir`, appear, change or disappear. They still recompile when a source or a standalone declaration file changes.
 

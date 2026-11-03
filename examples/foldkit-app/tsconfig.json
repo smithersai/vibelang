@@ -19,10 +19,5 @@
     "src",
     "ts",
     "test"
-  ],
-  "vibelang": {
-    "trustedPackages": [
-      "foldkit"
-    ]
-  }
+  ]
 }

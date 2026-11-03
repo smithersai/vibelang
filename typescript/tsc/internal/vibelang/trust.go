@@ -702,11 +702,10 @@ func isEffectfulType(c *checker.Checker, t *checker.Type) bool {
 	return isEffectType(c, t) || c.GetPropertyOfType(t, streamTypeID) != nil || isLayerType(c, t)
 }
 
-// trustedNote is EK4401's other fix: declare the function's failures with
+// trustedNote is EK0403's other fix: declare the function's failures with
 // trusted(impl, [Errors]) (D249), whose listed classes are expected failures
-// and any other exception a defect; for another package's function, trusting
-// the whole package with the vibelang setting trustedPackages (D261) also
-// does. A method needs a function around it first.
+// and any other exception a defect. A method needs a function around it first.
+// VIP-4 retires package trust, so the note must not recommend that setting.
 func trustedNote(c *checker.Checker, file *ast.SourceFile, call *ast.Node) string {
 	declaration := signatureDeclaration(c, call)
 	callee := ast.SkipParentheses(call.Expression())
@@ -715,9 +714,6 @@ func trustedNote(c *checker.Checker, file *ast.SourceFile, call *ast.Node) strin
 		impl := nodeText(file, callee)
 		value := impl[strings.LastIndex(impl, ".")+1:] + "Trusted"
 		wrap = "declare its failures once, const " + value + " = trusted(" + impl + ", [Errors]) with trusted imported from \"vibelang-runtime\", and call " + value
-	}
-	if declaration != nil && packageOf(c, ast.GetSourceFileOfNode(declaration)) != packageOf(c, file) {
-		return "list its package in the vibelang setting trustedPackages, or " + wrap
 	}
 	return wrap
 }

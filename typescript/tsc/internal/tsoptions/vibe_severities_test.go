@@ -174,11 +174,11 @@ func TestVibeSeveritiesLegacyCoexistence(t *testing.T) {
 		override string
 		trusted  []string
 	}{
-		{`"vibe":{"severities":{"EK4609":"off"}}`, []string{"example"}},
+		{`"vibe":{"severities":{"EK4609":"off"}}`, nil},
 		{`"compilerOptions":{"vibelang":{}}`, nil},
 		{`"compilerOptions":{"vibelang":null}`, nil},
 		{`"vibelang":null`, nil},
-		{`"vibelang":{"trustedPackages":["other"]},"vibe":{"severities":{"EK4609":"off"}}`, []string{"other"}},
+		{`"vibelang":{"trustedPackages":["other"]},"vibe":{"severities":{"EK4609":"off"}}`, nil},
 	} {
 		t.Run(test.override, func(t *testing.T) {
 			config := vibeConfig(t, `{"extends":"./base.json",`+test.override+`,"files":["main.vibe"]}`, base)

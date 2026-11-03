@@ -49,6 +49,8 @@ func parseVibeSettings(value any, expression *ast.Node, file *ast.SourceFile, ba
 			} else {
 				options.EffectModules = setting
 			}
+		case "trustedPackages":
+			// VIP-4: retired for every value; the declaring config supplies EK3010.
 		case "sidecarDir":
 			// A relative directory resolves from the config that declares it;
 			// a leading ${configDir} waits for the selected config's directory.

@@ -1,3 +1,2 @@
-// expect: TS6046
-// vibelang.declarationImportStyle is ".js", "extensionless" or ".ts"; "ts" is none of them.
+// VIP-30: a retired declarationImportStyle value warns without failing compilation.
 export const one = 1

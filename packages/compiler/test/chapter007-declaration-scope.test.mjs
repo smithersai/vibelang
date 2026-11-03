@@ -10,8 +10,8 @@ const repo = fileURLToPath(new URL("../../../", import.meta.url))
 const binary = process.env.VIBELANG_BINARY || join(repo, "packages/compiler/native/vibelang")
 const stock = join(repo, "docs/tools/node_modules/typescript/bin/tsc")
 
-// Chapter 007 / declaration settings leave JavaScript and source-sidecar identity intact: docs/design/src/007-tooling.md#65feda23da8922f1
-test("Chapter 007 / package declaration styles do not leak into JavaScript or adjacent sidecars", t => {
+// VIP-30: ignored declaration settings leave every output identical to an unconfigured project.
+test("Chapter 007 / retired declaration styles leave package output, JavaScript and sidecars unchanged", t => {
   const root = mkdtempSync(join(tmpdir(), "chapter007-declaration-scope-"))
   t.after(() => rmSync(root, { recursive: true, force: true }))
   assert.equal(JSON.parse(readFileSync(join(repo, "docs/tools/node_modules/typescript/package.json"), "utf8")).version, "5.9.3")
@@ -35,17 +35,19 @@ test("Chapter 007 / package declaration styles do not leak into JavaScript or ad
   const run = dir => command(process.execPath, ["--input-type=module", "-e",
     'import { value } from "./out/main.js"; console.log(JSON.stringify(value))'], dir)
   assert.equal(run(native), "42")
-  for (const style of [".js", "extensionless", ".ts"]) {
-    const dir = join(root, style === "extensionless" ? "bare" : style.slice(1))
+  let baseline
+  for (const style of [null, ".js", "extensionless", ".ts", 42, "bogus"]) {
+    const dir = join(root, String(style).replace(/[^a-z0-9]/gi, ""))
     prepare(dir, "vibe", "./leaf.vibe")
     writeFileSync(join(dir, "tsconfig.json"), JSON.stringify({ compilerOptions: options,
       files: ["src/main.vibe", "src/leaf.vibe"], vibe: { effectGlobals: false, effectModules: false },
-      vibelang: { declarationImportStyle: style } }))
+      ...(style === null ? {} : { vibelang: { declarationImportStyle: style } }) }))
     command(binary, ["-p", ".", "--pretty", "false"], dir)
     assert.match(readFileSync(join(dir, "out/main.js"), "utf8"), /from ["']\.\/leaf\.js["']/)
     assert.match(readFileSync(join(dir, "src/main.d.vibe.ts"), "utf8"), /from ["']\.\/leaf\.vibe["']/)
-    const suffix = style === "extensionless" ? "" : style
-    assert.ok(readFileSync(join(dir, "out/main.d.ts"), "utf8").includes('"./leaf' + suffix + '"'))
+    const declaration = readFileSync(join(dir, "out/main.d.ts"), "utf8")
+    if (style === null) baseline = declaration
+    else assert.equal(declaration, baseline, "retired values must not select declaration spelling")
     assert.equal(run(dir), run(native), style + " must preserve the ordinary module result")
   }
 })

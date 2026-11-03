@@ -73,7 +73,7 @@ func TestLegacyMigrationAllCommentShapes(t *testing.T) {
 					if got := parsed.CompilerOptions().VibeLang; got == nil || !reflect.DeepEqual(got.Severities, want) || got.EffectModules != core.TSFalse {
 						t.Fatalf("changed options: %+v, want %v", got, want)
 					}
-					if kept := parsed.CompilerOptions().VibeLang.TrustedPackages; shape.name == "retained-wrapper" && (len(kept) != 1 || kept[0] != "keep") {
+					if shape.name == "retained-wrapper" && !strings.Contains(fixed, `"trustedPackages":["keep"]`) {
 						t.Fatal("lost trustedPackages")
 					}
 					if shape.name == "strings" && !strings.Contains(fixed, "https://example.invalid/*not-comment*/") {

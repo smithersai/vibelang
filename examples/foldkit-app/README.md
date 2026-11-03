@@ -17,9 +17,10 @@ bun run test   # type check, Vitest, production build
 tests of `update`, and the HTTP command with an in-memory `HttpClient`, so no
 request leaves the process.
 
-Foldkit's functions are plain TypeScript, so `tsconfig.json` lists `foldkit`
-in `vibelang.trustedPackages`; without it, each call from a `.vibe` function
-is `EK4401`. `update` and `view` declare plain return types, which Foldkit's
-runtime needs: `update` returns `{ model, commands }`, not an Effect.
+Foldkit calls in Effect code use `Effect.try` and `Effect.orDie`, keeping
+JavaScript exceptions as defects. `update` and `view` declare plain return
+types, which Foldkit's runtime needs: `update` returns `{ model, commands }`.
+The retired `trustedPackages` setting is ignored; it cannot replace these
+call boundaries.
 
 [pairs/](pairs/) holds real before-and-after code from the Foldkit migration.

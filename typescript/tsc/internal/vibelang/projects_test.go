@@ -65,9 +65,8 @@ func untrustedCallsIn(t *testing.T, fs vfs.FS, parsed *tsoptions.ParsedCommandLi
 	return counts
 }
 
-// D297: the package that owns a .vibe file decides what its calls trust, in
-// every program that reads it; the compiled project's settings keep applying
-// to its own files.
+// VIP-4 and VIP-30 retire package trust. Neither a producer nor its importer
+// can suppress foreign-call diagnostics through their old project settings.
 func TestForeignVibeFileUsesItsOwnProjectSettings(t *testing.T) {
 	t.Parallel()
 	for _, test := range []struct {
@@ -75,9 +74,9 @@ func TestForeignVibeFileUsesItsOwnProjectSettings(t *testing.T) {
 		producerTrust, appTrust string
 		foreign, own            int
 	}{
-		{"only the producer trusts the helper", `["@acme/helper"]`, `[]`, 0, 1},
-		{"only the app trusts the helper", `[]`, `["@acme/helper"]`, 1, 0},
-		{"both trust it", `["@acme/*"]`, `["@acme/helper"]`, 0, 0},
+		{"only the producer trusts the helper", `["@acme/helper"]`, `[]`, 1, 1},
+		{"only the app trusts the helper", `[]`, `["@acme/helper"]`, 1, 1},
+		{"both trust it", `["@acme/*"]`, `["@acme/helper"]`, 1, 1},
 		{"neither trusts it", `[]`, `[]`, 1, 1},
 	} {
 		t.Run(test.name, func(t *testing.T) {
@@ -90,10 +89,8 @@ func TestForeignVibeFileUsesItsOwnProjectSettings(t *testing.T) {
 	}
 }
 
-// D297: a program without a tsconfig, such as `vibelang --ignoreConfig a.ts`
-// or a command line of files, has no VibeLang settings of its own, so each
-// package's .vibe file keeps its package's settings there too, the same ones
-// its own build checks it with.
+// Retired trust settings stay ignored when command-line files cause the
+// compiler to discover each imported package's project.
 func TestCommandLineProgramUsesEachPackageProjectSettings(t *testing.T) {
 	t.Parallel()
 	for _, test := range []struct {
@@ -102,8 +99,8 @@ func TestCommandLineProgramUsesEachPackageProjectSettings(t *testing.T) {
 		appTrust      string
 		foreign, own  int
 	}{
-		{"the producer's trust holds", `["@acme/helper"]`, `[]`, 0, 1},
-		{"the producer's distrust holds", `[]`, `["@acme/helper"]`, 1, 0},
+		{"the producer's retired trust is ignored", `["@acme/helper"]`, `[]`, 1, 1},
+		{"the app's retired trust is ignored", `[]`, `["@acme/helper"]`, 1, 1},
 		{"neither trusts it", `[]`, `[]`, 1, 1},
 	} {
 		t.Run(test.name, func(t *testing.T) {
@@ -135,24 +132,21 @@ func TestForeignVibeFileMatchesItsOwnBuild(t *testing.T) {
 	}
 }
 
-// D297: a second tsconfig of the same package, such as a test tsconfig that
-// extends the package's, applies its own settings to the package's files.
+// Extending a project cannot restore its retired trust exemption.
 func TestSamePackageKeepsTheCompiledProjectSettings(t *testing.T) {
 	t.Parallel()
 	files := projectFiles(`[]`, `[]`)
 	files["/producer/tsconfig.test.json"] = `{"extends":"./tsconfig.json","vibelang":{"trustedPackages":["@acme/helper"]}}`
-	if counts := untrustedCalls(t, files, "/producer/tsconfig.test.json", "/producer/src/lib.vibe"); counts[0] != 0 {
-		t.Fatalf("EK0403 under the test tsconfig = %d, want 0", counts[0])
+	if counts := untrustedCalls(t, files, "/producer/tsconfig.test.json", "/producer/src/lib.vibe"); counts[0] != 1 {
+		t.Fatalf("EK0403 under the test tsconfig = %d, want 1", counts[0])
 	}
 	if counts := untrustedCalls(t, files, "/producer/tsconfig.json", "/producer/src/lib.vibe"); counts[0] != 1 {
 		t.Fatalf("EK0403 under the package tsconfig = %d, want 1", counts[0])
 	}
 }
 
-// D297: a workspace package linked into node_modules, as pnpm links one, keeps
-// its own package's settings in a program that imports it by name, whether its
-// tsconfig sets them at the top level or in compilerOptions. A package with no
-// tsconfig.json above its files takes the importing project's.
+// Linked workspace packages keep their foreign-call boundary with retired
+// trust keys at either legacy path, in their own or the importing project.
 func TestLinkedWorkspaceVibeFileUsesItsOwnProjectSettings(t *testing.T) {
 	t.Parallel()
 	for _, test := range []struct {
@@ -161,10 +155,10 @@ func TestLinkedWorkspaceVibeFileUsesItsOwnProjectSettings(t *testing.T) {
 		importer string // the importing project's VibeLang settings
 		want     int    // EK0403 reports in the workspace package's .vibe file
 	}{
-		{"the package's own trust holds", `{"compilerOptions":{"strict":true},"vibelang":{"trustedPackages":["@smthrs/*"]}}`, `{}`, 0},
-		{"compilerOptions.vibelang holds too", `{"compilerOptions":{"strict":true,"vibelang":{"trustedPackages":["@smthrs/*"]}}}`, `{}`, 0},
+		{"the package's retired trust is ignored", `{"compilerOptions":{"strict":true},"vibelang":{"trustedPackages":["@smthrs/*"]}}`, `{}`, 1},
+		{"compilerOptions.vibelang is ignored too", `{"compilerOptions":{"strict":true,"vibelang":{"trustedPackages":["@smthrs/*"]}}}`, `{}`, 1},
 		{"the importer's trust does not reach it", `{"compilerOptions":{"strict":true}}`, `{"trustedPackages":["@smthrs/*"]}`, 1},
-		{"a package without a project takes the importer's", ``, `{"trustedPackages":["@smthrs/*"]}`, 0},
+		{"a package without a project ignores the importer's trust", ``, `{"trustedPackages":["@smthrs/*"]}`, 1},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()

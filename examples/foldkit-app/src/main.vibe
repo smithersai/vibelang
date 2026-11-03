@@ -1,4 +1,3 @@
-import { HttpClient } from "effect/http"
 import { Command, Http, Runtime, type Update } from "foldkit"
 import { Document, HtmlBuilder } from "foldkit/html"
 import { defineMessageUnion } from "foldkit/message"
@@ -36,11 +35,11 @@ schema Quote { readonly text: string }
 effect function loadQuote() {
   const response = try HttpClient.get(QUOTE_URL)
   const quote = try Schema.decodeUnknownEffect(Quote)(try response.json)
-  return Message.SucceededFetchQuote({ text: quote.text })
+  return try orDie(Effect.try({ try: () => Message.SucceededFetchQuote({ text: quote.text }), catch: (error) => error }))
 }
 
 export effect function fetchQuote() {
-  return loadQuote() catch () => Message.FailedFetchQuote({ error: "Could not load a quote" })
+  return loadQuote() catch effect () => try orDie(Effect.try({ try: () => Message.FailedFetchQuote({ error: "Could not load a quote" }), catch: (error) => error }))
 }
 
 export const FetchQuote = Command.define("FetchQuote", {

@@ -94,7 +94,7 @@ export async function wait(value: Deferred.Deferred<number>) { return await valu
 }
 
 for (const inherited of [false,true]) {
- test(`modern severities preserve ${inherited ? "inherited" : "local"} legacy options`,{skip},t=>{
+ test(`modern severities ignore ${inherited ? "inherited" : "local"} retired legacy options`,{skip},t=>{
   const legacy={trustedPackages:["example-package"]}
   const settings={vibe:{severities:{EK4609:"warning"}},...(inherited?{extends:"./base.json"}:{vibelang:legacy})}
   const dir=project(t,settings,source)
@@ -102,7 +102,7 @@ for (const inherited of [false,true]) {
   const result=run(dir,"--showConfig")
   assert.equal(result.status,0,result.stdout+result.stderr)
   const shown=JSON.parse(result.stdout)
-  assert.deepEqual(shown.compilerOptions.vibelang?.trustedPackages,["example-package"])
+  assert.equal(shown.compilerOptions.vibelang?.trustedPackages,undefined)
  })
 }
 

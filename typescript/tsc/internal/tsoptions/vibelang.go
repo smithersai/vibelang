@@ -2,7 +2,6 @@ package tsoptions
 
 import (
 	"maps"
-	"path"
 	"slices"
 	"strings"
 
@@ -17,9 +16,7 @@ import (
 // (design decision D34), which they reject as an unknown option:
 //
 //	"vibelang": {
-//	  "diagnostics": { "EK9204": "off", "EK4403": "warning" },
-//	  "trustedPackages": ["@smthrs/*"],
-//	  "declarationImportStyle": ".ts"
+//	  "diagnostics": { "EK9204": "off", "EK4403": "warning" }
 //	}
 //
 // It is added by hand to the generated option tables: its declaration in
@@ -31,7 +28,6 @@ var (
 	// change. Every other EK diagnostic keeps its category.
 	vibeLangAdjustableCodes = core.VibeLangAdjustableCodes
 	vibeLangCategories      = []string{"error", "warning", "off"}
-	vibeLangImportStyles    = []string{".js", "extensionless", ".ts"}
 )
 
 // parseVibeLangOptions reads a compilerOptions.vibelang value that
@@ -49,18 +45,6 @@ func parseVibeLangOptions(value any) *core.VibeLangOptions {
 					options.Diagnostics = make(map[string]string)
 				}
 				options.Diagnostics[code] = category
-			}
-		}
-	}
-	if style, ok := object.GetOrZero("declarationImportStyle").(string); ok && slices.Contains(vibeLangImportStyles, style) {
-		options.DeclarationImportStyle = style
-	}
-	if packages, ok := object.GetOrZero("trustedPackages").([]any); ok {
-		for _, entry := range packages {
-			if pattern, ok := entry.(string); ok {
-				if _, err := path.Match(pattern, ""); err == nil {
-					options.TrustedPackages = append(options.TrustedPackages, pattern)
-				}
 			}
 		}
 	}
@@ -111,32 +95,10 @@ func validateVibeLangOptions(value any, valueExpression *ast.Expression, sourceF
 			for _, name := range jsonEmptyNames(jsonInitializer(property)) {
 				notAdjustable(name, "")
 			}
-		case "trustedPackages":
-			entries, ok := v.([]any)
-			if !ok {
-				report(jsonInitializer(property), diagnostics.Compiler_option_0_requires_a_value_of_type_1, "vibelang.trustedPackages", "Array")
-				continue
-			}
-			var elements []*ast.Node
-			if expression := jsonInitializer(property); expression != nil && ast.IsArrayLiteralExpression(expression) {
-				elements = expression.AsArrayLiteralExpression().Elements.Nodes
-			}
-			for i, entry := range entries {
-				var element *ast.Node
-				if i < len(elements) {
-					element = elements[i]
-				}
-				pattern, ok := entry.(string)
-				if !ok {
-					report(element, diagnostics.Compiler_option_0_requires_a_value_of_type_1, "vibelang.trustedPackages", "string")
-				} else if _, err := path.Match(pattern, ""); err != nil {
-					report(element, diagnostics.Argument_for_0_option_must_be_Colon_1, "vibelang.trustedPackages", "a valid package-name glob")
-				}
-			}
-		case "declarationImportStyle":
-			if style, ok := v.(string); !ok || !slices.Contains(vibeLangImportStyles, style) {
-				report(jsonInitializer(property), diagnostics.Argument_for_0_option_must_be_Colon_1, "vibelang.declarationImportStyle", quoteList(vibeLangImportStyles))
-			}
+		case "trustedPackages", "declarationImportStyle":
+			// VIP-4 / VIP-30: every value is ignored. Warnings are collected
+			// from the source config alongside legacy severity warnings, so
+			// extended configs and nonfatal command-line reporting agree.
 		default:
 			report(jsonName(property), diagnostics.Unknown_compiler_option_0, "vibelang."+key)
 		}
@@ -152,23 +114,13 @@ func validateVibeLangOptions(value any, valueExpression *ast.Expression, sourceF
 
 // serializeVibeLangOptions writes options as tsconfig JSON for --showConfig.
 func serializeVibeLangOptions(options *core.VibeLangOptions) *collections.OrderedMap[string, any] {
-	result := collections.NewOrderedMapWithSizeHint[string, any](3)
-	if len(options.TrustedPackages) > 0 {
-		packages := make([]any, len(options.TrustedPackages))
-		for i, pattern := range options.TrustedPackages {
-			packages[i] = pattern
-		}
-		result.Set("trustedPackages", packages)
-	}
+	result := collections.NewOrderedMapWithSizeHint[string, any](1)
 	if len(options.Diagnostics) > 0 {
 		codes := collections.NewOrderedMapWithSizeHint[string, any](len(options.Diagnostics))
 		for _, code := range slices.Sorted(maps.Keys(options.Diagnostics)) {
 			codes.Set(code, options.Diagnostics[code])
 		}
 		result.Set("diagnostics", codes)
-	}
-	if options.DeclarationImportStyle != "" {
-		result.Set("declarationImportStyle", options.DeclarationImportStyle)
 	}
 	return result
 }

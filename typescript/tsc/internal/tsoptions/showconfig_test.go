@@ -43,8 +43,13 @@ func reflectedSerializeCompilerOptions(options *core.CompilerOptions, configFile
 			if len(errors) != 0 {
 				panic(errors[0])
 			}
+			// VIP-4 / VIP-30 retire these settings even when an API caller
+			// supplies an old struct: --showConfig must not revive them.
+			object := decoded.(*collections.OrderedMap[string, any])
+			object.Delete("trustedPackages")
+			object.Delete("declarationImportStyle")
 			value = decoded
-			if object := decoded.(*collections.OrderedMap[string, any]); object.Size() == 0 {
+			if object.Size() == 0 {
 				value = collections.NewOrderedMapWithSizeHint[string, any](0)
 			}
 		}

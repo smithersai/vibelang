@@ -101,16 +101,16 @@ export function recovered(text: string): number {
 
 }
 
-// D261 grants trust by package.json name, including TypeScript workspace
-// sources reached through paths, and preserves the boundary without a match.
+// VIP-4 and VIP-30 retire package-name trust, including TypeScript workspace
+// sources reached through paths. Matching names and globs remain untrusted.
 func TestTrustedWorkspacePackageNames(t *testing.T) {
 	t.Parallel()
 	for _, test := range []struct {
 		name, patterns string
 		want           int
 	}{
-		{"scope glob", `["@smthrs/*"]`, 0},
-		{"exact name", `["@smthrs/keys"]`, 0},
+		{"scope glob", `["@smthrs/*"]`, 1},
+		{"exact name", `["@smthrs/keys"]`, 1},
 		{"another scope", `["@other/*"]`, 1},
 		{"prefix is not a match", `["@smthrs/key"]`, 1},
 		{"no trust", `[]`, 1},
@@ -133,6 +133,9 @@ func TestTrustedWorkspacePackageNames(t *testing.T) {
 			for _, d := range p.GetSemanticDiagnostics(t.Context(), p.GetSourceFile("/main.vibe")) {
 				if d.Code() == EK0403.Code {
 					count++
+					if strings.Contains(notesOf(d), "trustedPackages") {
+						t.Errorf("foreign-call advice recommends retired package trust: %s", notesOf(d))
+					}
 				} else if d.Category() == diagnostics.CategoryError && d.Code() != EK1011.Code { // the fixture installs no effect
 					t.Errorf("unexpected diagnostic: %v", d)
 				}
@@ -144,16 +147,15 @@ func TestTrustedWorkspacePackageNames(t *testing.T) {
 	}
 }
 
-// A package.json without a name, which only sets "type" for a subdirectory as
-// zod's v4/classic does, does not end its package: a method declared under it
-// keeps the package's D261 trust.
+// Nameless nested manifests cannot restore a retired package-trust exemption:
+// both the factory and the returned object's foreign method retain boundaries.
 func TestTrustedPackageNameSkipsNamelessManifests(t *testing.T) {
 	t.Parallel()
 	for _, test := range []struct {
 		name, patterns string
 		want           int
 	}{
-		{"trusted", `["zodlike"]`, 0},
+		{"retired trust", `["zodlike"]`, 2},
 		{"no trust", `[]`, 2},
 	} {
 		t.Run(test.name, func(t *testing.T) {
@@ -176,6 +178,9 @@ export declare function make(): Schema`,
 			for _, d := range p.GetSemanticDiagnostics(t.Context(), p.GetSourceFile("/main.vibe")) {
 				if d.Code() == EK0403.Code {
 					count++
+					if strings.Contains(notesOf(d), "trustedPackages") {
+						t.Errorf("foreign-call advice recommends retired package trust: %s", notesOf(d))
+					}
 				} else if d.Category() == diagnostics.CategoryError && d.Code() != EK1011.Code { // the fixture installs no effect
 					t.Errorf("unexpected diagnostic: %v", d)
 				}

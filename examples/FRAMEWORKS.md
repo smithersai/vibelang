@@ -48,7 +48,7 @@ code with the same tested behavior.
 | `foldkit-app/ts/main.ts` | The Effect TypeScript original |
 | `foldkit-app/src/entry.ts` | Mounts the VibeLang app with `Runtime.makeApplication` |
 | `foldkit-app/test/app.test.ts` | `story` tests of `update` and the HTTP command, run against both |
-| `foldkit-app/tsconfig.json` | `"vibelang": { "trustedPackages": ["foldkit"] }` |
+| `foldkit-app/tsconfig.json` | Standard TypeScript options |
 | `foldkit-app/vite.config.ts` | `vibelang-vite`, happy-dom, `server.deps.inline: ["foldkit"]` |
 | `foldkit-app/pairs/README.md` | Three real pairs from the Foldkit migration |
 
@@ -93,7 +93,7 @@ bun add -d vibelang@0.0.11 vibelang-vite@0.0.11 vite@8.3.4 vitest@5.0.5 happy-do
 ```
 
 Then copy from `foldkit-app/`: `tsconfig.json` (Bundler resolution, DOM
-libs, `trustedPackages`), `vite.config.ts`, `index.html`, `src/entry.ts`
+libs), `vite.config.ts`, `index.html`, `src/entry.ts`
 and `test/setup.ts` (`setup()` from `foldkit/test/vitest`). Write the app in
 `src/main.vibe`. `bun run dev` serves it; `bun run test` checks, tests and
 builds.
@@ -119,9 +119,9 @@ Foldkit's own API and read the same in both panes.
 
 ### Sharp edges
 
-- **`trustedPackages`.** Foldkit's functions are plain TypeScript. Without
-  `"trustedPackages": ["foldkit"]`, each call inside a `.vibe` function, such
-  as `Message.match(...)` in `update`, is `EK4401`.
+- **Foreign calls in Effect code.** Foldkit constructors use `Effect.try`
+  and `Effect.orDie`, preserving JavaScript exceptions as defects. The
+  retired `trustedPackages` setting is ignored.
 - **`update` needs its return type.** Unannotated, `update` became
   Effect-returning, and `Runtime.makeApplication` rejected it with `TS2769`
   (`Property 'model' is missing in type 'Effect<...>'`).
