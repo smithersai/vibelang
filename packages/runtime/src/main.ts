@@ -36,6 +36,19 @@ const startedFiles = (host: EntryHost | undefined): ReadonlyArray<string> => {
   }
 }
 
+// Imports the file a host started, which only a host with process.argv reaches.
+// Hermes rejects any import() expression when it compiles a bundle, reached or
+// not, and bundlers would otherwise rewrite this one, so it stays in a string.
+// It builds the function only when called: Cloudflare Workers and a browser's
+// content security policy refuse new Function.
+const importStarted = (url: string): Promise<{ readonly main?: unknown }> => {
+  try {
+    return new Function("url", "return import(url)")(url)
+  } catch (error) {
+    return Promise.reject(error)
+  }
+}
+
 /**
  * D135: runs an entry module's main when the host started the module. The
  * module ends with
@@ -59,8 +72,8 @@ export const $entry = (started: boolean | undefined, url: string | undefined, ma
   const host = (globalThis as { readonly process?: EntryHost }).process
   if (started === true) {
     if (url === undefined || !startedFiles(host).includes(url)) return run()
-    import(/* webpackIgnore: true */ /* @vite-ignore */ url).then(
-      (module: { readonly main?: unknown }) => {
+    importStarted(url).then(
+      (module) => {
         if (module.main === main) run()
       },
       () => run()

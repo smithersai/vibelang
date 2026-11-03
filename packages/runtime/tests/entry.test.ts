@@ -2,7 +2,7 @@
 // modules in the shapes the compiler and bundlers emit, starts one with Node
 // and with Bun, and checks which mains ran.
 import { afterAll, expect, test } from "bun:test"
-import { mkdtempSync, rmSync, symlinkSync, writeFileSync, mkdirSync } from "node:fs"
+import { mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync, mkdirSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 
@@ -159,3 +159,20 @@ $entry(false, import.meta.url, main, () => console.log("imported ran"));
   })
   expect(start("node", dir, "page.js")).toBe("started ran\n")
 }, entryTimeout)
+
+test("the runner loads on a host that refuses code generation", () => {
+  const run = Bun.spawnSync(["node", "--disallow-code-generation-from-strings", "--input-type=module", "-e",
+    `const { $entry } = await import(${JSON.stringify(join(import.meta.dir, "../dist/main.js"))})
+     $entry(true, undefined, undefined, () => console.log("ran"))`])
+  expect(run.stderr.toString()).toBe("")
+  expect(run.stdout.toString()).toBe("ran\n")
+})
+
+// Metro bundles the runtime for React Native, and Hermes refuses a bundle that
+// holds an import() expression anywhere.
+test("the emitted runner holds no import() expression", () => {
+  const code = readFileSync(join(import.meta.dir, "../dist/main.js"), "utf8")
+    .replace(/\/\*[\s\S]*?\*\/|\/\/.*$/gm, "")
+    .replace(/"[^"\n]*"/g, '""')
+  expect(code).not.toMatch(/\bimport\s*\(/)
+})
