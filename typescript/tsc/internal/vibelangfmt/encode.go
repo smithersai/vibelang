@@ -209,7 +209,6 @@ func encode(fileName, source string) (*encoding, error) {
 		return nil, fmt.Errorf("vibelang format: the file contains every placeholder prefix (%s)", strings.Join(sentinels, ", "))
 	}
 	e := &encoder{file: file, source: source, sentinel: sentinel}
-	e.normalizeErrorFieldCommas()
 	e.keepJSDocEmptyStatements()
 	e.keepJSDocEmptyClassElements()
 	forms = uniqueForms(forms)
@@ -222,6 +221,7 @@ func encode(fileName, source string) (*encoding, error) {
 	if err := e.clauses(forms); err != nil {
 		return nil, err
 	}
+	e.normalizeErrorFieldCommas()
 	return e.finish()
 }
 
@@ -236,6 +236,14 @@ func (e *encoder) normalizeErrorFieldCommas() {
 			node.Flags&ast.NodeFlagsHasJSDoc == 0 {
 			start := scanner.SkipTrivia(e.source, node.Pos())
 			if e.source[start:node.End()] == "," {
+				// Declaration projections may already replace this separator
+				// with a placeholder that preserves its adjacent comments.
+				// Do not also encode that byte as a separate field token.
+				if slices.ContainsFunc(e.edits, func(ed edit) bool {
+					return ed.pos <= start && node.End() <= ed.end
+				}) {
+					return false
+				}
 				e.add(edit{pos: start, end: node.End(), text: ";", token: "fieldComma", stands: ","})
 			}
 		}

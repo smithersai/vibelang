@@ -447,6 +447,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - A `.vibe` module in a project with no declaration output failed to compile when its declaration sidecar could not print an export's type, such as foldkit's `AppTabs = Tabs.create<…>()` (`TS2883`), though `tsc` compiles the same TypeScript, which emits no declarations, without an error. Such an error is now reported only where a `.ts` file of the project imports the module, at that import, since that file reads the sidecar; a project that emits declarations still reports it at the export.
 - The migrate flow's `verify` passed a batch whose declaration emit failed in a migrated file, such as `TS7056` for a type too long to serialize, when the baseline's emit failed the same way and the two fallbacks were equal; it now fails the batch on any declaration emit error in a migrated file.
 - `await` at a `.vibe` module's top level, such as `export const answer = await Promise.resolve(42)`, was VibeLang's await, so it reported `EK4602` and `EK1001` and emitted a runtime `$await` call. It is ES top-level await of a Promise now, in a declaration, a statement or a block, as the spec says (VIP-26); an Effect operand is `EK0103`, and a CommonJS file reports TypeScript's `TS1309`.
+- Migrating a service default could capture a user-defined `ReturnType` and change exported types; the repair now extracts the factory return type without relying on that name.
+- A legacy service `default` with no value could be silently accepted and had no usable migration; it now reports `EK0902`, while initialized defaults keep their migration warning and repair.
 - Formatting an inline `@internal` or other JSDoc comment beside an error payload could silently change its declaration output; the formatter now refuses changes to comment attachment and leaves the file intact.
 - The runtime helper `$produce` required an external `Scope` even though its Stream callback supplies one; its result now removes that requirement and keeps other services.
 - Splitting `for concurrent` across lines could cause syntax errors; line breaks and multiline comments now work before either the limit or loop head.
@@ -527,6 +529,9 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Build entry globs could emit empty chunks from generated `.d.vibe.ts` files beside the source outputs; the Rolldown plugin now excludes those sidecars from single, array and named entries, including `tsdown` builds.
 - Knip could hide an unused export when an ordinary comment followed `@public`; the adapter now preserves that comment and Knip applies the same attachment rules as for TypeScript.
 - Knip marked later names in a `@public` variable declaration as unused; all bindings in that declaration now keep the marker.
+
+- Formatting service and error declarations with comma separators could report overlapping edits; each separator is now projected once, preserving adjacent comments.
+
 - Invalid TypeScript `module` forms reported broad or misleading errors. They now report the specific `EK4001`–`EK4004`, `EK4006` or `EK4008` diagnostic; TypeScript namespace spellings keep `TS1540` alone (VIP-40).
 - The editor refused renames and import organization in files with TypeScript `module` bodies. These operations now work across the body boundary and preserve identifier specifiers (VIP-40).
 - Published declaration checks rejected harmless formatting, quote, import-order and member-order differences; `scripts/api-identity.mjs` now compares exported names, their types through `tsc`, and their doc comments.
@@ -698,6 +703,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Helper re-export declaration properties required a manually configured compiler path; they now use the built checkout compiler by default and retain an explicit `VIBELANG_BINARY` override.
 - Incremental diagnostic properties required a manually configured compiler path; they now use the built checkout compiler by default and retain an explicit `VIBELANG_BINARY` override.
 - Incremental artifact identity properties required a manually configured compiler path; they now use the built checkout compiler by default and retain an explicit `VIBELANG_BINARY` override.
+- Formatting service members or class-form `error` fields separated by commas could fail with an internal parse error; the formatter now accepts their separators and keeps nested type commas and comments intact.
+- Checking an incomplete service in the editor, or with `noUnusedLocals` enabled, could panic; unsupported call and construct signatures now report `EK0902` while unused private implementation members are still checked.
 - A resize observer could remain allocated when the browser rejected its first target; `Experimental.ResizeObserver` now disconnects it when the scope closes, including after setup fails.
 - Waiting for a pending browser commit or animation frame required a plain host callback; `Experimental.Animations.nextFrameUnless` now checks and registers atomically inside a cold Effect, with cancellation on interruption (decided detail 261).
 - Browser file reads could report an unexpected result exactly like a host error; `Experimental.FileReader` now identifies unexpected results with `InvalidData`, preserving the origin even when the cause and message coincide.

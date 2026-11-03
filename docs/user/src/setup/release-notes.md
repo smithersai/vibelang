@@ -533,6 +533,9 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Initialized `_tag` fields, accessors and static members in an `error` or `schema error` could compile or report duplicate or unrelated diagnostics; they now report `EK2117`, and `--fix` retains previously valid implementations in explicit Effect classes.
 - A typed `_tag` field in an `error` or `schema error` could override the generated tag contract or report unrelated TypeScript errors; it now reports `EK2117` at the field name, and `vibelang --fix` retains compatible contracts and schema-family registration in an explicit class.
 
+
+- Formatting service and error declarations with comma separators could report overlapping edits; each separator is now projected once, preserving adjacent comments.
+
 - Invalid TypeScript `module` forms reported broad or misleading errors. They now report the specific `EK4001`–`EK4004`, `EK4006` or `EK4008` diagnostic; TypeScript namespace spellings keep `TS1540` alone (VIP-40).
 - The editor refused renames and import organization in files with TypeScript `module` bodies. These operations now work across the body boundary and preserve identifier specifiers (VIP-40).
 - Published declaration checks rejected harmless formatting, quote, import-order and member-order differences; `scripts/api-identity.mjs` now compares exported names, their types through `tsc`, and their doc comments.
