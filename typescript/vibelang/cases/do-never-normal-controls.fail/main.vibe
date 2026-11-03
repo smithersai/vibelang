@@ -1,0 +1,11 @@
+// expect: TS2322 TS2345
+// VIP-2: normal/empty completions are not never; outward returns keep their context.
+function empty() { const value: never = do {}; return value }
+function normal() { const value: never = do { 5 }; return value }
+function mixed(c: boolean) { const value: never = do { if (c) return 5; else {} }; return value }
+function wrongReturn(): number { const value: never = do { return "wrong" }; return value }
+// Ordered operands still keep their source type when the later do jumps out.
+function ordered(): number {
+  function take(value: string, ignored: never): number { return 0 }
+  return take((() => 123)(), do { return 5 })
+}

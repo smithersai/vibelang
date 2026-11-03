@@ -109,6 +109,12 @@ func (c *Checker) getFlowTypeOfReferenceEx(reference *ast.Node, declaredType *Ty
 			return declaredType
 		}
 	}
+	// A do result is read from a parser-written completion temporary. Unlike
+	// an ordinary source local in unreachable code, that expression has no
+	// normal value (VIP-2), so it must not take the declared/auto-any fallback.
+	if declaration := c.doCompletionDeclaration(reference); declaration != nil && declaration.Initializer() == nil && c.doTemporarySite(declaration) == reference && !c.isReachableFlowNode(flowNode) {
+		return c.neverType
+	}
 	f := c.getFlowState()
 	f.reference = reference
 	f.doCompletion = doTemporary != nil

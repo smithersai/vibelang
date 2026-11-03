@@ -679,7 +679,7 @@ effect function findUser(users: Map<string, User>, id: string) {
 
 `throw` is a statement. In an effect function, it fails the Effect with a typed error. In a plain function it is `EK0401`: make the function `effect`, or move the code to a `.ts` file. In an `async` function it rejects the Promise.
 
-**Blocks as values** ([do expressions](https://github.com/tc39/proposal-do-expressions)). The value is the block's normal completion value: an empty last statement keeps the earlier value, so `do { 7; {} }` is `7`. A block with no normal completion has type `never`, including `do { stop(); 1 }` when `stop(): never`. With `strict` checking, `[].concat(do { [] })` keeps the empty array's `never[]` type.
+**Blocks as values** ([do expressions](https://github.com/tc39/proposal-do-expressions)). The value is the block's normal completion value: an empty last statement keeps the earlier value, so `do { 7; {} }` is `7`. A block with no normal completion has type `never`, including `do { stop(); 1 }` when `stop(): never`. With `strict` checking, `[].concat(do { [] })` keeps the empty array's `never[]` type. Paths that leave by `return`, `break`, `continue` or `throw` contribute no result type; a `do` with no normal completion has type `never`. If old code relied on the leaked `any` to call or read properties of such a result, `vibelang --fix` makes that `any` explicit with an erased assertion.
 
 ```ts effect
 // fragment

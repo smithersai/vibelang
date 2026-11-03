@@ -1,4 +1,32 @@
-// Chapter 002: do never typing Exit parity; docs/design/src/002-running.md#18da8c80d68b0292
+// Chapter 002 / VIP-2: no normal completion has type never.
 import {Effect} from "effect"
 function stopped(){const value:never=do{return 5};return value}
-export effect function main():unknown!!{return stopped()}
+function branched(condition: boolean): number {
+  const value = do { if (condition) return 5; else return 6 }
+  const checked: never = value
+  return checked
+}
+function finalized(): number {
+  const value: never = do { try { 1 } finally { return 5 } }
+  return value
+}
+function jumped(): number {
+  outer: for (const n of [1, 2]) {
+    const value: never = do { 7; break outer }
+    return value
+  }
+  return 5
+}
+function continued(): number {
+  let count = 0
+  outer: for (const n of [1, 2]) {
+    count += n
+    const value: never = do { (do { continue outer }) }
+    return value
+  }
+  return count + 2
+}
+export effect function main():unknown!!{
+  if (branched(true) !== 5 || branched(false) !== 6 || finalized() !== 5 || jumped() !== 5 || continued() !== 5) return -1
+  return stopped()
+}

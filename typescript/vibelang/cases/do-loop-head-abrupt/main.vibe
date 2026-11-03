@@ -5,7 +5,7 @@ export function returned(): unknown {
   let read: () => unknown = () => 0
   const x = 7
   function inner(): unknown {
-    for (const x of do { read = (): unknown => x; return 42; [1] }) {}
+    for (const x of (do { read = (): unknown => x; return 42; [1] } as any)) {}
     return -1
   }
   return [inner(), readError(read)]
