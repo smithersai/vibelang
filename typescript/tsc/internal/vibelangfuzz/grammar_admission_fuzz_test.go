@@ -145,6 +145,7 @@ var grammarAdmissionSeeds = []struct{ key, source string }{
 	{"join-for-head", "effect function f(xs) { for (join x of xs) { x; } }"},
 	{"join-outside-effect-empty", "join [ ]"},
 	{"service-separators", "service S { n : number ; ; m : string }"},
+	{"effect-overload-line-break", "effect function f ( xs )\neffect { for ( const x of xs ) { try x ; } }"},
 	{"service-rejected-async-member", "service S { n : number ; async static readonly key : string = \"k\" ; }"},
 	{"join-for-head-line-break", "effect function f(xs) { for (join\nx\nof xs) { x; } }"},
 	{"interruption-outside-effect", "function f() { uninterruptible { return 1; } }"},
@@ -1175,6 +1176,19 @@ func TestGrammarAdmissionCore(t *testing.T) {
 	}
 	if r := lab.read(lab.g, grammarLexSource("effect function f(p) { const g = async function() { return join p; }; }"), grammarParseMode{prose: true, names: true}); r.count != 0 {
 		t.Error("join with an operand in a nested async function has a derivation")
+	}
+	// EffectFunctionOverload ends in ";" "and semicolon insertion".
+	for _, source := range []string{
+		"effect function f ( xs )\neffect { return 1 ; }",
+		"effect function f(p: number)\neffect function f(p) { return p; }",
+		"effect function f(p: number);\neffect function f(p) { return p; }",
+	} {
+		if r := lab.read(lab.g, grammarLexSource(source), grammarParseMode{prose: true, names: true}); r.count == 0 {
+			t.Errorf("effect overload signature has no derivation: %q", source)
+		}
+	}
+	if r := lab.read(lab.g, grammarLexSource("effect function f(p) effect function f(p) { return p; }"), grammarParseMode{prose: true, names: true}); r.count != 0 {
+		t.Error("an overload signature with no ; on the same line has a derivation")
 	}
 	// ECMAScript's for and for-in statements. The subset has no [In] parameter,
 	// so `for (a in b; ;)` derives too; that only makes the lab admit more.

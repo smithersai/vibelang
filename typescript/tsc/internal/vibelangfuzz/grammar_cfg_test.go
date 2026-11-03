@@ -403,6 +403,19 @@ func grammarBracketSym(text string) *grammarGsym {
 	return &grammarGsym{kind: grammarSymClass, text: "‹[" + t + "]›"}
 }
 
+// grammarSemicolonInsertion reads each ";" token of the alternatives as the
+// subset's StatementEnd, which ASI may supply.
+func grammarSemicolonInsertion(alts [][]grammarNelem) {
+	for _, alt := range alts {
+		for i := range alt {
+			if alt[i].sym != nil && alt[i].sym.kind == grammarSymTok && alt[i].sym.text == ";" {
+				alt[i] = grammarNelem{name: "StatementEnd", suffix: alt[i].suffix}
+			}
+			grammarSemicolonInsertion(alt[i].alts)
+		}
+	}
+}
+
 // grammarSplitLookahead splits a lookahead set at the commas between its
 // members. A quoted "," is a member, as in ThrowExpressionInvalidPunctuator.
 func grammarSplitLookahead(set string) []string {
@@ -874,6 +887,15 @@ func grammarBuildGrammar(a *grammarAppendixData) *grammarCfg {
 	for _, l := range strings.Split(grammarTsSubset, "\n") {
 		if m := production.FindStringSubmatch(l); m != nil && !defined[m[1]] {
 			defs = append(defs, tsDefs[m[1]])
+		}
+	}
+	// "(... TypeScript overload signatures and semicolon insertion)": such a
+	// production's ";" is ECMAScript's, which a line break may stand for.
+	for i := range a.defs {
+		for _, c := range a.defs[i].comments {
+			if strings.Contains(c, "semicolon insertion") {
+				grammarSemicolonInsertion(a.defs[i].alts)
+			}
 		}
 	}
 	defs = append(defs, a.defs...)

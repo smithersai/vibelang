@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("key:effect-overload-line-break\neffect function f ( xs )\neffect { for ( const x of xs ) { try x ; } }")
