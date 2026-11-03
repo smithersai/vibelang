@@ -666,6 +666,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Scaffolder CLI unit tests could regress unseen because they were excluded with the install/build fixtures; the fast suite now runs in the build graph.
 
 - A timing comparison saved inside a trial directory spoiled later comparisons with its own report; the tool now refuses that path before writing.
+
+- Migrating a service default could widen an exported literal type such as `typeof Flags.default` in declarations; type reads now retain their original primitive type for downstream consumers.
 - API checks invented ambient exports or hid an ambient type change when one input directory contained the other. Contributions now follow each snapshot’s dependency closure, and nested private-class origins remain distinct where required.
 
 - The editor outline merged separate `module` declarations as TypeScript namespaces and hid a later declaration with the same name; each VibeLang module now keeps its own outline entry and name range, including an invalid duplicate.

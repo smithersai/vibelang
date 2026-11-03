@@ -180,10 +180,40 @@ func legacyDefaultTypeQuery(c *checker.Checker, n *ast.Node) (left, name *ast.No
 	return nil, nil, nil
 }
 
+// closedLegacyDefaultReadType accepts only types whose spelling cannot bind
+// a source name at the read. In particular, enum literals, unique symbols,
+// string mappings and error-any keep the existing factory projection.
+func closedLegacyDefaultReadType(t *checker.Type) bool {
+	if t == nil {
+		return false
+	}
+	if t.Flags()&checker.TypeFlagsUnion != 0 {
+		for _, member := range t.Types() {
+			if !closedLegacyDefaultReadType(member) {
+				return false
+			}
+		}
+		return true
+	}
+	if t.Flags()&(checker.TypeFlagsEnum|checker.TypeFlagsEnumLiteral) != 0 {
+		return false
+	}
+	return t.Flags()&(checker.TypeFlagsLiteral|checker.TypeFlagsString|checker.TypeFlagsNumber|checker.TypeFlagsBigInt|checker.TypeFlagsBoolean|checker.TypeFlagsESSymbol|checker.TypeFlagsNull|checker.TypeFlagsUndefined|checker.TypeFlagsVoid|checker.TypeFlagsNever|checker.TypeFlagsUnknown) != 0
+}
+
 // legacyDefaultReadEdit rewrites one read of a legacy default: a value read
-// calls the factory, and a type read names the type the factory returns, so
-// an exported type keeps its meaning.
+// calls the factory. A type read keeps its closed original type or projects
+// the factory's result, so an exported type keeps its meaning.
 func legacyDefaultReadEdit(c *checker.Checker, file *ast.SourceFile, n *ast.Node) sourceEdit {
+	// Context.Reference<Shape> exposes () => Shape in declarations, even
+	// when the written factory returns a narrower literal. Preserve the
+	// original type read directly, including inside arrays and unions.
+	if ast.IsTypeQueryNode(n) || ast.IsIndexedAccessTypeNode(n) {
+		if t := c.GetTypeFromTypeNode(n); closedLegacyDefaultReadType(t) {
+			text := c.TypeToStringEx(t, n, checker.TypeFormatFlagsInTypeAlias|checker.TypeFormatFlagsNoTruncation, nil)
+			return sourceEdit{nodeStart(file, n), n.End(), "(" + text + ")"}
+		}
+	}
 	var text string
 	switch {
 	case ast.IsPropertyAccessExpression(n):

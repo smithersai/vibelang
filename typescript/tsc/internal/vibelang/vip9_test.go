@@ -102,7 +102,7 @@ func TestVIP9DefaultValueMigrationRewritesReads(t *testing.T) {
 		"export type Value = (typeof Flags.defaultValue extends (...args: any) => infer __VibeDefault ? __VibeDefault : never)\n" +
 		"export type Indexed = ((typeof Flags)[\"defaultValue\"] extends (...args: any) => infer __VibeDefault ? __VibeDefault : never)\n" +
 		"export type Enabled = ((typeof Flags.defaultValue extends (...args: any) => infer __VibeDefault ? __VibeDefault : never))[\"enabled\"]\n" +
-		"export type Deep = (typeof Flags.defaultValue extends (...args: any) => infer __VibeDefault ? __VibeDefault : never)[\"enabled\"]\n" +
+		"export type Deep = (boolean)\n" +
 		"export const value = Flags.defaultValue()\n" +
 		"export const element = Flags[\"defaultValue\"]()\n"
 	if got != want {
