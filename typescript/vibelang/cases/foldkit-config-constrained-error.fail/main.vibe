@@ -1,6 +1,5 @@
 // expect: EK9201
 import { Config } from "effect"
-/** @throws {never} */
 function identity<T>(value: T): T { return value }
 export effect function read<T extends Config.Config<string>>(config: T): string!! {
   return try identity(config)

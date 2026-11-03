@@ -2,7 +2,6 @@
 import { Config, ConfigProvider, Effect, Exit } from "effect"
 
 const configString = Config.String
-/** @throws {never} */
 function identity<T>(value: T): T { return value }
 
 // Foldkit relayLocation: no binding or cast is needed for the direct call.

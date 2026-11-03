@@ -20,7 +20,7 @@ export function main() {
       held: yield* held(1),
       projected: yield* projected.reduce(2),
       shout: shout("a"),
-      hidden: hidden(1),
+      hidden: yield* hidden(1),
     }
   })
 }

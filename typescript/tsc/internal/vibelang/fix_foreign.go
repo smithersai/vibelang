@@ -33,7 +33,10 @@ import (
 // A function with no Effect operation is plain in TypeScript, and its calls are
 // JavaScript calls, which VIP-4 allows when nothing says they throw. Without a
 // return annotation it would compile to an Effect (D500), so it gets : infer _,
-// which keeps its type. A call that returns a Promise has no such fix: it is
+// which keeps its type. A call whose @throws says it may throw, a class this
+// file can't reach included, can't stay in plain code (EK0401: synchronous
+// VibeLang code never throws), so its function becomes effect code and the
+// call goes through Effect.try like the others. A call that returns a Promise has no such fix: it is
 // a value in the generator, and tryPromise would wait for it.
 //
 // The wrapper's function also loses what control flow proved about a property:
@@ -92,7 +95,7 @@ func planForeignCall(c *checker.Checker, file *ast.SourceFile, call *ast.Node) *
 	if returnsEffectGen(c, fn) {
 		return nil // what fn is follows from the program it returns, written first
 	}
-	if a.staysPlain(fn) {
+	if a.staysPlain(fn) && a.knownThrows(call) == nil {
 		at := returnTypePosition(file, fn)
 		if at < 0 {
 			return nil

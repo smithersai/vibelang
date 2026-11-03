@@ -46,7 +46,7 @@ export const projected = project({
   },
 })
 
-// A function that runs no Effect stays plain, also where @throws names a class
-// this module can't reach.
+// A function that runs no Effect stays plain; one whose call is known to throw
+// (a @throws naming a class this module can't reach) becomes effect code.
 export const shout = (name: string) => label(name, double(1)).toUpperCase()
-export const hidden = (n: number) => guarded(n)
+export const hidden = effect (n: number) => try Effect.orDie(Effect.try({ try: () => guarded(n), catch: (error) => error }))
