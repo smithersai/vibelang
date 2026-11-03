@@ -550,11 +550,9 @@ func legacyHold(a *analyzer, n *ast.Node) (held bool, byName bool, reason string
 	if signature == nil {
 		return false, false, ""
 	}
-	// An inferred generic Effect is not a written program position.
-	// The direct-argument diagnostic and --fix now make this boundary explicit.
-	if len(path) == 1 && directInferredEffectArgument(c, n) {
-		return false, false, ""
-	}
+	// Today's inferred-Effect warning does not reconstruct a legacy run.
+	// atBareGenericParameter above excludes a self-inferred Effect; a sibling
+	// can independently fix this parameter as a program (D44).
 	if a.classify(a.expectedAt(owner, signature, path, n)).program || a.unmatchedOverloadExpectsProgram(owner, path) {
 		return true, true, "the expression is passed by name to a parameter that expects an Effect (D147), so the call in it ran inside that program"
 	}
@@ -923,16 +921,115 @@ func (a *analyzer) bareGenericParameter(call *ast.Node, signature *checker.Signa
 		if shared {
 			argument := call.Arguments()[other]
 			expected := a.checker.GetTypeAtPosition(signature, other)
-			// A mismatched plain value cannot independently establish the
-			// candidate's Effect context. It may start matching once this
-			// argument's legacy call is run. A spread retains the old context:
-			// its one syntax node can stand for several inferred parameters.
-			if ast.IsSpreadElement(argument) || expected != nil && a.checker.IsTypeAssignableTo(a.checker.GetTypeAtLocation(argument), expected) {
+			// Matching the inferred type alone is insufficient: undefined,
+			// empty containers and other legacy calls can all match without
+			// independently fixing T to a program.
+			if expected != nil && a.checker.IsTypeAssignableTo(a.checker.GetTypeAtLocation(argument), expected) && a.independentGenericProgram(argument, a.checker.GetTypeAtPosition(declared, other), t) {
 				return false
 			}
 		}
 	}
 	return true
+}
+
+// independentGenericProgram requires evidence at an occurrence of T that does
+// not come from contextual inference by the call being migrated. In particular,
+// undefined, an empty collection, or a second legacy call cannot fix T to Effect.
+func (a *analyzer) independentGenericProgram(argument *ast.Node, parameter, target *checker.Type) bool {
+	c := a.checker
+	argument = ast.SkipParentheses(argument)
+	if ast.IsSpreadElement(argument) || c.IsContextSensitive(argument) {
+		return false
+	}
+	var unstable func(*ast.Node) bool
+	unstable = func(n *ast.Node) bool {
+		if n == nil || ast.IsFunctionLike(n) {
+			return false
+		}
+		if ast.IsIdentifier(n) {
+			symbol := c.GetSymbolAtLocation(n)
+			if symbol != nil && symbol.ValueDeclaration() != nil {
+				d := symbol.ValueDeclaration()
+				if ast.IsVariableDeclaration(d) && d.Type() == nil && d.Initializer() != nil && effectCodeOwner(d) != nil {
+					return true
+				}
+			}
+		}
+		if ast.IsCallExpression(n) && effectCodeOwner(n) != nil {
+			signature := c.GetResolvedSignature(n)
+			if signature != nil && isEffectType(c, c.GetReturnTypeOfSignature(signature)) {
+				return true
+			}
+		}
+		return n.ForEachChild(unstable)
+	}
+	if unstable(argument) {
+		return false
+	}
+	actual := c.GetTypeAtLocation(argument)
+	// A generic data factory's contextual result is not independent evidence.
+	if ast.IsCallExpression(argument) {
+		if signature := a.declaredSignature(c.GetResolvedSignature(argument)); signature != nil {
+			actual = c.GetReturnTypeOfSignature(signature)
+		}
+	}
+	type pair struct{ parameter, actual *checker.Type }
+	seen := make(map[pair]bool)
+	budget := 128
+	var evidence func(*checker.Type, *checker.Type) bool
+	evidence = func(p, v *checker.Type) bool {
+		if p == nil || v == nil || budget == 0 || seen[pair{p, v}] {
+			return false
+		}
+		budget--
+		seen[pair{p, v}] = true
+		if p == target {
+			return isEffectType(c, v)
+		}
+		if p.Flags()&checker.TypeFlagsUnion != 0 {
+			for _, part := range p.Types() {
+				if evidence(part, v) {
+					return true
+				}
+			}
+			return false
+		}
+		if v.Flags()&checker.TypeFlagsUnion != 0 {
+			for _, part := range v.Types() {
+				if evidence(p, part) {
+					return true
+				}
+			}
+			return false
+		}
+		if p.Flags()&checker.TypeFlagsObject == 0 || v.Flags()&checker.TypeFlagsObject == 0 {
+			return false
+		}
+		for _, index := range c.GetIndexInfosOfType(p) {
+			if evidence(index.ValueType(), c.GetIndexTypeOfType(v, index.KeyType())) {
+				return true
+			}
+		}
+		for _, property := range c.GetPropertiesOfType(p) {
+			if evidence(c.GetTypeOfSymbol(property), c.GetTypeOfPropertyOfType(v, property.Name())) {
+				return true
+			}
+		}
+		ps := c.GetSignaturesOfType(p, checker.SignatureKindCall)
+		vs := c.GetSignaturesOfType(v, checker.SignatureKindCall)
+		if len(ps) == 1 && len(vs) == 1 {
+			if evidence(c.GetReturnTypeOfSignature(ps[0]), c.GetReturnTypeOfSignature(vs[0])) {
+				return true
+			}
+			for i, param := range ps[0].Parameters() {
+				if i < len(vs[0].Parameters()) && evidence(c.GetTypeOfSymbol(param), c.GetTypeOfSymbol(vs[0].Parameters()[i])) {
+					return true
+				}
+			}
+		}
+		return false
+	}
+	return evidence(parameter, actual)
 }
 
 // unmatchedOverloadExpectsProgram reports whether call has no matching overload

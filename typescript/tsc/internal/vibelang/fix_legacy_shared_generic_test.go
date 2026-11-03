@@ -18,6 +18,7 @@ func TestFixVIPGenericSiblingFormsHoldPrograms(t *testing.T) {
 	for _, test := range []struct{ name, parameter, other string }{
 		{"optional", "other?: T", "Effect.succeed(2)"},
 		{"record", "other: { value: T }", "{ value: Effect.succeed(2) }"},
+		{"array", "other: readonly T[]", "[Effect.succeed(2)]"},
 		{"tuple", "other: readonly [T]", "[Effect.succeed(2)] as const"},
 		{"callback", "other: () => T", "() => Effect.succeed(2)"},
 	} {
