@@ -44,8 +44,6 @@ FuzzFailuresSpec  feature:effectful-body-fail  compiler  VIP-6: the global `fail
 FuzzFailuresSpec  corpus:direct-local  compiler  the minimal reproduction of feature:direct-local
 FuzzFailuresSpec  corpus:declaration-throws  compiler  the minimal reproduction of feature:declaration-throws
 FuzzFailuresSpec  corpus:effectful-body-fail  compiler  the minimal reproduction of feature:effectful-body-fail
-FuzzFailuresSpec feature:assign-throwing compiler VIP-4: 003-failures.md contract assign-throwing disagrees on unmodified main c9327b36 (error TS2322); lane vip-core2
-FuzzFailuresSpec feature:assign-object-member compiler VIP-4: 003-failures.md contract assign-object-member disagrees on unmodified main c9327b36 (error TS2322); lane vip-core2
 FuzzFailuresSpec feature:wrapper-promise-throw compiler VIP-4: 003-failures.md as amended 2026-10-31 expects EK0401 at the marked code; main draws TS2552; lane nothrow-impl
 FuzzFailuresSpec feature:wrapper-trypromise-options compiler VIP-4: 003-failures.md as amended 2026-10-31 expects EK0401 at the marked code; main draws TS2552, TS7006; lane nothrow-impl
 FuzzFailuresSpec feature:foreign-const compiler VIP-4: 003-failures.md contract foreign-const disagrees on unmodified main c9327b36 (error EK4401, error TS1128, error TS1434, error TS2304); lane vip-core2
@@ -91,8 +89,6 @@ FuzzFailuresSpec corpus:promise-library-wrapped compiler VIP-4: minimized reprod
 FuzzFailuresSpec corpus:promise-reject compiler VIP-4: minimized reproduction of feature:promise-reject; lane w2-throw
 FuzzFailuresSpec corpus:promise-reject-wrapped compiler VIP-4: minimized reproduction of feature:promise-reject-wrapped; lane w2-throw
 FuzzFailuresSpec corpus:effect-decoder-call compiler VIP-4: minimized reproduction of feature:effect-decoder-call; lane w2-throw
-FuzzFailuresSpec corpus:assign-throwing compiler VIP-4: minimized reproduction of feature:assign-throwing; lane w2-throw
-FuzzFailuresSpec corpus:assign-object-member compiler VIP-4: minimized reproduction of feature:assign-object-member; lane w2-throw
 FuzzFailuresSpec corpus:wrapper-promise-throw compiler VIP-4: minimized reproduction of feature:wrapper-promise-throw; lane w2-throw
 FuzzFailuresSpec corpus:wrapper-trypromise-options compiler VIP-4: minimized reproduction of feature:wrapper-trypromise-options; lane w2-throw
 FuzzFailuresSpec corpus:foreign-const compiler VIP-4: minimized reproduction of feature:foreign-const; lane w2-throw
@@ -147,12 +143,8 @@ FuzzFailuresSpec feature:rethrows-foreign-own-unknown compiler VIP-4: chapter 3 
 FuzzFailuresSpec corpus:rethrows-foreign-own-unknown compiler VIP-4: minimized reproduction of feature:rethrows-foreign-own-unknown; lane w2-throw
 FuzzFailuresSpec feature:rethrows-own-never-callback-error compiler VIP-4: chapter 3 contract rethrows-own-never-callback-error fails on main 405bac96 (initial probe: EK4301); lane w2-throw
 FuzzFailuresSpec corpus:rethrows-own-never-callback-error compiler VIP-4: minimized reproduction of feature:rethrows-own-never-callback-error; lane w2-throw
-FuzzFailuresSpec feature:assign-incompatible-contract compiler VIP-4: 003-failures.md as amended 2026-10-31 expects EK0402 at the marked code; main draws no error; lane nothrow-impl
-FuzzFailuresSpec corpus:assign-incompatible-contract compiler VIP-4: minimized reproduction of feature:assign-incompatible-contract; lane w2-throw
 FuzzFailuresSpec feature:assign-class-override compiler VIP-4: 003-failures.md as amended 2026-10-31 expects EK0401 at the marked code; main draws TS2416; lane nothrow-impl
 FuzzFailuresSpec corpus:assign-class-override compiler VIP-4: minimized reproduction of feature:assign-class-override; lane vip-core2 (form inference makes the throwing plain function an Effect), then lane w2-throw
-FuzzFailuresSpec feature:assign-return-written-type compiler VIP-4: the chapter reports EK0402 at the marked code; the compiler draws TS2322 there on main 90a26cf8; lane vip-core2 (form inference makes the throwing plain function an Effect), then lane w2-throw
-FuzzFailuresSpec corpus:assign-return-written-type compiler VIP-4: minimized reproduction of feature:assign-return-written-type; lane vip-core2 (form inference makes the throwing plain function an Effect), then lane w2-throw
 FuzzFailuresSpec feature:assign-service-layer compiler VIP-4: 003-failures.md as amended 2026-10-31 expects EK0401 at the marked code; main draws EK4301, EK9205; lane nothrow-impl
 FuzzFailuresSpec corpus:assign-service-layer compiler VIP-4: minimized reproduction of feature:assign-service-layer; lane fix-vip-decls (EK2101), then lane vip-core2 (form inference), then lane w2-throw
 FuzzFailuresSpec feature:assign-service-member compiler VIP-4: 003-failures.md as amended 2026-10-31 expects EK0401 at the marked code; main draws EK4301, EK9205; lane nothrow-impl

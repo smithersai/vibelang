@@ -22,21 +22,29 @@ import (
 // the unknown call. Effect code's own checks of an unwrapped call (`EK0403`,
 // `EK4401`) are outside this rule.
 var nothrowPlacementQuotes = []string{
-	"A `throw` statement is `EK0401`, whether or not a `try` statement in the same function catches it.",
-	"*known to throw* is `EK0401`, unless it sits in the `try` block of a `try` statement that has a `catch` clause, in the same function",
-	"A call in the `catch` or `finally` block, or in a `try` statement with only `finally`, is the error.",
-	"A call whose throwing is unknown, such as an unannotated `.ts` function, stays an ordinary call.",
-	"| an `async` function, arrow or method, its parameter list included, or an `async` generator's body | JavaScript's `throw`: the returned Promise rejects with `e` (decided detail 251) |",
-	"plain function declarations, function expressions and arrows (one nested in effect code included), plain methods, constructors, getters and setters, plain generators",
-	"Its callee has a written or shipped `@throws {T}` other than `@throws {never}` (`@throws {unknown}` included)",
-	"may contain calls known to throw: they belong to the enclosing call",
-	"for a rest parameter, its element type or the tuple member at the argument's position",
-	"every function's parameter list except an ordinary nongenerator `async` function's (an `effect` function's and an `async` generator's included, since each runs at the call, before the Effect or the generator exists)",
+	"A `throw` statement is `EK0401`, even when a `try` statement in the same function catches it.",
+	"*known to throw* is `EK0401`, unless it sits in the `try` block of a `try` statement with a `catch` clause in the same function.",
+	"function orNull(s: string) { try { return JSON.parse(s) } catch { return null } } // allowed",
+	"A call whose throwing is unknown, such as an unannotated `.ts` function, stays an ordinary call",
+	"| an `async` function, arrow or method, its parameter list included, an `async` generator's body, or an `async match` | JavaScript's `throw`: the returned Promise rejects with `e` |",
+	"plain functions and arrows (one nested in effect code included), plain methods, constructors, accessors, plain generators",
+	"Its callee has a written `@throws {T}` other than `@throws {never}` (`@throws {unknown}` included)",
+	"may contain calls known to throw: they belong to the enclosing call.",
+	"(for a rest parameter, the element type or tuple member at the argument's position)",
+	"every parameter list except an ordinary `async` function's",
+	"A `do` expression is not a function, so a call in a `do` block inside that `try` block, or a `try` statement inside a `do` block, follows the same rule.",
 }
+
+// nothrowPlacementFolded marks the quotes that fold-details folds from
+// nothrow-impl.patch; each is checked once that text lands.
+var nothrowPlacementFolded = map[int]bool{8: true, 10: true}
 
 func nothrowPlacementChapter(tb testing.TB) {
 	chapter := SpecText("003-failures.md")
-	for _, quote := range nothrowPlacementQuotes {
+	for i, quote := range nothrowPlacementQuotes {
+		if nothrowPlacementFolded[i] && nothrowFoldPending() {
+			continue
+		}
 		if !strings.Contains(chapter, quote) {
 			tb.Fatalf("chapter 3 no longer says %q", quote)
 		}

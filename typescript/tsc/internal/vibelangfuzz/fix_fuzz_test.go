@@ -156,7 +156,7 @@ func FuzzFix(f *testing.F) {
 				}
 				fixed[rel] = file.Text
 				// D372: comments survive every rewrite.
-				if lost := toolsLostComments(file.Original, file.Text); len(lost) > 0 {
+				if lost := slices.DeleteFunc(toolsLostComments(file.Original, file.Text), fixRemovedThrowsTag.MatchString); len(lost) > 0 {
 					Gap(t, "FuzzFix", "fix:comments", "--fix lost the comments %q of %s:\n%s\nfixed:\n%s", lost, rel, file.Original, file.Text)
 				}
 			}
@@ -698,3 +698,8 @@ func toolsContractMismatch(t *testing.T, w *Workspace, before, after *Result, sa
 	}
 	return ""
 }
+
+// fixRemovedThrowsTag matches a comment that holds only `@throws` and
+// `@rethrows` tags. In a .vibe file each is EK0406, whose fix removes it
+// (chapter 3, Thrown types: "is `EK0406`: remove it"), so D372 does not count it.
+var fixRemovedThrowsTag = regexp.MustCompile(`^/\*\*\s*(?:(?:@throws\s*\{[^}]*\}|@rethrows\s+\w+)\s*)+\*/$`)

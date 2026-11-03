@@ -48,6 +48,11 @@ func FuzzVIPLegacyByNameFunctions(f *testing.F) {
 		}
 		source := legacyByNameHelpers + strings.ReplaceAll(legacyByNameSites[site], "FN", fn.text)
 		files := map[string]string{"main.vibe": source}
+		if fnKey == "throws" {
+			// Synchronous VibeLang code never throws (EK0401); a .ts file may.
+			files["main.vibe"] = "import { raise } from \"./raise.js\"\n" + source
+			files["raise.ts"] = "export function raise(e: unknown): never { throw e }\n"
+		}
 		old := legacyCompile(t, env, files)
 		defer old.Remove()
 		config := toolsConfig(env.w, old.Dir)
@@ -98,7 +103,7 @@ var legacyByNameFunctions = map[string]struct {
 }{
 	"arrow":        {text: "() => 2"},
 	"expression":   {text: "function () { return 2 }"},
-	"throws":       {text: "(): number => { throw new Error(\"plain\") }"},
+	"throws":       {text: "(): number => raise(new Error(\"plain\"))"},
 	"nested":       {text: "() => [1].map((x) => x + 1)[0]!"},
 	"gives-effect": {text: "() => take(1, () => 2) as unknown as number", refused: true},
 }

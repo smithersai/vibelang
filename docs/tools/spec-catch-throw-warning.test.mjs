@@ -7,14 +7,14 @@ import { chapter, read } from "./spec-witness.mjs"
 // 2026-10-31 ruling ("today's EK0511 warning becomes this error") replaces it with EK0401 in every owner.
 test("every owner of the plain-handler throw rule states EK0401, not the EK0511 warning", () => {
   const running = chapter("002-running")
-  assert.match(running, /\| `x catch \(e\) => \{ throw e \}` \| plain function \| error `EK0401`/)
-  assert.match(running, /A plain handler is plain code, so a `throw` in it is `EK0401` \(VIP-5, amended 2026-10-31; this replaces the old, retired `EK0511` warning\)/)
+  assert.match(running, /\| `x catch \(e\) => \{ throw e \}` \| plain function \| a compile error, `EK0401`; write `x catch effect \(e\) => \{ throw e \}` \|/)
+  assert.match(running, /A `throw` in a plain handler is `EK0401`, with the quick fix `catch effect \(e\) => \{ … \}`, which makes the throw a typed failure\./)
   assert.doesNotMatch(running, /A `throw` caught inside the handler, or written in a nested function, does not warn\./)
-  assert.match(chapter("007-tooling"), /The old `EK0511` warning for a `throw` in a plain handler is retired; this error replaces it\./)
+  assert.doesNotMatch(chapter("007-tooling"), /^\| `EK0511` \|/m)
   const appendix = chapter("900-appendices")
   assert.doesNotMatch(appendix, /^\| `EK0511` \|/m)
-  assert.match(appendix, /the old `EK0511` warned about a `throw` in a plain `catch` handler, which is now the error `EK0401`/)
-  assert.match(read("docs/design/vips/0005-try-runs-effects.md"), /`EK0511` is retired/)
+  assert.match(appendix, /The old `EK0511` is retired too: VIP-4 makes a `throw` in a plain `catch` handler the error `EK0401`\./)
+  assert.match(read("docs/design/vips/0005-try-runs-effects.md"), /The old lint warning `EK0511` retires\./)
 })
 
 // The reason for the fixes, on pinned Effect: Effect.catch(x, e => Effect.succeed(h(e))) dies with what h

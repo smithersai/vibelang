@@ -54,11 +54,11 @@ Registration reserves a code; it does not mean the compiler already implements e
 | `EK0108` | a recognized `effect` modifier on an `abstract` declaration, in an ambient `declare` context, or on an `interface` or type literal member |
 | `EK0109` | a typed or generic bare `effect` arrow head; parenthesize its parameters |
 | `EK0301` | `!` beside a union, an intersection, a function type or a conditional type without parentheses |
-| `EK0401` | a `throw` or a call that may throw in a plain function whose return type is effectful, or a parameter default that may throw in any effectful function, or a local implementation whose tracked throws exceed an exposed effectful overload's implicit `never` bound |
+| `EK0401` | a `throw` statement, or a call known to throw, in synchronous code outside effect code: plain functions, methods, constructors, accessors, plain generators, initializers, parameter lists, plain `catch` handlers and the module top level; a call in the `try` block of a `try`/`catch` statement is allowed |
 | `EK0402` | a function that may throw where a function type doesn't admit its thrown type |
-| `EK0403` | an unwrapped call, `new` expression or tagged template that may throw, in effect code or a plain `catch` handler |
+| `EK0403` | an unwrapped call, `new` expression or tagged template that may throw, in effect code |
 | `EK0404` | an unwrapped Promise-producing call, `new` expression, tagged template or `async match` in effect code |
-| `EK0405` | a body that throws more than its written `@throws {T}` |
+| `EK0406` | a `@throws` or `@rethrows` tag in a `.vibe` file, on any declaration, signature or type; quick fix: remove the tag |
 | `EK0501` | `try` outside effect code, the top level included |
 | `EK0502` | `try` on a value that is not an Effect |
 | `EK0503` | a `try` statement in effect code |

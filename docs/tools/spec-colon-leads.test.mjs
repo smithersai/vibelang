@@ -30,6 +30,6 @@ test("the effectful-function bullet is followed by its example", () => {
   const lead = "- A plain `.vibe` function that returns an Effect, a Stream or a Layer is effectful, so it can't throw ("
   const after = text.slice(text.indexOf(lead)).split("\n\n")[1]
   assert.match(after, /^```vibe es\n\/\/ compiler-gap: pending VIP-4\nexport function bad/)
-  const contract = text.indexOf("An `async` callable's declaration carries `@throws {never}` too")
+  const contract = text.indexOf("Ordinary nongenerator `async` callables use the [normalized async contract]")
   assert.ok(contract !== -1 && contract < text.indexOf(lead))
 })

@@ -21,8 +21,8 @@ import (
 // call, exactly one for any nested call. The quotes are read from the chapter
 // at test time.
 var nothrowEscapeQuotes = []string{
-	"may contain calls known to throw: they belong to the enclosing call, which is checked where it sits.",
-	"A function nested in such a literal, whether it is returned, stored, passed on or called in place, is its own plain code and keeps this check",
+	"may contain calls known to throw: they belong to the enclosing call.",
+	"A function nested in that literal is its own plain code.",
 }
 
 func nothrowEscapeChapter(tb testing.TB) {

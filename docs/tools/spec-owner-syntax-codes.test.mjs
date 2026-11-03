@@ -12,7 +12,9 @@ test("Appendix B assigns the five codes to their owning VIPs, in code order", ()
     assert.ok(row(code).includes(` | ${vip} | `), code)
   }
   const codes = [...appendix.matchAll(/^\| `(EK\d{4})` \|/gm)].map(m => m[1])
-  for (const [a, b] of [["EK0108", "EK0109"], ["EK0511", "EK0512"], ["EK1504", "EK1505"], ["EK1605", "EK1606"]]) {
+  // The no-throw rule retires EK0511, so EK0510 comes before EK0512 once its text lands.
+  const beforeEK0512 = codes.includes("EK0511") ? "EK0511" : "EK0510"
+  for (const [a, b] of [["EK0108", "EK0109"], [beforeEK0512, "EK0512"], ["EK1504", "EK1505"], ["EK1605", "EK1606"]]) {
     assert.equal(codes.indexOf(b), codes.indexOf(a) + 1, b)
   }
 })

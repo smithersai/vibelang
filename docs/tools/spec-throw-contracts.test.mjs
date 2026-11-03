@@ -8,9 +8,8 @@ import { Effect } from "effect"
 const failures = readFileSync(process.env.SPEC_FAILURES ?? new URL("../design/src/003-failures.md", import.meta.url), "utf8")
 // VIP-4, amended 2026-10-31: @rethrows defaults exist only in .ts and JavaScript declarations, whose written
 // @throws states the bound; VibeLang reads no bodies, so it infers no default-callback contract.
-test("generic substitution keeps its contract and default-callback bounds come from written foreign tags", () => {
-  assert.ok(failures.includes("before type-argument substitution"), "classify the declaration before substituting its return type")
-  assert.ok(failures.includes("Such parameters exist only in `.ts` and JavaScript declarations, whose bodies VibeLang does not read: their written `@throws` states the callable's bound"))
+test("default-callback bounds come from written foreign tags, never a .vibe body", () => {
+  assert.ok(failures.includes("Nothing is inferred from a body."), "a .vibe callable has no inferred contract")
   assert.ok(!failures.includes("emit it in `@throws`"), "no .vibe default-callback inference remains")
 })
 test("the documented generic bridge fails with the contract's throw and the constrained Effect succeeds", async () => {

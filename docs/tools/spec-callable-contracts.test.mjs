@@ -4,20 +4,23 @@ import { block, chapter, run } from "./spec-witness.mjs"
 
 // VIP-4, amended 2026-10-31 (Will: "If you throw in vibelang itself in a sync function that's an error"):
 // a .vibe callable has thrown type never, so overloads, declaration output and callbacks carry no inferred contract.
-test("a local .vibe implementation throws never and meets every overload bound; its throw is EK0401", () => {
-  assert.match(chapter("001-functions"), /A local `\.vibe` implementation has thrown type `never`, so it satisfies every exposed overload, an effectful overload's implicit `never` bound included\. A `throw` in it is `EK0401`/)
-  assert.match(chapter("003-failures"), /A local `\.vibe` implementation has thrown type `never`, so it satisfies every exposed overload bound; a `throw` or a call known to throw in it is `EK0401` at that site\./)
+test("a local .vibe implementation throws never, so its body sets no overload bound", () => {
+  const failures = chapter("003-failures")
+  assert.match(failures, /A callable declared in VibeLang \(`\.vibe` or `\.vibex`, outside a `module` body\) has thrown type `never`\. Nothing is inferred from a body\./)
+  assert.match(failures, /A `throw` statement is `EK0401`, even when a `try` statement in the same function catches it\./)
+  assert.doesNotMatch(chapter("001-functions"), /A written `@throws \{T\}` is a checked upper bound/)
 })
 
 test("declaration output writes @throws {never} on .vibe call signatures and no @rethrows", () => {
   const text = chapter("001-functions")
-  assert.match(text, /Every other call signature the output emits carries `@throws \{never\}`, so a TypeScript reader doesn't fall back to the foreign default `unknown`/)
-  assert.match(text, /\*\*No `@rethrows` is emitted\.\*\* A `\.vibe` file can't write `@throws` or `@rethrows` \(`EK0406`\)/)
+  assert.match(text, /\*\*Thrown types\.\*\* A `\.vibe` callable throws `never` \(\[Thrown types\]\(003-failures\.md#thrown-types\)\), so the output states the same on every call signature it emits other than an effectful one/)
   assert.doesNotMatch(text, /A written `@throws \{T\}` is a checked upper bound/)
   assert.doesNotMatch(text, /admitted thrown bound of `unknown`/)
-  for (const m of text.matchAll(/```vibe es\n([\s\S]*?)```/g)) assert.doesNotMatch(m[1], /@throws|@rethrows/)
-  // VIP-4, amended 2026-10-31: chapter 3 keeps @rethrows for foreign declarations only.
-  assert.match(chapter("003-failures"), /`@rethrows` parameters exist only on `\.ts`, `\.d\.ts` and JavaScript declarations/)
+  // A `module` body is TypeScript (VIP-40), so its tags are foreign contracts.
+  for (const m of text.matchAll(/```vibe es\n([\s\S]*?)```/g)) {
+    assert.doesNotMatch(m[1].replace(/^\s*(export\s+)?module\s+[\w$]+\s*\{[\s\S]*?^\}/gm, ""), /@throws|@rethrows/)
+  }
+  assert.match(chapter("003-failures"), /A written `@throws` or `@rethrows` tag there, on a function, service member or function-type signature, is `EK0406`/)
 })
 
 test("the printed references distinguish a hidden synchronous throw, an unwrapped callback defect and a wrapped failure", () => {

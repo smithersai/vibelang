@@ -11,6 +11,14 @@ export const repo = resolve(tools, "../..")
 export const read = (path) => readFileSync(join(repo, path), "utf8")
 export const chapter = (name) => read(`docs/design/src/${name}.md`)
 
+// Main's chapter 3 states Will's no-throw rule. Lane fold-details folds the rest of nothrow-impl's spec text
+// (fold-inputs/nothrow-impl.patch): the introduction's principle 4 stops listing `throw` among TypeScript's meanings,
+// and chapter 3 names rest positions and `do` expressions. Until then a test of that text stays pending, and it
+// runs again by itself once the text lands.
+export const nothrowFoldPending = chapter("000-intro").includes("Plain functions, `async` functions, `await`, `throw`, `using`")
+  ? "pending fold-details: nothrow-impl.patch (principle 4, rest positions, do expressions) has not landed"
+  : false
+
 export function block(text, marker, language = "ts effect") {
   const found = [...text.matchAll(/```([a-z]+(?: [a-z]+)?)\n([\s\S]*?)```/g)]
     .filter(m => m[1] === language && m[2].includes(marker))

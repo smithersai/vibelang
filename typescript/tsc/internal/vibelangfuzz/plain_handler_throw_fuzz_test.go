@@ -19,8 +19,8 @@ import (
 // nested in either kind of handler, and an `effect` handler's own `throw` is
 // a typed failure.
 var plainHandlerThrowQuotes = []string{
-	"A plain handler is plain code, so a `throw` in it is `EK0401`",
-	"a function nested in it is checked as its own plain code",
+	"A `throw` in a plain handler is `EK0401`",
+	"// EK0401: the nested arrow is plain code too",
 }
 
 type plainHandlerWrapper struct {

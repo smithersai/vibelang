@@ -7,10 +7,10 @@ const failures = readFileSync(process.env.SPEC_FAILURES ?? new URL("../design/sr
 
 // VIP-4, amended 2026-10-31: a .vibe generator never throws; a plain generator's body and parameters are
 // synchronous code outside effect code (EK0401), and an async generator's body throws reject its resumption.
-test("a .vibe generator never throws; foreign generators keep their signature contracts", () => {
-  assert.match(failures, /A `\.vibe` generator never throws: a plain generator's body and parameter list are synchronous code outside effect code, so a `throw` or a call known to throw there is `EK0401`/)
-  assert.match(failures, /an `async` generator's body throws reject its resumption Promise \(decided detail 251\)/)
-  assert.match(failures, /function\* lazy\(\) \{ throw "body" \}\s+\/\/ EK0401: a plain generator never throws/)
+test("a .vibe generator never throws; an async generator's body rejects", () => {
+  const plain = failures.slice(failures.indexOf("### Plain code never throws"), failures.indexOf("## Throw expressions"))
+  assert.ok(plain.includes("plain generators"), "a plain generator is synchronous code outside effect code")
+  assert.match(failures, /\| an `async` function, arrow or method, its parameter list included, an `async` generator's body, or an `async match` \| JavaScript's `throw`: the returned Promise rejects with `e` \|/)
   assert.doesNotMatch(failures, /parameter initialization alone contributes to the call's synchronous thrown type/)
 })
 

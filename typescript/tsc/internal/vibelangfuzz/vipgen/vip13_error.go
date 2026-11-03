@@ -24,7 +24,7 @@ func init() {
 		Citations: append(slices.Clone(errorCitations), Citation{
 			VIP:      5,
 			Template: "yield* Effect.catch(‹x›, (‹e›) => Effect.succeed(‹f(e)›))",
-			Quote:    "`x catch (e) => f(e)` (a plain function; a `throw` inside was a JavaScript exception, so a defect; since 2026-10-31 it is `EK0401`) | `Effect.catch(x, (e) => Effect.succeed(f(e)))`",
+			Quote:    "`x catch (e) => f(e)` (a plain function; a `throw` inside is `EK0401`, VIP-4, amended 2026-10-31) | `Effect.catch(x, (e) => Effect.succeed(f(e)))`",
 			Reading:  "VIP-5 states this Effect TS in its decision's table, not in a code block; yield* runs the Effect, since `e catch y` \"runs `e`\" inside an effect function.",
 		}),
 		Focus: func(g *Gen, s *Scope) []Stmt {

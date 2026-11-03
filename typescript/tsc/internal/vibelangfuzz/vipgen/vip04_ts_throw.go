@@ -29,7 +29,7 @@ func init() {
 		Citations: []Citation{{
 			VIP:      4,
 			Template: "yield* ‹load›()",
-			Quote:    "A function that returns an Effect, whether an `effect` function or a `.ts` function whose return type is `Effect`, can't throw: calling it is never throw-tracked, and its failures are its Effect's error channel",
+			Quote:    "A function whose return type is wholly `Effect`, `Stream` or `Layer` can't throw, and calling it is never throw-tracked: its failures are its Effect's error channel",
 			Reading:  "VIP-4 shows no Effect TS for calling a .ts function. try runs its Effect with yield* (VIP-5), and Chapter 3 says a .ts implementation that throws before returning produces a defect when called inside effect code, as a throw inside Effect.gen's body does.",
 		}},
 		Focus: func(g *Gen, s *Scope) []Stmt {
@@ -63,7 +63,7 @@ func init() {
 		Citations: []Citation{{
 			VIP:      4,
 			Template: "yield* ‹load›()",
-			Quote:    "A function that returns an Effect, whether an `effect` function or a `.ts` function whose return type is `Effect`, can't throw: calling it is never throw-tracked, and its failures are its Effect's error channel",
+			Quote:    "A function whose return type is wholly `Effect`, `Stream` or `Layer` can't throw, and calling it is never throw-tracked: its failures are its Effect's error channel",
 			Reading:  "Not tracked is not deferred: the call is Effect.ensuring's argument, which JavaScript evaluates before Effect.ensuring runs, so its throw is a defect of main and Effect.ensuring never adds its finalizer.",
 		}},
 		// The probe logs, then runs Effect.ensuring(load(), log): load logs
