@@ -4,6 +4,8 @@
 
 ## Decision
 
+- **Clarified 2026-11-03: throw arms follow VIP-4.** A `throw` arm fails the Effect in effect code, rejects the Promise in an `async match`, and is `EK0401` in other synchronous VibeLang code. The async-match boundary covers its subject, tests and arms; nested source callables keep their own contexts.
+
 ```ts
 match (e) {
   when NotFound: guest;                // NotFound's Symbol.customMatcher decides, as TC39 says

@@ -259,8 +259,38 @@ const pairCacheExit = Effect.runSyncExit(Effect.sync(pairCacheWitness)) // Succe
   VibeLang does not adopt the draft's disputed early error rejecting a `MatchProperty` name coverable by `BindingIdentifier`, either as a bare presence key or before `:`. Identifier keys such as `_tag:` remain valid; the separate `__proto__` pattern-key restriction and unrelated early errors remain.
 - Prefix `not` wins whenever the same token sequence can also be a member/extractor rooted at an identifier `not`. Parsing never consults a local binding or its type, and does not retry that identifier parse to evade an early error. Thus `not(let x)` negates a parenthesized binding pattern and `not[0]` negates an array pattern; `helpers.not(let x)` remains a qualified extractor. `not` stays an ordinary name outside the prefix collision and in property/binding-name positions.
 - Pattern bindings use `let` or `const`; `when var x:` is `EK0107`, as `var` is everywhere in `.vibe`.
-- An arm's body may be `throw e`, as VIP-5's example writes it. It means what `throw` means where the arm stands ([Failures](003-failures.md#throw)): in effect code it fails the Effect, in an `async` function or an `async match` it rejects the Promise, and in any other `.vibe` code it is `EK0401`.
+- An arm's body may be `throw e`, as VIP-5's example writes it. It means what `throw` means where the arm stands ([Failures](003-failures.md#throw)): in effect code it fails the Effect, in an `async` function or an `async match` it rejects the Promise, and in any other `.vibe` code it is `EK0401`. Nested source callables keep their own contexts.
 - No-match `TypeError`, implicit matcher reads/calls and protocol checks are implicit throws: never tracked, and defects in effect code. Written calls in subjects, guards, arms and call-only predicates are tracked normally ([Thrown types](003-failures.md#thrown-types)).
+
+```vibe es
+// compiler-gap: pending VIP-4, VIP-7
+function plainArm(b: boolean) {
+  return match (b) { when true: 1; default: throw new Error("missing"); } // EK0401
+}
+effect function effectArm(b: boolean) {
+  return match (b) { when true: 1; default: throw new Error("missing"); }
+}
+function asyncArm(b: boolean) {
+  return async match (b) { when true: 1; default: throw new Error("missing"); }
+} // asyncArm(false) rejects its Promise
+```
+
+```ts effect
+import { Effect } from "effect"
+
+function effectArm(b: boolean) {
+  return Effect.gen(function* () {
+    if (b === true) return 1
+    return yield* Effect.fail(new Error("missing"))
+  })
+}
+function asyncArm(b: boolean) {
+  return (async () => {
+    if (b === true) return 1
+    throw new Error("missing")
+  })()
+}
+```
 
 The empty array pattern uses [ArrayPattern](900-appendices.md#arraypattern) with its one nullable-list derivation. It matches an empty iterable, including an empty string, and is not a wildcard or an array-only test. Every array pattern and extractor list receives a cached Iterator Record; its finishing paths never receive the original subject instead of that record.
 

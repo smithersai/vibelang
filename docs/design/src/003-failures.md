@@ -38,7 +38,7 @@ function load(id: string) {
 
 ### Plain code never throws
 
-*Synchronous code outside effect code* is every part of a `.vibe` or `.vibex` file that is not effect code and not inside an `async` function or an `async match`: plain functions and arrows (one nested in effect code included), plain methods, constructors, accessors, plain generators, class field initializers, `static` blocks, every parameter list except an ordinary `async` function's, plain `catch` handlers (parameters and body), and the module top level. In that code:
+*Synchronous code outside effect code* is every part of a `.vibe` or `.vibex` file that is not effect code and not in an `async` function or `async match` boundary (nested source callables keep their own contexts): plain functions and arrows (one nested in effect code included), plain methods, constructors, accessors, plain generators, class field initializers, `static` blocks, every parameter list except an ordinary `async` function's, plain `catch` handlers (parameters and body), and the module top level. In that code:
 
 - A `throw` statement is `EK0401`, even when a `try` statement in the same function catches it.
 - A call, `new` expression, tagged template or class evaluation *known to throw* is `EK0401`, unless it sits in the `try` block of a `try` statement with a `catch` clause in the same function. Its callee has a `@throws {T}` other than `@throws {never}` (`@throws {unknown}` included), or a `@rethrows` parameter given a callback known to throw. A call whose throwing is unknown, such as an unannotated `.ts` function, stays an ordinary call.
