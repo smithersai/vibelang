@@ -1,0 +1,8 @@
+{
+  "key": "verify:test-diff-flags-emitted-js-as-fixture",
+  "files": [
+    "packages/client-runtime/.vibelang/js/src/state/orchestrationV2TestFixtures.js",
+    "packages/provider-opencode/.vibelang/js/src/server/probeResponses.fixture.js"
+  ],
+  "text": "export const fixture = 1;\n"
+}

@@ -1413,7 +1413,7 @@ export async function emitMigratedJs(config, t, logs) {
     // Nonzero emits can still write valid package-owned files (for example TS6059).
     let runtimeRouting, packingFiles=[]
     const exportsChanged = routeEmittedExports(join(t, pkg.dir), result.outputs, { typescript:typeScriptOf(config), onGraph:graph=>runtimeRouting=graph, onPacking:files=>packingFiles=files.map(file=>posix.join(pkg.dir,file)) })
-    emitted.push({ package: pkg.dir, files: result.files, code: result.code, exportsChanged, runtimeRouting, packingFiles, loaderRecords: [], diagnostics: result.diagnostics })
+    emitted.push({ package: pkg.dir, files: result.files, generatedFiles: result.generatedFiles, code: result.code, exportsChanged, runtimeRouting, packingFiles, loaderRecords: [], diagnostics: result.diagnostics })
   }
   // Routing edits TypeScript the loader records name, so it comes first.
   const routed = config.routeBundledImports ? routeBundledImports({ root: t, packages: config.packages, ts: typeScriptOf(config), compiler: compilerOf(config) }) : null
@@ -1429,7 +1429,7 @@ function rememberPackingFiles(p, batch, emitted) {
   const path = p.codemod(batch)
   const previous = readJsonIf(path)
   const next = withPackingScope(previous, emitted)
-  if (next && JSON.stringify(next.packingFiles) !== JSON.stringify(previous?.packingFiles)) {
+  if (next && (JSON.stringify(next.packingFiles) !== JSON.stringify(previous?.packingFiles) || JSON.stringify(next.generatedFiles) !== JSON.stringify(previous?.generatedFiles))) {
     durableWrite(path, JSON.stringify(next, null, 2) + "\n")
   }
   return next
@@ -1873,6 +1873,8 @@ export async function testEdits(config, p, plan, b, ts) {
     ts, target: config.target,
     base: setup?.jj?.upgradeCommit ?? setup?.jj?.setupCommit ?? "@-",
     bridges: setup?.wired?.testProjects ?? [],
+    generatedFiles: [...new Map((plan?.batches ?? []).slice(0, Number(b)).flatMap((_, i) =>
+      readJsonIf(p.codemod(batchName(i)))?.generatedFiles ?? []).map(proof => [proof.file, proof])).values()],
     renames, directories: [config.target, ...config.packages.map(pkg => join(config.target, pkg.dir))],
     scratch: p.batch(b), cwd: config.test.cwd, globRoot: config.test.globRoot,
     parseVibe: vibeParser(() => compilerOf(config))

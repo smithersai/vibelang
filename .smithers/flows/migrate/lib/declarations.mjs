@@ -1,6 +1,7 @@
 // Declaration gates share the canonical exported-name/type/JSDoc checker.
 // Text canonicalization remains available for syntax/formatting utilities;
 // public API decisions never depend on its printed spelling.
+import { createHash } from "node:crypto"
 import { existsSync, mkdtempSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs"
 import { createRequire } from "node:module"
 import { tmpdir } from "node:os"
@@ -801,7 +802,11 @@ export async function emitPackageJs({ compiler, tsconfigs, packageDir, log, root
     if (published.has(source)) keep(file, source, relative)
     else rmSync(file, { force: true })
   }
-  return { code, files, outputs, diagnostics: parseDiagnostics(output, { cwd: packageDir, root }) }
+  const generatedFiles = Object.values(outputs).map(output => {
+    const file = resolve(packageDir, output)
+    return { file: rel(scope, file), sha256: createHash("sha256").update(readFileSync(file)).digest("hex") }
+  })
+  return { code, files, outputs, generatedFiles, diagnostics: parseDiagnostics(output, { cwd: packageDir, root }) }
 }
 
 /**

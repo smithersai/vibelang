@@ -1,6 +1,7 @@
 // Detail 272: a test remains the migration's oracle. Only AST module-path
 // literals and extension selectors with an identical file set may change.
 // No target code is executed: the selector interpreter is deliberately finite.
+import { createHash } from "node:crypto"
 import { mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs"
 import { createRequire } from "node:module"
 import { dirname, join, posix } from "node:path"
@@ -450,7 +451,7 @@ function selectGlob(glob, pats, root, file, options, globRoot) {
  * runs from before setup, so each bridge is an added file; it is setup's own
  * only while its bytes are the ones setup wrote.
  */
-export function verifyTestDiff({ ts, before, after, renames, bridges = [], declarationImportStyle = "vibe", glob, scratch, cwd = ".", globRoot, parseVibe }) {
+export function verifyTestDiff({ ts, before, after, renames, bridges = [], generatedFiles = [], declarationImportStyle = "vibe", glob, scratch, cwd = ".", globRoot, parseVibe }) {
   renames = renames.filter(r => samePathRename(r) && Object.hasOwn(before, r.from) && !Object.hasOwn(after, r.from) && Object.hasOwn(after, r.to) && !Object.hasOwn(before, r.to))
   const result = { ok: true, files: [] }
   let trees
@@ -466,6 +467,11 @@ export function verifyTestDiff({ ts, before, after, renames, bridges = [], decla
   try {
     for (const file of sorted(new Set([...Object.keys(before), ...Object.keys(after)]))) {
       if (!isProtectedFile(file) || before[file] === after[file] && Object.hasOwn(before, file) === Object.hasOwn(after, file)) continue
+      // Only newly created bytes with an emitter receipt are generated output.
+      // A real pre-existing fixture or a stale/edited output remains protected.
+      if (!Object.hasOwn(before, file) && typeof after[file] === "string" &&
+        generatedFiles.some(proof => proof.file === file &&
+          proof.sha256 === createHash("sha256").update(after[file]).digest("hex"))) continue
       if (!Object.hasOwn(before, file) && bridges.some(bridge => bridge.config === file && bridge.text === after[file])) continue
       if (pairedSidecar(file, before) || pairedSidecar(file, after)) continue
       const entry = { file, ok: true, hunks: [] }

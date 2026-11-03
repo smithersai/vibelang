@@ -182,6 +182,8 @@ VIP-15 key mutability upgrade: a normal schema field without `readonly` maps to 
 
 With `--include-private-declarations`, private packages require the same stock-compiler and candidate API-identity proofs as public packages; an unavailable oracle never proves identity.
 
+A newly added emitted JavaScript fixture is flow output only when its pinned bytes match the emitter’s recorded `generatedFiles` digest. A path under `.vibelang/js/` alone proves nothing; pre-existing fixtures and later edits remain protected.
+
 ## The language
 
 The VibeLang skill follows: every form beside the Effect code it replaces, and the rules with their EK codes. Accepted VIPs and the call rule above take precedence over older examples.

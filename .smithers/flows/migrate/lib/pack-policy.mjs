@@ -71,9 +71,12 @@ export function syncPackPolicy(root,pkg) {
 export function withPackingScope(codemod, emitted = []) {
   if (!codemod) return codemod
   const files = new Set(codemod.packingFiles ?? [])
+  const generated = new Map((codemod.emittedJs ?? []).flatMap(row => row.generatedFiles ?? []).map(proof => [proof.file, proof]))
+  for (const proof of codemod.generatedFiles ?? []) generated.set(proof.file, proof)
   for (const row of [...(codemod.emittedJs ?? []), ...emitted]) {
     for (const file of row.packingFiles ?? []) files.add(file)
   }
-  if (!files.size && !Object.hasOwn(codemod, "packingFiles")) return codemod
-  return { ...codemod, packingFiles: [...files].sort() }
+  for (const row of emitted) for (const proof of row.generatedFiles ?? []) generated.set(proof.file, proof)
+  if (!files.size && !generated.size && !Object.hasOwn(codemod, "packingFiles")) return codemod
+  return { ...codemod, packingFiles: [...files].sort(), ...(generated.size ? { generatedFiles: [...generated.values()] } : {}) }
 }

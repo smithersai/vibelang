@@ -800,3 +800,5 @@ When a published package cannot add a platform sibling without widening its expo
 A compiler-refused `EK4830` preserves a `Data.TaggedError` class whose tag is published API. The style gate accepts its `No quick fix:` note, just as it accepts refused service and schema-error classes. A repairable `EK4830` and unrelated findings still block the batch.
 
 With `--include-private-declarations`, setup also captures the stock compiler oracle for private packages. Verification compares both that oracle and the candidate through the shared API-identity checker; missing or changed stock declarations still fail. Start a fresh setup if an older run recorded no private oracle.
+
+Each JavaScript emit records repository-relative output paths and SHA-256 digests in `generatedFiles`. The codemod journal retains the latest receipts across verification and restart. Test-diff verification exempts a newly added generated file only while its pinned bytes match the receipt. A directory name alone never exempts a fixture; a pre-existing fixture and output changed after emission remain protected.

@@ -8,7 +8,7 @@ import * as Jj from "./jj.mjs"
 import { isProtectedFile, loadGlob, verifyTestDiff, testDiffMarkdown } from "./test-diff.mjs"
 import { must, quote, writeJson, writeText } from "./util.mjs"
 
-export async function verifyRepositoryTests({ ts, target, base = "@-", bridges = [], renames, directories = [target], scratch, cwd = ".", declarationImportStyle, globRoot, parseVibe }) {
+export async function verifyRepositoryTests({ ts, target, base = "@-", bridges = [], generatedFiles = [], renames, directories = [target], scratch, cwd = ".", declarationImportStyle, globRoot, parseVibe }) {
   mkdirSync(scratch, { recursive: true })
   const from = await Jj.commitId(target, base)
   const to = await Jj.commitId(target, "@")
@@ -89,7 +89,7 @@ export async function verifyRepositoryTests({ ts, target, base = "@-", bridges =
   // Resolve from the importing test first: monorepos can install different
   // Vite versions in different packages. Resolution is lazy for non-glob edits.
   const glob = file => loadGlob([join(target, posix.dirname(file)), join(target, cwd), ...directories], ts)
-  const result = { ...verifyTestDiff({ ts, before, after, renames, bridges, glob, scratch, cwd, declarationImportStyle, globRoot, parseVibe }), from, to }
+  const result = { ...verifyTestDiff({ ts, before, after, renames, bridges, generatedFiles, glob, scratch, cwd, declarationImportStyle, globRoot, parseVibe }), from, to }
   writeJson(join(scratch, "test-diff.json"), result)
   writeText(join(scratch, "test-diff.md"), testDiffMarkdown(result))
   return result
