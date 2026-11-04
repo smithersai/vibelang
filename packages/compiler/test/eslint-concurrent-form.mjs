@@ -1,6 +1,6 @@
 import assert from "node:assert/strict"
 
-export const concurrentToolRule = "linters, Knip, bundlers and test runners each read `.vibe`"
+export const concurrentToolRule = "linters, Knip, bundlers and test runners read `.vibe`"
 
 export function concurrentInputs(fc) {
   return fc.record({

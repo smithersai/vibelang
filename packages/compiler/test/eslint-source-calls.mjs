@@ -1,6 +1,6 @@
 import assert from "node:assert/strict"
 
-export const sourceCallRule = "linters, Knip, bundlers and test runners each read `.vibe`"
+export const sourceCallRule = "linters, Knip, bundlers and test runners read `.vibe`"
 
 export function callInputs(fc) {
   return fc.record({

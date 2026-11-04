@@ -85,8 +85,8 @@ test("vibe.sidecarDir writes each sidecar under it, mirroring the source tree, a
     assert.equal(existsSync(beside(root, module)), false, module)
   }
   // Relative Vibe imports reach their mirrored companions; native TS imports reach their source even from another project.
-  assert.equal(readFileSync(mirrored(root, "deep/greet"), "utf8"), "import type { Name } from \"../name.vibe\";\nexport declare function greet(name: Name): string;\n")
-  assert.equal(readFileSync(mirrored(root, "loud"), "utf8"), "import type { Loud } from \"../../../src/util.ts\";\nexport declare const loud: (first: string) => Loud;\n")
+  assert.equal(readFileSync(mirrored(root, "deep/greet"), "utf8"), "import type { Name } from \"../name.vibe\";\n/** @throws {never} */\nexport declare function greet(name: Name): string;\n")
+  assert.equal(readFileSync(mirrored(root, "loud"), "utf8"), "import type { Loud } from \"../../../src/util.ts\";\n/** @throws {never} */\nexport declare const loud: (first: string) => Loud;\n")
   // A sidecar stays an output of its source, even where include names its directory.
   writeFileSync(join(root, "lib/tsconfig.json"), JSON.stringify({ ...JSON.parse(directoryMode()), include: ["src", ".vibe/declarations"] }))
   assert.doesNotMatch(build(root, "--listFiles").stdout, /\.d\.vibe\.ts/)

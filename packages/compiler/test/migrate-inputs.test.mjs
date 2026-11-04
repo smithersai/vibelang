@@ -15,7 +15,8 @@ const flowFiles = dir => readdirSync(join(root, dir), { withFileTypes: true })
   .flatMap(e => e.isDirectory() ? (e.name === "node_modules" ? [] : flowFiles(dir + "/" + e.name)) : [dir + "/" + e.name])
 
 // The targets that run or import the flows, by their packages/PACKAGE.ts names.
-const consumers = ["compiler-test", "migrate-test", "vite-test", "compiler-tools-test"]
+// The compiler package tests run as four file shards, compiler-test-1 to compiler-test-4.
+const consumers = ["compiler-test-1", "compiler-test-2", "compiler-test-3", "compiler-test-4", "migrate-test", "vite-test", "compiler-tools-test"]
 
 // The text that declares a target: its `const` up to the next top-level statement, plus the local helper it calls
 // (`pluginTest("vite", ...)`). Read as text rather than through `smthrs explain`: every explain walks the whole
@@ -24,7 +25,7 @@ const consumers = ["compiler-test", "migrate-test", "vite-test", "compiler-tools
 // failed 9 hosted pre-gates with explain_failed ("Something went wrong on our side", smithers-bugs.md); the four
 // target explains also took 55 s on a quiet nyc-01, against 4 s for the one explain below.
 const declaration = (source, label) => {
-  const name = source.match(new RegExp(`^\\s+"?${label}"?: (\\w+),?$`, "m"))?.[1]
+  const name = source.match(new RegExp(`^\\s+"?${label}"?: (\\w+)(?:\\(\\d+\\))?,?$`, "m"))?.[1]
   assert.ok(name, `packages/PACKAGE.ts: no target ${label}`)
   const body = id => source.match(new RegExp(`^const ${id} = [\\s\\S]*?(?=^(?:const|export|/[/*])|(?![\\s\\S]))`, "m"))?.[0] ?? ""
   const text = body(name)

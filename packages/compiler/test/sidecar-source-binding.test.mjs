@@ -46,7 +46,7 @@ function check({ directory = ".vibe/declarations", style = ".js", name = "tag", 
       // prove that sidecars bind the original .vibe source beside a sibling.
       assert.ok(publicText.includes('from "./' + name + '.ts"'), publicText)
       if (style !== null) {
-        assert.match(emit.stdout + emit.stderr, /TS5101/)
+        assert.match(emit.stdout + emit.stderr, /EK3011/)
         assert.match(emit.stdout + emit.stderr, /declarationImportStyle/)
       }
     }

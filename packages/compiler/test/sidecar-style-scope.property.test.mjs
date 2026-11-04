@@ -43,7 +43,7 @@ function check(input) {
       assert.equal(result.status, 0, result.stdout + result.stderr)
       const sidecar = readFileSync(join(root, "src", "a.d.vibe.ts"), "utf8")
       assert.ok(sidecar.includes(quoted), "detail263: " + style + " must retain the source sidecar reference: " + sidecar)
-      assert.match(result.stdout + result.stderr, /TS5101:.*declarationImportStyle.*deprecated and ignored/)
+      assert.match(result.stdout + result.stderr, /EK3011:.*declarationImportStyle.*deprecated and ignored/)
       const declaration = readFileSync(join(root, "out", "a.d.ts"), "utf8")
       assert.ok(declaration.includes(input.quote + "./" + input.name + ".ts" + input.quote), "the package declaration follows the native .ts twin under every retired setting: " + declaration)
       const stock = join(root, "stock")

@@ -54,10 +54,10 @@ test("vibelang writes x.d.vibe.ts beside each .vibe module, naming .vibe imports
   const built = run(native, ["-p", "lib/tsconfig.json"], root)
   assert.equal(built.status, 0, built.stdout + built.stderr)
   const greet = readFileSync(join(root, "lib/src/greet.d.vibe.ts"), "utf8")
-  assert.equal(greet, "import type { Name } from \"./name.vibe\";\nexport declare function greet(name: Name): string;\n")
+  assert.equal(greet, "import type { Name } from \"./name.vibe\";\n/** @throws {never} */\nexport declare function greet(name: Name): string;\n")
   assert.equal(readFileSync(join(root, "lib/src/name.d.vibe.ts"), "utf8"), "export type Name = {\n    readonly first: string;\n};\n")
   // A written ./util.ts stays ./util.ts, as stock TypeScript declares it (detail 263).
-  assert.equal(readFileSync(join(root, "lib/src/loud.d.vibe.ts"), "utf8"), "import type { Loud } from \"./util.ts\";\nexport declare const loud: (first: string) => Loud;\n")
+  assert.equal(readFileSync(join(root, "lib/src/loud.d.vibe.ts"), "utf8"), "import type { Loud } from \"./util.ts\";\n/** @throws {never} */\nexport declare const loud: (first: string) => Loud;\n")
   assert.equal(existsSync(join(root, "lib/src/util.d.vibe.ts")), false)
   // A sidecar is an output of its source, never an input of the project.
   const listed = run(native, ["-p", "lib/tsconfig.json", "--listFiles"], root)
@@ -92,7 +92,7 @@ test("sidecars sit beside the sources when declarations go to an outDir", { skip
   const root = project(t, library({ noEmit: false, declaration: true, declarationMap: true, outDir: "dist", rootDir: "src" }))
   const built = run(native, ["-p", "lib/tsconfig.json"], root)
   assert.equal(built.status, 0, built.stdout + built.stderr)
-  assert.equal(readFileSync(join(root, "lib/src/greet.d.vibe.ts"), "utf8"), "import type { Name } from \"./name.vibe\";\nexport declare function greet(name: Name): string;\n")
+  assert.equal(readFileSync(join(root, "lib/src/greet.d.vibe.ts"), "utf8"), "import type { Name } from \"./name.vibe\";\n/** @throws {never} */\nexport declare function greet(name: Name): string;\n")
   // Public declarations keep the TypeScript twin's written source spelling.
   assert.match(readFileSync(join(root, "lib/dist/greet.d.ts"), "utf8"), /from "\.\/name\.ts"/)
 })
@@ -101,7 +101,7 @@ test("vibelang -b writes the sidecars of a composite project", { skip }, (t) => 
   const root = project(t, library({ noEmit: false, composite: true, outDir: "dist", rootDir: "src" }))
   const built = run(native, ["-b", "lib"], root)
   assert.equal(built.status, 0, built.stdout + built.stderr)
-  assert.equal(readFileSync(join(root, "lib/src/greet.d.vibe.ts"), "utf8"), "import type { Name } from \"./name.vibe\";\nexport declare function greet(name: Name): string;\n")
+  assert.equal(readFileSync(join(root, "lib/src/greet.d.vibe.ts"), "utf8"), "import type { Name } from \"./name.vibe\";\n/** @throws {never} */\nexport declare function greet(name: Name): string;\n")
 })
 
 for (const section of ["vibelang", "vibe"]) {

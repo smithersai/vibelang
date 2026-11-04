@@ -57,7 +57,7 @@ function trees(input, mode, check) {
   return check(join(root,"before"),join(root,"after"),{target,bare,source,importer})
  } finally {rmSync(root,{recursive:true,force:true})}
 }
-const quote="Declaration output is API-identical to what `tsc` writes for the Effect TypeScript twin: the same exported names, each export's type identical to `tsc`'s in both directions (a type-level check), and the same doc comment on each export."
+const quote="Declaration output is API-identical to what `tsc` writes for the Effect TypeScript twin: the same exported names, each export's type identical to `tsc`'s in both directions (a type-level check), and the same doc comment on each export"
 test("declaration comparison oracle quotes the current API identity rule",()=>{
  assert.ok(readFileSync(join(repo,"docs/design/src/001-functions.md"),"utf8").includes(quote))
 })

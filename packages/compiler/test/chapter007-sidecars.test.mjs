@@ -28,9 +28,10 @@ function run(root,native=false){return spawnSync(native?process.execPath:binary,
 // Chapter 007 / native sidecar input protection: docs/design/src/007-tooling.md#740ba781cfae6db6
 
 for(const extension of ["vibe","vibex"])for(const directory of [false,true])for(const explicit of [false,true]){
+ // VIP-27 sidecar directory: a sidecar mirrors the source under explicit rootDir "src", so src/data.vibe maps to .vibe/declarations/data.d.vibe.ts.
  const sidecarTest=extension==="vibex"?test.todo:test
  sidecarTest("Chapter 007 / "+extension+" "+(directory?"mapped":"adjacent")+" "+(explicit?"explicit input":"discovered output"),t=>{
-  const root=fixture(t), source="src/data."+extension, sidecar=(directory?".vibe/declarations/":"")+"src/data.d."+extension+".ts"
+  const root=fixture(t), source="src/data."+extension, sidecar=(directory?".vibe/declarations/":"src/")+"data.d."+extension+".ts"
   const original="export declare const value: string; // must stay if input\n"
   write(root,source,"export const value = 42\n");write(root,sidecar,original)
   const config={compilerOptions:options,vibe:{effectGlobals:false,effectModules:false,...(directory?{sidecarDir:".vibe/declarations"}:{})},...(explicit?{files:[source,sidecar]}:{include:["src", ".vibe/declarations"]})}

@@ -11,7 +11,7 @@ const require = createRequire(new URL("../../runtime/package.json", import.meta.
 const ts = require("typescript"), fc = require("fast-check")
 const binary = fileURLToPath(new URL("../native/vibelang", import.meta.url))
 const corpus = JSON.parse(readFileSync(new URL("./fixtures/alchemy-namespace-declarations.json", import.meta.url), "utf8"))
-const rule = "Declaration import spelling follows TypeScript for the same source spelling and tsconfig"
+const rule = "Declaration emit follows TypeScript for the source’s `.ts`/`.tsx` twin"
 assert.ok(readFileSync(new URL("../../../docs/design/src/001-functions.md", import.meta.url), "utf8").includes(rule), "D263/D298 declaration spec quote must remain current")
 
 function fixture(files, style, consume) {
