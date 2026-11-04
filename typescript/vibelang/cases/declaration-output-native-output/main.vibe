@@ -1,3 +1,3 @@
-// docs/design/vips/0027-declaration-output.md#5f379b198b3b9091
-// VIP-27: inspect actual native-consumer JS independently of the known fork admission gap.
+// VIP-27 / VIP-39: native consumer JavaScript follows the .ts/.tsx twin.
+// Only rewriteRelativeImportExtensions rewrites a relative source extension.
 export const witness = 1;

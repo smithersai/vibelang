@@ -4,6 +4,7 @@ import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, existsSync, rmSync
 import { join, dirname } from "node:path"
 import { tmpdir } from "node:os"
 import ts from "../../../docs/tools/node_modules/typescript/lib/typescript.js"
+import { nativeConsumerExtensionPolicy } from "./_native-consumer-extension-policy.mjs"
 
 export function nativeContract(mode) {
   assert.equal(ts.version, "5.9.3")
@@ -27,23 +28,7 @@ export function nativeContract(mode) {
     } finally { rmSync(dir, { recursive: true, force: true }) }
   }
   if (mode === "consumer") {
-    for (const extension of [".vibe", ".vibex"]) for (const native of [".ts", ".tsx"]) for (const rewrite of [undefined, false, true]) fixture(({dir, put, invoke, config, options}) => {
-      put("producer" + extension, "export const value = 42 as const")
-      put("producer.d" + extension + ".ts", "export declare const value: 42;")
-      put("consumer" + native, 'import { value } from "./producer' + extension + '"; export const answer: 42 = value;')
-      Object.assign(options, { allowArbitraryExtensions: true, ...(rewrite === undefined ? {} : { rewriteRelativeImportExtensions: rewrite }) })
-      config({ files: ["consumer" + native, "producer" + extension] })
-      // Stock checks the same native consumer using its explicit custom-extension sidecar.
-      const stockOptions = { ...ts.convertCompilerOptionsFromJson(options, dir).options, noEmit: true }
-      const stock = ts.createProgram([join(dir, "consumer" + native)], stockOptions)
-      assert.deepEqual(ts.getPreEmitDiagnostics(stock).map(d => d.code), [])
-      const fork = invoke("-p", ".", "--pretty", "false")
-      check([extension, native, rewrite].join("/"), () => {
-        assert.equal(fork.status, 0, fork.text)
-        const js = readFileSync(join(dir, "out/consumer" + (native === ".tsx" ? ".jsx" : ".js")), "utf8")
-        assert.ok(js.includes("./producer" + (extension === ".vibex" ? ".jsx" : ".js")), js)
-      })
-    })
+    nativeConsumerExtensionPolicy("admission")
   } else if (mode === "native-errors") {
     for (const enabled of [false, true]) fixture(({put, invoke, config, options}) => {
       Object.assign(options, { noEmit: true })
