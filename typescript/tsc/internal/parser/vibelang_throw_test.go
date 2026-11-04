@@ -12,6 +12,7 @@ import (
 // Examples are from the upstream explainer; remaining rows exercise each
 // UnaryExpression operand and the ExpressionStatement lookahead restriction.
 func TestTC39ThrowExpressions(t *testing.T) {
+	// rule-evidence: docs/design/src/900-appendices.md#14a6b6eeb644e7f2 — Chapter 900: throw unary operand and statement positions
 	// rule-evidence: docs/design/vips/0041-throw-expressions.md#77427b5bb65b125f
 	// VIP-41: match direct throw full operand.
 	// rule-evidence: docs/design/vips/0041-throw-expressions.md#bafedb6cac1bddad
