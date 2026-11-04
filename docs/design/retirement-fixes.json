@@ -24,5 +24,14 @@
         "output": "typescript/vibelang/cases/ek4401-fix-fixed-output"
       }
     ]
+  },
+  {
+    "code": "EK0101",
+    "cases": [
+      {
+        "input": "typescript/vibelang/cases/ek4618-function-comment.fail",
+        "output": "typescript/vibelang/cases/ek4618-function-comment-fixed-output"
+      }
+    ]
   }
 ]

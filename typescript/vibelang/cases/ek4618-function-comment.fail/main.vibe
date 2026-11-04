@@ -1,4 +1,4 @@
-// expect: EK4618
+// expect: EK0101
 // A comment before the modifier does not supply a function keyword (VIP-39).
 export /* function */ effect load<T>(value: T) { return value }
 export /* function */ async later<T>(value: T) { return value }

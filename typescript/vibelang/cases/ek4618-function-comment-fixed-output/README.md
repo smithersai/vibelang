@@ -1,0 +1,1 @@
+Exact compiler-generated --fix output including the harness header. The retirement gate compiles it under the input project configuration. Regenerate from ek4618-function-comment.fail with --fix; do not edit this golden by hand.
