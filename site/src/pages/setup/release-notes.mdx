@@ -439,6 +439,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Converting an ambient `schema error` to a native class inserted static initialization that TypeScript rejects. The editor repair now keeps the ambient class erased and valid while runtime class repairs retain their matchers.
 
 - An `EK4833` warning on an Effect type with a union slot lost its concrete shorthand suggestion when the automatic fix was unsafe; it now shows the required parentheses while retaining the refusal to change grouping or declarations. Legacy `Effect<…>` annotations in callback and service cases also retain their required `EK4856` warning coverage.
+- Assigning to a field of a `data` variant or an `error` reported `TS2540` with a note to write `{ mutable name: T }`, a retired marker that a variant rejects with `EK2125`. The note now says every such field is readonly, as in Effect's `Data.TaggedEnum` and `Data.TaggedError`, and to construct a new value instead.
 
 - Migration oracle regression tests treated changed documentation as harmless spelling and overlooked unchanged declarations in a failed API proof; they now check documentation and the full comparison closure.
 

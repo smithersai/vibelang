@@ -1,3 +1,3 @@
 Cannot assign to 'n' because it is a read-only property.
 Cannot assign to '"display-name"' because it is a read-only property.
-In a data, schema or error body a member is readonly unless written mutable: { mutable r: number }.
+Every field of a data variant or an error is readonly, as in Effect's Data.TaggedEnum and Data.TaggedError; construct a new value with the changed r instead.
