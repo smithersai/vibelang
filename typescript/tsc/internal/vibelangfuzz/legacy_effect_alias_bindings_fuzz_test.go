@@ -16,12 +16,14 @@ func TestLegacyEffectAliasBindingsQuoted(t *testing.T) {
 }
 func FuzzLegacyEffectAliasBindings(f *testing.F) {
 	startShortBudget(f)
-	keys := []string{"legacy-global", "local-type", "imported-type", "legacy-disabled", "legacy-effect-return"}
+	keys := []string{"legacy-global", "local-type", "imported-type", "legacy-disabled", "legacy-effect-return", "legacy-callback-union", "legacy-service-requirement"}
 	for _, key := range keys {
 		f.Add(key, uint8(0))
 	}
 	for shape := range uint8(4) {
-		f.Add("legacy-effect-return", shape)
+		for _, key := range []string{"legacy-effect-return", "legacy-callback-union", "legacy-service-requirement"} {
+			f.Add(key, shape)
+		}
 	}
 	w := NewWorkspace(f)
 	f.Fuzz(func(t *testing.T, key string, shape uint8) {
@@ -43,6 +45,13 @@ func FuzzLegacyEffectAliasBindings(f *testing.F) {
 			// annotation still warns when all three slots are explicit.
 			value := []string{"1", "\"value\"", "1", "[]"}[int(shape)%4]
 			use = fmt.Sprintf("export effect function result(): Effect<%s, never, never> { return %s }", typ, value)
+		case "legacy-callback-union":
+			// A void callback may ignore an Effect result, but its written
+			// legacy alias still needs the migration warning (VIP-1/VIP-3).
+			value := []string{"1", "\"value\"", "1", "[]"}[int(shape)%4]
+			use = fmt.Sprintf("effect function task() { return %s }; export const callback: () => number | Effect<%s> = task; export const erased: () => void = callback;", value, typ)
+		case "legacy-service-requirement":
+			use = "service Port { static readonly key = \"pmfix/port\"; value: " + typ + " }; export let result: Effect<" + typ + ", never, Port>;"
 		case "legacy-disabled":
 			use = "// @vibelang-diagnostics-next-line EK4856:off\n" + use
 		case "local-type":
@@ -67,7 +76,7 @@ func FuzzLegacyEffectAliasBindings(f *testing.F) {
 			}
 		}
 		want := 0
-		if key == "legacy-global" || key == "legacy-effect-return" {
+		if strings.HasPrefix(key, "legacy-") && key != "legacy-disabled" {
 			want = 1
 		}
 		if warnings != want || len(errors) != 0 {

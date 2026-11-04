@@ -5,7 +5,9 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/microsoft/TypeScript/tsc/internal/bundled"
 	"github.com/microsoft/TypeScript/tsc/internal/diagnostics"
+	"github.com/microsoft/TypeScript/tsc/internal/vibelang"
 )
 
 const effectHintParenthesesTarget = "FuzzEffectTypeHintParentheses"
@@ -26,6 +28,9 @@ var effectHintSlots = []struct{ key, args, suffix string }{
 
 func effectTypeHintParenthesesQuoted(t testing.TB) {
 	t.Helper()
+	if !strings.Contains(SpecText("007-tooling.md"), legacyEffectAliasQuote) {
+		t.Fatalf("Chapter 7 no longer says %q", legacyEffectAliasQuote)
+	}
 	if !strings.Contains(SpecText("007-tooling.md"), effectHintParenthesesQuote) {
 		t.Fatalf("Chapter 7 no longer says %q", effectHintParenthesesQuote)
 	}
@@ -125,4 +130,40 @@ func FuzzEffectTypeHintParentheses(f *testing.F) {
 		ExpectPending(t, effectHintParenthesesTarget, gap)
 		ExpectPending(t, effectHintParenthesesTarget, specCorpusKey(t))
 	})
+}
+
+// Chapter 7 separates teaching the equivalent shorthand from applying it.
+// A concrete hint must not re-enable an edit that changes grouping or
+// declaration output after the legacy-alias migration (details260/277).
+func TestEffectTypeHintGroupingRefusesUnsafeFix(t *testing.T) {
+	effectTypeHintParenthesesQuoted(t)
+	w := NewWorkspace(t)
+	for _, home := range effectHintHomes {
+		for _, slots := range effectHintSlots {
+			t.Run(home+":"+slots.key, func(t *testing.T) {
+				source := effectHintSource(home, "number | string", slots.args)
+				before := toolsCompile(t, w, effectHintParenthesesTarget, map[string]string{"main.vibe": source})
+				defer before.Remove()
+				if !toolsErrorFree(before) {
+					t.Fatalf("qualified input must compile: %v", SortedKeys(Keys(before.Dir, before.Diagnostics)))
+				}
+				warnings := 0
+				for _, d := range before.Diagnostics {
+					if d.Source() == "EK" && d.Code() == 4833 {
+						warnings++
+						if !strings.Contains(d.String(), "(number | string)") {
+							t.Fatalf("the advisory lost the grouped success slot: %s", d.String())
+						}
+					}
+				}
+				if warnings != 1 {
+					t.Fatalf("want one EK4833, got %d", warnings)
+				}
+				fixed := vibelang.FixProjectWithOptions(t.Context(), w.fs, bundled.LibPath(), toolsConfig(w, before.Dir), vibelang.FixOptions{})
+				if fixed.Err != nil || len(fixed.Files) != 0 {
+					t.Fatalf("%s: grouped hint must leave the qualified source untouched; files=%d, err=%v", legacyEffectAliasQuote, len(fixed.Files), fixed.Err)
+				}
+			})
+		}
+	}
 }

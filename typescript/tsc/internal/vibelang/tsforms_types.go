@@ -108,15 +108,6 @@ func effectTypeRewrite(c *checker.Checker, file *ast.SourceFile, reference *ast.
 			return nil
 		}
 	}
-	// Details260/277 apply through the full --fix fixed point: a later
-	// style pass must not undo the migration's grouping or declarations.
-	// Keep the style advisory while withholding an unsafe automatic edit.
-	if !effectShorthandKeepsGrouping(file, reference) {
-		return &formRewrite{
-			description: "the A!E!R shorthand with its required grouping",
-			why:         "No quick fix: keep the qualified Effect type here to preserve grouping and declaration output.",
-		}
-	}
 	keepNever := c.CompilerOptions().GetEmitDeclarations() && isExportedStatementPart(reference)
 	slot := func(i int) string {
 		if i >= len(arguments) || arguments[i].Kind == ast.KindNeverKeyword && !keepNever {
@@ -140,6 +131,15 @@ func effectTypeRewrite(c *checker.Checker, file *ast.SourceFile, reference *ast.
 	}
 	if needsBangParentheses(reference) {
 		text = "(" + text + ")"
+	}
+	// Chapter 7's advisory still teaches the equivalent, grouped spelling
+	// when the edit is unsafe. Details260/277 apply through the full --fix
+	// fixed point: a later style pass must not undo migration qualification.
+	if !effectShorthandKeepsGrouping(file, reference) {
+		return &formRewrite{
+			description: text,
+			why:         "No quick fix: keep the qualified Effect type here to preserve grouping and declaration output.",
+		}
 	}
 	return &formRewrite{edits: []sourceEdit{{nodeStart(file, reference), reference.End(), text}}, description: text}
 }

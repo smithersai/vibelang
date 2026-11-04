@@ -1,2 +1,3 @@
 write (number | string)!!.
 write (number | string)!Error.
+No quick fix: keep the qualified Effect type here to preserve grouping and declaration output.

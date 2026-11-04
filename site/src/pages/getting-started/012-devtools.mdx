@@ -173,7 +173,7 @@ For `EK4834`, `EK4835` and the `provide` calls in `EK4836`, only the direct oper
 
 `EK4856` warns about the transitional bare `Effect<A, E, R>` alias. Its migration fix uses shorthand only when it needs no new parentheses: `Effect<number>[]` becomes `Effect.Effect<number>[]`, while `(Effect<number>)[]` becomes `(Effect.Effect<number>)[]` to retain its declaration bytes. Existing parentheses, comments and explicit default slots are preserved; `Effect<number, never>` becomes `number!never`. Local and imported types named `Effect` retain their native meaning.
 
-`EK4833` remains a style advisory when shorthand needs new grouping or would change declaration output. It offers no automatic edit there, so an ordinary `vibelang --fix` run keeps the qualified migration result.
+`EK4833` remains a style advisory when shorthand needs new grouping or would change declaration output. The warning still shows the equivalent shorthand with its required parentheses, such as `(number | string)!!`. It offers no automatic edit there, so an ordinary `vibelang --fix` run keeps the qualified migration result.
 
 Schema repairs retain value references. A library alias or field that refers to a value named `string`, `number` or another type keyword (including `keyof` and `readonly`) keeps its form: using that bare name as a schema type would change its meaning. Qualified references such as `holder.string` and neutral names remain eligible for automatic repair.
 
