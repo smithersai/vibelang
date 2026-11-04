@@ -6,7 +6,9 @@ const source = readFileSync(new URL("./corpus/foldkit-option-map-factory.txt", i
 
 test("foldkit-39: pipe arguments and callback factories run before any Option stage", { skip, timeout: 120000 }, async t => {
   const { original, changed, text, Option } = await migrationPair(t, source, "EK4840")
-  assert.doesNotMatch(text, /Option\.map\(/)
+  // Chapter 007 retires receiver methods to data-first namespace calls.
+  assert.match(text, /Option\.map\(/)
+  assert.doesNotMatch(text, /\bpipe\(|\.pipe\(/)
   const result = (f, value, delta) => {
     const trace = []
     const output = f(value === null ? Option.none() : Option.some(value), trace, delta)
