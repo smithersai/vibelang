@@ -1,3 +1,4 @@
+import { createApiIdentityInputs } from "../api-inputs.ts"
 import assert from "node:assert/strict"
 import { readFileSync } from "node:fs"
 import { stripTypeScriptTypes } from "node:module"
@@ -10,6 +11,7 @@ function targets(env = {}) {
     .replace("export const Package", "globalThis.result")
   const group = prefix => new Proxy({}, { get: (_, name) => prefix + "." + name })
   const context = {
+    createApiIdentityInputs,
     fuzzTopics: new Map([["prelude", ["FuzzPreludeGlobalMember", "FuzzPreludeShadowed"]]]),
     vibelangTopics: new Map([["fix", ["TestFixReachesFixedPoint", "TestFixArguments"]]]),
     process: { env },

@@ -1579,3 +1579,9 @@ own validation outcome: unavailable validators, exceptions and cache misses
 cannot inherit a previous successful check. Its quotation follows the published
 migration guide; the complete ten-mode matrix and generated record histories
 remain active when that guide or the validation implementation changes.
+
+The root-target regression inspectors execute the production `createApiIdentityInputs`
+helper when evaluating `PACKAGE.ts`. This keeps the spec-progress, forms,
+native-output and fuzz-hang checks able to inspect their target declarations
+after API input selection changes; they retain their existing dependency,
+command and failure assertions.

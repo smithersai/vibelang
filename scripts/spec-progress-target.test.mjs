@@ -1,3 +1,4 @@
+import { createApiIdentityInputs } from "../api-inputs.ts"
 import assert from "node:assert/strict"
 import { copyFileSync, mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync, existsSync } from "node:fs"
 import { spawnSync } from "node:child_process"
@@ -12,6 +13,7 @@ function target(name = "spec-tests") {
     .replace(/^import .*$/gm, "").replace("export const Package", "globalThis.result")
   const group = prefix => new Proxy({}, { get: (_, name) => prefix + "." + name })
   const context = {
+    createApiIdentityInputs,
     process: { env: {} }, fuzzTopics: [], vibelangTopics: [], migrationSources: "migration-sources",
     S: { Generate: spec => spec, Filegroup: spec => spec, glob: glob => glob, file: file => file,
       Shell: { Test: spec => spec, Run: spec => spec, Build: spec => spec }, Host: { bin: bin => bin }, Package: spec => spec },
