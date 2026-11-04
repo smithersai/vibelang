@@ -206,7 +206,11 @@ func FuzzMissingRuntimeDependency(f *testing.F) {
 				if d.Category() != diagnostics.CategoryError {
 					continue
 				}
-				got[d.Code()]++
+				code := d.Code()
+				if code == 2552 { // Native TypeScript uses TS2552 when a missing name has a suggested spelling.
+					code = 2304
+				}
+				got[code]++
 				messages = append(messages, d.String())
 				if d.Code() == 2307 && !strings.Contains(d.String(), "vibelang-runtime") {
 					t.Fatalf("wrong missing package: %s", d.String())
