@@ -1217,3 +1217,5 @@ unclassified conditions still fail the guard. Native provenance tests run in
 and generated provenance mutations.
 
 The alias-revert injected-I/O and asset-import properties quote Chapter 007’s current declaration-file and source-tool split. Refresh those citations when that sentence changes; retain their alias roundtrip and host asset-resolution checks and all sample counts.
+
+The hidden-native cache property requires real misses for the fixed .vibe leading-dot cases, including all visible/hidden file and directory combinations with include globs or explicit files. Its remaining .vibex allowances keep strict stale-result and XPASS guards until their own product repairs land; the32 discovery samples remain unchanged.

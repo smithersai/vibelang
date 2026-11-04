@@ -9,11 +9,5 @@
     "selection": "glob",
     "suffix": 43,
     "extension": ".vibe"
-  },
-  "pending": {
-    "key": "register-cache:hidden-added-native-source",
-    "owner": "migfix-foldkit",
-    "desired": "cache miss after included hidden source addition",
-    "guard": "strict stale-warm-result assertion and XPASS; HIDDEN_CACHE_RAW=1 exposes desired failing assertion"
   }
 }

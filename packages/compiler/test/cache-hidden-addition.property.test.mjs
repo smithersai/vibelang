@@ -47,10 +47,10 @@ async function check(input) {
    : input.extension === ".vibex"
     ? {key:input.hiddenFile ? "cache.mjs:hidden-vibex-input-invalidation" : "cache.mjs:vibex-input-invalidation",
        owner:input.hiddenFile ? "migfix-foldkit + vibex-bundlers" : "vibex-bundlers"}
-    : input.hiddenFile ? {key,owner:"migfix-foldkit"} : undefined;
+    : undefined;
   const requireMiss=()=>assert.ok(lookup.miss,key+": an explicitly included native source changed; a stale warm result is invalid");
   if(pending && process.env.HIDDEN_CACHE_RAW!=="1") {
-   // This exact known gap has an actual cache-level raw proof. It must fail
+   // These remaining .vibex gaps have actual cache-level raw proofs. They must fail
    // only the desired invalidation assertion; fixed implementations XPASS.
    assert.ok(lookup.result,"the known gap is a stale warm result, not an unrelated cache failure");
    assert.throws(requireMiss,error=>error.code==="ERR_ASSERTION" && error.message.startsWith(key),
@@ -58,6 +58,11 @@ async function check(input) {
   } else requireMiss();
  } finally {rmSync(root,{recursive:true,force:true});}
 }
+
+test("fixed .vibe additions invalidate every visible and hidden selection layout",async()=>{
+ for(const hiddenFile of [false,true]) for(const hiddenDirectory of [false,true]) for(const selection of ["glob","files"])
+  await check({hiddenFile,hiddenDirectory,selection,suffix:73,extension:".vibe"});
+});
 
 test("property: Foldkit included hidden native additions invalidate real warm cache entries",async()=>{
  await checkProperty(fc,{name:"HiddenNativeCacheAddition",
