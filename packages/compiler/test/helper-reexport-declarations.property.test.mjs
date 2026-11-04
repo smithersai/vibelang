@@ -15,6 +15,9 @@ const ts = require("typescript")
 const native = process.env.VIBELANG_BINARY || fileURLToPath(new URL("../native/" + (process.platform === "win32" ? "vibelang.exe" : "vibelang"), import.meta.url))
 const fixture = JSON.parse(readFileSync(new URL("./property-regressions/t3code-throw-helper-reexport.json", import.meta.url), "utf8"))
 test("helper declaration checks retain the published declaration contract", () => {
+  const research = readFileSync(new URL("../../../docs/research/fuzzing.md", import.meta.url), "utf8")
+  assert.ok(research.includes("The declaration gate accepts both a bare reexport and an explicit function wrapper when their callable APIs agree."),
+    "Research guidance must agree with the independently checked callable-identity oracle")
   assert.ok(readFileSync(SpecPath("001-functions.md"), "utf8").includes("Declarations are exactly what idiomatic Effect TypeScript would declare."))
 })
 
