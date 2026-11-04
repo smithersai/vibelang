@@ -41,6 +41,10 @@
       {
         "input": "typescript/vibelang/cases/ek0403-predicate-undefined.fail",
         "output": "typescript/vibelang/cases/ek0403-predicate-undefined-fixed-output"
+      },
+      {
+        "input": "typescript/vibelang/cases/intrinsic-binding-throws.fail",
+        "output": "typescript/vibelang/cases/intrinsic-binding-throws-fixed-output"
       }
     ]
   },

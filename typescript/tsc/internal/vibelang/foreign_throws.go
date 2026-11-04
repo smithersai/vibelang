@@ -17,7 +17,7 @@ func foreignThrowsContract(c *checker.Checker, call *ast.Node) (bound string, wr
 		return "", false
 	}
 	file := ast.GetSourceFileOfNode(decl)
-	if file == nil || isVibeLangFile(file) || isLibFile(c, file) {
+	if file == nil || isVibeLangFile(file) {
 		return "", false
 	}
 	var candidates []*ast.Node
@@ -31,7 +31,7 @@ func foreignThrowsContract(c *checker.Checker, call *ast.Node) (bound string, wr
 	candidates = append(candidates, decl)
 	for _, candidate := range candidates {
 		source := ast.GetSourceFileOfNode(candidate)
-		if source == nil || isVibeLangFile(source) {
+		if source == nil || isVibeLangFile(source) || isLibFile(c, source) {
 			continue
 		}
 		for _, host := range jsdocHosts(candidate) {

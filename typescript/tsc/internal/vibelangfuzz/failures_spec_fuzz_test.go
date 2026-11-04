@@ -534,6 +534,34 @@ func failuresCases() []*failCase {
 	add(&failCase{Name: "declaration-global-throws", Chapter: "001-functions.md", VIP: 27, Owner: "nothrow-impl", Quote: nothrowQ.declThrows, Host: "none", Decls: "export function decode(s: string) { try { return JSON.parse(s) } catch { return undefined } }\nexport function largest(xs: number[]) { return Math.max(...xs) }", Throws: map[string]string{"decode": "{never}", "largest": "{never}"}})
 	add(&failCase{Name: "foreign-declared-type-never", Quote: "| no tag | `unknown` |", Host: "effect", Body: "read(s)", Lib: "type Reader = {\n /** @throws {never} */\n (s: string): string\n}\nexport declare const read: Reader"})
 	add(&failCase{Name: "foreign-own-tag-over-type", Quote: "| no tag | `unknown` |", Host: "effect", Body: "read(s)", Lib: "type Reader = {\n /** @throws {Error} */\n (s: string): string\n}\n/** @throws {never} */\nexport declare const read: Reader"})
+
+	for _, builtin := range []struct{ key, signature, call string }{
+		{"parse", "JSON.parse", "foreign(s)"},
+		{"max", "Math.max", "foreign(1, 2)"},
+	} {
+		for _, tag := range []struct{ key, bound string }{{"range", "RangeError"}, {"unknown", "unknown"}, {"never", "never"}} {
+			for _, wrapped := range []bool{false, true} {
+				name := "binding-intrinsic-" + builtin.key + "-" + tag.key
+				body := builtin.call
+				code := 0
+				if wrapped {
+					name += "-wrapped"
+					body = "try Effect.try(() => " + body + ")"
+				} else if tag.bound != "never" {
+					body = "⟦" + body + "⟧"
+					code = 403
+				}
+				add(&failCase{Name: name, Quote: q.library, Lib: "/** @throws {" + tag.bound + "} */\nexport declare const foreign: typeof " + builtin.signature, Body: "const value = " + body, Code: code, OneDiagnostic: code != 0})
+			}
+		}
+	}
+	for _, wrapped := range []bool{false, true} {
+		name, body, code := "binding-intrinsic-property", "⟦holder.parse(s)⟧", 403
+		if wrapped {
+			name, body, code = name+"-wrapped", "try Effect.try(() => holder.parse(s))", 0
+		}
+		add(&failCase{Name: name, Quote: q.library, Lib: "export declare const holder: {\n/** @throws {RangeError} */\nparse: typeof JSON.parse\n}", Body: "const value = " + body, Code: code, OneDiagnostic: code != 0})
+	}
 	add(&failCase{Name: "foreign-own-throw-over-type", Quote: "| no tag | `unknown` |", Host: "effect", Body: "⟦read(s)⟧", Lib: "type Reader = (s: string) => string\n/** @throws {Error} */\nexport declare const read: Reader"})
 	add(&failCase{Name: "foreign-returned-signature", Quote: "Calls through `any` or `Function` throw `unknown`; callable unions combine their alternatives.", Host: "effect", Body: "const read = make()\n⟦read(s)⟧", Lib: "/** @throws {never} */\nexport declare function make(): {\n /** @throws {Error} */\n (s: string): string\n}"})
 	add(&failCase{Name: "foreign-overload-number", Quote: "Calls through `any` or `Function` throw `unknown`; callable unions combine their alternatives.", Host: "effect", Body: "const text = choose(s)\n⟦choose(1)⟧", Lib: "/** @throws {never} */\nexport declare function choose(s: string): string\n/** @throws {RangeError} */\nexport declare function choose(n: number): number"})

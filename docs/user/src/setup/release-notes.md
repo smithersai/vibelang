@@ -276,6 +276,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Companion namespace regression tests loaded browser declarations for every generated project. Stock TypeScript and native checks now load only the required ES5 library while retaining suffix and type-error checks.
 
+- A foreign callable binding could bypass its `@throws` annotation when its function type came from a builtin. Calls now use the binding contract and require an explicit exception bridge when it may throw.
+
 - Stock TypeScript tools rejected the mapper prelude after the old interruption and yield factories were retired. The mapper now imports `interrupt` and `yieldNow` directly from Effect and preserves their native value identities.
 - Match-chain migration validation now retains the explicit fallback required for destructuring combinator arms and checks that exhaustive tagged handlers keep their results and public types.
 
