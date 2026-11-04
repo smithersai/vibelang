@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("crypto:sign:alias\x00\x00")

@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("crypto:createVerify:direct\x00\x00")

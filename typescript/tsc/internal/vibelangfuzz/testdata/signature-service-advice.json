@@ -1,0 +1,122 @@
+[
+  {
+    "key": "node:crypto:createSign:direct",
+    "source": "import { createSign } from \"node:crypto\";export const value=createSign",
+    "advice": "try (try Signature.Signature).sign(privateKey, data)"
+  },
+  {
+    "key": "node:crypto:createSign:alias",
+    "source": "import { createSign as Native } from \"node:crypto\";export const value=Native",
+    "advice": "try (try Signature.Signature).sign(privateKey, data)"
+  },
+  {
+    "key": "node:crypto:createVerify:direct",
+    "source": "import { createVerify } from \"node:crypto\";export const value=createVerify",
+    "advice": "try (try Signature.Signature).verify(publicKey, signature, data)"
+  },
+  {
+    "key": "node:crypto:createVerify:alias",
+    "source": "import { createVerify as Native } from \"node:crypto\";export const value=Native",
+    "advice": "try (try Signature.Signature).verify(publicKey, signature, data)"
+  },
+  {
+    "key": "node:crypto:sign:direct",
+    "source": "import { sign } from \"node:crypto\";export const value=sign",
+    "advice": "try (try Signature.Signature).sign(privateKey, data)"
+  },
+  {
+    "key": "node:crypto:sign:alias",
+    "source": "import { sign as Native } from \"node:crypto\";export const value=Native",
+    "advice": "try (try Signature.Signature).sign(privateKey, data)"
+  },
+  {
+    "key": "node:crypto:verify:direct",
+    "source": "import { verify } from \"node:crypto\";export const value=verify",
+    "advice": "try (try Signature.Signature).verify(publicKey, signature, data)"
+  },
+  {
+    "key": "node:crypto:verify:alias",
+    "source": "import { verify as Native } from \"node:crypto\";export const value=Native",
+    "advice": "try (try Signature.Signature).verify(publicKey, signature, data)"
+  },
+  {
+    "key": "node:crypto:generateKeyPair:direct",
+    "source": "import { generateKeyPair } from \"node:crypto\";export const value=generateKeyPair",
+    "advice": "try (try Signature.Signature).generateKeyPair(Signature.ed25519)"
+  },
+  {
+    "key": "node:crypto:generateKeyPair:alias",
+    "source": "import { generateKeyPair as Native } from \"node:crypto\";export const value=Native",
+    "advice": "try (try Signature.Signature).generateKeyPair(Signature.ed25519)"
+  },
+  {
+    "key": "crypto:createSign:direct",
+    "source": "import { createSign } from \"crypto\";export const value=createSign",
+    "advice": "try (try Signature.Signature).sign(privateKey, data)"
+  },
+  {
+    "key": "crypto:createSign:alias",
+    "source": "import { createSign as Native } from \"crypto\";export const value=Native",
+    "advice": "try (try Signature.Signature).sign(privateKey, data)"
+  },
+  {
+    "key": "crypto:createVerify:direct",
+    "source": "import { createVerify } from \"crypto\";export const value=createVerify",
+    "advice": "try (try Signature.Signature).verify(publicKey, signature, data)"
+  },
+  {
+    "key": "crypto:createVerify:alias",
+    "source": "import { createVerify as Native } from \"crypto\";export const value=Native",
+    "advice": "try (try Signature.Signature).verify(publicKey, signature, data)"
+  },
+  {
+    "key": "crypto:sign:direct",
+    "source": "import { sign } from \"crypto\";export const value=sign",
+    "advice": "try (try Signature.Signature).sign(privateKey, data)"
+  },
+  {
+    "key": "crypto:sign:alias",
+    "source": "import { sign as Native } from \"crypto\";export const value=Native",
+    "advice": "try (try Signature.Signature).sign(privateKey, data)"
+  },
+  {
+    "key": "crypto:verify:direct",
+    "source": "import { verify } from \"crypto\";export const value=verify",
+    "advice": "try (try Signature.Signature).verify(publicKey, signature, data)"
+  },
+  {
+    "key": "crypto:verify:alias",
+    "source": "import { verify as Native } from \"crypto\";export const value=Native",
+    "advice": "try (try Signature.Signature).verify(publicKey, signature, data)"
+  },
+  {
+    "key": "crypto:generateKeyPair:direct",
+    "source": "import { generateKeyPair } from \"crypto\";export const value=generateKeyPair",
+    "advice": "try (try Signature.Signature).generateKeyPair(Signature.ed25519)"
+  },
+  {
+    "key": "crypto:generateKeyPair:alias",
+    "source": "import { generateKeyPair as Native } from \"crypto\";export const value=Native",
+    "advice": "try (try Signature.Signature).generateKeyPair(Signature.ed25519)"
+  },
+  {
+    "key": "crypto:subtle.sign",
+    "source": "export const value=crypto.subtle.sign",
+    "advice": "try (try Signature.Signature).sign(privateKey, data)"
+  },
+  {
+    "key": "crypto:subtle.verify",
+    "source": "export const value=crypto.subtle.verify",
+    "advice": "try (try Signature.Signature).verify(publicKey, signature, data)"
+  },
+  {
+    "key": "globalThis.crypto:subtle.sign",
+    "source": "export const value=globalThis.crypto.subtle.sign",
+    "advice": "try (try Signature.Signature).sign(privateKey, data)"
+  },
+  {
+    "key": "globalThis.crypto:subtle.verify",
+    "source": "export const value=globalThis.crypto.subtle.verify",
+    "advice": "try (try Signature.Signature).verify(publicKey, signature, data)"
+  }
+]

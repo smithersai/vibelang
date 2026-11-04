@@ -197,8 +197,8 @@ export const run = (key: Uint8Array) => createHmac("sha256", key)`, []string{
 		}},
 		{"signatures", `export const run = (key: CryptoKey, data: Uint8Array) => crypto.subtle.sign("Ed25519", key, data)`, []string{
 			"crypto.subtle is platform code, which VibeLang code does not use directly.",
-			"Use Effect's crypto services:   Signature.sign(privateKey, data)", provideCrypto,
-			"Signature.privateKey(Signature.ed25519, bytes) and Signature.publicKey make the keys from their bytes.",
+			"Use Effect's crypto services:   try (try Signature.Signature).sign(privateKey, data)", provideCrypto,
+			"try Signature.privateKey(Signature.ed25519, bytes) and try Signature.publicKey(Signature.ed25519, bytes) make the keys from their bytes.",
 		}},
 		{"gap of a property", `export const run = () => process.umask()`, []string{
 			"process.umask is platform code, which VibeLang code does not use directly.",

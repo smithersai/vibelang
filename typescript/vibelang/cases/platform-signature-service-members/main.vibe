@@ -1,0 +1,18 @@
+import { Signature } from "effect/crypto"
+import { fixed, expected, keyBytes, data } from "./native.js"
+
+export effect function generatedPair() {
+  return try (try Signature.Signature).generateKeyPair(Signature.ed25519)
+}
+effect function actual() {
+  const privateKey = try Signature.privateKey(Signature.ed25519, keyBytes)
+  const publicKey = try Signature.publicKey(Signature.ed25519, keyBytes)
+  provide Layer.succeed(Signature.Signature, fixed) {
+    const signed = try (try Signature.Signature).sign(privateKey, data)
+    return try (try Signature.Signature).verify(publicKey, signed, data)
+  }
+}
+// expect-result: [true, true]
+export effect function main() {
+  return [try actual(), try expected]
+}
