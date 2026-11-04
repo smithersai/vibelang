@@ -2,15 +2,15 @@ import { Smithers as S } from "@smthrs/targets"
 import { fuzzTopics } from "./fuzz-topics.ts"
 import { vibelangTopics } from "./vibelang-topics.ts"
 import { migrationSources } from "./migration-inputs.ts"
+import { createApiIdentityInputs } from "./api-inputs.ts"
 import { Package as Packages } from "./packages/PACKAGE.ts"
 import { Package as Typescript } from "./typescript/PACKAGE.ts"
 import { Package as Tsc } from "./typescript/tsc/PACKAGE.ts"
 import { Package as Vibelang } from "./typescript/vibelang/PACKAGE.ts"
 
-// The repository-wide checks: each reads files across the whole tree (docs,
-// sources, manifests), so each takes `tree`, every tracked file, as its input
-// and reruns on any change. Targets that read less are declared in their own
-// packages. docs/maintainers/build.md has the graph.
+// Most repository-wide checks read the whole tree (docs, sources, manifests)
+// and retain `tree` as their input. The API identity check uses its Node,
+// corpus and specification inputs below. docs/maintainers/build.md has the graph.
 const tree = S.Filegroup({
   srcs: [...S.glob(["**", "!.jj/**"]), Packages.tree, Typescript.tree, Tsc.tree, Vibelang.tree]
 })
@@ -33,8 +33,9 @@ const check = (
   data: ReadonlyArray<unknown>,
   tools: ReadonlyArray<typeof bun>,
   timeout = "30m",
-  env: Readonly<Record<string, string>> = {}
-) => S.Shell.Test({ summary, shell, data: [tree, ...data] as Array<never>, tools: [...tools], sandbox: "none", timeout, env })
+  env: Readonly<Record<string, string>> = {},
+  inputs: ReadonlyArray<unknown> = [tree]
+) => S.Shell.Test({ summary, shell, data: [...inputs, ...data] as Array<never>, tools: [...tools], sandbox: "none", timeout, env })
 
 // The VibeLang Go packages' tests read cases, docs and installs through the
 // repository root, so they take `tree` too. They run with -count=1: the graph
@@ -361,6 +362,8 @@ const sidecarRootContract = S.Shell.Test({
 
 const goTestProgress = S.Filegroup({ srcs: [...S.glob(["scripts/go-test-progress.mjs"])] })
 
+const apiIdentityFiles = createApiIdentityInputs(S, Packages.tree)
+
 const targets = {
   // Root ownership keeps template globs in scope without introducing a new
   // package boundary that would narrow the repository-wide tree checks.
@@ -421,7 +424,7 @@ const targets = {
     sandbox: "none",
     timeout: "1m"
   }),
-  "api-identity-test": check("Published export names, tsc type identity and JSDoc, with property controls.", "node scripts/sync-api-identity.mjs --check && node --test scripts/api-identity*.test.mjs", [], [node]),
+  "api-identity-test": check("Published export names, tsc type identity and JSDoc, with property controls.", "node scripts/sync-api-identity.mjs --check && node --test scripts/api-identity*.test.mjs", [], [node], undefined, {}, [apiIdentityFiles]),
   "spec-shared-tables": specSharedTables,
   "spec-copy-sections": specCopySections,
   "spec-registry": specRegistry,

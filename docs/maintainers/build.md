@@ -1418,3 +1418,21 @@ with a nested `do` expression. `TestSharedSourceFixturesRetainColdProgramBlocks`
 checks that the shared matrix still reaches a synthesized program builder.
 When refreshing syntax, retain cold blocks in the checks for source tokens
 and generated names as well as the dedicated tests of program values.
+
+The `//:api-identity-test` cache key uses `api-inputs.ts` rather than the
+whole repository tree. It includes scripts and corpus files, specification
+chapters (including historical chapter lookup), all package sources, the
+`docs/tools` and `experiments` sources and lockfiles, the staged checker
+copies, and the root JSON project configurations and Smithers install declarations. The installed tool
+and lockfiles still identify the TypeScript environment. Compiler Go,
+acceptance cases, user prose and generated site pages do not invalidate this
+Node-only check. Other root checks retain their existing inputs.
+
+The real SDK fixtures in `.smithers/flows/test/api-inputs.test.mjs` check the
+actual root key, 64 generated unrelated path neighbours, each selected input
+family, cache replay and a failing declaration through the real TypeScript
+comparator. They also audit current relative API imports and specification
+lookups. When an API test gains another repository read, extend the input
+group and its selected-input control before relying on cached results. The
+target command, source-sync guard, property counts and failure rules are
+unchanged.

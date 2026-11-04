@@ -294,6 +294,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Terminal platform errors suggested a namespace function; they now show how to obtain the terminal service and run its line-reading property.
 
 - An object shorthand such as `{ Function }` could copy the global constructor without reporting the legacy JavaScript restriction. It now reports `EK0107`; local bindings and ordinary property names remain allowed.
+
+- Compiler Go edits and generated documentation changes unnecessarily reran every published-declaration identity suite in CI. The dedicated check now reuses its cached result across those edits while retaining checker, corpus, specification, package and install inputs.
 - A variable named `module` followed by `as`, `satisfies`, `is` or `of` and an object type, pattern or literal, as in `(module as { model?: unknown }).model`, failed with `EK4003` ("A module expression is not supported"). It now reads as the identifier `module`, as in TypeScript; `module { … }` and `module name { … }` inside an expression still report `EK4003`.
 - Native `|>` pipelines could incorrectly report a nested pipe chain. Lint now checks written `.pipe` calls and ignores the calls generated to type native pipeline stages.
 

@@ -339,3 +339,12 @@ callable must compare equal to itself; a changed private signature must still
 fail assignability.
 
 
+
+
+The dedicated target's cache inputs are declared in `api-inputs.ts` and
+covered by real SDK key and replay fixtures. Unrelated compiler Go edits,
+acceptance cases, user prose and generated site pages reuse its successful
+result. Checker code, corpus, specification chapters, package sources,
+staged copies, root JSON configurations and install declarations still invalidate it. See
+[the build graph](build.md) before adding another repository input to an API
+test.
