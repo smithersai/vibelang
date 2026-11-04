@@ -22,7 +22,7 @@ var (
 	// EK4703: an is whose pattern binds names where the compiler gives them
 	// no home yet: a for head whose initializer is a var or using list, a
 	// for…in or for…of head, or a computed member key.
-	EK4703 = message(4703, errorCategory, "Bindings in an is pattern have no home here yet: they work in a statement of a block, in an if or while condition, in a for (init; test; update) head unless init is var or using, in a match arm, in a concise arrow body and in a class field initializer.")
+	EK4703 = message(4703, errorCategory, "Bindings in an is pattern have no home here yet: they work in a statement of a block, in an if, while or do…while condition, in a for (init; test; update) head unless init is var or using, in a match arm, in a concise arrow body and in a class field initializer.")
 	// EK4704: a pattern form VibeLang does not support yet. {0} names it.
 	EK4704 = message(4704, errorCategory, "{0} patterns are not supported yet.")
 	// EK0707: and, or, and not combined at one level without parentheses.

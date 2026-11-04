@@ -238,7 +238,7 @@ function classify(job: { status: string; attempts: number }) {
 
 An `is` expression returns a `boolean` even when its subject runs an Effect with `try`, including inside a generic Effect callback. Passing the result to an assertion or another generic function does not require a recursive function contract.
 
-In `while` and `do…while`, lexical `is` bindings belong to a loop head and get fresh cells for each condition. A true condition and its following body share those cells. A skipped binding stays in TDZ, and the initial `do` body has uninitialized head cells; a closure captured there stays in TDZ later. Outer names remain unchanged outside the loop.
+In `while` and `do…while`, lexical `is` bindings belong to a loop head and get fresh cells for each condition. A true condition and its following body share those cells. A skipped binding stays in TDZ, even when an earlier iteration initialized it, and the initial `do` body has uninitialized head cells; a closure captured there stays in TDZ later. A direct read in that initial body is `TS2448`; a closure read while its cell is uninitialized throws `ReferenceError`. Outer names remain unchanged outside the loop.
 
 `value is pattern` is `true` when the pattern matches. It binds as tightly as `instanceof`:
 
@@ -264,6 +264,8 @@ effect function firstFailure(id: string) {
 // Output: ok
 // Output: true
 ```
+
+The `test` and `update` bindings of `for (init; test; update)` start uninitialized in each iteration; `init` bindings follow the usual TypeScript loop rules.
 
 Loop bindings follow the pinned TC39 loop scopes. A `for` head scopes its bindings to the head and body: `for (;;)` copies an initializer's `let` binding into each iteration, as for a `let` declared there, and `for-of` copies a head expression's bindings into each item. The proposal gives `while` and `do-while` a head scope and per-iteration body scopes. Bindings are in the temporal dead zone on the first `do-while` iteration.
 

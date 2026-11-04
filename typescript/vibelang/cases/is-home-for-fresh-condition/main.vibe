@@ -1,0 +1,18 @@
+// expect-result: {"let":[0,"tdz",2,"tdz"],"const":[0,"tdz",2,"tdz"],"update":["tdz",1,"tdz",3]}
+const safe = (read: () => number) => { try { return read() } catch (e) { return e instanceof ReferenceError ? "tdz" : "other" } }
+function mutable() {
+  const reads: Array<() => number> = []
+  for (let i = 0; i < 4 && (i % 2 === 1 || (i is let cell)); i++) reads.push(() => cell)
+  return reads.map(safe)
+}
+function immutable() {
+  const reads: Array<() => number> = []
+  for (let i = 0; i < 4 && (i % 2 === 1 || (i is const cell)); i++) reads.push(() => cell)
+  return reads.map(safe)
+}
+function updated() {
+  const reads: Array<() => number> = []
+  for (let i = 0; i < 4; i++, i % 2 === 0 || (i is let cell)) reads.push(() => cell)
+  return reads.map(safe)
+}
+export effect function main() { return { let: mutable(), const: immutable(), update: updated() } }

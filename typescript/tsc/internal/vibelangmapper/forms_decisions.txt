@@ -4157,6 +4157,12 @@ typescript/vibelang/cases/is-home-arm-scope.fail/main.vibe:13:7 lambda dual fall
 typescript/vibelang/cases/is-home-arm-scope.fail/main.vibe:6:19 lambda plain fallback
 typescript/vibelang/cases/is-home-catch-do/main.vibe:4:46 lambda dual fallback
 typescript/vibelang/cases/is-home-concurrent-limit/main.vibe:8:99 lambda effectFn table
+typescript/vibelang/cases/is-home-do-while/main.vibe:11:28 lambda plain fallback
+typescript/vibelang/cases/is-home-do-while/main.vibe:21:19 lambda plain fallback
+typescript/vibelang/cases/is-home-do-while/main.vibe:32:20 lambda plain fallback
+typescript/vibelang/cases/is-home-do-while/main.vibe:33:66 lambda plain fallback
+typescript/vibelang/cases/is-home-do-while/main.vibe:7:14 lambda plain table
+typescript/vibelang/cases/is-home-do-while/main.vibe:8:58 lambda plain fallback
 typescript/vibelang/cases/is-home-fall-through/main.vibe:10:36 lambda plain fallback
 typescript/vibelang/cases/is-home-fall-through/main.vibe:16:36 lambda plain fallback
 typescript/vibelang/cases/is-home-fall-through/main.vibe:19:79 lambda plain fallback
@@ -4174,6 +4180,10 @@ typescript/vibelang/cases/is-home-for-each/main.vibe:45:63 lambda plain annotati
 typescript/vibelang/cases/is-home-for-each/main.vibe:47:15 lambda plain fallback
 typescript/vibelang/cases/is-home-for-each/main.vibe:4:33 lambda plain fallback
 typescript/vibelang/cases/is-home-for-each/main.vibe:50:19 lambda plain table
+typescript/vibelang/cases/is-home-for-fresh-condition/main.vibe:10:80 lambda plain fallback
+typescript/vibelang/cases/is-home-for-fresh-condition/main.vibe:15:74 lambda plain fallback
+typescript/vibelang/cases/is-home-for-fresh-condition/main.vibe:2:14 lambda plain table
+typescript/vibelang/cases/is-home-for-fresh-condition/main.vibe:5:78 lambda plain fallback
 typescript/vibelang/cases/is-home-for-head/main.vibe:13:65 lambda plain fallback
 typescript/vibelang/cases/is-home-for-head/main.vibe:14:18 lambda plain table
 typescript/vibelang/cases/is-home-for-head/main.vibe:18:51 lambda plain fallback

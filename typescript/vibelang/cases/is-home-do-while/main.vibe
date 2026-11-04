@@ -1,0 +1,38 @@
+// expect-result: {"cells":[3,["tdz",1,2]],"continued":[3,[2,3]],"skipped":["tdz","tdz",2,"tdz"],"labeled":6,"writes":[["tdz",11,12],[11,12]]}
+// Chapter 004, Pattern bindings: an is in a do…while condition binds in the loop head.
+// The first body runs with uninitialized cells (a closure created there stays in TDZ),
+// each later condition evaluation gets fresh cells that its following body shares,
+// a continue reaches the condition, a skipped binding stays uninitialized, and a
+// label on the loop keeps working.
+const safe = (read: () => number) => { try { return read() } catch (e) { return e instanceof ReferenceError ? "tdz" : "other" } }
+function feed(values: Array<number>) { let i = 0; return () => values[i++] ?? 99 }
+function cells(next: () => number) {
+  let count = 0; const reads: Array<() => number> = []
+  do { count++; reads.push(() => v) } while (next() is let v and if (v < 3))
+  return [count, reads.map(safe)]
+}
+function continued(next: () => number) {
+  let turns = 0; const seen: Array<number> = []
+  do { turns++; if (turns === 1) continue; seen.push(turns) } while (next() is let v and if (v < 3))
+  return [turns, seen]
+}
+function skipped(flags: Array<boolean>) {
+  let i = 0; const reads: Array<() => number> = []
+  do { reads.push(() => n) } while ((flags[i++] ?? false) || (i is let n and if (n < 3)))
+  return reads.map(safe)
+}
+function labeled(next: () => number) {
+  let n = 0
+  outer: do { n++; if (n > 5) break outer } while (next() is let v and if (v < 10))
+  return n
+}
+function sharedWrites() {
+  let tests = 0
+  const writes: Array<() => number> = [], conditions: Array<() => number> = []
+  do { writes.push(() => v += 10) }
+  while (++tests < 3 && (tests is let v and if ((conditions.push(() => v), true))))
+  return [writes.map(safe), conditions.map(safe)]
+}
+export effect function main() {
+  return { cells: cells(feed([1, 2, 3])), continued: continued(feed([1, 2, 3])), skipped: skipped([true, false, true, false]), labeled: labeled(feed([1, 2, 3, 4, 5, 6, 7, 8])), writes: sharedWrites() }
+}

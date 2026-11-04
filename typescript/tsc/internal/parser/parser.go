@@ -1422,6 +1422,10 @@ func (p *Parser) parseDoStatement() *ast.Node {
 	// spec but allowed in consensus reality. Approved -- this is the de-facto standard whereby
 	//  do;while(0)x will have a semicolon inserted before x.
 	p.parseOptional(ast.KindSemicolonToken)
+	if rewritten := p.restructureVibeLangDo(statement, expression, pos); rewritten != nil {
+		p.withJSDoc(rewritten, jsdoc)
+		return rewritten // an is in the condition binds names (vibelang_match.go)
+	}
 	result := p.finishNode(p.factory.NewDoStatement(statement, expression), pos)
 	p.withJSDoc(result, jsdoc)
 	return result

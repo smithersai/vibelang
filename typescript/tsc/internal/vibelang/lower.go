@@ -115,6 +115,9 @@ func (tx *lowering) visitSource(node *ast.Node) *ast.Node {
 		return tx.visitTopicClosure(node, pipes)
 	}
 	visited := tx.visitNode(node)
+	if ast.IsForStatement(node) && ast.IsForStatement(visited) {
+		visited = tx.resetIsBindingIteration(node, visited)
+	}
 	if tx.inEffect && tx.plan.returns[node] {
 		result := tx.Factory().NewYieldExpression(tx.Factory().NewToken(ast.KindAsteriskToken), visited)
 		tx.EmitContext().SetOriginal(result, node)

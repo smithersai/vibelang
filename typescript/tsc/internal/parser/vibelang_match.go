@@ -2490,6 +2490,55 @@ func (p *Parser) restructureVibeLangWhile(condition, body *ast.Node, pos int) *a
 	return p.finishNode(p.factory.NewWhileStatement(p.mKeyword(ast.KindTrueKeyword, anchor), loopBody), pos)
 }
 
+// restructureVibeLangDo rewrites do S while (... x is P ...), when P binds
+// names, as a for statement whose head declares the bindings as the
+// per-iteration cells hoistForHead gives a test binding (chapter 004, Pattern
+// bindings): the first iteration skips the condition, so S runs with the cells
+// uninitialized, and each later iteration evaluates the condition in a fresh
+// environment before S, which shares the cells with it:
+//
+//	for (let $do1 = true, <cells>; $do1 || condition; $do1 = false) S
+//
+// The condition still runs right after each S, a continue reaches it, a break
+// leaves the loop and a label stays on the statement. A direct read of a
+// binding in S precedes the declaration, TS2448, as the chapter states. It
+// returns nil when no is in the condition binds names.
+func (p *Parser) restructureVibeLangDo(body, condition *ast.Node, pos int) *ast.Node {
+	if !p.bindsIs(condition) {
+		return nil
+	}
+	anchor := p.keywordRangeAt(pos, "do")
+	p.vibelangMatchTemps++
+	name := "$do" + strconv.Itoa(p.vibelangMatchTemps)
+	first := p.vibelangSpanning(p.factory.NewVariableDeclaration(p.mTemp(name, anchor), nil, nil, p.mKeyword(ast.KindTrueKeyword, anchor)), anchor)
+	test := p.mBinary(p.mTemp(name, anchor), ast.KindBarBarToken, condition, anchor)
+	update := p.mBinary(p.mTemp(name, anchor), ast.KindEqualsToken, p.mKeyword(ast.KindFalseKeyword, anchor), anchor)
+	initializer := p.hoistForHead(p.mLetList([]*ast.Node{first}, anchor), test, update, anchor)
+	return p.finishNode(p.factory.NewForStatement(initializer, test, update, body), pos)
+}
+
+// bindsIs reports whether an is in expression binds names, outside the nested
+// callables and classes that are homes of their own.
+func (p *Parser) bindsIs(expression *ast.Node) bool {
+	if expression == nil || len(p.vibelangIsBindings) == 0 {
+		return false
+	}
+	found := false
+	var visit func(*ast.Node) bool
+	visit = func(node *ast.Node) bool {
+		switch {
+		case p.vibelangIsBindings[node] != nil:
+			found = true
+			return true
+		case ast.IsFunctionLike(node) || ast.IsClassLike(node):
+			return false
+		}
+		return node.ForEachChild(visit)
+	}
+	visit(expression)
+	return found
+}
+
 // keywordRangeAt returns the range of keyword, which starts the statement at pos.
 func (p *Parser) keywordRangeAt(pos int, keyword string) core.TextRange {
 	start := scanner.SkipTrivia(p.sourceText, pos)

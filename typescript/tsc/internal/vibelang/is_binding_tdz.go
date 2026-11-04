@@ -101,3 +101,36 @@ func (tx *lowering) isBindingSentinel() *ast.Node {
 	}
 	return tx.bindingSentinel
 }
+
+// resetIsBindingIteration starts test/update bindings uninitialized in the
+// environment native for creates before its update. A let from the initializer
+// keeps native copying; a test/update cell must not inherit the prior value
+// when short-circuiting skips its pattern. Resetting after the environment copy
+// preserves every closure created in the previous body.
+func (tx *lowering) resetIsBindingIteration(original, visited *ast.Node) *ast.Node {
+	initial := original.AsForStatement().Initializer
+	if initial == nil || !ast.IsVariableDeclarationList(initial) {
+		return visited
+	}
+	f := tx.Factory()
+	var reset *ast.Node
+	for _, declaration := range initial.AsVariableDeclarationList().Declarations.Nodes {
+		if declaration.Flags&ast.NodeFlagsVibeLangIterationCell == 0 || !tx.plan.isBindingDeclarations[declaration] {
+			continue
+		}
+		assign := f.NewBinaryExpression(nil, f.NewIdentifier(declaration.Name().Text()), nil, f.NewToken(ast.KindEqualsToken), tx.isBindingSentinel())
+		if reset == nil {
+			reset = assign
+		} else {
+			reset = f.NewBinaryExpression(nil, reset, nil, f.NewToken(ast.KindCommaToken), assign)
+		}
+	}
+	if reset == nil {
+		return visited
+	}
+	loop := visited.AsForStatement()
+	if loop.Incrementor != nil {
+		reset = f.NewBinaryExpression(nil, reset, nil, f.NewToken(ast.KindCommaToken), loop.Incrementor)
+	}
+	return f.UpdateForStatement(loop, loop.Initializer, loop.Condition, reset, loop.Statement)
+}
