@@ -337,6 +337,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Native `Schema.TaggedError` classes with spread fields or a written static `_tag` incorrectly drew a declaration advisory, and a stale `Data.TaggedError` diagnostic could offer a rewrite that removed static members. These native classes now keep their spelling without that advisory or repair.
 
+- A `catch` handler missing `=>`, such as `program catch (error) { return 0 }`, reported native `TS1005`. It now reports the catch-handler diagnostic `EK0509`, while independent syntax errors keep their native codes.
+
 - The function-controls example read the callable `Function` constructor and reported `EK0107`. Its erased constructor comparison now uses the explicit `any` boundary allowed by VIP-1, while the `instanceof` and prototype controls remain checked.
 
 - The operation-operands example declared a `.vibe` function with `@throws {never}`, which VIP-4 rejects with `EK0406`. The example now uses the declaration’s implicit `never` thrown type and keeps all operation-operand checks.

@@ -35,7 +35,7 @@ import (
 // as the legacy fallback did; in a plain handler it would be a defect.
 
 // EK0509: a catch handler that is no function literal.
-var EK0509 = message(509, errorCategory, "A catch handler that is not a plain or effect arrow or function expression. Run an Effect with try inside effect code; use a function literal as the catch handler.")
+var EK0509 = message(509, errorCategory, parser.VibeLangCatchHandlerMessage)
 
 func init() {
 	registry[EK0509.Code] = EK0509
@@ -107,6 +107,12 @@ func isAsyncOrGenerator(fn *ast.Node) bool {
 }
 
 func checkCatchHandler(c *checker.Checker, file *ast.SourceFile, call, fallback *ast.Node) {
+	if handler := call.Arguments()[1]; fallback == nil && ast.IsArrowFunction(handler) && ast.NodeIsMissing(handler.AsArrowFunction().EqualsGreaterThanToken) {
+		// The parser owns EK0509 for this recovered head. Suppress only
+		// its provisional argument mismatch, retaining errors in the body.
+		coverArgument(c, handler)
+		return
+	}
 	handler := malformedCatchHandler(call, fallback)
 	if handler == nil || parser.IsVibeLangCatchHandlerContinuation(handler) {
 		return // EK0512 owns this closed-handler grammar violation.

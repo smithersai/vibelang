@@ -69,12 +69,36 @@ func (p *Parser) parseVibeLangCatchRest(left *ast.Expression, pos int) *ast.Expr
 	return left
 }
 
+// VibeLangCatchHandlerMessage is shared by parser recovery and the EK registry.
+const VibeLangCatchHandlerMessage = "A catch handler that is not a plain or effect arrow or function expression. Run an Effect with try inside effect code; use a function literal as the catch handler."
+
 // parseVibeLangCatchHandler parses function expressions and the handler of `catch (e) => …`,
 // `catch e => …`, `catch effect (e) => …` or `catch async (e) => …`,
 // parenthesized or not, or returns nil when what follows catch is a fallback,
 // which the checker reports as EK0509 unless it is a parenthesized function
 // literal or a function expression.
 func (p *Parser) parseVibeLangCatchHandler() *ast.Node {
+	firstDiagnostic := len(p.diagnostics)
+	handler := p.parseVibeLangCatchHandlerWorker()
+	if handler != nil && ast.IsArrowFunction(handler) {
+		arrow := handler.AsArrowFunction().EqualsGreaterThanToken
+		if ast.NodeIsMissing(arrow) {
+			// Native arrow recovery admits (e) { body } to keep parsing. Only
+			// the missing arrow of the catch's own handler belongs to VIP-5;
+			// independent errors in its parameters or body retain their TS code.
+			for i := firstDiagnostic; i < len(p.diagnostics); i++ {
+				d := p.diagnostics[i]
+				if d.Code() == diagnostics.X_0_expected.Code() && len(d.MessageArgs()) == 1 && d.MessageArgs()[0] == "=>" && d.Pos() == scanner.SkipTrivia(p.sourceText, arrow.Pos()) {
+					p.diagnostics[i] = ast.NewExternalDiagnostic(nil, core.NewTextRange(scanner.SkipTrivia(p.sourceText, handler.Pos()), handler.End()), "EK", diagnostics.CategoryError, 509, VibeLangCatchHandlerMessage)
+					break
+				}
+			}
+		}
+	}
+	return handler
+}
+
+func (p *Parser) parseVibeLangCatchHandlerWorker() *ast.Node {
 	if p.token == ast.KindFunctionKeyword {
 		if p.lookAhead(func(p *Parser) bool { p.nextToken(); return p.token == ast.KindAsteriskToken }) {
 			return nil // Invalid generators keep value recovery without a synthetic callback type error.
