@@ -23,3 +23,4 @@ export layer CounterLive: Counter {
 
 // docs/design/vips/0021-producers.md#360d66c26125a2e5 | VIP-21 transitional-layer-code
 // Version both directions: older artifacts print layer-order `EK9209`; the coordinated transitional artifact may print layer-order `EK9209` and yield-placement `EK9209`; a final artifact with no legacy checker prints no layer-order code.
+// Chapter 900: EK9209 diagnostic - spec-rule: docs/design/src/900-appendices.md#41f85e60fbe66d02

@@ -7,3 +7,4 @@ import { main } from "./platform.vibe"
 it.effect("reads the config", effect () => {
   try main()
 })
+// Chapter 900: EK9211 diagnostic - spec-rule: docs/design/src/900-appendices.md#3e74d65915fa61bb

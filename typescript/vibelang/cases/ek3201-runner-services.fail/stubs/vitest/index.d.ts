@@ -34,3 +34,4 @@ export declare const layer: <R, E>(layer_: Layer.Layer<R, E>) => {
   (f: (it: Vitest.MethodsNonLive<R>) => void): void
   (name: string, f: (it: Vitest.MethodsNonLive<R>) => void): void
 }
+// Chapter 900: EK3201 diagnostic - spec-rule: docs/design/src/900-appendices.md#73c1fa12f8b8df03

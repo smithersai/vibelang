@@ -15,3 +15,4 @@ export effect function lookups() {
   const c = (try Fn)(3)
   return [a, b, c]
 }
+// Chapter 900: EK9214 diagnostic - spec-rule: docs/design/src/900-appendices.md#b45c2fa8d4fa8e7b

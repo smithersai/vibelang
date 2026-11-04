@@ -16,3 +16,4 @@ export effect function main() {
 // Appendix B: vip20-head.fail — spec-rule: docs/design/src/900-appendices.md#30fc1b092c29cde5
 
 // Appendix B: own syntax errors retain VIP codes — spec-rule: docs/design/src/900-appendices.md#cff51dce9c1f6552
+// Chapter 900: EK2005 diagnostic - spec-rule: docs/design/src/900-appendices.md#53240dc9bf4e9b43
