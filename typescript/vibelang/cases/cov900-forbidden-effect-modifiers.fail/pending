@@ -1,3 +1,0 @@
-cov-ch900b Chapter 900: An abstract effect member is accepted as a legacy service warning instead of EK0108.
-Rules: docs/design/src/900-appendices.md#589a791694d3ebc7, docs/design/src/900-appendices.md#b8be023f33e819e8
-Witness: typescript/vibelang/cases/cov900-forbidden-effect-modifiers.fail/main.vibe

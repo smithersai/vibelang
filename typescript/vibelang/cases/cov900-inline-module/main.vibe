@@ -1,0 +1,12 @@
+// docs/design/src/900-appendices.md#971db37fc8615da7 — Historical inline-module denial, superseded by VIP-40.
+// docs/design/vips/0040-module-declarations.md — A module body matches a sibling TypeScript module.
+module text {
+  export function clean(value: string): string { return value.trim() }
+}
+import { clean } from text
+export effect function normalized(value: string) {
+  return try Effect.try(() => clean(value))
+}
+export effect function main() {
+  return try normalized(" module ")
+}

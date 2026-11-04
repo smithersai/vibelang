@@ -1,3 +1,0 @@
-cov-ch900b Chapter 900: Mixed async/effect blocks report native parse errors instead of EK0105.
-Rules: docs/design/src/900-appendices.md#acdee1c6a22e4c8a, docs/design/src/900-appendices.md#ef8726adac5fb7e4, docs/design/src/900-appendices.md#581ab98f979947e3, docs/design/src/900-appendices.md#3d94876b9197f117
-Witness: typescript/vibelang/cases/cov900-mixed-effect-blocks.fail/main.vibe

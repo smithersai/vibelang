@@ -1,5 +1,6 @@
-// docs/design/src/900-appendices.md#d55505afa67e811c — Chapter 900: Promise executors admit throws in plain functions and tryPromise thunks.
-function later() { return new Promise<never>(()=>{throw new Error("executor")}) }
+// docs/design/src/900-appendices.md#d55505afa67e811c — Promise executor throws become rejected Promises.
+// docs/design/vips/0004-throw.md — Throwing synchronous callbacks live in TypeScript.
+import { later } from "./helpers.js"
 function summary(exit: Exit.Exit<unknown, unknown>): string {
  if(exit._tag === "Success") return "unexpected"
  const reason=exit.cause.reasons[0]
@@ -8,7 +9,7 @@ function summary(exit: Exit.Exit<unknown, unknown>): string {
  return error._tag+":"+error.cause.message
 }
 export effect function main() {
- const a=try Effect.exit(Effect.tryPromise(()=>later()))
- const b=try Effect.exit(Effect.tryPromise(()=>new Promise<never>(()=>{throw new Error("thunk")})))
+ const a=try Effect.exit(Effect.tryPromise(()=>later("executor")))
+ const b=try Effect.exit(Effect.tryPromise(()=>later("thunk")))
  return [summary(a),summary(b)]
 }

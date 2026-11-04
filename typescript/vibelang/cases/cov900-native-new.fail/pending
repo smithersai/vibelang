@@ -1,3 +1,0 @@
-cov-ch900b Chapter 900: The retired stricter EK1020 check remains instead of TypeScript's own construct-signature diagnostic.
-Rules: docs/design/src/900-appendices.md#9d6ac82eb2290a95
-Witness: typescript/vibelang/cases/cov900-native-new.fail/main.vibe

@@ -4,7 +4,7 @@
 // docs/design/src/900-appendices.md#4e402932ebf14c43 — Chapter 900: cov900-throw-wrappers.
 // docs/design/src/900-appendices.md#ed199a800ad29b77 — Chapter 900: cov900-throw-wrappers.
 // docs/design/src/900-appendices.md#099a748a5772dd92 — Chapter 900: cov900-throw-wrappers.
-import { each, later, User } from "./helpers.js"
+import { each, later, User, failCallback } from "./helpers.js"
 error BadJson { cause: unknown }
 function summary(e: Exit.Exit<unknown, unknown>): unknown {
  if (e._tag === "Success") return e.value
@@ -12,7 +12,7 @@ function summary(e: Exit.Exit<unknown, unknown>): unknown {
  return reason._tag === "Fail" ? typeof reason.error === "string" ? reason.error : (reason.error as {_tag: string})._tag : reason._tag
 }
 export effect function main() {
- const called = try Effect.exit(Effect.try({try: () => each([1], () => { throw "callback" }), catch: e => e}))
+ const called = try Effect.exit(Effect.try({try: () => each([1], failCallback), catch: e => e}))
  const json = try Effect.exit(Effect.try({try: () => JSON.parse("{"), catch: cause => new BadJson({cause})}))
  const rejected = try Effect.exit(Effect.tryPromise(() => later()))
  const decoder = Schema.decodeUnknownSync(User)

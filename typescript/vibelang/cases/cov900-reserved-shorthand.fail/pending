@@ -1,3 +1,0 @@
-cov-ch900b Chapter 900: An Effect-local join binding is accepted instead of EK1702.
-Rules: docs/design/src/900-appendices.md#22ae0ffa9c15581d, docs/design/src/900-appendices.md#92794aa96dd342a4
-Witness: typescript/vibelang/cases/cov900-reserved-shorthand.fail/main.vibe

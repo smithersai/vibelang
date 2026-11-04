@@ -1866,6 +1866,7 @@ typescript/vibelang/cases/cov900-fork-operand-contracts.fail/main.vibe:7:31 lamb
 typescript/vibelang/cases/cov900-infallible-catch/main.vibe:5:28 lambda plain table
 typescript/vibelang/cases/cov900-infallible-catch/main.vibe:6:12 lambda effectFn table
 typescript/vibelang/cases/cov900-infallible-catch/main.vibe:6:36 lambda effectFn table
+typescript/vibelang/cases/cov900-inline-module/main.vibe:8:25 lambda plain table
 typescript/vibelang/cases/cov900-name-controls/main.vibe:10:16 lambda plain fallback
 typescript/vibelang/cases/cov900-name-controls/main.vibe:9:13 lambda effectFn keyword
 typescript/vibelang/cases/cov900-native-and-effect-resources/main.vibe:3:45 lambda plain protocol
@@ -1882,12 +1883,10 @@ typescript/vibelang/cases/cov900-pipe-controls/main.vibe:9:40 lambda effectFn ta
 typescript/vibelang/cases/cov900-pipe-controls/main.vibe:9:48 lambda effectFn table
 typescript/vibelang/cases/cov900-plain-generators/main.vibe:5:27 lambda plain table
 typescript/vibelang/cases/cov900-plain-generators/main.vibe:6:34 lambda plain table
-typescript/vibelang/cases/cov900-promise-executors/main.vibe:11:26 byname program table
-typescript/vibelang/cases/cov900-promise-executors/main.vibe:11:44 lambda plain table
 typescript/vibelang/cases/cov900-promise-executors/main.vibe:12:26 byname program table
 typescript/vibelang/cases/cov900-promise-executors/main.vibe:12:44 lambda plain table
-typescript/vibelang/cases/cov900-promise-executors/main.vibe:12:67 lambda choice fallback
-typescript/vibelang/cases/cov900-promise-executors/main.vibe:2:46 lambda choice fallback
+typescript/vibelang/cases/cov900-promise-executors/main.vibe:13:26 byname program table
+typescript/vibelang/cases/cov900-promise-executors/main.vibe:13:44 lambda plain table
 typescript/vibelang/cases/cov900-readonly-execution/main.vibe:6:29 lambda plain fallback
 typescript/vibelang/cases/cov900-service-values/main.vibe:10:105 lambda effectFn service
 typescript/vibelang/cases/cov900-service-values/main.vibe:10:32 lambda program table
@@ -1902,10 +1901,9 @@ typescript/vibelang/cases/cov900-throw-expression/main.vibe:17:83 lambda plain f
 typescript/vibelang/cases/cov900-throw-expression/main.vibe:20:62 lambda plain table
 typescript/vibelang/cases/cov900-throw-expression/main.vibe:8:73 lambda dual fallback
 typescript/vibelang/cases/cov900-throw-expression/main.vibe:9:108 lambda dual fallback
-typescript/vibelang/cases/cov900-throw-wrappers/main.vibe:15:102 lambda plain table
 typescript/vibelang/cases/cov900-throw-wrappers/main.vibe:15:33 byname program table
 typescript/vibelang/cases/cov900-throw-wrappers/main.vibe:15:50 lambda plain table
-typescript/vibelang/cases/cov900-throw-wrappers/main.vibe:15:66 lambda choice fallback
+typescript/vibelang/cases/cov900-throw-wrappers/main.vibe:15:88 lambda plain table
 typescript/vibelang/cases/cov900-throw-wrappers/main.vibe:16:31 byname program table
 typescript/vibelang/cases/cov900-throw-wrappers/main.vibe:16:48 lambda plain table
 typescript/vibelang/cases/cov900-throw-wrappers/main.vibe:16:78 lambda plain table
