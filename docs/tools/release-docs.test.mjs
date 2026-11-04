@@ -255,6 +255,7 @@ test("the 0.0.10 release owns the Effect 4.0.6 migration and upgrade instruction
   ]) assert.ok(current.includes(text), text + " belongs in " + version)
 })
 
+// Chapter 900: EK2118 diagnostic - spec-rule: docs/design/src/900-appendices.md#d8b2013ff11f8c1b
 test("the 0.0.11 release retains its upgrade instructions", () => {
   const root = fileURLToPath(new URL("../../", import.meta.url))
   const version = "0.0.11"

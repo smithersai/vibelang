@@ -7,3 +7,4 @@ export effect function total() {
   const n = await pending
   return n + 1
 }
+// Chapter 900: EK4602 diagnostic - spec-rule: docs/design/src/900-appendices.md#de2e037ae3243f18

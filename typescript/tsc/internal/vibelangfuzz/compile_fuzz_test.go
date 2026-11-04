@@ -19,6 +19,7 @@ import (
 // FuzzCompile compiles arbitrary projects and checks current Appendix B
 // identity/defaults, valid diagnostic spans, fresh/order consistency and
 // the emitter, source-map and declaration invariants described below.
+// Chapter 900: EK1015 diagnostic - spec-rule: docs/design/src/900-appendices.md#12145eb223ce66b6
 func FuzzCompile(f *testing.F) {
 	startShortBudget(f)
 	w := NewWorkspace(f)

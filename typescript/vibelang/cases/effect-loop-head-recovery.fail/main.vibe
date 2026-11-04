@@ -13,3 +13,4 @@ export effect function load() {
   for try (await using n of Stream.make(1)) { void n }
   for try (x of Stream.make(1)) { void x }
 }
+// Chapter 900: EK1003 diagnostic - spec-rule: docs/design/src/900-appendices.md#18d48ec01e0666ad

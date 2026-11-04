@@ -18,3 +18,4 @@ export effect function main() {
   const retried = try retry(tryPromise(() => queryDb("b")), { times: 1 })
   return { row, failed, shadow: try shadowed(), retried }
 }
+// Chapter 900: follow tracked throws contracts and wrap - spec-rule: docs/design/src/900-appendices.md#638e7327cd5bd7d0

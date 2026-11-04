@@ -6,3 +6,4 @@ export function predicateOf() {
   const filter = numbers.filter
   return filter
 }
+// Chapter 900: EK4501 diagnostic - spec-rule: docs/design/src/900-appendices.md#b87f5a40082f4125

@@ -5,3 +5,4 @@ export function f() {
 }
 export function g() { return [provide Layer.empty { return 1 }] }
 export function h() { return String(provide Layer.empty { return 1 }) }
+// Chapter 900: EK1017 diagnostic - spec-rule: docs/design/src/900-appendices.md#1e69814b58cbe7ef

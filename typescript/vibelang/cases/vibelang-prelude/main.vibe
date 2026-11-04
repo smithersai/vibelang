@@ -30,3 +30,4 @@ export effect function main() {
 }
 
 export const unused = both
+// Chapter 900: EK1001 diagnostic - spec-rule: docs/design/src/900-appendices.md#0d9866d274591a23

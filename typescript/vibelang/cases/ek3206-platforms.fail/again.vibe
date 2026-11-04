@@ -5,3 +5,4 @@ import "vibelang/platform/node"
 export effect function main() {
   try Console.log(try (try FileSystem.FileSystem).readFileString("config.json"))
 }
+// Chapter 900: EK3206 diagnostic - spec-rule: docs/design/src/900-appendices.md#d4e99790f0152dec

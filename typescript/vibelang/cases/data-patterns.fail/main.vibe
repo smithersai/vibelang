@@ -61,3 +61,4 @@ function missingGeneric(state: LoadState<number, string>) {
     when LoadState.Loaded { let value }: value;
   }
 }
+// Chapter 900: EK2127 diagnostic - spec-rule: docs/design/src/900-appendices.md#0458b1215753c05d

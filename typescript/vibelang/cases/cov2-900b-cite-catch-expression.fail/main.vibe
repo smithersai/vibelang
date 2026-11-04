@@ -38,3 +38,4 @@ export const top = find("1") catch () => "guest"
 
 // Chapter 900: Appendix B interim EK9201 failure escapes the written contract — spec-rule: docs/design/src/900-appendices.md#a1d4c61f4a7e5703
 // Chapter 900: Appendix B interim EK9204 catch head cannot fail — spec-rule: docs/design/src/900-appendices.md#efc88709f48db4d2
+// Chapter 900: EK2114 diagnostic - spec-rule: docs/design/src/900-appendices.md#07a167dd7e99e6b5

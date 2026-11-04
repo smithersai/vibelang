@@ -6,3 +6,4 @@ import { Effect } from "effect"
 export effect function main() {
   return try Effect.succeed(1 + 2)
 }
+// Chapter 900: EK9204 diagnostic - spec-rule: docs/design/src/900-appendices.md#439366b9f1b6b39c

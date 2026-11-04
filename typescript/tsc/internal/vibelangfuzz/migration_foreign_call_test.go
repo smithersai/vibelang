@@ -107,6 +107,7 @@ func migrationForeignCallSource(position, call string) (typescript, vibe string)
 	return typescript, vibe
 }
 
+// Chapter 900: EK4401 diagnostic - spec-rule: docs/design/src/900-appendices.md#9fa88f2d8563bd32
 func TestMigrationForeignCallQuoted(t *testing.T) {
 	if !strings.Contains(SpecText("003-failures.md"), migrationForeignCallQuote) {
 		t.Fatalf("Chapter 3 no longer says %q; update the oracle", migrationForeignCallQuote)

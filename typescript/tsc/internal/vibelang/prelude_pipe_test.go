@@ -5,6 +5,7 @@ import (
 	"testing"
 )
 
+// Chapter 900: EK4502 diagnostic - spec-rule: docs/design/src/900-appendices.md#09f1cac138ddacd7
 func TestPreludePipeCallGuidance(t *testing.T) {
 	source := "effect function num(n: number) { return n + 1 }\nexport effect function f() { return pipe(try num(1), Effect.map((n: number) => n + 1)) }"
 	program, file, _, _ := editorProgram(t, source)

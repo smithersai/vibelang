@@ -16,3 +16,4 @@ export effect function main() {
   provide Layer.succeed(Flags, { enabled: false }) { override = try read() }
   return { defaultValue, override, key: Flags.key, ordinary: new Concrete().value }
 }
+// Chapter 900: EK2121 diagnostic - spec-rule: docs/design/src/900-appendices.md#76b64b7e3c8a5ebb

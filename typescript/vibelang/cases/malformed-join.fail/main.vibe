@@ -2,3 +2,4 @@
 // join with no operand is a reference to the prelude's join, which is used
 // only as the callee of join(…) (D391, D432).
 export function main() { join }
+// Chapter 900: EK4410 diagnostic - spec-rule: docs/design/src/900-appendices.md#7b1d5ecbd2c15871
