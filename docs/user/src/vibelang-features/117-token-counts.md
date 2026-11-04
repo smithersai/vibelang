@@ -98,7 +98,7 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [Two Types of Errors](../error-management/006-two-error-types.md) | 650 |
 | [Basic Concurrency](../concurrency/007-basic-concurrency.md) | 3,100 |
 | **Core Concepts** | **29,000** |
-| [Effect's Modules](../getting-started/008-importing-effect.md) | 3,400 |
+| [Effect's Modules](../getting-started/008-importing-effect.md) | 3,600 |
 | [Running Effects](../getting-started/009-running-effects.md) | 2,000 |
 | [Sequencing Effects](../getting-started/010-using-generators.md) | 2,000 |
 | [Building Pipelines](../getting-started/011-building-pipelines.md) | 2,000 |
@@ -116,7 +116,7 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [Existing project](../setup/existing-project.md) | 2,900 |
 | [Migrating retired forms](../setup/migrating-retired-forms.md) | 3,600 |
 | **Build and test** | **18,000** |
-| [vibelang CLI](../setup/vibelang-cli.md) | 14,000 |
+| [vibelang CLI](../setup/vibelang-cli.md) | 15,000 |
 | [Vite and Vitest](../setup/vite.md) | 3,600 |
 | **Format and lint** | **10,000** |
 | [Format with dprint](../setup/formatting.md) | 2,700 |
@@ -155,7 +155,7 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [Parallel and Sequential Errors](../error-management/023-parallel-and-sequential-errors.md) | 810 |
 | [Custom Error Classes](../error-management/024-yieldable-errors.md) | 1,200 |
 | **Requirements Management** | **11,000** |
-| [Managing Services](../requirements-management/025-services.md) | 5,200 |
+| [Managing Services](../requirements-management/025-services.md) | 5,300 |
 | [Default Services](../requirements-management/026-default-services.md) | 1,400 |
 | [Managing Layers](../requirements-management/027-layers.md) | 3,600 |
 | [Layer Memoization](../requirements-management/028-layer-memoization.md) | 1,100 |
@@ -183,7 +183,7 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [Caching Effects](../caching/045-caching-effects.md) | 950 |
 | [Cache](../caching/046-cache.md) | 1,100 |
 | **Concurrency** | **9,400** |
-| [Fibers](../concurrency/047-fibers.md) | 4,100 |
+| [Fibers](../concurrency/047-fibers.md) | 4,200 |
 | [Deferred](../concurrency/048-deferred.md) | 1,100 |
 | [Queue](../concurrency/049-queue.md) | 1,400 |
 | [PubSub](../concurrency/050-pubsub.md) | 1,300 |
