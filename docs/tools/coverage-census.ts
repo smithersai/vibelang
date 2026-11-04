@@ -6,6 +6,7 @@ import { homedir } from "node:os"
 import { join, resolve } from "node:path"
 import ts from "typescript"
 import * as portable from "./spec-normative"
+import { outputs, isGeneratedCensusSection } from "../../scripts/grammar-census.mjs"
 import { vipRegistryFromSources } from "./spec-rules.mjs"
 
 export type Sources = Map<string, string>
@@ -26,7 +27,10 @@ export function rules(sources: Sources): Rule[] {
   for (const [path, text] of [...sources].sort(([a], [b]) => a.localeCompare(b))) {
     if (!/^docs\/design\/(?:src|vips)\/.*\.md$/.test(path)) continue
     if (path.includes("/vips/") && !accepted.has(path)) continue
-    for (const sentence of detector.sentences(path, text).filter(s => detector.normative(s.text))) {
+    // The entry gate omits generated metadata. The census keeps it in the
+    // denominator and cites the projection sync check instead.
+    const sentences = path === outputs[1] ? portable.sentences(path, text) : detector.sentences(path, text)
+    for (const sentence of sentences.filter(s => detector.normative(s.text))) {
       const id = path + "#" + digest(normalize(sentence.text)).slice(0, 16)
       if (!found.has(id)) found.set(id, { ...sentence, id, chapter: path })
     }
@@ -142,8 +146,20 @@ export function evidenceFiles(sources: Sources) {
   })
 }
 
+// Trust only the writer's complete, validated frame in its declared output.
+// Missing markers, forged provenance and handwritten additions get no citation.
+function generatedGrammarLines(sources: Sources) {
+  const text = sources.get(outputs[1]) ?? "", ranges: { first: number; last: number }[] = []
+  for (const match of text.matchAll(/<!-- grammar-admission:start -->[\s\S]*?<!-- grammar-admission:end -->/g)) {
+    if (!isGeneratedCensusSection(match[0])) continue
+    const first = text.slice(0, match.index).split("\n").length
+    ranges.push({ first, last: first + match[0].split("\n").length - 1 })
+  }
+  return ranges
+}
+
 export async function census(sources: Sources, compileTwin?: (pair: unknown) => Promise<{ ok: boolean; reason: string }>, excluded: Set<string> = new Set()): Promise<Row[]> {
-  const tests = evidenceFiles(sources), rows: Row[] = []
+  const tests = evidenceFiles(sources), rows: Row[] = [], generated = generatedGrammarLines(sources)
   if (import.meta.main) console.error("coverage-census: indexed " + tests.length + " test declarations")
   const index = new Map<string, Set<number>>()
   tests.forEach((test, i) => {
@@ -163,6 +179,9 @@ export async function census(sources: Sources, compileTwin?: (pair: unknown) => 
   for (const rule of rules(sources)) {
     if (excluded.has(rule.id)) continue
     const evidence: Evidence[] = [], quote = normalize(rule.text)
+    if (rule.path === outputs[1] && generated.some(range => rule.line > range.first && rule.line < range.last))
+      evidence.push({ test: "scripts/generate-grammar-admission.mjs --check", status: "passing", kind: "cited", low: false,
+        reason: "generated grammar admission projection; sync check compares both tables with docs/design/registry/grammar-admission.tsv" })
     const codes = [...rule.text.matchAll(/\b(?:EK|TS)\d{4,}\b/g)].map(m => m[0])
     const forms = [...rule.text.matchAll(/`([^`]+)`/g)].map(m => m[1]).filter(s => s.length >= 8 && /[.()!]|\s/.test(s))
     const exactPossible = candidates(quote)
@@ -220,7 +239,7 @@ export function reports(rows: Row[], revision: string, twinMode: string, exclude
   const percent = "passing " + t.passing + ", pending " + t.pending + ", no test " + t.none + " of " + t.rules + " rules (excluded " + excluded + ")\n"
   const lines = ["# Specification test coverage census", "", "**" + percent.trim() + " · Coverage: " + t.percent + "% · tag-linked: " + t.tagLinked + "**", "",
     "Revision: `" + revision + "`. Detector: `" + detectorName + "`. Twin mode: " + twinMode + ".", "",
-    "Passing and pending are source classifications, not fresh execution results. Passing takes precedence over pending. Pending includes harness pending markers, Go tests containing t.Skip, and test.todo/test.skip declarations. Exact sentence quotes, stable rule ids, chapter/VIP comments with a matching short rule name, and successfully compiled twins count. Tag-linked rules are reported separately. Shared codes/forms remain low confidence and count as no test. Exclusions come from not-rules/*.csv and are removed from the denominator. One normalized sentence per file is one rule. Accepted VIPs require explicit accepted status. The shared detector excludes fences, headings and generated pages; this syntactic census cannot prove semantic adequacy.", "",
+    "Passing and pending are source classifications, not fresh execution results. Passing takes precedence over pending. Pending includes harness pending markers, Go tests containing t.Skip, and test.todo/test.skip declarations. Exact sentence quotes, stable rule ids, chapter/VIP comments with a matching short rule name, successfully compiled twins, and generated grammar admission regions cited to their sync check count. Tag-linked rules are reported separately. Shared codes/forms remain low confidence and count as no test. Exclusions come from not-rules/*.csv and are removed from the denominator. One normalized sentence per file is one rule. Accepted VIPs require explicit accepted status. The census retains generated grammar admission rows; other generated pages, fences and headings are excluded; this syntactic census cannot prove semantic adequacy.", "",
     "CSV contains every evidence path and both rule status and evidence status. Chapter/VIP tags require a matching phrase in the sentence or section; a chapter alone does not cover every rule.", ""]
   const records: unknown[][] = [["rule", "test", "missing", "status", "chapter", "line", "sentence", "low_confidence", "kind", "reason", "test_status"]]
   let chapter = ""

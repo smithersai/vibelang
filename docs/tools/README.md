@@ -472,6 +472,15 @@ sections containing `effect function`; a chapter alone links nothing. These
 links are also counted separately as `tag-linked` so rewording a sentence
 does not discard a surviving rule name.
 
+The census retains Appendix A's generated grammar admission region in the
+rule total, even though the entry evidence gate omits that metadata. A complete
+region with the generator's provenance, start/end markers and valid generated
+format cites `scripts/generate-grammar-admission.mjs --check` as strong
+`cited` evidence. That check compares the appendix and compiler fuzz inventory
+with `docs/design/registry/grammar-admission.tsv`. Handwritten rows outside
+the region, malformed frames and forged provenance receive no sync citation.
+The census records this check as source evidence without executing it.
+
 The search reads compiler case inputs, Go tests under `typescript/tsc/internal`,
 docs-tool tests, and package tests. Cases with a `pending` marker, Go tests
 containing `t.Skip` or `t.Skipf`, and `test.todo` / `test.skip` declarations

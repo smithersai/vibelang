@@ -3,6 +3,8 @@ import { readFileSync, mkdirSync, mkdtempSync, writeFileSync, rmSync } from "nod
 import { spawnSync } from "node:child_process"
 import { join } from "node:path"
 import fc from "fast-check"
+import { censusSection } from "../../scripts/grammar-census.mjs"
+import * as portable from "./spec-normative"
 import { vipRegistryFromSources } from "./spec-rules.mjs"
 import { exclusions, parseCSV, census, normalize, parseSnapshot, reports, rules, totals, type Sources } from "./coverage-census"
 
@@ -264,4 +266,47 @@ test("tag-linked counts include tests that also quote the full sentence", async 
   const rows = await census(sources)
   expect(totals(rows).passing).toBe(1)
   expect(totals(rows).tagLinked).toBe(1)
+})
+
+const appendix = "docs/design/src/900-appendices.md"
+const generatedSection = () => censusSection([1, 2].map(n => ({
+  hook: "parser/vibelang.go:Parser.coverageHook" + n, form: "admission:effect",
+  authority: "001-functions.md", status: "support", reason: "Generated coverage hook " + n
+})))
+const syncCheck = "scripts/generate-grammar-admission.mjs --check"
+
+test("generated grammar rows retain their rules and cite the sync check; adjacent handwritten rows do not", async () => {
+  const outside = "| `handWritten()` | This form must have its own test. |"
+  const text = "# Appendix A\n\n" + outside + "\n\n" + generatedSection() + "\n\n" + outside.replace("handWritten", "afterRegion")
+  const sources: Sources = new Map([[appendix, text]])
+  const rows = await census(sources)
+  const expected = portable.sentences(appendix, text).filter(s => portable.normative(s.text))
+  expect(rows.map(r => r.text)).toEqual([...new Set(expected.map(s => s.text))])
+  const handwritten = rows.filter(r => /handWritten|afterRegion/.test(r.text))
+  expect(handwritten).toHaveLength(2)
+  expect(totals(handwritten).none).toBe(2)
+  const generated = rows.filter(r => !handwritten.includes(r))
+  expect(generated.filter(r => r.text.includes("coverageHook"))).toHaveLength(2)
+  expect(totals(generated).covered).toBe(generated.length)
+  for (const row of generated) expect(row.evidence).toContainEqual(expect.objectContaining({
+    test: syncCheck, kind: "cited", status: "passing", low: false
+  }))
+  const csv = parseCSV(reports(rows, "fixture", "off").csv)
+  const kind = csv[0].indexOf("kind"), testPath = csv[0].indexOf("test")
+  expect(csv.slice(1).filter(r => r[kind] === "cited").every(r => r[testPath] === syncCheck)).toBe(true)
+})
+
+test("only complete authentic generated grammar frames in the declared output receive citations", async () => {
+  const section = generatedSection()
+  for (const [path, text] of [
+    [appendix, section.replace("<!-- grammar-admission:end -->", "")],
+    [appendix, section.replace("generate-grammar-admission.mjs", "handwritten.mjs")],
+    [appendix, section.replace("\n\n</details>", "\n| `forged()` | A form must compile. |\n\n</details>")],
+    [chapter, section],
+  ]) {
+    const rows = await census(new Map([[path, "# Fixture\n\n" + text]]))
+    expect(rows.length).toBeGreaterThan(0)
+    expect(totals(rows).covered).toBe(0)
+    expect(rows.flatMap(r => r.evidence).some(e => e.kind === "cited")).toBe(false)
+  }
 })
