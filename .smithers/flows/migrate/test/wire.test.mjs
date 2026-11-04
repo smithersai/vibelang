@@ -6,7 +6,7 @@ import { test } from "node:test"
 import { fileURLToPath } from "node:url"
 import { loadTypeScript } from "../lib/declarations.mjs"
 import { projectsOf } from "../lib/wire.mjs"
-import { addEslintIgnore, addEslintImportParsers, addBunBuildPlugin, addBunPreload, bunProgramDirs, wireBunBuilds, addBunTestPreload, wireBunTests, addCompilerOptions, inlineJson, addEffectLint, addOxlintIgnore, copyTarballs, formattable, formatterOf, addVibeLang, addVibeIncludes, addVitePlugin, initAgents, installCommand, packageManager, replaceTsc, rootTsconfigs, runsBunTest, setIgnoreLine, testConfigArgument, toolchainDirectory, toolchainSpecs, viteAppConfigs, wireKnip, wireVite, wireViteApps } from "../lib/wire.mjs"
+import { addEslintIgnore, addEslintImportParsers, addBunBuildPlugin, addBunPreload, bunProgramDirs, wireBunBuilds, addBunTestPreload, bunProgramFiles, runsBunTestIndirectly, wireBunTests, addCompilerOptions, inlineJson, addEffectLint, addOxlintIgnore, copyTarballs, formattable, formatterOf, addVibeLang, addVibeIncludes, addVitePlugin, initAgents, installCommand, packageManager, replaceTsc, rootTsconfigs, runsBunTest, setIgnoreLine, testConfigArgument, toolchainDirectory, toolchainSpecs, viteAppConfigs, wireKnip, wireVite, wireViteApps } from "../lib/wire.mjs"
 import { setUpAgents } from "../lib/steps.mjs"
 import { must } from "../lib/util.mjs"
 
@@ -420,6 +420,21 @@ test("bun test gets vibelang/bun in the [test] preload, which is the one it appl
   assert.equal(runsBunTest("bun run test", { test: "bun test --timeout 30000" }), true)
   assert.equal(runsBunTest("pnpm test", { test: "vitest run" }), false)
   assert.equal(runsBunTest("bun run test", { test: "bunx vitest" }), false)
+})
+
+test("bun test that a Bun program spawns, or that a [test] preload configures, gets the [test] preload", () => {
+  const none = () => undefined
+  assert.deepEqual(bunProgramFiles("bun run script/test.ts"), ["script/test.ts"])
+  assert.deepEqual(bunProgramFiles("bun ./main.ts --flag && bun test"), ["./main.ts"])
+  assert.deepEqual(bunProgramFiles("cd e2e && bun run.ts"), [])
+  assert.deepEqual(bunProgramFiles("bun alchemy-test"), [])
+  assert.equal(runsBunTestIndirectly('preload = ["vibelang/bun"]\n[test]\npreload = ["./test/preload.ts"]\n', [], none), true)
+  assert.equal(runsBunTestIndirectly('[test]\nroot = "./do-not-run-tests-from-root"\n', [], none), false)
+  assert.equal(runsBunTestIndirectly('preload = ["./setup.ts"]\n', [], none), false)
+  assert.equal(runsBunTestIndirectly("", ["bun run script/test.ts"], () => 'Bun.spawn({ cmd: [process.execPath, "test", ...argv] })'), true)
+  assert.equal(runsBunTestIndirectly("", ["bun run script/test.ts"], () => "await $`bun test --timeout 30000`"), true)
+  assert.equal(runsBunTestIndirectly("", ["bun run script/build.ts"], () => 'Bun.spawn([process.execPath, "build"]) // test later'), false)
+  assert.equal(runsBunTestIndirectly("", ["vitest run"], () => "bun test"), false)
 })
 
 test("wireKnip moves a JSON Knip configuration to knip.config.ts with VibeLang's compiler", () => {

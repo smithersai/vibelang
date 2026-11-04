@@ -354,6 +354,8 @@ When a migrated package export names JavaScript under `.vibelang/js/`, the prelo
 
 Bun also leaves stack locations unmapped when it runs the compiler's emitted JavaScript, such as `bun dist/main.js`, even with `"sourceMap": true`. For mapped traces, run `node --enable-source-maps dist/main.js`; see [Debug stack traces](../getting-started/012-devtools.md#debug-stack-traces) for a debugging entry that prints the underlying stack.
 
+`bun test` reads only `[test]`'s preload, never the top-level one, even when a program such as `bun run script/test.ts` spawns it. Without `vibelang/bun` under `[test]`, Bun loads `x.vibe` as a file: a test fails with `Export named '…' not found` or, for an extensionless import, `Cannot find module`. The migrate flow adds it to `[test]` for a script that runs `bun test`, a Bun program that spawns it, or a `bunfig.toml` that already gives `[test]` a preload.
+
 A child `bun test` process reads `bunfig.toml` from its own working directory. If a test starts a child in a fixture directory, add the same `[test].preload` there; the parent's configuration alone does not apply. The migrate flow writes this fixture loader when the child's test entries reach migrated sources, without rewriting the tests.
 
 `bun test` finds only files named `*.test.ts`, `*.test.js` and the like, never `*.test.vibe`. Write Bun suites as `.test.ts` files that import `.vibe` modules, or run `.test.vibe` files with Vitest.

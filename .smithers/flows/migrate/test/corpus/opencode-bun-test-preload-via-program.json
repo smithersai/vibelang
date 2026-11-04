@@ -1,0 +1,20 @@
+{
+  "key": "opencode-bun-test-preload-via-program",
+  "finding": "loader:bun-self-namespace-reexport-drops-named-exports + bun:extensionless-vibe-resolution",
+  "note": "packages/core runs `bun run script/test.ts`, which spawns `[process.execPath, \"test\", ...]`. Setup gave it only the top-level preload, which bun test never reads, so its [test] preload stayed [\"./test/preload.ts\"]. Under bun test, Bun loaded tool.vibe as a file asset: `Export named 'CodeModeTool' not found` (a self-namespace re-export), `export 'awaitActivation' not found`, and `Cannot find module '../src/environment/unavailable'` for extensionless imports.",
+  "manifest": {
+    "name": "@opencode/core",
+    "type": "module",
+    "scripts": {
+      "test": "bun run script/test.ts"
+    }
+  },
+  "files": {
+    "packages/core/bunfig.toml": "[test]\npreload = [\"./test/preload.ts\"]\n",
+    "packages/core/script/test.ts": "const child = Bun.spawn({\n  cmd: [process.execPath, \"test\", \"--only-failures\", \"--timeout=30000\", ...process.argv.slice(2)],\n  stdin: \"inherit\",\n  stdout: \"inherit\",\n  stderr: \"inherit\",\n})\nprocess.exitCode = await child.exited\n",
+    "packages/core/test/preload.ts": "process.env.OPENCODE_DB = \":memory:\"\n",
+    "packages/core/src/codemode/tool.vibe": "export * as CodeModeTool from \"./tool.vibe\"\nexport const create = (n: number) => n + 1\n",
+    "packages/core/src/environment/unavailable.vibe": "export const EnvironmentUnavailable = \"unavailable\"\n",
+    "packages/core/test/tool-schema.test.ts": "import { expect, test } from \"bun:test\"\nimport { CodeModeTool } from \"../src/codemode/tool.vibe\"\nimport { EnvironmentUnavailable } from \"../src/environment/unavailable\"\ntest(\"loads\", () => {\n  expect(CodeModeTool.create(1)).toBe(2)\n  expect(EnvironmentUnavailable).toBe(\"unavailable\")\n})\n"
+  }
+}

@@ -129,8 +129,10 @@ function verify(input) {
     const config = JSON.parse(parsed.stdout);
     assert.deepEqual(config.preload, ["vibelang/bun"]);
     assert.equal(config.telemetry, false);
+    // bun test reads only [test]'s preload, so a package that already sets one
+    // runs bun test and gets the loader there too (opencode packages/core).
     if (input.initialTest)
-      assert.deepEqual(config.test.preload, ["./test-only.ts"]);
+      assert.deepEqual(config.test.preload, ["vibelang/bun", "./test-only.ts"]);
     assert.equal(existsSync(join(root, "apps/unrelated/bunfig.toml")), false);
     const server = JSON.parse(
       readFileSync(join(root, "apps/server/package.json"), "utf8"),

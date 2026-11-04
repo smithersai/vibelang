@@ -1215,6 +1215,45 @@ export function runsBunTest(command, scripts = {}) {
 }
 
 /**
+ * Whether `bun test` runs in a package by a route its scripts do not spell:
+ * its bunfig.toml already gives `[test]` a preload (`bun test` is the only
+ * reader), or a script runs a program under Bun that spawns `bun test`
+ * itself, as opencode's `bun run script/test.ts` does with
+ * `Bun.spawn([process.execPath, "test", ...])`. `bun test` reads only
+ * `[test]`'s preload, so the top-level one a program gets never reaches it.
+ */
+export function runsBunTestIndirectly(bunfig, scripts, readProgram) {
+  if (/^\s*preload\s*=/m.test(sectionOf(bunfig, "test"))) return true
+  return scripts.some((script) => bunProgramFiles(script).some((file) => {
+    const text = readProgram(file)
+    return text !== undefined && (/(?:^|[\s"'`(])bun\s+test\b/.test(text) || /\bprocess\.execPath\s*,\s*["'`]test["'`]/.test(text))
+  }))
+}
+
+/** The lines of a bunfig.toml's [name] section, without its header. */
+function sectionOf(text, name) {
+  const lines = text.split("\n")
+  const header = lines.findIndex((line) => new RegExp(`^\\s*\\[${name}\\]\\s*(#.*)?$`).test(line))
+  if (header < 0) return ""
+  const end = lines.findIndex((line, i) => i > header && /^\s*\[/.test(line))
+  return lines.slice(header + 1, end < 0 ? lines.length : end).join("\n")
+}
+
+/** The script files, relative to its package, that script runs from the package's own directory as `bun file` or `bun run file`. */
+export function bunProgramFiles(script) {
+  const files = []
+  for (const part of script.split(/&&|\|\||;/)) {
+    const words = part.replace(/[()]/g, " ").trim().split(/\s+/)
+    if (words[0] === "cd") return files
+    if (words[0] !== "bun") continue
+    const args = words.slice(1).filter((word) => !word.startsWith("-"))
+    const program = args[0] === "run" ? args[1] : args[0]
+    if (program !== undefined && /\.(?:[cm]?[jt]s|[jt]sx)$/.test(program)) files.push(program)
+  }
+  return files
+}
+
+/**
  * A bunfig.toml's text with vibelang/bun in its `[test]` section's preload,
  * the one `bun test` applies; Bun reads a top-level preload only for `bun
  * run`. Other lines are kept.
@@ -1312,10 +1351,12 @@ export function wireBunTests({ root, packages, specsFor, ts }) {
   const fixtures = wireBunFixtureTests({ root, packages, parents: reaching, ts, write, addPreload: addBunTestPreload, foreign: file => inSubmodule(submodules, file) })
   warnings.push(...fixtures.warnings)
   for (const pkg of reaching) {
-    const edits = [...(scriptsOf(pkg).some((script) => runsBunTest(script)) ? [addBunTestPreload] : []), ...(programs.has(pkg.dir) ? [addBunPreload] : [])]
-    if (!edits.length && !fixtures.owners.has(pkg.dir)) continue
     const bunfig = posix.join(pkg.dir, "bunfig.toml")
     const text = existsSync(join(root, bunfig)) ? readFileSync(join(root, bunfig), "utf8") : ""
+    const readProgram = (file) => { try { return readFileSync(join(root, pkg.dir, file), "utf8") } catch { return undefined } }
+    const testsUnderBun = scriptsOf(pkg).some((script) => runsBunTest(script)) || runsBunTestIndirectly(text, scriptsOf(pkg), readProgram)
+    const edits = [...(testsUnderBun ? [addBunTestPreload] : []), ...(programs.has(pkg.dir) ? [addBunPreload] : [])]
+    if (!edits.length && !fixtures.owners.has(pkg.dir)) continue
     try {
       write(bunfig, text, edits.reduce((next, edit) => edit(next), text))
     } catch (error) {
