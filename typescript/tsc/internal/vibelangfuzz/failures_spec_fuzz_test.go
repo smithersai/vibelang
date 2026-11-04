@@ -676,16 +676,9 @@ func checkThrowsTags(outputs map[string]string, want map[string]string) []string
 			continue
 		}
 		comment := m[1]
-		// Chapter 1: a callable const places its contract on its own
-		// call signature, in a type literal, not on the const binding.
-		if strings.Contains(m[0], "const ") {
-			call := regexp.MustCompile(`(?s)\bconst ` + name + `\s*:\s*\{\s*/\*\*((?:[^*]|\*[^/])*)\*/\s*\(`).FindStringSubmatch(text)
-			if call == nil {
-				problems = append(problems, fmt.Sprintf("%s needs a tagged call signature in a type literal", name))
-				continue
-			}
-			comment = call[1]
-		}
+		// VIP-27 preserves native declaration shapes. A callable const can
+		// carry the generated contract on its binding without a type-literal rewrite.
+
 		got := ""
 		if tag := regexp.MustCompile(`@throws\s*(\{[^}]+\})`).FindStringSubmatch(comment); tag != nil {
 			got = tag[1]
