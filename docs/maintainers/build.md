@@ -256,6 +256,7 @@ queue:
 | --- | --- |
 | `//typescript/tsc:go-vibelangfmt` | Formatter sources/tests, the parser retirement check or VIP-35; retains retired syntax as refusal witnesses and tests admitted syntax round trips. |
 | `//:spec-rule-table` | Public specification chapters or the Go rule-injection table and its quotation check; preserves all injection programs and expected diagnostics. |
+| `//:docs-check` | Public spec sources or generated pages and the provenance checker; rejects internal review attribution while keeping the public policy text. |
 | `//typescript/tsc:go-parser` | `typescript/tsc/internal/parser/`, `typescript/vibelang/cases/vibex-clash/` or `typescript/tsc/PACKAGE.ts` |
 | `//:spec-registry-go` | Published specification/VIP assignments, compiler/core diagnostic declarations and fuzz registry inventories; validates registrations, paired debt records and declaration-only allowances; none permits an unassigned diagnostic to be emitted. |
 | `//:tooling-citations` | Service/tooling chapters, their owning VIPs, configuration/core options and the four covered fuzz sources; checks exact public quotations and retired-setting properties without a runtime build. |
