@@ -20,7 +20,7 @@ An agent that writes VibeLang loads the skill first: its forms, rules and idioms
 | The VibeLang skill, `packages/compiler/skills/vibelang/SKILL.md` | 4,658 |
 | The skill and the [cheat sheet](115-cheat-sheet.md) | 16,024 |
 | The skill and the user guide (142 pages) | 450,000 |
-| The user guide alone | 440,000 |
+| The user guide alone | 450,000 |
 | The specification (11 chapters) | 180,000 |
 | The decision log, `docs/design/history/DECISIONS.md` | 140,000 |
 
@@ -87,9 +87,9 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 
 | Page | Tokens |
 | --- | ---: |
-| **Start Here** | **4,200** |
-| [Welcome](../001-onboarding.md) | 1,800 |
-| [Why VibeLang?](../getting-started/002-why-effect.md) | 660 |
+| **Start Here** | **5,600** |
+| [Welcome](../001-onboarding.md) | 2,000 |
+| [Why VibeLang?](../getting-started/002-why-effect.md) | 1,900 |
 | [A Real Provider, Before and After](../getting-started/real-provider-before-after.md) | 1,700 |
 | **Learning Path** | **12,000** |
 | [The Effect Type](../getting-started/003-the-effect-type.md) | 2,600 |
@@ -103,7 +103,7 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [Sequencing Effects](../getting-started/010-using-generators.md) | 1,900 |
 | [Building Pipelines](../getting-started/011-building-pipelines.md) | 1,900 |
 | [Devtools](../getting-started/012-devtools.md) | 18,000 |
-| **All 13 pages** | **43,000** |
+| **All 13 pages** | **45,000** |
 
 ### Setup
 
@@ -141,7 +141,7 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 
 | Page | Tokens |
 | --- | ---: |
-| [Getting Started](../013-getting-started.md) | 1,100 |
+| [Getting Started](../013-getting-started.md) | 1,200 |
 | **Error Management** | **18,000** |
 | [Expected Errors](../error-management/014-expected-errors.md) | 7,700 |
 | [Unexpected Errors](../error-management/015-unexpected-errors.md) | 1,500 |
