@@ -3,7 +3,8 @@ import assert from "node:assert/strict";
 import fc from "fast-check";
 import ts from "typescript";
 import { fileURLToPath } from "node:url";
-import { missingRootAlternatives, checkSidecarRoots } from "./spec-sidecar-roots.mjs";
+import { readFileSync } from "node:fs";
+import { missingRootAlternatives, checkSidecarRoots, checkSidecarRootText } from "./spec-sidecar-roots.mjs";
 
 function declarationPaths(project, shared) {
   const files = new Map([[`/repo/${project}/src/local.ts`, "export const local = 1;"],
@@ -45,4 +46,19 @@ test("fast-check source-directory mutations keep native declaration placement", 
         `/repo/${project}/.vibe/declarations/${shared}/remote.d.ts`
       ]);
     }), { seed: 183, numRuns: 50 });
+});
+
+test("fast-check: moving layout out of the table retains every source-root requirement", () => {
+  const vip = readFileSync(new URL("../design/vips/0027-declaration-output.md", import.meta.url), "utf8");
+  const tooling = readFileSync(new URL("../design/src/007-tooling.md", import.meta.url), "utf8");
+  const paragraph = tooling.split("\n\n").find(p => p.startsWith("Sidecar placement follows TypeScript"));
+  fc.assert(fc.property(
+    fc.constantFrom("rootDir", "composite", "common source directory"),
+    fc.stringMatching(/^[A-Za-z ]{0,60}$/),
+    (term, prose) => {
+      assert.deepEqual(checkSidecarRootText(vip, prose + "\n\n" + tooling), []);
+      const changed = tooling.replace(paragraph, paragraph.replaceAll(term, "removed root alternative"));
+      assert.ok(checkSidecarRootText(vip, changed).some(f => f.includes("chapter 7 layout") && f.includes(term)));
+    }
+  ), { seed: 27183, numRuns: 150 });
 });

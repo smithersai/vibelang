@@ -8,13 +8,13 @@ export function missingRootAlternatives(text) {
   const normalized = text.replace(/`/g, "").replace(/\s+/g, " ");
   return ["rootDir", "composite", "common source directory"].filter(term => !normalized.includes(term));
 }
-export function checkSidecarRoots(root) {
-  const vip = readFileSync(resolve(root, "vips/0027-declaration-output.md"), "utf8");
-  const tooling = readFileSync(resolve(root, "src/007-tooling.md"), "utf8");
+export function checkSidecarRootText(vip, tooling) {
   const introduction = vip.split("\n\n").find(p => p.startsWith("The Location bullet"));
   const row = tooling.split("\n").find(p => p.startsWith("| `vibe.sidecarDir`"));
+  const layout = tooling.split("\n\n").find(p => p.startsWith("Sidecar placement follows TypeScript"));
   const failures = [];
-  for (const [name, text] of [["VIP-27 layout", introduction], ["sidecarDir option", row]]) {
+  if (!row || !row.includes("mirrored directory described above")) failures.push("sidecarDir option: missing link to the layout rule");
+  for (const [name, text] of [["VIP-27 layout", introduction], ["chapter 7 layout", layout]]) {
     if (!text) { failures.push(name + ": missing authoritative rule"); continue; }
     const missing = missingRootAlternatives(text);
     if (missing.length) failures.push(name + ": omits source-root alternatives: " + missing.join(", "));
@@ -23,6 +23,12 @@ export function checkSidecarRoots(root) {
   if (!/"rootDir"\s*:\s*"\."/.test(section))
     failures.push("VIP-27 config-relative example must explicitly set rootDir to '.'");
   return failures;
+}
+export function checkSidecarRoots(root) {
+  return checkSidecarRootText(
+    readFileSync(resolve(root, "vips/0027-declaration-output.md"), "utf8"),
+    readFileSync(resolve(root, "src/007-tooling.md"), "utf8")
+  );
 }
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const failures = checkSidecarRoots(process.argv[2] ?? resolve(dirname(fileURLToPath(import.meta.url)), "../design"));
