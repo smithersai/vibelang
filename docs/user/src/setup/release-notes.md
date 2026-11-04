@@ -189,6 +189,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 | Old diagnostic numbers, including `EK4617` | Appendix B numbering, including `EK0103`. Diagnostic triggers are unchanged. See the [old-to-new map](../vibelang-features/diagnostic-code-map.md). |
 
 ### Bugs fixed since 0.0.10
+
+- Service-member regression checks now distinguish forbidden constructors and index signatures from the separate service-class migration warning in the same module.
 - A `catch` handler written as a parameter list followed by a block, `x catch (e) { … }`, was a syntax error (`TS1005`) that hid every other error in the file. It is now `EK0509`, with a quick fix to `x catch effect (e) => { … }` when the block has no `break`, `continue`, `await` or `yield` of its own.
 
 - The grammar admission census could drift between its specification and fuzz inventory; both copies now generate from one source and fail checks on drift.

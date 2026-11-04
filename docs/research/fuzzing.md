@@ -1039,3 +1039,5 @@ Ambient-error repair and fix properties cite the current mechanical-repair, pres
 The producer buffering citation keeps the accepted sequential-emitter qualifier: one buffered item plus one pending offer is not a global lead bound for concurrent yields. Its reference template explicitly records how the typed, zero-argument VIP sample generalizes to generated numeric parameters. A quoted guard and named `FuzzVIPDifferential` seed retain that distinction without changing either printer.
 
 The declaration oracle preflights emitted roots when the stock source contains an error-suppression directive. A suppressed namespace used as an exported type (`TS2709`) has no valid API to compare. Only that owned emitted-root error makes the baseline ineligible; missing dependencies and other errors still fail. A local suppression with a valid exported declaration remains eligible.
+
+Mixed service-member coverage keeps the two forbidden-member diagnostics separate from the independent `EK4831` migration lint on a neighboring `Context.Service` class. Mutation varies member kind and declaration order, with ordinary-class and computed-property controls.
