@@ -1318,6 +1318,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Migrated packages could publish declaration sidecars and expose them through source export globs. Migration setup now excludes `*.d.vibe.ts` and `*.d.vibex.ts` from packs, and verification rejects sidecars or unexpected changes to the published file list.
 
 - A local declaration named `SchemaAST` could capture the `ParseOptions` qualifier in an inferred decoder declaration, leaving an invalid public type. Inferred library types now keep their library module, as TypeScript does.
+- The advanced Schema example accepted function-shaped decoding defaults in the docs but the library requires Effect values; the guide now explains the argument kind and checks the actual example and missing-key behavior directly.
 
 - An anonymous function or class captured by a `do` conditional, method receiver, computed key, `match` subject, pipeline topic or returned completion record could expose a generated name such as `$do_v1`, `$match1`, `topic_1` or `value`; captures now preserve the source name before class static initialization and key conversion.
 - The specification no longer holds an example that waits on denied VIP-8, or one written as two statements that parses as one. `spec-lint` now rejects both.

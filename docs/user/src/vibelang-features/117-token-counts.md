@@ -233,7 +233,7 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [Getting Started](../schema/086-getting-started.md) | 3,400 |
 | [Basic Usage](../schema/087-basic-usage.md) | 5,100 |
 | [Filters](../schema/088-filters.md) | 1,500 |
-| [Advanced Usage](../schema/089-advanced-usage.md) | 2,900 |
+| [Advanced Usage](../schema/089-advanced-usage.md) | 3,000 |
 | [Projections](../schema/090-projections.md) | 710 |
 | [Transformations](../schema/091-transformations.md) | 2,300 |
 | [Annotations](../schema/092-annotations.md) | 1,100 |

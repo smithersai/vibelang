@@ -164,7 +164,7 @@ SchemaError
 | `NullOr(String)` | rejected | rejected | accepted |
 | `optionalKey(Never)` | accepted | rejected | rejected |
 
-`withDecodingDefaultType` applies a decoded default to a missing or undefined input; the `Key` variant only to a missing key. `withDecodingDefault` and `withDecodingDefaultKey` instead take defaults in the encoded representation. No decoding default implies a constructor default. Enable `exactOptionalPropertyTypes` to keep these distinctions visible in static types.
+A decoding default is an Effect value, not a callback; `Effect.succeed(value)` supplies a constant default, while `effect { return value }` constructs a default program without running it. `withDecodingDefaultType` applies a decoded default to a missing or undefined input; the `Key` variant only to a missing key. `withDecodingDefault` and `withDecodingDefaultKey` instead take defaults in the encoded representation. No decoding default implies a constructor default. Enable `exactOptionalPropertyTypes` to keep these distinctions visible in static types.
 
 ## Mapping optional fields to options
 

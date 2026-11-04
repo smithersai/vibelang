@@ -440,6 +440,12 @@ const targets = {
   "grammar-admission": grammarAdmission,
   "grammar-admission-check": grammarAdmissionCheck,
   "go-vibelangfuzz-hangs": pendingHangs,
+  "docs-schema-defaults": check(
+    "Schema decoding defaults use Effect values and preserve the documented missing-key outcomes.",
+    "bun test --timeout 60000 docs/tools/schema-decoding-defaults.test.ts",
+    [Packages["compiler-native"], Packages["runtime-dist"]],
+    [bun, node]
+  ),
   "site-spec-links": siteSpecLinks,
   "spec-lint": specLint,
   "docs-comparison-output": check(
