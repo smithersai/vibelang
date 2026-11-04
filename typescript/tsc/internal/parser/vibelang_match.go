@@ -751,6 +751,11 @@ func (p *Parser) hoistDeclaration(decl *ast.Node, at core.TextRange) *ast.Node {
 		return p.mKeyword(ast.KindTrueKeyword, at)
 	}
 	hoisted := p.mConst(name, ast.NodeFlagsLet, nil, name.Loc)
+	// Captured computed keys carry an explicit literal or unique-symbol type.
+	// Keep it when an if/while is turns their declarations into assignments.
+	hoistedDeclaration := hoisted.AsVariableStatement().DeclarationList.AsVariableDeclarationList().Declarations.Nodes[0]
+	hoistedDeclaration.AsVariableDeclaration().Type = declaration.Type()
+	p.overrideParentInImmediateChildren(hoistedDeclaration)
 	hoisted.AsVariableStatement().DeclarationList.AsVariableDeclarationList().Declarations.Nodes[0].Flags |= ast.NodeFlagsVibeLangPatternHoist
 	if name.Flags&ast.NodeFlagsReparsed == 0 {
 		// A named binding: when another declaration of its home already
@@ -1151,6 +1156,9 @@ func (p *Parser) patternErrorCall(code int, detail string, at core.TextRange) *a
 func (p *Parser) cloneIdentExpression(expr *ast.Node) *ast.Node {
 	switch expr.Kind {
 	case ast.KindIdentifier:
+		if expr.Flags&ast.NodeFlagsVibeLangTemporary != 0 {
+			return p.mTemp(expr.Text(), expr.Loc)
+		}
 		return p.mIdent(expr.Text(), expr.Loc)
 	case ast.KindThisKeyword:
 		start := scanner.SkipTrivia(p.sourceText, expr.Pos())
@@ -1217,6 +1225,68 @@ func (p *Parser) propertyPath(base matchPath, clause objectClause) matchPath {
 
 func isLiteralKey(key *ast.Node) bool {
 	return key.Kind == ast.KindStringLiteral || key.Kind == ast.KindNumericLiteral
+}
+
+// patternKeyType writes the type of an admitted computed name without reading
+// it at runtime. Indexed-access types retain a member's unique-symbol type;
+// inferring a const from that member would widen it to symbol.
+func (p *Parser) patternKeyType(expr *ast.Node) *ast.Node {
+	at := expr.Loc
+	switch expr.Kind {
+	case ast.KindIdentifier:
+		return p.vibelangSynthesized(p.factory.NewTypeQueryNode(p.cloneIdentExpression(expr), nil), at)
+	case ast.KindThisKeyword:
+		return p.vibelangSynthesized(p.factory.NewTypeQueryNode(p.mKeyword(ast.KindThisKeyword, at), nil), at)
+	case ast.KindPropertyAccessExpression:
+		index := p.vibelangSynthesized(p.factory.NewLiteralTypeNode(p.mString(expr.Name().Text(), expr.Name().Loc)), at)
+		return p.vibelangSynthesized(p.factory.NewIndexedAccessTypeNode(p.patternKeyType(expr.Expression()), index), at)
+	case ast.KindElementAccessExpression:
+		argument := expr.AsElementAccessExpression().ArgumentExpression
+		var literal *ast.Node
+		if argument.Kind == ast.KindStringLiteral {
+			literal = p.mString(argument.Text(), argument.Loc)
+		} else {
+			literal = p.vibelangSynthesized(p.factory.NewNumericLiteral(argument.Text(), ast.TokenFlagsNone), argument.Loc)
+		}
+		index := p.vibelangSynthesized(p.factory.NewLiteralTypeNode(literal), at)
+		return p.vibelangSynthesized(p.factory.NewIndexedAccessTypeNode(p.patternKeyType(expr.Expression()), index), at)
+	}
+	return nil // computed clauses admit only cloneIdentExpression's name shapes
+}
+
+// capturePatternKey evaluates a computed name and ToPropertyKey once, before
+// the presence test, value read and rest exclusion use it (chapter 004).
+// An explicit type on both a const and its inline hoist prevents unique-symbol
+// widening. The assertion preserves the source key's static indexing checks;
+// only its runtime representation changes to a string or symbol.
+func (p *Parser) capturePatternKey(clause objectClause, steps *[]matchStep, ctx *matchCompile) objectClause {
+	if !clause.computed {
+		return clause
+	}
+	at := clause.key.Loc
+	p.vibelangMatchTemps++
+	key := "$matchKey" + strconv.Itoa(p.vibelangMatchTemps)
+	converted := p.mCall(p.vibelangIntrinsic("$propertyKey", at), []*ast.Node{clause.key}, at)
+	// Keep invalid source key types on their native in/index diagnostics, without
+	// adding a TS2352 for the compiler's representation conversion.
+	unknown := p.vibelangSynthesized(p.factory.NewKeywordTypeNode(ast.KindUnknownKeyword), at)
+	converted = p.vibelangSpanning(p.factory.NewAsExpression(converted, unknown), at)
+	value := p.vibelangSpanning(p.factory.NewAsExpression(converted, p.patternKeyType(clause.key)), at)
+	decl := p.mConst(p.mTemp(key, at), ast.NodeFlagsConst, value, at)
+	typed := decl
+	if ctx.inline {
+		*steps = append(*steps, matchStep{test: p.hoistDeclaration(decl, at)})
+		typed = p.reparseList[len(p.reparseList)-1]
+	} else {
+		*steps = append(*steps, matchStep{decl: decl})
+	}
+	declaration := typed.AsVariableStatement().DeclarationList.AsVariableDeclarationList().Declarations.Nodes[0]
+	declaration.AsVariableDeclaration().Type = p.patternKeyType(clause.key)
+	// mConst attached its original children before this annotation existed.
+	// Attach the new type too, so its names resolve through the lexical home.
+	p.overrideParentInImmediateChildren(declaration)
+	clause.key = p.mTemp(key, at)
+	return clause
 }
 
 // propertyKeyTest writes "key" in path(), or key in path() for a computed key.
@@ -1397,6 +1467,7 @@ func (p *Parser) compilePattern(pat *pattern, path matchPath, steps *[]matchStep
 			test(p.mBinary(path(), ast.KindExclamationEqualsEqualsToken, p.mKeyword(ast.KindNullKeyword, at), at))
 		}
 		for _, clause := range pat.clauses {
+			clause = p.capturePatternKey(clause, steps, ctx)
 			if !clause.optional && (pat.kind == patternObject || clause.pattern == nil) {
 				test(p.propertyKeyTest(path, clause, at))
 			}

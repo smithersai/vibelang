@@ -130,6 +130,7 @@ var preludeModules = map[string]string{
 	"$extract":      runtimeModule,
 	"$relation":     runtimeModule,
 	"$rest":         runtimeModule,
+	"$propertyKey":  runtimeModule,
 	"$noMatch":      runtimeModule,
 	"$patternError": runtimeModule,
 	"customMatcher": runtimeModule,

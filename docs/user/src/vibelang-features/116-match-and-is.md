@@ -98,7 +98,7 @@ function shape(value: ReadonlyArray<number> | { kind: string; size?: number }) {
 // Output: ["empty","one: 2","2 then 2 more","box of 5","point with 1 more keys","other"]
 ```
 
-An object pattern matches only an object or a function, never a primitive, and reads no property of a primitive: `{ length: let n }` does not match a string. It checks only the properties it names, and `...let rest` collects the others. A property that is not a valid name needs quotes, `{ "content-type": let type }`, and a computed key can be a name, `{ [key]: let value }`.
+An object pattern matches only an object or a function, never a primitive, and reads no property of a primitive: `{ length: let n }` does not match a string. It checks only the properties it names, and `...let rest` collects the others. A property that is not a valid name needs quotes, `{ "content-type": let type }`, and a computed key can be a name, `{ [key]: let value }`. A computed key is evaluated and converted to a property key once per property clause, after the subject is known to be an object. Its presence check, value read and rest exclusion use that saved key. Later properties run only after earlier properties match.
 
 ## Option, Exit, Result, and primitives
 

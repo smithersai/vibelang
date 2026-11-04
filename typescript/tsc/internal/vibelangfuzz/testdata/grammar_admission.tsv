@@ -178,6 +178,8 @@ parser/vibelang_match.go:Parser.cloneIdentExpression	admission:match	900-appendi
 parser/vibelang_match.go:Parser.subjectPath	admission:match	900-appendices.md#MatchExpression	support	VIP-7 pinned matcher parsing and lowering helpers
 parser/vibelang_match.go:Parser.propertyPath	admission:match	900-appendices.md#MatchExpression	support	VIP-7 pinned matcher parsing and lowering helpers
 parser/vibelang_match.go:isLiteralKey	admission:match	900-appendices.md#MatchExpression	support	VIP-7 pinned matcher parsing and lowering helpers
+parser/vibelang_match.go:Parser.patternKeyType	admission:match	900-appendices.md#MatchExpression	support	VIP-7 preserves the source computed key type while capturing its runtime property key once
+parser/vibelang_match.go:Parser.capturePatternKey	admission:match	900-appendices.md#MatchExpression	support	VIP-7 evaluates and converts each computed key once before presence, value and rest operations
 parser/vibelang_match.go:Parser.propertyKeyTest	admission:match	900-appendices.md#MatchExpression	support	VIP-7 pinned matcher parsing and lowering helpers
 parser/vibelang_match.go:BuiltinMatcherNamed	admission:match	900-appendices.md#MatchExpression	support	VIP-7 pinned matcher parsing and lowering helpers
 parser/vibelang_match.go:dottedName	admission:match	900-appendices.md#MatchExpression	support	VIP-7 pinned matcher parsing and lowering helpers

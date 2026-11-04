@@ -1,0 +1,67 @@
+// expect-result: {"primitive":[7,8,1,1],"coercion":[8,1,1,["other"]],"mutation":"hit","short":[true,true,0],"symbol":[9,8,1,["other"]],"numeric":[5,8,1,["other"]],"inline":[[true,true,true,true],5],"arms":[[true,true],3],"abrupt":[true,["key","coerce"]]}
+import { Effect } from "effect"
+import { coercionKey } from "./native-coercion.js"
+function probe() {
+  let keyReads = 0
+  let valueReads = 0
+  const keys = { get name(): "value" { keyReads++; return "value" } }
+  const subject = { get value() { valueReads++; return 7 }, other: 8 }
+  const primitive = match (subject) {
+    when { [keys.name]: let value, ...let rest }: [value, rest.other, keyReads, valueReads];
+    default: [];
+  }
+  let objectReads = 0
+  let coercions = 0
+  const rawKey = { [Symbol.toPrimitive](_hint: string) { coercions++; return "value" } }
+  const coercionKeys = { get name(): any { objectReads++; return rawKey } }
+  const record: Record<PropertyKey, unknown> = { value: 7, other: 8 }
+  const coercion = match (record) {
+    when { [coercionKeys.name]: 7, ...let rest }: [(rest as Record<PropertyKey, unknown>).other, objectReads, coercions, Object.keys(rest).sort()];
+    default: [];
+  }
+  let selected = "value"
+  const changing: Record<string, unknown> = new Proxy({ value: 7, other: 8 }, {
+    has(target, key) { selected = "other"; return Reflect.has(target, key) }
+  })
+  const mutation = match (changing) { when { [selected]: 7 }: "hit"; default: "miss"; }
+  let skipped = 0
+  const lazy = { get name(): "value" { skipped++; return "value" } }
+  const token = Symbol("key")
+  let symbolReads = 0
+  const symbolKeys = { get name(): typeof token { symbolReads++; return token } }
+  const symbolSubject = { [token]: 9, other: 8 }
+  let numberReads = 0
+  const numberKeys = { get name(): 1 { numberReads++; return 1 } }
+  const numberSubject = { 1: 5, other: 8 }
+  let inlineReads = 0
+  const inlineKeys = { get name(): "value" { inlineReads++; return "value" } }
+  const inlineSubject = { value: 7 }
+  const nullish: unknown = null
+  const short = match (nullish) { when { [lazy.name]: 1 }: false; default: true; }
+  const stopped = match ({ first: 0, value: 7 }) { when { first: 1, [lazy.name]: 7 }: false; default: true; }
+  const symbol = match (symbolSubject) { when { [symbolKeys.name]: let value, ...let rest }: [value, rest.other, symbolReads, Reflect.ownKeys(rest).map(String)]; default: []; }
+  const numeric = match (numberSubject) { when { [numberKeys.name]: let value, ...let rest }: [value, rest.other, numberReads, Object.keys(rest)]; default: []; }
+  const inline = [
+    inlineSubject is { [inlineKeys.name]: 7 },
+    inlineSubject is ({ [inlineKeys.name]: 0 } or { [inlineKeys.name]: 7 }),
+    inlineSubject is not { [inlineKeys.name]: 0 },
+    match ({}) { when { [inlineKeys.name]?: 7 }: true; default: false; }
+  ]
+  const inlineCount = inlineReads
+  const arms = [
+    match (inlineSubject) { when { [inlineKeys.name]: 0 } or { [inlineKeys.name]: 7 }: true; default: false; },
+    match (inlineSubject) { when not { [inlineKeys.name]: 0 }: true; default: false; }
+  ]
+  const abruptTrace: string[] = []
+  const stop = {}
+  const throwing = { get name(): any {
+    abruptTrace.push("key")
+    return coercionKey(abruptTrace, stop)
+  } }
+  const untouched: Record<PropertyKey, unknown> = new Proxy({ value: 7 }, { has() { abruptTrace.push("has"); return true } })
+  let abrupt = false
+  try { match (untouched) { when { [throwing.name]: 7 }: 1; default: 0; } }
+  catch (error) { abrupt = error === stop }
+  return { primitive, coercion, mutation, short: [short, stopped, skipped], symbol, numeric, inline: [inline, inlineCount], arms: [arms, inlineReads - inlineCount], abrupt: [abrupt, abruptTrace] }
+}
+export function main(): Effect.Effect<unknown> { return Effect.sync(probe) }
