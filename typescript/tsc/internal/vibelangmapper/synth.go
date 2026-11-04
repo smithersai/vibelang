@@ -61,6 +61,20 @@ func (w *printer) mark(kind editKind, p part, text string) {
 func (p *projector) synthesized(node *ast.Node, start, end int, e env) {
 	w := &printer{p: p, names: map[string]string{}}
 	w.node(node, e)
+	p.synthesizedChunks(node, w.chunks, start, end)
+}
+
+func (p *projector) synthesizedBlock(owner *ast.Node, statements []*ast.Node, start, end int, e env) {
+	w := &printer{p: p, names: map[string]string{}}
+	w.write("{ ")
+	for _, statement := range statements {
+		w.statement(statement, e)
+	}
+	w.write(" }")
+	p.synthesizedChunks(owner, w.chunks, start, end)
+}
+
+func (p *projector) synthesizedChunks(node *ast.Node, chunks []chunk, start, end int) {
 	cursor := start
 	pending := []chunk{}
 	flush := func(to int) {
@@ -80,7 +94,7 @@ func (p *projector) synthesized(node *ast.Node, start, end int, e env) {
 		}
 		pending = pending[:0]
 	}
-	for _, c := range w.chunks {
+	for _, c := range chunks {
 		if c.node == nil {
 			pending = append(pending, c)
 			continue
@@ -664,7 +678,9 @@ func (p *projector) isMatchForm(node *ast.Node) bool {
 		}
 		return close != node.End()-1 || close >= len(p.text) || p.text[close] != ')'
 	case ast.KindBlock:
-		return at("return") || at("if")
+		// A parser recovery block may stand for any unbraced statement.
+		// Print its hoisted bindings and diagnostic marker as one form.
+		return !at("{") && !isProvideBlock(node) && maskWord(node) == ""
 	case ast.KindLabeledStatement:
 		return node.AsLabeledStatement().Label.Flags&ast.NodeFlagsReparsed != 0
 	case ast.KindWhileStatement:

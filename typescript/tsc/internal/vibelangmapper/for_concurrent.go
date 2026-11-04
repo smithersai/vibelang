@@ -59,17 +59,27 @@ func (p *projector) forConcurrent(call *ast.Node, e env) {
 	// The parser gives an unbraced statement a synthetic block at the
 	// statement's own span. Supply only those braces the source lacks.
 	braced := p.text[bodyStart] == '{'
+	bodyEdits := len(p.plan.edits)
 	if !braced {
-		p.plan.insert(p.tokenStart(body), "{ ")
+		// The synthetic block may hold is-binding declarations anchored in
+		// the source pattern. Render it as a whole so their insertions cannot
+		// overlap the replacement of that pattern.
+		p.synthesizedBlock(body, statements, bodyStart, body.End(), newEffectEnv())
+	} else {
+		p.visitList(statements, newEffectEnv())
 	}
-	p.visitList(statements, newEffectEnv())
 	// Record replacements after the body walk so region completion edits
 	// at the same return position open before the keyword is consumed.
 	for _, node := range continues {
-		p.plan.replace(p.tokenStart(node), node.End(), "return")
-	}
-	if !braced {
-		p.plan.insert(body.End(), " }")
+		start := p.tokenStart(node)
+		// A synthesized unbraced body may already have printed this
+		// continue-return. Do not consume the same source span twice.
+		if !braced && slices.ContainsFunc(p.plan.edits[bodyEdits:], func(ed edit) bool {
+			return ed.pos <= start && ed.end >= node.End() && ed.end > ed.pos
+		}) {
+			continue
+		}
+		p.plan.replace(start, node.End(), "return")
 	}
 	p.plan.mark(editProgram, partClose, body.End(), body.End(), "")
 	closing := ")"

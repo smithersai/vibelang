@@ -1101,3 +1101,5 @@ The plain-runner property covers async callbacks invoked through `tryPromise`, p
 `FuzzExplicitDiagnosticCategoryVariants` checks every diagnostic category against Appendix B’s explicit error/warning rows for `EK1010` and `EK4402`. Suggestions and messages remain invalid, and all configured overrides remain rejected. Source-context generators continue to determine where each allowed category applies.
 
 Service-lookup fixtures record written `effect` arrows as keyword-selected forms. The forms-table check verifies these explicit classifications alongside inferred forms.
+
+Mapper recovery-block coverage varies braced and unbraced concurrent and Stream loop bodies, nested contexts and binding patterns. Checking and executable renderings must parse without overlapping edits, retain their source maps and keep the unsupported unbraced binding marker; the compiler rule stays unchanged.

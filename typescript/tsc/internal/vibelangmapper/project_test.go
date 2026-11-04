@@ -176,17 +176,17 @@ var projectionCases = []struct {
 	{
 		name:    "concurrent bounded single statement",
 		source:  "function f(xs: number[]) { for concurrent(2) (const x of xs) log(x) }",
-		virtual: "function f(xs: number[]) { return $gen(function* () { ;{ const $concurrency = 2; (yield* $run($forConcurrent(xs, $concurrency, (x) => $gen(function* () { ;(yield* $run(log(x))) }), true))); } })}",
+		virtual: "function f(xs: number[]) { return $gen(function* () { ;{ const $concurrency = 2; (yield* $run($forConcurrent(xs, $concurrency, (x) => $gen(function* () { ;(yield* $run(log(x)));  }), true))); } })}",
 	},
 	{
 		name:    "concurrent written undefined single statement",
 		source:  "function f(xs: number[]) { for concurrent(undefined as any) (const x of xs) log(x) }",
-		virtual: "function f(xs: number[]) { return $gen(function* () { ;{ const $concurrency = undefined as any; (yield* $run($forConcurrent(xs, $concurrency, (x) => $gen(function* () { ;(yield* $run(log(x))) }), true))); } })}",
+		virtual: "function f(xs: number[]) { return $gen(function* () { ;{ const $concurrency = undefined as any; (yield* $run($forConcurrent(xs, $concurrency, (x) => $gen(function* () { ;(yield* $run(log(x)));  }), true))); } })}",
 	},
 	{
 		name:    "concurrent written null single statement",
 		source:  "function f(xs: number[]) { for concurrent(null as any) (const x of xs) log(x) }",
-		virtual: "function f(xs: number[]) { return $gen(function* () { ;{ const $concurrency = null as any; (yield* $run($forConcurrent(xs, $concurrency, (x) => $gen(function* () { ;(yield* $run(log(x))) }), true))); } })}",
+		virtual: "function f(xs: number[]) { return $gen(function* () { ;{ const $concurrency = null as any; (yield* $run($forConcurrent(xs, $concurrency, (x) => $gen(function* () { ;(yield* $run(log(x)));  }), true))); } })}",
 	},
 	{
 		name:    "all takes its array elements by name",
