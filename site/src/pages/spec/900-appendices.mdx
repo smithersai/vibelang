@@ -963,7 +963,7 @@ ExpressionStatement[Yield, Await] =
                  "class", "let [", "throw" }] Expression[+In, ?Yield, ?Await] ";"
 ```
 
-The operand and parent positions follow `UnaryExpression`; `throw` in statement position is `ThrowStatement`. The expression production has no no-line-terminator restriction after `throw`. The invalid-punctuator lookahead also applies to comma separators. Parenthesize the operand or the throw to place an operator inside or outside it. ECMAScript automatic semicolon insertion applies. ASI can end a class field before the `*` of a following generator method. Rules about generators and where a throw is permitted remain separate. Where throwing is permitted is separately VIP-4's 2026-10-31 no-throw ruling (`EK0401`).
+The operand and parent positions follow `UnaryExpression`; `throw` in statement position is `ThrowStatement`. The expression production has no no-line-terminator restriction after `throw`. The invalid-punctuator lookahead also applies to comma separators. Its new punctuator-only comma case temporarily reports warning `EK1010` until the parenthesizing `vibelang --fix` ships, following Will's rule (effectscript-11, 23:05Z): codemod first, then the error. Existing operator-left `EK1010` violations (D186, S10-12) remain errors. Parenthesize the operand or the throw to place an operator inside or outside it. ECMAScript automatic semicolon insertion applies. ASI can end a class field before the `*` of a following generator method. Rules about generators and where a throw is permitted remain separate. Where throwing is permitted is separately VIP-4's 2026-10-31 no-throw ruling (`EK0401`).
 
 
 
@@ -974,7 +974,7 @@ The operand and parent positions follow `UnaryExpression`; `throw` in statement 
 This implementation census records each parser or lowering hook and its specification authority. It does not admit syntax: the productions and prose above remain the independent grammar oracle. A `pending` row has no authority; `support` and `recovery` rows do not add language forms.
 
 \<details>
-\<summary>Parser and lowering hooks (887 records)\</summary>
+\<summary>Parser and lowering hooks (898 records)\</summary>
 
 | Hook | Form | Authority | Status | Reason |
 | --- | --- | --- | --- | --- |
@@ -1249,6 +1249,7 @@ This implementation census records each parser or lowering hook and its specific
 | ` parser/vibelang_try.go:Parser.isVibeLangTryOperation ` | ` admission:try ` | ` 900-appendices.md#TryAll ` | ` support ` | Appendix A: TryAll; inherited TypeScript helpers and diagnostic recovery retain their stated boundaries |
 | ` parser/vibelang_try.go:Parser.parseVibeLangTryOperation ` | ` admission:try ` | ` 900-appendices.md#TryAll ` | ` support ` | Appendix A: TryAll; inherited TypeScript helpers and diagnostic recovery retain their stated boundaries |
 | ` parser/vibelang_try.go:isVibeLangTry ` | ` admission:try ` | ` 900-appendices.md#TryExpression ` | ` support ` | VIP-5: try (try e) runs both layers; the inner try stays the operand |
+| ` parser/vibelang_retired_controls.go:Parser.retiredControlForm ` | ` admission:retired-control-forms ` | ` 000-intro.md ` | ` recovery ` | First-release handler retirement reports EK3501/EK4607 and names --fix; recovery supports diagnostics and migration, never admission of open VIP-35 forms. |
 | ` vibelang/catches.go:init ` | ` admission:catch-tests ` | ` 003-failures.md ` | ` support ` | Failure test support; legacy typed catch syntax audited separately |
 | ` vibelang/catches.go:isFailureTest ` | ` admission:catch-tests ` | ` 003-failures.md ` | ` support ` | Failure test support; legacy typed catch syntax audited separately |
 | ` vibelang/catches.go:failureTags ` | ` admission:catch-tests ` | ` 003-failures.md ` | ` support ` | Failure test support; legacy typed catch syntax audited separately |
@@ -1865,6 +1866,16 @@ This implementation census records each parser or lowering hook and its specific
 | ` vibelang/effect_parameters_lower.go:lowering.callTimeEffectBody ` | ` admission:effect-function-support ` | ` 001-functions.md `, ` 003-failures.md ` | ` support ` | VIP-1: binds parameters once at the call and keeps only the source body inside the generator |
 | ` vibelang/effect_parameters_lower.go:lowering.directFunctionBody ` | ` admission:effect-function-support ` | ` 001-functions.md ` | ` support ` | VIP-1: preserves the source callable kind, name, arguments and frame while constructing its body |
 | ` vibelang/effect_parameters_lower.go:lowering.effectBindingBoundary ` | ` admission:effect-function-support ` | ` 001-functions.md `, ` 003-failures.md ` | ` support ` | VIP-1/4: call-time binding failures become defects in the returned Effect; no new syntax |
+| ` parser/vibelang_effect_channels.go:vibeLangFunctionTypeIsMissingArrow ` | ` admission:effect-type ` | ` 900-appendices.md#EffectOperand ` | ` support ` | VIP-3: identify a closed recovered function-type head lacking its outer arrow; ordinary invalid operands keep native syntax diagnostics |
+| ` parser/vibelang_do.go:doConcurrentBody ` | ` admission:do ` | ` 900-appendices.md `, ` 002-running.md ` | ` support ` | VIP-2: recover the source ForConcurrent body for the native iteration completion predicates |
+| ` parser/vibelang_data.go:Parser.skipDataVariantParameters ` | ` admission:data ` | ` 900-appendices.md#Variant ` | ` recovery ` | VIP-16/detail 247: consume a malformed parenthesized payload for EK1606; retain the declaration boundary |
+| ` parser/vibelang_effect_assertion.go:Parser.withVibeLangExpressionASI ` | ` admission:effect-type ` | ` 900-appendices.md#EffectOperand ` | ` support ` | Optional requirement complete-parse priority and the native expression caller’s ASI boundary |
+| ` parser/vibelang_effect_assertion.go:Parser.parseVibeLangExpressionAllowInASI ` | ` admission:effect-type ` | ` 900-appendices.md#EffectOperand ` | ` support ` | Optional requirement complete-parse priority and the native expression caller’s ASI boundary |
+| ` parser/vibelang_effect_assertion.go:Parser.parseVibeLangExpressionInitializer ` | ` admission:effect-type ` | ` 900-appendices.md#EffectOperand ` | ` support ` | Optional requirement complete-parse priority and the native expression caller’s ASI boundary |
+| ` parser/vibelang_effect_assertion.go:Parser.parseVibeLangClassInitializer ` | ` admission:effect-type ` | ` 900-appendices.md#EffectOperand ` | ` support ` | Optional requirement complete-parse priority and the native expression caller’s ASI boundary |
+| ` parser/vibelang_effect_assertion.go:Parser.optionalVibeLangRequirementKeyword ` | ` admission:effect-type ` | ` 900-appendices.md#EffectOperand ` | ` support ` | Optional requirement complete-parse priority and the native expression caller’s ASI boundary |
+| ` parser/vibelang_effect_assertion.go:Parser.parseVibeLangAssertionType ` | ` admission:effect-type ` | ` 900-appendices.md#EffectOperand ` | ` support ` | Optional requirement complete-parse priority and the native expression caller’s ASI boundary |
+| ` parser/vibelang_effect_assertion.go:Parser.vibeLangAssertionRestComplete ` | ` admission:effect-type ` | ` 900-appendices.md#EffectOperand ` | ` support ` | Optional requirement complete-parse priority and the native expression caller’s ASI boundary |
 
 \</details>
 
@@ -1928,7 +1939,7 @@ The TypeScript-form lint warnings also retain their existing `EK4830`–`EK4837`
 | `EK0906` | a recognized service declaration missing its required body | 9 | [Services](/spec/005-services#static-rules) |
 | `EK0907` | a custom `service` declaration in a native ambient source context, explicit or inherited; includes `declare service`, ahead of the same missing-body recovery | 9 | [Services](/spec/005-services#static-rules) |
 | `EK0908` | two `service` members with no separator between them, such as `a: number b: string` on one line; write `;` or a line break between them (quick fix: insert `;`) | 9 | [Services](/spec/005-services#static-rules) |
-| `EK1010` | a throw expression followed by a punctuator forbidden by the pinned proposal; parenthesize the operand or the throw | 41 | [Failures](/spec/003-failures#throw-expressions) |
+| `EK1010` | warning for the new punctuator-only comma case until its parenthesizing `vibelang --fix` ships (Will, effectscript-11, 23:05Z: codemod first, then the error); existing operator-left violations (D186, S10-12) remain errors; parenthesize the operand or the throw | 41 | [Failures](/spec/003-failures#throw-expressions) |
 | `EK1101` | a trailing block: a `{` on the same line after a name, a property access or a call, `f(x) { … }` or `f { … }`, outside a heritage clause and a `provide` block's providers, where no TypeScript or VibeLang production admits the `{` (so `effect { … }`, `match (x) { … }`, `namespace A.B { … }` and declaration heads such as `service S { … }` are not trailing blocks); quick fix: pass the block as the call's last argument, `f(x, effect { … })` where it ran as a program, `f(x, effect () => { … })` where it ran as an Effect function, `f(x, () => { … })` otherwise | 11 | [Configuration and tooling](/spec/007-tooling#compiler-and-tooling-requirements) |
 | `EK1201` | `provide` outside effect code | 12 | [Services](/spec/005-services#provide-blocks) |
 | `EK1202` | a line break immediately before or after a top-level provider-separating `,` | 12 | [Services](/spec/005-services#provide-blocks) |

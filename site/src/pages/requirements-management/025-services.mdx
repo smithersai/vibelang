@@ -256,6 +256,8 @@ The same declaration-import checks run with `noEmit` or `declaration: false`, be
 
 For a class written as `class Database extends Context.Service<Database, DatabaseService>()("BetterAuth.Database") {}`, `vibelang --fix` preserves the written whole shape: `service Database: DatabaseService { static readonly key = "BetterAuth.Database" }`. It keeps the existing shape type and runtime key, without adding a shape helper or namespace. Body comments and trivia before the brace stay in the declaration. A dynamic key, additional class members or header comments whose placement cannot be preserved stay for manual review with an explanation.
 
+An ordinary native `class Key extends Context.Service<…>` declares no `Key.Shape` namespace. Extract its implementation with `Context.Service.Shape<typeof Key>`, or use an explicitly declared TypeScript namespace. A member-body `service` declaration supplies its public `Shape` alias. The editor and `vibelang --fix` replace an invalid non-generic native-key shape reference with a type import of Effect's extractor, preserving local bindings and foreign source files. An explicit namespace or type arguments are left for the owner to check.
+
 ---
 
 The matching Effect page: [effect.website/docs/v4/requirements-management/services](https://effect.website/docs/v4/requirements-management/services/)

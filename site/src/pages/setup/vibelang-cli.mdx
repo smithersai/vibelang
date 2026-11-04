@@ -190,6 +190,8 @@ JSX VibeLang sources use `.vibex` with the same `jsx` option as `.tsx`. Runtime 
 
 TypeScript's `moduleSuffixes`, `paths`, package exports, and resolution mode still apply. Declaration and JavaScript fallbacks follow the source lookup. A written VibeLang extension can also resolve its own compatibility declaration when the source is absent. Wildcard project discovery excludes `App.d.vibex.ts` when `App.vibex` is present, including relocated sidecars; an explicitly listed sidecar stays an input.
 
+A native `.ts` or `.tsx` consumer importing a live `.vibe` or `.vibex` source follows the corresponding `.ts` or `.tsx` source-extension checks. Without `allowImportingTsExtensions` or `rewriteRelativeImportExtensions`, a value import reports `TS5097`; `allowArbitraryExtensions` does not permit a live source import. With `rewriteRelativeImportExtensions`, relative JavaScript imports use `.js` (`.jsx` for `.vibex` under `jsx: preserve`). With rewriting disabled, emitted imports keep the written extension. Plain `tsc` reading only a compatibility sidecar uses arbitrary-extension declaration rules instead.
+
 Declaration emit imports a prelude module whose name the source uses when an inferred type needs it: for example, `Layer.empty` declares a value of `Layer.Layer<never, never, never>` through an import from `effect`. This also applies with `module: Preserve` and `moduleResolution: Bundler`.
 
 A `.vibex` source emits `.jsx` under `jsx: preserve`, even when it contains no JSX elements, and `.js` in other JSX modes. Its source map uses the same suffix, `.jsx.map` or `.js.map`; public declarations remain `.d.ts`.

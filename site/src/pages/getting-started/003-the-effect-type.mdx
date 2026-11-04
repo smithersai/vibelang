@@ -65,6 +65,8 @@ Unparenthesized combinations report `EK0301`. The quick fix and `vibelang --fix`
 
 After an assertion, `x as A!! < 3` leaves `R` omitted and continues with a comparison; ordinary operand checks still apply. Parenthesize a generic function requirement, such as `A!!(<T>() => T)`. A tuple still fills the requirement slot: `x as A!![0]` has `R = [0]`; write `(x as A!!)[0]` for a later element access.
 
+An Effect type operand is an ordinary TypeScript source type. An invalid operand such as `number!!(string?)` reports TypeScript's syntax error. The `EK0301` parenthesis repair applies to actual compound operands, including written function and constructor types.
+
 A following `as` or `satisfies` still continues the expression: `x as A!! as B` keeps `R = never` and then asserts `B`. A type named `as` or `satisfies` can still fill a requirement slot. The parser prefers that slot when both source parses complete, including when a line break ends the statement by automatic semicolon insertion. Inside an argument or parentheses, a line break cannot end the statement.
 
 Hovers show contracts this way, and declaration files keep `Effect.Effect<A, E, R>` for TypeScript callers. `Effect.Effect<A, E, R>` is accepted anywhere a type is.
@@ -160,9 +162,9 @@ An initializer can immediately follow the shorthand: `const e: number!!=Effect.s
 
 Use `A!E!R` or `Effect.Effect<A, E, R>`, instead of the transitional bare global `Effect<A, E, R>` alias. Its migration warning is `EK4856`; `vibelang --fix` selects the resolved legacy symbol and writes `A!E!R` where it needs no new parentheses, such as `number!!` for `Effect<number>`, and `Effect.Effect<A, E, R>` elsewhere, such as `Effect.Effect<A | B, E>`, `Effect.Effect<A, E>[]` and an `extends` or `implements` clause. The fix preserves existing parentheses, explicit default slots and comments. It retains the qualified spelling when shorthand would change declaration bytes. Local and imported types named `Effect` keep their TypeScript meaning. Alias removal happens only in a coordinated compiler and codemod release.
 
-The same grouping rule applies to nested qualified types. An array boundary in `Effect.Effect<Array<Effect.Effect<number>>>` lets both levels use shorthand. Direct nesting in `Effect.Effect<Effect.Effect<number>>` keeps the outer qualified type when shortening it would need new parentheses.
-
 A required requirement can be an object type in a type alias, interface or function type: `type Read = number!string!{ readonly service: number }`. An implementation return annotation keeps its existing body-brace boundary; parenthesize an object requirement there. The optional requirement after `A!!` still requires parentheses around an object type.
+
+The same grouping rule applies to nested qualified types. An array boundary in `Effect.Effect<Array<Effect.Effect<number>>>` lets both levels use shorthand. Direct nesting in `Effect.Effect<Effect.Effect<number>>` keeps the outer qualified type when shortening it would need new parentheses.
 
 ---
 
