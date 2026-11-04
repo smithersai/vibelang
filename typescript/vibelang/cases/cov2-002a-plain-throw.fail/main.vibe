@@ -1,0 +1,5 @@
+// expect: EK0401
+// rule-evidence: docs/design/src/002-running.md#4ec348e7d5e37a0f
+// Chapter 002: | `x catch (e) => { throw e }` | plain function | a compile error, `EK0401`; write `x catch effect (e) => { throw e }` |
+import { Effect } from "effect"
+export effect function invalid() { return Effect.fail("bad") catch (e) => { throw e } }

@@ -1,0 +1,7 @@
+// expect: EK0503
+// rule-evidence: docs/design/src/002-running.md#98cdcc19245869d4
+// Chapter 002: | a `try` statement (`try { } catch { }`, `try { } finally { }`) anywhere in effect code.
+// rule-evidence: docs/design/src/002-running.md#442351d4d8f80984
+// Chapter 002: At the start of a statement, `try` followed by `{`, on the same line or not, begins a `try` statement, as in JavaScript, and that is an error in effect code.
+export effect function invalid() { try
+{ } finally { } }

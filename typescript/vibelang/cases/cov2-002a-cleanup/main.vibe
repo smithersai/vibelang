@@ -1,0 +1,9 @@
+// runtime witness
+// rule-evidence: docs/design/src/002-running.md#b53d7e331170a14f
+// Chapter 002: Handle failures with `catch` or `match`, and clean up with `ensuring` or `onExit`: `try ensuring(write(x), close())` | `EK0503` |
+import { Effect } from "effect"
+export effect function main() {
+ const events: string[] = []
+ const value = (effect { try Effect.ensuring(Effect.fail("bad"), Effect.sync(() => { events.push("close") })); return 1 }) catch (e) => { events.push(e); return 0 }
+ return [value,events]
+}

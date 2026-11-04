@@ -1,0 +1,7 @@
+// expect: EK0502
+// rule-evidence: docs/design/src/002-running.md#b2e783507bb588cb
+// Chapter 002: | `try e` where `e` is not an Effect.
+// rule-evidence: docs/design/src/002-running.md#eb250d07e720431d
+// Chapter 002: A call that may throw, and a Promise, must first be wrapped with `Effect.try`, `tryPromise` or `promise` | `EK0502` |
+import { Effect } from "effect"
+export effect function invalid(p: Promise<number>, f: () => number) { const a = try 1; const b = try p; return [a,b] }
