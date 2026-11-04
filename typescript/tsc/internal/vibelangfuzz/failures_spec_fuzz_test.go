@@ -189,7 +189,8 @@ func failuresCases() []*failCase {
 	add(&failCase{Name: "wrap-effect-try-options", Quote: q.wrapIt, Decls: failParse, Body: "const p = try Effect.try({ try: () => parse(s), catch: (e) => e })"})
 	add(&failCase{Name: "wrap-effect-try-held", Quote: q.wrapIt, Decls: failParse, Body: "const program = Effect.try(() => parse(s))\nconst p = try program"})
 	// PREVIEW-5: a callback nested in the thunk is its own plain code
-	add(&failCase{Name: "wrap-effect-try-nested-callback", Quote: nothrowQ.nested, Owner: "nothrow-impl", Decls: failParse, Body: "const p = try Effect.try(() => xs.map((x) => ⟦parse(String(x))⟧))", Code: 401})
+	add(&failCase{Name: "wrap-effect-try-nested-callback", Quote: nothrowQ.nested, Owner: "nothrow-impl", Lib: "/** @throws {Error} */\nexport declare function parse(s: string): string", Body: "const p = try Effect.try(() => { const f = (x: number) => ⟦parse(String(x))⟧; return xs.map(f) })", Code: 401})
+	add(&failCase{Name: "wrap-effect-try-rethrows-callback", Quote: "may contain calls known to throw: they belong to the enclosing call", Lib: "/** @throws {Error} */\nexport declare function parse(s: string): string", Body: "const p = try Effect.try(() => xs.map((x) => parse(String(x))))"})
 	add(&failCase{Name: "wrap-try-promise-async", Quote: q.promiseCall, Decls: failLater, Body: "const p = try tryPromise(() => later(s))"})
 	add(&failCase{Name: "wrap-promise", Quote: q.promiseCall, Decls: failLater, Body: "const p = try promise(() => later(s))"})
 	add(&failCase{Name: "nonthrowing-direct", Quote: q.callsDirectly, Decls: failAdd, Body: "add(1, 2)"})
@@ -418,6 +419,57 @@ func failuresCases() []*failCase {
 			body = "const v = ⟦read()⟧"
 		}
 		add(&failCase{Name: "foreign-alias-tag-" + alias.key, VIP: 4, Owner: "impl-hunt-fail", Quote: "a tag on an alias of a function type does not attach", Lib: alias.lib, Body: body, Code: alias.code, OneDiagnostic: alias.code != 0})
+	}
+	// A literal passed to a @rethrows parameter: its own calls known to throw
+	// belong to the enclosing call, whose own never does not erase them.
+	for _, r := range []struct {
+		key, host, body string
+		code            int
+	}{
+		{"own-never", "effect", "const v = ⟦invoke(() => parse(s))⟧", 403},
+		{"nested-call", "effect", "const v = ⟦invoke(() => invoke(() => parse(s)))⟧", 403},
+		{"map", "effect", "const v = ⟦xs.map((x) => parse(s))⟧", 403},
+		{"caught", "effect", "const v = invoke(() => { try { return parse(s) } catch { return s } })", 0},
+		{"safe", "effect", "const v = invoke(() => s)", 0},
+		{"wrapped", "effect", "const v = try Effect.try(() => invoke(() => parse(s)))", 0},
+		{"nested-function", "effect", "const v = invoke(() => { const f = () => ⟦parse(s)⟧; return s })", 401},
+		{"plain-host", "plain", "const v = ⟦invoke(() => parse(s))⟧", 401},
+		{"plain-caught", "plain", "try { invoke(() => parse(s)) } catch { }", 0},
+		{"constructor", "effect", "const v = ⟦new Invoke(() => parse(s))⟧", 403},
+		{"constructor-plain", "plain", "const v = ⟦new Invoke(() => parse(s))⟧", 401},
+		{"constructor-safe", "effect", "const v = new Invoke(() => s)", 0},
+		{"constructor-caught", "plain", "try { new Invoke(() => parse(s)) } catch { }", 0},
+		{"constructor-wrapped", "effect", "const v = try Effect.try(() => new Invoke(() => parse(s)))", 0},
+		{"class-base", "effect", "const v = ⟦invoke⟧(() => { class C extends makeBase() {}; return s })", 403},
+		{"enum-initializer", "effect", "const v = ⟦invoke⟧(() => { enum E { Value = parse(s).length }; return s })", 403},
+		{"do-expression", "effect", "const v = ⟦invoke⟧(() => do { parse(s) })", 403},
+		{"class-static-block", "effect", "const v = invoke(() => { class C { static { ⟦parse(s)⟧ } }; return s })", 401},
+		{"class-base-caught", "effect", "const v = invoke(() => { try { class C extends makeBase() {}; return s } catch { return s } })", 0},
+		{"enum-caught", "effect", "const v = invoke(() => { try { enum E { Value = parse(s).length }; return s } catch { return s } })", 0},
+		{"do-caught", "effect", "const v = invoke(() => { try { return do { parse(s) } } catch { return s } })", 0},
+	} {
+		add(&failCase{Name: "rethrows-literal-" + r.key, VIP: 4, Quote: "may contain calls known to throw: they belong to the enclosing call", Host: r.host, Lib: "/** @throws {Error} */\nexport declare function parse(s: string): string\n/**\n * @throws {never}\n * @rethrows f\n */\nexport declare function invoke(f: () => string): string\n/** @throws {Error} */\nexport declare function makeBase(): new () => object\nexport declare class Invoke {\n/**\n * @throws {never}\n * @rethrows f\n */\nconstructor(f: () => string)\n}", Body: r.body, Code: r.code, OneDiagnostic: r.code != 0})
+	}
+
+	for _, r := range []struct {
+		key, body string
+		code      int
+	}{
+		{"async", "const v = invoke(async () => parse(s))", 0},
+		{"async-generator", "const v = invoke(async function* () { return parse(s) })", 0},
+		{"generator-body", "const v = invoke(function* () { return ⟦parse(s)⟧ })", 401},
+		{"class-field", "const v = invoke(() => { class C { value = ⟦parse(s)⟧ }; return 0 })", 401},
+		{"effect-body", "const v = consume(effect () => { return ⟦parse(s)⟧ })", 403},
+	} {
+		add(&failCase{Name: "rethrows-literal-boundary-" + r.key, Quote: "nested source callables keep their own contexts", Host: "plain", Lib: "/** @throws {Error} */\nexport declare function parse(s: string): string\n/**\n * @throws {never}\n * @rethrows f\n */\nexport declare function invoke<T>(f: () => T): T\n/**\n * @throws {never}\n * @rethrows f\n */\nexport declare function consume<T>(f: () => T): void", Body: r.body, Code: r.code, OneDiagnostic: r.code != 0})
+	}
+
+	for _, r := range []struct{ key, body string }{
+		{"effect-parameter", "const v = consume(effect (x = ⟦parse(s)⟧) => x)"},
+		{"effectful-factory-body", "const v = consume(() => { const x = ⟦parse(s)⟧; return Effect.succeed(x) })"},
+		{"effectful-factory-parameter", "const v = consume((x = ⟦parse(s)⟧) => Effect.succeed(x))"},
+	} {
+		add(&failCase{Name: "rethrows-literal-" + r.key, Quote: "A plain function whose return type is wholly effectful, and an effectful function's parameter list, are stricter: any thrown type other than `never` is `EK0401`", Host: "plain", Lib: "/** @throws {Error} */\nexport declare function parse(s: string): string\n/**\n * @throws {never}\n * @rethrows f\n */\nexport declare function consume<T>(f: () => T): void", Body: r.body, Code: 401, OneDiagnostic: true})
 	}
 	add(&failCase{Name: "foreign-overload", Quote: "| no tag | `unknown` |", Host: "effect", Body: "⟦foreign(s)⟧", Lib: "export declare function foreign(s: string): string\nexport declare function foreign(s: number): number"})
 	add(&failCase{Name: "dynamic-any", Quote: "Calls through `any` or `Function` throw `unknown`; callable unions combine their alternatives.", Host: "effect", Body: "⟦f(s)⟧", Decls: "declare const f: any"})

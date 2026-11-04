@@ -1,0 +1,9 @@
+// expect: EK0403
+// A literal passed to a @rethrows parameter may contain calls known to throw:
+// they belong to the enclosing call (003), so the call is EK0403 in effect
+// code and nothing in the literal is EK0401.
+import { parse, invoke, Invoke } from "./helpers.js"
+export effect function direct(s: string) { return invoke(() => parse(s)) }
+export effect function nested(s: string) { return invoke(() => invoke(() => parse(s))) }
+export effect function mapped(xs: string[]) { return xs.map((x) => parse(x)) }
+export effect function constructed(s: string) { return new Invoke(() => parse(s)) }

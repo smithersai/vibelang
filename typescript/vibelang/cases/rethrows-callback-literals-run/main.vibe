@@ -1,0 +1,12 @@
+// expect-result: ["x","safe",[2,3],"caught",{"_tag":"Failure"}]
+// Bridged, safe and caught @rethrows literals compile and run (003).
+import { Effect, Exit } from "effect"
+import { parse, invoke } from "./helpers.js"
+export effect function main() {
+  const a = try Effect.try(() => invoke(() => parse("x")))
+  const b = invoke(() => "safe")
+  const c = [1, 2].map((x) => x + 1)
+  const d = invoke(() => { try { return parse("bad") } catch { return "caught" } })
+  const e = Exit.isFailure(try Effect.exit(Effect.try(() => invoke(() => parse("bad"))))) ? { _tag: "Failure" } : { _tag: "Success" }
+  return [a, b, c, d, e]
+}

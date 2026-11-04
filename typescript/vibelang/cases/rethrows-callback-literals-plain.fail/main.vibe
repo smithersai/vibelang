@@ -1,0 +1,5 @@
+// expect: EK0401
+// In plain code the same call is EK0401, at the call.
+import { parse, invoke } from "./helpers.js"
+export function direct(s: string) { return invoke(() => parse(s)) }
+export function mapped(xs: string[]) { return xs.map((x) => parse(x)) }

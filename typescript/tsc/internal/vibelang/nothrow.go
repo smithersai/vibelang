@@ -193,7 +193,19 @@ func admitsThrows(c *checker.Checker, fn *ast.Node) bool {
 			}
 		}
 	}
-	return false
+	// A generator body runs on iteration, outside the invoking call. It
+	// keeps its own plain-code check rather than this rethrows admission.
+	if ast.GetFunctionFlags(fn)&ast.FunctionFlagsGenerator != 0 || isMarkedEffect(fn) {
+		return false
+	}
+	// An effectful callable cannot synchronously throw, including while its
+	// parameters are initialized. Rethrows does not relax that own contract.
+	if signature := c.GetSignatureFromDeclaration(fn); signature != nil && isEffectfulType(c, c.GetReturnTypeOfSignature(signature)) {
+		return false
+	}
+	// A parameter named by @rethrows admits anything: what the literal throws
+	// belongs to the call (003 Plain code never throws; rethrows_known.go).
+	return rethrowsArgument(c, call, index)
 }
 
 // plainHomeOf returns the synchronous code outside effect code that node
