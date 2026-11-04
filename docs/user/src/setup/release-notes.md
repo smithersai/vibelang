@@ -181,6 +181,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Generated error matchers could fail to load after the extractor update because the guarded runtime entry omitted its registration helper. The entry now exports the helper once and preserves its ABI identity.
 
 - Formatter regression checks still expected retired handlers and selection blocks to format successfully. They now require a clear rejection before the host formatter runs, including Windows line endings and JSX files.
+
+- A list pattern with an elision or an optional element, such as `when [,,3]:` or `when [1?, 2?]:`, was a syntax error; it now matches as chapter 4 says. A binding in an optional element reports `EK4704`.
 - A `match` over an ordinary tagged-error class could appear exhaustive although a structurally compatible instance fell through with `TypeError`. Ordinary constructor patterns now cover no finite case; cover the tag explicitly or add a `default`.
 
 - The call-forms table reported stale plain-function decisions for the parameter-forwarding examples; it now records their explicit `effect` functions.

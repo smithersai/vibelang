@@ -1,0 +1,49 @@
+// expect-result: {"elision":["miss","hit","miss","miss"],"leading":["hit","miss"],"internal":["hit","miss"],"trailing":["hit","miss","miss"],"both":["pair","pair","other"],"optional":["hit","hit","miss","miss","miss"],"required":["miss","hit","miss"],"present":"miss","extractor":["none","some","other"],"rest":["hit","hit","miss"]}
+// Chapter 004, Elisions and Optional elements: each Elision consumes its full
+// number of commas, excluding a list-separator comma, and every skipped position
+// must exist. An absent optional element consumes zero values; a present
+// undefined is a value and must satisfy its sub-pattern.
+import { Option } from "effect"
+
+function third(xs: readonly number[]) {
+  return match (xs) { when [,,3]: "hit"; default: "miss"; }
+}
+function leading(xs: readonly unknown[]) {
+  return match (xs) { when [,let second]: second === 2 ? "hit" : "miss"; default: "miss"; }
+}
+function internal(xs: readonly unknown[]) {
+  return match (xs) { when [1,,3]: "hit"; default: "miss"; }
+}
+function trailing(xs: readonly unknown[]) {
+  return match (xs) { when [1,,]: "hit"; default: "miss"; }
+}
+function both(xs: readonly unknown[]) {
+  return match (xs) { when [1, 2?]: "pair"; default: "other"; }
+}
+function optional(xs: readonly unknown[]) {
+  return match (xs) { when [1?, 2?]: "hit"; default: "miss"; }
+}
+function required(xs: readonly unknown[]) {
+  return match (xs) { when [1?, 2]: "hit"; default: "miss"; }
+}
+function rest(xs: readonly unknown[]) {
+  return match (xs) { when [1?, ...]: "hit"; default: "miss"; }
+}
+function fixed(o: Option.Option<number>) {
+  return match (o) { when Option.None(1?): "none"; when Option.Some(1?): "some"; default: "other"; }
+}
+
+export effect function main() {
+  return {
+    elision: [third([9, 3]), third([9, 8, 3]), third([9, 8, 7]), third([9, 8, 3, 4])],
+    leading: [leading([0, 2]), leading([2])],
+    internal: [internal([1, 0, 3]), internal([1, 3])],
+    trailing: [trailing([1, 2]), trailing([1]), trailing([1, 2, 3])],
+    both: [both([1]), both([1, 2]), both([1, 3])],
+    optional: [optional([]), optional([1, 2]), optional([2]), optional([1, 3]), optional([1, 2, 3])],
+    required: [required([2]), required([1, 2]), required([1])],
+    present: match ([undefined]) { when [1?]: "hit"; default: "miss"; },
+    extractor: [fixed(Option.none()), fixed(Option.some(1)), fixed(Option.some(2))],
+    rest: [rest([]), rest([1, 2, 3]), rest([2])]
+  }
+}

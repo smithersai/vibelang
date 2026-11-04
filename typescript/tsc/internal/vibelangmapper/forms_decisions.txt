@@ -4049,6 +4049,7 @@ typescript/vibelang/cases/match-is-unbraced-body-home/main.vibe:34:18 lambda pla
 typescript/vibelang/cases/match-last-arm-tested/main.vibe:24:53 lambda plain fallback
 typescript/vibelang/cases/match-last-arm-tested/main.vibe:31:85 byname program annotation
 typescript/vibelang/cases/match-last-arm-tested/main.vibe:31:97 lambda plain table
+typescript/vibelang/cases/match-list-elision-optional/main.vibe:45:20 lambda dual fallback
 typescript/vibelang/cases/match-negated-ordinary-class/main.vibe:5:69 lambda plain table
 typescript/vibelang/cases/match-not-binding-lookahead/main.vibe:12:8 lambda dual fallback
 typescript/vibelang/cases/match-not-binding-lookahead/main.vibe:14:8 lambda dual fallback

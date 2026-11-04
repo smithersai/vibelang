@@ -1,0 +1,3 @@
+go test fuzz v1
+string("list-grammar-empty-control-is")
+byte(0)

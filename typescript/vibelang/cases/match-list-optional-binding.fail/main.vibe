@@ -1,0 +1,6 @@
+// expect: EK4704
+// An absent optional element leaves its bindings uninitialized, which match's
+// lowering has no form for yet; the compiler reports it instead of inventing a value.
+export function f(xs: readonly number[]) {
+  return match (xs) { when [let a?]: 1; default: 0; }
+}

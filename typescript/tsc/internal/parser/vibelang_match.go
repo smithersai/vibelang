@@ -70,6 +70,7 @@ const (
 	patternGuard                        // if (expr)
 	patternRelation                     // a relational pattern: operator and expr, < 10 or instanceof Map
 	patternInvalid                      // a form VibeLang does not support yet: code, detail
+	patternElision                      // a comma that skips one position of a list
 )
 
 // objectClause is one clause of an object pattern.
@@ -89,6 +90,7 @@ type pattern struct {
 	name          *ast.Node      // a binding's name
 	items         []*pattern
 	hasRest       bool     // an array or extractor pattern ends in ...
+	optional      bool     // a list element written P?: an absent value consumes nothing
 	rest          *pattern // the pattern after ..., or nil
 	clauses       []objectClause
 	parenthesized bool
@@ -502,6 +504,14 @@ func (p *Parser) parseMatchValueExpression() *ast.Node {
 func (p *Parser) parseMatchListPattern(result *pattern, close ast.Kind) {
 	p.nextToken() // [ or (
 	for p.token != close && p.token != ast.KindEndOfFile {
+		if p.token == ast.KindCommaToken {
+			// An Elision: a comma where an element would start skips one
+			// position, which the list must have; the comma after an element
+			// separates and skips none, as in an array literal.
+			result.items = append(result.items, &pattern{kind: patternElision, anchor: p.tokenRange()})
+			p.nextToken()
+			continue
+		}
 		if p.token == ast.KindDotDotDotToken {
 			p.nextToken()
 			result.hasRest = true
@@ -530,7 +540,11 @@ func (p *Parser) parseMatchListPattern(result *pattern, close ast.Kind) {
 			}
 			break
 		}
-		result.items = append(result.items, p.parseMatchPattern())
+		item := p.parseMatchPattern()
+		if p.parseOptional(ast.KindQuestionToken) {
+			item.optional = true
+		}
+		result.items = append(result.items, item)
 		if !p.parseOptional(ast.KindCommaToken) {
 			break
 		}
@@ -1661,11 +1675,28 @@ func subjectReads(pat *pattern) int {
 // the remaining elements.
 func (p *Parser) compileList(pat *pattern, path matchPath, n int, element func(int) matchPath, remaining func(int) *ast.Node, length func() *ast.Node, steps *[]matchStep, ctx *matchCompile) {
 	at := pat.anchor
-	operator := ast.KindEqualsEqualsEqualsToken
-	if pat.hasRest {
-		operator = ast.KindGreaterThanEqualsToken
+	// An optional element may be absent, so the list reaches only through the
+	// last element that is not optional; every position counts toward the most
+	// it can hold.
+	required, hasOptional := 0, false
+	for i, item := range pat.items {
+		if item.optional {
+			hasOptional = true
+		} else {
+			required = i + 1
+		}
 	}
-	*steps = append(*steps, matchStep{test: p.mBinary(length(), operator, p.mNumber(n, at), at)})
+	switch {
+	case hasOptional:
+		*steps = append(*steps, matchStep{test: p.mBinary(length(), ast.KindGreaterThanEqualsToken, p.mNumber(required, at), at)})
+		if !pat.hasRest {
+			*steps = append(*steps, matchStep{test: p.mBinary(length(), ast.KindLessThanEqualsToken, p.mNumber(n, at), at)})
+		}
+	case pat.hasRest:
+		*steps = append(*steps, matchStep{test: p.mBinary(length(), ast.KindGreaterThanEqualsToken, p.mNumber(n, at), at)})
+	default:
+		*steps = append(*steps, matchStep{test: p.mBinary(length(), ast.KindEqualsEqualsEqualsToken, p.mNumber(n, at), at)})
+	}
 	// An extractor's values come from the array $extract made, which the
 	// checker reads through for D215's narrowing (match_extract.go); an
 	// array pattern's elements are the subject's own, read once.
@@ -1676,7 +1707,19 @@ func (p *Parser) compileList(pat *pattern, path matchPath, n int, element func(i
 		return p.enterSubject(path, item, steps, ctx)
 	}
 	for i, item := range pat.items {
-		p.compilePattern(item, enter(element(i), item), steps, ctx)
+		switch {
+		case item.kind == patternElision:
+		case !item.optional:
+			p.compilePattern(item, enter(element(i), item), steps, ctx)
+		case patternHasBindings(item):
+			// An absent element leaves its bindings uninitialized, which this
+			// lowering's const cannot express.
+			*steps = append(*steps, matchStep{test: p.patternErrorCall(4704, "Optional binding", item.anchor)})
+		default:
+			absent := p.mBinary(length(), ast.KindLessThanEqualsToken, p.mNumber(i, at), at)
+			matches := p.mParens(p.inlinePattern(item, element(i), ctx), at)
+			*steps = append(*steps, matchStep{test: p.mParens(p.joinTests([]*ast.Node{absent, matches}, ast.KindBarBarToken, at), at)})
+		}
 	}
 	if pat.rest != nil {
 		p.compilePattern(pat.rest, enter(func() *ast.Node { return remaining(n) }, pat.rest), steps, ctx)
