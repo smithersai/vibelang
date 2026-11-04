@@ -22,10 +22,15 @@ const migrationDeclarationFixQuote = "A quick fix is offered only when it preser
 // cannot distinguish. Runtime equivalence remains in FuzzVIPDifferential.
 func migrationDeclarationWitnesses() map[string]string {
 	return map[string]string{
-		"alchemy-conditional-alias": "import * as DateTime from \"effect/DateTime\"\ntype NonNull<V> = V extends DateTime.Utc ? string : V\nexport type FieldFilter<V> = { eq: NonNull<V> }\n",
-		"alchemy-metric-module":     "import * as Metric from \"effect/Metric\"\nexport interface Tracked<M extends Metric.Metric<number, any>> { readonly metric: M }\n",
-		"opencode-type-modifier":    "import type { HttpClientResponse } from \"effect/http\"\nexport interface Options { readonly response: HttpClientResponse.HttpClientResponse }\n",
-		"foldkit-type-only":         "import type { Duration, Scope } from \"effect\"\nexport interface Options { readonly duration: Duration.Duration; readonly scope: Scope.Scope }\n",
+		"t3code-unattached-getter-jsdoc":       "import * as Schema from \"effect/Schema\"\nexport class Failed extends Schema.TaggedError<Failed>()(\"Failed\", {\n/** context */\ncause: Schema.Defect(),\n}) { /** context */\noverride get message(): \"Unavailable.\" { return \"Unavailable.\" } }\n",
+		"t3code-private-schema-error-getter":   "import * as Schema from \"effect/Schema\"\nclass Failed extends Schema.TaggedError<Failed>()(\"Failed\", { cause: Schema.Defect() }) {\n override get message(): string { return \"Unavailable.\" }\n}\nexport const failed = new Failed({ cause: \"offline\" })\n",
+		"t3code-browser-import-getter-comment": "import * as Schema from \"effect/Schema\"\nexport class Failed extends Schema.TaggedError<Failed>()(\"Failed\", { reason: Schema.String }) {\n // IPC preserves only the message.\n override get message(): string { return this.reason }\n}\n",
+		"t3code-schema-error-comments":         "import * as Schema from \"effect/Schema\"\nexport class Failed extends Schema.TaggedError<Failed>()(\"Failed\", {\n // reason\n reason: Schema.String, // keep\n /* cause */ cause: Schema.Defect()\n}) {}\n",
+		"t3code-schema-error-getter":           "import * as Schema from \"effect/Schema\"\nexport class Failed extends Schema.TaggedError<Failed>()(\"Failed\", {}) { override get message(): string { return \"Unavailable.\" } }\n",
+		"alchemy-conditional-alias":            "import * as DateTime from \"effect/DateTime\"\ntype NonNull<V> = V extends DateTime.Utc ? string : V\nexport type FieldFilter<V> = { eq: NonNull<V> }\n",
+		"alchemy-metric-module":                "import * as Metric from \"effect/Metric\"\nexport interface Tracked<M extends Metric.Metric<number, any>> { readonly metric: M }\n",
+		"opencode-type-modifier":               "import type { HttpClientResponse } from \"effect/http\"\nexport interface Options { readonly response: HttpClientResponse.HttpClientResponse }\n",
+		"foldkit-type-only":                    "import type { Duration, Scope } from \"effect\"\nexport interface Options { readonly duration: Duration.Duration; readonly scope: Scope.Scope }\n",
 		// EK4831 on an exported Context.Service class: alchemy's Domain
 		// Correlation and Platform, and t3code's server services, which an
 		// export list exports.
@@ -61,6 +66,20 @@ func migrationDeclarationVariants() []string {
 					sources = append(sources, prefix+body)
 				}
 			}
+		}
+	}
+	// Vary the t3code neighbourhood independently of import-only examples:
+	// field shape, comment placement, and getter return annotation.
+	for _, fields := range []string{"", "reason: Schema.String,", "cause: Schema.Defect(),"} {
+		for _, comment := range []string{"// context\n", "/** context */\n"} {
+			for _, result := range []string{"string", "\"Unavailable.\""} {
+				sources = append(sources, "import * as Schema from \"effect/Schema\"\nexport class Failed extends Schema.TaggedError<Failed>()(\"Failed\", {\n"+comment+fields+"\n}) { "+comment+"override get message(): "+result+" { return \"Unavailable.\" } }\n")
+			}
+		}
+	}
+	for _, field := range []string{"cause: Schema.Defect()", "cause: Schema.Defect(), detail: Schema.optional(Schema.String)"} {
+		for _, comment := range []string{"", "// IPC message\n"} {
+			sources = append(sources, "import * as Schema from \"effect/Schema\"\nclass Failed extends Schema.TaggedError<Failed>()(\"Failed\", {"+field+"}) {\n"+comment+"override get message(): string { return \"Unavailable.\" }\n}\nexport const failed = new Failed({ cause: \"offline\" })\n")
 		}
 	}
 	return sources

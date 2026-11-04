@@ -325,20 +325,37 @@ func schemaErrorRewrite(c *checker.Checker, file *ast.SourceFile, class *ast.Nod
 	}
 	text := file.Text()
 	object := arguments[1]
-	if body := text[nodeStart(file, object):object.End()]; strings.Contains(body, "//") || strings.Contains(body, "/*") {
-		return no("a comment among the fields would be lost.")
-	}
 	var lines, constants []string
+	end := nodeStart(file, object) + 1
 	for _, property := range object.AsObjectLiteralExpression().Properties.Nodes {
+		// The gaps contain the fields' leading and trailing comments. Keep
+		// them as separate lines so a trailing // cannot swallow a field.
+		gap := text[end:nodeStart(file, property)]
+		if schemaErrorUnattachedJSDoc(file, property, gap) {
+			return no("a JSDoc comment would gain a new member attachment.")
+		}
+		lines = append(lines, rewriteComments.FindAllString(gap, -1)...)
+		if hasComment(text[nodeStart(file, property):property.End()]) {
+			return no("a comment inside a field would be lost.")
+		}
 		field, constant, why := schemaErrorField(c, file, property, name)
 		if why != "" {
 			return no(why)
 		}
 		lines = append(lines, field)
+		end = property.End()
 		if constant != "" {
 			constants = append(constants, constant)
 		}
 	}
+	closing := rewriteComments.FindAllString(text[end:object.End()-1], -1)
+	for _, comment := range closing {
+		if strings.HasPrefix(comment, "/**") && len(class.Members()) != 0 {
+			return no("a trailing fields JSDoc comment would become member documentation.")
+		}
+	}
+	lines = append(lines, closing...)
+	memberEnd := class.AsClassDeclaration().Members.Pos()
 	for _, member := range class.Members() {
 		if key := member.Name(); key != nil && ast.IsComputedPropertyName(key) &&
 			keyDomainMayBeTag(c, c.GetTypeAtLocation(key.Expression()), 0) {
@@ -353,9 +370,16 @@ func schemaErrorRewrite(c *checker.Checker, file *ast.SourceFile, class *ast.Nod
 		if !ast.IsGetAccessorDeclaration(member) && !method && !ast.IsSemicolonClassElement(member) {
 			return no("a schema error's body keeps accessors and annotated methods.")
 		}
-		if !ast.IsSemicolonClassElement(member) {
-			lines = append(lines, text[nodeStart(file, member):member.End()])
+		// The member's full range starts after the previous member (or
+		// the opening brace), retaining its leading comments and JSDoc.
+		if schemaErrorUnattachedJSDoc(file, member, text[memberEnd:nodeStart(file, member)]) {
+			return no("a JSDoc comment would gain a new member attachment.")
 		}
+		lines = append(lines, strings.TrimSpace(text[memberEnd:member.End()]))
+		memberEnd = member.End()
+	}
+	if gap := text[memberEnd : class.End()-1]; hasComment(gap) {
+		lines = append(lines, strings.TrimSpace(gap))
 	}
 	start := nodeStart(file, class)
 	if modifiers := class.Modifiers(); modifiers != nil && len(modifiers.Nodes) > 0 {
@@ -373,11 +397,34 @@ func schemaErrorRewrite(c *checker.Checker, file *ast.SourceFile, class *ast.Nod
 		}
 		edits = append([]sourceEdit{{before, before, strings.Join(constants, "\n") + "\n"}}, edits...)
 	}
+	// A private class starts exactly where its generated codec constants
+	// are inserted. Apply that insertion and replacement as one edit;
+	// otherwise the insertion shifts the replacement's original offsets.
+	edits = joinEditsAt(edits)
 	rewrite := &formRewrite{edits: edits, description: "schema error " + name + " { … }"}
 	if declarations {
 		return rewrite
 	}
 	return withImportRemovals(c, file, rewrite)
+}
+
+// A moved JSDoc must document the same node. In particular a comment on
+// the opening brace's line is not attached in a native class, but putting
+// it on its own line before the getter would attach it in the declaration.
+func schemaErrorUnattachedJSDoc(file *ast.SourceFile, node *ast.Node, gap string) bool {
+	attached := map[string]int{}
+	for _, doc := range node.JSDoc(file) {
+		attached[strings.TrimSpace(file.Text()[doc.Pos():doc.End()])]++
+	}
+	for _, comment := range rewriteComments.FindAllString(gap, -1) {
+		if strings.HasPrefix(comment, "/**") {
+			if attached[comment] == 0 {
+				return true
+			}
+			attached[comment]--
+		}
+	}
+	return false
 }
 
 // schemaErrorField returns property, a field of a Schema.TaggedError's

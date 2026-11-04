@@ -54,6 +54,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - Migration verification rejected unchanged callbacks returning void Effects and plain factories returning `effect` blocks. It now checks each callback against its own original and still rejects dropped return values and delayed call-time work.
 
+- `vibelang --fix` could refuse comments on `Schema.TaggedError` fields or getters, or write invalid code for a private class with a codec field. It now preserves those comments and applies the private-class rewrite without overlapping edits; a JSDoc comment that would gain a new member attachment keeps the native class.
+
 - Moving an exported `unique symbol` into a private module could make an unchanged API fail migration verification. The checker now follows its public export path while still rejecting changed symbol keys, member types and documentation.
 
 ## 0.0.11
