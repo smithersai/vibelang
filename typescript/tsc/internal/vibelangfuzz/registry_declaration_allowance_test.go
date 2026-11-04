@@ -57,6 +57,7 @@ func TestRegistryDeclarationAllowancesStayStrict(t *testing.T) {
 }
 
 func FuzzRegistryDeclarationAllowances(f *testing.F) {
+	startShortBudget(f)
 	keys := []string{"EK4301", "EK4406", "EK4611", "EK4612", "EK4704"}
 	for _, key := range keys {
 		f.Add(key, false, true)

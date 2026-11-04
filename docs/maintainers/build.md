@@ -1016,6 +1016,8 @@ The command-line fuzz target builds its nested compiler with `-trimpath`,
 matching the outer Go test build. This lets the two builds share compiler
 package artifacts in the Go build cache on a fresh validation mirror.
 
+The `//:spec-registry-go` gate also checks that every fuzz target starts its short-seed CPU budget. A new fuzz oracle must register its budget before adding seeds; the gate selects changes to any VibeLang fuzz source so a newly added target cannot bypass this check.
+
 ## Benchmark corpus generation
 
 The compiler benchmark stops if docs corpus generation fails, returns the
