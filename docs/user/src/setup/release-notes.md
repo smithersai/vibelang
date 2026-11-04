@@ -204,6 +204,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Migration verification could reject inherited `TS4023` and `TS4058` declaration errors after a dependency upgrade changed only a resolved package version in their paths. It now accepts proved version-only path changes and records the evidence while preserving other diagnostic and API checks.
 - Changing a migration run's toolchain could make older conversions appear freshly produced. The provenance check now uses saved conversion receipts and refuses missing receipts.
 - Migration left snippet imports and re-exports such as `"./counter.ts?raw"` pointing at renamed files; it now updates the source path while preserving query strings, fragments and exported names.
+- Migration inventories omitted `.vibex` sources and their import and test dependencies; they now include those modules and resolve their source and JavaScript output names.
 - Calling an implementation method through a service key silently looked up the service and could hide native key properties. Keys now follow TypeScript; use an explicit `try` lookup, and `vibelang --fix` preserves the old direct call's run phase.
 
 - Calls imported from the retired `vibelang-runtime` `yieldNow` and `interrupt` factories stopped at missing-export errors; direct calls through named aliases and namespaces now migrate to cold native Effect values.

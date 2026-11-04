@@ -13,7 +13,7 @@ import { describe, enumerates, namedSelectors } from "./enumerations.mjs"
 import { isDeclarationFile, readJson, rel } from "./util.mjs"
 
 const skipDirectories = new Set(["node_modules", "dist", "build", "coverage", ".git", ".jj", ".turbo", ".vite", ".cache"])
-const sourceFile = /\.(?:ts|tsx|mts|cts|vibe)$/
+const sourceFile = /\.(?:ts|tsx|mts|cts|vibex?)$/
 export const isTestFile = (path) => /\.(?:test|spec)\.(?:[cm]?[jt]sx?|vibe|vibex)$/.test(path) || /(?:^|\/)(?:test|tests|__tests__)\//.test(path)
 
 export const isFixtureFile = path => /(?:^|\/)(?:[^/]*fixtures?[^/]*|__snapshots__|snapshots|testdata)(?:\/|$)/i.test(path) || /\.snap$/.test(path)

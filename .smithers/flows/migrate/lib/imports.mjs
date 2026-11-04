@@ -134,8 +134,8 @@ export function effectUse(imports) {
   return effect.some((i) => !i.typeOnly) ? "values" : "types"
 }
 
-const sourceExtensions = [".ts", ".tsx", ".mts", ".cts", ".vibe"]
-const jsToSource = { ".js": [".ts", ".tsx", ".vibe"], ".jsx": [".tsx"], ".mjs": [".mts", ".vibe"], ".cjs": [".cts"] }
+const sourceExtensions = [".ts", ".tsx", ".mts", ".cts", ".vibe", ".vibex"]
+const jsToSource = { ".js": [".ts", ".tsx", ".vibe", ".vibex"], ".jsx": [".ts", ".tsx", ".vibe", ".vibex"], ".mjs": [".mts", ".vibe"], ".cjs": [".cts"] }
 
 /** A loader query or fragment follows the source path; a package imports key may begin with #. */
 export function splitSpecifier(specifier) {

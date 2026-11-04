@@ -24,6 +24,8 @@ wraps. For example, `settings.vibe` beside `settings.ts` both emit
 
 Use Effect services for platform, clock and randomness APIs, such as `Console`, `Clock` and `Random`. The compiler reports unwrapped synchronous foreign calls as `EK0403`, and platform calls, including the web's clock and randomness reads such as `crypto.randomUUID()`, as `EK4402` ([diagnostics](../getting-started/012-devtools.md#diagnostics-completions-and-refactors)). A function that cannot throw can be called directly. Library declarations describe thrown types with `@throws {E}`. A missing annotation means the call may throw `unknown`. A written `@throws {RangeError}` or other non-`never` contract also requires an `Effect.try` bridge in effect code (`EK0403`).
 
+The migration inventory keeps `.vibex` modules alongside `.vibe`, `.ts` and `.tsx` sources, including their local import and test dependencies. Generated declaration sidecars do not count as source files.
+
 ## 1. Check package.json
 
 `package.json` must have `"type": "module"`. Before adding it, check how this changes Node's loading of your project's `.js` files.

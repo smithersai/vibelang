@@ -25,6 +25,8 @@ An exact `paths` alias keeps its configuration key. When its target becomes `.vi
 
 Inside `types` or `typings`, nested conditions and fallback arrays keep declaration-sidecar targets, including `vibe.sidecarDir` layouts; they never gain runtime export wrappers.
 
+The source inventory includes both `.vibe` and `.vibex` modules, excluding their declaration sidecars. Local dependency and test edges follow source names, extensionless imports and JavaScript output specifiers, with `.vibex` taking the place of its native `.tsx` twin. Existing native sources retain priority when both are present.
+
 Setup also follows literal `Bun.build` entrypoints when the native `.ts` or `.tsx` file is gone and its `.vibe` or `.vibex` replacement exists. Native files, declarations, tests and fixtures retain their paths. A script that changes its working directory, or whose options can override the entry array, receives a manual-routing warning.
 
 Setup follows `Bun.Glob` scans used as `Bun.build` entrypoints through immutable collections, array operations, loops and forwarding `.then` callbacks. Matching `.vibe` and `.vibex` sources become entries, while a small generated scanner filters `.d.vibe.ts` and `.d.vibex.ts` sidecars. Scan options and iteration stay with Bun. Computed patterns receive a file-and-line warning for manual wiring. Existing plugin-wired scripts receive this update when setup runs again.

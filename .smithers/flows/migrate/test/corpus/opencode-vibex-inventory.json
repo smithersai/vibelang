@@ -1,0 +1,16 @@
+{
+  "files": {
+    "package.json": "{\"type\":\"module\"}",
+    "src/Leaf.vibex": "import { Effect } from \"effect\"\nexport const value = Effect.succeed(1)\nexport const View = () => <span />\n",
+    "src/view.test.tsx": "import { value } from \"./Leaf.jsx\"\nexport const observed = value\n",
+    "src/Leaf.d.vibex.ts": "export declare const value: unknown\n",
+    "src/plain.vibe": "export const count = 1\n"
+  },
+  "sources": [
+    "src/Leaf.vibex",
+    "src/plain.vibe",
+    "src/view.test.tsx"
+  ],
+  "dependency": "src/Leaf.vibex",
+  "dependent": "src/view.test.tsx"
+}
