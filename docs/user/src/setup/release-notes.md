@@ -193,6 +193,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Migration tests could hit their aggregate deadline while declaration workers still made progress. The complete suite now has a bounded 90-minute budget and reports selected files, progress and full assertion details; failed or interrupted runs keep their nonzero outcomes.
 
+- Forced-record migration checks could stop on obsolete partial fixture receipts before writing their PR proof. The fixtures now capture real packs, run verification and retain each case's intended compiler or formatter, so protected edits and proof reporting are tested together.
+
 - Repository build checks could fail before inspecting compiler inputs after target declarations changed. Their isolated fixtures now retain the native source group and imported parser data while checking dependency and cache behavior.
 
 - A `do` expression with no normal result suppressed native iterator errors in loops, destructuring, delegated yields and call spreads, so migration missed a required cast. These uses now retain TypeScript's `never` protocol checks; array literal spreads keep their native behavior.

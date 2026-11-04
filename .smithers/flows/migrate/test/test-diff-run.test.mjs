@@ -6,6 +6,8 @@ import { tmpdir } from "node:os"
 import { fileURLToPath } from "node:url"
 import { dirname, join } from "node:path"
 import { test } from "node:test"
+import { runTests } from "../lib/tests.mjs"
+import { packRepository } from "../lib/pack-policy.mjs"
 import * as Jj from "../lib/jj.mjs"
 import { verifyRepositoryTests } from "../lib/test-diff-run.mjs"
 import { paths, record, report, verify } from "../lib/steps.mjs"
@@ -13,6 +15,14 @@ import { must, readJson, writeJson } from "../lib/util.mjs"
 
 const require = createRequire(new URL("../../../../packages/runtime/package.json", import.meta.url))
 const ts = require("typescript")
+// record --force still requires an actual successful pack-policy receipt.
+async function packVerification(p) {
+  const config = readJson(p.config)
+  const tests = await runTests({ command: "true", cwd: config.target, root: config.target, log: join(p.baseline, "verified-tests.log") })
+  writeJson(join(p.baseline, "tests.json"), tests)
+  const verified = await verify({ run: p.run, batch: "01" })
+  assert.equal(verified.checks.packs, true, JSON.stringify(verified.packs))
+}
 const put = (root, file, text) => {
   mkdirSync(dirname(join(root, file)), { recursive: true })
   writeFileSync(join(root, file), text)
@@ -28,16 +38,24 @@ async function fixture(body, { initial = {} } = {}) {
     put(target, "src/X.ts", "export const f = () => 1\n")
     put(target, "test/x.test.ts", 'import { f } from "../src/X.ts"\nexpect(f()).toBe(1)\n')
     for (const [file, text] of Object.entries(initial)) put(target, file, text)
+    writeJson(join(target, "package.json"), { name: "test-diff-fixture", version: "1.0.0", ...readJson(join(target, "package.json")) })
     const base = await Jj.commit(target, "unmodified baseline")
     mkdirSync(join(target, "node_modules"))
     symlinkSync(dirname(require.resolve("typescript/package.json")), join(target, "node_modules/typescript"))
     renameSync(join(target, "src/X.ts"), join(target, "src/X.vibe"))
     put(target, "test/x.test.ts", 'import { f } from "../src/X.vibe"\nexpect(f()).toBe(1)\n')
     const renames = [{ from: "src/X.ts", to: "src/X.vibe" }]
-    writeJson(p.config, { target, toolchain: { kind: "registry" }, packages: [], test: { cwd: "." }, bookmark: "vibe" })
+    const toolchain = join(root, "toolchain")
+    mkdirSync(join(toolchain, "native"), { recursive: true })
+    symlinkSync(fileURLToPath(new URL("../../../../packages/compiler/native/vibelang", import.meta.url)), join(toolchain, "native/vibelang"))
+    writeJson(join(toolchain, "toolchain.json"), { version: "0.0.11", effect: "4.1.0", compiler: "native/vibelang", packages: {} })
+    const config = { target, toolchain: { kind: "staged", dir: toolchain }, packages: [], test: { command: "true", cwd: "." }, bookmark: "vibe" }
+    writeJson(p.config, config)
+    writeJson(join(p.baseline, "upstream-packs.json"), await packRepository(config, join(p.baseline, "upstream-packs")))
     writeJson(p.inventory, { files: [{ path: "src/X.ts", tokens: 7 }] })
     writeJson(p.plan, { batches: [{ files: ["src/X.ts"], reason: "regression" }] })
     writeJson(p.codemod("01"), { renames, fix: { totals: {}, refused: [] } })
+    await packVerification(p)
     await body({ root, target, run, p, base, renames })
   } finally { rmSync(root, { recursive: true, force: true }) }
 }
@@ -81,9 +99,11 @@ test("recorded selector/import proof is included in the PR body artifact", async
 test("verify fails a batch even when all target tests and compiler checks pass", async () => fixture(async ({ target, run, p }) => {
   const config = readJson(p.config)
   config.packages = [{ dir: ".", sources: ["src"], tsconfig: "tsconfig.json" }]
+  // This case uses its package-local probe-aware compiler stub.
+  config.toolchain = { kind: "npm", version: "0.0.11" }
   config.test.command = "true"
   writeJson(p.config, config)
-  put(target, "package.json", '{"private":true}')
+  writeJson(join(target, "package.json"), { ...readJson(join(target, "package.json")), private: true })
   put(target, "tsconfig.json", '{"include":["src/**/*"]}')
   writeProbeAwareCompiler(join(target, "node_modules/.bin/vibelang"), "#!/bin/sh\nexit 0\n")
   await must("chmod +x node_modules/.bin/vibelang", { cwd: target })
@@ -145,10 +165,10 @@ test("pinned trees prove a filesystem path and refuse asserted source text", asy
 test("dependency assertion proof reads both pinned manifests and reaches the PR body", async () => fixture(async ({ root, target, run, p }) => {
   const old = 'expect(Object.keys(pkg.dependencies)).toEqual(["effect"])'
   const next = 'expect(Object.keys(pkg.dependencies)).toEqual(["effect", "vibelang-runtime"])'
-  put(target, "package.json", '{"dependencies":{"effect":"4.1.0"}}')
+  put(target, "package.json", '{"name":"test-diff-fixture","version":"1.0.0","dependencies":{"effect":"4.1.0"}}')
   put(target, "test/x.test.ts", old)
   const base = await Jj.commit(target, "dependency assertion baseline")
-  put(target, "package.json", '{"dependencies":{"effect":"4.1.0","vibelang-runtime":"0.0.12"}}')
+  put(target, "package.json", '{"name":"test-diff-fixture","version":"1.0.0","dependencies":{"effect":"4.1.0","vibelang-runtime":"0.0.12"}}')
   const setup = await Jj.commit(target, "setup adds runtime dependency")
   writeJson(p.setup, { jj: { upgradeCommit: base, setupCommit: setup } })
   put(target, "test/x.test.ts", next)
@@ -175,6 +195,8 @@ test("baseline VibeLang formatting survives pinned trees, record and the PR body
   const next = "effect function check() {\n  return try load()\n}\n  // keep   this comment\nexpect(1).toBe(1)\n"
   put(target, "test/existing.test.vibe", old)
   const base = await Jj.commit(target, "baseline already contains VibeLang test")
+  writeJson(join(p.baseline, "upstream-packs.json"), await packRepository(readJson(p.config), join(p.baseline, "upstream-packs")))
+  await packVerification(p)
   writeJson(p.setup, { jj: { upgradeCommit: base } })
   const config = readJson(p.config)
   config.packages = [{dir: "."}]

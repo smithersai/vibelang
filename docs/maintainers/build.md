@@ -51,6 +51,8 @@ Fixtures that bypass setup use `recordDeclarationSurface` to preserve entrypoint
 
 Private-declaration and one-pass record fixtures capture actual upstream packs, including the empty published set when every package is private. Private declarations remain gated by their original opt-in rules; pack prerequisites must not prevent those positive and negative cases from executing.
 
+Forced-record fixtures use complete receipts from `verify`, with real upstream packs and test-command results. A staged compiler descriptor supports zero-package proof fixtures; a case that intentionally uses its package-local compiler stub keeps that binding. These fixtures retain assertion-mutation, binary, BOM, source-path and native formatter controls.
+
 Migration tool-configuration tests load generated Knip modules and check both `.vibe` and `.vibex` compiler bindings, retained package settings and sidecar excludes.
 
 The formatted-declaration certification file must parse and execute its complete property suites: 40 signature cases and 12 formatter-mutation runs plus explicit mutation examples. A file-level syntax failure is a failed suite, not an omitted property.
