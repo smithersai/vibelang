@@ -177,6 +177,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Migration checks rejected a valid Knip configuration that registered both `.vibe` and `.vibex`. The check now loads the generated module and verifies both compiler bindings and sidecar excludes.
 
+- The formatted-declaration certification property suite could not load because an assertion lacked a closing parenthesis. All declaration and formatter-mutation cases now execute again.
+
 - Vite coverage counted private tail-delegation wrappers as extra functions or uncovered statements, especially in callbacks and throwing catch handlers. It now counts the authored functions and statements through the composed source map.
 - Repository migration checks could stop at invalid fixture lockfiles or package metadata before checking build provenance, declaration exits or test regressions. The fixtures now retain valid publication prerequisites and reach those checks.
 

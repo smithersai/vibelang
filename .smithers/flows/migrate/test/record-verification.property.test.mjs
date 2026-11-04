@@ -83,7 +83,7 @@ test("foldkit-13-record: generated signature names retain API gating and final t
   await fc.assert(fc.asyncProperty(fc.boolean(),fc.stringMatching(/^[a-z][a-z0-9]{0,7}$/),fc.constantFrom(corpus,...corpus.neighbours),async(drift,name,pattern)=>{
     await fixture(drift,name,async({run,p,target,formatted})=>{
       const checked=await verify({run,batch:"01"})
-      assert.equal(checked.ok,true,JSON.stringify(checked,JSON.stringify(checked))
+      assert.equal(checked.ok,true,JSON.stringify(checked))
       assert.equal(checked.checks.declarations,true)
       const recorded=await record({run,batch:"01"})
       assert.ok(recorded.commit)

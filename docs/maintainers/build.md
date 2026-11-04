@@ -49,6 +49,8 @@ Migration integration fixtures keep valid lockfile syntax and published package 
 
 Migration tool-configuration tests load generated Knip modules and check both `.vibe` and `.vibex` compiler bindings, retained package settings and sidecar excludes.
 
+The formatted-declaration certification file must parse and execute its complete property suites: 40 signature cases and 12 formatter-mutation runs plus explicit mutation examples. A file-level syntax failure is a failed suite, not an omitted property.
+
 The `//:release` target runs Node's test files with `--test-concurrency=8`.
 This bounds the number of simultaneous file workers independently of the host's
 CPU count and the graph's `--jobs` setting. Every selected file still runs,
