@@ -135,7 +135,7 @@ export const run = () => mkdtemp("build-")`, []string{
 		}},
 		{"crypto digest", `export const run = (bytes: Uint8Array) => crypto.subtle.digest("SHA-256", bytes)`, []string{
 			"crypto.subtle is platform code, which VibeLang code does not use directly.",
-			`Use Effect's crypto services:   Digest.digest(Digest.sha256, bytes)`, provideCrypto,
+			`Use Effect's crypto services:   try (try Digest.Digest).digest(Digest.sha256, bytes)`, provideCrypto,
 		}},
 		{"timers", `export const run = (f: () => void) => setTimeout(f, 10)`, []string{
 			"setTimeout is platform code, which VibeLang code does not use directly.",

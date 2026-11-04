@@ -864,6 +864,8 @@ For byte I/O, first obtain `Stdio.Stdio` with `try`. Its `stdout()` and `stderr(
 
 The terminal diagnostic examples obtain `Terminal.Terminal` with `try` and run its `readLine` Effect property to read a line.
 
+Digest diagnostic examples obtain `Digest.Digest` with `try`, then run its `digest(Digest.sha256, bytes)` method. This hashes the bytes in one operation.
+
 A numeric return value from `main` does not set the exit status:
 `effect function main(): number!! { return 3 }` succeeds with 3 and still exits 0 when passed to `NodeRuntime.runMain`. Return normally for exit 0,
 fail for exit 1, or interrupt for exit 130.

@@ -1,0 +1,52 @@
+[
+  {
+    "key": "node:crypto:createHash:direct",
+    "source": "import { createHash } from \"node:crypto\";export const value=createHash",
+    "advice": "try (try Digest.Digest).digest(Digest.sha256, bytes)"
+  },
+  {
+    "key": "node:crypto:createHash:alias",
+    "source": "import { createHash as Native } from \"node:crypto\";export const value=Native",
+    "advice": "try (try Digest.Digest).digest(Digest.sha256, bytes)"
+  },
+  {
+    "key": "node:crypto:hash:direct",
+    "source": "import { hash } from \"node:crypto\";export const value=hash",
+    "advice": "try (try Digest.Digest).digest(Digest.sha256, bytes)"
+  },
+  {
+    "key": "node:crypto:hash:alias",
+    "source": "import { hash as Native } from \"node:crypto\";export const value=Native",
+    "advice": "try (try Digest.Digest).digest(Digest.sha256, bytes)"
+  },
+  {
+    "key": "crypto:createHash:direct",
+    "source": "import { createHash } from \"crypto\";export const value=createHash",
+    "advice": "try (try Digest.Digest).digest(Digest.sha256, bytes)"
+  },
+  {
+    "key": "crypto:createHash:alias",
+    "source": "import { createHash as Native } from \"crypto\";export const value=Native",
+    "advice": "try (try Digest.Digest).digest(Digest.sha256, bytes)"
+  },
+  {
+    "key": "crypto:hash:direct",
+    "source": "import { hash } from \"crypto\";export const value=hash",
+    "advice": "try (try Digest.Digest).digest(Digest.sha256, bytes)"
+  },
+  {
+    "key": "crypto:hash:alias",
+    "source": "import { hash as Native } from \"crypto\";export const value=Native",
+    "advice": "try (try Digest.Digest).digest(Digest.sha256, bytes)"
+  },
+  {
+    "key": "crypto:subtle.digest",
+    "source": "export const value=crypto.subtle.digest",
+    "advice": "try (try Digest.Digest).digest(Digest.sha256, bytes)"
+  },
+  {
+    "key": "globalThis.crypto:subtle.digest",
+    "source": "export const value=globalThis.crypto.subtle.digest",
+    "advice": "try (try Digest.Digest).digest(Digest.sha256, bytes)"
+  }
+]
