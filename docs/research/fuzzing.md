@@ -1033,3 +1033,5 @@ Registered declaration-identity cases use their written VibeLang and Effect Type
 Four resolved data differential witnesses for local options, nested schemas, matcher-free matches and schema-error matcher properties now execute without stale pending exemptions. Their keyed corpus inputs and shared runtime comparisons are retained.
 
 The loader project-selection, Vite native-config, workspace-barrel and bundler sidecar-entry properties cite the current tooling interoperability sentence. Their Opencode, Foldkit and Alchemy corpus witnesses and generated cases remain intact when that sentence is reworded.
+
+Ambient-error repair and fix properties cite the current mechanical-repair, preservation and native-diagnostic wording. Their declaration shapes, negative controls, editor actions, keyed corpus and repaired-program checks are unchanged.

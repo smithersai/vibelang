@@ -10,9 +10,9 @@ import (
 )
 
 const ambientErrorFixTarget = "FuzzAmbientErrorFix"
-const ambientErrorFixQuote = "A rewrite that can't preserve types, behavior and declaration output refuses at that site (VIP-34)."
+const ambientErrorFixQuote = "A rewrite that can't preserve types, behavior and declaration output refuses at that site."
 const ambientErrorRuleQuote = "a recognized `error` or `schema error` declaration in an ambient source context, explicit or inherited"
-const ambientErrorNativeQuote = "TypeScript's own lexical, syntax and static errors on ordinary native syntax keep their `TS` codes, including independent errors in embedded expressions and types."
+const ambientErrorNativeQuote = "Native lexical, syntax and static errors keep their `TS` codes, as in TypeScript, including independent errors in embedded expressions and types."
 
 func TestAmbientErrorFixQuoted(t *testing.T) { ambientErrorFixCheckQuotes(t) }
 

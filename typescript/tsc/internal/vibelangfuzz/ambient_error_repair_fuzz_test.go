@@ -13,7 +13,7 @@ const ambientErrorRepairQuote = "| a recognized `error` or `schema error` declar
 
 func TestAmbientErrorRepairQuoted(t *testing.T) {
 	chapterSays(t, "003-failures.md", ambientErrorRepairQuote)
-	chapterSays(t, "007-tooling.md", "with a quick fix wherever the fix is mechanical.")
+	chapterSays(t, "007-tooling.md", "Every VibeLang diagnostic says what is wrong and how to fix it, with a mechanical quick fix where possible.")
 }
 
 // Vary source ambient boundaries, payload presence, name collisions, trivia
