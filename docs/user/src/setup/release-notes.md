@@ -333,6 +333,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Calling a producer with defaulted or destructured parameters could invoke modified array iterator methods before consumption. Producer calls now bind their arguments without those extra iterator steps.
 
+- CI's install checks could fail during host contention with an unexplained `null` status. Their hang guard now allows slower process startup, and failures identify the process outcome and installer stages reached.
+
 - The function-controls example read the callable `Function` constructor and reported `EK0107`. Its erased constructor comparison now uses the explicit `any` boundary allowed by VIP-1, while the `instanceof` and prototype controls remain checked.
 
 - The operation-operands example declared a `.vibe` function with `@throws {never}`, which VIP-4 rejects with `EK0406`. The example now uses the declaration’s implicit `never` thrown type and keeps all operation-operand checks.

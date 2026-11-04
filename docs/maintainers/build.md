@@ -45,6 +45,13 @@ For remote checks, `scripts/remote.sh` restores tracked fixtures under
 filter stops the check with its diagnostics and exit status. An empty fixture
 list is valid. Temporary discovery files are removed on success and failure.
 
+The CI install fixtures allow `30` seconds for their child shell as a hang
+guard. Their install, lockfile and shared-symlink assertions remain independent
+of elapsed time. A deliberately delayed installer checks this distinction.
+Failures retain elapsed time, exit status, signal, spawn error, started
+installer directories and both output streams, so a timeout can be separated
+from an installer refusal.
+
 The `//:api-identity-test` target checks [published declaration identity](api-identity.md), including harmless rewrites and semantic mutations.
 
 Migration integration fixtures keep valid lockfile syntax and published package names and versions. Fixtures that bypass setup record real upstream pack receipts before checking declaration exits, build provenance or test regressions. Their pack commands must succeed before the intended checks run.

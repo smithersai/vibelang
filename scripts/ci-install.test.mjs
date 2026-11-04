@@ -49,14 +49,21 @@ if (dir.endsWith("/.smithers")) {
 `)
   return {
     root, temp, installed,
-    run() {
+    run(timeout = 30000) {
+      const start = performance.now()
       const run = spawnSync("sh", ["scripts/ci.sh", "//packages:runtime-dist", "--jobs", "8"], {
-        cwd: root, encoding: "utf8", timeout: 10000,
+        cwd: root, encoding: "utf8", timeout,
         env: { ...process.env, PATH: path.dirname(bun) + ":" + process.env.PATH, INSTALL_LOG: log, CI_LOG: ciLog }
       })
-      assert.equal(run.status, 0, run.stdout + run.stderr)
+      const calls = fs.existsSync(log) ? fs.readFileSync(log, "utf8").trim().split("\n").filter(Boolean).map(line => JSON.parse(line)) : []
+      assert.equal(run.status, 0, "CI fixture failed: " + JSON.stringify({
+        elapsedMilliseconds: Math.round(performance.now() - start),
+        status: run.status, signal: run.signal, errorCode: run.error?.code ?? null,
+        startedInstallers: calls.map(call => path.relative(root, call.dir)),
+        stdout: run.stdout, stderr: run.stderr,
+      }))
       assert.deepEqual(JSON.parse(fs.readFileSync(ciLog, "utf8")).slice(0, 4), ["ci", "//packages:runtime-dist", "--jobs", "8"])
-      return fs.existsSync(log) ? fs.readFileSync(log, "utf8").trim().split("\n").map(line => JSON.parse(line)) : []
+      return calls
     }
   }
 }
@@ -188,4 +195,64 @@ test("real Bun repairs a stale non-Effect package and rechecks an unchanged tree
   }
   assert.deepEqual(fs.readFileSync(trace, "utf8").trim().split("\n").map(line => JSON.parse(line)),
     Array.from({ length: 2 }, () => ["ci", "//fixture", "--jobs", "8", "--workspace", root, "--ui", "plain"]))
+})
+
+test("CI fixture retains shared install assertions after a slow installer starts", t => {
+  const f = fixture(t)
+  const modules = path.join(f.root, ".smithers/node_modules")
+  const shared = path.join(f.temp, "shared/node_modules")
+  fs.mkdirSync(path.dirname(shared), { recursive: true })
+  fs.renameSync(modules, shared)
+  fs.symlinkSync(shared, modules, "dir")
+  const bun = path.join(f.temp, "bin/bun")
+  const source = fs.readFileSync(bun, "utf8")
+  // A deliberately slow process start models contention, not an installer error.
+  fs.writeFileSync(bun, source.replace("\n", "\n" +
+    'if (process.cwd().endsWith("/packages/runtime")) Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 11000)\n'))
+  const calls = f.run()
+  assert.deepEqual(calls.map(call => call.dir), directories.slice(1).map(dir => path.join(f.root, dir)))
+  assert.ok(calls.every(call => call.modules !== shared))
+  assert.equal(fs.readlinkSync(modules), shared)
+  for (const call of calls) assert.deepEqual(call.args, ["install", "--frozen-lockfile"])
+})
+
+for (const dir of [".smithers", "packages/runtime", "docs/tools"]) {
+  for (const status of [7, 143]) {
+    test("CI fixture diagnoses installer exit " + status + " at " + dir, t => {
+      const f = fixture(t)
+      const bun = path.join(f.temp, "bin/bun")
+      const source = fs.readFileSync(bun, "utf8")
+      fs.writeFileSync(bun, source.replace('if (dir.endsWith("/.smithers"))', 
+        "if (dir.endsWith(" + JSON.stringify("/" + dir) + ")) process.exit(" + status + ")\n" +
+        'if (dir.endsWith("/.smithers"))'))
+      assert.throws(() => f.run(), error => {
+        const prefix = "CI fixture failed: "
+        assert.ok(error.message.startsWith(prefix), "failure must name the failed CI fixture and preserve process context")
+        const context = JSON.parse(error.message.split("\n")[0].slice(prefix.length))
+        assert.equal(context.status, status)
+        assert.equal(context.signal, null)
+        assert.equal(context.errorCode, null)
+        assert.deepEqual(context.startedInstallers, directories.slice(0, directories.indexOf(dir) + 1))
+        assert.ok(Number.isFinite(context.elapsedMilliseconds) && context.elapsedMilliseconds >= 0)
+        return true
+      })
+    })
+  }
+}
+
+test("CI fixture reports a bounded child timeout with process context", t => {
+  const f = fixture(t)
+  assert.throws(() => f.run(1), error => {
+    const prefix = "CI fixture failed: "
+    assert.ok(error.message.startsWith(prefix), "timeout must preserve process context")
+    const context = JSON.parse(error.message.split("\n")[0].slice(prefix.length))
+    assert.equal(context.status, null)
+    assert.equal(context.signal, "SIGTERM")
+    assert.equal(context.errorCode, "ETIMEDOUT")
+    assert.deepEqual(context.startedInstallers, directories.slice(0, context.startedInstallers.length))
+    assert.ok(Number.isFinite(context.elapsedMilliseconds) && context.elapsedMilliseconds >= 0)
+    assert.equal(typeof context.stdout, "string")
+    assert.equal(typeof context.stderr, "string")
+    return true
+  })
 })
