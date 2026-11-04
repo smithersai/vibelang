@@ -44,3 +44,39 @@ func TestGrammarAdmissionDataMember(t *testing.T) {
 		})
 	}
 }
+
+// Campaign192: `schema C {\nstring }` reported only EK1505, VIP-15's
+// rejection of a schema body member that is not a Field, the schema
+// counterpart of EK1606. The checker reports it (vibelang/schemas.go).
+func TestGrammarAdmissionSchemaMember(t *testing.T) {
+	w := NewWorkspace(t)
+	for _, c := range []struct {
+		source string
+		ek1505 bool
+	}{
+		{"schema C {\nstring }", true},
+		{"schema C { string }", true},
+		{"schema C { m ( ) : string }", true},
+		{"schema C { a : string\nstring }", true},
+		{"schema C { a : string }", false},
+	} {
+		t.Run(c.source, func(t *testing.T) {
+			if grammarAdmissionVerdict(t, w, c.source) {
+				t.Fatal("mismatch")
+			}
+			result, err := w.Compile(context.Background(), Single(c.source))
+			if err != nil {
+				t.Fatal(err)
+			}
+			found := false
+			var seen []string
+			for _, d := range result.Diagnostics {
+				seen = append(seen, fmt.Sprintf("%s%d", d.Source(), d.Code()))
+				found = found || IsEK(d) && d.Code() == 1505
+			}
+			if found != c.ek1505 {
+				t.Fatalf("EK1505=%v, want %v: %s", found, c.ek1505, strings.Join(seen, ", "))
+			}
+		})
+	}
+}

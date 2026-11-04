@@ -170,6 +170,7 @@ var grammarAdmissionSeeds = []struct{ key, source string }{
 	{"import-equals", "import x = require ( \"m\" ) ; import y = N . a ;"},
 	{"data-member-not-field", "data D { A { x : number\nnumber } ; B }"},
 	{"throw-comma-join", "effect function f ( e ) { return [ join throw e , 1 ] ; }"},
+	{"schema-member-not-field", "schema C {\nstring }"},
 }
 
 func FuzzGrammarAdmission(f *testing.F) {
@@ -1562,6 +1563,8 @@ func grammarAdmissionSyntaxCode(code int32) bool {
 		return true
 	case 1606: // VIP-16: a malformed data variant or a payload member that is not a Field (Appendix B).
 		return true
+	case 1505: // VIP-15: a member of a schema body that is not a Field (Appendix B).
+		return true
 	}
 	return false
 }
@@ -1707,6 +1710,9 @@ func TestGrammarAdmissionDiagnostics(t *testing.T) {
 		{"data-member-not-field", "EK", diagnostics.CategoryError, 1606, true},
 		{"data-member-not-field-warning", "EK", diagnostics.CategoryWarning, 1606, false},
 		{"native-data-member-code-collision", "", diagnostics.CategoryError, 1606, false},
+		{"schema-member-not-field", "EK", diagnostics.CategoryError, 1505, true},
+		{"schema-member-not-field-warning", "EK", diagnostics.CategoryWarning, 1505, false},
+		{"native-schema-member-code-collision", "", diagnostics.CategoryError, 1505, false},
 		{"ek-esm-export-assignment-code-collision", "EK", diagnostics.CategoryError, 1203, false},
 		{"external-module-element-code-collision", "other", diagnostics.CategoryError, 1231, false},
 		{"ek-module-element-code-collision", "EK", diagnostics.CategoryError, 1231, false},

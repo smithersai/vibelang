@@ -213,3 +213,10 @@ operand (`return`, `join`, `fork`, `try`, `await`, `typeof`, `void`,
 `[join throw e, 1]`, which the first classifier left unkeyed. After `;`,
 `{`, `}`, `)`, `]` or any other word, `throw` starts a `ThrowStatement`,
 whose comma expression is ordinary.
+
+`EK1505`, VIP-15's rejection of a `schema` body member that is not a
+`Field`, counts the same way; campaign192 found `schema C {` followed by
+`string }` on the next line. Its declaration-level siblings already reject
+syntax before the checker: `EK1501` (`export default schema`) and `EK1502`
+(schema type parameters). A bare `schema C` is the known
+`admission:schema-no-body` gap.
