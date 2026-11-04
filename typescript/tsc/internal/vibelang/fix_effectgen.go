@@ -1123,15 +1123,17 @@ func effectGenTryEdit(c *checker.Checker, file *ast.SourceFile, y *ast.Node) ([]
 		keyword = sourceEdit{start, asterisk, "try"}
 	}
 	t := c.GetTypeAtLocation(operand)
-	// Effect.succeed(x) gives x.
-	if ast.IsCallExpression(inner) && len(inner.Arguments()) == 1 && isEffectFunction(c, inner.Expression(), "Effect", "succeed") && strings.TrimSpace(gap) == "" {
+	// Written type arguments supply contextual types and the program contract.
+	// Keep those calls as try operands; a bare value or throw loses that typing.
+	// Effect.succeed(x) without type arguments gives x.
+	if ast.IsCallExpression(inner) && inner.TypeArguments() == nil && len(inner.Arguments()) == 1 && isEffectFunction(c, inner.Expression(), "Effect", "succeed") && strings.TrimSpace(gap) == "" {
 		argument := inner.Arguments()[0]
 		return []sourceEdit{{start, nodeStart(file, argument), ""}, {argument.End(), operand.End(), ""}}, ""
 	}
 	// Effect.fail(e) in a statement is throw e. An error instance fails as
 	// throw fails with it, which only a statement writes: elsewhere it is
 	// Effect.fail(e), since try e would give a value of the error.
-	if ast.IsCallExpression(inner) && len(inner.Arguments()) == 1 && isEffectFunction(c, inner.Expression(), "Effect", "fail") {
+	if ast.IsCallExpression(inner) && inner.TypeArguments() == nil && len(inner.Arguments()) == 1 && isEffectFunction(c, inner.Expression(), "Effect", "fail") {
 		argument := inner.Arguments()[0]
 		if edits := throwEdits(file, y, start, nodeStart(file, argument)); edits != nil {
 			return append(edits, sourceEdit{argument.End(), operand.End(), ""}), ""
