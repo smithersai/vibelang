@@ -54,9 +54,11 @@ test("parity commands retain ordinary nonzero exit status", () => {
     [{ code: 7, stdout: "partial\n", stderr: "failure\n" }])
 })
 
+// The deadline starts at spawn, so it must outlast Node's startup on a loaded host: 200 ms killed the child before its
+// first write in 8 of 10 runs under CPU contention, and post-merge failed this way 4 times in 11 runs.
 test("a direct command deadline retains partial output and names the timeout", () => {
-  const [result] = run([request('console.log("started"); console.error("err"); setInterval(() => {}, 1000)', 200)])
-  assert.match(result.code, /timed out after 200 ms/)
+  const [result] = run([request('console.log("started"); console.error("err"); setInterval(() => {}, 1000)', 5_000)])
+  assert.match(result.code, /timed out after 5000 ms/)
   assert.equal(result.stdout, "started\n")
   assert.equal(result.stderr, "err\n")
 })
