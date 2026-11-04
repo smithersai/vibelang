@@ -1887,8 +1887,8 @@ func fileFixes(ctx context.Context, program *compiler.Program, file *ast.SourceF
 			if slices.Contains(dataHelperImportFixCodes, d.Code()) && action.CodeAction.Title != dataHelperFixTitle && action.CodeAction.Title != retiredRuntimeFactoryTitle {
 				continue // preserve existing import and re-export bindings
 			}
-			if d.Source() == "" && d.Code() == 2322 && action.CodeAction.Title != serviceKeyWidenTitle {
-				continue // only the service-key compatibility rewrite opts TS2322 into --fix
+			if d.Source() == "" && d.Code() == 2322 && action.CodeAction.Title != serviceKeyWidenTitle && action.CodeAction.Title != producerContractFixTitle {
+				continue // only explicit service-key and producer-contract repairs opt TS2322 into --fix
 			}
 			changes := *action.CodeAction.Edit.Changes
 			if len(changes) != 1 || changes[uri] == nil {

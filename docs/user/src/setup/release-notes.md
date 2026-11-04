@@ -219,6 +219,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Runner callback conformance treated an unwrapped Promise call in effect code as valid. It now requires the Promise boundary while continuing to allow root runners inside the plain async callback.
 
+- `vibelang --fix` could ignore a producer return-contract repair reported as `TS2322`; it now applies that specific repair while leaving unrelated assignment errors alone.
+
 - Geolocation, Permissions, UserDirectories and the experimental Process, FileSystem and Locks diagnostics suggested calling members on the module namespace, where they do not exist; their advice now obtains the injected service and runs its member.
 - A member pattern on `super`, `when super.inherited:` or `s is super.inherited`, produced JavaScript that passed `super` to a function and failed to load. The member is now read in place with `this` as its receiver.
 - Migrating legacy bare `yieldNow(priority)`, `yieldNow()` and `interrupt()` factory calls stopped at `TS2349` or ran a held Effect; `vibelang --fix` now keeps held and returned programs cold and evaluates optional priorities once.

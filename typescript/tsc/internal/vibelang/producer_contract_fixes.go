@@ -11,6 +11,8 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/vibelangmapper"
 )
 
+const producerContractFixTitle = "Write the producer's inferred Stream contract"
+
 func init() {
 	ls.RegisterCodeFixProvider(&ls.CodeFixProvider{
 		Source: diagnosticSource, ErrorCodes: []int32{EK2102.Code, EK9201.Code, EK9202.Code},
@@ -59,7 +61,7 @@ func producerContractFixActions(ctx context.Context, fix *ls.CodeFixContext) ([]
 			return false
 		}
 		actions = append(actions, &ls.CodeAction{
-			Description: "Write the producer's inferred Stream contract",
+			Description: producerContractFixTitle,
 			Changes:     replaceRange(fix, nodeStart(fix.SourceFile, fn.Type()), fn.Type().End(), annotation),
 		})
 		return false

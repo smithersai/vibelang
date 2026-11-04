@@ -16,6 +16,9 @@ func TestProducerWrittenContractFix(t *testing.T) {
 		{"object-error", "export const holder = { effect *values(): Stream.Stream<number> { yield 7; throw \"bad\" } }", "{ yield 7; throw \"bad\" }"},
 		{"class-error", "export class Holder { effect *values(): Stream.Stream<number> { yield 7; throw \"bad\" } }", "{ yield 7; throw \"bad\" }"},
 		{"object-property", "export const holder = { effect *values(): Stream.Stream<number> & {extra:number} { yield 7 } }", "{ yield 7 }"},
+		{"class-property", "export class Holder { effect *values(): Stream.Stream<number> & {extra:number} { yield 7 } }", "{ yield 7 }"},
+		{"declaration-property", "export effect function* values(): Stream.Stream<number> & {extra:number} { yield 7 }", "{ yield 7 }"},
+		{"object-readonly-property", "export const holder = { effect *values(): Stream.Stream<number> & {readonly extra:string} { yield 7 } }", "{ yield 7 }"},
 		{"class-union", "export class Holder { effect *values(): Stream.Stream<string> | undefined { yield 7 } }", "{ yield 7 }"},
 	} {
 		t.Run(test.name, func(t *testing.T) {
@@ -64,6 +67,22 @@ func TestProducerContractFixKeepsUnrelatedMismatch(t *testing.T) {
 		}
 		if !found {
 			t.Fatalf("missing diagnostic %d in %s", test.code, test.source)
+		}
+	}
+}
+
+// Enabling the producer's specific TS2322 action must not opt unrelated
+// assignment or return mismatches into project-wide automatic repair.
+func TestProducerContractCLIKeepsUnrelatedAssignments(t *testing.T) {
+	for _, source := range []string{
+		"export const value: number = 'wrong';",
+		"export function value(): number { return 'wrong' }",
+		"export effect function* values(): Stream.Stream<number> { const wrong: string = 1; yield 7 }",
+	} {
+		_, file, _, _ := editorProgram(t, source)
+		result := fixCase(t, filepath.Dir(file.FileName().AsString()))
+		if result.Err != nil || len(result.Files) != 0 {
+			t.Fatalf("unrelated mismatch changed: %+v", result)
 		}
 	}
 }

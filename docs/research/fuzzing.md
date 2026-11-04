@@ -1095,3 +1095,5 @@ The foreign `count` fixture declares `@throws {never}`: it only reads its module
 `FuzzCatchBlockHandler` keeps six keyed recovery neighbourhoods for native errors in handler bodies and parameter defaults, nested arrows, commented heads and grouped handlers. The Chapter 2 oracle requires `EK0509` alongside an independent `TS2322` or the native `TS1005` for a nested arrow also missing `=>`; the outer recovery must not consume that inner diagnostic. The target checks the aggregate diagnostic pipeline used by the CLI.
 
 The plain-runner property covers async callbacks invoked through `tryPromise`, preserving all six root-runner choices. The unit witness also retains the unwrapped call and requires exactly one `EK0404` there, while the wrapped callback keeps zero `EK1005` reports. Chapter 3 supplies the Promise boundary rule; callback kind still follows VIP-1.
+
+`FuzzProducerContractCLIRepair` crosses declaration and method forms with direct, readonly, and aliased incompatible `Stream` contracts. It requires project fixes to preserve the producer body, remove the annotation error, and retain independent assignment errors.
