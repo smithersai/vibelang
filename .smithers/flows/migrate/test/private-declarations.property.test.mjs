@@ -4,6 +4,7 @@ import { createRequire } from "node:module"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { test } from "node:test"
+import { packRepository } from "../lib/pack-policy.mjs"
 import { recordDeclarationSurface } from "../lib/declarations.mjs"
 import { makeConfig, paths, verify } from "../lib/steps.mjs"
 import * as Jj from "../lib/jj.mjs"
@@ -16,6 +17,7 @@ const t3code = JSON.parse(readFileSync(new URL("./corpus/t3code-private-workspac
 
 // foldkit agent's accepted 18:45Z ruling: "Declaration identity applies to published packages only."
 async function fixture(manifest, { before = corpus.before, after = corpus.after, diagnostic = "", command = "true", includePrivate = false, emitDiagnostic = "" } = {}) {
+  manifest = { version: "1.0.0", ...manifest }
   const root = mkdtempSync(join(tmpdir(), "migrate-private-dts-"))
   const target = join(root, "repo")
   const run = join(root, "run")
@@ -62,7 +64,9 @@ async function fixture(manifest, { before = corpus.before, after = corpus.after,
     writeFileSync(join(target, ".gitignore"), "node_modules/\n")
     await must("jj git init && jj config set --repo user.name test && jj config set --repo user.email test@localhost", { cwd: target })
     await Jj.commit(target, "declaration fixture baseline")
+    writeJson(join(p.baseline, "upstream-packs.json"), await packRepository(config, join(p.baseline, "upstream-packs")))
     const result = await verify({ run, batch: "01" })
+    assert.equal(result.checks.packs, true, JSON.stringify(result.packs))
     assert.deepEqual(JSON.parse(readFileSync(p.verify("01"), "utf8")), result)
     return result
   } finally {

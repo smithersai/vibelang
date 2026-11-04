@@ -49,6 +49,8 @@ Migration integration fixtures keep valid lockfile syntax and published package 
 
 Fixtures that bypass setup use `recordDeclarationSurface` to preserve entrypoint aliases and output layout, and record actual `packRepository` results. A hand-written root list does not contain the metadata needed to reproject the baseline independently of the candidate tree.
 
+Private-declaration and one-pass record fixtures capture actual upstream packs, including the empty published set when every package is private. Private declarations remain gated by their original opt-in rules; pack prerequisites must not prevent those positive and negative cases from executing.
+
 Migration tool-configuration tests load generated Knip modules and check both `.vibe` and `.vibex` compiler bindings, retained package settings and sidecar excludes.
 
 The formatted-declaration certification file must parse and execute its complete property suites: 40 signature cases and 12 formatter-mutation runs plus explicit mutation examples. A file-level syntax failure is a failed suite, not an omitted property.
