@@ -1658,3 +1658,12 @@ All property samples, type/name/comment mutations, private-member native
 assignability checks and JSON rejection controls remain enabled. Direct
 configuration discovery, caller-option overrides, CLI and compiler-exception
 tests keep their existing environments.
+
+Ambient self-identity helpers select `lib.es5.d.ts` for pure module and
+global fixtures, including generated JSON and intrinsic-array cases.
+Global `Request` declarations and `Window` augmentations retain their
+browser environment. Guards inspect native programs and require the actual
+browser-library declaration to participate in those bindings. Resource
+assertions run after comparison returns, so an invalid result cannot absorb
+them. All 24 ambient-shape samples, four independent-import samples and
+type, documentation, nominal-origin and invalid-input controls remain enabled.

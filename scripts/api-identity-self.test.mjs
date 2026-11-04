@@ -5,6 +5,29 @@ import { join } from 'node:path'
 import { test } from 'node:test'
 import { compareApiIdentity, loadTypeScript } from './api-identity.mjs'
 const ts = loadTypeScript()
+const pureLibraries = { lib: ["lib.es5.d.ts"] }
+function withFixtureCompiler(browserGlobal, fn) {
+  let unrelatedLibraries = 0, missingBrowserBindings = 0
+  const compiler = { ...ts, createProgram(...args) {
+    const program = ts.createProgram(...args)
+    const isBrowser = file => /[/\\]lib\.(?:dom|webworker)(?:\.[\w.]+)?\.d\.ts$/.test(file)
+    if (browserGlobal) {
+      const binding = program.getTypeChecker().resolveName(browserGlobal, undefined, ts.SymbolFlags.Type, false)
+      if (!binding?.declarations?.some(declaration => isBrowser(declaration.getSourceFile().fileName))) missingBrowserBindings++
+    } else {
+      unrelatedLibraries += program.getSourceFiles().filter(source => isBrowser(source.fileName)).length
+    }
+    return program
+  } }
+  const result = fn(compiler, browserGlobal ? {} : pureLibraries)
+  // Comparisons capture compiler exceptions, so assert resource invariants here.
+  assert.equal(unrelatedLibraries, 0, "Pure ambient fixtures must not load unrelated browser libraries")
+  assert.equal(missingBrowserBindings, 0, "Browser augmentation fixtures must retain their native library binding")
+  return result
+}
+const compareFixture = (a, b, browserGlobal) => withFixtureCompiler(browserGlobal, (compiler, compilerOptions) =>
+  compareApiIdentity(compiler, a, b, { compilerOptions }))
+
 function fixture(before, after, fn) {
   const root = mkdtempSync(join(tmpdir(), 'api-ambient-'))
   try {
@@ -17,15 +40,17 @@ function fixture(before, after, fn) {
     return fn(join(root, 'before'), join(root, 'after'))
   } finally { rmSync(root, {recursive: true, force: true}) }
 }
-function compare(a, b, expected) {
+function compare(a, b, expected, browserGlobal) {
   fixture(a, b, (a, b) => {
-    for (const dir of [a, b]) {
-      const program = ts.createProgram([join(dir, 'index.d.ts')], {strict: true, noEmit: true, types: []})
-      const diagnostics = ts.getPreEmitDiagnostics(program)
-      assert.equal(diagnostics.length, 0, ts.formatDiagnostics(diagnostics, {getCanonicalFileName:x=>x,getCurrentDirectory:()=>dir,getNewLine:()=> '\n'}))
-    }
-    const result = compareApiIdentity(ts, a, b)
-    assert.equal(result.identical, expected, JSON.stringify(result))
+    withFixtureCompiler(browserGlobal, (compiler, compilerOptions) => {
+      for (const dir of [a, b]) {
+        const program = compiler.createProgram([join(dir, 'index.d.ts')], {...compilerOptions, strict: true, noEmit: true, types: []})
+        const diagnostics = ts.getPreEmitDiagnostics(program)
+        assert.equal(diagnostics.length, 0, ts.formatDiagnostics(diagnostics, {getCanonicalFileName:x=>x,getCurrentDirectory:()=>dir,getNewLine:()=> '\n'}))
+      }
+      const result = compareApiIdentity(compiler, a, b, { compilerOptions })
+      assert.equal(result.identical, expected, JSON.stringify(result))
+    })
   })
 }
 const corpus = JSON.parse(readFileSync(new URL("./api-identity-corpus/foldkit-markdown-ambient-module.json", import.meta.url)))
@@ -44,9 +69,12 @@ test('ambient module generic constraints, namespace types, and docs stay compare
   compare(source, source.replace('Y = number', 'Y = string'), false)
 })
 test('global declarations and declare global keep their separate environments', () => {
-  for (const source of ['declare const token: string; interface Shape { value: number }', 'export {}; declare global { interface Window { custom: string } type Shape<T> = { value: T }; const token: Shape<string> }']) {
-    compare(source, source, true)
-    compare(source, source.replace('string', 'number'), false)
+  for (const [source, browserGlobal] of [
+    ['declare const token: string; interface Shape { value: number }'],
+    ['export {}; declare global { interface Window { custom: string } type Shape<T> = { value: T }; const token: Shape<string> }', 'Window'],
+  ]) {
+    compare(source, source, true, browserGlobal)
+    compare(source, source.replace('string', 'number'), false, browserGlobal)
   }
 })
 test('ambient imports and references from ordinary module exports resolve per snapshot', () => {
@@ -77,13 +105,14 @@ test('property: ambient module, global, and JSON packages are identical to thems
         files['all.json'] = JSON.stringify({value, enabled:true})
         files['package.json'] = JSON.stringify({exports:{'./content':{types:'./index.d.ts'}, './all.json':'./all.json'}})
       }
+      const browserGlobal = name === 'Request' && (shape === 'script' || shape === 'augmentation') ? 'Request' : undefined
       fixture(files, {...files, 'index.d.ts':source.replaceAll(';', ';\n')}, (a,b) => {
         for (const after of [a,b]) {
-          const result = compareApiIdentity(ts,a,after)
+          const result = compareFixture(a,after,browserGlobal)
           assert.equal(result.identical,true,JSON.stringify(result))
         }
         writeFileSync(join(b,'index.d.ts'),source.replace(`value: ${value}`, `value: ${value+1}`))
-        const result = compareApiIdentity(ts,a,b)
+        const result = compareFixture(a,b,browserGlobal)
         assert.equal(result.identical,false,'a changed ambient type must remain observable')
         assert.ok(result.typeDifferences.length,JSON.stringify(result))
       })
@@ -115,7 +144,7 @@ test('built-in generic global augmentations keep intrinsic array types', () => {
   const source = 'export {}; declare global { interface Array<T> { readonly custom: T } } export type X = string[]["custom"];'
   compare(source, source, true)
   fixture(source, source, a => {
-    const result = compareApiIdentity(ts, a, a)
+    const result = compareFixture(a, a)
     assert.equal(result.identical, true, JSON.stringify(result))
   })
 })
@@ -133,7 +162,7 @@ test("ambient closure proofs preserve each module resolution edge", () => {
       const program = ts.createProgram([join(dir,"index.d.ts")],{...options,noEmit:true,types:[]})
       assert.equal(ts.getPreEmitDiagnostics(program).length,0)
     }
-    const result=compareApiIdentity(ts,a,b)
+    const result=compareFixture(a,b)
     assert.equal(result.identical,false,JSON.stringify(result))
     assert.ok(result.typeDifferences.some(item=>item.export==="X"),JSON.stringify(result))
   })
@@ -142,8 +171,8 @@ test("ambient closure proofs preserve each module resolution edge", () => {
 
 test("augmentations can add defaulted parameters to a nongeneric built-in interface", () => {
   const source = "export {}; declare global { interface Request<T = number> { value: 0; nested?: T } const frontmatter: Request; }"
-  compare(source, source, true)
-  compare(source, source.replace("value: 0", "value: 1"), false)
+  compare(source, source, true, "Request")
+  compare(source, source.replace("value: 0", "value: 1"), false, "Request")
 })
 
 
@@ -151,7 +180,7 @@ test("ambient environment proofs retain each comment's declaration association",
   const before = "export {}; declare global {\n/** First docs */\ninterface First { x: string }\ninterface Second { y: number }\n}"
   const after = "export {}; declare global {\ninterface First { x: string }\n/** First docs */\ninterface Second { y: number }\n}"
   fixture(before, after, (a,b) => {
-    const result=compareApiIdentity(ts,a,b)
+    const result=compareFixture(a,b)
     assert.equal(result.identical,false,JSON.stringify(result))
     assert.equal(result.comparisonComplete,true,JSON.stringify(result))
     assert.ok(result.docDifferences.length,JSON.stringify(result))
@@ -167,7 +196,7 @@ test("reordering independent global interface imports keeps the API identical", 
     "index.d.ts": 'import "./a"; import "./b"; export type X = IndependentFirst & IndependentSecond;',
   }
   fixture(files, {...files,"index.d.ts":'import "./b"; import "./a"; export type X = IndependentFirst & IndependentSecond;'}, (a,b) => {
-    const result=compareApiIdentity(ts,a,b)
+    const result=compareFixture(a,b)
     assert.equal(result.identical,true,JSON.stringify(result))
   })
 })
@@ -192,7 +221,7 @@ test("property: independent global interface import order is irrelevant", async 
         "index.d.ts": imports + declaration,
       }
       fixture(files, { ...files, "index.d.ts": 'import "./b"; import "./a";' + declaration }, (a, b) => {
-        const result = compareApiIdentity(ts, a, b)
+        const result = compareFixture(a, b)
         assert.equal(result.identical, true, JSON.stringify(result))
       })
     },
@@ -211,7 +240,7 @@ test("errors shared by both ambient inputs remain invalid comparisons", () => {
         assert.ok(ts.getPreEmitDiagnostics(program).some(d => d.code === 2304))
       }
       for (const other of [before, after]) {
-        const result = compareApiIdentity(ts, before, other)
+        const result = compareFixture(before, other)
         assert.equal(result.identical, false, JSON.stringify(result))
         assert.equal(result.comparisonComplete, false, JSON.stringify(result))
         assert.deepEqual(result.typeDifferences, [])
