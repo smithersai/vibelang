@@ -1,0 +1,25 @@
+// A class evaluates its extends expression and its members' computed names
+// where it is defined. In effect code they are effect code, as await is
+// allowed there in an async function (chapter 2; VIP-5, amended 2026-10-29:
+// try works like await), so a try in a computed name runs, in order.
+// A class field's call-valued computed name is TypeScript's TS1166, so the
+// fields stay out of this case.
+import { Effect } from "effect"
+const key = <K extends string>(ev: string[], name: K) => Effect.sync((): K => { ev.push(name); return name })
+class Base { base = 1 }
+export effect function main() {
+  const ev: string[] = []
+  class C extends (ev.push("extends"), Base) {
+    [try key(ev, "method")]() { return 2 }
+    effect [try key(ev, "run")]() { return try Effect.succeed(6) }
+    get [try key(ev, "getter")]() { return 3 }
+    static [try key(ev, "static")]() { return 4 }
+    set [try key(ev, "setter")](v: number) { }
+  }
+  const c: any = new C()
+  const k: any = C
+  const failed = try Effect.exit(effect { class D { [try Effect.fail("bad")]() { return 0 } }; return 1 })
+  const runner: { run(): Effect.Effect<number> } = c
+  const ran = try runner.run()
+  return [ev.join(","), c.method(), ran, c.getter, k.static(), "setter" in c, c.base, failed._tag]
+}

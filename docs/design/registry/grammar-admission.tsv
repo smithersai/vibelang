@@ -525,6 +525,7 @@ vibelang/match_cache_lower.go:lowering.visitMatchCacheBlock	admission:match	004-
 vibelang/match_cache_lower.go:lowering.visitMatchCacheCondition	admission:match	004-match.md,008-runtime.md	support	VIP-7/31: native FinishMatch cleanup runs on JavaScript completions without resuming failed Effect generators
 vibelang/methods.go:analyzer.expectsEffect	admission:effect-method	900-appendices.md#EffectMethod	support	VIP-1 method lowering; legacy unmodified methods audited as function-kind
 vibelang/methods.go:lowering.lowerMethod	admission:effect-method	900-appendices.md#EffectMethod	support	VIP-1 method lowering; legacy unmodified methods audited as function-kind
+vibelang/methods.go:lowering.methodName	admission:effect-method	900-appendices.md#EffectMethod,002-running.md	support	VIP-1 method lowering; a computed method name runs where its class is defined (chapter 2)
 vibelang/methods.go:lowering.perRunMethod	admission:effect-method	900-appendices.md#EffectMethod	support	VIP-1 method lowering; legacy unmodified methods audited as function-kind
 vibelang/methods.go:usesThis	admission:effect-method	900-appendices.md#EffectMethod	support	VIP-1 method lowering; legacy unmodified methods audited as function-kind
 vibelang/names.go:lowering.generatorExpression	admission:names	001-functions.md	support	VIP-1 function name preservation

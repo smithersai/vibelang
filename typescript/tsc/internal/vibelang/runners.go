@@ -139,9 +139,22 @@ func init() {
 // runner that code a fiber runs calls.
 func checkProgramStarts(c *checker.Checker, file *ast.SourceFile) {
 	a := analyzerFor(c)
+	type context struct {
+		topLevel bool
+		plain    *ast.Node
+	}
+	classes := map[*ast.Node]context{}
 	var visit func(node *ast.Node, topLevel bool, plain *ast.Node) bool
 	visit = func(node *ast.Node, topLevel bool, plain *ast.Node) bool {
 		outerTopLevel, outerPlain := topLevel, plain
+		if ast.IsClassLike(node) {
+			classes[node] = context{topLevel, plain}
+		}
+		// A member's computed name runs where its class is defined.
+		if node.Parent != nil && classMemberNameChild(node.Parent, node) {
+			outer := classes[node.Parent.Parent]
+			topLevel, plain = outer.topLevel, outer.plain
+		}
 		switch {
 		case node.Kind == ast.KindConstructor || node.Kind == ast.KindGetAccessor || node.Kind == ast.KindSetAccessor || node.Kind == ast.KindClassStaticBlockDeclaration:
 			topLevel, plain = false, node

@@ -87,6 +87,54 @@ func classExtendsChild(class, child *ast.Node) bool {
 		child.AsHeritageClause().Token == ast.KindExtendsKeyword
 }
 
+// classMemberNameChild reports whether child is the computed name of a member
+// of class parent, which the class evaluates where it is defined, in its
+// enclosing context, as await in it suspends an enclosing async function
+// (chapter 2). A class with a decorator keeps its names in TypeScript's
+// decorator transform, outside the enclosing generator, so its names stay
+// plain code.
+func classMemberNameChild(member, child *ast.Node) bool {
+	return ast.IsComputedPropertyName(child) && ast.IsClassElement(member) && member.Name() == child &&
+		member.Parent != nil && ast.IsClassLike(member.Parent) && !classHasDecorators(member.Parent)
+}
+
+// classHasDecorators reports whether class or one of its members or their
+// parameters is decorated.
+func classHasDecorators(class *ast.Node) bool {
+	if ast.HasDecorators(class) {
+		return true
+	}
+	for _, member := range class.Members() {
+		if ast.HasDecorators(member) {
+			return true
+		}
+		if ast.IsFunctionLike(member) {
+			for _, parameter := range member.Parameters() {
+				if ast.HasDecorators(parameter) {
+					return true
+				}
+			}
+		}
+	}
+	return false
+}
+
+// classDefinitionExpressions returns what class evaluates where it is
+// defined, in ECMAScript's ClassDefinitionEvaluation order: its extends
+// expression, then its members' computed names (classMemberNameChild).
+func classDefinitionExpressions(class *ast.Node) []*ast.Node {
+	var out []*ast.Node
+	if base := ast.GetClassExtendsHeritageElement(class); base != nil {
+		out = append(out, base.Expression())
+	}
+	for _, member := range class.Members() {
+		if name := member.Name(); name != nil && classMemberNameChild(member, name) {
+			out = append(out, name)
+		}
+	}
+	return out
+}
+
 // heritageTypeArgument keeps erased class-base types outside runtime code.
 // An error's payload types stay types; a schema error maps them to expressions.
 func heritageTypeArgument(parent, child *ast.Node) bool {

@@ -29,8 +29,9 @@ func (a *analyzer) flowOf(node *ast.Node) *effectInfo {
 		case ast.IsClassLike(n):
 			// A class's generated schema codecs run in its extends
 			// expression, so their E and R escape into the enclosing Effect.
-			if base := ast.GetClassExtendsHeritageElement(n); base != nil {
-				visit(base.Expression())
+			// Its computed member names run there as well.
+			for _, expression := range classDefinitionExpressions(n) {
+				visit(expression)
 			}
 		case isFunctionBoundary(n) && !catchLeftHoldsTry(n):
 			// A catch's left side holding a try is code of this function

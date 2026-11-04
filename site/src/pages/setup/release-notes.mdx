@@ -18,6 +18,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - A `try` in a catch's left side ran inside the catch: `g(try a) catch h` caught `a`'s failure, and `(try x) catch h` caught `x`'s failure and gave the Effect `x` succeeded with unrun. The `try` now runs where it stands, before the catch, as VIP-5 and the [fallback guide](/error-management/016-fallback) say: `g(try a) catch h` catches `g`'s failure, and `(try x) catch h` runs and catches the Effect `x` gives. To catch the earlier failure as well, write `effect { return g(try a) } catch h`.
 
+- A `try` in a computed method or accessor name of a class defined in effect code, such as `class C { [try key()]() {} }`, reported `EK0501` and named the member after the unrun Effect. The name now runs where the class is defined, as `await` does in an `async` function, in order after the `extends` expression. A class with decorators keeps the old error.
 - `EK0106` on an `effect` function annotated `any` or `unknown` read "write no return annotation (infer the Effect), or leave the return type out", naming the same repair twice. It now says to leave the return type out, and its quick fix is described as removing the return type.
 Update `vibelang`, `vibelang-runtime` and your bundler plugin together to
 0.0.11. Use exactly `effect@4.1.1`, the earliest Effect version VibeLang

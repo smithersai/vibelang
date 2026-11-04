@@ -72,6 +72,11 @@ func effectCodeOwner(node *ast.Node) *ast.Node {
 		if classExtendsChild(n, child) {
 			continue
 		}
+		// A member's computed name runs where its class is defined.
+		if classMemberNameChild(n, child) {
+			n = n.Parent // the class: the loop goes on from the class's parent
+			continue
+		}
 		if !isFunctionBoundary(n) || isCalledInPlace(n) || isCatchLeftFunction(n) {
 			continue // an arrow the parser calls in place, or a catch expression's left side, has the code around it (markedForm)
 		}

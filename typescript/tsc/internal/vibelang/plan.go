@@ -189,8 +189,11 @@ func forEachCallInBody(fn *ast.Node, cb func(call *ast.Node) bool) bool {
 	var visit func(node *ast.Node) bool
 	visit = func(node *ast.Node) bool {
 		if ast.IsClassLike(node) {
-			if base := ast.GetClassExtendsHeritageElement(node); base != nil {
-				return visit(base.Expression())
+			// The class evaluates its base and computed member names here.
+			for _, expression := range classDefinitionExpressions(node) {
+				if visit(expression) {
+					return true
+				}
 			}
 			return false
 		}
@@ -221,8 +224,11 @@ func (a *analyzer) forEachRunningCallInBody(fn *ast.Node, cb func(*ast.Node) boo
 	var visit func(*ast.Node) bool
 	visit = func(node *ast.Node) bool {
 		if ast.IsClassLike(node) {
-			if base := ast.GetClassExtendsHeritageElement(node); base != nil {
-				return visit(base.Expression())
+			// The class evaluates its base and computed member names here.
+			for _, expression := range classDefinitionExpressions(node) {
+				if visit(expression) {
+					return true
+				}
 			}
 			return false
 		}

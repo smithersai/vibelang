@@ -43,6 +43,15 @@ func (a *analyzer) expectsEffect(fn *ast.Node) bool {
 //	find(id) { return Effect.gen({ self: this }, function* () { … }) }
 //
 // A body that does not mention this omits the { self: this } argument.
+// methodName lowers a computed method name, which runs where its class is
+// defined (classMemberNameChild), in that context; another name stays.
+func (tx *lowering) methodName(node *ast.Node) *ast.Node {
+	if name := node.Name(); name != nil && classMemberNameChild(node, name) {
+		return tx.Visitor().VisitNode(name)
+	}
+	return node.Name()
+}
+
 func (tx *lowering) lowerMethod(node *ast.Node) *ast.Node {
 	f := tx.Factory()
 	ec := tx.EmitContext()
@@ -59,7 +68,7 @@ func (tx *lowering) lowerMethod(node *ast.Node) *ast.Node {
 	if !hasSimpleParameters(node) || tx.plan.parameterWrites[node] {
 		if isMarkedEffect(node) {
 			parameters, block := tx.callTimeEffectBody(node, parameters, body)
-			lowered := f.UpdateMethodDeclaration(method, node.Modifiers(), method.AsteriskToken, node.Name(), method.PostfixToken, method.TypeParameters, parameters, method.Type, method.FullSignature, block)
+			lowered := f.UpdateMethodDeclaration(method, node.Modifiers(), method.AsteriskToken, tx.methodName(node), method.PostfixToken, method.TypeParameters, parameters, method.Type, method.FullSignature, block)
 			ec.SetOriginal(lowered, node)
 			return lowered
 		}
@@ -67,13 +76,13 @@ func (tx *lowering) lowerMethod(node *ast.Node) *ast.Node {
 	}
 	if effect := tx.directEffect(node, body, thunkIsReturn); effect != nil {
 		block := f.NewBlock(f.NewNodeList([]*ast.Node{tx.generated(f.NewReturnStatement(effect))}), true /*multiLine*/)
-		lowered := f.UpdateMethodDeclaration(method, node.Modifiers(), method.AsteriskToken, node.Name(), method.PostfixToken, method.TypeParameters, parameters, method.Type, method.FullSignature, block)
+		lowered := f.UpdateMethodDeclaration(method, node.Modifiers(), method.AsteriskToken, tx.methodName(node), method.PostfixToken, method.TypeParameters, parameters, method.Type, method.FullSignature, block)
 		ec.SetOriginal(lowered, node)
 		return lowered
 	}
 	if isMarkedEffect(node) && len(node.Parameters()) > 0 {
 		parameters, block := tx.callTimeEffectBody(node, parameters, body)
-		lowered := f.UpdateMethodDeclaration(method, node.Modifiers(), method.AsteriskToken, node.Name(), method.PostfixToken, method.TypeParameters, parameters, method.Type, method.FullSignature, block)
+		lowered := f.UpdateMethodDeclaration(method, node.Modifiers(), method.AsteriskToken, tx.methodName(node), method.PostfixToken, method.TypeParameters, parameters, method.Type, method.FullSignature, block)
 		ec.SetOriginal(lowered, node)
 		return lowered
 	}
@@ -87,7 +96,7 @@ func (tx *lowering) lowerMethod(node *ast.Node) *ast.Node {
 	}
 	gen := f.NewCallExpression(f.NewPropertyAccessExpression(tx.effectName(), nil /*questionDotToken*/, f.NewIdentifier("gen"), ast.NodeFlagsNone), nil /*questionDotToken*/, nil /*typeArguments*/, f.NewNodeList(arguments), ast.NodeFlagsNone)
 	block := f.NewBlock(f.NewNodeList([]*ast.Node{tx.generated(f.NewReturnStatement(gen))}), true /*multiLine*/)
-	lowered := f.UpdateMethodDeclaration(method, node.Modifiers(), method.AsteriskToken, node.Name(), method.PostfixToken, method.TypeParameters, parameters, method.Type, method.FullSignature, block)
+	lowered := f.UpdateMethodDeclaration(method, node.Modifiers(), method.AsteriskToken, tx.methodName(node), method.PostfixToken, method.TypeParameters, parameters, method.Type, method.FullSignature, block)
 	ec.SetOriginal(lowered, node)
 	return lowered
 }
@@ -125,7 +134,7 @@ func (tx *lowering) perRunMethod(node *ast.Node, parameters *ast.NodeList, body 
 	}
 	statements = append(statements, tx.generated(f.NewReturnStatement(call)))
 	block := f.NewBlock(f.NewNodeList(statements), true /*multiLine*/)
-	result := f.UpdateMethodDeclaration(method, node.Modifiers(), method.AsteriskToken, node.Name(), method.PostfixToken, method.TypeParameters, f.NewNodeList(forwarding), method.Type, method.FullSignature, block)
+	result := f.UpdateMethodDeclaration(method, node.Modifiers(), method.AsteriskToken, tx.methodName(node), method.PostfixToken, method.TypeParameters, f.NewNodeList(forwarding), method.Type, method.FullSignature, block)
 	tx.EmitContext().SetOriginal(result, node)
 	return result
 }
