@@ -66,6 +66,14 @@ test("the plain-helper oracle quotes chapter 1", () => {
   assert.ok(readFileSync(SpecPath("001-functions.md"), "utf8").includes(quote))
 })
 
+test("native function-model probe recognizes the emitted plain declaration", async () => {
+  assert.equal(missing, undefined, "build the compiler and install Effect before the native probe gate")
+  const root = mkdtempSync(join(tmpdir(), "plain-model-native-"))
+  try {
+    assert.equal(await toolchainKeepsFunctionsPlain({ compiler: native, modules, dir: root }), true)
+  } finally { rmSync(root, { recursive: true, force: true }) }
+})
+
 test("plain helpers keep declarations under the tested compiler model", { skip }, async () => {
   const probeDir = mkdtempSync(join(tmpdir(), "plain-property-model-"))
   let flipped

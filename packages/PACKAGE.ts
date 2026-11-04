@@ -114,6 +114,21 @@ const migrateWarningProvenance = S.Shell.Test({
   timeout: "3m"
 })
 
+// Check the compiler's declaration model before a full migration suite is needed.
+const migratePlainProbe = S.Shell.Test({
+  summary: "Check plain-function model detection against generated contracts and the native compiler.",
+  shell: "VIBELANG_BINARY=$PWD/packages/compiler/native/vibelang " +
+    "EFFECT_NODE_MODULES=$PWD/experiments/node_modules node --test " +
+    "--test-name-pattern='function-model|toolchain probe' " +
+    ".smithers/flows/migrate/test/plain.test.mjs .smithers/flows/migrate/test/plain.property.test.mjs",
+  data: [compilerNative, runtimeDist, migrationSources, ...install,
+    S.file("//scripts/testing/spec-path.mjs"), S.file("//docs/design/src/001-functions.md"),
+    S.file("//docs/design/vips/0027-declaration-output.md")],
+  tools: [S.Host.bin("node")],
+  sandbox: "none",
+  timeout: "5m"
+})
+
 const migrateTest = S.Shell.Test({
   summary: "The migrate and convert flows' tests.",
   shell: "cd packages/compiler && bun install --frozen-lockfile && " +
@@ -196,6 +211,7 @@ export const Package = S.Package({
     "migrate-lost-wrapper": migrateLostWrapper,
     "migrate-record-provenance": migrateRecordProvenance,
     "migrate-warning-provenance": migrateWarningProvenance,
+    "migrate-plain-probe": migratePlainProbe,
     "compiler-tools-test": compilerToolsTest,
     "vite-test": viteTest,
     "unplugin-test": unpluginTest,

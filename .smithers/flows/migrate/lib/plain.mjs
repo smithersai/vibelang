@@ -196,9 +196,14 @@ export async function toolchainKeepsFunctionsPlain({ compiler, modules, dir }) {
     let declared
     try { declared = readFileSync(join(probe, "out/probe.d.ts"), "utf8") }
     catch { throw new Error("function-model probe emitted no declaration; source files were not rewritten") }
-    if (/\bf: \(\) => number;/.test(declared)) return true
-    if (/\bf: \(\) => (?:[\w$]+\.)?Effect(?:\.Effect)?<number(?:,|>)/.test(declared)) return false
-    throw new Error("function-model probe emitted an unknown declaration; source files were not rewritten")
+    // VIP-27 permits the compiler's generated never contract on this fixed,
+    // undocumented source. Other annotations and unknown result types still fail.
+    const signature = declared.match(/\bf:\s*(?:\/\*\*\s+@throws\s+\{never\}\s+\*\/\s*)?\(\)\s*=>\s*([^;]+);/)?.[1]
+    if (signature === "number") return true
+    if (/^(?:[\w$]+\.)?Effect(?:\.Effect)?<number(?:,|>)/.test(signature ?? "")) return false
+    // Only this constant probe's declaration is included, never customer source.
+    const shape = JSON.stringify(declared.replace(/\s+/g, " ").slice(0, 240))
+    throw new Error("function-model probe emitted an unknown declaration; source files were not rewritten; probe declaration: " + shape)
   } finally {
     rmSync(probe, { recursive: true, force: true })
   }

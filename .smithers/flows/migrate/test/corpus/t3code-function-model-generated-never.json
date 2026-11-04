@@ -1,0 +1,5 @@
+{
+  "key": "t3code-function-model-generated-never",
+  "annotation": "/** @throws {never} */",
+  "result": "number"
+}

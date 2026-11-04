@@ -125,6 +125,16 @@ The specification coverage census test target runs Bun with an explicit
 sixty-second test budget within its two-minute target limit. This avoids
 Bun's default five-second deadline on loaded build hosts.
 
+The `//packages:migrate-plain-probe` target checks the migration toolchain's
+plain-function probe with generated declarations and the actual compiler.
+VIP-27 permits a generated `@throws {never}` tag on this undocumented probe;
+an unknown result type or any other annotation still refuses migration before
+source files are rewritten. The target checks the emitted fixed probe plus generated whitespace,
+result types and failed compiler outcomes. The full suite also keeps the
+minimized schema-helper pattern and plain-helper properties.
+The gate selects it for changes to the probe, its tests, compiler declaration
+emission or VIP-27. The broader migration suite remains unchanged.
+
 ## The merge queue's pre-gate
 
 The merge queue tests every queued change alone on current `main`, and a landing

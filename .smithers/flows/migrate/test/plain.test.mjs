@@ -210,3 +210,33 @@ test("property: the function-model probe accepts only successful recognized decl
     }), { numRuns: 100, seed: 441902 })
   } finally { rmSync(dir, { recursive: true, force: true }) }
 })
+
+// VIP-27 permits a generated never contract on this fixed, undocumented probe.
+// Keep unknown result shapes and every other annotation out of the model oracle.
+test("function-model probe accepts only the generated never contract", async () => {
+  const fc = createRequire(join(runtime, "package.json"))("fast-check")
+  const dir = mkdtempSync(join(tmpdir(), "migrate-probe-never-"))
+  try {
+    const check = async (annotation, result, expected, gap = " ") => {
+      const compiler = join(dir, "vibelang")
+      const declared = "export declare const f:" + gap + annotation + gap + "() => " + result + ";"
+      writeFileSync(compiler, "#!/usr/bin/env node\nconst fs=process.getBuiltinModule('fs');fs.mkdirSync('out',{recursive:true});fs.writeFileSync('out/probe.d.ts'," + JSON.stringify(declared) + ");", { mode: 0o755 })
+      const probe = () => toolchainKeepsFunctionsPlain({ compiler, modules: join(runtime, "node_modules"), dir })
+      if (expected === null) await assert.rejects(probe(), /function-model probe emitted an unknown declaration/)
+      else assert.equal(await probe(), expected, declared)
+      assert.deepEqual(readdirSync(dir), ["vibelang"])
+    }
+    const corpus = JSON.parse(readFileSync(new URL("./corpus/t3code-function-model-generated-never.json", import.meta.url), "utf8"))
+    await check(corpus.annotation, corpus.result, true)
+    for (const annotation of ["/** @throws {Error} */", "/** description @throws {never} */", "/** @throws {never} @deprecated */"]) {
+      await check(annotation, "number", null)
+    }
+    await fc.assert(fc.asyncProperty(
+      fc.constantFrom(" ", "\n", "\t", "\r\n"),
+      fc.constantFrom("number", "Effect.Effect<number, never, never>", "string"),
+      async (gap, result) => {
+        await check("/** @throws {never} */", result, result === "number" ? true : result.startsWith("Effect.") ? false : null, gap)
+      }
+    ), { seed: 27136, numRuns: 48 })
+  } finally { rmSync(dir, { recursive: true, force: true }) }
+})
