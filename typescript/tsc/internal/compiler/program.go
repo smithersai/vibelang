@@ -34,6 +34,15 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/tspath"
 )
 
+// recoverableSyntacticDiagnosticCallback identifies recovered language syntax
+// whose AST remains valid for binding and checking. Native syntax errors keep
+// the ordinary early-exit policy.
+var recoverableSyntacticDiagnosticCallback func(*ast.Diagnostic) bool
+
+func RegisterRecoverableSyntacticDiagnosticCallback(cb func(*ast.Diagnostic) bool) {
+	recoverableSyntacticDiagnosticCallback = cb
+}
+
 // FilterDiagnosticsForNoEmitOnErrorCallback is invoked before diagnostics
 // suppress emit when noEmitOnError is enabled.
 var FilterDiagnosticsForNoEmitOnErrorCallback func(*core.CompilerOptions, []*ast.Diagnostic) []*ast.Diagnostic
@@ -2146,9 +2155,22 @@ func GetDiagnosticsOfAnyProgram(
 	}
 	allDiagnostics = append(allDiagnostics, syntacticDiagnostics...)
 
-	// If we didn't have any syntactic errors, then also try getting the program (options),
-	// global and semantic errors.
-	if len(allDiagnostics) == configFileParsingDiagnosticsLength {
+	// A recovered language diagnostic may leave a valid AST that still needs
+	// independent type errors. Any native syntax or mapper failure retains the
+	// ordinary early exit.
+	diagnosticBaselineLength := len(allDiagnostics)
+	recoverable := len(syntacticDiagnostics) > 0 &&
+		diagnosticBaselineLength == configFileParsingDiagnosticsLength+len(syntacticDiagnostics) &&
+		recoverableSyntacticDiagnosticCallback != nil
+	if recoverable {
+		for _, diagnostic := range syntacticDiagnostics {
+			if !recoverableSyntacticDiagnosticCallback(diagnostic) {
+				recoverable = false
+				break
+			}
+		}
+	}
+	if diagnosticBaselineLength == configFileParsingDiagnosticsLength || recoverable {
 		allDiagnostics = append(allDiagnostics, program.GetProgramDiagnostics()...)
 
 		// Do binding early so we can track the time.
@@ -2157,7 +2179,7 @@ func GetDiagnosticsOfAnyProgram(
 		if program.Options().ListFilesOnly.IsFalseOrUnknown() {
 			allDiagnostics = append(allDiagnostics, program.GetGlobalDiagnostics(ctx)...)
 
-			if len(allDiagnostics) == configFileParsingDiagnosticsLength {
+			if len(allDiagnostics) == diagnosticBaselineLength {
 				allDiagnostics = appendDiagnosticsForAllFiles(allDiagnostics, getSemanticDiagnostics)
 				if p, ok := program.(*Program); ok {
 					// Incremental programs cache checking globals with file diagnostics;

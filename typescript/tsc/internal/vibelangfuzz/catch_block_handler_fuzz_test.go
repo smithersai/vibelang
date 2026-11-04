@@ -6,6 +6,7 @@ import (
 	"slices"
 	"testing"
 
+	"github.com/microsoft/TypeScript/tsc/internal/compiler"
 	"github.com/microsoft/TypeScript/tsc/internal/diagnostics"
 )
 
@@ -39,6 +40,12 @@ func FuzzCatchBlockHandler(f *testing.F) {
 		{"plain-function", "export function f() { return Effect.fail(\"x\") catch (e) { return 0 } }", []string{"EK0504", "EK0509"}, 1},
 		{"other-error-kept", "export effect function f() { const n: number = \"s\"; return Effect.fail(\"x\") catch (e) { return n } }", []string{"EK0509", "TS2322"}, 1},
 		{"two-handlers", "export effect function f() { const a = Effect.fail(\"x\") catch (e) { return 0 }; const b = Effect.fail(\"y\") catch (e) { return 1 }; return [a, b] }", []string{"EK0509"}, 2},
+		{"handler-body-native-error", "export effect function f() { return Effect.fail(\"x\") catch (e) { const bad: number = \"wrong\"; return 0 } }", []string{"EK0509", "TS2322"}, 1},
+		{"handler-default-native-error", "export effect function f() { return Effect.fail(\"x\") catch (e: string = 42) { return e.length } }", []string{"EK0509", "TS2322"}, 1},
+		{"handler-nested-body-error", "export effect function f() { return Effect.fail(\"x\") catch (e) { const nested = (n: number): number => \"wrong\"; return 0 } }", []string{"EK0509", "TS2322"}, 1},
+		{"handler-commented-head-error", "export effect function f() { return Effect.fail(\"x\") catch (e /* parameter */) /* before body */\n{ const bad: number = \"wrong\"; return 0 } }", []string{"EK0509", "TS2322"}, 1},
+		{"handler-grouped-body-error", "export effect function f() { return Effect.fail(\"x\") catch ((e) { const bad: number = \"wrong\"; return 0 }) }", []string{"EK0509", "TS2322"}, 1},
+		{"handler-independent-missing-arrow", "export effect function f() { return Effect.fail(\"x\") catch (e) { const nested = (n: number) { return n }; return 0 } }", []string{"EK0509", "TS1005"}, 1},
 	}
 	keys := make([]string, len(variants))
 	for i, v := range variants {
@@ -57,7 +64,10 @@ func FuzzCatchBlockHandler(f *testing.F) {
 		defer r.Remove()
 		var got []string
 		ek0509 := 0
-		for _, d := range r.Diagnostics {
+		// Exercise the actual CLI diagnostic pipeline, which can stop after
+		// syntax diagnostics even when the component API sees body errors.
+		actual := compiler.GetDiagnosticsOfAnyProgram(t.Context(), r.Program, nil, false, r.Program.GetBindDiagnostics, r.Program.GetSemanticDiagnostics)
+		for _, d := range actual {
 			if d.Category() != diagnostics.CategoryError {
 				continue
 			}

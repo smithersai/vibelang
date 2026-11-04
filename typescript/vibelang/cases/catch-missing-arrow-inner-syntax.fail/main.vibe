@@ -1,0 +1,3 @@
+// expect: EK0509 TS1005
+import { Effect } from "effect"
+export effect function f5() { return Effect.fail("x") catch (e) { const nested = (n: number) { return n }; return 0 } }

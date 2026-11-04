@@ -64,7 +64,6 @@ parser/vibelang_blocks.go:isVibeLangMaskMarker	admission:interruption	900-append
 parser/vibelang_catch.go:Parser.isVibeLangCatchExpression	admission:catch	900-appendices.md#CatchExpression	admitted	VIP-5 literal handler production; value handler recovery audited separately
 parser/vibelang_catch.go:Parser.parseVibeLangCatchRest	admission:catch	900-appendices.md#CatchExpression	admitted	VIP-5 literal handler production; value handler recovery audited separately
 parser/vibelang_catch.go:Parser.parseVibeLangCatchHandler	admission:catch	900-appendices.md#CatchExpression	admitted	VIP-5 literal handler production; value handler recovery audited separately
-parser/vibelang_catch.go:Parser.keepCatchBlockHandler	admission:catch	900-appendices.md#CatchHandler,002-running.md	recovery	VIP-5 malformed block-handler recovery retains other diagnostics without admitting a parameter list followed directly by a block
 parser/vibelang_catch.go:Parser.nextTokenIsEqualsGreaterThanToken	admission:catch	900-appendices.md#CatchExpression	admitted	VIP-5 literal handler production; value handler recovery audited separately
 parser/vibelang_data.go:Parser.scanDataName	admission:data	900-appendices.md#DataDeclaration	support	VIP-16/28 declarations and generated constructors
 parser/vibelang_data.go:Parser.parseDataDeclaration	admission:data	900-appendices.md#DataDeclaration	support	VIP-16/28 declarations and generated constructors

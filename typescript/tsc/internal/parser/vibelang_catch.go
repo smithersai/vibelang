@@ -118,9 +118,9 @@ func (p *Parser) parseVibeLangCatchHandlerWorker() *ast.Node {
 		return p.parseAssignmentExpressionOrHigher()
 	}
 	if p.token == ast.KindOpenParenToken || p.token == ast.KindLessThanToken {
-		reported := len(p.diagnostics)
 		if arrow := p.tryParseParenthesizedArrowFunctionExpression(true /*allowReturnTypeInArrowFunction*/); arrow != nil {
-			p.keepCatchBlockHandler(arrow, reported)
+			// Keep native recovery diagnostics until parseVibeLangCatchHandler
+			// replaces this handler's missing arrow with EK0509.
 			return arrow
 		}
 		// Parentheses keep an arrow's handler kind (VIP-5). Keep its
@@ -144,28 +144,6 @@ func (p *Parser) parseVibeLangCatchHandlerWorker() *ast.Node {
 		return p.tryParseAsyncSimpleArrowFunctionExpression(true /*allowReturnTypeInArrowFunction*/)
 	}
 	return nil
-}
-
-// keepCatchBlockHandler drops the "'=>' expected" error TypeScript's
-// recovery reports for `catch (e) { B }`, a parameter list followed directly
-// by a block, which it parses as an arrow without its =>. Chapter 2 makes
-// that handler EK0509 (vibelang/catch_handlers.go); a syntax error would
-// hide the file's other diagnostics. reported is the number of diagnostics
-// before the handler.
-func (p *Parser) keepCatchBlockHandler(arrow *ast.Node, reported int) {
-	token := arrow.AsArrowFunction().EqualsGreaterThanToken
-	body := arrow.Body()
-	if token == nil || token.Pos() != token.End() || body == nil || !ast.IsBlock(body) {
-		return
-	}
-	at := scanner.SkipTrivia(p.sourceText, body.Pos())
-	kept := p.diagnostics[:reported]
-	for _, d := range p.diagnostics[reported:] {
-		if d.Code() != diagnostics.X_0_expected.Code() || d.Pos() != at {
-			kept = append(kept, d)
-		}
-	}
-	p.diagnostics = kept
 }
 
 func (p *Parser) nextTokenIsEqualsGreaterThanToken() bool {

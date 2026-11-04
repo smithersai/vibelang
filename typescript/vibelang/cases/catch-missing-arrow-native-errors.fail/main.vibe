@@ -1,0 +1,9 @@
+// expect: EK0509 TS2322
+// Missing catch arrows must not hide independent native diagnostics.
+import { Effect } from "effect"
+export effect function f0() { return Effect.fail("x") catch (e) { const bad: number = "wrong"; return 0 } }
+export effect function f1() { return Effect.fail("x") catch (e: string = 42) { return e.length } }
+export effect function f2() { return Effect.fail("x") catch (e) { const nested = (n: number): number => "wrong"; return 0 } }
+export effect function f3() { return Effect.fail("x") catch (e /* parameter */) /* before body */
+{ const bad: number = "wrong"; return 0 } }
+export effect function f4() { return Effect.fail("x") catch ((e) { const bad: number = "wrong"; return 0 }) }

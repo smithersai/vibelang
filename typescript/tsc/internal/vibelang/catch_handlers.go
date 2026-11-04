@@ -7,6 +7,7 @@ import (
 
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/checker"
+	"github.com/microsoft/TypeScript/tsc/internal/compiler"
 	"github.com/microsoft/TypeScript/tsc/internal/core"
 	"github.com/microsoft/TypeScript/tsc/internal/ls"
 	"github.com/microsoft/TypeScript/tsc/internal/lsp/lsproto"
@@ -38,6 +39,10 @@ import (
 var EK0509 = message(509, errorCategory, parser.VibeLangCatchHandlerMessage)
 
 func init() {
+	compiler.RegisterRecoverableSyntacticDiagnosticCallback(func(d *ast.Diagnostic) bool {
+		// Missing catch arrows retain an intact recovered function body.
+		return d.Source() == diagnosticSource && d.Code() == EK0509.Code
+	})
 	registry[EK0509.Code] = EK0509
 	tsFormFixCodes = append(tsFormFixCodes, EK0509.Code)
 	vipMigrationFixCodes = append(vipMigrationFixCodes, EK0509.Code)
