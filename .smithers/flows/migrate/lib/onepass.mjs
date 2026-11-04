@@ -18,7 +18,7 @@ import { assertNoTestBundleRename, testBundleDeferrals } from "./test-bundles.mj
 import { bareRunnerDeferrals } from "./bare-runners.mjs"
 import { loadTypeScript } from "./declarations.mjs"
 import { projectsOf } from "./wire.mjs"
-import { readToolchain } from "./toolchain.mjs"
+import { bindCompilerArtifact, readToolchain } from "./toolchain.mjs"
 import { aliasesOf, paths, importers, plainGroupsOf, revertMany } from "./steps.mjs"
 import { regenerate } from "./hooks.mjs"
 import * as Jj from "./jj.mjs"
@@ -129,6 +129,7 @@ function packageDigest(config, dir, files) {
 }
 
 function compilerOf(config) {
+  if (config.compilerArtifact) bindCompilerArtifact(config)
   return config.toolchain.kind === "staged" ? readToolchain(config.toolchain.dir).compiler : join(config.target, config.packages[0].dir, "node_modules/.bin/vibelang")
 }
 
@@ -220,7 +221,7 @@ async function checkProjects(config, p, options, projects = projectList(config))
     try { assertFinished(result, log) } catch (error) { crash = error.message }
     if (crash) diagnostics.push({ file: null, code: "CRASH", category: "error", message: crash, line: 0, column: 0, notes: [] })
     for (const d of diagnostics) if (d.file?.endsWith(".d.vibe.ts")) d.file = d.file.replace(/\.d\.vibe\.ts$/, ".vibe")
-    return { ...task, code: result.code, ms: result.ms, crash, diagnostics }
+    return { ...task, compilerArtifact: config.compilerArtifact ? bindCompilerArtifact(config) : undefined, code: result.code, ms: result.ms, crash, diagnostics }
   })
 }
 
@@ -489,6 +490,7 @@ export async function onePassStep(step, options) {
     const catalog = await Jj.trackedFiles(config.target)
     assertComputedBuildEntrypoints(config.target, catalog, files.map(from => ({from})), ts)
     const existing = readJsonIf(p.codemod("01"))
+    bindCompilerArtifact(config, p, { resume: Boolean(existing) || existsSync(p.codemodState("01")) })
     if (existing?.renameComplete) return existing
     let state = readJsonIf(p.codemodState("01"))
     assertNoTestBundleRename(config.target, files, { routed: Boolean(config.routeBundledImports) })
@@ -498,6 +500,7 @@ export async function onePassStep(step, options) {
       if (baseline.some(p => p.crash)) throw new Error("baseline compiler did not finish: " + baseline.filter(p => p.crash).map(p => p.file + ": " + p.crash).join("; "))
       writeJson(join(p.run, "onepass-baseline.json"), baseline)
       state = prepareState(config.target, files, await importers(config.target), { ts, moduleBodies: config.platformModuleBodies === true, globalsOf: platformCausesOf(config, p.run), aliases: aliasesOf(config), referenceFiles: catalog, references: catalog, catalog, tracked: catalog, plainGroups: plainGroupsOf(config, files, ts, { flipped: await toolchainKeepsFunctionsPlain({ compiler: compilerOf(config), modules: join(config.target, config.packages[0].dir, "node_modules"), dir: join(p.run, "probe") }) }) })
+      state.compilerArtifact = config.compilerArtifact
       saveState(p.codemodState("01"), state)
     }
     if (state.target !== config.target || JSON.stringify(state.files) !== JSON.stringify(files)) throw new Error("rename journal does not match target and scope")
@@ -507,10 +510,11 @@ export async function onePassStep(step, options) {
       saveState(p.codemodState("01"), state)
     }
     const { renames, exportEdits, importEdits, refEdits = [], platform } = state
-    const cm = { batch: "01", at: new Date().toISOString(), files, renames, exportEdits, importEdits, refEdits, platform, buildEntries: state.buildEntries, plain: state.plain, functionModel: state.functionModel, scriptEdits: state.scriptEdits, packageScriptEdits: state.packageScriptEdits, referenceEdits: state.referenceEdits, referenceWarnings: state.referenceWarnings, selectorChecks: state.selectorChecks, referenceScan: state.referenceScan, renameComplete: true, fix: { settled: false, rounds: [], byFile: {}, totals: {}, refused: [] } }
+    const cm = { compilerArtifact: config.compilerArtifact, batch: "01", at: new Date().toISOString(), files, renames, exportEdits, importEdits, refEdits, platform, buildEntries: state.buildEntries, plain: state.plain, functionModel: state.functionModel, scriptEdits: state.scriptEdits, packageScriptEdits: state.packageScriptEdits, referenceEdits: state.referenceEdits, referenceWarnings: state.referenceWarnings, selectorChecks: state.selectorChecks, referenceScan: state.referenceScan, renameComplete: true, fix: { settled: false, rounds: [], byFile: {}, totals: {}, refused: [] } }
     durableWrite(p.codemod("01"), JSON.stringify(cm, null, 2) + "\n")
     return cm
   }
+  bindCompilerArtifact(config, p, { resume: true })
   const cm = readJson(p.codemod("01"))
   if (step === "fix") return fix(config, p, cm, options)
   if (step === "check") {

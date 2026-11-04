@@ -9,6 +9,7 @@ import { fileURLToPath } from "node:url"
 import * as Jj from "../lib/jj.mjs"
 import { checkStack, convertedIn, manifestOf, manifestOfTree, producerOf, readManifest, sha256, shapeOf, staleSources } from "../lib/source-digest.mjs"
 import { paths, record, sourceDigests } from "../lib/steps.mjs"
+import { compilerArtifactOf } from "../lib/toolchain.mjs"
 import { must, readJson, writeJson } from "../lib/util.mjs"
 
 const require = createRequire(new URL("../../../../packages/runtime/package.json", import.meta.url))
@@ -250,7 +251,8 @@ test("record names the staged toolchain's VibeLang commit as each module's produ
   const { run, p } = await converted(f, "export const x = 1\n")
   const tool = join(f.root, "toolchain")
   put(tool, "toolchain.json", JSON.stringify({ commit: "b7be67a09d50aaaabbbbccccddddeeeeffff0000", compiler: "native/vibelang" }))
-  const config = readJson(p.config); config.toolchain = { kind: "staged", dir: tool }; writeJson(p.config, config)
+  put(tool, "native/vibelang", "native compiler fixture")
+  const config = readJson(p.config); config.toolchain = { kind: "staged", dir: tool }; config.compilerArtifact = compilerArtifactOf(config.toolchain); writeJson(p.config, config)
   await record({ run, batch: "01", force: "no other checks in this fixture" })
   assert.deepEqual(readManifest(p.sourceDigests("01")).map(m => m.toolchain), ["b7be67a09d50aaaabbbbccccddddeeeeffff0000"])
 }))
@@ -259,7 +261,8 @@ test("record refuses a conversion whose toolchain records no commit, and force d
   const { run, p } = await converted(f, "export const x = 1\n")
   const tool = join(f.root, "toolchain")
   put(tool, "toolchain.json", JSON.stringify({ compiler: "native/vibelang" }))
-  const config = readJson(p.config); config.toolchain = { kind: "staged", dir: tool }; writeJson(p.config, config)
+  put(tool, "native/vibelang", "native compiler fixture")
+  const config = readJson(p.config); config.toolchain = { kind: "staged", dir: tool }; config.compilerArtifact = compilerArtifactOf(config.toolchain); writeJson(p.config, config)
   const parent = await Jj.commitId(f.target)
   await assert.rejects(record({ run, batch: "01", force: "ignored" }), /record refused: no producing toolchain/)
   assert.equal(await Jj.commitId(f.target), parent)

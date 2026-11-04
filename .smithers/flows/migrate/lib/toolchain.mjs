@@ -4,8 +4,9 @@
 // reading declarations. Staging it from a checkout lets a run use the
 // compiler on main before it is published; a published version needs no
 // staging (setup takes --vibelang-version instead).
+import { createHash } from "node:crypto"
 import { execFileSync } from "node:child_process"
-import { chmodSync, copyFileSync, cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
+import { chmodSync, copyFileSync, cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join, resolve } from "node:path"
 import { must, readJson, writeJson } from "./util.mjs"
@@ -99,6 +100,8 @@ export async function stageToolchain({ vibelang, out }) {
     commit: commit.trim(),
     effect: runtime.peerDependencies.effect,
     compiler: "native/vibelang",
+    nativeSha256: fileDigest(join(out, "native/vibelang")),
+    compilerArchiveSha256: fileDigest(compilerTgz),
     packages: {
       vibelang: compilerTgz.slice(out.length + 1),
       "vibelang-runtime": runtimeTgz.slice(out.length + 1),
@@ -107,6 +110,8 @@ export async function stageToolchain({ vibelang, out }) {
     },
     typescript: readJson(join(typescript, "package.json")).version
   }
+  const packedNative = execFileSync("tar", ["-xOzf", compilerTgz, "package/native/vibelang"], { maxBuffer: statSync(join(out, "native/vibelang")).size + 1024 })
+  if (digest(packedNative) !== toolchain.nativeSha256) throw new Error("staging refused: packed and standalone native compilers differ")
   writeJson(join(out, "toolchain.json"), toolchain)
   return toolchain
 }
@@ -115,5 +120,42 @@ export async function stageToolchain({ vibelang, out }) {
 export function readToolchain(dir) {
   dir = resolve(dir)
   const t = readJson(join(dir, "toolchain.json"))
-  return { ...t, dir, compiler: join(dir, t.compiler) }
+  const compiler = join(dir, t.compiler)
+  if (t.nativeSha256 !== undefined && (!/^[a-f0-9]{64}$/.test(t.nativeSha256) || fileDigest(compiler) !== t.nativeSha256)) {
+    throw new Error("native compiler digest mismatch: restage the toolchain before migration")
+  }
+  if (t.compilerArchiveSha256 !== undefined && (!/^[a-f0-9]{64}$/.test(t.compilerArchiveSha256) ||
+      !t.packages?.vibelang || fileDigest(join(dir, t.packages.vibelang)) !== t.compilerArchiveSha256)) {
+    throw new Error("compiler archive digest mismatch: restage the toolchain before migration")
+  }
+  return { ...t, dir, compiler }
+}
+
+const digest = bytes => createHash("sha256").update(bytes).digest("hex")
+const fileDigest = file => digest(readFileSync(file))
+
+/** The revision is an asserted producer label; the digest identifies its actual executable bytes. */
+export function compilerArtifactOf(toolchain) {
+  if (toolchain?.kind !== "staged") return null
+  const staged = readToolchain(toolchain.dir)
+  return { revision: staged.commit ?? null, nativeSha256: fileDigest(staged.compiler) }
+}
+
+/** Pin before conversion, then require the same artifact after restart and at every later phase. */
+export function bindCompilerArtifact(config, paths, { resume = false } = {}) {
+  const actual = compilerArtifactOf(config.toolchain)
+  const expected = config.compilerArtifact
+  if (!actual) {
+    if (expected) throw new Error("migration compiler artifact changed: the pinned staged compiler is no longer selected; reconvert in a fresh run")
+    return null
+  }
+  if (!expected && resume) throw new Error("migration has no compiler artifact receipt; reconvert in a fresh run")
+  if (expected && (expected.revision !== actual.revision || expected.nativeSha256 !== actual.nativeSha256)) {
+    throw new Error("migration compiler artifact changed: expected " + JSON.stringify(expected) + ", actual " + JSON.stringify(actual) + "; reconvert in a fresh run")
+  }
+  if (!expected) {
+    config.compilerArtifact = actual
+    writeJson(paths.config, config)
+  }
+  return actual
 }

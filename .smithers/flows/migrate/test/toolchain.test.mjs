@@ -1,11 +1,12 @@
 import assert from "node:assert/strict"
 import { execFileSync } from "node:child_process"
-import { chmodSync, existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs"
+import { chmodSync, existsSync, readFileSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { test } from "node:test"
 import { fileURLToPath } from "node:url"
-import { licenseFiles, stageToolchain } from "../lib/toolchain.mjs"
+import { createHash } from "node:crypto"
+import { licenseFiles, readToolchain, stageToolchain } from "../lib/toolchain.mjs"
 import { must } from "../lib/util.mjs"
 
 test("the staged npm package contains its dprint manifest's archive and canonical grammar", async t => {
@@ -32,10 +33,19 @@ fs.writeFileSync(path.join(root, "native/plugin.zip"), "formatter archive")
   execFileSync("jj", ["git", "init", root], { stdio: "pipe" })
   const out = join(root, "toolchain")
   const staged = await stageToolchain({ vibelang: root, out })
+  assert.equal(staged.nativeSha256, createHash("sha256").update(readFileSync(join(out, "native/vibelang"))).digest("hex"))
+  const before = readToolchain(out)
+  assert.equal(before.nativeSha256, staged.nativeSha256)
+  const originalNative = readFileSync(join(out, "native/vibelang"))
+  writeFileSync(join(out, "native/vibelang"), "another native compiler")
+  assert.throws(() => readToolchain(out), /native compiler digest mismatch/)
   const archive = path => execFileSync("tar", ["-xOzf", join(out, staged.packages.vibelang), "package/" + path], { encoding: "utf8" })
   const manifest = JSON.parse(archive("dprint-plugin.json"))
   assert.equal(archive(manifest["linux-x86_64"].reference), "formatter archive")
   assert.equal(archive("tree-sitter/parser.c"), "canonical parser")
+  writeFileSync(join(out, "native/vibelang"), originalNative)
+  writeFileSync(join(out, staged.packages.vibelang), "a replaced compiler archive")
+  assert.throws(() => readToolchain(out), /compiler archive digest mismatch/)
 })
 
 const repo = fileURLToPath(new URL("../../../../", import.meta.url))

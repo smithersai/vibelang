@@ -37,6 +37,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - Migrated helpers with an inferred return could expand a written `ReturnType` assertion in declarations. They now preserve the assertion and its imported name.
 
 - A closure in the iterable expression of `for concurrent` could not refer to the loop-head binding, or captured an outer binding instead. It now retains the uninitialized head binding, including destructuring, so calling it after the loop throws `ReferenceError`; a written limit still reads the enclosing scope. When the corrected head type rejects an old outer capture, `--fix` renames the item binding and its uses while preserving that outer capture.
+- Migration receipts could label an older native compiler as a newer producer; staged conversions now pin the executable digest and revision, and reject mixed compiler receipts.
 
 - The grammar admission audit could stop when an unsupported `import.meta` value occupied a static import or export specifier. It now records that diagnostic gap while keeping ordinary metadata reads and dynamic imports as controls.
 

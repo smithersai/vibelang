@@ -1,0 +1,6 @@
+{
+  "pattern": "A source-fresh conversion must not be relabeled when the staged native executable changes beneath the same producer revision.",
+  "revision": "0123456789abcdef0123456789abcdef01234567",
+  "nativeBefore": "native compiler A",
+  "nativeAfter": "native compiler B"
+}

@@ -67,7 +67,7 @@ import { routeBundledImports, routePrefix as bundledImportPrefix } from "./bundl
 import { routeSourceDeclarationImports, sourceDeclarationPrefix } from "./source-declaration-imports.mjs"
 import { wireOxlintPlugins } from "./oxlint-plugins.mjs"
 import { wireNodeTests } from "./node-tests.mjs"
-import { readToolchain } from "./toolchain.mjs"
+import { bindCompilerArtifact, compilerArtifactOf, readToolchain } from "./toolchain.mjs"
 import { probeVip1, probeTargetVip1 } from "./vip-flip.mjs"
 import { assertPortable, machineRoots } from "./portable.mjs"
 import { appendJsonl, batchName, isDeclarationFile, must, quote, readJson, readJsonIf, run as sh, slug, writeJson, writeText } from "./util.mjs"
@@ -147,12 +147,15 @@ function loadRun(runDir) {
   const p = paths(runDir)
   if (!existsSync(p.config)) throw new Error(`${p.config} is missing: run setup first`)
   const config = readJson(p.config)
+  if (config.compilerArtifact) bindCompilerArtifact(config, p)
   return { p, config, setup: readJsonIf(p.setup), plan: readJsonIf(p.plan), inventory: readJsonIf(p.inventory) }
 }
 
-const compilerOf = (config) => (config.toolchain.kind === "staged"
-  ? readToolchain(config.toolchain.dir).compiler
-  : join(config.target, config.packages[0].dir, "node_modules/.bin/vibelang"))
+const compilerOf = (config) => {
+  if (config.compilerArtifact) bindCompilerArtifact(config)
+  return config.toolchain.kind === "staged" ? readToolchain(config.toolchain.dir).compiler
+    : join(config.target, config.packages[0].dir, "node_modules/.bin/vibelang")
+}
 
 const typeScriptOf = (config) => loadTypeScript([
   ...(config.toolchain.kind === "staged" ? [config.toolchain.dir] : []),
@@ -1390,7 +1393,7 @@ export async function setup(options) {
   const result = {
     at: new Date().toISOString(),
     jj: { initialized: upgrade.jj.initialized, base: upgrade.jj.base, baseCommit: upgrade.jj.baseCommit, upgradeCommit: upgrade.jj.commit, setupCommit: setupCommit ?? upgrade.jj.commit, bookmark: config.bookmark },
-    compiler: { path: compiler, version: version.trim(), toolchain: config.toolchain.kind === "staged" ? readToolchain(config.toolchain.dir) : config.toolchain },
+    compiler: { artifact: compilerArtifactOf(config.toolchain), path: compiler, version: version.trim(), toolchain: config.toolchain.kind === "staged" ? readToolchain(config.toolchain.dir) : config.toolchain },
     declarationOracle: Object.fromEntries(Object.entries(declarationOracle).map(([dir, o]) => [dir, o.unavailable ? { unavailable: o.unavailable } : { compiler: o.compiler, unproven: o.files.length }])),
     effect: upgrade.effect,
     wired,
@@ -1466,6 +1469,7 @@ export function aliasesOf(config) {
  * then checked against the final tree; an entry whose record misses says why.
  */
 export async function emitMigratedJs(config, t, logs) {
+  const artifact = compilerArtifactOf(config.toolchain)
   const emitted = [], sourceOutputs = new Map(), outputs = {}
   for (const pkg of config.packages) {
     const manifest = join(t, pkg.dir, "package.json")
@@ -1483,7 +1487,7 @@ export async function emitMigratedJs(config, t, logs) {
     // Nonzero emits can still write valid package-owned files (for example TS6059).
     let runtimeRouting, packingFiles=[]
     const exportsChanged = routeEmittedExports(join(t, pkg.dir), result.outputs, { typescript:typeScriptOf(config), onGraph:graph=>runtimeRouting=graph, onPacking:files=>packingFiles=files.map(file=>posix.join(pkg.dir,file)) })
-    emitted.push({ package: pkg.dir, files: result.files, generatedFiles: result.generatedFiles, code: result.code, exportsChanged, runtimeRouting, packingFiles, loaderRecords: [], diagnostics: result.diagnostics })
+    emitted.push({ package: pkg.dir, compilerArtifact: artifact ? bindCompilerArtifact({ ...config, compilerArtifact: artifact }) : null, files: result.files, generatedFiles: result.generatedFiles, code: result.code, exportsChanged, runtimeRouting, packingFiles, loaderRecords: [], diagnostics: result.diagnostics })
   }
   // Routing edits TypeScript the loader records name, so it comes first.
   const routed = bundledImports(config, { root: t, outputs })
@@ -1528,6 +1532,7 @@ export async function codemod(options) {
     return readJson(p.codemod("01"))
   }
   const b = currentBatch(options.run, options.batch)
+  bindCompilerArtifact(config, p, { resume: existsSync(p.codemod(b)) || existsSync(p.codemodState(b)) })
   const t = config.target
   const files = thePlan.batches[Number(b) - 1].files
   assertNoTestBundleRename(t, files, { routed: Boolean(config.routeBundledImports) })
@@ -1554,6 +1559,7 @@ export async function codemod(options) {
     const manifests = tracked.filter((file) => /(?:^|\/)package\.json$/.test(file) && !/(?:^|\/)node_modules\//.test(file) && owned(file))
     const flipped = await toolchainKeepsFunctionsPlain({ compiler: compilerOf(config), modules: join(t, config.packages[0].dir, "node_modules"), dir: join(p.batch(b), "probe") })
     state = prepareState(t, files, await importers(t), { ts: typeScriptOf(config), moduleBodies: config.platformModuleBodies === true, globalsOf: platformCausesOf(config, p.run), aliases: aliasesOf(config), references: references(), pathSources: pathSources(), catalog: [...new Set([...tracked, ...references()])], bareEntries: bareVibeExports(t, manifests), tracked, plainGroups: plainGroupsOf(config, files, typeScriptOf(config), { flipped }) })
+    state.compilerArtifact = config.compilerArtifact
     state.toolConfigReferences = 1
     state.pathSourceReferences = 1
     state.referenceScan.toolConfigFiles = toolConfigs.length
@@ -1631,7 +1637,7 @@ export async function codemod(options) {
   const buildEntries = state.buildEntries ?? { edits: [], warnings: [] }
   const platform = state.platform ?? { splits: [], refused: [] }
   const attempt = state.attempts.length + 1
-  state.attempts.push({ attempt, compiler: compilerOf(config), startedAt: new Date().toISOString(), projects: [] })
+  state.attempts.push({ attempt, compilerArtifact: config.compilerArtifact, compiler: compilerOf(config), startedAt: new Date().toISOString(), projects: [] })
   saveState(p.codemodState(b), state)
   const compiler = compilerOf(config)
   const byFile = {}
@@ -1676,6 +1682,7 @@ export async function codemod(options) {
     batch: b,
     at: new Date().toISOString(),
     files,
+    compilerArtifact: config.compilerArtifact,
     platform: platformResult,
     sourceChildModules: state.sourceChildModules ?? { converted: [], refused: [] },
     formatted,
@@ -1695,6 +1702,7 @@ export async function codemod(options) {
     selectorChecks,
     fix: { settled, rounds, byFile, totals: rewriteTotals(byFile), refused, restored: [...new Set(restored)].sort() }
   }
+  if (config.compilerArtifact) bindCompilerArtifact(config)
   result.emittedJs = emittedJs
   const scopedResult = withPackingScope(result, emittedJs)
   durableWrite(p.codemod(b), JSON.stringify(scopedResult, null, 2) + "\n")
@@ -1714,6 +1722,7 @@ function originalSourceOf(p, plan, file) {
 export async function compile(options) {
   const { p, config, plan: thePlan } = loadRun(options.run)
   const b = currentBatch(options.run, options.batch)
+  bindCompilerArtifact(config, p, { resume: true })
   const files = batchFiles(config, thePlan, b).map((f) => f.path)
   const referenceRefresh = await refreshReferences(config, files, join(p.batch(b), "logs", "reference-refresh-compile.log"))
   const compiler = compilerOf(config)
@@ -1735,6 +1744,7 @@ export async function compile(options) {
     at: new Date().toISOString(),
     files,
     referenceRefresh,
+    compilerArtifact: config.compilerArtifact,
     summary: summarize(diagnostics, files),
     style: styleProblems(diagnostics, files),
     warningExceptions: warningExceptions(diagnostics, files.filter(f => f.endsWith(".vibe")),
@@ -1743,6 +1753,7 @@ export async function compile(options) {
     newErrors: added,
     diagnostics: diagnostics.filter((d) => files.includes(d.file) || added.includes(d))
   }
+  if (config.compilerArtifact) bindCompilerArtifact(config)
   if (!options.noRecord) writeJson(p.compile(b), result)
   return result
 }
@@ -2043,6 +2054,7 @@ export async function verify(options) {
   assertBaselineSafe(paths(options.run))
   const { p, config, plan: thePlan } = loadRun(options.run)
   const b = currentBatch(options.run, options.batch)
+  bindCompilerArtifact(config, p, { resume: true })
   const t = config.target
   const files = batchFiles(config, thePlan, b)
   const migrated = files.filter((f) => f.migrated).map((f) => f.path)
@@ -2145,6 +2157,7 @@ export async function verify(options) {
     batch: b,
     at: new Date().toISOString(),
     files: files.map(f => ({ ...f, warningExceptions: checked.warningExceptions.filter(e => e.file === f.path) })),
+    compilerArtifact: config.compilerArtifact,
     formatted,
     tests: { code: tests.code, total: tests.total, passed: tests.passed, failed: tests.failed.length, skipped: tests.skipped,
       status: testsPassed(tests) ? "passed" : "failing", failedNames: tests.failed, baseline: { code: baselineTests.code, failed: baselineTests.tests ? Object.keys(baselineTests.tests).filter(name => baselineTests.tests[name] === "failed") : [] }, ...testResults },
@@ -2187,6 +2200,7 @@ export async function verify(options) {
   result.packLoad = await verifyPackLoad({ config, baselinePath: join(p.baseline, "logs", "baseline-pack-load.json"), logs, files, built: Boolean(candidateBuild),
     earlierFailure: Object.entries(result.checks).filter(([, passed]) => !passed).map(([name]) => name) })
   result.checks.packLoad = result.packLoad.ok
+  if (config.compilerArtifact) bindCompilerArtifact(config)
   result.ok = Object.values(result.checks).every(Boolean)
   writeJson(p.verify(b), result)
   return result
@@ -2198,6 +2212,7 @@ export async function record(options) {
   const { p, config, plan: thePlan, inventory } = loadRun(options.run)
   const b = currentBatch(options.run, options.batch)
   if (existsSync(p.record(b))) return readJson(p.record(b))
+  bindCompilerArtifact(config, p, { resume: true })
   let verified = readJsonIf(p.verify(b))
   if (!verified?.ok && !options.force) throw new Error(`batch ${b} has not passed verify; run verify, or record with --force <reason>`)
   const t = config.target
@@ -2262,6 +2277,7 @@ export async function record(options) {
   if (!testDiff.ok) throw new Error(`batch ${b}: forbidden test/fixture edits; see ${join(p.batch(b), "test-diff.md")}; revert the edit or leave its module TypeScript`)
   await assertScope()
   await assertSources()
+  if (config.compilerArtifact) bindCompilerArtifact(config)
   const commit = await Jj.commit(t, lines.join("\n"))
   if (commit) await Jj.setBookmark(t, config.bookmark, commit)
   const result = {
@@ -2269,6 +2285,7 @@ export async function record(options) {
     at: new Date().toISOString(),
     commit,
     bookmark: config.bookmark,
+    compilerArtifact: config.compilerArtifact,
     files: rows,
     tokens,
     formatted,
