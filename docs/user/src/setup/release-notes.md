@@ -442,6 +442,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Producers with compatible written return annotations such as `any`, `unknown` or an optional `Stream` were rejected with `EK2102`; they now follow TypeScript's return checking, while explicit `Stream` channels still check yielded values, errors and requirements. Marked generator methods receive the same checks, including without an explicit `Stream` import; `--fix` can write their inferred `Stream` contract without changing the body.
 
+- The function-constructor regression remained pending after its three prohibited constructor reads were diagnosed correctly. It now runs as an active check, with the existing constructor-access fuzz controls.
+
 - Repository build checks could fail before inspecting compiler inputs after target declarations changed. Their isolated fixtures now retain the native source group and imported parser data while checking dependency and cache behavior.
 
 - A `do` expression with no normal result suppressed native iterator errors in loops, destructuring, delegated yields and call spreads, so migration missed a required cast. These uses now retain TypeScript's `never` protocol checks; array literal spreads keep their native behavior.
