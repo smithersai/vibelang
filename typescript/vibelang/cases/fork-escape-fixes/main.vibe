@@ -14,7 +14,7 @@ effect function startScoped() {
 const startConcise = effect () => try Effect.forkScoped(effect { return try slow() })
 
 effect function startIn(scope: Scope) {
-  return try forkIn(scope, effect { return try slow() })
+  return try forkIn(effect { return try slow() }, scope)
 }
 
 effect function startDetached() {

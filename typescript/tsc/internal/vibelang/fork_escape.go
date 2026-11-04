@@ -513,7 +513,7 @@ func (f *fiberFlow) report(out *fiberEscape) {
 		program = "…"
 	}
 	note(d, "Give it the caller's lifetime: Effect.forkScoped({0})", program)
-	note(d, "Or give it no owner: detach({0}), or a scope you hold: forkIn(scope, {0})", program)
+	note(d, "Or give it no owner: detach({0}), or a scope you hold: forkIn({0}, scope)", program)
 	if out.captured {
 		note(d, "To bound a join, race it in the region instead: try.race [Fiber.join(fiber), effect { try sleep(d); throw new Late() }]")
 	}

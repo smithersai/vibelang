@@ -1,0 +1,11 @@
+// expect-result: 2
+import { ev } from "./events.js"
+
+export effect function main() {
+  const v0 = try sync(() => { ev("e0"); return 1 })
+  const v1 = try succeed(v0 + 1)
+  return v1
+}
+export function identities() {
+  return [sync === Effect.sync, callback === Effect.callback, forkIn === Effect.forkIn, never === Effect.never, yieldNow === Effect.yieldNow]
+}

@@ -54,6 +54,7 @@ func tryEdits(c *checker.Checker, file *ast.SourceFile, unmatched map[int]bool) 
 	var refusals []tryRefusal
 	kinds := map[string]int{}
 	m := newLegacyModel(a, unmatched)
+	legacyFork := ""
 	opens := map[int]int{} // offset -> index in edits
 	insert := func(at int, s string) {
 		if i, ok := opens[at]; ok {
@@ -65,6 +66,15 @@ func tryEdits(c *checker.Checker, file *ast.SourceFile, unmatched map[int]bool) 
 	}
 	var visit func(node *ast.Node) bool
 	visit = func(node *ast.Node) bool {
+		// Its old by-name program and the explicit compatibility binding
+		// must change together: either edit alone changes checking or run phase.
+		if legacyForkInScopeFirst(c, node) {
+			if legacyFork == "" {
+				legacyFork = (&freshNames{file: file}).freshName("$legacyGlobalforkIn")
+			}
+			edits = append(edits, sourceEdit{nodeStart(file, node.Expression()), node.Expression().End(), legacyFork})
+			kinds["native Effect globals"]++
+		}
 		if at, open, rest, label, ok := effectValueCallEditsLabeled(a, file, node); ok {
 			if label != "" {
 				kinds[label]++
@@ -196,6 +206,24 @@ func tryEdits(c *checker.Checker, file *ast.SourceFile, unmatched map[int]bool) 
 		return node.ForEachChild(visit)
 	}
 	file.AsNode().ForEachChild(visit)
+	if legacyFork != "" {
+		at := retiredAwaitImportPosition(file)
+		header := "import { forkIn as " + legacyFork + " } from \"vibelang-runtime\"\n"
+		if at > 0 && text[at-1] != '\n' {
+			header = "\n" + header
+		}
+		merged := false
+		for i := range edits {
+			if edits[i].start == at {
+				edits[i].text = header + edits[i].text
+				merged = true
+				break
+			}
+		}
+		if !merged {
+			edits = append(edits, sourceEdit{at, at, header})
+		}
+	}
 	return edits, refusals, kinds
 }
 

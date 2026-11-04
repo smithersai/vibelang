@@ -91,7 +91,7 @@ func TestFiberFlows(t *testing.T) {
 			if !strings.Contains(text, "which interrupts it on exit, but it is "+test.how) {
 				t.Errorf("missing %q: %s", test.how, text)
 			}
-			if !strings.Contains(text, "Effect.forkScoped(") || !strings.Contains(text, "detach(") || !strings.Contains(text, "forkIn(scope, ") {
+			if !strings.Contains(text, "Effect.forkScoped(") || !strings.Contains(text, "detach(") || !strings.Contains(text, "forkIn(") || !strings.Contains(text, ", scope)") {
 				t.Errorf("missing lifetime guidance: %s", text)
 			}
 		})

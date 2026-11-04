@@ -94,7 +94,7 @@ func (m *legacyModel) effectResult(call *ast.Node) bool {
 	if m.givesRunArgument(call) {
 		return false
 	}
-	if legacyEffectResult(m.a.checker, call) || legacyValueReceiverCall(m.a, call) || legacyServiceMemberResult(m.a, call) {
+	if legacyForkInScopeFirst(m.a.checker, call) || legacyEffectResult(m.a.checker, call) || legacyValueReceiverCall(m.a, call) || legacyServiceMemberResult(m.a, call) {
 		return true
 	}
 	signature := m.a.checker.GetResolvedSignature(call)
@@ -538,6 +538,9 @@ func legacyHold(a *analyzer, n *ast.Node) (held bool, byName bool, reason string
 		}
 	}
 	owner, path := ownerCall(n)
+	if len(path) == 1 && path[0].argument == 1 && legacyForkInScopeFirst(c, owner) {
+		return true, true, "the legacy scope-first forkIn passes its second argument as a program (D147)"
+	}
 	if owner == nil || len(path) == 0 || isTryCall(owner) {
 		// try's operand is no parameter: legacyTryOperand decides it.
 		return false, false, ""
@@ -1324,6 +1327,9 @@ func legacyProgramLiteral(a *analyzer, fn *ast.Node) bool {
 	}
 	if ast.IsCallExpression(owner) && ast.SkipParentheses(owner.Expression()).Flags&(ast.NodeFlagsReparsed|ast.NodeFlagsVibeLangIntrinsic) != 0 {
 		return false
+	}
+	if len(path) == 1 && path[0].argument == 1 && legacyForkInScopeFirst(a.checker, owner) {
+		return true
 	}
 	signature := a.checker.GetResolvedSignature(owner)
 	if signature == nil {

@@ -306,7 +306,7 @@ export const CalendarDateFromIsoString = Schema.String.pipe(
 
 ### Running a subscription stream
 
-The subscription pipeline uses `Stream` methods and `effect` callbacks, with `try` running message delivery and the scoped fork.
+The subscription pipeline uses `Stream` methods and `effect` callbacks, with `try` running message delivery and the scoped fork. The native `forkIn(program, scope)` takes its program before its scope.
 
 [Before: `packages/foldkit/src/runtime/subscriptionFibers.ts`](https://github.com/foldkit/foldkit/blob/b702a5efbb74bebc056b798b414ddb923a82fbd5/packages/foldkit/src/runtime/subscriptionFibers.ts#L128-L146) · [After: `packages/foldkit/src/runtime/subscriptionFibers.vibe`](https://github.com/smithersai/foldkit/blob/64a3e6edd7df91fafd655c9d2d5789c1523388ae/packages/foldkit/src/runtime/subscriptionFibers.vibe#L111-L136)
 
@@ -360,5 +360,5 @@ The subscription pipeline uses `Stream` methods and `effect` callbacks, with `tr
         },
       )
     }
-    try forkIn(runtimeScope, () => runSubscription())
+    try forkIn(runSubscription(), runtimeScope)
 ```

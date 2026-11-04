@@ -134,6 +134,10 @@ func TestFixVIPLegacyRunPositions(t *testing.T) {
 			result, name := fixVIPOnlySource(t, legacyRunsPrelude+c.legacy)
 			fixed := result.Files[name]
 			want := legacyRunsPrelude + c.want
+			if strings.HasPrefix(c.name, "program-literal-argument") {
+				want = `import { forkIn as $legacyGlobalforkIn } from "vibelang-runtime"
+` + strings.ReplaceAll(strings.ReplaceAll(want, "forkIn(scope,", "$legacyGlobalforkIn(scope,"), "scope: Scope)", "scope: Scope.Scope)")
+			}
 			if fixed == nil || fixed.Text != want {
 				got := "(nothing)"
 				if fixed != nil {

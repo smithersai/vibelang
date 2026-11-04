@@ -1,0 +1,9 @@
+import { events, markScope, markProgram } from "./events.js"
+export effect function verify() {
+  const scope = try Scope.make()
+  const program = Effect.succeed(7)
+  const fiber = try forkIn(markScope(scope), markProgram(program))
+  const value = try Fiber.join(fiber)
+  try Scope.close(scope, Exit.succeed(undefined))
+  return { value, events: events.slice() }
+}

@@ -635,7 +635,7 @@ func FixProjectWithOptions(ctx context.Context, fs vfs.FS, libraryPath tspath.Ro
 	// propose returns a round's fixes: in each fixable file of program, the
 	// fixes options select whose edits do not overlap.
 	propose := func(program *compiler.Program) []proposal {
-		hatchTypes := legacyHatchTypeMigrationFixes(ctx, program, g.refused)
+		hatchTypes := legacyPreludeCompatibilityFixes(ctx, program, g.refused, options.MigrationOnly, options.VIPOnly)
 		if !options.VIPOnly && !options.MigrationOnly {
 			if p := cliThrowsNeverFixes(ctx, program, scope, g.refused); len(p) > 0 {
 				return p

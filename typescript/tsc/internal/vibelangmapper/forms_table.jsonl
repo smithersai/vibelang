@@ -1363,7 +1363,7 @@
 {"alias":"prelude#fork","to":"vibelang-runtime#fork"}
 {"alias":"prelude#forkChild","to":"effect/Effect#forkChild"}
 {"alias":"prelude#forkDetach","to":"effect/Effect#forkDetach"}
-{"alias":"prelude#forkIn","to":"vibelang-runtime#forkIn"}
+{"alias":"prelude#forkIn","to":"effect/Effect#forkIn"}
 {"alias":"prelude#forkScoped","to":"effect/Effect#forkScoped"}
 {"alias":"prelude#fromNullishOr","to":"effect/Effect#fromNullishOr"}
 {"alias":"prelude#fromOption","to":"effect/Effect#fromOption"}

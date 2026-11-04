@@ -183,7 +183,7 @@ When upgrading existing `.vibe` modules from the former readonly defaults, run `
 | `Effect.runPromise(program)` in TypeScript | `runPromise(program)` in a plain or `async` function, or at the module top level |
 | `Stream.fromIterable` or a generator-based source | `Stream.fromIterable` or a producer: `effect function*` with `yield value` |
 | `Effect.forkChild(program)` | `fork program` |
-| `Effect.forkIn(program, scope)` | `fork.in(scope) program` |
+| `Effect.forkIn(program, scope)` | `try forkIn(program, scope)` |
 | `Effect.forkDetach(program)` | `fork.detached program` |
 | `Stream.runForEachWhile` | `for try (const value of stream) { ... }` |
 
@@ -278,7 +278,7 @@ An exported `const main` or `let main` is an ordinary lexical binding. It keeps 
 
 The module top level is ordinary JavaScript. Construct Effects there and run them with an explicit runner. Top-level `await` accepts a Promise. A TypeScript `namespace` body is synchronous, so `await` there reports `TS1308`; use an `async` function inside the namespace and await its Promise at the module top level. `try` execution belongs inside an effect function or block.
 
-Every export of Effect's `Effect` module is global unless its name clashes with a keyword or JavaScript global. Clashing names keep the `Effect.` prefix, such as `Effect.try` and `Effect.provide`. Root modules such as `Console`, `Clock`, `Option`, `Schedule`, and `Stream` are in scope. JavaScript globals such as `Array` keep their meaning, and `Effect.Array` names Effect's module only through the unshadowed implicit `Effect`. Platform subpath namespaces such as `HttpClient` are also in scope. Precedence applies separately to TypeScript's type and value meanings: `Console` in a type position remains the DOM interface, while `Console.log` uses Effect's namespace. Local type aliases and interfaces likewise keep their type meaning without hiding Effect's value namespace; a local value binding keeps its own members. Generated imports use fresh names.
+Every export of Effect's `Effect` module is global unless its name clashes with a keyword or JavaScript global. These are the native functions and values: `forkIn(program, scope)` keeps Effect's argument order. Setting `vibe.effectGlobals` to `false` removes every implicit Effect function, including `sync` and `callback`; explicit imports and local declarations keep their ordinary meanings. Clashing names keep the `Effect.` prefix, such as `Effect.try` and `Effect.provide`. Root modules such as `Console`, `Clock`, `Option`, `Schedule`, and `Stream` are in scope. JavaScript globals such as `Array` keep their meaning, and `Effect.Array` names Effect's module only through the unshadowed implicit `Effect`. Platform subpath namespaces such as `HttpClient` are also in scope. Precedence applies separately to TypeScript's type and value meanings: `Console` in a type position remains the DOM interface, while `Console.log` uses Effect's namespace. Local type aliases and interfaces likewise keep their type meaning without hiding Effect's value namespace; a local value binding keeps its own members. Generated imports use fresh names.
 
 `globalThis.eval` and `globalThis.Function`, including static string or template keys and optional access, report `EK0107`. Keep code that evaluates source text in a `.ts` file or a `module` body. `x instanceof globalThis.Function` and `globalThis.Function.prototype` remain valid, as do type queries and a local binding named `globalThis`.
 

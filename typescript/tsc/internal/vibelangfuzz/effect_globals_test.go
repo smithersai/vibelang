@@ -33,7 +33,7 @@ func TestEffectGlobalsQuoted(t *testing.T) {
 // compiles each export bare. A clashing name tests the clash rule instead.
 var effectGlobalSeeds = []string{
 	"retry", "sleep", "log", "all", "race", "tryPromise", "sync", "callback", "map",
-	"currentParentSpan", "serviceOption", "scoped", "onExit",
+	"currentParentSpan", "serviceOption", "scoped", "onExit", "forkIn",
 	"succeed", "fail", "gen", "suspend", "forEach", "timeout", "andThen", "flatMap", "tap",
 	"catchTag", "acquireRelease", "ensuring", "interrupt", "never", "die", "logInfo",
 	"yieldNow", "runPromise", "promise", "as", "fn", "Do", "Transaction", "exit",

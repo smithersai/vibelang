@@ -2724,6 +2724,7 @@ typescript/vibelang/cases/effect-expression-name-preserved/main.vibe:6:19 lambda
 typescript/vibelang/cases/effect-expression-name-preserved/main.vibe:6:40 lambda plain annotation
 typescript/vibelang/cases/effect-expression-name-preserved/main.vibe:7:10 lambda plain fallback
 typescript/vibelang/cases/effect-gen-computed-method.fail/main.vibe:7:23 lambda plain table
+typescript/vibelang/cases/effect-globals-captured-native/main.vibe:5:23 lambda plain table
 typescript/vibelang/cases/effect-globals-coverage-capture/main.vibe:11:33 byname program table
 typescript/vibelang/cases/effect-globals-coverage-capture/main.vibe:11:55 lambda plain table
 typescript/vibelang/cases/effect-globals-coverage-capture/main.vibe:11:75 lambda plain table
@@ -3476,7 +3477,7 @@ typescript/vibelang/cases/fibers-fork-join/main.vibe:60:23 byname program table
 typescript/vibelang/cases/fibers-fork-join/main.vibe:69:21 lambda program table
 typescript/vibelang/cases/fibers-fork-join/main.vibe:73:20 byname program table
 typescript/vibelang/cases/fibers-fork-join/main.vibe:88:14 byname program table
-typescript/vibelang/cases/fibers-fork-join/main.vibe:94:35 byname program table
+typescript/vibelang/cases/fibers-fork-join/main.vibe:94:28 byname program table
 typescript/vibelang/cases/fibers-interrupt-siblings/main.vibe:14:18 block appended/program table
 typescript/vibelang/cases/fibers-interrupt-siblings/main.vibe:18:18 block appended/program table
 typescript/vibelang/cases/fibers-interrupt-siblings/main.vibe:24:20 block appended/program table
@@ -3787,7 +3788,7 @@ typescript/vibelang/cases/fork-escape-concurrent-operands.fail/main.vibe:9:18 by
 typescript/vibelang/cases/fork-escape-fixes/main.vibe:11:32 lambda program table
 typescript/vibelang/cases/fork-escape-fixes/main.vibe:14:22 lambda effectFn keyword
 typescript/vibelang/cases/fork-escape-fixes/main.vibe:14:57 lambda program table
-typescript/vibelang/cases/fork-escape-fixes/main.vibe:17:28 lambda program table
+typescript/vibelang/cases/fork-escape-fixes/main.vibe:17:21 lambda program table
 typescript/vibelang/cases/fork-escape-fixes/main.vibe:21:21 lambda program table
 typescript/vibelang/cases/fork-escape-fixes/main.vibe:25:36 lambda program table
 typescript/vibelang/cases/fork-escape-fixes/main.vibe:26:37 lambda program table

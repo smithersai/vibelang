@@ -1,0 +1,13 @@
+import { Effect, Scope, Fiber, Exit } from "effect"
+import { forkIn as legacyForkIn } from "vibelang-runtime"
+import { events, markScope, markProgram } from "./events.js"
+export function verify() {
+  return Effect.gen(function* () {
+    const scope = yield* Scope.make()
+    const program = Effect.succeed(7)
+    const fiber = yield* legacyForkIn(markScope(scope), markProgram(program))
+    const value = yield* Fiber.join(fiber)
+    yield* Scope.close(scope, Exit.succeed(undefined))
+    return { value, events: events.slice() }
+  })
+}

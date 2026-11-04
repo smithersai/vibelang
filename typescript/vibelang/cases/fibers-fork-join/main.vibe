@@ -91,7 +91,7 @@ effect function detached() {
 
 effect function scoped() {
   const scope = try Scope.make()
-  const fiber = try forkIn(scope, label())
+  const fiber = try forkIn(label(), scope)
   const value = join fiber
   try Scope.close(scope, Exit.void)
   return value

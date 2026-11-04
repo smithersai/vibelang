@@ -1,5 +1,1 @@
-# Remaining VIP-6 identity gaps for sync and callback.
-FuzzEffectGlobals identity:sync compiler VIP-6: sync is still the prelude's hatch, not Effect's export; lane fix-vip-globals-2
-FuzzEffectGlobals modules-off:sync compiler VIP-6: sync is still the prelude's hatch, usable only as a callee (EK4410); lane fix-vip-globals-2
-FuzzEffectGlobals identity:callback compiler VIP-6: callback is still the prelude's hatch, not Effect's export; lane fix-vip-globals-2
-FuzzEffectGlobals modules-off:callback compiler VIP-6: callback is still the prelude's hatch, usable only as a callee (EK4410); lane fix-vip-globals-2
+# VIP-6 native identity and module-option gaps are covered by FuzzEffectGlobals.

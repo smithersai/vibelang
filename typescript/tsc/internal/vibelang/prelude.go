@@ -103,7 +103,6 @@ var preludeModules = map[string]string{
 	"$awaitAny":        runtimeModule,
 	"$forConcurrent":   runtimeModule,
 	"detach":           runtimeModule,
-	"forkIn":           runtimeModule,
 	// A provide block's Key = value provider, which the parser writes (D173, provide.go).
 	"$provideService": runtimeModule,
 	// The extends clause the parser writes for service Name: Type (D281,
@@ -502,7 +501,7 @@ func resolvePreludeName(c *checker.Checker, location *ast.Node, name string, mea
 	symbol := preludeSymbol(c, state, file, name)
 	// Existing direct hatch calls retain their compatibility signatures. A
 	// reference to the global itself is the native Effect export (VIP-6).
-	if hatchNames[name] && isLoweredHatchCallee(location) {
+	if hatchNames[name] && isLoweredHatchCallee(location) && effectGlobalsOn(c, file) {
 		if module := runtimeModuleSymbol(c, state, file); module != nil {
 			symbol = c.TryGetMemberInModuleExports(name, module)
 		}
@@ -624,6 +623,14 @@ func recordPreludeUse(state *preludeState, file *ast.SourceFile, name string) {
 // module is not installed or file does not resolve it, or, for an effect
 // export, ECMAScript defines a global value with the name.
 func preludeSymbol(c *checker.Checker, state *preludeState, file *ast.SourceFile, name string) *ast.Symbol {
+	// VIP-6 controls all implicit Effect function bindings, including names
+	// that also have a transitional runtime compatibility entry.
+	if effectglobals.Names[name] {
+		if !effectGlobalsOn(c, file) || isBuiltinGlobal(c, name) {
+			return nil
+		}
+		return effectExportSymbol(c, state, file, name)
+	}
 	if len(effectSubpathShared[name]) > 0 {
 		return nil
 	}
@@ -868,10 +875,8 @@ func preludeImports(f *ast.NodeFactory, names []string) []*ast.Node {
 	var namedModules []string
 	for _, name := range names {
 		module, namespace := preludeModules[name], true
-		if hatchNames[name] {
-			module = ""
-		}
-		if module == "" && effectglobals.Names[name] {
+		if effectglobals.Names[name] {
+			// Native function exports win over compatibility helper entries.
 			module, namespace = "effect/Effect", false
 		} else if subpath, ok := effectSubpathNames[name]; module == "" && ok {
 			module = subpath.module
