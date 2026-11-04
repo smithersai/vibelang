@@ -199,6 +199,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - The forms gate rejected explicit Effect callbacks after independently landed changes moved their source locations; its reviewed snapshot now records the written modifier at each affected site.
 
 - Combining the chained-assertion and pipe-parser changes stopped compiler builds; the assertion probe now passes the pipe parser's arrow-context argument, with continuation tests covering both assertion operators and conditional tails.
+- A TypeScript file importing a migrated VibeLang module could emit a declaration through the package index and pull unrelated types into downstream consumers. Inferred imports now name the declaring module chosen by the TypeScript twin.
 - ESLint reported extra newline warnings around method calls containing a lifted `do` expression; it now follows the source method and receiver boundaries while retaining warnings for written call or property newlines.
 
 - Service-member regression checks now distinguish forbidden constructors and index signatures from the separate service-class migration warning in the same module.
@@ -221,6 +222,11 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - The error guide did not name the operation that preserves an Effect's typed failures; it now names `try`. Fast executable documentation checks now run on affected merge-gate changes, catching this wording before landing.
 
 - Fuzz validation reported allowed platform-boundary warnings as errors; it now checks the contextual `EK4402` policy while retaining errors for unwrapped host access.
+
+- Layer dependency diagnostics could mention the retired `wire` form. They now explain provider changes using native `Layer` composition.
+- The grammar inventory check could fail on the recovery helper for malformed `catch` handlers. The census now records that recovery path without admitting the malformed syntax, and both generated tables agree.
+
+- Contributor source checks stopped covering cold program blocks after a span fixture update. They now check cold blocks and nested `do` expressions alongside the existing callback fixture.
 - A `catch` handler written as a parameter list followed by a block, `x catch (e) { … }`, was a syntax error (`TS1005`) that hid every other error in the file. It is now `EK0509`, with a quick fix to `x catch effect (e) => { … }` when the block has no `break`, `continue`, `await` or `yield` of its own.
 
 - The grammar admission census could drift between its specification and fuzz inventory; both copies now generate from one source and fail checks on drift.
@@ -399,6 +405,17 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - On a host without `Symbol.customMatcher`, `vibelang-runtime` defined it as a configurable property, so any module could delete or replace the key that every matcher uses. It is now non-writable, non-enumerable and non-configurable, like a well-known symbol, and a symbol the host already defines is kept.
 
 - `try.allSettled [a, b]` added a call to `Array.prototype.map` that its native counterpart omits; literals without spreads now wrap each element directly with `Effect.exit`.
+
+- Installing the documentation tools printed a duplicate-dependency warning for `fast-check`. The tools now declare its existing version once, and a repository check catches competing production and development declarations.
+
+- A throwing tagged-template call could escape the synchronous no-throw check; known tag contracts now report `EK0401`, while native `try/catch` and admitting wrapper thunks remain allowed.
+- A package that re-exported or referenced a `.vibex` module shipped declarations that named `./App.vibex`, which a consumer of the build output could not resolve (`TS2307`). Ordinary declarations now name the module's `.tsx` twin, `./App.tsx`, in written specifiers, `import()` types and inferred import types, as `tsc` does; compatibility sidecars keep `./App.vibex`.
+
+- Applying `vibelang --fix` to a `Match` chain could skip getter reads or delay captured operands until a later call. Observable operands now keep their eager reads and an explanation that the conversion has no automatic fix.
+
+- A schema-alias quick fix could join its initializer to the statement after the removed type alias, silently changing `Base; …; value;` into `Basevalue`. The editor and `vibelang --fix` now keep the original statement terminator.
+
+- Path platform errors recommended namespace calls, a callable `Path()`, and unrun URL conversions; their examples now get `Path.Path` and run conversions before using the path.
 - The ESLint corpus check rejected deliberately constant source literal conditions as generated code; it now checks each reported literal against its source while continuing to detect unwritten constants.
 - An optional-schema inverse check expected the retired `mutable` field spelling. It now checks that writable keys have no `readonly` modifier and readonly keys retain it, with exact optional-property conversion controls unchanged.
 
@@ -487,6 +504,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Conformance checks incorrectly treated live Vibe modules as arbitrary-extension declarations. Native consumer checks now compare admission and emitted imports with TypeScript's source twins, including disabled rewriting and stale sidecars.
 
 - Bare `interruptible` and `uninterruptible` could be stored as global functions. These keyword names now report missing bindings; use `Effect.interruptible` or `Effect.uninterruptible` for function values.
+
+- A class could `implement` a pure callback member while storing or inheriting a throwing function; incompatible member contracts now report `EK0402`, including getters and generic interface bindings.
 
 - Repository build checks could fail before inspecting compiler inputs after target declarations changed. Their isolated fixtures now retain the native source group and imported parser data while checking dependency and cache behavior.
 

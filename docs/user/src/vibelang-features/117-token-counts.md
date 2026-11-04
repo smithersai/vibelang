@@ -143,7 +143,7 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | --- | ---: |
 | [Getting Started](../013-getting-started.md) | 1,200 |
 | **Error Management** | **20,000** |
-| [Expected Errors](../error-management/014-expected-errors.md) | 8,900 |
+| [Expected Errors](../error-management/014-expected-errors.md) | 9,000 |
 | [Unexpected Errors](../error-management/015-unexpected-errors.md) | 1,500 |
 | [Fallback](../error-management/016-fallback.md) | 2,200 |
 | [Matching](../error-management/017-matching.md) | 790 |
@@ -256,7 +256,7 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [PlatformLogger](../platform/108-platformlogger.md) | 790 |
 | [Runtime](../platform/109-runtime.md) | 1,400 |
 | [Terminal](../platform/110-terminal.md) | 1,600 |
-| [Platform globals in VibeLang](../platform/platform-globals.md) | 7,300 |
+| [Platform globals in VibeLang](../platform/platform-globals.md) | 7,400 |
 | [Cloudflare Workers](../platform/cloudflare-workers.md) | 760 |
 | [Alchemy](../platform/alchemy.md) | 2,500 |
 | **All 101 pages** | **170,000** |
