@@ -1215,3 +1215,5 @@ reported `Literal` node, UTF-16 range and raw text match the source. The
 unclassified conditions still fail the guard. Native provenance tests run in
 `compiler-test`; the pinned ESLint fixture also tests the real corpus checker
 and generated provenance mutations.
+
+The alias-revert injected-I/O and asset-import properties quote Chapter 007’s current declaration-file and source-tool split. Refresh those citations when that sentence changes; retain their alias roundtrip and host asset-resolution checks and all sample counts.

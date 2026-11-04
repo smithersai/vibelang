@@ -10,7 +10,7 @@ import { checkProperty } from "../../../scripts/testing/property.mjs"
 
 const repo = fileURLToPath(new URL("../../../", import.meta.url))
 const modules = ["packages/compiler/relative-imports.mjs", "packages/vite/src/relative-imports.js", "packages/unplugin/src/relative-imports.js"].map(path => join(repo, path))
-const rule = 'docs/design/src/007-tooling.md: "Existing tools work."; opencode-15: non-script assets retain host resolution'
+const rule = 'docs/design/src/007-tooling.md: "Type checkers use `.d.vibe.ts`; linters, Knip, bundlers and test runners read `.vibe`."; opencode-15: non-script assets retain host resolution'
 let diagnostics = ""
 
 function filesOf(input) {
@@ -21,7 +21,7 @@ function filesOf(input) {
 }
 
 test("asset import oracle quotes the current specification", () => {
-  assert.ok(readFileSync(join(repo, "docs/design/src/007-tooling.md"), "utf8").includes("Existing tools work."))
+  assert.ok(readFileSync(join(repo, "docs/design/src/007-tooling.md"), "utf8").includes("Type checkers use `.d.vibe.ts`; linters, Knip, bundlers and test runners read `.vibe`."))
 })
 
 test("all source loaders leave generated asset imports to Bun (opencode-15)", async () => {

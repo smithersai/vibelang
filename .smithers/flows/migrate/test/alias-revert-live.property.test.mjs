@@ -76,7 +76,7 @@ test("alias revert follows the documented original-name contract", () => {
 
 test("bulk revert restores two recorded aliases in the same existing VibeLang consumer", async () => fixture({ bulk: true }))
 
-const ioRule = "Existing tools work."
+const ioRule = "Type checkers use `.d.vibe.ts`; linters, Knip, bundlers and test runners read `.vibe`."
 function injectedIO({kind=".vibe",target=".ts",nested=false,quote='"',preserve=true,sourceLiteral=false}={}) {
   const dir=nested?"src/deep":"src",file=dir+"/consumer"+kind,dep=dir+"/dep"+target
   const suffix=sourceLiteral?(target===".vibe"?".ts":target):target===".mts"?".mjs":target===".cts"?".cjs":".js"
