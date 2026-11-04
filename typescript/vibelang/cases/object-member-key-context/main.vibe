@@ -1,0 +1,8 @@
+export const events: string[] = []
+export effect function main() {
+ const object = {
+  [try Effect.sync(() => { events.push("value1"); return { [Symbol.toPrimitive]() { events.push("coerce1"); return "method" } } as unknown as string })]() { events.push("body"); return 7 },
+  effect [try Effect.sync(() => { events.push("value2"); return "program" as const })]() { events.push("cold-body"); return 7 }
+ }
+ return 1
+}

@@ -58,6 +58,12 @@ func triedFlag(node *ast.Node) bool {
 func effectCodeOwner(node *ast.Node) *ast.Node {
 	child := node
 	for n := node.Parent; n != nil; child, n = n, n.Parent {
+		// An object member's computed name is evaluated before its callable
+		// exists, in the context that constructs the object.
+		if ast.IsComputedPropertyName(child) && ast.IsFunctionLike(n) &&
+			n.Parent != nil && ast.IsObjectLiteralExpression(n.Parent) {
+			continue
+		}
 		if heritageTypeArgument(n, child) {
 			return nil
 		}

@@ -464,6 +464,10 @@ Left on purpose: ESTree token parity with `typescript-estree` (not installed in 
 
 ## FuzzVIPDifferential: the VIPs' differential test
 
+Computed object member keys use the `vip01.object-member-key` construct in `FuzzVIPDifferential`. Its keyed corpus covers ordinary methods, getters, setters, written Effect methods and property controls, with string, symbol and coercing keys in direct and nested Effect bodies. The shared worker compares the canonical `Exit`, call-time snapshots and ordered events. `FuzzObjectMemberKeyContext` separately checks static context diagnostics; it runs no runtime comparator.
+
+For a construct-focused campaign, set `VIBELANG_FUZZ_VIP_FOCUS` to its registered key, for example `vip01.object-member-key`. The target retains each input's swarm bytes and exercises compatible enabled constructs through the shared comparator. A focus whose dependency is pending is refused. Record the focus in the campaign receipt.
+
 Added 2026-10-29. VIP-31: "Each VIP's VibeLang and Effect TS pair is a differential test that compiles one, runs both, and compares their `Exit`s. The fuzz suite generates more pairs." `FuzzVIPDifferential` is that test. Its oracles come from the accepted VIPs in `docs/design/vips/`, not from the old specification, and it will replace `FuzzSpecPrograms` and `FuzzSpecVariants` once it covers their constructs.
 
 ```

@@ -229,6 +229,8 @@ derived constructor before `super()` and run it afterward. Running it before
 Field and default-parameter arrows also keep TypeScript's inferred `name`,
 including private and computed fields; lazy captures preserve that naming context.
 
+`try` in an object literal's computed method or accessor name uses the surrounding `effect` activation. The member's body keeps its own context, and a parameter default remains plain JavaScript. Computed keys evaluate in source order, including conversion to a property key.
+
 ## Preserve a factory's call-time work
 
 When TypeScript captures configuration before returning an Effect, keep that phase in a plain function with a declared Effect return and return an Effect value:

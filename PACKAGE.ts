@@ -58,6 +58,10 @@ const goVibelang = (summary: string, shell: string, data: ReadonlyArray<unknown>
 // Every Test...Quoted in the target's packages runs by its name (fuzz coverage RULES #9), so a new quote
 // test needs no line here; scripts/spec-tests.test.mjs checks both.
 const specTests = [
+  "TestVIPFocusInput",
+  "TestVIPFocusAvailability",
+  "TestVIPObjectMemberKeyCorpusCoverage",
+  "FuzzObjectMemberKeyContext",
   "TestEffectMarkerComments",
   "FuzzEffectMarkerComments",
   "FuzzEffectSlotRecovery",

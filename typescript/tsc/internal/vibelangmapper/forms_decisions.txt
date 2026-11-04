@@ -4837,6 +4837,11 @@ typescript/vibelang/cases/nothrow-toplevel-async.fail/main.vibe:23:45 lambda pla
 typescript/vibelang/cases/nothrow-toplevel-async.fail/main.vibe:28:59 lambda dual fallback
 typescript/vibelang/cases/nothrow-toplevel-async.fail/main.vibe:31:29 lambda plain fallback
 typescript/vibelang/cases/nothrow-toplevel-async.fail/main.vibe:31:57 lambda dual fallback
+typescript/vibelang/cases/object-member-key-context/main.vibe:4:20 lambda plain table
+typescript/vibelang/cases/object-member-key-context/main.vibe:4:3 lambda choice fallback
+typescript/vibelang/cases/object-member-key-context/main.vibe:4:60 lambda plain protocol
+typescript/vibelang/cases/object-member-key-context/main.vibe:5:27 lambda plain table
+typescript/vibelang/cases/object-member-key-context/main.vibe:5:3 lambda effectFn keyword
 typescript/vibelang/cases/opencode-local-fork-binding.fail/main.vibe:5:21 lambda effectFn keyword
 typescript/vibelang/cases/opencode-local-fork-binding.fail/main.vibe:7:10 lambda plain fallback
 typescript/vibelang/cases/opencode-narrowed-branch-call-fixed-output/lib.vibe:12:22 byname program table

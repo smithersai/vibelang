@@ -397,12 +397,24 @@ func vipSeeds(leaveOut map[string]bool) [][]byte {
 func FuzzVIPDifferential(f *testing.F) {
 	startShortBudget(f)
 	leaveOut := vipLeaveOut()
-	for _, seed := range vipSeeds(leaveOut) {
+	focus := strings.TrimSpace(os.Getenv("VIBELANG_FUZZ_VIP_FOCUS"))
+	if err := validateVIPFocus(focus, leaveOut); err != nil {
+		f.Fatal(err)
+	}
+	seeds := vipSeeds(leaveOut)
+	if focus != "" {
+		minimal := vipgen.Seed(focus)
+		rich := append(slices.Clone(minimal), 0xff, 0xff)
+		rich = append(rich, make([]byte, 256)...)
+		seeds = [][]byte{minimal, rich}
+		f.Logf("VIP focus %s, preserving swarm choices", focus)
+	}
+	for _, seed := range seeds {
 		f.Add(seed)
 	}
 	env := newVIPEnv(f)
 	f.Fuzz(func(t *testing.T, data []byte) {
-		p := vipgen.Generate(data, leaveOut)
+		p := vipgen.Generate(vipFocusedInput(data, focus), leaveOut)
 		if p == nil {
 			t.Skip("every construct is pending, or the input names one that is pending or not registered; VIBELANG_FUZZ_PENDING=1 generates pending constructs, and TestVIPConstructs runs their probes")
 		}
@@ -412,7 +424,12 @@ func FuzzVIPDifferential(f *testing.F) {
 		for _, key := range mapKeys(failures) {
 			g.add(key, p, failures[key])
 		}
-		g.finish(specCorpusKey(t))
+		corpusKey := specCorpusKey(t)
+		if focus != "" {
+			// Explicitly retargeted data is not the original pending reproduction.
+			corpusKey = ""
+		}
+		g.finish(corpusKey)
 	})
 }
 

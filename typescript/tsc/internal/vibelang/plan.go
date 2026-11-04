@@ -195,6 +195,11 @@ func forEachCallInBody(fn *ast.Node, cb func(call *ast.Node) bool) bool {
 			return false
 		}
 		if isFunctionBoundary(node) && !catchLeftHoldsTry(node) {
+			if ast.IsFunctionLike(node) && node.Parent != nil && ast.IsObjectLiteralExpression(node.Parent) {
+				return node.ForEachChild(func(child *ast.Node) bool {
+					return ast.IsComputedPropertyName(child) && visit(child)
+				})
+			}
 			return false
 		}
 		if isInvocation(node) && cb(node) {
@@ -222,6 +227,11 @@ func (a *analyzer) forEachRunningCallInBody(fn *ast.Node, cb func(*ast.Node) boo
 			return false
 		}
 		if isFunctionBoundary(node) && !catchLeftHoldsTry(node) {
+			if ast.IsFunctionLike(node) && node.Parent != nil && ast.IsObjectLiteralExpression(node.Parent) {
+				return node.ForEachChild(func(child *ast.Node) bool {
+					return ast.IsComputedPropertyName(child) && visit(child)
+				})
+			}
 			return false
 		}
 		if isInvocation(node) && cb(node) {

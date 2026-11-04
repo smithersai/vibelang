@@ -289,7 +289,11 @@ func (tx *lowering) visitNode(node *ast.Node) *ast.Node {
 	case node.Kind == ast.KindFunctionDeclaration && tx.plan.isEffect(node):
 		return tx.visitEffectFunctionDeclaration(node)
 	case node.Kind == ast.KindMethodDeclaration && tx.plan.isEffect(node):
-		return tx.lowerMethod(node)
+		lowered := tx.lowerMethod(node)
+		if node.Parent != nil && ast.IsObjectLiteralExpression(node.Parent) {
+			return tx.visitObjectMemberName(lowered)
+		}
+		return lowered
 	case tx.inEffect && catchLeftHoldsTry(node):
 		return tx.visitCatchLeftValue(node)
 	case tx.plan.heads[node]:
@@ -308,6 +312,9 @@ func (tx *lowering) visitNode(node *ast.Node) *ast.Node {
 		saved := tx.inEffect
 		tx.inEffect = false
 		defer func() { tx.inEffect = saved }()
+		if ast.IsFunctionLike(node) && node.Parent != nil && ast.IsObjectLiteralExpression(node.Parent) {
+			return tx.visitObjectMemberBoundary(node, saved)
+		}
 	}
 	return tx.Visitor().VisitEachChild(node)
 }

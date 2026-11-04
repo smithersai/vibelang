@@ -141,6 +141,7 @@ func checkProgramStarts(c *checker.Checker, file *ast.SourceFile) {
 	a := analyzerFor(c)
 	var visit func(node *ast.Node, topLevel bool, plain *ast.Node) bool
 	visit = func(node *ast.Node, topLevel bool, plain *ast.Node) bool {
+		outerTopLevel, outerPlain := topLevel, plain
 		switch {
 		case node.Kind == ast.KindConstructor || node.Kind == ast.KindGetAccessor || node.Kind == ast.KindSetAccessor || node.Kind == ast.KindClassStaticBlockDeclaration:
 			topLevel, plain = false, node
@@ -182,7 +183,13 @@ func checkProgramStarts(c *checker.Checker, file *ast.SourceFile) {
 				reportNestedRunner(c, file, node, kind)
 			}
 		}
-		return node.ForEachChild(func(child *ast.Node) bool { return visit(child, topLevel, plain) })
+		return node.ForEachChild(func(child *ast.Node) bool {
+			if ast.IsComputedPropertyName(child) && ast.IsFunctionLike(node) &&
+				node.Parent != nil && ast.IsObjectLiteralExpression(node.Parent) {
+				return visit(child, outerTopLevel, outerPlain)
+			}
+			return visit(child, topLevel, plain)
+		})
 	}
 	file.AsNode().ForEachChild(func(child *ast.Node) bool { return visit(child, true, nil) })
 }
