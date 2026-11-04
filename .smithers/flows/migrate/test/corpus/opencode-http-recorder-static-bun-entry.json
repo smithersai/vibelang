@@ -1,0 +1,6 @@
+{
+  "key": "opencode-http-recorder-static-bun-entry",
+  "source": "export const result = await Bun.build({entrypoints:[\"src/index.ts\"],target:\"bun\",write:false})\n",
+  "after": "src/index.vibe",
+  "module": "export const value: number = 7\n"
+}

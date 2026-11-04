@@ -13,7 +13,7 @@ import { addBunBuildGlobs } from "./bun-globs.mjs"
 // coding agents up with the vibelang it installed.
 import { createHash } from "node:crypto"
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs"
-import { join, posix } from "node:path"
+import { isAbsolute, join, posix, relative, resolve } from "node:path"
 import { wireNativeViteConfigs } from "./vite-config.mjs"
 import { addVitestProjectPlugins } from "./vitest-projects.mjs"
 import { wireBunFixtureTests } from "./bun-fixtures.mjs"
@@ -526,6 +526,85 @@ export function addBunBuildPlugin(text, ts) {
   }
   find(source)
   return edits.length ? applyPluginEdits(text, [importEdit(text, source, ts, "vibelang-unplugin/bun"), ...edits]) : text
+}
+
+/**
+ * A Bun build resolves literal entrypoints from its package's working
+ * directory. Keep a native source when it exists; otherwise use the existing
+ * migrated source. Unknown option overrides and explicit cwd changes require
+ * manual routing instead of guessing which literal the build will consume.
+ */
+function addBunBuildEntries(text, ts, { root, dir }) {
+  const source = ts.createSourceFile("build.ts", text, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS)
+  const edits = [], warnings = []
+  let changesCwd = false
+  const propertyName = (name) => {
+    if (!name) return undefined
+    if (ts.isComputedPropertyName(name)) {
+      const expression = unwrapped(name.expression, ts)
+      return ts.isStringLiteralLike(expression) ? expression.text : undefined
+    }
+    return ts.isIdentifier(name) || ts.isStringLiteralLike(name) ? name.text : undefined
+  }
+  const callIs = (node, receiver, method) => ts.isCallExpression(node) && ts.isPropertyAccessExpression(node.expression) &&
+    ts.isIdentifier(node.expression.expression) && node.expression.expression.text === receiver && node.expression.name.text === method
+  const checkCwd = (node) => {
+    if (callIs(node, "process", "chdir")) changesCwd = true
+    ts.forEachChild(node, checkCwd)
+  }
+  checkCwd(source)
+  const migrated = (entry) => {
+    if (!/\.tsx?$/.test(entry) || /(?:\.d\.[cm]?ts|\.d\.(?:vibe|vibex)\.ts)$/.test(entry)) return undefined
+    const path = resolve(root, dir, entry), fromRoot = relative(resolve(root), path)
+    if (isAbsolute(fromRoot) || fromRoot.split(/[\\/]/)[0] === ".." || existsSync(path)) return undefined
+    const next = entry.replace(/\.tsx?$/, entry.endsWith(".tsx") ? ".vibex" : ".vibe")
+    try {
+      return statSync(resolve(root, dir, next)).isFile() ? next : undefined
+    } catch (error) {
+      if (error.code === "ENOENT" || error.code === "ENOTDIR") return undefined
+      throw error
+    }
+  }
+  const visit = (node) => {
+    if (callIs(node, "Bun", "build")) {
+      const options = unwrapped(node.arguments[0], ts)
+      if (options && ts.isObjectLiteralExpression(options)) {
+        const properties = options.properties.filter(p => propertyName(p.name) === "entrypoints")
+        const candidates = []
+        for (const property of properties) {
+          const array = ts.isPropertyAssignment(property) && unwrapped(property.initializer, ts)
+          if (!array || !ts.isArrayLiteralExpression(array)) continue
+          for (const element of array.elements) {
+            const literal = unwrapped(element, ts)
+            if (!ts.isStringLiteralLike(literal)) continue
+            const next = migrated(literal.text)
+            if (next !== undefined) candidates.push({ literal, next })
+          }
+        }
+        const ambiguous = properties.length !== 1 || options.properties.some(p =>
+          ts.isSpreadAssignment(p) || (p.name && ts.isComputedPropertyName(p.name) && propertyName(p.name) === undefined))
+        if (candidates.length && (changesCwd || ambiguous)) {
+          const line = source.getLineAndCharacterOfPosition(node.getStart(source)).line + 1
+          warnings.push("line " + line + ": Bun.build has migrated literal entries but " +
+            (changesCwd ? "the script changes its working directory" : "its options can override entrypoints") +
+            "; route those entries by hand")
+        } else {
+          const printer = ts.createPrinter()
+          for (const { literal, next } of candidates) {
+            const replacement = ts.isNoSubstitutionTemplateLiteral(literal)
+              ? ts.factory.createNoSubstitutionTemplateLiteral(next)
+              : ts.factory.createStringLiteral(next, literal.getText(source).startsWith("'"))
+            edits.push({ start: literal.getStart(source), end: literal.end, text: printer.printNode(ts.EmitHint.Expression, replacement, source) })
+          }
+        }
+      }
+    }
+    ts.forEachChild(node, visit)
+  }
+  visit(source)
+  let next = text
+  for (const edit of edits.sort((a, b) => b.start - a.start)) next = next.slice(0, edit.start) + edit.text + next.slice(edit.end)
+  return { text: next, warnings }
 }
 
 const viteConfigNames = ["vitest.config.ts", "vitest.config.mts", "vitest.config.js", "vitest.config.mjs", "vite.config.ts", "vite.config.mts", "vite.config.js", "vite.config.mjs"]
@@ -1449,7 +1528,9 @@ export function wireBunBuilds({ root, packages, ts, specsFor }) {
       try {
         const entries = addBunBuildGlobs(text, ts, file)
         warnings.push(...entries.warnings.map(warning => file + ": " + warning))
-        const next = addBunBuildPlugin(entries.text, ts)
+        const sources = addBunBuildEntries(entries.text, ts, { root, dir: pkg.dir })
+        warnings.push(...sources.warnings.map(warning => file + ": " + warning))
+        const next = addBunBuildPlugin(sources.text, ts)
         if (next === text) continue
         write(file, next)
         builds.push(file)
