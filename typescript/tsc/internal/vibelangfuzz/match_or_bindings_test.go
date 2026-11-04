@@ -24,7 +24,7 @@ func TestOrPatternBindingsCompile(t *testing.T) {
 		"export function f(s: unknown) { const r = match (s) { when %s: v; default: 0; }; return r }",
 		"export function f(s: unknown) { if (s is %s) return v; return 0 }",
 		"export function f(s: unknown) { if (!(s is %s)) return 0; return v }",
-		"export function f(xs: unknown[]) { for (const s of xs) if (s is %s) return v; return 0 }",
+		"export function f(xs: unknown[]) { for (const s of xs) { if (s is %s) return v; } return 0 }",
 	}
 	for i, form := range forms {
 		for _, pattern := range patterns {

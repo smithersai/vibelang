@@ -23,7 +23,7 @@ func orPatternBindingRules() []dataRule {
 		"export function f(s: unknown) { const r = match (s) { when %s: v; default: 0; }; return r }",
 		"export function f(s: unknown) { if (s is %s) return v; return 0 }",
 		"export function f(s: unknown) { if (!(s is %s)) return 0; return v }",
-		"export function f(xs: unknown[]) { for (const s of xs) if (s is %s) return v; return 0 }",
+		"export function f(xs: unknown[]) { for (const s of xs) { if (s is %s) return v; } return 0 }",
 	}
 	const quote = "An `or` pattern shares one lexical cell for a name bound with the same keyword in its alternatives."
 	var rules []dataRule
@@ -78,6 +78,11 @@ func orPatternBindingRules() []dataRule {
 			})
 		}
 	}
+	rules = append(rules, []dataRule{
+		{name: "or-pattern-unbraced-for-let", chapter: "004-match.md", quote: "an `is` pattern binding in an unbraced statement body", source: "export function f(xs:unknown[]){for(const s of xs) if(s is {a:let v} or {b:let v}) return 1; return 0}", code: "only:EK0705", owner: "impl-hunt-data"},
+		{name: "or-pattern-unbraced-for-const", chapter: "004-match.md", quote: "an `is` pattern binding in an unbraced statement body", source: "export function f(xs:unknown[]){for(const s of xs) if(s is {a:const v} or {b:const v}) return 1; return 0}", code: "only:EK0705", owner: "impl-hunt-data"},
+		{name: "or-pattern-unbraced-label", chapter: "004-match.md", quote: "an `is` pattern binding in an unbraced statement body", source: "export function f(xs:unknown[]){for(const s of xs) label: if(s is {a:let v} or {b:let v}) return 1; return 0}", code: "only:EK0705", owner: "impl-hunt-data"},
+	}...)
 	return rules
 }
 
