@@ -27,25 +27,25 @@ func nativeReadonlyUpgradeQuoted(t testing.TB) {
 }
 func TestNativeReadonlyUpgradeQuoted(t *testing.T) { nativeReadonlyUpgradeQuoted(t) }
 
-type nativeReadonlyPair struct{ key, source, legacy string }
+type nativeReadonlyPair struct{ key, source string }
 
 var nativeReadonlyPairs = []nativeReadonlyPair{
-	{"smithers-options", "export interface SmithersErrorOptions { cause?: unknown; includeDocsUrl?: boolean }\n", "export interface SmithersErrorOptions { readonly cause?: unknown; readonly includeDocsUrl?: boolean }\n"},
-	{"interface", "export interface Shape {field:number;optional?:string}\n", "export interface Shape {readonly field:number;readonly optional?:string}\n"},
-	{"alias", "export type Shape={field:string;nested:{inner:number;readonly fixed:boolean}}\n", "export type Shape={readonly field:string;readonly nested:{readonly inner:number;readonly fixed:boolean}}\n"},
-	{"method", "export interface Shape {read(input:{field:string}):{result:number}}\n", "export interface Shape {read(input:{readonly field:string}):{readonly result:number}}\n"},
-	{"index", "export interface Shape {[key:string]:{field:number}}\n", "export interface Shape {readonly [key:string]:{readonly field:number}}\n"},
-	{"mapped", "export type Shape<A>={[K in keyof A]:{field:A[K]}}\n", "export type Shape<A>={[K in keyof A]:{readonly field:A[K]}}\n"},
-	{"mutable", "export type Shape={mutable open:number;mutable?:number;nested:{mutable field:string;count:number}}\n", "export type Shape={mutable open:number;readonly mutable?:number;readonly nested:{mutable field:string;readonly count:number}}\n"},
-	{"class", "export class Shape {value=1;field:{inner:number}={inner:1}}\n", "export class Shape {value=1;field:{readonly inner:number}={inner:1}}\n"},
-	{"namespace", "export namespace N {export interface Shape {field:number}}\n", "export namespace N {export interface Shape {readonly field:number}}\n"},
-	{"module", "module Native {export interface Shape {field:number}}\nimport {Shape} from Native\nexport type Public=Shape\n", "module Native {export interface Shape {field:number}}\nimport {Shape} from Native\nexport type Public=Shape\n"},
-	{"containers", "export type Shape={field:{inner:number}[];pair:[{count:string}]}\n", "export type Shape={readonly field:{readonly inner:number}[];readonly pair:[{readonly count:string}]}\n"},
-	{"explicit", "export interface Shape {readonly field:{inner:number}}\n", "export interface Shape {readonly field:{readonly inner:number}}\n"},
-	{"keys", "export type Shape={'a-b'?:number;[Symbol.toStringTag]:string;0:number}\n", "export type Shape={readonly 'a-b'?:number;readonly [Symbol.toStringTag]:string;readonly 0:number}\n"},
-	{"mutable-index", "export type Shape={mutable [key:string]:{field:number}}\n", "export type Shape={mutable [key:string]:{readonly field:number}}\n"},
-	{"explicit-index", "export type Shape={readonly [key:string]:{field:number}}\n", "export type Shape={readonly [key:string]:{readonly field:number}}\n"},
-	{"parameter", "export function read(input:{field:number}):number{return input.field}\n", "export function read(input:{readonly field:number}):number{return input.field}\n"},
+	{"smithers-options", "export interface SmithersErrorOptions { cause?: unknown; includeDocsUrl?: boolean }\n"},
+	{"interface", "export interface Shape {field:number;optional?:string}\n"},
+	{"alias", "export type Shape={field:string;nested:{inner:number;readonly fixed:boolean}}\n"},
+	{"method", "export interface Shape {read(input:{field:string}):{result:number}}\n"},
+	{"index", "export interface Shape {[key:string]:{field:number}}\n"},
+	{"mapped", "export type Shape<A>={[K in keyof A]:{field:A[K]}}\n"},
+	{"mutable", "export type Shape={mutable open:number;mutable?:number;nested:{mutable field:string;count:number}}\n"},
+	{"class", "export class Shape {value=1;field:{inner:number}={inner:1}}\n"},
+	{"namespace", "export namespace N {export interface Shape {field:number}}\n"},
+	{"module", "module Native {export interface Shape {field:number}}\nimport {Shape} from Native\nexport type Public=Shape\n"},
+	{"containers", "export type Shape={field:{inner:number}[];pair:[{count:string}]}\n"},
+	{"explicit", "export interface Shape {readonly field:{inner:number}}\n"},
+	{"keys", "export type Shape={'a-b'?:number;[Symbol.toStringTag]:string;0:number}\n"},
+	{"mutable-index", "export type Shape={mutable [key:string]:{field:number}}\n"},
+	{"explicit-index", "export type Shape={readonly [key:string]:{field:number}}\n"},
+	{"parameter", "export function read(input:{field:number}):number{return input.field}\n"},
 }
 
 func nativeReadonlyInput(data []byte) (nativeReadonlyPair, string) {
@@ -77,10 +77,8 @@ func nativeReadonlyInput(data []byte) (nativeReadonlyPair, string) {
 	}
 	row := nativeReadonlyPairs[index]
 	row.source = strings.ReplaceAll(row.source, "field", words[word])
-	row.legacy = strings.ReplaceAll(row.legacy, "field", words[word])
 	if comment != 0 {
 		row.source = "/** Public API α. */\n" + row.source
-		row.legacy = "/** Public API α. */\n" + row.legacy
 	}
 	return row, row.key + "/" + words[word] + "/" + strconv.Itoa(comment)
 }
@@ -105,7 +103,7 @@ func FuzzNativeTypeReadonlyUpgrade(f *testing.F) {
 		files := map[string]string{"main.vibe": row.source}
 		before := toolsCompile(t, w, target, files)
 		defer before.Remove()
-		reference := toolsCompile(t, w, target, map[string]string{"main.vibe": row.legacy})
+		reference := toolsCompile(t, w, target, map[string]string{"main.vibe": row.source})
 		defer reference.Remove()
 		if !toolsErrorFree(before) || !toolsErrorFree(reference) {
 			t.Fatalf("invalid generator %s: %v / %v", key, SortedKeys(Keys(before.Dir, before.Diagnostics)), SortedKeys(Keys(reference.Dir, reference.Diagnostics)))
@@ -138,7 +136,7 @@ func FuzzNativeTypeReadonlyUpgrade(f *testing.F) {
 		}
 		got, want := declarations(after), declarations(reference)
 		if len(got) == 0 || !maps.Equal(got, want) {
-			Gap(t, target, "declarations:"+key, "old readonly declaration bytes differ\nwant:%v\ngot:%v\nsource:\n%s\nfixed:\n%s", want, got, row.source, fixed["main.vibe"])
+			Gap(t, target, "declarations:"+key, "written-member declaration bytes differ\nwant:%v\ngot:%v\nsource:\n%s\nfixed:\n%s", want, got, row.source, fixed["main.vibe"])
 		}
 		again := vibelang.FixProjectWithOptions(t.Context(), w.fs, bundled.LibPath(), toolsConfig(w, after.Dir), vibelang.FixOptions{MigrationOnly: true})
 		if again.Err != nil || len(again.Files) != 0 || len(again.Refused) != 0 {

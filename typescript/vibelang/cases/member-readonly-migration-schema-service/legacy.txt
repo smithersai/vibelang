@@ -1,0 +1,3 @@
+export schema S { readonly value: { readonly nested: number }; readonly fixed: string }
+export service Api { readonly value: { readonly nested: number }; readonly fixed: string; run(): number!!; static readonly key = "member/Api" }
+export schema error SE { value: { readonly nested: number } }

@@ -77,11 +77,14 @@ func FuzzSchemaExactOptionalMigration(f *testing.F) {
 			Gap(t, "FuzzSchemaExactOptionalMigration", key, "exact=%t\nbefore:\n%s\nafter:\n%s", exact, source, after)
 		}
 		if key == "nested-native" {
-			for _, fragment := range []string{"readonly value?", "readonly inside?", "export interface Native { readonly value?: string }"} {
+			for _, fragment := range []string{"readonly value?", "readonly inside?"} {
 				if strings.Contains(after, fragment) != migrate {
 					Gap(t, "FuzzSchemaExactOptionalMigration", key+":readonly:"+fragment, "explicit legacy upgrade alone writes readonly; migrate=%t\n%s", migrate, after)
 				}
 			}
+		}
+		if key == "nested-native" && !strings.Contains(after, "export interface Native { value?: string }") {
+			Gap(t, "FuzzSchemaExactOptionalMigration", key+":native-modifiers", "ordinary interface members retain written TypeScript modifiers; migrate=%t\n%s", migrate, after)
 		}
 		checked, err := w.CompileOrdered(t.Context(), Project{Files: map[string]string{"main.vibe": after}, Config: config}, OrderTsc, true)
 		if err != nil {

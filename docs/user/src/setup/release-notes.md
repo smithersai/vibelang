@@ -19,16 +19,16 @@ failure rules from 0.0.10 still apply.
 
 - A computed `schema error` field key whose type may be `"_tag"` now reports `EK2117`: a `string`, an enum or union containing `"_tag"`, a branded string, `any`, `PropertyKey` or a generic constrained by `string`. Give the field a literal key, a literal union without `"_tag"`, a number or a symbol; no automatic fix applies.
 
-- Error payload readonlyness is shallow. To retain the old implicit readonly modifiers in nested payload types and method types, run `vibelang --fix --fix-migration-only`.
+- Error payload readonlyness is shallow. Migration-only fixes write explicit readonly on nested payload members that the pre-pin compiler made readonly, preserving published declarations; ordinary fixes retain written modifiers.
 
 - Run `vibelang --fix` to update imports and re-exports of older generated `data` helpers while preserving local bindings and exported names; native TypeScript consumers remain unchanged and need an explicit helper-import update.
 
-- To preserve interface and object-type APIs that relied on implicit readonly members, run `vibelang --fix --fix-migration-only` on those legacy modules before publishing their new declarations.
+- Ordinary interface and object-type members retain their written modifiers during `vibelang --fix --fix-migration-only`.
 
 - The old bare `Effect<number>` alias was accepted without its migration warning; it now reports `EK4856`. The migration fix preserves comments and explicit default slots, uses shorthand when it needs no new parentheses, and retains a qualified type in other positions. Local and imported types named `Effect` keep their meaning. Later style passes keep the qualified spelling when an automatic shorthand edit would change grouping or declaration output.
 - A comment containing `function` before an `effect` or `async` modifier could hide a missing-keyword error; the compiler now reports it and the quick fix preserves the comment.
 - Effect function expressions could name themselves `fork` or `join`; these names now report `EK1702`, while declaration names follow their enclosing context and method names remain allowed.
-- `data` payload readonlyness is shallow. To preserve the old implicit readonly modifiers on nested fields, run `vibelang --fix --fix-migration-only`; ordinary `--fix` keeps valid writable payloads unchanged.
+- `data` payload readonlyness is shallow. Migration-only fixes write explicit readonly on nested payload members that the pre-pin compiler made readonly, preserving published declarations; ordinary fixes retain written modifiers.
 
 This release changes platform access and name resolution in `.vibe`.
 Run `vibelang -p tsconfig.json --fix`, then check the remaining diagnostics
@@ -497,6 +497,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - `EK4802` warned on `try x.pipe(Stream.runCollect)` and `try take(job)`, though `try` runs the inferred Effect at once. A call that is the direct operand of `try`, parenthesized or not, no longer warns; the same call assigned, passed, returned or pushed without `try`, such as `const value = take(job)`, still does.
 - Browser-storage platform errors suggested a method on a module namespace; they now show how to obtain the key-value store and run its lookup.
+
+- `--fix --fix-migration-only` now follows the member readonly rule: existing unmarked schema fields, including nested `schema error` structs, and service shape properties gain `readonly`. Legacy nested service and error/data payload members also gain explicit modifiers to preserve their pre-pin declarations. Ordinary native members and the already readonly error/data fields stay unchanged. A pre-existing `EK2109` on a schema no longer blocks the upgrade (foldkit-174).
 
 - The function-controls example read the callable `Function` constructor and reported `EK0107`. Its erased constructor comparison now uses the explicit `any` boundary allowed by VIP-1, while the `instanceof` and prototype controls remain checked.
 
@@ -1005,7 +1007,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - The no-throw documentation check missed plain functions with an `effect` parameter or a nested function on one line; it now parses callable contexts and checks both forms.
 - A service declaration could replace a written `Context` namespace alias with a new import in its public declaration. Generated service types now retain a visible namespace alias and preserve its import.
-- Upgrading a `.vibe` module could remove `readonly` from interface and object-type declarations, changing its published API. `vibelang --fix --fix-migration-only` now writes the old modifiers explicitly and preserves those declaration bytes.
+- The migration-only readonly upgrade preserves the former defaults of schema fields and service shape properties. Ordinary interface and object-type declarations retain their written modifiers.
 
 - Codemod conformance checks could report an unchanged private helper as a changed contract; their copied declaration probes now compare private signatures without assuming the original module exports them.
 

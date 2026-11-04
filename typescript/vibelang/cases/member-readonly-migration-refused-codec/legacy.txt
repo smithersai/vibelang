@@ -1,0 +1,4 @@
+export data Drag { Idle; Moving { x: number } }
+export schema S { readonly drag: Drag; readonly n: number }
+export const n = S.fields.n
+export const get = (s: S) => s.n

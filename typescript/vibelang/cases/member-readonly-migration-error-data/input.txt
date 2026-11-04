@@ -1,0 +1,2 @@
+export error E { value: { nested: number } }
+export data D { V { value: { nested: number } } }

@@ -126,7 +126,7 @@ The emitted declarations are the ones the Effect TypeScript writes, so a library
 
 For synchronous foreign calls, `@throws {never}` permits a direct call. Other written bounds require `try Effect.try(() => call())` (`EK0403`), including through aliases and the selected overload. For calls that previously converted listed exception classes into typed failures, `vibelang --fix` writes an explicit bridge that preserves those failures and leaves other exceptions as defects.
 
-When upgrading modules that relied on the old implicit readonly default, run `vibelang --fix --fix-migration-only` to spell those modifiers and retain their published declarations. This includes native type members, legacy `service` fields, nested object types and index signatures; explicit `mutable` members and TypeScript `module` bodies retain their mutability. Service static fields keep their written modifiers, while their nested types retain the old readonly members.
+When upgrading existing `.vibe` modules from the former readonly defaults, run `vibelang --fix --fix-migration-only` to make unmarked schema fields and service shape properties explicitly `readonly` and preserve legacy nested service types. Error and data fields remain shallow readonly properties, while the upgrade writes the old nested payload modifiers explicitly to retain published declarations. Ordinary classes, interfaces and object types retain their written modifiers.
 
 ## Translate the idioms
 

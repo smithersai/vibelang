@@ -47,6 +47,8 @@ func schemaReadonlyMigrationFixes(ctx context.Context, program *compiler.Program
 		case parser.VibeSyntaxSchemaAlias:
 			copy(text[head:head+6], "type  ")
 		case "schema error":
+			// Payload fields are error fields, readonly already. A nested object
+			// in a payload is a schema struct, whose fields had the old default.
 			copy(text[head:head+6], "      ")
 			errorPos := scanner.SkipTrivia(file.Text(), head+6)
 			copy(text[errorPos:errorPos+5], "class")

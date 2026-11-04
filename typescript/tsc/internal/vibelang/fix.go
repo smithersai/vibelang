@@ -368,18 +368,23 @@ type FixRemaining struct {
 
 // FixResult is what FixProject did.
 type FixResult struct {
-	Files     map[tspath.RootedFilePath]*FixedFile
-	Order     []tspath.RootedFilePath
-	Refused   []FixRefusal
-	Remaining []FixRemaining // the fixes that still apply after fixPassLimit passes
-	Err       error          // normalization could not reach a fixed point
-	Sites     []RefusedSite  // the diagnostics --fix declined, in the files before the run (fix_sites.go)
-	Changed   []RefusedSite  // sites a rewrite changed anyway, a vibelang bug: their files keep their text
+	// LegacyReadonlyFields counts explicit pre-flip source modifiers materialized before the fix baseline.
+	LegacyReadonlyFields int
+	Files                map[tspath.RootedFilePath]*FixedFile
+	Order                []tspath.RootedFilePath
+	Refused              []FixRefusal
+	Remaining            []FixRemaining // the fixes that still apply after fixPassLimit passes
+	Err                  error          // normalization could not reach a fixed point
+	Sites                []RefusedSite  // the diagnostics --fix declined, in the files before the run (fix_sites.go)
+	Changed              []RefusedSite  // sites a rewrite changed anyway, a vibelang bug: their files keep their text
 }
 
 // Report writes one line per fixed file, per refusal and per fix that still
 // applies, and a summary.
 func (r *FixResult) Report(w io.Writer, name func(tspath.RootedFilePath) string) {
+	if r.LegacyReadonlyFields > 0 {
+		fmt.Fprintf(w, "vibelang --fix: legacy readonly source upgrade: %d schema/service and nested payload fields; remaining diagnostics use the preserved pre-flip API.\n", r.LegacyReadonlyFields)
+	}
 	total := 0
 	for _, file := range r.Order {
 		fixed := r.Files[file]
@@ -532,6 +537,17 @@ func FixProjectWithOptions(ctx context.Context, fs vfs.FS, libraryPath tspath.Ro
 		return result
 	}
 	options.scope = scope
+	if options.MigrationOnly {
+		progress.enter("legacy readonly source upgrade", 0, 0, 0, "materializing schema/service and nested payload defaults")
+		materializeLegacyReadonly(ctx, program, scope, texts, result)
+		if len(texts) > 0 {
+			program = build(texts)
+			verified(texts)
+		}
+		if done.Err() != nil {
+			return result
+		}
+	}
 	// fresh builds a program no check has read, as the last one: on
 	// opencode's core, a box of 12 GiB ran out of memory when it held
 	// both (2026-11-02).

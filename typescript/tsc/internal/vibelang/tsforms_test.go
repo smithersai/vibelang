@@ -45,6 +45,8 @@ func TestTypeScriptFormQuickFixes(t *testing.T) {
 		{"prelude TaggedError", 4830, `export class Gone extends TaggedError("Gone")<{ id: string }> {}`, `export error Gone { id: string }`},
 		{"last use of the import", 4830, "import * as Data from \"effect/Data\"\n/** Gone. */\nexport class Gone extends Data.TaggedError(\"Gone\")<{ id: string }> {}", "/** Gone. */\nexport error Gone { id: string }"},
 		// EK4831 (D285)
+		{"service with a named shape", 4831, "interface Shape { read(): string!! }\nexport class Named extends Context.Service<Named, Shape>()(\"app/Named\") {}", "interface Shape { read(): string!! }\nexport service Named: Shape { static readonly key = \"app/Named\";}"},
+		{"service of a number", 4831, `export class Port extends Context.Service<Port, number>()("app/Port") {}`, `export service Port: number { static readonly key = "app/Port";}`},
 		{"service mutable field", 4831, `export class Counter extends Context.Service<Counter, { mutable /* keep */ n: number; readonly label: string; mutable: string }>()("app/Counter") {}`, `export service Counter: { mutable /* keep */ n: number; readonly label: string; mutable: string } { static readonly key = "app/Counter" }`},
 		{"service", 4831, "export class Users extends Context.Service<Users, {\n  find(id: string): Effect.Effect<string>\n  readonly region: string,\n  size: (name: string) => number!!\n}>()(\"app/Users\") {}", "export service Users: {\n  find(id: string): Effect.Effect<string>\n  readonly region: string,\n  size: (name: string) => number!!\n} { static readonly key = \"app/Users\" }"},
 		{"local service", 4831, "class Users extends Context.Service<Users, {\n  find(id: string): Effect.Effect<string>\n  readonly region: string,\n  size: (name: string) => number!!\n}>()(\"app/Users\") {}\nexport const users = Users", "service Users {\n  static readonly key = \"app/Users\"\n  find(id: string): string!!\n  readonly region: string\n  size: (name: string) => number!!\n}\nexport const users = Users"},
@@ -188,7 +190,6 @@ func TestTypeScriptFormRefusals(t *testing.T) {
 		{"Schema error tag differs from the name", `export class Failed extends Schema.TaggedError<Failed>()("app/Failed", { id: Schema.String }) {}`, 4837, "a schema error's tag is its name"},
 		{"fields from a named type", "interface Fields { id: string }\nexport class Named extends Data.TaggedError(\"Named\")<Fields> {}", 4830, "the fields come from Fields"},
 		{"error class with members", `export class Custom extends Data.TaggedError("Custom")<{ id: string }> { get message() { return this.id } }`, 4830, ""},
-		{"service of a number", `export class Port extends Context.Service<Port, number>()("app/Port") {}`, 4831, ""},
 		{"struct with optionalKey", `export const Exact = Schema.Struct({ id: Schema.optionalKey(Schema.String) })`, 4832, ""},
 		{"struct with an annotation", `export const Named = Schema.Struct({ id: Schema.String }).annotate({ identifier: "Named" })`, 4832, ""},
 		{"struct whose name is another type", "type Point = { x: number }\nexport const Point = Schema.Struct({ x: Schema.Number })", 4832, ""},
