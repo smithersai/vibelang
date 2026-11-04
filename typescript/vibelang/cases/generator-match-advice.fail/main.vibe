@@ -1,11 +1,12 @@
 // expect: EK1002
 // rule-evidence: docs/design/src/007-tooling.md#typescript-spellings-with-vibelang-forms
-// Both legacy generators must migrate before Option.match's preserving repair.
+// Both explicit producers passed to generator APIs (EK1002, VIP-21) must migrate
+// before Option.match's preserving repair; a plain function* would be native.
 export const choose = (value: Option<number>): number!any!any => Option.match(value, {
-  onNone: () => Effect.gen(function* () {
-    return yield* Effect.succeed(0)
+  onNone: () => Effect.gen(effect function* () {
+    yield try Effect.succeed(0)
   }),
-  onSome: Effect.fn("handler")(function* (n: number) {
-    return yield* Effect.succeed(n + 1)
+  onSome: Effect.fn("handler")(effect function* (n: number) {
+    yield try Effect.succeed(n + 1)
   }),
 })

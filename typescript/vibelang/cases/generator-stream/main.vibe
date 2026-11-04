@@ -1,8 +1,8 @@
 // expect-result: [true,[1,2]]
 import { Stream } from "effect"
 
-// D271 keeps the D26 producer form when no return annotation is written.
-export function* numbers() {
+// VIP-21 marks a Stream producer explicitly with effect function*.
+export effect function* numbers() {
   yield 1
   yield 2
 }

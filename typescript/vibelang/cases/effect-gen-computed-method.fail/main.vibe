@@ -1,10 +1,10 @@
 // expect: EK1002
-// Effect.gen in a method whose name is computed: EK1002's fix plans the marker
+// An explicit producer passed to Effect.gen in a computed method: EK1002's fix plans the marker
 // from the name's source text. The compiler panicked reading it (VIP-1).
 const key = "run"
 export class Worker {
   [key]() {
-    return Effect.gen(function* () {
+    return Effect.gen(effect function* () {
       return 1
     })
   }

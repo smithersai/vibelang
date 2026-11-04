@@ -679,6 +679,9 @@ func FixProjectWithOptions(ctx context.Context, fs vfs.FS, libraryPath tspath.Ro
 				}
 				if len(p.fixes) == 0 && !options.MigrationOnly {
 					p = fileFixes(ctx, program, file, g.refused, tsFormFixCodes)
+					if len(p.fixes) == 0 {
+						p = effectGenTeachingFixes(ctx, program, file, g.refused)
+					}
 					// Pipe and stage rewrites follow rules that consume their operands.
 					if len(p.fixes) == 0 {
 						p = effectPipeFixes(ctx, program, file, g.refused, refuse)

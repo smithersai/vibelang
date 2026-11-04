@@ -43,7 +43,6 @@ FuzzFailuresSpec feature:rethrows-reduce-no-initial compiler VIP-4: the chapter 
 FuzzFailuresSpec corpus:rethrows-reduce-no-initial compiler VIP-4: minimized reproduction of feature:rethrows-reduce-no-initial; lane w2-throw
 
 # Extensible native bases witness the inheritance ban independently of tag compatibility.
-FuzzFailuresSpec  feature:nothrow-generator  compiler  VIP-4: 003-failures.md, Plain code never throws: a throw in a plain generator draws no error; lane nothrow-impl
 FuzzFailuresSpec feature:rethrows-literal-boundary-async-generator compiler VIP-1: an ordinary generator expression still receives legacy producer checking instead of its native source context; lane compiler
 FuzzFailuresSpec corpus:rethrows-literal-boundary-async-generator compiler VIP-1: an ordinary generator expression still receives legacy producer checking instead of its native source context; lane compiler
 FuzzFailuresSpec feature:rethrows-literal-boundary-generator-body compiler VIP-1: an ordinary generator expression still receives legacy producer checking instead of its native source context; lane compiler

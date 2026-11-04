@@ -133,7 +133,7 @@ func TestPlainGeneratorThrows(t *testing.T) {
 		{"export async function* later(v: string): AsyncGenerator<string> { yield v; throw v }", true},
 		{"export function* kept(): Iterator<string> { try { throw \"x\" } catch (e) { yield \"caught\" } }", false},
 		{"export function* nested(): Iterable<number> { const f = (): number!string! => { throw \"x\" }; yield 1 }", false},
-		{"export function* producer(v: string) { if (v === \"\") throw v; yield v }", false},
+		{"export effect function* producer(v: string) { if (v === \"\") throw v; yield v }", false},
 	} {
 		for _, projection := range []Projection{Project(test.source, testContext), Executable(test.source, testContext)} {
 			count := 0

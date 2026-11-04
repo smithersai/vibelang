@@ -1,6 +1,6 @@
-// expect: EK1002 EK3201
-// An Effect TypeScript program pasted into a .vibe file: Effect.gen takes a
-// producer here (EK1002), so main has type any, and EK3201 at the runner says
+// expect: EK1002 EK9211
+// An explicit producer passed to Effect.gen is EK1002. Its rejected callback
+// leaves main with type any, and EK9211 at the runner says
 // its services are unknown rather than "no provider for any". The top-level
 // Effect.gen call only builds a value (VIP-1, VIP-26), so it is no EK1001.
 import { Context, Effect } from "effect"
@@ -9,9 +9,9 @@ class Greeter extends Context.Service<Greeter, {
   readonly greet: (name: string) => Effect.Effect<string>
 }>()("app/Greeter") {}
 
-const main = Effect.gen(function* () {
-  const greeter = yield* Greeter
-  yield* try Effect.log(yield* try greeter.greet("VibeLang"))
+const main = Effect.gen(effect function* () {
+  const greeter = try Greeter
+  yield try Effect.log(try greeter.greet("VibeLang"))
 })
 
 Effect.runPromise(main)

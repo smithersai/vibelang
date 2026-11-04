@@ -1,27 +1,24 @@
 // expect: EK1002
-// In a .vibe file function* declares a producer, so APIs that take a JavaScript
-// generator are EK1002 (Chapter 10). TypeScript's errors inside the generator
-// are hidden, and .ts files in the same program may use these APIs.
+// VIP-21: effect function* declares a Stream producer. Passing one to an API
+// that takes a JavaScript generator is EK1002; native function* is allowed.
+// Each rejected argument is a well-formed producer, rather than a native generator.
 import { Effect, Option } from "effect"
 import { fromTypeScript } from "./helpers.ts"
 
-export const findName = effect (id: string) => try Effect.gen(function* () {
-  const n = yield* try Effect.succeed(id.length)
-  return n
+export const findName = effect (id: string) => try Effect.gen(effect function* () {
+  yield try Effect.succeed(id.length)
 })
 
-export const traced = Effect.fn("traced")(function* (n: number) {
-  return yield* try Effect.succeed(n)
+export const traced = Effect.fn("traced")(effect function* (n: number) {
+  yield try Effect.succeed(n)
 })
 
-export const maybe = Option.gen(function* () {
-  const a = yield* Option.some(1)
-  return a + 1
+export const maybe = Option.gen(effect function* () {
+  yield Option.some(1)
 })
 
-function* body() {
-  yield* try Effect.succeed(1)
-  return 2
+effect function* body() {
+  yield try Effect.succeed(1)
 }
 
 export const named = effect () => try Effect.gen(body)

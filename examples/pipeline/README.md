@@ -1,7 +1,7 @@
 # Sensor pipeline
 
 A lazy producer supplies sensor readings to `Stream.filter`, `Stream.map`,
-and `Stream.take`. A `for...of` loop consumes the resulting Stream.
+and `Stream.take`. A `for try` loop consumes the resulting Stream.
 The producer closes once `Stream.take` has its second matching reading.
 Its finalizer logs closure, including when downstream stops early.
 
@@ -12,7 +12,7 @@ bun run build
 bun run start
 ```
 
-Features: `function*`, `yield`, a producer as a Stream, and `for...of` over a Stream.
+Features: `effect function*`, `yield`, a producer as a Stream, and `for try` over a Stream.
 The consuming loop in Effect TypeScript is:
 ```ts
 const consume = Stream.runForEach(alerts, (alert) =>

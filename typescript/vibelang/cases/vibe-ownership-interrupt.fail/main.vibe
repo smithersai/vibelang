@@ -1,11 +1,11 @@
 // expect: EK1002
-// Effect.gen's function* is a producer here (VIP-21); calling onLapse only
-// builds its Effect (VIP-1), so EK1002 is the one error.
+// VIP-21: an explicit effect function* is a producer, so Effect.gen rejects it.
+// Calling onLapse builds an Effect (VIP-1); EK1002 remains the only error.
 import { Effect } from "effect"
 
 const onLapse = effect (_unconfirmedMs: number) => Effect.void
-export const expire = Effect.gen(function* () {
-  yield* (try Effect.logWarning("run lease lapsed; interrupting owned work")).pipe(
+export const expire = Effect.gen(effect function* () {
+  try Effect.logWarning("run lease lapsed; interrupting owned work").pipe(
     Effect.annotateLogs({ runId: "run", unconfirmedMs: 100 }),
     Effect.andThen(onLapse(100)),
     Effect.andThen(Effect.interrupt)

@@ -229,9 +229,7 @@ type writtenEffectDeclarationMark [2]int
 func isEffectDeclarationCandidate(n *ast.Node) bool {
 	switch n.Kind {
 	case ast.KindFunctionDeclaration:
-		if n.AsFunctionDeclaration().AsteriskToken != nil {
-			return false
-		}
+		// VIP-21 producers retain their explicit effect kind across reparse too.
 	case ast.KindMethodDeclaration:
 		if !ast.IsClassLike(n.Parent) || n.AsMethodDeclaration().AsteriskToken != nil {
 			return false

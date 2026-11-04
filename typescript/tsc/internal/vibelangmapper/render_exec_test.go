@@ -336,7 +336,7 @@ var emitCases = []struct {
 	},
 	{
 		name:   "a producer runs under the runtime's Yield operation, and for try takes a Stream's elements (D26)",
-		source: "function* numbers(n: number) {\n  for (let i = 0; i < n; i++) yield i\n  yield* more(1)\n  yield\n}\nfunction sum() {\n  let s = 0\n  for try (const x of numbers(3)) s += x\n  return s\n}\n",
+		source: "effect function* numbers(n: number) {\n  for (let i = 0; i < n; i++) yield i\n  yield* more(1)\n  yield\n}\nfunction sum() {\n  let s = 0\n  for try (const x of numbers(3)) s += x\n  return s\n}\n",
 		contains: []string{
 			"return $produce(() => $producerGen(function* () {",
 			"yield* $yield(i);",
@@ -594,7 +594,7 @@ func TestEmitLoopRegions(t *testing.T) {
 // producer Effect's exit, including interruption after an early pull.
 func TestEmitProducerCleanup(t *testing.T) {
 	t.Parallel()
-	source := `function* values() { try { yield 1; yield 2 } finally { release() } }`
+	source := `effect function* values() { try { yield 1; yield 2 } finally { release() } }`
 	js, _, diagnostics := Emit(source, testContext)
 	assert.Equal(t, len(diagnostics), 0, "%v\n%s", diagnostics, js)
 	assert.Assert(t, strings.Contains(js, "$produce(() => $producerGen(function* () {"), js)
@@ -761,7 +761,7 @@ func TestProducerDepthRuntime(t *testing.T) {
 		t.Skip("node is unavailable")
 	}
 	source := `import { hooks } from "vibelang-runtime/kernel"
-function* count() { for (let i = 0; i < 100000; i++) yield i }
+effect function* count() { for (let i = 0; i < 100000; i++) yield i }
 export function scenario() {
  let depth = 0
  hooks.onResume = (fiber): void => { depth = Math.max(depth, fiber._stack.length) }
@@ -893,4 +893,14 @@ func TestCapturedSubjectReadByAGuard(t *testing.T) {
 	assert.Assert(t, strings.Contains(projection.Text, `return (void box.v, (true))`), "%s", projection.Text)
 	executable := Executable(source, testContext)
 	assert.Assert(t, strings.Contains(executable.Text, `=> (true))(box.v)`), "%s", executable.Text)
+}
+
+// VIP-21: the same native generator keeps its iterator and finally body.
+func TestEmitNativeGeneratorCleanup(t *testing.T) {
+	source := "function* values() { try { yield 1; return 2 } finally { release() } }"
+	js, _, diagnostics := Emit(source, testContext)
+	assert.Equal(t, len(diagnostics), 0, "%v\n%s", diagnostics, js)
+	assert.Assert(t, strings.Contains(js, "function* values"), js)
+	assert.Assert(t, strings.Contains(js, "finally"), js)
+	assert.Assert(t, !strings.Contains(js, "$produce("), js)
 }

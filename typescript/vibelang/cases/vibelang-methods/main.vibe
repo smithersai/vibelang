@@ -2,7 +2,7 @@
 // data-first function Module.name(x, args) when x's type, declared by that
 // module, has no member of that name. Own members win, so pipe stays a
 // method, and arrays keep their own map.
-function* readings() {
+effect function* readings() {
   for (const celsius of [18, 21, 25, 19, 28, 30]) {
     yield celsius
   }

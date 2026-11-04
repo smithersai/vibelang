@@ -1,6 +1,6 @@
 // Producers (chapter 8, D26): lazy, one value at a time, cleanup on early
 // exit by break, return, and continue to an outer label, one pass per run,
-// service calls between yields, yield* of another producer, a producer passed
+// service calls between yields, iteration over another producer, a producer passed
 // to Stream.take, for...of over a Stream, and 100,000 elements in constant
 // stack.
 import { Data, Stream } from "effect"
@@ -12,7 +12,7 @@ service Store {
   get(key: string): Effect<number, Missing, never>
 }
 
-function* numbers(limit: number, log: string[]) {
+effect function* numbers(limit: number, log: string[]) {
   try {
     let n = 0
     while (n < limit) {
@@ -26,31 +26,31 @@ function* numbers(limit: number, log: string[]) {
 }
 
 // A producer calls a service between yields.
-function* lookups(keys: ReadonlyArray<string>) {
+effect function* lookups(keys: ReadonlyArray<string>) {
   for (const key of keys) yield try (try Store).get(key)
 }
 
-// yield* yields every element of another producer.
-function* withTen(log: string[]) {
-  yield* numbers(2, log)
+// Iterate a producer to yield each of its elements (VIP-21).
+effect function* withTen(log: string[]) {
+  for try (const value of numbers(2, log)) yield value
   yield 10
 }
 
 class Broken extends Data.TaggedError("Broken")<{ readonly at: number }> {}
 
 // A producer that fails after two elements.
-export function* failing() {
+export effect function* failing() {
   yield 1
   yield 2
   throw new Broken({ at: 3 })
 }
 
-function* pairs() {
+effect function* pairs() {
   yield [1, "one"] as const
   yield [2, "two"] as const
 }
 
-function* count(n: number) {
+effect function* count(n: number) {
   let i = 0
   while (i < n) {
     yield i

@@ -17,7 +17,7 @@ effect function collectFiles(directory: string, found: string[], visited: Set<st
   }
 }
 
-function* walk(directory: string) {
+effect function* walk(directory: string) {
   const files: string[] = []
   try collectFiles(directory, files, new Set<string>())
   for (const path of files) yield path

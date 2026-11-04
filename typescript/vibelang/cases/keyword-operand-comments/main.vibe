@@ -146,7 +146,7 @@ effect function throwBlock(flag: boolean): string!Bad {
 }
 
 // yield: a producer and a JavaScript generator
-function* produced() {
+effect function* produced() {
   yield (
     // line
     try later(15)

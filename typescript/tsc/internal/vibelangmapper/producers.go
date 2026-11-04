@@ -4,12 +4,12 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 )
 
-// Producers (D26, D98, D271). An unannotated generator function in a .vibe file is a
-// producer, a Stream: `yield x` emits x, a call between yields runs, as in
+// Producers (VIP-21). An effect function* in a .vibe file is a producer, a
+// Stream; a plain function* stays a JavaScript generator: `yield x` emits x, a call between yields runs, as in
 // an Effect body, `yield* p` emits every element of another producer, and a
 // throw fails the Stream:
 //
-//	function* numbers(n) { ... yield i ... }
+//	effect function* numbers(n) { ... yield i ... }
 //	function numbers(n) { return $produce(function* () { ... yield $emit(i) ... }) }
 //
 // $produce types the generator as Stream<A, E, R>: A from what it emits, E
@@ -18,13 +18,12 @@ import (
 // the Stream's E and R, and leaves any other iterable as it is (D26).
 
 // isProducer reports whether node is a producer: a generator function
-// declaration or explicitly marked method with a body, not async, without
-// a JavaScript iterator contract (VIP-21).
+// declaration or method marked effect, with a body, and not async (VIP-21).
 func isProducer(node *ast.Node) bool {
-	if node.Kind != ast.KindFunctionDeclaration && !(node.Kind == ast.KindMethodDeclaration && node.Flags&ast.NodeFlagsVibeLangEffect != 0) || node.Flags&ast.NodeFlagsReparsed != 0 {
+	if node.Kind != ast.KindFunctionDeclaration && node.Kind != ast.KindMethodDeclaration || node.Flags&ast.NodeFlagsVibeLangEffect == 0 || node.Flags&ast.NodeFlagsReparsed != 0 {
 		return false
 	}
-	return node.Body() != nil && node.BodyData().AsteriskToken != nil && !ast.HasSyntacticModifier(node, ast.ModifierFlagsAsync) && !HasJavaScriptIteratorReturn(node)
+	return node.Body() != nil && node.BodyData().AsteriskToken != nil && !ast.HasSyntacticModifier(node, ast.ModifierFlagsAsync)
 }
 
 // HasJavaScriptIteratorReturn recognizes D271's explicit JavaScript iterator

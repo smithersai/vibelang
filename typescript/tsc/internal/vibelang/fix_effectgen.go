@@ -8,6 +8,7 @@ import (
 
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/checker"
+	"github.com/microsoft/TypeScript/tsc/internal/compiler"
 	"github.com/microsoft/TypeScript/tsc/internal/core"
 	"github.com/microsoft/TypeScript/tsc/internal/ls"
 	"github.com/microsoft/TypeScript/tsc/internal/lsp/lsproto"
@@ -1363,4 +1364,48 @@ func effectFnTypeHasImport(text string) bool {
 		return ast.IsImportTypeNode(node) || node.ForEachChild(visit)
 	}
 	return visit(file.AsNode())
+}
+
+// effectGenTeachingFixes retains the ordinary --fix teaching rewrite after
+// VIP-21 makes native generators valid. Compilation reports no error for them;
+// the existing planner and safe-fix gate still decide whether to rewrite.
+func effectGenTeachingFixes(ctx context.Context, program *compiler.Program, file *ast.SourceFile, refused map[string]bool) proposal {
+	c, done := program.GetTypeCheckerForFile(ctx, file)
+	defer done()
+	p := proposal{file: file}
+	var taken []sourceEdit
+	var visit func(*ast.Node) bool
+	visit = func(node *ast.Node) bool {
+		if ast.IsCallExpression(node) {
+			rewrite := planEffectGen(c, file, node)
+			// Share the diagnostic provider key so a refused fix stays refused.
+			key := diagnosticSource + strconv.Itoa(int(EK1002.Code)) + ":" + nodeText(file, node)
+			// Both fixes are sited on the call, so the second resolves the
+			// site the gate refused for the first (fix_sites.go).
+			site := fileFix{code: EK1002.Code, key: key, siteStart: node.Pos(), siteEnd: node.End(), sited: true}
+			fix, ok := fileFix{}, false
+			switch {
+			case !rewrite.fixable():
+			case !refused[key]:
+				fix, ok = site, true
+				fix.edits = rewrite.edits
+			default:
+				// The second fix keeps the body's .pipe calls once the gate
+				// refused the first, as effectGenNativePipesFix does for EK1002.
+				kept, keptKey := planEffectGenWith(c, file, node, true), key+nativePipesKeySuffix
+				if kept.fixable() && !refused[keptKey] && applyEdits(file.Text(), kept.edits) != applyEdits(file.Text(), rewrite.edits) {
+					fix, ok = site, true
+					fix.edits, fix.key = kept.edits, keptKey
+				}
+			}
+			if ok && editsPreserveComments(file.Text(), fix.edits) &&
+				!slices.ContainsFunc(fix.edits, func(edit sourceEdit) bool { return overlapsAny(edit, taken) }) {
+				taken = append(taken, fix.edits...)
+				p.fixes = append(p.fixes, fix)
+			}
+		}
+		return node.ForEachChild(visit)
+	}
+	file.AsNode().ForEachChild(visit)
+	return p
 }

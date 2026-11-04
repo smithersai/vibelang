@@ -57,7 +57,7 @@ class Reader {
   }
 }
 
-function* producer() {
+effect function* producer() {
   const [n = try choose()] = values("producer", [undefined])
   yield n
 }

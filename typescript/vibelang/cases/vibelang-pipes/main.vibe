@@ -14,7 +14,7 @@ effect function flaky() {
 function addMargin(n: number) { return n + 3 }
 function double(n: number) { return n * 2 }
 
-function* readings() {
+effect function* readings() {
   for (const celsius of [18, 26, 31, 22]) {
     yield celsius
   }

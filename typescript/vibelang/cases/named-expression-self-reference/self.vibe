@@ -24,6 +24,6 @@ export const viaDefault = effect function self(n: number, next: (n: number) => n
 }
 
 // A producer's plain function keeps its name too.
-export const named = function* walk(label: string) {
+export const named = effect function* walk(label: string) {
   yield walk.length
 }

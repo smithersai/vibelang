@@ -1,6 +1,6 @@
 // expect: EK1002
-// Chapter 10 "Generator-style code stays in TypeScript": Effect.gen expects a JavaScript generator,
-// but in VibeLang function* declares a producer.
+// VIP-21: Effect.gen expects a JavaScript generator;
+// an explicit effect function* is a Stream producer.
 
 class UserNotFound extends TaggedError("UserNotFound")<{ readonly id: string }> {}
 
@@ -13,8 +13,8 @@ service Users {
   find(id: string): Effect<User, UserNotFound, never>
 }
 
-const findName = effect (id: string) => try Effect.gen(function* () {
-  const users = yield* Users
-  const user = yield* try users.find(id)
-  return user.name
+const findName = effect (id: string) => try Effect.gen(effect function* () {
+  const users = try Users
+  const user = try users.find(id)
+  yield user.name
 })

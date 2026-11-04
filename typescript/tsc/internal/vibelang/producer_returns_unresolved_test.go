@@ -45,12 +45,12 @@ export const load = Effect.gen(function* () {
 	}
 }
 
-// A callee the program resolves still decides: a function* given to any-typed
-// code, or to a parameter that is not a generator, is a producer.
+// An explicit effect function* remains a producer when passed to any-typed
+// code or a parameter that is not a generator (VIP-21).
 func TestProducerReturnResolvedCalleeStillReports(t *testing.T) {
 	for _, source := range []string{
-		"declare const take: any\nexport const load = take(function* () {\n  return 1\n})\n",
-		"declare function take(f: unknown): void\ntake(function* () {\n  return 1\n})\n",
+		"declare const take: any\nexport const load = take(effect function* () {\n  return 1\n})\n",
+		"declare function take(f: unknown): void\ntake(effect function* () {\n  return 1\n})\n",
 	} {
 		program, file, _, _ := editorProgramWith(t, source, map[string]string{})
 		var codes []int32

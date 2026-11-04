@@ -1,1 +1,0 @@
-impl-hunt-func: VIP-34/VIP-3 require identity-selected EK4856; a use of the retired global Effect alias emits no transition warning.

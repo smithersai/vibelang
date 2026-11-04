@@ -1,10 +1,10 @@
 // expect: EK0107
 // VIP-1 rejects legacy arguments in ordinary generators too.
-export function* echo(label: string, count: number) {
+export effect function* echo(label: string, count: number) {
   yield `${arguments[0]}:${arguments.length}`
   yield label
 }
 
-export const expression = function* (label: string) {
+export const expression = effect function* (label: string) {
   yield arguments[0] as string
 }

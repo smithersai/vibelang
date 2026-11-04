@@ -49,7 +49,7 @@ effect function iteratorInterrupted() {
   return events
 }
 
-function* produce(events: string[]) {
+effect function* produce(events: string[]) {
   try {
     yield disposable(events, "p1")
     yield disposable(events, "p2")

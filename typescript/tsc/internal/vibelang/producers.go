@@ -7,7 +7,6 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/checker"
 	"github.com/microsoft/TypeScript/tsc/internal/core"
 	"github.com/microsoft/TypeScript/tsc/internal/transformers"
-	"github.com/microsoft/TypeScript/tsc/internal/vibelangmapper"
 )
 
 // Producers and loops over streams (design D26, chapters 8 and 26).
@@ -23,8 +22,8 @@ import (
 //	                                           }));
 //	                                         }
 //
-// A function* declaration or function expression in a .vibe file is a
-// producer unless it has a JavaScript iterator return annotation (D271).
+// An effect function* is a producer (VIP-21). A plain function* keeps its
+// native iterator and return value (VIP-1).
 // Its body is an Effect body, as any .vibe function's is, so its calls
 // run; `yield v` offers v to the producer's queue, and `yield* p` yields
 // every element of p. Calling a producer runs none of its body: it returns a
@@ -39,16 +38,15 @@ import (
 // VIP-20: for try consumes a Stream with Stream.runForEachWhile.
 // Ordinary for...of always retains its JavaScript iterator meaning.
 
-// isProducer reports whether fn is a producer: a function* declaration or
-// function expression, not async, with a body, in a .vibe file, without
-// a JavaScript iterator return annotation (D271, amending D26). VIP-21
-// also admits an explicitly marked generator method.
+// isProducer reports whether fn is a producer: an effect function*
+// declaration, function expression or method, not async, with a body, in a
+// .vibe file (VIP-1, VIP-21). A plain function* stays a JavaScript generator.
 func isProducer(fn *ast.Node) bool {
-	if fn.Kind != ast.KindFunctionDeclaration && fn.Kind != ast.KindFunctionExpression && !(fn.Kind == ast.KindMethodDeclaration && isMarkedEffect(fn)) || fn.Body() == nil {
+	if fn.Kind != ast.KindFunctionDeclaration && fn.Kind != ast.KindFunctionExpression && fn.Kind != ast.KindMethodDeclaration || fn.Body() == nil {
 		return false
 	}
 	flags := ast.GetFunctionFlags(fn)
-	return flags&ast.FunctionFlagsGenerator != 0 && flags&ast.FunctionFlagsAsync == 0 && isVibeLangFile(ast.GetSourceFileOfNode(fn)) && !vibelangmapper.HasJavaScriptIteratorReturn(fn)
+	return isMarkedEffect(fn) && flags&ast.FunctionFlagsGenerator != 0 && flags&ast.FunctionFlagsAsync == 0 && isVibeLangFile(ast.GetSourceFileOfNode(fn))
 }
 
 // streamTypeID names the variance property that every Effect 4 Stream has:

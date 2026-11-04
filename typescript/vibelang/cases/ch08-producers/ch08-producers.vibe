@@ -18,7 +18,7 @@ const contents = new Map<string, ReadonlyArray<string>>([
   ["/var/log/app.log", ["INFO start", "ERROR one", "INFO tick", "ERROR two", "ERROR three", "ERROR four", "INFO end"]]
 ])
 
-function* lines(path: string) {
+effect function* lines(path: string) {
   using file = try (try Files).open(path)
   while (true) {
     const line = try file.readLine()        // a service call: may wait on I/O

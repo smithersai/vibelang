@@ -24,7 +24,7 @@ import (
 
 const effectGenUsers = "export class Users extends Context.Service<Users, { readonly find: (id: string) => Effect.Effect<string> }>()(\"app/Users\") {}\n"
 
-// D470: EK1002's quick fix writes Effect.gen and Effect.fn with effect and
+// VIP-21: repair an explicit producer passed to a native generator API with effect and
 // try, each yield* e becomes what runs e where it stands, and the result
 // compiles.
 func TestEffectGenQuickFixes(t *testing.T) {
@@ -474,9 +474,8 @@ func TestEffectGenKeepsAProgramAsAValue(t *testing.T) {
 	}
 }
 
-// An Effect.fn with a pipeline argument is EK1002 too, though no overload
-// accepts the call while function* declares a producer: its generator is not
-// a producer, so EK2128's fix never drops its return value (drive-t3code).
+// VIP-21: a native Effect.fn pipeline accepts its ordinary generator, and
+// no producer-return repair may drop that generator's return (drive-t3code).
 func TestEffectGenLeavesEffectFnPipeline(t *testing.T) {
 	source := `export const load = Effect.fn("load")(
   function* (n: number) {
@@ -491,12 +490,12 @@ func TestEffectGenLeavesEffectFnPipeline(t *testing.T) {
 	for _, d := range program.GetSemanticDiagnostics(t.Context(), file) {
 		codes = append(codes, d.Code())
 	}
-	if !slices.Contains(codes, EK1002.Code) || slices.Contains(codes, EK2128.Code) {
-		t.Fatalf("codes %v; want EK1002 and no EK2128", codes)
+	if slices.Contains(codes, EK1002.Code) || slices.Contains(codes, EK2128.Code) {
+		t.Fatalf("codes %v; native generators must have neither EK1002 nor EK2128", codes)
 	}
 	result := fixCase(t, filepath.Dir(file.FileName().AsString()))
-	if fixed := result.Files[file.FileName()]; fixed == nil || fixed.Counts[EK2128.Code] != 0 || !strings.Contains(fixed.Text, "return n ? Option.some(n)") {
-		t.Fatalf("--fix wrote\n%s\ncounts %v", fixed.Text, fixed.Counts)
+	if fixed := result.Files[file.FileName()]; fixed != nil && (fixed.Counts[EK2128.Code] != 0 || !strings.Contains(fixed.Text, "return n ? Option.some(n)")) {
+		t.Fatalf("--fix changed the native generator return:\n%s\ncounts %v", fixed.Text, fixed.Counts)
 	}
 }
 
@@ -518,6 +517,7 @@ export const refused = () =>
     return s
   })
 `
+	source = strings.ReplaceAll(source, "function*", "effect function*")
 	_, file, _, _ := editorProgram(t, source)
 	dir := filepath.Dir(file.FileName().AsString())
 	result := fixCase(t, dir)
@@ -545,6 +545,10 @@ export const refused = () =>
 // effectGenDiagnostic returns source's first EK1002, which is an error.
 func effectGenDiagnostic(t *testing.T, source string) (*ast.Diagnostic, func() (string, bool)) {
 	t.Helper()
+	// Plain generators are admitted by VIP-21. Exercise the retained invalid-
+	// producer repair with explicit effect generators, keeping every rewrite
+	// and safety-refusal assertion below.
+	source = strings.ReplaceAll(source, "function*", "effect function*")
 	program, file, service, converters := editorProgram(t, source)
 	var diagnostic *ast.Diagnostic
 	for _, d := range program.GetSemanticDiagnostics(t.Context(), file) {

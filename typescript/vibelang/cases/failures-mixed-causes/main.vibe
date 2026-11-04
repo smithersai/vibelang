@@ -104,7 +104,7 @@ effect function usingDisposeThrows() {
   throw new E()
 }
 
-function* numbers() {
+effect function* numbers() {
   try {
     yield 1
     yield 2
@@ -113,13 +113,13 @@ function* numbers() {
   }
 }
 
-function* closingItems() {
+effect function* closingItems() {
   const items = try sync(() => ({
     [Symbol.iterator]() {
       return { next: () => ({ done: false, value: 1 }), return: closeDies }
     }
   }))
-  yield* items
+  for (const value of items) yield value
 }
 
 effect function producerIteratorCloseThrows() {

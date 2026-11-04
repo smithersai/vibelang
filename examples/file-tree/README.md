@@ -1,7 +1,7 @@
 # File tree
 
-A recursive function snapshots regular files, then a producer yields their paths.
-`for...of` consumes the producer; `Effect.forEach` reads files with concurrency 4.
+A recursive function snapshots regular files, then an `effect function*` producer yields their paths.
+`for try` consumes the producer; `Effect.forEach` reads files with concurrency 4.
 The recursion accumulates into an array and returns void. Because it is recursive,
 it writes out its contract, `void!PlatformError!FileSystem | Path`.
 `FileSystem` and `Path` come from Effect; `import "vibelang/platform/node"` makes the entry provide them to `main` from `NodeServices.layer`.

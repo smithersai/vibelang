@@ -1,5 +1,5 @@
 // A lazy source: operators decide how many readings to request.
-function* readings() {
+effect function* readings() {
   try {
     for (const celsius of [18, 21, 25, 19, 28, 30]) {
       yield celsius

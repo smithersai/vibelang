@@ -44,6 +44,8 @@ A class or object method written `effect *values() { yield this.value }` is also
 
 A producer expression cannot use `fork` or `join` as its own name (`EK1702`), just like a non-generator `effect function` expression. Top-level declarations and method names are allowed. `vibelang --fix` preserves the expression's name and self-references through a local constant in a plain arrow; see [Fibers](/concurrency/047-fibers).
 
+A plain synchronous generator follows the no-throw rule: a written `throw` in its body is `EK0401`. Keep JavaScript code that throws in a `.ts` helper.
+
 A bare `return` ends a producer. `return value` is an error (`EK2128`) because a Stream has no return value; `vibelang --fix` writes `return` and keeps the value's evaluation. It rewrites only a function marked `effect`, never a plain `function*`, whose caller can read the value. A `return` inside a `for try` head's binding initialization or body is also an error (`EK2002`); nested functions keep their own return targets. Save the result and use `break` instead.
 
 A `yield` belongs to its own source activation. In a nonproducer `effect` function, arrow or `effect { }` block, it reports `EK2104`, even inside an outer producer. Directly evaluated parameter defaults and destructuring of Effect callables and producers also report `EK2104`: parameter initialization is outside the suspended body. Nested native generators keep TypeScript's own `yield` rules.
@@ -157,3 +159,7 @@ A `for try` head must declare its element with `const` or `let`. A `var`, `using
 A producer binds parameters and evaluates defaults once at the call. Each consumption reruns the body with those same bindings. Forwarding arguments adds no array iterator observations; a source array destructuring pattern still uses its input's iterator.
 
 A producer method retains its receiver without reading a user-modified `Function.prototype.bind`. Its body reads receiver properties when the stream is consumed, including on later consumptions.
+
+A plain `function*` retains JavaScript iterator behavior and may return a value. Pass a plain generator to `Effect.gen` or other native generator APIs; only `effect function*` creates a producer Stream.
+
+Ordinary `vibelang --fix` still offers its safe teaching rewrites from `Effect.gen` and `Effect.fn` to `effect` syntax. Keeping a native generator is valid; the compiler does not require that rewrite.

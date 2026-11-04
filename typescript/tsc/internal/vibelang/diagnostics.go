@@ -68,7 +68,7 @@ var (
 	// EK1001: a module's top level runs a program. {0} is the call, such as "loadConfig()".
 	EK1001 = message(1001, errorCategory, "{0} runs a program, but a module's top level is not inside one.")
 	// EK1002: a generator-based API such as Effect.gen, where function* declares a producer. {0} is the API.
-	EK1002 = message(1002, errorCategory, "{0} expects a JavaScript generator, but in VibeLang function* declares a producer.")
+	EK1002 = message(1002, errorCategory, "{0} expects a JavaScript generator; an effect function* declares a producer.")
 	// EK1003: await using outside an async function. {0} is the keyword.
 	EK1003 = message(1003, errorCategory, "{0} is not part of VibeLang: a call already waits.")
 	// EK1005: a runner inside code that a fiber runs. {0} is the runner, {1} the function.

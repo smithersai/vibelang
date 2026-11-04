@@ -1,0 +1,1 @@
+native generators and Effect.gen retain JavaScript semantics

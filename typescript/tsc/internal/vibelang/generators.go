@@ -6,13 +6,10 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/checker"
 	"github.com/microsoft/TypeScript/tsc/internal/scanner"
-	"github.com/microsoft/TypeScript/tsc/internal/vibelangmapper"
 )
 
-// In a .vibe file, function* declares a producer (Chapter 8), so an API that
-// takes a JavaScript generator, such as Effect.gen, Effect.fn, Option.gen, or
-// Result.gen, cannot be called with an unannotated one: EK1002 (Chapter 10).
-// D271 permits an explicit JavaScript iterator return annotation instead.
+// An explicit effect function* is a producer (VIP-21), so a native generator
+// API cannot consume it. Plain function* stays native, including Effect.gen.
 
 func init() {
 	fileChecks = append(fileChecks, checkGeneratorArguments)
@@ -45,14 +42,14 @@ func checkGeneratorArguments(c *checker.Checker, file *ast.SourceFile) {
 	file.AsNode().ForEachChild(visit)
 }
 
-// isGeneratorFunction reports whether arg is a function* expression, or names
-// a function* declared in a .vibe file.
+// isGeneratorFunction reports whether arg is an explicit producer expression
+// or names an explicit producer declared in a .vibe file.
 func isGeneratorFunction(c *checker.Checker, arg *ast.Node) bool {
 	if ast.IsFunctionExpression(arg) {
-		return arg.AsFunctionExpression().AsteriskToken != nil && !vibelangmapper.HasJavaScriptIteratorReturn(arg)
+		return isProducer(arg)
 	}
 	decl := generatorDeclaration(c, arg)
-	return decl != nil && !vibelangmapper.HasJavaScriptIteratorReturn(decl)
+	return decl != nil && isProducer(decl)
 }
 
 // generatorDeclaration returns the function* declaration in a .vibe file that

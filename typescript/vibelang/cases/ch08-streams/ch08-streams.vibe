@@ -5,7 +5,7 @@ import { Stream } from "effect"
 
 const events: string[] = []
 
-function* countdown(from: number) {
+effect function* countdown(from: number) {
   try {
     let n = from
     while (n > 0) {

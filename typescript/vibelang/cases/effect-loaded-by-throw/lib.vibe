@@ -1,6 +1,5 @@
 // Nothing in this program names a prelude or effect export, and no function
-// declaration has a plain variant: each function below is an Effect only
-// because it throws or produces. The program still loads effect, so each
+// declaration has a plain variant: the declarations explicitly mark an Effect function or producer. The program still loads effect, so each
 // one's type and declaration are the Effect or Stream its JavaScript returns.
 export const make = effect (name: string) => {
   if (name === "") throw new TypeError("empty")
@@ -9,7 +8,7 @@ export const make = effect (name: string) => {
 
 export const pick = effect (name: string) => name === "" ? throw new TypeError("empty") : name
 
-export const count = function* () {
+export const count = effect function* () {
   yield 1
   yield 2
 }

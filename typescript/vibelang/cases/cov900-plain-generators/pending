@@ -1,3 +1,0 @@
-cov-ch900b Chapter 900: A native generator is classified as a Stream producer (EK2128 and missing next), losing its native return value.
-Rules: docs/design/src/900-appendices.md#3db8393ccb5b21c4
-Witness: typescript/vibelang/cases/cov900-plain-generators/main.vibe
