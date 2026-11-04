@@ -222,6 +222,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Documentation tests lost executable examples when the failure chapter was shortened; retained native fixtures now keep constructor, generator and handler exception-boundary checks running.
 
 - Async documentation checks still selected obsolete callback-contract text; they now verify the current rejection rules and retain executable async-versus-plain Promise examples.
+
+- Sidecar resolution documentation checks expected obsolete wording; they now verify the current final-path, symlink, module-identity and explicit-input safeguards.
 - A variable named `module` followed by `as`, `satisfies`, `is` or `of` and an object type, pattern or literal, as in `(module as { model?: unknown }).model`, failed with `EK4003` ("A module expression is not supported"). It now reads as the identifier `module`, as in TypeScript; `module { … }` and `module name { … }` inside an expression still report `EK4003`.
 
 - Migrating a module reached through an exact `paths` alias could rewrite imports to a name absent from the configuration, such as `models.vibe`. Those imports now name the same migrated source by a relative path, and revert restores the original alias.
