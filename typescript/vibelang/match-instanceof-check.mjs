@@ -51,9 +51,12 @@ export async function checkInstanceOfRepair(url, expected, repaired) {
     assert.match(fixed, /Match.instanceOf/, "unproven constructor keeps advisory without repair")
     assert.doesNotMatch(fixed, /when (Number|String|Boolean|Array):/)
   }
-  const declaration = readFileSync(path.join(dir, "out/main.d.ts"), "utf8")
+  // The compiler writes the generated `@throws {never}` contract on exported
+  // functions (decided detail 42); the native twin has none. Compare without it.
+  const withoutContract = (text) => text.replace(/^\/\*\* @throws \{never\} \*\/\n/gm, "")
+  const declaration = withoutContract(readFileSync(path.join(dir, "out/main.d.ts"), "utf8"))
   for (const work of [nativeDir, fixedDir]) {
-    assert.equal(readFileSync(path.join(work, "out/main.d.ts"), "utf8"), declaration, "public declarations")
+    assert.equal(withoutContract(readFileSync(path.join(work, "out/main.d.ts"), "utf8")), declaration, "public declarations")
   }
   console.log("native, original and CLI repair agree")
 }
