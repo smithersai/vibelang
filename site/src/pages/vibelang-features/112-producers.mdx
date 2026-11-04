@@ -163,3 +163,5 @@ A producer method retains its receiver without reading a user-modified `Function
 A plain `function*` retains JavaScript iterator behavior and may return a value. Pass a plain generator to `Effect.gen` or other native generator APIs; only `effect function*` creates a producer Stream.
 
 Ordinary `vibelang --fix` still offers its safe teaching rewrites from `Effect.gen` and `Effect.fn` to `effect` syntax. Keeping a native generator is valid; the compiler does not require that rewrite.
+
+A labeled jump out of a `for try` loop reports `EK2003`, including when the loop is inside `for concurrent`. Stop consuming with `break`, then make the item's decision after the stream loop.

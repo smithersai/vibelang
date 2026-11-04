@@ -1,0 +1,16 @@
+// expect: EK2003
+export effect function first() {
+ own: for concurrent (const x of [1]) {
+  for try (const y of Stream.make(x)) { continue own }
+ }
+}
+export effect function second() {
+ outer: alias: for concurrent(1) (const x of [1]) {
+  for try (const y of Stream.make(x)) { break outer }
+ }
+}
+export effect function third() {
+ own: for concurrent(2) (const x of [1]) {
+  uninterruptible { for try (const y of Stream.make(x)) { continue own } }
+ }
+}

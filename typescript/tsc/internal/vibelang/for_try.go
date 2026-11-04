@@ -98,10 +98,11 @@ func isReturnKeyword(file *ast.SourceFile, n *ast.Node) bool {
 }
 
 // labeledJumpTarget returns the statement a labeled break or continue names,
-// looking through do expressions, whose invoked arrows jumpTarget stops at.
+// looking through do expressions and generated concurrent item callbacks.
+// Neither introduces a source callable; written callables keep their boundary.
 func labeledJumpTarget(file *ast.SourceFile, jump *ast.Node) *ast.Node {
 	label := jump.Label().Text()
-	for n := jump.Parent; n != nil && (!isFunctionBoundary(n) || isDoArrow(file, n)); n = n.Parent {
+	for n := jump.Parent; n != nil && (!isFunctionBoundary(n) || isDoArrow(file, n) || isConcurrentBody(n)); n = n.Parent {
 		if n.Kind == ast.KindLabeledStatement && n.AsLabeledStatement().Label.Text() == label {
 			return n
 		}

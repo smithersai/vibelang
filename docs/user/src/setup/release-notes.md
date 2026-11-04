@@ -84,6 +84,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - Generated declarations for a `module` body could import a relocated compiler output and make a rebuild fail with `TS5055`. They now retain source-module imports, and returning a migrated source to TypeScript removes the declarations owned by its module bodies.
 
+- A labeled jump from a `for try` loop through a `for concurrent` body could report a native function-boundary error. It now reports `EK2003`, while source-written functions keep their own jump boundaries.
 - A labeled `continue` naming its own `for concurrent` loop could produce invalid JavaScript. It now ends that item, including through nested native loops and chained labels.
 - A `catch` execution head wrapped in `satisfies` could report a generated TypeScript operand error beside `EK0505`. It now reports the source diagnostic while preserving independent wrapper type errors.
 
