@@ -195,6 +195,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Schema documentation checks still expected older wording and left written companions unchecked; they now verify the published comment, declaration-order and export rules.
 - The sidecar documentation check missed source-root rules moved above the options table; it now checks the linked layout paragraph and all three TypeScript root choices.
 - The documentation check rejected piping a recovered value after a block-bodied catch handler; it now checks the distinction between open expression bodies and closed handlers.
+- Documentation checks could fail when an example moved; they now check the current example and detect prose that separates an introduction from its code or table.
 - A variable named `module` followed by `as`, `satisfies`, `is` or `of` and an object type, pattern or literal, as in `(module as { model?: unknown }).model`, failed with `EK4003` ("A module expression is not supported"). It now reads as the identifier `module`, as in TypeScript; `module { … }` and `module name { … }` inside an expression still report `EK4003`.
 
 - Migrating a module reached through an exact `paths` alias could rewrite imports to a name absent from the configuration, such as `models.vibe`. Those imports now name the same migrated source by a relative path, and revert restores the original alias.
