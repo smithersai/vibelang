@@ -98,6 +98,8 @@ The codemod refuses a batch whose `.vibe` path the repository ignores, as a trac
 
 A file the repository's own code finds by its name stays `.ts`, as a tool's config does: the inventory records in `namedBy` the first non-test file that writes the file name as a string, as alchemy's CLI writes `"alchemy.run.ts"`, and the plan refuses that file with the reason.
 
+Platform extraction also visits `.tsx` and `.vibex` sources in JSX mode, including host calls inside JSX callbacks. Their native companions use `.platform.tsx`, and a `module` body retains the containing file's JSX source kind. The same export-signature and publication checks apply.
+
 The codemod formats generated `.platform.ts` siblings with the repository's own formatter before it records its result, so a batch's immediate format check sees the final TypeScript. `codemod.json` records the formatter, exact files, exit code and relative log under `platform.formatted`; formatter failures remain visible there and in `logs/platform-format.log`. Files outside the split remain untouched.
 
 Each step reads and writes the run directory, so a step that already recorded its result returns it, and a stopped run resumes where it stopped.

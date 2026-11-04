@@ -1,0 +1,3 @@
+{
+  "source": "import { sep } from \"node:path\"\nexport function view(): unknown { return <span>{sep}</span> }\nexport const kept = VALUE\n"
+}

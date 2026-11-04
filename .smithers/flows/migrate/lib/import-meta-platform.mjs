@@ -4,7 +4,7 @@ import { readFileSync, writeFileSync } from "node:fs"
 import { dirname, join, posix, resolve } from "node:path"
 
 export function splitImportMeta(text, file, sibling, ts) {
-  const source = ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS)
+  const source = ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true, /\.(?:tsx|vibex)$/.test(file) ? ts.ScriptKind.TSX : ts.ScriptKind.TS)
   const sites = [], taken = new Set()
   let refused
   const visit = node => {

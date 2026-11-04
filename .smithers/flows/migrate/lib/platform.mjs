@@ -107,7 +107,7 @@ export function platformCausesOf(config, runDir) {
 }
 
 /** The sibling module a split writes for file, src/Open.ts: src/Open.platform.ts. */
-export const platformPath = (file) => file.replace(/\.(m?ts)$/, ".platform.$1")
+export const platformPath = (file) => file.replace(/\.(m?ts|tsx|vibex)$/, (_, extension) => ".platform." + (extension === "vibex" ? "tsx" : extension))
 
 /**
  * Splits the TypeScript module text of file (repository-relative). Returns
@@ -133,7 +133,7 @@ export function splitPlatform(text, file, ts, { globals = [] } = {}) {
 }
 
 function splitDeclarationsPlatform(text, file, ts, { globals = [] } = {}) {
-  const source = ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS)
+  const source = ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true, /\.(?:tsx|vibex)$/.test(file) ? ts.ScriptKind.TSX : ts.ScriptKind.TS)
   const imports = source.statements.filter((s) => ts.isImportDeclaration(s))
   const platform = new Set()
   const imported = new Set()
@@ -331,7 +331,7 @@ export function splitBatchPlatform(root, files, ts, {
   const splits = []
   const refused = []
   for (const file of files) {
-    if (!/\.m?ts$/.test(file) || /\.d\.m?ts$/.test(file)) continue
+    if (!/\.(?:m?ts|tsx|vibex)$/.test(file) || /\.d\.(?:m?ts|tsx|vibex)$/.test(file)) continue
     const sibling = platformPath(file)
     if (exists(sibling)) { refused.push(`${file}: ${sibling} already exists`); continue }
     const result = splitPlatform(read(file), file, ts, { globals: globalsOf(file) })
@@ -618,7 +618,7 @@ function firstLine(source, statement) {
  * keeps its platform code, or null when it reaches no platform code.
  */
 export function splitPlatformToModule(text, file, ts, { globals = [], throws = false, platform: platformCode = true, reexports = true } = {}) {
-  const source = ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS)
+  const source = ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true, /\.(?:tsx|vibex)$/.test(file) ? ts.ScriptKind.TSX : ts.ScriptKind.TS)
   const imports = source.statements.filter((s) => ts.isImportDeclaration(s))
   const platform = new Set()
   const imported = new Set()
