@@ -350,6 +350,8 @@ code.
 
 The same code covers the other legacy JavaScript the language removes anywhere in a `.vibe` file, plain functions included: `eval`, direct or indirect; the `Function` constructor, except `x instanceof Function` and `Function.prototype`; `arguments`, replaced by a rest parameter; `with`; reading `constructor` from a function value; and a string-literal `data:` or `blob:` import specifier. Grouping and erased type assertions keep the `instanceof Function` and `Function.prototype` exemptions: `x instanceof (Function)` and `(Function as FunctionConstructor).prototype` are allowed. Property names such as `o.eval` and the type `Function` keep their TypeScript meaning. Code that needs one of these lives in a `.ts` or `.js` file.
 
+An object shorthand such as `{ Function }` reads its value binding, so a reference to the global constructor is `EK0107`; a local binding named `Function` stays allowed.
+
 `Date.now()`, `Date()`, `new Date()`, and `Intl.DateTimeFormat().format()` with no
 argument read the current clock without a diagnostic. Read time through `try Clock.currentTimeMillis` and pass that
 value to the formatter when you need controlled time, including in tests.

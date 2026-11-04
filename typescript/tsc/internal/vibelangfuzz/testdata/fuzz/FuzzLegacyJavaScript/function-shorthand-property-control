@@ -1,0 +1,4 @@
+go test fuzz v1
+string("function-shorthand-property-control")
+string("plain")
+byte(0)

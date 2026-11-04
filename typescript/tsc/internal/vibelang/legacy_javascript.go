@@ -38,7 +38,11 @@ func checkLegacyJavaScript(c *checker.Checker, file *ast.SourceFile) {
 					if functionConstructorExempt(node) {
 						break
 					}
-					if symbol := c.GetSymbolAtLocation(node); symbol != nil && globalFunction() != nil && c.GetMergedSymbol(symbol) == globalFunction() {
+					symbol := c.GetSymbolAtLocation(node)
+					if node.Parent != nil && node.Parent.Kind == ast.KindShorthandPropertyAssignment {
+						symbol = c.GetShorthandAssignmentValueSymbol(node.Parent)
+					}
+					if symbol != nil && globalFunction() != nil && c.GetMergedSymbol(symbol) == globalFunction() {
 						report(c, node, EK0107.With("Function reaches the Function constructor, which runs a string as code. Move the code to a .ts or .js file; x instanceof Function and Function.prototype stay allowed."))
 					}
 				}
