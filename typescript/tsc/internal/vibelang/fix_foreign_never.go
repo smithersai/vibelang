@@ -104,22 +104,41 @@ func proveThrowsNever(c *checker.Checker, caller *ast.SourceFile, call *ast.Node
 			}
 		}
 	}
-	if !returnsEffectful(c, call) && !proveNeverCallbacks(c, caller, call, decl, active) {
+	if !proveNeverCallbacks(c, caller, call, decl, active) {
 		return false
 	}
 	if bound, written := foreignThrowsContract(c, call); written {
 		return !root && bound == ""
 	}
-	if !root {
-		t := callTrust(c, call)
-		if t.unknown || t.unreachable != "" || len(t.failures) != 0 {
+	if !root && isLibFile(c, ast.GetSourceFileOfNode(decl)) {
+		return proveNeverBuiltin(c, call, decl)
+	}
+	// Trust classifications describe the Effect error channel, not the
+	// absence of synchronous defects. Only an explicit contract or a
+	// recursively checked local body proves this declaration edit.
+	return proveNeverBody(c, caller, decl, active)
+}
+
+// Appendix E's never annotation is necessary, but implicit throws (getters,
+// proxy traps, coercion and iteration) are defects outside that static contract.
+// Keep this proof deliberately smaller than the compiler's builtin trust set.
+func proveNeverBuiltin(c *checker.Checker, call, decl *ast.Node) bool {
+	key := globalKey(decl)
+	if globalThrowsTable[key] != "never" ||
+		!isGlobalOf(calleeSymbol(c, call), func(f *ast.SourceFile) bool { return isLibFile(c, f) }) {
+		return false
+	}
+	// Numeric Math calls cannot invoke user coercion when all inputs are
+	// numbers. Other builtins need their own proof before being admitted.
+	if !strings.HasPrefix(key, "Math.") {
+		return false
+	}
+	for _, arg := range call.Arguments() {
+		if ast.IsSpreadElement(arg) || c.GetTypeAtLocation(arg).Flags()&checker.TypeFlagsNumberLike == 0 {
 			return false
 		}
-		if t.kind == trustES || t.kind == trustEffect || t.kind == trustBuiltin || t.kind == trustTagged || returnsEffectful(c, call) {
-			return true
-		}
 	}
-	return proveNeverBody(c, caller, decl, active)
+	return true
 }
 
 func proveNeverBody(c *checker.Checker, caller *ast.SourceFile, decl *ast.Node, active map[*ast.Node]bool) bool {
@@ -145,6 +164,68 @@ func proveNeverBody(c *checker.Checker, caller *ast.SourceFile, decl *ast.Node, 
 	unsafe = func(n *ast.Node) bool {
 		if ast.IsThrowStatement(n) || isThrowExpression(file, n) {
 			return true
+		}
+		// A constructor body alone does not cover field initializers, and
+		// class evaluation can invoke heritage/decorator proxy traps.
+		if ast.IsNewExpression(n) || ast.IsClassDeclaration(n) || ast.IsClassExpression(n) {
+			return true
+		}
+		// These forms can execute user code without a syntactic call.
+		if ast.IsForOfStatement(n) || ast.IsForInStatement(n) ||
+			ast.IsSpreadElement(n) || ast.IsSpreadAssignment(n) ||
+			ast.IsObjectBindingPattern(n) || ast.IsArrayBindingPattern(n) {
+			return true
+		}
+		if ast.IsPropertyAccessExpression(n) || ast.IsElementAccessExpression(n) {
+			// A builtin's global namespace read is the only non-literal
+			// property read proved here; an arbitrary receiver may be a Proxy
+			// or expose a getter even when its type has a plain property.
+			parent := n.Parent
+			if parent == nil || !ast.IsCallExpression(parent) || parent.Expression() != n {
+				return true
+			}
+			d := signatureDeclaration(c, parent)
+			receiver := n.Expression()
+			if d == nil || !isLibFile(c, ast.GetSourceFileOfNode(d)) ||
+				!proveNeverBuiltin(c, parent, d) || !ast.IsIdentifier(receiver) ||
+				!isGlobalOf(c.GetSymbolAtLocation(receiver), func(f *ast.SourceFile) bool { return isLibFile(c, f) }) {
+				return true
+			}
+		}
+		if ast.IsPrefixUnaryExpression(n) {
+			unary := n.AsPrefixUnaryExpression()
+			if unary.Operator != ast.KindExclamationToken && c.GetTypeAtLocation(unary.Operand).Flags()&checker.TypeFlagsNumberLike == 0 {
+				return true
+			}
+		}
+		if ast.IsPostfixUnaryExpression(n) && c.GetTypeAtLocation(n.AsPostfixUnaryExpression().Operand).Flags()&checker.TypeFlagsNumberLike == 0 {
+			return true
+		}
+		if n.Kind == ast.KindComputedPropertyName || n.Kind == ast.KindTemplateExpression ||
+			n.Kind == ast.KindAwaitExpression || n.Kind == ast.KindYieldExpression {
+			return true
+		}
+		if ast.IsBinaryExpression(n) {
+			binary := n.AsBinaryExpression()
+			switch binary.OperatorToken.Kind {
+			case ast.KindEqualsEqualsEqualsToken, ast.KindExclamationEqualsEqualsToken,
+				ast.KindAmpersandAmpersandToken, ast.KindBarBarToken, ast.KindQuestionQuestionToken,
+				ast.KindEqualsToken, ast.KindCommaToken:
+				// Strict equality, truthiness and assignment do not coerce.
+			case ast.KindEqualsEqualsToken, ast.KindExclamationEqualsToken:
+				if binary.Left.Kind != ast.KindNullKeyword && binary.Right.Kind != ast.KindNullKeyword {
+					return true
+				}
+			case ast.KindInKeyword, ast.KindInstanceOfKeyword:
+				return true
+			default:
+				// Objects can run coercion hooks; bigint arithmetic can throw.
+				primitive := checker.TypeFlagsNumberLike | checker.TypeFlagsStringLike
+				if c.GetTypeAtLocation(binary.Left).Flags()&primitive == 0 ||
+					c.GetTypeAtLocation(binary.Right).Flags()&primitive == 0 {
+					return true
+				}
+			}
 		}
 		if ast.IsCallExpression(n) || ast.IsNewExpression(n) || ast.IsTaggedTemplateExpression(n) {
 			if !proveThrowsNever(c, caller, n, active, false) {
@@ -177,9 +258,9 @@ func throwsNeverAction(c *checker.Checker, fix *ls.CodeFixContext, call *ast.Nod
 		AdditionalChanges: []ls.FileTextChanges{{URI: lsconv.FileNameToDocumentURI(file.FileName()), Changes: edits}}}
 }
 
-// cliThrowsNeverFixes handles calls whose wrapper cannot preserve TypeScript
-// control-flow predicates, and calls with no preserving wrapper. Other calls
-// keep the established --fix wrapper choice; the editor offers both actions.
+// cliThrowsNeverFixes is a fallback after the default bridge was refused
+// (for example, because it loses predicate narrowing). A missing plan may
+// mean an enclosing bridge or generator conversion must run first.
 func cliThrowsNeverFixes(ctx context.Context, program *compiler.Program, scope *fixScope, refused map[string]bool) []proposal {
 	for _, file := range scope.fixable(program) {
 		ds := program.GetSemanticDiagnostics(ctx, file)
@@ -193,8 +274,7 @@ func cliThrowsNeverFixes(ctx context.Context, program *compiler.Program, scope *
 				continue
 			}
 			call := callee.Parent
-			sig := c.GetResolvedSignature(call)
-			if sig == nil || c.GetTypePredicateOfSignature(sig) == nil && planForeignCall(c, file, call).fixable() {
+			if !refused[fixKey(file, d)] {
 				continue
 			}
 			decl, rewrite := throwsNeverDeclaration(c, file, call)
@@ -265,9 +345,6 @@ func proveNeverCallbacks(c *checker.Checker, caller *ast.SourceFile, call, decl 
 			d := callback.Declaration()
 			if d == nil {
 				return false
-			}
-			if isEffectfulType(c, c.GetReturnTypeOfSignature(callback)) || isVibeLangFile(ast.GetSourceFileOfNode(d)) {
-				continue
 			}
 			contract := writtenThrows(c, d)
 			if contract.tagged {

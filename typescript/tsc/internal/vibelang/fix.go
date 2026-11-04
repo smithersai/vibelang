@@ -1068,7 +1068,16 @@ func fixesApplied(result *FixResult) int {
 // and lengths framed by quoting. Repeated states are a cycle or a no-op, not
 // successful normalization; the CLI reports the failure without writing.
 func fixState(program *compiler.Program) [32]byte {
-	files := fixableFiles(program)
+	// The EK0403 fallback can edit only an owned .ts declaration. Include
+	// that change even when every .vibe call site remains byte-for-byte the
+	// same; otherwise a successful annotation looks like a repeated state.
+	var files []*ast.SourceFile
+	for _, file := range program.SourceFiles() {
+		if !file.IsDeclarationFile && !strings.Contains(file.FileName().AsString(), "/node_modules/") &&
+			!program.IsSourceFileFromExternalLibrary(file) && program.GetProjectReferenceFromSource(file.PathKey()) == nil {
+			files = append(files, file)
+		}
+	}
 	slices.SortFunc(files, func(a, b *ast.SourceFile) int { return a.FileName().Compare(b.FileName()) })
 	hash := sha256.New()
 	for _, file := range files {

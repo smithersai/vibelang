@@ -13,9 +13,22 @@ import (
 
 const migrationDefectMapperTarget = "FuzzMigrationDefectMapper"
 const migrationDefectMapperQuote = "A rewrite that can't preserve types, behavior and declaration output refuses at that site."
-const migrationDefectMapperContract = "export function validateGlob(pattern: string): string | undefined { return pattern === \"valid\" ? undefined : \"bad\" }\n"
+const migrationDefectMapperContract = "export function validateGlob(pattern: string): string | undefined { return pattern === \"valid\" ? undefined : \"bad\" }\n" + `
+export type Input<T> = T | { readonly deferred: () => T };
+export const isResolved = <T>(v:Input<T>):v is T => !hasUnresolved(v);
+const hasUnresolved=(v:unknown):boolean => v!==null && typeof v==="object" && ("deferred" in v || Object.values(v).some(hasUnresolved));
+export const havePropsChanged=(a:object,b:object)=>JSON.stringify(a)!==JSON.stringify(b);
+export function makeNews(mode: number): object {
+  if (mode === 1) return Object.defineProperty({}, "value", { enumerable: true, get() { throw "getter defect" } });
+  if (mode === 2) return { value: 1n };
+  return { value: 1 };
+}
+`
 
 var migrationDefectMapperPrograms = []struct{ key, source string }{
+	{"alchemy-success", "import { isResolved, havePropsChanged, makeNews } from \"./contract.js\"\nexport const main = () => Effect.gen(function* () { const news = makeNews(0); if (!isResolved(news)) return undefined; return havePropsChanged({}, news) ? \"update\" : \"noop\" })\n"},
+	{"alchemy-getter", "import { isResolved, havePropsChanged, makeNews } from \"./contract.js\"\nexport const main = () => Effect.gen(function* () { const news = makeNews(1); if (!isResolved(news)) return undefined; return havePropsChanged({}, news) ? \"update\" : \"noop\" })\n"},
+	{"alchemy-bigint", "import { isResolved, havePropsChanged, makeNews } from \"./contract.js\"\nexport const main = () => Effect.gen(function* () { const news = makeNews(2); if (!isResolved(news)) return undefined; return havePropsChanged({}, news) ? \"update\" : \"noop\" })\n"},
 	{"smithers-glob", "import * as Contract from \"./contract.js\"\nexport const main = () => Effect.gen(function* () { return Contract.validateGlob(\"valid\") ?? \"ok\" })\n"},
 	{"plain-good", "export const main = () => Effect.gen(function* () {\nreturn JSON.parse(\"1\") as number\n})\n"},
 	{"plain-bad", "export const main = () => Effect.gen(function* () {\nreturn JSON.parse(\"{\") as number\n})\n"},
@@ -97,8 +110,9 @@ func FuzzMigrationDefectMapper(f *testing.F) {
 				if toolsInvalidOutcome(was) {
 					t.Fatalf("invalid TypeScript outcome: %+v\n%s", was, source)
 				}
-				if was.Kind != is.Kind || string(was.Value) != string(is.Value) {
-					Gap(t, migrationDefectMapperTarget, oracleKey, "bridge defect outcome differs: .ts %s %s; migrated %s %s\n%s", was.Kind, was.Value, is.Kind, is.Value, fixed["main.vibe"])
+				// Fuzz oracle: the bridge Exit equals its gen twin for throwing and non-throwing callees.
+				if was.Kind != is.Kind || string(was.Value) != string(is.Value) || was.Tag != is.Tag || !slices.Equal(was.Cause, is.Cause) {
+					Gap(t, migrationDefectMapperTarget, oracleKey, "bridge defect outcome differs: .ts %+v; migrated %+v\n%s", was, is, fixed["main.vibe"])
 				}
 			}
 			ExpectPending(t, migrationDefectMapperTarget, oracleKey)
