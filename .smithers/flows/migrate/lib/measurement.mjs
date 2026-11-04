@@ -16,7 +16,7 @@ export async function runMeasurementJob(manifest) {
   for (const side of manifest.sides) {
     if (side.install) await must(side.install, { cwd: side.target, log: join(manifest.out, side.name + "-install.log") })
     if (manifest.build) builds[side.name] = await prepareBuilds({ ...manifest.build, target: side.target }, manifest.out, side.name)
-    if (manifest.build) packs[side.name] = await packRepository({ ...manifest.build, target: side.target }, join(manifest.out, side.name + "-packs"))
+    if (manifest.build) packs[side.name] = await packRepository({ ...manifest.build, target: side.target }, join(manifest.out, side.name + "-packs"), { baseline: manifest.packBaseline })
     receipts[side.name] = await runTests({ command: manifest.test.command, report: manifest.test.report,
       cwd: join(side.target, manifest.test.cwd ?? "."), root: side.target,
       jsonFile: join(manifest.out, side.name + "-vitest.json"), log: join(manifest.out, side.name + "-tests.log"), strict: true })
@@ -47,7 +47,7 @@ export async function measureTests(config, { run, batch }) {
       sides.push({name,target,revision,install:config.install ?? Wire.installCommand(Wire.packageManager(readdirSync(target)),readdirSync(target))})
     }
     sides.push({name:"candidate",target:config.target,revision:await Jj.commitId(config.target,"@"),install:config.install ?? Wire.installCommand(Wire.packageManager(readdirSync(config.target)),readdirSync(config.target))})
-    const manifest = { job, out, test:config.test, sides, build: { packages: config.packages ?? [{ dir: "." }], toolchain: config.toolchain ?? { kind: "registry" } } }
+    const manifest = { job, out, test:config.test, sides, packBaseline: readJsonIf(join(resolve(run), "baseline", "upstream-packs.json")), build: { packages: config.packages ?? [{ dir: "." }], toolchain: config.toolchain ?? { kind: "registry" } } }
     const manifestPath = join(out,"manifest.json")
     writeJson(manifestPath,manifest)
     const command = [process.execPath,fileURLToPath(import.meta.url),manifestPath].map(quote).join(" ")

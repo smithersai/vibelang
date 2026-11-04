@@ -559,7 +559,7 @@ export async function upgradeEffect(options) {
   const priorChecks = await previousCompilerChecks(config, logs)
   writeJson(join(p.baseline, "upstream-checks.json"), priorChecks)
   const upstreamBuild = await prepareBuilds(config, logs, "upstream")
-  writeJson(join(p.baseline, "upstream-packs.json"), await packRepository(config, join(logs, "upstream-packs")))
+  writeJson(join(p.baseline, "upstream-packs.json"), await packRepository(config, join(logs, "upstream-packs"), { upstream: true }))
   const before = await testRun("upstream")
   if (before.code !== 0 && !before.tests) throw new Error(`the target's tests do not run (exit ${before.code}); see ${join(logs, "upstream-tests.log")}`)
   writeJson(join(p.baseline, "upstream-tests.json"), { code: before.code, tests: before.tests })
@@ -2009,10 +2009,11 @@ export async function verify(options) {
   const testRenames = (thePlan.batches ?? []).slice(0, Number(b)).flatMap((_, i) =>
     readJsonIf(p.codemod(batchName(i)))?.renames ?? [])
   const testResults = compareTests(baselineTests, tests, { renames: testRenames })
-  const candidatePacks = measurement?.packs?.candidate ?? await packRepository(config, join(logs, "candidate-packs"))
+  const upstreamPacks = readJsonIf(join(p.baseline, "upstream-packs.json"))
+  const candidatePacks = measurement?.packs?.candidate ?? await packRepository(config, join(logs, "candidate-packs"), { baseline: upstreamPacks })
   const migratedPackSources = Object.fromEntries(config.packages.map(pkg => [pkg.dir,
     thePlan.batches.flatMap(batch => batch.files.map(vibePath)).filter(file => existsSync(join(t, file)) && packageOf(config, file) === pkg).map(file => posix.relative(pkg.dir, file))]))
-  const packs = comparePacks(readJsonIf(join(p.baseline, "upstream-packs.json")), candidatePacks, migratedPackSources)
+  const packs = comparePacks(upstreamPacks, candidatePacks, migratedPackSources)
   const ts = typeScriptOf(config)
   const testDiff = await testEdits(config, p, thePlan, b, ts)
   const declarations = {}

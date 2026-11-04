@@ -1,0 +1,8 @@
+{
+  "key": "flow:upstream-pack-baseline-packs-unpublishable-package",
+  "property": "upstream-pack-selection",
+  "rule": "Compare only packages that packed on the original tree; every original success must still pack and retain its file list.",
+  "repository": "t3code",
+  "pattern": "versioned server depends on versionless private provider; release builds a separate launcher",
+  "input": { "versioned": false, "field": "dependencies", "protocol": "workspace:*", "privateValue": true }
+}

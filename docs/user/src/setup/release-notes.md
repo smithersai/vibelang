@@ -189,6 +189,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 ### Bugs fixed since 0.0.10
 
+- Migration setup stopped when an application already failed to pack before conversion, such as t3code's server with versionless private workspace dependencies. It now records upstream pack exclusions and compares the packages that packed originally; a pack broken by migration still fails verification.
+
 - The migrate flow's platform split read the host global from two of `EK4402`'s three wordings. A module the compiler reported with `AbortSignal.timeout reaches the host and cannot be used in a .vibe file.` (a platform member) went back to TypeScript on every pass, because `platformGlobalsOf` named no global for it. It now names `AbortSignal` (or `URL` for `URL.createObjectURL`), and the next pass moves the declarations that read it into the `.platform.ts` sibling. A test reads the compiler's `EK4402` message table and fails on a wording the flow does not classify.
 
 - Runtime updates could disagree about available helpers, and valid comparison syntax could conflict with the parser examples; these compatibility checks now run before an affected change is accepted.

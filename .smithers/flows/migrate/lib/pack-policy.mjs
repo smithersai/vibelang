@@ -1,6 +1,6 @@
 import { testPath } from "./test-files.mjs"
 import { ownedPaths, packageManager, repositoryPackages } from "./wire.mjs"
-import { must, quote } from "./util.mjs"
+import { must, quote, run, writeJson } from "./util.mjs"
 import { posix, resolve } from "node:path"
 import { mkdtempSync, rmSync, statSync } from "node:fs"
 // Export routing and packing must describe the same public runtime tree.
@@ -115,7 +115,9 @@ export function excludeSidecars(root, pkg) {
 export function comparePacks(baseline, candidate, migrated = {}) {
   if (!baseline?.packages || !candidate?.packages) return { ok: false, reason: "missing upstream pack baseline; rerun upgrade-effect", packages: {} }
   const packages = {}
+  const excluded = baseline.skipped ?? {}
   for (const dir of new Set([...Object.keys(baseline.packages), ...Object.keys(candidate.packages)])) {
+    if (!Object.hasOwn(baseline.packages, dir) && excluded[dir]?.reason === "upstream-pack-failed") continue
     const before = baseline.packages[dir], after = candidate.packages[dir]
     if (!before || !after) { packages[dir] = { ok: false, reason: "public package set changed" }; continue }
     const original = new Set(before.files.filter(file => !isSidecar(file)))
@@ -132,19 +134,39 @@ export function comparePacks(baseline, candidate, migrated = {}) {
     packages[dir] = { ok: !sidecars.length && !sidecarTargets.length && !missing.length && !extra.length, sidecars, sidecarTargets, missing, extra,
       ...(sidecars.length || sidecarTargets.length ? { reason: "declaration sidecars must not ship; point published types at built .d.ts files" } : {}) }
   }
-  return { ok: Object.values(packages).every(item => item.ok), packages }
+  return { ok: Object.values(packages).every(item => item.ok), packages, skipped: excluded }
 }
 
-/** Pack with the repository's manager, including its publication lifecycle. */
-export async function packRepository(config, out) {
+/** Pack with the repository's publication config and lifecycle. Only the original tree may establish pack exclusions. */
+export async function packRepository(config, out, { upstream = false, baseline } = {}) {
   mkdirSync(out, { recursive: true })
-  const packages = {}
+  const packages = {}, skipped = {}
+  const save = () => writeJson(join(out, "selection.json"), { packages, skipped })
+  const skip = (dir, manifest, reason) => { skipped[dir] = { name: manifest.name, ...reason }; save() }
   const manager = config.packer ?? packageManager(readdirSync(config.target))
   const owns = ownedPaths(config.target)
-  for (const pkg of repositoryPackages(config.target).filter(pkg => owns(posix.join(pkg.dir, "package.json")) && !testPath.test(posix.join(pkg.dir, "package.json")))) {
+  save()
+  for (const pkg of repositoryPackages(config.target)) {
     const root = join(config.target, pkg.dir)
     const manifest = JSON.parse(readFileSync(join(root, "package.json"), "utf8"))
-    if (manifest.private === true) continue
+    const path = posix.join(pkg.dir, "package.json")
+    // Baseline success always wins over an exclusion: corrupt receipts cannot
+    // turn a previously working public package into an optional check.
+    if (!Object.hasOwn(baseline?.packages ?? {}, pkg.dir) && baseline?.skipped?.[pkg.dir]?.reason === "upstream-pack-failed") {
+      skip(pkg.dir, manifest, { ...baseline.skipped[pkg.dir], baseline: true }); continue
+    }
+    const reason = !owns(path) ? "not-workspace-member" : testPath.test(path) ? "test-fixture"
+      : manifest.private === true ? "private" : !manifest.name ? "missing-name" : !manifest.version ? "missing-version" : null
+    if (reason) { skip(pkg.dir, manifest, { reason }); continue }
+    const attempt = async (command, stage, log) => {
+      const result = await run(command, { cwd: root, log: join(out, log) })
+      if (result.code === 0) return true
+      if (!upstream || Object.hasOwn(baseline?.packages ?? {}, pkg.dir)) {
+        throw new Error(pkg.dir + ": " + stage + " failed (exit " + result.code + "); see " + join(out, log))
+      }
+      skip(pkg.dir, manifest, { reason: "upstream-pack-failed", stage, code: result.code, log })
+      return false
+    }
     const directory = mkdtempSync(join(resolve(out), "tarball-"))
     let generated
     const prior = new Map(readdirSync(root).filter(file => file.endsWith(".tgz")).map(file => [file, statSync(join(root, file)).mtimeMs]))
@@ -152,7 +174,7 @@ export async function packRepository(config, out) {
       // Some repositories' pack script temporarily maps exports to dist before
       // creating the archive, then restores the source manifest in finally.
       if (manifest.scripts?.pack) {
-        await must(manager + " run pack", { cwd: root, log: join(directory, "..", "pack-script-" + encodeURIComponent(pkg.dir) + ".log") })
+        if (!await attempt(manager + " run pack", "pack-script", "pack-script-" + encodeURIComponent(pkg.dir) + ".log")) continue
         const produced = readdirSync(root).filter(file => file.endsWith(".tgz") && prior.get(file) !== statSync(join(root, file)).mtimeMs)
         if (produced.length > 1) throw new Error("ambiguous pack script output for " + pkg.dir)
         generated = produced[0]
@@ -160,7 +182,7 @@ export async function packRepository(config, out) {
       const command = manager === "bun" ? "bun pm pack --destination " + quote(directory)
         : manager === "yarn" ? "yarn pack --out " + quote(join(directory, "package.tgz"))
         : manager + " pack --pack-destination " + quote(directory)
-      if (!generated) await must(command, { cwd: root, log: join(directory, "..", "pack-" + encodeURIComponent(pkg.dir) + ".log") })
+      if (!generated && !await attempt(command, "pack", "pack-" + encodeURIComponent(pkg.dir) + ".log")) continue
       const archives = generated ? [generated] : readdirSync(directory).filter(file => file.endsWith(".tgz"))
       if (archives.length !== 1) throw new Error("expected one package tarball for " + pkg.dir)
       const archive = join(generated ? root : directory, archives[0])
@@ -172,12 +194,13 @@ export async function packRepository(config, out) {
         : value && typeof value === "object" ? Object.values(value).flatMap(refs) : []
       const sidecarTargets = ["types", "typings", "main", "module", "exports", "imports"].flatMap(field => refs(published[field]))
       packages[pkg.dir] = { name: published.name, files, sidecarTargets }
+      save()
     } finally {
       if (generated && !prior.has(generated)) unlinkSync(join(root, generated))
       rmSync(directory, { recursive: true, force: true })
     }
   }
-  return { packages }
+  return { packages, skipped }
 }
 
 /** Setup edits owned package policy only; fixtures and vendored manifests keep every byte. */
