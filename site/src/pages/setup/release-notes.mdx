@@ -13,6 +13,12 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 ## 0.0.11 (unreleased)
 
 - Fuzz qualification now graduates resolved Effect-global, plain-throw, Stream-contract, runner-discard, and sidecar-emission pending cases. Their existing semantic checks and saved corpus inputs continue to run as regressions.
+
+- Fuzz guards for do-expression typing and evaluation order, legacy fork options, and legacy call marks now cite the current specification wording. Their generators, runtime and native-TypeScript oracles, and saved corpus inputs are unchanged.
+
+- The diagnostic-specification reader now recognizes the current severity-entry rule, including interim codes, and identifies the unmatched rule prefix if the table drifts. Code numbers and categories remain derived from Appendix B.
+
+- Producer and catch-handler fuzz guards now cite the current written-Stream, nested-yield, and arrow-body rules. All valid and invalid programs, diagnostic checks, and saved inputs are retained.
 - Effect's `deterministicKeys` rule asked a service moved into a `module` body for a key built from the body's own file, `@x/pkg/a.vibe.platform/Port`, where its `.ts` file had `@x/pkg/a/Port`, so every keyed service the migrate flow moved into `module platform { }` failed with `EK3822` (15 t3code desktop modules). A body's keys now come from the `.vibe` file that holds it, so a moved service keeps its key and its run-time identity.
 - A build of many `.vibe` files that write `Effect.Array` or another `Effect.M` module could stop at random with `fatal error: concurrent map read and map write` in `(*lowering).visit`. Each file's lowering now reads its own copy of what the checker recorded.
 - A type such as `Missing.Shape`, where no scope declares `Missing`, stopped the compiler with `fatal error: stack overflow`. It now reports the error TypeScript reports for the same text.
@@ -184,12 +190,69 @@ Effect 4.0.6 defect-precedence and interruption migration.
 ### Bugs fixed since 0.0.10
 
 - The function-controls example read the callable `Function` constructor and reported `EK0107`. Its erased constructor comparison now uses the explicit `any` boundary allowed by VIP-1, while the `instanceof` and prototype controls remain checked.
+
+- The operation-operands example declared a `.vibe` function with `@throws {never}`, which VIP-4 rejects with `EK0406`. The example now uses the declaration’s implicit `never` thrown type and keeps all operation-operand checks.
+
+- Parameterized effect functions showed anonymous generator frames in debugging stacks. Generated bodies now keep their source function names while parameters still bind when the function is called, including recursive function expressions.
+
+- The missing-keyword example expected retired `EK4618`; it now checks VIP-1’s `EK0101` and verifies that `--fix` inserts both `function` keywords without changing the comments.
+
+- The run-phase binding corpus still quoted a retired migration paragraph. Its contract check now quotes the current evaluation-order and coldness requirement, while retaining every binding and eager-argument case.
+
+
+- Alias-revert and asset-import property citations now follow the current declaration-file and source-tool contract, retaining all alias and asset behavior checks and sample counts.
+
+- The hidden-source cache regression now requires the already-fixed .vibe additions to invalidate warm results. It retains all32 property samples and the remaining .vibex gap guards, with explicit coverage of all eight .vibe selection layouts.
+
+- Seven tooling properties still cited the retired existing-tools paragraph. Their citations now quote the current declaration-file and source-tool contract, preserving all generated cases, negative controls and sample counts.
+
+- Sidecar source-selection properties now cite the current discovery, overwrite-protection and physical/logical resolution text. Their native and stock-compiler checks, literal corpus hashes and property sample counts remain intact.
+
+- The async conversion integration check could fail on a neighbouring negative fixture or run an asynchronous repair synchronously. It now isolates the repaired module and awaits its result, retaining every refusal check.
+
+- Declaration-comparison fixtures now follow the published API identity contract for equivalent module targets and extension spellings. The original 80-run property and eight mode cases remain, with specific export, type and documentation differences and incomplete environments still required to reject comparison.
+
+- A `do` expression after an unreachable outer statement lost its normal-completion type and reported property errors on `never`. It now retains the type of its local normal completions, while a `do` with no normal completion still has type `never`.
+
+- The lower and inference examples’ emitted JavaScript snapshots expected older arrow wrappers and anonymous generators. They now record the compiler’s equivalent explicit-return wrappers and preserved `greet` and `lookup` frames; their runtime checks remain in place.
+
+- Parameterized effect functions showed anonymous generator frames in debugging stacks. Generated bodies now keep their source function names while parameters still bind when the function is called, including recursive function expressions.
+
+- Knip and captured-pattern tooling properties now cite the current tool-input contract together with their paired Go guard. The native counterpart rules, original property sample counts and strict saved-regression checks remain intact.
+
+- The native declaration-spelling regression now cites the current Functions specification. All 12 stock TypeScript cases still check that unrelated written TypeScript imports retain their spelling in emitted declarations.
+
+- Publication helper properties now quote the current native JavaScript and declaration output names. Both 100-case properties retain their distribution-path, shadowing and unsupported-expression controls.
+
+- The retained-schema-constructor gate now cites the current fix-preservation contract, retaining its real compiler fixture and all refused-class and generated diagnostic-policy checks.
+
+- Imported lint tests applied the same warning and suggestion expectations to compiler builds and `lint`. They now check each command's documented native policy and its inclusion and ignore options.
+
+- The compiler package test target now supplies its staged compiler to the native configuration-contract tests, allowing all six configuration checks to execute.
+
+- Imported compiler policy and severity-inheritance fuzz checks now cite the current tooling rules, so documentation rewrites no longer hide their behavioral checks.
+
+- The migration regression for declarations that stock TypeScript cannot name now checks the complete API receipt, preserving refusal of a missing native baseline without depending on human report wording.
+
+- Properties for build entries, packages, wildcards, reversion and workspace resolution now cite the current TypeScript and tooling contract. Their original generated cases, literal corpora and behavior checks remain intact.
+
+- The legacy generic-argument migration check still cited an older runtime-preservation sentence. It now pins the current call-run-phase rule while retaining every migration case and declaration check.
+
+
+- Several compiler and tooling property checks still cited older diagnostic, tool-input and configuration paragraphs. Their citations now follow the current specific rules, including the severity-entry exception, without changing their behavioral checks or sample counts.
+
+
+- Lint output-preservation and public Effect-version citation checks now follow the current tooling text, retaining all refusal, output and public-authority assertions.
 - The ESLint corpus check rejected deliberately constant source literal conditions as generated code; it now checks each reported literal against its source while continuing to detect unwritten constants.
 - An optional-schema inverse check expected the retired `mutable` field spelling. It now checks that writable keys have no `readonly` modifier and readonly keys retain it, with exact optional-property conversion controls unchanged.
 
 - Exact-optional upgrade checks expected writable nested and native fields from an explicit legacy migration. They now check the required readonly declarations while ordinary fixes keep current written mutability.
 
 - Optional-schema fuzz checks stopped before testing behavior because they quoted a superseded specification sentence. They now quote the conditional optional-property table while retaining the decoding and declaration comparisons.
+
+- Formatter regression checks treated an intentionally duplicated module declaration as valid input. They now verify its refusal before invoking the formatter, alongside the existing valid module round trips.
+
+- The optional-schema runtime witness still quoted the old unconditional mapping rule. It now cites the current optional-property table while keeping its source, TypeScript twin and probes unchanged.
 
 
 - Stock-oracle and package-load migration checks could fail while reading an absent legacy setup receipt. Their fixtures now record complete public declaration metadata and real upstream packs before testing certification and load regressions.
@@ -223,6 +286,10 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - The foreign-call regression cases still expected `EK4401` after unknown thrown contracts moved to `EK0403`; they now check `EK0403` and retain the separate diagnostic for an inaccessible declared error type.
 
 - The readonly-upgrade fuzz check still quoted an older safe-rewrite rule. It now checks the current declaration-preservation sentence while keeping its readonly upgrade and ordinary-fix controls.
+
+- The migrate flow's `module throwing { }` and `module platform { }` bodies exported every private declaration they took, so a module failed `TS2883` when one had a type its package does not export, as t3code web `themePalette.ts` did with `const convertToOklch = converter("oklch")`. A body now exports a private declaration only when the rest of the module reads it or a kept declaration's type may name it, and the module's declarations are the original's.
+
+- `vibelang --fix` and `--fix-vip-only` refused (`no fix applies`) an `EK4402` inside an `Effect.try`, `tryPromise`, `sync` or `callback` callback that reads a binding of its file, such as `Effect.try({ try: () => decrypt(Buffer.from(value)), catch: (cause) => new DecryptError({ cause }) })`. Code like this compiled before host access was checked inside these callbacks. Both now move only the platform code into a new sibling `.ts` function and pass its arguments as parameters: `$platform(value)` in the `.vibe` file and `export function $platform(arg0: Uint8Array) { return Buffer.from(arg0); }` beside it. The wrapper and its `catch` stay where they were, so a throw still becomes the same failure, the call still runs only when the Effect runs, and the public declarations stay the same. In a composite project, such as t3code Desktop with `"include": ["src"]`, the check now lists the new file as `tsc` does once it is written, instead of refusing with `TS6307`. Under `--only`, which writes no unlisted file, the split is refused for that site with the reason; it used to stop the whole run with `wrote nothing`.
 
 - Repository build checks could fail before inspecting compiler inputs after target declarations changed. Their isolated fixtures now retain the native source group and imported parser data while checking dependency and cache behavior.
 
