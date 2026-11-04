@@ -88,19 +88,7 @@ func knownRethrownTypes(c *checker.Checker, call *ast.Node) []*checker.Type {
 	if len(named) == 0 {
 		return nil
 	}
-	var arguments []*ast.Node
-	if !ast.IsTaggedTemplateExpression(call) {
-		arguments = call.Arguments()
-	}
-	if ast.IsTaggedTemplateExpression(call) {
-		arguments = []*ast.Node{nil} // the template-strings object is the first parameter
-		template := call.AsTaggedTemplateExpression().Template
-		if template.Kind == ast.KindTemplateExpression {
-			for _, span := range template.AsTemplateExpression().TemplateSpans.Nodes {
-				arguments = append(arguments, span.AsTemplateSpan().Expression)
-			}
-		}
-	}
+	arguments := rethrowsCallArguments(call)
 	var thrown []*checker.Type
 	for index, parameter := range decl.Parameters() {
 		if !named[declarationName(parameter)] {
@@ -223,10 +211,13 @@ func knownCallbackSignatureThrows(c *checker.Checker, signature *checker.Signatu
 // catch clause in the literal throws nothing out of it.
 func (a *analyzer) rethrownThrows(call *ast.Node) []*checker.Type {
 	thrown := knownRethrownTypes(a.checker, call)
-	if !ast.IsCallExpression(call) && !ast.IsNewExpression(call) || returnsEffectful(a.checker, call) {
+	if !ast.IsCallExpression(call) && !ast.IsNewExpression(call) && !ast.IsTaggedTemplateExpression(call) || returnsEffectful(a.checker, call) {
 		return thrown
 	}
-	for index, argument := range call.Arguments() {
+	for index, argument := range rethrowsCallArguments(call) {
+		if argument == nil {
+			continue
+		}
 		literal := ast.SkipParentheses(argument)
 		if !ast.IsFunctionExpressionOrArrowFunction(literal) || !rethrowsArgument(a.checker, call, index) {
 			continue
@@ -340,4 +331,20 @@ func caughtWithinLiteral(node, literal *ast.Node) bool {
 		}
 	}
 	return false
+}
+
+// rethrowsCallArguments preserves native invocation positions. A tag receives
+// its template-strings object first, followed by the written substitutions.
+func rethrowsCallArguments(call *ast.Node) []*ast.Node {
+	if !ast.IsTaggedTemplateExpression(call) {
+		return call.Arguments()
+	}
+	arguments := []*ast.Node{nil}
+	template := call.AsTaggedTemplateExpression().Template
+	if template.Kind == ast.KindTemplateExpression {
+		for _, span := range template.AsTemplateExpression().TemplateSpans.Nodes {
+			arguments = append(arguments, span.AsTemplateSpan().Expression)
+		}
+	}
+	return arguments
 }

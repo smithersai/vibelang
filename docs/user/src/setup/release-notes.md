@@ -264,6 +264,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - The grammar admission inventory failed after schema header diagnostics were added; the declaration dispatcher and missing-body recovery now name their existing grammar authority.
 
+- A callback interpolation passed to a foreign tag's `@rethrows` parameter incorrectly reported `EK0401` inside the literal, even in an `Effect.try` bridge. Its known throws now belong to the tagged invocation, with `EK0403` at the tag in effect code.
 - A function literal passed to a `@rethrows` parameter, as in `invoke(() => parse(s))` or `xs.map((x) => parse(x))`, reported `EK0401` inside the literal. Known throws now belong to the enclosing call or constructor, including when its own contract is `@throws {never}`: effect code reports `EK0403` at the invocation, while native `try/catch` and `Effect.try` handle it.
 - Appendix conformance cases retained stale pending markers and older callback, service and inline `module` forms; they now check the accepted rules against TypeScript twins and treat resolved diagnostics as passing tests.
 

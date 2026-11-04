@@ -1,0 +1,10 @@
+// expect-result: ["x","safe",true,["tag","parse:x","holder","holder","parse:bad"]]
+import { Effect, Exit } from "effect"
+import { parse, tag, holder, events, reset } from "./helpers.js"
+export effect function main() {
+  reset()
+  const a = try Effect.try(() => tag`value: ${() => parse("x")}`)
+  const b = holder.tag`value: ${() => "safe"}`
+  const c = try Effect.exit(Effect.try(() => holder.tag`value: ${() => parse("bad")}`))
+  return [a, b, Exit.isFailure(c), events]
+}

@@ -1,0 +1,5 @@
+// expect: EK0403
+import { parse, tag, holder } from "./helpers.js"
+export effect function direct(s: string) { return tag`value: ${() => parse(s)}` }
+export effect function method(s: string) { return holder.tag`value: ${() => parse(s)}` }
+export effect function nested(s: string) { return tag`outer: ${() => tag`inner: ${() => parse(s)}`}` }

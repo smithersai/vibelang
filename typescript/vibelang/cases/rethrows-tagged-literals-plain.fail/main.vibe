@@ -1,0 +1,3 @@
+// expect: EK0401
+import { parse, tag } from "./helpers.js"
+export function direct(s: string) { return tag`value: ${() => parse(s)}` }

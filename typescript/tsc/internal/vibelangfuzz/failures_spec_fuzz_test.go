@@ -471,6 +471,27 @@ func failuresCases() []*failCase {
 	} {
 		add(&failCase{Name: "rethrows-literal-" + r.key, Quote: "A plain function whose return type is wholly effectful, and an effectful function's parameter list, are stricter: any thrown type other than `never` is `EK0401`", Host: "plain", Lib: "/** @throws {Error} */\nexport declare function parse(s: string): string\n/**\n * @throws {never}\n * @rethrows f\n */\nexport declare function consume<T>(f: () => T): void", Body: r.body, Code: 401, OneDiagnostic: true})
 	}
+
+	for _, r := range []struct {
+		key, host, body string
+		code            int
+	}{
+		{"effect", "effect", "const v = ⟦tag⟧`value: ${() => parse(s)}`", 403},
+		{"plain", "plain", "const v = ⟦tag⟧`value: ${() => parse(s)}`", 401},
+		{"method", "effect", "const v = ⟦holder.tag⟧`value: ${() => parse(s)}`", 403},
+		{"alias", "effect", "const t = tag; const v = ⟦t⟧`value: ${() => parse(s)}`", 403},
+		{"later", "effect", "const v = ⟦later⟧`prefix: ${s} value: ${() => parse(s)}`", 403},
+		{"rest", "effect", "⟦rest⟧`safe: ${() => s} bad: ${() => parse(s)}`", 403},
+		{"nested", "effect", "const v = ⟦tag⟧`outer: ${() => tag`inner: ${() => parse(s)}`}`", 403},
+		{"safe", "effect", "const v = tag`value: ${() => s}`", 0},
+		{"caught", "plain", "try { tag`value: ${() => parse(s)}` } catch { }", 0},
+		{"wrapped", "effect", "const v = try Effect.try(() => tag`value: ${() => parse(s)}`)", 0},
+		{"nested-function", "effect", "const v = tag`value: ${() => { const f = () => ⟦parse(s)⟧; return s }}`", 401},
+		{"async", "plain", "const v = tag`value: ${async () => parse(s)}`", 0},
+		{"effect-parameter", "plain", "const v = tag`value: ${effect (x = ⟦parse(s)⟧) => x}`", 401},
+	} {
+		add(&failCase{Name: "rethrows-tagged-literal-" + r.key, Quote: "may contain calls known to throw: they belong to the enclosing call", Host: r.host, Lib: "/** @throws {Error} */\nexport declare function parse(s: string): string\n/**\n * @throws {never}\n * @rethrows f\n */\nexport declare function tag<T>(parts: TemplateStringsArray, f: () => T): T\n/**\n * @throws {never}\n * @rethrows f\n */\nexport declare function later<T>(parts: TemplateStringsArray, prefix: string, f: () => T): T\n/**\n * @throws {never}\n * @rethrows callbacks\n */\nexport declare function rest(parts: TemplateStringsArray, ...callbacks: (() => string)[]): void\nexport declare const holder: {\n/**\n * @throws {never}\n * @rethrows f\n */\ntag<T>(parts: TemplateStringsArray, f: () => T): T\n}", Body: r.body, Code: r.code, OneDiagnostic: r.code != 0})
+	}
 	add(&failCase{Name: "foreign-overload", Quote: "| no tag | `unknown` |", Host: "effect", Body: "⟦foreign(s)⟧", Lib: "export declare function foreign(s: string): string\nexport declare function foreign(s: number): number"})
 	add(&failCase{Name: "dynamic-any", Quote: "Calls through `any` or `Function` throw `unknown`; callable unions combine their alternatives.", Host: "effect", Body: "⟦f(s)⟧", Decls: "declare const f: any"})
 	add(&failCase{Name: "dynamic-function", Quote: "Calls through `any` or `Function` throw `unknown`; callable unions combine their alternatives.", Host: "effect", Body: "⟦f(s)⟧", Decls: "declare const f: Function"})

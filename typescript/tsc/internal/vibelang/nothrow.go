@@ -160,10 +160,16 @@ func admitsThrows(c *checker.Checker, fn *ast.Node) bool {
 		node = node.Parent
 	}
 	call := node.Parent
-	if call == nil || !ast.IsCallExpression(call) && !ast.IsNewExpression(call) {
+	if call != nil && call.Kind == ast.KindTemplateSpan {
+		template := call.Parent
+		if template != nil && template.Kind == ast.KindTemplateExpression {
+			call = template.Parent
+		}
+	}
+	if call == nil || !ast.IsCallExpression(call) && !ast.IsNewExpression(call) && !ast.IsTaggedTemplateExpression(call) {
 		return false
 	}
-	index := slices.Index(call.Arguments(), node)
+	index := slices.Index(rethrowsCallArguments(call), node)
 	if index < 0 {
 		return false
 	}

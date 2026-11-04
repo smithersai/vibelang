@@ -2082,3 +2082,9 @@ typescript/vibelang/cases/vibelang-services-ts/main.vibe:24:19 lambda: effectFn 
 typescript/vibelang/cases/match-extractor-errors.fail/main.vibe:26:32 lambda: effectFn table -> effectFn keyword # VIP-1: the written effect modifier selects the handler's function kind.
 typescript/vibelang/cases/service-member-explicit/main.vibe:8:26 lambda: plain fallback -> effectFn keyword # VIP-1: the written effect modifier selects the service implementation's function kind.
 typescript/vibelang/cases/vibelang-services-ts/main.vibe:24:19 lambda: effectFn fallback -> effectFn keyword # VIP-1: the written effect modifier selects the lambda's function kind.
+
+typescript/vibelang/cases/match-extractor-errors.fail/main.vibe:26:32 lambda: effectFn table -> effectFn keyword # VIP-1: the written effect keyword determines this lambda's Effect function kind before destination inference.
+
+typescript/vibelang/cases/service-member-explicit/main.vibe:8:26 lambda: plain fallback -> effectFn keyword # VIP-1: the written effect keyword determines this lambda's Effect function kind before destination inference.
+
+typescript/vibelang/cases/vibelang-services-ts/main.vibe:24:19 lambda: effectFn fallback -> effectFn keyword # VIP-1: the written effect keyword determines this lambda's Effect function kind before destination inference.
