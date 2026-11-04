@@ -29,6 +29,13 @@ function trees(input, mode, check) {
     [importer]: statement(side==="before"?bare:source)+'export type Label = "./runtime";\n'
    }
    if(mode==="changed-target"&&side==="after")entries[importer]=statement("./other.js")+'export type Label = "./runtime";\n'
+   if(mode==="changed-target-type"&&side==="after") {
+    entries[importer]=statement("./other.js")+'export type Label = "./runtime";\n'
+    entries["api/other.d.ts"]="export declare const value: 43;\n"
+   }
+   if(mode==="changed-export"&&side==="after")entries[importer]=entries[importer].replace("as Runtime","as Renamed")
+   if(mode==="changed-doc")entries[target]=(side==="before"?"/** Original public documentation. */\n":"/** Changed public documentation. */\n")+entries[target]
+
    if(mode==="changed-type"&&side==="after")entries[target]="export declare const value: string;\n"
    if(mode==="type-literal"&&side==="after")entries[importer]=statement(source)+'export type Label = "./runtime.js";\n'
    if(mode==="explicit-extensions")entries[importer]=statement(side==="before"?"./runtime.jsx":"./runtime.js")
@@ -50,15 +57,14 @@ function trees(input, mode, check) {
   return check(join(root,"before"),join(root,"after"),{target,bare,source,importer})
  } finally {rmSync(root,{recursive:true,force:true})}
 }
-const tick=String.fromCharCode(96)
-const quote=tick+"x.vibe"+tick+" emits "+tick+"x.js"+tick+" beside "+tick+"x.d.ts"+tick+" in "+tick+"outDir"+tick
-test("module identity oracle quotes the current emit rule",()=>{
- assert.ok(readFileSync(join(repo,"docs/design/src/007-tooling.md"),"utf8").includes(quote))
+const quote="Declaration output is API-identical to what `tsc` writes for the Effect TypeScript twin: the same exported names, each export's type identical to `tsc`'s in both directions (a type-level check), and the same doc comment on each export."
+test("declaration comparison oracle quotes the current API identity rule",()=>{
+ assert.ok(readFileSync(join(repo,"docs/design/src/001-functions.md"),"utf8").includes(quote))
 })
 test("extensionless source and emitted names keep one declaration identity",async()=>{
  await checkProperty(fc,{
   name:"migrate-source-declaration-identity",
-  rule:"D298; docs/design/src/007-tooling.md: "+quote,
+  rule:"D298; docs/design/src/001-functions.md: "+quote,
   command:"node --test test/declaration-module-identity.property.test.mjs",
   regressions:new URL("./property-regressions/",import.meta.url),numRuns:80,
   arbitrary:fc.record({name:fc.constantFrom("runtime","stats.core","core-space",".runtime",".hidden/runtime"),parent:fc.boolean(),directory:fc.boolean(),slash:fc.boolean(),form:fc.constantFrom("namespace","named")}),
@@ -72,8 +78,37 @@ test("extensionless source and emitted names keep one declaration identity",asyn
   })
  })
 })
-test("identity comparison preserves explicit names, changed modules, types and literals",()=>{
+// Source001 API identity ignores presentation when every exported name, type and doc matches.
+test("API identity accepts equivalent targets and explicit extension spellings",()=>{
  const input={name:"runtime",parent:false,directory:false,slash:false,form:"namespace"}
- for(const mode of ["changed-target","changed-type","type-literal","missing","external","outside","shadowed","explicit-extensions"])
-  trees(input,mode,(a,b)=>assert.equal(draft(ts,a,b).identical,false,mode))
+ for(const mode of ["changed-target","shadowed","explicit-extensions"])
+  trees(input,mode,(a,b)=>{
+   const result=draft(ts,a,b)
+   assert.equal(result.identical,true,mode)
+   assert.equal(result.comparisonComplete,true,mode)
+   assert.deepEqual(result.nameDifferences,[],mode)
+   assert.deepEqual(result.typeDifferences,[],mode)
+   assert.deepEqual(result.docDifferences,[],mode)
+  })
+})
+test("API identity rejects real export, type, literal and documentation changes",()=>{
+ const input={name:"runtime",parent:false,directory:false,slash:false,form:"namespace"}
+ for(const mode of ["changed-type","type-literal","changed-target-type","changed-export","changed-doc"])
+  trees(input,mode,(a,b)=>{
+   const result=draft(ts,a,b)
+   assert.equal(result.identical,false,mode)
+   assert.equal(result.comparisonComplete,true,mode)
+   const differences=mode==="changed-export"?result.nameDifferences:mode==="changed-doc"?result.docDifferences:result.typeDifferences
+   assert.ok(differences.length>0,mode+": retain the specific API difference")
+  })
+})
+test("missing, external and outside declaration targets remain unproven",()=>{
+ const input={name:"runtime",parent:false,directory:false,slash:false,form:"namespace"}
+ for(const mode of ["missing","external","outside"])
+  trees(input,mode,(a,b)=>{
+   const result=draft(ts,a,b)
+   assert.equal(result.identical,false,mode)
+   assert.equal(result.comparisonComplete,false,mode)
+   assert.ok(result.environmentDiagnostics.length>0,mode)
+  })
 })
