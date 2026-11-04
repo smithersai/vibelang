@@ -59,7 +59,7 @@ effect function main() {
 // Output: Recovered from EmptyName
 ```
 
-The compiler infers the type of `greeting` as `string!EmptyName`, which is `Effect<string, EmptyName, never>`. A caller that forgets the failure gets a compile error, not a crash at runtime. [The Effect Type](/getting-started/003-the-effect-type) explains the contract, [Creating Effects](/getting-started/005-creating-effects) adds failures, and [Running Effects](/getting-started/009-running-effects) runs a program at the application boundary.
+The compiler infers the type of `greeting` as `string!EmptyName`, which is `Effect<string, EmptyName, never>`. A caller without a return annotation infers `EmptyName` in its own error channel when it runs `greeting`. A caller that declares a failure slot excluding `EmptyName` gets a compile error if it leaves that failure unhandled. For example, `effect function caller(): string!! { return try greeting("") }` promises no failures and is rejected; catch the error or include `EmptyName` in the return type. [The Effect Type](/getting-started/003-the-effect-type) explains the contract, [Creating Effects](/getting-started/005-creating-effects) adds failures, and [Running Effects](/getting-started/009-running-effects) runs a program at the application boundary.
 
 ## Set up your editor
 

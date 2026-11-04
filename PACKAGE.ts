@@ -396,6 +396,12 @@ const declarationPreservation = S.Shell.Test({
 const targets = {
   // Root ownership keeps template globs in scope without introducing a new
   // package boundary that would narrow the repository-wide tree checks.
+  "docs-failure-contracts": check(
+    "Tutorial compile-error claims distinguish a written failure contract from inferred propagation.",
+    "bun docs/tools/check-failure-contracts.ts && bun test --timeout 60000 docs/tools/check-failure-contracts.test.ts",
+    [Packages["compiler-native"], Packages["runtime-dist"]],
+    [bun, node]
+  ),
   "create-cli": S.Shell.Test({
     summary: "Run the scaffolder's fast CLI unit tests.",
     shell: "node --test packages/create-vibelang/test/create.test.mjs",
