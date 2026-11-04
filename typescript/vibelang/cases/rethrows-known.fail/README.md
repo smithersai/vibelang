@@ -1,0 +1,1 @@
+Chapter 003: a `@rethrows` callback contributes its own thrown contract even when the enclosing signature declares `@throws {never}`. Calls, constructors, tagged substitutions, aliases, rest arguments and intrinsic array callbacks retain that contribution. The `.ts` twin is natively well typed.

@@ -132,13 +132,13 @@ func callbackNames() []string {
 
 func TestForeignCallbackSitesQuoted(t *testing.T) {
 	r4Quoted(t, "../vips/0039-vibex.md", attributeQuote)
-	r4Quoted(t, "003-failures.md", assignabilityQuote, untaggedQuote)
+	r4Quoted(t, "003-failures.md", assignabilityQuote, untaggedQuote, rethrowsContributionQuote)
 }
 
 func FuzzForeignCallbackSites(f *testing.F) {
 	startShortBudget(f)
 	r4Quoted(f, "../vips/0039-vibex.md", attributeQuote)
-	r4Quoted(f, "003-failures.md", assignabilityQuote, untaggedQuote)
+	r4Quoted(f, "003-failures.md", assignabilityQuote, untaggedQuote, rethrowsContributionQuote)
 	names := callbackNames()
 	r4Seeds(f, names)
 	w := NewWorkspace(f)
@@ -171,9 +171,15 @@ func FuzzForeignCallbackSites(f *testing.F) {
 		errs := r4Errors(r.Diagnostics)
 		want := src.thrown > dst.admits && !site.admitsAll
 		got := slices.Contains(errs, "EK0402")
-		others := slices.DeleteFunc(slices.Clone(errs), func(e string) bool { return e == "EK0402" })
+		wantRethrown := site.name == "rethrows" && src.thrown > 0
+		others := slices.DeleteFunc(slices.Clone(errs), func(e string) bool {
+			return e == "EK0402" || wantRethrown && e == "EK0401"
+		})
 		if len(others) > 0 {
 			t.Fatalf("%s: unexpected errors %v\n%s", names[i], others, Archive(files))
+		}
+		if gotRethrown := slices.Contains(errs, "EK0401"); gotRethrown != wantRethrown {
+			Gap(t, "FuzzForeignCallbackSites", "rethrows:"+names[i], "003-failures: %s; %s got %v, want outer EK0401=%t\n%s", rethrowsContributionQuote, names[i], errs, wantRethrown, Archive(files))
 		}
 		if want && !got {
 			Gap(t, "FuzzForeignCallbackSites", "missing:EK0402/"+site.name, "003-failures: %s; %s: a @throws {%s} value against a function type admitting %s gives %v:\n%s", assignabilityQuote, names[i], callbackBounds[src.thrown], callbackBounds[dst.admits], errs, Archive(files))

@@ -1,0 +1,17 @@
+// expect: EK0401 EK0401 EK0401 EK0401 EK0401 EK0401 EK0401 EK0401 EK0401 EK0401 EK0401 EK0401 EK0401 EK0401
+import {invoke,Builder,tag,risky,unknownCallback,safe,both,all,ownAndCallback} from "./helpers.js"
+import * as helpers from "./helpers.js"
+const alias=risky
+export function direct(){return invoke(risky)}
+export function bound(){return invoke(alias)}
+export function constructed(){return new Builder(risky)}
+export function tagged(){return tag`x${risky}`}
+export function qualified(){return helpers.invoke(helpers.risky)}
+export function unknownThrow(){return invoke(unknownCallback)}
+export function multi(){return both(safe,risky)}
+export function rest(){return all(safe,risky)}
+export function mapped(){return [""].map(risky)}
+export function from(){return Array.from([""],risky)}
+export function joined(){return ownAndCallback(risky)}
+export class Fields {value=invoke(risky);static value=invoke(risky)}
+export const top=invoke(risky)

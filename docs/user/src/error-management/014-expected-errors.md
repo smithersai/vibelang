@@ -512,3 +512,5 @@ The ES2026 `JSON.parse` overload, whose reviver receives a context object, also 
 A foreign tag's `@throws` contract also applies to a tagged-template invocation. Synchronous code must catch a known throwing tag with native `try/catch`, or call it in an admitting wrapper thunk such as `Effect.try`.
 
 A class's `implements` clause also checks the thrown contracts of callable members. Storing a foreign throwing function in a field, returning it from a getter, or inheriting it does not turn it into a pure callback. Give the interface an admitting `@throws` signature, or supply a callback that catches the throw. Generic interface arguments and compatible overloads retain their own contracts.
+
+A foreign callback passed to a signature marked `@rethrows cb` keeps its known thrown contract at the enclosing call, constructor or tagged template. The enclosing signature’s `@throws {never}` does not erase that callback contract. Synchronous code must catch the invocation or put it in an admitting wrapper such as `Effect.try`. Callbacks that return an Effect keep their `never` thrown contract.

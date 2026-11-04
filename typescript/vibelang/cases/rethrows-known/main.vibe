@@ -1,0 +1,13 @@
+import {invoke,tag,risky,safe,fx,overloaded} from "./helpers.js"
+import * as Effect from "effect/Effect"
+export function accepted(){
+ invoke(safe)
+ invoke(fx)
+ invoke(overloaded)
+ return tag`x${safe}`}
+export function main(){
+ let caught=""
+ try {invoke(risky)} catch(error) {caught=(error as Error).message}
+ const bridged=Effect.runSync(Effect.try(() => invoke(safe)))
+ return {caught,safe:invoke(safe),bridged}
+}
