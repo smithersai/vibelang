@@ -10,7 +10,7 @@ import { checkProperty } from "../../scripts/testing/property.mjs"
 const repo = resolve(import.meta.dir, "../..")
 const require = createRequire(join(repo, "packages/runtime/package.json"))
 const fc = require("fast-check")
-const rule = "Existing tools work."
+const rule = "Type checkers use `.d.vibe.ts`; linters, Knip, bundlers and test runners read `.vibe`."
 type Input = { first: string[]; second: string[]; existing?: "none" | "directory" | "symlink"; scope?: string }
 function packageAt(root: string, name: string, marker: string) {
   const directory = join(root, name)
