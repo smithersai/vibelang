@@ -118,7 +118,7 @@ export async function deployedReleaseProblems({
   let platforms
   if (latest) {
     if (latest.version !== version) problems.push(`npm latest: ${latest.version}; compiler manifest: ${version}`)
-    platforms = Object.keys(latest.optionalDependencies ?? {}).filter(name => name.startsWith("vibelang-") || name.startsWith("@vibelang/cli-win32-")).sort()
+    platforms = Object.keys(latest.optionalDependencies ?? {}).filter(name => name.startsWith("vibelang-") || name.startsWith("@smthrs/cli-win32-")).sort()
     if (!platforms.length) problems.push("npm latest: missing published platform packages")
     for (const name of platforms) {
       if (latest.optionalDependencies[name] !== version || manifest.optionalDependencies?.[name] !== version) {

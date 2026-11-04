@@ -71,7 +71,7 @@ function nativeCompiler() {
   const local = fileURLToPath(new URL(`./native/${executable}`, import.meta.url))
   if (existsSync(local)) return local
   const target = `${process.platform}-${process.arch}`
-  const name = process.platform === "win32" ? `@vibelang/cli-${target}` : `vibelang-${target}`
+  const name = process.platform === "win32" ? `@smthrs/cli-${target}` : `vibelang-${target}`
   try {
     const platform = createRequire(import.meta.url).resolve(`${name}/package.json`)
     return join(dirname(platform), "bin", executable)

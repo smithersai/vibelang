@@ -52,7 +52,7 @@ Maintainers land their own work on `vibe`. `main` advances only to a commit on `
 
 ## Release process
 
-The release contains six platform binaries (macOS, Linux and Windows on arm64 and x64) and eleven packages. Include both Windows packages, `@vibelang/cli-win32-x64` and `@vibelang/cli-win32-arm64`, in rehearsal and publication.
+The release contains six platform binaries (macOS, Linux and Windows on arm64 and x64) and eleven packages. Include both Windows packages, `@smthrs/cli-win32-x64` and `@smthrs/cli-win32-arm64`, in rehearsal and publication.
 
 1. **Align versions.** Every package version must equal the compiler's, in `typescript/tsc/internal/vibelang/identity.go`; `make-packages.mjs` refuses a mismatch. Review breaking changes.
 2. **Check.** Run setup, `sh scripts/e2e.sh`, the compiler cases, affected package tests, editor tests and `bun docs/tools/check-snippets.ts`. Before publication, run `VIBELANG_RELEASE_NOTES_FINAL=1 VIBELANG_LAST_PUBLISHED_VERSION=$(npm view vibelang version) node --test docs/tools/release-docs.test.mjs` to check the candidate notes against npm. Record commands, toolchain versions and results. A skipped platform is untested.

@@ -17,8 +17,8 @@
         "prettier": "3.6.2",
       },
       "optionalDependencies": {
-        "@vibelang/cli-win32-arm64": "0.0.11",
-        "@vibelang/cli-win32-x64": "0.0.11",
+        "@smthrs/cli-win32-arm64": "0.0.11",
+        "@smthrs/cli-win32-x64": "0.0.11",
         "vibelang-darwin-arm64": "0.0.11",
         "vibelang-darwin-x64": "0.0.11",
         "vibelang-linux-arm64": "0.0.11",

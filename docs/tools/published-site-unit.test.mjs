@@ -26,7 +26,7 @@ test("npm latest overrides the candidate and registry failures never fall back",
 test("an explicit candidate override supports offline release rehearsals", () => {
   const dir = mkdtempSync(join(tmpdir(), "site-rehearsal-"))
   try {
-    for (const [name, manifest] of [["compiler", { version: "9.8.7", optionalDependencies: { "@vibelang/cli-win32-x64": "9.8.7" } }], ["runtime", { version: "9.8.7", peerDependencies: { effect: "4.1.0" } }]]) {
+    for (const [name, manifest] of [["compiler", { version: "9.8.7", optionalDependencies: { "@smthrs/cli-win32-x64": "9.8.7" } }], ["runtime", { version: "9.8.7", peerDependencies: { effect: "4.1.0" } }]]) {
       mkdirSync(join(dir, "packages", name), { recursive: true })
       writeFileSync(join(dir, "packages", name, "package.json"), JSON.stringify(manifest))
     }
@@ -47,7 +47,7 @@ test("the built-assets guard rejects each unpublished version or platform", () =
   try {
     writeFileSync(join(dir, "installation.html"), '<pre>npm install <span>vibelang@0.0.10</span></pre>')
     assert.deepEqual(builtInstallProblems(dir, snapshot), [])
-    writeFileSync(join(dir, "installation.md"), "bun add vibelang-runtime@0.0.11\n| Windows | @vibelang/cli-win32-x64 |")
+    writeFileSync(join(dir, "installation.md"), "bun add vibelang-runtime@0.0.11\n| Windows | @smthrs/cli-win32-x64 |")
     const problems = builtInstallProblems(dir, snapshot)
     assert.equal(problems.length, 2)
     assert.match(problems.join("\n"), /vibelang-runtime@0.0.11/)
@@ -68,11 +68,11 @@ test("homepage badges and both platform tables follow the selected registry vers
     assert.match(text, /use WSL/)
     assert.doesNotMatch(text, /0.0.11/)
   }
-  const table = "| Platform | Package | Rehearsed for 0.0.11 |\n| --- | --- | --- |\n| Windows | `@vibelang/cli-win32-x64` | No |\n"
+  const table = "| Platform | Package | Rehearsed for 0.0.11 |\n| --- | --- | --- |\n| Windows | `@smthrs/cli-win32-x64` | No |\n"
   const before = renderSiteRelease("getting-started/004-installation.md", table, snapshot)
   assert.doesNotMatch(before, /win32/)
   for (const name of Object.keys(snapshot.compiler.optionalDependencies)) assert.ok(before.includes(name), name)
-  const windows = { ...snapshot, compiler: { ...snapshot.compiler, optionalDependencies: { ...snapshot.compiler.optionalDependencies, "@vibelang/cli-win32-x64": "0.0.10" } } }
+  const windows = { ...snapshot, compiler: { ...snapshot.compiler, optionalDependencies: { ...snapshot.compiler.optionalDependencies, "@smthrs/cli-win32-x64": "0.0.10" } } }
   assert.match(renderSiteRelease("getting-started/004-installation.mdx", table, windows), /cli-win32-x64/)
 })
 test("both HTML route layouts check published history and reject a future latest heading", () => {
@@ -91,7 +91,7 @@ test("both HTML route layouts check published history and reject a future latest
 test("malformed pins, unknown tags, and scoped native versions cannot escape the registry guard", () => {
   const dir = mkdtempSync(join(tmpdir(), "site-invalid-pins-"))
   try {
-    for (const spec of ["vibelang@0.0", "vibelang@next", "@vibelang/cli-win32-x64@0.0.11"]) {
+    for (const spec of ["vibelang@0.0", "vibelang@next", "@smthrs/cli-win32-x64@0.0.11"]) {
       writeFileSync(join(dir, "install.md"), "pnpm add " + spec)
       assert.ok(builtInstallProblems(dir, snapshot).length, spec)
     }
@@ -113,6 +113,6 @@ test("every historical install pin must exist, while published history keeps its
   } finally { rmSync(dir, { recursive: true, force: true }) }
 })
 test("rehearsal package mentions are not installation claims", () => {
-  assert.deepEqual(installReferences("- The throwaway registry accepts @vibelang/cli-win32-x64 and @vibelang/cli-win32-arm64."), [])
-  assert.ok(installReferences("npm install @vibelang/cli-win32-x64").some(ref => ref.name === "@vibelang/cli-win32-x64"))
+  assert.deepEqual(installReferences("- The throwaway registry accepts @smthrs/cli-win32-x64 and @smthrs/cli-win32-arm64."), [])
+  assert.ok(installReferences("npm install @smthrs/cli-win32-x64").some(ref => ref.name === "@smthrs/cli-win32-x64"))
 })

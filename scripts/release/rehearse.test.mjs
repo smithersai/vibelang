@@ -23,7 +23,7 @@ test("rehearsal publishes both scoped Windows packages to its isolated registry"
   for (const file of ["rehearse.sh", "repack.mjs"]) copyFileSync(join(repo, "scripts/release", file), join(scripts, file))
   // This fixture checks registry routing; the real starter is exercised by rehearse.sh.
   writeFileSync(join(scripts, "check-app.sh"), "#!/bin/sh\necho registry-fixture-app-check\n")
-  const names = ["@vibelang/cli-win32-x64", "@vibelang/cli-win32-arm64", "vibelang"]
+  const names = ["@smthrs/cli-win32-x64", "@smthrs/cli-win32-arm64", "vibelang"]
   const version = "0.0.0"
   const packages = names.map(name => {
     writeFileSync(join(source, "package.json"), JSON.stringify({ name, version }))
