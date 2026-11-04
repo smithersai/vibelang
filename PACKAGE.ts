@@ -807,6 +807,14 @@ const targets = {
     sandbox: "none",
     timeout: "15m"
   }),
+  "spec-diagnostic-blocks": S.Shell.Test({
+    summary: "Retained diagnostic assignments have explicit exceptions and removing an exception rejects its own code.",
+    shell: "node --test --test-name-pattern='retained diagnostic assignments|outside its VIP' docs/tools/spec-rules.test.mjs",
+    data: [design, S.Filegroup({ srcs: [...S.glob(["docs/tools/spec-rules*.mjs", "docs/tools/spec-examples.mjs", "docs/tools/package.json", "docs/tools/bun.lock"])] })],
+    tools: [node],
+    sandbox: "none",
+    timeout: "1m"
+  }),
   "spec-rule-table": S.Shell.Test({
     summary: "Check rule-injection quotations against current public chapters.",
     shell: "cd typescript/tsc && GOCACHE=$HOME/.cache/go-build-smthrs CGO_ENABLED=0 go test -p 8 -count=1 -trimpath -run '^TestSpecRuleTable$' ./internal/vibelangfuzz/",

@@ -481,3 +481,21 @@ test("r26 OPUS-3: an exported effect function's counterpart stays a function dec
     }
   }
 })
+
+test("retained diagnostic assignments need an explicit block exception", () => {
+  const codes = ["EK1011", "EK2112", "EK2113", "EK2120", "EK2121", "EK9001", "EK9002", "EK9003", "EK9004"]
+  const text = read(repository, appendix)
+  const boundary = text.indexOf("\n| Code |")
+  assert.ok(boundary >= 0)
+  const head = text.slice(0, boundary), rows = text.slice(boundary)
+  for (const code of codes) assert.ok(head.includes("`" + code + "`"), code + " needs a stated retained assignment")
+  assert.deepEqual(codeBlockFindings(text), [])
+  // Removing any selected exceptions must reject exactly those retained rows;
+  // naming another code is never authority for its neighbour.
+  fc.assert(fc.property(fc.subarray(codes), removed => {
+    let changed = head
+    for (const code of removed) changed = changed.replaceAll("`" + code + "`", "a removed assignment")
+    const findings = codeBlockFindings(changed + rows).map(f => f.message.split(" ")[0]).sort()
+    assert.deepEqual(findings, [...removed].sort())
+  }), { numRuns: 100 })
+})

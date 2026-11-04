@@ -8,6 +8,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 ## 0.0.12 (unreleased)
 
 ### Bugs fixed since 0.0.11
+- The diagnostic reference defined retained compiler and migration codes without listing them among its numbering exceptions. Those assignments are now explicitly documented.
 - An inherited `schema error` could report an extra TypeScript base-type error alongside `EK2117`. It now reports the inheritance diagnostic while preserving independent errors inside the declaration.
 
 - The `data` guide left multiline assertions ambiguous; it now explains how parentheses preserve an assertion whose type continues on another line.
