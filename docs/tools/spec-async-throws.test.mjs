@@ -1,29 +1,28 @@
 import assert from "node:assert/strict"
 import { readFileSync } from "node:fs"
 import { test } from "node:test"
-import { block, chapter, read, run } from "./spec-witness.mjs"
+import fc from "fast-check"
+import { Effect, Exit } from "effect"
+import { chapter, read, run } from "./spec-witness.mjs"
 
 const failures = () => process.env.SPEC_FAILURES ? readFileSync(process.env.SPEC_FAILURES, "utf8") : chapter("003-failures")
 
 test("async declarations follow source callback contracts without synchronous throws", () => {
   const text = failures()
   assert.match(text, /nongenerator.*async.*synchronous thrown type.*never/)
-  if (text.includes("A written `@throws` or `@rethrows` tag in a `.vibe` file is `EK0406`")) {
-    assert.doesNotMatch(text, /A source `@rethrows` parameter still admits/)
-    assert.match(text, /callback parameters follow their written callable signatures/)
-    assert.match(text, /source `@rethrows` tag is `EK0406`/)
-  } else {
-    // The older published spec still allows source rethrows. Keep its guard
-    // until the source-only reconciliation is folded by the spec lander.
-    assert.match(text, /parameter.*@throws \{unknown\}/)
-    assert.match(text, /omit.*synchronous.*@rethrows/)
-    assert.match(text, /shared type alias/)
-  }
+  // VIP-4's accepted foreign-only contracts are published; no fallback to
+  // source @rethrows or inferred synchronous async throws remains.
+  assert.match(text, /body, parameter\/default initialization and callback throws reject its Promise/)
+  assert.match(text, /declarations, methods and arrows, but not async generators/)
+  assert.match(text, /callback parameters follow their written callable signatures/)
+  assert.match(text, /source `@rethrows` tag is `EK0406`/)
+  assert.match(text, /Declaration output carries callee `@throws \{never\}`/)
+  assert.match(text, /A returned callable keeps its own thrown contract/)
   assert.match(text, /Promise-returning plain function.*synchronously/)
 })
 
-test("the printed async and plain Promise producers keep different exception boundaries", () => {
-  const result = run(block(failures(), "async function invokeAsync") + `
+test("the native async and plain Promise witnesses keep different exception boundaries", () => {
+  const result = run(read("docs/tools/fixtures/async-contract-boundaries.ts") + `
 import assert from "node:assert/strict"
 import { Exit } from "effect"
 const rejected = await Effect.runPromiseExit(checkedAsync)
@@ -46,4 +45,34 @@ test("the Creating Effects guide limits synchronous rethrows to synchronous invo
   // VIP-4, amended 2026-10-31: only a `.ts` function's synchronous invocation rethrows; `async` rejects.
   assert.match(text, /For synchronous invocation of a `\.ts` function, `@rethrows f` adds `f`'s thrown type/)
   assert.match(text, /An `async` function's `throw` rejects its Promise\./)
+})
+
+test("fast-check: native async declarations, arrows and methods reject callback failures", async () => {
+  const invokers = [
+    async function declared(f) { return f() },
+    async f => f(),
+    f => ({ async method() { return f() } }).method(),
+    f => (async function declared(value = f()) { return value })(),
+    f => (async (value = f()) => value)(),
+    f => ({ async method(value = f()) { return value } }).method(),
+  ]
+  await fc.assert(fc.asyncProperty(fc.integer({ min: 0, max: invokers.length - 1 }), fc.jsonValue(), async (form, reason) => {
+    const invoke = invokers[form]
+    let calls = 0
+    const callback = () => { calls++; throw reason }
+    const promise = invoke(callback)
+    assert.ok(promise instanceof Promise)
+    assert.equal(calls, 1)
+    const rejected = await promise.then(() => assert.fail("callback failure fulfilled"), error => error)
+    assert.equal(rejected, reason)
+    const bridged = await Effect.runPromiseExit(Effect.tryPromise({ try: () => invoke(callback), catch: error => error }))
+    assert.ok(Exit.isFailure(bridged))
+    assert.equal(bridged.cause.reasons[0]._tag, "Fail")
+    assert.equal(bridged.cause.reasons[0].error, reason)
+    const plain = () => Promise.resolve(callback())
+    assert.throws(plain, error => error === reason)
+    const synchronous = Effect.runSyncExit(Effect.try({ try: plain, catch: error => error }))
+    assert.ok(Exit.isFailure(synchronous))
+    assert.equal(synchronous.cause.reasons[0].error, reason)
+  }), { seed: 4007, numRuns: 180 })
 })
