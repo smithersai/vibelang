@@ -1047,3 +1047,5 @@ The declaration oracle preflights emitted roots when the stock source contains a
 Mixed service-member coverage keeps the two forbidden-member diagnostics separate from the independent `EK4831` migration lint on a neighboring `Context.Service` class. Mutation varies member kind and declaration order, with ordinary-class and computed-property controls.
 
 Layer-composition advice keeps its native `Layer.provide` and `Layer.provideMerge` guidance and its refusal to switch providers automatically. The full keyed provider/dependent mutation property also checks that refusal notes do not reintroduce retired composition syntax.
+
+The alias-configuration Go guard shares the current tooling quotation with the migration property suite. Its route matrix, compiler consumers, path rewrites, corpus and property sample counts remain unchanged.

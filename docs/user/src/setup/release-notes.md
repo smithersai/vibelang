@@ -174,6 +174,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - The call-forms table reported stale plain-function decisions for the parameter-forwarding examples; it now records their explicit `effect` functions.
 - Imported lint severity settings could silently stop activating rules before their configuration was migrated; `EK3012` now identifies those projects, and `vibelang --fix` preserves their behavior with an explicit plugin entry.
+- Alias configuration conformance checks could reject the reworded tooling contract. The Go guard now shares the current quotation with the migration properties.
 
 - The forms gate rejected explicit Effect callbacks after independently landed changes moved their source locations; its reviewed snapshot now records the written modifier at each affected site.
 
