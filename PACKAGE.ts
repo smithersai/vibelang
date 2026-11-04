@@ -724,9 +724,9 @@ const targets = {
     "15m"
   ),
   "spec-registry-go": S.Shell.Test({
-    summary: "Every code Appendix B assigns is registered, or specAhead names the lane that registers it.",
-    shell: `cd typescript/tsc && GOCACHE=$HOME/.cache/go-build-smthrs CGO_ENABLED=0 go test -count=1 -trimpath -run '^TestRegistryMatchesSpec$' ./internal/vibelang/`,
-    data: [design, Tsc.srcs, Tsc["vibelang-files"]] as Array<never>,
+    summary: "Every assigned code is registered or names its implementation owner; legacy exceptions apply only to unassigned declarations.",
+    shell: `cd typescript/tsc && GOCACHE=$HOME/.cache/go-build-smthrs CGO_ENABLED=0 go test -count=1 -trimpath -run '^(TestRegistryMatchesSpec|TestCompilerRegistryIsSpecified)$' ./internal/vibelang/ ./internal/vibelangfuzz/`,
+    data: [design, Tsc.srcs, Tsc["vibelang-files"], Tsc["vibelangfuzz-files"]] as Array<never>,
     tools: [go, node],
     sandbox: "none",
     timeout: "15m"

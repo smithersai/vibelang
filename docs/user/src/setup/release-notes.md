@@ -217,6 +217,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - The generated grammar admission census cited denied VIP-11 as authority for the legacy trailing-block recovery hooks, so the specification authority check failed on `vibe`. The census source now states the denial, and the generator refuses a denied VIP citation that does not.
 - EK4839's direct `Option.match` quick fix now handles callbacks returning Effects, preserving cold construction and an explicit `try` on the selected result, including `try Option.match(…)` as a statement. These choices previously kept a blanket program-result refusal. A call whose handler is an `Effect.fn` generator now waits for `EK1002`'s rewrite instead of refusing first and blocking it.
 
+- Diagnostic conformance checks treated seven published codes as unassigned legacy exceptions; they now validate those codes directly against their specification assignments.
+
 - The forms gate rejected explicit Effect callbacks after independently landed changes moved their source locations; its reviewed snapshot now records the written modifier at each affected site.
 
 - Combining the chained-assertion and pipe-parser changes stopped compiler builds; the assertion probe now passes the pipe parser's arrow-context argument, with continuation tests covering both assertion operators and conditional tails.

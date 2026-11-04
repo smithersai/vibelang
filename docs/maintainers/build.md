@@ -245,6 +245,7 @@ queue:
 | Target | Runs when a batch changes |
 | --- | --- |
 | `//typescript/tsc:go-parser` | `typescript/tsc/internal/parser/`, `typescript/vibelang/cases/vibex-clash/` or `typescript/tsc/PACKAGE.ts` |
+| `//:spec-registry-go` | Published specification/VIP assignments, compiler/core diagnostic declarations and fuzz registry inventories; validates registrations and rejects obsolete legacy exceptions. |
 | `//:lint-config` | Configuration/core options, imported lint options or hooks, fixer/config diagnostics, lint fuzz tests, or the VIP-38 contract; checks warning, activation and preserving migration without building runtime packages. |\n| `//:docs-contracts` | Specification chapters/VIPs, user pages, covered contract tests and fixtures, or `docs/tools` dependencies; runs native examples and mutation guards without building the compiler. Appendix B owner checks run here; the complete compiler-backed no-throw suite remains in `//:docs-tools`. |
 | `//packages:runtime-package` | `packages/runtime/`, `packages/PACKAGE.ts` or `docs/tools/bugbash4-docs.test.mjs` |
 | `//:effect-pin` | a `package.json` or `scripts/effect-pin*` |
