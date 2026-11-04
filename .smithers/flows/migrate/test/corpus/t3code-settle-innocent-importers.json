@@ -1,0 +1,24 @@
+{
+  "key": "flow:settle-blames-innocent-importers",
+  "oracle": "It returns dependency roots first, through healthy intermediate importers and cycles, then checks again before deciding whether an importer also needs to return.",
+  "witnesses": [
+    {
+      "name": "web themePalette hidden export",
+      "rootCode": "TS2883",
+      "rootMessage": "The inferred type of hidden cannot be named without a reference to Hidden.",
+      "importerCode": "EK3805",
+      "originalRoot": "apps/web/src/themePalette.ts",
+      "rootSource": "import { value } from \"../../consumer/src/index.js\"\nexport const hidden = value\n",
+      "importerSource": "import { hidden } from \"../../core/src/index.js\"\nexport const result = hidden\n"
+    },
+    {
+      "name": "desktop snapShot unconverted Effect.fn",
+      "rootCode": "EK1002",
+      "rootMessage": "Effect.fn expects a JavaScript generator, but in VibeLang function* declares a producer.",
+      "importerCode": "EK3805",
+      "originalRoot": "apps/desktop/src/ipc/methods/snapShot.ts",
+      "rootSource": "import { Effect } from \"effect\"\nimport { value } from \"../../consumer/src/index.js\"\nexport const hidden = Effect.fn(function* () { return value })\n",
+      "importerSource": "import { hidden } from \"../../core/src/index.js\"\nexport const result = hidden\n"
+    }
+  ]
+}

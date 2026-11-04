@@ -146,7 +146,7 @@ An `is` binding without a defined lexical home in a formal-parameter, catch-para
 ## Whole-scope driver receipts
 
 - Bank completed packages and their source digests; skip unchanged banks on restart, with dependency packages first and large ready packages last. A config whose `--fix` timed out receives no retry in the same pass.
-- Own `EK` diagnostics blame only their file. For ordinary importer errors, try reachable modules with changed declarations before widening; return dependency roots first and check every return.
+- A diagnostic in a live migrated module blames only its own file, including TypeScript diagnostics repeated by an importing project. Return dependency roots among those owners first and recheck before judging importers, regardless of the diagnostic prefix. Only when no live module owns a diagnostic, trace foreign TypeScript fallout through reachable modules with changed declarations before widening. Cycles include failing owners, never healthy members added by attribution. Keep independent importer errors failing on the next check.
 - Emit both sides of every declaration comparison with `--singleThreaded`, including sidecars.
 - Under detail 272 addendum 4, rewrite only statically resolved path strings. Bare names require the module's own directory. Comments and prose stay as written; `vi.mock` and `require.resolve` are specifiers. Keep a module `.ts` when a test reads its source text.
 - Whole-scope record requires readable, nonempty per-test receipts against the setup baseline, previous commit and main. Reject inconsistent summaries, unexplained exits, missing tests and newly skipped passing tests. Measure all sides in one provider job; never compare separate box jobs.

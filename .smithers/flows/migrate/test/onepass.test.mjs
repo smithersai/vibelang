@@ -9,7 +9,7 @@ import { test } from "node:test"
 import { packRepository } from "../lib/pack-policy.mjs"
 import { rewriteReferences, restoreReferences } from "../lib/references.mjs"
 import { renameBatch } from "../lib/codemod.mjs"
-import { planScope, dependencyRoots, shardModules, fixShards, onePassStep } from "../lib/onepass.mjs"
+import { planScope, blameCandidates, dependencyRoots, shardModules, fixShards, onePassStep } from "../lib/onepass.mjs"
 import { revertMany, paths, flowStep, nextStep, verify, record } from "../lib/steps.mjs"
 import { must, quote, run, writeJson, readJson } from "../lib/util.mjs"
 import * as Jj from "../lib/jj.mjs"
@@ -660,4 +660,74 @@ if (args.includes("--fix")) {
     assert.equal(text(f.target, "core/src/observer.vibe"), before)
     assert.ok(!readdirSync(join(f.target, "core")).some(p => p.startsWith("tsconfig.vibelang-fix-")))
   } finally { rmSync(f.root, { recursive: true, force: true }) }
+})
+
+const settleCorpus = readJson(fileURLToPath(new URL("./corpus/t3code-settle-innocent-importers.json", import.meta.url)))
+
+for (const witness of settleCorpus.witnesses) for (const ownImporter of [false, true]) {
+  test("t3code settle: " + witness.name + "; independent importer error " + ownImporter, async () => {
+    const f = await fixture()
+    try {
+      put(f.target, "core/src/index.ts", witness.rootSource)
+      put(f.target, "app/src/index.ts", witness.importerSource)
+      put(f.target, "consumer/src/index.ts", "export const value = 1\n")
+      put(f.run, "scope.txt", "core/src/index.ts\napp/src/index.ts\nconsumer/src/index.ts\n")
+      // Every project repeats its imported root diagnostic, as themePalette did.
+      const prefix = text(f.root, "tool/compiler.cjs").split("const core =")[0]
+      const emit = (file, code, message) => "console.log(" + JSON.stringify(file + "(1,1): error " + code + ": " + message) + "); process.exitCode = 1;"
+      put(f.root, "tool/compiler.cjs", prefix + [
+        "const core = fs.existsSync(path.join(root, \"core/src/index.vibe\"))",
+        "if (core) { " + emit("../core/src/index.vibe", witness.rootCode, witness.rootMessage) + " }",
+        "if (pkg === \"app\" && fs.existsSync(\"src/index.vibe\")) {",
+        "if (core) { " + emit("src/index.vibe", witness.importerCode, "dependency fallout") + " }",
+        ownImporter ? emit("src/index.vibe", "TS2375", "independent importer failure") : "",
+        "}"
+      ].join("\n"))
+      await Jj.commit(f.target, "t3code minimized settle witness")
+      await onePassStep("plan", { run: f.run, scope: f.scope })
+      await onePassStep("rename", { run: f.run, jobs: 2 })
+      const out = await onePassStep("settle", { run: f.run, jobs: 2 })
+      assert.equal(out.settled, true)
+      assert.deepEqual(out.rounds[0].reverting, ["core/src/index.vibe"])
+      assert.deepEqual(Object.keys(out.causes), ownImporter ? ["core/src/index.vibe", "app/src/index.vibe"] : ["core/src/index.vibe"])
+      assert.ok(existsSync(join(f.target, "consumer/src/index.vibe")), "a healthy dependency stays migrated")
+      assert.equal(existsSync(join(f.target, "app/src/index.vibe")), !ownImporter)
+      assert.ok(out.causes["core/src/index.vibe"].diagnostics.every(d => d.file === "core/src/index.vibe"))
+      if (ownImporter) {
+        assert.deepEqual(out.rounds[1].reverting, ["app/src/index.vibe"])
+        assert.deepEqual(out.causes["app/src/index.vibe"].codes, ["TS2375"])
+      }
+    } finally { rmSync(f.root, { recursive: true, force: true }) }
+  })
+}
+
+test("t3code settle property: root retries preserve all importers whose fallout disappears", () => {
+  assert.ok(text(fileURLToPath(new URL("..", import.meta.url)), "README.md").replace(/\s+/g, " ").includes(settleCorpus.oracle))
+  fc.assert(fc.property(
+    fc.integer({ min: 2, max: 24 }), fc.array(fc.nat(100), { maxLength: 80 }),
+    fc.subarray(["TS2883", "EK1002", "EK3805", "TS2345", "TS2375"], { minLength: 1 }),
+    (size, extras, codes) => {
+      const names = Array.from({ length: size }, (_, i) => "m" + i + ".vibe")
+      const helper = "helper.vibe"
+      const graph = new Map([[helper, []], ...names.map((f, i) => [f, [i ? names[i - 1] : helper]])])
+      for (let i = 1; i < size; i++) for (const n of extras) if (n % size < i) graph.get(names[i]).push(names[n % size])
+      const live = new Set([helper, ...names])
+      const diagnostics = names.map((file, i) => ({ file, code: codes[i % codes.length] }))
+      const blamed = new Set(diagnostics.flatMap(d => blameCandidates(graph, d, live)))
+      const reverting = dependencyRoots(graph, blamed)
+      assert.deepEqual(reverting, [names[0]], "only the root returns before recompilation")
+      // The oracle clears propagated diagnostics after the root returns.
+      // An independent importer error must still be actionable on retry.
+      const independent = names.at(-1)
+      const remaining = new Set([...live].filter(f => !reverting.includes(f)))
+      assert.deepEqual(dependencyRoots(graph, new Set(blameCandidates(graph, { file: independent, code: "TS2375" }, remaining))), [independent])
+    }
+  ), { seed: 110404, numRuns: 250 })
+})
+
+test("t3code settle: cycles include diagnostic owners, never a healthy SCC member", () => {
+  const graph = new Map([["a.vibe", ["b.vibe"]], ["b.vibe", ["a.vibe"]], ["observer.vibe", ["a.vibe"]]])
+  const live = new Set(graph.keys())
+  assert.deepEqual(dependencyRoots(graph, new Set(blameCandidates(graph, { file: "a.vibe", code: "TS2883" }, live))), ["a.vibe"])
+  assert.deepEqual(new Set(dependencyRoots(graph, new Set(["a.vibe", "b.vibe", "observer.vibe"]))), new Set(["a.vibe", "b.vibe"]))
 })

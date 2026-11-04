@@ -232,12 +232,13 @@ function family(d) {
   return d.message.includes("Effect<") ? "Effect value used as a plain value" : "TypeScript error after conversion"
 }
 
-/** Own EK diagnostics only blame their file. Ordinary fallout first tries changed declarations. */
+/** A diagnostic in a live module blames that file. Foreign TS fallout tries changed declarations. */
 export function blameCandidates(graph, diagnostic, live, same = new Set()) {
-  if (/^EK/.test(diagnostic.code ?? "")) return live.has(diagnostic.file) ? [diagnostic.file] : []
+  if (live.has(diagnostic.file)) return [diagnostic.file]
+  if (/^EK/.test(diagnostic.code ?? "")) return []
   const hits = [...reachable(graph, diagnostic.file)].filter(f => live.has(f))
   const changed = hits.filter(f => !same.has(f))
-  return changed.length ? changed : live.has(diagnostic.file) ? [diagnostic.file] : hits
+  return changed.length ? changed : hits
 }
 
 function identicalDeclarations(config, p, cm) {
@@ -282,14 +283,16 @@ async function settle(config, p, cm, options) {
     })
     const live = new Set(cm.renames.map(r => r.to).filter(f => existsSync(join(config.target, f))))
     const graph = await moduleGraph(config, p)
-    const bad = new Map(), own = added.filter(d => live.has(d.file) && /^EK/.test(d.code))
-    const same = identicalDeclarations(config, p, cm)
-    // Own language failures are handled before inferring responsibility for TS fallout.
+    const bad = new Map(), own = added.filter(d => live.has(d.file))
+    const same = own.length ? new Set() : identicalDeclarations(config, p, cm)
+    // Retry every direct diagnostic owner before inferring foreign fallout.
+    // A TS root can cause EK lint fallout in its importers, so code prefixes
+    // cannot decide which file returns first; the dependency graph does.
     for (const d of own.length ? own : added) for (const file of blameCandidates(graph,d,live,same)) {
       bad.set(file,[...(bad.get(file) ?? []),d])
     }
     const roots = dependencyRoots(graph, new Set(bad.keys()))
-    const receipt = { round, errors: added.length, own: bad.size, reverting: roots }
+    const receipt = { round, errors: added.length, own: bad.size, attribution: own.length ? "own-file" : "dependencies", reverting: roots }
     history.push(receipt)
     appendJsonl(join(p.batch("01"), "progress.jsonl"), { at: new Date().toISOString(), stage: "settle", ...receipt })
     if (!added.length || !roots.length || round === maxRounds) {

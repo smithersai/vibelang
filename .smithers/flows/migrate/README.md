@@ -143,10 +143,19 @@ banks package outcomes, kept modules and return causes in `done.json`.
 A config whose `--fix` timed out is recorded in the bank and receives no more
 `--fix` in that pass, including after a restart. Start a new run to retry it.
 
-Own `EK` diagnostics blame only their own module. Ordinary type errors first
+A diagnostic whose file is a live migrated module blames only that module,
+including ordinary TypeScript diagnostics repeated by an importing project.
+Dependency roots among those owners return first, regardless of diagnostic
+prefix: an `EK` error in an importer can follow a TypeScript error in its
+dependency. The full project is checked again before returning importers;
+an importer with an independent error still returns on that later check.
+Healthy members of a cycle are not added to the blamed set; failing members
+of a dependency-root cycle return together so the pass makes progress.
+Only when no live module owns a diagnostic do foreign TypeScript errors
 blame reachable migrated modules whose declaration differs from the baseline;
-when none can be distinguished, settle widens to the reachable set. Dependency
-roots are returned first and every return is checked. Missing declaration
+when none can be distinguished, settle widens to the reachable set.
+Each round records `attribution` as `own-file` or `dependencies` alongside
+its exact return set, and every return is checked. Missing declaration
 evidence is treated as suspect. Both baseline and candidate declaration emits,
 including sidecar checks, use `--singleThreaded`.
 
