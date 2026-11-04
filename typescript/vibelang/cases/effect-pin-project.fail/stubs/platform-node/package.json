@@ -1,0 +1,1 @@
+{"name": "@effect/platform-node", "version": "4.1.0", "types": "index.d.ts", "exports": {".": "./index.d.ts", "./NodeRuntime": "./index.d.ts", "./NodeServices": "./index.d.ts"}}

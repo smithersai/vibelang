@@ -132,6 +132,8 @@ type Program struct {
 	declarationDiagnosticCache collections.SyncMap[*ast.SourceFile, []*ast.Diagnostic]
 
 	programDiagnostics             []*ast.Diagnostic
+	extensionDiagnosticsOnce       sync.Once
+	extensionDiagnostics           []*ast.Diagnostic
 	hasEmitBlockingDiagnostics     collections.Set[tspath.PathKey]
 	contentMapperOptionDiagnostics []*ast.Diagnostic
 
@@ -884,6 +886,7 @@ func (p *Program) GetSuggestionDiagnostics(ctx context.Context, sourceFile *ast.
 func (p *Program) GetProgramDiagnostics() []*ast.Diagnostic {
 	return SortAndDeduplicateDiagnostics(slices.Concat(
 		p.programDiagnostics,
+		p.getExtensionProgramDiagnostics(),
 		p.contentMapperDiagnostics,
 		p.contentMapperOptionDiagnostics,
 		p.includeProcessor.getDiagnostics(p).GetGlobalDiagnostics(),

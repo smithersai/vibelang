@@ -193,6 +193,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - An `is` binding in an unbraced statement body silently acquired an implicit block; it now reports `EK0705`, and the quick fix and `vibelang --fix` add the required braces.
 
+- An off-pin Effect dependency now reports one project-level EK3201 on the configuration file (or package manifest), with the resolved and pinned versions. Platform peers each report once; adding source files no longer duplicates the mismatch or attaches it to an Effect use.
+
 - The forms gate rejected explicit Effect callbacks after independently landed changes moved their source locations; its reviewed snapshot now records the written modifier at each affected site.
 
 - Combining the chained-assertion and pipe-parser changes stopped compiler builds; the assertion probe now passes the pipe parser's arrow-context argument, with continuation tests covering both assertion operators and conditional tails.

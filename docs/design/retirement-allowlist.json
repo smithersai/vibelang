@@ -88,5 +88,15 @@
       "reference": "docs/design/vips/0016-data-declarations.md: Status accepted by Will (2026-10-28), malformed-variant amendment (2026-10-31), decided detail 247; lane brief explicitly authorizes implementing accepted VIP requirements under Will's standing approval."
     },
     "reason": "Diagnostic-only compatibility fixture update authorized by VIP-16/detail 247. EK2122 is an unchanged pre-existing compiler bug: VIP-16 allows zero variants. This entry does not approve or add that rejection. The fixture's program text is unchanged apart from comments and its golden diagnostics change only EK2125 to EK1606."
+  },
+  {
+    "code": "EK3201",
+    "vip": "VIP-32",
+    "case": "typescript/vibelang/cases/effect-pin-project.fail",
+    "reason": "This case checks the project-level scope and text of the existing resolved-dependency pin error. Correcting it requires upgrading Effect and VibeLang together, not rewriting a source use site; --fix must not rewrite the package installation.",
+    "approval": {
+      "by": "Will",
+      "reference": "Accepted VIP-32, docs/design/vips/0032-effect-version.md#decision; explicit ek3201-once task (2026-11-03): fix the existing off-pin error to report once per project, add failing-first cases and a property over file counts, and queue it."
+    }
   }
 ]

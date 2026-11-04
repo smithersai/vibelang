@@ -10,7 +10,9 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
+	"testing/quick"
 
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/compiler"
@@ -19,7 +21,7 @@ import (
 // pinDiagnostics returns the EK3201 diagnostics of file and every other code.
 func pinDiagnostics(t *testing.T, program *compiler.Program, file *ast.SourceFile) (pins []*ast.Diagnostic, others []int32) {
 	t.Helper()
-	for _, d := range program.GetSemanticDiagnostics(t.Context(), file) {
+	for _, d := range append(program.GetProgramDiagnostics(), program.GetSemanticDiagnostics(t.Context(), file)...) {
 		if d.Code() == EK3201.Code {
 			pins = append(pins, d)
 		} else {
@@ -59,10 +61,8 @@ func TestEffectPinMismatch(t *testing.T) {
 						t.Fatalf("%q: EK3201 text %q lacks %q", source, text, part)
 					}
 				}
-				first := file.Statements.Nodes[0]
-				if pins[0].File() == nil || pins[0].File().FileName() != file.FileName() ||
-					pins[0].Pos() < first.Pos() || pins[0].End() > first.End() {
-					t.Fatalf("%q: EK3201 must point inside the first source statement: %v", source, pins[0])
+				if pins[0].File() == nil || !strings.HasSuffix(pins[0].File().FileName().AsString(), "/tsconfig.json") {
+					t.Fatalf("%q: EK3201 must point to the project config: %v", source, pins[0])
 				}
 			}
 		})
@@ -128,9 +128,132 @@ func TestEffectPinMismatchAfterPinnedFile(t *testing.T) {
 			if len(pins) != 1 || len(others) != 0 {
 				t.Fatalf("want one EK3201 for later package, got pins=%v others=%v", pins, others)
 			}
-			if pins[0].File() == nil || !strings.HasSuffix(pins[0].File().FileName().AsString(), "/nested/other.vibe") {
+			if pins[0].File() == nil || !strings.HasSuffix(pins[0].File().FileName().AsString(), "/tsconfig.json") {
 				t.Fatalf("off-pin diagnostic belongs to the other package: %v", pins[0])
 			}
 		})
 	}
+}
+
+// Adding source files or querying them in a different order cannot multiply
+// a project dependency error, including with multiple compiler checkers.
+func TestEffectPinFileCountProperty(t *testing.T) {
+	property := func(raw uint8, reverse bool) bool {
+		count := 1 + int(raw%24)
+		_, file, _, _ := editorProgramWith(t, "export const n = 1", map[string]string{"effect": "typescript/tsc/internal/vibelang/testdata/effect-pin/effect-4.1.0"})
+		dir := filepath.Dir(file.FileName().AsString())
+		names := []string{"main.vibe"}
+		for i := 1; i < count; i++ {
+			name := fmt.Sprintf("file%d.vibe", i)
+			if err := os.WriteFile(filepath.Join(dir, name), []byte("export const n = 1"), 0600); err != nil {
+				t.Fatal(err)
+			}
+			names = append(names, name)
+		}
+		if reverse {
+			for i, j := 0, len(names)-1; i < j; i, j = i+1, j-1 {
+				names[i], names[j] = names[j], names[i]
+			}
+		}
+		text := `{"compilerOptions":{"target":"ES2022","module":"NodeNext","skipLibCheck":true,"noEmit":true,"types":[]},"files":["` + strings.Join(names, `","`) + `"]}`
+		configName := filepath.Join(dir, "tsconfig.json")
+		if err := os.WriteFile(configName, []byte(text), 0600); err != nil {
+			t.Fatal(err)
+		}
+		fs := bundled.WrapFS(osvfs.FS())
+		config, errors := tsoptions.GetParsedCommandLineOfConfigFile(tspath.RootedFilePathFromAbsolute(filepath.ToSlash(configName)), &core.CompilerOptions{}, nil, fs, nil)
+		if len(errors) != 0 {
+			t.Fatal(errors)
+		}
+		program := compiler.NewProgram(compiler.ProgramOptions{Config: config, Host: compiler.NewCompilerHost(fs, bundled.LibPath(), nil, nil, nil)})
+		pins, _ := pinDiagnostics(t, program, nil)
+		if len(pins) != 1 || pins[0].File() == nil || !strings.HasSuffix(pins[0].File().FileName().AsString(), "/tsconfig.json") {
+			t.Logf("files=%d reverse=%v: %v", count, reverse, pins)
+			return false
+		}
+		// A project diagnostic is repeatable; individual source requests own none.
+		if len(program.GetProgramDiagnostics()) != 1 {
+			return false
+		}
+		for _, source := range program.GetSourceFiles() {
+			for _, d := range program.GetSemanticDiagnostics(t.Context(), source) {
+				if d.Code() == EK3201.Code {
+					return false
+				}
+			}
+		}
+		return true
+	}
+	if err := quick.Check(property, &quick.Config{MaxCount: 32}); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// Every platform peer has its own single project diagnostic. Root and
+// subpath imports, and an unused installed peer, cannot change that count.
+func TestEffectPlatformPinMismatch(t *testing.T) {
+	for _, version := range []string{"4.1.0", supportedEffectVersion} {
+		t.Run(version, func(t *testing.T) {
+			_, file, _, _ := editorProgramWith(t, "export const n = 1", map[string]string{"effect": "typescript/tsc/internal/vibelang/testdata/effect-pin/effect-4.1.0"})
+			dir := filepath.Dir(file.FileName().AsString())
+			for _, name := range []string{"platform-node", "platform-bun", "platform-browser", "platform-node-shared"} {
+				pkg := filepath.Join(dir, "node_modules/@effect", name)
+				if err := os.MkdirAll(pkg, 0755); err != nil {
+					t.Fatal(err)
+				}
+				if err := os.WriteFile(filepath.Join(pkg, "package.json"), []byte(fmt.Sprintf(`{"name":"@effect/%s","version":"%s","types":"index.d.ts"}`, name, version)), 0600); err != nil {
+					t.Fatal(err)
+				}
+				if err := os.WriteFile(filepath.Join(pkg, "index.d.ts"), []byte("export declare const value: number"), 0600); err != nil {
+					t.Fatal(err)
+				}
+			}
+			fs := bundled.WrapFS(osvfs.FS())
+			config, errors := tsoptions.GetParsedCommandLineOfConfigFile(tspath.RootedFilePathFromAbsolute(filepath.ToSlash(filepath.Join(dir, "tsconfig.json"))), &core.CompilerOptions{}, nil, fs, nil)
+			if len(errors) != 0 {
+				t.Fatal(errors)
+			}
+			program := compiler.NewProgram(compiler.ProgramOptions{Config: config, Host: compiler.NewCompilerHost(fs, bundled.LibPath(), nil, nil, nil)})
+			pins, _ := pinDiagnostics(t, program, nil)
+			want := 5
+			if version == supportedEffectVersion {
+				want = 1
+			}
+			if len(pins) != want {
+				t.Fatalf("want %d project pins, got %v", want, pins)
+			}
+			for _, d := range pins {
+				if d.File() == nil || !strings.HasSuffix(d.File().FileName().AsString(), "/tsconfig.json") || !strings.Contains(d.MessageText(), "4.1.0") || !strings.Contains(d.MessageText(), supportedEffectVersion) {
+					t.Fatal(d)
+				}
+			}
+		})
+	}
+}
+
+func TestEffectPinCommandLineProject(t *testing.T) {
+	original, _, _, _ := editorProgramWith(t, "export const n = 1", map[string]string{"effect": "typescript/tsc/internal/vibelang/testdata/effect-pin/effect-4.1.0"})
+	config := original.CommandLine()
+	config.ConfigFile = nil
+	config.CompilerOptions().ConfigFilePath = ""
+	fs := bundled.WrapFS(osvfs.FS())
+	program := compiler.NewProgram(compiler.ProgramOptions{Config: config, Host: compiler.NewCompilerHost(fs, bundled.LibPath(), nil, nil, nil)})
+	pins, _ := pinDiagnostics(t, program, nil)
+	if len(pins) != 1 || pins[0].File() == nil || !strings.HasSuffix(pins[0].File().FileName().AsString(), "/package.json") {
+		t.Fatalf("want package manifest anchor: %v", pins)
+	}
+}
+
+func TestEffectPinConcurrentProjectRequests(t *testing.T) {
+	program, _, _, _ := editorProgramWith(t, "export const n = 1", map[string]string{"effect": "typescript/tsc/internal/vibelang/testdata/effect-pin/effect-4.1.0"})
+	var wg sync.WaitGroup
+	for range 8 {
+		wg.Go(func() {
+			pins := program.GetProgramDiagnostics()
+			if len(pins) != 1 || pins[0].File() == nil || !strings.HasSuffix(pins[0].File().FileName().AsString(), "/tsconfig.json") {
+				t.Errorf("want one stable project pin: %v", pins)
+			}
+		})
+	}
+	wg.Wait()
 }

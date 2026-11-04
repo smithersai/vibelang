@@ -237,7 +237,7 @@ During alpha, VibeLang pins exactly one Effect version, and the pin moves to eac
 
 A migration upgrades the target repository to the pinned Effect first, on its own: it fixes what breaks and lands that commit with green tests. Only then does it convert files to `.vibe`, so each breakage shows its real cause. A repository that already uses VibeLang upgrades Effect together with the VibeLang release pinned to the new Effect, because the published `vibelang-runtime` enforces its exact pin.
 
-VibeLang declares an exact `effect` peer dependency. The compiler reads the resolved `effect/package.json`; any version other than `4.1.1`, including `4.1.0`, is `EK3201` in the CLI and editor ([VIP-32](../vips/0032-effect-version.md#decision)). For example, resolving `effect@4.0.3` reports: `the resolved effect is 4.0.3; VibeLang Y pins 4.1.1: upgrade both together`, where `Y` is the VibeLang release.
+VibeLang declares an exact `effect` peer dependency. The compiler reads the resolved `effect/package.json`; any version other than `4.1.1`, including `4.1.0`, is `EK3201` in the CLI and editor ([VIP-32](../vips/0032-effect-version.md#decision)). For example, resolving `effect@4.0.3` reports: `the resolved effect is 4.0.3; VibeLang Y pins 4.1.1: upgrade both together`, where `Y` is the VibeLang release. This is one project-level diagnostic on the configuration file or package manifest, independent of the number of files and use sites. Each resolved off-pin `@effect/platform-*` peer likewise reports once, naming its resolved and pinned versions.
 
 ## Compiler and tooling requirements
 
