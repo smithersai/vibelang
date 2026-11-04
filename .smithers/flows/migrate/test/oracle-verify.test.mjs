@@ -8,6 +8,8 @@ import { createRequire } from "node:module"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { test } from "node:test"
+import { recordDeclarationSurface } from "../lib/declarations.mjs"
+import { packRepository } from "../lib/pack-policy.mjs"
 import { makeConfig, paths, verify } from "../lib/steps.mjs"
 import { must, slug, writeJson } from "../lib/util.mjs"
 
@@ -24,7 +26,7 @@ async function verifyWith(oracle) {
     mkdirSync(join(target, "node_modules"), { recursive: true })
     symlinkSync(require.resolve("typescript/package.json").replace(/\/package.json$/, ""), join(target, "node_modules/typescript"))
     writeJson(join(target, "package.json"), { private: true })
-    writeJson(join(target, pkg, "package.json"), { name: "fruit", types: "./main.d.ts" })
+    writeJson(join(target, pkg, "package.json"), { name: "fruit", version: "1.0.0", types: "./main.d.ts" })
     writeJson(join(target, pkg, "tsconfig.json"), { compilerOptions: { rootDir: "." }, include: ["*.vibe"] })
     writeFileSync(join(target, pkg, "main.vibe"), "export const apple = 1\n")
     // A vibelang that emits main.d.ts exactly as the native baseline has it.
@@ -35,18 +37,21 @@ async function verifyWith(oracle) {
       "if (outIndex >= 0) { fs.mkdirSync(process.argv[outIndex + 1], { recursive: true }); fs.writeFileSync(path.join(process.argv[outIndex + 1], \"main.d.ts\"), " + JSON.stringify(declaration) + ") }"
     ].join("\n") + "\n", { mode: 0o755 })
     const p = paths(run)
-    writeJson(p.config, makeConfig({ target, packages: [pkg], test: "true", vibelangVersion: "0.0.11" }))
+    const config = makeConfig({ target, packages: [pkg], test: "true", vibelangVersion: "0.0.11" })
+    writeJson(p.config, config)
     writeJson(p.plan, { batches: [{ files: [pkg + "/main.ts"] }] })
     writeJson(join(p.baseline, "tests.json"), { code: 0, tests: {}, total: 0, passed: 0, failed: [], skipped: 0 })
     writeJson(join(p.baseline, "compile-" + slug(pkg) + ".json"), [])
     const baseline = join(p.baseline, "dts", slug(pkg))
     mkdirSync(baseline, { recursive: true })
     writeFileSync(join(baseline, "main.d.ts"), declaration)
-    writeJson(join(baseline, "public-surface.json"), { roots: ["main.d.ts"], reachable: ["main.d.ts"], unresolved: [] })
+    assert.deepEqual(recordDeclarationSurface(require("typescript"), baseline, join(target, pkg), [{ tsconfig: "tsconfig.json", prefix: "." }]).unresolved, [])
     if (oracle) writeJson(join(p.baseline, "declaration-oracle.json"), { [pkg]: oracle })
     writeFileSync(join(target, ".gitignore"), "node_modules/\n")
     await must("jj git init && jj config set --repo user.name test && jj config set --repo user.email test@localhost && jj commit -m baseline", { cwd: target })
+    writeJson(join(p.baseline, "upstream-packs.json"), await packRepository(config, join(p.baseline, "upstream-packs")))
     const result = await verify({ run, batch: "01" })
+    assert.equal(result.checks.packs, true, JSON.stringify(result.packs))
     assert.deepEqual(JSON.parse(readFileSync(p.verify("01"), "utf8")), result)
     return result
   } finally {

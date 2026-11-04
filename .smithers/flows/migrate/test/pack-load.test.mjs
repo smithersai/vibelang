@@ -8,6 +8,8 @@ import { createRequire } from "node:module"
 import { tmpdir } from "node:os"
 import { dirname, join } from "node:path"
 import { test } from "node:test"
+import { recordDeclarationSurface } from "../lib/declarations.mjs"
+import { packRepository } from "../lib/pack-policy.mjs"
 import { compareDistLists } from "../lib/dist-list.mjs"
 import * as Jj from "../lib/jj.mjs"
 import { comparePackLoads, exportSpecifiers, packLoadSnapshot, verifyPackLoad } from "../lib/pack-load.mjs"
@@ -289,7 +291,7 @@ async function verifiable(root) {
   mkdirSync(join(target, "src"), { recursive: true }); mkdirSync(join(target, "dist")); mkdirSync(join(target, "node_modules/.bin"), { recursive: true })
   symlinkSync(dirname(require.resolve("typescript/package.json")), join(target, "node_modules/typescript"))
   writeJson(join(target, "package.json"), { name: "pub", version: "1.0.0", type: "module", exports: "./dist/main.js", files: ["dist"] })
-  writeJson(join(target, "tsconfig.json"), { include: ["src/**/*.ts", "src/**/*.vibe"] })
+  writeJson(join(target, "tsconfig.json"), { compilerOptions: { rootDir: "src", outDir: "dist" }, include: ["src/**/*.ts", "src/**/*.vibe"] })
   writeFileSync(join(target, ".gitignore"), "node_modules/\ndist/\n")
   writeFileSync(join(target, ".npmrc"), "registry=http://127.0.0.1:9/\nfetch-retries=0\naudit=false\nfund=false\n")
   writeFileSync(join(target, "src/main.ts"), "export const value = 1\n")
@@ -298,7 +300,7 @@ async function verifiable(root) {
     "#!/usr/bin/env node",
     'const fs = require("node:fs"), path = require("node:path");',
     'const at = process.argv.indexOf("--outDir");',
-    'if (at >= 0) { const out = process.argv[at + 1]; fs.mkdirSync(path.join(out, "src"), { recursive: true }); fs.writeFileSync(path.join(out, "src/main.d.ts"), "export declare const value = 1;\\n"); }'
+    'if (at >= 0) { const out = process.argv[at + 1]; fs.mkdirSync(out, { recursive: true }); fs.writeFileSync(path.join(out, "main.d.ts"), "export declare const value = 1;\\n"); }'
   ].join("\n") + "\n", { mode: 0o755 })
   await must("jj git init && jj config set --repo user.name test && jj config set --repo user.email test@localhost", { cwd: target })
   await must("jj commit -m fixture", { cwd: target })
@@ -311,9 +313,10 @@ async function verifiable(root) {
   writeJson(join(p.baseline, "compile-" + slug(".") + ".json"), [])
   writeJson(join(p.baseline, "declaration-oracle.json"), { ".": { compiler: "fixture-stock", files: [], missing: [], extra: [], changed: [] } })
   const dts = join(p.baseline, "dts", slug("."))
-  mkdirSync(join(dts, "src"), { recursive: true })
-  writeFileSync(join(dts, "src/main.d.ts"), "export declare const value = 1;\n")
-  writeJson(join(dts, "public-surface.json"), { roots: ["src/main.d.ts"], reachable: ["src/main.d.ts"], unresolved: [] })
+  mkdirSync(dts, { recursive: true })
+  writeFileSync(join(dts, "main.d.ts"), "export declare const value = 1;\n")
+  assert.deepEqual(recordDeclarationSurface(require("typescript"), dts, target, [{ tsconfig: "tsconfig.json", prefix: "." }]).unresolved, [])
+  writeJson(join(p.baseline, "upstream-packs.json"), await packRepository(config, join(p.baseline, "upstream-packs")))
   return { target, run, p, config, env: { npm_config_userconfig: join(target, ".npmrc"), npm_config_cache: join(root, "npm-cache") } }
 }
 
@@ -326,6 +329,7 @@ test("verify: a pack regression fails checks.packLoad, named in verify.json; a f
     renameSync(join(target, "src/main.ts"), join(target, "src/main.vibe"))
     writeFileSync(join(target, "dist/main.js"), "bootstrap()\nexport const value = 1\n")
     const refused = await verify({ run, batch: "01" })
+    assert.equal(refused.checks.packs, true, JSON.stringify(refused.packs))
     assert.equal(refused.packLoad.state, "complete", JSON.stringify(refused.checks))
     assert.deepEqual(refused.packLoad.refusals.map(r => [r.kind, r.runtime, r.specifier]).sort(), [["load-failed", "bun", "pub"], ["load-failed", "node", "pub"]])
     assert.equal(refused.checks.packLoad, false)

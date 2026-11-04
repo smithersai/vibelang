@@ -47,6 +47,8 @@ The `//:api-identity-test` target checks [published declaration identity](api-id
 
 Migration integration fixtures keep valid lockfile syntax and published package names and versions. Fixtures that bypass setup record real upstream pack receipts before checking declaration exits, build provenance or test regressions. Their pack commands must succeed before the intended checks run.
 
+Fixtures that bypass setup use `recordDeclarationSurface` to preserve entrypoint aliases and output layout, and record actual `packRepository` results. A hand-written root list does not contain the metadata needed to reproject the baseline independently of the candidate tree.
+
 Migration tool-configuration tests load generated Knip modules and check both `.vibe` and `.vibex` compiler bindings, retained package settings and sidecar excludes.
 
 The formatted-declaration certification file must parse and execute its complete property suites: 40 signature cases and 12 formatter-mutation runs plus explicit mutation examples. A file-level syntax failure is a failed suite, not an omitted property.
