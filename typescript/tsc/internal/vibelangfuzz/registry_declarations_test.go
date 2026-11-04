@@ -32,7 +32,7 @@ var legacyDeclared = map[int32]string{
 	2113: "lane del-2",                                                                                                                                                         // diagnostics.go
 	2114: "lane del-rest",                                                                                                                                                      // catch_expressions.go
 	2115: "lane gate6-codes; declaration only: native check removed; stock TypeScript mapper still emits EK2115",                                                               // diagnostics.go
-	2118: "lane del-rest",                                                                                                                                                      // diagnostics.go
+	2118: "lane del-rest; declaration only: VIP-13/VIP-29 reject every error extends clause with EK2117 first, so no source witness reaches this constructor check",            // diagnostics.go
 	2119: "lane d-handlers",                                                                                                                                                    // handle_results.go
 	2120: "lane del-2",                                                                                                                                                         // declaration_forms.go
 	2121: "lane del-2",                                                                                                                                                         // declaration_forms.go
@@ -50,10 +50,7 @@ var legacyDeclared = map[int32]string{
 	4202: "lane relic-control; declaration only: retired control witnesses now report EK3501 before boundary checks",                                                           // diagnostics.go
 	4301: "lane del-rest; declaration only: legacy erasure checks remain declared, but the graduated Config.String witness grants no emitted-code waiver",                      // diagnostics.go
 	4401: "lane del-rest",                                                                                                                                                      // diagnostics.go
-	4403: "lane del-rest",                                                                                                                                                      // diagnostics.go
-	4405: "lane del-rest",                                                                                                                                                      // diagnostics.go
 	4406: "lane del-rest; declaration only: legacy trust warning remains declared after VIP-4 foreign-contract bridging; no emitted-code waiver is retained",                   // diagnostics.go
-	4408: "lane del-rest",                                                                                                                                                      // diagnostics.go
 	4409: "decide-live decides",                                                                                                                                                // diagnostics.go
 	4410: "lane del-rest",                                                                                                                                                      // keyword_bindings.go
 	4501: "lane del-rest",                                                                                                                                                      // diagnostics.go
