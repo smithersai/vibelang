@@ -18,7 +18,7 @@ An agent that writes VibeLang loads the skill first: its forms, rules and idioms
 | Load | Tokens |
 | --- | ---: |
 | The VibeLang skill, `packages/compiler/skills/vibelang/SKILL.md` | 4,658 |
-| The skill and the [cheat sheet](115-cheat-sheet.md) | 15,906 |
+| The skill and the [cheat sheet](115-cheat-sheet.md) | 15,962 |
 | The skill and the user guide (142 pages) | 440,000 |
 | The user guide alone | 430,000 |
 | The specification (11 chapters) | 180,000 |
@@ -231,7 +231,7 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | **Schema** | **35,000** |
 | [Introduction](../schema/085-introduction.md) | 1,400 |
 | [Getting Started](../schema/086-getting-started.md) | 3,300 |
-| [Basic Usage](../schema/087-basic-usage.md) | 4,700 |
+| [Basic Usage](../schema/087-basic-usage.md) | 5,000 |
 | [Filters](../schema/088-filters.md) | 1,500 |
 | [Advanced Usage](../schema/089-advanced-usage.md) | 2,900 |
 | [Projections](../schema/090-projections.md) | 710 |
@@ -268,11 +268,11 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [Control operations and handlers](111-control-operations-and-handlers.md) | 210 |
 | [Producers](112-producers.md) | 3,200 |
 | [Building an HTTP API](113-building-an-http-api.md) | 1,500 |
-| [VibeLang for Effect users](114-vibelang-for-effect-users.md) | 7,500 |
+| [VibeLang for Effect users](114-vibelang-for-effect-users.md) | 7,600 |
 | [Cheat sheet](115-cheat-sheet.md) | 11,000 |
 | [Pattern matching with match and is](116-match-and-is.md) | 8,800 |
 | [Diagnostic code map](diagnostic-code-map.md) | 2,800 |
-| [Experimental platform APIs](118-experimental-platform-apis.md) | 6,900 |
+| [Experimental platform APIs](118-experimental-platform-apis.md) | 7,000 |
 | **All 8 pages** | **42,000** |
 
 ### Specification

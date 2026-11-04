@@ -411,6 +411,10 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - A pre-VIP-1 `fork(program, options)` left inside an already marked `effect` function made `--fix-vip-only` refuse the file with `EK1703`. It now writes `try Effect.forkChild(program, options)`, as it already did when adding the `effect` mark itself.
 - A source-child helper inserted by migration failed with `EK4402` after its file became VibeLang. The codemod now keeps the helper in a private TypeScript module body, preserving loader arguments and declarations without adding public exports.
+
+- Optional schema fields and tuple elements accepted explicit `undefined` even with `exactOptionalPropertyTypes` enabled. They now use `Schema.optionalKey` under that setting; an explicit `| undefined` keeps the previous acceptance.
+
+- Incomplete matches on finite generic constraints could compile silently; they now report `EK4701`. `vibelang --fix` can preserve the previous no-match `TypeError` with an explicit default arm.
 - API identity checks rejected two identical copies of a generic function using an `import()` type with literal type arguments. Copies now compare identically, while changed literal arguments and dependencies remain differences.
 
 - Publication checks for source-child packages could not install an already-published Effect dependency while simulating an unreleased VibeLang SDK. Their registry fixture now serves the pinned Effect release while continuing to withhold the SDK.
@@ -491,7 +495,11 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - A `do` expression whose paths all leave outward could be typed as `any` or `undefined` and fail a `never` annotation; it now has type `never`. For calls or property uses that relied on the old `any`, `vibelang --fix` adds an erased assertion that preserves the outward jump.
 
+- Existing optional schema decoders in projects with `exactOptionalPropertyTypes` had no compatibility upgrade. `vibelang --fix --fix-migration-only` now adds explicit `undefined` unions to keep their previous decoding behavior.
+
 - Migration loader-record receipts looked validated when the installed project module or checker was unavailable. They now distinguish completed, unavailable and failed validation while retaining the original write details.
+
+- Existing optional schema decoders in projects with `exactOptionalPropertyTypes` had no compatibility upgrade. `vibelang --fix --fix-migration-only` now adds explicit `undefined` unions to keep their previous decoding behavior.
 
 - The migration checks generated callback failure unions without their required parentheses and failed to parse them. They now write valid compound slots while checking the same preserved channels and refusal controls.
 
@@ -615,6 +623,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - `catch` could mix with `??`, `||` or `&&` without parentheses and accept a call or member access after a function handler. These forms now report `EK0512`; `vibelang --fix` preserves the earlier grouping and fallback evaluation.
 
 - Logical assignments with a `do` right operand reread global accessors and could return a setter's transformed value. They now read once and return the original value when skipped or the right operand's value when assigned.
+
+- Native home-directory lookups could fail with `HOME` unset when replaced by the environment-based `UserDirectories.home`. `Experimental.Process.homeDirectory` now preserves `os.homedir()` account fallback through the Node and Bun layers.
 
 
 - Source-child loader wiring introduced a `fileURLToPath` import alias and failed repositories’ native import policies. Setup now uses a namespace import and refreshes its own previously generated helpers while preserving manually observed bindings.
@@ -2841,8 +2851,9 @@ listed with an upgrade step.
     of Effect 4.0's `Crypto`, which Effect 4.1 replaced with `effect/crypto`.
   - `Experimental.Process` reads the process id, platform, architecture,
     executable, versions, host name, available parallelism, time origin and
-    memory use, and signals processes with `kill` and `isRunning`. The home
-    directory is Effect's `UserDirectories.home()`. Browsers have no
+    memory use, and signals processes with `kill` and `isRunning`. Its native
+    `homeDirectory` query follows `os.homedir()` account fallback; Effect's
+    `UserDirectories.home` resolves the configured environment. Browsers have no
     `Process` layer.
   - `Experimental.Locks` holds Web Locks with `hold`, `tryHold` and `query`.
     Node.js's `ExperimentalNodeLocks.layer` locks only within one process; Bun has no
@@ -2864,8 +2875,8 @@ listed with an upgrade step.
   `Experimental.FileSystem` for `X_OK` and `O_NONBLOCK`, `Experimental.Process` for `os.hostname()`,
   `process.pid`, `process.kill` and the other calls it replaces, and
   `Experimental.Locks` for `navigator.locks`. It names Effect's own
-  `FileSystem.lstat` for `lstat`, `UserDirectories.home()` for
-  `os.homedir()`, and `effect/crypto`'s `Mac`, `Signature`, `Aead` and
+  `FileSystem.lstat` for `lstat`, `Experimental.Process.homeDirectory` for
+  native `os.homedir()`, and `effect/crypto`'s `Mac`, `Signature`, `Aead` and
   `Cipher` for HMAC, signatures and ciphers.
 
 ### Prelude
