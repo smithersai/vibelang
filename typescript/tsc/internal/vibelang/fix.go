@@ -1036,6 +1036,8 @@ func rewritePrelude(g *fixGate, fs vfs.FS, program *compiler.Program, texts map[
 	// file's whole rewrite with it, since the shortened names need it gone.
 	proposals := make([]proposal, 0, len(names))
 	kept := names[:0]
+	files := programFilesKey(program)
+	refused := 0
 	for _, name := range names {
 		r := rewrites[name]
 		if g.sites != nil {
@@ -1046,14 +1048,23 @@ func rewritePrelude(g *fixGate, fs vfs.FS, program *compiler.Program, texts map[
 			continue
 		}
 		kept = append(kept, name)
-		proposals = append(proposals, proposal{file: program.GetSourceFile(name), fixes: []fileFix{{edits: r.edits, key: "prelude: " + name.AsString()}}})
+		p := proposal{file: program.GetSourceFile(name), fixes: []fileFix{{edits: r.edits, key: "prelude: " + name.AsString()}}}
+		if g.stillRefused(fs, program, files, texts, p) {
+			refused++
+			continue
+		}
+		proposals = append(proposals, p)
 	}
 	names = kept
-	g.progress.offered(len(proposals))
+	g.progress.offered(len(proposals) + refused)
+	g.progress.decided(0, refused)
 	texted := map[tspath.RootedFilePath]string{}
+	g.recordPrelude = true
 	for _, p := range g.accept(texts, proposals, func(FixRefusal, string) {}) {
 		texted[p.file.FileName()] = p.text()
+		delete(g.preludeRefusals, p.file.FileName())
 	}
+	g.recordPrelude = false
 	if g.done.Err() != nil {
 		return
 	}
@@ -1561,6 +1572,12 @@ type fixGate struct {
 	// aloneKey: a later round that offers the same edit to the same texts
 	// builds the same program, so it is refused without a check.
 	alone map[[32]byte]map[string]int
+	// preludeRefusals holds the prelude rewrites the gate refused in the
+	// run and what each refusal read, by file, which rewritePrelude
+	// refuses again without a check; recordPrelude is set while it
+	// checks them (fix_prelude_refusals.go).
+	preludeRefusals map[tspath.RootedFilePath]*preludeRefusal
+	recordPrelude   bool
 	// isolationChecks and checkpointFirst replace fixIsolationChecks and
 	// fixCheckpointFirst when not 0 (FixOptions).
 	isolationChecks, checkpointFirst int

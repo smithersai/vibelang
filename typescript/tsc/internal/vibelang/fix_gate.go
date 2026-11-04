@@ -149,6 +149,9 @@ type gateRound struct {
 	wholeOnly bool // every trial checks the whole program
 	refusals  []gateRefusal
 	textsKey  []byte
+	// evidence is what the last trial read when it added errors and the
+	// gate records prelude refusals (fix_prelude_refusals.go).
+	evidence *trialEvidence
 	// The programs the round has checked, the errors its texts report in
 	// each list of files checked alone (orderErrors), when it next checks
 	// the halving's fixes to write them and how many programs it has
@@ -263,6 +266,16 @@ func (r *gateRound) trial(parts []part, files []tspath.RootedFilePath) checked {
 	if whole {
 		errors = r.g.errors(program)
 		added = r.addedBy(errors)
+	}
+	if r.g.recordPrelude {
+		r.evidence = nil
+		if len(added) > 0 {
+			var checkedFirst []tspath.RootedFilePath
+			if !whole {
+				checkedFirst = first
+			}
+			r.evidence = evidenceOf(program, maps(r.texts, overlay), checkedFirst)
+		}
 	}
 	if r.firstError == "" {
 		for key := range added {
@@ -675,6 +688,9 @@ func (r *gateRound) refuse(at [2]int, added map[string]int) {
 	}
 	r.refusals = append(r.refusals, gateRefusal{at, first})
 	r.g.progress.decided(0, 1)
+	if r.g.recordPrelude {
+		r.notePreludeRefusal(at, added)
+	}
 }
 
 // reportsAny reports whether one of the keys of added is an error of name.
