@@ -27,9 +27,9 @@ func checkGlobalLegacyMembers(c *checker.Checker, file *ast.SourceFile) {
 	file.AsNode().ForEachChild(visit)
 }
 
-// Parentheses do not change the two permitted value uses of Function.
+// Parentheses and erased assertions preserve the two permitted value uses of Function.
 func globalLegacyFunctionExempt(node *ast.Node) bool {
-	for node.Parent != nil && ast.IsParenthesizedExpression(node.Parent) {
+	for node.Parent != nil && ast.IsOuterExpression(node.Parent, ast.OEKParentheses|ast.OEKAssertions) {
 		node = node.Parent
 	}
 	parent := node.Parent

@@ -1,0 +1,4 @@
+go test fuzz v1
+string("prototype-parens-control")
+string("plain")
+byte(3)

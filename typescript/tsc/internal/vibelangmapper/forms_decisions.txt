@@ -3494,6 +3494,7 @@ typescript/vibelang/cases/generic-callees/main.vibe:20:13 lambda effectFn keywor
 typescript/vibelang/cases/global-augmentation-throws.fail/main.vibe:2:14 lambda plain fallback
 typescript/vibelang/cases/global-augmentation-throws/main.vibe:2:14 lambda plain fallback
 typescript/vibelang/cases/global-augmentation-throws/main.vibe:4:66 lambda plain table
+typescript/vibelang/cases/global-function-erased-exemptions/main.vibe:1:11 lambda plain fallback
 typescript/vibelang/cases/global-this-escape.fail/main.vibe:23:59 lambda plain table
 typescript/vibelang/cases/globalthis-platform.fail/main.vibe:11:22 lambda plain annotation
 typescript/vibelang/cases/globalthis-platform.fail/main.vibe:5:23 lambda plain annotation

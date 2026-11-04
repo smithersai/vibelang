@@ -1,0 +1,4 @@
+go test fuzz v1
+string("prototype-nonnull")
+string("plain")
+byte(3)

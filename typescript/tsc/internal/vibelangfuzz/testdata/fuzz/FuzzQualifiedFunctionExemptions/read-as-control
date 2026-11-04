@@ -1,0 +1,4 @@
+go test fuzz v1
+string("read-as-control")
+string("plain")
+byte(3)
