@@ -119,3 +119,9 @@ export effect function parsed(text: string) {
 // Chapter 900: EK4805 diagnostic - spec-rule: docs/design/src/900-appendices.md#39c3d2a974ab9d59
 // Chapter 900: EK4806 diagnostic - spec-rule: docs/design/src/900-appendices.md#00a184596eb76e88
 // Chapter 900: EK4813 diagnostic - spec-rule: docs/design/src/900-appendices.md#b62224ef4c52eb1f
+// Chapter 900: EK4808 diagnostic - spec-rule: docs/design/src/900-appendices.md#18e027056cd55ac0
+// Chapter 900: EK4809 diagnostic - spec-rule: docs/design/src/900-appendices.md#ac96540d588701a8
+// Chapter 900: EK4810 diagnostic - spec-rule: docs/design/src/900-appendices.md#073824c25099e067
+// Chapter 900: EK4811 diagnostic - spec-rule: docs/design/src/900-appendices.md#60733b5590d79a42
+// Chapter 900: EK4815 diagnostic - spec-rule: docs/design/src/900-appendices.md#27cb4815189792bb
+// Chapter 900: EK4817 diagnostic - spec-rule: docs/design/src/900-appendices.md#5fea487a123560c6

@@ -6,3 +6,4 @@ import { Users } from "./services.vibe"
 export effect function main() {
   try Console.log(try (try Users).find("1"))
 }
+// Chapter 900: EK3205 diagnostic - spec-rule: docs/design/src/900-appendices.md#d4a7e32cdd60d9f7

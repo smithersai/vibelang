@@ -180,3 +180,4 @@ export effect function main() {
     matchFailNone: failed(matchFail(Option.none())),
   }
 }
+// Chapter 900: EK4801 diagnostic - spec-rule: docs/design/src/900-appendices.md#aea235e216916daa

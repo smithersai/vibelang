@@ -17,3 +17,4 @@ export effect function main() {
   const decoded = try Schema.decodeUnknownEffect(Overridden)({ a: "x" })
   return [calls, decoded.extra]
 }
+// Chapter 900: EK4814 diagnostic - spec-rule: docs/design/src/900-appendices.md#81078a4a6930da0f

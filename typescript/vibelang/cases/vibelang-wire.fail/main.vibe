@@ -35,3 +35,5 @@ const UsersOpaque: Layer.Any = Layer.succeed(Users, { find: effect (id: string) 
 export const Ambiguous = wire(UsersLive, UsersTest)
 export const Cyclic = wire(CacheLive, DatabaseLive)
 export const Opaque = wire(UsersOpaque)
+// Chapter 900: EK3202 diagnostic - spec-rule: docs/design/src/900-appendices.md#b87f7080371b2fa8
+// Chapter 900: EK3203 diagnostic - spec-rule: docs/design/src/900-appendices.md#e90b21380036cfeb

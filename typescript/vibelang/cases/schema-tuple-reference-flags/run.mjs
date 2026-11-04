@@ -18,3 +18,4 @@ for (const [name, values] of Object.entries(inputs)) {
 assert.equal(Schema.is(V.PresentUndefined)([]),false)
 assert.equal(Schema.is(V.PresentUndefined)([undefined]),true)
 console.log("ok required tuple reference flags")
+// Chapter 900: use schema is the optional legacy - spec-rule: docs/design/src/900-appendices.md#f0bd0463c7375449

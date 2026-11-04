@@ -312,6 +312,7 @@ test("a report-site category override cannot hide behind its primary declaration
 
 
 // Chapter 900: EK9210 diagnostic - spec-rule: docs/design/src/900-appendices.md#463ccca02b740422
+// Chapter 900: EK4804 diagnostic - spec-rule: docs/design/src/900-appendices.md#400e2e503efb36a8
 test("identity-only allocations preserve the independently captured prior checker bodies",()=>{
  const proof=JSON.parse(readFileSync(new URL("../design/diagnostic-identity-renames.json",import.meta.url),"utf8"))
  for(const record of proof.files) {

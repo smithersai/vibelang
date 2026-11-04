@@ -48,3 +48,4 @@ export effect function joinInHatch() {
     join x
   })
 }
+// Chapter 900: EK4604 diagnostic - spec-rule: docs/design/src/900-appendices.md#04961d07f271f19d

@@ -19,3 +19,4 @@ export effect function main() {
   return { row, failed, shadow: try shadowed(), retried }
 }
 // Chapter 900: follow tracked throws contracts and wrap - spec-rule: docs/design/src/900-appendices.md#638e7327cd5bd7d0
+// Chapter 900: wrap native code with effect try - spec-rule: docs/design/src/900-appendices.md#41fbf06beb88e33b

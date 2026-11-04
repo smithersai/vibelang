@@ -5,3 +5,4 @@ import { one } from "./vendor/one/index.js"
 import { two } from "./vendor/two/index.js"
 
 export const both = one + two
+// Chapter 900: EK4803 diagnostic - spec-rule: docs/design/src/900-appendices.md#892643e149bf2259

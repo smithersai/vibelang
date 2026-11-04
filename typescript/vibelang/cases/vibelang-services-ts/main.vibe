@@ -31,3 +31,4 @@ effect function everything() {
 export effect function main() {
   return try Effect.provide(effect { return try everything() }, Layer.mergeAll(UserRepoLive, PathLayer))
 }
+// Chapter 900: EK4807 diagnostic - spec-rule: docs/design/src/900-appendices.md#a6961d425e081439

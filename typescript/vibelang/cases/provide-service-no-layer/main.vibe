@@ -89,3 +89,4 @@ export effect function bare() {
 // rule: docs/design/vips/0012-provide.md#83e370ee01391be5
 // VIP-12 declared-service-provider
 // rule: docs/design/vips/0012-provide.md#316e8b263510234e
+// Chapter 900: EK3207 diagnostic - spec-rule: docs/design/src/900-appendices.md#78cbad0208163769

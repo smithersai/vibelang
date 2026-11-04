@@ -16,3 +16,4 @@ effect function after() {
     return 2
   }
 }
+// Chapter 900: EK2106 diagnostic - spec-rule: docs/design/src/900-appendices.md#876017210e4ba1d8

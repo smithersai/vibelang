@@ -33,3 +33,4 @@ export effect function main() {
     fives: [hasFive(Option.some(5)), hasFive(Option.none())],
   }
 }
+// Chapter 900: EK4840 diagnostic - spec-rule: docs/design/src/900-appendices.md#85e5486645c81a46

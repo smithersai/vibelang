@@ -42,3 +42,4 @@ export class UsersLogged implements Users {
     return try Effect.fail(new UserNotFound({ id }))
   }
 }
+// Chapter 900: EK3101 diagnostic - spec-rule: docs/design/src/900-appendices.md#22a7abd037af536e
