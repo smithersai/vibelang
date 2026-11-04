@@ -2223,18 +2223,20 @@ export async function record(options) {
 }
 
 /**
- * source-digests: the push gate over base..head. Digests come from a run's journals, from
+ * source-digests: the push gate over base..head. Digests come from a run's saved manifests, from
  * --manifest files a driver outside the flow wrote, or both; a later source overrides an earlier one.
  */
 export async function sourceDigests({ run, target, manifests = [], producers = [], base, head = "@-" }) {
   const { p, config, plan: thePlan } = run ? loadRun(run) : {}
   const root = target ?? config?.target
   if (!root) throw new Error("source-digests needs --run or --target")
-  const journals = (thePlan?.batches ?? []).flatMap((_, i) => {
-    const originals = readJsonIf(p.codemodState(batchName(i)))?.originals
-    return originals ? [manifestOf(originals, producerOf(config.toolchain)).modules] : []
+  const recorded = (thePlan?.batches ?? []).flatMap((_, i) => {
+    const manifest = p.sourceDigests(batchName(i))
+    // The current pin did not produce earlier conversions. A missing receipt
+    // must stay unrecorded, rather than acquiring provenance from today's pin.
+    return existsSync(manifest) ? [readManifest(manifest)] : []
   })
-  return checkStack(root, [...journals, ...manifests.map(readManifest)], base, head, { producers })
+  return checkStack(root, [...recorded, ...manifests.map(readManifest)], base, head, { producers })
 }
 
 /** source-manifest: the digests of a pass outside the flow, from the tree it converts; list has one repository-relative .ts per line. */

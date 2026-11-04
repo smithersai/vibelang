@@ -1,0 +1,7 @@
+{
+  "key": "opencode-conversion-producer-switch",
+  "source": "export const x = 1\n",
+  "producer": "vibelang@0.0.11",
+  "replacementVersion": "0.0.12",
+  "rule": "A conversion can also be stale by converter: fresh source, old writer."
+}

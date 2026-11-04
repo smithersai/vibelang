@@ -157,12 +157,12 @@ test("the push gate refuses a stale module and a module with no record, through 
   assert.equal(JSON.parse(execFileSync("node", [step, "source-digests", "--target", f.target, "--manifest", manifest, "--base", base], { stdio: "pipe" })).ok, true)
 }))
 
-test("the push gate reads a run's journals and answers for a module's last conversion", async () => repo(async f => {
+test("the push gate reads a run's saved manifests and answers for a module's last conversion", async () => repo(async f => {
   const { run, p } = await converted(f, "export const x = 1\n")
   const base = await Jj.commitId(f.target, "@--")
   await record({ run, batch: "01", force: "no other checks in this fixture" })
   assert.equal((await sourceDigests({ run, base, head: "@-" })).ok, true)
-  writeJson(p.codemodState("01"), { originals: [journal("src/X.ts", "older\n")] })
+  writeJson(p.sourceDigests("01"), manifestOf([journal("src/X.ts", "older\n")], PRODUCER))
   assert.deepEqual((await sourceDigests({ run, base, head: "@-" })).stale.map(s => s.from), ["src/X.ts"])
 }))
 
@@ -298,4 +298,84 @@ test("a manifest entry with a malformed producer is an error", async () => repo(
   const file = join(f.root, "m.json")
   writeJson(file, { version: 1, modules: [entry("a.ts", "a", "main")] })
   assert.throws(() => readManifest(file), /bad entry/)
+}))
+
+test("a toolchain switch cannot relabel a recorded conversion's producer", async () => repo(async f => {
+  const { run, p } = await converted(f, "export const x = 1\n")
+  const base = await Jj.commitId(f.target, "@--")
+  await record({ run, batch: "01", force: "no other checks in this fixture" })
+  const receipt = readFileSync(p.sourceDigests("01"), "utf8")
+  const config = readJson(p.config)
+  config.toolchain = { kind: "npm", version: "0.0.12" }
+  writeJson(p.config, config)
+  const result = await sourceDigests({ run, base, producers: ["vibelang@0.0.12"] })
+  assert.equal(result.ok, false, "changing the current pin must not certify an older conversion")
+  assert.deepEqual(result.converter, [{ from: "src/X.ts", toolchain: PRODUCER }])
+  assert.equal((await sourceDigests({ run, base, producers: [PRODUCER] })).ok, true)
+  assert.equal(readFileSync(p.sourceDigests("01"), "utf8"), receipt)
+}))
+
+const producerSwitch = JSON.parse(readFileSync(new URL("./corpus/opencode-conversion-producer-switch.json", import.meta.url), "utf8"))
+
+test("conversion producer corpus follows the migration provenance rule", () => {
+  const guide = readFileSync(new URL("../README.md", import.meta.url), "utf8")
+  assert.ok(guide.includes(producerSwitch.rule))
+  assert.equal(producerSwitch.producer, PRODUCER)
+})
+
+test("a journal without a saved receipt cannot acquire the current producer", async () => repo(async f => {
+  const { run, p } = await converted(f, producerSwitch.source)
+  const base = await Jj.commitId(f.target, "@--")
+  await record({ run, batch: "01", force: "no other checks in this fixture" })
+  rmSync(p.sourceDigests("01"))
+  const result = await sourceDigests({ run, base, producers: [PRODUCER] })
+  assert.equal(result.ok, false)
+  assert.deepEqual(result.unrecorded, ["src/X.ts"])
+}))
+
+test("saved provenance survives a replaced staged toolchain and a missing journal", async () => repo(async f => {
+  const { run, p } = await converted(f, producerSwitch.source)
+  const base = await Jj.commitId(f.target, "@--")
+  await record({ run, batch: "01", force: "no other checks in this fixture" })
+  rmSync(p.codemodState("01"))
+  const config = readJson(p.config)
+  config.toolchain = { kind: "staged", dir: join(f.root, "missing-toolchain") }
+  writeJson(p.config, config)
+  const result = await sourceDigests({ run, base, producers: [PRODUCER] })
+  assert.equal(result.ok, true, JSON.stringify(result))
+  writeFileSync(p.sourceDigests("01"), '{"version":2,"modules":[]}')
+  await assert.rejects(sourceDigests({ run, base }), /version 1/)
+}))
+
+test("the CLI refuses the original producer after the run pin changes", async () => repo(async f => {
+  const { run, p } = await converted(f, producerSwitch.source)
+  const base = await Jj.commitId(f.target, "@--")
+  await record({ run, batch: "01", force: "no other checks in this fixture" })
+  const config = readJson(p.config)
+  config.toolchain = { kind: "npm", version: producerSwitch.replacementVersion }
+  writeJson(p.config, config)
+  assert.throws(() => execFileSync("node", [step, "source-digests", "--run", run, "--base", base,
+    "--producer", "vibelang@" + producerSwitch.replacementVersion], { stdio: "pipe" }), e =>
+    e.status === 1 && JSON.parse(e.stdout).converter[0].toolchain === producerSwitch.producer)
+}))
+
+test("property: current pins and journal edits never change recorded source or producer", async () => repo(async f => {
+  const { run, p } = await converted(f, producerSwitch.source)
+  const base = await Jj.commitId(f.target, "@--")
+  await record({ run, batch: "01", force: "no other checks in this fixture" })
+  const config = readJson(p.config)
+  const receipt = readFileSync(p.sourceDigests("01"), "utf8")
+  await fc.assert(fc.asyncProperty(
+    fc.record({ version: fc.constantFrom("0.0.10", "0.0.11", "0.0.12"), allowOriginal: fc.boolean(), text: fc.string({ maxLength: 32 }) }),
+    async ({ version, allowOriginal, text }) => {
+      config.toolchain = { kind: "npm", version }
+      writeJson(p.config, config)
+      writeJson(p.codemodState("01"), { originals: [journal("src/X.ts", text)] })
+      const producers = [allowOriginal ? PRODUCER : "vibelang@0.0.12"]
+      const result = await sourceDigests({ run, base, producers })
+      assert.equal(result.ok, allowOriginal, JSON.stringify(result))
+      assert.deepEqual(result.stale, [])
+      assert.deepEqual(result.converter, allowOriginal ? [] : [{ from: "src/X.ts", toolchain: PRODUCER }])
+      assert.equal(readFileSync(p.sourceDigests("01"), "utf8"), receipt)
+    }), { seed: 337, numRuns: 24 })
 }))
