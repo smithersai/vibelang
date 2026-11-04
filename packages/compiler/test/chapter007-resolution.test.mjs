@@ -32,7 +32,7 @@ test("Chapter 007 / NodeNext JavaScript imports find Vibe sources and extensionl
 // Chapter 007 / retired stale written TS fallback: docs/design/src/007-tooling.md#9b22f60d40467052
 // Chapter 007 / retired stale written TS fallback: docs/design/src/007-tooling.md#6254a3da6694d57f
 // Chapter 007 / retired stale written TS fallback: docs/design/src/007-tooling.md#04f8beffe186a474
-test.todo("Chapter 007 / a stale written .ts path never silently selects .vibe",t=>{
+test("Chapter 007 / a stale written .ts path never silently selects .vibe",t=>{
  for(const native of [true,false]){
   const root=fixture(t),ext=native?"ts":"vibe"
   writeFileSync(join(root,"gone.vibe"),"export const Stale=1\n")

@@ -18,6 +18,8 @@ import (
 	"slices"
 	"strings"
 	"testing"
+
+	"github.com/microsoft/TypeScript/tsc/internal/diagnostics"
 )
 
 // TestDeclarationImportStyleMatrix enforces Chapter 1,
@@ -214,6 +216,29 @@ func TestDeclarationImportStyleInferredImportType(t *testing.T) {
 					}
 					t.Run(fmt.Sprintf("%s/%s/%s/ts-importers/%q", mode, style, quoteName, spelling), func(t *testing.T) {
 						t.Parallel()
+						if spelling == ".ts" {
+							// Native imports retain byte-identical declarations while the
+							// same spelling cannot silently select a migrated homonym.
+							check(t, files("schema/index.ts", ".ts", spelling, false), files("schema/index.ts", ".ts", spelling, false))
+							vibe, err := w.Compile(t.Context(), Project{Files: files("schema/index.vibe", ".ts", spelling, false), Config: declarationModeConfig(mode, style)})
+							if err != nil {
+								t.Fatal(err)
+							}
+							missing := 0
+							for _, diagnostic := range vibe.Diagnostics {
+								if diagnostic.Category() != diagnostics.CategoryError {
+									continue
+								}
+								if diagnostic.Code() != 2307 {
+									t.Fatalf("unexpected stale native import diagnostic: %v", diagnostic)
+								}
+								missing++
+							}
+							if missing != 3 {
+								t.Fatalf("the three stale schema imports must report TS2307: %v", vibe.Diagnostics)
+							}
+							return
+						}
 						check(t, files("schema/index.vibe", ".ts", spelling, false), files("schema/index.ts", ".ts", spelling, false))
 					})
 				}

@@ -9,12 +9,8 @@ import (
 	"testing"
 )
 
-// Chapter 1, docs/design/src/001-functions.md, Declaration output,
-// Specifiers (detail 263). Chapter 7 no longer states that a written `./x.ts`
-// reaches `x.vibe`: no VIP, decided detail or ruling approves that resolution
-// (round 14 OPUS-1). The compiler still resolves it, and
-// TestWrittenSpecifierMigratedTarget keeps that behavior until the spec agent
-// answers the question recorded as OPEN in decided detail 296.
+// Declaration spelling follows Chapter 1, while Chapter 7 keeps written
+// TypeScript source imports within TypeScript's native substitutions.
 const writtenSpecifierKeptQuote = "written `./user.js`, `./App.jsx`, `./user` and native `./plain.ts` keep their spelling."
 
 func TestWrittenSpecifierMigratedTargetQuoted(t *testing.T) { requireWrittenSpecifierQuotes(t) }
@@ -34,23 +30,8 @@ func requireWrittenSpecifierQuotes(t testing.TB) {
 	}
 }
 
-// TestWrittenSpecifierMigratedTarget enforces the quote for an importer that
-// keeps the specifier it wrote for a module that became VibeLang. Witness:
-// foldkit-113 (inbox/migrate-foldkit.md, 2026-11-01), consumer.vibe's
-// import { type Factory } from './target.ts' failed TS2876 under
-// rewriteRelativeImportExtensions once target.ts became target.vibe.
-//
-// Oracle: for each project mode × written specifier (./target.ts,
-// ./target.js, ./target) × target extension (.vibe, .ts) × importer
-// extension (.vibe, .ts) × import form (value, inline type, type-only
-// specifier, import type, export, export type, import type node), the
-// project compiles without errors and the importer's declaration equals stock
-// tsc's declaration for the TypeScript twin, whose files are all .ts and write
-// the same specifier, with VIP-27's generated contract as the sole addition
-// on the known local arrow. Where JavaScript is emitted, the
-// importer's relative specifiers equal the twin's (all of main.js for a .ts
-// importer). Module nodenext has no extensionless relative import, so it
-// skips those cells.
+// Native imports keep the TypeScript twin's declaration spelling. A stale
+// written .ts import is unresolved after its target becomes VibeLang.
 func TestWrittenSpecifierMigratedTarget(t *testing.T) {
 	requireWrittenSpecifierQuotes(t)
 	tsc := StockTypeScript(t)
@@ -94,6 +75,18 @@ func TestWrittenSpecifierMigratedTarget(t *testing.T) {
 							vibe, err := w.Compile(t.Context(), Project{Files: files, Config: config})
 							if err != nil {
 								t.Fatal(err)
+							}
+							if written == ".ts" && targetExt == ".vibe" {
+								found := false
+								for _, diagnostic := range vibe.Diagnostics {
+									if diagnostic.Code() == 2307 {
+										found = true
+									}
+								}
+								if !found {
+									t.Fatalf("stale native import must report TS2307: %v", vibe.Diagnostics)
+								}
+								return
 							}
 							if HasError(vibe.Diagnostics) {
 								t.Fatalf("errors %v in main%s:\n%s", SortedKeys(Keys(vibe.Dir, vibe.Diagnostics)), importer, source)

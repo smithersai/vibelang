@@ -1,0 +1,3 @@
+// expect: TS2307
+import { value } from "./target.ts"
+export const copy = value

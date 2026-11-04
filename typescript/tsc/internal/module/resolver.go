@@ -1827,18 +1827,13 @@ func (r *resolutionState) tryAddingExtensions(extensionless tspath.FileNameStem,
 			if resolved := r.tryExtension(tspath.ExtensionTsx, extensionless, originalExtension == tspath.ExtensionTs || originalExtension == tspath.ExtensionDts); !resolved.shouldContinueSearching() {
 				return resolved
 			}
-			// ./welcome.js resolves to welcome.vibe as it resolves to welcome.ts.
-			// A written ./welcome.ts names the migrated module by its source
-			// extension, as it named welcome.ts: rewriteRelativeImportExtensions
-			// rewrites it to ./welcome.js, which welcome.vibe emits (foldkit-113).
-			if resolved := r.tryExtension(tspath.ExtensionVibe, extensionless, originalExtension == tspath.ExtensionTs); !resolved.shouldContinueSearching() {
-				return resolved
-			}
-			// Runtime and extensionless lookups add JSX VibeLang sources without
-			// extending the legacy written-native fallback (detail 296).
+			// Runtime and extensionless lookups include VibeLang sources.
+			// Written native source extensions keep TypeScript's substitutions.
 			if originalExtension == tspath.ExtensionJs || originalExtension == "" {
-				if resolved := r.tryExtension(tspath.ExtensionVibex, extensionless, false); !resolved.shouldContinueSearching() {
-					return resolved
+				for _, extension := range []string{tspath.ExtensionVibe, tspath.ExtensionVibex} {
+					if resolved := r.tryExtension(extension, extensionless, false); !resolved.shouldContinueSearching() {
+						return resolved
+					}
 				}
 			}
 		}
