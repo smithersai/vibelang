@@ -206,6 +206,7 @@ func checkErrorDeclaration(c *checker.Checker, class *ast.Node, form errorForm, 
 		note(d, "Give {0} the field _tag: string, or declare it abstract, so that its subclasses' tags fit.", baseName)
 		cover(c, name)                                           // TS2416 at the tag member the parser writes
 		cover(c, class.ClassLikeData().HeritageClauses.Nodes[0]) // TS2509: a schema base whose tag reduces to never
+		coverCodes(c, class, 2509)                               // a schema subclass's TS2509 spans its fields in the body
 		if field := errorTagField(class, form); field != name {
 			cover(c, field)
 		}

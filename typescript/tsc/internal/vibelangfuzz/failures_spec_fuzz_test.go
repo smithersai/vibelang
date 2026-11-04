@@ -445,6 +445,24 @@ func failuresCases() []*failCase {
 	}
 	add(&failCase{Name: "error-priority-tag-initializer", Quote: "A member rejected by [Functions](001-functions.md#static-rules) for `effect` on a getter, setter or constructor gets the applicable Functions diagnostics and no redundant error-body category diagnostic, including in either error form. This includes both `EK0104` and `EK0105` for `async effect get x() { }`.", Host: "none", Decls: "⟦export error Bad { _tag = 1 }⟧", Code: 2117, OneDiagnostic: true})
 	add(&failCase{Name: "error-priority-static-initializer", Quote: "A member rejected by [Functions](001-functions.md#static-rules) for `effect` on a getter, setter or constructor gets the applicable Functions diagnostics and no redundant error-body category diagnostic, including in either error form. This includes both `EK0104` and `EK0105` for `async effect get x() { }`.", Host: "none", Decls: "⟦export error Bad { static x = 1 }⟧", Code: 1302, OneDiagnostic: true})
+	// An error extending another error with its own tag gets EK2117 alone;
+	// TypeScript's TS2509 on a schema subclass's generated base is the same failure.
+	for _, form := range []struct {
+		prefix string
+		vip    int
+	}{{"error", 13}, {"schema error", 29}} {
+		for _, shape := range []struct{ key, base, sub string }{
+			{"empty", " {}", " {}"},
+			{"fields", " { id: string }", " { code: number }"},
+			{"bodyless", "", ""},
+			{"getter", " { id: string; get label() { return this.id } }", " { code: number }"},
+		} {
+			add(&failCase{Name: strings.ReplaceAll(form.prefix, " ", "-") + "-extends-own-tag-" + shape.key,
+				Chapter: failuresChapter, VIP: form.vip, Owner: "impl-hunt-fail", Host: "none", Code: 2117, OneDiagnostic: true,
+				Quote: "| an `extends` clause, `error UserNotFound extends NotFound { … }`, in either error form | `EK2117` |",
+				Decls: "export " + form.prefix + " NotFound" + shape.base + "\n⟦export " + form.prefix + " UserNotFound extends NotFound" + shape.sub + "⟧"})
+		}
+	}
 	add(&failCase{Name: "error-implements", Quote: "| any other member that is not a [Field](900-appendices.md#field), a method, a getter or an empty `;` class element, in either error form (for example `id = 1`, `private id: string`, `#id = 1`, `declare id: string`, `accessor id = 1`, or an index signature); an `implements` clause | `EK1304` |", Host: "none", Decls: "interface Shape {}\n⟦export error Bad implements Shape {}⟧", Code: 1304})
 	add(&failCase{Name: "error-default-export", Quote: "`error`, like `service`, `schema` and `data`, follows TypeScript's contextual keyword `type`: a declaration is the keyword, no line break, then the declaration's name (a `BindingIdentifier`), where a declaration can start; anything else is ordinary TypeScript, where `error` is an identifier ([Declaration keywords](900-appendices.md#declaration-keywords), the one rule for all four). So `const error = …`, `catch (error)`, `const e = error as Error` and `error instanceof NotFound` still work, and `error as T;` declares `as`, then fails; write `(error as T);`. The body is optional, as for TypeScript's `declare module \"m\"` ([ErrorDeclaration](900-appendices.md#errordeclaration)). As in ECMAScript's `ExportDeclaration`, `export error E` and `export schema error E` are named declarations; `export default error E` and `export default schema error E` are syntax errors (`EK1305`). Write `export { E as default }` instead, as for a [service](005-services.md).", Host: "none", Decls: "⟦export default error Bad⟧", Code: 1305, Owner: "fix-vip-decls"})
 	add(&failCase{Name: "schema-error-priority-tag-initializer", Quote: "A member rejected by [Functions](001-functions.md#static-rules) for `effect` on a getter, setter or constructor gets the applicable Functions diagnostics and no redundant error-body category diagnostic, including in either error form. This includes both `EK0104` and `EK0105` for `async effect get x() { }`.", Host: "none", Decls: "⟦export schema error Bad { _tag = 1 }⟧", Code: 2117, OneDiagnostic: true})

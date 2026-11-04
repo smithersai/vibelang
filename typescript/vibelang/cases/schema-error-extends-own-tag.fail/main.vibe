@@ -1,0 +1,9 @@
+// expect: EK2117
+// A schema error extending a schema error with its own tag gets EK2117 only;
+// TypeScript's TS2509 on the generated base is the same failure.
+export schema error A {}
+export schema error B { id: string }
+export schema error C { id: string; get label() { return this.id } }
+export schema error SubA extends A {}
+export schema error SubB extends B { code: number }
+export schema error SubC extends C

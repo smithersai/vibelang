@@ -278,6 +278,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - A generic `schema error`, such as `schema error Invalid<T> { value: T }`, reported `EK2109` for each field naming a type parameter beside the `EK1303` that rejects the parameters; it now reports `EK1303` only.
 
+- A `schema error` extending another `schema error`, such as `schema error UserNotFound extends NotFound {}`, reported TypeScript's `TS2509` ("Base constructor return type 'never'") beside its `EK2117`; it now reports `EK2117` only, as `error` does.
+
 - The forms gate rejected explicit Effect callbacks after independently landed changes moved their source locations; its reviewed snapshot now records the written modifier at each affected site.
 
 - Combining the chained-assertion and pipe-parser changes stopped compiler builds; the assertion probe now passes the pipe parser's arrow-context argument, with continuation tests covering both assertion operators and conditional tails.
