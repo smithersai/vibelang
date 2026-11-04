@@ -191,7 +191,14 @@ func FixWithOptions(ctx context.Context, sys tsc.System, args []string, options 
 	}
 	configFS, configChanges := sys.FS(), map[tspath.RootedFilePath]string(nil)
 	if !listed {
-		configFS, configChanges = sidecarConfigFixes(sys.FS(), configDiagnostics)
+		owned := configFileOwnership(sys.FS(), configFileName)
+		ownedDiagnostics := make([]*ast.Diagnostic, 0, len(configDiagnostics))
+		for _, diagnostic := range configDiagnostics {
+			if diagnostic.File() == nil || owned(diagnostic.File().FileName()) {
+				ownedDiagnostics = append(ownedDiagnostics, diagnostic)
+			}
+		}
+		configFS, configChanges = sidecarConfigFixes(sys.FS(), ownedDiagnostics)
 	}
 	if len(configChanges) > 0 {
 		config, errors = tsoptions.GetParsedCommandLineOfConfigFilePath(configFileName, path, commandLine.CompilerOptions(), nil, configFS, &tsc.ExtendedConfigCache{})
@@ -1887,8 +1894,9 @@ func (h fixHost) GetDirectories(tspath.RootedDirectoryPath) []string { return ni
 func (h fixHost) DirectoryExists(tspath.RootedDirectoryPath) bool    { return false }
 func (h fixHost) FileExists(tspath.RootedFilePath) bool              { return false }
 
-// Migrate the selected config and its extends chain, including JSONC bases.
+// Migrate the selected config and owned extends files, including JSONC bases.
 func migrateSeverityConfigs(sys tsc.System, name tspath.RootedFilePath) error {
+	owned := configFileOwnership(sys.FS(), name)
 	path := sys.FS().CaseSensitivity().PathKey(tspath.RootedPath(name))
 	config, _ := tsoptions.GetParsedCommandLineOfConfigFilePath(name, path, nil, nil, sys.FS(), &tsc.ExtendedConfigCache{})
 	names := []tspath.RootedFilePath{name}
@@ -1906,6 +1914,10 @@ func migrateSeverityConfigs(sys tsc.System, name tspath.RootedFilePath) error {
 			continue
 		}
 		if fixed, changed := tsoptions.MigrateLegacySeverities(name, text); changed {
+			if !owned(name) {
+				fmt.Fprintf(sys.Writer(), "vibelang --fix: %s: not fixed: config is outside repository ownership or under node_modules.\n", relativeName(sys, name))
+				continue
+			}
 			info, err := os.Stat(name.AsString())
 			if err != nil {
 				return err

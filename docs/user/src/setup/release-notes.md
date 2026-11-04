@@ -432,6 +432,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Foreign calls with a written throwing annotation could bypass the required bridge in effect code. They now report `EK0403`, and `--fix` preserves their former failures and defects.
 
+- `vibelang --fix` migrated legacy severity maps in external and dependency configs; it now reports those configs without editing them, including through symlinks.
+
 - Repository build checks could fail before inspecting compiler inputs after target declarations changed. Their isolated fixtures now retain the native source group and imported parser data while checking dependency and cache behavior.
 
 - A `do` expression with no normal result suppressed native iterator errors in loops, destructuring, delegated yields and call spreads, so migration missed a required cast. These uses now retain TypeScript's `never` protocol checks; array literal spreads keep their native behavior.
