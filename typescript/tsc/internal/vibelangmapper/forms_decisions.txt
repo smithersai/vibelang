@@ -4865,6 +4865,10 @@ typescript/vibelang/cases/migrate-opencode-unused-type-name-fixed/lib.vibe:3:21 
 typescript/vibelang/cases/migrate-opencode-unused-type-name-fixed/lib.vibe:3:79 lambda program table
 typescript/vibelang/cases/migrate-opencode-unused-type-name-fixed/lib.vibe:7:22 lambda effectFn keyword
 typescript/vibelang/cases/migrate-opencode-unused-type-name-fixed/lib.vibe:7:80 lambda program table
+typescript/vibelang/cases/migrate-smithers-written-generator-return-fixed/lib.vibe:11:22 lambda dual fallback
+typescript/vibelang/cases/migrate-smithers-written-generator-return-fixed/lib.vibe:11:39 lambda plain table
+typescript/vibelang/cases/migrate-smithers-written-generator-return-fixed/lib.vibe:5:22 lambda plain fallback
+typescript/vibelang/cases/migrate-smithers-written-generator-return-fixed/lib.vibe:5:41 lambda effectFn keyword
 typescript/vibelang/cases/migrate-t3code-effect-fn-default-parameter-fixed/lib.vibe:12:24 lambda effectFn keyword
 typescript/vibelang/cases/migrate-t3code-effect-fn-default-parameter-fixed/lib.vibe:17:21 lambda effectFn keyword
 typescript/vibelang/cases/migrate-t3code-effect-fn-default-parameter-fixed/lib.vibe:17:92 lambda program table

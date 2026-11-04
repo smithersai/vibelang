@@ -1,0 +1,14 @@
+
+type Outcome = { readonly kind: "ok"; readonly value: number }
+export const observed: number[] = []
+
+export const event = (bad: boolean) => (effect (): Outcome!string!never => {
+  if (bad) throw "bad"
+  observed.push(1)
+  return { kind: "ok", value: 7 }
+})()
+
+export const clock = () => Effect.gen(function* (): Generator<unknown!!, Outcome, never> {
+  yield* Effect.void
+  return { kind: "ok", value: 9 }
+})

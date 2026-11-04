@@ -217,8 +217,19 @@ func readGeneratorCall(c *checker.Checker, file *ast.SourceFile, call *ast.Node)
 	if generator.Type() != nil {
 		// Effect.fn's generator may say what its function's Effect is:
 		// function* (): Effect.fn.Return<A, E, R> is effect (): Effect.Effect<A, E, R>.
-		if g.returns = fnReturnEffectType(file, generator.Type()); g.returns == "" || !g.isFn {
-			return g, "its generator has a return type other than Effect.fn.Return"
+		if g.isFn {
+			if g.returns = fnReturnEffectType(file, generator.Type()); g.returns == "" {
+				return g, "its generator has a return type other than Effect.fn.Return"
+			}
+		} else {
+			// A generator alias or Effect.fn.Return also contextualizes gen's
+			// success expressions. Retain the checked call's complete Effect
+			// contract beside the converted body, including aliases and generics.
+			returned := c.GetTypeAtLocation(call)
+			if !isEffectType(c, returned) {
+				return g, "its annotated generator does not resolve to an Effect"
+			}
+			g.returns = c.TypeToStringEx(returned, generator, checker.TypeFormatFlagsNoTruncation|checker.TypeFormatFlagsUseFullyQualifiedType, nil)
 		}
 	}
 	// Effect.fn can also receive its result contract from the declaration
@@ -359,7 +370,7 @@ func planEffectGenWith(c *checker.Checker, file *ast.SourceFile, call *ast.Node,
 	bound := fn != nil && slices.ContainsFunc(fn.Parameters(), func(parameter *ast.Node) bool {
 		return parameter.Initializer() != nil || ast.IsBindingPattern(parameter.Name())
 	})
-	if fn != nil && (bound || !isEffectGenFunction(fn)) {
+	if fn != nil && (bound || g.returns != "" || !isEffectGenFunction(fn)) {
 		fn = nil
 	}
 	if fn != nil {
@@ -422,14 +433,20 @@ func planEffectGenWith(c *checker.Checker, file *ast.SourceFile, call *ast.Node,
 		at := functionKeywordStart(file, fn)
 		return &formRewrite{edits: []sourceEdit{{at, at, "effect "}, {start, end, body}}, description: "an effect function"}
 	}
+	// A typed cold function keeps the generator's return context even when
+	// the surrounding expression is a generic pipeline or has no annotation.
+	program := "effect " + body
+	if g.returns != "" {
+		program = "(effect (): " + g.returns + " => " + body + ")()"
+	}
 	// Effect.gen(…).pipe(stages) changes with its .pipe, whose stages read the
 	// block's type: effect { … } |> stages.
 	if pipe := pipeOfReceiver(outer); pipe != nil {
 		if rewrite := planEffectPipe(c, file, pipe); rewrite.fixable() {
-			return &formRewrite{edits: joinEditsAt(append(rewrite.edits, sourceEdit{start, end, "effect " + body})), description: "an effect block"}
+			return &formRewrite{edits: joinEditsAt(append(rewrite.edits, sourceEdit{start, end, program})), description: "an effect block"}
 		}
 	}
-	return &formRewrite{edits: []sourceEdit{{start, end, effectValueParentheses(outer, "effect "+body)}}, description: "an effect block"}
+	return &formRewrite{edits: []sourceEdit{{start, end, effectValueParentheses(outer, program)}}, description: "an effect block"}
 }
 
 // pipeOfReceiver returns the .pipe call that node is the receiver of, or nil.
