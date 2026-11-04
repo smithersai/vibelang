@@ -374,6 +374,8 @@ The same code covers the other legacy JavaScript the language removes anywhere i
 
 An object shorthand such as `{ Function }` reads its value binding, so a reference to the global constructor is `EK0107`; a local binding named `Function` stays allowed.
 
+The qualified `Function.prototype` exemption recognizes literal keys through parentheses and erased assertions, for example `globalThis.Function[("prototype" as const)]`. A key read through a variable remains a computed key, even when its value is `"prototype"`.
+
 `Date.now()`, `Date()`, `new Date()`, and `Intl.DateTimeFormat().format()` with no
 argument read the current clock without a diagnostic. Read time through `try Clock.currentTimeMillis` and pass that
 value to the formatter when you need controlled time, including in tests.

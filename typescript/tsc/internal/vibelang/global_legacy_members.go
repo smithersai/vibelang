@@ -40,6 +40,7 @@ func globalLegacyFunctionExempt(node *ast.Node) bool {
 		b := parent.AsBinaryExpression()
 		return b.OperatorToken.Kind == ast.KindInstanceOfKeyword && b.Right == node
 	}
-	return (ast.IsPropertyAccessExpression(parent) || ast.IsElementAccessExpression(parent)) &&
-		parent.Expression() == node && staticGlobalMemberName(parent) == "prototype"
+	// Use the same erased-literal key reader as the bare Function exemption.
+	name := legacyAccessedName(parent)
+	return name != nil && parent.Expression() == node && name.Text() == "prototype"
 }
