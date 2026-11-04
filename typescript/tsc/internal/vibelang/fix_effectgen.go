@@ -312,6 +312,11 @@ func planEffectGenWith(c *checker.Checker, file *ast.SourceFile, call *ast.Node,
 		return refuse("the generator reads this, which Effect.gen leaves undefined, but the block would read the function's own this")
 	}
 	var edits []sourceEdit
+	constructorEdits, why := generatorGlobalConstructors(c, file, block)
+	if why != "" {
+		return refuse(why)
+	}
+	edits = append(edits, constructorEdits...)
 	for _, y := range scan.yields {
 		edit, why := effectGenTryEdit(c, file, y)
 		if why != "" {

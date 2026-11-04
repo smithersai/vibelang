@@ -549,6 +549,10 @@ func FixProjectWithOptions(ctx context.Context, fs vfs.FS, libraryPath tspath.Ro
 			return result
 		}
 	}
+	if preserveGeneratorConstructors(ctx, program, scope, texts, result) {
+		program = build(texts)
+		verified(texts)
+	}
 	// fresh builds a program no check has read, as the last one: on
 	// opencode's core, a box of 12 GiB ran out of memory when it held
 	// both (2026-11-02).

@@ -198,6 +198,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Diagnostic-cache regression tests repeatedly loaded unrelated browser declarations for every dependency change; they now keep the ECMAScript libraries they exercise while retaining strict diagnostics, cache reuse, invalidation and bounded-retention checks.
 
+- `--fix` could leave an `Effect.fn` or `Effect.gen` generator unchanged when it constructed DOM `Headers`, reporting that the proposed constructor was not constructable. It now preserves the native constructor binding while retaining `EK4402` for banned host APIs.
+
 - The compiler fuzz suite stopped before running any test because one match witness was registered twice; it is registered once and the suite runs again.
 - A new fuzz target could land without its short-run CPU budget; the registry fuzz target now registers one, and the fast registry gate checks every target.
 - Geolocation, Permissions, UserDirectories and the experimental Process, FileSystem and Locks diagnostics suggested calling members on the module namespace, where they do not exist; their advice now obtains the injected service and runs its member.

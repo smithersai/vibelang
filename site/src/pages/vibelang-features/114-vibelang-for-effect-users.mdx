@@ -203,6 +203,8 @@ For a legacy `fork(program, options)` call inside `effect` code, `--fix` writes 
 
 Effect declarations and combinator calls ported from TypeScript compile in a `.vibe` file, with warnings EK4830-EK4837 where VibeLang has its own form. `Effect.gen` bodies do not compile there (EK1002). Run `npx vibelang -p tsconfig.json --fix --noEmit` to rewrite supported forms whose VibeLang form keeps what the program does, then read the diagnostics left: each says what its form would change. See [TypeScript-style Effect code](/getting-started/012-devtools#typescript-style-effect-code). Support for the new forms arrives with the compiler's VIP implementation.
 
+When converting an Effect generator, `--fix` preserves a native constructor hidden by an implicit Effect namespace: `new Headers(input)` becomes `new globalThis.Headers(input)`. Local and imported constructors keep their bindings. This qualification does not permit host APIs in VibeLang: a banned constructor still reports `EK4402` and belongs in a TypeScript adapter. If a local `globalThis` prevents safe qualification, the generator stays unchanged.
+
 When migrating a generator, `const inner = yield* make()` becomes `const inner = try make()` even when the result is another Effect. That inner program stays cold until a separate `try inner` runs it. A discarded program result becomes `void try make()`.
 
 ## Calls return Effects; programs stay cold
