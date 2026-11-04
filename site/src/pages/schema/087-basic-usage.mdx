@@ -282,7 +282,7 @@ Tuple-rest generic names use the same type-binding lookup as other schema generi
 
 ## Preserving optional schema decoding during an upgrade
 
-For projects with `exactOptionalPropertyTypes: true`, the explicit compatibility command `vibelang --fix --fix-migration-only` writes `name?: T | undefined` for existing optional schema fields and adds `undefined` to optional tuple element types. This keeps the previous decoder's acceptance of a present `undefined`. It covers nested mappings and `schema error` payloads, keeps existing `undefined` unions, and leaves native `data` payload types alone. Ordinary `--fix` preserves newly written optional fields. Projects using TypeScript's default optional-property setting need no such upgrade.
+For projects with `exactOptionalPropertyTypes: true`, the explicit compatibility command `vibelang --fix --fix-migration-only` expands existing optional schemas to explicit Effect codecs. It keeps the original `Schema.optional(S)` codec, including its published declaration type and acceptance of a present `undefined`. Adding an `undefined` union alone would publish a different codec type. The upgrade covers nested mappings and optional tuple elements; a `schema error` becomes a native class with its constructor, user members and cross-copy matcher preserved. Existing explicit `undefined` unions keep their codecs, and native `data` payload types stay unchanged. Ordinary `--fix` preserves newly written optional fields. Projects using TypeScript's default optional-property setting need no such upgrade.
 
 ---
 

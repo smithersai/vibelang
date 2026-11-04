@@ -196,6 +196,10 @@ func schemaFlagExpression(c *checker.Checker, file *ast.SourceFile, value *ast.N
 }
 
 func schemaFlagExpressionMode(c *checker.Checker, file *ast.SourceFile, value *ast.Node, name string, start, end int, resolveGenerics bool) string {
+	return schemaFlagExpressionPrinter(c, file, value, name, start, end, resolveGenerics, nil)
+}
+
+func schemaFlagExpressionPrinter(c *checker.Checker, file *ast.SourceFile, value *ast.Node, name string, start, end int, resolveGenerics bool, configure func(*ast.Node, *printer.EmitContext)) string {
 	f := &ast.NodeFactory{}
 	// A checker-selected library alias can have a different codec from the
 	// parser's provisional expression. Preserve the selected decoder in fixes.
@@ -229,7 +233,11 @@ func schemaFlagExpressionMode(c *checker.Checker, file *ast.SourceFile, value *a
 		}
 	}
 	bounded := parser.ParseSourceFile(ast.SourceFileParseOptions{FileName: "/schema-flag-print.ts", PathKey: "/schema-flag-print.ts"}, string(text), core.ScriptKindTS)
-	return printer.NewPrinter(printer.PrinterOptions{NewLine: core.NewLineKindLF}, printer.PrintHandlers{}, nil).Emit(clone, bounded)
+	emit := printer.NewEmitContext()
+	if configure != nil {
+		configure(clone, emit)
+	}
+	return printer.NewPrinter(printer.PrinterOptions{NewLine: core.NewLineKindLF}, printer.PrintHandlers{}, emit).Emit(clone, bounded)
 }
 
 func schemaErrorFlagExpansion(c *checker.Checker, fix *ls.CodeFixContext, class, fields *ast.Node) []*lsproto.TextEdit {

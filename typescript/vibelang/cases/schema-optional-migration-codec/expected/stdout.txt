@@ -1,0 +1,1 @@
+optional compatibility upgrades preserve stock TypeScript declarations and runtime behavior

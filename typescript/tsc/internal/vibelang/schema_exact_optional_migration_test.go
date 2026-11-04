@@ -11,7 +11,7 @@ import (
 )
 
 // The t3code-style migration preserves omission and explicit undefined
-// while the explicit legacy upgrade retains readonly native declarations.
+// while ordinary native declarations retain their written modifiers.
 func TestSchemaExactOptionalMigration(t *testing.T) {
 	source := `export schema S { value?: string; readonly loose?: string | undefined; nested?: { inside?: number }; list: [string?, (number | undefined)?] }
 export schema error E { value?: number; get label() { return "kept" } }
@@ -41,16 +41,19 @@ export interface Native { value?: string }
 					t.Fatal("missing optional-schema compatibility migration")
 				}
 				for _, want := range []string{
-					"value?: string | undefined", "loose?: string | undefined",
-					"readonly nested?: { readonly inside?: number | undefined } | undefined",
-					"[(string | undefined)?, (number | undefined)?]",
-					"value?: number | undefined", "label?: (string | undefined)",
+					"export const S =", ".optional(", "export class E extends",
+					"get label()", "export const T =",
 					"export data D { Some { value?: string } }",
-					"export interface Native { readonly value?: string }",
+					"export interface Native { value?: string }",
 				} {
 					if !strings.Contains(fixed.Text, want) {
 						t.Errorf("missing %q:\n%s", want, fixed.Text)
 					}
+				}
+				// Only the three source-written explicit undefined types
+				// remain unions; implicit optional fields keep their codec.
+				if strings.Count(fixed.Text, ".Undefined") != 3 {
+					t.Errorf("optional migration changed the explicit undefined codecs:\n%s", fixed.Text)
 				}
 				if err := os.WriteFile(file.FileName().AsString(), []byte(fixed.Text), 0600); err != nil {
 					t.Fatal(err)
