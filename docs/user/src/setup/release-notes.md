@@ -206,6 +206,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - The legacy `infer` return-type diagnostic example was rejected as an unmarked Effect spelling; documentation checks now recognize its specific `EK4857` migration diagnostic while retaining ordinary spelling checks.
 
 - Declaration-name checks still required the retired spelling option; they now verify native TypeScript options, separate sidecar identity and real packed-declaration consumers.
+
+- Changes to documented contract, binding and declaration rules could reach integration without exercising their native examples; the fast documentation check now covers those examples and their mutation checks.
 - ESLint reported extra newline warnings around method calls containing a lifted `do` expression; it now follows the source method and receiver boundaries while retaining warnings for written call or property newlines.
 
 - Service-member regression checks now distinguish forbidden constructors and index signatures from the separate service-class migration warning in the same module.

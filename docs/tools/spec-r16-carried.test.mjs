@@ -1,13 +1,11 @@
 import assert from "node:assert/strict"
 import { existsSync, readFileSync } from "node:fs"
-import { createRequire } from "node:module"
+import fc from "fast-check"
 import { join } from "node:path"
 import { test } from "node:test"
 import { fileURLToPath } from "node:url"
 import { SpecPath } from "../../scripts/testing/spec-path.mjs"
 
-const require = createRequire(new URL("../../packages/runtime/package.json", import.meta.url))
-const fc = require("fast-check")
 const design = process.env.SPEC_DESIGN_ROOT ?? fileURLToPath(new URL("../design", import.meta.url))
 const files = ["src/000-intro.md", "src/001-functions.md", "src/003-failures.md",
   "src/005-services.md", "src/900-appendices.md", "vips/0009-service-declarations.md",

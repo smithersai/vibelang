@@ -2,11 +2,10 @@ import assert from "node:assert/strict"
 import fc from "fast-check"
 import { Data, Effect } from "effect"
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
-import { createRequire } from "node:module"
+import ts from "typescript"
 import { join } from "node:path"
 import { test } from "node:test"
 import { chapter, read, repo, run, tools } from "./spec-witness.mjs"
-const ts = createRequire(join(repo, "experiments/package.json"))("typescript")
 const failures = () => process.env.SPEC_FAILURES ? readFileSync(process.env.SPEC_FAILURES, "utf8") : chapter("003-failures")
 
 test("generated constructor never contracts retain implicit payload-access failures", () => {
