@@ -1287,6 +1287,21 @@ func (p *Parser) mCall(callee *ast.Node, args []*ast.Node, at core.TextRange) *a
 	return p.vibelangSpanning(p.factory.NewCallExpression(callee, nil, nil, p.newNodeList(at, args), ast.NodeFlagsNone), at)
 }
 
+// mExtractCall writes $extract(matcher, subject). A global regular expression
+// literal passes its flag as the type argument, $extract<"g">, which selects
+// the runtime overload typing the extracted list as matchAll's RegExpExecArray
+// elements (Chapter 004, Typing); every other matcher keeps the untyped call.
+func (p *Parser) mExtractCall(matcher, subject *ast.Node, at core.TextRange) *ast.Node {
+	var typeArguments *ast.NodeList
+	if matcher.Kind == ast.KindRegularExpressionLiteral {
+		text := matcher.Text()
+		if strings.Contains(text[strings.LastIndex(text, "/")+1:], "g") {
+			typeArguments = p.newNodeList(at, []*ast.Node{p.vibelangSynthesized(p.factory.NewLiteralTypeNode(p.mString("g", at)), at)})
+		}
+	}
+	return p.vibelangSpanning(p.factory.NewCallExpression(p.vibelangIntrinsic("$extract", at), nil, typeArguments, p.newNodeList(at, []*ast.Node{matcher, subject}), ast.NodeFlagsNone), at)
+}
+
 func (p *Parser) mProperty(expr *ast.Node, name string, at core.TextRange) *ast.Node {
 	return p.vibelangSpanning(p.factory.NewPropertyAccessExpression(expr, nil, p.mIdent(name, at), ast.NodeFlagsNone), at)
 }
@@ -1765,12 +1780,12 @@ func (p *Parser) compilePattern(pat *pattern, path matchPath, steps *[]matchStep
 					}
 				}
 				first = false
-				return p.mCall(p.vibelangIntrinsic("$extract", at), []*ast.Node{m, path()}, at)
+				return p.mExtractCall(m, path(), at)
 			}
 		} else {
 			p.vibelangMatchTemps++
 			name := "$extracted" + strconv.Itoa(p.vibelangMatchTemps)
-			*steps = append(*steps, matchStep{decl: p.mConst(p.mTemp(name, at), ast.NodeFlagsConst, p.mCall(p.vibelangIntrinsic("$extract", at), []*ast.Node{matcher, path()}, at), at)})
+			*steps = append(*steps, matchStep{decl: p.mConst(p.mTemp(name, at), ast.NodeFlagsConst, p.mExtractCall(matcher, path(), at), at)})
 			extracted = func() *ast.Node { return p.mTemp(name, at) }
 		}
 		test(p.mBinary(extracted(), ast.KindExclamationEqualsEqualsToken, p.mKeyword(ast.KindFalseKeyword, at), at))

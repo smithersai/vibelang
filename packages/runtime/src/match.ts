@@ -224,6 +224,12 @@ type BoxForConstructor<C> =
  * the map. An ordinary class throws TypeError after recognizing the subject;
  * a function that is no class is called with the matcher's hint.
  */
+// A global regular expression literal: the compiler passes its flag as the
+// type argument, and the list holds matchAll's elements, RegExpExecArray
+// (Chapter 004, Typing). Without that argument the subject parameter is never,
+// so the overload never applies, and a RegExp value or a non-global literal
+// extracts one RegExpMatchArray below.
+export function $extract<F extends "g" = never>(matcher: RegExp, subject: [F] extends [never] ? never : unknown, receiver?: unknown): ReadonlyArray<RegExpExecArray> | false
 export function $extract<S>(matcher: ArrayConstructor, subject: S, receiver?: unknown): ArrayExtraction<S> | false
 // Infer the constructor itself: inferring its result can lose the BigInt
 // constructors to the generic class overload during subtype selection.

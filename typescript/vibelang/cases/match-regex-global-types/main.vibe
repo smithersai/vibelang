@@ -1,0 +1,15 @@
+// expect-result: {"pairs":[[0,"1"],[2,"2"]],"single":"12","none":"none","named":["x","y"]}
+// Chapter 004, Typing: a global regex extractor binds matchAll's RegExpExecArray elements,
+// so index is a number; a non-global extractor and a RegExp value bind one RegExpMatchArray.
+const words = /\w+/g
+function globalMatches(s: string) {
+  return match (s) {
+    when /(\d)/g(let a, let b): (a satisfies RegExpExecArray, b.index satisfies number, [[a.index, a[1]], [b.index, b[1]]]);
+    default: [];
+  }
+}
+function single(s: string) { return match (s) { when /(\d+)/(let m): (m satisfies RegExpMatchArray, m[1]); default: "none"; } }
+function named(s: string) { return match (s) { when words(let a, let b): (a satisfies RegExpMatchArray, [a[0], b[0]]); default: []; } }
+export effect function main() {
+  return { pairs: globalMatches("1a2"), single: single("12"), none: single("no"), named: named("x y") }
+}
