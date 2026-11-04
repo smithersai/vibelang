@@ -67,6 +67,7 @@ var admissionLab = sync.OnceValues(func() (*grammarLab, error) {
 // classify before adding a pending line.
 var grammarAdmissionSeeds = []struct{ key, source string }{
 	{"plain", "const n = 1;"},
+	{"native-optional-tuple", "type T = [string?, number?];"},
 	{"native-import-meta", "const url = import.meta.url;"},
 	{"native-new-target", "function f() { return new.target; }"},
 	{"import-meta-property", "import.x;"},
@@ -182,6 +183,7 @@ var grammarAdmissionSeeds = []struct{ key, source string }{
 	{"schema-member-not-field", "schema C {\nstring }"},
 	{"module-reference-not-literal", "import x = require ( ( \"m\" ) ) ; ; import y = N . a ;"},
 	{"module-require-identifier", "import x = require(join);"},
+	{"schema-jsdoc-postfix-type", "schema C { id: string? }"},
 	{"schema-jsdoc-field-type", "schema C { id: ?? string }"},
 	{"schema-error-jsdoc-field-type", "schema error E { id: ?? string }"},
 }

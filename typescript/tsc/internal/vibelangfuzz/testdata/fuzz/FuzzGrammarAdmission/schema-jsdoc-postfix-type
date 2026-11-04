@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("key:schema-jsdoc-postfix-type\nschema C { id: string? }")

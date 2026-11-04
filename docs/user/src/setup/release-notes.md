@@ -12,6 +12,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - The legacy abstract-error migration lacked generated preservation examples. Its error and schema-error forms now exercise field types, optional fields and line-ending trivia through the same API and runtime checks as other repairs.
 - The diagnostic reference’s replay link made syntax checks reject the published effect-block jump rule. Those checks now quote the complete rule and keep its existing diagnostic cases.
 
+- The grammar admission audit stopped on nullable schema type suffixes; it now records them under the mapped-type gap and keeps optional tuples as valid controls.
+
 - The grammar admission audit still expected a repaired plain-generator fiber gap; it now retains the original program as a syntax-rejection control.
 
 - The grammar admission inventory omitted match-arm yield and coverage helpers; it now records their existing specification authority.

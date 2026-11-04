@@ -294,3 +294,13 @@ and covers its declaration, hiding the native modifier diagnostic. Primitive
 field types still report native syntax rejection. The exact `admission:schema-async-field` family remains
 pending, with ordinary fields named `async`, computed expressions,
 native members and schema-error methods as separate controls.
+
+The same mapped-type gap includes JSDoc's postfix `?`, as in
+`schema C { id: string? }`. Its keyed corpus uses
+`admission:schema-jsdoc-field-type` rather than a second exemption.
+Native optional tuple elements, optional property names and conditional
+types remain separate from this suffix recovery.
+
+The inherited tuple subset derives optional, labeled and rest elements, including
+a trailing comma. These are positive controls in both native and VibeLang
+grammars; a postfix nullable schema type is still a separate pending gap.

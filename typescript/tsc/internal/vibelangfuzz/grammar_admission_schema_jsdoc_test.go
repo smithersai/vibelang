@@ -9,9 +9,14 @@ import (
 
 const grammarSchemaErrorTypeQuote = "Fields are written as TypeScript types and mapped to Schemas."
 
+const grammarOptionalTupleQuote = "An enclosing TypeScript tuple can mark the completed Effect type as an optional tuple element:"
+
 const grammarSchemaFieldTypeQuote = `Field = "readonly"? PropertyName "?"? ":" Type Separator`
 
 func TestGrammarAdmissionSchemaJSDocQuoted(t *testing.T) {
+	if !strings.Contains(SpecText(grammarAppendix), grammarOptionalTupleQuote) {
+		t.Fatal("Appendix A optional tuple inheritance changed; review native tuple controls")
+	}
 	if !strings.Contains(SpecText("../vips/0029-schema-errors.md"), grammarSchemaErrorTypeQuote) {
 		t.Fatal("VIP-29 schema-error field mapping changed; review JSDoc type recovery")
 	}
@@ -22,7 +27,7 @@ func TestGrammarAdmissionSchemaJSDocQuoted(t *testing.T) {
 
 // The native parser recovers JSDoc type prefixes even in source types.
 // Schema mapping discards that written type before native grammar checks.
-// Recognize only prefix positions inside a schema body or type alias;
+// Recognize prefix and postfix types inside a schema body or type alias;
 // optional property markers and Effect type bangs remain separate.
 func grammarSchemaJSDocFieldType(ts []grammarToken) bool {
 	prefixes := map[string]bool{"?": true, "??": true, "!": true, "*": true}
@@ -52,6 +57,7 @@ func grammarSchemaJSDocFieldType(ts []grammarToken) bool {
 			continue
 		}
 		depth := 0
+		var typeBrackets []string
 		callable := false
 	aliasType:
 		for k := start; k < len(ts); k++ {
@@ -114,10 +120,32 @@ func grammarSchemaJSDocFieldType(ts []grammarToken) bool {
 			if !callable && prefixes[ts[k].text] && (alias && k == start || k > start && beforeType[ts[k-1].text]) {
 				return true
 			}
+			// Native source types recover postfix ? as JSDoc nullable syntax.
+			// A tuple's own optional element marker is ordinary TypeScript.
+			if !callable && ts[k].text == "?" && k > start && !ts[k].nl {
+				previous := ts[k-1]
+				typeEnd := previous.kind == 'w' || previous.kind == 's' || previous.kind == 'n' ||
+					previous.text == ")" || previous.text == "]" || previous.text == ">" || previous.text == "}"
+				after := ""
+				if k+1 < len(ts) {
+					after = ts[k+1].text
+				}
+				tupleOptional := len(typeBrackets) > 0 && typeBrackets[len(typeBrackets)-1] == "[" && (after == "," || after == "]")
+				if typeEnd && !tupleOptional {
+					switch after {
+					case "", ";", ",", "}", ")", "]", ">", "|", "&", "[":
+						return true
+					}
+				}
+			}
 			switch ts[k].text {
 			case "{", "[", "(", "<":
+				typeBrackets = append(typeBrackets, ts[k].text)
 				depth++
 			case "}", "]", ")", ">":
+				if len(typeBrackets) > 0 {
+					typeBrackets = typeBrackets[:len(typeBrackets)-1]
+				}
 				depth--
 			}
 			if depth < 0 || !alias && depth == 0 || alias && depth == 0 && ts[k].text == ";" {
@@ -130,6 +158,19 @@ func grammarSchemaJSDocFieldType(ts []grammarToken) bool {
 
 func TestGrammarAdmissionSchemaJSDocKeys(t *testing.T) {
 	for source, want := range map[string]bool{
+		"schema C { id: string? }":                                 true,
+		"schema C { id?: string? }":                                true,
+		"schema C { readonly id: string? }":                        true,
+		"schema C { id: (string?) }":                               true,
+		"schema C { id: Array<string?> }":                          true,
+		"schema C = string?;":                                      true,
+		"schema error E { id: string? }":                           true,
+		"schema C { id: [string?, number?] }":                      false,
+		"schema C { id: [id?: string] }":                           false,
+		"schema C { id: T extends U ? V : W }":                     false,
+		"schema C { id: [Array<string?>] }":                        true,
+		"schema C { [key ? a : b]: string }":                       false,
+		"schema error E { m() { return value ? a : b; } }":         false,
 		"schema error E { id: ?? string }":                         true,
 		"schema error E { readonly id?: ? string }":                true,
 		"schema error E { id: * }":                                 true,
@@ -164,7 +205,7 @@ func TestGrammarAdmissionSchemaJSDocKeys(t *testing.T) {
 		"schema C = x ?? y;":                                       false,
 	} {
 		if got := grammarSchemaJSDocFieldType(grammarLexSource(source)); got != want {
-			t.Errorf("schema JSDoc prefix=%v, want %v: %s", got, want, source)
+			t.Errorf("schema JSDoc recovery=%v, want %v: %s", got, want, source)
 		}
 		if key := grammarAdmissionForm(source); (key == "admission:schema-jsdoc-field-type") != want {
 			t.Errorf("pending key=%q, want JSDoc family=%v: %s", key, want, source)
@@ -178,6 +219,12 @@ func TestGrammarAdmissionSchemaJSDocRegression(t *testing.T) {
 		source   string
 		mismatch bool
 	}{
+		{"schema C { id: string? }", true},
+		{"schema C { id?: string? }", true},
+		{"schema C { readonly id: string? }", true},
+		{"schema C = string?;", true},
+		{"schema error E { id: string? }", true},
+		{"schema C { id: [string?, number?] }", false},
 		{"schema error E { id: ?? string }", true},
 		{"schema error E { readonly id?: ? string }", true},
 		{"schema error E { id: * }", true},
@@ -216,5 +263,41 @@ func TestGrammarAdmissionSchemaJSDocRegression(t *testing.T) {
 			}
 			t.Logf("mismatch=%v; diagnostics: %v", c.mismatch, observed)
 		})
+	}
+}
+
+// Appendix A inherits native tuple types; its Effect-type punctuation rule
+// explicitly preserves a completed tuple element followed by an optional mark.
+func TestGrammarAdmissionOptionalTuples(t *testing.T) {
+	lab, err := admissionLab()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, source := range []string{
+		"type T = [string?, number?];",
+		"type T = [id?: string];",
+		"type T = [id: string, next?: number];",
+		"type T = [...string[]];",
+		"type T = [head?: string, ...tail: number[]];",
+		"type T = [number,];",
+		"type T = [];",
+	} {
+		for _, grammar := range []*grammarCfg{lab.ts, lab.g} {
+			if r := lab.read(grammar, grammarLexSource(source), grammarParseMode{}); r.count == 0 {
+				t.Errorf("native tuple has no derivation: %s", source)
+			}
+		}
+	}
+	for _, source := range []string{
+		"type T = [,];",
+		"type T = [string??];",
+		"type T = [id? string];",
+		"type T = [...];",
+	} {
+		for _, grammar := range []*grammarCfg{lab.ts, lab.g} {
+			if r := lab.read(grammar, grammarLexSource(source), grammarParseMode{}); r.count != 0 {
+				t.Errorf("invalid tuple derives: %s", source)
+			}
+		}
 	}
 }

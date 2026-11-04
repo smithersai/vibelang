@@ -579,7 +579,9 @@ PostfixType = PrimaryType | PostfixType [no LineTerminator here] "[" "]" | Postf
 PrimaryType = TypeReference | "(" Type ")" [lookahead ∉ { "=>" }] | ObjectType | TupleType | StringLiteral | NumericLiteral | "void" | "null" | "true" | "false" | "typeof" IdentifierReference
 TypeReference = TypeName [lookahead ∉ { "<" }] | TypeName [no LineTerminator here] TypeArguments
 TypeName = IdentifierName | TypeName "." IdentifierName
-TupleType = "[" "]" | "[" TypeList "]"
+TupleType = "[" "]" | "[" TupleElementList ","? "]"
+TupleElementList = TupleElement | TupleElementList "," TupleElement
+TupleElement = Type | Type [no LineTerminator here] "?" | IdentifierName "?"? ":" Type | "..." Type | "..." IdentifierName ":" Type
 FunctionType = TypeParameters? "(" FormalParameters ")" "=>" Type
 ObjectType = "{" "}" | "{" TypeMemberList TypeMemberEnd? "}"
 TypeMemberList = TypeMember | TypeMemberList TypeMemberSeparator TypeMember
