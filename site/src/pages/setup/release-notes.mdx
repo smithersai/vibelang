@@ -199,6 +199,24 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Service-member regression checks now distinguish forbidden constructors and index signatures from the separate service-class migration warning in the same module.
 - The resource-warning documentation check depended on an obsolete list position; it now checks the published ownership, unchanged diagnostic code and disposal safeguards directly.
+
+- The catch-parameter documentation check failed when the diagnostic row also named unbraced bodies; it now checks the retained parameter restriction and native closure-environment behavior.
+
+- The match guide and its scope test still promised implicit scopes for unbraced bindings; they now require the accepted `EK0705` brace repair, with native rejection and repaired-body controls.
+
+- Service documentation checks looked for superseded grammar production names; they now verify the folded whole-shape production and retain its restricted body and diagnostic recovery checks.
+
+- The no-throw documentation test rejected the added pattern-rule ownership of `EK0401`; it now checks every accepted owner while preserving the diagnostic and retired-code checks.
+
+- A documentation guard rejected the accepted plain-code rule for unannotated foreign calls; it now checks that rule together with written throwing contracts, catch exemptions and the stricter Effect wrapper requirement.
+
+- Built-in contract checks looked for superseded amendment wording; they now verify the active full-domain, implicit-defect and padding rules without granting npm functions an unwritten contract.
+
+- The legacy Effect-alias documentation check rejected the current wording; it now checks the same grouping, namespace and emitted-declaration safeguards in the published rule.
+
+- The error guide did not name the operation that preserves an Effect's typed failures; it now names `try`. Fast executable documentation checks now run on affected merge-gate changes, catching this wording before landing.
+
+- Fuzz validation reported allowed platform-boundary warnings as errors; it now checks the contextual `EK4402` policy while retaining errors for unwrapped host access.
 - A `catch` handler written as a parameter list followed by a block, `x catch (e) { … }`, was a syntax error (`TS1005`) that hid every other error in the file. It is now `EK0509`, with a quick fix to `x catch effect (e) => { … }` when the block has no `break`, `continue`, `await` or `yield` of its own.
 
 - The grammar admission census could drift between its specification and fuzz inventory; both copies now generate from one source and fail checks on drift.
@@ -374,6 +392,9 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Running a comma expression with `try` could be rejected as an old hatch; it now evaluates the operands in order and runs their final Effect value.
 
 - Sharded Go checks left a temporary directory after running a package with no selectable tests, including benchmark-only packages. The launcher now removes its discovery files before running the native test binary.
+- On a host without `Symbol.customMatcher`, `vibelang-runtime` defined it as a configurable property, so any module could delete or replace the key that every matcher uses. It is now non-writable, non-enumerable and non-configurable, like a well-known symbol, and a symbol the host already defines is kept.
+
+- `try.allSettled [a, b]` added a call to `Array.prototype.map` that its native counterpart omits; literals without spreads now wrap each element directly with `Effect.exit`.
 - The ESLint corpus check rejected deliberately constant source literal conditions as generated code; it now checks each reported literal against its source while continuing to detect unwritten constants.
 - An optional-schema inverse check expected the retired `mutable` field spelling. It now checks that writable keys have no `readonly` modifier and readonly keys retain it, with exact optional-property conversion controls unchanged.
 
@@ -460,6 +481,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Generated spec pages and compiler diagnostic defaults could lag accepted rules. They now match the published chapters, including the warning default for `EK3012`.
 
 - Conformance checks incorrectly treated live Vibe modules as arbitrary-extension declarations. Native consumer checks now compare admission and emitted imports with TypeScript's source twins, including disabled rewriting and stale sidecars.
+
+- Bare `interruptible` and `uninterruptible` could be stored as global functions. These keyword names now report missing bindings; use `Effect.interruptible` or `Effect.uninterruptible` for function values.
 
 - Repository build checks could fail before inspecting compiler inputs after target declarations changed. Their isolated fixtures now retain the native source group and imported parser data while checking dependency and cache behavior.
 
@@ -1728,6 +1751,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 
 - Release checks failed with `ERR_UNKNOWN_FILE_EXTENSION ".vibe"` when a registered Node parent launched typed source through `execFile` or `execFileSync`; migration setup now gives those children their own loader preload, preserving arguments, process options and callbacks.
+
+- The module-body mapping specification required `.ts` even for JSX bodies; it now requires `.tsx` for bodies in `.vibex`, preserving the source language variant required by the extraction rule.
 
 - The migrate flow's codemod left a test that lists a directory and filters it with an extension regex, such as t3code's React Compiler coverage and dependency-graph tests (`/\.tsx?$/.test(file)`), selecting only `.ts` files, so each migrated module silently dropped out of the check (318 t3code web and mobile modules stayed TypeScript); it now widens that one regex to `/(?<!\.d\.vibe)\.(?:tsx?|vibe)$/`, which selects `.vibe` modules and not their `x.d.vibe.ts` sidecars, when the selected files are the same by base name, and `verify` accepts only that widening.
 - The migrate flow's platform split took a type for a value of the same name, so in t3code Desktop's `MacSettingsWindow.ts` (`const Shape = Schema.String` with `type Shape = typeof Shape.Type`) the sibling imported `Shape` as a type and used it as a value (`TS2693`, `TS2345`); the split now takes the value and, since the module's declaration would change, keeps the module's platform code with a named cause.- With `stripInternal`, an `@internal` schema lost both its constant and type alias from declarations; it now drops only the constant, matching the equivalent Effect TypeScript pair.
