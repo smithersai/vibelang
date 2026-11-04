@@ -1075,3 +1075,5 @@ Reserved Effect-expression names are owned by the VIP-17 parser diagnostic. Exac
 The retired-formatter and public compatibility-code fuzz targets register the same short-seed CPU guard as every other target. Their original seeds, mutation oracles and twelve-minute limit remain unchanged; `TestShortTargetsBudgeted` checks the registration.
 
 The mapper non-field schema oracle follows `f41346523af5` (`EK1505`): a method recovers as `Schema.Never`, while an unsupported field type keeps `Schema.Unknown`. Parameter and return-type mutations preserve the two recovery diagnostics and the rejecting method codec.
+
+The ten failure contracts graduated by `588d171a7946` also retire their matching `corpus:` debt rows. Original saved inputs and thirty mutation corpus files remain active. `TestPendingLines` validates the ledger and the original ten named inputs run through `FuzzFailuresSpec` without new pending entries.

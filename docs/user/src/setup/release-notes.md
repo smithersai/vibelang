@@ -182,6 +182,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 ### Bugs fixed since 0.0.10
 
+- Pending-coverage validation still listed corpus debt for ten completed failure-contract cases. Those original reproductions now run without stale pending entries; their input files and mutations remain active.
+
 - The mapper’s schema recovery check still expected an unsupported method to accept arbitrary values. It now expects the rejecting `Schema.Never` recovery introduced with `EK1505`, while preserving both diagnostics.
 
 - Short fuzz runs omitted CPU accounting for the retired formatter and public compatibility-code checks, making the coverage guard fail. Both targets now use the existing budget without changing their samples or limits.
