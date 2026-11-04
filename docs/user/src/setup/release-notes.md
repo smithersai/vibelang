@@ -186,6 +186,9 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Diagnostic validation now recognizes the specification’s contextual error and warning variants for `EK1010` and `EK4402`, while continuing to reject severity overrides for them.
 - Forms validation now recognizes the explicit `effect` arrows in service-lookup examples instead of treating their intended classifications as unapproved changes.
 - An unbraced loop body containing an `is` binding could make editor projection fail with overlapping edits. Its recovery block now projects as one unit, preserving the source diagnostic and span map.
+
+- Automatic migration could discard an authored `@throws` or `@rethrows` paragraph. Descriptive and contract-only tags now retain their text with a located refusal, including neighboring tags and exported members.
+
 - Calling an implementation method through a service key silently looked up the service and could hide native key properties. Keys now follow TypeScript; use an explicit `try` lookup, and `vibelang --fix` preserves the old direct call's run phase.
 
 - Calls imported from the retired `vibelang-runtime` `yieldNow` and `interrupt` factories stopped at missing-export errors; direct calls through named aliases and namespaces now migrate to cold native Effect values.

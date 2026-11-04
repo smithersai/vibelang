@@ -5,7 +5,9 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/microsoft/TypeScript/tsc/internal/bundled"
 	"github.com/microsoft/TypeScript/tsc/internal/diagnostics"
+	"github.com/microsoft/TypeScript/tsc/internal/vibelang"
 )
 
 const declarationThrowsContractQuote = "functions, methods, constructors, callable `const`s, `async` functions, and each call, construct or method signature of an exported `interface`, type literal or `type` alias carry `@throws {never}`."
@@ -58,6 +60,7 @@ var declarationThrowsShapes = []declarationThrowsShape{
 }
 
 func TestDeclarationThrowsContractQuoted(t *testing.T) {
+	chapterSays(t, "007-tooling.md", "A rewrite that can't preserve types, behavior and declaration output refuses at that site")
 	for _, quote := range []string{declarationThrowsContractQuote, declarationThrowsExceptionsQuote, declarationThrowsDocsQuote} {
 		if !strings.Contains(SpecText("001-functions.md"), quote) {
 			t.Fatalf("Chapter 1 no longer contains %q", quote)
@@ -71,6 +74,12 @@ func TestDeclarationThrowsContractQuoted(t *testing.T) {
 func FuzzDeclarationThrowsContract(f *testing.F) {
 	startShortBudget(f)
 	w := NewWorkspace(f)
+	f.Add([]byte("smithers-poll-throws-docs|"))
+	for tag := byte(0); tag < 4; tag++ {
+		for shape := byte(0); shape < 4; shape++ {
+			f.Add(append([]byte("smithers-poll-throws-docs|"), tag, shape, (tag+shape)%3))
+		}
+	}
 	for _, shape := range declarationThrowsShapes {
 		f.Add([]byte(shape.key + "|"))
 	}
@@ -80,6 +89,10 @@ func FuzzDeclarationThrowsContract(f *testing.F) {
 		if !found {
 			key = declarationThrowsShapes[contractDeclarationByte(data, 0)%byte(len(declarationThrowsShapes))].key
 			tail = string(data)
+		}
+		if key == "smithers-poll-throws-docs" {
+			fuzzPollThrowsDocumentation(t, w, []byte(tail))
+			return
 		}
 		var shape *declarationThrowsShape
 		for i := range declarationThrowsShapes {
@@ -152,4 +165,61 @@ func FuzzDeclarationThrowsContract(f *testing.F) {
 			t.Fatalf("lost source documentation:\n%s", output)
 		}
 	})
+}
+
+// Smithers Poll.make's authored interval-validation paragraph must survive
+// automatic migration. Chapter 1 preserves source docs; Chapter 7 requires
+// refusal when the declaration cannot be preserved. Vary tag kind, exported
+// surface and source suffix; native TypeScript keeps its authored contract.
+func fuzzPollThrowsDocumentation(t *testing.T, w *Workspace, data []byte) {
+	tags := []string{
+		"@throws A RangeError when the poll interval exceeds the clock budget.",
+		"@throws {RangeError} The poll interval must be positive.",
+		"@rethrows callback Propagates the poll callback failure.",
+		"@throws {Error} See {@link RangeError} for the clock bounds.",
+	}
+	tag := tags[contractDeclarationByte(data, 0)%byte(len(tags))]
+	doc := "/** Creates a bounded poll.\n * " + tag + "\n */"
+	shapes := []string{
+		"DOC\nexport function make(callback: () => number): number { return 1 }",
+		"DOC\nexport const make = (callback: () => number): number => 1",
+		"export class Poll {\nDOC\nmake(callback: () => number): number { return 1 }\n}",
+		"export interface Poll {\nDOC\nmake(callback: () => number): number\n}",
+	}
+	source := strings.Replace(shapes[contractDeclarationByte(data, 1)%byte(len(shapes))], "DOC", doc, 1)
+	filename := "main.vibe"
+	switch contractDeclarationByte(data, 2) % 3 {
+	case 1:
+		filename = "main.vibex"
+	case 2:
+		filename = "main.ts"
+	}
+	config := fmt.Sprintf(`{"compilerOptions":{"target":"ES2022","module":"NodeNext","strict":true,"skipLibCheck":true,"declaration":true,"emitDeclarationOnly":true,"outDir":"out","jsx":"preserve"},"files":[%q]}`, filename)
+	before, err := w.CompileOrdered(t.Context(), Project{Files: map[string]string{filename: source}, Config: config}, OrderTsc, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer before.Remove()
+	fixed := vibelang.FixProjectWithOptions(t.Context(), w.fs, bundled.LibPath(), toolsConfig(w, before.Dir), vibelang.FixOptions{})
+	if fixed.Err != nil {
+		t.Fatal(fixed.Err)
+	}
+	after := source
+	for name, file := range fixed.Files {
+		if strings.HasSuffix(name.AsString(), "/"+filename) {
+			after = file.Text
+		}
+	}
+	if !strings.Contains(after, doc) {
+		Gap(t, "FuzzDeclarationThrowsContract", "docs:smithers-poll-throws-docs", "Chapter 1: %s\n%s", declarationThrowsDocsQuote, after)
+	}
+	if filename != "main.ts" {
+		refused := false
+		for _, site := range fixed.Sites {
+			refused = refused || site.Code == "EK0406" && site.StartLine > 0
+		}
+		if !refused {
+			Gap(t, "FuzzDeclarationThrowsContract", "refusal:smithers-poll-throws-docs", "Chapter 7 requires a located refusal; got %+v", fixed.Sites)
+		}
+	}
 }
