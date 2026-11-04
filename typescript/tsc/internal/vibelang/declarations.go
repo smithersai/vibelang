@@ -1140,8 +1140,9 @@ func (tx *specifierRewriter) visit(node *ast.Node) *ast.Node {
 
 // outputSpecifier returns a string literal that names the output of the
 // source specifier names, and whether it differs from specifier. Only a
-// relative ./users.vibe changes: vibelang.declarationImportStyle spells it
-// ./users.js (the default), ./users or ./users.ts. Every other specifier,
+// relative ./users.vibe or ./App.vibex changes: vibelang.declarationImportStyle
+// spells ./users.vibe as ./users.js (the default), ./users or ./users.ts, and
+// ./App.vibex is its TypeScript twin's ./App.tsx. Every other specifier,
 // ./plain.ts included, stays as the source wrote it under every setting, as
 // tsc keeps it in the declaration of a .ts file (detail 263).
 func (tx *specifierRewriter) outputSpecifier(f *printer.NodeFactory, specifier *ast.Node) (*ast.Node, bool) {
@@ -1149,6 +1150,12 @@ func (tx *specifierRewriter) outputSpecifier(f *printer.NodeFactory, specifier *
 	// portable output has a same-stem native sibling (VIP-27, RC-12).
 	if tx.EmitContext().VibeDeclarationSidecar {
 		return specifier, false
+	}
+	if specifier != nil && ast.IsStringLiteral(specifier) {
+		// ./App.vibex is declared as its TypeScript twin, ./App.tsx.
+		if rewritten, changed := tspath.ToModuleSpecifier(specifier.Text()).RewriteVibexExtension(); changed {
+			return f.NewStringLiteral(rewritten.AsString(), specifier.AsStringLiteral().TokenFlags), true
+		}
 	}
 	if specifier == nil || !ast.IsStringLiteral(specifier) || !tspath.FileExtensionIs(specifier.Text(), tspath.ExtensionVibe) {
 		return specifier, false

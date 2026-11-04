@@ -8,25 +8,39 @@ import (
 	"testing"
 )
 
+// vibexDeclarationSpecifierQuote is VIP-39's 2026-11-03 amendment, repeated in
+// chapter 1's Declaration output: the twin of a written ./leaf.vibex writes
+// ./leaf.tsx, and a written JavaScript spelling stays as written.
+const vibexDeclarationSpecifierQuote = "Ordinary package declarations use the native twin\u2019s relative specifiers: \x60./user.vibe\x60 is declared as \x60./user.ts\x60 and \x60./App.vibex\x60 as \x60./App.tsx\x60; written \x60./user.js\x60, \x60./App.jsx\x60, \x60./user\x60 and native \x60./plain.ts\x60 keep their spelling."
+
 func TestVibexDeclarationSpellingQuoted(t *testing.T) {
 	const quote = "The public \x60x.d.ts\x60 is API-identical ([VIP-27](0027-declaration-output.md)) to the one the fork writes for the \x60.tsx\x60 twin that carries the same \x60@throws\x60 tags."
 	if !strings.Contains(SpecText("../vips/0039-vibex.md"), quote) {
 		t.Fatalf("VIP39 no longer says %q", quote)
 	}
+	for _, chapter := range []string{"../vips/0039-vibex.md", "001-functions.md"} {
+		if !strings.Contains(SpecText(chapter), vibexDeclarationSpecifierQuote) {
+			t.Fatalf("%s no longer says %q", chapter, vibexDeclarationSpecifierQuote)
+		}
+	}
 }
 
-type vibexDeclarationCase struct{ key, jsx, form, quote string }
+// written is how main spells the .vibex module: "vibex" writes ./leaf.vibex,
+// whose twin writes ./leaf.tsx; "js" writes the JavaScript output name, which
+// both keep (keys without a written suffix are the "vibex" rows).
+type vibexDeclarationCase struct{ key, jsx, form, quote, written string }
 
 func vibexDeclarationCases() []vibexDeclarationCase {
 	var rows []vibexDeclarationCase
 	for _, jsx := range []string{"preserve", "react"} {
-		for _, form := range []string{"import-type", "reexport", "import-type-node"} {
+		for _, form := range []string{"import-type", "reexport", "import-type-node", "inferred", "export-star-as"} {
 			for _, quote := range []string{"\"", "'"} {
 				name := "double"
 				if quote == "'" {
 					name = "single"
 				}
-				rows = append(rows, vibexDeclarationCase{jsx + ":" + form + ":" + name, jsx, form, quote})
+				rows = append(rows, vibexDeclarationCase{jsx + ":" + form + ":" + name, jsx, form, quote, "vibex"})
+				rows = append(rows, vibexDeclarationCase{jsx + ":" + form + ":" + name + ":js", jsx, form, quote, "js"})
 			}
 		}
 	}
@@ -34,8 +48,8 @@ func vibexDeclarationCases() []vibexDeclarationCase {
 }
 
 // VIP39 explicitly compares public declarations with this fork's .tsx
-// twin. Both projects omit declarationImportStyle: the undecided .vibex
-// mapping of its nondefault values is not inferred from current behavior.
+// twin, whose specifiers it amended on 2026-11-03
+// (vibexDeclarationSpecifierQuote). Both projects omit declarationImportStyle.
 // Chapter 007 / explicit vibex source and declaration resolution follows TSX: docs/design/src/007-tooling.md#5fd2918efd46b2f8
 // Chapter 007 / default vibex declarations use the native JSX output name: docs/design/src/007-tooling.md#13acd5d5e7019188
 func FuzzVibexDeclarationSpelling(f *testing.F) {
@@ -63,6 +77,8 @@ func FuzzVibexDeclarationSpelling(f *testing.F) {
 			"import-type":      "import type { T } from %s;\nexport type U=T;\n",
 			"reexport":         "export { value } from %s;\n",
 			"import-type-node": "export type U=import(%s).T;\n",
+			"inferred":         "import { value } from %s;\nexport const get=()=>value;\n",
+			"export-star-as":   "export * as leaf from %s;\n",
 		}[row.form]
 		leaf := "export type T={readonly n:number};\nexport const value:T={n:1};\n"
 		compile := func(main, extension, spec string) *Result {
@@ -85,7 +101,11 @@ func FuzzVibexDeclarationSpelling(f *testing.F) {
 			t.Cleanup(result.Remove)
 			return result
 		}
-		native := compile("main.ts", "tsx", "./leaf"+ending)
+		twin, written := "./leaf.tsx", "./leaf.vibex"
+		if row.written == "js" {
+			twin, written = "./leaf"+ending, "./leaf"+ending
+		}
+		native := compile("main.ts", "tsx", twin)
 		if HasError(native.Diagnostics) {
 			t.Fatalf("native .tsx control invalid: %v", SortedKeys(Keys(native.Dir, native.Diagnostics)))
 		}
@@ -93,11 +113,11 @@ func FuzzVibexDeclarationSpelling(f *testing.F) {
 		if !ok {
 			t.Fatal("native twin did not emit its declaration")
 		}
-		vibe := compile("main.vibe", "vibex", "./leaf.vibex")
+		vibe := compile("main.vibe", "vibex", written)
 		got, ok := vibe.Outputs["out/main.d.ts"]
 		gaps := &Gaps{Target: "FuzzVibexDeclarationSpelling", Input: row.key}
 		if HasError(vibe.Diagnostics) || !ok || got != want {
-			gaps.Add("declaration:"+row.key, "VIP39 default public .vibex references must match .tsx twin: diagnostics=%v\nvibe=%s\nnative=%s",
+			gaps.Add("declaration:"+row.key, "VIP39: %s\ndiagnostics=%v\nvibe=%s\nnative=%s", vibexDeclarationSpecifierQuote,
 				SortedKeys(Keys(vibe.Dir, vibe.Diagnostics)), got, want)
 		} else {
 			ExpectPending(t, "FuzzVibexDeclarationSpelling", "declaration:"+row.key)

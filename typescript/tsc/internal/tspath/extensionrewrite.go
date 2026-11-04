@@ -70,3 +70,16 @@ func (s ModuleSpecifier) RewriteVibeExtension(extension string) (ModuleSpecifier
 	}
 	return ToModuleSpecifier(strings.TrimSuffix(s.AsString(), ExtensionVibe) + extension), true
 }
+
+// RewriteVibexExtension returns the specifier an ordinary declaration file
+// uses for a relative import of a .vibex module, and whether it differs: its
+// TypeScript twin's ./App.tsx, which stock tsc keeps in the twin's
+// declarations (001-functions.md, Declaration output, Specifiers). TypeScript
+// resolves ./App.tsx to the module's declaration, App.d.ts; a declaration has
+// no .vibex sibling to resolve ./App.vibex to.
+func (s ModuleSpecifier) RewriteVibexExtension() (ModuleSpecifier, bool) {
+	if !s.IsRelative() || !FileExtensionIs(s.AsString(), ExtensionVibex) {
+		return s, false
+	}
+	return ToModuleSpecifier(strings.TrimSuffix(s.AsString(), ExtensionVibex) + ExtensionTsx), true
+}

@@ -1686,6 +1686,16 @@ func (tx *DeclarationTransformer) rewriteModuleSpecifier(parent *ast.Node, input
 			tx.EmitContext().AssignCommentAndSourceMapRanges(result, input)
 			return result
 		}
+		// A .vibex module is declared through its TypeScript twin, ./App.tsx;
+		// a compatibility sidecar keeps ./App.vibex.
+		if !tx.EmitContext().VibeDeclarationSidecar {
+			if rewritten, ok := tspath.ToModuleSpecifier(input.Text()).RewriteVibexExtension(); ok {
+				result := tx.Factory().NewStringLiteral(rewritten.AsString(), input.AsStringLiteral().TokenFlags)
+				tx.EmitContext().SetOriginal(result, input)
+				tx.EmitContext().AssignCommentAndSourceMapRanges(result, input)
+				return result
+			}
+		}
 	}
 	if ast.IsStringLiteral(input) && tx.compilerOptions.RewriteRelativeImportExtensions.IsTrue() {
 		specifier := tspath.ToModuleSpecifier(input.Text())

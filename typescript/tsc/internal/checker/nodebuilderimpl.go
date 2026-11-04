@@ -1413,8 +1413,9 @@ func (b *NodeBuilderImpl) rewriteContentMappedModuleSpecifier(specifier tspath.M
 	return specifier
 }
 
-// vibeDeclarationSpecifier spells specifier, a relative ./x.vibe, as a
-// declaration names the module, and reports whether specifier is one (D298).
+// vibeDeclarationSpecifier spells specifier, a relative ./x.vibe or ./x.vibex,
+// as a declaration names the module, and reports whether specifier is one
+// (D298). A written ./x.vibex is its TypeScript twin's ./x.tsx.
 // A specifier the enclosing file writes takes vibelang.declarationImportStyle's
 // spelling, ./x.js (the default), ./x or ./x.ts, as the file's written imports
 // do. One the generator reached on its own, for a type the file never imports,
@@ -1426,7 +1427,15 @@ func (b *NodeBuilderImpl) vibeDeclarationSpecifier(specifier tspath.ModuleSpecif
 		return specifier.RewriteVibeExtension(tspath.ExtensionVibe)
 	}
 	extension := b.ch.compilerOptions.VibeLang.DeclarationImportExtension()
-	rewritten, ok := specifier.RewriteVibeExtension(extension)
+	// twin spells a written ./x.vibe in the setting's spelling and a written
+	// ./x.vibex as its TypeScript twin, ./x.tsx (001-functions.md, Specifiers).
+	twin := func(written tspath.ModuleSpecifier) (tspath.ModuleSpecifier, bool) {
+		if rewritten, ok := written.RewriteVibeExtension(extension); ok {
+			return rewritten, true
+		}
+		return written.RewriteVibexExtension()
+	}
+	rewritten, ok := twin(specifier)
 	file := b.ctx.enclosingFile
 	if !ok || file == nil || slices.ContainsFunc(file.Imports(), func(written *ast.StringLiteralLike) bool { return written.Text() == specifier.AsString() }) {
 		return rewritten, ok
@@ -1436,15 +1445,24 @@ func (b *NodeBuilderImpl) vibeDeclarationSpecifier(specifier tspath.ModuleSpecif
 		prefs.ImportModuleSpecifierEnding = modulespecifiers.ImportModuleSpecifierEndingPreferenceJs // as getSpecifierForModuleSymbol asks
 	}
 	endings := modulespecifiers.TwinAllowedEndings(prefs, b.ctx.host, b.ch.compilerOptions, file, func(written string) string {
-		twin, _ := tspath.ToModuleSpecifier(written).RewriteVibeExtension(extension)
-		return twin.AsString()
+		spelled, _ := twin(tspath.ToModuleSpecifier(written))
+		return spelled.AsString()
 	})
-	noExtension := strings.TrimSuffix(specifier.AsString(), tspath.ExtensionVibe)
+	// A .vibex module's twin is a .tsx file, which emits .jsx under jsx
+	// preserve and .js otherwise, as TypeScript's getJSExtensionForFile says.
+	source, tsExtension, jsExtension := tspath.ExtensionVibe, tspath.ExtensionTs, tspath.ExtensionJs
+	if tspath.FileExtensionIs(specifier.AsString(), tspath.ExtensionVibex) {
+		source, tsExtension = tspath.ExtensionVibex, tspath.ExtensionTsx
+		if b.ch.compilerOptions.Jsx == core.JsxEmitPreserve {
+			jsExtension = tspath.ExtensionJsx
+		}
+	}
+	noExtension := strings.TrimSuffix(specifier.AsString(), source)
 	switch endings[0] {
 	case modulespecifiers.ModuleSpecifierEndingTsExtension:
-		return tspath.ToModuleSpecifier(noExtension + tspath.ExtensionTs), true
+		return tspath.ToModuleSpecifier(noExtension + tsExtension), true
 	case modulespecifiers.ModuleSpecifierEndingJsExtension:
-		return tspath.ToModuleSpecifier(noExtension + tspath.ExtensionJs), true
+		return tspath.ToModuleSpecifier(noExtension + jsExtension), true
 	case modulespecifiers.ModuleSpecifierEndingMinimal:
 		return tspath.ToModuleSpecifier(strings.TrimSuffix(noExtension, "/index")), true
 	}

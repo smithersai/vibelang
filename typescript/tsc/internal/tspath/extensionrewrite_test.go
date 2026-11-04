@@ -107,3 +107,30 @@ func TestModuleSpecifierRewriteVibeExtension(t *testing.T) {
 		assert.Equal(t, changed, test.changed, test.specifier+" "+test.extension)
 	}
 }
+
+// 001-functions.md, Declaration output, Specifiers: "`./App.vibex` as
+// `./App.tsx`; written `./user.js`, `./App.jsx`, `./user` and native
+// `./plain.ts` keep their spelling."
+func TestRewriteVibexExtension(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct {
+		in, want string
+		changed  bool
+	}{
+		{"./App.vibex", "./App.tsx", true},
+		{"../ui/App.vibex", "../ui/App.tsx", true},
+		{"./nested/a.b.vibex", "./nested/a.b.tsx", true},
+		{"./App.jsx", "./App.jsx", false},
+		{"./App.js", "./App.js", false},
+		{"./App", "./App", false},
+		{"./plain.ts", "./plain.ts", false},
+		{"./user.vibe", "./user.vibe", false},
+		{"./App.d.vibex.ts", "./App.d.vibex.ts", false},
+		{"pkg/App.vibex", "pkg/App.vibex", false},
+		{"App.vibex", "App.vibex", false},
+	} {
+		got, changed := tspath.ToModuleSpecifier(tc.in).RewriteVibexExtension()
+		assert.Equal(t, got.AsString(), tc.want, tc.in)
+		assert.Equal(t, changed, tc.changed, tc.in)
+	}
+}
