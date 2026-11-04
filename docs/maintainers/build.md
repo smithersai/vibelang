@@ -1667,3 +1667,10 @@ browser-library declaration to participate in those bindings. Resource
 assertions run after comparison returns, so an invalid result cannot absorb
 them. All 24 ambient-shape samples, four independent-import samples and
 type, documentation, nominal-origin and invalid-input controls remain enabled.
+
+The compiler-package module-identity declaration fixtures carry explicit
+`no-default-lib` and `es5` reference directives. This scopes their TypeScript
+programs, including the migration gate's child worker, to the libraries the
+fixtures use. The resource regression checks both original declaration trees
+with native TypeScript. All 80 generated resolution samples and the export,
+type, literal, documentation and invalid-target controls remain in the suite.

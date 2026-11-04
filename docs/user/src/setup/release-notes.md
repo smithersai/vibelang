@@ -10,6 +10,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 ### Bugs fixed since 0.0.11
 - Migration could drop refused-site span reports and overlook a changed-site violation beside other diagnostics; it now retains those spans, accepts independent safe fixes, and fails on a preservation violation.
 
+- Declaration module-identity regression tests repeatedly loaded unrelated browser declarations; their fixtures now request ES5 while retaining generated module-resolution, API-mutation and invalid-target checks.
+
 - Grammar admission fuzzing now retains invalid native `import()` arities as pending witnesses when their diagnostic does not fail the VibeLang build.
 
 

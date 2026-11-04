@@ -51,7 +51,7 @@ function trees(input, mode, check) {
     entries[importer]=statement(side==="before"?"./runtime":"./runtime/index.js")
    }
    for(const [file,text]of Object.entries(entries)) {
-    const p=join(root,side,file);mkdirSync(dirname(p),{recursive:true});writeFileSync(p,text.replaceAll("\\n","\n"))
+    const p=join(root,side,file);mkdirSync(dirname(p),{recursive:true});writeFileSync(p,'/// <reference no-default-lib="true" />\n/// <reference lib="es5" />\n'+text.replaceAll("\\n","\n"))
    }
   }
   return check(join(root,"before"),join(root,"after"),{target,bare,source,importer})
@@ -111,4 +111,21 @@ test("missing, external and outside declaration targets remain unproven",()=>{
    assert.equal(result.comparisonComplete,false,mode)
    assert.ok(result.environmentDiagnostics.length>0,mode)
   })
+})
+
+test("module declaration fixtures load only the standard libraries they use",()=>{
+ const input={name:"runtime",parent:false,directory:false,slash:false,form:"namespace"}
+ trees(input,"same",(a,b,p)=>{
+  for(const root of [a,b]) {
+   const program=ts.createProgram([join(root,p.importer)],{
+    target:ts.ScriptTarget.ESNext,module:ts.ModuleKind.ESNext,moduleResolution:ts.ModuleResolutionKind.Bundler,
+    strict:true,skipLibCheck:false,noEmit:true,types:[],
+   })
+   assert.ok(program.getSourceFiles().some(source=>/[/\\]lib\.es5\.d\.ts$/.test(source.fileName)),
+    "Module declaration fixtures must retain the native ES5 library")
+   assert.ok(!program.getSourceFiles().some(source=>/[/\\]lib\.dom(?:\.iterable)?\.d\.ts$/.test(source.fileName)),
+    "Module declaration fixtures must not load unrelated browser libraries")
+   assert.deepEqual(ts.getPreEmitDiagnostics(program).map(item=>item.code),[])
+  }
+ })
 })
