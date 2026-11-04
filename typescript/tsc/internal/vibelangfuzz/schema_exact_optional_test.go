@@ -9,6 +9,10 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/vibelangfuzz/vipgen"
 )
 
+func TestSchemaOptionalMutabilityQuoted(t *testing.T) {
+	chapterSays(t, "006-data.md", "Mappings preserve TypeScript mutability: properties are writable unless `readonly`; arrays and tuples are mutable unless `readonly`.")
+}
+
 // Runtime checks reuse the VIP differential generator, worker, stability
 // checks and failures(). Declaration checks compare against the stock 5.9.3
 // twin under the identical option. No second Exit comparator is introduced.
@@ -24,6 +28,7 @@ func FuzzSchemaExactOptional(f *testing.F) {
 	f.Fuzz(func(t *testing.T, key string, mode uint8, exact bool) {
 		t.Parallel() // Independent projects; keep the short seed wall time bounded.
 		TestSchemaExactOptionalQuoted(t)
+		TestSchemaOptionalMutabilityQuoted(t)
 		key = "optional-fields"
 		p := vipgen.SchemaOptionalProgram(mode, exact)
 		run := env.run(t, p)
