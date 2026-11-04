@@ -10,6 +10,7 @@ import (
 
 const wholeServiceShapeTarget = "FuzzWholeServiceShapeDeclaration"
 const wholeServiceShapeQuote = "the TypeScript type annotation supplies the exact Shape"
+const wholeServiceShapeThrowsQuote = "only the generated contract described above is an allowed addition in the emitted declaration"
 const wholeServiceShapeNoNamespaceQuote = "This form adds no shape helper and no namespace"
 
 func TestWholeServiceShapeDeclarationQuoted(t *testing.T) {
@@ -17,6 +18,9 @@ func TestWholeServiceShapeDeclarationQuoted(t *testing.T) {
 		if !strings.Contains(SpecText("005-services.md"), quote) {
 			t.Fatalf("VIP-9 whole-shape authority changed: %q", quote)
 		}
+	}
+	if !strings.Contains(SpecText("001-functions.md"), wholeServiceShapeThrowsQuote) {
+		t.Fatalf("declaration contract exception moved: %q", wholeServiceShapeThrowsQuote)
 	}
 }
 func FuzzWholeServiceShapeDeclaration(f *testing.F) {
@@ -125,7 +129,16 @@ func FuzzWholeServiceShapeDeclaration(f *testing.F) {
 			}
 			outputs[i] = text
 		}
-		if outputs[0] != outputs[1] {
+		// Compare against the unmodified native source. Only this generated
+		// never contract is permitted; preserve every other declaration byte.
+		comparable := outputs[1]
+		if key == "callable" {
+			if !strings.Contains(comparable, "type Shape = /** @throws {never} */\n() => number;") {
+				Gap(t, wholeServiceShapeTarget, "contract:"+label, "missing generated non-throwing callable contract:\n%s", comparable)
+			}
+			comparable = strings.Replace(comparable, "type Shape = /** @throws {never} */\n() => number;", "type Shape = () => number;", 1)
+		}
+		if outputs[0] != comparable {
 			Gap(t, wholeServiceShapeTarget, "declaration:"+label, "VIP-9: %s; native:\n%s\nwhole-shape:\n%s", wholeServiceShapeNoNamespaceQuote, outputs[0], outputs[1])
 		}
 		if strings.Contains(outputs[1], "namespace Port") || strings.Contains(outputs[1], "Port_shape") {
