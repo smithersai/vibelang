@@ -62,7 +62,10 @@ function fixture(t) {
     return result
   }
 }
-test("validation bookkeeping guard covers wrapping case and historical placement", t => {
+// This property starts a bounded child process for every generated fixture.
+// Keep all 40 seeded runs and explicit examples; Bun's 5s default is too short
+// on a shared build host.
+test("validation bookkeeping guard covers wrapping case and historical placement", { timeout: 60_000 }, t => {
   const check = fixture(t)
   fc.assert(fc.property(fc.constantFrom(...privatePhrases), fc.constantFrom(" ", "  ", "\t", "\n  "),
     fc.boolean(), fc.constantFrom("intro", "bugs", "history"), (phrase, space, uppercase, location) => {

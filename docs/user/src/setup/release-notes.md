@@ -240,6 +240,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - A doc comment before the first field of an `error` declaration left that field in the declaration file: `export declare class E` printed the comment before `extends`, and editors showed the field undocumented. It now stays on the field.
 - `vibelang --fix` turned an exported `Context.Service` class, such as `export class Port extends Context.Service<Port, { readonly value: string }>()("app/Port") {}`, into `export service Port { … }`, whose declaration file adds a public `Port.Shape` namespace and a `Port_shape` type the class never had. It now writes `export service Port: { readonly value: string } { static readonly key = "app/Port" }`, whose declaration file matches the class's; a class the module doesn't export still becomes `service Port { … }`.
 - The migrate flow's platform split gave the `.platform.ts` sibling an `import type` of each exported type its code read from the module, while the module imported the sibling: a cycle the original single module never had. t3code mobile's unchanged dependency-graph test rejected it for `use-vcs-action-state` and `queued-run-edit`. The sibling now has a private copy of such a type, as it already had of a private one, and imports the module only for a type that reads one of the module's values. The module's declarations are unchanged.
+
+- Release-history checks could time out on busy build hosts. Their generated-fixture property now has an explicit bounded timeout while retaining every assertion and generated case.
 - ESLint reported extra newline warnings around method calls containing a lifted `do` expression; it now follows the source method and receiver boundaries while retaining warnings for written call or property newlines.
 
 
