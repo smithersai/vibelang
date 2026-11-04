@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/microsoft/TypeScript/tsc/internal/core"
+	"github.com/microsoft/TypeScript/tsc/internal/diagnostics"
 	"github.com/microsoft/TypeScript/tsc/internal/json"
 	"github.com/microsoft/TypeScript/tsc/internal/tsoptions"
 	"github.com/microsoft/TypeScript/tsc/internal/tspath"
@@ -162,5 +163,35 @@ func TestVibeLangTopLevelSettings(t *testing.T) {
 	invalid := vibeConfig(t, `{"compilerOptions":{},"vibelang":{"trustedPackage":["zod"]},"files":["main.vibe"]}`, "{}")
 	if len(invalid.Errors) == 0 {
 		t.Fatal("an unknown top-level vibelang key was accepted")
+	}
+}
+
+func TestDeclarationImportStyleDeprecated(t *testing.T) {
+	for _, value := range []string{`".js"`, `"extensionless"`, `".ts"`, `"invalid"`, `false`, `null`, `{}`} {
+		for _, nested := range []bool{false, true} {
+			for _, inherited := range []bool{false, true} {
+				t.Run(fmt.Sprintf("%s/nested=%v/inherited=%v", value, nested, inherited), func(t *testing.T) {
+					section := `"vibelang":{"declarationImportStyle":` + value + `}`
+					if nested {
+						section = `"compilerOptions":{` + section + `}`
+					}
+					text := `{` + section + `,"files":["main.vibe"]}`
+					base := "{}"
+					if inherited {
+						base = text
+						text = `{"extends":"./base.json"}`
+					}
+					config := vibeConfig(t, text, base)
+					ds := config.GetConfigFileParsingDiagnostics()
+					if len(ds) != 1 || ds[0].Category() != diagnostics.CategoryWarning || ds[0].Code() != 5101 || !strings.Contains(ds[0].String(), "Declaration import spelling follows TypeScript") {
+						t.Fatalf("expected one nonfatal deprecation warning, got %v", ds)
+					}
+					shown, err := json.Marshal(tsoptions.ConvertToTSConfig(config, "/project/tsconfig.json"))
+					if err != nil || strings.Contains(string(shown), "declarationImportStyle") {
+						t.Fatalf("retired setting retained: %s; %v", shown, err)
+					}
+				})
+			}
+		}
 	}
 }

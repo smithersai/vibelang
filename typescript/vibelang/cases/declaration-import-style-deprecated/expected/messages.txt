@@ -1,0 +1,2 @@
+declarationImportStyle is deprecated and ignored
+Declaration import spelling follows TypeScript

@@ -41,8 +41,14 @@ function check({ directory = ".vibe/declarations", style = ".js", name = "tag", 
     assert.equal(emit.status, 0, emit.stdout + emit.stderr)
     if (publicOutput) {
       const publicText = readFileSync(join(root, "public/src/index.d.ts"), "utf8")
-      const extension = style === "extensionless" ? "" : style
-      assert.ok(publicText.includes('from "' + "./" + name + extension + '"'), publicText)
+      // VIP-27/VIP-30: public spelling uses the native .ts twin. Retired
+      // style values do not change it; compatibility consumers below still
+      // prove that sidecars bind the original .vibe source beside a sibling.
+      assert.ok(publicText.includes('from "./' + name + '.ts"'), publicText)
+      if (style !== null) {
+        assert.match(emit.stdout + emit.stderr, /TS5101/)
+        assert.match(emit.stdout + emit.stderr, /declarationImportStyle/)
+      }
     }
     const consumers = {
       annotation: 'import { make } from "./src/index.vibe"; const kind: "vibe" = make().kind;',
@@ -81,6 +87,13 @@ test("property: sidecars preserve written and inferred source bindings across st
   })
 })
 
-test("ordinary public declarations retain each configured spelling beside compatibility output", () => {
-  for (const style of [".js", ".ts", "extensionless"]) check({ style, publicOutput: true })
+test("property: ordinary public declarations use native spelling beside compatibility output", { timeout: 600000 }, () => {
+  fc.assert(fc.property(fc.record({
+    directory: fc.constantFrom(null, ".vibe/declarations", "types"),
+    style: fc.constantFrom(null, ".js", ".ts", "extensionless", "unknown", false, 17),
+    name: fc.constantFrom("tag", "deep/tag", "Ω", ".hidden")
+  }), input => check({ ...input, publicOutput: true })), {
+    examples: [".js", ".ts", "extensionless"].map(style => [{ style }]),
+    seed: 2631102, numRuns: Number(process.env.FC_RUNS || 6)
+  })
 })

@@ -78,33 +78,30 @@ func TestModuleSpecifierShouldRewriteExtension(t *testing.T) {
 	}
 }
 
-// D298: a declaration names a relative .vibe module by the spelling its
-// project's vibelang.declarationImportStyle picks, .js by default, and keeps
-// every other specifier as written.
+// VIP-30: declarations preserve written TypeScript spelling in every config.
 func TestModuleSpecifierRewriteVibeExtension(t *testing.T) {
 	t.Parallel()
 	for _, test := range []struct {
-		specifier string
-		extension string
-		expected  string
-		changed   bool
+		specifier, expected string
+		changed             bool
 	}{
-		{"./lookup.vibe", ".js", "./lookup.js", true},
-		{"../errors/SmithersError.vibe", ".js", "../errors/SmithersError.js", true},
-		{"./lookup.vibe", "", "./lookup", true},
-		{"./lookup.vibe", ".ts", "./lookup.ts", true},
-		{"./a.b.vibe", "", "./a.b", true},
-		{"./dir/index.vibe", "", "./dir/index", true},
-		{"../Contribution.vibe", ".ts", "../Contribution.ts", true},
-		{"./Card.astro", ".ts", "./Card.astro", false},
-		{"./file.ts", ".js", "./file.ts", false},
-		{"./file.js", ".ts", "./file.js", false},
-		{"./file", ".ts", "./file", false},
-		{"package.vibe", "", "package.vibe", false},
+		{"./lookup.vibe", "./lookup.ts", true},
+		{"../errors/SmithersError.vibe", "../errors/SmithersError.ts", true},
+		{"./a.b.vibe", "./a.b.ts", true},
+		{"./dir/index.vibe", "./dir/index.ts", true},
+		{"./view.vibex", "./view.tsx", true},
+		{"../dir/view.vibex", "../dir/view.tsx", true},
+		{"./file.ts", "./file.ts", false},
+		{"./file.tsx", "./file.tsx", false},
+		{"./file.mts", "./file.mts", false},
+		{"./file.js", "./file.js", false},
+		{"./file", "./file", false},
+		{"package.vibe", "package.vibe", false},
+		{"/root/file.vibe", "/root/file.vibe", false},
 	} {
-		rewritten, changed := tspath.ToModuleSpecifier(test.specifier).RewriteVibeExtension(test.extension)
-		assert.Equal(t, rewritten.AsString(), test.expected, test.specifier+" "+test.extension)
-		assert.Equal(t, changed, test.changed, test.specifier+" "+test.extension)
+		rewritten, changed := tspath.ToModuleSpecifier(test.specifier).RewriteVibeExtension()
+		assert.Equal(t, rewritten.AsString(), test.expected, test.specifier)
+		assert.Equal(t, changed, test.changed, test.specifier)
 	}
 }
 

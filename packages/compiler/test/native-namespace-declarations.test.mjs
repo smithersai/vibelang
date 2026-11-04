@@ -11,7 +11,7 @@ const require = createRequire(new URL("../../runtime/package.json", import.meta.
 const ts = require("typescript"), fc = require("fast-check")
 const binary = fileURLToPath(new URL("../native/vibelang", import.meta.url))
 const corpus = JSON.parse(readFileSync(new URL("./fixtures/alchemy-namespace-declarations.json", import.meta.url), "utf8"))
-const rule = "A relative import of a VibeLang module, `./user.vibe`, is declared through its `.js` output, `./user.js`, by default"
+const rule = "Declaration import spelling follows TypeScript for the same source spelling and tsconfig"
 assert.ok(readFileSync(new URL("../../../docs/design/src/001-functions.md", import.meta.url), "utf8").includes(rule), "D263/D298 declaration spec quote must remain current")
 
 function fixture(files, style, consume) {
@@ -41,7 +41,7 @@ const noAny = target => '\ntype IsAny<T> = 0 extends (1 & T) ? true : false;\nco
 
 test("alchemy-57: stock namespace and direct consumers resolve the same emitted DBInstance type", () => {
   fixture({ ...corpus.files, "consumer.ts": corpus.files["consumer.ts"] + noAny("AWS.RDS.DBInstance") }, ".js", root => {
-    assert.match(readFileSync(join(root, "lib/RDS/index.d.ts"), "utf8"), /DBInstance\.js/)
+    assert.match(readFileSync(join(root, "lib/RDS/index.d.ts"), "utf8"), /DBInstance\.ts/)
     assert.match(readFileSync(join(root, "lib/index.d.ts"), "utf8"), /RDS\/index\.ts/)
   })
 })
@@ -70,7 +70,7 @@ test("property: native leaves behind retained TypeScript barrels resolve through
       fixture(files, style, root => {
         const declaration = readFileSync(join(root, "lib/last.d.ts"), "utf8")
         assert.ok(!declaration.includes("./DBInstance.vibe"), declaration)
-        assert.ok(declaration.includes("./DBInstance" + (style === "extensionless" ? "" : style)), declaration)
+        assert.ok(declaration.includes("./DBInstance.ts"), declaration)
         assert.ok(declaration.includes("./plain.ts"), declaration)
       })
     }), { seed: 570053, numRuns: 40 })

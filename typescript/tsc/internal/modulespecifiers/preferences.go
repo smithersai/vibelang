@@ -288,7 +288,7 @@ func (f twinSourceFile) Imports() []*ast.StringLiteralLike {
 	result := make([]*ast.StringLiteralLike, len(imports))
 	for i, specifier := range imports {
 		result[i] = specifier
-		if text := specifier.Text(); tspath.PathIsRelative(text) && tspath.FileExtensionIs(text, tspath.ExtensionVibe) {
+		if text := specifier.Text(); tspath.PathIsRelative(text) && (tspath.FileExtensionIs(text, tspath.ExtensionVibe) || tspath.FileExtensionIs(text, ".vibex")) {
 			if factory == nil {
 				factory = ast.NewNodeFactory(ast.NodeFactoryHooks{})
 			}

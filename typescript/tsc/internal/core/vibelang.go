@@ -31,27 +31,6 @@ type VibeLangOptions struct {
 	// Diagnostics maps an EK code in VibeLangAdjustableCodes, such as "EK9204",
 	// to "error", "warning", or "off".
 	Diagnostics map[string]string `json:"diagnostics,omitzero"`
-	// DeclarationImportStyle is ".js", "extensionless", or ".ts": how an
-	// emitted declaration spells a relative import of a VibeLang module that
-	// the source writes ./x.vibe, as ./x.js, ./x, or ./x.ts (D298). Empty
-	// means ".js".
-	DeclarationImportStyle string `json:"declarationImportStyle,omitzero"`
-}
-
-// DeclarationImportExtension returns the extension an emitted declaration
-// gives a relative import of a VibeLang module: ".js", "" (extensionless), or
-// ".ts".
-func (o *VibeLangOptions) DeclarationImportExtension() string {
-	if o == nil {
-		return ".js"
-	}
-	switch o.DeclarationImportStyle {
-	case "extensionless":
-		return ""
-	case ".ts":
-		return ".ts"
-	}
-	return ".js"
 }
 
 // VibeLangAdjustableCodes are the EK codes whose category compilerOptions.vibelang
@@ -73,7 +52,7 @@ func (o *VibeLangOptions) Equals(other *VibeLangOptions) bool {
 	if o == nil || other == nil {
 		return o == other
 	}
-	return o.VibeOnly == other.VibeOnly && maps.Equal(o.Severities, other.Severities) && maps.Equal(o.InvalidSeverities, other.InvalidSeverities) && o.EffectGlobals == other.EffectGlobals && o.EffectModules == other.EffectModules && o.SidecarDir == other.SidecarDir && o.DeclarationImportStyle == other.DeclarationImportStyle && slices.Equal(o.TrustedPackages, other.TrustedPackages) && maps.Equal(o.Diagnostics, other.Diagnostics)
+	return o.VibeOnly == other.VibeOnly && maps.Equal(o.Severities, other.Severities) && maps.Equal(o.InvalidSeverities, other.InvalidSeverities) && o.EffectGlobals == other.EffectGlobals && o.EffectModules == other.EffectModules && o.SidecarDir == other.SidecarDir && slices.Equal(o.TrustedPackages, other.TrustedPackages) && maps.Equal(o.Diagnostics, other.Diagnostics)
 }
 
 // VibeSeverityCode implements VIP-30/34/38, details 57 and 77. Legacy
@@ -102,7 +81,6 @@ func MergeVibeSettings(base, child *VibeLangOptions) *VibeLangOptions {
 		result.VibeOnly = false
 		result.Diagnostics = base.Diagnostics
 		result.TrustedPackages = base.TrustedPackages
-		result.DeclarationImportStyle = base.DeclarationImportStyle
 	}
 	result.Severities = maps.Clone(base.Severities)
 	if child.Severities != nil {

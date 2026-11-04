@@ -61,15 +61,25 @@ func emitSpecifierProject(t *testing.T, files map[string]string) (dts, js string
 }
 
 // asTypeScript is source as a .ts module writes it: a TypeScript module names
-// a VibeLang module by its output, ./users.js (D31).
+// a VibeLang module by its native source twin, ./users.ts (VIP-30).
 func asTypeScript(source string) string {
-	return strings.ReplaceAll(source, `"./users.vibe"`, `"./users.js"`)
+	return strings.ReplaceAll(source, `"./users.vibe"`, `"./users.ts"`)
+}
+
+// specifierTwinFiles makes an all-TypeScript control. A retained TypeScript
+// barrel can still import a VibeLang leaf, so the entry extension alone must
+// not choose the leaf's language.
+func specifierTwinFiles(source, options string) (map[string]string, string) {
+	files, dir := specifierFiles("ts", asTypeScript(source), options)
+	files[dir+"users.ts"] = files[dir+"users.vibe"]
+	delete(files, dir+"users.vibe")
+	return files, dir
 }
 
 // A .vibe module's declaration names a TypeScript sibling as the source
 // writes it, ./helper.ts, as stock TypeScript's declaration of the same
-// module does; only a VibeLang module's ./users.vibe becomes ./users.js
-// (decided detail 263). Before, every relative .ts specifier became .js, so
+// module does; ./users.vibe stands for the twin's ./users.ts
+// (VIP-30 and detail 263, amended 2026-11-02). Before, every relative .ts specifier became .js, so
 // each t3code module migrated beside unchanged .ts siblings changed its
 // declarations (drive-t3code-server slices 2 and 8, 2026-11-01).
 func TestDeclarationKeepsWrittenTypeScriptSpecifier(t *testing.T) {
@@ -87,7 +97,7 @@ export const made = make()
 export const user: User = { name: "b" }
 `
 	const options = `,"allowImportingTsExtensions":true,"rewriteRelativeImportExtensions":true`
-	files, _ := specifierFiles("ts", asTypeScript(source), options)
+	files, _ := specifierTwinFiles(source, options)
 	stock, _, errors := emitSpecifierProject(t, files)
 	if len(errors) != 0 || stock == "" {
 		t.Fatalf("control: the .ts module emits %q with errors %v", stock, errors)
@@ -100,7 +110,7 @@ export const user: User = { name: "b" }
 	if dts != stock {
 		t.Fatalf("the .vibe module's declaration differs from TypeScript's\n--- .ts\n%s\n--- .vibe\n%s", stock, dts)
 	}
-	for _, want := range []string{`from "./helper.ts"`, `import("./helper.ts")`, `from "./users.js"`} {
+	for _, want := range []string{`from "./helper.ts"`, `import("./helper.ts")`, `from "./users.ts"`} {
 		if !strings.Contains(dts, want) {
 			t.Errorf("the declaration lacks %s:\n%s", want, dts)
 		}
@@ -171,8 +181,8 @@ func specifierSource(data []byte) string {
 // FuzzDeclarationWrittenSpecifiers checks raw declaration identity, byte for
 // byte, for every import and export form over every specifier a .vibe module
 // may write: the module's declaration is the declaration stock TypeScript
-// emits for the same module as .ts, where a VibeLang sibling is named by its
-// output (decided detail 263). The migration gate's canonical comparison
+// emits for the all-.ts twin, where a VibeLang sibling is named ./users.ts
+// (VIP-30 and detail 263, amended 2026-11-02). The migration gate's canonical comparison
 // treats ./x.ts and ./x.js alike, so FuzzDeclarationIdentity cannot see this.
 func FuzzDeclarationWrittenSpecifiers(f *testing.F) {
 	for _, seed := range [][]byte{
@@ -194,7 +204,7 @@ func FuzzDeclarationWrittenSpecifiers(f *testing.F) {
 	f.Fuzz(func(t *testing.T, data []byte) {
 		t.Parallel() // the seed corpus only; fuzzing ignores it
 		source := specifierSource(data)
-		files, _ := specifierFiles("ts", asTypeScript(source), options)
+		files, _ := specifierTwinFiles(source, options)
 		stock, _, errors := emitSpecifierProject(t, files)
 		if len(errors) != 0 {
 			t.Skipf("not a valid TypeScript module: %v", errors)
@@ -210,13 +220,13 @@ func FuzzDeclarationWrittenSpecifiers(f *testing.F) {
 	})
 }
 
-// Chapter 1 Declaration output / D263: "A relative import of a VibeLang
-// module, ./user.vibe, is declared through its .js output, ./user.js, by
-// default". Alchemy-57 keeps index.ts barrels while migrating their leaves;
-// a .vibe string in lib/index.d.ts cannot resolve the emitted leaf.d.ts.
+// Chapter 1 / VIP-30 (2026-11-02): a written ./user.vibe declares
+// ./user.ts, independently of the retired option. Alchemy-57 keeps native
+// TypeScript barrels while migrating leaves; stock consumers must reach
+// those leaves through their emitted declarations.
 func TestTypeScriptDeclarationRewritesNativeBarrels(t *testing.T) {
 	t.Parallel()
-	for _, style := range []struct{ name, ending string }{{".js", ".js"}, {"extensionless", ""}, {".ts", ".ts"}} {
+	for _, style := range []struct{ name, ending string }{{".js", ".ts"}, {"extensionless", ".ts"}, {".ts", ".ts"}} {
 		for _, quote := range []string{`"`, `'`} {
 			for _, form := range []string{
 				"export * as People from %s\n",

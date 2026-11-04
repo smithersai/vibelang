@@ -16,7 +16,6 @@ func TestRawVibeParsedOptionsRoundTrip(t *testing.T) {
 			assert.Equal(t, len(config.Errors), 0)
 			// Include the supported legacy API fields as well as modern config fields.
 			config.CompilerOptions().VibeLang.TrustedPackages = []string{"@app/*"}
-			config.CompilerOptions().VibeLang.DeclarationImportStyle = ".ts"
 			config.CompilerOptions().VibeLang.Diagnostics = map[string]string{"EK9204": "off"}
 			encoded, err := json.Marshal(config.CompilerOptions())
 			assert.NilError(t, err)
@@ -29,7 +28,6 @@ func TestRawVibeParsedOptionsRoundTrip(t *testing.T) {
 			assert.DeepEqual(t, got.VibeLang.Severities, want.Severities)
 			assert.DeepEqual(t, got.VibeLang.Diagnostics, want.Diagnostics)
 			assert.DeepEqual(t, got.VibeLang.TrustedPackages, want.TrustedPackages)
-			assert.Equal(t, got.VibeLang.DeclarationImportStyle, ".ts")
 			assert.Equal(t, got.VibeLang.EffectGlobals, core.TSFalse)
 			assert.Equal(t, got.VibeLang.EffectModules, core.TSFalse)
 			assert.Equal(t, got.VibeLang.SidecarDir, "/project/.vibe/declarations")

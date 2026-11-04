@@ -32,6 +32,23 @@ const load = () => import("./d.ts");
 	}
 }
 
+// VIP-30's source-spelling rule permits every native declaration suffix and
+// rejects only VibeLang-only suffixes in a relative published import.
+func TestOutputsDeclarationSourceSpellings(t *testing.T) {
+	TestTscDeclarationRulesQuoted(t)
+	for _, suffix := range []string{".ts", ".tsx", ".mts", ".cts", ".js", ".jsx", "", ".vibe", ".vibex"} {
+		t.Run(suffix, func(t *testing.T) {
+			g := &Gaps{}
+			text := "export type { T } from \"./user" + suffix + "\";\n"
+			(&OutputChecker{G: g}).checkDeclarationText(nil, "main.d.ts", text, nil)
+			want := suffix == ".vibe" || suffix == ".vibex"
+			if g.Any() != want {
+				t.Fatalf("suffix %q: gaps %v; want rejected=%v", suffix, g.found, want)
+			}
+		})
+	}
+}
+
 // Chapter 27 and D34 require requested outputs even when the source is .ts.
 // Detail 72: a declaration file's module augmentation names the output, as
 // its imports do. No declaration sits beside ./x.vibe once it ships, so

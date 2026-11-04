@@ -1,0 +1,4 @@
+go test fuzz v1
+string("node10/1/0/commonjs/mts")
+byte(0)
+byte(4)

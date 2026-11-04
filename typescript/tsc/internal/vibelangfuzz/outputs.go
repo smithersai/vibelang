@@ -442,10 +442,11 @@ func (oc *OutputChecker) checkDeclarationText(c *Compilation, name, text string,
 		if platformImport.MatchString(use.Specifier) {
 			oc.G.Add("feature:d312-platform-import", "D312: %s still imports %q", name, use.Specifier)
 		}
-		// D365 and D298: declarations name a VibeLang module through its
-		// .js output; no TypeScript resolves ./x.vibe to x.d.ts.
-		if isRelative(use.Specifier) && hasSourceExtension(use.Specifier) {
-			oc.G.Add("feature:d365-declaration", "D365: %s names %q, a source name, not its output", name, use.Specifier)
+		// VIP-30, amended 2026-11-02: declaration spelling follows the
+		// TypeScript twin. Native .ts/.tsx/.mts/.cts names are legal;
+		// VibeLang-only source extensions cannot name the published .d.ts.
+		if isRelative(use.Specifier) && (strings.HasSuffix(use.Specifier, ".vibe") || strings.HasSuffix(use.Specifier, ".vibex")) {
+			oc.G.Add("feature:d365-declaration", "VIP-30: %s names %q instead of its TypeScript twin", name, use.Specifier)
 		}
 	}
 	// Detail 72: an augmentation names its module the same way. ./x.vibe has

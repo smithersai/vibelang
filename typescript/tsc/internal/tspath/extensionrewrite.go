@@ -56,19 +56,19 @@ func (s ModuleSpecifier) ShouldRewriteExtension(rewrites []ExtensionRewrite, cas
 	return HasTSFileExtension(s.AsString())
 }
 
-// RewriteVibeExtension returns the specifier a declaration file uses for a
-// relative import of a VibeLang module, and whether it differs: ./user.vibe
-// becomes ./user plus extension, which the project's
-// vibelang.declarationImportStyle picks (D298). With ".js", the default,
-// ./user.js names the module as emitted JavaScript does; "" and ".ts" keep a
-// package's own spelling, ./user or ./user.ts. A declaration has no .vibe
-// sibling, and TypeScript resolves each spelling to the module's declaration,
-// user.d.ts.
-func (s ModuleSpecifier) RewriteVibeExtension(extension string) (ModuleSpecifier, bool) {
-	if !s.IsRelative() || !FileExtensionIs(s.AsString(), ExtensionVibe) {
+// RewriteVibeExtension spells a relative source reference as its TypeScript
+// twin does in a declaration. TypeScript preserves written source extensions;
+// rewriteRelativeImportExtensions controls JavaScript, not declaration imports.
+func (s ModuleSpecifier) RewriteVibeExtension() (ModuleSpecifier, bool) {
+	if !s.IsRelative() {
 		return s, false
 	}
-	return ToModuleSpecifier(strings.TrimSuffix(s.AsString(), ExtensionVibe) + extension), true
+	for _, pair := range [][2]string{{ExtensionVibe, ExtensionTs}, {".vibex", ExtensionTsx}} {
+		if FileExtensionIs(s.AsString(), pair[0]) {
+			return ToModuleSpecifier(strings.TrimSuffix(s.AsString(), pair[0]) + pair[1]), true
+		}
+	}
+	return s, false
 }
 
 // RewriteVibexExtension returns the specifier an ordinary declaration file

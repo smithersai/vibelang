@@ -4,7 +4,6 @@
 # is listed here too, citing that target's line. Each minimal reproduction in
 # testdata/fuzz/FuzzSplice/ is an archive and has a corpus line.
 # <target> <key> <owner> <what is missing, with the decision it breaks>
-FuzzSplice  feature:d365-declaration  compiler  D365 (Chapter 26 Modules rule 5): a module declaration's .d.ts keeps the body's relative .ts specifiers (FuzzCompile feature:d365-declaration in compile.txt)
 FuzzSplice  feature:parse-span-CallExpression  compiler  D61: a schema error's extends clause parses to a CallExpression with an inverted span (FuzzParse feature:parse-span-CallExpression in compile.txt)
 FuzzSplice  feature:estree-range-CallExpression  compiler  Chapter 28 Linting (D277): a schema error's extends clause converts to a CallExpression whose range ends before it starts (FuzzParse feature:estree-range-CallExpression in compile.txt)
 FuzzSplice  feature:declaration-consumer-TS2306  compiler  Chapter 27 rule 4 (D312, D366): a .vibe file whose only statement is its platform import, import "vibelang/platform/node", emits JavaScript that is a module (export {}) and an empty .d.ts that is not, so a TypeScript consumer that imports it is TS2306

@@ -58,7 +58,7 @@ func TestRetiredConfigOptions(t *testing.T) {
 								t.Fatalf("wrong retirement warning: %s", d.String())
 							}
 						}
-						if o := parsed.CompilerOptions().VibeLang; o != nil && (o.DeclarationImportStyle != "" || len(o.TrustedPackages) != 0) {
+						if o := parsed.CompilerOptions().VibeLang; o != nil && (len(o.TrustedPackages) != 0) {
 							t.Fatalf("retired state retained: %+v", o)
 						}
 						shown, err := json.Marshal(tsoptions.ConvertToTSConfig(parsed, tspath.RootedFilePath("/p/"+name)))
@@ -121,7 +121,7 @@ func TestRetiredConfigSeverities(t *testing.T) {
 					t.Fatal(d)
 				}
 			}
-			if len(p.CompilerOptions().VibeLang.TrustedPackages) != 0 || p.CompilerOptions().VibeLang.DeclarationImportStyle != "" {
+			if len(p.CompilerOptions().VibeLang.TrustedPackages) != 0 {
 				t.Fatal("severity changes must not reactivate retired options")
 			}
 		})

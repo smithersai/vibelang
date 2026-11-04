@@ -30,21 +30,25 @@ function specifiers(source) {
     if ((ts.isImportDeclaration(node) || ts.isExportDeclaration(node)) && node.moduleSpecifier)
       result.push(node.moduleSpecifier.text)
     if (ts.isCallExpression(node) && ts.isIdentifier(node.expression) && node.expression.text === "require" && ts.isStringLiteral(node.arguments[0])) result.push(node.arguments[0].text)
+    if (ts.isImportTypeNode(node) && ts.isLiteralTypeNode(node.argument) && ts.isStringLiteral(node.argument.literal))
+      result.push(node.argument.literal.text)
     ts.forEachChild(node, visit)
   }
   visit(file)
   return result
 }
-export function probe(resolution, allow, rewrite, form, packageType = "module") {
+export function probe(resolution, allow, rewrite, form, packageType = "module", declaration = false, input = {}) {
   if (ts.version !== "5.9.3") throw new Error("Expected TypeScript 5.9.3; got " + ts.version)
   const [, written, target] = form
   const raw = { target: "es2022", module: ["node16", "nodenext"].includes(resolution) ? resolution : "esnext",
     moduleResolution: resolution, allowImportingTsExtensions: allow, rewriteRelativeImportExtensions: rewrite,
     jsx: "preserve", outDir: root + "/out", rootDir: root, types: [], skipLibCheck: true }
+  if (declaration) Object.assign(raw, {declaration: true, emitDeclarationOnly: true})
+  if (input.lib) raw.lib = input.lib
   const { options, errors } = ts.convertCompilerOptionsFromJson(raw, root)
   const files = new Map([
-    [root + "/main.ts", "import { value } from " + JSON.stringify(written) + ";\nexport const copy = value;\n"],
-    [root + "/" + target, "export const value: number = 1;\n"],
+    [root + "/main.ts", input.source ?? (declaration ? "export { value } from " + JSON.stringify(written) + ";\n" : "import { value } from " + JSON.stringify(written) + ";\nexport const copy = value;\n")],
+    [root + "/" + target, input.targetSource ?? "export const value: number = 1;\n"],
     [root + "/package.json", JSON.stringify({type: packageType})],
   ])
   const outputs = {}
@@ -71,16 +75,21 @@ export function probe(resolution, allow, rewrite, form, packageType = "module") 
     nativeTarget: target, vibeSpecifier: form[3], vibeTarget: form[4],
     resolved: resolved?.resolvedFileName.replace(root + "/", "") ?? null,
     diagnostics: [...new Set(diagnostics.map(d => d.code))].sort((a,b) => a-b),
-    emitted: specifiers(outputs[root + "/out/main.js"] ?? ""),
+    emitted: specifiers(outputs[root + (declaration ? "/out/main.d.ts" : "/out/main.js")] ?? ""),
+    // API-identity consumers need the real emitted graph, including doc comments.
+    // Keep the default resolution/declaration snapshot unchanged.
+    ...(input.captureDeclarations ? { declarations: Object.fromEntries(Object.entries(outputs)
+      .filter(([name]) => name.startsWith(root + "/out/") && /\.d\.[cm]?ts$/.test(name))
+      .map(([name, text]) => [name.slice((root + "/out/").length), text])) } : {}),
   }
 }
-export function matrix() {
+export function matrix(declaration = false) {
   const rows = []
   for (const resolution of ["node10", "node16", "nodenext", "bundler"])
     for (const allow of [false, true])
       for (const rewrite of [false, true])
         for (const packageType of ["module", "commonjs"])
-          for (const form of forms) rows.push(probe(resolution, allow, rewrite, form, packageType))
+          for (const form of forms) rows.push(probe(resolution, allow, rewrite, form, packageType, declaration))
   return { typescript: ts.version, rows }
 }
 const code = s => String.fromCharCode(96) + s + String.fromCharCode(96)

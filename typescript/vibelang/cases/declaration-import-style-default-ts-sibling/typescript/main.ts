@@ -1,7 +1,7 @@
-// Detail 263: under the default style a written ./helper.ts, an unmigrated
-// sibling, stays ./helper.ts; only ./runtime.vibe becomes ./runtime.js.
+// VIP-30: written ./helper.ts stays ./helper.ts, and ./runtime.vibe
+// stands for the TypeScript twin's written ./runtime.ts.
 import type { Helper } from "./helper.ts"
 
-export * as Runtime from "./runtime.js"
+export * as Runtime from "./runtime.ts"
 export { helper } from "./helper.ts"
 export const twice = (x: Helper): number => x.n * 2

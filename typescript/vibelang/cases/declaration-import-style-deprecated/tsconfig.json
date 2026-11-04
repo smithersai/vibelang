@@ -10,7 +10,8 @@
     "types": [],
     "skipLibCheck": true,
     "outDir": "out",
-    "declaration": true
+    "declaration": true,
+    "noEmitOnError": true
   },
   "include": [
     "*.vibe"

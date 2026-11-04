@@ -165,7 +165,7 @@ test("property: --no-wire repairs generated workspaces once and preserves alread
   }), { seed: 8008, numRuns: 100 })
 })
 
-test("RD-008: repairing a new package reports mixed import spellings and wires referenced projects", async t => {
+test("RD-008: repairing a new package accepts mixed native spellings and wires referenced projects", async t => {
   const root = target(t, {
     "package.json": { private: true },
     "packages/contracts/package.json": contracts,
@@ -178,7 +178,7 @@ test("RD-008: repairing a new package reports mixed import spellings and wires r
   const cfg = config(root, ["packages/contracts", "tools"])
   const result = await wireNewPackages(cfg, join(root, "logs"))
   assert.deepEqual(result.added, ["tools"])
-  assert.ok(result.warnings.some(warning => warning.includes("tools") && warning.includes("mix relative import spellings")))
+  assert.ok(!result.warnings.some(warning => warning.includes("mix relative import spellings")))
   assert.match(read(root, "tools/tsconfig.src.json"), /src\/\*\*\/\*\.vibe/)
   assert.equal(await wireNewPackages(cfg, join(root, "logs")), null)
 })

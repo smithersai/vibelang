@@ -1,2 +1,0 @@
-// VIP-30: a retired declarationImportStyle value warns without failing compilation.
-export const one = 1

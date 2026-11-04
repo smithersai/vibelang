@@ -1,0 +1,2 @@
+// The retired setting warns for every value and does not stop compilation.
+export const one = 1

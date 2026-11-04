@@ -43,9 +43,9 @@ function check(input) {
       assert.equal(result.status, 0, result.stdout + result.stderr)
       const sidecar = readFileSync(join(root, "src", "a.d.vibe.ts"), "utf8")
       assert.ok(sidecar.includes(quoted), "detail263: " + style + " must retain the source sidecar reference: " + sidecar)
-      const ending = style === "extensionless" ? "" : style
+      assert.match(result.stdout + result.stderr, /TS5101:.*declarationImportStyle.*deprecated and ignored/)
       const declaration = readFileSync(join(root, "out", "a.d.ts"), "utf8")
-      assert.ok(declaration.includes(input.quote + "./" + input.name + ending + input.quote), "the package declaration still uses its selected style: " + declaration)
+      assert.ok(declaration.includes(input.quote + "./" + input.name + ".ts" + input.quote), "the package declaration follows the native .ts twin under every retired setting: " + declaration)
       const stock = join(root, "stock")
       mkdirSync(stock, { recursive: true })
       writeFileSync(join(stock, "a.d.vibe.ts"), sidecar)
@@ -76,7 +76,7 @@ function check(input) {
 test("r14-astra-1: package declaration spelling leaves source sidecars usable", () => check(fixture.input))
 // Chapter 007 / declaration styles affect public output and preserve source sidecars: docs/design/src/007-tooling.md#5c254cd19b4bd101
 // Chapter 007 / declaration styles affect public output and preserve source sidecars: docs/design/src/007-tooling.md#d05c35efbaf324ec
-test("sidecar scope spans styles, quote choices, reexports and import types", () => {
+test("sidecar scope spans retired settings, quote choices, reexports and import types", () => {
   fc.assert(fc.property(fc.record({
     name: fc.constantFrom("b", "other-type", "model.shared"),
     quote: fc.constantFrom('"', "'"),

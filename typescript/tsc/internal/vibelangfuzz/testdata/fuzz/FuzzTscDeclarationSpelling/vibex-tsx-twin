@@ -1,0 +1,4 @@
+go test fuzz v1
+string("bundler/1/1/module/vibex")
+byte(0)
+byte(0)

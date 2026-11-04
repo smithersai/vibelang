@@ -54,9 +54,9 @@ func TestDeclarationImportStyleMatrix(t *testing.T) {
 	tsc := StockTypeScript(t)
 	w := NewWorkspace(t)
 	modes := []string{"bundler", "nodenext"}
-	styles := []struct{ name, extension string }{{".js", ".js"}, {"extensionless", ""}, {".ts", ".ts"}}
+	styles := []struct{ name string }{{".js"}, {"extensionless"}, {".ts"}}
 	quotes := []string{`"`, `'`}
-	// Each written specifier: the .vibe source's text, and the twin's under each style extension.
+	// Each source spelling and whether it names the migrated twin.
 	specifiers := []struct {
 		name    string
 		written string
@@ -82,7 +82,7 @@ func TestDeclarationImportStyleMatrix(t *testing.T) {
 			for _, quote := range quotes {
 				for _, specifier := range specifiers {
 					for _, form := range forms {
-						if mode == "nodenext" && (style.name == "extensionless" || specifier.name == "extensionless") {
+						if mode == "nodenext" && specifier.name == "extensionless" {
 							continue
 						}
 						name := fmt.Sprintf("%s/%s/%s/%s/%s", mode, style.name, map[string]string{`"`: "double", `'`: "single"}[quote], specifier.name, form.name)
@@ -90,7 +90,7 @@ func TestDeclarationImportStyleMatrix(t *testing.T) {
 							t.Parallel()
 							twinSpecifier := specifier.written
 							if specifier.vibe {
-								twinSpecifier = "./leaf" + style.extension
+								twinSpecifier = "./leaf.ts"
 							}
 							source := fmt.Sprintf(form.source, quote+specifier.written+quote)
 							twin := fmt.Sprintf(form.source, quote+twinSpecifier+quote)
@@ -142,33 +142,11 @@ func stockDeclaration(t *testing.T, w *Workspace, tsc string, project Project, n
 	return string(text)
 }
 
-// TestDeclarationImportStyleInferredImportType enforces Chapter 1,
-// docs/design/src/001-functions.md, Declaration output, Specifiers, for the
-// specifier the compiler writes itself: an inferred type that names a
-// VibeLang module, import("../schema/index.ts").MessageUnion, is spelled as
-// stock tsc spells it for the file's TypeScript twin. A specifier the file
-// writes keeps the setting's spelling; one the compiler generates for a module
-// the file never imports follows tsc's own choice for the twin, which under
-// module nodenext with .ts imports allowed is .ts whatever the file writes.
-//
-// Oracle: raw byte equality, no normalization. For each module mode × setting
-// × quote × spelling, the project whose importers are .ts files and whose
-// schema/index is .vibe declares what stock tsc declares when schema/index is
-// .ts; and the project whose importers are .vibe files writing ./x.vibe
-// declares what stock tsc declares for their twins, which write each ./x.vibe
-// in the setting's spelling (the spelling setup records, detail 263). The
-// .vibe importers infer through constants, not arrows: an unannotated .vibe
-// arrow is an effect function, whose declaration returns an Effect. Module
-// nodenext has no extensionless relative import, so it skips those cells, and
-// it skips .ts importers that write ../schema/index.ts, which report TS2876
-// under rewriteRelativeImportExtensions (inbox/migrate-alchemy.md, not
-// declaration spelling).
-// Witnesses: foldkit's experimental/query/keyedQuery.ts, which writes
-// '../../message/index.js' under module nodenext and
-// rewriteRelativeImportExtensions, declared import("../../schema/index.js")
-// where the baseline printed index.ts (foldkit-92, 2026-11-01T08:05Z), and 14
-// Smithers declarations printed import("./StdError.js") for
-// import("./StdError.ts") (pass3/dtsdiff, packages/smithers/agent/std).
+// TestDeclarationImportStyleInferredImportType compares native generated import
+// types, through both .ts and .vibe importers, with stock tsc. Written .vibe
+// references stand for .ts; generated endings follow the twin's native
+// preferences. Legacy settings cannot change either result (VIP-27/VIP-30).
+// Witnesses are foldkit's keyedQuery and Smithers' inferred StdError imports.
 func TestDeclarationImportStyleInferredImportType(t *testing.T) {
 	// Spec rule: docs/design/src/001-functions.md#ccd37d703ff5fb5b
 	// Chapter 001: inferred import types match the twin resolution mode (TestDeclarationImportStyleInferredImportType).
@@ -199,7 +177,7 @@ func TestDeclarationImportStyleInferredImportType(t *testing.T) {
 							"import { keyed } from " + q("./keyedQuery"+spelling) + "\nexport const wrapped = { keyed }\n",
 							"export const made = makeMessage({ a: \"m\" })\n",
 						}
-						otherSpelling = declarationStyleExtension(style)
+						otherSpelling = ".ts"
 					}
 					return declarationModeFiles(mode, map[string]string{
 						schemaFile:                    schema,
@@ -245,20 +223,11 @@ func TestDeclarationImportStyleInferredImportType(t *testing.T) {
 				// The Smithers shape: migrated importers, which write ./x.vibe.
 				t.Run(fmt.Sprintf("%s/%s/%s/vibe-importers", mode, style, quoteName), func(t *testing.T) {
 					t.Parallel()
-					check(t, files("schema/index.vibe", ".vibe", ".vibe", true), files("schema/index.ts", ".ts", declarationStyleExtension(style), true))
+					check(t, files("schema/index.vibe", ".vibe", ".vibe", true), files("schema/index.ts", ".ts", ".ts", true))
 				})
 			}
 		}
 	}
-}
-
-// declarationStyleExtension is the extension a setting gives a relative
-// import of a VibeLang module.
-func declarationStyleExtension(style string) string {
-	if style == "extensionless" {
-		return ""
-	}
-	return style
 }
 
 // TestDeclarationEffectModuleImports enforces D311 and Chapter 1,
@@ -355,13 +324,13 @@ func TestDeclarationEffectModuleImports(t *testing.T) {
 }
 
 // declarationStyleConfig is the tsconfig of a declaration-only bundler
-// project under vibelang.declarationImportStyle style.
+// project with a retired vibelang.declarationImportStyle value.
 func declarationStyleConfig(style string) string {
 	return declarationModeConfig("bundler", style)
 }
 
 // declarationModeConfig is the tsconfig of a declaration-only project under
-// vibelang.declarationImportStyle style: "bundler" (module preserve,
+// a retired declarationImportStyle setting: "bundler" (module preserve,
 // allowImportingTsExtensions) or "nodenext" (module nodenext,
 // rewriteRelativeImportExtensions, foldkit's settings).
 func declarationModeConfig(mode, style string) string {

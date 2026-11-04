@@ -1,0 +1,4 @@
+go test fuzz v1
+string("node16/0/0/module/directory")
+byte(0)
+byte(0)

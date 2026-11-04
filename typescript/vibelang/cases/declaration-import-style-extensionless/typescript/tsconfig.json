@@ -11,7 +11,8 @@
     "skipLibCheck": true,
     "outDir": "out",
     "declaration": true,
-    "emitDeclarationOnly": true
+    "emitDeclarationOnly": true,
+    "allowImportingTsExtensions": true
   },
   "include": [
     "*.ts"

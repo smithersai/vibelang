@@ -1,1 +1,1 @@
-export { store } from "./consumer/main.js";
+export { store } from "./consumer/main.ts";

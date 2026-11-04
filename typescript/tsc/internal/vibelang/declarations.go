@@ -16,11 +16,11 @@ import (
 )
 
 // The declaration file of a .vibe file is ordinary TypeScript, so it must import
-// what the source took from the prelude and name its imports by output:
+// what the source took from the prelude and spell imports as the native twin:
 //
 //	// main.vibe                               // main.d.ts
 //	import { find } from "./users.vibe"        import { Effect } from "effect";
-//	export const one: Effect<number> = …     import { find } from "./users.js";
+//	export const one: Effect<number> = …     import { find } from "./users.ts";
 //	                                         export declare const one: Effect.Effect<number>;
 //
 // Effect's own modules, the prelude's Effect, Layer, Schema and Scope
@@ -102,7 +102,6 @@ func transformDeclarations(resolver printer.EmitResolver, sourceFile *ast.Source
 		rewriter := &specifierRewriter{sourceDirectory: tspath.GetDirectoryPath(string(sourceFile.FileName()))}
 		keys := &computedKeyRewriter{keys: map[string]computedKey{}, bound: map[string]bool{}}
 		r.WithChecker(func(c *checker.Checker) {
-			rewriter.style = c.CompilerOptions().VibeLang
 			if namespace := preludeSymbol(c, preludeStateOf(c), sourceFile, "Effect"); namespace != nil {
 				if effect := effectInterfaceOfModule(c, namespace); effect != nil {
 					rewriter.effectPath = effectModulePath(c, effect)
@@ -1084,9 +1083,6 @@ type specifierRewriter struct {
 	transformers.Transformer
 	sourceDirectory string
 	effectPath      string // extensionless path of the resolved Effect interface's module
-	// style is the project's VibeLang settings, whose declarationImportStyle
-	// spells a relative import of a .vibe module.
-	style *core.VibeLangOptions
 }
 
 func (tx *specifierRewriter) visit(node *ast.Node) *ast.Node {
@@ -1126,36 +1122,19 @@ func (tx *specifierRewriter) visit(node *ast.Node) *ast.Node {
 	return tx.Visitor().VisitEachChild(node)
 }
 
-// outputSpecifier returns a string literal that names the output of the
-// source specifier names, and whether it differs from specifier. Only a
-// relative ./users.vibe or ./App.vibex changes: vibelang.declarationImportStyle
-// spells ./users.vibe as ./users.js (the default), ./users or ./users.ts, and
-// ./App.vibex is its TypeScript twin's ./App.tsx. Every other specifier,
-// ./plain.ts included, stays as the source wrote it under every setting, as
-// tsc keeps it in the declaration of a .ts file (detail 263).
+// outputSpecifier preserves native specifiers and maps VibeLang source
+// extensions to their TypeScript counterparts, independently of JS rewriting.
 func (tx *specifierRewriter) outputSpecifier(f *printer.NodeFactory, specifier *ast.Node) (*ast.Node, bool) {
-	// Source sidecars must retain explicit .vibe identity even when the
+	// Source sidecars must retain explicit source identity even when the
 	// portable output has a same-stem native sibling (VIP-27, RC-12).
 	if tx.EmitContext().VibeDeclarationSidecar {
 		return specifier, false
 	}
-	if specifier != nil && ast.IsStringLiteral(specifier) {
-		// ./App.vibex is declared as its TypeScript twin, ./App.tsx.
-		if rewritten, changed := tspath.ToModuleSpecifier(specifier.Text()).RewriteVibexExtension(); changed {
-			return f.NewStringLiteral(rewritten.AsString(), specifier.AsStringLiteral().TokenFlags), true
-		}
-	}
-	if specifier == nil || !ast.IsStringLiteral(specifier) || !tspath.FileExtensionIs(specifier.Text(), tspath.ExtensionVibe) {
+	if specifier == nil || !ast.IsStringLiteral(specifier) {
 		return specifier, false
 	}
-	if extension := tx.style.DeclarationImportExtension(); extension != tspath.ExtensionJs {
-		rewritten, changed := tspath.ToModuleSpecifier(specifier.Text()).RewriteVibeExtension(extension)
-		if !changed {
-			return specifier, false
-		}
-		return f.NewStringLiteral(rewritten.AsString(), specifier.AsStringLiteral().TokenFlags), true
-	}
-	text, changed := outputSpecifierText(specifier.Text())
+	rewritten, changed := tspath.ToModuleSpecifier(specifier.Text()).RewriteVibeExtension()
+	text := rewritten.AsString()
 	if !changed {
 		return specifier, false
 	}

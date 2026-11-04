@@ -1,0 +1,4 @@
+go test fuzz v1
+string("nodenext/1/1/module/vibe")
+byte(0)
+byte(1)

@@ -886,13 +886,6 @@ function wirePackages({ t, ts, packages, specsFor, writeIfChanged, warnings, lay
   const { enumerations, wiredTsconfigs } = layout
   for (const pkg of packages) {
     const path = join(t, pkg.dir, "package.json")
-    // A migrated module's declarations spell a relative import as the package's sources do (C′).
-    const sources = pkg.sources.flatMap((dir) => listSources(t, posix.join(pkg.dir, dir)))
-    const spelling = Wire.importSpelling(sources.map((file) => readFileSync(join(t, file), "utf8")))
-    if (!spelling.style && Object.values(spelling.counts).some(Boolean)) {
-      const counts = Object.entries(spelling.counts).filter(([, n]) => n).map(([style, n]) => `${n} ${style}`).join(", ")
-      warnings.push(`setup leaves ${pkg.dir}'s declarations importing migrated modules as ./x.js: its sources mix relative import spellings (${counts}), so no vibelang.declarationImportStyle fits; make them one spelling and run setup again`)
-    }
     const next = Wire.addVibeLang(readJson(path), specsFor(pkg.dir))
     next.scripts = Wire.replaceTsc(next.scripts)
     writeIfChanged(path, readFileSync(path, "utf8"), JSON.stringify(next, null, 2) + "\n")
@@ -905,12 +898,9 @@ function wirePackages({ t, ts, packages, specsFor, writeIfChanged, warnings, lay
       // and the project lists .vibe files where it lists .ts files. An earlier setup's
       // declarationSidecars setting is retired: the compiler rejects it (TS5023).
       const current = Wire.removeWrittenModuleSuffixes(Wire.removeVibeLangSetting(text, ts, "declarationSidecars"), ts)
-      // ".js" is the default, so an earlier setup's other spelling goes; mixed sources keep what the file says.
-      const styled = !spelling.style ? current
-        : spelling.style === ".js" ? Wire.removeVibeLangSetting(current, ts, "declarationImportStyle")
-        : Wire.addVibeLangSetting(current, ts, "declarationImportStyle", spelling.style)
-      // Native rewriting keeps its authored value, inheritance and default (VIP-27, VIP-30).
-      const next = Wire.addVibeIncludes(styled, ts)
+      // Retired style settings cannot select declaration spelling.
+      const native = Wire.removeVibeLangSetting(current, ts, "declarationImportStyle")
+      const next = Wire.addVibeIncludes(native, ts)
       const outside = sidecarProjectLayout(file, ts, next).outside
       writeIfChanged(file, text, enumerations.length || outside || Enumerations.sidecarSettings(file, ts, next) ? Enumerations.addSidecarDir(next, ts, Enumerations.sidecarDirectory, file) : next)
       wiredTsconfigs.add(posix.join(pkg.dir, tsconfig))

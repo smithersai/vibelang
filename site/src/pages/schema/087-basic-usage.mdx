@@ -25,15 +25,6 @@ JSDoc on a `schema` declaration belongs to its constant. Without a written type 
 
 To document the type separately, write `type Message = typeof Message.Type` beside either `schema Message { … }` or `schema Message = …`, before or after it in the same scope. One exact, nongeneric alias replaces the synthesized type. Each written declaration keeps its own JSDoc, position and `export` modifier; native `removeComments` and `stripInternal` still apply. Other type-name collisions remain errors.
 
-Mapped array schemas follow the resolved TypeScript-library type. `globalThis.Array<number>` and a renamed library import map to a mutable array; a binding to `ReadonlyArray` maps to a readonly array even when imported as `Array`. Value-only bindings do not hide the separate library type. Ordinary generic type aliases and interfaces are not expanded into schemas.
-
-Earlier compilers selected array mutability from the written name. If an imported `Array` actually names the library `ReadonlyArray`, or the reverse, `vibelang --fix --fix-migration-only` writes the previous decoder explicitly and preserves its public type. Ordinary compilation uses the resolved library meaning. This compatibility rewrite only covers previously supported canonical spellings; it does not invent old decoders for new qualified or renamed forms.
-
-A declaration such as `schema Values = globalThis.Record<"key", number>` and a renamed library `Record` binding use the record decoder with writable decoded keys. The same mapping applies when that library type is imported as `Array` or `Readonly`: its resolved binding and two arguments select the record mapping.
-
-If an earlier compiler accepted `Record<K, V>` while that name actually referred to a different library type, `vibelang --fix` preserves the previous record decoder with explicit Effect Schema code. A newly supported qualified or renamed form receives no compatibility rewrite.
-
-
 ## Modeling primitives, symbols, literals, enums, and template strings
 
 ```vibe
@@ -167,7 +158,7 @@ false
 
 ## Declaring records and index signatures
 
-In a `schema` declaration, `Readonly<Record<K, V>>` maps to `Schema.Record`. Parentheses only group its argument: `Readonly<(Record<string, number>)>` produces the same codec and readonly decoded properties. Both generic names follow their resolved TypeScript-library bindings: `globalThis.Readonly<globalThis.Record<string, number>>` and renamed library imports produce the same readonly keys. A value-only local does not hide either library type. A shadowing type without a suitable mapping reports `EK2109`; `vibelang --fix` preserves the previous codec for previously accepted canonical spellings. If a canonical `Readonly` import now selects an array type, `--fix-migration-only` preserves its earlier record decoder explicitly.
+In a `schema` declaration, `Readonly<Record<K, V>>` maps to `Schema.Record`. Parentheses only group its argument: `Readonly<(Record<string, number>)>` produces the same codec and readonly decoded properties.
 
 ```vibe
 const Stock = Schema.Record(Schema.String, Schema.Int)

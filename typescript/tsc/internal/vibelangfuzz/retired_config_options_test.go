@@ -84,7 +84,7 @@ func FuzzRetiredConfigOptions(f *testing.F) {
 			}
 		}
 		o := parsed.CompilerOptions().VibeLang
-		if o == nil || o.DeclarationImportStyle != "" || len(o.TrustedPackages) != 0 || !o.EffectGlobals.IsFalse() {
+		if o == nil || len(o.TrustedPackages) != 0 || !o.EffectGlobals.IsFalse() {
 			Gap(t, "FuzzRetiredConfigOptions", key, "VIP-30/VIP-4: retired state retained or independent switch lost: %+v", o)
 		}
 		shown, err := json.Marshal(tsoptions.ConvertToTSConfig(parsed, tspath.RootedFilePath("/p/"+name)))

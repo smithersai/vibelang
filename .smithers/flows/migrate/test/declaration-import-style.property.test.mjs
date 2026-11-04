@@ -1,87 +1,78 @@
-// C′ (Will, 2026-10-31): setup writes vibelang.declarationImportStyle for a
-// package from the spelling its sources already give relative imports, so a
-// migrated module's declarations keep it: opencode's stats/core writes ./x,
-// Smithers writes ./x.ts. A package that mixes spellings gets no setting.
+// Will, 2026-11-02 / VIP-30: declaration spelling follows the TypeScript twin.
+// Setup must remove the retired setting instead of inferring a package style.
 import assert from "node:assert/strict"
+import { execFileSync } from "node:child_process"
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs"
 import { createRequire } from "node:module"
+import { tmpdir } from "node:os"
+import { join } from "node:path"
 import { test } from "node:test"
-import { addVibeLangSetting, importSpelling, removeVibeLangSetting } from "../lib/wire.mjs"
+import { fileURLToPath } from "node:url"
+import { makeConfig, wireTarget } from "../lib/steps.mjs"
+import { removeVibeLangSetting } from "../lib/wire.mjs"
 
-const require = createRequire(new URL("../../../../packages/runtime/package.json", import.meta.url))
+const runtime = fileURLToPath(new URL("../../../../packages/runtime/", import.meta.url))
+const require = createRequire(join(runtime, "package.json"))
 const ts = require("typescript")
 const fc = require("fast-check")
-
-test("import spelling: each repository's own relative imports decide the style", () => {
-  // opencode core (.js), opencode stats/core (extensionless), Smithers (.ts).
-  assert.deepEqual(importSpelling(['import { a } from "./a.js"\nexport * as B from \'../b.js\'\n']), { style: ".js", counts: { ".js": 2, extensionless: 0, ".ts": 0 } })
-  assert.equal(importSpelling(["import { live } from './runtime'\nconst m = await import('./lazy')\n"]).style, "extensionless")
-  assert.equal(importSpelling(['import { Refusal } from "./Contribution.ts"\nimport type { Bind } from "../Bind.tsx"\n']).style, ".ts")
-  // Migrated modules, assets, data, declarations, packages and directory imports say nothing.
-  assert.equal(importSpelling(['import { x } from "./x.vibe"\nimport "./styles.css"\nimport data from "./data.json"\nimport type { T } from "./types.d.ts"\nimport { Effect } from "effect"\nimport { y } from "../"\nimport { z } from "./y.ts"\n']).style, ".ts")
-  assert.deepEqual(importSpelling(['import { x } from "./x.vibe"\nimport { Effect } from "effect"\n']), { style: null, counts: { ".js": 0, extensionless: 0, ".ts": 0 } })
-  // A package that mixes spellings gets no style.
-  assert.deepEqual(importSpelling(['import { a } from "./a.js"\n', 'import { b } from "./b"\n']), { style: null, counts: { ".js": 1, extensionless: 1, ".ts": 0 } })
-})
-
-const names = fc.array(fc.stringMatching(/^[A-Za-z][A-Za-z0-9_-]{0,8}$/), { minLength: 1, maxLength: 6 })
-const spellings = { ".js": ".js", extensionless: "", ".ts": ".ts" }
-const form = fc.constantFrom(
-  (s) => `import { x } from "${s}"`, (s) => `import type { T } from '${s}'`, (s) => `export * from "${s}"`,
-  (s) => `export * as N from '${s}'`, (s) => `const m = await import("${s}")`, (s) => `type U = typeof import('${s}')`)
-
-test("import-spelling: a package whose imports all use one spelling gets it; one other import clears it", () => {
-  fc.assert(fc.property(fc.constantFrom(".js", "extensionless", ".ts"), fc.constantFrom(".js", "extensionless", ".ts"), names, fc.array(form, { minLength: 1, maxLength: 6 }), fc.constantFrom("./", "../", "./dir/"), (style, other, modules, forms, prefix) => {
-    const lines = modules.map((name, i) => forms[i % forms.length](`${prefix}${name}${spellings[style]}`))
-    // Already migrated modules and package imports beside them change nothing.
-    lines.push('import { done } from "./done.vibe"', "import { Effect } from 'effect'")
-    assert.equal(importSpelling([lines.join("\n")]).style, style)
-    const mixed = importSpelling([lines.join("\n"), forms[0](`./odd${spellings[other]}`)]).style
-    assert.equal(mixed, other === style ? style : null)
-  }), { seed: 31010, numRuns: 300 })
-})
-
-const parse = (text) => {
-  const { config, error } = ts.parseConfigFileTextToJson("tsconfig.json", text)
-  assert.equal(error, undefined, text)
-  return config
+const parse = text => {
+  const result = ts.parseConfigFileTextToJson("tsconfig.json", text)
+  assert.equal(result.error, undefined)
+  return result.config
 }
 
-test("declaration import style setting: setup writes it beside other VibeLang settings and replaces an earlier value", () => {
-  const smithers = '{\n  "extends": "../../tsconfig.base.json",\n  "compilerOptions": { "rewriteRelativeImportExtensions": true }\n}\n'
-  const written = addVibeLangSetting(smithers, ts, "declarationImportStyle", ".ts")
-  assert.equal(written, '{\n  "extends": "../../tsconfig.base.json",\n  "compilerOptions": { "rewriteRelativeImportExtensions": true },\n  "vibelang": { "declarationImportStyle": ".ts" }\n}\n')
-  assert.equal(addVibeLangSetting(written, ts, "declarationImportStyle", "extensionless"), written.replace('".ts"', '"extensionless"'))
-  assert.equal(removeVibeLangSetting(written, ts, "declarationImportStyle"), '{\n  "extends": "../../tsconfig.base.json",\n  "compilerOptions": { "rewriteRelativeImportExtensions": true }\n}\n')
-  const trusted = '{ "vibelang": { "trustedPackages": ["@opencode/*"] } // ours\n}'
-  assert.deepEqual(parse(addVibeLangSetting(trusted, ts, "declarationImportStyle", "extensionless")).vibelang, { declarationImportStyle: "extensionless", trustedPackages: ["@opencode/*"] })
-  const nested = '{ "compilerOptions": { "vibelang": { "tracing": "exported" } } }'
-  assert.deepEqual(parse(addVibeLangSetting(nested, ts, "declarationImportStyle", ".ts")).compilerOptions.vibelang, { declarationImportStyle: ".ts", tracing: "exported" })
+test("setup removes declarationImportStyle for each source spelling and legacy path", async () => {
+  for (const suffix of [".js", "", ".ts"]) {
+    for (const nested of [false, true]) {
+      const root = mkdtempSync(join(tmpdir(), "declaration-native-"))
+      try {
+        const put = (file, text) => {
+          mkdirSync(join(root, file, ".."), { recursive: true })
+          writeFileSync(join(root, file), text)
+        }
+        put("package.json", JSON.stringify({ name: "fixture", private: true, type: "module" }))
+        put("src/main.ts", 'export { value } from "./user' + suffix + '";\n')
+        put("src/user.ts", "export const value = 1\n")
+        const config = {
+          compilerOptions: { strict: true, moduleResolution: "bundler", module: "esnext" },
+          include: ["src/**/*.ts"],
+        }
+        const settings = { declarationImportStyle: "extensionless", trustedPackages: ["@x/*"] }
+        if (nested) config.compilerOptions.vibelang = settings
+        else config.vibelang = settings
+        put("tsconfig.json", JSON.stringify(config))
+        mkdirSync(join(root, "node_modules"))
+        symlinkSync(join(runtime, "node_modules/typescript"), join(root, "node_modules/typescript"))
+        execFileSync("jj", ["git", "init", root], { stdio: "pipe" })
+        const setup = makeConfig({ target: root, packages: ["."], test: "true", vibelangVersion: "0.0.11", install: "true" })
+        const wired = await wireTarget(setup, join(root, ".logs"))
+        const after = parse(readFileSync(join(root, "tsconfig.json"), "utf8"))
+        assert.equal(after.vibelang?.declarationImportStyle, undefined, suffix)
+        assert.equal(after.compilerOptions.vibelang?.declarationImportStyle, undefined, suffix)
+        assert.deepEqual((nested ? after.compilerOptions.vibelang : after.vibelang).trustedPackages, ["@x/*"])
+        assert.equal(after.compilerOptions.strict, true)
+        assert.ok(!wired.warnings.some(w => w.includes("declarationImportStyle")))
+      } finally {
+        rmSync(root, { recursive: true, force: true })
+      }
+    }
+  }
 })
 
-const option = fc.constantFrom('"strict": true', '"module": "NodeNext"', '"rewriteRelativeImportExtensions": true')
-const comment = fc.constantFrom("", " // keep", " /* block */")
-const tsconfig = fc.record({
-  options: fc.array(option, { maxLength: 3 }),
-  vibelang: fc.option(fc.constantFrom('"trustedPackages": ["@x/*"]', '"tracing": "all"', ""), { nil: undefined }),
-  comment,
-  indent: fc.constantFrom("  ", "    ", "\t"),
-})
-const render = ({ options, vibelang, comment, indent }) => {
-  const properties = [`${indent}"compilerOptions": {${comment}${options.map((o) => `\n${indent}${indent}${o}`).join(",")}\n${indent}}`]
-  if (vibelang !== undefined) properties.push(`${indent}"vibelang": { ${vibelang} }`)
-  return `{\n${properties.join(",\n")}\n}\n`
-}
-
-test("declaration-import-style-roundtrip: written, rewritten and removed, the tsconfig keeps everything else", () => {
-  fc.assert(fc.property(tsconfig, fc.constantFrom("extensionless", ".ts"), fc.constantFrom("extensionless", ".ts"), (input, first, second) => {
-    const before = render(input)
-    const config = parse(before)
-    const written = addVibeLangSetting(before, ts, "declarationImportStyle", first)
-    assert.deepEqual(parse(written), { ...config, vibelang: { ...config.vibelang, declarationImportStyle: first } })
-    const rewritten = addVibeLangSetting(written, ts, "declarationImportStyle", second)
-    assert.equal(parse(rewritten).vibelang.declarationImportStyle, second)
-    // The section goes with the style when the style was all it held; one that held other settings keeps them.
-    const { vibelang, ...rest } = config
-    assert.deepEqual(parse(removeVibeLangSetting(rewritten, ts, "declarationImportStyle")), input.vibelang ? config : rest)
-  }), { seed: 31011, numRuns: 300 })
+test("retired setting removal preserves unrelated JSONC configuration and is idempotent", () => {
+  fc.assert(fc.property(
+    fc.jsonValue(), fc.boolean(), fc.constantFrom("  ", "    ", "\t"),
+    (value, nested, indent) => {
+      const settings = { declarationImportStyle: value, trustedPackages: ["@x/*"] }
+      const before = { compilerOptions: { strict: true }, files: ["main.vibe"] }
+      if (nested) before.compilerOptions.vibelang = settings
+      else before.vibelang = settings
+      const text = "// keep\n" + JSON.stringify(before, null, indent) + "\n"
+      const next = removeVibeLangSetting(text, ts, "declarationImportStyle")
+      delete settings.declarationImportStyle
+      assert.deepEqual(parse(next), before)
+      assert.ok(next.includes("// keep"))
+      assert.equal(removeVibeLangSetting(next, ts, "declarationImportStyle"), next)
+    }
+  ), { seed: 110202, numRuns: 300 })
 })

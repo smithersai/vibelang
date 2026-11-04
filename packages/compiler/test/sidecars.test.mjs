@@ -1,6 +1,6 @@
 import { strict as assert } from "node:assert"
 import { spawnSync } from "node:child_process"
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, statSync, symlinkSync, writeFileSync } from "node:fs"
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, statSync, symlinkSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { dirname, join } from "node:path"
 import { test } from "node:test"
@@ -22,7 +22,12 @@ function project(t, files) {
   t.after(() => rmSync(root, { recursive: true, force: true }))
   mkdirSync(join(root, "node_modules"))
   symlinkSync(realpathSync(effect), join(root, "node_modules/effect"))
-  symlinkSync(runtime, join(root, "node_modules/vibelang-runtime"))
+  // Model the published runtime without exposing its workspace devDependencies.
+  // The fixture and runtime must resolve the same Effect type identity.
+  const packagedRuntime = join(root, "node_modules/vibelang-runtime")
+  mkdirSync(packagedRuntime)
+  cpSync(join(runtime, "package.json"), join(packagedRuntime, "package.json"))
+  cpSync(join(runtime, "dist"), join(packagedRuntime, "dist"), { recursive: true })
   for (const [name, text] of Object.entries(files)) {
     mkdirSync(dirname(join(root, name)), { recursive: true })
     writeFileSync(join(root, name), text)
@@ -88,8 +93,8 @@ test("sidecars sit beside the sources when declarations go to an outDir", { skip
   const built = run(native, ["-p", "lib/tsconfig.json"], root)
   assert.equal(built.status, 0, built.stdout + built.stderr)
   assert.equal(readFileSync(join(root, "lib/src/greet.d.vibe.ts"), "utf8"), "import type { Name } from \"./name.vibe\";\nexport declare function greet(name: Name): string;\n")
-  // The ordinary declarations keep their emitted names.
-  assert.match(readFileSync(join(root, "lib/dist/greet.d.ts"), "utf8"), /from "\.\/name\.js"/)
+  // Public declarations keep the TypeScript twin's written source spelling.
+  assert.match(readFileSync(join(root, "lib/dist/greet.d.ts"), "utf8"), /from "\.\/name\.ts"/)
 })
 
 test("vibelang -b writes the sidecars of a composite project", { skip }, (t) => {

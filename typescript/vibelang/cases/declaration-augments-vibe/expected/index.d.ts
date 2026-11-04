@@ -1,5 +1,5 @@
-import { type User } from "./User.js";
-declare module "./User.js" {
+import { type User } from "./User.ts";
+declare module "./User.ts" {
     interface User {
         nick?: string;
     }
