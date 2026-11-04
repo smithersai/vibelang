@@ -1063,3 +1063,5 @@ Catch-operand diagnostics cover only the rejected operand's argument mismatch. A
 The no-throw wrapper fixture uses the VIP-5 catch join point without a second execution head. Its positive oracle, foreign throwing declaration, wrapped inner call and source mutations remain unchanged.
 
 Ten completed failures contracts graduate only after their original oracles pass with declarations in either source module, nested blocks and declaration-file forms. The regression reruns all ten through four mutation choices; thirty saved corpus inputs retain those neighborhoods. Their programs, expected diagnostics, quotation guards and all remaining pending entries are unchanged.
+
+Plain catch-handler coverage distinguishes native caught calls, uncaught calls, finally blocks and nested functions from explicitly marked Effect handlers. Written throwing and never contracts, grouping, Unicode prefixes and declaration-file forms retain their source-context diagnostics.

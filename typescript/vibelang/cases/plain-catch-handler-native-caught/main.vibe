@@ -1,0 +1,8 @@
+// expect-result: 7
+import { Effect } from "effect"
+import { parse } from "./foreign.js"
+export effect function main() {
+ return Effect.fail(new Error("input")) catch () => {
+  try { return parse("bad") } catch { return 7 }
+ }
+}

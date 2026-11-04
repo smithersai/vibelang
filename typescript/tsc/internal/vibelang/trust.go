@@ -639,7 +639,7 @@ func checkTrust(c *checker.Checker, file *ast.SourceFile) {
 }
 
 func checkCall(c *checker.Checker, a *analyzer, file *ast.SourceFile, call *ast.Node) {
-	if fn := enclosingFunction(call); fn != nil && !a.isEffect(fn) {
+	if fn := enclosingFunction(call); fn != nil && !a.runsAsEffect(fn) {
 		return // D282: a plain function's calls of TypeScript code are JavaScript calls
 	}
 	if ast.IsSuperCall(call) || ast.IsImportCall(call) || a.performs(call) || isPlatformCallee(c, call) || returnsEffectful(c, call) {

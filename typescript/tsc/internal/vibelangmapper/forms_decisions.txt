@@ -5017,6 +5017,8 @@ typescript/vibelang/cases/plain-catch-function-results/main.vibe:13:37 lambda ef
 typescript/vibelang/cases/plain-catch-function-results/main.vibe:6:23 lambda choice fallback
 typescript/vibelang/cases/plain-catch-function-results/main.vibe:9:13 lambda effectFn table
 typescript/vibelang/cases/plain-catch-function-results/main.vibe:9:34 lambda effectFn table
+typescript/vibelang/cases/plain-catch-handler-native-caught/main.vibe:5:47 lambda effectFn table
+typescript/vibelang/cases/plain-catch-handler-native-caught/main.vibe:5:9 lambda effectFn table
 typescript/vibelang/cases/plain-catch-native/main.vibe:11:24 lambda plain annotation
 typescript/vibelang/cases/plain-catch-result-try/main.vibe:10:14 lambda plain table
 typescript/vibelang/cases/plain-catch-result-try/main.vibe:10:88 lambda plain table
