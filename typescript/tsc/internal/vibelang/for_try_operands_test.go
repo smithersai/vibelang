@@ -9,6 +9,8 @@ import (
 
 // VIP-20, decided detail 288: the operand domain is Stream<any, any, any>.
 // A variance marker alone is not a Stream contract; any and never are assignable.
+// Chapter 002: Stream assignability rejects arrays and AsyncIterables
+// Spec rule: docs/design/src/002-running.md#cc67e4a132ec20fb
 func TestForTryOperandAssignability(t *testing.T) {
 	for _, tc := range []struct {
 		name, parameter, setup, body string

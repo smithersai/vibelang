@@ -3,3 +3,6 @@
 // Chapter 002: yield belongs to its own producer activation; docs/design/src/002-running.md#89993d73fb236ebc
 // Chapter 002: yield belongs to its own producer activation; docs/design/src/002-running.md#d55e34c974c4bef6
 export const invalid=effect ()=>{yield 1}
+
+// Chapter 002: effect arrow creates nonproducer yield activation
+// Spec rule: docs/design/src/002-running.md#ed84ed3ab2744d7f

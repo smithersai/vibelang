@@ -10,3 +10,6 @@ export effect function* delegated() { yield* [1, 2] }
 
 // docs/design/vips/0021-producers.md#1ef5150126f7936e | VIP-21 delegation-requires-a-VIP
 // ```vibe effect function* p() { yield* other() } // error ``` Effect TS: none chosen (`Stream.concat` is one candidate).
+
+// Chapter 002: producer yield-star requires EK2103
+// Spec rule: docs/design/src/002-running.md#1426a33370cd5aaa

@@ -1,0 +1,21 @@
+// Chapter 002: loop success is discarded while all retains results
+// Spec rule: docs/design/src/002-running.md#c002a282bc37e263
+// Chapter 002: limit evaluated before entering head environment
+// Spec rule: docs/design/src/002-running.md#3cb59678b0f326ea
+// Chapter 002: limit reads outer binding before same-named head
+// Spec rule: docs/design/src/002-running.md#97f1df24fd657944
+import {Effect} from "effect"
+export effect function main():Effect.Effect<unknown[]>{
+ const x=1
+ let active=0,peak=0
+ effect function visit(){
+  for concurrent(x)(const x of [2,3,4]){
+   active++;peak=Math.max(peak,active)
+   try Effect.yieldNow
+   active--
+  }
+ }
+ const nothing=try visit()
+ const kept=try.all [Effect.succeed(2),Effect.succeed(3),Effect.succeed(4)]
+ return [nothing===undefined,kept,peak]
+}

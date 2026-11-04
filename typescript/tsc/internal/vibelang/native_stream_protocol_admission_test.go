@@ -5,6 +5,10 @@ import (
 	"testing"
 )
 
+// Chapter 002: native loop chooses synchronous or async iterable channel
+// Spec rule: docs/design/src/002-running.md#46d815cc3e8f1513
+// Chapter 002: effect for-await retains EK0102
+// Spec rule: docs/design/src/002-running.md#2272f1685a21e34c
 func TestNativeStreamProtocolAdmission(t *testing.T) {
 	for _, d := range []struct {
 		key, source string

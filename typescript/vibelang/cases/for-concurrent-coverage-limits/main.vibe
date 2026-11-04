@@ -74,3 +74,6 @@ export effect function main(): Effect.Effect<number[]> {
 
 // Chapter 002: positive and sub-one numeric concurrency limits
 // Spec rule: docs/design/src/002-running.md#624f60da005efbec
+
+// Chapter 002: const and let destructuring head bindings
+// Spec rule: docs/design/src/002-running.md#b5c483f29b4dd85b

@@ -26,3 +26,6 @@ export effect function main(): Effect.Effect<number[]> {
 
 // docs/design/vips/0020-for-try.md#6aaf871c94fcd36b | VIP-20 Stream-binding-and-local-jump
 // `own: for try (const x of stream) { if (skip(x)) continue own; if (stop(x)) break own; }` is allowed: the target is this same Stream loop, so its Effect TypeScript counterpart returns `true`/`false` from the current item callback just as for the unlabelled forms.
+
+// Chapter 002: self-labeled stream break and continue
+// Spec rule: docs/design/src/002-running.md#0b4fc91fbb2eb54a

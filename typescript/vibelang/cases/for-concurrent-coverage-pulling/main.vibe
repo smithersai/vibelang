@@ -52,3 +52,12 @@ export effect function main(): Effect.Effect<string[]> {
 
 // docs/design/vips/0019-for-concurrent.md#0333d13b40145f1c | VIP-19 native-iterator-selection
 // Pinned `internal/effect.js` selects forEachSequential only at resolved1, otherwise Arr.fromIterable before concurrent work.
+
+// Chapter 002: forEach chooses parent versus item fiber
+// Spec rule: docs/design/src/002-running.md#3ca02cbbe809a8c7
+
+// Chapter 002: forEach pulling and iterator closing
+// Spec rule: docs/design/src/002-running.md#bba4c7862f96f06e
+
+// Chapter 002: unit limit pulls incrementally and does not close on failure
+// Spec rule: docs/design/src/002-running.md#ef4912757fb1674d

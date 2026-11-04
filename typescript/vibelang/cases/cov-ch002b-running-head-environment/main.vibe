@@ -12,3 +12,6 @@ export effect function main():unknown!! {
  const name=(ex:Exit.Exit<unknown,unknown>)=>Exit.isFailure(ex)?(Cause.squash(ex.cause) as Error).name:"wrong"
  return [seen,name(a),name(b)]
 }
+
+// Chapter 002: separate TDZ environment for stream and concurrent RHS
+// Spec rule: docs/design/src/002-running.md#612a2f658e682a13

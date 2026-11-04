@@ -99,6 +99,8 @@ func TestCov2002cConcurrentOperand(t *testing.T) {
 
 // Chapter 002: ConcurrentHead
 // Spec rule: docs/design/src/002-running.md#8fcddd762fe2c46b
+// Chapter 002: var and assignment concurrent heads require EK1906
+// Spec rule: docs/design/src/002-running.md#8b15cf9fdae5e7d1
 func TestCov2002cConcurrentHead(t *testing.T) {
 	if os.Getenv("COV2_002C_PROBE") == "" {
 		t.Skip("docs/design/src/002-running.md#8fcddd762fe2c46b — Missing required concurrent diagnostic in head/operand fixtures; see batch1-validation-r2.log")
@@ -114,4 +116,40 @@ func TestCov2002cConcurrentHead(t *testing.T) {
 // Spec rule: docs/design/src/002-running.md#4d46d7afbd665fd9
 func TestCov2002cConcurrentLimit(t *testing.T) {
 	cov2002cDiagnostic(t, "effect function f(){for concurrent(\"fast\")(const n of [1]){}}", 1907)
+}
+
+// Chapter 002: StreamOutside
+// Spec rule: docs/design/src/002-running.md#72eaf722805e03d0
+func TestCov2002cStreamOutside(t *testing.T) {
+	cov2002cDiagnostic(t, "function f(){for try(const n of Stream.make(1)){}}", 2001)
+}
+
+// Chapter 002: StreamReturn
+// Spec rule: docs/design/src/002-running.md#d7945ecaf0b9efc1
+func TestCov2002cStreamReturn(t *testing.T) {
+	cov2002cDiagnostic(t, "effect function f(){for try(const n of Stream.make(1)){return n}}", 2002)
+	cov2002cDiagnostic(t, "effect function f(){for try(const {n=do{return 1;1}} of Stream.make({})){}}", 2002)
+}
+
+// Chapter 002: StreamOutwardJump
+// Spec rule: docs/design/src/002-running.md#2df98e0422bd859b
+func TestCov2002cStreamOutwardJump(t *testing.T) {
+	cov2002cDiagnostic(t, "effect function f(){outer:for(const x of [1]){for try(const n of Stream.make(x)){continue outer}}}", 2003)
+	cov2002cDiagnostic(t, "effect function f(){outer:{for try(const n of Stream.make(1)){break outer}}}", 2003)
+	cov2002cDiagnostic(t, "effect function f(){outer:for(const x of [1]){for try(const {n=do{continue outer;1}} of Stream.make({})){}}", 2003)
+}
+
+// Chapter 002: StreamHead
+// Spec rule: docs/design/src/002-running.md#be2c0421f9632191
+func TestCov2002cStreamHead(t *testing.T) {
+	cov2002cDiagnostic(t, "effect function f(){let x=0;for try(var x of Stream.make(1)){}}", 2005)
+	cov2002cDiagnostic(t, "effect function f(){let x=0;for try(x of Stream.make(1)){}}", 2005)
+	cov2002cDiagnostic(t, "effect function f(){let x=0;for try(using x of Stream.make(1)){}}", 2005)
+	cov2002cDiagnostic(t, "effect function f(){let x=0;for try(await using x of Stream.make(1)){}}", 2005)
+}
+
+// Chapter 002: ProducerReturnContainer
+// Spec rule: docs/design/src/002-running.md#ad36845d1b7b5ab4
+func TestCov2002cProducerReturnContainer(t *testing.T) {
+	cov2002cDiagnostic(t, "export effect function* f():number[]{yield 1}", 2102)
 }

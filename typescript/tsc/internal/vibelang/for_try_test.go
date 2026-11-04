@@ -8,6 +8,8 @@ import (
 
 // Native iteration has no implicit-Stream migration provenance (detail293).
 // A migration switch and the operand's Stream shape must not select a new protocol.
+// Chapter 002: native loop migration refuses unproved protocol changes
+// Spec rule: docs/design/src/002-running.md#c45dbc55b027f5c4
 func TestStreamLoopMigrationPreservesNativeProtocols(t *testing.T) {
 	for _, tc := range []struct{ name, source string }{
 		{"sync-dual", "export function main(rows:Stream.Stream<number>&Iterable<number>):void{for(const row of rows){void row}}"},

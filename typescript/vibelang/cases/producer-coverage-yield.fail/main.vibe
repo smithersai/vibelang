@@ -14,3 +14,6 @@ export effect function* formal(a = do { yield 1; 0 }) { yield a }
 
 // docs/design/vips/0021-producers.md#e6a503659ee1fba7 | VIP-21 source-yield-ownership
 // An `Effect.gen` implementation generator is not a source producer and grants no source `yield` permission to `badYield`.
+
+// Chapter 002: nonproducer and formal-parameter yield requires EK2104
+// Spec rule: docs/design/src/002-running.md#5a25b9b7ab12d319

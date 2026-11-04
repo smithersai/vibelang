@@ -16,3 +16,6 @@ export effect function main() {
 
 // docs/design/vips/0023-pipe.md#b848721278c18c26 | VIP-23 catch-arrow-pipe-right-edge
 // The input of a `PipeExpression` may not end in an open `catch` arrow handler, so the `|>` belongs to the handler's body; parentheses, a closed handler and a block-bodied arrow end the handler.
+
+// Chapter 002: open arrow handler keeps pipe on its right edge
+// Spec rule: docs/design/src/002-running.md#d9a441da456c4677

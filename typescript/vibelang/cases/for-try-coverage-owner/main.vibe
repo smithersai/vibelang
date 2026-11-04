@@ -36,3 +36,6 @@ export effect function main(): Effect.Effect<number> {
 
 // docs/design/vips/0017-fork.md#5897c8744b602303 | VIP-17 consuming-fiber-child-lifetime
 // ```vibe effect function consume(items: Stream.Stream<number>) { for try (const item of items) { fork work(item) } try parentWork() // a plain fork child may still run while this consuming fiber continues } ``` Effect TS: `yield* Stream.runForEachWhile(items, item => Effect.gen(function* () { yield* Effect.forkChild(work(item)); return true })); yield* parentWork()`.
+
+// Chapter 002: plain child outlives stream iteration and successful completion
+// Spec rule: docs/design/src/002-running.md#8036fcb7ec956a32
