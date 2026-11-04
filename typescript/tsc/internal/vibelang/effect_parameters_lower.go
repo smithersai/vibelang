@@ -70,19 +70,24 @@ func (tx *lowering) effectBindingBoundary(node *ast.Node, parameters *ast.NodeLi
 		}
 		placeholders = append(placeholders, f.NewParameterDeclaration(nil, nil, f.NewUniqueName("arg"), nil, nil, nil))
 	}
-	var args *ast.Node = f.NewIdentifier("arguments")
+	// Forward generated argument storage without consulting mutable iterator
+	// hooks. Parameter binding itself performs no argument-list iteration.
+	// A source destructuring pattern still iterates its own input normally.
+	spread := func(items *ast.Node) *ast.Node {
+		return f.NewSpreadElement(tx.generated(tx.runtimeCall("$spreadItems", items)))
+	}
+	args := []*ast.Node{spread(f.NewIdentifier("arguments"))}
 	if node.Kind == ast.KindArrowFunction {
-		args = f.NewUniqueName("args")
-		placeholders = append(placeholders, f.NewParameterDeclaration(nil, f.NewToken(ast.KindDotDotDotToken), args, nil, nil, nil))
-		var items []*ast.Node
-		for _, p := range placeholders[:len(placeholders)-1] {
-			items = append(items, p.Name())
+		rest := f.NewUniqueName("args")
+		args = nil
+		for _, p := range placeholders {
+			args = append(args, p.Name())
 		}
-		items = append(items, f.NewSpreadElement(args))
-		args = f.NewArrayLiteralExpression(f.NewNodeList(items), false)
+		placeholders = append(placeholders, f.NewParameterDeclaration(nil, f.NewToken(ast.KindDotDotDotToken), rest, nil, nil, nil))
+		args = append(args, spread(rest))
 	}
 	bind := f.NewArrowFunction(nil, nil, f.NewNodeList(bound), nil, nil, f.NewToken(ast.KindEqualsGreaterThanToken), effect)
-	call := f.NewCallExpression(f.NewParenthesizedExpression(bind), nil, nil, f.NewNodeList([]*ast.Node{f.NewSpreadElement(args)}), ast.NodeFlagsNone)
+	call := f.NewCallExpression(f.NewParenthesizedExpression(bind), nil, nil, f.NewNodeList(args), ast.NodeFlagsNone)
 	thrown := f.NewUniqueName("e")
 	die := f.NewCallExpression(f.NewPropertyAccessExpression(tx.effectName(), nil, f.NewIdentifier("die"), ast.NodeFlagsNone), nil, nil, f.NewNodeList([]*ast.Node{thrown}), ast.NodeFlagsNone)
 	caught := f.NewCatchClause(f.NewVariableDeclaration(thrown, nil, nil, nil), f.NewBlock(f.NewNodeList([]*ast.Node{tx.generated(f.NewReturnStatement(die))}), true))

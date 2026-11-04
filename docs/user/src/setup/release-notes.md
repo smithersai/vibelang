@@ -327,6 +327,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Programs using retired `control` and `handle` forms or continuation runtime calls could compile; they now report `EK3501`. Retired `select` blocks report `EK4607`. The errors point to `vibelang --fix`.
 
+- Calling an `effect` function with defaults or destructured parameters could run user-modified array iterator hooks and change its arguments or produce a defect. Argument forwarding now preserves TypeScript's parameter binding without those extra iterator observations.
+
 - The function-controls example read the callable `Function` constructor and reported `EK0107`. Its erased constructor comparison now uses the explicit `any` boundary allowed by VIP-1, while the `instanceof` and prototype controls remain checked.
 
 - The operation-operands example declared a `.vibe` function with `@throws {never}`, which VIP-4 rejects with `EK0406`. The example now uses the declaration’s implicit `never` thrown type and keeps all operation-operand checks.

@@ -1,0 +1,8 @@
+// Parameter binding adds no iteration beyond source destructuring.
+export const defaulted = effect (x: number = 7) => x
+export const prefixed = effect (a: number, x: number = 7) => a + x
+export const destructured = effect ({ x }: { x: number } = { x: 7 }) => x
+export const rested = effect (x: number = 7, ...tail: number[]) => x + tail.length
+export effect function declaration(x: number = 7) { return x }
+export const method = { effect run(x: number = 7) { return x } }.run
+export const array = effect ([x]: number[] = [7]) => x
