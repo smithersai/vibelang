@@ -598,3 +598,178 @@ test("custom runners receive the selected compiler despite absent or stale inher
     ],
   })
 })
+
+
+test("performance reports retain successful, failing and pending command timings in selection order", (t) => {
+  const { root, harness, compiler } = fixture(t)
+  const put = (name, text) => {
+    const file = path.join(root, name)
+    fs.mkdirSync(path.dirname(file), { recursive: true })
+    fs.writeFileSync(file, text)
+  }
+  fs.writeFileSync(compiler, '#!/usr/bin/env node\nimport fs from "node:fs"\nfs.mkdirSync("out", { recursive: true })\nfs.writeFileSync("out/main.js", \'console.log("expected")\')\n')
+  for (const name of ["success", "pending", "xpass"]) {
+    put("vibelang/cases/" + name + "/tsconfig.json", "{}")
+    put("vibelang/cases/" + name + "/expected/stdout.txt", name === "pending" ? "other\n" : "expected\n")
+  }
+  for (const name of ["pending", "xpass"]) put("vibelang/cases/" + name + "/pending", "test intentional status fixture")
+  put("vibelang/cases/compile/expected/stdout.txt", "wrong\n")
+  put("modules/effect/package.json", '{"name":"effect","version":"4.1.0"}')
+  const report = path.join(root, "reports", "trial.json")
+  const env = { ...process.env, EFFECT_NODE_MODULES: path.join(root, "modules"), VIBELANG_RUNTIME: path.join(root, "runtime") }
+  const selected = ["xpass", "success", "compile", "pending"]
+  const invoke = (out) => spawnSync(process.execPath, [harness, "--report", out, "--status", "--isolated", "--jobs", "2", ...selected], {
+    env, encoding: "utf8", timeout: 30_000,
+  })
+  const result = invoke(report)
+  assert.equal(result.status, 1, result.stdout + result.stderr)
+  const receipt = JSON.parse(fs.readFileSync(report, "utf8"))
+  assert.equal(receipt.version, 1)
+  assert.equal(receipt.complete, true)
+  assert.equal(receipt.jobs, 2)
+  assert.equal(receipt.isolated, true)
+  assert.equal(receipt.lateStart, false)
+  assert.equal(receipt.compiler.path, compiler)
+  assert.match(receipt.compiler.sha256, /^[0-9a-f]{64}$/)
+  assert.equal(receipt.effectVersion, "4.1.0")
+  assert.equal(receipt.node, process.version)
+  assert.ok(receipt.system.availableParallelism > 0)
+  assert.ok(Date.parse(receipt.finishedAt) >= Date.parse(receipt.startedAt))
+  assert.deepEqual(receipt.cases.map(r => r.name), selected)
+  assert.deepEqual(receipt.cases.map(r => r.status), ["XPASS", "ok", "FAIL", "pending"])
+  for (const item of receipt.cases) {
+    assert.ok(item.wallMs > 0)
+    assert.deepEqual(item.commands.map(r => r.phase), ["compile", "run"])
+    for (const record of item.commands) {
+      assert.ok(record.wallMs > 0)
+      assert.equal(record.timedOut, false)
+      assert.equal(record.exitCode, 0)
+      assert.ok(Date.parse(record.finishedAt) >= Date.parse(record.startedAt))
+    }
+  }
+  // The selected cases ran privately even when their successful copies have gone.
+  assert.equal(fs.existsSync(path.join(root, "vibelang/cases/success/out")), false)
+  assert.equal(fs.existsSync(receipt.cases[1].commands[0].cwd), false)
+  const first = fs.readFileSync(report)
+  const again = invoke(report)
+  assert.equal(again.status, 2, again.stdout + again.stderr)
+  assert.match(again.stderr, /report.*already exists/i)
+  assert.deepEqual(fs.readFileSync(report), first, "never overwrite a prior trial")
+  const second = path.join(root, "reports", "trial2.json")
+  assert.equal(invoke(second).status, 1)
+  assert.deepEqual(fs.readFileSync(report), first)
+})
+
+test("an interrupted report stays incomplete with invocation metadata", async (t) => {
+  const { root, harness, compiler } = fixture(t)
+  const report = path.join(root, "interrupted.json")
+  const barrier = path.join(root, "compiling")
+  fs.writeFileSync(compiler, '#!/usr/bin/env node\nimport fs from "node:fs"\nfs.writeFileSync(' + JSON.stringify(barrier) + ', "")\nsetTimeout(() => {}, 300)\n')
+  const child = spawn(process.execPath, [harness, "--report", report, "runtime"], {
+    env: { ...process.env, EFFECT_NODE_MODULES: path.join(root, "modules"), VIBELANG_RUNTIME: path.join(root, "runtime") },
+    stdio: "ignore",
+  })
+  const closed = new Promise((resolve, reject) => {
+    child.on("error", reject)
+    child.on("close", resolve)
+  })
+  t.after(() => child.kill("SIGKILL"))
+  const deadline = Date.now() + 30_000
+  while (!fs.existsSync(barrier)) {
+    assert.equal(child.exitCode, null, "harness exited before starting the compiler")
+    assert.ok(Date.now() < deadline, "compiler did not start")
+    await new Promise(resolve => setTimeout(resolve, 10))
+  }
+  child.kill("SIGKILL")
+  await closed
+  const receipt = JSON.parse(fs.readFileSync(report, "utf8"))
+  assert.equal(receipt.complete, false)
+  assert.equal(receipt.finishedAt, undefined)
+  assert.deepEqual(receipt.selected, ["runtime"])
+  // Let the short-lived fixture child finish before the fixture directory is removed.
+  await new Promise(resolve => setTimeout(resolve, 500))
+})
+
+test("performance report arguments reject missing and repeated paths before running cases", (t) => {
+  const { root, harness } = fixture(t)
+  const env = { ...process.env, EFFECT_NODE_MODULES: path.join(root, "modules"), VIBELANG_RUNTIME: path.join(root, "runtime") }
+  for (const args of [["--report"], ["--report", "--status"], ["--report", "one", "--report", "two"]]) {
+    const result = spawnSync(process.execPath, [harness, ...args], { env, encoding: "utf8", timeout: 10_000 })
+    assert.equal(result.status, 2)
+    assert.match(result.stderr, /--report requires one new JSON file path/)
+    assert.equal(fs.existsSync(path.join(root, "vibelang/cases/runtime/out")), false)
+  }
+})
+
+
+test("an expected compiler error reports a successful case without inventing a run phase", (t) => {
+  const { root, harness } = fixture(t)
+  fs.writeFileSync(path.join(root, "vibelang/cases/compile/main.vibe"), "// expect: TS9999\n")
+  const report = path.join(root, "expected-error.json")
+  const result = spawnSync(process.execPath, [harness, "--report", report, "compile"], {
+    env: { ...process.env, EFFECT_NODE_MODULES: path.join(root, "modules"), VIBELANG_RUNTIME: path.join(root, "runtime") },
+    encoding: "utf8", timeout: 10_000,
+  })
+  assert.equal(result.status, 0, result.stdout + result.stderr)
+  const receipt = JSON.parse(fs.readFileSync(report, "utf8"))
+  assert.equal(receipt.complete, true)
+  assert.equal(receipt.cases[0].status, "ok")
+  assert.deepEqual(receipt.cases[0].commands.map(r => r.phase), ["compile"])
+  assert.equal(receipt.cases[0].commands[0].exitCode, 1)
+  assert.ok(receipt.cases[0].commands[0].wallMs > 0)
+})
+
+test("generated report paths and option orders preserve case selection and round-trip through the comparator", async (t) => {
+  const { root, harness, compiler } = fixture(t)
+  const runtime = path.join(root, "runtime/package.json")
+  const manifest = JSON.parse(fs.readFileSync(runtime, "utf8"))
+  manifest.version = "0.0.11"
+  fs.writeFileSync(runtime, JSON.stringify(manifest))
+  fs.writeFileSync(compiler, '#!/usr/bin/env node\nimport fs from "node:fs"\nfs.mkdirSync("out", { recursive: true })\nfs.writeFileSync("out/main.js", \'console.log("expected")\')\n')
+  const env = { ...process.env, EFFECT_NODE_MODULES: path.join(root, "modules"), VIBELANG_RUNTIME: path.join(root, "runtime") }
+  const receipts = []
+  fc.assert(fc.property(
+    fc.record({
+      suffix: fc.array(fc.constantFrom("a", "Z", "0", " ", "-", "é", "中"), { minLength: 1, maxLength: 12 }).map(xs => xs.join("")),
+      first: fc.boolean(),
+      status: fc.boolean(),
+      verbose: fc.boolean(),
+    }),
+    ({ suffix, first, status, verbose }) => {
+      const output = path.join(root, "reports " + receipts.length, suffix + ".json")
+      const reportArgs = ["--report", output]
+      const caseArgs = ["--isolated", "--jobs", "1", ...(status ? ["--status"] : []), ...(verbose ? ["-v"] : []), "runtime"]
+      const args = first ? [...reportArgs, ...caseArgs] : [...caseArgs, ...reportArgs]
+      const result = spawnSync(process.execPath, [harness, ...args], { env, encoding: "utf8", timeout: 10_000 })
+      assert.equal(result.status, 0, result.stdout + result.stderr)
+      const receipt = JSON.parse(fs.readFileSync(output, "utf8"))
+      assert.deepEqual(receipt.selected, ["runtime"])
+      assert.deepEqual(receipt.cases.map(c => c.name), ["runtime"])
+      assert.equal(receipt.cases[0].status, "ok")
+      assert.deepEqual(receipt.cases[0].commands.map(c => c.phase), ["compile", "run"])
+      receipts.push(receipt)
+    },
+  ), { seed: 156084, numRuns: 32 })
+  const { compareTrials } = await import("../../scripts/bench/case-timings.mjs")
+  const result = compareTrials(receipts, receipts)
+  assert.equal(result.valid, true)
+  assert.equal(result.baseline.trials, 32)
+  assert.equal(result.regressions.length, 0)
+  assert.deepEqual(result.rows.map(r => r.phase), ["compile", "run", null])
+})
+
+test("invalid report paths preserve the source case and previous evidence", (t) => {
+  const { root, harness } = fixture(t)
+  const env = { ...process.env, EFFECT_NODE_MODULES: path.join(root, "modules"), VIBELANG_RUNTIME: path.join(root, "runtime") }
+  const directory = path.join(root, "existing directory")
+  fs.mkdirSync(directory)
+  const sentinel = path.join(directory, "keep")
+  fs.writeFileSync(sentinel, "original")
+  for (const output of [directory, path.join(sentinel, "child.json")]) {
+    const result = spawnSync(process.execPath, [harness, "--report", output, "runtime"], { env, encoding: "utf8", timeout: 10_000 })
+    assert.equal(result.status, 2, result.stdout + result.stderr)
+    assert.match(result.stderr, /harness.mjs: report/)
+    assert.equal(fs.readFileSync(sentinel, "utf8"), "original")
+    assert.equal(fs.existsSync(path.join(root, "vibelang/cases/runtime/out")), false)
+  }
+})

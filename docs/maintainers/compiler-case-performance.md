@@ -13,6 +13,8 @@ VIBELANG_RUNTIME=$PWD/../packages/runtime \
   --report ../.cache/case-baseline/1.json stack-depth ts-hello
 ```
 
+The `--report` path must be new. Reports retain outcomes and command records for every selected case, including failures and pending cases, in selection order. A killed invocation leaves `complete: false`; completed runs write `complete: true`. Timing collection leaves the case result and exit status unchanged. Without `--report`, successful command records are discarded after each case as before.
+
 Repeat with new paths `2.json` and `3.json`, then measure the candidate build into a separate directory such as `.cache/case-current/`. Use the same case sources, runtime files, dependencies, tool versions, scheduling settings and reserved CPU capacity. Record their revisions alongside the reports. The harness records the compiler's SHA-256 and environment; package versions and CPU metadata alone do not prove that runtime contents, sources or competing host work stayed the same.
 
 A survey can select the ten slowest successful cases plus `stack-depth`; collect the comparison trials with that exact selection and `--jobs 1`. Each directory must contain only its trial JSON reports, at least three from independent invocations of one compiler build. Keep all trials; select capacity and case sets before collecting them.

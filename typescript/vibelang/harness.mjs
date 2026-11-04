@@ -1,6 +1,6 @@
 // Compiles and runs the VibeLang acceptance cases in vibelang/cases.
 //
-//   node vibelang/harness.mjs [--status] [--verbose] [--jobs N] [--late-start] [--isolated] [case...]
+//   node vibelang/harness.mjs [--status] [--verbose] [--jobs N] [--late-start] [--isolated] [--report new.json] [case...]
 //
 // smoke.sh builds tsc and the runtime, then runs this script; run smoke.sh,
 // not this file. A case argument selects the case with that name, or else
@@ -28,6 +28,11 @@
 // --isolated copies each case into a private sibling of cases/, so an
 // aggregate target can run alongside per-case targets without sharing out/ or
 // node_modules. Successful copies are removed; failed copies retain evidence.
+//
+// --report new.json retains full-precision case and phase wall times, outcomes,
+// commands and tool identities for successful and failing cases alike. The path
+// must be new: previous trials are never overwritten. Interrupted reports have
+// complete: false. Timings describe this invocation, not a performance baseline.
 //
 // Every runner must exit successfully, including when its stdout matches.
 // Every case except a failing one must compile without errors. Every file in
@@ -65,6 +70,7 @@
 // case's stubs/ with a package.json stands in for the package it names: the
 // case's node_modules links it under that name, so the compiler and Node
 // resolve the package there, as they would an installed one.
+import { createHash } from "node:crypto"
 import { CaseCommands } from "./harness-command.mjs"
 import fs from "node:fs"
 import os from "node:os"
@@ -152,11 +158,11 @@ try {
 
 const args = process.argv.slice(2)
 // Reject unknown switches before case selection or filesystem writes. A value
-// belongs to --jobs even when it starts with a dash; validate the count below.
+// belongs to --jobs or --report; validate those values below.
 const switches = new Set(["--status", "--late-start", "--isolated", "--verbose", "-v"])
 for (let i = 0; i < args.length; i++) {
   const arg = args[i]
-  if (arg === "--jobs") {
+  if (arg === "--jobs" || arg === "--report") {
     i++
   } else if (arg.startsWith("-") && !switches.has(arg)) {
     console.error("harness.mjs: unknown option " + arg)
@@ -173,13 +179,53 @@ if (!Number.isSafeInteger(jobs) || jobs < 1) {
   console.error("harness.mjs: --jobs must be a positive safe integer")
   process.exit(2)
 }
-const selectors = args.filter((a, i) => !a.startsWith("-") && !(jobsAt >= 0 && i === jobsAt + 1))
+const reportAt = args.indexOf("--report")
+if (reportAt >= 0 && (!args[reportAt + 1] || args[reportAt + 1].startsWith("-") || args.lastIndexOf("--report") !== reportAt)) {
+  console.error("harness.mjs: --report requires one new JSON file path")
+  process.exit(2)
+}
+const reportPath = reportAt >= 0 ? path.resolve(args[reportAt + 1]) : undefined
+const selectors = args.filter((a, i) => !a.startsWith("-") &&
+  !(jobsAt >= 0 && i === jobsAt + 1) && !(reportAt >= 0 && i === reportAt + 1))
+
 
 const allCases = fs
   .readdirSync(casesDir)
   .filter((name) => fs.existsSync(path.join(casesDir, name, "tsconfig.json")))
   .sort()
 const selected = selectors.length === 0 ? allCases : [...new Set(selectors.flatMap(select))]
+
+// Reserve the file before running a case. A killed process leaves an explicit
+// incomplete invocation; a repeated path cannot destroy an earlier sample.
+let reportFd, reportState
+function writeReport(value) {
+  const json = JSON.stringify(value, null, 2) + "\n"
+  fs.writeSync(reportFd, json, 0, "utf8")
+  fs.ftruncateSync(reportFd, Buffer.byteLength(json))
+}
+if (reportPath) {
+  try {
+    const version = (dir) => JSON.parse(fs.readFileSync(path.join(dir, "package.json"), "utf8")).version
+    reportState = {
+      version: 1, complete: false, startedAt: new Date().toISOString(),
+      selected, jobs, isolated, lateStart,
+      compiler: { path: tsc, sha256: createHash("sha256").update(fs.readFileSync(tsc)).digest("hex") },
+      node: process.version, effectVersion: version(path.join(effectModules, "effect")),
+      runtimeVersion: version(runtimeDir),
+      system: {
+        platform: os.platform(), release: os.release(), arch: os.arch(),
+        cpu: os.cpus()[0]?.model, availableParallelism: os.availableParallelism(),
+      },
+    }
+    fs.mkdirSync(path.dirname(reportPath), { recursive: true })
+    reportFd = fs.openSync(reportPath, "wx")
+    writeReport(reportState)
+  } catch (error) {
+    console.error("harness.mjs: report " + reportPath + ": " +
+      (error.code === "EEXIST" ? "already exists; choose a new path" : error.message))
+    process.exit(2)
+  }
+}
 
 function select(selector) {
   if (allCases.includes(selector)) return [selector]
@@ -503,7 +549,7 @@ async function main() {
       const index = next++
       const name = selected[index]
       let pending
-      const started = Date.now()
+      const started = performance.now()
       let result
       const commands = new CaseCommands()
       try {
@@ -522,7 +568,7 @@ async function main() {
       }
       if (isolated && result.ok) fs.rmSync(path.join(isolatedCasesDir, name), { recursive: true, force: true })
       const status = pending ? (result.ok ? "XPASS" : "pending") : result.ok ? "ok" : "FAIL"
-      results[index] = { name, pending, status, ms: Date.now() - started, ...result }
+      results[index] = { name, pending, status, ms: performance.now() - started, commands: reportPath ? commands.records : undefined, ...result }
       flush()
     }
   }
@@ -531,6 +577,17 @@ async function main() {
   if (isolated && fs.existsSync(isolatedCasesDir) &&
     fs.readdirSync(isolatedCasesDir, { withFileTypes: true }).every((entry) => !entry.isDirectory())) {
     fs.rmSync(isolatedCasesDir, { recursive: true, force: true })
+  }
+
+  if (reportPath) {
+    writeReport({
+      ...reportState, complete: true, finishedAt: new Date().toISOString(),
+      cases: results.map(({ name, status, detail, ms, commands, logFile }) => ({
+        name, status, detail, wallMs: ms, commands, ...(logFile ? { logFile } : {}),
+      })),
+    })
+    fs.closeSync(reportFd)
+    console.log("report: " + reportPath)
   }
 
   const count = (status) => results.filter((r) => r.status === status).length

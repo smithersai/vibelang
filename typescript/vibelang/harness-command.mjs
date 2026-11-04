@@ -7,6 +7,7 @@ export class CaseCommands {
   run(command, argv, { phase, timeout, ...options }) {
     return new Promise((resolve) => {
       const started = Date.now()
+      const monotonicStart = performance.now()
       const record = {
         phase, command, argv, cwd: options.cwd ?? process.cwd(),
         startedAt: new Date(started).toISOString(),
@@ -55,6 +56,7 @@ export class CaseCommands {
         terminate()
         Object.assign(record, {
           finishedAt: new Date().toISOString(),
+          wallMs: performance.now() - monotonicStart,
           exitCode: record.error ? null : code, signal,
           stdoutTail: stdout.slice(-16_384), stderrTail: stderr.slice(-16_384),
         })
