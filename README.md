@@ -7,8 +7,14 @@ Write [Effect](https://effect.website) programs in TypeScript syntax, with typed
 
 [Get started](https://vibelang.sh) · [Cheat sheet](https://vibelang.sh/vibelang-features/115-cheat-sheet) · [Contribute](CONTRIBUTING.md)
 
+> [!IMPORTANT]
+> The alpha [specification](https://vibelang.sh/spec) is final. The initial alpha release is expected in the coming days.
+
 > [!WARNING]
 > VibeLang is v0. The language will change in major, breaking ways. It is not suitable for production use.
+
+> [!NOTE]
+> The latest code is on the [`vibe`](https://github.com/smithersai/vibelang/tree/vibe) branch. `main` holds accepted code.
 
 <!-- compatibility:start -->
 > **Compatibility.** Use exactly `effect@4.1.1`; keep `@effect/platform-node` and `@effect/vitest` at `4.1.1` when used.
