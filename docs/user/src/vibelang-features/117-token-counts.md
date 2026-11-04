@@ -19,7 +19,7 @@ An agent that writes VibeLang loads the skill first: its forms, rules and idioms
 | --- | ---: |
 | The VibeLang skill, `packages/compiler/skills/vibelang/SKILL.md` | 4,881 |
 | The skill and the [cheat sheet](115-cheat-sheet.md) | 16,511 |
-| The skill and the user guide (142 pages) | 470,000 |
+| The skill and the user guide (142 pages) | 480,000 |
 | The user guide alone | 470,000 |
 | The specification (11 chapters) | 250,000 |
 | The decision log, `docs/design/history/DECISIONS.md` | 140,000 |
@@ -142,10 +142,10 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | Page | Tokens |
 | --- | ---: |
 | [Getting Started](../013-getting-started.md) | 1,300 |
-| **Error Management** | **21,000** |
+| **Error Management** | **22,000** |
 | [Expected Errors](../error-management/014-expected-errors.md) | 10,000 |
 | [Unexpected Errors](../error-management/015-unexpected-errors.md) | 1,500 |
-| [Fallback](../error-management/016-fallback.md) | 2,300 |
+| [Fallback](../error-management/016-fallback.md) | 2,500 |
 | [Matching](../error-management/017-matching.md) | 790 |
 | [Retrying](../error-management/018-retrying.md) | 760 |
 | [Timing Out](../error-management/019-timing-out.md) | 830 |
@@ -266,14 +266,14 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | Page | Tokens |
 | --- | ---: |
 | [Control operations and handlers](111-control-operations-and-handlers.md) | 260 |
-| [Producers](112-producers.md) | 3,500 |
+| [Producers](112-producers.md) | 3,700 |
 | [Building an HTTP API](113-building-an-http-api.md) | 1,500 |
 | [VibeLang for Effect users](114-vibelang-for-effect-users.md) | 9,700 |
 | [Cheat sheet](115-cheat-sheet.md) | 12,000 |
 | [Pattern matching with match and is](116-match-and-is.md) | 11,000 |
 | [Diagnostic code map](diagnostic-code-map.md) | 3,300 |
 | [Experimental platform APIs](118-experimental-platform-apis.md) | 9,500 |
-| **All 8 pages** | **50,000** |
+| **All 8 pages** | **51,000** |
 
 ### Specification
 
@@ -283,7 +283,7 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | **The language** | **130,000** |
 | [1. Functions and Effect types](../../../design/src/001-functions.md) | 14,000 |
 | [2. Running Effects](../../../design/src/002-running.md) | 30,000 |
-| [3. Failures](../../../design/src/003-failures.md) | 10,000 |
+| [3. Failures](../../../design/src/003-failures.md) | 11,000 |
 | [4. Pattern matching](../../../design/src/004-match.md) | 23,000 |
 | [5. Services and the environment](../../../design/src/005-services.md) | 13,000 |
 | [6. Data](../../../design/src/006-data.md) | 9,200 |
