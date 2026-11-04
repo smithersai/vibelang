@@ -37,5 +37,14 @@
         "output": "typescript/vibelang/cases/ek4618-function-comment-fixed-output"
       }
     ]
+  },
+  {
+    "code": "EK4402",
+    "cases": [
+      {
+        "input": "typescript/vibelang/cases/platform-qualified-host-alias.fail",
+        "output": "typescript/vibelang/cases/platform-qualified-host-alias-fixed-output"
+      }
+    ]
   }
 ]

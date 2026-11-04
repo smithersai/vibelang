@@ -168,6 +168,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 | Before | Now |
 | --- | --- |
 | Old diagnostic numbers, including `EK4617` | Appendix B numbering, including `EK0103`. Diagnostic triggers are unchanged. See the [old-to-new map](../vibelang-features/diagnostic-code-map.md). |
+| Unused host namespace aliases such as `import NativeModule = WebAssembly.Module` | `vibelang --fix` removes already-erased aliases. Move a needed alias into a `.ts` adapter or use the injected Effect service. |
 
 ### Bugs fixed since 0.0.10
 
@@ -285,6 +286,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Standard-I/O platform errors suggested namespace methods and called the arguments property; they now use the injected service and its Effect, stream, or sink members.
 
 - Find References and rename could miss identifiers inside retired `select` arms; the editor now follows their written callees and bindings during recovery.
+
+- Qualified namespace aliases could read host globals without a platform error; they now report `EK4402`, including unused aliases, while local namespaces and type queries keep their ordinary rules. `vibelang --fix` removes unused aliases that TypeScript already erases.
 - A variable named `module` followed by `as`, `satisfies`, `is` or `of` and an object type, pattern or literal, as in `(module as { model?: unknown }).model`, failed with `EK4003` ("A module expression is not supported"). It now reads as the identifier `module`, as in TypeScript; `module { … }` and `module name { … }` inside an expression still report `EK4003`.
 - Native `|>` pipelines could incorrectly report a nested pipe chain. Lint now checks written `.pipe` calls and ignores the calls generated to type native pipeline stages.
 

@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("commonjs:Bun:platform.nested:used\x00\x00")

@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("module:globalThis:Bun:value-unused\x00\x00")

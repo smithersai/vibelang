@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("module:HostRuntime:platform:unused\x00\x00")

@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("commonjs:globalThis:HostRuntime:value-used\x00\x00")

@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("commonjs:HostRuntime:platform.nested.deeper:unused\x00\x00")

@@ -1,0 +1,554 @@
+[
+  {
+    "key": "module:Bun:platform:unused",
+    "mode": "module",
+    "source": "import Alias = Bun.platform; export const value=1",
+    "errors": [
+      "EK4402"
+    ]
+  },
+  {
+    "key": "module:Bun:platform:used",
+    "mode": "module",
+    "source": "import Alias = Bun.platform; export const value=Alias.value",
+    "errors": [
+      "EK4402"
+    ]
+  },
+  {
+    "key": "module:Bun:platform:export",
+    "mode": "module",
+    "source": "export import Alias = Bun.platform;",
+    "errors": [
+      "EK4402"
+    ]
+  },
+  {
+    "key": "module:Bun:platform.nested:unused",
+    "mode": "module",
+    "source": "import Alias = Bun.platform.nested; export const value=1",
+    "errors": [
+      "EK4402"
+    ]
+  },
+  {
+    "key": "module:Bun:platform.nested:used",
+    "mode": "module",
+    "source": "import Alias = Bun.platform.nested; export const value=Alias.value",
+    "errors": [
+      "EK4402"
+    ]
+  },
+  {
+    "key": "module:Bun:platform.nested:export",
+    "mode": "module",
+    "source": "export import Alias = Bun.platform.nested;",
+    "errors": [
+      "EK4402"
+    ]
+  },
+  {
+    "key": "module:Bun:platform.nested.deeper:unused",
+    "mode": "module",
+    "source": "import Alias = Bun.platform.nested.deeper; export const value=1",
+    "errors": [
+      "EK4402"
+    ]
+  },
+  {
+    "key": "module:Bun:platform.nested.deeper:used",
+    "mode": "module",
+    "source": "import Alias = Bun.platform.nested.deeper; export const value=Alias.value",
+    "errors": [
+      "EK4402"
+    ]
+  },
+  {
+    "key": "module:Bun:platform.nested.deeper:export",
+    "mode": "module",
+    "source": "export import Alias = Bun.platform.nested.deeper;",
+    "errors": [
+      "EK4402"
+    ]
+  },
+  {
+    "key": "module:Bun:local",
+    "mode": "module",
+    "source": "declare namespace Bun {namespace platform {const value:number}} import Alias=Bun.platform;export const value=Alias.value",
+    "errors": []
+  },
+  {
+    "key": "module:Bun:type-query",
+    "mode": "module",
+    "source": "export type Value=typeof Bun.platform",
+    "errors": []
+  },
+  {
+    "key": "module:Bun:type-only",
+    "mode": "module",
+    "source": "import type Alias=Bun.platform;export type Value=typeof Alias.value",
+    "errors": [
+      "TS1392"
+    ]
+  },
+  {
+    "key": "module:Bun:npm",
+    "mode": "module",
+    "source": "import * as Bun from \"library\";import Alias=Bun.platform;export const value=Alias.value",
+    "errors": []
+  },
+  {
+    "key": "module:HostRuntime:platform:unused",
+    "mode": "module",
+    "source": "import Alias = HostRuntime.platform; export const value=1",
+    "errors": [
+      "EK4402"
+    ]
+  },
+  {
+    "key": "module:HostRuntime:platform:used",
+    "mode": "module",
+    "source": "import Alias = HostRuntime.platform; export const value=Alias.value",
+    "errors": [
+      "EK4402"
+    ]
+  },
+  {
+    "key": "module:HostRuntime:platform:export",
+    "mode": "module",
+    "source": "export import Alias = HostRuntime.platform;",
+    "errors": [
+      "EK4402"
+    ]
+  },
+  {
+    "key": "module:HostRuntime:platform.nested:unused",
+    "mode": "module",
+    "source": "import Alias = HostRuntime.platform.nested; export const value=1",
+    "errors": [
+      "EK4402"
+    ]
+  },
+  {
+    "key": "module:HostRuntime:platform.nested:used",
+    "mode": "module",
+    "source": "import Alias = HostRuntime.platform.nested; export const value=Alias.value",
+    "errors": [
+      "EK4402"
+    ]
+  },
+  {
+    "key": "module:HostRuntime:platform.nested:export",
+    "mode": "module",
+    "source": "export import Alias = HostRuntime.platform.nested;",
+    "errors": [
+      "EK4402"
+    ]
+  },
+  {
+    "key": "module:HostRuntime:platform.nested.deeper:unused",
+    "mode": "module",
+    "source": "import Alias = HostRuntime.platform.nested.deeper; export const value=1",
+    "errors": [
+      "EK4402"
+    ]
+  },
+  {
+    "key": "module:HostRuntime:platform.nested.deeper:used",
+    "mode": "module",
+    "source": "import Alias = HostRuntime.platform.nested.deeper; export const value=Alias.value",
+    "errors": [
+      "EK4402"
+    ]
+  },
+  {
+    "key": "module:HostRuntime:platform.nested.deeper:export",
+    "mode": "module",
+    "source": "export import Alias = HostRuntime.platform.nested.deeper;",
+    "errors": [
+      "EK4402"
+    ]
+  },
+  {
+    "key": "module:HostRuntime:local",
+    "mode": "module",
+    "source": "declare namespace HostRuntime {namespace platform {const value:number}} import Alias=HostRuntime.platform;export const value=Alias.value",
+    "errors": []
+  },
+  {
+    "key": "module:HostRuntime:type-query",
+    "mode": "module",
+    "source": "export type Value=typeof HostRuntime.platform",
+    "errors": []
+  },
+  {
+    "key": "module:HostRuntime:type-only",
+    "mode": "module",
+    "source": "import type Alias=HostRuntime.platform;export type Value=typeof Alias.value",
+    "errors": [
+      "TS1392"
+    ]
+  },
+  {
+    "key": "module:HostRuntime:npm",
+    "mode": "module",
+    "source": "import * as HostRuntime from \"library\";import Alias=HostRuntime.platform;export const value=Alias.value",
+    "errors": []
+  },
+  {
+    "key": "module:ES:Intl",
+    "mode": "module",
+    "source": "import Alias=Intl.DateTimeFormat;export const value=Alias",
+    "errors": []
+  },
+  {
+    "key": "commonjs:Bun:platform:unused",
+    "mode": "commonjs",
+    "source": "import Alias = Bun.platform; export const value=1",
+    "errors": [
+      "EK4402"
+    ]
+  },
+  {
+    "key": "commonjs:Bun:platform:used",
+    "mode": "commonjs",
+    "source": "import Alias = Bun.platform; export const value=Alias.value",
+    "errors": [
+      "EK4402"
+    ]
+  },
+  {
+    "key": "commonjs:Bun:platform:export",
+    "mode": "commonjs",
+    "source": "export import Alias = Bun.platform;",
+    "errors": [
+      "EK4402"
+    ]
+  },
+  {
+    "key": "commonjs:Bun:platform.nested:unused",
+    "mode": "commonjs",
+    "source": "import Alias = Bun.platform.nested; export const value=1",
+    "errors": [
+      "EK4402"
+    ]
+  },
+  {
+    "key": "commonjs:Bun:platform.nested:used",
+    "mode": "commonjs",
+    "source": "import Alias = Bun.platform.nested; export const value=Alias.value",
+    "errors": [
+      "EK4402"
+    ]
+  },
+  {
+    "key": "commonjs:Bun:platform.nested:export",
+    "mode": "commonjs",
+    "source": "export import Alias = Bun.platform.nested;",
+    "errors": [
+      "EK4402"
+    ]
+  },
+  {
+    "key": "commonjs:Bun:platform.nested.deeper:unused",
+    "mode": "commonjs",
+    "source": "import Alias = Bun.platform.nested.deeper; export const value=1",
+    "errors": [
+      "EK4402"
+    ]
+  },
+  {
+    "key": "commonjs:Bun:platform.nested.deeper:used",
+    "mode": "commonjs",
+    "source": "import Alias = Bun.platform.nested.deeper; export const value=Alias.value",
+    "errors": [
+      "EK4402"
+    ]
+  },
+  {
+    "key": "commonjs:Bun:platform.nested.deeper:export",
+    "mode": "commonjs",
+    "source": "export import Alias = Bun.platform.nested.deeper;",
+    "errors": [
+      "EK4402"
+    ]
+  },
+  {
+    "key": "commonjs:Bun:local",
+    "mode": "commonjs",
+    "source": "declare namespace Bun {namespace platform {const value:number}} import Alias=Bun.platform;export const value=Alias.value",
+    "errors": []
+  },
+  {
+    "key": "commonjs:Bun:type-query",
+    "mode": "commonjs",
+    "source": "export type Value=typeof Bun.platform",
+    "errors": []
+  },
+  {
+    "key": "commonjs:Bun:type-only",
+    "mode": "commonjs",
+    "source": "import type Alias=Bun.platform;export type Value=typeof Alias.value",
+    "errors": [
+      "TS1392"
+    ]
+  },
+  {
+    "key": "commonjs:Bun:npm",
+    "mode": "commonjs",
+    "source": "import * as Bun from \"library\";import Alias=Bun.platform;export const value=Alias.value",
+    "errors": []
+  },
+  {
+    "key": "commonjs:HostRuntime:platform:unused",
+    "mode": "commonjs",
+    "source": "import Alias = HostRuntime.platform; export const value=1",
+    "errors": [
+      "EK4402"
+    ]
+  },
+  {
+    "key": "commonjs:HostRuntime:platform:used",
+    "mode": "commonjs",
+    "source": "import Alias = HostRuntime.platform; export const value=Alias.value",
+    "errors": [
+      "EK4402"
+    ]
+  },
+  {
+    "key": "commonjs:HostRuntime:platform:export",
+    "mode": "commonjs",
+    "source": "export import Alias = HostRuntime.platform;",
+    "errors": [
+      "EK4402"
+    ]
+  },
+  {
+    "key": "commonjs:HostRuntime:platform.nested:unused",
+    "mode": "commonjs",
+    "source": "import Alias = HostRuntime.platform.nested; export const value=1",
+    "errors": [
+      "EK4402"
+    ]
+  },
+  {
+    "key": "commonjs:HostRuntime:platform.nested:used",
+    "mode": "commonjs",
+    "source": "import Alias = HostRuntime.platform.nested; export const value=Alias.value",
+    "errors": [
+      "EK4402"
+    ]
+  },
+  {
+    "key": "commonjs:HostRuntime:platform.nested:export",
+    "mode": "commonjs",
+    "source": "export import Alias = HostRuntime.platform.nested;",
+    "errors": [
+      "EK4402"
+    ]
+  },
+  {
+    "key": "commonjs:HostRuntime:platform.nested.deeper:unused",
+    "mode": "commonjs",
+    "source": "import Alias = HostRuntime.platform.nested.deeper; export const value=1",
+    "errors": [
+      "EK4402"
+    ]
+  },
+  {
+    "key": "commonjs:HostRuntime:platform.nested.deeper:used",
+    "mode": "commonjs",
+    "source": "import Alias = HostRuntime.platform.nested.deeper; export const value=Alias.value",
+    "errors": [
+      "EK4402"
+    ]
+  },
+  {
+    "key": "commonjs:HostRuntime:platform.nested.deeper:export",
+    "mode": "commonjs",
+    "source": "export import Alias = HostRuntime.platform.nested.deeper;",
+    "errors": [
+      "EK4402"
+    ]
+  },
+  {
+    "key": "commonjs:HostRuntime:local",
+    "mode": "commonjs",
+    "source": "declare namespace HostRuntime {namespace platform {const value:number}} import Alias=HostRuntime.platform;export const value=Alias.value",
+    "errors": []
+  },
+  {
+    "key": "commonjs:HostRuntime:type-query",
+    "mode": "commonjs",
+    "source": "export type Value=typeof HostRuntime.platform",
+    "errors": []
+  },
+  {
+    "key": "commonjs:HostRuntime:type-only",
+    "mode": "commonjs",
+    "source": "import type Alias=HostRuntime.platform;export type Value=typeof Alias.value",
+    "errors": [
+      "TS1392"
+    ]
+  },
+  {
+    "key": "commonjs:HostRuntime:npm",
+    "mode": "commonjs",
+    "source": "import * as HostRuntime from \"library\";import Alias=HostRuntime.platform;export const value=Alias.value",
+    "errors": []
+  },
+  {
+    "key": "commonjs:ES:Intl",
+    "mode": "commonjs",
+    "source": "import Alias=Intl.DateTimeFormat;export const value=Alias",
+    "errors": []
+  },
+  {
+    "key": "module:Bun:types-unused",
+    "mode": "module",
+    "source": "import Alias=Bun.platform.TypesOnly;export const value=1",
+    "errors": []
+  },
+  {
+    "key": "module:Bun:types-used",
+    "mode": "module",
+    "source": "import Alias=Bun.platform.TypesOnly;export type Value=Alias.Value",
+    "errors": []
+  },
+  {
+    "key": "module:Bun:interface",
+    "mode": "module",
+    "source": "import Alias=Bun.platform.TypesOnly.Value;export type Value=Alias",
+    "errors": []
+  },
+  {
+    "key": "module:globalThis:Bun:value-unused",
+    "mode": "module",
+    "source": "import Alias=globalThis.Bun.platform;export const value=1",
+    "errors": [
+      "EK4402"
+    ]
+  },
+  {
+    "key": "module:globalThis:Bun:value-used",
+    "mode": "module",
+    "source": "import Alias=globalThis.Bun.platform;export const value=Alias.value",
+    "errors": [
+      "EK4402"
+    ]
+  },
+  {
+    "key": "module:HostRuntime:types-unused",
+    "mode": "module",
+    "source": "import Alias=HostRuntime.platform.TypesOnly;export const value=1",
+    "errors": []
+  },
+  {
+    "key": "module:HostRuntime:types-used",
+    "mode": "module",
+    "source": "import Alias=HostRuntime.platform.TypesOnly;export type Value=Alias.Value",
+    "errors": []
+  },
+  {
+    "key": "module:HostRuntime:interface",
+    "mode": "module",
+    "source": "import Alias=HostRuntime.platform.TypesOnly.Value;export type Value=Alias",
+    "errors": []
+  },
+  {
+    "key": "module:globalThis:HostRuntime:value-unused",
+    "mode": "module",
+    "source": "import Alias=globalThis.HostRuntime.platform;export const value=1",
+    "errors": [
+      "EK4402"
+    ]
+  },
+  {
+    "key": "module:globalThis:HostRuntime:value-used",
+    "mode": "module",
+    "source": "import Alias=globalThis.HostRuntime.platform;export const value=Alias.value",
+    "errors": [
+      "EK4402"
+    ]
+  },
+  {
+    "key": "module:globalThis:Intl",
+    "mode": "module",
+    "source": "import Alias=globalThis.Intl;export const value=Alias.DateTimeFormat",
+    "errors": []
+  },
+  {
+    "key": "commonjs:Bun:types-unused",
+    "mode": "commonjs",
+    "source": "import Alias=Bun.platform.TypesOnly;export const value=1",
+    "errors": []
+  },
+  {
+    "key": "commonjs:Bun:types-used",
+    "mode": "commonjs",
+    "source": "import Alias=Bun.platform.TypesOnly;export type Value=Alias.Value",
+    "errors": []
+  },
+  {
+    "key": "commonjs:Bun:interface",
+    "mode": "commonjs",
+    "source": "import Alias=Bun.platform.TypesOnly.Value;export type Value=Alias",
+    "errors": []
+  },
+  {
+    "key": "commonjs:globalThis:Bun:value-unused",
+    "mode": "commonjs",
+    "source": "import Alias=globalThis.Bun.platform;export const value=1",
+    "errors": [
+      "EK4402"
+    ]
+  },
+  {
+    "key": "commonjs:globalThis:Bun:value-used",
+    "mode": "commonjs",
+    "source": "import Alias=globalThis.Bun.platform;export const value=Alias.value",
+    "errors": [
+      "EK4402"
+    ]
+  },
+  {
+    "key": "commonjs:HostRuntime:types-unused",
+    "mode": "commonjs",
+    "source": "import Alias=HostRuntime.platform.TypesOnly;export const value=1",
+    "errors": []
+  },
+  {
+    "key": "commonjs:HostRuntime:types-used",
+    "mode": "commonjs",
+    "source": "import Alias=HostRuntime.platform.TypesOnly;export type Value=Alias.Value",
+    "errors": []
+  },
+  {
+    "key": "commonjs:HostRuntime:interface",
+    "mode": "commonjs",
+    "source": "import Alias=HostRuntime.platform.TypesOnly.Value;export type Value=Alias",
+    "errors": []
+  },
+  {
+    "key": "commonjs:globalThis:HostRuntime:value-unused",
+    "mode": "commonjs",
+    "source": "import Alias=globalThis.HostRuntime.platform;export const value=1",
+    "errors": [
+      "EK4402"
+    ]
+  },
+  {
+    "key": "commonjs:globalThis:HostRuntime:value-used",
+    "mode": "commonjs",
+    "source": "import Alias=globalThis.HostRuntime.platform;export const value=Alias.value",
+    "errors": [
+      "EK4402"
+    ]
+  },
+  {
+    "key": "commonjs:globalThis:Intl",
+    "mode": "commonjs",
+    "source": "import Alias=globalThis.Intl;export const value=Alias.DateTimeFormat",
+    "errors": []
+  }
+]

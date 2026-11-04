@@ -35,7 +35,11 @@ func checkUnlistedHostGlobals(c *checker.Checker, file *ast.SourceFile) {
 
 			if node.Parent != nil && ast.IsShorthandPropertyAssignment(node.Parent) {
 				symbol = c.GetShorthandAssignmentValueSymbol(node.Parent)
-			} else if isValueUse(node) {
+			} else if isValueUse(node) || isValueImportAliasReference(c, node) {
+				symbol = c.GetSymbolAtLocation(node)
+			}
+		case ast.IsQualifiedName(node):
+			if isValueImportAliasReference(c, node) {
 				symbol = c.GetSymbolAtLocation(node)
 			}
 		case ast.IsPropertyAccessExpression(node):

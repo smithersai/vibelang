@@ -353,6 +353,10 @@ argument read the current clock without a diagnostic. Read time through `try Clo
 value to the formatter when you need controlled time, including in tests.
 
 
+## Namespace aliases
+
+A qualified namespace alias such as `import NativeModule = WebAssembly.Module` also reads the host global and reports `EK4402`, even when the alias is unused. Only an alias target with a value meaning reads the host: namespaces containing only types and direct interface aliases retain their TypeScript rules, as do local or imported namespaces, `globalThis.Intl`, and erased type queries. `vibelang --fix` removes an unused alias only when TypeScript already erases it from runtime and declaration output. It preserves aliases with references or exports, script aliases, `verbatimModuleSyntax` aliases, and commented or escaped source; move a needed host alias into a `.ts` adapter.
+
 ## Literal module URLs
 
 A string-literal `data:` or `blob:` specifier in an import or re-export reports `EK0107`: these module URLs supply code in a string. URL-equivalent scheme spellings, including uppercase letters and ASCII whitespace, get the same diagnostic. Move the import into a `.ts` helper and call it through `Effect.tryPromise`:

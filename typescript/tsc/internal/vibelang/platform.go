@@ -683,23 +683,23 @@ func importedName(module string, decl *ast.Node) string {
 // globalPlatformName covers D102's bare globals and S6-1's globalThis
 // receiver. A locally declared globalThis or process retains its own meaning.
 func globalPlatformName(c *checker.Checker, node *ast.Node) string {
-	if ast.IsIdentifier(node) && (isValueUse(node) || node.Parent != nil && ast.IsShorthandPropertyAssignment(node.Parent)) {
+	if ast.IsIdentifier(node) && (isValueUse(node) || isValueImportAliasReference(c, node) || node.Parent != nil && ast.IsShorthandPropertyAssignment(node.Parent)) {
 		// A shorthand property's name is also the value it reads: { setTimeout }.
 		return node.Text()
 	}
-	if !ast.IsPropertyAccessExpression(node) && !ast.IsElementAccessExpression(node) {
+	if !ast.IsPropertyAccessExpression(node) && !ast.IsElementAccessExpression(node) && !(ast.IsQualifiedName(node) && isValueImportAliasReference(c, node)) {
 		return ""
 	}
 	name := staticGlobalMemberName(node)
 	if name == "" || name == "globalThis" {
 		return ""
 	}
-	receiver := ast.SkipParentheses(node.Expression())
-	for ast.IsPropertyAccessExpression(receiver) || ast.IsElementAccessExpression(receiver) {
+	receiver := ast.SkipParentheses(platformMemberReceiver(node))
+	for ast.IsPropertyAccessExpression(receiver) || ast.IsElementAccessExpression(receiver) || ast.IsQualifiedName(receiver) {
 		if staticGlobalMemberName(receiver) != "globalThis" {
 			return ""
 		}
-		receiver = ast.SkipParentheses(receiver.Expression())
+		receiver = ast.SkipParentheses(platformMemberReceiver(receiver))
 	}
 	if !ast.IsIdentifier(receiver) || receiver.Text() != "globalThis" {
 		return ""
@@ -711,9 +711,41 @@ func globalPlatformName(c *checker.Checker, node *ast.Node) string {
 	return name
 }
 
+// Internal aliases can name types alone. Only a value-bearing target reads
+// the host namespace, and only its left spine contains qualifier references.
+func isValueImportAliasReference(c *checker.Checker, node *ast.Node) bool {
+	reference := node
+	for reference.Parent != nil && ast.IsQualifiedName(reference.Parent) && reference.Parent.AsQualifiedName().Left == reference {
+		reference = reference.Parent
+	}
+	declaration := reference.Parent
+	if declaration == nil || !ast.IsImportEqualsDeclaration(declaration) {
+		return false
+	}
+	alias := declaration.AsImportEqualsDeclaration()
+	if alias.IsTypeOnly || alias.ModuleReference != reference || !ast.IsQualifiedName(reference) || declaration.Name() == nil {
+		return false
+	}
+	symbol := c.GetSymbolAtLocation(declaration.Name())
+	if symbol != nil && symbol.Flags()&ast.SymbolFlagsAlias != 0 {
+		symbol = c.GetAliasedSymbol(symbol)
+	}
+	return symbol != nil && symbol.Flags()&ast.SymbolFlagsValue != 0
+}
+
+func platformMemberReceiver(node *ast.Node) *ast.Node {
+	if ast.IsQualifiedName(node) {
+		return node.AsQualifiedName().Left
+	}
+	return node.Expression()
+}
+
 // staticGlobalMemberName implements detail 73's closed static-access grammar.
 // The receiver check above still resolves the original global binding.
 func staticGlobalMemberName(node *ast.Node) string {
+	if ast.IsQualifiedName(node) {
+		return node.AsQualifiedName().Right.Text()
+	}
 	if ast.IsPropertyAccessExpression(node) {
 		return node.Name().Text()
 	}
