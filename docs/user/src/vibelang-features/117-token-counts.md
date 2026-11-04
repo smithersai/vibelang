@@ -115,7 +115,7 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [New project](../setup/new-project.md) | 540 |
 | [Existing project](../setup/existing-project.md) | 3,200 |
 | [Migrating retired forms](../setup/migrating-retired-forms.md) | 3,800 |
-| **Build and test** | **18,000** |
+| **Build and test** | **19,000** |
 | [vibelang CLI](../setup/vibelang-cli.md) | 15,000 |
 | [Vite and Vitest](../setup/vite.md) | 3,600 |
 | **Format and lint** | **10,000** |
@@ -155,7 +155,7 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [Parallel and Sequential Errors](../error-management/023-parallel-and-sequential-errors.md) | 810 |
 | [Custom Error Classes](../error-management/024-yieldable-errors.md) | 1,200 |
 | **Requirements Management** | **11,000** |
-| [Managing Services](../requirements-management/025-services.md) | 5,300 |
+| [Managing Services](../requirements-management/025-services.md) | 5,400 |
 | [Default Services](../requirements-management/026-default-services.md) | 1,400 |
 | [Managing Layers](../requirements-management/027-layers.md) | 3,600 |
 | [Layer Memoization](../requirements-management/028-layer-memoization.md) | 1,100 |
@@ -273,7 +273,7 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [Pattern matching with match and is](116-match-and-is.md) | 11,000 |
 | [Diagnostic code map](diagnostic-code-map.md) | 3,300 |
 | [Experimental platform APIs](118-experimental-platform-apis.md) | 10,000 |
-| **All 8 pages** | **52,000** |
+| **All 8 pages** | **51,000** |
 
 ### Specification
 
