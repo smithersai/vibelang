@@ -196,6 +196,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - The resource-warning documentation check depended on an obsolete list position; it now checks the published ownership, unchanged diagnostic code and disposal safeguards directly.
 
 - The catch-parameter documentation check failed when the diagnostic row also named unbraced bodies; it now checks the retained parameter restriction and native closure-environment behavior.
+
+- The match guide and its scope test still promised implicit scopes for unbraced bindings; they now require the accepted `EK0705` brace repair, with native rejection and repaired-body controls.
 - A `catch` handler written as a parameter list followed by a block, `x catch (e) { … }`, was a syntax error (`TS1005`) that hid every other error in the file. It is now `EK0509`, with a quick fix to `x catch effect (e) => { … }` when the block has no `break`, `continue`, `await` or `yield` of its own.
 
 - The grammar admission census could drift between its specification and fuzz inventory; both copies now generate from one source and fail checks on drift.

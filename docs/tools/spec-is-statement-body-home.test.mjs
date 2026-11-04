@@ -1,32 +1,47 @@
 import assert from "node:assert/strict"
 import { test } from "node:test"
+import fc from "fast-check"
 import { chapter, read } from "./spec-witness.mjs"
 
-// Loop round 3, OPUS-2 (decided detail 245): the nearest enclosing block of
-// an unbraced loop body is outside the loop, which would reinitialize one cell
-// per iteration, so the body is its own home.
-const bodyRule = "when it is not a Block, is the home of the bindings inside it, exactly as if it were wrapped in braces"
-
-test("chapter 4, VIP-7 and the pinned reconciliation give an unbraced body its own home", () => {
-  const match = chapter("004-match")
-  assert.ok(match.includes(bodyRule))
-  assert.ok(match.includes("so braces around a body never change a result ([VIP-7](../vips/0007-match.md#binding-homes-and-redeclarations))"))
-  assert.ok(match.includes("An `if` head belongs to the home that contains the `if` statement"))
-  assert.ok(match.includes("for (const x of xs) if (x is { id: let id }) out.push(id)"))
-  assert.ok(!match.includes("nearest enclosing lexical block"))
-  assert.ok(!match.includes("nearest-block scope"))
-  const vip = read("docs/design/vips/0007-match.md")
-  assert.ok(vip.includes("**Amended 2026-10-31: unbraced statement bodies.**"))
-  assert.ok(read("docs/design/vips/tc39-pattern-matching/README.md").includes("| Lexical `is` in unbraced statement bodies |"))
-  assert.ok(read("docs/user/src/vibelang-features/116-match-and-is.md").includes("An unbraced loop or `if` body counts as its own block"))
+// VIP-7's accepted Nov 3 amendment replaces detail245's implicit-body home.
+const bodyRule = "when it is not a Block, cannot be the lexical home"
+const clauses = [
+  bodyRule, "report `EK0705`", "TypeScript's `TS1156`",
+  "wrap that statement body in braces",
+  "An `if` head belongs to the home that contains the `if` statement",
+  "an `else if` head therefore needs braces",
+  "an explicit `do` block, match arm, callable body or loop head keeps its own home",
+]
+function checkBodyRule(text) {
+  const line = text.split("\n").find(line => line.includes(bodyRule))
+  assert.ok(line, "published unbraced body rule")
+  for (const clause of clauses) assert.ok(line.includes(clause), clause)
+  return line
+}
+test("chapter 4, VIP-7, reconciliation and guide require explicit unbraced repairs", () => {
+  checkBodyRule(chapter("004-match"))
+  checkBodyRule(read("docs/design/vips/0007-match.md"))
+  const table = read("docs/design/vips/tc39-pattern-matching/README.md")
+  assert.match(table, /Lexical `is` in unbraced statement bodies.*`TS1156`.*`EK0705`.*add braces/)
+  const guide = read("docs/user/src/vibelang-features/116-match-and-is.md")
+  assert.match(guide, /unbraced.*`EK0705`.*braces/)
+  assert.doesNotMatch(guide, /unbraced[^.]*own block|adding braces never changes/)
 })
-
-test("every statement form the rule lists is a statement ECMAScript forbids let in", () => {
-  const rule = chapter("004-match").split("\n").find(line => line.includes(bodyRule)) ?? ""
-  for (const form of ["`if`", "`else`", "`for`", "`for…in`", "`for…of`", "`for await`", "`for concurrent`", "`for try`", "`while`", "`do…while`", "a labeled statement"]) {
-    assert.ok(rule.includes(form), form)
-  }
-  for (const source of ["for (const x of []) let n = 1", "if (true) let n = 1", "while (false) let n = 1", "l: let n = 1"]) {
-    assert.throws(() => new Function(source), SyntaxError, source)
-  }
+test("every listed statement form rejects lexical declarations without braces", () => {
+  const rule = checkBodyRule(chapter("004-match"))
+  for (const form of ["`if`", "`else`", "`for`", "`for…in`", "`for…of`", "`for await`", "`for concurrent`", "`for try`", "`while`", "`do…while`", "a labeled statement"]) assert.ok(rule.includes(form), form)
+  for (const source of ["for (const x of []) let n = 1", "if (true) let n = 1", "while (false) let n = 1", "l: let n = 1"]) assert.throws(() => new Function(source), SyntaxError, source)
+})
+test("fast-check: native statement bodies reject declarations and accept the brace repair", () => {
+  fc.assert(fc.property(fc.constantFrom("for (const x of [])", "if (true)", "while (false)", "label:"), fc.constantFrom(" ", "  ", "\n"), fc.integer({ min: 0, max: 1000 }), (head, space, n) => {
+    const declaration = "let value" + n + " = " + n
+    assert.throws(() => new Function(head + space + declaration), SyntaxError)
+    assert.doesNotThrow(() => new Function(head + space + "{ " + declaration + " }"))
+  }), { seed: 1104109, numRuns: 200 })
+})
+test("fast-check: no ownership or repair clause disappears", () => {
+  const text = chapter("004-match")
+  fc.assert(fc.property(fc.constantFrom(...clauses), clause => {
+    assert.throws(() => checkBodyRule(text.replaceAll(clause, "[removed]")))
+  }), { seed: 1104110, numRuns: 160 })
 })
