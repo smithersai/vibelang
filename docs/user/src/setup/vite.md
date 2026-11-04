@@ -267,3 +267,7 @@ An unrelated file's type errors do not prevent loading a clean module. Run
 Source maps keep the original `.vibe` positions and source text through repeated
 development requests and hot updates, including modules declared inside a
 `.vibe` file.
+
+The shared `vibelang-unplugin` load hook accepts explicit `.vibex` sources
+as well as `.vibe` sources, including module IDs with query strings. Configure
+`compilerOptions.jsx` as for the corresponding `.tsx` project.

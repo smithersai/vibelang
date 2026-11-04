@@ -44,8 +44,8 @@ function isModuleOutput(path) {
   const source = /^(.+\.vibe)\.[^./\\]+\.js$/.exec(path)?.[1]
   return source !== undefined && !existsSync(path) && existsSync(source)
 }
-// A module whose JavaScript the plugin compiles: a .vibe module or one of its module declarations.
-const isCompiled = (id) => cleanId(id).endsWith(".vibe") || isModuleOutput(cleanId(id))
+// A module whose JavaScript the plugin compiles: a VibeLang source or module declaration.
+const isCompiled = (id) => /\.vibex?$/.test(cleanId(id)) || isModuleOutput(cleanId(id))
 
 // Keep TypeScript's source priority when the bundler cannot find .vibe.
 function extensionlessVibe(directory, specifier) {
