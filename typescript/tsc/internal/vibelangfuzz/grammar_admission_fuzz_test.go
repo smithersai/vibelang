@@ -141,6 +141,7 @@ var grammarAdmissionSeeds = []struct{ key, source string }{
 	{"effect-type-line-break", "type T = number !\n! ;"},
 	{"service-class", "service class S { n: number }"},
 	{"try-in-generator", "function* g() { try 1; }"},
+	{"or-binding-reserved-name", "const b = x is [let let or a];"},
 	{"data-separators", "data D { A { x : number } ; ; B }"},
 	{"join-for-head", "effect function f(xs) { for (join x of xs) { x; } }"},
 	{"join-outside-effect-empty", "join [ ]"},
@@ -575,8 +576,45 @@ func TestGrammarAdmissionDeclarationKeys(t *testing.T) {
 // Corpus keys name the syntax that is actually present, rather than the seed
 // selected before mutation. Known gaps therefore cover their own neighbourhood
 // while a new form still receives an independent mutation key.
+// grammarOrBindingReservedName reports a pattern binding whose name is a
+// strict-mode reserved word, after is or when, with an or or not combinator
+// in the same pattern. A pattern binding is `let` BindingIdentifier, and
+// BindingIdentifier excludes these words in module code (TS1214). Inside or
+// and not the compiler reports only EK4702 and drops the name, so TS1214 is
+// lost; with and, or alone, TS1214 stays.
+func grammarOrBindingReservedName(ts []grammarToken) bool {
+	reserved := map[string]bool{"let": true, "yield": true, "static": true, "implements": true, "interface": true,
+		"package": true, "private": true, "protected": true, "public": true}
+	pattern, combinator, binding, depth := false, false, false, 0
+	for i, tok := range ts {
+		switch {
+		case tok.text == "is" || tok.text == "when":
+			pattern, depth = true, 0
+		case !pattern:
+		case tok.text == "(" || tok.text == "[" || tok.text == "{":
+			depth++
+		case tok.text == ")" || tok.text == "]" || tok.text == "}":
+			depth--
+		case tok.text == "or" || tok.text == "not":
+			combinator = true
+		case tok.text == "let" && i+1 < len(ts) && reserved[ts[i+1].text]:
+			binding = true
+		case tok.text == ";" || tok.text == ":" && depth <= 0:
+			// A when arm's colon or the statement's end closes the pattern.
+			if combinator && binding {
+				return true
+			}
+			pattern, combinator, binding = false, false, false
+		}
+	}
+	return combinator && binding
+}
+
 func grammarAdmissionForm(source string) string {
 	ts := grammarLexSource(source)
+	if grammarOrBindingReservedName(ts) {
+		return "admission:or-binding-reserved-name"
+	}
 	if form := grammarAdmissionDeclarationForm(ts); form != "" {
 		return form
 	}
@@ -1655,5 +1693,29 @@ func TestGrammarAdmissionDiagnostics(t *testing.T) {
 				t.Fatalf("syntax rejection = %v; want %v", got, tc.want)
 			}
 		})
+	}
+}
+
+// The or-binding-reserved-name family is exactly a strict-reserved pattern
+// binding with or or not in the same pattern; and keeps TS1214, so it stays
+// outside the family, as do ordinary names.
+func TestGrammarAdmissionOrBindingReservedNameForm(t *testing.T) {
+	for source, want := range map[string]bool{
+		"const b = x is [let let or a];":                                    true,
+		"const b = x is [ let yield or a ] ;":                               true,
+		"const b = x is let let or a;":                                      true,
+		"const b = x is not let let;":                                       true,
+		"const b = x is not [let interface];":                               true,
+		"const b = x is { k: let static or a };":                            true,
+		"const x = match (v) { when let let or 1: 1; default: 0; };":        true,
+		"const b = x is [let let and a];":                                   false,
+		"const b = x is [let let];":                                         false,
+		"const b = x is [let a or b];":                                      false,
+		"const b = x is [a or b]; const let_ = 1;":                          false,
+		"const x = match (v) { when let a or 1: 1; default: let static; };": false,
+	} {
+		if got := grammarOrBindingReservedName(grammarLexSource(source)); got != want {
+			t.Errorf("%s: or-binding-reserved-name = %v, want %v", source, got, want)
+		}
 	}
 }

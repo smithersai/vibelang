@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("key:or-binding-reserved-name\nconst b = x is [let let or a];")
