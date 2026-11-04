@@ -120,6 +120,11 @@ func pipeFormOf(c *checker.Checker, call *ast.Node) pipeForm {
 func pipeReceiver(c *checker.Checker, call *ast.Node) *ast.Node {
 	callee := call.Expression()
 	if isMethodPipe(call) {
+		// A curried native |> stage gets a synthesized .pipe for contextual
+		// typing. Its method name was not written and is not a lint target.
+		if callee.Name().Flags&ast.NodeFlagsReparserTransformedLiteral != 0 {
+			return nil
+		}
 		if module, _ := effectFunctionOf(c, callee); module == "Pipeable" {
 			return callee.Expression()
 		}

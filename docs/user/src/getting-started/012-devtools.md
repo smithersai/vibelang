@@ -316,6 +316,8 @@ effect function discard() {
 
 Since such a rule does not run, an `@effect-diagnostics-next-line` comment that names it suppresses nothing in a `.vibe` file, and Effect reports `TS377000: @effect-diagnostics directive has no effect`; a file renamed from `.ts` keeps every such comment. `vibelang --fix` rewrites each comment `TS377000` reports. A rule whose code in this table reports on the next line keeps its setting under that code, so `// @effect-diagnostics-next-line overriddenSchemaConstructor:off` above a Schema class's `constructor` becomes `// @vibelang-diagnostics-next-line EK4814:off`. The comment's other rules go, and its explanation stays: `// @effect-diagnostics-next-line effectSucceedWithVoid:off - why` becomes `// why`. A comment left with nothing goes with its line. The report counts these as `TS377000`. A marker inside a string is no comment, so `--fix` leaves it, although Effect's parser reports it too.
 
+Native `|>` stages do not count as written `.pipe` chains. Their generated calls provide contextual types; `unnecessaryPipeChain` still reports written nested `.pipe` calls, including those inside a native pipeline.
+
 | Group | Effect's rule or feature | In VibeLang | Example |
 | --- | --- | --- | --- |
 | Correctness | `anyUnknownInErrorContext` | EK4811, off by default | `throw cause` where `cause: unknown` |
@@ -390,7 +392,7 @@ Since such a rule does not run, an `@effect-diagnostics-next-line` comment that 
 | Style | `unnecessaryEffectGen` | Effect functions use `try` | None |
 | Style | `unnecessaryFailYieldableError` | Not needed: `throw new NotFound({ id })` | `throw new NotFound({ id })` |
 | Style | `unnecessaryPipe` | EK4824, off by default, with a quick fix | `pipe(x)` |
-| Style | `unnecessaryPipeChain` | EK4825, off by default, with a quick fix | `x.pipe(f).pipe(g)` |
+| Style | `unnecessaryPipeChain` | `EK4825`, off by default, with a quick fix | `x.pipe(f).pipe(g)` |
 | Hover | Extended Effect type | Covered: a function's hover shows its contract, `A!E!R` | `string!UserNotFound!Users` |
 | Hover | `yield*` hover | Use `try` to get the success value | `try load()` returns `User` |
 | Hover | Layer service involvement | Hover: a layer lists what it provides, needs, and fails with | Hover on `UsersLive` |

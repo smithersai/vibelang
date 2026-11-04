@@ -1,0 +1,7 @@
+import * as Stream from "effect/Stream"
+export const collect = effect (pages: Stream.Stream<number>) => Array.from(
+  try (pages
+    |> Stream.filter((x) => x > 0)(%)
+    |> Stream.map((x) => x + 1)(%)
+    |> Stream.runCollect(%))
+)
