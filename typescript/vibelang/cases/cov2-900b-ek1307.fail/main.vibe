@@ -1,0 +1,5 @@
+// expect: EK1307 EK1307 EK1307
+// Chapter 900: Appendix B EK1307 ambient error declaration — spec-rule: docs/design/src/900-appendices.md#545a8406ce215b61
+declare error Bodyless
+declare error Fields { id: string }
+export declare error Exported

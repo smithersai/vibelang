@@ -60,3 +60,5 @@ export effect function main() {
   const ts = try tsLoad(() => 7)
   return { tagged, ran, loaded, arrow, streamed, found, add: add(1, 2), maybe: maybe() === undefined, ts }
 }
+
+// Chapter 900: Appendix B EK0406 throws tag in vibe source — spec-rule: docs/design/src/900-appendices.md#a4968b86a455bde8

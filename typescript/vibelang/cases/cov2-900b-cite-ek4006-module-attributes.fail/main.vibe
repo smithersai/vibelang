@@ -1,0 +1,6 @@
+// expect: EK4006
+module text { export const n = 1 }
+import { n } from text with { type: "json" }
+export const value = n
+
+// Chapter 900: Appendix B EK4006 identifier specifier with import attributes — spec-rule: docs/design/src/900-appendices.md#d84329482f24c7a0

@@ -11,3 +11,5 @@ export effect function main() { for concurrent (const x of Stream.make(1)) {} }
 
 // docs/design/vips/0019-for-concurrent.md#820bc33338f38ce3 | VIP-19 Iterable-operand-domain
 // Any other operand is a compile error.
+
+// Chapter 900: Appendix B EK1901 for concurrent operand not iterable — spec-rule: docs/design/src/900-appendices.md#215d442fc27a6155

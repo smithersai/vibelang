@@ -5,3 +5,5 @@ export effect function load() { return try Effect.provideService(Effect.succeed(
 // Appendix B: EK4836 — spec-rule: docs/design/src/900-appendices.md#bcbb5371b2fa8b1d
 
 // Appendix B: retained TypeScript-form warning codes — spec-rule: docs/design/src/900-appendices.md#44f3b4ad3c1cdb61
+
+// Chapter 900: Appendix B EK4836 Effect.provide under bare try — spec-rule: docs/design/src/900-appendices.md#f85717a1bd43da69

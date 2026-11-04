@@ -1,0 +1,9 @@
+// expect: EK4007
+// Chapter 900: Appendix B EK4007 identifier specifier inside a module body — spec-rule: docs/design/src/900-appendices.md#1d17809ccbf9b5aa
+module a { export const n = 1 }
+module b {
+  import { n } from a
+  export const m = n
+}
+import { m } from b
+export const value = m

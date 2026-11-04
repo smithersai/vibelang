@@ -1,0 +1,8 @@
+// expect: EK4008
+module text {
+  const n = 1
+  export = n
+}
+import text
+
+// Chapter 900: Appendix B EK4008 export assignment in a module body — spec-rule: docs/design/src/900-appendices.md#7355813037a6df7c

@@ -1,0 +1,7 @@
+// expect: EK4001
+function f() {
+  module text { export const n = 1 }
+}
+export {}
+
+// Chapter 900: Appendix B EK4001 module below top level — spec-rule: docs/design/src/900-appendices.md#642f41471497a724

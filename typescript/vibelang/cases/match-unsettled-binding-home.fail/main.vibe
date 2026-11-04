@@ -39,3 +39,5 @@ enum E{A=(1 is let one)?1:0}
 // Appendix B: EK0705 — spec-rule: docs/design/src/900-appendices.md#fc426d87c9e6c5f5
 
 // Appendix B: EK0705 — spec-rule: docs/design/src/900-appendices.md#fc426d87c9e6c5f5
+
+// Chapter 900: Appendix B EK0705 is binding without a lexical home — spec-rule: docs/design/src/900-appendices.md#218bdf6c61423fd8

@@ -3,3 +3,5 @@
 // a payload member that is not a Field.
 data Paren { A(x: number) }
 data Method { A { m(): void } }
+
+// Chapter 900: Appendix B EK1606 malformed data variant — spec-rule: docs/design/src/900-appendices.md#fe70d1eabc80797d

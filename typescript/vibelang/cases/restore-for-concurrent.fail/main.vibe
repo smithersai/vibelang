@@ -32,3 +32,5 @@ export effect function innerMask(xs: number[]) {
 }
 
 // Appendix B: EK2202 — spec-rule: docs/design/src/900-appendices.md#b61c390ed34312e3
+
+// Chapter 900: Appendix B EK2202 restore across an independent region — spec-rule: docs/design/src/900-appendices.md#79a46243ce591c4f

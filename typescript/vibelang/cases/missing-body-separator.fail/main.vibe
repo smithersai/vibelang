@@ -7,3 +7,5 @@ service Svc { a: number b: string }
 error Overloaded { a(): number a(): number { return 1 } }
 schema error EncodedOverloaded { a(): number a(): number { return 1 } }
 service Methods { a(): Effect.Effect<number> b(): Effect.Effect<string> }
+
+// Chapter 900: Appendix B EK1306 error body separator — spec-rule: docs/design/src/900-appendices.md#37741a6dd1066524

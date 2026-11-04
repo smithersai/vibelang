@@ -21,3 +21,5 @@ export function rejected(x: number) {
 // Appendix B: EK2301 — spec-rule: docs/design/src/900-appendices.md#7cd6f87a401e3d0c
 // Appendix A: pipe-conditional-test.fail — spec-rule: docs/design/src/900-appendices.md#313a0d012d44a85b
 // Appendix A: pipe-conditional-test.fail — spec-rule: docs/design/src/900-appendices.md#3747bd8dcbafd1bf
+
+// Chapter 900: Appendix B EK2301 unparenthesized conditional at a pipe end — spec-rule: docs/design/src/900-appendices.md#b0d1579e24d122a2

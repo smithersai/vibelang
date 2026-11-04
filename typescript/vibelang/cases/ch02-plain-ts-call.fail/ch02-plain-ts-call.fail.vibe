@@ -17,3 +17,5 @@ effect function profileCard(id: string) {
   }
 }
 // Effect<{ title: string; avatar: Avatar }, UserNotFound | AvatarError, Users | Storage>
+
+// Chapter 900: Appendix B EK0403 unwrapped throwing call in effect code — spec-rule: docs/design/src/900-appendices.md#5d5c8147217baa68

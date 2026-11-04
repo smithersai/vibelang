@@ -1,0 +1,4 @@
+// expect: EK1506 EK1506
+// Chapter 900: Appendix B EK1506 ambient schema declaration — spec-rule: docs/design/src/900-appendices.md#57f4c17e281f72db
+declare schema User { name: string }
+declare namespace API { export schema Item { id: string } }

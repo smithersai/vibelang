@@ -135,6 +135,8 @@ const rows = [
   {"rule": "docs/design/src/900-appendices.md#9af88cbadef73147", "code": "EK3863", "name": "matchEffectToMatch", "severity": "suggestion"},
   // Appendix B: effecttsgo/missedPipeableOpportunity — spec-rule: docs/design/src/900-appendices.md#04ac73df8e1c5719
   {"rule": "docs/design/src/900-appendices.md#04ac73df8e1c5719", "code": "EK3864", "name": "missedPipeableOpportunity", "severity": "off"},
+  // Appendix B: effecttsgo/missingEffectContext — spec-rule: docs/design/src/900-appendices.md#aef283819725219e
+  {"rule": "docs/design/src/900-appendices.md#aef283819725219e", "code": "EK3865", "name": "missingEffectContext", "severity": "error"},
 ]
 const { inventory } = generateLintCodes()
 const declared = readFileSync(new URL("../../typescript/tsc/internal/core/vibe_lint_codes.go", import.meta.url), "utf8")

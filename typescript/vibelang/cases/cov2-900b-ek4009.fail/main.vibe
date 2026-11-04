@@ -1,0 +1,5 @@
+// expect: EK4009
+// Chapter 900: Appendix B EK4009 import.meta in a module body — spec-rule: docs/design/src/900-appendices.md#9e7b7a86a8e4bae9
+module paths { export const here = import.meta.url }
+import { here } from paths
+export const value = here

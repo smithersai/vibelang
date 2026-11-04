@@ -1,0 +1,4 @@
+// expect: EK4003
+export const value = module { export const n = 1 }
+
+// Chapter 900: Appendix B EK4003 module expression — spec-rule: docs/design/src/900-appendices.md#147033b53c1bcb6e

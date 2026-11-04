@@ -3,3 +3,5 @@
 // body that is not a Field.
 schema Method { m(): string }
 schema Index { [k: string]: number }
+
+// Chapter 900: Appendix B EK1505 schema member not a Field — spec-rule: docs/design/src/900-appendices.md#43a493a13e9c648c

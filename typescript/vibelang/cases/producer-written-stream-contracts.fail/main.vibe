@@ -12,3 +12,5 @@ export effect function* invalid8(): Effect.Effect<number> { yield 7 }
 export effect function* invalid9(): Generator<number> { yield 7 }
 export effect function* invalid10(): AsyncGenerator<number> { yield 7 }
 export effect function* invalid11(): void { yield 7 }
+
+// Chapter 900: Appendix B EK2102 producer written return type — spec-rule: docs/design/src/900-appendices.md#e39a96a71e725000

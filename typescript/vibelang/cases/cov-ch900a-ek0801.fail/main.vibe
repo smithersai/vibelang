@@ -3,3 +3,5 @@
 // Promote this configurable warning to an error so the rejection harness checks its trigger.
 declare const resource: Disposable
 export effect function load() { using r = resource; return 1 }
+
+// Chapter 900: Appendix B EK0801 using in effect code warning — spec-rule: docs/design/src/900-appendices.md#0cbfacbce69e50d1

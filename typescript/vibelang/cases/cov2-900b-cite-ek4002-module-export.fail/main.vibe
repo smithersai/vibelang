@@ -1,0 +1,4 @@
+// expect: EK4002
+export module text { export const n = 1 }
+
+// Chapter 900: Appendix B EK4002 exported module declaration — spec-rule: docs/design/src/900-appendices.md#c13e931c723030b7

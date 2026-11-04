@@ -1,0 +1,5 @@
+// expect: EK4005
+// Chapter 900: Appendix B EK4005 module name redeclares a binding — spec-rule: docs/design/src/900-appendices.md#5ce2aa83e69aa74d
+const text = 1
+module text { export const n = 1 }
+export { text }

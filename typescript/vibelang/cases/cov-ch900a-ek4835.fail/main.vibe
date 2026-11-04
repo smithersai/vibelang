@@ -4,3 +4,5 @@ export effect function load() { return try Effect.catch(Effect.fail("bad"), () =
 // Appendix B: EK4835 — spec-rule: docs/design/src/900-appendices.md#be22aa99cff7df6f
 
 // Appendix B: retained TypeScript-form warning codes — spec-rule: docs/design/src/900-appendices.md#44f3b4ad3c1cdb61
+
+// Chapter 900: Appendix B EK4835 Effect.catch under bare try — spec-rule: docs/design/src/900-appendices.md#f6796f0b47e876a7

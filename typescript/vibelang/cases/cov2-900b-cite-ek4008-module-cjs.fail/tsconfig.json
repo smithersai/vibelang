@@ -1,0 +1,1 @@
+{"compilerOptions": {"target": "esnext", "module": "nodenext", "moduleResolution": "nodenext", "strict": true, "skipLibCheck": true, "types": [], "outDir": "out"}, "files": ["main.vibe"]}

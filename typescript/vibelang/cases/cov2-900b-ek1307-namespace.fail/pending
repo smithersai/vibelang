@@ -1,0 +1,1 @@
+cov2-900b docs/design/src/900-appendices.md#545a8406ce215b61: declare schema error and an error declaration inside declare namespace also report TS1036; EK1307 should be the only diagnostic

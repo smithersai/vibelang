@@ -1,0 +1,4 @@
+// expect: EK1607 EK1607
+// Chapter 900: Appendix B EK1607 ambient data declaration — spec-rule: docs/design/src/900-appendices.md#20eefbc9ab2f0ec7
+declare data Shape { Circle { r: number }; Square }
+declare namespace API { export data Result { Ok; Err { message: string } } }

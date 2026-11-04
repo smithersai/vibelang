@@ -1,0 +1,5 @@
+// expect: EK4006
+import { n } from missing
+export const value = n
+
+// Chapter 900: Appendix B EK4006 identifier specifier names no module — spec-rule: docs/design/src/900-appendices.md#d84329482f24c7a0

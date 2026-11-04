@@ -1,0 +1,5 @@
+// expect: EK1307 EK1307 EK1307
+// Chapter 900: Appendix B EK1307 ambient schema error and error in an ambient namespace — spec-rule: docs/design/src/900-appendices.md#545a8406ce215b61
+declare schema error SchemaFields { id: string }
+declare namespace API { export error Nested { id: string } }
+declare namespace Other { export schema error NestedSchema { id: string } }

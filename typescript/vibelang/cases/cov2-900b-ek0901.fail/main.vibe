@@ -1,0 +1,4 @@
+// expect: EK0901 EK0901
+// Chapter 900: Appendix B EK0901 static key form — spec-rule: docs/design/src/900-appendices.md#06662cfb17933934
+export service A { static key = "a"; value: number }
+export service B { static readonly key = `b`; value: number }
