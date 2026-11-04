@@ -12,7 +12,7 @@ import { checkProperty } from "../../../../scripts/testing/property.mjs"
 const fc = createRequire(new URL("../../../../packages/runtime/package.json", import.meta.url))("fast-check")
 const ts = loadTypeScript([fileURLToPath(new URL("../../../../packages/runtime/", import.meta.url))])
 const corpus = JSON.parse(readFileSync(new URL("./corpus/opencode-sdk-conditional-imports.json", import.meta.url), "utf8"))
-const rule = "`x.vibe` emits `x.js` beside `x.d.ts` in `outDir`"
+const rule = "`x.vibe` emits `x.js` and `x.d.ts` in `outDir`"
 const spec = readFileSync(new URL("../../../../docs/design/src/007-tooling.md", import.meta.url), "utf8")
 const execute = (text, manifest, name) => {
   const out = {}

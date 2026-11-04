@@ -1231,3 +1231,5 @@ Declaration comparison fixtures follow the API identity contract in Functions: e
 The Knip JSDoc and local-type-query properties and their paired Go citation guard share the exact current Chapter 007 tool-input sentence. Refresh the Go and Node citations atomically; retain the Chapter 000 counterpart rule, all 300/80 discovery samples and strict saved-regression guards.
 
 The native declaration-spelling property reads the current Specifiers contract in Functions. Its 12 stock TypeScript cases continue to check written .ts imports, quote styles and actual emitted declaration text; moving the citation changes neither compiler options nor emit assertions.
+
+Publication helper properties cite Chapter 007’s native output names: x.js and ordinary x.d.ts in outDir. Citation maintenance retains both 100-case properties and their distribution paths, shadowing, unsupported-expression and source-form controls.
