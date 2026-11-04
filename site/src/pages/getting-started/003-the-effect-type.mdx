@@ -158,6 +158,8 @@ An initializer can immediately follow the shorthand: `const e: number!!=Effect.s
 
 Use `A!E!R` or `Effect.Effect<A, E, R>`, instead of the transitional bare global `Effect<A, E, R>` alias. Its migration warning is `EK4856`; `vibelang --fix` selects the resolved legacy symbol and writes `A!E!R` where it needs no new parentheses, such as `number!!` for `Effect<number>`, and `Effect.Effect<A, E, R>` elsewhere, such as `Effect.Effect<A | B, E>`, `Effect.Effect<A, E>[]` and an `extends` or `implements` clause. The fix preserves existing parentheses, explicit default slots and comments. It retains the qualified spelling when shorthand would change declaration bytes. Local and imported types named `Effect` keep their TypeScript meaning. Alias removal happens only in a coordinated compiler and codemod release.
 
+The same grouping rule applies to nested qualified types. An array boundary in `Effect.Effect<Array<Effect.Effect<number>>>` lets both levels use shorthand. Direct nesting in `Effect.Effect<Effect.Effect<number>>` keeps the outer qualified type when shortening it would need new parentheses.
+
 ---
 
 The matching Effect page: [effect.website/docs/v4/getting-started/the-effect-type](https://effect.website/docs/v4/getting-started/the-effect-type/)

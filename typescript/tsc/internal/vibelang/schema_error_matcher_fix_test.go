@@ -15,7 +15,7 @@ func TestSchemaErrorMatcherClassFix(t *testing.T) {
 		"const Schema = 0;\n",
 	} {
 		t.Run(prefix, func(t *testing.T) {
-			source := prefix + "export schema error E { id: string; static marker = 1 }\n"
+			source := prefix + "export schema error E { id: string; static marker = 1 }\nexport function probe(subject: unknown) { return match(subject) { when E(let item): item; default: undefined; } }\n"
 			fixed := applyQuickFixOf(t, source, 1302, diagnostics.CategoryError)
 			program, file, _, _ := editorProgram(t, fixed)
 			for _, d := range append(program.GetSyntacticDiagnostics(t.Context(), file), program.GetSemanticDiagnostics(t.Context(), file)...) {

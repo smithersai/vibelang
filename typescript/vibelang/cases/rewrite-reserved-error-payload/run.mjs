@@ -43,7 +43,11 @@ process.stdout.write(JSON.stringify(await Effect.runPromiseExit(main())));
 `]
     const originalExit = JSON.parse(command("run-before", process.execPath, runArgs))
     assert.equal(originalExit._tag, "Success")
-    assert.deepEqual(originalExit.value, [family ? "Child" : "E", "x", "family", true])
+    // VIP-7/29 (dfc50f853e2e): schema errors test their own tag,
+    // including legacy family inputs. Plain error compatibility keeps its
+    // instance-based family matcher. Both must survive the rewrite unchanged.
+    const matched = form === "schema error" && family ? "miss" : "family"
+    assert.deepEqual(originalExit.value, [family ? "Child" : "E", "x", matched, true])
     command("fix", compiler, [...compileArgs, "--fix"])
     const fixed = fs.readFileSync(source, "utf8")
     assert.ok(fixed.includes("class E extends"), "the reserved field was not migrated to its class")

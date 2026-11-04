@@ -55,6 +55,9 @@ func ordinaryExtractorType(c *checker.Checker, call *ast.Node) *checker.Type {
 			}
 		}
 	}
+	if hasRegisteredSchemaErrorMatcher(c, constructor) {
+		return nil
+	}
 	if name := customMatcherPropertyName(c); name != "" {
 		if property := c.GetPropertyOfType(constructor, name); property != nil {
 			for _, declaration := range property.Declarations() {
@@ -233,4 +236,37 @@ var ordinaryExtractorFix = &ls.CodeFixProvider{
 		fix.SourceFile.AsNode().ForEachChild(visit)
 		return actions, nil
 	},
+}
+
+// The schema-error class repair installs an own runtime matcher in its
+// first static block. The helper deliberately adds no declaration member:
+// adding one would change the exported declaration the repair must preserve.
+// Recognize only a resolved runtime helper called directly on this class;
+// inherited registrations, deferred callbacks and conditional calls do not
+// prove that the constructor has its own matcher.
+func hasRegisteredSchemaErrorMatcher(c *checker.Checker, constructor *checker.Type) bool {
+	symbol := constructor.Symbol()
+	if symbol == nil || symbol.ValueDeclaration() == nil || !ast.IsClassLike(symbol.ValueDeclaration()) {
+		return false
+	}
+	class := symbol.ValueDeclaration()
+	for _, member := range class.Members() {
+		if member.Kind != ast.KindClassStaticBlockDeclaration {
+			continue
+		}
+		for _, statement := range member.AsClassStaticBlockDeclaration().Body.Statements() {
+			if !ast.IsExpressionStatement(statement) {
+				continue
+			}
+			call := statement.Expression()
+			if !ast.IsCallExpression(call) || runtimeExportOf(c, call.Expression()) != "$schemaErrorMatcher" {
+				continue
+			}
+			args := call.Arguments()
+			if len(args) == 2 && args[0].Kind == ast.KindThisKeyword && ast.IsStringLiteral(args[1]) {
+				return true
+			}
+		}
+	}
+	return false
 }

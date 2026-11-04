@@ -107,6 +107,9 @@ func isObjectLikeMatcher(t *checker.Type) bool {
 // has its own customMatcher property. A static matcher inherited from a
 // superclass is not its own (decided details 67 and 93).
 func hasOwnPatternMatcher(c *checker.Checker, t *checker.Type) bool {
+	if hasRegisteredSchemaErrorMatcher(c, t) {
+		return true
+	}
 	symbol := t.Symbol()
 	var class *ast.Node
 	if symbol != nil && symbol.ValueDeclaration() != nil && ast.IsClassLike(symbol.ValueDeclaration()) {

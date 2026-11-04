@@ -200,6 +200,12 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Migrating an SSR entry left Vite's `/src/…` `serverEntry` or `clientEntry` URL pointing at the renamed TypeScript file. The codemod now follows those URLs in owned Vite configuration variants and records exact reversible edits.
 
+- Migration checks for reserved schema-error payloads now require tag matching: a child with a different `_tag` misses the base pattern, and its class upgrade preserves the same result.
+
+- Upgrading a `schema error` to a class could refuse the migration with `EK0704` at its extractor patterns. The checker now recognizes the own matcher that the migration installs, while inherited matchers remain excluded.
+
+- Nested Effect types keep their qualified spelling when shorthand would need new grouping; migration checks now cover both direct nesting and array boundaries.
+
 - Vite coverage counted private tail-delegation wrappers as extra functions or uncovered statements, especially in callbacks and throwing catch handlers. It now counts the authored functions and statements through the composed source map.
 - Repository migration checks could stop at invalid fixture lockfiles or package metadata before checking build provenance, declaration exits or test regressions. The fixtures now retain valid publication prerequisites and reach those checks.
 

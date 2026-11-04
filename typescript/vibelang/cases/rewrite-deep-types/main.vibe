@@ -1,3 +1,5 @@
 import "vibelang/platform/node"
-export type Deep = Effect.Effect<Effect.Effect<Effect.Effect<Effect.Effect<Effect.Effect<Effect.Effect<Effect.Effect<Effect.Effect<Effect.Effect<Effect.Effect<Effect.Effect<Effect.Effect<Effect.Effect<Effect.Effect<Effect.Effect<Effect.Effect<Effect.Effect<Effect.Effect<Effect.Effect<Effect.Effect<number>>>>>>>>>>>>>>>>>>>>;
+export type Deep = Effect.Effect<Array<Effect.Effect<Array<Effect.Effect<Array<Effect.Effect<Array<Effect.Effect<Array<Effect.Effect<Array<Effect.Effect<Array<Effect.Effect<Array<Effect.Effect<Array<Effect.Effect<Array<Effect.Effect<Array<Effect.Effect<Array<Effect.Effect<Array<Effect.Effect<Array<Effect.Effect<Array<Effect.Effect<Array<Effect.Effect<Array<Effect.Effect<Array<Effect.Effect<Array<Effect.Effect<Array<number>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>;
+// Detail 260/277: nested success slots retain qualification when shorthand needs new grouping.
+export type Grouped = Effect.Effect<Effect.Effect<Effect.Effect<Effect.Effect<Effect.Effect<Effect.Effect<Effect.Effect<Effect.Effect<Effect.Effect<Effect.Effect<Effect.Effect<Effect.Effect<Effect.Effect<Effect.Effect<Effect.Effect<Effect.Effect<Effect.Effect<Effect.Effect<Effect.Effect<Effect.Effect<number>>>>>>>>>>>>>>>>>>>>;
 export effect function main() { try Console.log("ok") }
