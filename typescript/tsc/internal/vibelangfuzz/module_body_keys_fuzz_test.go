@@ -19,7 +19,7 @@ import (
 // `@x/pkg/a/Port` (platform-body:deterministicKeys-virtual-path, t3code
 // desktop, 15 modules). This compares the compiler with itself on two inputs
 // the quote says must agree.
-const moduleBodyKeysQuote = "moving it to a sibling `.ts` file and replacing `from name` with that file's specifier changes no diagnostic, type, emitted statement, declaration or run-time observation"
+const moduleBodyKeysQuote = "moving it to a sibling `.ts` file (`.tsx` for a body in `.vibex`) with its external-module classification preserved and replacing `from name` with that file's specifier changes no diagnostic, type, emitted statement, declaration or run-time observation."
 
 func TestModuleBodyKeysQuoted(t *testing.T) {
 	if !strings.Contains(SpecText("001-functions.md"), moduleBodyKeysQuote) {

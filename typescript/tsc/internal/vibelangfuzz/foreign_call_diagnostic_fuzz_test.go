@@ -10,11 +10,12 @@ import (
 )
 
 const foreignDiagnosticTarget = "FuzzForeignCallDiagnostic"
-const foreignDiagnosticDefault = "Otherwise a callable declared in `.ts`, `.d.ts` or JavaScript has `unknown`, whether its type is written or inferred: functions, callable constants, class or interface methods, function-typed property signatures or fields, and each overload."
-const foreignDiagnosticRule = "| In effect code or a plain `catch` handler's parameter/default/destructuring initialization or body, a call, `new` expression, tagged template or class evaluation whose thrown type is not `never`. Wrap it: `try Effect.try(() => parse(s))` | `EK0403` |"
+const foreignDiagnosticDefault = "This section is the one definition of throw tracking; every other chapter refers to it. A callable declared outside VibeLang, in a `.ts`, `.js` or `.d.ts` file, an npm package or a `module` body (VIP-40), carries a thrown type by one rule, as TypeScript's own (VIP-4, amended 2026-11-02):"
+const foreignDiagnosticUntagged = "| no tag | `unknown` |"
+const foreignDiagnosticRule = "| In effect code, a call, `new` expression, tagged template or class evaluation whose thrown type is not `never`. Wrap it: `try Effect.try(() => parse(s))` | `EK0403` |"
 
 func TestForeignCallDiagnosticQuoted(t *testing.T) {
-	for _, quote := range []string{foreignDiagnosticDefault, foreignDiagnosticRule} {
+	for _, quote := range []string{foreignDiagnosticDefault, foreignDiagnosticUntagged, foreignDiagnosticRule} {
 		if !strings.Contains(SpecText(failuresChapter), quote) {
 			t.Fatalf("%s no longer says %q", failuresChapter, quote)
 		}

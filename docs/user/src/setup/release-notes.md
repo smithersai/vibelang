@@ -187,6 +187,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 ### Bugs fixed since 0.0.10
 
+- Foreign-call, module-key and pipe-edge checks could stop on retired spec wording. They now read the current rules while retaining unknown-throws, module-classification and open-arrow-binding assertions.
+
 - Service migration checks still cited the retired default-factory wording. They now cite the current cached native-service preservation and refusal contract while retaining every type and runtime check.
 
 - Declaration and import property checks still cited retired output and API-preservation wording. They now cite the native-twin and written-specifier rules while keeping their original assertions and corpus.

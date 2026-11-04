@@ -25,7 +25,7 @@ import (
 // none, compile cleanly and run to the value the tree evaluates to.
 var pipeEdgeQuotes = []string{
 	"an unparenthesized conditional at either end of a pipe",
-	"It is a Syntax Error if the `ShortCircuitExpression` of a `PipeExpression` is a `CatchExpression` whose handler is an `ArrowHandler`; the `|>` then belongs to the arrow's body",
+	"It is a Syntax Error if the input of a [PipeExpression](#pipeexpression) ends in an open arrow handler: a `CatchExpression` whose handler is an `ArrowHandler` with an expression body, or a `PipeExpression` whose `PipeBody` ends in one.",
 }
 
 func pipeEdgesAppendix(tb testing.TB) {
