@@ -45,7 +45,7 @@ import (
 // which spans the whole declaration.
 //
 // The checker reports what the parser accepts and a data type cannot hold
-// (data.go in package vibelang): no variants (EK2122), a variant named
+// (data.go in package vibelang): a variant named
 // $is or $match or a field named _tag
 // (EK2124), a member of a variant that is not a field (EK1606), more than
 // four type parameters (EK2801), a constrained one (EK2126), and a comma after a

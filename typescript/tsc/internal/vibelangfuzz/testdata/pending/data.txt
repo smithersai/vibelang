@@ -1,6 +1,4 @@
 # Chapter-backed match/data/schema gaps. Delete feature and corpus lines when XPASS.
-FuzzDataSpecRules feature:empty-data compiler VIP-16: empty data is rejected with EK2122 (decided detail 25); lane vip-core2
-FuzzDataSpecRules corpus:data-empty-data compiler VIP-16: empty data is rejected with EK2122 (decided detail 25); lane vip-core2; reproduction of feature:empty-data
 FuzzVIPDifferential exit:exit-tag/vip07.exhaustive-runtime-plain compiler VIP-7: ordinary try/catch does not catch the no-match TypeError; match must stay in its enclosing plain activation; lane vip-core2
 FuzzVIPDifferential compile:TS2551/vip07.intrinsic-alias-plain compiler VIP-7: resolved Option aliases are treated as missing Some/None value exports instead of intrinsic pattern syntax; lane vip-match
 FuzzVIPDifferential compile:TS2345/vip07.intrinsic-arity-plain compiler VIP-7: extractor arity mismatch must fail the match at runtime, but typed singleton checks/indexing produce compile errors; lane vip-match
@@ -11,8 +9,6 @@ FuzzVIPDifferential compile:TS2345/vip07.intrinsic-option-some-plain compiler VI
 FuzzVIPDifferential compile:TS2345/vip07.intrinsic-result-failure-plain compiler VIP-7: unknown subjects need the brand guard before the tag guard; generated tag checks reject unknown with TS2345; lane vip-match
 FuzzVIPDifferential compile:TS2345/vip07.intrinsic-result-success-plain compiler VIP-7: unknown subjects need the brand guard before the tag guard; generated tag checks reject unknown with TS2345; lane vip-match
 FuzzVIPDifferential compile:TS2339/vip07.local-option-plain compiler VIP-7: Symbol.customMatcher is missing from SymbolConstructor, so the specified matcher protocol cannot be used in typed code; lane vip-match
-FuzzVIPDifferential compile:EK2122/vip16.empty-data-plain compiler VIP-16: the permitted zero-variant data declaration still draws EK2122; lane vip-core2
-FuzzVIPDifferential corpus:data-vip16-empty-data-plain compiler VIP-16: minimized vip16.empty-data-plain probe; lane vip-core2
 FuzzVIPDifferential compile:TS2339/vip16.no-matcher-plain compiler VIP-16: Symbol.customMatcher is missing from SymbolConstructor, so the specified matcher protocol cannot be used in typed code; lane vip-match
 FuzzVIPDifferential compile:EK0102/vip07.async-match compiler VIP-7: async match remains unimplemented (TS1005/TS2552/TS2554); the enclosing effect await diagnostic is now EK0102 rather than EK4602; lane vip-match
 FuzzVIPDifferential compile:TS1005/vip07.async-match compiler VIP-7: vip07.async-match disagrees with its cited rule (compile:TS1005); lane vip-match

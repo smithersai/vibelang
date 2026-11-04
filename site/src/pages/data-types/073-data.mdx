@@ -52,6 +52,9 @@ Support for the new object patterns arrives with the compiler's VIP implementati
 
 `export default data D { … }` reports `EK1603`, including for generic data declarations. Declare the name, then write `export { D as default }`. This keeps the type and constructors under that name.
 
+
+A declaration may have no variants: `data Empty {}` has the type `never` and no constructible variants, as `Data.TaggedEnum<{}>` does in Effect. Generic empty declarations are allowed too.
+
 ## Generic data types
 
 ```vibe
@@ -223,7 +226,6 @@ const idle = LoadState.Idle()
 
 | Code | Cause | Fix |
 | --- | --- | --- |
-| EK2122 | A `data` declaration without variants, which the specification allows as `data Empty {}`; the current compiler still rejects it | Write a variant until the compiler accepts it |
 | `TS2300` | A variant or field declared twice | Rename one, or remove the duplicate |
 | EK2124 | A variant named `$is` or `$match`, a field named `_tag` | Rename it: the constructors object has its own `$is` and `$match`, and the constructor sets `_tag` |
 | `EK1606` | A parenthesized variant payload, or a payload member that is not a field: a method, a signature, or a field without a type | Write `A { name: Type }` or `A { name?: Type }` |

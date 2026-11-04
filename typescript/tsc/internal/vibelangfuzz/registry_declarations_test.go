@@ -36,7 +36,6 @@ var legacyDeclared = map[int32]string{
 	2119: "lane d-handlers",                                                                                                                  // handle_results.go
 	2120: "lane del-2",                                                                                                                       // declaration_forms.go
 	2121: "lane del-2",                                                                                                                       // declaration_forms.go
-	2122: "lane del-rest",                                                                                                                    // data.go
 	2124: "lane del-rest",                                                                                                                    // data.go
 	2127: "lane del-rest",                                                                                                                    // data.go
 	3008: "lane fix-diag-renumber; declaration only: the service-declaration fix still reports 0.0.10's EK3008; Appendix B's rule is EK0901", // fix_service_declarations.go

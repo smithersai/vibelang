@@ -21,7 +21,7 @@ import (
 // (parser/vibelang_data.go), so construction, $is, $match, equality and
 // hashing are Effect's. What VibeLang adds is checked here:
 //
-//   - the declaration's rules: at least one variant (EK2122), no name
+//   - the declaration's rules: no name
 //     Data.taggedEnum reserves (EK2124), only fields in
 //     a variant (EK1606), at most four type parameters (EK2801), no constraints (EK2126),
 //     and no comma between variants or fields (EK1013);
@@ -42,8 +42,6 @@ import (
 // with Data.taggedEnum matches the same way.
 
 var (
-	// EK2122: a data declaration with no variants. {0} is its name.
-	EK2122 = message(2122, errorCategory, "data {0} has no variants: a data type lists at least one.")
 	// EK2124: a name that Data.taggedEnum reserves: a variant named $is or $match. {0} is the name.
 	EK2124 = message(2124, errorCategory, "{0} cannot name a variant: Data.taggedEnum gives every data type its own {0}.")
 	// EK1606: a malformed variant or a payload member that is not a Field (VIP-16/detail 247).
@@ -68,7 +66,7 @@ var (
 )
 
 func init() {
-	for _, m := range []*Message{EK2122, EK2124, EK1606, EK2126, EK2801, EK2127, EK4706, EK4707} {
+	for _, m := range []*Message{EK2124, EK1606, EK2126, EK2801, EK2127, EK4706, EK4707} {
 		registry[m.Code] = m
 	}
 	fileChecks = append(fileChecks, checkData)
@@ -317,9 +315,6 @@ func checkData(c *checker.Checker, file *ast.SourceFile) {
 func checkDataDeclaration(c *checker.Checker, file *ast.SourceFile, alias *ast.Node) {
 	name := alias.Name().Text()
 	variants := parser.DataVariants(alias)
-	if len(variants) == 0 {
-		report(c, alias.Name(), EK2122, name)
-	}
 	for _, variant := range variants {
 		variantName := variant.Name().Text()
 		if slices.Contains(dataReserved, variantName) {

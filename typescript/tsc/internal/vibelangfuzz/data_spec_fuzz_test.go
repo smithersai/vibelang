@@ -343,6 +343,7 @@ func dataRules() []dataRule {
 	rules = append(rules, dataMemberSeparatorRules()...)
 	rules = append(rules, dataTypeParameterNewlineRules()...)
 	rules = append(rules, dataSchemaInitializerRules()...)
+	rules = append(rules, emptyDataNeighborhoodRules()...)
 	rules = append(rules, dataCoverageFlowRules()...)
 	rules = append(rules, dataGenericConstraintRules()...)
 	rules = append(rules, dataRegExpValueRules()...)
