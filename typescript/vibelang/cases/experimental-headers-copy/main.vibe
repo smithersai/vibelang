@@ -1,0 +1,12 @@
+// expect-result: {"same":true}
+import { ExperimentalBrowserHeaders } from "vibelang-runtime/experimental/platform-browser"
+import { nativeHeaders } from "./host.js"
+
+export const liveLayer = ExperimentalBrowserHeaders.layer
+export effect function main() {
+  provide Experimental.Headers.layerTest({ copy: input => Effect.succeed(input) }) {
+    const headers = try Experimental.Headers.Headers
+    const result = try headers.copy(nativeHeaders)
+    return { same: result === nativeHeaders }
+  }
+}

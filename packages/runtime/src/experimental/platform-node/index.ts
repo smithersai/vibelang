@@ -7,6 +7,9 @@
  * @experimental
  * @since 0.0.11
  */
+export * as ExperimentalNodeRequest from "./ExperimentalNodeRequest.js"
+export * as ExperimentalNodeStream from "./ExperimentalNodeStream.js"
+export * as ExperimentalNodeHeaders from "./ExperimentalNodeHeaders.js"
 export * as ExperimentalNodeCrypto from "./ExperimentalNodeCrypto.js"
 export * as ExperimentalNodeFileSystem from "./ExperimentalNodeFileSystem.js"
 export * as ExperimentalNodeHttpServer from "./ExperimentalNodeHttpServer.js"
@@ -15,3 +18,4 @@ export * as ExperimentalNodeProcess from "./ExperimentalNodeProcess.js"
 export * as ExperimentalNodeServices from "./ExperimentalNodeServices.js"
 export * as ExperimentalNodeStdio from "./ExperimentalNodeStdio.js"
 export * as ExperimentalNodeDns from "./ExperimentalNodeDns.js"
+export * as ExperimentalNodeChildProcess from "./ExperimentalNodeChildProcess.js"

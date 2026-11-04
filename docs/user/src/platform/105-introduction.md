@@ -54,6 +54,12 @@ Each Node.js or web call has an Effect replacement, which needs no import. `EK44
 | --- | --- | --- |
 | `fs.readFile` | `try (try FileSystem.FileSystem).readFileString(path)` | `NodeServices.layer` |
 | `os.tmpdir` | `try (try Experimental.Process.Process).temporaryDirectory` | `ExperimentalNodeServices.layer` |
+| `net.isIPv6` | `Experimental.NetAddress.isIPv6(address)` | none (pure) |
+| `child_process.spawn` with inherited stdio | `Experimental.ChildProcess.ChildProcess.runInherited(command, args, options)` | `ExperimentalNodeChildProcess.layer` |
+| `new Headers(headers)` | `Experimental.Headers.Headers.copy(headers)` | Node, Bun or browser experimental layer |
+| `Readable.fromWeb(response.body)` | `Experimental.NodeStream.NodeStream.fromWeb(body, { response, signal })` | Node or Bun experimental layer |
+| `new Request(url, request)` | `Experimental.Request.Request.atUrl(url, request)` | Node, Bun or browser experimental layer |
+| `os.tmpdir` | `try (try FileSystem.FileSystem).makeTempDirectory()` | `NodeServices.layer` |
 | `path.join` | `(try Path.Path).join(directory, name)` | `NodeServices.layer` |
 | `process.cwd` | `(try Path.Path).resolve()` | `NodeServices.layer` |
 | `child_process.execFileSync` | `try (try ChildProcessSpawner.ChildProcessSpawner).string(ChildProcess.make(command, args))` | `NodeServices.layer` |

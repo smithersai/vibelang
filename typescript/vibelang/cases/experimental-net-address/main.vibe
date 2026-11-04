@@ -1,0 +1,11 @@
+// expect-result: {"bare":true,"largeScope":true,"unicodeScope":false,"emptyScope":false,"mapped":true,"malformed":false}
+export effect function main() {
+  return {
+    bare: Experimental.NetAddress.isIPv6("::1"),
+    largeScope: Experimental.NetAddress.isIPv6("::1%4294967296"),
+    unicodeScope: Experimental.NetAddress.isIPv6("::1%💩"),
+    emptyScope: Experimental.NetAddress.isIPv6("::1%"),
+    mapped: Experimental.NetAddress.isIPv6("::ffff:127.0.0.1%eth0"),
+    malformed: Experimental.NetAddress.isIPv6("[::1]"),
+  }
+}

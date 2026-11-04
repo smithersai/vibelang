@@ -1,0 +1,12 @@
+// expect-result: {"sameBody":true}
+import { ExperimentalNodeStream } from "vibelang-runtime/experimental/platform-node"
+import { webBody, response, signal, readable } from "./host.js"
+
+export const liveLayer = ExperimentalNodeStream.layer
+export effect function main() {
+  provide Experimental.NodeStream.layerTest({ fromWeb: () => Effect.succeed(readable) }) {
+    const streams = try Experimental.NodeStream.NodeStream
+    const body = try streams.fromWeb(webBody, { response, signal })
+    return { sameBody: body === readable }
+  }
+}

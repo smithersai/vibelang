@@ -90,6 +90,7 @@ var platformServices = map[string]*platformService{
 	"SocketServerTls": {"the SocketServer service", "", "", `NodeSocketServer.layerTls(options) from "@effect/platform-node"`},
 	"DatagramSocket":  {"the DatagramSocket service", "", "", `NodeDatagramSocket.layer(options) from "@effect/platform-node"`},
 	"Dns":             {"the Dns service", "", "", `NodeDns.layer from "@effect/platform-node"`},
+	"ExperimentalNetAddress": {"the pure Experimental.NetAddress predicate, which needs no layer", "Experimental.NetAddress.isIPv6(address)", "", ""},
 	"NetAddress":      {"NetAddress, which needs no layer", "NetAddress.ipFromString(text)", "", ""},
 	"Worker": {"Worker and WorkerRunner", "", "",
 		`NodeWorker.layer(spawn) from "@effect/platform-node", or BrowserWorker.layer(spawn) from "@effect/platform-browser"`},
@@ -267,7 +268,7 @@ var platformAPIs = map[string]platformAPI{
 	"net.Server":       {"SocketServer", "", ""},
 	"net.isIP":         {"NetAddress", "", ""},
 	"net.isIPv4":       {"NetAddress", "", ""},
-	"net.isIPv6":       {"NetAddress", "", ""},
+	"net.isIPv6":       {"ExperimentalNetAddress", "", "Effect parses the address; this predicate preserves Node's numeric and ASCII zone syntax."},
 	"tls.createServer": {"SocketServerTls", "", ""},
 	"tls.Server":       {"SocketServerTls", "", ""},
 

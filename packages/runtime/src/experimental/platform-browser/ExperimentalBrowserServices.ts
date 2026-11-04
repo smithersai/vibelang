@@ -16,6 +16,7 @@ import type * as Document from "../Document.js"
 import type * as BrowserInfo from "../BrowserInfo.js"
 import type * as Window from "../Window.js"
 import type * as Crypto from "../Crypto.js"
+import type * as Headers from "../Headers.js"
 import type * as Locks from "../Locks.js"
 import type * as MediaQuery from "../MediaQuery.js"
 import * as ExperimentalBrowserAnimations from "./ExperimentalBrowserAnimations.js"
@@ -25,9 +26,12 @@ import * as ExperimentalBrowserResizeObserver from "./ExperimentalBrowserResizeO
 import * as ExperimentalBrowserDocument from "./ExperimentalBrowserDocument.js"
 import * as ExperimentalBrowserWindow from "./ExperimentalBrowserWindow.js"
 import * as ExperimentalBrowserInfo from "./ExperimentalBrowserInfo.js"
+import type * as Request from "../Request.js"
 import * as ExperimentalBrowserCrypto from "./ExperimentalBrowserCrypto.js"
 import * as ExperimentalBrowserLocks from "./ExperimentalBrowserLocks.js"
 import * as ExperimentalBrowserMediaQuery from "./ExperimentalBrowserMediaQuery.js"
+import * as ExperimentalBrowserHeaders from "./ExperimentalBrowserHeaders.js"
+import * as ExperimentalBrowserRequest from "./ExperimentalBrowserRequest.js"
 
 /**
  * The services of the browser bundle: the experimental `Crypto`, Effect's
@@ -47,6 +51,8 @@ export type ExperimentalBrowserServices =
   | Layer.Success<typeof ExperimentalBrowserCrypto.layer>
   | Locks.Locks
   | MediaQuery.MediaQuery
+  | Headers.Headers
+  | Request.Request
 
 /**
  * `ExperimentalBrowserCrypto.layer`, which provides the experimental `Crypto` and
@@ -66,5 +72,7 @@ export const layer: Layer.Layer<ExperimentalBrowserServices> = Layer.mergeAll(
   ExperimentalBrowserAudioContext.layer,
   ExperimentalBrowserCrypto.layer,
   ExperimentalBrowserLocks.layer,
-  ExperimentalBrowserMediaQuery.layer
+  ExperimentalBrowserMediaQuery.layer,
+  ExperimentalBrowserHeaders.layer,
+  ExperimentalBrowserRequest.layer
 )

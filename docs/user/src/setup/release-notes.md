@@ -14,6 +14,11 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - The `data` guide left multiline assertions ambiguous; it now explains how parentheses preserve an assertion whose type continues on another line.
 
 - Migration-only fixes could leave foreign calls unwrapped in effect code or reject a private callback that accepted the original throwing function. They now preserve those exceptions as defects and retain supported private callback contracts through a TypeScript module body.
+- Cancelling an inherited child process waited for its exit; `Experimental.ChildProcess.runInherited` now sends one signal and returns immediately while the child is still active.
+- Copying native `Headers` could normalize duplicate `Set-Cookie` values; `Experimental.Headers.copy` now uses the native constructor and returns an independent mutable copy.
+- Checking a scoped IPv6 address could reject Node-accepted zone names; `Experimental.NetAddress.isIPv6` now preserves the ASCII zone syntax accepted by Node.
+- An unread Web response body could stay uncancelled after response close; `Experimental.NodeStream.fromWeb` now owns the body eagerly and destroys it when the response closes.
+- Replacing a native `Request` URL required TypeScript; `Experimental.Request.atUrl` now preserves request options, body, headers and signal.
 - Migration batches still ran project-wide repairs before restoring unrelated files, making small retries slow in large packages. The flow now passes the selected files through `--only` and skips an empty batch.
 - Migration verification could report a missing declaration for a module returned to TypeScript when its package export kept a source `types` condition. Declaration snapshots now preserve that recorded source path and still reject changed types, documentation and missing provenance.
 

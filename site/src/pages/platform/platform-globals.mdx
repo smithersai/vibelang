@@ -419,3 +419,15 @@ effect function loadData() {
 ```
 
 A computed `import(specifier)` stays unchecked by this rule. Type-level `import(…)` queries keep their TypeScript meaning.
+
+For an inherited child whose cancellation must return without waiting for exit,
+`Experimental.ChildProcess.ChildProcess` provides `runInherited(command, args,
+\{ cwd, shell \})`. Provide `ExperimentalNodeChildProcess.layer` or
+`ExperimentalBunChildProcess.layer`. Ordinary commands, pipes and stdio streams
+use Effect's `ChildProcessSpawner`.
+
+For a native mutable copy of Web headers, `Experimental.Headers.Headers.copy` preserves duplicate-cookie behavior; provide `ExperimentalNodeHeaders.layer`, `ExperimentalBunHeaders.layer` or `ExperimentalBrowserHeaders.layer`.
+
+For a Web response body that must become a Node readable, `Experimental.NodeStream.NodeStream.fromWeb(body, { response, signal })` takes ownership eagerly and cancels the reader when the response closes. Provide the Node or Bun layer.
+
+To construct a native `Request` at a different URL while retaining its body, headers and signal, use `Experimental.Request.Request.atUrl(url, request)` with the Node, Bun or browser layer.

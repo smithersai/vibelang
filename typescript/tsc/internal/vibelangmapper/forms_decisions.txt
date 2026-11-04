@@ -3226,6 +3226,11 @@ typescript/vibelang/cases/experimental-animations/main.vibe:22:52 lambda effectF
 typescript/vibelang/cases/experimental-animations/main.vibe:22:58 lambda plain fallback
 typescript/vibelang/cases/experimental-animations/main.vibe:6:34 lambda plain annotation
 typescript/vibelang/cases/experimental-audio-context/main.vibe:15:23 byname program table
+typescript/vibelang/cases/experimental-child-process-inherited/main.vibe:15:63 lambda dual fallback
+typescript/vibelang/cases/experimental-child-process-inherited/main.vibe:18:63 lambda dual fallback
+typescript/vibelang/cases/experimental-child-process-inherited/main.vibe:21:63 lambda dual fallback
+typescript/vibelang/cases/experimental-child-process-inherited/main.vibe:22:12 lambda effectFn table
+typescript/vibelang/cases/experimental-child-process-inherited/main.vibe:22:24 lambda effectFn table
 typescript/vibelang/cases/experimental-computed-style/main.vibe:13:72 lambda plain fallback
 typescript/vibelang/cases/experimental-computed-style/main.vibe:14:40 lambda effectFn annotation
 typescript/vibelang/cases/experimental-document-helpers/main.vibe:20:21 lambda plain fallback
@@ -3240,6 +3245,7 @@ typescript/vibelang/cases/experimental-file-reader/main.vibe:28:12 lambda effect
 typescript/vibelang/cases/experimental-file-reader/main.vibe:28:35 lambda effectFn table
 typescript/vibelang/cases/experimental-file-reader/main.vibe:9:30 byname program table
 typescript/vibelang/cases/experimental-file-reader/main.vibe:9:55 lambda plain table
+typescript/vibelang/cases/experimental-headers-copy/main.vibe:7:50 lambda plain fallback
 typescript/vibelang/cases/experimental-locks/main.vibe:25:62 lambda effectFn table
 typescript/vibelang/cases/experimental-locks/main.vibe:25:79 lambda effectFn table
 typescript/vibelang/cases/experimental-locks/main.vibe:8:23 byname program table
@@ -3252,6 +3258,7 @@ typescript/vibelang/cases/experimental-module-services/main.vibe:18:22 byname pr
 typescript/vibelang/cases/experimental-module-services/main.vibe:28:16 byname program table
 typescript/vibelang/cases/experimental-module-services/main.vibe:49:85 byname program table
 typescript/vibelang/cases/experimental-module-services/main.vibe:9:28 lambda choice fallback
+typescript/vibelang/cases/experimental-node-stream-from-web/main.vibe:7:56 lambda dual fallback
 typescript/vibelang/cases/experimental-platform/main.vibe:17:35 byname program table
 typescript/vibelang/cases/experimental-platform/main.vibe:9:28 lambda choice fallback
 typescript/vibelang/cases/experimental-process-current-uid/main.vibe:19:12 lambda effectFn table
@@ -3273,6 +3280,7 @@ typescript/vibelang/cases/experimental-process/main.vibe:12:48 lambda effectFn t
 typescript/vibelang/cases/experimental-process/main.vibe:18:16 byname program table
 typescript/vibelang/cases/experimental-process/main.vibe:6:19 byname program table
 typescript/vibelang/cases/experimental-process/main.vibe:9:26 byname program table
+typescript/vibelang/cases/experimental-request-at-url/main.vibe:7:51 lambda plain fallback
 typescript/vibelang/cases/experimental-resize-observer/main.vibe:14:14 lambda effectFn keyword
 typescript/vibelang/cases/experimental-resize-observer/main.vibe:20:23 byname program table
 typescript/vibelang/cases/experimental-resize-observer/main.vibe:20:43 lambda effectFn annotation

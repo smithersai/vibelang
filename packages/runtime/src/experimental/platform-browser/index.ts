@@ -8,6 +8,7 @@
  */
 export * as ExperimentalBrowserAnimations from "./ExperimentalBrowserAnimations.js"
 export * as ExperimentalBrowserAudioContext from "./ExperimentalBrowserAudioContext.js"
+export * as ExperimentalBrowserRequest from "./ExperimentalBrowserRequest.js"
 export * as ExperimentalBrowserCrypto from "./ExperimentalBrowserCrypto.js"
 export * as ExperimentalBrowserDocument from "./ExperimentalBrowserDocument.js"
 export * as ExperimentalBrowserFileReader from "./ExperimentalBrowserFileReader.js"
@@ -17,3 +18,5 @@ export * as ExperimentalBrowserMediaQuery from "./ExperimentalBrowserMediaQuery.
 export * as ExperimentalBrowserResizeObserver from "./ExperimentalBrowserResizeObserver.js"
 export * as ExperimentalBrowserServices from "./ExperimentalBrowserServices.js"
 export * as ExperimentalBrowserWindow from "./ExperimentalBrowserWindow.js"
+
+export * as ExperimentalBrowserHeaders from "./ExperimentalBrowserHeaders.js"

@@ -7,6 +7,7 @@ VibeLang adds the few platform APIs that Effect does not have yet. They are expe
 | `Experimental.Encoding` | pure lenient base64 decode returning a typed result | none |
 | `Experimental.Dns` | Effect Dns extended only with direct authoritative-server TXT queries | Node; Worker TCP, or typed `Unsupported` |
 | `Experimental.FileSystem` | `access(path, { executable })`, `open(path, { nonBlocking })`, `File.chmod` | Node, Bun |
+| `Experimental.Headers` | `copy(input)` using native mutable Web Headers copies | Node, Bun, browser |
 | `Experimental.Crypto` | `hmac`, `sign`, `verify`, beside the members of Effect 4.0's `Crypto` | Node, Bun, browser |
 | `Experimental.Stdio` | Effect standard I/O plus `awaitInputClosed` without consuming input | Node, Bun |
 | `Experimental.Process` | the process id, platform, host name and other facts; `kill`, `isRunning`, `observeSignals` | Node, Bun |
@@ -21,6 +22,8 @@ VibeLang adds the few platform APIs that Effect does not have yet. They are expe
 | `Experimental.AudioContext` | `acquire`, an `AudioContext` that closes with the Scope | browser |
 
 `Experimental` is in scope in every `.vibe` file without an import, as Effect's modules are. A local value declaration or an import named `Experimental` shadows it in expressions. A local type alias or interface keeps its type meaning without hiding the implicit value namespace. TypeScript imports the same modules from `vibelang-runtime/experimental`, or one module from its subpath, such as `vibelang-runtime/experimental/FileSystem`.
+
+Pure additions, such as `Experimental.NetAddress`, are ordinary functions: no service key, `try` or provider is needed. The following service rules apply to additions that access a platform.
 
 ## How they work
 
@@ -171,6 +174,18 @@ effect function awaitTransportInputClosed() {
 `Experimental.Stdio.Service` extends Effect's `Stdio.Stdio` interface; `Experimental.Stdio.Stdio` is a distinct service key. `Experimental.Stdio.make(stdio, { awaitInputClosed })` keeps Effect's argument effects, sinks, terminal facts and input stream unchanged. The Node and Bun experimental bundles also include this extension. There is no browser layer.
 
 `Experimental.Stdio.layerTest()` supplies Effect's test standard I/O and an already-completed closure Effect. Override `awaitInputClosed` and the standard members a test needs. A pending or failing transport can be modeled with an injected Effect without native stdin.
+
+
+## NetAddress
+
+`Experimental.NetAddress.isIPv6(input)` is a pure `string => boolean` predicate with Node's `net.isIPv6` acceptance, including scoped literals. It delegates bare-address parsing to Effect; its only added rule is a nonempty zone of ASCII letters, digits, `-`, `.` or `:`, without numeric conversion or bounds. It does not normalize the address or resolve interface names.
+
+```vibe
+const valid = Experimental.NetAddress.isIPv6("fe80::1%eth0")
+const largeScope = Experimental.NetAddress.isIPv6("::1%4294967296")
+```
+
+Both are `true`. `"::1%💩"` and `"::1%eth_0"` are `false`, matching Node. Effect's scoped parser deliberately has a different scope contract, including unsigned 32-bit numeric scopes and broader named zones. Use Effect's `NetAddress.ipv6FromString` when decoding a bare address; this addition is for the Node-compatible predicate. No Node import, platform layer or fake service is needed, in a browser, worker or server.
 
 ## Process
 
@@ -524,6 +539,63 @@ Each fact is an Effect that cannot fail, as `Experimental.Process`'s are:
 ## ExperimentalNodeHttpServer
 
 `NodeHttpServer.layer` from `@effect/platform-node` takes Node's `createServer`, and a `.vibe` file does not import `node:http` as a value. `ExperimentalNodeHttpServer.layer({ port })` is Effect's layer with that argument supplied, and `layerConfig({ port: Config.Port("PORT") })` reads the options from `Config`. It adds no service: it provides Effect's `HttpServer`. A server that needs its own `createServer` options belongs in a `.ts` file. Bun's `BunHttpServer.layer({ port })` takes no constructor, so it has no such layer.
+
+
+## ChildProcess
+
+Use Effect's `ChildProcessSpawner` for ordinary commands, pipes and stdio
+streams. Its scoped cleanup waits for exit. When inherited stdio must preserve
+synchronous, non-waiting cancellation, use `Experimental.ChildProcess`:
+
+```vibe
+// inherited.vibe
+// run: provide Experimental.ChildProcess.layerTest() { try Console.log(try install()) }
+effect function install() {
+  const child = try Experimental.ChildProcess.ChildProcess
+  return try child.runInherited("package-manager", ["install"], { cwd: "/test/work", shell: false })
+}
+// Output: 0
+```
+
+`runInherited` starts only when executed. It inherits stdio and leaves the native
+non-detached default. `cwd` is required; `shell` defaults to `false`. The
+result is the native `exit` event's code, including `null` for signal termination;
+the caller decides how to report nonzero or nullable status. Native asynchronous
+errors retain their `Error` identity; synchronous construction exceptions are
+defects.
+
+Interrupting the pending Effect calls the native argument-free `kill()` once
+only when `exitCode === null && !killed`. It does not wait for exit, escalate,
+unreference the child, or signal its process group. Native event listeners
+continue to handle late errors as in the callback contract. No new `Scope`
+requirement is added.
+
+Provide `ExperimentalNodeChildProcess.layer` or
+`ExperimentalBunChildProcess.layer` at the boundary; their experimental service
+bundles include it. `Experimental.ChildProcess.layerTest()` returns exit code
+zero without starting a process. Override `runInherited` for status or error
+tests. This capability adds the cancellation contract, not another command
+parser or stream implementation.
+
+
+## Headers
+
+`Experimental.Headers.copy(input)` constructs a native mutable `Headers` object when the Effect runs. It preserves the native constructor's handling of duplicate `Set-Cookie` values and returns an independent copy. Provide `ExperimentalNodeHeaders.layer`, `ExperimentalBunHeaders.layer` or `ExperimentalBrowserHeaders.layer`; their service bundles include the corresponding layer.
+
+```vibe
+effect function copyHeaders(input: Headers) {
+  const headers = try Experimental.Headers.Headers
+  return try headers.copy(input)
+}
+```
+
+## NodeStream
+
+`Experimental.NodeStream.fromWeb(body, { response, signal })` eagerly takes ownership of a Web response body when the Effect runs and returns a Node-compatible readable. A response `close` destroys that readable, which cancels the underlying reader even if no Node consumer has started reading. Its close listener is removed when the readable closes. Provide `ExperimentalNodeStream.layer` or `ExperimentalBunNodeStream.layer`; both service bundles include it.
+
+## Request
+
+`Experimental.Request.atUrl(url, existingRequest)` constructs a native `Request` at a replacement URL while preserving the existing request's native initialization, including its body, headers and signal. Construction happens when the Effect runs, so native constructor errors remain defects. Provide `ExperimentalNodeRequest.layer`, `ExperimentalBunRequest.layer` or `ExperimentalBrowserRequest.layer`; the service bundles include them.
 
 ## When Effect ships them
 

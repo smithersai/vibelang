@@ -1,0 +1,129 @@
+{
+  "key": "foldkit-create-app-nonwaiting-child",
+  "source": {
+    "repository": "foldkit/foldkit",
+    "revision": "b702a5efbb74",
+    "path": "packages/create-foldkit-app/src/utils/packages.ts",
+    "blob": "863a7fb48c7ea008cacf823d905957f5d92bdb2d",
+    "sha256": "0234d90945dce5bfc11483654fbfa652fa29a098dadf3cb51db8766d655b4188"
+  },
+  "original": "const runCommand = (\n  command: string,\n  args: ReadonlyArray<string>,\n  cwd: string,\n): Effect.Effect<void, Error> =>\n  Effect.callback<void, Error>(\n    (resume: (effect: Effect.Effect<void, Error>) => void) => {\n      const child = spawn(command, [...args], {\n        cwd,\n        shell: isWindows,\n        stdio: 'inherit',\n      })\n\n      child.on('error', error => resume(Effect.fail(error)))\n\n      child.on('exit', code => {\n        if (code === 0) {\n          resume(Effect.void)\n        } else {\n          resume(Effect.fail(new Error(`${command} exited with code ${code}`)))\n        }\n      })\n      // NOTE: SIGTERM only \u2014 the Effect.callback finalizer is sync so we\n      // can't escalate to SIGKILL. On Windows with shell:true the signal\n      // hits cmd.exe but doesn't propagate to the package manager.\n      return Effect.sync(() => {\n        if (child.exitCode === null && !child.killed) {\n          child.kill()\n        }\n      })\n    },\n  )",
+  "models": [
+    {
+      "events": [],
+      "initialCode": null,
+      "initialKilled": false,
+      "killResult": true,
+      "windows": false,
+      "args": [
+        "install"
+      ],
+      "sync": "none"
+    },
+    {
+      "events": [
+        {
+          "tag": "exit",
+          "code": 0
+        }
+      ],
+      "initialCode": null,
+      "initialKilled": false,
+      "killResult": true,
+      "windows": false,
+      "args": [
+        "install"
+      ],
+      "sync": "none"
+    },
+    {
+      "events": [
+        {
+          "tag": "exit",
+          "code": 2
+        }
+      ],
+      "initialCode": null,
+      "initialKilled": false,
+      "killResult": true,
+      "windows": false,
+      "args": [
+        "install"
+      ],
+      "sync": "none"
+    },
+    {
+      "events": [
+        {
+          "tag": "exit",
+          "code": null
+        }
+      ],
+      "initialCode": null,
+      "initialKilled": false,
+      "killResult": true,
+      "windows": false,
+      "args": [
+        "install"
+      ],
+      "sync": "none"
+    },
+    {
+      "events": [
+        {
+          "tag": "error",
+          "code": 0
+        }
+      ],
+      "initialCode": null,
+      "initialKilled": false,
+      "killResult": true,
+      "windows": false,
+      "args": [
+        "install"
+      ],
+      "sync": "none"
+    },
+    {
+      "events": [
+        {
+          "tag": "exit",
+          "code": 0
+        },
+        {
+          "tag": "error",
+          "code": 0
+        }
+      ],
+      "initialCode": null,
+      "initialKilled": false,
+      "killResult": true,
+      "windows": false,
+      "args": [
+        "install"
+      ],
+      "sync": "none"
+    },
+    {
+      "events": [
+        {
+          "tag": "error",
+          "code": 0
+        },
+        {
+          "tag": "exit",
+          "code": 0
+        }
+      ],
+      "initialCode": null,
+      "initialKilled": false,
+      "killResult": true,
+      "windows": false,
+      "args": [
+        "install"
+      ],
+      "sync": "none"
+    }
+  ],
+  "oracle": "Run the frozen original Effect.callback against each fake host and compare the migrated caller over the Experimental service. The original sends one argument-free kill only on cancellation when exitCode is null and killed is false; it never waits for another event."
+}

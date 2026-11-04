@@ -7,14 +7,22 @@
  */
 import * as EffectBunServices from "@effect/platform-bun/BunServices"
 import * as Layer from "effect/Layer"
+import type * as ChildProcess from "../ChildProcess.js"
 import type * as Crypto from "../Crypto.js"
+import type * as Headers from "../Headers.js"
 import type * as FileSystem from "../FileSystem.js"
+import type * as NodeStream from "../NodeStream.js"
 import * as CryptoExtension from "../internal/crypto.js"
 import * as FileSystemExtension from "../internal/nodeFileSystem.js"
 import type * as Process from "../Process.js"
 import type * as Stdio from "../Stdio.js"
 import * as StdioExtension from "../internal/stdio.js"
+import type * as Request from "../Request.js"
+import * as ExperimentalBunChildProcess from "./ExperimentalBunChildProcess.js"
+import * as ExperimentalBunHeaders from "./ExperimentalBunHeaders.js"
+import * as ExperimentalBunNodeStream from "./ExperimentalBunNodeStream.js"
 import * as ExperimentalBunProcess from "./ExperimentalBunProcess.js"
+import * as ExperimentalBunRequest from "./ExperimentalBunRequest.js"
 
 /**
  * The services of `@effect/platform-bun`'s `BunServices` and the
@@ -24,10 +32,14 @@ import * as ExperimentalBunProcess from "./ExperimentalBunProcess.js"
  */
 export type ExperimentalBunServices =
   | EffectBunServices.BunServices
+  | ChildProcess.ChildProcess
   | Crypto.Crypto
+  | Headers.Headers
   | FileSystem.FileSystem
+  | NodeStream.NodeStream
   | Process.Process
   | Stdio.Stdio
+  | Request.Request
 
 /**
  * `@effect/platform-bun`'s `BunServices.layer` plus the experimental
@@ -41,6 +53,10 @@ export type ExperimentalBunServices =
  */
 export const layer: Layer.Layer<ExperimentalBunServices> = Layer.provideMerge(
   Layer.mergeAll(
+    ExperimentalBunChildProcess.layer,
+    ExperimentalBunHeaders.layer,
+    ExperimentalBunNodeStream.layer,
+    ExperimentalBunRequest.layer,
     CryptoExtension.layer,
     FileSystemExtension.layer,
     ExperimentalBunProcess.layer,

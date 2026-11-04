@@ -1,0 +1,32 @@
+// expect-result: {"defaultCode":0,"nonzero":7,"signaled":null,"sameError":true}
+import { ExperimentalNodeChildProcess } from "vibelang-runtime/experimental/platform-node"
+import { nativeFailure } from "./host.js"
+
+export const liveLayer = ExperimentalNodeChildProcess.layer
+
+effect function run() {
+  const child = try Experimental.ChildProcess.ChildProcess
+  return try child.runInherited("tool", ["install"], { cwd: "/test/work", shell: false })
+}
+effect function defaultCode() {
+  provide Experimental.ChildProcess.layerTest() { return try run() }
+}
+effect function nonzero() {
+  provide Experimental.ChildProcess.layerTest({ runInherited: () => Effect.succeed(7) }) { return try run() }
+}
+effect function signaled() {
+  provide Experimental.ChildProcess.layerTest({ runInherited: () => Effect.succeed(null) }) { return try run() }
+}
+effect function sameError() {
+  provide Experimental.ChildProcess.layerTest({ runInherited: () => Effect.fail(nativeFailure) }) {
+    return run() catch (error) => error === nativeFailure
+  }
+}
+export effect function main() {
+  return {
+    defaultCode: try defaultCode(),
+    nonzero: try nonzero(),
+    signaled: try signaled(),
+    sameError: try sameError(),
+  }
+}

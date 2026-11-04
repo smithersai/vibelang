@@ -1,0 +1,56 @@
+{
+  "key": "foldkit-node-response-close",
+  "source": {
+    "repository": "foldkit/foldkit",
+    "revision": "b702a5efbb74",
+    "path": "packages/node/src/node.ts",
+    "blob": "e7b55c61f6fa5226df5bd876914278bbf4e2b84b",
+    "sha256": "3f40071eecebe1e0ab9396fd259e544717a7f59bf5f4c1426df7f570efef11da"
+  },
+  "original": "export function originalBridge(response, nodeResponse, signal) {\n    const webReader = response.body.getReader()\n    const nodeBody = Readable.fromWeb(\n      new ReadableStream<Uint8Array>({\n        async pull(controller) {\n          const chunk = await webReader.read()\n          if (chunk.done) {\n            controller.close()\n          } else {\n            controller.enqueue(chunk.value)\n          }\n        },\n        cancel: reason => webReader.cancel(reason),\n      }),\n    )\n    const destroyBody = () => nodeBody.destroy()\n    nodeResponse.once('close', destroyBody)\n    nodeBody.once('close', () => nodeResponse.off('close', destroyBody))\n    if (signal.aborted) {\n      nodeBody.destroy()\n    }\n\n    return nodeBody\n}\n",
+  "models": [
+    {
+      "chunks": [
+        [
+          1,
+          2
+        ]
+      ],
+      "readReject": false,
+      "cancelReject": false,
+      "aborted": false,
+      "closeFirst": true,
+      "repeatClose": false,
+      "toggleAbort": false,
+      "consume": false
+    },
+    {
+      "chunks": [],
+      "readReject": false,
+      "cancelReject": false,
+      "aborted": true,
+      "closeFirst": false,
+      "repeatClose": true,
+      "toggleAbort": false,
+      "consume": false
+    },
+    {
+      "chunks": [
+        [
+          3
+        ],
+        [
+          4
+        ]
+      ],
+      "readReject": false,
+      "cancelReject": false,
+      "aborted": false,
+      "closeFirst": false,
+      "repeatClose": false,
+      "toggleAbort": true,
+      "consume": true
+    }
+  ],
+  "oracle": "Execute the exact original bridge and the service with the same native Web/Node primitives. Compare eager reader/read ownership, bytes, cancellation/errors and response-listener removal; HEAD never needs a Node pull."
+}

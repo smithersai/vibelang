@@ -1,0 +1,24 @@
+{
+  "key": "foldkit-native-response-headers",
+  "source": {
+    "repository": "foldkit/foldkit",
+    "revision": "b702a5efbb74",
+    "path": "packages/node/src/node.ts",
+    "expression": "new Headers(response.headers)"
+  },
+  "pairs": [
+    [
+      "set-cookie",
+      "session=a; Path=/"
+    ],
+    [
+      "set-cookie",
+      "session=b; Path=/other"
+    ],
+    [
+      "x-foldkit",
+      "native"
+    ]
+  ],
+  "oracle": "Native Headers constructor preserves its own duplicate cookies, normalization and mutable independent copy; Effect response conversion is an intentionally rejected alternative."
+}

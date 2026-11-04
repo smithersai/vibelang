@@ -305,6 +305,8 @@ and a worker. The required mode fails if Chromium is missing; ordinary runtime
 test runs report the browser tests as skipped when it is unavailable. Browser
 fixture failures include page errors and console errors.
 
+`vibelang-runtime/experimental/NetAddress` exports the pure `isIPv6` predicate. It delegates address grammar to Effect and preserves Node-compatible scoped literals without a Node import, service or layer.
+
 ## Fast calls without types
 
 The text-only projector (decision (B)) can't see types, so `$isRun`, `$direct`,

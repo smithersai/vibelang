@@ -1,0 +1,12 @@
+// expect-result: {"same":true}
+import { ExperimentalBrowserRequest } from "vibelang-runtime/experimental/platform-browser"
+import { nativeRequest } from "./host.js"
+
+export const liveLayer = ExperimentalBrowserRequest.layer
+export effect function main() {
+  provide Experimental.Request.layerTest({ atUrl: (_url, input) => Effect.succeed(input) }) {
+    const requests = try Experimental.Request.Request
+    const result = try requests.atUrl("https://target.invalid/b", nativeRequest)
+    return { same: result === nativeRequest }
+  }
+}

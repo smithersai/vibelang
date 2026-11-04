@@ -8,14 +8,22 @@
  */
 import * as EffectNodeServices from "@effect/platform-node/NodeServices"
 import * as Layer from "effect/Layer"
+import type * as ChildProcess from "../ChildProcess.js"
 import type * as Crypto from "../Crypto.js"
+import type * as Headers from "../Headers.js"
 import type * as FileSystem from "../FileSystem.js"
+import type * as NodeStream from "../NodeStream.js"
 import * as CryptoExtension from "../internal/crypto.js"
 import * as FileSystemExtension from "../internal/nodeFileSystem.js"
 import type * as Process from "../Process.js"
 import type * as Stdio from "../Stdio.js"
 import * as StdioExtension from "../internal/stdio.js"
+import type * as Request from "../Request.js"
+import * as ExperimentalNodeChildProcess from "./ExperimentalNodeChildProcess.js"
+import * as ExperimentalNodeHeaders from "./ExperimentalNodeHeaders.js"
+import * as ExperimentalNodeStream from "./ExperimentalNodeStream.js"
 import * as ExperimentalNodeProcess from "./ExperimentalNodeProcess.js"
+import * as ExperimentalNodeRequest from "./ExperimentalNodeRequest.js"
 
 /**
  * The services of `@effect/platform-node`'s `NodeServices` and the
@@ -25,10 +33,14 @@ import * as ExperimentalNodeProcess from "./ExperimentalNodeProcess.js"
  */
 export type ExperimentalNodeServices =
   | EffectNodeServices.NodeServices
+  | ChildProcess.ChildProcess
   | Crypto.Crypto
+  | Headers.Headers
   | FileSystem.FileSystem
+  | NodeStream.NodeStream
   | Process.Process
   | Stdio.Stdio
+  | Request.Request
 
 /**
  * `@effect/platform-node`'s `NodeServices.layer` plus the experimental
@@ -42,6 +54,10 @@ export type ExperimentalNodeServices =
  */
 export const layer: Layer.Layer<ExperimentalNodeServices> = Layer.provideMerge(
   Layer.mergeAll(
+    ExperimentalNodeChildProcess.layer,
+    ExperimentalNodeHeaders.layer,
+    ExperimentalNodeStream.layer,
+    ExperimentalNodeRequest.layer,
     CryptoExtension.layer,
     FileSystemExtension.layer,
     ExperimentalNodeProcess.layer,

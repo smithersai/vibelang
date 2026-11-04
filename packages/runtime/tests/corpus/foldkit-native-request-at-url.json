@@ -1,0 +1,17 @@
+{
+  "key": "foldkit-native-request-at-url",
+  "source": {
+    "repository": "foldkit/foldkit",
+    "revision": "b702a5efbb74",
+    "path": "packages/node/src/node.ts",
+    "expression": "new Request(requestUrl, webRequest)"
+  },
+  "urls": [
+    "https://target.invalid/b",
+    "https://TARGET.invalid:443/a%20b?q=%E2%9C%93",
+    "data:text/plain,hello",
+    "not an absolute url",
+    "http://["
+  ],
+  "oracle": "Compare with the native constructor, including body identity/use, native init metadata, headers, following AbortSignal, and constructor failures. HTTP-model reconstruction is a rejected mutation."
+}

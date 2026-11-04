@@ -16,6 +16,7 @@ const platformTypes = `declare module "node:fs/promises" {
 }
 declare module "node:path" { export function join(...paths: string[]): string }
 declare module "node:child_process" { export function execFileSync(command: string, args: string[]): string }
+declare module "node:net" { export function isIPv6(address: string): boolean }
 declare module "node:http" { export function createServer(): unknown }
 declare module "node:os" { export function tmpdir(): string; export function hostname(): string; export function uptime(): number; export function homedir(): string }
 declare module "node:events" { export function once(emitter: unknown, name: string): Promise<unknown[]> }
@@ -83,6 +84,12 @@ export const run = () => execFileSync("git", ["status"])`, []string{
 			"fetch is platform code, which VibeLang code does not use directly.",
 			"Use HttpClient:   HttpClient.get(url)",
 			`Provide it in main with FetchHttpClient.layer from "effect/http", or NodeHttpClient.layerUndici from "@effect/platform-node".`,
+		}},
+		{"scoped IPv6", `import { isIPv6 } from "node:net"
+export const run = (address: string) => isIPv6(address)`, []string{
+			"isIPv6 from node:net is platform code, which a .vibe file does not import as a value.",
+			"Use the pure Experimental.NetAddress predicate, which needs no layer:   Experimental.NetAddress.isIPv6(address)",
+			"Effect parses the address; this predicate preserves Node's numeric and ASCII zone syntax.",
 		}},
 		{"http server", `import { createServer } from "node:http"
 export const run = () => createServer()`, []string{

@@ -17,10 +17,10 @@ An agent that writes VibeLang loads the skill first: its forms, rules and idioms
 
 | Load | Tokens |
 | --- | ---: |
-| The VibeLang skill, `packages/compiler/skills/vibelang/SKILL.md` | 4,881 |
-| The skill and the [cheat sheet](115-cheat-sheet.md) | 16,511 |
+| The VibeLang skill, `packages/compiler/skills/vibelang/SKILL.md` | 5,140 |
+| The skill and the [cheat sheet](115-cheat-sheet.md) | 16,770 |
 | The skill and the user guide (142 pages) | 480,000 |
-| The user guide alone | 470,000 |
+| The user guide alone | 480,000 |
 | The specification (11 chapters) | 250,000 |
 | The decision log, `docs/design/history/DECISIONS.md` | 140,000 |
 
@@ -250,13 +250,13 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [Formatter](../schema/103-formatter.md) | 540 |
 | [Schema Compilers](../schema/104-compilers.md) | 2,200 |
 | **Platform** | **22,000** |
-| [Introduction](../platform/105-introduction.md) | 3,600 |
+| [Introduction](../platform/105-introduction.md) | 3,800 |
 | [FileSystem](../platform/106-file-system.md) | 1,300 |
 | [Path](../platform/107-path.md) | 950 |
 | [PlatformLogger](../platform/108-platformlogger.md) | 790 |
 | [Runtime](../platform/109-runtime.md) | 1,400 |
 | [Terminal](../platform/110-terminal.md) | 1,600 |
-| [Platform globals in VibeLang](../platform/platform-globals.md) | 8,900 |
+| [Platform globals in VibeLang](../platform/platform-globals.md) | 9,100 |
 | [Cloudflare Workers](../platform/cloudflare-workers.md) | 760 |
 | [Alchemy](../platform/alchemy.md) | 2,500 |
 | **All 101 pages** | **180,000** |
@@ -272,8 +272,8 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [Cheat sheet](115-cheat-sheet.md) | 12,000 |
 | [Pattern matching with match and is](116-match-and-is.md) | 11,000 |
 | [Diagnostic code map](diagnostic-code-map.md) | 3,300 |
-| [Experimental platform APIs](118-experimental-platform-apis.md) | 9,500 |
-| **All 8 pages** | **51,000** |
+| [Experimental platform APIs](118-experimental-platform-apis.md) | 10,000 |
+| **All 8 pages** | **52,000** |
 
 ### Specification
 
