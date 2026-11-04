@@ -126,4 +126,4 @@ If you use a coding agent, run `npx vibelang agents init` to give it the VibeLan
 
 Set up the build: [React](react.md), [Vue](vue.md), or [Svelte](svelte.md) with Vite; [Vite and Vitest](vite.md) for other Vite or Vitest projects; [Build with the vibelang CLI](vibelang-cli.md) without a bundler. For another bundler, see step 3 of [Set up VibeLang](../setup.md).
 
-Migration keeps a `Data.TaggedError` class when `EK4830` says `No quick fix:` because its published tag differs from the class name. That refusal is accepted by the style gate; a diagnostic with an available safe repair still blocks conversion.
+Migration keeps a `Data.TaggedError` class when `EK4830` says `No quick fix:` because its published tag differs from the class name. That refusal is accepted by the style gate; a diagnostic with an available safe repair still blocks conversion. It also keeps an `Effect.Effect<A, E, R>` type whose shorthand would need parentheses the source did not write, such as `Effect.Effect<string | undefined, unknown, Http>`; `EK4833` then says `No quick fix: keep the qualified Effect type here`, and the style gate accepts it.

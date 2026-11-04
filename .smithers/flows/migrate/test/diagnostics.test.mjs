@@ -167,3 +167,27 @@ test("CRLF diagnostic streams preserve errors, locations and repair notes", () =
   assert.equal(diagnostics[2].file, null)
   assert.doesNotThrow(() => assertFinished({ code: 1, stdout: output, stderr: "" }))
 })
+
+// Alchemy OidcToken and neon LanguageModel (stale-alchemy, 2026-11-04): an
+// Effect type with a union slot keeps its qualified spelling, because the
+// shorthand would add grouping the source did not write (decided detail
+// 260). EK4833 says so with "No quick fix: keep", and that code is what the
+// migration means to keep, so it must not return the module. A fixable
+// EK4833 still does.
+test("styleProblems keeps an EK4833 the compiler says to keep, and rejects a fixable one", () => {
+  const corpus = JSON.parse(readFileSync(new URL("./corpus/alchemy-ek4833-kept-grouping.json", import.meta.url), "utf8"))
+  const diagnostics = parseDiagnostics(corpus.output)
+  assert.equal(diagnostics.filter((d) => d.code === "EK4833").length, 3)
+  assert.deepEqual(styleProblems(diagnostics, ["main.vibe"]).map((d) => d.line), [7])
+})
+
+test("styleProblems still returns other EK48 refusals, so a refusal bug stays visible", () => {
+  const diagnostics = parseDiagnostics([
+    "src/a.vibe(3,9): warning EK4834: try Effect.succeed(v) is TypeScript's spelling; write v.",
+    "  No quick fix: the fixed program would report TS1109.",
+    "src/b.vibe(3,9): warning EK4833: This Effect type is TypeScript's spelling of an Effect type; write the A!E!R shorthand with its required grouping.",
+    "  No quick fix: some other reason this repair is refused.",
+    ""
+  ].join("\n"))
+  assert.deepEqual(styleProblems(diagnostics, ["src/a.vibe", "src/b.vibe"]).map((d) => d.file), ["src/a.vibe", "src/b.vibe"])
+})

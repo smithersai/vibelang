@@ -1,0 +1,6 @@
+{
+  "key": "alchemy-ek4833-kept-grouping",
+  "source": "alchemy packages/alchemy/src/Auth/OidcToken.vibe:55 and packages/neon/src/LanguageModel.vibe:94, minimized; native RC6 vibelang 8341e3fa217c --noEmit",
+  "vibe": "import * as Effect from \"effect/Effect\"\ninterface Http { readonly get: (url: string) => string }\nexport const probes: ReadonlyArray<{\n  readonly probe: (audience: string | undefined) => Effect.Effect<string | undefined, unknown, Http>\n}> = []\nexport const make = (): Effect.Effect<number, never, Http | Date> => Effect.succeed(1)\nexport type Plain = Effect.Effect<number, Error, Http>\n",
+  "output": "main.vibe(4,53): warning EK4833: This Effect type is TypeScript's spelling of an Effect type; write the A!E!R shorthand with its required grouping.\n  No quick fix: keep the qualified Effect type here to preserve grouping and declaration output.\nmain.vibe(6,25): warning EK4833: This Effect type is TypeScript's spelling of an Effect type; write the A!E!R shorthand with its required grouping.\n  No quick fix: keep the qualified Effect type here to preserve grouping and declaration output.\nmain.vibe(7,21): warning EK4833: Effect.Effect<number, Error, Http> is TypeScript's spelling of an Effect type; write number!Error!Http.\n  Its quick fix writes number!Error!Http; vibelang --fix applies every such fix in the project.\n"
+}

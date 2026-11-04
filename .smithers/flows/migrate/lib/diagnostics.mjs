@@ -84,10 +84,14 @@ export function summarize(diagnostics, files = []) {
  * requirement, and those member contracts are the service's published
  * declaration, which verify already holds to the TypeScript's. Dropping the
  * requirement, as its advice says, would change the API (alchemy-42).
+ * So does an EK4833 whose note says to keep the qualified Effect type: the
+ * shorthand would need parentheses the source did not write, and decided
+ * detail 260 keeps Effect.Effect there. Any other EK4833 refusal still counts.
  */
 export function styleProblems(diagnostics, files, preservedErrors = new Set()) {
   const inFiles = new Set(files)
-  const refused = (d) => ["EK4805", "EK4830", "EK4831", "EK4837"].includes(d.code) && d.notes.some((note) => note.startsWith("No quick fix"))
+  const refused = (d) => (["EK4805", "EK4830", "EK4831", "EK4837"].includes(d.code) && d.notes.some((note) => note.startsWith("No quick fix"))) ||
+    (d.code === "EK4833" && d.notes.some((note) => note.startsWith("No quick fix: keep the qualified Effect type here")))
   // The class a diagnostic names first: `E extends …`, `E overrides …`.
   const className = (d) => /^(\S+) (?:extends|overrides) /.exec(d.message)?.[1]
   const keptClasses = new Set(diagnostics.filter((d) => d.code === "EK4837" && refused(d)).map((d) => `${d.file}\0${className(d)}`))
