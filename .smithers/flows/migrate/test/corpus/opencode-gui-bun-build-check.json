@@ -1,0 +1,10 @@
+{
+  "script": "bun check --no-script -b",
+  "source": "packages/gui-plugins/package.json",
+  "importer": "src/browser/address.test.ts",
+  "specifier": "./history",
+  "migrated": "src/browser/history.vibe",
+  "moduleResolution": "bundler",
+  "before": "The original root typecheck passes; the migrated root reaches stock Bun build checking and reports TS2307 in unchanged tests.",
+  "expected": "Select VibeLang's build mode, preserving project selection and authored noEmit or emit settings."
+}

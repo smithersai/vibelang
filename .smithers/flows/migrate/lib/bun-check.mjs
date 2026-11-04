@@ -11,14 +11,16 @@ export function replaceBunCheck(script) {
     offset = start + raw.length
     if (words[0] !== "bun" || words[1] !== "check" || !/^bun[ \t]+check[ \t]+--no-script(?=[ \t]|$)/.test(raw)) continue
     // Future Bun-only options keep the original command rather than losing flags.
+    const build = words.some(word => word === "-b" || word === "--build")
     let valid = true
     for (let i = 2; i < words.length; i++) {
-      if (["--no-script", "--noEmit", "--strict", "--skipLibCheck"].includes(words[i])) continue
+      if (["--no-script", "--noEmit", "--strict", "--skipLibCheck", "-b", "--build"].includes(words[i])) continue
       if (["-p", "--project"].includes(words[i]) && words[i + 1] && !words[i + 1].startsWith("-")) { i++; continue }
+      if (build && !words[i].startsWith("-")) continue
       valid = false
     }
     if (!valid) continue
-    const next = raw.replace(/^bun\s+check\b/, "vibelang --noEmit").replace(/\s+--no-script(?=\s|$)/, "")
+    const next = raw.replace(/^bun\s+check\b/, build ? "vibelang" : "vibelang --noEmit").replace(/\s+--no-script(?=\s|$)/, "")
     result = result.slice(0, start + delta) + next + result.slice(offset + delta)
     delta += next.length - raw.length
   }
