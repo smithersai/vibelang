@@ -1,3 +1,4 @@
+import { bunProgramScope } from "./bun-scope.mjs"
 import { addBunBuildGlobs } from "./bun-globs.mjs"
 // The edits that set up VibeLang in an existing project, as text-in,
 // text-out functions: the package's dependencies, tsc replaced by vibelang
@@ -518,10 +519,10 @@ function applyPluginEdits(text, edits) {
  */
 export function addBunBuildPlugin(text, ts) {
   if (/from\s+['"]vibelang-unplugin\/bun['"]/.test(text)) return text
-  const source = ts.createSourceFile("build.ts", text, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS)
+  const { source, bun } = bunProgramScope(text, ts)
   const edits = []
   const find = (node) => {
-    if (ts.isCallExpression(node) && ts.isPropertyAccessExpression(node.expression) && ts.isIdentifier(node.expression.expression) && node.expression.expression.text === "Bun" && node.expression.name.text === "build") {
+    if (ts.isCallExpression(node) && ts.isPropertyAccessExpression(node.expression) && bun(node.expression.expression) && node.expression.name.text === "build") {
       const line = source.getLineAndCharacterOfPosition(node.getStart(source)).line + 1
       const refusal = `line ${line}: Bun.build does not take an object literal with an array of plugins; add vibelang() from vibelang-unplugin/bun to it by hand`
       const options = unwrapped(node.arguments[0], ts)
@@ -541,7 +542,7 @@ export function addBunBuildPlugin(text, ts) {
  * manual routing instead of guessing which literal the build will consume.
  */
 function addBunBuildEntries(text, ts, { root, dir }) {
-  const source = ts.createSourceFile("build.ts", text, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS)
+  const { source, bun } = bunProgramScope(text, ts)
   const edits = [], warnings = []
   let changesCwd = false
   const propertyName = (name) => {
@@ -553,7 +554,7 @@ function addBunBuildEntries(text, ts, { root, dir }) {
     return ts.isIdentifier(name) || ts.isStringLiteralLike(name) ? name.text : undefined
   }
   const callIs = (node, receiver, method) => ts.isCallExpression(node) && ts.isPropertyAccessExpression(node.expression) &&
-    ts.isIdentifier(node.expression.expression) && node.expression.expression.text === receiver && node.expression.name.text === method
+    (receiver === "Bun" ? bun(node.expression.expression) : ts.isIdentifier(node.expression.expression) && node.expression.expression.text === receiver) && node.expression.name.text === method
   const checkCwd = (node) => {
     if (callIs(node, "process", "chdir")) changesCwd = true
     ts.forEachChild(node, checkCwd)

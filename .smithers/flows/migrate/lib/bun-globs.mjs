@@ -1,25 +1,14 @@
+import { bunProgramScope } from "./bun-scope.mjs"
+
 // Bun.Glob uses Bun's matching contract; minimatch's negative extglobs do
 // not exclude declaration sidecars in Bun. Keep the native scanner and its
 // options/iteration, widen only build-entry producers, and filter its yields.
 export function addBunBuildGlobs(text, ts, file = "build.ts") {
-  const source = ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true, /jsx?$/.test(file) ? ts.ScriptKind.JS : ts.ScriptKind.TS)
-  const host = ts.createCompilerHost({ noLib: true, noResolve: true })
-  host.getSourceFile = name => name === file ? source : undefined
-  const checker = ts.createProgram([file], { noLib: true, noResolve: true, allowJs: true }, host).getTypeChecker()
-  const symbol = node => checker.getSymbolAtLocation(node)
+  const { source, checker, symbol, runtimeImport, bun } = bunProgramScope(text, ts, file)
   const unwrap = node => {
     while (node && (ts.isParenthesizedExpression(node) || ts.isAsExpression(node) || ts.isSatisfiesExpression(node) || ts.isTypeAssertionExpression(node) || ts.isAwaitExpression(node))) node = node.expression
     return node
   }
-  const moduleOf = node => {
-    for (let p = node; p; p = p.parent) if (ts.isImportDeclaration(p)) return p.moduleSpecifier.text
-  }
-  const runtimeImport = node => {
-    for (let p = node; p && !ts.isImportDeclaration(p); p = p.parent) if (p.isTypeOnly) return false
-    return moduleOf(node) === "bun"
-  }
-  const bun = node => ts.isIdentifier(node) && (node.text === "Bun" && !symbol(node)?.declarations?.length ||
-    symbol(node)?.declarations?.some(d => (ts.isNamespaceImport(d) || ts.isImportClause(d)) && runtimeImport(d)))
   const baseOf = expression => {
     if (ts.isPropertyAccessExpression(expression) && bun(expression.expression) && expression.name.text === "Glob") return expression.getText(source)
     if (ts.isIdentifier(expression) && symbol(expression)?.declarations?.some(d =>

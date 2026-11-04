@@ -1,0 +1,10 @@
+{
+  "key": "setup:bun-build-shadowed-Bun",
+  "origin": "review-generated neighbour of the Opencode HTTP-recorder witness; not an authored Opencode source claim",
+  "input": {
+    "kind": "parameter",
+    "entry": "src/index.ts"
+  },
+  "spec": "007-tooling.md",
+  "quote": "A rewrite that can't preserve types, behavior and declaration output refuses at that site."
+}

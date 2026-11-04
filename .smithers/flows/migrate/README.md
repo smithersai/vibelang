@@ -884,3 +884,5 @@ Tests must keep a missing-receipt negative control rather than bypassing
 `checks.packs`.
 
 Inline module declarations keep every emitted companion beside the parent JavaScript, including `ViewCsp.vibe.$call$ts.js`. Each file is attributed to the parent source and included in `generatedFiles`; only the parent entry occupies `outputs`. Plain Node can therefore follow the parent’s companion imports. Test-source filtering applies to the entire source, including its companions; exported test-support modules retain their emitted dependency graph.
+
+Bun build wiring resolves the runtime receiver before changing a script. Local `Bun` bindings, type-only imports and direct replacement of the Bun build API keep their authored options. Genuine globals and runtime imports from `bun` remain eligible, including beside an unrelated local receiver.

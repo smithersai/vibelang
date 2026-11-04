@@ -1,3 +1,4 @@
+import { SpecPath } from "../../../../scripts/testing/spec-path.mjs"
 import assert from "node:assert/strict"
 import { spawnSync } from "node:child_process"
 import { mkdirSync, mkdtempSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs"
@@ -166,4 +167,106 @@ test("ambiguous option overrides and explicit cwd changes keep entries with a ma
       assert.ok(result.warnings.some(w => w.includes("route those entries by hand")))
     } finally { f.remove() }
   }
+})
+
+const receiverCorpus = JSON.parse(readFileSync(new URL("./corpus/bun-build-local-binding.json", import.meta.url)))
+const mockBuild = 'const mock = {build:(options:{entrypoints:readonly string[]})=>options.entrypoints};\n'
+function boundBuild(kind, entry) {
+  const call = 'Bun.build({entrypoints:[' + JSON.stringify(entry) + ']})'
+  const bodies = {
+    constant: 'const Bun = mock; export const result = ' + call,
+    mutable: 'let Bun = mock; export const result = ' + call,
+    variable: 'var Bun = mock; export const result = ' + call,
+    parameter: 'function select(Bun:typeof mock) {return ' + call + '}; export const result = select(mock)',
+    default: 'function select(Bun:typeof mock=mock) {return ' + call + '}; export const result = select()',
+    arrow: 'const select = (Bun:typeof mock) => ' + call + '; export const result = select(mock)',
+    destructure: 'const {api:Bun} = {api:mock}; export const result = ' + call,
+    nested: 'export const result = (()=>{const Bun=mock;return ' + call + '})()',
+    caught: 'export let result:readonly string[]=[];try{throw mock}catch(Bun:any){result=' + call + '}',
+    class: 'class Bun {static build=mock.build}; export const result=' + call,
+    imported: 'import Bun from "./mock.ts"; export const result=' + call,
+    namespace: 'import * as Bun from "./mock.ts"; export const result=' + call
+  }
+  return mockBuild + bodies[kind] + '\nconsole.log(JSON.stringify(result))\n'
+}
+function prepareBound(source, entry = "src/index.ts") {
+  const f = fixture(source)
+  f.put(entry.replace(/\.tsx?$/, entry.endsWith(".tsx") ? ".vibex" : ".vibe"), corpus.module)
+  f.put("script/mock.ts", 'export const build=(options:{entrypoints:readonly string[]})=>options.entrypoints;export default {build}\n')
+  return f
+}
+function checkBound(input, nativeTypes = false) {
+  const source = boundBuild(input.kind, input.entry)
+  const f = prepareBound(source, input.entry)
+  try {
+    if (nativeTypes) {
+      const options = {strict:true,noEmit:true,skipLibCheck:true,types:[],target:ts.ScriptTarget.ES2022,
+        module:ts.ModuleKind.ESNext,moduleResolution:ts.ModuleResolutionKind.Bundler,allowImportingTsExtensions:true}
+      const program = ts.createProgram([join(f.root,"script/build.ts")], options)
+      const diagnostics = ts.getPreEmitDiagnostics(program)
+      assert.deepEqual(diagnostics.map(d=>[d.code,ts.flattenDiagnosticMessageText(d.messageText,"\n")]), [],
+        "native TypeScript admits this local receiver")
+      console.log("BUN_RECEIVER_NATIVE_TS",ts.version,input.kind)
+    }
+    const before = run(f)
+    assert.equal(before.status,0,before.stderr)
+    assert.deepEqual(JSON.parse(before.stdout.trim()),[input.entry])
+    assert.deepEqual(f.wire().warnings,[])
+    const after = run(f)
+    assert.equal(after.status,0,after.stderr)
+    const afterEntries = JSON.parse(after.stdout.trim())
+    if (nativeTypes) console.log("BUN_RECEIVER_OBSERVATION",JSON.stringify({before:JSON.parse(before.stdout.trim()),after:afterEntries}))
+    assert.deepEqual(afterEntries,[input.entry],"setup must leave a non-bundler's observed entries unchanged")
+    assert.equal(f.text(),source,"setup must leave a non-bundler's own options untouched")
+  } finally { f.remove() }
+}
+test("local Bun receiver corpus preserves native types and observed entries", () => {
+  checkBound(receiverCorpus.input,true)
+  for (const kind of ["constant","mutable","variable","default","arrow","destructure","nested","caught","class","imported","namespace"])
+    checkBound({kind,entry:"src/index.ts"})
+})
+test("property: local Bun receiver bindings keep their authored entries", () => {
+  fc.assert(fc.property(fc.record({
+    kind:fc.constantFrom("constant","mutable","variable","parameter","default","arrow","destructure","nested","caught","class","imported","namespace"),
+    name:fc.constantFrom("Entry","with space","café","quote'name"),depth:fc.integer({min:0,max:3}),jsx:fc.boolean()
+  }), input=>checkBound({kind:input.kind,entry:"src/"+"nested/".repeat(input.depth)+input.name+(input.jsx?".tsx":".ts")})),
+    {seed:151534,numRuns:200})
+})
+test("direct Bun API replacements and type-only imports stay authored", () => {
+  for (const prefix of [
+    "Bun.build=mock.build;", 'Bun["build"]=mock.build;', "Bun=mock;", "globalThis.Bun=mock;",
+    'globalThis["Bun"]=mock;', "({Bun}={Bun:mock});", "[Bun]=[mock];",
+    "Bun.Glob=mock.build;", 'import type * as Bun from "bun";'
+  ]) {
+    const source=mockBuild+prefix+'\nBun.build({entrypoints:["src/index.ts"]})\n'
+    const f=prepareBound(source)
+    try {assert.deepEqual(f.wire().warnings,[]);assert.equal(f.text(),source)} finally {f.remove()}
+  }
+})
+test("genuine Bun calls still migrate beside local and type-only names", () => {
+  for (const prefix of ["", 'import * as Bun from "bun";\n', 'import Bun from "bun";\n', "type Bun=number;\n", "interface Bun {typeOnly:true}\n"]) {
+    const local='function local(Bun:typeof mock){return Bun.build({entrypoints:["src/index.ts"]})}\n'
+    const source=prefix+mockBuild+local+
+      'export const result=await Bun.build({entrypoints:["src/index.ts"],target:"bun",format:"esm",write:false})\n'+
+      'if(!result.success)throw new AggregateError(result.logs)\n'+
+      'const built=await import("data:text/javascript;base64,"+Buffer.from(await result.outputs[0].text()).toString("base64"))\n'+
+      'console.log(JSON.stringify({actual:built.value,local:local(mock)[0]}))\n'
+    const f=fixture(source)
+    try {
+      f.put("src/index.ts",corpus.module)
+      const before=run(f);assert.equal(before.status,0,before.stderr)
+      assert.deepEqual(JSON.parse(before.stdout.trim()),{actual:7,local:"src/index.ts"})
+      renameSync(join(f.root,"src/index.ts"),join(f.root,"src/index.vibe"))
+      assert.deepEqual(f.wire().warnings,[])
+      assert.ok(f.text().includes(local),"the local call remains byte-for-byte authored")
+      assert.ok(f.text().includes('"src/index.vibe"'),"the genuine bundle entry follows its source")
+      const after=run(f);assert.equal(after.status,0,after.stderr)
+      assert.deepEqual(JSON.parse(after.stdout.trim()),{actual:7,local:"src/index.ts"})
+      assert.deepEqual(f.wire().changed,[])
+    } finally {f.remove()}
+  }
+})
+
+test("Bun receiver preservation quotes the safe rewrite contract", () => {
+  assert.ok(readFileSync(SpecPath(receiverCorpus.spec), "utf8").includes(receiverCorpus.quote))
 })
