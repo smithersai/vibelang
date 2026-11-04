@@ -1,9 +1,5 @@
-# VIP-6 gaps left after every export became a global. sync and callback are still the prelude's hatches, and interrupt, yieldNow, interruptible and uninterruptible still resolve to the runtime's functions. Owner fix-vip-globals-2.
+# Remaining VIP-6 identity gaps for sync and callback.
 FuzzEffectGlobals identity:sync compiler VIP-6: sync is still the prelude's hatch, not Effect's export; lane fix-vip-globals-2
 FuzzEffectGlobals modules-off:sync compiler VIP-6: sync is still the prelude's hatch, usable only as a callee (EK4410); lane fix-vip-globals-2
 FuzzEffectGlobals identity:callback compiler VIP-6: callback is still the prelude's hatch, not Effect's export; lane fix-vip-globals-2
 FuzzEffectGlobals modules-off:callback compiler VIP-6: callback is still the prelude's hatch, usable only as a callee (EK4410); lane fix-vip-globals-2
-FuzzEffectGlobals off:interrupt compiler VIP-6: vibe.effectGlobals false leaves the runtime's interrupt in scope; lane fix-vip-globals-2
-FuzzEffectGlobals identity:interrupt compiler VIP-6: bare interrupt is the runtime's function, not Effect's export; lane fix-vip-globals-2
-FuzzEffectGlobals off:yieldNow compiler VIP-6: vibe.effectGlobals false leaves the runtime's yieldNow in scope; lane fix-vip-globals-2
-FuzzEffectGlobals identity:yieldNow compiler VIP-6: bare yieldNow is the runtime's function, not Effect's export; lane fix-vip-globals-2
