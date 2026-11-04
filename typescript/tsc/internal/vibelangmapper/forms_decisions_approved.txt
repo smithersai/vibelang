@@ -1972,3 +1972,11 @@ typescript/vibelang/cases/effect-parameter-forwarding/main.vibe:4:29 lambda: pla
 typescript/vibelang/cases/effect-parameter-forwarding/main.vibe:5:23 lambda: plain fallback -> effectFn keyword # 401fa44101e5 writes this function with the explicit effect keyword; retain the authored effect provenance.
 typescript/vibelang/cases/effect-parameter-forwarding/main.vibe:7:25 lambda: plain fallback -> effectFn keyword # 401fa44101e5 writes this function with the explicit effect keyword; retain the authored effect provenance.
 typescript/vibelang/cases/effect-parameter-forwarding/main.vibe:8:22 lambda: plain fallback -> effectFn keyword # 401fa44101e5 writes this function with the explicit effect keyword; retain the authored effect provenance.
+
+# Argument-forwarding fixture 401fa44101e5 writes explicit effect declarations.
+typescript/vibelang/cases/effect-parameter-forwarding/main.vibe:2:26 lambda: plain fallback -> effectFn keyword # 401fa44101e5 writes the effect keyword at this fixture site; preserve its explicit Effect-function form
+typescript/vibelang/cases/effect-parameter-forwarding/main.vibe:3:25 lambda: plain fallback -> effectFn keyword # 401fa44101e5 writes the effect keyword at this fixture site; preserve its explicit Effect-function form
+typescript/vibelang/cases/effect-parameter-forwarding/main.vibe:4:29 lambda: plain fallback -> effectFn keyword # 401fa44101e5 writes the effect keyword at this fixture site; preserve its explicit Effect-function form
+typescript/vibelang/cases/effect-parameter-forwarding/main.vibe:5:23 lambda: plain fallback -> effectFn keyword # 401fa44101e5 writes the effect keyword at this fixture site; preserve its explicit Effect-function form
+typescript/vibelang/cases/effect-parameter-forwarding/main.vibe:7:25 lambda: plain fallback -> effectFn keyword # 401fa44101e5 writes the effect keyword at this fixture site; preserve its explicit Effect-function form
+typescript/vibelang/cases/effect-parameter-forwarding/main.vibe:8:22 lambda: plain fallback -> effectFn keyword # 401fa44101e5 writes the effect keyword at this fixture site; preserve its explicit Effect-function form
