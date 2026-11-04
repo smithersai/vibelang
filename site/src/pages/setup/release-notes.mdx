@@ -479,6 +479,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - The grammar-admission audit reported `export = 1;` as accepted although TypeScript rejects it (`TS1203`) under ES modules, and it had no derivation for TypeScript's `import x = require("m")`. It now counts `TS1203` as a syntax rejection and derives import assignments.
 - The grammar-admission audit reported a `data` variant member with no type, such as a bare `number` on its own line, as accepted although the compiler rejects it with `EK1606`. It now counts `EK1606` as a syntax rejection.
 - The grammar-admission census reported nine Effect-function and catch helpers as unaccounted once a try in a catch's left side began running before the catch. It now lists them under VIP-1, VIP-2 and VIP-5.
+- The grammar-admission census rejected the row for the `match` coverage-combinator helper, because it cited a chapter anchor where an Appendix A production is required. It now cites `MatchExpression` and the Match chapter.
 
 - Callable-contract documentation tests depended on removed examples; they now retain native witnesses and check the current wrapper example without losing defect, failure or default-callback coverage.
 

@@ -930,7 +930,7 @@ parser/vibelang_do_bindings.go:doLowering.arrayBindingStatement	admission:do	002
 parser/vibelang_do_bindings.go:doLowering.bindingDefaultContextSite	admission:do	000-intro.md,002-running.md	support	VIP-2: contextual typing reaches the normal default result only
 parser/vibelang_do_bindings.go:doLowering.bindingTypingPattern	admission:do	000-intro.md,002-running.md	support	VIP-2: source binding context controls literal, tuple and declaration types
 parser/vibelang_do_bindings.go:doLowering.finishArrayBindings	admission:do	002-running.md	support	VIP-2: unfinished iterators close with native jump and throw precedence while lexical cells are retained
-parser/vibelang_match.go:patternHasCoverageCombinator	admission:match	004-match.md#exhaustiveness	support	VIP-7 and/not subpatterns cannot establish finite coverage through a containing pattern
+parser/vibelang_match.go:patternHasCoverageCombinator	admission:match	900-appendices.md#MatchExpression,004-match.md	support	VIP-7 and/not subpatterns cannot establish finite coverage through a containing pattern
 parser/vibelang_effect.go:Parser.scanEffectPrefix	admission:effect	900-appendices.md#EffectModifier	support	VIP-1/VIP-2: recover either mixed prefix order for EK0105 without changing ordinary async names or line breaks
 parser/vibelang_effect.go:Parser.reportEffectAsyncConflict	admission:effect	900-appendices.md#EffectModifier	support	VIP-1/VIP-2: recover either mixed prefix order for EK0105 without changing ordinary async names or line breaks
 parser/vibelang_effect.go:Parser.parseEffectPrefix	admission:effect	900-appendices.md#EffectModifier	support	VIP-1/VIP-2: recover either mixed prefix order for EK0105 without changing ordinary async names or line breaks
