@@ -42,10 +42,12 @@ const (
 	DefaultWarning
 	DefaultOff
 	DefaultSuggestion
+	// Appendix B states both categories for a contextual compatibility rule.
+	DefaultBoundaryWarning
 )
 
 func (c DefaultCategory) String() string {
-	return [...]string{"unknown", "error", "warning", "off", "suggestion"}[c]
+	return [...]string{"unknown", "error", "warning", "off", "suggestion", "error or boundary warning"}[c]
 }
 
 // importedDefaults reads the imported table's Default severity column.
@@ -163,6 +165,12 @@ var Facts = sync.OnceValue(func() *SpecFacts {
 		category := DefaultError
 		if strings.HasPrefix(cells[1], "warning") || strings.HasPrefix(cells[1], "lint warning") {
 			category = DefaultWarning
+		} else if strings.HasPrefix(cells[1], "interim warning inside formerly accepted boundary callbacks; error otherwise:") {
+			// The row overrides the general default sentence. Keep both
+			// registered categories, without making this rule adjustable.
+			// FuzzPlatformContextualSeverity checks which source contexts
+			// require each category; the registry alone has no source context.
+			category = DefaultBoundaryWarning
 		}
 		facts.Defaults[code] = category
 	}

@@ -332,6 +332,8 @@ func CategoryMatches(want DefaultCategory, got diagnostics.Category) bool {
 		return got == diagnostics.CategoryError
 	case DefaultWarning:
 		return got == diagnostics.CategoryWarning
+	case DefaultBoundaryWarning:
+		return got == diagnostics.CategoryError || got == diagnostics.CategoryWarning
 	case DefaultSuggestion:
 		return got == diagnostics.CategorySuggestion
 	case DefaultOff:
