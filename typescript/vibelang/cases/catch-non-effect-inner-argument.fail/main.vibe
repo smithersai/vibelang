@@ -1,0 +1,3 @@
+// expect: EK0506 TS2345
+declare function take(n: number): number
+export effect function main() { take("bad") catch () => 0; return 0 }

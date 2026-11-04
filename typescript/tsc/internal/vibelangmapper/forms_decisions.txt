@@ -584,6 +584,8 @@ typescript/vibelang/cases/catch-narrowing/main.vibe:52:14 lambda effectFn table
 typescript/vibelang/cases/catch-narrowing/main.vibe:52:37 lambda effectFn table
 typescript/vibelang/cases/catch-narrowing/main.vibe:6:43 lambda effectFn table
 typescript/vibelang/cases/catch-narrowing/main.vibe:6:63 lambda effectFn table
+typescript/vibelang/cases/catch-non-effect-inner-argument.fail/main.vibe:3:33 lambda effectFn table
+typescript/vibelang/cases/catch-non-effect-inner-argument.fail/main.vibe:3:51 lambda effectFn table
 typescript/vibelang/cases/catch-plain-throw.fail/main.vibe:10:23 lambda effectFn table
 typescript/vibelang/cases/catch-plain-throw.fail/main.vibe:10:36 lambda effectFn table
 typescript/vibelang/cases/catch-plain-throw.fail/main.vibe:11:23 lambda effectFn table

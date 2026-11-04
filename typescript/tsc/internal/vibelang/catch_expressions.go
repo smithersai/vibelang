@@ -171,7 +171,10 @@ func checkCatchExpressions(c *checker.Checker, file *ast.SourceFile) {
 			}
 			if t := catchOperandType(c, left); t != nil && !isEffectOperandType(c, t) {
 				report(c, left, EK0506)
-				coverCodes(c, call, 2322, 2345, 2769)
+				// Cover the rejected operand, retaining independent argument and
+				// handler-body diagnostics inside this catch expression.
+				coverArgument(c, left)
+				catchExecutionMismatchStarts(c)[file] = append(catchExecutionMismatchStarts(c)[file], scanner.GetErrorRangeForNode(file, left).Pos())
 				return node.ForEachChild(visit)
 			}
 			checkCatchHandlerResult(c, file, call, fallback)
