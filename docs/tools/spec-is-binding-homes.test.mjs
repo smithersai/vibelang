@@ -39,7 +39,7 @@ if (!Exit.isSuccess(loopHomesExit) || JSON.stringify(loopHomesExit.value) !== "[
 // Accepted VIP-7 and the Nov3 TypeScript ruling retain type-dependent
 // definite-assignment exemptions; they do not erase runtime lexical TDZ.
 function exemptionParagraph(text) {
-  const paragraph = text.split("\n").find(line => line.includes("definite-assignment checks") && line.includes("TS2454"))
+  const paragraph = text.split("\n").find(line => line.startsWith("These bindings take part") || line.startsWith("`is` may bind names in any expression."))
   assert.ok(paragraph, "definite-assignment paragraph")
   return paragraph
 }
@@ -56,6 +56,13 @@ test("binding-home docs retain every native definite-assignment exemption", () =
   fc.assert(fc.property(fc.integer({ min: 0, max: 1 }), fc.constantFrom("`any`", "`unknown`", "`void`", "`undefined`"), (index, type) => {
     assert.throws(() => checkExemptions(exemptionParagraph(sources[index]).replaceAll(type, "[removed]")))
   }), { seed: 1104113, numRuns: 160 })
+})
+
+test("exemption checks select binding homes after an unrelated match introduction", () => {
+  const introduction = "TypeScript reports `TS2454` when its definite-assignment checks find an uninitialized read."
+  for (const source of [chapter("004-match"), read("docs/user/src/vibelang-features/116-match-and-is.md")]) {
+    checkExemptions(introduction + "\n" + source)
+  }
 })
 
 test("fast-check: native TypeScript keeps the same TS2454 exemptions", () => {
@@ -82,4 +89,45 @@ test("generated native loop cells preserve iteration and closure identity", () =
     '\nimport assert from "node:assert/strict"\nfor (const values of ' + JSON.stringify(inputs) + ') { assert.deepEqual(drain(values[Symbol.iterator]()), values); assert.deepEqual(ids(values.map(id => ({ id }))), values); const n = values.length; assert.deepEqual(countdown({ n }), Array.from({length:n}, (_, i) => n-i)) }\n'
   const result = run(source)
   assert.equal(result.status, 0, result.stdout + result.stderr)
+})
+
+function checkBindingGuide(text) {
+  const paragraphs = text.split("\n").filter(line => line.startsWith("`is` may bind names in any expression."))
+  assert.equal(paragraphs.length, 1, "one binding-home paragraph")
+  const paragraph = paragraphs[0]
+  for (const rule of [
+    "An `is` binding that needs an unbraced statement body as its lexical home reports `EK0705`",
+    "A collision with a local `const` also reports `TS2451`",
+    "a collision with a parameter reports `TS2300`",
+    "Both declarations are reported",
+    "Assignments written in the source keep their ordinary type and immutability checks",
+    "Neither home exports the binding after the loop",
+    "a skipped `init` binding stays in the runtime temporal dead zone",
+  ]) assert.ok(paragraph.includes(rule), rule)
+  checkExemptions(paragraph)
+}
+
+test("the binding guide combines native redeclarations with current binding homes once", () => {
+  checkBindingGuide(read("docs/user/src/vibelang-features/116-match-and-is.md"))
+})
+
+test("fast-check: duplicate or stale binding-home paragraphs fail the guide check", () => {
+  const guide = read("docs/user/src/vibelang-features/116-match-and-is.md")
+  const paragraph = guide.split("\n").find(line => line.startsWith("`is` may bind names in any expression."))
+  const obsoleteRules = [
+    ["a collision with a parameter reports `TS2300`", "a collision with a parameter is allowed"],
+    ["reports `EK0705`", "is implicitly a block"],
+    ["Neither home exports the binding after the loop", "Bindings escape the loop"],
+    ["a skipped `init` binding stays in the runtime temporal dead zone", "a skipped `init` binding reads `undefined`"],
+    ["`any`", "[removed]"],
+  ]
+  fc.assert(fc.property(fc.boolean(), fc.nat(), fc.constantFrom(...obsoleteRules), (duplicate, position, [before, after]) => {
+    const lines = guide.split("\n")
+    if (duplicate) lines.splice(position % (lines.length + 1), 0, paragraph.replace(before, after))
+    else {
+      assert.ok(paragraph.includes(before), before)
+      lines[lines.indexOf(paragraph)] = paragraph.replace(before, after)
+    }
+    assert.throws(() => checkBindingGuide(lines.join("\n")))
+  }), { seed: 1104251, numRuns: 160 })
 })
