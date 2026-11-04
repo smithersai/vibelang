@@ -1,24 +1,4 @@
 # Exact native CLI observations on main4dfd9a19cad2; expected results come from VIP contracts/details286-289, never these observations.
-FuzzProducerWrittenContract any-export compiler VIP-21 Chapter 2/detail287: resolved binding, written Stream container or named collection operand domain; lane core-land
-FuzzProducerWrittenContract corpus:any-export compiler VIP-21 Chapter 2/detail287: resolved binding, written Stream container or named collection operand domain; lane core-land
-FuzzProducerWrittenContract any-nested compiler VIP-21 Chapter 2/detail287: resolved binding, written Stream container or named collection operand domain; lane core-land
-FuzzProducerWrittenContract corpus:any-nested compiler VIP-21 Chapter 2/detail287: resolved binding, written Stream container or named collection operand domain; lane core-land
-FuzzProducerWrittenContract unknown-export compiler VIP-21 Chapter 2/detail287: resolved binding, written Stream container or named collection operand domain; lane core-land
-FuzzProducerWrittenContract corpus:unknown-export compiler VIP-21 Chapter 2/detail287: resolved binding, written Stream container or named collection operand domain; lane core-land
-FuzzProducerWrittenContract unknown-nested compiler VIP-21 Chapter 2/detail287: resolved binding, written Stream container or named collection operand domain; lane core-land
-FuzzProducerWrittenContract corpus:unknown-nested compiler VIP-21 Chapter 2/detail287: resolved binding, written Stream container or named collection operand domain; lane core-land
-FuzzProducerWrittenContract never-export compiler VIP-21 Chapter 2/detail287: resolved binding, written Stream container or named collection operand domain; lane core-land
-FuzzProducerWrittenContract corpus:never-export compiler VIP-21 Chapter 2/detail287: resolved binding, written Stream container or named collection operand domain; lane core-land
-FuzzProducerWrittenContract never-nested compiler VIP-21 Chapter 2/detail287: resolved binding, written Stream container or named collection operand domain; lane core-land
-FuzzProducerWrittenContract corpus:never-nested compiler VIP-21 Chapter 2/detail287: resolved binding, written Stream container or named collection operand domain; lane core-land
-FuzzProducerWrittenContract optional-export compiler VIP-21 Chapter 2/detail287: resolved binding, written Stream container or named collection operand domain; lane core-land
-FuzzProducerWrittenContract corpus:optional-export compiler VIP-21 Chapter 2/detail287: resolved binding, written Stream container or named collection operand domain; lane core-land
-FuzzProducerWrittenContract optional-nested compiler VIP-21 Chapter 2/detail287: resolved binding, written Stream container or named collection operand domain; lane core-land
-FuzzProducerWrittenContract corpus:optional-nested compiler VIP-21 Chapter 2/detail287: resolved binding, written Stream container or named collection operand domain; lane core-land
-FuzzProducerWrittenContract alias-any-export compiler VIP-21 Chapter 2/detail287: resolved binding, written Stream container or named collection operand domain; lane core-land
-FuzzProducerWrittenContract corpus:alias-any-export compiler VIP-21 Chapter 2/detail287: resolved binding, written Stream container or named collection operand domain; lane core-land
-FuzzProducerWrittenContract alias-any-nested compiler VIP-21 Chapter 2/detail287: resolved binding, written Stream container or named collection operand domain; lane core-land
-FuzzProducerWrittenContract corpus:alias-any-nested compiler VIP-21 Chapter 2/detail287: resolved binding, written Stream container or named collection operand domain; lane core-land
 FuzzCollectionOperandDomain all-any-direct compiler VIP-18/VIP-19/VIP-20 Chapter 2/detail288: resolved binding, written Stream container or named collection operand domain; lane core-tryall
 FuzzCollectionOperandDomain corpus:all-any-direct compiler VIP-18/VIP-19/VIP-20 Chapter 2/detail288: resolved binding, written Stream container or named collection operand domain; lane core-fortry
 FuzzCollectionOperandDomain all-any-nested-block compiler VIP-18/VIP-19/VIP-20 Chapter 2/detail288: resolved binding, written Stream container or named collection operand domain; lane core-tryall

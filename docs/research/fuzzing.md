@@ -1006,3 +1006,5 @@ lookalike checks; changing the citation does not change their filtering oracle.
 `FuzzPreludeFileSystemIdentity` compares qualified prelude service types and inferred environments with explicit native imports across functions, arrows and layers, ambient host interfaces, DOM libraries and sidecar `rootDirs`. Native positive and ambient-brand negative controls check the oracle. Three Smithers-named corpus files retain the reduced WireTrace pattern; its unreduced project-specific failure remains with its compiler owner.
 
 Quoted chapter witnesses keep their citation in the registered witness metadata. When a specification sentence becomes a conditional table, update that citation while preserving the witness source, native twin, probes and keyed corpus.
+
+When a published pending target reports XPASS, replay the exact key and its paired feature or corpus rows before removing metadata. Preserve the original diagnostic, native-consumer, runtime, and negative-control oracles and keep every corpus input. A neighboring key remains pending until its own oracle passes.

@@ -6,6 +6,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 
 ## 0.0.11 (unreleased)
+
+- Fuzz qualification now graduates resolved Effect-global, plain-throw, Stream-contract, runner-discard, and sidecar-emission pending cases. Their existing semantic checks and saved corpus inputs continue to run as regressions.
 - Effect's `deterministicKeys` rule asked a service moved into a `module` body for a key built from the body's own file, `@x/pkg/a.vibe.platform/Port`, where its `.ts` file had `@x/pkg/a/Port`, so every keyed service the migrate flow moved into `module platform { }` failed with `EK3822` (15 t3code desktop modules). A body's keys now come from the `.vibe` file that holds it, so a moved service keeps its key and its run-time identity.
 - A build of many `.vibe` files that write `Effect.Array` or another `Effect.M` module could stop at random with `fatal error: concurrent map read and map write` in `(*lowering).visit`. Each file's lowering now reads its own copy of what the checker recorded.
 - A type such as `Missing.Shape`, where no scope declares `Missing`, stopped the compiler with `fatal error: stack overflow`. It now reports the error TypeScript reports for the same text.
