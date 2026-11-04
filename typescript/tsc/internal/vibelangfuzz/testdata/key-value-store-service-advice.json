@@ -1,0 +1,62 @@
+[
+  {
+    "key": "localStorage:held",
+    "source": "export const value=localStorage",
+    "advice": "try (try KeyValueStore.KeyValueStore).get(key)"
+  },
+  {
+    "key": "localStorage:destructured",
+    "source": "export const {getItem}=localStorage",
+    "advice": "try (try KeyValueStore.KeyValueStore).get(key)"
+  },
+  {
+    "key": "globalThis.localStorage:held",
+    "source": "export const value=globalThis.localStorage",
+    "advice": "try (try KeyValueStore.KeyValueStore).get(key)"
+  },
+  {
+    "key": "globalThis.localStorage:destructured",
+    "source": "export const {getItem}=globalThis.localStorage",
+    "advice": "try (try KeyValueStore.KeyValueStore).get(key)"
+  },
+  {
+    "key": "sessionStorage:held",
+    "source": "export const value=sessionStorage",
+    "advice": "try (try KeyValueStore.KeyValueStore).get(key)"
+  },
+  {
+    "key": "sessionStorage:destructured",
+    "source": "export const {getItem}=sessionStorage",
+    "advice": "try (try KeyValueStore.KeyValueStore).get(key)"
+  },
+  {
+    "key": "globalThis.sessionStorage:held",
+    "source": "export const value=globalThis.sessionStorage",
+    "advice": "try (try KeyValueStore.KeyValueStore).get(key)"
+  },
+  {
+    "key": "globalThis.sessionStorage:destructured",
+    "source": "export const {getItem}=globalThis.sessionStorage",
+    "advice": "try (try KeyValueStore.KeyValueStore).get(key)"
+  },
+  {
+    "key": "indexedDB:held",
+    "source": "export const value=indexedDB",
+    "advice": "try (try KeyValueStore.KeyValueStore).get(key)"
+  },
+  {
+    "key": "indexedDB:destructured",
+    "source": "export const {open}=indexedDB",
+    "advice": "try (try KeyValueStore.KeyValueStore).get(key)"
+  },
+  {
+    "key": "globalThis.indexedDB:held",
+    "source": "export const value=globalThis.indexedDB",
+    "advice": "try (try KeyValueStore.KeyValueStore).get(key)"
+  },
+  {
+    "key": "globalThis.indexedDB:destructured",
+    "source": "export const {open}=globalThis.indexedDB",
+    "advice": "try (try KeyValueStore.KeyValueStore).get(key)"
+  }
+]

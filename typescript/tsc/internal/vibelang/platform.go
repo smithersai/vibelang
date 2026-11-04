@@ -93,7 +93,7 @@ var platformServices = map[string]*platformService{
 	"NetAddress":      {"NetAddress, which needs no layer", "NetAddress.ipFromString(text)", "", ""},
 	"Worker": {"Worker and WorkerRunner", "", "",
 		`NodeWorker.layer(spawn) from "@effect/platform-node", or BrowserWorker.layer(spawn) from "@effect/platform-browser"`},
-	"KeyValueStore": {"the KeyValueStore service", "KeyValueStore.get(key)", "",
+	"KeyValueStore": {"the KeyValueStore service", "try (try KeyValueStore.KeyValueStore).get(key)", "",
 		`BrowserKeyValueStore.layerLocalStorage from "@effect/platform-browser", or KeyValueStore.layerFileSystem(directory)`},
 	"SqlClient": {"the SqlClient service", "", "",
 		`a driver's layer, such as SqliteClient.layer({ filename }) from "@effect/sql-sqlite-node"`},

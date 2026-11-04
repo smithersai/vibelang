@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("globalThis.localStorage:destructured\x00\x00")

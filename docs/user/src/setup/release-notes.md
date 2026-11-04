@@ -360,6 +360,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - An unchecked nullish `for concurrent(limit)` limit ran all items at once. Written limits now reach Effect unchanged, while omitting the limit still runs unbounded.
 
 - `EK4802` warned on `try x.pipe(Stream.runCollect)` and `try take(job)`, though `try` runs the inferred Effect at once. A call that is the direct operand of `try`, parenthesized or not, no longer warns; the same call assigned, passed, returned or pushed without `try`, such as `const value = take(job)`, still does.
+- Browser-storage platform errors suggested a method on a module namespace; they now show how to obtain the key-value store and run its lookup.
+
 - The function-controls example read the callable `Function` constructor and reported `EK0107`. Its erased constructor comparison now uses the explicit `any` boundary allowed by VIP-1, while the `instanceof` and prototype controls remain checked.
 
 - The operation-operands example declared a `.vibe` function with `@throws {never}`, which VIP-4 rejects with `EK0406`. The example now uses the declaration’s implicit `never` thrown type and keeps all operation-operand checks.

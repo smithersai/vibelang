@@ -1,0 +1,10 @@
+// VIP-33: a storage replacement obtains the service and runs its lookup.
+// expect-result: [true,"stored"]
+export effect function main() {
+  provide KeyValueStore.layerMemory {
+    const before = try (try KeyValueStore.KeyValueStore).get("key")
+    try (try KeyValueStore.KeyValueStore).set("key", "stored")
+    const after = try (try KeyValueStore.KeyValueStore).get("key")
+    return [before === undefined, after]
+  }
+}
