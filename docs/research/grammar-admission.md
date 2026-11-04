@@ -261,3 +261,11 @@ rejection; campaign195 found `import x = require(("m"))`.
 compiles with only the operand type error `EK4611`. The classifier keys it
 `admission:fiber-in-generator` (seed, corpus, inventory alias row on
 `isProducer`), apart from `join-outside-effect`, whose compiler fix landed.
+
+
+The inherited subset includes native dynamic `import(specifier)` and its
+optional options argument. Its `ImportCall` production permits trailing
+commas and subsequent property/call chains, while excluding zero arguments,
+spread, a third argument and construction with `new`. The keyed
+`native-dynamic-import` witness retains an identifier argument: a type or
+name error does not remove the native syntax derivation.

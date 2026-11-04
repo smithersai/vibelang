@@ -67,6 +67,7 @@ var admissionLab = sync.OnceValues(func() (*grammarLab, error) {
 // classify before adding a pending line.
 var grammarAdmissionSeeds = []struct{ key, source string }{
 	{"plain", "const n = 1;"},
+	{"native-dynamic-import", "import ( join ) ; ;"},
 	{"declaration-name-context", "effect function join(p) { return try p; }"},
 	{"effect", "effect function f(p) { return try p; }"},
 	{"block", "const p = effect { return 1; };"},

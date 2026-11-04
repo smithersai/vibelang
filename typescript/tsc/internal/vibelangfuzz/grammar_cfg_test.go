@@ -536,7 +536,8 @@ UpdateExpression = LeftHandSideExpression | LeftHandSideExpression [no LineTermi
 LeftHandSideExpression = NewExpression | CallExpression | OptionalExpression
 NewExpression = MemberExpression | "new" NewExpression
 MemberExpression = MemberExpression TypeArguments [lookahead ∈ { ";", ")", "]", "}", ",", ":", "?", "??", "||", "&&", "|", "&", "^", "==", "!=", "===", "!==", "<=", ">=", "*", "/", "%", "**", "<<", ">>", ">>>", "instanceof", "in", "as", "satisfies", "=", "+=", "-=", "??=" }] | PrimaryExpression | "super" "." IdentifierName | "super" "[" Expression "]" | MemberExpression "[" Expression "]" | MemberExpression "." IdentifierName | MemberExpression [no LineTerminator here] "!" | MemberExpression TemplateLiteral | "new" MemberExpression Arguments
-CallExpression = MemberExpression Arguments | "super" Arguments | CallExpression Arguments | CallExpression "[" Expression "]" | CallExpression "." IdentifierName | CallExpression [no LineTerminator here] "!"
+CallExpression = ImportCall | MemberExpression Arguments | "super" Arguments | CallExpression Arguments | CallExpression "[" Expression "]" | CallExpression "." IdentifierName | CallExpression [no LineTerminator here] "!"
+ImportCall = "import" "(" AssignmentExpression ","? ")" | "import" "(" AssignmentExpression "," AssignmentExpression ","? ")"
 OptionalExpression = MemberExpression OptionalChain | CallExpression OptionalChain | OptionalExpression OptionalChain
 OptionalChain = "?." IdentifierName | "?." Arguments
 Arguments = "(" ")" | "(" ArgumentList ","? ")"
