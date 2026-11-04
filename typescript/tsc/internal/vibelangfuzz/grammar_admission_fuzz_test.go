@@ -171,6 +171,8 @@ var grammarAdmissionSeeds = []struct{ key, source string }{
 	{"native-for-await-placement", "async\nfunction f ( xs ) { for await ( const of xs ) effect { x ; } }"},
 	{"reserved-expression-name", "throw effect function join(p) { return try p; }"},
 	{"throw-comma-warning", "effect function f(e) { return [throw e, 1]; }"},
+	{"schema-async-field", "schema S { async id: Missing }"},
+	{"schema-async-duplicate-modifier", "schema S { async async id: Missing }"},
 	{"schema-effect-field", "schema S { effect id : string }"},
 	{"schema-effect-unsupported-field", "schema S { effect id : Missing }"},
 	{"export-assignment", "export = 1 ;"},
@@ -685,6 +687,9 @@ func grammarOrBindingReservedName(ts []grammarToken) bool {
 
 func grammarAdmissionForm(source string) string {
 	ts := grammarLexSource(source)
+	if grammarSchemaAsyncField(ts) {
+		return "admission:schema-async-field"
+	}
 	if grammarInvalidImportMeta(ts) {
 		return "admission:import-meta-property"
 	}

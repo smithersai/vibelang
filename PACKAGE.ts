@@ -102,6 +102,8 @@ const specTests = [
   "TestGrammarAdmissionSchemaJSDocKeys",
   "TestGrammarAdmissionSchemaJSDocRegression",
   "TestGrammarAdmissionDynamicImport",
+  "TestGrammarAdmissionSchemaAsyncKeys",
+  "TestGrammarAdmissionSchemaAsyncRegression",
   "TestGrammarAdmissionMetaPropertyKeys",
   "TestGrammarAdmissionMetaPropertyNative",
   "TestGrammarAdmissionMetaPropertyRegression",

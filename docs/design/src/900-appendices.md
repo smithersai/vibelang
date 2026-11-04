@@ -970,7 +970,7 @@ The operand and parent positions follow `UnaryExpression`; `throw` in statement 
 This implementation census records each parser or lowering hook and its specification authority. It does not admit syntax: the productions and prose above remain the independent grammar oracle. A `pending` row has no authority; `support` and `recovery` rows do not add language forms.
 
 <details>
-<summary>Parser and lowering hooks (980 records)</summary>
+<summary>Parser and lowering hooks (981 records)</summary>
 
 | Hook | Form | Authority | Status | Reason |
 | --- | --- | --- | --- | --- |
@@ -1954,6 +1954,7 @@ This implementation census records each parser or lowering hook and its specific
 | ` parser/vibelang_yield_activation.go:VibeLangYieldOutsideProducer ` | ` admission:producer-yield-activation ` | ` 900-appendices.md#Producer `, ` 002-running.md ` | ` recovery ` | VIP-21: source activations and formal initialization own EK2104; compiler-generated wrappers grant no yield permission |
 | ` parser/vibelang_declaration_body.go:Parser.reportVibeLangMissingBody ` | ` admission:schema ` | ` 900-appendices.md#SchemaDeclaration `, ` 006-data.md ` | ` recovery ` | Reports `EK1503` for a schema header without the required field body or alias; recovery adds no form |
 | ` parser/vibelang_fibers.go:Parser.rewriteConcurrentLabelContinues ` | ` admission:for-concurrent ` | ` 900-appendices.md#ForConcurrent ` | ` support ` | VIP-19 self-labeled `continue` ends the current item, preserving source callable boundaries |
+| ` parser/vibelang.go:Parser.vibelangSchemaFields@schema-async-field ` | ` admission:schema-async-field ` | ` - ` | ` pending ` | VIP-15: an unresolved schema field reference reports `EK2109` and covers the declaration, hiding native `async` modifier rejection |
 
 </details>
 

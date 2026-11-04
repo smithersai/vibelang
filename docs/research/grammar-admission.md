@@ -287,3 +287,10 @@ grammar check, leaving only `EK4402`. That exact bad-name/incomplete-phase
 family remains pending under `admission:import-meta-property`. Ordinary
 member names and native URL-whitelist recovery remain separate controls.
 Phase-import calls remain outside the generated subset.
+
+An `async` modifier on a schema field is also outside Appendix A's
+`Field` production. An unresolved schema reference reports `EK2109`
+and covers its declaration, hiding the native modifier diagnostic. Primitive
+field types still report native syntax rejection. The exact `admission:schema-async-field` family remains
+pending, with ordinary fields named `async`, computed expressions,
+native members and schema-error methods as separate controls.
