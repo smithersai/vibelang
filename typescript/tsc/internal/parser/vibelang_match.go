@@ -1125,6 +1125,70 @@ func patternHasBindings(pat *pattern) bool {
 	return patternHasBindings(pat.rest)
 }
 
+// isInitializerKey identifies a hoisted declaration by its written name site.
+// A duplicate gets its own binder recovery symbol; the generated initialization
+// must use that symbol rather than assigning to the earlier declaration.
+type isInitializerKey struct {
+	name string
+	loc  core.TextRange
+}
+
+var isInitializerDeclarationsKey = ast.NewSourceFileDataKey[map[isInitializerKey]*ast.Node]()
+
+// VibeLangIsRecoveryBindingDeclaration identifies a rejected is declaration.
+// The native binder keeps the original symbol in its home's locals and gives
+// a duplicate its own recovery symbol. Legal homes keep ordinary inference.
+func VibeLangIsRecoveryBindingDeclaration(declaration *ast.Node) bool {
+	if declaration == nil || declaration.Flags&ast.NodeFlagsVibeLangPatternHoist == 0 ||
+		declaration.Name() == nil || !ast.IsIdentifier(declaration.Name()) || declaration.Symbol() == nil {
+		return false
+	}
+	name := declaration.Name().Text()
+	for scope := declaration.Parent; scope != nil; scope = scope.Parent {
+		if symbol := scope.Locals()[name]; symbol != nil {
+			return symbol != declaration.Symbol()
+		}
+	}
+	return false
+}
+
+// VibeLangIsInitializerDeclaration returns the recovery declaration initialized by a
+// generated is-pattern assignment. Source references and source assignments
+// still resolve through the ordinary lexical symbol table.
+func VibeLangIsInitializerDeclaration(target *ast.Node) *ast.Node {
+	if !ast.IsIdentifier(target) || target.Flags&ast.NodeFlagsReparsed == 0 ||
+		target.Parent == nil || !ast.IsBinaryExpression(target.Parent) {
+		return nil
+	}
+	binary := target.Parent.AsBinaryExpression()
+	if binary.Left != target || binary.OperatorToken.Kind != ast.KindEqualsToken {
+		return nil
+	}
+	file := ast.GetSourceFileOfNode(target)
+	if file == nil || !file.FileName().IsVibeLangSource() {
+		return nil
+	}
+	declarations := file.GetOrComputeData(isInitializerDeclarationsKey, func(file *ast.SourceFile) map[isInitializerKey]*ast.Node {
+		declarations := map[isInitializerKey]*ast.Node{}
+		var visit func(*ast.Node) bool
+		visit = func(node *ast.Node) bool {
+			if ast.IsVariableDeclaration(node) && node.Flags&ast.NodeFlagsVibeLangPatternHoist != 0 &&
+				node.Name() != nil && ast.IsIdentifier(node.Name()) {
+				name := node.Name()
+				declarations[isInitializerKey{name.Text(), name.Loc}] = node
+			}
+			return node.ForEachChild(visit)
+		}
+		file.AsNode().ForEachChild(visit)
+		return declarations
+	})
+	declaration := declarations[isInitializerKey{target.Text(), target.Loc}]
+	if !VibeLangIsRecoveryBindingDeclaration(declaration) {
+		return nil
+	}
+	return declaration
+}
+
 // ---------------------------------------------------------------- writing
 
 func (p *Parser) mIdent(name string, at core.TextRange) *ast.Node {

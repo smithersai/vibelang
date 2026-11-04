@@ -14302,7 +14302,11 @@ func (c *Checker) getResolvedSymbol(node *ast.Node) *ast.Symbol {
 	links := c.symbolNodeLinks.Get(node)
 	if links.resolvedSymbol == nil {
 		var symbol *ast.Symbol
-		if !ast.NodeIsMissing(node) {
+		if declaration := parser.VibeLangIsInitializerDeclaration(node); declaration != nil {
+			// An is binding's initialization belongs to its own declaration,
+			// including the recovery symbol for an illegal redeclaration.
+			symbol = declaration.Symbol()
+		} else if !ast.NodeIsMissing(node) {
 			symbol = c.resolveName(node, node.Text(), ast.SymbolFlagsValue|ast.SymbolFlagsExportValue,
 				c.getCannotFindNameDiagnosticForName(node), !ast.IsWriteOnlyAccess(node), false /*excludeGlobals*/)
 		}

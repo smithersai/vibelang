@@ -1594,6 +1594,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Native home-directory lookups could fail with `HOME` unset when replaced by the environment-based `UserDirectories.home`. `Experimental.Process.homeDirectory` now preserves `os.homedir()` account fallback through the Node and Bun layers.
 
 - Nested computed field keys in a `schema error` inside effect code incorrectly reported `EK0501` and `TS2464`; `try` now evaluates those keys in the enclosing Effect and keeps their failures and requirements. `vibelang --fix` preserves defects from formerly unchecked plain calls when their failures exceed a written contract.
+- An `is` binding that redeclared a `const` local or a parameter also reported a misleading assignment or type error. It now reports the native redeclaration error at both declarations; assignments written in the source keep their usual checks.
+
 
 - Reading a skipped `is` pattern binding from a closure returned `undefined`; it now throws `ReferenceError` until that binding pattern executes, including for `typeof` and source writes.
 

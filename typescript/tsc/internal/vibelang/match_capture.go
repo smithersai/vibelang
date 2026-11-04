@@ -5,6 +5,7 @@ import (
 
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/checker"
+	"github.com/microsoft/TypeScript/tsc/internal/parser"
 )
 
 // A match reads its subject once, before any pattern runs, as JavaScript's
@@ -204,7 +205,8 @@ func hoistedValue(declaration *ast.Node) *ast.Node {
 		}
 		if ast.IsBinaryExpression(node) {
 			b := node.AsBinaryExpression()
-			if b.OperatorToken.Kind == ast.KindEqualsToken && ast.IsIdentifier(b.Left) && b.Left.Text() == name && b.Left.Flags&ast.NodeFlagsReparsed != 0 {
+			if b.OperatorToken.Kind == ast.KindEqualsToken && ast.IsIdentifier(b.Left) && b.Left.Text() == name && b.Left.Flags&ast.NodeFlagsReparsed != 0 &&
+				(!parser.VibeLangIsRecoveryBindingDeclaration(declaration) || b.Left.Loc == declaration.Name().Loc) {
 				found = b.Right
 				return true
 			}

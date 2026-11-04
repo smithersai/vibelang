@@ -1,0 +1,11 @@
+// expect-result: "ADA"
+// VIP-7/detail 245: fixing rejected redeclarations leaves legal homes alone.
+// Keep the current string inference independent of the inner any binding.
+export function compatible(a: string, b: any) {
+  { if (b is let id) {} }
+  if (a is let id) return id.toUpperCase()
+  return ""
+}
+export effect function main() {
+  return try sync((compatible) => compatible("ada", 0), compatible)
+}

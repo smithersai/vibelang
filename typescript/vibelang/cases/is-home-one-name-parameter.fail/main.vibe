@@ -1,4 +1,4 @@
-// expect: TS2300 TS2322
+// expect: TS2300
 // Chapter 004, decided detail 245: an is binding named like a parameter of
 // its home redeclares it, as a let in the function body would (TS2300). The
 // quick fix renames the later binding and its uses; is-home-one-name-fixed

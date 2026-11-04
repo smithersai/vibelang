@@ -3917,6 +3917,7 @@ typescript/vibelang/cases/is-nested-binding-temps/main.vibe:11:23 lambda plain a
 typescript/vibelang/cases/is-nested-binding-temps/main.vibe:16:24 lambda plain annotation
 typescript/vibelang/cases/is-nested-binding-temps/main.vibe:21:22 lambda plain annotation
 typescript/vibelang/cases/is-nested-binding-temps/main.vibe:27:32 byname program table
+typescript/vibelang/cases/is-redeclaration-keeps-shadow-inference/main.vibe:10:19 lambda plain table
 typescript/vibelang/cases/iterator-array-custom-close/main.vibe:19:19 byname program table
 typescript/vibelang/cases/iterator-binding-default-close/main.vibe:11:19 byname program table
 typescript/vibelang/cases/iterator-destructure-default-close/main.vibe:8:19 byname program table

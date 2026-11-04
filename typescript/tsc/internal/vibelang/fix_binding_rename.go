@@ -32,7 +32,7 @@ import (
 // keeps its key: it becomes { id: let id2 }. The new name is the name with the
 // smallest number that no identifier of the file uses.
 
-// isBindingRenameLabel is the rewrite kind --fix reports for the renames.
+// isBindingRenameLabel names historical rewrite-kind report records.
 const isBindingRenameLabel = "is-binding renames"
 
 func init() {
@@ -381,7 +381,7 @@ func bindingRenameMigrationFixes(ctx context.Context, program *compiler.Program,
 		if refused[key] || slices.ContainsFunc(r.edits, func(e sourceEdit) bool { return overlapsAny(e, taken) }) {
 			continue
 		}
-		p.fixes = append(p.fixes, fileFix{code: r.code, edits: r.edits, key: key, label: isBindingRenameLabel})
+		p.fixes = append(p.fixes, fileFix{code: r.code, edits: r.edits, key: key, native: true})
 		taken = append(taken, r.edits...)
 	}
 	return p

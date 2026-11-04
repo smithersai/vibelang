@@ -74,24 +74,29 @@
     ]
   },
   {
-    "code": "EK0702",
-    "cases": [
-      {
-        "input": "typescript/vibelang/cases/match-pattern-value-admission.fail",
-        "output": "typescript/vibelang/cases/match-pattern-value-admission-fixed-output"
-      },
-      {
-        "input": "typescript/vibelang/cases/match-vip7-invalid-values.fail",
-        "output": "typescript/vibelang/cases/match-vip7-invalid-values-fixed-output"
-      }
-    ]
-  },
-  {
     "code": "EK4857",
     "cases": [
       {
         "input": "typescript/vibelang/cases/vip3-infer-slot.fail",
         "output": "typescript/vibelang/cases/vip3-infer-slot-migration-output"
+      }
+    ]
+  },
+  {
+    "code": "TS2451",
+    "cases": [
+      {
+        "input": "typescript/vibelang/cases/match-is-one-name-per-home.fail",
+        "output": "typescript/vibelang/cases/match-is-one-name-per-home-fixed-output"
+      }
+    ]
+  },
+  {
+    "code": "TS2300",
+    "cases": [
+      {
+        "input": "typescript/vibelang/cases/match-is-one-name-per-home.fail",
+        "output": "typescript/vibelang/cases/match-is-one-name-per-home-fixed-output"
       }
     ]
   }

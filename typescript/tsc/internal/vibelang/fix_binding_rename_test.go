@@ -208,12 +208,12 @@ func TestBindingRenameFix(t *testing.T) {
 				if fixed.Text != test.want {
 					t.Fatalf("--fix writes\n%s\nwant\n%s", fixed.Text, test.want)
 				}
-				if fixed.Rewrites[isBindingRenameLabel] == 0 || len(fixed.Counts) != 0 {
-					t.Fatalf("the renames count as %v, %v", fixed.Rewrites, fixed.Counts)
+				if fixed.NativeCounts[2451]+fixed.NativeCounts[2300] == 0 || len(fixed.Counts) != 0 {
+					t.Fatalf("the renames count as %v, %v", fixed.NativeCounts, fixed.Counts)
 				}
 				var report strings.Builder
 				result.Report(&report, func(name tspath.RootedFilePath) string { return "main.vibe" })
-				if !strings.Contains(report.String(), isBindingRenameLabel+" ×") {
+				if !strings.Contains(report.String(), "TS2451 ×") && !strings.Contains(report.String(), "TS2300 ×") {
 					t.Fatalf("the report does not name the renames: %s", report.String())
 				}
 				if errors := errorsOf(t, fixed.Text); len(errors) != 0 {
