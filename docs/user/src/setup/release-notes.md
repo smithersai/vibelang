@@ -189,6 +189,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 ### Bugs fixed since 0.0.10
 
+- Runtime updates could disagree about available helpers, and valid comparison syntax could conflict with the parser examples; these compatibility checks now run before an affected change is accepted.
+
 - Declaration fuzzing now distinguishes a stock source suppression that exports an invalid namespace type from a valid public API; unresolved dependencies and unrelated declaration failures remain errors.
 - Sidecar documentation checks rejected updated wording for explicit inputs; they now verify discovery, overwrite protection and independent writes against the current contract.
 - The generator migration guide did not name how to run a returned inner Effect; it now shows the separate `try inner` operation.

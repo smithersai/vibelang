@@ -218,6 +218,8 @@ queue:
 
 | Target | Runs when a batch changes |
 | --- | --- |
+| `//typescript/tsc:go-parser` | `typescript/tsc/internal/parser/`, `typescript/vibelang/cases/vibex-clash/` or `typescript/tsc/PACKAGE.ts` |
+| `//packages:runtime-package` | `packages/runtime/`, `packages/PACKAGE.ts` or `docs/tools/bugbash4-docs.test.mjs` |
 | `//:effect-pin` | a `package.json` or `scripts/effect-pin*` |
 | `//:flow-layout` | the migrate flow's `lib/steps.mjs` or its layout test |
 | `//:grammar-inventory` | a VibeLang parser file, a file in `internal/vibelang/`, or the admission table |
@@ -225,6 +227,10 @@ queue:
 | `//typescript/vibelang:lsp-smoke` | `typescript/vibelang/lsp-*`, its `PACKAGE.ts`, or the compiler's `format.mjs` |
 | `//:go-vibelangfuzz-editor` | the language service, `typescript/tsc/internal/ls/` |
 | `//:go-vibelang-fix-twins` | a non-test Go source in the parser, `internal/vibelang/` or `internal/effectglobals/` |
+
+The complete parser package takes less than a second after compilation and includes the clash-corpus expectations. Parser and corpus changes select it from their first matching train.
+
+The runtime package check runs the existing entrypoint, export-identity and Effect-version tests and checks the README's public export table after building the runtime. It takes about eight seconds after the build. It joins the first matching train, without waiting for a post-merge receipt: adding a helper to the main entry while omitting it from the guarded entry must fail before landing.
 
 The editor oracles take about a minute after their build. They join for the
 language service, which they judge: main went RED post-merge on

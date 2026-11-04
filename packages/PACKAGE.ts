@@ -32,6 +32,17 @@ const runtimeTest = S.Shell.Test({
   timeout: "15m"
 })
 
+// A small pre-merge check for package entrypoints, export identity and the Effect pin.
+const runtimePackageTest = S.Shell.Test({
+  summary: "Check the runtime package entries, ABI export identity and Effect version guard.",
+  shell: "cd packages/runtime && bun test tests/package.test.ts && cd ../.. && " +
+    "node --test --test-name-pattern='runtime export table covers every built JavaScript root export' docs/tools/bugbash4-docs.test.mjs",
+  data: [runtimeDist, ...install, S.glob("runtime/tests/**"), S.file("runtime/README.md"), S.file("//docs/tools/bugbash4-docs.test.mjs")],
+  tools: [S.Host.bin("bun"), S.Host.bin("node")],
+  sandbox: "none",
+  timeout: "5m"
+})
+
 // The files the published package holds: what a case's node_modules copies.
 const runtimePublished = S.Filegroup({ srcs: [S.file("runtime/package.json"), S.file("runtime/README.md"), S.file("runtime/LICENSE")] })
 
@@ -125,6 +136,7 @@ export const Package = S.Package({
   targets: {
     "runtime-dist": runtimeDist,
     "runtime-test": runtimeTest,
+    "runtime-package": runtimePackageTest,
     "runtime-published": runtimePublished,
     "compiler-native": compilerNative,
     "compiler-test": compilerTest,
