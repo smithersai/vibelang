@@ -58,6 +58,26 @@ func (p *Parser) isStartOfVibeLangModuleDeclaration() bool {
 	})
 }
 
+// isStartOfVibeLangModuleExpression reports whether module, in an expression,
+// starts a rejected module (EK4003, or EK4002 after export default) rather
+// than the identifier it stays everywhere else (VIP-40). An identifier then {
+// after module is a module's name only when that identifier cannot continue
+// an expression whose operand is the identifier module: as, satisfies, is
+// and of can, so (module as { model?: unknown }).model, module satisfies
+// { … }, module is { … } and for (module of { … }) are valid programs. At a
+// statement's start module as { } is a module named as, as TC39 and
+// TypeScript's own namespace parsing both read it.
+func (p *Parser) isStartOfVibeLangModuleExpression() bool {
+	return p.isStartOfVibeLangModuleDeclaration() && !p.lookAhead(func(p *Parser) bool {
+		p.nextToken()
+		switch p.token {
+		case ast.KindAsKeyword, ast.KindSatisfiesKeyword, ast.KindIsKeyword, ast.KindOfKeyword:
+			return true
+		}
+		return false
+	})
+}
+
 // parseVibeLangModuleDeclaration parses module Name { body } at the current
 // token, or returns nil when the token starts no module declaration.
 func (p *Parser) parseVibeLangModuleDeclaration(pos int, jsdoc jsdocScannerInfo, modifiers *ast.ModifierList) *ast.Node {

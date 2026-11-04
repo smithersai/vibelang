@@ -4084,6 +4084,9 @@ typescript/vibelang/cases/module-declaration/main.vibe:58:97 lambda plain table
 typescript/vibelang/cases/module-declaration/main.vibe:70:27 lambda plain table
 typescript/vibelang/cases/module-declaration/main.vibe:71:25 lambda plain table
 typescript/vibelang/cases/module-declaration/main.vibe:73:28 lambda plain table
+typescript/vibelang/cases/module-identifier-operators/main.vibe:23:17 lambda plain fallback
+typescript/vibelang/cases/module-identifier-operators/main.vibe:37:39 lambda plain protocol
+typescript/vibelang/cases/module-identifier-operators/main.vibe:55:27 lambda plain fallback
 typescript/vibelang/cases/module-import-generated-names/main.vibe:14:21 lambda dual fallback
 typescript/vibelang/cases/module-missing-export.fail/main.vibe:17:19 lambda plain table
 typescript/vibelang/cases/module-outer-binding.fail/main.vibe:23:19 lambda plain table

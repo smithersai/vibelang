@@ -1,0 +1,56 @@
+// expect-result: 8
+// VIP-40: `module` stays an identifier everywhere else. After the identifier,
+// as, satisfies, is and of continue the expression, so none of these is a
+// module expression (EK4003) or an exported module (EK4002), though an
+// identifier and { follow module. opencode packages/core/src/provider.ts.
+function model(value: unknown) {
+  const module = value
+  return (module as { model?: unknown }).model
+}
+function kind(value: unknown) {
+  const module = value
+  return typeof (module as { model?: unknown }).model
+}
+function asserted(value: unknown) {
+  const module = value
+  return module as { model?: number }
+}
+function parameter(module: unknown) {
+  return (module as { model?: number }).model ?? 0
+}
+function shadowed(value: unknown) {
+  const module = { model: 10 }
+  const inner = (module: unknown) => (module as { model?: number }).model ?? 0
+  return inner(value) + module.model
+}
+function satisfied() {
+  const module = { model: 2 }
+  return (module satisfies { model: number }).model
+}
+function matched(module: { model: number }) {
+  if (module is { model: let n }) return n
+  return 0
+}
+function iterated() {
+  const seen: number[] = []
+  let module = 0
+  for (module of { [Symbol.iterator]: () => [1, 2].values() }) seen.push(module)
+  return seen.length
+}
+const module = { model: 4 }
+export default module satisfies { model: number }
+export function results() {
+  return [
+    model({ model: 1 }) === 1,
+    kind({}) === "undefined",
+    asserted({ model: 2 }).model === 2,
+    parameter({ model: 3 }) === 3,
+    shadowed({ model: 5 }) === 15,
+    satisfied() === 2,
+    matched({ model: 5 }) === 5,
+    iterated() === 2,
+  ]
+}
+export effect function main() {
+  return results().filter((ok) => ok).length
+}

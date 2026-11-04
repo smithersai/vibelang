@@ -2864,7 +2864,7 @@ func (p *Parser) parseExportAssignment(pos int, jsdoc jsdocScannerInfo, modifier
 		}
 	}
 	var expression *ast.Node
-	if !isExportEquals && p.isStartOfVibeLangModuleDeclaration() {
+	if !isExportEquals && p.isStartOfVibeLangModuleExpression() {
 		expression = p.rejectVibeLangModule(4002, ModuleExportMessage)
 	} else {
 		expression = p.parseAssignmentExpressionOrHigher()
@@ -6044,7 +6044,7 @@ func (p *Parser) parseTemplateSpan(isTaggedTemplate bool) *ast.Node {
 }
 
 func (p *Parser) parsePrimaryExpression() *ast.Expression {
-	if p.isStartOfVibeLangModuleDeclaration() {
+	if p.isStartOfVibeLangModuleExpression() {
 		return p.rejectVibeLangModule(4003, ModuleExpressionMessage)
 	}
 	// A parenthesized call may name a user's function with a block argument.
