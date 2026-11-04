@@ -1,0 +1,10 @@
+{
+  "key": "onepass:unproven-original-declaration-baseline",
+  "oracle": "After failed verification, one-pass repair restores each still-migrated module listed in declarationOracle.unproven before checking the remaining modules.",
+  "modules": ["core/src/index.vibe", "app/src/index.vibe"],
+  "unproven": {
+    "file": "core/src/index.vibe",
+    "declaration": "index.d.ts",
+    "reason": "native baseline differs from the original compiler"
+  }
+}

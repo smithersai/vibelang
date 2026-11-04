@@ -934,3 +934,75 @@ test("settled success receipts cannot certify a different producer", async () =>
     assert.ok(fixes() > before, "done.json must be rechecked under the new producer")
   } finally { rmSync(f.root, { recursive: true, force: true }) }
 })
+
+test("one-pass repair restores a module with an unproven stock declaration baseline", async () => {
+  const corpus = readJson(fileURLToPath(new URL("./corpus/t3code-onepass-stock-declaration.json", import.meta.url)))
+  const f = await fixture()
+  try {
+    await onePassStep("plan", { run: f.run, scope: f.scope })
+    await onePassStep("rename", { run: f.run })
+    await onePassStep("fix", { run: f.run, jobs: 1 })
+    const p = paths(f.run)
+    put(f.root, "tool/compiler.cjs", "#!/usr/bin/env node\nprocess.exit(0)\n")
+    const unproven = corpus.unproven
+    writeJson(p.compile("01"), { batch: "01" })
+    writeJson(p.verify("01"), { ok: false, declarationOracle: { unproven: [unproven] } })
+    await (await import("../lib/steps.mjs")).repair({ run: f.run, batch: "01" })
+    assert.equal(existsSync(join(f.target, unproven.file)), false)
+    assert.equal(existsSync(join(f.target, "core/src/index.ts")), true)
+    assert.equal(existsSync(join(f.target, "app/src/index.vibe")), true, "keep the healthy importer")
+    assert.match(text(f.target, "app/src/index.vibe"), /core\/src\/index\.js/)
+    const causes = readJson(join(p.batch("01"), "settle-causes.json"))
+    assert.deepEqual(causes[unproven.file].codes, ["STOCK_DECL"])
+    assert.match(causes[unproven.file].diagnostics[0].message, /index\.d\.ts/)
+    assert.equal(readJson(p.verify("01")).ok, false, "restoration does not certify verification")
+    assert.deepEqual(nextStep(f.run), { step: "verify", batch: "01" })
+
+    // A retry reads the same failed receipt after the module has been restored.
+    await (await import("../lib/steps.mjs")).repair({ run: f.run, batch: "01" })
+    assert.equal(existsSync(join(f.target, "app/src/index.vibe")), true)
+    assert.deepEqual(readJson(join(p.batch("01"), "settle-causes.json"))[unproven.file].codes, ["STOCK_DECL"])
+  } finally { rmSync(f.root, { recursive: true, force: true }) }
+})
+
+test("property: one-pass oracle recovery restores only live batch modules and never trusts an old verdict", async () => {
+  const corpus = readJson(fileURLToPath(new URL("./corpus/t3code-onepass-stock-declaration.json", import.meta.url)))
+  const scenario = fc.record({
+    files: fc.subarray(corpus.modules, { minLength: 1 }),
+    duplicate: fc.boolean(),
+    passed: fc.boolean()
+  })
+  await fc.assert(fc.asyncProperty(scenario, async ({ files, duplicate, passed }) => {
+    const f = await fixture()
+    try {
+      await onePassStep("plan", { run: f.run, scope: f.scope })
+      await onePassStep("rename", { run: f.run })
+      await onePassStep("fix", { run: f.run, jobs: 1 })
+      put(f.root, "tool/compiler.cjs", "#!/usr/bin/env node\nprocess.exit(0)\n")
+      const p = paths(f.run)
+      const entries = files.map(file => ({ ...corpus.unproven, file }))
+      writeJson(p.verify("01"), {
+        ok: passed,
+        declarationOracle: { unproven: [...entries, ...(duplicate ? entries : []), { ...corpus.unproven, file: "entry.vibe" }] }
+      })
+      const repair = (await import("../lib/steps.mjs")).repair
+      await repair({ run: f.run, batch: "01" })
+      await repair({ run: f.run, batch: "01" })
+      for (const file of corpus.modules) {
+        const returned = !passed && files.includes(file)
+        assert.equal(existsSync(join(f.target, file)), !returned, file)
+        assert.equal(existsSync(join(f.target, file.replace(/\.vibe$/, ".ts"))), returned, file)
+      }
+      assert.equal(existsSync(join(f.target, "entry.vibe")), true, "ignore a module outside the batch")
+      assert.equal(readJson(p.verify("01")).ok, passed, "repair must not fabricate a new verification verdict")
+    } finally { rmSync(f.root, { recursive: true, force: true }) }
+  }), {
+    seed: 101,
+    numRuns: 8,
+    examples: [
+      [{ files: [corpus.modules[0]], duplicate: true, passed: false }],
+      [{ files: corpus.modules, duplicate: true, passed: false }],
+      [{ files: corpus.modules, duplicate: false, passed: true }]
+    ]
+  })
+})

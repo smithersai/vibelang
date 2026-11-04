@@ -343,6 +343,13 @@ The existing flow uses this path when `plan.json` has `mode: "one-pass"`:
 The target's test, declaration and style gates still run in `verify` before
 `record`. A clean settle alone does not prove those gates passed.
 
+After failed verification, one-pass `repair` restores each still-migrated module
+listed in `declarationOracle.unproven` before checking the remaining modules.
+The `STOCK_DECL` cause and original declaration filename are saved in
+`settle-causes.json` before restoration, so a retry keeps the evidence and
+does not restore the same module twice. Healthy importers stay migrated.
+A successful repair still requires fresh verification before recording.
+
 ### Staged dependencies in published packages
 
 When a public package needs a staged toolchain package at runtime, setup keeps its production dependency at the exact version read from that artifact's `package.json`. This includes `vibelang-runtime` and the `vibelang` loader needed by a source child. An `npm pack` consumer therefore resolves a release rather than a path inside the migration checkout. Setup also normalizes public sibling manifests changed by loader wiring, even when those packages were not selected for conversion.

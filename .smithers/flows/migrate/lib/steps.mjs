@@ -1735,6 +1735,29 @@ export async function repair(options) {
   const { p, config, plan: thePlan } = loadRun(options.run)
   const b = currentBatch(options.run, options.batch)
   if (thePlan?.mode === "one-pass") {
+    const previous = readJsonIf(p.verify(b))
+    if (previous?.ok === false) {
+      const cm = readJson(p.codemod(b))
+      const live = new Set(cm.renames.map(r => r.to).filter(file => existsSync(join(config.target, file))))
+      const unproven = new Map((previous.declarationOracle?.unproven ?? []).filter(item => live.has(item.file)).map(item => [item.file, item]))
+      if (unproven.size) {
+        const causesPath = join(p.batch(b), "settle-causes.json")
+        const causes = readJsonIf(causesPath, {})
+        const requests = [...unproven].map(([file, item]) => {
+          const message = item.reason + ": " + item.declaration
+          causes[file] = {
+            cause: "original TypeScript declaration oracle",
+            families: ["original TypeScript declaration oracle"],
+            codes: ["STOCK_DECL"],
+            diagnostics: [{ file, code: "STOCK_DECL", category: "error", message }]
+          }
+          return { file, reason: "STOCK_DECL: " + message }
+        })
+        // Save the cause before restoring sources so a retry retains its evidence.
+        writeJson(causesPath, causes)
+        await revertMany({ run: p.run, batch: b, files: requests })
+      }
+    }
     const settled = await (await import("./onepass.mjs")).onePassStep("settle", options)
     if (!settled.settled) throw new Error("NOT SETTLED: see " + join(p.batch(b), "settle.json"))
     const result = {
