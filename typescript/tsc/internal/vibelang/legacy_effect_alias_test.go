@@ -156,14 +156,11 @@ func TestLegacyEffectAliasModuleConfiguration(t *testing.T) {
 }
 
 // Details260/277: a qualified migration result retains its EK4833 advisory,
-// but neither a style action nor a later --fix round may undo its contract.
+// when source-written parentheses would be lost by declaration emission.
 func TestLegacyEffectAliasStyleAdvisory(t *testing.T) {
 	for _, source := range []string{
-		"export type Value = Effect.Effect<number>[]",
-		"export type Value = Effect.Effect<number> | null",
 		"export type Value = (Effect.Effect<number>)[]",
 		"export type Value = Effect.Effect<(number | string)>",
-		"export type Value = Effect.Effect<number, Error | string>",
 	} {
 		t.Run(source, func(t *testing.T) {
 			program, file, service, converters := editorProgram(t, source)

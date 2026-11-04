@@ -320,6 +320,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Native `|>` pipelines could incorrectly report a nested pipe chain. Lint now checks written `.pipe` calls and ignores the calls generated to type native pipeline stages.
 
 
+- EK4833's quick fix refused every Effect type whose shorthand needs parentheses, such as `Effect.Effect<string | null, E>`, so `--fix` left annotated t3code modules unconverted. It now writes the grouped shorthand, such as `(string | null)!E`, with unchanged declaration output. A full `--fix` run on a legacy `Effect<A | B>` now ends at `(A | B)!!` rather than `Effect.Effect<A | B>`. Refusals now name the source-written parentheses or type-argument comments they would lose.
+
 - Migrating a module reached through an exact `paths` alias could rewrite imports to a name absent from the configuration, such as `models.vibe`. Those imports now name the same migrated source by a relative path, and revert restores the original alias.
 
 - The producer fuzz citation failed after its buffering rule was clarified. It now retains the sequential-emitter qualification and identifies the generalized reference template; the generated programs are unchanged.

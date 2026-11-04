@@ -1,6 +1,8 @@
 package vibelang
 
 import (
+	"fmt"
+
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/checker"
 )
@@ -108,12 +110,20 @@ func effectTypeRewrite(c *checker.Checker, file *ast.SourceFile, reference *ast.
 			return nil
 		}
 	}
-	keepNever := c.CompilerOptions().GetEmitDeclarations() && isExportedStatementPart(reference)
+	grouped := needsBangParentheses(reference)
+	for i, argument := range arguments {
+		grouped = grouped || effectSlotNeedsParentheses(argument, i > 0)
+	}
+	keepNever := grouped || c.CompilerOptions().GetEmitDeclarations() && isExportedStatementPart(reference)
 	slot := func(i int) string {
 		if i >= len(arguments) || arguments[i].Kind == ast.KindNeverKeyword && !keepNever {
 			return ""
 		}
-		return bangSlot(expressionText(file, arguments[i]), i > 0)
+		text := expressionText(file, arguments[i])
+		if effectSlotNeedsParentheses(arguments[i], i > 0) {
+			text = "(" + text + ")"
+		}
+		return text
 	}
 	success, errors, dependencies := slot(0), slot(1), slot(2)
 	if success == "" {
@@ -129,19 +139,51 @@ func effectTypeRewrite(c *checker.Checker, file *ast.SourceFile, reference *ast.
 			text = success + "!!"
 		}
 	}
+	// A body return annotation with one ! infers R. The named Effect's
+	// omitted R instead defaults to never, so keep that contract explicit.
+	if grouped && isBodyReturnAnnotation(reference) && dependencies == "" && errors != "" {
+		text += "!"
+	}
 	if needsBangParentheses(reference) {
 		text = "(" + text + ")"
 	}
-	// Chapter 7's advisory still teaches the equivalent, grouped spelling
-	// when the edit is unsafe. Details260/277 apply through the full --fix
-	// fixed point: a later style pass must not undo migration qualification.
-	if !effectShorthandKeepsGrouping(file, reference) {
-		return &formRewrite{
-			description: text,
-			why:         "No quick fix: keep the qualified Effect type here to preserve grouping and declaration output.",
+	if grouped {
+		name := expressionText(file, reference.AsTypeReferenceNode().TypeName)
+		if name != "Effect.Effect" {
+			return &formRewrite{description: text, why: fmt.Sprintf("No quick fix: the shorthand would replace %s with Effect.Effect in declaration output.", name)}
 		}
 	}
-	return &formRewrite{edits: []sourceEdit{{nodeStart(file, reference), reference.End(), text}}, description: text}
+	// Newly required grouping disappears again when emptySlots emits the
+	// named Effect type. Source-written grouping, however, would disappear
+	// too; retain it until declarations can distinguish those parentheses.
+	if reference.Parent != nil && ast.IsParenthesizedTypeNode(reference.Parent) {
+		return &formRewrite{description: text, why: "No quick fix: declaration emission would remove the source-written parentheses around this Effect type."}
+	}
+	for i, argument := range arguments {
+		if ast.IsParenthesizedTypeNode(argument) {
+			return &formRewrite{description: text, why: fmt.Sprintf("No quick fix: declaration emission would remove the source-written parentheses in Effect type argument %d.", i+1)}
+		}
+	}
+	rewrite := &formRewrite{edits: []sourceEdit{{nodeStart(file, reference), reference.End(), text}}, description: text}
+	if !editsPreserveComments(file.Text(), rewrite.edits) {
+		return &formRewrite{description: text, why: "No quick fix: rewriting this Effect type would discard or reorder comments between its type arguments."}
+	}
+	return rewrite
+}
+
+// Use parsed kinds rather than scanning operand text: operator-looking
+// characters inside comments must not change the grouping decision.
+func effectSlotNeedsParentheses(node *ast.Node, afterBang bool) bool {
+	if isBangType(node) {
+		return true
+	}
+	switch node.Kind {
+	case ast.KindUnionType, ast.KindIntersectionType, ast.KindFunctionType, ast.KindConstructorType, ast.KindConditionalType:
+		return true
+	case ast.KindTypeLiteral, ast.KindMappedType:
+		return afterBang
+	}
+	return false
 }
 
 // isExportedStatementPart reports whether node stands in a top-level

@@ -22,7 +22,7 @@ func TestContractAmbientNamesake(t *testing.T) {
 		name, contract, want, fullWant string
 	}{
 		{"alone", "Effect<string, never, FileSystem>", "Effect<string, never, FileSystem.FileSystem>", "string!never!FileSystem.FileSystem"},
-		{"union", "Effect<string, never, FileSystem | Path>", "Effect<string, never, FileSystem.FileSystem | Path>", "Effect.Effect<string, never, FileSystem.FileSystem | Path>"},
+		{"union", "Effect<string, never, FileSystem | Path>", "Effect<string, never, FileSystem.FileSystem | Path>", "string!never!(FileSystem.FileSystem | Path)"}, // EK4833 then groups the union (VIP-3, 2026-11-04)
 		{"bang form", "string!!FileSystem", "string!!FileSystem.FileSystem", "string!!FileSystem.FileSystem"},
 	} {
 		t.Run(test.name, func(t *testing.T) {

@@ -132,21 +132,37 @@ func FuzzEffectTypeHintParentheses(f *testing.F) {
 	})
 }
 
-// Chapter 7 separates teaching the equivalent shorthand from applying it.
-// A concrete hint must not re-enable an edit that changes grouping or
-// declaration output after the legacy-alias migration (details260/277).
-func TestEffectTypeHintGroupingRefusesUnsafeFix(t *testing.T) {
+// Chapter 7: a quick fix is offered when it preserves declaration output, and
+// EK4833's shorthand keeps required parentheses. Parentheses the fix adds never
+// reach declarations, so the grouped hint is applied, and declarations stay
+// byte-identical (VIP-3, amended 2026-11-04).
+func TestEffectTypeHintGroupingFixKeepsDeclarations(t *testing.T) {
 	effectTypeHintParenthesesQuoted(t)
 	w := NewWorkspace(t)
+	const config = `{"compilerOptions":{"target":"ES2022","module":"NodeNext","moduleResolution":"NodeNext","strict":true,"types":[],"skipLibCheck":true,"declaration":true,"emitDeclarationOnly":true,"outDir":"out"},"files":["main.vibe"]}`
+	compile := func(t *testing.T, source string) (*Result, string) {
+		t.Helper()
+		r, err := w.Compile(t.Context(), Project{Files: map[string]string{"main.vibe": source, "package.json": `{"type":"module"}`}, Config: config})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !toolsErrorFree(r) {
+			t.Fatalf("must compile: %v\n%s", SortedKeys(Keys(r.Dir, r.Diagnostics)), source)
+		}
+		for output, text := range r.Outputs {
+			if strings.HasSuffix(output, "/main.d.ts") {
+				return r, text
+			}
+		}
+		t.Fatalf("missing main.d.ts\n%s", source)
+		return r, ""
+	}
 	for _, home := range effectHintHomes {
 		for _, slots := range effectHintSlots {
 			t.Run(home+":"+slots.key, func(t *testing.T) {
 				source := effectHintSource(home, "number | string", slots.args)
-				before := toolsCompile(t, w, effectHintParenthesesTarget, map[string]string{"main.vibe": source})
+				before, declaration := compile(t, source)
 				defer before.Remove()
-				if !toolsErrorFree(before) {
-					t.Fatalf("qualified input must compile: %v", SortedKeys(Keys(before.Dir, before.Diagnostics)))
-				}
 				warnings := 0
 				for _, d := range before.Diagnostics {
 					if d.Source() == "EK" && d.Code() == 4833 {
@@ -160,8 +176,20 @@ func TestEffectTypeHintGroupingRefusesUnsafeFix(t *testing.T) {
 					t.Fatalf("want one EK4833, got %d", warnings)
 				}
 				fixed := vibelang.FixProjectWithOptions(t.Context(), w.fs, bundled.LibPath(), toolsConfig(w, before.Dir), vibelang.FixOptions{})
-				if fixed.Err != nil || len(fixed.Files) != 0 {
-					t.Fatalf("%s: grouped hint must leave the qualified source untouched; files=%d, err=%v", legacyEffectAliasQuote, len(fixed.Files), fixed.Err)
+				if fixed.Err != nil || len(fixed.Files) != 1 || len(fixed.Refused) != 0 {
+					t.Fatalf("%s: the grouped hint must be applied; files=%d, refused=%v, err=%v", legacyEffectAliasQuote, len(fixed.Files), fixed.Refused, fixed.Err)
+				}
+				var text string
+				for _, file := range fixed.Files {
+					text = file.Text
+				}
+				if strings.Contains(text, "Effect.Effect<") || !strings.Contains(text, "(number | string)") {
+					t.Fatalf("%s: want the grouped shorthand, --fix wrote\n%s", effectHintParenthesesQuote, text)
+				}
+				after, got := compile(t, text)
+				defer after.Remove()
+				if got != declaration {
+					t.Fatalf("%s: declarations changed\nbefore:\n%s\nafter:\n%s", legacyEffectAliasQuote, declaration, got)
 				}
 			})
 		}

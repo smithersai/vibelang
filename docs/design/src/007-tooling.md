@@ -183,6 +183,8 @@ In the `EK4834`, `EK4835` and `EK4836` rows, the call is the direct operand of b
 | `EK4841` | A schema `const` immediately followed by its matching `typeof Name.Type` alias | Use the corresponding `schema Name = …` declaration where the schema mapping preserves both exports. |
 | `EK4842` | An Effect module imported under a conflicting JavaScript global name | Rename that import and its resolved uses, such as `Array as Arr`, only where emitted public types keep their meaning. |
 
+EK4833's quick fix may add parentheses required by the shorthand: `Effect.Effect<number> | null` becomes `(number!!) | null`, and `Effect.Effect<A, E | Error>` becomes `A!(E | Error)`. These added parentheses disappear in declaration output. If declaration emission would also remove parentheses already written in the source, or the rewrite would lose type-argument comments, the fix refuses and identifies that loss. A differently named Effect namespace is retained when rewriting would change its spelling in declaration output.
+
 The `EK4833` advisory treats a custom qualified alias named `Effect` as an equivalent spelling only when its resolved type is Effect's own `Effect` interface and its written arguments match that type's success, error and requirements slots. An omitted slot must resolve to `never`. An exact forwarding alias may qualify; aliases whose parameter order, defaults, wrapped slots, added requirements or union branches would change the repaired type retain their spelling without this advisory.
 
 For example, the `EK4830` repair may replace this class with `error Missing { id: string }` while preserving `Fail(Missing { id: "x" })`:

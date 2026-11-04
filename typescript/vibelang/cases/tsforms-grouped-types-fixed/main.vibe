@@ -1,0 +1,17 @@
+// Chapter 007: grouped quick fixes preserve declaration output.
+export type Maybe = (number!!) | null
+export interface Client {
+ readonly run: <A, E>(p: A!E) => A!(E | Error)
+}
+export type Resource<R, S> = void!Error!(R | S)
+export type Callback = (() => number)!!
+
+// t3code apps/web/src/connection/storage.ts: a union success slot.
+export type Get = (key: string) => (string | null)!Error
+// t3code apps/desktop/src/app/DesktopStartupRecovery.ts: a leading-bar union requirements slot.
+export type Listen = void!Error!(| RangeError
+  | TypeError)
+// t3code apps/web/src/lib/backgroundActivityReporter.ts: an Effect type in the success slot.
+export type Outer = (void!!)!!
+
+// Appendix B: EK4833 — spec-rule: docs/design/src/900-appendices.md#bd2b6979a6e8cc0d

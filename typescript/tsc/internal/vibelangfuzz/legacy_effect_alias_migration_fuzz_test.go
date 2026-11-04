@@ -138,6 +138,26 @@ func FuzzLegacyEffectAliasMigration(f *testing.F) {
 		default:
 			key = "alias"
 		}
+		// EK4856 still qualifies grouped aliases in migration-only mode.
+		// Ordinary --fix then applies EK4833's declaration-preserving grouping.
+		if mode&8 != 0 {
+			switch key {
+			case "union-member":
+				wantText = "export type Value = (" + scalar + "!!) | null"
+			case "intersection-member":
+				wantText = "export type Value = (" + scalar + "!!) & { readonly id: string }"
+			case "conditional-check":
+				wantText = "export type Value<T> = (" + scalar + "!!) extends T ? 1 : 2"
+			case "keyof":
+				wantText = "export type Value = keyof (" + scalar + "!!)"
+			case "function-success":
+				wantText = "export type Value = (() => " + scalar + ")!!"
+			case "constructor-success":
+				wantText = "export type Value = (new () => { readonly id: " + scalar + " })!!"
+			case "success-intersection":
+				wantText = "export type Value = ({ a: number } & { b: string })!!"
+			}
+		}
 		if mode&4 != 0 {
 			source = "// café 😀\n" + source
 			if wantText != "" {
@@ -183,7 +203,7 @@ func FuzzLegacyEffectAliasMigration(f *testing.F) {
 				return
 			}
 			if wantText != "" && next["main.vibe"] != wantText {
-				Gap(t, "FuzzLegacyEffectAliasMigration", "grouping:"+key, "detail260: use shorthand only without new grouping and preserve written defaults; got %q, want %q", next["main.vibe"], wantText)
+				Gap(t, "FuzzLegacyEffectAliasMigration", "grouping:"+key, "VIP-3: preserve written defaults and distinguish migration-only qualification from full grouped repair; got %q, want %q", next["main.vibe"], wantText)
 				return
 			}
 			after := toolsCompile(t, w, "FuzzLegacyEffectAliasMigration", next)

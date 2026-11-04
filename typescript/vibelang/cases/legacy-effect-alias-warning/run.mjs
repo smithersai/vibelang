@@ -11,12 +11,15 @@ const work = path.join(here, "out/fix-evidence")
 fs.rmSync(work, { recursive: true, force: true })
 fs.mkdirSync(work, { recursive: true })
 const compiler = process.env.VIBELANG_REWRITE_BINARY || fileURLToPath(new URL("../../../built/local/tsc", import.meta.url))
+// EK4856 writes Effect.Effect<…> where shorthand needs new parentheses (detail 260);
+// EK4833 then writes the grouped shorthand, which keeps declaration bytes, in the
+// same --fix run. Source-written parentheses and heritage elements stay qualified.
 const sources = [
   ["export type Basic = Effect<number>", "export type Basic = number!!"],
   ["export type Defaults = Effect<number, never, never>", "export type Defaults = number!never!never"],
-  ["export type Union = Effect<number | string>", "export type Union = Effect.Effect<number | string>"],
-  ["export type Items = Effect<number>[]", "export type Items = Effect.Effect<number>[]"],
-  ["export type Member = Effect<number> | null", "export type Member = Effect.Effect<number> | null"],
+  ["export type Union = Effect<number | string>", "export type Union = (number | string)!!"],
+  ["export type Items = Effect<number>[]", "export type Items = (number!!)[]"],
+  ["export type Member = Effect<number> | null", "export type Member = (number!!) | null"],
   ["export type Group = (Effect<number>)[]", "export type Group = (Effect.Effect<number>)[]"],
   ["export type GroupSlot = Effect<(number | string)>", "export type GroupSlot = Effect.Effect<(number | string)>"],
   ["export interface Parent extends Effect<number> {}", "export interface Parent extends Effect.Effect<number> {}"],

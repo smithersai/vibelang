@@ -1,6 +1,6 @@
 // expect-result: {"loaded":3,"checked":"ok","held":"held","callback":4,"maybe":5,"nested":6,"kept":7}
 // An explicit Effect type draws EK4833 (D287); a safe fix writes ! without
-// adding grouping or changing declarations (details260/277). Other positions
+// changing declarations. Required grouping is added; source-written parentheses
 // and explicit infer channels retain the qualified type. An omitted slot is
 // never, and the directive keeps an additional qualified spelling.
 // tsforms-types-fixed is what vibelang --fix writes.
@@ -22,11 +22,11 @@ const six: number!! = effect { return 6 }
 type Callback = (n: number) => number!!
 const callback: Callback = effect (n) => n + 1
 
-effect function maybe(program: Effect.Effect<number> | undefined): number!! {
+effect function maybe(program: (number!!) | undefined): number!! {
   return program === undefined ? 0 : try program
 }
 
-effect function nested(program: Effect.Effect<number>!!): number!! {
+effect function nested(program: (number!!)!!): number!! {
   const inner = try program
   return try inner
 }
