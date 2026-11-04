@@ -182,6 +182,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 ### Bugs fixed since 0.0.10
 
+- Short fuzz runs omitted CPU accounting for the retired formatter and public compatibility-code checks, making the coverage guard fail. Both targets now use the existing budget without changing their samples or limits.
+
 - Upgrade-baseline regression tests could stop at an incomplete target-dependency fixture before checking compiler errors. They now complete the capability probe and verify that new compiler errors still reject the upgrade.
 - Source-child helper validation rejected the compiler's permitted generated `@throws {never}` contract; it now uses the declaration identity gate while preserving checks for authored documentation and type changes.
 - Migration wrapper-loss checks could fail their regression suite after private packages gained normal emission. Separate checks now cover private-package output and scratch fallback while preserving lost-wrapper rejection.

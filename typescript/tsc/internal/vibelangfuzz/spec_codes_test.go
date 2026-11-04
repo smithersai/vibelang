@@ -186,6 +186,7 @@ func TestGrammarAdmissionReasonsUsePublishedCodes(t *testing.T) {
 // VIP-34/Appendix B assigns current codes. The historical-reference exception
 // cannot leak across a sentence or newline into a current-code citation.
 func FuzzPublicCompatibilityCodeCitations(f *testing.F) {
+	startShortBudget(f)
 	for _, seed := range []uint8{0, 1, 2, 7, 255} {
 		f.Add(seed)
 	}

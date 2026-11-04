@@ -1071,3 +1071,5 @@ The diagnostic-link oracle retains the round-36 `EK4857` duplicate-`Meaning` wit
 Error and schema-error declaration counterparts follow the 2026-11-04 VIP-27 ruling implemented by `5df13e0fc559`: generated matcher members and runtime references stay out of published types. The strict API oracle remains unchanged. Coverage includes computed payloads, fieldless errors, schema codecs and an accessor, including the schema fixture’s second source file; keyed archives retain those paired inputs.
 
 Reserved Effect-expression names are owned by the VIP-17 parser diagnostic. Exact-count controls include functions, producers, escaped identifiers, Unicode prefixes, nested source contexts and the existing rename checks. The callable-name property retains its original count oracle and adds escaped-name mutations and keyed inputs.
+
+The retired-formatter and public compatibility-code fuzz targets register the same short-seed CPU guard as every other target. Their original seeds, mutation oracles and twelve-minute limit remain unchanged; `TestShortTargetsBudgeted` checks the registration.

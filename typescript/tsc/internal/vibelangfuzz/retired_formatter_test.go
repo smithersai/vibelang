@@ -10,6 +10,7 @@ import (
 // VIP-35: "the first release ships without handlers." Whitespace, encoding
 // and JSX mode cannot make a retired control declaration reach the host.
 func FuzzRetiredFormatterControl(f *testing.F) {
+	startShortBudget(f)
 	for _, n := range []uint8{0, 1, 7, 255} {
 		f.Add(n, false, false)
 		f.Add(n, true, true)
