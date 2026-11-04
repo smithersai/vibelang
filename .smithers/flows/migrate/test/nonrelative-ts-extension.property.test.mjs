@@ -13,7 +13,7 @@ const require = createRequire(new URL("../../../../packages/runtime/package.json
 const ts = require("typescript"), fc = require("fast-check")
 const native = process.env.VIBELANG_BINARY || fileURLToPath(new URL("../../../../packages/compiler/native/" + (process.platform === "win32" ? "vibelang.exe" : "vibelang"), import.meta.url))
 const fixture = JSON.parse(readFileSync(new URL("./corpus/t3code-nonrelative-ts-extension.json", import.meta.url), "utf8"))
-const quote = "TypeScript's own lexical, syntax and static errors on ordinary native syntax keep their " + String.fromCharCode(96) + "TS" + String.fromCharCode(96) + " codes, including independent errors in embedded expressions and types."
+const quote = "Native lexical, syntax and static errors keep their `TS` codes, as in TypeScript, including independent errors in embedded expressions and types."
 
 test("alias spelling uses the spec's native TypeScript diagnostic contract", () => {
   assert.ok(readFileSync(SpecPath("007-tooling.md"), "utf8").includes(quote))
