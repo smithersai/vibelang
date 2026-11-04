@@ -1,8 +1,6 @@
-// Nothing in this program names a prelude or effect export, and no function
-// declaration has a plain variant: each function below is an Effect only
-// because it calls a built-in whose failures are expected (D101). The program
-// still loads effect, so each one's type and declaration are the Effect its
-// JavaScript returns.
-export const line = effect (asked: string) => JSON.parse(asked)
-export const component = effect (text: string) => decodeURIComponent(text)
-export const global = effect (text: string) => globalThis.JSON.parse(text) as unknown
+// Intrinsic calls use explicit exception bridges.
+// These effect arrows load the Effect operations they need and retain
+// their success and failure channels.
+export const line = effect (asked: string) => try ((foreignSyntaxErrorClass: typeof SyntaxError) => Effect.catch(Effect.try({ try: () => JSON.parse(asked), catch: (error) => error }), (error) => error instanceof foreignSyntaxErrorClass ? Effect.fail(error) : Effect.die(error)))(SyntaxError)
+export const component = effect (text: string) => try ((foreignURIErrorClass: typeof URIError) => Effect.catch(Effect.try({ try: () => decodeURIComponent(text), catch: (error) => error }), (error) => error instanceof foreignURIErrorClass ? Effect.fail(error) : Effect.die(error)))(URIError)
+export const global = effect (text: string) => (try ((foreignSyntaxErrorClass: typeof SyntaxError) => Effect.catch(Effect.try({ try: () => globalThis.JSON.parse(text), catch: (error) => error }), (error) => error instanceof foreignSyntaxErrorClass ? Effect.fail(error) : Effect.die(error)))(SyntaxError)) as unknown

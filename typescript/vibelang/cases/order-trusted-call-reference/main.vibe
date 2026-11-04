@@ -16,7 +16,10 @@ effect function getter() {
     trace.push("argument")
     return "7"
   }
-  const value: number = codec.parse(try input())
+  const callReceiver = codec
+  const callTarget = callReceiver.parse
+  const callArgument = try input()
+  const value: number = try ((failureClass: typeof SyntaxError) => Effect.catch(Effect.try({ try: () => Reflect.apply(callTarget, callReceiver, [callArgument]), catch: (error) => error }), (error) => error instanceof failureClass ? Effect.fail(error) : Effect.die(error)))(SyntaxError)
   return [value, trace]
 }
 
@@ -35,7 +38,10 @@ effect function replaced() {
     }
     return "7"
   }
-  const value: number = codec.parse(try input())
+  const callReceiver = codec
+  const callTarget = callReceiver.parse
+  const callArgument = try input()
+  const value: number = try ((failureClass: typeof SyntaxError) => Effect.catch(Effect.try({ try: () => Reflect.apply(callTarget, callReceiver, [callArgument]), catch: (error) => error }), (error) => error instanceof failureClass ? Effect.fail(error) : Effect.die(error)))(SyntaxError)
   return [value, trace]
 }
 
@@ -53,7 +59,9 @@ effect function rebound() {
     }
     return "7"
   }
-  const value: number = parse(try input())
+  const callTarget = parse
+  const callArgument = try input()
+  const value: number = try ((failureClass: typeof SyntaxError) => Effect.catch(Effect.try({ try: () => Reflect.apply(callTarget, void 0, [callArgument]), catch: (error) => error }), (error) => error instanceof failureClass ? Effect.fail(error) : Effect.die(error)))(SyntaxError)
   return [value, trace]
 }
 

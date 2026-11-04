@@ -1,10 +1,9 @@
 // Built-in contracts (D5): JSON.parse's shipped contract lists SyntaxError.
-import { Effect } from "effect"
 
 // An Effect function that lets the SyntaxError escape fails with it: the
 // contract makes it an expected failure, so it joins E.
 effect function parse(text: string) {
-  return JSON.parse(text) as { port: number }
+  return (try ((foreignSyntaxErrorClass: typeof SyntaxError) => Effect.catch(Effect.try({ try: () => JSON.parse(text), catch: (error) => error }), (error) => error instanceof foreignSyntaxErrorClass ? Effect.fail(error) : Effect.die(error)))(SyntaxError)) as { port: number }
 }
 
 // A catch in an Effect function receives the typed SyntaxError.

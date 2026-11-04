@@ -15,7 +15,13 @@ effect function method() {
     try Effect.yieldNow
     return "7"
   }
-  const value = codec.parse?.(try input())
+  const callReceiver = codec
+  const callTarget = callReceiver.parse
+  let value: ReturnType<typeof JSON.parse> = undefined
+  if (callTarget != null) {
+    const callArgument = try input()
+    value = try ((failureClass: typeof SyntaxError) => Effect.catch(Effect.try({ try: () => Reflect.apply(callTarget, callReceiver, [callArgument]), catch: (error) => error }), (error) => error instanceof failureClass ? Effect.fail(error) : Effect.die(error)))(SyntaxError)
+  }
   return [value ?? null, trace]
 }
 
@@ -26,7 +32,13 @@ effect function receiver(codec: { parse: typeof JSON.parse } | undefined) {
     try Effect.yieldNow
     return "7"
   }
-  const value = codec?.parse(try input())
+  const callReceiver = codec
+  let value: ReturnType<typeof JSON.parse> = undefined
+  if (callReceiver != null) {
+    const callTarget = callReceiver.parse
+    const callArgument = try input()
+    value = try ((failureClass: typeof SyntaxError) => Effect.catch(Effect.try({ try: () => Reflect.apply(callTarget, callReceiver, [callArgument]), catch: (error) => error }), (error) => error instanceof failureClass ? Effect.fail(error) : Effect.die(error)))(SyntaxError)
+  }
   return [value ?? null, trace]
 }
 
