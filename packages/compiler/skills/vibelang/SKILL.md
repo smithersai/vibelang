@@ -57,6 +57,15 @@ VibeLang is TypeScript with syntax for Effect. An `effect` function returns an E
 | `Effect.withSpan(e, "load")` | `try withSpan(effect { … }, "load")` |
 | `NodeRuntime.runMain(main.pipe(Effect.provide(NodeServices.layer)))` | `export effect function main() { … }`, then at the top level `NodeRuntime.runMain(Effect.provide(main(), NodeServices.layer))`, or `await runPromise(main())` |
 
+## Member readonlyness
+
+- `schema` members are writable unless written `readonly`; a writable field maps to `Schema.mutableKey`.
+- `service` shape properties are writable unless written `readonly`, as in a TypeScript object type.
+- `error` fields, including `schema error` fields, are always readonly; an explicit `readonly` is redundant.
+- `data` variant payload properties are always readonly in the resulting type, even without a written `readonly`, as in `Data.TaggedEnum`.
+
+Readonly applies to the property, not recursively to its value.
+
 ## Rules
 
 1. `try` runs only Effects, and only inside an `effect` function or block. A module's top level is ordinary JavaScript: top-level `await` of a Promise works there, and `try` does not.

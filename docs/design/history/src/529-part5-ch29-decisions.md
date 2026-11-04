@@ -153,7 +153,7 @@ D57 supplies decision 2's partial-annotation spelling: explicit `infer Name` slo
 | D131 | A typed catch clause names the failures it handles | Catching by tag in the clause | Superseded by D216 | 3 |
 | D132 | `try { } handle Op(x) { }` clauses handle a control's operations | Bodies and clauses stay code of the enclosing function |  | 9 |
 | D133 | `schema` declares a struct schema and its decoded type | One declaration, so the schema and its type cannot drift | Amended by D501 | 11 |
-| D134 | Members are readonly unless written `mutable` | Immutable data is the common case; the docs wrote `readonly` 186 times |  | 10 |
+| D134 | Members are readonly unless written `mutable` | Immutable data is the common case; the docs wrote `readonly` 186 times | Superseded by VIP-9, VIP-13, VIP-15, VIP-16 and VIP-29; [compile comparison](../DECISIONS.md) | 10 |
 | D135 | An exported parameterless `main` runs when the host starts its module; a top-level runner, resolved by symbol, suppresses the entry | `node dist/main.js` runs the program, and importing the module runs nothing | Amended by D312, D387 | 1, 13 |
 | D146 | Every export of `effect`'s root is in scope; JavaScript's own globals win, host globals do not | Imports from `effect` were 5.9% of the docs' tokens |  | 1, 27 |
 | D147 | A call is passed by name where a parameter expects a program: `fork(fetchReport())` | Thunks around single calls were 2.6% of the docs' tokens | Superseded by D320, D322 | 5, 13 |
