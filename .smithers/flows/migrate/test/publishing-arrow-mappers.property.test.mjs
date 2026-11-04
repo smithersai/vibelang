@@ -7,7 +7,7 @@ import { checkProperty } from "../../../../scripts/testing/property.mjs"
 
 const require = createRequire(new URL("../../../../packages/runtime/package.json", import.meta.url))
 const ts = require("typescript"), fc = require("fast-check")
-const rule = "`x.vibe` emits `x.js` beside `x.d.ts` in `outDir`"
+const rule = "`x.vibe` emits `x.js` and `x.d.ts` in `outDir`"
 const corpus = JSON.parse(readFileSync(new URL("./corpus/opencode-shared-pack-arrow-imports.json", import.meta.url), "utf8"))
 function execute(text, manifest) {
  const exports = {}

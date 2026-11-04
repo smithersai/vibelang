@@ -13,7 +13,7 @@ const runtime=new URL("../../../../packages/runtime/",import.meta.url).pathname
 const ts=loadTypeScript([runtime]),fc=createRequire(runtime+"package.json")("fast-check")
 const nativeScript=JSON.parse(readFileSync(new URL("./corpus/opencode-sdk-conditional-imports.json",import.meta.url),"utf8")).source
 const actual=JSON.parse(readFileSync(new URL("./corpus/opencode-publication-emitted-types.json",import.meta.url),"utf8"))
-const quote="`x.vibe` emits `x.js` beside `x.d.ts` in `outDir`"
+const quote="`x.vibe` emits `x.js` and `x.d.ts` in `outDir`"
 const diagnostics=(root,file)=>ts.getPreEmitDiagnostics(ts.createProgram([join(root,file)],{strict:true,noEmit:true,skipLibCheck:false,types:[],lib:["lib.es5.d.ts"],target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.ESNext,moduleResolution:ts.ModuleResolutionKind.Bundler})).map(d=>({code:d.code,message:ts.flattenDiagnosticMessageText(d.messageText," ")}))
 const execute=(source,pkg,name)=>{
  const out={}

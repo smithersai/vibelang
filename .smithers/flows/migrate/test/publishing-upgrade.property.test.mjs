@@ -7,7 +7,7 @@ import { checkProperty } from "../../../../scripts/testing/property.mjs"
 const require=createRequire(new URL("../../../../packages/runtime/package.json",import.meta.url))
 const ts=require("typescript"),fc=require("fast-check")
 const corpus=JSON.parse(readFileSync(new URL("./corpus/opencode-owned-packer-upgrade.json",import.meta.url)))
-const rule="`x.vibe` emits `x.js` beside `x.d.ts` in `outDir`"
+const rule="`x.vibe` emits `x.js` and `x.d.ts` in `outDir`"
 function execute(text,pkg) {
  const out={}
  const result=ts.transpileModule(text,{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.CommonJS},reportDiagnostics:true})

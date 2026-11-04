@@ -187,6 +187,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 ### Bugs fixed since 0.0.10
 
+- Publication property checks stopped at retired output-name wording. They now cite the native output-name rule and retain the packed-type, shadowing and refusal checks.
+
 - Loading `vibelang-runtime` through its guarded entry lacked `$registerErrorMatcher`, which the main entry exports, so the two entries disagreed on the runtime's exports. Both entries now export the same names.
 - The function-controls example read the callable `Function` constructor and reported `EK0107`. Its erased constructor comparison now uses the explicit `any` boundary allowed by VIP-1, while the `instanceof` and prototype controls remain checked.
 
