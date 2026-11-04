@@ -1,0 +1,82 @@
+[
+  {
+    "key": "navigator.clipboard:held",
+    "source": "export const value=navigator.clipboard",
+    "advice": "try (try Clipboard.Clipboard).readString"
+  },
+  {
+    "key": "navigator.clipboard:alias-held",
+    "source": "const Native=navigator.clipboard;export const value=Native",
+    "advice": "try (try Clipboard.Clipboard).readString"
+  },
+  {
+    "key": "navigator.clipboard:alias-read",
+    "source": "const Native=navigator.clipboard;export function value(){return Native.readText()}",
+    "advice": "try (try Clipboard.Clipboard).readString"
+  },
+  {
+    "key": "navigator.clipboard:getter",
+    "source": "export function value(){return navigator.clipboard}",
+    "advice": "try (try Clipboard.Clipboard).readString"
+  },
+  {
+    "key": "navigator.clipboard:closure",
+    "source": "export const value=()=>navigator.clipboard",
+    "advice": "try (try Clipboard.Clipboard).readString"
+  },
+  {
+    "key": "navigator.clipboard:read",
+    "source": "export function value(){return navigator.clipboard.readText()}",
+    "advice": "try (try Clipboard.Clipboard).readString"
+  },
+  {
+    "key": "navigator.clipboard:async-read",
+    "source": "export async function value(){return await navigator.clipboard.readText()}",
+    "advice": "try (try Clipboard.Clipboard).readString"
+  },
+  {
+    "key": "navigator.clipboard:boundary",
+    "source": "export effect function value(){return try Effect.tryPromise(()=>navigator.clipboard.readText())}",
+    "advice": "try (try Clipboard.Clipboard).readString"
+  },
+  {
+    "key": "globalThis.navigator.clipboard:held",
+    "source": "export const value=globalThis.navigator.clipboard",
+    "advice": "try (try Clipboard.Clipboard).readString"
+  },
+  {
+    "key": "globalThis.navigator.clipboard:alias-held",
+    "source": "const Native=globalThis.navigator.clipboard;export const value=Native",
+    "advice": "try (try Clipboard.Clipboard).readString"
+  },
+  {
+    "key": "globalThis.navigator.clipboard:alias-read",
+    "source": "const Native=globalThis.navigator.clipboard;export function value(){return Native.readText()}",
+    "advice": "try (try Clipboard.Clipboard).readString"
+  },
+  {
+    "key": "globalThis.navigator.clipboard:getter",
+    "source": "export function value(){return globalThis.navigator.clipboard}",
+    "advice": "try (try Clipboard.Clipboard).readString"
+  },
+  {
+    "key": "globalThis.navigator.clipboard:closure",
+    "source": "export const value=()=>globalThis.navigator.clipboard",
+    "advice": "try (try Clipboard.Clipboard).readString"
+  },
+  {
+    "key": "globalThis.navigator.clipboard:read",
+    "source": "export function value(){return globalThis.navigator.clipboard.readText()}",
+    "advice": "try (try Clipboard.Clipboard).readString"
+  },
+  {
+    "key": "globalThis.navigator.clipboard:async-read",
+    "source": "export async function value(){return await globalThis.navigator.clipboard.readText()}",
+    "advice": "try (try Clipboard.Clipboard).readString"
+  },
+  {
+    "key": "globalThis.navigator.clipboard:boundary",
+    "source": "export effect function value(){return try Effect.tryPromise(()=>globalThis.navigator.clipboard.readText())}",
+    "advice": "try (try Clipboard.Clipboard).readString"
+  }
+]

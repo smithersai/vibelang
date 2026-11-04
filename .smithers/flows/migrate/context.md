@@ -897,6 +897,8 @@ Environment diagnostic examples run `Config.String("NAME")` directly with `try`.
 
 Timer-cancellation advice uses `try Fiber.interrupt(fiber)`. The public `Fiber` module function returns an Effect; `try` runs it.
 
+Clipboard advice first obtains the injected `Clipboard.Clipboard` service. Its `readString` member is an Effect value: `try (try Clipboard.Clipboard).readString` reads the text.
+
 A numeric return value from `main` does not set the exit status:
 `effect function main(): number!! { return 3 }` succeeds with 3 and still exits 0 when passed to `NodeRuntime.runMain`. Return normally for exit 0,
 fail for exit 1, or interrupt for exit 130.

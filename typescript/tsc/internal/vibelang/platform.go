@@ -111,7 +111,7 @@ var platformServices = map[string]*platformService{
 	"PubSub":          {"PubSub, or Stream.fromEventListener for an event target, from the prelude", `Stream.fromEventListener(target, "message")`, "", ""},
 	"Exit":            {"return from main for exit 0; fail for exit 1; interruption exits 130", "", "", ""},
 	"@effect/vitest":  {"it.effect and assert", "", `import { assert, it } from "@effect/vitest"`, ""},
-	"Clipboard":       {"the Clipboard service", "Clipboard.readString()", `import { Clipboard } from "@effect/platform-browser"`, `Clipboard.layer from "@effect/platform-browser"`},
+	"Clipboard":       {"the Clipboard service", "try (try Clipboard.Clipboard).readString", `import { Clipboard } from "@effect/platform-browser"`, `Clipboard.layer from "@effect/platform-browser"`},
 	"Geolocation":     {"the Geolocation service", "Geolocation.getCurrentPosition()", `import { Geolocation } from "@effect/platform-browser"`, `Geolocation.layer from "@effect/platform-browser"`},
 	"Permissions":     {"the Permissions service", `Permissions.query("geolocation")`, `import { Permissions } from "@effect/platform-browser"`, `Permissions.layer from "@effect/platform-browser"`},
 	"BrowserStream":   {"BrowserStream, a Stream of a window's or document's events", `BrowserStream.fromEventListenerWindow("resize")`, `import { BrowserStream } from "@effect/platform-browser"`, ""},

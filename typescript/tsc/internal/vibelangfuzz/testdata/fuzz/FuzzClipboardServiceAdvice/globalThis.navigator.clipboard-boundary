@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("globalThis.navigator.clipboard:boundary\x00\x00")

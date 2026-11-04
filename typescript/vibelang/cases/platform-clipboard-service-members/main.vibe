@@ -1,0 +1,12 @@
+import { Clipboard } from "@effect/platform-browser"
+import { provider, expected } from "./native.js"
+
+effect function actual() {
+  provide provider {
+    return try (try Clipboard.Clipboard).readString
+  }
+}
+// expect-result: ["copied", "copied"]
+export effect function main() {
+  return [try actual(), try expected]
+}
