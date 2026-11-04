@@ -43,6 +43,13 @@ Where a loader does serve a script, as in `node --import vibelang/register src/x
 
 ## Paths to converted files
 
+A source-mode extension check must cover the same path after conversion.
+For example, `import.meta.url.endsWith(".ts") || import.meta.url.endsWith(".vibe")`
+covers both source extensions. An unrelated `".vibe"` string, comment or check
+on another path does not prove that coverage, so migration still refuses the
+unsafe conversion. Qualification must also preserve the source and bundle
+entry points and any child-process loader.
+
 Renaming `X.ts` to `X.vibe` updates imports, but not a path held as data, and
 that path fails only when the program runs it. A batched migration rewrites a
 static path it can resolve. `verify` fails the batch for what is left, naming

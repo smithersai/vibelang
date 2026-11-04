@@ -1,0 +1,48 @@
+{
+  "repo": "t3code",
+  "pattern": "unrelated native-extension text cannot prove that a source-mode predicate covers a renamed module",
+  "witnesses": [
+    {
+      "name": "source entry with an unrelated native suffix",
+      "file": "packages/a/src/Probe.vibe",
+      "kind": "caller-extension",
+      "source": "const entry = new URL(import.meta.url.endsWith(\".ts\") ? \"../bin.ts\" : \"./bin.mjs\", import.meta.url), suffix = \".vibe\""
+    },
+    {
+      "name": "source flag with an unrelated native suffix",
+      "file": "packages/a/src/Probe.vibe",
+      "kind": "caller-extension",
+      "source": "const fromSource = import.meta.url.endsWith(\".ts\"), suffix = \".vibe\""
+    },
+    {
+      "name": "disabled native branch",
+      "file": "packages/a/src/Probe.vibe",
+      "kind": "caller-extension",
+      "source": "const fromSource = import.meta.url.endsWith(\".ts\") || (false && import.meta.url.endsWith(\".vibe\"))"
+    },
+    {
+      "name": "native branch reads another path",
+      "file": "packages/a/src/Probe.vibe",
+      "kind": "caller-extension",
+      "source": "const fromSource = import.meta.url.endsWith(\".ts\") || other.endsWith(\".vibe\")"
+    },
+    {
+      "name": "native suffix is only a comment",
+      "file": "packages/a/src/Probe.vibe",
+      "kind": "caller-extension",
+      "source": "const fromSource = import.meta.url.endsWith(\".ts\") /* .vibe */"
+    },
+    {
+      "name": "native suffix inside a conjunction",
+      "file": "packages/a/src/Probe.vibe",
+      "kind": "caller-extension",
+      "source": "const fromSource = import.meta.url.endsWith(\".ts\") && typeof \".vibe\" === \"string\""
+    },
+    {
+      "name": "transform early return mentions the native suffix",
+      "file": "packages/a/vite.config.ts",
+      "kind": "selector",
+      "source": "export default { plugins: [{ transform(code, id) { if (!/\\.tsx?$/.test(id)) return \".vibe\"; return code } }] }"
+    }
+  ]
+}

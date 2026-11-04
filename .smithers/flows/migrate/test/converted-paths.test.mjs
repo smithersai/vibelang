@@ -382,3 +382,20 @@ for (const legacy of [false, true]) test("the codemod rewrites a static path out
     for (const [file, text] of Object.entries(outside)) assert.equal(readFileSync(join(target, file), "utf8"), text, file)
   } finally { rmSync(root, { recursive: true, force: true }) }
 })
+
+
+// Source-mode predicates must cover the tested path, not another literal in the statement.
+const sourceModeCorpus = JSON.parse(readFileSync(new URL("./corpus/t3code-source-mode.json", import.meta.url)))
+for (const witness of sourceModeCorpus.witnesses) test("refuses an unrelated native-extension escape: " + witness.name, () => {
+  const { refusals } = run(witness.file, witness.source + "\n")
+  assert.ok(refusals.some(hit => hit.kind === witness.kind), JSON.stringify({ witness, refusals }))
+})
+
+for (const [name, expression] of Object.entries({
+  "native suffix on the same path": 'import.meta.url.endsWith(".ts") || import.meta.url.endsWith(".vibe")',
+  "parenthesized suffix on the same path": '(import.meta.url.endsWith(".ts")) || (import.meta.url.endsWith(".vibe"))',
+  "reversed suffix order": 'import.meta.url.endsWith(".vibe") || import.meta.url.endsWith(".ts")',
+  "outer disjunction": '(import.meta.url.endsWith(".ts") || false) || import.meta.url.endsWith(".vibe")'
+})) test("accepts a source-mode predicate covering both extensions: " + name, () => {
+  assert.deepEqual(run("packages/a/src/Probe.vibe", "const fromSource = " + expression).refusals, [])
+})

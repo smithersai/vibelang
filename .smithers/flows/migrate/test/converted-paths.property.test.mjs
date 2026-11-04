@@ -105,3 +105,30 @@ test("property: a generated glob selector fails only when it picked the .ts spel
       assert.equal(refusals.length, picksTs && !widened ? 1 : 0, source + JSON.stringify(refusals))
     }), { seed: 560059, numRuns: 200 })
 })
+
+// A native suffix elsewhere is not a proof that the tested path remains selected.
+test("property: unrelated native-extension text cannot hide a source-mode change", () => {
+  const mutations = {
+    sibling: p => 'const selected = ' + p + ', suffix = ".vibe"',
+    comment: p => 'const selected = ' + p + ' /* .vibe */',
+    disabled: p => 'const selected = ' + p + ' || (false && self.endsWith(".vibe"))',
+    other: p => 'const selected = ' + p + ' || other.endsWith(".vibe")',
+    conjunction: p => 'const selected = ' + p + ' && typeof ".vibe" === "string"'
+  }
+  fc.assert(fc.property(
+    fc.constantFrom(...Object.keys(mutations)), fc.constantFrom(".ts", ".mts", ".tsx"),
+    fc.constantFrom('"', "'", "`"), fc.boolean(),
+    (mutation, extension, quote, alias) => {
+      const receiver = alias ? "self" : "import.meta.url"
+      const predicate = receiver + ".endsWith(" + quote + extension + quote + ")"
+      const source = 'const self = import.meta.url, other = "unrelated.js";\n' + mutations[mutation](predicate)
+      // Execute the predicate before and after renaming, independently of the checker.
+      const evaluate = url => Function(source.replaceAll("import.meta.url", JSON.stringify(url)) + "; return selected")()
+      assert.equal(evaluate("file:///fixture/Probe" + extension), true)
+      assert.equal(evaluate("file:///fixture/Probe.vibe"), false)
+      const file = "packages/a/src/Probe.vibe"
+      const tracked = [...Object.keys(manifests), file]
+      const result = checkConvertedPaths({ ts, tracked, read: name => name === file ? source : manifests[name] })
+      assert.ok(result.refusals.some(hit => hit.kind === "caller-extension"), JSON.stringify({ mutation, source, result }))
+    }), { seed: 113115, numRuns: 300 })
+})

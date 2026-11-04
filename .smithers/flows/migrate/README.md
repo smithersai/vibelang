@@ -605,6 +605,12 @@ comments, URLs, prose, types, assertions, test names, imports, generated outputs
 `.vibe`, and a data file's `path` field. In a `package.json`, only `main`, `module`,
 `bin` and `sideEffects` count: the codemod owns `exports` and `imports`.
 
+An extension predicate covers `.vibe` only when the same tested value has a
+`.endsWith(".vibe")` alternative joined by `||`, or its regex already matches
+both extensions. A comment, unrelated string or binding, another path's suffix
+check, or a disabled alternative does not clear a refusal. The checker leaves
+unsupported predicates for explicit source-mode qualification.
+
 To clear a refusal, `revert` the module, or change the caller in its own commit
 before the batch: `foreignFiles` fails a batch that edits a file outside it.
 

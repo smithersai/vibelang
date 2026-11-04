@@ -559,8 +559,32 @@ export function scanSource(ts, text, file, index) {
     }
     return null
   }
-  const mentionsVibe = node => {
-    for (let n = node; n && !ts.isSourceFile(n); n = n.parent) if (ts.isStatement(n)) return /\.vibe\b/.test(n.getText(source))
+  // Only an alternative suffix test on the same stable value proves coverage.
+  // A comment, another binding or an unreachable branch can mention .vibe while
+  // the source-mode predicate still changes its answer after a rename.
+  const coversVibe = (node, tested) => {
+    tested = unwrap(ts, tested)
+    if (!ts.isIdentifier(tested) && !selfUrl(ts, tested)) return false
+    const sameValue = value => {
+      value = unwrap(ts, value)
+      if (ts.isIdentifier(tested)) return ts.isIdentifier(value) && value.text === tested.text &&
+        bindingOf(ts, value, env) === bindingOf(ts, tested, env)
+      return selfUrl(ts, value) && value.getText(source) === tested.getText(source)
+    }
+    const alternative = input => {
+      const candidate = unwrap(ts, input)
+      if (ts.isBinaryExpression(candidate) && candidate.operatorToken.kind === ts.SyntaxKind.BarBarToken)
+        return alternative(candidate.left) || alternative(candidate.right)
+      return ts.isCallExpression(candidate) && candidate.arguments.length === 1 &&
+        ts.isPropertyAccessExpression(candidate.expression) && candidate.expression.name.text === "endsWith" &&
+        sameValue(candidate.expression.expression) && isString(ts, candidate.arguments[0]) && candidate.arguments[0].text === ".vibe"
+    }
+    for (let expression = node; expression.parent; expression = expression.parent) {
+      const parent = expression.parent
+      if (ts.isParenthesizedExpression(parent)) continue
+      if (!ts.isBinaryExpression(parent) || parent.operatorToken.kind !== ts.SyntaxKind.BarBarToken) break
+      if (alternative(parent.left === expression ? parent.right : parent.left)) return true
+    }
     return false
   }
   const selfProbe = node => {
@@ -580,7 +604,7 @@ export function scanSource(ts, text, file, index) {
   const probes = node => {
     pathRegex(node)
     const tested = extensionTest(node)
-    if (tested && !test && !mentionsVibe(node)) {
+    if (tested && !test && !coversVibe(node, tested)) {
       if (selfDerived(tested) && index.converted.has(file)) refuse(node, index.moveOfVibe.get(file), "caller-extension", "this module tests its own file extension, and the test changes its answer when the module becomes .vibe")
       else if (selfDerived(tested)) { /* True for a module that stays TypeScript: a path it picks is checked where it is used. */ }
       else if (toolConfig.test(file) && !lintConfig.test(file) && !index.converted.has(file)) selector(node, regexOfNode(node), "a transform filter in a tool configuration")
