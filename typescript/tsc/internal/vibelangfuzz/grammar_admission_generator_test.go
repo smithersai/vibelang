@@ -1,6 +1,7 @@
 package vibelangfuzz
 
 import (
+	"context"
 	"strings"
 	"testing"
 
@@ -84,17 +85,23 @@ func TestGrammarAdmissionGeneratorInterruptionKeys(t *testing.T) {
 	t.Fatal("plain-generator interruption seed is missing")
 }
 
-// Campaign197: `function * g (\n) { join effect % 1 ; }` reported only
-// EK4611 (a join operand type error). The compiler still treats the plain
-// generator as an implicit producer, so join compiles there; Appendix A has
-// no derivation without an effect marker. Key it with its generator cause,
-// not as join-outside-effect, whose compiler fix landed.
+// The original witness reported only a join operand type error. Keep it
+// as a rejection control after plain native generators stop admitting join.
 func TestGrammarAdmissionFiberInGenerator(t *testing.T) {
 	w := NewWorkspace(t)
 	witness := "function * g (\n) { join effect % 1 ; }"
-	if !grammarAdmissionVerdict(t, w, witness) {
-		t.Fatalf("no mismatch for %q", witness)
+	result, err := w.Compile(context.Background(), Single(witness))
+	if err != nil {
+		t.Fatal(err)
 	}
+	syntax := false
+	for _, diagnostic := range result.Diagnostics {
+		syntax = syntax || grammarAdmissionSyntaxDiagnostic(diagnostic)
+	}
+	if !syntax || grammarAdmissionVerdict(t, w, witness) {
+		t.Fatalf("plain-generator fiber witness must retain syntax rejection; diagnostics=%v", result.Diagnostics)
+	}
+	t.Logf("former plain-generator gap rejects with %v", result.Diagnostics)
 	for source, want := range map[string]string{
 		witness:                                  "admission:fiber-in-generator",
 		"function * g ( ) { join effect % 1 ; }": "admission:fiber-in-generator",

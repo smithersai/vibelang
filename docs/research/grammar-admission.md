@@ -255,12 +255,12 @@ parser reads any expression in the parentheses for recovery, and the
 checker rejects a non-literal with `TS1141`, which now counts as syntax
 rejection; campaign195 found `import x = require(("m"))`.
 
-`fork` and `join` in a plain native generator share the
-`interruption-in-generator` cause: the compiler still treats an unannotated
-`function*` as an implicit producer, so `function* g() { join effect % 1; }`
-compiles with only the operand type error `EK4611`. The classifier keys it
-`admission:fiber-in-generator` (seed, corpus, inventory alias row on
-`isProducer`), apart from `join-outside-effect`, whose compiler fix landed.
+The original `admission:fiber-in-generator` witness,
+`function* g() { join effect % 1; }`, now retains syntax rejection.
+Its pending entries have been removed; the seed, corpus and compiler-backed
+regression remain active. The inventory alias records the rejection boundary.
+The classifier retains its precise historical grouping without granting
+admission to a plain native generator.
 
 
 The inherited subset includes native dynamic `import(specifier)` and its
