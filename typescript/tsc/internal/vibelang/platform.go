@@ -105,7 +105,7 @@ var platformServices = map[string]*platformService{
 	"Interrupt":       {"a fiber's interruption", "fiber.interrupt()", "", ""},
 	"Yield":           {"Effect's yieldNow value", "try Effect.yieldNow", `import { Effect } from "effect"`, ""},
 	"Clock":           {"Clock, from the prelude", "try Clock.currentTimeMillis", "", ""},
-	"Config":          {"Config, from the prelude", `Config.String("NAME")()`, "", ""},
+	"Config":          {"Config, from the prelude", `try Config.String("NAME")`, "", ""},
 	"Console":         {"Console, from the prelude", "Console.log(message)", "", ""},
 	"Stream":          {"Stream, from the prelude", "Stream.fromIterable(values)", "", ""},
 	"PubSub":          {"PubSub, or Stream.fromEventListener for an event target, from the prelude", `Stream.fromEventListener(target, "message")`, "", ""},

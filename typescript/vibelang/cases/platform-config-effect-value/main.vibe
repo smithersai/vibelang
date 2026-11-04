@@ -1,0 +1,11 @@
+import { provider, expected } from "./native.js"
+
+effect function actual() {
+  provide provider {
+    return try Config.String("NAME")
+  }
+}
+// expect-result: ["configured", "configured"]
+export effect function main() {
+  return [try actual(), try expected]
+}

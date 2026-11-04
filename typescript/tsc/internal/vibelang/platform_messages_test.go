@@ -110,7 +110,7 @@ export const run = () => typeof server`, nil},
 		}},
 		{"process.env", `export const run = () => process.env.PORT`, []string{
 			"process.env is platform code, which VibeLang code does not use directly.",
-			`Use Config, from the prelude:   Config.String("NAME")()`,
+			`Use Config, from the prelude:   try Config.String("NAME")`,
 		}},
 		{"process.getuid", `export const run = () => process.getuid?.()`, []string{
 			"process.getuid is platform code, which VibeLang code does not use directly.",

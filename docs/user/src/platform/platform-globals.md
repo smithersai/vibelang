@@ -177,6 +177,8 @@ Signature diagnostic examples obtain `Signature.Signature` with `try` before sig
 
 Authenticated-encryption diagnostic examples obtain `Aead.Aead` with `try` before running `encrypt` or `decrypt`. Build a key with `try Aead.key(Aead.aes256Gcm, bytes)`, then pass that key, the bytes and `{ nonce }` to the service method.
 
+Environment diagnostic examples run `Config.String("NAME")` directly with `try`. A config value is an Effect; it is not called again as a function.
+
 A numeric return value from `main` does not set the exit status:
 `effect function main(): number!! { return 3 }` succeeds with 3 and still exits 0 when passed to `NodeRuntime.runMain`. Return normally for exit 0,
 fail for exit 1, or interrupt for exit 130.

@@ -1,0 +1,72 @@
+[
+  {
+    "key": "node:process:env:direct",
+    "source": "import { env } from \"node:process\";export const value=env",
+    "advice": "try Config.String(\"NAME\")"
+  },
+  {
+    "key": "node:process:env:alias",
+    "source": "import { env as Native } from \"node:process\";export const value=Native",
+    "advice": "try Config.String(\"NAME\")"
+  },
+  {
+    "key": "node:process:namespace",
+    "source": "import * as Native from \"node:process\";export const value=Native.env",
+    "advice": "try Config.String(\"NAME\")"
+  },
+  {
+    "key": "node:process:side-effect",
+    "source": "import \"node:process\"",
+    "advice": "try Config.String(\"NAME\")"
+  },
+  {
+    "key": "process:env:direct",
+    "source": "import { env } from \"process\";export const value=env",
+    "advice": "try Config.String(\"NAME\")"
+  },
+  {
+    "key": "process:env:alias",
+    "source": "import { env as Native } from \"process\";export const value=Native",
+    "advice": "try Config.String(\"NAME\")"
+  },
+  {
+    "key": "process:namespace",
+    "source": "import * as Native from \"process\";export const value=Native.env",
+    "advice": "try Config.String(\"NAME\")"
+  },
+  {
+    "key": "process:side-effect",
+    "source": "import \"process\"",
+    "advice": "try Config.String(\"NAME\")"
+  },
+  {
+    "key": "process",
+    "source": "export const value=process",
+    "advice": "try Config.String(\"NAME\")"
+  },
+  {
+    "key": "process.env",
+    "source": "export const value=process.env",
+    "advice": "try Config.String(\"NAME\")"
+  },
+  {
+    "key": "process.env.NAME",
+    "source": "export const value=process.env.NAME",
+    "advice": "try Config.String(\"NAME\")"
+  },
+  {
+    "key": "globalThis.process",
+    "source": "export const value=globalThis.process",
+    "advice": "try Config.String(\"NAME\")"
+  },
+  {
+    "key": "globalThis.process.env",
+    "source": "export const value=globalThis.process.env",
+    "advice": "try Config.String(\"NAME\")"
+  },
+  {
+    "key": "globalThis.process.env.NAME",
+    "source": "export const value=globalThis.process.env.NAME",
+    "advice": "try Config.String(\"NAME\")"
+  }
+]
