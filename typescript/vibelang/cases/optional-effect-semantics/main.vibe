@@ -4,18 +4,24 @@ import { argument, receiver, counts, config, exit, blank, fallback } from "./cal
 function readArgument(): string { return argument() }
 function readReceiver(present: boolean): ReturnType<typeof receiver> { return receiver(present) }
 function readCounts(): number[] { return counts() }
-effect function computed(present: boolean) { return try readReceiver(present)?.["decode"](readArgument()) }
-effect function computedCall(present: boolean) { return try readReceiver(present)?.["decode"]?.(readArgument()) }
-effect function method(present: boolean) { return try readReceiver(present)?.decode(readArgument()) }
-effect function methodCall(present: boolean) { return try readReceiver(present)?.decode?.(readArgument()) }
+effect function computed(present: boolean) { return try runOptional(readReceiver(present)?.["decode"](readArgument())) }
+effect function computedCall(present: boolean) { return try runOptional(readReceiver(present)?.["decode"]?.(readArgument())) }
+effect function method(present: boolean) { return try runOptional(readReceiver(present)?.decode(readArgument())) }
+effect function methodCall(present: boolean) { return try runOptional(readReceiver(present)?.decode?.(readArgument())) }
 function configData(f: typeof config | undefined) { return f?.() }
 // D248/D251: the projector needs the Exit data annotation.
 function exitData(f: typeof exit | undefined): Exit.Exit<string> | undefined { return f?.() }
 function exitIsData(): boolean { return Exit.isExit(exitData(exit)) }
-effect function nullish(f: typeof blank | undefined) { return try f?.() ?? try fallback() }
-effect function or(f: typeof blank | undefined) { return try f?.() || try fallback() }
+effect function nullish(f: typeof blank | undefined) { return try runOptional(f?.()) ?? try fallback() }
+effect function or(f: typeof blank | undefined) { return try runOptional(f?.()) || try fallback() }
 export effect function main() {
  const values = [try computed(true), try computedCall(true), try method(true), try methodCall(true)]
  try computed(false); try computedCall(false); try method(false); try methodCall(false)
  return [values, readCounts(), Config.isConfig(configData(config)), exitIsData(), try nullish(blank), try or(blank), try nullish(undefined)]
+}
+
+// VIP-5 / 002-running: try requires an Effect, not Effect | undefined.
+// Preserve optional receiver/call/argument evaluation, then guard the result.
+effect function runOptional<A, E, R>(program: (A!E!R) | undefined): (A | undefined)!E!R {
+  return program === undefined ? undefined : try program
 }

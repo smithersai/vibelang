@@ -7,7 +7,7 @@ effect function fetchUser(id: string) { seen.push(id); return "user-" + id }
 function load(id: string) { return id ? fetchUser(id) : Effect.fail(new BadInput()) }
 export effect function main() {
  seen.length = 0
- const bad = try (load("") catch (error) => error._tag)
+ const bad = (load("") catch (error) => error._tag)
  const good = try load("u")
  return { bad, good, calls: [...seen] }
 }

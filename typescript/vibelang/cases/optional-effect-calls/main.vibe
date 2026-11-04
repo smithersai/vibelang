@@ -1,16 +1,16 @@
 // expect-result: [["X","X","X","X","X","X","X","X","fallback","fallback","fallback","fallback","fallback","fallback","fallback","fallback"],[10,10],"X","fallback",true]
 import { Effect } from "effect"
 import { decoder, counts, plain, type Decode, type Flow, type RequiredFlow } from "./callbacks.js"
-effect function named(f: Decode | undefined, input: string) { return try f?.(input) ?? "fallback" }
-effect function method(o: Flow, input: string) { return try o.decode?.(input) ?? "fallback" }
-effect function receiver(o: RequiredFlow | undefined, input: string) { return try o?.decode(input) ?? "fallback" }
-effect function both(o: Flow | undefined, input: string) { return try o?.decode?.(input) ?? "fallback" }
-effect function namedOr(f: Decode | undefined) { return try f?.("x") || "fallback" }
-effect function methodOr(o: Flow) { return try o.decode?.("x") || "fallback" }
-effect function receiverOr(o: RequiredFlow | undefined) { return try o?.decode("x") || "fallback" }
-effect function bothOr(o: Flow | undefined) { return try o?.decode?.("x") || "fallback" }
-effect function statement(f: Decode | undefined) { try f?.("x") }
-effect function raw(f: Decode | undefined) { return try f?.("x") }
+effect function named(f: Decode | undefined, input: string) { return try runOptional(f?.(input)) ?? "fallback" }
+effect function method(o: Flow, input: string) { return try runOptional(o.decode?.(input)) ?? "fallback" }
+effect function receiver(o: RequiredFlow | undefined, input: string) { return try runOptional(o?.decode(input)) ?? "fallback" }
+effect function both(o: Flow | undefined, input: string) { return try runOptional(o?.decode?.(input)) ?? "fallback" }
+effect function namedOr(f: Decode | undefined) { return try runOptional(f?.("x")) || "fallback" }
+effect function methodOr(o: Flow) { return try runOptional(o.decode?.("x")) || "fallback" }
+effect function receiverOr(o: RequiredFlow | undefined) { return try runOptional(o?.decode("x")) || "fallback" }
+effect function bothOr(o: Flow | undefined) { return try runOptional(o?.decode?.("x")) || "fallback" }
+effect function statement(f: Decode | undefined) { try runOptional(f?.("x")) }
+effect function raw(f: Decode | undefined) { return try runOptional(f?.("x")) }
 function plainCall(f: ((s: string) => string) | undefined): string { return f?.("x") ?? "fallback" }
 function readCounts(): number[] { return counts() }
 export effect function main() {
@@ -20,4 +20,10 @@ export effect function main() {
  const value = try raw(decoder)
  const absent = try raw(undefined)
  return [results, readCounts(), plainCall(plain), plainCall(undefined), value === "X" && absent === undefined]
+}
+
+// VIP-5 / 002-running: try requires an Effect, not Effect | undefined.
+// Preserve optional receiver/call/argument evaluation, then guard the result.
+effect function runOptional<A, E, R>(program: (A!E!R) | undefined): (A | undefined)!E!R {
+  return program === undefined ? undefined : try program
 }

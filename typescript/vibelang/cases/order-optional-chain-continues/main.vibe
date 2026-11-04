@@ -1,6 +1,6 @@
 // expect-result: {"absent":null,"present":5,"element":null,"present element":6,"call":null,"present call":3}
 // A ?. skips the rest of its chain when the value before it is absent
-// (chapter 13). try box?.read() gives undefined for an absent box, as await
+// (chapter 13). try runOptional(box?.read()) gives undefined for an absent box, as await
 // does (VIP-5), and the ?. after it skips the access.
 class Box {
   size = 5
@@ -11,15 +11,15 @@ class Box {
 }
 
 effect function value(box: Box | undefined) {
-  return (try box?.read())?.value ?? null
+  return (try runOptional(box?.read()))?.value ?? null
 }
 
 effect function element(box: Box | undefined) {
-  return (try box?.read())?.items[0] ?? null
+  return (try runOptional(box?.read()))?.items[0] ?? null
 }
 
 effect function call(make: (() => { value: number }!!) | undefined) {
-  return (try make?.())?.value ?? null
+  return (try runOptional(make?.()))?.value ?? null
 }
 
 export effect function main() {
@@ -31,4 +31,10 @@ export effect function main() {
     call: try call(undefined),
     "present call": try call(effect () => ({ value: 3 }))
   }
+}
+
+// VIP-5 / 002-running: try requires an Effect, not Effect | undefined.
+// Preserve optional receiver/call/argument evaluation, then guard the result.
+effect function runOptional<A, E, R>(program: (A!E!R) | undefined): (A | undefined)!E!R {
+  return program === undefined ? undefined : try program
 }

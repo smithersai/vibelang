@@ -1,22 +1,21 @@
 // expect-result: ["custom 2","custom 2","default",true,20,"caught thrown",true,"ran 2","default",-1]
-// An optional call of an Effect callback runs the callback when it is
-// present, as a required call does; the callback's type declares its
-// channels (D500).
+// An optional call preserves TypeScript evaluation. Explicitly guard its
+// result before running the Effect; the callback type declares its channels.
 error Late { label: string }
 
 const coalesced = effect <E = never, R = never>(label?: (seconds: number) => Late!E!R) => {
-  return try label?.(2) ?? new Late({ label: "default" })
+  return try runOptional(label?.(2)) ?? new Late({ label: "default" })
 }
 
 const bound = effect <E = never, R = never>(label?: (seconds: number) => Late!E!R) => {
-  const value = try label?.(2)
+  const value = try runOptional(label?.(2))
   return value
 }
 
-const scaled = effect <E = never, R = never>(scale?: (n: number) => number!E!R) => try scale?.(2)
+const scaled = effect <E = never, R = never>(scale?: (n: number) => number!E!R) => try runOptional(scale?.(2))
 
 const announced = effect <E = never, R = never>(log?: (n: number) => void!E!R) => {
-  try log?.(2)
+  try runOptional(log?.(2))
   return true
 }
 
@@ -46,4 +45,10 @@ export effect function main() {
     ran.push("ran " + n)
   })
   return [a.label, b?.label, c.label, d === undefined, n, caught.label, announcedOk, ran[0], (try defaulted()).label, try unscaled()]
+}
+
+// VIP-5 / 002-running: try requires an Effect, not Effect | undefined.
+// Preserve optional receiver/call/argument evaluation, then guard the result.
+effect function runOptional<A, E, R>(program: (A!E!R) | undefined): (A | undefined)!E!R {
+  return program === undefined ? undefined : try program
 }

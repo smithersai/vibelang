@@ -4,16 +4,22 @@ error Gone {}
 service Needed { id: string }
 type Decode = () => Effect.Effect<number, Gone, Needed>
 export effect function failsNever(f: Decode | undefined): Effect.Effect<number | undefined, never, Needed> {
- return try f?.()
+ return try runOptional(f?.())
 }
 export effect function needsNothing(o: { readonly decode?: Decode }): Effect.Effect<number | undefined, Gone, never> {
- return try o.decode?.()
+ return try runOptional(o.decode?.())
 }
 
 effect function declared(): Effect.Effect<number, Gone, Needed> { return 1 }
 export effect function declaredFailsNever(): Effect.Effect<number | undefined, never, Needed> {
- return try declared?.()
+ return try runOptional(declared?.())
 }
 export effect function declaredNeedsNothing(): Effect.Effect<number | undefined, Gone, never> {
- return try declared?.()
+ return try runOptional(declared?.())
+}
+
+// VIP-5 / 002-running: try requires an Effect, not Effect | undefined.
+// Preserve optional receiver/call/argument evaluation, then guard the result.
+effect function runOptional<A, E, R>(program: (A!E!R) | undefined): (A | undefined)!E!R {
+  return program === undefined ? undefined : try program
 }
