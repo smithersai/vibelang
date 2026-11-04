@@ -1,0 +1,10 @@
+{
+  "origin": "Alchemy EventBridge/ToQueue.ts retained while Rule becomes Rule.vibe",
+  "files": {
+    "Providers.ts": "export interface Providers { readonly region: string }",
+    "Rule.vibe": "import * as Effect from \"effect/Effect\"; import type { Providers } from \"./Providers.ts\"; export declare const rule: () => Effect.Effect<number, never, Providers>;",
+    "index.ts": "export * from \"./Providers.ts\"; export * from \"./Rule.vibe\";",
+    "sub/ToQueue.ts": "import { rule } from \"../Rule.vibe\"; export const toQueue = () => rule();"
+  },
+  "expected": "The inferred Providers import names its declaring module, as the all-TypeScript twin does; importing the re-exporting index loads unrelated ambient augmentations."
+}

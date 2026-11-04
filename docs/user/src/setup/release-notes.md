@@ -194,6 +194,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - The forms gate rejected explicit Effect callbacks after independently landed changes moved their source locations; its reviewed snapshot now records the written modifier at each affected site.
 
 - Combining the chained-assertion and pipe-parser changes stopped compiler builds; the assertion probe now passes the pipe parser's arrow-context argument, with continuation tests covering both assertion operators and conditional tails.
+- A TypeScript file importing a migrated VibeLang module could emit a declaration through the package index and pull unrelated types into downstream consumers. Inferred imports now name the declaring module chosen by the TypeScript twin.
 - ESLint reported extra newline warnings around method calls containing a lifted `do` expression; it now follows the source method and receiver boundaries while retaining warnings for written call or property newlines.
 
 - Service-member regression checks now distinguish forbidden constructors and index signatures from the separate service-class migration warning in the same module.
