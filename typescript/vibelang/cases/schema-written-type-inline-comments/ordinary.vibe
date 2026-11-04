@@ -1,0 +1,2 @@
+import { Schema } from "effect";
+/** Value docs. */ export schema Message { id: string }; /* separator */ /** Type docs. */ export type Message = typeof Message.Type

@@ -1,0 +1,4 @@
+import { Schema } from "effect";
+export namespace Model {
+/** Value docs. */ export schema Message { id: string }; /** Type docs. */ export type Message = typeof Message.Type
+}

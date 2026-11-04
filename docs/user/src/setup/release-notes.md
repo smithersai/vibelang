@@ -43,6 +43,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - `FuzzFixGate` could pass without exercising cross-file refusals after explicit effects were introduced; its two saved examples now require a real narrowing refusal.
 
+- A comment after the semicolon of a `schema` body could disappear from declarations, including a comment before its written type alias. Declaration emit now retains it in TypeScript’s position.
+
 - The grammar admission audit could stop when an unsupported `import.meta` value occupied a static import or export specifier. It now records that diagnostic gap while keeping ordinary metadata reads and dynamic imports as controls.
 
 - The grammar admission audit could mistake valid bitwise AND and XOR expressions for undefined syntax. It now derives these TypeScript expressions, including their continuations after an `is` pattern.

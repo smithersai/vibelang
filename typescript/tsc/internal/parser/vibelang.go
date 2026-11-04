@@ -1245,6 +1245,10 @@ func (p *Parser) parseSchemaDeclaration(pos int, jsdoc jsdocScannerInfo, modifie
 		members = literal.AsTypeLiteralNode().Members.Nodes
 		body = literal.Loc
 		form.Open, form.Close = p.blockBraces(literal)
+		// Keep the terminator on the generated constant. A separate empty
+		// statement is erased by declaration emit along with its trailing
+		// comments, including documentation before a written type alias.
+		p.parseOptional(ast.KindSemicolonToken)
 	} else if !form.Ambient && !aliased {
 		// An ambient schema reports EK1506 instead (chapter 006: it comes ahead of EK1503).
 		p.reportVibeLangMissingBody(name, VibeLangSchemaMissingBodyCode, VibeLangSchemaMissingBodyMessage)
