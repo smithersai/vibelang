@@ -43,7 +43,7 @@ export function area(shape: Shape): number {
 `, `type Shape = { readonly _tag: "Circle"; readonly radius: number } | { readonly _tag: "Square"; readonly side: number }
 export function area(shape: Shape): number {
   return match (shape) {
-    when { _tag: "Circle", let radius }: Math.PI * radius * radius;
+    when { _tag: "Circle" } and let $matchHandler: do { let { radius } = $matchHandler; (Math.PI * radius * radius); };
     when { _tag: "Square" } and let square: square.side * square.side;
   }
 }
@@ -64,10 +64,10 @@ export const describe = (event: Event) =>
 export const describe = (event: Event) =>
   do { const $matchResult: string = match (event) {
     when { _tag: "Opened" }: "open";
-    when { _tag: "Closed", let reason }: do {
+    when { _tag: "Closed" } and let $matchHandler: do { let { reason } = $matchHandler; (do {
       const text = reason.trim()
       "closed: " + text
-    };
+    }); };
   }; $matchResult; }
 `},
 		{"objects, or, not and refinements", `type Config = { readonly method: "token" | "oauth" | "none"; readonly value: string | number }
@@ -159,4 +159,5 @@ func TestMatchChainNotReported(t *testing.T) {
 		}
 	}
 }
+
 // VIP-7 refuse native Match migration when contextual types cannot be preserved; rule: docs/design/vips/0007-match.md#ac19cae21b402757

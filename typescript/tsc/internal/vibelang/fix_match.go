@@ -826,28 +826,38 @@ func matchHandlerArm(c *checker.Checker, a *analyzer, file *ast.SourceFile, hand
 				binding = "let " + name.Text()
 			}
 		case ast.IsObjectBindingPattern(name):
+			// Initialize the writable parameter binding after selecting the arm,
+			// in a scope outside the handler's original body (RC-18 / VIP-34).
+			captureName := "$matchHandler"
 			if isDefault {
-				// Destructure only after choosing the fallback: matching an object
-				// pattern first would add tests and duplicate observable getter reads.
-				capture := (&freshNames{file: file}).freshName("$matchDefault")
-				binding = "let " + capture
-				destructure = "const " + nodeText(file, name) + " = " + capture + "; "
-				break
+				captureName = "$matchDefault"
 			}
-			var fields []string
-			for _, element := range name.AsBindingPattern().Elements.Nodes {
-				if element.Initializer() != nil || element.AsBindingElement().DotDotDotToken != nil || !ast.IsIdentifier(element.Name()) {
-					return matchArm{}, label + " destructures with a default, a rest, or a nested pattern"
-				}
-				if property := element.PropertyName(); property != nil {
-					fields = append(fields, nodeText(file, property)+": let "+element.Name().Text())
-				} else {
-					fields = append(fields, "let "+element.Name().Text())
-				}
-			}
-			binding = "{ " + strings.Join(fields, ", ") + " }"
+			capture := (&freshNames{file: file}).freshName(captureName)
+			binding = "let " + capture
+			destructure = "let " + nodeText(file, name) + " = " + capture + "; "
 		default:
 			return matchArm{}, label + " destructures an array"
+		}
+	}
+	if destructure != "" {
+		// A nested eval can still observe the removed parameter environment.
+		if usesName(handler, "eval") {
+			return matchArm{}, label + " uses eval whose scope would change"
+		}
+		unsafe := false
+		var visit func(*ast.Node) bool
+		visit = func(n *ast.Node) bool {
+			if isFunctionBoundary(n) {
+				return false
+			}
+			if ast.IsVariableDeclarationList(n) && n.Flags&ast.NodeFlagsBlockScoped == 0 {
+				unsafe = true
+			}
+			return unsafe || n.ForEachChild(visit)
+		}
+		visit(handler.Body())
+		if unsafe {
+			return matchArm{}, label + " has a var declaration whose function scope would change"
 		}
 	}
 	// A call in the handler stays a call in the arm: neither runs an Effect
@@ -882,18 +892,13 @@ func matchHandlerArm(c *checker.Checker, a *analyzer, file *ast.SourceFile, hand
 	}
 	if binding != "" {
 		switch {
-		case pattern == "" && strings.HasPrefix(binding, "{"):
-			return matchArm{}, label + " destructures what a default arm, which matches anything, would have to test is an object"
 		case pattern == "":
 			pattern = binding
-		case strings.HasPrefix(binding, "{") && strings.HasPrefix(pattern, "{ ") && strings.HasSuffix(pattern, " }"):
-			pattern = strings.TrimSuffix(pattern, " }") + ", " + strings.TrimPrefix(binding, "{ ")
 		default:
 			pattern = parenthesizedPattern(pattern) + " and " + binding
 		}
 	}
 	_ = patternNode
-	_ = isDefault
 	return matchArm{handler: handler, pattern: pattern, body: text, value: value}, ""
 }
 

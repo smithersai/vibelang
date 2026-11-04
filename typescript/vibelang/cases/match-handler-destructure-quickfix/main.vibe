@@ -1,0 +1,69 @@
+import { Match } from "effect"
+type Input = { kind: string; payload?: string; box?: { payload?: string } }
+export function choose(value: Input): string {
+  return Match.value(value).pipe(
+    Match.when({ kind: "hit" }, ({ payload }): string => payload ?? "empty"),
+    Match.orElse((): string => "miss"))
+}
+export function defaults(value: Input): string {
+  return Match.value(value).pipe(
+    Match.when({ kind: "hit" }, ({ payload = "default" }): string => payload),
+    Match.orElse((): string => "miss"))
+}
+export function nested(value: Input): string {
+  return Match.value(value).pipe(
+    Match.when({ kind: "hit" }, ({ box: { payload = "nested" } = {} }): string => payload),
+    Match.orElse((): string => "miss"))
+}
+export function tagged(value: { _tag: "Hit"; payload?: string } | { _tag: "Miss" }): string {
+  return Match.value(value).pipe(
+    Match.tag("Hit", ({ payload }): string => payload ?? "empty"),
+    Match.orElse((): string => "miss"))
+}
+export function primitive(value: string | number): number {
+  return Match.value(value).pipe(
+    Match.when(Match.string, ({ length }): number => length),
+    Match.orElse((): number => -1))
+}
+export function scope(value: Input): string {
+  const fallback = "outer"
+  const $matchHandler = "fresh"
+  return Match.value(value).pipe(
+    Match.when({kind:"hit"}, ({payload = fallback}):string => {
+      const fallback = "inner"
+      return payload + fallback + $matchHandler
+    }),
+    Match.orElse(():string => "miss"))
+}
+export function writable(value: Input): string {
+  return Match.value(value).pipe(
+    Match.when({kind:"hit"}, ({payload = "old"}):string => { payload = "new"; return payload }),
+    Match.orElse(():string => "miss"))
+}
+const events: string[] = []
+function payloadKey(): "payload" { events.push("key"); return "payload" }
+function fallbackValue(): string { events.push("default"); return "empty" }
+export function ordered(value: Input): string {
+  return Match.value(value).pipe(
+    Match.when({kind:"hit"}, ({[payloadKey()]: payload = fallbackValue()}):string => {
+      events.push("body")
+      return payload
+    }),
+    Match.orElse(():string => { events.push("miss"); return "miss" }))
+}
+export function main(): object {
+  events.length = 0
+  const values: Input[] = [{kind:"hit"}, {kind:"hit", payload:undefined}, {kind:"hit", payload:"yes"}, {kind:"miss"}]
+  let reads = 0
+  const getter = {kind:"hit", get payload() { reads++; return "getter" }}
+  const inherited = Object.create({payload:"inherited"}) as Input
+  inherited.kind = "hit"
+  const result = {
+    chosen: values.map(choose), defaults: values.map(defaults), nested: values.map(nested),
+    tags: [tagged({_tag:"Hit"}), tagged({_tag:"Hit", payload:undefined}), tagged({_tag:"Miss"})],
+    primitive: [primitive("abc"), primitive(""), primitive(1)],
+    scope: scope({kind:"hit"}), writable: writable({kind:"hit"}), inherited: choose(inherited), getter: choose(getter)
+  }
+  const orderedResults = [{kind:"miss"}, ...values.slice(0,3)].map(ordered)
+  return {...result, reads, orderedResults, events: [...events]}
+}

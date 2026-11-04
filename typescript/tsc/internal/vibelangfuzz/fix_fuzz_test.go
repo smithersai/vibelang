@@ -110,6 +110,7 @@ func fuzzFixProjects(f *testing.F, target string) {
 				TestCatchScopeFixQuoted(t)
 				archive = strings.TrimPrefix(archive, nativeFixReferenceKey)
 			}
+			archive = matchDestructureArchive(archive)
 			directOption := strings.HasPrefix(archive, optionMatchFixKey)
 			if directOption {
 				TestOptionMatchFixQuoted(t)

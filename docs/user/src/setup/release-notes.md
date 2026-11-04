@@ -426,6 +426,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - A schema-alias quick fix could join its initializer to the statement after the removed type alias, silently changing `Base; …; value;` into `Basevalue`. The editor and `vibelang --fix` now keep the original statement terminator.
 
 - Path platform errors recommended namespace calls, a callable `Path()`, and unrun URL conversions; their examples now get `Path.Path` and run conversions before using the path.
+- Applying `vibelang --fix` to a `Match` handler with an object parameter could send a matching value with a missing optional field to the fallback. Handler fields are now destructured after arm selection, preserving missing fields, defaults, rest bindings and getter reads.
 - The ESLint corpus check rejected deliberately constant source literal conditions as generated code; it now checks each reported literal against its source while continuing to detect unwritten constants.
 - An optional-schema inverse check expected the retired `mutable` field spelling. It now checks that writable keys have no `readonly` modifier and readonly keys retain it, with exact optional-property conversion controls unchanged.
 
