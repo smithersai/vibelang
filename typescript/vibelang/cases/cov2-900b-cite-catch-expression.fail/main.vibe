@@ -1,0 +1,40 @@
+// expect: EK0401 EK0504 EK9201 EK2114 EK4701
+error NotFound { id: string }
+error Timeout
+
+effect function find(id: string): string!(NotFound | Timeout)! {
+  if (id === "missing") throw new NotFound({ id })
+  if (id === "slow") throw new Timeout()
+  return `user ${id}`
+}
+
+// A match without default must handle every failure (EK4701).
+export effect function partial(id: string) {
+  return find(id) catch (e) => match (e) {
+    when NotFound: "missing";
+  }
+}
+
+// A hatch body is plain TypeScript (EK2114).
+export effect function parsed() {
+  return try sync(() => JSON.parse("{}") catch null)
+}
+
+// The left side cannot fail, so the catch never runs (EK9204, a warning).
+export effect function constant() {
+  return Effect.succeed(1) catch () => 2
+}
+
+// default: throw e keeps Timeout in E, which the contract leaves out.
+export effect function strict(id: string): string!! {
+  return find(id) catch effect (e) => match (e) {
+    when NotFound: "missing";
+    default: throw e;
+  }
+}
+
+// catch runs its Effect, so outside effect code it is EK0504 (VIP-5, chapter 2).
+export const top = find("1") catch () => "guest"
+
+// Chapter 900: Appendix B interim EK9201 failure escapes the written contract — spec-rule: docs/design/src/900-appendices.md#a1d4c61f4a7e5703
+// Chapter 900: Appendix B interim EK9204 catch head cannot fail — spec-rule: docs/design/src/900-appendices.md#efc88709f48db4d2

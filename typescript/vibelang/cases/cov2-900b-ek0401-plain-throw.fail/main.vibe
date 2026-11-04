@@ -1,0 +1,4 @@
+// expect: EK0401 EK0401
+// Chapter 900: Appendix B EK0401 throw in synchronous code outside effect code — spec-rule: docs/design/src/900-appendices.md#aa456f78debc4f8a
+export function plain(): number { throw new Error("bad") }
+export const arrow = (): number => { throw new Error("bad") }

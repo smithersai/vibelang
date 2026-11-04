@@ -1,0 +1,11 @@
+// expect-result: {"wire":2,"value":"db:conn"}
+// Chapter 900: Appendix C denied VIP-24: wire is an ordinary name; layers compose with Layer.provide — spec-rule: docs/design/src/900-appendices.md#ec21c02b4d57759a
+const wire = (n: number): number => n + 1
+service Conn { static readonly key = "conn"; url: string }
+service Db { static readonly key = "db"; read(): string!! }
+const ConnLive = Layer.succeed(Conn, { url: "conn" })
+const DbLive = Layer.effect(Db, effect { const c = try Conn; return { read: effect () => "db:" + c.url } })
+export effect function main() {
+  const value = try Effect.provide(effect { return try (try Db).read() }, Layer.provide(DbLive, ConnLive))
+  return { wire: wire(1), value }
+}

@@ -1,0 +1,4 @@
+// expect-result: {"value":null}
+// Chapter 900: Appendix B function f(x = do { return null }) returns null from f — spec-rule: docs/design/src/900-appendices.md#1bef786019a4ac2b
+function f(x: number = do { return null }): number | null { return x }
+export effect function main() { return { value: f() } }

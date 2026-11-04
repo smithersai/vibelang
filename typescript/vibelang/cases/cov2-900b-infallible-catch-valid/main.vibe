@@ -1,0 +1,6 @@
+// expect-result: {"value":2}
+// Chapter 900: Appendix B succeed(2) catch (e) => 0 is valid — spec-rule: docs/design/src/900-appendices.md#5da78066df93ef5e
+export effect function main() {
+  const value = succeed(2) catch (e) => 0
+  return { value }
+}

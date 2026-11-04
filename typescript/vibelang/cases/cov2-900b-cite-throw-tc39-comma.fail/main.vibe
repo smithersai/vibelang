@@ -1,0 +1,8 @@
+// expect: EK1010
+error Missing
+export effect function bad() {
+  const xs = [throw new Missing(), 1]
+  return xs
+}
+
+// Chapter 900: Appendix B EK1010 throw expression invalid punctuator — spec-rule: docs/design/src/900-appendices.md#741c0b2e4ac2b518

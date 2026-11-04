@@ -1,0 +1,13 @@
+// expect-result: {"a":1,"code":2}
+// Chapter 900: Appendix A member alternatives use interface separators — spec-rule: docs/design/src/900-appendices.md#f8099cea7d10481f
+export service Pair { static readonly key = "pair"; a: number, b: string }
+export error Coded { id: string, code: number }
+const PairLive = Layer.succeed(Pair, { a: 1, b: "b" })
+effect function read() {
+  const pair = try Pair
+  return pair.a
+}
+export effect function main() {
+  const e = new Coded({ id: "a", code: 2 })
+  return { a: try Effect.provide(read(), PairLive), code: e.code }
+}

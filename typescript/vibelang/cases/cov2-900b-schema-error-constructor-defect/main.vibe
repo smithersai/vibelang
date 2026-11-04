@@ -1,0 +1,10 @@
+// expect-result: {"ok":"x","bad":"died"}
+// Chapter 900: Appendix E Schema.TaggedError constructor throws never; a bad field dies — spec-rule: docs/design/src/900-appendices.md#0e96dab754b64151
+import * as Schema from "effect/Schema"
+const Name = Schema.NonEmptyString
+schema error Invalid { name: Name }
+export effect function main() {
+  const ok = new Invalid({ name: "x" })
+  const bad = try Effect.catchDefect(effect { throw new Invalid({ name: "" }) }, () => Effect.succeed("died"))
+  return { ok: ok.name, bad }
+}

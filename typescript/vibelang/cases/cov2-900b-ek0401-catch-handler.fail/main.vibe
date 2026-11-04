@@ -1,0 +1,4 @@
+// expect: EK0401
+// Chapter 900: Appendix B retired EK0511: a throw in a plain catch handler is EK0401 — spec-rule: docs/design/src/900-appendices.md#b586842a71a2fa52
+effect function load(): number!string { throw "missing" }
+export effect function main() { return load() catch (e) => { throw `wrapped ${e}` } }

@@ -1,0 +1,18 @@
+// expect-result: {"plain":["body","disposed"],"scoped":["acquired","used","released"]}
+// Chapter 900: Appendix C denied VIP-8: using is TypeScript and Effect resources use scoped — spec-rule: docs/design/src/900-appendices.md#51f3557fec7743d8
+function plainUsing(): Array<string> {
+  const log: Array<string> = []
+  {
+    using r = { [Symbol.dispose]: () => { log.push("disposed") } }
+    log.push("body")
+  }
+  return log
+}
+export effect function main() {
+  const log: Array<string> = []
+  try scoped(effect {
+    try acquireRelease(sync((l) => { l.push("acquired") }, log), () => sync((l) => { l.push("released") }, log))
+    log.push("used")
+  })
+  return { plain: plainUsing(), scoped: log }
+}

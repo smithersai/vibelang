@@ -1,0 +1,10 @@
+// expect: EK9202
+import * as Effect from "effect/Effect"
+service Host { field: string }
+service Outside { value: number }
+export effect function run<A, E, R>(body: Effect.Effect<A, E, R>): A!E!(Exclude<R, Host>) {
+  try Outside
+  return try Effect.scoped(Effect.provideService(body, Host, { field: "host" }))
+}
+
+// Chapter 900: Appendix B interim EK9202 requirement escapes the written contract — spec-rule: docs/design/src/900-appendices.md#82677ed56820e47a

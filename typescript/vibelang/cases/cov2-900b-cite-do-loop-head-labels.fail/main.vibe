@@ -1,0 +1,36 @@
+// expect: EK0205 EK0205 EK0205 EK0205 EK0205 EK0205 EK0204 EK0204
+// VIP-2 / Appendix B: every consecutive label denotes the same loop.
+// do-while also retains its existing EK0204 lowering limitation.
+export function doubleBreak(): void {
+  outer: inner: while (do { break outer; true }) {}
+}
+export function doubleContinue(): void {
+  outer: inner: while (do { continue outer; true }) {}
+}
+export function tripleOuterBreak(): void {
+  outer: middle: inner: while (do { break outer; true }) {}
+}
+export function tripleMiddleContinue(): void {
+  outer: middle: inner: while (do { continue middle; true }) {}
+}
+export function doWhileBreak(): void {
+  outer: middle: inner: do {} while (do { break outer; true });
+}
+export function doWhileContinue(): void {
+  outer: inner: do {} while (do { continue outer; true });
+}
+// A different enclosing loop remains a permitted destination.
+export function enclosingBreak(): void {
+  enclosing: while (true) {
+    outer: inner: while (do { break enclosing; true }) {}
+  }
+}
+export function enclosingContinue(): void {
+  enclosing: while (true) {
+    outer: middle: inner: while (do { continue enclosing; true }) {}
+  }
+}
+
+// Chapter 900: Appendix B the compiler prints EK0204, a compiler gap — spec-rule: docs/design/src/900-appendices.md#5c3b09c09ca752e8
+// Chapter 900: Appendix B EK0204 rejects a jump leaving a do compiled to a function — spec-rule: docs/design/src/900-appendices.md#74f3cc40d8df4e4e
+// Chapter 900: Appendix B EK0204 row — spec-rule: docs/design/src/900-appendices.md#09f48b65f0baf24d

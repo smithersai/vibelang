@@ -1,0 +1,15 @@
+// expect: EK1101 TS1005 TS1128
+// VIP-11 leaves the denied call and block to native TypeScript recovery.
+// The private migration retains each EK1101 message and quick fix.
+// An explicit argument replaces every retired trailing block.
+function plain(f: () => number) { return f() }
+const obj = { plain }
+function test(name: string, body: () => Effect.Effect<number>) { return body() }
+service Users { find(): number!! }
+export function callback() { return plain() { return 7 } }
+export function bare() { return obj.plain { return 7 } }
+export const live = Layer.effect(Users) { return { find: effect () => 7 } }
+export function scoped() { return Effect.scoped { return 7 } }
+export function tested() { return test("loads") { return 7 } }
+
+// Chapter 900: Appendix C denied VIP-11: no trailing blocks — spec-rule: docs/design/src/900-appendices.md#d46aee74a74ff5b7
