@@ -1,0 +1,11 @@
+import { expected } from "./native.js"
+
+effect function actual() {
+  const fiber = fork Effect.never
+  try Fiber.interrupt(fiber)
+  return 1
+}
+// expect-result: [1, 1]
+export effect function main() {
+  return [try actual(), try expected]
+}

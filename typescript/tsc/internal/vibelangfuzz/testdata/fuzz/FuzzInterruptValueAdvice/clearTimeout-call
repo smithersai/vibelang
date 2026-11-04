@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("clearTimeout:call\x00\x00")

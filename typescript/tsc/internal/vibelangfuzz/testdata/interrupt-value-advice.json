@@ -1,0 +1,122 @@
+[
+  {
+    "key": "clearTimeout:held",
+    "source": "export const value=clearTimeout",
+    "advice": "try Fiber.interrupt(fiber)"
+  },
+  {
+    "key": "clearTimeout:call",
+    "source": "export function run(){clearTimeout(0)}",
+    "advice": "try Fiber.interrupt(fiber)"
+  },
+  {
+    "key": "clearTimeout:closure",
+    "source": "export const value=()=>clearTimeout(0)",
+    "advice": "try Fiber.interrupt(fiber)"
+  },
+  {
+    "key": "clearTimeout:alias-held",
+    "source": "const Native=clearTimeout;export const value=Native",
+    "advice": "try Fiber.interrupt(fiber)"
+  },
+  {
+    "key": "clearTimeout:alias-call",
+    "source": "const Native=clearTimeout;export function run(){Native(0)}",
+    "advice": "try Fiber.interrupt(fiber)"
+  },
+  {
+    "key": "clearTimeout:boundary",
+    "source": "export effect function run(){return try Effect.try(()=>clearTimeout(0))}",
+    "advice": "try Fiber.interrupt(fiber)"
+  },
+  {
+    "key": "globalThis.clearTimeout:held",
+    "source": "export const value=globalThis.clearTimeout",
+    "advice": "try Fiber.interrupt(fiber)"
+  },
+  {
+    "key": "globalThis.clearTimeout:call",
+    "source": "export function run(){globalThis.clearTimeout(0)}",
+    "advice": "try Fiber.interrupt(fiber)"
+  },
+  {
+    "key": "globalThis.clearTimeout:closure",
+    "source": "export const value=()=>globalThis.clearTimeout(0)",
+    "advice": "try Fiber.interrupt(fiber)"
+  },
+  {
+    "key": "globalThis.clearTimeout:alias-held",
+    "source": "const Native=globalThis.clearTimeout;export const value=Native",
+    "advice": "try Fiber.interrupt(fiber)"
+  },
+  {
+    "key": "globalThis.clearTimeout:alias-call",
+    "source": "const Native=globalThis.clearTimeout;export function run(){Native(0)}",
+    "advice": "try Fiber.interrupt(fiber)"
+  },
+  {
+    "key": "globalThis.clearTimeout:boundary",
+    "source": "export effect function run(){return try Effect.try(()=>globalThis.clearTimeout(0))}",
+    "advice": "try Fiber.interrupt(fiber)"
+  },
+  {
+    "key": "clearInterval:held",
+    "source": "export const value=clearInterval",
+    "advice": "try Fiber.interrupt(fiber)"
+  },
+  {
+    "key": "clearInterval:call",
+    "source": "export function run(){clearInterval(0)}",
+    "advice": "try Fiber.interrupt(fiber)"
+  },
+  {
+    "key": "clearInterval:closure",
+    "source": "export const value=()=>clearInterval(0)",
+    "advice": "try Fiber.interrupt(fiber)"
+  },
+  {
+    "key": "clearInterval:alias-held",
+    "source": "const Native=clearInterval;export const value=Native",
+    "advice": "try Fiber.interrupt(fiber)"
+  },
+  {
+    "key": "clearInterval:alias-call",
+    "source": "const Native=clearInterval;export function run(){Native(0)}",
+    "advice": "try Fiber.interrupt(fiber)"
+  },
+  {
+    "key": "clearInterval:boundary",
+    "source": "export effect function run(){return try Effect.try(()=>clearInterval(0))}",
+    "advice": "try Fiber.interrupt(fiber)"
+  },
+  {
+    "key": "globalThis.clearInterval:held",
+    "source": "export const value=globalThis.clearInterval",
+    "advice": "try Fiber.interrupt(fiber)"
+  },
+  {
+    "key": "globalThis.clearInterval:call",
+    "source": "export function run(){globalThis.clearInterval(0)}",
+    "advice": "try Fiber.interrupt(fiber)"
+  },
+  {
+    "key": "globalThis.clearInterval:closure",
+    "source": "export const value=()=>globalThis.clearInterval(0)",
+    "advice": "try Fiber.interrupt(fiber)"
+  },
+  {
+    "key": "globalThis.clearInterval:alias-held",
+    "source": "const Native=globalThis.clearInterval;export const value=Native",
+    "advice": "try Fiber.interrupt(fiber)"
+  },
+  {
+    "key": "globalThis.clearInterval:alias-call",
+    "source": "const Native=globalThis.clearInterval;export function run(){Native(0)}",
+    "advice": "try Fiber.interrupt(fiber)"
+  },
+  {
+    "key": "globalThis.clearInterval:boundary",
+    "source": "export effect function run(){return try Effect.try(()=>globalThis.clearInterval(0))}",
+    "advice": "try Fiber.interrupt(fiber)"
+  }
+]

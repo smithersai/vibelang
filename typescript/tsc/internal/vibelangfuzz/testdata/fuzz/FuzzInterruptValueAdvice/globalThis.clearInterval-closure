@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("globalThis.clearInterval:closure\x00\x00")

@@ -102,7 +102,7 @@ var platformServices = map[string]*platformService{
 	"URL":             {"the global URL and URLSearchParams, which VibeLang code may use", "new URL(text)", "", ""},
 	"Inspectable":     {"Inspectable, from the prelude", "Inspectable.toStringUnknown(value)", "", ""},
 	"Schedule":        {"sleep and Schedule, from the prelude", `sleep("1 second")`, "", ""},
-	"Interrupt":       {"a fiber's interruption", "fiber.interrupt()", "", ""},
+	"Interrupt":       {"a fiber's interruption", "try Fiber.interrupt(fiber)", "", ""},
 	"Yield":           {"Effect's yieldNow value", "try Effect.yieldNow", `import { Effect } from "effect"`, ""},
 	"Clock":           {"Clock, from the prelude", "try Clock.currentTimeMillis", "", ""},
 	"Config":          {"Config, from the prelude", `try Config.String("NAME")`, "", ""},

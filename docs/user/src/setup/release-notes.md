@@ -250,6 +250,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Migration verification tests for nested ambient declarations spent time checking unrelated browser libraries; they now use the libraries their fixtures require while retaining every ownership and mutation check.
 - Ambient `schema` and `data` declarations were accepted or produced native initializer errors; they now report `EK1506` or `EK1607`, including inherited ambient contexts and incomplete bodies.
 
+- Timer-cancellation errors suggested a legacy method without running its Effect; they now show how to run the public `Fiber.interrupt(fiber)` Effect.
+
 - The grammar inventory cited old compatibility diagnostics as though they were current public assignments. Those references now explicitly say they are historical; all pending gaps and their regression witnesses remain intact.
 - Filesystem platform errors recommended methods on the `FileSystem` namespace, where they do not exist; their advice now gets `FileSystem.FileSystem` before calling the implementation.
 - Migrating imports inside native `module` bodies could replace `./leaf.js` with `./leaf.vibe` and cause `TS5097`. These bodies now keep their original TypeScript import spelling.
