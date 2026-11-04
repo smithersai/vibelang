@@ -1,0 +1,19 @@
+export effect function tail(value: any) { return try value }
+export effect function bound(value: any) { const result = try value; return result }
+export effect function factory(make: () => any) { return try make() }
+export effect function grouped(value: any) { return (try value) }
+export effect function array(value: any) { return [try value] }
+
+export effect function known(value: Effect.Effect<number>) { return try value }
+export effect function knownFactory(make: () => Effect.Effect<number>) { return try make() }
+export effect function knownGeneric<T extends Effect.Effect<number>>(value: T) { return try value }
+
+export function makeZero(value: any) { return effect function () { return try value } }
+export function makeNamedZero(value: any) { return effect function chosen() { return try value } }
+export function makeArrowZero(value: any) { return effect () => try value }
+export function makeOne(value: any) { return effect function (input: any) { return try input } }
+export function makeThisZero(value: any) { return effect function (this: { value: any }) { return try this.value } }
+export function makeSelfZero(value: any) {
+ return effect function chosen() { return try ((chosen as any).program ?? value) }
+}
+export function makeCapturedRestZero(...args: any[]) { return effect function () { return try args[0] } }

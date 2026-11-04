@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("key:vip05.tail-native-delegation-effect\u0000\u0000\u0000\u0000\u0004\u0005")

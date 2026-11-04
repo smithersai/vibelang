@@ -16,7 +16,8 @@ type plan struct {
 	schemaGenerics   map[*ast.Node]*ast.Node
 	collisionModules map[*ast.Node]string
 
-	parameterWrites map[*ast.Node]bool // Effect functions whose body writes a parameter binding
+	parameterWrites     map[*ast.Node]bool // Effect functions whose body writes a parameter binding
+	sourceTryDelegation map[*ast.Node]bool // preserve host iterator errors at the written operand
 
 	fieldlessErrorConstructors map[*ast.Node]bool
 	effects                    map[*ast.Node]bool // functions lowered to Effect.fnUntraced generators
@@ -64,6 +65,7 @@ func newFilePlan() *plan {
 	p := &plan{effects: map[*ast.Node]bool{}, programs: map[*ast.Node]bool{}, runs: map[*ast.Node]bool{}, servicePlan: newServicePlan(), trustedPlan: newTrustedPlan(), scopePlan: newScopePlan()}
 	p.schemaGenerics = map[*ast.Node]*ast.Node{}
 	p.parameterWrites = map[*ast.Node]bool{}
+	p.sourceTryDelegation = map[*ast.Node]bool{}
 	p.returns = map[*ast.Node]bool{}
 	p.chainedCatches = map[*ast.Node]bool{}
 	p.fieldlessErrorConstructors = map[*ast.Node]bool{}
@@ -110,6 +112,9 @@ func populateFilePlan(c *checker.Checker, file *ast.SourceFile, p *plan) {
 			p.parameterWrites[node] = writesParameters(c, node)
 			p.planProducer(c, node)
 			forEachCallInBody(node, func(call *ast.Node) bool {
+				if isTryCall(call) || call.Flags&ast.NodeFlagsVibeLangTry != 0 {
+					p.sourceTryDelegation[node] = true
+				}
 				if a.runs(call) {
 					p.runs[call] = true
 				}

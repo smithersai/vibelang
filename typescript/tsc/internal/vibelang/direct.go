@@ -32,9 +32,10 @@ const (
 
 // directEffect returns the Effect for a single-result callable, given its
 // lowered body, or nil when the general lowering is required.
-// role says what its thunk stands for.
+// role says what its thunk stands for. Source delegation keeps the original
+// operand expression: V8 also uses that expression when wording TypeErrors.
 func (tx *lowering) directEffect(node *ast.Node, body *ast.Node, role thunkRole) *ast.Node {
-	if ast.GetFunctionFlags(node)&ast.FunctionFlagsAsyncGenerator != 0 || tx.plan.resumesInTail(node) {
+	if ast.GetFunctionFlags(node)&ast.FunctionFlagsAsyncGenerator != 0 || tx.plan.resumesInTail(node) || tx.plan.sourceTryDelegation[node] {
 		return nil
 	}
 	f := tx.Factory()

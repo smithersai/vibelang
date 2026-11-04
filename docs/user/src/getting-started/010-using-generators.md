@@ -14,7 +14,7 @@ Method names follow TypeScript's property-name rules, including bigint literals:
 
 A class can extend a value named `effect`: in `class Derived extends effect { }`, the braces are the class body.
 
-`try` keeps native delegated iteration even when it is the function's only return. An unchecked empty iterable succeeds with `undefined`, an unchecked noniterable dies with its native `TypeError`, and iterator getters keep their evaluation order. An iterator getter on an `Effect` is still observed.
+`try` keeps native delegated iteration even when it is the function's only return. An unchecked empty iterable succeeds with `undefined`, an unchecked noniterable dies with its native `TypeError`, and iterator getters keep their evaluation order. An iterator getter on an `Effect` is still observed. Tail returns preserve the native error's `name` and `message`, including when a typed or generic operand receives an unchecked value.
 
 Comments do not supply a keyword: `export /* function */ effect load() { }` still needs `function` before `load`, and its quick fix preserves the comment.
 
