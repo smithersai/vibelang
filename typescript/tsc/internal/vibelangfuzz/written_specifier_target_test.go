@@ -15,7 +15,7 @@ import (
 // (round 14 OPUS-1). The compiler still resolves it, and
 // TestWrittenSpecifierMigratedTarget keeps that behavior until the spec agent
 // answers the question recorded as OPEN in decided detail 296.
-const writtenSpecifierKeptQuote = "Under every setting, every other specifier stays as the source wrote it, `./plain.ts` included, as `tsc` keeps it in the declaration of a `.ts` file."
+const writtenSpecifierKeptQuote = "written `./user.js`, `./App.jsx`, `./user` and native `./plain.ts` keep their spelling."
 
 func TestWrittenSpecifierMigratedTargetQuoted(t *testing.T) { requireWrittenSpecifierQuotes(t) }
 

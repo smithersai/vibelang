@@ -26,7 +26,7 @@ import (
 // declaration, its sidecar; and in a plain run no effect import that --fix
 // leaves can go with the declaration unchanged and no error added. Comparing
 // the compiler with itself across the fix is this target's oracle.
-const fixDeclaredQuote = "Prelude cleanup keeps an explicit Effect import where removing it would change the declaration."
+const fixDeclaredQuote = "In every scope, `--fix` removes an import only when the resulting declaration preserves [API identity](001-functions.md#api-identity): the same exports, types and documentation."
 
 const fixDeclaredOnlyQuote = "Every `.vibe` module has a declaration, its sidecar, so `noEmit` and `declaration: false` change nothing here."
 

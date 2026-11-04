@@ -12,8 +12,9 @@ import (
 
 var nativeOutputSpecifierQuotes = []string{
 	"Fields retain their TypeScript meaning with one deliberate file-kind exception:",
-	"`x.vibe` emits `x.js` beside `x.d.ts` in `outDir`; JavaScript output rewrites relative `./x.vibe` specifiers to `./x.js`.",
-	"Declaration output selects `./x.js` (default), `./x` (`\"extensionless\"`) or `./x.ts` through `vibelang.declarationImportStyle`; every other written specifier stays as written under every style, including `./helper.ts`",
+	"Output names follow the native twin: `x.vibe` emits `x.js` and `x.d.ts` in `outDir`;",
+	"JavaScript source-extension rewriting requires `rewriteRelativeImportExtensions`.",
+	"Ordinary declarations use the native twin's relative specifiers; compatibility sidecars preserve the selected VibeLang source identity, relocated when needed.",
 }
 
 func requireNativeOutputSpecifierQuotes(t testing.TB) {

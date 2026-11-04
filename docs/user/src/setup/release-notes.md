@@ -187,6 +187,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 ### Bugs fixed since 0.0.10
 
+- Declaration and import property checks still cited retired output and API-preservation wording. They now cite the native-twin and written-specifier rules while keeping their original assertions and corpus.
+
 - Quick-fix coverage omitted the legacy global `Effect` alias diagnostic. The `EK4856` alias, channel and heritage witnesses now run through the strict CLI, editor, API and runtime checks.
 
 - The nonrelative-import property check still quoted retired diagnostic wording. It now cites the current native TypeScript rule and retains its compiler-discovery and alias controls.

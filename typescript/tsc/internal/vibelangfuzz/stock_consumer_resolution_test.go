@@ -11,7 +11,7 @@ import (
 	"testing"
 )
 
-const stockConsumerResolutionQuote = "A package whose sources spell relative imports another way keeps that spelling with the project setting `vibelang.declarationImportStyle`"
+const stockConsumerResolutionQuote = "Declaration emit follows TypeScript for the source’s `.ts`/`.tsx` twin."
 
 func TestStockConsumerResolutionQuoted(t *testing.T) {
 	if !strings.Contains(SpecText("001-functions.md"), stockConsumerResolutionQuote) {
