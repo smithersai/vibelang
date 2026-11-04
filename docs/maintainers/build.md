@@ -1566,3 +1566,9 @@ compiler package's locked development dependencies. The load-path tests resolve
 it from that package rather than relying on an incidental runtime install.
 The target retains both original Node/esbuild commands, protected test bytes,
 generated import forms and idempotent routing and restoration checks.
+
+The `//packages:migrate-loader-validation` gate checks each loader record's
+own validation outcome: unavailable validators, exceptions and cache misses
+cannot inherit a previous successful check. Its quotation follows the published
+migration guide; the complete ten-mode matrix and generated record histories
+remain active when that guide or the validation implementation changes.

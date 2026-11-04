@@ -139,6 +139,15 @@ const migrateNativeLoadpaths = S.Shell.Test({
   timeout: "3m"
 })
 
+const migrateLoaderValidation = S.Shell.Test({
+  summary: "Check loader validation receipts and their published contract.",
+  shell: "node --test .smithers/flows/migrate/test/loader-validation.property.test.mjs",
+  data: [migrationSources, ...install, S.file("//docs/user/src/setup/migrating-retired-forms.md")],
+  tools: [S.Host.bin("node")],
+  sandbox: "none",
+  timeout: "2m"
+})
+
 const migrateTest = S.Shell.Test({
   summary: "The migrate and convert flows' tests.",
   shell: "cd packages/compiler && bun install --frozen-lockfile && " +
@@ -149,6 +158,7 @@ const migrateTest = S.Shell.Test({
   data: [compilerNative, runtimeDist, S.glob("compiler/**"), migrationSources,
     S.file("//docs/tools/package.json"), S.file("//docs/tools/bun.lock"),
     S.file("//scripts/testing/property.mjs"), S.file("//scripts/testing/spec-path.mjs"), S.file("//scripts/testing/migrate-progress.mjs"), S.file("//docs/design/src/001-functions.md"), S.file("//docs/design/src/007-tooling.md"),
+    S.file("//docs/user/src/setup/migrating-retired-forms.md"),
     S.glob("vite/src/**"), S.glob("unplugin/src/**"), ...install],
   tools: [S.Host.bin("node"), S.Host.bin("bun"), S.Host.bin("jj")],
   sandbox: "none",
@@ -223,6 +233,7 @@ export const Package = S.Package({
     "migrate-warning-provenance": migrateWarningProvenance,
     "migrate-plain-probe": migratePlainProbe,
     "migrate-native-loadpaths": migrateNativeLoadpaths,
+    "migrate-loader-validation": migrateLoaderValidation,
     "compiler-tools-test": compilerToolsTest,
     "vite-test": viteTest,
     "unplugin-test": unpluginTest,

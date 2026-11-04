@@ -10,8 +10,8 @@ const require = createRequire(new URL("../../../../packages/runtime/package.json
 const fc = require("fast-check")
 const rule = "A missing validation outcome is unverified: a later stage never inherits an earlier stage's exit."
 
-test("loader validation oracle quotes VIP-34's tooling contract", () => {
-  assert.ok(readFileSync(new URL("../../../../docs/design/src/007-tooling.md", import.meta.url), "utf8").includes(rule))
+test("loader validation oracle quotes the published migration contract", () => {
+  assert.ok(readFileSync(new URL("../../../../docs/user/src/setup/migrating-retired-forms.md", import.meta.url), "utf8").includes(rule))
 })
 
 async function check({ mode, count, failedWrite, prior = false }) {
