@@ -25,6 +25,7 @@ import (
 type moduleBody struct {
 	name string
 	body core.TextRange
+	kind core.ScriptKind
 }
 
 // checkModules reports what keeps the module declarations of file, a parse
@@ -50,7 +51,11 @@ func checkModules(file *ast.SourceFile, source string) error {
 			// Recovery leaves EK4003 to the checker and attaches no supplemental
 			// file. Check the body independently before projecting a temporary name.
 			r := parser.ModuleDeclarationBody(file, statement)
-			body := parser.ParseSourceFile(typeScriptOptions, source[r.Pos():r.End()], core.ScriptKindTS)
+			kind := core.ScriptKindTS
+			if file.LanguageVariant == core.LanguageVariantJSX {
+				kind = core.ScriptKindTSX
+			}
+			body := parser.ParseSourceFile(typeScriptOptions, source[r.Pos():r.End()], kind)
 			if diagnostics := body.Diagnostics(); len(diagnostics) != 0 {
 				line, column := lineColumn(source, r.Pos()+diagnostics[0].Pos())
 				return fmt.Errorf("vibelang format: %d:%d: %s", line, column, diagnostics[0].String())
@@ -101,7 +106,7 @@ func formatModules(source string, modules []moduleBody, formatter TypeScriptForm
 	for _, module := range modules {
 		// Use the same field-key protection in the body's standalone pass.
 		body := source[module.body.Pos():module.body.End()]
-		file := parser.ParseSourceFile(typeScriptOptions, body, core.ScriptKindTS)
+		file := parser.ParseSourceFile(projectionOptions(module.kind), body, module.kind)
 		e := &encoder{file: file, source: body, sentinel: "$v"}
 		for strings.Contains(body, e.sentinel) {
 			e.sentinel += "_"
@@ -119,7 +124,7 @@ func formatModules(source string, modules []moduleBody, formatter TypeScriptForm
 		if err != nil {
 			return "", fmt.Errorf("vibelang format: module %s: %w", module.name, err)
 		}
-		formatted, err = preserveTypeScript(body, formatted)
+		formatted, err = preserveTypeScript(body, formatted, module.kind)
 		if err != nil {
 			return "", fmt.Errorf("vibelang format: module %s: %w", module.name, err)
 		}
@@ -205,8 +210,12 @@ func (c *comparer) sameModules(before, after *ast.SourceFile) error {
 		a := parser.ModuleDeclarationBody(before, statement)
 		b := parser.ModuleDeclarationBody(after, afterStatements[i])
 		original, formatted := before.Text()[a.Pos():a.End()], after.Text()[b.Pos():b.End()]
-		left := parser.ParseSourceFile(typeScriptOptions, original, core.ScriptKindTS)
-		right := parser.ParseSourceFile(typeScriptOptions, formatted, core.ScriptKindTS)
+		kind := core.ScriptKindTS
+		if before.LanguageVariant == core.LanguageVariantJSX {
+			kind = core.ScriptKindTSX
+		}
+		left := parser.ParseSourceFile(projectionOptions(kind), original, kind)
+		right := parser.ParseSourceFile(projectionOptions(kind), formatted, kind)
 		if diagnostics := right.Diagnostics(); len(diagnostics) != 0 {
 			return fmt.Errorf("unnamed module: %w", syntaxError(formatted, diagnostics[0]))
 		}

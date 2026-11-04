@@ -1,1 +1,0 @@
-vip40 A module body in a .vibex file is parsed as TS, not TSX (TS1005 at the JSX element). Rule: docs/design/vips/0040-module-declarations.md#b60f3e05d94999b8

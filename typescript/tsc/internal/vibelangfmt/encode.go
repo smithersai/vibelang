@@ -539,7 +539,7 @@ func (e *encoder) form(form parser.VibeSyntax) error {
 			e.opaque(placeholderModuleName, core.NewTextRange(form.Open.Pos(), form.Open.Pos()), " ", "", 0)
 		}
 		// TypeScript syntax too; the body is TypeScript (modules.go).
-		e.modules = append(e.modules, moduleBody{name: form.Name, body: core.NewTextRange(form.Open.End(), form.Close.Pos())})
+		e.modules = append(e.modules, moduleBody{name: form.Name, body: core.NewTextRange(form.Open.End(), form.Close.Pos()), kind: core.GetScriptKindFromFileName(e.file.FileName())})
 	case parser.VibeSyntaxModuleReference:
 		e.replace(form.Word.Pos(), form.Word.End(), moduleSpecifierString(e.sentinel, e.text(form.Word)))
 		e.references++

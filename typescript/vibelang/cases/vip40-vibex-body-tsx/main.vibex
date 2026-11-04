@@ -6,5 +6,6 @@ module view {
 }
 
 import { element } from view
+export { element } from view
 
 export const kept = element

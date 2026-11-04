@@ -7,6 +7,7 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/core"
 	"github.com/microsoft/TypeScript/tsc/internal/outputpaths"
+	"github.com/microsoft/TypeScript/tsc/internal/parser"
 	"github.com/microsoft/TypeScript/tsc/internal/tspath"
 )
 
@@ -40,6 +41,11 @@ func (tx *lowering) outputSpecifier(specifier *ast.Node) *ast.Node {
 		return specifier
 	}
 	text, changed := outputSpecifierTextWithJSX(specifier.Text(), tx.jsx)
+	// Identifier module references are generated output names, independent of
+	// source-extension rewriting. A JSX body preserves JSX in its own .jsx file.
+	if parser.IsVibeLangModuleReference(specifier) && tx.jsx == core.JsxEmitPreserve && tx.fresh.file.LanguageVariant == core.LanguageVariantJSX {
+		text, changed = strings.TrimSuffix(specifier.Text(), ".js")+".jsx", true
+	}
 	if !changed {
 		return specifier
 	}

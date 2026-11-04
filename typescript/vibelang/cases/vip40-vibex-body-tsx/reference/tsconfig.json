@@ -1,0 +1,18 @@
+{
+  "compilerOptions": {
+    "strict": true,
+    "types": [],
+    "target": "ESNext",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "jsx": "preserve",
+    "declaration": true,
+    "sourceMap": true,
+    "outDir": "out"
+  },
+  "files": [
+    "main.tsx",
+    "body.tsx",
+    "jsx.d.ts"
+  ]
+}

@@ -228,7 +228,12 @@ func parseModuleBody(file *ast.SourceFile, declaration *ast.Node) *ast.SourceFil
 	body := parser.ModuleDeclarationBody(file, declaration)
 	opts := ast.SourceFileParseOptions{FileName: "/estree.module.ts", PathKey: "/estree.module.ts"}
 	opts.ExternalModuleIndicatorOptions.Force = true
-	return parser.ParseSourceFile(opts, blank(text[:body.Pos()])+text[body.Pos():body.End()]+blank(text[body.End():]), core.ScriptKindTS)
+	kind := core.ScriptKindTS
+	if file.LanguageVariant == core.LanguageVariantJSX {
+		kind = core.ScriptKindTSX
+		opts.FileName, opts.PathKey = "/estree.module.tsx", "/estree.module.tsx"
+	}
+	return parser.ParseSourceFile(opts, blank(text[:body.Pos()])+text[body.Pos():body.End()]+blank(text[body.End():]), kind)
 }
 
 // moduleDeclaration converts module text { body }, whose block the parser

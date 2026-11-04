@@ -10,9 +10,9 @@ import (
 // A module body's first pass formats ordinary TypeScript before the file is
 // encoded. Restore return grouping and expression-label bodies there and in the outer pass,
 // before that intermediate output becomes the next encoding's source.
-func preserveTypeScript(before, after string) (string, error) {
-	original := parser.ParseSourceFile(typeScriptOptions, before, core.ScriptKindTS)
-	formatted := parser.ParseSourceFile(typeScriptOptions, after, core.ScriptKindTS)
+func preserveTypeScript(before, after string, kind core.ScriptKind) (string, error) {
+	original := parser.ParseSourceFile(projectionOptions(kind), before, kind)
+	formatted := parser.ParseSourceFile(projectionOptions(kind), after, kind)
 	if diagnostics := formatted.Diagnostics(); len(diagnostics) != 0 {
 		return "", fmt.Errorf("vibelang format: the formatted TypeScript does not parse: %s", diagnostics[0].String())
 	}

@@ -26,6 +26,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - Migration sidecar checks could reject valid declaration routes after TypeScript inferred a source root. They now qualify explicit, inferred and composite layouts against TypeScript's declaration output.
 - A declaration before `for concurrent` in a labeled block could reject a valid `break` from its iterable with `EK0205`, or accept an invalid `continue` to that block. A `break` from the iterable can now leave the enclosing block, and a labeled `continue` must name the loop itself.
 - Converting a `Schema.TaggedError` field could narrow its schema input type when the codec moved into a constant. The repair now preserves the original contextual type on that constant.
+- JSX inside a native `module` body in `.vibex` failed to parse; bodies now support TSX syntax, format JSX and emit `.jsx` under `jsx: preserve`, with matching imports and declarations.
 - Contributor checks mistook the compiler’s sharded tests for a missing target. They now verify the runtime build dependency of every shard.
 - Contributor diagnostics checks could compile a second set of packages with workspace paths. They now use the compiler’s `-trimpath` settings.
 

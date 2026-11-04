@@ -14,6 +14,7 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/jsnum"
 	"github.com/microsoft/TypeScript/tsc/internal/modulespecifiers"
 	"github.com/microsoft/TypeScript/tsc/internal/nodebuilder"
+	"github.com/microsoft/TypeScript/tsc/internal/parser"
 	"github.com/microsoft/TypeScript/tsc/internal/printer"
 	"github.com/microsoft/TypeScript/tsc/internal/scanner"
 	"github.com/microsoft/TypeScript/tsc/internal/transformers"
@@ -1675,6 +1676,13 @@ func (tx *DeclarationTransformer) rewriteModuleSpecifier(parent *ast.Node, input
 	}
 	tx.resultHasExternalModuleIndicator = tx.resultHasExternalModuleIndicator || (parent.Kind != ast.KindModuleDeclaration && parent.Kind != ast.KindImportType)
 	if ast.IsStringLiteral(input) {
+		if parser.IsVibeLangModuleReference(input) && tx.compilerOptions.Jsx == core.JsxEmitPreserve &&
+			tx.state.currentSourceFile != nil && tx.state.currentSourceFile.LanguageVariant == core.LanguageVariantJSX {
+			result := tx.Factory().NewStringLiteral(strings.TrimSuffix(input.Text(), ".js")+".jsx", input.AsStringLiteral().TokenFlags)
+			tx.EmitContext().SetOriginal(result, input)
+			tx.EmitContext().AssignCommentAndSourceMapRanges(result, input)
+			return result
+		}
 		// Source sidecars preserve source identity; public declarations use the
 		// TypeScript twin independently of JavaScript extension rewriting.
 		if tx.EmitContext().VibeDeclarationSidecar && tspath.IsExternalModuleNameRelative(input.Text()) && (tspath.FileExtensionIs(input.Text(), tspath.ExtensionVibe) || tspath.FileExtensionIs(input.Text(), ".vibex")) {

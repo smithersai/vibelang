@@ -232,6 +232,9 @@ func (p *Parser) attachVibeLangModules(file *ast.SourceFile) {
 			continue
 		}
 		suffix := ModuleDeclarationFileSuffix(statement.Name().Text())
+		if file.LanguageVariant == core.LanguageVariantJSX {
+			suffix = strings.TrimSuffix(suffix, tspath.ExtensionTs) + tspath.ExtensionTsx
+		}
 		if seen[suffix] {
 			continue
 		}
@@ -276,7 +279,7 @@ func (p *Parser) attachVibeLangModules(file *ast.SourceFile) {
 func parseModuleBody(opts ast.SourceFileParseOptions, text string, start int) *ast.SourceFile {
 	p := getParser()
 	defer putParser(p)
-	p.initializeState(opts, text, core.ScriptKindTS)
+	p.initializeState(opts, text, core.GetScriptKindFromFileName(opts.FileName))
 	p.vibelangTypeScript = true
 	p.scanner.ResetPos(start)
 	p.nextToken()

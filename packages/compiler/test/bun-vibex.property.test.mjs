@@ -31,7 +31,7 @@ function check({ form, jsx, dynamic = false, body = false, value = 7 }) {
     }))
     const code = "/** @jsxRuntime classic */\n/** @jsx h */\nfunction h(tag: string, props: unknown, ...children: unknown[]) { return children[0] }\nexport const value = <span>{" + value + "}</span>\n"
     put("src/jsx.d.ts", "declare namespace JSX { interface IntrinsicElements { span: unknown } }\n")
-    put("src/leaf.vibex", body ? "module host { export const value = " + value + " }\nexport { value } from host\n" : code)
+    put("src/leaf.vibex", body ? "module host {\n" + code + "}\nexport { value } from host\n" : code)
     put("src/dir/index.vibex", code)
     put("src/twin.tsx", code)
     const specifier = corpus.forms[form]
@@ -54,7 +54,8 @@ function check({ form, jsx, dynamic = false, body = false, value = 7 }) {
 
 test("Bun loads the opencode Vibex import forms with native TSX results", { skip }, () => {
   for (const form of Object.keys(corpus.forms)) check({ form, jsx: "preserve" })
-  check({ form: "explicit", jsx: "preserve", body: true })
+  for (const jsx of ["preserve", "react", "react-native"]) check({ form: "explicit", jsx, body: true })
+  check(JSON.parse(readFileSync(new URL("./corpus/opencode-vibex-native-jsx.json", import.meta.url))))
 })
 
 test("Bun Vibex imports preserve JSX modes, values and dynamic edges", { skip }, async () => {

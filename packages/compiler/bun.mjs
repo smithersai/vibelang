@@ -318,6 +318,6 @@ Bun.plugin({
     })
     // Bun 1.4.2 ignores a plugin's source maps, so the module is its JavaScript alone.
     build.onLoad({ filter: /\.vibex?$/ }, ({ path }) => { const code = emitted(path).code, loader = path.endsWith(".vibex") ? "jsx" : "js"; discover(path, code, loader); return resolveImports(path, code, loader) })
-    build.onLoad({ filter: /\.jsx?$/, namespace: moduleNamespace }, ({ path }) => { const code = emitted(path).code, loader = path.endsWith(".jsx") ? "jsx" : "js"; discover(path, code, loader); return resolveImports(path, code, loader, true) })
+    build.onLoad({ filter: /\.jsx?$/, namespace: moduleNamespace }, ({ path }) => { const code = emitted(path).code, loader = moduleDeclarationSource(path)?.endsWith(".vibex") ? "jsx" : "js"; discover(path, code, loader); return resolveImports(path, code, loader, true) })
   }
 })

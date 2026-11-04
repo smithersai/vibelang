@@ -229,6 +229,8 @@ Declaration emit imports a prelude module whose name the source uses when an inf
 
 The `vibelang/bun` preload loads `.vibex` modules as well as `.vibe`, including extensionless imports, directory indexes, `paths` aliases, and relative `.js` or `.jsx` output names. Preserved JSX is passed to Bun's JSX loader.
 
+A native `module view { ... }` body in `main.vibex` uses TSX syntax. Its emitted file is `main.vibex.view.jsx` under `jsx: preserve` and `main.vibex.view.js` in other JSX modes. Generated imports and re-exports name that actual output independently of `rewriteRelativeImportExtensions`; its declarations remain `main.vibex.view.d.ts`.
+
 A `.vibex` source emits `.jsx` under `jsx: preserve`, even when it contains no JSX elements, and `.js` in other JSX modes. Its source map uses the same suffix, `.jsx.map` or `.js.map`; public declarations remain `.d.ts`.
 
 Malformed JSX containers, such as `<p>{render { return 1 }}</p>`, report the same syntax errors as `.tsx`; they do not add the trailing-block migration diagnostic `EK1101`. Written function bodies, `do {}` and `effect {}` inside a container retain VibeLang diagnostics. `vibelang --fix` still migrates a legacy trailing callback in a container to an explicit argument when the rewrite preserves its behavior.
