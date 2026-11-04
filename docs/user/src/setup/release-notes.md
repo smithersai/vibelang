@@ -615,6 +615,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - `--fix --fix-migration-only` now follows the member readonly rule: existing unmarked schema fields, including nested `schema error` structs, and service shape properties gain `readonly`. Legacy nested service and error/data payload members also gain explicit modifiers to preserve their pre-pin declarations. Ordinary native members and the already readonly error/data fields stay unchanged. A pre-existing `EK2109` on a schema no longer blocks the upgrade (foldkit-174).
 
+- `vibelang lint` could turn inferred Effect argument warnings into `effect-in-void-success` errors, including a stream collected with `try`. The imported rule now matches the TypeScript twin and reports `EK3830` independently of `EK4802`.
+
 - The function-controls example read the callable `Function` constructor and reported `EK0107`. Its erased constructor comparison now uses the explicit `any` boundary allowed by VIP-1, while the `instanceof` and prototype controls remain checked.
 
 - The operation-operands example declared a `.vibe` function with `@throws {never}`, which VIP-4 rejects with `EK0406`. The example now uses the declaration’s implicit `never` thrown type and keeps all operation-operand checks.

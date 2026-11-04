@@ -344,7 +344,7 @@ Native `|>` stages do not count as written `.pipe` chains. Their generated calls
 | Anti-pattern | `effectFnIife` | An effect function call returns an Effect | `(() => load())()` |
 | Anti-pattern | `effectGenUsesAdapter` | Effect functions use `try` | None |
 | Anti-pattern | `effectInFailure` | EK4815, warning | `throw program`; run it: `try program` |
-| Anti-pattern | `effectInVoidSuccess` | `EK4802`, warning; executing a returned program has no automatic fix; `TS2322` under a `void!!` contract | `return program` from a function that runs Effects |
+| Anti-pattern | `effectInVoidSuccess` | `EK3830`, the pinned Effect rule at its configured severity; separate from the inferred-argument warning `EK4802` | An Effect containing another Effect is assigned to an `Effect.Effect<void>` contract |
 | Anti-pattern | `globalErrorInEffectCatch` | EK4804, warning | `Effect.try({ try: code, catch: (cause) => new Error(String(cause)) })` |
 | Anti-pattern | `globalErrorInEffectFailure` | EK4804, warning | `throw new Error("boom")`; declare `error Boom { }` |
 | Anti-pattern | `lazyPromiseInEffectSync` | Use `promise` for a Promise whose rejection is a defect | `try promise(() => load(url))`, with `load` from a `.ts` module |

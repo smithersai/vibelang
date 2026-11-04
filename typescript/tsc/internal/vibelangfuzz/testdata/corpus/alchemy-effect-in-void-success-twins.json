@@ -1,0 +1,80 @@
+[
+  {
+    "key": "alchemy-stream-collect",
+    "ts": "export const work = Effect.gen(function* () { return yield* Stream.make(1, 2).pipe(Stream.runCollect) })",
+    "vibe": "export effect function work() { return try Stream.make(1, 2).pipe(Stream.runCollect) }",
+    "count": 0
+  },
+  {
+    "key": "generic-program",
+    "ts": "const id = <A>(a: A): A => a; export const work = Effect.gen(function* () { return id(Effect.succeed(1)) })",
+    "vibe": "const id = <A>(a: A): A => a; export effect function work() { return id(Effect.succeed(1)) }",
+    "count": 0
+  },
+  {
+    "key": "nested-void-variable",
+    "ts": "export const work: Effect.Effect<void> = Effect.succeed(Effect.succeed(1))",
+    "count": 1
+  },
+  {
+    "key": "nested-void-return",
+    "ts": "export function work(): Effect.Effect<void> { return Effect.succeed(Effect.succeed(1)) }",
+    "count": 1
+  },
+  {
+    "key": "nested-void-argument",
+    "ts": "declare function take(a: Effect.Effect<void>): void; export const work = take(Effect.succeed(Effect.succeed(1)))",
+    "count": 1
+  },
+  {
+    "key": "plain-void",
+    "ts": "export const work: Effect.Effect<void> = Effect.succeed(undefined)",
+    "count": 0
+  },
+  {
+    "key": "explicit-nested",
+    "ts": "export const work: Effect.Effect<Effect.Effect<number>> = Effect.succeed(Effect.succeed(1))",
+    "count": 0
+  },
+  {
+    "key": "alchemy-wrapped-stream-collect",
+    "ts": "const pin = <A, E, R>(job: Effect.Effect<A, E, R>) => job; export const work = Effect.gen(function* () { return yield* pin(Stream.make(1, 2).pipe(Stream.runCollect)) })",
+    "vibe": "const pin = <A, E, R>(job: Effect.Effect<A, E, R>) => job; export effect function work() { return try pin(Stream.make(1, 2).pipe(Stream.runCollect)) }",
+    "count": 0
+  },
+  {
+    "key": "alchemy-wrapped-stream-head",
+    "ts": "const pin = <A, E, R>(job: Effect.Effect<A, E, R>) => job; export const work = Effect.gen(function* () { return yield* pin(Stream.make(1, 2).pipe(Stream.runHead)) })",
+    "vibe": "const pin = <A, E, R>(job: Effect.Effect<A, E, R>) => job; export effect function work() { return try pin(Stream.make(1, 2).pipe(Stream.runHead)) }",
+    "count": 0
+  },
+  {
+    "key": "alchemy-config-option",
+    "ts": "import { Config, Option } from \"effect\"; export const work = Effect.gen(function* () { return yield* Config.all({ key: Config.String(\"KEY\").pipe(Config.option, Config.map(Option.getOrUndefined)) }) })",
+    "vibe": "import { Config, Option } from \"effect\"; export effect function work() { return try Config.all({ key: Config.String(\"KEY\").pipe(Config.option, Config.map(Option.getOrUndefined)) }) }",
+    "count": 0
+  },
+  {
+    "key": "alchemy-config-map-effect",
+    "ts": "import { Config } from \"effect\"; export const work = Config.String(\"KEY\").pipe(Config.mapEffect(value => Effect.succeed(value.length)))",
+    "count": 0
+  },
+  {
+    "key": "alchemy-stream-all",
+    "ts": "export const work = Effect.gen(function* () { return yield* Effect.all({ stdout: Stream.make(\"a\").pipe(Stream.mkString), stderr: Stream.make(\"b\").pipe(Stream.mkString) }) })",
+    "vibe": "export effect function work() { return try Effect.all({ stdout: Stream.make(\"a\").pipe(Stream.mkString), stderr: Stream.make(\"b\").pipe(Stream.mkString) }) }",
+    "count": 0
+  },
+  {
+    "key": "alchemy-scoped-cache",
+    "ts": "import { Scope } from \"effect\"; export const work = Effect.gen(function* () { const scope = yield* Effect.scope; return yield* Effect.cached(Effect.succeed(1).pipe(Scope.provide(scope))) })",
+    "vibe": "import { Scope } from \"effect\"; export effect function work() { const scope = try Effect.scope; return try Effect.cached(Effect.succeed(1) |> Scope.provide(scope)(%)) }",
+    "count": 0
+  },
+  {
+    "key": "alchemy-stream-callback",
+    "ts": "export const work = Effect.gen(function* () { return yield* Effect.forkScoped(Stream.make(1).pipe(Stream.runForEach(value => Effect.gen(function* () { yield* Effect.succeed(value) })))) })",
+    "vibe": "export effect function work() { return try Effect.forkScoped(Stream.make(1) |> Stream.runForEach(effect (value) => { try Effect.succeed(value) })(%)) }",
+    "count": 0
+  }
+]

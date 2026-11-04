@@ -9,12 +9,9 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/effecttsgo/etscore"
 )
 
-// Alchemy RC6 (drive-alchemy, 2026-11-04): with
-// effecttsgo/effect-in-void-success set to error, vibelang lint reported each
-// EK4802 twice, as error. EK4802 ports that rule and its severity is
-// configurable, so the port was appended again as a configurable code. Each
-// diagnostic a file's check reports reaches lint once, at its rule's
-// severity; other configurable codes still pass through.
+// A diagnostic that is both a lint port and a configurable compiler warning
+// reaches lint once, at the rule's severity. Other configurable codes pass
+// through independently.
 func TestLintReportsAPortOnce(t *testing.T) {
 	for _, test := range []struct {
 		rule     etscore.Severity
@@ -25,7 +22,7 @@ func TestLintReportsAPortOnce(t *testing.T) {
 	} {
 		port := ast.NewExternalDiagnostic(nil, core.NewTextRange(10, 20), "EK", diagnostics.CategoryWarning, 4802, "ported")
 		other := ast.NewExternalDiagnostic(nil, core.NewTextRange(30, 40), "EK", diagnostics.CategoryWarning, 4833, "configurable")
-		got := lintPortDiagnostics([]*ast.Diagnostic{port, other}, map[string]etscore.Severity{"effectInVoidSuccess": test.rule})
+		got := lintPortDiagnostics([]*ast.Diagnostic{port, other}, map[string]etscore.Severity{"returnEffectInGen": test.rule})
 		counts := map[*ast.Diagnostic]int{}
 		for _, d := range got {
 			counts[d]++

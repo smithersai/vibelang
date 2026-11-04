@@ -23,6 +23,8 @@ type vibeAnswer struct {
 	notNeeded string
 }
 
+// effectInVoidSuccess runs as imported EK3830: EK4802 now checks inferred
+// Effect arguments, which is a different predicate and severity policy.
 var vibeAnswers = map[string]vibeAnswer{
 	"anyUnknownInErrorContext":      {ek: "EK4811"},
 	"duplicatePackage":              {ek: "EK4803"},
@@ -30,7 +32,6 @@ var vibeAnswers = map[string]vibeAnswer{
 	"outdatedApi":                   {ek: "EK4813"},
 	"overriddenSchemaConstructor":   {ek: "EK4814"},
 	"effectInFailure":               {ek: "EK4815"},
-	"effectInVoidSuccess":           {ek: "EK4802"},
 	"returnEffectInGen":             {ek: "EK4802"},
 	"globalErrorInEffectCatch":      {ek: "EK4804"},
 	"globalErrorInEffectFailure":    {ek: "EK4804"},
