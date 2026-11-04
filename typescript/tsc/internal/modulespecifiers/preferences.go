@@ -268,6 +268,13 @@ func TwinAllowedEndings(prefs UserPreferences, host ModuleSpecifierGenerationHos
 	return GetAllowedEndingsInPreferredOrder(prefs, host, compilerOptions, twinSourceFile{importingSourceFile, twinSpecifier}, "", core.ResolutionModeNone)
 }
 
+// TwinSourceFile returns importingSourceFile as its TypeScript twin, whose
+// relative ./x.vibe imports read as twinSpecifier spells them, so specifiers
+// generated for it take the endings stock tsc infers for the twin (D298).
+func TwinSourceFile(importingSourceFile SourceFileForSpecifierGeneration, twinSpecifier func(string) string) SourceFileForSpecifierGeneration {
+	return twinSourceFile{importingSourceFile, twinSpecifier}
+}
+
 // twinSourceFile is a source file whose relative ./x.vibe imports read as
 // twinSpecifier spells them.
 type twinSourceFile struct {

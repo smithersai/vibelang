@@ -359,7 +359,11 @@ func computeModuleSpecifiers(
 	forAutoImport bool,
 ) ([]tspath.ModuleSpecifier, ResultKind) {
 	info := getInfo(importingSourceFile.FileName(), host)
-	preferences := getModuleSpecifierPreferences(userPreferences, host, compilerOptions, importingSourceFile, "")
+	preferenceFile := importingSourceFile
+	if options.EndingPreferenceFile != nil {
+		preferenceFile = options.EndingPreferenceFile
+	}
+	preferences := getModuleSpecifierPreferences(userPreferences, host, compilerOptions, preferenceFile, "")
 	caseSensitivity := info.CaseSensitivity
 
 	var existingSpecifier tspath.ModuleSpecifier

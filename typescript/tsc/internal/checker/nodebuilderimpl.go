@@ -1353,6 +1353,22 @@ func (b *NodeBuilderImpl) getSpecifierForModuleSymbol(symbol *ast.Symbol, overri
 	if resolutionMode == core.ResolutionModeESM {
 		endingPref = modulespecifiers.ImportModuleSpecifierEndingPreferenceJs
 	}
+	// A .vibe file's synthesized specifiers take its TypeScript twin's endings,
+	// as vibeDeclarationSpecifier spells a .vibe target (D298). Its ./x.vibe
+	// imports set no ending preference, so a re-exporting index read as ".."
+	// and outranked the declaring module in sortByBestName, where tsc writes
+	// ../index.ts for the twin and keeps the declaring module (Alchemy's
+	// EventBridge/ToQueue named import("..").Providers, 2026-11-04).
+	// Existing imports still come from the file itself; only the ending
+	// preference reads the twin, whose import nodes have no parents.
+	var endingFile modulespecifiers.SourceFileForSpecifierGeneration
+	if contextFile.FileName().IsVibeLangSource() {
+		extension := b.ch.compilerOptions.VibeLang.DeclarationImportExtension()
+		endingFile = modulespecifiers.TwinSourceFile(contextFile, func(written string) string {
+			twin, _ := tspath.ToModuleSpecifier(written).RewriteVibeExtension(extension)
+			return twin.AsString()
+		})
+	}
 	moduleSpecifiersResult := modulespecifiers.GetModuleSpecifiers(
 		symbol,
 		b.ch,
@@ -1364,7 +1380,8 @@ func (b *NodeBuilderImpl) getSpecifierForModuleSymbol(symbol *ast.Symbol, overri
 			ImportModuleSpecifierEnding:     endingPref,
 		},
 		modulespecifiers.ModuleSpecifierOptions{
-			OverrideImportMode: overrideImportMode,
+			OverrideImportMode:   overrideImportMode,
+			EndingPreferenceFile: endingFile,
 		},
 		false, /*forAutoImports*/
 	)

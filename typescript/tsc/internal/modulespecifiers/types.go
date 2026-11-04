@@ -97,6 +97,11 @@ type UserPreferences struct {
 
 type ModuleSpecifierOptions struct {
 	OverrideImportMode core.ResolutionMode
+	// EndingPreferenceFile, when set, is the file whose imports infer the
+	// ending preference instead of the importing file: a .vibe file's
+	// TypeScript twin (TwinSourceFile). Existing imports are still read
+	// from the importing file itself.
+	EndingPreferenceFile SourceFileForSpecifierGeneration
 }
 
 type RelativePreferenceKind uint8
