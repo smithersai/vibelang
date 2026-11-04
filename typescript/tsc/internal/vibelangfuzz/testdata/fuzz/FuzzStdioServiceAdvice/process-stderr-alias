@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("process:stderr:alias\x00\x00")

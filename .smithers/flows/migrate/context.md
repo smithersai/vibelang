@@ -860,6 +860,8 @@ The `EK4402` replacement examples obtain `SecureRandom.SecureRandom` with `try` 
 
 For storage diagnostics, `KeyValueStore` names a namespace. Obtain `KeyValueStore.KeyValueStore` with `try`, then run the Effect returned by its `get(key)` method.
 
+For byte I/O, first obtain `Stdio.Stdio` with `try`. Its `stdout()` and `stderr()` methods return sinks, and its `stdin` property is a stream. Its `args` property is an Effect: use `try (try Stdio.Stdio).args`, without calling `args`. The platform diagnostic's replacement examples use these service members.
+
 A numeric return value from `main` does not set the exit status:
 `effect function main(): number!! { return 3 }` succeeds with 3 and still exits 0 when passed to `NodeRuntime.runMain`. Return normally for exit 0,
 fail for exit 1, or interrupt for exit 130.

@@ -119,8 +119,8 @@ export const run = () => typeof server`, nil},
 		}},
 		{"process.argv", `export const run = () => process.argv`, []string{
 			"process.argv is platform code, which VibeLang code does not use directly.",
-			"Use the Stdio service:   Stdio.args()", provideNodeServices,
-			"Stdio.args() leaves out argv[0] and argv[1], the runtime and the script.",
+			"Use the Stdio service:   try (try Stdio.Stdio).args", provideNodeServices,
+			"The args effect leaves out argv[0] and argv[1], the runtime and the script.",
 		}},
 		{"tmpdir", `import { tmpdir } from "node:os"
 export const run = () => tmpdir()`, []string{

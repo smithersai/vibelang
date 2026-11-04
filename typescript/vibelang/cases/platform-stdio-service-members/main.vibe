@@ -1,0 +1,12 @@
+// VIP-33: injected standard I/O uses Effect properties and byte sinks.
+// expect-result: [["one","two"],[]]
+export effect function main() {
+  provide Stdio.layerTest({ args: Effect.succeed(["one", "two"]) }) {
+    const args = try (try Stdio.Stdio).args
+    const input = (try Stdio.Stdio).stdin
+    const chunks = try Stream.runCollect(input)
+    try Stream.run(Stream.make("out"), (try Stdio.Stdio).stdout())
+    try Stream.run(Stream.make("err"), (try Stdio.Stdio).stderr())
+    return [args, chunks]
+  }
+}

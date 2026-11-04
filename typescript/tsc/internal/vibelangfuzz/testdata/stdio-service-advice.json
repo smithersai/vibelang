@@ -1,0 +1,122 @@
+[
+  {
+    "key": "node:process:argv:direct",
+    "source": "import { argv } from \"node:process\";export const value=argv",
+    "advice": "try (try Stdio.Stdio).args"
+  },
+  {
+    "key": "node:process:argv:alias",
+    "source": "import { argv as Native } from \"node:process\";export const value=Native",
+    "advice": "try (try Stdio.Stdio).args"
+  },
+  {
+    "key": "node:process:stdout:direct",
+    "source": "import { stdout } from \"node:process\";export const value=stdout",
+    "advice": "For bytes, (try Stdio.Stdio).stdout() is a Sink."
+  },
+  {
+    "key": "node:process:stdout:alias",
+    "source": "import { stdout as Native } from \"node:process\";export const value=Native",
+    "advice": "For bytes, (try Stdio.Stdio).stdout() is a Sink."
+  },
+  {
+    "key": "node:process:stderr:direct",
+    "source": "import { stderr } from \"node:process\";export const value=stderr",
+    "advice": "For bytes, (try Stdio.Stdio).stderr() is a Sink."
+  },
+  {
+    "key": "node:process:stderr:alias",
+    "source": "import { stderr as Native } from \"node:process\";export const value=Native",
+    "advice": "For bytes, (try Stdio.Stdio).stderr() is a Sink."
+  },
+  {
+    "key": "node:process:stdin:direct",
+    "source": "import { stdin } from \"node:process\";export const value=stdin",
+    "advice": "(try Stdio.Stdio).stdin streams the bytes."
+  },
+  {
+    "key": "node:process:stdin:alias",
+    "source": "import { stdin as Native } from \"node:process\";export const value=Native",
+    "advice": "(try Stdio.Stdio).stdin streams the bytes."
+  },
+  {
+    "key": "process:argv:direct",
+    "source": "import { argv } from \"process\";export const value=argv",
+    "advice": "try (try Stdio.Stdio).args"
+  },
+  {
+    "key": "process:argv:alias",
+    "source": "import { argv as Native } from \"process\";export const value=Native",
+    "advice": "try (try Stdio.Stdio).args"
+  },
+  {
+    "key": "process:stdout:direct",
+    "source": "import { stdout } from \"process\";export const value=stdout",
+    "advice": "For bytes, (try Stdio.Stdio).stdout() is a Sink."
+  },
+  {
+    "key": "process:stdout:alias",
+    "source": "import { stdout as Native } from \"process\";export const value=Native",
+    "advice": "For bytes, (try Stdio.Stdio).stdout() is a Sink."
+  },
+  {
+    "key": "process:stderr:direct",
+    "source": "import { stderr } from \"process\";export const value=stderr",
+    "advice": "For bytes, (try Stdio.Stdio).stderr() is a Sink."
+  },
+  {
+    "key": "process:stderr:alias",
+    "source": "import { stderr as Native } from \"process\";export const value=Native",
+    "advice": "For bytes, (try Stdio.Stdio).stderr() is a Sink."
+  },
+  {
+    "key": "process:stdin:direct",
+    "source": "import { stdin } from \"process\";export const value=stdin",
+    "advice": "(try Stdio.Stdio).stdin streams the bytes."
+  },
+  {
+    "key": "process:stdin:alias",
+    "source": "import { stdin as Native } from \"process\";export const value=Native",
+    "advice": "(try Stdio.Stdio).stdin streams the bytes."
+  },
+  {
+    "key": "global:process:argv",
+    "source": "export const value=process.argv",
+    "advice": "try (try Stdio.Stdio).args"
+  },
+  {
+    "key": "global:process:stdout",
+    "source": "export const value=process.stdout",
+    "advice": "For bytes, (try Stdio.Stdio).stdout() is a Sink."
+  },
+  {
+    "key": "global:process:stderr",
+    "source": "export const value=process.stderr",
+    "advice": "For bytes, (try Stdio.Stdio).stderr() is a Sink."
+  },
+  {
+    "key": "global:process:stdin",
+    "source": "export const value=process.stdin",
+    "advice": "(try Stdio.Stdio).stdin streams the bytes."
+  },
+  {
+    "key": "global:globalThis.process:argv",
+    "source": "export const value=globalThis.process.argv",
+    "advice": "try (try Stdio.Stdio).args"
+  },
+  {
+    "key": "global:globalThis.process:stdout",
+    "source": "export const value=globalThis.process.stdout",
+    "advice": "For bytes, (try Stdio.Stdio).stdout() is a Sink."
+  },
+  {
+    "key": "global:globalThis.process:stderr",
+    "source": "export const value=globalThis.process.stderr",
+    "advice": "For bytes, (try Stdio.Stdio).stderr() is a Sink."
+  },
+  {
+    "key": "global:globalThis.process:stdin",
+    "source": "export const value=globalThis.process.stdin",
+    "advice": "(try Stdio.Stdio).stdin streams the bytes."
+  }
+]
