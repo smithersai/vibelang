@@ -1,0 +1,16 @@
+{
+  "finding": "platformGlobalsOf:reaches-the-host",
+  "note": "Minimized from opencode packages/cli/src/commands/handlers/auth/login.ts (drive2-opencode 2026-11-04T04:59Z, VIP-40 CLI on m26). The compiler reported `EK4402 AbortSignal.timeout reaches the host and cannot be used in a .vibe file.`; platformGlobalsOf did not read that wording, so the next pass never moved the call into the sibling and the module kept one EK4402.",
+  "file": "packages/cli/src/login.ts",
+  "text": "export function deadline(): AbortSignal {\n  return AbortSignal.timeout(50)\n}\n\nexport const value = 1\n",
+  "ambient": "interface AbortSignal { readonly aborted: boolean }\ndeclare var AbortSignal: { prototype: AbortSignal; timeout(milliseconds: number): AbortSignal }\n",
+  "settleCauses": {
+    "packages/cli/src/login.vibe": {
+      "cause": "platform access",
+      "codes": ["EK4402"],
+      "diagnostics": [{ "code": "EK4402", "message": "AbortSignal.timeout reaches the host and cannot be used in a .vibe file." }]
+    }
+  },
+  "moved": ["deadline"],
+  "wrapped": ["deadline"]
+}

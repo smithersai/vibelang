@@ -30,20 +30,31 @@ export function isPlatformModule(specifier) {
   return builtins.has(specifier) || builtins.has(specifier.split("/")[0])
 }
 
+// The EK4402 texts whose {0} is a host global or a member path from one
+// (typescript/tsc/internal/vibelang: diagnostics.go's EK4402, unlistedHostGlobal
+// in host_global_declarations.go, checkPlatformHostMembers in
+// platform_host_members.go). test/platform-globals-wording.test.mjs reads that
+// table and fails on an EK4402 text this list does not classify.
+export const globalWordings = ["is platform code", "reads a host global", "reaches the host"]
+const globalMessage = new RegExp(String.raw`^([A-Za-z_$][\w$]*)(?:\??\.[\w$.?]*|\[[^\]]*\])* (?:${globalWordings.join("|")})`)
+
 /**
  * The host globals that EK4402 messages name, as the identifiers a
  * declaration reads: "process.env is platform code" names process,
- * "globalThis.crypto.subtle is platform code" names globalThis, and "Blob
- * reads a host global" (a global VIP-33 derives) names Blob. A builtin
- * import ("createHash from node:crypto is platform code") is split without
- * being named, and a message about anything else names nothing.
+ * "globalThis.crypto.subtle is platform code" names globalThis, "Blob
+ * reads a host global" (a global VIP-33 derives) names Blob, and
+ * "AbortSignal.timeout reaches the host" (a platform member) names
+ * AbortSignal. A builtin import ("createHash from node:crypto is platform
+ * code") is split without being named, and a message about anything else
+ * names nothing. The diagnostic carries only its text, so these are the
+ * wordings of the compiler's message table (globalWordings).
  */
 export function platformGlobalsOf(messages) {
   const names = new Set()
   for (const message of messages) {
     const text = String(message).replace(/^\s*(?:error\s+)?EK4402:\s*/, "")
     if (/^\S+ from \S+ is platform code/.test(text)) continue
-    const m = /^([A-Za-z_$][\w$]*)(?:\??\.[\w$.?]*|\[[^\]]*\])* (?:is platform code|reads a host global)/.exec(text)
+    const m = globalMessage.exec(text)
     if (m && m[1] !== "import") names.add(m[1])
   }
   return [...names].sort()
