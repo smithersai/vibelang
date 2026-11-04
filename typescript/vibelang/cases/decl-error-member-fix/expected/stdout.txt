@@ -1,0 +1,6 @@
+static API_EQUAL true EXIT_EQUAL true IDEMPOTENT true
+static-shadow API_EQUAL true EXIT_EQUAL true IDEMPOTENT true
+constructor API_EQUAL true EXIT_EQUAL true IDEMPOTENT true
+constructor-shadow API_EQUAL true EXIT_EQUAL true IDEMPOTENT true
+generic API_EQUAL true EXIT_EQUAL true IDEMPOTENT true
+generic-shadow API_EQUAL true EXIT_EQUAL true IDEMPOTENT true

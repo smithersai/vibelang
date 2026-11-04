@@ -90,6 +90,8 @@ const ReportsLive = Layer.effect(Reports, effect {
 
 Use `Layer.succeed` for an existing implementation or constant factory, `Layer.effect` for a factory that performs Effect operations, and `Layer.sync` for a plain synchronous constructor, such as `(): Users.Shape => …`, that needs no Effect work. Constructing a layer value doesn't run its initialization program.
 
+For older code, `vibelang --fix` rewrites `layer Live: Service { … }` to `Layer.succeed(Service, { … })` when it has no setup statements, or `Layer.effect(Service, effect { … })` when it does. Setup stays inside the Effect and runs when the layer builds. The editor offers the same rewrite on `EK2121`. If a local `Layer` binding would capture the generated call, the automatic repair leaves the declaration unchanged; use an explicit Effect namespace for a manual rewrite.
+
 A factory can register `try addFinalizer(...)` or acquire with `try acquireRelease(...)`; `Layer.effect` supplies the construction scope and removes `Scope` from the layer's input requirements. Acquire a returned service's resources with `try acquireRelease(...)`; a lexical `using` releases a TypeScript disposable when the factory returns.
 
 ## Merging independent layers

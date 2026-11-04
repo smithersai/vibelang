@@ -1,0 +1,2 @@
+go test fuzz v1
+string("key:layer-declaration-fix\n\x00\x00\x00\x00\x00\x00\x01\x03")

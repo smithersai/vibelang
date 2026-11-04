@@ -279,7 +279,7 @@ try {
     assert(layerFix, `no EK2121 quick fix among ${JSON.stringify(layerActions.map((a) => a.title))}`)
     const layerEdits = layerFix.edit?.changes?.[uri] ?? []
     // The layer's member is an effect method: a method without effect is plain (VIP-1).
-    const want = "const GreetingLive = Layer.effect(Greeting) {\n  const word = \"hi\"\n  return {\n    effect text() { return word }\n  }\n}"
+    const want = "const GreetingLive = Layer.effect(Greeting, effect {\n  const word = \"hi\"\n  return {\n    effect text() { return word }\n  }\n})"
     assert(layerEdits.length === 1 && layerEdits[0].newText === want, `EK2121 edits ${JSON.stringify(layerEdits)}`)
     assert(layerEdits[0].range.start.line === layerStart.line && layerEdits[0].range.end.line === lineOf(file, "effect text() { return word }") + 1, `EK2121 edit range ${JSON.stringify(layerEdits[0].range)}`)
   })

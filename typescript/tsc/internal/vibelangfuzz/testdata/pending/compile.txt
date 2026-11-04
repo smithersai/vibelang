@@ -177,3 +177,5 @@ FuzzCompile corpus:registry-EK4840 compiler Appendix B: reproduction of registry
 
 
 
+FuzzCompile registry:EK1308 compiler Appendix B: "A transitional compiler may still print compatibility diagnostics from the old language." EK1308 warns on a legacy abstract error root; assignment is in fold input 1793701000-relic-decl-forms-abstract-codemods.patch; lane relic-decl-forms.
+FuzzCompile corpus:registry-EK1308 compiler Appendix B: reproduction of registry:EK1308; lane relic-decl-forms.

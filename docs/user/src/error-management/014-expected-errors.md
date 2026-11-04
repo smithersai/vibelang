@@ -488,6 +488,7 @@ A written constructor in `error` or `schema error` is `EK1301`: the declaration'
 Remove the clause and use the error's instance type structurally; `vibelang --fix` removes it without changing the runtime class.
 
 User-written `static` members are forbidden in both `error` and `schema error` bodies (`EK1302`). Move helpers outside the declaration, or use `vibelang --fix` to write the equivalent Effect TypeScript class and keep its `static` members. `EK1302` takes precedence over native errors about a forbidden `static` member's inheritance, `override` modifier or built-in constructor property name. Independent type errors inside method bodies and computed keys remain visible. Compiler-generated matchers remain available. The class migration keeps leading reference directives and class documentation when it adds an import.
+User-written `static` members are forbidden in both `error` and `schema error` bodies (`EK1302`). Move helpers outside the declaration, or use `vibelang --fix` to write the equivalent Effect TypeScript class and keep its `static` members. Compiler-generated matchers remain available. The class migration keeps leading reference directives and class documentation when it adds an import. For a plain error, the migration imports `TaggedError` from `vibelang-runtime` to retain the existing class matcher, including cross-copy tags and extractor patterns.
 
 Setters are forbidden in both error forms (`EK1302`). Use a method instead, or keep the setter in the equivalent Effect TypeScript class with `vibelang --fix`. Getters remain allowed.
 
@@ -539,3 +540,7 @@ type Reader = {
 ```
 
 A tag on `type Reader = () => string` does not attach; passing a throwing callback to that unannotated signature reports `EK0402`.
+
+Legacy abstract plain and schema error roots report the migration warning `EK1308`. Run `vibelang --fix` to keep the existing abstract constructor, widened tag contract, members and runtime matcher in an explicit `abstract class`. The rewrite preserves public declaration output and runtime behaviour; a native abstract class keeps its TypeScript meaning.
+
+For `abstract schema error` roots, the native-class migration retains the original family registration before written static members. A schema built from the base therefore keeps encoding and decoding its registered descendants; public declarations are unchanged.

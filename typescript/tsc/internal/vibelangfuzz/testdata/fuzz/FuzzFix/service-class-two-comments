@@ -1,0 +1,2 @@
+go test fuzz v1
+string("key:service-class-fix\n\x02\x02\x00\x10\x01")

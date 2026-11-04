@@ -1,0 +1,8 @@
+empty API_EQUAL true EXIT_EQUAL true IDEMPOTENT true
+empty-shadow API_EQUAL true EXIT_EQUAL true IDEMPOTENT true
+root API_EQUAL true EXIT_EQUAL true IDEMPOTENT true
+root-shadow API_EQUAL true EXIT_EQUAL true IDEMPOTENT true
+getter API_EQUAL true EXIT_EQUAL true IDEMPOTENT true
+getter-shadow API_EQUAL true EXIT_EQUAL true IDEMPOTENT true
+comments API_EQUAL true EXIT_EQUAL true IDEMPOTENT true
+comments-shadow API_EQUAL true EXIT_EQUAL true IDEMPOTENT true

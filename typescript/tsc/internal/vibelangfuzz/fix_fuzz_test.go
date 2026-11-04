@@ -80,6 +80,20 @@ func FuzzFix(f *testing.F) {
 		f.Add(optionMatchFixKey + choices)
 	}
 	f.Add(optionMatchFixKey + "\x00\x07\x00\x00\x00\x00\x00\x00\x01")
+	for _, choices := range []string{"\x00\x00\x00\x00", "\xff\x01\x00\x01", "\x02\x02\x01\x01", "\x05\x02\x00\x01\x01\x00", "\x05\x00\x01\x01\x00\x01", "\x01\x01\x00\x01\x00\x00\x01"} {
+		f.Add(layerDeclarationFixKey + choices)
+	}
+	for _, choices := range []string{"\x00\x00\x00\x00\x00", "\x01\x01\x01\xff\x00", "\x02\x02\x00\x10\x01", "\x03\x01\x01\x80\x01"} {
+		f.Add(serviceClassFixKey + choices)
+	}
+	for _, choices := range []string{"\x00\x00\x00\x00", "\x01\xff\x01\x00", "\x02\x80\x02\x00", "\x01\x01\x00\x01", "\x02\x02\x01\x01", "\x00\x03\x02\x01"} {
+		f.Add(errorMemberFixKey + choices)
+	}
+	f.Add(errorMemberFixKey + "\x00\x12\x03\x00")
+	f.Add(errorMemberFixKey + "\x01\xfe\x03\x01")
+	f.Add(errorMemberFixKey + "\x00\x80\x03\x00\x01")
+	f.Add(errorMemberFixKey + "\x00\x12\x04\x00")
+	f.Add(errorMemberFixKey + "\x01\xfe\x04\x01")
 	for _, data := range []string{"\x04\x00\x02", "\x14\x04\x03"} {
 		f.Add(trailingWhitespaceFixKey + data)
 	}
@@ -105,6 +119,31 @@ func fuzzFixProjects(f *testing.F, target string) {
 				source, reference := trailingWhitespaceFixSources(archive)
 				trailingReference = reference
 				archive = Archive(map[string]string{"main.vibe": source})
+			}
+			directErrorMember := strings.HasPrefix(archive, errorMemberFixKey)
+			if directErrorMember {
+				TestErrorMemberFixQuoted(t)
+				archive = errorMemberFixArchive(archive)
+			}
+			abstractError := directErrorMember && (strings.Contains(archive, "abstract error") || strings.Contains(archive, "abstract schema error"))
+			schemaAbstractError := directErrorMember && strings.Contains(archive, "abstract schema error")
+			directServiceClass := strings.HasPrefix(archive, serviceClassFixKey)
+			if directServiceClass {
+				TestServiceClassFixQuoted(t)
+				archive = serviceClassFixArchive(archive)
+			}
+			directLayer := strings.HasPrefix(archive, layerDeclarationFixKey)
+			shadowedLayer := directLayer && layerDeclarationFixShadowed(archive)
+			if directLayer {
+				TestLayerDeclarationFixQuoted(t)
+				archive = layerDeclarationFixArchive(archive)
+			}
+			declarationKind := "layer-declaration"
+			if directServiceClass {
+				declarationKind = "service-class"
+			}
+			if directErrorMember {
+				declarationKind = "error-member"
 			}
 			nativeTS := trailingWhitespace || strings.HasPrefix(archive, nativeFixReferenceKey)
 			if nativeTS {
@@ -140,7 +179,7 @@ func fuzzFixProjects(f *testing.F, target string) {
 			if strings.HasPrefix(archive, "match-instanceof:") {
 				files = matchInstanceOfProject(archive)
 			}
-			if toolsMainFile(files) == "" || toolsTooLarge(files) || toolsLeftOut(target, files) {
+			if toolsMainFile(files) == "" || toolsTooLarge(files) || toolsLeftOut(target, files) && !directLayer && !directErrorMember {
 				return
 			}
 			r := toolsCompile(t, w, target, files)
@@ -178,6 +217,12 @@ func fuzzFixProjects(f *testing.F, target string) {
 					Gap(t, target, "fix:direct-option-match:diagnostic", "Chapter 7 requires EK4839 on a direct Option.match: %v\n%s", SortedKeys(Keys(r.Dir, r.Diagnostics)), archive)
 				}
 			}
+			if directErrorMember && !errorMemberFixRunnable(r) {
+				Gap(t, "FuzzFix", "fix:error-member:original", "expected only the migrated error-member diagnostic: %v\n%s", SortedKeys(Keys(r.Dir, r.Diagnostics)), archive)
+			}
+			if (directLayer || directServiceClass) && !toolsErrorFree(r) {
+				Gap(t, "FuzzFix", "fix:"+declarationKind+":original", "generated declaration must typecheck: %v\n%s", SortedKeys(Keys(r.Dir, r.Diagnostics)), archive)
+			}
 			var result *vibelang.FixResult
 			toolsRun(t, target, "fix", archive, nil, func() {
 				result = vibelang.FixProjectWithOptions(t.Context(), w.fs, bundled.LibPath(), config, options)
@@ -196,6 +241,9 @@ func fuzzFixProjects(f *testing.F, target string) {
 			}
 			if dataMethods && (!toolsErrorFree(r) || len(result.Files) == 0) {
 				Gap(t, "FuzzFix", "fix:legacy-data-method:missing", "the legacy data method must have a preserving namespace fix: %v\n%s", SortedKeys(Keys(r.Dir, r.Diagnostics)), archive)
+			}
+			if (directErrorMember || directServiceClass || directLayer && !shadowedLayer) && len(result.Files) == 0 {
+				Gap(t, "FuzzFix", "fix:"+declarationKind+":missing", "Chapter 7 requires a preserving declaration rewrite:\n%s", archive)
 			}
 			if directOption && len(result.Files) == 0 {
 				Gap(t, target, "fix:direct-option-match:missing", "the direct Option.match must have a safe fix (error %v, refused %+v, remaining %+v):\n%s", result.Err, result.Refused, result.Remaining, archive)
@@ -236,6 +284,12 @@ func fuzzFixProjects(f *testing.F, target string) {
 					Gap(t, target, "fix:comments", "--fix lost the comments %q of %s:\n%s\nfixed:\n%s", lost, rel, file.Original, file.Text)
 				}
 			}
+			if abstractError && (strings.Contains(fixed["main.vibe"], "abstract error") || strings.Contains(fixed["main.vibe"], "abstract schema error")) {
+				Gap(t, "FuzzFix", "fix:abstract-error:missing", "Chapter 7 requires a preserving migration of the abstract error root")
+			}
+			if shadowedLayer && !strings.Contains(fixed["main.vibe"], "layer Live: Counter") {
+				Gap(t, "FuzzFix", "fix:layer-declaration:namespace-capture", "Chapter 7 requires retaining the intrinsic Layer identity; a shadowed constructor must not be written into the source")
+			}
 			after := r
 			if len(result.Files) > 0 {
 				after = toolsCompile(t, w, target, fixed)
@@ -264,6 +318,25 @@ func fuzzFixProjects(f *testing.F, target string) {
 					if d.Code() == 4839 {
 						Gap(t, target, "fix:direct-option-match:remaining", "safe Option choice still refused: %s\n%s", d.String(), Archive(fixed))
 					}
+				}
+			}
+			if directLayer || directServiceClass || directErrorMember {
+				declarations := 0
+				for name, text := range r.Outputs {
+					if isDeclaration(name) {
+						declarations++
+					}
+					beforeDeclaration, afterDeclaration := text, after.Outputs[name]
+					if schemaAbstractError {
+						beforeDeclaration = errorMigrationDeclaration(beforeDeclaration)
+						afterDeclaration = errorMigrationDeclaration(afterDeclaration)
+					}
+					if isDeclaration(name) && afterDeclaration != beforeDeclaration {
+						Gap(t, "FuzzFix", "fix:"+declarationKind+":declarations", "migration changed declaration bytes in %s\nbefore:\n%s\nafter:\n%s", name, text, after.Outputs[name])
+					}
+				}
+				if declarations == 0 {
+					Gap(t, "FuzzFix", "fix:"+declarationKind+":missing-declarations", "generated declaration must emit its public API")
 				}
 			}
 			// Chapter 7 (decided 2026-10-31): "One `vibelang --fix` run applies
@@ -307,7 +380,7 @@ func fuzzFixProjects(f *testing.F, target string) {
 			// write; a declaration may print it differently after a fix (an
 			// error class becomes an error declaration, D284-D290), so the
 			// contracts are compared by assignability in both directions.
-			if toolsTrailingBlockRunnable(runtimeBefore) && toolsErrorFree(after) {
+			if (toolsTrailingBlockRunnable(runtimeBefore) || directErrorMember && errorMemberFixRunnable(runtimeBefore)) && toolsErrorFree(after) {
 				if mismatch := toolsContractMismatch(t, w, runtimeBefore, after, false); mismatch != "" {
 					key := "fix:types"
 					if toolsContractMismatch(t, w, runtimeBefore, after, true) == "" {
@@ -318,10 +391,13 @@ func fuzzFixProjects(f *testing.F, target string) {
 			}
 			// D372: compare every callable exported Effect, not only main fixtures
 			// marked with expect-result. Chapter 26 requires the same exit.
-			// The explicit-class repair is offered for rejected static members
-			// and setters (EK1302). Its D372 meaning-preservation contract
-			// still applies to their already-emitted runtime representation.
-			if (!toolsTrailingBlockRunnable(runtimeBefore) && !toolsMemberRepairRuntime(r)) || !toolsErrorFree(after) {
+			originalRunnable := toolsTrailingBlockRunnable(runtimeBefore) || toolsMemberRepairRuntime(r) || directErrorMember && errorMemberFixRunnable(runtimeBefore)
+			if (directLayer || directServiceClass || directErrorMember) && (!originalRunnable || !toolsErrorFree(after)) {
+				Gap(t, "FuzzFix", "fix:"+declarationKind+":not-runnable", "generated original and fixed declarations must run for Exit comparison")
+			}
+			// Keep the published rejected-member runtime oracle alongside
+			// the direct constructor/generic/matcher migration cases.
+			if !originalRunnable || !toolsErrorFree(after) {
 				if nativeTS {
 					t.Logf("native-ts remaining diagnostics prevent runtime comparison: %v", SortedKeys(Keys(after.Dir, after.Diagnostics)))
 				}
@@ -331,7 +407,11 @@ func fuzzFixProjects(f *testing.F, target string) {
 			if directOption {
 				resultKey = "fix:direct-option-match:value-and-events"
 			}
-			for _, entry := range toolsRunnableExports(runtimeBefore) {
+			entries := toolsRunnableExports(runtimeBefore)
+			if (directLayer || directServiceClass || directErrorMember) && len(entries) == 0 {
+				Gap(t, "FuzzFix", "fix:"+declarationKind+":missing-entry", "generated migration must expose an Effect for Exit comparison")
+			}
+			for _, entry := range entries {
 				if node == nil {
 					var err error
 					if node, err = NewNode(w.Dir); err != nil {
@@ -349,6 +429,9 @@ func fuzzFixProjects(f *testing.F, target string) {
 				} else {
 					was, is = node.Run(runtimeBefore, entry.file, entry.name), node.Run(after, entry.file, entry.name)
 				}
+				if directLayer {
+					t.Logf("layer Exit comparison %s:%s original=%s/%s fixed=%s/%s", entry.file, entry.name, was.Kind, was.Value, is.Kind, is.Value)
+				}
 				if nativeTS {
 					t.Logf("native-ts runtime comparison %s:%s original=%s/%s fixed=%s/%s", entry.file, entry.name, was.Kind, was.Value, is.Kind, is.Value)
 				}
@@ -357,6 +440,9 @@ func fuzzFixProjects(f *testing.F, target string) {
 				// Node rejects before any user code, has no outcome to keep; a
 				// fixed program that stops running does break it.
 				if toolsInvalidOutcome(was) {
+					if directLayer || directServiceClass || directErrorMember {
+						Gap(t, "FuzzFix", "fix:"+declarationKind+":runtime", "generated declaration must run for Exit comparison: %+v\n%s", was, archive)
+					}
 					if nativeTS {
 						Gap(t, target, "fix:native-ts:runtime", "native reference must run: %+v\n%s", was, archive)
 					}

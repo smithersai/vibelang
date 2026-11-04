@@ -1,0 +1,4 @@
+space API_EQUAL true EXIT_EQUAL true
+comment API_EQUAL true EXIT_EQUAL true
+two-comments API_EQUAL true EXIT_EQUAL true
+unicode API_EQUAL true EXIT_EQUAL true

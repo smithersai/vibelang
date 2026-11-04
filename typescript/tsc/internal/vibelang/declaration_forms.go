@@ -16,7 +16,7 @@ import (
 //
 //	service Users { find(id: string): User!NotFound }
 //	control Approval { approve(request: string): boolean!! }
-//	const UsersLive = Layer.effect(Users) { const seen = new Set<string>(); return { find(id) { ... } } }
+//	const UsersLive = Layer.effect(Users, effect { const seen = new Set<string>(); return { find(id) { ... } } })
 //
 // The older spellings still compile and draw warnings with quick fixes:
 // service class Users { ... } and control class Approval { ... } (EK2120,
@@ -28,7 +28,7 @@ var (
 	// EK2120: a service or control declaration written with class (D223). {0} is the word. A warning.
 	EK2120 = message(2120, warningCategory, "{0} class is the older spelling: write {0} without class.")
 	// EK2121: a layer declaration (D221). A warning.
-	EK2121 = message(2121, warningCategory, "layer declarations are the old spelling of a layer: write Layer.effect(Service) { ... } or Layer.succeed(Service, { ... }).")
+	EK2121 = message(2121, warningCategory, "layer declarations are the old spelling of a layer: write Layer.effect(Service, effect { ... }) or Layer.succeed(Service, { ... }).")
 )
 
 func init() {
@@ -106,7 +106,8 @@ func checkDeclarationSpelling(c *checker.Checker, file *ast.SourceFile) {
 			}
 		}
 		if call := layerDeclarationCall(n); call != nil {
-			reportAt(c, file, call.Expression().Expression().Loc, EK2121)
+			d := reportAt(c, file, call.Expression().Expression().Loc, EK2121)
+			note(d, "The automatic rewrite requires Layer to be Effect's value namespace; a shadowed or type-only binding needs an explicit library constructor.")
 		}
 		return n.ForEachChild(visit)
 	}
@@ -123,14 +124,27 @@ var serviceClassFix = &ls.CodeFixProvider{
 		if fix.Diagnostic == nil || fix.Span.End() > len(text) {
 			return nil, nil
 		}
-		fields := strings.Fields(text[fix.Span.Pos():fix.Span.End()])
-		if len(fields) != 2 || fields[1] != "class" || fields[0] != "service" && fields[0] != "control" {
+		span := text[fix.Span.Pos():fix.Span.End()]
+		lex := scanner.NewScanner()
+		lex.SetText(span)
+		lex.Scan()
+		word := lex.TokenText()
+		if word != "service" && word != "control" {
 			return nil, nil
 		}
-		word := fields[0]
+		if lex.Scan() != ast.KindClassKeyword {
+			return nil, nil
+		}
+		classStart := lex.TokenStart()
+		if lex.Scan() != ast.KindEndOfFile {
+			return nil, nil
+		}
+		// The diagnostic covers both keywords. Retain the trivia between
+		// them, including comments, and remove only the class token.
+		replacement := strings.TrimSpace(span[:classStart])
 		return []*ls.CodeAction{{
 			Description: "Write " + word + " without class",
-			Changes:     []*lsproto.TextEdit{{Range: fix.Diagnostic.Range, NewText: word}},
+			Changes:     []*lsproto.TextEdit{{Range: fix.Diagnostic.Range, NewText: replacement}},
 		}}, nil
 	},
 }
@@ -140,7 +154,7 @@ var serviceClassFix = &ls.CodeFixProvider{
 var layerDeclarationFix = &ls.CodeFixProvider{
 	Source:     diagnosticSource,
 	ErrorCodes: []int32{EK2121.Code},
-	GetCodeActions: func(_ context.Context, fix *ls.CodeFixContext) ([]*ls.CodeAction, error) {
+	GetCodeActions: func(ctx context.Context, fix *ls.CodeFixContext) ([]*ls.CodeAction, error) {
 		file := fix.SourceFile
 		var statement *ast.Node
 		var find func(n *ast.Node) bool
@@ -153,6 +167,25 @@ var layerDeclarationFix = &ls.CodeFixProvider{
 		}
 		file.AsNode().ForEachChild(find)
 		if statement == nil {
+			return nil, nil
+		}
+		// The parser's Layer is intrinsic. Source text must resolve to the
+		// same namespace, or the rewrite would capture a user's local Layer.
+		c, done := fix.Program.GetTypeCheckerForFile(ctx, file)
+		defer done()
+		c.GetDiagnostics(ctx, file)
+		visible := c.ResolveName("Layer", statement, ast.SymbolFlagsValue|ast.SymbolFlagsNamespace|ast.SymbolFlagsAlias, false)
+		expected := preludeSymbol(c, preludeStateOf(c), file, "Layer")
+		if visible == nil || expected == nil || c.GetTypeOnlyAliasDeclaration(visible) != nil {
+			return nil, nil
+		}
+		if visible.Flags()&ast.SymbolFlagsAlias != 0 {
+			visible = c.GetAliasedSymbol(visible)
+		}
+		if expected.Flags()&ast.SymbolFlagsAlias != 0 {
+			expected = c.GetAliasedSymbol(expected)
+		}
+		if visible != expected {
 			return nil, nil
 		}
 		replacement, ok := layerDeclarationText(file, statement)
@@ -179,13 +212,13 @@ func lspPosition(file *ast.SourceFile, pos int) lsproto.Position {
 // layerDeclarationText writes statement, a layer declaration, as the call it
 // abbreviates:
 //
-//	export const UsersLive = Layer.effect(Users) {
+//	export const UsersLive = Layer.effect(Users, effect {
 //	  const seen = new Set<string>()
 //	  return {
 //	    find(id) { ... },
 //	    region: "eu"
 //	  }
-//	}
+//	})
 //
 // or, without setup statements, export const DirectoryLive = Layer.succeed(Directory, { ... }).
 func layerDeclarationText(file *ast.SourceFile, statement *ast.Node) (string, bool) {
@@ -235,14 +268,14 @@ func layerDeclarationText(file *ast.SourceFile, statement *ast.Node) (string, bo
 		b.WriteString(indent + "})")
 		return b.String(), true
 	}
-	b.WriteString("Layer.effect(" + service + ") {\n")
+	b.WriteString("Layer.effect(" + service + ", effect {\n")
 	for _, s := range statements {
 		b.WriteString(indent + "  " + sourceText(file, s) + "\n")
 	}
 	b.WriteString(indent + "  return {\n")
 	writeMembers(&b, members, indent+"    ", "  ")
 	b.WriteString(indent + "  }\n")
-	b.WriteString(indent + "}")
+	b.WriteString(indent + "})")
 	return b.String(), true
 }
 

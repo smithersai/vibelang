@@ -1049,6 +1049,16 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - An upgrade could skip the required explicit-effects migration when the new compiler pinned a different `effect` version. The target capability probe now installs matching dependencies separately and reports dependency failures before changing the consumer.
 
 - Service-default examples with local declarations could fail with `EK0903` before checking their fiber-name behavior. They now supply the required explicit keys and retain their original default values.
+
+- `vibelang --fix` left legacy `abstract schema error` roots unchanged. It now writes their native abstract class while preserving the public API and family decoding.
+
+- `vibelang --fix` left old `abstract error` roots unchanged. It now writes the equivalent native abstract class, retaining the public API and runtime matcher.
+
+- Migrating an old error declaration with `vibelang --fix` could remove its runtime matcher. The equivalent class now retains tag matching and extractor behaviour as well as its constructor and public types.
+
+- A comment between `service` and `class` stopped `vibelang --fix` from migrating the old service spelling. It now removes `class` while retaining the comments and service identity.
+
+- The layer-declaration quick fix wrote a retired trailing block for layers with setup statements, so the replacement reported `EK1101` and `vibelang --fix` could refuse it. It now passes an explicit `effect { … }` argument to `Layer.effect`, keeping setup deferred until the layer builds.
 - API checks invented ambient exports or hid an ambient type change when one input directory contained the other. Contributions now follow each snapshot’s dependency closure, and nested private-class origins remain distinct where required.
 
 - The editor outline merged separate `module` declarations as TypeScript namespaces and hid a later declaration with the same name; each VibeLang module now keeps its own outline entry and name range, including an invalid duplicate.

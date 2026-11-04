@@ -1,0 +1,4 @@
+family API_EQUAL true EXIT_EQUAL true IDEMPOTENT true
+family-shadow API_EQUAL true EXIT_EQUAL true IDEMPOTENT true
+empty API_EQUAL true EXIT_EQUAL true IDEMPOTENT true
+empty-shadow API_EQUAL true EXIT_EQUAL true IDEMPOTENT true

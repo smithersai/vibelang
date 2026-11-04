@@ -1,0 +1,2 @@
+go test fuzz v1
+string("key:error-member-fix\n\x00\x80\x03\x00\x01")

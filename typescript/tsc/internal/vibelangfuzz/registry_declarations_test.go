@@ -12,6 +12,7 @@ import (
 // diagnostics. Each entry expires when its declaration disappears or its
 // number gains a current assignment; TestCompilerRegistryIsSpecified checks it.
 var legacyDeclared = map[int32]string{
+	1308: "lane relic-decl-forms: transitional abstract-root migration; pending Appendix B fold in 1793701000-relic-decl-forms-abstract-codemods.patch",
 	1001: "lane del-rest",                                                                                                                    // diagnostics.go
 	1002: "lane del-rest",                                                                                                                    // diagnostics.go
 	1003: "lane del-rest",                                                                                                                    // diagnostics.go
