@@ -1,0 +1,32 @@
+export effect function main() {
+ const values: number[] = []
+ let n = 0
+ own: for concurrent (const x of [1, 2]) { if (x === 1) continue own; n += x }
+ values.push(n)
+ n = 0
+ outer: alias: for concurrent(1) (const x of [1, 2]) {
+   for (const y of [1, 2]) { if (x === 1) continue outer; n += y }
+ }
+ values.push(n)
+ n = 0
+ masked: for concurrent(2) (const x of [1, 2]) {
+   uninterruptible { if (x === 1) continue masked; n += x }
+ }
+ values.push(n)
+ n = 0
+ switched: for concurrent (const x of [1, 2]) {
+   switch (x) { case 1: continue switched; default: n += x; break }
+ }
+ values.push(n)
+ n = 0
+ local: for concurrent (const x of [1, 2]) {
+   inner: for (const y of [1, 2]) { if (y === 1) continue inner; if (x === 1) continue local; n += y }
+ }
+ values.push(n)
+ const events: string[] = []
+ function* items(): Generator<number, void, unknown> { try { yield 1; yield 2 } finally { events.push("close") } }
+ closing: for concurrent(1) (const x of [1, 2]) {
+   for (const y of items()) { events.push(`${x}:${y}`); continue closing }
+ }
+ return { values, events }
+}

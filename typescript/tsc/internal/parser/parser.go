@@ -1728,6 +1728,7 @@ func (p *Parser) parseExpressionOrLabeledStatement() *ast.Statement {
 		p.parseExpected(ast.KindColonToken)
 		result := p.finishNode(p.factory.NewLabeledStatement(label, p.parseEmbeddedStatement()), pos)
 		p.withJSDoc(result, jsdoc)
+		p.rewriteConcurrentLabelContinues(result)
 		return result
 	}
 	expression := p.withVibeLangExpressionASI(true, (*Parser).parseExpressionWorker)
@@ -1735,6 +1736,7 @@ func (p *Parser) parseExpressionOrLabeledStatement() *ast.Statement {
 	if expression.Kind == ast.KindIdentifier && p.parseOptional(ast.KindColonToken) {
 		result := p.finishNode(p.factory.NewLabeledStatement(expression, p.parseEmbeddedStatement()), pos)
 		p.withJSDoc(result, jsdoc)
+		p.rewriteConcurrentLabelContinues(result)
 		return result
 	}
 

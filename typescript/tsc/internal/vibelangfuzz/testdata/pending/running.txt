@@ -14,8 +14,6 @@ FuzzRunningRules control:fork-scoped-requirement compiler VIP-17: `fork.scoped e
 FuzzRunningRules corpus:fork-scoped-requirement compiler VIP-17: minimal reproduction of control:fork-scoped-requirement; lane w2-fork
 FuzzVIPDifferential compile:EK4838/vip05.catch-join-value compiler VIP-17: the retired static fiber-escape ban EK4838 rejects a fiber that an `effect` catch handler joins; lane w2-removals
 FuzzVIPDifferential corpus:fz-run-vip05-catch-join-value compiler VIP-17: minimal named probe reproduces compile:EK4838/vip05.catch-join-value; lane w2-removals
-FuzzVIPDifferential compile:TS1107/vip19.self-continue compiler VIP-19: a labeled `continue` naming the `for concurrent` itself draws TS1107 from the generated callback (queued fix 19e25b89faef); lane impl-hunt-run
-FuzzVIPDifferential corpus:fz-run-vip19-self-continue compiler VIP-19: minimal named probe reproduces compile:TS1107/vip19.self-continue; lane impl-hunt-run
 FuzzRunningRules diagnostic:concurrent-head-break-outer compiler VIP-19: a labeled `break` in a head default's `do` draws the retired EK1019, not EK1903; lane core-block
 FuzzRunningRules corpus:concurrent-head-break-outer compiler VIP-19: minimal reproduction of diagnostic:concurrent-head-break-outer; lane core-block
 FuzzRunningRules diagnostic:concurrent-head-continue-outer compiler VIP-19: a labeled `continue` in a head default's `do` draws the retired EK1019, not EK1905; lane core-block

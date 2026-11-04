@@ -1019,6 +1019,12 @@ typescript/vibelang/cases/concurrent-return-computed.fail/main.vibe:4:25 lambda 
 typescript/vibelang/cases/concurrent-return-computed.fail/main.vibe:5:20 lambda plain fallback
 typescript/vibelang/cases/concurrent-return-computed.fail/main.vibe:5:25 lambda plain fallback
 typescript/vibelang/cases/concurrent-return-computed.fail/main.vibe:9:25 lambda effectFn table
+typescript/vibelang/cases/concurrent-self-continue/main.vibe:12:35 lambda effectFn table
+typescript/vibelang/cases/concurrent-self-continue/main.vibe:17:34 lambda effectFn table
+typescript/vibelang/cases/concurrent-self-continue/main.vibe:22:31 lambda effectFn table
+typescript/vibelang/cases/concurrent-self-continue/main.vibe:28:36 lambda effectFn table
+typescript/vibelang/cases/concurrent-self-continue/main.vibe:4:29 lambda effectFn table
+typescript/vibelang/cases/concurrent-self-continue/main.vibe:7:41 lambda effectFn table
 typescript/vibelang/cases/concurrent-unbounded-limit/main.vibe:10:38 lambda effectFn table
 typescript/vibelang/cases/concurrent-unbounded-limit/main.vibe:5:32 lambda effectFn table
 typescript/vibelang/cases/concurrent-written-nullish-limit/main.vibe:10:216 lambda effectFn table
