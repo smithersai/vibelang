@@ -26,6 +26,7 @@ export function assertReleasePublication(notes, version) {
   assert.doesNotMatch(publicationNotes, /(?:mask|LSP|editor)\s+smoke\s+test|fork\s+startup\s+checks/i)
   assert.doesNotMatch(publicationNotes, /Compiler\s+validation\s+treated\s+an?\s+error\s+name|CI\s+reused\s+an?\s+older/i)
   assert.doesNotMatch(publicationNotes, /editor\s+smoke\s+validation|compiler\s+fuzz\s+validation|schema\s+regression\s+check/i)
+  assert.doesNotMatch(publicationNotes, /migration\s+oracle\s+regression\s+tests|(?:compiler|pin)\s+regression\s+suite|compiler[\u0027\u2019]s\s+keyword\s+coverage\s+check|CI[- ]health\s+reports|declaration[- ]oracle\s+tests|snippet\s+tools[\u0027\u2019]\s+pending[- ]output\s+test\s+fixtures|narrow\s+hosted\s+CI\s+checks/i)
   const bullets = bugs.split("\n").filter(line => line.startsWith("- "))
   assert.equal(new Set(bullets).size, bullets.length, "each user-facing fix appears once")
   for (const symptom of ["Editor parsing rejected `for try` `Stream` loops", "A tool that reads a `.vibe` file through the TypeScript mapper", "compiler output with Windows line endings"]) {

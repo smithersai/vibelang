@@ -1,5 +1,6 @@
 // Publication requirement: the user-facing bug list excludes internal CI and
 // fuzz bookkeeping. Exercise the real publication guard with isolated notes.
+import { assertReleasePublication } from "./release-publication-checks.mjs"
 import assert from "node:assert/strict"
 import { spawnSync } from "node:child_process"
 import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
@@ -74,4 +75,19 @@ test("publication retains a user-visible compiler fix that mentions CI", t => {
 test("publication rejects test-only introductory bullets", t => {
   const result = fixture(t).check("- The mask smoke test now waits for a start signal.", "intro")
   assert.equal(result.status, 1, result.stdout + result.stderr)
+})
+
+const internalSuiteRecords = [
+  "Migration oracle regression tests", "compiler regression suite", "compiler’s keyword coverage check",
+  "pin regression suite", "CI-health reports", "Declaration-oracle tests",
+  "snippet tools’ pending-output test fixtures", "narrow hosted CI checks"
+]
+test("publication rejects internal suite and CI report records across spelling variants", () => {
+  fc.assert(fc.property(fc.constantFrom(...internalSuiteRecords), fc.constantFrom(" ", "  ", "\t", "\n  "),
+    fc.boolean(), fc.boolean(), (phrase, separator, uppercase, intro) => {
+      const text = (uppercase ? phrase.toUpperCase() : phrase).split(" ").join(separator)
+      const notes = goodNotes.replace("<!-- injected-row -->", intro ? "" : "- The " + text + " now passes.")
+        .replace("<!-- intro-row -->", intro ? "- The " + text + " now passes." : "")
+      assert.throws(() => assertReleasePublication(notes, "0.0.11"))
+    }), { numRuns: 160, seed: 110039, examples: internalSuiteRecords.map(phrase => [phrase, " ", false, false]) })
 })
