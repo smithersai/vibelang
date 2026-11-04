@@ -603,6 +603,8 @@ An `EK4405` input fix preserves captured values' types and is withheld when exis
 
 The `EK4839` repair keeps literal-typed getters, properties, mutable bindings and computed constants as `Match` calls: their construction-time reads must not move into a lazy arm or a returned function. A literal `const` initialized earlier in the same activation can still convert. Reads across functions, class initializers or imports keep their advisory, because even a literal binding may still be uninitialized.
 
+A `Match` handler's object parameter is destructured only after its original predicate succeeds. Missing optional fields, defaults, rest bindings and getters retain their ordinary parameter behavior; a binding cannot add a presence test to the arm. A handler whose function scope cannot be preserved keeps the advisory without a repair.
+
 The `EK4839` quick fix preserves a Match return-type hint with a checked
 annotation on its binding, including destructuring, or a typed local binding
 inside a `do` expression. It uses existing written context when available
