@@ -1,0 +1,6 @@
+// expect: EK1506 EK1607
+declare schema Row { n: number }
+declare namespace N { export data Choice { A; B { n: number } } }
+declare schema Alias = string
+declare data NoBody
+export {}

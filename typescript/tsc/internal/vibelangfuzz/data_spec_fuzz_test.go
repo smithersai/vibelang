@@ -373,6 +373,7 @@ func dataRules() []dataRule {
 	rules = append(rules, dataPredicateCoverageRules()...)
 	rules = append(rules, dataForeignClassCoverageRules()...)
 	rules = append(rules, schemaGroupedLiteralRules()...)
+	rules = append(rules, dataAmbientDeclarationRules()...)
 	return append(rules, dataUnreachableMatchRules()...)
 }
 

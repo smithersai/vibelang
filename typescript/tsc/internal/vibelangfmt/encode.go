@@ -68,8 +68,8 @@ const (
 	placeholderClassHead                                   // a class name for a service or control header
 	placeholderCatch                                       // a method name for catch
 	placeholderMutableIndex                                // [ and the key name after mutable
-	placeholderModuleName                          // a temporary name for a recovered unnamed module
-	placeholderGenericComma                        // a temporary second arrow type parameter
+	placeholderModuleName                                  // a temporary name for a recovered unnamed module
+	placeholderGenericComma                                // a temporary second arrow type parameter
 	placeholderEmptyClassElement                           // a JSDoc-owning empty class element
 	placeholderEmptyStatement                              // a JSDoc-owning empty statement
 	placeholderClassMemberSeparator                        // a temporary method standing for a service comma
@@ -588,7 +588,12 @@ func (e *encoder) declaration(form parser.VibeSyntax) error {
 		name := e.hold(placeholderTypeHead, head, form.Head.Pos(), firstLineWidth(head)-len("type  ="))
 		e.holders[len(e.holders)-1].data = true
 		e.add(edit{pos: form.Head.Pos(), end: form.Head.End(), text: "type " + name, opaque: true})
-		e.typeBody(form)
+		if form.Open.Pos() == form.Open.End() {
+			e.holders[len(e.holders)-1].noBody = true
+			e.insert(form.Range.End(), " = {}", 0)
+		} else {
+			e.typeBody(form)
+		}
 		for _, variant := range form.Variants {
 			if variant.Open.Pos() != variant.Open.End() {
 				e.insert(variant.Name.End(), ":", 0)

@@ -102,7 +102,9 @@ type VibeSyntax struct {
 	Name  string
 	Index bool
 	Class bool
-	Arms  []VibeSyntaxArm
+	// Ambient records native ambient context for schema/data declarations.
+	Ambient bool
+	Arms    []VibeSyntaxArm
 	// FieldNames are error payload names needing a class-body formatting placeholder.
 	FieldNames []core.TextRange
 	// Variants are the variants of a data declaration.

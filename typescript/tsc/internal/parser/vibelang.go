@@ -1224,7 +1224,7 @@ func (p *Parser) parseSchemaDeclaration(pos int, jsdoc jsdocScannerInfo, modifie
 	p.parseVibeLangSchemaTypeParameters()
 	var members []*ast.Node
 	body := name.Loc
-	form := VibeSyntax{Kind: VibeSyntaxDeclaration, Name: "schema", Head: core.NewTextRange(keyword.Pos(), name.End())}
+	form := VibeSyntax{Kind: VibeSyntaxDeclaration, Name: "schema", Head: core.NewTextRange(keyword.Pos(), name.End()), Ambient: p.isVibeLangAmbientService(modifiers)}
 	if p.token == ast.KindOpenBraceToken {
 		saved := p.vibelangImplicitReadonly
 		p.vibelangImplicitReadonly = true // a schema's fields map as written (D134; see Members keep TypeScript's mutability)

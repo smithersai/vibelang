@@ -89,8 +89,6 @@ var specAhead = map[int32]string{
 	// Spec-direct commits of 2026-11-03 (576e5f80a23f, 93ee4a5d11cf, ad7c006e1e7c and the 14:26Z fold batch) assigned these.
 	407:  "lane relic-trusted registers EK0407 (claim EK0407:trusted-empty-retirement)",
 	1402: "lane spec-lander assigned EK1402 (claim spec:EK1402-public-provenance); " + renumbering,
-	1506: "lane impl-hunt-data registers EK1506 (claim ambient-runtime-declarations:EK1506-EK1607)",
-	1607: "lane impl-hunt-data registers EK1607 (claim ambient-runtime-declarations:EK1506-EK1607)",
 	1707: "lane relic-try-forms registers EK1707 (claim diagnostic:EK1707-bare-fork-block)",
 	2401: "lane relic-try-forms registers EK2401 (claim diagnostic:EK2401-wire-intrinsic)",
 	2601: renumbering,

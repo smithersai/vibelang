@@ -1,0 +1,2 @@
+go test fuzz v1
+string("declare namespace N { data /* keep 😀 */ D<T> }\n")

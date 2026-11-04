@@ -78,7 +78,7 @@ func (p *Parser) parseDataDeclaration(pos int, jsdoc jsdocScannerInfo, modifiers
 	p.nextToken() // data
 	name := p.parseBindingIdentifier()
 	typeParameters := p.parseTypeParameters()
-	form := VibeSyntax{Kind: VibeSyntaxDeclaration, Name: VibeSyntaxData, Head: core.NewTextRange(keyword.Pos(), name.End())}
+	form := VibeSyntax{Kind: VibeSyntaxDeclaration, Name: VibeSyntaxData, Head: core.NewTextRange(keyword.Pos(), name.End()), Ambient: p.isVibeLangAmbientService(modifiers)}
 	bodyStart := p.nodePos()
 	var variants []*ast.Node
 	if p.token == ast.KindOpenBraceToken {

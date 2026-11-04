@@ -59,10 +59,11 @@ func (p *Parser) parseSchemaAliasDeclaration(pos int, jsdoc jsdocScannerInfo, mo
 	p.vibelangImplicitReadonly = saved
 	p.parseSemicolon()
 	p.recordVibeSyntax(VibeSyntax{
-		Kind:  VibeSyntaxDeclaration,
-		Name:  VibeSyntaxSchemaAlias,
-		Head:  core.NewTextRange(keyword.Pos(), name.End()),
-		Range: core.NewTextRange(scanner.SkipTrivia(p.sourceText, pos), p.nodePos()),
+		Kind:    VibeSyntaxDeclaration,
+		Name:    VibeSyntaxSchemaAlias,
+		Ambient: p.isVibeLangAmbientService(modifiers),
+		Head:    core.NewTextRange(keyword.Pos(), name.End()),
+		Range:   core.NewTextRange(scanner.SkipTrivia(p.sourceText, pos), p.nodePos()),
 	})
 
 	// const Code = <the type's schema>

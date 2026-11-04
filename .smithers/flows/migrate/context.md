@@ -191,6 +191,8 @@ A newly added emitted JavaScript fixture is flow output only when its pinned byt
 
 Package-script rewrites require `codemod.packageScriptEdits` receipts and pinned manifest snapshots proving the recorded module-path replacements. Reverted modules authorize no replacement. Extra command flags, altered test scripts and unrelated manifest fields are not authorized by a package-script receipt; final `record` checks this again, including with `--force`.
 
+Ambient APIs keep native TypeScript declarations. A custom `schema` or `data` creates a runtime value, so do not introduce it under `declare` or an inherited ambient namespace, module, or global declaration (`EK1506`/`EK1607`, decided detail 248). Describe an existing runtime API with native `declare const`/`type` counterparts.
+
 ## The language
 
 The VibeLang skill follows: every form beside the Effect code it replaces, and the rules with their EK codes. Accepted VIPs and the call rule above take precedence over older examples.
