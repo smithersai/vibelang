@@ -30,6 +30,24 @@ func TestEffectIntoPlainGeneric(t *testing.T) {
 		{"declared-program", "function take<T>(x: Effect.Effect<T>): number { return 1 }", "job", "", 0},
 		{"effect-constraint", "function take<T extends Effect.Effect<any, any, any>>(x: T): number { return 1 }", "job", "", 0},
 		{"dual-constraint", "function take<T extends Effect.Effect<any, any, any> | { readonly n?: number } | undefined>(x?: T): [T] extends [Effect.Effect<infer A>] ? Effect.Effect<A> : number { return 1 as any }", "job", "", 0},
+		{"effect-fork-scoped", "const take = Effect.forkScoped", "job", "", 0},
+		{"effect-map", "const take = Effect.map", "job, (n) => n + 1", "", 0},
+		{"effect-flat-map", "const take = Effect.flatMap", "job, (n) => Effect.succeed(n)", "", 0},
+		{"effect-zip", "const take = Effect.zip", "job, job", "", 0},
+		{"effect-all", "const take = Effect.all", "[job]", "", 0},
+		{"effect-timeout", "const take = Effect.timeout", "job, 1000", "", 0},
+		{"nested-effect", "function take<T>(x: Effect.Effect<T>): number { return 1 }", "nested", "", 0},
+		{"effect-union", "function take<T>(x: T | Effect.Effect<T>): number { return 1 }", "job", "", 0},
+		{"effect-intersection", "function take<T>(x: T & Effect.Effect<number>): number { return 1 }", "job", "", 0},
+		{"effect-union-constraint", "function take<T extends object | Effect.Effect<number>>(x: T): number { return 1 }", "job", "", 0},
+		{"effect-intersection-constraint", "function take<T extends object & Effect.Effect<number>>(x: T): number { return 1 }", "job", "", 0},
+		{"stream", "function take<T>(x: Stream.Stream<T>): number { return 1 }", "stream", "", 0},
+		{"nested-stream", "function take<T>(x: Stream.Stream<T>): number { return 1 }", "nestedStream", "", 0},
+		{"nested-option", "function take<T>(x: Option.Option<T>): number { return 1 }", "option", "", 0},
+		{"effect-alias", "type Cold<T> = Effect.Effect<T>; function take<T>(x: T | Cold<T>): number { return 1 }", "job", "", 0},
+		{"user-stream-name", "namespace User { export interface Stream<T> { value: T } }; function take<T>(x: User.Stream<T>): number { return 1 }", "{ value: job }", "", 1},
+		{"plain-union", "function take<T>(x: T | number): number { return 1 }", "job", "", 1},
+		{"plain-intersection", "function take<T>(x: T & object): number { return 1 }", "job", "", 1},
 		{"effect-fork-child", "const take = Effect.forkChild", "job", "", 0},
 		{"effect-fork-detach", "const take = Effect.forkDetach", "job", "", 0},
 		{"other-constraint", "function take<T extends { readonly n?: number } | object>(x: T): number { return 1 }", "job", "", 1},
@@ -40,7 +58,7 @@ func TestEffectIntoPlainGeneric(t *testing.T) {
 			if test.name == "plain-owner" {
 				mark = ""
 			}
-			source := test.declaration + "\nexport " + mark + "function probe(job: Effect.Effect<number>, pending: Promise<Effect.Effect<number>>) { const value = take" + test.typeArgs + "(" + test.argument + "); return 0 }"
+			source := test.declaration + "\nexport " + mark + "function probe(job: Effect.Effect<number>, pending: Promise<Effect.Effect<number>>, nested: Effect.Effect<Effect.Effect<number>>, stream: Stream.Stream<number>, nestedStream: Stream.Stream<Effect.Effect<number>>, option: Option.Option<Effect.Effect<number>>) { const value = take" + test.typeArgs + "(" + test.argument + "); return 0 }"
 			if test.name == "fork-keyword" {
 				source = "export effect function probe(job: number!!) { const child = fork job; return join child }"
 			}

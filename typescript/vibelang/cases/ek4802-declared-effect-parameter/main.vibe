@@ -1,0 +1,21 @@
+// Declared Effect positions compose programs, even when their payloads are Effects.
+type Cold<A> = Effect.Effect<A>
+function f<A>(e: Cold<A>): number { return 1 }
+function union<A>(e: A | Cold<A>): number { return 1 }
+function stream<A>(e: Stream.Stream<A>): number { return 1 }
+export effect function w() { return 1 }
+export effect function probe(nestedStream: Stream.Stream<Effect.Effect<number>>) {
+  const p: Effect.Effect<number> = w()
+  const scoped = try Effect.forkScoped(w())
+  const child = try Effect.forkChild(p)
+  const mapped = try Effect.map(p, (n) => n + 1)
+  const bound = try Effect.flatMap(p, (n) => Effect.succeed(n))
+  const zipped = try Effect.zip(p, p)
+  const collected = try Effect.all([p])
+  const timed = try Effect.timeout(p, 1000)
+  const nested: Effect.Effect<Effect.Effect<number>> = Effect.succeed(p)
+  const direct = f(nested)
+  const choice = union(p)
+  const streamed = stream(nestedStream)
+  return 0
+}

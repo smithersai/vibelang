@@ -72,21 +72,54 @@ func inferredEffectArguments(c *checker.Checker, call *ast.Node) []*ast.Node {
 	return out
 }
 
-// constraintNamesEffect reports whether param's constraint is an Effect or a
-// union with an Effect member, as in Effect's duals
-// `<Arg extends Effect<any, any, any> | Options>(effectOrOptions?: Arg)`:
-// the parameter declares that it takes a program (VIP-1, inferred Effect
-// arguments), even though the conditional return type is no Effect.
+// constraintNamesEffect reports whether the unsubstituted constraint declares
+// Effect data, including constrained duals and containers of programs.
 func constraintNamesEffect(c *checker.Checker, param *checker.Type) bool {
-	t := c.GetConstraintOfTypeParameter(param)
-	if t == nil {
+	return declaresEffectData(c, c.GetConstraintOfTypeParameter(param), make(map[*checker.Type]bool))
+}
+
+// declaresEffectData inspects the declared type before this call's inference.
+// Use resolved symbols, not source spellings: aliases and Effect's other data
+// types (Stream, Option, Layer, ...) retain their library identity. Do not
+// descend into those types' implementation members or generic payloads.
+func declaresEffectData(c *checker.Checker, t *checker.Type, seen map[*checker.Type]bool) bool {
+	if t == nil || seen[t] {
 		return false
 	}
-	parts := []*checker.Type{t}
-	if t.Flags()&checker.TypeFlagsUnion != 0 {
-		parts = t.Types()
+	seen[t] = true
+	if t.Flags()&checker.TypeFlagsTypeParameter != 0 {
+		return declaresEffectData(c, c.GetConstraintOfTypeParameter(t), seen)
 	}
-	return slices.ContainsFunc(parts, func(part *checker.Type) bool { return isEffectType(c, part) || isEffectSubtype(c, part) })
+	if t.Flags()&(checker.TypeFlagsUnion|checker.TypeFlagsIntersection) != 0 {
+		return slices.ContainsFunc(t.Types(), func(part *checker.Type) bool { return declaresEffectData(c, part, seen) })
+	}
+	if t.Flags()&checker.TypeFlagsObject == 0 {
+		return false
+	}
+	for _, property := range c.GetPropertiesOfType(t) {
+		if strings.HasPrefix(property.Name(), "~effect/") && declaredInEffect(property) {
+			return true
+		}
+	}
+	if isEffectType(c, t) || isEffectSubtype(c, t) {
+		return true
+	}
+	if t.ObjectFlags()&checker.ObjectFlagsReference != 0 {
+		return slices.ContainsFunc(c.GetTypeArguments(t), func(arg *checker.Type) bool { return declaresEffectData(c, arg, seen) })
+	}
+	for _, sig := range c.GetSignaturesOfType(t, checker.SignatureKindCall) {
+		if declaresEffectData(c, c.GetReturnTypeOfSignature(sig), seen) {
+			return true
+		}
+		for _, param := range sig.Parameters() {
+			if declaresEffectData(c, c.GetTypeOfSymbol(param), seen) {
+				return true
+			}
+		}
+	}
+	return slices.ContainsFunc(c.GetPropertiesOfType(t), func(property *ast.Symbol) bool {
+		return declaresEffectData(c, c.GetTypeOfSymbol(property), seen)
+	})
 }
 
 // Follow generic containers and callback contracts without expanding their
@@ -99,7 +132,7 @@ func inferredEffectPosition(c *checker.Checker, t *checker.Type, inferred map[*c
 	if inferred[t] {
 		return true
 	}
-	if isEffectType(c, t) || isEffectSubtype(c, t) {
+	if declaresEffectData(c, t, make(map[*checker.Type]bool)) {
 		return false
 	}
 	if t.Flags()&(checker.TypeFlagsUnion|checker.TypeFlagsIntersection) != 0 {
