@@ -1,0 +1,23 @@
+{
+  "rule": "A published package carries JavaScript and ordinary `.d.ts` files.",
+  "files": [
+    "src/**/*.ts",
+    "dist/**/*",
+    "README.md",
+    "!src/private/**",
+    "!**/*.d.vibe.ts",
+    "!**/*.d.vibex.ts"
+  ],
+  "modules": [
+    "src/index.ts",
+    "src/helper.ts"
+  ],
+  "publishFiles": [
+    "src/**/*.ts",
+    "dist/**/*",
+    "README.md",
+    "!src/private/**",
+    "!**/*.d.vibe.ts",
+    "!**/*.d.vibex.ts"
+  ]
+}

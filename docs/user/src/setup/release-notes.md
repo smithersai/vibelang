@@ -228,6 +228,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Known-throwing builtins such as `JSON.parse` could run without an explicit exception bridge in effect code. They now report `EK0403`; `--fix` preserves their typed failures and unexpected defects.
 
 - Bun treated explicit `.vibex` imports as file assets and missed extensionless imports; the preload now compiles JSX sources and loads their named exports, directory indexes, aliases and native module bodies.
+
+- Migration could omit renamed source modules from published packages whose `files` allowlist selected only `.ts` sources. It now records exact `.vibe` additions in `files` and `publishConfig.files`, preserving exclusions and removing only its own entries on revert.
 - `vibelang --fix` left every `EK4402` platform access inside a bare `sync`, `callback` or `tryPromise` wrapper unrepaired and unreported once `sync` and `callback` became Effect globals. It again moves the wrapper into a `.platform.ts` companion, or reports why it refuses.
 
 - Stock TypeScript tools could receive an unchanged `.vibe` file for iterable `is` patterns because projection edits overlapped. Function and nested-block projections now preserve the iterator cache and its cleanup without overlapping edits.

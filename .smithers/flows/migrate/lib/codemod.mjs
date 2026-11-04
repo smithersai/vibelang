@@ -13,6 +13,7 @@ import { assertFinished, parseDiagnostics } from "./diagnostics.mjs"
 import { isFixtureFile, isTestFile } from "./inventory.mjs"
 import { isDeclarationFile, quote, run } from "./util.mjs"
 import { fixProgramFiles, withFixFiles } from "./fix-scope.mjs"
+import { Minimatch } from "./vendor/minimatch.mjs"
 
 /**
  * The tsconfig `paths` of each file's project, for rewriteImports and
@@ -268,8 +269,9 @@ export function bareVibeExports(root, manifests) {
  * package's other modules keep it. A bare entry becomes { types, default }
  * (TS2883, t3code), or stays a bare path to the .vibe file with bareEntries,
  * where the repository already exports its .vibe modules that way
- * (bareVibeExports). Returns the edits, { manifest, field, key, added,
- * module }, for restoreExports.
+ * (bareVibeExports). Source file allowlists gain an exact replacement only
+ * when they selected the original source and do not exclude its new path.
+ * Returns export and fileEntry edits for restoreExports.
  */
 export function rewriteExports(root, renames, { write = (file, text) => writeFileSync(join(root, file), text), bareEntries = false } = {}) {
   const edits = []
@@ -289,6 +291,7 @@ export function rewriteExports(root, renames, { write = (file, text) => writeFil
         edits.push({ manifest, ...edit, module: to })
         changed = true
       }
+      for (const edit of inventoryEdits(pkg, source, posix.relative(dir, to))) record(edit)
       for (const field of modulePaths) {
         if (typeof pkg[field] !== "string" || posix.normalize(pkg[field]) !== source) continue
         pkg[field] = pointAt(pkg[field], source, { condition: field, sidecar })
@@ -382,6 +385,29 @@ export function refreshSidecarExports(root, tracked, configs, {
   return edits
 }
 
+// File allowlists include matching directories as well as exact files. Keep
+// authored exclusions and add only a renamed source selected before conversion.
+function inventoryMatches(pattern, file) {
+  const matcher = new Minimatch(posix.normalize(pattern).replace(/^\.?\//, ""), { dot: true, nonegate: true, nocomment: true })
+  for (let path = file; path !== "."; path = posix.dirname(path)) if (matcher.match(path)) return true
+  return false
+}
+
+function inventoryEdits(pkg, source, target) {
+  const edits = []
+  for (const [field, owner] of [["files", pkg], ["publishConfig", pkg.publishConfig]]) {
+    const patterns = owner?.files
+    if (!Array.isArray(patterns)) continue
+    const includes = path => patterns.some(pattern => typeof pattern === "string" && !pattern.startsWith("!") && inventoryMatches(pattern, path))
+    const excludes = path => patterns.some(pattern => typeof pattern === "string" && pattern.startsWith("!") && inventoryMatches(pattern.slice(1), path))
+    if (includes(source) && !excludes(source) && !includes(target) && !excludes(target)) {
+      patterns.push(target)
+      edits.push({ field, fileEntry: target })
+    }
+  }
+  return edits
+}
+
 /**
  * Undoes the edits of rewriteExports for one module that revert returns to
  * .ts (repository-relative, now .ts): an added entry goes, and a rewritten one
@@ -396,7 +422,10 @@ export function restoreExports(root, edits, module) {
     const pkg = JSON.parse(readFileSync(path, "utf8"))
     const source = posix.relative(posix.dirname(edit.manifest), vibe)
     const sidecar = sidecarOf(root, posix.dirname(edit.manifest))
-    if (edit.added) delete pkg[edit.field][edit.key]
+    if (edit.fileEntry !== undefined) {
+      const owner = edit.field === "publishConfig" ? pkg.publishConfig : pkg
+      if (Array.isArray(owner?.files)) owner.files = owner.files.filter(file => file !== edit.fileEntry)
+    } else if (edit.added) delete pkg[edit.field][edit.key]
     else if (edit.key !== undefined) pkg[edit.field][edit.key] = pointBack(pkg[edit.field][edit.key], source, posix.extname(module), sidecar)
     else pkg[edit.field] = pointBack(pkg[edit.field], source, posix.extname(module), sidecar)
     writeFileSync(path, JSON.stringify(pkg, null, 2) + "\n")
