@@ -188,6 +188,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 | Old diagnostic numbers, including `EK4617` | Appendix B numbering, including `EK0103`. Diagnostic triggers are unchanged. See the [old-to-new map](../vibelang-features/diagnostic-code-map.md). |
 
 ### Bugs fixed since 0.0.10
+
+- Declaration fuzzing now distinguishes a stock source suppression that exports an invalid namespace type from a valid public API; unresolved dependencies and unrelated declaration failures remain errors.
 - A variable named `module` followed by `as`, `satisfies`, `is` or `of` and an object type, pattern or literal, as in `(module as { model?: unknown }).model`, failed with `EK4003` ("A module expression is not supported"). It now reads as the identifier `module`, as in TypeScript; `module { … }` and `module name { … }` inside an expression still report `EK4003`.
 
 - Migrating a module reached through an exact `paths` alias could rewrite imports to a name absent from the configuration, such as `models.vibe`. Those imports now name the same migrated source by a relative path, and revert restores the original alias.

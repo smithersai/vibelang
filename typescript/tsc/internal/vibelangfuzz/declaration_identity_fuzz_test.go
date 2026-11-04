@@ -226,6 +226,16 @@ func CheckDeclarationIdentity(t *testing.T, w *Workspace, tsc, api, archive stri
 	defer c.Remove()
 	dir := emitDeclarationIdentityStock(t, w, tsc, stock) // skips a program stock tsc rejects
 	defer os.RemoveAll(dir)
+
+	preflight, cancelPreflight := context.WithTimeout(t.Context(), 2*HangLimit)
+	reason, preflightErr := declarationIdentitySuppressedStockAPI(preflight, api, dir, stock)
+	cancelPreflight()
+	if preflightErr != nil {
+		t.Fatal(preflightErr)
+	}
+	if reason != "" {
+		t.Skip(reason)
+	}
 	if HasError(c.Diagnostics) {
 		g := &Gaps{Target: target, Input: SeedName(archive)}
 		key := ""
