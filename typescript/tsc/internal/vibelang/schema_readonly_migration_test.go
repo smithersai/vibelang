@@ -10,6 +10,7 @@ import (
 	"testing"
 )
 
+// rule-evidence: docs/design/src/007-tooling.md#fix-scopes | Ordinary checking and `--fix` keep the current writable defaults.
 func TestSchemaWritableFieldMapping(t *testing.T) {
 	source := "schema State { value:number; note?:string; nested:{ active:boolean }; readonly items:readonly number[]; locked:readonly number[] }\nconst state:State={value:1,nested:{active:false},items:[1],locked:[1]}\nstate.value=2;state.note=\"ok\";state.nested.active=true;state.locked=[3]\n"
 	program, file, _, _ := editorProgram(t, source)

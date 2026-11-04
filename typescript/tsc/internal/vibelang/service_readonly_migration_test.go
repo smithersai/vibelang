@@ -10,6 +10,8 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/vfs/osvfs"
 )
 
+// rule-evidence: docs/design/src/007-tooling.md#fix-scopes | `--fix-migration-only` reads existing `.vibe` source under the former readonly defaults of schema fields, including the keys of a nested schema in a `schema error` payload, and service shape properties, and writes `readonly` on their unmarked members before it takes the fix baseline.
+// rule-evidence: docs/design/src/007-tooling.md#fix-scopes | Ordinary checking and `--fix` keep the current writable defaults.
 func TestServiceReadonlyMigrationModes(t *testing.T) {
 	for _, mode := range []struct {
 		name    string

@@ -13,6 +13,7 @@ import (
 // VIP-15 / 005-services, Member readonlyness: only schema fields (including
 // the fields of a nested struct in a schema-error payload) and service shape
 // properties, plus nested error/data members, had readonly defaults to preserve.
+// rule-evidence: docs/design/src/007-tooling.md#fix-scopes | `--fix-migration-only` reads existing `.vibe` source under the former readonly defaults of schema fields, including the keys of a nested schema in a `schema error` payload, and service shape properties, and writes `readonly` on their unmarked members before it takes the fix baseline.
 func TestMemberReadonlyMigrationRule(t *testing.T) {
 	for _, tc := range []struct{ source, want string }{
 		{"export interface I { value: { nested: number } }", "export interface I { value: { nested: number } }"},
