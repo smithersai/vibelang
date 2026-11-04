@@ -21,8 +21,6 @@ func TestCompatibilityIdentityPrimaryMessages(t *testing.T) {
 		{9209, errorCategory, "setup statements"},
 		{9210, errorCategory, "resumeWith"},
 		{9211, errorCategory, "Nothing provides"},
-		{9212, errorCategory, "already declares"},
-		{9213, warningCategory, "value binding"},
 		{9214, errorCategory, "service key"},
 	} {
 		m := registry[tc.code]
@@ -32,5 +30,15 @@ func TestCompatibilityIdentityPrimaryMessages(t *testing.T) {
 	}
 	if registry[4408] != nil {
 		t.Fatal("retired shared EK4408 remains registered")
+	}
+	// VIP-40: a duplicate module or a module/value collision is the error
+	// EK4005, so the retired EK4408 has no interim compatibility identity.
+	if m := registry[4005]; m == nil || m.Category != errorCategory || !strings.Contains(m.Text, "redeclares") {
+		t.Fatalf("EK4005: %+v; want the VIP-40 module collision error", m)
+	}
+	for _, code := range []int32{9212, 9213} {
+		if registry[code] != nil {
+			t.Fatalf("EK%d is registered, but Appendix B allocates no such interim code", code)
+		}
 	}
 }
