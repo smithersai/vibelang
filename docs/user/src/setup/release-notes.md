@@ -24,6 +24,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - `Experimental` service references called operations on module namespaces or service keys and failed with missing-property errors. They now look up the implementation before calling it.
 - `--fix` could rewrite a generator whose bare `return` violated `Effect.fn.Return<A>`, leaving an invalid generated function. It now leaves that generator unchanged and explains why; valid `void` and optional success types still migrate.
+- Converted generator callbacks in array maps could leave stored programs with an inferred-effect warning. The repair now records their program contract explicitly.
 - Converted `Effect.fn` callbacks could read destructured inputs when the program was constructed. Supported bindings now run on each execution; bindings whose scope, public labels or rest semantics cannot be preserved keep their original generator.
 - The diagnostic reference defined retained compiler and migration codes without listing them among its numbering exceptions. Those assignments are now explicitly documented.
 

@@ -450,7 +450,20 @@ func planEffectGenWith(c *checker.Checker, file *ast.SourceFile, call *ast.Node,
 		return &formRewrite{edits: []sourceEdit{{start, end, effectValueParentheses(outer, program)}}, description: "an effect function"}
 	case fn != nil && ast.IsArrowFunction(fn):
 		at := nodeStart(file, fn)
-		return &formRewrite{edits: []sourceEdit{{at, at, "effect "}, {start, end, " " + body}}, description: "an effect function"}
+		edits := []sourceEdit{{at, at, "effect "}, {start, end, " " + body}}
+		if parent := fn.Parent; ast.IsCallExpression(parent) && parent.TypeArguments() == nil && len(parent.Arguments()) > 0 && parent.Arguments()[0] == fn {
+			callee := parent.Expression()
+			if ast.IsPropertyAccessExpression(callee) && callee.Name().Text() == "map" {
+				signature := c.GetResolvedSignature(parent)
+				if signature != nil && signature.Declaration() != nil && strings.HasSuffix(string(ast.GetSourceFileOfNode(signature.Declaration()).FileName()), "/lib.es5.d.ts") {
+					held := c.TypeToStringEx(c.GetTypeAtLocation(outer), outer, checker.TypeFormatFlagsNoTruncation|checker.TypeFormatFlagsUseFullyQualifiedType, nil)
+					if held != "" && !effectFnTypeHasImport(held) {
+						edits = append(edits, sourceEdit{callee.End(), callee.End(), "<" + held + ">"})
+					}
+				}
+			}
+		}
+		return &formRewrite{edits: edits, description: "an effect function with its stored program contract"}
 	case fn != nil:
 		at := functionKeywordStart(file, fn)
 		return &formRewrite{edits: []sourceEdit{{at, at, "effect "}, {start, end, body}}, description: "an effect function"}
