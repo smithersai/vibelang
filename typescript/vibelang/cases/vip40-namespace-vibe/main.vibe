@@ -1,0 +1,9 @@
+// VIP-40: namespace X is a namespace of VibeLang code — spec-rule: docs/design/vips/0040-module-declarations.md#db4ec4fb36fc27c1
+namespace Geometry {
+  export const unit = 2
+}
+
+// expect-result: 2
+export effect function main() {
+  return Geometry.unit
+}

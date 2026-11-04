@@ -1,0 +1,19 @@
+// expect: EK0401
+// VIP-40: re-exports keep the contract — spec-rule: docs/design/vips/0040-module-declarations.md#34a89a50242c359b
+module parse {
+  /** @throws {RangeError} */
+  export function port(raw: string): number {
+    const n = Number(raw)
+    if (!(n >= 1 && n <= 65535)) throw new RangeError(`bad port: ${raw}`)
+    return n
+  }
+}
+
+import { port } from parse
+
+export { port } from parse
+
+// A VibeLang wrapper cannot launder the contract.
+export function wrapped(raw: string): number {
+  return port(raw)
+}

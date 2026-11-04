@@ -1,0 +1,9 @@
+// expect: EK4006 EK4006
+// VIP-40: an identifier specifier naming no declaration or carrying attributes is EK4006 — spec-rule: docs/design/vips/0040-module-declarations.md#566e1e603c8cfae0
+// VIP-40: EK4006 identifier specifier naming no module or with import attributes — spec-rule: docs/design/vips/0040-module-declarations.md#72cd0853e2183046
+module text { export const n = 1 }
+
+import { n } from text with { type: "json" }
+import { m } from missing
+
+export const kept = [n, m]

@@ -1,0 +1,20 @@
+// expect: EK4005 EK4005 EK4005 EK4005 EK4005
+// VIP-40: the name is a lexical binding of the file — spec-rule: docs/design/vips/0040-module-declarations.md#ef6ff37a731db1f9
+// VIP-40: EK4005 the name redeclares a binding of the file — spec-rule: docs/design/vips/0040-module-declarations.md#3b94ad8882a3ccab
+import { other } from "./other.ts"
+
+module text { export const a = 1 }
+const text = 1
+
+module tool { export const b = 2 }
+function tool() {}
+
+module Shape { export const c = 3 }
+class Shape {}
+
+module other { export const d = 4 }
+
+module twice { export const e = 5 }
+module twice { export const f = 6 }
+
+export const kept = [text, tool, Shape, other]

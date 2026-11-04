@@ -1,0 +1,30 @@
+// VIP-40: async, await and top-level await are JavaScript's — spec-rule: docs/design/vips/0040-module-declarations.md#73b45a3d51c64b3a
+// VIP-40: a top-level await makes the body and its importers async — spec-rule: docs/design/vips/0040-module-declarations.md#5f2fea35a44263c6
+// VIP-40: awaiting an Effect object does what it does in ts — spec-rule: docs/design/vips/0040-module-declarations.md#a6c90a45df7f508b
+// VIP-40: a Promise-returning body function is wrapped with Effect.tryPromise — spec-rule: docs/design/vips/0040-module-declarations.md#1afec824ab5a72c2
+module io {
+  import { Effect } from "effect"
+
+  /** @throws {TypeError} */
+  export async function load(ok: boolean): Promise<string> {
+    await null
+    if (!ok) throw new TypeError("rejected")
+    return "loaded"
+  }
+
+  // Top-level await: this file's own evaluation waits for it.
+  export const ready = await new Promise<string>((resolve) => setTimeout(() => resolve("top-level"), 1))
+
+  // An Effect is not a thenable: await returns the object itself, as in .ts.
+  const awaited = await Effect.succeed(1)
+  export const effectAwaited = Effect.isEffect(awaited)
+}
+
+import { effectAwaited, load, ready } from io
+
+// expect-result: {"loaded":"loaded","failed":"TypeError","ready":"top-level","effectAwaited":true}
+export effect function main() {
+  const loaded = try Effect.tryPromise(() => load(true))
+  const failed = try Effect.flip(Effect.tryPromise({ try: () => load(false), catch: (error) => (error as Error).name }))
+  return { loaded, failed, ready, effectAwaited }
+}

@@ -1,0 +1,11 @@
+// expect: TS1128 TS1434
+// VIP-40: VibeLang forms are unavailable in a body — spec-rule: docs/design/vips/0040-module-declarations.md#f03ff4ab87672aa1
+// Each VibeLang form gets TypeScript's own error in a body.
+module text {
+  export effect function load() {
+    return 1
+  }
+}
+
+import { load } from text
+export const kept = load

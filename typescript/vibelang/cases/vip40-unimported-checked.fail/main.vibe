@@ -1,0 +1,8 @@
+// expect: TS2322
+// VIP-40: a body never imported is still checked — spec-rule: docs/design/vips/0040-module-declarations.md#18914d3128057be8
+// Never imported, so it never evaluates, but it is still checked.
+module unused {
+  export const n: number = "text"
+}
+
+export const kept = 1

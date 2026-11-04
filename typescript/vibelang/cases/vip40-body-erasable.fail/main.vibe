@@ -1,0 +1,11 @@
+// expect: TS1294
+// VIP-40: under erasableSyntaxOnly as in ts — spec-rule: docs/design/vips/0040-module-declarations.md#6da914baf00ae984
+// erasableSyntaxOnly applies to a body as to a .ts file: an enum is TS1294.
+module shapes {
+  export enum Kind {
+    Circle,
+  }
+}
+
+import { Kind } from shapes
+export const kept = Kind

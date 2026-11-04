@@ -1,0 +1,9 @@
+// expect: TS1005
+// VIP-40: a body in a vibe file is TS — spec-rule: docs/design/vips/0040-module-declarations.md#b60f3e05d94999b8
+// In a .vibe file a body is TS, so JSX is not JSX there.
+module view {
+  export const element = <div />
+}
+
+import { element } from view
+export const kept = element

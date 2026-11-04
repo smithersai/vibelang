@@ -1,0 +1,15 @@
+// expect: EK4007
+// VIP-40: a body cannot name a sibling declaration — spec-rule: docs/design/vips/0040-module-declarations.md#764d53f2f06c5c81
+// VIP-40: EK4007 identifier specifier inside a body — spec-rule: docs/design/vips/0040-module-declarations.md#483cc4b319428c31
+// VIP-40: import in the body is ES imports by string — spec-rule: docs/design/vips/0040-module-declarations.md#c585a35ce13e81b8
+module parse {
+  export const x = 1
+}
+
+module env {
+  import { x } from parse
+  export const y = x
+}
+
+import { y } from env
+export const kept = y

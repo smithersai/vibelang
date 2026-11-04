@@ -1,0 +1,17 @@
+// expect: EK0401
+// VIP-40: plain VibeLang code may not call a function known to throw — spec-rule: docs/design/vips/0040-module-declarations.md#c1aa22730d97ad82
+// VIP-40: a body's exported functions throw what @throws says — spec-rule: docs/design/vips/0040-module-declarations.md#032068f889b65be3
+module parse {
+  /** @throws {RangeError} */
+  export function port(raw: string): number {
+    const n = Number(raw)
+    if (!(n >= 1 && n <= 65535)) throw new RangeError(`bad port: ${raw}`)
+    return n
+  }
+}
+
+import { port } from parse
+
+export function label(raw: string): string {
+  return `port ${port(raw)}`
+}

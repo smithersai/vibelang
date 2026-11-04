@@ -1,0 +1,10 @@
+// expect: TS1434 EK1101
+// VIP-40: module then a line break then a name is not a declaration — spec-rule: docs/design/vips/0040-module-declarations.md#e06182b56ad225d2
+// module, a line break, then X { }: [no LineTerminator here] keeps this out of
+// the production: the statement `module`, then `X { }`, which TypeScript
+// rejects (TS1434) and VibeLang reports as a trailing block (EK1101, VIP-11).
+let module = 0
+let X = 0
+module
+X { }
+export const values = [module, X]

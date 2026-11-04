@@ -1,0 +1,18 @@
+// expect: EK4001 EK4001 EK4001
+// VIP-40: EK4001 a module declaration below the top level — spec-rule: docs/design/vips/0040-module-declarations.md#cb9be58d01564281
+// VIP-40: TC39's grammar restricted to one placement — spec-rule: docs/design/vips/0040-module-declarations.md#4cc9ed804f9f803e
+// Only the file's top level holds a module declaration: a block, a function
+// and a class body are each EK4001.
+{
+  module inBlock { export const a = 1 }
+}
+
+function host() {
+  module inFunction { export const b = 2 }
+}
+
+class Holder {
+  module inClass { export const c = 3 }
+}
+
+export const kept = [host, Holder]

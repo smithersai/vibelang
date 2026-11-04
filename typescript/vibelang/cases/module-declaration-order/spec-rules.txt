@@ -1,0 +1,3 @@
+VIP-40 rules this case exercises (stable ids read by docs/tools/coverage-census.ts):
+VIP-40: import name evaluates it for effects — spec-rule: docs/design/vips/0040-module-declarations.md#0d256a5853b9abc6
+VIP-40: declarations are hoisted — spec-rule: docs/design/vips/0040-module-declarations.md#dc6f4c05c1126796

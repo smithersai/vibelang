@@ -1,0 +1,6 @@
+// expect: TS1540 TS1540
+// VIP-40: TypeScript's codes stay: TS1540 alone — spec-rule: docs/design/vips/0040-module-declarations.md#64ed6037b01a2ee1
+// VIP-40: module A.B and declare module C get TS1540 alone — spec-rule: docs/design/vips/0040-module-declarations.md#7d4ae0705481a977
+module A.B { }
+declare module C { }
+export const kept = 1

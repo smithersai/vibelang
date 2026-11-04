@@ -1,0 +1,1 @@
+vip40 Module name redeclarations report retired EK4408 (warning for value bindings, error for a second module) instead of EK4005 errors. Rules: docs/design/vips/0040-module-declarations.md#ef6ff37a731db1f9 docs/design/vips/0040-module-declarations.md#3b94ad8882a3ccab

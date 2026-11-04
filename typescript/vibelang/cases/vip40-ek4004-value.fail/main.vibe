@@ -1,0 +1,14 @@
+// expect: EK4004 EK4004 EK4004 EK4004
+// VIP-40: the name is not a value — spec-rule: docs/design/vips/0040-module-declarations.md#f3c5db87c3109149
+// VIP-40: import(text), text.clean, typeof text and f(text) are EK4004 — spec-rule: docs/design/vips/0040-module-declarations.md#c6b2c7fd5b1e7188
+// VIP-40: EK4004 the module's name used as a value — spec-rule: docs/design/vips/0040-module-declarations.md#fd4fe08871d3ac7e
+// VIP-40: X is not a value — spec-rule: docs/design/vips/0040-module-declarations.md#5f93aca6e5f7330b
+// VIP-40: the name as a Module value is a compile error — spec-rule: docs/design/vips/0040-module-declarations.md#ff097c739772dccf
+module text { export function clean(value: string): string { return value.trim() } }
+
+function f(value: unknown) {}
+
+export const dynamic = import(text)
+export const member = text.clean
+export const kind = typeof text
+f(text)

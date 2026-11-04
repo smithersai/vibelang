@@ -1,0 +1,42 @@
+// VIP-40: function*, yield, Promise, var, arguments and eval are JavaScript's — spec-rule: docs/design/vips/0040-module-declarations.md#4838577abfaab432
+// VIP-40: no VibeLang rule runs on a body — spec-rule: docs/design/vips/0040-module-declarations.md#5fe80c5f3011e25d
+// VIP-40: the plain-function throw error and platform rules are about VibeLang code — spec-rule: docs/design/vips/0040-module-declarations.md#33395c5e4f4c4d5e
+// VIP-40: console, fetch and timers are typed by the project's lib — spec-rule: docs/design/vips/0040-module-declarations.md#82b037a4897aafa3
+// Each of these is a VibeLang error in VibeLang code (plain throw, legacy
+// JavaScript, platform globals) and ordinary TypeScript in a body.
+module legacy {
+  export function* count(n: number) {
+    for (var i = 0; i < n; i++) yield i
+  }
+
+  export function args(..._values: number[]): number {
+    return arguments.length
+  }
+
+  export function evaluate(): number {
+    return eval("1 + 2")
+  }
+
+  export function later(): Promise<string> {
+    return new Promise((resolve) => setTimeout(() => resolve("timer"), 1))
+  }
+
+  export function fail(): never {
+    throw new Error("plain")
+  }
+
+  export const hasFetch = typeof fetch === "function"
+  export const max = globalThis.Math.max(1, 2)
+  console.log("legacy evaluated")
+}
+
+import { args, count, evaluate, hasFetch, later, max } from legacy
+
+// expect-result: {"counted":[0,1,2],"args":2,"evaluated":3,"timer":"timer","hasFetch":true,"max":2}
+export effect function main() {
+  const counted = try sync(() => [...count(3)])
+  const passed = try sync(() => args(1, 2))
+  const evaluated = try sync(() => evaluate())
+  const timer = try Effect.promise(() => later())
+  return { counted, args: passed, evaluated, timer, hasFetch, max }
+}

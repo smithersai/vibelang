@@ -1,0 +1,12 @@
+// expect: TS1101 TS2410
+// VIP-40: with stays a strict-mode error — spec-rule: docs/design/vips/0040-module-declarations.md#cb2cdcd2bdcd0586
+module legacy {
+  export function read(scope: { a: number }): number {
+    with (scope) {
+      return a
+    }
+  }
+}
+
+import { read } from legacy
+export const kept = read

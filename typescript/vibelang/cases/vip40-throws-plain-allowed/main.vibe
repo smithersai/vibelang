@@ -1,0 +1,55 @@
+// VIP-40: nothing is inferred from the body — spec-rule: docs/design/vips/0040-module-declarations.md#8aed5270f87c6c2c
+// VIP-40: an unannotated body function throws unknown and stays an ordinary call — spec-rule: docs/design/vips/0040-module-declarations.md#975e618a61f41cd2
+// VIP-40: a written @throws is trusted, not checked — spec-rule: docs/design/vips/0040-module-declarations.md#7f25cd8cf8365071
+// VIP-40: a call inside a try block with a catch clause is allowed — spec-rule: docs/design/vips/0040-module-declarations.md#399d0ae1dd4b6325
+// VIP-40: @throws {never} lets VibeLang call a body function directly — spec-rule: docs/design/vips/0040-module-declarations.md#0bd35a8e6c6759c9
+// VIP-40: async VibeLang functions may call a throwing body function — spec-rule: docs/design/vips/0040-module-declarations.md#55cf8b484d3d71c1
+module parse {
+  // Throws, but nothing is inferred from the body: an ordinary call.
+  export function readText(raw: string): string {
+    if (raw === "") throw new Error("empty")
+    return raw.trim()
+  }
+
+  /** @throws {never} */
+  export function steady(): number {
+    return 1
+  }
+
+  // Trusted, not checked: the tag says never though the body throws.
+  /** @throws {never} */
+  export function liar(flag: boolean): number {
+    if (flag) throw new Error("liar")
+    return 2
+  }
+  /** @throws {RangeError} */
+  export function port(raw: string): number {
+    const n = Number(raw)
+    if (!(n >= 1 && n <= 65535)) throw new RangeError(`bad port: ${raw}`)
+    return n
+  }
+}
+
+import { liar, port, readText, steady } from parse
+
+function safePort(raw: string): number {
+  try {
+    return port(raw)
+  } catch {
+    return 0
+  }
+}
+
+function plain(raw: string): string {
+  return readText(raw)
+}
+
+async function viaAsync(raw: string): Promise<number> {
+  return port(raw)
+}
+
+// expect-result: {"safe":0,"text":"a","steady":1,"liar":2,"async":80}
+export effect function main() {
+  const viaPromise = try Effect.promise(() => viaAsync("80"))
+  return { safe: safePort("0"), text: plain(" a "), steady: steady(), liar: liar(false), async: viaPromise }
+}

@@ -1,0 +1,17 @@
+// expect: TS18046
+// VIP-40: the catch variable is unknown — spec-rule: docs/design/vips/0040-module-declarations.md#53aeff6f27720417
+// useUnknownInCatchVariables (under strict) makes a body's catch variable unknown.
+module parse {
+  export function message(): string {
+    try {
+      return "ok"
+    } catch (error) {
+      return error.message
+    } finally {
+      void 0
+    }
+  }
+}
+
+import { message } from parse
+export const kept = message

@@ -1,0 +1,10 @@
+// expect: TS2591
+// VIP-40: process is typed by the project's types — spec-rule: docs/design/vips/0040-module-declarations.md#82b037a4897aafa3
+// The project's types is [], so process has no declaration in a body, as in a
+// .ts file of the same project.
+module env {
+  export const home = process.env.HOME
+}
+
+import { home } from env
+export const kept = home

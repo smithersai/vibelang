@@ -1,0 +1,10 @@
+// expect: EK3801
+// VIP-40: Effect lint reaches a body where it reaches a ts file — spec-rule: docs/design/vips/0040-module-declarations.md#d98713883ecd8da6
+module floating {
+  import { Effect } from "effect"
+  Effect.succeed(1)
+  export const n = 1
+}
+
+import { n } from floating
+export const kept = n

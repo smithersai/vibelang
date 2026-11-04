@@ -1,0 +1,11 @@
+// expect: TS2304
+// VIP-40: a body imports what it uses; effect globals do not apply — spec-rule: docs/design/vips/0040-module-declarations.md#42f23e1576cacd39
+// Effect and the VIP-6 globals are in scope in this file, not in a body.
+export const outside = Effect.succeed(1)
+
+module parse {
+  export const inside = Effect.succeed(1)
+}
+
+import { inside } from parse
+export const kept = inside

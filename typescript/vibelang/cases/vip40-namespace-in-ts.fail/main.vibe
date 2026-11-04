@@ -1,0 +1,4 @@
+// expect: TS1540
+// VIP-40: module X in a ts file is TS1540 — spec-rule: docs/design/vips/0040-module-declarations.md#e3fe613130d2f9e7
+import "./legacy.ts"
+export const kept = 1

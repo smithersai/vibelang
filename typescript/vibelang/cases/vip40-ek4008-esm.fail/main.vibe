@@ -1,0 +1,16 @@
+// expect: EK4008 EK4008
+// VIP-40: export = and import x = require() in a body are EK4008 under any emit — spec-rule: docs/design/vips/0040-module-declarations.md#d457ff3548cedb07
+// VIP-40: EK4008 export = or import x = require() in a body — spec-rule: docs/design/vips/0040-module-declarations.md#3f3605c1de39dea2
+module assign {
+  const n = 1
+  export = n
+}
+
+module required {
+  import value = require("./dep.cjs")
+  export const n = value
+}
+
+import assign
+import { n } from required
+export const kept = n

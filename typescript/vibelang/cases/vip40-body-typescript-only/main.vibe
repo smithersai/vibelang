@@ -1,0 +1,30 @@
+// VIP-40: enum, namespace, declare, decorators and parameter properties are TypeScript's — spec-rule: docs/design/vips/0040-module-declarations.md#6da914baf00ae984
+module shapes {
+  export enum Kind {
+    Circle = "circle",
+  }
+
+  export namespace Geometry {
+    export const unit = 1
+  }
+
+  declare const injected: number | undefined
+
+  function tagged<T>(target: T, _context: ClassDecoratorContext): T {
+    return target
+  }
+
+  @tagged
+  export class Point {
+    constructor(public readonly x: number) {}
+  }
+
+  export const resolved = typeof injected
+}
+
+import { Geometry, Kind, Point, resolved } from shapes
+
+// expect-result: {"kind":"circle","unit":1,"x":2,"resolved":"undefined"}
+export effect function main() {
+  return { kind: Kind.Circle, unit: Geometry.unit, x: new Point(2).x, resolved }
+}

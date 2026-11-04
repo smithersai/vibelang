@@ -1,0 +1,9 @@
+// expect: EK4009
+// VIP-40: import.meta is EK4009 anywhere in a body — spec-rule: docs/design/vips/0040-module-declarations.md#407f7f26fc0bf7a6
+// VIP-40: EK4009 import.meta in a body — spec-rule: docs/design/vips/0040-module-declarations.md#04586ac03b89c5ad
+module where {
+  export const url = import.meta.url
+}
+
+import { url } from where
+export const kept = url

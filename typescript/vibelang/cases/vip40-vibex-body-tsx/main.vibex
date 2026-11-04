@@ -1,0 +1,10 @@
+// VIP-40: a body in a vibex file is TSX — spec-rule: docs/design/vips/0040-module-declarations.md#b60f3e05d94999b8
+// The body of a module in a .vibex file is TSX, so JSX parses there and the
+// output keeps TypeScript's .jsx suffix under "jsx": "preserve".
+module view {
+  export const element = <div />
+}
+
+import { element } from view
+
+export const kept = element

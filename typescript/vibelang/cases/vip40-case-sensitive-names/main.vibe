@@ -1,0 +1,16 @@
+// VIP-40: names are case-sensitive — spec-rule: docs/design/vips/0040-module-declarations.md#9b3b21e834452c6d
+module Text {
+  export const which = "upper"
+}
+
+module text {
+  export const which = "lower"
+}
+
+import { which as upper } from Text
+import { which as lower } from text
+
+// expect-result: ["upper","lower"]
+export effect function main() {
+  return [upper, lower]
+}

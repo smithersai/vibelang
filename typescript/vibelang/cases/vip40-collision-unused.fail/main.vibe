@@ -1,0 +1,6 @@
+// expect: EK4005
+// VIP-40: const beside module is an EK4005 error — spec-rule: docs/design/vips/0040-module-declarations.md#7978a78d0fc1f5c1
+// VIP-40: module-declaration-collision-unused becomes a fail case — spec-rule: docs/design/vips/0040-module-declarations.md#97195d9104ac48ed
+module text { export const n = 1 }
+const text = 2
+export effect function main() { return text }

@@ -1,0 +1,16 @@
+// VIP-40: an uncaught throw fails module evaluation before effect code runs — spec-rule: docs/design/vips/0040-module-declarations.md#490a8787b190f7b3
+// import boom evaluates the body; its throw fails this file's evaluation, so
+// main never runs and nothing reaches Effect.
+import { log } from "./log.ts"
+import boom
+
+module boom {
+  import { log } from "./log.ts"
+  log.push("boom")
+  throw new Error("init failed")
+}
+
+export effect function main() {
+  log.push("effect ran")
+  return 1
+}

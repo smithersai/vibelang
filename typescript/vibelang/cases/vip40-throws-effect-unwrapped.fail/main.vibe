@@ -1,0 +1,19 @@
+// expect: EK0403 EK0403
+// VIP-40: effect code wraps every call that may throw — spec-rule: docs/design/vips/0040-module-declarations.md#e79b56e4ec48d1e7
+module parse {
+  export function readText(raw: string): string {
+    return raw.trim()
+  }
+  /** @throws {RangeError} */
+  export function port(raw: string): number {
+    const n = Number(raw)
+    if (!(n >= 1 && n <= 65535)) throw new RangeError(`bad port: ${raw}`)
+    return n
+  }
+}
+
+import { port, readText } from parse
+
+export effect function main() {
+  return [port("80"), readText(" a ")]
+}

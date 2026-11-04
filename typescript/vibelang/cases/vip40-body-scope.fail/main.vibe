@@ -1,0 +1,21 @@
+// expect: TS2304 TS2304 TS2304 TS2304 TS2304
+// VIP-40: no shared lexical scope — spec-rule: docs/design/vips/0040-module-declarations.md#82376f5311811891
+// VIP-40: using a file binding in a body is TS2304 — spec-rule: docs/design/vips/0040-module-declarations.md#67210524a33fba20
+// VIP-40: each tool reads a body as the ts file mapped into the vibe file — spec-rule: docs/design/vips/0040-module-declarations.md#3554f53db9a76386
+import { Option } from "effect"
+
+const prefixValue = "item-"
+function labelOf(value: string) { return value }
+error Missing { reason: string }
+type Shape = { readonly width: number }
+
+module text {
+  export const a = prefixValue
+  export const b = labelOf
+  export const c = Missing
+  export const d = Option
+  export const e: Shape | undefined = undefined
+}
+
+import { a } from text
+export const kept = [a, labelOf("x"), Option.none(), new Missing({ reason: "r" })]

@@ -1,0 +1,23 @@
+// VIP-40: declare module with a quoted name is unchanged — spec-rule: docs/design/vips/0040-module-declarations.md#478549e66a3b4378
+// VIP-40: declare module x and declare global are unchanged — spec-rule: docs/design/vips/0040-module-declarations.md#2cf791299eb9dc0c
+declare module "effect" {
+  export interface Vip40Augmented {
+    readonly n: number
+  }
+}
+
+declare global {
+  interface Vip40Global {
+    readonly m: number
+  }
+}
+
+import type { Vip40Augmented } from "effect"
+
+const augmented: Vip40Augmented = { n: 1 }
+const global: Vip40Global = { m: 2 }
+
+// expect-result: [1,2]
+export effect function main() {
+  return [augmented.n, global.m]
+}

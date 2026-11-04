@@ -1,0 +1,6 @@
+// expect: EK4002 EK4002
+// VIP-40: the declaration is never exported — spec-rule: docs/design/vips/0040-module-declarations.md#959593651e4e9465
+// VIP-40: EK4002 export module or export default module — spec-rule: docs/design/vips/0040-module-declarations.md#7bbfb3d25a21cc67
+// VIP-40: exported declarations are a compile error — spec-rule: docs/design/vips/0040-module-declarations.md#ff097c739772dccf
+export module text { export const n = 1 }
+export default module { export const m = 2 }

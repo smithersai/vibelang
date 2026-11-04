@@ -1,0 +1,43 @@
+// VIP-40: module stays an identifier everywhere else — spec-rule: docs/design/vips/0040-module-declarations.md#fc732478b1775d1b
+// VIP-40: module then a line break is an identifier statement — spec-rule: docs/design/vips/0040-module-declarations.md#e06182b56ad225d2
+// VIP-40: module in a body is what it is in ts — spec-rule: docs/design/vips/0040-module-declarations.md#53863c624db0261b
+// VIP-40: words used as names keep their TypeScript meaning — spec-rule: docs/design/vips/0040-module-declarations.md#ecdeb5acb1259e4c
+// module is an ordinary identifier outside the production: a const, a member
+// read, a call, and an expression statement followed by a block.
+const module = { x: 2 }
+const member = module.x
+
+function called(): number {
+  const module = (n: number) => n + 1
+  return module(1)
+}
+
+function statement(): number {
+  const module = 3
+  module
+  { }
+  return module
+}
+
+module tools {
+  // Inside a body these words are TypeScript names; module is whatever it is in .ts.
+  const module = { id: "inner" }
+  export const id = module.id
+  export function effect(fork: number): number {
+    return fork + 1
+  }
+  export function isText(value: unknown): value is string {
+    return typeof value === "string"
+  }
+  export function first(values: number[]): number {
+    return values[0]!
+  }
+}
+
+import { effect, first, id, isText } from tools
+
+// expect-result: {"member":2,"called":2,"statement":3,"id":"inner","effect":2,"text":true,"first":7}
+export effect function main() {
+  const fromBody = try sync(() => ({ effect: effect(1), text: isText("a"), first: first([7]) }))
+  return { member, called: called(), statement: statement(), id, ...fromBody }
+}

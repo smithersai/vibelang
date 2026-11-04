@@ -1,0 +1,3 @@
+// expect: TS2436
+// VIP-40: a declaration file cannot hold the body inline — spec-rule: docs/design/vips/0040-module-declarations.md#1043fb2d3f9cae38
+export const kept = 1

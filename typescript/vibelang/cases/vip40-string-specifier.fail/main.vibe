@@ -1,0 +1,9 @@
+// expect: TS2307
+// VIP-40: a string specifier is always a file or package — spec-rule: docs/design/vips/0040-module-declarations.md#858b7de9d8d8e2e0
+// from "text" names the package text, not the module declaration text.
+module text {
+  export const n = 1
+}
+
+import { n } from "text"
+export const kept = n

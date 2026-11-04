@@ -1,0 +1,6 @@
+// expect: EK0401
+import { port } from "./main.vibe"
+
+export function viaReexport(raw: string): number {
+  return port(raw)
+}

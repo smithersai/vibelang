@@ -1,0 +1,9 @@
+// expect: EK4008
+// VIP-40: export = in a body is EK4008 under CommonJS emit too — spec-rule: docs/design/vips/0040-module-declarations.md#d457ff3548cedb07
+module assign {
+  const n = 1
+  export = n
+}
+
+import assign
+export const kept = 1

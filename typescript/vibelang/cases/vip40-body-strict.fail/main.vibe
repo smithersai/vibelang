@@ -1,0 +1,12 @@
+// expect: TS7006
+// VIP-40: the body is checked under the project's compilerOptions — spec-rule: docs/design/vips/0040-module-declarations.md#f2a41685f9780600
+// strict is on for the project, so an implicit any parameter in a body is
+// TypeScript's own error, as in a sibling .ts file.
+module parse {
+  export function same(value) {
+    return value
+  }
+}
+
+import { same } from parse
+export const kept = same

@@ -1,0 +1,3 @@
+// expect: EK4402
+// VIP-40: module.exports in VibeLang code stays EK4402 — spec-rule: docs/design/vips/0040-module-declarations.md#4480efcdd1c9f5b5
+export const exported = module.exports

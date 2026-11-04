@@ -1,0 +1,5 @@
+VIP-40 rules this case exercises (stable ids read by docs/tools/coverage-census.ts):
+VIP-40: a body reaches its vibe file only by importing it — spec-rule: docs/design/vips/0040-module-declarations.md#09f25fd16c69db47
+VIP-40: that is an ordinary module cycle with TDZ rules — spec-rule: docs/design/vips/0040-module-declarations.md#72e3c28e69590010
+VIP-40: live bindings — spec-rule: docs/design/vips/0040-module-declarations.md#a39b9f1fed1008c9
+VIP-40: export in the body is live module exports — spec-rule: docs/design/vips/0040-module-declarations.md#38c21f6482383928

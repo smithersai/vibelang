@@ -1,0 +1,2 @@
+rejected Error: init failed
+["boom"]

@@ -1,0 +1,3 @@
+VIP-40 rules this case exercises (stable ids read by docs/tools/coverage-census.ts):
+VIP-40: under CommonJS emit the body is a CommonJS module — spec-rule: docs/design/vips/0040-module-declarations.md#eb31a484fd1ea344
+VIP-40: relative specifiers resolve from the vibe file's directory — spec-rule: docs/design/vips/0040-module-declarations.md#f57a19a57b88871a

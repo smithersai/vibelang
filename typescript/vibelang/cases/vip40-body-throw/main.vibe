@@ -1,0 +1,43 @@
+// VIP-40: code that throws lives in a ts module — spec-rule: docs/design/vips/0040-module-declarations.md#b5af01820a6abf78
+// VIP-40: throw e is JavaScript's throw — spec-rule: docs/design/vips/0040-module-declarations.md#421274553a9b7fcf
+// VIP-40: never Effect.fail — spec-rule: docs/design/vips/0040-module-declarations.md#c99bb09827446abe
+// VIP-40: Effect.try fails with Cause.UnknownError — spec-rule: docs/design/vips/0040-module-declarations.md#600c3c6ac1431524
+// VIP-40: retryable initialization through Effect.try — spec-rule: docs/design/vips/0040-module-declarations.md#3a8128e5cd817f8a
+// VIP-40: throws tracking exists for code inside a module block — spec-rule: docs/design/vips/0040-module-declarations.md#fff15f2ac4cbb644
+module parse {
+  let calls = 0
+
+  // Fails twice, then succeeds: retryable initialization.
+  export function init(): number {
+    calls++
+    if (calls < 3) throw new Error(`not ready ${calls}`)
+    return calls
+  }
+
+  // A body's throw is JavaScript's: a body catch sees the RangeError itself.
+  export function inside(): string {
+    try {
+      port("0")
+      return "none"
+    } catch (error) {
+      return error instanceof RangeError ? "RangeError" : "other"
+    }
+  }
+  /** @throws {RangeError} */
+  export function port(raw: string): number {
+    const n = Number(raw)
+    if (!(n >= 1 && n <= 65535)) throw new RangeError(`bad port: ${raw}`)
+    return n
+  }
+}
+
+import { init, inside, port } from parse
+
+// expect-result: {"unknown":"UnknownError","mapped":"range","ready":3,"inside":"RangeError"}
+export effect function main() {
+  const unknown = try Effect.flip(Effect.try(() => port("0")))
+  const mapped = try Effect.flip(Effect.try({ try: () => port("0"), catch: (error) => error instanceof RangeError ? "range" : "other" }))
+  const ready = try Effect.retry(Effect.try(() => init()), { times: 5 })
+  const caught = try Effect.try(() => inside())
+  return { unknown: unknown._tag, mapped, ready, inside: caught }
+}
