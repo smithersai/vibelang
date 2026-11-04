@@ -9,6 +9,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.11
 - Reading a function constructor through a `Function` intersection, inherited interface or generic constraint could miss `EK0107`. Those reads now report the same restriction as a direct `Function` receiver.
+
+- A label inside a `for concurrent` body could repeat an enclosing label without an error. It now reports `TS1114`, matching TypeScript.
 - Failure-alias examples could still report a resolved declaration-tag assignment gap. They now require the correct `EK0402` rejection and retain the saved examples.
 - An `is` binding in a `do…while` condition reported `EK4703`. It now has fresh loop-head cells for each condition: the initial body sees uninitialized cells, closures retain their own iteration, and `continue`, `break` and labels keep their meaning. A skipped `for` condition or update binding now also stays uninitialized instead of inheriting the previous value.
 - Checking diagnostic documentation could stop with a TypeScript syntax error in obsolete variant-pattern exemptions. The check now loads correctly and uses the current diagnostics.

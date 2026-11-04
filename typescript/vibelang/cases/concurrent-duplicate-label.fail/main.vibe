@@ -1,0 +1,19 @@
+// expect: TS1114 TS1114 TS1114 TS1114 TS1114 TS1114
+export effect function nativeLoop() {
+ item: for concurrent(1)(const x of [1]) { item: for(const y of [1]) {} }
+}
+export effect function block() {
+ item: for concurrent(1)(const x of [1]) { item: {7} }
+}
+export effect function nestedItem() {
+ item: for concurrent(1)(const x of [1]) { for concurrent(1)(const y of [1]) { item: {7} } }
+}
+export effect function doValue() {
+ item: for concurrent(1)(const x of [1]) { const value=do {item: {7};7}; void value }
+}
+export effect function masked() {
+ item: for concurrent(1)(const x of [1]) { uninterruptible { item: {7} } }
+}
+export effect function chain() {
+ item: alias: for concurrent(1)(const x of [1]) { alias: {7} }
+}

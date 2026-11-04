@@ -35,3 +35,5 @@ FuzzConcurrentOperandDiagnostics compile:union-arrays compiler VIP-19: valid Ite
 FuzzConcurrentOperandDiagnostics corpus:union-arrays compiler VIP-19: minimized Iterable-union inference witness; lane core-fortry
 FuzzConcurrentOperandDiagnostics compile:union-containers compiler VIP-19: valid Iterable union retains preexisting TS2345 helper inference error; the separate classification key must never be EK1901; lane core-fortry
 FuzzConcurrentOperandDiagnostics corpus:union-containers compiler VIP-19: minimized Iterable-union inference witness; lane core-fortry
+
+FuzzConcurrentDuplicateLabel scope:head-default compiler VIP-2: a retained do initializer still hides an enclosing source label

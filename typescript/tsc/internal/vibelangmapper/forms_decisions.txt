@@ -1033,6 +1033,13 @@ typescript/vibelang/cases/concurrent-do-continue/main.vibe:25:27 lambda effectFn
 typescript/vibelang/cases/concurrent-do-continue/main.vibe:32:37 lambda effectFn table
 typescript/vibelang/cases/concurrent-do-continue/main.vibe:4:32 lambda effectFn table
 typescript/vibelang/cases/concurrent-do-continue/main.vibe:9:27 lambda effectFn table
+typescript/vibelang/cases/concurrent-duplicate-label.fail/main.vibe:12:32 lambda effectFn table
+typescript/vibelang/cases/concurrent-duplicate-label.fail/main.vibe:15:32 lambda effectFn table
+typescript/vibelang/cases/concurrent-duplicate-label.fail/main.vibe:18:39 lambda effectFn table
+typescript/vibelang/cases/concurrent-duplicate-label.fail/main.vibe:3:32 lambda effectFn table
+typescript/vibelang/cases/concurrent-duplicate-label.fail/main.vibe:6:32 lambda effectFn table
+typescript/vibelang/cases/concurrent-duplicate-label.fail/main.vibe:9:32 lambda effectFn table
+typescript/vibelang/cases/concurrent-duplicate-label.fail/main.vibe:9:68 lambda effectFn table
 typescript/vibelang/cases/concurrent-head-do-return/main.vibe:12:50 lambda effectFn table
 typescript/vibelang/cases/concurrent-head-do-return/main.vibe:17:25 lambda effectFn table
 typescript/vibelang/cases/concurrent-head-do-return/main.vibe:23:58 lambda effectFn table

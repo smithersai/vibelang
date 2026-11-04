@@ -46,6 +46,8 @@ A concurrency limit bounds running work, not iterable pulling. In pinned Effect,
 
 A `return` cannot leave a `for concurrent` item, including its head binding initialization, computed member names and class heritage. These positions report `EK1904`. A nested method or function keeps its own returns. Use `continue` to finish one item. A labeled `continue` naming the concurrent loop itself, including any label in a chain, also finishes that item, including from a `do` expression; nested loops keep their own jump targets.
 
+A label cannot be repeated inside the statement it labels. Reusing an enclosing label in a `for concurrent` body reports `TS1114`; a nested function has its own label scope.
+
 A written `for concurrent(limit())` limit is evaluated once, before the iterable expression, in both the native compiler and TypeScript mapper.
 
 Group a comma expression used as a limit with extra parentheses: `for concurrent((record(), 4)) (...)`. A bare comma list in the limit reports `TS1005`; `vibelang --fix` adds the parentheses while preserving evaluation order.
