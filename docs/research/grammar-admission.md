@@ -225,3 +225,10 @@ TypeScript's `ExternalModuleReference` is `require ( StringLiteral )`. Its
 parser reads any expression in the parentheses for recovery, and the
 checker rejects a non-literal with `TS1141`, which now counts as syntax
 rejection; campaign195 found `import x = require(("m"))`.
+
+`fork` and `join` in a plain native generator share the
+`interruption-in-generator` cause: the compiler still treats an unannotated
+`function*` as an implicit producer, so `function* g() { join effect % 1; }`
+compiles with only the operand type error `EK4611`. The classifier keys it
+`admission:fiber-in-generator` (seed, corpus, inventory alias row on
+`isProducer`), apart from `join-outside-effect`, whose compiler fix landed.

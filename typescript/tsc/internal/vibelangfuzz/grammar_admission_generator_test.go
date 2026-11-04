@@ -83,3 +83,26 @@ func TestGrammarAdmissionGeneratorInterruptionKeys(t *testing.T) {
 	}
 	t.Fatal("plain-generator interruption seed is missing")
 }
+
+// Campaign197: `function * g (\n) { join effect % 1 ; }` reported only
+// EK4611 (a join operand type error). The compiler still treats the plain
+// generator as an implicit producer, so join compiles there; Appendix A has
+// no derivation without an effect marker. Key it with its generator cause,
+// not as join-outside-effect, whose compiler fix landed.
+func TestGrammarAdmissionFiberInGenerator(t *testing.T) {
+	w := NewWorkspace(t)
+	witness := "function * g (\n) { join effect % 1 ; }"
+	if !grammarAdmissionVerdict(t, w, witness) {
+		t.Fatalf("no mismatch for %q", witness)
+	}
+	for source, want := range map[string]string{
+		witness:                                  "admission:fiber-in-generator",
+		"function * g ( ) { join effect % 1 ; }": "admission:fiber-in-generator",
+		"function g ( ) { join effect % 1 ; }":   "admission:join-outside-effect",
+		"effect function * g ( p ) { join p ; }": "",
+	} {
+		if got := grammarAdmissionForm(source); got != want {
+			t.Errorf("%q keyed %q, want %q", source, got, want)
+		}
+	}
+}

@@ -156,6 +156,7 @@ var grammarAdmissionSeeds = []struct{ key, source string }{
 	{"join-for-head-line-break", "effect function f(xs) { for (join\nx\nof xs) { x; } }"},
 	{"interruption-outside-effect", "function f() { uninterruptible { return 1; } }"},
 	{"interruption-in-generator", "function* f() { uninterruptible { return 1; } }"},
+	{"fiber-in-generator", "function * g (\n) { join effect % 1 ; }"},
 	{"error-no-end", "error E effect { id: string }"},
 	{"error-no-end-schema", "schema error E effect { id: string }"},
 	{"fiber-binding-arrow", "const f = effect join => 1;"},
@@ -858,6 +859,12 @@ func grammarAdmissionForm(source string) string {
 			if insideEffect || len(operand) == 0 || operand[0].nl {
 				continue
 			}
+			// A plain native generator is still an implicit producer to the
+			// compiler: the interruption-in-generator cause, for fibers.
+			outside := "admission:" + word + "-outside-effect"
+			if grammarAdmissionPlainGeneratorAt(file, start) {
+				outside = "admission:fiber-in-generator"
+			}
 			// A same-line name/literal juxtaposition cannot be an inherited
 			// TS call, member, binary expression, tagged template or ASI.
 			next := operand[0]
@@ -866,16 +873,16 @@ func grammarAdmissionForm(source string) string {
 				case "as", "satisfies", "in", "instanceof", "of":
 					continue
 				}
-				return "admission:" + word + "-outside-effect"
+				return outside
 			}
 			// A same-line object operand cannot be a native call or element
 			// access. A newline still permits an identifier statement and block.
 			if next.kind == 'n' || next.kind == 's' || next.text == "{" {
-				return "admission:" + word + "-outside-effect"
+				return outside
 			}
 			// An element access needs an argument (TS1011), so `join [ ]` is no native access.
 			if next.text == "[" && len(operand) > 1 && (operand[1].text == "]" || operand[1].text == ",") {
-				return "admission:" + word + "-outside-effect"
+				return outside
 			}
 		case parser.VibeSyntaxForkBlock:
 			return "admission:fork-block"
