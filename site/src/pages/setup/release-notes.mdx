@@ -451,6 +451,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Bare `pipe` could fail to resolve when only `effect` was installed, or add a runtime import when the runtime was present. It now resolves and imports directly from `effect/Function`, like the other root functions; local bindings keep their meaning.
 
+- Regression checks for repeated runs of an Effect method expected its parameter mutations to reset. They now compare all sixteen method and assignment paths with native TypeScript and preserve each call’s parameter bindings.
+
 - Vite coverage counted private tail-delegation wrappers as extra functions or uncovered statements, especially in callbacks and throwing catch handlers. It now counts the authored functions and statements through the composed source map.
 - Repository migration checks could stop at invalid fixture lockfiles or package metadata before checking build provenance, declaration exits or test regressions. The fixtures now retain valid publication prerequisites and reach those checks.
 
