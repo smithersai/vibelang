@@ -1,0 +1,5 @@
+{
+  "script": "bun check --no-script -b -p tsconfig.tests.json",
+  "expected": "vibelang -b tsconfig.tests.json",
+  "symptom": "The migrated Core typecheck failed with TS5072 because TypeScript build mode does not accept -p."
+}
