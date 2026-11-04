@@ -8,6 +8,7 @@ import {
 import { tmpdir } from "node:os"
 import { dirname, join } from "node:path"
 import { test } from "node:test"
+import fc from "fast-check"
 import { setTimeout as sleep } from "node:timers/promises"
 import { fileURLToPath } from "node:url"
 import { compileProjectSync, projects } from "../project.mjs"
@@ -247,23 +248,34 @@ test("a changed dependency recompiles", { skip }, async (t) => {
   assert.equal(compiles(), 3, "a lockfile change means an install")
 })
 
-test("a changed tsconfig of a workspace package whose .vibe source the project reads recompiles", { skip }, async (t) => {
-  // The package's .vibe source supplies types to this project's compile with
-  // the package's own settings (D297), so its tsconfig decides this compile
-  // too. The package's own compile checks that source.
-  const { root, app, run, compiles } = await fixture(t, {
+async function workspaceConfigFixture(t, { newline = "\n", blankLines = 0, indent = "  ", greeting = "hello" } = {}) {
+  const context = await fixture(t, {
     "src/greet.ts": "export { greeting } from \"@acme/dep\"\n",
-    "src/greet-main.ts": "import { Effect } from \"effect\"\nimport { greeting } from \"./greet.ts\"\nconsole.log(Effect.runSync(greeting()))\n"
+    "src/greet-main.ts": "import { greeting } from \"./greet.ts\"\nconsole.log(JSON.stringify(greeting()))\n"
   })
+  const { root, app } = context
   write(root, {
     "dep/package.json": JSON.stringify({ name: "@acme/dep", type: "module", exports: { ".": "./src/greeting.vibe" } }),
-    "dep/tsconfig.json": tsconfig({ vibelang: { trustedPackages: ["@acme/dep"] } }),
-    "dep/src/text.ts": "export const text = (): string => \"hello\"\n",
-    "dep/src/greeting.vibe": "import { text } from \"./text.ts\"\n\nexport effect function greeting() {\n  return text()\n}\n"
+    "dep/tsconfig.json": tsconfig({ compilerOptions: { ...options, strictNullChecks: false } }),
+    "dep/src/text.ts": "export const text = (): string | undefined => " + JSON.stringify(greeting) + "\n",
+    "dep/src/greeting.vibe": [
+      "import { text } from \"./text.ts\"",
+      ...Array(blankLines + 1).fill(""),
+      "export function greeting(): string {",
+      indent + "return text()",
+      "}", ""
+    ].join(newline)
   })
   mkdirSync(join(app, "node_modules/@acme"))
   symlinkSync(join(root, "dep"), join(app, "node_modules/@acme/dep"))
   await settle()
+  return context
+}
+
+test("a changed tsconfig of a workspace package whose .vibe source the project reads recompiles", { skip }, async (t) => {
+  // Spec 007: fields retain their TypeScript meaning. Both projects read the
+  // package's signature, and the package checks its body with its own settings.
+  const { root, run, compiles } = await workspaceConfigFixture(t)
   ok(run())
   ok(run())
   assert.equal(compiles(), 1)
@@ -274,9 +286,44 @@ test("a changed tsconfig of a workspace package whose .vibe source the project r
   assert.match(result.stderr, /app\/tsconfig\.json in \d+ms \(.*dep\/tsconfig\.json changed\)/)
   assert.equal(compiles(), 2)
   const loaded = run("src/greet-main.ts")
-  assert.notEqual(loaded.status, 0, "a cached compile would hide the untrusted call")
-  assert.match(loaded.stderr, /greeting\.vibe:4:\d+ - error EK4401/)
+  assert.notEqual(loaded.status, 0, "a cached compile would hide the changed strictNullChecks setting")
+  assert.match(loaded.stderr, /greeting\.vibe:4:\d+ - error TS2322/)
+  assert.doesNotMatch(loaded.stderr, /EK1011|EK3010|EK4401/, "the failure is the intended TypeScript contract")
   assert.equal(compiles(), 3, "the package's module compiles with the package's own project")
+})
+
+test("workspace cache fixture quotes the current TypeScript configuration contract", () => {
+  const spec = readFileSync(new URL("../../../docs/design/src/007-tooling.md", import.meta.url), "utf8")
+  assert.ok(spec.includes("Fields retain their TypeScript meaning with one deliberate file-kind exception:"))
+})
+
+test("property: supported workspace settings invalidate real warm package compiles", { skip }, async (t) => {
+  // TypeScript strictNullChecks and Spec 007, configuration: "Fields retain
+  // their TypeScript meaning". No retired VibeLang trust setting is involved.
+  await fc.assert(fc.asyncProperty(fc.record({
+    newline: fc.constantFrom("\n", "\r\n"),
+    blankLines: fc.integer({ min: 0, max: 2 }),
+    indent: fc.constantFrom("  ", "\t"),
+    greeting: fc.constantFrom("hello", "é", "漢🚀")
+  }), async (input) => {
+    const { root, run, compiles } = await workspaceConfigFixture(t, input)
+    ok(run()) // Loading the app's .vibe module invokes its compiler.
+    assert.equal(compiles(), 1)
+    assert.equal(ok(run("src/greet-main.ts")), input.greeting)
+    assert.equal(compiles(), 2, "the first loads check both actual projects")
+    ok(run())
+    assert.equal(ok(run("src/greet-main.ts")), input.greeting)
+    assert.equal(compiles(), 2, "the unchanged package really hits the warm cache")
+    writeFileSync(join(root, "dep/tsconfig.json"), tsconfig())
+    await settle()
+    ok(run())
+    assert.equal(compiles(), 3, "the app observed its dependency configuration change")
+    const loaded = run("src/greet-main.ts")
+    assert.notEqual(loaded.status, 0, "a warm cache cannot hide the strict TypeScript error")
+    assert.match(loaded.stderr, new RegExp("greeting\\.vibe:" + (4 + input.blankLines) + ":\\d+ - error TS2322"))
+    assert.doesNotMatch(loaded.stderr, /EK1011|EK3010|EK4401/)
+    assert.equal(compiles(), 4, "both cached projects observed the changed dependency setting")
+  }), { seed: 186, numRuns: 16, endOnFailure: true })
 })
 
 test("a different or rebuilt compiler recompiles", { skip }, async (t) => {
