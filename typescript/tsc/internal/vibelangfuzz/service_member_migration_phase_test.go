@@ -84,30 +84,71 @@ export effect function main(){provide live {` + tc.body + `}}
 	}
 }
 
-func TestServiceMemberControlProtocolPreserved(t *testing.T) {
-	w := NewWorkspace(t)
-	node, err := NewNode(w.Dir)
-	if err != nil {
-		t.Fatal(err)
+func serviceMemberControlRetirementQuoted(t testing.TB) {
+	t.Helper()
+	const quote = "The first-release retirement diagnostics are `EK3501` for `control` and `handle` syntax"
+	if !strings.Contains(SpecText("000-intro.md"), quote) {
+		t.Fatalf("retirement rule no longer says %q", quote)
 	}
-	t.Cleanup(node.Close)
-	source := `control Ask {ask():number!!}
-export effect function main(){try {return try Ask.ask()} handle Ask.ask(){try resume(7)}}`
-	files := map[string]string{"main.vibe": source, "package.json": `{"type":"module"}`}
-	r, err := w.Compile(t.Context(), Project{Files: files})
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer r.Remove()
-	if errs := legacyErrors(r); len(errs) > 0 {
-		t.Fatalf("Control protocol changed: %v", errs)
-	}
-	result := vibelang.FixProjectWithOptions(t.Context(), w.fs, bundled.LibPath(), toolsConfig(w, r.Dir), vibelang.FixOptions{MigrationOnly: true})
-	if result.Err != nil || len(result.Files) > 0 || len(result.Refused) > 0 {
-		t.Fatalf("changed Control operation: %+v", result)
-	}
-	got := node.Run(r, "out/main.js", "main")
-	if got.Kind != "success" || string(got.Value) != "7" {
-		t.Fatalf("Control operation changed: %+v", got)
+}
+func TestServiceMemberControlRetirementQuoted(t *testing.T) { serviceMemberControlRetirementQuoted(t) }
+func TestServiceMemberControlRetirementPreserved(t *testing.T) {
+	serviceMemberControlRetirementQuoted(t)
+	for _, tc := range []struct {
+		name, tail string
+		repair     bool
+	}{
+		{"tail-resume", "return try resume(7)", true},
+		{"tail-statement", "try resume(7)", true},
+		{"non-tail-resume", "const result = try resume(7); return result + 1", false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			w := NewWorkspace(t)
+			source := "control Ask {ask():number!!}\nexport effect function main(){try {return try Ask.ask()} handle Ask.ask(){" + tc.tail + "}}"
+			files := map[string]string{"main.vibe": source, "package.json": `{"type":"module"}`}
+			r, err := w.Compile(t.Context(), Project{Files: files})
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer r.Remove()
+			errs := legacyErrors(r)
+			if len(errs) != 2 || !strings.Contains(errs[0], " 3501:") || !strings.Contains(errs[1], " 3501:") {
+				t.Fatalf("retired syntax must retain two EK3501 errors: %v", errs)
+			}
+			result := vibelang.FixProjectWithOptions(t.Context(), w.fs, bundled.LibPath(), toolsConfig(w, r.Dir), vibelang.FixOptions{MigrationOnly: true})
+			if result.Err != nil {
+				t.Fatal(result.Err)
+			}
+			if !tc.repair {
+				if len(result.Files) > 0 || len(result.Refused) == 0 {
+					t.Fatalf("non-tail continuation must be retained with a refusal: %+v", result)
+				}
+				return
+			}
+			fixed := maps.Clone(files)
+			for name, file := range result.Files {
+				fixed[filepath.Base(name.AsString())] = file.Text
+			}
+			if len(result.Refused) != 0 || !strings.Contains(fixed["main.vibe"], "service Ask") || strings.Contains(fixed["main.vibe"], "resume(") {
+				t.Fatalf("missing preserving service migration: %+v\n%s", result, fixed["main.vibe"])
+			}
+			after, err := w.Compile(t.Context(), Project{Files: fixed})
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer after.Remove()
+			if errs := legacyErrors(after); len(errs) > 0 {
+				t.Fatalf("service migration rejected: %v", errs)
+			}
+			node, err := NewNode(w.Dir)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer node.Close()
+			got := node.Run(after, "out/main.js", "main")
+			if got.Kind != "success" || string(got.Value) != "7" {
+				t.Fatalf("migrated result changed: %+v", got)
+			}
+		})
 	}
 }

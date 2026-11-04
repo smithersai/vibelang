@@ -13,6 +13,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - Migration setup could add a loader helper to a script that launches built JavaScript and break tests evaluating it in a VM. Proven JavaScript paths now preserve the script’s original bytes, and repeated setup removes the unnecessary generated helper.
 - Migration could add an inferred `Generator<…>` return type and reject an unchanged `Effect.fn` contract. The rename step now leaves unwritten return types unwritten when functions are plain by syntax.
 
+- A compiler regression check still expected retired handler syntax to run unchanged; it now checks `EK3501`, preserving service migration and refusal of continuation-dependent rewrites.
 - Moving an exported `unique symbol` into a private module could make an unchanged API fail migration verification. The checker now follows its public export path while still rejecting changed symbol keys, member types and documentation.
 
 ## 0.0.11
