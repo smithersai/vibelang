@@ -1067,3 +1067,5 @@ Ten completed failures contracts graduate only after their original oracles pass
 Plain catch-handler coverage distinguishes native caught calls, uncaught calls, finally blocks and nested functions from explicitly marked Effect handlers. Written throwing and never contracts, grouping, Unicode prefixes and declaration-file forms retain their source-context diagnostics.
 
 The diagnostic-link oracle retains the round-36 `EK4857` duplicate-`Meaning` witness. A seeded `fast-check` property exercises 240 layouts with repeated headings, blank lines, nested sections and fenced heading lookalikes; numbered fragments must resolve only their own occurrence.
+
+Error and schema-error declaration counterparts follow the 2026-11-04 VIP-27 ruling implemented by `5df13e0fc559`: generated matcher members and runtime references stay out of published types. The strict API oracle remains unchanged. Coverage includes computed payloads, fieldless errors, schema codecs and an accessor, including the schema fixture’s second source file; keyed archives retain those paired inputs.
