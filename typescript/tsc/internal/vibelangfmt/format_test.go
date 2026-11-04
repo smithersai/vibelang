@@ -888,7 +888,7 @@ func TestFormatVibex(t *testing.T) {
 		"jsx-operands":           "effect function f() { const child = fork <b/>; const x = join <b/>; return try <b/> }\n",
 		"error-before-jsx":       "error Timeout\n<App/>\n",
 		"generic-catch":          "const el = <p>{x catch <E,>(e: E) => 1}</p>\n",
-		"relational-pattern":     "const el = match (s) { when < /b/: <A/>; default: <B/>; }\n",
+		"relational-pattern":     "const el = match (s) { when < limits[/b/.source]: <A/>; default: <B/>; }\n",
 		"effect-type-assignment": "const el = <p>{do { const p: A!!=src; p }}</p>\n",
 		"regex-comparison":       "const el = <p>{a < /re/.source.length}</p>\n",
 		"self-closing":           "const el = <Box value={tryIt()}/>\n",
@@ -985,6 +985,8 @@ func TestFormatVibexRejectsTSXAmbiguities(t *testing.T) {
 		"const el = <p>{</p>",
 		"const x = a </b/.source.length",
 		"const x = match (n) { when <b/>: 1; default: 2; }",
+		"const el = match (s) { when < /b/: <A/>; default: <B/>; }",
+		"const el = match (s) { when === /b/: <A/>; default: <B/>; }",
 	} {
 		if got, err := Format("bad.vibex", source, func(s string) (string, error) { return s, nil }); err == nil {
 			t.Fatalf("formatted invalid TSX %q as %q", source, got)

@@ -357,7 +357,7 @@ The pinned design gives an ordinary `is` expression's `let` and `const` bindings
 
 A regular expression is a pattern: `when /^\d+$/:` matches a string the expression's `test` accepts. With an argument list it is an extractor whose value is the match, so `/(?<id>\d+)/(let m)` binds the match array, with `m.groups`. A global expression, `/\d/g(let first, ...let rest)`, extracts one element per match.
 
-A relational pattern compares the value on its left with an operand: `<`, `>`, `<=` and `>=` match only a string, a number or a bigint that compares as JavaScript does; `===`, `!==`, `==` and `!=` test as the operators do; `instanceof` and `in` test as the operators do, and `in` fails on a subject that is not a property key.
+A relational pattern compares the value on its left with an operand: `<`, `>`, `<=` and `>=` match only a string, a number or a bigint that compares as JavaScript does; `===`, `!==`, `==` and `!=` test as the operators do; `instanceof` and `in` test as the operators do, and `in` fails on a subject that is not a property key. The operand follows the pinned grammar: a literal, a template without substitutions, a member expression, or its permitted signed form. A regex can be a standalone pattern or occur inside a member access, such as `when < limits[/b/.source]:`; a raw `when < /b/:` is not a relational pattern.
 
 ```vibe
 // run: try Console.log(try Effect.try(() => JSON.stringify([size(3), size(15), size(99), size("big"), id("ab 12"), id("none")])))
