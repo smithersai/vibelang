@@ -3,5 +3,6 @@ main.vibe(3,38): error TS1030
 main.vibe(4,35): error TS1030
 main.vibe(5,46): error TS1030
 main.vibe(6,33): error TS1030
+main.vibe(7,23): warning EK1308
 main.vibe(8,28): error EK2117
 main.vibe(8,46): error TS1030
