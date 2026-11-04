@@ -248,7 +248,8 @@ queue:
 | `//typescript/tsc:go-parser` | `typescript/tsc/internal/parser/`, `typescript/vibelang/cases/vibex-clash/` or `typescript/tsc/PACKAGE.ts` |
 | `//:spec-registry-go` | Published specification/VIP assignments, compiler/core diagnostic declarations and fuzz registry inventories; validates registrations and rejects obsolete legacy exceptions. |
 | `//:tooling-citations` | Service/tooling chapters, their owning VIPs, configuration/core options and the four covered fuzz sources; checks exact public quotations and retired-setting properties without a runtime build. |
-| `//:lint-config` | Configuration/core options, imported lint options or hooks, fixer/config diagnostics, lint fuzz tests, or the VIP-38 contract; checks warning, activation and preserving migration without building runtime packages. |\n| `//:docs-contracts` | Specification chapters/VIPs, user pages, covered contract tests and fixtures, or `docs/tools` dependencies; runs native examples and mutation guards without building the compiler. Appendix B owner checks run here; the complete compiler-backed no-throw suite remains in `//:docs-tools`. |
+| `//:lint-config` | Configuration/core options, imported lint options or hooks, fixer/config diagnostics, lint fuzz tests, or the VIP-38 contract; checks warning, activation and preserving migration without building runtime packages. |
+| `//:docs-contracts` | Specification chapters/VIPs, user pages, covered contract tests and fixtures, or `docs/tools` dependencies; runs native examples and mutation guards without building the compiler. Appendix B owner checks run here; the complete compiler-backed no-throw suite remains in `//:docs-tools`. |
 | `//packages:runtime-package` | `packages/runtime/`, `packages/PACKAGE.ts` or `docs/tools/bugbash4-docs.test.mjs` |
 | `//:effect-pin` | a `package.json` or `scripts/effect-pin*` |
 | `//:flow-layout` | the migrate flow's `lib/steps.mjs` or its layout test |
@@ -885,7 +886,7 @@ Launcher fixtures that expect the whole suite set `GO_TEST_SLICE=1/1` explicitly
 
 The `//:spec-tests` selector includes every `Test…Quoted` in its declared Go packages by name. Quote checks need no explicit list entry. `node --test scripts/spec-tests.test.mjs` and `bun test docs/tools/spec-quote-gates.test.mjs` check the executable selector, its package scope and the listed tests together.
 
-`//:spec-registry-go` runs `TestRegistryMatchesSpec` alone. `mq.py spec-push` runs it with the spec linters, so a spec-only commit that assigns an Appendix B code needs a registered message or a `specAhead` entry naming the lane that registers it. A target of one test still blocks a push while `//:spec-tests` is red for other reasons, because `spec-push` tolerates a target `main` already fails.
+`//:spec-registry-go` checks assigned-code registration, stale legacy-code exceptions, and grammar-inventory citations, with sentence-boundary properties for historical references. `mq.py spec-push` runs it with the spec linters, so a spec-only commit that assigns an Appendix B code needs a registered message or a `specAhead` entry naming the lane that registers it. This focused target still blocks a push while `//:spec-tests` is red for other reasons, because `spec-push` tolerates a target `main` already fails.
 
 A gate that needs only some checks names their labels, for example
 `sh scripts/ci.sh //packages/... //:docs-check --jobs 8`; a full run is

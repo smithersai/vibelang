@@ -152,3 +152,64 @@ func withoutFoldedDetails(chapter string) string {
 	}
 	return chapter[:start+1]
 }
+
+// Appendix B: "A transitional compiler may still print compatibility
+// diagnostics from the old language." An inventory reason must identify
+// such a number as old, rather than presenting it as a current assignment.
+func TestGrammarAdmissionReasonsUsePublishedCodes(t *testing.T) {
+	const quote = "A transitional compiler may still print compatibility diagnostics from the old language."
+	appendix := SpecText(grammarAppendix)
+	if !strings.Contains(appendix, quote) {
+		t.Fatal("review the compatibility-code citation rule")
+	}
+	rows, _ := appendixBRows(appendix)
+	data, err := os.ReadFile(filepath.Join(Root(), "docs/design/registry/grammar-admission.tsv"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, line := range strings.Split(string(data), "\n") {
+		if line == "" || strings.HasPrefix(line, "#") {
+			continue
+		}
+		fields := strings.SplitN(line, "\t", 5)
+		if len(fields) != 5 {
+			t.Fatalf("malformed inventory row: %q", line)
+		}
+		for code, sentence := range citedCodes(fields[4]) {
+			if _, ok := rows[code]; !ok {
+				t.Errorf("%s: current-looking EK%s reference has no public row: %s", fields[0], code, sentence)
+			}
+		}
+	}
+}
+
+// VIP-34/Appendix B assigns current codes. The historical-reference exception
+// cannot leak across a sentence or newline into a current-code citation.
+func FuzzPublicCompatibilityCodeCitations(f *testing.F) {
+	for _, seed := range []uint8{0, 1, 2, 7, 255} {
+		f.Add(seed)
+	}
+	f.Fuzz(func(t *testing.T, n uint8) {
+		code := []string{"4611", "3207", "2120"}[int(n)%3]
+		old := "old"
+		if n&1 != 0 {
+			old = "OLD"
+		}
+		pad := strings.Repeat(" \t", int(n%8))
+		cases := []struct {
+			text    string
+			current bool
+		}{
+			{"The " + old + pad + " EK" + code + " compatibility diagnostic is unassigned.", false},
+			{"The " + old + " compatibility diagnostic is unassigned. Current EK" + code + " needs a row.", true},
+			{"The " + old + " compatibility diagnostic is unassigned\nCurrent EK" + code + " needs a row.", true},
+			{"The folded EK" + code + " reference still needs a row.", true},
+		}
+		for _, c := range cases {
+			_, got := citedCodes(c.text)[code]
+			if got != c.current {
+				t.Fatalf("%q: current=%v, want %v", c.text, got, c.current)
+			}
+		}
+	})
+}

@@ -181,6 +181,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 | Unused host namespace aliases such as `import NativeModule = WebAssembly.Module` | `vibelang --fix` removes already-erased aliases. Move a needed alias into a `.ts` adapter or use the injected Effect service. |
 
 ### Bugs fixed since 0.0.10
+
+- The grammar inventory cited old compatibility diagnostics as though they were current public assignments. Those references now explicitly say they are historical; all pending gaps and their regression witnesses remain intact.
 - Bare `data as T;`, `data satisfies T;`, and `data is Number;` statements bypassed the required data body check. They now report `EK1604`, and `vibelang --fix` preserves the intended expression by adding parentheses.
 
 - Generated error matchers could fail to load after the extractor update because the guarded runtime entry omitted its registration helper. The entry now exports the helper once and preserves its ABI identity.
