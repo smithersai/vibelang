@@ -44,4 +44,11 @@ else
 fi
 # Labels come only from the checked-in map, never from path text.
 [ -z "$seeds" ] || set -- "$@" $seeds
+# Build-only queue runs must validate what a new user copies too, including
+# workers without CI_GATE_BASE/CI_CHANGED_PATHS. The target builds this same
+# native compiler and runtime before checking every template.
+case " $* " in
+  *" //packages:compiler-native "*)
+    case " $* " in *" //:starter-templates "*) ;; *) set -- "$@" //:starter-templates ;; esac ;;
+esac
 exec .smithers/node_modules/.bin/smthrs ci "$@" --workspace "$root" --ui plain ${CI_RESULTS:+--results-file "$CI_RESULTS"}

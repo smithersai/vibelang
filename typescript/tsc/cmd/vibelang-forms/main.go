@@ -76,7 +76,22 @@ func main() {
 	previous := flag.String("previous", "", "the committed decision snapshot: fail if a decision moved without an approval")
 	approved := flag.String("approved", "", "the approvals file for -previous")
 	stats := flag.Bool("stats", false, "print counts and timing to stderr")
+	legacy := flag.String("legacy", "", "audit a project with the native compiler; require zero diagnostics, warnings included")
+	compiler := flag.String("compiler", "", "native compiler for -legacy (default packages/compiler/native/vibelang)")
 	flag.Parse()
+	if *legacy != "" {
+		if *compiler == "" {
+			root := *repo
+			if root == "" {
+				root = must(findRepo())
+			}
+			*compiler = filepath.Join(root, "packages", "compiler", "native", "vibelang")
+		}
+		if err := auditLegacy(*compiler, *legacy); err != nil {
+			fail(err)
+		}
+		return
+	}
 	root := *repo
 	if root == "" {
 		var err error

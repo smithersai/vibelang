@@ -82,9 +82,15 @@ examples/vue-vite/src/todos.test.vibe:9:56 lambda effectFn keyword
 examples/vue-vite/src/todos.vibe:12:46 lambda program table
 examples/vue-vite/src/todos.vibe:19:5 lambda effectFn keyword
 examples/vue-vite/src/todos.vibe:20:5 lambda effectFn keyword
+templates/app/src/greeting.test.vibe:10:18 lambda effectFn table
+templates/app/src/greeting.test.vibe:10:37 lambda effectFn table
+templates/app/src/greeting.test.vibe:11:18 lambda plain table
 templates/app/src/greeting.test.vibe:4:28 lambda effectFn keyword
-templates/app/src/greeting.test.vibe:8:42 lambda effectFn keyword
-templates/app/src/main.vibe:8:3 lambda effectFn keyword
+templates/app/src/greeting.test.vibe:6:18 lambda plain table
+templates/app/src/greeting.test.vibe:9:42 lambda effectFn keyword
+templates/app/src/main.vibe:14:29 lambda effectFn keyword
+templates/app/src/main.vibe:14:5 lambda effectFn table
+templates/app/src/main.vibe:20:21 byname program table
 typescript/vibelang/cases/acquire-function-resource/main.vibe:11:35 lambda program table
 typescript/vibelang/cases/acquire-function-resource/main.vibe:13:19 lambda plain table
 typescript/vibelang/cases/acquire-function-resource/main.vibe:13:7 byname program table

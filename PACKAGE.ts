@@ -454,8 +454,15 @@ const targets = {
       "site/scripts/sync-spec-docs.test.mjs site/scripts/sync-user-docs.test.mjs " +
       ".smithers/flows/effect-bump/test/*.test.mjs .smithers/flows/ts-bump/test/*.test.mjs .smithers/flows/ci-health/test/*.test.mjs .smithers/flows/first-bad/test/*.test.mjs " +
       ".smithers/flows/test/*.test.mjs",
-    [Packages["compiler-native"], Packages["runtime-dist"]],
+    [Typescript["forms-generator"], Packages["compiler-native"], Packages["runtime-dist"]],
     [node, bun, gofmt, bun, go, S.Host.bin("diff3")]
+  ),
+  "starter-templates": check(
+    "Compile and run every starter with zero diagnostics and zero legacy sites.",
+    "bun test --timeout 180000 docs/tools/starter-templates.test.ts",
+    [Typescript["forms-generator"], Packages["compiler-native"], Packages["runtime-dist"]],
+    [bun, node],
+    "5m"
   ),
   snippets: check(
     "Compile every code block in the docs.",
@@ -529,7 +536,7 @@ const targets = {
   "docs-tools": check(
     "docs/tools' bun tests, with cached specification links and linters and without site contrast.",
     "cd docs/tools && bun test --timeout 60000 --parallel=3 --no-isolate $(ls *.test.* | grep -vE '^(site-(contrast|spec-links)|spec-lint)\\.test\\.')",
-    [Typescript.compiler, Packages["runtime-dist"], Packages["compiler-native"], siteSpecLinks, specLint],
+    [Typescript.compiler, Typescript["forms-generator"], Packages["runtime-dist"], Packages["compiler-native"], siteSpecLinks, specLint],
     [bun, node, S.Host.bin("jj")]
   ),
   // It installs and builds a private copy of site/ (docs/tools/site-scratch.ts),

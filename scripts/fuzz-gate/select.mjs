@@ -7,9 +7,13 @@ export const families = JSON.parse(readFileSync(new URL("map.json", import.meta.
 export function select(paths) {
   const names = paths.map(path => path.replaceAll("\\", "/").replace(/^\.\//, ""))
   const mapChanged = names.some(path => path.startsWith("scripts/fuzz-gate/"))
-  return Object.entries(families).filter(([, family]) => mapChanged ||
+  const selected = Object.entries(families).filter(([, family]) => mapChanged ||
     family.paths.some(pattern => names.some(path => new RegExp(pattern).test(path))))
-    .map(([name]) => "//scripts/fuzz-gate:" + name).sort()
+    .map(([name]) => "//scripts/fuzz-gate:" + name)
+  if (names.some(path => /^(templates\/|docs\/tools\/starter-templates\.test\.ts$|scripts\/starter-templates\.test\.mjs$|typescript\/tsc\/cmd\/vibelang-forms\/)/.test(path))) {
+    selected.push("//:starter-templates")
+  }
+  return selected.sort()
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {

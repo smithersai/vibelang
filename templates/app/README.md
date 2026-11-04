@@ -20,7 +20,9 @@ checks the project with `vibelang`, serves compiled JavaScript from
 lines. `test` needs no prior build.
 
 Edit `src/main.vibe` for the service and layer, and `src/greeting.vibe` for
-a typed failure. Import local `.vibe` source files; the compiler emits `.js`
+a typed failure. Look up the service with `try Greeter`, then call its methods;
+recover failures with a `catch effect` handler. `NodeRuntime.runMain(main())`
+starts the program explicitly. Import local `.vibe` source files; the compiler emits `.js`
 imports. Source maps connect Node debugging to those sources.
 
 ## Debugging failures

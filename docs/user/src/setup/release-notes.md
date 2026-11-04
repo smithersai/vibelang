@@ -197,6 +197,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - In an `effect` function, a call of an unannotated `.ts` function inside a class field initializer or `static` block reported `EK0403`, as if it ran in effect code, and the same call in a parameter default reported `EK0403` too. A field initializer or `static` block is plain code, so the call is now an ordinary call there; a default in an `effect` function's or producer's parameter list runs before its Effect exists and now reports `EK0401`.
 
+- The starter uses explicit service lookup and catch expressions, wraps test assertions with `Effect.try`, and starts `main` explicitly. Every template is compiled without diagnostics or warnings and run against its expected output in the queue.
+
 - The forms gate rejected explicit Effect callbacks after independently landed changes moved their source locations; its reviewed snapshot now records the written modifier at each affected site.
 
 - Combining the chained-assertion and pipe-parser changes stopped compiler builds; the assertion probe now passes the pipe parser's arrow-context argument, with continuation tests covering both assertion operators and conditional tails.

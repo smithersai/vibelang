@@ -34,7 +34,7 @@ Hello, VibeLang!
 Recovered from EmptyName
 ```
 
-`src/greeting.vibe` declares an `EmptyName` error and a `greeting` function that fails with it. `src/main.vibe` declares a `Greeter` service, supplies it with a `Layer.succeed` layer, recovers from the typed failure, and runs `main` with `NodeRuntime.runMain` at the top of the module. `src/greeting.test.vibe` tests both paths with `it.effect`. Vitest compiles `src/**/*.test.vibe` through `vibelang-vite`, so the tests need no build step.
+`src/greeting.vibe` declares an `EmptyName` error and a `greeting` function that fails with it. `src/main.vibe` declares a `Greeter` service, supplies it with a `Layer.succeed` layer, looks it up with `const greeter = try Greeter`, recovers from the typed failure with a `catch effect` handler, and runs `main` with `NodeRuntime.runMain` at the top of the module. `src/greeting.test.vibe` tests both paths with `it.effect`. Vitest compiles `src/**/*.test.vibe` through `vibelang-vite`, so the tests need no build step.
 
 `npm run dev` (or `bun run dev`) recompiles on every change and restarts Node when the output changes. Ctrl+C stops both watchers.
 

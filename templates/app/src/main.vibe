@@ -1,22 +1,20 @@
+import * as NodeRuntime from "@effect/platform-node/NodeRuntime"
 import { EmptyName, greeting } from "./greeting.vibe"
 
 service Greeter {
   greet(name: string): string!EmptyName
 }
 
-const GreeterLive = Layer.succeed(Greeter, {
-  effect greet(name: string) {
-    return try greeting(name)
-  },
-})
+const GreeterLive = Layer.succeed(Greeter, { greet: greeting })
 
 export effect function main() {
   provide GreeterLive {
-    try Console.log(try Greeter.greet("VibeLang"))
-    try {
-      try Greeter.greet("")
-    } catch (error) {
+    const greeter = try Greeter
+    try Console.log(try greeter.greet("VibeLang"))
+    greeter.greet("") catch effect (error) => {
       try Console.log(`Recovered from ${error._tag}`)
     }
   }
 }
+
+NodeRuntime.runMain(main())

@@ -167,3 +167,19 @@ test("an empty paths file and ordinary CI preserve the requested selection", t =
 test("hosted gates select changed paths against their tested base", () => {
   assert.match(read(".github/workflows/mq-pregate.yml"), /CI_GATE_BASE="\$PRE_BASE".*CI_RESULTS=/)
 })
+
+test("template edits select the native starter contract in build-only gates", () => {
+  for (const path of ["templates/app/src/main.vibe", "templates/new/src/main.vibe", "docs/tools/starter-templates.test.ts",
+    "scripts/starter-templates.test.mjs", "typescript/tsc/cmd/vibelang-forms/legacy.go"]) {
+    assert.ok(select([path]).includes("//:starter-templates"), path)
+  }
+})
+
+test("build-only queue checks include starters even without a changed-path environment", t => {
+  const f = fixture(t)
+  const run = spawnSync("sh", ["scripts/ci.sh", "//packages:compiler-native", "--jobs", "2"], {
+    cwd: f.root, env: f.env, encoding: "utf8", timeout: 15000,
+  })
+  assert.equal(run.status, 0, run.stderr)
+  assert.ok(f.args().includes("//:starter-templates"))
+})

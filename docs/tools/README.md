@@ -534,3 +534,20 @@ run `bun test docs/tools/release-docs.test.mjs docs/tools/release-history-public
 The bookkeeping property runs `40` seeded cases and its explicit examples.
 It has `60` seconds for its child-process fixtures on shared hosts; each child
 retains its own timeout.
+
+### Starter templates
+
+`bun test docs/tools/starter-templates.test.ts` checks every directory under
+`templates/` with the checkout compiler and runtime, including test sources,
+then runs its main and compares exact stdout. The queue selects
+`//:starter-templates` for template edits; the release suite also runs it.
+Build the native compiler, runtime and forms generator first.
+
+`typescript/built/local/vibelang-forms -legacy templates/app/tsconfig.test.json`
+audits a project with the native compiler and checks resolved service calls and
+effect-body try statements still accepted by compatibility lowering. It prints `0 legacy sites` only for
+a diagnostic-free project: warnings and unrelated type errors also fail, since
+an invalid program cannot establish a clean audit. `-compiler` selects the
+compiler explicitly; the default is this checkout's native compiler. The
+audit uses the project's compiler configuration; the template configs keep
+the default diagnostic severities.
