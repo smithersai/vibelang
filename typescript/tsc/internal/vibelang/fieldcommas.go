@@ -16,7 +16,7 @@ import (
 // the parser marks their comma nodes as synthesized class separators.
 // Other retained markers still get this diagnostic and its semicolon fix.
 
-// EK1013: a comma after a field of an error, schema, schema error, or control declaration. {0} is the declaration's kind, such as "an error".
+// EK1013: a comma after a field of an error, schema error, or control declaration whose body is a class body. {0} is the declaration's kind, such as "an error".
 var EK1013 = message(1013, errorCategory, "The fields of {0} are separated by ; or a new line, not by a comma.")
 
 // EK1306 and EK0908 (decided detail 241, Appendix A Separator): two members
@@ -31,6 +31,7 @@ var (
 
 func init() {
 	registry[EK1013.Code] = EK1013
+	tsFormFixCodes = append(tsFormFixCodes, EK1013.Code)
 	registry[EK1306.Code] = EK1306
 	registry[EK0908.Code] = EK0908
 	fileChecks = append(fileChecks, checkFieldCommas)

@@ -1,4 +1,4 @@
-// expect: TS2300 TS2717 EK2124 EK1606 EK2126 EK2801 EK1013
+// expect: TS2300 TS2717 EK2124 EK1606 EK2126 EK2801
 // What a data declaration (D307) cannot hold.
 
 // Zero variants are permitted (VIP-16/detail 25).
@@ -23,12 +23,6 @@ data Members {
   Mutable { mutable count: number }
   Untyped { untyped }
   Indexed { [key: string]: unknown }
-}
-
-// EK1013: ; or a new line separates fields and variants, as in an error's body.
-data Commas {
-  Point { x: number, y: number },
-  Origin
 }
 
 // EK2801 limits the parameter count; EK2126 rejects a constraint.

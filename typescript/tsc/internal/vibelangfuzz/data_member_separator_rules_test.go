@@ -21,6 +21,12 @@ func dataMemberSeparatorRules() []dataRule {
 		{"data-separator-payload-newline-before-body", "006-data.md", quote, "data D { A\n{ x:number\ny:string }\nB }", "", "impl-hunt-data"},
 		{"data-separator-fields-semicolon", "006-data.md", quote, "data D { A { x:number; y?:string } }", "", "impl-hunt-data"},
 		{"data-separator-fields-block-newline", "006-data.md", quote, "data D { A { x:number /*\n*/ y:string } }", "", "impl-hunt-data"},
+		{"data-separator-variants-comma", "900-appendices.md", "Separator = \";\" | \",\" | a LineTerminator before the next token | before \"}\"", "data D { A, B }", "", "impl-hunt-data"},
+		{"data-separator-variants-comma-trailing", "900-appendices.md", "Separator = \";\" | \",\" | a LineTerminator before the next token | before \"}\"", "data D { A { x:number }, B, }", "", "impl-hunt-data"},
+		{"data-separator-variants-comma-line", "900-appendices.md", "Separator = \";\" | \",\" | a LineTerminator before the next token | before \"}\"", "data D { A,\nB { y:string } }", "", "impl-hunt-data"},
+		{"data-separator-fields-comma", "900-appendices.md", "Separator = \";\" | \",\" | a LineTerminator before the next token | before \"}\"", "data D { A { x:number, y?:string, } }", "", "impl-hunt-data"},
+		{"schema-separator-fields-comma", "900-appendices.md", "Separator = \";\" | \",\" | a LineTerminator before the next token | before \"}\"", "schema S { a:string, readonly b:number }", "", "impl-hunt-data"},
+		{"schema-separator-fields-comma-trailing", "900-appendices.md", "Separator = \";\" | \",\" | a LineTerminator before the next token | before \"}\"", "schema S { a:string, }", "", "impl-hunt-data"},
 		{"data-separator-native-nested-type", "006-data.md", quote, "data D { A { x:{ n:number s:string }; y:string } }", "only:TS1005", "impl-hunt-data"},
 		{"data-separator-native-ordinary-type", "006-data.md", quote, "type D = { n:number s:string }", "only:TS1005", "impl-hunt-data"},
 	}

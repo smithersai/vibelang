@@ -1,0 +1,14 @@
+import { Data, Effect, Schema } from "effect"
+// Appendix A: Separator = ";" | "," | a LineTerminator before the next token | before "}".
+// A schema declaration's fields, a data declaration's variants and a variant's
+// fields take the same separators (chapter 006).
+export schema Comma { readonly one: string, readonly two: number, }
+export data Shape { Dot, Point { x: number, y: number }, Line { from: number; to: number }, }
+
+function probe(): unknown {
+  const decoded = Schema.decodeUnknownSync(Comma)({ one: "a", two: 2 })
+  const point = Shape.Point({ x: 1, y: 2 })
+  return [decoded.one, decoded.two, Shape.Dot()._tag, point._tag, point.x + point.y, Shape.Line({ from: 0, to: 3 }).to]
+}
+
+export function main(): Effect.Effect<unknown> { return Effect.sync(probe) }

@@ -34,7 +34,7 @@ Rejected: address missing
 true
 ```
 
-A variant without fields is a bare name. A variant with fields lists them in braces as an `error` does, `name: Type` or `name?: Type`, and they are readonly. A new line, `;` or `,` separates variants and fields. The current compiler still reports a comma as `EK1013`. `Delivery.Sent({ tracking })` and `Delivery.Waiting()` build values: plain records with a `_tag`, which compare and hash by their fields.
+A variant without fields is a bare name. A variant with fields lists them in braces as an `error` does, `name: Type` or `name?: Type`, and they are readonly. A new line, `;` or `,` separates variants and fields. `Delivery.Sent({ tracking })` and `Delivery.Waiting()` build values: plain records with a `_tag`, which compare and hash by their fields.
 
 A parenthesized payload such as `data D { A(x: number) }` reports `EK1606`; write `A { x: number }`. Payload methods and signatures, such as `A { m(): void }`, also report `EK1606`. A function-valued field such as `A { m: () => void }` is allowed.
 

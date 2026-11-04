@@ -8,6 +8,4 @@ Subsequent property declarations must have the same type.
 [key: string]: unknown is not a field: a variant holds only fields, each written name: Type or name?: Type.
 run(): void is not a field: a variant holds only fields, each written name: Type or name?: Type.
 _tag cannot name a field: a variant's constructor sets _tag to the variant's name.
-The fields of a data variant are separated by ; or a new line, not by a comma.
-The variants of a data declaration are separated by ; or a new line, not by a comma.
 untyped has no type: write untyped: Type.

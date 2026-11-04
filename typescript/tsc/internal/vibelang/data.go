@@ -7,7 +7,6 @@ import (
 
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/checker"
-	"github.com/microsoft/TypeScript/tsc/internal/core"
 	"github.com/microsoft/TypeScript/tsc/internal/diagnostics"
 	"github.com/microsoft/TypeScript/tsc/internal/parser"
 	"github.com/microsoft/TypeScript/tsc/internal/scanner"
@@ -24,7 +23,7 @@ import (
 //   - the declaration's rules: no name
 //     Data.taggedEnum reserves (EK2124), only fields in
 //     a variant (EK1606), at most four type parameters (EK2801), no constraints (EK2126),
-//     and no comma between variants or fields (EK1013);
+//     commas, semicolons and line breaks separate variants and fields (Appendix A Separator);
 //   - Name.Variant naming no variant, in a call, a pattern or anywhere else
 //     (EK2127, in place of TypeScript's TS2339);
 //   - patterns. A variant pattern, when Delivery.Sent or when Delivery.Sent
@@ -62,7 +61,6 @@ var (
 	ek1606Mutable    = EK1606.With("{0} cannot be mutable: Data.TaggedEnum makes every field of a variant readonly.")
 	ek1606Untyped    = EK1606.With("{0} has no type: write {0}: Type.")
 	ek4706Extractor  = EK4706.With("{0} is a data variant, and a variant's pattern lists its fields in braces: {0} { let field }.")
-	ek1013Variants   = EK1013.With("The variants of {0} are separated by ; or a new line, not by a comma.")
 )
 
 func init() {
@@ -320,7 +318,6 @@ func checkDataDeclaration(c *checker.Checker, file *ast.SourceFile, alias *ast.N
 		if slices.Contains(dataReserved, variantName) {
 			report(c, variant.Name(), EK2124, variantName)
 		}
-		reportDataComma(c, file, variant, ek1013Variants, "a data declaration")
 		fields := variant.Type()
 		if fields == nil || fields.Kind != ast.KindTypeLiteral {
 			continue
@@ -331,7 +328,6 @@ func checkDataDeclaration(c *checker.Checker, file *ast.SourceFile, alias *ast.N
 			continue
 		}
 		for _, field := range fields.Members() {
-			reportDataComma(c, file, field, EK1013, "a data variant")
 			switch {
 			case field.Kind != ast.KindPropertySignature:
 				report(c, field, EK1606, memberText(file, field))
@@ -394,17 +390,6 @@ func dataDefinitionOf(alias *ast.Node) *ast.Node {
 		}
 	}
 	return nil
-}
-
-// reportDataComma reports m, EK1013, at the comma that ends node, a variant
-// or a field, which the parser reads as a separator, as a type literal's
-// member's.
-func reportDataComma(c *checker.Checker, file *ast.SourceFile, node *ast.Node, m *Message, kind string) {
-	end := node.End()
-	if end == 0 || end > len(file.Text()) || file.Text()[end-1] != ',' {
-		return
-	}
-	note(reportAt(c, file, core.NewTextRange(end-1, end), m, kind), "Write ; or start a new line, as between the fields of an error.")
 }
 
 // memberText returns the first line of member's source text, to name it.
