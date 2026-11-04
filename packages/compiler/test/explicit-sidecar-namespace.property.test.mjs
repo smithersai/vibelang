@@ -24,7 +24,7 @@ test("explicit-sidecar resolution oracle quotes the current tooling rule", () =>
   assert.ok(readFileSync(join(repo, corpus.spec), "utf8").includes(corpus.rule))
 })
 
-function verify(input, literal = false) {
+function verify(input, literal = false, { nativeLibraries = false } = {}) {
   const root = realpathSync(mkdtempSync(join(tmpdir(), "opencode-sidecar-namespace-")))
   try {
     symlinkSync(realpathSync(modules), join(root, "node_modules"), "dir")
@@ -41,7 +41,7 @@ function verify(input, literal = false) {
       'import { ' + input.namespace + ' } from "@fixture/core/tool";\n' +
       'export const answer = ' + input.namespace + '.create((name, index) => ' + expression + ' + index);\n'
     const config = {
-      compilerOptions: { strict: true, noImplicitAny: !input.invalid, noEmit: true,
+      compilerOptions: { lib: ["es5"], strict: true, noImplicitAny: !input.invalid, noEmit: true,
         skipLibCheck: input.skipLibCheck, module: "NodeNext", moduleResolution: "NodeNext",
         allowArbitraryExtensions: true, moduleSuffixes: suffixes, types: [] },
       files: ["consumer.ts"],
@@ -64,6 +64,10 @@ function verify(input, literal = false) {
     const parsed = ts.parseJsonConfigFileContent(config, ts.sys, root)
     assert.deepEqual(parsed.errors, [])
     let program = ts.createProgram(parsed.fileNames, parsed.options)
+    assert.ok(program.getSourceFiles().some(source => /[/\\]lib\.es5\.d\.ts$/.test(source.fileName)),
+      "Companion namespace fixtures must retain the native ES5 library")
+    assert.ok(!program.getSourceFiles().some(source => /[/\\]lib\.dom(?:\.iterable)?\.d\.ts$/.test(source.fileName)),
+      "Companion namespace fixtures must not load unrelated browser libraries")
     const stock = ts.getPreEmitDiagnostics(program).map(d => d.code)
     program = null
     assert.deepEqual([...new Set(stock)], input.invalid ? [2339] : [], "stock TypeScript oracle")
@@ -78,6 +82,18 @@ function verify(input, literal = false) {
     evidence = JSON.stringify({ input, stock, native: { status: native.status, codes, output: output.replaceAll(root, "<project>") } })
     assert.equal(native.status, input.invalid ? 2 : 0, evidence)
     assert.deepEqual(codes, input.invalid ? ["TS2339"] : [], evidence)
+    if (nativeLibraries) {
+      const listing = spawnSync(binary, ["-p", join(root, "tsconfig.json"), "--listFilesOnly", "--pretty", "false"], {
+        cwd: root, encoding: "utf8", timeout: 30000, maxBuffer: 2 << 20,
+      })
+      assert.ifError(listing.error)
+      assert.equal(listing.signal, null)
+      assert.equal(listing.status, 0, listing.stdout + listing.stderr)
+      assert.ok(listing.stdout.includes("lib.es5.d.ts"),
+        "Native companion namespace fixtures must retain ES5 declarations")
+      assert.ok(!/[/\\]lib\.dom(?:\.iterable)?\.d\.ts/.test(listing.stdout),
+        "Native companion namespace fixtures must not load unrelated browser libraries")
+    }
     for (const [name, expected] of Object.entries(hashes))
       assert.equal(hash(readFileSync(join(root, name))), expected, "consumer and declaration inputs remain unchanged")
   } finally { rmSync(root, { recursive: true, force: true }) }
@@ -106,3 +122,6 @@ test("property: explicit companion imports preserve contextual types and reject 
     regressions: new URL("./property-regressions/", import.meta.url),
   })
 })
+
+test("companion namespace projects load only the libraries they use", nativeOptions,
+  () => verify(corpus.input, true, { nativeLibraries: true }))

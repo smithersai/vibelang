@@ -232,6 +232,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Private-member declaration API tests still loaded browser libraries during comparison. Their fixed and generated comparisons now use the same ES5 baseline as native validation.
 
+- Companion namespace regression tests loaded browser declarations for every generated project. Stock TypeScript and native checks now load only the required ES5 library while retaining suffix and type-error checks.
+
 - Stock TypeScript tools rejected the mapper prelude after the old interruption and yield factories were retired. The mapper now imports `interrupt` and `yieldNow` directly from Effect and preserves their native value identities.
 - Match-chain migration validation now retains the explicit fallback required for destructuring combinator arms and checks that exhaustive tagged handlers keep their results and public types.
 

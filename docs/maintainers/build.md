@@ -1696,3 +1696,10 @@ validation and comparison, including all 24 generated class shapes. Their
 loaded-library guards also cover fixed private signatures and comparisons
 against the same package directory. Native private, protected and ECMAScript
 private-member incompatibility checks remain active.
+
+Companion namespace fixtures select ES5 declarations in the shared project
+configuration used by stock TypeScript and the native compiler. Both retain
+the real ES5 library and reject unrelated browser libraries. All 80 generated
+samples, declaration suffix combinations, both `skipLibCheck` settings and
+real `TS2339` counterexamples remain enabled; every input file keeps its
+original content hash during compilation.
