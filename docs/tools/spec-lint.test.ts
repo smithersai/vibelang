@@ -439,3 +439,26 @@ test("chapter-codes accepts a code Appendix B states retired and rejects an unkn
   const unknown = withEdit("src/002-running.md", text => text.replace("## `try`\n", "## `try`\n\nThe old `EK2007` warning is gone.\n"))
   expect(lint(unknown, rule("chapter-codes")).map(v => v.message)).toEqual(["EK2007 has no Appendix B row and no retirement note"])
 })
+
+test("chapter-codes preserves generator repair ordering without an unassigned code", () => {
+  const current = loadSpec()
+  expect(lint(current, rule("chapter-codes"))).toEqual([])
+  const row = current.get("src/007-tooling.md")!.split("\n").find(line => line.startsWith("| `EK4839` |"))!
+  expect(row).toContain("is reported after that generator is rewritten by `vibelang --fix`")
+  expect(row).toContain("`Effect.gen`")
+  expect(row).toContain("`Effect.fn`")
+})
+
+test("chapter-codes rejects unassigned migration advice across the diagnostic range", () => {
+  const current = loadSpec()
+  const appendix = current.get("src/900-appendices.md")!
+  fc.assert(fc.property(fc.integer({ min: 1000, max: 9999 }).filter(n => !appendix.includes("EK" + n)), n => {
+    const code = "EK" + n
+    const bad = new Map(current)
+    bad.set("src/007-tooling.md", bad.get("src/007-tooling.md")! + "\nRun `" + code + "`'s generator repair first.\n")
+    expect(lint(bad, rule("chapter-codes")).map(v => v.message)).toEqual([code + " has no Appendix B row and no retirement note"])
+    const corrected = new Map(current)
+    corrected.set("src/007-tooling.md", corrected.get("src/007-tooling.md")! + "\nRun `vibelang --fix`'s preserving generator repair first.\n")
+    expect(lint(corrected, rule("chapter-codes"))).toEqual([])
+  }), { numRuns: 200, seed: 20261104 })
+})

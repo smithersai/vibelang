@@ -3591,6 +3591,10 @@ typescript/vibelang/cases/function-constructor-exempt-wrappers/main.vibe:2:4 lam
 typescript/vibelang/cases/function-constructor-exempt-wrappers/main.vibe:3:4 lambda plain fallback
 typescript/vibelang/cases/function-constructor-exempt-wrappers/main.vibe:4:4 lambda plain fallback
 typescript/vibelang/cases/function-constructor-exempt-wrappers/main.vibe:5:4 lambda plain fallback
+typescript/vibelang/cases/generator-match-advice.fail/main.vibe:4:23 lambda effectFn annotation
+typescript/vibelang/cases/generator-match-advice.fail/main.vibe:5:11 lambda plain table
+typescript/vibelang/cases/generator-match-advice.fail/main.vibe:5:28 lambda plain table
+typescript/vibelang/cases/generator-match-advice.fail/main.vibe:8:32 lambda choice fallback
 typescript/vibelang/cases/generator-method-runs-effect.fail/main.vibe:17:3 lambda dual fallback
 typescript/vibelang/cases/generator-method-runs-effect.fail/main.vibe:25:11 lambda effectFn keyword
 typescript/vibelang/cases/generic-callees/main.vibe:17:25 lambda effectFn keyword

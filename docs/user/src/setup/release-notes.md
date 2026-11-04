@@ -186,6 +186,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Source-child helper validation rejected the compiler's permitted generated `@throws {never}` contract; it now uses the declaration identity gate while preserving checks for authored documentation and type changes.
 - Migration wrapper-loss checks could fail their regression suite after private packages gained normal emission. Separate checks now cover private-package output and scratch fallback while preserving lost-wrapper rejection.
 - The final migration-record regression fixture stopped at missing compiler provenance before testing generated output. It now checks both refusals independently, including that `force` bypasses neither.
+- Match migration advice named an unregistered diagnostic for its prerequisite generator rewrite. It now names `vibelang --fix` and preserves the same repair order.
 
 - The grammar inventory cited old compatibility diagnostics as though they were current public assignments. Those references now explicitly say they are historical; all pending gaps and their regression witnesses remain intact.
 - Filesystem platform errors recommended methods on the `FileSystem` namespace, where they do not exist; their advice now gets `FileSystem.FileSystem` before calling the implementation.

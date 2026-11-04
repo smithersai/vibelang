@@ -485,6 +485,14 @@ const targets = {
   "spec-rule-evidence": specRuleEvidence,
   "spec-rule-evidence-test": specRuleEvidenceTest,
   "spec-vip-examples": specExamples,
+  "spec-lint-unit": S.Shell.Test({
+    summary: "Check current specification rules and their mutation properties without building a compiler.",
+    shell: "bun test --timeout 60000 docs/tools/spec-lint.test.ts",
+    data: [specInputs],
+    tools: [bun, node],
+    sandbox: "none",
+    timeout: "2m"
+  }),
   "spec-linters-test": specLinterTests,
   "grammar-admission": grammarAdmission,
   "grammar-admission-check": grammarAdmissionCheck,

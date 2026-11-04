@@ -256,6 +256,7 @@ queue:
 | `//:flow-layout` | the migrate flow's `lib/steps.mjs` or its layout test |
 | `//:grammar-inventory` | a VibeLang parser file, a file in `internal/vibelang/`, or the admission table |
 | `//:mapper-scripts` | `scripts/mapper-*`, `packages/ts-mapper/`, the compiler's `cache.mjs` or the LSP fixture |
+| `//:spec-lint-unit` | Public chapters/VIPs and spec-linter sources or tests; checks diagnostic ownership and mutation properties without a compiler build. |
 | `//typescript/vibelang:lsp-smoke` | `typescript/vibelang/lsp-*`, its `PACKAGE.ts`, or the compiler's `format.mjs` |
 | `//:go-vibelangfuzz-editor` | the language service, `typescript/tsc/internal/ls/` |
 | `//:go-vibelang-fix-twins` | a non-test Go source in the parser, `internal/vibelang/` or `internal/effectglobals/` |

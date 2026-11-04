@@ -141,3 +141,25 @@ func FuzzOptionMatchGeneratorHandler(f *testing.F) {
 		}
 	})
 }
+
+// Chapter 7 keeps generator migration ahead of Option.match's preserving fix.
+// This is the executable witness for generator-match-advice.fail and the
+// public advice sentence, independent of the compatibility diagnostic number.
+func TestPublicGeneratorMatchAdviceWitness(t *testing.T) {
+	root, err := filepath.Abs("../../../..")
+	if err != nil {
+		t.Fatal(err)
+	}
+	fixture := filepath.Join(root, "typescript/vibelang/cases/generator-match-advice.fail")
+	dir := copyCompilerFixture(t, fixture, root)
+	result := fixCase(t, dir)
+	for _, file := range result.Files {
+		if file.Counts[EK1002.Code] != 2 || file.Counts[EK4839.Code] != 1 ||
+			strings.Contains(file.Text, "function*") || strings.Contains(file.Text, "Option.match(") {
+			t.Fatalf("expected both generators before the match repair; got %+v", file)
+		}
+	}
+	if len(result.Files) != 1 || len(result.Refused) != 0 {
+		t.Fatalf("expected one fully migrated file with no refusals: %+v", result)
+	}
+}
