@@ -16,7 +16,7 @@ import (
 // call-versus-run boundary; unsupported placements must retain their own spans.
 func FuzzNothrowCallPreservation(f *testing.F) {
 	startShortBudget(f)
-	for _, key := range []string{"t3code-gitcafe-BigInt-narrowing", "predicate", "call", "conditional", "default", "receiver", "new", "strict-effect-default", "yield-operand", "smithers-Catalog-tracked-call"} {
+	for _, key := range []string{"polymorphic-receiver", "polymorphic-indexed", "t3code-gitcafe-BigInt-narrowing", "predicate", "call", "conditional", "default", "receiver", "new", "strict-effect-default", "yield-operand", "smithers-Catalog-tracked-call"} {
 		f.Add(key, int8(7))
 	}
 	w := NewWorkspace(f)
@@ -26,6 +26,13 @@ func FuzzNothrowCallPreservation(f *testing.F) {
 			source := ""
 			refuse := false
 			switch key {
+			case "polymorphic-receiver":
+				source = "import type {Reader} from \"./native.js\";export const main=<T extends Reader>(r:T,n:number):infer _=>n<" + fmt.Sprint(value) + "?r.read():r.read()"
+				refuse = true
+			case "polymorphic-indexed":
+				source = "import type {Reader} from \"./native.js\";export const main=<T extends {reader:Reader}>(r:T[\"reader\"],n:number):infer _=>n<" + fmt.Sprint(value) + "?r.read():r.read()"
+				refuse = true
+
 			case "t3code-gitcafe-BigInt-narrowing":
 				source = "export const main=(input:{id?:string|null}):infer _=>input.id==null?0n:BigInt(input.id)"
 
@@ -52,7 +59,11 @@ func FuzzNothrowCallPreservation(f *testing.F) {
 				key = "call"
 				source = "export function main(s:string):unknown {return JSON.parse(s)}"
 			}
-			files := map[string]string{"main.vibe": source, "native.ts": `export class Box {
+			files := map[string]string{"main.vibe": source, "native.ts": `export interface Reader {
+ /** @throws {Error} */
+ read():number
+}
+export class Box {
  /** @throws {Error} */
  constructor(readonly n:number){if(n)throw new Error(String(n))}
 }

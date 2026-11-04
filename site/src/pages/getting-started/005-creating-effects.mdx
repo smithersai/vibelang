@@ -116,6 +116,8 @@ function slug(title: string) {
 // Output: hello-vibelang
 ```
 
+Calls whose callee or receiver is a type parameter, indexed type, conditional type, union or intersection remain refused. A generic TypeScript boundary can otherwise change an inferred return type, such as `number`, into a deferred `ReturnType<…>`. The refusal keeps the original site and declaration API.
+
 ## Create effects from promises
 
 ```ts

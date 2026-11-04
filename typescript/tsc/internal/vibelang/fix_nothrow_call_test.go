@@ -97,7 +97,11 @@ func TestFixNothrowCallsRefuseUnprovedTypes(t *testing.T) {
 
 func writeNothrowNativeFixture(t *testing.T, dir string) {
 	t.Helper()
-	source := `export class Box {
+	source := `export interface Reader {
+ /** @throws {Error} */
+ read():number
+}
+export class Box {
  /** @throws {Error} */
  constructor(readonly n:number){if(n)throw new Error(String(n))}
 }

@@ -97,7 +97,11 @@ func preservingNothrowCallFix(c *checker.Checker, file *ast.SourceFile, site *as
 	if construct {
 		kind = checker.SignatureKindConstruct
 	}
-	signatures := c.GetSignaturesOfType(c.GetTypeAtLocation(callee), kind)
+	calleeType := c.GetTypeAtLocation(callee)
+	if !stableNothrowCallTarget(calleeType) {
+		return fileFix{}, false
+	}
+	signatures := c.GetSignaturesOfType(calleeType, kind)
 	if len(signatures) != 1 || len(signatures[0].TypeParameters()) != 0 || c.GetTypePredicateOfSignature(signatures[0]) != nil {
 		return fileFix{}, false
 	}
@@ -110,6 +114,9 @@ func preservingNothrowCallFix(c *checker.Checker, file *ast.SourceFile, site *as
 		method = callee.Name().Text()
 		target = callee.Expression()
 	} else if !construct && !ast.IsIdentifier(callee) {
+		return fileFix{}, false
+	}
+	if !stableNothrowCallTarget(c.GetTypeAtLocation(target)) {
 		return fileFix{}, false
 	}
 	if strings.Contains(nodeText(file, callee), "?.") {
@@ -188,4 +195,11 @@ func preservingNothrowCallFix(c *checker.Checker, file *ast.SourceFile, site *as
 		}
 	}
 	return fileFix{code: EK0401.Code, edits: edits, key: key, siteStart: site.Pos(), siteEnd: site.End(), sited: true}, true
+}
+
+// A deferred receiver can change an inferred result from its constraint
+// (number) to ReturnType<T["read"]>. Union/intersection calls also combine
+// parameter domains differently from Parameters<T>. Keep these sites intact.
+func stableNothrowCallTarget(t *checker.Type) bool {
+	return t != nil && t.Flags()&(checker.TypeFlagsInstantiableNonPrimitive|checker.TypeFlagsUnionOrIntersection) == 0
 }
