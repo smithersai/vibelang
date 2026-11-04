@@ -277,6 +277,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Compiler examples that relied on implicit bridges for throwing builtins failed their checks. They now use explicit bridges while retaining their results, declarations and evaluation order.
 
+- Compiler validation no longer fails on a stale pending entry for ordinary generator callback bodies. Their throw-context tests remain enabled.
+
 - Compiler validation no longer fails on a stale pending entry for ordinary async generator callbacks. Their callback tests remain enabled.
 
 - `vibelang lint` reported `EK4806` when an identity-mapped `Effect.try` was piped into `Effect.orDie`; direct and piped defect bridges, including parenthesized forms, now lint alike. An unprotected mapping still warns.
