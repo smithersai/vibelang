@@ -18,7 +18,8 @@ import { wireNativeViteConfigs } from "./vite-config.mjs"
 import { addVitestProjectPlugins } from "./vitest-projects.mjs"
 import { wireBunFixtureTests } from "./bun-fixtures.mjs"
 import { localPackageDependencies } from "./workspace-dependencies.mjs"
-import { workspaceGlobs, workspaceManifests } from "./upgrade.mjs"
+import { jsonStrings, workspaceGlobs, workspaceManifests } from "./upgrade.mjs"
+import { applyEdits } from "./imports.mjs"
 import { must, quote } from "./util.mjs"
 import { packageScripts, testLeftAsIs, testOnlyScripts } from "./test-files.mjs"
 
@@ -198,8 +199,13 @@ export function replaceTscInScript(text, ts) {
 export function addCompilerScripts(pkg, compiler) {
   const scripts = replaceTsc(pkg.scripts)
   const changed = JSON.stringify(scripts) !== JSON.stringify(pkg.scripts ?? {})
-  return { ...pkg, ...(pkg.scripts ? { scripts } : {}), ...(changed ? { devDependencies: { ...pkg.devDependencies, vibelang: compiler } } : {}) }
+  // A compiler an earlier setup staged names a tarball this run's setup deleted, so it moves too.
+  const staged = typeof pkg.devDependencies?.vibelang === "string" && stagedSpec.test(pkg.devDependencies.vibelang)
+  return { ...pkg, ...(pkg.scripts ? { scripts } : {}), ...(changed || staged ? { devDependencies: { ...pkg.devDependencies, vibelang: compiler } } : {}) }
 }
+
+// A specifier for a tarball in a toolchain directory: file:../.vibelang-toolchain/vibelang-0.0.11-<hash>.tgz.
+const stagedSpec = /^(?:file|link):(?!\/)(?:\.\.?\/)*\.vibelang-toolchain\/[^/]+$/
 
 // Oxlint options that take a value, so a path after one is not a lint target.
 const oxlintValueOptions = new Set(["-c", "--config", "--tsconfig", "-A", "--allow", "-W", "--warn", "-D", "--deny", "--ignore-path", "--ignore-pattern", "-f", "--format", "--max-warnings", "--threads", "--import-plugin"])
@@ -1752,6 +1758,45 @@ export function toolchainSpecs(packageDir, tarballs) {
   const up = packageDir === "." || packageDir === "" ? "./" : "../".repeat(packageDir.split("/").filter(Boolean).length)
   return Object.fromEntries(Object.entries(tarballs).map(([name, file]) => [name, `file:${up}${toolchainDirectory}/${file}`]))
 }
+
+/**
+ * A package.json's text, at packageDir (relative to the repository root),
+ * with each specifier that names a tarball in the root's toolchain directory
+ * moved to specs[name] for the package that tarball holds, keeping the
+ * file's formatting. Setup owns that directory and deletes it before it
+ * copies a toolchain's tarballs, so it owns every specifier into it: in
+ * dependencies, devDependencies, overrides, resolutions and catalogs, in
+ * every package, whether or not setup edits the package otherwise. A
+ * specifier left on an earlier toolchain's tarball fails the install with
+ * ENOENT (opencode setup42-m26). Every other specifier is kept, and so is
+ * one for a package specs has no tarball for, which `stale` lists.
+ * wireTarget runs it after prepareToolchainPublication, which moves the
+ * override pins its receipt manages itself.
+ */
+export function refreshToolchainSpecs(text, packageDir, specs) {
+  const names = toolchainPackages.filter((name) => specs[name] !== undefined).sort((a, b) => b.length - a.length)
+  const edits = []
+  const stale = []
+  for (const s of jsonStrings(text)) {
+    if (typeof s.path[0] !== "string" || !specifierFields.has(s.path[0]) || !stagedSpec.test(s.value)) continue
+    const path = posix.normalize(posix.join(packageDir || ".", s.value.replace(/^(?:file|link):/, "")))
+    if (posix.dirname(path) !== toolchainDirectory) continue
+    const file = posix.basename(path)
+    const name = names.find((n) => file.startsWith(`${n}-`) && /^\d/.test(file.slice(n.length + 1)))
+    if (name === undefined) {
+      stale.push(s.value)
+      continue
+    }
+    if (specs[name] !== s.value) edits.push({ start: s.start, end: s.end, text: JSON.stringify(specs[name]).slice(1, -1) })
+  }
+  return { text: edits.length ? applyEdits(text, edits) : text, stale }
+}
+
+// The packages a toolchain directory holds tarballs of.
+const toolchainPackages = ["vibelang", "vibelang-runtime", "vibelang-vite", "vibelang-unplugin"]
+
+// The package.json fields whose strings are specifiers: npm, Bun, pnpm and Yarn read overrides, resolutions and catalogs there.
+const specifierFields = new Set(["dependencies", "devDependencies", "optionalDependencies", "peerDependencies", "overrides", "resolutions", "pnpm", "workspaces", "catalog", "catalogs"])
 
 /** A .gitignore's text with line present (add) or absent (remove); other lines are kept. */
 export function setIgnoreLine(text, line, present) {

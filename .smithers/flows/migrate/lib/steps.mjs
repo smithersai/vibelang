@@ -1135,6 +1135,18 @@ export async function wireTarget(config, log) {
   // What setup wrote is in the repository's own format.
   const publication = prepareToolchainPublication({ target: t, manifests: ["package.json", ...packages.map(pkg => posix.join(pkg.dir, "package.json")), ...changed.filter(file => posix.basename(file) === "package.json")], manager: Wire.packageManager(readdirSync(t)), specsFor })
   changed.push(...publication.changed)
+  // A tree an earlier toolchain set up names that toolchain's tarballs, which are gone now: each moves to this
+  // toolchain's, after the publication pins its receipt manages have moved (it refuses a pin changed under it).
+  const ownsManifest = Wire.ownedPaths(t)
+  for (const { dir } of Wire.repositoryPackages(t)) {
+    const path = posix.join(dir, "package.json")
+    if (!ownsManifest(path)) continue
+    const before = readFileSync(join(t, path), "utf8")
+    const refreshed = Wire.refreshToolchainSpecs(before, dir, specsFor(dir))
+    if (refreshed.text !== before && !changed.includes(path)) changed.push(path)
+    if (refreshed.text !== before) writeFileSync(join(t, path), refreshed.text)
+    for (const spec of refreshed.stale) warnings.push(`${path}: ${spec} names a tarball this toolchain does not have; setup removed ${Wire.toolchainDirectory}, so point it at a VibeLang package by hand`)
+  }
   const formatted = await formatWritten(t, changed, join(log, "setup-format.log"))
   if (formatted.code !== 0) warnings.push(`${formatted.formatter} exited ${formatted.code} on the files setup wrote; see ${join(log, "setup-format.log")}`)
   const manager = Wire.packageManager(readdirSync(t))

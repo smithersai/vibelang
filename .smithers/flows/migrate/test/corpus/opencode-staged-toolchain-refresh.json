@@ -1,0 +1,6 @@
+{
+  "finding": "opencode:setup:staged-toolchain-refresh-existing",
+  "repo": "opencode",
+  "pattern": "setup42-m26: wireTarget on a tree an older staged toolchain set up deletes .vibelang-toolchain, but the root's compiler (scripts already run vibelang) and packages/opencode's vibelang-unplugin (Bun.build already wired) keep the deleted tarballs, so bun install fails ENOENT; the root's Bun overrides pin the staged build through .vibelang/toolchain-publication.json",
+  "input": { "rootScript": "vibelang -b", "reaching": "vibelang -p tsconfig.json", "bunBuild": true, "foreign": true, "bun": true, "public": true }
+}
