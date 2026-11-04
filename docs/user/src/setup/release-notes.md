@@ -187,6 +187,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 ### Bugs fixed since 0.0.10
 
+- Migration helper regressions now recognize an unchanged public API through a bare reexport, while still rejecting changed types, changed JSDoc and unresolved declarations.
+
 - Declaration fuzzing could reject its own registered cases by renaming their Effect TypeScript reference into retired VibeLang syntax. It now checks their written VibeLang counterparts while retaining the original seed selection and admission guard.
 
 - The `Buffer.byteLength` quick-fix regression now checks the same Unicode runtime witness on both input and output, preserving its exact rewrite and idempotence checks.

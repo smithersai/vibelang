@@ -1,7 +1,7 @@
 import { fileURLToPath } from "node:url"
 import assert from "node:assert/strict"
 import { spawnSync } from "node:child_process"
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
+import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs"
 import { createRequire } from "node:module"
 import { tmpdir } from "node:os"
 import { dirname, join } from "node:path"
@@ -18,7 +18,7 @@ test("helper declaration checks retain the published declaration contract", () =
   assert.ok(readFileSync(SpecPath("001-functions.md"), "utf8").includes("Declarations are exactly what idiomatic Effect TypeScript would declare."))
 })
 
-function check(input) {
+function check(input, { negative = false } = {}) {
   const root = mkdtempSync(join(tmpdir(), "t3code-throw-helper-declarations-"))
   try {
     const helper = "export function " + input.name + "(" + input.parameter + ": string | undefined): string {\n" +
@@ -43,12 +43,13 @@ function check(input) {
       dirs[side] = join(directory, "out")
     }
     // Independent stock TypeScript proves that both exported callable types
-    // agree. That fact alone does not grant a declaration-byte waiver.
+    // agree. The shared API gate separately checks names, types and JSDoc.
     const consumer = join(root, "consumer.ts")
     writeFileSync(consumer, 'import { ' + input.name + ' as a } from "./before/out/main.js";\n' +
       'import { ' + input.name + ' as b } from "./wrapped/out/main.js";\n' +
+      'import { ' + input.name + ' as c } from "./bare/out/main.js";\n' +
       "type Equal<A,B>=(<T>()=>T extends A?1:2) extends (<T>()=>T extends B?1:2)?true:false;\n" +
-      "const forward: true = null as unknown as Equal<typeof a,typeof b>;\nconst backward: true = null as unknown as Equal<typeof b,typeof a>;\n")
+      "const forward: true = null as unknown as Equal<typeof a,typeof b>;\nconst backward: true = null as unknown as Equal<typeof b,typeof a>;\nconst bareForward: true = null as unknown as Equal<typeof a,typeof c>;\nconst bareBackward: true = null as unknown as Equal<typeof c,typeof a>;\n")
     const program = ts.createProgram([consumer], { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ESNext,
       moduleResolution: ts.ModuleResolutionKind.Bundler, strict: true, skipLibCheck: true, noEmit: true, types: [] })
     assert.deepEqual(ts.getPreEmitDiagnostics(program).filter(d => d.category === ts.DiagnosticCategory.Error).map(d => d.code), [])
@@ -57,16 +58,43 @@ function check(input) {
     assert.equal(bare.files, 2)
     assert.deepEqual(bare.added, [])
     assert.deepEqual(bare.removed, [])
-    assert.equal(bare.identical, false, "bare reexports must not bypass the declaration gate")
-    assert.deepEqual(bare.changed.map(row => row.file), ["main.d.ts"])
+    assert.equal(bare.comparisonComplete, true, JSON.stringify(bare))
+    assert.equal(bare.identical, true, "the API gate accepts an unchanged callable reexport")
+    assert.deepEqual(bare.changed, [])
     const wrapped = compareDeclarations(ts, dirs.before, dirs.wrapped)
     assert.equal(wrapped.files, 2)
+    assert.equal(wrapped.comparisonComplete, true, JSON.stringify(wrapped))
     assert.equal(wrapped.identical, true, JSON.stringify(wrapped))
+
+    if (negative) {
+      const main = readFileSync(join(dirs.before, "main.d.ts"), "utf8")
+      const changedType = main.replace(/(\): )string;/, "$1number;")
+      assert.notEqual(changedType, main, "negative control changes the exported helper's return type")
+      for (const [kind, source] of [
+        ["type", changedType],
+        ["doc", "/** changed API documentation */\n" + main],
+        ["missing", 'export { ' + input.name + ' } from "pmfix-identity-missing-dependency";\n'],
+      ]) {
+        const directory = join(root, "negative-" + kind)
+        mkdirSync(directory)
+        for (const file of readdirSync(dirs.before)) copyFileSync(join(dirs.before, file), join(directory, file))
+        writeFileSync(join(directory, "main.d.ts"), source)
+        const result = compareDeclarations(ts, dirs.before, directory)
+        assert.equal(result.identical, false, JSON.stringify(result))
+        if (kind === "missing") {
+          assert.equal(result.comparisonComplete, false, JSON.stringify(result))
+          assert.ok(result.environmentDiagnostics.some(row => /TS2307/.test(row.diagnostic)), JSON.stringify(result))
+        } else {
+          assert.equal(result.comparisonComplete, true, JSON.stringify(result))
+          assert.ok((kind === "type" ? result.typeDifferences : result.docDifferences).length > 0, JSON.stringify(result))
+        }
+      }
+    }
 
   } finally { rmSync(root, { recursive: true, force: true }) }
 }
 
-test(fixture.key, () => check(fixture.input))
+test(fixture.key, () => check(fixture.input, { negative: true }))
 test("helper boundary identity varies exported names, parameter spellings and exception messages", () => {
   fc.assert(fc.property(fc.record({
     name: fc.constantFrom("required", "readRequired", "decodeRequired"),
