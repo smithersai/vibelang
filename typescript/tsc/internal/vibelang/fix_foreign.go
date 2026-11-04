@@ -127,7 +127,7 @@ func planForeignCall(c *checker.Checker, file *ast.SourceFile, call *ast.Node) *
 	} else {
 		code = nodeText(file, target)
 	}
-	if bound, written := foreignThrowsContract(c, call); written && bound != "" && (len(inputs) > 0 || target != call) {
+	if needsExplicitThrowsBridge(c, call) && (len(inputs) > 0 || target != call) {
 		// Preserve the former callee, operand and constructor-read ordering.
 		// A running operand or a surrounding guard needs a manual bridge.
 		return nil
@@ -164,9 +164,9 @@ func planForeignCall(c *checker.Checker, file *ast.SourceFile, call *ast.Node) *
 		edits = append(edits, sourceEdit{nodeStart(file, fn), nodeStart(file, fn), "effect "}) // try needs effect code
 	}
 	wrapped := "try Effect.orDie(Effect.try({ try: () => " + code + ", catch: " + defectBridgeIdentity + " }))"
-	// A tagged call formerly lowered through $trusted: listed classes failed
+	// A contracted call formerly lowered through $trusted: listed classes failed
 	// through E; every other exception was a defect. Preserve that distinction.
-	if bound, written := foreignThrowsContract(c, call); written && bound != "" {
+	if needsExplicitThrowsBridge(c, call) {
 		failures := legacyForeignCallFailures(c, call)
 		if len(failures) > 0 {
 			var tests, parameters, classes []string
@@ -310,6 +310,9 @@ func runsBefore(statement, node *ast.Node) bool {
 func needsBoundary(c *checker.Checker, file *ast.SourceFile, call *ast.Node) bool {
 	t := callTrust(c, call)
 	if bound, written := foreignThrowsContract(c, call); written && bound != "" && !t.value && !t.promise && !returnsEffectful(c, call) {
+		return true
+	}
+	if t.kind == trustBuiltin && len(t.failures) > 0 {
 		return true
 	}
 	switch {

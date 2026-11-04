@@ -689,6 +689,12 @@ func checkCall(c *checker.Checker, a *analyzer, file *ast.SourceFile, call *ast.
 	case (t.kind == trustForeign || t.kind == trustTagged) && t.promise:
 		d := report(c, callee, promiseCall, name)
 		note(d, "Wait for it with {0}, or name its failure: {1}.", boundaryCall(c, file, "tryPromise", call, ""), boundaryCall(c, file, "tryPromise", call, "(error) => …"))
+	case t.kind == trustBuiltin && len(t.failures) > 0:
+		var names []string
+		for _, failure := range t.failures {
+			names = append(names, failure.name)
+		}
+		report(c, callee, foreignThrowingCall, name, strings.Join(names, " | "))
 	case t.kind == trustForeign:
 		// VIP-4: unknown is a thrown contract. Keep the legacy trust
 		// diagnostics for Promise and unreachable-class contracts.

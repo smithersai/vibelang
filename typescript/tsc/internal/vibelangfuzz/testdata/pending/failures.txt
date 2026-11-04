@@ -5,7 +5,6 @@
 # regression inputs remain. Historical diagnostic observations below name
 # their original baseline, not a current syntax limitation.
 # target            key                       owner     what is missing
-FuzzFailuresSpec  feature:global-json-parse  compiler  VIP-4: 003-failures.md rejects the marked call for "VibeLang ships its own annotations for them, so `JSON.parse` throws `SyntaxError` and `Math.max` is known n…"; lane w2-throw
 FuzzFailuresSpec  feature:effect-decode-sync  compiler  VIP-4: 003-failures.md rejects the marked call for "VibeLang also ships annotations for Effect's non-effectful exports: `Option.some` throws `never`; `Schema.d…"; lane w2-throw
 FuzzFailuresSpec  feature:function-type-opts-in  compiler  VIP-4: 003-failures.md as amended 2026-10-31 expects EK0401 at the marked code; main draws no error; lane nothrow-impl
 FuzzFailuresSpec  feature:new-tracked  compiler  VIP-4: 003-failures.md rejects the marked call for "`new X()` is throw-tracked; getter and setter access is not."; lane w2-throw
@@ -14,7 +13,6 @@ FuzzFailuresSpec feature:dynamic-any compiler VIP-4: 003-failures.md contract dy
 FuzzFailuresSpec feature:dynamic-function compiler VIP-4: 003-failures.md contract dynamic-function disagrees on unmodified main c9327b36 (error TS1128, error TS1434, error TS2304); lane vip-core2
 FuzzFailuresSpec feature:tagged-template-throw compiler VIP-4: 003-failures.md contract tagged-template-throw disagrees on unmodified main c9327b36 (error TS1128, error TS1434, error TS2304); lane vip-core2
 FuzzFailuresSpec feature:callable-union-throw compiler VIP-4: 003-failures.md contract callable-union-throw disagrees on unmodified main c9327b36 (error TS1128, error TS1434, error TS2304); lane vip-core2
-FuzzFailuresSpec corpus:global-json-parse compiler VIP-4: minimized reproduction of feature:global-json-parse; lane w2-throw
 FuzzFailuresSpec corpus:effect-decode-sync compiler VIP-4: minimized reproduction of feature:effect-decode-sync; lane w2-throw
 FuzzFailuresSpec corpus:function-type-opts-in compiler VIP-4: minimized reproduction of feature:function-type-opts-in; lane w2-throw
 FuzzFailuresSpec corpus:new-tracked compiler VIP-4: minimized reproduction of feature:new-tracked; lane w2-throw

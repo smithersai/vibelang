@@ -308,6 +308,15 @@ typescript/vibelang/cases/blocks-throw-expression/main.vibe:42:15 lambda effectF
 typescript/vibelang/cases/blocks-throw-expression/main.vibe:42:68 lambda dual fallback
 typescript/vibelang/cases/builtin-contracts/main.vibe:35:31 lambda program table
 typescript/vibelang/cases/builtin-contracts/main.vibe:36:27 lambda plain table
+typescript/vibelang/cases/builtin-throws-bridge-fixed-output/main.vibe:3:137 byname program table
+typescript/vibelang/cases/builtin-throws-bridge-fixed-output/main.vibe:3:155 lambda plain table
+typescript/vibelang/cases/builtin-throws-bridge-fixed-output/main.vibe:3:183 lambda plain table
+typescript/vibelang/cases/builtin-throws-bridge-fixed-output/main.vibe:3:204 lambda effectFn table
+typescript/vibelang/cases/builtin-throws-bridge-fixed-output/main.vibe:3:75 lambda effectFn fallback
+typescript/vibelang/cases/builtin-throws-bridge-fixed-output/main.vibe:5:31 byname program table
+typescript/vibelang/cases/builtin-throws-bridge-fixed-output/main.vibe:6:30 byname program table
+typescript/vibelang/cases/builtin-throws-bridge.fail/main.vibe:7:31 byname program table
+typescript/vibelang/cases/builtin-throws-bridge.fail/main.vibe:8:30 byname program table
 typescript/vibelang/cases/by-name-choice-program.fail/main.vibe:4:47 lambda program annotation
 typescript/vibelang/cases/by-name-choice-program.fail/main.vibe:5:37 byname program table
 typescript/vibelang/cases/by-name-choice-program/main.vibe:10:36 byname program table

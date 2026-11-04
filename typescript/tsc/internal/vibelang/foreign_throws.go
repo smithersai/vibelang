@@ -75,10 +75,14 @@ var foreignThrowingCall = EK0403.With("'{0}' may throw '{1}'. Wrap the call with
 // all declarations of a callee before its selected signature, so an earlier
 // overload could supply its failure classes. A preserving fix must retain
 // that old channel split, even while the checker uses the selected contract.
+// Intrinsic signatures retain the shipped classes the former emitter read.
 func legacyForeignCallFailures(c *checker.Checker, call *ast.Node) []failure {
 	decl := signatureDeclaration(c, call)
 	if decl == nil || isParameterCall(c, call) || legacyListedInManifest(c, ast.GetSourceFileOfNode(decl)) {
 		return nil
+	}
+	if isLibFile(c, ast.GetSourceFileOfNode(decl)) {
+		return callTrust(c, call).failures
 	}
 	var candidates []*ast.Node
 	if symbol := calleeSymbol(c, call); symbol != nil {
@@ -101,4 +105,15 @@ func legacyForeignCallFailures(c *checker.Checker, call *ast.Node) []failure {
 		}
 	}
 	return failures
+}
+
+// needsExplicitThrowsBridge identifies contracts whose former implicit
+// bridge must keep listed failures separate from unexpected defects.
+func needsExplicitThrowsBridge(c *checker.Checker, call *ast.Node) bool {
+	t := callTrust(c, call)
+	if t.kind == trustBuiltin && len(t.failures) > 0 {
+		return true
+	}
+	bound, written := foreignThrowsContract(c, call)
+	return written && bound != ""
 }

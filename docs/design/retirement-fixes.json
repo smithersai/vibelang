@@ -21,6 +21,10 @@
       {
         "input": "typescript/vibelang/cases/ek0403-throws-never.fail",
         "output": "typescript/vibelang/cases/ek0403-throws-never-fixed-output"
+      },
+      {
+        "input": "typescript/vibelang/cases/builtin-throws-bridge.fail",
+        "output": "typescript/vibelang/cases/builtin-throws-bridge-fixed-output"
       }
     ]
   },

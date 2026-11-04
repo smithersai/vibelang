@@ -1,0 +1,10 @@
+// expect: EK0403
+// expect-result: [["Success","value"],["Failure",["Fail"]]]
+import { Effect } from "effect"
+import { describe } from "./helper.js"
+export effect function parse(s:string):unknown!SyntaxError! { return JSON.parse(s) }
+export effect function main() {
+ const good = try Effect.exit(parse('"value"'))
+ const bad = try Effect.exit(parse("{"))
+ return [describe(good), describe(bad)]
+}
