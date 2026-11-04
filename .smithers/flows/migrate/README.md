@@ -882,3 +882,5 @@ just as `upgrade-effect` does. Public fixture manifests need a valid `name`
 and `version`; private fixtures still need the empty public-package receipt.
 Tests must keep a missing-receipt negative control rather than bypassing
 `checks.packs`.
+
+Inline module declarations keep every emitted companion beside the parent JavaScript, including `ViewCsp.vibe.$call$ts.js`. Each file is attributed to the parent source and included in `generatedFiles`; only the parent entry occupies `outputs`. Plain Node can therefore follow the parent’s companion imports. Test-source filtering applies to the entire source, including its companions; exported test-support modules retain their emitted dependency graph.

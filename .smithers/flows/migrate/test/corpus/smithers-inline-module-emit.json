@@ -1,0 +1,6 @@
+{
+  "source": "src/ViewCsp.vibe",
+  "module": "$call$ts",
+  "value": 42,
+  "text": "module $call$ts { export function invoke() { return 42 } }\nimport { invoke as $invoke } from $call$ts\nexport const value = $invoke()\n"
+}
