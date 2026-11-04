@@ -1017,3 +1017,5 @@ Diagnostic table readers must derive code identities from current rows and fail 
 A producer citation should name the channel contract exercised by its witness; a handler citation should name its current grammar production. Preserve both accepted and rejected programs when refreshing that wording.
 
 The retained-error `JoseError` witnesses use VIP-7's existing public-module rule and Effect `4.1.1`. Their keyed `tagged-` and `guard-` constructs check branded copies, tag-only objects, `null`, empty objects, capture identity and zero/two-argument failures against `isJoseError`. They share `FuzzVIPDifferential`'s comparison and campaign harness.
+
+The canonical migration-eval corpus checks authored throw documentation and exported package JSON independently. Declaration properties vary function, arrow and overload signatures, comment tags, condition objects, public JSON field kinds and key order. Native TypeScript JSON-import twins distinguish a changed public type from reordered keys; a lost authored comment remains a documentation difference. These checks preserve failed migration gates and do not certify a package whose declarations or pack changed.

@@ -310,6 +310,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - The clean ESLint regression fixture produced an unexpected multiline-call warning because its final `match` arm lacked `;`. The fixture now uses a terminated arm, and generated layout checks keep real multiline-call warnings covered.
 - Effect `4.1.1`'s `JoseError` was missing from retained-error regression coverage. Guard and capture witnesses now cover its branded copies and nearby nonmatching values; compiler conformance remains a separate tracked gap.
 
+- Migration-eval declaration failures lacked nearby regression coverage. Authored throw documentation and exported package metadata now have separate mutation checks, with native TypeScript controls for metadata types.
+
 - Repository build checks could fail before inspecting compiler inputs after target declarations changed. Their isolated fixtures now retain the native source group and imported parser data while checking dependency and cache behavior.
 
 - A `do` expression with no normal result suppressed native iterator errors in loops, destructuring, delegated yields and call spreads, so migration missed a required cast. These uses now retain TypeScript's `never` protocol checks; array literal spreads keep their native behavior.

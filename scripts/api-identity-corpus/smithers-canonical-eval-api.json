@@ -1,0 +1,23 @@
+{
+  "source": "@smthrs/canonical migrate eval; minimized exported package.json and authored documentation differences",
+  "before": {
+    "name": "@smthrs/canonical",
+    "type": "module",
+    "exports": {
+      ".": "./index.d.ts",
+      "./package.json": "./package.json"
+    }
+  },
+  "after": {
+    "exports": {
+      ".": {
+        "types": "./index.d.ts",
+        "default": "./index.js"
+      }
+    }
+  },
+  "authoredThrows": [
+    "@throws Propagates native Map construction errors for invalid iterables.",
+    "@throws Propagates Array.isArray errors for revoked proxies."
+  ]
+}
