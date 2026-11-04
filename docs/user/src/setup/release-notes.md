@@ -43,6 +43,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - Migrated packages could leave Node loading a TypeScript source graph when an export array began with `null`, or select a fallback behind an empty array. Runtime routing now follows Node's array fallbacks and condition blockers.
 
+- The diagnostic code map displayed `EK0201` and `EK0202` descriptions as replacement codes. They now appear with their rules in the diagnostic reference.
+
 - Moving an exported `unique symbol` into a private module could make an unchanged API fail migration verification. The checker now follows its public export path while still rejecting changed symbol keys, member types and documentation.
 
 ## 0.0.11

@@ -660,7 +660,7 @@ const targets = {
     timeout: "5m"
   }),
   "docs-table-rows": check(
-    "User documentation table rows follow their header and delimiter.",
+    "User documentation table rows follow their header, delimiter and cell count.",
     "node docs/tools/table-rows.mjs && bun test docs/tools/user-table-rows.test.ts docs/tools/spec-table-rows.test.mjs",
     [],
     [bun, node]

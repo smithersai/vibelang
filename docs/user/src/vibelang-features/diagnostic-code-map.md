@@ -34,8 +34,6 @@ Current compatibility splits keep the old check's behavior while freeing the can
 
 | Previous code | Current code | Rule |
 | --- | --- | --- |
-| `EK0201` | a `do` expression that ends in a declaration, a loop or an `if` without an `else` |
-| `EK0202` | a `break` or `continue` whose target is outside its `effect` block |
 | `EK4615` | `EK0502` | The same diagnostic rule with Appendix B numbering |
 | `EK4605` | `EK1903` | The same diagnostic rule with Appendix B numbering |
 | `EK4606` | `EK1904` | The same diagnostic rule with Appendix B numbering |
@@ -67,6 +65,8 @@ Registration reserves a code; it does not mean the compiler already implements e
 | `EK0107` | `eval`, `Function`, `arguments`, `var` or `with` in a `.vibe` file |
 | `EK0108` | a recognized `effect` modifier on an `abstract` declaration, in an ambient `declare` context, or on an `interface` or type literal member |
 | `EK0109` | a typed or generic bare `effect` arrow head; parenthesize its parameters |
+| `EK0201` | a `do` block whose last statement violates TC39's `EndsInIterationOrBareIfOrDeclaration` early error; replaces `EK0107` for the same `var`, and reports alongside `EK0203` when both apply |
+| `EK0202` | a `break` or `continue` whose target is outside the block of an `effect { … }` expression |
 | `EK0301` | `!` beside a union, an intersection, a function type or a conditional type without parentheses |
 | `EK0401` | a `throw` statement, or a call known to throw, in synchronous code outside effect code: plain functions, methods, constructors, accessors, plain generators, initializers, parameter lists, plain `catch` handlers and the module top level; a call in the `try` block of a `try`/`catch` statement is allowed |
 | `EK0402` | a function that may throw where a function type doesn't admit its thrown type |

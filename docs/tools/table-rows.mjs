@@ -33,8 +33,7 @@ export function tableRowProblems(text, file, { checkWidths = true } = {}) {
 export function userTableProblems(root = fileURLToPath(new URL("../user/src", import.meta.url))) {
   const pages = directory => readdirSync(directory, { withFileTypes: true }).flatMap(entry =>
     entry.isDirectory() ? pages(join(directory, entry.name)) : entry.name.endsWith(".md") ? [join(directory, entry.name)] : [])
-  // This user-docs rule checks row placement; the spec also checks widths.
-  return pages(root).flatMap(file => tableRowProblems(readFileSync(file, "utf8"), file, { checkWidths: false }))
+  return pages(root).flatMap(file => tableRowProblems(readFileSync(file, "utf8"), file))
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
