@@ -25,7 +25,8 @@ import (
 // and principle 4, "TypeScript's meaning outside Effect code"; and Chapter 1,
 // docs/design/src/001-functions.md, Declaration output:
 // "Declarations are exactly what idiomatic Effect TypeScript would declare."
-// Renaming ordinary .ts sources to .vibe, without editing their text (in
+// Registered acceptance twins compare their written VibeLang counterparts.
+// Other ordinary .ts sources rename to .vibe without editing their text (in
 // particular their ./x.js imports, D298), must preserve stock TypeScript's
 // exported names, tsc type identity and JSDoc under the shared API gate.
 func FuzzDeclarationIdentity(f *testing.F) {
@@ -100,7 +101,19 @@ func declarationIdentityProjects(archive string) (Project, Project, string) {
 		config = DefaultConfig
 	}
 	stock.Files[inputConfig] = config
-	vibe.Files[inputConfig] = declarationIdentityConfig(config)
+	if paired, ok := registeredDeclarationIdentityTwin(archive); ok {
+		// A written Effect TypeScript counterpart is already paired with the
+		// case's idiomatic VibeLang. Raw renaming would reintroduce retired
+		// Effect.gen/function* syntax instead of checking that declared pair.
+		vibe = paired
+		pairedConfig := vibe.Config
+		if pairedConfig == "" {
+			pairedConfig = DefaultConfig
+		}
+		vibe.Files[inputConfig] = pairedConfig
+	} else {
+		vibe.Files[inputConfig] = declarationIdentityConfig(config)
+	}
 	// Both sides get the same declaration-only emit request. An extends
 	// wrapper overrides noEmit in cases without rewriting their JSONC or
 	// losing their resolution settings, paths, file lists or package type.

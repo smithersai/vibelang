@@ -1023,3 +1023,5 @@ The canonical migration-eval corpus checks authored throw documentation and expo
 The loop-head differential generators keep the historical selector bytes for retired `var` heads, emitting native assignment heads over initialized outer `let` bindings instead. Their closure, TDZ and per-iteration observations stay in `FuzzVIPDifferential`; `FuzzVarDenial` separately rejects the old outer/head declarations across simple and destructured `for…of` operands, including `do`. Legacy corpus labels identify the assignment counterpart rather than an admitted `var` program.
 
 The quick-fix behavior registry includes keyed `EK4856` alias, channel and heritage inputs. Each uses the existing CLI/editor, declaration API identity and runtime preservation oracle.
+
+Registered declaration-identity cases use their written VibeLang and Effect TypeScript counterparts. Unrecognized archives still test an unchanged `.ts`-to-`.vibe` rename. The short seed list, keyed corpus and half-admission guard remain unchanged.
