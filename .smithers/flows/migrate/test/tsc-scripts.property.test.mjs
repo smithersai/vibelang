@@ -1,3 +1,4 @@
+import { SpecPath } from "../../../../scripts/testing/spec-path.mjs"
 // opencode-42: packages/http-recorder's script/build.ts runs
 // $`bunx tsc --emitDeclarationOnly` and then reads dist/index.d.ts; stock tsc
 // reads no .vibe file, so once src/index.ts became .vibe the build failed.
@@ -28,10 +29,47 @@ test("opencode-42: the build script's Bun shell runs vibelang where it ran tsc, 
     for (const [file, text] of Object.entries(files)) { mkdirSync(dirname(join(root, file)), { recursive: true }); writeFileSync(join(root, file), text) }
     const wired = wireBunBuilds({ root, packages: [{ dir: "packages/http-recorder" }], ts, specsFor: () => ({ vibelang: "x", "vibelang-unplugin": "x" }) })
     assert.ok(wired.changed.includes("packages/http-recorder/script/build.ts"), JSON.stringify(wired))
-    assert.equal(readFileSync(join(root, "packages/http-recorder/script/build.ts"), "utf8"), corpus.after)
+    assert.equal(readFileSync(join(root, "packages/http-recorder/script/build.ts"), "utf8"), corpus.afterSetup)
+    assert.deepEqual(wireBunBuilds({ root, packages: [{ dir: "packages/http-recorder" }], ts, specsFor: () => ({ vibelang: "x", "vibelang-unplugin": "x" }) }).changed, [], "full setup is idempotent")
   } finally {
     rmSync(root, { recursive: true, force: true })
   }
+})
+
+// The command-only stage preserves entry spelling; complete setup also follows
+// a converted entry, while retaining an existing native source when both exist.
+test("tsc and literal Bun entrypoints: setup composes both rewrites and preserves native precedence", () => {
+  const corpus = JSON.parse(readFileSync(new URL("./corpus/opencode-http-recorder-build.json", import.meta.url), "utf8"))
+  fc.assert(fc.property(
+    fc.constantFrom("migrated", "native", "both", "missing"), fc.boolean(),
+    fc.constantFrom("bunx ", "pnpm exec ", "bun x "), fc.integer({ min: 0, max: 3 }),
+    (state, jsx, runner, depth) => {
+      const root = mkdtempSync(join(tmpdir(), "migrate-tsc-bun-compose-"))
+      const entry = "./src/" + "nested/".repeat(depth) + "index" + (jsx ? ".tsx" : ".ts")
+      const converted = entry.replace(/\.tsx?$/, jsx ? ".vibex" : ".vibe")
+      const render = (text, selected) => text.replace("bunx ", runner).replace("./src/index.ts", selected).replace("./src/index.vibe", selected)
+      const put = (file, text) => { mkdirSync(dirname(join(root, file)), { recursive: true }); writeFileSync(join(root, file), text) }
+      try {
+        put("package.json", JSON.stringify({ name: "composition", private: true, workspaces: ["packages/*"] }))
+        put("packages/lib/package.json", JSON.stringify({ name: "@fixture/lib", scripts: { build: "bun ./script/build.ts" }, devDependencies: { "vibelang-unplugin": "x", vibelang: "x" } }))
+        const source = render(corpus.before, entry)
+        put("packages/lib/script/build.ts", source)
+        put("packages/lib/src/other.vibe", "export const other = 1\n")
+        if (state === "native" || state === "both") put("packages/lib/" + entry, "export const value = 1\n")
+        if (state === "migrated" || state === "both") put("packages/lib/" + converted, "export const value = 2\n")
+        assert.equal(replaceTscInScript(source, ts), render(corpus.after, entry), "the command stage leaves the written entry alone")
+        const wire = () => wireBunBuilds({ root, packages: [{ dir: "packages/lib" }], ts, specsFor: () => ({ vibelang: "x", "vibelang-unplugin": "x" }) })
+        assert.deepEqual(wire().warnings, [])
+        assert.equal(readFileSync(join(root, "packages/lib/script/build.ts"), "utf8"), render(corpus.afterSetup, state === "migrated" ? converted : entry))
+        assert.deepEqual(wire().changed, [], "a second complete setup changes nothing")
+      } finally { rmSync(root, { recursive: true, force: true }) }
+    }
+  ), { seed: 420161, numRuns: 240 })
+})
+
+test("TestBunSetupCompositionQuoted", () => {
+  const corpus = JSON.parse(readFileSync(new URL("./corpus/opencode-http-recorder-build.json", import.meta.url), "utf8"))
+  assert.ok(readFileSync(SpecPath(corpus.spec), "utf8").includes(corpus.quote))
 })
 
 test("opencode-47: a build script that only runs tsc runs vibelang, and its package gets vibelang", () => {
