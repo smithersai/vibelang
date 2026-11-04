@@ -970,7 +970,7 @@ The operand and parent positions follow `UnaryExpression`; `throw` in statement 
 This implementation census records each parser or lowering hook and its specification authority. It does not admit syntax: the productions and prose above remain the independent grammar oracle. A `pending` row has no authority; `support` and `recovery` rows do not add language forms.
 
 <details>
-<summary>Parser and lowering hooks (981 records)</summary>
+<summary>Parser and lowering hooks (985 records)</summary>
 
 | Hook | Form | Authority | Status | Reason |
 | --- | --- | --- | --- | --- |
@@ -1955,6 +1955,10 @@ This implementation census records each parser or lowering hook and its specific
 | ` parser/vibelang_declaration_body.go:Parser.reportVibeLangMissingBody ` | ` admission:schema ` | ` 900-appendices.md#SchemaDeclaration `, ` 006-data.md ` | ` recovery ` | Reports `EK1503` for a schema header without the required field body or alias; recovery adds no form |
 | ` parser/vibelang_fibers.go:Parser.rewriteConcurrentLabelContinues ` | ` admission:for-concurrent ` | ` 900-appendices.md#ForConcurrent ` | ` support ` | VIP-19 self-labeled `continue` ends the current item, preserving source callable boundaries |
 | ` parser/vibelang.go:Parser.vibelangSchemaFields@schema-async-field ` | ` admission:schema-async-field ` | ` - ` | ` pending ` | VIP-15: an unresolved schema field reference reports `EK2109` and covers the declaration, hiding native `async` modifier rejection |
+| ` parser/vibelang_do.go:Parser.hasYieldingMatch ` | ` admission:match ` | ` 900-appendices.md#MatchExpression `, ` 002-running.md ` | ` support ` | VIP-7 and VIP-2: identify a match whose arm yields into its enclosing source generator |
+| ` parser/vibelang_do.go:Parser.matchArmsYield ` | ` admission:match ` | ` 900-appendices.md#MatchExpression `, ` 002-running.md ` | ` support ` | VIP-7 and VIP-2: inspect source arm yields while preserving nested callable boundaries |
+| ` parser/vibelang_match.go:coveragePattern ` | ` admission:match ` | ` 900-appendices.md#MatchExpression `, ` 004-match.md ` | ` support ` | VIP-7: remove irrefutable captures only from coverage analysis while preserving source pattern evaluation |
+| ` parser/vibelang_match.go:Parser.mExtractCall ` | ` admission:match ` | ` 900-appendices.md#MatchExpression `, ` 900-appendices.md#RegularExpressionPattern `, ` 004-match.md ` | ` support ` | VIP-7: emit the existing extractor call and preserve the global regular-expression literal flag for its extraction type |
 
 </details>
 

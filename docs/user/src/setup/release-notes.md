@@ -12,6 +12,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - The legacy abstract-error migration lacked generated preservation examples. Its error and schema-error forms now exercise field types, optional fields and line-ending trivia through the same API and runtime checks as other repairs.
 - The diagnostic reference’s replay link made syntax checks reject the published effect-block jump rule. Those checks now quote the complete rule and keep its existing diagnostic cases.
 
+- The grammar admission inventory omitted match-arm yield and coverage helpers; it now records their existing specification authority.
+
 - The grammar admission audit could miss invalid `async` schema fields when an unresolved type hid their syntax diagnostic; it now records that gap explicitly.
 - The diagnostic reference defined retained compiler and migration codes without listing them among its numbering exceptions. Those assignments are now explicitly documented.
 
