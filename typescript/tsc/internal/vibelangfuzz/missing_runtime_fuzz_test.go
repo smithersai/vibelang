@@ -1,3 +1,5 @@
+// docs/design/vips/0034-compiler-and-tooling.md#313dd1003a2ff858
+// VIP-34: one package-naming TS2307 for missing runtime with independent native errors.
 package vibelangfuzz
 
 import (

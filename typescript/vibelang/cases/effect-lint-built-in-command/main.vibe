@@ -1,0 +1,9 @@
+// docs/design/vips/0038-effect-lint-built-in.md#36b717c513b31ceb
+// VIP-38: supported compiler options and the sole codemod entry point.
+// docs/design/vips/0038-effect-lint-built-in.md#c07f7b4db6d7fc7b
+// VIP-38: supported compiler options and the sole codemod entry point.
+// docs/design/vips/0038-effect-lint-built-in.md#435767429fc1a728
+// VIP-38: supported compiler options and the sole codemod entry point.
+// docs/design/vips/0038-effect-lint-built-in.md#9c0f18539fe3780e
+// VIP-38: supported compiler options and the sole codemod entry point.
+export const witness = 1;

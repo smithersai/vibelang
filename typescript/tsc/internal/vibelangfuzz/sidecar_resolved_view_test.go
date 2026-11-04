@@ -1,5 +1,17 @@
 package vibelangfuzz
 
+// Coverage census: resolved module identity across package, paths, imports, suffixes and symlinks.
+// VIP-27 resolved module identity across package, paths, imports, suffixes and symlinks: docs/design/vips/0027-declaration-output.md#52d921be04c5f053
+// VIP-27 resolved module identity across package, paths, imports, suffixes and symlinks: docs/design/vips/0027-declaration-output.md#608508298ee8f6a7
+// VIP-27 resolved module identity across package, paths, imports, suffixes and symlinks: docs/design/vips/0027-declaration-output.md#8d637c83ecf4653c
+// VIP-27 resolved module identity across package, paths, imports, suffixes and symlinks: docs/design/vips/0027-declaration-output.md#103aa0b333a11de3
+// VIP-27 resolved module identity across package, paths, imports, suffixes and symlinks: docs/design/vips/0027-declaration-output.md#418b9929d2304676
+// VIP-27 resolved module identity across package, paths, imports, suffixes and symlinks: docs/design/vips/0027-declaration-output.md#cb8eede064af3d15
+// VIP-27 resolved module identity across package, paths, imports, suffixes and symlinks: docs/design/vips/0027-declaration-output.md#e551aa12b14940f3
+// VIP-27 resolved module identity across package, paths, imports, suffixes and symlinks: docs/design/vips/0027-declaration-output.md#2f4ebc21ac345244
+// VIP-27 resolved module identity across package, paths, imports, suffixes and symlinks: docs/design/vips/0027-declaration-output.md#878e8d383bb9c844
+// VIP-27 resolved module identity across package, paths, imports, suffixes and symlinks: docs/design/vips/0027-declaration-output.md#759be401fb27afe6
+
 import (
 	"encoding/json"
 	"fmt"

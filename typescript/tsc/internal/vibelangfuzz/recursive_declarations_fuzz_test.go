@@ -1,5 +1,12 @@
 package vibelangfuzz
 
+// Coverage census: anonymous cycle elision and declaration-consumer validity across TS and Vibe.
+// VIP-27 anonymous cycle elision and declaration-consumer validity across TS and Vibe: docs/design/vips/0027-declaration-output.md#70538324d3bcb7a4
+// VIP-27 anonymous cycle elision and declaration-consumer validity across TS and Vibe: docs/design/vips/0027-declaration-output.md#7e45ff501f339b59
+// VIP-27 anonymous cycle elision and declaration-consumer validity across TS and Vibe: docs/design/vips/0027-declaration-output.md#16e4416b46621f5a
+// VIP-27 anonymous cycle elision and declaration-consumer validity across TS and Vibe: docs/design/vips/0027-declaration-output.md#62b07b8007aa750b
+// VIP-27 anonymous cycle elision and declaration-consumer validity across TS and Vibe: docs/design/vips/0027-declaration-output.md#9bf5c90d831a0352
+
 import (
 	"fmt"
 	"os"

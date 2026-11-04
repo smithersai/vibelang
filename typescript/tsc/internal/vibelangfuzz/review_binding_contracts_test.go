@@ -1,3 +1,5 @@
+// docs/design/vips/0034-compiler-and-tooling.md#e3ae0eb4693c052d
+// VIP-34: a Stream concurrent operand uses the owning VIP-19 EK1901.
 package vibelangfuzz
 
 import (
@@ -13,15 +15,17 @@ import (
 type reviewContractCase struct {
 	key, source, native, config string
 	code                        int32
+	nativeCode                  int32
 	nativeReject                bool
 	extras                      map[string]string
 }
 
 func TestReviewBindingContractsQuoted(t *testing.T) {
 	quotes := map[string]string{
-		"006-data.md":     "A reference names a Schema value, not an expanded TypeScript type alias, interface, enum or class.",
-		"002-running.md":  "a written return type incompatible with the producer's Stream result",
-		"005-services.md": "A local declaration or import shadows one, as with any global.",
+		"../vips/0034-compiler-and-tooling.md": "A rejection that depends on a VibeLang production, placement rule, proposal-specific early error or explicitly adopted reconciliation uses its owning VIP's `EK` code, even when a TypeScript parser helper implements it.",
+		"006-data.md":                          "A reference names a Schema value, not an expanded TypeScript type alias, interface, enum or class.",
+		"002-running.md":                       "a written return type incompatible with the producer's Stream result",
+		"005-services.md":                      "A local declaration or import shadows one, as with any global.",
 	}
 	for chapter, quote := range quotes {
 		if !strings.Contains(SpecText(chapter), quote) {
@@ -78,6 +82,8 @@ func reviewContractCases(target string) []reviewContractCase {
 			{key: "stream-alias-nested-block", source: "import * as Effect from \"effect/Effect\";\nimport * as Stream from \"effect/Stream\";\ntype Input = Stream.Stream<number>;\nexport effect function probe(input: Input) { { for try (const item of input) { } return 0; } }\n", code: 0, native: "import * as Effect from \"effect/Effect\";\nimport * as Stream from \"effect/Stream\";\ntype Input = Stream.Stream<number>;\ndeclare const input: Input;\nconst check: Stream.Stream<any, any, any> = input;\nexport {check};\n", nativeReject: false, config: "", extras: map[string]string{}},
 			{key: "stream-number-direct", source: "import * as Effect from \"effect/Effect\";\nimport * as Stream from \"effect/Stream\";\nexport effect function probe(input: number) { for try (const item of input) { } return 0; }\n", code: 2004, native: "import * as Effect from \"effect/Effect\";\nimport * as Stream from \"effect/Stream\";\ndeclare const input: number;\nconst check: Stream.Stream<any, any, any> = input;\nexport {check};\n", nativeReject: true, config: "", extras: map[string]string{}},
 			{key: "stream-number-nested-block", source: "import * as Effect from \"effect/Effect\";\nimport * as Stream from \"effect/Stream\";\nexport effect function probe(input: number) { { for try (const item of input) { } return 0; } }\n", code: 2004, native: "import * as Effect from \"effect/Effect\";\nimport * as Stream from \"effect/Stream\";\ndeclare const input: number;\nconst check: Stream.Stream<any, any, any> = input;\nexport {check};\n", nativeReject: true, config: "", extras: map[string]string{}},
+			{key: "concurrent-stream-direct", source: "import * as Stream from \"effect/Stream\";\nexport effect function probe(input: Stream.Stream<number>) { for concurrent (const item of input) { } return 0; }\n", code: 1901, native: "import * as Stream from \"effect/Stream\";\ndeclare const input: Stream.Stream<number>;\nconst check: Iterable<unknown> = input;\nexport {check};\n", nativeReject: true, nativeCode: 2741, config: "", extras: map[string]string{}},
+			{key: "concurrent-stream-nested-block", source: "import * as Stream from \"effect/Stream\";\nexport effect function probe(input: Stream.Stream<number>) { { for concurrent (const item of input) { } } return 0; }\n", code: 1901, native: "import * as Stream from \"effect/Stream\";\ndeclare const input: Stream.Stream<number>;\nconst check: Iterable<unknown> = input;\nexport {check};\n", nativeReject: true, nativeCode: 2741, config: "", extras: map[string]string{}},
 		}
 	case "FuzzEffectQualifierBinding":
 		return []reviewContractCase{
@@ -193,6 +199,9 @@ func fuzzReviewContract(f *testing.F, target string) {
 			}
 			if row.nativeReject {
 				want := int32(2322) // Assignment to the explicitly named operand domain.
+				if row.nativeCode != 0 {
+					want = row.nativeCode
+				}
 				if row.code == 2339 {
 					want = 2339
 				} // Ordinary namespace member lookup.

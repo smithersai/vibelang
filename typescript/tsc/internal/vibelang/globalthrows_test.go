@@ -1,3 +1,5 @@
+// docs/design/vips/0027-declaration-output.md#68feb199cb49dd6e
+// VIP-27: JavaScript global throwing contracts have the specified never/error spellings.
 package vibelang
 
 import (

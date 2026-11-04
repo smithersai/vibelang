@@ -1,4 +1,13 @@
+// docs/design/vips/0034-compiler-and-tooling.md#4eccc779b2b6a174
+// VIP-34: both fix scope options require --fix in either argument order.
 package vibelangfuzz
+
+// Coverage census: scope options require the fix entry point in either argument order.
+// VIP-34 scope options require the fix entry point in either argument order: docs/design/vips/0034-compiler-and-tooling.md#971d79350e1f09c7
+// VIP-34 scope options require the fix entry point in either argument order: docs/design/vips/0034-compiler-and-tooling.md#4c22bc44d023ec46
+// VIP-34 scope options require the fix entry point in either argument order: docs/design/vips/0034-compiler-and-tooling.md#1081277f999762fe
+// VIP-34 scope options require the fix entry point in either argument order: docs/design/vips/0034-compiler-and-tooling.md#aab86e7304ebc8f5
+// VIP-34 scope options require the fix entry point in either argument order: docs/design/vips/0034-compiler-and-tooling.md#465f179b8ba11361
 
 import (
 	"strings"

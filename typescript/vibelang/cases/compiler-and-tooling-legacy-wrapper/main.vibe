@@ -1,0 +1,5 @@
+// docs/design/vips/0034-compiler-and-tooling.md#1201c82921527c11
+// VIP-34: legacy wrapper execution phase.
+import {Effect} from "effect"
+export function make(){ return Effect.succeed(7) }
+export effect function main(){ return make() }

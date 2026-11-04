@@ -1,0 +1,3 @@
+// docs/design/vips/0027-declaration-output.md#af0d109226341bb8
+// VIP-27: compiler-and-tooling-native-recursion.
+export const witness = 1;

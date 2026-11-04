@@ -1,4 +1,12 @@
+// docs/design/vips/0027-declaration-output.md#34af7570204a2eee
+// VIP-27: Vibe prelude joining compared with independent explicit native import bytes.
 package vibelangfuzz
+
+// Coverage census: TestDeclarationEffectModuleImports checks explicit twin bytes with unsorted imports and stable insertion.
+// VIP-27 TestDeclarationEffectModuleImports checks explicit twin bytes with unsorted imports and stable insertion: docs/design/vips/0027-declaration-output.md#5f0a8d854c1083b5
+// VIP-27 TestDeclarationEffectModuleImports checks explicit twin bytes with unsorted imports and stable insertion: docs/design/vips/0027-declaration-output.md#e5526e35dce7aa9d
+// VIP-27 TestDeclarationEffectModuleImports checks explicit twin bytes with unsorted imports and stable insertion: docs/design/vips/0027-declaration-output.md#58098e0ca4042213
+// VIP-27 TestDeclarationEffectModuleImports checks explicit twin bytes with unsorted imports and stable insertion: docs/design/vips/0027-declaration-output.md#198e3569bcf7ded1
 
 import (
 	"context"

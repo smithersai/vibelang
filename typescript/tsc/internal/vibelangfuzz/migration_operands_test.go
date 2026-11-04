@@ -1,3 +1,7 @@
+// docs/design/vips/0038-effect-lint-built-in.md#03bf9c9a5ad67efb
+// VIP-38: structural Effect operand mutations retain ordinary try; Option/Result have no invented conversion.
+// docs/design/vips/0038-effect-lint-built-in.md#00dfa9ddbebe9c9e
+// VIP-38: structural Effect operand mutations retain ordinary try; Option/Result have no invented conversion.
 package vibelangfuzz
 
 import (

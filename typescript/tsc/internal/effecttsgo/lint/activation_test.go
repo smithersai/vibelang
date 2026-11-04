@@ -1,5 +1,11 @@
 package lint
 
+// VIP-38 native Effect lint activation and disabled-plugin controls.
+// VIP-38 native Effect lint activation and disabled-plugin controls: docs/design/vips/0038-effect-lint-built-in.md#57d9308271e62069
+// VIP-38 native Effect lint activation and disabled-plugin controls: docs/design/vips/0038-effect-lint-built-in.md#392c06ea8c925751
+// VIP-38 native Effect lint activation and disabled-plugin controls: docs/design/vips/0038-effect-lint-built-in.md#75143e3da2b80996
+// VIP-38 native Effect lint activation and disabled-plugin controls: docs/design/vips/0038-effect-lint-built-in.md#dc9ac4396e556e19
+
 import (
 	"context"
 	"os"

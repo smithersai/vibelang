@@ -1,0 +1,1 @@
+selected native files, declarations, dependencies and output stay intact

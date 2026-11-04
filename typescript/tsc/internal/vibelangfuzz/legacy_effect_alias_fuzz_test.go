@@ -1,3 +1,5 @@
+// docs/design/vips/0034-compiler-and-tooling.md#c8a9f8f09355bffa
+// VIP-34: resolved retired Effect alias warns; local and imported same-named types do not.
 package vibelangfuzz
 
 import (

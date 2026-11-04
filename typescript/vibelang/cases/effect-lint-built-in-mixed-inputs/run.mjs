@@ -1,3 +1,5 @@
+// docs/design/vips/0038-effect-lint-built-in.md#9cab28dc303cae2b
+// VIP-38: floatingEffect uses assigned EK3801 across native and Vibe inputs.
 // run-seconds: 300
 import assert from "node:assert/strict"
 import { spawnSync } from "node:child_process"

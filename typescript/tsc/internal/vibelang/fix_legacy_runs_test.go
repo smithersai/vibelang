@@ -1,3 +1,5 @@
+// docs/design/vips/0034-compiler-and-tooling.md#aad064991d073aa1
+// VIP-34: VIP-only migration writes function kind markers and explicit try at legacy run positions.
 package vibelang
 
 import (

@@ -1,0 +1,13 @@
+// expect: EK1901
+// docs/design/vips/0034-compiler-and-tooling.md#6f0eb19b09ab0119
+// VIP-34: VIP-owned rejection uses its owning diagnostic block.
+// docs/design/vips/0034-compiler-and-tooling.md#9d4bfd932483a873
+// VIP-34: VIP-owned rejection uses its owning diagnostic block.
+// docs/design/vips/0034-compiler-and-tooling.md#a04141019b92d086
+// VIP-34: VIP-owned rejection uses its owning diagnostic block.
+// docs/design/vips/0034-compiler-and-tooling.md#e3ae0eb4693c052d
+// VIP-34: a Stream used by for concurrent gets the owning VIP-19 EK1901.
+import { Stream } from "effect"
+export effect function rejected() {
+  for concurrent (const item of Stream.make(1, 2, 3)) { }
+}

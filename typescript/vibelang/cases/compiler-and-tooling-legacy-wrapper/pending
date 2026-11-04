@@ -1,0 +1,1 @@
+cov-tooling: VIP-34 legacy wrapper migration keeps try when success data is another Effect; the inner program is run instead of returned.

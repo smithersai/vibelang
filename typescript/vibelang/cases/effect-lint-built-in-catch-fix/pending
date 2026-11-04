@@ -1,0 +1,1 @@
+cov-tooling VIP coverage: plain catch returning an Effect retains EK4802 instead of the required VIP-38 lint and handler fix.

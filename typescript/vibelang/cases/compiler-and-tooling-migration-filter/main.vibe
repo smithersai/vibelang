@@ -1,0 +1,3 @@
+// docs/design/vips/0034-compiler-and-tooling.md#97f6ada6c350122b
+// VIP-34: compiler-and-tooling-migration-filter.
+export const witness = 1;

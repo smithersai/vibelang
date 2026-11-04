@@ -1,4 +1,19 @@
+// docs/design/vips/0027-declaration-output.md#d9b55db30edfcc33
+// VIP-27: artifact preservation includes sidecars with noEmit or declaration false.
+// docs/design/vips/0027-declaration-output.md#21c795692db6fcaf
+// VIP-27: native noEmit and declaration false control suppresses native declaration writes.
+// docs/design/vips/0027-declaration-output.md#9c2b53d6833b7bb7
+// VIP-27: required compatibility output is independent of ordinary emit.
 package vibelangfuzz
+
+// Coverage census: independent compatibility writes and native no-write controls across emit modes.
+// VIP-27 independent compatibility writes and native no-write controls across emit modes: docs/design/vips/0027-declaration-output.md#8bbc40fc4488bd77
+// VIP-27 independent compatibility writes and native no-write controls across emit modes: docs/design/vips/0027-declaration-output.md#b80fff451d2bce05
+// VIP-27 independent compatibility writes and native no-write controls across emit modes: docs/design/vips/0027-declaration-output.md#b807e06f720bcc19
+// VIP-27 independent compatibility writes and native no-write controls across emit modes: docs/design/vips/0027-declaration-output.md#db225a080a847135
+// VIP-27 independent compatibility writes and native no-write controls across emit modes: docs/design/vips/0027-declaration-output.md#188ac5c170105aa1
+// VIP-27 independent compatibility writes and native no-write controls across emit modes: docs/design/vips/0027-declaration-output.md#0ce7d9085b13014d
+// VIP-27 independent compatibility writes and native no-write controls across emit modes: docs/design/vips/0027-declaration-output.md#c9b0d0d57a7330d8
 
 import (
 	"encoding/json"

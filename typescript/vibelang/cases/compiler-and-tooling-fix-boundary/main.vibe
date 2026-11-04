@@ -1,0 +1,9 @@
+// docs/design/vips/0034-compiler-and-tooling.md#ec1bf63a039a713c
+// VIP-34: external and dependency configs and sources stay intact.
+// docs/design/vips/0034-compiler-and-tooling.md#788fb321493e1069
+// VIP-34: external and dependency configs and sources stay intact.
+// docs/design/vips/0034-compiler-and-tooling.md#f81be71d687210ad
+// VIP-34: external and dependency configs and sources stay intact.
+// docs/design/vips/0034-compiler-and-tooling.md#8162761ef2d6babf
+// VIP-34: external and dependency configs and sources stay intact.
+export const witness = 1;

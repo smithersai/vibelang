@@ -1,0 +1,11 @@
+// docs/design/vips/0034-compiler-and-tooling.md#fa20a2c5ef7c6da6
+// VIP-34: current execution phase and no invented conversion.
+// docs/design/vips/0038-effect-lint-built-in.md#5ddef204ae55e32b
+// VIP-38: current execution phase and no invented conversion.
+// docs/design/vips/0038-effect-lint-built-in.md#628b178179fe4d27
+// VIP-38: current execution phase and no invented conversion.
+// docs/design/vips/0038-effect-lint-built-in.md#4662e298d858f61b
+// VIP-38: current execution phase and no invented conversion.
+import {Effect} from "effect"
+export function make(){ return Effect.succeed(7) }
+export effect function main(){ return try make() }

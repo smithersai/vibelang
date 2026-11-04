@@ -1,3 +1,5 @@
+// docs/design/vips/0034-compiler-and-tooling.md#8b7166d0d577488c
+// VIP-34: fixed-point rerun, pass-limit residual report and driver exit status.
 package vibelang
 
 import (

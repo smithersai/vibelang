@@ -1,0 +1,1 @@
+cov-tooling VIP coverage: lint --config accepts an unsupported extra option.

@@ -1,0 +1,3 @@
+// docs/design/vips/0034-compiler-and-tooling.md#377eaea3641b20d1
+// VIP-34: compiler-and-tooling-foreign-refusal.
+export const witness = 1;

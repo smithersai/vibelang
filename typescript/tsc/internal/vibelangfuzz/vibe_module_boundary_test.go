@@ -1,3 +1,7 @@
+// docs/design/vips/0030-config-files.md#620eaee7d226e458
+// VIP-30: native moduleDetection control and private Vibe bindings in both file orders.
+// docs/design/vips/0030-config-files.md#31da1fa785cfd07c
+// VIP-30: native moduleDetection control and private Vibe bindings in both file orders.
 package vibelangfuzz
 
 import (

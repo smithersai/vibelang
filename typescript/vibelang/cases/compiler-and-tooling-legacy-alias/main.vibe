@@ -1,0 +1,3 @@
+// docs/design/vips/0034-compiler-and-tooling.md#c8a9f8f09355bffa
+// VIP-34: the resolved retired Effect alias carries transition warning EK4856.
+export effect function main(value: Effect<number>) { return try value }

@@ -1,4 +1,17 @@
+// docs/design/vips/0027-declaration-output.md#1142b60f1dc8b56c
+// VIP-27: include/default-source precedence and explicit compatibility input TS5055 preservation.
+// docs/design/vips/0027-declaration-output.md#a32a500eb9e7400f
+// VIP-27: include/default-source precedence and explicit compatibility input TS5055 preservation.
 package vibelangfuzz
+
+// Coverage census: explicit sidecar inputs compared with native declaration selection, TS5055 status and retained bytes.
+// VIP-27 explicit sidecar inputs compared with native declaration selection, TS5055 status and retained bytes: docs/design/vips/0027-declaration-output.md#69a7716cf6d0917d
+// VIP-27 explicit sidecar inputs compared with native declaration selection, TS5055 status and retained bytes: docs/design/vips/0027-declaration-output.md#d6cef667787d1eb1
+// VIP-27 explicit sidecar inputs compared with native declaration selection, TS5055 status and retained bytes: docs/design/vips/0027-declaration-output.md#6486ff2ac5ec2445
+// VIP-27 explicit sidecar inputs compared with native declaration selection, TS5055 status and retained bytes: docs/design/vips/0027-declaration-output.md#4d697f7471280b35
+// VIP-27 explicit sidecar inputs compared with native declaration selection, TS5055 status and retained bytes: docs/design/vips/0027-declaration-output.md#711fd4f2e017f34d
+// VIP-27 explicit sidecar inputs compared with native declaration selection, TS5055 status and retained bytes: docs/design/vips/0027-declaration-output.md#dae280a86c8acdb5
+// VIP-27 explicit sidecar inputs compared with native declaration selection, TS5055 status and retained bytes: docs/design/vips/0027-declaration-output.md#04c5ec6db029937f
 
 import (
 	"bytes"

@@ -1,0 +1,1 @@
+build mode fixes each project in dependency order

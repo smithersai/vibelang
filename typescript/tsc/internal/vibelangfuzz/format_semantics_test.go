@@ -1,3 +1,5 @@
+// docs/design/vips/0034-compiler-and-tooling.md#acf50e7788cd53bb
+// VIP-34: escaped directive versus strict directive semantic oracle rejects changed meaning.
 package vibelangfuzz
 
 import "testing"

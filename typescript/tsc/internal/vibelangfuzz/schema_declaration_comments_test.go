@@ -4,6 +4,11 @@
 // rule: docs/design/src/006-data.md#f5211dee12b7b0f9
 package vibelangfuzz
 
+// Coverage census: schema JSDoc, tags, removeComments and stripInternal against the explicit Schema twin.
+// VIP-27 schema JSDoc, tags, removeComments and stripInternal against the explicit Schema twin: docs/design/vips/0027-declaration-output.md#3378c6dba93fd16f
+// VIP-27 schema JSDoc, tags, removeComments and stripInternal against the explicit Schema twin: docs/design/vips/0027-declaration-output.md#f5211dee12b7b0f9
+// VIP-27 schema JSDoc, tags, removeComments and stripInternal against the explicit Schema twin: docs/design/vips/0027-declaration-output.md#6f42980fb6df70ed
+
 import (
 	"fmt"
 	"os"

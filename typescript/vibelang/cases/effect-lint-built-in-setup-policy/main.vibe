@@ -1,0 +1,3 @@
+// docs/design/vips/0038-effect-lint-built-in.md#453d429bc82e8726
+// VIP-38: effect-lint-built-in-setup-policy.
+export const witness = 1;

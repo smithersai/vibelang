@@ -1,0 +1,1 @@
+cov-tooling VIP coverage: fix traverses external and node_modules extended configs and external Vibe sources.

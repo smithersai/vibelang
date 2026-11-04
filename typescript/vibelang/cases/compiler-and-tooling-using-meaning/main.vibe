@@ -1,0 +1,6 @@
+// docs/design/vips/0034-compiler-and-tooling.md#120ad52d16359764
+// VIP-34: compiler-and-tooling-using-meaning.
+// docs/design/vips/0034-compiler-and-tooling.md#f1178443aaaa6fb2
+// VIP-34: compiler-and-tooling-using-meaning.
+import { Effect } from "effect"
+export effect function unsafe(resource: Disposable) { using file = resource; return try Effect.fail("boom") }

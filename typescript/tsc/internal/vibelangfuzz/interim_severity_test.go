@@ -1,3 +1,5 @@
+// docs/design/vips/0030-config-files.md#c77e9663aa746fc7
+// VIP-30: interim EK92xx cannot be configured.
 package vibelangfuzz
 
 import (

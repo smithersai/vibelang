@@ -1,0 +1,3 @@
+// docs/design/vips/0038-effect-lint-built-in.md#4cd6a7363d77eb15
+// VIP-38: effect-lint-built-in-extractor-fix.
+export const witness = 1;

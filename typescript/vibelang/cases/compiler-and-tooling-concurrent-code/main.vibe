@@ -1,0 +1,7 @@
+// docs/design/vips/0034-compiler-and-tooling.md#e3ae0eb4693c052d
+// VIP-34: a Stream used by for concurrent gets the owning VIP-19 EK1901.
+export effect function main(values: ReadonlyArray<number>) {
+  let sum = 0
+  for concurrent (const item of values) { sum += item }
+  return sum
+}

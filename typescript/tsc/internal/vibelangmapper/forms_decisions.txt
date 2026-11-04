@@ -924,6 +924,8 @@ typescript/vibelang/cases/ch24-profile/ch24-profile.vibe:55:36 lambda program ta
 typescript/vibelang/cases/ch24-profile/ch24-profile.vibe:56:38 lambda program table
 typescript/vibelang/cases/ch24-profile/ch24-profile.vibe:59:24 lambda program table
 typescript/vibelang/cases/class-callback-contracts/main.vibe:7:38 lambda plain fallback
+typescript/vibelang/cases/compiler-and-tooling-concurrent-code.fail/main.vibe:12:25 lambda effectFn table
+typescript/vibelang/cases/compiler-and-tooling-concurrent-code/main.vibe:5:25 lambda effectFn table
 typescript/vibelang/cases/concurrent-body-scope/main.vibe:12:28 lambda effectFn table
 typescript/vibelang/cases/concurrent-body-scope/main.vibe:4:28 lambda effectFn table
 typescript/vibelang/cases/concurrent-body-scope/main.vibe:8:26 lambda effectFn table
@@ -2588,7 +2590,7 @@ typescript/vibelang/cases/effect-lexical-this-regions/main.vibe:13:20 lambda pro
 typescript/vibelang/cases/effect-lexical-this-regions/main.vibe:14:20 lambda program annotation
 typescript/vibelang/cases/effect-lexical-this-regions/main.vibe:15:20 lambda program annotation
 typescript/vibelang/cases/effect-lexical-this-regions/main.vibe:6:30 lambda plain fallback
-typescript/vibelang/cases/effect-lint-mixed-inputs/main.vibe:20:3 lambda plain fallback
+typescript/vibelang/cases/effect-lint-built-in-mixed-inputs/main.vibe:20:3 lambda plain fallback
 typescript/vibelang/cases/effect-loaded-by-parse/lib.vibe:6:21 lambda effectFn keyword
 typescript/vibelang/cases/effect-loaded-by-parse/lib.vibe:7:26 lambda effectFn keyword
 typescript/vibelang/cases/effect-loaded-by-parse/lib.vibe:8:23 lambda effectFn keyword

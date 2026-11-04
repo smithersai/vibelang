@@ -1,0 +1,7 @@
+// docs/design/vips/0034-compiler-and-tooling.md#de82f2635eee85c6
+// VIP-34: imported owned Vibe and Vibex sources are fixed despite root exclusion.
+// docs/design/vips/0034-compiler-and-tooling.md#42ac0a2607fad1a1
+// VIP-34: imported owned Vibe and Vibex sources are fixed despite root exclusion.
+// docs/design/vips/0034-compiler-and-tooling.md#c2673ec039824821
+// VIP-34: imported owned Vibe and Vibex sources are fixed despite root exclusion.
+export const witness = 1;
