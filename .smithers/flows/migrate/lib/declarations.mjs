@@ -1019,8 +1019,9 @@ export function emitErrorsIn(diagnostics, files, { code = 0, log, baseline, cwd,
   const recorded = baseline && Number.isInteger(baseline.code) && Array.isArray(baseline.diagnostics)
   const source = d => (d.file ?? "").replace(/\.(?:ts|tsx|mts|cts|vibe|vibex)$/, "")
   const key = d => JSON.stringify([source(d), d.code, d.message, d.notes ?? []])
+  const originals = recorded ? baseline.diagnostics.filter(d => d.category === "error") : []
   const remaining = new Map()
-  if (recorded) for (const d of baseline.diagnostics.filter(d => d.category === "error")) {
+  if (recorded) for (const d of originals) {
     const entry = remaining.get(key(d)) ?? { diagnostic: d, count: 0 }
     entry.count++
     remaining.set(key(d), entry)
@@ -1034,6 +1035,9 @@ export function emitErrorsIn(diagnostics, files, { code = 0, log, baseline, cwd,
     return false
   })
   const added = unmatched.filter(d => {
+    // A package-path relaxation proves the complete original error census.
+    // Ordinary exact matching may still recognize a fixed original error.
+    if (current.length !== originals.length) return true
     for (const entry of remaining.values()) {
       const original = entry.diagnostic
       if (!entry.count || source(original) !== source(d) ||

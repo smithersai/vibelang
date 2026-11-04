@@ -49,6 +49,7 @@ test("dependency paths never excuse changed symbols, owners, codes, notes or mul
     d => ({ ...d, notes: ["changed constraint"] }),
     d => ({ ...d, message: d.message.replace("cannot be named", "cannot be exported") })
   ]) assert.ok(check([change(current[0]), ...current.slice(1)]).length)
+  assert.ok(check(current.slice(1)).length, "path tolerance requires the complete original diagnostic census")
   assert.ok(check([...current, current[0]]).length)
   assert.ok(check([{ ...current[0], message: current[0].message + " another error" }]).length)
 }))
@@ -87,6 +88,10 @@ test("generated dependency neighbourhoods preserve precisely the proved version 
       const baseline = { code: 2, diagnostics: diagnostics(a) }
       const current = diagnostics(b)
       assert.deepEqual(emitErrorsIn(current, [], { code: 2, baseline, cwd: root }), [])
+      for (const count of [1, 2]) {
+        assert.ok(emitErrorsIn(current.slice(count), [], { code: 2, baseline, cwd: root }).length, "a missing original error prevents path relaxation")
+        assert.ok(emitErrorsIn([...current, ...current.slice(0, count)], [], { code: 2, baseline, cwd: root }).length, "additional errors prevent path relaxation")
+      }
       const changed = current.map(d => ({ ...d, message: d.message.replace("NodeInspectSymbol", "NewSymbol") }))
       assert.ok(emitErrorsIn(changed, [], { code: 2, baseline, cwd: root }).length)
       const peer = module("4.2." + patch, { name, subpath, peers: "_peer@1.0.0" })
