@@ -24,13 +24,5 @@ const $makeCodec1333_0 = (): infer _ => Schema.Union([Schema.Literals(["a", "b"]
 const $codecs1333 = { get $codec1333_0() { return $makeCodec1333_0(); } };
 
 export schema error Root { value: $codecs1333.$codec1333_0; get label(): string {return "kept"} }
-const $makeCodec750_0 = (): infer _ => Schema.Union([Schema.Literals(["a", "b"]), Schema.Null]);
-const $codecs750 = { get $codec750_0() { return $makeCodec750_0(); } };
-
-export abstract schema error Family { value: $codecs750.$codec750_0 }
-const $makeCodec816_1 = (): infer _ => Schema.Union([Schema.Literals(["c", "d"]), Schema.Null]);
-const $codecs816 = { get $codec816_1() { return $makeCodec816_1(); } };
-
-export schema error Child extends Family { extra: $codecs816.$codec816_1 }
 export function make(): infer _ { return new Root({value: "a"}) }
 export function matches(value: unknown): boolean {return value is Root}
