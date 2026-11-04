@@ -1,0 +1,212 @@
+//:mapper-scripts: property mapper-hover-streaming: 30 runs (Runner invariant: valid replies keep hover/diagnostic checks and exit status stable across stdout chunk boundaries and unrelated server stderr; every run reaps its peer.)
+//:mapper-scripts: ✔ mapper hover runner reaps its peer: success (789.815953ms)
+//:mapper-scripts: ✔ mapper hover runner reaps its peer: success-ignore-exit (515.194369ms)
+//:mapper-scripts: ✔ mapper hover runner reaps its peer: success-ignore-term (1423.547773ms)
+//:mapper-scripts: ✔ mapper hover runner reaps its peer: hover-mismatch (1578.100575ms)
+//:mapper-scripts: ✔ mapper hover runner reaps its peer: initialize-error (1596.047021ms)
+//:mapper-scripts: ✔ mapper hover runner reaps its peer: hover-error (1528.920973ms)
+//:mapper-scripts: ✔ mapper hover runner reaps its peer: diagnostic-error (1721.177047ms)
+//:mapper-scripts: ✔ mapper hover runner reaps its peer: shutdown-error (1773.153552ms)
+//:mapper-scripts: ✔ mapper hover runner reaps its peer: initialize-exit (783.316918ms)
+//:mapper-scripts: ✔ mapper hover runner reaps its peer: malformed-header (2139.602824ms)
+//:mapper-scripts: ✔ mapper hover runner reaps its peer: malformed-json (1594.020178ms)
+//:mapper-scripts: ✔ mapper hover runner reaps its peer: configuration (630.858228ms)
+//:mapper-scripts: ✔ mapper hover runner reports a missing peer without an unhandled event (335.632906ms)
+//:mapper-scripts: ✔ mapper hover runner tolerates fragmented Unicode replies and stderr pressure (23059.590325ms)
+//:mapper-scripts: property mapper-parity-command-descendants: 24 runs (Runner invariant: the command deadline covers process exit and inherited output pipes; it kills the owned POSIX process group and reports a timeout even if its parent has already exited zero.)
+//:mapper-scripts: ✔ both parity columns route commands through the shared deadline owner (14.951462ms)
+//:mapper-scripts: ✔ parity commands retain literal arguments, cwd, Unicode and both streams (423.060951ms)
+//:mapper-scripts: ✔ parity commands retain ordinary nonzero exit status (303.149998ms)
+//:mapper-scripts: ✔ a direct command deadline retains partial output and names the timeout (301.801077ms)
+//:mapper-scripts: ✔ one deadline does not kill an independent concurrent command (673.418943ms)
+//:mapper-scripts: ✔ spawn failures propagate rather than becoming successful commands (83.157961ms)
+//:mapper-scripts: ✔ a spontaneous signal remains distinct from a command deadline (287.567905ms)
+//:mapper-scripts: ✔ parity deadline stops stdout holders after parent wait (299.802126ms)
+//:mapper-scripts: ✔ parity deadline stops stderr holders after parent wait (301.690757ms)
+//:mapper-scripts: ✔ parity deadline stops both holders after parent wait (269.73378ms)
+//:mapper-scripts: ✔ parity deadline stops stdout holders after parent exit (265.947777ms)
+//:mapper-scripts: ✔ parity deadline stops stderr holders after parent exit (244.963469ms)
+//:mapper-scripts: ✔ parity deadline stops both holders after parent exit (299.656365ms)
+//:mapper-scripts: ✔ generated process trees stay bounded across stream ownership and output pressure (6658.637136ms)
+//:mapper-scripts: property mapper-parity-local-export-alias: 80 runs (Harness invariant: a changed public alias in a named local export list changes the compared declaration surface; formatting and comments do not.)
+//:mapper-scripts: ✔ local export aliases remain part of the compared declaration (124.729796ms)
+//:mapper-scripts: ✔ dropping a local export list cannot match the prior declaration surface (0.961701ms)
+//:mapper-scripts: ✔ changing only one of multiple local export lists is detected (0.538111ms)
+//:mapper-scripts: ✔ default and string-named local aliases retain their spelling (0.94172ms)
+//:mapper-scripts: ✔ local export tracking preserves declaration visibility and module markers (0.768651ms)
+//:mapper-scripts: ✔ external reexports continue to retain aliases and modules (0.870161ms)
+//:mapper-scripts: ✔ public export names cannot resolve through unrelated local imports (12.5446ms)
+//:mapper-scripts: ✔ renaming an imported local alias keeps the same public export (3.592443ms)
+//:mapper-scripts: ✔ real pinned TypeScript declaration emit detects renamed local exports (1621.151502ms)
+//:mapper-scripts: ✔ generated local alias mutations cannot disappear from parity (264.505625ms)
+//:mapper-scripts: property mapper-parity-invalid-jobs: 48 runs (Harness invariant: --jobs is a positive safe integer; invalid counts exit2 before setting up modules or replacing documentation receipts.)
+//:mapper-scripts: ✔ parity keeps its default and positive integer worker counts (3264.268162ms)
+//:mapper-scripts: ✔ parity rejects zero worker counts before changing output (57.089418ms)
+//:mapper-scripts: ✔ parity rejects negative worker counts before changing output (275.016405ms)
+//:mapper-scripts: ✔ parity rejects fraction below one worker counts before changing output (251.352194ms)
+//:mapper-scripts: ✔ parity rejects fraction above one worker counts before changing output (247.778001ms)
+//:mapper-scripts: ✔ parity rejects NaN worker counts before changing output (186.57319ms)
+//:mapper-scripts: ✔ parity rejects infinity worker counts before changing output (157.135894ms)
+//:mapper-scripts: ✔ parity rejects negative infinity worker counts before changing output (279.655448ms)
+//:mapper-scripts: ✔ parity rejects nonnumeric worker counts before changing output (153.248821ms)
+//:mapper-scripts: ✔ parity rejects empty worker counts before changing output (250.898424ms)
+//:mapper-scripts: ✔ parity rejects whitespace worker counts before changing output (159.079606ms)
+//:mapper-scripts: ✔ parity rejects unsafe integer worker counts before changing output (152.47261ms)
+//:mapper-scripts: ✔ parity rejects overflow worker counts before changing output (172.712017ms)
+//:mapper-scripts: ✔ parity rejects missing worker counts before changing output (175.28958ms)
+//:mapper-scripts: ✔ parity rejects flag as value worker counts before changing output (168.366403ms)
+//:mapper-scripts: ✔ generated invalid parity worker counts preserve prior docs receipts (11136.156221ms)
+//:mapper-scripts: property mapper-parity-jsonc-data: 400 runs (Harness invariant: reading tsconfig JSONC preserves every JSON string key and value; only comments and commas outside strings are syntax.)
+//:mapper-scripts: property mapper-parity-jsonc-paths: 12 runs (Harness invariant: the runtime column passes the literal configured output path to stock TypeScript and runs that emitted JavaScript.)
+//:mapper-scripts: ✔ both parity columns use the compiler's string-aware JSONC reader (11.05664ms)
+//:mapper-scripts: ✔ JSONC commas and comment lookalikes inside keys and values remain data (22.369619ms)
+//:mapper-scripts: ✔ comments cannot join otherwise invalid JSON tokens (1.009141ms)
+//:mapper-scripts: ✔ generated JSON data survives JSONC comment and trailing-comma decoration (481.77768ms)
+//:mapper-scripts: ✔ runtime parity compiles and runs with literal outDir "out" (4275.653945ms)
+//:mapper-scripts: ✔ runtime parity compiles and runs with literal outDir "out,]" (3926.855207ms)
+//:mapper-scripts: ✔ runtime parity compiles and runs with literal outDir "out,}" (4465.678706ms)
+//:mapper-scripts: ✔ runtime parity compiles and runs with literal outDir "out,   ]" (3468.766027ms)
+//:mapper-scripts: ✔ runtime parity compiles and runs with literal outDir "nested/out, }" (4032.283807ms)
+//:mapper-scripts: ✔ runtime parity compiles and runs with literal outDir "雪😀,]" (3953.06018ms)
+//:mapper-scripts: ✔ runtime parity reads a BOM-prefixed JSONC project (4486.910574ms)
+//:mapper-scripts: ✔ generated path neighbours reach the real compiler and runner unchanged (57644.765383ms)
+//:mapper-scripts: property mapper-parity-empty-declaration-selection: 24 runs (Harness invariant: a declaration measurement needs at least one selected case; an empty selection exits2 before replacing receipts or setting up modules.)
+//:mapper-scripts: ✔ unmatched declaration selectors fail without replacing receipts: misspelled-case (41.269725ms)
+//:mapper-scripts: ✔ unmatched declaration selectors fail without replacing receipts: not-alpha, not-beta (38.421532ms)
+//:mapper-scripts: ✔ an empty declaration corpus fails before setup: [] (39.559134ms)
+//:mapper-scripts: ✔ an empty declaration corpus fails before setup: ["not-present"] (39.291194ms)
+//:mapper-scripts: ✔ gate selectors retain their explicit whole-corpus error before setup (41.486735ms)
+//:mapper-scripts: ✔ generated unmatched selectors fail without creating a zero-case result (717.144871ms)
+//:mapper-scripts: ✔ real compilers preserve selection: [] (1733.610218ms)
+//:mapper-scripts: ✔ real compilers preserve selection: ["alpha-case"] (1435.478303ms)
+//:mapper-scripts: ✔ real compilers preserve selection: ["beta-"] (1552.364933ms)
+//:mapper-scripts: ✔ real compilers preserve selection: ["alpha-case","beta-case"] (1814.051477ms)
+//:mapper-scripts: ✔ docs-only measurement remains independent of declaration selection (100.062375ms)
+//:mapper-scripts: ✔ mapper RPC rejects every request after eof (320.849123ms)
+//:mapper-scripts: ✔ mapper RPC rejects every request after header-eof (338.269568ms)
+//:mapper-scripts: ✔ mapper RPC rejects every request after body-eof (1374.551331ms)
+//:mapper-scripts: ✔ mapper RPC rejects every request after missing-length (362.500279ms)
+//:mapper-scripts: ✔ mapper RPC rejects every request after duplicate-length (324.276737ms)
+//:mapper-scripts: ✔ mapper RPC rejects every request after invalid-length (304.245759ms)
+//:mapper-scripts: ✔ mapper RPC rejects every request after oversized-length (358.046765ms)
+//:mapper-scripts: ✔ mapper RPC rejects every request after unsafe-length (385.632359ms)
+//:mapper-scripts: ✔ mapper RPC rejects every request after json (207.904768ms)
+//:mapper-scripts: ✔ mapper RPC rejects every request after null (220.094637ms)
+//:mapper-scripts: ✔ mapper RPC rejects every request after array (147.772806ms)
+//:mapper-scripts: ✔ mapper RPC rejects every request after server-request (305.904551ms)
+//:mapper-scripts: ✔ mapper RPC rejects every request after exit (335.543036ms)
+//:mapper-scripts: ✔ mapper RPC rejects every request after signal (260.350082ms)
+//:mapper-scripts: ✔ closing mapper RPC rejects pending and future work and reaps an unresponsive peer (1250.893826ms)
+//:mapper-scripts: ✔ mapper RPC preserves response errors without failing the transport (304.89117ms)
+//:mapper-scripts: property mapper-rpc-framing: 40 runs (Test transport invariant: framing preserves JSON results and request ids across arbitrary stdout chunk boundaries; response order is independent of request order.)
+//:mapper-scripts: ✔ mapper RPC answers server configuration requests (305.58815ms)
+//:mapper-scripts: ✔ mapper RPC preserves Unicode results across fragmented and coalesced frames (15418.670103ms)
+//:mapper-scripts: ✔ mapper RPC reports spawn failure to pending and future requests (24.937421ms)
+//:mapper-scripts: ✔ mapper RPC decodes Unicode split at every byte in reversed coalesced replies (541.661022ms)
+//:mapper-scripts: property mapper-runtime-compile-status: 16 runs (Runner invariant: stock TypeScript must exit zero before emitted JavaScript executes; noCheck skips type checking but does not admit syntax errors.)
+//:mapper-scripts: ✔ runtime parity still executes healthy and deliberately unchecked TypeScript (5281.344231ms)
+//:mapper-scripts: ✔ runtime parity stops after a real compiler failure: const invalid: = 1 (2733.27223ms)
+//:mapper-scripts: ✔ runtime parity stops after a real compiler failure: function unused(value:) { return value } (2090.630122ms)
+//:mapper-scripts: ✔ runtime parity stops after a real compiler failure: class Unused { field: = 1 } (2142.698686ms)
+//:mapper-scripts: ✔ runtime parity stops after a real compiler failure: type Unused = ; (2221.925294ms)
+//:mapper-scripts: ✔ runtime parity stops after a real compiler failure: interface Unused { value: } (1874.485217ms)
+//:mapper-scripts: ✔ generated mixed batches distinguish syntax failures from emitted output (60000.854822ms)
+//:mapper-scripts: property mapper-runtime-entry-url: 12 runs (Harness invariant: a generated import names the literal emitted filename, including URL metacharacters and JavaScript quotes; every real compiled main returns its expected value.)
+//:mapper-scripts: ✔ runtime parity imports a literal entry filename: "main" (4798.28352ms)
+//:mapper-scripts: ✔ runtime parity imports a literal entry filename: "with space" (5606.750229ms)
+//:mapper-scripts: ✔ runtime parity imports a literal entry filename: "unicode-λ" (4216.920345ms)
+//:mapper-scripts: ✔ runtime parity imports a literal entry filename: "hash#tag" (5453.038578ms)
+//:mapper-scripts: ✔ runtime parity imports a literal entry filename: "query?tag" (5007.805888ms)
+//:mapper-scripts: ✔ runtime parity imports a literal entry filename: "double\"quote" (3392.644562ms)
+//:mapper-scripts: ✔ runtime parity imports a literal entry filename: "literal%20space" (4663.383595ms)
+//:mapper-scripts: ✔ runtime parity imports a literal entry filename: "encoded%2Fslash" (4767.913514ms)
+//:mapper-scripts: ✔ generated filename batches preserve literal URL metacharacters (62075.59458ms)
+//:mapper-scripts: property mapper-runtime-entry-extension: 16 runs (Harness invariant: .ts entries run their .js output, .mts their .mjs output, and .cts their .cjs output; each compiled main returns the source's expected value.)
+//:mapper-scripts: ✔ runtime parity executes the real emitted .ts entry (4257.011289ms)
+//:mapper-scripts: ✔ runtime parity executes the real emitted .mts entry (5181.050526ms)
+//:mapper-scripts: ✔ runtime parity executes the real emitted .cts entry (4312.128435ms)
+//:mapper-scripts: ✔ entry selection keeps alphabetical order and ignores declaration sidecars (158.865705ms)
+//:mapper-scripts: ✔ generated native entry batches run the modules stock tsc actually emitted (98287.108804ms)
+//:mapper-scripts: property mapper-runtime-parity-status: 24 runs (Runner invariant: the runtime-parity CLI returns success exactly when every selected runtime case passes, including mixed batches and harness failures.)
+//:mapper-scripts: ✔ mapper runtime parity exits zero when every real compiled fixture passes (5549.5725ms)
+//:mapper-scripts: ✔ mapper runtime parity exits one after a real result mismatch (4328.781429ms)
+//:mapper-scripts: ✔ mapper runtime parity keeps successful rows and fails a mixed batch (9297.684965ms)
+//:mapper-scripts: ✔ mapper runtime parity reports compiler launch failure to its caller (345.738815ms)
+//:mapper-scripts: ✔ mapper runtime parity status matches the aggregate real fixture results (160872.575909ms)
+//:mapper-scripts: property mapper-runtime-result-exit: 24 runs (Runner invariant: a runtime case passes only when its process exits zero and its result matches; expected output cannot hide a teardown failure or signal.)
+//:mapper-scripts: ✔ mapper runtime parity retains healthy success and value mismatch controls (5038.749165ms)
+//:mapper-scripts: ✔ mapper runtime parity rejects a matching value followed by exit 1 (5427.871566ms)
+//:mapper-scripts: ✔ mapper runtime parity rejects a matching value followed by exit 2 (5501.016479ms)
+//:mapper-scripts: ✔ mapper runtime parity rejects a matching value followed by exit 7 (4763.907091ms)
+//:mapper-scripts: ✔ mapper runtime parity rejects a matching value followed by exit 42 (5212.245963ms)
+//:mapper-scripts: ✔ mapper runtime parity rejects a matching value followed by exit 127 (5890.22964ms)
+//:mapper-scripts: ✔ mapper runtime parity rejects a matching value followed by exit 255 (5126.3575ms)
+//:mapper-scripts: ✔ mapper runtime parity rejects a matching value followed by a signal (5854.46073ms)
+//:mapper-scripts: ✔ mapper runtime parity checks exit status independently for generated mixed batches (135885.939442ms)
+//:mapper-scripts: property mapper-runtime-runner-isolation: 12 runs (Harness invariant: executing a case must preserve every compiler-emitted module; run.mjs is a valid dependency, both directly and through a reexport.)
+//:mapper-scripts: ✔ runtime parity still runs a graph with a noncolliding helper (3931.120841ms)
+//:mapper-scripts: ✔ runtime parity preserves a dependency named run.mjs (6186.976554ms)
+//:mapper-scripts: ✔ runtime parity preserves run.mjs reached through a reexport (5241.228947ms)
+//:mapper-scripts: ✔ concurrent cases keep their own runner and emitted module graph (7583.934364ms)
+//:mapper-scripts: ✔ generated module graphs retain compiler-owned run.mjs exports (67169.936362ms)
+//:mapper-scripts: property mapper-runtime-empty-selection: 32 runs (Harness invariant: runtime-parity CLI succeeds only after selecting runnable cases; an empty selection exits2, names its selectors and creates no runtime output.)
+//:mapper-scripts: ✔ runtime parity runs all runnable cases without selectors (3795.608936ms)
+//:mapper-scripts: ✔ runtime parity keeps exact and substring selector matches (9239.009165ms)
+//:mapper-scripts: ✔ runtime parity rejects a selector that matches no case (116.66802ms)
+//:mapper-scripts: ✔ runtime parity rejects an empty case corpus (152.32411ms)
+//:mapper-scripts: ✔ runtime parity rejects a corpus containing only compile-only cases (159.525466ms)
+//:mapper-scripts: ✔ runtime parity names every unmatched selector in an empty selection (122.498254ms)
+//:mapper-scripts: ✔ generated unmatched selectors cannot certify an empty runtime run (3603.458202ms)
+//:mapper-scripts: ℹ tests 144
+//:mapper-scripts: ℹ suites 0
+//:mapper-scripts: ℹ pass 144
+//:mapper-scripts: ℹ fail 0
+//:mapper-scripts: ℹ cancelled 0
+//:mapper-scripts: ℹ skipped 0
+//:mapper-scripts: ℹ todo 0
+//:mapper-scripts: ℹ duration_ms 456595.233107
+//:mapper-scripts  ran  461.6s
+13 targets: 0 hit, 12 ran, 1 failed, 0 skipped (897.5s)
+newly red, no matching failure in /tmp/known-red.json: //:go-vibelang
+observed failure: //:go-vibelang sha256:89073e148df3ff3aa4361812742ecc7a91f67a0e3d4f956c0a9db329f59a613c
+code: targets_failed
+message: "1 of 13 targets failed; 1 not on the known-red list, 0 not run"
+retryable: false
+cta:
+  description: "Suggested commands:"
+  commands[3]{command,description}:
+    "smthrs explain '//:go-vibelang' --workspace '/work'",Inspect the target and its dependencies
+    smthrs targets --workspace '/work',Discover available targets
+    smthrs cache status --workspace '/work',Inspect local cache usage
+
+=== shard cf5 (pm-11032209-8341e3fa217c-sh-cf5-graph.log)
+27 |     "fast-check": "4.10.2"
+         ^
+warn: Duplicate dependency: "fast-check" specified in package.json
+   at /work/docs/tools/package.json:27:5
+
+15 |     "fast-check": "4.10.2"
+                       ^
+note: "fast-check" originally specified here
+   at /work/docs/tools/package.json:15:19
+//:grammar-inventory: --- FAIL: TestTableAccountsForEveryHook (0.72s)
+//:grammar-inventory:     inventory_test.go:38: unaccounted syntax/lowering hook parser/vibelang_effect_slot_relational.go:Parser.nextVibeLangRequirementIsComparison; add its spec authority or pending admission:<form>
+//:grammar-inventory:     inventory_test.go:38: unaccounted syntax/lowering hook vibelang/effect_parameters_lower.go:lowering.callTimeEffectBody; add its spec authority or pending admission:<form>
+//:grammar-inventory:     inventory_test.go:38: unaccounted syntax/lowering hook vibelang/effect_parameters_lower.go:lowering.directFunctionBody; add its spec authority or pending admission:<form>
+//:grammar-inventory:     inventory_test.go:38: unaccounted syntax/lowering hook vibelang/effect_parameters_lower.go:lowering.effectBindingBoundary; add its spec authority or pending admission:<form>
+//:grammar-inventory:     inventory_test.go:38: unaccounted syntax/lowering hook vibelang/frames_lower.go:lowering.bindSuperMethod; add its spec authority or pending admission:<form>
+//:grammar-inventory:     inventory_test.go:38: unaccounted syntax/lowering hook vibelang/hatches.go:boundaryOperands; add its spec authority or pending admission:<form>
+//:grammar-inventory: FAIL
+//:grammar-inventory: FAIL	github.com/microsoft/TypeScript/tsc/internal/vibelangfuzz/grammaradmission	1.714s
+//:grammar-inventory: FAIL
+//:grammar-inventory  failed  2.7s  command failed (exit 1): /bin/sh -c cd typescript/tsc && GOCACHE=$HOME/.cache/go-build-smthrs CGO_ENABLED=0 go test -count=1 -trimpath ./internal/vibelangfuzz/grammaradmission/
+--- FAIL: TestTableAccountsForEveryHook (0.72s)
+    inventory_test.go:38: unaccounted syntax/lowering hook parser/vibelang_effect_slot_relational.go:Parser.nextVibeLangRequirementIsComparison; add its spec authority or pending admission:<form>
+    inventory_test.go:38: unaccounted syntax/lowering hook vibelang/effect_parameters_lower.go:lowering.callTimeEffectBody; add its spec authority or pending admission:<form>
+    inventory_test.go:38: unaccounted syntax/lowering hook vibelang/effect_parameters_lower.go:lowering.directFunctionBody; add its spec authority or pending admission:<form>
+    inventory_test.go:38: unaccounted syntax/lowering hook vibelang/effect_parameters_lower.go:lowering.effectBindingBoundary; add its spec authority or pending admission:<form>
+    inventory_test.go:38: unaccounted syntax/lowering hook vibelang/frames_lower.go:lowering.bindSuperMethod; add its spec authority or pending admission:<form>
+    inventory_test.go:38: unaccounted syntax/lowering hook vibelang/hatches.go:boundaryOperands; add its spec authority or pending admission:<form>
+FAIL
+FAIL	github.com/microsoft/TypeScript/tsc/internal/vibelangfuzz/grammaradmission	1.714s
+FAIL

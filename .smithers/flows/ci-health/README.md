@@ -2,7 +2,7 @@
 
 The ci-health flow reads the build graph's results and logs and says where CI
 loses time and trust: which targets cost the most, which got slower, which gave
-two answers for the same inputs, and which tests and causes are behind them. It writes a report
+two answers for the same inputs, which tests failed again after their target passed, and which tests and causes are behind them. It writes a report
 a person or a lane acts on. No step calls a model.
 
 ```text
@@ -12,14 +12,21 @@ collect ──▶ analyze ──▶ report
 | Step | What it does | Writes |
 | --- | --- | --- |
 | collect | Reads each `<id>-graph.json` (`CI_RESULTS` in `scripts/ci.sh`) in the results directory. A file cut off mid-write is counted, not read | `collect.json` |
-| analyze | Finds each target and key that both passed and failed, reads the matching `<id>-graph.log`, names the failed tests (bun, `node --test`, `go test`) and classifies the cause. Ranks targets by total run time; a cache replay proves a key passed, but its time does not count. Compares each target's median run time after `--split` with its median before | `analyze.json` |
-| report | The flaky targets with their causes, next step and last failure, the flaky tests, the slower targets, and the slow targets | `report.json`, `report.md` |
+| analyze | Finds each target and key that both passed and failed, and each test that failed, passed with its target, and failed again under any keys, reads the matching `<id>-graph.log`, names the failed tests (bun, `node --test`, `go test`) and classifies the cause. Ranks targets by total run time; a cache replay proves a key passed, but its time does not count. Compares each target's median run time after `--split` with its median before | `analyze.json` |
+| report | The flaky targets with their causes, next step and last failure, the flaky tests, the intermittent tests, the slower targets, and the slow targets | `report.json`, `report.md` |
 
 A key hashes a target's declared inputs. A key that passed and failed is a flake
 or an undeclared input: code cannot explain it, because the code did not change.
 A key that only failed is a real break, and the flow ignores it. A property test
 draws a new seed each run, so its key can pass and fail too. The report names that
 cause `property counterexample`: it is a real bug, and the log prints the replay.
+
+Post-merge runs change most keys every run, so a timing flake there seldom
+repeats a key. The intermittent tests catch it instead: a test that failed,
+then passed with its target, then failed again, under any keys. On 2026-11-03
+and 2026-11-04 a 200 ms deadline test failed `//:mapper-scripts` in 4 of 11
+post-merge runs under four keys while the flaky list stayed empty. A break
+that was fixed and came back looks the same, so read the last failure.
 
 `Go cache archive` identifies a Go import whose content-addressed compiled archive was missing. The hash must match its two-digit cache bucket. Inspect the cache and its cleanup or transport; this log does not identify what removed the file. Missing repository inputs keep the separate `missing file` cause and its input-declaration guidance.
 
@@ -76,10 +83,17 @@ runtime-build startup failure and successful retry with the same declared key.
 It checks startup attribution and the absence of invented test names. Existing
 package, cache and duration fixtures remain independent.
 
+The `intermittent` eval runs the flow on `fixture-intermittent/`: four real
+post-merge runs, each under new keys. `//:mapper-scripts` failed its deadline
+test, passed, failed it again and passed; `//:grammar-inventory` failed once
+and then passed twice. Only the deadline test is intermittent, and neither
+target is flaky.
+
 | Scorer | 1 when |
 | --- | --- |
 | `flaky` | The report names exactly the known flaky targets for each fixture, excluding targets that never passed |
 | `tests` | The report names the known flaky tests |
+| `intermittent` | The report names exactly the tests that failed again after their target passed |
 | `causes` | Each target's top cause matches the logs |
 | `slow` | Targets rank by run time, and a target that only replayed never ranks |
 | `regressed` | The report names exactly `//packages:compiler-test` as slower, with its two timeouts; `//:docs-tools`, 1.4 times slower under load, is not named |

@@ -887,7 +887,9 @@ These declared values also enter the target cache key.
 ## Finding slow and flaky targets
 
 The ci-health flow ranks them from `CI_RESULTS` files and graph logs, with the
-tests and causes behind each flaky target: `.smithers/flows/ci-health/README.md`.
+tests and causes behind each flaky target, and names each test that failed
+again after its target passed, which catches post-merge flakes whose keys
+change every run: `.smithers/flows/ci-health/README.md`.
 
 ## Finding the commit that broke a target
 

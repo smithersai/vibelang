@@ -1,0 +1,10 @@
+{
+ "results": [
+  {
+   "label": "//:mapper-scripts",
+   "status": "failed",
+   "key": "55011c25d42b6c6a51e09eb122625f6b8b59065f6be3f6b84ad6a7051859bd75",
+   "durationMs": 387982.525015
+  }
+ ]
+}

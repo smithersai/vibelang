@@ -1,0 +1,16 @@
+{
+ "results": [
+  {
+   "label": "//:mapper-scripts",
+   "status": "ran",
+   "key": "a3405bb771c7b2c262bae5975aab51afd79eea86bb2bfb9076d6a84e83b8271d",
+   "durationMs": 461567.110515
+  },
+  {
+   "label": "//:grammar-inventory",
+   "status": "failed",
+   "key": "bb3f4471afda880df121d085a878cb858c57aae1e27f9771e10eabc89a223dea",
+   "durationMs": 2657.5418770000106
+  }
+ ]
+}

@@ -3,7 +3,7 @@ import { mkdtempSync, rmSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { test } from "node:test"
-import { analyze, cause, collect, failedTests, flakes, parseRun, regressions, report, slow, start, targetLines } from "../lib/steps.mjs"
+import { analyze, cause, collect, failedTests, flakes, intermittent, parseRun, regressions, report, slow, start, targetLines } from "../lib/steps.mjs"
 
 const t = (label, status, key, ms = 1000) => ({ label, status, key, ms })
 
@@ -20,6 +20,19 @@ test("a replay proves its key passed, but its time is not a run", () => {
   const runs = [{ id: "a", targets: [t("//x", "failed", "k")] }, { id: "b", targets: [t("//x", "hit", "k", 1)] }]
   assert.equal(flakes(runs).length, 1)
   assert.deepEqual(slow(runs), [{ label: "//x", runs: 1, medianS: 1, p90S: 1, totalS: 1 }])
+})
+
+test("intermittent names a test that failed again after its target passed, under any keys", () => {
+  const runs = [
+    { id: "a", at: "t1", targets: [t("//x", "failed", "k1"), t("//fixed", "failed", "k1"), t("//broken", "failed", "k1")] },
+    { id: "b", at: "t2", targets: [t("//x", "ran", "k2"), t("//fixed", "ran", "k2"), t("//broken", "failed", "k2")] },
+    { id: "c", at: "t3", targets: [t("//x", "failed", "k3"), t("//fixed", "hit", "k2"), t("//broken", "ran", "k3")] },
+    { id: "d", at: "t4", targets: [t("//x", "failed", "k4")] }
+  ]
+  // //x's other test failed in b's place only once; //broken's test failed twice in a row, then was fixed.
+  const failed = { "a //x": ["deadline"], "c //x": ["deadline", "other"], "d //x": ["deadline"], "a //fixed": ["once"], "a //broken": ["until b"], "b //broken": ["until b"] }
+  assert.deepEqual(intermittent(runs, (id, label) => failed[`${id} ${label}`] ?? []),
+    [{ label: "//x", name: "deadline", failures: 3, returns: 1, last: "t4" }])
 })
 
 test("failedTests names failures from bun, node --test, go test and the compiler case harness", () => {

@@ -17,7 +17,8 @@
 // gives each run's time, which collect reads from the file's mtime.
 //
 // Scorers: flaky, exactly the flaky targets; tests, the known flaky tests are
-// named; causes, each target's top cause; slow, a replay never ranks as slow;
+// named; intermittent, exactly the tests that failed again after their target
+// passed (fixture-intermittent); causes, each target's top cause; slow, a replay never ranks as slow;
 // regressed, exactly the targets that got slower, with the timeouts counted.
 // A scorer whose field a case does not state scores 1 there.
 //
@@ -44,6 +45,7 @@ type Input = {
   readonly tests?: ReadonlyArray<string>;
   readonly causes?: Readonly<Record<string, string>>;
   readonly regressed?: Readonly<Record<string, number>>;
+  readonly intermittent?: ReadonlyArray<string>;
 };
 type Output = {
   readonly flaky: ReadonlyArray<string>;
@@ -51,6 +53,7 @@ type Output = {
   readonly causes: Readonly<Record<string, string>>;
   readonly slow: ReadonlyArray<string>;
   readonly regressed: Readonly<Record<string, number>>;
+  readonly intermittent: ReadonlyArray<string>;
 };
 
 const cases: Array<{ readonly name: string; readonly input: Input }> = [{
@@ -71,6 +74,20 @@ const cases: Array<{ readonly name: string; readonly input: Input }> = [{
   // The slower targets, each with its timeouts after the split.
   input: { fixture: "fixture-regression", split: "2026-11-02T00:00:00Z", regressed: { "//packages:compiler-test": 2 } } satisfies Input
 }];
+
+// Four real post-merge runs, each under new keys. //:mapper-scripts failed its
+// 200 ms deadline test, passed, failed it again and passed; //:grammar-inventory
+// failed once and then passed twice: a break that was fixed. Neither repeats a
+// key, so neither is a flaky target.
+cases.push({
+  name: "intermittent",
+  input: {
+    fixture: "fixture-intermittent",
+    split: "",
+    flaky: [],
+    intermittent: ["a direct command deadline retains partial output and names the timeout"]
+  } satisfies Input
+});
 
 // A real Go compilation failure, followed by a successful same-key retry.
 cases.push({
@@ -117,6 +134,7 @@ const exactly = (want: ReadonlyArray<string>, got: ReadonlyArray<string>) => {
   return got.length === 0 ? (want.length === 0 ? 1 : 0) : (right / want.length) * (right / got.length);
 };
 const flaky = score("flaky", (i, o) => (i.flaky ? exactly(i.flaky, o.flaky) : 1));
+const intermittent = score("intermittent", (i, o) => (i.intermittent ? exactly(i.intermittent, o.intermittent) : 1));
 const tests = score("tests", (i, o) => {
   if (!i.tests) return 1;
   if (i.tests.length === 0) return Number(o.tests.length === 0);
@@ -163,6 +181,7 @@ async function report(input: Input): Promise<Output> {
     return {
       flaky: result.flaky,
       tests: result.tests,
+      intermittent: result.intermittent,
       slow: result.slow,
       causes: Object.fromEntries(analysis.flaky.map((t: { label: string; causes: Record<string, number> }) => [t.label, top(t.causes)])),
       regressed: Object.fromEntries(analysis.regressed.map((t: { label: string; timeouts: number }) => [t.label, t.timeouts]))
@@ -185,7 +204,7 @@ const program = Effect.gen(function* () {
   const suite = yield* Suite.make({
     name: "ci-health",
     cases,
-    bindings: [flaky, tests, causes, slow, regressed].map((scorer) => Binding.make({ scorer, appliesTo: target })),
+    bindings: [flaky, tests, intermittent, causes, slow, regressed].map((scorer) => Binding.make({ scorer, appliesTo: target })),
     concurrency: 1
   });
   const run = yield* Runner.run(suite, { runId: `ci-health-${Date.now()}`, at: new Date().toISOString() });

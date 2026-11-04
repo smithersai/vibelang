@@ -1,6 +1,7 @@
 // The ci-health flow's analysis. It reads the graph results and logs CI wrote
 // (<id>-graph.json, from CI_RESULTS, beside <id>-graph.log) and says which
-// targets are slow, which are flaky, and which tests and causes are behind them.
+// targets are slow, which are flaky, and which tests and causes are behind them,
+// and which tests failed again after their target passed.
 //
 // A flake here is a target whose key, the hash of its declared inputs, both
 // passed and failed: a code change cannot explain that, because the code did
@@ -143,6 +144,39 @@ export function flakes(runs) {
   return [...by.values()].filter((f) => f.passed > 0 && f.failed.length > 0)
 }
 
+// intermittent lists the tests that failed, then passed with their target,
+// then failed again, under any keys. flakes needs one key to give two answers,
+// but nearly every post-merge run changes the keys of most targets, so a
+// timing flake there seldom repeats a key: on 2026-11-03 and 11-04 a 200 ms
+// deadline test failed //:mapper-scripts in 4 of 11 post-merge runs, under
+// four keys, and the flaky list stayed empty. A break that was fixed and came
+// back looks the same; the failures and the last one tell them apart.
+// testsOf(id, label) names the tests that failed in that run.
+export function intermittent(runs, testsOf) {
+  const passed = new Set(runs.flatMap((r) => r.targets.filter((t) => t.status === "ran" || t.status === "hit").map((t) => t.label)))
+  const by = new Map()
+  for (const r of runs) {
+    for (const t of r.targets) {
+      if (!passed.has(t.label)) continue
+      const tests = by.get(t.label) ?? new Map()
+      by.set(t.label, tests)
+      if (t.status === "ran" || t.status === "hit") for (const x of tests.values()) x.passedSince = true
+      if (t.status !== "failed") continue
+      for (const name of testsOf(r.id, t.label)) {
+        const x = tests.get(name) ?? { failures: 0, returns: 0, last: "", passedSince: false }
+        if (x.passedSince) x.returns++
+        x.failures++
+        x.last = r.at
+        x.passedSince = false
+        tests.set(name, x)
+      }
+    }
+  }
+  return [...by].flatMap(([label, tests]) => [...tests].filter(([, x]) => x.returns > 0)
+    .map(([name, x]) => ({ label, name, failures: x.failures, returns: x.returns, last: x.last })))
+    .sort((a, b) => b.returns - a.returns || b.failures - a.failures)
+}
+
 // failedTests names what failed in one target's output lines, across the
 // runners the graph uses: bun, node --test, go test and the compiler case
 // harness (typescript/vibelang/harness.mjs).
@@ -241,7 +275,8 @@ export const analyze = (run) => once(run, "analyze", ({ results, split }) => {
   }))
   const timedOut = (id, label) => targetLines(log(id), label).some((l) => /timed out after/.test(l))
   const regressed = regressions(runs, { split, timedOut })
-  return { ok: true, runs: runs.length, flaky: ranked, slow: slow(runs), regressed, summary: `${ranked.length} flaky targets, ${regressed.length} slower over ${runs.length} runs` }
+  const returned = intermittent(runs, (id, label) => failedTests(targetLines(log(id), label)))
+  return { ok: true, runs: runs.length, flaky: ranked, intermittent: returned, slow: slow(runs), regressed, summary: `${ranked.length} flaky targets, ${returned.length} intermittent tests, ${regressed.length} slower over ${runs.length} runs` }
 })
 
 // ACTIONS says what a cause usually needs; the report quotes it per target.
@@ -275,6 +310,9 @@ export const report = (run) => once(run, "report", () => {
   lines.push("", "## Flaky tests", "", "A test that stopped failing was probably fixed: check the last failure before fixing it again.", "", "| Target | Test | Failures | Last failed |", "| --- | --- | --- | --- |")
   const tests = a.flaky.flatMap((t) => t.tests.map((x) => ({ label: t.label, ...x }))).sort((x, y) => y.failures - x.failures).slice(0, 30)
   for (const t of tests) lines.push(`| \`${t.label}\` | ${cell(t.name)} | ${t.failures} | ${day(t.last)} |`)
+  lines.push("", "## Intermittent tests", "", "Failed, passed with its target, then failed again, under any keys: a flake, or a break that came back. Read the last failure.", "")
+  lines.push("| Target | Test | Failures | Came back | Last failed |", "| --- | --- | --- | --- | --- |")
+  for (const t of (a.intermittent ?? []).slice(0, 30)) lines.push(`| \`${t.label}\` | ${cell(t.name)} | ${t.failures} | ${t.returns} | ${day(t.last)} |`)
   lines.push("", "## Slower targets", "", "Run time after the split against before it, or timeouts after it. Find what changed at the first slow run.", "")
   lines.push("| Target | Runs before, after | Median before | Median after | Ratio | Timeouts | First slow run |", "| --- | --- | --- | --- | --- | --- | --- |")
   for (const t of a.regressed ?? []) lines.push(`| \`${t.label}\` | ${t.beforeRuns}, ${t.afterRuns} | ${t.beforeMedianS} s | ${t.afterMedianS} s | ${t.ratio} | ${t.timeouts} | ${t.firstSlow ? `${t.firstSlow.run} (${day(t.firstSlow.at)})` : "-"} |`)
@@ -282,7 +320,8 @@ export const report = (run) => once(run, "report", () => {
   for (const t of a.slow.slice(0, 15)) lines.push(`| \`${t.label}\` | ${t.runs} | ${t.medianS} s | ${t.p90S} s | ${t.totalS} s |`)
   writeFileSync(path.join(run, "report.md"), lines.join("\n") + "\n")
   const regressed = (a.regressed ?? []).map((t) => t.label)
-  return { ok: true, flaky: a.flaky.map((t) => t.label), tests: tests.map((t) => t.name), slow: a.slow.slice(0, 5).map((t) => t.label), regressed, summary: `report.md: ${a.flaky.length} flaky targets, ${tests.length} tests, ${regressed.length} slower targets` }
+  const returned = (a.intermittent ?? []).map((t) => t.name)
+  return { ok: true, flaky: a.flaky.map((t) => t.label), tests: tests.map((t) => t.name), intermittent: returned, slow: a.slow.slice(0, 5).map((t) => t.label), regressed, summary: `report.md: ${a.flaky.length} flaky targets, ${tests.length} tests, ${returned.length} intermittent tests, ${regressed.length} slower targets` }
 })
 
 export const run = { collect, analyze, report }
