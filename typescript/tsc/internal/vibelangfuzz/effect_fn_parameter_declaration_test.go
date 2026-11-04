@@ -18,6 +18,10 @@ func TestEffectFnParameterDeclarationQuoted(t *testing.T) {
 	if !strings.Contains(SpecText("001-functions.md"), migrationDefaultProgramQuote) {
 		t.Fatalf("Chapter 1 no longer says %q", migrationDefaultProgramQuote)
 	}
+	const identity = "each export's type identical to `tsc`'s in both directions"
+	if !strings.Contains(SpecText("001-functions.md"), identity) {
+		t.Fatalf("Chapter 1 no longer says %q", identity)
+	}
 }
 
 // The native Effect.fn result infers a parameter tuple. Copying the generator's
@@ -37,6 +41,9 @@ func FuzzEffectFnParameterDeclaration(f *testing.F) {
 			}
 		}
 	}
+	for _, key := range []string{"brand-alias", "brand-array", "brand-union"} {
+		f.Add(key, uint8(1), false)
+	}
 	f.Add("namespace-return", uint8(0), false)
 	w := NewWorkspace(f)
 	f.Fuzz(func(t *testing.T, key string, mode uint8, optional bool) {
@@ -45,9 +52,18 @@ func FuzzEffectFnParameterDeclaration(f *testing.F) {
 		switch key {
 		case "readonly":
 			typ = "ReadonlyArray<string>"
-		case "brand":
+		case "brand", "brand-alias", "brand-array", "brand-union":
 			typ = "Path"
 			extra = "export const Path = Schema.String.pipe(Schema.brand(\"Path\"))\nexport type Path = typeof Path.Type\n"
+			switch key {
+			case "brand-alias":
+				extra += "export type Input = Path\n"
+				typ = "Input"
+			case "brand-array":
+				typ = "ReadonlyArray<Path>"
+			case "brand-union":
+				typ = "Path | number"
+			}
 		case "structural":
 			typ = "Box"
 			extra = "export type Box = { readonly value: string }\n"

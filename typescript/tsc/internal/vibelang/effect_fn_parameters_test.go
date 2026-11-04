@@ -17,12 +17,17 @@ func TestOpencodeEffectFnInferredParameters(t *testing.T) {
 		{"defaulted object", "export const cleanup = Effect.fn(\"cleanup\")(function* (input: { readonly x?: number } = {}) { return input.x ?? 0 })\n", "| undefined = {}"},
 		{"member default", "export const client = { cleanup: Effect.fn(function* (input: number = 1) { return input }) }\n", "input: number | undefined = 1"},
 		{"readonly rest", "export const cleanup = Effect.fn(function* (...files: ReadonlyArray<string>) { return files.length })\n", "...files: string[]"},
-		{"brand alias", "export const Path = Schema.String.pipe(Schema.brand(\"Path\"))\nexport type Path = typeof Path.Type\nexport const cleanup = Effect.fn(\"cleanup\")(function*(input: Path) { return input })\n", "input: string &"},
+		{"brand alias", "export const Path = Schema.String.pipe(Schema.brand(\"Path\"))\nexport type Path = typeof Path.Type\nexport const cleanup = Effect.fn(\"cleanup\")(function*(input: Path) { return input })\n", ""},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			got, ok := effectGenQuickFix(t, tc.source)
 			if !ok || !strings.Contains(got, tc.want) {
 				t.Fatalf("Effect.fn conversion must preserve inferred parameter declaration %q; got:\n%s", tc.want, got)
+			}
+			if tc.name == "brand alias" {
+				if count := brandedParameterIdentityErrors(t, got); count != 0 {
+					t.Fatalf("Effect.fn conversion changed its branded parameter type (%d errors):\n%s", count, got)
+				}
 			}
 		})
 	}
