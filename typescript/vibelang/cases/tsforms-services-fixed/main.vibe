@@ -1,9 +1,9 @@
 // expect-result: {"name":"Ada","region":"eu","size":3,"named":"named","port":8080}
 // A Context.Service class draws EK4831 (D285). Its quick fix writes a service
 // declaration with the key (D501) and, for an export, its shape as written,
-// when the shape's members are written in place; a named shape keeps the warning
-// without a fix, and a shape that is not an object type has no service form
-// and draws nothing. tsforms-services-fixed is what vibelang --fix writes.
+// including named and non-object whole shapes (VIP-9, amended 2026-11-02).
+// The conversion preserves each written shape and key.
+// tsforms-services-fixed is what vibelang --fix writes.
 
 export service Users: {
   find(id: string): string!!
@@ -14,8 +14,8 @@ export service Users: {
 interface NamedShape {
   read(): string!!
 }
-class Named extends Context.Service<Named, NamedShape>()("app/Named") {}
-class Port extends Context.Service<Port, number>()("app/Port") {}
+service Named: NamedShape { static readonly key = "app/Named";}
+service Port: number { static readonly key = "app/Port";}
 
 const UsersLive = Layer.succeed(Users, {
   effect find(id) { return id === "1" ? "Ada" : "?" },

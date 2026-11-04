@@ -6270,7 +6270,7 @@ typescript/vibelang/cases/tsforms-schemas/main.vibe:33:79 lambda plain fallback
 typescript/vibelang/cases/tsforms-service-default-type-reads-fixed/main.vibe:4:52 lambda plain fallback
 typescript/vibelang/cases/tsforms-services-fixed/main.vibe:21:3 lambda plain fallback
 typescript/vibelang/cases/tsforms-services-fixed/main.vibe:23:3 lambda plain fallback
-typescript/vibelang/cases/tsforms-services-fixed/main.vibe:25:42 lambda effectFn service
+typescript/vibelang/cases/tsforms-services-fixed/main.vibe:25:42 lambda plain fallback
 typescript/vibelang/cases/tsforms-services/main.vibe:22:3 lambda effectFn service
 typescript/vibelang/cases/tsforms-services/main.vibe:24:3 lambda effectFn service
 typescript/vibelang/cases/tsforms-services/main.vibe:26:42 lambda effectFn service
