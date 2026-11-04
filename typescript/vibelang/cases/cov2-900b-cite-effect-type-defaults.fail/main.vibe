@@ -1,0 +1,23 @@
+// expect: EK9201 EK9202
+// D308, D309: a type argument left out of Effect<...> is never, and the compiler
+// checks it as never. Effect<string> rejects the failure and the service the
+// body needs; Effect<string, Gone> rejects the service. A service member
+// may also declare a plain return type.
+error Gone { id: string }
+
+service Users {
+  find(id: string): Effect<string, Gone>
+  count(): number
+}
+
+export effect function find(id: string): Effect<string> {
+  return try Users.find(id)
+}
+
+export effect function lookup(id: string): Effect<string, Gone> {
+  return try Users.find(id)
+}
+
+// Chapter 001: written omitted requirements cannot be inferred from a body (effect-type-defaults.fail).
+
+// Chapter 900: Appendix B EK4856 retired global Effect alias — spec-rule: docs/design/src/900-appendices.md#04e6709a385af2a3

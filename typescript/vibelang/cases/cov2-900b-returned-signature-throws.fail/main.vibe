@@ -1,0 +1,5 @@
+// expect: EK0403
+// Chapter 900: Appendix E throws attach to each call signature — spec-rule: docs/design/src/900-appendices.md#099a748a5772dd92
+import { decoder } from "lib"
+export effect function build() { return decoder() }
+export effect function run(u: unknown) { const d = decoder(); return d(u) }

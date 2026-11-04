@@ -231,3 +231,8 @@ func TestEKDiagnosticsOnlyAttachToVibeLang(t *testing.T) {
 		})
 	}
 }
+
+// docs/design/src/900-appendices.md#709dea7811693cc4 — Chapter 900: every diagnostic has an EK code and a message that says how to fix it.
+func TestAppendixBEveryDiagnosticHasCodeAndFix(t *testing.T) {
+	t.Skip("docs/design/src/900-appendices.md#709dea7811693cc4: pending; Appendix B assigns EK3012, which the registry does not have (TestRegistryMatchesSpec), and no check reads each message for a repair")
+}

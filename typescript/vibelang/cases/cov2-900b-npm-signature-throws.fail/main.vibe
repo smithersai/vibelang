@@ -1,0 +1,5 @@
+// expect: EK0403
+// Chapter 900: Appendix E npm signature: written annotation or unknown — spec-rule: docs/design/src/900-appendices.md#644813cae06db058
+import { annotated, bare } from "lib"
+export effect function safe() { return annotated() }
+export effect function risky() { return bare() }

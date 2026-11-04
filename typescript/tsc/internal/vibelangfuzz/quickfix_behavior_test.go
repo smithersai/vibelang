@@ -13,6 +13,8 @@ import (
 const quickfixBehaviorTarget = "FuzzQuickFixBehavior"
 const quickfixBehaviorQuote = "A quick fix is offered only when it preserves evaluation order, coldness, types, comments, and declaration output; otherwise the diagnostic explains why it has no automatic fix."
 
+// docs/design/src/900-appendices.md#77d6e5ac1dd20049 — Chapter 900: Appendix B EK4853 omitted requirement slot migration.
+// docs/design/src/900-appendices.md#0c9c17d47c4624e9 — Chapter 900: Appendix B EK4854 abstract-class service migration.
 func TestQuickFixBehaviorQuoted(t *testing.T) {
 	if !strings.Contains(SpecText("007-tooling.md"), quickfixBehaviorQuote) {
 		t.Fatalf("Chapter 7 no longer says %q", quickfixBehaviorQuote)

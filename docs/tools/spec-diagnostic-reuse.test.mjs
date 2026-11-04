@@ -36,6 +36,7 @@ test("the reuse inventory covers each historical core rule assigned a different 
 
 // docs/design/src/900-appendices.md#9c4c04ae41c203a7 — Chapter 900: compatibility allocation is labelled separately.
 // docs/design/src/900-appendices.md#2d42c434fcc99246 — Chapter 900: compatibility allocation is labelled separately.
+// docs/design/src/900-appendices.md#0268ab526eefcd9b — Chapter 900: Appendix B EK3008 is not reused.
 test("current compiler registry status stays separate from normative code allocation", () => {
   const appendix = chapter("900-appendices")
   const intro = appendix.split("## Appendix B. Diagnostics")[1].split("| Code |")[0]

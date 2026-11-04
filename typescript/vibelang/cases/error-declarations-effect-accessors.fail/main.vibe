@@ -5,3 +5,5 @@ export {}
 
 // VIP-13 function modifier diagnostics own rejected accessors; rule: docs/design/vips/0013-error-declarations.md#dc44545cc144c0c6
 // VIP-13 function modifier diagnostics own rejected accessors; rule: docs/design/vips/0013-error-declarations.md#09e9e25d26e70cd4
+
+// Chapter 900: Appendix A one diagnostic per rejected member — spec-rule: docs/design/src/900-appendices.md#0454a1e546e81c9d

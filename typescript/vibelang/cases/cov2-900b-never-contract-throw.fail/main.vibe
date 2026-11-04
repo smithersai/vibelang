@@ -1,0 +1,4 @@
+// expect: TS2322
+// Chapter 900: Appendix B transitional example: throw against a never error contract — spec-rule: docs/design/src/900-appendices.md#3f5f45010c0a714a
+error Bad
+export effect function bad(): number!! { throw new Bad() }

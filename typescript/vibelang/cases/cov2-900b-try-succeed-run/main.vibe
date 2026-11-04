@@ -1,0 +1,4 @@
+// expect-result: 1
+// Chapter 900: Appendix B transitional example: return try succeed(1) gives Success(1) — spec-rule: docs/design/src/900-appendices.md#08cd32ea9551bd32
+export effect function run() { return try succeed(1) }
+export effect function main() { return try run() }

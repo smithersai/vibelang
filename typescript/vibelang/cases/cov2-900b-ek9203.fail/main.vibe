@@ -1,0 +1,3 @@
+// expect: EK9203
+// Chapter 900: Appendix B interim EK9203 plain annotation on a function that runs an Effect — spec-rule: docs/design/src/900-appendices.md#362471a6dce8cb66
+export function plain(): number { return try Effect.succeed(1) }

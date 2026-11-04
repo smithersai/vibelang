@@ -45,6 +45,8 @@ test("the normative throws inventory is current for the exact pinned inputs", { 
 // docs/design/src/900-appendices.md#14d84decbaaafdd7 — Chapter 900: selected call, callback and returned-decoder contracts.
 // docs/design/src/900-appendices.md#ac164d47dcfa1702 — Chapter 900: selected call, callback and returned-decoder contracts.
 // docs/design/src/900-appendices.md#8a66d1b86c46953f — Chapter 900: safe literals retain full signature thrown bounds.
+// docs/design/src/900-appendices.md#ed199a800ad29b77 — Chapter 900: Appendix E decoders build, the returned decoder throws SchemaError.
+// docs/design/src/900-appendices.md#705fbc284c30af19 — Chapter 900: Appendix E callbacks admit never; wrapper thunks and executor carry their type.
 test("direct calls, callbacks, validation and returned decoders have separate contracts", () => {
   // rule-evidence: docs/design/vips/0004-throw.md#e1cb2f42468e2280
   // VIP-4: Examples: Option.some throws never; Schema.decodeUnknownSync throws SchemaError.
@@ -112,6 +114,8 @@ test("direct calls, callbacks, validation and returned decoders have separate co
 // docs/design/src/900-appendices.md#c77bd4681ab4d222 — Chapter 900: source traversal keeps unresolved throws conservative.
 // docs/design/src/900-appendices.md#1a4b92c9f0820495 — Chapter 900: source traversal keeps unresolved throws conservative.
 // docs/design/src/900-appendices.md#556a0583cd8c325e — Chapter 900: source traversal keeps unresolved throws conservative.
+// docs/design/src/900-appendices.md#196c2d7fcea76243 — Chapter 900: Appendix E generated annotations: never, named class or unknown.
+// docs/design/src/900-appendices.md#08004a4c2cdc19b4 — Chapter 900: Appendix E source analysis follows helpers and constructors.
 test("source proofs follow imports and constructors, skip returned bodies, and retain unknown calls", () => {
   const temp = mkdtempSync(join(tmpdir(), "vibelang-throws-"))
   try {
@@ -220,6 +224,9 @@ test("native proofs cover typed iterables, null targets and byte syntax", () => 
 // docs/design/src/900-appendices.md#550330c19a8e895a — Chapter 900: iterator hooks and dual-factory phases.
 // docs/design/src/900-appendices.md#65a3ab133e10d843 — Chapter 900: iterator hooks and dual-factory phases.
 // docs/design/src/900-appendices.md#ac95a42c7fe2f389 — Chapter 900: iterator hooks and dual-factory phases.
+// docs/design/src/900-appendices.md#1f24b611fece8e15 — Chapter 900: Appendix E data-last dual overloads throw never.
+// docs/design/src/900-appendices.md#c54a8555c6afe33c — Chapter 900: Appendix E iterable protocol hooks are implicit.
+// docs/design/src/900-appendices.md#16aa894ad34d2c60 — Chapter 900: Appendix E catchTag data-last factory throws never.
 test("protocol hooks are implicit and dual factories defer full invocations (detail 202)", () => {
   // rule-evidence: docs/design/vips/0004-throw.md#5132540f29f7c1da
   // VIP-4: Appendix E's shipped annotations cover Effect's dual exports.

@@ -1,0 +1,3 @@
+// expect: EK9205
+// Chapter 900: Appendix B interim EK9205 bodiless service method without a return type — spec-rule: docs/design/src/900-appendices.md#6d514386e7752820
+export service Users { static readonly key = "users"; find(id: string) }

@@ -9,3 +9,5 @@ import { bare } from "./foreign.js"
 const a = Effect.sync(() => bare())
 const b = Effect.suspend(() => Effect.succeed(bare()))
 
+
+// Chapter 900: Appendix E LazyArg callbacks admit only non-throwing functions — spec-rule: docs/design/src/900-appendices.md#6f6a438d16e362ef

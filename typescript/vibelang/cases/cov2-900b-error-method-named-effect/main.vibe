@@ -1,0 +1,10 @@
+// expect-result: {"plain":1,"again":2}
+// Chapter 900: Appendix A effect() is a method named effect — spec-rule: docs/design/src/900-appendices.md#9005dc27e82ab9f6
+export error E {
+  effect() { return 1 }
+  effect again() { return 2 }
+}
+export effect function main() {
+  const e = new E()
+  return { plain: e.effect(), again: try e.again() }
+}

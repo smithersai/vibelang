@@ -23,6 +23,7 @@ func TestReleaseSeverityConfigPrecedence(t *testing.T) {
 	}
 }
 
+// docs/design/src/900-appendices.md#3d96c66cac7d6eea — Chapter 900: Appendix B one stable EK38xx code per imported rule.
 func TestImportedLintCodeRegistryMatchesPin(t *testing.T) {
 	if len(core.VibeImportedLintCodes) != len(rules.All) {
 		t.Fatal("update the stable code table for the new pin")

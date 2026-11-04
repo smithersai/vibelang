@@ -1,0 +1,30 @@
+// expect: EK9206 EK9206 EK9206 TS7023
+// A recursive function whose contract leaves E or R to inference must write
+// every channel when a call of itself stands where TypeScript needs the
+// contract to type it: an argument, a logical operand, or a generic call.
+// EK9206 suggests the whole contract, which compiles (D52).
+error Neg { n: number }
+service Audit { note(n: number): void!! }
+
+export effect function biggest(n: number): Effect<number, Neg, infer R> {
+  try Audit.note(n)
+  if (n < 0) throw new Neg({ n })
+  return n === 0 ? 0 : Math.max(try biggest(n - 1), n)
+}
+
+export effect function either(n: number): Effect<number, Neg, infer R> {
+  if (n < 0) throw new Neg({ n })
+  return n === 0 ? 0 : (try either(n - 1) || n)
+}
+
+export effect function depth<T>(xs: ReadonlyArray<T>, n: number): Effect<number, Neg, infer R> {
+  if (n < 0) throw new Neg({ n })
+  return xs.length === 0 ? n : 1 + try depth(xs.slice(1), n)
+}
+
+export effect function plain(n: number) {
+  if (n < 0) throw new Neg({ n })
+  return n === 0 ? 0 : Math.max(try plain(n - 1), n)
+}
+
+// Chapter 900: Appendix B interim EK9206 recursive success type — spec-rule: docs/design/src/900-appendices.md#f59de55b7111dabc

@@ -67,3 +67,5 @@ export effect function main() {
     cause: [try outcome("1"), try outcome("missing")]
   }
 }
+
+// Chapter 900: Appendix A match arms use when and a throw arm body — spec-rule: docs/design/src/900-appendices.md#4c7c7145eecde3fb

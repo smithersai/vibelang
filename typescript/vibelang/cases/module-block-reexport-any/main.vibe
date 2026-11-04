@@ -1,2 +1,4 @@
 module platform { export const eol = (text: string): string => text + "\n"; }
 export { eol } from platform;
+
+// Chapter 900: Appendix C VIP-25 superseded by VIP-40: named top-level module declarations — spec-rule: docs/design/src/900-appendices.md#c6c0d8637a1a729b

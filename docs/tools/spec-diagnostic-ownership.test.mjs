@@ -8,6 +8,7 @@ const repo = process.env.SPEC_TEST_ROOT || fileURLToPath(new URL("../..", import
 const read = path => readFileSync(resolve(repo, path), "utf8")
 
 for (const path of ["docs/design/src/007-tooling.md", "docs/design/vips/0034-compiler-and-tooling.md"]) {
+// docs/design/src/900-appendices.md#0dce3ad7a76dc166 — Chapter 900: Appendix B diagnostic ownership follows the source rule.
  test(path + " assigns diagnostics by the rejected source rule", () => {
   const text = read(path)
   assert.match(text, /Every VibeLang diagnostic/, "native diagnostics need their own identity")

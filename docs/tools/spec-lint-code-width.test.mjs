@@ -3,6 +3,7 @@ import { test } from "node:test"
 import { chapter } from "./spec-witness.mjs"
 
 const tooling = chapter("007-tooling")
+// docs/design/src/900-appendices.md#5721e7552bf8d726 — Chapter 900: Appendix B codes compare as whole strings.
 test("severity keys use whole printed codes, including growing imported ordinals", () => {
   const paragraph = tooling.split("\n").find(line => line.startsWith("Keys are whole printed codes:"))
   assert.ok(paragraph, "missing severity-key contract")

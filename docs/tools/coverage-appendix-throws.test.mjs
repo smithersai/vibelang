@@ -30,6 +30,8 @@ test("Date.now has the same never contract as Math.max and Option.some", () => {
   for (const [module, declaration] of [["global", "Date.now"], ["global", "Math.max"], ["effect/Option", "some"]])
     assert.ok(entries(module, declaration).every(e => e.ownThrows === "never"))
 })
+// docs/design/src/900-appendices.md#e3a6001f201852c3 — Chapter 900: Appendix E options-form catch callback has no throws.
+// docs/design/src/900-appendices.md#a42359b6bb25674d — Chapter 900: Appendix E promise thunk admits only never.
 test("wrapper options admit a throwing try thunk and only a nonthrowing catch", () => {
   for (const declaration of ["try", "tryPromise"]) {
     const contracts = entries("effect/Effect", declaration).flatMap(e => e.callbacks)
@@ -43,4 +45,15 @@ test("wrapper options admit a throwing try thunk and only a nonthrowing catch", 
 // docs/design/src/900-appendices.md#f3844bec75aee36b — Chapter 900: setTimeout stores callbacks rather than rethrowing.
 test("setTimeout is not a rethrowing invocation", () => {
   for (const entry of entries("global", "setTimeout")) assert.deepEqual(entry.rethrows, [])
+})
+
+// docs/design/src/900-appendices.md#03259cc60a228a62 — Chapter 900: data-last overload callbacks have no @throws.
+test("Chapter 900: data-last dual factories admit only non-throwing callbacks", () => {
+  for (const declaration of ["map", "catchTag"]) {
+    const factories = entries("effect/Effect", declaration).filter(e => e.returns.length)
+    assert.ok(factories.length, declaration)
+    const callbacks = factories.flatMap(e => e.callbacks)
+    assert.ok(callbacks.length, declaration + " has a callback parameter")
+    for (const c of callbacks) assert.equal(c.admits, "never", declaration + "." + c.parameter)
+  }
 })

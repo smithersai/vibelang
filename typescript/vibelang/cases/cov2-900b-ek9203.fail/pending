@@ -1,0 +1,1 @@
+cov2-900b docs/design/src/900-appendices.md#362471a6dce8cb66: the compiler reports the plain-code try placement instead of interim EK9203; VIP-1 decides function kind by keyword

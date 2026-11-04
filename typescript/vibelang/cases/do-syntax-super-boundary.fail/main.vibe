@@ -9,3 +9,5 @@ class Child extends Base {
 export {}
 
 // Appendix B: EK0204 — spec-rule: docs/design/src/900-appendices.md#91c7e631d752b8f0
+
+// Chapter 900: Appendix B EK0204 rejects a return leaving a do compiled to a function — spec-rule: docs/design/src/900-appendices.md#74f3cc40d8df4e4e

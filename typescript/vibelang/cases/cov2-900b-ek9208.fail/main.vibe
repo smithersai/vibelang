@@ -1,0 +1,3 @@
+// expect: EK9208
+// Chapter 900: Appendix B interim EK9208 static member shadows a service member — spec-rule: docs/design/src/900-appendices.md#a2dc96c4871b5486
+export service Users { static readonly key = "users"; key: string }

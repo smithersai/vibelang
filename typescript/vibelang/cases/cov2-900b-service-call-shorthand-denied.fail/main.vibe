@@ -1,0 +1,5 @@
+// expect: TS2339
+// Chapter 900: Appendix C denied VIP-10: no Users.find(id) shorthand — spec-rule: docs/design/src/900-appendices.md#7518edfc1a63ea9c
+export service Users { static readonly key = "users"; find(id: string): number!! }
+export effect function direct(id: string) { return try (try Users).find(id) }
+export effect function shorthand(id: string) { return try Users.find(id) }

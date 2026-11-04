@@ -28,6 +28,7 @@ import { readFileSync } from "node:fs"
 import { resolve } from "node:path"
 import { root, lintOutputs, assignCodes, generateLintCodes } from "./lint-codes.mjs"
 
+// docs/design/src/900-appendices.md#c444ca31e28b7089 — Chapter 900: Appendix B lint-codes.json and the table are generated from the UPSTREAM pin.
 test("the pinned imported lint inventory and both rendered tables are current", () => {
   for (const [path, expected] of lintOutputs()) {
     assert.equal(readFileSync(resolve(root, path), "utf8"), expected, path + " is stale; run node docs/tools/lint-codes.mjs --write")
@@ -43,6 +44,7 @@ test("new alphabetical predecessors append, and removed codes remain reserved", 
   assert.throws(() => assignCodes([], { a: "EK3801", b: "EK3801" }), /duplicate/)
 })
 // docs/design/src/900-appendices.md#eb73fb77849128fd — Chapter 900: imported floatingEffect has one pinned EK3801 identity.
+// docs/design/src/900-appendices.md#84411e328a1abab6 — Chapter 900: Appendix B imported lint rules use the growing EK38 suffix.
 test("the EK38 namespace accommodates the complete upstream registry", () => {
   const codes = assignCodes(Array.from({ length: 130 }, (_, i) => String(i).padStart(3, "0")))
   assert.equal(codes["098"], "EK38100")
@@ -674,6 +676,7 @@ test("documentation generation and checking include the lint inventory and table
 
 // VIP-38 initial allocation and stable future additions: mutate names, order,
 // duplicates and removals independently of the compiler's registry.
+// docs/design/src/900-appendices.md#3d96c66cac7d6eea — Chapter 900: Appendix B EK38xx code never changes once assigned.
 test("property: imported lint codes are ASCII ordered initially and never reused", () => {
   const name = fc.array(fc.constantFrom(..."aAzZ09_"), { minLength: 1, maxLength: 10 }).map(chars => chars.join(""))
   fc.assert(fc.property(fc.uniqueArray(name, { minLength: 1, maxLength: 145 }), names => {

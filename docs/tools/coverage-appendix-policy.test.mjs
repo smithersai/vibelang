@@ -3,6 +3,7 @@ import { readFileSync, readdirSync } from "node:fs"
 import { test } from "node:test"
 const appendix = readFileSync(new URL("../design/src/900-appendices.md", import.meta.url), "utf8")
 // docs/design/src/900-appendices.md#49fddf4aa0c3db7a — Chapter 900: kept-code catalog exceptions.
+// docs/design/src/900-appendices.md#2df063c529d54663 — Chapter 900: Appendix B kept pre-scheme codes.
 test("the catalog records kept-code and migration exceptions beside the growing EK38 namespace", () => {
   const intro = appendix.split("## Appendix B. Diagnostics")[1].split("| Code |")[0]
   assert.match(intro, /code assigned before that scheme is kept/)

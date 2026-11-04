@@ -59,6 +59,7 @@ test("expected diagnostics must occur and do not hide other errors", () => {
 // docs/design/src/900-appendices.md#38901d9eba878c55 — Chapter 900: explicit gaps remain checked, and stale markers fail.
 // docs/design/src/900-appendices.md#8e6d38a46e549efa — Chapter 900: explicit gaps remain checked, and stale markers fail.
 // docs/design/src/900-appendices.md#26a54106f3b6a227 — Chapter 900: explicit gaps remain checked, and stale markers fail.
+// docs/design/src/900-appendices.md#10a7369be3e829fe — Chapter 900: Appendix D compiler-gap and fragment markers.
 test("explicit gaps remain checked, and stale markers fail", () => {
   const gap = { ...block, gap: "D56 program conversion" }
   expect(classify(gap, [diagnostic("TS2345")]).status).toBe("compiler-gap")

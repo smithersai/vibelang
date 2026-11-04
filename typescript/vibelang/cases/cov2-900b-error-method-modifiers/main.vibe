@@ -1,0 +1,10 @@
+// expect-result: {"visible":3}
+// Chapter 900: Appendix A error-body methods follow class-method checks — spec-rule: docs/design/src/900-appendices.md#1947541e4541f855
+export error E {
+  private one() { return 1 }
+  protected two() { return 2 }
+  effect visible() { return this.one() + this.two() }
+}
+export effect function main() {
+  return { visible: try new E().visible() }
+}

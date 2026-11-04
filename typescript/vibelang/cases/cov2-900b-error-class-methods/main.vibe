@@ -1,0 +1,13 @@
+// expect-result: {"n":"n:1","s":"s:x","label":"E:7"}
+// Chapter 900: Appendix A ClassMethod includes overloads and getters — spec-rule: docs/design/src/900-appendices.md#1482c41d444966c7
+export error E {
+  id: number
+  show(x: number): string
+  show(x: string): string
+  show(x: number | string): string { return (typeof x === "number" ? "n:" : "s:") + x }
+  get label(): string { return "E:" + this.id }
+}
+export effect function main() {
+  const e = new E({ id: 7 })
+  return { n: e.show(1), s: e.show("x"), label: e.label }
+}

@@ -6,6 +6,7 @@ const read = (path) => readFileSync(new URL("../" + path, import.meta.url), "utf
 const appendix = () => read("design/src/900-appendices.md")
 
 // docs/design/src/900-appendices.md#7c273f2557fa5715 — Chapter 900: interim categories and emitted meanings.
+// docs/design/src/900-appendices.md#6371772a0c689cbc — Chapter 900: Appendix B interim inventory follows the registry.
 test("the complete interim block follows the landed registry, with meanings and retirement owners", () => {
   const inventory = appendix().split("### Transitional compiler diagnostics")[1]?.split("\n## ")[0]
   assert.ok(inventory, "Appendix B must distinguish emitted compatibility checks from normative rules")

@@ -1,0 +1,1 @@
+cov2-900b docs/design/src/900-appendices.md#099a748a5772dd92: missing EK0403; a @throws tag on a returned function's call signature is not read, so calling the returned decoder in effect code compiles

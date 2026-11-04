@@ -1,0 +1,9 @@
+// expect-result: {"error":"NotFound:7","variant":"Sent:a"}
+// Chapter 900: Appendix E Data.TaggedError and data variant constructors throw never — spec-rule: docs/design/src/900-appendices.md#d5d55c71b25135f8
+error NotFound { id: string }
+data Delivery { Sent { to: string }; Pending }
+export effect function main() {
+  const e = new NotFound({ id: "7" })
+  const d = Delivery.Sent({ to: "a" })
+  return { error: e._tag + ":" + e.id, variant: d._tag + ":" + d.to }
+}
