@@ -3,8 +3,9 @@
 // that name them by VibeLang's rules, then run `vibelang --fix` until it finds
 // nothing more to fix, recording each rewrite it applied and each it refused.
 import { spawnSync } from "node:child_process"
-import { existsSync, readdirSync, readFileSync, realpathSync, renameSync, writeFileSync } from "node:fs"
+import { appendFileSync, existsSync, mkdtempSync, readdirSync, readFileSync, realpathSync, renameSync, rmSync, writeFileSync } from "node:fs"
 import { join, posix, relative, resolve, sep } from "node:path"
+import { tmpdir } from "node:os"
 import { fileURLToPath } from "node:url"
 import { loadTypeScript } from "./declarations.mjs"
 import { sidecarConfigIn, sidecarPath, sidecarSettings } from "./sidecar-config.mjs"
@@ -742,17 +743,33 @@ export function mergeFixes(into, files) {
  * Runs `vibelang -p tsconfig --fix --noEmit --declaration` until a run fixes nothing, at
  * most maxRounds times. Returns every round's report, the merged rewrites by
  * file and kind, the refusals, and the diagnostics of the last run. With
- * only, the files (relative to root) whose rewrites a batch keeps: --fix
- * rewrites every VibeLang source of the project and its dependency closure, so each
- * round puts its nonselected files back, and an earlier batch's file, hand
- * repairs included, stays as committed.
+ * only, ordinary repairs use --only for the batch's files (relative to root).
+ * A defensive snapshot still restores nonselected sources if a compiler writes
+ * outside its selection, including on interruption. An earlier batch's file,
+ * hand repairs included, stays as committed. An empty selection starts no fix.
  */
 export async function fixToFixedPoint(options) {
+  if (options.only?.length === 0) {
+    return { settled: true, rounds: [], byFile: {}, refused: [], restored: [], diagnostics: [] }
+  }
   const files = await fixProgramFiles(options)
-  return withFixFiles(files, () => fixToFixedPointInScope(options, files), options.log)
+  const directory = options.only ? mkdtempSync(join(tmpdir(), "vibelang-fix-selection-")) : undefined
+  try {
+    const selectionFile = directory && join(directory, "files.txt")
+    if (selectionFile) {
+      const root = resolve(options.root ?? options.cwd ?? ".")
+      // A list file keeps spaces and commas in a source path literal. Resolve
+      // physical identities just as the scope snapshot does for linked roots.
+      writeFileSync(selectionFile, [...new Set(options.only.map(file => realpathSync(resolve(root, file))))].join("\n") + "\n")
+      if (options.log) appendFileSync(`${options.log}.scope.log`, `# fix scope ${JSON.stringify({ stage: "selected", files: options.only.length, selected: options.only })}\n`)
+    }
+    return await withFixFiles(files, () => fixToFixedPointInScope({ ...options, selectionFile }, files), options.log)
+  } finally {
+    if (directory) rmSync(directory, { recursive: true, force: true })
+  }
 }
 
-async function fixToFixedPointInScope({ compiler, tsconfig, cwd, root, maxRounds = 4, log, only, timeoutMs }, scopeFiles) {
+async function fixToFixedPointInScope({ compiler, tsconfig, cwd, root, maxRounds = 4, log, only, timeoutMs, selectionFile }, scopeFiles) {
   const rounds = []
   const byFile = {}
   const refused = []
@@ -788,7 +805,8 @@ async function fixToFixedPointInScope({ compiler, tsconfig, cwd, root, maxRounds
     // --declaration: what --fix keeps for a declaration file it keeps under a tsconfig that says noEmit too.
     let result
     try {
-      result = await run(`${quote(compiler)} -p ${quote(tsconfig)} --fix --noEmit --declaration --pretty false --singleThreaded`, { cwd, log: log && `${log}.${round}.log`, timeoutMs })
+      const selection = selectionFile ? ` --only ${quote("@" + selectionFile)}` : ""
+      result = await run(`${quote(compiler)} -p ${quote(tsconfig)} --fix${selection} --noEmit --declaration --pretty false --singleThreaded`, { cwd, log: log && `${log}.${round}.log`, timeoutMs })
     } finally {
       // An interrupted compiler may keep verified writes without printing
       // per-file statistics. Restore the whole nonselected byte snapshot.

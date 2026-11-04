@@ -78,7 +78,7 @@ async function verify(input) {
       0,
       ...files.filter((file) => file.kept).map((file) => file.stages),
     );
-    const rounds = Math.min(input.maxRounds, maxStage + 1);
+    const rounds = only.length ? Math.min(input.maxRounds, maxStage + 1) : 0;
     const result = await fixToFixedPoint({
       compiler,
       tsconfig: "tsconfig.json",

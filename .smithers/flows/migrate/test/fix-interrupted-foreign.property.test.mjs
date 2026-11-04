@@ -28,7 +28,7 @@ async function exercise({mode=3,scope="selected",payload=Buffer.from(corpus.fore
   const only=scope==="all"?undefined:scope==="none"?[]:[corpus.selected]
   let result,error
   try{result=await fixToFixedPoint({compiler:script,tsconfig:"tsconfig.json",cwd:root,root,only})}catch(e){error=e}
-  if(mode===0)assert.equal(error,undefined)
+  if(mode===0||scope==="none")assert.equal(error,undefined)
   else assert.match(error?.message??"",/compiler did not finish|interrupt|signal|finish/i)
   const keepForeign=scope==="all"
   for(const file of foreign){

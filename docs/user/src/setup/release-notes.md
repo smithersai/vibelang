@@ -8,6 +8,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 ## 0.0.12 (unreleased)
 
 ### Bugs fixed since 0.0.11
+- Migration batches still ran project-wide repairs before restoring unrelated files, making small retries slow in large packages. The flow now passes the selected files through `--only` and skips an empty batch.
+
 - Re-exporting a documented type or value through a root namespace could report missing prose even when the authored comments remained. Migration verification now reads the target declaration and still rejects changed comments, tags and types.
 
 - Migration could drop refused-site span reports and overlook a changed-site violation beside other diagnostics; it now retains those spans, accepts independent safe fixes, and fails on a preservation violation.
