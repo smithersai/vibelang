@@ -200,6 +200,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - The match guide and its scope test still promised implicit scopes for unbraced bindings; they now require the accepted `EK0705` brace repair, with native rejection and repaired-body controls.
 
 - Service documentation checks looked for superseded grammar production names; they now verify the folded whole-shape production and retain its restricted body and diagnostic recovery checks.
+
+- The no-throw documentation test rejected the added pattern-rule ownership of `EK0401`; it now checks every accepted owner while preserving the diagnostic and retired-code checks.
 - A `catch` handler written as a parameter list followed by a block, `x catch (e) { … }`, was a syntax error (`TS1005`) that hid every other error in the file. It is now `EK0509`, with a quick fix to `x catch effect (e) => { … }` when the block has no `break`, `continue`, `await` or `yield` of its own.
 
 - The grammar admission census could drift between its specification and fuzz inventory; both copies now generate from one source and fail checks on drift.

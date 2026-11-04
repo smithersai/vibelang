@@ -179,7 +179,7 @@ test("chapter 7 lists no EK0511 warning", () => {
 test("Appendix B widens EK0401 and EK0406, narrows EK0403 and retires EK0405 and EK0511", () => {
   const text = chapter("900-appendices")
   const b = text.slice(text.indexOf("## Appendix B. Diagnostics"), text.indexOf("## Appendix C"))
-  assert.match(b, /\| `EK0401` \| a `throw`, or a call known to throw outside the `try` block of a `try`\/`catch` statement, in synchronous `\.vibe` code outside effect code; .* \| 4, 5 \|/)
+  assert.match(b, /\| `EK0401` \| a `throw`, or a call known to throw outside the `try` block of a `try`\/`catch` statement, in synchronous `\.vibe` code outside effect code; .* \| 4, 5, 7 \|/)
   assert.match(b, /\| `EK0403` \| an unwrapped call, `new` expression, tagged template or class evaluation that may throw, in effect code \| 4 \|/)
   assert.match(b, /\| `EK0406` \| a `@throws` or `@rethrows` tag in `\.vibe` or `\.vibex` source outside a `module` body, including on a service member or function-type signature; quick fix: remove the tag \|/)
   assert.doesNotMatch(b, /^\| `EK0405` \|/m)
@@ -394,4 +394,16 @@ test("plainThrows keeps a bare arrow parameter named effect synchronous", () => 
       assert.deepEqual(plainThrows("const f = effect (" + name + ") => " + body), [])
     }
   }), { seed: 110333, numRuns: 100 })
+})
+
+// VIP-7 contributes pattern-triggered thrown-call ownership; do not silently
+// lose an owner when refreshing the public row.
+test("Appendix B diagnostic owners survive missing-owner mutations", () => {
+  const row = chapter("900-appendices").split("\n").find(line => line.startsWith("| `EK0401` |"))
+  const owners = text => text.split("|")[3].trim().split(/,\s*/)
+  assert.deepEqual(owners(row), ["4", "5", "7"])
+  fc.assert(fc.property(fc.constantFrom("4", "5", "7"), owner => {
+    const changed = row.replace("4, 5, 7", ["4", "5", "7"].filter(value => value !== owner).join(", "))
+    assert.notDeepEqual(owners(changed), ["4", "5", "7"])
+  }), { seed: 1104107, numRuns: 60 })
 })
