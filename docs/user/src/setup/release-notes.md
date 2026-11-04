@@ -21,6 +21,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - Replacing a native `Request` URL required TypeScript; `Experimental.Request.atUrl` now preserves request options, body, headers and signal.
 
 - The matching guide repeated conflicting rules for `is` binding homes. It now describes the current scopes, temporal dead zone and native redeclaration errors together.
+- Converting sequential catch pipelines could leave recovery combinators behind, and a grouped `try` could leave part of its operand outside recovery. The converter now keeps intermediate programs cold and recovers the complete grouped operand.
 - Migration batches still ran project-wide repairs before restoring unrelated files, making small retries slow in large packages. The flow now passes the selected files through `--only` and skips an empty batch.
 - Migration verification could report a missing declaration for a module returned to TypeScript when its package export kept a source `types` condition. Declaration snapshots now preserve that recorded source path and still reject changed types, documentation and missing provenance.
 

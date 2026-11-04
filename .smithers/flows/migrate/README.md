@@ -476,6 +476,15 @@ A run's `issues.jsonl` is the input to the loop that improves the flow. The repa
 
 `report.md` lists all three, with the rewrites `--fix` applied and refused, so a run's report says which rule to write next.
 
+### Catch pipelines
+
+Each sequential recovery stage remains a cold program for the following stage.
+The converter captures an intermediate program before wrapping its recovery in
+an `effect` block. A later handler can therefore recover a failure raised by an
+earlier fallback, without moving the original program's construction. A grouped
+`try` whose operand executes another Effect keeps those executions inside the
+same recovery block.
+
 ### What `--fix` rewrites
 
 | Effect TypeScript | `--fix` writes | Code |

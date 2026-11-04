@@ -6,6 +6,13 @@
 
 **Migration** rewrites toward the VIP form or native Effect TypeScript and preserves evaluation order, captures, the call-versus-run phase, coldness, error and environment channels, and public declarations. It never edits a test or a fixture: a test that bundles `.vibe` passes unchanged, or its modules stay `.ts`. A default plan leaves Effect type-only users in TypeScript. A legacy `try make()` of a removed plain wrapper loses its `try`, whatever the result's shape. An old call whose behavior it can't preserve keeps a `.ts` boundary, with an explicit refusal. It never invents `asEffect()`, never turns `Match.withReturnType<T>()` into an unchecked `as T`, and writes `try Effect.forkChild(program, options)` for the legacy `fork(program, options)`. Prelude cleanup keeps an explicit Effect import where removing it would change the declaration. A tool cache for type-directed compilation is reusable only while its source, declarations, configuration, versions and project are unchanged. A missing validation outcome is unverified: a later stage never inherits an earlier stage's exit. The migrate flow pairs a callback with its original callee, argument position and occurrence, separately from its enclosing function. A callback returning a cold `Effect.gen` program may become an `effect` callback with the same void completion. An `effect { … }` block remains a program returned by its plain factory; a dropped return value or call-time work moved into an `effect` function still fails verification.
 
+## Catch pipelines
+
+`vibelang --fix` keeps sequential catch stages as programs. Each later handler
+can recover failures from the earlier handler's fallback. Capturing the program
+before its recovery block preserves construction timing. If a grouped `try`
+contains another `try`, the repair keeps the whole operand inside recovery.
+
 ## Synchronous throws
 
 For `EK0401`, `vibelang --fix` moves an existing `throw` instruction into a TypeScript `module` helper, keeping its operand in its original scope and evaluation position. The same repair covers throw expressions and plain parameter defaults. Supported tracked synchronous calls move their invocation into TypeScript while keeping the receiver, method getter order, argument order and return type. A plain throwing `catch` handler uses `catch effect` and `die` to retain the native exception as a defect.

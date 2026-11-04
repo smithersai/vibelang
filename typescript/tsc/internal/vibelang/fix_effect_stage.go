@@ -252,12 +252,40 @@ func triedCatchRewrite(c *checker.Checker, file *ast.SourceFile, site *ast.Node)
 
 // triedLeftRewrite plans the removal of the try before the left side of a
 // catch, which runs that side, or nil.
-func triedLeftRewrite(file *ast.SourceFile, catch *ast.Node) *formRewrite {
+func triedLeftRewrite(c *checker.Checker, file *ast.SourceFile, catch *ast.Node) *formRewrite {
 	left := ast.SkipParentheses(catch.Arguments()[0])
-	if !ast.IsArrowFunction(left) || left.Body().Flags&ast.NodeFlagsVibeLangTry == 0 {
+	if !ast.IsArrowFunction(left) {
 		return nil
 	}
-	keyword := tryKeyword(file, left.Body())
+	tried := left.Body()
+	for ast.IsParenthesizedExpression(tried) && tried.Flags&ast.NodeFlagsVibeLangTry == 0 {
+		tried = tried.Expression()
+	}
+	if tried.Flags&ast.NodeFlagsVibeLangTry == 0 {
+		return nil
+	}
+	// A nested execution in the operand must be inside the recovery too.
+	// Removing just the outer try would evaluate that execution before the
+	// catch receives its program (for example fail(new Error(try lookup()))).
+	var nestedExecution func(*ast.Node) bool
+	nestedExecution = func(node *ast.Node) bool {
+		if node != ast.SkipParentheses(tried) && (node.Flags&ast.NodeFlagsVibeLangTry != 0 || isTryCall(node) || catchExpressionOf(node) != nil) {
+			return true
+		}
+		if ast.IsFunctionLike(node) {
+			return false
+		}
+		return node.ForEachChild(nestedExecution)
+	}
+	if tried.ForEachChild(nestedExecution) {
+		if catchHeadBoundaryChangesOwner(c, file, tried) {
+			return nil
+		}
+		body := tried
+		text := "effect { return " + file.Text()[tryKeyword(file, body).Pos():body.End()] + " }"
+		return &formRewrite{edits: []sourceEdit{{tryKeyword(file, body).Pos(), body.End(), text}}, description: "a catch around the complete program"}
+	}
+	keyword := tryKeyword(file, tried)
 	end := keyword.End()
 	for end < len(file.Text()) && file.Text()[end] == ' ' {
 		end++
@@ -459,7 +487,7 @@ func effectStageFixes(ctx context.Context, program *compiler.Program, file *ast.
 		case ast.IsParenthesizedExpression(node):
 			propose(EK4835.Code, node, triedCatchRewrite(c, file, node))
 		case catchExpressionOf(node) != nil:
-			propose(EK4835.Code, node, triedLeftRewrite(file, node))
+			propose(EK4835.Code, node, triedLeftRewrite(c, file, node))
 		case ast.IsCallExpression(node):
 			propose(EK4834.Code, node, thunkRewrite(c, file, node))
 		case ast.IsPropertyAccessExpression(node):

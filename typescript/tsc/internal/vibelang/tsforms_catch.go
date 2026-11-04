@@ -189,7 +189,7 @@ func catchCombinatorRewrite(c *checker.Checker, file *ast.SourceFile, call *ast.
 // a catch combinator, under the try that runs it, or nil.
 func catchStageRewrite(c *checker.Checker, file *ast.SourceFile, pipe *ast.Node) *formRewrite {
 	call := pipe.AsBinaryExpression().Right
-	if !ast.IsCallExpression(call) || stagePipe(call) != pipe {
+	if !ast.IsCallExpression(call) || catchProgramPipe(call) != pipe {
 		return nil
 	}
 	name := catchCombinatorName(c, call)
@@ -197,6 +197,24 @@ func catchStageRewrite(c *checker.Checker, file *ast.SourceFile, pipe *ast.Node)
 		return nil
 	}
 	return catchExpressionRewrite(c, file, call, name)
+}
+
+// catchProgramPipe also accepts an intermediate catch stage. Its result must
+// remain a cold program for the following stage, rather than the success value
+// of the catch expression.
+func catchProgramPipe(call *ast.Node) *ast.Node {
+	if !ast.IsCallExpression(call) || len(call.Arguments()) == 0 || !isTopic(call.Arguments()[0]) || !isPipe(call.Parent) || call.Parent.AsBinaryExpression().Right != call {
+		return nil
+	}
+	pipe := call.Parent
+	var duplicate func(*ast.Node) bool
+	duplicate = func(node *ast.Node) bool {
+		return isTopic(node) && pipeOfTopic(node) == pipe || node.ForEachChild(duplicate)
+	}
+	if slices.ContainsFunc(call.Arguments()[1:], duplicate) {
+		return nil
+	}
+	return pipe
 }
 
 // catchExpressionRewrite writes call, the catch combinator name, as a catch
@@ -209,14 +227,15 @@ func catchExpressionRewrite(c *checker.Checker, file *ast.SourceFile, call *ast.
 	// The site is what the catch expression replaces: call, or for the last
 	// stage of a pipeline that try runs, the try and the pipeline.
 	site := call
-	var left string
+	var left, held string
 	if isTopic(arguments[0]) {
-		pipe := stagePipe(call)
+		pipe := catchProgramPipe(call)
 		if pipe == nil {
 			return nil
 		}
 		if site = runningSite(pipe); site == nil {
-			return nil
+			site = pipe
+			held = freshName(file, "catchProgram")
 		}
 		self := pipe.AsBinaryExpression().Left
 		if !isEffectType(c, c.GetTypeAtLocation(self)) {
@@ -235,6 +254,12 @@ func catchExpressionRewrite(c *checker.Checker, file *ast.SourceFile, call *ast.
 		if needsOperandParentheses(self) && isInvocation(ast.SkipParentheses(self)) || isHelperCall(self) || isLowPrecedence(self) || isTry(self) {
 			left = "(" + left + ")"
 		}
+	}
+	// Capture the original program now. Deferring its factory into the
+	// block would change construction-time effects and captured arguments.
+	program := left
+	if held != "" {
+		left = held
 	}
 	var handlers []catchHandler
 	var tags []string
@@ -341,6 +366,9 @@ func catchExpressionRewrite(c *checker.Checker, file *ast.SourceFile, call *ast.
 			indent := lineIndent(file.Text(), nodeStart(file, site))
 			text = head + "\n" + indent + "  " + strings.Join(arms, "\n"+indent+"  ") + "\n" + indent + "}"
 		}
+	}
+	if held != "" {
+		text = "do { const " + held + " = " + program + "; effect { return " + text + " } }"
 	}
 	if catchNeedsParentheses(site) {
 		text = "(" + text + ")"
