@@ -1,0 +1,5 @@
+// expect: EK4701
+// VIP-7: ordinary user constructors have no finite coverage proof.
+import { Wanted, Other } from "./classes.js"
+export const sameShape: Wanted = new Other()
+export function label(s: Wanted) { return match(s) { when Wanted: "wanted"; } }

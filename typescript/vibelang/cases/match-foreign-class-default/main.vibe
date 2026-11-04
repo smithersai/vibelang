@@ -1,0 +1,5 @@
+// expect-result: ["wanted","other"]
+import { Wanted, Other } from "./classes.js"
+export function label(s: Wanted) { return match(s) { when Wanted: "wanted"; default: "other"; } }
+const sameShape: Wanted = new Other()
+export effect function main() { return [label(new Wanted()), label(sameShape)] }

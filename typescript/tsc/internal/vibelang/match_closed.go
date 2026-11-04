@@ -8,34 +8,14 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/tspath"
 )
 
-// Coverage credit for class arms (D407, D427, D428). A class arm, `when
-// NotFound:`, tests `instanceof` (D213), which the parser writes as
-// $is(NotFound, $match1). TypeScript narrows the subject by the test as by
-// an instanceof, removing NotFound where the arm fails, which counts the arm
-// toward exhaustiveness (D346). That is sound only when the test is
-// guaranteed to accept every value of the class's type, so a class arm
-// removes its class only when the class is closed and its package resolves
-// to one installed copy:
+// Class tests retain their existing source-flow handling. VIP-7's synthetic
+// $noMatch coverage query ignores ordinary constructors: structural assignment
+// does not guarantee instanceof membership. Generated error declarations and
+// retained fixed guards keep their own coverage rules (chapter 004).
 //
-//   - A closed class is an error class: an error declaration, or any class,
-//     in a .vibe, .ts, or declaration file, whose instance type extends the
-//     pinned effect's YieldableError, as Data.TaggedError, Data.Error, Schema
-//     error classes, and effect's own error classes do, where neither the
-//     class nor a class it extends declares its own static
-//     [Symbol.hasInstance] or [customMatcher] (D501). TypeScript's types are
-//     structural, so a value of a same-shaped class of another declaration
-//     can reach the match; it fails every arm's instanceof (D405) and reaches
-//     the match's end as a defect, never another arm.
-//   - TypeScript gives two installed copies of one package version one type,
-//     while the run time loads two classes, so where module resolution
-//     merged a second copy of the class's package, the arm removes nothing
-//     (D427).
-//
-// Any other class arm, such as one over Error or a class that is not an
-// error class, or a class with its own membership test, removes nothing, as a guarded arm
-// does (D428), and a match that needs it to cover its subject is EK4701,
-// whose notes say why the arm did not count. Primitive guards retain
-// ordinary source narrowing; the coverage query ignores their tests.
+// The historical closed-class checks below still serve source-flow recovery
+// and diagnostic notes; they no longer grant finite coverage to handwritten
+// Effect error subclasses.
 
 func init() {
 	checker.RegisterFlowNarrowingHook(narrowOpenClassArm)
@@ -112,6 +92,22 @@ func narrowOpenClassArm(c *checker.Checker, reference *ast.Node, t *checker.Type
 		}
 		if symbol != nil && isPrimitiveClass(c, symbol) {
 			return t
+		}
+	}
+	// Ordinary constructors have no whole-case coverage proof: structural
+	// assignment admits values whose prototype fails their instanceof test.
+	// The synthetic query alone ignores that test; source flow stays native.
+	if primitiveCoverageReference(reference) {
+		if _, fixed := builtinMatcherOf(c, matcher); !fixed {
+			if constructor := c.TypeOfPatternMatcher(matcher); constructor != nil && len(c.GetConstructSignatures(constructor)) > 0 {
+				form := errorFormNone
+				if symbol := constructor.Symbol(); symbol != nil && symbol.ValueDeclaration() != nil {
+					form, _ = errorFormOf(symbol.ValueDeclaration())
+				}
+				if form == errorFormNone {
+					return t
+				}
+			}
 		}
 	}
 	if assumeTrue {
