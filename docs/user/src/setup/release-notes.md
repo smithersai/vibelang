@@ -238,6 +238,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Signature platform errors suggested namespace methods and omitted effectful key conversions; they now show the injected service and how to obtain keys.
 
+- Authenticated-encryption platform errors suggested namespace methods and omitted effectful key conversion; they now show the injected service and how to obtain its key.
+
 - The grammar inventory cited old compatibility diagnostics as though they were current public assignments. Those references now explicitly say they are historical; all pending gaps and their regression witnesses remain intact.
 - Filesystem platform errors recommended methods on the `FileSystem` namespace, where they do not exist; their advice now gets `FileSystem.FileSystem` before calling the implementation.
 - Migrating imports inside native `module` bodies could replace `./leaf.js` with `./leaf.vibe` and cause `TS5097`. These bodies now keep their original TypeScript import spelling.

@@ -889,6 +889,8 @@ MAC diagnostic examples obtain `Mac.Mac` with `try`, then run its `sign(key, dat
 
 Signature diagnostic examples obtain `Signature.Signature` with `try` before signing, verifying or generating a key pair. Building keys from bytes also runs an Effect: use `try Signature.privateKey(Signature.ed25519, bytes)` or `try Signature.publicKey(Signature.ed25519, bytes)`.
 
+Authenticated-encryption diagnostic examples obtain `Aead.Aead` with `try` before running `encrypt` or `decrypt`. Build a key with `try Aead.key(Aead.aes256Gcm, bytes)`, then pass that key, the bytes and `{ nonce }` to the service method.
+
 A numeric return value from `main` does not set the exit status:
 `effect function main(): number!! { return 3 }` succeeds with 3 and still exits 0 when passed to `NodeRuntime.runMain`. Return normally for exit 0,
 fail for exit 1, or interrupt for exit 130.

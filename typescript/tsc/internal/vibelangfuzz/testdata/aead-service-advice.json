@@ -1,0 +1,42 @@
+[
+  {
+    "key": "node:crypto:createCipheriv:direct",
+    "source": "import { createCipheriv } from \"node:crypto\";export const value=createCipheriv",
+    "advice": "try (try Aead.Aead).encrypt(key, plaintext, { nonce })"
+  },
+  {
+    "key": "node:crypto:createCipheriv:alias",
+    "source": "import { createCipheriv as Native } from \"node:crypto\";export const value=Native",
+    "advice": "try (try Aead.Aead).encrypt(key, plaintext, { nonce })"
+  },
+  {
+    "key": "node:crypto:createDecipheriv:direct",
+    "source": "import { createDecipheriv } from \"node:crypto\";export const value=createDecipheriv",
+    "advice": "try (try Aead.Aead).decrypt(key, ciphertext, { nonce })"
+  },
+  {
+    "key": "node:crypto:createDecipheriv:alias",
+    "source": "import { createDecipheriv as Native } from \"node:crypto\";export const value=Native",
+    "advice": "try (try Aead.Aead).decrypt(key, ciphertext, { nonce })"
+  },
+  {
+    "key": "crypto:createCipheriv:direct",
+    "source": "import { createCipheriv } from \"crypto\";export const value=createCipheriv",
+    "advice": "try (try Aead.Aead).encrypt(key, plaintext, { nonce })"
+  },
+  {
+    "key": "crypto:createCipheriv:alias",
+    "source": "import { createCipheriv as Native } from \"crypto\";export const value=Native",
+    "advice": "try (try Aead.Aead).encrypt(key, plaintext, { nonce })"
+  },
+  {
+    "key": "crypto:createDecipheriv:direct",
+    "source": "import { createDecipheriv } from \"crypto\";export const value=createDecipheriv",
+    "advice": "try (try Aead.Aead).decrypt(key, ciphertext, { nonce })"
+  },
+  {
+    "key": "crypto:createDecipheriv:alias",
+    "source": "import { createDecipheriv as Native } from \"crypto\";export const value=Native",
+    "advice": "try (try Aead.Aead).decrypt(key, ciphertext, { nonce })"
+  }
+]

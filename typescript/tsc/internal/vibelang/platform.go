@@ -252,8 +252,8 @@ var platformAPIs = map[string]platformAPI{
 	"crypto.createVerify":     {"Crypto", "try (try Signature.Signature).verify(publicKey, signature, data)", signatureKeys},
 	"crypto.sign":             {"Crypto", "try (try Signature.Signature).sign(privateKey, data)", signatureKeys},
 	"crypto.verify":           {"Crypto", "try (try Signature.Signature).verify(publicKey, signature, data)", signatureKeys},
-	"crypto.createCipheriv":   {"Crypto", "Aead.encrypt(key, plaintext, { nonce })", aeadKeys},
-	"crypto.createDecipheriv": {"Crypto", "Aead.decrypt(key, ciphertext, { nonce })", aeadKeys},
+	"crypto.createCipheriv":   {"Crypto", "try (try Aead.Aead).encrypt(key, plaintext, { nonce })", aeadKeys},
+	"crypto.createDecipheriv": {"Crypto", "try (try Aead.Aead).decrypt(key, ciphertext, { nonce })", aeadKeys},
 	"crypto.generateKeyPair":  {"Crypto", "try (try Signature.Signature).generateKeyPair(Signature.ed25519)", ""},
 
 	"http.createServer":        {"HttpServer", "", ""},
@@ -384,7 +384,7 @@ var platformAPIs = map[string]platformAPI{
 const (
 	cryptoFamilies = "effect/crypto has a service for each WebCrypto family: Digest, Mac, Signature, Cipher, Aead, Kdf, KeyAgreement and KeyWrap."
 	signatureKeys  = "try Signature.privateKey(Signature.ed25519, bytes) and try Signature.publicKey(Signature.ed25519, bytes) make the keys from their bytes."
-	aeadKeys       = "Aead.key(Aead.aes256Gcm, bytes) makes the key; Aead also has ChaCha20-Poly1305, and Cipher has AES-CTR and AES-CBC."
+	aeadKeys       = "try Aead.key(Aead.aes256Gcm, bytes) makes the key; Aead also has ChaCha20-Poly1305, and Cipher has AES-CTR and AES-CBC."
 	windowGap      = "Effect has no service for the DOM; try (try Experimental.Window.Window).current gives an API that takes it the page's Window, and other UI code belongs in a .ts or .tsx file, such as a React component's."
 	documentGap    = "Effect has no service for the DOM; try (try Experimental.Document.Document).current gives an API that takes it the page's Document, and other UI code belongs in a .ts or .tsx file, such as a React component's."
 	domGap         = "Effect has no service for the DOM; UI code belongs in a .ts or .tsx file, such as a React component's."

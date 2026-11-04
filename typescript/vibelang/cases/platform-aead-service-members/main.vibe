@@ -1,0 +1,15 @@
+import { Aead } from "effect/crypto"
+import { fixed, expected, keyBytes, data, nonce } from "./native.js"
+
+effect function actual() {
+  const key = try Aead.key(Aead.aes256Gcm, keyBytes)
+  provide Layer.succeed(Aead.Aead, fixed) {
+    const ciphertext = try (try Aead.Aead).encrypt(key, data, { nonce })
+    const plaintext = try (try Aead.Aead).decrypt(key, ciphertext, { nonce })
+    return plaintext[0]
+  }
+}
+// expect-result: [4, 4]
+export effect function main() {
+  return [try actual(), try expected]
+}
