@@ -506,3 +506,5 @@ For an old typed statement catch such as `try { ... } catch (e: Missing) { ... }
 A foreign callback returning `Effect`, `Stream` or `Layer` has synchronous thrown type `never`, even if its declaration writes `@throws`. Generic signatures use their constraints before substitution. A `Promise` return alone does not provide this contract; neither do `any`, `unknown`, `never`, an unconstrained type parameter or a union containing a non-effectful member.
 
 A foreign constructor's own `@throws` contract also applies when its value is passed, assigned or returned as a construct signature. A construct signature without `@throws` admits only `never`; a signature with `@throws {E}` admits subtypes of `E`, and `@throws {unknown}` admits any thrown type. Overloads match their native parameter types. Constructors returning an effectful value keep their intrinsic synchronous thrown type `never`.
+
+The ES2026 `JSON.parse` overload, whose reviver receives a context object, also throws `SyntaxError`. Wrap a synchronous call in native `try/catch`, or use a callback whose contract admits throws; effect code can use `try Effect.try(() => JSON.parse(text, reviver))`.

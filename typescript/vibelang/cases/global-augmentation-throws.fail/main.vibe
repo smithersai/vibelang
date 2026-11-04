@@ -1,0 +1,8 @@
+// expect: EK0401 EK0401 EK0401 EK0401
+const revive=(key:string,value:unknown,context:{source?:string})=>context.source ?? value
+const alias=JSON.parse
+const globalAlias=globalThis.JSON.parse
+export function direct(text:string){return JSON.parse(text,revive)}
+export function global(text:string){return globalThis.JSON.parse(text,revive)}
+export function aliased(text:string){return alias(text,revive)}
+export function globalAliased(text:string){return globalAlias(text,revive)}

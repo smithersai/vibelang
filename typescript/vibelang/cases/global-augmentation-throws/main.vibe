@@ -1,0 +1,6 @@
+import { Effect } from "effect"
+const revive=(key:string,value:unknown,context:{source?:string})=>value
+export function caught(text:string):unknown { try { return JSON.parse(text,revive) } catch(error) { return error instanceof SyntaxError ? "SyntaxError" : "other" } }
+export effect function bridge(text:string){return try Effect.try(()=>JSON.parse(text,revive))}
+// expect-result: {"valid":1,"invalid":"SyntaxError","bridged":1}
+export effect function main(){return {valid:caught("1"),invalid:caught("{"),bridged:try bridge("1")}}

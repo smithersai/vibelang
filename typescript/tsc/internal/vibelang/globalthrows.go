@@ -124,8 +124,14 @@ func globalKey(decl *ast.Node) string {
 walk:
 	for n := decl.Parent; n != nil; n = n.Parent {
 		switch n.Kind {
-		case ast.KindInterfaceDeclaration, ast.KindModuleDeclaration:
+		case ast.KindInterfaceDeclaration:
 			parts = append(parts, declarationName(n))
+		case ast.KindModuleDeclaration:
+			// A declare global block augments the surrounding global scope;
+			// an ordinary namespace named global still contributes its name.
+			if !ast.IsGlobalScopeAugmentation(n) {
+				parts = append(parts, declarationName(n))
+			}
 		case ast.KindTypeLiteral:
 			if n.Parent == nil || !ast.IsVariableDeclaration(n.Parent) {
 				return ""
