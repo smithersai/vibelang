@@ -1,0 +1,74 @@
+{
+  "source": "t3code server: VcsDriverContractHarness and AcpMcpStdioBridge minimized patterns",
+  "quote": "A function's kind is decided by a keyword on the function, never by its body or by a type.",
+  "samples": [
+    {
+      "key": "VcsDriverContractHarness-void-callbacks",
+      "before": "import { Effect } from \"effect\"; export function runVcsDriverContractSuite(it) { describe(\"detection\", () => { it.effect(\"outside\", () => Effect.gen(function* () { yield* detect(); })); it.effect(\"inside\", () => Effect.gen(function* () { yield* detect(); return; })); }); }",
+      "after": "export function runVcsDriverContractSuite(it) { describe(\"detection\", () => { it.effect(\"outside\", effect () => { try detect(); }); it.effect(\"inside\", effect () => { try detect(); return; }); }); }",
+      "expected": []
+    },
+    {
+      "key": "AcpMcpStdioBridge-plain-factory-effect-block",
+      "before": "import { Effect } from \"effect\"; export const mcpToolSession = () => { const send = Effect.fn(\"send\")(function* () { return 1 }); const terminate = Effect.suspend(() => Effect.void); return Effect.gen(function* () { yield* send(); return { terminate }; }); };",
+      "after": "export const mcpToolSession = () => { const send = effect () => 1; const terminate = effect {}; return effect { try send(); return { terminate }; }; };",
+      "expected": []
+    },
+    {
+      "key": "callback-plain-value-drop",
+      "before": "export function suite(it) { it.effect(\"value\", () => 42); }",
+      "after": "export function suite(it) { it.effect(\"value\", effect () => {}); }",
+      "expected": [
+        {
+          "name": "suite/it.effect(1)",
+          "verdict": "value"
+        }
+      ]
+    },
+    {
+      "key": "callback-plain-void-gains-effect",
+      "before": "export function suite(it) { it.effect(\"void\", () => {}); }",
+      "after": "export function suite(it) { it.effect(\"void\", effect () => {}); }",
+      "expected": [
+        {
+          "name": "suite/it.effect(1)",
+          "verdict": "value"
+        }
+      ]
+    },
+    {
+      "key": "callback-eager-work-moves",
+      "before": "import { Effect } from \"effect\"; export function suite(it) { it.effect(\"eager\", () => { trace(); return Effect.gen(function* () {}); }); }",
+      "after": "export function suite(it) { it.effect(\"eager\", effect () => { trace(); }); }",
+      "expected": [
+        {
+          "name": "suite/it.effect(1)",
+          "verdict": "eager"
+        }
+      ]
+    },
+    {
+      "key": "outer-factory-really-marked-effect",
+      "before": "import { Effect } from \"effect\"; export const mcpToolSession = () => { const send = Effect.fn(\"send\")(function* () { return 1 }); return Effect.gen(function* () { return yield* send(); }); };",
+      "after": "export const mcpToolSession = effect () => { const send = effect () => 1; return try send(); };",
+      "expected": [
+        {
+          "name": "mcpToolSession",
+          "verdict": "eager"
+        }
+      ]
+    },
+    {
+      "key": "callback-cold-program-value-drop",
+      "before": "import { Effect } from \"effect\"; export function suite(it) { it.effect(\"value\", () => Effect.gen(function* () { return 42; })); }",
+      "after": "export function suite(it) { it.effect(\"value\", effect () => {}); }",
+      "expected": [
+        {
+          "name": "suite/it.effect(1)",
+          "verdict": "value"
+        }
+      ]
+    }
+  ],
+  "equivalenceQuote": "| `effect (p) => { B }` | `(p) => Effect.gen(function* () { B })` |"
+}

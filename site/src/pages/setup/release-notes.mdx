@@ -57,6 +57,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - Contributor checks for variance-annotated declarations loaded unrelated browser libraries. They now use ES5 while retaining native validity and changed-field checks.
 
+- Migration verification rejected unchanged callbacks returning void Effects and plain factories returning `effect` blocks. It now checks each callback against its own original and still rejects dropped return values and delayed call-time work.
+
 - Moving an exported `unique symbol` into a private module could make an unchanged API fail migration verification. The checker now follows its public export path while still rejecting changed symbol keys, member types and documentation.
 
 ## 0.0.11

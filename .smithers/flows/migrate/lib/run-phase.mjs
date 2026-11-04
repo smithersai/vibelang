@@ -26,6 +26,34 @@ export function vibeTree(compiler, text, file, cwd = undefined) {
 const estreeFunctions = new Set(["ArrowFunctionExpression", "FunctionExpression", "FunctionDeclaration"])
 const keyName = key => key?.type === "Identifier" ? key.name : key?.type === "Literal" ? String(key.value) : key?.type === "PrivateIdentifier" ? "#" + key.name : null
 
+// Callback identity includes the holder, callee, argument and occurrence.
+// Count plain callbacks too, so changing only a later callback cannot shift it.
+function callbackPath(path, callee, index, ordinals) {
+  const key = path.join(".") + "/" + callee + "(" + index + ")"
+  const ordinal = ordinals.get(key) ?? 0
+  ordinals.set(key, ordinal + 1)
+  return [key + (ordinal ? "#" + ordinal : "")]
+}
+const estreeUnwrap = node => {
+  while (node && ["TSAsExpression", "TSSatisfiesExpression", "TSNonNullExpression", "TSTypeAssertion", "ChainExpression"].includes(node.type)) node = node.expression
+  return node
+}
+const estreeCallee = node => {
+  node = estreeUnwrap(node)
+  if (node?.type === "Identifier") return node.name
+  if (node?.type === "MemberExpression") return estreeCallee(node.object) + (node.computed ? "[]" : "." + keyName(node.property))
+  if (node?.type === "CallExpression") return estreeCallee(node.callee) + "()"
+  return "?"
+}
+const tsCallee = (ts, node) => {
+  node = unwrap(ts, node)
+  if (ts.isIdentifier(node)) return node.text
+  if (ts.isPropertyAccessExpression(node)) return tsCallee(ts, node.expression) + "." + node.name.text
+  if (ts.isElementAccessExpression(node)) return tsCallee(ts, node.expression) + "[]"
+  if (ts.isCallExpression(node)) return tsCallee(ts, node.expression) + "()"
+  return "?"
+}
+
 /** The `effect` functions of a .vibe module, by name path. */
 export function effectFunctions(ast, text = "") {
   const tokens = ast.tokens ?? []
@@ -35,11 +63,26 @@ export function effectFunctions(ast, text = "") {
     for (let i = starts.get(from); i !== undefined && i < tokens.length && tokens[i].range[0] < to; i++) if (tokens[i].value === "effect") return true
     return false
   }
-  const found = []
+  const found = [], ordinals = new Map()
   const visit = (node, path, parent) => {
     if (!node || typeof node !== "object") return
     if (Array.isArray(node)) { for (const child of node) visit(child, path, parent); return }
     if (typeof node.type !== "string") return
+    if (node.type === "CallExpression") {
+      // ESTree represents an effect block as an intrinsic builder holding a
+      // lexical arrow. That arrow is the program body, not a changed function.
+      if (node.callee?.synthesized && node.callee.name === "$effect") {
+        for (const argument of node.arguments) visit(argument.body, path, argument)
+        return
+      }
+      visit(node.callee, path, node)
+      node.arguments.forEach((argument, index) => {
+        const value = estreeUnwrap(argument)
+        const next = estreeFunctions.has(value?.type) ? callbackPath(path, estreeCallee(node.callee), index, ordinals) : path
+        visit(argument, next, node)
+      })
+      return
+    }
     let next = path
     if (node.type === "VariableDeclarator" && node.id?.type === "Identifier") next = [...path, node.id.name]
     else if ((node.type === "Property" || node.type === "MethodDefinition" || node.type === "PropertyDefinition") && keyName(node.key)) next = [...path, keyName(node.key)]
@@ -47,7 +90,7 @@ export function effectFunctions(ast, text = "") {
     if (estreeFunctions.has(node.type) && next.length) {
       const own = starts.has(node.range[0]) && tokens[starts.get(node.range[0])].value === "effect"
       const method = parent && (parent.type === "Property" || parent.type === "MethodDefinition") && parent.value === node && marked(parent.range[0], parent.key.range[0])
-      if (own || method) found.push({ name: next.join("."), line: lineAt(node.range[0]) })
+      if (own || method) found.push({ name: next.join("."), line: lineAt(node.range[0]), node })
     }
     for (const [key, value] of Object.entries(node)) if (!["tokens", "comments", "range", "loc", "parent"].includes(key)) visit(value, next, node)
   }
@@ -58,9 +101,28 @@ export function effectFunctions(ast, text = "") {
 /** The function-valued names of a TypeScript module, by the same name paths. */
 export function originalFunctions(ts, text, file = "original.ts") {
   const source = ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true, file.endsWith("x") ? ts.ScriptKind.TSX : ts.ScriptKind.TS)
-  const found = new Map()
+  const found = new Map(), ordinals = new Map()
   const nameOf = name => name && (ts.isIdentifier(name) || ts.isPrivateIdentifier(name) || ts.isStringLiteral(name) || ts.isNumericLiteral(name)) ? name.text : null
   const visit = (node, path) => {
+    if (ts.isCallExpression(node)) {
+      visit(node.expression, path)
+      // Effect.gen's generator belongs to the surrounding callback or named
+      // function; Effect.fn already establishes that named function's kind.
+      const program = coldGen(ts, node)
+      const factory = effectFactory(ts, node)
+      node.arguments.forEach((argument, index) => {
+        const value = unwrap(ts, argument)
+        const shape = functionShape(ts, value)
+        if (program || factory) {
+          visit(shape?.node?.body ?? value, path)
+        } else if (shape) {
+          const next = callbackPath(path, tsCallee(ts, node.expression), index, ordinals)
+          found.set(next.join("."), shape)
+          visit(value, next)
+        } else visit(argument, path)
+      })
+      return
+    }
     let next = path
     const named = nameOf(node.name)
     if ((ts.isVariableDeclaration(node) || ts.isPropertyAssignment(node) || ts.isMethodDeclaration(node) || ts.isPropertyDeclaration(node) || ts.isFunctionDeclaration(node) || ts.isClassDeclaration(node)) && named) next = [...path, named]
@@ -175,7 +237,7 @@ function functionShape(ts, value) {
   const node = unwrap(ts, value)
   if (ts.isCallExpression(node) && effectFactory(ts, node)) return { kind: "effect" }
   if (ts.isArrowFunction(node) || ts.isFunctionExpression(node) || ts.isFunctionDeclaration(node) || ts.isMethodDeclaration(node)) {
-    if (node.asteriskToken) return { kind: "generator" }
+    if (node.asteriskToken) return { kind: "generator", node }
     return { kind: "plain", node }
   }
   return null
@@ -251,6 +313,52 @@ export function runPhaseOf(ts, node) {
   return verdict
 }
 
+// A cold program's explicit success value must not disappear when its
+// callback becomes an effect body. Nested functions have their own returns.
+function dropsProgramValue(ts, before, after) {
+  if (!before.body || !after.body) return false
+  let value = false
+  const returnsValue = node => {
+    if (ts.isFunctionLike(node) || ts.isClassLike(node)) return
+    if (ts.isReturnStatement(node) && node.expression) {
+      const expression = unwrap(ts, node.expression)
+      if (!ts.isVoidExpression(expression) && !(ts.isIdentifier(expression) && expression.text === "undefined")) value = true
+    }
+    ts.forEachChild(node, returnsValue)
+  }
+  const programs = expression => {
+    const node = unwrap(ts, expression)
+    if (!node) return
+    if (ts.isCallExpression(node) && coldGen(ts, node)) returnsValue(unwrap(ts, node.arguments.at(-1)).body)
+    else if (ts.isConditionalExpression(node)) { programs(node.whenTrue); programs(node.whenFalse) }
+  }
+  const scanReturns = node => {
+    if (ts.isFunctionLike(node) || ts.isClassLike(node)) return
+    if (ts.isReturnStatement(node)) programs(node.expression)
+    else ts.forEachChild(node, scanReturns)
+  }
+  if (ts.isBlock(before.body)) scanReturns(before.body)
+  else programs(before.body)
+  if (!value) return false
+  const hasValue = node => {
+    if (!node || typeof node !== "object") return false
+    if (Array.isArray(node)) return node.some(hasValue)
+    if (estreeFunctions.has(node.type) || ["ClassDeclaration", "ClassExpression"].includes(node.type)) return false
+    if (node.type === "ReturnStatement") {
+      const expression = estreeUnwrap(node.argument)
+      return !!expression && !(expression.type === "Identifier" && expression.name === "undefined") &&
+        !(expression.type === "UnaryExpression" && expression.operator === "void")
+    }
+    return Object.entries(node).some(([key, value]) => !["tokens", "comments", "range", "loc", "parent"].includes(key) && hasValue(value))
+  }
+  if (after.body.type !== "BlockStatement") {
+    const expression = estreeUnwrap(after.body)
+    return (expression.type === "Identifier" && expression.name === "undefined") ||
+      (expression.type === "UnaryExpression" && expression.operator === "void")
+  }
+  return !hasValue(after.body)
+}
+
 /**
  * Each `effect` function of the migrated module whose original was plain,
  * with what the change does: "value" (the call returned a value, now a
@@ -263,7 +371,8 @@ export function runPhaseChanges({ ts, original, originalPath, vibe, vibeText = "
   for (const fn of effectFunctions(vibe, vibeText)) {
     const before = functions.get(fn.name)
     if (!before || before.kind !== "plain") continue
-    const phase = runPhaseOf(ts, before.node)
+    let phase = runPhaseOf(ts, before.node)
+    if (phase.verdict === "ok" && dropsProgramValue(ts, before.node, fn.node)) phase = { verdict: "value", detail: "drops the original program's returned value" }
     if (phase.verdict !== "ok") changes.push({ name: fn.name, line: fn.line, ...phase })
   }
   return changes
