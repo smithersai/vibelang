@@ -439,6 +439,12 @@ const targets = {
   "go-vibelangfuzz-hangs": pendingHangs,
   "site-spec-links": siteSpecLinks,
   "spec-lint": specLint,
+  "docs-comparison-output": check(
+    "Complete Effect comparisons print the output their prose promises, without an injected runner.",
+    "bun docs/tools/check-comparison-output.ts && bun test --timeout 60000 docs/tools/check-comparison-output.test.ts",
+    [Packages["compiler-native"]],
+    [bun, node]
+  ),
   release: check(
     "The release, contributor and site generator node tests, the upgrade and maintenance flows' steps, and their evals' step keys.",
     "node --test --test-concurrency=8 scripts/release/*.test.mjs scripts/*.test.mjs typescript/vibelang/harness.test.mjs typescript/vibelang/coverage-stock-twins.test.mjs typescript/vibelang/vip7-reference.test.mjs docs/redirect/*.test.mjs " +

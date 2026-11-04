@@ -28,6 +28,9 @@ const UsersLive = Layer.succeed(Users, {
 const main = Effect.gen(function* () {
   yield* Console.log(yield* greet("ada"))
 }).pipe(Effect.provide(UsersLive))
+
+await Effect.runPromise(main)
+// Output: Hello, Ada
 ```
 
 ```vibe
