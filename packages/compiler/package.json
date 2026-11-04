@@ -95,7 +95,8 @@
     "fast-glob": "3.3.3",
     "oxlint": "1.89.0",
     "oxlint-tsgolint": "7.0.2005",
-    "knip": "6.34.0"
+    "knip": "6.34.0",
+    "esbuild": "0.28.2"
   },
   "engines": {
     "node": "^22.22.3 || >=24.11.1"
