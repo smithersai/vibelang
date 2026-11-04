@@ -201,6 +201,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Platform callback regressions still used native timers inside `.vibe` wrappers and failed with `EK4402`; their TypeScript adapters now preserve the same results and awaited finalizers, while rejection cases check the forbidden wrapper access.
 
+- Contract diagnostic checks omitted the `EK4856` warnings on transitional `Effect<…>` aliases; their snapshots now retain those warnings alongside the exact missing-error and missing-service diagnostics.
+
 - Repository build checks could fail before inspecting compiler inputs after target declarations changed. Their isolated fixtures now retain the native source group and imported parser data while checking dependency and cache behavior.
 
 - A `do` expression with no normal result suppressed native iterator errors in loops, destructuring, delegated yields and call spreads, so migration missed a required cast. These uses now retain TypeScript's `never` protocol checks; array literal spreads keep their native behavior.

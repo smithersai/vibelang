@@ -1,2 +1,5 @@
+main.vibe(5,34): warning EK4856
 main.vibe(6,14): error EK9202
+main.vibe(10,36): warning EK4856
 main.vibe(11,14): error EK9202
+main.vibe(16,37): warning EK4856
