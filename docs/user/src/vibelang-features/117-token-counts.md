@@ -120,7 +120,7 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [Vite and Vitest](../setup/vite.md) | 3,600 |
 | **Format and lint** | **10,000** |
 | [Format with dprint](../setup/formatting.md) | 2,700 |
-| [Developer tools](../setup/developer-tools.md) | 7,700 |
+| [Developer tools](../setup/developer-tools.md) | 7,800 |
 | **Frameworks** | **11,000** |
 | [React](../setup/react.md) | 2,100 |
 | [React Native and Metro](../setup/react-native.md) | 450 |
@@ -135,7 +135,7 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [Coding agents](../setup/coding-agents.md) | 1,100 |
 | **Upgrade** | **140,000** |
 | [Release notes](../setup/release-notes.md) | 140,000 |
-| **All 20 pages** | **190,000** |
+| **All 20 pages** | **200,000** |
 
 ### Guides
 
@@ -266,7 +266,7 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | Page | Tokens |
 | --- | ---: |
 | [Control operations and handlers](111-control-operations-and-handlers.md) | 260 |
-| [Producers](112-producers.md) | 3,800 |
+| [Producers](112-producers.md) | 3,900 |
 | [Building an HTTP API](113-building-an-http-api.md) | 1,500 |
 | [VibeLang for Effect users](114-vibelang-for-effect-users.md) | 9,800 |
 | [Cheat sheet](115-cheat-sheet.md) | 12,000 |
@@ -287,7 +287,7 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [4. Pattern matching](../../../design/src/004-match.md) | 23,000 |
 | [5. Services and the environment](../../../design/src/005-services.md) | 13,000 |
 | [6. Data](../../../design/src/006-data.md) | 9,200 |
-| [7. Configuration and tooling](../../../design/src/007-tooling.md) | 18,000 |
+| [7. Configuration and tooling](../../../design/src/007-tooling.md) | 19,000 |
 | [8. Runtime guarantees](../../../design/src/008-runtime.md) | 7,900 |
 | **Appendices** | **120,000** |
 | [Grammar, diagnostics, and denied and open VIPs](../../../design/src/900-appendices.md) | 95,000 |
