@@ -3,6 +3,7 @@ import { extract, classify } from "./check-snippets"
 
 // Chapter 900: trailing code comments never become expected diagnostics.
 // docs/design/src/900-appendices.md#d39863e3f1a87660 — Chapter 900: pending-example directive extraction.
+// docs/design/src/000-intro.md#cffae800ff7b9484 — Chapter 000: compiler-gap markers classify still-failing examples as pending.
 test("a trailing EK example needs an explicit expect-error header", () => {
   const fence = String.fromCharCode(96).repeat(3)
   const trailing = extract([fence + "vibe", "// compiler-gap: pending VIP-1", "effect function n(): number { return 1 } // EK0106", fence].join("\n"))[0]
