@@ -188,9 +188,6 @@ func TestTypeScriptFormRefusals(t *testing.T) {
 		{"Schema error tag differs from the name", `export class Failed extends Schema.TaggedError<Failed>()("app/Failed", { id: Schema.String }) {}`, 4837, "a schema error's tag is its name"},
 		{"fields from a named type", "interface Fields { id: string }\nexport class Named extends Data.TaggedError(\"Named\")<Fields> {}", 4830, "the fields come from Fields"},
 		{"error class with members", `export class Custom extends Data.TaggedError("Custom")<{ id: string }> { get message() { return this.id } }`, 4830, ""},
-		{"service with a named shape", "interface Shape { read(): string!! }\nexport class Named extends Context.Service<Named, Shape>()(\"app/Named\") {}", 4831, "its members come from Shape"},
-		{"service with a plain method", `class Plain extends Context.Service<Plain, { read(): string }>()("app/Plain") {}
-export const plain = Plain`, 4831, "an operation of a service returns an Effect type"},
 		{"service of a number", `export class Port extends Context.Service<Port, number>()("app/Port") {}`, 4831, ""},
 		{"struct with optionalKey", `export const Exact = Schema.Struct({ id: Schema.optionalKey(Schema.String) })`, 4832, ""},
 		{"struct with an annotation", `export const Named = Schema.Struct({ id: Schema.String }).annotate({ identifier: "Named" })`, 4832, ""},

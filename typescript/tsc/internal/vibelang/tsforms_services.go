@@ -281,9 +281,6 @@ func serviceBodyText(c *checker.Checker, file *ast.SourceFile, literal *ast.Node
 		if name == nil || !ast.IsIdentifier(name) && !ast.IsStringLiteral(name) {
 			return "", "a service declares named members only"
 		}
-		if postfix := member.PostfixToken(); postfix != nil && postfix.Kind == ast.KindQuestionToken {
-			return "", name.Text() + " is optional, which a service member cannot be"
-		}
 		switch {
 		case ast.IsPropertySignatureDeclaration(member):
 			if member.Type() == nil {
@@ -316,9 +313,7 @@ func serviceBodyText(c *checker.Checker, file *ast.SourceFile, literal *ast.Node
 					return "", name.Text() + "'s return type has no ! form"
 				}
 				edits = append(edits, contract.edits...)
-			} else if !isBangType(returnType) {
-				return "", name.Text() + " returns " + expressionText(file, returnType) + ", but an operation of a service returns an Effect type"
-			}
+			} // Plain method signatures retain their written return type.
 		default:
 			return "", "a service declares properties and methods only"
 		}
