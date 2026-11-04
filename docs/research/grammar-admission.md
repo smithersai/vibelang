@@ -61,8 +61,14 @@ resolution errors remain non-syntax errors. `EK2301`, a topic `%` outside
 every pipe body, is the early error of VIP-23's TC39 topic grammar and counts
 as syntax rejection. Warnings
 and suggestions do not.
-Operand and name/type errors do not. Syntax-only legacy recovery also
-counts as rejection; this grants no authority to the corresponding form. The grammar lab models a
+Operand and name/type errors do not.
+`EK2109` is a schema type/value error, including a missing Schema value or
+incompatible decoded-key flags. It does not reject syntax: a schema field
+with an unadmitted `effect` modifier remains an admission mismatch when its
+type also reports `EK2109`. The keyed unsupported-field witness shares the
+existing `admission:schema-effect-field` pending family; ordinary, optional
+and readonly fields with unsupported types remain grammar-derived controls.
+Syntax-only legacy recovery also counts as rejection; this grants no authority to the corresponding form. The grammar lab models a
 bounded TypeScript subset, so an unrecognized program is triaged as either
 compiler admission or lab/spec coverage before it is made pending. The
 subset keeps ECMAScript's `ExpressionStatement` lookahead exactly, including
@@ -204,8 +210,8 @@ Campaign176 found both omissions.
 
 `EK1606` is a syntax rejection when its source is `EK` and its category is
 an error: VIP-16's rejection of a malformed `data` variant or a payload
-member that is not a `Field`, the data counterpart of `EK2109` and
-`EK2125`. The checker reports it, so the parse gate never saw it; campaign183
+member that is not a `Field`, the data counterpart of a malformed schema
+field. The checker reports it, so the parse gate never saw it; campaign183
 found `data D { A { x : number` and a line break before `number } ; B }`,
 whose second member has no type.
 

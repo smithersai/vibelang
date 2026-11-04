@@ -11,7 +11,7 @@ import (
 // EK1606, which the oracle did not count. The line break separates a second
 // member, `number`, that is not a Field (no type). EK1606 is VIP-16's
 // rejection of a malformed variant or a payload member that is not a Field,
-// the data counterpart of EK2109/EK2125. Each program must report EK1606 and
+// the data counterpart of a malformed schema Field. Each program must report EK1606 and
 // draw no mismatch; a well-formed variant list is the derived control.
 func TestGrammarAdmissionDataMember(t *testing.T) {
 	w := NewWorkspace(t)

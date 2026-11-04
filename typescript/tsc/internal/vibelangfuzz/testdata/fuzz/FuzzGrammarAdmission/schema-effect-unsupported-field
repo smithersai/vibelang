@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("key:schema-effect-unsupported-field\nschema S { effect id : Missing }")

@@ -9,6 +9,9 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.11
 
+- Grammar admission checks could overlook undefined field modifiers when a schema type was unsupported; these type errors now leave the syntax check active.
+
+
 - Migration API verification could stop before comparing apps that import declarations from sibling packages or scripts. Those declarations now resolve inside the isolated comparison layout, while real API changes and paths escaping that layout still fail.
 - Migration setup could add a loader helper to a script that launches built JavaScript and break tests evaluating it in a VM. Proven JavaScript paths now preserve the script’s original bytes, and repeated setup removes the unnecessary generated helper.
 - Migration could add an inferred `Generator<…>` return type and reject an unchanged `Effect.fn` contract. The rename step now leaves unwritten return types unwritten when functions are plain by syntax.

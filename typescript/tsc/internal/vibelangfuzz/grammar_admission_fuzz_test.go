@@ -167,6 +167,7 @@ var grammarAdmissionSeeds = []struct{ key, source string }{
 	{"reserved-expression-name", "throw effect function join(p) { return try p; }"},
 	{"throw-comma-warning", "effect function f(e) { return [throw e, 1]; }"},
 	{"schema-effect-field", "schema S { effect id : string }"},
+	{"schema-effect-unsupported-field", "schema S { effect id : Missing }"},
 	{"export-assignment", "export = 1 ;"},
 	{"import-equals", "import x = require ( \"m\" ) ; import y = N . a ;"},
 	{"data-member-not-field", "data D { A { x : number\nnumber } ; B }"},
@@ -1557,7 +1558,7 @@ func grammarAdmissionSyntaxCode(code int32) bool {
 		return true
 	case 2005: // ForTry requires a ForDeclaration head.
 		return true
-	case 2109, 2125: // A schema or data Field requires its Type; a field with one is derived, so these codes cannot excuse it.
+	case 2125: // A data Field requires its Type.
 		return true
 	case 1304: // RejectedElement: an error body element that parses, then a static rule rejects.
 		return true
@@ -1747,7 +1748,8 @@ func TestGrammarAdmissionDiagnostics(t *testing.T) {
 		{"native-strict-reserved-warning", "", diagnostics.CategoryWarning, 1214, false},
 		{"ek-strict-reserved-code-collision", "EK", diagnostics.CategoryError, 1214, false},
 		{"for-try-head", "EK", diagnostics.CategoryError, 2005, true},
-		{"schema-field-no-type", "EK", diagnostics.CategoryError, 2109, true},
+		{"schema-field-type-error", "EK", diagnostics.CategoryError, 2109, false},
+		{"schema-field-type-warning", "EK", diagnostics.CategoryWarning, 2109, false},
 		{"data-field-no-type", "EK", diagnostics.CategoryError, 2125, true},
 		{"error-rejected-element", "EK", diagnostics.CategoryError, 1304, true},
 		{"native-readonly-operator", "", diagnostics.CategoryError, 1354, true},
