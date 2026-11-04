@@ -13,8 +13,8 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/vfs/vfstest"
 )
 
-const severityInheritanceQuote = "After `extends` merges entries by code, validate each effective entry independently."
-const severityInheritanceInvalidQuote = "An invalid child entry has already displaced the same code's inherited setting and does not restore that base entry"
+const severityInheritanceQuote = "Merge `extends` before validating each effective severity entry."
+const severityInheritanceInvalidQuote = "An invalid child entry displaces its inherited entry without restoring it: fall back to the Effect language-service setting where applicable, then the default. Other inherited codes remain."
 
 func severityInheritanceQuoted(t testing.TB) {
 	t.Helper()

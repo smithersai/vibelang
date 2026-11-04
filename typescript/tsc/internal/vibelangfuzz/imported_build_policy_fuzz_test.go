@@ -17,7 +17,7 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/execute/tsc"
 )
 
-const importedBuildPolicyQuote = "Imported Effect diagnostics in compiler builds follow their Effect language-service configuration"
+const importedBuildPolicyQuote = "Warnings affect exit status and `noEmitOnError` unless `ignoreEffectWarningsInTscExitCode` is `true`; errors use `ignoreEffectErrorsInTscExitCode`."
 
 func importedBuildPolicyQuoted(t testing.TB) {
 	t.Helper()

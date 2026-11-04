@@ -220,6 +220,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Imported lint tests applied the same warning and suggestion expectations to compiler builds and `lint`. They now check each command's documented native policy and its inclusion and ignore options.
 
 - The compiler package test target now supplies its staged compiler to the native configuration-contract tests, allowing all six configuration checks to execute.
+
+- Imported compiler policy and severity-inheritance fuzz checks now cite the current tooling rules, so documentation rewrites no longer hide their behavioral checks.
 - The ESLint corpus check rejected deliberately constant source literal conditions as generated code; it now checks each reported literal against its source while continuing to detect unwritten constants.
 - An optional-schema inverse check expected the retired `mutable` field spelling. It now checks that writable keys have no `readonly` modifier and readonly keys retain it, with exact optional-property conversion controls unchanged.
 
