@@ -7,6 +7,7 @@ export function initializer(x: unknown) {
 export function returned(x: unknown) {
   return x is { id: let id } && id === 1
 }
+export const concise = (x: unknown) => x is { id: let id } && id === 2
 export effect function thrown(x: { message: string } | null) {
   return (effect {
     throw (x is { message: let message }) ? new Error(message) : new Error("none")

@@ -1,2 +1,2 @@
 // expect: EK0705
-function f() { try { throw {} as any } catch ({ code = (1 is let c) }) { void code } }
+effect function f() { try { throw {} as any } catch ({ code = (1 is let c) }) { void code } }
