@@ -278,6 +278,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - `vibelang --fix` could refuse a named `Effect.fn` returning a literal object with `TS2322`. It now retains the written or contextual return type inside the span.
 - The grammar-admission audit kept a resolved reserved-name pattern case pending, making its passing regression fail as `XPASS`. It now runs that saved case as a regular syntax-rejection regression.
 - The grammar-admission audit mistook an Effect declaration named `join` or `fork` for undefined syntax. It now checks the declaration name in its enclosing context, while keeping Effect parameter and expression-name restrictions.
+- The grammar-admission audit reported a rejected Effect expression name as accepted syntax. It now counts the `EK1702` reserved-name error as syntax rejection while preserving warning, diagnostic-source, and operand-type checks.
 
 - Callable-contract documentation tests depended on removed examples; they now retain native witnesses and check the current wrapper example without losing defect, failure or default-callback coverage.
 

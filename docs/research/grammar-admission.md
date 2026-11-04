@@ -162,3 +162,11 @@ that enclosing Effect context. A nested plain callable resets that context.
 Overload names follow the same declaration rule. The former
 `fiber-function-name` lab pending entries are retired; their mutation corpus
 and the stable `declaration-name-context` witness remain regression inputs.
+
+`EK1702` is a syntax rejection when its source is `EK` and its category is
+an error. VIP-17 reserves `fork` and `join` in the applicable identifier
+positions, including an Effect function or producer expression name; some
+own-name checks run after parser recovery. A warning, suggestion, another
+diagnostic source, or an operand type error still grants no syntax rejection.
+The `reserved-expression-name` corpus preserves the throw-wrapped campaign
+witness, alongside declaration and method-name controls.

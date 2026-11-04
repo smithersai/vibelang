@@ -163,6 +163,7 @@ var grammarAdmissionSeeds = []struct{ key, source string }{
 	{"join-nested-plain", "effect effect => function f(p) { return join p; }"},
 	{"native-for-await", "async function f(xs) { for await (const x of xs) { x; } }"},
 	{"native-for-await-placement", "async\nfunction f ( xs ) { for await ( const of xs ) effect { x ; } }"},
+	{"reserved-expression-name", "throw effect function join(p) { return try p; }"},
 }
 
 func FuzzGrammarAdmission(f *testing.F) {
@@ -1501,6 +1502,8 @@ func grammarAdmissionSyntaxCode(code int32) bool {
 		return true
 	case 501, 504, 1701, 1001: // [+Effect] placement; EK1001 is legacy module-level try rejection.
 		return true
+	case 1702: // VIP-17: reserved fork/join names are a syntax error, including expression-owned names.
+		return true
 	case 509: // CatchHandler must be a function literal.
 		return true
 	case 4408: // Legacy module recovery rejects a missing name; this admits no module form.
@@ -1643,6 +1646,13 @@ func TestGrammarAdmissionDiagnostics(t *testing.T) {
 		code         int32
 		want         bool
 	}{
+		{"reserved-fiber-name-error", "EK", diagnostics.CategoryError, 1702, true},
+		{"reserved-fiber-name-warning", "EK", diagnostics.CategoryWarning, 1702, false},
+		{"reserved-fiber-name-suggestion", "EK", diagnostics.CategorySuggestion, 1702, false},
+		{"native-reserved-fiber-code-collision", "", diagnostics.CategoryError, 1702, false},
+		{"external-reserved-fiber-code-collision", "other", diagnostics.CategoryError, 1702, false},
+		{"fork-operand-type-error", "EK", diagnostics.CategoryError, 1703, false},
+		{"join-operand-type-error", "EK", diagnostics.CategoryError, 1704, false},
 		{"recovery-error", "EK", diagnostics.CategoryError, 103, true},
 		{"legacy-module-error", "EK", diagnostics.CategoryError, 4408, true},
 		{"legacy-top-level-error", "EK", diagnostics.CategoryError, 1001, true},
