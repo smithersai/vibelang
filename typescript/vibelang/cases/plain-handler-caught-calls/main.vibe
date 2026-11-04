@@ -1,0 +1,10 @@
+// expect-result: ["fallback","OK"]
+// A plain catch handler keeps the try statement's exemption, and an
+// unannotated call there stays an ordinary call (003 Plain code never throws).
+import { Effect } from "effect"
+import { parse, plain } from "./helpers.js"
+export effect function main() {
+  const a = Effect.fail(new Error("input")) catch (e) => { try { return parse("bad") } catch { return "fallback" } }
+  const b = Effect.fail(new Error("input")) catch (e) => plain("ok")
+  return [a, b]
+}

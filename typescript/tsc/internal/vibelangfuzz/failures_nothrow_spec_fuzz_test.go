@@ -97,6 +97,15 @@ func failuresNoThrowCases() []*failCase {
 	add(&failCase{Name: "nothrow-unknown-call", Quote: q.knownCall, Host: "plain", Lib: plain, Body: "plain(s)"})
 	add(&failCase{Name: "nothrow-try-statement", Quote: q.tryStmt, Host: "plain", Lib: plain, Body: "try { plain(s) } catch { }"})
 	add(&failCase{Name: "nothrow-handler-try", Quote: q.handler, Host: "effect", Lib: parse, Body: "return Effect.fail(new Error(\"input\")) catch (e) => { try { return parse(s) } catch { return \"\" } }"})
+	// A plain handler is plain code: EK0401 for a call known to throw, the
+	// try statement's exemption, and an unknown call stays an ordinary call;
+	// EK0403 belongs to an effect handler's body.
+	add(&failCase{Name: "nothrow-handler-known-call", Quote: q.handler, Host: "effect", Lib: parse, Body: "return Effect.fail(new Error(\"input\")) catch (e) => ⟦parse(s)⟧", Code: 401, OneDiagnostic: true})
+	add(&failCase{Name: "nothrow-handler-known-call-block", Quote: q.handler, Host: "effect", Lib: parse, Body: "return Effect.fail(new Error(\"input\")) catch (e) => { return ⟦parse(s)⟧ }", Code: 401, OneDiagnostic: true})
+	add(&failCase{Name: "nothrow-handler-catch-block", Quote: q.knownCall, Host: "effect", Lib: parse, Body: "return Effect.fail(new Error(\"input\")) catch (e) => { try { s.trim() } catch { ⟦parse(s)⟧ } return \"\" }", Code: 401, OneDiagnostic: true})
+	add(&failCase{Name: "nothrow-handler-try-statement", Quote: q.knownCall, Host: "effect", Lib: parse, Body: "return Effect.fail(new Error(\"input\")) catch (e) => { try { parse(s) } catch { } return \"\" }"})
+	add(&failCase{Name: "nothrow-handler-unknown-call", Quote: q.knownCall, Host: "effect", Lib: plain, Body: "return Effect.fail(new Error(\"input\")) catch (e) => plain(s)"})
+	add(&failCase{Name: "nothrow-handler-effect-known-call", Quote: "| In effect code, a call, `new` expression, tagged template or class evaluation whose thrown type is not `never`. Wrap it: `try Effect.try(() => parse(s))` | `EK0403` |", Host: "effect", Lib: parse, Body: "return Effect.fail(new Error(\"input\")) catch effect (e) => ⟦parse(s)⟧", Code: 403, OneDiagnostic: true})
 	// function literals the parameter admits
 	add(&failCase{Name: "nothrow-wrapper-thunk-plain", Quote: q.literal, Host: "plain", Lib: parse, Body: "const e = Effect.try(() => parse(s))"})
 	add(&failCase{Name: "nothrow-wrapper-thunk-throw", Quote: q.literal, Host: "effect", Body: "const v = try Effect.try(() => { ⟦throw new Error(\"x\")⟧ })", Code: 401})

@@ -1,0 +1,11 @@
+// expect: EK0401
+// A plain catch handler is plain code: a call known to throw is EK0401 alone,
+// not EK0403 as well (002 handler table; Appendix B: EK0403 is effect code).
+import { Effect } from "effect"
+import { parse } from "./helpers.js"
+export effect function direct(s: string) {
+  return Effect.fail(new Error("input")) catch (e) => parse(s)
+}
+export effect function block(s: string) {
+  return Effect.fail(new Error("input")) catch (e) => { return parse(s) }
+}
