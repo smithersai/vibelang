@@ -79,7 +79,8 @@ func (p *Parser) parsePipeRest(left *ast.Expression, pos int, allowReturnTypeInA
 // parsePipeBodyBinaryOrArrow recovers a whole bare arrow before the pinned
 // covering-production error. Binary parsing alone leaves => behind (or
 // fails at an empty parameter list), producing unrelated TypeScript errors.
-// Keep the usual binary-body boundary for assignments, yield and chains.
+// A whole yield or assignment body is recovered the same way; chains keep
+// the usual binary-body boundary.
 // Preserve the native conditional-colon guard: (n = %) : m => m can be
 // a parenthesized assignment followed by the conditional's alternate.
 func (p *Parser) parsePipeBodyBinaryOrArrow(allowReturnTypeInArrowFunction bool) *ast.Expression {
@@ -92,8 +93,22 @@ func (p *Parser) parsePipeBodyBinaryOrArrow(allowReturnTypeInArrowFunction bool)
 	if arrow == nil {
 		arrow = p.tryParseAsyncSimpleArrowFunctionExpression(allowReturnTypeInArrowFunction)
 	}
+	if arrow == nil && p.isYieldExpression() {
+		// The pinned proposal's covering production: a whole yield body.
+		body := p.parseYieldExpression()
+		p.diagnostics = append(p.diagnostics, ast.NewExternalDiagnostic(nil, p.sourceRange(body), "EK", diagnostics.CategoryError, 2301, PipeYieldBodyMessage))
+		p.hasParseError = true
+		return body
+	}
 	if arrow == nil {
 		body := p.parseBinaryExpressionOrHigher(ast.OperatorPrecedenceLowest)
+		if ast.IsLeftHandSideExpression(body) && ast.IsAssignmentOperator(p.reScanGreaterThanToken()) {
+			// And a whole assignment body, = and the compound operators.
+			assignment := p.makeBinaryExpression(body, p.parseTokenNode(), p.parseAssignmentExpressionOrHigherWorker(allowReturnTypeInArrowFunction), pos)
+			p.diagnostics = append(p.diagnostics, ast.NewExternalDiagnostic(nil, p.sourceRange(assignment), "EK", diagnostics.CategoryError, 2301, PipeAssignmentBodyMessage))
+			p.hasParseError = true
+			return assignment
+		}
 		if body.Kind != ast.KindIdentifier || p.token != ast.KindEqualsGreaterThanToken {
 			return body
 		}
@@ -107,6 +122,13 @@ func (p *Parser) parsePipeBodyBinaryOrArrow(allowReturnTypeInArrowFunction bool)
 // PipeArrowBodyMessage applies VIP-23/detail246's covering-production ban
 // equally to plain, async and Effect arrows, including block-bodied arrows.
 const PipeArrowBodyMessage = "An arrow cannot stand unparenthesized as a whole pipe body. Put parentheses around the arrow: x |> (() => %)."
+
+// PipeYieldBodyMessage and PipeAssignmentBodyMessage apply the same
+// covering-production ban to a whole yield or assignment body (chapter 2:
+// "The existing conditional, yield, assignment and arrow covering-production
+// errors remain").
+const PipeYieldBodyMessage = "A yield expression cannot stand unparenthesized as a whole pipe body. Put parentheses around it: x |> (yield %)."
+const PipeAssignmentBodyMessage = "An assignment cannot stand unparenthesized as a whole pipe body. Put parentheses around it: x |> (y = %)."
 
 // PipeConditionalMessage is EK2301's text, for a ? after a pipe body.
 const PipeConditionalMessage = "A conditional cannot stand unparenthesized at either end of a pipe. Write (x |> f(%)) ? a : b to test the pipe's result, or x |> (f(%) ? a : b) to make the conditional the body."

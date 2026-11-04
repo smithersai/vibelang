@@ -1,0 +1,7 @@
+// expect: EK2301
+// Chapter 2: the pipe proposal's yield and assignment covering-production
+// errors remain, under EK2301. Parenthesize the body: x |> (z = %).
+let z = 0
+export effect function* g() { const r = 1 |> yield % }
+export function assign() { return 1 |> z = % }
+export function compound() { return 2 |> z += % }

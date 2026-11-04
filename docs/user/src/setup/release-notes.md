@@ -7,6 +7,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ## 0.0.11 (unreleased)
 
+- A `yield` or an assignment written as a whole pipe body, such as `x |> y = %` or `x |> yield %`, reported `TS1005`, `TS1109` or `TS1134` at the following tokens. It now reports `EK2301` with the repair, parentheses around the body: `x |> (y = %)`.
 - A `try` in a catch's left side ran inside the catch: `g(try a) catch h` caught `a`'s failure, and `(try x) catch h` caught `x`'s failure and gave the Effect `x` succeeded with unrun. The `try` now runs where it stands, before the catch, as VIP-5 and the [fallback guide](../error-management/016-fallback.md) say: `g(try a) catch h` catches `g`'s failure, and `(try x) catch h` runs and catches the Effect `x` gives. To catch the earlier failure as well, write `effect { return g(try a) } catch h`.
 - Migration verification could miss a removed doc comment or changed exported type in a shipped deep module of a package without `exports`; it now checks those consumer entrypoints, including bin-only packages and refreshed snapshots.
 
