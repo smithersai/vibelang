@@ -2047,7 +2047,7 @@ The TypeScript-form lint warnings also retain their existing `EK4830`–`EK4837`
 | `EK4834` | lint warning: `Effect.succeed(v)` or `Effect.fail(e)` as the direct operand of bare `try` in effect code | 4, 34 | [Configuration and tooling](007-tooling.md#typescript-spellings-with-vibelang-forms) |
 | `EK4835` | lint warning: `Effect.catch`, `Effect.catchTag`, or `Effect.catchTags` as the direct operand of bare `try` in effect code | 5, 34 | [Configuration and tooling](007-tooling.md#typescript-spellings-with-vibelang-forms) |
 | `EK4836` | lint warning: `Effect.provide` or `Effect.provideService` as the direct operand of bare `try` in effect code | 12, 34 | [Configuration and tooling](007-tooling.md#typescript-spellings-with-vibelang-forms) |
-| `EK4837` | lint warning: A class written with `Schema.TaggedError` | 29, 34 | [Configuration and tooling](007-tooling.md#typescript-spellings-with-vibelang-forms) |
+| `EK4837` | lint warning: A class written with `Schema.TaggedError`, except one with spread fields or a user-written static `_tag` | 29, 34 | [Configuration and tooling](007-tooling.md#typescript-spellings-with-vibelang-forms) |
 | `EK4839` | lint warning: An Effect `Match` chain with a supported finisher, or a direct `Option.match(value, handlers)` call | 7, 34 | [Configuration and tooling](007-tooling.md#typescript-spellings-with-vibelang-forms) |
 | `EK4841` | lint warning: A schema `const` immediately followed by its matching `typeof Name.Type` alias | 15, 34 | [Configuration and tooling](007-tooling.md#typescript-spellings-with-vibelang-forms) |
 | `EK4842` | lint warning: An Effect module imported under a conflicting JavaScript global name | 14, 34 | [Configuration and tooling](007-tooling.md#typescript-spellings-with-vibelang-forms) |

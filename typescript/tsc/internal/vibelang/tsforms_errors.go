@@ -166,7 +166,7 @@ func findErrorClasses(c *checker.Checker, file *ast.SourceFile, report func(at *
 func findSchemaErrorClasses(c *checker.Checker, file *ast.SourceFile, report func(at *ast.Node, rewrite *formRewrite, args ...any)) {
 	var visit func(node *ast.Node) bool
 	visit = func(node *ast.Node) bool {
-		if ast.IsClassDeclaration(node) && !inHatch(node) && errorClassOf(c, file, node).base == schemaErrorBase && errorClassHead(node) && !nativeSchemaErrorClass(c, node) {
+		if ast.IsClassDeclaration(node) && !inHatch(node) && errorClassOf(c, file, node).base == schemaErrorBase && errorClassHead(node) && !nativeSchemaErrorClass(c, node) && !nativeErrorClass(c, file, node) {
 			report(node.Name(), errorClassRewrite(c, file, node), node.Name().Text())
 		}
 		return node.ForEachChild(visit)
@@ -190,11 +190,35 @@ func nativeSchemaErrorClass(c *checker.Checker, class *ast.Node) bool {
 	return false
 }
 
+// nativeErrorClass reports whether class keeps its native Effect form, with
+// neither an error-declaration warning nor a fix (proxy ruling 2026-11-04): a
+// Schema.TaggedError class whose fields object spreads another object, or a
+// Data.TaggedError or Schema.TaggedError class with a written static _tag.
+//
+//	class A extends Schema.TaggedError<A>()("A", { ...shared, id: Schema.String }) {}
+//	class B extends Data.TaggedError("B")<{ id: string }> { static readonly _tag = "B" }
+func nativeErrorClass(c *checker.Checker, file *ast.SourceFile, class *ast.Node) bool {
+	if slices.ContainsFunc(class.Members(), func(m *ast.Node) bool {
+		return ast.HasSyntacticModifier(m, ast.ModifierFlagsStatic) && errorMemberIsReservedTag(c, m)
+	}) {
+		return true
+	}
+	if errorClassOf(c, file, class).base != schemaErrorBase {
+		return false
+	}
+	arguments := ast.GetClassExtendsHeritageElement(class).Expression().Arguments()
+	return len(arguments) >= 2 && ast.IsObjectLiteralExpression(arguments[1]) &&
+		slices.ContainsFunc(arguments[1].AsObjectLiteralExpression().Properties.Nodes, ast.IsSpreadAssignment)
+}
+
 // errorClassRewrite plans EK4830's fix for class.
 func errorClassRewrite(c *checker.Checker, file *ast.SourceFile, class *ast.Node) *formRewrite {
 	if class.TypeParameters() != nil {
 		return nil
 	} // VIP-13: a generic class has no error-declaration equivalent.
+	if nativeErrorClass(c, file, class) {
+		return &formRewrite{why: "No quick fix: a class with spread fields or a static _tag keeps its native Effect form."}
+	}
 	parts := errorClassOf(c, file, class)
 	if parts.base == schemaErrorBase {
 		if !errorClassHead(class) || nativeSchemaErrorClass(c, class) {

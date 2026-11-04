@@ -2,6 +2,7 @@ package vibelang
 
 import (
 	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
@@ -99,5 +100,92 @@ func TestNativeErrorClassShapeBoundaries(t *testing.T) {
 		if count != 1 {
 			t.Errorf("control got %d EK4837, want 1: %s", count, source)
 		}
+	}
+}
+
+// Native Effect classes with spread fields or a written static _tag have no
+// declaration advisory. Ordinary fields remain eligible for a preserving fix.
+func FuzzNativeErrorClassShapes(f *testing.F) {
+	for shape := uint8(0); shape < 4; shape++ {
+		for mode := uint8(0); mode < 4; mode++ {
+			f.Add(shape, mode)
+		}
+	}
+	f.Fuzz(func(t *testing.T, shape, mode uint8) {
+		spread, static := shape&1 != 0, shape&2 != 0
+		schema := mode&1 == 0
+		fields := "id: Schema.String"
+		prefix, body := "", ""
+		if schema && spread {
+			prefix = "const fields = { id: Schema.String }\n"
+			fields = "...fields, count: Schema.Number"
+		}
+		if static {
+			body = "static readonly _tag = \"Native\""
+			if mode&2 != 0 {
+				body = "static get [\"_tag\"](): string { return \"Native\" }"
+			}
+		}
+		code := int32(4837)
+		source := prefix + "export class Native extends Schema.TaggedError<Native>()(\"Native\", {" + fields + "}) {" + body + "}\n"
+		if !schema {
+			code = 4830
+			source = "export class Native extends Data.TaggedError(\"Native\")<{ readonly id: string }> {" + body + "}\n"
+		}
+		if mode&2 != 0 {
+			source = "// café 😀\n" + source
+		}
+		exempt := static || schema && spread
+		program, file, _, _ := editorProgram(t, source)
+		count := 0
+		for _, d := range append(program.GetSyntacticDiagnostics(t.Context(), file), program.GetSemanticDiagnostics(t.Context(), file)...) {
+			if d.Category() == diagnostics.CategoryError {
+				t.Fatalf("invalid generated class: %s\n%s", d.String(), source)
+			}
+			if d.Source() == diagnosticSource && d.Code() == code {
+				count++
+			}
+		}
+		want := 1
+		if exempt {
+			want = 0
+		}
+		if count != want {
+			t.Fatalf("got %d EK%d, want %d (spread=%t static=%t schema=%t)\n%s", count, code, want, spread, static, schema, source)
+		}
+		c, done := program.GetTypeCheckerForFile(t.Context(), file)
+		defer done()
+		var class *ast.Node
+		for _, statement := range file.Statements.Nodes {
+			if ast.IsClassDeclaration(statement) {
+				class = statement
+				break
+			}
+		}
+		rewrite := errorClassRewrite(c, file, class)
+		if exempt {
+			if rewrite.fixable() {
+				t.Fatalf("native class has a stale-diagnostic fix: %+v", rewrite)
+			}
+		} else {
+			if !rewrite.fixable() {
+				t.Fatalf("ordinary class lost its fix: %+v", rewrite)
+			}
+		}
+	})
+}
+
+func TestNativeErrorClassOrdinaryFixControls(t *testing.T) {
+	for _, schema := range []bool{false, true} {
+		t.Run(fmt.Sprint(schema), func(t *testing.T) {
+			code, source := int32(4830), "export class Native extends Data.TaggedError(\"Native\")<{ readonly id: string }> {}"
+			if schema {
+				code, source = 4837, "export class Native extends Schema.TaggedError<Native>()(\"Native\", {id: Schema.String}) {}"
+			}
+			fixed := applyQuickFix(t, source, code)
+			if fixed == source || !strings.Contains(fixed, "error Native") {
+				t.Fatalf("ordinary class lost its editor repair:\n%s", fixed)
+			}
+		})
 	}
 }

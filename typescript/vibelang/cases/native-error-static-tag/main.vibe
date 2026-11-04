@@ -1,0 +1,10 @@
+import * as Schema from "effect/Schema"
+export class SchemaFailure extends Schema.TaggedError<SchemaFailure>()("SchemaFailure", {
+  reason: Schema.String,
+}) {
+  static readonly _tag = "SchemaFailure"
+}
+export class DataFailure extends Data.TaggedError("DataFailure")<{ readonly reason: string }> {
+  static readonly _tag = "DataFailure"
+}
+export const ready = true

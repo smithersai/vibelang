@@ -1,0 +1,9 @@
+import * as Schema from "effect/Schema"
+const fields = { cause: Schema.Defect() }
+export class StorageFailure extends Schema.TaggedError<StorageFailure>()("StorageFailure", {
+  ...fields,
+  reason: Schema.String,
+}) {
+  override get message(): string { return this.reason }
+}
+export const ready = true
