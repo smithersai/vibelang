@@ -14,6 +14,7 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - Comparing declaration APIs could falsely report a missing `NodeJS` namespace in packages with configured ambient types. The comparison now keeps the package's `types` and `typeRoots` settings.
 - The generator guide could imply that plain generator bodies may throw. It now states their `EK0401` restriction and distinguishes `async` generators from Effect producers.
+- Sidecar self-comparison regression fixtures repeatedly loaded unrelated browser declarations. Their entry declarations now select ES5 while retaining actual project discovery, generated nominal and structural shapes, type mutations and missing-library checks.
 - The fuzzing research guide incorrectly said an unchanged callable reexport must fail migration verification. It now describes the accepted API identity and the retained type, documentation and missing-dependency controls.
 - Contributor helper re-export checks now require a missing `BigInt` library to produce `TS2583` and make comparison unavailable, matching stock TypeScript validation.
 

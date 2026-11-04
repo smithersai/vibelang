@@ -662,12 +662,12 @@ test("property: a valid package compared with itself is always identical", async
     arbitrary: fc.record({ sidecar: fc.boolean(), value: fc.integer({ min: 0, max: 100 }), nominal: fc.boolean() }),
     numRuns: 8,
     check: ({ sidecar, value, nominal }) => {
-      const files = { "index.d.ts": 'export { X } from "./dep.vibe";',
+      const files = { "index.d.ts": '/// <reference no-default-lib="true" />\n/// <reference lib="es5" />\nexport { X } from "./dep.vibe";',
         "tsconfig.json": JSON.stringify({ vibe: sidecar ? { sidecarDir: ".vibe/declarations" } : {} }),
         [(sidecar ? ".vibe/declarations/" : "") + "dep.d.vibe.ts"]:
           nominal ? `export declare class X { private brand; value: ${value} }` : `export interface X { value: ${value} }` }
       fixture(files, files, a => {
-        const result = compareApiIdentity(ts, a, a)
+        const result = withPureFixtureCompiler(compiler => compareApiIdentity(compiler, a, a))
         assert.equal(result.identical, true, JSON.stringify(result))
         assert.deepEqual(result.nameDifferences, [])
         assert.deepEqual(result.typeDifferences, [])
@@ -1020,4 +1020,45 @@ test("pure declaration fixtures retain utility types and reject missing browser 
   assert.equal(missing.comparisonComplete, false)
   assert.deepEqual(missing.typeDifferences, [])
   assert.ok(missing.environmentDiagnostics.some(item => item.blocking && /TS2304/.test(item.diagnostic)))
+})
+
+test("sidecar self fixtures retain native library errors and semantic mutations", () => {
+  const libraries = '/// <reference no-default-lib="true" />\n/// <reference lib="es5" />\n'
+  for (const sidecar of [false, true]) for (const nominal of [false, true]) {
+    const config = JSON.stringify({ vibe: sidecar ? { sidecarDir: ".vibe/declarations" } : {} })
+    const leaf = (sidecar ? ".vibe/declarations/" : "") + "dep.d.vibe.ts"
+    const declaration = type => nominal
+      ? "export declare class X { private brand; value: " + type + " }"
+      : "export interface X { value: " + type + " }"
+    const files = { "index.d.ts": libraries + 'export { X } from "./dep.vibe";',
+      "tsconfig.json": config, [leaf]: declaration("1") }
+    fixture(files, files, (a, b) => {
+      const compare = () => withPureFixtureCompiler(compiler => compareApiIdentity(compiler, a, b))
+      const unchanged = compare()
+      assert.equal(unchanged.identical, true, JSON.stringify(unchanged))
+      assert.equal(unchanged.comparisonComplete, true, JSON.stringify(unchanged))
+      writeFileSync(join(b, leaf), declaration("2"))
+      const changed = compare()
+      assert.equal(changed.comparisonComplete, true, JSON.stringify(changed))
+      assert.equal(changed.identical, false, JSON.stringify(changed))
+      assert.ok(changed.typeDifferences.some(row => row.export === "X" && /TS2344/.test(row.diagnostic)), JSON.stringify(changed))
+
+      // Stock TypeScript independently proves that ES5 cannot supply BigInt.
+      writeFileSync(join(b, leaf), declaration("BigInt"))
+      const program = ts.createProgram([join(b, leaf), join(b, "index.d.ts")], {
+        strict: true, noEmit: true, types: [], allowArbitraryExtensions: true,
+        module: ts.ModuleKind.ESNext, moduleResolution: ts.ModuleResolutionKind.Bundler,
+      })
+      assert.ok(program.getSourceFiles().some(source => /[/\\]lib\.es5\.d\.ts$/.test(source.fileName)))
+      assert.ok(!program.getSourceFiles().some(source => /[/\\]lib\.(?:dom|webworker)(?:\.[\w.]+)?\.d\.ts$/.test(source.fileName)))
+      assert.ok(ts.getPreEmitDiagnostics(program).some(diagnostic => diagnostic.code === 2583))
+      const missing = compare()
+      assert.equal(missing.identical, false, JSON.stringify(missing))
+      assert.equal(missing.comparisonComplete, false, JSON.stringify(missing))
+      assert.ok(missing.environmentDiagnostics.some(row => /TS2583/.test(row.diagnostic)), JSON.stringify(missing))
+      for (const directory of [a, b])
+        assert.equal(readFileSync(join(directory, "tsconfig.json"), "utf8"), config,
+          "Library scoping must preserve the actual sidecar project configuration")
+    }, { types: "./index.d.ts" })
+  }
 })

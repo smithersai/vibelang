@@ -1757,3 +1757,11 @@ The `//:http-api-example` target compiles the HTTP example with the local compil
 The Effect-parameter oracle inventories the pinned Effect exports. Nested Promise-returning root runners must report both `EK1005` and `EK0404` at the same call. Its scope controls reject unrelated Promise diagnostics and native `TS1005`; the declared-parameter and plain-generic warning controls remain separate.
 
 The `//:emission-snapshots` target checks exact emitted JavaScript, declaration files and runtime results for direct and delegated cold functions. It also retains the native tail-delegation error-message controls. Run it after changing lowering or generated source ranges; regenerate an expected file from compiler output only after reviewing every changed statement and its existing runtime checks.
+
+The generated valid-self sidecar fixtures select ES5 with reference directives
+in their entry declaration. Their `vibe.sidecarDir` configuration stays unchanged,
+and comparison still discovers it through the real project path without caller
+option overrides. Guards reject browser-library loading; independent stock
+TypeScript and the comparison gate both report `TS2583` for an unavailable
+`BigInt`. Adjacent and mirrored declarations retain nominal and structural
+self-identity checks, and changed public fields still produce type differences.
