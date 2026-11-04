@@ -9,10 +9,11 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/diagnostics"
 )
 
-// Accepted legacy inputs must retain the explicit lookup this rule requires.
-// This is an emit/type hygiene oracle, not a second runtime differential runner.
+// Bare service-key calls retain native class-static diagnostics; explicit
+// service lookups retain implementation members and environment requirements.
 const serviceRunHeadQuote = "There is no `Users.find(id)` shorthand"
 const serviceRunHeadRequirementsQuote = "`Users` is the identifier, the type that appears in R."
+const serviceRunHeadCollisionQuote = "Class statics collide with member names"
 const serviceRunHeadTarget = "FuzzServiceRunHead"
 
 var serviceRunHeadForms = []string{"catch", "try", "pipe", "pipe-catch", "try-catch", "nested"}
@@ -23,6 +24,9 @@ func TestServiceRunHeadQuoted(t *testing.T) {
 	}
 	if !strings.Contains(SpecText("../vips/0009-service-declarations.md"), serviceRunHeadRequirementsQuote) {
 		t.Fatalf("service requirement rule moved: %q", serviceRunHeadRequirementsQuote)
+	}
+	if !strings.Contains(SpecText("../vips/0010-service-call-shorthand-denied.md"), serviceRunHeadCollisionQuote) {
+		t.Fatalf("service static-member rule moved: %q", serviceRunHeadCollisionQuote)
 	}
 }
 
@@ -35,6 +39,7 @@ func FuzzServiceRunHead(f *testing.F) {
 	}
 	w := NewWorkspace(f)
 	f.Fuzz(func(t *testing.T, data []byte) {
+		TestServiceRunHeadQuoted(t)
 		parts := strings.Split(string(data), ":")
 		key := parts[0]
 		if !slices.Contains(serviceRunHeadForms, key) {
@@ -81,23 +86,58 @@ func FuzzServiceRunHead(f *testing.F) {
 			t.Fatal(err)
 		}
 		defer r.Remove()
-		if errors := legacyErrors(r); len(errors) > 0 {
-			// The service retirement may reject the shorthand with TS2339.
-			// Other diagnostics are not evidence of a valid rejection.
-			for _, d := range r.Diagnostics {
-				if d.Code() != 2339 && d.Category() == diagnostics.CategoryError {
-					Gap(t, serviceRunHeadTarget, "compile/"+key, "unexpected rejection: %v\n%s", errors, source)
-				}
+		// Use the ordinary TypeScript class twin to distinguish a missing
+		// member from existing native statics such as name and pipe.
+		native := fmt.Sprintf("import { Context, Effect } from \"effect\"\nclass Audit extends Context.Service<Audit, { %s: (n: number) => Effect.Effect<number> }>()(\"service-run-head/Audit\") {}\nexport function probe() { return Audit.%s(%d) }\n", member, member, n)
+		twin, err := w.Compile(t.Context(), Project{Files: map[string]string{"main.ts": native}})
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer twin.Remove()
+		nativeCodes := map[int32]bool{}
+		for _, d := range twin.Diagnostics {
+			if d.Category() == diagnostics.CategoryError && d.Source() == "" {
+				nativeCodes[d.Code()] = true
 			}
+		}
+		if len(nativeCodes) == 0 {
+			t.Fatal("native class-static negative control unexpectedly compiled")
+		}
+		found := false
+		for _, d := range r.Diagnostics {
+			if d.Category() == diagnostics.CategoryError && d.Source() == "" && nativeCodes[d.Code()] {
+				found = true
+			}
+		}
+		if !found {
+			Gap(t, serviceRunHeadTarget, "native/"+key+":"+member, "want native class-static rejection %v, got %v\n%s", nativeCodes, legacyErrors(r), source)
+		}
+
+		// Secondary recovery diagnostics on an invalid bare call do not
+		// establish correctness. A valid lookup must also compile and emit
+		// the implementation call while retaining Audit in its environment.
+		explicit := owner + fmt.Sprintf(" { const implementation = try Audit; return try implementation.%s(%d) }\n", member, n)
+		positiveFiles := map[string]string{"main.vibe": declaration + explicit}
+		if len(files) > 1 {
+			explicit = strings.ReplaceAll(explicit, "try Audit;", "try Services.Audit;")
+			positiveFiles = map[string]string{"main.vibe": "import * as Services from \"./audit.vibe\"\n" + explicit, "audit.vibe": declaration}
+		}
+		positive, err := w.Compile(t.Context(), Project{Files: positiveFiles})
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer positive.Remove()
+		if errors := legacyErrors(positive); len(errors) > 0 {
+			Gap(t, serviceRunHeadTarget, "explicit/"+key+":"+member, "explicit lookup rejected: %v\n%s", errors, positiveFiles["main.vibe"])
 			return
 		}
-		js, decl := r.Outputs["out/main.js"], r.Outputs["out/main.d.ts"]
+		js, decl := positive.Outputs["out/main.js"], positive.Outputs["out/main.d.ts"]
 		compact := strings.Join(strings.Fields(js), "")
-		if js == "" || strings.Contains(compact, "Audit."+member+"(") {
-			Gap(t, serviceRunHeadTarget, "lookup/"+key, "accepted head emits a bare key member call:\n%s\nsource:\n%s", js, source)
+		if js == "" || strings.Contains(compact, "Audit."+member+"(") || !strings.Contains(compact, "implementation."+member+"(") {
+			Gap(t, serviceRunHeadTarget, "lookup/"+key+":"+member, "explicit lookup lost its implementation call:\n%s", js)
 		}
 		if !strings.Contains(decl, "Audit>") {
-			Gap(t, serviceRunHeadTarget, "requirements/"+key, "accepted head lost its lookup requirement:\n%s\nsource:\n%s", decl, source)
+			Gap(t, serviceRunHeadTarget, "requirements/"+key+":"+member, "explicit lookup lost its requirement:\n%s", decl)
 		}
 	})
 }
