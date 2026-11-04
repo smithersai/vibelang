@@ -201,6 +201,8 @@ An `effect` function or producer expression reserves `fork` and `join` in its ow
 
 ## Port code with --fix
 
+When a `.pipe(...)` has custom stages, `--fix` preserves the construction order before applying them. It uses local captures where needed, so stage factories still run at the original call site and the returned Effect stays cold. Options with accessors or opaque values keep the data-last `retry`, `repeat` or `withSpan` call, preserving when options are read. A custom stage that may observe the receiver supplied by `.pipe(...)` keeps its library form.
+
 For a legacy `fork(program, options)` call inside `effect` code, `--fix` writes `try Effect.forkChild(program, options)`. This preserves the options and evaluates both arguments on the caller before starting the child.
 
 Effect declarations and combinator calls ported from TypeScript compile in a `.vibe` file, with warnings `EK4830`–`EK4837` where VibeLang has its own form. A plain `function*` keeps JavaScript generator semantics, including when passed to `Effect.gen`. Run `npx vibelang -p tsconfig.json --fix --noEmit` to rewrite supported forms whose VibeLang form keeps what the program does. Forms without a preserving repair stay unchanged; read any remaining diagnostics before continuing. See [TypeScript-style Effect code](../getting-started/012-devtools.md#typescript-style-effect-code).

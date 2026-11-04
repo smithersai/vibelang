@@ -2153,6 +2153,8 @@ Optional array-pattern bindings use the same conditional lexical-cell initializa
 
 Computed schema keys in TypeScript projections keep their native expressions, including calls, getters and symbol keys. They are evaluated in the generated schema object at the same position as before. Keys containing VibeLang operations, or lexical values that need an Effect frame, report `EK9001` and require the compiler; they are not silently copied after removing a keyword. Native `await` and `yield` keep their native function context. Ordinary `this` keys retain the Effect function receiver in checking and executable projections. `FuzzMapperSchemaComputedKeys` covers writable and readonly fields in schemas, aliases and nested structs, with keyed inputs and changing names and literals.
 
-The `//:http-request-pipe-rollback-controls` target retains canonical HTTP setter repairs, observable argument refusal and exact declaration controls across namespace and named imports, aliases, reexports, Unicode and stage order. The complete pipeline-order change is reverted together until its replacement passes the full preservation controls.
+The `//:http-request-pipe-rollback-controls` target retains canonical HTTP setter repairs, observable argument refusal and exact declaration controls across namespace and named imports, aliases, reexports, Unicode and stage order. The complete pipeline-order preservation controls also run in `//:pure-request-pipe-receiver-controls`.
+
+The corrected pipeline repair check retains all original factory-order, mutable-stage, receiver, callback, runner and accessor-option cases. Canonical HTTP setters additionally keep their proven-safe data-first form and exact declaration output across import layouts and stage order.
 
 `//:service-member-diagnostic-ownership` checks single member diagnostics across whole shapes, generic declarations, invalid keys and call or construct signatures, including keyed fuzz inputs.

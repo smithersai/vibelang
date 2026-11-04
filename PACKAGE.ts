@@ -1283,6 +1283,13 @@ const targets = {
     [],
     "15m"
   ),
+  "pure-request-pipe-receiver-controls": check(
+    "Canonical request pipeline repairs preserve native values and reject observable custom stages",
+    "cd typescript/tsc && EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -trimpath -short -p 8 -count=1 -timeout=5m -run '^(TestAlchemyDnsPureRequest|TestAlchemyRequestPipeKeepsObservableArguments|TestEffectPipeKeepsReceiverSensitiveStage|TestEffectPipeCapturesCustomStages|TestEffectPipeCaptureAvoidsWrittenIdentifiers|TestEffectPipeCaptureKeepsInterstageComments)$' ./internal/vibelang && VIBELANG_FUZZ_REQUIRE=1 EFFECT_NODE_MODULES=$PWD/../../experiments/node_modules go test -trimpath -v -short -p 8 -count=1 -timeout=10m -run '^(TestPureRequestPipeReceiverQuoted|FuzzPureRequestPipeReceiver)$' ./internal/vibelangfuzz && cd ../.. && VIBELANG_BINARY=$PWD/packages/compiler/native/vibelang EFFECT_NODE_MODULES=$PWD/experiments/node_modules node --test packages/compiler/test/fix-dns-pure-request.property.test.mjs packages/compiler/test/effect-pipe-order.property.test.mjs",
+    [Packages["compiler-native"], Packages["runtime-dist"], Tsc["vibelangfuzz-files"]],
+    [go, node, bun],
+    "20m"
+  ),
   "native-using-advisories": goVibelang(
     "Native disposal errors coexist with every configured Effect using advisory.",
     `CGO_ENABLED=0 VIBELANG_FUZZ_REQUIRE=1 ${effect} go test -p 8 -short -count=1 -trimpath -timeout=5m ./internal/vibelangfuzz -run '^(TestEffectUsingWarningQuoted|FuzzEffectUsingWarning)$'`,

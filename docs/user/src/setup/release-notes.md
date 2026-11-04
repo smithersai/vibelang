@@ -15,6 +15,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - Rolldown builds started from another directory could compile the wrong project or bundle a same-named source from the caller's directory; the plugin now honors `cwd` for the default compiler root and relative entries.
 
+- Pipeline repairs could reject canonical HTTP setters or change custom stage construction order; safe request setters now keep their data-first form while custom stages retain their receiver, argument order and coldness.
+
 - Compiler help incorrectly described `--fix` as incompatible with `--build`; it now explains project repairs in build order and the existing `--watch` restriction.
 - Migrating a fieldless abstract error root could leave its child unrepairable; constructor-preserving child repairs now run before the root class expansion.
 - Binding-free iterable patterns could produce an undeclared cache during TypeScript checking and omit iterator cleanup in mapped execution; both now retain their cache scope and cleanup.
@@ -24,7 +26,6 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - The TypeScript mapper reported `EK2109` for valid computed schema keys. It now preserves native key expressions and reports `EK9001` when a key needs VibeLang operations the mapper cannot lower.
 
 - Migration setup left source-linked documentation examples stale after rewriting their source. It now refreshes matching whole-file code blocks after formatting and reports mismatched excerpts for review.
-- Canonical HTTP request pipelines could be refused by a pipeline migration update; that update has been rolled back while its corrected implementation is validated.
 
 - Bun scripts and tests could load a source module but fail when bundling it with `Bun.build`; the `vibelang-unplugin/bun/register` preload now loads both runtime imports and build graphs while preserving existing plugins.
 
@@ -645,6 +646,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - `FuzzFixGate` could pass without exercising cross-file refusals after explicit effects were introduced; its two saved examples now require a real narrowing refusal.
 
 - A comment after the semicolon of a `schema` body could disappear from declarations, including a comment before its written type alias. Declaration emit now retains it in TypeScript’s position.
+- Converting `.pipe(...)` could interleave stage construction and application, read options early, or change a custom stage’s receiver. The quick fix now preserves construction order and declines custom stages that may observe the receiver supplied by `.pipe`.
 
 - `vibelang --build --fix` rejected project-reference builds. It now applies each project's safe source and config repairs in dependency order before building.
 
