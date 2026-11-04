@@ -21,7 +21,7 @@ const native = process.env.VIBELANG_BINARY || [join(repo, "packages/compiler/nat
 test("schema constructor gate quotes the retained-class contract", () => {
   assert.ok(readFileSync(new URL("../rules.md", import.meta.url), "utf8").includes(rule));
   assert.ok(readFileSync(SpecPath("003-failures.md"), "utf8").includes("a constructor in an `error` or `schema error` body"));
-  assert.ok(readFileSync(SpecPath("007-tooling.md"), "utf8").includes("`vibelang --fix` keeps the existing safe-fix checks and refusal rules."));
+  assert.ok(readFileSync(SpecPath("007-tooling.md"), "utf8").includes("`vibelang --fix` retains its safety checks and refusal rules."));
 });
 
 test("T3code: the actual native constructor fixture compiles and keeps its refused-class warning", () => {

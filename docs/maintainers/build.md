@@ -1233,3 +1233,5 @@ The Knip JSDoc and local-type-query properties and their paired Go citation guar
 The native declaration-spelling property reads the current Specifiers contract in Functions. Its 12 stock TypeScript cases continue to check written .ts imports, quote styles and actual emitted declaration text; moving the citation changes neither compiler options nor emit assertions.
 
 Publication helper properties cite Chapter 007’s native output names: x.js and ordinary x.d.ts in outDir. Citation maintenance retains both 100-case properties and their distribution paths, shadowing, unsupported-expression and source-form controls.
+
+The retained-schema-constructor gate cites the current preserving-fix rule in Chapter 007. Its real compiler fixture, constructor/refused-class warning checks and generated diagnostic-policy controls remain required when refreshing that citation.

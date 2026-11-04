@@ -212,6 +212,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - The native declaration-spelling regression now cites the current Functions specification. All 12 stock TypeScript cases still check that unrelated written TypeScript imports retain their spelling in emitted declarations.
 
 - Publication helper properties now quote the current native JavaScript and declaration output names. Both 100-case properties retain their distribution-path, shadowing and unsupported-expression controls.
+
+- The retained-schema-constructor gate now cites the current fix-preservation contract, retaining its real compiler fixture and all refused-class and generated diagnostic-policy checks.
 - The ESLint corpus check rejected deliberately constant source literal conditions as generated code; it now checks each reported literal against its source while continuing to detect unwritten constants.
 - An optional-schema inverse check expected the retired `mutable` field spelling. It now checks that writable keys have no `readonly` modifier and readonly keys retain it, with exact optional-property conversion controls unchanged.
 
