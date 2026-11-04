@@ -86,7 +86,7 @@ func counterpartComparisonWitness(t *testing.T, api, key string, mode uint8) {
 			}
 		}
 	}
-	diff, err := compareIdentityDeclarations(t.Context(), api, before, after)
+	diff, err := declarationIdentityProbeFor(t, api)(t.Context(), api, before, after)
 	if err != nil || (diff == "") != want {
 		t.Fatalf("%s scope%d: equality=%v, want%v, err=%v\n%s", key, scope, diff == "", want, err, diff)
 	}
@@ -97,7 +97,7 @@ func counterpartComparisonWitness(t *testing.T, api, key string, mode uint8) {
 		t.Fatalf("changed export type was not identified: %s", diff)
 	}
 
-	diff, err = compareIdentityDeclarations(t.Context(), api, before, before)
+	diff, err = declarationIdentityProbeFor(t, api)(t.Context(), api, before, before)
 	if err != nil || diff != "" {
 		t.Fatalf("%s scope%d: identical control: err=%v\n%s", key, scope, err, diff)
 	}

@@ -37,10 +37,11 @@ func fuzzCPU() (time.Duration, error) {
 const shortSeedCPULimit = 12 * time.Minute
 
 func startShortBudget(f *testing.F) {
-	if !testing.Short() || toolsFuzzing() {
-		return
+	closeDeclarationIdentityUnitWorkers()
+	if testing.Short() && !toolsFuzzing() {
+		enforceFuzzBudget(f, shortSeedCPULimit)
 	}
-	enforceFuzzBudget(f, shortSeedCPULimit)
+	registerDeclarationIdentityScope(f)
 }
 
 func enforceFuzzBudget(t testing.TB, limit time.Duration) {

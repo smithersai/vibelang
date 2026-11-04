@@ -348,7 +348,7 @@ func CheckErrorDeclarationTwin(t *testing.T, w *Workspace, tsc, api string, e er
 	}
 	ctx, cancel := context.WithTimeout(t.Context(), 2*HangLimit)
 	defer cancel()
-	diff, err := compareIdentityDeclarations(ctx, api, filepath.Join(dir, "__identity_out"), current)
+	diff, err := declarationIdentityProbeFor(t, api)(ctx, api, filepath.Join(dir, "__identity_out"), current)
 	if err != nil {
 		t.Fatal(err)
 	}

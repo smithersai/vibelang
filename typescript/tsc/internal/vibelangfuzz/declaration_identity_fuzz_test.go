@@ -220,6 +220,10 @@ func mutabilityErrors(ds []*ast.Diagnostic) bool {
 // TS2542 (foldkit-10: the checker kept the retired readonly default while the
 // declaration printed the members writable).
 func CheckDeclarationIdentity(t *testing.T, w *Workspace, tsc, api, archive string) {
+	checkDeclarationIdentity(t, w, tsc, api, archive, declarationIdentityProbeFor(t, api))
+}
+
+func checkDeclarationIdentity(t *testing.T, w *Workspace, tsc, api, archive string, probe declarationIdentityProbe) {
 	const target = "FuzzDeclarationIdentity"
 	defer recoverCompilerPanic(t, target)
 	c, stock := compileDeclarationIdentity(t, w, archive)
@@ -265,9 +269,9 @@ func CheckDeclarationIdentity(t *testing.T, w *Workspace, tsc, api, archive stri
 			t.Fatal(err)
 		}
 	}
-	diff, err := compareIdentityDeclarations(ctx, api, filepath.Join(dir, "__identity_out"), current)
+	diff, err := probe(ctx, api, filepath.Join(dir, "__identity_out"), current)
 	if err != nil {
-		t.Fatal(err)
+		t.Fatalf("declaration fixture %s: %v", SeedName(archive), err)
 	}
 	g := &Gaps{Target: target, Input: SeedName(archive)}
 	key := ""
@@ -418,7 +422,8 @@ func compareDeclarationTrees(t *testing.T, before, after string) string {
 	t.Helper()
 	ctx, cancel := context.WithTimeout(t.Context(), 2*HangLimit)
 	defer cancel()
-	diff, err := compareIdentityDeclarations(ctx, declarationIdentityAPI(t), before, after)
+	api := declarationIdentityAPI(t)
+	diff, err := declarationIdentityProbeFor(t, api)(ctx, api, before, after)
 	if err != nil {
 		t.Fatal(err)
 	}

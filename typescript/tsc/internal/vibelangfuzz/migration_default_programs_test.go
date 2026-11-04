@@ -128,7 +128,7 @@ func FuzzMigrationDefaultPrograms(f *testing.F) {
 		}
 		ctx, cancel := context.WithTimeout(t.Context(), 2*HangLimit)
 		defer cancel()
-		diff, err := compareIdentityDeclarations(ctx, api, filepath.Join(dir, "out"), current)
+		diff, err := declarationIdentityProbeFor(t, api)(ctx, api, filepath.Join(dir, "out"), current)
 		if err != nil {
 			t.Fatal(err)
 		}

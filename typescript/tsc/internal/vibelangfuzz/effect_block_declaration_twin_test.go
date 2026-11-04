@@ -236,7 +236,7 @@ func CheckEffectBlockDeclarationTwin(t *testing.T, w *Workspace, tsc, api string
 	previous, found := comparisons[e.key()]
 	diff := previous.diff
 	if !found || previous.emitted != fingerprint {
-		diff, err = compareIdentityDeclarations(ctx, api, filepath.Join(dir, "__identity_out"), current)
+		diff, err = declarationIdentityProbeFor(t, api)(ctx, api, filepath.Join(dir, "__identity_out"), current)
 		if err != nil {
 			t.Fatal(err)
 		}

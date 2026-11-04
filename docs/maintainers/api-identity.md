@@ -126,6 +126,21 @@ additional result is `true`.
 `loadTypeScript()` loads the pinned compiler API; `formatResult(result)`
 prints the three lists.
 
+Semantic declaration oracles use one bounded Node worker per test phase or fuzz target. Within each pinned
+worker, an optional `dependencyDiagnosticsCache` retains at most 16 diagnostic
+receipts, keyed by the full ordered dependency text, module formats, resolved
+edges and compiler options. Owned declarations, option and global diagnostics,
+and every name, type and documentation probe still run for every input.
+Owned scripts, global or module augmentations, namespace exports and dependency
+imports back into either snapshot bypass reuse. Changed dependencies or
+resolutions cannot reuse an earlier receipt, including an earlier error.
+The fuzz worker also uses TypeScript’s document registry for dependency declaration syntax trees. It retains at most 1,024 documents and 32 MiB of declaration text per worker, keys versions by complete text and compiler settings, and preserves the actual module format. A changed dependency clears the registry before acquiring its new version. Owned and virtual declarations remain fresh; no checker or program survives a comparison. Cold-versus-warm controls cover dependency edits, documentation, module format and augmentation isolation.
+
+The ordinary CLI and migration calls keep the default gate behavior.
+Workers are replaced after 128 completed requests; crashes and cancellations
+fail the input without retrying it. Worker cleanup precedes CPU-budget
+accounting so child CPU remains included. Unit-test workers stop before a fuzz budget window opens. Each scope reports worker probes, failures, dependency-cache hits and child CPU without source payloads.
+
 Run `smthrs test //:api-identity-test`, or
 `node --test scripts/api-identity*.test.mjs`, for the regression corpus and
 the property that harmless rewrites pass while a semantic mutation fails.
@@ -357,3 +372,5 @@ staged copies, root JSON configurations and install declarations still invalidat
 test.
 
 The generated-tag exception also preserves authored JSDoc block counts: repeated prose blocks remain a difference even when TypeScript coalesces identical documentation text.
+Within a comparison, the optional diagnostic path reuses the exact program supplied for the first original or normalized diagnostic group; later groups remain fresh. The fuzz worker materializes ambient documentation on demand for the same closure proof. Shared physical modules need no such proof; distinct closures still request their full documentation. Programs and checkers remain local to one comparison.
+

@@ -24,7 +24,9 @@ func TestMain(m *testing.M) {
 			}
 		}
 	}
-	os.Exit(m.Run())
+	code := m.Run()
+	closeDeclarationIdentityUnitWorkers()
+	os.Exit(code)
 }
 
 func isFuzzWorker(args []string) bool {

@@ -207,7 +207,7 @@ func checkMigrationForeignCall(t *testing.T, w *Workspace, api, input string) {
 		}
 		ctx, cancel := context.WithTimeout(t.Context(), 2*HangLimit)
 		defer cancel()
-		diff, err := compareIdentityDeclarations(ctx, api, baseline, current)
+		diff, err := declarationIdentityProbeFor(t, api)(ctx, api, baseline, current)
 		if err != nil {
 			t.Fatal(err)
 		}

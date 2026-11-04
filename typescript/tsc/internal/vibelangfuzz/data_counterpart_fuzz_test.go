@@ -166,7 +166,7 @@ func checkDataCounterpart(t *testing.T, w *Workspace, api string, c dataCounterp
 			t.Fatal(err)
 		}
 	}
-	diff, err := compareIdentityDeclarations(t.Context(), api, before, after)
+	diff, err := declarationIdentityProbeFor(t, api)(t.Context(), api, before, after)
 	if err != nil {
 		t.Fatal(err)
 	}

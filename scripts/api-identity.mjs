@@ -6,6 +6,7 @@ import { createRequire } from "node:module"
 import { spawnSync } from "node:child_process"
 import { dirname, join, relative, resolve } from "node:path"
 import { fileURLToPath } from "node:url"
+import { dependencyDiagnosticsPlan, saveDependencyDiagnostics } from "./api-identity-diagnostics-cache.mjs"
 import { isolateAmbientSnapshots } from "./api-identity-ambient.mjs"
 import { alignNominalIdentity } from "./api-identity-nominal.mjs"
 
@@ -826,7 +827,11 @@ function createIdentityHost(ts, compilerOptions, before, after, options, virtual
   host.getSourceFile = (file, languageVersion, onError, fresh) => {
     const key = resolve(file), cached = sourceCache.get(key)
     if (!fresh && cached && cached.text === host.readFile(file)) return cached
-    const source = getSource(file, languageVersion, onError, fresh)
+    const text = host.readFile(file)
+    const shared = !fresh && options.dependencyDocuments && key.includes("/node_modules/") &&
+      /\.d\.[cm]?ts$/.test(key) && !virtual.has(key) && typeof text === "string"
+      ? options.dependencyDocuments.read(file, compilerOptions, languageVersion, text, host) : undefined
+    const source = shared ?? getSource(file, languageVersion, onError, fresh)
     if (source) sourceCache.set(key, source)
     return source
   }
@@ -883,6 +888,7 @@ function createIdentityHost(ts, compilerOptions, before, after, options, virtual
     if (!moduleResolutions.has(key)) moduleResolutions.set(key, resolveNames([name], file, [modes[index]])[0])
     return moduleResolutions.get(key)
   })
+  host.identityDiagnosticEnvironment = { snapshots: [before, after], resolutions: moduleResolutions }
   return { host, moduleResolutions, externalGroups }
 }
 
@@ -890,11 +896,23 @@ function createIdentityHost(ts, compilerOptions, before, after, options, virtual
 // instantiation until the whole dependency closure is done. Keep the identical
 // program roots/global environment, but diagnose bounded source groups with
 // fresh checkers and return only plain records.
-function collectInputDiagnostics(ts, roots, compilerOptions, host, files, options, progress, stage) {
+function collectInputDiagnostics(ts, roots, compilerOptions, host, files, options, progress, stage, suppliedProgram) {
   const size = options.diagnosticBatchSize ?? 8
   if (!Number.isSafeInteger(size) || size < 1)
     throw new Error("diagnosticBatchSize must be a positive safe integer")
-  const records = new Map()
+  const cache = options.dependencyDiagnosticsCache
+  if (cache !== undefined && !(cache instanceof Map))
+    throw new Error("dependencyDiagnosticsCache must be a Map")
+  let firstProgram, plan, saved
+  if (cache) {
+    firstProgram = suppliedProgram ?? ts.createProgram(roots, compilerOptions, host)
+    const environment = host.identityDiagnosticEnvironment
+    if (environment) plan = dependencyDiagnosticsPlan(ts, firstProgram, compilerOptions,
+      environment.snapshots, environment.resolutions, files)
+    if (plan) saved = cache.get(plan.key)
+  }
+  const checked = saved ? files.filter(file => !plan.files.has(file)) : files
+  const records = new Map((saved ?? []).map(record => [JSON.stringify(record), { ...record }]))
   const capture = diagnostic => {
     const item = { diagnostic: "TS" + diagnostic.code + ": " + ts.flattenDiagnosticMessageText(diagnostic.messageText, "\n"),
       file: diagnostic.file?.fileName, start: diagnostic.start, length: diagnostic.length, code: diagnostic.code,
@@ -903,8 +921,9 @@ function collectInputDiagnostics(ts, roots, compilerOptions, host, files, option
     records.set(JSON.stringify(item), item)
   }
   const group = (offset, batch) => {
-    progress(stage, { diagnosticOffset: offset, diagnosticCount: batch.length, totalDiagnosticFiles: files.length })
-    const program = ts.createProgram(roots, compilerOptions, host)
+    progress(stage, { diagnosticOffset: offset, diagnosticCount: batch.length, totalDiagnosticFiles: files.length, reusedInputProgram: Boolean(firstProgram && firstProgram === suppliedProgram) })
+    const program = firstProgram ?? ts.createProgram(roots, compilerOptions, host)
+    firstProgram = undefined
     if (offset === 0) {
       for (const diagnostic of [...program.getConfigFileParsingDiagnostics(),
         ...program.getOptionsDiagnostics(), ...program.getGlobalDiagnostics()]) capture(diagnostic)
@@ -915,8 +934,9 @@ function collectInputDiagnostics(ts, roots, compilerOptions, host, files, option
         ...program.getSemanticDiagnostics(source)]) capture(diagnostic)
     }
   }
-  for (let offset = 0; offset < Math.max(1, files.length); offset += size)
-    group(offset, files.slice(offset, offset + size))
+  for (let offset = 0; offset < Math.max(1, checked.length); offset += size)
+    group(offset, checked.slice(offset, offset + size))
+  if (cache && !saved) saveDependencyDiagnostics(cache, plan, [...records.values()])
   return [...records.values()].sort((a, b) => (a.file ?? "").localeCompare(b.file ?? "") ||
     (a.start ?? -1) - (b.start ?? -1) || (a.length ?? 0) - (b.length ?? 0) ||
     a.code - b.code || a.diagnostic.localeCompare(b.diagnostic))
@@ -977,7 +997,7 @@ function prepareComparison(ts, before, after, options, progress) {
         ownedInputFiles.filter(file => file === base || file.startsWith(base + "/")).sort()]))
   }
   const ambient = isolateAmbientSnapshots(ts, [{ base: before, entries: left }, { base: after, entries: right }], compilerOptions, host, program,
-    (isolated, entries, files) => collectInputDiagnostics(ts, entries, compilerOptions, host, files, options, progress, "input-diagnostics"))
+    (isolated, entries, files) => collectInputDiagnostics(ts, entries, compilerOptions, host, files, options, progress, "input-diagnostics", isolated))
   const originalDiagnostics = ambient.diagnostics
   for (const [path, text] of ambient.virtual) virtual.set(path, text)
   if (ambient.virtual.size) {
@@ -1002,26 +1022,43 @@ function prepareComparison(ts, before, after, options, progress) {
     return contributes
   }
   if (program.getSourceFiles().some(contributesAmbient)) {
-    const ambientDocumentation = new Map()
+    const ambientDocumentation = new Map(), documentationInputs = new Map()
+    const describeAmbientDocumentation = (source, docChecker) => {
+      const comments = []
+      const inspect = (node, path) => {
+        const name = node.name && (ts.isIdentifier(node.name) || ts.isStringLiteral(node.name) || ts.isNumericLiteral(node.name)) ? node.name.text : ""
+        const key = path + "/" + ts.SyntaxKind[node.kind] + ":" + name
+        const symbol = node.name && docChecker.getSymbolAtLocation(node.name)
+        if (symbol) {
+          const value = docs(ts, docChecker, symbol)
+          if (value) comments.push([key, value])
+        }
+        ts.forEachChild(node, child => inspect(child, key))
+      }
+      inspect(source, "")
+
+      return JSON.stringify(comments.sort((a,b) => JSON.stringify(a).localeCompare(JSON.stringify(b))))
+    }
+    // Materialize exactly the same documentation only when the closure proof
+    // asks for it. Shared physical modules need no syntax/documentation proof.
+    const documentation = options.lazyAmbientDocumentation ? {
+      get(file) {
+        if (ambientDocumentation.has(file)) return ambientDocumentation.get(file)
+        const input = documentationInputs.get(file)
+        if (!input) return undefined
+        const value = describeAmbientDocumentation(input.source, input.program.getTypeChecker())
+        ambientDocumentation.set(file, value)
+        return value
+      },
+    } : ambientDocumentation
     const ambient = (roots, base) => {
       const isolated = ts.createProgram(Object.values(roots), compilerOptions, host)
       const sources = new Map()
-      const docChecker = isolated.getTypeChecker()
+      const docChecker = options.lazyAmbientDocumentation ? undefined : isolated.getTypeChecker()
       for (const source of isolated.getSourceFiles()) {
         if (source.hasNoDefaultLib) continue
-        const comments = []
-        const inspect = (node, path) => {
-          const name = node.name && (ts.isIdentifier(node.name) || ts.isStringLiteral(node.name) || ts.isNumericLiteral(node.name)) ? node.name.text : ""
-          const key = path + "/" + ts.SyntaxKind[node.kind] + ":" + name
-          const symbol = node.name && docChecker.getSymbolAtLocation(node.name)
-          if (symbol) {
-            const value = docs(ts, docChecker, symbol)
-            if (value) comments.push([key, value])
-          }
-          ts.forEachChild(node, child => inspect(child, key))
-        }
-        inspect(source, "")
-        ambientDocumentation.set(source.fileName, JSON.stringify(comments.sort((a,b) => JSON.stringify(a).localeCompare(JSON.stringify(b)))))
+        if (options.lazyAmbientDocumentation) documentationInputs.set(source.fileName, { source, program: isolated })
+        else ambientDocumentation.set(source.fileName, describeAmbientDocumentation(source, docChecker))
         if (!contributesAmbient(source)) continue
         const file = resolve(source.fileName)
         let key
@@ -1051,7 +1088,7 @@ function prepareComparison(ts, before, after, options, progress) {
       result.comparisonComplete = false
       return result
     }
-    const ambientProof = equivalentModules(ts, program, host, Object.fromEntries(ambientLeft), Object.fromEntries(ambientRight), externalGroups, ambientDocumentation)
+    const ambientProof = equivalentModules(ts, program, host, Object.fromEntries(ambientLeft), Object.fromEntries(ambientRight), externalGroups, documentation)
     for (const key of new Set([...ambientLeft.keys(), ...ambientRight.keys()])) {
       const a = ambientLeft.get(key), b = ambientRight.get(key)
       if (a && b && (a === b || ambientProof.get(b) === a)) continue
@@ -1078,7 +1115,7 @@ function prepareComparison(ts, before, after, options, progress) {
   }
   progress("normalized-input-diagnostics")
   const inputDiagnostics = collectInputDiagnostics(ts, roots, compilerOptions, host,
-    program.getSourceFiles().map(source => source.fileName), options, progress, "normalized-input-diagnostics")
+    program.getSourceFiles().map(source => source.fileName), options, progress, "normalized-input-diagnostics", program)
   const checker = program.getTypeChecker()
   const absentReferences = attributeAbsentReferences(ts, program, checker, inputDiagnostics,
     before, after, absent, { ...compilerOptions, ...options.compilerOptions, allowArbitraryExtensions: true }, host)

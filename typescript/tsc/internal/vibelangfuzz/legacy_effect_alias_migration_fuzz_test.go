@@ -253,7 +253,7 @@ func FuzzLegacyEffectAliasMigration(f *testing.F) {
 						}
 					}
 				}
-				diff, err := compareIdentityDeclarations(t.Context(), api, left, right)
+				diff, err := declarationIdentityProbeFor(t, api)(t.Context(), api, left, right)
 				if err != nil {
 					t.Fatal(err)
 				}

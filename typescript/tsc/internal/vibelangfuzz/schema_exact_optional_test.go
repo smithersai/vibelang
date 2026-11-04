@@ -56,7 +56,7 @@ func FuzzSchemaExactOptional(f *testing.F) {
 				t.Fatal(err)
 			}
 		}
-		diff, err := compareIdentityDeclarations(t.Context(), api, before, after)
+		diff, err := declarationIdentityProbeFor(t, api)(t.Context(), api, before, after)
 		if err != nil {
 			t.Fatal(err)
 		}
