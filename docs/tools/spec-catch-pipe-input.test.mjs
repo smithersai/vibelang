@@ -6,6 +6,7 @@ import assert from "node:assert/strict"
 import { readFileSync } from "node:fs"
 import { resolve } from "node:path"
 import test from "node:test"
+import fc from "fast-check"
 import { fileURLToPath } from "node:url"
 
 const root = process.env.SPEC_CATCH_PIPE_ROOT || fileURLToPath(new URL("../..", import.meta.url))
@@ -13,14 +14,42 @@ const read = path => readFileSync(resolve(root, path), "utf8")
 const appendix = read("docs/design/src/900-appendices.md")
 const running = read("docs/design/src/002-running.md")
 
-test("Appendix A rejects a catch with an arrow handler as a pipe's input", () => {
-  assert.match(appendix, /It is a Syntax Error if the `ShortCircuitExpression` of a `PipeExpression` is a `CatchExpression` whose handler is an `ArrowHandler`; the `\|>` then belongs to the arrow's body/)
-  assert.match(appendix, /So `a catch \(\) => b \|> % \+ 1` is `a catch \(\(\) => \(b \|> % \+ 1\)\)`/)
+// VIP-23, the accepted closed-arrow reconciliation, and docs-tools
+// disposition 5 distinguish the open right edge from a completed handler.
+const openArrowClauses = [
+  "input of a [PipeExpression](#pipeexpression) ends in an open arrow handler",
+  "an `ArrowHandler` with an expression body",
+  "or a `PipeExpression` whose `PipeBody` ends in one",
+  "`a catch () => b |> % + 1` is `a catch (() => (b |> % + 1))`",
+  "`x |> % catch () => y |> % + 1` is `x |> (% catch (() => (y |> % + 1)))`",
+  "Parentheses around the handler or the whole `catch` expression, a `NonArrowHandler` and a block-bodied arrow close the handler",
+  "a following `|>` pipes the recovered value",
+]
+function checkOpenArrowContract(text) {
+  const rule = text.split("\n").find(line => line.startsWith("It is a Syntax Error if the input of a [PipeExpression]"))
+  assert.ok(rule, "missing open-arrow pipe-input rule")
+  for (const clause of openArrowClauses) assert.ok(rule.includes(clause), "missing pipe boundary clause: " + clause)
+}
+
+test("Appendix A reserves pipe input only at an open arrow edge", () => {
+  checkOpenArrowContract(appendix)
+})
+
+test("fast-check: every open and closed pipe boundary clause remains required", () => {
+  fc.assert(fc.property(
+    fc.integer({ min: 0, max: openArrowClauses.length - 1 }),
+    fc.stringMatching(/^[A-Za-z ]{0,60}$/),
+    (index, prose) => {
+      checkOpenArrowContract(prose + "\n" + appendix + "\n" + prose)
+      const clause = openArrowClauses[index]
+      assert.throws(() => checkOpenArrowContract(appendix.replace(clause, "removed boundary clause")), { code: "ERR_ASSERTION" })
+    }
+  ), { seed: 23005, numRuns: 200 })
 })
 
 test("the conditional and pipe edges of an arrow handler agree", () => {
-  // Both left-hand consumers of ShortCircuitExpression that can follow an
-  // arrow's concise body carry the same restriction.
+  // An open concise arrow absorbs either following operator; the pipe rule
+  // separately permits the closed handlers checked above.
   assert.match(appendix, /It is a Syntax Error if the `ShortCircuitExpression` before `\?` is a `CatchExpression` whose handler is an `ArrowHandler`/)
   assert.match(running, /`a catch \(\) => b \? c : d` means `a catch \(\(\) => \(b \? c : d\)\)`, and `a catch \(\) => b \|> % \+ 1` means `a catch \(\(\) => \(b \|> % \+ 1\)\)`/)
 })
