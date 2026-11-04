@@ -496,6 +496,8 @@ typescript/vibelang/cases/catch-expression/main.vibe:87:18 lambda effectFn table
 typescript/vibelang/cases/catch-expression/main.vibe:87:40 lambda effectFn table
 typescript/vibelang/cases/catch-expression/main.vibe:89:14 lambda effectFn table
 typescript/vibelang/cases/catch-expression/main.vibe:89:36 lambda effectFn table
+typescript/vibelang/cases/catch-fork-head-diagnostic.fail/main.vibe:6:16 lambda effectFn table
+typescript/vibelang/cases/catch-fork-head-diagnostic.fail/main.vibe:6:3 lambda effectFn table
 typescript/vibelang/cases/catch-handler-parentheses/main.vibe:4:13 lambda effectFn table
 typescript/vibelang/cases/catch-handler-parentheses/main.vibe:4:38 lambda effectFn table
 typescript/vibelang/cases/catch-handler-parentheses/main.vibe:5:13 lambda effectFn table

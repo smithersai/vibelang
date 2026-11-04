@@ -164,12 +164,14 @@ func checkCatchExpressions(c *checker.Checker, file *ast.SourceFile) {
 				// EK0504 or EK0509 (foldkit devtools-mcp relayRegistry.vibe).
 				return node.ForEachChild(visit)
 			}
+			// Execution heads take precedence over their non-Effect result types
+			// (VIP-5). Source parentheses still leave the operand test below.
+			if checkCatchExecutionHead(c, file, call, left, fallback) {
+				return node.ForEachChild(visit)
+			}
 			if t := catchOperandType(c, left); t != nil && !isEffectOperandType(c, t) {
 				report(c, left, EK0506)
 				coverCodes(c, call, 2322, 2345, 2769)
-				return node.ForEachChild(visit)
-			}
-			if checkCatchExecutionHead(c, file, call, left, fallback) {
 				return node.ForEachChild(visit)
 			}
 			checkCatchHandlerResult(c, file, call, fallback)

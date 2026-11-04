@@ -1,0 +1,8 @@
+// expect: EK0505
+// rule-evidence: docs/design/vips/0005-try-runs-effects.md#6152af569eeb50c8
+// VIP-5 / Appendix B: source execution heads precede operand typing.
+declare const p: Effect.Effect<number, string>;
+export effect function main() {
+  fork p catch () => 0;
+  return 0;
+}

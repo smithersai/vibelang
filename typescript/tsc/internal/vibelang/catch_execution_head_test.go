@@ -113,3 +113,31 @@ func TestCatchExecutionForkHandlerKind(t *testing.T) {
 		})
 	}
 }
+
+// TestCatchExecutionForkDiagnosticPrecedence checks the checker, not just the
+// parser's source-head search: fork produces a Fiber, but an unparenthesized
+// execution head must report EK0505 before the Effect operand test.
+func TestCatchExecutionForkDiagnosticPrecedence(t *testing.T) {
+	for _, test := range []struct {
+		head string
+		want int32
+	}{
+		{"fork p", 505},
+		{"fork p as Fiber.Fiber<number, string>", 505},
+		{"(fork p)", 506},
+	} {
+		t.Run(test.head, func(t *testing.T) {
+			source := "declare const p: Effect.Effect<number, string>; export effect function main() { " + test.head + " catch () => 0; return 0 }"
+			program, file, _, _ := editorProgram(t, source)
+			counts := map[int32]int{}
+			for _, d := range program.GetSemanticDiagnostics(t.Context(), file) {
+				if d.Source() == diagnosticSource {
+					counts[d.Code()]++
+				}
+			}
+			if counts[test.want] != 1 || counts[505]+counts[506] != 1 {
+				t.Fatalf("head %q: expected only EK%04d among catch-head diagnostics, got %v", test.head, test.want, counts)
+			}
+		})
+	}
+}
