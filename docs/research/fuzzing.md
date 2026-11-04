@@ -1025,3 +1025,5 @@ The loop-head differential generators keep the historical selector bytes for ret
 The quick-fix behavior registry includes keyed `EK4856` alias, channel and heritage inputs. Each uses the existing CLI/editor, declaration API identity and runtime preservation oracle.
 
 Registered declaration-identity cases use their written VibeLang and Effect TypeScript counterparts. Unrecognized archives still test an unchanged `.ts`-to-`.vibe` rename. The short seed list, keyed corpus and half-admission guard remain unchanged.
+
+Four resolved data differential witnesses for local options, nested schemas, matcher-free matches and schema-error matcher properties now execute without stale pending exemptions. Their keyed corpus inputs and shared runtime comparisons are retained.

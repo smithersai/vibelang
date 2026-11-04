@@ -305,6 +305,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Large `vibelang --fix` migrations kept earlier rounds' checker caches alive while checking new fixes, increasing peak memory. Earlier programs are now released before the next round's check, and the progress log identifies the current stage and reports heap usage, the garbage collector's target and collection count.
 - `vibelang --fix` could refuse an `Effect.gen` whose typed `Effect.fail<E>` or `Effect.succeed<A>` supplied an object literal, tuple or callback. Generator conversion now keeps those type arguments on the call under `try`, preserving its contextual types.
 - The grammar-census evidence test crashed while looking for an obsolete deleted-rule event. It now checks that deletions add no evidence obligation and verifies additions, replacements and moves around generated census metadata.
+- Four data regression witnesses were reported as unexpectedly passing; their resolved cases now pass normally and retain their runtime comparisons.
 - The ESLint corpus check rejected deliberately constant source literal conditions as generated code; it now checks each reported literal against its source while continuing to detect unwritten constants.
 - An optional-schema inverse check expected the retired `mutable` field spelling. It now checks that writable keys have no `readonly` modifier and readonly keys retain it, with exact optional-property conversion controls unchanged.
 
