@@ -399,6 +399,26 @@ func failuresCases() []*failCase {
 	add(&failCase{Name: "catch-explicit-throw", Owner: "nothrow-impl", Quote: nothrowQ.handler, Host: "effect", Body: "return Effect.fail(new Error(\"input\")) catch (e) => { ⟦throw e⟧ }", Code: 401})
 	add(&failCase{Name: "foreign-const", Quote: "| no tag | `unknown` |", Host: "effect", Body: "⟦foreign(s)⟧", Lib: "export declare const foreign: (s: string) => string"})
 	add(&failCase{Name: "foreign-method", Quote: "| no tag | `unknown` |", Host: "effect", Body: "⟦foreign.read(s)⟧", Lib: "export declare class Reader { read(s: string): string }\nexport declare const foreign: Reader"})
+	// A tag on a function-type alias does not attach: the call is untagged,
+	// so it throws unknown; a tag on the call signature or the const does attach.
+	for _, alias := range []struct {
+		key, lib string
+		code     int
+	}{
+		{"error", "/** @throws {Error} */\nexport type Reader = () => string\nexport declare const read: Reader", 403},
+		{"unknown", "/** @throws {unknown} */\nexport type Reader = () => string\nexport declare const read: Reader", 403},
+		{"generic", "/** @throws {never} */\nexport type Make<T> = () => T\nexport declare const read: Make<string>", 403},
+		{"nested", "/** @throws {never} */\nexport type Base = () => string\nexport type Reader = Base\nexport declare const read: Reader", 403},
+		{"parenthesized", "/** @throws {never} */\nexport type Reader = (() => string)\nexport declare const read: Reader", 403},
+		{"signature-control", "export type Reader = {\n  /** @throws {never} */\n  (): string\n}\nexport declare const read: Reader", 0},
+		{"const-control", "export type Reader = () => string\n/** @throws {never} */\nexport declare const read: Reader", 0},
+	} {
+		body := "const v = read()"
+		if alias.code != 0 {
+			body = "const v = ⟦read()⟧"
+		}
+		add(&failCase{Name: "foreign-alias-tag-" + alias.key, VIP: 4, Owner: "impl-hunt-fail", Quote: "a tag on an alias of a function type does not attach", Lib: alias.lib, Body: body, Code: alias.code, OneDiagnostic: alias.code != 0})
+	}
 	add(&failCase{Name: "foreign-overload", Quote: "| no tag | `unknown` |", Host: "effect", Body: "⟦foreign(s)⟧", Lib: "export declare function foreign(s: string): string\nexport declare function foreign(s: number): number"})
 	add(&failCase{Name: "dynamic-any", Quote: "Calls through `any` or `Function` throw `unknown`; callable unions combine their alternatives.", Host: "effect", Body: "⟦f(s)⟧", Decls: "declare const f: any"})
 	add(&failCase{Name: "dynamic-function", Quote: "Calls through `any` or `Function` throw `unknown`; callable unions combine their alternatives.", Host: "effect", Body: "⟦f(s)⟧", Decls: "declare const f: Function"})

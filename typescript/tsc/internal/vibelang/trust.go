@@ -316,6 +316,11 @@ func tagged(c *checker.Checker, call *ast.Node, candidates []*ast.Node, otherwis
 			continue
 		}
 		for _, host := range jsdocHosts(candidate) {
+			// A tag belongs to the call signature, never to its type alias
+			// (003 Thrown types), as foreignThrowsContract reads it.
+			if ast.IsTypeAliasDeclaration(host) {
+				break
+			}
 			throws := hasThrowsTag(host)
 			if !hasTrustedTag(host) && !throws {
 				continue

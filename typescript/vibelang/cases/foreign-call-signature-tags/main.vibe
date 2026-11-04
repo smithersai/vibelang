@@ -1,0 +1,7 @@
+// expect-result: ["signature","const"]
+// A tag on the call signature, or on the const itself, attaches (003 Thrown
+// types): these calls throw never and run directly in effect code.
+import { read, tagged } from "./helpers.js"
+export effect function main() {
+  return [read(), tagged()]
+}

@@ -1,0 +1,7 @@
+// expect: EK0403
+// A tag on a function-type alias does not attach (003 Thrown types): each
+// call is untagged, throws unknown, and needs its bridge in effect code.
+import { read, make, nested } from "./helpers.js"
+export effect function direct() { return read() }
+export effect function generic() { return make() }
+export effect function aliased() { return nested() }

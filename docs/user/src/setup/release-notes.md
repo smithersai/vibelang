@@ -229,6 +229,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Declaration-identity checks for JSDoc links repeatedly checked unused browser declarations; those fixtures now load only the JavaScript libraries while preserving strict type and comment checks.
 
+- In effect code, calling a TypeScript const typed by a function-type alias whose own JSDoc says `@throws` drew no `EK0403`: the alias tag was read as the call's contract. A tag on an alias does not attach, so the call now needs `try Effect.try(() => …)`; put the tag on the call signature, `type Reader = { /** @throws {never} */ (): string }`, or on the const.
+
 - The grammar inventory cited old compatibility diagnostics as though they were current public assignments. Those references now explicitly say they are historical; all pending gaps and their regression witnesses remain intact.
 - Filesystem platform errors recommended methods on the `FileSystem` namespace, where they do not exist; their advice now gets `FileSystem.FileSystem` before calling the implementation.
 - Migrating imports inside native `module` bodies could replace `./leaf.js` with `./leaf.vibe` and cause `TS5097`. These bodies now keep their original TypeScript import spelling.
