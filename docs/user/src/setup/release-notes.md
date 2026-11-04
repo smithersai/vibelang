@@ -9,6 +9,9 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 ### Bugs fixed since 0.0.11
 
+- Grammar admission fuzzing now retains invalid native `import()` arities as pending witnesses when their diagnostic does not fail the VibeLang build.
+
+
 - Grammar admission fuzzing now recognizes native dynamic `import(...)` calls, including options and chained property access.
 
 

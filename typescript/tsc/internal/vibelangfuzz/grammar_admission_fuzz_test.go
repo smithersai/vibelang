@@ -68,6 +68,7 @@ var admissionLab = sync.OnceValues(func() (*grammarLab, error) {
 var grammarAdmissionSeeds = []struct{ key, source string }{
 	{"plain", "const n = 1;"},
 	{"native-dynamic-import", "import ( join ) ; ;"},
+	{"native-dynamic-import-arity", "import();"},
 	{"declaration-name-context", "effect function join(p) { return try p; }"},
 	{"effect", "effect function f(p) { return try p; }"},
 	{"block", "const p = effect { return 1; };"},
@@ -681,6 +682,9 @@ func grammarOrBindingReservedName(ts []grammarToken) bool {
 
 func grammarAdmissionForm(source string) string {
 	ts := grammarLexSource(source)
+	if grammarDynamicImportArity(ts) {
+		return "admission:dynamic-import-arity"
+	}
 	if grammarSchemaJSDocFieldType(ts) {
 		return "admission:schema-jsdoc-field-type"
 	}
@@ -1591,6 +1595,11 @@ func grammarAdmissionSyntaxCode(code int32) bool {
 // A warning or a non-syntax error is not a syntax rejection, even if a
 // diagnostic uses a recovery code or shares its number with another source.
 func grammarAdmissionSyntaxDiagnostic(d *ast.Diagnostic) bool {
+	// A repaired native build policy will make the pending ImportCall
+	// arity corpus XPASS without promoting unrelated messages.
+	if d.Source() == "" && d.Code() == 1450 && d.Category() == diagnostics.CategoryMessage && d.AffectsBuild() {
+		return true
+	}
 	if d.Category() != diagnostics.CategoryError {
 		return false
 	}
@@ -1624,6 +1633,11 @@ func grammarAdmissionSyntaxDiagnostic(d *ast.Diagnostic) bool {
 	// parser reads any expression there for recovery and the checker rejects a
 	// non-literal with TS1141, e.g. `import x = require(("m"));`.
 	case 1141:
+		return true
+	// Native ImportCall rejects spread, type arguments and invalid arity.
+	// TS1450 currently has CategoryMessage, so the category guard above
+	// keeps that recovery diagnostic outside syntax rejection.
+	case 1325, 1326, 1450:
 		return true
 	// checkGrammarArrowFunction: a line break before => (TS1200); the
 	// checker's throw check: a line break after throw (TS1142).
@@ -1698,6 +1712,14 @@ func TestGrammarAdmissionDiagnostics(t *testing.T) {
 		code         int32
 		want         bool
 	}{
+		{"native-import-spread-error", "", diagnostics.CategoryError, 1325, true},
+		{"native-import-type-arguments-error", "", diagnostics.CategoryError, 1326, true},
+		{"native-import-arity-error", "", diagnostics.CategoryError, 1450, true},
+		{"native-import-arity-message", "", diagnostics.CategoryMessage, 1450, false},
+		{"native-import-spread-warning", "", diagnostics.CategoryWarning, 1325, false},
+		{"native-import-spread-source-collision", "other", diagnostics.CategoryError, 1325, false},
+		{"native-import-spread-ek-collision", "EK", diagnostics.CategoryError, 1325, false},
+		{"native-import-specifier-type-error", "", diagnostics.CategoryError, 7036, false},
 		{"reserved-fiber-name-error", "EK", diagnostics.CategoryError, 1702, true},
 		{"reserved-fiber-name-warning", "EK", diagnostics.CategoryWarning, 1702, false},
 		{"reserved-fiber-name-suggestion", "EK", diagnostics.CategorySuggestion, 1702, false},

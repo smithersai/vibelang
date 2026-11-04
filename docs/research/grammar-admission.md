@@ -269,3 +269,11 @@ commas and subsequent property/call chains, while excluding zero arguments,
 spread, a third argument and construction with `new`. The keyed
 `native-dynamic-import` witness retains an identifier argument: a type or
 name error does not remove the native syntax derivation.
+
+Native dynamic imports with zero or more than two arguments report
+`TS1450` as a message. Stock TypeScript exits with status `2`, but
+VibeLang's `Diagnostic.AffectsBuild` ignores that native message.
+The exact `admission:dynamic-import-arity` family therefore stays pending.
+Error-category `TS1325` (spread) and `TS1326` (type arguments) reject
+syntax. Warning, message and foreign-source collisions do not. Ordinary
+call arity and import-specifier type errors remain outside syntax rejection.
