@@ -58,7 +58,7 @@ function vibeImport(directory, specifier) {
   looking = true
   try {
     const source = isRelative(specifier) ? extensionlessImport(directory, specifier) : aliasImport(configOf(directory), specifier)
-    return source?.endsWith(".vibe") ? source : undefined
+    return source !== undefined && /\.vibex?$/.test(source) ? source : undefined
   } finally { looking = false }
 }
 
@@ -162,7 +162,7 @@ const pathOf = (importer) => importer?.startsWith(`${moduleNamespace}:`) ? impor
 // type-only imports. A CommonJS require and `import x = require()` reach a
 // .vibe module through the CommonJS resolve hook above instead.
 const esImports = (code, loader) => new Bun.Transpiler({ loader }).scan(code).imports
-const relativeJs = /^\.\.?\/.*\.js$/
+const relativeJs = /^\.\.?\/.*\.jsx?$/
 const escapeRegExp = (value) => value.replace(/[.*+?^{}$()|[\]\\]/g, "\\$&")
 // What a module declaration's output imports, from its .vibe file's directory.
 // A relative .js name is the emitted name of a .vibe or .ts file beside it.
@@ -172,8 +172,8 @@ function fromModuleOutput(directory, specifier) {
   if (relativeJs.test(specifier)) {
     const target = resolve(directory, specifier)
     if (existsSync(target)) return target
-    const stem = target.slice(0, -".js".length)
-    return [".vibe", ".ts", ".tsx"].map((extension) => stem + extension).find(existsSync)
+    const stem = target.replace(/\.jsx?$/, "")
+    return [".ts", ".tsx", ".vibe", ".vibex"].map((extension) => stem + extension).find(existsSync)
   }
   try {
     const resolved = Bun.resolveSync(specifier, directory)
@@ -301,9 +301,9 @@ Bun.plugin({
       if (existsSync(target)) return fromModule ? { path: target } : undefined
       if (isModuleOutput(target)) return { path: target, namespace: moduleNamespace }
       // A TypeScript module's own .ts or .tsx file still wins, as without vibelang.
-      if (!importer.endsWith(".vibe") && !fromModule && [".ts", ".tsx"].some((extension) => existsSync(target.slice(0, -".js".length) + extension))) return undefined
-      for (const extension of fromModule ? [".vibe", ".ts", ".tsx"] : [".vibe"]) {
-        const source = target.slice(0, -".js".length) + extension
+      if (!/\.vibex?$/.test(importer) && !fromModule && [".ts", ".tsx"].some((extension) => existsSync(target.replace(/\.jsx?$/, "") + extension))) return undefined
+      for (const extension of path.endsWith(".jsx") ? [".tsx", ".ts", ".vibex", ".vibe"] : [".ts", ".tsx", ".vibe", ".vibex"]) {
+        const source = target.replace(/\.jsx?$/, "") + extension
         if (existsSync(source)) return { path: source }
       }
       return undefined
@@ -317,7 +317,7 @@ Bun.plugin({
       return { contents: reexportOf(source, exportsDefault(source, emitted, loaderOf)), loader: "js" }
     })
     // Bun 1.4.2 ignores a plugin's source maps, so the module is its JavaScript alone.
-    build.onLoad({ filter: /\.vibe$/ }, ({ path }) => { const code = emitted(path).code; discover(path, code, "js"); return resolveImports(path, code, "js") })
-    build.onLoad({ filter: /\.js$/, namespace: moduleNamespace }, ({ path }) => { const code = emitted(path).code; discover(path, code, "js"); return resolveImports(path, code, "js", true) })
+    build.onLoad({ filter: /\.vibex?$/ }, ({ path }) => { const code = emitted(path).code, loader = path.endsWith(".vibex") ? "jsx" : "js"; discover(path, code, loader); return resolveImports(path, code, loader) })
+    build.onLoad({ filter: /\.jsx?$/, namespace: moduleNamespace }, ({ path }) => { const code = emitted(path).code, loader = path.endsWith(".jsx") ? "jsx" : "js"; discover(path, code, loader); return resolveImports(path, code, loader, true) })
   }
 })

@@ -214,7 +214,7 @@ const realpath = (path) => {
  * on disk: a loader serves it from the project's compile.
  */
 export function moduleDeclarationSource(path) {
-  return /^(.+\.vibe)\.[^./\\]+\.js$/.exec(path)?.[1]
+  return /^(.+\.vibex?)\.[^./\\]+\.jsx?$/.exec(path)?.[1]
 }
 
 // Turns one compiler run into its result:
@@ -249,10 +249,11 @@ function collect({ status, signal, output }, root, out) {
   }
   const listings = new Map() // each output directory's file names
   for (const source of inputs) {
-    if (!source.endsWith(".vibe")) continue
+    if (!/\.vibex?$/.test(source)) continue
     const path = relative(root, source)
     if (path.startsWith("..") || isAbsolute(path)) continue
-    const emitted = join(out, relative(emitRoot(root), source).replace(/\.vibe$/, ".js"))
+    const stem = join(out, relative(emitRoot(root), source).replace(/\.vibex?$/, ""))
+    const emitted = source.endsWith(".vibex") && existsSync(stem + ".jsx") ? stem + ".jsx" : stem + ".js"
     // The compile emits nothing for a module it reached through node_modules,
     // such as a nested workspace package's: that one compiles with its own project.
     if (!existsSync(emitted)) continue

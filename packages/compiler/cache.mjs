@@ -37,7 +37,8 @@ import { basename, dirname, isAbsolute, join, relative, resolve, sep } from "nod
 // 8: discard cached results populated by text-rewriting loader records.
 // 9: a pattern that writes a leading dot scans dotted names.
 // 10: decode compiler UTF-8 incrementally; discard corrupted cached warnings.
-const format = 10
+// 11: collect Vibex outputs and fingerprint JSX source discovery.
+const format = 11
 const version = JSON.parse(readFileSync(new URL("./package.json", import.meta.url), "utf8")).version
 
 // A file whose timestamp is this close to a compile's start may have changed
@@ -338,7 +339,7 @@ function scannedDirectories(main) {
 // What a directory holds that could become part of a program: its source
 // files and subdirectories, without the dotted names TypeScript's globs skip
 // unless a pattern writes the dot (hidden).
-const sourceName = /\.(?:[cm]?[jt]sx?|vibe|json)$/i
+const sourceName = /\.(?:[cm]?[jt]sx?|vibex?|json)$/i
 // omitted names excluded child directories, such as outDir, so creating
 // or removing one is no change.
 function listing(path, omitted = [], hidden = false) {
@@ -353,7 +354,7 @@ function listing(path, omitted = [], hidden = false) {
   // A declaration sidecar beside its .vibe source is an output (VIP-27),
   // excluded from the program just as it is by the compiler's resolver.
   // An orphan sidecar remains a TypeScript input.
-  const sources = new Set(entries.filter((entry) => entry.name.endsWith(".vibe") &&
+  const sources = new Set(entries.filter((entry) => /\.vibex?$/.test(entry.name) &&
     (entry.isFile() || entry.isSymbolicLink() && statOf(join(path, entry.name))?.isFile())).map((entry) => entry.name))
   for (const entry of entries) {
     if (entry.name.startsWith(".") && !hidden) continue
@@ -364,7 +365,7 @@ function listing(path, omitted = [], hidden = false) {
       names.push(`${entry.name}/`)
       directories.push(join(path, entry.name))
     } else if (sourceName.test(entry.name)) {
-      if (entry.name.endsWith(".d.vibe.ts") && sources.has(entry.name.slice(0, -".d.vibe.ts".length) + ".vibe")) continue
+      if (/\.d\.vibex?\.ts$/.test(entry.name) && sources.has(entry.name.replace(/\.d\.(vibex?)\.ts$/, ".$1"))) continue
       names.push(entry.name)
     }
   }
@@ -383,12 +384,13 @@ function sidecarInputNames(root, { recursive, excluded, sidecarDir, home, hidden
   const ancestors = new Set()
   let unreadable = false
   const paired = (path) => {
-    const suffix = ".d.vibe.ts"
-    if (!path.endsWith(suffix)) return false
-    if (statOf(path.slice(0, -suffix.length) + ".vibe")?.isFile()) return true
+    const suffix = /\.d\.(vibex?)\.ts$/.exec(path)?.[0]
+    if (!suffix) return false
+    const extension = suffix.slice(2, -3)
+    if (statOf(path.slice(0, -suffix.length) + extension)?.isFile()) return true
     const mirrored = relative(sidecarDir, path)
     if (mirrored === ".." || mirrored.startsWith(".." + sep) || isAbsolute(mirrored)) return false
-    return statOf(join(home, mirrored.slice(0, -suffix.length) + ".vibe"))?.isFile() ?? false
+    return statOf(join(home, mirrored.slice(0, -suffix.length) + extension))?.isFile() ?? false
   }
   const walk = (path, depth) => {
     if (excluded.includes(path)) return
@@ -610,7 +612,7 @@ function entryOf({ project, root, snapshot, result, files, hashDependencies = fa
   const settings = new Map()
   const nearestConfigs = new Map()
   for (const path of files) {
-    if (!path.endsWith(".vibe")) continue
+    if (!/\.vibex?$/.test(path)) continue
     const config = nearestFile(dirname(path), "tsconfig.json", nearestConfigs)
     if (config === null || config === project || settings.has(config)) continue
     for (const file of readConfigs(config).files) if (!settings.has(file) && existsSync(file)) settings.set(file, undefined)

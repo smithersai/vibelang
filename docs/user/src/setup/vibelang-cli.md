@@ -200,6 +200,8 @@ A native `.ts` or `.tsx` consumer importing a live `.vibe` or `.vibex` source fo
 
 Declaration emit imports a prelude module whose name the source uses when an inferred type needs it: for example, `Layer.empty` declares a value of `Layer.Layer<never, never, never>` through an import from `effect`. This also applies with `module: Preserve` and `moduleResolution: Bundler`.
 
+The `vibelang/bun` preload loads `.vibex` modules as well as `.vibe`, including extensionless imports, directory indexes, `paths` aliases, and relative `.js` or `.jsx` output names. Preserved JSX is passed to Bun's JSX loader.
+
 A `.vibex` source emits `.jsx` under `jsx: preserve`, even when it contains no JSX elements, and `.js` in other JSX modes. Its source map uses the same suffix, `.jsx.map` or `.js.map`; public declarations remain `.d.ts`.
 
 A native `.tsx` sibling keeps the project’s `jsx` output extension: a source import such as `./token.tsx` becomes `./token.jsx` in JavaScript under `preserve`, and `./token.js` under `react-native` and the React transform modes, as `tsc` names them.

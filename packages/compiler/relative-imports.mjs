@@ -3,14 +3,14 @@ import { join, resolve } from "node:path"
 
 // A specifier ending in one of these names its file's extension; TypeScript
 // removes it before it tries its own (tspath's extensionsToRemove).
-const namedExtension = /\.(?:d\.[cm]?ts|[cm]?[jt]s|[jt]sx|json|vibe)$/
+const namedExtension = /\.(?:d\.[cm]?ts|[cm]?[jt]s|[jt]sx|json|vibex?)$/
 // A specifier that names a file by its path: relative (./x, ../x, ., ..) or
 // absolute (/x, C:\x). A bare specifier names a package, or a tsconfig paths
 // alias, and reaches a .vibe module only through a file discovery already reads.
 export const pathSpecifier = /^(?:\.\.?(?:[\\/]|$)|[\\/]|[A-Za-z]:[\\/])/
 
 // The files TypeScript tries for an extensionless import, in its order.
-const implicitExtensions = [".ts", ".tsx", ".vibe", ".d.ts", ".js", ".jsx"]
+const implicitExtensions = [".ts", ".tsx", ".vibe", ".vibex", ".d.ts", ".js", ".jsx"]
 
 /**
  * Returns the file TypeScript's Bundler resolution picks (TypeScript 7 removed

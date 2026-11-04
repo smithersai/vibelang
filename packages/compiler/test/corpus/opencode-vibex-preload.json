@@ -1,0 +1,11 @@
+{
+  "forms": {
+    "explicit": "./src/leaf.vibex",
+    "extensionless": "./src/leaf",
+    "directory": "./src/dir",
+    "selfIndex": "./src/dir/",
+    "alias": "@view",
+    "javascript": "./src/leaf.js",
+    "jsx": "./src/leaf.jsx"
+  }
+}
