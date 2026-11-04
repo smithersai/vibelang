@@ -1627,3 +1627,9 @@ programs. The fixture retains explicit and implicit project roots,
 composite projects, JSON exports, unused checks and all 24 generated
 option layouts. Its real outside-root sources must still produce `TS6059`
 and make the comparison unavailable.
+
+Import-type-argument API fixtures select `lib.es5.d.ts` for native validation
+and every comparator program. A native source-file guard rejects unrelated
+browser declarations. All 24 generated literal arguments, const type
+parameters, readonly arrays and tuple forms remain active, together with
+the path-looking literal mutation and dependency-shape mutation checks.

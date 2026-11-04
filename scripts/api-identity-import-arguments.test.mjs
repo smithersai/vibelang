@@ -7,7 +7,15 @@ import { test } from "node:test"
 import { compareApiIdentity, loadTypeScript } from "./api-identity.mjs"
 import { checkProperty } from "./testing/property.mjs"
 
-const ts = loadTypeScript()
+const stockTs = loadTypeScript()
+const ts = { ...stockTs, createProgram(...args) {
+  const program = stockTs.createProgram(...args)
+  assert.ok(!program.getSourceFiles().some(source => /[/\\]lib\.dom(?:\.iterable)?\.d\.ts$/.test(source.fileName)),
+    "Import-type-argument fixtures must not load unrelated browser libraries")
+  return program
+} }
+const compilerOptions = { lib: ["lib.es5.d.ts"] }
+const compare = (before, after) => compareApiIdentity(ts, before, after, { compilerOptions })
 const fc = createRequire(new URL("../docs/tools/package.json", import.meta.url))("fast-check")
 const corpus = JSON.parse(readFileSync(new URL("./api-identity-corpus/opencode-make-event-group.json", import.meta.url)))
 function fixture(before, after, run) {
@@ -24,7 +32,7 @@ function fixture(before, after, run) {
   } finally { rmSync(root, { recursive: true, force: true }) }
 }
 function valid(dir) {
-  const program = ts.createProgram([join(dir, "index.d.ts")], { strict: true, noEmit: true, types: [] })
+  const program = ts.createProgram([join(dir, "index.d.ts")], { ...compilerOptions, strict: true, noEmit: true, types: [] })
   const diagnostics = ts.getPreEmitDiagnostics(program)
   assert.equal(diagnostics.length, 0, ts.formatDiagnostics(diagnostics, {
     getCanonicalFileName: x => x, getCurrentDirectory: () => dir, getNewLine: () => "\n",
@@ -45,8 +53,8 @@ test("opencode generic function copies retain identity with literal import type 
   fixture(corpus.before, corpus.after, (before, after) => {
     valid(before)
     valid(after)
-    identical(compareApiIdentity(ts, before, before))
-    identical(compareApiIdentity(ts, before, after))
+    identical(compare(before, before))
+    identical(compare(before, after))
   })
 })
 
@@ -59,7 +67,7 @@ test("a literal import type argument that resembles a module path remains an API
   fixture(before, after, (before, after) => {
     valid(before)
     valid(after)
-    different(compareApiIdentity(ts, before, after))
+    different(compare(before, after))
   })
 })
 
@@ -82,11 +90,11 @@ test("property: generic self comparisons keep import arguments and detect depend
       fixture(before, after, (before, after) => {
         valid(before)
         valid(after)
-        identical(compareApiIdentity(ts, before, before))
-        identical(compareApiIdentity(ts, before, after))
+        identical(compare(before, before))
+        identical(compare(before, after))
         writeFileSync(join(after, "brand.d.ts"), "export interface Brand<Tag> { readonly tag: Tag; changed: number }")
         valid(after)
-        different(compareApiIdentity(ts, before, after))
+        different(compare(before, after))
       })
     },
   })
