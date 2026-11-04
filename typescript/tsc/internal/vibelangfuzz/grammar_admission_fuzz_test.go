@@ -67,6 +67,9 @@ var admissionLab = sync.OnceValues(func() (*grammarLab, error) {
 // classify before adding a pending line.
 var grammarAdmissionSeeds = []struct{ key, source string }{
 	{"plain", "const n = 1;"},
+	{"native-import-meta", "const url = import.meta.url;"},
+	{"native-new-target", "function f() { return new.target; }"},
+	{"import-meta-property", "import.x;"},
 	{"native-dynamic-import", "import ( join ) ; ;"},
 	{"native-dynamic-import-arity", "import();"},
 	{"declaration-name-context", "effect function join(p) { return try p; }"},
@@ -682,6 +685,9 @@ func grammarOrBindingReservedName(ts []grammarToken) bool {
 
 func grammarAdmissionForm(source string) string {
 	ts := grammarLexSource(source)
+	if grammarInvalidImportMeta(ts) {
+		return "admission:import-meta-property"
+	}
 	if grammarDynamicImportArity(ts) {
 		return "admission:dynamic-import-arity"
 	}
@@ -1639,6 +1645,9 @@ func grammarAdmissionSyntaxDiagnostic(d *ast.Diagnostic) bool {
 	// keeps that recovery diagnostic outside syntax rejection.
 	case 1325, 1326, 1450:
 		return true
+	// Native MetaProperty spelling and new.target placement.
+	case 17012, 17013:
+		return true
 	// checkGrammarArrowFunction: a line break before => (TS1200); the
 	// checker's throw check: a line break after throw (TS1142).
 	case 1200, 1142:
@@ -1720,6 +1729,11 @@ func TestGrammarAdmissionDiagnostics(t *testing.T) {
 		{"native-import-spread-source-collision", "other", diagnostics.CategoryError, 1325, false},
 		{"native-import-spread-ek-collision", "EK", diagnostics.CategoryError, 1325, false},
 		{"native-import-specifier-type-error", "", diagnostics.CategoryError, 7036, false},
+		{"native-meta-name-error", "", diagnostics.CategoryError, 17012, true},
+		{"native-meta-context-error", "", diagnostics.CategoryError, 17013, true},
+		{"native-meta-name-warning", "", diagnostics.CategoryWarning, 17012, false},
+		{"native-meta-name-message", "", diagnostics.CategoryMessage, 17012, false},
+		{"native-meta-name-foreign", "other", diagnostics.CategoryError, 17012, false},
 		{"reserved-fiber-name-error", "EK", diagnostics.CategoryError, 1702, true},
 		{"reserved-fiber-name-warning", "EK", diagnostics.CategoryWarning, 1702, false},
 		{"reserved-fiber-name-suggestion", "EK", diagnostics.CategorySuggestion, 1702, false},

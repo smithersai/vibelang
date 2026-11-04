@@ -277,3 +277,13 @@ The exact `admission:dynamic-import-arity` family therefore stays pending.
 Error-category `TS1325` (spread) and `TS1326` (type arguments) reject
 syntax. Warning, message and foreign-source collisions do not. Ordinary
 call arity and import-specifier type errors remain outside syntax rejection.
+
+Native `MetaProperty` syntax includes `import.meta` and `new.target`.
+The lab derives them and their property-access continuations. Bad native
+meta-property names report `TS17012`, and native target placement reports
+`TS17013`; error-category diagnostics reject syntax.
+VibeLang's platform check instead covers `import.x` before its native
+grammar check, leaving only `EK4402`. That exact bad-name/incomplete-phase
+family remains pending under `admission:import-meta-property`. Ordinary
+member names and native URL-whitelist recovery remain separate controls.
+Phase-import calls remain outside the generated subset.

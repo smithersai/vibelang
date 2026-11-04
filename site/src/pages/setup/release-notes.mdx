@@ -26,6 +26,9 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 
 - Declaration module-identity regression tests repeatedly loaded unrelated browser declarations; their fixtures now request ES5 while retaining generated module-resolution, API-mutation and invalid-target checks.
 
+- The grammar admission audit omitted native meta-properties; it now derives valid spellings and records invalid spellings hidden by a platform diagnostic.
+
+
 - Grammar admission fuzzing now retains invalid native `import()` arities as pending witnesses when their diagnostic does not fail the VibeLang build.
 
 
