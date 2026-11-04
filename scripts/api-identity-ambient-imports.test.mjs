@@ -2,7 +2,7 @@ import assert from "node:assert/strict"
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { createRequire } from "node:module"
 import { tmpdir } from "node:os"
-import { dirname, join } from "node:path"
+import { basename, dirname, join } from "node:path"
 import { test } from "node:test"
 import { compareApiIdentity, loadTypeScript } from "./api-identity.mjs"
 import { checkProperty } from "./testing/property.mjs"
@@ -10,11 +10,13 @@ import { checkProperty } from "./testing/property.mjs"
 const ts = loadTypeScript()
 const fc = createRequire(new URL("../docs/tools/package.json", import.meta.url))("fast-check")
 const corpus = JSON.parse(readFileSync(new URL("./api-identity-corpus/opencode-google-auth-ambient-import.json", import.meta.url)))
-const options = { strict: true, noEmit: true, skipLibCheck: false, types: [], target: ts.ScriptTarget.ESNext,
+const options = { lib: ["lib.esnext.d.ts"], strict: true, noEmit: true, skipLibCheck: false, types: [], target: ts.ScriptTarget.ESNext,
   module: ts.ModuleKind.NodeNext, moduleResolution: ts.ModuleResolutionKind.NodeNext }
 const put = (file, text) => { mkdirSync(dirname(file), { recursive: true }); writeFileSync(file, text) }
 function valid(file) {
   const program = ts.createProgram([file], options)
+  assert.ok(!program.getSourceFiles().some(source => basename(source.fileName).startsWith("lib.dom.")),
+    "ambient import fixtures must not load browser libraries")
   const diagnostics = ts.getPreEmitDiagnostics(program)
   assert.equal(diagnostics.length, 0, ts.formatDiagnostics(diagnostics, {
     getCanonicalFileName: x => x, getCurrentDirectory: () => dirname(file), getNewLine: () => "\n",

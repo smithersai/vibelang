@@ -1585,3 +1585,13 @@ helper when evaluating `PACKAGE.ts`. This keeps the spec-progress, forms,
 native-output and fuzz-hang checks able to inspect their target declarations
 after API input selection changes; they retain their existing dependency,
 command and failure assertions.
+
+
+The ambient-import API fixture uses `lib.esnext.d.ts` explicitly. Its declarations
+use ECMAScript types and authored virtual modules; loading browser declarations
+added unrelated checking work to every mutation. A source-file resource guard
+rejects accidental DOM-library loading. The complete diagnostics, self-identity,
+nominal-class and selected-module mutations, and all 24 generated samples remain
+enabled. A same-box A–B–B–A measurement of the fixed witness observed median wall
+time fall from 9.56 seconds to 3.22 seconds (two samples per variant). This
+measures that fixture, not the complete API target or a reserved-host guarantee.
