@@ -121,7 +121,7 @@ func legacyForkInput(data []byte) (key, source string) {
 	return strings.Join(parts, ":"), legacyForkHelpers + strings.ReplaceAll(legacyForkOwners[parts[0]], "BODY", body)
 }
 
-const legacyForkOptionsQuote = "writes `try Effect.forkChild(program, options)` for the legacy `fork(program, options)`."
+const legacyForkOptionsQuote = "The legacy `fork(program, options)` call becomes `try Effect.forkChild(program, options)`."
 
 func legacyForkOptionsQuoted(t testing.TB) {
 	t.Helper()

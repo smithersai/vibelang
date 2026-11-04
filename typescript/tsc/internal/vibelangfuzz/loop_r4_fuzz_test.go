@@ -299,7 +299,7 @@ func FuzzVibeResolutionOrder(f *testing.F) {
 // continue leaves it. The run-time order is the case do-jump-operand-order.
 
 const (
-	doOrderQuote = "Everything to its left runs first, in source order, the callee and a method's receiver included"
+	doOrderQuote = "Everything to its left runs first, in source order, fully evaluated as ECMA-262 specifies"
 	row33Quote   = "the `do` never moves alone"
 )
 

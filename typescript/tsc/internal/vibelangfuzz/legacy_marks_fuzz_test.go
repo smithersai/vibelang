@@ -12,7 +12,7 @@ import (
 
 // legacyMarkQuote is the rule FuzzVIPLegacyMarks checks (chapter 7, the VIP-1
 // migration).
-const legacyMarkQuote = "The VIP-1 migration writes `try` before each call that ran where it stood before VIP-1 and keeps that call's run phase"
+const legacyMarkQuote = "It writes `try` before each call that ran where it stood before VIP-1, and removes the `try` that ran a known legacy wrapper, deciding from the original resolved callable and migration provenance, not the final value's shape or annotation alone."
 
 func TestLegacyMarksRuleQuoted(t *testing.T) {
 	if !strings.Contains(SpecText("007-tooling.md"), legacyMarkQuote) {

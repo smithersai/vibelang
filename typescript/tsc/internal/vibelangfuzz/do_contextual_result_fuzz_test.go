@@ -14,7 +14,7 @@ import (
 const doContextualResultTarget = "FuzzDoContextualResult"
 
 var doContextualResultQuotes = []struct{ chapter, quote string }{
-	{"007-tooling.md", "TypeScript's own lexical, syntax and static errors on ordinary native syntax keep their `TS` codes, including independent errors in embedded expressions and types."},
+	{"007-tooling.md", "Native lexical, syntax and static errors keep their `TS` codes, as in TypeScript, including independent errors in embedded expressions and types."},
 	{"002-running.md", "Contextual typing reaches only the expression alternatives contributing to the normal result; discarded intermediate expressions and outward returns retain their own source contexts."},
 	{"002-running.md", "`const exact = do { 1 }` has type `1`, while `let ordinary = do { 1 }` widens to `number`"},
 }
