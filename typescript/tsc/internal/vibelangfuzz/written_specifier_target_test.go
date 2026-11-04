@@ -20,6 +20,9 @@ const writtenSpecifierKeptQuote = "written `./user.js`, `./App.jsx`, `./user` an
 func TestWrittenSpecifierMigratedTargetQuoted(t *testing.T) { requireWrittenSpecifierQuotes(t) }
 
 func requireWrittenSpecifierQuotes(t testing.TB) {
+	if !strings.Contains(SpecText("001-functions.md"), declarationThrowsContractQuote) {
+		t.Fatal("Chapter 1 no longer states the generated callable contract")
+	}
 	for chapter, quote := range map[string]string{"001-functions.md": writtenSpecifierKeptQuote} {
 		text, err := os.ReadFile(SpecPath(chapter))
 		if err != nil {
@@ -41,9 +44,10 @@ func requireWrittenSpecifierQuotes(t testing.TB) {
 // ./target.js, ./target) × target extension (.vibe, .ts) × importer
 // extension (.vibe, .ts) × import form (value, inline type, type-only
 // specifier, import type, export, export type, import type node), the
-// project compiles without errors and the importer's declaration equals, byte
-// for byte, stock tsc's declaration of the TypeScript twin, whose files are
-// all .ts and write the same specifier. Where JavaScript is emitted, the
+// project compiles without errors and the importer's declaration equals stock
+// tsc's declaration for the TypeScript twin, whose files are all .ts and write
+// the same specifier, with VIP-27's generated contract as the sole addition
+// on the known local arrow. Where JavaScript is emitted, the
 // importer's relative specifiers equal the twin's (all of main.js for a .ts
 // importer). Module nodenext has no extensionless relative import, so it
 // skips those cells.
@@ -103,7 +107,13 @@ func TestWrittenSpecifierMigratedTarget(t *testing.T) {
 								t.Fatal(err)
 							}
 							stock := stockDeclarations(t, tsc, dir, outputs...)
-							if got := vibe.Outputs["out/main.d.ts"]; got != stock[0] {
+							wantDeclaration := stock[0]
+							if importer == ".vibe" && form.name == "type-only-specifier" {
+								// VIP-27 permits this one generated addition for the known
+								// local arrow. Keep the actual stock twin unannotated.
+								wantDeclaration = strings.Replace(wantDeclaration, "export declare const take:", "/** @throws {never} */\nexport declare const take:", 1)
+							}
+							if got := vibe.Outputs["out/main.d.ts"]; got != wantDeclaration {
 								t.Errorf("main%s declares:\n%s\nstock tsc declares main.ts:\n%s\nfrom:\n%s", importer, got, stock[0], source)
 							}
 							if !emitsJS {
