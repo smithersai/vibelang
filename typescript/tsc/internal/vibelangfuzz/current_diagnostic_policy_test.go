@@ -12,7 +12,7 @@ import (
 )
 
 var currentDiagnosticPolicyQuotes = []string{
-	"A row whose rule starts \"warning\" or \"lint warning\" is a warning; every other code is an error.",
+	"A row whose rule starts \"warning\" or \"lint warning\" is a warning; a row starting \"suggestion\" is an editor suggestion; an interim row starting \"off by default\" is a disabled warning.",
 	"Only a warning's code, or an `EK38xx` code, may appear in `vibe.severities`",
 	"| `EK4609` | lint warning:",
 	"| `EK4610` | lint warning:",
