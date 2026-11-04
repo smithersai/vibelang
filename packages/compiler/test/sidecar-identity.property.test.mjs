@@ -19,7 +19,7 @@ const modules = process.env.EFFECT_NODE_MODULES || join(repo, "experiments/node_
 const runtime = process.env.VIBELANG_RUNTIME || join(repo, "packages/runtime")
 const fixture = JSON.parse(readFileSync(new URL("./property-regressions/alchemy-sidecar-source-identity.json", import.meta.url), "utf8"))
 const raw = process.env.VIBELANG_SIDECAR_IDENTITY_RAW === "1"
-const sourceIdentityQuote = "A non-relative specifier that TypeScript resolves to `x.d.vibe.ts` or `x.d.vibex.ts`, through a package `types` export, a `paths` entry or package `#imports`, resolves to the available `x.vibe` or `x.vibex` source when the final resolved path is outside `node_modules`."
+const sourceIdentityQuote = "A non-relative import reaching a known compatibility declaration uses its available mapped source only when TypeScript's final resolved path is outside `node_modules`."
 
 test("the sidecar identity oracle quotes the current specification and literal source hashes", () => {
   const chapter = readFileSync(SpecPath("007-tooling.md"), "utf8")

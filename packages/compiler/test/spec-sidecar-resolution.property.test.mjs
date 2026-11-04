@@ -10,7 +10,7 @@ import { join } from "node:path"
 const spec = readFileSync(new URL("../../../docs/design/src/007-tooling.md",import.meta.url),"utf8")
 
 test("TypeScript resolves physical or logical sidecar paths before classification",()=>{
- for(const text of ["final resolved path","preserveSymlinks: true","x.d.vibex.ts"]) assert.ok(spec.includes(text),text)
+ for(const text of ["final resolved path","preserveSymlinks","compatibility declaration"]) assert.ok(spec.includes(text),text)
  fc.assert(fc.property(fc.boolean(),fc.constantFrom(".d.vibe.ts",".d.vibex.ts",".d.ts"),fc.constantFrom("Stage","Another"),(preserveSymlinks,extension,name)=>{
   const dir=mkdtempSync(join(tmpdir(),"sidecar-resolve-"))
   try {

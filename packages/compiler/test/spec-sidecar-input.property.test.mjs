@@ -8,8 +8,8 @@ import { join } from "node:path"
 const spec = readFileSync(new URL("../../../docs/design/src/007-tooling.md",import.meta.url),"utf8")
 
 test("sidecar input protection follows native discovery, including no-write controls",()=>{
- assert.ok(spec.includes("compatibility write is independent"))
- assert.ok(spec.includes("explicitly listed in "))
+ assert.ok(spec.includes("The required sidecar write is independent"))
+ assert.ok(spec.includes("Listing both the source and its sidecar explicitly in "))
  fc.assert(fc.property(fc.boolean(),fc.boolean(),fc.integer(),fc.constantFrom("alpha","file space","nested"),(explicit,noEmit,value,name)=>{
   const dir=mkdtempSync(join(tmpdir(),"sidecar-input-"))
   try {

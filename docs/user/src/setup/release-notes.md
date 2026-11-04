@@ -192,6 +192,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - The hidden-source cache regression now requires the already-fixed .vibe additions to invalidate warm results. It retains all32 property samples and the remaining .vibex gap guards, with explicit coverage of all eight .vibe selection layouts.
 
 - Seven tooling properties still cited the retired existing-tools paragraph. Their citations now quote the current declaration-file and source-tool contract, preserving all generated cases, negative controls and sample counts.
+
+- Sidecar source-selection properties now cite the current discovery, overwrite-protection and physical/logical resolution text. Their native and stock-compiler checks, literal corpus hashes and property sample counts remain intact.
 - The ESLint corpus check rejected deliberately constant source literal conditions as generated code; it now checks each reported literal against its source while continuing to detect unwritten constants.
 - An optional-schema inverse check expected the retired `mutable` field spelling. It now checks that writable keys have no `readonly` modifier and readonly keys retain it, with exact optional-property conversion controls unchanged.
 

@@ -12,8 +12,8 @@ const repo = fileURLToPath(new URL("../../../", import.meta.url))
 const binary = process.env.VIBELANG_BINARY || join(repo, "packages/compiler/native/vibelang")
 const modules = process.env.EFFECT_NODE_MODULES || join(repo, "experiments/node_modules")
 const corpus = new URL("./property-regressions/", import.meta.url)
-const discoveryQuote = "A compatibility sidecar is an emit output: when `include` or default discovery selects both `x.vibe` and `x.d.vibe.ts`, the source wins and the sidecar leaves the program, as discovery selects `x.ts` ahead of `x.d.ts`."
-const relativeQuote = "VibeLang resolves a relative `./x.vibe` to source; plain `tsc` reads the compatibility declaration."
+const discoveryQuote = "A compatibility sidecar is an emit output: discovery selects the source ahead of its sidecar, while an explicit `files` input keeps native overwrite protection (`TS5055`)."
+const relativeQuote = "Compatibility declarations preserve the actual module selected by a source import."
 const rule = "VIP-27; docs/design/src/007-tooling.md: " + discoveryQuote + " " + relativeQuote
 let diagnostics = ""
 

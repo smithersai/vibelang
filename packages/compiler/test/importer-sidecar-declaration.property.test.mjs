@@ -20,15 +20,15 @@ const fixture = JSON.parse(readFileSync(new URL("./property-regressions/t3code-i
 
 test("the importer declaration oracle quotes source selection and preserves its literal corpus", () => {
   const chapter = readFileSync(join(repo, "docs/design/src/007-tooling.md"), "utf8")
-  assert.ok(chapter.includes("A compatibility sidecar is an emit output: when `include` or default discovery selects both `x.vibe` and `x.d.vibe.ts`, the source wins and the sidecar leaves the program, as discovery selects `x.ts` ahead of `x.d.ts`."))
-  assert.ok(chapter.includes("A sidecar explicitly listed in `files` remains an input."))
-  assert.ok(chapter.includes("If the compatibility write would overwrite it, the compiler reports native `TS5055` (`Cannot write file … because it would overwrite input file`), exits `1` and leaves its bytes unchanged."))
-  assert.ok(chapter.includes("VibeLang resolves a relative `./x.vibe` to source; plain `tsc` reads the compatibility declaration."))
-  assert.ok(chapter.includes("A non-relative specifier that TypeScript resolves to `x.d.vibe.ts` or `x.d.vibex.ts`, through a package `types` export, a `paths` entry or package `#imports`, resolves to the available `x.vibe` or `x.vibex` source when the final resolved path is outside `node_modules`."))
-  assert.ok(chapter.includes("Classify the path after TypeScript's own `realpath` step, not the written name: a linked workspace package normally reads its source."))
-  assert.ok(chapter.includes("With `preserveSymlinks: true` the logical path keeps its `node_modules` segment and therefore its declarations, as a published package does; TypeScript may then distinguish the source and declaration modules."))
-  assert.ok(chapter.includes("For relocated sidecars, follow the source that the sidecar map names rather than guessing from basenames."))
-  assert.ok(chapter.includes("An explicitly listed sidecar remains an input even when another import redirects to its source, and its attempted overwrite keeps `TS5055` protection."))
+  assert.ok(chapter.includes("A compatibility sidecar is an emit output: discovery selects the source ahead of its sidecar, while an explicit `files` input keeps native overwrite protection (`TS5055`)."))
+  assert.ok(chapter.includes("Listing both the source and its sidecar explicitly in `files` keeps the sidecar as an input"))
+  assert.ok(chapter.includes("emit reports `TS5055`, exits `1`, and leaves its bytes untouched."))
+  assert.ok(chapter.includes("Compatibility declarations preserve the actual module selected by a source import."))
+  assert.ok(chapter.includes("A non-relative import reaching a known compatibility declaration uses its available mapped source only when TypeScript's final resolved path is outside `node_modules`."))
+  assert.ok(chapter.includes("Apply `realpath` and `preserveSymlinks` first;"))
+  assert.ok(chapter.includes("a retained logical dependency path keeps its declaration and native module identity."))
+  assert.ok(chapter.includes("The rule also applies to the effective `sidecarDir` map"))
+  assert.ok(chapter.includes("Explicitly selected declarations remain inputs subject to the ordinary overwrite guard."))
   for (const [name, hash] of Object.entries(fixture.hashes)) {
     assert.equal(createHash("sha256").update(fixture.files[name]).digest("hex"), hash, name)
   }
