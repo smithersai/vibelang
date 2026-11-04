@@ -1,0 +1,9 @@
+// expect-result: ["one 1","two 2",true,false]
+function isOne(s: unknown): s is 1 { return s === 1 }
+function label(s: 1 | 2) {
+  return match (s) {
+    when isOne: do { const value: 1 = s; `one ${value}` };
+    default: do { const value: 2 = s; `two ${value}` };
+  }
+}
+export effect function main() { return [label(1), label(2), 1 is isOne, 2 is isOne] }

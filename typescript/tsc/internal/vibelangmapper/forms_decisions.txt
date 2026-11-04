@@ -4020,6 +4020,8 @@ typescript/vibelang/cases/match-patterns/main.vibe:145:26 lambda plain fallback
 typescript/vibelang/cases/match-patterns/main.vibe:165:21 lambda plain fallback
 typescript/vibelang/cases/match-patterns/main.vibe:45:35 byname program table
 typescript/vibelang/cases/match-patterns/main.vibe:96:3 lambda plain fallback
+typescript/vibelang/cases/match-predicate-source-narrowing/main.vibe:9:63 lambda plain fallback
+typescript/vibelang/cases/match-predicate-source-narrowing/main.vibe:9:75 lambda plain fallback
 typescript/vibelang/cases/match-primitive-coverage-controls/main.vibe:8:25 lambda plain table
 typescript/vibelang/cases/match-proto-key-controls/main.vibe:6:38 lambda plain fallback
 typescript/vibelang/cases/match-proto-key-controls/main.vibe:8:25 lambda plain table

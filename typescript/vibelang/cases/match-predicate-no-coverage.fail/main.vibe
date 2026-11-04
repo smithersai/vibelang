@@ -1,0 +1,10 @@
+// expect: EK4701
+// VIP-7: user matcher predicates narrow arm reads but cover no finite case.
+function isOne(s: unknown): s is 1 { return s === 1 }
+export function classify(s: 1 | 2) {
+  return match (s) { when isOne: 1; when 2: 2; }
+}
+function isA(s: unknown): s is { _tag: "A" } { return false }
+export function tagged(s: { _tag: "A" } | { _tag: "B" }) {
+  return match (s) { when isA: 1; when { _tag: "B" }: 2; }
+}

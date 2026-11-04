@@ -81,9 +81,30 @@ func narrowUncoveredArm(_ *checker.Checker, reference *ast.Node, t *checker.Type
 // it the arm tests, as it was when the arm does not count toward coverage.
 func narrowOpenClassArm(c *checker.Checker, reference *ast.Node, t *checker.Type, test *ast.Node, assumeTrue bool, narrowAlias func(*ast.Node, *checker.Type, *ast.Node) *checker.Type) *checker.Type {
 	matcher, subject := classArmTest(test)
-	if matcher == nil || !c.IsMatchingReference(reference, subject) {
+	if matcher == nil {
 		return nil
 	}
+	// Only coverage ignores a call-only user matcher. Source arm/default
+	// references still narrow as the corresponding TypeScript predicate does.
+	if primitiveCoverageReference(reference) {
+		root := subject
+		for ast.IsAccessExpression(root) {
+			root = root.Expression()
+		}
+		if c.IsMatchingReference(reference, root) {
+			if _, fixed := builtinMatcherOf(c, matcher); !fixed {
+				if _, _, variant := dataVariantOf(c, matcher); !variant {
+					if typ := c.TypeOfPatternMatcher(matcher); typ != nil && len(c.GetConstructSignatures(typ)) == 0 && len(c.GetCallSignatures(typ)) > 0 {
+						return t
+					}
+				}
+			}
+		}
+	}
+	if !c.IsMatchingReference(reference, subject) {
+		return nil
+	}
+
 	if primitiveCoverageReference(reference) {
 		symbol := c.GetSymbolAtLocation(matcher)
 		if symbol != nil && symbol.Flags()&ast.SymbolFlagsAlias != 0 {

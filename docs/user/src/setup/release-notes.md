@@ -262,6 +262,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - The migrate flow's platform split gave the `.platform.ts` sibling an `import type` of each exported type its code read from the module, while the module imported the sibling: a cycle the original single module never had. t3code mobile's unchanged dependency-graph test rejected it for `use-vcs-action-state` and `queued-run-edit`. The sibling now has a private copy of such a type, as it already had of a private one, and imports the module only for a type that reads one of the module's values. The module's declarations are unchanged.
 
 - Release-history checks could time out on busy build hosts. Their generated-fixture property now has an explicit bounded timeout while retaining every assertion and generated case.
+- A type-predicate matcher could make an incomplete finite `match` appear exhaustive. User matcher functions now cover no cases for `EK4701`; their arm and `default` reads still narrow normally. Add explicit case patterns or a `default`.
 - A call-only extractor could accept a broken `Symbol.iterator` protocol and fail at run time, while rejecting `never` or reporting an internal property error for a matcher returning only `false`. Extractor return types now follow TypeScript assignability to `Iterable<unknown> | false`, reporting `EK0702` for an invalid protocol.
 - ESLint reported extra newline warnings around method calls containing a lifted `do` expression; it now follows the source method and receiver boundaries while retaining warnings for written call or property newlines.
 

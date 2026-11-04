@@ -364,6 +364,7 @@ func dataRules() []dataRule {
 	rules = append(rules, dataVariantMemberAdmissionRules()...)
 	rules = append(rules, dataReadonlyRecordAliasRules()...)
 	rules = append(rules, dataExtractorReturnRules()...)
+	rules = append(rules, dataPredicateCoverageRules()...)
 	return append(rules, dataUnreachableMatchRules()...)
 }
 
