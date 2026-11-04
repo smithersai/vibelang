@@ -19,6 +19,8 @@ upgrade-effect ──▶ setup ──▶ plan ──▶ for each batch: codemod 
 | record | none | Rejects foreign changes before formatting and before committing, including when forced; commits the batch with `jj`, naming its files, with o200k token counts before and after | `batches/NN/record.json` |
 | report | none | Batches, tests, declaration identity, tokens, codemod gaps, issues and idiom lessons | `report.md`, `report.json` |
 
+An exact `paths` alias keeps its configuration key. When its target becomes `.vibe`, imports use a relative name of that same source, following the project's extension policy. The import journal restores the original alias on revert. Wildcard aliases continue to follow their existing configuration and native extension policy.
+
 Inside `types` or `typings`, nested conditions and fallback arrays keep declaration-sidecar targets, including `vibe.sidecarDir` layouts; they never gain runtime export wrappers.
 
 Setup also follows literal `Bun.build` entrypoints when the native `.ts` or `.tsx` file is gone and its `.vibe` or `.vibex` replacement exists. Native files, declarations, tests and fixtures retain their paths. A script that changes its working directory, or whose options can override the entry array, receives a manual-routing warning.

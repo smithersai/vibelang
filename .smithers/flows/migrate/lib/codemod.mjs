@@ -607,9 +607,10 @@ export function rewriteImports(root, scope, moved, aliases, { preserve = [], rea
       // need one: it does not reach x.vibe as written.
       if (i.kind !== "mock" && (isTestFile(file) || isFixtureFile(file)) && !specifierExtensions.includes(posix.extname(i.specifier))) continue
       let next = rewriteSpecifier(file, i.specifier, target, { base: aliased?.base })
-      if (aliased && target.endsWith(".vibe") && aliases?.rewriteRelativeImportExtensions?.(file)) {
-        // Native TS2877 rejects non-relative source names under this option.
-        // Use the same resolved source through a name the compiler can emit.
+      if (aliased && target.endsWith(".vibe") && (aliased.exact || aliases?.rewriteRelativeImportExtensions?.(file))) {
+        // An exact paths key cannot gain a source suffix. Native TS2877 also
+        // rejects non-relative source names under rewriteRelativeImportExtensions.
+        // Use the same resolved source through a relative name the compiler can emit.
         next = posix.relative(posix.dirname(file), target)
         if (!next.startsWith(".")) next = "./" + next
       }

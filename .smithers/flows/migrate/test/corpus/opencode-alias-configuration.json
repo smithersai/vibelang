@@ -7,10 +7,10 @@
     "depth": 0,
     "index": false
   },
-  "pending": {
+  "resolved": {
     "exact_alias": {
       "key": "rewriteSpecifier:exact-paths-alias",
-      "owner": "migfix-opencode"
+      "regression": "opencode-exact-path-alias.json"
     }
   }
 }

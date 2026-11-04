@@ -1,0 +1,12 @@
+{
+  "finding": "opencode-54: exact paths alias with migration setup",
+  "input": {
+    "kind": "exact",
+    "wire": true,
+    "prefix": "@/",
+    "depth": 0,
+    "index": false,
+    "alias": "models",
+    "stock": true
+  }
+}

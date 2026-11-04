@@ -207,8 +207,8 @@ export function resolveAlias(specifier, paths, files) {
  * aliases(file) gives for the importer's project ([{ pattern: "@/*",
  * targets: ["packages/app/src/*"] }], repository-relative), with
  * resolveRelative's rules for extensions and directory indexes: `@/x` and
- * `@/x.js` name packages/app/src/x.vibe. Returns { target, base }, base the
- * aliased path before those rules, or undefined.
+ * `@/x.js` name packages/app/src/x.vibe. Returns { target, base, exact }, base the
+ * aliased path before those rules, exact marking an opaque key, or undefined.
  */
 export function resolveAliased(from, specifier, files, aliases) {
   if (!aliases || specifier.startsWith(".")) return undefined
@@ -228,7 +228,7 @@ export function resolveAliased(from, specifier, files, aliases) {
       let relative = posix.relative(posix.dirname(from), base) || "."
       if (!relative.startsWith(".")) relative = "./" + relative
       const found = resolveRelative(from, relative + (specifier.endsWith("/") && !relative.endsWith("/") ? "/" : ""), files)
-      if (found) return { target: found, base }
+      if (found) return { target: found, base, exact: star < 0 }
     }
   }
   return undefined
