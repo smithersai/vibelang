@@ -1418,12 +1418,14 @@ func (p *Parser) vibelangSchemaOf(typeNode *ast.Node) *ast.Node {
 		}
 		return p.vibelangSchemaCall("Literal", typeNode.Loc, literal)
 	case ast.KindUnionType:
-		members := typeNode.AsUnionTypeNode().Types.Nodes
-		if core.Every(members, isVibeLangSchemaLiteral) {
-			literals := make([]*ast.Node, len(members))
-			for i, member := range members {
-				literals[i] = member.AsLiteralTypeNode().Literal
-			}
+		members := vibelangSchemaUnionMembers(typeNode)
+		literals := make([]*ast.Node, len(members))
+		allLiterals := true
+		for i, member := range members {
+			literals[i] = vibelangSchemaLiteral(member)
+			allLiterals = allLiterals && literals[i] != nil
+		}
+		if allLiterals {
 			array := p.vibelangSpanning(p.factory.NewArrayLiteralExpression(p.newNodeList(typeNode.Loc, literals), false /*multiLine*/), typeNode.Loc)
 			return p.vibelangSchemaCall("Literals", typeNode.Loc, array)
 		}
@@ -1504,10 +1506,40 @@ var vibelangSchemaKeywords = map[ast.Kind]string{
 	ast.KindUndefinedKeyword: "Undefined",
 }
 
-// isVibeLangSchemaLiteral reports whether typeNode is a literal type other than
-// null: a string, number, bigint, or boolean literal.
-func isVibeLangSchemaLiteral(typeNode *ast.Node) bool {
-	return typeNode.Kind == ast.KindLiteralType && typeNode.AsLiteralTypeNode().Literal.Kind != ast.KindNullKeyword
+// vibelangSchemaUnionMembers flattens grouped unions in source order. Grouping
+// cannot change whether the union uses Literals or the members of Union.
+func vibelangSchemaUnionMembers(typeNode *ast.Node) []*ast.Node {
+	var members []*ast.Node
+	var visit func(*ast.Node)
+	visit = func(node *ast.Node) {
+		for node.Kind == ast.KindParenthesizedType {
+			node = node.AsParenthesizedTypeNode().Type
+		}
+		if node.Kind == ast.KindUnionType {
+			for _, member := range node.AsUnionTypeNode().Types.Nodes {
+				visit(member)
+			}
+		} else {
+			members = append(members, node)
+		}
+	}
+	visit(typeNode)
+	return members
+}
+
+// vibelangSchemaLiteral returns the literal of a parenthesized or bare literal
+// type other than null. Parentheses do not change a literal union into a union
+// of schemas; it still uses Schema.Literals, preserving its literals API.
+func vibelangSchemaLiteral(typeNode *ast.Node) *ast.Node {
+	for typeNode.Kind == ast.KindParenthesizedType {
+		typeNode = typeNode.AsParenthesizedTypeNode().Type
+	}
+	if typeNode.Kind == ast.KindLiteralType {
+		if literal := typeNode.AsLiteralTypeNode().Literal; literal.Kind != ast.KindNullKeyword {
+			return literal
+		}
+	}
+	return nil
 }
 
 // vibelangEntityExpression turns name, an entity name such as Address or

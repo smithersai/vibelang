@@ -205,11 +205,13 @@ func schemaFlagExpressionPrinter(c *checker.Checker, file *ast.SourceFile, value
 	// parser's provisional expression. Preserve the selected decoder in fixes.
 	var selected *ast.NodeVisitor
 	selected = ast.NewNodeVisitor(func(node *ast.Node) *ast.Node {
-		if replacement := schemaOptionalReplacement(c, node); resolveGenerics && replacement != nil {
-			node = replacement
-		}
-		if replacement := schemaGenericReplacement(c, node); resolveGenerics && replacement != nil {
-			node = replacement
+		if resolveGenerics {
+			if replacement := schemaOptionalReplacement(c, node); replacement != nil {
+				node = replacement
+			}
+			if replacement := schemaGenericReplacement(c, node); replacement != nil {
+				node = replacement
+			}
 		}
 		return node.VisitEachChild(selected)
 	}, f, ast.NodeVisitorHooks{})

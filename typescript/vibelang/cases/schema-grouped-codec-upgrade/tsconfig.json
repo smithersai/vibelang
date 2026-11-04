@@ -1,0 +1,1 @@
+{"compilerOptions": {"target": "ESNext", "module": "NodeNext", "moduleResolution": "NodeNext", "strict": true, "skipLibCheck": true, "types": [], "declaration": true, "outDir": "out"}, "include": ["main.vibe", "reference.ts"]}

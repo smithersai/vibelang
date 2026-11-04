@@ -1,0 +1,19 @@
+import { Schema } from "effect"
+export const Words = Schema.Literals(["a", "b", "c"])
+export type Words = typeof Words.Type
+export const Values = Schema.Literals([-1, 2, true, 3n])
+export type Values = typeof Values.Type
+export const Mixed = Schema.Union([Schema.Literal("a"), Schema.Literal("b"), Schema.Null])
+export type Mixed = typeof Mixed.Type
+export const Nested = Schema.Struct({ code: Schema.Literals(["a", "b"]) })
+export type Nested = typeof Nested.Type
+export const words = Words.literals
+export const values = Values.literals
+export const Grouped = Schema.Literals(["a", "b", "a", "c"])
+export type Grouped = typeof Grouped.Type
+export const GroupedMixed = Schema.Union([Schema.Literal("a"), Schema.Literal("b"), Schema.Null])
+export type GroupedMixed = typeof GroupedMixed.Type
+export const GroupedArray = Schema.mutable(Schema.Array(Schema.Literals(["a", "b", "c"])))
+export type GroupedArray = typeof GroupedArray.Type
+export const grouped = Grouped.literals
+export const mixedMembers = GroupedMixed.members

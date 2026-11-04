@@ -1,0 +1,11 @@
+export schema Words = "a" | ("b") | (("c"))
+export schema Values = (-1) | (2) | (true) | (3n)
+export schema Mixed = "a" | ("b") | (null)
+export schema Nested { readonly code: "a" | ("b") }
+export const words = Words.literals
+export const values = Values.literals
+export schema Grouped = ("a" | ("b" | "a")) | (("c"))
+export schema GroupedMixed = ("a" | ("b")) | ((null))
+export schema GroupedArray = (("a" | ("b" | "c")))[]
+export const grouped = Grouped.literals
+export const mixedMembers = GroupedMixed.members

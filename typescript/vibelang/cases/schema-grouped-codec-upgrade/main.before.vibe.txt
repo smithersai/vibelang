@@ -1,0 +1,17 @@
+export const events: string[] = []
+const codecs = {
+ get first(): typeof Schema.String {events.push("first"); return Schema.String},
+ get last(): typeof Schema.Number {events.push("last"); return Schema.Number},
+}
+export schema Grouped = ("a" | "b") | null
+export schema IndividuallyGrouped = ("a") | "b"
+export schema Row = readonly [("a" | "b") | null]
+export schema Dict = Readonly<Record<string, ("a" | "b") | null>>
+export namespace N { const Schema=1; export schema Choice = ("x" | "y") | null }
+export schema Deep = ReadonlyArray<("a" | ("b" | "c")) | null>
+export schema Payload { first: codecs.first; choice: ("a" | "b") | null; last: codecs.last }
+export schema error Root { value: ("a" | "b") | null; get label(): string {return "kept"} }
+export abstract schema error Family { value: ("a" | "b") | null }
+export schema error Child extends Family { extra: ("c" | "d") | null }
+export function make(): infer _ { return new Root({value: "a"}) }
+export function matches(value: unknown): boolean {return value is Root}

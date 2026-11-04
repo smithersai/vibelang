@@ -372,6 +372,7 @@ func dataRules() []dataRule {
 	rules = append(rules, dataExtractorReturnRules()...)
 	rules = append(rules, dataPredicateCoverageRules()...)
 	rules = append(rules, dataForeignClassCoverageRules()...)
+	rules = append(rules, schemaGroupedLiteralRules()...)
 	return append(rules, dataUnreachableMatchRules()...)
 }
 

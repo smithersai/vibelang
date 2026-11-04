@@ -245,6 +245,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Ambient-import declaration regression tests repeatedly checked unrelated browser libraries and ran slowly. Those fixtures now check their ECMAScript libraries explicitly while retaining all diagnostics and generated identity checks.
 - `async match` in native Promise callbacks was rejected with syntax errors; it now returns a Promise and accepts `await` in its subject, tests and selected arm.
+
+- Parentheses inside schema unions could create extra union codecs; grouping now stays transparent and literal-only unions expose `.literals` in source order. Run `vibelang -p tsconfig.json --fix --fix-migration-only` to retain an older grouped schema codec layout, public declarations and decoding behavior.
 - Bare `data as T;`, `data satisfies T;`, and `data is Number;` statements bypassed the required data body check. They now report `EK1604`, and `vibelang --fix` preserves the intended expression by adding parentheses.
 
 - Generated error matchers could fail to load after the extractor update because the guarded runtime entry omitted its registration helper. The entry now exports the helper once and preserves its ABI identity.

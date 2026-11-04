@@ -1,0 +1,3 @@
+go test fuzz v1
+string("schema-grouped-literals-numbers")
+byte('\x00')

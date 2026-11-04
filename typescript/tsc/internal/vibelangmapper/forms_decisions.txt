@@ -5996,6 +5996,9 @@ typescript/vibelang/cases/schema-errors-implicit-copy/main.vibe:18:34 byname pro
 typescript/vibelang/cases/schema-errors-transport/main.vibe:11:39 byname program table
 typescript/vibelang/cases/schema-errors-transport/main.vibe:11:50 lambda plain table
 typescript/vibelang/cases/schema-errors-transport/main.vibe:9:31 lambda plain table
+typescript/vibelang/cases/schema-grouped-codec-upgrade/main.vibe:23:26 lambda plain annotation
+typescript/vibelang/cases/schema-grouped-codec-upgrade/main.vibe:27:25 lambda plain annotation
+typescript/vibelang/cases/schema-grouped-codec-upgrade/main.vibe:31:25 lambda plain annotation
 typescript/vibelang/cases/schema-library-generic-arrays/main.vibe:20:22 lambda plain table
 typescript/vibelang/cases/schema-library-generic-arrays/main.vibe:21:22 lambda plain table
 typescript/vibelang/cases/schema-library-generic-arrays/main.vibe:22:22 lambda plain table

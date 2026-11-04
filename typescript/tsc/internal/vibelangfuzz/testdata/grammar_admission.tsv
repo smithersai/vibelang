@@ -48,7 +48,8 @@ parser/vibelang.go:Parser.vibelangUnsupportedSchema	admission:schema	900-appendi
 parser/vibelang.go:Parser.vibelangNonFieldSchema	admission:schema	900-appendices.md#SchemaDeclaration	support	VIP-15 and detail 247 retain non-field members for EK1505
 parser/vibelang.go:Parser.vibelangSchemaOf	admission:schema	900-appendices.md#SchemaDeclaration	support	VIP-15 schema mapping
 parser/vibelang.go:Parser.vibelangSchemaPropertyName	admission:schema	900-appendices.md#SchemaDeclaration	support	VIP-15 schema mapping keeps `__proto__` a field name
-parser/vibelang.go:isVibeLangSchemaLiteral	admission:schema	900-appendices.md#SchemaDeclaration	support	VIP-15 schema mapping
+parser/vibelang.go:vibelangSchemaLiteral	admission:schema	900-appendices.md#SchemaDeclaration	support	VIP-15 schema mapping: a union of literals, parentheses only grouping
+parser/vibelang.go:vibelangSchemaUnionMembers	admission:schema	900-appendices.md#SchemaDeclaration	support	VIP-15 schema mapping: parenthesized unions flatten in source order
 parser/vibelang.go:Parser.vibelangEntityExpression	admission:declaration-support	900-appendices.md#DeclarationStart	support	Declaration dispatch and synthesized node support
 parser/vibelang_block_do.go:Parser.nextTokenIsBlockOrDoBlock	admission:block-do	-	pending	Unadopted block do recovery spelling
 parser/vibelang_block_do.go:Parser.rejectVibeLangBlockDo	admission:block-do	-	pending	Unadopted block do recovery spelling

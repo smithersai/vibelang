@@ -1,0 +1,36 @@
+const $Schema458 = Schema;
+export const events: string[] = []
+const codecs = {
+ get first(): typeof Schema.String {events.push("first"); return Schema.String},
+ get last(): typeof Schema.Number {events.push("last"); return Schema.Number},
+}
+export const Grouped = Schema.Union([Schema.Literals(["a", "b"]), Schema.Null]);
+export type Grouped = typeof Grouped.Type;
+export const IndividuallyGrouped = Schema.Union([Schema.Literal("a"), Schema.Literal("b")]);
+export type IndividuallyGrouped = typeof IndividuallyGrouped.Type;
+export const Row = Schema.Tuple([Schema.Union([Schema.Literals(["a", "b"]), Schema.Null]),]);
+export type Row = typeof Row.Type;
+export const Dict = Schema.Record(Schema.String, Schema.Union([Schema.Literals(["a", "b"]), Schema.Null]));
+export type Dict = typeof Dict.Type;
+export namespace N { const Schema=1; export const Choice = $Schema458.Union([$Schema458.Literals(["x", "y"]), $Schema458.Null]);
+export type Choice = typeof Choice.Type; }
+export const Deep = Schema.Array(Schema.Union([Schema.Union([Schema.Literal("a"), Schema.Literals(["b", "c"])]), Schema.Null]));
+export type Deep = typeof Deep.Type;
+export const Payload = Schema.Struct({
+    first: codecs.first, choice: Schema.Union([Schema.Literals(["a", "b"]), Schema.Null]), last: codecs.last,
+});
+export type Payload = typeof Payload.Type;
+const $makeCodec1333_0 = (): infer _ => Schema.Union([Schema.Literals(["a", "b"]), Schema.Null]);
+const $codecs1333 = { get $codec1333_0() { return $makeCodec1333_0(); } };
+
+export schema error Root { value: $codecs1333.$codec1333_0; get label(): string {return "kept"} }
+const $makeCodec750_0 = (): infer _ => Schema.Union([Schema.Literals(["a", "b"]), Schema.Null]);
+const $codecs750 = { get $codec750_0() { return $makeCodec750_0(); } };
+
+export abstract schema error Family { value: $codecs750.$codec750_0 }
+const $makeCodec816_1 = (): infer _ => Schema.Union([Schema.Literals(["c", "d"]), Schema.Null]);
+const $codecs816 = { get $codec816_1() { return $makeCodec816_1(); } };
+
+export schema error Child extends Family { extra: $codecs816.$codec816_1 }
+export function make(): infer _ { return new Root({value: "a"}) }
+export function matches(value: unknown): boolean {return value is Root}
