@@ -39,7 +39,7 @@ var formChoiceAhead = map[string]string{
 	"docs/user/src/setup/react.md#block-2":                                      "mapper:effect-block-catch-head (impl-hunt-run)",
 	"docs/user/src/setup/vibelang-cli.md#block-4":                               "mapper:effect-block-catch-head (impl-hunt-run)",
 	"docs/user/src/setup/vue.md#block-3":                                        "mapper:effect-block-catch-head (impl-hunt-run)",
-	"docs/user/src/vibelang-features/114-vibelang-for-effect-users.md#block-11": "mapper:effect-block-catch-head (impl-hunt-run)",
+	"docs/user/src/vibelang-features/114-vibelang-for-effect-users.md#block-12": "mapper:effect-block-catch-head (impl-hunt-run)",
 	// VIP-6 (d9f6dcb0f3ce) retired these blocks' pending lines; each is the
 	// same effect-block head the entries above wait on.
 	"docs/user/src/error-management/014-expected-errors.md#block-9":       "mapper:effect-block-catch-head (impl-hunt-run)",

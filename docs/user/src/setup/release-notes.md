@@ -339,6 +339,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - A `catch` handler missing `=>`, such as `program catch (error) { return 0 }`, reported native `TS1005`. It now reports the catch-handler diagnostic `EK0509`, while independent syntax errors keep their native codes.
 
+- The documentation diagnostic check failed after a startup example was added. Its existing exception now follows the unchanged `Clock` example at the correct position.
+
 - The function-controls example read the callable `Function` constructor and reported `EK0107`. Its erased constructor comparison now uses the explicit `any` boundary allowed by VIP-1, while the `instanceof` and prototype controls remain checked.
 
 - The operation-operands example declared a `.vibe` function with `@throws {never}`, which VIP-4 rejects with `EK0406`. The example now uses the declaration’s implicit `never` thrown type and keeps all operation-operand checks.
