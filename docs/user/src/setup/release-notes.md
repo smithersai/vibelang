@@ -180,6 +180,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 ### Bugs fixed since 0.0.10
 - `vibelang --fix` left every `EK4402` platform access inside a bare `sync`, `callback` or `tryPromise` wrapper unrepaired and unreported once `sync` and `callback` became Effect globals. It again moves the wrapper into a `.platform.ts` companion, or reports why it refuses.
 
+- Stock TypeScript tools could receive an unchanged `.vibe` file for iterable `is` patterns because projection edits overlapped. Function and nested-block projections now preserve the iterator cache and its cleanup without overlapping edits.
+
 - Ambient declaration API tests repeatedly loaded browser libraries for pure module and global fixtures. Those fixtures now use their required ECMAScript library; browser augmentation tests retain the native `Window` and `Request` bindings.
 - Diagnostic validation now recognizes the specification’s contextual error and warning variants for `EK1010` and `EK4402`, while continuing to reject severity overrides for them.
 - Forms validation now recognizes the explicit `effect` arrows in service-lookup examples instead of treating their intended classifications as unapproved changes.

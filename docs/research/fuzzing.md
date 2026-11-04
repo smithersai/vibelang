@@ -1103,3 +1103,5 @@ The plain-runner property covers async callbacks invoked through `tryPromise`, p
 Service-lookup fixtures record written `effect` arrows as keyword-selected forms. The forms-table check verifies these explicit classifications alongside inferred forms.
 
 Mapper recovery-block coverage varies braced and unbraced concurrent and Stream loop bodies, nested contexts and binding patterns. Checking and executable renderings must parse without overlapping edits, retain their source maps and keep the unsupported unbraced binding marker; the compiler rule stays unchanged.
+
+Iterable `is` cache declarations use the source pattern span but are generated statements, not source calls. Projection tests retain all 200 parenthesized-subject mutations and add plain, arrow, Effect and nested block homes. Runtime witnesses verify early return, failed patterns, cache-name collisions and throwing property reads close the iterator; keyed tuple corpus entries also exercise the recovery-block oracle. This follows the iterator cleanup introduced by `d4c0dd4a`.

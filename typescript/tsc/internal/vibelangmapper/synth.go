@@ -67,9 +67,7 @@ func (p *projector) synthesized(node *ast.Node, start, end int, e env) {
 func (p *projector) synthesizedBlock(owner *ast.Node, statements []*ast.Node, start, end int, e env) {
 	w := &printer{p: p, names: map[string]string{}}
 	w.write("{ ")
-	for _, statement := range statements {
-		w.statement(statement, e)
-	}
+	w.blockContents(owner, statements, e)
 	w.write(" }")
 	p.synthesizedChunks(owner, w.chunks, start, end)
 }
@@ -219,26 +217,7 @@ func (w *printer) node(n *ast.Node, e env) {
 		w.node(n.Name(), e)
 	case ast.KindBlock:
 		w.write("{ ")
-		caches := parser.VibeLangMatchCacheBindings(n)
-		for _, statement := range n.Statements() {
-			if parser.VibeLangMatchCacheDeclaration(statement) != nil {
-				w.statement(statement, e)
-			}
-		}
-		for range caches {
-			w.chunks = append(w.chunks, chunk{kind: editPatternFlow, part: partWhole, fields: []string{"", "try { "}})
-		}
-		for _, statement := range n.Statements() {
-			if parser.VibeLangMatchCacheDeclaration(statement) == nil {
-				w.statement(statement, e)
-			}
-		}
-		for i := len(caches) - 1; i >= 0; i-- {
-			name := w.identifier(caches[i])
-			failure := w.p.freshWord("$matchError")
-			runtime := "} catch (" + failure + ") { " + name + ".threw(" + failure + "); throw " + failure + "; } finally { " + name + ".finish(); } "
-			w.chunks = append(w.chunks, chunk{kind: editPatternFlow, part: partWhole, fields: []string{"", runtime}})
-		}
+		w.blockContents(n, n.Statements(), e)
 		w.write("}")
 	default:
 		if ast.IsStatement(n) {
@@ -247,6 +226,32 @@ func (w *printer) node(n *ast.Node, e env) {
 		}
 		// A node of a kind no form writes: its source text as it stands.
 		w.chunks = append(w.chunks, chunk{node: n, env: e})
+	}
+}
+
+// blockContents keeps parser-owned cache declarations and cleanup in the same
+// rendering as their pattern conditions. Their spans name the is keyword, not
+// a source call that can be visited independently.
+func (w *printer) blockContents(owner *ast.Node, statements []*ast.Node, e env) {
+	caches := parser.VibeLangMatchCacheBindings(owner)
+	for _, statement := range statements {
+		if parser.VibeLangMatchCacheDeclaration(statement) != nil {
+			w.statement(statement, e)
+		}
+	}
+	for range caches {
+		w.chunks = append(w.chunks, chunk{kind: editPatternFlow, part: partWhole, fields: []string{"", "try { "}})
+	}
+	for _, statement := range statements {
+		if parser.VibeLangMatchCacheDeclaration(statement) == nil {
+			w.statement(statement, e)
+		}
+	}
+	for i := len(caches) - 1; i >= 0; i-- {
+		name := w.identifier(caches[i])
+		failure := w.p.freshWord("$matchError")
+		runtime := "} catch (" + failure + ") { " + name + ".threw(" + failure + "); throw " + failure + "; } finally { " + name + ".finish(); } "
+		w.chunks = append(w.chunks, chunk{kind: editPatternFlow, part: partWhole, fields: []string{"", runtime}})
 	}
 }
 

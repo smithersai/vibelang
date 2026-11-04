@@ -522,6 +522,10 @@ func (p *projector) visit(node *ast.Node, e env) {
 
 // visitChildren walks node's children in order.
 func (p *projector) visitChildren(node *ast.Node, e env) {
+	if node.Kind == ast.KindBlock {
+		p.visitList(node.Statements(), e)
+		return
+	}
 	node.ForEachChild(func(child *ast.Node) bool {
 		p.visit(child, e)
 		return false
@@ -530,6 +534,23 @@ func (p *projector) visitChildren(node *ast.Node, e env) {
 
 // visitList walks nodes in order.
 func (p *projector) visitList(nodes []*ast.Node, e env) {
+	for _, node := range nodes {
+		if parser.VibeLangMatchCacheDeclaration(node) == nil {
+			continue
+		}
+		owner := node.Parent
+		if owner == nil || owner.Kind != ast.KindBlock || len(nodes) != len(owner.Statements()) {
+			break
+		}
+		start := p.tokenStart(owner)
+		if start >= len(p.text) || p.text[start] != '{' {
+			break
+		}
+		w := &printer{p: p, names: map[string]string{}}
+		w.blockContents(owner, nodes, e)
+		p.synthesizedChunks(owner, w.chunks, start+1, owner.End()-1)
+		return
+	}
 	for _, node := range nodes {
 		p.visit(node, e)
 	}
