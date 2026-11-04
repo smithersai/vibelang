@@ -38,7 +38,10 @@ func TestPlatformBufferByteLengthCase(t *testing.T) {
 		_, rest, _ := strings.Cut(text, "\n")
 		return rest
 	}
-	if body(got) != body(string(want)) {
+	// The passing fixture alone owns runtime-harness metadata. Its main and
+	// every actual input comment still compare byte for byte after the fix.
+	wantBody := strings.Replace(body(string(want)), "// expect-result: [2,4,0,2,1,3]\n", "", 1)
+	if body(got) != wantBody {
 		t.Fatalf("--fix writes\n%s\nwant\n%s", got, want)
 	}
 	if again := fixCase(t, copyCompilerFixture(t, filepath.Join(cases, "platform-buffer-bytelength-fixed"), root)); len(again.Files) != 0 {

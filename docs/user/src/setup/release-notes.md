@@ -209,6 +209,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 - Declaration fuzzing could reject its own registered cases by renaming their Effect TypeScript reference into retired VibeLang syntax. It now checks their written VibeLang counterparts while retaining the original seed selection and admission guard.
 
+- The `Buffer.byteLength` quick-fix pair keeps its Unicode runtime witness without treating its expected-error input as a runnable fuzz host.
+
 - The `Buffer.byteLength` quick-fix regression now checks the same Unicode runtime witness on both input and output, preserving its exact rewrite and idempotence checks.
 
 - An unrelated Oxlint config could switch `vibelang lint` away from its compiler project, hide TypeScript errors and reject compiler flags. Native lint now keeps the selected project's options and diagnostics regardless of those files.
