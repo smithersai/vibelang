@@ -53,6 +53,77 @@ for (const [before, after] of [
   expect(changedRules([doc(after, before)])).toEqual([])
 })
 
+test("VIP-32 attribution-only privacy edit changes no normative sentences", () => {
+  const before = "**Amended 2026-10-29: repos that already use VibeLang.** The published `vibelang-runtime` enforces its exact Effect pin, so the Effect upgrade lands together with the VibeLang release pinned to the new Effect, not before it (found by smithers-3a on Smithers). Recorded under Will's standing approval of recommendations."
+  const after = before.replace("found by smithers-3a on Smithers", "found while upgrading Smithers")
+  expect(changedRules([{ path: "docs/design/vips/0032-effect-version.md", before, after }])).toEqual([])
+  expect(changedRules([doc(after.replace("pinned to the new Effect", "pinned to the current Effect"), before)])).toHaveLength(1)
+})
+
+test("EK1010 attribution-only privacy edit changes no normative sentences in all three locations", () => {
+  const chapterBefore = "The new punctuator-only comma case is a warning until `vibelang --fix` can parenthesize it: Will's rule (effectscript-11, 23:05Z) is codemod first, then the error; a new error never lands ahead of its `--fix`."
+  const chapterAfter = "The new punctuator-only comma case is a warning until `vibelang --fix` can parenthesize it: the preserving codemod ships before the new error; a new error never lands ahead of its `--fix`."
+  const appendixBefore = "Its new punctuator-only comma case temporarily reports warning `EK1010` until the parenthesizing `vibelang --fix` ships, following Will's rule (effectscript-11, 23:05Z): codemod first, then the error."
+  const appendixAfter = "Its new punctuator-only comma case temporarily reports warning `EK1010` until the parenthesizing `vibelang --fix` ships: the preserving codemod ships before the new error."
+  const tableBefore = "| `EK1010` | warning for the new punctuator-only comma case until its parenthesizing `vibelang --fix` ships (Will, effectscript-11, 23:05Z: codemod first, then the error); existing operator-left violations (D186, S10-12) remain errors; parenthesize the operand or the throw | 41 | [Failures](003-failures.md#throw-expressions) |"
+  const tableAfter = tableBefore.replace("Will, effectscript-11, 23:05Z: codemod first, then the error", "the preserving codemod ships before the new error")
+  const changes = [
+    { path: "docs/design/src/003-failures.md", before: chapterBefore, after: chapterAfter },
+    { path: "docs/design/src/900-appendices.md", before: appendixBefore + "\n\n" + tableBefore, after: appendixAfter + "\n\n" + tableAfter }
+  ]
+  expect(changedRules(changes)).toEqual([])
+  for (const [before, after] of [[chapterBefore, chapterAfter], [appendixBefore, appendixAfter], [tableBefore, tableAfter]]) {
+    expect(changedRules([doc(after, before)])).toEqual([])
+    expect(changedRules([doc(after.replace("before the new error", "after the new error"), before)])).toHaveLength(1)
+  }
+})
+
+test("editorial parentheses and discovery clauses normalize prose presentation", () => {
+  for (const [before, after] of [
+    ["The `rule` applies (editorial note).", "THE `rule` applies!"],
+    ["The `rule` applies (found by Alice).", "The `rule` applies (reported by Bob)."],
+    ["The `rule` applies, found by reviewer.", "The `rule` applies."],
+    ["The `rule` applies (earlier note) (another note).", "The `rule` applies."],
+    ["The `rule` applies; (editorial note) with care.", "The `rule` applies, with care."]
+  ]) expect(changedRules([doc(after, before)])).toEqual([])
+})
+
+test("parenthetical and attribution stripping never hides rule-bearing changes", () => {
+  for (const [before, after] of [
+    ["EK1010", "EK1011"], ["TS2322", "TS2345"], ["4.1.1", "4.1.2"], ["0", "1"],
+    ["`Result<T>`", "`Result<U>`"], ["Result", "Option"], ["string", "number"],
+    ["readonly", "abstract"], ["await", "yield"], ["schema", "service"],
+    ["a.b", "a.c"], ["a! + b", "a + b"], ["a | b", "a & b"], ["f(x)", "f(y)"],
+    ["compiles", "does something"], ["means success", "means failure"],
+    ["must pass", "must fail"], ["never pass", "never fail"], ["only pass", "only fail"],
+    ["must pass", "pass"], ["not accepted", "accepted"], ["new error", "existing error"],
+    ["`a.b`", "`a b`"], ["`value!`", "`value`"], ["`type`", "`Type`"]
+  ]) {
+    for (const wrap of [
+      (note: string) => "The `rule` applies (" + note + ").",
+      (note: string) => "The `rule` applies (found by reviewer: " + note + ").",
+      (note: string) => "The `rule` applies, found by reviewer: " + note + ".",
+      (note: string) => "The `rule` applies (Will's rule: " + note + ").",
+      (note: string) => "The `rule` applies (editorial (" + note + "))."
+    ]) expect(changedRules([doc(wrap(after), wrap(before))]), wrap(before) + " -> " + wrap(after)).toHaveLength(1)
+    expect(changedRules([doc("The `rule` applies.", "The `rule` applies (" + before + ").")])).toHaveLength(1)
+  }
+  expect(changedRules([doc("The `rule` applies (a).", "The `rule` applies (a!).")])).toHaveLength(1)
+  expect(changedRules([doc("The `call(note)` means failure.", "The `call` means failure.")])).toHaveLength(1)
+  expect(changedRules([doc("The `call(found by reviewer)` means failure.", "The `call` means failure.")])).toHaveLength(1)
+})
+
+test("attribution removal preserves changes elsewhere and does not suppress new rules", async () => {
+  const before = "The `rule` must pass (found by reviewer)."
+  for (const after of [
+    "The `rule` must fail (editorial note).",
+    "The `rule` never passes.",
+    "The `rule` must pass. The `other` must fail (editorial note)."
+  ]) expect(changedRules([doc(after, before)])).toHaveLength(1)
+  expect((await checkEntry(entry(doc("The `rule` must pass.", before)), okTwin)).findings).toEqual([])
+  expect((await checkEntry(entry(doc("The `rule` must fail.", before)), okTwin)).findings).toHaveLength(1)
+})
+
 test("exempts generated pages, non-spec docs, unchanged moved rules and fenced code", () => {
   expect(changedRules([doc("<!-- Generated by docs. -->\n`try` must run.")])).toEqual([])
   expect(changedRules([{ path: "docs/user/src/rules.md", before: "", after: "`try` must run." }])).toEqual([])

@@ -106,6 +106,55 @@ export function normative(text: string): boolean {
   return /`[^`]+`|\b(?:EK|TS)\d{4,}\b|\b(?:must|compiles?|means)\b|\bis an? error\b/i.test(text)
 }
 
+// Strip editorial notes only when they contain no rule-bearing content. A closed
+// provenance form may contain an author handle and timestamp; other numbers,
+// code, type names, language keywords and normative clauses stay significant.
+const ruleWords = new Set([
+  ...Array.from({ length: ts.SyntaxKind.LastKeyword - ts.SyntaxKind.FirstKeyword + 1 },
+    (_, i) => ts.tokenToString(ts.SyntaxKind.FirstKeyword + i)),
+  "effect", "error", "schema", "data", "service", "match", "when", "fork", "join", "provide",
+  "uninterruptible", "interruptible", "restore", "concurrent", "must", "never", "only",
+  "not", "no", "without", "unless", "cannot", "should", "shall", "required", "compile", "compiles", "means"
+])
+const hasRuleContent = (text: string) => /[\x60\x00\p{N}]|[<>=+*/{}\[\]\\|&!%?^~]|[\w$]\.[\w$]/u.test(text) ||
+  (text.match(/[A-Za-z_$][\w$]*/g) ?? []).some(word => ruleWords.has(word.toLowerCase()) || /[A-Z_$]/.test(word))
+
+function attributionComparable(text: string): string {
+  const protectedSpans: string[] = []
+  const protect = (part: string) => "\x00" + (protectedSpans.push(
+    part.replace(/\x00(\d+)\x00/g, (_, index) => protectedSpans[Number(index)])) - 1) + "\x00"
+  // Work outside inline code, including parentheses and punctuation in code.
+  let prose = text.replace(/\x60+[^\x60]*\x60+/g, protect)
+    .replace(/\(effectscript-\d+,\s*\d{1,2}:\d{2}Z\)/gi, " ")
+    .replace(/\(Will,\s*effectscript-\d+,\s*\d{1,2}:\d{2}Z:\s*/gi, "(")
+    .replace(/,\s*following Will's rule\s*:\s*/gi, ": ")
+    .replace(/\bWill's rule\s+is\s+/gi, "")
+  // The historical EK1010 privacy edit also spells out this exact ordering.
+  // Keep the policy itself, rather than deleting the rest of an attribution.
+  prose = prose.replace(/\bcodemod first,\s*then the error\b/gi, "the preserving codemod ships before the new error")
+  prose = prose.replace(/\(([^()]*)\)/g, (whole, inner: string, offset: number, source: string) => {
+    // An argument list or link target is not a prose parenthetical.
+    if (offset && /[\w$)\]>]/.test(source[offset - 1])) return protect(whole)
+    // Explicit discovery provenance can name an author or project. Check any
+    // remaining clause normally, so a colon cannot smuggle a rule into a note.
+    const discovery = inner.trim().replace(
+      /^(?:(?:found|discovered|reported|identified) by|found while (?:upgrading|using|testing|reviewing))\s+([A-Za-z][\w-]*)(?:\s+on\s+([A-Za-z][\w-]*))?(?=$|[,:;])/i,
+      (source, name: string, project?: string) =>
+        /^(?:EK|TS)\d|^\d/i.test(name) || ruleWords.has(name.toLowerCase()) ||
+        (project && (/^(?:EK|TS)\d/i.test(project) || ruleWords.has(project.toLowerCase()))) ? source : ""
+    )
+    return hasRuleContent(discovery) ? protect(whole) : " "
+  })
+  prose = prose.replace(/(?:[,;:]|\s[-–—])\s*((?:found (?:by|while)|discovered by|reported by|identified by)\b[^.!?]*)([.!?]?)$/i,
+    (whole, clause: string) => {
+      const body = clause.replace(/^(?:found (?:by|while)|discovered by|reported by|identified by)\s+/i, "")
+      return hasRuleContent(body) ? whole : " "
+    })
+  // Normalize prose punctuation and case without touching protected material.
+  prose = prose.replace(/[.,;:!?](?=\s|$)/g, " ").toLowerCase().replace(/\s+/g, " ").trim()
+  return prose.replace(/\x00(\d+)\x00/g, (_, index) => protectedSpans[Number(index)])
+}
+
 export function changedRules(changes: Change[]): Sentence[] {
   const docs = changes.filter(c => specPath(c.path))
   // Compare the whole entry, so moving a rule to another chapter is exempt.
@@ -113,9 +162,11 @@ export function changedRules(changes: Change[]): Sentence[] {
   const next = docs.flatMap(c => sentences(c.path, c.after))
   const unmatched = (a: Sentence[], b: Sentence[]) => {
     const existing = new Set(b.map(s => canonical(s.text)))
+    const editorial = new Set(b.map(s => attributionComparable(s.text)))
     // Copying a published rule into its VIP or another chapter changes its
     // location/authority citation, not what the rule says.
-    return a.filter(s => !existing.has(canonical(s.text)) && normative(s.text))
+    return a.filter(s => !existing.has(canonical(s.text)) &&
+      !editorial.has(attributionComparable(s.text)) && normative(s.text))
   }
   // A deletion adds no obligation. Semantic review still decides whether
   // removing a rule is appropriate; this gate asks for evidence of additions.
