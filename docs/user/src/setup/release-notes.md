@@ -23,6 +23,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - The matching guide repeated conflicting rules for `is` binding homes. It now describes the current scopes, temporal dead zone and native redeclaration errors together.
 - Converting sequential catch pipelines could leave recovery combinators behind, and a grouped `try` could leave part of its operand outside recovery. The converter now keeps intermediate programs cold and recovers the complete grouped operand.
 
+- The legacy JavaScript regression check failed on a call to `Function` after its throwing contract was tracked; it now checks both the legacy-reference error and the plain-call error.
+
 - Optional property access on a nullable function could read its `constructor` without `EK0107`; it now reports the same diagnostic as a direct function-constructor read.
 - Migration batches still ran project-wide repairs before restoring unrelated files, making small retries slow in large packages. The flow now passes the selected files through `--only` and skips an empty batch.
 - Migration verification could report a missing declaration for a module returned to TypeScript when its package export kept a source `types` condition. Declaration snapshots now preserve that recorded source path and still reject changed types, documentation and missing provenance.

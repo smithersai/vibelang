@@ -1375,5 +1375,45 @@
       "reference": "docs/design/vips/0006-effect-globals.md: accepted by Will (2026-10-28); every value export of effect's Effect module is a global, and chapter 005 and VIP-33 name bare interrupt and yieldNow as those native values, retiring the runtime's wrappers"
     },
     "reason": "Fixture port for the native yield value: the case wrote the retired runtime wrapper call try yieldNow() and now writes the Effect value try yieldNow. It rejects the same rule as before; no new rejected form is added."
+  },
+  {
+    "code": "EK0401",
+    "case": "typescript/vibelang/cases/legacy-javascript.fail",
+    "vip": "VIP-4",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0004-throw.md: Status: accepted by Will, 2026-10-28; plain synchronous code rejects calls known to throw. This cites existing published acceptance, not a new approval."
+    },
+    "reason": "Only the expected diagnostics change. The executable source already fails with EK0107 and native strict-mode errors; its Function call independently has the known SyntaxError contract required by VIP-4. Recording EK0401 preserves every existing rejection and introduces no newly rejected program or compiler behavior."
+  },
+  {
+    "code": "EK0107",
+    "case": "typescript/vibelang/cases/legacy-javascript.fail",
+    "vip": "VIP-1",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0001-effect-and-async-functions.md: Status: accepted by Will, 2026-10-28; its legacy-JavaScript amendment rejects arguments, eval, global Function and with statements. This records existing published acceptance, not a new approval."
+    },
+    "reason": "This diagnostic is unchanged in the exact snapshot. Only the fixture's expected-code comment and the independently required EK0401 snapshot entry change; its executable source was already rejected. A matching previous-compiler receipt confirms zero retirements. Retain this narrow record for offline prechecks without that oracle."
+  },
+  {
+    "code": "TS1101",
+    "case": "typescript/vibelang/cases/legacy-javascript.fail",
+    "vip": "VIP-1",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0001-effect-and-async-functions.md: Status: accepted by Will, 2026-10-28; its legacy-JavaScript amendment rejects arguments, eval, global Function and with statements. This records existing published acceptance, not a new approval."
+    },
+    "reason": "This diagnostic is unchanged in the exact snapshot. Only the fixture's expected-code comment and the independently required EK0401 snapshot entry change; its executable source was already rejected. A matching previous-compiler receipt confirms zero retirements. Retain this narrow record for offline prechecks without that oracle."
+  },
+  {
+    "code": "TS2410",
+    "case": "typescript/vibelang/cases/legacy-javascript.fail",
+    "vip": "VIP-1",
+    "approval": {
+      "by": "Will",
+      "reference": "docs/design/vips/0001-effect-and-async-functions.md: Status: accepted by Will, 2026-10-28; its legacy-JavaScript amendment rejects arguments, eval, global Function and with statements. This records existing published acceptance, not a new approval."
+    },
+    "reason": "This diagnostic is unchanged in the exact snapshot. Only the fixture's expected-code comment and the independently required EK0401 snapshot entry change; its executable source was already rejected. A matching previous-compiler receipt confirms zero retirements. Retain this narrow record for offline prechecks without that oracle."
   }
 ]

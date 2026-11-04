@@ -1,4 +1,4 @@
-// expect: EK0107 TS1101 TS2410
+// expect: EK0107 EK0401 TS1101 TS2410
 // VIP-1 and VIP-4: eval, the Function constructor, arguments, with, a
 // function value's .constructor and data:/blob: specifiers are EK0107
 // anywhere in a .vibe file, plain functions included. Property names, the
