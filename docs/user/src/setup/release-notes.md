@@ -205,6 +205,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - The runtime reference omitted `$registerErrorMatcher`; it now documents the exported helper and how it preserves error-family matching.
 - Migrated packages could fail to build or load because the migrate flow deleted the JavaScript emitted for inline module declarations. It now keeps those companion files beside their parent and records every generated file without replacing the parent entry.
 - Migration setup could enable Vite’s native config loader while a helper still used an extensionless import, causing `ERR_MODULE_NOT_FOUND`. Setup now spells owned relative runtime imports with the source extension TypeScript resolves before enabling native loading, and stops if a required helper edit is unsafe.
+- `vibelang --fix` could refuse a named `Effect.fn` returning a literal object with `TS2322`. It now retains the written or contextual return type inside the span.
 - A variable named `module` followed by `as`, `satisfies`, `is` or `of` and an object type, pattern or literal, as in `(module as { model?: unknown }).model`, failed with `EK4003` ("A module expression is not supported"). It now reads as the identifier `module`, as in TypeScript; `module { … }` and `module name { … }` inside an expression still report `EK4003`.
 
 - Migrating a module reached through an exact `paths` alias could rewrite imports to a name absent from the configuration, such as `models.vibe`. Those imports now name the same migrated source by a relative path, and revert restores the original alias.

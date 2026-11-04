@@ -502,6 +502,13 @@ func lineSpan(text string, line int) (int, int) {
 
 // declineReason is why --fix leaves d: its first note that is not a fix's.
 func declineReason(d *ast.Diagnostic) string {
+	// A planner's refusal is more specific than an earlier explanatory note
+	// such as EK1002's generic "write the body as an ordinary function".
+	for _, n := range d.MessageChain() {
+		if text := n.MessageText(); strings.HasPrefix(text, "No quick fix:") {
+			return "no fix applies: " + text
+		}
+	}
 	for _, n := range d.MessageChain() {
 		if text := n.MessageText(); text != "" && !strings.Contains(text, "quick fix writes") {
 			return "no fix applies: " + text

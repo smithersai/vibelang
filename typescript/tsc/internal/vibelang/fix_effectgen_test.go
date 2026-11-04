@@ -99,7 +99,7 @@ func TestEffectGenQuickFixes(t *testing.T) {
 		{"Effect.fn", "export const f = Effect.fn(function* (n: number) {\n  return yield* Effect.succeed(n)\n})\n",
 			"export const f = effect (n: number) => {\n  return n\n}\n"},
 		{"Effect.fn with a return annotation", "export const f = Effect.fn(\"f\")(function* (n: number): Effect.fn.Return<number> {\n  return yield* Effect.succeed(n)\n})\n",
-			"export const f = effect (n: number): Effect.Effect<number> => try Effect.withSpan(effect {\n  return n\n}, \"f\")\n"},
+			"export const f = effect (n: number): Effect.Effect<number> => try Effect.withSpan((effect (): Effect.Effect<number> => {\n  return n\n})(), \"f\")\n"},
 		{"Effect.fn reading import.meta", "export const f = Effect.fn(function* () {\n  return import.meta.url\n})\n",
 			"export const f = effect () => {\n  return import.meta.url\n}\n"},
 		{"Effect.fnUntraced where a plain member is declared", "import * as Context from \"effect/Context\"\nexport const Addresses = Context.Reference<Effect.Effect<ReadonlySet<string>>>(\"Addresses\", {\n  defaultValue: Effect.fnUntraced(function* () {\n    const resolved = yield* Effect.succeed([\"a\"])\n    return new Set(resolved)\n  }),\n})\n",

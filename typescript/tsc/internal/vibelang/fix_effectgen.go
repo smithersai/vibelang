@@ -219,6 +219,18 @@ func readGeneratorCall(c *checker.Checker, file *ast.SourceFile, call *ast.Node)
 			return g, "its generator has a return type other than Effect.fn.Return"
 		}
 	}
+	// Effect.fn can also receive its result contract from the declaration
+	// that holds it. Keep that contextual return type beside the body,
+	// including when withSpan introduces a generic call around the program.
+	if g.isFn && g.span != nil && g.returns == "" && len(g.stages) == 0 {
+		if contextual := c.GetContextualType(call, checker.ContextFlagsNone); contextual != nil {
+			if signatures := c.GetSignaturesOfType(contextual, checker.SignatureKindCall); len(signatures) == 1 {
+				if returned := c.GetReturnTypeOfSignature(signatures[0]); isEffectType(c, returned) {
+					g.returns = c.TypeToStringEx(returned, generator, checker.TypeFormatFlagsNoTruncation|checker.TypeFormatFlagsUseFullyQualifiedType, nil)
+				}
+			}
+		}
+	}
 	return g, ""
 }
 
@@ -519,6 +531,13 @@ func effectFnText(c *checker.Checker, file *ast.SourceFile, g *generatorCall, bo
 		return "effect " + signature + " => " + body, ""
 	}
 	program := "effect " + body
+	if g.returns != "" {
+		// A generic withSpan does not contextualize the body's return
+		// expression: { version: 1 } would widen to { version: number }.
+		// An explicitly typed cold function retains that context and
+		// runs its body only when the surrounding span runs the program.
+		program = "(effect (): " + g.returns + " => " + body + ")()"
+	}
 	for _, stage := range g.stages {
 		if ast.IsSpreadElement(stage) {
 			return "", "a stage is a spread, which a pipe's stage has no access to"
