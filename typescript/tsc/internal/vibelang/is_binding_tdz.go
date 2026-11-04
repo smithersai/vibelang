@@ -13,7 +13,12 @@ func (p *plan) planIsBindingTDZ(c *checker.Checker, file *ast.SourceFile) {
 	p.isBindingReferences = map[*ast.Node]*ast.Node{}
 	var visit func(*ast.Node) bool
 	visit = func(node *ast.Node) bool {
-		if ast.IsVariableDeclaration(node) && node.Flags&ast.NodeFlagsVibeLangIsBinding != 0 {
+		// A for-each head binding's per-item copy carries its initializer, the
+		// head cell read when the item starts: it is not a cell a skipped
+		// pattern leaves uninitialized, so it keeps that initializer. Its
+		// references still read through the guard, so a head the pattern
+		// skipped stays uninitialized in its copy too.
+		if ast.IsVariableDeclaration(node) && node.Flags&ast.NodeFlagsVibeLangIsBinding != 0 && node.AsVariableDeclaration().Initializer == nil {
 			p.isBindingDeclarations[node] = true
 		}
 		if ast.IsIdentifier(node) && node.Flags&ast.NodeFlagsReparsed == 0 {
