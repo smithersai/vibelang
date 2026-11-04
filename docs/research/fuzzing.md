@@ -12,6 +12,10 @@ Spec quote checks from independent fuzz targets need distinct Go names. Keep eac
 
 The `FuzzEffectGlobals` clash inputs cover direct values, type queries, object shorthand, closures and both global/module switches against the native Effect export type. Keyword spellings stay unavailable as global values while compiler-generated interruption statements retain their helper bindings.
 
+## Catch execution heads
+
+`FuzzCatchExecutionHead` quotes VIP-5 and pairs each execution head with an actual source-parentheses barrier. Its keyed corpus covers erased wrappers and unary/binary paths with both scalar and Effect-valued results, so operand-type errors cannot hide `EK0505`. Existing keys retain their Effect-valued inputs; `scalar:` keys select the additional result family.
+
 ## Quick-fix behavior oracle
 
 `FuzzQuickFixBehavior` reads the EK inventory from the compiler's registered

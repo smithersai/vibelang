@@ -1,5 +1,5 @@
-// expect: EK0505
-// Chapter 2: For `EK0505`'s head search, [runtime-erased TypeScript expression wrappers](https://github.com/micro
+// expect: EK0505 EK0506
+// Chapter 2: erased wrappers are transparent; source parentheses stop the search, leaving scalar operands as EK0506.
 // docs/design/src/002-running.md#1e05104332254623
 import { Effect } from "effect"
 declare const program: Effect.Effect<number>

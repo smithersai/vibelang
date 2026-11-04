@@ -141,3 +141,50 @@ func TestCatchExecutionForkDiagnosticPrecedence(t *testing.T) {
 		})
 	}
 }
+
+// VIP-5 checks source execution heads before their scalar/Fiber result types.
+// Pair every erased wrapper with a real source-parentheses barrier.
+func TestCatchExecutionScalarWrapperPrecedence(t *testing.T) {
+	for _, head := range []struct{ expression, result string }{
+		{"try p", "number"},
+		{"fork p", "Fiber.Fiber<number, string>"},
+		{"join fiber", "number"},
+		{"try.all [p]", "number[]"},
+	} {
+		for _, wrap := range []string{"direct", "as", "assertion", "satisfies", "nonnull"} {
+			for _, grouped := range []bool{false, true} {
+				expression := head.expression
+				want := int32(505)
+				if grouped {
+					expression = "(" + expression + ")"
+					want = 506
+				}
+				switch wrap {
+				case "as":
+					expression += " as " + head.result
+				case "assertion":
+					expression = "<" + head.result + ">" + expression
+				case "satisfies":
+					expression += " satisfies " + head.result
+				case "nonnull":
+					expression += "!"
+				}
+				t.Run(expression, func(t *testing.T) {
+					source := "declare const p: Effect.Effect<number, string>; declare const fiber: Fiber.Fiber<number, string>; export effect function main(){ " + expression + " catch () => 0; return 0 }"
+					program, file, _, _ := editorProgram(t, source)
+					counts := map[int32]int{}
+					var messages []string
+					for _, d := range program.GetSemanticDiagnostics(t.Context(), file) {
+						if d.Category() == diagnostics.CategoryError {
+							counts[d.Code()]++
+							messages = append(messages, d.String())
+						}
+					}
+					if counts[want] != 1 || counts[505]+counts[506] != 1 || len(counts) != 1 {
+						t.Fatalf("expected only EK%04d, got %v\n%s", want, counts, strings.Join(messages, "\n"))
+					}
+				})
+			}
+		}
+	}
+}

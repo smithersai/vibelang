@@ -60,6 +60,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - Generated declarations for a `module` body could import a relocated compiler output and make a rebuild fail with `TS5055`. They now retain source-module imports, and returning a migrated source to TypeScript removes the declarations owned by its module bodies.
 
 - A labeled `continue` naming its own `for concurrent` loop could produce invalid JavaScript. It now ends that item, including through nested native loops and chained labels.
+- A `catch` execution head wrapped in `satisfies` could report a generated TypeScript operand error beside `EK0505`. It now reports the source diagnostic while preserving independent wrapper type errors.
+
 - Moving an exported `unique symbol` into a private module could make an unchanged API fail migration verification. The checker now follows its public export path while still rejecting changed symbol keys, member types and documentation.
 
 ## 0.0.11

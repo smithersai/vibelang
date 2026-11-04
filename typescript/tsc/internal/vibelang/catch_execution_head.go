@@ -8,6 +8,7 @@ import (
 	"github.com/microsoft/TypeScript/tsc/internal/ast"
 	"github.com/microsoft/TypeScript/tsc/internal/checker"
 	"github.com/microsoft/TypeScript/tsc/internal/ls"
+	"github.com/microsoft/TypeScript/tsc/internal/scanner"
 )
 
 type catchExecutionDiagnosticsKey struct{}
@@ -89,7 +90,9 @@ func checkCatchExecutionHead(c *checker.Checker, file *ast.SourceFile, call, lef
 		}
 	})
 	if found {
-		catchExecutionMismatchStarts(c)[file] = append(catchExecutionMismatchStarts(c)[file], nodeStart(file, left))
+		// Match diagnostic anchors: satisfies points at its keyword,
+		// while the source execution head starts at its operand.
+		catchExecutionMismatchStarts(c)[file] = append(catchExecutionMismatchStarts(c)[file], scanner.GetErrorRangeForNode(file, left).Pos())
 	}
 	return found
 }

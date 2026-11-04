@@ -1,0 +1,29 @@
+// expect: EK0505
+// VIP-5: source execution heads precede scalar/Fiber operand typing.
+// Erased wrappers preserve that diagnostic; actual parentheses are tested separately.
+import { Effect, Fiber } from "effect"
+declare const p: Effect.Effect<number, string>
+declare const fiber: Fiber.Fiber<number, string>
+export effect function main() {
+  try p catch () => 0;
+  try p as number catch () => 0;
+  <number>try p catch () => 0;
+  try p satisfies number catch () => 0;
+  try p! catch () => 0;
+  fork p catch () => 0;
+  fork p as Fiber.Fiber<number, string> catch () => 0;
+  <Fiber.Fiber<number, string>>fork p catch () => 0;
+  fork p satisfies Fiber.Fiber<number, string> catch () => 0;
+  fork p! catch () => 0;
+  join fiber catch () => 0;
+  join fiber as number catch () => 0;
+  <number>join fiber catch () => 0;
+  join fiber satisfies number catch () => 0;
+  join fiber! catch () => 0;
+  try.all [p] catch () => 0;
+  try.all [p] as number[] catch () => 0;
+  <number[]>try.all [p] catch () => 0;
+  try.all [p] satisfies number[] catch () => 0;
+  try.all [p]! catch () => 0;
+  return 0
+}
