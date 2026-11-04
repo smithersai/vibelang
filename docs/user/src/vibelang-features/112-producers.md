@@ -150,6 +150,8 @@ function* countdown(from: number): Generator<number> {
 
 A plain `function*` is a JavaScript generator, with or without a return annotation such as `Generator`, `Iterator`, `Iterable`, or their async forms, for APIs that call `.next()`. Its `throw`, `try`/`catch`, and iterator protocol keep their JavaScript meaning. A generator method, `*[Symbol.iterator]() { … }` in a class or an object literal, is a JavaScript generator too. Yield an Effect value, `load()`, to hand one out without running it. An `async function*` is an AsyncIterable. Calling a synchronous or `async` generator runs its parameter defaults and destructuring, but its body waits until the iterator is resumed. Throw tracking at that call includes parameter initialization, not the suspended body; an iterator's `next`, `throw` and `return` calls have their own signature contracts. Use `effect function*` for a Stream, or `effect *name()` for a producer method.
 
+Nearby Effect code does not change a plain generator’s native calls, `yield` values or `yield*` delegation. This also applies in a file that consumes a Stream with `for try`.
+
 ## Coming from Effect
 
 Declare a generator-based Stream source with `effect function*`. Write `try` for Effects between `yield` statements, and reserve `yield` for emitted values. Use Stream's existing operators when they express the transformation you need.

@@ -273,7 +273,7 @@ Each row is one [cheat sheet](115-cheat-sheet.md) entry: its Effect TypeScript b
 | [Pattern matching with match and is](116-match-and-is.md) | 11,000 |
 | [Diagnostic code map](diagnostic-code-map.md) | 3,300 |
 | [Experimental platform APIs](118-experimental-platform-apis.md) | 10,000 |
-| **All 8 pages** | **51,000** |
+| **All 8 pages** | **52,000** |
 
 ### Specification
 

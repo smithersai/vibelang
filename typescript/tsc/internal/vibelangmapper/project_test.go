@@ -453,9 +453,9 @@ var projectionCases = []struct {
 		virtual: "async function* steps(): AsyncGenerator<number> { yield await f() }\n",
 	},
 	{
-		name:    "top-level calls stay and an async function is TypeScript (VIP-1); a generator function is a producer (D26)",
+		name:    "top-level calls and async functions stay native; plain generators stay native (VIP-1, VIP-21)",
 		source:  "const top = f()\nasync function a() { return f() }\nfunction* g() { yield f() }\n",
-		virtual: "const top = f()\nasync function a() { return f() }\nfunction g() { return $produce(function* () { yield $emit((yield* $run($value(f)()))) })}\n",
+		virtual: "const top = f()\nasync function a() { return f() }\nfunction* g() { yield f() }\n",
 	},
 	{
 		name:    "a service is an interface and a key (D45)",
@@ -548,9 +548,9 @@ var projectionCases = []struct {
 		virtual: "function describe(e: Failure) { return $gen(function* () {\n  const $c = yield* $catch($gen(function* () {\n    return $box((yield* $run(find(e))))\n  }), (error) => $gen(function* () {\n    switch (error._tag) {\n      case \"A\": return $box(\"a\")\n      case \"B\": return $box(\"b\")\n    }\n  })); return $unboxed($c)\n})}\n",
 	},
 	{
-		name:    "a producer is a Stream that emits its yields (D26)",
+		name:    "a plain generator retains calls and delegation beside Effect iteration (VIP-21)",
 		source:  "function* lookups(keys: string[]) {\n  for (const key of keys) yield Store.get(key)\n  yield* more()\n}\nfunction total() {\n  let sum = 0\n  for try (const n of lookups([\"a\"])) sum += n\n  return sum\n}\n",
-		virtual: "function lookups(keys: string[]) { return $produce(function* () {\n  for (const key of (yield* $each(keys))) yield $emit((yield* $run($use(Store).get(key))))\n  yield* $delegate((yield* $run($value(more)())))\n})}\nfunction total() { return $gen(function* () {\n  let sum = 0\n  for (const n of (yield* $eachStream((yield* $run(lookups([\"a\"])))))) sum += n\n  return sum\n})}\n",
+		virtual: "function* lookups(keys: string[]) {\n  for (const key of keys) yield Store.get(key)\n  yield* more()\n}\nfunction total() { return $gen(function* () {\n  let sum = 0\n  for (const n of (yield* $eachStream((yield* $run(lookups([\"a\"])))))) sum += n\n  return sum\n})}\n",
 	},
 	{
 		name:    "a layer without statements succeeds with its members",
