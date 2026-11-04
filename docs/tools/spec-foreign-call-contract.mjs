@@ -2,10 +2,18 @@ import { readFileSync } from "node:fs";
 import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
-// VIP-4 (2026-11-02), chapter 003: unannotated foreign signatures throw
-// unknown, which is included in the plain-code EK0401 check.
-export function unknownCallExemptions(text) {
-  return [...text.matchAll(/[^.\n]*\b(?:throwing|throws?)\s+(?:is\s+)?`?unknown`?[^.\n]*\b(?:stays|remains)\s+an?\s+ordinary\s+call[^.\n]*/gi)].map(m => m[0]);
+// VIP-40's accepted plain-code rule distinguishes unannotated unknown from
+// a written throwing contract; effect code still requires the wrapper.
+export const plainForeignClauses = [
+  "A call of `readText`, whose throwing is unknown, stays an ordinary call.",
+  "effect code requires the wrapper in rule 3",
+  "A written `@throws {unknown}` is a known throwing contract",
+  "the `try` block of a `try` statement with a `catch` clause in the same function",
+  "**`@throws {never}`** lets VibeLang call a body function directly",
+];
+export function plainForeignContractProblems(text) {
+  return plainForeignClauses.filter(clause => !text.includes(clause))
+    .map(clause => "VIP-40 missing foreign-call safeguard: " + clause);
 }
 // A deliberately bounded check of the implicit-prelude examples, where these
 // names resolve to npm exports. It does not guess contracts of arbitrary names.
@@ -20,7 +28,7 @@ export function directPreludeInitializers(markdown) {
 export function checkForeignExamples(root) {
   const vip = readFileSync(resolve(root, "vips/0040-module-declarations.md"), "utf8");
   const services = readFileSync(resolve(root, "src/005-services.md"), "utf8");
-  return [...unknownCallExemptions(vip).map(text => "VIP-40 exempts unknown foreign throws: " + text),
+  return [...plainForeignContractProblems(vip),
     ...directPreludeInitializers(services).map(name => "Unbridged npm initializer in prelude example: " + name)];
 }
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {

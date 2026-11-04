@@ -2,12 +2,21 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import fc from "fast-check";
 import { fileURLToPath } from "node:url";
-import { unknownCallExemptions, directPreludeInitializers, checkForeignExamples } from "./spec-foreign-call-contract.mjs";
+import { readFileSync } from "node:fs";
+import { plainForeignClauses, plainForeignContractProblems, directPreludeInitializers, checkForeignExamples } from "./spec-foreign-call-contract.mjs";
 
 const fence = code => "```vibe es\n// compiler-gap: pending VIP-14\n" + code + "\n```";
-test("r18 VIP-40 stale unknown-call exception fails the VIP-4 contract", () => {
-  assert.equal(unknownCallExemptions("A call of `readText`, whose throwing is unknown, stays an ordinary call, as the ruling says.").length, 1);
-  assert.deepEqual(unknownCallExemptions("A call whose unannotated signature throws `unknown` is rejected too."), []);
+test("accepted VIP-40 keeps plain unknown calls ordinary and effect calls wrapped", () => {
+  const text = readFileSync(new URL("../design/vips/0040-module-declarations.md", import.meta.url), "utf8");
+  assert.deepEqual(plainForeignContractProblems(text), []);
+  assert.ok(plainForeignContractProblems("Unannotated unknown calls are rejected in all code.").length > 0);
+});
+test("fast-check: every foreign-call tier and catch exemption remains required", () => {
+  const text = readFileSync(new URL("../design/vips/0040-module-declarations.md", import.meta.url), "utf8");
+  fc.assert(fc.property(fc.constantFrom(...plainForeignClauses), fc.nat(20), (clause, padding) => {
+    const changed = "Unrelated prose.\\n".repeat(padding) + text.replace(clause, "[removed]");
+    assert.equal(plainForeignContractProblems(changed).length, 1);
+  }), { seed: 1104106, numRuns: 200 });
 });
 test("r18 prelude example needs bridges for its three npm value calls", () => {
   const code = "const two = pipe(1, n => n + 1)\nconst first = Effect.Array.head([1, 2])\nconst o = Option.some(1)";

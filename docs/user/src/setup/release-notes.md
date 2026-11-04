@@ -202,6 +202,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Service documentation checks looked for superseded grammar production names; they now verify the folded whole-shape production and retain its restricted body and diagnostic recovery checks.
 
 - The no-throw documentation test rejected the added pattern-rule ownership of `EK0401`; it now checks every accepted owner while preserving the diagnostic and retired-code checks.
+
+- A documentation guard rejected the accepted plain-code rule for unannotated foreign calls; it now checks that rule together with written throwing contracts, catch exemptions and the stricter Effect wrapper requirement.
 - A `catch` handler written as a parameter list followed by a block, `x catch (e) { … }`, was a syntax error (`TS1005`) that hid every other error in the file. It is now `EK0509`, with a quick fix to `x catch effect (e) => { … }` when the block has no `break`, `continue`, `await` or `yield` of its own.
 
 - The grammar admission census could drift between its specification and fuzz inventory; both copies now generate from one source and fail checks on drift.
