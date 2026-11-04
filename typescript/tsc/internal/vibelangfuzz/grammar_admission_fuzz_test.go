@@ -67,6 +67,7 @@ var admissionLab = sync.OnceValues(func() (*grammarLab, error) {
 // classify before adding a pending line.
 var grammarAdmissionSeeds = []struct{ key, source string }{
 	{"plain", "const n = 1;"},
+	{"declaration-name-context", "effect function join(p) { return try p; }"},
 	{"effect", "effect function f(p) { return try p; }"},
 	{"block", "const p = effect { return 1; };"},
 	{"catch-arrow", "effect function f(p) { return p catch () => 1; }"},
@@ -730,12 +731,6 @@ func grammarAdmissionForm(source string) string {
 				open++
 			}
 			if open < len(ts) && ts[open].kind == 'w' {
-				// Appendix A Name: a declaration's own name takes the
-				// enclosing context's parameters. The lab gives it [+Effect].
-				declaration := i == 0 || tok.nl || ts[i-1].text == ";" || ts[i-1].text == "}" || ts[i-1].text == "{" || ts[i-1].text == "export"
-				if declaration && (ts[open].text == "fork" || ts[open].text == "join") {
-					return "admission:fiber-function-name"
-				}
 				open++
 			}
 		}
@@ -949,11 +944,11 @@ func TestGrammarAdmissionMutationKeys(t *testing.T) {
 	if bareSource != "effect join => function f ( p ) { return fork p ; }" || grammarAdmissionForm(bareSource) != "admission:fiber-binding" {
 		t.Errorf("bare parameter campaign witness did not replay under its precise key: %q", bareSource)
 	}
-	if got := grammarAdmissionForm("effect function join(p) { return 1; }"); got != "admission:fiber-function-name" {
-		t.Errorf("declaration name not keyed: %s", got)
+	if got := grammarAdmissionForm("effect function join(p) { return 1; }"); got != "" {
+		t.Errorf("admitted declaration name acquired a pending key: %s", got)
 	}
-	if got := grammarAdmissionForm("const g = effect function join(p) { return 1; };"); got == "admission:fiber-function-name" {
-		t.Errorf("expression name keyed as a declaration name")
+	if got := grammarAdmissionForm("const g = effect function join(p) { return 1; };"); got != "" {
+		t.Errorf("expression name acquired a retired pending key")
 	}
 	if got := grammarAdmissionForm("function f(p) { return p catch () => 1; }"); got != "admission:function-kind" {
 		t.Errorf("plain catch expression not keyed: %s", got)
@@ -988,8 +983,8 @@ func TestGrammarAdmissionMutationKeys(t *testing.T) {
 	if got := grammarAdmissionForm("join effect function f ( p ) { return throw try p ; }"); got != "admission:join-outside-effect" {
 		t.Errorf("module-level join with a throw expression keyed %s", got)
 	}
-	if got := grammarAdmissionForm("effect function * fork ( ) { yield 1 ; }"); got != "admission:fiber-function-name" {
-		t.Errorf("producer declaration named fork keyed %s", got)
+	if got := grammarAdmissionForm("effect function * fork ( ) { yield 1 ; }"); got != "" {
+		t.Errorf("admitted producer declaration named fork acquired a pending key: %s", got)
 	}
 	for _, source := range []string{"function f() {}", "if (ok) { x(); }", "g(1)\n{}", "const x = 'catch 1';", "const x = 'module M {';", "const x = a ?? b;", "function f() { throw e; }", "effect function f() { throw e; }", "function f(p) { return fork(p); }", "function f(p) { return fork + p; }", "effect function f(p) { return fork p; }", "function f(p) { return effect () => fork p; }"} {
 		if key := grammarAdmissionForm(source); key != "" {

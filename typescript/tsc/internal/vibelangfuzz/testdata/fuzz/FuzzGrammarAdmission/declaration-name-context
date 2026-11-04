@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("key:declaration-name-context\neffect function join(p) { return try p; }")

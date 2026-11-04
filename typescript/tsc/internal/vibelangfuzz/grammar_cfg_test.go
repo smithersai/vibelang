@@ -1046,7 +1046,46 @@ func grammarBuildGrammar(a *grammarAppendixData) *grammarCfg {
 		g.unresolved = append(g.unresolved, n)
 	}
 	sort.Strings(g.unresolved)
+	g.effectDeclarationNames()
 	return g.parameterize()
+}
+
+// effectDeclarationNames splits the declaration placement of a shared Appendix A
+// function production from its expression placement. Name's prose gives only
+// declarations the enclosing context; expression names keep the body's context.
+// Clone the parsed productions, including their source citations, rather than
+// restating a second grammar that could drift from Appendix A.
+func (g *grammarCfg) effectDeclarationNames() {
+	declarations := map[string]string{
+		"EffectFunction":         "EffectFunctionDeclaration",
+		"EffectFunctionOverload": "EffectFunctionOverloadDeclaration",
+		"Producer":               "ProducerDeclaration",
+	}
+	for _, r := range slices.Clone(g.rules) {
+		if name, ok := declarations[g.names[r.lhs]]; ok {
+			lhs := g.nt(name)
+			g.vibe[lhs] = g.vibe[r.lhs]
+			rhs := slices.Clone(r.rhs)
+			for i := range rhs {
+				if name, ok := declarations[rhs[i].text]; ok && rhs[i].kind == grammarSymNT {
+					rhs[i].text, rhs[i].nt = name, g.nt(name)
+				}
+			}
+			g.add(lhs, rhs, r.src, r.vibe)
+		}
+	}
+	for i := range g.rules {
+		r := &g.rules[i]
+		if g.names[r.lhs] != "HoistableDeclaration" {
+			continue
+		}
+		for k := range r.rhs {
+			s := &r.rhs[k]
+			if name, ok := declarations[s.text]; ok && s.kind == grammarSymNT {
+				s.text, s.nt = name, g.nt(name)
+			}
+		}
+	}
 }
 
 // grammarEffectBodies are the subset's function-like productions, whose parameters
@@ -1100,6 +1139,11 @@ func (g *grammarCfg) parameterize() *grammarCfg {
 				}
 				if s.kind == grammarSymNT {
 					s.eff = child
+					// A declaration binds its own name in the surrounding
+					// activation, before its Effect parameters/body begin.
+					if (owner == "EffectFunctionDeclaration" || owner == "EffectFunctionOverloadDeclaration" || owner == "ProducerDeclaration") && s.text == "Name?" {
+						s.eff = e
+					}
 					if s.effectArg != 0 {
 						s.eff = s.effectArg > 0
 					}

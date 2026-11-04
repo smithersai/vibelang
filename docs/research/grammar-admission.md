@@ -152,3 +152,13 @@ Reserved binding names inside `or` and `not` patterns now retain their
 native syntax diagnostics after lowering. The former
 `or-binding-reserved-name` pending entries are retired; the original keyed
 corpus and seed continue to check that these names have no derivation.
+
+The lab distinguishes a callable declaration from an expression when reading
+`Name`. An Effect declaration or producer binds its name in the enclosing
+context, so a top-level declaration may be named `fork` or `join`. Its
+parameters still reserve both names. An expression uses its own Effect
+context for its name, and a declaration nested directly in Effect code uses
+that enclosing Effect context. A nested plain callable resets that context.
+Overload names follow the same declaration rule. The former
+`fiber-function-name` lab pending entries are retired; their mutation corpus
+and the stable `declaration-name-context` witness remain regression inputs.
