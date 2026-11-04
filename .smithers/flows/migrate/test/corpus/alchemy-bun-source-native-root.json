@@ -1,0 +1,14 @@
+{
+  "module": "src/Git.ts",
+  "exports": {
+    "./Git": {
+      "types": "./lib/Git.d.ts",
+      "bun": "./src/Git.ts",
+      "default": "./lib/Git.js"
+    }
+  },
+  "source": "import WorkerLoader from \"./WorkerLoader.js?worker\"; export const loader = WorkerLoader;\n",
+  "worker": "src/WorkerLoader.ts",
+  "workerSource": "export default class WorkerLoader {}\n",
+  "note": "A Bun-only native worker entry is disconnected from migrated modules and keeps its authored source path."
+}

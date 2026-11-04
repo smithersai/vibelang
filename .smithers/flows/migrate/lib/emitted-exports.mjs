@@ -9,6 +9,7 @@ import { resolveRelative, resolveFile, resolveAliased } from "./imports.mjs"
 
 const native = /(?<!\.d)\.(?:[cm]?tsx?|[cm]?jsx?)$/
 const metadata = new Set(["types", "typings", "vibelang-source"])
+const nodeConditions = ["import", "require"].map(kind => new Set(["node", "node-addons", "module-sync", kind]))
 const skipped = (name) => name.startsWith(".") || ["node_modules", "dist", "coverage", "test", "tests", "__tests__", "fixtures"].includes(name)
 
 /** An untouched TypeScript runtime export can be an entry into a private .vibe module. */
@@ -40,6 +41,24 @@ function targets(value) {
   if (typeof value === "string") return [value]
   if (Array.isArray(value)) return value.flatMap(targets)
   return value && typeof value === "object" ? Object.entries(value).filter(([key])=>!["types","typings"].includes(key)).flatMap(([,item])=>targets(item)) : []
+}
+// A native source branch needs Node emission only when Node can select it.
+// Bun and Worker loaders can give the same authored source a different contract.
+function nodeTargets(value) {
+  const pick = (item, conditions) => {
+    if (item === null || typeof item === "string") return item
+    if (Array.isArray(item)) {
+      for (const next of item) { const found = pick(next, conditions); if (found !== undefined) return found }
+    } else if (item && typeof item === "object") {
+      for (const [key, next] of Object.entries(item)) {
+        if (key !== "default" && !conditions.has(key)) continue
+        const found = pick(next, conditions)
+        if (found !== undefined) return found
+      }
+    }
+    return undefined
+  }
+  return nodeConditions.map(conditions => pick(value, conditions)).filter(target => typeof target === "string")
 }
 function mappedTargets(map, key) {
   if (!map || typeof map !== "object" || Array.isArray(map)) return []
@@ -73,9 +92,9 @@ function runtimeComponentOutputs(root, outputs, pkg, typescript) {
   const runtimeEdges=new Map([...sources].map(source=>[source,new Set()]))
   const isPublic=source=>publicMaps.some(map=>{
     if(!map||typeof map!=="object"||Array.isArray(map)||Object.keys(map).every(key=>!key.startsWith(".")&&!key.startsWith("#"))) {
-      return targets(map).some(target=>target.startsWith("./")&&plainPath(target)===source)
+      return nodeTargets(map).some(target=>target.startsWith("./")&&plainPath(target)===source)
     }
-    for(const [key,item] of Object.entries(map)) for(const target of targets(item)) {
+    for(const [key,item] of Object.entries(map)) for(const target of nodeTargets(item)) {
       if(!target.startsWith("./")||!native.test(target))continue
       const star=matchPattern(plainPath(target),source)
       if(star===undefined)continue
@@ -90,7 +109,7 @@ function runtimeComponentOutputs(root, outputs, pkg, typescript) {
         if(selected===undefined)continue
         selectedStar=matchPattern(selected,exact)
       }
-      if(targets(map[selected]).some(path=>path.startsWith("./")&&plainPath(path.replaceAll("*",selectedStar))===source))return true
+      if(nodeTargets(map[selected]).some(path=>path.startsWith("./")&&plainPath(path.replaceAll("*",selectedStar))===source))return true
     }
     return false
   })

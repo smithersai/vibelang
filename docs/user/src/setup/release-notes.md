@@ -205,6 +205,7 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Changing a migration run's toolchain could make older conversions appear freshly produced. The provenance check now uses saved conversion receipts and refuses missing receipts.
 - Migration left snippet imports and re-exports such as `"./counter.ts?raw"` pointing at renamed files; it now updates the source path while preserving query strings, fragments and exported names.
 - Migration inventories omitted `.vibex` sources and their import and test dependencies; they now include those modules and resolve their source and JavaScript output names.
+- Migration could redirect a Bun-only TypeScript source entry to emitted JavaScript because its relative imports needed emission for Node, changing worker-loader behavior. Native runtime roots now follow Node's selected conditions, preserving unrelated Bun and worker source entries.
 - Calling an implementation method through a service key silently looked up the service and could hide native key properties. Keys now follow TypeScript; use an explicit `try` lookup, and `vibelang --fix` preserves the old direct call's run phase.
 
 - Calls imported from the retired `vibelang-runtime` `yieldNow` and `interrupt` factories stopped at missing-export errors; direct calls through named aliases and namespaces now migrate to cold native Effect values.
