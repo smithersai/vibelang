@@ -23,6 +23,8 @@ one, and update `vibelang`, `vibelang-runtime`, and `vibelang-vite` together.
 - The matching guide repeated conflicting rules for `is` binding homes. It now describes the current scopes, temporal dead zone and native redeclaration errors together.
 - Converting sequential catch pipelines could leave recovery combinators behind, and a grouped `try` could leave part of its operand outside recovery. The converter now keeps intermediate programs cold and recovers the complete grouped operand.
 
+- The check for `yield` in Effect parameter defaults remained pending after `EK2104` was implemented; it now runs as an active regression for functions and producers.
+
 - Legacy JavaScript checks inside `match` subjects, guards and arms still appeared as pending after the diagnostics were fixed; the existing regression now runs as an active check.
 
 - The legacy JavaScript regression check failed on a call to `Function` after its throwing contract was tracked; it now checks both the legacy-reference error and the plain-call error.
