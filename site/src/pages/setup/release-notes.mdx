@@ -189,10 +189,85 @@ Effect 4.0.6 defect-precedence and interruption migration.
 
 ### Bugs fixed since 0.0.10
 
+- A `catch` handler missing `=>` could omit `EK0509`; recovery now reports it while retaining independent TypeScript errors in the parameters and body.
+
+- Migration setup left forced Bun build checks such as `bun check --no-script -b` unable to resolve unchanged tests' imports after conversion; setup now selects VibeLang's build mode with the same projects and emit settings.
+
+- Generated synchronous defect bridges now use a nonthrowing inline catch mapper, so `--fix` no longer refuses EK0403, generator conversion or EK0407 retirement because an imported `identity` adds EK0402. Existing imports and the original defect value are preserved.
+
+- Pending-coverage validation still listed corpus debt for ten completed failure-contract cases. Those original reproductions now run without stale pending entries; their input files and mutations remain active.
+
+- The mapper’s schema recovery check still expected an unsupported method to accept arbitrary values. It now expects the rejecting `Schema.Never` recovery introduced with `EK1505`, while preserving both diagnostics.
+
+- Short fuzz runs omitted CPU accounting for the retired formatter and public compatibility-code checks, making the coverage guard fail. Both targets now use the existing budget without changing their samples or limits.
+
 - Upgrade-baseline regression tests could stop at an incomplete target-dependency fixture before checking compiler errors. They now complete the capability probe and verify that new compiler errors still reject the upgrade.
+- Source-child helper validation rejected the compiler's permitted generated `@throws {never}` contract; it now uses the declaration identity gate while preserving checks for authored documentation and type changes.
+- Migration wrapper-loss checks could fail their regression suite after private packages gained normal emission. Separate checks now cover private-package output and scratch fallback while preserving lost-wrapper rejection.
+- The final migration-record regression fixture stopped at missing compiler provenance before testing generated output. It now checks both refusals independently, including that `force` bypasses neither.
+- Match migration advice named an unregistered diagnostic for its prerequisite generator rewrite. It now names `vibelang --fix` and preserves the same repair order.
+- The throw-expression and API-identity pages exposed private review attribution. They now state the same public rules, retaining the migration prerequisite, diagnostic severities and generated-contract exception.
+- A migration regression test still treated a retained warning as a blocking error; it now checks the warning's provenance record and verifies that promoting it to an error still blocks migration.
+- Migration could stop with an unknown function-model declaration when the compiler emitted `@throws {never}`; it now recognizes that generated contract while still rejecting unknown declaration shapes.
+- Migration load-path tests failed on clean installs because `esbuild` was undeclared; the compiler test package now installs it explicitly and the tests use that copy.
+- Loader validation tests failed after their documented contract moved to the migration guide; they now read its published location while retaining every receipt and failure check.
+- The diagnostic registry check could fail after a fixed fuzz witness left an orphaned pending record; graduated witnesses now stay active without waiving unassigned diagnostics.
+- Error declaration conformance checks still expected the retired generated matcher member in published types. Their TypeScript counterparts now match the accepted published API, while the runtime matcher checks remain active.
+- An Effect expression named `fork` or `join` could report `EK1702` twice. Its parser diagnostic now appears once, with the existing rename fix preserved.
+
+- Declaration validation now accepts the generated `@throws {never}` contract in written-import tests while continuing to check every import specifier against the untouched TypeScript twin.
+- Migration checks could reject correctly rewritten Bun build scripts or run the same suites twice through compiler wrappers; they now check command and entrypoint rewrites together and run each suite in its own target.
+
+- Library inventory prose could contradict the rule for unannotated npm functions; the specification checks now reject implicit library contracts under that rule.
+
+- Schema documentation rules denied comments on written type aliases; the specification checks now reject that contradiction across the chapter and proposals.
+
+- The specification admitted whole-shape services without a matching grammar production; its checks now require that form in the grammar and reject conflicting body-only claims.
+
+- The specification checks missed broken VIP links and superseded proposals still listed as denied; they now reject both inconsistencies.
+
+- A computed method or accessor name in an object literal inside an `effect` function could receive `EK0501`, or leave its Effect unrun. It now evaluates in the surrounding activation; method bodies and parameter defaults keep their own contexts.
+
+- A computed object-pattern key such as `{ [keys.name]: let value, ...let rest }` could run its getter repeatedly, convert an object key twice, or read a different property after a proxy presence check. Each property clause now saves one converted key for its presence check, value read and rest exclusion.
+
+- `async match` in native Promise callbacks was rejected with syntax errors; it now returns a Promise and accepts `await` in its subject, tests and selected arm.
+
+- Declaration-identity checks for JSDoc links repeatedly checked unused browser declarations; those fixtures now load only the JavaScript libraries while preserving strict type and comment checks.
+
+- In effect code, calling a TypeScript const typed by a function-type alias whose own JSDoc says `@throws` drew no `EK0403`: the alias tag was read as the call's contract. A tag on an alias does not attach, so the call now needs `try Effect.try(() => …)`; put the tag on the call signature, `type Reader = { /** @throws {never} */ (): string }`, or on the const.
+
+- A permitted `globalThis.Function.prototype` access could receive `EK0107` when its literal key used parentheses or an erased assertion. Those keys now keep the prototype exemption; variable keys remain rejected.
+
+
+- Declaration identity checks could report `TS1262` for a valid export named `await`; keyword export aliases now compare normally, including through namespace re-exports.
+
+- Signature platform errors suggested namespace methods and omitted effectful key conversions; they now show the injected service and how to obtain keys.
+
+- Authenticated-encryption platform errors suggested namespace methods and omitted effectful key conversion; they now show the injected service and how to obtain its key.
+
+- A comma between `schema` declaration fields, between `data` variants or between a variant's fields reported `EK1013`, though the language admits `;`, `,` or a line break there. Commas now separate them, as in a TypeScript type literal; `error` and `schema error` payloads already accepted them.
+
+- Environment-access errors suggested calling a config value as a function; they now show how to run its Effect directly.
 
 - The grammar inventory cited old compatibility diagnostics as though they were current public assignments. Those references now explicitly say they are historical; all pending gaps and their regression witnesses remain intact.
 - Filesystem platform errors recommended methods on the `FileSystem` namespace, where they do not exist; their advice now gets `FileSystem.FileSystem` before calling the implementation.
+- Migrating imports inside native `module` bodies could replace `./leaf.js` with `./leaf.vibe` and cause `TS5097`. These bodies now keep their original TypeScript import spelling.
+- Fuzz validation previously rejected native arrow declarations with the correct generated contract; it now reads `@throws {never}` from the exported binding.
+- Regression checks for `or`-pattern bindings in loops could reject a correct compiler because their witnesses omitted the required lexical block. The checks now use block bodies and separately verify `EK0705` on unbraced bodies.
+
+- Cancelling Go validation could leave child test processes running. On POSIX hosts, the progress wrapper now forwards cancellation to the whole test process group and immediately records the signal.
+
+- Migration prompts told converters to replace `ensuring` with retired `try`/`finally` in Effect code; they now keep `ensuring` or `onExit` and reserve native `try`/`finally` for plain and `async` functions.
+
+- Build-graph regression checks could fail before inspecting their targets after API input selection changed. The spec-progress, forms, native-output and fuzz-hang checks now load the actual input helper and run their assertions again.
+
+- Ambient-import declaration regression tests repeatedly checked unrelated browser libraries and ran slowly. Those fixtures now check their ECMAScript libraries explicitly while retaining all diagnostics and generated identity checks.
+- `async match` in native Promise callbacks was rejected with syntax errors; it now returns a Promise and accepts `await` in its subject, tests and selected arm.
+
+- Parentheses inside schema unions could create extra union codecs; grouping now stays transparent and literal-only unions expose `.literals` in source order. Run `vibelang -p tsconfig.json --fix --fix-migration-only` to retain an older grouped schema codec layout, public declarations and decoding behavior.
+- Storing or renaming `sync` and `callback` reported `EK4410`, and their arrows rejected captured locals with `EK4405`. Stored bindings now use the native Effect exports, `never` resolves to `Effect.never`, and wrapper arrows may capture locals. If an older `typeof sync` or `typeof callback` annotation, including a factory return type, needs the compatibility signature, `vibelang --fix` qualifies its runtime import type while preserving the function and its calls.
+
+- Inline TypeScript modules now retain case-sensitive identities, enforce the accepted restricted module profile, and keep identifier imports in module rename, references and highlight results without merging unrelated type imports.
 - Bare `data as T;`, `data satisfies T;`, and `data is Number;` statements bypassed the required data body check. They now report `EK1604`, and `vibelang --fix` preserves the intended expression by adding parentheses.
 
 - Generated error matchers could fail to load after the extractor update because the guarded runtime entry omitted its registration helper. The entry now exports the helper once and preserves its ABI identity.
@@ -212,6 +287,13 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Generated error matchers could fail to load after the extractor update because the guarded runtime entry omitted its registration helper. The entry now exports the helper once and preserves its ABI identity.
 
 - Empty `data` declarations were rejected; they now produce an empty tagged union, as `Data.TaggedEnum<{}>` does.
+
+- A computed object-pattern key such as `{ [keys.name]: let value, ...let rest }` could run its getter repeatedly, convert an object key twice, or read a different property after a proxy presence check. Each property clause now saves one converted key for its presence check, value read and rest exclusion.
+
+- Declaration builds no longer emit or watch obsolete `vibelang.manifest.json` files. Foreign declarations use their written throws contracts; legacy migration still preserves the historical failure and defect split.
+- Bare `data as T;`, `data satisfies T;`, and `data is Number;` statements bypassed the required data body check. They now report `EK1604`, and `vibelang --fix` preserves the intended expression by adding parentheses.
+
+- Generated error matchers could fail to load after the extractor update because the guarded runtime entry omitted its registration helper. The entry now exports the helper once and preserves its ABI identity.
 - A `match` over an ordinary tagged-error class could appear exhaustive although a structurally compatible instance fell through with `TypeError`. Ordinary constructor patterns now cover no finite case; cover the tag explicitly or add a `default`.
 
 - The call-forms table reported stale plain-function decisions for the parameter-forwarding examples; it now records their explicit `effect` functions.
@@ -355,6 +437,53 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Unchecked pattern values could reach a matcher call without a valid static signature. They now report `EK0702` for `any`, `unknown`, `Function`, and noncallable objects, including indexed references and values typed as `object`; `vibelang --fix` preserves legacy dynamic matching with an explicit runtime guard.
 
 - Declaration fuzzing could exceed its short-test CPU limit while repeatedly checking the same dependencies. Bounded worker reuse now reduces repeated parsing and diagnostics while retaining every input and public API check.
+- The optional-schema compatibility upgrade kept decoded values but changed the published codec to `Schema.optional<Schema.Union<…>>`. It now writes the original `Schema.optional` codec explicitly, preserving declarations, constructors and matchers.
+- Regression coverage now checks that migration preserves plain Effect factories' captured values and repeated result or error identity, including Smithers patterns that had changed in earlier converted files. Fresh ordinary `--fix` already preserves these minimized cases.
+
+- Native `Schema.TaggedError` classes with spread fields or a user-written static `_tag` no longer receive EK4837 or an error-declaration quick fix. Native `Data.TaggedError` classes with a static `_tag` also keep their class form; ordinary fields remain eligible for preserving repairs.
+
+- Full CI selected the published-declaration identity suites twice. Release now shares their existing dedicated target, retaining its complete checks and cache inputs while running each suite once.
+
+- Node built-ins could bypass the platform boundary with `import FS = require("node:fs")`; value aliases now report `EK4402`, and `--fix` converts aliases used only as types to `import type`.
+
+- The editor quick fix for `try` in an ordinary function could insert `effect` into a comment containing `function`. It now marks the real declaration and keeps the comment unchanged.
+
+- Migration setup left `bun check --no-script` using a checker that could not resolve unchanged TypeScript tests' `.js` imports after conversion; it now runs `vibelang --noEmit` with the same project.
+
+- A throwing foreign call inside a native `try/catch` in a plain `catch` handler could incorrectly require an Effect bridge. It now follows the handler’s plain source context while uncaught calls keep their checks.
+
+- Native service-name, platform-advice and retired-setting conformance checks rejected an editorial specification update; they now cite the current rules while retaining their compiler checks.
+
+- Diagnostic conformance checks treated seven published codes as unassigned legacy exceptions; they now validate those codes directly against their specification assignments.
+
+- A bad `catch` operand could hide type errors in its arguments or handler. Those errors now remain visible alongside `EK0506`.
+
+- The no-throw wrapper conformance fixture still ran a catch operand with a redundant `try`. It now uses the catch expression’s existing join point and continues to check the wrapped foreign call.
+
+- Callback conformance checks failed after declaration-file cases expanded a shared generator; implementation and declaration cases now use the correct source sets, retaining their existing coverage.
+
+- VIP-27 now emits the generated `@throws {never}` contract on every local non-effectful export signature; `Effect`, `Stream` and `Layer` return channels keep their own contract. API identity allows only the added tag and still rejects authored documentation changes.
+
+- MAC platform errors suggested a namespace method and omitted the effectful key conversion; they now show the injected signing service and how to obtain its key.
+
+- Passing an overloaded TypeScript callback could reject a safe overload or lose a throwing overload through a local alias. Callback checks now compare the matching call signatures and require every signature of an overloaded destination to admit its matching source contract.
+
+- A `@throws` tag on a function type alias could incorrectly permit throwing callbacks. Only a tag attached to the callback's call signature now permits its declared throws.
+- Repeated automatic fixes no longer recheck the same refused syntax rewrite when only other files' types change.
+- When a type imported by a global declaration changed during `vibelang --fix`, an earlier refused rewrite could stay skipped. The fixer now checks it again, including through re-exports and import-type queries.
+- `vibelang --fix` checked again, in each later pass of a run, every prelude rewrite it had refused, though nothing the refusal read had changed; on a Smithers slice that was 13 or 14 rewrites a pass and about a fifth of each run. A run now refuses such a rewrite again without a check while its file, the files it reads and their imports, and the files that declare globals are unchanged.
+- Plain functions with written `Effect` return types previously widened object literals and rejected valid returns such as `Effect.succeed({ type: "dataUrl", value })`; return expressions now keep their literal types from the written `Effect` result, as in TypeScript.
+
+- A CommonJS program loading a migrated package through `vibelang/register` could fail with `Cannot find module` and a `file:` URL; it now resolves the source with the same module identity as an ESM import.
+
+- VIP-27 now emits the generated `@throws {never}` contract on every local non-effectful export signature; `Effect`, `Stream` and `Layer` return channels keep their own contract. API identity allows only the added tag and still rejects authored documentation changes.
+
+- The failures conformance matrix still marked ten implemented contracts as pending, so successful checks failed as XPASS. Those contracts now run as required checks with additional saved source mutations.
+
+- An erased assertion around `globalThis.Function` incorrectly rejected its permitted `instanceof` and prototype uses with `EK0107`. These uses now keep their exemption through `as`, type assertions, `satisfies` and non-null assertions; other reads stay rejected.
+
+- A `return`, `break`, or `continue` inside `do` in a flat array declaration default could be rejected with `EK0204`. These defaults now run in the enclosing function or loop, skip later bindings on a jump, and close unfinished iterators with native exception precedence. Effect defaults also preserve failure channels and close before enclosing `Scope` finalizers. Generated cleanup keeps the existing checks on source calls known to throw.
+- Unchecked pattern values could reach a matcher call without a valid static signature. They now report `EK0702` for `any`, `unknown`, `Function`, and noncallable objects, including indexed references and values typed as `object`; `vibelang --fix` preserves legacy dynamic matching with an explicit runtime guard.
 
 - The forms gate rejected explicit Effect callbacks after independently landed changes moved their source locations; its reviewed snapshot now records the written modifier at each affected site.
 
@@ -1244,6 +1373,8 @@ Effect 4.0.6 defect-precedence and interruption migration.
 - Bare comma lists in a `for concurrent` limit were accepted outside the documented grammar; they are now rejected, and `vibelang --fix` adds parentheses without reordering their evaluation.
 
 - A rejected `fork` operand wrapped in parentheses or `satisfies`, such as `fork (Effect.fail("bad") catch () => 7)`, also reported a compiler-generated call error. It now reports `EK1703` alone while preserving independent errors inside the operand.
+
+- Array patterns skipped generators and other non-array iterables; they now match them and reuse pulled values across arms. Failed Effects leave destructuring iterators suspended, as native `Effect.gen` does.
 
 - Identical recursive generic declaration APIs could fail with `TS2589`; exact resolved type identity now proves those comparisons.
 - API checks treated identical JSDoc links as different when a private target resolved in only one snapshot. Link targets and labels now compare consistently while real comment changes remain differences.
