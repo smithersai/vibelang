@@ -51,6 +51,8 @@ const allExitsEncoded = `{"_tag":"Success","value":{"$array":[` +
 // on pairs that agree and pairs that do not (VIP-31: "the same `Exit` ...:
 // success, failure, defect or interruption, with finalizers in the same
 // order").
+// rule-evidence: docs/design/vips/0031-runtime-guarantees.md#ac0884a8968a9455
+// VIP-31: canonical Exit and finalizer trace.
 func TestVIPExitEncoding(t *testing.T) {
 	env := newVIPEnv(t)
 	modules := map[string]struct{ body, kind, exit string }{

@@ -10,6 +10,8 @@ const pinned = existsSync(join(root, "docs/tools/node_modules/@types/node"))
 
 // docs/design/src/900-appendices.md#ccd7c79f00222642 — Chapter 900: platform inventory pins native declarations.
 // docs/design/src/900-appendices.md#08db07864af89197 — Chapter 900: platform inventory pins native declarations.
+// rule-evidence: docs/design/vips/0033-platform-stdlib.md#c6e052446ac444ba
+// VIP-33: generated platform inventory.
 test("the inventory is current for the pinned libs and @types/node", { skip: !pinned, timeout: 120_000 }, () => {
   assert.equal(readFileSync(join(root, artifactPath), "utf8"), serialize(generate()), "run node docs/tools/platform-globals.mjs --write")
 })
@@ -30,6 +32,8 @@ test("the banned set follows the rule", () => {
 })
 
 // docs/design/src/900-appendices.md#cf80e89c02cbd17e — Chapter 900: host-reaching allowlisted members stay banned.
+// rule-evidence: docs/design/vips/0033-platform-stdlib.md#42f414bbb61d5184
+// VIP-33: complete platform member classification.
 test("every member of an allowlisted global is classified, and the banned ones have reasons", () => {
   const { members } = inventory()
   const banned = members.filter(m => m.status === "banned").map(m => m.member)

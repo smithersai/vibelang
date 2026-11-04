@@ -11,6 +11,10 @@ import (
 	"testing"
 )
 
+// rule-evidence: docs/design/vips/0031-runtime-guarantees.md#38c00238e9be564d
+// VIP-31: interruptor equality classes.
+// rule-evidence: docs/design/vips/0031-runtime-guarantees.md#80d5121350308fbe
+// VIP-31: canonical interruptor sequences.
 func TestVIPFiberIDNumberEquality(t *testing.T) {
 	env := newVIPEnv(t)
 	for _, mode := range []string{"top", "cause", "exit", "reasons"} {

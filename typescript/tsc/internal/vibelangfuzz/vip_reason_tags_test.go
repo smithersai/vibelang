@@ -8,6 +8,8 @@ import (
 	"testing"
 )
 
+// rule-evidence: docs/design/vips/0031-runtime-guarantees.md#8f3f9849e3c3bdcd
+// VIP-31: invalid encoded reason tags.
 func TestCanonicalVIPExitRejectsInvalidReasonTags(t *testing.T) {
 	for _, tag := range []string{`null`, `true`, `7`, `"Other"`, `[]`, `{}`} {
 		for _, container := range []string{"top", "exit", "cause", "reason"} {
